@@ -2,6 +2,10 @@
 
 ## Next release
 
+* Removed `Explicit` as a command line compilation target option as it never worked.
+
+## Version 0.14.0
+
 * Fixed spurious "Unnecessary resources provided" warning when exporting to ITPs.
 
 * Drastically reduced memory consumption when compiling verification queries.

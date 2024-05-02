@@ -1,8 +1,6 @@
 module Vehicle.Backend.LossFunction.Convert
   ( convertToTensors,
     MonadTensorProperty,
-    TensorPreprocessingStep (..),
-    noPreprocessing,
   )
 where
 
@@ -14,8 +12,11 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (fromMaybe, maybeToList)
 import Data.Ratio
 import Data.Set as Set (Set, fromList)
+import Vehicle.Backend.LossFunction (MonadTensor, MonadTensorProperty, convertLossExpr)
 import Vehicle.Backend.LossFunction.Core (TensorBuiltin)
 import Vehicle.Backend.LossFunction.Core qualified as T
+import Vehicle.Backend.LossFunction.Logics (implementationOf)
+import Vehicle.Backend.Prelude (DifferentiableLogicID)
 import Vehicle.Compile.Context.Var
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE
@@ -28,67 +29,49 @@ import Vehicle.Libraries.StandardLibrary.Definitions
 import Vehicle.Prelude.Warning
 import Vehicle.Syntax.Builtin
 
-type MonadTensor m =
-  ( MonadCompile m,
-    MonadFreeContext Builtin m,
-    MonadBoundContext Builtin m
-  )
-
-type MonadTensorProperty m =
-  ( MonadTensor m,
-    MonadReader DeclProvenance m
-  )
-
-newtype TensorPreprocessingStep
-  = TensorPreprocessingStep
-      (forall m. (MonadTensorProperty m) => WHNFValue Builtin -> m (WHNFValue Builtin))
-
-noPreprocessing :: TensorPreprocessingStep
-noPreprocessing = TensorPreprocessingStep return
-
 convertToTensors ::
   (MonadCompile m) =>
-  TensorPreprocessingStep ->
+  DifferentiableLogicID ->
   Prog Ix Builtin ->
   m (Prog Ix TensorBuiltin)
-convertToTensors preprocess prog =
+convertToTensors logicID prog =
   logCompilerPass MinDetail currentPass $ do
     runFreshFreeContextT (Proxy @Builtin) $
       runFreshBoundContextT (Proxy @Builtin) $
-        convertProg preprocess prog
+        convertProg logicID prog
 
 convertProg ::
   (MonadTensor m) =>
-  TensorPreprocessingStep ->
+  DifferentiableLogicID ->
   Prog Ix Builtin ->
   m (Prog Ix TensorBuiltin)
-convertProg preprocess (Main ds) = Main <$> convertDecls preprocess ds
+convertProg logicID (Main ds) = Main <$> convertDecls logicID ds
 
 convertDecls ::
   (MonadTensor m) =>
-  TensorPreprocessingStep ->
+  DifferentiableLogicID ->
   [Decl Ix Builtin] ->
   m [Decl Ix TensorBuiltin]
-convertDecls preprocess = \case
+convertDecls logicID = \case
   [] -> return []
   decl : decls -> do
     maybeDecl <-
-      flip runReaderT (identifierOf decl, provenanceOf decl) $
+      flip runReaderT ((identifierOf decl, provenanceOf decl), logicID) $
         case decl of
-          DefAbstract p i s t ->
+          DefAbstract p i s t -> do
             Just . DefAbstract p i s <$> convertDeclType t
           DefFunction p i anns t e
             | isProperty anns -> do
                 logCompilerPass MinDetail ("property" <+> quotePretty i) $ do
                   hideStdLibDecls (Proxy @Builtin) preservedStdLibOps $ do
                     t' <- convertDeclType t
-                    e' <- runReaderT (normAndConvertExpr preprocess mempty e) (i, p)
+                    e' <- normAndConvertExpr mempty e
                     e'' <- unnormaliseNF e'
                     return $ Just $ DefFunction p i anns t' e''
             | otherwise -> return Nothing
 
     addDeclToContext decl $ do
-      decls' <- convertDecls preprocess decls
+      decls' <- convertDecls logicID decls
       return $ maybeToList maybeDecl ++ decls'
 
 convertDeclType ::
@@ -96,82 +79,78 @@ convertDeclType ::
   Type Ix Builtin ->
   m (Type Ix TensorBuiltin)
 convertDeclType t = do
-  type'' <- normAndConvertExpr noPreprocessing mempty t
+  type'' <- normAndConvertExpr mempty t
   unnormaliseNF type''
 
 normAndConvertExpr ::
   (MonadTensorProperty m) =>
-  TensorPreprocessingStep ->
   WHNFBoundEnv Builtin ->
   Expr Ix Builtin ->
   m (NFValue TensorBuiltin)
-normAndConvertExpr preprocess env expr = do
+normAndConvertExpr env expr = do
   whnfExpr <- normaliseInEnv env expr
-  convertExpr preprocess whnfExpr
+  convertExpr whnfExpr
 
 convertExpr ::
   (MonadTensorProperty m) =>
-  TensorPreprocessingStep ->
   WHNFValue Builtin ->
   m (NFValue TensorBuiltin)
-convertExpr preprocess@(TensorPreprocessingStep pre) expr = do
-  preprocessedExpr <- pre expr
+convertExpr expr = do
+  (_, logicID) <- ask
+  preprocessedExpr <- convertLossExpr (implementationOf logicID) expr
   logDebugM MaxDetail $ do
     ctx <- getNamedBoundCtx (Proxy @Builtin)
-    return $ "Pre-processed to:" <+> prettyFriendly (WithContext preprocessedExpr ctx)
-  convertedExpr <- convertValue preprocess preprocessedExpr
+    return $ "Converted to loss functions:" <+> prettyFriendly (WithContext preprocessedExpr ctx)
+  convertedExpr <- convertValue preprocessedExpr
   return convertedExpr
 
 convertValue ::
   (MonadTensorProperty m) =>
-  TensorPreprocessingStep ->
   WHNFValue Builtin ->
   m (NFValue TensorBuiltin)
-convertValue preprocess e = do
+convertValue e = do
   showEntry e
   result <- case e of
     VMeta {} -> unexpectedExprError currentPass "VMeta"
     VUniverse l -> return $ VUniverse l
     VPi binder body -> do
-      binder' <- convertBinder preprocess binder
+      binder' <- convertBinder binder
       unnormBinder <- traverse unnormalise binder
-      body' <- addBinderToContext unnormBinder $ convertValue preprocess body
+      body' <- addBinderToContext unnormBinder $ convertValue body
       return $ VPi binder' body'
     VFreeVar v spine -> case findStdLibFunction v of
-      Just StdForeachIndex -> convertForeachIndex preprocess spine
+      Just StdForeachIndex -> convertForeachIndex spine
       _ -> do
-        spine' <- convertSpine preprocess spine
+        spine' <- convertSpine spine
         return $ VFreeVar v spine'
     VBoundVar v spine -> do
-      spine' <- convertSpine preprocess spine
+      spine' <- convertSpine spine
       return $ VBoundVar v spine'
     VBuiltin b spine -> do
-      spine' <- convertSpine preprocess spine
+      spine' <- convertSpine spine
       convertBuiltins b spine'
     VLam binder (WHNFBody env body) -> do
-      binder' <- convertBinder preprocess binder
+      binder' <- convertBinder binder
       unnormBinder <- traverse unnormalise binder
       lv <- getCurrentLv (Proxy @Builtin)
       body' <-
         addBinderToContext unnormBinder $
-          normAndConvertExpr preprocess (extendEnvWithBound lv unnormBinder env) body
+          normAndConvertExpr (extendEnvWithBound lv unnormBinder env) body
       return $ VLam binder' (NFBody body')
   showExit result
   return result
 
 convertSpine ::
   (MonadTensorProperty m) =>
-  TensorPreprocessingStep ->
   WHNFSpine Builtin ->
   m [NFArg TensorBuiltin]
-convertSpine preprocess = traverse (traverse (convertValue preprocess))
+convertSpine = traverse (traverse convertValue)
 
 convertBinder ::
   (MonadTensorProperty m) =>
-  TensorPreprocessingStep ->
   WHNFBinder Builtin ->
   m (NFBinder TensorBuiltin)
-convertBinder preprocess = traverse (convertValue preprocess)
+convertBinder = traverse convertValue
 
 convertBuiltins :: (MonadTensorProperty m) => Builtin -> [NFArg TensorBuiltin] -> m (NFValue TensorBuiltin)
 convertBuiltins b args = case b of
@@ -212,7 +191,7 @@ convertVectorType elemType size = do
   case maybeResult of
     Just result -> return $ mkBuiltin result []
     Nothing -> do
-      declProv <- ask
+      (declProv, _) <- ask
       boundCtx <- getNamedBoundCtx (Proxy @Builtin)
       let vecType = VFreeVar (Identifier User "Vector") [Arg mempty Explicit Relevant elemType, Arg mempty Explicit Relevant size]
       throwError $ HigherOrderVectors declProv boundCtx vecType elemType
@@ -321,38 +300,36 @@ convertBuiltinFunction t args = case t of
 
 convertForeachIndex ::
   (MonadTensorProperty m) =>
-  TensorPreprocessingStep ->
   WHNFSpine Builtin ->
   m (NFValue TensorBuiltin)
-convertForeachIndex preprocess spine = do
+convertForeachIndex spine = do
   lv <- getCurrentLv (Proxy @Builtin)
-  spine' <- convertSpine preprocess spine
+  spine' <- convertSpine spine
   case spine' of
     [_, argExpr -> size, argExpr -> VLam binder (NFBody expr)] -> do
       logDebug MaxDetail $ "Trying to convert" <+> quotePretty StdForeachIndex
-      result <- distributeForeachIndex preprocess spine size (nameOf binder) lv expr
+      result <- distributeForeachIndex spine size (nameOf binder) lv expr
       case result of
         Just x -> return x
         Nothing -> do
           reducedExpr <- appHiddenStdlibDef StdForeachIndex spine
-          convertExpr preprocess reducedExpr
+          convertExpr reducedExpr
     _ -> compilerDeveloperError "Unexpected expr while converting ForeachIndex"
 
 distributeForeachIndex ::
   (MonadTensorProperty m) =>
-  TensorPreprocessingStep ->
   WHNFSpine Builtin ->
   NFValue TensorBuiltin ->
   Maybe Name ->
   Lv ->
   NFValue TensorBuiltin ->
   m (Maybe (NFValue TensorBuiltin))
-distributeForeachIndex preprocess originalSpine size varName lv = \case
+distributeForeachIndex originalSpine size varName lv = \case
   -- Distribute the `forallIndex` across a liftable operation (e.g. `and`).
   -- e.g. `foreach i . x(i) op y(i)` -> `(foreach i . x(i)) op (forall i . y(i))`
   VBuiltin b [e1, e2] | isLiftableTensorOp b -> do
     logCompilerSection MaxDetail ("Distributing `foreach` over" <+> pretty b) $ do
-      let recurse = distributeForeachIndex preprocess originalSpine size varName lv
+      let recurse = distributeForeachIndex originalSpine size varName lv
       e1' <- sequence <$> traverse recurse e1
       e2' <- sequence <$> traverse recurse e2
       return $ Applicative.liftA2 (\x y -> VBuiltin b [x, y]) e1' e2'
@@ -394,7 +371,7 @@ convertHigherOrderFunction convertFn origFn newFun args = do
   case result of
     Nothing -> do
       logDebug MaxDetail "Failed"
-      (ident, _) <- ask
+      ((ident, _), _) <- ask
       boundCtx <- getNamedBoundCtx (Proxy @Builtin)
       let expr = mkBuiltin newFun args
       logWarning $ InefficientTensorCode (nameOf ident) origFn boundCtx expr
