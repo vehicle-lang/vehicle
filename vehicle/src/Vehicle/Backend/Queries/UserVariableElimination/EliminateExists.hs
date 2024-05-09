@@ -11,8 +11,8 @@ import Vehicle.Backend.Queries.UserVariableElimination.Core
 import Vehicle.Backend.Queries.UserVariableElimination.FourierMotzkinElimination
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Data.BooleanExpr
-import Vehicle.Data.LinearExpr (rearrangeExprToSolveFor, referencesVariable)
+import Vehicle.Data.Expr.Boolean
+import Vehicle.Data.Expr.Linear (rearrangeExprToSolveFor, referencesVariable)
 import Vehicle.Prelude.Warning (CompileWarning (..))
 import Vehicle.Verify.Variable
 

@@ -11,9 +11,10 @@ import Data.Map (Map)
 import Data.Map qualified as Map (insertWith, singleton, toList, unionWith)
 import Data.Set (Set)
 import Data.Set qualified as Set (singleton)
-import Vehicle.Backend.LossFunction.Core
 import Vehicle.Compile.Context.Bound.Core
-import Vehicle.Data.NormalisedExpr
+import Vehicle.Data.Builtin.Loss.Core (LossBuiltin)
+import Vehicle.Data.Builtin.Tensor
+import Vehicle.Data.Expr.Normalised
 import Vehicle.Libraries.StandardLibrary.Definitions
 import Vehicle.Resource (ExternalResource)
 import Vehicle.Syntax.AST
@@ -32,7 +33,7 @@ data CompileWarning
   | UnsoundStrictOrderConversion QueryFormatID QueryAddress
   | AllConstantNetworkInputVars QueryFormatID QueryAddress
   | UnboundedNetworkInputVariables QueryFormatID QueryAddress MetaNetwork [(NetworkRationalVariable, UnderConstrainedVariableStatus)]
-  | InefficientTensorCode Name BuiltinFunction NamedBoundCtx (NFValue TensorBuiltin)
+  | InefficientTensorCode Name LossBuiltin NamedBoundCtx (NFValue TensorBuiltin)
 
 data SummarisedCompileWarning
   = UnusedResourcesSummary ExternalResource (Set Name)
@@ -54,7 +55,7 @@ data CombiningState = CombiningState
     unsoundStrictnessConversions :: Map (QueryFormatID, PropertyAddress) Int,
     allConstantNetworkInputVars :: Map (QueryFormatID, PropertyAddress) (NonEmpty QueryID),
     unboundedNetworkInputs :: Map (QueryFormatID, PropertyAddress) (Map UnderConstrainedSignature (NonEmpty QueryID)),
-    inefficientTensorCode :: Map Name [(BuiltinFunction, NamedBoundCtx, NFValue TensorBuiltin)]
+    inefficientTensorCode :: Map Name [(LossBuiltin, NamedBoundCtx, NFValue TensorBuiltin)]
   }
 
 emptyState :: CombiningState

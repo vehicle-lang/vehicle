@@ -12,9 +12,9 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
-import Vehicle.Compile.Type.Subsystem.Standard
-import Vehicle.Data.BuiltinInterface.ASTInterface
-import Vehicle.Data.NormalisedExpr
+import Vehicle.Data.Builtin.Standard
+import Vehicle.Data.Expr.Interface
+import Vehicle.Data.Expr.Normalised
 
 --------------------------------------------------------------------------------
 -- Parameter parsing

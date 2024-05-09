@@ -7,8 +7,8 @@ import Control.Monad (when)
 import Control.Monad.State (MonadState (..), evalState, modify)
 import Data.Set (Set, insert, member)
 import Vehicle.Compile.Prelude
-import Vehicle.Data.BuiltinInterface
-import Vehicle.Data.BuiltinInterface.ASTInterface
+import Vehicle.Data.Builtin.Interface
+import Vehicle.Data.Expr.Interface
 
 --------------------------------------------------------------------------------
 -- Capitalise type names

@@ -42,7 +42,7 @@ import System.Random
 import Vehicle.Backend.Agda.Interact (writeResultToFile)
 import Vehicle.Backend.Queries.UserVariableElimination.VariableReconstruction (reconstructUserVars)
 import Vehicle.Compile.Prelude
-import Vehicle.Data.BooleanExpr
+import Vehicle.Data.Expr.Boolean
 import Vehicle.Data.Tensor (Tensor (..))
 import Vehicle.Prelude.IO qualified as VIO (MonadStdIO (writeStdoutLn))
 import Vehicle.Verify.Core

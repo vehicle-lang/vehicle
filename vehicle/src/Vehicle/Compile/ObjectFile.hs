@@ -10,7 +10,7 @@ import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
 import System.FilePath (dropExtension)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Type.Subsystem.Standard
+import Vehicle.Data.Builtin.Standard
 
 data ObjectFileContents = ObjectFileContents
   { fileHash :: Int,

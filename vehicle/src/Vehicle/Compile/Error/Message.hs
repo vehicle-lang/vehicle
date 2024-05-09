@@ -12,18 +12,18 @@ import Data.Monoid (Endo (..))
 import Data.Text (Text, pack)
 import Prettyprinter (list)
 import System.FilePath
-import Vehicle.Backend.Queries.Error.Linearity
-import Vehicle.Backend.Queries.Error.Polarity
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Core
-import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Data.BuiltinInterface.ASTInterface
+import Vehicle.Data.Builtin.Linearity
+import Vehicle.Data.Builtin.Polarity
+import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.DSL
 import Vehicle.Data.DeBruijn (substDBInto)
-import Vehicle.Data.NormalisedExpr
+import Vehicle.Data.Expr.Interface
+import Vehicle.Data.Expr.Normalised
 import Vehicle.Libraries.StandardLibrary.Definitions (pattern TensorIdent)
 import Vehicle.Syntax.Parse (ParseError (..))
 import Prelude hiding (pi)
@@ -1181,7 +1181,7 @@ instance MeaningfulError CompileError where
                 <+> "does not contain any neural networks.",
             fix = Just "choose a different compilation target than VNNLib"
           }
-    UnsupportedNegatedOperation logic ctx expr ->
+    UnsupportedNegatedOperation logic ctx originalExpr problematicExpr ->
       UError $
         UserError
           { provenance = mempty,
@@ -1192,8 +1192,9 @@ instance MeaningfulError CompileError where
                 <+> "pushing the"
                 <+> quotePretty Not
                 <+> "through"
-                <+> prettyFriendly (WithContext expr ctx)
-                <+> "because it cannot be eliminated by pushing it inwards.",
+                <+> prettyFriendly (WithContext originalExpr ctx)
+                <+> "because it cannot be eliminated by pushing it inwards through the subexpression"
+                <+> prettyFriendly (WithContext problematicExpr ctx),
             fix = Just "choose a different differential logic"
           }
     UnsupportedIfOperation _declProv ifProv ->

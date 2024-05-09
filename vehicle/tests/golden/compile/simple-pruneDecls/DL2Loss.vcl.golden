@@ -1,7 +1,7 @@
 @property;
-p1 : forallT (f : Tensor Rat -> Tensor Rat) . Tensor Bool;
-p1 f = Optimise[min] (+) (\ x -> max 0.0 (1.0 - f x ! 0) + (if 1.0 == f x ! 0 then 1.0 else 0.0))
+p1 : (Tensor Rat -> Tensor Rat) -> Tensor Rat;
+p1 f = minimise (\ x -> max (const[ 0.0 ] nil) (const[ 1.0 ] nil - f x ! 0))
 
 @property;
-p2 : forallT (g : Tensor Rat -> Tensor Rat) . Tensor Bool;
-p2 g = Optimise[min] (+) (\ x -> max 0.0 (0.0 - g x ! 0) + (if 0.0 == g x ! 0 then 1.0 else 0.0))
+p2 : (Tensor Rat -> Tensor Rat) -> Tensor Rat;
+p2 g = minimise (\ x -> max (const[ 0.0 ] nil) (const[ 0.0 ] nil - g x ! 0))

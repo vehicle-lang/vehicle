@@ -12,6 +12,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.Proxy (Proxy (..))
 import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Error
+import Vehicle.Compile.Normalise.Builtin (NormalisableBuiltin)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Bidirectional
@@ -23,15 +24,15 @@ import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Monad.Class
-import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Data.NormalisedExpr
+import Vehicle.Data.Builtin.Standard.Core
+import Vehicle.Data.Expr.Normalised
 
 -------------------------------------------------------------------------------
 -- Algorithm
 
 typeCheckProg ::
   forall builtin m.
-  (HasTypeSystem builtin, MonadCompile m) =>
+  (HasTypeSystem builtin, NormalisableBuiltin builtin, MonadCompile m) =>
   InstanceCandidateDatabase builtin ->
   FreeCtx builtin ->
   Prog Ix Builtin ->
@@ -44,7 +45,7 @@ typeCheckProg instanceCandidates freeCtx (Main uncheckedProg) =
 
 typeCheckExpr ::
   forall builtin m.
-  (HasTypeSystem builtin, MonadCompile m) =>
+  (HasTypeSystem builtin, NormalisableBuiltin builtin, MonadCompile m) =>
   InstanceCandidateDatabase builtin ->
   FreeCtx builtin ->
   Expr Ix Builtin ->
@@ -61,12 +62,12 @@ typeCheckExpr instanceCandidates freeCtx expr1 = do
 -------------------------------------------------------------------------------
 -- Type-class for things that can be type-checked
 
-typeCheckDecls :: (TCM builtin m) => [Decl Ix Builtin] -> m [Decl Ix builtin]
+typeCheckDecls :: forall builtin m. (TCM builtin m) => [Decl Ix Builtin] -> m [Decl Ix builtin]
 typeCheckDecls = \case
   [] -> return []
   d : ds -> do
     typedDecl <- typeCheckDecl d
-    checkedDecls <- addDeclToContext typedDecl $ typeCheckDecls ds
+    checkedDecls <- addDeclToContext (Proxy @builtin) typedDecl $ typeCheckDecls ds
     return $ typedDecl : checkedDecls
 
 typeCheckDecl :: forall builtin m. (TCM builtin m) => Decl Ix Builtin -> m (Decl Ix builtin)

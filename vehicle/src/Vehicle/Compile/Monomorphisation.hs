@@ -34,11 +34,10 @@ import Data.Text qualified as Text
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyFriendlyEmptyCtx, prettyVerbose)
-import Vehicle.Compile.Type.Subsystem.Standard ()
-import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Data.BuiltinInterface
-import Vehicle.Data.BuiltinInterface.ASTInterface
+import Vehicle.Data.Builtin.Interface
+import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.DeBruijn
+import Vehicle.Data.Expr.Interface
 import Vehicle.Data.Hashing ()
 import Vehicle.Libraries.StandardLibrary.Definitions
 
@@ -255,15 +254,15 @@ getTypeJoiner nameJoiner = nameJoiner <> nameJoiner
 -- Step 4. Coercions
 
 removeLiteralCoercions ::
-  forall m builtin.
-  (MonadCompile m, HasStandardData builtin, PrintableBuiltin builtin) =>
+  forall m.
+  (MonadCompile m) =>
   Text ->
-  Prog Ix builtin ->
-  m (Prog Ix builtin)
+  Prog Ix Builtin ->
+  m (Prog Ix Builtin)
 removeLiteralCoercions nameJoiner (Main ds) =
   Main . catMaybes <$> traverse goDecl ds
   where
-    goDecl :: Decl Ix builtin -> m (Maybe (Decl Ix builtin))
+    goDecl :: Decl Ix Builtin -> m (Maybe (Decl Ix Builtin))
     goDecl decl = case getVectorCoercion (identifierOf decl) of
       Just StdVectorToVector -> return Nothing
       Just StdVectorToList -> return Nothing
@@ -282,7 +281,7 @@ removeLiteralCoercions nameJoiner (Main ds) =
       let shortIdent = Identifier (moduleOf ident) $ fst $ Text.breakOn typeJoiner (nameOf ident)
       findStdLibFunction shortIdent
 
-    updateBuiltin :: Decl Ix builtin -> BuiltinUpdate m Ix builtin builtin
+    updateBuiltin :: Decl Ix Builtin -> BuiltinUpdate m Ix Builtin Builtin
     updateBuiltin decl p2 b args = case b of
       (getBuiltinFunction -> Just (FromNat dom)) -> case (dom, filter isExplicit args) of
         (FromNatToIndex, [RelevantExplicitArg _ (INatLiteral p n)]) -> return $ IIndexLiteral p n
@@ -295,7 +294,7 @@ removeLiteralCoercions nameJoiner (Main ds) =
         _ -> partialApplication decl (pretty (FromRat dom)) args
       _ -> return $ normAppList (Builtin p2 b) args
 
-    updateFreeVar :: Decl Ix builtin -> FreeVarUpdate m Ix builtin
+    updateFreeVar :: Decl Ix Builtin -> FreeVarUpdate m Ix Builtin
     updateFreeVar decl recGo p ident args = do
       let vectorCoercion = getVectorCoercion ident
       args' <- traverse (traverse recGo) args
@@ -308,7 +307,7 @@ removeLiteralCoercions nameJoiner (Main ds) =
           _ -> partialApplication decl (pretty ident) args'
         _ -> return $ normAppList (FreeVar p ident) args'
 
-    partialApplication :: Decl Ix builtin -> Doc () -> [Arg Ix builtin] -> m b
+    partialApplication :: Decl Ix Builtin -> Doc () -> [Arg Ix Builtin] -> m b
     partialApplication decl v args =
       compilerDeveloperError $
         "Found partially applied"

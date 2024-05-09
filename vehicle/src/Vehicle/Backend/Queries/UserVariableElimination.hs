@@ -17,6 +17,7 @@ import Data.Vector qualified as Vector
 import Vehicle.Backend.Queries.PostProcessing (convertPartitionsToQueries)
 import Vehicle.Backend.Queries.UserVariableElimination.Core
 import Vehicle.Backend.Queries.UserVariableElimination.EliminateExists (eliminateExists)
+import Vehicle.Backend.Queries.UserVariableElimination.EliminateIf (unfoldIf)
 import Vehicle.Backend.Queries.UserVariableElimination.EliminateNot (eliminateNot)
 import Vehicle.Backend.Queries.UserVariableElimination.Unblocking
 import Vehicle.Compile.Context.Free
@@ -24,11 +25,11 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendlyEmptyCtx, prettyVerbose)
-import Vehicle.Compile.Type.Subsystem.Standard
-import Vehicle.Data.BooleanExpr
-import Vehicle.Data.BuiltinInterface.ASTInterface
-import Vehicle.Data.LinearExpr (LinearExpr, addExprs, constantExpr, isConstant, scaleExpr, singletonVarExpr)
-import Vehicle.Data.NormalisedExpr
+import Vehicle.Data.Builtin.Standard
+import Vehicle.Data.Expr.Boolean
+import Vehicle.Data.Expr.Interface
+import Vehicle.Data.Expr.Linear (LinearExpr, addExprs, constantExpr, isConstant, scaleExpr, singletonVarExpr)
+import Vehicle.Data.Expr.Normalised
 import Vehicle.Data.Tensor (RationalTensor, Tensor (..), zeroTensor)
 import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (StdEqualsVector, StdNotEqualsVector))
 import Vehicle.Verify.QueryFormat (QueryFormat (..), supportsStrictInequalities)
@@ -59,10 +60,10 @@ eliminateUserVariables = go
       ---------------------
       IAnd e1 e2 -> andTrivial andBoolExpr <$> go e1 <*> go e2
       IOr e1 e2 -> orTrivial orBoolExpr <$> go e1 <*> go e2
-      IIf _ c x y -> go =<< eliminateIf c x y
-      IExists _ (VLam binder (WHNFBody env body)) -> compileQuantifiedQuerySet False binder env body
-      IForall _ (VLam binder (WHNFBody env body)) -> do
-        logDebug MinDetail ("Negating property..." <> line)
+      IIf _ c x y -> go =<< unfoldIf c x y
+      IExists _ (VLam binder (WHNFClosure env body)) ->
+        compileQuantifiedQuerySet False binder env body
+      IForall _ (VLam binder (WHNFClosure env body)) ->
         compileQuantifiedQuerySet True binder env (INot body)
       -----------------
       -- Mixed cases --
@@ -93,7 +94,7 @@ compileQuantifiedQuerySet ::
   Expr Ix Builtin ->
   m (Property QueryMetaData)
 compileQuantifiedQuerySet isPropertyNegated binder env body = do
-  let subsectionDoc = "compilation of set of quantified queries:" <+> prettyFriendlyEmptyCtx (IExists [] (VLam binder (WHNFBody env body)))
+  let subsectionDoc = "compilation of set of quantified queries:" <+> prettyFriendlyEmptyCtx (IExists [] (VLam binder (WHNFClosure env body)))
   logCompilerPass MaxDetail subsectionDoc $ do
     resetGlobalCtx
     maybePartitions <- compileExists binder env body
@@ -143,24 +144,11 @@ compileBoolExpr expr = case expr of
   INotEqual EqRat e1 e2 -> compileBoolExpr =<< eliminateNotEqualRat e1 e2
   IVectorNotEqualFull spine -> compileBoolExpr =<< eliminateNotVectorEqual spine
   INot e -> compileBoolExpr =<< eliminateNot e
-  IIf _ c x y -> compileBoolExpr =<< eliminateIf c x y
+  IIf _ c x y -> compileBoolExpr =<< unfoldIf c x y
   IAnd x y -> andTrivial andPartitions <$> compileBoolExpr x <*> compileBoolExpr y
   IOr x y -> orTrivial orPartitions <$> compileBoolExpr x <*> compileBoolExpr y
-  IExists _ (VLam binder (WHNFBody env body)) -> compileExists binder env body
+  IExists _ (VLam binder (WHNFClosure env body)) -> compileExists binder env body
   _ -> compileBoolExpr =<< unblockBoolExpr expr
-
-eliminateIf ::
-  (MonadQueryStructure m) =>
-  WHNFValue QueryBuiltin ->
-  WHNFValue QueryBuiltin ->
-  WHNFValue QueryBuiltin ->
-  m (WHNFValue QueryBuiltin)
-eliminateIf c x y = do
-  let mkArgs = fmap (Arg mempty Explicit Relevant)
-  cAndX <- evalBuiltin (BuiltinFunction And) (mkArgs [c, x])
-  notC <- evalBuiltin (BuiltinFunction Not) (mkArgs [c])
-  notCAndY <- evalBuiltin (BuiltinFunction And) (mkArgs [notC, y])
-  evalBuiltin (BuiltinFunction Or) (mkArgs [cAndX, notCAndY])
 
 eliminateNotEqualRat ::
   (MonadQueryStructure m) =>
@@ -305,7 +293,7 @@ compileExists binder env body = do
 
     -- Normalise the expression
     let newEnv = extendEnvWithDefined userVarExpr binder env
-    normExpr <- eval newEnv body
+    normExpr <- normaliseInEnv newEnv body
 
     -- Recursively compile the expression.
     (partitions, networkInputEqualities) <- runWriterT (compileBoolExpr normExpr)

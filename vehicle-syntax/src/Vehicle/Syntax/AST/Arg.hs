@@ -91,3 +91,28 @@ traverseExplicitArgExpr f arg
 
 argFromBinder :: GenericBinder expr -> expr -> GenericArg expr
 argFromBinder (Binder p i v r _) = Arg p v r
+
+-- | Constructs an explicit relevant argument
+explicit :: expr -> GenericArg expr
+explicit = Arg mempty Explicit Relevant
+
+-- | Constructs an implicit relevant argument marked as being inserted by
+-- the compiler.
+implicit :: expr -> GenericArg expr
+implicit = Arg mempty (Implicit True) Relevant
+
+--------------------------------------------------------------------------------
+-- Args
+
+traverseArgs ::
+  (Monad m) =>
+  (expr1 -> m expr2) ->
+  [GenericArg expr1] ->
+  m [GenericArg expr2]
+traverseArgs f = traverse (traverse f)
+
+mapArgs ::
+  (expr1 -> expr2) ->
+  [GenericArg expr1] ->
+  [GenericArg expr2]
+mapArgs f = fmap (fmap f)

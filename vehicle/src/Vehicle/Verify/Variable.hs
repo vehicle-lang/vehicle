@@ -9,9 +9,9 @@ import Data.Map qualified as Map
 import GHC.Generics (Generic)
 import Numeric (showFFloat)
 import Prettyprinter (brackets)
-import Vehicle.Data.BuiltinInterface.ASTInterface
 import Vehicle.Data.DeBruijn
-import Vehicle.Data.NormalisedExpr
+import Vehicle.Data.Expr.Interface
+import Vehicle.Data.Expr.Normalised
 import Vehicle.Data.Tensor (RationalTensor)
 import Vehicle.Prelude
 import Vehicle.Syntax.AST

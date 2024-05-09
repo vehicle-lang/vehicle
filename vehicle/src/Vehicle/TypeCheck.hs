@@ -14,8 +14,6 @@ import Control.Monad.IO.Class (MonadIO (..))
 import Data.Data (Proxy (..))
 import Data.Text as T (Text)
 import Vehicle.Backend.Prelude
-import Vehicle.Backend.Queries.Error.Linearity.Core (LinearityBuiltin)
-import Vehicle.Backend.Queries.Error.Polarity.Core (PolarityBuiltin)
 import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Error
 import Vehicle.Compile.Error.Message
@@ -25,8 +23,10 @@ import Vehicle.Compile.Print
 import Vehicle.Compile.Scope (scopeCheck, scopeCheckClosedExpr)
 import Vehicle.Compile.Type (typeCheckExpr, typeCheckProg)
 import Vehicle.Compile.Type.Subsystem
-import Vehicle.Compile.Type.Subsystem.Standard
-import Vehicle.Compile.Type.Subsystem.Standard.InstanceBuiltins
+import Vehicle.Data.Builtin.Linearity.Core (LinearityBuiltin)
+import Vehicle.Data.Builtin.Polarity.Core (PolarityBuiltin)
+import Vehicle.Data.Builtin.Standard
+import Vehicle.Data.Builtin.Standard.InstanceBuiltins
 import Vehicle.Libraries (Library (..), LibraryInfo (..), findLibraryContentFile)
 import Vehicle.Libraries.StandardLibrary (standardLibrary)
 import Vehicle.Prelude.Logging.Instance
@@ -150,25 +150,24 @@ runCompileMonad loggingSettings x = do
 
 convertBackToStandardBuiltin ::
   (MonadCompile m) =>
-  Expr Ix StandardTypingBuiltin ->
+  Expr Ix Builtin ->
   m (Expr Ix Builtin)
 convertBackToStandardBuiltin = traverseBuiltinsM $
-  \p b args -> case b of
-    StandardBuiltin c -> return $ normAppList (Builtin p c) args
+  \p b args -> return $ normAppList (Builtin p b) args
 
 createFreeCtx ::
   (MonadCompile m) =>
   Imports ->
-  m (FreeCtx StandardTypingBuiltin)
+  m (FreeCtx Builtin)
 createFreeCtx imports = do
   let decls = [d | imp <- imports, let Main ds = imp, d <- ds]
   convertedDecls <- traverse (traverse (traverseBuiltinsM convertToTypingBuiltins)) decls
-  runFreshFreeContextT (Proxy @StandardTypingBuiltin) (calculateCtx convertedDecls)
+  runFreshFreeContextT (Proxy @Builtin) (calculateCtx convertedDecls)
   where
     calculateCtx ::
-      (MonadFreeContext StandardTypingBuiltin m) =>
-      [Decl Ix StandardTypingBuiltin] ->
-      m (FreeCtx StandardTypingBuiltin)
+      (MonadFreeContext Builtin m) =>
+      [Decl Ix Builtin] ->
+      m (FreeCtx Builtin)
     calculateCtx = \case
-      [] -> getFreeCtx (Proxy @StandardTypingBuiltin)
-      d : ds -> addDeclToContext d $ calculateCtx ds
+      [] -> getFreeCtx (Proxy @Builtin)
+      d : ds -> addDeclToContext (Proxy @Builtin) d $ calculateCtx ds

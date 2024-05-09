@@ -19,4 +19,4 @@ runFreshVarContextT ::
   Proxy builtin ->
   BoundContextT builtin (FreeContextT builtin m) a ->
   m a
-runFreshVarContextT p = runFreshFreeContextT p . runFreshBoundContextT p
+runFreshVarContextT p = runFreshFreeContextT (Proxy @builtin) . runFreshBoundContextT p

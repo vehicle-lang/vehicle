@@ -7,14 +7,14 @@ where
 import Data.List.NonEmpty (NonEmpty)
 import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Error
+import Vehicle.Compile.Normalise.Builtin (NormalisableBuiltin)
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Meta.Variable (MetaInfo (..))
-import Vehicle.Data.BuiltinInterface (HasStandardData)
-import Vehicle.Data.NormalisedExpr
+import Vehicle.Data.Expr.Normalised
 
 --------------------------------------------------------------------------------
 -- Substitution operation
@@ -23,7 +23,11 @@ class MetaSubstitutable m builtin a | a -> builtin where
   -- | Substitutes meta-variables through the provided object, returning the
   -- updated object and the set of meta-variables within the object for which
   -- no subsitution was provided.
-  subst :: (MonadCompile m, MonadFreeContext builtin m, HasStandardData builtin) => MetaSubstitution builtin -> a -> m a
+  subst ::
+    (MonadCompile m, MonadFreeContext builtin m, NormalisableBuiltin builtin) =>
+    MetaSubstitution builtin ->
+    a ->
+    m a
 
 instance (MetaSubstitutable m builtin b) => MetaSubstitutable m builtin (a, b) where
   subst s (x, y) = do
@@ -64,7 +68,7 @@ instance MetaSubstitutable m builtin (Expr Ix builtin) where
 -- them as it substitutes the meta in.
 substApp ::
   forall builtin m.
-  (MonadFreeContext builtin m) =>
+  (MonadFreeContext builtin m, NormalisableBuiltin builtin) =>
   MetaSubstitution builtin ->
   (Expr Ix builtin, [Arg Ix builtin]) ->
   m (Expr Ix builtin)
@@ -90,15 +94,15 @@ instance MetaSubstitutable m builtin (WHNFValue builtin) where
     VBoundVar v spine -> VBoundVar v <$> traverse (subst s) spine
     VBuiltin b spine -> do
       spine' <- traverse (subst s) spine
-      evalBuiltin b spine'
+      normaliseBuiltin b spine'
 
     -- NOTE: no need to lift the substitutions here as we're passing under the binders
     -- because by construction every meta-variable solution is a closed term.
     VLam binder body -> VLam <$> subst s binder <*> subst s body
     VPi binder body -> VPi <$> subst s binder <*> subst s body
 
-instance MetaSubstitutable m builtin (Body 'WHNF builtin) where
-  subst s (WHNFBody env body) = WHNFBody <$> subst s env <*> subst s body
+instance MetaSubstitutable m builtin (WHNFClosure builtin) where
+  subst s (WHNFClosure env body) = WHNFClosure <$> subst s env <*> subst s body
 
 {-
 instance MetaSubstitutable m builtin (Env 'WHNF builtin) where
@@ -106,7 +110,7 @@ instance MetaSubstitutable m builtin (Env 'WHNF builtin) where
     newEnvEntries <- subst s envEntries
     return $ Env { envEntries = newEnvEntries, .. }
 -}
-instance MetaSubstitutable m builtin (BoundEnvValue 'WHNF builtin) where
+instance MetaSubstitutable m builtin (WHNFBoundEnvValue builtin) where
   subst s = \case
     Bound -> return Bound
     Defined value -> Defined <$> subst s value

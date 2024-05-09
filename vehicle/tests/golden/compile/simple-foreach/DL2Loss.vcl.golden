@@ -1,3 +1,7 @@
 @property;
-index : forallT (f : Tensor Rat -> Tensor Rat) . Tensor Bool;
-index f = [max 0.0 (0.0 - f [0.0, 0.0] ! 0) + (if 0.0 == f [0.0, 0.0] ! 0 then 1.0 else 0.0), max 0.0 (0.0 - f [0.0, 0.0] ! 1) + (if 0.0 == f [0.0, 0.0] ! 1 then 1.0 else 0.0)]
+index : (Tensor Rat -> Tensor Rat) -> Tensor Rat;
+index f = [max (const[ 0.0 ] nil) (const[ 0.0 ] nil - f [const[ 0.0 ] nil, const[ 0.0 ] nil] ! 0), max (const[ 0.0 ] nil) (const[ 0.0 ] nil - f [const[ 0.0 ] nil, const[ 0.0 ] nil] ! 1)]
+
+@property;
+safe : (Tensor Rat -> Tensor Rat) -> Tensor Rat;
+safe f = minimise (\ x -> max (const[ 0.0 ] nil) (const[ 0.0 ] nil - f (x + const[ 4.0 ] (2 :: nil)) ! 0))

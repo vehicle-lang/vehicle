@@ -17,9 +17,9 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
-import Vehicle.Data.BuiltinInterface (TypableBuiltin (..))
+import Vehicle.Data.Builtin.Interface (TypableBuiltin (..))
 import Vehicle.Data.DeBruijn
-import Vehicle.Data.NormalisedExpr
+import Vehicle.Data.Expr.Normalised
 import Prelude hiding (pi)
 
 --------------------------------------------------------------------------------

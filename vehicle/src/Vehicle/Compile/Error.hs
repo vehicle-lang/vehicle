@@ -8,16 +8,16 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.Map qualified as Map
 import Data.Void (Void)
 import Prettyprinter (list)
-import Vehicle.Backend.LossFunction.Core
 import Vehicle.Backend.Prelude
-import Vehicle.Backend.Queries.Error.Linearity.Core
-import Vehicle.Backend.Queries.Error.Polarity.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
-import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Data.BuiltinInterface (HasStandardData, PrintableBuiltin)
+import Vehicle.Data.Builtin.Interface (HasStandardData, PrintableBuiltin)
+import Vehicle.Data.Builtin.Linearity.Core
+import Vehicle.Data.Builtin.Polarity.Core
+import Vehicle.Data.Builtin.Standard.Core
+import Vehicle.Data.Builtin.Tensor
 import Vehicle.Data.DeBruijn
-import Vehicle.Data.NormalisedExpr
+import Vehicle.Data.Expr.Normalised
 import Vehicle.Syntax.Parse (ParseError)
 import Vehicle.Verify.QueryFormat.Core
 
@@ -54,28 +54,28 @@ data CompileError
   | ResourceIOError DeclProvenance ExternalResource IOException
   | UnsupportedResourceFormat DeclProvenance ExternalResource String
   | UnableToParseResource DeclProvenance ExternalResource String
-  | NetworkTypeIsNotAFunction DeclProvenance (GluedType StandardTypingBuiltin)
-  | NetworkTypeIsNotOverTensors DeclProvenance (GluedType StandardTypingBuiltin) (WHNFType StandardTypingBuiltin) InputOrOutput
-  | NetworkTypeHasNonExplicitArguments DeclProvenance (GluedType StandardTypingBuiltin) (WHNFBinder StandardTypingBuiltin)
-  | NetworkTypeHasUnsupportedElementType DeclProvenance (GluedType StandardTypingBuiltin) (WHNFType StandardTypingBuiltin) InputOrOutput
-  | DatasetTypeUnsupportedContainer DeclProvenance (GluedType StandardTypingBuiltin)
-  | DatasetTypeUnsupportedElement DeclProvenance (GluedType StandardTypingBuiltin) (WHNFType StandardTypingBuiltin)
+  | NetworkTypeIsNotAFunction DeclProvenance (GluedType Builtin)
+  | NetworkTypeIsNotOverTensors DeclProvenance (GluedType Builtin) (WHNFType Builtin) InputOrOutput
+  | NetworkTypeHasNonExplicitArguments DeclProvenance (GluedType Builtin) (WHNFBinder Builtin)
+  | NetworkTypeHasUnsupportedElementType DeclProvenance (GluedType Builtin) (WHNFType Builtin) InputOrOutput
+  | DatasetTypeUnsupportedContainer DeclProvenance (GluedType Builtin)
+  | DatasetTypeUnsupportedElement DeclProvenance (GluedType Builtin) (WHNFType Builtin)
   | DatasetVariableSizeTensor DeclProvenance (GluedType Builtin) (WHNFType Builtin)
   | DatasetDimensionSizeMismatch DeclProvenance FilePath Int Int TensorShape TensorShape
   | DatasetDimensionsMismatch DeclProvenance FilePath (GluedExpr Builtin) TensorShape
   | DatasetTypeMismatch DeclProvenance FilePath (GluedType Builtin) (WHNFType Builtin) (Doc Void)
   | DatasetInvalidIndex DeclProvenance FilePath Int Int
   | DatasetInvalidNat DeclProvenance FilePath Int
-  | ParameterTypeUnsupported DeclProvenance (GluedType StandardTypingBuiltin)
+  | ParameterTypeUnsupported DeclProvenance (GluedType Builtin)
   | ParameterTypeVariableSizeIndex DeclProvenance (GluedType Builtin)
   | ParameterTypeInferableParameterIndex DeclProvenance Identifier
   | ParameterValueUnparsable DeclProvenance String BuiltinType
   | ParameterValueInvalidIndex DeclProvenance Int Int
   | ParameterValueInvalidNat DeclProvenance Int
-  | InferableParameterTypeUnsupported DeclProvenance (GluedType StandardTypingBuiltin)
+  | InferableParameterTypeUnsupported DeclProvenance (GluedType Builtin)
   | InferableParameterContradictory Identifier (DeclProvenance, ExternalResource, Int) (DeclProvenance, ExternalResource, Int)
   | InferableParameterUninferrable DeclProvenance
-  | PropertyTypeUnsupported DeclProvenance (GluedType StandardTypingBuiltin)
+  | PropertyTypeUnsupported DeclProvenance (GluedType Builtin)
   | -- Unsupported networks
     NetworkTypeHasVariableSizeTensor DeclProvenance (GluedType Builtin) (WHNFType Builtin) InputOrOutput
   | NetworkTypeHasImplicitSizeTensor DeclProvenance (GluedType Builtin) Identifier InputOrOutput
@@ -87,7 +87,7 @@ data CompileError
   | UnsupportedVariableType QueryFormatID Identifier Provenance Name (WHNFType Builtin) (WHNFType Builtin) [Builtin]
   | UnsupportedAlternatingQuantifiers QueryFormatID DeclProvenance (Either CompileError (Quantifier, Provenance, PolarityProvenance))
   | UnsupportedNonLinearConstraint QueryFormatID DeclProvenance (Either CompileError NonLinearitySource)
-  | UnsupportedNegatedOperation DifferentiableLogicID NamedBoundCtx (WHNFValue Builtin)
+  | UnsupportedNegatedOperation DifferentiableLogicID NamedBoundCtx (Expr Ix Builtin) (WHNFValue Builtin)
   | UnsupportedIfOperation DeclProvenance Provenance
   | DuplicateQuantifierNames DeclProvenance Name
   | QuantifiedIfCondition (ConstraintContext PolarityBuiltin)

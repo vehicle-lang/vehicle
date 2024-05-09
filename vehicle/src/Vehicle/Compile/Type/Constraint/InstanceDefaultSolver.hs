@@ -15,8 +15,8 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Meta.Variable
 import Vehicle.Compile.Type.Monad
-import Vehicle.Data.BuiltinInterface
-import Vehicle.Data.NormalisedExpr
+import Vehicle.Data.Builtin.Interface
+import Vehicle.Data.Expr.Normalised
 
 class HasInstanceDefaults builtin where
   getCandidatesFromConstraint ::
@@ -98,7 +98,7 @@ data Candidate builtin = Candidate
 
 instance (PrintableBuiltin builtin) => Pretty (Candidate builtin) where
   pretty Candidate {..} =
-    prettyVerbose candidateMetaExpr <+> "~" <+> prettyVerbose (VBuiltin @'WHNF candidateTypeClass [])
+    prettyVerbose candidateMetaExpr <+> "~" <+> prettyVerbose (VBuiltin @(WHNFClosure builtin) @builtin candidateTypeClass [])
 
 data CandidateStatus builtin
   = Valid (Candidate builtin)
@@ -130,7 +130,7 @@ generateConstraintUsingDefaults constraints = do
           <+> "="
           <+> prettyVerbose candidateSolution
           <+> "         "
-          <> parens ("from" <+> prettyVerbose (VBuiltin @'WHNF candidateTypeClass []))
+          <> parens ("from" <+> prettyVerbose (VBuiltin @(WHNFClosure builtin) @builtin candidateTypeClass []))
       newConstraint <- createInstanceUnification candidateInfo candidateMetaExpr candidateSolution
       return $ Just newConstraint
 

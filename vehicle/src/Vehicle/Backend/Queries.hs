@@ -22,10 +22,10 @@ import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print.Warning ()
-import Vehicle.Compile.Type.Subsystem.Standard
-import Vehicle.Data.BooleanExpr
-import Vehicle.Data.BuiltinInterface.ASTInterface
-import Vehicle.Data.NormalisedExpr
+import Vehicle.Data.Builtin.Standard
+import Vehicle.Data.Expr.Boolean
+import Vehicle.Data.Expr.Interface
+import Vehicle.Data.Expr.Normalised
 import Vehicle.Prelude.Warning (CompileWarning (..))
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat
@@ -96,7 +96,7 @@ compileDecls prog queryFormat networkCtx propertyID (d : ds) outputLocation = do
             Just <$> compilePropertyDecl prog propertyData body
     _ -> return Nothing
 
-  addDeclToContext d $ do
+  addDeclToContext (Proxy @Builtin) d $ do
     let newPropertyID = if isNothing property then propertyID else propertyID + 1
     properties <- compileDecls prog queryFormat networkCtx newPropertyID ds outputLocation
     return $ maybeToList property ++ properties

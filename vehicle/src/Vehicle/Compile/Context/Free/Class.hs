@@ -11,8 +11,7 @@ import Vehicle.Compile.Context.Free.Core
 import Vehicle.Compile.Error (MonadCompile, lookupInFreeCtx)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (PrintableBuiltin)
-import Vehicle.Data.BuiltinInterface (HasStandardData)
-import Vehicle.Data.NormalisedExpr (WHNFDecl)
+import Vehicle.Data.Expr.Normalised
 import Vehicle.Libraries.StandardLibrary.Definitions
 
 --------------------------------------------------------------------------------
@@ -20,9 +19,9 @@ import Vehicle.Libraries.StandardLibrary.Definitions
 
 -- | A monad that is used to store the current context at a given point in a
 -- program, i.e. what declarations and bound variables are in scope.
-class (PrintableBuiltin builtin, HasStandardData builtin, MonadCompile m) => MonadFreeContext builtin m where
+class (PrintableBuiltin builtin, MonadCompile m) => MonadFreeContext builtin m where
   -- | Adds a new decl to the free variable context.
-  addDeclEntryToContext :: (WHNFDecl builtin, Type Ix builtin) -> m a -> m a
+  addDeclEntryToContext :: FreeCtxEntry builtin -> m a -> m a
 
   -- | Returns the current free variable context (with masked definitions excluded)
   getFreeCtx :: Proxy builtin -> m (FreeCtx builtin)
@@ -32,7 +31,7 @@ class (PrintableBuiltin builtin, HasStandardData builtin, MonadCompile m) => Mon
   hideStdLibDecls :: Proxy builtin -> Set StdLibFunction -> m a -> m a
 
   -- | Returns the free context of all the currently hidden declarations.
-  getHiddenStdLibDecl :: Proxy builtin -> StdLibFunction -> m (WHNFDecl builtin, Type Ix builtin)
+  getHiddenStdLibDecl :: Proxy builtin -> StdLibFunction -> m (FreeCtxEntry builtin)
 
 instance (Monoid w, MonadFreeContext builtin m) => MonadFreeContext builtin (WriterT w m) where
   addDeclEntryToContext = mapWriterT . addDeclEntryToContext
@@ -74,25 +73,14 @@ instance (MonadFreeContext builtin m) => MonadFreeContext builtin (SupplyT s m) 
 -- Operations
 
 getDeclEntry ::
-  forall builtin m.
   (MonadFreeContext builtin m) =>
   Proxy builtin ->
   CompilerPass ->
   Identifier ->
-  m (WHNFDecl builtin, Type Ix builtin)
+  m (FreeCtxEntry builtin)
 getDeclEntry proxy compilerPass ident = do
   ctx <- getFreeCtx proxy
   lookupInFreeCtx compilerPass ident ctx
-
-getDecl ::
-  forall builtin m.
-  (MonadFreeContext builtin m) =>
-  Proxy builtin ->
-  CompilerPass ->
-  Identifier ->
-  m (WHNFDecl builtin)
-getDecl proxy compilerPass ident =
-  fst <$> getDeclEntry proxy compilerPass ident
 
 getDeclType ::
   (MonadFreeContext builtin m) =>
@@ -101,4 +89,13 @@ getDeclType ::
   Identifier ->
   m (Type Ix builtin)
 getDeclType proxy compilerPass ident =
+  typeOf . fst <$> getDeclEntry proxy compilerPass ident
+
+getDecl ::
+  (MonadFreeContext builtin m) =>
+  Proxy builtin ->
+  CompilerPass ->
+  Identifier ->
+  m (WHNFDecl builtin)
+getDecl proxy compilerPass ident =
   snd <$> getDeclEntry proxy compilerPass ident

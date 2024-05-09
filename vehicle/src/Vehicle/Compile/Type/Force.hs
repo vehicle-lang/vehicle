@@ -5,6 +5,7 @@ module Vehicle.Compile.Type.Force where
 
 import Data.Maybe (fromMaybe, isJust)
 import Vehicle.Compile.Context.Free
+import Vehicle.Compile.Normalise.Builtin (NormalisableBuiltin)
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
@@ -12,16 +13,19 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap (lookup)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet (singleton, unions)
-import Vehicle.Data.BuiltinInterface (HasStandardData (getBuiltinFunction))
-import Vehicle.Data.NormalisedExpr
+import Vehicle.Data.Builtin.Interface (HasStandardData (getBuiltinFunction))
+import Vehicle.Data.Expr.Normalised
 
 -----------------------------------------------------------------------------
 -- Meta-variable forcing
 
+type ForcableBuiltin builtin =
+  (HasStandardData builtin, NormalisableBuiltin builtin)
+
 -- | Recursively forces the evaluation of any meta-variables at the head
 -- of the expresson.
 forceHead ::
-  (MonadFreeContext builtin m) =>
+  (MonadFreeContext builtin m, ForcableBuiltin builtin) =>
   MetaSubstitution builtin ->
   ConstraintContext builtin ->
   WHNFValue builtin ->
@@ -44,7 +48,7 @@ forceHead subst ctx expr = do
 -- evaluation.
 forceExpr ::
   forall builtin m.
-  (MonadFreeContext builtin m) =>
+  (MonadFreeContext builtin m, ForcableBuiltin builtin) =>
   MetaSubstitution builtin ->
   WHNFValue builtin ->
   m (Maybe (WHNFValue builtin), MetaSet)
@@ -67,7 +71,7 @@ forceExpr subst = go
         Nothing -> return (Nothing, MetaSet.singleton m)
 
 forceArg ::
-  (MonadFreeContext builtin m) =>
+  (MonadFreeContext builtin m, ForcableBuiltin builtin) =>
   MetaSubstitution builtin ->
   WHNFArg builtin ->
   m (WHNFArg builtin, (Bool, MetaSet))
@@ -78,7 +82,7 @@ forceArg subst arg = do
   return (result, (reduced, blockingMetas))
 
 forceBuiltin ::
-  (MonadFreeContext builtin m) =>
+  (MonadFreeContext builtin m, ForcableBuiltin builtin) =>
   MetaSubstitution builtin ->
   builtin ->
   WHNFSpine builtin ->
@@ -93,5 +97,5 @@ forceBuiltin subst b spine = case getBuiltinFunction b of
     result <-
       if not anyArgsReduced
         then return Nothing
-        else Just <$> evalBuiltin b argResults
+        else Just <$> normaliseBuiltin b argResults
     return (result, blockingMetas)

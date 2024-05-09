@@ -5,8 +5,10 @@ module Vehicle.Compile
 where
 
 import Vehicle.Backend.Agda
-import Vehicle.Backend.LossFunction.Convert
+import Vehicle.Backend.LossFunction (convertToLossTensors)
 import Vehicle.Backend.LossFunction.JSON (compileProgToJSON)
+import Vehicle.Backend.LossFunction.LogicCompilation (compileLogic)
+import Vehicle.Backend.LossFunction.Logics (dslFor)
 import Vehicle.Backend.Prelude
 import Vehicle.Backend.Queries
 import Vehicle.Compile.Dependency (analyseDependenciesAndPrune)
@@ -15,7 +17,7 @@ import Vehicle.Compile.FunctionaliseResources (functionaliseResources)
 import Vehicle.Compile.Monomorphisation (hoistInferableParameters)
 import Vehicle.Compile.Prelude as CompilePrelude
 import Vehicle.Compile.Print (prettyFriendly)
-import Vehicle.Compile.Type.Subsystem.Standard
+import Vehicle.Data.Builtin.Standard
 import Vehicle.Prelude.Logging
 import Vehicle.TypeCheck (TypeCheckOptions (..), runCompileMonad, typeCheckUserProg)
 import Vehicle.Verify.QueryFormat
@@ -93,21 +95,9 @@ compileToLossFunction ::
   m ()
 compileToLossFunction differentiableLogicID (imports, typedProg) outputFile outputAsJSON = do
   let mergedProg = mergeImports imports typedProg
-  -- Deciding on the best ordering of converting to loss functions and converting to tensor code
-  -- is tricky. There are three approaches:
-  --
-  -- Loss functions -> Tensors
-  --    Disadvantages
-  --        - Vector representation contains higher order structure (e.g. folds) that
-  --          can be converted to tensor operations, but which `not` cannot easily
-  --          be pushed through in general for DL2 loss. e.g. in
-  --          fold (\ x -> \ y -> x and y) True (foreachIndex 2 (\ i -> - 3.25 <= x ! i and x ! i <= 3.25))
-  --
-  -- Tensors -> Loss functions
-  --    Disadvantages
-  --        - Loss functions need to be specified in terms of tensors.
-  --
-  tensorProg <- convertToTensors differentiableLogicID mergedProg
+  let logic = dslFor differentiableLogicID
+  compiledLogic <- compileLogic logic
+  tensorProg <- convertToLossTensors compiledLogic mergedProg
   hoistedProg <- hoistInferableParameters tensorProg
   functionalisedProg <- functionaliseResources hoistedProg
   result <-

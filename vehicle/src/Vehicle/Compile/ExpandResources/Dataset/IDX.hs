@@ -21,9 +21,9 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
-import Vehicle.Compile.Type.Subsystem.Standard
-import Vehicle.Data.BuiltinInterface.ASTInterface
-import Vehicle.Data.NormalisedExpr
+import Vehicle.Data.Builtin.Standard
+import Vehicle.Data.Expr.Interface
+import Vehicle.Data.Expr.Normalised
 
 -- | Reads the IDX dataset from the provided file, checking that the user type
 -- matches the type of the stored data.
@@ -111,10 +111,10 @@ parseVector ctx@(decl, file, _, allDims, _) (actualDim : actualDims) elems expec
       let newEntry = (decl, Dataset, actualDim)
       case Map.lookup dimIdent implicitParams of
         Nothing -> variableSizeError ctx expectedDim
-        Just Left {} -> do
-          addPossibleInferableParameterSolution dimIdent newEntry
+        Just (p, declType, Nothing) -> do
+          addPossibleInferableParameterSolution dimIdent p declType newEntry
           return actualDim
-        Just (Right existingEntry@(_, _, value)) ->
+        Just (_, _, Just existingEntry@(_, _, value)) ->
           if value == actualDim
             then return value
             else throwError $ InferableParameterContradictory dimIdent existingEntry newEntry

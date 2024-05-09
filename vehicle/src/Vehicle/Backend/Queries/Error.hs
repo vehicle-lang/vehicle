@@ -5,13 +5,13 @@ module Vehicle.Backend.Queries.Error
 where
 
 import Control.Monad.Except (MonadError (..))
-import Vehicle.Backend.Queries.Error.Linearity
-import Vehicle.Backend.Queries.Error.Polarity
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Type.Subsystem (typeCheckWithSubsystem)
-import Vehicle.Compile.Type.Subsystem.Standard
+import Vehicle.Data.Builtin.Linearity
+import Vehicle.Data.Builtin.Polarity
+import Vehicle.Data.Builtin.Standard
 import Vehicle.Verify.QueryFormat.Core (QueryFormatID)
 
 diagnoseNonLinearity ::

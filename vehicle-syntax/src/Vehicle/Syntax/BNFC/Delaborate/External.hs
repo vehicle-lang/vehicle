@@ -204,7 +204,6 @@ delabBuiltinFunction fun args = case fun of
   V.MinRat {} -> rawDelab
   V.MaxRat {} -> rawDelab
   V.PowRat -> rawDelab
-  V.Optimise {} -> rawDelab
   where
     rawDelab = delabApp (cheatDelab $ layoutAsText $ pretty fun) args
 

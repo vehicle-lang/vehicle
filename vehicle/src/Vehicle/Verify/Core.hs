@@ -11,8 +11,8 @@ import GHC.Generics (Generic)
 import System.FilePath ((<.>))
 import Vehicle.Compile.Context.Bound.Core (GenericBoundCtx)
 import Vehicle.Compile.Resource
-import Vehicle.Data.BooleanExpr
-import Vehicle.Data.LinearExpr
+import Vehicle.Data.Expr.Boolean
+import Vehicle.Data.Expr.Linear
 import Vehicle.Prelude
 import Vehicle.Syntax.AST
 import Vehicle.Syntax.Builtin.BasicOperations

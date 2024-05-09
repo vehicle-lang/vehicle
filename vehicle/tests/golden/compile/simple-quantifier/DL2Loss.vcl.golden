@@ -1,11 +1,11 @@
 @property;
-expandedExpr : forallT (f : Tensor Rat -> Tensor Rat) . Tensor Bool;
-expandedExpr f = Optimise[min] (+) (\ x -> max 0.0 (f x ! 0 - x ! 0) + (if f x ! 0 == x ! 0 then 1.0 else 0.0))
+expandedExpr : (Tensor Rat -> Tensor Rat) -> Tensor Rat;
+expandedExpr f = minimise (\ x -> max (const[ 0.0 ] nil) (f x ! 0 - x ! 0))
 
 @property;
-sequential : forallT (f : Tensor Rat -> Tensor Rat) . Tensor Bool;
-sequential f = Optimise[min] (+) (\ x -> Optimise[min] (+) (\ y -> max 0.0 (f y ! 0 - f x ! 0) + (if f y ! 0 == f x ! 0 then 1.0 else 0.0)))
+sequential : (Tensor Rat -> Tensor Rat) -> Tensor Rat;
+sequential f = minimise (\ x -> minimise (\ y -> max (const[ 0.0 ] nil) (f y ! 0 - f x ! 0)))
 
 @property;
-parallel : forallT (f : Tensor Rat -> Tensor Rat) . Tensor Bool;
-parallel f = Optimise[min] (+) (\ x -> max 0.0 (0.0 - f x ! 0) + (if 0.0 == f x ! 0 then 1.0 else 0.0)) + Optimise[min] (*) (\ x -> max 0.0 (5.0 - f x ! 0) + (if 5.0 == f x ! 0 then 1.0 else 0.0))
+parallel : (Tensor Rat -> Tensor Rat) -> Tensor Rat;
+parallel f = minimise (\ x -> max (const[ 0.0 ] nil) (const[ 0.0 ] nil - f x ! 0)) + maximise (\ x -> max (const[ 0.0 ] nil) (const[ 5.0 ] nil - f x ! 0))

@@ -24,7 +24,7 @@ import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad (MonadTypeChecker, TCM, copyContext, freshMetaIdAndExpr, trackSolvedMetas)
 import Vehicle.Data.DSL
-import Vehicle.Data.NormalisedExpr
+import Vehicle.Data.Expr.Normalised
 
 -- | Attempts to solve as many constraints as possible. Takes in
 -- the set of meta-variables solved since the solver was last run and outputs

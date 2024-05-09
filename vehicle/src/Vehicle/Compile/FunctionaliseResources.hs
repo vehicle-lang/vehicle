@@ -16,7 +16,7 @@ import Data.Set (Set)
 import Data.Set qualified as Set (fromList, member, singleton)
 import Vehicle.Compile.Error (MonadCompile, internalScopingError, lookupInFreeCtx)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (PrintableBuiltin, prettyFriendly, prettyVerbose)
+import Vehicle.Compile.Print (PrintableBuiltin, prettyFriendly)
 import Vehicle.Data.DeBruijn (dbLevelToIndex)
 
 --------------------------------------------------------------------------------
@@ -125,7 +125,6 @@ findResourceUses ::
   Expr Ix builtin ->
   m (Set Name)
 findResourceUses e = do
-  logDebug MaxDetail $ prettyVerbose e
   execWriterT $ traverseFreeVarsM (const id) updateFn e
   where
     updateFn recGo p ident args = do
@@ -145,7 +144,6 @@ replaceResourceUses ::
   Expr Ix builtin ->
   m (Expr Ix builtin)
 replaceResourceUses (mkBinder, binders, binderNames) initialExpr = do
-  logDebug MaxDetail $ prettyVerbose initialExpr
   funcState <- ask
   let resourceLevels = Map.fromList (zip binderNames [(0 :: Lv) ..])
   let underBinder _b = local (first (+ 1))
@@ -190,7 +188,7 @@ createBinders isType p idents = do
   let identsAndTypes = LinkedHashMap.filterWithKey (\i _ -> Set.member i idents) resourceDeclarations
   let identsAndTypesList = LinkedHashMap.toList identsAndTypes
   let mkBindingForm ident
-        | isType = BinderDisplayForm (NameAndType (nameOf ident)) True
+        | isType = BinderDisplayForm OnlyType True
         | otherwise = BinderDisplayForm (OnlyName (nameOf ident)) True
   let mkBinder (ident, typ) = Binder p (mkBindingForm ident) Explicit Relevant typ
   let binders = fmap mkBinder identsAndTypesList

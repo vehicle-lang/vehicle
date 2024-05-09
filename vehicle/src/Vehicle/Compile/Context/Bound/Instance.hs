@@ -12,7 +12,6 @@ import Vehicle.Compile.Context.Bound.Class
 import Vehicle.Compile.Context.Bound.Core
 import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Prelude
-import Vehicle.Data.BuiltinInterface (HasStandardData)
 
 --------------------------------------------------------------------------------
 -- Context monad instantiation
@@ -67,7 +66,7 @@ instance (MonadReader s m) => MonadReader s (BoundContextT builtin m) where
   ask = lift ask
   local = mapBoundContextT . local
 
-instance (HasStandardData builtin, MonadCompile m) => MonadBoundContext builtin (BoundContextT builtin m) where
+instance (MonadCompile m) => MonadBoundContext builtin (BoundContextT builtin m) where
   addBinderToContext binder cont = BoundContextT $ do
     local (first (binder :)) (unBoundContextT cont)
 

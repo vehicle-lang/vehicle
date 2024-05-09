@@ -6,9 +6,9 @@ import Data.Text (Text, pack)
 import GHC.Generics (Generic)
 import System.Console.ANSI (Color (..))
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Data.BooleanExpr (MaybeTrivial (..))
-import Vehicle.Data.BuiltinInterface.ASTInterface
+import Vehicle.Data.Builtin.Standard.Core
+import Vehicle.Data.Expr.Boolean (MaybeTrivial (..))
+import Vehicle.Data.Expr.Interface
 import Vehicle.Data.Tensor (RationalTensor)
 import Vehicle.Verify.Core
 import Vehicle.Verify.Specification
