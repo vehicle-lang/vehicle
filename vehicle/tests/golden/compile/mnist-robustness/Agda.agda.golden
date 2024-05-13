@@ -2,7 +2,7 @@
 -- and should not be modified manually!
 -- Metadata:
 --  - Agda version: 2.6.2
---  - Vehicle version: 0.11.1+dev
+--  - Vehicle version: 0.14.0+dev
 
 {-# OPTIONS --allow-exec #-}
 
@@ -40,7 +40,7 @@ BoundedByEpsilon : Image → Set
 BoundedByEpsilon x = ∀ i → ∀ j → ℚ.- epsilon ℚ.≤ x i j × x i j ℚ.≤ epsilon
 
 RobustAround : Image → (Label → Set)
-RobustAround image label = ∀ pertubation → let perturbedImage = image ⊖ pertubation in BoundedByEpsilon pertubation × ValidImage perturbedImage → Advises perturbedImage label
+RobustAround image label = ∀ perturbation → let perturbedImage = image ⊖ perturbation in BoundedByEpsilon perturbation × ValidImage perturbedImage → Advises perturbedImage label
 
 postulate n : ℕ
 

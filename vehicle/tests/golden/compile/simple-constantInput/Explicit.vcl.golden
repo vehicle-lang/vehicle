@@ -1,3 +1,0 @@
-@property;
-spec : forallT (f : Vector Rat -> Vector Rat) . Bool;
-spec f = forall x . f [x, 0.0] ! 0 >= 0.0

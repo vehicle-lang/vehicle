@@ -8,7 +8,6 @@ where
 import Data.Text qualified as Text
 import Vehicle.Backend.Queries.Error.Linearity.Core
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Type.Subsystem.Standard.Type (typeOfAnn)
 import Vehicle.Data.DSL
 import Vehicle.Syntax.Builtin hiding (Builtin (..))
 
@@ -45,14 +44,14 @@ typeOfBuiltinFunction = \case
   FromNat {} -> constant ~> constant
   FromRat {} -> constant ~> constant
   -- Container functions
-  Fold {} -> typeOfFold
+  FoldList -> typeOfFold
+  FoldVector -> typeOfFold
   MapList -> typeOfMap
   MapVector -> typeOfMap
   ZipWithVector -> typeOfZipWith
   At -> typeOfAt
   Indices -> constant ~> constant
   b@Optimise {} -> developerError $ "Should not be linearity typing" <+> pretty b
-  Ann -> typeOfAnn
 
 typeOfConstructor :: BuiltinConstructor -> LinearityDSLExpr
 typeOfConstructor = \case
@@ -62,7 +61,6 @@ typeOfConstructor = \case
   LBool {} -> constant
   LIndex {} -> constant
   LNat {} -> constant
-  LInt {} -> constant
   LRat {} -> constant
   LVec n -> typeOfVecLiteral n
 

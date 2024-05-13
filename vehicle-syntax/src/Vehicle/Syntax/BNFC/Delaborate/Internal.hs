@@ -50,7 +50,7 @@ instance Delaborate (V.Decl V.Name V.Builtin) B.Decl where
 
 instance Delaborate V.DefAbstractSort (B.NameToken -> B.Expr -> B.Decl) where
   delabM sort = return $ case sort of
-    V.PostulateDef -> B.DeclPost
+    V.PostulateDef {} -> B.DeclPost
     V.NetworkDef -> B.DeclNetw
     V.DatasetDef -> B.DeclData
     V.ParameterDef sort -> case sort of
@@ -68,7 +68,7 @@ instance Delaborate (V.Expr V.Name V.Builtin) B.Expr where
     V.Let _ v b e -> B.Let <$> delabM b <*> delabM v <*> delabM e
     V.Lam _ b e -> B.Lam <$> delabM b <*> delabM e
     V.Meta _ m -> return $ B.Hole (mkToken B.HoleToken (layoutAsText (pretty m)))
-    V.App _ fun args -> delabApp <$> delabM fun <*> traverse delabM (reverse (NonEmpty.toList args))
+    V.App fun args -> delabApp <$> delabM fun <*> traverse delabM (reverse (NonEmpty.toList args))
 
 instance Delaborate (V.Arg V.Name V.Builtin) B.Arg where
   delabM :: (MonadDelab m) => V.Arg V.Name V.Builtin -> m B.Arg

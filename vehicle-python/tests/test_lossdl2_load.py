@@ -2,27 +2,17 @@ import os
 from pathlib import Path
 
 import pytest
-import vehicle_lang as vcl
-import vehicle_lang.ast as vcl2ast
+import vehicle_lang.ast as vcl_ast
+import vehicle_lang.typing as vcl_typing
 
-GOLDEN_PATH = (
-    Path(__file__).parent.parent / "vendor" / "vehicle" / "tests" / "golden" / "compile"
-)
-GOLDEN_LOSS_FUNCTION_FILES = GOLDEN_PATH.glob(os.path.join("**", "DL2Loss.vcl.golden"))
+GOLDEN_PATH = Path(__file__).parent / "data"
+GOLDEN_LOSS_FUNCTION_FILES = GOLDEN_PATH.glob("*.vcl")
 
 
 @pytest.mark.parametrize(
-    "dl2loss_specification_path",
+    "specification_path",
     GOLDEN_LOSS_FUNCTION_FILES,
 )  # type: ignore[misc]
-def test_interpret_load(dl2loss_specification_path: Path) -> None:
-    specification_path = dl2loss_specification_path.parent / "spec.vcl"
+def test_lossdl2_load(specification_path: Path) -> None:
     print(f"Load {specification_path}")
-    vcl2ast.load(
-        specification_path,
-        target=vcl.DifferentiableLogic.DL2,
-    )
-
-
-if __name__ == "__main__":
-    pytest.main(["vehicle-python/tests/test_lossdl2_load.py"])
+    vcl_ast.load(specification_path, target=vcl_typing.DifferentiableLogic.DL2)

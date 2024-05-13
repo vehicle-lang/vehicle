@@ -1,5 +1,6 @@
 module Vehicle.Verify.Core where
 
+import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
@@ -26,6 +27,8 @@ data NetworkContextInfo = NetworkContextInfo
   }
   deriving (Eq, Ord, Show, Generic)
 
+instance NFData NetworkContextInfo
+
 instance ToJSON NetworkContextInfo
 
 instance FromJSON NetworkContextInfo
@@ -35,6 +38,8 @@ data MetaNetworkEntry = MetaNetworkEntry
     metaNetworkEntryInfo :: NetworkContextInfo
   }
   deriving (Eq, Ord, Show, Generic)
+
+instance NFData MetaNetworkEntry
 
 instance ToJSON MetaNetworkEntry
 
@@ -55,6 +60,8 @@ data MetaNetwork = MetaNetwork
     variables :: [NetworkRationalVariable]
   }
   deriving (Eq, Ord, Show, Generic)
+
+instance NFData MetaNetwork
 
 instance ToJSON MetaNetwork
 
@@ -112,6 +119,8 @@ data PropertyAddress = PropertyAddress
     propertyIndices :: TensorIndices
   }
   deriving (Eq, Ord, Show, Generic)
+
+instance NFData PropertyAddress
 
 instance ToJSON PropertyAddress
 
@@ -183,9 +192,9 @@ flipQueryRel = \case
 
 -- A single assertion for a query.
 data QueryAssertion = QueryAssertion
-  { lhs :: NonEmpty (Coefficient, NetworkRationalVariable),
-    rel :: QueryRelation,
-    rhs :: Rational
+  { lhs :: !(NonEmpty (Coefficient, NetworkRationalVariable)),
+    rel :: !QueryRelation,
+    rhs :: !Rational
   }
 
 instance Pretty QueryAssertion where

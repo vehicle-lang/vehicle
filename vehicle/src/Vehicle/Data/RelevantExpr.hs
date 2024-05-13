@@ -23,10 +23,10 @@ data RelDecl var builtin
 
 data RelExpr var builtin
   = Universe Provenance Int
-  | App Provenance (RelExpr var builtin) [RelExpr var builtin]
+  | App (RelExpr var builtin) [RelExpr var builtin]
   | -- | Because we're probably not going to a functional language we
     -- need to mark partial applications as such to avoid excessive currying.
-    PartialApp Provenance Arity (RelExpr var builtin) [RelExpr var builtin]
+    PartialApp Arity (RelExpr var builtin) [RelExpr var builtin]
   | Pi Provenance (RelBinder var builtin) (RelExpr var builtin)
   | Builtin Provenance builtin
   | BoundVar Provenance var

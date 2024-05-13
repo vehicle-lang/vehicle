@@ -1,10 +1,11 @@
 import json
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
+from fractions import Fraction
 from pathlib import Path
-from typing import Iterable, Optional, Sequence, Union
+from typing import Any, Generic, Iterable, Optional, Sequence, Tuple, Union
 
-from typing_extensions import Self, TypeAlias, override
+from typing_extensions import Literal, Self, TypeAlias, TypeVar, override
 
 from .. import session
 from ..error import VehicleError
@@ -45,49 +46,49 @@ class Provenance(AST):
 MISSING: Provenance = Provenance(0, 0)
 
 ################################################################################
-# Builtins
+# Values
+################################################################################
+
+
+DType = TypeVar("DType", bool, float, int, Fraction)
+
+
+@dataclass(frozen=True)
+class Tensor(Generic[DType]):
+    shape: Tuple[int, ...]
+    value: Tuple[DType, ...]
+
+
+################################################################################
+# Builtin Constants
+################################################################################
+
+
+@dataclass(frozen=True, init=False)
+class BuiltinConstant(AST):
+    def __init__(self) -> None:
+        raise TypeError("Cannot instantiate abstract class BuiltinConstant")
+
+
+@dataclass(frozen=True)
+class Unit(BuiltinConstant):
+    pass
+
+
+@dataclass(frozen=True)
+class NilList(BuiltinConstant):
+    pass
+
+
+################################################################################
+# Builtin Functions
 ################################################################################
 
 
 @dataclass(frozen=True, init=False)
 class BuiltinFunction(AST):
     def __init__(self) -> None:
-        raise TypeError("Cannot instantiate abstract class Builtin")
-
-
-@dataclass(frozen=True)
-class AddInt(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class AddNat(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class AddRat(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class And(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class AtVector(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class Bool(BuiltinFunction):
-    value: bool
-
-
-@dataclass(frozen=True)
-class BoolType(BuiltinFunction):
-    pass
+        raise TypeError("Cannot instantiate abstract class BuiltinFunction")
 
 
 @dataclass(frozen=True)
@@ -96,7 +97,107 @@ class ConsList(BuiltinFunction):
 
 
 @dataclass(frozen=True)
-class DivRat(BuiltinFunction):
+class NotBoolTensor(BuiltinFunction):
+    pass
+
+
+@dataclass(frozen=True)
+class AndBoolTensor(BuiltinFunction):
+    pass
+
+
+@dataclass(frozen=True)
+class OrBoolTensor(BuiltinFunction):
+    pass
+
+
+@dataclass(frozen=True)
+class NegRatTensor(BuiltinFunction):
+    pass
+
+
+@dataclass(frozen=True)
+class AddRatTensor(BuiltinFunction):
+    pass
+
+
+@dataclass(frozen=True)
+class SubRatTensor(BuiltinFunction):
+    pass
+
+
+@dataclass(frozen=True)
+class MulRatTensor(BuiltinFunction):
+    pass
+
+
+@dataclass(frozen=True)
+class DivRatTensor(BuiltinFunction):
+    pass
+
+
+@dataclass(frozen=True)
+class EqRatTensor(BuiltinFunction):
+    pass
+
+
+@dataclass(frozen=True)
+class NeRatTensor(BuiltinFunction):
+    pass
+
+
+@dataclass(frozen=True)
+class LeRatTensor(BuiltinFunction):
+    pass
+
+
+@dataclass(frozen=True)
+class LtRatTensor(BuiltinFunction):
+    pass
+
+
+@dataclass(frozen=True)
+class GeRatTensor(BuiltinFunction):
+    pass
+
+
+@dataclass(frozen=True)
+class GtRatTensor(BuiltinFunction):
+    pass
+
+
+@dataclass(frozen=True)
+class PowRatTensor(BuiltinFunction):
+    pass
+
+
+@dataclass(frozen=True)
+class MinRatTensor(BuiltinFunction):
+    pass
+
+
+@dataclass(frozen=True)
+class MaxRatTensor(BuiltinFunction):
+    pass
+
+
+@dataclass(frozen=True)
+class ReduceAndBoolTensor(BuiltinFunction):
+    pass
+
+
+@dataclass(frozen=True)
+class ReduceOrBoolTensor(BuiltinFunction):
+    pass
+
+
+@dataclass(frozen=True)
+class ReduceSumRatTensor(BuiltinFunction):
+    pass
+
+
+@dataclass(frozen=True)
+class ReduceRatTensor(BuiltinFunction):
     pass
 
 
@@ -106,112 +207,7 @@ class EqIndex(BuiltinFunction):
 
 
 @dataclass(frozen=True)
-class EqInt(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class EqNat(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class EqRat(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class Exists(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class FoldList(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class FoldVector(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class Forall(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class GeIndex(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class GeInt(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class GeNat(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class GeRat(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class GtIndex(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class GtInt(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class GtNat(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class GtRat(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class If(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class Implies(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class Index(BuiltinFunction):
-    value: int
-
-
-@dataclass(frozen=True)
-class IndexType(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class Indices(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class Int(BuiltinFunction):
-    value: int
-
-
-@dataclass(frozen=True)
-class IntType(BuiltinFunction):
+class NeIndex(BuiltinFunction):
     pass
 
 
@@ -221,42 +217,37 @@ class LeIndex(BuiltinFunction):
 
 
 @dataclass(frozen=True)
-class LeInt(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class LeNat(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class LeRat(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class ListType(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
 class LtIndex(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class LtInt(BuiltinFunction):
+class GeIndex(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class LtNat(BuiltinFunction):
+class GtIndex(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class LtRat(BuiltinFunction):
+class LookupRatTensor(BuiltinFunction):
+    pass
+
+
+@dataclass(frozen=True)
+class StackRatTensor(BuiltinFunction):
+    value: int
+
+
+@dataclass(frozen=True)
+class ConstRatTensor(BuiltinFunction):
+    value: Fraction
+
+
+@dataclass(frozen=True)
+class FoldList(BuiltinFunction):
     pass
 
 
@@ -266,144 +257,121 @@ class MapList(BuiltinFunction):
 
 
 @dataclass(frozen=True)
-class MapVector(BuiltinFunction):
+class MapRatTensor(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class MaxRat(BuiltinFunction):
+class ZipWithRatTensor(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class MinRat(BuiltinFunction):
+class IndicesIndexTensor(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class MulInt(BuiltinFunction):
+class MinimiseRatTensor(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class MulNat(BuiltinFunction):
+class MaximiseRatTensor(BuiltinFunction):
     pass
 
 
 @dataclass(frozen=True)
-class MulRat(BuiltinFunction):
+class If(BuiltinFunction):
     pass
 
 
+################################################################################
+# Builtin Literals
+################################################################################
+
+
+@dataclass(frozen=True, init=False)
+class BuiltinLiteral(AST):
+    value: Any
+
+    def __init__(self) -> None:
+        raise TypeError("Cannot instantiate abstract class BuiltinLiteral")
+
+
 @dataclass(frozen=True)
-class Nat(BuiltinFunction):
+class Index(BuiltinLiteral):
     value: int
 
 
 @dataclass(frozen=True)
-class NatType(BuiltinFunction):
+class BoolTensor(BuiltinLiteral):
+    value: Tensor[bool]
+
+
+@dataclass(frozen=True)
+class NatTensor(BuiltinLiteral):
+    value: Tensor[int]
+
+
+@dataclass(frozen=True)
+class IntTensor(BuiltinLiteral):
+    value: Tensor[int]
+
+
+@dataclass(frozen=True)
+class RatTensor(BuiltinLiteral):
+    value: Tensor[Fraction]
+
+
+################################################################################
+# Builtin Types
+################################################################################
+
+
+@dataclass(frozen=True, init=False)
+class BuiltinType(AST):
+    def __init__(self) -> None:
+        raise TypeError("Cannot instantiate abstract class BuiltinType")
+
+
+@dataclass(frozen=True)
+class IndexType(BuiltinType):
     pass
 
 
 @dataclass(frozen=True)
-class NeIndex(BuiltinFunction):
+class IndexTensorType(BuiltinType):
     pass
 
 
 @dataclass(frozen=True)
-class NeInt(BuiltinFunction):
+class BoolTensorType(BuiltinType):
     pass
 
 
 @dataclass(frozen=True)
-class NeNat(BuiltinFunction):
+class NatTensorType(BuiltinType):
     pass
 
 
 @dataclass(frozen=True)
-class NeRat(BuiltinFunction):
+class IntTensorType(BuiltinType):
     pass
 
 
 @dataclass(frozen=True)
-class NegInt(BuiltinFunction):
+class RatTensorType(BuiltinType):
     pass
 
 
 @dataclass(frozen=True)
-class NegRat(BuiltinFunction):
+class ListType(BuiltinType):
     pass
 
 
 @dataclass(frozen=True)
-class NilList(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class Not(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class Optimise(BuiltinFunction):
-    minimise: bool
-    context: Sequence[Name]
-
-
-@dataclass(frozen=True)
-class Or(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class PowRat(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class Rat(BuiltinFunction):
-    numerator: int
-    denominator: int
-
-
-@dataclass(frozen=True)
-class RatType(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class SubInt(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class SubRat(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class Unit(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class UnitType(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class Vector(BuiltinFunction):
-    value: int
-
-
-@dataclass(frozen=True)
-class VectorType(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class ZipWithVector(BuiltinFunction):
+class UnitType(BuiltinType):
     pass
 
 
@@ -449,7 +417,7 @@ class BoundVar(Expression):
 @dataclass(frozen=True)
 class Builtin(Expression):
     provenance: Provenance = field(repr=False)
-    builtin: BuiltinFunction
+    builtin: Union[BuiltinConstant, BuiltinFunction, BuiltinLiteral, BuiltinType]
 
 
 @dataclass(frozen=True)

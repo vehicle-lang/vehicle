@@ -64,7 +64,7 @@ jobs:
           cabal-project-freeze-file: "vehicle-python/cabal.project.freeze"
 
       - name: Build wheel
-        uses: pypa/cibuildwheel@v2.16.5
+        uses: pypa/cibuildwheel@v2.17.0
         with:
           package-dir: "./vehicle-python"
           output-dir: "./vehicle-python/wheelhouse"

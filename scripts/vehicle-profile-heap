@@ -7,7 +7,7 @@
 #
 # instead run:
 #
-#    ./scripts/vehicle-profile-time ARGS
+#    ./scripts/vehicle-profile-heap ARGS
 #
 # This will generate an HTML file in the `.profiling` folder that can be viewed in a
 # browser.
@@ -30,15 +30,15 @@ if [ -s "$fail" ]; then
 fi
 
 # Check the HEAP_PROFILE_TYPE setting:
+# Can be anything from https://downloads.haskell.org/ghc/latest/docs/users_guide/profiling.html#profiling-memory-usage
 HEAP_PROFILE_TYPE="${HEAP_PROFILE_TYPE--hT}"
-if [ "$HEAP_PROFILE_TYPE" = "-hT" ]; then
-    echo "Type of profile: Basic heap profile"
-    elif [ "$HEAP_PROFILE_TYPE" = "-hi" ]; then
-    echo "Type of profile: Info table profile"
+
+if [ "$HEAP_PROFILE_TYPE" = "-hT" ] || [ "$HEAP_PROFILE_TYPE" = "-hi" ] || [ "$HEAP_PROFILE_TYPE" = "-hm" ]; then
+    PROFILING_OPT=""
 else
-    echo "Usage: HEAP_PROFILE_TYPE=[-hT or -hi] ./scripts/vehicle-profile [VEHICLE OPTIONS]"
-    echo "Error: expected HEAP_PROFILE_TYPE to be -hT or -hi, found $HEAP_PROFILE_TYPE"
+    PROFILING_OPT="--enable-profiling"
 fi
+
 
 # Create the directory for profiling files:
 PROFILING_DIR=".profiling"
@@ -52,6 +52,7 @@ EVENTLOG_HTML="$EVENTLOG_FILE.html"
 
 # Build vehicle in heap profiling mode with the given options.
 CABAL_BUILD="cabal -v1 --project-file=cabal.project.profile-heap build vehicle:exe:vehicle"
+
 [ ! -s "$fail" ] && ($CABAL_BUILD || echo > "$fail")
 
 # On interrupt, kill Vehicle and reset trap.
@@ -64,7 +65,7 @@ trap _on_interrupt INT
 
 # Run vehicle in heap profiling mode with the given options.
 RTSOPTS="+RTS -po$PROFILING_PREFIX -ol$EVENTLOG_FILE -s -l ${HEAP_PROFILE_TYPE} -RTS"
-CABAL_RUN="cabal -v0 --project-file=cabal.project.profile-heap run vehicle:exe:vehicle -- $* $RTSOPTS"
+CABAL_RUN="cabal -v0 $PROFILING_OPT --project-file=cabal.project.profile-heap run vehicle:exe:vehicle -- $* $RTSOPTS"
 if [ ! -s "$fail" ]; then
     echo "$CABAL_RUN"
     $CABAL_RUN || echo > "$fail" &

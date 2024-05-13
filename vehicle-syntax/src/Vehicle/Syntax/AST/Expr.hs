@@ -2,7 +2,6 @@ module Vehicle.Syntax.AST.Expr
   ( -- * Generic expressions
     Arg,
     Binder,
-    Decl,
     Expr
       ( Universe,
         App,
@@ -15,7 +14,6 @@ module Vehicle.Syntax.AST.Expr
         Let,
         Lam
       ),
-    Prog,
     Type,
     UniverseLevel (..),
     Telescope,
@@ -25,6 +23,8 @@ module Vehicle.Syntax.AST.Expr
     isPi,
     mkHole,
     normAppList,
+    getFreeVarApp,
+    getBuiltinApp,
     pattern TypeUniverse,
     pattern BuiltinExpr,
   )
@@ -33,16 +33,15 @@ where
 import Control.DeepSeq (NFData)
 import Data.Hashable (Hashable)
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), (<+>))
 import Vehicle.Syntax.AST.Arg
 import Vehicle.Syntax.AST.Binder
-import Vehicle.Syntax.AST.Decl (GenericDecl)
 import Vehicle.Syntax.AST.Meta (MetaID)
 import Vehicle.Syntax.AST.Name (Identifier, Name)
-import Vehicle.Syntax.AST.Prog (GenericProg)
-import Vehicle.Syntax.AST.Provenance (HasProvenance (..), Provenance)
+import Vehicle.Syntax.AST.Provenance (HasProvenance (..), Provenance, fillInProvenance)
 import Vehicle.Syntax.Builtin (Builtin)
 import Vehicle.Syntax.Prelude
 
@@ -76,9 +75,8 @@ data Expr var builtin
     Universe
       Provenance
       UniverseLevel
-  | -- | Application of one term to another.
+  | -- | Application of one term to another. Doesn't have provenance as it has no syntax in the grammar.
     UnsafeApp
-      Provenance
       (Expr var builtin) -- Function.
       (NonEmpty (Arg var builtin)) -- Arguments.
   | -- | Dependent product (subsumes both functions and universal quantification).
@@ -128,20 +126,20 @@ data Expr var builtin
 -- Safe applications
 
 -- | Smart constructor for applications with possibly no arguments.
-normAppList :: Provenance -> Expr var builtin -> [Arg var builtin] -> Expr var builtin
-normAppList _ f [] = f
-normAppList p f (x : xs) = App p f (x :| xs)
+normAppList :: Expr var builtin -> [Arg var builtin] -> Expr var builtin
+normAppList f [] = f
+normAppList f (x : xs) = App f (x :| xs)
 
 -- | Smart constructor for applications.
-normApp :: Provenance -> Expr var builtin -> NonEmpty (Arg var builtin) -> Expr var builtin
-normApp p (UnsafeApp _p f xs) ys = UnsafeApp p f (xs <> ys)
-normApp p f xs = UnsafeApp p f xs
+normApp :: Expr var builtin -> NonEmpty (Arg var builtin) -> Expr var builtin
+normApp (UnsafeApp f xs) ys = UnsafeApp f (xs <> ys)
+normApp f xs = UnsafeApp f xs
 
 -- | Safe pattern synonym for applications.
-pattern App :: Provenance -> Expr var builtin -> NonEmpty (Arg var builtin) -> Expr var builtin
-pattern App p f xs <- UnsafeApp p f xs
+pattern App :: Expr var builtin -> NonEmpty (Arg var builtin) -> Expr var builtin
+pattern App f xs <- UnsafeApp f xs
   where
-    App p f xs = normApp p f xs
+    App f xs = normApp f xs
 
 {-# COMPLETE Universe, App, Pi, Builtin, BoundVar, FreeVar, Hole, Meta, Let, Lam #-}
 
@@ -157,7 +155,7 @@ instance HasProvenance (Expr var builtin) where
     Universe p _ -> p
     Hole p _ -> p
     Meta p _ -> p
-    App p _ _ -> p
+    App e xs -> fillInProvenance (provenanceOf e :| provenanceOf xs : [])
     Pi p _ _ -> p
     Builtin p _ -> p
     BoundVar p _ -> p
@@ -173,10 +171,6 @@ type Type = Expr
 type Binder var builtin = GenericBinder (Expr var builtin)
 
 type Arg var builtin = GenericArg (Expr var builtin)
-
-type Decl var builtin = GenericDecl (Expr var builtin)
-
-type Prog var builtin = GenericProg (Expr var builtin)
 
 type Telescope var builtin = [Binder var builtin]
 
@@ -206,6 +200,18 @@ pattern BuiltinExpr ::
   builtin ->
   NonEmpty (Arg var builtin) ->
   Expr var builtin
-pattern BuiltinExpr p b args <- App p (Builtin _ b) args
+pattern BuiltinExpr p b args <- App (Builtin p b) args
   where
-    BuiltinExpr p b args = App p (Builtin p b) args
+    BuiltinExpr p b args = App (Builtin p b) args
+
+getBuiltinApp :: Expr var builtin -> Maybe (Provenance, builtin, [Arg var builtin])
+getBuiltinApp = \case
+  Builtin p b -> Just (p, b, [])
+  App (Builtin p b) args -> Just (p, b, NonEmpty.toList args)
+  _ -> Nothing
+
+getFreeVarApp :: Expr var builtin -> Maybe (Provenance, Identifier, [Arg var builtin])
+getFreeVarApp = \case
+  FreeVar p b -> Just (p, b, [])
+  App (FreeVar p b) args -> Just (p, b, NonEmpty.toList args)
+  _ -> Nothing

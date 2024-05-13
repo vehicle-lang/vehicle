@@ -63,13 +63,19 @@ getBoundVarByLv _ compilerPass lv =
   lookupLvInBoundCtx compilerPass lv =<< getBoundCtx (Proxy @builtin)
 
 unnormalise ::
-  forall builtin m.
+  forall strategy builtin m.
   (MonadBoundContext builtin m) =>
-  WHNFValue builtin ->
+  Value strategy builtin ->
   m (Expr Ix builtin)
 unnormalise e = do
-  boundCtx <- getBoundCtx (Proxy @builtin)
-  return $ Quote.unnormalise (Lv $ length boundCtx) e
+  lv <- getCurrentLv (Proxy @builtin)
+  return $ Quote.unnormalise lv e
+
+getCurrentLv ::
+  (MonadBoundContext builtin m) =>
+  Proxy builtin ->
+  m Lv
+getCurrentLv p = boundCtxLv <$> getBoundCtx p
 
 --------------------------------------------------------------------------------
 -- Fresh names
@@ -91,6 +97,9 @@ getBinderNameOrFreshName :: (MonadBoundContext builtin m) => Maybe Name -> Type 
 getBinderNameOrFreshName piName typ = case piName of
   Just x -> return x
   Nothing -> getFreshName typ
+
+getNamedBoundCtx :: (MonadBoundContext builtin m) => Proxy builtin -> m NamedBoundCtx
+getNamedBoundCtx p = toNamedBoundCtx <$> getBoundCtx p
 
 {-
 getFreshNameInternal :: (Monad m) => Type Ix builtin -> TypeCheckerTInternals builtin2 m Name

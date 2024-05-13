@@ -9,7 +9,8 @@ where
 import Control.Monad.Identity (Identity (runIdentity), IdentityT)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty (head, toList)
-import Data.Maybe (fromMaybe)
+import Data.Map qualified as Map
+import Data.Maybe (fromMaybe, maybeToList)
 import Data.Text (Text, pack)
 import Prettyprinter (Doc, Pretty (..), squote, squotes, (<+>))
 import Vehicle.Syntax.AST qualified as V
@@ -48,13 +49,20 @@ instance Delaborate (V.Decl V.Name V.Builtin) [B.Decl] where
     V.DefAbstract _ n a t -> do
       defFun <- B.DefFunType (delabIdentifier n) tokElemOf <$> delabM t
 
-      let defAnn = case a of
-            V.PostulateDef -> delabAnn postulateAnn []
-            V.NetworkDef -> delabAnn networkAnn []
-            V.DatasetDef -> delabAnn datasetAnn []
-            V.ParameterDef sort -> case sort of
-              V.NonInferable -> delabAnn parameterAnn []
-              V.Inferable -> delabAnn parameterAnn [mkDeclAnnOption InferableOption True]
+      defAnn <- case a of
+        V.PostulateDef linearityType polarityType -> do
+          let nameOption = mkNameAnnOption "name" (V.nameOf n)
+          let types = t : fromMaybe [] (sequence [linearityType, polarityType])
+          typeOption <- mkTypeAnnOption ("standard", t)
+          linearOpt <- traverse (mkTypeAnnOption . ("linearity",)) linearityType
+          polarityOpt <- traverse (mkTypeAnnOption . ("polarity",)) polarityType
+          let declOptions = [nameOption, typeOption] ++ fromMaybe [] (sequence [linearOpt, polarityOpt])
+          return $ B.DefPostulate tokPostulate (B.DeclAnnWithOpts declOptions)
+        V.NetworkDef -> return $ delabAnn networkAnn []
+        V.DatasetDef -> return $ delabAnn datasetAnn []
+        V.ParameterDef sort -> return $ case sort of
+          V.NonInferable -> delabAnn parameterAnn []
+          V.Inferable -> delabAnn parameterAnn [mkBoolAnnOption InferableOption True]
 
       return [defAnn, defFun]
     V.DefFunction _ n anns t e -> do
@@ -72,8 +80,8 @@ instance Delaborate (V.Expr V.Name V.Builtin) B.Expr where
     V.Let _ e1 b e2 -> delabLet e1 b e2
     V.Lam _ binder body -> delabLam binder body
     V.Meta _ m -> return $ B.Var (mkToken B.Name (layoutAsText (pretty m)))
-    V.App _ (V.Builtin _ b) args -> delabBuiltin b (NonEmpty.toList args)
-    V.App _ fun args -> do
+    V.App (V.Builtin _ b) args -> delabBuiltin b (NonEmpty.toList args)
+    V.App fun args -> do
       fun' <- delabM fun
       delabApp fun' (NonEmpty.toList args)
     V.Builtin _ op -> delabBuiltin op []
@@ -183,14 +191,13 @@ delabBuiltinFunction fun args = case fun of
   V.Quantifier q -> delabTypeClassOp (V.QuantifierTC q) args
   V.Equals _ op -> delabTypeClassOp (V.EqualsTC op) args
   V.Order _ op -> delabTypeClassOp (V.OrderTC op) args
-  V.Fold V.FoldList -> delabTypeClassOp V.FoldTC args
-  V.Fold V.FoldVector -> delabTypeClassOp V.FoldTC args
+  V.FoldList -> delabTypeClassOp V.FoldTC args
+  V.FoldVector -> delabTypeClassOp V.FoldTC args
   V.MapList -> delabTypeClassOp V.MapTC args
   V.MapVector -> delabTypeClassOp V.MapTC args
   V.ZipWithVector -> delabApp (B.ZipWith tokZipWith) args
   V.At -> delabInfixOp2 B.At tokAt args
   V.Indices -> delabApp (B.Indices tokIndices) args
-  V.Ann -> delabInfixOp2 B.Ann tokElemOf args
   -- Builtins not in the surface syntax.
   V.FromNat {} -> rawDelab
   V.FromRat {} -> rawDelab
@@ -206,7 +213,6 @@ delabBuiltinType fun args = case fun of
   V.Unit -> delabApp (B.Unit tokUnit) args
   V.Bool -> delabApp (B.Bool tokBool) args
   V.Nat -> delabApp (B.Nat tokNat) args
-  V.Int -> delabApp (B.Int tokInt) args
   V.Rat -> delabApp (B.Rat tokRat) args
   V.List -> delabApp (B.List tokList) args
   V.Vector -> delabApp (B.Vector tokVector) args
@@ -233,11 +239,6 @@ delabConstructor fun args = case fun of
   V.LBool b -> return $ B.Literal $ B.BoolLiteral $ delabBoolLit b
   V.LIndex x -> return $ B.Literal $ B.NatLiteral $ delabNatLit x
   V.LNat n -> return $ B.Literal $ B.NatLiteral $ delabNatLit n
-  V.LInt i ->
-    return $
-      if i >= 0
-        then B.Literal $ B.NatLiteral $ delabNatLit i
-        else B.Neg tokSub (B.Literal $ B.NatLiteral $ delabNatLit (-i))
   V.LRat r -> return $ B.Literal $ B.RatLiteral $ delabRatLit r
   V.LVec _ -> do
     let explArgs = filter V.isExplicit args
@@ -394,12 +395,18 @@ delabForeach args = case reverse args of
     return $ B.Foreach tokForeach binder' tokDot body'
   _ -> argsError (tkSymbol tokForeach) 1 <$> traverse delabM args
 
-delabAnn :: B.DeclAnnName -> [B.DeclAnnOption] -> B.Decl
+delabAnn :: B.TokAnnotation -> [B.DeclAnnOption] -> B.Decl
 delabAnn name [] = B.DefAnn name B.DeclAnnWithoutOpts
 delabAnn name ops = B.DefAnn name $ B.DeclAnnWithOpts ops
 
-mkDeclAnnOption :: Text -> Bool -> B.DeclAnnOption
-mkDeclAnnOption name value = B.BooleanOption (mkToken B.Name name) (delabBoolLit value)
+mkBoolAnnOption :: Text -> Bool -> B.DeclAnnOption
+mkBoolAnnOption name value = B.InferAnnOption (mkToken B.TokAnnInferOpt name) (B.Literal (B.BoolLiteral (delabBoolLit value)))
+
+mkNameAnnOption :: Text -> Text -> B.DeclAnnOption
+mkNameAnnOption name value = B.NameAnnOption (mkToken B.TokAnnNameOpt name) (mkToken B.Name value)
+
+mkTypeAnnOption :: (MonadDelab m) => (Text, V.Expr V.Name V.Builtin) -> m B.DeclAnnOption
+mkTypeAnnOption (name, value) = B.TypeAnnOption (mkToken B.Name name) <$> delabM value
 
 auxiliaryTypeError :: Doc a -> a
 auxiliaryTypeError e =

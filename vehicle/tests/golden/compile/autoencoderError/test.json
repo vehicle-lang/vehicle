@@ -14,12 +14,6 @@
     }
   },
   {
-    "name": "Explicit",
-    "run": "vehicle compile -s spec.vcl -t Explicit -o Explicit.vcl",
-    "needs": ["spec.vcl"],
-    "produces": ["Explicit.vcl"]
-  },
-  {
     "name": "Agda",
     "run": "vehicle compile -s spec.vcl -t Agda -o Agda.agda",
     "needs": ["spec.vcl"],

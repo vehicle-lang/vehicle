@@ -17,6 +17,7 @@ examples/**/*.vclplan
 examples/**/*.vclresult
 examples/**/*-query*.txt
 examples/windController/agdaProof/WindControllerSpec.agda
+examples/windController/verificationResult/*
 
 # Wheels
 wheelhouselocal/

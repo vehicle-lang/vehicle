@@ -129,7 +129,7 @@ findInstanceGoalHead :: Expr Ix builtin -> Either (Expr Ix builtin) builtin
 findInstanceGoalHead = \case
   Pi _ binder body
     | not (isExplicit binder) -> findInstanceGoalHead body
-  App _ (Builtin _ b) _ -> Right b
+  App (Builtin _ b) _ -> Right b
   Builtin _ b -> Right b
   expr -> Left expr
 

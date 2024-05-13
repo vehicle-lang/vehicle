@@ -20,8 +20,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Data.BuiltinInterface.Expr (pattern UnitLiteral)
-import Vehicle.Data.BuiltinInterface.Value
+import Vehicle.Data.BuiltinInterface.ASTInterface
 import Vehicle.Data.DSL
 import Vehicle.Data.DeBruijn (substDBInto)
 import Vehicle.Data.NormalisedExpr
@@ -208,16 +207,38 @@ instance MeaningfulError CompileError where
                   [] -> Nothing
                   (s : _) -> Just $ "did you mean" <+> quotePretty s <> "?"
             }
-      InvalidAnnotationOptionValue p parameterName parameterValue ->
+      InvalidAnnotationOptionValue parameterName parameterValue ->
+        UError $
+          UserError
+            { provenance = provenanceOf parameterValue,
+              problem =
+                "unable to parse the value"
+                  <+> squotes (prettyFriendly parameterValue)
+                  <+> "for option"
+                  <+> quotePretty parameterName,
+              fix = Nothing
+            }
+      DuplicateAnnotationOption p annotation name ->
         UError $
           UserError
             { provenance = p,
               problem =
-                "unable to parse the value"
-                  <+> quotePretty parameterValue
-                  <+> "for option"
-                  <+> quotePretty parameterName,
-              fix = Nothing
+                "the annotation"
+                  <+> quotePretty annotation
+                  <+> "has multiple copies of the option"
+                  <+> quotePretty name,
+              fix = Just $ "remove all but one of the instances of" <+> quotePretty name
+            }
+      MissingAnnotationOption p annotation name ->
+        UError $
+          UserError
+            { provenance = p,
+              problem =
+                "the annotation"
+                  <+> quotePretty annotation
+                  <+> "is missing the option"
+                  <+> quotePretty name,
+              fix = Just $ "add a value for the option" <+> quotePretty name
             }
       UnknownBuiltin p symbol ->
         UError $
@@ -325,7 +346,7 @@ instance MeaningfulError CompileError where
           }
       where
         WithContext (Unify origin e1 e2) ctx = NonEmpty.head cs
-        boundCtx = boundContextOf ctx
+        boundCtx = namedBoundCtxOf ctx
 
         constraintOriginMessage = case origin of
           CheckingExprType CheckingExpr {..} ->
@@ -358,7 +379,7 @@ instance MeaningfulError CompileError where
           }
       where
         WithContext constraint ctx = NonEmpty.head cs
-        nameCtx = boundContextOf ctx
+        nameCtx = namedBoundCtxOf ctx
 
         constraintOriginMessage = case constraint of
           UnificationConstraint (Unify origin _ _) -> case origin of
@@ -431,16 +452,16 @@ instance MeaningfulError CompileError where
       where
         InstanceConstraintOrigin tcOp tcOpArgs tcOpType tc = origin
 
-        deducedType = calculateOpType (boundContextOf ctx) $ case tc of
-          App _ _ as -> NonEmpty.toList as
+        deducedType = calculateOpType (namedBoundCtxOf ctx) $ case tc of
+          App _ as -> NonEmpty.toList as
           _ -> []
 
         originExpr :: Doc a
         originExpr = squotes (prettyTypeClassConstraintOriginExpr ctx tcOp tcOpArgs)
 
-        calculateOpType :: BoundCtx builtin -> [Arg Ix builtin] -> Doc a
+        calculateOpType :: NamedBoundCtx -> [Arg Ix builtin] -> Doc a
         calculateOpType dbCtx args = do
-          let argsToSubst = fmap argExpr args <> [UnitLiteral mempty]
+          let argsToSubst = fmap argExpr args <> [IUnitLiteral mempty]
           let inferedOpType = instantiateTelescope tcOpType argsToSubst
           prettyFriendly (WithContext inferedOpType dbCtx)
 
@@ -450,8 +471,8 @@ instance MeaningfulError CompileError where
           where
             go :: BoundCtx builtin -> Expr Ix builtin -> Doc a
             go dbCtx = \case
-              App _ (Builtin _ _tc) args ->
-                calculateOpType dbCtx (NonEmpty.toList args)
+              App (Builtin _ _tc) args ->
+                calculateOpType (toNamedBoundCtx dbCtx) (NonEmpty.toList args)
               Pi _ binder result ->
                 go (binder : dbCtx) result
               _ -> "UNSUPPORTED PRINTING"
@@ -482,9 +503,9 @@ instance MeaningfulError CompileError where
           { provenance = provenanceOf ctx,
             problem =
               "unable to determine if"
-                <+> squotes (prettyFriendly (WithContext v (boundContextOf ctx)))
+                <+> squotes (prettyFriendly (WithContext v (namedBoundCtxOf ctx)))
                 <+> "is a valid index of size"
-                <+> squotes (prettyFriendly (WithContext t (boundContextOf ctx)))
+                <+> squotes (prettyFriendly (WithContext t (namedBoundCtxOf ctx)))
                 <> ".",
             fix = Nothing
           }
@@ -721,7 +742,7 @@ instance MeaningfulError CompileError where
                   <+> "to a supported type."
           }
       where
-        supportedTypes = map pretty [Index, Nat, Int, Rat]
+        supportedTypes = map pretty [Index, Nat, Rat]
     DatasetVariableSizeTensor (ident, p) datasetType variableDim ->
       UError $
         UserError
@@ -758,8 +779,8 @@ instance MeaningfulError CompileError where
       where
         dimensionsOf :: WHNFType Builtin -> Int
         dimensionsOf = \case
-          VListType t -> 1 + dimensionsOf t
-          VVectorType t _ -> 1 + dimensionsOf t
+          IListType _ t -> 1 + dimensionsOf t
+          IVectorType _ t _ -> 1 + dimensionsOf t
           _ -> 0
     DatasetDimensionSizeMismatch (ident, p) file expectedSize actualSize allDimensions visitedDimensions ->
       UError $
@@ -832,7 +853,7 @@ instance MeaningfulError CompileError where
                 <> "Expected elements of type"
                   <+> squotes (prettyFriendlyEmptyCtx expectedType)
                   <+> "but found elements of type"
-                  <+> squotes (prettyFriendlyEmptyCtx actualType)
+                  <+> squotes actualType
                   <+> "when reading"
                   <+> quotePretty file
                 <> ".",
@@ -859,7 +880,7 @@ instance MeaningfulError CompileError where
                   <+> "to a supported type."
           }
       where
-        supportedTypes = map pretty [Bool, Index, Nat, Int, Rat]
+        supportedTypes = map pretty [Bool, Index, Nat, Rat]
     ParameterValueUnparsable (ident, p) value expectedType ->
       UError $
         UserError
@@ -1160,18 +1181,18 @@ instance MeaningfulError CompileError where
                 <+> "does not contain any neural networks.",
             fix = Just "choose a different compilation target than VNNLib"
           }
-    UnsupportedNegatedOperation logic notProv ->
+    UnsupportedNegatedOperation logic ctx expr ->
       UError $
         UserError
-          { provenance = notProv,
+          { provenance = mempty,
             problem =
               "The differential logic"
                 <+> quotePretty logic
                 <+> "does not support"
-                <+> "the"
+                <+> "pushing the"
                 <+> quotePretty Not
-                <+> "at"
-                <+> pretty notProv
+                <+> "through"
+                <+> prettyFriendly (WithContext expr ctx)
                 <+> "because it cannot be eliminated by pushing it inwards.",
             fix = Just "choose a different differential logic"
           }
@@ -1196,6 +1217,21 @@ instance MeaningfulError CompileError where
                 <+> quotePretty name
                 <> ".",
             fix = Just "change the specification so that all quantified variables have unique names"
+          }
+    HigherOrderVectors (ident, p) ctx vecTyp elemTyp ->
+      UError $
+        UserError
+          { provenance = p,
+            problem =
+              "The property"
+                <+> quotePretty (nameOf ident)
+                <+> "cannot be compiled to tensors as it contains"
+                <+> "the vector type:"
+                <> line
+                  <+> indent 2 (prettyFriendly (WithContext vecTyp ctx))
+                <> line
+                <> "Vectors with elements of type" <+> squotes (prettyFriendly (WithContext elemTyp ctx)) <+> "cannot currently be compiled:",
+            fix = Nothing
           }
 
 datasetDimensionsFix :: Doc a -> Identifier -> FilePath -> Doc a
@@ -1373,7 +1409,7 @@ prettyTypeClassConstraintOriginExpr ctx fun args = do
         -- oblivious to them. Instead we want to print out what they are applied to.
         Builtin _ b | isCoercion b -> argExpr $ last args
         _ -> fun
-  prettyFriendly $ WithContext expr (boundContextOf ctx)
+  prettyFriendly $ WithContext expr (namedBoundCtxOf ctx)
 
 prettyUnificationConstraintOriginExpr ::
   (PrintableBuiltin builtin) =>
@@ -1381,7 +1417,7 @@ prettyUnificationConstraintOriginExpr ::
   Expr Ix builtin ->
   Doc a
 prettyUnificationConstraintOriginExpr ctx expr =
-  prettyFriendly $ WithContext expr (boundContextOf ctx)
+  prettyFriendly $ WithContext expr (namedBoundCtxOf ctx)
 
 prettyIdentName :: Identifier -> Doc a
 prettyIdentName ident = quotePretty (nameOf ident :: Name)

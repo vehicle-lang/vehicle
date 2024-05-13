@@ -11,8 +11,7 @@ import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad
 import Vehicle.Data.BuiltinInterface
-import Vehicle.Data.BuiltinInterface.Expr
-import Vehicle.Data.BuiltinInterface.Value
+import Vehicle.Data.BuiltinInterface.ASTInterface
 import Vehicle.Data.NormalisedExpr
 import Vehicle.Syntax.Builtin
 
@@ -30,7 +29,7 @@ solveIndexConstraint constraint = do
       progress <- solveInDomain normConstraint (mapMaybe getExplicitArg args)
       case progress of
         Nothing -> do
-          let solution = UnitLiteral (provenanceOf ctx)
+          let solution = IUnitLiteral (provenanceOf ctx)
           solveMeta meta solution (boundContext ctx)
         Just metas -> do
           let blockedConstraint = blockConstraintOn (mapObject InstanceConstraint normConstraint) metas
@@ -51,12 +50,11 @@ solveInDomain ::
   m (Maybe MetaSet)
 solveInDomain c [value, typ] = case typ of
   (getNMeta -> Just {}) -> return $ blockOnMetas [typ]
-  VNatType {} -> return Nothing
-  VIntType {} -> return Nothing
-  VRatType {} -> return Nothing
-  VIndexType size -> case value of
+  INatType {} -> return Nothing
+  IRatType {} -> return Nothing
+  IIndexType _ size -> case value of
     VMeta {} -> return $ blockOnMetas [value]
-    VNatLiteral n -> do
+    INatLiteral _ n -> do
       (sizeBlockingMetas, sizeLowerBound) <- findLowerBound ctx value size
       if n < sizeLowerBound
         then return Nothing
@@ -90,11 +88,11 @@ findLowerBound ctx value indexSize = go indexSize
     go = \case
       VMeta m _ ->
         return (MetaSet.singleton m, 0)
-      VNatLiteral n ->
+      INatLiteral _ n ->
         return (mempty, n)
       VFreeVar {} ->
         return (mempty, 0)
-      VAdd AddNat e1 e2 -> do
+      IAdd AddNat e1 e2 -> do
         (m1, b1) <- go e1
         (m2, b2) <- go e2
         return (m1 <> m2, b1 + b2)

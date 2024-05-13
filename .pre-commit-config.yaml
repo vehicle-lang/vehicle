@@ -16,7 +16,7 @@ exclude: '^.*\.golden$'
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v4.6.0
     hooks:
       - id: check-added-large-files
       - id: check-case-conflict
@@ -46,11 +46,11 @@ repos:
       - id: isort
         args: ["--profile", "black", "--filter-files"]
   - repo: https://github.com/psf/black
-    rev: "24.1.1"
+    rev: "24.4.2"
     hooks:
       - id: black
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: "v1.8.0"
+    rev: "v1.10.0"
     hooks:
       - id: mypy
         name: mypy (vehicle-python)
@@ -61,6 +61,10 @@ repos:
           - "types_pygments >=2.14"
           - "packaging >=23"
         files: '^vehicle-python\/.*\.py$'
+  - repo: https://github.com/citation-file-format/cffconvert
+    rev: "054bda51dbe278b3e86f27c890e3f3ac877d616c"
+    hooks:
+      - id: validate-cff
   - repo: local
     hooks:
       - id: cabal-fmt

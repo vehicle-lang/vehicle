@@ -32,7 +32,6 @@ data BuiltinType
   | Bool
   | Index
   | Nat
-  | Int
   | Rat
   | List
   | Vector
@@ -52,7 +51,6 @@ instance Pretty BuiltinType where
     Bool -> "Bool"
     Index -> "Index"
     Nat -> "Nat"
-    Int -> "Int"
     Rat -> "Rat"
     List -> "List"
     Vector -> "Vector"
@@ -69,7 +67,6 @@ data BuiltinConstructor
   | LBool Bool
   | LIndex Int
   | LNat Int
-  | LInt Int
   | LRat Rational
   | LVec Int
   deriving (Eq, Ord, Show, Generic)
@@ -90,7 +87,6 @@ instance Pretty BuiltinConstructor where
     LBool x -> pretty x
     LIndex x -> pretty x
     LNat x -> pretty x
-    LInt x -> pretty x
     LRat x -> pretty x
     LVec n -> "LVec[" <> pretty n <> "]"
 
@@ -103,7 +99,6 @@ instance Pretty Rational where
 data OrderDomain
   = OrderIndex
   | OrderNat
-  | OrderInt
   | OrderRat
   deriving (Eq, Ord, Show, Generic)
 
@@ -117,13 +112,11 @@ instance Pretty OrderDomain where
   pretty = \case
     OrderNat -> "Nat"
     OrderIndex -> "Index"
-    OrderInt -> "Int"
     OrderRat -> "Rat"
 
 data EqualityDomain
   = EqIndex
   | EqNat
-  | EqInt
   | EqRat
   deriving (Eq, Ord, Show, Generic)
 
@@ -137,12 +130,10 @@ instance Pretty EqualityDomain where
   pretty = \case
     EqIndex -> "Index"
     EqNat -> "Nat"
-    EqInt -> "Int"
     EqRat -> "Rat"
 
 data NegDomain
-  = NegInt
-  | NegRat
+  = NegRat
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData NegDomain
@@ -153,17 +144,14 @@ instance Serialize NegDomain
 
 instance Pretty NegDomain where
   pretty = \case
-    NegInt -> "Int"
     NegRat -> "Rat"
 
 negToMulDomain :: NegDomain -> MulDomain
 negToMulDomain = \case
-  NegInt -> MulInt
   NegRat -> MulRat
 
 data AddDomain
   = AddNat
-  | AddInt
   | AddRat
   deriving (Eq, Ord, Show, Generic)
 
@@ -176,12 +164,10 @@ instance Serialize AddDomain
 instance Pretty AddDomain where
   pretty = \case
     AddNat -> "Nat"
-    AddInt -> "Int"
     AddRat -> "Rat"
 
 data SubDomain
-  = SubInt
-  | SubRat
+  = SubRat
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData SubDomain
@@ -192,22 +178,18 @@ instance Serialize SubDomain
 
 instance Pretty SubDomain where
   pretty = \case
-    SubInt -> "Int"
     SubRat -> "Rat"
 
 subToAddDomain :: SubDomain -> AddDomain
 subToAddDomain = \case
-  SubInt -> AddInt
   SubRat -> AddRat
 
 subToNegDomain :: SubDomain -> NegDomain
 subToNegDomain = \case
-  SubInt -> NegInt
   SubRat -> NegRat
 
 data MulDomain
   = MulNat
-  | MulInt
   | MulRat
   deriving (Eq, Ord, Show, Generic)
 
@@ -220,7 +202,6 @@ instance Serialize MulDomain
 instance Pretty MulDomain where
   pretty = \case
     MulNat -> "Nat"
-    MulInt -> "Int"
     MulRat -> "Rat"
 
 data DivDomain
@@ -244,7 +225,6 @@ divToMulDomain = \case
 data FromNatDomain
   = FromNatToIndex
   | FromNatToNat
-  | FromNatToInt
   | FromNatToRat
   deriving (Eq, Ord, Show, Generic)
 
@@ -252,7 +232,6 @@ instance Pretty FromNatDomain where
   pretty = \case
     FromNatToIndex -> "Index"
     FromNatToNat -> "Nat"
-    FromNatToInt -> "Int"
     FromNatToRat -> "Rat"
 
 instance Serialize FromNatDomain
@@ -274,22 +253,6 @@ instance NFData FromRatDomain
 instance Hashable FromRatDomain
 
 instance Serialize FromRatDomain
-
-data FoldDomain
-  = FoldList
-  | FoldVector
-  deriving (Eq, Ord, Show, Generic)
-
-instance Pretty FoldDomain where
-  pretty = \case
-    FoldList -> "List"
-    FoldVector -> "Vector"
-
-instance NFData FoldDomain
-
-instance Hashable FoldDomain
-
-instance Serialize FoldDomain
 
 data BuiltinFunction
   = Not
@@ -316,14 +279,12 @@ data BuiltinFunction
     Equals EqualityDomain EqualityOp
   | Order OrderDomain OrderOp
   | At
-  | Fold FoldDomain
+  | FoldList
+  | FoldVector
   | MapList
   | MapVector
   | ZipWithVector
   | Indices
-  | -- | A type annotation. The type is stored first and then expression (i.e. Ann t e),
-    -- which differs  from the frontend where the expression comes first (i.e. e : t)
-    Ann
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData BuiltinFunction
@@ -354,13 +315,13 @@ instance Pretty BuiltinFunction where
     FromRat dom -> "fromRatTo" <> pretty dom
     Equals dom op -> equalityOpName op <> pretty dom
     Order dom op -> orderOpName op <> pretty dom
-    Fold dom -> "fold" <> pretty dom
+    FoldList -> "foldList"
+    FoldVector -> "foldVector"
     MapList -> "mapList"
     MapVector -> "mapVector"
     ZipWithVector -> "zipWith"
     At -> "!"
     Indices -> "indices"
-    Ann -> ":"
     Optimise b -> "Optimise[" <> direction <> "]"
       where
         direction = if b then "min" else "max"

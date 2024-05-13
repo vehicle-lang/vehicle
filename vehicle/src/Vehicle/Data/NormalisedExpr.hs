@@ -38,13 +38,13 @@ instance (Generic builtin) => Generic (Body 'WHNF builtin) where
 -- | A normalised expression. Internal invariant is that it should always be
 -- well-typed.
 data Value (strategy :: NFStrategy) builtin
-  = VUniverse UniverseLevel
-  | VMeta MetaID (Spine strategy builtin)
-  | VFreeVar Identifier (Spine strategy builtin)
-  | VBoundVar Lv (Spine strategy builtin)
-  | VBuiltin builtin (Spine strategy builtin)
-  | VLam (VBinder strategy builtin) (Body strategy builtin)
-  | VPi (VBinder strategy builtin) (Value strategy builtin)
+  = VUniverse !UniverseLevel
+  | VMeta !MetaID !(Spine strategy builtin)
+  | VFreeVar !Identifier !(Spine strategy builtin)
+  | VBoundVar !Lv !(Spine strategy builtin)
+  | VBuiltin !builtin !(Spine strategy builtin)
+  | VLam !(VBinder strategy builtin) !(Body strategy builtin)
+  | VPi !(VBinder strategy builtin) !(Value strategy builtin)
   deriving (Eq, Show, Generic)
 
 type VArg strategy builtin = GenericArg (Value strategy builtin)
@@ -85,11 +85,15 @@ mkDefaultEnvEntry name value = (Binder mempty displayForm Explicit Relevant (), 
   where
     displayForm = BinderDisplayForm (OnlyName name) True
 
+-- | Note that the `ctxSize` must come from the current context and not a
+-- bound environment as the environment that the term was originally normalised
+-- in may not be the same size as the current context.
 extendEnvWithBound ::
+  Lv ->
   GenericBinder expr ->
   BoundEnv strategy builtin ->
   BoundEnv strategy builtin
-extendEnvWithBound binder env = (void binder, Bound) : env
+extendEnvWithBound ctxSize = extendEnvWithDefined (VBoundVar ctxSize [])
 
 extendEnvWithDefined ::
   Value strategy builtin ->

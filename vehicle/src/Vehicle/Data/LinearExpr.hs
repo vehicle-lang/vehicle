@@ -1,13 +1,11 @@
 module Vehicle.Data.LinearExpr where
 
+import Control.DeepSeq (NFData)
 import Control.Monad (foldM)
 import Data.Aeson (FromJSON, FromJSONKey, ToJSON, ToJSONKey)
-import Data.List.Split (chunksOf)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
-import Data.Vector (Vector)
-import Data.Vector qualified as Vector
 import GHC.Generics (Generic)
 import Vehicle.Prelude
 
@@ -31,69 +29,10 @@ class (Pretty constant) => IsConstant constant where
   scaleConstant :: Coefficient -> constant -> constant
   addConstants :: Coefficient -> Coefficient -> constant -> constant -> constant
 
---------------------------------------------------------------------------------
--- Rational constants
-
 instance IsConstant Rational where
   isZero = (== 0.0)
   scaleConstant = (*)
   addConstants a b x y = a * x + b * y
-
---------------------------------------------------------------------------------
--- Tensor constants
-
-data RationalTensor = RationalTensor
-  { tensorDims :: TensorDimensions,
-    tensorValues :: Vector Rational
-  }
-  deriving (Show, Eq, Ord, Generic)
-
-instance ToJSON RationalTensor
-
-instance FromJSON RationalTensor
-
-zeroTensor :: TensorDimensions -> RationalTensor
-zeroTensor dims = RationalTensor dims (Vector.replicate (product dims) 0)
-
-mapTensor ::
-  (Rational -> Rational) ->
-  RationalTensor ->
-  RationalTensor
-mapTensor f RationalTensor {..} =
-  RationalTensor
-    { tensorValues = Vector.map f tensorValues,
-      ..
-    }
-
-zipWithTensor ::
-  (Rational -> Rational -> Rational) ->
-  RationalTensor ->
-  RationalTensor ->
-  RationalTensor
-zipWithTensor f t1 t2 =
-  RationalTensor
-    { tensorDims = tensorDims t1,
-      tensorValues = Vector.zipWith f (tensorValues t1) (tensorValues t2)
-    }
-
-instance Pretty RationalTensor where
-  pretty = foldTensor pretty prettyFlatList
-
-foldTensor :: forall a. (Rational -> a) -> ([a] -> a) -> RationalTensor -> a
-foldTensor mkValue mkVec (RationalTensor dims value) = go dims (Vector.toList value)
-  where
-    go :: TensorDimensions -> [Rational] -> a
-    go [] [x] = mkValue x
-    go [] _xs = developerError "Mis-sized tensor. Expected a single element."
-    go (_d : ds) xs = do
-      let inputVarIndicesChunks = chunksOf (product ds) xs
-      let elems = fmap (go ds) inputVarIndicesChunks
-      mkVec elems
-
-instance IsConstant RationalTensor where
-  isZero = Vector.all (== 0) . tensorValues
-  scaleConstant v = mapTensor (scaleConstant v)
-  addConstants a b = zipWithTensor (addConstants a b)
 
 --------------------------------------------------------------------------------
 -- Sparse representations of linear expressions
@@ -103,6 +42,8 @@ data LinearExpr variable constant = Sparse
     constantValue :: constant
   }
   deriving (Show, Eq, Ord, Generic)
+
+instance (NFData variable, NFData constant) => NFData (LinearExpr variable constant)
 
 instance (ToJSONKey variable, ToJSON constant) => ToJSON (LinearExpr variable constant)
 

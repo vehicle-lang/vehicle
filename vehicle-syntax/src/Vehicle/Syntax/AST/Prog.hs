@@ -5,6 +5,7 @@ import Data.Aeson (FromJSON, ToJSON)
 import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
 import Vehicle.Syntax.AST.Decl (GenericDecl)
+import Vehicle.Syntax.AST.Expr (Expr)
 
 --------------------------------------------------------------------------------
 -- Programs
@@ -14,6 +15,8 @@ newtype GenericProg expr
   = -- | List of declarations.
     Main [GenericDecl expr]
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
+
+type Prog var builtin = GenericProg (Expr var builtin)
 
 instance (NFData expr) => NFData (GenericProg expr)
 

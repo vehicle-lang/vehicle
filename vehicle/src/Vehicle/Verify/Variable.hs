@@ -1,5 +1,6 @@
 module Vehicle.Verify.Variable where
 
+import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, FromJSONKey, ToJSON, ToJSONKey)
 import Data.Char.SScript
 import Data.Hashable (Hashable)
@@ -8,10 +9,10 @@ import Data.Map qualified as Map
 import GHC.Generics (Generic)
 import Numeric (showFFloat)
 import Prettyprinter (brackets)
-import Vehicle.Data.BuiltinInterface.Value
+import Vehicle.Data.BuiltinInterface.ASTInterface
 import Vehicle.Data.DeBruijn
-import Vehicle.Data.LinearExpr
 import Vehicle.Data.NormalisedExpr
+import Vehicle.Data.Tensor (RationalTensor)
 import Vehicle.Prelude
 import Vehicle.Syntax.AST
 import Vehicle.Syntax.Builtin
@@ -21,9 +22,11 @@ import Vehicle.Syntax.Builtin
 
 data OriginalUserVariable = OriginalUserVariable
   { userTensorVarName :: Name,
-    userTensorVarDimensions :: TensorDimensions
+    userTensorVarDimensions :: TensorShape
   }
   deriving (Show, Eq, Ord, Generic)
+
+instance NFData OriginalUserVariable
 
 instance ToJSON OriginalUserVariable
 
@@ -44,13 +47,15 @@ data OriginalNetworkVariable = OriginalNetworkVariable
     -- | Whether its an input or an output variable
     inputOrOutput :: InputOrOutput,
     -- | The dimensions of the variable
-    networkTensorVarDimensions :: TensorDimensions,
+    networkTensorVarDimensions :: TensorShape,
     -- | The position in the list of applications of `networkName`
     application :: Int,
     -- | Index starting
     startingIndex :: Int
   }
   deriving (Show, Eq, Ord, Generic)
+
+instance NFData OriginalNetworkVariable
 
 instance ToJSON OriginalNetworkVariable
 
@@ -73,6 +78,8 @@ data ReducedVariable variable = ReducedVariable
   }
   deriving (Show, Eq, Ord, Generic)
 
+instance (NFData variable) => NFData (ReducedVariable variable)
+
 instance (Pretty variable) => Pretty (ReducedVariable variable) where
   pretty ReducedVariable {..} =
     pretty originalVar <> pretty (showTensorIndices tensorIndices)
@@ -89,7 +96,7 @@ instance (Hashable variable) => Hashable (ReducedVariable variable)
 
 reduceVariable ::
   forall variable.
-  (variable -> TensorDimensions) ->
+  (variable -> TensorShape) ->
   Lv ->
   variable ->
   ([(Lv, ReducedVariable variable)], WHNFValue Builtin)
@@ -103,7 +110,7 @@ reduceVariable varDims dbLevel var
     createRatVar indices lv = ([(lv, ReducedVariable var indices)], VBoundVar lv [])
 
     go ::
-      TensorDimensions ->
+      TensorShape ->
       TensorIndices ->
       Supply Lv ([(Lv, ReducedVariable variable)], WHNFValue Builtin)
     go dims indices = case dims of
@@ -115,7 +122,7 @@ reduceVariable varDims dbLevel var
         -- Generate the corresponding names from the indices
         (elementUserVars, subexprs) <- unzip <$> traverse (\i -> go ds (i : indices)) allIndices
         let userVars = concat elementUserVars
-        return (userVars, mkVLVec subexprs)
+        return (userVars, mkVecExpr subexprs)
 
 --------------------------------------------------------------------------------
 -- Reduced user variables
@@ -139,6 +146,8 @@ data RationalVariable
   | NetworkRationalVar NetworkRationalVariable
   deriving (Show, Eq, Ord, Generic)
 
+instance NFData RationalVariable
+
 instance ToJSON RationalVariable
 
 instance FromJSON RationalVariable
@@ -161,6 +170,8 @@ data TensorVariable
   | NetworkTensorVar OriginalNetworkVariable
   deriving (Show, Eq, Ord, Generic)
 
+instance NFData TensorVariable
+
 instance ToJSON TensorVariable
 
 instance FromJSON TensorVariable
@@ -174,7 +185,7 @@ instance Pretty TensorVariable where
     UserTensorVar v -> pretty v
     NetworkTensorVar v -> pretty v
 
-tensorVariableDims :: TensorVariable -> TensorDimensions
+tensorVariableDims :: TensorVariable -> TensorShape
 tensorVariableDims = \case
   UserTensorVar v -> userTensorVarDimensions v
   NetworkTensorVar v -> networkTensorVarDimensions v

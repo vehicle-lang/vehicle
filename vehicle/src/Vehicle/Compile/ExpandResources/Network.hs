@@ -11,7 +11,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Resource
 import Vehicle.Compile.Type.Subsystem.Standard
-import Vehicle.Data.BuiltinInterface.Value
+import Vehicle.Data.BuiltinInterface.ASTInterface
 import Vehicle.Data.NormalisedExpr
 import Vehicle.Verify.Core (NetworkContextInfo (..))
 
@@ -55,11 +55,9 @@ getNetworkType decl networkType = case normalised networkType of
       (baseType, dims) <- go True tensorType
       return $ NetworkTensorType baseType dims
       where
-        go :: Bool -> WHNFType Builtin -> m (NetworkBaseType, TensorDimensions)
+        go :: Bool -> WHNFType Builtin -> m (NetworkBaseType, TensorShape)
         go topLevel = \case
-          VTensorType _ dims ->
-            throwError $ NetworkTypeHasVariableSizeTensor decl networkType dims io
-          VVectorType tElem dim -> do
+          IVectorType _ tElem dim -> do
             d <- getTensorDimension io dim
             (baseType, ds) <- go False tElem
             return (baseType, d : ds)
@@ -72,7 +70,7 @@ getNetworkType decl networkType = case normalised networkType of
 
     getTensorDimension :: InputOrOutput -> WHNFType Builtin -> m Int
     getTensorDimension io dim = case dim of
-      VNatLiteral n -> return n
+      INatLiteral _ n -> return n
       VFreeVar varIdent _ -> do
         implicitParameters <- getInferableParameterContext
         case Map.lookup varIdent implicitParameters of
@@ -87,7 +85,7 @@ getNetworkType decl networkType = case normalised networkType of
 
     getElementType :: WHNFType Builtin -> m NetworkBaseType
     getElementType = \case
-      VRatType {} -> return NetworkRatType
+      IRatType {} -> return NetworkRatType
       _ -> typingError
 
     typingError :: m a

@@ -292,7 +292,7 @@ allLossFunctionDLs :: [String]
 allLossFunctionDLs = map show (enumerate @DifferentiableLogicID)
 
 allTargets :: [String]
-allTargets = allLossFunctionDLs <> allVerifiersFormats <> allITPs <> [show ExplicitVehicle]
+allTargets = allLossFunctionDLs <> allVerifiersFormats <> allITPs
 
 allTypeSystems :: [Doc a]
 allTypeSystems = flip map (enumerate @TypingSystem) $ \case

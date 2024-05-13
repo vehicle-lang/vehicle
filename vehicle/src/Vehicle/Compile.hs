@@ -4,27 +4,19 @@ module Vehicle.Compile
   )
 where
 
-import Control.Monad (unless)
-import Data.Hashable (Hashable)
-import Data.Map qualified as Map
 import Vehicle.Backend.Agda
-import Vehicle.Backend.JSON (ToJBuiltin, compileProgToJSON)
-import Vehicle.Backend.LossFunction qualified as LossFunction
+import Vehicle.Backend.LossFunction.Convert
+import Vehicle.Backend.LossFunction.JSON (compileProgToJSON)
 import Vehicle.Backend.Prelude
 import Vehicle.Backend.Queries
-import Vehicle.Backend.Tensors.Clean (cleanUpHigherOrderStuff)
 import Vehicle.Compile.Dependency (analyseDependenciesAndPrune)
 import Vehicle.Compile.Error
-import Vehicle.Compile.EtaConversion (etaExpandProg)
 import Vehicle.Compile.FunctionaliseResources (functionaliseResources)
-import Vehicle.Compile.Monomorphisation (hoistInferableParameters, monomorphise, removeLiteralCoercions)
+import Vehicle.Compile.Monomorphisation (hoistInferableParameters)
 import Vehicle.Compile.Prelude as CompilePrelude
 import Vehicle.Compile.Print (prettyFriendly)
-import Vehicle.Compile.Type.Irrelevance (removeIrrelevantCodeFromProg)
-import Vehicle.Compile.Type.Subsystem (resolveInstanceArguments)
 import Vehicle.Compile.Type.Subsystem.Standard
-import Vehicle.Data.BuiltinInterface
-import Vehicle.Prelude.Warning (CompileWarning (..))
+import Vehicle.Prelude.Logging
 import Vehicle.TypeCheck (TypeCheckOptions (..), runCompileMonad, typeCheckUserProg)
 import Vehicle.Verify.QueryFormat
 
@@ -62,11 +54,9 @@ compile loggingSettings options@CompileOptions {..} = runCompileMonad loggingSet
     VerifierQueries queryFormatID ->
       compileToQueryFormat result resources queryFormatID output
     LossFunction differentiableLogic ->
-      compileToLossFunction result differentiableLogic output outputAsJSON
+      compileToLossFunction differentiableLogic result output outputAsJSON
     ITP Agda ->
       compileToAgda options result
-    ExplicitVehicle ->
-      compileDirect result output outputAsJSON
 
 --------------------------------------------------------------------------------
 -- Backend-specific compilation functions
@@ -88,66 +78,42 @@ compileToAgda ::
   CompileOptions ->
   (Imports, Prog Ix Builtin) ->
   m ()
-compileToAgda options@CompileOptions {..} (_, typedProg) = do
-  warnIfResourcesProvided options
+compileToAgda CompileOptions {..} (_, typedProg) = do
   let agdaOptions = AgdaOptions verificationCache output moduleName
   agdaCode <- compileProgToAgda typedProg agdaOptions
   writeAgdaFile output agdaCode
 
 compileToLossFunction ::
+  forall m.
   (MonadCompile m, MonadStdIO m) =>
-  (Imports, Prog Ix Builtin) ->
   DifferentiableLogicID ->
-  Maybe FilePath ->
-  Bool ->
-  m ()
-compileToLossFunction (imports, typedProg) differentiableLogic output outputAsJSON = do
-  let mergedProg = mergeImports imports typedProg
-  resolvedProg <- resolveInstanceArguments mergedProg
-  lossProg <- LossFunction.compile differentiableLogic resolvedProg
-  compileToTensors lossProg output outputAsJSON
-
-compileDirect ::
-  (MonadCompile m, MonadStdIO m) =>
   (Imports, Prog Ix Builtin) ->
   Maybe FilePath ->
   Bool ->
   m ()
-compileDirect (imports, typedProg) outputFile outputAsJSON = do
+compileToLossFunction differentiableLogicID (imports, typedProg) outputFile outputAsJSON = do
   let mergedProg = mergeImports imports typedProg
-  resolvedProg <- resolveInstanceArguments mergedProg
-  compileToTensors resolvedProg outputFile outputAsJSON
-
-compileToTensors ::
-  forall builtin m.
-  (MonadCompile m, MonadStdIO m, HasStandardData builtin, TypableBuiltin builtin, Hashable builtin, ToJBuiltin builtin) =>
-  Prog Ix builtin ->
-  Maybe FilePath ->
-  Bool ->
-  m ()
-compileToTensors prog outputFile outputAsJSON = do
-  relevantProg <- removeIrrelevantCodeFromProg prog
-  let monomorphiseIf = isPropertyDecl
-  monomorphiseProg <- monomorphise monomorphiseIf "_" relevantProg
-  literalFreeProg <- removeLiteralCoercions "_" monomorphiseProg
-  cleanedProg <- cleanUpHigherOrderStuff literalFreeProg
-
-  hoistedProg <- hoistInferableParameters cleanedProg
+  -- Deciding on the best ordering of converting to loss functions and converting to tensor code
+  -- is tricky. There are three approaches:
+  --
+  -- Loss functions -> Tensors
+  --    Disadvantages
+  --        - Vector representation contains higher order structure (e.g. folds) that
+  --          can be converted to tensor operations, but which `not` cannot easily
+  --          be pushed through in general for DL2 loss. e.g. in
+  --          fold (\ x -> \ y -> x and y) True (foreachIndex 2 (\ i -> - 3.25 <= x ! i and x ! i <= 3.25))
+  --
+  -- Tensors -> Loss functions
+  --    Disadvantages
+  --        - Loss functions need to be specified in terms of tensors.
+  --
+  tensorProg <- convertToTensors differentiableLogicID mergedProg
+  hoistedProg <- hoistInferableParameters tensorProg
   functionalisedProg <- functionaliseResources hoistedProg
-  etaExpandedProg <- etaExpandProg functionalisedProg
   result <-
     if outputAsJSON
       then do
-        compileProgToJSON etaExpandedProg
+        compileProgToJSON functionalisedProg
       else do
-        return $ prettyFriendly etaExpandedProg
+        return $ prettyFriendly functionalisedProg
   writeResultToFile Nothing outputFile result
-
-warnIfResourcesProvided :: (MonadCompile m) => CompileOptions -> m ()
-warnIfResourcesProvided CompileOptions {..} = do
-  let parameters = fmap (Parameter,) (Map.keys parameterValues)
-  let datasets = fmap (Dataset,) (Map.keys datasetLocations)
-  let networks = fmap (Network,) (Map.keys networkLocations)
-  let resources = parameters <> datasets <> networks
-  unless (null resources) $ do
-    logWarning $ UnnecessaryResourcesProvided target resources

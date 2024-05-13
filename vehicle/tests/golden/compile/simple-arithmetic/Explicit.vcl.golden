@@ -1,6 +1,0 @@
-natLitNatLitDiv : Rat;
-natLitNatLitDiv = 1.0 / 2.0
-
-@property;
-property : forallT (f : Vector Rat -> Vector Rat) . Bool;
-property f = f [natLitNatLitDiv] ! 0 >= 0.0

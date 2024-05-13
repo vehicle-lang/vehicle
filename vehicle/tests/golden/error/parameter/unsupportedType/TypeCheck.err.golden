@@ -1,5 +1,5 @@
 Error at Line 2, Columns 1-2: The type of @parameter 'n':
   Nat -> Nat
 is not supported. Only the following types are allowed for parameters:
-  Bool, Index, Nat, Int, Rat
+  Bool, Index, Nat, Rat
 Fix: change the element type of 'n' to a supported type.

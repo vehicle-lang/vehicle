@@ -17,7 +17,7 @@ boundedByEpsilon : forallT (epsilon : Rat) . Vector (Vector Rat) -> Rat;
 boundedByEpsilon epsilon x = bigAnd (map (\ i -> bigAnd (map (\ j -> max 0.0 (- epsilon - x ! i ! j) + (if - epsilon == x ! i ! j then 1.0 else 0.0) + (max 0.0 (x ! i ! j - epsilon) + (if x ! i ! j == epsilon then 1.0 else 0.0))) (indices 28))) (indices 28))
 
 robustAround : forallT (classifier : Vector (Vector Rat) -> Vector Rat) . forallT (epsilon : Rat) . Vector (Vector Rat) -> Index -> Rat;
-robustAround classifier epsilon image label = Optimise[min] (+) (\ pertubation -> let perturbedImage = subVector--Vector-Rat--Vector-Rat--Vector-Rat image pertubation in max 0.0 ((boundedByEpsilon epsilon pertubation + validImage perturbedImage) * advises classifier perturbedImage label))
+robustAround classifier epsilon image label = Optimise[min] (+) (\ perturbation -> let perturbedImage = subVector--Vector-Rat--Vector-Rat--Vector-Rat image perturbation in max 0.0 ((boundedByEpsilon epsilon perturbation + validImage perturbedImage) * advises classifier perturbedImage label))
 
 @property;
 robust : forallT (n : Nat) . forallT (classifier : Vector (Vector Rat) -> Vector Rat) . forallT (epsilon : Rat) . forallT (trainingImages : Vector (Vector (Vector Rat))) . forallT (trainingLabels : Vector (Index)) . Vector Rat;

@@ -10,10 +10,7 @@ position token Boolean  ({"True"} | {"False"});
 position token Natural  (digit+);
 position token Rational (digit+ '.' digit+);
 
-position token TokNetwork   {"@network"};
-position token TokDataset   {"@dataset"};
-position token TokParameter {"@parameter"};
-position token TokProperty  {"@property"};
+position token TokAnnotation ({"@"} ({"network"} | {"dataset"} | {"parameter"} | {"property"}));
 position token TokPostulate {"@postulate"};
 
 position token TokArrow     {"->"};
@@ -30,7 +27,6 @@ position token TokType      {"Type"};
 position token TokUnit      {"Unit"};
 position token TokBool      {"Bool"};
 position token TokNat       {"Nat"};
-position token TokInt       {"Int"};
 position token TokRat       {"Rat"};
 position token TokVector    {"Vector"};
 position token TokList      {"List"};
@@ -63,8 +59,6 @@ position token TokZipWith    {"zipWith"};
 position token TokMap        {"map"};
 position token TokFold       {"fold"};
 position token TokIndices    {"indices"};
-position token TokFromNat    {"fromNat"};
-position token TokFromInt    {"fromInt"};
 
 position token TokHasLeq    {"HasLeq"};
 position token TokHasEq     {"HasEq"};
@@ -75,10 +69,12 @@ position token TokHasMul    {"HasMul"};
 position token TokHasFold   {"HasFold"};
 position token TokHasMap    {"HasMap"};
 
+position token TokAnnNameOpt  {"name"};
+position token TokAnnInferOpt {"infer"};
+
+-- NOTE: As order matters don't declare tokens after these ones!
 position token Name        (letter (letter | digit | '_')*) ;
 position token HoleToken   ({"?"} (letter | digit | '_')*);
-
-position token DeclAnnOptionValue ((letter | digit)+);
 
 separator Name "";
 
@@ -195,7 +191,6 @@ Indices.    Expr15 ::= TokIndices;
 Unit.    Expr15 ::= TokUnit;
 Bool.    Expr15 ::= TokBool;
 Rat.     Expr15 ::= TokRat;
-Int.     Expr15 ::= TokInt;
 Nat.     Expr15 ::= TokNat;
 List.    Expr14 ::= TokList;
 Vector.  Expr14 ::= TokVector;
@@ -214,17 +209,14 @@ HasFold.  Expr15 ::= TokHasFold;
 coercions Expr 15;
 separator Expr ",";
 
--- * Annotations
-
-Network.   DeclAnnName ::= TokNetwork;
-Dataset.   DeclAnnName ::= TokDataset;
-Parameter. DeclAnnName ::= TokParameter;
-Property.  DeclAnnName ::= TokProperty;
-Postulate. DeclAnnName ::= TokPostulate;
-
 -- * Annotation options
 
-BooleanOption. DeclAnnOption ::= Name "=" Boolean;
+-- The LHS of an annotation is an `Expr` rather than a `Name` so we can capture
+-- the builtin names `Bool` etc. which aren't captured by the `Name` class because
+-- they necessarily have priority over it.
+NameAnnOption.  DeclAnnOption ::= TokAnnNameOpt "=" Name;
+InferAnnOption. DeclAnnOption ::= TokAnnInferOpt "=" Expr;
+TypeAnnOption.  DeclAnnOption ::= Name "=" Expr;
 
 separator DeclAnnOption ",";
 
@@ -235,11 +227,11 @@ DeclAnnWithoutOpts. DeclAnnOpts ::= "";
 
 -- * Declarations
 
-
-DefAnn.       Decl ::= DeclAnnName DeclAnnOpts;
+DefAnn.       Decl ::= TokAnnotation DeclAnnOpts;
 DefType.      Decl ::= "type" Name [NameBinder] "=" Expr;
 DefFunType.   Decl ::= Name TokElemOf Expr;
 DefFunExpr.   Decl ::= Name [NameBinder] "=" Expr;
+DefPostulate. Decl ::= TokPostulate DeclAnnOpts;
 
 separator Decl ";";
 

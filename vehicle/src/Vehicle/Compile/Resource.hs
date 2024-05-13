@@ -1,5 +1,6 @@
 module Vehicle.Compile.Resource where
 
+import Control.DeepSeq (NFData)
 import Data.Aeson (ToJSON)
 import Data.Aeson.Types (FromJSON)
 import Data.Hashable (Hashable)
@@ -16,6 +17,8 @@ data NetworkType = NetworkType
   }
   deriving (Eq, Ord, Show, Generic)
 
+instance NFData NetworkType
+
 instance ToJSON NetworkType
 
 instance FromJSON NetworkType
@@ -29,9 +32,11 @@ networkSize network = tensorSize (inputTensor network) + tensorSize (outputTenso
 
 data NetworkTensorType = NetworkTensorType
   { baseType :: NetworkBaseType,
-    dimensions :: TensorDimensions
+    dimensions :: TensorShape
   }
   deriving (Eq, Ord, Show, Generic)
+
+instance NFData NetworkTensorType
 
 instance ToJSON NetworkTensorType
 
@@ -49,6 +54,8 @@ instance Pretty NetworkTensorType where
 data NetworkBaseType
   = NetworkRatType
   deriving (Eq, Ord, Enum, Show, Generic)
+
+instance NFData NetworkBaseType
 
 instance ToJSON NetworkBaseType
 

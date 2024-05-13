@@ -8,8 +8,8 @@ import System.Console.ANSI (Color (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Subsystem.Standard.Core
 import Vehicle.Data.BooleanExpr (MaybeTrivial (..))
-import Vehicle.Data.BuiltinInterface.Expr
-import Vehicle.Data.LinearExpr (RationalTensor)
+import Vehicle.Data.BuiltinInterface.ASTInterface
+import Vehicle.Data.Tensor (RationalTensor)
 import Vehicle.Verify.Core
 import Vehicle.Verify.Specification
 import Vehicle.Verify.Variable
@@ -91,14 +91,14 @@ prettyUserVariableAssignment :: (OriginalUserVariable, RationalTensor) -> Doc a
 prettyUserVariableAssignment (OriginalUserVariable {..}, variableValue) =
   pretty userTensorVarName <> ":" <+> pretty variableValue
 
-assignmentToExpr :: TensorDimensions -> [Rational] -> Expr Ix Builtin
-assignmentToExpr [] [x] = RatLiteral mempty (toRational x)
+assignmentToExpr :: TensorShape -> [Rational] -> Expr Ix Builtin
+assignmentToExpr [] [x] = IRatLiteral mempty (toRational x)
 assignmentToExpr [] _ = developerError "Malformed tensor"
 assignmentToExpr (dim : dims) xs = do
   let vecConstructor = Builtin mempty (BuiltinConstructor $ LVec dim)
   let inputVarIndicesChunks = chunksOf (product dims) xs
   let elems = fmap (Arg mempty Explicit Relevant . assignmentToExpr dims) inputVarIndicesChunks
-  normAppList mempty vecConstructor elems
+  normAppList vecConstructor elems
 
 --------------------------------------------------------------------------------
 -- Verification status of the specification

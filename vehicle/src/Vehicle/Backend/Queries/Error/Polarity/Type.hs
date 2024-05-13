@@ -5,7 +5,6 @@ where
 
 import Data.Text qualified as Text
 import Vehicle.Backend.Queries.Error.Polarity.Core
-import Vehicle.Compile.Type.Subsystem.Standard.Type (typeOfAnn)
 import Vehicle.Data.DSL
 import Vehicle.Data.DeBruijn
 import Vehicle.Prelude
@@ -46,14 +45,14 @@ typeOfBuiltinFunction = \case
   FromNat {} -> unquantified ~> unquantified
   FromRat {} -> unquantified ~> unquantified
   -- Container functions
-  Fold {} -> typeOfFold
+  FoldList -> typeOfFold
+  FoldVector -> typeOfFold
   MapList -> typeOfMap
   MapVector -> typeOfMap
   ZipWithVector -> typeOfZipWith
   At -> forAllPolarities $ \p -> p ~> unquantified ~> p
   Indices -> unquantified ~> unquantified
   b@Optimise {} -> developerError $ "Should not be polarity typing" <+> pretty b
-  Ann -> typeOfAnn
 
 typeOfConstructor :: BuiltinConstructor -> PolarityDSLExpr
 typeOfConstructor = \case
@@ -63,7 +62,6 @@ typeOfConstructor = \case
   LBool {} -> unquantified
   LIndex {} -> unquantified
   LNat {} -> unquantified
-  LInt {} -> unquantified
   LRat {} -> unquantified
   LVec n -> typeOfVecLiteral n
 

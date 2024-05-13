@@ -1,10 +1,10 @@
 [93m
-Warning:  In property 'test1', the following network input variables do not always have both a lower and a upper bound. This is not currently supported by the Marabou query format.
+Warning: In property 'test1', the following network input variables do not always have both a lower and a upper bound. This is not currently supported by the Marabou query format.
   In query 1:
     f₀[input]!0 - no upper bound
 
 
-Warning:  In property 'test2', the following network input variables do not always have both a lower and a upper bound. This is not currently supported by the Marabou query format.
+Warning: In property 'test2', the following network input variables do not always have both a lower and a upper bound. This is not currently supported by the Marabou query format.
   In query 1:
     g₀[input]!0 - no lower or upper bound
     g₀[input]!1 - no lower or upper bound

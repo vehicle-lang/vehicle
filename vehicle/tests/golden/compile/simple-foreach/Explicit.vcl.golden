@@ -1,3 +1,0 @@
-@property;
-index : forallT (f : Vector Rat -> Vector Rat) . Vector Bool;
-index f = map (\ i -> f [0.0, 0.0] ! i >= 0.0) (indices 2)

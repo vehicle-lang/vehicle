@@ -10,18 +10,21 @@ module Vehicle.Syntax.BNFC.Elaborate.External
   )
 where
 
-import Control.Monad (foldM)
+import Control.Monad (foldM, foldM_, unless)
 import Control.Monad.Except (MonadError (..), throwError)
 import Control.Monad.Reader (MonadReader (..), runReaderT)
 import Data.Bitraversable (bitraverse)
 import Data.Either (partitionEithers)
-import Data.List (group)
+import Data.List (find, group)
 import Data.List.NonEmpty (NonEmpty (..))
-import Data.Maybe (fromMaybe)
+import Data.Map (Map)
+import Data.Map qualified as Map (insert, lookup, updateLookupWithKey)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set (Set)
-import Data.Set qualified as Set (singleton)
+import Data.Set qualified as Set (fromList, notMember, singleton, toList)
 import Data.Text (Text, unpack)
 import Data.These (These (..))
+import Prettyprinter
 import Text.Read (readMaybe)
 import Vehicle.Syntax.AST qualified as V
 import Vehicle.Syntax.BNFC.Utils
@@ -74,7 +77,7 @@ partiallyElabDecls = \case
     ds' <- partiallyElabDecls ds
     return $ d' : ds'
 
-type Annotation = (B.DeclAnnName, B.DeclAnnOpts)
+type Annotation = (B.TokAnnotation, B.DeclAnnOpts)
 
 elabDeclGroup ::
   (MonadElab m) =>
@@ -104,14 +107,23 @@ elabDeclGroup anns = \case
     d' <- elabDefAbstract n t abstractType
     return (d', ds)
 
+  -- Standalone postulate annotation
+  B.DefPostulate tk annOpts :| ds -> case anns of
+    [] -> do
+      d' <- elabPostulate tk annOpts
+      return (d', ds)
+    (annTk, _) : _ -> do
+      p <- mkProvenance annTk
+      throwError $ AnnotationWithNoDef p (tkSymbol annTk)
+
   -- Annotation declaration.
   B.DefAnn ann annOpts :| (d : ds) -> do
     elabDeclGroup ((ann, annOpts) : anns) (d :| ds)
 
   -- ERROR: Annotation with no body
   B.DefAnn ann annOpts :| [] -> do
-    p <- annotationProvenance ann
-    throwError $ AnnotationWithNoDef p (annotationSymbol ann)
+    p <- mkProvenance ann
+    throwError $ AnnotationWithNoDef p (tkSymbol ann)
 
 elabDefAbstractSort ::
   (MonadElab m) =>
@@ -132,6 +144,19 @@ elabDefAbstractSort defName anns = do
       ann1 : ann2 : _ -> do
         p <- mkProvenance defName
         throwError $ MultiplyAnnotatedAbstractDef p (tkSymbol defName) ann1 ann2
+
+elabPostulate ::
+  (MonadElab m) =>
+  B.TokPostulate ->
+  B.DeclAnnOpts ->
+  m (V.GenericDecl UnparsedExpr)
+elabPostulate tok opts = do
+  let allowedOptions = Set.fromList ["name", "standard", "polarity", "linearity"]
+  optsMap <- validateOpts tok allowedOptions opts
+  (name, standardType, linearityType, polarityType) <- elabPostulateOptions tok optsMap
+  ident <- elabName name
+  abstractSort <- V.PostulateDef <$> traverse elabExpr linearityType <*> traverse elabExpr polarityType
+  elabDefAbstract name standardType abstractSort
 
 elabDefAbstract ::
   (MonadElab m) =>
@@ -188,57 +213,96 @@ elabDefFunctionAnnotations defName anns = do
     [] -> return annotations
 
 parseAnnotation :: (MonadElab m) => B.Name -> Annotation -> m (Either V.DefAbstractSort V.Annotation)
-parseAnnotation defName (name, opts) = case name of
-  B.Network {} -> do checkNoAnnotationOptions name opts; return $ Left V.NetworkDef
-  B.Dataset {} -> do checkNoAnnotationOptions name opts; return $ Left V.DatasetDef
-  B.Parameter {} -> Left <$> elabParameterOptions opts
-  B.Postulate {} -> do checkNoAnnotationOptions name opts; return $ Left V.PostulateDef
-  B.Property {} -> do checkNoAnnotationOptions name opts; return $ Right V.AnnProperty
+parseAnnotation defName (name, opts) = do
+  case tkSymbol name of
+    "@network" -> do
+      let allowedOptions = mempty
+      validateOpts name allowedOptions opts
+      return $ Left V.NetworkDef
+    "@dataset" -> do
+      let allowedOptions = mempty
+      validateOpts name allowedOptions opts
+      return $ Left V.DatasetDef
+    "@parameter" -> do
+      let allowedOptions = Set.fromList [InferableOption]
+      optsList <- validateOpts name allowedOptions opts
+      Left <$> elabParameterOptions optsList
+    "@property" -> do
+      let allowedOptions = mempty
+      validateOpts name allowedOptions opts
+      return $ Right V.AnnProperty
+    name -> developerError $ "Unknown annotation found" <+> squotes (pretty name)
 
-elabParameterOptions :: (MonadElab m) => B.DeclAnnOpts -> m V.DefAbstractSort
-elabParameterOptions = \case
-  B.DeclAnnWithoutOpts -> return $ V.ParameterDef V.NonInferable
-  B.DeclAnnWithOpts opts -> foldM parseOpt (V.ParameterDef V.NonInferable) opts
+validateOpts :: forall m token. (MonadElab m, IsToken token) => token -> Set Text -> B.DeclAnnOpts -> m [B.DeclAnnOption]
+validateOpts token _allowedNames B.DeclAnnWithoutOpts = return mempty
+validateOpts token allowedNames (B.DeclAnnWithOpts opts) = do
+  foldM_ processOpt mempty opts
+  return opts
   where
-    parseOpt :: (MonadElab m) => V.DefAbstractSort -> B.DeclAnnOption -> m V.DefAbstractSort
-    parseOpt _r (B.BooleanOption nameToken valueToken) = do
-      let name = tkSymbol nameToken
-      let value = tkSymbol valueToken
-      if name /= InferableOption
-        then do
-          p <- mkProvenance nameToken
-          throwError $ InvalidAnnotationOption p "@parameter" name [InferableOption]
-        else case readMaybe (unpack value) of
-          Just True -> return $ V.ParameterDef V.Inferable
-          Just False -> return $ V.ParameterDef V.NonInferable
-          Nothing -> do
-            p <- mkProvenance nameToken
-            throwError $ InvalidAnnotationOptionValue p name value
+    processOpt :: Map Text (V.Expr V.Name V.Builtin) -> B.DeclAnnOption -> m (Map Text (V.Expr V.Name V.Builtin))
+    processOpt found opt = do
+      let mkEntry tk value = (,tkSymbol tk,value) <$> mkProvenance tk
 
-checkNoAnnotationOptions :: (MonadElab m) => B.DeclAnnName -> B.DeclAnnOpts -> m ()
-checkNoAnnotationOptions annName = \case
-  B.DeclAnnWithoutOpts -> return ()
-  B.DeclAnnWithOpts [] -> return ()
-  B.DeclAnnWithOpts (o : _) -> do
-    let B.BooleanOption paramName _ = o
-    p <- mkProvenance paramName
-    throwError $ InvalidAnnotationOption p (annotationSymbol annName) (tkSymbol paramName) []
+      (prov, name, value) <- case opt of
+        B.NameAnnOption tk value -> mkEntry tk (B.Var value)
+        B.InferAnnOption tk value -> mkEntry tk value
+        B.TypeAnnOption tk expr -> mkEntry tk expr
 
-annotationSymbol :: B.DeclAnnName -> Text
-annotationSymbol = \case
-  B.Network tk -> tkSymbol tk
-  B.Dataset tk -> tkSymbol tk
-  B.Parameter tk -> tkSymbol tk
-  B.Property tk -> tkSymbol tk
-  B.Postulate tk -> tkSymbol tk
+      let nameTxt = name
+      p <- mkProvenance token
+      value' <- elabExpr value
+      if Set.notMember nameTxt allowedNames
+        then throwError $ InvalidAnnotationOption prov (tkSymbol token) nameTxt (Set.toList allowedNames)
+        else case Map.lookup nameTxt found of
+          Just r -> throwError $ DuplicateAnnotationOption prov (tkSymbol token) nameTxt
+          Nothing -> return $ Map.insert nameTxt value' found
 
-annotationProvenance :: (MonadElab m) => B.DeclAnnName -> m V.Provenance
-annotationProvenance = \case
-  B.Network tk -> mkProvenance tk
-  B.Dataset tk -> mkProvenance tk
-  B.Parameter tk -> mkProvenance tk
-  B.Property tk -> mkProvenance tk
-  B.Postulate tk -> mkProvenance tk
+elabParameterOptions :: (MonadElab m) => [B.DeclAnnOption] -> m V.DefAbstractSort
+elabParameterOptions opts =
+  V.ParameterDef <$> case mapMaybe getInferOption opts of
+    [] -> return V.NonInferable
+    (optTk, expr) : _ -> do
+      expr' <- elabExpr expr
+      case expr' of
+        V.Builtin p (V.BuiltinConstructor (V.LBool infer))
+          | infer -> return V.Inferable
+          | otherwise -> return V.NonInferable
+        _ -> do
+          throwError $ InvalidAnnotationOptionValue InferableOption expr'
+
+elabPostulateOptions :: (MonadElab m) => B.TokPostulate -> [B.DeclAnnOption] -> m (B.Name, B.Expr, Maybe B.Expr, Maybe B.Expr)
+elabPostulateOptions tokPostulate opts = do
+  name <- case mapMaybe getNameOption opts of
+    [] -> do
+      p <- mkProvenance tokPostulate
+      throwError $ MissingAnnotationOption p (tkSymbol tokPostulate) "name"
+    (_, nameValue) : _ -> return nameValue
+
+  let typeOpts = mapMaybe getTypeOption opts
+  standardType <- case find (\(a, b) -> tkSymbol a == "standard") typeOpts of
+    Nothing -> do
+      p <- mkProvenance tokPostulate
+      throwError $ MissingAnnotationOption p (tkSymbol tokPostulate) "standard type"
+    Just (_, standardType) -> return standardType
+
+  let linearityType = snd <$> find (\(n, _) -> tkSymbol n == "linearity") typeOpts
+  let polarityType = snd <$> find (\(n, _) -> tkSymbol n == "polarity") typeOpts
+  return (name, standardType, linearityType, polarityType)
+
+getNameOption :: B.DeclAnnOption -> Maybe (B.TokAnnNameOpt, B.Name)
+getNameOption = \case
+  B.NameAnnOption optTk name -> Just (optTk, name)
+  _ -> Nothing
+
+getInferOption :: B.DeclAnnOption -> Maybe (B.TokAnnInferOpt, B.Expr)
+getInferOption = \case
+  B.InferAnnOption optTk name -> Just (optTk, name)
+  _ -> Nothing
+
+getTypeOption :: B.DeclAnnOption -> Maybe (B.Name, B.Expr)
+getTypeOption = \case
+  B.TypeAnnOption optTk altType -> Just (optTk, altType)
+  _ -> Nothing
 
 --------------------------------------------------------------------------------
 -- Full elaboration
@@ -298,7 +362,6 @@ elabExpr = \case
   B.Bool tk -> builtinType V.Bool tk []
   B.Index tk -> builtinType V.Index tk []
   B.Nat tk -> builtinType V.Nat tk []
-  B.Int tk -> builtinType V.Int tk []
   B.Rat tk -> builtinType V.Rat tk []
   B.List tk -> builtinType V.List tk []
   B.Vector tk -> builtinType V.Vector tk []
@@ -334,7 +397,7 @@ elabExpr = \case
   B.HasMap tk -> builtinTypeClass V.HasMap tk []
   B.HasFold tk -> builtinTypeClass V.HasFold tk []
   -- NOTE: we reverse the arguments to make it well-typed.
-  B.Ann e tk t -> builtinFunction V.Ann tk [t, e]
+  B.Ann e tk t -> freeVar (V.Identifier V.StdLib "typeAnn") tk [t, e]
 
 elabArg :: (MonadElab m) => B.Arg -> m (V.Arg V.Name V.Builtin)
 elabArg = \case
@@ -407,7 +470,7 @@ elabLiteral = \case
   B.UnitLiteral -> return $ V.Builtin mempty $ V.BuiltinConstructor V.LUnit
   B.BoolLiteral t -> do
     p <- mkProvenance t
-    let b = read (unpack $ tkSymbol t)
+    let b = elabBoolLiteral t
     return $ V.Builtin p $ V.BuiltinConstructor $ V.LBool b
   B.NatLiteral t -> do
     p <- mkProvenance t
@@ -419,6 +482,9 @@ elabLiteral = \case
     let r = readRat (tkSymbol t)
     let fromRat = V.Builtin p (V.TypeClassOp V.FromRatTC)
     return $ app fromRat [V.Builtin p $ V.BuiltinConstructor $ V.LRat r]
+
+elabBoolLiteral :: B.Boolean -> Bool
+elabBoolLiteral t = read (unpack $ tkSymbol t)
 
 parseTypeLevel :: B.TokType -> Int
 parseTypeLevel s = read (drop 4 (unpack (tkSymbol s)))
@@ -449,6 +515,11 @@ op2 mk t e1 e2 = do
   let p = V.fillInProvenance (tProv :| [V.provenanceOf ce1, V.provenanceOf ce2])
   return $ mk p ce1 ce2
 
+freeVar :: (MonadElab m, IsToken token) => V.Identifier -> token -> [B.Expr] -> m (V.Expr V.Name V.Builtin)
+freeVar b t args = do
+  tProv <- mkProvenance t
+  app (V.FreeVar tProv b) <$> traverse elabExpr args
+
 builtin :: (MonadElab m, IsToken token) => V.Builtin -> token -> [B.Expr] -> m (V.Expr V.Name V.Builtin)
 builtin b t args = do
   tProv <- mkProvenance t
@@ -467,9 +538,8 @@ builtinFunction :: (MonadElab m, IsToken token) => V.BuiltinFunction -> token ->
 builtinFunction b = builtin (V.BuiltinFunction b)
 
 app :: V.Expr V.Name V.Builtin -> [V.Expr V.Name V.Builtin] -> V.Expr V.Name V.Builtin
-app fun argExprs = V.normAppList p' fun args
+app fun argExprs = V.normAppList fun args
   where
-    p' = V.fillInProvenance (V.provenanceOf fun :| map V.provenanceOf args)
     args = fmap (mkArg V.Explicit) argExprs
 
 elabVecLiteral :: (MonadElab m, IsToken token) => token -> [B.Expr] -> m (V.Expr V.Name V.Builtin)
@@ -484,8 +554,7 @@ elabApp :: (MonadElab m) => B.Expr -> B.Arg -> m (V.Expr V.Name V.Builtin)
 elabApp fun arg = do
   fun' <- elabExpr fun
   arg' <- elabArg arg
-  let p = V.fillInProvenance (V.provenanceOf fun' :| [V.provenanceOf arg'])
-  return $ V.normAppList p fun' [arg']
+  return $ V.normAppList fun' [arg']
 
 elabOrder :: (MonadElab m, IsToken token) => V.OrderOp -> token -> B.Expr -> B.Expr -> m (V.Expr V.Name V.Builtin)
 elabOrder order tk e1 e2 = do
@@ -541,7 +610,6 @@ elabQuantifier tk q binders body = do
   let mkQuantifier binder body =
         let p' = V.provenanceOf binder
          in V.normAppList
-              p'
               builtin
               [ mkArg V.Explicit (V.Lam p' binder body)
               ]
@@ -569,7 +637,6 @@ elabQuantifierIn tk q binder container body = do
   let p' = V.provenanceOf binder'
   return $
     V.normAppList
-      p'
       builtin
       [ mkArg V.Explicit (V.Lam p' binder' body'),
         mkArg V.Explicit container'
@@ -583,7 +650,7 @@ elabForeach ::
   m (V.Expr V.Name V.Builtin)
 elabForeach tk binder body = do
   p <- mkProvenance tk
-  let builtin = V.FreeVar p (V.Identifier V.StdLib "foreachVector")
+  let builtin = V.FreeVar p (V.Identifier V.StdLib "foreachIndex")
 
   binder' <- elabNameBinder False binder
   body' <- elabExpr body
@@ -591,7 +658,6 @@ elabForeach tk binder body = do
   let p' = V.provenanceOf binder'
   return $
     V.normAppList
-      p'
       builtin
       [ mkArg V.Explicit (V.mkHole p "n"),
         mkArg V.Explicit (V.Lam p' binder' body')

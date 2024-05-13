@@ -22,7 +22,7 @@ import Vehicle.Compile.Normalise.NBE (normaliseInEmptyEnv)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print.Warning ()
 import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Data.BuiltinInterface.Value
+import Vehicle.Data.BuiltinInterface.ASTInterface
 import Vehicle.Data.NormalisedExpr
 import Vehicle.Prelude.Warning (CompileWarning (..))
 
@@ -51,7 +51,7 @@ mkFunctionDefFromResource p ident value = do
   -- We should really be storing the parameter values in their own environment,
   -- as values rather than as declarations in the free var context.
   let unnormType = Builtin mempty (BuiltinType Unit)
-  (DefFunction p ident mempty VUnitType value, unnormType)
+  (DefFunction p ident mempty (IUnitType mempty) value, unnormType)
 
 -- | Goes through the program finding all
 -- the resources, comparing the data against the type in the spec, and making
@@ -71,7 +71,7 @@ readResourcesInDecls = \case
         normalisedType <- normaliseInEmptyEnv declType
         let gluedType = Glued declType normalisedType
         case defType of
-          PostulateDef -> do
+          PostulateDef {} -> do
             entry <- mkDeclCtxEntry decl
             return (Just decl, entry)
           ParameterDef sort -> case sort of
@@ -132,7 +132,7 @@ fillInInferableParameters freeCtx inferableCtx =
       Left p -> throwError $ InferableParameterUninferrable (ident, p)
       Right ((_, p), _, v) -> do
         logDebug MaxDetail $ "Inferred" <+> quotePretty ident <+> "as" <+> quotePretty v
-        let decl = mkFunctionDefFromResource p ident (VNatLiteral v)
+        let decl = mkFunctionDefFromResource p ident (INatLiteral p v)
         return $ Map.insert ident decl ctx
 
 warnIfUnusedResources ::

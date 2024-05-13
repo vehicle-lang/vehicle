@@ -14,7 +14,8 @@ pattern TensorIdent :: Identifier
 pattern TensorIdent = Identifier StdLib "Tensor"
 
 data StdLibFunction
-  = StdNotBoolOp2
+  = StdTypeAnn
+  | StdNotBoolOp2
   | StdBigAnd
   | StdBigOr
   | StdExistsIndex
@@ -29,12 +30,13 @@ data StdLibFunction
   | StdAddVector
   | StdSubVector
   | StdVectorToList
-  | StdForeach
+  | StdForeachIndex
   | StdTensor
   deriving (Eq, Ord, Enum, Bounded, Generic)
 
 instance Show StdLibFunction where
   show = \case
+    StdTypeAnn -> "typeAnn"
     StdNotBoolOp2 -> "notBoolOp2"
     StdBigAnd -> "bigAnd"
     StdBigOr -> "bigOr"
@@ -50,7 +52,7 @@ instance Show StdLibFunction where
     StdNotEqualsVector -> "notEqualsVector"
     StdVectorToVector -> "vectorToVector"
     StdVectorToList -> "vectorToList"
-    StdForeach -> "foreachVector"
+    StdForeachIndex -> "foreachIndex"
     StdTensor -> "Tensor"
 
 instance Pretty StdLibFunction where

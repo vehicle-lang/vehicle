@@ -1,5 +1,5 @@
 [bumpver]
-current_version = "v0.11.1"
+current_version = "v0.14.0"
 version_pattern = "vMAJOR.MINOR.PATCH"
 commit_message = "Bump version {old_version} -> {new_version}"
 commit = true
@@ -10,6 +10,11 @@ push = true
 "bumpver.toml" = ['current_version = "{version}"']
 "vehicle-python/vehicle-python-binding.cabal" = [
     "^version:         {pep440_version}$",
+]
+"CITATION.cff" = [
+    'version: "{pep440_version}"',
+    'date-released: "YYYY-0M-0D"',
+    'repository-artifact: "https://github.com/vehicle-lang/vehicle/releases/tag/{version}"'
 ]
 "CONTRIBUTING.md" = [
     "This should print `{pep440_version}`.",

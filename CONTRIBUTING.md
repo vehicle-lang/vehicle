@@ -450,7 +450,7 @@ Ensure that [you have the source code](#getting-the-source) and that you have in
    vehicle --version
    ```
 
-   This should print `0.11.1`.
+   This should print `0.14.0`.
 
 ### Building the Vehicle Python bindings
 
@@ -573,14 +573,14 @@ Ensure that [you have the source code](#getting-the-source) and that you have in
    pipx run tox
    ```
 
-This creates the directory `dist` which contains "wheels", which are the binary distribution format for Python packages. These wheels will have file names such as `vehicle_lang-0.11.1-cp311-cp311-macosx_13_0_arm64`:
+This creates the directory `dist` which contains "wheels", which are the binary distribution format for Python packages. These wheels will have file names such as `vehicle_lang-0.14.0-cp311-cp311-macosx_13_0_arm64`:
 
 ```sh
 #   Supported
 #   Python   _____
 #   versions      \
 #                  vvvvvvvvvvv
-vehicle_lang-0.11.1-cp311-cp311-macosx_13_0_arm64
+vehicle_lang-0.14.0-cp311-cp311-macosx_13_0_arm64
 #                              ^^^^^^^^^^^^^^^^^
 #   Supported                /
 #   Operating System  ______/
@@ -725,7 +725,7 @@ Ensure that [you have the source code](#getting-the-source) and that you have in
    vehicle --version
    ```
 
-   This should print `0.11.1`.
+   This should print `0.14.0`.
 
 1. Check if your installation of the `vehicle_lang` package was successful.
 
@@ -748,6 +748,7 @@ python -m pip install -e .[test]
 ```
 
 This installs the Python bindings in [editable mode], which directly adds the files in the development directory are added to Python's import path.
+Note that you must have the preferred version of GHC (see above) active in order to run this command otherwise you'll get a `Error: cabal: Could not resolve dependencies` error message.
 
 When the Python bindings are installed in editable mode, you can run pytest directly:
 
@@ -907,7 +908,20 @@ The procedure to create a new release is:
 
 7. Ensure that the CI successfully builds and publishes Vehicle to PyPI: <https://github.com/vehicle-lang/vehicle/actions/workflows/ci.yml?query=branch%3Adev>
 
-8. **On a macOS machine with an M1/M2 chipset**
+8. Add identifiers for the new version to `CITATION.cff` at the top of the list under the `identifiers` key.
+
+   You can use the following as a template:
+
+   ```yaml
+   - type: url
+    value: "https://github.com/vehicle-lang/vehicle/releases/tag/v0.13.0"
+    description: "The GitHub release URL of tag v0.13.0."
+   - type: url
+      value: "https://gpypi.org/project/vehicle-lang/0.13.0/"
+      description: "The PyPI release URL of version 0.13.0."
+   ```
+
+9. **On a macOS machine with an M1/M2 chipset**
 
    There are no GitHub Actions runners with an M1/M2 chipset, so the binary distributions for this platform must be built and published manually from an appropriate machine.
 
@@ -920,11 +934,11 @@ The procedure to create a new release is:
    This creates the directory `dist` which contains "wheels", which are the binary distribution format for Python packages. If you're on macOS with an M1/M2 chipset, these look like:
 
    ```
-   vehicle_lang-0.11.1-cp310-cp310-macosx_13_0_arm64.whl
-   vehicle_lang-0.11.1-cp37-cp37m-macosx_13_0_arm64.whl
-   vehicle_lang-0.11.1-cp39-cp39-macosx_13_0_arm64.whl
-   vehicle_lang-0.11.1-cp311-cp311-macosx_13_0_arm64.whl
-   vehicle_lang-0.11.1-cp38-cp38-macosx_13_0_arm64.whl
+   vehicle_lang-0.14.0-cp310-cp310-macosx_13_0_arm64.whl
+   vehicle_lang-0.14.0-cp37-cp37m-macosx_13_0_arm64.whl
+   vehicle_lang-0.14.0-cp39-cp39-macosx_13_0_arm64.whl
+   vehicle_lang-0.14.0-cp311-cp311-macosx_13_0_arm64.whl
+   vehicle_lang-0.14.0-cp38-cp38-macosx_13_0_arm64.whl
    ```
 
    Run the following command to check each wheel's metadata:
@@ -945,7 +959,7 @@ The procedure to create a new release is:
 
    The release will be at a URL like:
 
-   <https://github.com/vehicle-lang/vehicle/releases/tag/v0.11.1>
+   <https://github.com/vehicle-lang/vehicle/releases/tag/v0.14.0>
 
 [vehicle-lang/vehicle]: https://github.com/vehicle-lang/vehicle
 [GHC]: https://www.haskell.org/ghc/

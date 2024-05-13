@@ -1,3 +1,0 @@
-@property;
-bounded : forallT (f : Vector Rat -> Vector Rat) . Bool;
-bounded f = forall x . 0.0 < x and x < 1.0 => 0.0 < f [x] ! 0 and f [x] ! 0 < 1.0

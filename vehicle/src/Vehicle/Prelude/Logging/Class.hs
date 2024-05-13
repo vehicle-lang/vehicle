@@ -31,7 +31,7 @@ import Vehicle.Prelude.Warning
 import Vehicle.Syntax.Prelude (layoutAsText)
 
 --------------------------------------------------------------------------------
--- Logging settings
+-- Settings
 
 type CompilerPass = Doc ()
 

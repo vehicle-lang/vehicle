@@ -1,3 +1,0 @@
-@property;
-monotonic : forallT (f : Vector Rat -> Vector Rat) . Bool;
-monotonic f = forall x1 . forall x2 . x1 <= x2 => f [x1] ! 0 <= f [x2] ! 0

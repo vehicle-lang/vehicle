@@ -1,2 +1,2 @@
-@parameter(implicit=xsd)
+@parameter(infer = xsd)
 epsilon : Rat

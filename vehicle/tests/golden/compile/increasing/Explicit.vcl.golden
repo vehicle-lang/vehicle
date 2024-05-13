@@ -1,3 +1,0 @@
-@property;
-increasing : forallT (f : Vector Rat -> Vector Rat) . Bool;
-increasing f = forall x . x <= f [x] ! 0

@@ -1,7 +1,8 @@
 module Vehicle.Backend.Queries.UserVariableElimination.Core where
 
-import Control.Monad.Reader (MonadReader (..), asks)
-import Control.Monad.State (MonadState (..), gets)
+import Control.DeepSeq (NFData)
+import Control.Monad.Reader (MonadReader (..))
+import Control.Monad.State (MonadState (..), gets, modify)
 import Control.Monad.Writer (MonadWriter)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Bifunctor (Bifunctor (..))
@@ -19,16 +20,15 @@ import GHC.Generics
 import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
-import Vehicle.Compile.Normalise.NBE (normaliseApp)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Resource (NetworkType (..), dimensions)
 import Vehicle.Data.BooleanExpr
-import Vehicle.Data.BuiltinInterface.Expr
-import Vehicle.Data.BuiltinInterface.Value
+import Vehicle.Data.BuiltinInterface.ASTInterface
 import Vehicle.Data.Hashing ()
 import Vehicle.Data.LinearExpr
 import Vehicle.Data.NormalisedExpr
+import Vehicle.Data.Tensor
 import Vehicle.Libraries.StandardLibrary.Definitions
 import Vehicle.Syntax.Builtin
 import Vehicle.Verify.Core
@@ -66,19 +66,20 @@ data NetworkApplicationReplacement = NetworkApplicationReplacement
 data PropertyMetaData = PropertyMetaData
   { queryFormat :: QueryFormat,
     networkCtx :: NetworkContext,
-    unalteredFreeContext :: FreeCtx QueryBuiltin,
     propertyProvenance :: DeclProvenance,
-    propertyAddress :: PropertyAddress
+    propertyAddress :: PropertyAddress,
+    outputLocation :: Maybe FilePath
   }
 
 --------------------------------------------------------------------------------
 -- Global state
 
 data GlobalCtx = GlobalCtx
-  { globalBoundVarCtx :: LinkedHashMap Lv Variable,
-    userVariableReductions :: HashMap OriginalUserVariable ([UserRationalVariable], WHNFValue QueryBuiltin),
-    networkVariableReductions :: HashMap OriginalNetworkVariable ([NetworkRationalVariable], WHNFValue QueryBuiltin),
-    networkApplications :: LinkedHashMap NetworkApplication NetworkApplicationReplacement
+  { globalBoundVarCtx :: !(LinkedHashMap Lv Variable),
+    userVariableReductions :: !(HashMap OriginalUserVariable ([UserRationalVariable], WHNFValue QueryBuiltin)),
+    networkVariableReductions :: !(HashMap OriginalNetworkVariable ([NetworkRationalVariable], WHNFValue QueryBuiltin)),
+    networkApplications :: !(LinkedHashMap NetworkApplication NetworkApplicationReplacement),
+    queryID :: !QueryID
   }
 
 emptyGlobalCtx :: GlobalCtx
@@ -87,7 +88,8 @@ emptyGlobalCtx =
     { globalBoundVarCtx = LinkedHashMap.empty,
       userVariableReductions = mempty,
       networkVariableReductions = mempty,
-      networkApplications = LinkedHashMap.empty
+      networkApplications = LinkedHashMap.empty,
+      queryID = 1
     }
 
 addVectorVarToBoundVarCtx ::
@@ -394,6 +396,8 @@ data UserVariableReconstructionStep
   | ReconstructTensor TensorVariable [RationalVariable]
   deriving (Eq, Ord, Show, Generic)
 
+instance NFData UserVariableReconstructionStep
+
 instance ToJSON UserVariableReconstructionStep
 
 instance FromJSON UserVariableReconstructionStep
@@ -451,6 +455,8 @@ data FMBound = FMBound
   }
   deriving (Show, Eq, Ord, Generic)
 
+instance NFData FMBound
+
 instance ToJSON FMBound
 
 instance FromJSON FMBound
@@ -467,6 +473,8 @@ data FourierMotzkinVariableSolution = FMSolution
     upperBounds :: [FMBound]
   }
   deriving (Show, Eq, Ord, Generic)
+
+instance NFData FourierMotzkinVariableSolution
 
 instance ToJSON FourierMotzkinVariableSolution
 
@@ -503,7 +511,7 @@ getGlobalBoundCtx = gets (variableCtxToBoundCtx . (fmap snd . LinkedHashMap.toLi
 
 prettyFriendlyInCtx :: (MonadQueryStructure m) => WHNFValue QueryBuiltin -> m (Doc a)
 prettyFriendlyInCtx e = do
-  ctx <- getGlobalBoundCtx
+  ctx <- toNamedBoundCtx <$> getGlobalBoundCtx
   return $ prettyFriendly (WithContext e ctx)
 
 lookupVarByLevel :: (MonadQueryStructure m) => Lv -> m Variable
@@ -512,6 +520,17 @@ lookupVarByLevel lv = do
   case LinkedHashMap.lookup lv globalBoundVarCtx of
     Nothing -> compilerDeveloperError "Cannout find variable var"
     Just v -> return v
+
+getAndUpdateQueryID :: (MonadQueryStructure m) => m QueryID
+getAndUpdateQueryID = do
+  queryID <$> getModify (\GlobalCtx {..} -> GlobalCtx {queryID = queryID + 1, ..})
+
+-- | Resets the entire global state except for the queryID
+resetGlobalCtx :: (MonadQueryStructure m) => m ()
+resetGlobalCtx = modify $ \ctx ->
+  emptyGlobalCtx
+    { queryID = queryID ctx
+    }
 
 getReducedVariableExprFor :: (MonadQueryStructure m) => Lv -> m (Maybe (WHNFValue QueryBuiltin))
 getReducedVariableExprFor lv = do
@@ -570,21 +589,13 @@ getReducedVariablesFor var = do
       Just (vars, _) -> return $ fmap UserRationalVar vars
       Nothing -> compilerDeveloperError $ "User variable" <+> pretty var <+> "has no reductions"
 
-appStdlibDef :: (MonadPropertyStructure m) => StdLibFunction -> WHNFSpine QueryBuiltin -> m (WHNFValue QueryBuiltin)
-appStdlibDef fn spine = do
-  freeCtx <- asks unalteredFreeContext
-  (fnDef, _) <- lookupInFreeCtx "lookupStdlibDef" (identifierOf fn) freeCtx
-  case bodyOf fnDef of
-    Just fnBody -> normaliseApp fnBody spine
-    Nothing -> compilerDeveloperError $ "Unexpected found" <+> quotePretty fn <+> "to have no body"
-
 reduceTensorExpr ::
   (MonadQueryStructure m) =>
   LinearExpr TensorVariable RationalTensor ->
   m [LinearExpr RationalVariable Rational]
 reduceTensorExpr (Sparse coeff constant) = do
-  let constValues = Vector.toList $ tensorValues constant
-  let numRatEqs = product (tensorDims constant)
+  let constValues = Vector.toList $ tensorValue constant
+  let numRatEqs = product (tensorShape constant)
   coeffList <- traverse (\(v, c) -> (,c) <$> getReducedVariablesFor v) (Map.toList coeff)
   let asserts = fmap (mkRatEquality coeffList constValues) [0 .. numRatEqs - 1]
   return asserts
@@ -607,105 +618,13 @@ variableCtxToBoundCtx ctx = zipWith variableCtxToBoundCtxEntry [0 .. Ix (length 
 --------------------------------------------------------------------------------
 -- Vector operation patterns
 
-pattern VInfiniteQuantifier ::
-  Quantifier ->
-  [WHNFArg QueryBuiltin] ->
-  WHNFBinder QueryBuiltin ->
-  WHNFBoundEnv QueryBuiltin ->
-  Expr Ix QueryBuiltin ->
-  WHNFValue QueryBuiltin
-pattern VInfiniteQuantifier q args binder env body <-
-  VBuiltinFunction (Quantifier q) (reverse -> RelevantExplicitArg _ (VLam binder (WHNFBody env body)) : args)
-  where
-    VInfiniteQuantifier q args binder env body =
-      VBuiltinFunction (Quantifier q) (reverse (Arg mempty Explicit Relevant (VLam binder (WHNFBody env body)) : args))
-
-pattern VForall ::
-  [WHNFArg QueryBuiltin] ->
-  WHNFBinder QueryBuiltin ->
-  WHNFBoundEnv QueryBuiltin ->
-  Expr Ix QueryBuiltin ->
-  WHNFValue QueryBuiltin
-pattern VForall args binder env body = VInfiniteQuantifier Forall args binder env body
-
-pattern VExists ::
-  [WHNFArg QueryBuiltin] ->
-  WHNFBinder QueryBuiltin ->
-  WHNFBoundEnv QueryBuiltin ->
-  Expr Ix QueryBuiltin ->
-  WHNFValue QueryBuiltin
-pattern VExists args binder env body = VInfiniteQuantifier Exists args binder env body
-
-pattern VVecEqSpine ::
-  WHNFArg QueryBuiltin ->
-  WHNFArg QueryBuiltin ->
-  WHNFArg QueryBuiltin ->
-  WHNFArg QueryBuiltin ->
-  WHNFValue QueryBuiltin ->
-  WHNFValue QueryBuiltin ->
-  WHNFSpine QueryBuiltin
-pattern VVecEqSpine t1 t2 dim sol x y <- [t1, t2, dim, sol, argExpr -> x, argExpr -> y]
-  where
-    VVecEqSpine t1 t2 dim sol x y = [t1, t2, dim, sol, Arg mempty Explicit Relevant x, Arg mempty Explicit Relevant y]
-
-pattern VVecOp2Spine ::
-  WHNFArg QueryBuiltin ->
-  WHNFArg QueryBuiltin ->
-  WHNFArg QueryBuiltin ->
-  WHNFArg QueryBuiltin ->
-  WHNFArg QueryBuiltin ->
-  WHNFValue QueryBuiltin ->
-  WHNFValue QueryBuiltin ->
-  WHNFSpine QueryBuiltin
-pattern VVecOp2Spine t1 t2 t3 dim sol x y <- [t1, t2, t3, dim, sol, argExpr -> x, argExpr -> y]
-
-pattern VVecEqArgs ::
-  WHNFValue QueryBuiltin ->
-  WHNFValue QueryBuiltin ->
-  WHNFSpine QueryBuiltin
-pattern VVecEqArgs x y <- VVecEqSpine _ _ _ _ x y
-
-pattern VVectorEqualFull :: WHNFSpine QueryBuiltin -> WHNFValue QueryBuiltin
-pattern VVectorEqualFull spine = VStandardLib StdEqualsVector spine
-
-pattern VVectorNotEqualFull :: WHNFSpine QueryBuiltin -> WHNFValue QueryBuiltin
-pattern VVectorNotEqualFull spine = VStandardLib StdNotEqualsVector spine
-
-pattern VVectorEqual :: WHNFValue QueryBuiltin -> WHNFValue QueryBuiltin -> WHNFValue QueryBuiltin
-pattern VVectorEqual x y <- VVectorEqualFull (VVecEqArgs x y)
-
-pattern VVectorNotEqual :: WHNFValue QueryBuiltin -> WHNFValue QueryBuiltin -> WHNFValue QueryBuiltin
-pattern VVectorNotEqual x y <- VVectorNotEqualFull (VVecEqArgs x y)
-
-pattern VVectorAdd :: WHNFValue QueryBuiltin -> WHNFValue QueryBuiltin -> WHNFValue QueryBuiltin
-pattern VVectorAdd x y <- VStandardLib StdAddVector [_, _, _, _, _, argExpr -> x, argExpr -> y]
-
-pattern VVectorSub :: WHNFValue QueryBuiltin -> WHNFValue QueryBuiltin -> WHNFValue QueryBuiltin
-pattern VVectorSub x y <- VStandardLib StdSubVector [_, _, _, _, _, argExpr -> x, argExpr -> y]
-
-pattern VAt :: WHNFValue QueryBuiltin -> WHNFValue QueryBuiltin -> WHNFValue QueryBuiltin
-pattern VAt xs i <- VBuiltinFunction At [_t, _n, argExpr -> xs, argExpr -> i]
-
-pattern VFoldVector ::
-  WHNFValue QueryBuiltin ->
-  WHNFValue QueryBuiltin ->
-  WHNFValue QueryBuiltin ->
-  WHNFValue QueryBuiltin
-pattern VFoldVector f e xs <- VBuiltinFunction (Fold FoldVector) [_n, _a, _b, argExpr -> f, argExpr -> e, argExpr -> xs]
-
-pattern VMapVector ::
-  WHNFValue QueryBuiltin ->
-  WHNFValue QueryBuiltin ->
-  WHNFValue QueryBuiltin
-pattern VMapVector f xs <- VBuiltinFunction MapVector [_n, _a, _b, argExpr -> f, argExpr -> xs]
-
 mkVVectorEquality ::
-  TensorDimensions ->
+  TensorShape ->
   WHNFValue QueryBuiltin ->
   WHNFValue QueryBuiltin ->
   WHNFValue QueryBuiltin
 mkVVectorEquality dimensions e1 e2 = do
-  mkVectorEquality (fmap VNatLiteral dimensions) (Arg mempty Explicit Relevant <$> [e1, e2])
+  mkVectorEquality (fmap (INatLiteral mempty) dimensions) (Arg mempty Explicit Relevant <$> [e1, e2])
   where
     -- Would definitely be nicer to somehow reuse the type-class resolution machinery here,
     -- but it seems incredibly complicated to setup...
@@ -716,7 +635,7 @@ mkVVectorEquality dimensions e1 e2 = do
             [] -> VBuiltinFunction (Equals EqRat Eq) spine
             d : ds -> VFreeVar (identifierOf StdEqualsVector) (nonExplicitArgs <> spine)
               where
-                tensorType = foldr (\dim t -> mkVVectorType t dim) VRatType ds
+                tensorType = foldr (\dim t -> IVectorType mempty t dim) (IRatType mempty) ds
                 nonExplicitArgs =
                   [ Arg p (Implicit True) Relevant tensorType,
                     Arg p (Implicit True) Relevant tensorType,
@@ -724,17 +643,13 @@ mkVVectorEquality dimensions e1 e2 = do
                     Arg p (Instance True) Relevant (mkVectorEquality ds [])
                   ]
 
-negExpr :: Expr Ix QueryBuiltin -> Expr Ix QueryBuiltin
-negExpr body = NotExpr mempty [Arg mempty Explicit Relevant body]
-
 -- | The set of vector operations that we sometimes want to avoid normalising
 -- out in the property for efficiency reasons.
-vectorOperations :: Set Identifier
+vectorOperations :: Set StdLibFunction
 vectorOperations =
-  Set.fromList $
-    identifierOf
-      <$> [ StdAddVector,
-            StdSubVector,
-            StdEqualsVector,
-            StdNotEqualsVector
-          ]
+  Set.fromList
+    [ StdAddVector,
+      StdSubVector,
+      StdEqualsVector,
+      StdNotEqualsVector
+    ]

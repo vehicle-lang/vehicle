@@ -1,4 +1,12 @@
 --------------------------------------------------------------------------------
+-- Type annotations
+--------------------------------------------------------------------------------
+
+-- Implementation of the `:` syntax
+typeAnn : forallT (t : Type) . t -> t
+typeAnn t a = a
+
+--------------------------------------------------------------------------------
 -- Bool
 --------------------------------------------------------------------------------
 
@@ -35,8 +43,8 @@ existsIn f xs = bigOr (map f xs)
 vectorToVector : forallT {@0 n} {A} . Vector A n -> Vector A n
 vectorToVector xs = xs
 
-foreachVector : forallT n . (Index n -> A) -> Vector A n
-foreachVector n f = map f (indices n)
+foreachIndex : forallT n . (Index n -> A) -> Vector A n
+foreachIndex n f = map f (indices n)
 
 addVector : forallT {@0 n} . {{HasAdd A B C}} -> Vector A n -> Vector B n -> Vector C n
 addVector = zipWith (\x y -> x + y)
@@ -55,10 +63,10 @@ notEqualsVector xs ys = bigOr (zipWith (\x y -> x != y) xs ys)
 --------------------------------------------------------------------------------
 
 existsIndex : forallT n . (Index n -> Bool) -> Bool
-existsIndex n f = bigOr (map f (indices n))
+existsIndex n f = bigOr (foreachIndex n f)
 
 forallIndex : forallT n . (Index n -> Bool) -> Bool
-forallIndex n f = bigAnd (map f (indices n))
+forallIndex n f = bigAnd (foreachIndex n f)
 
 --------------------------------------------------------------------------------
 -- Tensor

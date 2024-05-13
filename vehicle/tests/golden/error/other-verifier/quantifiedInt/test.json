@@ -1,5 +1,0 @@
-{
-  "name": "Marabou",
-  "run": "vehicle compile -s quantifiedInt.vcl -t MarabouQueries",
-  "needs": ["quantifiedInt.vcl"]
-}
