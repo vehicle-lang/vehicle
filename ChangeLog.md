@@ -1,8 +1,10 @@
 # Changelog for Vehicle
 
-## Next release
+## Version 0.14.1
 
 * Removed `Explicit` as a command line compilation target option as it never worked.
+
+* Fixed bug where generated Agda files sometimes incorrectly said `Unable to read the verification cache from file`.
 
 ## Version 0.14.0
 

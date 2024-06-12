@@ -10,7 +10,7 @@ import Vehicle.Prelude
 import Vehicle.Prelude.Logging
 import Vehicle.Resource
 import Vehicle.Verify.Specification (SpecificationCacheIndex (..), multiPropertyAddresses, properties)
-import Vehicle.Verify.Specification.IO (readPropertyResult, readSpecificationCacheIndex)
+import Vehicle.Verify.Specification.IO (readPropertyResult, readSpecificationCacheIndex, specificationCacheIndexFileName)
 
 --------------------------------------------------------------------------------
 -- Proof validation
@@ -32,7 +32,8 @@ checkSpecificationStatus ::
   ValidateOptions ->
   m ValidateResult
 checkSpecificationStatus ValidateOptions {..} = do
-  SpecificationCacheIndex {..} <- liftIO $ readSpecificationCacheIndex verificationCache
+  let cacheIndexFile = specificationCacheIndexFileName verificationCache
+  SpecificationCacheIndex {..} <- liftIO $ readSpecificationCacheIndex cacheIndexFile
   maybeIntegrityError <- checkIntegrityOfResources resourcesIntegrityInfo
   case maybeIntegrityError of
     Just err -> return $ IntegrityError err
