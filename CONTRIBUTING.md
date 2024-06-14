@@ -122,6 +122,11 @@ We recommend you install GHC and Cabal using [GHCup].
 
 If you'd like to use a different version of GHC, you can find the list of versions that we test with in [build-vehicle.yml]. However, be aware that building the Python bindings _requires_ [our preferred version](#the-preferred-version-of-ghc).
 
+Some of the Haskell libraries used by Vehicle also required `gmp` arithmetic library to be installed on the system. If it is not installed on your system you can install it, e.g. on Linux by
+   ```sh
+   sudo apt-get install libgmp3-dev
+   ```
+
 ##### The preferred version of GHC
 
 The preferred version of GHC is currently _GHC 9.4.8_, which is the version of GHC we recommend you use, and which is required to build the Python bindings.
