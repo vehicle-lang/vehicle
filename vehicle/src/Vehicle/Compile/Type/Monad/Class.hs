@@ -10,6 +10,7 @@ import Data.Proxy (Proxy (..))
 import Vehicle.Compile.Context.Bound.Instance
 import Vehicle.Compile.Context.Free.Class (MonadFreeContext)
 import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError)
+import Vehicle.Compile.Normalise.Builtin (NormalisableBuiltin)
 import Vehicle.Compile.Normalise.NBE (normaliseInEnv)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyExternal, prettyFriendly, prettyVerbose)
@@ -24,9 +25,9 @@ import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Meta.Set (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Meta.Substitution as MetaSubstitution (MetaSubstitutable (..))
-import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Data.BuiltinInterface
-import Vehicle.Data.NormalisedExpr
+import Vehicle.Data.Builtin.Interface
+import Vehicle.Data.Builtin.Standard.Core
+import Vehicle.Data.Expr.Normalised
 
 --------------------------------------------------------------------------------
 -- Solved meta-state
@@ -92,7 +93,7 @@ emptyTypeCheckerState =
 -- The type-checking monad class
 
 -- | The type-checking monad.
-class (MonadCompile m, MonadFreeContext builtin m) => MonadTypeChecker builtin m where
+class (MonadCompile m, MonadFreeContext builtin m, NormalisableBuiltin builtin) => MonadTypeChecker builtin m where
   getMetaState :: m (TypeCheckerState builtin)
   modifyMetaCtx :: (TypeCheckerState builtin -> TypeCheckerState builtin) -> m ()
   getFreshName :: Type Ix builtin -> m Name
@@ -528,5 +529,9 @@ copyContext (ConstraintContext _cid originProv creationProv _blockingStatus ctx)
 -- Constraints
 --------------------------------------------------------------------------------
 
-glueNBE :: (MonadFreeContext builtin m) => WHNFBoundEnv builtin -> Expr Ix builtin -> m (GluedExpr builtin)
+glueNBE ::
+  (MonadFreeContext builtin m, NormalisableBuiltin builtin) =>
+  WHNFBoundEnv builtin ->
+  Expr Ix builtin ->
+  m (GluedExpr builtin)
 glueNBE env e = Glued e <$> normaliseInEnv env e

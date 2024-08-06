@@ -11,6 +11,7 @@ import Control.Monad.Writer (WriterT (..), tell)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (maybeToList)
+import Data.Proxy (Proxy (..))
 import Data.Set qualified as Set
 import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Error
@@ -19,11 +20,12 @@ import Vehicle.Compile.ExpandResources.Dataset
 import Vehicle.Compile.ExpandResources.Network
 import Vehicle.Compile.ExpandResources.Parameter
 import Vehicle.Compile.Normalise.NBE (normaliseInEmptyEnv)
+import Vehicle.Compile.Normalise.Quote
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print.Warning ()
-import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Data.BuiltinInterface.ASTInterface
-import Vehicle.Data.NormalisedExpr
+import Vehicle.Data.Builtin.Standard.Core
+import Vehicle.Data.Expr.Interface
+import Vehicle.Data.Expr.Normalised
 import Vehicle.Prelude.Warning (CompileWarning (..))
 
 -- | Calculates the context for external resources, reading them from disk and
@@ -45,13 +47,15 @@ expandResources resources prog =
     integrityInfo <- generateResourcesIntegrityInfo resources
     return (progWithoutResources, networkCtx, freeCtx, integrityInfo)
 
-mkFunctionDefFromResource :: Provenance -> Identifier -> WHNFValue Builtin -> (WHNFDecl Builtin, Type Ix Builtin)
-mkFunctionDefFromResource p ident value = do
+mkFunctionDefFromResource :: Provenance -> Identifier -> GluedType Builtin -> WHNFValue Builtin -> FreeCtxEntry Builtin
+mkFunctionDefFromResource p ident typ normValue = do
   -- We're doing something wrong here as we only really need the value.
   -- We should really be storing the parameter values in their own environment,
   -- as values rather than as declarations in the free var context.
-  let unnormType = Builtin mempty (BuiltinType Unit)
-  (DefFunction p ident mempty (IUnitType mempty) value, unnormType)
+  let value = unnormalise 0 normValue
+  let decl = DefFunction p ident mempty (unnormalised typ) value
+  let normDecl = DefFunction p ident mempty (normalised typ) normValue
+  (decl, normDecl)
 
 -- | Goes through the program finding all
 -- the resources, comparing the data against the type in the spec, and making
@@ -65,38 +69,39 @@ readResourcesInDecls = \case
   decl : decls -> do
     (newDecl, newDeclEntry) <- case decl of
       DefFunction {} -> do
-        entry <- mkDeclCtxEntry decl
+        entry <- mkDeclCtxEntry (Proxy @Builtin) decl
         return (Just decl, entry)
       DefAbstract p ident defType declType -> do
-        normalisedType <- normaliseInEmptyEnv declType
-        let gluedType = Glued declType normalisedType
+        normDeclType <- normaliseInEmptyEnv declType
+        let gluedType = Glued declType normDeclType
         case defType of
           PostulateDef {} -> do
-            entry <- mkDeclCtxEntry decl
+            entry <- mkDeclCtxEntry (Proxy @Builtin) decl
             return (Just decl, entry)
           ParameterDef sort -> case sort of
             Inferable -> do
-              entry <- mkDeclCtxEntry decl
-              noteInferableParameter p ident
+              entry <- mkDeclCtxEntry (Proxy @Builtin) decl
+              noteInferableParameter p ident gluedType
               return (Nothing, entry)
             NonInferable -> do
               parameterValues <- asks parameters
               parameterExpr <- parseParameterValue parameterValues (ident, p) gluedType
-              let newDeclEntry = mkFunctionDefFromResource p ident parameterExpr
+              let newDeclEntry = mkFunctionDefFromResource p ident gluedType parameterExpr
               tell (Map.singleton ident newDeclEntry)
               return (Nothing, newDeclEntry)
           DatasetDef -> do
             datasetLocations <- asks datasets
             datasetExpr <- parseDataset datasetLocations (ident, p) gluedType
-            let newDeclEntry = mkFunctionDefFromResource p ident datasetExpr
+            let newDeclEntry = mkFunctionDefFromResource p ident gluedType datasetExpr
             tell (Map.singleton ident newDeclEntry)
             return (Nothing, newDeclEntry)
           NetworkDef -> do
             networkLocations <- asks networks
             networkDetails <- checkNetwork networkLocations (ident, p) gluedType
             addNetworkType ident networkDetails
-            tell (Map.singleton ident (DefAbstract p ident defType normalisedType, declType))
-            entry <- mkDeclCtxEntry decl
+            let newDeclEntry = (DefAbstract p ident defType declType, DefAbstract p ident defType normDeclType)
+            tell (Map.singleton ident newDeclEntry)
+            entry <- mkDeclCtxEntry (Proxy @Builtin) decl
             return (Nothing, entry)
 
     decls' <-
@@ -126,13 +131,13 @@ fillInInferableParameters freeCtx inferableCtx =
     insertInferableParameter ::
       (MonadCompile m) =>
       FreeCtx Builtin ->
-      (Identifier, Either Provenance InferableParameterEntry) ->
+      (Identifier, (Provenance, GluedType Builtin, Maybe InferableParameterEntry)) ->
       m (FreeCtx Builtin)
-    insertInferableParameter ctx (ident, maybeValue) = case maybeValue of
-      Left p -> throwError $ InferableParameterUninferrable (ident, p)
-      Right ((_, p), _, v) -> do
+    insertInferableParameter ctx (ident, (p, declType, maybeValue)) = case maybeValue of
+      Nothing -> throwError $ InferableParameterUninferrable (ident, p)
+      Just ((_, inferProv), _, v) -> do
         logDebug MaxDetail $ "Inferred" <+> quotePretty ident <+> "as" <+> quotePretty v
-        let decl = mkFunctionDefFromResource p ident (INatLiteral p v)
+        let decl = mkFunctionDefFromResource inferProv ident declType (INatLiteral inferProv v)
         return $ Map.insert ident decl ctx
 
 warnIfUnusedResources ::

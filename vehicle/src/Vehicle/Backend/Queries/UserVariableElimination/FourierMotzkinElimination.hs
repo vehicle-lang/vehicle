@@ -11,7 +11,7 @@ import GHC.Real (infinity)
 import Vehicle.Backend.Queries.UserVariableElimination.Core
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Data.LinearExpr
+import Vehicle.Data.Expr.Linear
 import Vehicle.Syntax.Builtin (Strictness (..))
 import Vehicle.Verify.Variable
 

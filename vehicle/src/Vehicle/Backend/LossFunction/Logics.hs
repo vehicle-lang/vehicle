@@ -1,22 +1,24 @@
 module Vehicle.Backend.LossFunction.Logics
-  ( DifferentialLogicImplementation (..),
+  ( DifferentialLogicDSL (..),
     NotTranslation (..),
-    implementationOf,
+    PLExpr,
+    dslFor,
   )
 where
 
+import Prettyprinter
 import Vehicle.Backend.Prelude (DifferentiableLogicID (..))
 import Vehicle.Compile.Prelude (developerError)
-import Vehicle.Data.BuiltinInterface.DSL
+import Vehicle.Data.Builtin.Loss
 import Vehicle.Data.DSL
-import Vehicle.Syntax.Builtin
+import Vehicle.Syntax.Builtin qualified as V
 
 --------------------------------------------------------------------------------
 -- Patterns for building logics
 --------------------------------------------------------------------------------
 
 -- | A partial expression which requires provenance to construct.
-type PLExpr = DSLExpr Builtin
+type PLExpr = DSLExpr LossBuiltin
 
 mkOp1 :: PLExpr -> (PLExpr -> PLExpr) -> PLExpr
 mkOp1 t f = explLam "x" t (\x -> f x)
@@ -24,56 +26,49 @@ mkOp1 t f = explLam "x" t (\x -> f x)
 mkOp2 :: PLExpr -> (PLExpr -> PLExpr -> PLExpr) -> PLExpr
 mkOp2 t f = explLam "x" t (\x -> explLam "y" t (\y -> f x y))
 
-op1 :: BuiltinFunction -> PLExpr -> PLExpr
-op1 op x = builtinFunction op @@ [x]
+op1 :: LossBuiltin -> PLExpr -> PLExpr
+op1 op x = builtin op @@ [x]
 
-op2 :: BuiltinFunction -> PLExpr -> PLExpr -> PLExpr
-op2 op x y = builtinFunction op @@ [x, y]
+op2 :: LossBuiltin -> PLExpr -> PLExpr -> PLExpr
+op2 op x y = builtin op @@ [x, y]
 
 -- | Addition
 (+:) :: PLExpr -> PLExpr -> PLExpr
-(+:) = op2 (Add AddRat)
+(+:) = op2 (Add V.AddRat)
 
 -- | Multiplication
 (*:) :: PLExpr -> PLExpr -> PLExpr
-(*:) = op2 (Mul MulRat)
+(*:) = op2 (Mul V.MulRat)
 
 -- | Subtraction
 (-:) :: PLExpr -> PLExpr -> PLExpr
-(-:) = op2 (Sub SubRat)
+(-:) = op2 (Sub V.SubRat)
+
+-- | Division
+(/:) :: PLExpr -> PLExpr -> PLExpr
+(/:) = op2 (Div V.DivRat)
 
 -- | Negation
 neg :: PLExpr -> PLExpr
-neg = op1 (Neg NegRat)
+neg = op1 (Neg V.NegRat)
 
 -- | Power
 (^:) :: PLExpr -> Rational -> PLExpr
 (^:) x y = op2 PowRat x (ratLit y)
 
--- | Indicator function
-ind :: PLExpr -> PLExpr -> PLExpr
-ind x y = builtinFunction If @@ [builtinFunction (Equals EqRat Eq) @@ [x, y], ratLit 1, ratLit 0]
-
 -- | Maximum operator
 lmax :: PLExpr -> PLExpr -> PLExpr
-lmax x y = builtinFunction MaxRat @@ [x, y]
+lmax x y = builtin MaxRat @@ [x, y]
+
+ratLit :: Rational -> PLExpr
+ratLit r = builtin (Rat r)
+
+tRat :: PLExpr
+tRat = builtin RatType
 
 -- | Minimum operator
 lmin :: PLExpr -> PLExpr -> PLExpr
-lmin x y = builtinFunction MinRat @@ [x, y]
-
--- | Compiles a quantifier to a sampling procedure.
-quantifierSampler :: Bool -> PLExpr -> PLExpr
-quantifierSampler maximise bop =
-  builtinFunction (Optimise maximise) @@ [bop]
-
--- | Compiles a `Forall` to a sampling procedure
-forallSampler :: Bool -> PLExpr -> PLExpr
-forallSampler = quantifierSampler
-
--- | Compiles an `Exists` to a sampling procedure
-existsSampler :: Bool -> PLExpr -> PLExpr
-existsSampler = quantifierSampler
+lmin x y = builtin MinRat @@ [x, y]
 
 --------------------------------------------------------------------------------
 -- Logics
@@ -83,35 +78,33 @@ data NotTranslation
   = TryToEliminate
   | UnaryNot PLExpr -- (LExpr -> LExpr)
 
---  | Template for different avilable differentiable logics
---  part of the syntax translation that differ depending on chosen DL are:
---  logical lconnectives (not, and, or, implies)
---  comparisons (<, <=, >, >=, =, !=)
-data DifferentialLogicImplementation = DifferentialLogicImplementation
+-- | Template for different avilable differentiable logics
+-- part of the syntax translation that differ depending on chosen DL are:
+-- logical connectives (not, and, or, implies)
+-- comparisons (<, <=, >, >=, =, !=)
+data DifferentialLogicDSL = DifferentialLogicDSL
   { logicID :: DifferentiableLogicID,
-    compileBool :: PLExpr,
-    compileTrue :: PLExpr,
-    compileFalse :: PLExpr,
-    compileAnd :: PLExpr,
-    compileOr :: PLExpr,
-    compileNot :: NotTranslation,
-    compileImplies :: PLExpr,
-    compileForall :: PLExpr,
-    compileExists :: PLExpr,
-    compileLe :: PLExpr,
-    compileLt :: PLExpr,
-    compileGe :: PLExpr,
-    compileGt :: PLExpr,
-    compileEq :: PLExpr,
-    compileNeq :: PLExpr
+    translateBool :: PLExpr,
+    translateTrue :: PLExpr,
+    translateFalse :: PLExpr,
+    translateAnd :: PLExpr,
+    translateOr :: PLExpr,
+    translateNot :: PLExpr,
+    translateImplies :: PLExpr,
+    translateLe :: PLExpr,
+    translateLt :: PLExpr,
+    translateGe :: PLExpr,
+    translateGt :: PLExpr,
+    translateEq :: PLExpr,
+    translateNeq :: PLExpr
   }
 
 --------------------------------------------------------------------------------
 -- Logic implementations
 --------------------------------------------------------------------------------
 
-implementationOf :: DifferentiableLogicID -> DifferentialLogicImplementation
-implementationOf = \case
+dslFor :: DifferentiableLogicID -> DifferentialLogicDSL
+dslFor = \case
   VehicleLoss -> vehicleTranslation
   DL2Loss -> dl2Translation
   GodelLoss -> godelTranslation
@@ -123,83 +116,77 @@ implementationOf = \case
 --------------------------------------------------------------------------------
 -- Main vehicle logic
 
-vehicleTranslation :: DifferentialLogicImplementation
+vehicleTranslation :: DifferentialLogicDSL
 vehicleTranslation =
-  DifferentialLogicImplementation
+  DifferentialLogicDSL
     { logicID = DL2Loss,
-      compileBool = tRat,
-      compileTrue = ratLit (-100000),
-      compileFalse = ratLit 100000,
-      compileAnd = andOp,
-      compileOr = orOp,
-      compileNot = UnaryNot $ builtinFunction (Neg NegRat),
-      compileImplies = mkOp2 tRat $ \x y -> lmax (neg x) y,
-      compileForall = forallSampler True andOp,
-      compileExists = existsSampler True orOp,
-      compileLe = mkOp2 tRat $ \x y -> x -: y,
-      compileLt = mkOp2 tRat $ \x y -> x -: y,
-      compileGe = mkOp2 tRat $ \x y -> y -: x,
-      compileGt = mkOp2 tRat $ \x y -> y -: x,
-      compileNeq = mkOp2 tRat ind,
-      compileEq = mkOp2 tRat $ \x y -> lmax (x -: y) (y -: x)
+      translateBool = tRat,
+      translateTrue = ratLit (-100000),
+      translateFalse = ratLit 100000,
+      translateAnd = andOp,
+      translateOr = orOp,
+      translateNot = builtin (Neg V.NegRat),
+      translateImplies = mkOp2 tRat $ \x y -> lmax (neg x) y,
+      translateLe = mkOp2 tRat $ \x y -> x -: y,
+      translateLt = mkOp2 tRat $ \x y -> x -: y,
+      translateGe = mkOp2 tRat $ \x y -> y -: x,
+      translateGt = mkOp2 tRat $ \x y -> y -: x,
+      translateNeq = mkOp2 tRat $ \x y -> neg (lmax (x -: y) (y -: x)),
+      translateEq = mkOp2 tRat $ \x y -> lmax (x -: y) (y -: x)
     }
   where
-    andOp = builtinFunction MaxRat
-    orOp = builtinFunction MinRat
+    andOp = builtin MaxRat
+    orOp = builtin MinRat
 
 --------------------------------------------------------------------------------
 -- DL2
 
 -- | Logic from Fischer, Marc, et al. "Dl2: Training and querying neural
 -- networks with logic."  PMLR, 2019.
-dl2Translation :: DifferentialLogicImplementation
+dl2Translation :: DifferentialLogicDSL
 dl2Translation =
-  DifferentialLogicImplementation
+  DifferentialLogicDSL
     { logicID = DL2Loss,
-      compileBool = tRat,
-      compileTrue = ratLit 0,
-      compileFalse = ratLit 1, -- TODO this should be infinity???
-      compileAnd = andOp,
-      compileOr = orOp,
-      compileNot = TryToEliminate,
-      compileImplies = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x *: y),
-      compileForall = forallSampler True andOp,
-      compileExists = existsSampler True orOp,
-      compileLe = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y) +: ind x y,
-      compileLt = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y),
-      compileGe = mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x) +: ind y x,
-      compileGt = mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x),
-      compileNeq = mkOp2 tRat ind,
-      compileEq = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y) +: lmax (ratLit 0) (y -: x)
+      translateBool = tRat,
+      translateTrue = ratLit 0,
+      translateFalse = ratLit 1, -- TODO this should be infinity???
+      translateAnd = andOp,
+      translateOr = orOp,
+      translateNot = mkOp1 tRat $ \x -> ratLit 1 /: x,
+      translateImplies = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x *: y),
+      translateLe = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y),
+      translateLt = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y),
+      translateGe = mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x),
+      translateGt = mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x),
+      translateNeq = mkOp2 tRat $ \x y -> neg (lmax (ratLit 0) (x -: y) +: lmax (ratLit 0) (y -: x)),
+      translateEq = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y) +: lmax (ratLit 0) (y -: x)
     }
   where
-    andOp = builtinFunction (Add AddRat)
-    orOp = builtinFunction (Mul MulRat)
+    andOp = builtin (Add V.AddRat)
+    orOp = builtin (Mul V.MulRat)
 
 --------------------------------------------------------------------------------
 -- Godel
 
 -- | From van Krieken, et al. "Analyzing differentiable fuzzy logic operators."
 -- 2022
-godelTranslation :: DifferentialLogicImplementation
+godelTranslation :: DifferentialLogicDSL
 godelTranslation =
-  DifferentialLogicImplementation
+  DifferentialLogicDSL
     { logicID = GodelLoss,
-      compileBool = tRat,
-      compileTrue = ratLit 0,
-      compileFalse = ratLit 1,
-      compileAnd = andOp,
-      compileOr = orOp,
-      compileNot = UnaryNot (mkOp1 tRat $ \x -> ratLit 1 -: x),
-      compileImplies = mkOp2 tRat $ \x y -> ratLit 1 -: lmax (ratLit 1 -: x) y,
-      compileForall = forallSampler True andOp,
-      compileExists = existsSampler True orOp,
-      compileLe = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y),
-      compileLt = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y),
-      compileGe = mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x),
-      compileGt = mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x),
-      compileEq = mkOp2 tRat $ \x y -> ratLit 1 -: ind x y,
-      compileNeq = mkOp2 tRat ind
+      translateBool = tRat,
+      translateTrue = ratLit 0,
+      translateFalse = ratLit 1,
+      translateAnd = andOp,
+      translateOr = orOp,
+      translateNot = mkOp1 tRat $ \x -> ratLit 1 -: x,
+      translateImplies = mkOp2 tRat $ \x y -> ratLit 1 -: lmax (ratLit 1 -: x) y,
+      translateLe = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y),
+      translateLt = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y),
+      translateGe = mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x),
+      translateGt = mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x),
+      translateEq = unsupported "==" "Godel",
+      translateNeq = unsupported "!=" "Godel"
     }
   where
     andOp = mkOp2 tRat $ \x y -> ratLit 1 -: lmin x y
@@ -210,25 +197,23 @@ godelTranslation =
 
 -- | From van Krieken, et al. "Analyzing differentiable fuzzy logic operators."
 -- 2022
-lukasiewiczTranslation :: DifferentialLogicImplementation
+lukasiewiczTranslation :: DifferentialLogicDSL
 lukasiewiczTranslation =
-  DifferentialLogicImplementation
+  DifferentialLogicDSL
     { logicID = LukasiewiczLoss,
-      compileBool = tRat,
-      compileTrue = ratLit 0,
-      compileFalse = ratLit 1,
-      compileAnd = andOp,
-      compileOr = orOp,
-      compileNot = UnaryNot (mkOp1 tRat $ \arg -> ratLit 1 -: arg),
-      compileImplies = mkOp2 tRat $ \x y -> ratLit 1 -: lmin (ratLit 1) ((ratLit 1 -: x) +: y),
-      compileForall = forallSampler True andOp,
-      compileExists = existsSampler True orOp,
-      compileLe = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y),
-      compileLt = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y),
-      compileGe = mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x),
-      compileGt = mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x),
-      compileEq = mkOp2 tRat $ \x y -> ratLit 1 -: ind x y,
-      compileNeq = mkOp2 tRat ind
+      translateBool = tRat,
+      translateTrue = ratLit 0,
+      translateFalse = ratLit 1,
+      translateAnd = andOp,
+      translateOr = orOp,
+      translateNot = mkOp1 tRat $ \arg -> ratLit 1 -: arg,
+      translateImplies = mkOp2 tRat $ \x y -> ratLit 1 -: lmin (ratLit 1) ((ratLit 1 -: x) +: y),
+      translateLe = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y),
+      translateLt = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y),
+      translateGe = mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x),
+      translateGt = mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x),
+      translateEq = unsupported "==" "Lukasiewicz",
+      translateNeq = unsupported "!=" "Lukasiewicz"
     }
   where
     andOp = mkOp2 tRat $ \x y -> ratLit 1 -: lmax (ratLit 0) ((x +: y) -: ratLit 1)
@@ -239,64 +224,59 @@ lukasiewiczTranslation =
 
 -- | From van Krieken, et al. "Analyzing differentiable fuzzy logic operators."
 -- 2022
-productTranslation :: DifferentialLogicImplementation
+productTranslation :: DifferentialLogicDSL
 productTranslation =
-  DifferentialLogicImplementation
+  DifferentialLogicDSL
     { logicID = ProductLoss,
-      compileBool = tRat,
-      compileTrue = ratLit 0,
-      compileFalse = ratLit 1,
-      compileAnd = andOp,
-      compileOr = andOp,
-      compileNot = UnaryNot (mkOp1 tRat $ \x -> ratLit 1 -: x),
-      compileImplies = mkOp2 tRat $ \x y -> ratLit 1 -: ((ratLit 1 -: x) +: (x *: y)),
-      compileForall = forallSampler True andOp,
-      compileExists = existsSampler True orOp,
-      compileLe = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y),
-      compileLt = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y),
-      compileGe = mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x),
-      compileGt = mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x),
-      compileEq = mkOp2 tRat $ \x y -> ratLit 1 -: ind x y,
-      compileNeq = mkOp2 tRat ind
+      translateBool = tRat,
+      translateTrue = ratLit 0,
+      translateFalse = ratLit 1,
+      translateAnd = andOp,
+      translateOr = andOp,
+      translateNot = mkOp1 tRat $ \x -> ratLit 1 -: x,
+      translateImplies = mkOp2 tRat $ \x y -> ratLit 1 -: ((ratLit 1 -: x) +: (x *: y)),
+      translateLe = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y),
+      translateLt = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y),
+      translateGe = mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x),
+      translateGt = mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x),
+      translateEq = unsupported "==" "Product",
+      translateNeq = unsupported "!=" "Product"
     }
   where
     andOp = mkOp2 tRat $ \x y -> ratLit 1 -: (x *: y)
-    orOp = mkOp2 tRat $ \x y -> ratLit 1 -: ((x +: y) -: (x *: y))
 
 --------------------------------------------------------------------------------
 -- Yager
 
 -- | Sets parameter p for the Yager DL (by default set to 1)
-yagerTranslation :: DifferentialLogicImplementation
+yagerTranslation :: DifferentialLogicDSL
 yagerTranslation = parameterisedYagerTranslation 1 -- change lconstant here
 
 -- | From van Krieken, et al. "Analyzing differentiable fuzzy logic operators."
 -- 2022
-parameterisedYagerTranslation :: Rational -> DifferentialLogicImplementation
+parameterisedYagerTranslation :: Rational -> DifferentialLogicDSL
 parameterisedYagerTranslation p =
-  DifferentialLogicImplementation
+  DifferentialLogicDSL
     { logicID = YagerLoss,
-      compileBool = tRat,
-      compileTrue = ratLit 0,
-      compileFalse = ratLit 1,
-      compileAnd = andOp,
-      compileOr = orOp,
-      compileNot = UnaryNot (mkOp1 tRat (ratLit 1 -:)),
-      compileImplies = mkOp2 tRat $ \x y ->
+      translateBool = tRat,
+      translateTrue = ratLit 0,
+      translateFalse = ratLit 1,
+      translateAnd = andOp,
+      translateOr = orOp,
+      translateNot = mkOp1 tRat (ratLit 1 -:),
+      translateImplies = mkOp2 tRat $ \x y ->
         ratLit 1
           -: lmin
             ( (((ratLit 1 -: x) ^: p) +: (y ^: p))
                 ^: (1 / p)
             )
             (ratLit 1),
-      compileForall = forallSampler True andOp,
-      compileExists = existsSampler True orOp,
-      compileLe = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y),
-      compileLt = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y),
-      compileGe = mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x),
-      compileGt = mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x),
-      compileEq = mkOp2 tRat $ \x y -> ratLit 1 -: ind x y,
-      compileNeq = mkOp2 tRat ind
+      translateLe = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y),
+      translateLt = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y),
+      translateGe = mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x),
+      translateGt = mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x),
+      translateEq = unsupported "==" "Yager",
+      translateNeq = unsupported "!=" "Yager"
     }
   where
     andOp = mkOp2 tRat $ \x y ->
@@ -320,24 +300,27 @@ parameterisedYagerTranslation p =
 -- STL translation
 
 -- | from Varnai and Dimarogonas, "On Robustness Metrics for Learning STL Tasks." 2020
-stlTranslation :: DifferentialLogicImplementation
+stlTranslation :: DifferentialLogicDSL
 stlTranslation = developerError "STL logic not yet implemented"
 
+unsupported :: Doc a -> Doc a -> a
+unsupported op logic = developerError $ "Translating" <+> op <+> "not yet supported for" <+> logic <+> "logic"
+
 {-
-  DifferentialLogicImplementation
+  DifferentialLogicDSL
     { logicID = STLLoss,
-      compileBool = builtin J.Rat,
-      compileAnd = NaryAnd (mkOp1 tRat $ \x -> exponentialAnd x),
-      compileOr = NaryOr (mkOp1 tRat $ \x -> neg (exponentialAnd (builtin _ @@ [x]))),
-      compileNot = UnaryNot (mkOp1 tRat neg),
-      compileImplies = mkOp2 tRat $ \x y -> neg (exponentialAnd (map neg [neg x, y])),
-      compileLe = builtin (J.Sub SubRat),
-      compileLt = builtin (J.Sub SubRat),
-      compileGe = mkOp2 tRat (\x y -> y -: x),
-      compileGt = mkOp2 tRat (\x y -> y -: x),
-      compileEq = mkOp2 tRat ind,
-      compileNeq = mkOp2 tRat $ \x y -> neg (ind x y),
-      compileTrue = ratLit 1,
-      compileFalse = ratLit (-1)
+      translateBool = builtin J.Rat,
+      translateAnd = NaryAnd (mkOp1 tRat $ \x -> exponentialAnd x),
+      translateOr = NaryOr (mkOp1 tRat $ \x -> neg (exponentialAnd (builtin _ @@ [x]))),
+      translateNot = UnaryNot (mkOp1 tRat neg),
+      translateImplies = mkOp2 tRat $ \x y -> neg (exponentialAnd (map neg [neg x, y])),
+      translateLe = builtin (J.Sub SubRat),
+      translateLt = builtin (J.Sub SubRat),
+      translateGe = mkOp2 tRat (\x y -> y -: x),
+      translateGt = mkOp2 tRat (\x y -> y -: x),
+      translateEq = mkOp2 tRat ind,
+      translateNeq = mkOp2 tRat $ \x y -> neg (ind x y),
+      translateTrue = ratLit 1,
+      translateFalse = ratLit (-1)
     }
-    -}
+-}

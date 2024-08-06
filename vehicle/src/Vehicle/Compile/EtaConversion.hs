@@ -1,9 +1,10 @@
 module Vehicle.Compile.EtaConversion
-  ( etaExpandProg,
-    etaExpand,
+  ( -- etaExpandProg,
+  -- etaExpand,
   )
 where
 
+{-
 import Data.Data (Proxy (..))
 import Vehicle.Compile.Context.Bound.Class
 import Vehicle.Compile.Context.Free
@@ -12,9 +13,9 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE (normaliseInEmptyEnv)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
-import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.DeBruijn (liftDBIndices)
-import Vehicle.Data.NormalisedExpr
+import Vehicle.Data.Expr.Normalised
 
 etaExpandProg ::
   forall m builtin.
@@ -89,3 +90,4 @@ etaExpand declIdent originalType originalBody = do
 
 currentPass :: CompilerPass
 currentPass = "eta-expansion"
+-}

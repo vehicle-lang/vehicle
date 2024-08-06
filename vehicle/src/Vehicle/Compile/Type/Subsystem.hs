@@ -8,20 +8,20 @@ import Control.Monad.Except (runExceptT)
 import Data.List.NonEmpty qualified as NonEmpty
 import Vehicle.Compile.Error
 import Vehicle.Compile.Monomorphisation (monomorphise, removeLiteralCoercions)
-import Vehicle.Compile.Normalise.NBE (findInstanceArg)
+import Vehicle.Compile.Normalise.Builtin (NormalisableBuiltin, findInstanceArg)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyExternal)
 import Vehicle.Compile.Type (typeCheckProg)
 import Vehicle.Compile.Type.Core (InstanceCandidateDatabase)
 import Vehicle.Compile.Type.Irrelevance (removeIrrelevantCodeFromProg)
 import Vehicle.Compile.Type.Monad
-import Vehicle.Compile.Type.Subsystem.Standard
-import Vehicle.Data.BuiltinInterface
+import Vehicle.Data.Builtin.Interface
+import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.DeBruijn
 
 typeCheckWithSubsystem ::
   forall builtin m.
-  (HasTypeSystem builtin, MonadCompile m) =>
+  (HasTypeSystem builtin, NormalisableBuiltin builtin, MonadCompile m) =>
   InstanceCandidateDatabase builtin ->
   (forall a. CompileError -> m a) ->
   Prog Ix Builtin ->

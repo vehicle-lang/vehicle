@@ -3,20 +3,24 @@
 module Vehicle.Data.Hashing () where
 
 import Data.Hashable (Hashable (..))
+-- import GHC.Generics (Generic)
+
+-- import Vehicle.Data.Expr.Normalised
+
 import GHC.Generics (Generic)
 import Vehicle.Data.DeBruijn
-import Vehicle.Data.NormalisedExpr
+import Vehicle.Data.Expr.Normalised (BoundEnvValue, Value, WHNFClosure)
 import Vehicle.Syntax.AST
 
 -- We used to have full blown alpha-equivalence based on co-deBruijn indices
 -- but this proved to be unnecessary. It's still in the repo's history if
 -- need be though.
 
-instance (Hashable builtin, Generic builtin) => Hashable (BoundEnvValue 'WHNF builtin)
+instance (Hashable builtin, Generic builtin) => Hashable (WHNFClosure builtin)
 
-instance (Hashable builtin, Generic builtin) => Hashable (Body 'WHNF builtin)
+instance (Hashable closure, Hashable builtin) => Hashable (BoundEnvValue closure builtin)
 
-instance (Hashable builtin, Generic builtin) => Hashable (WHNFValue builtin)
+instance (Hashable closure, Hashable builtin) => Hashable (Value closure builtin)
 
 instance (Hashable expr) => Hashable (GenericArg expr)
 

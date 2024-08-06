@@ -117,10 +117,9 @@ library
   exposed-modules:
     Vehicle
     Vehicle.Backend.Agda
-    Vehicle.Backend.LossFunction
-    Vehicle.Backend.LossFunction.Convert
-    Vehicle.Backend.LossFunction.Core
     Vehicle.Backend.LossFunction.JSON
+    Vehicle.Backend.LossFunction.LogicCompilation
+    Vehicle.Backend.LossFunction.TensorCompilation
     Vehicle.Backend.Prelude
     Vehicle.Backend.Queries.Error
     Vehicle.CommandLine
@@ -145,16 +144,19 @@ library
     Vehicle.Compile.Scope
     Vehicle.Compile.Simplify
     Vehicle.Compile.Type
-    Vehicle.Compile.Type.Subsystem.Standard
-    Vehicle.Data.BooleanExpr
-    Vehicle.Data.BuiltinInterface
-    Vehicle.Data.BuiltinInterface.ASTInterface
-    Vehicle.Data.BuiltinInterface.DSL
+    Vehicle.Data.Builtin.Interface
+    Vehicle.Data.Builtin.Loss
+    Vehicle.Data.Builtin.Standard
+    Vehicle.Data.Builtin.Tensor
     Vehicle.Data.DeBruijn
     Vehicle.Data.DSL
+    Vehicle.Data.Expr.Boolean
+    Vehicle.Data.Expr.DSL
+    Vehicle.Data.Expr.Interface
+    Vehicle.Data.Expr.Linear
+    Vehicle.Data.Expr.Normalised
+    Vehicle.Data.Expr.Standard
     Vehicle.Data.Hashing
-    Vehicle.Data.LinearExpr
-    Vehicle.Data.NormalisedExpr
     Vehicle.Data.Tensor
     Vehicle.Export
     Vehicle.Libraries
@@ -176,23 +178,16 @@ library
     Vehicle.Backend.Agda.CapitaliseTypeNames
     Vehicle.Backend.Agda.Compile
     Vehicle.Backend.Agda.Interact
+    Vehicle.Backend.LossFunction
+    Vehicle.Backend.LossFunction.Core
     Vehicle.Backend.LossFunction.Logics
     Vehicle.Backend.Queries
     Vehicle.Backend.Queries.ConstraintSearch
-    Vehicle.Backend.Queries.Error.Linearity
-    Vehicle.Backend.Queries.Error.Linearity.AnnotationRestrictions
-    Vehicle.Backend.Queries.Error.Linearity.Core
-    Vehicle.Backend.Queries.Error.Linearity.LinearitySolver
-    Vehicle.Backend.Queries.Error.Linearity.Type
-    Vehicle.Backend.Queries.Error.Polarity
-    Vehicle.Backend.Queries.Error.Polarity.AnnotationRestrictions
-    Vehicle.Backend.Queries.Error.Polarity.Core
-    Vehicle.Backend.Queries.Error.Polarity.PolaritySolver
-    Vehicle.Backend.Queries.Error.Polarity.Type
     Vehicle.Backend.Queries.PostProcessing
     Vehicle.Backend.Queries.UserVariableElimination
     Vehicle.Backend.Queries.UserVariableElimination.Core
     Vehicle.Backend.Queries.UserVariableElimination.EliminateExists
+    Vehicle.Backend.Queries.UserVariableElimination.EliminateIf
     Vehicle.Backend.Queries.UserVariableElimination.EliminateNot
     Vehicle.Backend.Queries.UserVariableElimination.FourierMotzkinElimination
     Vehicle.Backend.Queries.UserVariableElimination.Unblocking
@@ -232,12 +227,27 @@ library
     Vehicle.Compile.Type.Monad.Instance
     Vehicle.Compile.Type.Subsystem
     Vehicle.Compile.Type.Subsystem.InputOutputInsertion
-    Vehicle.Compile.Type.Subsystem.Standard.AnnotationRestrictions
-    Vehicle.Compile.Type.Subsystem.Standard.Core
-    Vehicle.Compile.Type.Subsystem.Standard.InstanceBuiltins
-    Vehicle.Compile.Type.Subsystem.Standard.InstanceDefaults
-    Vehicle.Compile.Type.Subsystem.Standard.Type
-    Vehicle.Data.RelevantExpr
+    Vehicle.Data.Builtin.Linearity
+    Vehicle.Data.Builtin.Linearity.AnnotationRestrictions
+    Vehicle.Data.Builtin.Linearity.Core
+    Vehicle.Data.Builtin.Linearity.Eval
+    Vehicle.Data.Builtin.Linearity.LinearitySolver
+    Vehicle.Data.Builtin.Linearity.Type
+    Vehicle.Data.Builtin.Loss.Core
+    Vehicle.Data.Builtin.Loss.Eval
+    Vehicle.Data.Builtin.Polarity
+    Vehicle.Data.Builtin.Polarity.AnnotationRestrictions
+    Vehicle.Data.Builtin.Polarity.Core
+    Vehicle.Data.Builtin.Polarity.Eval
+    Vehicle.Data.Builtin.Polarity.PolaritySolver
+    Vehicle.Data.Builtin.Polarity.Type
+    Vehicle.Data.Builtin.Standard.AnnotationRestrictions
+    Vehicle.Data.Builtin.Standard.Core
+    Vehicle.Data.Builtin.Standard.Eval
+    Vehicle.Data.Builtin.Standard.InstanceBuiltins
+    Vehicle.Data.Builtin.Standard.InstanceDefaults
+    Vehicle.Data.Builtin.Standard.Type
+    Vehicle.Data.Expr.Relevant
     Vehicle.Debug
     Vehicle.Prelude.IO
     Vehicle.Prelude.Logging.Class

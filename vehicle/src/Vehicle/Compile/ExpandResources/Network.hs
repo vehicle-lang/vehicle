@@ -10,9 +10,9 @@ import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Resource
-import Vehicle.Compile.Type.Subsystem.Standard
-import Vehicle.Data.BuiltinInterface.ASTInterface
-import Vehicle.Data.NormalisedExpr
+import Vehicle.Data.Builtin.Standard
+import Vehicle.Data.Expr.Interface
+import Vehicle.Data.Expr.Normalised
 import Vehicle.Verify.Core (NetworkContextInfo (..))
 
 --------------------------------------------------------------------------------
@@ -74,8 +74,8 @@ getNetworkType decl networkType = case normalised networkType of
       VFreeVar varIdent _ -> do
         implicitParameters <- getInferableParameterContext
         case Map.lookup varIdent implicitParameters of
-          Just Left {} -> throwError $ NetworkTypeHasImplicitSizeTensor decl networkType varIdent io
-          Just (Right (_, _, d)) -> return d
+          Just (_, _, Nothing) -> throwError $ NetworkTypeHasImplicitSizeTensor decl networkType varIdent io
+          Just (_, _, Just (_, _, d)) -> return d
           Nothing -> do
             explicitParameters <- getExplicitParameterContext
             case Map.lookup varIdent explicitParameters of

@@ -27,7 +27,7 @@ import Vehicle.Compile.Type.Meta.Set qualified as MetaSet (null, singleton)
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Data.DeBruijn
-import Vehicle.Data.NormalisedExpr
+import Vehicle.Data.Expr.Normalised
 
 --------------------------------------------------------------------------------
 -- Unification solver
@@ -162,10 +162,10 @@ solveSpine info args1 args2
 solveLam ::
   (MonadUnify builtin m) =>
   (ConstraintContext builtin, UnificationConstraintOrigin builtin) ->
-  (WHNFBinder builtin, Body 'WHNF builtin) ->
-  (WHNFBinder builtin, Body 'WHNF builtin) ->
+  (WHNFBinder builtin, WHNFClosure builtin) ->
+  (WHNFBinder builtin, WHNFClosure builtin) ->
   m (UnificationResult builtin)
-solveLam info@(ctx, origin) (binder1, WHNFBody env1 body1) (binder2, WHNFBody env2 body2) = do
+solveLam info@(ctx, origin) (binder1, WHNFClosure env1 body1) (binder2, WHNFClosure env2 body2) = do
   -- Unify binder constraints
   binderConstraint <- unify info (typeOf binder1, typeOf binder2)
 

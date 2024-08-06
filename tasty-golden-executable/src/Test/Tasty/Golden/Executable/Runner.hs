@@ -11,7 +11,7 @@ module Test.Tasty.Golden.Executable.Runner where
 import Control.Exception (throw)
 import Control.Monad (unless, when)
 import Control.Monad.Catch (MonadCatch (..), MonadMask, MonadThrow, handle)
-import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.State.Class (modify)
 import Control.Monad.State.Strict (MonadState (..), StateT (..), evalStateT, execStateT)
 import Control.Monad.Trans (MonadTrans (..))
@@ -239,7 +239,7 @@ writeGoldenStdout contents = TestT $ do
 -- NOTE: The loose equality must extend equality.
 diffStderr :: Maybe (Text -> Text -> Bool) -> Lazy.Text -> DiffTestIO ()
 diffStderr maybeLooseEq actual = do
-  golden <- lift $ readGoldenStderr
+  golden <- lift readGoldenStderr
   catch (lift $ lift $ diffText (shortCircuitWithEq maybeLooseEq) Nothing golden actual) $ \diff ->
     tell $ Just $ stderrDiffer diff
 
@@ -273,7 +273,7 @@ writeGoldenStderr contents = TestT $ do
 -- NOTE: The loose equality must extend equality.
 diffTestProduced :: Maybe (Text -> Text -> Bool) -> [FilePattern] -> IgnoreFiles -> SizeOnlyExtensions -> DiffTestIO ()
 diffTestProduced maybeLooseEq testProduces (IgnoreFiles testIgnores) sizeOnlyExtensions = do
-  TestEnvironment {testDirectory, tempDirectory} <- lift $ getTestEnvironment
+  TestEnvironment {testDirectory, tempDirectory} <- lift getTestEnvironment
   let shortCircuitLooseEq = shortCircuitWithEq maybeLooseEq
   let sizeOnlyExtensionsSet = toSizeOnlyExtensionsSet sizeOnlyExtensions
   -- Find the golden and actual files:
@@ -404,14 +404,17 @@ acceptTestProduced testProduces (IgnoreFiles testIgnores) = do
         modify $ \acceptState@AcceptState {..} ->
           acceptState {acceptTestSpec = acceptTestSpec {testSpecProduces = newTestSpecProduces}}
     maybe (return ()) throw maybeError
+
   -- If no errors occurred:
   -- Write the new test specification:
   when acceptTestSpecChanged $ do
-    let acceptTestSpecs =
-          TestSpecs
-            $ NonEmpty.prependList
-              otherTestSpecsBefore
+    let acceptTestSpecsList =
+          NonEmpty.prependList
+            otherTestSpecsBefore
             $ NonEmpty.appendList (NonEmpty.singleton acceptTestSpec) otherTestSpecsAfter
+    liftIO $ putStrLn "Hi2"
+    liftIO $ print acceptTestSpecsList
+    let acceptTestSpecs = TestSpecs acceptTestSpecsList
     lift $ writeTestSpecsFile (testDirectory </> testSpecsFileName) acceptTestSpecs
   -- Remove the outdated .golden files:
   lift $

@@ -3,7 +3,7 @@ module Vehicle.Verify.QueryFormat.VNNLib where
 import Control.Monad (forM)
 import Data.List.NonEmpty qualified as NonEmpty
 import Vehicle.Compile.Prelude
-import Vehicle.Data.LinearExpr
+import Vehicle.Data.Expr.Linear
 import Vehicle.Syntax.Builtin
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core

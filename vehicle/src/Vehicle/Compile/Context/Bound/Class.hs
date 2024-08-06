@@ -8,15 +8,14 @@ import Vehicle.Compile.Context.Bound.Core
 import Vehicle.Compile.Error (MonadCompile, lookupIxInBoundCtx, lookupLvInBoundCtx)
 import Vehicle.Compile.Normalise.Quote qualified as Quote (unnormalise)
 import Vehicle.Compile.Prelude
-import Vehicle.Data.BuiltinInterface (HasStandardData)
-import Vehicle.Data.NormalisedExpr
+import Vehicle.Data.Expr.Normalised
 
 --------------------------------------------------------------------------------
 -- Context monad class
 
 -- | A monad that is used to store the current context at a given point in a
 -- program, i.e. what declarations and bound variables are in scope.
-class (Monad m, HasStandardData builtin) => MonadBoundContext builtin m where
+class (Monad m) => MonadBoundContext builtin m where
   addBinderToContext :: Binder Ix builtin -> m a -> m a
   getBoundCtx :: Proxy builtin -> m (BoundCtx builtin)
 
@@ -63,9 +62,9 @@ getBoundVarByLv _ compilerPass lv =
   lookupLvInBoundCtx compilerPass lv =<< getBoundCtx (Proxy @builtin)
 
 unnormalise ::
-  forall strategy builtin m.
-  (MonadBoundContext builtin m) =>
-  Value strategy builtin ->
+  forall builtin m.
+  (MonadBoundContext builtin m, Show builtin) =>
+  WHNFValue builtin ->
   m (Expr Ix builtin)
 unnormalise e = do
   lv <- getCurrentLv (Proxy @builtin)

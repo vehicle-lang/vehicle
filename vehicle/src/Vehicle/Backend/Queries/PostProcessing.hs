@@ -22,8 +22,8 @@ import Data.Tuple (swap)
 import Vehicle.Backend.Queries.UserVariableElimination.Core
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Data.BooleanExpr
-import Vehicle.Data.LinearExpr
+import Vehicle.Data.Expr.Boolean
+import Vehicle.Data.Expr.Linear
 import Vehicle.Prelude.Warning (CompileWarning (..))
 import Vehicle.Syntax.Builtin
 import Vehicle.Verify.Core

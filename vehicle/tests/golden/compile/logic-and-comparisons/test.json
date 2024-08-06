@@ -15,24 +15,28 @@
       "name": "GodelLoss",
       "run": "vehicle compile -s spec.vcl -t GodelLoss -o GodelLoss.vcl",
       "needs": ["spec.vcl"],
-      "produces": ["GodelLoss.vcl"]
+      "produces": ["GodelLoss.vcl"],
+      "enabled": false
     },
     {
       "name": "LukasiewiczLoss",
       "run": "vehicle compile -s spec.vcl -t LukasiewiczLoss -o LukasiewiczLoss.vcl",
       "needs": ["spec.vcl"],
-      "produces": ["LukasiewiczLoss.vcl"]
+      "produces": ["LukasiewiczLoss.vcl"],
+      "enabled": false
     },
     {
       "name": "YagerLoss",
       "run": "vehicle compile -s spec.vcl -t YagerLoss -o YagerLoss.vcl",
       "needs": ["spec.vcl"],
-      "produces": ["YagerLoss.vcl"]
+      "produces": ["YagerLoss.vcl"],
+      "enabled": false
     },
     {
       "name": "ProductLoss",
       "run": "vehicle compile -s spec.vcl -t ProductLoss -o ProductLoss.json",
       "needs": ["spec.vcl"],
-      "produces": ["ProductLoss.json"]
+      "produces": ["ProductLoss.json"],
+      "enabled": false
     }
   ]

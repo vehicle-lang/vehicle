@@ -2,6 +2,7 @@
 
 module Test.Tasty.Golden.Executable.Error where
 
+import Control.Applicative ((<|>))
 import Control.Exception (Exception)
 import Data.List qualified as List (intercalate)
 import Data.Map.Strict (Map)
@@ -61,8 +62,8 @@ instance Semigroup ProducedFilesError where
   (<>) :: ProducedFilesError -> ProducedFilesError -> ProducedFilesError
   e1 <> e2 =
     ProducedFilesError
-      { stdoutDiff = maybe (stdoutDiff e2) Just (stdoutDiff e1),
-        stderrDiff = maybe (stderrDiff e2) Just (stderrDiff e1),
+      { stdoutDiff = stdoutDiff e1 <|> stdoutDiff e2,
+        stderrDiff = stderrDiff e1 <|> stderrDiff e2,
         expectedFilesNotProduced = expectedFilesNotProduced e1 <> expectedFilesNotProduced e2,
         producedFilesNotExpected = producedFilesNotExpected e1 <> producedFilesNotExpected e2,
         producedAndExpectedDiffs = producedAndExpectedDiffs e1 <> producedAndExpectedDiffs e2
@@ -87,6 +88,7 @@ instance Exception ProducedFilesError
 
 handleProducedFilesError :: ProducedFilesError -> IO Result
 handleProducedFilesError ProducedFilesError {..} = do
+  print stdoutDiff
   let message =
         unlines . catMaybes $
           [ case stderrDiff of
@@ -98,7 +100,7 @@ handleProducedFilesError ProducedFilesError {..} = do
             boolToMaybe (not $ null expectedFilesNotProduced) $
               printf "Did not produce expected files: %s" $
                 List.intercalate ", " (show <$> expectedFilesNotProduced),
-            boolToMaybe (not $ null expectedFilesNotProduced) $
+            boolToMaybe (not $ null producedFilesNotExpected) $
               printf "Did not expect produced files: %s" $
                 List.intercalate ", " (show <$> producedFilesNotExpected),
             boolToMaybe (not $ null producedAndExpectedDiffs) $

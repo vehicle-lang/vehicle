@@ -15,7 +15,6 @@ import Vehicle.Compile.Context.Free.Core
 import Vehicle.Compile.Error (MonadCompile, lookupInFreeCtx)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (PrintableBuiltin)
-import Vehicle.Data.BuiltinInterface (HasStandardData)
 import Vehicle.Prelude.IO qualified as VIO
 
 --------------------------------------------------------------------------------
@@ -84,7 +83,7 @@ instance (MonadStdIO m) => MonadStdIO (FreeContextT builtin m) where
 -- Context monad preservation
 
 instance
-  (PrintableBuiltin builtin, HasStandardData builtin, MonadCompile m) =>
+  (PrintableBuiltin builtin, MonadCompile m) =>
   MonadFreeContext builtin (FreeContextT builtin m)
   where
   addDeclEntryToContext entry@(decl, _) cont = FreeContextT $ do
@@ -103,7 +102,7 @@ instance
         Monad.unless (Map.null hiddenDecls) $ do
           developerError "Hiding stdlib-decls twice not allowed"
         let fnIdents = Set.map identifierOf fns
-        let unhiddenDecls = alterKeys fnIdents (first convertToPostulate) decls
+        let unhiddenDecls = alterKeys fnIdents (bimap convertToPostulate convertToPostulate) decls
         (unhiddenDecls, decls)
 
   getHiddenStdLibDecl _ fn = FreeContextT $ do

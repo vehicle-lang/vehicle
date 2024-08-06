@@ -14,14 +14,14 @@ import Data.ByteString.Lazy.Char8 (unpack)
 import Data.Coerce (coerce)
 import Data.List.NonEmpty qualified as NonEmpty (filter, toList)
 import Data.Maybe (mapMaybe)
-import Vehicle.Backend.LossFunction.Core
 import Vehicle.Compile.Arity
-import Vehicle.Compile.Descope (DescopeNamed (..))
+import Vehicle.Compile.Descope (descopeRelExprInEmptyCtx)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude (GenericBoundCtx, GenericFreeCtx, HasType (..), getExplicitArg)
 import Vehicle.Compile.Print
+import Vehicle.Data.Builtin.Tensor
 import Vehicle.Data.DeBruijn
-import Vehicle.Data.RelevantExpr
+import Vehicle.Data.Expr.Relevant
 import Vehicle.Prelude
 import Vehicle.Prelude.Logging.Class
 import Vehicle.Syntax.AST (Position (..), Provenance (..), UniverseLevel)
@@ -38,7 +38,7 @@ compileProgToJSON ::
 compileProgToJSON prog = do
   logCompilerPass MinDetail currentPass $ do
     jProg <- runReaderT (toJProg prog) mempty
-    let namedProg = descopeNamed jProg
+    let namedProg = fmapRelProg descopeRelExprInEmptyCtx jProg
     let json = toJSON namedProg
     return $ pretty $ unpack $ encodePretty' prettyJSONConfig json
 
@@ -248,5 +248,3 @@ showEntry e = do
 showExit :: (MonadJSON m) => JExpr Ix -> m ()
 showExit _e = do
   decrCallDepth
-
--- logDebug MaxDetail $ "tensor-exit: " <+> prettyVerbose e

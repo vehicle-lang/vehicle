@@ -8,7 +8,7 @@ import Data.Map qualified as Map
 import Vehicle.Compile.Context.Free (MonadFreeContext)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Data.NormalisedExpr
+import Vehicle.Data.Expr.Normalised
 import Vehicle.Syntax.Builtin (Builtin)
 import Vehicle.Verify.Core
 
@@ -22,7 +22,7 @@ type NetworkContext = Map Name NetworkContextInfo
 
 type InferableParameterEntry = (DeclProvenance, ExternalResource, Int)
 
-type InferableParameterContext = Map Identifier (Either Provenance InferableParameterEntry)
+type InferableParameterContext = Map Identifier (Provenance, GluedType Builtin, Maybe InferableParameterEntry)
 
 type ExplicitParameterContext = Map Identifier (WHNFValue Builtin)
 
@@ -63,9 +63,10 @@ noteInferableParameter ::
   (MonadExpandResources m) =>
   Provenance ->
   Identifier ->
+  GluedType Builtin ->
   m ()
-noteInferableParameter p ident =
-  modify (\(u, v, w) -> (u, Map.insert ident (Left p) v, w))
+noteInferableParameter p ident paramType =
+  modify (\(u, v, w) -> (u, Map.insert ident (p, paramType, Nothing) v, w))
 
 noteExplicitParameter ::
   (MonadExpandResources m) =>
@@ -78,10 +79,12 @@ noteExplicitParameter ident value =
 addPossibleInferableParameterSolution ::
   (MonadExpandResources m) =>
   Identifier ->
+  Provenance ->
+  GluedType Builtin ->
   InferableParameterEntry ->
   m ()
-addPossibleInferableParameterSolution ident entry =
-  modify (\(u, v, w) -> (u, Map.insert ident (Right entry) v, w))
+addPossibleInferableParameterSolution ident p declType entry =
+  modify (\(u, v, w) -> (u, Map.insert ident (p, declType, Just entry) v, w))
 
 addNetworkType ::
   (MonadExpandResources m) =>

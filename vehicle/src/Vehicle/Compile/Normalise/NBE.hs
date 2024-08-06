@@ -1,142 +1,184 @@
-{-# HLINT ignore "Use <|>" #-}
-{-# OPTIONS_GHC -Wno-orphans #-}
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-
 module Vehicle.Compile.Normalise.NBE
   ( MonadNorm,
+    EvaluableClosure (..),
+    FreeEnv,
     normalise,
     normaliseInEnv,
     normaliseInEmptyEnv,
     normaliseApp,
+    normaliseBuiltin,
     eval,
-    findInstanceArg,
-    evalBuiltin,
+    evalApp,
   )
 where
 
 import Data.Data (Proxy (..))
 import Data.List.NonEmpty as NonEmpty (toList)
 import Vehicle.Compile.Context.Bound.Class (MonadBoundContext (..))
-import Vehicle.Compile.Context.Free.Class (MonadFreeContext, getDecl)
+import Vehicle.Compile.Context.Free.Class (MonadFreeContext (getFreeCtx))
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.Builtin qualified as Builtin (evalBuiltin)
+import Vehicle.Compile.Normalise.Builtin (NormalisableBuiltin (..), filterOutIrrelevantArgs)
+import Vehicle.Compile.Normalise.Quote (QuoteClosure)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
-import Vehicle.Data.BuiltinInterface
-import Vehicle.Data.NormalisedExpr
+import Vehicle.Data.Builtin.Standard.Core (Builtin)
+import Vehicle.Data.Expr.Normalised
+
+-- import Control.Monad (when)
 
 -- NOTE: there is no evaluatation to NF in this file. To do it
 -- efficiently you should just evaluate to WHNF and then recursively
 -- evaluate as required.
 
+-----------------------------------------------------------------------------
+-- Specialised methods for when the normalised builtins is the same as the
+-- unnormalised builtins and has the standard set of datatypes.
+
 normalise ::
   forall builtin m.
-  (MonadBoundContext builtin m, MonadFreeContext builtin m) =>
+  (MonadNorm (WHNFClosure builtin) builtin m, MonadBoundContext builtin m, MonadFreeContext builtin m) =>
   Expr Ix builtin ->
   m (WHNFValue builtin)
 normalise e = do
   boundCtx <- getBoundCtx (Proxy @builtin)
-  let env = boundContextToEnv boundCtx
-  normaliseInEnv env e
+  let boundEnv = boundContextToEnv boundCtx
+  normaliseInEnv boundEnv e
 
 normaliseInEnv ::
-  (MonadFreeContext builtin m) =>
+  (MonadNorm (WHNFClosure builtin) builtin m, MonadFreeContext builtin m) =>
   WHNFBoundEnv builtin ->
   Expr Ix builtin ->
   m (WHNFValue builtin)
-normaliseInEnv = eval
+normaliseInEnv boundEnv expr = do
+  freeEnv <- freeEnvFromCtx
+  eval freeEnv boundEnv expr
 
 normaliseInEmptyEnv ::
-  (MonadFreeContext builtin m) =>
+  (MonadNorm (WHNFClosure builtin) builtin m, MonadFreeContext builtin m) =>
   Expr Ix builtin ->
   m (WHNFValue builtin)
 normaliseInEmptyEnv = normaliseInEnv mempty
 
 normaliseApp ::
-  (MonadFreeContext builtin m) =>
+  (MonadNorm (WHNFClosure builtin) builtin m, MonadFreeContext builtin m) =>
   WHNFValue builtin ->
   WHNFSpine builtin ->
   m (WHNFValue builtin)
-normaliseApp = evalApp
+normaliseApp fn spine = do
+  freeEnv <- freeEnvFromCtx
+  evalApp freeEnv fn spine
+
+normaliseBuiltin ::
+  (MonadNorm (WHNFClosure builtin) builtin m, MonadFreeContext builtin m) =>
+  builtin ->
+  WHNFSpine builtin ->
+  m (WHNFValue builtin)
+normaliseBuiltin b spine = do
+  freeEnv <- freeEnvFromCtx
+  evalBuiltin freeEnv b spine
+
+freeEnvFromCtx ::
+  forall builtin m.
+  (MonadFreeContext builtin m) =>
+  m (FreeEnv (WHNFClosure builtin) builtin)
+freeEnvFromCtx = do
+  ctx <- getFreeCtx (Proxy @builtin)
+  return $ fmap snd ctx
+
+-----------------------------------------------------------------------------
+-- Evaluation of closures
+
+class EvaluableClosure closure builtin where
+  formClosure ::
+    BoundEnv closure builtin ->
+    Expr Ix builtin ->
+    closure
+
+  evalClosure ::
+    (MonadNorm closure builtin m) =>
+    FreeEnv closure builtin ->
+    closure ->
+    (VBinder closure builtin, Value closure builtin) ->
+    m (Value closure builtin)
+
+instance EvaluableClosure (WHNFClosure builtin) builtin where
+  formClosure = WHNFClosure
+
+  evalClosure freeEnv (WHNFClosure env body) (binder, arg) = do
+    let newEnv = extendEnvWithDefined arg binder env
+    eval freeEnv newEnv body
 
 -----------------------------------------------------------------------------
 -- Evaluation
 
-type MonadNorm builtin m =
-  ( PrintableBuiltin builtin,
-    HasStandardData builtin,
-    MonadFreeContext builtin m
+type MonadNorm closure builtin m =
+  ( MonadCompile m,
+    EvaluableClosure closure builtin,
+    QuoteClosure closure Builtin,
+    NormalisableBuiltin builtin,
+    PrintableBuiltin builtin
   )
 
+type FreeEnv closure builtin = GenericFreeCtx (VDecl closure builtin)
+
 eval ::
-  (MonadNorm builtin m) =>
-  WHNFBoundEnv builtin ->
+  (MonadNorm closure builtin m) =>
+  FreeEnv closure builtin ->
+  BoundEnv closure builtin ->
   Expr Ix builtin ->
-  m (WHNFValue builtin)
-eval env expr = do
-  showEntry env expr
+  m (Value closure builtin)
+eval freeEnv boundEnv expr = do
+  showEntry boundEnv expr
   result <- case expr of
     Hole {} -> resolutionError currentPass "Hole"
     Meta _ m -> return $ VMeta m []
     Universe _ u -> return $ VUniverse u
+    BoundVar _ v -> lookupIxValueInEnv boundEnv v
+    FreeVar _ v -> lookupIdentValueInEnv freeEnv v
     Builtin _ b -> return $ VBuiltin b []
-    BoundVar _ v -> lookupIxValueInEnv env v
-    FreeVar _ v -> lookupIdentValueInEnv v
     Lam _ binder body -> do
-      binder' <- evalBinder env binder
-      return $ VLam binder' (WHNFBody env body)
+      binder' <- traverse (eval freeEnv boundEnv) binder
+      return $ VLam binder' (formClosure boundEnv body)
     Pi _ binder body -> do
-      binder' <- evalBinder env binder
-      let newEnv = extendEnvWithBound (Lv $ length env) binder' env
-      body' <- eval newEnv body
+      binder' <- traverse (eval freeEnv boundEnv) binder
+      let newBoundEnv = extendEnvWithBound (Lv $ length boundEnv) binder' boundEnv
+      body' <- eval freeEnv newBoundEnv body
       return $ VPi binder' body'
     Let _ bound binder body -> do
-      binder' <- evalBinder env binder
-      boundNormExpr <- eval env bound
-      let newEnv = extendEnvWithDefined boundNormExpr binder' env
-      eval newEnv body
+      binder' <- traverse (eval freeEnv boundEnv) binder
+      boundNormExpr <- eval freeEnv boundEnv bound
+      let newBoundEnv = extendEnvWithDefined boundNormExpr binder' boundEnv
+      eval freeEnv newBoundEnv body
     App fun args -> do
-      fun' <- eval env fun
-      args' <- traverse (traverse (eval env)) (NonEmpty.toList args)
-      evalApp fun' args'
+      fun' <- eval freeEnv boundEnv fun
+      args' <- traverse (traverse (eval freeEnv boundEnv)) (NonEmpty.toList args)
+      evalApp freeEnv fun' args'
 
-  showExit env result
+  showExit boundEnv result
   return result
 
-evalBinder ::
-  (MonadNorm builtin m) =>
-  WHNFBoundEnv builtin ->
-  Binder Ix builtin ->
-  m (WHNFBinder builtin)
-evalBinder env = traverse (eval env)
-
 evalApp ::
-  (MonadNorm builtin m) =>
-  WHNFValue builtin ->
-  WHNFSpine builtin ->
-  m (WHNFValue builtin)
-evalApp fun [] = return fun
-evalApp fun args@(a : as) = do
+  (MonadNorm closure builtin m) =>
+  FreeEnv closure builtin ->
+  Value closure builtin ->
+  Spine closure builtin ->
+  m (Value closure builtin)
+evalApp _freeEnv fun [] = return fun
+evalApp freeEnv fun args@(a : as) = do
   showApp fun args
   result <- case fun of
     VMeta v spine -> return $ VMeta v (spine <> args)
     VBoundVar v spine -> return $ VBoundVar v (spine <> args)
     VFreeVar v spine -> return $ VFreeVar v (spine <> args)
-    VLam binder (WHNFBody env body)
+    VBuiltin b spine -> evalBuiltin freeEnv b (spine <> args)
+    VLam binder closure
       | not (visibilityMatches binder a) ->
           visibilityError currentPass (prettyVerbose fun) (prettyVerbose args)
       | otherwise -> do
-          let newEnv = extendEnvWithDefined (argExpr a) binder env
-          body' <- eval newEnv body
+          body' <- evalClosure freeEnv closure (binder, argExpr a)
           case as of
             [] -> return body'
-            (b : bs) -> evalApp body' (b : bs)
-    VBuiltin b spine
-      | not (isTypeClassOp b) -> do
-          evalBuiltin b (spine <> args)
-      | otherwise -> do
-          (inst, remainingArgs) <- findInstanceArg b args
-          evalApp inst remainingArgs
+            (b : bs) -> evalApp freeEnv body' (b : bs)
     VUniverse {} -> unexpectedExprError currentPass ("VUniverse" <+> prettyVerbose args)
     VPi {} -> unexpectedExprError currentPass ("VPi" <+> prettyVerbose args)
 
@@ -144,28 +186,34 @@ evalApp fun args@(a : as) = do
   return result
 
 evalBuiltin ::
-  (MonadNorm builtin m) =>
+  (MonadNorm closure builtin m) =>
+  FreeEnv closure builtin ->
   builtin ->
-  WHNFSpine builtin ->
-  m (WHNFValue builtin)
-evalBuiltin b args = Builtin.evalBuiltin evalApp (VBuiltin b args)
+  Spine closure builtin ->
+  m (Value closure builtin)
+evalBuiltin freeEnv b args = do
+  let relArgs = filterOutIrrelevantArgs args
+  -- when (length relArgs /= length (spine <> args)) $ do
+  --   compilerDeveloperError $ "Bang" <> line <> prettyVerbose relArgs <> line <> prettyVerbose fun <> line <> prettyVerbose args <> line <> "Boom"
+  evalBuiltinApp (evalApp freeEnv) (VBuiltin b args) b relArgs
 
 lookupIdentValueInEnv ::
-  forall builtin m.
-  (MonadNorm builtin m) =>
+  forall closure builtin m.
+  (MonadNorm closure builtin m) =>
+  FreeEnv closure builtin ->
   Identifier ->
-  m (WHNFValue builtin)
-lookupIdentValueInEnv ident = do
-  decl <- getDecl (Proxy @builtin) currentPass ident
+  m (Value closure builtin)
+lookupIdentValueInEnv freeEnv ident = do
+  decl <- lookupInFreeCtx currentPass ident freeEnv
   return $ case bodyOf decl of
     Just value -> value
     _ -> VFreeVar ident []
 
 lookupIxValueInEnv ::
-  (MonadNorm builtin m) =>
-  WHNFBoundEnv builtin ->
+  (MonadNorm closure builtin m) =>
+  BoundEnv closure builtin ->
   Ix ->
-  m (WHNFValue builtin)
+  m (Value closure builtin)
 lookupIxValueInEnv boundEnv ix = do
   (_binder, value) <- lookupIxInBoundCtx currentPass ix boundEnv
   case value of
@@ -184,34 +232,28 @@ lookupIxValueInEnv boundEnv ix = do
 currentPass :: Doc ()
 currentPass = "normalisation by evaluation"
 
-showEntry :: (MonadNorm builtin m) => WHNFBoundEnv builtin -> Expr Ix builtin -> m ()
-showEntry _env _expr = do
-  -- logDebug MidDetail $ "nbe-entry" <+> prettyVerbose expr <+> "   { env=" <+> prettyVerbose env <+> "}"
-  -- logDebug MidDetail $ "nbe-entry" <+> prettyFriendly (WithContext expr (fmap fst env)) <+> "   { env=" <+> hang 0 (prettyVerbose env) <+> "}"
+showEntry :: (MonadNorm closure builtin m) => BoundEnv closure builtin -> Expr Ix builtin -> m ()
+showEntry _boundEnv _expr = do
+  -- logDebug MidDetail $ "nbe-entry" <+> prettyFriendly (WithContext expr (fmap fst boundEnv)) <+> "   { boundEnv=" <+> hang 0 (prettyVerbose boundEnv) <+> "}"
+  -- logDebug MidDetail $ "nbe-entry" <+> prettyVerbose expr -- <+> "   { boundEnv=" <+> prettyVerbose boundEnv <+> "}"
   -- incrCallDepth
   return ()
 
-showExit :: (MonadNorm builtin m) => WHNFBoundEnv builtin -> WHNFValue builtin -> m ()
-showExit _env _result = do
+showExit :: (MonadNorm closure builtin m) => BoundEnv closure builtin -> Value closure builtin -> m ()
+showExit _boundEnv _result = do
   -- decrCallDepth
   -- logDebug MidDetail $ "nbe-exit" <+> prettyVerbose result
-  -- logDebug MidDetail $ "nbe-exit" <+> prettyFriendly (WithContext result (fmap fst env))
+  -- logDebug MidDetail $ "nbe-exit" <+> prettyFriendly (WithContext result (fmap fst boundEnv))
   return ()
 
-showApp :: (MonadNorm builtin m) => WHNFValue builtin -> WHNFSpine builtin -> m ()
+showApp :: (MonadNorm closure builtin m) => Value closure builtin -> Spine closure builtin -> m ()
 showApp _fun _spine = do
   -- logDebug MaxDetail $ "nbe-app:" <+> prettyVerbose fun <+> "@" <+> prettyVerbose spine
   -- incrCallDepth
   return ()
 
-showAppExit :: (MonadNorm builtin m) => Value nf builtin -> m ()
+showAppExit :: (MonadNorm closure builtin m) => Value closure builtin -> m ()
 showAppExit _result = do
   -- decrCallDepth
   -- logDebug MaxDetail $ "nbe-app-exit:" <+> prettyVerbose result
   return ()
-
-findInstanceArg :: (MonadCompile m, Show op) => op -> [GenericArg a] -> m (a, [GenericArg a])
-findInstanceArg op = \case
-  (InstanceArg _ _ inst : xs) -> return (inst, xs)
-  (_ : xs) -> findInstanceArg op xs
-  [] -> compilerDeveloperError $ "Malformed type class operation:" <+> pretty (show op)

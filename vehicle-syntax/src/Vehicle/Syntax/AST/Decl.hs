@@ -92,6 +92,11 @@ isPropertyDecl = \case
   DefAbstract {} -> False
   DefFunction _ _ anns _ _ -> AnnProperty `elem` anns
 
+isAbstractDecl :: GenericDecl expr -> Bool
+isAbstractDecl = \case
+  DefAbstract {} -> True
+  DefFunction {} -> False
+
 --------------------------------------------------------------------------------
 -- Abstract definition types options
 

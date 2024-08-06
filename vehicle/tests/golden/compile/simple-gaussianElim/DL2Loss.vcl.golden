@@ -1,7 +1,7 @@
 @property;
-test1 : forallT (f : Tensor Rat -> Tensor Rat) . Tensor Bool;
-test1 f = Optimise[min] (*) (\ a -> max 0.0 (0.0 - a) + (if 0.0 == a then 1.0 else 0.0) + ReduceSum (f [a + 2.0] == [0.0]))
+test1 : (Tensor Rat -> Tensor Rat) -> Tensor Rat;
+test1 f = maximise (\ a -> max (const[ 0.0 ] nil) (const[ 0.0 ] nil - a) + (reduceSum (max (const[ 0.0 ] (1 :: nil)) (f [a + const[ 2.0 ] nil] - [const[ 0.0 ] nil]) + max (const[ 0.0 ] (1 :: nil)) ([const[ 0.0 ] nil] - f [a + const[ 2.0 ] nil])) + const[ 0.0 ] nil))
 
 @property;
-test2 : forallT (g : Tensor Rat -> Tensor Rat) . Tensor Bool;
-test2 g = Optimise[min] (*) (\ a -> Optimise[min] (*) (\ b -> max 0.0 (1.0 - a) + (if 1.0 == a then 1.0 else 0.0) + (max 0.0 (a - b) + (if a == b then 1.0 else 0.0) + ReduceSum (g [a + b, a + 2.0 * b] == [0.0]))))
+test2 : (Tensor Rat -> Tensor Rat) -> Tensor Rat;
+test2 g = maximise (\ a -> maximise (\ b -> max (const[ 0.0 ] nil) (const[ 1.0 ] nil - a) + (max (const[ 0.0 ] nil) (a - b) + (reduceSum (max (const[ 0.0 ] (1 :: nil)) (g [a + b, a + const[ 2.0 ] nil * b] - [const[ 0.0 ] nil]) + max (const[ 0.0 ] (1 :: nil)) ([const[ 0.0 ] nil] - g [a + b, a + const[ 2.0 ] nil * b])) + const[ 0.0 ] nil))))

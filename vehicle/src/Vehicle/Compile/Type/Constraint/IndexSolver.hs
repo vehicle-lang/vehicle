@@ -10,15 +10,14 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad
-import Vehicle.Data.BuiltinInterface
-import Vehicle.Data.BuiltinInterface.ASTInterface
-import Vehicle.Data.NormalisedExpr
+import Vehicle.Data.Expr.Interface
+import Vehicle.Data.Expr.Normalised
 import Vehicle.Syntax.Builtin
 
 solveIndexConstraint ::
-  forall builtin m.
-  (TCM builtin m, HasStandardTypes builtin) =>
-  WithContext (InstanceConstraint builtin) ->
+  forall m.
+  (TCM Builtin m) =>
+  WithContext (InstanceConstraint Builtin) ->
   m ()
 solveIndexConstraint constraint = do
   normConstraint@(WithContext (Resolve _ meta _ expr) ctx) <- substMetas constraint
@@ -43,10 +42,10 @@ solveIndexConstraint constraint = do
 -- This should eventually be refactored out so all are solved by instance
 -- search.
 solveInDomain ::
-  forall builtin m.
-  (TCM builtin m, HasStandardTypes builtin) =>
-  WithContext (InstanceConstraint builtin) ->
-  [WHNFType builtin] ->
+  forall m.
+  (TCM Builtin m) =>
+  WithContext (InstanceConstraint Builtin) ->
+  [WHNFType Builtin] ->
   m (Maybe MetaSet)
 solveInDomain c [value, typ] = case typ of
   (getNMeta -> Just {}) -> return $ blockOnMetas [typ]
@@ -68,7 +67,7 @@ solveInDomain c [value, typ] = case typ of
     ctx = contextOf c
 solveInDomain c _ = malformedConstraintError c
 
-blockOnMetas :: [WHNFValue builtin] -> Maybe MetaSet
+blockOnMetas :: [WHNFValue Builtin] -> Maybe MetaSet
 blockOnMetas args = do
   let metas = mapMaybe getNMeta args
   if null metas
@@ -76,15 +75,15 @@ blockOnMetas args = do
     else Just (MetaSet.fromList metas)
 
 findLowerBound ::
-  forall m builtin.
-  (TCM builtin m, HasStandardData builtin) =>
-  ConstraintContext builtin ->
-  WHNFType builtin ->
-  WHNFType builtin ->
+  forall m.
+  (TCM Builtin m) =>
+  ConstraintContext Builtin ->
+  WHNFType Builtin ->
+  WHNFType Builtin ->
   m (MetaSet, Int)
 findLowerBound ctx value indexSize = go indexSize
   where
-    go :: WHNFType builtin -> m (MetaSet, Int)
+    go :: WHNFType Builtin -> m (MetaSet, Int)
     go = \case
       VMeta m _ ->
         return (MetaSet.singleton m, 0)

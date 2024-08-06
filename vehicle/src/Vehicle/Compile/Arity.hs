@@ -1,11 +1,11 @@
 module Vehicle.Compile.Arity where
 
-import Vehicle.Data.NormalisedExpr
+import Vehicle.Data.Expr.Normalised
 import Vehicle.Syntax.AST
 
 type Arity = Int
 
-arityFromVType :: Value strategy builtin -> Arity
+arityFromVType :: Value closure builtin -> Arity
 arityFromVType = \case
   VPi _ r -> 1 + arityFromVType r
   _ -> 0

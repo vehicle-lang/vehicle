@@ -21,14 +21,14 @@ import Prettyprinter hiding (hcat, hsep, vcat, vsep)
 import System.FilePath (takeBaseName)
 import Vehicle.Backend.Agda.CapitaliseTypeNames (capitaliseTypeNames)
 import Vehicle.Backend.Prelude
-import Vehicle.Compile.Descope (descopeNamed)
+import Vehicle.Compile.Descope (descopeExprInEmptyCtx)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Monomorphisation
-import Vehicle.Compile.Normalise.NBE (findInstanceArg)
+import Vehicle.Compile.Normalise.Builtin (findInstanceArg)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
-import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Data.BuiltinInterface.ASTInterface
+import Vehicle.Data.Builtin.Standard.Core
+import Vehicle.Data.Expr.Interface
 import Vehicle.Libraries.StandardLibrary.Definitions
 import Vehicle.Syntax.Sugar
 
@@ -46,7 +46,7 @@ compileProgToAgda prog options = logCompilerPass MinDetail currentPhase $
   flip runReaderT (options, BoolLevel) $ do
     monoProg <- monomorphise isPropertyDecl "-" prog
     let prog2 = capitaliseTypeNames monoProg
-    let prog3 = descopeNamed prog2
+    let prog3 = fmap descopeExprInEmptyCtx prog2
     programDoc <- compileProg prog3
     let programStream = layoutPretty defaultLayoutOptions programDoc
     -- Collects dependencies by first discarding precedence info and then
@@ -591,7 +591,6 @@ compileBuiltin _p b args = case b of
             (Set.singleton DataBool, 0)
             ("if" <+> ce1 <+> "then" <+> ce2 <+> "else" <+> ce3)
       _ -> unsupportedArgsError
-    Optimise {} -> unsupportedError
   NatInDomainConstraint -> unsupportedError
   where
     unsupportedError :: (MonadAgdaCompile m) => m a

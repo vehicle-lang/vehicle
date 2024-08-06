@@ -26,15 +26,15 @@ import Data.Text (Text)
 import GHC.TypeLits (ErrorMessage (..), TypeError)
 import Prettyprinter (list)
 import Vehicle.Compile.Descope
-import Vehicle.Compile.Normalise.Quote (unnormalise)
+import Vehicle.Compile.Normalise.Quote (QuoteClosure, unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Simplify
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
-import Vehicle.Compile.Type.Subsystem.Standard.Core
-import Vehicle.Data.BooleanExpr
-import Vehicle.Data.BuiltinInterface
-import Vehicle.Data.NormalisedExpr
+import Vehicle.Data.Builtin.Interface
+import Vehicle.Data.Builtin.Standard.Core
+import Vehicle.Data.Expr.Boolean
+import Vehicle.Data.Expr.Normalised
 import Vehicle.Syntax.Print
 
 --------------------------------------------------------------------------------
@@ -103,9 +103,9 @@ data Tags
 data Strategy
   = PrintAs VehicleLang
   | ConvertBuiltins Strategy
+  | QuoteValue Strategy
   | DescopeNaively Strategy
   | DescopeWithNames Strategy
-  | Denormalise Strategy
   | DiscardConstraintCtx Strategy
   | KeepConstraintCtx Strategy
   | UninsertArgsAndBinders Strategy
@@ -117,79 +117,91 @@ data Strategy
 
 -- | This type family computes the correct printing strategy given the tags
 -- and the type of the expression.
-type family StrategyFor (tags :: Tags) a :: Strategy where
+type family StrategyFor (tags :: Tags) a :: Strategy where --------------------
+-- Generic syntax --
+--------------------
+-- The strategy for printing `Arg`, `Binder` is just the same strategy as to print the expressions they contain.
+  StrategyFor tags (GenericArg expr) = StrategyFor tags expr
+  StrategyFor tags (GenericBinder expr) = StrategyFor tags expr
+  StrategyFor tags (Contextualised (GenericArg expr) NamedBoundCtx) = StrategyFor tags (Contextualised expr NamedBoundCtx)
+  StrategyFor tags (Contextualised (GenericBinder expr) NamedBoundCtx) = StrategyFor tags (Contextualised expr NamedBoundCtx)
+  ----------
+  -- Expr --
+  ----------
   -- To convert any named representation to the target language, simply convert it.
   StrategyFor ('As lang) (Prog Name Builtin) = 'PrintAs lang
   StrategyFor ('As lang) (Decl Name Builtin) = 'PrintAs lang
   StrategyFor ('As lang) (Expr Name Builtin) = 'PrintAs lang
-  StrategyFor ('As lang) (Arg Name Builtin) = 'PrintAs lang
-  StrategyFor ('As lang) (Binder Name Builtin) = 'PrintAs lang
-  -- To print a DB expr in an unnamed representation, simply naively descope.
-  StrategyFor ('Unnamed tags) (Prog Ix builtin) = 'DescopeNaively (StrategyFor tags (Prog Name builtin))
-  StrategyFor ('Unnamed tags) (Decl Ix builtin) = 'DescopeNaively (StrategyFor tags (Decl Name builtin))
-  StrategyFor ('Unnamed tags) (Expr Ix builtin) = 'DescopeNaively (StrategyFor tags (Expr Name builtin))
-  StrategyFor ('Unnamed tags) (Arg Ix builtin) = 'DescopeNaively (StrategyFor tags (Arg Name builtin))
-  StrategyFor ('Unnamed tags) (Binder Ix builtin) = 'DescopeNaively (StrategyFor tags (Binder Name builtin))
-  -- To print a normalised expr in an unnamed representation, simply naively descope.
-  StrategyFor ('Unnamed tags) (Value strategy builtin) = 'DescopeNaively (StrategyFor tags (Expr Name builtin))
-  StrategyFor ('Unnamed tags) (VArg strategy builtin) = 'DescopeNaively (StrategyFor tags (Arg Name builtin))
-  StrategyFor ('Unnamed tags) (VBinder strategy builtin) = 'DescopeNaively (StrategyFor tags (Binder Name builtin))
-  StrategyFor tags (BoundEnvValue 'WHNF builtin) = StrategyFor tags (WHNFValue builtin)
-  StrategyFor tags (GenericBinder ()) = 'Pretty
-  -- To standardise builtins
-  StrategyFor ('StandardiseBuiltin tags) (Prog Name builtin) = 'ConvertBuiltins (StrategyFor tags (Prog Name Builtin))
-  StrategyFor ('StandardiseBuiltin tags) (Decl Name builtin) = 'ConvertBuiltins (StrategyFor tags (Decl Name Builtin))
-  StrategyFor ('StandardiseBuiltin tags) (Expr Name builtin) = 'ConvertBuiltins (StrategyFor tags (Expr Name Builtin))
-  StrategyFor ('StandardiseBuiltin tags) (Arg Name builtin) = 'ConvertBuiltins (StrategyFor tags (Arg Name Builtin))
-  StrategyFor ('StandardiseBuiltin tags) (Binder Name builtin) = 'ConvertBuiltins (StrategyFor tags (Binder Name Builtin))
-  -- To convert an expression using a named representation to a named representation is a no-op.
+  -- To convert an expression from a `Name` representation to a `Name` representation is a no-op.
   StrategyFor ('Named tags) (Prog Name builtin) = StrategyFor tags (Prog Name builtin)
   StrategyFor ('Named tags) (Decl Name builtin) = StrategyFor tags (Decl Name builtin)
   StrategyFor ('Named tags) (Expr Name builtin) = StrategyFor tags (Expr Name builtin)
-  StrategyFor ('Named tags) (Arg Name builtin) = StrategyFor tags (Arg Name builtin)
-  StrategyFor ('Named tags) (Binder Name builtin) = StrategyFor tags (Binder Name builtin)
-  -- To convert a closed expression using a DB representation but whose missing names have been supplied
-  -- to a named representation, perform the Checked to named conversion. For expressions, args, binders
-  -- we need to have the context in scope.
-  StrategyFor ('Named tags) (Prog Ix builtin) = 'DescopeWithNames (StrategyFor tags (Prog Name Builtin))
-  StrategyFor ('Named tags) (Decl Ix builtin) = 'DescopeWithNames (StrategyFor tags (Decl Name Builtin))
-  StrategyFor ('Named tags) (Contextualised (Expr Ix builtin) NamedBoundCtx) = 'DescopeWithNames (StrategyFor tags (Expr Name Builtin))
-  StrategyFor ('Named tags) (Contextualised (Arg Ix builtin) NamedBoundCtx) = 'DescopeWithNames (StrategyFor tags (Arg Name Builtin))
-  StrategyFor ('Named tags) (Contextualised (Binder Ix builtin) NamedBoundCtx) = 'DescopeWithNames (StrategyFor tags (Binder Name Builtin))
-  -- To convert a named normalised expr, first denormalise to a checked expr.
-  StrategyFor ('Named tags) (Contextualised (Value strategy builtin) NamedBoundCtx) = 'Denormalise (StrategyFor ('Named tags) (Contextualised (Expr Ix builtin) NamedBoundCtx))
-  -- Things that we just pretty print.
-  StrategyFor tags Int = 'Pretty
-  StrategyFor tags Text = 'Pretty
-  StrategyFor tags (Contextualised Text ctx) = StrategyFor tags Text
+  -- To convert an expression using a Ix representation but whose missing names have been supplied
+  -- to a named representation.
+  StrategyFor ('Named tags) (Prog Ix builtin) = StrategyFor ('Named tags) (Contextualised (Expr Ix builtin) NamedBoundCtx)
+  StrategyFor ('Named tags) (Decl Ix builtin) = StrategyFor ('Named tags) (Contextualised (Expr Ix builtin) NamedBoundCtx)
+  StrategyFor ('Named tags) (Contextualised (Expr Ix builtin) NamedBoundCtx) = 'DescopeWithNames (StrategyFor tags (Expr Name builtin))
+  -- To print a DB expr in an unnamed representation, simply naively descope.
+  StrategyFor ('Unnamed tags) (Prog Ix builtin) = 'DescopeNaively (StrategyFor tags (Expr Name builtin))
+  StrategyFor ('Unnamed tags) (Decl Ix builtin) = 'DescopeNaively (StrategyFor tags (Expr Name builtin))
+  StrategyFor ('Unnamed tags) (Expr Ix builtin) = 'DescopeNaively (StrategyFor tags (Expr Name builtin))
+  -- To standardise builtins
+  StrategyFor ('StandardiseBuiltin tags) (Prog var builtin) = 'ConvertBuiltins (StrategyFor tags (Prog var Builtin))
+  StrategyFor ('StandardiseBuiltin tags) (Decl var builtin) = 'ConvertBuiltins (StrategyFor tags (Decl var Builtin))
+  StrategyFor ('StandardiseBuiltin tags) (Expr var builtin) = 'ConvertBuiltins (StrategyFor tags (Expr var Builtin))
+  -----------
+  -- Value --
+  -----------
+  -- To print a `Value` we need to quote it first. Note that we convert it to a `Builtin` representation immediately
+  StrategyFor ('Unnamed tags) (Value closure builtin) = 'QuoteValue (StrategyFor ('Unnamed tags) (Expr Ix Builtin))
+  StrategyFor ('Named tags) (VDecl closure builtin) = StrategyFor ('Named tags) (Contextualised (Value closure builtin) NamedBoundCtx)
+  StrategyFor ('Named tags) (Contextualised (Value closure builtin) NamedBoundCtx) = 'QuoteValue (StrategyFor ('Named tags) (Contextualised (Expr Ix Builtin) NamedBoundCtx))
+  StrategyFor ('Unnamed tags) (BoundEnvValue closure builtin) = StrategyFor ('Unnamed tags) (Value closure builtin)
+  -----------
+  -- State --
+  -----------
   -- Objects for which we want to block the strategy computation on.
-  StrategyFor ('Named tags) (Contextualised (Constraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised (WHNFValue Builtin) NamedBoundCtx))
-  StrategyFor ('Named tags) (Contextualised (InstanceConstraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised (WHNFValue Builtin) NamedBoundCtx))
-  StrategyFor ('Named tags) (Contextualised (UnificationConstraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised (WHNFValue Builtin) NamedBoundCtx))
-  StrategyFor tags (Contextualised (Constraint builtin) (ConstraintContext builtin)) = 'DiscardConstraintCtx (StrategyFor tags (WHNFValue Builtin))
-  StrategyFor tags (Contextualised (InstanceConstraint builtin) (ConstraintContext builtin)) = 'DiscardConstraintCtx (StrategyFor tags (WHNFValue Builtin))
-  StrategyFor tags (Contextualised (UnificationConstraint builtin) (ConstraintContext builtin)) = 'DiscardConstraintCtx (StrategyFor tags (WHNFValue Builtin))
-  StrategyFor tags (MetaMap a) = 'Opaque (StrategyFor tags a)
-  -- Simplification
-  StrategyFor ('Uninserted tags) a = 'UninsertArgsAndBinders (StrategyFor tags a)
-  StrategyFor ('ShortVectors tags) a = 'ShortenVectors (StrategyFor tags a)
-  -- Things were we just print the structure and recursively print through.
+  StrategyFor ('Named tags) (Contextualised (Constraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised (WHNFValue builtin) NamedBoundCtx))
+  StrategyFor ('Named tags) (Contextualised (InstanceConstraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised (WHNFValue builtin) NamedBoundCtx))
+  StrategyFor ('Named tags) (Contextualised (UnificationConstraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised (WHNFValue builtin) NamedBoundCtx))
+  StrategyFor ('Unnamed tags) (Contextualised (Constraint builtin) (ConstraintContext builtin)) = 'DiscardConstraintCtx (StrategyFor ('Unnamed tags) (WHNFValue builtin))
+  StrategyFor ('Unnamed tags) (Contextualised (InstanceConstraint builtin) (ConstraintContext builtin)) = 'DiscardConstraintCtx (StrategyFor ('Unnamed tags) (WHNFValue builtin))
+  StrategyFor ('Unnamed tags) (Contextualised (UnificationConstraint builtin) (ConstraintContext builtin)) = 'DiscardConstraintCtx (StrategyFor ('Unnamed tags) (WHNFValue builtin))
+  --------------------------------
+  -- Distributing over functors --
+  --------------------------------
+  -- Contextualised functors
+  StrategyFor tags (Contextualised (a, b) ctx) = 'MapTuple2 (StrategyFor tags (Contextualised a ctx)) (StrategyFor tags (Contextualised b ctx))
+  StrategyFor tags (Contextualised [a] ctx) = StrategyFor tags [Contextualised a ctx]
+  StrategyFor tags (Contextualised (Maybe a) ctx) = StrategyFor tags (Maybe (Contextualised a ctx))
+  StrategyFor tags (Contextualised (ConjunctAll a) ctx) = StrategyFor tags (ConjunctAll (Contextualised a ctx))
+  -- StrategyFor tags (Contextualised Text ctx) = StrategyFor tags Text
+  -- Plain functors
   StrategyFor tags (a, b) = 'MapTuple2 (StrategyFor tags a) (StrategyFor tags b)
   StrategyFor tags (a, b, c) = 'MapTuple3 (StrategyFor tags a) (StrategyFor tags b) (StrategyFor tags c)
-  StrategyFor tags (IntMap a) = 'Opaque (StrategyFor tags a)
   StrategyFor tags [a] = 'Opaque (StrategyFor tags a)
   StrategyFor tags (Maybe a) = 'Opaque (StrategyFor tags a)
   StrategyFor tags (ConjunctAll a) = 'Opaque (StrategyFor tags a)
   StrategyFor tags (DisjunctAll a) = 'Opaque (StrategyFor tags a)
   StrategyFor tags (MaybeTrivial a) = 'Opaque (StrategyFor tags a)
-  StrategyFor tags (Contextualised (a, b) ctx) =
-    'MapTuple2 (StrategyFor tags (Contextualised a ctx)) (StrategyFor tags (Contextualised b ctx))
-  StrategyFor tags (Contextualised [a] ctx) =
-    StrategyFor tags [Contextualised a ctx]
-  StrategyFor tags (Contextualised (Maybe a) ctx) =
-    StrategyFor tags (Maybe (Contextualised a ctx))
-  StrategyFor tags (Contextualised (ConjunctAll a) ctx) =
-    StrategyFor tags (ConjunctAll (Contextualised a ctx))
+  StrategyFor tags (IntMap a) = 'Opaque (StrategyFor tags a)
+  StrategyFor tags (MetaMap a) = 'Opaque (StrategyFor tags a)
+  --------------------
+  -- Simplification --
+  --------------------
+  StrategyFor ('Uninserted tags) a = 'UninsertArgsAndBinders (StrategyFor tags a)
+  StrategyFor ('ShortVectors tags) a = 'ShortenVectors (StrategyFor tags a)
+  ------------
+  -- Pretty --
+  ------------
+  -- Things that we just pretty print.
+  StrategyFor tags () = 'Pretty
+  StrategyFor tags Int = 'Pretty
+  StrategyFor tags Text = 'Pretty
+  -- StrategyFor tags (GenericBinder ()) = 'Pretty
+  ----------------
+  -- Error case --
+  ----------------
   -- Otherwise if we cannot compute an error then throw an informative error
   -- at type-checking time.
   StrategyFor tags a =
@@ -263,93 +275,85 @@ instance
   (PrintableBuiltin builtin, PrettyUsing rest (Prog Name Builtin)) =>
   PrettyUsing ('ConvertBuiltins rest) (Prog Name builtin)
   where
-  prettyUsing = prettyUsing @rest . fmap convertExprBuiltins
+  prettyUsing = prettyUsing @rest . fmap (convertExprBuiltins @builtin @Builtin)
 
 instance
   (PrintableBuiltin builtin, PrettyUsing rest (Decl Name Builtin)) =>
   PrettyUsing ('ConvertBuiltins rest) (Decl Name builtin)
   where
-  prettyUsing = prettyUsing @rest . fmap convertExprBuiltins
+  prettyUsing = prettyUsing @rest . fmap (convertExprBuiltins @builtin @Builtin)
 
 instance
   (PrintableBuiltin builtin, PrettyUsing rest (Expr Name Builtin)) =>
   PrettyUsing ('ConvertBuiltins rest) (Expr Name builtin)
   where
-  prettyUsing = prettyUsing @rest . convertExprBuiltins
+  prettyUsing = prettyUsing @rest . (convertExprBuiltins @builtin @Builtin)
 
 instance
   (PrintableBuiltin builtin, PrettyUsing rest (Arg Name Builtin)) =>
   PrettyUsing ('ConvertBuiltins rest) (Arg Name builtin)
   where
-  prettyUsing = prettyUsing @rest . fmap convertExprBuiltins
+  prettyUsing = prettyUsing @rest . fmap (convertExprBuiltins @builtin @Builtin)
 
 instance
   (PrintableBuiltin builtin, PrettyUsing rest (Binder Name Builtin)) =>
   PrettyUsing ('ConvertBuiltins rest) (Binder Name builtin)
   where
-  prettyUsing = prettyUsing @rest . fmap convertExprBuiltins
-
-convertExprBuiltins ::
-  forall builtin var.
-  (PrintableBuiltin builtin, Show var) =>
-  Expr var builtin ->
-  Expr var Builtin
-convertExprBuiltins = mapBuiltins $ \p b args ->
-  normAppList (convertBuiltin p b) args
+  prettyUsing = prettyUsing @rest . fmap (convertExprBuiltins @builtin @Builtin)
 
 --------------------------------------------------------------------------------
 -- Convert closed terms from DeBruijn representation to named representation naively
 
-instance (PrettyUsing rest (Prog Name builtin)) => PrettyUsing ('DescopeNaively rest) (Prog Ix builtin) where
-  prettyUsing = prettyUsing @rest . descopeNaive
+instance (PrettyUsing rest (Prog Name builtin), PrintableBuiltin builtin) => PrettyUsing ('DescopeNaively rest) (Prog Ix builtin) where
+  prettyUsing prog = prettyUsing @rest $ fmap descopeExprNaively prog
 
-instance (PrettyUsing rest (Decl Name builtin)) => PrettyUsing ('DescopeNaively rest) (Decl Ix builtin) where
-  prettyUsing = prettyUsing @rest . descopeNaive
+instance (PrettyUsing rest (Decl Name builtin), PrintableBuiltin builtin) => PrettyUsing ('DescopeNaively rest) (Decl Ix builtin) where
+  prettyUsing decl = prettyUsing @rest $ fmap descopeExprNaively decl
 
-instance (PrettyUsing rest (Expr Name builtin)) => PrettyUsing ('DescopeNaively rest) (Expr Ix builtin) where
-  prettyUsing = prettyUsing @rest . descopeNaive
+instance (PrettyUsing rest (Expr Name builtin), PrintableBuiltin builtin) => PrettyUsing ('DescopeNaively rest) (Expr Ix builtin) where
+  prettyUsing = prettyUsing @rest . descopeExprNaively
 
-instance (PrettyUsing rest (Arg Name builtin)) => PrettyUsing ('DescopeNaively rest) (Arg Ix builtin) where
-  prettyUsing = prettyUsing @rest . descopeNaive
+instance (PrettyUsing rest (Arg Name builtin), PrintableBuiltin builtin) => PrettyUsing ('DescopeNaively rest) (Arg Ix builtin) where
+  prettyUsing arg = prettyUsing @rest $ fmap descopeExprNaively arg
 
-instance (PrettyUsing rest (Binder Name builtin)) => PrettyUsing ('DescopeNaively rest) (Binder Ix builtin) where
-  prettyUsing = prettyUsing @rest . descopeNaive
+instance (PrettyUsing rest (Binder Name builtin), PrintableBuiltin builtin) => PrettyUsing ('DescopeNaively rest) (Binder Ix builtin) where
+  prettyUsing binder = prettyUsing @rest $ fmap descopeExprNaively binder
 
-instance (PrettyUsing rest (Expr Name builtin)) => PrettyUsing ('DescopeNaively rest) (Value strategy builtin) where
-  prettyUsing = prettyUsing @rest . descopeNaive
+instance (PrettyUsing rest (Expr Name builtin), PrintableBuiltin builtin, DescopableClosure closure builtin) => PrettyUsing ('DescopeNaively rest) (Value closure builtin) where
+  prettyUsing = prettyUsing @rest . descopeValueNaively
 
-instance (PrettyUsing rest (Arg Name builtin)) => PrettyUsing ('DescopeNaively rest) (VArg strategy builtin) where
-  prettyUsing = prettyUsing @rest . descopeNaive
+instance (PrettyUsing rest (Arg Name builtin), PrintableBuiltin builtin, DescopableClosure closure builtin) => PrettyUsing ('DescopeNaively rest) (VArg closure builtin) where
+  prettyUsing arg = prettyUsing @rest $ fmap descopeValueNaively arg
 
-instance (PrettyUsing rest (Binder Name builtin)) => PrettyUsing ('DescopeNaively rest) (VBinder strategy builtin) where
-  prettyUsing = prettyUsing @rest . descopeNaive
+instance (PrettyUsing rest (Binder Name builtin), PrintableBuiltin builtin, DescopableClosure closure builtin) => PrettyUsing ('DescopeNaively rest) (VBinder closure builtin) where
+  prettyUsing binder = prettyUsing @rest $ fmap descopeValueNaively binder
 
 --------------------------------------------------------------------------------
 -- Convert open terms from DeBruijn representation to named representation
 
-instance (PrettyUsing rest (Prog Name builtin)) => PrettyUsing ('DescopeWithNames rest) (Prog Ix builtin) where
-  prettyUsing = prettyUsing @rest . descopeNamed
+instance (PrettyUsing rest (Prog Name builtin), PrintableBuiltin builtin) => PrettyUsing ('DescopeWithNames rest) (Prog Ix builtin) where
+  prettyUsing prog = prettyUsing @rest $ fmap descopeExprInEmptyCtx prog
 
-instance (PrettyUsing rest (Decl Name builtin)) => PrettyUsing ('DescopeWithNames rest) (Decl Ix builtin) where
-  prettyUsing = prettyUsing @rest . descopeNamed
+instance (PrettyUsing rest (Decl Name builtin), PrintableBuiltin builtin) => PrettyUsing ('DescopeWithNames rest) (Decl Ix builtin) where
+  prettyUsing decl = prettyUsing @rest $ fmap descopeExprInEmptyCtx decl
 
 instance
-  (PrettyUsing rest (Expr Name builtin)) =>
+  (PrettyUsing rest (Expr Name builtin), PrintableBuiltin builtin) =>
   PrettyUsing ('DescopeWithNames rest) (Contextualised (Expr Ix builtin) NamedBoundCtx)
   where
-  prettyUsing e = prettyUsing @rest $ descopeNamed e
+  prettyUsing e = prettyUsing @rest $ descopeExpr e
 
 instance
-  (PrettyUsing rest (Arg Name builtin)) =>
+  (PrettyUsing rest (Arg Name builtin), PrintableBuiltin builtin) =>
   PrettyUsing ('DescopeWithNames rest) (Contextualised (Arg Ix builtin) NamedBoundCtx)
   where
-  prettyUsing e = prettyUsing @rest $ descopeNamed e
+  prettyUsing (WithContext e ctx) = prettyUsing @rest $ fmap (\a -> descopeExpr (WithContext a ctx)) e
 
 instance
-  (PrettyUsing rest (Binder Name builtin)) =>
+  (PrettyUsing rest (Binder Name builtin), PrintableBuiltin builtin) =>
   PrettyUsing ('DescopeWithNames rest) (Contextualised (Binder Ix builtin) NamedBoundCtx)
   where
-  prettyUsing e = prettyUsing @rest $ descopeNamed e
+  prettyUsing (WithContext e ctx) = prettyUsing @rest $ fmap (\a -> descopeExpr (WithContext a ctx)) e
 
 --------------------------------------------------------------------------------
 -- Simplification
@@ -428,23 +432,47 @@ instance
 -- Instances for normalised types
 
 instance
-  (Show builtin, PrettyUsing rest (Contextualised (Expr Ix builtin) NamedBoundCtx)) =>
-  PrettyUsing ('Denormalise rest) (Contextualised (Value strategy builtin) NamedBoundCtx)
+  (PrettyUsing rest (Expr Ix Builtin), PrintableBuiltin builtin, QuoteClosure closure Builtin) =>
+  PrettyUsing ('QuoteValue rest) (Value closure builtin)
+  where
+  prettyUsing e = prettyUsing @rest $ unnormalise @(Value closure builtin) @(Expr Ix Builtin) 0 e
+
+instance
+  (PrettyUsing rest (Arg Ix Builtin), PrintableBuiltin builtin, QuoteClosure closure Builtin) =>
+  PrettyUsing ('QuoteValue rest) (VArg closure builtin)
+  where
+  prettyUsing e = prettyUsing @rest $ fmap (unnormalise @(Value closure builtin) @(Expr Ix Builtin) 0) e
+
+instance
+  (PrettyUsing rest (Binder Ix Builtin), PrintableBuiltin builtin, QuoteClosure closure Builtin) =>
+  PrettyUsing ('QuoteValue rest) (VBinder closure builtin)
+  where
+  prettyUsing e = prettyUsing @rest $ fmap (unnormalise @(Value closure builtin) @(Expr Ix Builtin) 0) e
+
+instance
+  (PrettyUsing rest (Decl Ix Builtin), PrintableBuiltin builtin, QuoteClosure closure Builtin) =>
+  PrettyUsing ('QuoteValue rest) (VDecl closure builtin)
+  where
+  prettyUsing e = prettyUsing @rest $ fmap (unnormalise @(Value closure builtin) @(Expr Ix Builtin) 0) e
+
+instance
+  (PrettyUsing rest (Contextualised (Expr Ix Builtin) NamedBoundCtx), PrintableBuiltin builtin, QuoteClosure closure Builtin) =>
+  PrettyUsing ('QuoteValue rest) (Contextualised (Value closure builtin) NamedBoundCtx)
   where
   prettyUsing (WithContext e ctx) = do
-    let e' = unnormalise @(Value strategy builtin) @(Expr Ix builtin) (Lv $ length ctx) e
+    let e' = unnormalise @(Value closure builtin) @(Expr Ix Builtin) (Lv $ length ctx) e
     prettyUsing @rest (WithContext e' ctx)
 
-instance (Show builtin, PrettyUsing rest (Expr Ix builtin)) => PrettyUsing ('Denormalise rest) (Value strategy builtin) where
-  prettyUsing e = prettyUsing @rest (unnormalise @(Value strategy builtin) @(Expr Ix builtin) 0 e)
-
-instance (Show builtin, PrettyUsing rest (Arg Ix builtin)) => PrettyUsing ('Denormalise rest) (VArg strategy builtin) where
-  prettyUsing e = prettyUsing @rest (unnormalise @(VArg strategy builtin) @(Arg Ix builtin) 0 e)
-
-instance (PrettyUsing rest (WHNFValue builtin)) => PrettyUsing rest (BoundEnvValue 'WHNF builtin) where
+instance (PrettyUsing rest (Value closure builtin)) => PrettyUsing rest (BoundEnvValue closure builtin) where
   prettyUsing = \case
     Bound {} -> ""
     Defined v -> prettyUsing @rest v
+
+instance (PrintableBuiltin builtin, PrettyUsing rest (Expr Ix Builtin)) => PrettyUsing ('DescopeWithNames rest) (NFValue builtin) where
+  prettyUsing e = prettyUsing @rest (unnormalise @(NFValue builtin) @(Expr Ix Builtin) 0 e)
+
+instance (PrintableBuiltin builtin, PrettyUsing rest (Arg Ix Builtin)) => PrettyUsing ('DescopeWithNames rest) (NFArg builtin) where
+  prettyUsing e = prettyUsing @rest (unnormalise @(NFArg builtin) @(Arg Ix Builtin) 0 e)
 
 instance PrettyUsing rest (GenericBinder ()) where
   prettyUsing b = maybe "_" pretty (nameOf b)
