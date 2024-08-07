@@ -1,7 +1,7 @@
 @property;
 test1 : (Tensor Rat -> Tensor Rat) -> Tensor Rat;
-test1 f = maximise (\ a -> max (const[ 0.0 ] nil) (const[ 0.0 ] nil - a) + (reduceSum (max (const[ 0.0 ] (1 :: nil)) (f [a + const[ 2.0 ] nil] - [const[ 0.0 ] nil]) + max (const[ 0.0 ] (1 :: nil)) ([const[ 0.0 ] nil] - f [a + const[ 2.0 ] nil])) + const[ 0.0 ] nil))
+test1 f = maximise (*) (\ a -> max (const[ 0.0 ] nil) (const[ 0.0 ] nil - a) + (reduceSum (max (const[ 0.0 ] (1 :: nil)) (f [a + const[ 2.0 ] nil] - [const[ 0.0 ] nil]) + max (const[ 0.0 ] (1 :: nil)) ([const[ 0.0 ] nil] - f [a + const[ 2.0 ] nil])) + const[ 0.0 ] nil))
 
 @property;
 test2 : (Tensor Rat -> Tensor Rat) -> Tensor Rat;
-test2 g = maximise (\ a -> maximise (\ b -> max (const[ 0.0 ] nil) (const[ 1.0 ] nil - a) + (max (const[ 0.0 ] nil) (a - b) + (reduceSum (max (const[ 0.0 ] (1 :: nil)) (g [a + b, a + const[ 2.0 ] nil * b] - [const[ 0.0 ] nil]) + max (const[ 0.0 ] (1 :: nil)) ([const[ 0.0 ] nil] - g [a + b, a + const[ 2.0 ] nil * b])) + const[ 0.0 ] nil))))
+test2 g = maximise (*) (\ a -> maximise (*) (\ b -> max (const[ 0.0 ] nil) (const[ 1.0 ] nil - a) + (max (const[ 0.0 ] nil) (a - b) + (reduceSum (max (const[ 0.0 ] (1 :: nil)) (g [a + b, a + const[ 2.0 ] nil * b] - [const[ 0.0 ] nil]) + max (const[ 0.0 ] (1 :: nil)) ([const[ 0.0 ] nil] - g [a + b, a + const[ 2.0 ] nil * b])) + const[ 0.0 ] nil))))
