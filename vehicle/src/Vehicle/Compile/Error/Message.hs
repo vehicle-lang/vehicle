@@ -133,14 +133,12 @@ instance MeaningfulError CompileError where
                 Just "remove one of annotations."
             }
       AbstractDefWithNonAbstractAnnotation p name ann ->
-        case ann of
-          AnnProperty ->
-            UError $
-              UserError
-                { provenance = p,
-                  problem = "missing definition for property" <+> quotePretty name <> ".",
-                  fix = Just $ "add a definition for" <+> quotePretty name <+> "."
-                }
+        UError $
+          UserError
+            { provenance = p,
+              problem = "missing definition for" <+> pretty ann <+> quotePretty name <> ".",
+              fix = Just $ "add a definition for" <+> quotePretty name <+> "."
+            }
       NonAbstractDefWithAbstractAnnotation p name resource ->
         UError $
           UserError

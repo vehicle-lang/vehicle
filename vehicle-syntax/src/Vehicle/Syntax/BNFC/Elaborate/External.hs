@@ -223,6 +223,10 @@ parseAnnotation (tkName, opts) = do
     "@property" -> do
       validateEmptyOpts tkName opts
       return $ Right V.AnnProperty
+    "@differentiableLogic" -> do
+      let allowedOptions = mempty
+      validateOpts name allowedOptions opts
+      return $ Right V.AnnDifferentiableLogic
     name -> developerError $ "Unknown annotation found" <+> squotes (pretty name)
 
 validateOpts :: forall m token. (MonadElab m, IsToken token) => token -> Set Text -> B.DeclAnnOpts -> m [B.DeclAnnOption]

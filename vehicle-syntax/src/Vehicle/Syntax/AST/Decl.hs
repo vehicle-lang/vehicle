@@ -147,6 +147,7 @@ convertToPostulate d =
 
 data Annotation
   = AnnProperty
+  | AnnDifferentiableLogic
   deriving (Eq, Show, Generic)
 
 instance NFData Annotation
@@ -156,6 +157,7 @@ instance Serialize Annotation
 instance Pretty Annotation where
   pretty = \case
     AnnProperty -> "@property"
+    AnnDifferentiableLogic -> "@differentiableLogic"
 
 isProperty :: [Annotation] -> Bool
 isProperty anns = AnnProperty `elem` anns

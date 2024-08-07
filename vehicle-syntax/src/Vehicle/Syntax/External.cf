@@ -10,7 +10,7 @@ position token Boolean  ({"True"} | {"False"});
 position token Natural  (digit+);
 position token Rational (digit+ '.' digit+);
 
-position token TokAnnotation ({"@"} ({"network"} | {"dataset"} | {"parameter"} | {"property"}));
+position token TokAnnotation ({"@"} ({"network"} | {"dataset"} | {"parameter"} | {"property"} | {"differentiableLogic"}));
 position token TokPostulate {"@postulate"};
 
 position token TokArrow     {"->"};
@@ -123,6 +123,10 @@ NatLiteral.   Lit ::= Natural;
 RatLiteral.   Lit ::= Rational;
 BoolLiteral.  Lit ::= Boolean;
 
+-- * Records
+
+RecordCreate. RecordField ::= Name "=" Expr;
+separator RecordField ",";
 
 -- * Expressions
 
@@ -149,6 +153,7 @@ App.     Expr13 ::= Expr13 Arg;
 Var.     Expr15 ::= Name;
 Literal. Expr15 ::= Lit;
 Hole.    Expr15 ::= HoleToken;
+Record.  Expr15 ::= "{" [RecordField] "}";
 
 -- Quantification
 Forall.    Expr2 ::= TokForall [NameBinder] TokDot Expr2;
