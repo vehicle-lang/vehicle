@@ -223,10 +223,11 @@ convertBuiltin builtin spine = convert builtin
 
 translateQuantifier :: (MonadLoss m) => Quantifier -> MixedLossSpine -> m MixedLossValue
 translateQuantifier q spine = do
-  let b = case q of
-        V.Forall -> Minimise
-        V.Exists -> Maximise
-  return $ VBuiltin b spine
+  DifferentialLogicImplementation {..} <- getLogic
+  let (builtin, op) = case q of
+        V.Forall -> (Minimise, translateAnd)
+        V.Exists -> (Maximise, translateOr)
+  return $ VBuiltin builtin (explicit op : spine)
 
 --------------------------------------------------------------------------------
 -- Utils
