@@ -1,8 +1,8 @@
 module Vehicle.Compile.Normalise.Quote where
 
+import Vehicle.Backend.LossFunction.Core (LossClosure (..), MixedClosure (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Interface (ConvertableBuiltin (..))
-import Vehicle.Data.Builtin.Loss.Core (MixedClosure (..))
 import Vehicle.Data.Builtin.Standard.Core (Builtin)
 import Vehicle.Data.DeBruijn
 import Vehicle.Data.Expr.Normalised
@@ -37,11 +37,14 @@ instance (ConvertableBuiltin builtin1 builtin2) => QuoteClosure (NFClosure built
 
 instance QuoteClosure MixedClosure Builtin where
   quoteClosure p lv (binder, closure) = case closure of
-    StandardClosure standardClosure -> quoteClosure p lv (binder, standardClosure)
-    LossClosure env body -> do
-      let newEnv = extendEnvWithBound lv binder env
-      let subst = quoteCtx p (lv + 1) newEnv
-      substituteDB 0 subst (convertExprBuiltins body)
+    StandardClos standardClosure -> quoteClosure p lv (binder, standardClosure)
+    LossClos lossClosure -> quoteClosure p lv (binder, lossClosure)
+
+instance QuoteClosure LossClosure Builtin where
+  quoteClosure p lv (binder, LossClosure env body) = do
+    let newEnv = extendEnvWithBound lv binder env
+    let subst = quoteCtx p (lv + 1) newEnv
+    substituteDB 0 subst (convertExprBuiltins body)
 
 quoteCtx :: (ConvertableBuiltin builtin1 builtin2, QuoteClosure closure builtin2) => Provenance -> Lv -> BoundEnv closure builtin1 -> Substitution (Expr Ix builtin2)
 quoteCtx p level env i = case lookupIx env i of

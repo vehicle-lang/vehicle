@@ -1,18 +1,22 @@
 module Vehicle.Backend.LossFunction.TensorCompilation
-  ( convertLossToTensorValue,
+  ( convertExprToTensorValue,
+    runMonadTensorT,
   )
 where
 
 import Control.Monad.Except (MonadError (..))
+import Control.Monad.Reader (MonadReader (..))
+import Control.Monad.Trans.Reader (ReaderT (..))
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (fromMaybe)
 import Data.Ratio
 import Vehicle.Backend.LossFunction.Core
 import Vehicle.Backend.LossFunction.LogicCompilation
+import Vehicle.Backend.Prelude (DifferentiableLogicID)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (PrettyFriendly, prettyFriendly)
-import Vehicle.Data.Builtin.Loss (LossBuiltin, MixedClosure (..))
+import Vehicle.Data.Builtin.Loss (LossBuiltin)
 import Vehicle.Data.Builtin.Loss qualified as L
 import Vehicle.Data.Builtin.Tensor (TensorBuiltin)
 import Vehicle.Data.Builtin.Tensor qualified as T
@@ -23,10 +27,77 @@ import Vehicle.Prelude.Warning
 import Vehicle.Syntax.Builtin
 
 --------------------------------------------------------------------------------
+-- Monad
+
+type MonadTensorCtx =
+  ( DifferentiableLogicID,
+    DifferentiableLogicImplementation,
+    DeclProvenance,
+    FreeEnv (WHNFClosure Builtin) Builtin,
+    MixedFreeEnv,
+    GenericBoundCtx MixedLossBinder
+  )
+
+type MonadTensor m =
+  ( MonadCompile m,
+    MonadReader MonadTensorCtx m
+  )
+
+runMonadTensorT ::
+  (MonadCompile m) =>
+  DifferentiableLogicID ->
+  DeclProvenance ->
+  DifferentiableLogicImplementation ->
+  FreeEnv (WHNFClosure Builtin) Builtin ->
+  MixedFreeEnv ->
+  ReaderT MonadTensorCtx m a ->
+  m a
+runMonadTensorT logicID origin logic standardEnv lossEnv =
+  flip runReaderT (logicID, logic, origin, standardEnv, lossEnv, mempty)
+
+switchToMonadLogic ::
+  (MonadTensor m) =>
+  ReaderT MonadLogicCtx m a ->
+  m a
+switchToMonadLogic comp = do
+  (logicID, logic, declProv, freeEnv, mixedEnv, boundCtx) <- ask
+  runMonadLogicT logicID logic (Left declProv) freeEnv mixedEnv boundCtx comp
+
+getDeclProvenance :: (MonadTensor m) => m DeclProvenance
+getDeclProvenance = do
+  (_, _, prov, _, _, _) <- ask
+  return prov
+
+getNamedBoundCtx :: (MonadTensor m) => m NamedBoundCtx
+getNamedBoundCtx = do
+  (_, _, _, _, _, ctx) <- ask
+  return $ fmap nameOf ctx
+
+getCurrentLv :: (MonadTensor m) => m Lv
+getCurrentLv = Lv . length <$> getNamedBoundCtx
+
+addLossBinderToContext :: (MonadTensor m) => MixedLossBinder -> m a -> m a
+addLossBinderToContext binder cont = do
+  local
+    ( \(logicID, declProv, logic, standardEnv, freeEnv, ctx) ->
+        (logicID, declProv, logic, standardEnv, freeEnv, binder : ctx)
+    )
+    cont
+
+--------------------------------------------------------------------------------
 -- Public method
 
+convertExprToTensorValue ::
+  (MonadTensor m) =>
+  WHNFBoundEnv Builtin ->
+  Expr Ix Builtin ->
+  m (NFValue TensorBuiltin)
+convertExprToTensorValue env expr = do
+  x <- switchToMonadLogic $ normStandardExprToLoss env expr
+  convertLossToTensorValue x
+
 convertLossToTensorValue ::
-  (MonadLoss m) =>
+  (MonadTensor m) =>
   MixedLossValue ->
   m (NFValue TensorBuiltin)
 convertLossToTensorValue e = do
@@ -55,23 +126,21 @@ convertLossToTensorValue e = do
   return result
 
 convertClosure ::
-  (MonadLoss m) =>
+  (MonadTensor m) =>
   Lv ->
   MixedLossBinder ->
   MixedClosure ->
   m (NFValue TensorBuiltin)
-convertClosure lv binder closure = do
-  lossExpr <- case closure of
-    StandardClosure (WHNFClosure env standardExpr) -> do
-      let newEnv = extendEnvWithBound lv binder env
-      normStandardExprToLoss newEnv standardExpr
-    LossClosure env lossExpr -> do
-      let newEnv = extendEnvWithBound lv binder env
-      normLossExprToLoss newEnv lossExpr
+convertClosure lv binder closure = case closure of
+  StandardClos (WHNFClosure env standardExpr) -> do
+    let newEnv = extendEnvWithBound lv binder env
+    convertExprToTensorValue newEnv standardExpr
+  LossClos (LossClosure env lossExpr) -> do
+    let newEnv = extendEnvWithBound lv binder env
+    normLossExpr <- switchToMonadLogic $ normLossExprToLoss newEnv lossExpr
+    convertLossToTensorValue normLossExpr
 
-  convertLossToTensorValue lossExpr
-
-convertBuiltins :: (MonadLoss m) => LossBuiltin -> MixedLossSpine -> m (NFValue TensorBuiltin)
+convertBuiltins :: (MonadTensor m) => LossBuiltin -> MixedLossSpine -> m (NFValue TensorBuiltin)
 convertBuiltins b args = do
   let normArgs = traverseArgs convertLossToTensorValue args
   case b of
@@ -130,7 +199,7 @@ convertBuiltins b args = do
   where
     unsupportedTypeError op = compilerDeveloperError $ "Conversion of" <+> pretty op <+> "not yet supported"
 
-convertVectorType :: (MonadLoss m) => [NFArg TensorBuiltin] -> m (NFValue TensorBuiltin)
+convertVectorType :: (MonadTensor m) => [NFArg TensorBuiltin] -> m (NFValue TensorBuiltin)
 convertVectorType = \case
   [argExpr -> elemType, argExpr -> size] -> do
     let maybeResult = case elemType of
@@ -151,7 +220,7 @@ convertVectorType = \case
         throwError $ HigherOrderVectors declProv boundCtx vecType elemType
   _ -> unexpectedExprError currentPass "Vector has incorrect number of arguments"
 
-convertVector :: (MonadLoss m) => [NFArg TensorBuiltin] -> m (NFValue TensorBuiltin)
+convertVector :: (MonadTensor m) => [NFArg TensorBuiltin] -> m (NFValue TensorBuiltin)
 convertVector args = case args of
   [] -> compilerDeveloperError "Malformed LVec found."
   [_t] -> compilerDeveloperError "0-dimensional tensor found"
@@ -181,13 +250,13 @@ extendConstRatTensor x dim dims = do
 
 type HigherOrderFunctionConversion =
   forall m.
-  (MonadLoss m) =>
+  (MonadTensor m) =>
   Lv ->
   [NFArg TensorBuiltin] ->
   m (Maybe (NFValue TensorBuiltin))
 
 convertHigherOrderFunction ::
-  (MonadLoss m) =>
+  (MonadTensor m) =>
   HigherOrderFunctionConversion ->
   LossBuiltin ->
   (NFSpine TensorBuiltin -> NFValue TensorBuiltin) ->
@@ -209,7 +278,7 @@ convertHigherOrderFunction convertFn origFn mkDefault args = do
   showExit ("exit-" <> pretty origFn) result
   return result
 
-convertFoldVector :: (MonadLoss m) => [NFArg TensorBuiltin] -> m (NFValue TensorBuiltin)
+convertFoldVector :: (MonadTensor m) => [NFArg TensorBuiltin] -> m (NFValue TensorBuiltin)
 convertFoldVector = convertHigherOrderFunction go L.MapVector (VBuiltin T.MapRatTensor)
   where
     go :: HigherOrderFunctionConversion
@@ -221,13 +290,18 @@ convertFoldVector = convertHigherOrderFunction go L.MapVector (VBuiltin T.MapRat
         _ -> return Nothing
       _ -> return Nothing
 
-convertZipWith :: (MonadLoss m) => [NFArg TensorBuiltin] -> m (NFValue TensorBuiltin)
+convertZipWith :: (MonadTensor m) => [NFArg TensorBuiltin] -> m (NFValue TensorBuiltin)
 convertZipWith = convertHigherOrderFunction go L.ZipWithVector (VBuiltin T.ZipWithRatTensor)
   where
     go :: HigherOrderFunctionConversion
     go lv = \case
       [a, b, c, n, argExpr -> VLam2 binder1 binder2 body, xs, ys] ->
         case body of
+          VBuiltin op [e1] | isLiftableTensorOp op -> do
+            let mkArgs f = [a, b, c, n, explicit f, xs, ys]
+            let args1 = mkArgs (VLam2 binder1 binder2 (argExpr e1))
+            xs' <- convertZipWith args1
+            return $ Just $ VBuiltin op [explicit xs']
           VBuiltin op [e1, e2] | isLiftableTensorOp op -> do
             let mkArgs f = [a, b, c, n, explicit f, xs, ys]
             let args1 = mkArgs (VLam2 binder1 binder2 (argExpr e1))
@@ -246,13 +320,13 @@ convertZipWith = convertHigherOrderFunction go L.ZipWithVector (VBuiltin T.ZipWi
           _ -> return Nothing
       _ -> return Nothing
 
-convertMapVector :: (MonadLoss m) => [NFArg TensorBuiltin] -> m (NFValue TensorBuiltin)
+convertMapVector :: (MonadTensor m) => [NFArg TensorBuiltin] -> m (NFValue TensorBuiltin)
 convertMapVector = convertHigherOrderFunction go L.MapVector (VBuiltin T.MapRatTensor)
   where
     go :: HigherOrderFunctionConversion
     go _lv _args = return Nothing
 
-convertForeachIndex :: (MonadLoss m) => [NFArg TensorBuiltin] -> m (NFValue TensorBuiltin)
+convertForeachIndex :: (MonadTensor m) => [NFArg TensorBuiltin] -> m (NFValue TensorBuiltin)
 convertForeachIndex = convertHigherOrderFunction go L.ForeachIndex (VFreeVar (identifierOf StdForeachIndex))
   where
     go :: HigherOrderFunctionConversion
@@ -297,6 +371,7 @@ evalAdd x y = VBuiltin T.AddRatTensor (Arg mempty Explicit Relevant <$> [x, y])
 
 isLiftableTensorOp :: TensorBuiltin -> Bool
 isLiftableTensorOp = \case
+  T.NegRatTensor -> True
   T.EqRatTensor -> True
   T.NeRatTensor -> True
   T.LeRatTensor -> True
@@ -313,13 +388,13 @@ isLiftableTensorOp = \case
 currentPass :: CompilerPass
 currentPass = "conversion to tensors"
 
-showEntry :: (MonadLoss m, PrettyFriendly (Contextualised a NamedBoundCtx)) => Doc a -> a -> m ()
+showEntry :: (MonadTensor m, PrettyFriendly (Contextualised a NamedBoundCtx)) => Doc a -> a -> m ()
 showEntry doc e = do
   ctx <- getNamedBoundCtx
   logDebug MaxDetail $ doc <+> ":" <+> prettyFriendly (WithContext e ctx)
   incrCallDepth
 
-showExit :: (MonadLoss m) => Doc a -> NFValue TensorBuiltin -> m ()
+showExit :: (MonadTensor m) => Doc a -> NFValue TensorBuiltin -> m ()
 showExit doc e = do
   ctx <- getNamedBoundCtx
   decrCallDepth

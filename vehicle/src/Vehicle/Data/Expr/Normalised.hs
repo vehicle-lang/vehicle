@@ -84,7 +84,7 @@ extendEnvWithDefined ::
 extendEnvWithDefined value binder env = (void binder, value) : env
 
 boundContextToEnv ::
-  BoundCtx builtin ->
+  GenericBoundCtx (GenericBinder expr) ->
   BoundEnv closure builtin
 boundContextToEnv ctx = do
   let numberedCtx = zip ctx (reverse [0 .. Lv (length ctx - 1)])

@@ -15,3 +15,5 @@ type FreeCtxEntry builtin =
   )
 
 type FreeCtx builtin = GenericFreeCtx (FreeCtxEntry builtin)
+
+type FreeEnv closure builtin = GenericFreeCtx (VDecl closure builtin)

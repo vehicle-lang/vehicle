@@ -1,24 +1,26 @@
 module Vehicle.Backend.LossFunction.Logics
-  ( DifferentialLogicDSL (..),
-    NotTranslation (..),
+  ( DifferentialLogicDSL,
     PLExpr,
     dslFor,
   )
 where
 
+import Data.Bifunctor (Bifunctor (..))
+import Data.LinkedHashMap (LinkedHashMap)
+import Data.LinkedHashMap qualified as Map (fromList)
 import Prettyprinter
+import Vehicle.Backend.LossFunction.Core as L
 import Vehicle.Backend.Prelude (DifferentiableLogicID (..))
-import Vehicle.Compile.Prelude (developerError)
-import Vehicle.Data.Builtin.Loss
+import Vehicle.Compile.Prelude (Expr, Ix, developerError)
+import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.DSL
-import Vehicle.Syntax.Builtin qualified as V
 
 --------------------------------------------------------------------------------
 -- Patterns for building logics
 --------------------------------------------------------------------------------
 
 -- | A partial expression which requires provenance to construct.
-type PLExpr = DSLExpr LossBuiltin
+type PLExpr = DSLExpr Builtin
 
 mkOp1 :: PLExpr -> (PLExpr -> PLExpr) -> PLExpr
 mkOp1 t f = explLam "x" t (\x -> f x)
@@ -26,31 +28,34 @@ mkOp1 t f = explLam "x" t (\x -> f x)
 mkOp2 :: PLExpr -> (PLExpr -> PLExpr -> PLExpr) -> PLExpr
 mkOp2 t f = explLam "x" t (\x -> explLam "y" t (\y -> f x y))
 
-op1 :: LossBuiltin -> PLExpr -> PLExpr
-op1 op x = builtin op @@ [x]
+builtinFunction :: BuiltinFunction -> PLExpr
+builtinFunction op = builtin (BuiltinFunction op)
 
-op2 :: LossBuiltin -> PLExpr -> PLExpr -> PLExpr
-op2 op x y = builtin op @@ [x, y]
+op1 :: BuiltinFunction -> PLExpr -> PLExpr
+op1 op x = builtinFunction op @@ [x]
+
+op2 :: BuiltinFunction -> PLExpr -> PLExpr -> PLExpr
+op2 op x y = builtinFunction op @@ [x, y]
 
 -- | Addition
 (+:) :: PLExpr -> PLExpr -> PLExpr
-(+:) = op2 (Add V.AddRat)
+(+:) = op2 (Add AddRat)
 
 -- | Multiplication
 (*:) :: PLExpr -> PLExpr -> PLExpr
-(*:) = op2 (Mul V.MulRat)
+(*:) = op2 (Mul MulRat)
 
 -- | Subtraction
 (-:) :: PLExpr -> PLExpr -> PLExpr
-(-:) = op2 (Sub V.SubRat)
+(-:) = op2 (Sub SubRat)
 
 -- | Division
 (/:) :: PLExpr -> PLExpr -> PLExpr
-(/:) = op2 (Div V.DivRat)
+(/:) = op2 (Div DivRat)
 
 -- | Negation
 neg :: PLExpr -> PLExpr
-neg = op1 (Neg V.NegRat)
+neg = op1 (Neg NegRat)
 
 -- | Power
 (^:) :: PLExpr -> Rational -> PLExpr
@@ -58,46 +63,30 @@ neg = op1 (Neg V.NegRat)
 
 -- | Maximum operator
 lmax :: PLExpr -> PLExpr -> PLExpr
-lmax x y = builtin MaxRat @@ [x, y]
-
-ratLit :: Rational -> PLExpr
-ratLit r = builtin (Rat r)
-
-tRat :: PLExpr
-tRat = builtin RatType
+lmax = op2 MaxRat
 
 -- | Minimum operator
 lmin :: PLExpr -> PLExpr -> PLExpr
-lmin x y = builtin MinRat @@ [x, y]
+lmin = op2 MinRat
+
+ratLit :: Rational -> PLExpr
+ratLit r = builtin (BuiltinConstructor (LRat r))
+
+tRat :: PLExpr
+tRat = builtin (BuiltinType Rat)
 
 --------------------------------------------------------------------------------
 -- Logics
 --------------------------------------------------------------------------------
 
-data NotTranslation
-  = TryToEliminate
-  | UnaryNot PLExpr -- (LExpr -> LExpr)
-
 -- | Template for different avilable differentiable logics
 -- part of the syntax translation that differ depending on chosen DL are:
 -- logical connectives (not, and, or, implies)
 -- comparisons (<, <=, >, >=, =, !=)
-data DifferentialLogicDSL = DifferentialLogicDSL
-  { logicID :: DifferentiableLogicID,
-    translateBool :: PLExpr,
-    translateTrue :: PLExpr,
-    translateFalse :: PLExpr,
-    translateAnd :: PLExpr,
-    translateOr :: PLExpr,
-    translateNot :: PLExpr,
-    translateImplies :: PLExpr,
-    translateLe :: PLExpr,
-    translateLt :: PLExpr,
-    translateGe :: PLExpr,
-    translateGt :: PLExpr,
-    translateEq :: PLExpr,
-    translateNeq :: PLExpr
-  }
+type DifferentialLogicDSL = LinkedHashMap DifferentiableLogicField (Expr Ix Builtin)
+
+mkDSL :: [(DifferentiableLogicField, PLExpr)] -> DifferentialLogicDSL
+mkDSL = Map.fromList . fmap (second (fromDSL mempty))
 
 --------------------------------------------------------------------------------
 -- Logic implementations
@@ -118,25 +107,24 @@ dslFor = \case
 
 vehicleTranslation :: DifferentialLogicDSL
 vehicleTranslation =
-  DifferentialLogicDSL
-    { logicID = DL2Loss,
-      translateBool = tRat,
-      translateTrue = ratLit (-100000),
-      translateFalse = ratLit 100000,
-      translateAnd = andOp,
-      translateOr = orOp,
-      translateNot = builtin (Neg V.NegRat),
-      translateImplies = mkOp2 tRat $ \x y -> lmax (neg x) y,
-      translateLe = mkOp2 tRat $ \x y -> x -: y,
-      translateLt = mkOp2 tRat $ \x y -> x -: y,
-      translateGe = mkOp2 tRat $ \x y -> y -: x,
-      translateGt = mkOp2 tRat $ \x y -> y -: x,
-      translateNeq = mkOp2 tRat $ \x y -> neg (lmax (x -: y) (y -: x)),
-      translateEq = mkOp2 tRat $ \x y -> lmax (x -: y) (y -: x)
-    }
+  mkDSL
+    [ (L.Bool, tRat),
+      (L.Truthity, ratLit (-100000)),
+      (L.Falsity, ratLit 100000),
+      (L.Conjunction, andOp),
+      (L.Disjunction, orOp),
+      (L.Negation, builtinFunction (Neg NegRat)),
+      (L.Implication, mkOp2 tRat $ \x y -> lmax (neg x) y),
+      (L.LessThan, mkOp2 tRat $ \x y -> x -: y),
+      (L.LessEqual, mkOp2 tRat $ \x y -> x -: y),
+      (L.GreaterThan, mkOp2 tRat $ \x y -> y -: x),
+      (L.GreaterEqual, mkOp2 tRat $ \x y -> y -: x),
+      (L.Equal, mkOp2 tRat $ \x y -> neg (lmax (x -: y) (y -: x))),
+      (L.NotEqual, mkOp2 tRat $ \x y -> lmax (x -: y) (y -: x))
+    ]
   where
-    andOp = builtin MaxRat
-    orOp = builtin MinRat
+    andOp = builtinFunction MaxRat
+    orOp = builtinFunction MinRat
 
 --------------------------------------------------------------------------------
 -- DL2
@@ -145,25 +133,24 @@ vehicleTranslation =
 -- networks with logic."  PMLR, 2019.
 dl2Translation :: DifferentialLogicDSL
 dl2Translation =
-  DifferentialLogicDSL
-    { logicID = DL2Loss,
-      translateBool = tRat,
-      translateTrue = ratLit 0,
-      translateFalse = ratLit 1, -- TODO this should be infinity???
-      translateAnd = andOp,
-      translateOr = orOp,
-      translateNot = mkOp1 tRat $ \x -> ratLit 1 /: x,
-      translateImplies = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x *: y),
-      translateLe = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y),
-      translateLt = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y),
-      translateGe = mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x),
-      translateGt = mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x),
-      translateNeq = mkOp2 tRat $ \x y -> neg (lmax (ratLit 0) (x -: y) +: lmax (ratLit 0) (y -: x)),
-      translateEq = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y) +: lmax (ratLit 0) (y -: x)
-    }
+  mkDSL
+    [ (L.Bool, tRat),
+      (L.Truthity, ratLit 0),
+      (L.Falsity, ratLit 1), -- TODO this should be infinity??)
+      (L.Conjunction, andOp),
+      (L.Disjunction, orOp),
+      (L.Negation, mkOp1 tRat $ \x -> ratLit 1 /: x),
+      (L.Implication, mkOp2 tRat $ \x y -> lmax (ratLit 0) (x *: y)),
+      (L.LessThan, mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y)),
+      (L.LessEqual, mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y)),
+      (L.GreaterThan, mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x)),
+      (L.GreaterEqual, mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x)),
+      (L.Equal, mkOp2 tRat $ \x y -> neg (lmax (ratLit 0) (x -: y) +: lmax (ratLit 0) (y -: x))),
+      (L.NotEqual, mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y) +: lmax (ratLit 0) (y -: x))
+    ]
   where
-    andOp = builtin (Add V.AddRat)
-    orOp = builtin (Mul V.MulRat)
+    andOp = builtinFunction (Add AddRat)
+    orOp = builtinFunction (Mul MulRat)
 
 --------------------------------------------------------------------------------
 -- Godel
@@ -172,22 +159,21 @@ dl2Translation =
 -- 2022
 godelTranslation :: DifferentialLogicDSL
 godelTranslation =
-  DifferentialLogicDSL
-    { logicID = GodelLoss,
-      translateBool = tRat,
-      translateTrue = ratLit 0,
-      translateFalse = ratLit 1,
-      translateAnd = andOp,
-      translateOr = orOp,
-      translateNot = mkOp1 tRat $ \x -> ratLit 1 -: x,
-      translateImplies = mkOp2 tRat $ \x y -> ratLit 1 -: lmax (ratLit 1 -: x) y,
-      translateLe = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y),
-      translateLt = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y),
-      translateGe = mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x),
-      translateGt = mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x),
-      translateEq = unsupported "==" "Godel",
-      translateNeq = unsupported "!=" "Godel"
-    }
+  mkDSL
+    [ (L.Bool, tRat),
+      (L.Truthity, ratLit 0),
+      (L.Falsity, ratLit 1),
+      (L.Conjunction, andOp),
+      (L.Disjunction, orOp),
+      (L.Negation, mkOp1 tRat $ \x -> ratLit 1 -: x),
+      (L.Implication, mkOp2 tRat $ \x y -> ratLit 1 -: lmax (ratLit 1 -: x) y),
+      (L.LessThan, mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y)),
+      (L.LessEqual, mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y)),
+      (L.GreaterThan, mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x)),
+      (L.GreaterEqual, mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x)),
+      (L.Equal, unsupported "==" "Godel"),
+      (L.NotEqual, unsupported "!=" "Godel")
+    ]
   where
     andOp = mkOp2 tRat $ \x y -> ratLit 1 -: lmin x y
     orOp = mkOp2 tRat $ \x y -> ratLit 1 -: lmax x y
@@ -199,22 +185,21 @@ godelTranslation =
 -- 2022
 lukasiewiczTranslation :: DifferentialLogicDSL
 lukasiewiczTranslation =
-  DifferentialLogicDSL
-    { logicID = LukasiewiczLoss,
-      translateBool = tRat,
-      translateTrue = ratLit 0,
-      translateFalse = ratLit 1,
-      translateAnd = andOp,
-      translateOr = orOp,
-      translateNot = mkOp1 tRat $ \arg -> ratLit 1 -: arg,
-      translateImplies = mkOp2 tRat $ \x y -> ratLit 1 -: lmin (ratLit 1) ((ratLit 1 -: x) +: y),
-      translateLe = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y),
-      translateLt = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y),
-      translateGe = mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x),
-      translateGt = mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x),
-      translateEq = unsupported "==" "Lukasiewicz",
-      translateNeq = unsupported "!=" "Lukasiewicz"
-    }
+  mkDSL
+    [ (L.Bool, tRat),
+      (L.Truthity, ratLit 0),
+      (L.Falsity, ratLit 1),
+      (L.Conjunction, andOp),
+      (L.Disjunction, orOp),
+      (L.Negation, mkOp1 tRat $ \arg -> ratLit 1 -: arg),
+      (L.Implication, mkOp2 tRat $ \x y -> ratLit 1 -: lmin (ratLit 1) ((ratLit 1 -: x) +: y)),
+      (L.LessThan, mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y)),
+      (L.LessEqual, mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y)),
+      (L.GreaterThan, mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x)),
+      (L.GreaterEqual, mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x)),
+      (L.Equal, unsupported "==" "Lukasiewicz"),
+      (L.NotEqual, unsupported "!=" "Lukasiewicz")
+    ]
   where
     andOp = mkOp2 tRat $ \x y -> ratLit 1 -: lmax (ratLit 0) ((x +: y) -: ratLit 1)
     orOp = mkOp2 tRat $ \x y -> ratLit 1 -: lmin (x +: y) (ratLit 1)
@@ -226,22 +211,21 @@ lukasiewiczTranslation =
 -- 2022
 productTranslation :: DifferentialLogicDSL
 productTranslation =
-  DifferentialLogicDSL
-    { logicID = ProductLoss,
-      translateBool = tRat,
-      translateTrue = ratLit 0,
-      translateFalse = ratLit 1,
-      translateAnd = andOp,
-      translateOr = andOp,
-      translateNot = mkOp1 tRat $ \x -> ratLit 1 -: x,
-      translateImplies = mkOp2 tRat $ \x y -> ratLit 1 -: ((ratLit 1 -: x) +: (x *: y)),
-      translateLe = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y),
-      translateLt = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y),
-      translateGe = mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x),
-      translateGt = mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x),
-      translateEq = unsupported "==" "Product",
-      translateNeq = unsupported "!=" "Product"
-    }
+  mkDSL
+    [ (L.Bool, tRat),
+      (L.Truthity, ratLit 0),
+      (L.Falsity, ratLit 1),
+      (L.Conjunction, andOp),
+      (L.Disjunction, andOp),
+      (L.Negation, mkOp1 tRat $ \x -> ratLit 1 -: x),
+      (L.Implication, mkOp2 tRat $ \x y -> ratLit 1 -: ((ratLit 1 -: x) +: (x *: y))),
+      (L.LessThan, mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y)),
+      (L.LessEqual, mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y)),
+      (L.GreaterThan, mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x)),
+      (L.GreaterEqual, mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x)),
+      (L.Equal, unsupported "==" "Product"),
+      (L.NotEqual, unsupported "!=" "Product")
+    ]
   where
     andOp = mkOp2 tRat $ \x y -> ratLit 1 -: (x *: y)
 
@@ -256,28 +240,29 @@ yagerTranslation = parameterisedYagerTranslation 1 -- change lconstant here
 -- 2022
 parameterisedYagerTranslation :: Rational -> DifferentialLogicDSL
 parameterisedYagerTranslation p =
-  DifferentialLogicDSL
-    { logicID = YagerLoss,
-      translateBool = tRat,
-      translateTrue = ratLit 0,
-      translateFalse = ratLit 1,
-      translateAnd = andOp,
-      translateOr = orOp,
-      translateNot = mkOp1 tRat (ratLit 1 -:),
-      translateImplies = mkOp2 tRat $ \x y ->
-        ratLit 1
-          -: lmin
-            ( (((ratLit 1 -: x) ^: p) +: (y ^: p))
-                ^: (1 / p)
-            )
-            (ratLit 1),
-      translateLe = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y),
-      translateLt = mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y),
-      translateGe = mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x),
-      translateGt = mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x),
-      translateEq = unsupported "==" "Yager",
-      translateNeq = unsupported "!=" "Yager"
-    }
+  mkDSL
+    [ (L.Bool, tRat),
+      (L.Truthity, ratLit 0),
+      (L.Falsity, ratLit 1),
+      (L.Conjunction, andOp),
+      (L.Disjunction, orOp),
+      (L.Negation, mkOp1 tRat (ratLit 1 -:)),
+      ( L.Implication,
+        mkOp2 tRat $ \x y ->
+          ratLit 1
+            -: lmin
+              ( (((ratLit 1 -: x) ^: p) +: (y ^: p))
+                  ^: (1 / p)
+              )
+              (ratLit 1)
+      ),
+      (L.LessThan, mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y)),
+      (L.LessEqual, mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y)),
+      (L.GreaterThan, mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x)),
+      (L.GreaterEqual, mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x)),
+      (L.Equal, unsupported "==" "Yager"),
+      (L.NotEqual, unsupported "!=" "Yager")
+    ]
   where
     andOp = mkOp2 tRat $ \x y ->
       ratLit 1
@@ -307,20 +292,20 @@ unsupported :: Doc a -> Doc a -> a
 unsupported op logic = developerError $ "Translating" <+> op <+> "not yet supported for" <+> logic <+> "logic"
 
 {-
-  DifferentialLogicDSL
-    { logicID = STLLoss,
-      translateBool = builtin J.Rat,
-      translateAnd = NaryAnd (mkOp1 tRat $ \x -> exponentialAnd x),
-      translateOr = NaryOr (mkOp1 tRat $ \x -> neg (exponentialAnd (builtin _ @@ [x]))),
-      translateNot = UnaryNot (mkOp1 tRat neg),
-      translateImplies = mkOp2 tRat $ \x y -> neg (exponentialAnd (map neg [neg x, y])),
-      translateLe = builtin (J.Sub SubRat),
-      translateLt = builtin (J.Sub SubRat),
-      translateGe = mkOp2 tRat (\x y -> y -: x),
-      translateGt = mkOp2 tRat (\x y -> y -: x),
-      translateEq = mkOp2 tRat ind,
-      translateNeq = mkOp2 tRat $ \x y -> neg (ind x y),
-      translateTrue = ratLit 1,
-      translateFalse = ratLit (-1)
+  mkDSL
+    [ ( STL,ss)
+    , (Bool, builtin J.Rat)
+    , (And =,aryAnd (mkOp1 tRat $ \x -> exponentialAnd x))
+    , (Conjunction,NaryOr (mkOp1 tRat $ \x -> neg (exponentialAnd (builtin _ @@ [x]))))
+    , (Disjunction,= UnaryNot (mkOp1 tRat neg))
+    , (Negation,es = mkOp2 tRat $ \x y -> neg (exponentialAnd (map neg [neg x, y])))
+    , (Implication,tin (J.Sub SubRat))
+    , (LessThan, builtin (J.Sub SubRat))
+    , (LessEqual, mkOp2 tRat (\x y -> y -: x))
+    , (GreaterThan, mkOp2 tRat (\x y -> y -: x))
+    , (GreaterEqual, mkOp2 tRat ind)
+    , (Neual,= mkOp2 tRat $ \x y -> neg (ind x y))
+    , (NotEqual,= ratLit 1)
+    ] translateFalse = ratLit (-1)
     }
 -}

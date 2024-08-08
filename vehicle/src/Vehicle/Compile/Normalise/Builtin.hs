@@ -8,6 +8,7 @@ import Control.Monad (zipWithM)
 import Data.Foldable (foldrM)
 import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Print (PrintableBuiltin)
 import Vehicle.Data.Builtin.Interface (HasStandardData (..))
 import Vehicle.Data.Expr.Interface
 import Vehicle.Data.Expr.Normalised
@@ -51,7 +52,7 @@ type Eval builtin m =
   m (WHNFValue builtin)
 
 -- | A type-class for builtins that can be normalised compositionally.
-class NormalisableBuiltin builtin where
+class (PrintableBuiltin builtin) => NormalisableBuiltin builtin where
   -- This function takes in the original expression (containing both relevant
   -- and irrelevant arguments), the builtin that is in the head position
   -- and the list of computationally relevant arguments.

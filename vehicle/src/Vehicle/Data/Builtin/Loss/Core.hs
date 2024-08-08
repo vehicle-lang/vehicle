@@ -2,14 +2,12 @@ module Vehicle.Data.Builtin.Loss.Core where
 
 import GHC.Generics (Generic)
 import Vehicle.Data.Builtin.Interface (ConvertableBuiltin (..), PrintableBuiltin (..))
-import Vehicle.Data.Builtin.Standard.Core (Builtin)
-import Vehicle.Data.DeBruijn (Ix)
 import Vehicle.Data.Expr.Interface
 import Vehicle.Data.Expr.Normalised
 import Vehicle.Data.Expr.Standard (cheatConvertBuiltin)
 import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (StdForeachIndex))
 import Vehicle.Prelude (Pretty (..))
-import Vehicle.Syntax.AST (Expr, HasIdentifier (..))
+import Vehicle.Syntax.AST (HasIdentifier (..))
 import Vehicle.Syntax.AST qualified as V
 import Vehicle.Syntax.Builtin qualified as V
 
@@ -142,7 +140,3 @@ instance HasStandardListLits (Value closure LossBuiltin) where
     VBuiltin ConsList [t, x, xs] -> Just (t, x, xs)
     _ -> Nothing
   mkCons t x xs = VBuiltin ConsList [t, x, xs]
-
-data MixedClosure
-  = StandardClosure (WHNFClosure Builtin)
-  | LossClosure (BoundEnv MixedClosure LossBuiltin) (Expr Ix LossBuiltin)

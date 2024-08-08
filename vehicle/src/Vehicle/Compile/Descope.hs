@@ -12,8 +12,10 @@ module Vehicle.Compile.Descope
 where
 
 import Control.Monad.Reader (MonadReader (..), runReader)
+import Vehicle.Backend.LossFunction.Core (LossClosure (..), MixedClosure (..))
 import Vehicle.Compile.Prelude
-import Vehicle.Data.Builtin.Interface (convertBuiltin)
+import Vehicle.Data.Builtin.Interface (ConvertableBuiltin, convertBuiltin)
+import Vehicle.Data.Builtin.Standard.Core (Builtin)
 import Vehicle.Data.Expr.Normalised
 import Vehicle.Data.Expr.Relevant (RelBinder, RelExpr)
 import Vehicle.Data.Expr.Relevant qualified as R
@@ -39,9 +41,9 @@ descopeExprNaively e = runReader (genericDescopeExpr (ixToName Naive) e) mempty
 -- | Note that you cannot descope `Value` non-naively as you can't descope
 -- closures properly. You have to quote the `Value` first.
 descopeValueNaively ::
-  (DescopableClosure closure builtin) =>
-  Value closure builtin ->
-  Expr Name builtin
+  (ConvertableBuiltin builtin1 builtin2, DescopableClosure closure builtin2) =>
+  Value closure builtin1 ->
+  Expr Name builtin2
 descopeValueNaively e = runReader (genericDescopeValue Naive e) mempty
 
 descopeRelExprInEmptyCtx ::
@@ -126,22 +128,36 @@ genericDescopeExpr f e = showScopeExit $ case showScopeEntry e of
 class DescopableClosure closure builtin where
   descopeClosure :: (MonadDescope m) => VarStrategy -> GenericBinder binder -> closure -> m (Expr Name builtin)
 
-instance DescopableClosure (WHNFClosure builtin) builtin where
-  descopeClosure f _binder (WHNFClosure _env body) = do
-    -- let env' = fmap (descopeNormExpr f) (cheatEnvToValues env)
-    -- let envExpr = normAppList p (BoundVar p "ENV") $ fmap (Arg p Explicit Relevant) env'
-    genericDescopeExpr (ixToName f) body
+instance (ConvertableBuiltin builtin Builtin) => DescopableClosure (WHNFClosure builtin) Builtin where
+  descopeClosure :: forall m binder. (MonadDescope m) => VarStrategy -> GenericBinder binder -> WHNFClosure builtin -> m (Expr Name Builtin)
+  descopeClosure f _binder (WHNFClosure env body) = do
+    body' <- genericDescopeExpr (ixToName f) $ convertExprBuiltins body
+    env' <- traverse (genericDescopeValue f) (cheatEnvToValues env) :: m [Expr Name Builtin]
+    let envExpr = normAppList (BoundVar mempty "ENV") $ fmap (Arg mempty Explicit Relevant) env'
+    return $ App envExpr [explicit body']
+
+-- genericDescopeExpr (ixToName f) $ convertExprBuiltins body
 
 instance DescopableClosure (NFClosure builtin) builtin where
   descopeClosure f _binder (NFClosure body) = genericDescopeValue f body
 
+instance DescopableClosure MixedClosure Builtin where
+  descopeClosure :: forall m binder. (MonadDescope m) => VarStrategy -> GenericBinder binder -> MixedClosure -> m (Expr Name Builtin)
+  descopeClosure f binder = \case
+    StandardClos closure -> descopeClosure f binder closure
+    LossClos (LossClosure env body) -> do
+      body' <- genericDescopeExpr (ixToName f) $ convertExprBuiltins body
+      env' <- traverse (genericDescopeValue f) (cheatEnvToValues env) :: m [Expr Name Builtin]
+      let envExpr = normAppList (BoundVar mempty "ENV") $ fmap (Arg mempty Explicit Relevant) env'
+      return $ App envExpr [explicit body']
+
 -- | This function is not meant to do anything sensible and is merely
 -- used for printing `WHNF`s in a readable form.
 genericDescopeValue ::
-  (MonadDescope m, DescopableClosure closure builtin) =>
+  (MonadDescope m, DescopableClosure closure builtin2, ConvertableBuiltin builtin1 builtin2) =>
   VarStrategy ->
-  Value closure builtin ->
-  m (Expr Name builtin)
+  Value closure builtin1 ->
+  m (Expr Name builtin2)
 genericDescopeValue f e = case e of
   VUniverse u ->
     return $ Universe p u

@@ -16,9 +16,9 @@ import Data.Data (Proxy (..))
 import Data.List.NonEmpty as NonEmpty (toList)
 import Vehicle.Compile.Context.Bound.Class (MonadBoundContext (..))
 import Vehicle.Compile.Context.Free.Class (MonadFreeContext (getFreeCtx))
+import Vehicle.Compile.Descope (DescopableClosure)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Builtin (NormalisableBuiltin (..), filterOutIrrelevantArgs)
-import Vehicle.Compile.Normalise.Quote (QuoteClosure)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Data.Builtin.Standard.Core (Builtin)
@@ -114,12 +114,10 @@ instance EvaluableClosure (WHNFClosure builtin) builtin where
 type MonadNorm closure builtin m =
   ( MonadCompile m,
     EvaluableClosure closure builtin,
-    QuoteClosure closure Builtin,
+    DescopableClosure closure Builtin,
     NormalisableBuiltin builtin,
     PrintableBuiltin builtin
   )
-
-type FreeEnv closure builtin = GenericFreeCtx (VDecl closure builtin)
 
 eval ::
   (MonadNorm closure builtin m) =>

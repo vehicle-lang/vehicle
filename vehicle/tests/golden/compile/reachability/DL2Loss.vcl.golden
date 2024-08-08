@@ -1,3 +1,3 @@
 @property;
 reachable : (Tensor Rat -> Tensor Rat) -> Tensor Rat;
-reachable f = maximise (*) (\ x -> reduceSum (max (const[ 0.0 ] (1 :: nil)) (f x - [const[ 0.0 ] nil]) + max (const[ 0.0 ] (1 :: nil)) ([const[ 0.0 ] nil] - f x)) + const[ 0.0 ] nil)
+reachable f = maximise (*) (\ x -> reduceSum (- (max (const[ 0.0 ] (1 :: nil)) (f x - [const[ 0.0 ] nil]) + max (const[ 0.0 ] (1 :: nil)) ([const[ 0.0 ] nil] - f x))) + const[ 0.0 ] nil)
