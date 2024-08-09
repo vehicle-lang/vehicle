@@ -63,11 +63,8 @@ type DifferentiableLogicImplementation =
 
 -- | Standard library operations that we don't want to normalise
 -- as we need them present to convert into tensors.
-preservedStdLibOps :: Set Identifier
+preservedStdLibOps :: Set StdLibFunction
 preservedStdLibOps =
   Set.fromList
-    [ identifierOf StdForeachIndex
+    [ StdForeachIndex
     ]
-
-isPreservedStdLibOp :: GenericDecl expr -> Bool
-isPreservedStdLibOp decl = identifierOf decl `Set.member` preservedStdLibOps

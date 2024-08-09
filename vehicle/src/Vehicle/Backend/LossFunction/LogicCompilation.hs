@@ -19,15 +19,15 @@ import Vehicle.Backend.LossFunction.Core
 import Vehicle.Backend.LossFunction.Core qualified as L
 import Vehicle.Backend.LossFunction.Logics qualified as DSL
 import Vehicle.Backend.Prelude (DifferentiableLogicID)
-import Vehicle.Compile.Context.Free (MonadFreeContext, getFreeEnv, runFreshFreeContextT)
+import Vehicle.Compile.Context.Free (MonadFreeContext, runFreshFreeContextT)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBE (EvaluableClosure (..), eval, evalApp)
+import Vehicle.Compile.Normalise.NBE (EvaluableClosure (..), eval, evalApp, normaliseInEnv)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
 import Vehicle.Data.Builtin.Loss
 import Vehicle.Data.Builtin.Standard (Quantifier)
-import Vehicle.Data.Expr.Normalised (VBinder, Value (..), WHNFBoundEnv, WHNFClosure (..), WHNFFreeEnv, WHNFValue, boundContextToEnv, extendEnvWithBound, extendEnvWithDefined)
+import Vehicle.Data.Expr.Normalised (VBinder, Value (..), WHNFBoundEnv, WHNFClosure (..), WHNFValue, boundContextToEnv, extendEnvWithBound, extendEnvWithDefined)
 import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (..))
 import Vehicle.Syntax.Builtin (Builtin)
 import Vehicle.Syntax.Builtin qualified as V
@@ -68,10 +68,6 @@ getDeclProvenance :: (MonadLogic m) => m (Either DeclProvenance DifferentiableLo
 getDeclProvenance = do
   (_, prov, _, _) <- ask
   return prov
-
-getStandardFreeEnvWithoutHidden :: (MonadLogic m) => m (WHNFFreeEnv Builtin)
-getStandardFreeEnvWithoutHidden = do
-  Map.map (\d -> if isPreservedStdLibOp d then convertToPostulate d else d) <$> getFreeEnv
 
 getBoundCtx :: (MonadLogic m) => m (GenericBoundCtx MixedLossBinder)
 getBoundCtx = do
@@ -213,8 +209,7 @@ normStandardExprToLoss ::
   Expr Ix Builtin ->
   m MixedLossValue
 normStandardExprToLoss boundEnv expr = do
-  freeEnv <- getStandardFreeEnvWithoutHidden
-  standardValue <- eval freeEnv boundEnv expr
+  standardValue <- normaliseInEnv boundEnv expr
   result <- convertToLossBuiltins standardValue
   return result
 
