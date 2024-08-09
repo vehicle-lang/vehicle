@@ -94,4 +94,9 @@ binding :: Type Ix Builtin -> Binder Ix Builtin
 binding = Binder p (BinderDisplayForm (OnlyName "x") False) Explicit Relevant
 
 mkNoOpEnv :: Lv -> WHNFBoundEnv builtin
-mkNoOpEnv boundCtxSize = [mkDefaultEnvEntry "_" Bound | _ <- [0 .. boundCtxSize - 1]]
+mkNoOpEnv boundCtxSize = reverse [mkDefaultEnvEntry "_" (VBoundVar i []) | i <- [0 .. boundCtxSize - 1]]
+  where
+    mkDefaultEnvEntry :: Name -> Value closure builtin -> EnvEntry closure builtin
+    mkDefaultEnvEntry name value = (Binder mempty displayForm Explicit Relevant (), value)
+      where
+        displayForm = BinderDisplayForm (OnlyName name) True

@@ -9,7 +9,7 @@ import Data.Hashable (Hashable (..))
 
 import GHC.Generics (Generic)
 import Vehicle.Data.DeBruijn
-import Vehicle.Data.Expr.Normalised (BoundEnvValue, Value, WHNFClosure)
+import Vehicle.Data.Expr.Normalised (Value, WHNFClosure)
 import Vehicle.Syntax.AST
 
 -- We used to have full blown alpha-equivalence based on co-deBruijn indices
@@ -17,8 +17,6 @@ import Vehicle.Syntax.AST
 -- need be though.
 
 instance (Hashable builtin, Generic builtin) => Hashable (WHNFClosure builtin)
-
-instance (Hashable closure, Hashable builtin) => Hashable (BoundEnvValue closure builtin)
 
 instance (Hashable closure, Hashable builtin) => Hashable (Value closure builtin)
 

@@ -45,12 +45,8 @@ instance QuoteClosure MixedClosure Builtin where
 
 quoteCtx :: (ConvertableBuiltin builtin1 builtin2, QuoteClosure closure builtin2) => Provenance -> Lv -> BoundEnv closure builtin1 -> Substitution (Expr Ix builtin2)
 quoteCtx p level env i = case lookupIx env i of
-  Nothing ->
-    developerError $
-      "Mis-sized environment" <+> pretty (length env) <+> "when quoting variable" <+> pretty i
-  Just (_binder, value) -> case value of
-    Bound {} -> Left i
-    Defined v -> Right (quote p level v)
+  Nothing -> developerError $ "Mis-sized environment" <+> pretty (length env) <+> "when quoting variable" <+> pretty i
+  Just (_binder, value) -> Right (quote p level value)
 
 -----------------------------------------------------------------------------
 -- Quoting expressions
