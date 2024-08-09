@@ -75,7 +75,6 @@ checkExpr expectedType expr = do
 
           let checkedLamBinder = replaceBinderType (typeOf piBinder) lamBinder
           let finalLamBinder = setBinderRelevance checkedLamBinder (relevanceOf piBinder)
-
           -- Add bound variable to context and check if the type of the expression
           -- matches the expected result type.
           checkedBody <- addBinderToContext finalLamBinder $ checkExpr resultType body
@@ -83,23 +82,19 @@ checkExpr expectedType expr = do
 
     -- In the case where we have an implicit or instance pi binder then insert a new
     -- lambda expression.
-    (Pi _ piBinder resultType, e)
+    (Pi _ piBinder _, e)
       | isImplicit piBinder || isInstance piBinder -> do
-          -- Then eta-expand
+          logDebug MaxDetail $ "inserting-binder" <+> prettyVerbose piBinder
+
+          -- Create a suitable binder
           let p = provenanceOf piBinder
           let binderType = typeOf piBinder
-
-          -- Create a new binder mirroring the Pi binder expected
           lamBinderName <- getBinderNameOrFreshName (nameOf piBinder) binderType
           let lamBinderForm = BinderDisplayForm (OnlyName lamBinderName) False
           let lamBinder = Binder p lamBinderForm (visibilityOf piBinder) (relevanceOf piBinder) binderType
 
-          -- Add the pi-bound variable to the context and check if the type
-          -- of the expression matches the expected result type.
-          checkedExpr <- addBinderToContext lamBinder $ checkExpr resultType (liftDBIndices 1 e)
-
-          -- Prepend a new lambda to the expression with the implicit binder
-          return $ Lam p lamBinder checkedExpr
+          -- Re-check the expression
+          checkExpr expectedType (Lam p lamBinder e)
 
     -- Otherwise switch to inference mode
     (_, _) -> viaInfer expectedType expr
@@ -359,22 +354,22 @@ setRelevance _ relevance = local (relevance <>)
 currentPass :: Doc a
 currentPass = "bidirectional type-checking"
 
-showCheckEntry :: (MonadBidirectional builtin m) => Type Ix builtin -> Expr Ix builtin -> m ()
+showCheckEntry :: forall builtin m. (MonadBidirectional builtin m) => Type Ix builtin -> Expr Ix builtin -> m ()
 showCheckEntry t e = do
-  logDebug MaxDetail ("check-entry" <+> prettyVerbose e <+> ":" <+> prettyVerbose t)
+  logDebug MaxDetail $ "check-entry" <+> prettyVerbose e <+> ":" <+> prettyVerbose t -- <+> "::::" <+> prettyVerbose ctx)
   incrCallDepth
 
 showCheckExit :: (MonadBidirectional builtin m) => Expr Ix builtin -> m ()
 showCheckExit e = do
   decrCallDepth
-  logDebug MaxDetail ("check-exit " <+> prettyVerbose e)
+  logDebug MaxDetail $ "check-exit " <+> prettyVerbose e
 
 showInferEntry :: (MonadBidirectional builtin m) => Expr Ix builtin -> m ()
 showInferEntry e = do
-  logDebug MaxDetail ("infer-entry" <+> prettyVerbose e)
+  logDebug MaxDetail $ "infer-entry" <+> prettyVerbose e
   incrCallDepth
 
 showInferExit :: (MonadBidirectional builtin m) => (Expr Ix builtin, Type Ix builtin) -> m ()
 showInferExit (e, t) = do
   decrCallDepth
-  logDebug MaxDetail ("infer-exit " <+> prettyVerbose e <+> ":" <+> prettyVerbose t)
+  logDebug MaxDetail $ "infer-exit " <+> prettyVerbose e <+> ":" <+> prettyVerbose t

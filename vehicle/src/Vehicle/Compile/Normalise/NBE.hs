@@ -216,15 +216,7 @@ lookupIxValueInEnv ::
   m (Value closure builtin)
 lookupIxValueInEnv boundEnv ix = do
   (_binder, value) <- lookupIxInBoundCtx currentPass ix boundEnv
-  case value of
-    Defined v -> return v
-    Bound -> do
-      -- We need to calculate the level in the final scope. Note this
-      -- step could probably be optimised by storing the required level
-      -- on the `Bound` contructor.
-      let inScopeEnv = drop (unIx ix) boundEnv
-      let lv = Lv $ length (filter isBoundEntry inScopeEnv) - 1
-      return $ VBoundVar lv []
+  return value
 
 -----------------------------------------------------------------------------
 -- Other

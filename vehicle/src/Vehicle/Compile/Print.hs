@@ -156,7 +156,6 @@ type family StrategyFor (tags :: Tags) a :: Strategy where --------------------
   StrategyFor ('Unnamed tags) (Value closure builtin) = 'QuoteValue (StrategyFor ('Unnamed tags) (Expr Ix Builtin))
   StrategyFor ('Named tags) (VDecl closure builtin) = StrategyFor ('Named tags) (Contextualised (Value closure builtin) NamedBoundCtx)
   StrategyFor ('Named tags) (Contextualised (Value closure builtin) NamedBoundCtx) = 'QuoteValue (StrategyFor ('Named tags) (Contextualised (Expr Ix Builtin) NamedBoundCtx))
-  StrategyFor ('Unnamed tags) (BoundEnvValue closure builtin) = StrategyFor ('Unnamed tags) (Value closure builtin)
   -----------
   -- State --
   -----------
@@ -462,11 +461,6 @@ instance
   prettyUsing (WithContext e ctx) = do
     let e' = unnormalise @(Value closure builtin) @(Expr Ix Builtin) (Lv $ length ctx) e
     prettyUsing @rest (WithContext e' ctx)
-
-instance (PrettyUsing rest (Value closure builtin)) => PrettyUsing rest (BoundEnvValue closure builtin) where
-  prettyUsing = \case
-    Bound {} -> ""
-    Defined v -> prettyUsing @rest v
 
 instance (PrintableBuiltin builtin, PrettyUsing rest (Expr Ix Builtin)) => PrettyUsing ('DescopeWithNames rest) (NFValue builtin) where
   prettyUsing e = prettyUsing @rest (unnormalise @(NFValue builtin) @(Expr Ix Builtin) 0 e)

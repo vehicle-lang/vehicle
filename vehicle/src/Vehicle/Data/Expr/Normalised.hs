@@ -56,33 +56,15 @@ traverseSpine f = traverse (traverse f)
 -----------------------------------------------------------------------------
 -- Bound environments
 
--- | Represents a variable's value in the environment.
-data BoundEnvValue closure builtin
-  = -- | The variable has no known concrete value.
-    Bound
-  | -- | The variable has a known value.
-    Defined (Value closure builtin)
-  deriving (Show, Eq, Generic)
-
 -- | The information stored for each variable in the environment. We choose
 -- to store the binder as it's a convenient mechanism for passing through
 -- name, relevance for pretty printing and debugging.
-type EnvEntry closure builtin = (GenericBinder (), BoundEnvValue closure builtin)
-
-isBoundEntry :: EnvEntry closure builtin -> Bool
-isBoundEntry (_binder, value) = case value of
-  Bound {} -> True
-  Defined {} -> False
+type EnvEntry closure builtin = (GenericBinder (), Value closure builtin)
 
 type BoundEnv closure builtin = GenericBoundCtx (EnvEntry closure builtin)
 
 emptyBoundEnv :: BoundEnv closure builtin
 emptyBoundEnv = mempty
-
-mkDefaultEnvEntry :: Name -> BoundEnvValue closure builtin -> EnvEntry closure builtin
-mkDefaultEnvEntry name value = (Binder mempty displayForm Explicit Relevant (), value)
-  where
-    displayForm = BinderDisplayForm (OnlyName name) True
 
 -- | Note that the `ctxSize` must come from the current context and not a
 -- bound environment as the environment that the term was originally normalised
@@ -99,12 +81,14 @@ extendEnvWithDefined ::
   GenericBinder expr ->
   BoundEnv closure builtin ->
   BoundEnv closure builtin
-extendEnvWithDefined value binder env = (void binder, Defined value) : env
+extendEnvWithDefined value binder env = (void binder, value) : env
 
 boundContextToEnv ::
   BoundCtx builtin ->
   BoundEnv closure builtin
-boundContextToEnv = fmap (\binder -> (void binder, Bound))
+boundContextToEnv ctx = do
+  let numberedCtx = zip ctx (reverse [0 .. Lv (length ctx - 1)])
+  fmap (\(binder, lv) -> (void binder, VBoundVar lv [])) numberedCtx
 
 -- | Converts an environment to set of values suitable for printing
 cheatEnvToValues :: BoundEnv closure builtin -> GenericBoundCtx (Value closure builtin)
@@ -112,17 +96,11 @@ cheatEnvToValues = fmap envEntryToValue
   where
     envEntryToValue :: EnvEntry closure builtin -> Value closure builtin
     envEntryToValue (binder, value) = do
-      let name = VFreeVar (Identifier StdLib (fromMaybe "_" (nameOf binder) <> " ="))
-      name
-        [ Arg mempty Explicit Relevant $ case value of
-            Bound -> VFreeVar (Identifier StdLib "_") mempty
-            Defined x -> x
-        ]
+      let ident = Identifier StdLib (fromMaybe "_" (nameOf binder) <> " =")
+      VFreeVar ident [explicit value]
 
 -----------------------------------------------------------------------------
 -- WHNF
-
-type WHNFBoundEnvValue builtin = BoundEnvValue (WHNFClosure builtin) builtin
 
 type WHNFValue builtin = Value (WHNFClosure builtin) builtin
 
