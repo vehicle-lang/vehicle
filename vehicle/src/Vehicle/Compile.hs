@@ -93,11 +93,11 @@ compileToLossFunction ::
   Maybe FilePath ->
   Bool ->
   m ()
-compileToLossFunction differentiableLogicID (imports, typedProg) outputFile outputAsJSON = do
+compileToLossFunction logicID (imports, typedProg) outputFile outputAsJSON = do
   let mergedProg = mergeImports imports typedProg
-  let logic = dslFor differentiableLogicID
-  compiledLogic <- compileLogic logic
-  tensorProg <- convertToLossTensors compiledLogic mergedProg
+  let logic = dslFor logicID
+  compiledLogic <- compileLogic logicID logic
+  tensorProg <- convertToLossTensors logicID compiledLogic mergedProg
   hoistedProg <- hoistInferableParameters tensorProg
   functionalisedProg <- functionaliseResources hoistedProg
   result <-

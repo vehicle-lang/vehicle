@@ -15,10 +15,10 @@ where
 import Data.Data (Proxy (..))
 import Data.List.NonEmpty as NonEmpty (toList)
 import Vehicle.Compile.Context.Bound.Class (MonadBoundContext (..))
-import Vehicle.Compile.Context.Free.Class (MonadFreeContext (getFreeCtx))
+import Vehicle.Compile.Context.Free.Class (MonadFreeContext (..), getFreeEnv)
+import Vehicle.Compile.Descope (DescopableClosure)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Builtin (NormalisableBuiltin (..), filterOutIrrelevantArgs)
-import Vehicle.Compile.Normalise.Quote (QuoteClosure)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Data.Builtin.Standard.Core (Builtin)
@@ -36,11 +36,11 @@ import Vehicle.Data.Expr.Normalised
 
 normalise ::
   forall builtin m.
-  (MonadNorm (WHNFClosure builtin) builtin m, MonadBoundContext builtin m, MonadFreeContext builtin m) =>
+  (MonadNorm (WHNFClosure builtin) builtin m, MonadBoundContext (Type Ix builtin) m, MonadFreeContext builtin m) =>
   Expr Ix builtin ->
   m (WHNFValue builtin)
 normalise e = do
-  boundCtx <- getBoundCtx (Proxy @builtin)
+  boundCtx <- getBoundCtx (Proxy @(Type Ix builtin))
   let boundEnv = boundContextToEnv boundCtx
   normaliseInEnv boundEnv e
 
@@ -50,7 +50,7 @@ normaliseInEnv ::
   Expr Ix builtin ->
   m (WHNFValue builtin)
 normaliseInEnv boundEnv expr = do
-  freeEnv <- freeEnvFromCtx
+  freeEnv <- getFreeEnv
   eval freeEnv boundEnv expr
 
 normaliseInEmptyEnv ::
@@ -65,7 +65,7 @@ normaliseApp ::
   WHNFSpine builtin ->
   m (WHNFValue builtin)
 normaliseApp fn spine = do
-  freeEnv <- freeEnvFromCtx
+  freeEnv <- getFreeEnv
   evalApp freeEnv fn spine
 
 normaliseBuiltin ::
@@ -74,16 +74,8 @@ normaliseBuiltin ::
   WHNFSpine builtin ->
   m (WHNFValue builtin)
 normaliseBuiltin b spine = do
-  freeEnv <- freeEnvFromCtx
+  freeEnv <- getFreeEnv
   evalBuiltin freeEnv b spine
-
-freeEnvFromCtx ::
-  forall builtin m.
-  (MonadFreeContext builtin m) =>
-  m (FreeEnv (WHNFClosure builtin) builtin)
-freeEnvFromCtx = do
-  ctx <- getFreeCtx (Proxy @builtin)
-  return $ fmap snd ctx
 
 -----------------------------------------------------------------------------
 -- Evaluation of closures
@@ -114,12 +106,10 @@ instance EvaluableClosure (WHNFClosure builtin) builtin where
 type MonadNorm closure builtin m =
   ( MonadCompile m,
     EvaluableClosure closure builtin,
-    QuoteClosure closure Builtin,
+    DescopableClosure closure Builtin,
     NormalisableBuiltin builtin,
     PrintableBuiltin builtin
   )
-
-type FreeEnv closure builtin = GenericFreeCtx (VDecl closure builtin)
 
 eval ::
   (MonadNorm closure builtin m) =>

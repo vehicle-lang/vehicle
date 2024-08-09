@@ -9,9 +9,10 @@ where
 import Data.Data (Proxy (..))
 import Vehicle.Compile.Context.Bound as BoundCtx
 import Vehicle.Compile.Context.Free as FreeContext
+import Vehicle.Compile.Prelude
 
 type MonadVarContext builtin m =
-  (MonadBoundContext builtin m, MonadFreeContext builtin m)
+  (MonadBoundContext (Type Ix builtin) m, MonadFreeContext builtin m)
 
 runFreshVarContextT ::
   forall m builtin a.

@@ -72,7 +72,7 @@ data ConstraintContext builtin = ConstraintContext
     -- If |Nothing| then the set is unknown.
     blockedBy :: BlockingStatus,
     -- | The set of bound variables in scope at the point the constraint was generated.
-    boundContext :: BoundCtx builtin
+    boundContext :: BoundCtx (Type Ix builtin)
   }
   deriving (Show)
 
@@ -84,7 +84,7 @@ instance Pretty (ConstraintContext builtin) where
 instance HasProvenance (ConstraintContext builtin) where
   provenanceOf (ConstraintContext _ _ creationProvenance _ _) = creationProvenance
 
-instance HasBoundCtx (ConstraintContext builtin) builtin where
+instance HasBoundCtx (ConstraintContext builtin) (Type Ix builtin) where
   boundContextOf = boundContext
 
 blockCtxOn :: MetaSet -> ConstraintContext builtin -> ConstraintContext builtin
@@ -94,14 +94,14 @@ blockCtxOn metas (ConstraintContext cid originProv creationProv _ ctx) =
 
 updateConstraintBoundCtx ::
   ConstraintContext builtin ->
-  (BoundCtx builtin -> BoundCtx builtin) ->
+  (BoundCtx (Type Ix builtin) -> BoundCtx (Type Ix builtin)) ->
   ConstraintContext builtin
 updateConstraintBoundCtx ConstraintContext {..} updateFn =
   ConstraintContext {boundContext = updateFn boundContext, ..}
 
 setConstraintBoundCtx ::
   ConstraintContext builtin ->
-  BoundCtx builtin ->
+  BoundCtx (Type Ix builtin) ->
   ConstraintContext builtin
 setConstraintBoundCtx ctx v = updateConstraintBoundCtx ctx (const v)
 
@@ -139,7 +139,7 @@ data InstanceCandidate builtin = InstanceCandidate
 
 type instance
   WithContext (InstanceCandidate builtin) =
-    Contextualised (InstanceCandidate builtin) (BoundCtx builtin)
+    Contextualised (InstanceCandidate builtin) (BoundCtx (Type Ix builtin))
 
 data InstanceGoal builtin = InstanceGoal
   { goalTelescope :: Telescope Ix builtin,

@@ -21,15 +21,6 @@ import Vehicle.Data.Expr.Normalised
 import Vehicle.Syntax.Builtin hiding (Builtin (..))
 import Vehicle.Syntax.Builtin qualified as S
 
-instance ConvertableBuiltin PolarityBuiltin S.Builtin where
-  convertBuiltin p = \case
-    BuiltinConstructor c -> Builtin p (S.BuiltinConstructor c)
-    BuiltinFunction f -> Builtin p (S.BuiltinFunction f)
-    b -> FreeVar p $ Identifier StdLib (layoutAsText $ pretty b)
-
-instance PrintableBuiltin PolarityBuiltin where
-  isCoercion = const False
-
 instance TypableBuiltin PolarityBuiltin where
   typeBuiltin = typePolarityBuiltin
 

@@ -3,45 +3,48 @@ module Vehicle.Backend.LossFunction
   )
 where
 
-import Control.Monad.Reader (ReaderT (..))
-import Data.Map qualified as Map
 import Data.Maybe (maybeToList)
-import Vehicle.Backend.LossFunction.Core (DifferentialLogicImplementation, MixedFreeEnv)
-import Vehicle.Backend.LossFunction.LogicCompilation (convertToLossBuiltins)
-import Vehicle.Backend.LossFunction.TensorCompilation (convertLossToTensorValue)
+import Data.Proxy (Proxy (..))
+import Vehicle.Backend.LossFunction.Core (DifferentiableLogicImplementation, MixedLossValue, preservedStdLibOps)
+import Vehicle.Backend.LossFunction.TensorCompilation (convertExprToTensorValue, runMonadTensorT)
+import Vehicle.Backend.Prelude (DifferentiableLogicID)
+import Vehicle.Compile.Context.Bound.Class (MonadBoundContext)
+import Vehicle.Compile.Context.Bound.Instance (runFreshBoundContextT)
+import Vehicle.Compile.Context.Free (MonadFreeContext, addDeclEntryToContext, hideStdLibDecls, runFreshFreeContextT)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBE (FreeEnv, eval)
+import Vehicle.Compile.Normalise.NBE (normaliseInEnv)
 import Vehicle.Compile.Normalise.Quote qualified as Quote
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Tensor (TensorBuiltin)
-import Vehicle.Data.Expr.Normalised (WHNFClosure)
 import Vehicle.Syntax.Builtin
 
 convertToLossTensors ::
   (MonadCompile m) =>
-  DifferentialLogicImplementation ->
+  DifferentiableLogicID ->
+  DifferentiableLogicImplementation ->
   Prog Ix Builtin ->
   m (Prog Ix TensorBuiltin)
-convertToLossTensors logic (Main ds) =
-  logCompilerPass MinDetail currentPass $ do
-    Main <$> convertDecls logic mempty mempty ds
+convertToLossTensors logicID logic (Main ds) =
+  logCompilerPass MinDetail currentPass $
+    runFreshFreeContextT (Proxy @Builtin) $
+      runFreshBoundContextT (Proxy @MixedLossValue) $
+        Main <$> convertDecls logicID logic ds
 
 convertDecls ::
-  (MonadCompile m) =>
-  DifferentialLogicImplementation ->
-  FreeEnv (WHNFClosure Builtin) Builtin ->
-  MixedFreeEnv ->
+  (MonadCompile m, MonadFreeContext Builtin m, MonadBoundContext MixedLossValue m) =>
+  DifferentiableLogicID ->
+  DifferentiableLogicImplementation ->
   [Decl Ix Builtin] ->
   m [Decl Ix TensorBuiltin]
-convertDecls logic standardFreeEnv lossFreeEnv = \case
+convertDecls logicID logic = \case
   [] -> return []
   decl : decls -> do
     let ident = identifierOf decl
     let declProv = (ident, provenanceOf decl)
 
-    (standardDecl, maybeTensorDecl) <-
-      flip runReaderT (logic, declProv, standardFreeEnv, lossFreeEnv, mempty) $ do
-        logCompilerPass MinDetail ("declaration" <+> quotePretty ident) $ do
+    (normDecl, maybeTensorDecl) <-
+      logCompilerPass MinDetail ("declaration" <+> quotePretty ident) $ do
+        hideStdLibDecls (Proxy @Builtin) preservedStdLibOps $ do
           -- Deciding on the best ordering of converting to loss functions and converting to tensor code
           -- is tricky. There are three approaches:
           --
@@ -56,13 +59,14 @@ convertDecls logic standardFreeEnv lossFreeEnv = \case
           --    Disadvantages
           --        - Loss functions need to be specified in terms of tensors.
           --        - Can't reuse not/if-elimination code
-          normStandardDecl <- traverse (eval standardFreeEnv mempty) decl
+          normStandardDecl <- traverse (normaliseInEnv mempty) decl
           maybeTensorDecl <-
             if not (isPropertyDecl decl) && not (isAbstractDecl decl)
               then return Nothing
               else do
-                normLossDecl <- traverse convertToLossBuiltins normStandardDecl
-                normTensorDecl <- traverse convertLossToTensorValue normLossDecl
+                normTensorDecl <-
+                  runMonadTensorT logicID declProv logic $
+                    traverse (convertExprToTensorValue mempty) decl
                 let tensorDecl = fmap (Quote.unnormalise 0) normTensorDecl
                 return $ Just tensorDecl
 
@@ -71,10 +75,9 @@ convertDecls logic standardFreeEnv lossFreeEnv = \case
               maybeTensorDecl
             )
 
-    let newStandardFreeEnv = Map.insert ident standardDecl standardFreeEnv
-    let newLossFreeEnv = lossFreeEnv -- Map.insert ident lossDecl lossFreeEnv
-    decls' <- convertDecls logic newStandardFreeEnv newLossFreeEnv decls
-    return $ maybeToList maybeTensorDecl ++ decls'
+    addDeclEntryToContext (decl, normDecl) $ do
+      decls' <- convertDecls logicID logic decls
+      return $ maybeToList maybeTensorDecl ++ decls'
 
 currentPass :: Doc a
 currentPass = "loss function compilation"

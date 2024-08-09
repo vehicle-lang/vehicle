@@ -3,7 +3,7 @@ module Vehicle.Compile.Context.Bound.Core where
 import Data.Coerce (coerce)
 import Vehicle.Data.DeBruijn
 import Vehicle.Prelude
-import Vehicle.Syntax.AST (Binder, Name, nameOf)
+import Vehicle.Syntax.AST (GenericBinder, Name, nameOf)
 
 --------------------------------------------------------------------------------
 -- Bound context
@@ -29,16 +29,16 @@ boundCtxLv = Lv . length
 -- via De Bruijn expressions.
 -- Therefore the variables at the start of the list are the most
 -- recent variables introduced to the scope.
-type BoundCtx builtin = GenericBoundCtx (Binder Ix builtin)
+type BoundCtx expr = GenericBoundCtx (GenericBinder expr)
 
-emptyBoundCtx :: BoundCtx builtin
+emptyBoundCtx :: BoundCtx expr
 emptyBoundCtx = mempty
 
-toNamedBoundCtx :: BoundCtx builtin -> NamedBoundCtx
+toNamedBoundCtx :: BoundCtx expr -> NamedBoundCtx
 toNamedBoundCtx = fmap nameOf
 
-class HasBoundCtx a builtin | a -> builtin where
-  boundContextOf :: a -> BoundCtx builtin
+class HasBoundCtx a expr | a -> expr where
+  boundContextOf :: a -> BoundCtx expr
 
 namedBoundCtxOf :: (HasBoundCtx a builtin) => a -> NamedBoundCtx
 namedBoundCtxOf = toNamedBoundCtx . boundContextOf

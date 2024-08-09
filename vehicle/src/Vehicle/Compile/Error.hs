@@ -8,6 +8,7 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.Map qualified as Map
 import Data.Void (Void)
 import Prettyprinter (list)
+import Vehicle.Backend.LossFunction.Core (DifferentiableLogicField)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
@@ -88,7 +89,7 @@ data CompileError
   | UnsupportedAlternatingQuantifiers QueryFormatID DeclProvenance (Either CompileError (Quantifier, Provenance, PolarityProvenance))
   | UnsupportedNonLinearConstraint QueryFormatID DeclProvenance (Either CompileError NonLinearitySource)
   | UnsupportedNegatedOperation DifferentiableLogicID NamedBoundCtx (Expr Ix Builtin) (WHNFValue Builtin)
-  | UnsupportedIfOperation DeclProvenance Provenance
+  | UnsupportedIfOperation (Either DeclProvenance DifferentiableLogicField) Provenance
   | DuplicateQuantifierNames DeclProvenance Name
   | QuantifiedIfCondition (ConstraintContext PolarityBuiltin)
   | HigherOrderVectors DeclProvenance NamedBoundCtx (NFType TensorBuiltin) (NFType TensorBuiltin)

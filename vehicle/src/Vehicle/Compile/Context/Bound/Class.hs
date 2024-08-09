@@ -15,19 +15,19 @@ import Vehicle.Data.Expr.Normalised
 
 -- | A monad that is used to store the current context at a given point in a
 -- program, i.e. what declarations and bound variables are in scope.
-class (Monad m) => MonadBoundContext builtin m where
-  addBinderToContext :: Binder Ix builtin -> m a -> m a
-  getBoundCtx :: Proxy builtin -> m (BoundCtx builtin)
+class (Monad m) => MonadBoundContext expr m where
+  addBinderToContext :: GenericBinder expr -> m a -> m a
+  getBoundCtx :: Proxy expr -> m (BoundCtx expr)
 
-instance (Monoid w, MonadBoundContext builtin m) => MonadBoundContext builtin (WriterT w m) where
+instance (Monoid w, MonadBoundContext expr m) => MonadBoundContext expr (WriterT w m) where
   addBinderToContext = mapWriterT . addBinderToContext
   getBoundCtx = lift . getBoundCtx
 
-instance (MonadBoundContext builtin m) => MonadBoundContext builtin (ReaderT w m) where
+instance (MonadBoundContext expr m) => MonadBoundContext expr (ReaderT w m) where
   addBinderToContext = mapReaderT . addBinderToContext
   getBoundCtx = lift . getBoundCtx
 
-instance (MonadBoundContext builtin m) => MonadBoundContext builtin (StateT w m) where
+instance (MonadBoundContext expr m) => MonadBoundContext expr (StateT w m) where
   addBinderToContext = mapStateT . addBinderToContext
   getBoundCtx = lift . getBoundCtx
 
@@ -35,44 +35,44 @@ instance (MonadBoundContext builtin m) => MonadBoundContext builtin (StateT w m)
 -- Operations
 
 addBindersToContext ::
-  (MonadBoundContext builtin m) =>
-  [Binder Ix builtin] ->
+  (MonadBoundContext expr m) =>
+  [GenericBinder expr] ->
   m a ->
   m a
 addBindersToContext binders fn = foldr addBinderToContext fn binders
 
 getBoundVarByIx ::
-  forall builtin m.
-  (MonadBoundContext builtin m, MonadCompile m) =>
-  Proxy builtin ->
+  forall expr m.
+  (MonadBoundContext expr m, MonadCompile m) =>
+  Proxy expr ->
   CompilerPass ->
   Ix ->
-  m (Binder Ix builtin)
+  m (GenericBinder expr)
 getBoundVarByIx _ compilerPass ix =
-  lookupIxInBoundCtx compilerPass ix =<< getBoundCtx (Proxy @builtin)
+  lookupIxInBoundCtx compilerPass ix =<< getBoundCtx (Proxy @expr)
 
 getBoundVarByLv ::
-  forall builtin m.
-  (MonadBoundContext builtin m, MonadCompile m) =>
-  Proxy builtin ->
+  forall expr m.
+  (MonadBoundContext expr m, MonadCompile m) =>
+  Proxy expr ->
   CompilerPass ->
   Lv ->
-  m (Binder Ix builtin)
+  m (GenericBinder expr)
 getBoundVarByLv _ compilerPass lv =
-  lookupLvInBoundCtx compilerPass lv =<< getBoundCtx (Proxy @builtin)
+  lookupLvInBoundCtx compilerPass lv =<< getBoundCtx (Proxy @expr)
 
 unnormalise ::
-  forall builtin m.
-  (MonadBoundContext builtin m, Show builtin) =>
-  WHNFValue builtin ->
-  m (Expr Ix builtin)
+  forall expr m.
+  (MonadBoundContext expr m, Show expr) =>
+  WHNFValue expr ->
+  m (Expr Ix expr)
 unnormalise e = do
-  lv <- getCurrentLv (Proxy @builtin)
+  lv <- getCurrentLv (Proxy @expr)
   return $ Quote.unnormalise lv e
 
 getCurrentLv ::
-  (MonadBoundContext builtin m) =>
-  Proxy builtin ->
+  (MonadBoundContext expr m) =>
+  Proxy expr ->
   m Lv
 getCurrentLv p = boundCtxLv <$> getBoundCtx p
 
@@ -84,32 +84,24 @@ type FreshNameState = Int
 
 -- TODO not currently sound.
 getFreshName ::
-  forall builtin m.
-  (MonadBoundContext builtin m) =>
-  Expr Ix builtin ->
+  forall expr m.
+  (MonadBoundContext expr m) =>
+  expr ->
   m Name
 getFreshName _t = do
-  boundCtx <- getBoundCtx (Proxy @builtin)
+  boundCtx <- getBoundCtx (Proxy @expr)
   return $ "_x" <> layoutAsText (pretty (length boundCtx))
 
-getBinderNameOrFreshName :: (MonadBoundContext builtin m) => Maybe Name -> Type Ix builtin -> m Name
+getBinderNameOrFreshName :: (MonadBoundContext expr m) => Maybe Name -> expr -> m Name
 getBinderNameOrFreshName piName typ = case piName of
   Just x -> return x
   Nothing -> getFreshName typ
 
-getNamedBoundCtx :: (MonadBoundContext builtin m) => Proxy builtin -> m NamedBoundCtx
+getNamedBoundCtx :: (MonadBoundContext expr m) => Proxy expr -> m NamedBoundCtx
 getNamedBoundCtx p = toNamedBoundCtx <$> getBoundCtx p
 
-{-
-getFreshNameInternal :: (Monad m) => Type Ix builtin -> TypeCheckerTInternals builtin2 m Name
-getFreshNameInternal _typ = do
-  nameID <- gets freshNameState
-  modify (\TypeCheckerState {..} -> TypeCheckerState {freshNameState = nameID + 1, ..})
-  return $ layoutAsText $ "_x" <> pretty nameID
--}
-
 piBinderToLamBinder ::
-  (MonadBoundContext builtin m) =>
+  (MonadBoundContext (Expr Ix builtin) m) =>
   Binder Ix builtin ->
   m (Binder Ix builtin)
 piBinderToLamBinder binder@(Binder p _ v r t) = do

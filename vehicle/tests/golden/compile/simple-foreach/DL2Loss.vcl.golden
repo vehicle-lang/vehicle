@@ -1,6 +1,6 @@
 @property;
 index : (Tensor Rat -> Tensor Rat) -> Tensor Rat;
-index f = [max (const[ 0.0 ] nil) (const[ 0.0 ] nil - f [const[ 0.0 ] nil, const[ 0.0 ] nil] ! 0), max (const[ 0.0 ] nil) (const[ 0.0 ] nil - f [const[ 0.0 ] nil, const[ 0.0 ] nil] ! 1)]
+index f = max (const[ 0.0 ] (2 :: nil)) (const[ 0.0 ] (2 :: nil) - f [const[ 0.0 ] nil, const[ 0.0 ] nil])
 
 @property;
 safe : (Tensor Rat -> Tensor Rat) -> Tensor Rat;

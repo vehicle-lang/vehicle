@@ -153,9 +153,9 @@ type family StrategyFor (tags :: Tags) a :: Strategy where --------------------
   -- Value --
   -----------
   -- To print a `Value` we need to quote it first. Note that we convert it to a `Builtin` representation immediately
-  StrategyFor ('Unnamed tags) (Value closure builtin) = 'QuoteValue (StrategyFor ('Unnamed tags) (Expr Ix Builtin))
   StrategyFor ('Named tags) (VDecl closure builtin) = StrategyFor ('Named tags) (Contextualised (Value closure builtin) NamedBoundCtx)
   StrategyFor ('Named tags) (Contextualised (Value closure builtin) NamedBoundCtx) = 'QuoteValue (StrategyFor ('Named tags) (Contextualised (Expr Ix Builtin) NamedBoundCtx))
+  StrategyFor ('Unnamed tags) (Value closure builtin) = 'DescopeNaively (StrategyFor tags (Expr Name Builtin))
   -----------
   -- State --
   -----------
@@ -318,14 +318,14 @@ instance (PrettyUsing rest (Arg Name builtin), PrintableBuiltin builtin) => Pret
 instance (PrettyUsing rest (Binder Name builtin), PrintableBuiltin builtin) => PrettyUsing ('DescopeNaively rest) (Binder Ix builtin) where
   prettyUsing binder = prettyUsing @rest $ fmap descopeExprNaively binder
 
-instance (PrettyUsing rest (Expr Name builtin), PrintableBuiltin builtin, DescopableClosure closure builtin) => PrettyUsing ('DescopeNaively rest) (Value closure builtin) where
-  prettyUsing = prettyUsing @rest . descopeValueNaively
+instance (PrettyUsing rest (Expr Name Builtin), PrintableBuiltin builtin, DescopableClosure closure Builtin) => PrettyUsing ('DescopeNaively rest) (Value closure builtin) where
+  prettyUsing = prettyUsing @rest . descopeValueNaively @builtin @Builtin @closure
 
-instance (PrettyUsing rest (Arg Name builtin), PrintableBuiltin builtin, DescopableClosure closure builtin) => PrettyUsing ('DescopeNaively rest) (VArg closure builtin) where
-  prettyUsing arg = prettyUsing @rest $ fmap descopeValueNaively arg
+instance (PrettyUsing rest (Arg Name Builtin), PrintableBuiltin builtin, DescopableClosure closure Builtin) => PrettyUsing ('DescopeNaively rest) (VArg closure builtin) where
+  prettyUsing arg = prettyUsing @rest $ fmap (descopeValueNaively @builtin @Builtin @closure) arg
 
-instance (PrettyUsing rest (Binder Name builtin), PrintableBuiltin builtin, DescopableClosure closure builtin) => PrettyUsing ('DescopeNaively rest) (VBinder closure builtin) where
-  prettyUsing binder = prettyUsing @rest $ fmap descopeValueNaively binder
+instance (PrettyUsing rest (Binder Name Builtin), PrintableBuiltin builtin, DescopableClosure closure Builtin) => PrettyUsing ('DescopeNaively rest) (VBinder closure builtin) where
+  prettyUsing binder = prettyUsing @rest $ fmap (descopeValueNaively @builtin @Builtin @closure) binder
 
 --------------------------------------------------------------------------------
 -- Convert open terms from DeBruijn representation to named representation

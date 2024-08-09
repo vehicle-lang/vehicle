@@ -6,12 +6,15 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), (<+>))
-import Vehicle.Data.Builtin.Interface (HasStandardData (..))
+import Vehicle.Compile.Print (PrintableBuiltin (..))
+import Vehicle.Data.Builtin.Interface (ConvertableBuiltin (..), HasStandardData (..))
 import Vehicle.Data.DSL
 import Vehicle.Data.Expr.Interface
 import Vehicle.Data.Expr.Normalised
+import Vehicle.Prelude (layoutAsText)
 import Vehicle.Syntax.AST
 import Vehicle.Syntax.Builtin hiding (Builtin (BuiltinConstructor, BuiltinFunction))
+import Vehicle.Syntax.Builtin qualified as S
 
 --------------------------------------------------------------------------------
 -- PolarityProvenance
@@ -161,6 +164,15 @@ instance HasRatLits (Value closure PolarityBuiltin) where
     VBuiltin (BuiltinConstructor (LRat b)) [] -> Just (mempty, b)
     _ -> Nothing
   mkRatLit _p x = VBuiltin (BuiltinConstructor (LRat x)) mempty
+
+instance ConvertableBuiltin PolarityBuiltin S.Builtin where
+  convertBuiltin p = \case
+    BuiltinConstructor c -> Builtin p (S.BuiltinConstructor c)
+    BuiltinFunction f -> Builtin p (S.BuiltinFunction f)
+    b -> FreeVar p $ Identifier StdLib (layoutAsText $ pretty b)
+
+instance PrintableBuiltin PolarityBuiltin where
+  isCoercion = const False
 
 -----------------------------------------------------------------------------
 -- Type synonyms
