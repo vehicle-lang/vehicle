@@ -13,6 +13,7 @@ import Data.Ratio
 import Vehicle.Backend.LossFunction.Core
 import Vehicle.Backend.LossFunction.LogicCompilation
 import Vehicle.Backend.Prelude (DifferentiableLogicID)
+import Vehicle.Compile.Context.Free.Class (MonadFreeContext)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (PrettyFriendly, prettyFriendly)
@@ -33,13 +34,13 @@ type MonadTensorCtx =
   ( DifferentiableLogicID,
     DifferentiableLogicImplementation,
     DeclProvenance,
-    WHNFFreeEnv Builtin,
     GenericBoundCtx MixedLossBinder
   )
 
 type MonadTensor m =
   ( MonadCompile m,
-    MonadReader MonadTensorCtx m
+    MonadReader MonadTensorCtx m,
+    MonadFreeContext Builtin m
   )
 
 runMonadTensorT ::
@@ -47,28 +48,27 @@ runMonadTensorT ::
   DifferentiableLogicID ->
   DeclProvenance ->
   DifferentiableLogicImplementation ->
-  WHNFFreeEnv Builtin ->
   ReaderT MonadTensorCtx m a ->
   m a
-runMonadTensorT logicID origin logic standardEnv =
-  flip runReaderT (logicID, logic, origin, standardEnv, mempty)
+runMonadTensorT logicID origin logic =
+  flip runReaderT (logicID, logic, origin, mempty)
 
 switchToMonadLogic ::
   (MonadTensor m) =>
   ReaderT MonadLogicCtx m a ->
   m a
 switchToMonadLogic comp = do
-  (logicID, logic, declProv, freeEnv, boundCtx) <- ask
-  runMonadLogicT logicID logic (Left declProv) freeEnv boundCtx comp
+  (logicID, logic, declProv, boundCtx) <- ask
+  runMonadLogicT logicID logic (Left declProv) boundCtx comp
 
 getDeclProvenance :: (MonadTensor m) => m DeclProvenance
 getDeclProvenance = do
-  (_, _, prov, _, _) <- ask
+  (_, _, prov, _) <- ask
   return prov
 
 getNamedBoundCtx :: (MonadTensor m) => m NamedBoundCtx
 getNamedBoundCtx = do
-  (_, _, _, _, ctx) <- ask
+  (_, _, _, ctx) <- ask
   return $ fmap nameOf ctx
 
 getCurrentLv :: (MonadTensor m) => m Lv
@@ -77,8 +77,8 @@ getCurrentLv = Lv . length <$> getNamedBoundCtx
 addLossBinderToContext :: (MonadTensor m) => MixedLossBinder -> m a -> m a
 addLossBinderToContext binder cont = do
   local
-    ( \(logicID, declProv, logic, standardEnv, ctx) ->
-        (logicID, declProv, logic, standardEnv, binder : ctx)
+    ( \(logicID, declProv, logic, ctx) ->
+        (logicID, declProv, logic, binder : ctx)
     )
     cont
 

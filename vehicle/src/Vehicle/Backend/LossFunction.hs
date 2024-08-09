@@ -3,17 +3,17 @@ module Vehicle.Backend.LossFunction
   )
 where
 
-import Data.Map qualified as Map
 import Data.Maybe (maybeToList)
+import Data.Proxy (Proxy (..))
 import Vehicle.Backend.LossFunction.Core (DifferentiableLogicImplementation)
 import Vehicle.Backend.LossFunction.TensorCompilation (convertExprToTensorValue, runMonadTensorT)
 import Vehicle.Backend.Prelude (DifferentiableLogicID)
+import Vehicle.Compile.Context.Free (MonadFreeContext, addDeclEntryToContext, runFreshFreeContextT)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBE (eval)
+import Vehicle.Compile.Normalise.NBE (normaliseInEnv)
 import Vehicle.Compile.Normalise.Quote qualified as Quote
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Tensor (TensorBuiltin)
-import Vehicle.Data.Expr.Normalised (WHNFFreeEnv)
 import Vehicle.Syntax.Builtin
 
 convertToLossTensors ::
@@ -23,23 +23,23 @@ convertToLossTensors ::
   Prog Ix Builtin ->
   m (Prog Ix TensorBuiltin)
 convertToLossTensors logicID logic (Main ds) =
-  logCompilerPass MinDetail currentPass $ do
-    Main <$> convertDecls logicID logic mempty ds
+  logCompilerPass MinDetail currentPass $
+    runFreshFreeContextT (Proxy @Builtin) $
+      Main <$> convertDecls logicID logic ds
 
 convertDecls ::
-  (MonadCompile m) =>
+  (MonadCompile m, MonadFreeContext Builtin m) =>
   DifferentiableLogicID ->
   DifferentiableLogicImplementation ->
-  WHNFFreeEnv Builtin ->
   [Decl Ix Builtin] ->
   m [Decl Ix TensorBuiltin]
-convertDecls logicID logic standardFreeEnv = \case
+convertDecls logicID logic = \case
   [] -> return []
   decl : decls -> do
     let ident = identifierOf decl
     let declProv = (ident, provenanceOf decl)
 
-    (standardDecl, maybeTensorDecl) <-
+    (normDecl, maybeTensorDecl) <-
       logCompilerPass MinDetail ("declaration" <+> quotePretty ident) $ do
         -- Deciding on the best ordering of converting to loss functions and converting to tensor code
         -- is tricky. There are three approaches:
@@ -55,13 +55,13 @@ convertDecls logicID logic standardFreeEnv = \case
         --    Disadvantages
         --        - Loss functions need to be specified in terms of tensors.
         --        - Can't reuse not/if-elimination code
-        normStandardDecl <- traverse (eval standardFreeEnv mempty) decl
+        normStandardDecl <- traverse (normaliseInEnv mempty) decl
         maybeTensorDecl <-
           if not (isPropertyDecl decl) && not (isAbstractDecl decl)
             then return Nothing
             else do
               normTensorDecl <-
-                runMonadTensorT logicID declProv logic standardFreeEnv $
+                runMonadTensorT logicID declProv logic $
                   traverse (convertExprToTensorValue mempty) decl
               let tensorDecl = fmap (Quote.unnormalise 0) normTensorDecl
               return $ Just tensorDecl
@@ -71,9 +71,9 @@ convertDecls logicID logic standardFreeEnv = \case
             maybeTensorDecl
           )
 
-    let newStandardFreeEnv = Map.insert ident standardDecl standardFreeEnv
-    decls' <- convertDecls logicID logic newStandardFreeEnv decls
-    return $ maybeToList maybeTensorDecl ++ decls'
+    addDeclEntryToContext (decl, normDecl) $ do
+      decls' <- convertDecls logicID logic decls
+      return $ maybeToList maybeTensorDecl ++ decls'
 
 currentPass :: Doc a
 currentPass = "loss function compilation"

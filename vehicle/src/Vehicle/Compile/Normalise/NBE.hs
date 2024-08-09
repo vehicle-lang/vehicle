@@ -15,7 +15,7 @@ where
 import Data.Data (Proxy (..))
 import Data.List.NonEmpty as NonEmpty (toList)
 import Vehicle.Compile.Context.Bound.Class (MonadBoundContext (..))
-import Vehicle.Compile.Context.Free.Class (MonadFreeContext (getFreeCtx))
+import Vehicle.Compile.Context.Free.Class (MonadFreeContext (..), getFreeEnv)
 import Vehicle.Compile.Descope (DescopableClosure)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Builtin (NormalisableBuiltin (..), filterOutIrrelevantArgs)
@@ -50,7 +50,7 @@ normaliseInEnv ::
   Expr Ix builtin ->
   m (WHNFValue builtin)
 normaliseInEnv boundEnv expr = do
-  freeEnv <- freeEnvFromCtx
+  freeEnv <- getFreeEnv
   eval freeEnv boundEnv expr
 
 normaliseInEmptyEnv ::
@@ -65,7 +65,7 @@ normaliseApp ::
   WHNFSpine builtin ->
   m (WHNFValue builtin)
 normaliseApp fn spine = do
-  freeEnv <- freeEnvFromCtx
+  freeEnv <- getFreeEnv
   evalApp freeEnv fn spine
 
 normaliseBuiltin ::
@@ -74,16 +74,8 @@ normaliseBuiltin ::
   WHNFSpine builtin ->
   m (WHNFValue builtin)
 normaliseBuiltin b spine = do
-  freeEnv <- freeEnvFromCtx
+  freeEnv <- getFreeEnv
   evalBuiltin freeEnv b spine
-
-freeEnvFromCtx ::
-  forall builtin m.
-  (MonadFreeContext builtin m) =>
-  m (FreeEnv (WHNFClosure builtin) builtin)
-freeEnvFromCtx = do
-  ctx <- getFreeCtx (Proxy @builtin)
-  return $ fmap snd ctx
 
 -----------------------------------------------------------------------------
 -- Evaluation of closures

@@ -14,10 +14,12 @@ import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Data.LinkedHashMap qualified as LinkedHashMap
 import Data.Map qualified as Map
+import Data.Proxy (Proxy (..))
 import Vehicle.Backend.LossFunction.Core
 import Vehicle.Backend.LossFunction.Core qualified as L
 import Vehicle.Backend.LossFunction.Logics qualified as DSL
 import Vehicle.Backend.Prelude (DifferentiableLogicID)
+import Vehicle.Compile.Context.Free (MonadFreeContext, getFreeEnv, runFreshFreeContextT)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE (EvaluableClosure (..), eval, evalApp)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
@@ -37,57 +39,55 @@ type MonadLogicCtx =
   ( DifferentiableLogicID,
     Either DeclProvenance DifferentiableLogicField,
     DifferentiableLogicImplementation,
-    WHNFFreeEnv Builtin,
     GenericBoundCtx MixedLossBinder
   )
 
 type MonadLogic m =
   ( MonadCompile m,
+    MonadFreeContext Builtin m,
     MonadReader MonadLogicCtx m
   )
 
 runMonadLogicT ::
-  (MonadCompile m) =>
+  (MonadCompile m, MonadFreeContext Builtin m) =>
   DifferentiableLogicID ->
   DifferentiableLogicImplementation ->
   Either DeclProvenance DifferentiableLogicField ->
-  WHNFFreeEnv Builtin ->
   GenericBoundCtx MixedLossBinder ->
   ReaderT MonadLogicCtx m a ->
   m a
-runMonadLogicT logicID logic origin standardEnv boundCtx =
-  flip runReaderT (logicID, origin, logic, standardEnv, boundCtx)
+runMonadLogicT logicID logic origin boundCtx =
+  flip runReaderT (logicID, origin, logic, boundCtx)
 
 getLogic :: (MonadLogic m) => m DifferentiableLogicImplementation
 getLogic = do
-  (_, _, logic, _, _) <- ask
+  (_, _, logic, _) <- ask
   return logic
 
 getDeclProvenance :: (MonadLogic m) => m (Either DeclProvenance DifferentiableLogicField)
 getDeclProvenance = do
-  (_, prov, _, _, _) <- ask
+  (_, prov, _, _) <- ask
   return prov
 
 getStandardFreeEnvWithoutHidden :: (MonadLogic m) => m (WHNFFreeEnv Builtin)
 getStandardFreeEnvWithoutHidden = do
-  (_, _, _, env, _) <- ask
-  return $ Map.map (\d -> if isPreservedStdLibOp d then convertToPostulate d else d) env
+  Map.map (\d -> if isPreservedStdLibOp d then convertToPostulate d else d) <$> getFreeEnv
 
 getBoundCtx :: (MonadLogic m) => m (GenericBoundCtx MixedLossBinder)
 getBoundCtx = do
-  (_, _, _, _, ctx) <- ask
+  (_, _, _, ctx) <- ask
   return ctx
 
 getNamedBoundCtx :: (MonadLogic m) => m NamedBoundCtx
 getNamedBoundCtx = do
-  (_, _, _, _, ctx) <- ask
+  (_, _, _, ctx) <- ask
   return $ fmap nameOf ctx
 
 addLossBinderToContext :: (MonadLogic m) => MixedLossBinder -> m a -> m a
 addLossBinderToContext binder cont = do
   local
-    ( \(logicID, declProv, logic, standardEnv, ctx) ->
-        (logicID, declProv, logic, standardEnv, binder : ctx)
+    ( \(logicID, declProv, logic, ctx) ->
+        (logicID, declProv, logic, binder : ctx)
     )
     cont
 
@@ -122,10 +122,11 @@ compileLogic logicID dsl = do
     go impl ((field, expr) : fields) = do
       value <-
         logCompilerSection MaxDetail ("compiling logic field" <+> quotePretty field) $
-          runMonadLogicT logicID impl (Right field) mempty mempty $ do
-            mixedLossValue <- normStandardExprToLoss mempty expr
-            lossValue <- transformMixedClosureToStandardClosure mixedLossValue
-            transformLossClosureToMixedClosure lossValue
+          runFreshFreeContextT (Proxy @Builtin) $
+            runMonadLogicT logicID impl (Right field) mempty $ do
+              mixedLossValue <- normStandardExprToLoss mempty expr
+              lossValue <- transformMixedClosureToStandardClosure mixedLossValue
+              transformLossClosureToMixedClosure lossValue
       go (Map.insert field value impl) fields
 
 traverseClosures ::
