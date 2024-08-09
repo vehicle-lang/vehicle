@@ -33,7 +33,7 @@ type MonadTensorCtx =
   ( DifferentiableLogicID,
     DifferentiableLogicImplementation,
     DeclProvenance,
-    FreeEnv (WHNFClosure Builtin) Builtin,
+    WHNFFreeEnv Builtin,
     GenericBoundCtx MixedLossBinder
   )
 
@@ -47,7 +47,7 @@ runMonadTensorT ::
   DifferentiableLogicID ->
   DeclProvenance ->
   DifferentiableLogicImplementation ->
-  FreeEnv (WHNFClosure Builtin) Builtin ->
+  WHNFFreeEnv Builtin ->
   ReaderT MonadTensorCtx m a ->
   m a
 runMonadTensorT logicID origin logic standardEnv =

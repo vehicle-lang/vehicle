@@ -1,6 +1,7 @@
 module Vehicle.Data.Expr.Normalised where
 
 import Control.Monad (void)
+import Data.Map (Map)
 import Data.Maybe (fromMaybe)
 import GHC.Generics
 import Vehicle.Compile.Context.Bound.Core
@@ -99,6 +100,8 @@ cheatEnvToValues = fmap envEntryToValue
       let ident = Identifier StdLib (fromMaybe "_" (nameOf binder) <> " =")
       VFreeVar ident [explicit value]
 
+type FreeEnv closure builtin = Map Identifier (VDecl closure builtin)
+
 -----------------------------------------------------------------------------
 -- WHNF
 
@@ -115,6 +118,8 @@ type WHNFSpine builtin = Spine (WHNFClosure builtin) builtin
 type WHNFDecl builtin = GenericDecl (WHNFValue builtin)
 
 type WHNFBoundEnv builtin = BoundEnv (WHNFClosure builtin) builtin
+
+type WHNFFreeEnv builtin = FreeEnv (WHNFClosure builtin) builtin
 
 -----------------------------------------------------------------------------
 -- NF

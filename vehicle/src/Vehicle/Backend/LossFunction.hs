@@ -13,7 +13,7 @@ import Vehicle.Compile.Normalise.NBE (eval)
 import Vehicle.Compile.Normalise.Quote qualified as Quote
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Tensor (TensorBuiltin)
-import Vehicle.Data.Expr.Normalised (WHNFClosure)
+import Vehicle.Data.Expr.Normalised (WHNFFreeEnv)
 import Vehicle.Syntax.Builtin
 
 convertToLossTensors ::
@@ -30,7 +30,7 @@ convertDecls ::
   (MonadCompile m) =>
   DifferentiableLogicID ->
   DifferentiableLogicImplementation ->
-  FreeEnv (WHNFClosure Builtin) Builtin ->
+  WHNFFreeEnv Builtin ->
   [Decl Ix Builtin] ->
   m [Decl Ix TensorBuiltin]
 convertDecls logicID logic standardFreeEnv = \case

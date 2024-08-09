@@ -25,7 +25,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
 import Vehicle.Data.Builtin.Loss
 import Vehicle.Data.Builtin.Standard (Quantifier)
-import Vehicle.Data.Expr.Normalised (VBinder, Value (..), WHNFBoundEnv, WHNFClosure (..), WHNFValue, boundContextToEnv, extendEnvWithBound, extendEnvWithDefined)
+import Vehicle.Data.Expr.Normalised (VBinder, Value (..), WHNFBoundEnv, WHNFClosure (..), WHNFFreeEnv, WHNFValue, boundContextToEnv, extendEnvWithBound, extendEnvWithDefined)
 import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (..))
 import Vehicle.Syntax.Builtin (Builtin)
 import Vehicle.Syntax.Builtin qualified as V
@@ -37,7 +37,7 @@ type MonadLogicCtx =
   ( DifferentiableLogicID,
     Either DeclProvenance DifferentiableLogicField,
     DifferentiableLogicImplementation,
-    FreeEnv (WHNFClosure Builtin) Builtin,
+    WHNFFreeEnv Builtin,
     GenericBoundCtx MixedLossBinder
   )
 
@@ -51,7 +51,7 @@ runMonadLogicT ::
   DifferentiableLogicID ->
   DifferentiableLogicImplementation ->
   Either DeclProvenance DifferentiableLogicField ->
-  FreeEnv (WHNFClosure Builtin) Builtin ->
+  WHNFFreeEnv Builtin ->
   GenericBoundCtx MixedLossBinder ->
   ReaderT MonadLogicCtx m a ->
   m a
@@ -68,7 +68,7 @@ getDeclProvenance = do
   (_, prov, _, _, _) <- ask
   return prov
 
-getStandardFreeEnvWithoutHidden :: (MonadLogic m) => m (FreeEnv (WHNFClosure Builtin) Builtin)
+getStandardFreeEnvWithoutHidden :: (MonadLogic m) => m (WHNFFreeEnv Builtin)
 getStandardFreeEnvWithoutHidden = do
   (_, _, _, env, _) <- ask
   return $ Map.map (\d -> if isPreservedStdLibOp d then convertToPostulate d else d) env
