@@ -121,7 +121,7 @@ instance (MonadTypeChecker builtin m) => MonadTypeChecker builtin (StateT s m) w
   clearFreshNames = lift . clearFreshNames
   getInstanceCandidates = lift getInstanceCandidates
 
-instance (MonadTypeChecker builtin m) => MonadTypeChecker builtin (BoundContextT builtin m) where
+instance (MonadTypeChecker builtin m) => MonadTypeChecker builtin (BoundContextT (Type Ix builtin) m) where
   getMetaState = lift getMetaState
   modifyMetaCtx = lift . modifyMetaCtx
   getFreshName = lift . getFreshName
@@ -246,7 +246,7 @@ freshMeta ::
   (MonadTypeChecker builtin m) =>
   Provenance ->
   Type Ix builtin ->
-  BoundCtx builtin ->
+  BoundCtx (Type Ix builtin) ->
   m (MetaID, GluedExpr builtin)
 freshMeta p metaType boundCtx = do
   -- Create a fresh id for the meta
@@ -304,7 +304,7 @@ getMetaType :: (MonadTypeChecker builtin m) => MetaID -> m (Type Ix builtin)
 getMetaType m = metaType <$> getMetaInfo m
 
 -- | Get the bound context the meta-variable was created in.
-getMetaCtx :: (MonadTypeChecker builtin m) => Proxy builtin -> MetaID -> m (BoundCtx builtin)
+getMetaCtx :: (MonadTypeChecker builtin m) => Proxy builtin -> MetaID -> m (BoundCtx (Type Ix builtin))
 getMetaCtx _ m = metaCtx <$> getMetaInfo m
 
 extendBoundCtxOfMeta :: (MonadTypeChecker builtin m) => MetaID -> Binder Ix builtin -> m ()
@@ -363,7 +363,7 @@ getMetasLinkedToMetasIn allConstraints typeOfInterest = do
           then (constraint : nonRelatedConstraints, typeMetas)
           else (nonRelatedConstraints, MetaSet.unions [constraintMetas, typeMetas])
 
-abstractOverCtx :: BoundCtx builtin -> Expr Ix builtin -> Expr Ix builtin
+abstractOverCtx :: BoundCtx (Type Ix builtin) -> Expr Ix builtin -> Expr Ix builtin
 abstractOverCtx ctx body = do
   let p = mempty
   let lamBinderForm n = BinderDisplayForm (OnlyName (fromMaybe "_" n)) True
@@ -378,7 +378,7 @@ solveMeta ::
   (MonadTypeChecker builtin m) =>
   MetaID ->
   Expr Ix builtin ->
-  BoundCtx builtin ->
+  BoundCtx (Type Ix builtin) ->
   m ()
 solveMeta m solution solutionCtx = do
   MetaInfo p _ metaCtx <- getMetaInfo m
@@ -503,7 +503,7 @@ createFreshUnificationConstraint ::
   forall builtin m.
   (MonadTypeChecker builtin m) =>
   Provenance ->
-  BoundCtx builtin ->
+  BoundCtx (Type Ix builtin) ->
   UnificationConstraintOrigin builtin ->
   Type Ix builtin ->
   Type Ix builtin ->

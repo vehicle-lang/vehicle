@@ -9,10 +9,12 @@ import Control.Monad.Reader (MonadReader (..))
 import Control.Monad.Trans.Reader (ReaderT (..))
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (fromMaybe)
+import Data.Proxy (Proxy (..))
 import Data.Ratio
 import Vehicle.Backend.LossFunction.Core
 import Vehicle.Backend.LossFunction.LogicCompilation
 import Vehicle.Backend.Prelude (DifferentiableLogicID)
+import Vehicle.Compile.Context.Bound
 import Vehicle.Compile.Context.Free.Class (MonadFreeContext)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
@@ -33,14 +35,14 @@ import Vehicle.Syntax.Builtin
 type MonadTensorCtx =
   ( DifferentiableLogicID,
     DifferentiableLogicImplementation,
-    DeclProvenance,
-    GenericBoundCtx MixedLossBinder
+    DeclProvenance
   )
 
 type MonadTensor m =
   ( MonadCompile m,
     MonadReader MonadTensorCtx m,
-    MonadFreeContext Builtin m
+    MonadFreeContext Builtin m,
+    MonadBoundContext MixedLossValue m
   )
 
 runMonadTensorT ::
@@ -51,36 +53,20 @@ runMonadTensorT ::
   ReaderT MonadTensorCtx m a ->
   m a
 runMonadTensorT logicID origin logic =
-  flip runReaderT (logicID, logic, origin, mempty)
+  flip runReaderT (logicID, logic, origin)
 
 switchToMonadLogic ::
   (MonadTensor m) =>
   ReaderT MonadLogicCtx m a ->
   m a
 switchToMonadLogic comp = do
-  (logicID, logic, declProv, boundCtx) <- ask
-  runMonadLogicT logicID logic (Left declProv) boundCtx comp
+  (logicID, logic, declProv) <- ask
+  runMonadLogicT logicID logic (Left declProv) comp
 
 getDeclProvenance :: (MonadTensor m) => m DeclProvenance
 getDeclProvenance = do
-  (_, _, prov, _) <- ask
+  (_, _, prov) <- ask
   return prov
-
-getNamedBoundCtx :: (MonadTensor m) => m NamedBoundCtx
-getNamedBoundCtx = do
-  (_, _, _, ctx) <- ask
-  return $ fmap nameOf ctx
-
-getCurrentLv :: (MonadTensor m) => m Lv
-getCurrentLv = Lv . length <$> getNamedBoundCtx
-
-addLossBinderToContext :: (MonadTensor m) => MixedLossBinder -> m a -> m a
-addLossBinderToContext binder cont = do
-  local
-    ( \(logicID, declProv, logic, ctx) ->
-        (logicID, declProv, logic, binder : ctx)
-    )
-    cont
 
 --------------------------------------------------------------------------------
 -- Public method
@@ -113,12 +99,12 @@ convertLossToTensorValue e = do
       convertBuiltins b spine
     VPi binder body -> do
       binder' <- traverse convertLossToTensorValue binder
-      body' <- addLossBinderToContext binder $ convertLossToTensorValue body
+      body' <- addBinderToContext binder $ convertLossToTensorValue body
       return $ VPi binder' body'
     VLam binder closure -> do
-      lv <- getCurrentLv
+      lv <- getCurrentLv (Proxy @MixedLossValue)
       binder' <- traverse convertLossToTensorValue binder
-      body' <- addLossBinderToContext binder $ convertClosure lv binder closure
+      body' <- addBinderToContext binder $ convertClosure lv binder closure
       return $ VLam binder' (NFClosure body')
   showExit "tensor-exit" result
   return result
@@ -186,12 +172,12 @@ convertBuiltins b args = do
     ----------------------
     L.Minimise -> do
       let op = T.MinimiseRatTensor
-      boundCtx <- getNamedBoundCtx
+      boundCtx <- getNamedBoundCtx (Proxy @MixedLossValue)
       let namedCtx = fmap (fromMaybe "<nameless>") boundCtx
       VBuiltin (op namedCtx) <$> normArgs
     L.Maximise -> do
       let op = T.MaximiseRatTensor
-      boundCtx <- getNamedBoundCtx
+      boundCtx <- getNamedBoundCtx (Proxy @MixedLossValue)
       let namedCtx = fmap (fromMaybe "<nameless>") boundCtx
       VBuiltin (op namedCtx) <$> normArgs
   where
@@ -213,7 +199,7 @@ convertVectorType = \case
       Just result -> return $ VBuiltin result []
       Nothing -> do
         declProv <- getDeclProvenance
-        boundCtx <- getNamedBoundCtx
+        boundCtx <- getNamedBoundCtx (Proxy @MixedLossValue)
         let vecType = VFreeVar (Identifier User "Vector") [Arg mempty Explicit Relevant elemType, Arg mempty Explicit Relevant size]
         throwError $ HigherOrderVectors declProv boundCtx vecType elemType
   _ -> unexpectedExprError currentPass "Vector has incorrect number of arguments"
@@ -263,13 +249,13 @@ convertHigherOrderFunction ::
 convertHigherOrderFunction convertFn origFn mkDefault args = do
   let defaultExpr = mkDefault args
   showEntry ("enter-" <> pretty origFn) defaultExpr
-  lv <- getCurrentLv
+  lv <- getCurrentLv (Proxy @MixedLossValue)
   maybeResult <- convertFn lv args
   result <- case maybeResult of
     Just expr -> return expr
     Nothing -> do
       (ident, _) <- getDeclProvenance
-      boundCtx <- getNamedBoundCtx
+      boundCtx <- getNamedBoundCtx (Proxy @MixedLossValue)
       logWarning $ InefficientTensorCode (nameOf ident) origFn boundCtx defaultExpr
       return defaultExpr
 
@@ -388,12 +374,12 @@ currentPass = "conversion to tensors"
 
 showEntry :: (MonadTensor m, PrettyFriendly (Contextualised a NamedBoundCtx)) => Doc a -> a -> m ()
 showEntry doc e = do
-  ctx <- getNamedBoundCtx
+  ctx <- getNamedBoundCtx (Proxy @MixedLossValue)
   logDebug MaxDetail $ doc <+> ":" <+> prettyFriendly (WithContext e ctx)
   incrCallDepth
 
 showExit :: (MonadTensor m) => Doc a -> NFValue TensorBuiltin -> m ()
 showExit doc e = do
-  ctx <- getNamedBoundCtx
+  ctx <- getNamedBoundCtx (Proxy @MixedLossValue)
   decrCallDepth
   logDebug MaxDetail $ doc <+> ": " <+> prettyFriendly (WithContext e ctx)

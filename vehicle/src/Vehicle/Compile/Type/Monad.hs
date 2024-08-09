@@ -98,7 +98,7 @@ freshMetaIdAndExpr ::
   (TCM builtin m) =>
   Provenance ->
   Type Ix builtin ->
-  BoundCtx builtin ->
+  BoundCtx (Type Ix builtin) ->
   m (MetaID, GluedExpr builtin)
 freshMetaIdAndExpr p t boundCtx = do
   let ctx = if useDependentMetas (Proxy @builtin) then boundCtx else mempty
@@ -109,7 +109,7 @@ freshMetaExpr ::
   (TCM builtin m) =>
   Provenance ->
   Type Ix builtin ->
-  BoundCtx builtin ->
+  BoundCtx (Type Ix builtin) ->
   m (GluedExpr builtin)
 freshMetaExpr p t boundCtx = snd <$> freshMetaIdAndExpr p t boundCtx
 
@@ -118,7 +118,7 @@ freshMetaExpr p t boundCtx = snd <$> freshMetaIdAndExpr p t boundCtx
 createFreshInstanceConstraint ::
   forall builtin m.
   (TCM builtin m) =>
-  BoundCtx builtin ->
+  BoundCtx (Type Ix builtin) ->
   (Expr Ix builtin, [Arg Ix builtin], Type Ix builtin) ->
   Relevance ->
   Type Ix builtin ->
@@ -149,7 +149,7 @@ createFreshInstanceConstraint boundCtx (fun, funArgs, funType) relevance tcExpr 
 
 instantiateArgForNonExplicitBinder ::
   (TCM builtin m) =>
-  BoundCtx builtin ->
+  BoundCtx (Type Ix builtin) ->
   Provenance ->
   (Expr Ix builtin, [Arg Ix builtin], Type Ix builtin) ->
   Binder Ix builtin ->

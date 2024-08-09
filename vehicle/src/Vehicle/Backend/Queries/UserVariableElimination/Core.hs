@@ -506,7 +506,7 @@ type MonadUnblock m =
     MonadWriter [WHNFValue QueryBuiltin] m
   )
 
-getGlobalBoundCtx :: (MonadQueryStructure m) => m (BoundCtx QueryBuiltin)
+getGlobalBoundCtx :: (MonadQueryStructure m) => m (BoundCtx (Expr Ix QueryBuiltin))
 getGlobalBoundCtx = gets (variableCtxToBoundCtx . (fmap snd . LinkedHashMap.toList . globalBoundVarCtx))
 
 prettyFriendlyInCtx :: (MonadQueryStructure m) => WHNFValue QueryBuiltin -> m (Doc a)
@@ -610,7 +610,7 @@ reduceTensorExpr (Sparse coeff constant) = do
 --------------------------------------------------------------------------------
 -- Context operations
 
-variableCtxToBoundCtx :: (Pretty variable) => [variable] -> BoundCtx builtin
+variableCtxToBoundCtx :: (Pretty variable) => [variable] -> BoundCtx (Expr Ix builtin)
 variableCtxToBoundCtx ctx = zipWith variableCtxToBoundCtxEntry [0 .. Ix (length ctx - 1)] ctx
   where
     variableCtxToBoundCtxEntry ix var = mkDefaultBinder (layoutAsText $ pretty var) (BoundVar mempty ix)

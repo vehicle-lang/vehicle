@@ -103,11 +103,11 @@ findCandidatesInBoundCtx ::
   forall builtin m.
   (MonadInstance builtin m) =>
   InstanceGoal builtin ->
-  BoundCtx builtin ->
+  BoundCtx (Type Ix builtin) ->
   m [WithContext (InstanceCandidate builtin)]
 findCandidatesInBoundCtx goal ctx = go ctx
   where
-    go :: (MonadCompile m) => BoundCtx builtin -> m [WithContext (InstanceCandidate builtin)]
+    go :: (MonadCompile m) => BoundCtx (Type Ix builtin) -> m [WithContext (InstanceCandidate builtin)]
     go = \case
       [] -> return []
       (binder : localCtx) -> do
@@ -180,7 +180,7 @@ checkCandidate info@(constraintCtx, constraintOrigin) meta goal@InstanceGoal {..
 instantiateCandidateTelescope ::
   forall builtin m.
   (MonadInstance builtin m) =>
-  BoundCtx builtin ->
+  BoundCtx (Type Ix builtin) ->
   InstanceConstraintInfo builtin ->
   WithContext (InstanceCandidate builtin) ->
   m (WHNFValue builtin, Expr Ix builtin, [WithContext (Constraint builtin)])
@@ -195,8 +195,8 @@ instantiateCandidateTelescope goalCtxExtension (constraintCtx, constraintOrigin)
   where
     go ::
       (MonadInstance builtin m) =>
-      (Type Ix builtin, Expr Ix builtin, [WithContext (Constraint builtin)], BoundCtx builtin) ->
-      m (Type Ix builtin, Expr Ix builtin, [WithContext (Constraint builtin)], BoundCtx builtin)
+      (Type Ix builtin, Expr Ix builtin, [WithContext (Constraint builtin)], BoundCtx (Type Ix builtin)) ->
+      m (Type Ix builtin, Expr Ix builtin, [WithContext (Constraint builtin)], BoundCtx (Type Ix builtin))
     go = \case
       (Pi _ exprBinder exprBody, Lam _ _solutionBinder solutionBody, constraints, boundCtx) -> do
         let binderType = typeOf exprBinder

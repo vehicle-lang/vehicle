@@ -36,11 +36,11 @@ import Vehicle.Data.Expr.Normalised
 
 normalise ::
   forall builtin m.
-  (MonadNorm (WHNFClosure builtin) builtin m, MonadBoundContext builtin m, MonadFreeContext builtin m) =>
+  (MonadNorm (WHNFClosure builtin) builtin m, MonadBoundContext (Type Ix builtin) m, MonadFreeContext builtin m) =>
   Expr Ix builtin ->
   m (WHNFValue builtin)
 normalise e = do
-  boundCtx <- getBoundCtx (Proxy @builtin)
+  boundCtx <- getBoundCtx (Proxy @(Type Ix builtin))
   let boundEnv = boundContextToEnv boundCtx
   normaliseInEnv boundEnv e
 

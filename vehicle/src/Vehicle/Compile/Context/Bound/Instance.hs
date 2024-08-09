@@ -16,36 +16,36 @@ import Vehicle.Compile.Prelude
 --------------------------------------------------------------------------------
 -- Context monad instantiation
 
-newtype BoundContextT builtin m a = BoundContextT
-  { unBoundContextT :: ReaderT (BoundCtx builtin, FreshNameState) m a
+newtype BoundContextT expr m a = BoundContextT
+  { unBoundContextT :: ReaderT (BoundCtx expr, FreshNameState) m a
   }
   deriving (Functor, Applicative, Monad)
 
 -- | Runs a computation in the context monad allowing you to keep track of the
 -- context. Note that you must still call `addDeclToCtx` and `addBinderToCtx`
 -- manually in the right places.
-runBoundContextT :: (Monad m) => BoundCtx builtin -> BoundContextT builtin m a -> m a
+runBoundContextT :: (Monad m) => BoundCtx expr -> BoundContextT expr m a -> m a
 runBoundContextT ctx (BoundContextT contextFn) = runReaderT contextFn (ctx, 0)
 
 -- | Runs a computation in the context monad allowing you to keep track of the
 -- context. Note that you must still call `addDeclToCtx` and `addBinderToCtx`
 -- manually in the right places.
-runFreshBoundContextT :: (Monad m) => Proxy builtin -> BoundContextT builtin m a -> m a
+runFreshBoundContextT :: (Monad m) => Proxy expr -> BoundContextT expr m a -> m a
 runFreshBoundContextT _ = runBoundContextT mempty
 
-instance MonadTrans (BoundContextT builtin) where
+instance MonadTrans (BoundContextT expr) where
   lift = BoundContextT . lift
 
 mapBoundContextT ::
   (m a -> n b) ->
-  BoundContextT builtin m a ->
-  BoundContextT builtin n b
+  BoundContextT expr m a ->
+  BoundContextT expr n b
 mapBoundContextT f m = BoundContextT (mapReaderT f (unBoundContextT m))
 
 --------------------------------------------------------------------------------
 -- Other monad preservation
 
-instance (MonadLogger m) => MonadLogger (BoundContextT builtin m) where
+instance (MonadLogger m) => MonadLogger (BoundContextT expr m) where
   setCallDepth = BoundContextT . setCallDepth
   getCallDepth = BoundContextT getCallDepth
   incrCallDepth = BoundContextT incrCallDepth
@@ -54,19 +54,19 @@ instance (MonadLogger m) => MonadLogger (BoundContextT builtin m) where
   logMessage = BoundContextT . logMessage
   logWarning = BoundContextT . logWarning
 
-instance (MonadError e m) => MonadError e (BoundContextT builtin m) where
+instance (MonadError e m) => MonadError e (BoundContextT expr m) where
   throwError = lift . throwError
   catchError m f = BoundContextT (catchError (unBoundContextT m) (unBoundContextT . f))
 
-instance (MonadState s m) => MonadState s (BoundContextT builtin m) where
+instance (MonadState s m) => MonadState s (BoundContextT expr m) where
   get = lift get
   put = lift . put
 
-instance (MonadReader s m) => MonadReader s (BoundContextT builtin m) where
+instance (MonadReader s m) => MonadReader s (BoundContextT expr m) where
   ask = lift ask
   local = mapBoundContextT . local
 
-instance (MonadCompile m) => MonadBoundContext builtin (BoundContextT builtin m) where
+instance (MonadCompile m) => MonadBoundContext expr (BoundContextT expr m) where
   addBinderToContext binder cont = BoundContextT $ do
     local (first (binder :)) (unBoundContextT cont)
 

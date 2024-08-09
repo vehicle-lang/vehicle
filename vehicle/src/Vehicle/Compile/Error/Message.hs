@@ -469,7 +469,7 @@ instance MeaningfulError CompileError where
         calculateCandidateType (WithContext candidate typingCtx) =
           go typingCtx (candidateExpr candidate)
           where
-            go :: BoundCtx builtin -> Expr Ix builtin -> Doc a
+            go :: BoundCtx (Expr Ix builtin) -> Expr Ix builtin -> Doc a
             go dbCtx = \case
               App (Builtin _ _tc) args ->
                 calculateOpType (toNamedBoundCtx dbCtx) (NonEmpty.toList args)

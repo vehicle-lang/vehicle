@@ -40,7 +40,7 @@ data MetaInfo builtin = MetaInfo
     -- | The type of the meta-variable
     metaType :: Expr Ix builtin,
     -- | The number of bound variables in scope when the meta-variable was created.
-    metaCtx :: BoundCtx builtin
+    metaCtx :: BoundCtx (Expr Ix builtin)
   }
 
 extendMetaCtx :: Binder Ix builtin -> MetaInfo builtin -> MetaInfo builtin
@@ -54,7 +54,7 @@ extendMetaCtx binder MetaInfo {..} =
 makeMetaExpr ::
   Provenance ->
   MetaID ->
-  BoundCtx builtin ->
+  BoundCtx (Type Ix builtin) ->
   GluedExpr builtin
 makeMetaExpr p metaID boundCtx = do
   -- Create bound variables for everything in the context
@@ -70,7 +70,7 @@ makeMetaExpr p metaID boundCtx = do
 
 -- | Creates a Pi type that abstracts over all bound variables
 makeMetaType ::
-  BoundCtx builtin ->
+  BoundCtx (Type Ix builtin) ->
   Provenance ->
   Type Ix builtin ->
   Type Ix builtin

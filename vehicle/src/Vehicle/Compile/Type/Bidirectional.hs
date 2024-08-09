@@ -33,7 +33,7 @@ import Prelude hiding (pi)
 -- type-checking pass.
 type MonadBidirectional builtin m =
   ( TCM builtin m,
-    MonadBoundContext builtin m,
+    MonadBoundContext (Type Ix builtin) m,
     MonadReader Relevance m
   )
 
@@ -41,10 +41,10 @@ runMonadBidirectional ::
   forall m builtin a.
   (TCM builtin m) =>
   Proxy builtin ->
-  BoundContextT builtin (ReaderT Relevance m) a ->
+  BoundContextT (Type Ix builtin) (ReaderT Relevance m) a ->
   m a
-runMonadBidirectional p x =
-  runReaderT (runFreshBoundContextT p x) Relevant
+runMonadBidirectional _ x =
+  runReaderT (runFreshBoundContextT (Proxy @(Type Ix builtin)) x) Relevant
 
 --------------------------------------------------------------------------------
 -- Checking
@@ -142,7 +142,7 @@ inferExpr e = do
       -- Replace the hole with meta-variable.
       -- NOTE, different uses of the same hole name will be interpreted
       -- as different meta-variables.
-      boundCtx <- getBoundCtx (Proxy @builtin)
+      boundCtx <- getBoundCtx (Proxy @(Type Ix builtin))
       metaType <- unnormalised <$> freshMetaExpr p (TypeUniverse p 0) boundCtx
       metaExpr <- unnormalised <$> freshMetaExpr p metaType boundCtx
       return (metaExpr, metaType)
@@ -159,7 +159,7 @@ inferExpr e = do
       (checkedFun, checkedFunType) <- inferExpr fun
       inferApp checkedFun checkedFunType (NonEmpty.toList args)
     BoundVar p i -> do
-      ctx <- getBoundCtx (Proxy @builtin)
+      ctx <- getBoundCtx (Proxy @(Type Ix builtin))
       binder <- lookupIxInBoundCtx currentPass i ctx
       currentRelevance <- getCurrentRelevance (Proxy @builtin)
       if currentRelevance == Relevant && relevanceOf binder == Irrelevant
@@ -253,7 +253,7 @@ inferArgs original@(fun, _, _) piT@(Pi _ binder resultType) args
         (arg : remainingArgs)
           | visibilityOf arg == visibility -> return (Just arg, remainingArgs)
           | isExplicit binder -> do
-              boundCtx <- getNamedBoundCtx (Proxy @builtin)
+              boundCtx <- getNamedBoundCtx (Proxy @(Type Ix builtin))
               throwError $ TypingError $ MissingExplicitArgument boundCtx binder arg
           | otherwise -> return (Nothing, args)
 
@@ -267,7 +267,7 @@ inferArgs original@(fun, _, _) piT@(Pi _ binder resultType) args
               checkExpr (typeOf binder) (argExpr arg)
           return $ Arg p visibility relevance checkedArgExpr
         Nothing -> do
-          boundCtx <- getBoundCtx (Proxy @builtin)
+          boundCtx <- getBoundCtx (Proxy @(Type Ix builtin))
           newArg <- instantiateArgForNonExplicitBinder boundCtx p original binder
           return $ fmap unnormalised newArg
 
@@ -287,7 +287,7 @@ inferArgs origin@(fun, originalArgs, _) nonPiType args =
   case (nonPiType, args) of
     (_, []) -> return (nonPiType, [])
     (Meta {}, a : _) -> do
-      ctx <- getBoundCtx (Proxy @builtin)
+      ctx <- getBoundCtx (Proxy @(Type Ix builtin))
       let p = provenanceOf nonPiType
       typeMeta <- unnormalised <$> freshMetaExpr p (TypeUniverse p 0) ctx
       let newBinder = Binder p (BinderDisplayForm OnlyType False) (visibilityOf a) (relevanceOf a) typeMeta
@@ -296,7 +296,7 @@ inferArgs origin@(fun, originalArgs, _) nonPiType args =
       checkExprTypesEqual p (argExpr a) nonPiType newType
       inferArgs origin newType args
     _ -> do
-      ctx <- getNamedBoundCtx (Proxy @builtin)
+      ctx <- getNamedBoundCtx (Proxy @(Type Ix builtin))
       throwError $ TypingError $ FunctionTypeMismatch ctx fun originalArgs nonPiType args
 
 -------------------------------------------------------------------------------
@@ -311,7 +311,7 @@ checkExprTypesEqual ::
   Type Ix builtin ->
   m ()
 checkExprTypesEqual p expr expectedType actualType = do
-  ctx <- getBoundCtx (Proxy @builtin)
+  ctx <- getBoundCtx (Proxy @(Type Ix builtin))
   let origin =
         CheckingExprType $
           CheckingExpr
@@ -330,7 +330,7 @@ checkBinderTypesEqual ::
   Type Ix builtin ->
   m ()
 checkBinderTypesEqual p binderName expectedType actualType = do
-  ctx <- getBoundCtx (Proxy @builtin)
+  ctx <- getBoundCtx (Proxy @(Type Ix builtin))
   let origin =
         CheckingBinderType $
           CheckingBinder

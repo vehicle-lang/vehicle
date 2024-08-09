@@ -5,9 +5,11 @@ where
 
 import Data.Maybe (maybeToList)
 import Data.Proxy (Proxy (..))
-import Vehicle.Backend.LossFunction.Core (DifferentiableLogicImplementation, preservedStdLibOps)
+import Vehicle.Backend.LossFunction.Core (DifferentiableLogicImplementation, MixedLossValue, preservedStdLibOps)
 import Vehicle.Backend.LossFunction.TensorCompilation (convertExprToTensorValue, runMonadTensorT)
 import Vehicle.Backend.Prelude (DifferentiableLogicID)
+import Vehicle.Compile.Context.Bound.Class (MonadBoundContext)
+import Vehicle.Compile.Context.Bound.Instance (runFreshBoundContextT)
 import Vehicle.Compile.Context.Free (MonadFreeContext, addDeclEntryToContext, hideStdLibDecls, runFreshFreeContextT)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE (normaliseInEnv)
@@ -25,10 +27,11 @@ convertToLossTensors ::
 convertToLossTensors logicID logic (Main ds) =
   logCompilerPass MinDetail currentPass $
     runFreshFreeContextT (Proxy @Builtin) $
-      Main <$> convertDecls logicID logic ds
+      runFreshBoundContextT (Proxy @MixedLossValue) $
+        Main <$> convertDecls logicID logic ds
 
 convertDecls ::
-  (MonadCompile m, MonadFreeContext Builtin m) =>
+  (MonadCompile m, MonadFreeContext Builtin m, MonadBoundContext MixedLossValue m) =>
   DifferentiableLogicID ->
   DifferentiableLogicImplementation ->
   [Decl Ix Builtin] ->

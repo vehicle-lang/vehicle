@@ -19,6 +19,8 @@ import Vehicle.Backend.LossFunction.Core
 import Vehicle.Backend.LossFunction.Core qualified as L
 import Vehicle.Backend.LossFunction.Logics qualified as DSL
 import Vehicle.Backend.Prelude (DifferentiableLogicID)
+import Vehicle.Compile.Context.Bound (MonadBoundContext, getNamedBoundCtx, runFreshBoundContextT)
+import Vehicle.Compile.Context.Bound.Class (MonadBoundContext (..))
 import Vehicle.Compile.Context.Free (MonadFreeContext, runFreshFreeContextT)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE (EvaluableClosure (..), eval, evalApp, normaliseInEnv)
@@ -38,54 +40,35 @@ import Vehicle.Syntax.Builtin qualified as V
 type MonadLogicCtx =
   ( DifferentiableLogicID,
     Either DeclProvenance DifferentiableLogicField,
-    DifferentiableLogicImplementation,
-    GenericBoundCtx MixedLossBinder
+    DifferentiableLogicImplementation
   )
 
 type MonadLogic m =
   ( MonadCompile m,
     MonadFreeContext Builtin m,
+    MonadBoundContext MixedLossValue m,
     MonadReader MonadLogicCtx m
   )
 
 runMonadLogicT ::
-  (MonadCompile m, MonadFreeContext Builtin m) =>
+  (MonadCompile m, MonadFreeContext Builtin m, MonadBoundContext MixedLossValue m) =>
   DifferentiableLogicID ->
   DifferentiableLogicImplementation ->
   Either DeclProvenance DifferentiableLogicField ->
-  GenericBoundCtx MixedLossBinder ->
   ReaderT MonadLogicCtx m a ->
   m a
-runMonadLogicT logicID logic origin boundCtx =
-  flip runReaderT (logicID, origin, logic, boundCtx)
+runMonadLogicT logicID logic origin =
+  flip runReaderT (logicID, origin, logic)
 
 getLogic :: (MonadLogic m) => m DifferentiableLogicImplementation
 getLogic = do
-  (_, _, logic, _) <- ask
+  (_, _, logic) <- ask
   return logic
 
 getDeclProvenance :: (MonadLogic m) => m (Either DeclProvenance DifferentiableLogicField)
 getDeclProvenance = do
-  (_, prov, _, _) <- ask
+  (_, prov, _) <- ask
   return prov
-
-getBoundCtx :: (MonadLogic m) => m (GenericBoundCtx MixedLossBinder)
-getBoundCtx = do
-  (_, _, _, ctx) <- ask
-  return ctx
-
-getNamedBoundCtx :: (MonadLogic m) => m NamedBoundCtx
-getNamedBoundCtx = do
-  (_, _, _, ctx) <- ask
-  return $ fmap nameOf ctx
-
-addLossBinderToContext :: (MonadLogic m) => MixedLossBinder -> m a -> m a
-addLossBinderToContext binder cont = do
-  local
-    ( \(logicID, declProv, logic, ctx) ->
-        (logicID, declProv, logic, binder : ctx)
-    )
-    cont
 
 lookupLogicField :: (MonadLogic m) => DifferentiableLogicField -> m MixedLossValue
 lookupLogicField field = do
@@ -119,20 +102,20 @@ compileLogic logicID dsl = do
       value <-
         logCompilerSection MaxDetail ("compiling logic field" <+> quotePretty field) $
           runFreshFreeContextT (Proxy @Builtin) $
-            runMonadLogicT logicID impl (Right field) mempty $ do
-              mixedLossValue <- normStandardExprToLoss mempty expr
-              lossValue <- transformMixedClosureToStandardClosure mixedLossValue
-              transformLossClosureToMixedClosure lossValue
+            runFreshBoundContextT (Proxy @MixedLossValue) $
+              runMonadLogicT logicID impl (Right field) $ do
+                mixedLossValue <- normStandardExprToLoss mempty expr
+                lossValue <- transformMixedClosureToStandardClosure mixedLossValue
+                transformLossClosureToMixedClosure lossValue
       go (Map.insert field value impl) fields
 
 traverseClosures ::
   forall m closure1 closure2 builtin.
-  (Monad m) =>
-  (forall a. VBinder closure1 builtin -> m a -> m a) ->
+  (Monad m, MonadBoundContext (Value closure1 builtin) m) =>
   (VBinder closure1 builtin -> closure1 -> m closure2) ->
   Value closure1 builtin ->
   m (Value closure2 builtin)
-traverseClosures addBinderToCtx f = go
+traverseClosures f = go
   where
     go :: Value closure1 builtin -> m (Value closure2 builtin)
     go = \case
@@ -143,20 +126,20 @@ traverseClosures addBinderToCtx f = go
       VBuiltin b spine -> VBuiltin b <$> traverseArgs go spine
       VPi binder body -> do
         binder' <- traverse go binder
-        body' <- addBinderToCtx binder $ go body
+        body' <- addBinderToContext binder $ go body
         return $ VPi binder' body'
       VLam binder closure -> do
         binder' <- traverse go binder
-        closure' <- addBinderToCtx binder $ f binder closure
+        closure' <- f binder closure
         return $ VLam binder' closure'
 
 transformMixedClosureToStandardClosure ::
   forall m.
-  (MonadLogic m) =>
+  (MonadLogic m, MonadBoundContext MixedLossValue m) =>
   MixedLossValue ->
   m (WHNFValue LossBuiltin)
 transformMixedClosureToStandardClosure =
-  traverseClosures addLossBinderToContext eliminateStandardClosures
+  traverseClosures eliminateStandardClosures
   where
     eliminateStandardClosures ::
       MixedLossBinder ->
@@ -165,24 +148,25 @@ transformMixedClosureToStandardClosure =
     eliminateStandardClosures binder = \case
       LossClos {} -> compilerDeveloperError "Impossible??"
       StandardClos (WHNFClosure env body) -> do
-        boundCtx <- getBoundCtx
+        boundCtx <- getBoundCtx (Proxy @MixedLossValue)
         let lv = boundCtxLv boundCtx
-        let newEnv = extendEnvWithBound (lv - 1) binder env
-        mixedLossValue <- normStandardExprToLoss newEnv body
-        lossValue <- transformMixedClosureToStandardClosure mixedLossValue
-        let lossBody = quote mempty lv lossValue
-        let finalEnv = boundContextToEnv (tail boundCtx)
-        return $ WHNFClosure finalEnv lossBody
+        let newEnv = extendEnvWithBound lv binder env
+        addBinderToContext binder $ do
+          mixedLossValue <- normStandardExprToLoss newEnv body
+          lossValue <- transformMixedClosureToStandardClosure mixedLossValue
+          let lossBody = quote mempty (lv + 1) lossValue
+          let finalEnv = boundContextToEnv boundCtx
+          return $ WHNFClosure finalEnv lossBody
 
 transformLossClosureToMixedClosure ::
-  forall m.
-  (MonadLogic m) =>
+  (MonadCompile m) =>
   WHNFValue LossBuiltin ->
   m MixedLossValue
-transformLossClosureToMixedClosure =
-  traverseClosures (\_ x -> x) eliminateLossClosure
+transformLossClosureToMixedClosure value =
+  runFreshBoundContextT (Proxy @(WHNFValue LossBuiltin)) (traverseClosures eliminateLossClosure value)
   where
     eliminateLossClosure ::
+      (MonadCompile m, MonadBoundContext (WHNFValue LossBuiltin) m) =>
       VBinder (WHNFClosure LossBuiltin) LossBuiltin ->
       WHNFClosure LossBuiltin ->
       m MixedClosure
@@ -244,7 +228,7 @@ convertToLossBuiltins e = do
       convertBuiltin b =<< traverseArgs convertToLossBuiltins spine
     VPi binder body -> do
       binder' <- traverse convertToLossBuiltins binder
-      body' <- addLossBinderToContext binder' $ convertToLossBuiltins body
+      body' <- addBinderToContext binder' $ convertToLossBuiltins body
       return $ VPi binder' body'
     VLam binder closure -> do
       binder' <- traverse convertToLossBuiltins binder
@@ -372,13 +356,13 @@ currentPass = "logic translation"
 
 showEntry :: (MonadLogic m) => WHNFValue Builtin -> m ()
 showEntry e = do
-  ctx <- getNamedBoundCtx
+  ctx <- getNamedBoundCtx (Proxy @MixedLossValue)
   logDebug MaxDetail $ "loss-enter:" <+> prettyFriendly (WithContext e ctx)
   incrCallDepth
 
 showExit :: (MonadLogic m) => MixedLossValue -> m ()
 showExit e = do
-  ctx <- getNamedBoundCtx
+  ctx <- getNamedBoundCtx (Proxy @MixedLossValue)
   decrCallDepth
   logDebug MaxDetail $ "loss-exit: " <+> prettyFriendly (WithContext e ctx)
 
