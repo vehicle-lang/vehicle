@@ -34,7 +34,6 @@ type MonadTensorCtx =
     DifferentiableLogicImplementation,
     DeclProvenance,
     FreeEnv (WHNFClosure Builtin) Builtin,
-    MixedFreeEnv,
     GenericBoundCtx MixedLossBinder
   )
 
@@ -49,28 +48,27 @@ runMonadTensorT ::
   DeclProvenance ->
   DifferentiableLogicImplementation ->
   FreeEnv (WHNFClosure Builtin) Builtin ->
-  MixedFreeEnv ->
   ReaderT MonadTensorCtx m a ->
   m a
-runMonadTensorT logicID origin logic standardEnv lossEnv =
-  flip runReaderT (logicID, logic, origin, standardEnv, lossEnv, mempty)
+runMonadTensorT logicID origin logic standardEnv =
+  flip runReaderT (logicID, logic, origin, standardEnv, mempty)
 
 switchToMonadLogic ::
   (MonadTensor m) =>
   ReaderT MonadLogicCtx m a ->
   m a
 switchToMonadLogic comp = do
-  (logicID, logic, declProv, freeEnv, mixedEnv, boundCtx) <- ask
-  runMonadLogicT logicID logic (Left declProv) freeEnv mixedEnv boundCtx comp
+  (logicID, logic, declProv, freeEnv, boundCtx) <- ask
+  runMonadLogicT logicID logic (Left declProv) freeEnv boundCtx comp
 
 getDeclProvenance :: (MonadTensor m) => m DeclProvenance
 getDeclProvenance = do
-  (_, _, prov, _, _, _) <- ask
+  (_, _, prov, _, _) <- ask
   return prov
 
 getNamedBoundCtx :: (MonadTensor m) => m NamedBoundCtx
 getNamedBoundCtx = do
-  (_, _, _, _, _, ctx) <- ask
+  (_, _, _, _, ctx) <- ask
   return $ fmap nameOf ctx
 
 getCurrentLv :: (MonadTensor m) => m Lv
@@ -79,8 +77,8 @@ getCurrentLv = Lv . length <$> getNamedBoundCtx
 addLossBinderToContext :: (MonadTensor m) => MixedLossBinder -> m a -> m a
 addLossBinderToContext binder cont = do
   local
-    ( \(logicID, declProv, logic, standardEnv, freeEnv, ctx) ->
-        (logicID, declProv, logic, standardEnv, freeEnv, binder : ctx)
+    ( \(logicID, declProv, logic, standardEnv, ctx) ->
+        (logicID, declProv, logic, standardEnv, binder : ctx)
     )
     cont
 

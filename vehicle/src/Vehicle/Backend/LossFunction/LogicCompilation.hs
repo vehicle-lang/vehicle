@@ -38,7 +38,6 @@ type MonadLogicCtx =
     Either DeclProvenance DifferentiableLogicField,
     DifferentiableLogicImplementation,
     FreeEnv (WHNFClosure Builtin) Builtin,
-    MixedFreeEnv,
     GenericBoundCtx MixedLossBinder
   )
 
@@ -53,50 +52,42 @@ runMonadLogicT ::
   DifferentiableLogicImplementation ->
   Either DeclProvenance DifferentiableLogicField ->
   FreeEnv (WHNFClosure Builtin) Builtin ->
-  MixedFreeEnv ->
   GenericBoundCtx MixedLossBinder ->
   ReaderT MonadLogicCtx m a ->
   m a
-runMonadLogicT logicID logic origin standardEnv lossEnv boundCtx =
-  flip runReaderT (logicID, origin, logic, standardEnv, lossEnv, boundCtx)
+runMonadLogicT logicID logic origin standardEnv boundCtx =
+  flip runReaderT (logicID, origin, logic, standardEnv, boundCtx)
 
 getLogic :: (MonadLogic m) => m DifferentiableLogicImplementation
 getLogic = do
-  (_, _, logic, _, _, _) <- ask
+  (_, _, logic, _, _) <- ask
   return logic
 
 getDeclProvenance :: (MonadLogic m) => m (Either DeclProvenance DifferentiableLogicField)
 getDeclProvenance = do
-  (_, prov, _, _, _, _) <- ask
+  (_, prov, _, _, _) <- ask
   return prov
 
 getStandardFreeEnvWithoutHidden :: (MonadLogic m) => m (FreeEnv (WHNFClosure Builtin) Builtin)
 getStandardFreeEnvWithoutHidden = do
-  (_, _, _, env, _, _) <- ask
+  (_, _, _, env, _) <- ask
   return $ Map.map (\d -> if isPreservedStdLibOp d then convertToPostulate d else d) env
-
-getLossFreeEnvWithHidden :: (MonadLogic m) => m (FreeEnv MixedClosure LossBuiltin)
-getLossFreeEnvWithHidden =
-  return mempty
-
-getLossFreeEnvWithoutHidden :: (MonadLogic m) => m (FreeEnv MixedClosure LossBuiltin)
-getLossFreeEnvWithoutHidden = Map.map (\d -> if isPreservedStdLibOp d then convertToPostulate d else d) <$> getLossFreeEnvWithHidden
 
 getBoundCtx :: (MonadLogic m) => m (GenericBoundCtx MixedLossBinder)
 getBoundCtx = do
-  (_, _, _, _, _, ctx) <- ask
+  (_, _, _, _, ctx) <- ask
   return ctx
 
 getNamedBoundCtx :: (MonadLogic m) => m NamedBoundCtx
 getNamedBoundCtx = do
-  (_, _, _, _, _, ctx) <- ask
+  (_, _, _, _, ctx) <- ask
   return $ fmap nameOf ctx
 
 addLossBinderToContext :: (MonadLogic m) => MixedLossBinder -> m a -> m a
 addLossBinderToContext binder cont = do
   local
-    ( \(logicID, declProv, logic, standardEnv, freeEnv, ctx) ->
-        (logicID, declProv, logic, standardEnv, freeEnv, binder : ctx)
+    ( \(logicID, declProv, logic, standardEnv, ctx) ->
+        (logicID, declProv, logic, standardEnv, binder : ctx)
     )
     cont
 
@@ -131,7 +122,7 @@ compileLogic logicID dsl = do
     go impl ((field, expr) : fields) = do
       value <-
         logCompilerSection MaxDetail ("compiling logic field" <+> quotePretty field) $
-          runMonadLogicT logicID impl (Right field) mempty mempty mempty $ do
+          runMonadLogicT logicID impl (Right field) mempty mempty $ do
             mixedLossValue <- normStandardExprToLoss mempty expr
             lossValue <- transformMixedClosureToStandardClosure mixedLossValue
             transformLossClosureToMixedClosure lossValue
@@ -231,9 +222,7 @@ normLossExprToLoss ::
   MixedBoundEnv ->
   Expr Ix LossBuiltin ->
   m MixedLossValue
-normLossExprToLoss boundEnv expr = do
-  freeEnv <- getLossFreeEnvWithoutHidden
-  eval freeEnv boundEnv expr
+normLossExprToLoss = eval mempty
 
 convertToLossBuiltins ::
   forall m.
@@ -367,8 +356,7 @@ convertBuiltin builtin spine = convert builtin
     changedBuiltin field = do
       fn <- lookupLogicField field
       logDebug MaxDetail $ "subst-field" <+> pretty field <+> "-->" <+> prettyVerbose fn
-      freeEnv <- getLossFreeEnvWithoutHidden
-      evalApp freeEnv fn spine
+      evalApp mempty fn spine
 
     unchangedBuiltin :: LossBuiltin -> m MixedLossValue
     unchangedBuiltin b = return $ VBuiltin b spine

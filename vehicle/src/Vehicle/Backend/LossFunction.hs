@@ -5,7 +5,7 @@ where
 
 import Data.Map qualified as Map
 import Data.Maybe (maybeToList)
-import Vehicle.Backend.LossFunction.Core (DifferentiableLogicImplementation, MixedFreeEnv)
+import Vehicle.Backend.LossFunction.Core (DifferentiableLogicImplementation)
 import Vehicle.Backend.LossFunction.TensorCompilation (convertExprToTensorValue, runMonadTensorT)
 import Vehicle.Backend.Prelude (DifferentiableLogicID)
 import Vehicle.Compile.Error
@@ -24,17 +24,16 @@ convertToLossTensors ::
   m (Prog Ix TensorBuiltin)
 convertToLossTensors logicID logic (Main ds) =
   logCompilerPass MinDetail currentPass $ do
-    Main <$> convertDecls logicID logic mempty mempty ds
+    Main <$> convertDecls logicID logic mempty ds
 
 convertDecls ::
   (MonadCompile m) =>
   DifferentiableLogicID ->
   DifferentiableLogicImplementation ->
   FreeEnv (WHNFClosure Builtin) Builtin ->
-  MixedFreeEnv ->
   [Decl Ix Builtin] ->
   m [Decl Ix TensorBuiltin]
-convertDecls logicID logic standardFreeEnv lossFreeEnv = \case
+convertDecls logicID logic standardFreeEnv = \case
   [] -> return []
   decl : decls -> do
     let ident = identifierOf decl
@@ -62,7 +61,7 @@ convertDecls logicID logic standardFreeEnv lossFreeEnv = \case
             then return Nothing
             else do
               normTensorDecl <-
-                runMonadTensorT logicID declProv logic standardFreeEnv lossFreeEnv $
+                runMonadTensorT logicID declProv logic standardFreeEnv $
                   traverse (convertExprToTensorValue mempty) decl
               let tensorDecl = fmap (Quote.unnormalise 0) normTensorDecl
               return $ Just tensorDecl
@@ -73,8 +72,7 @@ convertDecls logicID logic standardFreeEnv lossFreeEnv = \case
           )
 
     let newStandardFreeEnv = Map.insert ident standardDecl standardFreeEnv
-    let newLossFreeEnv = lossFreeEnv -- Map.insert ident lossDecl lossFreeEnv
-    decls' <- convertDecls logicID logic newStandardFreeEnv newLossFreeEnv decls
+    decls' <- convertDecls logicID logic newStandardFreeEnv decls
     return $ maybeToList maybeTensorDecl ++ decls'
 
 currentPass :: Doc a

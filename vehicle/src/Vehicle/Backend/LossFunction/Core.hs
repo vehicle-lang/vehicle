@@ -21,11 +21,6 @@ data MixedClosure
   = StandardClos (WHNFClosure Builtin)
   | LossClos LossClosure
 
--- NOTE that MixedClosure is not quotable as you can't convert the standard
--- closure to loss builtins.
-
-type MixedFreeEnv = FreeEnv MixedClosure LossBuiltin
-
 type MixedBoundEnv = BoundEnv MixedClosure LossBuiltin
 
 type MixedLossValue = Value MixedClosure LossBuiltin
