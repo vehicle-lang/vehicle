@@ -8,7 +8,6 @@ import Control.Monad (when)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
-import Control.Monad.State (evalStateT)
 import Data.Maybe (isNothing, maybeToList)
 import Data.Proxy (Proxy (..))
 import System.Directory (createDirectoryIfMissing)
@@ -168,7 +167,7 @@ compileSingleProperty ::
   WHNFValue Builtin ->
   m ()
 compileSingleProperty expr = do
-  queries <- flip evalStateT emptyGlobalCtx $ eliminateUserVariables expr
+  queries <- flip runSupplyT [1 :: QueryID ..] $ eliminateUserVariables expr
 
   PropertyMetaData {..} <- ask
 

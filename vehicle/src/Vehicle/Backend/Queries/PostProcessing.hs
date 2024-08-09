@@ -36,7 +36,7 @@ import Vehicle.Verify.Variable
 -- Main entry point
 
 convertPartitionsToQueries ::
-  (MonadQueryStructure m, MonadStdIO m) =>
+  (MonadQueryStructure m, MonadStdIO m, MonadSupply QueryID m) =>
   Partitions ->
   m (DisjunctAll QueryMetaData)
 convertPartitionsToQueries partitions = do
@@ -64,13 +64,13 @@ convertPartitionsToQueries partitions = do
 -- This is separated from `convertPartitionsToQueries` above because for
 -- performance reasons we don't want `MonadSupply` to be needed everywhere.
 compileQueryToFormat ::
-  (MonadQueryStructure m) =>
+  (MonadPropertyStructure m, MonadSupply QueryID m) =>
   (MetaNetwork, UserVariableReconstruction, QueryContents) ->
   m (QueryMetaData, QueryText)
 compileQueryToFormat (metaNetwork, userVars, contents@QueryContents {..}) = do
   -- Calculate query address
   PropertyMetaData {..} <- ask
-  queryID <- getAndUpdateQueryID
+  queryID <- demand
   let queryAddress = (propertyAddress, queryID)
   checkIfNetworkInputsBounded queryAddress metaNetwork queryAssertions
   let queryMetaData = QueryMetaData queryAddress metaNetwork userVars

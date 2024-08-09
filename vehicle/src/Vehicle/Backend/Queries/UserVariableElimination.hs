@@ -10,7 +10,7 @@ import Control.Applicative (Applicative (..))
 import Control.Monad (when)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..))
-import Control.Monad.State (MonadState (..))
+import Control.Monad.State (MonadState (..), evalStateT)
 import Control.Monad.Writer (MonadWriter, WriterT (..))
 import Data.Vector (Vector)
 import Data.Vector qualified as Vector
@@ -32,6 +32,7 @@ import Vehicle.Data.Expr.Linear (LinearExpr, addExprs, constantExpr, isConstant,
 import Vehicle.Data.Expr.Normalised
 import Vehicle.Data.Tensor (RationalTensor, Tensor (..), zeroTensor)
 import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (StdEqualsVector, StdNotEqualsVector))
+import Vehicle.Verify.Core (QuerySetNegationStatus)
 import Vehicle.Verify.QueryFormat (QueryFormat (..), supportsStrictInequalities)
 import Vehicle.Verify.Specification
 import Vehicle.Verify.Variable
@@ -44,7 +45,7 @@ import Prelude hiding (Applicative (..))
 -- Assumptions - expression is well-typed in the empty context and of type Bool.
 eliminateUserVariables ::
   forall m.
-  (MonadQueryStructure m, MonadStdIO m) =>
+  (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m) =>
   WHNFValue Builtin ->
   m (Property QueryMetaData)
 eliminateUserVariables = go
@@ -87,7 +88,7 @@ eliminateUserVariables = go
       _ -> compileUnquantifiedQuerySet expr
 
 compileQuantifiedQuerySet ::
-  (MonadQueryStructure m, MonadStdIO m) =>
+  (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m) =>
   Bool ->
   WHNFBinder Builtin ->
   WHNFBoundEnv Builtin ->
@@ -96,31 +97,34 @@ compileQuantifiedQuerySet ::
 compileQuantifiedQuerySet isPropertyNegated binder env body = do
   let subsectionDoc = "compilation of set of quantified queries:" <+> prettyFriendlyEmptyCtx (IExists [] (VLam binder (WHNFClosure env body)))
   logCompilerPass MaxDetail subsectionDoc $ do
-    resetGlobalCtx
-    maybePartitions <- compileExists binder env body
-    case maybePartitions of
-      Trivial b -> return $ Trivial (b `xor` isPropertyNegated)
-      NonTrivial partitions -> do
-        queries <- convertPartitionsToQueries partitions
-        return $ NonTrivial $ Query $ QuerySet isPropertyNegated queries
+    flip evalStateT emptyGlobalCtx $ do
+      maybePartitions <- compileExists binder env body
+      compileQuerySetPartitions isPropertyNegated maybePartitions
 
 -- | We only need this because we can't evaluate networks in the compiler.
 compileUnquantifiedQuerySet ::
-  (MonadQueryStructure m, MonadStdIO m) =>
+  (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m) =>
   WHNFValue Builtin ->
   m (Property QueryMetaData)
 compileUnquantifiedQuerySet value = do
   let subsectionDoc = "compilation of set of unquantified queries:" <+> prettyFriendlyEmptyCtx value
   logCompilerPass MaxDetail subsectionDoc $ do
-    resetGlobalCtx
-    (maybePartitions, equalities) <- runWriterT $ compileBoolExpr value
-    networkEqPartitions <- networkEqualitiesToPartition equalities
-    let equalitiesPartition = andTrivial andPartitions maybePartitions networkEqPartitions
-    case equalitiesPartition of
-      Trivial b -> return $ Trivial b
-      NonTrivial partitions -> do
-        queries <- convertPartitionsToQueries partitions
-        return $ NonTrivial $ Query $ QuerySet False queries
+    flip evalStateT emptyGlobalCtx $ do
+      (maybePartitions, equalities) <- runWriterT $ compileBoolExpr value
+      networkEqPartitions <- networkEqualitiesToPartition equalities
+      let allPartitions = andTrivial andPartitions maybePartitions networkEqPartitions
+      compileQuerySetPartitions False allPartitions
+
+compileQuerySetPartitions ::
+  (MonadQueryStructure m, MonadSupply QueryID m, MonadStdIO m) =>
+  QuerySetNegationStatus ->
+  MaybeTrivial Partitions ->
+  m (Property QueryMetaData)
+compileQuerySetPartitions isPropertyNegated maybePartitions = case maybePartitions of
+  Trivial b -> return $ Trivial (b `xor` isPropertyNegated)
+  NonTrivial partitions -> do
+    queries <- convertPartitionsToQueries partitions
+    return $ NonTrivial $ Query $ QuerySet isPropertyNegated queries
 
 -- | Attempts to compile an arbitrary expression of type `Bool` down to a tree
 -- of assertions implicitly existentially quantified by a set of network

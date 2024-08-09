@@ -2,8 +2,7 @@ module Vehicle.Backend.Queries.UserVariableElimination.Core where
 
 import Control.DeepSeq (NFData)
 import Control.Monad.Reader (MonadReader (..))
-import Control.Monad.State (MonadState (..), gets, modify)
-import Control.Monad.Writer (MonadWriter)
+import Control.Monad.State (MonadState (..), gets)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Bifunctor (Bifunctor (..))
 import Data.HashMap.Strict (HashMap)
@@ -78,8 +77,7 @@ data GlobalCtx = GlobalCtx
   { globalBoundVarCtx :: !(LinkedHashMap Lv Variable),
     userVariableReductions :: !(HashMap OriginalUserVariable ([UserRationalVariable], WHNFValue QueryBuiltin)),
     networkVariableReductions :: !(HashMap OriginalNetworkVariable ([NetworkRationalVariable], WHNFValue QueryBuiltin)),
-    networkApplications :: !(LinkedHashMap NetworkApplication NetworkApplicationReplacement),
-    queryID :: !QueryID
+    networkApplications :: !(LinkedHashMap NetworkApplication NetworkApplicationReplacement)
   }
 
 emptyGlobalCtx :: GlobalCtx
@@ -88,8 +86,7 @@ emptyGlobalCtx =
     { globalBoundVarCtx = LinkedHashMap.empty,
       userVariableReductions = mempty,
       networkVariableReductions = mempty,
-      networkApplications = LinkedHashMap.empty,
-      queryID = 1
+      networkApplications = LinkedHashMap.empty
     }
 
 addVectorVarToBoundVarCtx ::
@@ -501,12 +498,7 @@ type MonadQueryStructure m =
     MonadState GlobalCtx m
   )
 
-type MonadUnblock m =
-  ( MonadQueryStructure m,
-    MonadWriter [WHNFValue QueryBuiltin] m
-  )
-
-getGlobalBoundCtx :: (MonadQueryStructure m) => m (BoundCtx (Expr Ix QueryBuiltin))
+getGlobalBoundCtx :: (MonadQueryStructure m) => m (BoundCtx (Type Ix QueryBuiltin))
 getGlobalBoundCtx = gets (variableCtxToBoundCtx . (fmap snd . LinkedHashMap.toList . globalBoundVarCtx))
 
 prettyFriendlyInCtx :: (MonadQueryStructure m) => WHNFValue QueryBuiltin -> m (Doc a)
@@ -520,17 +512,6 @@ lookupVarByLevel lv = do
   case LinkedHashMap.lookup lv globalBoundVarCtx of
     Nothing -> compilerDeveloperError "Cannout find variable var"
     Just v -> return v
-
-getAndUpdateQueryID :: (MonadQueryStructure m) => m QueryID
-getAndUpdateQueryID = do
-  queryID <$> getModify (\GlobalCtx {..} -> GlobalCtx {queryID = queryID + 1, ..})
-
--- | Resets the entire global state except for the queryID
-resetGlobalCtx :: (MonadQueryStructure m) => m ()
-resetGlobalCtx = modify $ \ctx ->
-  emptyGlobalCtx
-    { queryID = queryID ctx
-    }
 
 getReducedVariableExprFor :: (MonadQueryStructure m) => Lv -> m (Maybe (WHNFValue QueryBuiltin))
 getReducedVariableExprFor lv = do
@@ -610,7 +591,7 @@ reduceTensorExpr (Sparse coeff constant) = do
 --------------------------------------------------------------------------------
 -- Context operations
 
-variableCtxToBoundCtx :: (Pretty variable) => [variable] -> BoundCtx (Expr Ix builtin)
+variableCtxToBoundCtx :: (Pretty variable) => [variable] -> BoundCtx (Type Ix builtin)
 variableCtxToBoundCtx ctx = zipWith variableCtxToBoundCtxEntry [0 .. Ix (length ctx - 1)] ctx
   where
     variableCtxToBoundCtxEntry ix var = mkDefaultBinder (layoutAsText $ pretty var) (BoundVar mempty ix)

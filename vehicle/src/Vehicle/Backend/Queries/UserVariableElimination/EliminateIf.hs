@@ -6,7 +6,6 @@ module Vehicle.Backend.Queries.UserVariableElimination.EliminateIf
   )
 where
 
-import Vehicle.Backend.Queries.UserVariableElimination.Core
 import Vehicle.Compile.Context.Free (MonadFreeContext)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE
@@ -34,7 +33,7 @@ liftIfArg ::
 liftIfArg k (Arg p v r e) = liftIf (k . Arg p v r) e
 
 liftIfSpine ::
-  (MonadUnblock m) =>
+  (MonadCompile m) =>
   WHNFSpine Builtin ->
   (WHNFSpine Builtin -> m (WHNFValue Builtin)) ->
   m (WHNFValue Builtin)

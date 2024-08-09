@@ -48,6 +48,11 @@ unblockBoolExpr expr = do
 
 type ReduceVectorVars = Bool
 
+type MonadUnblock m =
+  ( MonadQueryStructure m,
+    MonadWriter [WHNFValue QueryBuiltin] m
+  )
+
 -- | Lifts all `if`s in the provided expression `e` to the top-level, while
 -- preserving the guarantee that the expression is normalised as much as
 -- possible.
