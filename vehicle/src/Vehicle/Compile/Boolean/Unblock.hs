@@ -23,7 +23,7 @@ import Vehicle.Libraries.StandardLibrary.Definitions
 --------------------------------------------------------------------------------
 
 type MonadUnblock m =
-  ( MonadCompile m,
+  ( MonadLogger m,
     MonadFreeContext Builtin m
   )
 
@@ -251,7 +251,7 @@ unblockIndices actions n = do
     forceEvalSimple Indices (evalIndices (VBuiltinFunction Indices)) (explicit <$> [n''])
 
 forceEval ::
-  (MonadCompile m) =>
+  (MonadLogger m) =>
   BuiltinFunction ->
   (WHNFValue Builtin -> WHNFSpine Builtin -> m (WHNFValue Builtin)) ->
   WHNFSpine Builtin ->
@@ -261,7 +261,7 @@ forceEval b evalFn args = evalFn cannotEvalError $ filterOutIrrelevantArgs args
     cannotEvalError = developerError $ "Unexpectedly blocked expression" <+> prettyVerbose (VBuiltin (BuiltinFunction b) args)
 
 forceEvalSimple ::
-  (MonadCompile m) =>
+  (MonadLogger m) =>
   BuiltinFunction ->
   (WHNFValue Builtin -> WHNFSpine Builtin -> WHNFValue Builtin) ->
   WHNFSpine Builtin ->
@@ -276,10 +276,8 @@ tryPurifyAssertion ::
   NamedBoundCtx ->
   UnblockingActions m ->
   WHNFValue Builtin ->
-  (WHNFValue Builtin -> m a) ->
-  (WHNFValue Builtin -> WHNFValue Builtin -> m a) ->
-  m a
-tryPurifyAssertion ctx actions assertion whenImpure whenPure = do
+  m (Either (WHNFValue Builtin) (WHNFValue Builtin, WHNFValue Builtin))
+tryPurifyAssertion ctx actions assertion = do
   let assertionDoc = prettyFriendly (WithContext assertion ctx)
   logDebug MaxDetail $ line <> "Trying to purify" <+> squotes assertionDoc
   incrCallDepth
@@ -296,12 +294,12 @@ tryPurifyAssertion ctx actions assertion whenImpure whenPure = do
   let onPurified x y = do
         logDebug MaxDetail "No new boolean structure found."
         decrCallDepth
-        whenPure x y
+        return $ Right (x, y)
 
   let onUnpurified expr = do
         logDebug MaxDetail "New boolean structure found."
         decrCallDepth
-        whenImpure expr
+        return $ Left expr
 
   case unblockedExpr of
     IEqual EqRat x y -> onPurified x y
@@ -334,7 +332,7 @@ purify actions expr = case expr of
   IFoldVector t1 t2 n f e xs -> unblockFoldVector actions t1 t2 n f e xs
   IAt t n xs i -> unblockAt actions t n xs i
   -- Other
-  _ -> compilerDeveloperError $ "Do not yet support purification of" <+> prettyVerbose expr
+  _ -> developerError $ "Do not yet support purification of" <+> prettyVerbose expr
 
 purifyVectorLiteral ::
   (MonadUnblock m) =>

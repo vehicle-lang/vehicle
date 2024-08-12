@@ -104,7 +104,7 @@ instance EvaluableClosure (WHNFClosure builtin) builtin where
 -- Evaluation
 
 type MonadNorm closure builtin m =
-  ( MonadCompile m,
+  ( MonadLogger m,
     EvaluableClosure closure builtin,
     DescopableClosure closure Builtin,
     NormalisableBuiltin builtin,
@@ -123,7 +123,7 @@ eval freeEnv boundEnv expr = do
     Hole {} -> resolutionError currentPass "Hole"
     Meta _ m -> return $ VMeta m []
     Universe _ u -> return $ VUniverse u
-    BoundVar _ v -> lookupIxValueInEnv boundEnv v
+    BoundVar _ v -> return $ lookupIxValueInEnv boundEnv v
     FreeVar _ v -> lookupIdentValueInEnv freeEnv v
     Builtin _ b -> return $ VBuiltin b []
     Lam _ binder body -> do
@@ -200,13 +200,11 @@ lookupIdentValueInEnv freeEnv ident = do
     _ -> VFreeVar ident []
 
 lookupIxValueInEnv ::
-  (MonadNorm closure builtin m) =>
   BoundEnv closure builtin ->
   Ix ->
-  m (Value closure builtin)
+  Value closure builtin
 lookupIxValueInEnv boundEnv ix = do
-  (_binder, value) <- lookupIxInBoundCtx currentPass ix boundEnv
-  return value
+  snd $ lookupIxInBoundCtx currentPass ix boundEnv
 
 -----------------------------------------------------------------------------
 -- Other

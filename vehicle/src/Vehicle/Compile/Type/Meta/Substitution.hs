@@ -6,7 +6,6 @@ where
 
 import Data.List.NonEmpty (NonEmpty)
 import Vehicle.Compile.Context.Free
-import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Builtin (NormalisableBuiltin)
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
@@ -24,7 +23,7 @@ class MetaSubstitutable m builtin a | a -> builtin where
   -- updated object and the set of meta-variables within the object for which
   -- no subsitution was provided.
   subst ::
-    (MonadCompile m, MonadFreeContext builtin m, NormalisableBuiltin builtin) =>
+    (MonadLogger m, MonadFreeContext builtin m, NormalisableBuiltin builtin) =>
     MetaSubstitution builtin ->
     a ->
     m a
@@ -122,7 +121,7 @@ instance MetaSubstitutable m builtin (InstanceConstraint builtin) where
 
 -- This is a massive hack, and only works because we only have instance resolution
 -- for types in the loss typing subsystem which doesn't use dependently types.
-substMetaID :: (MonadCompile m) => MetaSubstitution builtin -> MetaID -> m MetaID
+substMetaID :: (MonadLogger m) => MetaSubstitution builtin -> MetaID -> m MetaID
 substMetaID metaSubst m =
   case MetaMap.lookup m metaSubst of
     Nothing -> return m

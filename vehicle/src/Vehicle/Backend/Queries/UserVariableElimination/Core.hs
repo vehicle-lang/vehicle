@@ -490,7 +490,8 @@ instance Pretty FourierMotzkinVariableSolution where
 
 type MonadPropertyStructure m =
   ( MonadFreeContext QueryBuiltin m,
-    MonadReader PropertyMetaData m
+    MonadReader PropertyMetaData m,
+    MonadCompile m
   )
 
 type MonadQueryStructure m =

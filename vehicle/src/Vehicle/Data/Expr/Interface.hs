@@ -348,6 +348,12 @@ pattern IMul dom x y = IOp2 (Mul dom) x y
 pattern IDiv :: (HasStandardDataExpr expr) => DivDomain -> expr -> expr -> expr
 pattern IDiv dom x y = IOp2 (Div dom) x y
 
+pattern IMax :: (HasStandardDataExpr expr) => expr -> expr -> expr
+pattern IMax x y = IOp2 MaxRat x y
+
+pattern IMin :: (HasStandardDataExpr expr) => expr -> expr -> expr
+pattern IMin x y = IOp2 MinRat x y
+
 pattern VIndices ::
   (HasStandardDataExpr expr) =>
   expr ->

@@ -114,8 +114,8 @@ unexpectedExpr pass name =
 compilerDeveloperError :: (MonadError CompileError m) => Doc () -> m b
 compilerDeveloperError message = throwError $ DevError message
 
-unexpectedExprError :: (MonadError CompileError m) => Doc () -> Doc () -> m b
-unexpectedExprError pass name = compilerDeveloperError $ unexpectedExpr pass name
+unexpectedExprError :: Doc () -> Doc () -> a
+unexpectedExprError pass name = developerError $ unexpectedExpr pass name
 
 normalisationError :: (MonadError CompileError m) => Doc () -> Doc () -> m b
 normalisationError pass name =
@@ -132,19 +132,19 @@ illTypedError pass name =
   compilerDeveloperError $
     unexpectedExpr pass name <+> "This is ill-typed."
 
-visibilityError :: (MonadError CompileError m) => Doc () -> Doc () -> Doc () -> m b
+visibilityError :: Doc () -> Doc () -> Doc () -> m b
 visibilityError pass fun args =
-  compilerDeveloperError $
+  developerError $
     unexpectedExpr pass args <+> "Does not match function's visibility:" <+> fun
 
 -- | Throw this when you encounter a case that should have been resolved during
 -- type-checking, e.g. holes or metas.
-resolutionError :: (MonadError CompileError m) => Doc () -> Doc () -> m b
+resolutionError :: Doc () -> Doc () -> m b
 resolutionError pass name =
-  compilerDeveloperError $
+  developerError $
     unexpectedExpr pass name <+> "We should have resolved this during type-checking."
 
-caseError :: (MonadError CompileError m) => Doc () -> Doc () -> [Doc ()] -> m b
+caseError :: (MonadError CompileError m) => Doc () -> Doc () -> [Doc ()] -> m a
 caseError pass name cases =
   compilerDeveloperError $
     unexpectedExpr pass name
@@ -152,9 +152,9 @@ caseError pass name cases =
       <+> "following cases:"
       <+> list cases
 
-internalScopingError :: (MonadError CompileError m) => Doc () -> Identifier -> m b
+internalScopingError :: Doc () -> Identifier -> a
 internalScopingError pass ident =
-  compilerDeveloperError $
+  developerError $
     "Internal scoping error during"
       <+> pass
       <> ":"
@@ -162,9 +162,9 @@ internalScopingError pass ident =
         <+> quotePretty ident
         <+> "not found in scope..."
 
-outOfBoundsError :: (MonadError CompileError m) => Doc () -> GenericBoundCtx a -> Ix -> m b
+outOfBoundsError :: Doc () -> GenericBoundCtx a -> Ix -> b
 outOfBoundsError pass ctx i =
-  compilerDeveloperError $
+  developerError $
     "Internal scoping error during"
       <+> pass
       <> ":"
@@ -176,7 +176,7 @@ outOfBoundsError pass ctx i =
 -- | Looks up the declaration associated the provided `Identifier`, throwing
 -- an error if that identifier is out of scope.
 lookupInFreeCtx ::
-  (MonadError CompileError m) =>
+  (MonadLogger m) =>
   Doc () ->
   Identifier ->
   GenericFreeCtx a ->
@@ -188,23 +188,21 @@ lookupInFreeCtx pass ident ctx = case Map.lookup ident ctx of
 -- | Looks up the value associated with the variable given the provided `Lv`, throwing
 -- an error if that level is out of scope.
 lookupLvInBoundCtx ::
-  (MonadError CompileError m) =>
   Doc () ->
   Lv ->
   GenericBoundCtx a ->
-  m a
+  a
 lookupLvInBoundCtx pass lv ctx = case lookupLv ctx lv of
   Nothing -> outOfBoundsError pass ctx (dbLevelToIndex (Lv $ length ctx) lv)
-  Just x -> return x
+  Just x -> x
 
 -- | Looks up the value associated with the variable given the provided `Ix`, throwing
 -- an error if that index is out of scope.
 lookupIxInBoundCtx ::
-  (MonadError CompileError m) =>
   Doc () ->
   Ix ->
   GenericBoundCtx a ->
-  m a
+  a
 lookupIxInBoundCtx pass ix ctx = case lookupIx ctx ix of
   Nothing -> outOfBoundsError pass ctx ix
-  Just x -> return x
+  Just x -> x

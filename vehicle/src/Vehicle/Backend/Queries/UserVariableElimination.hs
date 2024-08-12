@@ -289,9 +289,12 @@ tryPurifyAssertion ::
   WHNFValue Builtin ->
   (WHNFValue Builtin -> WHNFValue Builtin -> m (MaybeTrivial Partitions)) ->
   m (MaybeTrivial Partitions)
-tryPurifyAssertion expr whenPure = do
+tryPurifyAssertion expr whenAlreadyPure = do
   ctx <- getGlobalNamedBoundCtx
-  Unblocking.tryPurifyAssertion ctx unblockingActions expr compileBoolExpr whenPure
+  result <- Unblocking.tryPurifyAssertion ctx unblockingActions expr
+  case result of
+    Left purifiedExpr -> compileBoolExpr purifiedExpr
+    Right (x, y) -> whenAlreadyPure x y
 
 unblockBoolExpr ::
   (MonadQuantifierBody m) =>

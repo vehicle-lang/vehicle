@@ -49,7 +49,7 @@ getBoundVarByIx ::
   Ix ->
   m (GenericBinder expr)
 getBoundVarByIx _ compilerPass ix =
-  lookupIxInBoundCtx compilerPass ix =<< getBoundCtx (Proxy @expr)
+  lookupIxInBoundCtx compilerPass ix <$> getBoundCtx (Proxy @expr)
 
 getBoundVarByLv ::
   forall expr m.
@@ -59,7 +59,7 @@ getBoundVarByLv ::
   Lv ->
   m (GenericBinder expr)
 getBoundVarByLv _ compilerPass lv =
-  lookupLvInBoundCtx compilerPass lv =<< getBoundCtx (Proxy @expr)
+  lookupLvInBoundCtx compilerPass lv <$> getBoundCtx (Proxy @expr)
 
 unnormalise ::
   forall expr m.

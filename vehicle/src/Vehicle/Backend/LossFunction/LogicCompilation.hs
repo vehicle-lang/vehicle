@@ -182,7 +182,7 @@ instance EvaluableClosure MixedClosure LossBuiltin where
 
   evalClosure freeEnv closure (binder, arg) = case closure of
     StandardClos (WHNFClosure {}) ->
-      compilerDeveloperError "Should not be evaluating standard closures"
+      developerError "Should not be evaluating standard closures"
     LossClos (LossClosure env body) -> do
       let newEnv = extendEnvWithDefined arg binder env
       eval freeEnv newEnv body

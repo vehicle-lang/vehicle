@@ -1,7 +1,7 @@
 module Vehicle.Backend.LossFunction.Domain where
 
 {-
-import Vehicle.Backend.LossFunction.Core (MixedLossBinder)
+import Vehicle.Backend.LossFunction.Core (MixedLossBinder, MixedLossValue)
 import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Normalise.NBE (FreeEnv, eval)
 import Vehicle.Compile.Prelude
@@ -11,8 +11,13 @@ import Vehicle.Data.Expr.Normalised
 import Vehicle.Data.Expr.Boolean (BooleanExpr (..), MaybeTrivial (..), orTrivial, andTrivial)
 import Vehicle.Compile.Boolean.LiftIf (unfoldIf)
 import Vehicle.Compile.Boolean.LowerNot (lowerNot)
+import Vehicle.Compile.Boolean.Unblock (ReduceVectorVars, UnblockingActions (..))
+import Vehicle.Compile.Boolean.Unblock qualified as Unblocking
 import Data.Map (Map)
 import qualified Data.Map as Map
+import Vehicle.Compile.Context.Bound (MonadBoundContext, getNamedBoundCtx)
+import Data.Proxy (Proxy(..))
+import Control.Monad.Except (MonadError (..), runExceptT)
 
 data Domain = Domain
   { lowerBound :: WHNFValue Builtin,
@@ -21,6 +26,7 @@ data Domain = Domain
 
 type MonadDomain m =
   ( MonadCompile m
+  , MonadBoundContext MixedLossValue m
   )
 
 extractQuantifierDomain ::
@@ -31,7 +37,7 @@ extractQuantifierDomain ::
   m (Maybe (Domain, Expr Ix Builtin))
 extractQuantifierDomain binder lv (WHNFClosure env expr) = case expr of
   BuiltinFunc Implies [argExpr -> e1, argExpr -> e2] -> do
-    maybeDomain <- extractDomain _ _ env e1
+    maybeDomain <- extractDomain binder _ env e1
     return $ (,e2) <$> maybeDomain
   _ -> do
     logWarning _
@@ -62,33 +68,35 @@ data VariableConstraints = VariableConstraints
 
 instance Semigroup VariableConstraints where
   x <> y = VariableConstraints
-    { lowerBounds = Map.unionWith _ (lowerBounds x) (lowerBounds y)
-    , upperBounds = Map.unionWith _ (upperBounds x) (upperBounds y)
+    { lowerBounds = Map.unionWith IMax (lowerBounds x) (lowerBounds y)
+    , upperBounds = Map.unionWith IMin (upperBounds x) (upperBounds y)
     }
 
 instance Monoid VariableConstraints where
   mempty = VariableConstraints mempty mempty
 
+type ConstrainedValue = (Maybe VariableConstraints, WHNFValue Builtin)
+
 searchForDomain ::
   MonadDomain m =>
   Quantifier ->
   WHNFValue Builtin ->
-  m (Maybe (VariableConstraints, WHNFValue Builtin))
-searchForDomain q value = case value of
+  m ConstrainedValue
+searchForDomain q expr = case expr of
   ----------------------------------
   -- No useful domain information --
   ----------------------------------
-  IBoolLiteral {} -> return Nothing
-  IExists {} -> return Nothing
-  IForall {} -> return Nothing
-  INotEqual {} -> return Nothing
-  IVectorNotEqualFull {} -> return Nothing
+  IBoolLiteral {} -> return (Nothing, expr)
+  IExists {} -> return (Nothing, expr)
+  IForall {} -> return (Nothing, expr)
+  INotEqual {} -> return (Nothing, expr)
+  IVectorNotEqualFull {} -> return (Nothing, expr)
   ----------------
   -- Base cases --
   ----------------
-  IOrder {} -> _
-  IEqual {} -> _
-  IVectorEqualFull {} -> _
+  IOrder {} -> tryPurifyAssertion expr recurseDomain _ --(compileRationalAssertion (ordToAssertion op))
+  IEqual {} -> tryPurifyAssertion expr recurseDomain (compileRationalAssertion eqToAssertion)
+  IVectorEqualFull {} -> tryPurifyAssertion expr recurseDomain (compileTensorAssertion [t1, t2, n, s])
   ---------------------
   -- Recursive cases --
   ---------------------
@@ -105,35 +113,7 @@ searchForDomain q value = case value of
         (Nothing, Nothing) -> return Nothing
     | otherwise -> return Nothing
   IOr x y -> orTrivial _ <$> recurseDomain x <*> recurseDomain y
-  _ -> recurseDomain =<< unblockBoolExpr expr
-
-recurseDomain ::
-  MonadDomain m =>
-  WHNFValue Builtin ->
-  m (MaybeTrivial (BooleanExpr (Maybe VariableConstraints)))
-recurseDomain expr = case expr of
-  ---------------------------
-  -- Can't compile further --
-  ---------------------------
-  IBoolLiteral _ b -> return $ Trivial b
-  IExists {} -> return $ NonTrivial $ Query $ Left expr
-  IForall {} -> return $ NonTrivial $ Query $ Left expr
-  ----------------
-  -- Base cases --
-  ----------------
-  IOrder OrderRat op _ _ -> tryPurifyAssertion expr recurseDomain (compileRationalAssertion (ordToAssertion op))
-  IEqual EqRat _ _ -> tryPurifyAssertion expr recurseDomain (compileRationalAssertion eqToAssertion)
-  IVectorEqualFull (IVecEqSpine t1 t2 n s _ _) -> tryPurifyAssertion expr recurseDomain (compileTensorAssertion [t1, t2, n, s])
-  ---------------------
-  -- Recursive cases --
-  ---------------------
-  INotEqual EqRat e1 e2 -> recurseDomain =<< eliminateNotEqualRat e1 e2
-  IVectorNotEqualFull spine -> recurseDomain =<< eliminateNotVectorEqual spine
-  INot e -> handleNot e
-  IIf _ c x y -> handleIf c x y
-  IAnd x y -> andTrivial _ <$> recurseDomain x <*> recurseDomain y
-  IOr x y -> orTrivial _ <$> recurseDomain x <*> recurseDomain y
-  _ -> recurseDomain =<< unblockBoolExpr expr
+  _ -> unblockBoolExpr expr
 
 handleNot ::
   MonadDomain m =>
@@ -152,4 +132,51 @@ handleIf ::
   WHNFValue Builtin ->
   m (MaybeTrivial (BooleanExpr (Either (WHNFValue Builtin) VariableConstraints)))
 handleIf c x y = recurseDomain =<< unfoldIf c x y
--}
+
+--------------------------------------------------------------------------------
+-- Unblocking
+
+tryPurifyAssertion ::
+  (MonadDomain m) =>
+  WHNFValue Builtin ->
+  (WHNFValue Builtin -> WHNFValue Builtin -> m ConstrainedValue) ->
+  m ConstrainedValue
+tryPurifyAssertion expr whenPure = do
+  ctx <- getNamedBoundCtx (Proxy @Builtin)
+  result <- runExceptT (Unblocking.tryPurifyAssertion ctx unblockingActions expr _ whenPure)
+  case result of
+    Left {} -> return (Nothing, expr)
+    Right _ -> _
+
+unblockBoolExpr ::
+  (MonadDomain m) =>
+  WHNFValue Builtin ->
+  m ConstrainedValue
+unblockBoolExpr value = do
+  ctx <- getNamedBoundCtx (Proxy @Builtin)
+  result <- runExceptT (Unblocking.unblockBoolExpr ctx unblockingActions value)
+  case result of
+    Left {} -> return (Nothing, expr)
+    Right _ -> recurseDomain _
+
+unblockingActions :: MonadError (WHNFValue Builtin) m => UnblockingActions m
+unblockingActions = UnblockingActions
+  { unblockFreeVectorVar = unblockFreeVectorVariable
+  , unblockBoundVectorVar = unblockBoundVectorVariable
+  }
+
+unblockFreeVectorVariable ::
+  (MonadError (WHNFValue Builtin) m) =>
+  (ReduceVectorVars -> WHNFValue Builtin -> m (WHNFValue Builtin)) ->
+  ReduceVectorVars ->
+  Identifier ->
+  WHNFSpine Builtin ->
+  m (WHNFValue Builtin)
+unblockFreeVectorVariable _unblockVector _reduceVectorVars ident spine =
+  throwError $ VFreeVar ident spine
+
+unblockBoundVectorVariable ::
+  MonadError (WHNFValue Builtin) m =>
+  Lv ->
+  m (WHNFValue Builtin)
+unblockBoundVectorVariable lv = _-}

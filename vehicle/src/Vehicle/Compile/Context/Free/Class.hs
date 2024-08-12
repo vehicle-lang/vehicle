@@ -19,7 +19,7 @@ import Vehicle.Libraries.StandardLibrary.Definitions
 
 -- | A monad that is used to store the current context at a given point in a
 -- program, i.e. what declarations and bound variables are in scope.
-class (PrintableBuiltin builtin, MonadCompile m) => MonadFreeContext builtin m where
+class (PrintableBuiltin builtin, MonadLogger m) => MonadFreeContext builtin m where
   -- | Adds a new decl to the free variable context.
   addDeclEntryToContext :: FreeCtxEntry builtin -> m a -> m a
 
@@ -73,7 +73,7 @@ instance (MonadFreeContext builtin m) => MonadFreeContext builtin (SupplyT s m) 
 -- Operations
 
 getDeclEntry ::
-  (MonadFreeContext builtin m) =>
+  (MonadCompile m, MonadFreeContext builtin m) =>
   Proxy builtin ->
   CompilerPass ->
   Identifier ->
@@ -83,7 +83,7 @@ getDeclEntry proxy compilerPass ident = do
   lookupInFreeCtx compilerPass ident ctx
 
 getDeclType ::
-  (MonadFreeContext builtin m) =>
+  (MonadCompile m, MonadFreeContext builtin m) =>
   Proxy builtin ->
   CompilerPass ->
   Identifier ->
@@ -92,7 +92,7 @@ getDeclType proxy compilerPass ident =
   typeOf . fst <$> getDeclEntry proxy compilerPass ident
 
 getDecl ::
-  (MonadFreeContext builtin m) =>
+  (MonadCompile m, MonadFreeContext builtin m) =>
   Proxy builtin ->
   CompilerPass ->
   Identifier ->
