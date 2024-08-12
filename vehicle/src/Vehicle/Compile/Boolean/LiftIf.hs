@@ -1,4 +1,4 @@
-module Vehicle.Backend.Queries.UserVariableElimination.EliminateIf
+module Vehicle.Compile.Boolean.LiftIf
   ( liftIf,
     liftIfArg,
     liftIfSpine,
@@ -40,13 +40,6 @@ liftIfSpine ::
 liftIfSpine [] k = k []
 liftIfSpine (x : xs) k = liftIfArg (\a -> liftIfSpine xs (\as -> k (a : as))) x
 
-{-
--- | Recursively removes all top-level `if` statements in the current
--- provided expression.
-elimIf :: WHNFValue Builtin -> WHNFValue Builtin
-elimIf (IIf _ cond e1 e2) = unfoldIf cond (elimIf e1) (elimIf e2)
-elimIf e = e
--}
 unfoldIf ::
   (MonadCompile m, MonadFreeContext Builtin m) =>
   WHNFValue Builtin ->

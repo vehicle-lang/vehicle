@@ -1,15 +1,13 @@
-module Vehicle.Backend.Queries.UserVariableElimination.EliminateNot
-  ( eliminateNot,
+module Vehicle.Compile.Boolean.LowerNot
+  ( lowerNot,
   )
 where
 
-import Control.Monad.Writer
-import Vehicle.Backend.Queries.UserVariableElimination.Core
-import Vehicle.Backend.Queries.UserVariableElimination.Unblocking (unblockBoolExpr)
 import Vehicle.Compile.Context.Free
-import Vehicle.Compile.Error (compilerDeveloperError)
+import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
+import Vehicle.Data.Builtin.Standard ()
 import Vehicle.Data.Expr.Interface
 import Vehicle.Data.Expr.Normalised
 import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (StdNotBoolOp2))
@@ -18,17 +16,22 @@ import Vehicle.Syntax.Builtin
 --------------------------------------------------------------------------------
 -- Not elimination
 
--- | Tries to push in a `Not` function as far as possible. Note that it will not
--- push it past a `Fold` application, and therefore these need to be tested for
--- and eliminated before applying this function.
-eliminateNot ::
+type MonadDropNot m =
+  ( MonadCompile m,
+    MonadFreeContext Builtin m
+  )
+
+-- | Tries to push in a `Not` as far as possible into a boolean expression.
+-- If it is not possible to push it all the way through, it calls the continuation.
+lowerNot ::
   forall m.
-  (MonadQueryStructure m, MonadWriter [WHNFValue QueryBuiltin] m) =>
-  WHNFValue QueryBuiltin ->
-  m (WHNFValue QueryBuiltin)
-eliminateNot = go
+  (MonadDropNot m) =>
+  (WHNFValue Builtin -> m (WHNFValue Builtin)) ->
+  WHNFValue Builtin ->
+  m (WHNFValue Builtin)
+lowerNot whenBlocked = go
   where
-    go :: WHNFValue QueryBuiltin -> m (WHNFValue QueryBuiltin)
+    go :: WHNFValue Builtin -> m (WHNFValue Builtin)
     go = \case
       ----------------
       -- Base cases --
@@ -54,9 +57,9 @@ eliminateNot = go
       IOr x y -> IAnd <$> go x <*> go y
       IAnd x y -> IOr <$> go x <*> go y
       IIf t c x y -> IIf t c <$> go x <*> go y
-      expr -> go =<< unblockBoolExpr expr
+      expr -> whenBlocked expr
 
-negVectorEqSpine :: (MonadQueryStructure m) => WHNFSpine QueryBuiltin -> m (WHNFSpine QueryBuiltin)
+negVectorEqSpine :: (MonadDropNot m) => WHNFSpine Builtin -> m (WHNFSpine Builtin)
 negVectorEqSpine (IVecEqSpine a b n fn x y) = do
   fn' <- appHiddenStdlibDef StdNotBoolOp2 [a, b, fn]
   return $ IVecEqSpine a b n (Arg mempty Explicit Relevant fn') x y

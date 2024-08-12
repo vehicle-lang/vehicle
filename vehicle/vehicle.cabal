@@ -187,12 +187,12 @@ library
     Vehicle.Backend.Queries.UserVariableElimination
     Vehicle.Backend.Queries.UserVariableElimination.Core
     Vehicle.Backend.Queries.UserVariableElimination.EliminateExists
-    Vehicle.Backend.Queries.UserVariableElimination.EliminateIf
-    Vehicle.Backend.Queries.UserVariableElimination.EliminateNot
     Vehicle.Backend.Queries.UserVariableElimination.FourierMotzkinElimination
-    Vehicle.Backend.Queries.UserVariableElimination.Unblocking
     Vehicle.Backend.Queries.UserVariableElimination.VariableReconstruction
     Vehicle.Compile.Arity
+    Vehicle.Compile.Boolean.LiftIf
+    Vehicle.Compile.Boolean.LowerNot
+    Vehicle.Compile.Boolean.Unblock
     Vehicle.Compile.Context.Bound.Class
     Vehicle.Compile.Context.Bound.Core
     Vehicle.Compile.Context.Bound.Instance

@@ -501,6 +501,9 @@ type MonadQueryStructure m =
 getGlobalBoundCtx :: (MonadQueryStructure m) => m (BoundCtx (Type Ix QueryBuiltin))
 getGlobalBoundCtx = gets (variableCtxToBoundCtx . (fmap snd . LinkedHashMap.toList . globalBoundVarCtx))
 
+getGlobalNamedBoundCtx :: (MonadQueryStructure m) => m NamedBoundCtx
+getGlobalNamedBoundCtx = toNamedBoundCtx <$> getGlobalBoundCtx
+
 prettyFriendlyInCtx :: (MonadQueryStructure m) => WHNFValue QueryBuiltin -> m (Doc a)
 prettyFriendlyInCtx e = do
   ctx <- toNamedBoundCtx <$> getGlobalBoundCtx
