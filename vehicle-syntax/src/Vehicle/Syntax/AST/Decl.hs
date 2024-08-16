@@ -1,9 +1,7 @@
 module Vehicle.Syntax.AST.Decl where
 
 import Control.DeepSeq (NFData)
-import Data.Map (Map)
 import Data.Serialize (Serialize)
-import Data.Text (Text)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..))
 import Vehicle.Syntax.AST.Expr
@@ -63,7 +61,7 @@ bodyOf = \case
 
 annotationsOf :: GenericDecl expr -> [Annotation]
 annotationsOf = \case
-  DefFunction _ _ anns _ e -> anns
+  DefFunction _ _ anns _ _ -> anns
   DefAbstract {} -> []
 
 -- | Traverses the type and body of a declaration using the first and
@@ -130,7 +128,7 @@ instance Pretty DefAbstractSort where
     "@" <> case t of
       NetworkDef -> "network"
       DatasetDef -> "dataset"
-      ParameterDef paramTyp -> "parameter"
+      ParameterDef {} -> "parameter"
       PostulateDef {} -> "postulate"
 
 isExternalResourceSort :: DefAbstractSort -> Bool

@@ -90,7 +90,7 @@ traverseExplicitArgExpr f arg
   | otherwise = return arg
 
 argFromBinder :: GenericBinder expr -> expr -> GenericArg expr
-argFromBinder (Binder p i v r _) = Arg p v r
+argFromBinder (Binder p _ v r _) = Arg p v r
 
 -- | Constructs an explicit relevant argument
 explicit :: expr -> GenericArg expr

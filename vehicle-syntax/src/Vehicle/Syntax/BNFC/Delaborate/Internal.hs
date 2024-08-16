@@ -15,7 +15,6 @@ import Prettyprinter (Pretty (..))
 import Vehicle.Syntax.AST qualified as V
 import Vehicle.Syntax.Builtin qualified as V
 import Vehicle.Syntax.Internal.Abs qualified as B
-import Vehicle.Syntax.Parse.Error
 import Vehicle.Syntax.Parse.Token
 import Vehicle.Syntax.Prelude (layoutAsText)
 
@@ -53,7 +52,7 @@ instance Delaborate V.DefAbstractSort (B.NameToken -> B.Expr -> B.Decl) where
     V.PostulateDef {} -> B.DeclPost
     V.NetworkDef -> B.DeclNetw
     V.DatasetDef -> B.DeclData
-    V.ParameterDef sort -> case sort of
+    V.ParameterDef paramSort -> case paramSort of
       V.NonInferable -> B.DeclParam
       V.Inferable -> B.DeclImplParam
 
@@ -95,18 +94,6 @@ instance Delaborate (V.Binder V.Name V.Builtin) B.Binder where
 delabUniverse :: V.UniverseLevel -> B.Expr
 delabUniverse = \case
   V.UniverseLevel l -> B.Type (mkToken B.TypeToken ("Type" <> pack (show l)))
-  where
-    mkBuiltinToken :: (Pretty a) => a -> B.BuiltinToken
-    mkBuiltinToken a = mkToken B.BuiltinToken $ layoutAsText (pretty a)
-
-delabBoolLit :: Bool -> B.Expr
-delabBoolLit b = B.Literal $ B.BoolLiteral (mkToken B.BoolToken (if b then "True" else "False"))
-
-delabNatLit :: Int -> B.Expr
-delabNatLit n = B.Literal $ B.NatLiteral (mkToken B.Natural (pack $ show n))
-
-delabRatLit :: Rational -> B.Expr
-delabRatLit r = B.Literal $ B.RatLiteral (mkToken B.Rational (pack $ show (fromRational r :: Double)))
 
 delabSymbol :: Text -> B.NameToken
 delabSymbol = mkToken B.NameToken

@@ -73,13 +73,14 @@ common common-language
     MultiParamTypeClasses
     OverloadedStrings
     PatternSynonyms
+    RecordWildCards
     ScopedTypeVariables
     TupleSections
     TypeApplications
     TypeFamilies
 
 common common-library
-  import: common-language
+  import:      common-language
 
   if flag(ghc-debug)
     build-depends: ghc-debug-stub >=0.3 && <0.5
@@ -93,6 +94,12 @@ common common-library
     cpp-options: -DoptimiseHeavily
     ghc-options: -fexpose-all-unfoldings -fspecialise-aggressively
 
+  ghc-options:
+    -Werror -Wall -fno-warn-orphans
+    -fno-warn-missing-pattern-synonym-signatures
+    -fno-warn-missing-signatures
+
+-- These warnings are triggered by the auto-generated BNFC files so ignore.
 library
   import:             common-library
   hs-source-dirs:     autogen src

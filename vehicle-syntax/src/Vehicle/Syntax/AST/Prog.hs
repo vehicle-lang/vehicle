@@ -1,7 +1,6 @@
 module Vehicle.Syntax.AST.Prog where
 
 import Control.DeepSeq (NFData)
-import Data.Aeson (FromJSON, ToJSON)
 import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
 import Vehicle.Syntax.AST.Decl (GenericDecl)
@@ -33,4 +32,4 @@ filterDecls ::
   (GenericDecl expr -> Bool) ->
   GenericProg expr ->
   GenericProg expr
-filterDecls pred (Main ds) = Main (filter pred ds)
+filterDecls f (Main ds) = Main (filter f ds)

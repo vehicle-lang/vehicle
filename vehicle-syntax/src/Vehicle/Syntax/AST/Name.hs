@@ -1,11 +1,11 @@
 module Vehicle.Syntax.AST.Name where
 
 import Control.DeepSeq (NFData)
-import Data.Aeson (FromJSON, FromJSONKey, ToJSON, ToJSONKey)
+import Data.Aeson (FromJSON, ToJSON, ToJSONKey)
 import Data.Hashable (Hashable)
 import Data.Serialize (Serialize)
 import Data.Serialize.Text ()
-import Data.Text (Text, pack)
+import Data.Text (Text)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..))
 
@@ -74,7 +74,7 @@ class HasName a name | a -> name where
   nameOf :: a -> name
 
 instance HasName Identifier Name where
-  nameOf (Identifier mod name) = name
+  nameOf (Identifier _mod name) = name
 
 instance HasName Name Name where
   nameOf = id
