@@ -97,6 +97,7 @@ common common-library
   ghc-options:
     -Werror -Wall -fno-warn-orphans
     -fno-warn-missing-pattern-synonym-signatures
+    -fno-warn-missing-signatures
 
 -- These warnings are triggered by the auto-generated BNFC files so ignore.
 library
