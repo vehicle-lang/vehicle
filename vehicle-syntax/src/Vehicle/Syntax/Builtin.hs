@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
+
 -- | This module exports the datatype representations of the builtin symbols.
 module Vehicle.Syntax.Builtin
   ( module Vehicle.Syntax.Builtin,

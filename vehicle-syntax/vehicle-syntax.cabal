@@ -73,14 +73,14 @@ common common-language
     MultiParamTypeClasses
     OverloadedStrings
     PatternSynonyms
+    RecordWildCards
     ScopedTypeVariables
     TupleSections
     TypeApplications
     TypeFamilies
-    RecordWildCards
 
 common common-library
-  import: common-language
+  import:      common-language
 
   if flag(ghc-debug)
     build-depends: ghc-debug-stub >=0.3 && <0.5
@@ -95,12 +95,10 @@ common common-library
     ghc-options: -fexpose-all-unfoldings -fspecialise-aggressively
 
   ghc-options:
-    -Werror
-    -Wall
-    -- These warnings are triggered by the auto-generated BNFC files so ignore.
-    -fno-warn-orphans
+    -Werror -Wall -fno-warn-orphans
     -fno-warn-missing-pattern-synonym-signatures
 
+-- These warnings are triggered by the auto-generated BNFC files so ignore.
 library
   import:             common-library
   hs-source-dirs:     autogen src

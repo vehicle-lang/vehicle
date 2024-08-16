@@ -1,4 +1,3 @@
-
 module Vehicle.Syntax.AST.Provenance
   ( Provenance (..),
     tkProvenance,
