@@ -1,3 +1,4 @@
+
 module Vehicle.Syntax.AST.Provenance
   ( Provenance (..),
     tkProvenance,
@@ -13,16 +14,12 @@ module Vehicle.Syntax.AST.Provenance
 where
 
 import Control.DeepSeq (NFData (..))
-import Data.Aeson (KeyValue (..), ToJSON (..), object)
 import Data.Hashable (Hashable (..))
-import Data.List (sort)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
-import Data.Maybe (maybeToList)
 import Data.Serialize (Serialize)
-import Data.Text (Text)
 import GHC.Generics (Generic (..))
-import Prettyprinter (Pretty (..), concatWith, squotes, (<+>))
+import Prettyprinter (Pretty (..), (<+>))
 import Vehicle.Syntax.AST.Name (Module (..))
 import Vehicle.Syntax.Parse.Token
 
@@ -68,7 +65,7 @@ data Range = Range
   deriving (Show, Eq, Generic)
 
 instance Ord Range where
-  Range s1 e1 <= Range s2 e2 = s1 < s2 || (s1 == s2 && e1 <= e1)
+  Range s1 e1 <= Range s2 e2 = s1 < s2 || (s1 == s2 && e1 <= e2)
 
 instance Semigroup Range where
   Range b1 _ <> Range _ b2 = Range b1 b2
@@ -92,7 +89,7 @@ instance Pretty Range where
 instance Serialize Range
 
 expandRange :: (Int, Int) -> Range -> Range
-expandRange (l, r) (Range start end) =
+expandRange (l, r) (Range {..}) =
   Range (alterColumn (\x -> x - l) start) (alterColumn (+ r) end)
 
 --------------------------------------------------------------------------------
@@ -120,7 +117,7 @@ instance Serialize Provenance
 
 -- | Get the provenance for a single token.
 tkProvenance :: (IsToken a) => Module -> a -> Provenance
-tkProvenance mod tk = Provenance (Range start end) mod
+tkProvenance modl tk = Provenance (Range start end) modl
   where
     start = tkPosition tk
     end = Position (posLine start) (posColumn start + tkLength tk)
@@ -133,18 +130,18 @@ fillInProvenance provenances = do
   Provenance (Range start end) (modul $ NonEmpty.head provenances)
   where
     getPositions :: Provenance -> (Position, Position)
-    getPositions (Provenance (Range start end) modul) = (start, end)
+    getPositions (Provenance (Range start end) _) = (start, end)
 
 expandProvenance :: (Int, Int) -> Provenance -> Provenance
 expandProvenance w (Provenance range o) = Provenance (expandRange w range) o
 
 instance Pretty Provenance where
-  pretty (Provenance origin mod) = case mod of
+  pretty (Provenance origin modl) = case modl of
     User -> pretty origin
-    StdLib -> pretty mod <> "," <+> pretty origin
+    StdLib -> pretty modl <> "," <+> pretty origin
 
 instance Semigroup Provenance where
-  Provenance origin1 owner1 <> Provenance origin2 owner2 =
+  Provenance origin1 owner1 <> Provenance origin2 _owner2 =
     Provenance (origin1 <> origin2) owner1
 
 noProvenance :: Provenance

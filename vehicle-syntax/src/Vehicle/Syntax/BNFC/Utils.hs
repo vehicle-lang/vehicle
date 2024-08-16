@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-missing-signatures #-}
+
 module Vehicle.Syntax.BNFC.Utils where
 
 import Control.Monad.Except (MonadError)
@@ -19,8 +21,8 @@ pattern InferableOption = "infer"
 
 mkProvenance :: (MonadElab m, IsToken tk) => tk -> m Provenance
 mkProvenance tk = do
-  mod <- ask
-  return $ tkProvenance mod tk
+  modl <- ask
+  return $ tkProvenance modl tk
 
 tokType :: Int -> B.Expr
 tokType l = B.Type (mkToken B.TokType ("Type" <> pack (show l)))

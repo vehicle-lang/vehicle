@@ -12,7 +12,6 @@ where
 
 import Data.Bifunctor (Bifunctor (..))
 import Data.List.NonEmpty (NonEmpty (..))
-import Data.Maybe (fromMaybe)
 import Vehicle.Syntax.AST
 import Vehicle.Syntax.Builtin
 
@@ -43,11 +42,12 @@ data BinderFoldTarget var builtin
   = FoldableBinder FoldableBinderType (Binder var builtin)
   | FunFold
 
+pattern QuantifierExpr :: Binder var Builtin -> Expr var Builtin -> Quantifier -> Expr var Builtin
 pattern QuantifierExpr binder body q <-
   App (Builtin _ (TypeClassOp (QuantifierTC q))) (RelevantExplicitArg _ (Lam _ binder body) :| [])
 
 foldBinders ::
-  forall binder var builtin.
+  forall var builtin.
   (Show (Binder var builtin), FoldableBuiltin builtin) =>
   BinderFoldTarget var builtin ->
   Expr var builtin ->
@@ -57,10 +57,10 @@ foldBinders foldTarget = go
     go :: Expr var builtin -> ([Binder var builtin], Expr var builtin)
     go expr = do
       let result = case expr of
-            Pi p binder body -> processBinder binder body PiFold
-            Lam p binder body -> processBinder binder body LamFold
+            Pi _ binder body -> processBinder binder body PiFold
+            Lam _ binder body -> processBinder binder body LamFold
             (getQuant -> Just (q, binder, body)) -> processBinder binder body (QuantFold q)
-            expr -> Nothing
+            _ -> Nothing
 
       case result of
         Nothing -> ([], expr)

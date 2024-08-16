@@ -5,7 +5,6 @@ import Data.Aeson (ToJSON)
 import Data.Hashable (Hashable)
 import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
-import Vehicle.Syntax.Builtin
 
 --------------------------------------------------------------------------------
 -- Data

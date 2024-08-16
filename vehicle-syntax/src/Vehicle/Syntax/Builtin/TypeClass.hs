@@ -1,7 +1,6 @@
 module Vehicle.Syntax.Builtin.TypeClass where
 
 import Control.DeepSeq (NFData (..))
-import Data.Aeson (ToJSON)
 import Data.Hashable (Hashable (..))
 import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
@@ -41,6 +40,7 @@ instance Pretty TypeClass where
     HasEq {} -> "HasEq"
     HasOrd {} -> "HasOrd"
     HasQuantifier q -> "HasQuantifier" <+> pretty q
+    HasQuantifierIn q -> "HasQuantifierIn" <+> pretty q
     HasAdd -> "HasAdd"
     HasSub -> "HasSub"
     HasMul -> "HasMul"
@@ -90,19 +90,3 @@ instance Pretty TypeClassOp where
     MapTC -> "map"
     FoldTC -> "fold"
     QuantifierTC q -> pretty q
-
-opOfTypeClass :: TypeClass -> TypeClassOp
-opOfTypeClass = \case
-  HasEq op -> EqualsTC op
-  HasOrd op -> OrderTC op
-  HasQuantifier q -> QuantifierTC q
-  HasAdd -> AddTC
-  HasSub -> SubTC
-  HasMul -> MulTC
-  HasDiv -> DivTC
-  HasNeg -> NegTC
-  HasFold -> FoldTC
-  HasMap -> MapTC
-  HasNatLits -> FromNatTC
-  HasRatLits -> FromRatTC
-  HasVecLits -> FromVecTC

@@ -6,20 +6,16 @@ module Vehicle.Syntax.BNFC.Delaborate.External
   )
 where
 
-import Control.Monad.Identity (Identity (runIdentity), IdentityT)
-import Data.List.NonEmpty (NonEmpty)
-import Data.List.NonEmpty qualified as NonEmpty (head, toList)
-import Data.Map qualified as Map
-import Data.Maybe (fromMaybe, maybeToList)
+import Control.Monad.Identity (Identity (runIdentity))
+import Data.List.NonEmpty qualified as NonEmpty (toList)
+import Data.Maybe (fromMaybe)
 import Data.Text (Text, pack)
-import Prettyprinter (Doc, Pretty (..), squote, squotes, (<+>))
+import Prettyprinter (Pretty (..))
 import Vehicle.Syntax.AST qualified as V
 import Vehicle.Syntax.AST.Arg
 import Vehicle.Syntax.BNFC.Utils
 import Vehicle.Syntax.Builtin qualified as V
 import Vehicle.Syntax.External.Abs qualified as B
-import Vehicle.Syntax.External.Print as External (Print, printTree)
-import Vehicle.Syntax.Parse.Error
 import Vehicle.Syntax.Parse.Token
 import Vehicle.Syntax.Prelude
 import Vehicle.Syntax.Sugar
@@ -52,7 +48,6 @@ instance Delaborate (V.Decl V.Name V.Builtin) [B.Decl] where
       defAnn <- case a of
         V.PostulateDef linearityType polarityType -> do
           let nameOption = mkNameAnnOption "name" (V.nameOf n)
-          let types = t : fromMaybe [] (sequence [linearityType, polarityType])
           typeOption <- mkTypeAnnOption ("standard", t)
           linearOpt <- traverse (mkTypeAnnOption . ("linearity",)) linearityType
           polarityOpt <- traverse (mkTypeAnnOption . ("polarity",)) polarityType
@@ -117,7 +112,7 @@ delabNameBinder b = case V.binderNamingForm b of
   V.OnlyType {} ->
     developerError
       "Should not be delaborating the `OnlyType` binder to a `Binder Name`"
-  V.NameAndType name -> B.BasicNameBinder <$> delabM b
+  V.NameAndType {} -> B.BasicNameBinder <$> delabM b
   V.OnlyName name -> return $ case V.visibilityOf b of
     V.Explicit -> B.ExplicitNameBinder (delabModalities b) (delabSymbol name)
     V.Implicit {} -> B.ImplicitNameBinder (delabModalities b) (delabSymbol name)
@@ -270,31 +265,12 @@ delabOp1 op tk [arg]
   | V.isExplicit arg = op tk <$> delabM (argExpr arg)
 delabOp1 _ tk args = delabApp (cheatDelab $ tkSymbol tk) args
 
-delabOp2 :: (MonadDelab m, IsToken token) => (token -> B.Expr -> B.Expr -> B.Expr) -> token -> [V.Arg V.Name V.Builtin] -> m B.Expr
-delabOp2 op tk args@[arg1, arg2]
-  | all V.isExplicit args = op tk <$> delabM (argExpr arg1) <*> delabM (argExpr arg2)
-delabOp2 op tk args = delabApp (cheatDelab $ tkSymbol tk) args
-
-delabOp3 :: (MonadDelab m, IsToken token) => (token -> B.Expr -> B.Expr -> B.Expr -> B.Expr) -> token -> [V.Arg V.Name V.Builtin] -> m B.Expr
-delabOp3 op tk args@[arg1, arg2, arg3]
-  | all V.isExplicit args = op tk <$> delabM (argExpr arg1) <*> delabM (argExpr arg2) <*> delabM (argExpr arg3)
-delabOp3 op tk args = delabApp (cheatDelab $ tkSymbol tk) args
-
 delabInfixOp2 :: (MonadDelab m, IsToken token) => (B.Expr -> token -> B.Expr -> B.Expr) -> token -> [V.Arg V.Name V.Builtin] -> m B.Expr
 delabInfixOp2 op tk args@[arg1, arg2]
   | all V.isExplicit args = op <$> delabM (argExpr arg1) <*> pure tk <*> delabM (argExpr arg2)
-delabInfixOp2 op tk args
+delabInfixOp2 _op tk args
   | null args = delabApp (cheatDelab $ "(" <> tkSymbol tk <> ")") []
   | otherwise = delabApp (cheatDelab $ tkSymbol tk) args
-
-delabPartialSection :: Int -> [B.Expr] -> ([B.Expr] -> B.Expr) -> B.Expr
-delabPartialSection expectedArgs actualArgs mkOp = do
-  -- This is a hack until we get section syntax.
-  let missingArgNumbers = [0 .. (expectedArgs - length actualArgs)]
-  let missingVarNames = fmap (\v -> delabSymbol (pack "x" <> pack (show v))) missingArgNumbers
-  let missingVars = fmap B.Var missingVarNames
-  let missingBinders = fmap (B.ExplicitNameBinder mempty) missingVarNames
-  B.Lam tokLambda missingBinders tokArrow (mkOp (actualArgs <> missingVars))
 
 delabIf :: (MonadDelab m) => [V.Arg V.Name V.Builtin] -> m B.Expr
 delabIf args@[arg1, arg2, arg3]
@@ -304,18 +280,6 @@ delabIf args@[arg1, arg2, arg3]
       e3 <- delabM (argExpr arg3)
       return $ B.If tokIf e1 tokThen e2 tokElse e3
 delabIf args = delabApp (cheatDelab "if") args
-
-argsError :: Text -> Int -> [B.Arg] -> a
-argsError s n args =
-  developerError $
-    "Expecting"
-      <+> pretty n
-      <+> "arguments for"
-      <+> squotes (pretty s)
-      <+> "but found"
-      <+> pretty (length args)
-      <+> "arguments:"
-      <+> squotes (pretty (External.printTree args))
 
 -- | Collapses pi expressions into either a function or a sequence of forall bindings
 delabPi :: (MonadDelab m) => V.Binder V.Name V.Builtin -> V.Expr V.Name V.Builtin -> m B.Expr
@@ -372,28 +336,6 @@ delabQuantifier q args = case reverse args of
     return $ mkTk binders' tokDot body'
   _ -> return $ cheatDelab (layoutAsText $ pretty q)
 
-delabQuantifierIn :: (MonadDelab m) => V.Quantifier -> [V.Arg V.Name V.Builtin] -> m B.Expr
-delabQuantifierIn q args = case reverse args of
-  V.RelevantExplicitArg _ cont : V.RelevantExplicitArg _ (V.Lam _ binder body) : _ -> do
-    binder' <- delabNameBinder binder
-    cont' <- delabM cont
-    body' <- delabM body
-    let mkTk = case q of
-          V.Forall -> B.ForallIn tokForall
-          V.Exists -> B.ExistsIn tokExists
-    return $ mkTk binder' cont' tokDot body'
-  _ -> do
-    let sym = case q of V.Forall -> tkSymbol tokForall; V.Exists -> tkSymbol tokExists
-    argsError sym 2 <$> traverse delabM args
-
-delabForeach :: (MonadDelab m) => [V.Arg V.Name V.Builtin] -> m B.Expr
-delabForeach args = case reverse args of
-  V.RelevantExplicitArg _ (V.Lam _ binder body) : _ -> do
-    binder' <- delabNameBinder binder
-    body' <- delabM body
-    return $ B.Foreach tokForeach binder' tokDot body'
-  _ -> argsError (tkSymbol tokForeach) 1 <$> traverse delabM args
-
 delabAnn :: B.TokAnnotation -> [B.DeclAnnOption] -> B.Decl
 delabAnn name [] = B.DefAnn name B.DeclAnnWithoutOpts
 delabAnn name ops = B.DefAnn name $ B.DeclAnnWithOpts ops
@@ -406,16 +348,3 @@ mkNameAnnOption name value = B.NameAnnOption (mkToken B.TokAnnNameOpt name) (mkT
 
 mkTypeAnnOption :: (MonadDelab m) => (Text, V.Expr V.Name V.Builtin) -> m B.DeclAnnOption
 mkTypeAnnOption (name, value) = B.TypeAnnOption (mkToken B.Name name) <$> delabM value
-
-auxiliaryTypeError :: Doc a -> a
-auxiliaryTypeError e =
-  developerError $
-    "Encountered" <+> squotes e <> ". Should not be delaborating auxiliary-type system code."
-
-primOpError :: V.Builtin -> a
-primOpError e =
-  developerError $
-    "Encountered" <+> squotes (pretty e) <> ". Delaborating primitive builtins not yet supported."
-
-onlyExplicit :: NonEmpty (GenericArg expr) -> [expr]
-onlyExplicit args = argExpr <$> filter V.isExplicit (NonEmpty.toList args)

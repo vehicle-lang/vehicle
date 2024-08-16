@@ -3,16 +3,9 @@ module Vehicle.Syntax.Parse.Error
   )
 where
 
-import Control.Monad.Except (MonadError (..), liftEither)
-import Data.Bifunctor (first)
 import Data.Text (Text)
-import Data.Text.IO qualified as T
-import Prettyprinter (Doc, defaultLayoutOptions, layoutPretty)
-import Prettyprinter.Render.String (renderString)
-import Prettyprinter.Render.Text (renderStrict)
 import Vehicle.Syntax.AST
 import Vehicle.Syntax.Builtin
-import Vehicle.Syntax.Parse.Token
 
 --------------------------------------------------------------------------------
 -- Parsing

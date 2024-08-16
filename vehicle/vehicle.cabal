@@ -74,7 +74,10 @@ common common-language
     UndecidableInstances
     ViewPatterns
 
-  ghc-options:        -Werror -Wall -fprint-potential-instances
+  ghc-options:        
+    -Werror 
+    -Wall 
+    -fprint-potential-instances
 
 common common-library
   import: common-language

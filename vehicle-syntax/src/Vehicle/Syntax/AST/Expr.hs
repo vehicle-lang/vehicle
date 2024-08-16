@@ -42,8 +42,7 @@ import Vehicle.Syntax.AST.Binder
 import Vehicle.Syntax.AST.Meta (MetaID)
 import Vehicle.Syntax.AST.Name (Identifier, Name)
 import Vehicle.Syntax.AST.Provenance (HasProvenance (..), Provenance, fillInProvenance)
-import Vehicle.Syntax.Builtin (Builtin)
-import Vehicle.Syntax.Prelude
+import Vehicle.Syntax.Prelude ()
 
 --------------------------------------------------------------------------------
 -- Universes

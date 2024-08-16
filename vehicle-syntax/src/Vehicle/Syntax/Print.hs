@@ -3,18 +3,15 @@ module Vehicle.Syntax.Print
   )
 where
 
-import Control.Monad.Identity (Identity (..))
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Prettyprinter (Doc, Pretty (..))
 import Vehicle.Syntax.AST
-import Vehicle.Syntax.BNFC.Delaborate.External as External (Delaborate, delab)
+import Vehicle.Syntax.BNFC.Delaborate.External as External (delab)
 import Vehicle.Syntax.BNFC.Delaborate.Internal as Internal (delab)
 import Vehicle.Syntax.Builtin
-import Vehicle.Syntax.External.Abs qualified as BF
-import Vehicle.Syntax.External.Print as External (Print, printTree)
-import Vehicle.Syntax.Internal.Abs qualified as BC
-import Vehicle.Syntax.Internal.Print as Internal (Print, printTree)
+import Vehicle.Syntax.External.Print as External (printTree)
+import Vehicle.Syntax.Internal.Print as Internal (printTree)
 
 --------------------------------------------------------------------------------
 -- Conversion to BNFC representation

@@ -10,11 +10,8 @@ module Vehicle.Syntax.Parse
   )
 where
 
-import Control.Monad.Except (MonadError (..), liftEither)
-import Data.Bifunctor (first)
-import Data.Set (Set)
+import Control.Monad.Except (MonadError (..))
 import Data.Text (Text)
-import Data.Text.IO qualified as T
 import Vehicle.Syntax.AST
 import Vehicle.Syntax.BNFC.Elaborate.External
 import Vehicle.Syntax.Builtin
@@ -22,8 +19,6 @@ import Vehicle.Syntax.External.Abs qualified as External (Expr, Prog)
 import Vehicle.Syntax.External.Layout as External (resolveLayout)
 import Vehicle.Syntax.External.Lex as External (Token)
 import Vehicle.Syntax.External.Par as External (myLexer, pExpr, pProg)
-import Vehicle.Syntax.Internal.Abs qualified as Internal (Expr, Prog)
-import Vehicle.Syntax.Internal.Par as Internal (myLexer, pExpr, pProg)
 import Vehicle.Syntax.Parse.Error (ParseError (..))
 
 --------------------------------------------------------------------------------
@@ -52,12 +47,6 @@ parseExternalExpr = runExternalParser False External.pExpr
 
 parseExternalProg :: Text -> Either String External.Prog
 parseExternalProg = runExternalParser True External.pProg
-
-parseInternalExpr :: Text -> Either String Internal.Expr
-parseInternalExpr = Internal.pExpr . Internal.myLexer
-
-parseInternalProg :: Text -> Either String Internal.Prog
-parseInternalProg = Internal.pProg . Internal.myLexer
 
 runExternalParser :: Bool -> ExternalParser a -> Text -> Either String a
 runExternalParser topLevel p t = p (runExternalLexer topLevel t)

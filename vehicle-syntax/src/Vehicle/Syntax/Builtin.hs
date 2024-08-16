@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
 -- | This module exports the datatype representations of the builtin symbols.
 module Vehicle.Syntax.Builtin
   ( module Vehicle.Syntax.Builtin,
@@ -6,18 +7,13 @@ module Vehicle.Syntax.Builtin
 where
 
 import Control.DeepSeq (NFData (..))
-import Data.Aeson (FromJSON, Options (..), ToJSON (..), defaultOptions, genericParseJSON, genericToJSON)
-import Data.Aeson.Types (FromJSON (..), ToJSON)
-import Data.Bifunctor (first)
+import Data.Aeson (ToJSON (..))
 import Data.Hashable (Hashable (..))
-import Data.List (stripPrefix)
-import Data.Maybe (fromMaybe)
 import Data.Serialize (Serialize)
-import Data.Text (Text, pack)
+import Data.Text (Text)
 import GHC.Generics (Generic)
-import Prettyprinter (Pretty (..), defaultLayoutOptions, layoutPretty, (<+>))
+import Prettyprinter (Pretty (..), defaultLayoutOptions, layoutPretty)
 import Prettyprinter.Render.Text (renderStrict)
-import Vehicle.Syntax.AST.Name (Name)
 import Vehicle.Syntax.Builtin.BasicOperations as X
 import Vehicle.Syntax.Builtin.TypeClass as X
 

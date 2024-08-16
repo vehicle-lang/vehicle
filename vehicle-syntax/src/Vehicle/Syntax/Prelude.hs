@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Vehicle.Syntax.Prelude where
 
 import Control.Exception (Exception, throw)

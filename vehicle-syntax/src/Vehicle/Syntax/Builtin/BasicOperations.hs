@@ -18,7 +18,6 @@ where
 
 import Control.DeepSeq (NFData (..))
 import Data.Aeson (FromJSON, ToJSON)
-import Data.Aeson.Types (ToJSON (..))
 import Data.Hashable (Hashable (..))
 import Data.Serialize (Serialize)
 import Data.Serialize.Text ()
