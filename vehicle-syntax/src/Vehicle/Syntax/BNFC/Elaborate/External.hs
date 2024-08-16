@@ -344,6 +344,7 @@ elabExpr = \case
   B.Type t -> V.Universe <$> mkProvenance t <*> pure (V.UniverseLevel 0)
   B.Var n -> V.BoundVar <$> mkProvenance n <*> pure (tkSymbol n)
   B.Hole n -> V.mkHole <$> mkProvenance n <*> pure (tkSymbol n)
+  B.Record xs -> V.Record mempty <$> traverse elabRecordField xs
   B.Literal l -> elabLiteral l
   B.Fun t1 tk t2 -> op2 V.Pi tk (elabTypeBinder False t1) (elabExpr t2)
   B.VecLiteral tk1 es _tk2 -> elabVecLiteral tk1 es
@@ -458,6 +459,9 @@ mkBinder folded r v nameTyp = do
   let prov = V.expandByArgVisibility v exprProv
   let displayForm = V.BinderDisplayForm form folded
   return $ V.Binder prov displayForm v r typ
+
+elabRecordField :: (MonadElab m) => B.RecordField -> m (V.Name, V.Expr V.Name V.Builtin)
+elabRecordField (B.Field name expr) = (tkSymbol name,) <$> elabExpr expr
 
 elabLetDecl :: (MonadElab m) => B.LetDecl -> m (V.Binder V.Name V.Builtin, V.Expr V.Name V.Builtin)
 elabLetDecl (B.LDecl b e) = bitraverse (elabNameBinder False) elabExpr (b, e)

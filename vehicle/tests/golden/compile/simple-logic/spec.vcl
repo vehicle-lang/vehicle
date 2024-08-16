@@ -1,4 +1,5 @@
-@differentiableLogic
+@lossLogic
+myLogic : DifferentiableLogic
 myLogic =
   { bool        = Rat
   , true        = -100000

@@ -12,7 +12,8 @@ module Vehicle.Syntax.AST.Expr
         Hole,
         Meta,
         Let,
-        Lam
+        Lam,
+        Record
       ),
     Type,
     UniverseLevel (..),
@@ -103,6 +104,10 @@ data Expr var builtin
     Meta
       Provenance
       MetaID -- Meta variable number.
+  | -- | Records
+    Record
+      Provenance
+      [ (Name, Expr var builtin)]
   | -- | Let expressions. We have these in the core syntax because we want to
     -- cross compile them to various backends.
     --

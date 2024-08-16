@@ -113,7 +113,6 @@ InstanceArg. Arg ::= "{{" Expr1 "}}";
 -- * Individual let declarations
 
 LDecl. LetDecl ::= NameBinder "=" Expr;
-
 separator LetDecl ",";
 
 -- * Literals
@@ -125,7 +124,7 @@ BoolLiteral.  Lit ::= Boolean;
 
 -- * Records
 
-RecordCreate. RecordField ::= Name "=" Expr;
+Field. RecordField ::= Name "=" Expr;
 separator RecordField ",";
 
 -- * Expressions
