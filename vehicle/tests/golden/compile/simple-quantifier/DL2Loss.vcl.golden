@@ -1,11 +1,11 @@
 @property;
 expandedExpr : (Tensor Rat -> Tensor Rat) -> Tensor Rat;
-expandedExpr f = minimise (+) (\ x -> max (const[ 0.0 ] nil) (f x ! 0 - x ! 0))
+expandedExpr f = const[ 1.0 ] nil / search (*) (\ x -> const[ 1.0 ] nil / max (const[ 0.0 ] nil) (f x ! 0 - x ! 0))
 
 @property;
 sequential : (Tensor Rat -> Tensor Rat) -> Tensor Rat;
-sequential f = minimise (+) (\ x -> minimise (+) (\ y -> max (const[ 0.0 ] nil) (f y ! 0 - f x ! 0)))
+sequential f = const[ 1.0 ] nil / search (*) (\ x -> const[ 1.0 ] nil / (const[ 1.0 ] nil / search (*) (\ y -> const[ 1.0 ] nil / max (const[ 0.0 ] nil) (f y ! 0 - f x ! 0))))
 
 @property;
 parallel : (Tensor Rat -> Tensor Rat) -> Tensor Rat;
-parallel f = minimise (+) (\ x -> max (const[ 0.0 ] nil) (const[ 0.0 ] nil - f x ! 0)) + maximise (*) (\ x -> max (const[ 0.0 ] nil) (const[ 5.0 ] nil - f x ! 0))
+parallel f = const[ 1.0 ] nil / search (*) (\ x -> const[ 1.0 ] nil / max (const[ 0.0 ] nil) (const[ 0.0 ] nil - f x ! 0)) + search (*) (\ x -> max (const[ 0.0 ] nil) (const[ 5.0 ] nil - f x ! 0))

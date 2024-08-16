@@ -1,4 +1,4 @@
-module Vehicle.Compile.Error.Message
+module Vehicle.Compile.Print.Error
   ( UserError (..),
     VehicleError (..),
     MeaningfulError (..),
@@ -24,6 +24,7 @@ import Vehicle.Data.DSL
 import Vehicle.Data.DeBruijn (substDBInto)
 import Vehicle.Data.Expr.Interface
 import Vehicle.Data.Expr.Normalised
+import Vehicle.Data.QuantifiedVariable (prettyUnderConstrainedVariables)
 import Vehicle.Libraries.StandardLibrary.Definitions (pattern TensorIdent)
 import Vehicle.Syntax.Parse (ParseError (..))
 import Prelude hiding (pi)
@@ -253,7 +254,7 @@ instance MeaningfulError CompileError where
     -------------
     -- Scoping --
     -------------
-    InvalidPrunedName name ->
+    MissingPrunedName name ->
       UError $
         UserError
           { provenance = mempty,
@@ -1110,7 +1111,7 @@ instance MeaningfulError CompileError where
                 <+> pretty opProv
                 <+> "involves"
                 <> prettyLinearityProvenance lhs "exponent of the power"
-    UnsupportedVariableType queryFormat ident p name problemType baseType supportedTypes ->
+    UnsupportedVariableType (ident, _) p name problemType baseType supportedTypes ->
       UError $
         UserError
           { provenance = p,
@@ -1122,8 +1123,6 @@ instance MeaningfulError CompileError where
                 <+> "of type"
                 <+> squotes (prettyFriendlyEmptyCtx baseType)
                 <+> "which is not currently supported"
-                <+> "by the"
-                <+> pretty queryFormat
                 <> "."
                 <> ( if baseType == problemType
                        then ""
@@ -1171,32 +1170,6 @@ instance MeaningfulError CompileError where
             problem = "No properties found in file.",
             fix = Just $ "an expression is labelled as a property by giving it type" <+> squotes (pretty Bool) <+> "."
           }
-    NoNetworkUsedInProperty (ident, p) ->
-      UError $
-        UserError
-          { provenance = p,
-            problem =
-              "After normalisation, the property"
-                <+> prettyIdentName ident
-                <+> "does not contain any neural networks.",
-            fix = Just "choose a different compilation target than VNNLib"
-          }
-    UnsupportedNegatedOperation logic ctx originalExpr problematicExpr ->
-      UError $
-        UserError
-          { provenance = mempty,
-            problem =
-              "The differential logic"
-                <+> quotePretty logic
-                <+> "does not support"
-                <+> "pushing the"
-                <+> quotePretty Not
-                <+> "through"
-                <+> prettyFriendly (WithContext originalExpr ctx)
-                <+> "because it cannot be eliminated by pushing it inwards through the subexpression"
-                <+> prettyFriendly (WithContext problematicExpr ctx),
-            fix = Just "choose a different differential logic"
-          }
     UnsupportedIfOperation _declProv ifProv ->
       UError $
         UserError
@@ -1226,13 +1199,27 @@ instance MeaningfulError CompileError where
             problem =
               "The property"
                 <+> quotePretty (nameOf ident)
-                <+> "cannot be compiled to tensors as it contains"
+                <+> "cannot be compiled to tensor code as it contains"
                 <+> "the vector type:"
                 <> line
                   <+> indent 2 (prettyFriendly (WithContext vecTyp ctx))
                 <> line
                 <> "Vectors with elements of type" <+> squotes (prettyFriendly (WithContext elemTyp ctx)) <+> "cannot currently be compiled:",
             fix = Nothing
+          }
+    NoQuantifierDomainFound (ident, _p) binder maybeUnboundedVariables ->
+      UError $
+        UserError
+          { provenance = provenanceOf binder,
+            problem =
+              "The property"
+                <+> quotePretty ident
+                <+> "cannot be compiled to tensor code as the variable"
+                <+> quotePretty (nameOf binder)
+                <+> case maybeUnboundedVariables of
+                  Nothing -> "has no bounds at all on it's value."
+                  Just unboundedVariables -> "is missing the following bounds:" <> line <> prettyUnderConstrainedVariables unboundedVariables,
+            fix = Just "Add inequalities that restrict the value of the variable both below and above."
           }
 
 datasetDimensionsFix :: Doc a -> Identifier -> FilePath -> Doc a

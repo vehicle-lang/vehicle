@@ -12,8 +12,8 @@ import Vehicle.Backend.Queries.UserVariableElimination.Core
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Expr.Linear
+import Vehicle.Data.QuantifiedVariable
 import Vehicle.Syntax.Builtin (Strictness (..))
-import Vehicle.Verify.Variable
 
 -- | TODO If performance proves unnacceptably poor look into
 -- Imbert's acceleration theorems:

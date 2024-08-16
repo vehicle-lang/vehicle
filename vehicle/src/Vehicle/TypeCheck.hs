@@ -16,10 +16,10 @@ import Data.Text as T (Text)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Error
-import Vehicle.Compile.Error.Message
 import Vehicle.Compile.ObjectFile
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
+import Vehicle.Compile.Print.Error
 import Vehicle.Compile.Scope (scopeCheck, scopeCheckClosedExpr)
 import Vehicle.Compile.Type (typeCheckExpr, typeCheckProg)
 import Vehicle.Compile.Type.Subsystem

@@ -13,8 +13,8 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Expr.Boolean
 import Vehicle.Data.Expr.Linear (rearrangeExprToSolveFor, referencesVariable)
+import Vehicle.Data.QuantifiedVariable
 import Vehicle.Prelude.Warning (CompileWarning (..))
-import Vehicle.Verify.Variable
 
 --------------------------------------------------------------------------------
 -- Main function

@@ -11,8 +11,8 @@ import Vehicle.Backend.Queries.UserVariableElimination.Core
 import Vehicle.Backend.Queries.UserVariableElimination.FourierMotzkinElimination
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Expr.Linear (evaluateExpr)
+import Vehicle.Data.QuantifiedVariable
 import Vehicle.Data.Tensor (RationalTensor, Tensor (..))
-import Vehicle.Verify.Variable
 
 --------------------------------------------------------------------------------
 -- Variable reconstruction

@@ -4,11 +4,11 @@ import Control.Monad (forM)
 import Data.List.NonEmpty qualified as NonEmpty
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Expr.Linear
+import Vehicle.Data.QuantifiedVariable
 import Vehicle.Syntax.Builtin
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
 import Vehicle.Verify.QueryFormat.Interface
-import Vehicle.Verify.Variable
 
 --------------------------------------------------------------------------------
 -- Marabou query format

@@ -101,8 +101,7 @@ data TensorBuiltin
   | MapRatTensor
   | ZipWithRatTensor
   | Indices
-  | MinimiseRatTensor [V.Name]
-  | MaximiseRatTensor [V.Name]
+  | SearchRatTensor [V.Name]
   | If
   | Forall
   | Exists
@@ -164,8 +163,7 @@ instance ConvertableBuiltin TensorBuiltin V.Builtin where
     IndexTensorType -> V.FreeVar p (V.identifierOf StdTensor)
     ListType -> builtinType V.List
     ReduceSumRatTensor -> cheatConvertBuiltin p "reduceSum"
-    MinimiseRatTensor {} -> cheatConvertBuiltin p "minimise"
-    MaximiseRatTensor {} -> cheatConvertBuiltin p "maximise"
+    SearchRatTensor {} -> cheatConvertBuiltin p "search"
     where
       builtinConstructor = V.Builtin p . V.BuiltinConstructor
       builtinFunction = V.Builtin p . V.BuiltinFunction
@@ -224,8 +222,7 @@ arityOf b = case b of
   ZipWithRatTensor -> 3
   Indices -> 1
   ReduceSumRatTensor -> 1
-  MinimiseRatTensor {} -> 2
-  MaximiseRatTensor {} -> 2
+  SearchRatTensor {} -> 2
   StackRatTensor n -> n
 
 --------------------------------------------------------------------------------

@@ -9,10 +9,10 @@ import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Expr.Boolean (MaybeTrivial (..))
 import Vehicle.Data.Expr.Interface
+import Vehicle.Data.QuantifiedVariable
 import Vehicle.Data.Tensor (RationalTensor)
 import Vehicle.Verify.Core
 import Vehicle.Verify.Specification
-import Vehicle.Verify.Variable
 
 class IsVerified a where
   isVerified :: a -> Bool

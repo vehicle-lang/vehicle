@@ -12,7 +12,7 @@ import Test.Tasty.Ingredients (Ingredient)
 import Test.Tasty.Options (IsOption (..), OptionDescription (Option))
 import Text.Read (readMaybe)
 import Vehicle.Compile.Error (CompileError)
-import Vehicle.Compile.Error.Message
+import Vehicle.Compile.Print.Error
   ( MeaningfulError (details),
     logCompileError,
   )

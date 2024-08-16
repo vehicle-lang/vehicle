@@ -10,10 +10,10 @@ import Data.Map qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as Text (pack, splitOn, strip)
 import Vehicle.Compile.Prelude
+import Vehicle.Data.QuantifiedVariable
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
 import Vehicle.Verify.QueryFormat.Marabou (compileMarabouVar)
-import Vehicle.Verify.Variable
 import Vehicle.Verify.Verifier.Core
 
 --------------------------------------------------------------------------------

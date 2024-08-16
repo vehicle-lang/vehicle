@@ -24,13 +24,13 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Expr.Boolean
 import Vehicle.Data.Expr.Linear
+import Vehicle.Data.QuantifiedVariable
 import Vehicle.Prelude.Warning (CompileWarning (..))
 import Vehicle.Syntax.Builtin
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat (QueryFormat (..), QueryFormatID (..), queryFormatID)
 import Vehicle.Verify.Specification (QueryMetaData (QueryMetaData), queryAddress)
 import Vehicle.Verify.Specification.IO (writeVerificationQuery)
-import Vehicle.Verify.Variable
 
 --------------------------------------------------------------------------------
 -- Main entry point

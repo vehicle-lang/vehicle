@@ -129,7 +129,6 @@ library
     Vehicle.Compile.Context.Var
     Vehicle.Compile.Descope
     Vehicle.Compile.Error
-    Vehicle.Compile.Error.Message
     Vehicle.Compile.ExpandResources
     Vehicle.Compile.ExpandResources.Core
     Vehicle.Compile.ExpandResources.Dataset
@@ -140,6 +139,7 @@ library
     Vehicle.Compile.Normalise.Quote
     Vehicle.Compile.Prelude
     Vehicle.Compile.Print
+    Vehicle.Compile.Print.Error
     Vehicle.Compile.Resource
     Vehicle.Compile.Scope
     Vehicle.Compile.Simplify
@@ -207,6 +207,7 @@ library
     Vehicle.Compile.ObjectFile
     Vehicle.Compile.Prelude.Utils
     Vehicle.Compile.Print.Warning
+    Vehicle.Compile.Rational.LinearExpr
     Vehicle.Compile.Type.Bidirectional
     Vehicle.Compile.Type.Constraint.Core
     Vehicle.Compile.Type.Constraint.IndexSolver
@@ -227,6 +228,7 @@ library
     Vehicle.Compile.Type.Monad.Instance
     Vehicle.Compile.Type.Subsystem
     Vehicle.Compile.Type.Subsystem.InputOutputInsertion
+    Vehicle.Compile.Variable
     Vehicle.Data.Builtin.Linearity
     Vehicle.Data.Builtin.Linearity.AnnotationRestrictions
     Vehicle.Data.Builtin.Linearity.Core
@@ -248,6 +250,7 @@ library
     Vehicle.Data.Builtin.Standard.InstanceDefaults
     Vehicle.Data.Builtin.Standard.Type
     Vehicle.Data.Expr.Relevant
+    Vehicle.Data.QuantifiedVariable
     Vehicle.Debug
     Vehicle.Prelude.IO
     Vehicle.Prelude.Logging.Class
@@ -264,7 +267,6 @@ library
     Vehicle.Verify.Specification
     Vehicle.Verify.Specification.IO
     Vehicle.Verify.Specification.Status
-    Vehicle.Verify.Variable
     Vehicle.Verify.Verifier.Core
     Vehicle.Verify.Verifier.Marabou
     Vehicle.Verify.Verifier.Test

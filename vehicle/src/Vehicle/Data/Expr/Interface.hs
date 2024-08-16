@@ -4,6 +4,7 @@ import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Expr.Normalised
 import Vehicle.Data.Tensor
 import Vehicle.Libraries.StandardLibrary.Definitions
+import Vehicle.Prelude (TensorShape)
 import Vehicle.Syntax.AST
 import Vehicle.Syntax.Builtin
 import Prelude hiding (pi)
@@ -269,13 +270,31 @@ mkVecExpr xs =
     (LVec (length xs))
     (Arg mempty (Implicit True) Relevant (IUnitLiteral mempty) : (Arg mempty Explicit Relevant <$> xs))
 
-tensorToExpr :: (HasStandardDataExpr expr) => (a -> expr) -> Tensor a -> expr
-tensorToExpr mkElem =
-  foldMapTensor
-    mkElem
-    ( \xs ->
-        mkConstructor mempty (LVec (length xs)) (Arg mempty (Implicit True) Relevant (IUnitLiteral mempty) : fmap (Arg mempty Explicit Relevant) xs)
-    )
+mkTensorLayer ::
+  (HasStandardVecLits expr, HasStandardListLits expr, HasStandardTypesExpr expr, HasNatLits expr) =>
+  TensorShape ->
+  [expr] ->
+  expr
+mkTensorLayer dims xs = do
+  let dimsExpr = mkListExpr (INatType mempty) (fmap (INatLiteral mempty) dims)
+  let elementType = Arg mempty (Implicit True) Relevant dimsExpr
+  let elements = fmap (Arg mempty Explicit Relevant) xs
+  mkHomoVector elementType elements
+
+tensorLikeToExpr ::
+  (HasStandardVecLits expr, HasStandardListLits expr, HasStandardTypesExpr expr, HasNatLits expr) =>
+  (a -> expr) ->
+  TensorShape ->
+  [a] ->
+  expr
+tensorLikeToExpr mkElem = foldMapTensorLike mkElem mkTensorLayer
+
+tensorToExpr ::
+  (HasStandardVecLits expr, HasStandardListLits expr, HasStandardTypesExpr expr, HasNatLits expr) =>
+  (a -> expr) ->
+  Tensor a ->
+  expr
+tensorToExpr mkElem = foldMapTensor mkElem mkTensorLayer
 
 --------------------------------------------------------------------------------
 -- Functions
