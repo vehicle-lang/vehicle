@@ -94,8 +94,8 @@ common common-library
     cpp-options: -DoptimiseHeavily
     ghc-options: -fexpose-all-unfoldings -fspecialise-aggressively
 
-  ghc-options: 
-    -Werror 
+  ghc-options:
+    -Werror
     -Wall
     -- These warnings are triggered by the auto-generated BNFC files so ignore.
     -fno-warn-orphans
