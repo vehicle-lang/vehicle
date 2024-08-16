@@ -13,6 +13,7 @@ import Data.Maybe (fromMaybe)
 import Data.Text (Text, pack)
 import Prettyprinter (Pretty (..))
 import Vehicle.Syntax.AST qualified as V
+import Vehicle.Syntax.AST.Record qualified as V
 import Vehicle.Syntax.Builtin qualified as V
 import Vehicle.Syntax.Internal.Abs qualified as B
 import Vehicle.Syntax.Parse.Token
@@ -46,6 +47,7 @@ instance Delaborate (V.Decl V.Name V.Builtin) B.Decl where
     V.DefAbstract _ n s t -> do
       constructor <- delabM s
       constructor (delabIdentifier n) <$> delabM t
+    V.DefRecord _ n t fs -> B.DefRecord (delabIdentifier n) <$> delabM t <*> traverse delabM fs
 
 instance Delaborate V.DefAbstractSort (B.NameToken -> B.Expr -> B.Decl) where
   delabM sort = return $ case sort of
@@ -68,6 +70,7 @@ instance Delaborate (V.Expr V.Name V.Builtin) B.Expr where
     V.Lam _ b e -> B.Lam <$> delabM b <*> delabM e
     V.Meta _ m -> return $ B.Hole (mkToken B.HoleToken (layoutAsText (pretty m)))
     V.App fun args -> delabApp <$> delabM fun <*> traverse delabM (reverse (NonEmpty.toList args))
+    V.RecordCon _ fs -> B.RecordCon <$> traverse delabM fs
 
 instance Delaborate (V.Arg V.Name V.Builtin) B.Arg where
   delabM :: (MonadDelab m) => V.Arg V.Name V.Builtin -> m B.Arg
@@ -90,6 +93,9 @@ instance Delaborate (V.Binder V.Name V.Builtin) B.Binder where
       (V.Explicit {}, V.Irrelevant) -> B.IrrelevantExplicitBinder n' t'
       (V.Implicit {}, V.Irrelevant) -> B.IrrelevantImplicitBinder n' t'
       (V.Instance {}, V.Irrelevant) -> B.IrrelevantInstanceBinder n' t'
+
+instance Delaborate (V.FieldName, V.Expr V.Name V.Builtin) B.RecordField where
+  delabM (V.FieldName _ name, expr) = B.Field (delabSymbol name) <$> delabM expr
 
 delabUniverse :: V.UniverseLevel -> B.Expr
 delabUniverse = \case

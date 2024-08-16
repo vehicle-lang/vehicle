@@ -78,6 +78,7 @@ common common-language
     TupleSections
     TypeApplications
     TypeFamilies
+    ViewPatterns
 
 common common-library
   import:      common-language
@@ -122,6 +123,7 @@ library
     Vehicle.Syntax.AST.Name
     Vehicle.Syntax.AST.Prog
     Vehicle.Syntax.AST.Provenance
+    Vehicle.Syntax.AST.Record
     Vehicle.Syntax.AST.Relevance
     Vehicle.Syntax.AST.Type
     Vehicle.Syntax.AST.Visibility

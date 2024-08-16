@@ -7,6 +7,7 @@ import Prettyprinter (Pretty (..))
 import Vehicle.Syntax.AST.Expr
 import Vehicle.Syntax.AST.Name
 import Vehicle.Syntax.AST.Provenance
+import Vehicle.Syntax.AST.Record (FieldName, traverseRecordDefFields)
 import Vehicle.Syntax.AST.Type
 import Vehicle.Syntax.Builtin
 
@@ -28,6 +29,12 @@ data GenericDecl expr
       [Annotation] -- List of annotations.
       expr -- Type of the definition.
       expr -- Body of the definition.
+  | -- | Record definitions
+    DefRecord
+      Provenance -- Location in source file.
+      Identifier -- Name of definition.
+      expr -- Type of the definition.
+      [(FieldName, expr)] -- Fields in the record definition.
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
 type Decl var builtin = GenericDecl (Expr var builtin)
@@ -40,11 +47,13 @@ instance HasProvenance (GenericDecl expr) where
   provenanceOf = \case
     DefAbstract p _ _ _ -> p
     DefFunction p _ _ _ _ -> p
+    DefRecord p _ _ _ -> p
 
 instance HasIdentifier (GenericDecl expr) where
   identifierOf = \case
     DefAbstract _ i _ _ -> i
     DefFunction _ i _ _ _ -> i
+    DefRecord _ i _ _ -> i
 
 instance HasName (GenericDecl expr) Name where
   nameOf = nameOf . identifierOf
@@ -53,16 +62,19 @@ instance HasType (GenericDecl expr) expr where
   typeOf = \case
     DefAbstract _ _ _ t -> t
     DefFunction _ _ _ t _ -> t
+    DefRecord _ _ t _ -> t
 
 bodyOf :: GenericDecl expr -> Maybe expr
 bodyOf = \case
   DefFunction _ _ _ _ e -> Just e
   DefAbstract {} -> Nothing
+  DefRecord {} -> Nothing
 
 annotationsOf :: GenericDecl expr -> [Annotation]
 annotationsOf = \case
   DefFunction _ _ anns _ _ -> anns
   DefAbstract {} -> []
+  DefRecord {} -> []
 
 -- | Traverses the type and body of a declaration using the first and
 -- second provided functions respectively.
@@ -76,6 +88,7 @@ traverseDeclTypeAndExpr ::
 traverseDeclTypeAndExpr f1 f2 = \case
   DefAbstract p n r t -> DefAbstract p n r <$> f1 t
   DefFunction p n b t e -> DefFunction p n b <$> f1 t <*> f2 e
+  DefRecord p n t fs -> DefRecord p n <$> f1 t <*> traverseRecordDefFields f2 fs
 
 -- | Traverses the type of the declaration.
 traverseDeclType ::
@@ -89,11 +102,13 @@ isPropertyDecl :: GenericDecl expr -> Bool
 isPropertyDecl = \case
   DefAbstract {} -> False
   DefFunction _ _ anns _ _ -> AnnProperty `elem` anns
+  DefRecord {} -> False
 
 isAbstractDecl :: GenericDecl expr -> Bool
 isAbstractDecl = \case
   DefAbstract {} -> True
   DefFunction {} -> False
+  DefRecord {} -> False
 
 --------------------------------------------------------------------------------
 -- Abstract definition types options

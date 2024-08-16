@@ -26,6 +26,7 @@ import Data.Text (Text, unpack)
 import Data.These (These (..))
 import Prettyprinter
 import Vehicle.Syntax.AST qualified as V
+import Vehicle.Syntax.AST.Record qualified as V
 import Vehicle.Syntax.BNFC.Utils
   ( MonadElab,
     mkProvenance,
@@ -113,6 +114,14 @@ elabDeclGroup anns = \case
     (annTk, _) : _ -> do
       p <- mkProvenance annTk
       throwError $ AnnotationWithNoDef p (tkSymbol annTk)
+
+  -- Record declaration
+  B.DefRecord tk fields :| ds -> do
+    p <- mkProvenance tk
+    n <- elabName tk
+    fields' <- traverse elabRecordFieldDef fields
+    let d' = V.DefRecord p n (UnparsedExpr (tokType 0)) fields'
+    return (d', ds)
 
   -- Annotation declaration.
   B.DefAnn ann annOpts :| (d : ds) -> do
@@ -224,8 +233,7 @@ parseAnnotation (tkName, opts) = do
       validateEmptyOpts tkName opts
       return $ Right V.AnnProperty
     "@differentiableLogic" -> do
-      let allowedOptions = mempty
-      validateOpts name allowedOptions opts
+      validateEmptyOpts tkName opts
       return $ Right V.AnnDifferentiableLogic
     name -> developerError $ "Unknown annotation found" <+> squotes (pretty name)
 
@@ -313,6 +321,7 @@ elaborateDecl ::
 elaborateDecl modl decl = flip runReaderT modl $ case decl of
   V.DefAbstract p n r t -> V.DefAbstract p n r <$> elabDeclType t
   V.DefFunction p n b t e -> V.DefFunction p n b <$> elabDeclType t <*> elabDeclBody e
+  V.DefRecord p n t fs -> V.DefRecord p n <$> elabDeclType t <*> traverse elabRecordDefEntry fs
 
 elabDeclType ::
   (MonadElab m) =>
@@ -332,6 +341,13 @@ elabDeclBody (UnparsedExpr expr) = case expr of
     return $ foldr (V.Lam p) body' binders'
   _ -> developerError "Invalid declaration body - no lambdas found"
 
+elabRecordDefEntry ::
+  (MonadElab m) =>
+  (V.FieldName, UnparsedExpr) ->
+  m (V.FieldName, V.Expr V.Name V.Builtin)
+elabRecordDefEntry (fieldName, UnparsedExpr typ) =
+  (fieldName,) <$> elabExpr typ
+
 elaborateExpr ::
   (MonadError ParseError m) =>
   V.Module ->
@@ -344,7 +360,9 @@ elabExpr = \case
   B.Type t -> V.Universe <$> mkProvenance t <*> pure (V.UniverseLevel 0)
   B.Var n -> V.BoundVar <$> mkProvenance n <*> pure (tkSymbol n)
   B.Hole n -> V.mkHole <$> mkProvenance n <*> pure (tkSymbol n)
-  B.Record xs -> V.Record mempty <$> traverse elabRecordField xs
+  B.RecordCon xs -> V.RecordCon mempty <$> traverse elabRecordFieldCon xs
+  B.RecordAcc r f -> elabApp (elabRecordFieldAccess f) (B.ExplicitArg r)
+  B.RecordSelfAcc f -> elabExpr (B.RecordAcc (B.Var (B.Name (tkLocation f, V.SelfRecordRef))) f)
   B.Literal l -> elabLiteral l
   B.Fun t1 tk t2 -> op2 V.Pi tk (elabTypeBinder False t1) (elabExpr t2)
   B.VecLiteral tk1 es _tk2 -> elabVecLiteral tk1 es
@@ -460,11 +478,22 @@ mkBinder folded r v nameTyp = do
   let displayForm = V.BinderDisplayForm form folded
   return $ V.Binder prov displayForm v r typ
 
-elabRecordField :: (MonadElab m) => B.RecordField -> m (V.Name, V.Expr V.Name V.Builtin)
-elabRecordField (B.Field name expr) = (tkSymbol name,) <$> elabExpr expr
+elabRecordField :: (MonadElab m) => B.Name -> m V.FieldName
+elabRecordField tk = do
+  p <- mkProvenance tk
+  return $ V.FieldName p (tkSymbol tk)
+
+elabRecordFieldDef :: (MonadElab m) => B.RecordFieldDef -> m (V.FieldName, UnparsedExpr)
+elabRecordFieldDef (B.FieldDef name _tk expr) = (,) <$> elabRecordField name <*> pure (UnparsedExpr expr)
+
+elabRecordFieldCon :: (MonadElab m) => B.RecordFieldCon -> m (V.FieldName, V.Expr V.Name V.Builtin)
+elabRecordFieldCon (B.FieldCon name expr) = (,) <$> elabRecordField name <*> elabExpr expr
 
 elabLetDecl :: (MonadElab m) => B.LetDecl -> m (V.Binder V.Name V.Builtin, V.Expr V.Name V.Builtin)
 elabLetDecl (B.LDecl b e) = bitraverse (elabNameBinder False) elabExpr (b, e)
+
+elabRecordFieldAccess :: B.FieldAccess -> B.Expr
+elabRecordFieldAccess tk = B.Var (B.Name (tkLocation tk, tkSymbol tk))
 
 elabLiteral :: (MonadElab m) => B.Lit -> m (V.Expr V.Name V.Builtin)
 elabLiteral = \case

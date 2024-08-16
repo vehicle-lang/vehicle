@@ -35,6 +35,8 @@ parameterAnn = mkToken B.TokAnnotation "@parameter"
 
 propertyAnn = mkToken B.TokAnnotation "@property"
 
+differentiableLogicAnn = mkToken B.TokAnnotation "@differentiableLogic"
+
 tokPostulate = mkToken B.TokPostulate "@postulate"
 
 tokArrow = mkToken B.TokArrow "->"

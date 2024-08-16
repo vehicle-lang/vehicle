@@ -1,3 +1,6 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
+{-# HLINT ignore "Use list literal" #-}
 module Vehicle.Syntax.AST.Expr
   ( -- * Generic expressions
     Arg,
@@ -13,7 +16,8 @@ module Vehicle.Syntax.AST.Expr
         Meta,
         Let,
         Lam,
-        Record
+        RecordCon
+        -- RecordAcc
       ),
     Type,
     UniverseLevel (..),
@@ -43,6 +47,7 @@ import Vehicle.Syntax.AST.Binder
 import Vehicle.Syntax.AST.Meta (MetaID)
 import Vehicle.Syntax.AST.Name (Identifier, Name)
 import Vehicle.Syntax.AST.Provenance (HasProvenance (..), Provenance, fillInProvenance)
+import Vehicle.Syntax.AST.Record (FieldName)
 import Vehicle.Syntax.Prelude ()
 
 --------------------------------------------------------------------------------
@@ -83,7 +88,7 @@ data Expr var builtin
     Pi
       Provenance
       (Binder var builtin) -- The bound name
-      (Expr var builtin) -- (Dependent) result type.
+      (Type var builtin) -- (Dependent) result type.
   | -- | Terms consisting of constants that are built into the language.
     Builtin
       Provenance
@@ -104,11 +109,18 @@ data Expr var builtin
     Meta
       Provenance
       MetaID -- Meta variable number.
-  | -- | Records
-    Record
+  | -- | Record construction
+    RecordCon
       Provenance
-      [ (Name, Expr var builtin)]
-  | -- | Let expressions. We have these in the core syntax because we want to
+      [(FieldName, Expr var builtin)]
+  | {-
+    \| -- | Record field access
+      RecordAcc
+        (Expr var builtin)
+        FieldName
+    -}
+
+    -- | Let expressions. We have these in the core syntax because we want to
     -- cross compile them to various backends.
     --
     -- NOTE: that the order of the bound expression and the binder is reversed
@@ -125,6 +137,9 @@ data Expr var builtin
       (Binder var builtin) -- Bound expression name.
       (Expr var builtin) -- Expression body.
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
+
+-- You must update this if adding a new constructor.
+{-# COMPLETE Universe, App, Pi, RecordCon, Builtin, BoundVar, FreeVar, Hole, Meta, Let, Lam #-}
 
 --------------------------------------------------------------------------------
 -- Safe applications
@@ -145,8 +160,6 @@ pattern App f xs <- UnsafeApp f xs
   where
     App f xs = normApp f xs
 
-{-# COMPLETE Universe, App, Pi, Builtin, BoundVar, FreeVar, Hole, Meta, Let, Lam #-}
-
 --------------------------------------------------------------------------------
 -- Instances
 
@@ -159,6 +172,8 @@ instance HasProvenance (Expr var builtin) where
     Universe p _ -> p
     Hole p _ -> p
     Meta p _ -> p
+    RecordCon p _ -> p
+    -- RecordAcc e f -> fillInProvenance (provenanceOf e :| provenanceOf f : [])
     App e xs -> fillInProvenance (provenanceOf e :| provenanceOf xs : [])
     Pi p _ _ -> p
     Builtin p _ -> p

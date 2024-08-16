@@ -46,6 +46,11 @@ NatLiteral.  Lit ::= Natural;
 RatLiteral.  Lit ::= Rational;
 BoolLiteral. Lit ::= BoolToken;
 
+-- * Records
+
+Field. RecordField ::= "(" NameToken "," Expr ")";
+separator RecordField ",";
+
 -- * Core structure.
 
 Ann.           Expr  ::= Expr1 ":" Expr1;
@@ -59,6 +64,7 @@ Var.           Expr1 ::= NameToken;
 Literal.       Expr1 ::= Lit;
 LVec.          Expr1 ::= "[" [Expr1] "]";
 Hole.          Expr1 ::= HoleToken;
+RecordCon.     Expr1 ::= "{" [RecordField] "}";
 
 coercions Expr 1;
 separator Expr1 ",";
@@ -71,6 +77,7 @@ DeclParam.     Decl ::= "(" "declare-parameter"      NameToken Expr1 ")";
 DeclImplParam. Decl ::= "(" "declare-impl-parameter" NameToken Expr1 ")";
 DeclPost.      Decl ::= "(" "declare-postulate"      NameToken Expr1 ")";
 DefFun.        Decl ::= "(" "define-fun"             NameToken Expr1 Expr1 ")";
+DefRecord.     Decl ::= "(" "define-record"          NameToken Expr1 [RecordField] ")";
 
 separator Decl "";
 

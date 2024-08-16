@@ -74,6 +74,7 @@ position token TokAnnInferOpt {"infer"};
 
 -- NOTE: As order matters don't declare tokens after these ones!
 position token Name        (letter (letter | digit | '_')*) ;
+position token FieldAccess ({"."} letter (letter | digit | '_')*);
 position token HoleToken   ({"?"} (letter | digit | '_')*);
 
 separator Name "";
@@ -124,8 +125,11 @@ BoolLiteral.  Lit ::= Boolean;
 
 -- * Records
 
-Field. RecordField ::= Name "=" Expr;
-separator RecordField ",";
+FieldDef. RecordFieldDef ::= Name TokElemOf Expr;
+separator RecordFieldDef ",";
+
+FieldCon. RecordFieldCon ::= Name "=" Expr;
+separator RecordFieldCon ",";
 
 -- * Expressions
 
@@ -143,16 +147,18 @@ separator RecordField ",";
 Type.    Expr14 ::= TokType;
 
 -- Core structure.
-Ann.     Expr   ::= Expr2 TokElemOf Expr1;
-ForallT. Expr1  ::= TokForallT [NameBinder] TokDot Expr1;
-Let.     Expr2  ::= TokLet [LetDecl] "in" Expr2;
-Lam.     Expr2  ::= TokLambda [NameBinder] TokArrow Expr2;
-Fun.     Expr11 ::= TypeBinder TokArrow Expr11;
-App.     Expr13 ::= Expr13 Arg;
-Var.     Expr15 ::= Name;
-Literal. Expr15 ::= Lit;
-Hole.    Expr15 ::= HoleToken;
-Record.  Expr15 ::= "{" [RecordField] "}";
+Ann.           Expr   ::= Expr2 TokElemOf Expr1;
+ForallT.       Expr1  ::= TokForallT [NameBinder] TokDot Expr1;
+Let.           Expr2  ::= TokLet [LetDecl] "in" Expr2;
+Lam.           Expr2  ::= TokLambda [NameBinder] TokArrow Expr2;
+Fun.           Expr11 ::= TypeBinder TokArrow Expr11;
+App.           Expr13 ::= Expr13 Arg;
+Var.           Expr15 ::= Name;
+Literal.       Expr15 ::= Lit;
+Hole.          Expr15 ::= HoleToken;
+RecordCon.     Expr15 ::= "{" [RecordFieldCon] "}";
+RecordAcc.     Expr13 ::= Expr13 FieldAccess;
+RecordSelfAcc. Expr13 ::= FieldAccess;
 
 -- Quantification
 Forall.    Expr2 ::= TokForall [NameBinder] TokDot Expr2;
@@ -236,6 +242,7 @@ DefType.      Decl ::= "type" Name [NameBinder] "=" Expr;
 DefFunType.   Decl ::= Name TokElemOf Expr;
 DefFunExpr.   Decl ::= Name [NameBinder] "=" Expr;
 DefPostulate. Decl ::= TokPostulate DeclAnnOpts;
+DefRecord.    Decl ::= "record" Name "{" [RecordFieldDef] "}";
 
 separator Decl ";";
 

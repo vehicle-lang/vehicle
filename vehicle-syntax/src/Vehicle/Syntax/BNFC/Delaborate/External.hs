@@ -13,6 +13,7 @@ import Data.Text (Text, pack)
 import Prettyprinter (Pretty (..))
 import Vehicle.Syntax.AST qualified as V
 import Vehicle.Syntax.AST.Arg
+import Vehicle.Syntax.AST.Record qualified as V
 import Vehicle.Syntax.BNFC.Utils
 import Vehicle.Syntax.Builtin qualified as V
 import Vehicle.Syntax.External.Abs qualified as B
@@ -64,6 +65,10 @@ instance Delaborate (V.Decl V.Name V.Builtin) [B.Decl] where
       annDecls <- traverse delabM anns
       funDecls <- delabFun n t e
       return $ annDecls <> funDecls
+    V.DefRecord _ n _t fs -> do
+      let n' = delabIdentifier n
+      fs' <- traverse delabRecordFieldDef fs
+      return [B.DefRecord n' fs']
 
 instance Delaborate (V.Expr V.Name V.Builtin) B.Expr where
   delabM expr = case expr of
@@ -71,6 +76,8 @@ instance Delaborate (V.Expr V.Name V.Builtin) B.Expr where
     V.FreeVar _ n -> return $ B.Var (delabSymbol (V.nameOf n))
     V.BoundVar _ n -> return $ B.Var (delabSymbol n)
     V.Hole _ n -> return $ B.Hole (mkToken B.HoleToken n)
+    V.RecordCon _ fields -> B.RecordCon <$> traverse delabRecordFieldCon fields
+    -- V.RecordAcc record fieldName -> B.RecordAcc <$> delabM record  <*> delabM fieldName
     V.Pi _ t1 t2 -> delabPi t1 t2
     V.Let _ e1 b e2 -> delabLet e1 b e2
     V.Lam _ binder body -> delabLam binder body
@@ -99,9 +106,19 @@ instance Delaborate (V.Binder V.Name V.Builtin) B.BasicBinder where
       V.Implicit {} -> B.ImplicitBinder m' n' tokElemOf t'
       V.Instance {} -> B.InstanceBinder m' n' tokElemOf t'
 
+instance Delaborate (V.Name, V.Expr V.Name V.Builtin) B.RecordFieldDef where
+  delabM (name, typ) = do
+    let name' = delabSymbol name
+    typ' <- delabM typ
+    return $ B.FieldDef name' tokElemOf typ'
+
 instance Delaborate V.Annotation B.Decl where
   delabM = \case
     V.AnnProperty -> return $ delabAnn propertyAnn []
+    V.AnnDifferentiableLogic -> return $ delabAnn differentiableLogicAnn []
+
+instance Delaborate V.FieldName B.FieldAccess where
+  delabM (V.FieldName _ name) = return $ mkToken B.FieldAccess ("." <> name)
 
 -- | Used for things not in the user-syntax.
 cheatDelab :: Text -> B.Expr
@@ -151,6 +168,17 @@ delabSymbol = mkToken B.Name
 
 delabIdentifier :: V.Identifier -> B.Name
 delabIdentifier (V.Identifier _ n) = mkToken B.Name n
+
+delabFieldName :: V.FieldName -> B.Name
+delabFieldName (V.FieldName _ name) = delabSymbol name
+
+delabRecordFieldDef :: (MonadDelab m) => (V.FieldName, V.Expr V.Name V.Builtin) -> m B.RecordFieldDef
+delabRecordFieldDef (fieldName, typ) =
+  B.FieldDef (delabFieldName fieldName) tokElemOf <$> delabM typ
+
+delabRecordFieldCon :: (MonadDelab m) => (V.FieldName, V.Expr V.Name V.Builtin) -> m B.RecordFieldCon
+delabRecordFieldCon (fieldName, expr) =
+  B.FieldCon (delabFieldName fieldName) <$> delabM expr
 
 delabApp :: (MonadDelab m) => B.Expr -> [V.Arg V.Name V.Builtin] -> m B.Expr
 delabApp fun allArgs = go fun <$> traverse delabM (reverse allArgs)
