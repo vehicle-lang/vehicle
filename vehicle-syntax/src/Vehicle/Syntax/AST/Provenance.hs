@@ -18,8 +18,8 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Serialize (Serialize)
 import GHC.Generics (Generic (..))
-import Prettyprinter (Pretty (..), (<+>))
-import Vehicle.Syntax.AST.Name (Module (..))
+import Prettyprinter (Pretty (..), squotes, (<+>))
+import System.FilePath (takeFileName)
 import Vehicle.Syntax.Parse.Token
 
 --------------------------------------------------------------------------------
@@ -96,9 +96,12 @@ expandRange (l, r) (Range {..}) =
 
 data Provenance = Provenance
   { range :: Range,
-    modul :: Module
+    file :: FilePath
   }
   deriving (Generic)
+
+noProvenance :: Provenance
+noProvenance = Provenance mempty "unknown"
 
 instance Show Provenance where
   show = const ""
@@ -114,9 +117,19 @@ instance Hashable Provenance where
 
 instance Serialize Provenance
 
+instance Pretty Provenance where
+  pretty (Provenance origin file) = "file" <+> squotes (pretty (takeFileName file)) <+> "at" <+> pretty origin
+
+instance Semigroup Provenance where
+  Provenance origin1 owner1 <> Provenance origin2 _owner2 =
+    Provenance (origin1 <> origin2) owner1
+
+instance Monoid Provenance where
+  mempty = noProvenance
+
 -- | Get the provenance for a single token.
-tkProvenance :: (IsToken a) => Module -> a -> Provenance
-tkProvenance modl tk = Provenance (Range start end) modl
+tkProvenance :: (IsToken a) => a -> FilePath -> Provenance
+tkProvenance tk = Provenance (Range start end)
   where
     start = tkPosition tk
     end = Position (posLine start) (posColumn start + tkLength tk)
@@ -126,28 +139,13 @@ fillInProvenance provenances = do
   let (starts, ends) = NonEmpty.unzip (fmap getPositions provenances)
   let start = minimum starts
   let end = maximum ends
-  Provenance (Range start end) (modul $ NonEmpty.head provenances)
+  Provenance (Range start end) (file $ NonEmpty.head provenances)
   where
     getPositions :: Provenance -> (Position, Position)
     getPositions (Provenance (Range start end) _) = (start, end)
 
 expandProvenance :: (Int, Int) -> Provenance -> Provenance
 expandProvenance w (Provenance range o) = Provenance (expandRange w range) o
-
-instance Pretty Provenance where
-  pretty (Provenance origin modl) = case modl of
-    User -> pretty origin
-    StdLib -> pretty modl <> "," <+> pretty origin
-
-instance Semigroup Provenance where
-  Provenance origin1 owner1 <> Provenance origin2 _owner2 =
-    Provenance (origin1 <> origin2) owner1
-
-noProvenance :: Provenance
-noProvenance = Provenance mempty User
-
-instance Monoid Provenance where
-  mempty = Provenance mempty User
 
 --------------------------------------------------------------------------------
 -- Type-classes

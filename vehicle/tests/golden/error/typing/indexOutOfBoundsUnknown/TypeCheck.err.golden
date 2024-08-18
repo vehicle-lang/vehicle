@@ -1,1 +1,1 @@
-Error at Line 2, Columns 21-22: unable to determine if '1' is a valid index of size 'n'.
+Error in file 'indexOutOfBoundsUnknown.vcl' at Line 2, Columns 21-22: unable to determine if '1' is a valid index of size 'n'.

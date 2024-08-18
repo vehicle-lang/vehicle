@@ -127,7 +127,7 @@ substArgs e args = normAppList e args
 -- | Use to convert builtins for printing that have no representation in the
 -- standard `Builtin` type.
 cheatConvertBuiltin :: Provenance -> Doc a -> Expr var builtin
-cheatConvertBuiltin p b = FreeVar p $ Identifier StdLib (layoutAsText b)
+cheatConvertBuiltin p b = FreeVar p $ stdlibIdentifier (layoutAsText b)
 
 convertExprBuiltins ::
   forall builtin1 builtin2 var.

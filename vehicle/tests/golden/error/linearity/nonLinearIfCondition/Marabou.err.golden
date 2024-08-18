@@ -1,9 +1,9 @@
-Error at Line 5, Columns 1-2: The property 'p' contains a non-linear constraint which is not supported by the Marabou query format.
-In particular the multiplication at Line 6, Columns 30-31 involves
-  1. the quantified variable 'x' introduced at Line 6, Columns 13-20
+Error in file 'spec.vcl' at Line 5, Columns 1-2: The property 'p' contains a non-linear constraint which is not supported by the Marabou query format.
+In particular the multiplication in file 'spec.vcl' at Line 6, Columns 30-31 involves
+  1. the quantified variable 'x' introduced in file 'spec.vcl' at Line 6, Columns 13-20
   2. which is used in the left hand side of the multiplication
 and
-  1. the quantified variable 'x' introduced at Line 6, Columns 13-20
+  1. the quantified variable 'x' introduced in file 'spec.vcl' at Line 6, Columns 13-20
   2. which is used in the right hand side of the multiplication
 
 Fix: try rewriting the specification to avoid the non-linearity.

@@ -1,2 +1,2 @@
-Error at Line 1, Columns 1-10: unattached annotation '@property'
+Error in file 'annotationWithNoDeclaration.vcl' at Line 1, Columns 1-10: unattached annotation '@property'
 Fix: either attach the annotation to a declaration or remove it entirely

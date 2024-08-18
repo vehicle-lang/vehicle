@@ -12,7 +12,7 @@ where
 
 import Control.Monad (foldM_)
 import Control.Monad.Except (MonadError (..), throwError)
-import Control.Monad.Reader (MonadReader (..), runReaderT)
+import Control.Monad.Reader (runReaderT)
 import Data.Bitraversable (bitraverse)
 import Data.Either (partitionEithers)
 import Data.List (find)
@@ -28,6 +28,8 @@ import Prettyprinter
 import Vehicle.Syntax.AST qualified as V
 import Vehicle.Syntax.BNFC.Utils
   ( MonadElab,
+    ParseLocation,
+    getModule,
     mkProvenance,
     tokArrow,
     tokDot,
@@ -61,10 +63,10 @@ newtype UnparsedExpr = UnparsedExpr B.Expr
 -- types and definitions.
 partiallyElabProg ::
   (MonadError ParseError m) =>
-  V.Module ->
+  ParseLocation ->
   B.Prog ->
   m PartiallyParsedProg
-partiallyElabProg modl (B.Main decls) = flip runReaderT modl $ do
+partiallyElabProg file (B.Main decls) = flip runReaderT file $ do
   V.Main <$> partiallyElabDecls decls
 
 partiallyElabDecls :: (MonadElab m) => [B.Decl] -> m [PartiallyParsedDecl]
@@ -303,10 +305,10 @@ getTypeOption = \case
 
 elaborateDecl ::
   (MonadError ParseError m) =>
-  V.Module ->
+  ParseLocation ->
   PartiallyParsedDecl ->
   m (V.Decl V.Name V.Builtin)
-elaborateDecl modl decl = flip runReaderT modl $ case decl of
+elaborateDecl file decl = flip runReaderT file $ case decl of
   V.DefAbstract p n r t -> V.DefAbstract p n r <$> elabDeclType t
   V.DefFunction p n b t e -> V.DefFunction p n b <$> elabDeclType t <*> elabDeclBody e
 
@@ -330,10 +332,10 @@ elabDeclBody (UnparsedExpr expr) = case expr of
 
 elaborateExpr ::
   (MonadError ParseError m) =>
-  V.Module ->
+  ParseLocation ->
   UnparsedExpr ->
   m (V.Expr V.Name V.Builtin)
-elaborateExpr modl (UnparsedExpr expr) = runReaderT (elabExpr expr) modl
+elaborateExpr file (UnparsedExpr expr) = runReaderT (elabExpr expr) file
 
 elabExpr :: (MonadElab m) => B.Expr -> m (V.Expr V.Name V.Builtin)
 elabExpr = \case
@@ -391,7 +393,7 @@ elabExpr = \case
   B.HasMap tk -> builtinTypeClass V.HasMap tk []
   B.HasFold tk -> builtinTypeClass V.HasFold tk []
   -- NOTE: we reverse the arguments to make it well-typed.
-  B.Ann e tk t -> freeVar (V.Identifier V.StdLib "typeAnn") tk [t, e]
+  B.Ann e tk t -> elabExpr (B.App (B.App (B.Var (B.Name (tkLocation tk, "typeAnn"))) (B.ExplicitArg t)) (B.ExplicitArg e))
 
 elabArg :: (MonadElab m) => B.Arg -> m (V.Arg V.Name V.Builtin)
 elabArg = \case
@@ -401,7 +403,7 @@ elabArg = \case
 
 elabName :: (MonadElab m) => B.Name -> m V.Identifier
 elabName n = do
-  modl <- ask
+  modl <- getModule
   return $ V.Identifier modl $ tkSymbol n
 
 elabBasicBinder :: (MonadElab m) => Bool -> B.BasicBinder -> m (V.Binder V.Name V.Builtin)
@@ -492,11 +494,6 @@ op2 mk t e1 e2 = do
   tProv <- mkProvenance t
   let p = V.fillInProvenance (tProv :| [V.provenanceOf ce1, V.provenanceOf ce2])
   return $ mk p ce1 ce2
-
-freeVar :: (MonadElab m, IsToken token) => V.Identifier -> token -> [B.Expr] -> m (V.Expr V.Name V.Builtin)
-freeVar b t args = do
-  tProv <- mkProvenance t
-  app (V.FreeVar tProv b) <$> traverse elabExpr args
 
 builtin :: (MonadElab m, IsToken token) => V.Builtin -> token -> [B.Expr] -> m (V.Expr V.Name V.Builtin)
 builtin b t args = do
@@ -603,9 +600,9 @@ elabQuantifierIn ::
   m (V.Expr V.Name V.Builtin)
 elabQuantifierIn tk q binder container body = do
   p <- mkProvenance tk
-  let quantBuiltin = V.FreeVar p $ case q of
-        V.Forall -> V.Identifier V.StdLib "forallIn"
-        V.Exists -> V.Identifier V.StdLib "existsIn"
+  let quantBuiltin = V.BoundVar p $ case q of
+        V.Forall -> "forallIn"
+        V.Exists -> "existsIn"
 
   binder' <- elabNameBinder False binder
   container' <- elabExpr container
@@ -627,7 +624,7 @@ elabForeach ::
   m (V.Expr V.Name V.Builtin)
 elabForeach tk binder body = do
   p <- mkProvenance tk
-  let foreachBuiltin = V.FreeVar p (V.Identifier V.StdLib "foreachIndex")
+  let foreachBuiltin = V.BoundVar p "foreachIndex"
 
   binder' <- elabNameBinder False binder
   body' <- elabExpr body

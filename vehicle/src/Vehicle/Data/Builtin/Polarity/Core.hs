@@ -169,7 +169,7 @@ instance ConvertableBuiltin PolarityBuiltin S.Builtin where
   convertBuiltin p = \case
     BuiltinConstructor c -> Builtin p (S.BuiltinConstructor c)
     BuiltinFunction f -> Builtin p (S.BuiltinFunction f)
-    b -> FreeVar p $ Identifier StdLib (layoutAsText $ pretty b)
+    b -> FreeVar p $ stdlibIdentifier (layoutAsText $ pretty b)
 
 instance PrintableBuiltin PolarityBuiltin where
   isCoercion = const False

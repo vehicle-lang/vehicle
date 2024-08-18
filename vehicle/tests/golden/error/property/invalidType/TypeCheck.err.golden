@@ -1,4 +1,4 @@
-Error at Line 2, Columns 1-2: The type of @property 'p':
+Error in file 'invalidType.vcl' at Line 2, Columns 1-2: The type of @property 'p':
   Rat
 is not supported. Only the following types are allowed for '@property's:
   Bool, Vector Bool n, Tensor Bool ns

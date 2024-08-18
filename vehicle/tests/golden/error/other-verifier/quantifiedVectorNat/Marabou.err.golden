@@ -1,4 +1,4 @@
-Error at Line 3, Columns 5-11: unable to work out a valid type for the overloaded expression 'forall'.
+Error in file 'quantifiedVectorNat.vcl' at Line 3, Columns 5-11: unable to work out a valid type for the overloaded expression 'forall'.
 Type checking has deduced that it is of type:
   (Vector Nat 2 -> Bool) -> Bool
 but 'forall' has only the following valid types:

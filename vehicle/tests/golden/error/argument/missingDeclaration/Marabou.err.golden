@@ -1,2 +1,2 @@
-Error at Line 0, Columns 0-0: Was asked to compile declaration 'property' but no declaration exists with that name in the specification.
+Error in file 'unknown' at Line 0, Columns 0-0: Was asked to compile declaration 'property' but no declaration exists with that name in the specification.
 Fix: check the spelling of 'property' or that the right specification is being used.

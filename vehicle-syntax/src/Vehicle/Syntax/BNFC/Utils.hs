@@ -3,9 +3,9 @@
 module Vehicle.Syntax.BNFC.Utils where
 
 import Control.Monad.Except (MonadError)
-import Control.Monad.Reader (MonadReader (..))
+import Control.Monad.Reader (MonadReader (..), asks)
 import Data.Text (Text, pack)
-import Vehicle.Syntax.AST.Name (Module)
+import Vehicle.Syntax.AST.Name (ModulePath)
 import Vehicle.Syntax.AST.Provenance
 import Vehicle.Syntax.External.Abs qualified as B
 import Vehicle.Syntax.Parse.Error (ParseError (..))
@@ -13,16 +13,22 @@ import Vehicle.Syntax.Parse.Token (IsToken, mkToken)
 
 type MonadElab m =
   ( MonadError ParseError m,
-    MonadReader Module m
+    MonadReader ParseLocation m
   )
 
 pattern InferableOption :: Text
 pattern InferableOption = "infer"
 
+type ParseLocation = (ModulePath, FilePath)
+
+getModule :: (MonadElab m) => m ModulePath
+getModule = asks fst
+
+getFile :: (MonadElab m) => m FilePath
+getFile = asks snd
+
 mkProvenance :: (MonadElab m, IsToken tk) => tk -> m Provenance
-mkProvenance tk = do
-  modl <- ask
-  return $ tkProvenance modl tk
+mkProvenance tk = tkProvenance tk <$> getFile
 
 tokType :: Int -> B.Expr
 tokType l = B.Type (mkToken B.TokType ("Type" <> pack (show l)))

@@ -1,2 +1,2 @@
-Error at Line 2, Columns 1-2: The value '~' provided for parameter 'n' could not be parsed as an 'Index'.
+Error in file 'unparseableIndex.vcl' at Line 2, Columns 1-2: The value '~' provided for parameter 'n' could not be parsed as an 'Index'.
 Fix: either change the type of 'n' in the specification or change the value provided.

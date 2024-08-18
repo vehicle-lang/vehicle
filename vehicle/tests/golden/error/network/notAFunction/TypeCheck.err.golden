@@ -1,4 +1,4 @@
-Error at Line 2, Columns 5-8: The type of @network 'f':
+Error in file 'notAFunction.vcl' at Line 2, Columns 5-8: The type of @network 'f':
   Rat
 is not supported as it is not a function.
 Fix: Only networks of the following types are allowed:

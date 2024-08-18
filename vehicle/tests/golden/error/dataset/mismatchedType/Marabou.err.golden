@@ -1,3 +1,3 @@
-Error at Line 3, Columns 1-16: Mismatch in the type of elements of dataset 'trainingDataset'.
+Error in file 'mismatchedType.vcl' at Line 3, Columns 1-16: Mismatch in the type of elements of dataset 'trainingDataset'.
 Expected elements of type 'Nat' but found elements of type 'Rat' when reading 'dataset-rat-4.idx'.
 Fix: change the type of 'trainingDataset' in the specification or check that 'dataset-rat-4.idx' is in the format you were expecting.

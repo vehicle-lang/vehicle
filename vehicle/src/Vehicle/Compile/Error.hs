@@ -20,7 +20,7 @@ import Vehicle.Data.Builtin.Tensor
 import Vehicle.Data.DeBruijn
 import Vehicle.Data.Expr.Normalised
 import Vehicle.Data.QuantifiedVariable (UnderConstrainedVariableStatus, UserRationalVariable)
-import Vehicle.Syntax.Parse (ParseError)
+import Vehicle.Syntax.Parse (ParseError, ParseLocation)
 import Vehicle.Verify.QueryFormat.Core
 
 --------------------------------------------------------------------------------
@@ -34,11 +34,12 @@ type MonadCompile m =
 --------------------------------------------------------------------------------
 -- Compilation errors
 
+
 data CompileError
   = DevError (Doc ())
   | -- Parse errors
-    ParseError Module ParseError
-  | -- Scope checking errors.
+    ParseError ParseLocation ParseError
+  | -- Errors thrown by scope checking.
     UnboundName Provenance Name
   | DeclarationDeclarationShadowing Provenance Name Identifier
   | DeclarationBoundShadowing Provenance Name

@@ -90,7 +90,7 @@ analyseDependenciesAndPrune prog declarationsToCompile = do
     else do
       dependencyGraph <- constructGraph prog
       startingVertices <- forM declarationsToCompile $ \name ->
-        case vertexFromIdent dependencyGraph (Identifier User name) of
+        case vertexFromIdent dependencyGraph (Identifier (ModulePath [User]) name) of
           Just vertex -> return vertex
           Nothing -> throwError $ MissingPrunedName name
 

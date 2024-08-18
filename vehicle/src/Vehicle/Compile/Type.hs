@@ -154,7 +154,7 @@ typeCheckFunction p ident anns typ body = do
     else do
       -- Otherwise if not a property then generalise over unsolved meta-variables.
       checkedDecl1 <-
-        if moduleOf ident == User
+        if isUserIdent ident
           then addAuxiliaryInputOutputConstraints substDecl
           else return substDecl
       logUnsolvedUnknowns (Just substDecl) Nothing
