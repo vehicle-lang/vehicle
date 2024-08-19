@@ -156,8 +156,9 @@ eliminateVar var solution row = do
         { coefficients = Map.delete var $ coefficients resultExpr
         }
 
--- | Takes an assertion `a*x_0 + ... + b*x_i + ... c * x_n` and
--- returns the RHS of the equation: `x_i = -a/b*x_0 + ... -c/b*x_n`
+-- | Takes an assertion `c_0*x_0 + ... + c_i*x_i + ... c_n * x_n` and
+-- returns (c_i, -(c_0/c_i)*x_0 ... - (c_n/c_i) * x_n), i.e.
+-- the expression is the expression equal to `x_i`.
 rearrangeExprToSolveFor ::
   (Ord variable, IsConstant constant) =>
   variable ->
@@ -168,7 +169,7 @@ rearrangeExprToSolveFor var expr = do
   if c == 0
     then (0, expr)
     else do
-      let scaledExpr = scaleExpr (-1 / c) expr
+      let scaledExpr = scaleExpr (-(1 / c)) expr
       ( c,
         scaledExpr
           { coefficients = Map.delete var $ coefficients scaledExpr

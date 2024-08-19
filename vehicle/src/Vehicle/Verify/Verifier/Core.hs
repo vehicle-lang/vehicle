@@ -5,9 +5,9 @@ module Vehicle.Verify.Verifier.Core where
 import Control.Monad.Error.Class (MonadError (..))
 import Data.Set (Set)
 import Vehicle.Compile.Prelude
+import Vehicle.Data.QuantifiedVariable
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
-import Vehicle.Verify.Variable
 
 # ifdef mingw32_HOST_OS
 # else

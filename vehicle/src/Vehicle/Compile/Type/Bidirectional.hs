@@ -160,7 +160,7 @@ inferExpr e = do
       inferApp checkedFun checkedFunType (NonEmpty.toList args)
     BoundVar p i -> do
       ctx <- getBoundCtx (Proxy @(Type Ix builtin))
-      binder <- lookupIxInBoundCtx currentPass i ctx
+      let binder = lookupIxInBoundCtx currentPass i ctx
       currentRelevance <- getCurrentRelevance (Proxy @builtin)
       if currentRelevance == Relevant && relevanceOf binder == Irrelevant
         then do

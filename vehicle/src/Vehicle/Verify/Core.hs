@@ -13,10 +13,10 @@ import Vehicle.Compile.Context.Bound.Core (GenericBoundCtx)
 import Vehicle.Compile.Resource
 import Vehicle.Data.Expr.Boolean
 import Vehicle.Data.Expr.Linear
+import Vehicle.Data.QuantifiedVariable
 import Vehicle.Prelude
 import Vehicle.Syntax.AST
 import Vehicle.Syntax.Builtin.BasicOperations
-import Vehicle.Verify.Variable
 
 --------------------------------------------------------------------------------
 -- Meta-network
@@ -149,28 +149,6 @@ type QueryAddress = (PropertyAddress, QueryID)
 calculateQueryFileName :: QueryAddress -> FilePath
 calculateQueryFileName (propertyAddress, queryID) = do
   calculatePropertyFilePrefix propertyAddress <> "-query" <> show queryID <.> "txt"
-
---------------------------------------------------------------------------------
--- Variable status
-
-data UnderConstrainedVariableStatus
-  = Unconstrained
-  | BoundedAbove
-  | BoundedBelow
-  deriving (Show, Eq, Ord)
-
-instance Pretty UnderConstrainedVariableStatus where
-  pretty = \case
-    Unconstrained -> "Unconstrained"
-    BoundedAbove -> "BoundedAbove"
-    BoundedBelow -> "BoundedBelow"
-
-instance Semigroup UnderConstrainedVariableStatus where
-  Unconstrained <> r = r
-  r <> Unconstrained = r
-  BoundedAbove <> r = r
-  r <> BoundedAbove = r
-  BoundedBelow <> BoundedBelow = BoundedBelow
 
 --------------------------------------------------------------------------------
 -- Queries

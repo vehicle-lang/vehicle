@@ -57,7 +57,7 @@ class (PrintableBuiltin builtin) => NormalisableBuiltin builtin where
   -- and irrelevant arguments), the builtin that is in the head position
   -- and the list of computationally relevant arguments.
   evalBuiltinApp ::
-    (MonadCompile m) =>
+    (MonadLogger m) =>
     EvalApp (Value closure builtin) m ->
     Value closure builtin ->
     builtin ->

@@ -2,8 +2,7 @@ module Vehicle.Backend.Queries.UserVariableElimination.Core where
 
 import Control.DeepSeq (NFData)
 import Control.Monad.Reader (MonadReader (..))
-import Control.Monad.State (MonadState (..), gets, modify)
-import Control.Monad.Writer (MonadWriter)
+import Control.Monad.State (MonadState (..), gets)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Bifunctor (Bifunctor (..))
 import Data.HashMap.Strict (HashMap)
@@ -28,12 +27,12 @@ import Vehicle.Data.Expr.Interface
 import Vehicle.Data.Expr.Linear
 import Vehicle.Data.Expr.Normalised
 import Vehicle.Data.Hashing ()
+import Vehicle.Data.QuantifiedVariable
 import Vehicle.Data.Tensor
 import Vehicle.Libraries.StandardLibrary.Definitions
 import Vehicle.Syntax.Builtin
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Interface
-import Vehicle.Verify.Variable
 
 --------------------------------------------------------------------------------
 -- Builtins
@@ -78,8 +77,7 @@ data GlobalCtx = GlobalCtx
   { globalBoundVarCtx :: !(LinkedHashMap Lv Variable),
     userVariableReductions :: !(HashMap OriginalUserVariable ([UserRationalVariable], WHNFValue QueryBuiltin)),
     networkVariableReductions :: !(HashMap OriginalNetworkVariable ([NetworkRationalVariable], WHNFValue QueryBuiltin)),
-    networkApplications :: !(LinkedHashMap NetworkApplication NetworkApplicationReplacement),
-    queryID :: !QueryID
+    networkApplications :: !(LinkedHashMap NetworkApplication NetworkApplicationReplacement)
   }
 
 emptyGlobalCtx :: GlobalCtx
@@ -88,8 +86,7 @@ emptyGlobalCtx =
     { globalBoundVarCtx = LinkedHashMap.empty,
       userVariableReductions = mempty,
       networkVariableReductions = mempty,
-      networkApplications = LinkedHashMap.empty,
-      queryID = 1
+      networkApplications = LinkedHashMap.empty
     }
 
 addVectorVarToBoundVarCtx ::
@@ -493,7 +490,8 @@ instance Pretty FourierMotzkinVariableSolution where
 
 type MonadPropertyStructure m =
   ( MonadFreeContext QueryBuiltin m,
-    MonadReader PropertyMetaData m
+    MonadReader PropertyMetaData m,
+    MonadCompile m
   )
 
 type MonadQueryStructure m =
@@ -501,38 +499,25 @@ type MonadQueryStructure m =
     MonadState GlobalCtx m
   )
 
-type MonadUnblock m =
-  ( MonadQueryStructure m,
-    MonadWriter [WHNFValue QueryBuiltin] m
-  )
-
-getGlobalBoundCtx :: (MonadQueryStructure m) => m (BoundCtx (Expr Ix QueryBuiltin))
+getGlobalBoundCtx :: (MonadQueryStructure m) => m (BoundCtx (Type Ix QueryBuiltin))
 getGlobalBoundCtx = gets (variableCtxToBoundCtx . (fmap snd . LinkedHashMap.toList . globalBoundVarCtx))
+
+getGlobalNamedBoundCtx :: (MonadQueryStructure m) => m NamedBoundCtx
+getGlobalNamedBoundCtx = toNamedBoundCtx <$> getGlobalBoundCtx
 
 prettyFriendlyInCtx :: (MonadQueryStructure m) => WHNFValue QueryBuiltin -> m (Doc a)
 prettyFriendlyInCtx e = do
   ctx <- toNamedBoundCtx <$> getGlobalBoundCtx
   return $ prettyFriendly (WithContext e ctx)
 
-lookupVarByLevel :: (MonadQueryStructure m) => Lv -> m Variable
+lookupVarByLevel :: (MonadState GlobalCtx m) => Lv -> m Variable
 lookupVarByLevel lv = do
   GlobalCtx {..} <- get
   case LinkedHashMap.lookup lv globalBoundVarCtx of
-    Nothing -> compilerDeveloperError "Cannout find variable var"
+    Nothing -> developerError "Cannout find variable var"
     Just v -> return v
 
-getAndUpdateQueryID :: (MonadQueryStructure m) => m QueryID
-getAndUpdateQueryID = do
-  queryID <$> getModify (\GlobalCtx {..} -> GlobalCtx {queryID = queryID + 1, ..})
-
--- | Resets the entire global state except for the queryID
-resetGlobalCtx :: (MonadQueryStructure m) => m ()
-resetGlobalCtx = modify $ \ctx ->
-  emptyGlobalCtx
-    { queryID = queryID ctx
-    }
-
-getReducedVariableExprFor :: (MonadQueryStructure m) => Lv -> m (Maybe (WHNFValue QueryBuiltin))
+getReducedVariableExprFor :: (MonadState GlobalCtx m) => Lv -> m (Maybe (WHNFValue QueryBuiltin))
 getReducedVariableExprFor lv = do
   GlobalCtx {..} <- get
   var <- lookupVarByLevel lv
@@ -541,25 +526,25 @@ getReducedVariableExprFor lv = do
     TensorVar (NetworkTensorVar v) -> return (snd <$> HashMap.lookup v networkVariableReductions)
     _ -> return Nothing
 
-getTensorVariable :: (MonadQueryStructure m) => Lv -> m TensorVariable
+getTensorVariable :: (MonadState GlobalCtx m) => Lv -> m TensorVariable
 getTensorVariable lv = do
   var <- lookupVarByLevel lv
   case var of
     TensorVar v -> return v
-    _ -> compilerDeveloperError "Expected tensor variable but found rational variable"
+    _ -> developerError "Expected tensor variable but found rational variable"
 
-getRationalVariable :: (MonadQueryStructure m) => Lv -> m RationalVariable
+getRationalVariable :: (MonadState GlobalCtx m) => Lv -> m RationalVariable
 getRationalVariable lv = do
   var <- lookupVarByLevel lv
   case var of
     RationalVar rv -> return rv
     TensorVar tv
-      | not (null (tensorVariableDims tv)) -> compilerDeveloperError $ "Expected rational variable but found tensor variable" <+> pretty var
+      | not (null (tensorVariableDims tv)) -> developerError $ "Expected rational variable but found tensor variable" <+> pretty var
       | otherwise -> do
           rvs <- getReducedVariablesFor tv
           case rvs of
             [rv] -> return rv
-            _ -> compilerDeveloperError "Mismatched tensor dimensions!"
+            _ -> developerError "Mismatched tensor dimensions!"
 
 getReducedUserVariablesFor :: (MonadQueryStructure m) => OriginalUserVariable -> m [UserRationalVariable]
 getReducedUserVariablesFor var = do
@@ -578,16 +563,16 @@ getReducedNetworkVariablesFor GlobalCtx {..} var = do
       compilerDeveloperError $
         "Network variable" <+> pretty var <+> "has no reductions"
 
-getReducedVariablesFor :: (MonadQueryStructure m) => TensorVariable -> m [RationalVariable]
+getReducedVariablesFor :: (MonadState GlobalCtx m) => TensorVariable -> m [RationalVariable]
 getReducedVariablesFor var = do
   GlobalCtx {..} <- get
   case var of
     NetworkTensorVar v -> case HashMap.lookup v networkVariableReductions of
       Just (vars, _) -> return $ fmap NetworkRationalVar vars
-      Nothing -> compilerDeveloperError $ "Network variable" <+> pretty var <+> "has no reductions"
+      Nothing -> developerError $ "Network variable" <+> pretty var <+> "has no reductions"
     UserTensorVar v -> case HashMap.lookup v userVariableReductions of
       Just (vars, _) -> return $ fmap UserRationalVar vars
-      Nothing -> compilerDeveloperError $ "User variable" <+> pretty var <+> "has no reductions"
+      Nothing -> developerError $ "User variable" <+> pretty var <+> "has no reductions"
 
 reduceTensorExpr ::
   (MonadQueryStructure m) =>
@@ -610,7 +595,7 @@ reduceTensorExpr (Sparse coeff constant) = do
 --------------------------------------------------------------------------------
 -- Context operations
 
-variableCtxToBoundCtx :: (Pretty variable) => [variable] -> BoundCtx (Expr Ix builtin)
+variableCtxToBoundCtx :: (Pretty variable) => [variable] -> BoundCtx (Type Ix builtin)
 variableCtxToBoundCtx ctx = zipWith variableCtxToBoundCtxEntry [0 .. Ix (length ctx - 1)] ctx
   where
     variableCtxToBoundCtxEntry ix var = mkDefaultBinder (layoutAsText $ pretty var) (BoundVar mempty ix)

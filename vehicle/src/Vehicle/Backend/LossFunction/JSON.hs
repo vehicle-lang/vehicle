@@ -209,7 +209,7 @@ getFreeVarArity :: (MonadJSON m) => V.Identifier -> m Arity
 getFreeVarArity ident = lookupInFreeCtx currentPass ident =<< asks fst
 
 getBoundVarArity :: (MonadJSON m) => Ix -> m Arity
-getBoundVarArity ix = lookupIxInBoundCtx currentPass ix =<< asks snd
+getBoundVarArity ix = asks (lookupIxInBoundCtx currentPass ix . snd)
 
 resourceError :: (MonadCompile m) => V.DefAbstractSort -> m a
 resourceError resourceType =

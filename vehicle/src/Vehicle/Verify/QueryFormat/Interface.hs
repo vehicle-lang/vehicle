@@ -4,9 +4,9 @@ import Control.Monad.Except (MonadError)
 import Data.Text (Text)
 import Vehicle.Compile.Error (CompileError)
 import Vehicle.Compile.Prelude (Doc, ExternalOutputFormat, MonadLogger)
+import Vehicle.Data.QuantifiedVariable
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
-import Vehicle.Verify.Variable
 
 type FormatQuery =
   forall m.

@@ -57,19 +57,20 @@ stack :: NonEmpty (Tensor a) -> Tensor a
 stack tensors@(t :| ts) =
   Tensor (length tensors : tensorShape t) (Vector.concat (fmap tensorValue (t : ts)))
 
-foldMapTensor :: forall a b. (a -> b) -> ([b] -> b) -> Tensor a -> b
-foldMapTensor mkValue mkVec (Tensor dims value) = go dims (Vector.toList value)
-  where
-    go :: TensorShape -> [a] -> b
-    go [] [x] = mkValue x
-    go [] _xs = developerError "Mis-sized tensor. Expected a single element."
-    go (_d : ds) xs = do
-      let inputVarIndicesChunks = chunksOf (product ds) xs
-      let elems = fmap (go ds) inputVarIndicesChunks
-      mkVec elems
+foldMapTensor :: forall a b. (a -> b) -> (TensorShape -> [b] -> b) -> Tensor a -> b
+foldMapTensor mkValue mkVec (Tensor dims value) =
+  foldMapTensorLike mkValue mkVec dims (Vector.toList value)
+
+foldMapTensorLike :: (a -> b) -> (TensorShape -> [b] -> b) -> TensorShape -> [a] -> b
+foldMapTensorLike mkValue _mkVec [] [x] = mkValue x
+foldMapTensorLike _mkValue _mkVec [] _xs = developerError "Mis-sized tensor. Expected a single element."
+foldMapTensorLike mkValue mkVec (_ : ds) xs = do
+  let inputVarIndicesChunks = chunksOf (product ds) xs
+  let elems = fmap (foldMapTensorLike mkValue mkVec ds) inputVarIndicesChunks
+  mkVec ds elems
 
 instance (Pretty a) => Pretty (Tensor a) where
-  pretty = foldMapTensor pretty prettyFlatList
+  pretty = foldMapTensor pretty (const prettyFlatList)
 
 type RationalTensor = Tensor Rational
 

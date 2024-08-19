@@ -9,10 +9,10 @@ import Data.Map qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as Text (pack, splitOn, strip)
 import Vehicle.Compile.Prelude
+import Vehicle.Data.QuantifiedVariable
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
 import Vehicle.Verify.QueryFormat.VNNLib (compileVNNLibVar)
-import Vehicle.Verify.Variable
 import Vehicle.Verify.Verifier.Core
 
 -- This is a verifier only used for testing.

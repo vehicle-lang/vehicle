@@ -170,13 +170,8 @@ convertBuiltins b args = do
     ----------------------
     -- Other operations --
     ----------------------
-    L.Minimise -> do
-      let op = T.MinimiseRatTensor
-      boundCtx <- getNamedBoundCtx (Proxy @MixedLossValue)
-      let namedCtx = fmap (fromMaybe "<nameless>") boundCtx
-      VBuiltin (op namedCtx) <$> normArgs
-    L.Maximise -> do
-      let op = T.MaximiseRatTensor
+    L.Search -> do
+      let op = T.SearchRatTensor
       boundCtx <- getNamedBoundCtx (Proxy @MixedLossValue)
       let namedCtx = fmap (fromMaybe "<nameless>") boundCtx
       VBuiltin (op namedCtx) <$> normArgs

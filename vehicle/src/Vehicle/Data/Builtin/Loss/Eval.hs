@@ -43,6 +43,7 @@ instance NormalisableBuiltin LossBuiltin where
       NilList -> return unchanged
       ConsList -> return unchanged
       Vector -> return unchanged
+      Search {} -> return unchanged
       -- Numeric operations
       Neg V.NegRat -> return $ evalNegRat unchanged args
       Add V.AddRat -> return $ evalAddRat unchanged args
@@ -63,5 +64,3 @@ instance NormalisableBuiltin LossBuiltin where
       Indices -> return $ evalIndices (VBuiltin Indices) unchanged args
       -- Don't evaluate in order to allow for tensor optimisations later.
       ForeachIndex {} -> return unchanged
-      Maximise {} -> return unchanged
-      Minimise {} -> return unchanged

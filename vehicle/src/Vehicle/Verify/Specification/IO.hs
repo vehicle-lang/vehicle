@@ -43,13 +43,13 @@ import Vehicle.Backend.Agda.Interact (writeResultToFile)
 import Vehicle.Backend.Queries.UserVariableElimination.VariableReconstruction (reconstructUserVars)
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Expr.Boolean
+import Vehicle.Data.QuantifiedVariable (NetworkVariableAssignment (..), OriginalUserVariable (..), UserVariableAssignment (..))
 import Vehicle.Data.Tensor (Tensor (..))
 import Vehicle.Prelude.IO qualified as VIO (MonadStdIO (writeStdoutLn))
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat
 import Vehicle.Verify.Specification
 import Vehicle.Verify.Specification.Status
-import Vehicle.Verify.Variable (NetworkVariableAssignment (..), OriginalUserVariable (..), UserVariableAssignment (..))
 import Vehicle.Verify.Verifier
 
 --------------------------------------------------------------------------------

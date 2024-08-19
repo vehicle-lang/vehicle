@@ -7,10 +7,10 @@ import Data.List.NonEmpty (NonEmpty, sort)
 import Data.Set qualified as Set
 import Vehicle.Compile.Prelude (Contextualised (..))
 import Vehicle.Compile.Print (prettyFriendly)
+import Vehicle.Data.QuantifiedVariable
 import Vehicle.Prelude
 import Vehicle.Prelude.Warning
 import Vehicle.Verify.Core
-import Vehicle.Verify.Variable
 
 instance Pretty SummarisedCompileWarning where
   pretty = \case
@@ -92,14 +92,7 @@ instance Pretty SummarisedCompileWarning where
           "In" <+> prettyQueryIDs queryIDs
             <> ":"
             <> line
-            <> indent 2 (vsep $ fmap prettyVar vars)
-
-        prettyVar :: (NetworkRationalVariable, UnderConstrainedVariableStatus) -> Doc a
-        prettyVar (var, constraint) =
-          pretty var <+> "-" <+> case constraint of
-            Unconstrained -> "no lower or upper bound"
-            BoundedAbove -> "no lower bound"
-            BoundedBelow -> "no upper bound"
+            <> prettyUnderConstrainedVariables vars
 
 prettyQueryIDs :: NonEmpty QueryID -> Doc a
 prettyQueryIDs ids =

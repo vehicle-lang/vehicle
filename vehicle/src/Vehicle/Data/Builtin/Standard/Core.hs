@@ -88,7 +88,7 @@ instance HasStandardVecLits (Expr var Builtin) where
     BuiltinExpr _ (BuiltinConstructor (LVec _)) (t :| xs) -> Just (t, xs)
     _ -> Nothing
 
-instance (Show var) => HasStandardListLits (Expr var Builtin) where
+instance HasStandardListLits (Expr var Builtin) where
   getNil e = case getConstructor e of
     Just (p, Nil, [t]) -> Just (p, t)
     _ -> Nothing

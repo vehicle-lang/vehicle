@@ -92,7 +92,7 @@ analyseDependenciesAndPrune prog declarationsToCompile = do
       startingVertices <- forM declarationsToCompile $ \name ->
         case vertexFromIdent dependencyGraph (Identifier User name) of
           Just vertex -> return vertex
-          Nothing -> throwError $ InvalidPrunedName name
+          Nothing -> throwError $ MissingPrunedName name
 
       let declsToKeep = reachableFrom dependencyGraph startingVertices
       return $ pruneProg prog declsToKeep

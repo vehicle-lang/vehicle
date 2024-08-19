@@ -28,7 +28,7 @@ import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
 import Vehicle.Data.Builtin.Loss
-import Vehicle.Data.Builtin.Standard (Quantifier)
+import Vehicle.Data.Expr.Interface (pattern INot)
 import Vehicle.Data.Expr.Normalised (VBinder, Value (..), WHNFBoundEnv, WHNFClosure (..), WHNFValue, boundContextToEnv, extendEnvWithBound, extendEnvWithDefined)
 import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (..))
 import Vehicle.Syntax.Builtin (Builtin)
@@ -182,7 +182,7 @@ instance EvaluableClosure MixedClosure LossBuiltin where
 
   evalClosure freeEnv closure (binder, arg) = case closure of
     StandardClos (WHNFClosure {}) ->
-      compilerDeveloperError "Should not be evaluating standard closures"
+      developerError "Should not be evaluating standard closures"
     LossClos (LossClosure env body) -> do
       let newEnv = extendEnvWithDefined arg binder env
       eval freeEnv newEnv body
@@ -294,7 +294,8 @@ convertBuiltin builtin spine = convert builtin
       V.Order V.OrderRat V.Gt -> changedBuiltin L.GreaterThan
       V.Order V.OrderRat V.Ge -> changedBuiltin L.GreaterEqual
       -- Quantifiers
-      V.Quantifier q -> translateQuantifier q spine
+      V.Quantifier V.Exists -> translateExists spine
+      V.Quantifier V.Forall -> translateForall spine
       -- Unsupported
       V.If -> do
         declProv <- getDeclProvenance
@@ -341,12 +342,24 @@ convertBuiltin builtin spine = convert builtin
     unchangedBuiltin :: LossBuiltin -> m MixedLossValue
     unchangedBuiltin b = return $ VBuiltin b spine
 
-translateQuantifier :: (MonadLogic m) => Quantifier -> MixedLossSpine -> m MixedLossValue
-translateQuantifier q spine = do
-  (builtin, op) <- case q of
-    V.Forall -> (Minimise,) <$> lookupLogicField Conjunction
-    V.Exists -> (Maximise,) <$> lookupLogicField Disjunction
-  return $ VBuiltin builtin (explicit op : spine)
+convertNot :: (MonadLogic m) => MixedLossSpine -> m MixedLossValue
+convertNot = convertBuiltin (V.BuiltinFunction V.Not)
+
+translateExists :: (MonadLogic m) => MixedLossSpine -> m MixedLossValue
+translateExists spine = do
+  disjunct <- lookupLogicField Disjunction
+  return $ VBuiltin Search (explicit disjunct : spine)
+
+translateForall :: (MonadLogic m) => MixedLossSpine -> m MixedLossValue
+translateForall spine = case spine of
+  [argExpr -> VLam binder closure] -> do
+    negBody <- case closure of
+      StandardClos (WHNFClosure env body) -> return $ StandardClos $ WHNFClosure env (INot body)
+      LossClos {} -> developerError "Should not be evaluating standard closures"
+    let newSpine = [explicit (VLam binder negBody)]
+    existsExpr <- translateExists newSpine
+    convertNot [explicit existsExpr]
+  _ -> unexpectedExprError currentPass (pretty V.Forall <+> prettyVerbose spine)
 
 --------------------------------------------------------------------------------
 -- Utils

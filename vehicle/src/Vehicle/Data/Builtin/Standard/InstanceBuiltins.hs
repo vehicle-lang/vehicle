@@ -210,9 +210,9 @@ candidates =
               hasQuantifier q t
                 ~~~> hasQuantifier q (tVector t n),
           implLam "t1" type0 $ \t ->
-            irrelImplNatLam "n" $ \n ->
-              instLam "quant" (hasQuantifier q t) $ \quant ->
-                builtin (Quantifier q) @@@ [t, n] @@@@ [quant]
+            irrelImplNatLam "n" $ \_n ->
+              instLam "quant" (hasQuantifier q t) $ \quant -> quant
+              -- THIS IS A BUG (see #837)
         )
       ]
 

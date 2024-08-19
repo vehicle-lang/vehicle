@@ -15,13 +15,13 @@ import Vehicle.Compile.Context.Bound.Core
 import Vehicle.Data.Builtin.Loss.Core (LossBuiltin)
 import Vehicle.Data.Builtin.Tensor
 import Vehicle.Data.Expr.Normalised
+import Vehicle.Data.QuantifiedVariable
 import Vehicle.Libraries.StandardLibrary.Definitions
 import Vehicle.Resource (ExternalResource)
 import Vehicle.Syntax.AST
 import Vehicle.Syntax.Builtin
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
-import Vehicle.Verify.Variable
 
 --------------------------------------------------------------------------------
 -- Non-unique compile warnings

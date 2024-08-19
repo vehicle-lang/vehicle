@@ -1,4 +1,4 @@
-module Vehicle.Verify.Variable where
+module Vehicle.Data.QuantifiedVariable where
 
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, FromJSONKey, ToJSON, ToJSONKey)
@@ -249,3 +249,36 @@ instance FromJSON UserVariableAssignment
 instance Pretty UserVariableAssignment where
   pretty (UserVariableAssignment assignment) =
     vsep (fmap pretty assignment)
+
+--------------------------------------------------------------------------------
+-- Variable status
+
+data UnderConstrainedVariableStatus
+  = Unconstrained
+  | BoundedAbove
+  | BoundedBelow
+  deriving (Show, Eq, Ord)
+
+instance Pretty UnderConstrainedVariableStatus where
+  pretty = \case
+    Unconstrained -> "Unconstrained"
+    BoundedAbove -> "BoundedAbove"
+    BoundedBelow -> "BoundedBelow"
+
+instance Semigroup UnderConstrainedVariableStatus where
+  Unconstrained <> r = r
+  r <> Unconstrained = r
+  BoundedAbove <> r = r
+  r <> BoundedAbove = r
+  BoundedBelow <> BoundedBelow = BoundedBelow
+
+prettyUnderConstrainedVariables :: (Pretty var) => [(var, UnderConstrainedVariableStatus)] -> Doc a
+prettyUnderConstrainedVariables vars =
+  indent 2 (vsep $ fmap prettyUnderConstrainedVariable vars)
+
+prettyUnderConstrainedVariable :: (Pretty var) => (var, UnderConstrainedVariableStatus) -> Doc a
+prettyUnderConstrainedVariable (var, constraint) =
+  pretty var <+> "-" <+> case constraint of
+    Unconstrained -> "no lower or upper bound"
+    BoundedAbove -> "no lower bound"
+    BoundedBelow -> "no upper bound"

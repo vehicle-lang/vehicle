@@ -19,6 +19,7 @@ import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Builtin.Tensor
 import Vehicle.Data.DeBruijn
 import Vehicle.Data.Expr.Normalised
+import Vehicle.Data.QuantifiedVariable (UnderConstrainedVariableStatus, UserRationalVariable)
 import Vehicle.Syntax.Parse (ParseError)
 import Vehicle.Verify.QueryFormat.Core
 
@@ -37,29 +38,32 @@ data CompileError
   = DevError (Doc ())
   | -- Parse errors
     ParseError Module ParseError
-  | -- Command line option errors
-    InvalidPrunedName Name
-  | -- Errors thrown by scope checking.
+  | -- Scope checking errors.
     UnboundName Provenance Name
   | DeclarationDeclarationShadowing Provenance Name Identifier
   | DeclarationBoundShadowing Provenance Name
-  | -- Errors thrown while type checking
+  | MissingPrunedName Name
+  | -- Type checking errors
     UnresolvedHole Provenance Name
   | forall builtin.
     (PrintableBuiltin builtin, Show builtin, HasStandardData builtin) =>
     TypingError (TypingError builtin)
   | UnsolvedMetas (NonEmpty (MetaID, Provenance))
   | RelevantUseOfIrrelevantVariable Provenance Name
-  | -- Resource typing errors
+  | -- Resource loading errors
     ResourceNotProvided DeclProvenance ExternalResource
   | ResourceIOError DeclProvenance ExternalResource IOException
   | UnsupportedResourceFormat DeclProvenance ExternalResource String
   | UnableToParseResource DeclProvenance ExternalResource String
+  | -- Unsupported networks
+    NetworkTypeHasVariableSizeTensor DeclProvenance (GluedType Builtin) (WHNFType Builtin) InputOrOutput
+  | NetworkTypeHasImplicitSizeTensor DeclProvenance (GluedType Builtin) Identifier InputOrOutput
   | NetworkTypeIsNotAFunction DeclProvenance (GluedType Builtin)
   | NetworkTypeIsNotOverTensors DeclProvenance (GluedType Builtin) (WHNFType Builtin) InputOrOutput
   | NetworkTypeHasNonExplicitArguments DeclProvenance (GluedType Builtin) (WHNFBinder Builtin)
   | NetworkTypeHasUnsupportedElementType DeclProvenance (GluedType Builtin) (WHNFType Builtin) InputOrOutput
-  | DatasetTypeUnsupportedContainer DeclProvenance (GluedType Builtin)
+  | -- Unsupported datasets
+    DatasetTypeUnsupportedContainer DeclProvenance (GluedType Builtin)
   | DatasetTypeUnsupportedElement DeclProvenance (GluedType Builtin) (WHNFType Builtin)
   | DatasetVariableSizeTensor DeclProvenance (GluedType Builtin) (WHNFType Builtin)
   | DatasetDimensionSizeMismatch DeclProvenance FilePath Int Int TensorShape TensorShape
@@ -67,7 +71,8 @@ data CompileError
   | DatasetTypeMismatch DeclProvenance FilePath (GluedType Builtin) (WHNFType Builtin) (Doc Void)
   | DatasetInvalidIndex DeclProvenance FilePath Int Int
   | DatasetInvalidNat DeclProvenance FilePath Int
-  | ParameterTypeUnsupported DeclProvenance (GluedType Builtin)
+  | -- Unsupported parameters
+    ParameterTypeUnsupported DeclProvenance (GluedType Builtin)
   | ParameterTypeVariableSizeIndex DeclProvenance (GluedType Builtin)
   | ParameterTypeInferableParameterIndex DeclProvenance Identifier
   | ParameterValueUnparsable DeclProvenance String BuiltinType
@@ -76,23 +81,23 @@ data CompileError
   | InferableParameterTypeUnsupported DeclProvenance (GluedType Builtin)
   | InferableParameterContradictory Identifier (DeclProvenance, ExternalResource, Int) (DeclProvenance, ExternalResource, Int)
   | InferableParameterUninferrable DeclProvenance
-  | PropertyTypeUnsupported DeclProvenance (GluedType Builtin)
-  | -- Unsupported networks
-    NetworkTypeHasVariableSizeTensor DeclProvenance (GluedType Builtin) (WHNFType Builtin) InputOrOutput
-  | NetworkTypeHasImplicitSizeTensor DeclProvenance (GluedType Builtin) Identifier InputOrOutput
-  | -- Backend errors
-    NoPropertiesFound
-  | UnsupportedInequality QueryFormatID DeclProvenance
-  | UnsupportedPolymorphicEquality ITP Provenance Name
-  | NoNetworkUsedInProperty DeclProvenance
-  | UnsupportedVariableType QueryFormatID Identifier Provenance Name (WHNFType Builtin) (WHNFType Builtin) [Builtin]
-  | UnsupportedAlternatingQuantifiers QueryFormatID DeclProvenance (Either CompileError (Quantifier, Provenance, PolarityProvenance))
-  | UnsupportedNonLinearConstraint QueryFormatID DeclProvenance (Either CompileError NonLinearitySource)
-  | UnsupportedNegatedOperation DifferentiableLogicID NamedBoundCtx (Expr Ix Builtin) (WHNFValue Builtin)
-  | UnsupportedIfOperation (Either DeclProvenance DifferentiableLogicField) Provenance
-  | DuplicateQuantifierNames DeclProvenance Name
-  | QuantifiedIfCondition (ConstraintContext PolarityBuiltin)
+  | -- Unsupported properties
+    PropertyTypeUnsupported DeclProvenance (GluedType Builtin)
+  | NoPropertiesFound
+  | -- Verification backend errors
+    UnsupportedVariableType DeclProvenance Provenance Name (WHNFType Builtin) (WHNFType Builtin) [Builtin]
   | HigherOrderVectors DeclProvenance NamedBoundCtx (NFType TensorBuiltin) (NFType TensorBuiltin)
+  | UnsupportedAlternatingQuantifiers QueryFormatID DeclProvenance (Either CompileError (Quantifier, Provenance, PolarityProvenance))
+  | DuplicateQuantifierNames DeclProvenance Name
+  | UnsupportedNonLinearConstraint QueryFormatID DeclProvenance (Either CompileError NonLinearitySource)
+  | -- Loss backend errors
+    UnsupportedIfOperation (Either DeclProvenance DifferentiableLogicField) Provenance
+  | NoQuantifierDomainFound DeclProvenance (GenericBinder ()) (Maybe [(UserRationalVariable, UnderConstrainedVariableStatus)])
+  | -- ITP backend errors
+    UnsupportedPolymorphicEquality ITP Provenance Name
+  | -- Other
+    UnsupportedInequality QueryFormatID DeclProvenance
+  | QuantifiedIfCondition (ConstraintContext PolarityBuiltin)
 
 deriving instance Show CompileError
 
@@ -114,8 +119,8 @@ unexpectedExpr pass name =
 compilerDeveloperError :: (MonadError CompileError m) => Doc () -> m b
 compilerDeveloperError message = throwError $ DevError message
 
-unexpectedExprError :: (MonadError CompileError m) => Doc () -> Doc () -> m b
-unexpectedExprError pass name = compilerDeveloperError $ unexpectedExpr pass name
+unexpectedExprError :: Doc () -> Doc () -> a
+unexpectedExprError pass name = developerError $ unexpectedExpr pass name
 
 normalisationError :: (MonadError CompileError m) => Doc () -> Doc () -> m b
 normalisationError pass name =
@@ -132,19 +137,19 @@ illTypedError pass name =
   compilerDeveloperError $
     unexpectedExpr pass name <+> "This is ill-typed."
 
-visibilityError :: (MonadError CompileError m) => Doc () -> Doc () -> Doc () -> m b
+visibilityError :: Doc () -> Doc () -> Doc () -> m b
 visibilityError pass fun args =
-  compilerDeveloperError $
+  developerError $
     unexpectedExpr pass args <+> "Does not match function's visibility:" <+> fun
 
 -- | Throw this when you encounter a case that should have been resolved during
 -- type-checking, e.g. holes or metas.
-resolutionError :: (MonadError CompileError m) => Doc () -> Doc () -> m b
+resolutionError :: Doc () -> Doc () -> m b
 resolutionError pass name =
-  compilerDeveloperError $
+  developerError $
     unexpectedExpr pass name <+> "We should have resolved this during type-checking."
 
-caseError :: (MonadError CompileError m) => Doc () -> Doc () -> [Doc ()] -> m b
+caseError :: (MonadError CompileError m) => Doc () -> Doc () -> [Doc ()] -> m a
 caseError pass name cases =
   compilerDeveloperError $
     unexpectedExpr pass name
@@ -152,9 +157,9 @@ caseError pass name cases =
       <+> "following cases:"
       <+> list cases
 
-internalScopingError :: (MonadError CompileError m) => Doc () -> Identifier -> m b
+internalScopingError :: Doc () -> Identifier -> a
 internalScopingError pass ident =
-  compilerDeveloperError $
+  developerError $
     "Internal scoping error during"
       <+> pass
       <> ":"
@@ -162,9 +167,9 @@ internalScopingError pass ident =
         <+> quotePretty ident
         <+> "not found in scope..."
 
-outOfBoundsError :: (MonadError CompileError m) => Doc () -> GenericBoundCtx a -> Ix -> m b
+outOfBoundsError :: Doc () -> GenericBoundCtx a -> Ix -> b
 outOfBoundsError pass ctx i =
-  compilerDeveloperError $
+  developerError $
     "Internal scoping error during"
       <+> pass
       <> ":"
@@ -176,7 +181,7 @@ outOfBoundsError pass ctx i =
 -- | Looks up the declaration associated the provided `Identifier`, throwing
 -- an error if that identifier is out of scope.
 lookupInFreeCtx ::
-  (MonadError CompileError m) =>
+  (MonadLogger m) =>
   Doc () ->
   Identifier ->
   GenericFreeCtx a ->
@@ -188,23 +193,21 @@ lookupInFreeCtx pass ident ctx = case Map.lookup ident ctx of
 -- | Looks up the value associated with the variable given the provided `Lv`, throwing
 -- an error if that level is out of scope.
 lookupLvInBoundCtx ::
-  (MonadError CompileError m) =>
   Doc () ->
   Lv ->
   GenericBoundCtx a ->
-  m a
+  a
 lookupLvInBoundCtx pass lv ctx = case lookupLv ctx lv of
   Nothing -> outOfBoundsError pass ctx (dbLevelToIndex (Lv $ length ctx) lv)
-  Just x -> return x
+  Just x -> x
 
 -- | Looks up the value associated with the variable given the provided `Ix`, throwing
 -- an error if that index is out of scope.
 lookupIxInBoundCtx ::
-  (MonadError CompileError m) =>
   Doc () ->
   Ix ->
   GenericBoundCtx a ->
-  m a
+  a
 lookupIxInBoundCtx pass ix ctx = case lookupIx ctx ix of
   Nothing -> outOfBoundsError pass ctx ix
-  Just x -> return x
+  Just x -> x

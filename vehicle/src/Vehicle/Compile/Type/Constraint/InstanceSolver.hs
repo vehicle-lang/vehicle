@@ -10,10 +10,10 @@ import Data.Maybe (catMaybes, fromMaybe)
 import Data.Proxy (Proxy (..))
 import Prettyprinter (list)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Error.Message (MeaningfulError (..))
 import Vehicle.Compile.Normalise.NBE (normaliseInEnv)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (PrintableBuiltin, prettyExternal, prettyFriendly)
+import Vehicle.Compile.Print.Error (MeaningfulError (..))
 import Vehicle.Compile.Type (runUnificationSolver)
 import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Core

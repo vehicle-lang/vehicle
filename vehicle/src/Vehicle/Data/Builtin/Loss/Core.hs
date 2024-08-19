@@ -54,8 +54,7 @@ data LossBuiltin
   | ZipWithVector
   | Indices
   | ForeachIndex
-  | Maximise
-  | Minimise
+  | Search
   deriving (Show, Eq, Generic)
 
 -- instance Hashable TensorBuiltin
@@ -95,8 +94,7 @@ instance ConvertableBuiltin LossBuiltin V.Builtin where
     Indices -> builtinFunction V.Indices
     ListType -> builtinType V.List
     ForeachIndex -> freeVar StdForeachIndex
-    Maximise {} -> cheatConvertBuiltin mempty "maximise"
-    Minimise {} -> cheatConvertBuiltin mempty "minimise"
+    Search {} -> cheatConvertBuiltin mempty "search"
     where
       builtinConstructor = V.Builtin p . V.BuiltinConstructor
       builtinFunction = V.Builtin p . V.BuiltinFunction

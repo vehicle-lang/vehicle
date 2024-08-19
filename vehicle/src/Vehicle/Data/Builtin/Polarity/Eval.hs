@@ -2,9 +2,8 @@
 
 module Vehicle.Data.Builtin.Polarity.Eval where
 
-import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError)
 import Vehicle.Compile.Normalise.Builtin hiding (evalFoldList)
-import Vehicle.Compile.Prelude (GenericArg (..), explicit)
+import Vehicle.Compile.Prelude (GenericArg (..), MonadLogger, explicit)
 import Vehicle.Data.Builtin.Polarity.Core (PolarityBuiltin)
 import Vehicle.Data.Builtin.Polarity.Core qualified as P
 import Vehicle.Data.Builtin.Standard.Core
@@ -14,7 +13,7 @@ import Vehicle.Prelude
 instance NormalisableBuiltin PolarityBuiltin where
   evalBuiltinApp = evalTypeClassOp evalBuiltinFunction
 
-evalBuiltinFunction :: (MonadCompile m) => BuiltinFunction -> EvalBuiltin (Value closure PolarityBuiltin) m
+evalBuiltinFunction :: (MonadLogger m) => BuiltinFunction -> EvalBuiltin (Value closure PolarityBuiltin) m
 evalBuiltinFunction b evalApp originalValue args = case b of
   Quantifier {} -> return originalValue
   Not -> return $ evalNot originalValue args
@@ -50,8 +49,8 @@ evalBuiltinFunction b evalApp originalValue args = case b of
   Indices -> notImplemented
   Implies -> notImplemented
   where
-    notImplemented :: (MonadCompile m) => m a
-    notImplemented = compilerDeveloperError $ "Normalisation of " <+> pretty b <+> "at the type-level not yet supported for Polarity system"
+    notImplemented :: (MonadLogger m) => m a
+    notImplemented = developerError $ "Normalisation of " <+> pretty b <+> "at the type-level not yet supported for Polarity system"
 
 -- Need foldList at the type-level to evaluate the Tensor definition
 evalFoldList :: EvalBuiltin (Value closure PolarityBuiltin) m

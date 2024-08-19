@@ -29,7 +29,7 @@ appHiddenStdlibDef fn spine = do
     Nothing -> developerError $ "Unexpected found" <+> quotePretty fn <+> "to have no body"
 
 mkDeclCtxEntry ::
-  (MonadFreeContext builtin m, NormalisableBuiltin builtin) =>
+  (MonadLogger m, MonadFreeContext builtin m, NormalisableBuiltin builtin) =>
   Proxy normBuiltin ->
   Decl Ix builtin ->
   m (FreeCtxEntry builtin)
@@ -38,7 +38,7 @@ mkDeclCtxEntry _ decl = do
   return (decl, normDecl)
 
 addDeclToContext ::
-  (MonadFreeContext builtin m, NormalisableBuiltin builtin) =>
+  (MonadLogger m, MonadFreeContext builtin m, NormalisableBuiltin builtin) =>
   Proxy normBuiltin ->
   Decl Ix builtin ->
   m a ->
