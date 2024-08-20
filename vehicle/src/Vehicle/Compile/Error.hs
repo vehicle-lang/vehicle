@@ -34,7 +34,6 @@ type MonadCompile m =
 --------------------------------------------------------------------------------
 -- Compilation errors
 
-
 data CompileError
   = DevError (Doc ())
   | -- Parse errors
