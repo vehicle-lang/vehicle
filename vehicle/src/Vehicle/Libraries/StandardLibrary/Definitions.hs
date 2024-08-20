@@ -11,7 +11,9 @@ import Vehicle.Syntax.AST
 import Vehicle.Syntax.Builtin
 
 pattern TensorIdent :: Identifier
-pattern TensorIdent = Identifier (ModulePath [StdLib]) "Tensor"
+pattern TensorIdent <- Identifier (ModulePath [StdLib]) "Tensor"
+  where
+    TensorIdent = Identifier (ModulePath [StdLib]) "Tensor"
 
 data StdLibFunction
   = StdTypeAnn
