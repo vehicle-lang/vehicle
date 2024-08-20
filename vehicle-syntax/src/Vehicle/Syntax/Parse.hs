@@ -3,6 +3,7 @@ module Vehicle.Syntax.Parse
     UnparsedExpr,
     PartiallyParsedProg,
     PartiallyParsedDecl,
+    ParseLocation,
     readAndParseProg,
     parseDecl,
     parseExpr,
@@ -14,6 +15,7 @@ import Control.Monad.Except (MonadError (..))
 import Data.Text (Text)
 import Vehicle.Syntax.AST
 import Vehicle.Syntax.BNFC.Elaborate.External
+import Vehicle.Syntax.BNFC.Utils (ParseLocation)
 import Vehicle.Syntax.Builtin
 import Vehicle.Syntax.External.Abs qualified as External (Expr, Prog)
 import Vehicle.Syntax.External.Layout as External (resolveLayout)
@@ -24,14 +26,14 @@ import Vehicle.Syntax.Parse.Error (ParseError (..))
 --------------------------------------------------------------------------------
 -- Interface
 
-readAndParseProg :: (MonadError ParseError m) => Module -> Text -> m PartiallyParsedProg
+readAndParseProg :: (MonadError ParseError m) => ParseLocation -> Text -> m PartiallyParsedProg
 readAndParseProg modul txt =
   castBNFCError (partiallyElabProg modul) (parseExternalProg txt)
 
-parseDecl :: (MonadError ParseError m) => Module -> PartiallyParsedDecl -> m (Decl Name Builtin)
+parseDecl :: (MonadError ParseError m) => ParseLocation -> PartiallyParsedDecl -> m (Decl Name Builtin)
 parseDecl = elaborateDecl
 
-parseExpr :: (MonadError ParseError m) => Module -> UnparsedExpr -> m (Expr Name Builtin)
+parseExpr :: (MonadError ParseError m) => ParseLocation -> UnparsedExpr -> m (Expr Name Builtin)
 parseExpr = elaborateExpr
 
 readExpr :: (MonadError ParseError m) => Text -> m UnparsedExpr

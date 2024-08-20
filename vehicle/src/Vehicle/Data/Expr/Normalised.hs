@@ -97,7 +97,7 @@ cheatEnvToValues = fmap envEntryToValue
   where
     envEntryToValue :: EnvEntry closure builtin -> Value closure builtin
     envEntryToValue (binder, value) = do
-      let ident = Identifier StdLib (fromMaybe "_" (nameOf binder) <> " =")
+      let ident = stdlibIdentifier (fromMaybe "_" (nameOf binder) <> " =")
       VFreeVar ident [explicit value]
 
 type FreeEnv closure builtin = Map Identifier (VDecl closure builtin)

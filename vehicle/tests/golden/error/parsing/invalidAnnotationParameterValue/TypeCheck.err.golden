@@ -1,1 +1,1 @@
-Error at Line 1, Columns 20-23: unable to parse the value 'xsd' for option 'infer'
+Error in file 'invalidAnnotationParameterValue.vcl' at Line 1, Columns 20-23: unable to parse the value 'xsd' for option 'infer'

@@ -88,7 +88,6 @@ instance Exception ProducedFilesError
 
 handleProducedFilesError :: ProducedFilesError -> IO Result
 handleProducedFilesError ProducedFilesError {..} = do
-  print stdoutDiff
   let message =
         unlines . catMaybes $
           [ case stderrDiff of

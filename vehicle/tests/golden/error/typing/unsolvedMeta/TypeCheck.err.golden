@@ -1,2 +1,2 @@
-Error at Line 2, Columns 8-14: insufficient information to find a valid type for the overloaded expression 'forall'.
+Error in file 'unsolvedMeta.vcl' at Line 2, Columns 8-14: insufficient information to find a valid type for the overloaded expression 'forall'.
 Fix: try adding more type annotations

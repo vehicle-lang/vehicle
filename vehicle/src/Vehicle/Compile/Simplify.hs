@@ -54,7 +54,7 @@ instance Simplify (Expr Name Builtin) where
               normAppList
                 (Builtin p (BuiltinConstructor (LVec n)))
                 [ firstArg,
-                  Arg p Explicit Relevant (FreeVar p (Identifier StdLib ("<" <> n2 <> " more>"))),
+                  Arg p Explicit Relevant (FreeVar p (stdlibIdentifier ("<" <> n2 <> " more>"))),
                   lastArg
                 ]
           where

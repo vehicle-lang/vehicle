@@ -11,7 +11,9 @@ import Vehicle.Syntax.AST
 import Vehicle.Syntax.Builtin
 
 pattern TensorIdent :: Identifier
-pattern TensorIdent = Identifier StdLib "Tensor"
+pattern TensorIdent <- Identifier (ModulePath [StdLib]) "Tensor"
+  where
+    TensorIdent = Identifier (ModulePath [StdLib]) "Tensor"
 
 data StdLibFunction
   = StdTypeAnn
@@ -61,7 +63,7 @@ instance Pretty StdLibFunction where
 instance Hashable StdLibFunction
 
 instance HasIdentifier StdLibFunction where
-  identifierOf f = Identifier StdLib $ pack $ show f
+  identifierOf f = stdlibIdentifier $ pack $ show f
 
 stdLibFunctions :: Map Name StdLibFunction
 stdLibFunctions = Map.fromList $ fmap (\f -> (pack $ show f, f)) [minBound .. maxBound]

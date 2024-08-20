@@ -1,2 +1,2 @@
-Error at Line 1, Columns 1-5: no definition provided for the declaration 'test'.
+Error in file 'spec.vcl' at Line 1, Columns 1-5: no definition provided for the declaration 'test'.
 Fix: either provide a definition for 'test' or mark it as an external resource by adding an appropriate annotation, i.e. @network, @dataset or @parameter.

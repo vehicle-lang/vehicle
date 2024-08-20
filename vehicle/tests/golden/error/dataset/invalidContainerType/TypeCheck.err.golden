@@ -1,4 +1,4 @@
-Error at Line 2, Columns 1-16: The type of @dataset 'trainingDataset':
+Error in file 'invalidContainerType.vcl' at Line 2, Columns 1-16: The type of @dataset 'trainingDataset':
   Nat
 is not supported. Only the following types are allowed for datasets:
   List, Vector, Tensor

@@ -51,7 +51,7 @@ typeCheck loggingSettings options@TypeCheckOptions {..} = runCompileMonad loggin
 --------------------------------------------------------------------------------
 -- Useful functions that apply to multiple compiler passes
 
-parseAndTypeCheckExpr :: (MonadIO m, MonadCompile m) => Text -> m (Expr Ix Builtin)
+parseAndTypeCheckExpr :: (MonadIO m, MonadCompile m) => (FilePath, Text) -> m (Expr Ix Builtin)
 parseAndTypeCheckExpr expr = do
   standardLibraryProg <- loadLibrary standardLibrary
   freeCtx <- createFreeCtx [standardLibraryProg]
@@ -60,10 +60,11 @@ parseAndTypeCheckExpr expr = do
   typedExpr <- typeCheckExpr standardBuiltinInstances freeCtx scopedExpr
   convertBackToStandardBuiltin typedExpr
 
-parseExprText :: (MonadCompile m) => Text -> m (Expr Name Builtin)
-parseExprText txt =
-  case runExcept (parseExpr User =<< readExpr txt) of
-    Left err -> throwError $ ParseError User err
+parseExprText :: (MonadCompile m) => (FilePath, Text) -> m (Expr Name Builtin)
+parseExprText (file, txt) = do
+  let location = (ModulePath [User], file)
+  case runExcept (parseExpr location =<< readExpr txt) of
+    Left err -> throwError $ ParseError location err
     Right expr -> return expr
 
 typeCheckUserProg ::
@@ -79,7 +80,7 @@ typeCheckUserProg TypeCheckOptions {..} = do
 -- not load networks and datasets from disk.
 typeCheckProgram ::
   (MonadIO m, MonadCompile m) =>
-  Module ->
+  ParseLocation ->
   Imports ->
   SpecificationText ->
   m (Prog Ix Builtin)
@@ -98,22 +99,22 @@ typeCheckOrLoadProg ::
   Imports ->
   FilePath ->
   m (Prog Ix Builtin)
-typeCheckOrLoadProg modul imports specificationFile = do
+typeCheckOrLoadProg modl imports specificationFile = do
   spec <- readSpecification specificationFile
   interfaceFileResult <- readObjectFile specificationFile spec
   case interfaceFileResult of
     Just result -> return result
     Nothing -> do
-      result <- typeCheckProgram modul imports spec
+      result <- typeCheckProgram (ModulePath [modl], specificationFile) imports spec
       writeObjectFile specificationFile spec result
       return result
 
-parseProgText :: (MonadCompile m) => Module -> Text -> m (Prog Name Builtin)
-parseProgText modul txt = do
-  case runExcept (readAndParseProg modul txt) of
-    Left err -> throwError $ ParseError modul err
-    Right prog -> case traverseDecls (parseDecl modul) prog of
-      Left err -> throwError $ ParseError modul err
+parseProgText :: (MonadCompile m) => ParseLocation -> Text -> m (Prog Name Builtin)
+parseProgText location txt = do
+  case runExcept (readAndParseProg location txt) of
+    Left err -> throwError $ ParseError location err
+    Right prog -> case traverseDecls (parseDecl location) prog of
+      Left err -> throwError $ ParseError location err
       Right prog' -> return prog'
 
 loadLibrary :: (MonadIO m, MonadCompile m) => Library -> m (Prog Ix Builtin)

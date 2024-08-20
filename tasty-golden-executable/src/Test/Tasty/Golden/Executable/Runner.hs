@@ -412,8 +412,6 @@ acceptTestProduced testProduces (IgnoreFiles testIgnores) = do
           NonEmpty.prependList
             otherTestSpecsBefore
             $ NonEmpty.appendList (NonEmpty.singleton acceptTestSpec) otherTestSpecsAfter
-    liftIO $ putStrLn "Hi2"
-    liftIO $ print acceptTestSpecsList
     let acceptTestSpecs = TestSpecs acceptTestSpecsList
     lift $ writeTestSpecsFile (testDirectory </> testSpecsFileName) acceptTestSpecs
   -- Remove the outdated .golden files:

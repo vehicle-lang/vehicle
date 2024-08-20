@@ -25,7 +25,7 @@ import Vehicle.Data.Builtin.Tensor (TensorBuiltin)
 import Vehicle.Data.Builtin.Tensor qualified as T
 import Vehicle.Data.Expr.Normalised
 import Vehicle.Data.Tensor
-import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (StdForeachIndex))
+import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (StdForeachIndex), pattern TensorIdent)
 import Vehicle.Prelude.Warning
 import Vehicle.Syntax.Builtin
 
@@ -195,7 +195,7 @@ convertVectorType = \case
       Nothing -> do
         declProv <- getDeclProvenance
         boundCtx <- getNamedBoundCtx (Proxy @MixedLossValue)
-        let vecType = VFreeVar (Identifier User "Vector") [Arg mempty Explicit Relevant elemType, Arg mempty Explicit Relevant size]
+        let vecType = VFreeVar TensorIdent [Arg mempty Explicit Relevant elemType, Arg mempty Explicit Relevant size]
         throwError $ HigherOrderVectors declProv boundCtx vecType elemType
   _ -> unexpectedExprError currentPass "Vector has incorrect number of arguments"
 

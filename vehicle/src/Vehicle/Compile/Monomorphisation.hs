@@ -156,7 +156,7 @@ performMonomorphisation ::
 performMonomorphisation (p, ident, anns, typ, body) createNewName args = do
   newIdent <-
     if createNewName
-      then Identifier (moduleOf ident) <$> getMonomorphisedName (nameOf ident) args
+      then changeName ident <$> getMonomorphisedName (nameOf ident) args
       else return ident
   (newType, newBody) <- substituteArgsThrough (typ, body, args)
   tell (Map.singleton (ident, args) newIdent)
@@ -278,7 +278,7 @@ removeLiteralCoercions nameJoiner (Main ds) =
     getVectorCoercion :: Identifier -> Maybe StdLibFunction
     getVectorCoercion ident = do
       let typeJoiner = getTypeJoiner nameJoiner
-      let shortIdent = Identifier (moduleOf ident) $ fst $ Text.breakOn typeJoiner (nameOf ident)
+      let shortIdent = changeName ident $ fst $ Text.breakOn typeJoiner (nameOf ident)
       findStdLibFunction shortIdent
 
     updateBuiltin :: Decl Ix Builtin -> BuiltinUpdate m Ix Builtin Builtin

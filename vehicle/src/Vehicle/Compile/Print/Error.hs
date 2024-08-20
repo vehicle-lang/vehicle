@@ -52,7 +52,7 @@ data VehicleError
 instance Pretty VehicleError where
   pretty (UError (UserError p prob probFix)) =
     unAnnotate $
-      "Error at"
+      "Error in"
         <+> pretty p
         <> ":"
           <+> prob
@@ -1090,24 +1090,24 @@ instance MeaningfulError CompileError where
           Left err -> errorInSubsystemMessage "locate the original source of the non-linearity" err
           Right source -> case source of
             LinearTimesLinear opProv lhs rhs ->
-              "In particular the multiplication at"
+              "In particular the multiplication in"
                 <+> pretty opProv
                 <+> "involves"
                 <> prettyLinearityProvenance lhs "left hand side of the multiplication"
                 <> "and"
                 <> prettyLinearityProvenance rhs "right hand side of the multiplication"
             DivideByLinear opProv rhs ->
-              "In particular the division at"
+              "In particular the division in"
                 <+> pretty opProv
                 <+> "involves"
                 <> prettyLinearityProvenance rhs "denominator of the division"
             PowLinearBase opProv lhs ->
-              "In particular the power at"
+              "In particular the power in"
                 <+> pretty opProv
                 <+> "involves"
                 <> prettyLinearityProvenance lhs "base of the power"
             PowLinearExponent opProv lhs ->
-              "In particular the power at"
+              "In particular the power in"
                 <+> pretty opProv
                 <+> "involves"
                 <> prettyLinearityProvenance lhs "exponent of the power"
@@ -1319,7 +1319,7 @@ prettyPolarityProvenance topQuantifierProv topQuantifier bottomQuantifierProvena
     go :: Quantifier -> PolarityProvenance -> [Doc a]
     go q = \case
       QuantifierProvenance p ->
-        ["the inner quantifier is the" <+> quotePretty q <+> "located at" <+> pretty p]
+        ["the inner quantifier is the" <+> quotePretty q <+> "located in" <+> pretty p]
       NegateProvenance p pp ->
         transform p ("the" <+> quotePretty Not) : go (neg q) pp
       LHSImpliesProvenance p pp ->
@@ -1330,7 +1330,7 @@ prettyPolarityProvenance topQuantifierProv topQuantifier bottomQuantifierProvena
         surround p (prettyAuxiliaryFunctionProvenance position) : go q pp
       where
         surround p x =
-          "which is" <+> x <+> "at" <+> pretty p
+          "which is" <+> x <+> "in" <+> pretty p
 
         transform p x =
           surround p ("turned into" <+> prettyQuantifierArticle q <+> "by" <+> x)
@@ -1339,7 +1339,7 @@ prettyPolarityProvenance topQuantifierProv topQuantifier bottomQuantifierProvena
     finalLine =
       "which alternates with the outer"
         <+> quotePretty topQuantifier
-        <+> "at"
+        <+> "in"
         <+> pretty topQuantifierProv
 
 prettyLinearityProvenance :: forall a. LinearityProvenance -> Doc a -> Doc a
@@ -1349,11 +1349,11 @@ prettyLinearityProvenance lp location =
     go :: LinearityProvenance -> [Doc a]
     go = \case
       QuantifiedVariableProvenance p v ->
-        ["the quantified variable" <+> quotePretty v <+> "introduced at" <+> pretty p]
+        ["the quantified variable" <+> quotePretty v <+> "introduced in" <+> pretty p]
       NetworkOutputProvenance p networkName ->
-        ["the output of network" <+> squotes (pretty networkName) <+> "at" <+> pretty p]
+        ["the output of network" <+> squotes (pretty networkName) <+> "in" <+> pretty p]
       LinFunctionProvenance p pp position ->
-        (prettyAuxiliaryFunctionProvenance position <+> "at" <+> pretty p) : go pp
+        (prettyAuxiliaryFunctionProvenance position <+> "in" <+> pretty p) : go pp
 
     finalLine :: Doc a
     finalLine = "which is used in the" <+> location

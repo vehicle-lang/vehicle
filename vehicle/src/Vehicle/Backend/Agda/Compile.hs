@@ -911,7 +911,7 @@ pattern TensorType ::
   Expr Name Builtin
 pattern TensorType p tElem tDims <-
   App
-    (FreeVar p (Identifier StdLib "Tensor"))
+    (FreeVar p TensorIdent)
     [ RelevantExplicitArg _ tElem,
       IrrelevantExplicitArg _ tDims
       ]
