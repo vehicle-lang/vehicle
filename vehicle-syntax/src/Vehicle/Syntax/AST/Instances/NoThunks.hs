@@ -75,6 +75,7 @@ instance NoThunks MetaID
 
 -- Vehicle.Syntax.AST.Name
 instance NoThunks Module
+instance NoThunks ModulePath
 instance NoThunks Identifier
 
 -- Vehicle.Syntax.AST.Prog
