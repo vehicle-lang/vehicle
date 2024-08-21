@@ -39,7 +39,7 @@ typeStandardBuiltin p b = fromDSL p $ case b of
 --------------------------------------------------------------------------------
 -- Type classes
 
-typeOfTypeClass :: (HasStandardTypes builtin) => TypeClass -> DSLExpr builtin
+typeOfTypeClass :: (BuiltinHasStandardTypes builtin) => TypeClass -> DSLExpr builtin
 typeOfTypeClass tc = case tc of
   HasEq {} -> type0 ~> type0 ~> type0
   HasOrd {} -> type0 ~> type0 ~> type0
@@ -56,7 +56,7 @@ typeOfTypeClass tc = case tc of
   HasRatLits -> type0 ~> type0
   HasVecLits {} -> tNat ~> type0 ~> type0
 
-typeOfTypeClassOp :: (HasStandardBuiltins builtin, HasStandardTypeClasses builtin) => TypeClassOp -> DSLExpr builtin
+typeOfTypeClassOp :: (HasStandardBuiltins builtin, BuiltinHasStandardTypeClasses builtin) => TypeClassOp -> DSLExpr builtin
 typeOfTypeClassOp b = case b of
   NegTC -> typeOfTCOp1 hasNeg
   AddTC -> typeOfTCOp2 hasAdd
@@ -154,7 +154,7 @@ typeOfBuiltinConstructor = \case
   LRat {} -> tRat
   LVec n -> typeOfVectorLiteral n
 
-typeOfIf :: (HasStandardTypes builtin) => DSLExpr builtin
+typeOfIf :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin
 typeOfIf =
   forAll "A" type0 $ \t ->
     tBool ~> t ~> t ~> t
@@ -172,16 +172,16 @@ typeOfTCOp2 constraint =
       forAll "C" type0 $ \t3 ->
         constraint t1 t2 t3 ~~~> t1 ~> t2 ~> t3
 
-typeOfTCComparisonOp :: (HasStandardTypes builtin) => (DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
+typeOfTCComparisonOp :: (BuiltinHasStandardTypes builtin) => (DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
 typeOfTCComparisonOp constraint =
   forAll "A" type0 $ \t1 ->
     forAll "B" type0 $ \t2 ->
       constraint t1 t2 ~~~> typeOfComparisonOp t1 t2
 
-typeOfComparisonOp :: (HasStandardTypes builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+typeOfComparisonOp :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 typeOfComparisonOp t1 t2 = t1 ~> t2 ~> tBool
 
-typeOfIndices :: (HasStandardTypes builtin) => DSLExpr builtin
+typeOfIndices :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin
 typeOfIndices =
   pi (Just "n") Explicit Relevant tNat $ \n -> tVector (tIndex n) n
 

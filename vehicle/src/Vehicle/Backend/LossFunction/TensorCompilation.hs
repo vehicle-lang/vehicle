@@ -12,6 +12,7 @@ import Data.Maybe (fromMaybe)
 import Data.Proxy (Proxy (..))
 import Data.Ratio
 import Vehicle.Backend.LossFunction.Core
+-- import Vehicle.Backend.LossFunction.Domain (Domain (..), extractSearchDomain)
 import Vehicle.Backend.LossFunction.LogicCompilation
 import Vehicle.Backend.Prelude (DifferentiableLogicID)
 import Vehicle.Compile.Context.Bound
@@ -23,7 +24,7 @@ import Vehicle.Data.Builtin.Loss (LossBuiltin)
 import Vehicle.Data.Builtin.Loss qualified as L
 import Vehicle.Data.Builtin.Tensor (TensorBuiltin)
 import Vehicle.Data.Builtin.Tensor qualified as T
-import Vehicle.Data.Expr.Normalised
+import Vehicle.Data.Expr.Value
 import Vehicle.Data.Tensor
 import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (StdForeachIndex), pattern TensorIdent)
 import Vehicle.Prelude.Warning
@@ -119,10 +120,8 @@ convertClosure lv binder closure = case closure of
   StandardClos (WHNFClosure env standardExpr) -> do
     let newEnv = extendEnvWithBound lv binder env
     convertExprToTensorValue newEnv standardExpr
-  LossClos (LossClosure env lossExpr) -> do
-    let newEnv = extendEnvWithBound lv binder env
-    normLossExpr <- switchToMonadLogic $ normLossExprToLoss newEnv lossExpr
-    convertLossToTensorValue normLossExpr
+  LossClos (LossClosure _env _lossExpr) -> do
+    compilerDeveloperError "Impossible"
 
 convertBuiltins :: (MonadTensor m) => LossBuiltin -> MixedLossSpine -> m (NFValue TensorBuiltin)
 convertBuiltins b args = do
@@ -144,8 +143,8 @@ convertBuiltins b args = do
     L.Index i -> VBuiltin (T.Index i) <$> normArgs
     L.Bool v -> return $ T.VBoolTensor (Tensor [] [v])
     L.Nat v -> VBuiltin (T.Nat v) <$> normArgs
-    L.Rat v -> return $ constRatTensor (T.convertRat v)
-    L.Vector -> convertVector =<< normArgs
+    L.Rat v -> return $ constRatTensor v
+    L.Vector {} -> convertVector =<< normArgs
     ----------------
     -- Operations --
     ----------------
@@ -167,16 +166,43 @@ convertBuiltins b args = do
     L.FoldList -> VBuiltin T.FoldList <$> normArgs
     L.MapList -> VBuiltin T.MapList <$> normArgs
     L.ForeachIndex -> convertForeachIndex =<< normArgs
-    ----------------------
-    -- Other operations --
-    ----------------------
-    L.Search -> do
-      let op = T.SearchRatTensor
-      boundCtx <- getNamedBoundCtx (Proxy @MixedLossValue)
-      let namedCtx = fmap (fromMaybe "<nameless>") boundCtx
-      VBuiltin (op namedCtx) <$> normArgs
+    L.Search -> convertSearch args
   where
     unsupportedTypeError op = compilerDeveloperError $ "Conversion of" <+> pretty op <+> "not yet supported"
+
+convertSearch :: (MonadTensor m) => MixedLossSpine -> m (NFValue TensorBuiltin)
+convertSearch args = do
+  boundCtx <- getNamedBoundCtx (Proxy @MixedLossValue)
+  let namedCtx = fmap (fromMaybe "<nameless>") boundCtx
+  VBuiltin (T.SearchRatTensor namedCtx) <$> traverseArgs convertLossToTensorValue args
+
+{-
+case args of
+  [unionOp, argExpr -> VLam binder (StandardClos closure)] -> do
+    -- Extract the context
+    boundCtx <- getNamedBoundCtx (Proxy @MixedLossValue)
+    let namedCtx = fmap (fromMaybe "<nameless>") boundCtx
+
+    -- Convert the union operation (for combining search results) and the binder.
+    tensorUnionOp <- traverse convertLossToTensorValue unionOp
+    tensorBinder <- traverse convertLossToTensorValue binder
+
+    -- Extract the domain for the search
+    declProv <- getDeclProvenance
+    (Domain {..}, newBody) <- extractSearchDomain declProv binder (boundCtxLv boundCtx) closure
+    let tensorLowerBounds = explicit lowerBound
+    let tensorUpperBounds = explicit upperBound
+
+    -- Convert the new body of the predicate
+    lossBody <- switchToMonadLogic $ convertToLossBuiltins newBody
+    tensorPredicate <- explicit . VLam tensorBinder . NFClosure <$> convertLossToTensorValue lossBody
+
+    -- Extract the domain for the search
+    let newArgs = [tensorUnionOp, tensorLowerBounds, tensorUpperBounds, tensorPredicate]
+
+    return $ VBuiltin (T.SearchRatTensor namedCtx) newArgs
+  _ -> unexpectedExprError currentPass (prettyVerbose $ VBuiltin L.Search args)
+-}
 
 convertVectorType :: (MonadTensor m) => [NFArg TensorBuiltin] -> m (NFValue TensorBuiltin)
 convertVectorType = \case
@@ -218,9 +244,6 @@ convertVector args = case args of
       comp mk f xs = case traverse (f . argExpr) xs of
         Just constantTensors -> mk $ stack constantTensors
         Nothing -> VBuiltin (T.StackRatTensor (length (a : as))) args
-
-constRatTensor :: T.Rat -> NFValue TensorBuiltin
-constRatTensor v = VBuiltin (T.ConstRatTensor v) [explicit (VBuiltin T.NilList [])]
 
 extendConstRatTensor :: T.Rat -> NFValue TensorBuiltin -> NFArg TensorBuiltin -> NFValue TensorBuiltin
 extendConstRatTensor x dim dims = do

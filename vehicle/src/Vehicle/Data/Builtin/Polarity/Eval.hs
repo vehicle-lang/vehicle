@@ -7,7 +7,7 @@ import Vehicle.Compile.Prelude (GenericArg (..), MonadLogger, explicit)
 import Vehicle.Data.Builtin.Polarity.Core (PolarityBuiltin)
 import Vehicle.Data.Builtin.Polarity.Core qualified as P
 import Vehicle.Data.Builtin.Standard.Core
-import Vehicle.Data.Expr.Normalised
+import Vehicle.Data.Expr.Value
 import Vehicle.Prelude
 
 instance NormalisableBuiltin PolarityBuiltin where

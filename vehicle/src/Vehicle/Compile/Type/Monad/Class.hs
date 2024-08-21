@@ -27,7 +27,7 @@ import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Meta.Substitution as MetaSubstitution (MetaSubstitutable (..))
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Standard.Core
-import Vehicle.Data.Expr.Normalised
+import Vehicle.Data.Expr.Value
 
 --------------------------------------------------------------------------------
 -- Solved meta-state
@@ -132,7 +132,7 @@ instance (MonadTypeChecker builtin m) => MonadTypeChecker builtin (BoundContextT
 -- Abstract interface for a type system.
 
 -- | A class that provides an abstract interface for a set of builtins.
-class (HasStandardData builtin, TypableBuiltin builtin) => HasTypeSystem builtin where
+class (Eq builtin, BuiltinHasStandardData builtin, TypableBuiltin builtin) => HasTypeSystem builtin where
   convertFromStandardBuiltins ::
     (MonadTypeChecker builtin m) =>
     BuiltinUpdate m Ix Builtin builtin

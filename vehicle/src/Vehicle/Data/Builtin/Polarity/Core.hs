@@ -6,11 +6,9 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), (<+>))
-import Vehicle.Compile.Print (PrintableBuiltin (..))
-import Vehicle.Data.Builtin.Interface (ConvertableBuiltin (..), HasStandardData (..))
+import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.DSL
-import Vehicle.Data.Expr.Interface
-import Vehicle.Data.Expr.Normalised
+import Vehicle.Data.Expr.Value
 import Vehicle.Prelude (layoutAsText)
 import Vehicle.Syntax.AST
 import Vehicle.Syntax.Builtin hiding (Builtin (BuiltinConstructor, BuiltinFunction))
@@ -128,7 +126,7 @@ instance Pretty PolarityBuiltin where
     Polarity l -> pretty l
     PolarityRelation c -> pretty c
 
-instance HasStandardData PolarityBuiltin where
+instance BuiltinHasStandardData PolarityBuiltin where
   mkBuiltinFunction = BuiltinFunction
   getBuiltinFunction = \case
     BuiltinFunction c -> Just c
@@ -141,29 +139,29 @@ instance HasStandardData PolarityBuiltin where
 
   getBuiltinTypeClassOp = const Nothing
 
-instance HasBoolLits (Value closure PolarityBuiltin) where
-  mkBoolLit _p b = VBuiltin (BuiltinConstructor (LBool b)) []
-  getBoolLit = \case
-    VBuiltin (BuiltinConstructor (LBool b)) [] -> Just (mempty, b)
+instance BuiltinHasBoolLiterals PolarityBuiltin where
+  mkBoolBuiltinLit b = BuiltinConstructor (LBool b)
+  getBoolBuiltinLit = \case
+    BuiltinConstructor (LBool b) -> Just b
     _ -> Nothing
 
-instance HasIndexLits (Value closure PolarityBuiltin) where
-  getIndexLit e = case e of
-    VBuiltin (BuiltinConstructor (LIndex n)) [] -> Just (mempty, n)
+instance BuiltinHasIndexLiterals PolarityBuiltin where
+  getIndexBuiltinLit e = case e of
+    BuiltinConstructor (LIndex n) -> Just n
     _ -> Nothing
-  mkIndexLit _p x = VBuiltin (BuiltinConstructor (LIndex x)) mempty
+  mkIndexBuiltinLit x = BuiltinConstructor (LIndex x)
 
-instance HasNatLits (Value closure PolarityBuiltin) where
-  getNatLit e = case e of
-    VBuiltin (BuiltinConstructor (LNat b)) [] -> Just (mempty, b)
+instance BuiltinHasNatLiterals PolarityBuiltin where
+  getNatBuiltinLit e = case e of
+    BuiltinConstructor (LNat b) -> Just b
     _ -> Nothing
-  mkNatLit _p x = VBuiltin (BuiltinConstructor (LNat x)) mempty
+  mkNatBuiltinLit x = BuiltinConstructor (LNat x)
 
-instance HasRatLits (Value closure PolarityBuiltin) where
-  getRatLit e = case e of
-    VBuiltin (BuiltinConstructor (LRat b)) [] -> Just (mempty, b)
+instance BuiltinHasRatLiterals PolarityBuiltin where
+  getRatBuiltinLit e = case e of
+    BuiltinConstructor (LRat b) -> Just b
     _ -> Nothing
-  mkRatLit _p x = VBuiltin (BuiltinConstructor (LRat x)) mempty
+  mkRatBuiltinLit x = BuiltinConstructor (LRat x)
 
 instance ConvertableBuiltin PolarityBuiltin S.Builtin where
   convertBuiltin p = \case

@@ -5,96 +5,84 @@ module Vehicle.Data.Builtin.Standard.Core
   )
 where
 
-import Data.List.NonEmpty (NonEmpty (..))
-import Vehicle.Data.Expr.Interface
-import Vehicle.Data.Expr.Normalised
-import Vehicle.Syntax.AST
+import Vehicle.Data.Builtin.Interface
 import Vehicle.Syntax.Builtin as Syntax
 
 -----------------------------------------------------------------------------
--- Literal instances for `Value`
+-- Classes
 
-instance HasBoolLits (Value closure Builtin) where
-  mkBoolLit _p b = VBuiltin (BuiltinConstructor (LBool b)) []
-  getBoolLit = \case
-    VBuiltin (BuiltinConstructor (LBool b)) [] -> Just (mempty, b)
+instance BuiltinHasBoolLiterals Builtin where
+  mkBoolBuiltinLit b = BuiltinConstructor (LBool b)
+  getBoolBuiltinLit = \case
+    BuiltinConstructor (LBool b) -> Just b
     _ -> Nothing
 
-instance HasIndexLits (Value closure Builtin) where
-  getIndexLit e = case e of
-    VBuiltin (BuiltinConstructor (LIndex n)) [] -> Just (mempty, n)
+instance BuiltinHasIndexLiterals Builtin where
+  getIndexBuiltinLit e = case e of
+    BuiltinConstructor (LIndex n) -> Just n
     _ -> Nothing
-  mkIndexLit _p x = VBuiltin (BuiltinConstructor (LIndex x)) mempty
+  mkIndexBuiltinLit x = BuiltinConstructor (LIndex x)
 
-instance HasNatLits (Value closure Builtin) where
-  getNatLit e = case e of
-    VBuiltin (BuiltinConstructor (LNat b)) [] -> Just (mempty, b)
+instance BuiltinHasNatLiterals Builtin where
+  getNatBuiltinLit e = case e of
+    BuiltinConstructor (LNat b) -> Just b
     _ -> Nothing
-  mkNatLit _p x = VBuiltin (BuiltinConstructor (LNat x)) mempty
+  mkNatBuiltinLit x = BuiltinConstructor (LNat x)
 
-instance HasRatLits (Value closure Builtin) where
-  getRatLit e = case e of
-    VBuiltin (BuiltinConstructor (LRat b)) [] -> Just (mempty, b)
+instance BuiltinHasRatLiterals Builtin where
+  getRatBuiltinLit e = case e of
+    BuiltinConstructor (LRat b) -> Just b
     _ -> Nothing
-  mkRatLit _p x = VBuiltin (BuiltinConstructor (LRat x)) mempty
+  mkRatBuiltinLit x = BuiltinConstructor (LRat x)
 
-instance HasStandardVecLits (Value closure Builtin) where
-  mkHomoVector t xs = VBuiltin (BuiltinConstructor (LVec (length xs))) (t : xs)
-  getHomoVector = \case
-    VBuiltin (BuiltinConstructor (LVec _)) (t : xs) -> Just (t, xs)
+instance BuiltinHasListLiterals Builtin where
+  isBuiltinNil e = case e of
+    BuiltinConstructor Nil -> True
+    _ -> False
+  mkBuiltinNil = BuiltinConstructor Nil
+
+  isBuiltinCons e = case e of
+    BuiltinConstructor Cons -> True
+    _ -> False
+  mkBuiltinCons = BuiltinConstructor Cons
+
+instance BuiltinHasVecLiterals Builtin where
+  getVecBuiltinLit e = case e of
+    BuiltinConstructor (LVec n) -> Just n
     _ -> Nothing
+  mkVecBuiltinLit n = BuiltinConstructor (LVec n)
 
-instance HasStandardListLits (Value closure Builtin) where
-  getNil e = case getConstructor e of
-    Just (p, Nil, [t]) -> Just (p, t)
-    _ -> Nothing
-  mkNil t = mkConstructor mempty Nil [t]
+instance PrintableBuiltin Builtin where
+  isCoercion = \case
+    BuiltinFunction FromNat {} -> True
+    BuiltinFunction FromRat {} -> True
+    TypeClassOp FromNatTC {} -> True
+    TypeClassOp FromRatTC {} -> True
+    TypeClassOp FromVecTC {} -> True
+    _ -> False
 
-  getCons e = case getConstructor e of
-    Just (_p, Cons, [t, x, xs]) -> Just (t, x, xs)
-    _ -> Nothing
-  mkCons t x xs = mkConstructor mempty Cons [t, x, xs]
+instance BuiltinHasStandardTypeClasses Builtin where
+  mkBuiltinTypeClass = TypeClass
 
------------------------------------------------------------------------------
--- Literal intstances for `Expr`
-
-instance HasBoolLits (Expr var Builtin) where
-  getBoolLit e = case e of
-    Builtin _ (BuiltinConstructor (LBool b)) -> Just (mempty, b)
-    _ -> Nothing
-  mkBoolLit p x = Builtin p (BuiltinConstructor (LBool x))
-
-instance HasIndexLits (Expr var Builtin) where
-  getIndexLit e = case e of
-    BuiltinExpr _ (BuiltinConstructor (LIndex n)) [] -> Just (mempty, n)
-    _ -> Nothing
-  mkIndexLit p x = Builtin p (BuiltinConstructor (LIndex x))
-
-instance HasNatLits (Expr var Builtin) where
-  getNatLit e = case e of
-    Builtin _ (BuiltinConstructor (LNat b)) -> Just (mempty, b)
-    _ -> Nothing
-  mkNatLit p x = Builtin p (BuiltinConstructor (LNat x))
-
-instance HasRatLits (Expr var Builtin) where
-  getRatLit e = case e of
-    Builtin _ (BuiltinConstructor (LRat b)) -> Just (mempty, b)
-    _ -> Nothing
-  mkRatLit p x = Builtin p (BuiltinConstructor (LRat x))
-
-instance HasStandardVecLits (Expr var Builtin) where
-  mkHomoVector t xs = BuiltinExpr mempty (BuiltinConstructor (LVec (length xs))) (t :| xs)
-  getHomoVector = \case
-    BuiltinExpr _ (BuiltinConstructor (LVec _)) (t :| xs) -> Just (t, xs)
+instance BuiltinHasStandardTypes Builtin where
+  mkBuiltinType = BuiltinType
+  getBuiltinType = \case
+    BuiltinType c -> Just c
     _ -> Nothing
 
-instance HasStandardListLits (Expr var Builtin) where
-  getNil e = case getConstructor e of
-    Just (p, Nil, [t]) -> Just (p, t)
-    _ -> Nothing
-  mkNil t = mkConstructor mempty Nil [t]
+  mkNatInDomainConstraint = NatInDomainConstraint
 
-  getCons e = case getConstructor e of
-    Just (_p, Cons, [t, x, xs]) -> Just (t, x, xs)
+instance BuiltinHasStandardData Builtin where
+  mkBuiltinFunction = BuiltinFunction
+  getBuiltinFunction = \case
+    BuiltinFunction c -> Just c
     _ -> Nothing
-  mkCons t x xs = mkConstructor mempty Cons [t, x, xs]
+
+  mkBuiltinConstructor = BuiltinConstructor
+  getBuiltinConstructor = \case
+    BuiltinConstructor c -> Just c
+    _ -> Nothing
+
+  getBuiltinTypeClassOp = \case
+    TypeClassOp op -> Just op
+    _ -> Nothing

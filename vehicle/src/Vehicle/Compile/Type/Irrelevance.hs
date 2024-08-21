@@ -16,7 +16,7 @@ import Vehicle.Data.Expr.Interface
 
 -- | Removes all irrelevant code from the program/expression.
 removeIrrelevantCodeFromProg ::
-  (MonadCompile m, HasStandardData builtin, PrintableBuiltin builtin) =>
+  (MonadCompile m, BuiltinHasStandardData builtin, PrintableBuiltin builtin) =>
   Prog Ix builtin ->
   m (Prog Ix builtin)
 removeIrrelevantCodeFromProg x = do
@@ -44,7 +44,7 @@ instance (RemoveIrrelevantCode m expr) => RemoveIrrelevantCode m (GenericProg ex
 instance (RemoveIrrelevantCode m expr) => RemoveIrrelevantCode m (GenericDecl expr) where
   remove = traverse remove
 
-instance (HasStandardData builtin) => RemoveIrrelevantCode m (Expr Ix builtin) where
+instance (BuiltinHasStandardData builtin) => RemoveIrrelevantCode m (Expr Ix builtin) where
   remove expr = do
     -- showRemoveEntry expr
     result <- case expr of

@@ -17,7 +17,7 @@ import Vehicle.Data.Builtin.Polarity.Core as Core hiding (BuiltinFunction)
 import Vehicle.Data.Builtin.Polarity.Eval ()
 import Vehicle.Data.Builtin.Polarity.PolaritySolver
 import Vehicle.Data.Builtin.Polarity.Type
-import Vehicle.Data.Expr.Normalised
+import Vehicle.Data.Expr.Value
 import Vehicle.Syntax.Builtin hiding (Builtin (..))
 import Vehicle.Syntax.Builtin qualified as S
 

@@ -16,7 +16,7 @@ import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Meta.Variable
 import Vehicle.Compile.Type.Monad
 import Vehicle.Data.Builtin.Interface
-import Vehicle.Data.Expr.Normalised
+import Vehicle.Data.Expr.Value
 
 class HasInstanceDefaults builtin where
   getCandidatesFromConstraint ::

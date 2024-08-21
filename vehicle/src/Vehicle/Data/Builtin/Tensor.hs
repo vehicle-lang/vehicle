@@ -6,8 +6,8 @@ import Vehicle.Compile.Arity (Arity)
 import Vehicle.Data.Builtin.Interface (ConvertableBuiltin (..), PrintableBuiltin (..))
 import Vehicle.Data.Builtin.Standard.Core ()
 import Vehicle.Data.Expr.Interface
-import Vehicle.Data.Expr.Normalised
 import Vehicle.Data.Expr.Standard (cheatConvertBuiltin)
+import Vehicle.Data.Expr.Value
 import Vehicle.Data.Tensor (Tensor (..))
 import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (..))
 import Vehicle.Prelude.Prettyprinter

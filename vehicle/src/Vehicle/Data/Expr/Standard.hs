@@ -1,15 +1,19 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
+
 module Vehicle.Data.Expr.Standard where
 
 import Control.Monad.Identity (Identity (..))
 import Control.Monad.Writer (MonadWriter (..), execWriter)
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Prettyprinter (Doc)
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.DeBruijn (Ix (..), substDBInto)
+import Vehicle.Data.Expr.Interface
 import Vehicle.Prelude (layoutAsText)
-import Vehicle.Syntax.AST as X
+import Vehicle.Syntax.AST (Arg, Binder, Expr (..), Identifier, Provenance, argExpr, getBuiltinApp, getFreeVarApp, normAppList, stdlibIdentifier, pattern BuiltinExpr)
 
 -----------------------------------------------------------------------------
 -- Traversing builtins
@@ -136,3 +140,81 @@ convertExprBuiltins ::
   Expr var builtin2
 convertExprBuiltins = mapBuiltins $ \p b args ->
   normAppList (convertBuiltin p b) args
+
+-----------------------------------------------------------------------------
+-- Instances
+
+instance (BuiltinHasStandardTypes builtin) => HasStandardTypes (Expr var builtin) where
+  mkType p b = normAppList (Builtin p (mkBuiltinType b))
+  getType e = case getBuiltinApp e of
+    Just (p, b, args) -> case getBuiltinType b of
+      Just t -> Just (p, t, args)
+      Nothing -> Nothing
+    _ -> Nothing
+
+instance (BuiltinHasStandardData builtin) => HasStandardData (Expr var builtin) where
+  mkFunction p b = normAppList (Builtin p (mkBuiltinFunction b))
+  getFunction e = case getBuiltinApp e of
+    Just (p, b, args) -> case getBuiltinFunction b of
+      Just f -> Just (p, f, args)
+      Nothing -> Nothing
+    _ -> Nothing
+
+  mkConstructor p b = normAppList (Builtin p (mkBuiltinConstructor b))
+  getConstructor e = case getBuiltinApp e of
+    Just (p, b, args) -> case getBuiltinConstructor b of
+      Just f -> Just (p, f, args)
+      Nothing -> Nothing
+    _ -> Nothing
+
+  mkFreeVar p ident = normAppList (FreeVar p ident)
+  getFreeVar e = case getFreeVarApp e of
+    Just (p, ident, args) -> Just (p, ident, args)
+    _ -> Nothing
+
+  getTypeClassOp e = case getBuiltinApp e of
+    Just (p, b, args) -> case getBuiltinTypeClassOp b of
+      Just f -> Just (p, f, args)
+      Nothing -> Nothing
+    _ -> Nothing
+
+instance (BuiltinHasBoolLiterals builtin) => HasBoolLits (Expr var builtin) where
+  getBoolLit e = case e of
+    Builtin _ (getBoolBuiltinLit -> Just b) -> Just (mempty, b)
+    _ -> Nothing
+  mkBoolLit p x = Builtin p (mkBoolBuiltinLit x)
+
+instance (BuiltinHasIndexLiterals builtin) => HasIndexLits (Expr var builtin) where
+  getIndexLit e = case e of
+    Builtin _ (getIndexBuiltinLit -> Just i) -> Just (mempty, i)
+    _ -> Nothing
+  mkIndexLit p i = Builtin p (mkIndexBuiltinLit i)
+
+instance (BuiltinHasNatLiterals builtin) => HasNatLits (Expr var builtin) where
+  getNatLit e = case e of
+    Builtin _ (getNatBuiltinLit -> Just n) -> Just (mempty, n)
+    _ -> Nothing
+  mkNatLit p n = Builtin p (mkNatBuiltinLit n)
+
+instance (BuiltinHasRatLiterals builtin) => HasRatLits (Expr var builtin) where
+  getRatLit e = case e of
+    Builtin _ (getRatBuiltinLit -> Just r) -> Just (mempty, r)
+    _ -> Nothing
+  mkRatLit p r = Builtin p (mkRatBuiltinLit r)
+
+instance (BuiltinHasVecLiterals builtin) => HasStandardVecLits (Expr var builtin) where
+  getHomoVector = \case
+    BuiltinExpr _ (getVecBuiltinLit -> Just {}) (t :| xs) -> Just (t, xs)
+    _ -> Nothing
+  mkHomoVector t xs = BuiltinExpr mempty (mkVecBuiltinLit (length xs)) (t :| xs)
+
+instance (BuiltinHasListLiterals builtin) => HasStandardListLits (Expr var builtin) where
+  getNil = \case
+    BuiltinExpr p (isBuiltinNil -> True) [t] -> Just (p, t)
+    _ -> Nothing
+  mkNil t = BuiltinExpr mempty mkBuiltinNil [t]
+
+  getCons = \case
+    BuiltinExpr p (isBuiltinCons -> True) [t, x, xs] -> Just (p, t, x, xs)
+    _ -> Nothing
+  mkCons t x xs = BuiltinExpr mempty mkBuiltinCons [t, x, xs]

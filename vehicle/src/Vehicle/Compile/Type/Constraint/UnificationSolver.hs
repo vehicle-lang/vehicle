@@ -27,7 +27,7 @@ import Vehicle.Compile.Type.Meta.Set qualified as MetaSet (null, singleton)
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Data.DeBruijn
-import Vehicle.Data.Expr.Normalised
+import Vehicle.Data.Expr.Value
 
 --------------------------------------------------------------------------------
 -- Unification solver

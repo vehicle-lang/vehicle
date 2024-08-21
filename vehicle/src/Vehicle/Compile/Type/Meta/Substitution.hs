@@ -13,7 +13,7 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Meta.Variable (MetaInfo (..))
-import Vehicle.Data.Expr.Normalised
+import Vehicle.Data.Expr.Value
 
 --------------------------------------------------------------------------------
 -- Substitution operation

@@ -9,9 +9,9 @@ import Data.Foldable (foldrM)
 import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (PrintableBuiltin)
-import Vehicle.Data.Builtin.Interface (HasStandardData (..))
+import Vehicle.Data.Builtin.Interface (BuiltinHasStandardData (..))
 import Vehicle.Data.Expr.Interface
-import Vehicle.Data.Expr.Normalised
+import Vehicle.Data.Expr.Value
 import Vehicle.Syntax.Builtin
 
 -- Okay so the important thing to remember about this module is that we have
@@ -65,7 +65,7 @@ class (PrintableBuiltin builtin) => NormalisableBuiltin builtin where
     m (Value closure builtin)
 
 evalTypeClassOp ::
-  (MonadLogger m, HasStandardData builtin) =>
+  (MonadLogger m, BuiltinHasStandardData builtin, Show builtin) =>
   (BuiltinFunction -> EvalBuiltin (Value closure builtin) m) ->
   EvalApp (Value closure builtin) m ->
   Value closure builtin ->
@@ -149,7 +149,7 @@ evalIf originalExpr = \case
   _ -> originalExpr
 
 -- TODO define in terms of language. The problem is the polarity checking...
-evalImplies :: (HasStandardDataExpr expr, HasBoolLits expr) => EvalSimpleBuiltin expr
+evalImplies :: (HasStandardData expr, HasBoolLits expr) => EvalSimpleBuiltin expr
 evalImplies originalExpr = \case
   [e1, e2] -> do
     let ne1 = evalNot (INot (argExpr e1)) [e1]

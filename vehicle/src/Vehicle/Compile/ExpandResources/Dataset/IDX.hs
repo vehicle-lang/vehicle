@@ -23,7 +23,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Expr.Interface
-import Vehicle.Data.Expr.Normalised
+import Vehicle.Data.Expr.Value
 
 -- | Reads the IDX dataset from the provided file, checking that the user type
 -- matches the type of the stored data.

@@ -15,11 +15,11 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.DeBruijn (liftDBIndices)
-import Vehicle.Data.Expr.Normalised
+import Vehicle.Data.Expr.Value
 
 etaExpandProg ::
   forall m builtin.
-  (MonadCompile m, PrintableBuiltin builtin, HasStandardData builtin) =>
+  (MonadCompile m, PrintableBuiltin builtin, BuiltinHasStandardData builtin) =>
   Prog Ix builtin ->
   m (Prog Ix builtin)
 etaExpandProg (Main ds) =

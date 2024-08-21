@@ -154,8 +154,8 @@ library
     Vehicle.Data.Expr.DSL
     Vehicle.Data.Expr.Interface
     Vehicle.Data.Expr.Linear
-    Vehicle.Data.Expr.Normalised
     Vehicle.Data.Expr.Standard
+    Vehicle.Data.Expr.Value
     Vehicle.Data.Hashing
     Vehicle.Data.Tensor
     Vehicle.Export
@@ -180,6 +180,7 @@ library
     Vehicle.Backend.Agda.Interact
     Vehicle.Backend.LossFunction
     Vehicle.Backend.LossFunction.Core
+    Vehicle.Backend.LossFunction.Domain
     Vehicle.Backend.LossFunction.Logics
     Vehicle.Backend.Queries
     Vehicle.Backend.Queries.ConstraintSearch

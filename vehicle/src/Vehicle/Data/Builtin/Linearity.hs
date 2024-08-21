@@ -16,7 +16,7 @@ import Vehicle.Data.Builtin.Linearity.Core as Core
 import Vehicle.Data.Builtin.Linearity.Eval ()
 import Vehicle.Data.Builtin.Linearity.LinearitySolver
 import Vehicle.Data.Builtin.Linearity.Type
-import Vehicle.Data.Expr.Normalised
+import Vehicle.Data.Expr.Value
 import Vehicle.Syntax.Builtin hiding (Builtin (..))
 import Vehicle.Syntax.Builtin qualified as S
 

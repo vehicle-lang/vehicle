@@ -5,11 +5,11 @@ module Vehicle.Data.Hashing () where
 import Data.Hashable (Hashable (..))
 -- import GHC.Generics (Generic)
 
--- import Vehicle.Data.Expr.Normalised
+-- import Vehicle.Data.Expr.Value
 
 import GHC.Generics (Generic)
 import Vehicle.Data.DeBruijn
-import Vehicle.Data.Expr.Normalised (Value, WHNFClosure)
+import Vehicle.Data.Expr.Value (Value, WHNFClosure)
 import Vehicle.Syntax.AST
 
 -- We used to have full blown alpha-equivalence based on co-deBruijn indices

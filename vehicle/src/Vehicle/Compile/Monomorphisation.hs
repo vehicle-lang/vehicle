@@ -54,7 +54,7 @@ import Vehicle.Libraries.StandardLibrary.Definitions
 -- (e.g. naturals, rationals and tensors)
 monomorphise ::
   forall m builtin.
-  (MonadCompile m, Hashable builtin, PrintableBuiltin builtin, HasStandardData builtin) =>
+  (MonadCompile m, Hashable builtin, PrintableBuiltin builtin, BuiltinHasStandardData builtin) =>
   (Decl Ix builtin -> Bool) ->
   Text ->
   Prog Ix builtin ->

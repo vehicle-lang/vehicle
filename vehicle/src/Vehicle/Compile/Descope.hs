@@ -16,9 +16,9 @@ import Vehicle.Backend.LossFunction.Core (LossClosure (..), MixedClosure (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Interface (ConvertableBuiltin, convertBuiltin)
 import Vehicle.Data.Builtin.Standard.Core (Builtin)
-import Vehicle.Data.Expr.Normalised
 import Vehicle.Data.Expr.Relevant (RelBinder, RelExpr)
 import Vehicle.Data.Expr.Relevant qualified as R
+import Vehicle.Data.Expr.Value
 
 --------------------------------------------------------------------------------
 -- Interface

@@ -9,6 +9,7 @@ module Vehicle.Syntax.Builtin.BasicOperations
     orderOpName,
     Strictness (..),
     isStrict,
+    isForward,
     flipStrictness,
     flipOrder,
     chainable,
@@ -111,6 +112,9 @@ orderOpName = \case
 
 isStrict :: OrderOp -> Bool
 isStrict order = order == Lt || order == Gt
+
+isForward :: OrderOp -> Bool
+isForward order = order == Lt || order == Le
 
 flipStrictness :: OrderOp -> OrderOp
 flipStrictness = \case

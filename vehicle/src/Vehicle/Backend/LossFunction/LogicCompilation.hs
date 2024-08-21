@@ -4,7 +4,6 @@ module Vehicle.Backend.LossFunction.LogicCompilation
   ( compileLogic,
     convertToLossBuiltins,
     normStandardExprToLoss,
-    normLossExprToLoss,
     MonadLogicCtx,
     runMonadLogicT,
   )
@@ -29,7 +28,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
 import Vehicle.Data.Builtin.Loss
 import Vehicle.Data.Expr.Interface (pattern INot)
-import Vehicle.Data.Expr.Normalised (VBinder, Value (..), WHNFBoundEnv, WHNFClosure (..), WHNFValue, boundContextToEnv, extendEnvWithBound, extendEnvWithDefined)
+import Vehicle.Data.Expr.Value (VBinder, Value (..), WHNFBoundEnv, WHNFClosure (..), WHNFValue, boundContextToEnv, extendEnvWithBound, extendEnvWithDefined)
 import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (..))
 import Vehicle.Syntax.Builtin (Builtin)
 import Vehicle.Syntax.Builtin qualified as V
@@ -194,15 +193,7 @@ normStandardExprToLoss ::
   m MixedLossValue
 normStandardExprToLoss boundEnv expr = do
   standardValue <- normaliseInEnv boundEnv expr
-  result <- convertToLossBuiltins standardValue
-  return result
-
-normLossExprToLoss ::
-  (MonadLogic m) =>
-  MixedBoundEnv ->
-  Expr Ix LossBuiltin ->
-  m MixedLossValue
-normLossExprToLoss = eval mempty
+  convertToLossBuiltins standardValue
 
 convertToLossBuiltins ::
   forall m.
@@ -273,7 +264,7 @@ convertBuiltin builtin spine = convert builtin
       V.LIndex x -> unchangedBuiltin (Index x)
       V.LNat x -> unchangedBuiltin (Nat x)
       V.LRat x -> unchangedBuiltin (Rat x)
-      V.LVec _x -> unchangedBuiltin Vector
+      V.LVec n -> unchangedBuiltin $ Vector n
 
     convertBuiltinFunction :: V.BuiltinFunction -> m MixedLossValue
     convertBuiltinFunction b = case b of
