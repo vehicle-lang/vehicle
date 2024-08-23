@@ -22,11 +22,12 @@ import Data.Tuple (swap)
 import Vehicle.Backend.Queries.UserVariableElimination.Core
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
+import Vehicle.Data.Assertion
+import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.QuantifiedVariable
 import Vehicle.Prelude.Warning (CompileWarning (..))
-import Vehicle.Syntax.Builtin
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat (QueryFormat (..), QueryFormatID (..), queryFormatID)
 import Vehicle.Verify.Specification (QueryMetaData (QueryMetaData), queryAddress)
@@ -109,13 +110,13 @@ convertToNetworkRatVarAssertions = go
 
     convert :: Assertion -> m (BooleanExpr QueryAssertion)
     convert = \case
-      TensorEq (TensorEquality tensorEquality) -> do
+      TensorEq (Equality tensorEquality) -> do
         rationalEqualities <- reduceTensorExpr tensorEquality
-        let assertions = fmap (Query . RationalEq . RationalEquality) rationalEqualities
+        let assertions = fmap (Query . RationalEq . Equality) rationalEqualities
         go $ Conjunct $ ConjunctAll (NonEmpty.fromList assertions)
-      RationalEq (RationalEquality expr) ->
+      RationalEq (Equality expr) ->
         Query <$> makeQueryAssertion Equal expr
-      RationalIneq (RationalInequality strict expr) -> do
+      RationalIneq (Inequality strict expr) -> do
         let rel = if strict == Strict then LessThan else LessThanOrEqual
         Query <$> makeQueryAssertion rel expr
 

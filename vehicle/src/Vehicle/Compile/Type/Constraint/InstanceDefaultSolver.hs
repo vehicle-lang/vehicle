@@ -9,12 +9,12 @@ import Control.Monad (filterM, foldM)
 import Data.Proxy (Proxy (..))
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyVerbose)
+import Vehicle.Compile.Print (PrintableBuiltin, prettyVerbose)
 import Vehicle.Compile.Type.Constraint.Core (createInstanceUnification)
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Meta.Variable
-import Vehicle.Compile.Type.Monad
+import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Data.Code.Value
 
 class HasInstanceDefaults builtin where
@@ -28,13 +28,13 @@ class HasInstanceDefaults builtin where
   compareCandidates :: Candidate builtin -> Candidate builtin -> Maybe Ordering
 
 type MonadInstanceDefault builtin m =
-  ( TCM builtin m,
+  ( MonadTypeChecker builtin m,
     HasInstanceDefaults builtin
   )
 
 -- | Tries to add new unification constraints using default values.
 addNewConstraintUsingDefaults ::
-  (TCM builtin m, HasInstanceDefaults builtin) =>
+  (MonadTypeChecker builtin m, HasInstanceDefaults builtin) =>
   Maybe (Decl builtin) ->
   m Bool
 addNewConstraintUsingDefaults maybeDecl = do
@@ -67,13 +67,12 @@ getDefaultableConstraints ::
 getDefaultableConstraints maybeDecl = do
   typeClassConstraints <- getActiveInstanceConstraints
   case maybeDecl of
-    Nothing -> return typeClassConstraints
-    Just decl -> do
-      declType <- substMetas (typeOf decl)
-
+    Just decl | not (isAbstractDecl decl) -> do
       -- We only want to generate default solutions for constraints
       -- that *don't* appear in the type of the declaration, as those will be
       -- quantified over later.
+      declType <- substMetas (typeOf decl)
+
       constraints <- getActiveConstraints
       typeMetas <- getMetasLinkedToMetasIn constraints declType
 
@@ -84,6 +83,7 @@ getDefaultableConstraints maybeDecl = do
       flip filterM typeClassConstraints $ \tc -> do
         constraintMetas <- metasIn (objectIn tc)
         return $ MetaSet.disjoint constraintMetas typeMetas
+    _ -> return typeClassConstraints
 
 --------------------------------------------------------------------------------
 -- Default solutions to type-class constraints

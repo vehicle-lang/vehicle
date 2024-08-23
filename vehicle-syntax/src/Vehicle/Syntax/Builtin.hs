@@ -19,6 +19,27 @@ import Vehicle.Syntax.Builtin.BasicOperations as X
 import Vehicle.Syntax.Builtin.TypeClass as X
 
 --------------------------------------------------------------------------------
+-- Negation
+
+class Negatable a where
+  neg :: a -> a
+
+instance Negatable EqualityOp where
+  neg Eq = Neq
+  neg Neq = Eq
+
+instance Negatable OrderOp where
+  neg = \case
+    Le -> Gt
+    Lt -> Ge
+    Ge -> Lt
+    Gt -> Le
+
+instance Negatable Quantifier where
+  neg Forall = Exists
+  neg Exists = Forall
+
+--------------------------------------------------------------------------------
 -- Types
 
 -- | Constructors for types in the language. The types and type-classes

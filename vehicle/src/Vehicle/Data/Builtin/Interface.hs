@@ -1,7 +1,6 @@
 module Vehicle.Data.Builtin.Interface where
 
-import Vehicle.Syntax.Builtin
-import Prelude hiding (pi)
+import Vehicle.Data.Builtin.Core
 
 --------------------------------------------------------------------------------
 -- Interface to standard builtins
@@ -16,8 +15,6 @@ import Prelude hiding (pi)
 -- of builtins being used, and therefore allows us to define operations
 -- (e.g. normalisation) once, rather than once for each builtin type.
 
---------------------------------------------------------------------------------
--- Interface to content of standard builtins
 --------------------------------------------------------------------------------
 -- In these classes we need to separate out the types from the literals, as
 -- various sets of builtins may have the literals but not the types (e.g.
@@ -50,7 +47,7 @@ class BuiltinHasRatLiterals builtin where
   mkRatBuiltinLit :: Rational -> builtin
   getRatBuiltinLit :: builtin -> Maybe Rational
 
-class (BuiltinHasRatLiterals builtin) => HasRatTypeBuiltin builtin where
+class (BuiltinHasRatLiterals builtin) => BuiltinHasRatType builtin where
   mkRatBuiltinType :: builtin
   isRatBuiltinType :: builtin -> Bool
 
@@ -71,7 +68,7 @@ class BuiltinHasVecLiterals builtin where
   mkVecBuiltinLit :: Int -> builtin
   getVecBuiltinLit :: builtin -> Maybe Int
 
-class (BuiltinHasVecLiterals builtin) => HasVecTypeBuiltin builtin where
+class (BuiltinHasVecLiterals builtin) => BuiltinHasVecType builtin where
   mkVecBuiltinType :: builtin
   isVecBuiltinType :: builtin -> Bool
 
@@ -121,3 +118,25 @@ type HasStandardBuiltins builtin =
   ( BuiltinHasStandardTypes builtin,
     BuiltinHasStandardData builtin
   )
+
+--------------------------------------------------------------------------------
+-- HasTensorBuiltins
+
+class BuiltinHasRatTensor builtin where
+  mkRatTensorBuiltin :: RatTensorBuiltin -> builtin
+  getRatTensorBuiltin :: builtin -> Maybe RatTensorBuiltin
+
+class (BuiltinHasRatTensor builtin) => BuiltinHasBoolTensor builtin where
+  mkBoolTensorBuiltin :: BoolTensorBuiltin -> builtin
+  getBoolTensorBuiltin :: builtin -> Maybe BoolTensorBuiltin
+
+--------------------------------------------------------------------------------
+-- Dimension builtins
+
+class BuiltinHasDimensionTypes builtin where
+  mkDimensionTypeBuiltin :: DimensionTypeBuiltin -> builtin
+  getDimensionTypeBuiltin :: builtin -> Maybe DimensionTypeBuiltin
+
+class BuiltinHasDimensionData builtin where
+  mkDimensionDataBuiltin :: DimensionDataBuiltin -> builtin
+  getDimensionDataBuiltin :: builtin -> Maybe DimensionDataBuiltin

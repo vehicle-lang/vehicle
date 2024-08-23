@@ -26,7 +26,7 @@ import Vehicle.Data.DeBruijn
 -- metas that occur in the type of the declaration. It then appends these
 -- constraints as instance arguments to the declaration.
 generaliseOverUnsolvedConstraints ::
-  (TCM builtin m) =>
+  (MonadTypeChecker builtin m) =>
   Decl builtin ->
   m (Decl builtin)
 generaliseOverUnsolvedConstraints decl =
@@ -40,7 +40,7 @@ generaliseOverUnsolvedConstraints decl =
     return generalisedDecl
 
 generaliseOverConstraint ::
-  (TCM builtin m) =>
+  (MonadTypeChecker builtin m) =>
   [WithContext (Constraint builtin)] ->
   (Decl builtin, [WithContext (InstanceConstraint builtin)]) ->
   WithContext (InstanceConstraint builtin) ->
@@ -64,7 +64,7 @@ generaliseOverConstraint allConstraints (decl, rejected) c@(WithContext tc ctx) 
       return (generalisedDecl, rejected)
 
 prependConstraint ::
-  (TCM builtin m) =>
+  (MonadTypeChecker builtin m) =>
   Decl builtin ->
   WithContext (InstanceConstraint builtin) ->
   m (Decl builtin)
@@ -84,7 +84,7 @@ prependConstraint decl (WithContext (Resolve _origin meta relevance expr) ctx) =
 -- type and then solves the meta as that new variable.
 generaliseOverUnsolvedMetaVariables ::
   forall builtin m.
-  (TCM builtin m) =>
+  (MonadTypeChecker builtin m) =>
   Decl builtin ->
   m (Decl builtin)
 generaliseOverUnsolvedMetaVariables decl =
@@ -108,7 +108,7 @@ generaliseOverUnsolvedMetaVariables decl =
 
 quantifyOverMeta ::
   forall builtin m.
-  (TCM builtin m) =>
+  (MonadTypeChecker builtin m) =>
   Decl builtin ->
   MetaID ->
   m (Decl builtin)
@@ -138,7 +138,7 @@ isMeta _ = False
 
 prependBinderAndSolveMeta ::
   forall builtin m.
-  (TCM builtin m) =>
+  (MonadTypeChecker builtin m) =>
   MetaID ->
   BinderDisplayForm ->
   Visibility ->
@@ -185,7 +185,7 @@ prependBinderAndSolveMeta meta f v r binderType decl = do
 
 removeContextsOfMetasIn ::
   forall builtin m.
-  (TCM builtin m) =>
+  (MonadTypeChecker builtin m) =>
   Type builtin ->
   Decl builtin ->
   m (Type builtin, Decl builtin)

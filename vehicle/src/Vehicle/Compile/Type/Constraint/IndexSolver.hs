@@ -9,14 +9,14 @@ import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
-import Vehicle.Compile.Type.Monad
+import Vehicle.Compile.Type.Monad.Class
+import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
-import Vehicle.Syntax.Builtin
 
 solveIndexConstraint ::
   forall m.
-  (TCM Builtin m) =>
+  (MonadTypeChecker Builtin m) =>
   WithContext (InstanceConstraint Builtin) ->
   m ()
 solveIndexConstraint constraint = do
@@ -43,7 +43,7 @@ solveIndexConstraint constraint = do
 -- search.
 solveInDomain ::
   forall m.
-  (TCM Builtin m) =>
+  (MonadTypeChecker Builtin m) =>
   WithContext (InstanceConstraint Builtin) ->
   [WHNFType Builtin] ->
   m (Maybe MetaSet)
@@ -76,7 +76,7 @@ blockOnMetas args = do
 
 findLowerBound ::
   forall m.
-  (TCM Builtin m) =>
+  (MonadTypeChecker Builtin m) =>
   ConstraintContext Builtin ->
   WHNFType Builtin ->
   WHNFType Builtin ->

@@ -119,6 +119,7 @@ library
     Vehicle.Backend.Agda
     Vehicle.Backend.LossFunction.JSON
     Vehicle.Backend.LossFunction.LogicCompilation
+    Vehicle.Backend.LossFunction.LossCompilation
     Vehicle.Backend.LossFunction.TensorCompilation
     Vehicle.Backend.Prelude
     Vehicle.Backend.Queries.Error
@@ -126,6 +127,7 @@ library
     Vehicle.Compile
     Vehicle.Compile.Context.Bound
     Vehicle.Compile.Context.Free
+    Vehicle.Compile.Context.Name
     Vehicle.Compile.Context.Var
     Vehicle.Compile.Descope
     Vehicle.Compile.Error
@@ -147,7 +149,6 @@ library
     Vehicle.Data.Builtin.Interface
     Vehicle.Data.Builtin.Loss
     Vehicle.Data.Builtin.Standard
-    Vehicle.Data.Builtin.Tensor
     Vehicle.Data.Code.BooleanExpr
     Vehicle.Data.Code.DSL
     Vehicle.Data.Code.Expr
@@ -183,18 +184,18 @@ library
     Vehicle.Backend.LossFunction.Core
     Vehicle.Backend.LossFunction.Domain
     Vehicle.Backend.LossFunction.Logics
+    Vehicle.Backend.LossFunction.ZeroTensorLifting
     Vehicle.Backend.Queries
     Vehicle.Backend.Queries.ConstraintSearch
     Vehicle.Backend.Queries.PostProcessing
+    Vehicle.Backend.Queries.Unblock
     Vehicle.Backend.Queries.UserVariableElimination
     Vehicle.Backend.Queries.UserVariableElimination.Core
     Vehicle.Backend.Queries.UserVariableElimination.EliminateExists
-    Vehicle.Backend.Queries.UserVariableElimination.FourierMotzkinElimination
     Vehicle.Backend.Queries.UserVariableElimination.VariableReconstruction
     Vehicle.Compile.Arity
     Vehicle.Compile.Boolean.LiftIf
     Vehicle.Compile.Boolean.LowerNot
-    Vehicle.Compile.Boolean.Unblock
     Vehicle.Compile.Context.Bound.Class
     Vehicle.Compile.Context.Bound.Core
     Vehicle.Compile.Context.Bound.Instance
@@ -204,17 +205,31 @@ library
     Vehicle.Compile.Dependency
     Vehicle.Compile.EtaConversion
     Vehicle.Compile.ExpandResources.Dataset.IDX
+    Vehicle.Compile.FourierMotzkinElimination
     Vehicle.Compile.FunctionaliseResources
     Vehicle.Compile.Normalise.Builtin
     Vehicle.Compile.ObjectFile
     Vehicle.Compile.Prelude.Utils
+    Vehicle.Compile.Print.Builtin
     Vehicle.Compile.Print.Warning
     Vehicle.Compile.Rational.LinearExpr
     Vehicle.Compile.Type.Bidirectional
+    Vehicle.Compile.Type.Builtin
+    Vehicle.Compile.Type.Builtin.Linearity
+    Vehicle.Compile.Type.Builtin.Polarity
+    Vehicle.Compile.Type.Builtin.Standard
+    Vehicle.Compile.Type.Builtin.Tensor
     Vehicle.Compile.Type.Constraint.Core
     Vehicle.Compile.Type.Constraint.IndexSolver
+    Vehicle.Compile.Type.Constraint.InstanceBuiltins
+    Vehicle.Compile.Type.Constraint.InstanceDefaults
     Vehicle.Compile.Type.Constraint.InstanceDefaultSolver
     Vehicle.Compile.Type.Constraint.InstanceSolver
+    Vehicle.Compile.Type.Constraint.LinearityAnnotationRestrictions
+    Vehicle.Compile.Type.Constraint.LinearitySolver
+    Vehicle.Compile.Type.Constraint.PolarityAnnotationRestrictions
+    Vehicle.Compile.Type.Constraint.PolaritySolver
+    Vehicle.Compile.Type.Constraint.StandardAnnotationRestrictions
     Vehicle.Compile.Type.Constraint.UnificationSolver
     Vehicle.Compile.Type.Core
     Vehicle.Compile.Type.Force
@@ -230,27 +245,13 @@ library
     Vehicle.Compile.Type.Monad.Instance
     Vehicle.Compile.Type.Subsystem
     Vehicle.Compile.Type.Subsystem.InputOutputInsertion
+    Vehicle.Compile.Type.System
     Vehicle.Compile.Variable
+    Vehicle.Data.Assertion
+    Vehicle.Data.Builtin.Core
     Vehicle.Data.Builtin.Linearity
-    Vehicle.Data.Builtin.Linearity.AnnotationRestrictions
-    Vehicle.Data.Builtin.Linearity.Core
-    Vehicle.Data.Builtin.Linearity.Eval
-    Vehicle.Data.Builtin.Linearity.LinearitySolver
-    Vehicle.Data.Builtin.Linearity.Type
-    Vehicle.Data.Builtin.Loss.Core
-    Vehicle.Data.Builtin.Loss.Eval
     Vehicle.Data.Builtin.Polarity
-    Vehicle.Data.Builtin.Polarity.AnnotationRestrictions
-    Vehicle.Data.Builtin.Polarity.Core
-    Vehicle.Data.Builtin.Polarity.Eval
-    Vehicle.Data.Builtin.Polarity.PolaritySolver
-    Vehicle.Data.Builtin.Polarity.Type
-    Vehicle.Data.Builtin.Standard.AnnotationRestrictions
-    Vehicle.Data.Builtin.Standard.Core
-    Vehicle.Data.Builtin.Standard.Eval
-    Vehicle.Data.Builtin.Standard.InstanceBuiltins
-    Vehicle.Data.Builtin.Standard.InstanceDefaults
-    Vehicle.Data.Builtin.Standard.Type
+    Vehicle.Data.Builtin.Tensor
     Vehicle.Data.QuantifiedVariable
     Vehicle.Data.Universe
     Vehicle.Debug

@@ -3,6 +3,8 @@ module Vehicle.Prelude
   )
 where
 
+-- Need to export `Pretty Rational` instance but not the builtins
+import Vehicle.Data.Builtin.Core as X ()
 import Vehicle.Data.Meta as X
 import Vehicle.Prelude.IO as X
 import Vehicle.Prelude.Misc as X
@@ -18,6 +20,4 @@ import Vehicle.Syntax.AST.Provenance as X
 import Vehicle.Syntax.AST.Relevance as X
 import Vehicle.Syntax.AST.Type as X
 import Vehicle.Syntax.AST.Visibility as X
--- Need to export `Pretty Rational` instance
-import Vehicle.Syntax.Builtin as X ()
 import Vehicle.Syntax.Prelude as X

@@ -12,10 +12,10 @@ import Prettyprinter (list)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE (normaliseInEnv)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyExternal, prettyFriendly)
+import Vehicle.Compile.Print (PrintableBuiltin, prettyExternal, prettyFriendly)
 import Vehicle.Compile.Print.Error (MeaningfulError (..))
-import Vehicle.Compile.Type (runUnificationSolver)
 import Vehicle.Compile.Type.Constraint.Core
+import Vehicle.Compile.Type.Constraint.UnificationSolver (runUnificationSolver)
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
 import Vehicle.Data.Code.Value
@@ -41,7 +41,10 @@ resolveInstance allCandidates (WithContext constraint ctx) = do
 --------------------------------------------------------------------------------
 -- Algorithm
 
-type MonadInstance builtin m = TCM builtin m
+type MonadInstance builtin m =
+  MonadTypeChecker
+    builtin
+    m
 
 -- The algorithm for this is taken from
 -- https://agda.readthedocs.io/en/v2.6.2.2/language/instance-arguments.html#instance-resolution

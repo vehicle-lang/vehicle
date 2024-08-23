@@ -9,8 +9,27 @@ import Data.List.Split (chunksOf)
 import Data.Vector (Vector)
 import Data.Vector qualified as Vector
 import GHC.Generics (Generic)
-import Vehicle.Data.Code.LinearExpr
-import Vehicle.Prelude
+import Vehicle.Prelude.Misc (IsConstant (..), jsonOptions)
+import Vehicle.Prelude.Prettyprinter (Pretty (..), prettyFlatList, (<+>))
+import Vehicle.Syntax.Prelude (developerError)
+
+--------------------------------------------------------------------------------
+-- Indices
+
+type TensorShape = [Int]
+
+type TensorIndices = [Int]
+
+computeFlatIndex :: TensorShape -> TensorIndices -> Int
+computeFlatIndex = go
+  where
+    go :: TensorShape -> TensorIndices -> Int
+    go [] [] = 0
+    go (d : ds) (i : is) | i < d = i * product ds + go ds is
+    go ds is = developerError $ "Invalid flat tensor arguments" <+> pretty ds <+> pretty is
+
+showTensorIndices :: TensorIndices -> String
+showTensorIndices xs = concatMap (\v -> "!" <> show v) (reverse xs)
 
 --------------------------------------------------------------------------------
 -- Tensor constants
@@ -46,6 +65,9 @@ instance (IsConstant a) => IsConstant (Tensor a) where
   scaleConstant v = fmap (scaleConstant v)
   addConstants a b = zipWithTensor (addConstants a b)
 
+mapTensor :: (a -> b) -> Tensor a -> Tensor b
+mapTensor = fmap
+
 zipWithTensor :: (a -> b -> c) -> Tensor a -> Tensor b -> Tensor c
 zipWithTensor f t1 t2 =
   Tensor
@@ -53,9 +75,19 @@ zipWithTensor f t1 t2 =
       tensorValue = Vector.zipWith f (tensorValue t1) (tensorValue t2)
     }
 
+foldTensor :: (Tensor a -> b -> b) -> b -> Tensor a -> b
+foldTensor f e = \case
+  Tensor [] _ -> e
+  Tensor (_d : ds) xs -> do
+    let inputChunks = chunksOf (product ds) (Vector.toList xs)
+    let inputTensorChunks = fmap (Tensor ds . Vector.fromList) inputChunks
+    foldr f e inputTensorChunks
+
 stack :: NonEmpty (Tensor a) -> Tensor a
-stack tensors@(t :| ts) =
-  Tensor (length tensors : tensorShape t) (Vector.concat (fmap tensorValue (t : ts)))
+stack (t :| ts) = do
+  let dims = 1 + length ts : tensorShape t
+  let elems = Vector.concat (fmap tensorValue (t : ts))
+  Tensor dims elems
 
 foldMapTensor :: forall a b. (a -> b) -> (TensorShape -> [b] -> b) -> Tensor a -> b
 foldMapTensor mkValue mkVec (Tensor dims value) =
@@ -76,3 +108,6 @@ type RationalTensor = Tensor Rational
 
 zeroTensor :: TensorShape -> RationalTensor
 zeroTensor dims = Tensor dims (Vector.replicate (product dims) 0)
+
+singletonTensor :: a -> Tensor a
+singletonTensor a = Tensor [1] (Vector.singleton a)

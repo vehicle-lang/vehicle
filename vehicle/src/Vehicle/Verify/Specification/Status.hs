@@ -6,11 +6,11 @@ import Data.Text (Text, pack)
 import GHC.Generics (Generic)
 import System.Console.ANSI (Color (..))
 import Vehicle.Compile.Prelude
-import Vehicle.Data.Builtin.Standard.Core
+import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.BooleanExpr (MaybeTrivial (..))
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.QuantifiedVariable
-import Vehicle.Data.Tensor (RationalTensor)
+import Vehicle.Data.Tensor (RationalTensor, TensorShape)
 import Vehicle.Verify.Core
 import Vehicle.Verify.Specification
 

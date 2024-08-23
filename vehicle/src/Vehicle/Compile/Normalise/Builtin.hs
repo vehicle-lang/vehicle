@@ -8,10 +8,16 @@ import Control.Monad (zipWithM)
 import Data.Foldable (foldrM)
 import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Print.Builtin
+import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Interface (BuiltinHasStandardData (..))
+import Vehicle.Data.Builtin.Linearity (LinearityBuiltin (..))
+import Vehicle.Data.Builtin.Loss
+import Vehicle.Data.Builtin.Polarity (PolarityBuiltin (..))
+import Vehicle.Data.Builtin.Tensor
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
-import Vehicle.Syntax.Builtin
+import Vehicle.Data.Tensor (Tensor, foldTensor, mapTensor, zipWithTensor)
 
 -- Okay so the important thing to remember about this module is that we have
 -- a variety of different typing schemes for builtins (standard, polarity,
@@ -49,19 +55,6 @@ type Eval builtin m =
   (MonadCompile m) =>
   Expr builtin ->
   m (WHNFValue builtin)
-
--- | A type-class for builtins that can be normalised compositionally.
-class (PrintableBuiltin builtin) => NormalisableBuiltin builtin where
-  -- This function takes in the original expression (containing both relevant
-  -- and irrelevant arguments), the builtin that is in the head position
-  -- and the list of computationally relevant arguments.
-  evalBuiltinApp ::
-    (MonadLogger m) =>
-    EvalApp (Value closure builtin) m ->
-    Value closure builtin ->
-    builtin ->
-    Spine closure builtin ->
-    m (Value closure builtin)
 
 evalTypeClassOp ::
   (MonadLogger m, BuiltinHasStandardData builtin, Show builtin) =>
@@ -117,15 +110,42 @@ type EvalSimpleBuiltin expr =
   [GenericArg expr] ->
   expr
 
+evalOp1 ::
+  (expr -> Maybe (Provenance, a)) ->
+  (a -> b) ->
+  (Provenance -> b -> expr) ->
+  EvalSimpleBuiltin expr
+evalOp1 getArg op mkResult originalExpr = \case
+  [argExpr -> (getArg -> Just (p, x))] -> mkResult p (op x)
+  _ -> originalExpr
+
+evalOp2 ::
+  (expr -> Maybe (Provenance, a)) ->
+  (expr -> Maybe (Provenance, b)) ->
+  (a -> b -> c) ->
+  (Provenance -> c -> expr) ->
+  EvalSimpleBuiltin expr
+evalOp2 getArg1 getArg2 op mkResult originalExpr = \case
+  [argExpr -> (getArg1 -> Just (p, x)), argExpr -> (getArg2 -> Just (_, y))] -> mkResult p (op x y)
+  _ -> originalExpr
+
+evalReduceTensor ::
+  (expr -> Maybe (Provenance, Tensor a)) ->
+  (Tensor a -> Tensor a -> Tensor a) ->
+  (Provenance -> Tensor a -> expr) ->
+  EvalSimpleBuiltin expr
+evalReduceTensor getTensor f mkTensor originalExpr = \case
+  [argExpr -> (getTensor -> Just (_, e)), argExpr -> (getTensor -> Just (_, t))] ->
+    mkTensor mempty $ foldTensor f e t
+  _ -> originalExpr
+
 -----------------------------------------------------------------------------
 -- Individual builtin evaluation
 -----------------------------------------------------------------------------
 -- Bool
 
 evalNot :: (HasBoolLits expr) => EvalSimpleBuiltin expr
-evalNot originalExpr = \case
-  [argExpr -> IBoolLiteral _ x] -> IBoolLiteral mempty (not x)
-  _ -> originalExpr
+evalNot = evalOp1 getBoolLit not mkBoolLit
 
 evalAnd :: (HasBoolLits expr) => EvalSimpleBuiltin expr
 evalAnd originalExpr = \case
@@ -172,82 +192,52 @@ evalEqualsIndex op originalExpr = \case
 -- Nat
 
 evalAddNat :: (HasNatLits expr) => EvalSimpleBuiltin expr
-evalAddNat originalExpr = \case
-  [argExpr -> INatLiteral _ x, argExpr -> INatLiteral _ y] -> INatLiteral mempty (x + y)
-  _ -> originalExpr
+evalAddNat = evalOp2 getNatLit getNatLit (+) mkNatLit
 
 evalMulNat :: (HasNatLits expr) => EvalSimpleBuiltin expr
-evalMulNat originalExpr = \case
-  [argExpr -> INatLiteral _ x, argExpr -> INatLiteral _ y] -> INatLiteral mempty (x * y)
-  _ -> originalExpr
+evalMulNat = evalOp2 getNatLit getNatLit (*) mkNatLit
 
 evalOrderNat :: (HasBoolLits expr, HasNatLits expr) => OrderOp -> EvalSimpleBuiltin expr
-evalOrderNat op originalExpr = \case
-  [argExpr -> INatLiteral _ x, argExpr -> INatLiteral _ y] -> IBoolLiteral mempty (orderOp op x y)
-  _ -> originalExpr
+evalOrderNat op = evalOp2 getNatLit getNatLit (orderOp op) mkBoolLit
 
 evalEqualsNat :: (HasBoolLits expr, HasNatLits expr) => EqualityOp -> EvalSimpleBuiltin expr
-evalEqualsNat op originalExpr = \case
-  [argExpr -> INatLiteral _ x, argExpr -> INatLiteral _ y] -> IBoolLiteral mempty (equalityOp op x y)
-  _ -> originalExpr
+evalEqualsNat op = evalOp2 getNatLit getNatLit (equalityOp op) mkBoolLit
 
 evalFromNatToIndex :: (HasIndexLits expr, HasNatLits expr) => EvalSimpleBuiltin expr
-evalFromNatToIndex originalExpr = \case
-  [argExpr -> INatLiteral _ x] -> IIndexLiteral mempty x
-  _ -> originalExpr
+evalFromNatToIndex = evalOp1 getNatLit id mkIndexLit
 
 -----------------------------------------------------------------------------
 -- Rat
 
 evalNegRat :: (HasRatLits expr) => EvalSimpleBuiltin expr
-evalNegRat originalExpr = \case
-  [argExpr -> IRatLiteral _ x] -> IRatLiteral mempty (-x)
-  _ -> originalExpr
+evalNegRat = evalOp1 getRatLit (\x -> -x) mkRatLit
 
 evalAddRat :: (HasRatLits expr) => EvalSimpleBuiltin expr
-evalAddRat originalExpr = \case
-  [argExpr -> IRatLiteral _ x, argExpr -> IRatLiteral _ y] -> IRatLiteral mempty (x + y)
-  _ -> originalExpr
+evalAddRat = evalOp2 getRatLit getRatLit (+) mkRatLit
 
 evalSubRat :: (HasRatLits expr) => EvalSimpleBuiltin expr
-evalSubRat originalExpr = \case
-  [argExpr -> IRatLiteral _ x, argExpr -> IRatLiteral _ y] -> IRatLiteral mempty (x - y)
-  _ -> originalExpr
+evalSubRat = evalOp2 getRatLit getRatLit (-) mkRatLit
 
 evalMulRat :: (HasRatLits expr) => EvalSimpleBuiltin expr
-evalMulRat originalExpr = \case
-  [argExpr -> IRatLiteral _ x, argExpr -> IRatLiteral _ y] -> IRatLiteral mempty (x * y)
-  _ -> originalExpr
+evalMulRat = evalOp2 getRatLit getRatLit (*) mkRatLit
 
 evalDivRat :: (HasRatLits expr) => EvalSimpleBuiltin expr
-evalDivRat originalExpr = \case
-  [argExpr -> IRatLiteral _ x, argExpr -> IRatLiteral _ y] -> IRatLiteral mempty (x / y)
-  _ -> originalExpr
-
-evalPowRat :: (HasNatLits expr, HasRatLits expr) => EvalSimpleBuiltin expr
-evalPowRat originalExpr = \case
-  [argExpr -> IRatLiteral _ x, argExpr -> INatLiteral _ y] -> IRatLiteral mempty (x ^^ y)
-  _ -> originalExpr
+evalDivRat = evalOp2 getRatLit getRatLit (/) mkRatLit
 
 evalMinRat :: (HasRatLits expr) => EvalSimpleBuiltin expr
-evalMinRat originalExpr = \case
-  [argExpr -> IRatLiteral _ x, argExpr -> IRatLiteral _ y] -> IRatLiteral mempty (min x y)
-  _ -> originalExpr
+evalMinRat = evalOp2 getRatLit getRatLit min mkRatLit
 
 evalMaxRat :: (HasRatLits expr) => EvalSimpleBuiltin expr
-evalMaxRat originalExpr = \case
-  [argExpr -> IRatLiteral _ x, argExpr -> IRatLiteral _ y] -> IRatLiteral mempty (max x y)
-  _ -> originalExpr
+evalMaxRat = evalOp2 getRatLit getRatLit max mkRatLit
+
+evalPowRat :: (HasNatLits expr, HasRatLits expr) => EvalSimpleBuiltin expr
+evalPowRat = evalOp2 getRatLit getNatLit (^^) mkRatLit
 
 evalOrderRat :: (HasBoolLits expr, HasRatLits expr) => OrderOp -> EvalSimpleBuiltin expr
-evalOrderRat op originalExpr = \case
-  [argExpr -> IRatLiteral _ x, argExpr -> IRatLiteral _ y] -> IBoolLiteral mempty (orderOp op x y)
-  _ -> originalExpr
+evalOrderRat op = evalOp2 getRatLit getRatLit (orderOp op) mkBoolLit
 
 evalEqualsRat :: (HasBoolLits expr, HasRatLits expr) => EqualityOp -> EvalSimpleBuiltin expr
-evalEqualsRat op originalExpr = \case
-  [argExpr -> IRatLiteral _ x, argExpr -> IRatLiteral _ y] -> IBoolLiteral mempty (equalityOp op x y)
-  _ -> originalExpr
+evalEqualsRat op = evalOp2 getRatLit getRatLit (equalityOp op) mkBoolLit
 
 evalFromNatToNat :: EvalSimpleBuiltin expr
 evalFromNatToNat originalExpr = \case
@@ -255,9 +245,7 @@ evalFromNatToNat originalExpr = \case
   _ -> originalExpr
 
 evalFromNatToRat :: (HasRatLits expr, HasNatLits expr) => EvalSimpleBuiltin expr
-evalFromNatToRat originalExpr = \case
-  [argExpr -> INatLiteral _ x] -> IRatLiteral mempty (fromIntegral x)
-  _ -> originalExpr
+evalFromNatToRat = evalOp1 getNatLit fromIntegral mkRatLit
 
 evalFromRatToRat :: EvalSimpleBuiltin expr
 evalFromRatToRat originalExpr = \case
@@ -334,3 +322,354 @@ evalMapVector evalApp originalExpr = \case
     where
       f' x = explicit <$> evalApp f [x]
   _ -> return originalExpr
+
+-----------------------------------------------------------------------------
+-- Rational tensors
+
+evalRatTensorBuiltin :: (HasRatTensors expr, HasDimensionData expr) => RatTensorBuiltin -> EvalSimpleBuiltin expr
+evalRatTensorBuiltin b originalExpr args = case b of
+  RatTensor {} -> originalExpr
+  RatType {} -> originalExpr
+  RatLiteral {} -> originalExpr
+  SearchRatTensor {} -> originalExpr
+  NegRatTensor -> evalRatTensorOp1 (\x -> -x) originalExpr args
+  AddRatTensor -> evalAddRatTensor originalExpr args
+  SubRatTensor -> evalRatTensorOp2 (-) originalExpr args
+  MulRatTensor -> evalMulRatTensor originalExpr args
+  DivRatTensor -> evalRatTensorOp2 (/) originalExpr args
+  MinRatTensor -> evalMinRatTensor originalExpr args
+  MaxRatTensor -> evalMaxRatTensor originalExpr args
+  ReduceAddRatTensor -> evalReduceAddRatTensor originalExpr args
+  ReduceMulRatTensor -> evalReduceMulRatTensor originalExpr args
+  ReduceMinRatTensor -> evalReduceMinRatTensor originalExpr args
+  ReduceMaxRatTensor -> evalReduceMaxRatTensor originalExpr args
+
+evalRatTensorOp1 :: (HasRatTensors expr) => (Rational -> Rational) -> EvalSimpleBuiltin expr
+evalRatTensorOp1 op = evalOp1 getRatTensor (mapTensor op) mkRatTensor
+
+evalRatTensorOp2 :: (HasRatTensors expr) => (Rational -> Rational -> Rational) -> EvalSimpleBuiltin expr
+evalRatTensorOp2 op = evalOp2 getRatTensor getRatTensor (zipWithTensor op) mkRatTensor
+
+evalReduceRatTensor :: (HasRatTensors expr) => (Tensor Rational -> Tensor Rational -> Tensor Rational) -> EvalSimpleBuiltin expr
+evalReduceRatTensor f = evalReduceTensor getRatTensor f mkRatTensor
+
+evalAddRatTensor :: (HasRatTensors expr, HasDimensionData expr) => EvalSimpleBuiltin expr
+evalAddRatTensor originalExpr = \case
+  [argExpr -> e1, argExpr -> e2] -> case (e1, e2) of
+    (IRatTensor x, IRatTensor y) -> IRatTensor $ zipWithTensor (+) x y
+    (IRatConstTensor r _, _) | r == 0 -> e2
+    (_, IRatConstTensor r _) | r == 0 -> e1
+    _ -> originalExpr
+  _ -> originalExpr
+
+evalMulRatTensor :: (HasRatTensors expr, HasDimensionData expr) => EvalSimpleBuiltin expr
+evalMulRatTensor originalExpr = \case
+  [argExpr -> e1, argExpr -> e2] -> case (e1, e2) of
+    (IRatTensor x, IRatTensor y) -> IRatTensor $ zipWithTensor (*) x y
+    (IRatConstTensor r _, _) | r == 1 -> e2
+    (_, IRatConstTensor r _) | r == 1 -> e1
+    _ -> originalExpr
+  _ -> originalExpr
+
+evalMinRatTensor :: (HasRatTensors expr) => EvalSimpleBuiltin expr
+evalMinRatTensor = evalRatTensorOp2 min
+
+evalMaxRatTensor :: (HasRatTensors expr) => EvalSimpleBuiltin expr
+evalMaxRatTensor = evalRatTensorOp2 max
+
+evalReduceAddRatTensor :: (HasRatTensors expr) => EvalSimpleBuiltin expr
+evalReduceAddRatTensor = evalReduceRatTensor (zipWithTensor (+))
+
+evalReduceMulRatTensor :: (HasRatTensors expr) => EvalSimpleBuiltin expr
+evalReduceMulRatTensor = evalReduceRatTensor (zipWithTensor (*))
+
+evalReduceMinRatTensor :: (HasRatTensors expr) => EvalSimpleBuiltin expr
+evalReduceMinRatTensor = evalReduceRatTensor (zipWithTensor min)
+
+evalReduceMaxRatTensor :: (HasRatTensors expr) => EvalSimpleBuiltin expr
+evalReduceMaxRatTensor = evalReduceRatTensor (zipWithTensor max)
+
+-----------------------------------------------------------------------------
+-- Rational tensors
+
+evalBoolTensorBuiltin :: (Show expr, HasBoolTensors expr, HasDimensionData expr) => BoolTensorBuiltin -> EvalSimpleBuiltin expr
+evalBoolTensorBuiltin b originalExpr args = case b of
+  BoolType -> originalExpr
+  BoolLiteral {} -> originalExpr
+  BoolTensor {} -> originalExpr
+  QuantifyRatTensor {} -> originalExpr
+  EqualsRatTensor op -> evalEqualityRatTensor op originalExpr args
+  OrderRatTensor op -> evalOrderRatTensor op originalExpr args
+  AndBoolTensor -> evalAndBoolTensor originalExpr args
+  OrBoolTensor -> evalOrBoolTensor originalExpr args
+  NotBoolTensor -> evalNotBoolTensor originalExpr args
+  ReduceAndTensor -> evalReduceAndTensor originalExpr args
+  ReduceOrTensor -> evalReduceOrTensor originalExpr args
+
+evalNotBoolTensor :: (HasBoolTensors expr) => EvalSimpleBuiltin expr
+evalNotBoolTensor = evalOp1 getBoolTensor (mapTensor not) mkBoolTensor
+
+evalAndBoolTensor :: (Show expr, HasBoolTensors expr, HasDimensionData expr) => EvalSimpleBuiltin expr
+evalAndBoolTensor originalExpr = \case
+  [argExpr -> e1, argExpr -> e2] -> case (e1, e2) of
+    (IBoolTensor x, IBoolTensor y) -> IBoolTensor $ zipWithTensor (&&) x y
+    (IBoolConstTensor b _, _) -> if b then e2 else e1
+    (_, IBoolConstTensor b _) -> if b then e1 else e2
+    _ -> originalExpr
+  _ -> originalExpr
+
+evalOrBoolTensor :: (HasBoolTensors expr, HasDimensionData expr) => EvalSimpleBuiltin expr
+evalOrBoolTensor originalExpr = \case
+  [argExpr -> e1, argExpr -> e2] -> case (e1, e2) of
+    (IBoolTensor x, IBoolTensor y) -> IBoolTensor $ zipWithTensor (||) x y
+    (IBoolConstTensor b _, _) -> if b then e1 else e2
+    (_, IBoolConstTensor b _) -> if b then e2 else e1
+    _ -> originalExpr
+  _ -> originalExpr
+
+evalEqualityRatTensor :: (HasBoolTensors expr) => EqualityOp -> EvalSimpleBuiltin expr
+evalEqualityRatTensor op = evalOp2 getRatTensor getRatTensor (zipWithTensor (equalityOp op)) mkBoolTensor
+
+evalOrderRatTensor :: (HasBoolTensors expr) => OrderOp -> EvalSimpleBuiltin expr
+evalOrderRatTensor op = evalOp2 getRatTensor getRatTensor (zipWithTensor (orderOp op)) mkBoolTensor
+
+evalReduceAndTensor :: (HasBoolTensors expr) => EvalSimpleBuiltin expr
+evalReduceAndTensor = evalReduceTensor getBoolTensor (zipWithTensor (&&)) mkBoolTensor
+
+evalReduceOrTensor :: (HasBoolTensors expr) => EvalSimpleBuiltin expr
+evalReduceOrTensor = evalReduceTensor getBoolTensor (zipWithTensor (||)) mkBoolTensor
+
+-----------------------------------------------------------------------------
+-- Slices
+
+evalDimensionTypeBuiltin :: DimensionTypeBuiltin -> EvalSimpleBuiltin expr
+evalDimensionTypeBuiltin _ originalExpr _ = originalExpr
+
+evalDimensionDataBuiltin :: DimensionDataBuiltin -> EvalSimpleBuiltin expr
+evalDimensionDataBuiltin _ originalExpr _ = originalExpr -- TODO
+
+-----------------------------------------------------------------------------
+-- Type-class
+
+-- | A type-class for builtins that can be normalised compositionally.
+class (PrintableBuiltin builtin) => NormalisableBuiltin builtin where
+  -- This function takes in the original expression (containing both relevant
+  -- and irrelevant arguments), the builtin that is in the head position
+  -- and the list of computationally relevant arguments.
+  evalBuiltinApp ::
+    (MonadLogger m, Show closure) =>
+    EvalApp (Value closure builtin) m ->
+    Value closure builtin ->
+    builtin ->
+    Spine closure builtin ->
+    m (Value closure builtin)
+
+  blockingArgs ::
+    builtin ->
+    [Int]
+
+functionBlockingArgs :: BuiltinFunction -> [Int]
+functionBlockingArgs = \case
+  Quantifier {} -> []
+  Not -> [0]
+  And -> [0, 1]
+  Or -> [0, 1]
+  Neg NegRat -> [0]
+  Add AddNat -> [0, 1]
+  Add AddRat -> [0, 1]
+  Sub SubRat -> [0, 1]
+  Mul MulNat -> [0, 1]
+  Mul MulRat -> [0, 1]
+  Div DivRat -> [0, 1]
+  PowRat -> [0, 1]
+  MinRat -> [0, 1]
+  MaxRat -> [0, 1]
+  Equals EqIndex _op -> [2, 3]
+  Equals EqNat _op -> [0, 1]
+  Equals EqRat _op -> [0, 1]
+  Order OrderIndex _op -> [2, 3]
+  Order OrderNat _op -> [0, 1]
+  Order OrderRat _op -> [0, 1]
+  FromNat FromNatToIndex -> [1]
+  FromNat FromNatToNat -> []
+  FromNat FromNatToRat -> [0]
+  FromRat FromRatToRat -> [0]
+  If -> [1]
+  At -> [2, 3]
+  FoldVector -> [5]
+  FoldList -> [4]
+  ZipWithVector -> [5, 6]
+  MapList -> [3]
+  MapVector -> [4]
+  Indices -> [0]
+  Implies -> []
+
+instance NormalisableBuiltin Builtin where
+  evalBuiltinApp = evalTypeClassOp $ \b evalApp originalValue args -> case b of
+    Quantifier {} -> return originalValue
+    Not -> return $ evalNot originalValue args
+    And -> return $ evalAnd originalValue args
+    Or -> return $ evalOr originalValue args
+    Neg NegRat -> return $ evalNegRat originalValue args
+    Add AddNat -> return $ evalAddNat originalValue args
+    Add AddRat -> return $ evalAddRat originalValue args
+    Sub SubRat -> return $ evalSubRat originalValue args
+    Mul MulNat -> return $ evalMulNat originalValue args
+    Mul MulRat -> return $ evalMulRat originalValue args
+    Div DivRat -> return $ evalDivRat originalValue args
+    PowRat -> return $ evalPowRat originalValue args
+    MinRat -> return $ evalMinRat originalValue args
+    MaxRat -> return $ evalMaxRat originalValue args
+    Equals EqIndex op -> return $ evalEqualsIndex op originalValue args
+    Equals EqNat op -> return $ evalEqualsNat op originalValue args
+    Equals EqRat op -> return $ evalEqualsRat op originalValue args
+    Order OrderIndex op -> return $ evalOrderIndex op originalValue args
+    Order OrderNat op -> return $ evalOrderNat op originalValue args
+    Order OrderRat op -> return $ evalOrderRat op originalValue args
+    FromNat FromNatToIndex -> return $ evalFromNatToIndex originalValue args
+    FromNat FromNatToNat -> return $ evalFromNatToNat originalValue args
+    FromNat FromNatToRat -> return $ evalFromNatToRat originalValue args
+    FromRat FromRatToRat -> return $ evalFromRatToRat originalValue args
+    If -> return $ evalIf originalValue args
+    At -> return $ evalAt originalValue args
+    FoldVector -> evalFoldVector evalApp originalValue args
+    FoldList -> evalFoldList (VBuiltinFunction FoldList) evalApp originalValue args
+    ZipWithVector -> evalZipWith evalApp originalValue args
+    MapList -> evalMapList (VBuiltinFunction MapList) evalApp originalValue args
+    MapVector -> evalMapVector evalApp originalValue args
+    Indices -> return $ evalIndices (VBuiltin (BuiltinType Index)) originalValue args
+    Implies -> return $ evalImplies originalValue args
+
+  blockingArgs = \case
+    BuiltinFunction f -> functionBlockingArgs f
+    _ -> []
+
+evalTensorBuiltin :: (Show closure) => TensorBuiltin -> EvalSimpleBuiltin (Value closure TensorBuiltin)
+evalTensorBuiltin b originalExpr spine =
+  case b of
+    TensorRat op -> evalRatTensorBuiltin op originalExpr spine
+    TensorBool op -> evalBoolTensorBuiltin op originalExpr spine
+    TensorDimType op -> evalDimensionTypeBuiltin op originalExpr spine
+    TensorDimData op -> evalDimensionDataBuiltin op originalExpr spine
+
+instance NormalisableBuiltin TensorBuiltin where
+  evalBuiltinApp _evalApp originalExpr b = return . evalTensorBuiltin b originalExpr
+
+  blockingArgs = developerError "forcing not yet implemented for tensor builtins"
+
+instance NormalisableBuiltin LossTensorBuiltin where
+  evalBuiltinApp _evalApp originalExpr builtin args = case builtin of
+    LossTensorRat op -> return $ evalRatTensorBuiltin op originalExpr args
+    LossTensorDimType op -> return $ evalDimensionTypeBuiltin op originalExpr args
+    LossTensorDimData op -> return $ evalDimensionDataBuiltin op originalExpr args
+
+  blockingArgs = developerError "forcing not yet implemented for tensor builtins"
+
+instance NormalisableBuiltin LinearityBuiltin where
+  evalBuiltinApp = evalTypeClassOp $ \b evalApp originalValue args -> case b of
+    Quantifier {} -> return originalValue
+    Not -> return $ evalNot originalValue args
+    And -> return $ evalAnd originalValue args
+    Or -> return $ evalOr originalValue args
+    Neg NegRat -> return $ evalNegRat originalValue args
+    Add AddNat -> return $ evalAddNat originalValue args
+    Add AddRat -> return $ evalAddRat originalValue args
+    Sub SubRat -> return $ evalSubRat originalValue args
+    Mul MulNat -> return $ evalMulNat originalValue args
+    Mul MulRat -> return $ evalMulRat originalValue args
+    Div DivRat -> return $ evalDivRat originalValue args
+    PowRat -> return $ evalPowRat originalValue args
+    MinRat -> return $ evalMinRat originalValue args
+    MaxRat -> return $ evalMaxRat originalValue args
+    Equals EqIndex op -> return $ evalEqualsIndex op originalValue args
+    Equals EqNat op -> return $ evalEqualsNat op originalValue args
+    Equals EqRat op -> return $ evalEqualsRat op originalValue args
+    Order OrderIndex op -> return $ evalOrderIndex op originalValue args
+    Order OrderNat op -> return $ evalOrderNat op originalValue args
+    Order OrderRat op -> return $ evalOrderRat op originalValue args
+    FromNat FromNatToIndex -> return $ evalFromNatToIndex originalValue args
+    FromNat FromNatToNat -> return $ evalFromNatToNat originalValue args
+    FromNat FromNatToRat -> return $ evalFromNatToRat originalValue args
+    FromRat FromRatToRat -> return $ evalFromRatToRat originalValue args
+    If -> return $ evalIf originalValue args
+    At -> notImplemented b
+    FoldVector -> notImplemented b
+    FoldList -> evalLinearityFoldList evalApp originalValue args
+    ZipWithVector -> notImplemented b
+    MapList -> notImplemented b
+    MapVector -> notImplemented b
+    Indices -> notImplemented b
+    Implies -> notImplemented b
+    where
+      notImplemented = normNotImplemented "Polarity"
+
+  blockingArgs = \case
+    LinearityFunction f -> functionBlockingArgs f
+    _ -> []
+
+-- Need foldList at the type-level to evaluate the Tensor definition
+evalLinearityFoldList :: EvalBuiltin (Value closure LinearityBuiltin) m
+evalLinearityFoldList evalApp originalExpr args =
+  case args of
+    [_a, _b, _c, _f, e, argExpr -> VBuiltin (LinearityConstructor Nil) []] -> return $ argExpr e
+    [a, b, c, f, e, argExpr -> VBuiltin (LinearityConstructor Cons) [_, _, _, _, x, xs]] -> do
+      let defaultFold = VBuiltin (LinearityFunction FoldList) [a, b, c, f, e, xs]
+      r <- evalLinearityFoldList evalApp defaultFold [a, b, c, f, e, xs]
+      evalApp (argExpr f) [x, explicit r]
+    _ -> return originalExpr
+
+instance NormalisableBuiltin PolarityBuiltin where
+  evalBuiltinApp = evalTypeClassOp $ \b evalApp originalValue args -> case b of
+    Quantifier {} -> return originalValue
+    Not -> return $ evalNot originalValue args
+    And -> return $ evalAnd originalValue args
+    Or -> return $ evalOr originalValue args
+    Neg NegRat -> return $ evalNegRat originalValue args
+    Add AddNat -> return $ evalAddNat originalValue args
+    Add AddRat -> return $ evalAddRat originalValue args
+    Sub SubRat -> return $ evalSubRat originalValue args
+    Mul MulNat -> return $ evalMulNat originalValue args
+    Mul MulRat -> return $ evalMulRat originalValue args
+    Div DivRat -> return $ evalDivRat originalValue args
+    PowRat -> return $ evalPowRat originalValue args
+    MinRat -> return $ evalMinRat originalValue args
+    MaxRat -> return $ evalMaxRat originalValue args
+    Equals EqIndex op -> return $ evalEqualsIndex op originalValue args
+    Equals EqNat op -> return $ evalEqualsNat op originalValue args
+    Equals EqRat op -> return $ evalEqualsRat op originalValue args
+    Order OrderIndex op -> return $ evalOrderIndex op originalValue args
+    Order OrderNat op -> return $ evalOrderNat op originalValue args
+    Order OrderRat op -> return $ evalOrderRat op originalValue args
+    FromNat FromNatToIndex -> return $ evalFromNatToIndex originalValue args
+    FromNat FromNatToNat -> return $ evalFromNatToNat originalValue args
+    FromNat FromNatToRat -> return $ evalFromNatToRat originalValue args
+    FromRat FromRatToRat -> return $ evalFromRatToRat originalValue args
+    If -> return $ evalIf originalValue args
+    At -> notImplemented b
+    FoldVector -> notImplemented b
+    FoldList -> evalPolarityFoldList evalApp originalValue args
+    ZipWithVector -> notImplemented b
+    MapList -> notImplemented b
+    MapVector -> notImplemented b
+    Indices -> notImplemented b
+    Implies -> notImplemented b
+    where
+      notImplemented = normNotImplemented "Polarity"
+
+  blockingArgs = \case
+    PolarityFunction f -> functionBlockingArgs f
+    _ -> []
+
+-- Need foldList at the type-level to evaluate the Tensor definition
+evalPolarityFoldList :: EvalBuiltin (Value closure PolarityBuiltin) m
+evalPolarityFoldList evalApp originalExpr args =
+  case args of
+    [_a, _b, _c, _f, e, argExpr -> VBuiltin (PolarityConstructor Nil) []] -> return $ argExpr e
+    [a, b, c, f, e, argExpr -> VBuiltin (PolarityConstructor Cons) [_, _, _, _, x, xs]] -> do
+      let defaultFold = VBuiltin (PolarityFunction FoldList) [a, b, c, f, e, xs]
+      r <- evalPolarityFoldList evalApp defaultFold [a, b, c, f, e, xs]
+      evalApp (argExpr f) [x, explicit r]
+    _ -> return originalExpr
+
+normNotImplemented :: (Pretty fn) => Doc () -> fn -> a
+normNotImplemented typeSystem b = developerError $ "Normalisation of " <+> pretty b <+> "at the type-level not yet supported for" <+> typeSystem <+> "system"

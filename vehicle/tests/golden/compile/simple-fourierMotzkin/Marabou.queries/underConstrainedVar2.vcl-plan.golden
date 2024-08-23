@@ -93,7 +93,8 @@
                     {
                       "upperBounds": [
                         {
-                          "boundValue": {
+                          "strictness": "NonStrict",
+                          "inequalityExpr": {
                             "constantValue": {
                               "numerator": -1,
                               "denominator": 2
@@ -123,20 +124,19 @@
                                 }
                               ]
                             ]
-                          },
-                          "boundStrictness": "NonStrict"
+                          }
                         }
                       ],
                       "lowerBounds": [
                         {
-                          "boundValue": {
+                          "strictness": "NonStrict",
+                          "inequalityExpr": {
                             "constantValue": {
                               "numerator": 1,
                               "denominator": 1
                             },
                             "coefficients": []
-                          },
-                          "boundStrictness": "NonStrict"
+                          }
                         }
                       ]
                     }

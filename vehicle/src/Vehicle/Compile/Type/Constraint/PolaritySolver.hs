@@ -1,4 +1,4 @@
-module Vehicle.Data.Builtin.Polarity.PolaritySolver
+module Vehicle.Compile.Type.Constraint.PolaritySolver
   ( solvePolarityConstraint,
   )
 where
@@ -11,10 +11,10 @@ import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
-import Vehicle.Data.Builtin.Polarity.Core
+import Vehicle.Data.Builtin.Core
+import Vehicle.Data.Builtin.Polarity
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
-import Vehicle.Syntax.Builtin
 
 solvePolarityConstraint ::
   (MonadPolaritySolver m) =>
@@ -35,7 +35,7 @@ solvePolarityConstraint _ (WithContext constraint ctx) = do
 --------------------------------------------------------------------------------
 -- Constraint solving
 
-type MonadPolaritySolver m = TCM PolarityBuiltin m
+type MonadPolaritySolver m = MonadTypeChecker PolarityBuiltin m
 
 type PolaritySolver =
   forall m.

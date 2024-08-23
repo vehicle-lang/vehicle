@@ -4,9 +4,12 @@ module Vehicle.Compile
   )
 where
 
+import Data.Aeson (ToJSON (..))
+import Data.Aeson.Encode.Pretty (encodePretty')
+import Data.ByteString.Lazy.Char8 (unpack)
 import Vehicle.Backend.Agda
 import Vehicle.Backend.LossFunction (convertToLossTensors)
-import Vehicle.Backend.LossFunction.JSON (compileProgToJSON)
+import Vehicle.Backend.LossFunction.JSON
 import Vehicle.Backend.LossFunction.LogicCompilation (compileLogic)
 import Vehicle.Backend.LossFunction.Logics (dslFor)
 import Vehicle.Backend.Prelude
@@ -95,15 +98,13 @@ compileToLossFunction ::
   m ()
 compileToLossFunction logicID (imports, typedProg) outputFile outputAsJSON = do
   let mergedProg = mergeImports imports typedProg
+  hoistedProg <- hoistInferableParameters mergedProg
+  functionalisedProg <- functionaliseResources hoistedProg
   let logic = dslFor logicID
   compiledLogic <- compileLogic logicID logic
-  tensorProg <- convertToLossTensors logicID compiledLogic mergedProg
-  hoistedProg <- hoistInferableParameters tensorProg
-  functionalisedProg <- functionaliseResources hoistedProg
-  result <-
-    if outputAsJSON
-      then do
-        compileProgToJSON functionalisedProg
-      else do
-        return $ prettyFriendly functionalisedProg
-  writeResultToFile Nothing outputFile result
+  lossTensorProg <- convertToLossTensors compiledLogic functionalisedProg
+  jsonProg <- convertToJSONProg lossTensorProg
+  let outputText
+        | outputAsJSON = pretty $ unpack $ encodePretty' prettyJSONConfig $ toJSON jsonProg
+        | otherwise = prettyFriendly (convertFromJSONProg jsonProg)
+  writeResultToFile Nothing outputFile outputText

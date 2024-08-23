@@ -8,7 +8,7 @@ import Data.Map.Strict qualified as HashMap
 import Data.Maybe (mapMaybe)
 import Data.Vector qualified as Vector
 import Vehicle.Backend.Queries.UserVariableElimination.Core
-import Vehicle.Backend.Queries.UserVariableElimination.FourierMotzkinElimination
+import Vehicle.Compile.FourierMotzkinElimination
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Code.LinearExpr (evaluateExpr)
 import Vehicle.Data.QuantifiedVariable

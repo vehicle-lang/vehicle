@@ -22,6 +22,8 @@ import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Resource (NetworkType (..), dimensions)
+import Vehicle.Data.Assertion
+import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.LinearExpr
@@ -30,7 +32,6 @@ import Vehicle.Data.Hashing ()
 import Vehicle.Data.QuantifiedVariable
 import Vehicle.Data.Tensor
 import Vehicle.Libraries.StandardLibrary.Definitions
-import Vehicle.Syntax.Builtin
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Interface
 
@@ -193,193 +194,6 @@ addNetworkApplicationToGlobalCtx app@(networkName, _) networkInfo GlobalCtx {..}
   (appInfo, newGlobalCtx)
 
 --------------------------------------------------------------------------------
--- Rational equalities
-
-newtype RationalEquality = RationalEquality
-  { rationalEqExpr :: LinearExpr RationalVariable Rational
-  }
-  deriving (Show, Eq, Ord, Generic)
-
-instance ToJSON RationalEquality
-
-instance FromJSON RationalEquality
-
-instance Pretty RationalEquality where
-  pretty e = pretty (rationalEqExpr e) <+> "== 0"
-
--- | Checks whether an assertion is trivial or not. Returns `Nothing` if
--- non-trivial, and otherwise `Just b` where `b` is the value of the assertion
--- if it is trivial.
-checkRationalEqualityTriviality :: RationalEquality -> Maybe Bool
-checkRationalEqualityTriviality (RationalEquality e) = case isConstant e of
-  Nothing -> Nothing
-  Just c -> Just $ c == 0.0
-
---------------------------------------------------------------------------------
--- Rational inequalities
-
-data RationalInequality = RationalInequality
-  { strictness :: Strictness,
-    rationalIneqExpr :: LinearExpr RationalVariable Rational
-  }
-  deriving (Show, Eq, Ord, Generic)
-
-instance ToJSON RationalInequality
-
-instance FromJSON RationalInequality
-
-instance Pretty RationalInequality where
-  pretty ineq =
-    pretty (rationalIneqExpr ineq)
-      <+> (if strictness ineq == Strict then "<" else "<=")
-      <+> "0.0"
-
--- | Checks whether an assertion is trivial or not. Returns `Nothing` if
--- non-trivial, and otherwise `Just b` where `b` is the value of the assertion
--- if it is trivial.
-checkRationalInequalityTriviality :: RationalInequality -> Maybe Bool
-checkRationalInequalityTriviality (RationalInequality s e) = case isConstant e of
-  Nothing -> Nothing
-  Just c -> Just $ case s of
-    Strict -> c < 0.0
-    NonStrict -> c <= 0.0
-
---------------------------------------------------------------------------------
--- Tensor equalities
-
-newtype TensorEquality = TensorEquality
-  { tensorEqExpr :: LinearExpr TensorVariable RationalTensor
-  }
-  deriving (Show, Eq, Ord, Generic)
-
-instance Pretty TensorEquality where
-  pretty TensorEquality {..} = pretty tensorEqExpr <+> "== 0"
-
-instance ToJSON TensorEquality
-
-instance FromJSON TensorEquality
-
---------------------------------------------------------------------------------
--- Assertions
-
-data Assertion
-  = RationalEq RationalEquality
-  | RationalIneq RationalInequality
-  | TensorEq TensorEquality
-  deriving (Show, Eq, Generic)
-
-instance ToJSON Assertion
-
-instance FromJSON Assertion
-
-instance Pretty Assertion where
-  pretty = \case
-    RationalEq eq -> pretty eq
-    RationalIneq ineq -> pretty ineq
-    TensorEq eq -> pretty eq
-
-prettyAssertions :: [Assertion] -> Doc a
-prettyAssertions assertions =
-  vsep (fmap pretty assertions)
-
-prettyInequalities :: [RationalInequality] -> Doc a
-prettyInequalities assertions =
-  vsep (fmap pretty assertions)
-
-data Relation
-  = Equal
-  | LessThan
-  | LessThanOrEqual
-  deriving (Eq, Ord)
-
-assertionRel :: Assertion -> Relation
-assertionRel = \case
-  RationalEq {} -> Equal
-  TensorEq {} -> Equal
-  RationalIneq ineq
-    | strictness ineq == Strict -> LessThan
-    | otherwise -> LessThanOrEqual
-
-eqToAssertion ::
-  LinearExpr RationalVariable Rational ->
-  LinearExpr RationalVariable Rational ->
-  Assertion
-eqToAssertion e1 e2 = do
-  let e = addExprs 1 (-1) e1 e2
-  RationalEq $ RationalEquality e
-
-ordToAssertion ::
-  OrderOp ->
-  LinearExpr RationalVariable Rational ->
-  LinearExpr RationalVariable Rational ->
-  Assertion
-ordToAssertion op e1 e2 =
-  RationalIneq $ case op of
-    Lt -> RationalInequality Strict (addExprs 1 (-1) e1 e2)
-    Le -> RationalInequality NonStrict (addExprs 1 (-1) e1 e2)
-    Gt -> RationalInequality Strict (addExprs (-1) 1 e1 e2)
-    Ge -> RationalInequality NonStrict (addExprs (-1) 1 e1 e2)
-
-tensorEqToAssertion ::
-  LinearExpr TensorVariable RationalTensor ->
-  LinearExpr TensorVariable RationalTensor ->
-  Assertion
-tensorEqToAssertion e1 e2 = do
-  let e = addExprs 1 (-1) e1 e2
-  TensorEq $ TensorEquality e
-
-mapAssertionExprs ::
-  (LinearExpr TensorVariable RationalTensor -> LinearExpr TensorVariable RationalTensor) ->
-  (LinearExpr RationalVariable Rational -> LinearExpr RationalVariable Rational) ->
-  Assertion ->
-  MaybeTrivial Assertion
-mapAssertionExprs ft fr ass = checkTriviality $ case ass of
-  TensorEq TensorEquality {..} -> TensorEq $ TensorEquality $ ft tensorEqExpr
-  RationalEq RationalEquality {..} -> RationalEq $ RationalEquality $ fr rationalEqExpr
-  RationalIneq RationalInequality {..} -> RationalIneq $ RationalInequality strictness (fr rationalIneqExpr)
-
-checkTriviality :: Assertion -> MaybeTrivial Assertion
-checkTriviality ass = case ass of
-  RationalEq RationalEquality {..} -> case isConstant rationalEqExpr of
-    Nothing -> NonTrivial ass
-    Just d -> Trivial (d == 0)
-  RationalIneq RationalInequality {..} -> case isConstant rationalIneqExpr of
-    Nothing -> NonTrivial ass
-    Just d -> Trivial ((if strictness == Strict then (<) else (<=)) d 0)
-  TensorEq TensorEquality {..} -> case isConstant tensorEqExpr of
-    Nothing -> NonTrivial ass
-    Just d -> Trivial (isZero d)
-
-substituteTensorEq ::
-  (OriginalUserVariable, LinearExpr TensorVariable RationalTensor) ->
-  Map RationalVariable (LinearExpr RationalVariable Rational) ->
-  Assertion ->
-  MaybeTrivial Assertion
-substituteTensorEq (var, solution) ratSolutions =
-  mapAssertionExprs
-    (eliminateVar (UserTensorVar var) solution)
-    eliminateRatVars
-  where
-    -- Usually the expression being substituted into is much smaller than the number of tensor
-    -- variables so we traverse the expression instead of folding over the subsitutions
-    eliminateRatVars :: LinearExpr RationalVariable Rational -> LinearExpr RationalVariable Rational
-    eliminateRatVars expr = do
-      let varExprs = lookupVar <$> Map.toList (coefficients expr)
-      let constantExp = Sparse (mempty @(Map RationalVariable Coefficient)) (constantValue expr)
-      foldr (addExprs 1 1) constantExp varExprs
-
-    lookupVar :: (RationalVariable, Coefficient) -> LinearExpr RationalVariable Rational
-    lookupVar (v, c) = do
-      let vc = Sparse (Map.singleton v c) 0
-      case Map.lookup v ratSolutions of
-        Nothing -> vc
-        Just sol -> eliminateVar v sol vc
-
-substituteRationalEq :: UserRationalVariable -> LinearExpr RationalVariable Rational -> Assertion -> MaybeTrivial Assertion
-substituteRationalEq var solution =
-  mapAssertionExprs id (eliminateVar (UserRationalVar var) solution)
-
---------------------------------------------------------------------------------
 -- Partitions
 
 type AssertionTree = BooleanExpr Assertion
@@ -389,7 +203,7 @@ type AssertionTree = BooleanExpr Assertion
 data UserVariableReconstructionStep
   = SolveTensorEquality OriginalUserVariable (LinearExpr TensorVariable RationalTensor)
   | SolveRationalEquality UserRationalVariable (LinearExpr RationalVariable Rational)
-  | SolveRationalInequalities UserRationalVariable FourierMotzkinVariableSolution
+  | SolveRationalInequalities UserRationalVariable (Bounds RationalVariable Rational)
   | ReconstructTensor TensorVariable [RationalVariable]
   deriving (Eq, Ord, Show, Generic)
 
@@ -442,48 +256,6 @@ mkSinglePartition (solutions, maybeAssertion) =
 
 mkTrivialPartition :: Assertion -> MaybeTrivial Partitions
 mkTrivialPartition assertion = mkSinglePartition (mempty, NonTrivial $ Query assertion)
-
---------------------------------------------------------------------------------
--- Variable reconstruction
-
-data FMBound = FMBound
-  { boundStrictness :: Strictness,
-    boundValue :: LinearExpr RationalVariable Rational
-  }
-  deriving (Show, Eq, Ord, Generic)
-
-instance NFData FMBound
-
-instance ToJSON FMBound
-
-instance FromJSON FMBound
-
-instance Pretty FMBound where
-  pretty FMBound {..} =
-    pretty boundValue <> (if boundStrictness == Strict then " (strictly)" else "")
-
--- | A FM solution for an normalised user variable is two lists of constraints.
--- The variable value must be greater than the first set of assertions, and less than
--- the second set of assertions.
-data FourierMotzkinVariableSolution = FMSolution
-  { lowerBounds :: [FMBound],
-    upperBounds :: [FMBound]
-  }
-  deriving (Show, Eq, Ord, Generic)
-
-instance NFData FourierMotzkinVariableSolution
-
-instance ToJSON FourierMotzkinVariableSolution
-
-instance FromJSON FourierMotzkinVariableSolution
-
-instance Pretty FourierMotzkinVariableSolution where
-  pretty FMSolution {..} =
-    "below by max"
-      <+> pretty lowerBounds
-      <+> "and"
-      <+> "above by min"
-      <+> pretty upperBounds
 
 --------------------------------------------------------------------------------
 -- Monads
@@ -598,7 +370,7 @@ reduceTensorExpr (Sparse coeff constant) = do
 variableCtxToBoundCtx :: (Pretty variable) => [variable] -> BoundCtx (Type builtin)
 variableCtxToBoundCtx ctx = zipWith variableCtxToBoundCtxEntry [0 .. Ix (length ctx - 1)] ctx
   where
-    variableCtxToBoundCtxEntry ix var = mkDefaultBinder (BoundVar mempty ix) (Just (layoutAsText $ pretty var))
+    variableCtxToBoundCtxEntry ix var = mkExplicitBinder (BoundVar mempty ix) (Just (layoutAsText $ pretty var))
 
 --------------------------------------------------------------------------------
 -- Vector operation patterns

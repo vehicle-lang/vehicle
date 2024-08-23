@@ -77,6 +77,19 @@ prettyNonEmptyList xs = case NonEmpty.init xs of
   [] -> NonEmpty.last xs
   ys -> commaSep ys <+> "and" <+> NonEmpty.last xs
 
+-- | Shortens a list by turning [a1, a2, a3, a4, a5] into
+-- [a1, a2, ... 2 more ..., a5]
+dotDotList :: Int -> [Doc a] -> [Doc a]
+dotDotList maxElems xs = do
+  let n = length xs
+  if n <= maxElems
+    then xs
+    else do
+      let start = take (maxElems - 1) xs
+      let middle = "..." <+> pretty (n - maxElems) <+> "more" <+> "..."
+      let end = drop (n - 1) xs
+      start <> [middle] <> end
+
 --------------------------------------------------------------------------------
 -- Useful utility functions
 

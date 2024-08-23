@@ -6,8 +6,8 @@ import Data.Map qualified as Map
 import Data.Maybe (isJust)
 import Data.Text (pack)
 import GHC.Generics (Generic)
+import Vehicle.Data.Builtin.Core
 import Vehicle.Prelude
-import Vehicle.Syntax.Builtin
 
 pattern TensorIdent :: Identifier
 pattern TensorIdent <- Identifier (ModulePath [StdLib]) "Tensor"

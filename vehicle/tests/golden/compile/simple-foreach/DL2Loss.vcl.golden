@@ -1,7 +1,7 @@
 @property;
 index : (Tensor Rat -> Tensor Rat) -> Tensor Rat;
-index f = max (const[ 0.0 ] (2 :: nil)) (const[ 0.0 ] (2 :: nil) - f [const[ 0.0 ] nil, const[ 0.0 ] nil])
+index f = max (const 0.0 (1 :: nil)) (const 0.0 (1 :: nil) - f (const 0.0 (1 :: nil)))
 
 @property;
 safe : (Tensor Rat -> Tensor Rat) -> Tensor Rat;
-safe f = const[ 1.0 ] nil / search (*) (\ x -> const[ 1.0 ] nil / max (const[ 0.0 ] nil) (const[ 0.0 ] nil - f (x + const[ 4.0 ] (2 :: nil)) ! 0))
+safe f = const 1.0 (1 :: nil) / search (\ xs -> reduceMul xs) 0.0 0.0 (\ x -> const 1.0 (1 :: nil) / max (const 0.0 (1 :: nil)) (const 0.0 (1 :: nil) - f (x + const 4.0 (1 :: nil)) ! 0))

@@ -1,3 +1,6 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
+{-# HLINT ignore "Avoid NonEmpty.unzip" #-}
 module Vehicle.Prelude.Misc where
 
 import Control.DeepSeq (NFData)
@@ -21,14 +24,8 @@ import Data.Text qualified as Text
 import GHC.Generics (Generic)
 import Numeric (readFloat, readSigned)
 import System.Console.ANSI
-import Vehicle.Prelude.Prettyprinter (Pretty (pretty), (<+>))
+import Vehicle.Prelude.Prettyprinter (Pretty (pretty))
 import Vehicle.Syntax.AST.Name (Name)
-import Vehicle.Syntax.Builtin.BasicOperations
-  ( EqualityOp (..),
-    OrderOp (..),
-    Quantifier (..),
-  )
-import Vehicle.Syntax.Prelude (developerError)
 
 data VehicleLang = External | Internal
   deriving (Show)
@@ -157,24 +154,6 @@ listOrd leq (x : xs) (y : ys) = le || (eq && listOrd leq xs ys)
     le = leq x y && not (leq y x)
     eq = leq x y && leq y x
 
-class Negatable a where
-  neg :: a -> a
-
-instance Negatable EqualityOp where
-  neg Eq = Neq
-  neg Neq = Eq
-
-instance Negatable OrderOp where
-  neg = \case
-    Le -> Gt
-    Lt -> Ge
-    Ge -> Lt
-    Gt -> Le
-
-instance Negatable Quantifier where
-  neg Forall = Exists
-  neg Exists = Forall
-
 -- | Used to distinguish between inputs and outputs of neural networks.
 data InputOrOutput
   = Input
@@ -223,21 +202,6 @@ jsonOptions =
     { tagSingleConstructors = True
     }
 
-type TensorShape = [Int]
-
-type TensorIndices = [Int]
-
-computeFlatIndex :: TensorShape -> TensorIndices -> Int
-computeFlatIndex = go
-  where
-    go :: TensorShape -> TensorIndices -> Int
-    go [] [] = 0
-    go (d : ds) (i : is) | i < d = i * product ds + go ds is
-    go ds is = developerError $ "Invalid flat tensor arguments" <+> pretty ds <+> pretty is
-
-showTensorIndices :: TensorIndices -> String
-showTensorIndices xs = concatMap (\v -> "!" <> show v) (reverse xs)
-
 readFloatAsRational :: Text -> Rational
 readFloatAsRational str =
   case readSigned readFloat (Text.unpack str) of
@@ -261,3 +225,25 @@ getModify f = do
   x <- get
   modify f
   return x
+
+--------------------------------------------------------------------------------
+-- Constants
+
+-- At the moment we only support rational coefficients.
+type Coefficient = Rational
+
+-- If we're ever to support matrix multiplication we'll need to make this a full
+-- field structure.
+--
+-- However, we run into issues that we can't define a `zero` element as we don't
+-- don't have access to the dimensions of tensors at the type level due to the
+-- lack of dependent types.
+class IsConstant constant where
+  isZero :: constant -> Bool
+  scaleConstant :: Coefficient -> constant -> constant
+  addConstants :: Coefficient -> Coefficient -> constant -> constant -> constant
+
+instance IsConstant Rational where
+  isZero = (== 0.0)
+  scaleConstant = (*)
+  addConstants a b x y = a * x + b * y

@@ -28,10 +28,11 @@ import Prettyprinter (list)
 import Vehicle.Compile.Descope
 import Vehicle.Compile.Normalise.Quote (QuoteClosure, unnormalise)
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Print.Builtin (ConvertableBuiltin, PrintableBuiltin)
 import Vehicle.Compile.Simplify
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
-import Vehicle.Data.Builtin.Standard.Core
+import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.Value
 import Vehicle.Syntax.AST.Expr qualified as S
@@ -421,12 +422,6 @@ instance
   prettyUsing (WithContext e ctx) = do
     let e' = unnormalise @(Value closure builtin) @(Expr Builtin) (Lv $ length ctx) e
     prettyUsing @rest (WithContext e' ctx)
-
-instance (ConvertableBuiltin builtin Builtin, PrettyUsing rest (Expr Builtin)) => PrettyUsing ('DescopeWithNames rest) (NFValue builtin) where
-  prettyUsing e = prettyUsing @rest (unnormalise @(NFValue builtin) @(Expr Builtin) 0 e)
-
-instance (ConvertableBuiltin builtin Builtin, PrettyUsing rest (Arg Builtin)) => PrettyUsing ('DescopeWithNames rest) (NFArg builtin) where
-  prettyUsing e = prettyUsing @rest (unnormalise @(NFArg builtin) @(Arg Builtin) 0 e)
 
 instance PrettyUsing rest (GenericBinder ()) where
   prettyUsing b = maybe "_" pretty (nameOf b)

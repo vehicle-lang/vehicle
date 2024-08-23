@@ -34,9 +34,11 @@ instance HasProvenance (GenericArg expr) where
 
 instance HasVisibility (GenericArg expr) where
   visibilityOf = argVisibility
+  setVisibility r Arg {..} = Arg {argVisibility = r, ..}
 
 instance HasRelevance (GenericArg expr) where
   relevanceOf = argRelevance
+  setRelevance r Arg {..} = Arg {argRelevance = r, ..}
 
 --------------------------------------------------------------------------------
 -- Patterns

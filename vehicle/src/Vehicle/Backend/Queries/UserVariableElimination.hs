@@ -15,20 +15,21 @@ import Control.Monad.Writer (MonadWriter (..), WriterT (..))
 import Data.LinkedHashMap qualified as LinkedHashMap
 import Data.Map qualified as Map
 import Vehicle.Backend.Queries.PostProcessing (convertPartitionsToQueries)
+import Vehicle.Backend.Queries.Unblock (ReduceVectorVars, UnblockingActions (..))
+import Vehicle.Backend.Queries.Unblock qualified as Unblocking
 import Vehicle.Backend.Queries.UserVariableElimination.Core
 import Vehicle.Backend.Queries.UserVariableElimination.EliminateExists (eliminateExists)
 import Vehicle.Compile.Boolean.LiftIf (liftIfSpine, unfoldIf)
 import Vehicle.Compile.Boolean.LowerNot (lowerNot)
-import Vehicle.Compile.Boolean.Unblock (ReduceVectorVars, UnblockingActions (..))
-import Vehicle.Compile.Boolean.Unblock qualified as Unblocking
 import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyFriendlyEmptyCtx)
-import Vehicle.Compile.Rational.LinearExpr (NonLinearity (..), compileRatLinearRelation, compileTensorLinearRelation)
+import Vehicle.Compile.Print (prettyFriendlyEmptyCtx, prettyVerbose)
+import Vehicle.Compile.Rational.LinearExpr (LinearityError (..), compileRatLinearRelation, compileTensorLinearRelation)
 import Vehicle.Compile.Resource (NetworkTensorType (..), NetworkType (..))
 import Vehicle.Compile.Variable (createUserVar)
+import Vehicle.Data.Assertion
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.Interface
@@ -138,7 +139,7 @@ compileBoolExpr expr = case expr of
   -- Base cases --
   ----------------
   IBoolLiteral _ b -> return $ Trivial b
-  IOrder OrderRat op _ _ -> tryPurifyAssertion expr (compileRationalAssertion (ordToAssertion op))
+  IOrder OrderRat op _ _ -> tryPurifyAssertion expr (compileRationalAssertion (\x y -> RationalIneq $ mkInequality op x y))
   IEqual EqRat _ _ -> tryPurifyAssertion expr (compileRationalAssertion eqToAssertion)
   IVectorEqualFull (IVecEqSpine t1 t2 n s _ _) -> tryPurifyAssertion expr (compileTensorAssertion [t1, t2, n, s])
   IForall {} -> throwError catchableUnsupportedAlternatingQuantifiersError
@@ -183,8 +184,7 @@ tryPurifyAssertion ::
   (WHNFValue Builtin -> WHNFValue Builtin -> m (MaybeTrivial Partitions)) ->
   m (MaybeTrivial Partitions)
 tryPurifyAssertion expr whenAlreadyPure = do
-  ctx <- getGlobalNamedBoundCtx
-  result <- Unblocking.tryPurifyAssertion ctx unblockingActions expr
+  result <- Unblocking.tryPurifyAssertion unblockingActions expr
   case result of
     Left purifiedExpr -> compileBoolExpr purifiedExpr
     Right (x, y) -> whenAlreadyPure x y
@@ -319,10 +319,11 @@ compileRationalAssertion ::
   WHNFValue QueryBuiltin ->
   m (MaybeTrivial Partitions)
 compileRationalAssertion mkAssertion x y = do
-  result <- compileRatLinearRelation getRationalVariable x y
+  result <- compileRatLinearRelation getRationalVariable mkAssertion x y
   case result of
+    Left (UnhandlableExpr e) -> compilerDeveloperError ("unexpected rational expression" <+> prettyVerbose e)
     Left NonLinearity -> throwError catchableUnsupportedNonLinearConstraint
-    Right (e1, e2) -> return $ mkTrivialPartition (mkAssertion e1 e2)
+    Right assertion -> return $ mkTrivialPartition assertion
 
 compileTensorAssertion ::
   (MonadQueryStructure m, MonadWriter [WHNFValue QueryBuiltin] m) =>
@@ -333,6 +334,7 @@ compileTensorAssertion ::
 compileTensorAssertion spinePrefix x y = do
   result <- compileTensorLinearRelation getTensorVariable x y
   case result of
+    Left (UnhandlableExpr e) -> compilerDeveloperError ("unexpected tensor expression" <+> prettyVerbose e)
     Left NonLinearity -> throwError catchableUnsupportedNonLinearConstraint
     Right (Just (e1, e2)) -> return $ mkTrivialPartition (tensorEqToAssertion e1 e2)
     Right Nothing -> do

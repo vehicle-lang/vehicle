@@ -1,8 +1,7 @@
 module Vehicle.Compile.Normalise.Quote where
 
-import Vehicle.Backend.LossFunction.Core (LossClosure (..), MixedClosure (..))
 import Vehicle.Compile.Context.Bound.Core
-import Vehicle.Data.Builtin.Standard.Core (Builtin)
+import Vehicle.Compile.Print.Builtin
 import Vehicle.Data.Code.Expr
 import Vehicle.Data.Code.Value
 import Vehicle.Data.DeBruijn (Lv, Substitution, dbLevelToIndex)
@@ -28,21 +27,6 @@ instance (ConvertableBuiltin builtin1 builtin2) => QuoteClosure (WHNFClosure bui
     --
     -- normBody <- runReaderT (eval (liftEnvOverBinder p env) body) mempty
     -- quotedBody <- quote (level + 1) normBody
-    let newEnv = extendEnvWithBound lv binder env
-    let subst = quoteCtx p (lv + 1) newEnv
-    substituteDB 0 subst (convertExprBuiltins body)
-
-instance (ConvertableBuiltin builtin1 builtin2) => QuoteClosure (NFClosure builtin1) builtin2 where
-  quoteClosure p level (_binder, body) = case body of
-    NFClosure value -> quote p (level + 1) value
-
-instance QuoteClosure MixedClosure Builtin where
-  quoteClosure p lv (binder, closure) = case closure of
-    StandardClos standardClosure -> quoteClosure p lv (binder, standardClosure)
-    LossClos lossClosure -> quoteClosure p lv (binder, lossClosure)
-
-instance QuoteClosure LossClosure Builtin where
-  quoteClosure p lv (binder, LossClosure env body) = do
     let newEnv = extendEnvWithBound lv binder env
     let subst = quoteCtx p (lv + 1) newEnv
     substituteDB 0 subst (convertExprBuiltins body)

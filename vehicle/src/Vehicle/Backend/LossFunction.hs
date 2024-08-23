@@ -5,79 +5,62 @@ where
 
 import Data.Maybe (maybeToList)
 import Data.Proxy (Proxy (..))
-import Vehicle.Backend.LossFunction.Core (DifferentiableLogicImplementation, MixedLossValue, preservedStdLibOps)
-import Vehicle.Backend.LossFunction.TensorCompilation (convertExprToTensorValue, runMonadTensorT)
-import Vehicle.Backend.Prelude (DifferentiableLogicID)
-import Vehicle.Compile.Context.Bound.Class (MonadBoundContext)
-import Vehicle.Compile.Context.Bound.Instance (runFreshBoundContextT)
+import Vehicle.Backend.LossFunction.Core (CompiledDifferentiableLogic, preservedStdLibOps)
+import Vehicle.Backend.LossFunction.LossCompilation (runMonadLogicT)
+import Vehicle.Backend.LossFunction.LossCompilation qualified as Loss (convertValue)
+import Vehicle.Backend.LossFunction.TensorCompilation (convertExpr, runMonadTensorT)
+import Vehicle.Backend.LossFunction.ZeroTensorLifting (liftZeroDimensionalTensors)
 import Vehicle.Compile.Context.Free (MonadFreeContext, addDeclEntryToContext, hideStdLibDecls, runFreshFreeContextT)
+import Vehicle.Compile.Context.Name (MonadNameContext, runFreshNameContextT)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE (normaliseInEnv)
-import Vehicle.Compile.Normalise.Quote qualified as Quote
+import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
-import Vehicle.Data.Builtin.Tensor (TensorBuiltin)
-import Vehicle.Syntax.Builtin
+import Vehicle.Data.Builtin.Core
+import Vehicle.Data.Builtin.Loss (LossTensorBuiltin)
 
 convertToLossTensors ::
   (MonadCompile m) =>
-  DifferentiableLogicID ->
-  DifferentiableLogicImplementation ->
+  CompiledDifferentiableLogic ->
   Prog Builtin ->
-  m (Prog TensorBuiltin)
-convertToLossTensors logicID logic (Main ds) =
+  m (Prog LossTensorBuiltin)
+convertToLossTensors logic (Main ds) =
   logCompilerPass MinDetail currentPass $
     runFreshFreeContextT (Proxy @Builtin) $
-      runFreshBoundContextT (Proxy @MixedLossValue) $
-        Main <$> convertDecls logicID logic ds
+      runFreshNameContextT $
+        Main <$> convertDecls logic ds
 
 convertDecls ::
-  (MonadCompile m, MonadFreeContext Builtin m, MonadBoundContext MixedLossValue m) =>
-  DifferentiableLogicID ->
-  DifferentiableLogicImplementation ->
+  (MonadCompile m, MonadFreeContext Builtin m, MonadNameContext m) =>
+  CompiledDifferentiableLogic ->
   [Decl Builtin] ->
-  m [Decl TensorBuiltin]
-convertDecls logicID logic = \case
+  m [Decl LossTensorBuiltin]
+convertDecls logic = \case
   [] -> return []
   decl : decls -> do
-    let ident = identifierOf decl
-    let declProv = (ident, provenanceOf decl)
-
-    (normDecl, maybeTensorDecl) <-
+    (normDecl, maybeLossTensorDecl) <- do
+      let ident = identifierOf decl
       logCompilerPass MinDetail ("declaration" <+> quotePretty ident) $ do
         hideStdLibDecls (Proxy @Builtin) preservedStdLibOps $ do
-          -- Deciding on the best ordering of converting to loss functions and converting to tensor code
-          -- is tricky. There are three approaches:
-          --
-          -- Loss functions -> Tensors
-          --    Disadvantages
-          --        - Vector representation contains higher order structure (e.g. folds) that
-          --          can be converted to tensor operations, but which `not` cannot easily
-          --          be pushed through in general for DL2 loss. e.g. in
-          --          fold (\ x -> \ y -> x and y) True (foreachIndex 2 (\ i -> - 3.25 <= x ! i and x ! i <= 3.25))
-          --
-          -- Tensors -> Loss functions
-          --    Disadvantages
-          --        - Loss functions need to be specified in terms of tensors.
-          --        - Can't reuse not/if-elimination code
           normStandardDecl <- traverse (normaliseInEnv mempty) decl
           maybeTensorDecl <-
-            if not (isPropertyDecl decl) && not (isAbstractDecl decl)
+            if not (isPropertyDecl decl)
               then return Nothing
               else do
-                normTensorDecl <-
-                  runMonadTensorT logicID declProv logic $
-                    traverse (convertExprToTensorValue mempty) decl
-                let tensorDecl = fmap (Quote.unnormalise 0) normTensorDecl
-                return $ Just tensorDecl
+                let declProv = (ident, provenanceOf decl)
+                tensorDecl <- runMonadTensorT declProv $ traverse (convertExpr mempty) decl
+                normLossTensorDecl <- runMonadLogicT logic declProv $ traverse Loss.convertValue tensorDecl
+                liftedTensorDecl <- liftZeroDimensionalTensors normLossTensorDecl
+                let lossTensorDecl = fmap (unnormalise 0) liftedTensorDecl
+                return $ Just lossTensorDecl
 
           return
             ( normStandardDecl,
               maybeTensorDecl
             )
 
-    addDeclEntryToContext (decl, normDecl) $ do
-      decls' <- convertDecls logicID logic decls
-      return $ maybeToList maybeTensorDecl ++ decls'
+    decls' <- addDeclEntryToContext (decl, normDecl) $ convertDecls logic decls
+    return $ maybeToList maybeLossTensorDecl ++ decls'
 
 currentPass :: Doc a
 currentPass = "loss function compilation"

@@ -12,7 +12,6 @@ Warning: In property 'identity', the following network input variables do not al
     decode₀[input]!1 - no lower or upper bound
     encode₀[input]!0 - no lower or upper bound
     encode₀[input]!1 - no lower or upper bound
-    encode₀[input]!2 - no lower or upper bound
-    encode₀[input]!3 - no lower or upper bound
+    ... 2 more ...
     encode₀[input]!4 - no lower or upper bound
 [m

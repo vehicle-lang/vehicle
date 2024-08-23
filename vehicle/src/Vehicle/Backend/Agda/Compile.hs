@@ -23,13 +23,13 @@ import System.FilePath (takeBaseName)
 import Vehicle.Backend.Agda.CapitaliseTypeNames (capitaliseTypeNames)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Context.Bound (getNamedBoundCtx)
-import Vehicle.Compile.Descope (MonadDescope, addBinderNameToContext, ixToProperName, runMonadDescopeT)
+import Vehicle.Compile.Context.Name (MonadNameContext, addNameToContext, ixToProperName, runFreshNameContextT)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Monomorphisation
 import Vehicle.Compile.Normalise.Builtin (findInstanceArg)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
-import Vehicle.Data.Builtin.Standard.Core
+import Vehicle.Data.Builtin.Standard hiding (TensorType)
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Universe (UniverseLevel (..))
 import Vehicle.Libraries.StandardLibrary.Definitions
@@ -49,7 +49,7 @@ compileProgToAgda prog options = logCompilerPass MinDetail currentPhase $
   flip runReaderT (options, BoolLevel) $ do
     monoProg <- monomorphise isPropertyDecl "-" prog
     let prog2 = capitaliseTypeNames monoProg
-    programDoc <- runMonadDescopeT $ compileProg prog2
+    programDoc <- runFreshNameContextT $ compileProg prog2
     let programStream = layoutPretty defaultLayoutOptions programDoc
     -- Collects dependencies by first discarding precedence info and then
     -- folding using Set Monoid
@@ -312,7 +312,7 @@ arrow = "→" -- <> softline'
 type MonadAgdaCompile m =
   ( MonadCompile m,
     MonadReader (AgdaOptions, BoolLevel) m,
-    MonadDescope m
+    MonadNameContext m
   )
 
 getVerificationCache :: (MonadAgdaCompile m) => m (Maybe FilePath)
@@ -362,14 +362,14 @@ compileExpr expr = do
     Pi _ binder result -> case binderNamingForm binder of
       OnlyType -> do
         cInput <- compileBinder binder
-        cOutput <- addBinderNameToContext binder $ compileExpr result
+        cOutput <- addNameToContext binder $ compileExpr result
         return $ annotateInfixOp2 [] minPrecedence id Nothing arrow [cInput, cOutput]
       _ -> do
         let (binders, body) = foldBinders PiBinder binder result
         compileTypeLevelQuantifier Forall (binder :| binders) body
     Let _ bound binder body -> do
       cBoundExpr <- compileLetBinder (binder, bound)
-      cBody <- addBinderNameToContext binder $ compileExpr body
+      cBody <- addNameToContext binder $ compileExpr body
       return $ "let" <+> cBoundExpr <+> "in" <+> cBody
     Lam _ binder body -> compileLam binder body
     Builtin p b -> compileBuiltin p b []
@@ -391,14 +391,14 @@ compileApp fun args = do
     Just v -> return v
     Nothing -> do
       cFun <- compileExpr fun
-      cArgs <- traverse compileExpr (filterOutNonExplicitArgs args)
+      cArgs <- traverse compileExpr (filterOutNonExplicitArgs $ NonEmpty.toList args)
       return $ annotateApp [] cFun cArgs
 
 compileStdLibFunction :: (MonadAgdaCompile m) => StdLibFunction -> NonEmpty (Arg Builtin) -> m (Maybe Code)
 compileStdLibFunction fn args = case fn of
   StdTensor -> do
     let fun' = annotateConstant [DataTensor] "Tensor"
-    args' <- traverse compileExpr (filterOutNonExplicitArgs args)
+    args' <- traverse compileExpr (filterOutNonExplicitArgs $ NonEmpty.toList args)
     return $ Just $ annotateApp [] fun' args'
   StdForeachIndex -> Just <$> compileExpr (argExpr $ NonEmpty.last args)
   StdVectorToVector -> Just <$> compileExpr (argExpr $ NonEmpty.last args)
@@ -469,7 +469,7 @@ compileTopLevelBinder binder
 compileBinders :: (MonadAgdaCompile m) => [Binder Builtin] -> m Code -> m ([Code], Code)
 compileBinders [] c = ([],) <$> c
 compileBinders (b : bs) c = do
-  (cbs, cc) <- addBinderNameToContext b $ compileBinders bs c
+  (cbs, cc) <- addNameToContext b $ compileBinders bs c
   cb <- compileBinder b
   return (cb : cbs, cc)
 

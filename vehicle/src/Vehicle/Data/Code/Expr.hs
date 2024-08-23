@@ -18,7 +18,6 @@ import Vehicle.Data.Code.Interface
 import Vehicle.Data.DeBruijn (Ix (..), Lv, Substitutable (..), Substitution, shiftDBIndex, unLv)
 import Vehicle.Data.Universe (UniverseLevel (..))
 import Vehicle.Prelude
-import Vehicle.Syntax.Builtin (Builtin)
 import Vehicle.Syntax.Sugar (BinderType (..), HasBinders (..))
 
 --------------------------------------------------------------------------------
@@ -371,6 +370,42 @@ instance (BuiltinHasListLiterals builtin) => HasStandardListLits (Expr builtin) 
     _ -> Nothing
   mkCons t x xs = BuiltinExpr mempty mkBuiltinCons [t, x, xs]
 
+instance (BuiltinHasRatType builtin) => HasRatType (Expr builtin) where
+  getRatType e = case e of
+    Builtin p (isRatBuiltinType -> True) -> Just p
+    _ -> Nothing
+  mkRatType p = Builtin p mkRatBuiltinType
+
+instance (BuiltinHasVecType builtin) => HasVecType (Expr builtin) where
+  getVectorType e = case e of
+    BuiltinExpr p (isVecBuiltinType -> True) [t, n] -> Just (p, t, n)
+    _ -> Nothing
+  mkVectorType p t n = BuiltinExpr p mkVecBuiltinType [t, n]
+
+instance (BuiltinHasRatTensor builtin) => HasRatTensors (Expr builtin) where
+  getRatTensorOp e = case e of
+    BuiltinExpr _ (getRatTensorBuiltin -> Just op) args -> Just (op, NonEmpty.toList args)
+    _ -> Nothing
+  mkRatTensorOp op = normAppList (Builtin mempty $ mkRatTensorBuiltin op)
+
+instance (BuiltinHasBoolTensor builtin) => HasBoolTensors (Expr builtin) where
+  getBoolTensorOp e = case e of
+    BuiltinExpr _ (getBoolTensorBuiltin -> Just op) args -> Just (op, NonEmpty.toList args)
+    _ -> Nothing
+  mkBoolTensorOp op = normAppList (Builtin mempty $ mkBoolTensorBuiltin op)
+
+instance (BuiltinHasDimensionTypes builtin) => HasDimensionTypes (Expr builtin) where
+  getDimensionTypeOp e = case e of
+    BuiltinExpr _ (getDimensionTypeBuiltin -> Just op) args -> Just (op, NonEmpty.toList args)
+    _ -> Nothing
+  mkDimensionTypeOp op = normAppList (Builtin mempty $ mkDimensionTypeBuiltin op)
+
+instance (BuiltinHasDimensionData builtin) => HasDimensionData (Expr builtin) where
+  getDimensionDataOp e = case e of
+    BuiltinExpr _ (getDimensionDataBuiltin -> Just op) args -> Just (op, NonEmpty.toList args)
+    _ -> Nothing
+  mkDimensionDataOp op = normAppList (Builtin mempty $ mkDimensionDataBuiltin op)
+
 --------------------------------------------------------------------------------
 -- DeBruijin substitution
 
@@ -453,33 +488,3 @@ substArgs :: Expr builtin -> [Arg builtin] -> Expr builtin
 substArgs (Lam _ _ body) (arg : args) = do
   substArgs (argExpr arg `substDBInto` body) args
 substArgs e args = normAppList e args
-
---------------------------------------------------------------------------------
--- Converting builtins
-
-class ConvertableBuiltin builtin1 builtin2 where
-  convertBuiltin :: Provenance -> builtin1 -> Expr builtin2
-
-instance ConvertableBuiltin builtin builtin where
-  convertBuiltin = Builtin
-
-convertExprBuiltins ::
-  forall builtin1 builtin2.
-  (ConvertableBuiltin builtin1 builtin2) =>
-  Expr builtin1 ->
-  Expr builtin2
-convertExprBuiltins = mapBuiltins $ \p b args ->
-  normAppList (convertBuiltin p b) args
-
--- | Use to convert builtins for printing that have no representation in the
--- standard `Builtin` type.
-cheatConvertBuiltin :: Provenance -> Doc a -> Expr builtin
-cheatConvertBuiltin p b = FreeVar p $ stdlibIdentifier $ layoutAsText b
-
---------------------------------------------------------------------------------
--- Printing builtins
-
-class (Show builtin, Pretty builtin, ConvertableBuiltin builtin Builtin) => PrintableBuiltin builtin where
-  -- | Convert expressions with the builtin back to expressions with the standard
-  -- builtin type. Used for printing.
-  isCoercion :: builtin -> Bool

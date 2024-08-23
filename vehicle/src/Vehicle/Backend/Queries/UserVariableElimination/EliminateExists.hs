@@ -8,9 +8,10 @@ import Data.Foldable (foldlM)
 import Data.Map qualified as Map
 import Vehicle.Backend.Queries.ConstraintSearch
 import Vehicle.Backend.Queries.UserVariableElimination.Core
-import Vehicle.Backend.Queries.UserVariableElimination.FourierMotzkinElimination
 import Vehicle.Compile.Error
+import Vehicle.Compile.FourierMotzkinElimination
 import Vehicle.Compile.Prelude
+import Vehicle.Data.Assertion
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.LinearExpr (rearrangeExprToSolveFor, referencesVariable)
 import Vehicle.Data.QuantifiedVariable
@@ -59,7 +60,7 @@ solveExists searchCriteria solveVarConstraints partitions userVar = do
 
 fromTensorAssertion :: OriginalUserVariable -> Assertion -> ConstrainedAssertionTree TensorEquality
 fromTensorAssertion var = \case
-  TensorEq eq | tensorEqExpr eq `referencesVariable` UserTensorVar var -> Equality eq (Trivial True)
+  TensorEq eq | equalityExpr eq `referencesVariable` UserTensorVar var -> SingleEquality eq (Trivial True)
   assertion -> NoConstraints (Query assertion)
 
 solveTensorVariable ::
@@ -69,7 +70,7 @@ solveTensorVariable ::
   ConstrainedAssertionTree TensorEquality ->
   m (MaybeTrivial Partitions)
 solveTensorVariable userTensorVar solutions = \case
-  Equality (TensorEquality tensorEq) remainingTree -> do
+  SingleEquality (Equality tensorEq) remainingTree -> do
     let (_, rearrangedEq) = rearrangeExprToSolveFor (UserTensorVar userTensorVar) tensorEq
     let solution = SolveTensorEquality userTensorVar rearrangedEq
     logDebug MaxDetail $
@@ -105,8 +106,8 @@ solveTensorVariable userTensorVar solutions = \case
 
 fromRationalAssertion :: UserRationalVariable -> Assertion -> ConstrainedAssertionTree RationalEquality
 fromRationalAssertion var = \case
-  RationalEq eq | rationalEqExpr eq `referencesVariable` UserRationalVar var -> Equality eq (Trivial True)
-  RationalIneq ineq | rationalIneqExpr ineq `referencesVariable` UserRationalVar var -> Inequalities (ConjunctAll [ineq]) (Trivial True)
+  RationalEq eq | equalityExpr eq `referencesVariable` UserRationalVar var -> SingleEquality eq (Trivial True)
+  RationalIneq ineq | inequalityExpr ineq `referencesVariable` UserRationalVar var -> Inequalities (ConjunctAll [ineq]) (Trivial True)
   assertion -> NoConstraints (Query assertion)
 
 solveRationalVariable ::
@@ -117,7 +118,7 @@ solveRationalVariable ::
   m (MaybeTrivial Partitions)
 solveRationalVariable var solutions constraint =
   mkSinglePartition <$> case constraint of
-    Equality (RationalEquality eq) remainingTree -> do
+    SingleEquality (Equality eq) remainingTree -> do
       let (_, rearrangedEq) = rearrangeExprToSolveFor (UserRationalVar var) eq
       let solution = SolveRationalEquality var rearrangedEq
       logDebug MaxDetail $
@@ -142,7 +143,7 @@ solveRationalInequalities ::
   m (UserVariableReconstruction, MaybeTrivial AssertionTree)
 solveRationalInequalities var solutions ineqs remainingTree = do
   PropertyMetaData {..} <- ask
-  (solution, newInequalities) <- fourierMotzkinElimination var ineqs
+  (solution, newInequalities) <- fourierMotzkinElimination (UserRationalVar var) ineqs
   let step = SolveRationalInequalities var solution
   logDebug MaxDetail $
     "Solving"

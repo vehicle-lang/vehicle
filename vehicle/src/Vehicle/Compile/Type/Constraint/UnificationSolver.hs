@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
 module Vehicle.Compile.Type.Constraint.UnificationSolver
-  ( solveUnificationConstraint,
+  ( runUnificationSolver,
   )
 where
 
@@ -18,7 +18,8 @@ import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Normalise.Quote (Quote (..), unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
-import Vehicle.Compile.Type.Constraint.Core (unify)
+import Vehicle.Compile.Type.Builtin (TypableBuiltin (..))
+import Vehicle.Compile.Type.Constraint.Core (runConstraintSolver, unify)
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Force (forceHead)
 import Vehicle.Compile.Type.Meta
@@ -35,10 +36,22 @@ import Vehicle.Data.DeBruijn
 -- See https://github.com/AndrasKovacs/elaboration-zoo/
 -- for an excellent tutorial on the algorithm.
 
+-- | Attempts to solve as many unification constraints as possible. Takes in
+-- the set of meta-variables solved since unification was last run and outputs
+-- the set of meta-variables solved during this run.
+runUnificationSolver :: forall builtin m. (MonadTypeChecker builtin m) => Proxy builtin -> MetaSet -> m ()
+runUnificationSolver _ metasSolved =
+  logCompilerPass MaxDetail "unification solver run" $
+    runConstraintSolver @builtin
+      getActiveUnificationConstraints
+      setUnificationConstraints
+      solveUnificationConstraint
+      metasSolved
+
 --------------------------------------------------------------------------------
 -- Unification algorithm
 
-type MonadUnify builtin m = TCM builtin m
+type MonadUnify builtin m = MonadTypeChecker builtin m
 
 solveUnificationConstraint ::
   forall builtin m.
@@ -49,6 +62,7 @@ solveUnificationConstraint (WithContext (Unify origin' e1 e2) ctx) = do
   metaSubst <- getMetaSubstitution (Proxy @builtin)
   (ne1', e1BlockingMetas) <- forceHead metaSubst ctx e1
   (ne2', e2BlockingMetas) <- forceHead metaSubst ctx e2
+  logDebug MaxDetail $ pretty e2BlockingMetas
 
   -- In theory this substitution shouldn't be needed, but in practice it is as if
   -- not all the meta-variables are substituted through then the scope of some
@@ -107,6 +121,7 @@ unification info@(ctx, _) reductionBlockingMetas = \case
     | v1 == v2 -> solveSpine info spine1 spine2
   VBuiltin b1 spine1 :~: VBuiltin b2 spine2
     | b1 == b2 -> solveSpine info spine1 spine2
+    | isConstructor b1 && isConstructor b2 -> return HardFailure
   VPi binder1 body1 :~: VPi binder2 body2
     | visibilityMatches binder1 binder2 -> solvePi info (binder1, body1) (binder2, body2)
   VLam binder1 body1 :~: VLam binder2 body2 ->

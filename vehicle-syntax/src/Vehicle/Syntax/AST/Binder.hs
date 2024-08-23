@@ -105,9 +105,11 @@ instance HasProvenance (GenericBinder expr) where
 
 instance HasVisibility (GenericBinder expr) where
   visibilityOf = binderVisibility
+  setVisibility r Binder {..} = Binder {binderVisibility = r, ..}
 
 instance HasRelevance (GenericBinder expr) where
   relevanceOf = binderRelevance
+  setRelevance r Binder {..} = Binder {binderRelevance = r, ..}
 
 instance HasName (GenericBinder expr) (Maybe Name) where
   nameOf = nameOf . binderNamingForm
@@ -170,5 +172,8 @@ mkDefaultBinderDisplayForm = \case
   Just name -> BinderDisplayForm (OnlyName name) True
   Nothing -> BinderDisplayForm OnlyType True
 
-mkDefaultBinder :: expr -> Maybe Name -> GenericBinder expr
-mkDefaultBinder typ name = Binder mempty (mkDefaultBinderDisplayForm name) Explicit Relevant typ
+mkExplicitBinder :: expr -> Maybe Name -> GenericBinder expr
+mkExplicitBinder typ name = Binder mempty (mkDefaultBinderDisplayForm name) Explicit Relevant typ
+
+mkImplicitBinder :: expr -> Maybe Name -> GenericBinder expr
+mkImplicitBinder typ name = Binder mempty (mkDefaultBinderDisplayForm name) (Implicit True) Relevant typ

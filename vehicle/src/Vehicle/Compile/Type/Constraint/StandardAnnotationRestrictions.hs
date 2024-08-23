@@ -1,4 +1,4 @@
-module Vehicle.Data.Builtin.Standard.AnnotationRestrictions
+module Vehicle.Compile.Type.Constraint.StandardAnnotationRestrictions
   ( restrictStandardParameterType,
     restrictStandardDatasetType,
     restrictStandardNetworkType,
@@ -9,8 +9,8 @@ where
 import Control.Monad.Except (MonadError (..))
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Type.Monad
-import Vehicle.Data.Builtin.Standard.Core
+import Vehicle.Compile.Type.Monad.Class
+import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
 

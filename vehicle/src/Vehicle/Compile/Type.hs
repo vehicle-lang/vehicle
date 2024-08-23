@@ -1,7 +1,6 @@
 module Vehicle.Compile.Type
   ( typeCheckProg,
     typeCheckExpr,
-    runUnificationSolver,
   )
 where
 
@@ -24,7 +23,8 @@ import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Monad.Class
-import Vehicle.Data.Builtin.Standard.Core
+import Vehicle.Compile.Type.System (HasTypeSystem (..), TCM)
+import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.Value
 
 -------------------------------------------------------------------------------
@@ -241,22 +241,10 @@ runInstanceSolver _ metasSolved = do
       (solveInstance instanceCandidates)
       metasSolved
 
--- | Attempts to solve as many unification constraints as possible. Takes in
--- the set of meta-variables solved since unification was last run and outputs
--- the set of meta-variables solved during this run.
-runUnificationSolver :: forall builtin m. (TCM builtin m) => Proxy builtin -> MetaSet -> m ()
-runUnificationSolver _ metasSolved =
-  logCompilerPass MaxDetail "unification solver run" $
-    runConstraintSolver @builtin
-      getActiveUnificationConstraints
-      setUnificationConstraints
-      solveUnificationConstraint
-      metasSolved
-
 -------------------------------------------------------------------------------
 -- Unsolved constraint checks
 
-checkAllUnknownsSolved :: (TCM builtin m) => Proxy builtin -> m ()
+checkAllUnknownsSolved :: (MonadTypeChecker builtin m) => Proxy builtin -> m ()
 checkAllUnknownsSolved proxy = do
   -- First check all user constraints (i.e. unification and type-class
   -- constraints) are solved.
@@ -268,14 +256,14 @@ checkAllUnknownsSolved proxy = do
   -- ...and the fresh names
   clearFreshNames proxy
 
-checkAllConstraintsSolved :: forall builtin m. (TCM builtin m) => Proxy builtin -> m ()
+checkAllConstraintsSolved :: forall builtin m. (MonadTypeChecker builtin m) => Proxy builtin -> m ()
 checkAllConstraintsSolved _ = do
   constraints <- getActiveConstraints @builtin
   case constraints of
     [] -> return ()
     (c : cs) -> throwError $ TypingError $ UnsolvedConstraints (c :| cs)
 
-checkAllMetasSolved :: (TCM builtin m) => Proxy builtin -> m ()
+checkAllMetasSolved :: (MonadTypeChecker builtin m) => Proxy builtin -> m ()
 checkAllMetasSolved proxy = do
   unsolvedMetas <- getUnsolvedMetas proxy
   case MetaSet.toList unsolvedMetas of

@@ -1,8 +1,6 @@
 module Vehicle.Compile.Type.Monad
-  ( TCM,
-    MonadTypeChecker (..),
+  ( MonadTypeChecker (..),
     TypeCheckerState,
-    HasTypeSystem (..),
     -- Top-level interface
     runTypeCheckerTInitially,
     runTypeCheckerTHypothetically,
@@ -47,16 +45,11 @@ import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Error (CompileError (..), compilerDeveloperError)
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Type.Builtin (TypableBuiltin (..))
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Compile.Type.Monad.Instance
 import Vehicle.Data.Code.Value
-
--- | The type-checking monad.
-type TCM builtin m =
-  ( MonadTypeChecker builtin m,
-    HasTypeSystem builtin
-  )
 
 runTypeCheckerTInitially ::
   (Monad m) =>
@@ -71,7 +64,7 @@ runTypeCheckerTInitially freeCtx instanceCandidates e =
 -- returning the resulting state of the type-checker.
 runTypeCheckerTHypothetically ::
   forall builtin m a.
-  (TCM builtin m) =>
+  (MonadTypeChecker builtin m) =>
   TypeCheckerT builtin (ExceptT CompileError m) a ->
   m (Either CompileError (a, TypeCheckerState builtin))
 runTypeCheckerTHypothetically e = do
@@ -90,12 +83,12 @@ runTypeCheckerTHypothetically e = do
         return $ Left err
 
 -- | Accepts the hypothetical outcome of the type-checker.
-adoptHypotheticalState :: (TCM builtin m) => TypeCheckerState builtin -> m ()
+adoptHypotheticalState :: (MonadTypeChecker builtin m) => TypeCheckerState builtin -> m ()
 adoptHypotheticalState = modifyMetaCtx . const
 
 freshMetaIdAndExpr ::
   forall builtin m.
-  (TCM builtin m) =>
+  (MonadTypeChecker builtin m) =>
   Provenance ->
   Type builtin ->
   BoundCtx (Type builtin) ->
@@ -106,7 +99,7 @@ freshMetaIdAndExpr p t boundCtx = do
 
 freshMetaExpr ::
   forall builtin m.
-  (TCM builtin m) =>
+  (MonadTypeChecker builtin m) =>
   Provenance ->
   Type builtin ->
   BoundCtx (Type builtin) ->
@@ -117,7 +110,7 @@ freshMetaExpr p t boundCtx = snd <$> freshMetaIdAndExpr p t boundCtx
 -- derived from another constraint).
 createFreshInstanceConstraint ::
   forall builtin m.
-  (TCM builtin m) =>
+  (MonadTypeChecker builtin m) =>
   BoundCtx (Type builtin) ->
   (Expr builtin, [Arg builtin], Type builtin) ->
   Relevance ->
@@ -148,7 +141,7 @@ createFreshInstanceConstraint boundCtx (fun, funArgs, funType) relevance tcExpr 
   return metaExpr
 
 instantiateArgForNonExplicitBinder ::
-  (TCM builtin m) =>
+  (MonadTypeChecker builtin m) =>
   BoundCtx (Type builtin) ->
   Provenance ->
   (Expr builtin, [Arg builtin], Type builtin) ->

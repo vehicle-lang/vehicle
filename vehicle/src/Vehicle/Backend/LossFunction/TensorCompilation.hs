@@ -1,403 +1,520 @@
+{-# OPTIONS_GHC -Wno-deferred-out-of-scope-variables #-}
+
 module Vehicle.Backend.LossFunction.TensorCompilation
-  ( convertExprToTensorValue,
+  ( convertExpr,
     runMonadTensorT,
+    evalTensorBuiltinApp,
   )
 where
 
 import Control.Monad.Except (MonadError (..))
-import Control.Monad.Reader (MonadReader (..))
+import Control.Monad.Reader (MonadReader (..), void)
 import Control.Monad.Trans.Reader (ReaderT (..))
 import Data.List.NonEmpty (NonEmpty (..))
-import Data.Maybe (fromMaybe)
-import Data.Proxy (Proxy (..))
-import Data.Ratio
-import Vehicle.Backend.LossFunction.Core
--- import Vehicle.Backend.LossFunction.Domain (Domain (..), extractSearchDomain)
-import Vehicle.Backend.LossFunction.LogicCompilation
-import Vehicle.Backend.Prelude (DifferentiableLogicID)
+import Vehicle.Backend.LossFunction.Core (pattern VLam2)
+import Vehicle.Compile.Arity (Arity)
 import Vehicle.Compile.Context.Bound
-import Vehicle.Compile.Context.Free.Class (MonadFreeContext)
+import Vehicle.Compile.Context.Free.Class (MonadFreeContext, getFreeEnv)
+import Vehicle.Compile.Context.Name (MonadNameContext, addNameToContext, getBinderDepth, getNameContext)
 import Vehicle.Compile.Error
+import Vehicle.Compile.Normalise.Builtin (evalTensorBuiltin, filterOutIrrelevantArgs)
+import Vehicle.Compile.Normalise.NBE (normaliseInEnv, traverseClosure)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (PrettyFriendly, prettyFriendly)
-import Vehicle.Data.Builtin.Loss (LossBuiltin)
-import Vehicle.Data.Builtin.Loss qualified as L
-import Vehicle.Data.Builtin.Tensor (TensorBuiltin)
-import Vehicle.Data.Builtin.Tensor qualified as T
+import Vehicle.Compile.Print (PrettyFriendly, PrettyVerbose, prettyFriendly, prettyVerbose)
+import Vehicle.Data.Builtin.Core
+import Vehicle.Data.Builtin.Tensor
+import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Tensor
 import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (StdForeachIndex), pattern TensorIdent)
-import Vehicle.Prelude.Warning
-import Vehicle.Syntax.Builtin
 
 --------------------------------------------------------------------------------
 -- Monad
 
-type MonadTensorCtx =
-  ( DifferentiableLogicID,
-    DifferentiableLogicImplementation,
-    DeclProvenance
-  )
+type MonadTensorCtx = DeclProvenance
 
 type MonadTensor m =
   ( MonadCompile m,
     MonadReader MonadTensorCtx m,
     MonadFreeContext Builtin m,
-    MonadBoundContext MixedLossValue m
+    MonadNameContext m
   )
 
 runMonadTensorT ::
   (MonadCompile m) =>
-  DifferentiableLogicID ->
   DeclProvenance ->
-  DifferentiableLogicImplementation ->
   ReaderT MonadTensorCtx m a ->
   m a
-runMonadTensorT logicID origin logic =
-  flip runReaderT (logicID, logic, origin)
-
-switchToMonadLogic ::
-  (MonadTensor m) =>
-  ReaderT MonadLogicCtx m a ->
-  m a
-switchToMonadLogic comp = do
-  (logicID, logic, declProv) <- ask
-  runMonadLogicT logicID logic (Left declProv) comp
+runMonadTensorT = flip runReaderT
 
 getDeclProvenance :: (MonadTensor m) => m DeclProvenance
-getDeclProvenance = do
-  (_, _, prov) <- ask
-  return prov
+getDeclProvenance = ask
 
 --------------------------------------------------------------------------------
--- Public method
+-- Conversion from loss expressions
 
-convertExprToTensorValue ::
-  (MonadTensor m) =>
-  WHNFBoundEnv Builtin ->
-  Expr Builtin ->
-  m (NFValue TensorBuiltin)
-convertExprToTensorValue env expr = do
-  x <- switchToMonadLogic $ normStandardExprToLoss env expr
-  convertLossToTensorValue x
+convertExpr :: (MonadTensor m) => WHNFBoundEnv Builtin -> Expr Builtin -> m (WHNFValue TensorBuiltin)
+convertExpr env expr = do
+  convertValue =<< normaliseInEnv env expr
 
-convertLossToTensorValue ::
-  (MonadTensor m) =>
-  MixedLossValue ->
-  m (NFValue TensorBuiltin)
-convertLossToTensorValue e = do
-  showEntry "tensor-enter" e
-  result <- case e of
-    VMeta {} ->
-      unexpectedExprError currentPass "VMeta"
-    VUniverse l ->
-      return $ VUniverse l
-    VFreeVar v spine -> do
-      VFreeVar v <$> traverseArgs convertLossToTensorValue spine
-    VBoundVar v spine -> do
-      VBoundVar v <$> traverseArgs convertLossToTensorValue spine
-    VBuiltin b spine ->
-      convertBuiltins b spine
-    VPi binder body -> do
-      binder' <- traverse convertLossToTensorValue binder
-      body' <- addBinderToContext binder $ convertLossToTensorValue body
-      return $ VPi binder' body'
-    VLam binder closure -> do
-      lv <- getCurrentLv (Proxy @MixedLossValue)
-      binder' <- traverse convertLossToTensorValue binder
-      body' <- addBinderToContext binder $ convertClosure lv binder closure
-      return $ VLam binder' (NFClosure body')
-  showExit "tensor-exit" result
-  return result
-
-convertClosure ::
-  (MonadTensor m) =>
-  Lv ->
-  MixedLossBinder ->
-  MixedClosure ->
-  m (NFValue TensorBuiltin)
-convertClosure lv binder closure = case closure of
-  StandardClos (WHNFClosure env standardExpr) -> do
-    let newEnv = extendEnvWithBound lv binder env
-    convertExprToTensorValue newEnv standardExpr
-  LossClos (LossClosure _env _lossExpr) -> do
-    compilerDeveloperError "Impossible"
-
-convertBuiltins :: (MonadTensor m) => LossBuiltin -> MixedLossSpine -> m (NFValue TensorBuiltin)
-convertBuiltins b args = do
-  let normArgs = traverseArgs convertLossToTensorValue args
-  case b of
-    -----------
-    -- Types --
-    -----------
-    L.NatType -> VBuiltin T.NatType <$> normArgs
-    L.RatType -> VBuiltin T.RatTensorType <$> normArgs
-    L.IndexType -> VBuiltin T.IndexType <$> normArgs
-    L.ListType -> VBuiltin T.ListType <$> normArgs
-    L.VectorType -> convertVectorType =<< normArgs
-    --------------
-    -- Literals --
-    --------------
-    L.NilList -> VBuiltin T.NilList <$> normArgs
-    L.ConsList -> VBuiltin T.ConsList <$> normArgs
-    L.Index i -> VBuiltin (T.Index i) <$> normArgs
-    L.Bool v -> return $ T.VBoolTensor (Tensor [] [v])
-    L.Nat v -> VBuiltin (T.Nat v) <$> normArgs
-    L.Rat v -> return $ constRatTensor v
-    L.Vector {} -> convertVector =<< normArgs
-    ----------------
-    -- Operations --
-    ----------------
-    L.Neg NegRat -> VBuiltin T.NegRatTensor <$> normArgs
-    L.Add AddNat -> unsupportedTypeError Nat
-    L.Add AddRat -> VBuiltin T.AddRatTensor <$> normArgs
-    L.Sub SubRat -> VBuiltin T.SubRatTensor <$> normArgs
-    L.Mul MulNat -> unsupportedTypeError Nat
-    L.Mul MulRat -> VBuiltin T.MulRatTensor <$> normArgs
-    L.Div DivRat -> VBuiltin T.DivRatTensor <$> normArgs
-    L.PowRat -> VBuiltin T.PowRatTensor <$> normArgs
-    L.MinRat -> VBuiltin T.MinRatTensor <$> normArgs
-    L.MaxRat -> VBuiltin T.MaxRatTensor <$> normArgs
-    L.FoldVector -> convertFoldVector =<< normArgs
-    L.MapVector -> convertMapVector =<< normArgs
-    L.ZipWithVector -> convertZipWith =<< normArgs
-    L.Indices -> VBuiltin T.Indices <$> normArgs
-    L.LookupVector -> VBuiltin T.LookupRatTensor <$> normArgs
-    L.FoldList -> VBuiltin T.FoldList <$> normArgs
-    L.MapList -> VBuiltin T.MapList <$> normArgs
-    L.ForeachIndex -> convertForeachIndex =<< normArgs
-    L.Search -> convertSearch args
+convertValue :: forall m. (MonadTensor m) => WHNFValue Builtin -> m (WHNFValue TensorBuiltin)
+convertValue = go
   where
-    unsupportedTypeError op = compilerDeveloperError $ "Conversion of" <+> pretty op <+> "not yet supported"
+    go :: WHNFValue Builtin -> m (WHNFValue TensorBuiltin)
+    go e = do
+      showEntry "tensor-enter" e
+      result <- case e of
+        VMeta {} ->
+          unexpectedExprError currentPass "VMeta"
+        VUniverse l ->
+          return $ VUniverse l
+        VFreeVar v spine
+          | v == identifierOf StdForeachIndex -> convertForeachIndex spine
+          | otherwise -> VFreeVar v <$> traverseArgs go spine
+        VBoundVar v spine -> do
+          VBoundVar v <$> traverseArgs go spine
+        VBuiltin b spine ->
+          convertBuiltinToTensors b spine
+        VPi binder body -> do
+          binder' <- traverse go binder
+          body' <- addBinderToContext (void binder) $ go body
+          return $ VPi binder' body'
+        VLam binder closure -> do
+          binder' <- traverse go binder
+          freeEnv <- getFreeEnv
+          closure' <- traverseClosure convertValue freeEnv binder closure
+          return $ VLam binder' closure'
+      showExit "tensor-exit" result
+      return result
 
-convertSearch :: (MonadTensor m) => MixedLossSpine -> m (NFValue TensorBuiltin)
-convertSearch args = do
-  boundCtx <- getNamedBoundCtx (Proxy @MixedLossValue)
-  let namedCtx = fmap (fromMaybe "<nameless>") boundCtx
-  VBuiltin (T.SearchRatTensor namedCtx) <$> traverseArgs convertLossToTensorValue args
+convertBuiltinToTensors :: (MonadTensor m) => Builtin -> WHNFSpine Builtin -> m (WHNFValue TensorBuiltin)
+convertBuiltinToTensors b args = case b of
+  BuiltinType t -> convertBuiltinType t =<< traverseSpine convertValue args
+  BuiltinConstructor c -> convertBuiltinConstructor c =<< traverseSpine convertValue args
+  BuiltinFunction f -> convertBuiltinFunction f args
+  TypeClass {} -> unexpectedExprError currentPass "TypeClass"
+  TypeClassOp {} -> unexpectedExprError currentPass "TypeClassOp"
+  NatInDomainConstraint -> unexpectedExprError currentPass "NatInDomainConstraint"
 
-{-
-case args of
-  [unionOp, argExpr -> VLam binder (StandardClos closure)] -> do
-    -- Extract the context
-    boundCtx <- getNamedBoundCtx (Proxy @MixedLossValue)
-    let namedCtx = fmap (fromMaybe "<nameless>") boundCtx
+convertBuiltinType :: (MonadTensor m) => BuiltinType -> WHNFSpine TensorBuiltin -> m (WHNFValue TensorBuiltin)
+convertBuiltinType t args = case t of
+  Unit -> unexpectedExprError currentPass "Unit"
+  Nat -> return $ IDimensionTypeOp DimensionType []
+  Index -> convertIndexType args
+  List -> unsupportedOperation t
+  Bool -> return $ ITensorType (explicit IBoolElementType) (explicit IDimNil)
+  Rat -> return $ ITensorType (explicit IRatElementType) (explicit IDimNil)
+  Vector -> convertVectorType args
 
-    -- Convert the union operation (for combining search results) and the binder.
-    tensorUnionOp <- traverse convertLossToTensorValue unionOp
-    tensorBinder <- traverse convertLossToTensorValue binder
+convertBuiltinConstructor :: (MonadTensor m) => BuiltinConstructor -> WHNFSpine TensorBuiltin -> m (WHNFValue TensorBuiltin)
+convertBuiltinConstructor c args = case c of
+  LUnit -> unexpectedExprError currentPass "LUnit"
+  Nil -> unsupportedOperation c
+  Cons -> unsupportedOperation c
+  LIndex n -> return $ IDimensionDataOp (DimensionIndex n) []
+  LNat n -> return $ IDimensionDataOp (Dimension n) []
+  LBool v -> return $ IBoolConstTensor v (explicit IDimNil)
+  LRat v -> return $ IRatConstTensor v (explicit IDimNil)
+  LVec {} -> convertVector args
 
-    -- Extract the domain for the search
-    declProv <- getDeclProvenance
-    (Domain {..}, newBody) <- extractSearchDomain declProv binder (boundCtxLv boundCtx) closure
-    let tensorLowerBounds = explicit lowerBound
-    let tensorUpperBounds = explicit upperBound
+convertBuiltinFunction :: (MonadTensor m) => BuiltinFunction -> WHNFSpine Builtin -> m (WHNFValue TensorBuiltin)
+convertBuiltinFunction b args = do
+  let tensorArgs = traverseSpine convertValue args
+  let prependSize0 = (Arg mempty (Implicit True) Irrelevant IDimNil :)
+  case b of
+    FromNat {} -> unexpectedExprError currentPass "FromNat"
+    FromRat {} -> unexpectedExprError currentPass "FromRat"
+    Implies -> unexpectedExprError currentPass "Implies"
+    ------------------------
+    -- Boolean operations --
+    ------------------------
+    Not -> IBoolTensorOp NotBoolTensor . prependSize0 <$> tensorArgs
+    And -> IBoolTensorOp AndBoolTensor . prependSize0 <$> tensorArgs
+    Or -> IBoolTensorOp OrBoolTensor . prependSize0 <$> tensorArgs
+    Quantifier q -> IBoolTensorOp (QuantifyRatTensor q) . prependSize0 <$> tensorArgs
+    Equals EqRat op -> IBoolTensorOp (EqualsRatTensor op) . prependSize0 <$> tensorArgs
+    Order OrderRat op -> IBoolTensorOp (OrderRatTensor op) . prependSize0 <$> tensorArgs
+    If -> unsupportedOperation b
+    -----------------------
+    -- Index operations --
+    -----------------------
+    Equals EqIndex Eq -> unsupportedOperation b
+    Equals EqIndex Neq -> unsupportedOperation b
+    Order OrderIndex Le -> unsupportedOperation b
+    Order OrderIndex Lt -> unsupportedOperation b
+    Order OrderIndex Ge -> unsupportedOperation b
+    Order OrderIndex Gt -> unsupportedOperation b
+    ------------------------
+    -- Natural operations --
+    ------------------------
+    Add AddNat -> unsupportedOperation b
+    Mul MulNat -> unsupportedOperation b
+    Equals EqNat Eq -> unsupportedOperation b
+    Equals EqNat Neq -> unsupportedOperation b
+    Order OrderNat Le -> unsupportedOperation b
+    Order OrderNat Lt -> unsupportedOperation b
+    Order OrderNat Ge -> unsupportedOperation b
+    Order OrderNat Gt -> unsupportedOperation b
+    ----------------------
+    -- Rational operations --
+    ----------------------
+    Neg NegRat -> IRatTensorOp NegRatTensor . prependSize0 <$> tensorArgs
+    Add AddRat -> IRatTensorOp AddRatTensor . prependSize0 <$> tensorArgs
+    Sub SubRat -> IRatTensorOp SubRatTensor . prependSize0 <$> tensorArgs
+    Mul MulRat -> IRatTensorOp MulRatTensor . prependSize0 <$> tensorArgs
+    Div DivRat -> IRatTensorOp DivRatTensor . prependSize0 <$> tensorArgs
+    MinRat -> IRatTensorOp MinRatTensor . prependSize0 <$> tensorArgs
+    MaxRat -> IRatTensorOp MaxRatTensor . prependSize0 <$> tensorArgs
+    PowRat -> unsupportedOperation b
+    -----------------------
+    -- Vector operations --
+    -----------------------
+    FoldVector -> convertFoldVector args
+    MapVector -> convertMapVector args
+    ZipWithVector -> convertZipWith args
+    Indices -> unsupportedOperation b
+    At -> convertAt =<< tensorArgs
+    ---------------------
+    -- List operations --
+    ---------------------
+    FoldList -> unsupportedOperation b
+    MapList -> unsupportedOperation b
 
-    -- Convert the new body of the predicate
-    lossBody <- switchToMonadLogic $ convertToLossBuiltins newBody
-    tensorPredicate <- explicit . VLam tensorBinder . NFClosure <$> convertLossToTensorValue lossBody
+unsupportedOperation :: (Pretty builtin, MonadTensor m) => builtin -> m a
+unsupportedOperation t = do
+  declProv <- getDeclProvenance
+  throwError $ UnsupportedLossOperation declProv mempty (pretty t)
 
-    -- Extract the domain for the search
-    let newArgs = [tensorUnionOp, tensorLowerBounds, tensorUpperBounds, tensorPredicate]
+--------------------------------------------------------------------------------
+-- Simple function conversion
 
-    return $ VBuiltin (T.SearchRatTensor namedCtx) newArgs
-  _ -> unexpectedExprError currentPass (prettyVerbose $ VBuiltin L.Search args)
--}
+convertIndexType :: (MonadTensor m) => WHNFSpine TensorBuiltin -> m (WHNFValue TensorBuiltin)
+convertIndexType = \case
+  [dim] -> do
+    return $ ITensorType (explicit (IDimType dim)) (explicit IDimNil)
+  _ -> unexpectedExprError currentPass "Index has incorrect number of arguments"
 
-convertVectorType :: (MonadTensor m) => [NFArg TensorBuiltin] -> m (NFValue TensorBuiltin)
+convertVectorType :: (MonadTensor m) => WHNFSpine TensorBuiltin -> m (WHNFValue TensorBuiltin)
 convertVectorType = \case
-  [argExpr -> elemType, argExpr -> size] -> do
-    let maybeResult = case elemType of
-          VBuiltin b _args -> case b of
-            T.BoolTensorType -> Just T.BoolTensorType
-            T.RatTensorType -> Just T.RatTensorType
-            T.IndexType -> Just T.IndexTensorType
-            T.IndexTensorType -> Just T.IndexTensorType
-            _ -> Nothing
-          _ -> Nothing
-
-    case maybeResult of
-      Just result -> return $ VBuiltin result []
-      Nothing -> do
-        declProv <- getDeclProvenance
-        boundCtx <- getNamedBoundCtx (Proxy @MixedLossValue)
-        let vecType = VFreeVar TensorIdent [Arg mempty Explicit Relevant elemType, Arg mempty Explicit Relevant size]
-        throwError $ HigherOrderVectors declProv boundCtx vecType elemType
+  [elemType, dim] -> case argExpr elemType of
+    ITensorType tBaseElem dims -> return $ ITensorType tBaseElem (explicit $ IDimCons (explicit (argExpr dim)) dims)
+    unknownElemType -> do
+      declProv <- getDeclProvenance
+      boundCtx <- getNameContext
+      let vecType = VFreeVar TensorIdent [elemType, dim]
+      throwError $ HigherOrderVectors declProv boundCtx vecType unknownElemType
   _ -> unexpectedExprError currentPass "Vector has incorrect number of arguments"
 
-convertVector :: (MonadTensor m) => [NFArg TensorBuiltin] -> m (NFValue TensorBuiltin)
+convertVector :: (MonadTensor m) => WHNFSpine TensorBuiltin -> m (WHNFValue TensorBuiltin)
 convertVector args = case args of
   [] -> compilerDeveloperError "Malformed LVec found."
-  [_t] -> compilerDeveloperError "0-dimensional tensor found"
-  _t : a : as -> do
-    let vs = a :| as
-    return $ case argExpr a of
-      T.VBoolTensor {} -> comp T.VBoolTensor T.getBoolTensor vs
-      T.VRatTensor {} -> comp T.VRatTensor T.getRatTensor vs
-      _ -> VBuiltin (T.StackRatTensor (length (a : as))) args
-    where
-      comp ::
-        (Tensor a -> NFValue TensorBuiltin) ->
-        (NFValue TensorBuiltin -> Maybe (Tensor a)) ->
-        NonEmpty (NFArg TensorBuiltin) ->
-        NFValue TensorBuiltin
-      comp mk f xs = case traverse (f . argExpr) xs of
-        Just constantTensors -> mk $ stack constantTensors
-        Nothing -> VBuiltin (T.StackRatTensor (length (a : as))) args
+  t : xs -> case argExpr t of
+    ITensorType tElem dims -> do
+      let mkStack elems = IDimensionDataOp (StackTensor (length elems)) (tElem : dims : elems)
+      logDebug MaxDetail $ prettyVerbose tElem
+      case argExpr tElem of
+        IBoolElementType -> convertVectorElems dims mkStack IBoolTensor getBoolTensor IBoolConstTensor getBoolConstTensor xs
+        IRatElementType -> convertVectorElems dims mkStack IRatTensor getRatTensor IRatConstTensor getRatConstTensor xs
+        IDimType dim -> convertVectorElems dims mkStack (IDimIndexTensor dim) getDimIndexTensor (IDimIndexConstTensor dim) getDimIndexConstTensor xs
+        _ -> compilerDeveloperError $ "Invalid base element" <+> prettyVerbose tElem
+    _ -> compilerDeveloperError $ "Invalid vector element" <+> prettyVerbose t
 
-extendConstRatTensor :: T.Rat -> NFValue TensorBuiltin -> NFArg TensorBuiltin -> NFValue TensorBuiltin
-extendConstRatTensor x dim dims = do
-  let newDims = VBuiltin T.ConsList [explicit dim, dims]
-  VBuiltin (T.ConstRatTensor x) [explicit newDims]
+convertVectorElems ::
+  (MonadTensor m, Eq a, Pretty a) =>
+  WHNFArg TensorBuiltin ->
+  (WHNFSpine TensorBuiltin -> WHNFValue TensorBuiltin) ->
+  (Tensor a -> WHNFValue TensorBuiltin) ->
+  (WHNFValue TensorBuiltin -> Maybe (Provenance, Tensor a)) ->
+  (a -> WHNFArg TensorBuiltin -> WHNFValue TensorBuiltin) ->
+  (WHNFValue TensorBuiltin -> Maybe a) ->
+  WHNFSpine TensorBuiltin ->
+  m (WHNFValue TensorBuiltin)
+convertVectorElems elementDims mkStack mkLiteralTensor getLiteralTensor mkConstantTensor getConstantTensor = \case
+  -- If we're in a zero dimension vector, simply return the empty tensor
+  [] -> return $ mkStack []
+  x : xs -> do
+    let elements = fmap argExpr (x :| xs)
+    -- If all elements are literal tensors then combine into a new single literal tensor
+    case traverse getLiteralTensor elements of
+      Just constantTensors -> do
+        return $ mkLiteralTensor $ stack (fmap snd constantTensors)
+      -- If all elements are constant tensors with the same value then combine into a new single constant tensor
+      Nothing -> do
+        case traverse getConstantTensor elements of
+          Just (c :| cs) | all (c ==) cs -> return $ mkConstantTensor c (makeExplicitDims (explicit (IDim (length elements))) elementDims)
+          -- Otherwise we have to manually stack the tensor
+          _ -> return $ mkStack (x : xs)
 
-type HigherOrderFunctionConversion =
-  forall m.
-  (MonadTensor m) =>
-  Lv ->
-  [NFArg TensorBuiltin] ->
-  m (Maybe (NFValue TensorBuiltin))
+convertAt :: (MonadTensor m) => WHNFSpine TensorBuiltin -> m (WHNFValue TensorBuiltin)
+convertAt = \case
+  [argExpr -> ITensorType tElem dims, dim, xs, i] -> do
+    let tElem' = setVisibility (Implicit True) tElem
+    let dim' = setRelevance Irrelevant $ setVisibility (Implicit True) dim
+    let dims' = setRelevance Irrelevant $ setVisibility (Implicit True) dims
+    return $ IDimensionDataOp DimensionLookup [tElem', dim', dims', xs, i]
+  _ -> unexpectedExprError currentPass "'!'"
 
-convertHigherOrderFunction ::
-  (MonadTensor m) =>
-  HigherOrderFunctionConversion ->
-  LossBuiltin ->
-  (NFSpine TensorBuiltin -> NFValue TensorBuiltin) ->
-  [NFArg TensorBuiltin] ->
-  m (NFValue TensorBuiltin)
-convertHigherOrderFunction convertFn origFn mkDefault args = do
-  let defaultExpr = mkDefault args
-  showEntry ("enter-" <> pretty origFn) defaultExpr
-  lv <- getCurrentLv (Proxy @MixedLossValue)
-  maybeResult <- convertFn lv args
-  result <- case maybeResult of
-    Just expr -> return expr
-    Nothing -> do
-      (ident, _) <- getDeclProvenance
-      boundCtx <- getNamedBoundCtx (Proxy @MixedLossValue)
-      logWarning $ InefficientTensorCode (nameOf ident) origFn boundCtx defaultExpr
-      return defaultExpr
+convertDim :: (MonadTensor m) => WHNFArg Builtin -> m (WHNFArg TensorBuiltin)
+convertDim arg = setVisibility Explicit . setRelevance Relevant <$> traverse convertValue arg
 
-  showExit ("exit-" <> pretty origFn) result
-  return result
+--------------------------------------------------------------------------------
+-- Higher order function conversion
 
-convertFoldVector :: (MonadTensor m) => [NFArg TensorBuiltin] -> m (NFValue TensorBuiltin)
-convertFoldVector = convertHigherOrderFunction go L.MapVector (VBuiltin T.MapRatTensor)
+convertFoldVector :: forall m. (MonadTensor m) => WHNFSpine Builtin -> m (WHNFValue TensorBuiltin)
+convertFoldVector spine = case spine of
+  [_dim, _a, _b, argExpr -> VLam2 binder1 env binder2 body, e, xs] -> do
+    lv <- getBinderDepth
+    (reductionOp, pointwiseOp, dims) <- addNameToContext binder1 $ addNameToContext binder2 $ do
+      go lv =<< convertExpr (extendEnvWithBound (lv + 1) binder2 $ extendEnvWithBound lv binder1 env) body
+
+    e' <- traverse convertValue e
+    xs' <- traverse convertValue xs
+
+    let dimsArg = Arg mempty (Implicit True) Irrelevant dims
+    let foldResult = evalTensorBuiltinApp reductionOp [dimsArg, xs']
+    return $ evalTensorBuiltinApp pointwiseOp [dimsArg, e', explicit foldResult]
+  _ -> unexpectedExprError currentPass $ "'foldVector'" <+> prettyVerbose spine
   where
-    go :: HigherOrderFunctionConversion
-    go lv = \case
-      [_, _, _, f, argExpr -> e, xs] -> case f of
-        ExplicitArg _ _ (getSimpleBinaryOp lv -> Just bop) -> return $ case bop of
-          T.AddRatTensor -> Just $ evalAdd (VBuiltin T.ReduceSumRatTensor [xs]) e
-          _ -> Nothing
-        _ -> return Nothing
-      _ -> return Nothing
+    go :: Lv -> WHNFValue TensorBuiltin -> m (TensorBuiltin, TensorBuiltin, WHNFValue TensorBuiltin)
+    go lv = convertHigherOrderFunction FoldVector $ \value -> case getSimpleBinaryOp lv value of
+      Just (op, dims) -> case op of
+        (TensorBool AndBoolTensor) -> return (TensorBool ReduceAndTensor, op, dims)
+        (TensorBool OrBoolTensor) -> return (TensorBool ReduceAndTensor, op, dims)
+        (TensorRat AddRatTensor) -> return (TensorRat ReduceAddRatTensor, op, dims)
+        (TensorRat MulRatTensor) -> return (TensorRat ReduceMulRatTensor, op, dims)
+        (TensorRat MinRatTensor) -> return (TensorRat ReduceMulRatTensor, op, dims)
+        (TensorRat MaxRatTensor) -> return (TensorRat ReduceMulRatTensor, op, dims)
+        _ -> cannotConvertError 2 (Right FoldVector) spine value
+      _ -> cannotConvertError 2 (Right FoldVector) spine value
 
-convertZipWith :: (MonadTensor m) => [NFArg TensorBuiltin] -> m (NFValue TensorBuiltin)
-convertZipWith = convertHigherOrderFunction go L.ZipWithVector (VBuiltin T.ZipWithRatTensor)
-  where
-    go :: HigherOrderFunctionConversion
-    go lv = \case
-      [a, b, c, n, argExpr -> VLam2 binder1 binder2 body, xs, ys] ->
-        case body of
-          VBuiltin op [e1] | isLiftableTensorOp op -> do
-            let mkArgs f = [a, b, c, n, explicit f, xs, ys]
-            let args1 = mkArgs (VLam2 binder1 binder2 (argExpr e1))
-            xs' <- convertZipWith args1
-            return $ Just $ VBuiltin op [explicit xs']
-          VBuiltin op [e1, e2] | isLiftableTensorOp op -> do
-            let mkArgs f = [a, b, c, n, explicit f, xs, ys]
-            let args1 = mkArgs (VLam2 binder1 binder2 (argExpr e1))
-            let args2 = mkArgs (VLam2 binder1 binder2 (argExpr e2))
-            xs' <- convertZipWith args1
-            ys' <- convertZipWith args2
-            return $ Just $ VBuiltin op [explicit xs', explicit ys']
-          VBuiltin (T.ConstRatTensor r) [dims] ->
-            return $ Just $ extendConstRatTensor r (argExpr n) dims
-          VBoundVar v []
-            | v == lv ->
-                return $ Just $ argExpr xs
-          VBoundVar v []
-            | v == lv + 1 ->
-                return $ Just $ argExpr ys
-          _ -> return Nothing
-      _ -> return Nothing
+    getSimpleBinaryOp :: Lv -> WHNFValue TensorBuiltin -> Maybe (TensorBuiltin, WHNFValue TensorBuiltin)
+    getSimpleBinaryOp lv e = case e of
+      VBuiltin b [argExpr -> dims, argExpr -> VBoundVar lv1 [], argExpr -> VBoundVar lv2 []] | lv1 == lv && lv2 == lv + 1 -> Just (b, dims)
+      _ -> Nothing
 
-convertMapVector :: (MonadTensor m) => [NFArg TensorBuiltin] -> m (NFValue TensorBuiltin)
-convertMapVector = convertHigherOrderFunction go L.MapVector (VBuiltin T.MapRatTensor)
-  where
-    go :: HigherOrderFunctionConversion
-    go _lv _args = return Nothing
+convertZipWith :: forall m. (MonadTensor m) => WHNFSpine Builtin -> m (WHNFValue TensorBuiltin)
+convertZipWith spine = case spine of
+  [_a, _b, _c, dim, argExpr -> VLam2 binder1 env binder2 body, xs, ys] -> do
+    lv <- getBinderDepth
+    liftedBody <- addNameToContext binder1 $ addNameToContext binder2 $ do
+      tensorBody <- convertExpr (extendEnvWithBound (lv + 1) binder2 $ extendEnvWithBound lv binder1 env) body
+      go (lv + 2) tensorBody
 
-convertForeachIndex :: (MonadTensor m) => [NFArg TensorBuiltin] -> m (NFValue TensorBuiltin)
-convertForeachIndex = convertHigherOrderFunction go L.ForeachIndex (VFreeVar (identifierOf StdForeachIndex))
+    dim' <- convertDim dim
+    xs' <- traverse convertValue xs
+    ys' <- traverse convertValue ys
+    liftedBody dim' xs' ys'
+  _ -> unexpectedExprError currentPass $ "'zipWith'" <+> prettyVerbose spine
   where
-    go :: HigherOrderFunctionConversion
-    go lv = \case
-      [t, size, f@(argExpr -> VLam binder (NFClosure body))] -> case body of
+    go :: Lv -> WHNFValue TensorBuiltin -> m (WHNFArg TensorBuiltin -> WHNFArg TensorBuiltin -> WHNFArg TensorBuiltin -> m (WHNFValue TensorBuiltin))
+    go lv = convertHigherOrderFunction ZipWithVector $ \case
+      VBuiltin op@(isPointwiseLiftable -> Just {}) [argExpr -> dims, argExpr -> e] -> do
+        e' <- go lv e
+        return $ \dim xs ys -> do
+          e'' <- explicit <$> e' dim xs ys
+          return $ evalTensorBuiltinApp op [makeImplicitDims dim dims, e'']
+      VBuiltin op@(isPointwiseLiftable -> Just {}) [argExpr -> dims, argExpr -> e1, argExpr -> e2] -> do
+        e1' <- go lv e1
+        e2' <- go lv e2
+        return $ \dim xs ys -> do
+          let dims'' = makeImplicitDims dim dims
+          e1'' <- explicit <$> e1' dim xs ys
+          e2'' <- explicit <$> e2' dim xs ys
+          return $ evalTensorBuiltinApp op [dims'', e1'', e2'']
+      IConstTensor t x dims -> do
+        return $ \dim _xs _ys -> return $ extendConstTensor t x dim dims
+      VBoundVar v []
+        | v == lv - 2 -> return $ \_dim xs _ys -> return $ argExpr xs
+        | v == lv - 1 -> return $ \_dim _xs ys -> return $ argExpr ys
+      blockedExpr -> cannotConvertError 2 (Right ZipWithVector) spine blockedExpr
+
+convertMapVector :: forall m. (MonadTensor m) => WHNFSpine Builtin -> m (WHNFValue TensorBuiltin)
+convertMapVector spine = case spine of
+  [dim, _a, _b, argExpr -> VLam binder (WHNFClosure env body), xs] -> do
+    lv <- getBinderDepth
+    liftedBody <- addNameToContext binder $ do
+      tensorBody <- convertExpr (extendEnvWithBound lv binder env) body
+      go (lv + 1) tensorBody
+
+    dim' <- convertDim dim
+    xs' <- traverse convertValue xs
+
+    return $ liftedBody dim' xs'
+  _ -> unexpectedExprError currentPass $ "'mapVector'" <+> prettyVerbose spine
+  where
+    go :: Lv -> WHNFValue TensorBuiltin -> m (WHNFArg TensorBuiltin -> WHNFArg TensorBuiltin -> WHNFValue TensorBuiltin)
+    go lv = convertHigherOrderFunction MapVector $ \case
+      VBuiltin op@(isPointwiseLiftable -> Just {}) [dims, argExpr -> e1, argExpr -> e2] -> do
         -- Distribute the `forallIndex` across a liftable operation (e.g. `and`).
         -- e.g. `foreach i . x(i) op y(i)` -> `(foreach i . x(i)) op (forall i . y(i))`
-        VBuiltin b [e1, e2] | isLiftableTensorOp b -> do
-          let mk newBody = convertForeachIndex [t, size, explicit (VLam binder (NFClosure newBody))]
-          e1' <- mk $ argExpr e1
-          e2' <- mk $ argExpr e2
-          return $ Just $ VBuiltin b [explicit e1', explicit e2']
-        -- Eliminate `forall i . xs ! i` into `xs`
-        VBuiltin T.LookupRatTensor (reverse -> (argExpr -> VBoundVar lv1 _) : xs : _)
-          | lv1 == lv -> return $ Just $ argExpr xs
-        -- Eliminate `forall i . c` into `const c`
-        T.VRatTensor (Tensor _ [x]) -> do
-          let nil = VBuiltin T.NilList []
-          let dims = VBuiltin T.ConsList (Arg mempty Explicit Relevant <$> [argExpr size, nil])
-          return $ Just $ VBuiltin (T.ConstRatTensor x) [Arg mempty Explicit Relevant dims]
-        VBuiltin (T.ConstRatTensor x) [dims] ->
-          return $ Just $ extendConstRatTensor x (argExpr size) dims
-        _ -> do
-          let indexType = VBuiltin T.IndexType [size]
-          let indices = VBuiltin T.Indices [size]
-          result <- convertMapVector [implicit indexType, t, size, f, explicit indices]
-          return $ Just result
-      _ -> unexpectedExprError currentPass "'foreachIndex'"
+        e1' <- go lv e1
+        e2' <- go lv e2
+        return $ \dim xs -> evalTensorBuiltinApp op [makeImplicitDims dim (argExpr dims), explicit (e1' dim xs), explicit (e2' dim xs)]
+      VBoundVar v []
+        | v == lv - 1 -> return $ \_dim xs -> argExpr xs
+      IDimensionDataOp ConstTensor [t, x, dims] -> do
+        return $ \dim _xs -> extendConstTensor t x dim dims
+      blockedExpr ->
+        cannotConvertError 1 (Right MapVector) spine blockedExpr
 
-pattern VLam2 :: NFBinder TensorBuiltin -> NFBinder TensorBuiltin -> NFValue TensorBuiltin -> NFValue TensorBuiltin
-pattern VLam2 binder1 binder2 body = VLam binder1 (NFClosure (VLam binder2 (NFClosure body)))
+convertForeachIndex :: forall m. (MonadTensor m) => WHNFSpine Builtin -> m (WHNFValue TensorBuiltin)
+convertForeachIndex spine = case spine of
+  [argExpr -> typ, dim, argExpr -> VLam binder (WHNFClosure env body)] -> do
+    typ' <- convertValue typ
+    lv <- getBinderDepth
+    addNameToContext binder $ do
+      dim' <- traverse convertValue dim
+      body' <- convertExpr (extendEnvWithBound lv binder env) body
+      go lv typ' dim' body'
+  _ -> unexpectedExprError currentPass "'foreachIndex'"
+  where
+    go :: Lv -> WHNFValue TensorBuiltin -> WHNFArg TensorBuiltin -> WHNFValue TensorBuiltin -> m (WHNFValue TensorBuiltin)
+    go lv resultType dim = convertHigherOrderFunction StdForeachIndex $ \case
+      VBuiltin b@(isPointwiseLiftable -> Just tElem) [argExpr -> dims, e] -> do
+        -- Distribute the `forallIndex` across a liftable operation (e.g. `and`).
+        -- e.g. `foreach i . x(i) op y(i)` -> `(foreach i . x(i)) op (forall i . y(i))`
+        let newType = ITensorType (explicit (VBuiltin tElem [])) (explicit dims)
+        e' <- traverse (go lv newType dim) e
+        return $ evalTensorBuiltinApp b [makeImplicitDims dim dims, e']
+      VBuiltin b@(isPointwiseLiftable -> Just tElem) [argExpr -> dims, e1, e2] -> do
+        -- Distribute the `forallIndex` across a liftable operation (e.g. `and`).
+        -- e.g. `foreach i . x(i) op y(i)` -> `(foreach i . x(i)) op (forall i . y(i))`
+        let newType = ITensorType (explicit (VBuiltin tElem [])) (explicit dims)
+        e1' <- traverse (go lv newType dim) e1
+        e2' <- traverse (go lv newType dim) e2
+        return $ evalTensorBuiltinApp b [makeImplicitDims dim dims, e1', e2']
+      IDimensionDataOp DimensionLookup [_tElem, _dim, _dims, xs, argExpr -> VBoundVar lv1 []]
+        | lv1 == lv ->
+            -- Eliminate `forall i . xs ! i` into `xs`
+            return $ argExpr xs
+      IConstTensor t x dims -> do
+        return $ extendConstTensor t x dim dims
+      VBoundVar lv1 []
+        | lv1 /= lv -> do
+            logDebug MaxDetail $ prettyVerbose resultType
+            case resultType of
+              ITensorType tElem dims@(argExpr -> IDimNil) -> do
+                let tElem' = setVisibility (Implicit True) tElem
+                let value = explicit (VBoundVar lv1 [])
+                return $ IConstTensor tElem' value (makeExplicitDims dim dims)
+              _ -> cannotConvertError 1 (Right MapVector) spine (VBoundVar lv1 [])
+      blockedExpr -> do
+        logDebug MaxDetail $ prettyVerbose blockedExpr
+        cannotConvertError 1 (Left StdForeachIndex) spine blockedExpr
 
-getSimpleBinaryOp :: Lv -> NFValue TensorBuiltin -> Maybe TensorBuiltin
-getSimpleBinaryOp lv e = case e of
-  VLam2 _ _ (VBuiltin b [argExpr -> VBoundVar lv1 [], argExpr -> VBoundVar lv2 []]) | lv1 == lv && lv2 == lv + 1 -> Just b
-  _ -> Nothing
+-- | Returns Nothing if not liftable, and the argument type if it is liftable
+isPointwiseLiftable :: TensorBuiltin -> Maybe TensorBuiltin
+isPointwiseLiftable = \case
+  TensorBool op -> case op of
+    BoolType -> Nothing
+    BoolLiteral {} -> Nothing
+    AndBoolTensor -> Just (TensorBool BoolType)
+    OrBoolTensor -> Just (TensorBool BoolType)
+    NotBoolTensor -> Just (TensorBool BoolType)
+    EqualsRatTensor {} -> Just (TensorRat RatType)
+    OrderRatTensor {} -> Just (TensorRat RatType)
+    ReduceAndTensor -> Nothing
+    ReduceOrTensor -> Nothing
+    BoolTensor {} -> Nothing
+    QuantifyRatTensor {} -> Nothing
+  TensorRat op -> case op of
+    RatTensor {} -> Nothing
+    RatType -> Nothing
+    RatLiteral {} -> Nothing
+    NegRatTensor -> Just (TensorRat RatType)
+    AddRatTensor -> Just (TensorRat RatType)
+    SubRatTensor -> Just (TensorRat RatType)
+    MulRatTensor -> Just (TensorRat RatType)
+    DivRatTensor -> Just (TensorRat RatType)
+    MinRatTensor -> Just (TensorRat RatType)
+    MaxRatTensor -> Just (TensorRat RatType)
+    ReduceAddRatTensor -> Nothing
+    ReduceMulRatTensor -> Nothing
+    ReduceMinRatTensor -> Nothing
+    ReduceMaxRatTensor -> Nothing
+    SearchRatTensor -> Nothing
+  TensorDimData {} -> Nothing
+  TensorDimType {} -> Nothing
 
-evalAdd :: NFValue TensorBuiltin -> NFValue TensorBuiltin -> NFValue TensorBuiltin
-evalAdd (T.VRatTensor xs) y | all (\r -> numerator r == 0) xs = y
-evalAdd x (T.VRatTensor ys) | all (\r -> numerator r == 0) ys = x
-evalAdd x y = VBuiltin T.AddRatTensor (Arg mempty Explicit Relevant <$> [x, y])
-
-isLiftableTensorOp :: TensorBuiltin -> Bool
-isLiftableTensorOp = \case
-  T.NegRatTensor -> True
-  T.EqRatTensor -> True
-  T.NeRatTensor -> True
-  T.LeRatTensor -> True
-  T.LtRatTensor -> True
-  T.GeRatTensor -> True
-  T.GtRatTensor -> True
-  T.AddRatTensor -> True
-  T.SubRatTensor -> True
-  T.MulRatTensor -> True
-  T.DivRatTensor -> True
-  T.MaxRatTensor -> True
-  _ -> False
-
+{-
+isReduction :: TensorBuiltin -> Maybe TensorBuiltin
+isReduction = \case
+  TensorBool op -> case op of
+    BoolType -> Nothing
+    BoolLiteral {} -> Nothing
+    AndBoolTensor -> Nothing
+    OrBoolTensor -> Nothing
+    NotBoolTensor -> Nothing
+    EqualsRatTensor {} -> Nothing
+    OrderRatTensor {} -> Nothing
+    ReduceAndTensor -> Just (TensorBool BoolType)
+    ReduceOrTensor -> Just (TensorBool BoolType)
+    BoolTensor {} -> Nothing
+    QuantifyRatTensor {} -> Nothing
+  TensorRat op -> case op of
+    RatTensor {} -> Nothing
+    RatType -> Nothing
+    RatLiteral {} -> Nothing
+    NegRatTensor -> Nothing
+    AddRatTensor -> Nothing
+    SubRatTensor -> Nothing
+    MulRatTensor -> Nothing
+    DivRatTensor -> Nothing
+    MinRatTensor -> Nothing
+    MaxRatTensor -> Nothing
+    ReduceAddRatTensor -> Just (TensorRat RatType)
+    ReduceMulRatTensor -> Just (TensorRat RatType)
+    ReduceMinRatTensor -> Just (TensorRat RatType)
+    ReduceMaxRatTensor -> Just (TensorRat RatType)
+    SearchRatTensor -> Nothing
+  TensorDimData {} -> Nothing
+  TensorDimType {} -> Nothing
+-}
 currentPass :: CompilerPass
 currentPass = "conversion to tensors"
 
-showEntry :: (MonadTensor m, PrettyFriendly (Contextualised a NamedBoundCtx)) => Doc a -> a -> m ()
+cannotConvertError :: (MonadTensor m) => Arity -> Either StdLibFunction BuiltinFunction -> WHNFSpine Builtin -> WHNFValue TensorBuiltin -> m b
+cannotConvertError arity fn args problematicExpr = do
+  prov <- getDeclProvenance
+  problematicCtx <- getNameContext
+  let originalCtx = drop arity problematicCtx
+  let originalExpr = either (VFreeVar . identifierOf) (VBuiltin . BuiltinFunction) fn args
+  throwError $ UnsupportedHigherOrderTensorCode prov originalCtx originalExpr problematicCtx problematicExpr
+
+evalTensorBuiltinApp :: TensorBuiltin -> WHNFSpine TensorBuiltin -> WHNFValue TensorBuiltin
+evalTensorBuiltinApp op spine = evalTensorBuiltin op (VBuiltin op spine) (filterOutIrrelevantArgs spine)
+
+makeImplicitDims :: WHNFArg TensorBuiltin -> WHNFValue TensorBuiltin -> WHNFArg TensorBuiltin
+makeImplicitDims dim dims = Arg mempty (Implicit True) Irrelevant (IDimCons dim (explicit dims))
+
+makeExplicitDims :: WHNFArg TensorBuiltin -> WHNFArg TensorBuiltin -> WHNFArg TensorBuiltin
+makeExplicitDims dim dims = Arg mempty Explicit Relevant (IDimCons dim dims)
+
+extendConstTensor :: WHNFArg TensorBuiltin -> WHNFArg TensorBuiltin -> WHNFArg TensorBuiltin -> WHNFArg TensorBuiltin -> WHNFValue TensorBuiltin
+extendConstTensor t x dim dims = IDimensionDataOp ConstTensor [t, x, makeExplicitDims dim dims]
+
+convertHigherOrderFunction ::
+  (MonadLogger m, MonadNameContext m, Pretty fn, PrettyFriendly (Contextualised b NamedBoundCtx), PrettyVerbose b) =>
+  fn ->
+  (b -> m a) ->
+  b ->
+  m a
+convertHigherOrderFunction origFn convert lamBody = do
+  showEntry ("enter-" <> pretty origFn) lamBody
+  result <- convert lamBody
+  decrCallDepth
+  logDebug MaxDetail ("exit-" <> pretty origFn)
+  return result
+
+showEntry :: (MonadLogger m, MonadNameContext m, PrettyFriendly (Contextualised b NamedBoundCtx), PrettyVerbose b) => Doc a -> b -> m ()
 showEntry doc e = do
-  ctx <- getNamedBoundCtx (Proxy @MixedLossValue)
+  ctx <- getNameContext
+  -- logDebug MaxDetail $ doc <+> ":" <+> prettyVerbose e
   logDebug MaxDetail $ doc <+> ":" <+> prettyFriendly (WithContext e ctx)
   incrCallDepth
 
-showExit :: (MonadTensor m) => Doc a -> NFValue TensorBuiltin -> m ()
+showExit :: (MonadLogger m, MonadNameContext m, PrettyFriendly (Contextualised b NamedBoundCtx), PrettyVerbose b) => Doc a -> b -> m ()
 showExit doc e = do
-  ctx <- getNamedBoundCtx (Proxy @MixedLossValue)
+  ctx <- getNameContext
   decrCallDepth
   logDebug MaxDetail $ doc <+> ": " <+> prettyFriendly (WithContext e ctx)

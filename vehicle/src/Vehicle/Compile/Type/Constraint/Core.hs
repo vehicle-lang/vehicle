@@ -22,7 +22,7 @@ import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
-import Vehicle.Compile.Type.Monad (MonadTypeChecker, TCM, copyContext, freshMetaIdAndExpr, trackSolvedMetas)
+import Vehicle.Compile.Type.Monad (MonadTypeChecker, copyContext, freshMetaIdAndExpr, trackSolvedMetas)
 import Vehicle.Data.Code.Value
 import Vehicle.Data.DSL
 
@@ -31,7 +31,7 @@ import Vehicle.Data.DSL
 -- the set of meta-variables solved during this run.
 runConstraintSolver ::
   forall builtin m constraint.
-  (TCM builtin m, PrettyExternal (Contextualised constraint (ConstraintContext builtin))) =>
+  (MonadTypeChecker builtin m, PrettyExternal (Contextualised constraint (ConstraintContext builtin))) =>
   m [Contextualised constraint (ConstraintContext builtin)] ->
   ([Contextualised constraint (ConstraintContext builtin)] -> m ()) ->
   (Contextualised constraint (ConstraintContext builtin) -> m ()) ->
@@ -94,7 +94,7 @@ createInstanceUnification (ctx, origin) e1 e2 = do
 
 -- | Creates an instance constraint as a subgoal of an existing instance constraint.
 createSubInstance ::
-  (TCM builtin m) =>
+  (MonadTypeChecker builtin m) =>
   (ConstraintContext builtin, InstanceConstraintOrigin builtin) ->
   Relevance ->
   WHNFValue builtin ->

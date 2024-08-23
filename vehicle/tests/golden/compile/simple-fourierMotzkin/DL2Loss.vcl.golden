@@ -1,15 +1,15 @@
 @property;
 unusedVar : (Tensor Rat -> Tensor Rat) -> Tensor Rat;
-unusedVar f = search (*) (\ x -> search (*) (\ (y : Tensor Rat) -> max (const[ 0.0 ] nil) (const[ 0.0 ] nil - f [x] ! 0)))
+unusedVar f = search (\ xs -> reduceMul xs) 0.0 0.0 (\ x -> search (\ xs -> reduceMul xs) 0.0 0.0 (\ y -> max (const 0.0 (1 :: nil)) (const 0.0 (1 :: nil) - f (stack Rat nil x) ! 0)))
 
 @property;
 underConstrainedVar1 : (Tensor Rat -> Tensor Rat) -> Tensor Rat;
-underConstrainedVar1 f = search (*) (\ x -> search (*) (\ y -> max (const[ 0.0 ] nil) (const[ 1.0 ] nil - x) + (max (const[ 0.0 ] nil) (const[ 2.0 ] nil - y) + max (const[ 0.0 ] nil) (const[ 0.0 ] nil - f [x + y] ! 0))))
+underConstrainedVar1 f = search (\ xs -> reduceMul xs) 0.0 0.0 (\ x -> search (\ xs -> reduceMul xs) 0.0 0.0 (\ y -> max (const 0.0 (1 :: nil)) (const 1.0 (1 :: nil) - x) + (max (const 0.0 (1 :: nil)) (const 2.0 (1 :: nil) - y) + max (const 0.0 (1 :: nil)) (const 0.0 (1 :: nil) - f (stack Rat nil (x + y)) ! 0))))
 
 @property;
 underConstrainedVar2 : (Tensor Rat -> Tensor Rat) -> Tensor Rat;
-underConstrainedVar2 f = search (*) (\ x -> search (*) (\ y -> max (const[ 0.0 ] nil) (const[ 1.0 ] nil - x) + (max (const[ 0.0 ] nil) (const[ 2.0 ] nil - const[ 2.0 ] nil * y) + max (const[ 0.0 ] nil) (const[ 0.0 ] nil - f [const[ 2.0 ] nil * x + y] ! 0))))
+underConstrainedVar2 f = search (\ xs -> reduceMul xs) 0.0 0.0 (\ x -> search (\ xs -> reduceMul xs) 0.0 0.0 (\ y -> max (const 0.0 (1 :: nil)) (const 1.0 (1 :: nil) - x) + (max (const 0.0 (1 :: nil)) (const 2.0 (1 :: nil) - const 2.0 (1 :: nil) * y) + max (const 0.0 (1 :: nil)) (const 0.0 (1 :: nil) - f (stack Rat nil (const 2.0 (1 :: nil) * x + y)) ! 0))))
 
 @property;
 underConstrainedVars : (Tensor Rat -> Tensor Rat) -> Tensor Rat;
-underConstrainedVars f = search (*) (\ (x : Tensor Rat) -> max (const[ 0.0 ] nil) (const[ 2.0 ] nil - x ! 3) + (max (const[ 0.0 ] nil) (const[ 1.0 ] nil - (x ! 2 + x ! 3)) + (max (const[ 0.0 ] nil) (const[ 2.5 ] nil - (x ! 1 - const[ 2.0 ] nil * x ! 3)) + max (const[ 0.0 ] nil) (const[ 2.0 ] nil - f [x ! 0 + x ! 1] ! 0))))
+underConstrainedVars f = search (\ xs -> reduceMul xs) 0.0 0.0 (\ x -> max (const 0.0 (1 :: nil)) (const 2.0 (1 :: nil) - x ! 3) + (max (const 0.0 (1 :: nil)) (const 1.0 (1 :: nil) - (x ! 2 + x ! 3)) + (max (const 0.0 (1 :: nil)) (const 2.5 (1 :: nil) - (x ! 1 - const 2.0 (1 :: nil) * x ! 3)) + max (const 0.0 (1 :: nil)) (const 2.0 (1 :: nil) - f (stack Rat nil (x ! 0 + x ! 1)) ! 0))))

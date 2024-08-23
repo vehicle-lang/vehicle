@@ -58,9 +58,7 @@ instance Pretty Visibility where
 -- | Type class for types which have provenance information
 class HasVisibility a where
   visibilityOf :: a -> Visibility
-
-instance HasVisibility Visibility where
-  visibilityOf = id
+  setVisibility :: Visibility -> a -> a
 
 isExplicit :: (HasVisibility a) => a -> Bool
 isExplicit x = visibilityOf x == Explicit

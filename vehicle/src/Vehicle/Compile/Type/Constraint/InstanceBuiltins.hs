@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
-module Vehicle.Data.Builtin.Standard.InstanceBuiltins
+module Vehicle.Compile.Type.Constraint.InstanceBuiltins
   ( standardBuiltinInstances,
   )
 where
@@ -9,7 +9,7 @@ import Data.Bifunctor (Bifunctor (..))
 import Data.HashMap.Strict qualified as Map
 import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Core (InstanceCandidate, InstanceCandidateDatabase)
-import Vehicle.Data.Builtin.Standard.Core
+import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.DSL hiding (builtin)
 import Vehicle.Libraries.StandardLibrary.Definitions

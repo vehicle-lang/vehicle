@@ -9,13 +9,11 @@ import Control.Monad.Identity
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyFriendly)
-import Vehicle.Data.Builtin.Interface
-import Vehicle.Data.Code.Interface
+import Vehicle.Compile.Print (PrintableBuiltin, prettyFriendly)
 
 -- | Removes all irrelevant code from the program/expression.
 removeIrrelevantCodeFromProg ::
-  (MonadCompile m, BuiltinHasStandardData builtin, PrintableBuiltin builtin) =>
+  (MonadCompile m, PrintableBuiltin builtin) =>
   Prog builtin ->
   m (Prog builtin)
 removeIrrelevantCodeFromProg x = do
@@ -43,7 +41,7 @@ instance (RemoveIrrelevantCode m expr) => RemoveIrrelevantCode m (GenericProg ex
 instance (RemoveIrrelevantCode m expr) => RemoveIrrelevantCode m (GenericDecl expr) where
   remove = traverse remove
 
-instance (BuiltinHasStandardData builtin) => RemoveIrrelevantCode m (Expr builtin) where
+instance RemoveIrrelevantCode m (Expr builtin) where
   remove expr = do
     -- showRemoveEntry expr
     result <- case expr of
@@ -51,11 +49,11 @@ instance (BuiltinHasStandardData builtin) => RemoveIrrelevantCode m (Expr builti
         normAppList <$> remove fun <*> removeArgs (NonEmpty.toList args)
       Pi p binder res ->
         if isIrrelevant binder
-          then remove $ IUnitLiteral p `substDBInto` res
+          then remove $ arbitraryExpr `substDBInto` res
           else Pi p <$> remove binder <*> remove res
       Lam p binder body ->
         if isIrrelevant binder
-          then remove $ IUnitLiteral p `substDBInto` body
+          then remove $ arbitraryExpr `substDBInto` body
           else Lam p <$> remove binder <*> remove body
       Let p bound binder body -> Let p <$> remove bound <*> remove binder <*> remove body
       Universe {} -> return expr
@@ -79,6 +77,9 @@ removeArgs ::
   [GenericArg expr] ->
   m [GenericArg expr]
 removeArgs = traverse remove . filter isRelevant
+
+arbitraryExpr :: Expr builtin
+arbitraryExpr = developerError "arbitrary expression should not be evaluated"
 
 {-
 --------------------------------------------------------------------------------

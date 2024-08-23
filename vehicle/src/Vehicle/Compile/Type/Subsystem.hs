@@ -10,11 +10,11 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Monomorphisation (monomorphise, removeLiteralCoercions)
 import Vehicle.Compile.Normalise.Builtin (NormalisableBuiltin, findInstanceArg)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyExternal)
+import Vehicle.Compile.Print (PrintableBuiltin, prettyExternal)
 import Vehicle.Compile.Type (typeCheckProg)
 import Vehicle.Compile.Type.Core (InstanceCandidateDatabase)
 import Vehicle.Compile.Type.Irrelevance (removeIrrelevantCodeFromProg)
-import Vehicle.Compile.Type.Monad
+import Vehicle.Compile.Type.System
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Standard
 

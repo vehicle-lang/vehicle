@@ -1,6 +1,6 @@
-module Vehicle.Data.Builtin.Linearity.AnnotationRestrictions
+module Vehicle.Compile.Type.Constraint.LinearityAnnotationRestrictions
   ( assertConstantLinearity,
-    checkNetworkType,
+    checkLinearityNetworkType,
   )
 where
 
@@ -9,16 +9,16 @@ import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
-import Vehicle.Data.Builtin.Linearity.Core
+import Vehicle.Data.Builtin.Linearity
 import Vehicle.Data.Code.Value
 
-checkNetworkType ::
+checkLinearityNetworkType ::
   forall m.
   (MonadTypeChecker LinearityBuiltin m) =>
   DeclProvenance ->
   GluedType LinearityBuiltin ->
   m (Type LinearityBuiltin)
-checkNetworkType (ident, p) networkType = case normalised networkType of
+checkLinearityNetworkType (ident, p) networkType = case normalised networkType of
   -- \|Decomposes the Pi types in a network type signature, checking that the
   -- binders are explicit and their types are equal. Returns a function that
   -- prepends the max linearity constraint.
