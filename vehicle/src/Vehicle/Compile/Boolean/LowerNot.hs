@@ -9,7 +9,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Data.Builtin.Standard ()
 import Vehicle.Data.Expr.Interface
-import Vehicle.Data.Expr.Normalised
+import Vehicle.Data.Expr.Value
 import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (StdNotBoolOp2))
 import Vehicle.Syntax.Builtin
 

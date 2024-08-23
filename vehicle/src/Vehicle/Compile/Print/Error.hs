@@ -23,7 +23,7 @@ import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.DSL
 import Vehicle.Data.DeBruijn (substDBInto)
 import Vehicle.Data.Expr.Interface
-import Vehicle.Data.Expr.Normalised
+import Vehicle.Data.Expr.Value
 import Vehicle.Data.QuantifiedVariable (prettyUnderConstrainedVariables)
 import Vehicle.Libraries.StandardLibrary.Definitions (pattern TensorIdent)
 import Vehicle.Syntax.Parse (ParseError (..))
@@ -1234,7 +1234,7 @@ datasetDimensionsFix feature ident file =
     <+> "is in the format you were expecting."
 
 unsupportedAnnotationTypeDescription ::
-  (PrintableBuiltin builtin) =>
+  (Eq builtin, PrintableBuiltin builtin) =>
   Doc a ->
   Identifier ->
   GluedType builtin ->

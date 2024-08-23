@@ -24,7 +24,7 @@ import Vehicle.Compile.Normalise.Builtin
   )
 import Vehicle.Data.Builtin.Loss.Core
 import Vehicle.Data.Builtin.Standard.Core ()
-import Vehicle.Data.Expr.Normalised (Value (..))
+import Vehicle.Data.Expr.Value (Value (..))
 import Vehicle.Syntax.Builtin qualified as V
 
 instance NormalisableBuiltin LossBuiltin where
@@ -42,7 +42,7 @@ instance NormalisableBuiltin LossBuiltin where
       Rat {} -> return unchanged
       NilList -> return unchanged
       ConsList -> return unchanged
-      Vector -> return unchanged
+      Vector {} -> return unchanged
       Search {} -> return unchanged
       -- Numeric operations
       Neg V.NegRat -> return $ evalNegRat unchanged args

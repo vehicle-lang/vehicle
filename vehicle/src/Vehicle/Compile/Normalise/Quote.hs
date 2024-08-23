@@ -5,7 +5,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Interface (ConvertableBuiltin (..))
 import Vehicle.Data.Builtin.Standard.Core (Builtin)
 import Vehicle.Data.DeBruijn
-import Vehicle.Data.Expr.Normalised
+import Vehicle.Data.Expr.Value
 
 -- | Converts from a normalised representation to an unnormalised representation.
 -- Do not call except for logging and debug purposes, very expensive with nested

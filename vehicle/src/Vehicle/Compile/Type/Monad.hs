@@ -50,7 +50,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Compile.Type.Monad.Instance
-import Vehicle.Data.Expr.Normalised
+import Vehicle.Data.Expr.Value
 
 -- | The type-checking monad.
 type TCM builtin m =

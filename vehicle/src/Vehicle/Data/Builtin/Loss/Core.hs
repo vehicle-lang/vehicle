@@ -1,9 +1,7 @@
 module Vehicle.Data.Builtin.Loss.Core where
 
 import GHC.Generics (Generic)
-import Vehicle.Data.Builtin.Interface (ConvertableBuiltin (..), PrintableBuiltin (..))
-import Vehicle.Data.Expr.Interface
-import Vehicle.Data.Expr.Normalised
+import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Expr.Standard (cheatConvertBuiltin)
 import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (StdForeachIndex))
 import Vehicle.Prelude (Pretty (..))
@@ -34,7 +32,7 @@ data LossBuiltin
   | Rat Rational
   | NilList
   | ConsList
-  | Vector
+  | Vector Int
   | ----------------
     -- Operations --
     ----------------
@@ -75,7 +73,7 @@ instance ConvertableBuiltin LossBuiltin V.Builtin where
     Rat vs -> builtinConstructor $ V.LRat vs
     NilList -> builtinConstructor V.Nil
     ConsList -> builtinConstructor V.Cons
-    Vector -> builtinConstructor (V.LVec (-1))
+    Vector n -> builtinConstructor (V.LVec n)
     -- Numeric operations
     Neg dom -> builtinFunction (V.Neg dom)
     Add dom -> builtinFunction (V.Add dom)
@@ -104,37 +102,37 @@ instance ConvertableBuiltin LossBuiltin V.Builtin where
 instance PrintableBuiltin LossBuiltin where
   isCoercion = const False
 
-instance HasIndexLits (Value closure LossBuiltin) where
-  getIndexLit e = case e of
-    VBuiltin (Index n) [] -> Just (mempty, n)
+instance BuiltinHasIndexLiterals LossBuiltin where
+  getIndexBuiltinLit e = case e of
+    Index n -> Just n
     _ -> Nothing
-  mkIndexLit _p x = VBuiltin (Index x) mempty
+  mkIndexBuiltinLit = Index
 
-instance HasNatLits (Value closure LossBuiltin) where
-  getNatLit e = case e of
-    VBuiltin (Nat b) [] -> Just (mempty, b)
+instance BuiltinHasNatLiterals LossBuiltin where
+  getNatBuiltinLit e = case e of
+    Nat b -> Just b
     _ -> Nothing
-  mkNatLit _p x = VBuiltin (Nat x) mempty
+  mkNatBuiltinLit = Nat
 
-instance HasRatLits (Value closure LossBuiltin) where
-  getRatLit e = case e of
-    VBuiltin (Rat b) [] -> Just (mempty, b)
+instance BuiltinHasRatLiterals LossBuiltin where
+  getRatBuiltinLit e = case e of
+    Rat b -> Just b
     _ -> Nothing
-  mkRatLit _p x = VBuiltin (Rat x) mempty
+  mkRatBuiltinLit = Rat
 
-instance HasStandardVecLits (Value closure LossBuiltin) where
-  mkHomoVector t xs = VBuiltin Vector (t : xs)
-  getHomoVector = \case
-    VBuiltin Vector (t : xs) -> Just (t, xs)
-    _ -> Nothing
+instance BuiltinHasListLiterals LossBuiltin where
+  isBuiltinNil e = case e of
+    NilList -> True
+    _ -> False
+  mkBuiltinNil = NilList
 
-instance HasStandardListLits (Value closure LossBuiltin) where
-  getNil e = case e of
-    VBuiltin NilList [t] -> Just (mempty, t)
-    _ -> Nothing
-  mkNil t = VBuiltin NilList [t]
+  isBuiltinCons e = case e of
+    ConsList -> True
+    _ -> False
+  mkBuiltinCons = ConsList
 
-  getCons e = case e of
-    VBuiltin ConsList [t, x, xs] -> Just (t, x, xs)
+instance BuiltinHasVecLiterals LossBuiltin where
+  getVecBuiltinLit e = case e of
+    Vector n -> Just n
     _ -> Nothing
-  mkCons t x xs = VBuiltin ConsList [t, x, xs]
+  mkVecBuiltinLit = Vector

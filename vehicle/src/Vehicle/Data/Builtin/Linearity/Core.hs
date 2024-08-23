@@ -9,8 +9,7 @@ import GHC.Generics (Generic)
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.DSL
-import Vehicle.Data.Expr.Interface
-import Vehicle.Data.Expr.Normalised
+import Vehicle.Data.Expr.Value
 import Vehicle.Syntax.Builtin hiding (Builtin (BuiltinConstructor, BuiltinFunction))
 import Vehicle.Syntax.Builtin qualified as S
 
@@ -164,7 +163,7 @@ instance ConvertableBuiltin LinearityBuiltin S.Builtin where
 instance PrintableBuiltin LinearityBuiltin where
   isCoercion = const False
 
-instance HasStandardData LinearityBuiltin where
+instance BuiltinHasStandardData LinearityBuiltin where
   mkBuiltinFunction = BuiltinFunction
   getBuiltinFunction = \case
     BuiltinFunction c -> Just c
@@ -177,29 +176,29 @@ instance HasStandardData LinearityBuiltin where
 
   getBuiltinTypeClassOp = const Nothing
 
-instance HasBoolLits (Value closure LinearityBuiltin) where
-  mkBoolLit _p b = VBuiltin (BuiltinConstructor (LBool b)) []
-  getBoolLit = \case
-    VBuiltin (BuiltinConstructor (LBool b)) [] -> Just (mempty, b)
+instance BuiltinHasBoolLiterals LinearityBuiltin where
+  mkBoolBuiltinLit b = BuiltinConstructor (LBool b)
+  getBoolBuiltinLit = \case
+    BuiltinConstructor (LBool b) -> Just b
     _ -> Nothing
 
-instance HasIndexLits (Value closure LinearityBuiltin) where
-  getIndexLit e = case e of
-    VBuiltin (BuiltinConstructor (LIndex n)) [] -> Just (mempty, n)
+instance BuiltinHasIndexLiterals LinearityBuiltin where
+  getIndexBuiltinLit e = case e of
+    BuiltinConstructor (LIndex n) -> Just n
     _ -> Nothing
-  mkIndexLit _p x = VBuiltin (BuiltinConstructor (LIndex x)) mempty
+  mkIndexBuiltinLit x = BuiltinConstructor (LIndex x)
 
-instance HasNatLits (Value closure LinearityBuiltin) where
-  getNatLit e = case e of
-    VBuiltin (BuiltinConstructor (LNat b)) [] -> Just (mempty, b)
+instance BuiltinHasNatLiterals LinearityBuiltin where
+  getNatBuiltinLit e = case e of
+    BuiltinConstructor (LNat b) -> Just b
     _ -> Nothing
-  mkNatLit _p x = VBuiltin (BuiltinConstructor (LNat x)) mempty
+  mkNatBuiltinLit x = BuiltinConstructor (LNat x)
 
-instance HasRatLits (Value closure LinearityBuiltin) where
-  getRatLit e = case e of
-    VBuiltin (BuiltinConstructor (LRat b)) [] -> Just (mempty, b)
+instance BuiltinHasRatLiterals LinearityBuiltin where
+  getRatBuiltinLit e = case e of
+    BuiltinConstructor (LRat b) -> Just b
     _ -> Nothing
-  mkRatLit _p x = VBuiltin (BuiltinConstructor (LRat x)) mempty
+  mkRatBuiltinLit x = BuiltinConstructor (LRat x)
 
 -----------------------------------------------------------------------------
 -- Patterns

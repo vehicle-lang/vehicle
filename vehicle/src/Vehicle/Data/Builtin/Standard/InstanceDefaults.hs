@@ -9,7 +9,7 @@ import Vehicle.Compile.Type.Constraint.InstanceDefaultSolver
 import Vehicle.Compile.Type.Core
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Expr.Interface
-import Vehicle.Data.Expr.Normalised
+import Vehicle.Data.Expr.Value
 
 instance HasInstanceDefaults Builtin where
   getCandidatesFromConstraint = getCandidates

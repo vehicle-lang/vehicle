@@ -13,7 +13,7 @@ import Vehicle.Compile.Context.Free.Instance as X
 import Vehicle.Compile.Normalise.Builtin (NormalisableBuiltin)
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
-import Vehicle.Data.Expr.Normalised
+import Vehicle.Data.Expr.Value
 import Vehicle.Libraries.StandardLibrary.Definitions
 
 appHiddenStdlibDef ::

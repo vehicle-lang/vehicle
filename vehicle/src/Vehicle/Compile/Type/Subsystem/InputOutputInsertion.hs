@@ -9,7 +9,7 @@ import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Monad (TCM, createFreshInstanceConstraint, freshMetaExpr)
 import Vehicle.Data.Expr.Interface
-import Vehicle.Data.Expr.Normalised
+import Vehicle.Data.Expr.Value
 import Vehicle.Syntax.Builtin
 
 -------------------------------------------------------------------------------

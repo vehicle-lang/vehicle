@@ -13,14 +13,14 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap (lookup)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet (singleton, unions)
-import Vehicle.Data.Builtin.Interface (HasStandardData (getBuiltinFunction))
-import Vehicle.Data.Expr.Normalised
+import Vehicle.Data.Builtin.Interface (BuiltinHasStandardData (getBuiltinFunction))
+import Vehicle.Data.Expr.Value
 
 -----------------------------------------------------------------------------
 -- Meta-variable forcing
 
 type ForcableBuiltin builtin =
-  (HasStandardData builtin, NormalisableBuiltin builtin)
+  (BuiltinHasStandardData builtin, NormalisableBuiltin builtin)
 
 -- | Recursively forces the evaluation of any meta-variables at the head
 -- of the expresson.

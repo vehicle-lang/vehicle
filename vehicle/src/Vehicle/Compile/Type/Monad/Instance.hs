@@ -24,7 +24,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad.Class
-import Vehicle.Data.Builtin.Interface (HasStandardData)
+import Vehicle.Data.Builtin.Interface (BuiltinHasStandardData)
 
 --------------------------------------------------------------------------------
 -- Implementation
@@ -74,13 +74,13 @@ mapTypeCheckerT f m = TypeCheckerT (mapFreeContextT (mapReaderT (mapStateT f)) (
 --------------------------------------------------------------------------------
 -- Instances that TypeCheckerT satisfies
 
-instance (PrintableBuiltin builtin, HasStandardData builtin, MonadCompile m) => MonadFreeContext builtin (TypeCheckerT builtin m) where
+instance (PrintableBuiltin builtin, BuiltinHasStandardData builtin, MonadCompile m) => MonadFreeContext builtin (TypeCheckerT builtin m) where
   addDeclEntryToContext entry = TypeCheckerT . addDeclEntryToContext entry . unTypeCheckerT
   getFreeCtx = TypeCheckerT . getFreeCtx
   hideStdLibDecls p f = TypeCheckerT . hideStdLibDecls p f . unTypeCheckerT
   getHiddenStdLibDecl p = TypeCheckerT . getHiddenStdLibDecl p
 
-instance (PrintableBuiltin builtin, HasStandardData builtin, NormalisableBuiltin builtin, MonadCompile m) => MonadTypeChecker builtin (TypeCheckerT builtin m) where
+instance (PrintableBuiltin builtin, BuiltinHasStandardData builtin, NormalisableBuiltin builtin, MonadCompile m) => MonadTypeChecker builtin (TypeCheckerT builtin m) where
   getMetaState = TypeCheckerT get
   modifyMetaCtx f = TypeCheckerT $ modify f
   getFreshName typ = TypeCheckerT $ getFreshNameInternal typ

@@ -12,7 +12,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Monad
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Expr.Interface
-import Vehicle.Data.Expr.Normalised
+import Vehicle.Data.Expr.Value
 
 --------------------------------------------------------------------------------
 -- Property

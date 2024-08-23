@@ -25,7 +25,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print.Warning ()
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Expr.Interface
-import Vehicle.Data.Expr.Normalised
+import Vehicle.Data.Expr.Value
 import Vehicle.Prelude.Warning (CompileWarning (..))
 
 -- | Calculates the context for external resources, reading them from disk and

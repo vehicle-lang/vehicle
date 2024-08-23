@@ -8,7 +8,7 @@ import Vehicle.Compile.Context.Bound.Core
 import Vehicle.Compile.Error (MonadCompile, lookupIxInBoundCtx, lookupLvInBoundCtx)
 import Vehicle.Compile.Normalise.Quote qualified as Quote (unnormalise)
 import Vehicle.Compile.Prelude
-import Vehicle.Data.Expr.Normalised
+import Vehicle.Data.Expr.Value
 
 --------------------------------------------------------------------------------
 -- Context monad class

@@ -2,7 +2,7 @@ module Vehicle.Compile.Context.Free.Core where
 
 import Data.Map (Map)
 import Vehicle.Data.DeBruijn (Ix)
-import Vehicle.Data.Expr.Normalised
+import Vehicle.Data.Expr.Value
 import Vehicle.Syntax.AST
 
 -- | Stores information associated with the declarations that are currently in

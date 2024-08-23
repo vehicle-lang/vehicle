@@ -19,79 +19,6 @@ import Prelude hiding (pi)
 -- (e.g. normalisation) once, rather than once for each builtin type.
 
 --------------------------------------------------------------------------------
--- HasStandardData
-
--- | Indicates that this set of builtins has the standard builtin constructors
--- and functions.
-class (Show builtin) => HasStandardData builtin where
-  mkBuiltinConstructor :: BuiltinConstructor -> builtin
-  getBuiltinConstructor :: builtin -> Maybe BuiltinConstructor
-
-  mkBuiltinFunction :: BuiltinFunction -> builtin
-  getBuiltinFunction :: builtin -> Maybe BuiltinFunction
-
-  getBuiltinTypeClassOp :: builtin -> Maybe TypeClassOp
-
-  isTypeClassOp :: builtin -> Bool
-  isTypeClassOp b = case getBuiltinTypeClassOp b of
-    Just {} -> True
-    Nothing -> False
-
-instance HasStandardData Builtin where
-  mkBuiltinFunction = BuiltinFunction
-  getBuiltinFunction = \case
-    BuiltinFunction c -> Just c
-    _ -> Nothing
-
-  mkBuiltinConstructor = BuiltinConstructor
-  getBuiltinConstructor = \case
-    BuiltinConstructor c -> Just c
-    _ -> Nothing
-
-  getBuiltinTypeClassOp = \case
-    TypeClassOp op -> Just op
-    _ -> Nothing
-
---------------------------------------------------------------------------------
--- HasStandardTypes
-
--- | Indicates that this set of builtins has the standard set of types.
-class HasStandardTypes builtin where
-  mkBuiltinType :: BuiltinType -> builtin
-  getBuiltinType :: builtin -> Maybe BuiltinType
-
-  mkNatInDomainConstraint :: builtin
-
-instance HasStandardTypes Builtin where
-  mkBuiltinType = BuiltinType
-  getBuiltinType = \case
-    BuiltinType c -> Just c
-    _ -> Nothing
-
-  mkNatInDomainConstraint = NatInDomainConstraint
-
---------------------------------------------------------------------------------
--- HasStandardBuiltins
-
--- | Indicates that this set of builtins has the standard set of constructors,
--- functions and types.
-class HasStandardTypeClasses builtin where
-  mkBuiltinTypeClass :: TypeClass -> builtin
-
-instance HasStandardTypeClasses Builtin where
-  mkBuiltinTypeClass = TypeClass
-
---------------------------------------------------------------------------------
--- HasStandardBuiltins
-
--- | Indicates that this set of builtins has the standard set of constructors,
--- functions and types.
-type HasStandardBuiltins builtin =
-  ( HasStandardTypes builtin,
-    HasStandardData builtin
-  )
-
---------------------------------------------------------------------------------
 -- Converting builtins
 
 class ConvertableBuiltin builtin1 builtin2 where
@@ -106,26 +33,120 @@ instance ConvertableBuiltin builtin builtin where
 --------------------------------------------------------------------------------
 -- Printing builtins
 
-class (Show builtin, Eq builtin, ConvertableBuiltin builtin Builtin) => PrintableBuiltin builtin where
+class (Show builtin, ConvertableBuiltin builtin Builtin) => PrintableBuiltin builtin where
   -- | Convert expressions with the builtin back to expressions with the standard
   -- builtin type. Used for printing.
-  isCoercion ::
-    builtin ->
-    Bool
-
-instance PrintableBuiltin Builtin where
-  isCoercion = \case
-    BuiltinFunction FromNat {} -> True
-    BuiltinFunction FromRat {} -> True
-    TypeClassOp FromNatTC {} -> True
-    TypeClassOp FromRatTC {} -> True
-    TypeClassOp FromVecTC {} -> True
-    _ -> False
+  isCoercion :: builtin -> Bool
 
 --------------------------------------------------------------------------------
 -- Typable builtin
 
 class (PrintableBuiltin builtin) => TypableBuiltin builtin where
   -- | Construct a type for the builtin
-  typeBuiltin ::
-    Provenance -> builtin -> Type Ix builtin
+  typeBuiltin :: Provenance -> builtin -> Type Ix builtin
+
+--------------------------------------------------------------------------------
+-- Interface to content of standard builtins
+--------------------------------------------------------------------------------
+-- In these classes we need to separate out the types from the literals, as
+-- various sets of builtins may have the literals but not the types (e.g.
+-- `LinearityBuiltin`)
+--------------------------------------------------------------------------------
+-- HasBool
+
+class BuiltinHasBoolLiterals builtin where
+  mkBoolBuiltinLit :: Bool -> builtin
+  getBoolBuiltinLit :: builtin -> Maybe Bool
+
+--------------------------------------------------------------------------------
+-- HasIndex
+
+class BuiltinHasIndexLiterals builtin where
+  mkIndexBuiltinLit :: Int -> builtin
+  getIndexBuiltinLit :: builtin -> Maybe Int
+
+--------------------------------------------------------------------------------
+-- HasNat
+
+class BuiltinHasNatLiterals builtin where
+  mkNatBuiltinLit :: Int -> builtin
+  getNatBuiltinLit :: builtin -> Maybe Int
+
+--------------------------------------------------------------------------------
+-- HasRat
+
+class BuiltinHasRatLiterals builtin where
+  mkRatBuiltinLit :: Rational -> builtin
+  getRatBuiltinLit :: builtin -> Maybe Rational
+
+class (BuiltinHasRatLiterals builtin) => HasRatTypeBuiltin builtin where
+  mkRatBuiltinType :: builtin
+  isRatBuiltinType :: builtin -> Bool
+
+--------------------------------------------------------------------------------
+-- HasList
+
+class BuiltinHasListLiterals builtin where
+  mkBuiltinNil :: builtin
+  isBuiltinNil :: builtin -> Bool
+
+  mkBuiltinCons :: builtin
+  isBuiltinCons :: builtin -> Bool
+
+--------------------------------------------------------------------------------
+-- HasVector
+
+class BuiltinHasVecLiterals builtin where
+  mkVecBuiltinLit :: Int -> builtin
+  getVecBuiltinLit :: builtin -> Maybe Int
+
+class (BuiltinHasVecLiterals builtin) => HasVecTypeBuiltin builtin where
+  mkVecBuiltinType :: builtin
+  isVecBuiltinType :: builtin -> Bool
+
+--------------------------------------------------------------------------------
+-- BuiltinHasStandardData
+
+-- | Indicates that this set of builtins has the standard builtin constructors
+-- and functions.
+class BuiltinHasStandardData builtin where
+  mkBuiltinConstructor :: BuiltinConstructor -> builtin
+  getBuiltinConstructor :: builtin -> Maybe BuiltinConstructor
+
+  mkBuiltinFunction :: BuiltinFunction -> builtin
+  getBuiltinFunction :: builtin -> Maybe BuiltinFunction
+
+  getBuiltinTypeClassOp :: builtin -> Maybe TypeClassOp
+
+  isTypeClassOp :: builtin -> Bool
+  isTypeClassOp b = case getBuiltinTypeClassOp b of
+    Just {} -> True
+    Nothing -> False
+
+--------------------------------------------------------------------------------
+-- BuiltinHasStandardTypes
+
+-- | Indicates that this set of builtins has the standard set of types.
+class BuiltinHasStandardTypes builtin where
+  mkBuiltinType :: BuiltinType -> builtin
+  getBuiltinType :: builtin -> Maybe BuiltinType
+
+  mkNatInDomainConstraint :: builtin
+
+--------------------------------------------------------------------------------
+-- HasStandardBuiltins
+
+-- | Indicates that this set of builtins has the standard set of constructors,
+-- functions and types.
+class BuiltinHasStandardTypeClasses builtin where
+  mkBuiltinTypeClass :: TypeClass -> builtin
+
+--------------------------------------------------------------------------------
+-- HasStandardBuiltins
+
+-- | Indicates that this set of builtins has the standard set of constructors,
+-- functions and types.
+type HasStandardBuiltins builtin =
+  ( BuiltinHasStandardTypes builtin,
+    BuiltinHasStandardData builtin
+  )

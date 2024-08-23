@@ -20,7 +20,7 @@ import Vehicle.Data.Builtin.Standard.Core as Core
 import Vehicle.Data.Builtin.Standard.Eval ()
 import Vehicle.Data.Builtin.Standard.InstanceDefaults ()
 import Vehicle.Data.Builtin.Standard.Type
-import Vehicle.Data.Expr.Normalised
+import Vehicle.Data.Expr.Value
 import Prelude hiding (pi)
 
 -----------------------------------------------------------------------------

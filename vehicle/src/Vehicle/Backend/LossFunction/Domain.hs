@@ -1,7 +1,15 @@
-{-
-module Vehicle.Backend.LossFunction.Domain where
+module Vehicle.Backend.LossFunction.Domain
+  ( -- extractSearchDomain,
+  -- Domain (..),
+  )
+where
 
+{-
+import Control.Applicative (Applicative (..))
+import Control.Monad (when)
 import Control.Monad.Except (MonadError (..), runExceptT, void)
+import Control.Monad.Reader (MonadReader (..), ReaderT (..))
+import Data.Either (partitionEithers)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Proxy (Proxy (..))
@@ -11,21 +19,19 @@ import Vehicle.Compile.Boolean.LowerNot (lowerNot)
 import Vehicle.Compile.Boolean.Unblock (ReduceVectorVars, UnblockingActions (..))
 import Vehicle.Compile.Boolean.Unblock qualified as Unblocking
 import Vehicle.Compile.Context.Bound (MonadBoundContext, getNamedBoundCtx)
-import Vehicle.Compile.Error (CompileError (..), MonadCompile)
+import Vehicle.Compile.Context.Free (MonadFreeContext)
+import Vehicle.Compile.Error (CompileError (..), MonadCompile, unexpectedExprError)
 import Vehicle.Compile.Normalise.NBE (normaliseInEnv)
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Rational.LinearExpr
 import Vehicle.Compile.Variable (createUserVar)
 import Vehicle.Data.Builtin.Standard
+import Vehicle.Data.Builtin.Tensor (TensorBuiltin (..))
 import Vehicle.Data.Expr.Interface
-import Vehicle.Data.Expr.Normalised
-import Vehicle.Compile.Context.Free (MonadFreeContext)
-import Control.Applicative (Applicative(..))
-import Control.Monad.Reader (MonadReader (..), ReaderT (..))
-import Vehicle.Data.QuantifiedVariable
-import Control.Monad (when)
 import Vehicle.Data.Expr.Linear (addExprs, rearrangeExprToSolveFor)
-import Data.Either (partitionEithers)
+import Vehicle.Data.Expr.Value
+import Vehicle.Data.QuantifiedVariable
 
 type MonadDomain m =
   ( MonadCompile m,
@@ -34,15 +40,15 @@ type MonadDomain m =
   )
 
 type MonadSearch m =
-  ( MonadDomain m
-  , MonadReader VariableInfo m
+  ( MonadDomain m,
+    MonadReader VariableInfo m
   )
 
 -- | Information for the variable whose domain we are trying to find.
 data VariableInfo = VariableInfo
-  { variableLv :: Lv
-  , vectorExpr :: WHNFValue Builtin
-  , reducedVars :: [(Lv, UserRationalVariable)]
+  { variableLv :: Lv,
+    vectorExpr :: WHNFValue Builtin,
+    reducedVars :: [(Lv, UserRationalVariable)]
   }
 
 extractSearchDomain ::
@@ -51,7 +57,7 @@ extractSearchDomain ::
   MixedLossBinder ->
   Lv ->
   WHNFClosure Builtin ->
-  m (Maybe (Domain, WHNFValue Builtin))
+  m (Domain, WHNFValue Builtin)
 extractSearchDomain propertyProv binder lv (WHNFClosure env expr) = do
   -- Convert the binder
   namedCtx <- getNamedBoundCtx (Proxy @MixedLossValue)
@@ -69,24 +75,24 @@ extractSearchDomain propertyProv binder lv (WHNFClosure env expr) = do
   case maybeConstraints of
     Nothing -> throwError $ NoQuantifierDomainFound propertyProv (void binder) Nothing
     Just constraints -> do
-      let maybeDomain = extractDomainFromConstraints constraints (userTensorVarDimensions userVar) reducedUseVars
+      let maybeDomain = extractDomainFromConstraints constraints reducedUseVars
       case maybeDomain of
         Left missingCostraints -> throwError $ NoQuantifierDomainFound propertyProv (void binder) (Just missingCostraints)
-        Right domain -> return $ Just (domain, remainder)
+        Right domain -> return (domain, remainder)
 
 --------------------------------------------------------------------------------
 -- Constraints
 
 data VariableConstraints = VariableConstraints
-  { lowerBounds :: Map Lv (WHNFValue Builtin),
-    upperBounds :: Map Lv (WHNFValue Builtin)
+  { lowerBounds :: Map Lv (NFValue TensorBuiltin),
+    upperBounds :: Map Lv (NFValue TensorBuiltin)
   }
 
 instance Semigroup VariableConstraints where
   x <> y =
     VariableConstraints
-      { lowerBounds = Map.unionWith IMax (lowerBounds x) (lowerBounds y),
-        upperBounds = Map.unionWith IMin (upperBounds x) (upperBounds y)
+      { lowerBounds = Map.unionWith (\u v -> VBuiltin MaxRatTensor (explicit <$> [u, v])) (lowerBounds x) (lowerBounds y),
+        upperBounds = Map.unionWith (\u v -> VBuiltin MinRatTensor (explicit <$> [u, v])) (upperBounds x) (upperBounds y)
       }
 
 instance Monoid VariableConstraints where
@@ -106,16 +112,15 @@ updateConstrainedValue originalExpr = \case
 -- Domain
 
 data Domain = Domain
-  { lowerBound :: WHNFValue Builtin,
-    upperBound :: WHNFValue Builtin
+  { lowerBound :: NFValue TensorBuiltin,
+    upperBound :: NFValue TensorBuiltin
   }
 
 extractDomainFromConstraints ::
   VariableConstraints ->
-  TensorShape ->
   [(Lv, UserRationalVariable)] ->
   Either [(UserRationalVariable, UnderConstrainedVariableStatus)] Domain
-extractDomainFromConstraints VariableConstraints{..} tensorShape allVariables = do
+extractDomainFromConstraints VariableConstraints {..} allVariables = do
   let lowerBoundExprs = flip map allVariables $ \(lv, var) ->
         case (Map.lookup lv lowerBounds, Map.lookup lv upperBounds) of
           (Just x, Just y) -> Right (x, y)
@@ -127,9 +132,10 @@ extractDomainFromConstraints VariableConstraints{..} tensorShape allVariables = 
   if not $ null missingVars
     then Left missingVars
     else do
+      let n = length allVariables
       let (lowerBoundElements, upperBoundElements) = unzip presentVarBounds
-      let lowerBoundExpr = tensorLikeToExpr id tensorShape lowerBoundElements
-      let upperBoundExpr = tensorLikeToExpr id tensorShape upperBoundElements
+      let lowerBoundExpr = VBuiltin (StackRatTensor n) (explicit <$> lowerBoundElements)
+      let upperBoundExpr = VBuiltin (StackRatTensor n) (explicit <$> upperBoundElements)
       Right $ Domain lowerBoundExpr upperBoundExpr
 
 --------------------------------------------------------------------------------
@@ -194,11 +200,11 @@ tryPurifyAssertion value whenPure = do
     Right (Left purified) -> updateConstrainedValue value <$> findConstraints purified
 
 unblockBoolExpr ::
-  (MonadDomain m) =>
+  (MonadSearch m) =>
   WHNFValue Builtin ->
   m ConstrainedValue
 unblockBoolExpr value = do
-  ctx <- getNamedBoundCtx (Proxy @Builtin)
+  ctx <- getNamedBoundCtx (Proxy @MixedLossValue)
   result <- runExceptT (Unblocking.unblockBoolExpr ctx unblockingActions value)
   case result of
     Left {} -> return (Nothing, value)
@@ -206,7 +212,9 @@ unblockBoolExpr value = do
       constrainedValue <- findConstraints unblockedValue
       return $ updateConstrainedValue value constrainedValue
 
-unblockingActions :: (MonadError (WHNFValue Builtin) m) => UnblockingActions m
+unblockingActions ::
+  (MonadError (WHNFValue Builtin) m, MonadReader VariableInfo m) =>
+  UnblockingActions m
 unblockingActions =
   UnblockingActions
     { unblockFreeVectorVar = unblockFreeVectorVariable,
@@ -228,10 +236,11 @@ unblockBoundVectorVariable ::
   Lv ->
   m (WHNFValue Builtin)
 unblockBoundVectorVariable lv = do
-  VariableInfo{..} <- ask
+  VariableInfo {..} <- ask
 
   when (lv /= variableLv) $
-    throwError $ VBoundVar lv []
+    throwError $
+      VBoundVar lv []
 
   return vectorExpr
 
@@ -239,17 +248,59 @@ unblockBoundVectorVariable lv = do
 -- Compilation of inequalities
 
 handleRatInequality ::
-  (MonadDomain m) =>
+  (MonadSearch m) =>
   OrderOp ->
   WHNFValue Builtin ->
   WHNFValue Builtin ->
   m ConstrainedValue
 handleRatInequality op e1 e2 = do
-  result <- compileRatLinearRelation _ e1 e2
+  let e = ISub SubRat e1 e2
+  result <- runExceptT (compileRatLinearExpr e)
   case result of
-    Left NonLinearity -> return (Nothing, IOrderRat op e1 e2)
-    Right (le1, le2) -> do
-      let le = addExprs 1 (-1) le1 le2
-      let (_, rearrangedExpr) = rearrangeExprToSolveFor _ le
-      return _
+    Right (Linear a b) -> do
+      case op of
+        Le -> return (_, ITrueExpr mempty)
+    _ -> return (Nothing, IOrderRat op e1 e2)
+
+data Bound
+  = Constant (NFValue TensorBuiltin)
+  | Linear (NFValue TensorBuiltin) (NFValue TensorBuiltin)
+
+compileRatLinearExpr ::
+  forall m.
+  (MonadLogger m, MonadError NonLinearity m) =>
+  WHNFValue Builtin ->
+  m Bound
+compileRatLinearExpr = go
+  where
+    go :: WHNFValue Builtin -> m Bound
+    go e = case e of
+      ----------------
+      -- Base cases --
+      ----------------
+      IRatLiteral _ l -> return $ Constant _
+      VBoundVar lv [] -> return $ Linear _ _
+      ---------------------
+      -- Inductive cases --
+      ---------------------
+      INeg NegRat v -> scaleExpr (-1) <$> go v
+      IAdd AddRat e1 e2 -> addExprs 1 1 <$> go e1 <*> go e2
+      ISub SubRat e1 e2 -> addExprs 1 (-1) <$> go e1 <*> go e2
+      IMul MulRat e1 e2 -> do
+        e1' <- go e1
+        e2' <- go e2
+        case (e1', e2') of
+          (Constant c1, Constant c2) -> return $ scaleExpr c1 e2'
+          (_, Just c2) -> return $ scaleExpr c2 e1'
+          _ -> throwError NonLinearity
+      IDiv DivRat e1 e2 -> do
+        e1' <- go e1
+        e2' <- go e2
+        case isConstant e2' of
+          (Just c2) -> return $ scaleExpr (1 / c2) e1'
+          _ -> throwError NonLinearity
+      -----------------
+      -- Error cases --
+      -----------------
+      ex -> unexpectedExprError "compile linear rational expression" $ prettyVerbose ex
 -}

@@ -33,7 +33,7 @@ import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Expr.Boolean
 import Vehicle.Data.Expr.Interface
 import Vehicle.Data.Expr.Linear (LinearExpr)
-import Vehicle.Data.Expr.Normalised
+import Vehicle.Data.Expr.Value
 import Vehicle.Data.QuantifiedVariable
 import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (StdEqualsVector, StdNotEqualsVector))
 import Vehicle.Verify.Core (NetworkContextInfo (..), QuerySetNegationStatus)

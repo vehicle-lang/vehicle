@@ -7,7 +7,7 @@ import Vehicle.Compile.Prelude (GenericArg (..), MonadLogger, explicit)
 import Vehicle.Data.Builtin.Linearity.Core (LinearityBuiltin)
 import Vehicle.Data.Builtin.Linearity.Core qualified as L
 import Vehicle.Data.Builtin.Standard.Core
-import Vehicle.Data.Expr.Normalised
+import Vehicle.Data.Expr.Value
 import Vehicle.Prelude
 
 instance NormalisableBuiltin LinearityBuiltin where

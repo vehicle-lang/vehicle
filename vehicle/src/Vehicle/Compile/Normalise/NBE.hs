@@ -22,7 +22,7 @@ import Vehicle.Compile.Normalise.Builtin (NormalisableBuiltin (..), filterOutIrr
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Data.Builtin.Standard.Core (Builtin)
-import Vehicle.Data.Expr.Normalised
+import Vehicle.Data.Expr.Value
 
 -- import Control.Monad (when)
 
@@ -213,27 +213,42 @@ currentPass :: Doc ()
 currentPass = "normalisation by evaluation"
 
 showEntry :: (MonadNorm closure builtin m) => BoundEnv closure builtin -> Expr Ix builtin -> m ()
-showEntry _boundEnv _expr = do
+showEntry _ _ = return ()
+
+showExit :: (MonadNorm closure builtin m) => BoundEnv closure builtin -> Value closure builtin -> m ()
+showExit _ _ = return ()
+
+{-
+showEntry :: (MonadNorm closure builtin m) => BoundEnv closure builtin -> Expr Ix builtin -> m ()
+showEntry _boundEnv expr = do
   -- logDebug MidDetail $ "nbe-entry" <+> prettyFriendly (WithContext expr (fmap fst boundEnv)) <+> "   { boundEnv=" <+> hang 0 (prettyVerbose boundEnv) <+> "}"
-  -- logDebug MidDetail $ "nbe-entry" <+> prettyVerbose expr -- <+> "   { boundEnv=" <+> prettyVerbose boundEnv <+> "}"
-  -- incrCallDepth
+  logDebug MidDetail $ "nbe-entry" <+> prettyVerbose expr -- <+> "   { boundEnv=" <+> prettyVerbose boundEnv <+> "}"
+  incrCallDepth
   return ()
 
 showExit :: (MonadNorm closure builtin m) => BoundEnv closure builtin -> Value closure builtin -> m ()
-showExit _boundEnv _result = do
-  -- decrCallDepth
-  -- logDebug MidDetail $ "nbe-exit" <+> prettyVerbose result
+showExit _boundEnv result = do
+  decrCallDepth
+  logDebug MidDetail $ "nbe-exit" <+> prettyVerbose result
   -- logDebug MidDetail $ "nbe-exit" <+> prettyFriendly (WithContext result (fmap fst boundEnv))
   return ()
-
+-}
 showApp :: (MonadNorm closure builtin m) => Value closure builtin -> Spine closure builtin -> m ()
-showApp _fun _spine = do
-  -- logDebug MaxDetail $ "nbe-app:" <+> prettyVerbose fun <+> "@" <+> prettyVerbose spine
-  -- incrCallDepth
+showApp _ _ = return ()
+
+showAppExit :: (MonadNorm closure builtin m) => Value closure builtin -> m ()
+showAppExit _ = return ()
+
+{-
+showApp :: (MonadNorm closure builtin m) => Value closure builtin -> Spine closure builtin -> m ()
+showApp fun spine = do
+  logDebug MaxDetail $ "nbe-app:" <+> prettyVerbose fun <+> "@" <+> prettyVerbose spine
+  incrCallDepth
   return ()
 
 showAppExit :: (MonadNorm closure builtin m) => Value closure builtin -> m ()
-showAppExit _result = do
-  -- decrCallDepth
-  -- logDebug MaxDetail $ "nbe-app-exit:" <+> prettyVerbose result
+showAppExit result = do
+  decrCallDepth
+  logDebug MaxDetail $ "nbe-app-exit:" <+> prettyVerbose result
   return ()
+-}

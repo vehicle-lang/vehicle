@@ -12,13 +12,13 @@ import Vehicle.Backend.LossFunction.Core (DifferentiableLogicField)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
-import Vehicle.Data.Builtin.Interface (HasStandardData, PrintableBuiltin)
+import Vehicle.Data.Builtin.Interface (BuiltinHasStandardData, PrintableBuiltin)
 import Vehicle.Data.Builtin.Linearity.Core
 import Vehicle.Data.Builtin.Polarity.Core
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Builtin.Tensor
 import Vehicle.Data.DeBruijn
-import Vehicle.Data.Expr.Normalised
+import Vehicle.Data.Expr.Value
 import Vehicle.Data.QuantifiedVariable (UnderConstrainedVariableStatus, UserRationalVariable)
 import Vehicle.Syntax.Parse (ParseError, ParseLocation)
 import Vehicle.Verify.QueryFormat.Core
@@ -46,7 +46,7 @@ data CompileError
   | -- Type checking errors
     UnresolvedHole Provenance Name
   | forall builtin.
-    (PrintableBuiltin builtin, Show builtin, HasStandardData builtin) =>
+    (PrintableBuiltin builtin, Show builtin, BuiltinHasStandardData builtin) =>
     TypingError (TypingError builtin)
   | UnsolvedMetas (NonEmpty (MetaID, Provenance))
   | RelevantUseOfIrrelevantVariable Provenance Name

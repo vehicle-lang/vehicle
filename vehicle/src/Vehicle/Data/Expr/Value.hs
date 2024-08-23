@@ -1,11 +1,14 @@
-module Vehicle.Data.Expr.Normalised where
+module Vehicle.Data.Expr.Value where
 
 import Control.Monad (void)
 import Data.Map (Map)
 import Data.Maybe (fromMaybe)
 import GHC.Generics
 import Vehicle.Compile.Context.Bound.Core
+import Vehicle.Data.Builtin.Interface
+import Vehicle.Data.Builtin.Standard.Core (BuiltinFunction)
 import Vehicle.Data.DeBruijn
+import Vehicle.Data.Expr.Interface
 import Vehicle.Syntax.AST
 
 -----------------------------------------------------------------------------
@@ -190,3 +193,90 @@ traverseUnnormalised ::
   GluedExpr builtin ->
   m (GluedExpr builtin)
 traverseUnnormalised f (Glued u n) = Glued <$> f u <*> pure n
+
+-----------------------------------------------------------------------------
+-- Instances
+
+instance (BuiltinHasStandardTypes builtin) => HasStandardTypes (Value closure builtin) where
+  mkType _p b = VBuiltin (mkBuiltinType b)
+  getType e = case e of
+    VBuiltin b args -> case getBuiltinType b of
+      Just t -> Just (mempty, t, args)
+      Nothing -> Nothing
+    _ -> Nothing
+
+instance (BuiltinHasStandardData builtin) => HasStandardData (Value closure builtin) where
+  mkFunction _p b = VBuiltin (mkBuiltinFunction b)
+  getFunction e = case e of
+    VBuiltin b args -> case getBuiltinFunction b of
+      Just t -> Just (mempty, t, args)
+      Nothing -> Nothing
+    _ -> Nothing
+
+  mkConstructor _p b = VBuiltin (mkBuiltinConstructor b)
+  getConstructor e = case e of
+    VBuiltin b args -> case getBuiltinConstructor b of
+      Just t -> Just (mempty, t, args)
+      Nothing -> Nothing
+    _ -> Nothing
+
+  mkFreeVar _p = VFreeVar
+  getFreeVar = \case
+    VFreeVar ident args -> Just (mempty, ident, args)
+    _ -> Nothing
+
+  getTypeClassOp e = case e of
+    VBuiltin b args -> case getBuiltinTypeClassOp b of
+      Just op -> Just (mempty, op, args)
+      Nothing -> Nothing
+    _ -> Nothing
+
+instance (BuiltinHasBoolLiterals builtin) => HasBoolLits (Value closure builtin) where
+  getBoolLit = \case
+    VBuiltin (getBoolBuiltinLit -> Just b) [] -> Just (mempty, b)
+    _ -> Nothing
+  mkBoolLit _p b = VBuiltin (mkBoolBuiltinLit b) []
+
+instance (BuiltinHasIndexLiterals builtin) => HasIndexLits (Value closure builtin) where
+  getIndexLit e = case e of
+    VBuiltin (getIndexBuiltinLit -> Just n) [] -> Just (mempty, n)
+    _ -> Nothing
+  mkIndexLit _p x = VBuiltin (mkIndexBuiltinLit x) mempty
+
+instance (BuiltinHasNatLiterals builtin) => HasNatLits (Value closure builtin) where
+  getNatLit e = case e of
+    VBuiltin (getNatBuiltinLit -> Just b) [] -> Just (mempty, b)
+    _ -> Nothing
+  mkNatLit _p x = VBuiltin (mkNatBuiltinLit x) mempty
+
+instance (BuiltinHasRatLiterals builtin) => HasRatLits (Value closure builtin) where
+  getRatLit e = case e of
+    VBuiltin (getRatBuiltinLit -> Just b) [] -> Just (mempty, b)
+    _ -> Nothing
+  mkRatLit _p x = VBuiltin (mkRatBuiltinLit x) mempty
+
+instance (BuiltinHasVecLiterals builtin) => HasStandardVecLits (Value closure builtin) where
+  getHomoVector = \case
+    VBuiltin (getVecBuiltinLit -> Just {}) (t : xs) -> Just (t, xs)
+    _ -> Nothing
+  mkHomoVector t xs = VBuiltin (mkVecBuiltinLit (length xs)) (t : xs)
+
+instance (BuiltinHasListLiterals builtin) => HasStandardListLits (Value closure builtin) where
+  getNil = \case
+    VBuiltin (isBuiltinNil -> True) [t] -> Just (mempty, t)
+    _ -> Nothing
+  mkNil t = VBuiltin mkBuiltinNil [t]
+
+  getCons = \case
+    VBuiltin (isBuiltinCons -> True) [t, x, xs] -> Just (mempty, t, x, xs)
+    _ -> Nothing
+  mkCons t x xs = VBuiltin mkBuiltinCons [t, x, xs]
+
+--------------------------------------------------------------------------------
+-- WHNFValue Function patterns
+
+-- TODO this should really be removed.
+pattern VBuiltinFunction :: (BuiltinHasStandardData builtin) => BuiltinFunction -> Spine closure builtin -> Value closure builtin
+pattern VBuiltinFunction f args <- VBuiltin (getBuiltinFunction -> Just f) args
+  where
+    VBuiltinFunction f args = VBuiltin (mkBuiltinFunction f) args

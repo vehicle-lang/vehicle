@@ -10,7 +10,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
 import Vehicle.Data.Builtin.Linearity.Core
-import Vehicle.Data.Expr.Normalised
+import Vehicle.Data.Expr.Value
 
 checkNetworkType ::
   forall m.

@@ -11,7 +11,7 @@ import Numeric (showFFloat)
 import Prettyprinter (brackets)
 import Vehicle.Data.DeBruijn
 import Vehicle.Data.Expr.Interface
-import Vehicle.Data.Expr.Normalised
+import Vehicle.Data.Expr.Value
 import Vehicle.Data.Tensor (RationalTensor)
 import Vehicle.Prelude
 import Vehicle.Syntax.AST

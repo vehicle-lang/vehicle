@@ -34,7 +34,7 @@ import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Expr.Boolean
-import Vehicle.Data.Expr.Normalised
+import Vehicle.Data.Expr.Value
 import Vehicle.Syntax.Print
 
 --------------------------------------------------------------------------------

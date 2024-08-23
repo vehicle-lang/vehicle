@@ -25,7 +25,7 @@ import Vehicle.Compile.Resource (NetworkType (..), dimensions)
 import Vehicle.Data.Expr.Boolean
 import Vehicle.Data.Expr.Interface
 import Vehicle.Data.Expr.Linear
-import Vehicle.Data.Expr.Normalised
+import Vehicle.Data.Expr.Value
 import Vehicle.Data.Hashing ()
 import Vehicle.Data.QuantifiedVariable
 import Vehicle.Data.Tensor

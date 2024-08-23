@@ -40,7 +40,7 @@ typeCheckWithSubsystem instanceCandidates errorHandler prog = do
 
 resolveInstanceArguments ::
   forall m builtin.
-  (MonadCompile m, HasStandardData builtin, Show builtin) =>
+  (MonadCompile m, BuiltinHasStandardData builtin, Show builtin) =>
   Prog Ix builtin ->
   m (Prog Ix builtin)
 resolveInstanceArguments prog =
