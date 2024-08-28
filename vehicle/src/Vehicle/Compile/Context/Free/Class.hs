@@ -11,8 +11,7 @@ import Vehicle.Compile.Context.Bound
 import Vehicle.Compile.Context.Free.Core
 import Vehicle.Compile.Error (MonadCompile, lookupInFreeCtx)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (PrintableBuiltin)
-import Vehicle.Data.Expr.Value
+import Vehicle.Data.Code.Value
 import Vehicle.Libraries.StandardLibrary.Definitions
 
 --------------------------------------------------------------------------------
@@ -94,7 +93,7 @@ getDeclType ::
   Proxy builtin ->
   CompilerPass ->
   Identifier ->
-  m (Type Ix builtin)
+  m (Type builtin)
 getDeclType proxy compilerPass ident =
   typeOf . fst <$> getDeclEntry proxy compilerPass ident
 

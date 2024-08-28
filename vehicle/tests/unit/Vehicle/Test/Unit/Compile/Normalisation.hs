@@ -12,8 +12,8 @@ import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Data.Builtin.Standard
-import Vehicle.Data.Expr.Interface
-import Vehicle.Data.Expr.Value
+import Vehicle.Data.Code.Interface
+import Vehicle.Data.Code.Value
 import Vehicle.Test.Unit.Common (unitTestCase)
 
 normalisationTests :: TestTree
@@ -59,8 +59,8 @@ normalisationTests =
 data NBETest = NBETest
   { name :: String,
     dbLevel :: Lv,
-    input :: Expr Ix Builtin,
-    expected :: Expr Ix Builtin
+    input :: Expr Builtin,
+    expected :: Expr Builtin
   }
 
 normalisationTest :: NBETest -> TestTree
@@ -90,7 +90,7 @@ normalisationTest NBETest {..} =
 p :: Provenance
 p = mempty
 
-binding :: Type Ix Builtin -> Binder Ix Builtin
+binding :: Type Builtin -> Binder Builtin
 binding = Binder p (BinderDisplayForm (OnlyName "x") False) Explicit Relevant
 
 mkNoOpEnv :: Lv -> WHNFBoundEnv builtin

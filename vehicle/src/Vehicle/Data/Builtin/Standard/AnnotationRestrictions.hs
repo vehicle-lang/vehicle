@@ -11,8 +11,8 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Monad
 import Vehicle.Data.Builtin.Standard.Core
-import Vehicle.Data.Expr.Interface
-import Vehicle.Data.Expr.Value
+import Vehicle.Data.Code.Interface
+import Vehicle.Data.Code.Value
 
 --------------------------------------------------------------------------------
 -- Property
@@ -39,7 +39,7 @@ restrictStandardParameterType ::
   ParameterSort ->
   DeclProvenance ->
   GluedType Builtin ->
-  m (Type Ix Builtin)
+  m (Type Builtin)
 restrictStandardParameterType sort = case sort of
   NonInferable -> restrictStandardNonInferableParameterType
   Inferable -> restrictStandardInferableParameterType
@@ -48,7 +48,7 @@ restrictStandardNonInferableParameterType ::
   (MonadTypeChecker Builtin m) =>
   DeclProvenance ->
   GluedType Builtin ->
-  m (Type Ix Builtin)
+  m (Type Builtin)
 restrictStandardNonInferableParameterType decl parameterType = do
   case normalised parameterType of
     IIndexType {} -> return ()
@@ -63,7 +63,7 @@ restrictStandardInferableParameterType ::
   (MonadTypeChecker Builtin m) =>
   DeclProvenance ->
   GluedType Builtin ->
-  m (Type Ix Builtin)
+  m (Type Builtin)
 restrictStandardInferableParameterType decl parameterType =
   case normalised parameterType of
     INatType {} -> return (unnormalised parameterType)
@@ -77,7 +77,7 @@ restrictStandardDatasetType ::
   (MonadTypeChecker Builtin m) =>
   DeclProvenance ->
   GluedType Builtin ->
-  m (Type Ix Builtin)
+  m (Type Builtin)
 restrictStandardDatasetType decl datasetType = do
   checkContainerType True (normalised datasetType)
   return (unnormalised datasetType)
@@ -106,7 +106,7 @@ restrictStandardNetworkType ::
   (MonadTypeChecker Builtin m) =>
   DeclProvenance ->
   GluedType Builtin ->
-  m (Type Ix Builtin)
+  m (Type Builtin)
 restrictStandardNetworkType decl networkType = case normalised networkType of
   -- \|Decomposes the Pi types in a network type signature, checking that the
   -- binders are explicit and their types are equal. Returns a function that

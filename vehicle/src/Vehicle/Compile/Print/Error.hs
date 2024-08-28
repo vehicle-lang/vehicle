@@ -20,10 +20,9 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Data.Builtin.Linearity
 import Vehicle.Data.Builtin.Polarity
 import Vehicle.Data.Builtin.Standard.Core
+import Vehicle.Data.Code.Interface
+import Vehicle.Data.Code.Value
 import Vehicle.Data.DSL
-import Vehicle.Data.DeBruijn (substDBInto)
-import Vehicle.Data.Expr.Interface
-import Vehicle.Data.Expr.Value
 import Vehicle.Data.QuantifiedVariable (prettyUnderConstrainedVariables)
 import Vehicle.Libraries.StandardLibrary.Definitions (pattern TensorIdent)
 import Vehicle.Syntax.Parse (ParseError (..))
@@ -322,7 +321,7 @@ instance MeaningfulError CompileError where
             | (i, arg) <- zip [0 :: Int ..] args
           ]
 
-        expectedType :: Expr Ix builtin
+        expectedType :: Expr builtin
         expectedType = fromDSL p (appEndo (mconcat mkRes) (tHole "res"))
     UnresolvedHole p name ->
       UError $
@@ -460,7 +459,7 @@ instance MeaningfulError CompileError where
         originExpr :: Doc a
         originExpr = squotes (prettyTypeClassConstraintOriginExpr ctx tcOp tcOpArgs)
 
-        calculateOpType :: NamedBoundCtx -> [Arg Ix builtin] -> Doc a
+        calculateOpType :: NamedBoundCtx -> [Arg builtin] -> Doc a
         calculateOpType dbCtx args = do
           let argsToSubst = fmap argExpr args <> [IUnitLiteral mempty]
           let inferedOpType = instantiateTelescope tcOpType argsToSubst
@@ -470,7 +469,7 @@ instance MeaningfulError CompileError where
         calculateCandidateType (WithContext candidate typingCtx) =
           go typingCtx (candidateExpr candidate)
           where
-            go :: BoundCtx (Expr Ix builtin) -> Expr Ix builtin -> Doc a
+            go :: BoundCtx (Expr builtin) -> Expr builtin -> Doc a
             go dbCtx = \case
               App (Builtin _ _tc) args ->
                 calculateOpType (toNamedBoundCtx dbCtx) (NonEmpty.toList args)
@@ -478,7 +477,7 @@ instance MeaningfulError CompileError where
                 go (binder : dbCtx) result
               _ -> "UNSUPPORTED PRINTING"
 
-        instantiateTelescope :: Expr Ix builtin -> [Expr Ix builtin] -> Expr Ix builtin
+        instantiateTelescope :: Expr builtin -> [Expr builtin] -> Expr builtin
         instantiateTelescope expr arguments = case (expr, arguments) of
           (_, []) -> expr
           (Pi _ _binder body, arg : args) -> do
@@ -1388,8 +1387,8 @@ prettyOrdinal object argNo argTotal
 prettyTypeClassConstraintOriginExpr ::
   (PrintableBuiltin builtin) =>
   ConstraintContext builtin ->
-  Expr Ix builtin ->
-  [Arg Ix builtin] ->
+  Expr builtin ->
+  [Arg builtin] ->
   Doc a
 prettyTypeClassConstraintOriginExpr ctx fun args = do
   let expr = case fun of
@@ -1402,7 +1401,7 @@ prettyTypeClassConstraintOriginExpr ctx fun args = do
 prettyUnificationConstraintOriginExpr ::
   (PrintableBuiltin builtin) =>
   ConstraintContext builtin ->
-  Expr Ix builtin ->
+  Expr builtin ->
   Doc a
 prettyUnificationConstraintOriginExpr ctx expr =
   prettyFriendly $ WithContext expr (namedBoundCtxOf ctx)

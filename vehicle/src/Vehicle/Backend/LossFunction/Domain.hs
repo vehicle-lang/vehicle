@@ -28,9 +28,9 @@ import Vehicle.Compile.Rational.LinearExpr
 import Vehicle.Compile.Variable (createUserVar)
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Builtin.Tensor (TensorBuiltin (..))
-import Vehicle.Data.Expr.Interface
-import Vehicle.Data.Expr.Linear (addExprs, rearrangeExprToSolveFor)
-import Vehicle.Data.Expr.Value
+import Vehicle.Data.Code.Interface
+import Vehicle.Data.Code.LinearExpr (addExprs, rearrangeExprToSolveFor)
+import Vehicle.Data.Code.Value
 import Vehicle.Data.QuantifiedVariable
 
 type MonadDomain m =

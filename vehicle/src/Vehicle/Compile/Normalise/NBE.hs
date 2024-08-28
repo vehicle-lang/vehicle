@@ -21,8 +21,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Builtin (NormalisableBuiltin (..), filterOutIrrelevantArgs)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
-import Vehicle.Data.Builtin.Standard.Core (Builtin)
-import Vehicle.Data.Expr.Value
+import Vehicle.Data.Code.Value
 
 -- import Control.Monad (when)
 
@@ -36,18 +35,18 @@ import Vehicle.Data.Expr.Value
 
 normalise ::
   forall builtin m.
-  (MonadNorm (WHNFClosure builtin) builtin m, MonadBoundContext (Type Ix builtin) m, MonadFreeContext builtin m) =>
-  Expr Ix builtin ->
+  (MonadNorm (WHNFClosure builtin) builtin m, MonadBoundContext (Type builtin) m, MonadFreeContext builtin m) =>
+  Expr builtin ->
   m (WHNFValue builtin)
 normalise e = do
-  boundCtx <- getBoundCtx (Proxy @(Type Ix builtin))
+  boundCtx <- getBoundCtx (Proxy @(Type builtin))
   let boundEnv = boundContextToEnv boundCtx
   normaliseInEnv boundEnv e
 
 normaliseInEnv ::
   (MonadNorm (WHNFClosure builtin) builtin m, MonadFreeContext builtin m) =>
   WHNFBoundEnv builtin ->
-  Expr Ix builtin ->
+  Expr builtin ->
   m (WHNFValue builtin)
 normaliseInEnv boundEnv expr = do
   freeEnv <- getFreeEnv
@@ -55,7 +54,7 @@ normaliseInEnv boundEnv expr = do
 
 normaliseInEmptyEnv ::
   (MonadNorm (WHNFClosure builtin) builtin m, MonadFreeContext builtin m) =>
-  Expr Ix builtin ->
+  Expr builtin ->
   m (WHNFValue builtin)
 normaliseInEmptyEnv = normaliseInEnv mempty
 
@@ -83,7 +82,7 @@ normaliseBuiltin b spine = do
 class EvaluableClosure closure builtin where
   formClosure ::
     BoundEnv closure builtin ->
-    Expr Ix builtin ->
+    Expr builtin ->
     closure
 
   evalClosure ::
@@ -106,7 +105,7 @@ instance EvaluableClosure (WHNFClosure builtin) builtin where
 type MonadNorm closure builtin m =
   ( MonadLogger m,
     EvaluableClosure closure builtin,
-    DescopableClosure closure Builtin,
+    DescopableClosure closure,
     NormalisableBuiltin builtin,
     PrintableBuiltin builtin
   )
@@ -115,7 +114,7 @@ eval ::
   (MonadNorm closure builtin m) =>
   FreeEnv closure builtin ->
   BoundEnv closure builtin ->
-  Expr Ix builtin ->
+  Expr builtin ->
   m (Value closure builtin)
 eval freeEnv boundEnv expr = do
   showEntry boundEnv expr
@@ -212,14 +211,14 @@ lookupIxValueInEnv boundEnv ix = do
 currentPass :: Doc ()
 currentPass = "normalisation by evaluation"
 
-showEntry :: (MonadNorm closure builtin m) => BoundEnv closure builtin -> Expr Ix builtin -> m ()
+showEntry :: (MonadNorm closure builtin m) => BoundEnv closure builtin -> Expr builtin -> m ()
 showEntry _ _ = return ()
 
 showExit :: (MonadNorm closure builtin m) => BoundEnv closure builtin -> Value closure builtin -> m ()
 showExit _ _ = return ()
 
 {-
-showEntry :: (MonadNorm closure builtin m) => BoundEnv closure builtin -> Expr Ix builtin -> m ()
+showEntry :: (MonadNorm closure builtin m) => BoundEnv closure builtin -> Expr builtin -> m ()
 showEntry _boundEnv expr = do
   -- logDebug MidDetail $ "nbe-entry" <+> prettyFriendly (WithContext expr (fmap fst boundEnv)) <+> "   { boundEnv=" <+> hang 0 (prettyVerbose boundEnv) <+> "}"
   logDebug MidDetail $ "nbe-entry" <+> prettyVerbose expr -- <+> "   { boundEnv=" <+> prettyVerbose boundEnv <+> "}"

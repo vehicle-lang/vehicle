@@ -104,7 +104,17 @@ library
   import:             common-library
   hs-source-dirs:     autogen src
   exposed-modules:
-    Vehicle.Syntax.AST
+    Vehicle.Syntax.AST.Arg
+    Vehicle.Syntax.AST.Binder
+    Vehicle.Syntax.AST.Decl
+    Vehicle.Syntax.AST.Expr
+    Vehicle.Syntax.AST.Instances.NoThunks
+    Vehicle.Syntax.AST.Name
+    Vehicle.Syntax.AST.Prog
+    Vehicle.Syntax.AST.Provenance
+    Vehicle.Syntax.AST.Relevance
+    Vehicle.Syntax.AST.Type
+    Vehicle.Syntax.AST.Visibility
     Vehicle.Syntax.Builtin
     Vehicle.Syntax.Builtin.BasicOperations
     Vehicle.Syntax.Parse
@@ -113,18 +123,7 @@ library
     Vehicle.Syntax.Sugar
 
   other-modules:
-    Vehicle.Syntax.AST.Arg
-    Vehicle.Syntax.AST.Binder
-    Vehicle.Syntax.AST.Decl
-    Vehicle.Syntax.AST.Expr
-    Vehicle.Syntax.AST.Instances.NoThunks
-    Vehicle.Syntax.AST.Meta
-    Vehicle.Syntax.AST.Name
-    Vehicle.Syntax.AST.Prog
-    Vehicle.Syntax.AST.Provenance
-    Vehicle.Syntax.AST.Relevance
-    Vehicle.Syntax.AST.Type
-    Vehicle.Syntax.AST.Visibility
+    Vehicle.Syntax.AST
     Vehicle.Syntax.BNFC.Delaborate.External
     Vehicle.Syntax.BNFC.Delaborate.Internal
     Vehicle.Syntax.BNFC.Elaborate.External

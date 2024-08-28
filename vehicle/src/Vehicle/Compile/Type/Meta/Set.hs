@@ -20,7 +20,6 @@ import Data.Coerce (coerce)
 import Data.IntSet (IntSet)
 import Data.IntSet qualified as IntSet
 import Vehicle.Prelude
-import Vehicle.Syntax.AST
 import Prelude hiding (null)
 
 newtype MetaSet = MetaSet IntSet

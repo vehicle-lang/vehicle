@@ -26,8 +26,8 @@ import Vehicle.Compile.Type.Meta.Map qualified as MetaMap (lookup)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet (null, singleton)
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Monad.Class
+import Vehicle.Data.Code.Value
 import Vehicle.Data.DeBruijn
-import Vehicle.Data.Expr.Value
 
 --------------------------------------------------------------------------------
 -- Unification solver
@@ -297,7 +297,7 @@ createMetaWithRestrictedDependencies ctx meta newDependencies = do
   let constraintLevel = contextDBLevel ctx
   let dbIndices = fmap (dbLevelToIndex constraintLevel) newDependencies
   let boundCtx = boundContextOf ctx
-  let newDeps = fmap (\v -> prettyFriendly (WithContext (BoundVar p v :: Expr Ix builtin) (toNamedBoundCtx boundCtx))) dbIndices
+  let newDeps = fmap (\v -> prettyFriendly (WithContext (BoundVar p v :: Expr builtin) (toNamedBoundCtx boundCtx))) dbIndices
 
   logCompilerSection MaxDetail ("restricting dependencies of" <+> pretty meta <+> "to" <+> sep newDeps) $ do
     let levelSet = IntSet.fromList $ fmap unLv newDependencies

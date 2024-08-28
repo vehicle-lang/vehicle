@@ -10,8 +10,8 @@ import Data.HashMap.Strict qualified as Map
 import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Core (InstanceCandidate, InstanceCandidateDatabase)
 import Vehicle.Data.Builtin.Standard.Core
+import Vehicle.Data.Code.DSL
 import Vehicle.Data.DSL hiding (builtin)
-import Vehicle.Data.Expr.DSL
 import Vehicle.Libraries.StandardLibrary.Definitions
 
 standardBuiltinInstances :: InstanceCandidateDatabase Builtin

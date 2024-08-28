@@ -1,9 +1,8 @@
-module Vehicle.Data.Expr.Interface where
+module Vehicle.Data.Code.Interface where
 
 import Vehicle.Data.Tensor
 import Vehicle.Libraries.StandardLibrary.Definitions
-import Vehicle.Prelude (TensorShape)
-import Vehicle.Syntax.AST
+import Vehicle.Prelude
 import Vehicle.Syntax.Builtin
 import Prelude hiding (pi)
 

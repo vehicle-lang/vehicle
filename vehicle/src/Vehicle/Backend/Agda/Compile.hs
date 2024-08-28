@@ -12,6 +12,7 @@ import Data.List (sort)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Maybe (mapMaybe)
+import Data.Proxy (Proxy (..))
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -21,14 +22,16 @@ import Prettyprinter hiding (hcat, hsep, vcat, vsep)
 import System.FilePath (takeBaseName)
 import Vehicle.Backend.Agda.CapitaliseTypeNames (capitaliseTypeNames)
 import Vehicle.Backend.Prelude
-import Vehicle.Compile.Descope (descopeExprInEmptyCtx)
+import Vehicle.Compile.Context.Bound (getNamedBoundCtx)
+import Vehicle.Compile.Descope (MonadDescope, addBinderNameToContext, ixToProperName, runMonadDescopeT)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Monomorphisation
 import Vehicle.Compile.Normalise.Builtin (findInstanceArg)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Data.Builtin.Standard.Core
-import Vehicle.Data.Expr.Interface
+import Vehicle.Data.Code.Interface
+import Vehicle.Data.Universe (UniverseLevel (..))
 import Vehicle.Libraries.StandardLibrary.Definitions
 import Vehicle.Syntax.Sugar
 
@@ -41,13 +44,12 @@ data AgdaOptions = AgdaOptions
     moduleName :: Maybe String
   }
 
-compileProgToAgda :: (MonadCompile m) => Prog Ix Builtin -> AgdaOptions -> m (Doc a)
+compileProgToAgda :: (MonadCompile m) => Prog Builtin -> AgdaOptions -> m (Doc a)
 compileProgToAgda prog options = logCompilerPass MinDetail currentPhase $
   flip runReaderT (options, BoolLevel) $ do
     monoProg <- monomorphise isPropertyDecl "-" prog
     let prog2 = capitaliseTypeNames monoProg
-    let prog3 = fmap descopeExprInEmptyCtx prog2
-    programDoc <- compileProg prog3
+    programDoc <- runMonadDescopeT $ compileProg prog2
     let programStream = layoutPretty defaultLayoutOptions programDoc
     -- Collects dependencies by first discarding precedence info and then
     -- folding using Set Monoid
@@ -72,10 +74,11 @@ compileProgToAgda prog options = logCompilerPass MinDetail currentPhase $
 --------------------------------------------------------------------------------
 -- Debug functions
 
-logEntry :: (MonadAgdaCompile m) => Expr Name Builtin -> m ()
+logEntry :: (MonadAgdaCompile m) => Expr Builtin -> m ()
 logEntry e = do
   incrCallDepth
-  logDebug MaxDetail $ "compile-entry" <+> prettyExternal e
+  ctx <- getNamedBoundCtx (Proxy @())
+  logDebug MaxDetail $ "compile-entry" <+> prettyFriendly (WithContext e ctx)
 
 logExit :: (MonadAgdaCompile m) => Code -> m ()
 logExit e = do
@@ -308,7 +311,8 @@ arrow = "→" -- <> softline'
 
 type MonadAgdaCompile m =
   ( MonadCompile m,
-    MonadReader (AgdaOptions, BoolLevel) m
+    MonadReader (AgdaOptions, BoolLevel) m,
+    MonadDescope m
   )
 
 getVerificationCache :: (MonadAgdaCompile m) => m (Maybe FilePath)
@@ -327,23 +331,24 @@ setBoolLevel level = local (second (const level))
 --------------------------------------------------------------------------------
 -- Program Compilation
 
-compileProg :: (MonadAgdaCompile m) => Prog Name Builtin -> m Code
+compileProg :: (MonadAgdaCompile m) => Prog Builtin -> m Code
 compileProg (Main ds) = vsep2 <$> traverse compileDecl ds
 
-compileDecl :: (MonadAgdaCompile m) => Decl Name Builtin -> m Code
+compileDecl :: (MonadAgdaCompile m) => Decl Builtin -> m Code
 compileDecl = \case
   DefAbstract _ n _ t ->
     compilePostulate (compileIdentifier n) <$> compileExpr t
   DefFunction _ n anns t e -> do
-    let (binders, body) = foldBinders FunFold e
+    let (binders, body) = foldDeclBinders e
     setBoolLevel TypeLevel $ do
       if isProperty anns
         then compileProperty (compileIdentifier n) =<< compileExpr e
         else do
           let binders' = mapMaybe compileTopLevelBinder binders
-          compileFunDef (compileIdentifier n) <$> compileExpr t <*> pure binders' <*> compileExpr body
+          (_, cbody) <- compileBinders binders (compileExpr body)
+          compileFunDef (compileIdentifier n) <$> compileExpr t <*> pure binders' <*> pure cbody
 
-compileExpr :: (MonadAgdaCompile m) => Expr Name Builtin -> m Code
+compileExpr :: (MonadAgdaCompile m) => Expr Builtin -> m Code
 compileExpr expr = do
   logEntry expr
   result <- case expr of
@@ -351,18 +356,20 @@ compileExpr expr = do
     Meta {} -> resolutionError currentPhase "Meta"
     Universe _ l -> return $ compileType l
     FreeVar _ n -> return $ annotateConstant [] (pretty (nameOf n))
-    BoundVar _ n -> return $ annotateConstant [] (pretty n)
+    BoundVar p ix -> do
+      n <- ixToProperName p ix
+      return $ annotateConstant [] (pretty n)
     Pi _ binder result -> case binderNamingForm binder of
       OnlyType -> do
         cInput <- compileBinder binder
-        cOutput <- compileExpr result
+        cOutput <- addBinderNameToContext binder $ compileExpr result
         return $ annotateInfixOp2 [] minPrecedence id Nothing arrow [cInput, cOutput]
       _ -> do
-        let (binders, body) = foldBinders (FoldableBinder PiFold binder) result
+        let (binders, body) = foldBinders PiBinder binder result
         compileTypeLevelQuantifier Forall (binder :| binders) body
-    Let _ bound binding body -> do
-      cBoundExpr <- compileLetBinder (binding, bound)
-      cBody <- compileExpr body
+    Let _ bound binder body -> do
+      cBoundExpr <- compileLetBinder (binder, bound)
+      cBody <- addBinderNameToContext binder $ compileExpr body
       return $ "let" <+> cBoundExpr <+> "in" <+> cBody
     Lam _ binder body -> compileLam binder body
     Builtin p b -> compileBuiltin p b []
@@ -371,7 +378,7 @@ compileExpr expr = do
   logExit result
   return result
 
-compileApp :: (MonadAgdaCompile m) => Expr Name Builtin -> NonEmpty (Arg Name Builtin) -> m Code
+compileApp :: (MonadAgdaCompile m) => Expr Builtin -> NonEmpty (Arg Builtin) -> m Code
 compileApp fun args = do
   specialResult <- case fun of
     Builtin p b -> Just <$> compileBuiltin p b (NonEmpty.toList args)
@@ -387,7 +394,7 @@ compileApp fun args = do
       cArgs <- traverse compileExpr (filterOutNonExplicitArgs args)
       return $ annotateApp [] cFun cArgs
 
-compileStdLibFunction :: (MonadAgdaCompile m) => StdLibFunction -> NonEmpty (Arg Name Builtin) -> m (Maybe Code)
+compileStdLibFunction :: (MonadAgdaCompile m) => StdLibFunction -> NonEmpty (Arg Builtin) -> m (Maybe Code)
 compileStdLibFunction fn args = case fn of
   StdTensor -> do
     let fun' = annotateConstant [DataTensor] "Tensor"
@@ -417,24 +424,23 @@ compileStdLibFunction fn args = case fn of
 
 compileLetBinder ::
   (MonadAgdaCompile m) =>
-  LetBinder Name Builtin ->
+  LetBinder (Expr Builtin) ->
   m Code
 compileLetBinder (binder, expr) = do
   let binderName = pretty (getBinderName binder)
   cExpr <- compileExpr expr
   return $ binderName <+> "=" <+> cExpr
 
-compileLam :: (MonadAgdaCompile m) => Binder Name Builtin -> Expr Name Builtin -> m Code
+compileLam :: (MonadAgdaCompile m) => Binder Builtin -> Expr Builtin -> m Code
 compileLam binder expr = do
-  let (binders, body) = foldBinders (FoldableBinder LamFold binder) expr
-  cBinders <- traverse compileBinder (binder : binders)
-  cBody <- compileExpr body
+  let (binders, body) = foldBinders LamBinder binder expr
+  (cBinders, cBody) <- compileBinders (binder : binders) (compileExpr body)
   return $ annotate (mempty, minPrecedence) ("λ" <+> hsep cBinders <+> arrow <+> cBody)
 
-compileArg :: (MonadAgdaCompile m) => Arg Name Builtin -> m Code
+compileArg :: (MonadAgdaCompile m) => Arg Builtin -> m Code
 compileArg arg = argBrackets (visibilityOf arg) <$> compileExpr (argExpr arg)
 
-compileArgs :: (MonadAgdaCompile m) => [Arg Name Builtin] -> m [Code]
+compileArgs :: (MonadAgdaCompile m) => [Arg Builtin] -> m [Code]
 compileArgs args = traverse compileArg (filter (not . wasInsertedByCompiler) args)
 
 compileBooleanType :: (MonadAgdaCompile m) => m Code
@@ -452,7 +458,7 @@ compileType (UniverseLevel l)
   | l == 0 = "Set"
   | otherwise = annotateConstant [] ("Set" <> pretty l)
 
-compileTopLevelBinder :: Binder Name Builtin -> Maybe Code
+compileTopLevelBinder :: Binder Builtin -> Maybe Code
 compileTopLevelBinder binder
   | visibilityOf binder /= Explicit = Nothing
   | otherwise = do
@@ -460,7 +466,14 @@ compileTopLevelBinder binder
       let addBrackets = binderBrackets True (visibilityOf binder)
       Just $ addBrackets binderName
 
-compileBinder :: (MonadAgdaCompile m) => Binder Name Builtin -> m Code
+compileBinders :: (MonadAgdaCompile m) => [Binder Builtin] -> m Code -> m ([Code], Code)
+compileBinders [] c = ([],) <$> c
+compileBinders (b : bs) c = do
+  (cbs, cc) <- addBinderNameToContext b $ compileBinders bs c
+  cb <- compileBinder b
+  return (cb : cbs, cc)
+
+compileBinder :: (MonadAgdaCompile m) => Binder Builtin -> m Code
 compileBinder binder = do
   binderType <- compileExpr (typeOf binder)
   (binderDoc, noExplicitBrackets) <- case binderNamingForm binder of
@@ -484,7 +497,7 @@ agdaDivRat = annotateInfixOp2 [DataRat] 7 id (Just ratQualifier) "/"
 agdaNatToFin :: [Code] -> Code
 agdaNatToFin = annotateInfixOp1 [DataFin] 10 Nothing "#"
 
-compileBuiltin :: (MonadAgdaCompile m) => Provenance -> Builtin -> [Arg Name Builtin] -> m Code
+compileBuiltin :: (MonadAgdaCompile m) => Provenance -> Builtin -> [Arg Builtin] -> m Code
 compileBuiltin _p b args = case b of
   TypeClass c -> case c of
     HasEq {} -> annotateApp [] "HasEq" <$> compileArgs args
@@ -599,15 +612,14 @@ compileBuiltin _p b args = case b of
         "compilation of builtin" <+> quotePretty b <+> "to Agda unsupported"
 
     unsupportedArgsError :: (MonadAgdaCompile m) => m a
-    unsupportedArgsError =
+    unsupportedArgsError = do
+      ctx <- getNamedBoundCtx (Proxy @())
       compilerDeveloperError $
-        "compilation of builtin"
-          <+> quotePretty b
-          <+> "with args"
-          <+> prettyFriendly args
+        "compilation of"
+          <+> prettyFriendly (WithContext (normAppList (Builtin mempty b) args) ctx)
           <+> "to Agda unsupported"
 
-    resolveInstance :: (MonadAgdaCompile m) => Builtin -> [Arg Name Builtin] -> m Code
+    resolveInstance :: (MonadAgdaCompile m) => Builtin -> [Arg Builtin] -> m Code
     resolveInstance op as = do
       (fn, newArgs) <- findInstanceArg op as
       compileExpr (normAppList fn newArgs)
@@ -615,18 +627,17 @@ compileBuiltin _p b args = case b of
 compileTypeLevelQuantifier ::
   (MonadAgdaCompile m) =>
   Quantifier ->
-  NonEmpty (Binder Name Builtin) ->
-  Expr Name Builtin ->
+  NonEmpty (Binder Builtin) ->
+  Expr Builtin ->
   m Code
 compileTypeLevelQuantifier q binders body = do
-  cBinders <- traverse compileBinder binders
-  cBody <- compileExpr body
+  (cBinders, cBody) <- compileBinders (NonEmpty.toList binders) (compileExpr body)
   quant <- case q of
     Forall -> return "∀"
     Exists -> return $ annotateConstant [DataProduct] "∃ λ"
   return $ quant <+> hsep cBinders <+> arrow <+> cBody
 
-compileQuantIn :: (MonadAgdaCompile m) => Quantifier -> Expr Name Builtin -> Expr Name Builtin -> Expr Name Builtin -> m Code
+compileQuantIn :: (MonadAgdaCompile m) => Quantifier -> Expr Builtin -> Expr Builtin -> Expr Builtin -> m Code
 compileQuantIn q tCont fn cont = do
   boolLevel <- getBoolLevel
 
@@ -660,7 +671,7 @@ compileRatLiteral r = agdaDivRat [num, denom]
     denom = compileNatLiteral (denominator r)
 
 -- | Compiling vector literals. No literals in Agda so have to go via cons.
-compileVecLiteral :: (MonadAgdaCompile m) => [Expr Name Builtin] -> m Code
+compileVecLiteral :: (MonadAgdaCompile m) => [Expr Builtin] -> m Code
 compileVecLiteral = \case
   [] -> return $ annotateConstant [DataVector] "[]ᵥ"
   (x : xs) -> do
@@ -868,7 +879,7 @@ equalityDomDependencies = \case
   EqRat -> [DataRat]
 
 -- Calculates the dependencies needed for equality over the provided type
-equalityDependencies :: (MonadAgdaCompile m) => Expr Name Builtin -> m [Dependency]
+equalityDependencies :: (MonadAgdaCompile m) => Expr Builtin -> m [Dependency]
 equalityDependencies = \case
   IndexType _ _ -> return [DataFin]
   INatType {} -> return [DataNatInstances]
@@ -884,17 +895,20 @@ equalityDependencies = \case
     deps <- equalityDependencies tElem
     return $ [DataTensorInstances] <> deps
   FreeVar p n -> throwError $ UnsupportedPolymorphicEquality Agda p (nameOf n)
-  BoundVar p n -> throwError $ UnsupportedPolymorphicEquality Agda p n
+  BoundVar p ix -> do
+    n <- ixToProperName p ix
+    throwError $ UnsupportedPolymorphicEquality Agda p n
   t -> unexpectedTypeError t (map pretty [Bool, Index, Nat, Rat, List, Vector] <> [pretty (identifierName TensorIdent)])
 
-unexpectedTypeError :: (MonadCompile m) => Expr Name Builtin -> [Doc ()] -> m a
-unexpectedTypeError actualType expectedTypes =
+unexpectedTypeError :: (MonadAgdaCompile m) => Expr Builtin -> [Doc ()] -> m a
+unexpectedTypeError actualType expectedTypes = do
+  ctx <- getNamedBoundCtx (Proxy @())
   compilerDeveloperError $
     "Unexpected type found."
       <+> "Was expecting one of"
       <+> list expectedTypes
       <+> "but found"
-      <+> prettyFriendly actualType
+      <+> prettyFriendly (WithContext actualType ctx)
       <+> "at"
       <+> pretty (provenanceOf actualType)
       <> "."
@@ -906,9 +920,9 @@ currentPhase = "compilation to Agda"
 -- user syntax.
 pattern TensorType ::
   Provenance ->
-  Expr Name Builtin ->
-  Expr Name Builtin ->
-  Expr Name Builtin
+  Expr Builtin ->
+  Expr Builtin ->
+  Expr Builtin
 pattern TensorType p tElem tDims <-
   App
     (FreeVar p TensorIdent)
@@ -918,8 +932,8 @@ pattern TensorType p tElem tDims <-
 
 pattern IndexType ::
   Provenance ->
-  Expr Name Builtin ->
-  Expr Name Builtin
+  Expr Builtin ->
+  Expr Builtin
 pattern IndexType p size <-
   App
     (Builtin p (BuiltinType Index))

@@ -6,10 +6,23 @@ module Vehicle.Data.Builtin.Standard.Core
 where
 
 import Vehicle.Data.Builtin.Interface
+import Vehicle.Data.Code.Expr
 import Vehicle.Syntax.Builtin as Syntax
 
 -----------------------------------------------------------------------------
 -- Classes
+
+isBuiltinCoercion :: Builtin -> Bool
+isBuiltinCoercion = \case
+  BuiltinFunction FromNat {} -> True
+  BuiltinFunction FromRat {} -> True
+  TypeClassOp FromNatTC {} -> True
+  TypeClassOp FromRatTC {} -> True
+  TypeClassOp FromVecTC {} -> True
+  _ -> False
+
+instance PrintableBuiltin Builtin where
+  isCoercion = isBuiltinCoercion
 
 instance BuiltinHasBoolLiterals Builtin where
   mkBoolBuiltinLit b = BuiltinConstructor (LBool b)
@@ -51,15 +64,6 @@ instance BuiltinHasVecLiterals Builtin where
     BuiltinConstructor (LVec n) -> Just n
     _ -> Nothing
   mkVecBuiltinLit n = BuiltinConstructor (LVec n)
-
-instance PrintableBuiltin Builtin where
-  isCoercion = \case
-    BuiltinFunction FromNat {} -> True
-    BuiltinFunction FromRat {} -> True
-    TypeClassOp FromNatTC {} -> True
-    TypeClassOp FromRatTC {} -> True
-    TypeClassOp FromVecTC {} -> True
-    _ -> False
 
 instance BuiltinHasStandardTypeClasses Builtin where
   mkBuiltinTypeClass = TypeClass

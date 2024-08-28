@@ -9,15 +9,15 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
 import Vehicle.Compile.Type.Meta.Set (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
-import Vehicle.Data.Expr.Value
+import Vehicle.Data.Code.Value
 
 --------------------------------------------------------------------------------
 -- Typing errors
 
 -- | Errors in bidirectional type-checking
 data TypingError builtin
-  = MissingExplicitArgument NamedBoundCtx (Binder Ix builtin) (Arg Ix builtin)
-  | FunctionTypeMismatch NamedBoundCtx (Expr Ix builtin) [Arg Ix builtin] (Expr Ix builtin) [Arg Ix builtin]
+  = MissingExplicitArgument NamedBoundCtx (Binder builtin) (Arg builtin)
+  | FunctionTypeMismatch NamedBoundCtx (Expr builtin) [Arg builtin] (Expr builtin) [Arg builtin]
   | FailedUnificationConstraints (NonEmpty (WithContext (UnificationConstraint builtin)))
   | FailedInstanceConstraint (ConstraintContext builtin) (InstanceConstraintOrigin builtin) (InstanceGoal builtin) [WithContext (InstanceCandidate builtin)]
   | UnsolvedConstraints (NonEmpty (WithContext (Constraint builtin)))
@@ -72,7 +72,7 @@ data ConstraintContext builtin = ConstraintContext
     -- If |Nothing| then the set is unknown.
     blockedBy :: BlockingStatus,
     -- | The set of bound variables in scope at the point the constraint was generated.
-    boundContext :: BoundCtx (Type Ix builtin)
+    boundContext :: BoundCtx (Type builtin)
   }
   deriving (Show)
 
@@ -84,7 +84,7 @@ instance Pretty (ConstraintContext builtin) where
 instance HasProvenance (ConstraintContext builtin) where
   provenanceOf (ConstraintContext _ _ creationProvenance _ _) = creationProvenance
 
-instance HasBoundCtx (ConstraintContext builtin) (Type Ix builtin) where
+instance HasBoundCtx (ConstraintContext builtin) (Type builtin) where
   boundContextOf = boundContext
 
 blockCtxOn :: MetaSet -> ConstraintContext builtin -> ConstraintContext builtin
@@ -94,14 +94,14 @@ blockCtxOn metas (ConstraintContext cid originProv creationProv _ ctx) =
 
 updateConstraintBoundCtx ::
   ConstraintContext builtin ->
-  (BoundCtx (Type Ix builtin) -> BoundCtx (Type Ix builtin)) ->
+  (BoundCtx (Type builtin) -> BoundCtx (Type builtin)) ->
   ConstraintContext builtin
 updateConstraintBoundCtx ConstraintContext {..} updateFn =
   ConstraintContext {boundContext = updateFn boundContext, ..}
 
 setConstraintBoundCtx ::
   ConstraintContext builtin ->
-  BoundCtx (Type Ix builtin) ->
+  BoundCtx (Type builtin) ->
   ConstraintContext builtin
 setConstraintBoundCtx ctx v = updateConstraintBoundCtx ctx (const v)
 
@@ -112,10 +112,10 @@ contextDBLevel = Lv . length . boundContext
 -- Instance constraints
 
 data InstanceConstraintOrigin builtin = InstanceConstraintOrigin
-  { checkedInstanceOp :: Expr Ix builtin,
-    checkedInstanceOpArgs :: [Arg Ix builtin],
-    checkedInstanceOpType :: Type Ix builtin,
-    checkedInstanceType :: Type Ix builtin
+  { checkedInstanceOp :: Expr builtin,
+    checkedInstanceOpArgs :: [Arg builtin],
+    checkedInstanceOpType :: Type builtin,
+    checkedInstanceType :: Type builtin
   }
   deriving (Show)
 
@@ -132,17 +132,17 @@ type instance
     Contextualised (InstanceConstraint builtin) (ConstraintContext builtin)
 
 data InstanceCandidate builtin = InstanceCandidate
-  { candidateExpr :: Expr Ix builtin,
-    candidateSolution :: Expr Ix builtin
+  { candidateExpr :: Expr builtin,
+    candidateSolution :: Expr builtin
   }
   deriving (Show)
 
 type instance
   WithContext (InstanceCandidate builtin) =
-    Contextualised (InstanceCandidate builtin) (BoundCtx (Type Ix builtin))
+    Contextualised (InstanceCandidate builtin) (BoundCtx (Type builtin))
 
 data InstanceGoal builtin = InstanceGoal
-  { goalTelescope :: Telescope Ix builtin,
+  { goalTelescope :: Telescope builtin,
     goalHead :: builtin,
     goalSpine :: WHNFSpine builtin
   }
@@ -163,16 +163,16 @@ type InstanceCandidateDatabase builtin =
 -- Unification constraints
 
 data CheckingExprType builtin = CheckingExpr
-  { checkedExpr :: Expr Ix builtin,
-    checkedExprExpectedType :: Type Ix builtin,
-    checkedExprActualType :: Expr Ix builtin
+  { checkedExpr :: Expr builtin,
+    checkedExprExpectedType :: Type builtin,
+    checkedExprActualType :: Expr builtin
   }
   deriving (Show)
 
 data CheckingBinderType builtin = CheckingBinder
   { checkedBinderName :: Maybe Name,
-    checkedBinderExpectedType :: Type Ix builtin,
-    checkedBinderActualType :: Type Ix builtin
+    checkedBinderExpectedType :: Type builtin,
+    checkedBinderActualType :: Type builtin
   }
   deriving (Show)
 

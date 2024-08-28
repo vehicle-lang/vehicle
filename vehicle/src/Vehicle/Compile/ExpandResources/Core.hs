@@ -8,7 +8,7 @@ import Data.Map qualified as Map
 import Vehicle.Compile.Context.Free (MonadFreeContext)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Data.Expr.Value
+import Vehicle.Data.Code.Value
 import Vehicle.Syntax.Builtin (Builtin)
 import Vehicle.Verify.Core
 

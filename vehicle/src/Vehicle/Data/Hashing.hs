@@ -3,14 +3,10 @@
 module Vehicle.Data.Hashing () where
 
 import Data.Hashable (Hashable (..))
--- import GHC.Generics (Generic)
-
--- import Vehicle.Data.Expr.Value
-
 import GHC.Generics (Generic)
-import Vehicle.Data.DeBruijn
-import Vehicle.Data.Expr.Value (Value, WHNFClosure)
-import Vehicle.Syntax.AST
+import Vehicle.Data.Code.Expr (Expr)
+import Vehicle.Data.Code.Value (Value, WHNFClosure)
+import Vehicle.Prelude
 
 -- We used to have full blown alpha-equivalence based on co-deBruijn indices
 -- but this proved to be unnecessary. It's still in the repo's history if
@@ -24,4 +20,4 @@ instance (Hashable expr) => Hashable (GenericArg expr)
 
 instance (Hashable expr) => Hashable (GenericBinder expr)
 
-instance (Hashable builtin) => Hashable (Expr Ix builtin)
+instance (Hashable builtin) => Hashable (Expr builtin)

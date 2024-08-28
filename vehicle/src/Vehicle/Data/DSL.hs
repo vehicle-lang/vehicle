@@ -36,9 +36,11 @@ where
 
 import Data.List.NonEmpty (NonEmpty)
 import Data.Maybe (fromMaybe)
+import Vehicle.Data.Code.Expr
 import Vehicle.Data.DeBruijn
+import Vehicle.Data.Universe
 import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction)
-import Vehicle.Syntax.AST
+import Vehicle.Prelude
 import Prelude hiding (pi)
 
 --------------------------------------------------------------------------------
@@ -55,13 +57,13 @@ class DSL expr where
   free :: StdLibFunction -> expr
 
 newtype DSLExpr builtin = DSL
-  { unDSL :: Provenance -> Lv -> Expr Ix builtin
+  { unDSL :: Provenance -> Lv -> Expr builtin
   }
 
-fromDSL :: Provenance -> DSLExpr builtin -> Expr Ix builtin
+fromDSL :: Provenance -> DSLExpr builtin -> Expr builtin
 fromDSL p e = unDSL e p 0
 
-toDSL :: Expr Ix builtin -> DSLExpr builtin
+toDSL :: Expr builtin -> DSLExpr builtin
 toDSL e = DSL $ \_p l ->
   if l > 0
     then liftDBIndices l e

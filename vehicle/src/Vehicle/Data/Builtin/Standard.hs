@@ -14,13 +14,13 @@ import Vehicle.Compile.Type.Constraint.InstanceDefaultSolver
 import Vehicle.Compile.Type.Constraint.InstanceSolver
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
-import Vehicle.Data.Builtin.Interface
+import Vehicle.Compile.Type.Monad.Class (TypableBuiltin (typeBuiltin))
 import Vehicle.Data.Builtin.Standard.AnnotationRestrictions
 import Vehicle.Data.Builtin.Standard.Core as Core
 import Vehicle.Data.Builtin.Standard.Eval ()
 import Vehicle.Data.Builtin.Standard.InstanceDefaults ()
 import Vehicle.Data.Builtin.Standard.Type
-import Vehicle.Data.Expr.Value
+import Vehicle.Data.Code.Value
 import Prelude hiding (pi)
 
 -----------------------------------------------------------------------------
@@ -41,7 +41,7 @@ instance HasTypeSystem Builtin where
   addAuxiliaryInputOutputConstraints = return
   generateDefaultConstraint = addNewConstraintUsingDefaults
 
-convertToTypingBuiltins :: (MonadCompile m) => BuiltinUpdate m Ix Builtin Builtin
+convertToTypingBuiltins :: (MonadCompile m) => BuiltinUpdate m Builtin Builtin
 convertToTypingBuiltins p t args = return $ normAppList (Builtin p t) args
 
 solveInstanceConstraint ::

@@ -12,7 +12,7 @@ import Vehicle.Compile.Context.Free as FreeContext
 import Vehicle.Compile.Prelude
 
 type MonadVarContext builtin m =
-  (MonadBoundContext (Type Ix builtin) m, MonadFreeContext builtin m)
+  (MonadBoundContext (Type builtin) m, MonadFreeContext builtin m)
 
 runFreshVarContextT ::
   forall m builtin a.

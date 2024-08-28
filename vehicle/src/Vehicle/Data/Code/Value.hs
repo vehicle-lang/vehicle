@@ -1,4 +1,4 @@
-module Vehicle.Data.Expr.Value where
+module Vehicle.Data.Code.Value where
 
 import Control.Monad (void)
 import Data.Map (Map)
@@ -7,15 +7,17 @@ import GHC.Generics
 import Vehicle.Compile.Context.Bound.Core
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Standard.Core (BuiltinFunction)
+import Vehicle.Data.Code.Expr (Expr)
+import Vehicle.Data.Code.Interface
 import Vehicle.Data.DeBruijn
-import Vehicle.Data.Expr.Interface
-import Vehicle.Syntax.AST
+import Vehicle.Data.Universe (UniverseLevel)
+import Vehicle.Prelude
 
 -----------------------------------------------------------------------------
 -- WHNF closures
 
 -- | Closures for weak-head normal-form.
-data WHNFClosure builtin = WHNFClosure (BoundEnv (WHNFClosure builtin) builtin) (Expr Ix builtin)
+data WHNFClosure builtin = WHNFClosure (BoundEnv (WHNFClosure builtin) builtin) (Expr builtin)
   deriving (Eq, Show, Generic)
 
 -----------------------------------------------------------------------------
@@ -164,7 +166,7 @@ getNMeta _ = Nothing
 
 -- | A pair of an unnormalised and normalised expression.
 data GluedExpr builtin = Glued
-  { unnormalised :: Expr Ix builtin,
+  { unnormalised :: Expr builtin,
     normalised :: WHNFValue builtin
   }
   deriving (Show, Generic)
@@ -189,7 +191,7 @@ traverseNormalised f (Glued u n) = Glued u <$> f n
 
 traverseUnnormalised ::
   (Monad m) =>
-  (Expr Ix builtin -> m (Expr Ix builtin)) ->
+  (Expr builtin -> m (Expr builtin)) ->
   GluedExpr builtin ->
   m (GluedExpr builtin)
 traverseUnnormalised f (Glued u n) = Glued <$> f u <*> pure n

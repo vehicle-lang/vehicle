@@ -9,7 +9,7 @@ module Vehicle.Compile.Print
     PrettyFriendly,
     PrettyVerbose,
     PrettyExternal,
-    PrintableBuiltin (..),
+    PrintableBuiltin,
     Tags (..),
     prettyVerbose,
     prettyFriendly,
@@ -31,21 +31,21 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Simplify
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
-import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Standard.Core
-import Vehicle.Data.Expr.Boolean
-import Vehicle.Data.Expr.Value
+import Vehicle.Data.Code.BooleanExpr
+import Vehicle.Data.Code.Value
+import Vehicle.Syntax.AST.Expr qualified as S
 import Vehicle.Syntax.Print
 
 --------------------------------------------------------------------------------
 -- Public methods
 --------------------------------------------------------------------------------
 
-type VerboseTags = 'Unnamed ('StandardiseBuiltin ('ShortVectors ('As 'Internal)))
+type VerboseTags = 'Unnamed ('ShortVectors ('As 'Internal))
 
-type ExternalTags = 'Named ('StandardiseBuiltin ('ShortVectors ('As 'External)))
+type ExternalTags = 'Named ('ShortVectors ('As 'External))
 
-type FriendlyTags = 'Named ('StandardiseBuiltin ('Uninserted ('As 'External)))
+type FriendlyTags = 'Named ('Uninserted ('As 'External))
 
 type PrettyVerbose a = PrettyWith VerboseTags a
 
@@ -94,15 +94,12 @@ data Tags
     Uninserted Tags
   | -- | The `ShortVectors` tag ensures that long vectors are printed out concisely.
     ShortVectors Tags
-  | -- | The `StandardiseBuiltin` tag ensures that the term is converted back to the standard set of builtins
-    StandardiseBuiltin Tags
 
 -- | A strategy is an abstract representation of the sequence of operations that
 -- are needed in order to convert something into a printable form. It should not
 -- be confused with the actual operations needed to do so.
 data Strategy
   = PrintAs VehicleLang
-  | ConvertBuiltins Strategy
   | QuoteValue Strategy
   | DescopeNaively Strategy
   | DescopeWithNames Strategy
@@ -129,33 +126,29 @@ type family StrategyFor (tags :: Tags) a :: Strategy where --------------------
   -- Expr --
   ----------
   -- To convert any named representation to the target language, simply convert it.
-  StrategyFor ('As lang) (Prog Name Builtin) = 'PrintAs lang
-  StrategyFor ('As lang) (Decl Name Builtin) = 'PrintAs lang
-  StrategyFor ('As lang) (Expr Name Builtin) = 'PrintAs lang
+  StrategyFor ('As lang) S.Prog = 'PrintAs lang
+  StrategyFor ('As lang) S.Decl = 'PrintAs lang
+  StrategyFor ('As lang) S.Expr = 'PrintAs lang
   -- To convert an expression from a `Name` representation to a `Name` representation is a no-op.
-  StrategyFor ('Named tags) (Prog Name builtin) = StrategyFor tags (Prog Name builtin)
-  StrategyFor ('Named tags) (Decl Name builtin) = StrategyFor tags (Decl Name builtin)
-  StrategyFor ('Named tags) (Expr Name builtin) = StrategyFor tags (Expr Name builtin)
+  StrategyFor ('Named tags) S.Prog = StrategyFor tags S.Prog
+  StrategyFor ('Named tags) S.Decl = StrategyFor tags S.Decl
+  StrategyFor ('Named tags) S.Expr = StrategyFor tags S.Expr
   -- To convert an expression using a Ix representation but whose missing names have been supplied
   -- to a named representation.
-  StrategyFor ('Named tags) (Prog Ix builtin) = StrategyFor ('Named tags) (Contextualised (Expr Ix builtin) NamedBoundCtx)
-  StrategyFor ('Named tags) (Decl Ix builtin) = StrategyFor ('Named tags) (Contextualised (Expr Ix builtin) NamedBoundCtx)
-  StrategyFor ('Named tags) (Contextualised (Expr Ix builtin) NamedBoundCtx) = 'DescopeWithNames (StrategyFor tags (Expr Name builtin))
+  StrategyFor ('Named tags) (Prog builtin) = StrategyFor ('Named tags) (Contextualised (Expr builtin) NamedBoundCtx)
+  StrategyFor ('Named tags) (Decl builtin) = StrategyFor ('Named tags) (Contextualised (Expr builtin) NamedBoundCtx)
+  StrategyFor ('Named tags) (Contextualised (Expr builtin) NamedBoundCtx) = 'DescopeWithNames (StrategyFor tags S.Expr)
   -- To print a DB expr in an unnamed representation, simply naively descope.
-  StrategyFor ('Unnamed tags) (Prog Ix builtin) = 'DescopeNaively (StrategyFor tags (Expr Name builtin))
-  StrategyFor ('Unnamed tags) (Decl Ix builtin) = 'DescopeNaively (StrategyFor tags (Expr Name builtin))
-  StrategyFor ('Unnamed tags) (Expr Ix builtin) = 'DescopeNaively (StrategyFor tags (Expr Name builtin))
-  -- To standardise builtins
-  StrategyFor ('StandardiseBuiltin tags) (Prog var builtin) = 'ConvertBuiltins (StrategyFor tags (Prog var Builtin))
-  StrategyFor ('StandardiseBuiltin tags) (Decl var builtin) = 'ConvertBuiltins (StrategyFor tags (Decl var Builtin))
-  StrategyFor ('StandardiseBuiltin tags) (Expr var builtin) = 'ConvertBuiltins (StrategyFor tags (Expr var Builtin))
+  StrategyFor ('Unnamed tags) (Prog builtin) = 'DescopeNaively (StrategyFor tags S.Expr)
+  StrategyFor ('Unnamed tags) (Decl builtin) = 'DescopeNaively (StrategyFor tags S.Expr)
+  StrategyFor ('Unnamed tags) (Expr builtin) = 'DescopeNaively (StrategyFor tags S.Expr)
   -----------
   -- Value --
   -----------
   -- To print a `Value` we need to quote it first. Note that we convert it to a `Builtin` representation immediately
   StrategyFor ('Named tags) (VDecl closure builtin) = StrategyFor ('Named tags) (Contextualised (Value closure builtin) NamedBoundCtx)
-  StrategyFor ('Named tags) (Contextualised (Value closure builtin) NamedBoundCtx) = 'QuoteValue (StrategyFor ('Named tags) (Contextualised (Expr Ix Builtin) NamedBoundCtx))
-  StrategyFor ('Unnamed tags) (Value closure builtin) = 'DescopeNaively (StrategyFor tags (Expr Name Builtin))
+  StrategyFor ('Named tags) (Contextualised (Value closure builtin) NamedBoundCtx) = 'QuoteValue (StrategyFor ('Named tags) (Contextualised (Expr Builtin) NamedBoundCtx))
+  StrategyFor ('Unnamed tags) (Value closure builtin) = 'DescopeNaively (StrategyFor tags S.Expr)
   -----------
   -- State --
   -----------
@@ -230,127 +223,94 @@ prettyWith = prettyUsing @(StrategyFor tags a) @a @b
 --------------------------------------------------------------------------------
 -- Printing to internal language
 
-instance PrettyUsing ('PrintAs 'Internal) (Prog Name Builtin) where
+instance PrettyUsing ('PrintAs 'Internal) S.Prog where
   prettyUsing (Main decls) =
     -- BNFC doesn't add empty lines so add them manually here.
     vsep2 $ fmap (prettyUsing @('PrintAs 'Internal)) decls
 
-instance PrettyUsing ('PrintAs 'Internal) (Decl Name Builtin) where
+instance PrettyUsing ('PrintAs 'Internal) S.Decl where
   prettyUsing = printInternal
 
-instance PrettyUsing ('PrintAs 'Internal) (Expr Name Builtin) where
+instance PrettyUsing ('PrintAs 'Internal) S.Expr where
   prettyUsing = printInternal
 
-instance PrettyUsing ('PrintAs 'Internal) (Arg Name Builtin) where
+instance PrettyUsing ('PrintAs 'Internal) S.Arg where
   prettyUsing = printInternal
 
-instance PrettyUsing ('PrintAs 'Internal) (Binder Name Builtin) where
+instance PrettyUsing ('PrintAs 'Internal) S.Binder where
   prettyUsing = printInternal
 
 --------------------------------------------------------------------------------
 -- Printing to external language
 
-instance PrettyUsing ('PrintAs 'External) (Prog Name Builtin) where
+instance PrettyUsing ('PrintAs 'External) S.Prog where
   prettyUsing (Main decls) =
     -- BNFC doesn't add empty lines so add them manually here.
     vsep2 $ fmap (prettyUsing @('PrintAs 'External)) decls
 
-instance PrettyUsing ('PrintAs 'External) (Decl Name Builtin) where
+instance PrettyUsing ('PrintAs 'External) S.Decl where
   prettyUsing = printExternal
 
-instance PrettyUsing ('PrintAs 'External) (Expr Name Builtin) where
+instance PrettyUsing ('PrintAs 'External) S.Expr where
   prettyUsing = printExternal
 
-instance PrettyUsing ('PrintAs 'External) (Arg Name Builtin) where
+instance PrettyUsing ('PrintAs 'External) S.Arg where
   prettyUsing = printExternal
 
-instance PrettyUsing ('PrintAs 'External) (Binder Name Builtin) where
+instance PrettyUsing ('PrintAs 'External) S.Binder where
   prettyUsing = printExternal
-
---------------------------------------------------------------------------------
--- Converting builtins
-
-instance
-  (PrintableBuiltin builtin, PrettyUsing rest (Prog Name Builtin)) =>
-  PrettyUsing ('ConvertBuiltins rest) (Prog Name builtin)
-  where
-  prettyUsing = prettyUsing @rest . fmap (convertExprBuiltins @builtin @Builtin)
-
-instance
-  (PrintableBuiltin builtin, PrettyUsing rest (Decl Name Builtin)) =>
-  PrettyUsing ('ConvertBuiltins rest) (Decl Name builtin)
-  where
-  prettyUsing = prettyUsing @rest . fmap (convertExprBuiltins @builtin @Builtin)
-
-instance
-  (PrintableBuiltin builtin, PrettyUsing rest (Expr Name Builtin)) =>
-  PrettyUsing ('ConvertBuiltins rest) (Expr Name builtin)
-  where
-  prettyUsing = prettyUsing @rest . (convertExprBuiltins @builtin @Builtin)
-
-instance
-  (PrintableBuiltin builtin, PrettyUsing rest (Arg Name Builtin)) =>
-  PrettyUsing ('ConvertBuiltins rest) (Arg Name builtin)
-  where
-  prettyUsing = prettyUsing @rest . fmap (convertExprBuiltins @builtin @Builtin)
-
-instance
-  (PrintableBuiltin builtin, PrettyUsing rest (Binder Name Builtin)) =>
-  PrettyUsing ('ConvertBuiltins rest) (Binder Name builtin)
-  where
-  prettyUsing = prettyUsing @rest . fmap (convertExprBuiltins @builtin @Builtin)
 
 --------------------------------------------------------------------------------
 -- Convert closed terms from DeBruijn representation to named representation naively
 
-instance (PrettyUsing rest (Prog Name builtin), PrintableBuiltin builtin) => PrettyUsing ('DescopeNaively rest) (Prog Ix builtin) where
+instance (PrettyUsing rest S.Prog, PrintableBuiltin builtin) => PrettyUsing ('DescopeNaively rest) (Prog builtin) where
   prettyUsing prog = prettyUsing @rest $ fmap descopeExprNaively prog
 
-instance (PrettyUsing rest (Decl Name builtin), PrintableBuiltin builtin) => PrettyUsing ('DescopeNaively rest) (Decl Ix builtin) where
+instance (PrettyUsing rest S.Decl, PrintableBuiltin builtin) => PrettyUsing ('DescopeNaively rest) (Decl builtin) where
   prettyUsing decl = prettyUsing @rest $ fmap descopeExprNaively decl
 
-instance (PrettyUsing rest (Expr Name builtin), PrintableBuiltin builtin) => PrettyUsing ('DescopeNaively rest) (Expr Ix builtin) where
+instance (PrettyUsing rest S.Expr, PrintableBuiltin builtin) => PrettyUsing ('DescopeNaively rest) (Expr builtin) where
   prettyUsing = prettyUsing @rest . descopeExprNaively
 
-instance (PrettyUsing rest (Arg Name builtin), PrintableBuiltin builtin) => PrettyUsing ('DescopeNaively rest) (Arg Ix builtin) where
+instance (PrettyUsing rest S.Arg, PrintableBuiltin builtin) => PrettyUsing ('DescopeNaively rest) (Arg builtin) where
   prettyUsing arg = prettyUsing @rest $ fmap descopeExprNaively arg
 
-instance (PrettyUsing rest (Binder Name builtin), PrintableBuiltin builtin) => PrettyUsing ('DescopeNaively rest) (Binder Ix builtin) where
+instance (PrettyUsing rest S.Binder, PrintableBuiltin builtin) => PrettyUsing ('DescopeNaively rest) (Binder builtin) where
   prettyUsing binder = prettyUsing @rest $ fmap descopeExprNaively binder
 
-instance (PrettyUsing rest (Expr Name Builtin), PrintableBuiltin builtin, DescopableClosure closure Builtin) => PrettyUsing ('DescopeNaively rest) (Value closure builtin) where
-  prettyUsing = prettyUsing @rest . descopeValueNaively @builtin @Builtin @closure
+instance (PrettyUsing rest S.Expr, PrintableBuiltin builtin, DescopableClosure closure) => PrettyUsing ('DescopeNaively rest) (Value closure builtin) where
+  prettyUsing = prettyUsing @rest . descopeValueNaively @builtin @closure
 
-instance (PrettyUsing rest (Arg Name Builtin), PrintableBuiltin builtin, DescopableClosure closure Builtin) => PrettyUsing ('DescopeNaively rest) (VArg closure builtin) where
-  prettyUsing arg = prettyUsing @rest $ fmap (descopeValueNaively @builtin @Builtin @closure) arg
+instance (PrettyUsing rest S.Arg, PrintableBuiltin builtin, DescopableClosure closure) => PrettyUsing ('DescopeNaively rest) (VArg closure builtin) where
+  prettyUsing arg = prettyUsing @rest $ fmap (descopeValueNaively @builtin @closure) arg
 
-instance (PrettyUsing rest (Binder Name Builtin), PrintableBuiltin builtin, DescopableClosure closure Builtin) => PrettyUsing ('DescopeNaively rest) (VBinder closure builtin) where
-  prettyUsing binder = prettyUsing @rest $ fmap (descopeValueNaively @builtin @Builtin @closure) binder
+instance (PrettyUsing rest S.Binder, PrintableBuiltin builtin, DescopableClosure closure) => PrettyUsing ('DescopeNaively rest) (VBinder closure builtin) where
+  prettyUsing binder = prettyUsing @rest $ fmap (descopeValueNaively @builtin @closure) binder
 
 --------------------------------------------------------------------------------
 -- Convert open terms from DeBruijn representation to named representation
 
-instance (PrettyUsing rest (Prog Name builtin), PrintableBuiltin builtin) => PrettyUsing ('DescopeWithNames rest) (Prog Ix builtin) where
+instance (PrettyUsing rest S.Prog, PrintableBuiltin builtin) => PrettyUsing ('DescopeWithNames rest) (Prog builtin) where
   prettyUsing prog = prettyUsing @rest $ fmap descopeExprInEmptyCtx prog
 
-instance (PrettyUsing rest (Decl Name builtin), PrintableBuiltin builtin) => PrettyUsing ('DescopeWithNames rest) (Decl Ix builtin) where
+instance (PrettyUsing rest S.Decl, PrintableBuiltin builtin) => PrettyUsing ('DescopeWithNames rest) (Decl builtin) where
   prettyUsing decl = prettyUsing @rest $ fmap descopeExprInEmptyCtx decl
 
 instance
-  (PrettyUsing rest (Expr Name builtin), PrintableBuiltin builtin) =>
-  PrettyUsing ('DescopeWithNames rest) (Contextualised (Expr Ix builtin) NamedBoundCtx)
+  (PrettyUsing rest S.Expr, PrintableBuiltin builtin) =>
+  PrettyUsing ('DescopeWithNames rest) (Contextualised (Expr builtin) NamedBoundCtx)
   where
   prettyUsing e = prettyUsing @rest $ descopeExpr e
 
 instance
-  (PrettyUsing rest (Arg Name builtin), PrintableBuiltin builtin) =>
-  PrettyUsing ('DescopeWithNames rest) (Contextualised (Arg Ix builtin) NamedBoundCtx)
+  (PrettyUsing rest S.Arg, PrintableBuiltin builtin) =>
+  PrettyUsing ('DescopeWithNames rest) (Contextualised (Arg builtin) NamedBoundCtx)
   where
   prettyUsing (WithContext e ctx) = prettyUsing @rest $ fmap (\a -> descopeExpr (WithContext a ctx)) e
 
 instance
-  (PrettyUsing rest (Binder Name builtin), PrintableBuiltin builtin) =>
-  PrettyUsing ('DescopeWithNames rest) (Contextualised (Binder Ix builtin) NamedBoundCtx)
+  (PrettyUsing rest S.Binder, PrintableBuiltin builtin) =>
+  PrettyUsing ('DescopeWithNames rest) (Contextualised (Binder builtin) NamedBoundCtx)
   where
   prettyUsing (WithContext e ctx) = prettyUsing @rest $ fmap (\a -> descopeExpr (WithContext a ctx)) e
 
@@ -431,42 +391,42 @@ instance
 -- Instances for normalised types
 
 instance
-  (PrettyUsing rest (Expr Ix Builtin), PrintableBuiltin builtin, QuoteClosure closure Builtin) =>
+  (PrettyUsing rest (Expr Builtin), ConvertableBuiltin builtin Builtin, QuoteClosure closure Builtin) =>
   PrettyUsing ('QuoteValue rest) (Value closure builtin)
   where
-  prettyUsing e = prettyUsing @rest $ unnormalise @(Value closure builtin) @(Expr Ix Builtin) 0 e
+  prettyUsing e = prettyUsing @rest $ unnormalise @(Value closure builtin) @(Expr Builtin) 0 e
 
 instance
-  (PrettyUsing rest (Arg Ix Builtin), PrintableBuiltin builtin, QuoteClosure closure Builtin) =>
+  (PrettyUsing rest (Arg Builtin), ConvertableBuiltin builtin Builtin, QuoteClosure closure Builtin) =>
   PrettyUsing ('QuoteValue rest) (VArg closure builtin)
   where
-  prettyUsing e = prettyUsing @rest $ fmap (unnormalise @(Value closure builtin) @(Expr Ix Builtin) 0) e
+  prettyUsing e = prettyUsing @rest $ fmap (unnormalise @(Value closure builtin) @(Expr Builtin) 0) e
 
 instance
-  (PrettyUsing rest (Binder Ix Builtin), PrintableBuiltin builtin, QuoteClosure closure Builtin) =>
+  (PrettyUsing rest (Binder Builtin), ConvertableBuiltin builtin Builtin, QuoteClosure closure Builtin) =>
   PrettyUsing ('QuoteValue rest) (VBinder closure builtin)
   where
-  prettyUsing e = prettyUsing @rest $ fmap (unnormalise @(Value closure builtin) @(Expr Ix Builtin) 0) e
+  prettyUsing e = prettyUsing @rest $ fmap (unnormalise @(Value closure builtin) @(Expr Builtin) 0) e
 
 instance
-  (PrettyUsing rest (Decl Ix Builtin), PrintableBuiltin builtin, QuoteClosure closure Builtin) =>
+  (PrettyUsing rest (Decl Builtin), ConvertableBuiltin builtin Builtin, QuoteClosure closure Builtin) =>
   PrettyUsing ('QuoteValue rest) (VDecl closure builtin)
   where
-  prettyUsing e = prettyUsing @rest $ fmap (unnormalise @(Value closure builtin) @(Expr Ix Builtin) 0) e
+  prettyUsing e = prettyUsing @rest $ fmap (unnormalise @(Value closure builtin) @(Expr Builtin) 0) e
 
 instance
-  (PrettyUsing rest (Contextualised (Expr Ix Builtin) NamedBoundCtx), PrintableBuiltin builtin, QuoteClosure closure Builtin) =>
+  (PrettyUsing rest (Contextualised (Expr Builtin) NamedBoundCtx), ConvertableBuiltin builtin Builtin, QuoteClosure closure Builtin) =>
   PrettyUsing ('QuoteValue rest) (Contextualised (Value closure builtin) NamedBoundCtx)
   where
   prettyUsing (WithContext e ctx) = do
-    let e' = unnormalise @(Value closure builtin) @(Expr Ix Builtin) (Lv $ length ctx) e
+    let e' = unnormalise @(Value closure builtin) @(Expr Builtin) (Lv $ length ctx) e
     prettyUsing @rest (WithContext e' ctx)
 
-instance (PrintableBuiltin builtin, PrettyUsing rest (Expr Ix Builtin)) => PrettyUsing ('DescopeWithNames rest) (NFValue builtin) where
-  prettyUsing e = prettyUsing @rest (unnormalise @(NFValue builtin) @(Expr Ix Builtin) 0 e)
+instance (ConvertableBuiltin builtin Builtin, PrettyUsing rest (Expr Builtin)) => PrettyUsing ('DescopeWithNames rest) (NFValue builtin) where
+  prettyUsing e = prettyUsing @rest (unnormalise @(NFValue builtin) @(Expr Builtin) 0 e)
 
-instance (PrintableBuiltin builtin, PrettyUsing rest (Arg Ix Builtin)) => PrettyUsing ('DescopeWithNames rest) (NFArg builtin) where
-  prettyUsing e = prettyUsing @rest (unnormalise @(NFArg builtin) @(Arg Ix Builtin) 0 e)
+instance (ConvertableBuiltin builtin Builtin, PrettyUsing rest (Arg Builtin)) => PrettyUsing ('DescopeWithNames rest) (NFArg builtin) where
+  prettyUsing e = prettyUsing @rest (unnormalise @(NFArg builtin) @(Arg Builtin) 0 e)
 
 instance PrettyUsing rest (GenericBinder ()) where
   prettyUsing b = maybe "_" pretty (nameOf b)

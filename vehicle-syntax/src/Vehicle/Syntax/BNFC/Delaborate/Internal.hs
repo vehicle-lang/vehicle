@@ -10,13 +10,11 @@ where
 import Control.Monad.Identity (Identity (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Maybe (fromMaybe)
-import Data.Text (Text, pack)
-import Prettyprinter (Pretty (..))
+import Data.Text (Text)
 import Vehicle.Syntax.AST qualified as V
 import Vehicle.Syntax.Builtin qualified as V
 import Vehicle.Syntax.Internal.Abs qualified as B
 import Vehicle.Syntax.Parse.Token
-import Vehicle.Syntax.Prelude (layoutAsText)
 
 --------------------------------------------------------------------------------
 -- Conversion to BNFC AST
@@ -36,11 +34,11 @@ class Delaborate t bnfc | t -> bnfc, bnfc -> t where
   delabM :: (MonadDelab m) => t -> m bnfc
 
 -- | Elaborate programs.
-instance Delaborate (V.Prog V.Name V.Builtin) B.Prog where
+instance Delaborate V.Prog B.Prog where
   delabM (V.Main decls) = B.Main <$> traverse delabM decls
 
 -- | Elaborate declarations.
-instance Delaborate (V.Decl V.Name V.Builtin) B.Decl where
+instance Delaborate V.Decl B.Decl where
   delabM = \case
     V.DefFunction _ n _ t e -> B.DefFun (delabIdentifier n) <$> delabM t <*> delabM e
     V.DefAbstract _ n s t -> do
@@ -56,21 +54,19 @@ instance Delaborate V.DefAbstractSort (B.NameToken -> B.Expr -> B.Decl) where
       V.NonInferable -> B.DeclParam
       V.Inferable -> B.DeclImplParam
 
-instance Delaborate (V.Expr V.Name V.Builtin) B.Expr where
+instance Delaborate V.Expr B.Expr where
   delabM expr = case expr of
-    V.Universe _ u -> return $ delabUniverse u
-    V.FreeVar _ n -> return $ B.Var (delabSymbol (V.nameOf n))
-    V.BoundVar _ n -> return $ B.Var (delabSymbol n)
+    V.Universe _ -> return delabUniverse
+    V.Var _ n -> return $ B.Var (delabSymbol n)
     V.Hole _ n -> return $ B.Hole (mkToken B.HoleToken n)
     V.Builtin _ op -> return $ delabBuiltin op
     V.Pi _ b t -> B.Pi <$> delabM b <*> delabM t
     V.Let _ v b e -> B.Let <$> delabM b <*> delabM v <*> delabM e
     V.Lam _ b e -> B.Lam <$> delabM b <*> delabM e
-    V.Meta _ m -> return $ B.Hole (mkToken B.HoleToken (layoutAsText (pretty m)))
     V.App fun args -> delabApp <$> delabM fun <*> traverse delabM (reverse (NonEmpty.toList args))
 
-instance Delaborate (V.Arg V.Name V.Builtin) B.Arg where
-  delabM :: (MonadDelab m) => V.Arg V.Name V.Builtin -> m B.Arg
+instance Delaborate V.Arg B.Arg where
+  delabM :: (MonadDelab m) => V.Arg -> m B.Arg
   delabM (V.Arg _ v r e) = case (v, r) of
     (V.Explicit {}, V.Relevant) -> B.RelevantExplicitArg <$> delabM e
     (V.Implicit {}, V.Relevant) -> B.RelevantImplicitArg <$> delabM e
@@ -79,7 +75,7 @@ instance Delaborate (V.Arg V.Name V.Builtin) B.Arg where
     (V.Implicit {}, V.Irrelevant) -> B.IrrelevantImplicitArg <$> delabM e
     (V.Instance {}, V.Irrelevant) -> B.IrrelevantInstanceArg <$> delabM e
 
-instance Delaborate (V.Binder V.Name V.Builtin) B.Binder where
+instance Delaborate V.Binder B.Binder where
   delabM binder = do
     t' <- delabM $ V.binderValue binder
     let n' = delabSymbol $ fromMaybe "_" (V.nameOf binder)
@@ -91,9 +87,8 @@ instance Delaborate (V.Binder V.Name V.Builtin) B.Binder where
       (V.Implicit {}, V.Irrelevant) -> B.IrrelevantImplicitBinder n' t'
       (V.Instance {}, V.Irrelevant) -> B.IrrelevantInstanceBinder n' t'
 
-delabUniverse :: V.UniverseLevel -> B.Expr
-delabUniverse = \case
-  V.UniverseLevel l -> B.Type (mkToken B.TypeToken ("Type" <> pack (show l)))
+delabUniverse :: B.Expr
+delabUniverse = B.Type (mkToken B.TypeToken "Type")
 
 delabSymbol :: Text -> B.NameToken
 delabSymbol = mkToken B.NameToken

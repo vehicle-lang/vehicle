@@ -9,7 +9,7 @@ import Control.Monad.Except (MonadError (..))
 import Data.List.NonEmpty (NonEmpty (..))
 import Vehicle.Compile.Error (CompileError (..))
 import Vehicle.Compile.Prelude
-import Vehicle.Data.Expr.Linear
+import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.QuantifiedVariable
 import Vehicle.Prelude.Warning
 import Vehicle.Syntax.Builtin

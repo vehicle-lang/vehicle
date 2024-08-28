@@ -10,7 +10,7 @@ import Data.Vector qualified as Vector
 import Vehicle.Backend.Queries.UserVariableElimination.Core
 import Vehicle.Backend.Queries.UserVariableElimination.FourierMotzkinElimination
 import Vehicle.Compile.Prelude
-import Vehicle.Data.Expr.Linear (evaluateExpr)
+import Vehicle.Data.Code.LinearExpr (evaluateExpr)
 import Vehicle.Data.QuantifiedVariable
 import Vehicle.Data.Tensor (RationalTensor, Tensor (..))
 

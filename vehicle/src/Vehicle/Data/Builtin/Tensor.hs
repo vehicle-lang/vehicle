@@ -3,18 +3,13 @@ module Vehicle.Data.Builtin.Tensor where
 import Data.Ratio
 import GHC.Generics (Generic)
 import Vehicle.Compile.Arity (Arity)
-import Vehicle.Data.Builtin.Interface (ConvertableBuiltin (..), PrintableBuiltin (..))
-import Vehicle.Data.Builtin.Standard.Core ()
-import Vehicle.Data.Expr.Interface
-import Vehicle.Data.Expr.Standard (cheatConvertBuiltin)
-import Vehicle.Data.Expr.Value
+import Vehicle.Data.Builtin.Standard.Core qualified as S
+import Vehicle.Data.Code.Expr (ConvertableBuiltin (..), Expr (..), PrintableBuiltin (..), cheatConvertBuiltin, normAppList)
+import Vehicle.Data.Code.Interface
+import Vehicle.Data.Code.Value
 import Vehicle.Data.Tensor (Tensor (..))
 import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (..))
-import Vehicle.Prelude.Prettyprinter
-import Vehicle.Syntax.AST (Provenance (..))
-import Vehicle.Syntax.AST qualified as V
-import Vehicle.Syntax.Builtin qualified as V
-import Vehicle.Syntax.Prelude (developerError)
+import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
 -- Builtin datatype
@@ -101,7 +96,7 @@ data TensorBuiltin
   | MapRatTensor
   | ZipWithRatTensor
   | Indices
-  | SearchRatTensor [V.Name]
+  | SearchRatTensor [Name]
   | If
   | Forall
   | Exists
@@ -112,64 +107,64 @@ data TensorBuiltin
 instance Pretty TensorBuiltin where
   pretty = pretty . show
 
-instance ConvertableBuiltin TensorBuiltin V.Builtin where
-  convertBuiltin :: Provenance -> TensorBuiltin -> V.Expr var V.Builtin
+instance ConvertableBuiltin TensorBuiltin S.Builtin where
+  convertBuiltin :: Provenance -> TensorBuiltin -> Expr S.Builtin
   convertBuiltin p b = case b of
-    IndexType -> builtinType V.Index
-    BoolTensorType -> builtinTensorType IBoolType
-    NatType -> builtinTensorType INatType
-    RatTensorType -> builtinTensorType IRatType
+    IndexType -> builtinType S.Index
+    BoolTensorType -> builtinTensorType (builtinType S.Bool)
+    NatType -> builtinTensorType (builtinType S.Nat)
+    RatTensorType -> builtinTensorType (builtinType S.Rat)
+    IndexTensorType -> builtinTensorType (builtinType S.Nat)
     -- Constructors
-    Unit -> IUnitLiteral mempty
-    Index i -> builtinConstructor $ V.LIndex i
+    Unit -> builtinType S.Unit
+    Index i -> builtinConstructor $ S.LIndex i
     BoolTensor vs -> tensorToExpr (IBoolLiteral mempty) vs
     Nat vs -> INatLiteral mempty vs
     RatTensor vs -> tensorToExpr (IRatLiteral mempty . convertTRat) vs
-    NilList -> builtinConstructor V.Nil
-    ConsList -> builtinConstructor V.Cons
+    NilList -> builtinConstructor S.Nil
+    ConsList -> builtinConstructor S.Cons
     ConstRatTensor r -> cheatConvertBuiltin p $ "const[" <+> pretty (convertTRat r) <+> "]"
-    StackRatTensor n -> builtinConstructor (V.LVec n)
-    Forall -> builtinFunction (V.Quantifier V.Forall)
-    Exists -> builtinFunction (V.Quantifier V.Exists)
-    If -> builtinFunction V.If
+    StackRatTensor n -> builtinConstructor (S.LVec n)
+    Forall -> builtinFunction (S.Quantifier S.Forall)
+    Exists -> builtinFunction (S.Quantifier S.Exists)
+    If -> builtinFunction S.If
     -- Tensor operations
-    NegRatTensor -> builtinTCOp V.NegTC
-    AddRatTensor -> builtinTCOp V.AddTC
-    SubRatTensor -> builtinTCOp V.SubTC
-    MulRatTensor -> builtinTCOp V.MulTC
-    DivRatTensor -> builtinTCOp V.DivTC
-    EqRatTensor -> builtinTCOp $ V.EqualsTC V.Eq
-    NeRatTensor -> builtinTCOp $ V.EqualsTC V.Neq
-    LeRatTensor -> builtinTCOp $ V.OrderTC V.Le
-    LtRatTensor -> builtinTCOp $ V.OrderTC V.Lt
-    GeRatTensor -> builtinTCOp $ V.OrderTC V.Ge
-    GtRatTensor -> builtinTCOp $ V.OrderTC V.Gt
-    PowRatTensor -> builtinFunction V.PowRat
-    MinRatTensor -> builtinFunction V.MinRat
-    MaxRatTensor -> builtinFunction V.MaxRat
-    GtIndex -> builtinFunction $ V.Order V.OrderIndex V.Gt
-    GeIndex -> builtinFunction $ V.Order V.OrderIndex V.Ge
-    LtIndex -> builtinFunction $ V.Order V.OrderIndex V.Lt
-    LeIndex -> builtinFunction $ V.Order V.OrderIndex V.Le
-    EqIndex -> builtinFunction $ V.Equals V.EqIndex V.Eq
-    NeIndex -> builtinFunction $ V.Equals V.EqIndex V.Neq
-    LookupRatTensor -> builtinFunction V.At
-    FoldList -> builtinFunction V.FoldList
-    ReduceRatTensor -> builtinFunction V.FoldVector
-    MapList -> builtinFunction V.MapList
-    MapRatTensor -> builtinFunction V.MapVector
-    ZipWithRatTensor -> builtinFunction V.ZipWithVector
-    Indices -> builtinFunction V.Indices
-    IndexTensorType -> V.FreeVar p (V.identifierOf StdTensor)
-    ListType -> builtinType V.List
+    NegRatTensor -> builtinTCOp S.NegTC
+    AddRatTensor -> builtinTCOp S.AddTC
+    SubRatTensor -> builtinTCOp S.SubTC
+    MulRatTensor -> builtinTCOp S.MulTC
+    DivRatTensor -> builtinTCOp S.DivTC
+    EqRatTensor -> builtinTCOp $ S.EqualsTC S.Eq
+    NeRatTensor -> builtinTCOp $ S.EqualsTC S.Neq
+    LeRatTensor -> builtinTCOp $ S.OrderTC S.Le
+    LtRatTensor -> builtinTCOp $ S.OrderTC S.Lt
+    GeRatTensor -> builtinTCOp $ S.OrderTC S.Ge
+    GtRatTensor -> builtinTCOp $ S.OrderTC S.Gt
+    PowRatTensor -> builtinFunction S.PowRat
+    MinRatTensor -> builtinFunction S.MinRat
+    MaxRatTensor -> builtinFunction S.MaxRat
+    GtIndex -> builtinFunction $ S.Order S.OrderIndex S.Gt
+    GeIndex -> builtinFunction $ S.Order S.OrderIndex S.Ge
+    LtIndex -> builtinFunction $ S.Order S.OrderIndex S.Lt
+    LeIndex -> builtinFunction $ S.Order S.OrderIndex S.Le
+    EqIndex -> builtinFunction $ S.Equals S.EqIndex S.Eq
+    NeIndex -> builtinFunction $ S.Equals S.EqIndex S.Neq
+    LookupRatTensor -> builtinFunction S.At
+    FoldList -> builtinFunction S.FoldList
+    ReduceRatTensor -> builtinFunction S.FoldVector
+    MapList -> builtinFunction S.MapList
+    MapRatTensor -> builtinFunction S.MapVector
+    ZipWithRatTensor -> builtinFunction S.ZipWithVector
+    Indices -> builtinFunction S.Indices
+    ListType -> builtinType S.List
     ReduceSumRatTensor -> cheatConvertBuiltin p "reduceSum"
     SearchRatTensor {} -> cheatConvertBuiltin p "search"
     where
-      builtinConstructor = V.Builtin p . V.BuiltinConstructor
-      builtinFunction = V.Builtin p . V.BuiltinFunction
-      builtinTCOp = V.Builtin p . V.TypeClassOp
-      builtinType = V.Builtin p . V.BuiltinType
-      builtinTensorType t = IStandardLib StdTensor [V.Arg mempty V.Explicit V.Relevant (t V.noProvenance)]
+      builtinConstructor = Builtin p . S.BuiltinConstructor
+      builtinFunction = Builtin p . S.BuiltinFunction
+      builtinTCOp = Builtin p . S.TypeClassOp
+      builtinType = Builtin p . S.BuiltinType
+      builtinTensorType t = normAppList (FreeVar p (identifierOf StdTensor)) [Arg mempty Explicit Relevant t]
 
 instance PrintableBuiltin TensorBuiltin where
   isCoercion :: TensorBuiltin -> Bool
@@ -241,7 +236,7 @@ pattern VRatTensor :: Tensor Rat -> NFValue TensorBuiltin
 pattern VRatTensor t = VTensorLiteral (RatTensor t)
 
 pattern VLookup :: NFArg TensorBuiltin -> NFValue TensorBuiltin -> NFValue TensorBuiltin
-pattern VLookup xs i <- VBuiltin LookupRatTensor [xs, V.RelevantExplicitArg _ i]
+pattern VLookup xs i <- VBuiltin LookupRatTensor [xs, RelevantExplicitArg _ i]
 
 getBoolTensor :: NFValue TensorBuiltin -> Maybe (Tensor Bool)
 getBoolTensor (VBoolTensor t) = Just t

@@ -25,7 +25,7 @@ import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Data.Builtin.Standard.Core
-import Vehicle.Data.Expr.Value
+import Vehicle.Data.Code.Value
 
 -------------------------------------------------------------------------------
 -- Algorithm
@@ -35,8 +35,8 @@ typeCheckProg ::
   (HasTypeSystem builtin, NormalisableBuiltin builtin, MonadCompile m) =>
   InstanceCandidateDatabase builtin ->
   FreeCtx builtin ->
-  Prog Ix Builtin ->
-  m (Prog Ix builtin)
+  Prog Builtin ->
+  m (Prog builtin)
 typeCheckProg instanceCandidates freeCtx (Main uncheckedProg) =
   logCompilerPass MinDetail "type checking" $
     runTypeCheckerTInitially freeCtx instanceCandidates $ do
@@ -48,8 +48,8 @@ typeCheckExpr ::
   (HasTypeSystem builtin, NormalisableBuiltin builtin, MonadCompile m) =>
   InstanceCandidateDatabase builtin ->
   FreeCtx builtin ->
-  Expr Ix Builtin ->
-  m (Expr Ix builtin)
+  Expr Builtin ->
+  m (Expr builtin)
 typeCheckExpr instanceCandidates freeCtx expr1 = do
   runTypeCheckerTInitially freeCtx instanceCandidates $ do
     expr2 <- convertExprFromStandardTypes expr1
@@ -62,7 +62,7 @@ typeCheckExpr instanceCandidates freeCtx expr1 = do
 -------------------------------------------------------------------------------
 -- Type-class for things that can be type-checked
 
-typeCheckDecls :: forall builtin m. (TCM builtin m) => [Decl Ix Builtin] -> m [Decl Ix builtin]
+typeCheckDecls :: forall builtin m. (TCM builtin m) => [Decl Builtin] -> m [Decl builtin]
 typeCheckDecls = \case
   [] -> return []
   d : ds -> do
@@ -70,7 +70,7 @@ typeCheckDecls = \case
     checkedDecls <- addDeclToContext (Proxy @builtin) typedDecl $ typeCheckDecls ds
     return $ typedDecl : checkedDecls
 
-typeCheckDecl :: forall builtin m. (TCM builtin m) => Decl Ix Builtin -> m (Decl Ix builtin)
+typeCheckDecl :: forall builtin m. (TCM builtin m) => Decl Builtin -> m (Decl builtin)
 typeCheckDecl uncheckedDecl =
   logCompilerPass MaxDetail ("declaration" <+> quotePretty (identifierOf uncheckedDecl)) $ do
     convertedDecl <- traverse convertExprFromStandardTypes uncheckedDecl
@@ -88,8 +88,8 @@ typeCheckDecl uncheckedDecl =
 convertExprFromStandardTypes ::
   forall builtin m.
   (HasTypeSystem builtin, TCM builtin m) =>
-  Expr Ix Builtin ->
-  m (Expr Ix builtin)
+  Expr Builtin ->
+  m (Expr builtin)
 convertExprFromStandardTypes = traverseBuiltinsM convertFromStandardBuiltins
 
 typeCheckAbstractDef ::
@@ -97,8 +97,8 @@ typeCheckAbstractDef ::
   Provenance ->
   Identifier ->
   DefAbstractSort ->
-  Type Ix builtin ->
-  m (Decl Ix builtin)
+  Type builtin ->
+  m (Decl builtin)
 typeCheckAbstractDef p ident defSort uncheckedType = do
   checkedType <- checkDeclType ident uncheckedType
   let checkedDecl = DefAbstract p ident defSort checkedType
@@ -126,9 +126,9 @@ typeCheckFunction ::
   Provenance ->
   Identifier ->
   [Annotation] ->
-  Type Ix builtin ->
-  Expr Ix builtin ->
-  m (Decl Ix builtin)
+  Type builtin ->
+  Expr builtin ->
+  m (Decl builtin)
 typeCheckFunction p ident anns typ body = do
   checkedType <- checkDeclType ident typ
 
@@ -163,7 +163,7 @@ typeCheckFunction p ident anns typ body = do
       checkedDecl3 <- generaliseOverUnsolvedMetaVariables checkedDecl2
       return checkedDecl3
 
-checkDeclType :: forall builtin m. (TCM builtin m) => Identifier -> Expr Ix builtin -> m (Type Ix builtin)
+checkDeclType :: forall builtin m. (TCM builtin m) => Identifier -> Expr builtin -> m (Type builtin)
 checkDeclType ident declType = do
   let pass = bidirectionalPassDoc <+> "type of" <+> quotePretty ident
   logCompilerPass MidDetail pass $ do
@@ -174,7 +174,7 @@ restrictAbstractDefType ::
   DefAbstractSort ->
   DeclProvenance ->
   GluedType builtin ->
-  m (Type Ix builtin)
+  m (Type builtin)
 restrictAbstractDefType resource decl@(ident, _) defType = do
   let resourceName = pretty resource <+> quotePretty ident
   logCompilerPass MidDetail ("checking suitability of the type of" <+> resourceName) $ do
@@ -190,11 +190,11 @@ restrictAbstractDefType resource decl@(ident, _) defType = do
 -- | Tries to solve constraints. Passes in the type of the current declaration
 -- being checked, as metas are handled different according to whether they
 -- occur in the type or not.
-solveConstraints :: forall builtin m. (TCM builtin m) => Maybe (Decl Ix builtin) -> m ()
+solveConstraints :: forall builtin m. (TCM builtin m) => Maybe (Decl builtin) -> m ()
 solveConstraints d = logCompilerPass MidDetail "constraint solving" $ do
   loopOverConstraints mempty 1 d
   where
-    loopOverConstraints :: (TCM builtin m) => MetaSet -> Int -> Maybe (Decl Ix builtin) -> m ()
+    loopOverConstraints :: (TCM builtin m) => MetaSet -> Int -> Maybe (Decl builtin) -> m ()
     loopOverConstraints recentlySolvedMetas loopNumber decl = do
       unsolvedConstraints <- getActiveConstraints @builtin
 
@@ -290,7 +290,7 @@ checkAllMetasSolved proxy = do
           )
       throwError $ UnsolvedMetas metasAndOrigins
 
-logUnsolvedUnknowns :: forall builtin m. (TCM builtin m) => Maybe (Decl Ix builtin) -> Maybe MetaSet -> m ()
+logUnsolvedUnknowns :: forall builtin m. (TCM builtin m) => Maybe (Decl builtin) -> Maybe MetaSet -> m ()
 logUnsolvedUnknowns maybeDecl maybeSolvedMetas = do
   logDebugM MaxDetail $ do
     newSubstitution <- getMetaSubstitution (Proxy @builtin)

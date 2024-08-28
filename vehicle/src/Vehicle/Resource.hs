@@ -13,9 +13,9 @@ import Data.Map (Map, assocs)
 import Data.Map qualified as Map
 import Data.Text (Text)
 import GHC.Generics (Generic)
+import Vehicle.Prelude (Name)
 import Vehicle.Prelude.IO (fatalError)
 import Vehicle.Prelude.Prettyprinter
-import Vehicle.Syntax.AST
 
 --------------------------------------------------------------------------------
 -- The different types of resources supported

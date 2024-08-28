@@ -14,11 +14,11 @@ import Data.Set qualified as Set (singleton)
 import Vehicle.Compile.Context.Bound.Core
 import Vehicle.Data.Builtin.Loss.Core (LossBuiltin)
 import Vehicle.Data.Builtin.Tensor
-import Vehicle.Data.Expr.Value
+import Vehicle.Data.Code.Value
 import Vehicle.Data.QuantifiedVariable
 import Vehicle.Libraries.StandardLibrary.Definitions
+import Vehicle.Prelude (Name)
 import Vehicle.Resource (ExternalResource)
-import Vehicle.Syntax.AST
 import Vehicle.Syntax.Builtin
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core

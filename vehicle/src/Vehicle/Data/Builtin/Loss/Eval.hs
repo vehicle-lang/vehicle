@@ -24,7 +24,7 @@ import Vehicle.Compile.Normalise.Builtin
   )
 import Vehicle.Data.Builtin.Loss.Core
 import Vehicle.Data.Builtin.Standard.Core ()
-import Vehicle.Data.Expr.Value (Value (..))
+import Vehicle.Data.Code.Value (Value (..))
 import Vehicle.Syntax.Builtin qualified as V
 
 instance NormalisableBuiltin LossBuiltin where

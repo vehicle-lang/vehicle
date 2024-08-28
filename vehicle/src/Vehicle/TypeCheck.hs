@@ -30,6 +30,7 @@ import Vehicle.Data.Builtin.Standard.InstanceBuiltins
 import Vehicle.Libraries (Library (..), LibraryInfo (..), findLibraryContentFile)
 import Vehicle.Libraries.StandardLibrary (standardLibrary)
 import Vehicle.Prelude.Logging.Instance
+import Vehicle.Syntax.AST.Expr qualified as S
 import Vehicle.Syntax.Parse
 import Vehicle.Verify.Specification.IO
 
@@ -51,7 +52,7 @@ typeCheck loggingSettings options@TypeCheckOptions {..} = runCompileMonad loggin
 --------------------------------------------------------------------------------
 -- Useful functions that apply to multiple compiler passes
 
-parseAndTypeCheckExpr :: (MonadIO m, MonadCompile m) => (FilePath, Text) -> m (Expr Ix Builtin)
+parseAndTypeCheckExpr :: (MonadIO m, MonadCompile m) => (FilePath, Text) -> m (Expr Builtin)
 parseAndTypeCheckExpr expr = do
   standardLibraryProg <- loadLibrary standardLibrary
   freeCtx <- createFreeCtx [standardLibraryProg]
@@ -60,7 +61,7 @@ parseAndTypeCheckExpr expr = do
   typedExpr <- typeCheckExpr standardBuiltinInstances freeCtx scopedExpr
   convertBackToStandardBuiltin typedExpr
 
-parseExprText :: (MonadCompile m) => (FilePath, Text) -> m (Expr Name Builtin)
+parseExprText :: (MonadCompile m) => (FilePath, Text) -> m S.Expr
 parseExprText (file, txt) = do
   let location = (ModulePath [User], file)
   case runExcept (parseExpr location =<< readExpr txt) of
@@ -70,7 +71,7 @@ parseExprText (file, txt) = do
 typeCheckUserProg ::
   (MonadIO m, MonadCompile m) =>
   TypeCheckOptions ->
-  m (Imports, Prog Ix Builtin)
+  m (Imports, Prog Builtin)
 typeCheckUserProg TypeCheckOptions {..} = do
   imports <- (: []) <$> loadLibrary standardLibrary
   typedProg <- typeCheckOrLoadProg User imports specification
@@ -83,7 +84,7 @@ typeCheckProgram ::
   ParseLocation ->
   Imports ->
   SpecificationText ->
-  m (Prog Ix Builtin)
+  m (Prog Builtin)
 typeCheckProgram modul imports spec = do
   vehicleProg <- parseProgText modul spec
   scopedProg <- scopeCheck imports vehicleProg
@@ -98,7 +99,7 @@ typeCheckOrLoadProg ::
   Module ->
   Imports ->
   FilePath ->
-  m (Prog Ix Builtin)
+  m (Prog Builtin)
 typeCheckOrLoadProg modl imports specificationFile = do
   spec <- readSpecification specificationFile
   interfaceFileResult <- readObjectFile specificationFile spec
@@ -109,7 +110,7 @@ typeCheckOrLoadProg modl imports specificationFile = do
       writeObjectFile specificationFile spec result
       return result
 
-parseProgText :: (MonadCompile m) => ParseLocation -> Text -> m (Prog Name Builtin)
+parseProgText :: (MonadCompile m) => ParseLocation -> Text -> m S.Prog
 parseProgText location txt = do
   case runExcept (readAndParseProg location txt) of
     Left err -> throwError $ ParseError location err
@@ -117,21 +118,21 @@ parseProgText location txt = do
       Left err -> throwError $ ParseError location err
       Right prog' -> return prog'
 
-loadLibrary :: (MonadIO m, MonadCompile m) => Library -> m (Prog Ix Builtin)
+loadLibrary :: (MonadIO m, MonadCompile m) => Library -> m (Prog Builtin)
 loadLibrary library = do
   let libname = libraryName $ libraryInfo library
   logCompilerSection MinDetail ("Loading library" <+> quotePretty libname) $ do
     libraryFile <- findLibraryContentFile library
     typeCheckOrLoadProg StdLib mempty libraryFile
 
-printPropertyTypes :: (MonadIO m, MonadCompile m, PrintableBuiltin builtin) => Prog Ix builtin -> m ()
+printPropertyTypes :: (MonadIO m, MonadCompile m, PrintableBuiltin builtin) => Prog builtin -> m ()
 printPropertyTypes (Main decls) = do
   let properties = filter isPropertyDecl decls
   let propertyDocs = fmap propertySummary properties
   let outputDoc = concatWith (\a b -> a <> line <> b) propertyDocs
   programOutput outputDoc
   where
-    propertySummary :: (PrintableBuiltin builtin) => Decl Ix builtin -> Doc a
+    propertySummary :: (PrintableBuiltin builtin) => Decl builtin -> Doc a
     propertySummary decl = do
       let propertyName = pretty $ identifierName $ identifierOf decl
       let propertyType = prettyFriendlyEmptyCtx (typeOf decl)
@@ -151,8 +152,8 @@ runCompileMonad loggingSettings x = do
 
 convertBackToStandardBuiltin ::
   (MonadCompile m) =>
-  Expr Ix Builtin ->
-  m (Expr Ix Builtin)
+  Expr Builtin ->
+  m (Expr Builtin)
 convertBackToStandardBuiltin = traverseBuiltinsM $
   \p b args -> return $ normAppList (Builtin p b) args
 
@@ -167,7 +168,7 @@ createFreeCtx imports = do
   where
     calculateCtx ::
       (MonadFreeContext Builtin m) =>
-      [Decl Ix Builtin] ->
+      [Decl Builtin] ->
       m (FreeCtx Builtin)
     calculateCtx = \case
       [] -> getFreeCtx (Proxy @Builtin)

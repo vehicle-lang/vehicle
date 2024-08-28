@@ -10,8 +10,8 @@ import Vehicle.Compile.Context.Free (MonadFreeContext)
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Standard
-import Vehicle.Data.Expr.Interface
-import Vehicle.Data.Expr.Value
+import Vehicle.Data.Code.Interface
+import Vehicle.Data.Code.Value
 
 --------------------------------------------------------------------------------
 -- If lifting

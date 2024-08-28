@@ -11,7 +11,7 @@ import Data.LinkedHashMap qualified as Map (fromList)
 import Prettyprinter
 import Vehicle.Backend.LossFunction.Core as L
 import Vehicle.Backend.Prelude (DifferentiableLogicID (..))
-import Vehicle.Compile.Prelude (Expr, Ix, developerError)
+import Vehicle.Compile.Prelude (Expr, developerError)
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.DSL
 
@@ -83,7 +83,7 @@ tRat = builtin (BuiltinType Rat)
 -- part of the syntax translation that differ depending on chosen DL are:
 -- logical connectives (not, and, or, implies)
 -- comparisons (<, <=, >, >=, =, !=)
-type DifferentialLogicDSL = LinkedHashMap DifferentiableLogicField (Expr Ix Builtin)
+type DifferentialLogicDSL = LinkedHashMap DifferentiableLogicField (Expr Builtin)
 
 mkDSL :: [(DifferentiableLogicField, PLExpr)] -> DifferentialLogicDSL
 mkDSL = Map.fromList . fmap (second (fromDSL mempty))

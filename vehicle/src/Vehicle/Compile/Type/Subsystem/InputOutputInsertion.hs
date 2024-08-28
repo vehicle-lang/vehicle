@@ -8,8 +8,8 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Monad (TCM, createFreshInstanceConstraint, freshMetaExpr)
-import Vehicle.Data.Expr.Interface
-import Vehicle.Data.Expr.Value
+import Vehicle.Data.Code.Interface
+import Vehicle.Data.Code.Value
 import Vehicle.Syntax.Builtin
 
 -------------------------------------------------------------------------------
@@ -22,8 +22,8 @@ import Vehicle.Syntax.Builtin
 addFunctionAuxiliaryInputOutputConstraints ::
   (TCM builtin m) =>
   (FunctionPosition -> builtin) ->
-  Decl Ix builtin ->
-  m (Decl Ix builtin)
+  Decl builtin ->
+  m (Decl builtin)
 addFunctionAuxiliaryInputOutputConstraints mkConstraint = \case
   DefFunction p ident anns t e
     | not (isTypeSynonym t) -> do
@@ -33,12 +33,12 @@ addFunctionAuxiliaryInputOutputConstraints mkConstraint = \case
   d -> return d
 
 decomposePiType ::
-  (TCM builtin m, MonadState (MetaMap (Expr Ix builtin)) m) =>
+  (TCM builtin m, MonadState (MetaMap (Expr builtin)) m) =>
   (FunctionPosition -> builtin) ->
   DeclProvenance ->
   Int ->
-  Type Ix builtin ->
-  m (Type Ix builtin)
+  Type builtin ->
+  m (Type builtin)
 decomposePiType mkConstraint declProv@(ident, p) inputNumber = \case
   Pi p' binder res
     | isExplicit binder -> do
@@ -56,11 +56,11 @@ decomposePiType mkConstraint declProv@(ident, p) inputNumber = \case
     addFunctionConstraint mkConstraint (p, position) outputType
 
 addFunctionConstraint ::
-  (TCM builtin m, MonadState (MetaMap (Expr Ix builtin)) m) =>
+  (TCM builtin m, MonadState (MetaMap (Expr builtin)) m) =>
   (FunctionPosition -> builtin) ->
   (Provenance, FunctionPosition) ->
-  Expr Ix builtin ->
-  m (Expr Ix builtin)
+  Expr builtin ->
+  m (Expr builtin)
 addFunctionConstraint mkConstraint (declProv, position) existingExpr = do
   let p = provenanceOf existingExpr
   newExpr <- case existingExpr of

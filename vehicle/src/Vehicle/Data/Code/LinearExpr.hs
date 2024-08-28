@@ -1,4 +1,4 @@
-module Vehicle.Data.Expr.Linear where
+module Vehicle.Data.Code.LinearExpr where
 
 import Control.DeepSeq (NFData)
 import Control.Monad (foldM)

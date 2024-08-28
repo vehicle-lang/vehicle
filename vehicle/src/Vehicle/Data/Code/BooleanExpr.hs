@@ -1,6 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Vehicle.Data.Expr.Boolean where
+module Vehicle.Data.Code.BooleanExpr where
 
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON)

@@ -27,7 +27,7 @@ import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Meta.Substitution as MetaSubstitution (MetaSubstitutable (..))
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Standard.Core
-import Vehicle.Data.Expr.Value
+import Vehicle.Data.Code.Value
 
 --------------------------------------------------------------------------------
 -- Solved meta-state
@@ -96,7 +96,7 @@ emptyTypeCheckerState =
 class (MonadCompile m, MonadFreeContext builtin m, NormalisableBuiltin builtin) => MonadTypeChecker builtin m where
   getMetaState :: m (TypeCheckerState builtin)
   modifyMetaCtx :: (TypeCheckerState builtin -> TypeCheckerState builtin) -> m ()
-  getFreshName :: Type Ix builtin -> m Name
+  getFreshName :: Type builtin -> m Name
   clearFreshNames :: Proxy builtin -> m ()
   getInstanceCandidates :: m (InstanceCandidateDatabase builtin)
 
@@ -121,7 +121,7 @@ instance (MonadTypeChecker builtin m) => MonadTypeChecker builtin (StateT s m) w
   clearFreshNames = lift . clearFreshNames
   getInstanceCandidates = lift getInstanceCandidates
 
-instance (MonadTypeChecker builtin m) => MonadTypeChecker builtin (BoundContextT (Type Ix builtin) m) where
+instance (MonadTypeChecker builtin m) => MonadTypeChecker builtin (BoundContextT (Type builtin) m) where
   getMetaState = lift getMetaState
   modifyMetaCtx = lift . modifyMetaCtx
   getFreshName = lift . getFreshName
@@ -131,11 +131,15 @@ instance (MonadTypeChecker builtin m) => MonadTypeChecker builtin (BoundContextT
 --------------------------------------------------------------------------------
 -- Abstract interface for a type system.
 
+class (PrintableBuiltin builtin) => TypableBuiltin builtin where
+  -- | Construct a type for the builtin
+  typeBuiltin :: Provenance -> builtin -> Type builtin
+
 -- | A class that provides an abstract interface for a set of builtins.
 class (Eq builtin, BuiltinHasStandardData builtin, TypableBuiltin builtin) => HasTypeSystem builtin where
   convertFromStandardBuiltins ::
     (MonadTypeChecker builtin m) =>
-    BuiltinUpdate m Ix Builtin builtin
+    BuiltinUpdate m Builtin builtin
 
   -- | Can meta-variables be dependent on their context?
   useDependentMetas :: Proxy builtin -> Bool
@@ -144,20 +148,20 @@ class (Eq builtin, BuiltinHasStandardData builtin, TypableBuiltin builtin) => Ha
     (MonadTypeChecker builtin m) =>
     DeclProvenance ->
     GluedType builtin ->
-    m (Type Ix builtin)
+    m (Type builtin)
 
   restrictDatasetType ::
     (MonadTypeChecker builtin m) =>
     DeclProvenance ->
     GluedType builtin ->
-    m (Type Ix builtin)
+    m (Type builtin)
 
   restrictParameterType ::
     (MonadTypeChecker builtin m) =>
     ParameterSort ->
     DeclProvenance ->
     GluedType builtin ->
-    m (Type Ix builtin)
+    m (Type builtin)
 
   restrictPropertyType ::
     (MonadTypeChecker builtin m) =>
@@ -166,11 +170,11 @@ class (Eq builtin, BuiltinHasStandardData builtin, TypableBuiltin builtin) => Ha
     m ()
 
   addAuxiliaryInputOutputConstraints ::
-    (MonadTypeChecker builtin m) => Decl Ix builtin -> m (Decl Ix builtin)
+    (MonadTypeChecker builtin m) => Decl builtin -> m (Decl builtin)
 
   generateDefaultConstraint ::
     (MonadTypeChecker builtin m) =>
-    Maybe (Decl Ix builtin) ->
+    Maybe (Decl builtin) ->
     m Bool
 
   -- | Solves a type-class constraint
@@ -245,8 +249,8 @@ getUnsolvedMetas proxy = do
 freshMeta ::
   (MonadTypeChecker builtin m) =>
   Provenance ->
-  Type Ix builtin ->
-  BoundCtx (Type Ix builtin) ->
+  Type builtin ->
+  BoundCtx (Type builtin) ->
   m (MetaID, GluedExpr builtin)
 freshMeta p metaType boundCtx = do
   -- Create a fresh id for the meta
@@ -300,14 +304,14 @@ getMetaIndex metaInfo (MetaID m) = length metaInfo - m - 1
 getMetaProvenance :: forall builtin m. (MonadTypeChecker builtin m) => Proxy builtin -> MetaID -> m Provenance
 getMetaProvenance _ m = metaProvenance <$> getMetaInfo @builtin m
 
-getMetaType :: (MonadTypeChecker builtin m) => MetaID -> m (Type Ix builtin)
+getMetaType :: (MonadTypeChecker builtin m) => MetaID -> m (Type builtin)
 getMetaType m = metaType <$> getMetaInfo m
 
 -- | Get the bound context the meta-variable was created in.
-getMetaCtx :: (MonadTypeChecker builtin m) => Proxy builtin -> MetaID -> m (BoundCtx (Type Ix builtin))
+getMetaCtx :: (MonadTypeChecker builtin m) => Proxy builtin -> MetaID -> m (BoundCtx (Type builtin))
 getMetaCtx _ m = metaCtx <$> getMetaInfo m
 
-extendBoundCtxOfMeta :: (MonadTypeChecker builtin m) => MetaID -> Binder Ix builtin -> m ()
+extendBoundCtxOfMeta :: (MonadTypeChecker builtin m) => MetaID -> Binder builtin -> m ()
 extendBoundCtxOfMeta m binder =
   modifyMetaCtx
     ( \TypeCheckerState {..} -> do
@@ -328,7 +332,7 @@ clearMetaSubstitution :: forall builtin m. (MonadTypeChecker builtin m) => Proxy
 clearMetaSubstitution _ = modifyMetaCtx @builtin $ \TypeCheckerState {..} ->
   TypeCheckerState {currentSubstitution = mempty, ..}
 
-getSubstMetaTypes :: (MonadTypeChecker builtin m) => MetaSet -> m [(MetaID, Type Ix builtin)]
+getSubstMetaTypes :: (MonadTypeChecker builtin m) => MetaSet -> m [(MetaID, Type builtin)]
 getSubstMetaTypes metas = traverse (\m -> (m,) <$> getSubstMetaType m) (MetaSet.toList metas)
 
 -- | Computes the set of all metas that are related via constraints to the
@@ -338,7 +342,7 @@ getMetasLinkedToMetasIn ::
   forall builtin m.
   (MonadTypeChecker builtin m) =>
   [WithContext (Constraint builtin)] ->
-  Type Ix builtin ->
+  Type builtin ->
   m MetaSet
 getMetasLinkedToMetasIn allConstraints typeOfInterest = do
   let constraints = fmap objectIn allConstraints
@@ -363,7 +367,7 @@ getMetasLinkedToMetasIn allConstraints typeOfInterest = do
           then (constraint : nonRelatedConstraints, typeMetas)
           else (nonRelatedConstraints, MetaSet.unions [constraintMetas, typeMetas])
 
-abstractOverCtx :: BoundCtx (Type Ix builtin) -> Expr Ix builtin -> Expr Ix builtin
+abstractOverCtx :: BoundCtx (Type builtin) -> Expr builtin -> Expr builtin
 abstractOverCtx ctx body = do
   let p = mempty
   let lamBinderForm n = BinderDisplayForm (OnlyName (fromMaybe "_" n)) True
@@ -377,8 +381,8 @@ solveMeta ::
   forall builtin m.
   (MonadTypeChecker builtin m) =>
   MetaID ->
-  Expr Ix builtin ->
-  BoundCtx (Type Ix builtin) ->
+  Expr builtin ->
+  BoundCtx (Type builtin) ->
   m ()
 solveMeta m solution solutionCtx = do
   MetaInfo p _ metaCtx <- getMetaInfo m
@@ -427,7 +431,7 @@ prettyMetas _ metas = do
 prettyMeta :: forall builtin m a. (MonadTypeChecker builtin m) => Proxy builtin -> MetaID -> m (Doc a)
 prettyMeta _ meta = prettyMetaInternal meta <$> getMetaType @builtin meta
 
-prettyMetaInternal :: (PrintableBuiltin builtin) => MetaID -> Type Ix builtin -> Doc a
+prettyMetaInternal :: (PrintableBuiltin builtin) => MetaID -> Type builtin -> Doc a
 prettyMetaInternal m t = pretty m <+> ":" <+> prettyVerbose t
 
 clearMetaCtx :: forall builtin m. (MonadTypeChecker builtin m) => Proxy builtin -> m ()
@@ -435,7 +439,7 @@ clearMetaCtx _ = do
   logDebug MaxDetail "Clearing meta-variable context"
   modifyMetaCtx @builtin (const emptyTypeCheckerState)
 
-getSubstMetaType :: forall builtin m. (MonadTypeChecker builtin m) => MetaID -> m (Type Ix builtin)
+getSubstMetaType :: forall builtin m. (MonadTypeChecker builtin m) => MetaID -> m (Type builtin)
 getSubstMetaType m = do
   substMetas =<< getMetaType m
 
@@ -503,10 +507,10 @@ createFreshUnificationConstraint ::
   forall builtin m.
   (MonadTypeChecker builtin m) =>
   Provenance ->
-  BoundCtx (Type Ix builtin) ->
+  BoundCtx (Type builtin) ->
   UnificationConstraintOrigin builtin ->
-  Type Ix builtin ->
-  Type Ix builtin ->
+  Type builtin ->
+  Type builtin ->
   m ()
 createFreshUnificationConstraint p ctx origin expectedType actualType = do
   let env = boundContextToEnv ctx
@@ -532,6 +536,6 @@ copyContext (ConstraintContext _cid originProv creationProv _blockingStatus ctx)
 glueNBE ::
   (MonadFreeContext builtin m, NormalisableBuiltin builtin) =>
   WHNFBoundEnv builtin ->
-  Expr Ix builtin ->
+  Expr builtin ->
   m (GluedExpr builtin)
 glueNBE env e = Glued e <$> normaliseInEnv env e

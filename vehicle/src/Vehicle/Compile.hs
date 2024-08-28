@@ -65,7 +65,7 @@ compile loggingSettings options@CompileOptions {..} = runCompileMonad loggingSet
 
 compileToQueryFormat ::
   (MonadCompile m, MonadStdIO m) =>
-  (Imports, Prog Ix Builtin) ->
+  (Imports, Prog Builtin) ->
   Resources ->
   QueryFormatID ->
   Maybe FilePath ->
@@ -78,7 +78,7 @@ compileToQueryFormat (imports, typedProg) resources queryFormatID output = do
 compileToAgda ::
   (MonadCompile m, MonadStdIO m) =>
   CompileOptions ->
-  (Imports, Prog Ix Builtin) ->
+  (Imports, Prog Builtin) ->
   m ()
 compileToAgda CompileOptions {..} (_, typedProg) = do
   let agdaOptions = AgdaOptions verificationCache output moduleName
@@ -89,7 +89,7 @@ compileToLossFunction ::
   forall m.
   (MonadCompile m, MonadStdIO m) =>
   DifferentiableLogicID ->
-  (Imports, Prog Ix Builtin) ->
+  (Imports, Prog Builtin) ->
   Maybe FilePath ->
   Bool ->
   m ()

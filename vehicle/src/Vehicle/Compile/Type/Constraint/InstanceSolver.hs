@@ -12,14 +12,14 @@ import Prettyprinter (list)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE (normaliseInEnv)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (PrintableBuiltin, prettyExternal, prettyFriendly)
+import Vehicle.Compile.Print (prettyExternal, prettyFriendly)
 import Vehicle.Compile.Print.Error (MeaningfulError (..))
 import Vehicle.Compile.Type (runUnificationSolver)
 import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
-import Vehicle.Data.DeBruijn (dbLevelToIndex, substDBInto)
-import Vehicle.Data.Expr.Value
+import Vehicle.Data.Code.Value
+import Vehicle.Data.DeBruijn (dbLevelToIndex)
 
 --------------------------------------------------------------------------------
 -- Public interface
@@ -103,11 +103,11 @@ findCandidatesInBoundCtx ::
   forall builtin m.
   (MonadInstance builtin m) =>
   InstanceGoal builtin ->
-  BoundCtx (Type Ix builtin) ->
+  BoundCtx (Type builtin) ->
   m [WithContext (InstanceCandidate builtin)]
 findCandidatesInBoundCtx goal ctx = go ctx
   where
-    go :: (MonadCompile m) => BoundCtx (Type Ix builtin) -> m [WithContext (InstanceCandidate builtin)]
+    go :: (MonadCompile m) => BoundCtx (Type builtin) -> m [WithContext (InstanceCandidate builtin)]
     go = \case
       [] -> return []
       (binder : localCtx) -> do
@@ -180,10 +180,10 @@ checkCandidate info@(constraintCtx, constraintOrigin) meta goal@InstanceGoal {..
 instantiateCandidateTelescope ::
   forall builtin m.
   (MonadInstance builtin m) =>
-  BoundCtx (Type Ix builtin) ->
+  BoundCtx (Type builtin) ->
   InstanceConstraintInfo builtin ->
   WithContext (InstanceCandidate builtin) ->
-  m (WHNFValue builtin, Expr Ix builtin, [WithContext (Constraint builtin)])
+  m (WHNFValue builtin, Expr builtin, [WithContext (Constraint builtin)])
 instantiateCandidateTelescope goalCtxExtension (constraintCtx, constraintOrigin) candidate = do
   let WithContext InstanceCandidate {..} candidateCtx = candidate
   logCompilerSection MaxDetail "instantiating candidate telescope" $ do
@@ -195,8 +195,8 @@ instantiateCandidateTelescope goalCtxExtension (constraintCtx, constraintOrigin)
   where
     go ::
       (MonadInstance builtin m) =>
-      (Type Ix builtin, Expr Ix builtin, [WithContext (Constraint builtin)], BoundCtx (Type Ix builtin)) ->
-      m (Type Ix builtin, Expr Ix builtin, [WithContext (Constraint builtin)], BoundCtx (Type Ix builtin))
+      (Type builtin, Expr builtin, [WithContext (Constraint builtin)], BoundCtx (Type builtin)) ->
+      m (Type builtin, Expr builtin, [WithContext (Constraint builtin)], BoundCtx (Type builtin))
     go = \case
       (Pi _ exprBinder exprBody, Lam _ _solutionBinder solutionBody, constraints, boundCtx) -> do
         let binderType = typeOf exprBinder
@@ -226,10 +226,10 @@ prettyCandidate (WithContext candidate ctx) =
 goalExpr :: InstanceGoal builtin -> WHNFValue builtin
 goalExpr InstanceGoal {..} = VBuiltin goalHead goalSpine
 
-replaceProvenance :: Provenance -> Expr Ix builtin -> Expr Ix builtin
+replaceProvenance :: Provenance -> Expr builtin -> Expr builtin
 replaceProvenance p = go
   where
-    go :: Expr Ix builtin -> Expr Ix builtin
+    go :: Expr builtin -> Expr builtin
     go = \case
       Meta _p m -> Meta p m
       App fun args -> App (go fun) (fmap (fmap go) args)

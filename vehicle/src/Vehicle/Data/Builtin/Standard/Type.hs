@@ -9,14 +9,14 @@ module Vehicle.Data.Builtin.Standard.Type
 where
 
 import Vehicle.Compile.Prelude
-import Vehicle.Data.Builtin.Interface hiding (typeBuiltin)
+import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Standard.Core
+import Vehicle.Data.Code.DSL
 import Vehicle.Data.DSL
-import Vehicle.Data.Expr.DSL
 import Prelude hiding (pi)
 
 -- | Return the type of the provided builtin.
-typeBuiltin :: Provenance -> Builtin -> Type Ix Builtin
+typeBuiltin :: Provenance -> Builtin -> Type Builtin
 typeBuiltin p b = fromDSL p $ case b of
   BuiltinConstructor c -> typeOfBuiltinConstructor c
   BuiltinFunction f -> typeOfBuiltinFunction f
@@ -27,7 +27,7 @@ typeBuiltin p b = fromDSL p $ case b of
 
 -- ResourceConstraint c -> _
 
-typeStandardBuiltin :: Provenance -> Builtin -> Type Ix Builtin
+typeStandardBuiltin :: Provenance -> Builtin -> Type Builtin
 typeStandardBuiltin p b = fromDSL p $ case b of
   BuiltinConstructor c -> typeOfBuiltinConstructor c
   BuiltinFunction f -> typeOfBuiltinFunction f

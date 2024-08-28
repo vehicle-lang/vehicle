@@ -30,10 +30,10 @@ import Vehicle.Compile.Rational.LinearExpr (NonLinearity (..), compileRatLinearR
 import Vehicle.Compile.Resource (NetworkTensorType (..), NetworkType (..))
 import Vehicle.Compile.Variable (createUserVar)
 import Vehicle.Data.Builtin.Standard
-import Vehicle.Data.Expr.Boolean
-import Vehicle.Data.Expr.Interface
-import Vehicle.Data.Expr.Linear (LinearExpr)
-import Vehicle.Data.Expr.Value
+import Vehicle.Data.Code.BooleanExpr
+import Vehicle.Data.Code.Interface
+import Vehicle.Data.Code.LinearExpr (LinearExpr)
+import Vehicle.Data.Code.Value
 import Vehicle.Data.QuantifiedVariable
 import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (StdEqualsVector, StdNotEqualsVector))
 import Vehicle.Verify.Core (NetworkContextInfo (..), QuerySetNegationStatus)
@@ -95,7 +95,7 @@ compileQuantifiedQuerySet ::
   Bool ->
   WHNFBinder Builtin ->
   WHNFBoundEnv Builtin ->
-  Expr Ix Builtin ->
+  Expr Builtin ->
   m (Property QueryMetaData)
 compileQuantifiedQuerySet isPropertyNegated binder env body = do
   let subsectionDoc = "compilation of set of quantified queries:" <+> prettyFriendlyEmptyCtx (IExists [] (VLam binder (WHNFClosure env body)))
@@ -207,7 +207,7 @@ compileExists ::
   (MonadQueryStructure m) =>
   WHNFBinder QueryBuiltin ->
   WHNFBoundEnv QueryBuiltin ->
-  Expr Ix QueryBuiltin ->
+  Expr QueryBuiltin ->
   m (MaybeTrivial Partitions)
 compileExists binder env body = do
   let varName = getBinderName binder

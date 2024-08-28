@@ -1,4 +1,4 @@
-module Vehicle.Syntax.AST.Meta where
+module Vehicle.Data.Meta where
 
 import Control.DeepSeq (NFData)
 import Data.Aeson (ToJSON)

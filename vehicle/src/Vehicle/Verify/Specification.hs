@@ -21,9 +21,9 @@ import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 import Vehicle.Backend.Queries.UserVariableElimination.Core
-import Vehicle.Data.Expr.Boolean
+import Vehicle.Compile.Prelude (Name)
+import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Resource (ResourcesIntegrityInfo)
-import Vehicle.Syntax.AST (Name)
 import Vehicle.Verify.Core
 
 --------------------------------------------------------------------------------

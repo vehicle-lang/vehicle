@@ -17,15 +17,14 @@ import Vehicle.Compile.Type.Irrelevance (removeIrrelevantCodeFromProg)
 import Vehicle.Compile.Type.Monad
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Standard
-import Vehicle.Data.DeBruijn
 
 typeCheckWithSubsystem ::
   forall builtin m.
   (HasTypeSystem builtin, NormalisableBuiltin builtin, MonadCompile m) =>
   InstanceCandidateDatabase builtin ->
   (forall a. CompileError -> m a) ->
-  Prog Ix Builtin ->
-  m (Prog Ix builtin)
+  Prog Builtin ->
+  m (Prog builtin)
 typeCheckWithSubsystem instanceCandidates errorHandler prog = do
   typeClassFreeProg <- resolveInstanceArguments prog
   irrelevantFreeProg <- removeIrrelevantCodeFromProg typeClassFreeProg
@@ -41,15 +40,15 @@ typeCheckWithSubsystem instanceCandidates errorHandler prog = do
 resolveInstanceArguments ::
   forall m builtin.
   (MonadCompile m, BuiltinHasStandardData builtin, Show builtin) =>
-  Prog Ix builtin ->
-  m (Prog Ix builtin)
+  Prog builtin ->
+  m (Prog builtin)
 resolveInstanceArguments prog =
   logCompilerPass MaxDetail "resolution of instance arguments" $ do
     flip traverseDecls prog $ \decl -> do
       result <- traverse (traverseBuiltinsM builtinUpdateFunction) decl
       return result
   where
-    builtinUpdateFunction :: BuiltinUpdate m Ix builtin builtin
+    builtinUpdateFunction :: BuiltinUpdate m builtin builtin
     builtinUpdateFunction p b args
       | isTypeClassOp b = do
           (inst, remainingArgs) <- findInstanceArg b args
@@ -59,15 +58,15 @@ resolveInstanceArguments prog =
 removeImplicitAndInstanceArgs ::
   forall m builtin.
   (MonadCompile m, PrintableBuiltin builtin) =>
-  Prog Ix builtin ->
-  m (Prog Ix builtin)
+  Prog builtin ->
+  m (Prog builtin)
 removeImplicitAndInstanceArgs prog =
   logCompilerPass MaxDetail "removal of implicit arguments" $ do
     result <- traverse go prog
     logCompilerPassOutput $ prettyExternal result
     return result
   where
-    go :: Expr Ix builtin -> m (Expr Ix builtin)
+    go :: Expr builtin -> m (Expr builtin)
     go expr = case expr of
       App fun args -> do
         fun' <- go fun

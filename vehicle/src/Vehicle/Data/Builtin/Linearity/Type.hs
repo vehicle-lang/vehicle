@@ -12,7 +12,7 @@ import Vehicle.Data.DSL
 import Vehicle.Syntax.Builtin hiding (Builtin (..))
 
 -- | Return the type of the provided builtin.
-typeLinearityBuiltin :: Provenance -> LinearityBuiltin -> Type Ix LinearityBuiltin
+typeLinearityBuiltin :: Provenance -> LinearityBuiltin -> Type LinearityBuiltin
 typeLinearityBuiltin p b = fromDSL p $ case b of
   BuiltinConstructor c -> typeOfConstructor c
   BuiltinFunction f -> typeOfBuiltinFunction f

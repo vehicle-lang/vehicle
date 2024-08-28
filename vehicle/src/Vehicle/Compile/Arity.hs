@@ -1,7 +1,8 @@
 module Vehicle.Compile.Arity where
 
-import Vehicle.Data.Expr.Value
-import Vehicle.Syntax.AST
+import Vehicle.Data.Code.Expr
+import Vehicle.Data.Code.Value
+import Vehicle.Prelude (isExplicit)
 
 type Arity = Int
 
@@ -11,14 +12,14 @@ arityFromVType = \case
   _ -> 0
 
 -- | This is only safe when the type is known to be in normalised type.
-explicitArityFromType :: Type var builtin -> Arity
+explicitArityFromType :: Type builtin -> Arity
 explicitArityFromType = \case
   Pi _ binder r
     | isExplicit binder -> 1 + explicitArityFromType r
     | otherwise -> explicitArityFromType r
   _ -> 0
 
-lamArity :: Expr var builtin -> Arity
+lamArity :: Expr builtin -> Arity
 lamArity = \case
   Lam _ _ body -> 1 + lamArity body
   _ -> 0

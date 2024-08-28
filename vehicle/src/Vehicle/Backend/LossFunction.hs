@@ -22,8 +22,8 @@ convertToLossTensors ::
   (MonadCompile m) =>
   DifferentiableLogicID ->
   DifferentiableLogicImplementation ->
-  Prog Ix Builtin ->
-  m (Prog Ix TensorBuiltin)
+  Prog Builtin ->
+  m (Prog TensorBuiltin)
 convertToLossTensors logicID logic (Main ds) =
   logCompilerPass MinDetail currentPass $
     runFreshFreeContextT (Proxy @Builtin) $
@@ -34,8 +34,8 @@ convertDecls ::
   (MonadCompile m, MonadFreeContext Builtin m, MonadBoundContext MixedLossValue m) =>
   DifferentiableLogicID ->
   DifferentiableLogicImplementation ->
-  [Decl Ix Builtin] ->
-  m [Decl Ix TensorBuiltin]
+  [Decl Builtin] ->
+  m [Decl TensorBuiltin]
 convertDecls logicID logic = \case
   [] -> return []
   decl : decls -> do

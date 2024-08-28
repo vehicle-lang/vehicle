@@ -20,7 +20,7 @@ import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap
 import Vehicle.Compile.Type.Meta.Set (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
-import Vehicle.Syntax.AST
+import Vehicle.Data.Meta (MetaID (..))
 import Prelude hiding (lookup, map)
 
 --------------------------------------------------------------------------------

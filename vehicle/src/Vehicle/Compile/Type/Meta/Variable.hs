@@ -19,7 +19,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Set (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
-import Vehicle.Data.Expr.Value
+import Vehicle.Data.Code.Value
 
 -- Eventually when metas make into the builtins, this should module
 -- should also contain the definition of meta-variables themselves.
@@ -38,12 +38,12 @@ data MetaInfo builtin = MetaInfo
   { -- | Location in the source file the meta-variable was generated
     metaProvenance :: Provenance,
     -- | The type of the meta-variable
-    metaType :: Expr Ix builtin,
+    metaType :: Expr builtin,
     -- | The number of bound variables in scope when the meta-variable was created.
-    metaCtx :: BoundCtx (Expr Ix builtin)
+    metaCtx :: BoundCtx (Expr builtin)
   }
 
-extendMetaCtx :: Binder Ix builtin -> MetaInfo builtin -> MetaInfo builtin
+extendMetaCtx :: Binder builtin -> MetaInfo builtin -> MetaInfo builtin
 extendMetaCtx binder MetaInfo {..} =
   MetaInfo
     { metaCtx = binder : metaCtx,
@@ -54,7 +54,7 @@ extendMetaCtx binder MetaInfo {..} =
 makeMetaExpr ::
   Provenance ->
   MetaID ->
-  BoundCtx (Type Ix builtin) ->
+  BoundCtx (Type builtin) ->
   GluedExpr builtin
 makeMetaExpr p metaID boundCtx = do
   -- Create bound variables for everything in the context
@@ -70,21 +70,21 @@ makeMetaExpr p metaID boundCtx = do
 
 -- | Creates a Pi type that abstracts over all bound variables
 makeMetaType ::
-  BoundCtx (Type Ix builtin) ->
+  BoundCtx (Type builtin) ->
   Provenance ->
-  Type Ix builtin ->
-  Type Ix builtin
+  Type builtin ->
+  Type builtin
 makeMetaType boundCtx p resultType = foldr entryToPi resultType (reverse boundCtx)
   where
     entryToPi ::
-      Binder Ix builtin ->
-      Type Ix builtin ->
-      Type Ix builtin
+      Binder builtin ->
+      Type builtin ->
+      Type builtin
     entryToPi binder = do
       let n = fromMaybe "_" (nameOf binder)
       Pi p (Binder p (BinderDisplayForm (OnlyName n) True) Explicit (relevanceOf binder) (typeOf binder))
 
-getMetaDependencies :: [Arg Ix builtin] -> [Ix]
+getMetaDependencies :: [Arg builtin] -> [Ix]
 getMetaDependencies = \case
   (ExplicitArg _ _ (BoundVar _ i)) : args -> i : getMetaDependencies args
   _ -> []
@@ -103,7 +103,7 @@ class HasMetas a where
   metasIn :: (MonadCompile m) => a -> m MetaSet
   metasIn e = execWriterT (findMetas e)
 
-instance HasMetas (Expr Ix builtin) where
+instance HasMetas (Expr builtin) where
   findMetas expr = case expr of
     Meta _ m -> tell (MetaSet.singleton m)
     Universe {} -> return ()

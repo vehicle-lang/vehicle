@@ -1,66 +1,68 @@
 module Vehicle.Compile.Descope
   ( DescopableClosure (..),
+    MonadDescope,
+    runMonadDescope,
+    runMonadDescopeT,
+    addBinderNameToContext,
     descopeExpr,
     descopeExprInEmptyCtx,
     descopeExprNaively,
     descopeValueNaively,
-    descopeRelExprInEmptyCtx,
-    genericDescopeRelExpr,
     genericDescopeExpr,
     ixToName,
+    ixToProperName,
   )
 where
 
-import Control.Monad.Reader (MonadReader (..), runReader)
+import Control.Monad (void)
+import Data.Proxy (Proxy (..))
 import Vehicle.Backend.LossFunction.Core (LossClosure (..), MixedClosure (..))
+import Vehicle.Compile.Context.Bound.Class (MonadBoundContext (..), getNamedBoundCtx)
+import Vehicle.Compile.Context.Bound.Instance (BoundContext, BoundContextT, runBoundContext, runFreshBoundContext, runFreshBoundContextT)
 import Vehicle.Compile.Prelude
-import Vehicle.Data.Builtin.Interface (ConvertableBuiltin, convertBuiltin)
 import Vehicle.Data.Builtin.Standard.Core (Builtin)
-import Vehicle.Data.Expr.Relevant (RelBinder, RelExpr)
-import Vehicle.Data.Expr.Relevant qualified as R
-import Vehicle.Data.Expr.Value
-
---------------------------------------------------------------------------------
--- Interface
-
-descopeExpr ::
-  Contextualised (Expr Ix builtin) NamedBoundCtx ->
-  Expr Name builtin
-descopeExpr (WithContext e ctx) = runReader (genericDescopeExpr (ixToName Named) e) ctx
-
-descopeExprInEmptyCtx ::
-  Expr Ix builtin ->
-  Expr Name builtin
-descopeExprInEmptyCtx e = descopeExpr (WithContext e mempty)
-
-descopeExprNaively ::
-  Expr Ix builtin ->
-  Expr Name builtin
-descopeExprNaively e = runReader (genericDescopeExpr (ixToName Naive) e) mempty
-
--- | Note that you cannot descope `Value` non-naively as you can't descope
--- closures properly. You have to quote the `Value` first.
-descopeValueNaively ::
-  (ConvertableBuiltin builtin1 builtin2, DescopableClosure closure builtin2) =>
-  Value closure builtin1 ->
-  Expr Name builtin2
-descopeValueNaively e = runReader (genericDescopeValue Naive e) mempty
-
-descopeRelExprInEmptyCtx ::
-  RelExpr Ix builtin ->
-  RelExpr Name builtin
-descopeRelExprInEmptyCtx e = runReader (genericDescopeRelExpr (ixToName Named) e) mempty
+import Vehicle.Data.Code.Value
+import Vehicle.Data.Universe (UniverseLevel)
+import Vehicle.Syntax.AST.Expr qualified as S
 
 --------------------------------------------------------------------------------
 -- Monad
 
-type MonadDescope m = MonadReader NamedBoundCtx m
+type MonadDescope m = MonadBoundContext () m
 
-addBinderToCtx :: (MonadDescope m, HasName binder (Maybe Name)) => binder -> m a -> m a
-addBinderToCtx binder = local (nameOf binder :)
+runMonadDescope :: BoundContext () a -> a
+runMonadDescope = runFreshBoundContext (Proxy @())
 
-addBindersToCtx :: (MonadDescope m, HasName binder (Maybe Name)) => [binder] -> m a -> m a
-addBindersToCtx binders = local (fmap nameOf (reverse binders) <>)
+runMonadDescopeT :: (Monad m) => BoundContextT () m a -> m a
+runMonadDescopeT = runFreshBoundContextT (Proxy @())
+
+addBinderNameToContext :: (MonadDescope m) => GenericBinder expr -> m a -> m a
+addBinderNameToContext binder = addBinderToContext (void binder)
+
+--------------------------------------------------------------------------------
+-- Interface
+
+descopeExpr :: (PrintableBuiltin builtin) => Contextualised (Expr builtin) NamedBoundCtx -> S.Expr
+descopeExpr (WithContext e ctx) = do
+  let binderCtx = fmap (mkDefaultBinder ()) ctx
+  let fun = genericDescopeExpr (ixToName Named) (convertExprBuiltins e)
+  runBoundContext binderCtx fun
+
+descopeExprInEmptyCtx :: (PrintableBuiltin builtin) => Expr builtin -> S.Expr
+descopeExprInEmptyCtx e = descopeExpr (WithContext e mempty)
+
+descopeExprNaively :: (PrintableBuiltin builtin) => Expr builtin -> S.Expr
+descopeExprNaively e = do
+  let se = convertExprBuiltins e
+  runMonadDescope (genericDescopeExpr (ixToName Naive) se)
+
+-- | Note that you cannot descope `Value` non-naively as you can't descope
+-- closures properly. You have to quote the `Value` first.
+descopeValueNaively ::
+  (PrintableBuiltin builtin, DescopableClosure closure) =>
+  Value closure builtin ->
+  S.Expr
+descopeValueNaively e = runMonadDescope (genericDescopeValue Naive e)
 
 --------------------------------------------------------------------------------
 -- Variable conversion methods
@@ -69,21 +71,24 @@ type VarConversion var m = (MonadDescope m) => Provenance -> var -> m Name
 
 data VarStrategy = Named | Naive
 
+ixToProperName :: VarConversion Ix m
+ixToProperName p ix = do
+  ctx <- getNamedBoundCtx (Proxy @())
+  case lookupIx ctx ix of
+    Nothing -> varOutOfBounds "DeBruijn index" p ix (length ctx)
+    Just Nothing -> return "_"
+    Just (Just name) -> return name
+
 ixToName :: VarStrategy -> VarConversion Ix m
 ixToName s p ix = case s of
   Naive -> return $ layoutAsText $ pretty ix
-  Named -> do
-    ctx <- ask
-    case lookupIx ctx ix of
-      Nothing -> varOutOfBounds "DeBruijn index" p ix (length ctx)
-      Just Nothing -> return "_"
-      Just (Just name) -> return name
+  Named -> ixToProperName p ix
 
 lvToName :: VarStrategy -> VarConversion Lv m
 lvToName s p lv = case s of
   Naive -> return $ layoutAsText $ pretty lv
   Named -> do
-    ctx <- ask
+    ctx <- getNamedBoundCtx (Proxy @())
     case lookupLv ctx lv of
       Nothing -> varOutOfBounds "DeBruijn level" p lv (length ctx)
       Just Nothing -> return "_"
@@ -92,151 +97,109 @@ lvToName s p lv = case s of
 --------------------------------------------------------------------------------
 -- Expr
 
-genericDescopeExpr ::
-  (MonadDescope m, Show var) =>
-  VarConversion var m ->
-  Expr var builtin ->
-  m (Expr Name builtin)
+genericDescopeExpr :: (MonadDescope m) => VarConversion Ix m -> Expr Builtin -> m S.Expr
 genericDescopeExpr f e = showScopeExit $ case showScopeEntry e of
-  Universe p l -> return $ Universe p l
-  Hole p name -> return $ Hole p name
-  Builtin p op -> return $ convertBuiltin p op
-  Meta p i -> return $ Meta p i
-  FreeVar p v -> return $ FreeVar p v
-  BoundVar p v -> BoundVar p <$> f p v
+  Universe p l -> return $ descopeUniverse p l
+  Hole p name -> return $ S.Hole p name
+  Builtin p op -> return $ S.Builtin p op
+  Meta p i -> return $ descopeMeta p i
+  FreeVar p v -> return $ descopeFreeVar p v
+  BoundVar p v -> S.Var p <$> f p v
   App fun args -> do
     fun' <- genericDescopeExpr f fun
     args' <- traverse (traverse (genericDescopeExpr f)) args
-    return $ App fun' args'
+    return $ S.App fun' args'
   Let p bound binder body -> do
     bound' <- genericDescopeExpr f bound
     binder' <- traverse (genericDescopeExpr f) binder
-    body' <- addBinderToCtx binder' (genericDescopeExpr f body)
-    return $ Let p bound' binder' body'
+    body' <- addBinderToContext (void binder) (genericDescopeExpr f body)
+    return $ S.Let p bound' binder' body'
   Lam p binder body -> do
     binder' <- traverse (genericDescopeExpr f) binder
-    body' <- addBinderToCtx binder' (genericDescopeExpr f body)
-    return $ Lam p binder' body'
+    body' <- addBinderToContext (void binder) (genericDescopeExpr f body)
+    return $ S.Lam p binder' body'
   Pi p binder body -> do
     binder' <- traverse (genericDescopeExpr f) binder
-    body' <- addBinderToCtx binder' (genericDescopeExpr f body)
-    return $ Pi p binder' body'
+    body' <- addBinderToContext (void binder) (genericDescopeExpr f body)
+    return $ S.Pi p binder' body'
 
 --------------------------------------------------------------------------------
 -- Value
 
-class DescopableClosure closure builtin where
-  descopeClosure :: (MonadDescope m) => VarStrategy -> GenericBinder binder -> closure -> m (Expr Name builtin)
+class DescopableClosure closure where
+  descopeClosure :: (MonadDescope m) => VarStrategy -> GenericBinder expr -> closure -> m S.Expr
 
-instance (ConvertableBuiltin builtin Builtin) => DescopableClosure (WHNFClosure builtin) Builtin where
-  descopeClosure :: forall m binder. (MonadDescope m) => VarStrategy -> GenericBinder binder -> WHNFClosure builtin -> m (Expr Name Builtin)
+instance (PrintableBuiltin builtin) => DescopableClosure (WHNFClosure builtin) where
+  descopeClosure :: forall m binder. (MonadDescope m) => VarStrategy -> GenericBinder binder -> WHNFClosure builtin -> m S.Expr
   descopeClosure f _binder (WHNFClosure env body) = do
     body' <- genericDescopeExpr (ixToName f) $ convertExprBuiltins body
-    env' <- traverse (genericDescopeValue f) (cheatEnvToValues env) :: m [Expr Name Builtin]
-    let envExpr = normAppList (BoundVar mempty "ENV") $ fmap (Arg mempty Explicit Relevant) env'
-    return $ App envExpr [explicit body']
+    env' <- traverse (genericDescopeValue f) (cheatEnvToValues env) :: m [S.Expr]
+    let envExpr = S.normAppList (S.Var mempty "ENV") $ fmap (Arg mempty Explicit Relevant) env'
+    return $ S.App envExpr [explicit body']
 
 -- genericDescopeExpr (ixToName f) $ convertExprBuiltins body
 
-instance DescopableClosure (NFClosure builtin) builtin where
+instance (PrintableBuiltin builtin) => DescopableClosure (NFClosure builtin) where
   descopeClosure f _binder (NFClosure body) = genericDescopeValue f body
 
-instance DescopableClosure MixedClosure Builtin where
-  descopeClosure :: forall m binder. (MonadDescope m) => VarStrategy -> GenericBinder binder -> MixedClosure -> m (Expr Name Builtin)
+instance DescopableClosure MixedClosure where
+  descopeClosure :: forall m binder. (MonadDescope m) => VarStrategy -> GenericBinder binder -> MixedClosure -> m S.Expr
   descopeClosure f binder = \case
     StandardClos closure -> descopeClosure f binder closure
     LossClos (LossClosure env body) -> do
       body' <- genericDescopeExpr (ixToName f) $ convertExprBuiltins body
-      env' <- traverse (genericDescopeValue f) (cheatEnvToValues env) :: m [Expr Name Builtin]
-      let envExpr = normAppList (BoundVar mempty "ENV") $ fmap (Arg mempty Explicit Relevant) env'
-      return $ App envExpr [explicit body']
+      env' <- traverse (genericDescopeValue f) (cheatEnvToValues env) :: m [S.Expr]
+      let envExpr = S.normAppList (S.Var mempty "ENV") $ fmap (Arg mempty Explicit Relevant) env'
+      return $ S.App envExpr [explicit body']
 
 -- | This function is not meant to do anything sensible and is merely
 -- used for printing `WHNF`s in a readable form.
 genericDescopeValue ::
-  (MonadDescope m, DescopableClosure closure builtin2, ConvertableBuiltin builtin1 builtin2) =>
+  (MonadDescope m, DescopableClosure closure, PrintableBuiltin builtin) =>
   VarStrategy ->
-  Value closure builtin1 ->
-  m (Expr Name builtin2)
+  Value closure builtin ->
+  m S.Expr
 genericDescopeValue f e = case e of
   VUniverse u ->
-    return $ Universe p u
+    return $ descopeUniverse p u
   VMeta m spine ->
-    normAppList (Meta p m) <$> traverseArgs (genericDescopeValue f) spine
+    S.normAppList (descopeMeta p m) <$> traverseArgs (genericDescopeValue f) spine
   VFreeVar v spine ->
-    normAppList (FreeVar p v) <$> traverseArgs (genericDescopeValue f) spine
-  VBuiltin b spine ->
-    normAppList (convertBuiltin p b) <$> traverseArgs (genericDescopeValue f) spine
+    S.normAppList (descopeFreeVar p v) <$> traverseArgs (genericDescopeValue f) spine
+  VBuiltin b spine -> do
+    fn <- genericDescopeExpr (ixToName f) $ convertBuiltin p b
+    S.normAppList fn <$> traverseArgs (genericDescopeValue f) spine
   VBoundVar v spine -> do
-    var <- BoundVar p <$> lvToName f p v
+    var <- S.Var p <$> lvToName f p v
     args <- traverseArgs (genericDescopeValue f) spine
-    return $ normAppList var args
+    return $ S.normAppList var args
   VPi binder body -> do
     binder' <- traverse (genericDescopeValue f) binder
-    body' <- addBinderToCtx binder $ genericDescopeValue f body
-    return $ Pi p binder' body'
+    body' <- addBinderToContext (void binder) $ genericDescopeValue f body
+    return $ S.Pi p binder' body'
   VLam binder closure -> do
     binder' <- traverse (genericDescopeValue f) binder
-    body' <- addBinderToCtx binder $ descopeClosure f binder closure
-    return $ Lam p binder' body'
+    body' <- addBinderToContext (void binder) $ descopeClosure f binder closure
+    return $ S.Lam p binder' body'
   where
     p = mempty
 
---------------------------------------------------------------------------------
--- RelExpr
+descopeUniverse :: Provenance -> UniverseLevel -> S.Expr
+descopeUniverse p _u = S.Universe p
 
-genericDescopeRelExpr ::
-  (MonadDescope m, Show var) =>
-  VarConversion var m ->
-  RelExpr var builtin ->
-  m (RelExpr Name builtin)
-genericDescopeRelExpr f e = case e of
-  R.Universe p l -> return $ R.Universe p l
-  R.Builtin p op -> return $ R.Builtin p op
-  R.FreeVar p v -> return $ R.FreeVar p v
-  R.BoundVar p v -> R.BoundVar p <$> f p v
-  R.App fun args -> R.App <$> genericDescopeRelExpr f fun <*> traverse (genericDescopeRelExpr f) args
-  R.PartialApp arity fun args -> R.PartialApp arity <$> genericDescopeRelExpr f fun <*> traverse (genericDescopeRelExpr f) args
-  R.Let p bound binder body -> do
-    bound' <- genericDescopeRelExpr f bound
-    binder' <- descopeRelBinder f binder
-    body' <- addBinderToCtx binder' (genericDescopeRelExpr f body)
-    return $ R.Let p bound' binder' body'
-  R.Lam p binders body -> do
-    binders' <- descopeRelBinders f binders
-    body' <- addBindersToCtx binders' (genericDescopeRelExpr f body)
-    return $ R.Lam p binders' body'
-  R.Pi p binder body -> do
-    binder' <- descopeRelBinder f binder
-    body' <- addBinderToCtx binder' (genericDescopeRelExpr f body)
-    return $ R.Pi p binder' body'
+descopeMeta :: Provenance -> MetaID -> S.Expr
+descopeMeta p m = S.Hole p (layoutAsText $ pretty m)
 
-descopeRelBinder ::
-  (MonadDescope m, Show var) =>
-  VarConversion var m ->
-  RelBinder var builtin ->
-  m (RelBinder Name builtin)
-descopeRelBinder f (R.Binder p r t) = R.Binder p r <$> genericDescopeRelExpr f t
-
-descopeRelBinders ::
-  (MonadDescope m, Show var) =>
-  VarConversion var m ->
-  [RelBinder var builtin] ->
-  m [RelBinder Name builtin]
-descopeRelBinders f = \case
-  [] -> return []
-  (b : bs) -> do
-    b' <- descopeRelBinder f b
-    bs' <- addBinderToCtx b $ descopeRelBinders f bs
-    return $ b' : bs'
+descopeFreeVar :: Provenance -> Identifier -> S.Expr
+descopeFreeVar p ident = S.Var p (nameOf ident)
 
 --------------------------------------------------------------------------------
 -- Logging and errors
 
-showScopeEntry :: (Show var) => Expr var builtin -> Expr var builtin
+showScopeEntry :: Expr builtin -> Expr builtin
 showScopeEntry e = e
 
-showScopeExit :: (Monad m) => m (Expr Name builtin) -> m (Expr Name builtin)
+showScopeExit :: (Monad m) => m S.Expr -> m S.Expr
 showScopeExit m = do
   e <- m
   return e

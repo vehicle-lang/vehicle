@@ -7,7 +7,6 @@ import Vehicle.Syntax.AST.Arg
 import Vehicle.Syntax.AST.Binder
 import Vehicle.Syntax.AST.Decl
 import Vehicle.Syntax.AST.Expr
-import Vehicle.Syntax.AST.Meta
 import Vehicle.Syntax.AST.Name
 import Vehicle.Syntax.AST.Prog
 import Vehicle.Syntax.AST.Provenance
@@ -68,9 +67,9 @@ instance NoThunks Annotation
 
 -- Vehicle.Syntax.AST.Expr
 instance NoThunks UniverseLevel
-instance (NoThunks var, NoThunks builtin) => NoThunks (Expr var builtin)
+instance (NoThunks var, NoThunks builtin) => NoThunks (Expr builtin)
 
--- Vehicle.Syntax.AST.Meta
+-- Vehicle.Data.Meta
 instance NoThunks MetaID
 
 -- Vehicle.Syntax.AST.Name

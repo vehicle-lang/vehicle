@@ -14,7 +14,7 @@ import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap (lookup)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet (singleton, unions)
 import Vehicle.Data.Builtin.Interface (BuiltinHasStandardData (getBuiltinFunction))
-import Vehicle.Data.Expr.Value
+import Vehicle.Data.Code.Value
 
 -----------------------------------------------------------------------------
 -- Meta-variable forcing
