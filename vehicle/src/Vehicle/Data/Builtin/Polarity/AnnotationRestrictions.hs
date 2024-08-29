@@ -10,14 +10,14 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
 import Vehicle.Data.Builtin.Polarity.Core
-import Vehicle.Data.Expr.Value
+import Vehicle.Data.Code.Value
 
 checkNetworkType ::
   forall m.
   (MonadTypeChecker PolarityBuiltin m) =>
   DeclProvenance ->
   GluedType PolarityBuiltin ->
-  m (Type Ix PolarityBuiltin)
+  m (Type PolarityBuiltin)
 checkNetworkType (_, p) networkType = case normalised networkType of
   -- \|Decomposes the Pi types in a network type signature, checking that the
   -- binders are explicit and their types are equal. Returns a function that
@@ -35,7 +35,7 @@ assertUnquantifiedPolarity ::
   (MonadTypeChecker PolarityBuiltin m) =>
   DeclProvenance ->
   GluedType PolarityBuiltin ->
-  m (Type Ix PolarityBuiltin)
+  m (Type PolarityBuiltin)
 assertUnquantifiedPolarity (_, p) t = do
   createFreshUnificationConstraint p mempty CheckingAuxiliary (PolarityExpr p Unquantified) (unnormalised t)
   return $ unnormalised t

@@ -4,7 +4,7 @@ module Vehicle.Data.Builtin.Standard.Eval where
 
 import Vehicle.Compile.Normalise.Builtin
 import Vehicle.Data.Builtin.Standard.Core
-import Vehicle.Data.Expr.Value
+import Vehicle.Data.Code.Value
 
 instance NormalisableBuiltin Builtin where
   evalBuiltinApp = evalTypeClassOp evalBuiltinFunction

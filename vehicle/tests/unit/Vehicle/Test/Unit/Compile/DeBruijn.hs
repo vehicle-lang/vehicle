@@ -4,8 +4,7 @@ import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertBool)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
-import Vehicle.Data.DeBruijn (liftDBIndices, substDBInto)
-import Vehicle.Data.Expr.Interface
+import Vehicle.Data.Code.Interface
 import Vehicle.Syntax.Builtin
 import Vehicle.Test.Unit.Common (unitTestCase)
 
@@ -71,9 +70,9 @@ liftingTests =
 
 data SubstitutionTest = SubstitutionTest
   { name :: String,
-    value :: Expr Ix Builtin,
-    expr :: Expr Ix Builtin,
-    expected :: Expr Ix Builtin
+    value :: Expr Builtin,
+    expr :: Expr Builtin,
+    expected :: Expr Builtin
   }
 
 substTest :: SubstitutionTest -> TestTree
@@ -107,8 +106,8 @@ substTest SubstitutionTest {..} =
 data LiftingTest = LiftingTest
   { name :: String,
     amount :: Lv,
-    input :: Expr Ix Builtin,
-    expected :: Expr Ix Builtin
+    input :: Expr Builtin,
+    expected :: Expr Builtin
   }
 
 liftTest :: LiftingTest -> TestTree
@@ -137,5 +136,5 @@ liftTest LiftingTest {..} =
 p :: Provenance
 p = mempty
 
-binding :: Expr Ix Builtin -> Binder Ix Builtin
+binding :: Expr Builtin -> Binder Builtin
 binding = Binder p (BinderDisplayForm (OnlyName "x") False) Explicit Relevant

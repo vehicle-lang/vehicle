@@ -10,14 +10,14 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
 import Vehicle.Data.Builtin.Linearity.Core
-import Vehicle.Data.Expr.Value
+import Vehicle.Data.Code.Value
 
 checkNetworkType ::
   forall m.
   (MonadTypeChecker LinearityBuiltin m) =>
   DeclProvenance ->
   GluedType LinearityBuiltin ->
-  m (Type Ix LinearityBuiltin)
+  m (Type LinearityBuiltin)
 checkNetworkType (ident, p) networkType = case normalised networkType of
   -- \|Decomposes the Pi types in a network type signature, checking that the
   -- binders are explicit and their types are equal. Returns a function that
@@ -41,7 +41,7 @@ assertConstantLinearity ::
   (MonadTypeChecker LinearityBuiltin m) =>
   DeclProvenance ->
   GluedType LinearityBuiltin ->
-  m (Type Ix LinearityBuiltin)
+  m (Type LinearityBuiltin)
 assertConstantLinearity (_, p) t = do
   createFreshUnificationConstraint p mempty CheckingAuxiliary (LinearityExpr p Constant) (unnormalised t)
   return $ unnormalised t

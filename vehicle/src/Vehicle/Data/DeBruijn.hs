@@ -4,12 +4,7 @@ module Vehicle.Data.DeBruijn
   ( Ix (..),
     Lv (..),
     Substitution,
-    substituteDB,
-    substDBInto,
-    substDBIntoAtLevel,
-    substDBAll,
-    liftDBIndices,
-    underDBBinder,
+    Substitutable (..),
     dbLevelToIndex,
     dbIndexToLevel,
     shiftDBIndex,
@@ -17,16 +12,14 @@ module Vehicle.Data.DeBruijn
 where
 
 import Control.DeepSeq (NFData)
-import Control.Monad.Reader (MonadReader (..), local, runReader)
-import Data.Bifunctor (Bifunctor (..))
+import Control.Monad.Reader (MonadReader (..))
 import Data.Hashable (Hashable (..))
 import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
 import Vehicle.Prelude
-import Vehicle.Syntax.AST
 
 --------------------------------------------------------------------------------
--- Definitions
+-- Indices
 
 -- | A DeBruijn index pointing to the binder that the variable refers to,
 -- counting from the variable position upwards.
@@ -43,6 +36,9 @@ instance Serialize Ix
 
 instance Pretty Ix where
   pretty i = "𝓲" <> pretty (unIx i)
+
+--------------------------------------------------------------------------------
+-- Levels
 
 -- | DeBruijn level - represents how many binders deep we currently are.
 -- (e.g. \f . f (\x . x)) the variable `f` is at level 0 and the variable `x`
@@ -88,81 +84,3 @@ instance (Substitutable expr expr) => Substitutable expr (GenericArg expr) where
 
 instance (Substitutable expr expr) => Substitutable expr (GenericBinder expr) where
   subst = traverse subst
-
-instance Substitutable (Expr Ix builtin) (Expr Ix builtin) where
-  subst expr = case expr of
-    BoundVar p i -> do
-      (d, s) <- ask
-      return $
-        if unIx i < unLv d
-          then BoundVar p i
-          else case s (shiftDBIndex i (-d)) of
-            Left i' -> BoundVar p (shiftDBIndex i' d)
-            Right v -> if d > 0 then liftDBIndices d v else v
-    Universe {} -> return expr
-    Meta {} -> return expr
-    Hole {} -> return expr
-    Builtin {} -> return expr
-    FreeVar {} -> return expr
-    App fun args -> App <$> subst fun <*> traverse subst args
-    Pi p binder res -> Pi p <$> traverse subst binder <*> underDBBinder (subst res)
-    Let p e1 binder e2 -> Let p <$> subst e1 <*> traverse subst binder <*> underDBBinder (subst e2)
-    Lam p binder e -> Lam p <$> traverse subst binder <*> underDBBinder (subst e)
-
--- Temporarily go under a binder, increasing the binding depth by one
--- and shifting the current state.
-underDBBinder :: (MonadReader (Lv, c) m) => m a -> m a
-underDBBinder = local (first (+ 1))
-
---------------------------------------------------------------------------------
--- Concrete operations
-
-substituteDB :: Lv -> Substitution (Expr Ix builtin) -> Expr Ix builtin -> Expr Ix builtin
-substituteDB depth sub e = runReader (subst e) (depth, sub)
-
--- | Lift all DeBruijn indices that refer to environment variables by the
--- provided depth.
-liftDBIndices ::
-  -- | number of levels to lift by
-  Lv ->
-  -- | target term to lift
-  Expr Ix builtin ->
-  -- | lifted term
-  Expr Ix builtin
-liftDBIndices l = substituteDB 0 (\i -> Left (shiftDBIndex i l))
-
--- | De Bruijn aware substitution of one expression into another
-substDBIntoAtLevel ::
-  forall builtin.
-  -- | The index of the variable of which to substitute
-  Ix ->
-  -- | expression to substitute
-  Expr Ix builtin ->
-  -- | term to substitute into
-  Expr Ix builtin ->
-  -- | the result of the substitution
-  Expr Ix builtin
-substDBIntoAtLevel level value = substituteDB 0 substVar
-  where
-    substVar :: Ix -> Either Ix (Expr Ix builtin)
-    substVar v
-      | v == level = Right value
-      | v > level = Left (v - 1)
-      | otherwise = Left v
-
--- | De Bruijn aware substitution of one expression into another
-substDBInto ::
-  -- | expression to substitute
-  Expr Ix builtin ->
-  -- | term to substitute into
-  Expr Ix builtin ->
-  -- | the result of the substitution
-  Expr Ix builtin
-substDBInto = substDBIntoAtLevel 0
-
-substDBAll ::
-  Lv ->
-  (Ix -> Maybe Ix) ->
-  Expr Ix builtin ->
-  Expr Ix builtin
-substDBAll depth sub = substituteDB depth (\v -> maybe (Left v) Left (sub v))

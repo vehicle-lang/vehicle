@@ -22,8 +22,12 @@ import GHC.Generics (Generic)
 import Numeric (readFloat, readSigned)
 import System.Console.ANSI
 import Vehicle.Prelude.Prettyprinter (Pretty (pretty), (<+>))
-import Vehicle.Syntax.AST
-import Vehicle.Syntax.Builtin
+import Vehicle.Syntax.AST.Name (Name)
+import Vehicle.Syntax.Builtin.BasicOperations
+  ( EqualityOp (..),
+    OrderOp (..),
+    Quantifier (..),
+  )
 import Vehicle.Syntax.Prelude (developerError)
 
 data VehicleLang = External | Internal

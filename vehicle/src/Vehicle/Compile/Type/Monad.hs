@@ -50,7 +50,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Compile.Type.Monad.Instance
-import Vehicle.Data.Expr.Value
+import Vehicle.Data.Code.Value
 
 -- | The type-checking monad.
 type TCM builtin m =
@@ -97,8 +97,8 @@ freshMetaIdAndExpr ::
   forall builtin m.
   (TCM builtin m) =>
   Provenance ->
-  Type Ix builtin ->
-  BoundCtx (Type Ix builtin) ->
+  Type builtin ->
+  BoundCtx (Type builtin) ->
   m (MetaID, GluedExpr builtin)
 freshMetaIdAndExpr p t boundCtx = do
   let ctx = if useDependentMetas (Proxy @builtin) then boundCtx else mempty
@@ -108,8 +108,8 @@ freshMetaExpr ::
   forall builtin m.
   (TCM builtin m) =>
   Provenance ->
-  Type Ix builtin ->
-  BoundCtx (Type Ix builtin) ->
+  Type builtin ->
+  BoundCtx (Type builtin) ->
   m (GluedExpr builtin)
 freshMetaExpr p t boundCtx = snd <$> freshMetaIdAndExpr p t boundCtx
 
@@ -118,10 +118,10 @@ freshMetaExpr p t boundCtx = snd <$> freshMetaIdAndExpr p t boundCtx
 createFreshInstanceConstraint ::
   forall builtin m.
   (TCM builtin m) =>
-  BoundCtx (Type Ix builtin) ->
-  (Expr Ix builtin, [Arg Ix builtin], Type Ix builtin) ->
+  BoundCtx (Type builtin) ->
+  (Expr builtin, [Arg builtin], Type builtin) ->
   Relevance ->
-  Type Ix builtin ->
+  Type builtin ->
   m (GluedExpr builtin)
 createFreshInstanceConstraint boundCtx (fun, funArgs, funType) relevance tcExpr = do
   let origin =
@@ -149,10 +149,10 @@ createFreshInstanceConstraint boundCtx (fun, funArgs, funType) relevance tcExpr 
 
 instantiateArgForNonExplicitBinder ::
   (TCM builtin m) =>
-  BoundCtx (Type Ix builtin) ->
+  BoundCtx (Type builtin) ->
   Provenance ->
-  (Expr Ix builtin, [Arg Ix builtin], Type Ix builtin) ->
-  Binder Ix builtin ->
+  (Expr builtin, [Arg builtin], Type builtin) ->
+  Binder builtin ->
   m (GluedArg builtin)
 instantiateArgForNonExplicitBinder boundCtx p origin binder = do
   let binderType = typeOf binder

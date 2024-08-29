@@ -148,15 +148,16 @@ library
     Vehicle.Data.Builtin.Loss
     Vehicle.Data.Builtin.Standard
     Vehicle.Data.Builtin.Tensor
+    Vehicle.Data.Code.BooleanExpr
+    Vehicle.Data.Code.DSL
+    Vehicle.Data.Code.Expr
+    Vehicle.Data.Code.Interface
+    Vehicle.Data.Code.LinearExpr
+    Vehicle.Data.Code.Value
     Vehicle.Data.DeBruijn
     Vehicle.Data.DSL
-    Vehicle.Data.Expr.Boolean
-    Vehicle.Data.Expr.DSL
-    Vehicle.Data.Expr.Interface
-    Vehicle.Data.Expr.Linear
-    Vehicle.Data.Expr.Standard
-    Vehicle.Data.Expr.Value
     Vehicle.Data.Hashing
+    Vehicle.Data.Meta
     Vehicle.Data.Tensor
     Vehicle.Export
     Vehicle.Libraries
@@ -250,8 +251,8 @@ library
     Vehicle.Data.Builtin.Standard.InstanceBuiltins
     Vehicle.Data.Builtin.Standard.InstanceDefaults
     Vehicle.Data.Builtin.Standard.Type
-    Vehicle.Data.Expr.Relevant
     Vehicle.Data.QuantifiedVariable
+    Vehicle.Data.Universe
     Vehicle.Debug
     Vehicle.Prelude.IO
     Vehicle.Prelude.Logging.Class

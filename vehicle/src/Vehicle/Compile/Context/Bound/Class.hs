@@ -5,10 +5,8 @@ import Control.Monad.State
 import Control.Monad.Writer
 import Data.Data (Proxy (..))
 import Vehicle.Compile.Context.Bound.Core
-import Vehicle.Compile.Error (MonadCompile, lookupIxInBoundCtx, lookupLvInBoundCtx)
-import Vehicle.Compile.Normalise.Quote qualified as Quote (unnormalise)
-import Vehicle.Compile.Prelude
-import Vehicle.Data.Expr.Value
+import Vehicle.Data.DeBruijn
+import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
 -- Context monad class
@@ -41,35 +39,6 @@ addBindersToContext ::
   m a
 addBindersToContext binders fn = foldr addBinderToContext fn binders
 
-getBoundVarByIx ::
-  forall expr m.
-  (MonadBoundContext expr m, MonadCompile m) =>
-  Proxy expr ->
-  CompilerPass ->
-  Ix ->
-  m (GenericBinder expr)
-getBoundVarByIx _ compilerPass ix =
-  lookupIxInBoundCtx compilerPass ix <$> getBoundCtx (Proxy @expr)
-
-getBoundVarByLv ::
-  forall expr m.
-  (MonadBoundContext expr m, MonadCompile m) =>
-  Proxy expr ->
-  CompilerPass ->
-  Lv ->
-  m (GenericBinder expr)
-getBoundVarByLv _ compilerPass lv =
-  lookupLvInBoundCtx compilerPass lv <$> getBoundCtx (Proxy @expr)
-
-unnormalise ::
-  forall expr m.
-  (MonadBoundContext expr m, Show expr) =>
-  WHNFValue expr ->
-  m (Expr Ix expr)
-unnormalise e = do
-  lv <- getCurrentLv (Proxy @expr)
-  return $ Quote.unnormalise lv e
-
 getCurrentLv ::
   (MonadBoundContext expr m) =>
   Proxy expr ->
@@ -99,15 +68,3 @@ getBinderNameOrFreshName piName typ = case piName of
 
 getNamedBoundCtx :: (MonadBoundContext expr m) => Proxy expr -> m NamedBoundCtx
 getNamedBoundCtx p = toNamedBoundCtx <$> getBoundCtx p
-
-piBinderToLamBinder ::
-  (MonadBoundContext (Expr Ix builtin) m) =>
-  Binder Ix builtin ->
-  m (Binder Ix builtin)
-piBinderToLamBinder binder@(Binder p _ v r t) = do
-  binderName <- case nameOf binder of
-    Just name -> return name
-    Nothing -> getFreshName (typeOf binder)
-
-  let displayForm = BinderDisplayForm (OnlyName binderName) True
-  return $ Binder p displayForm v r t

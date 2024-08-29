@@ -12,13 +12,13 @@ import Vehicle.Backend.LossFunction.Core (DifferentiableLogicField)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
-import Vehicle.Data.Builtin.Interface (BuiltinHasStandardData, PrintableBuiltin)
+import Vehicle.Data.Builtin.Interface (BuiltinHasStandardData)
 import Vehicle.Data.Builtin.Linearity.Core
 import Vehicle.Data.Builtin.Polarity.Core
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Builtin.Tensor
+import Vehicle.Data.Code.Value
 import Vehicle.Data.DeBruijn
-import Vehicle.Data.Expr.Value
 import Vehicle.Data.QuantifiedVariable (UnderConstrainedVariableStatus, UserRationalVariable)
 import Vehicle.Syntax.Parse (ParseError, ParseLocation)
 import Vehicle.Verify.QueryFormat.Core

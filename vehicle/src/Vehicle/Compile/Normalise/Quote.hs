@@ -1,11 +1,12 @@
 module Vehicle.Compile.Normalise.Quote where
 
 import Vehicle.Backend.LossFunction.Core (LossClosure (..), MixedClosure (..))
-import Vehicle.Compile.Prelude
-import Vehicle.Data.Builtin.Interface (ConvertableBuiltin (..))
+import Vehicle.Compile.Context.Bound.Core
 import Vehicle.Data.Builtin.Standard.Core (Builtin)
-import Vehicle.Data.DeBruijn
-import Vehicle.Data.Expr.Value
+import Vehicle.Data.Code.Expr
+import Vehicle.Data.Code.Value
+import Vehicle.Data.DeBruijn (Lv, Substitution, dbLevelToIndex)
+import Vehicle.Prelude
 
 -- | Converts from a normalised representation to an unnormalised representation.
 -- Do not call except for logging and debug purposes, very expensive with nested
@@ -17,7 +18,7 @@ unnormalise = quote mempty
 -- Quoting closures
 
 class QuoteClosure closure builtin where
-  quoteClosure :: Provenance -> Lv -> (GenericBinder expr, closure) -> Expr Ix builtin
+  quoteClosure :: Provenance -> Lv -> (GenericBinder expr, closure) -> Expr builtin
 
 instance (ConvertableBuiltin builtin1 builtin2) => QuoteClosure (WHNFClosure builtin1) builtin2 where
   quoteClosure p lv (binder, WHNFClosure env body) = do
@@ -46,7 +47,7 @@ instance QuoteClosure LossClosure Builtin where
     let subst = quoteCtx p (lv + 1) newEnv
     substituteDB 0 subst (convertExprBuiltins body)
 
-quoteCtx :: (ConvertableBuiltin builtin1 builtin2, QuoteClosure closure builtin2) => Provenance -> Lv -> BoundEnv closure builtin1 -> Substitution (Expr Ix builtin2)
+quoteCtx :: (ConvertableBuiltin builtin1 builtin2, QuoteClosure closure builtin2) => Provenance -> Lv -> BoundEnv closure builtin1 -> Substitution (Expr builtin2)
 quoteCtx p level env i = case lookupIx env i of
   Nothing -> developerError $ "Mis-sized environment" <+> pretty (length env) <+> "when quoting variable" <+> pretty i
   Just (_binder, value) -> Right (quote p level value)
@@ -57,7 +58,7 @@ quoteCtx p level env i = case lookupIx env i of
 class Quote a b where
   quote :: Provenance -> Lv -> a -> b
 
-instance (ConvertableBuiltin builtin1 builtin2, QuoteClosure closure builtin2) => Quote (Value closure builtin1) (Expr Ix builtin2) where
+instance (ConvertableBuiltin builtin1 builtin2, QuoteClosure closure builtin2) => Quote (Value closure builtin1) (Expr builtin2) where
   quote p level = \case
     VUniverse u -> Universe p u
     VMeta m spine -> quoteApp level p (Meta p m) spine
@@ -83,5 +84,5 @@ instance (Quote expr1 expr2) => Quote (GenericBinder expr1) (GenericBinder expr2
 instance (Quote expr1 expr2) => Quote (GenericArg expr1) (GenericArg expr2) where
   quote p level = fmap (quote p level)
 
-quoteApp :: (Quote a (Expr Ix builtin2)) => Lv -> Provenance -> Expr Ix builtin2 -> [GenericArg a] -> Expr Ix builtin2
+quoteApp :: (Quote a (Expr builtin2)) => Lv -> Provenance -> Expr builtin2 -> [GenericArg a] -> Expr builtin2
 quoteApp l p fn spine = normAppList fn $ fmap (quote p l) spine

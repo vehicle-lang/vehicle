@@ -13,7 +13,7 @@ import Vehicle.Compile.Context.Free.Instance as X
 import Vehicle.Compile.Normalise.Builtin (NormalisableBuiltin)
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
-import Vehicle.Data.Expr.Value
+import Vehicle.Data.Code.Value
 import Vehicle.Libraries.StandardLibrary.Definitions
 
 appHiddenStdlibDef ::
@@ -31,7 +31,7 @@ appHiddenStdlibDef fn spine = do
 mkDeclCtxEntry ::
   (MonadLogger m, MonadFreeContext builtin m, NormalisableBuiltin builtin) =>
   Proxy normBuiltin ->
-  Decl Ix builtin ->
+  Decl builtin ->
   m (FreeCtxEntry builtin)
 mkDeclCtxEntry _ decl = do
   normDecl <- traverse normaliseInEmptyEnv decl
@@ -40,7 +40,7 @@ mkDeclCtxEntry _ decl = do
 addDeclToContext ::
   (MonadLogger m, MonadFreeContext builtin m, NormalisableBuiltin builtin) =>
   Proxy normBuiltin ->
-  Decl Ix builtin ->
+  Decl builtin ->
   m a ->
   m a
 addDeclToContext proxy decl cont = do

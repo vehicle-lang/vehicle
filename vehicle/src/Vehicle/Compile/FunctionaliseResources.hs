@@ -16,7 +16,7 @@ import Data.Set (Set)
 import Data.Set qualified as Set (fromList, member, singleton)
 import Vehicle.Compile.Error (MonadCompile, internalScopingError, lookupInFreeCtx)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (PrintableBuiltin, prettyFriendly)
+import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Data.DeBruijn (dbLevelToIndex)
 
 --------------------------------------------------------------------------------
@@ -43,8 +43,8 @@ import Vehicle.Data.DeBruijn (dbLevelToIndex)
 -- are no longer guaranteed to be of type `Bool`.
 functionaliseResources ::
   (MonadCompile m, PrintableBuiltin builtin) =>
-  Prog Ix builtin ->
-  m (Prog Ix builtin)
+  Prog builtin ->
+  m (Prog builtin)
 functionaliseResources prog =
   logCompilerPass MidDetail currentPass $ do
     runReaderT (functionaliseProg prog) (FuncState LinkedHashMap.empty mempty)
@@ -56,11 +56,11 @@ currentPass :: CompilerPass
 currentPass = "resource functionalisation"
 
 data FuncState builtin = FuncState
-  { resourceDeclarations :: LinkedHashMap Name (Type Ix builtin),
+  { resourceDeclarations :: LinkedHashMap Name (Type builtin),
     resourceUsageFreeCtx :: GenericFreeCtx [Name]
   }
 
-addResourceDeclaration :: Identifier -> Type Ix builtin -> FuncState builtin -> FuncState builtin
+addResourceDeclaration :: Identifier -> Type builtin -> FuncState builtin -> FuncState builtin
 addResourceDeclaration resource typ FuncState {..} =
   FuncState
     { resourceDeclarations = LinkedHashMap.insert (nameOf resource) typ resourceDeclarations,
@@ -85,15 +85,15 @@ type MonadResource m builtin =
 
 functionaliseProg ::
   (MonadResource m builtin) =>
-  Prog Ix builtin ->
-  m (Prog Ix builtin)
+  Prog builtin ->
+  m (Prog builtin)
 functionaliseProg (Main ds) =
   Main . catMaybes <$> traverseListLocal functionaliseDecl ds
 
 functionaliseDecl ::
   (MonadResource m builtin) =>
-  Decl Ix builtin ->
-  m (FuncState builtin -> FuncState builtin, Maybe (Decl Ix builtin))
+  Decl builtin ->
+  m (FuncState builtin -> FuncState builtin, Maybe (Decl builtin))
 functionaliseDecl d =
   logCompilerPass MaxDetail ("functionalising" <+> quotePretty (nameOf d)) $ case d of
     DefAbstract p i s initialType -> do
@@ -122,7 +122,7 @@ functionaliseDecl d =
 
 findResourceUses ::
   (MonadResource m builtin) =>
-  Expr Ix builtin ->
+  Expr builtin ->
   m (Set Name)
 findResourceUses e = do
   execWriterT $ traverseFreeVarsM (const id) updateFn e
@@ -140,9 +140,9 @@ findResourceUses e = do
 replaceResourceUses ::
   forall m builtin.
   (MonadResource m builtin) =>
-  (Binder Ix builtin -> Expr Ix builtin -> Expr Ix builtin, [Binder Ix builtin], [Name]) ->
-  Expr Ix builtin ->
-  m (Expr Ix builtin)
+  (Binder builtin -> Expr builtin -> Expr builtin, [Binder builtin], [Name]) ->
+  Expr builtin ->
+  m (Expr builtin)
 replaceResourceUses (mkBinder, binders, binderNames) initialExpr = do
   funcState <- ask
   let resourceLevels = Map.fromList (zip binderNames [(0 :: Lv) ..])
@@ -151,7 +151,7 @@ replaceResourceUses (mkBinder, binders, binderNames) initialExpr = do
   processedAppsExpr <- runReaderT (traverseFreeVarsM underBinder updateFn initialExpr) readerState
   return $ foldr mkBinder processedAppsExpr binders
   where
-    updateFn :: FreeVarUpdate (ReaderT (Lv, (FuncState builtin, Map Name Lv)) m) Ix builtin
+    updateFn :: FreeVarUpdate (ReaderT (Lv, (FuncState builtin, Map Name Lv)) m) builtin
     updateFn recGo p ident args = do
       args' <- traverse (traverse recGo) args
       (currentOldLv, (FuncState {..}, resourceLevels)) <- ask
@@ -182,7 +182,7 @@ createBinders ::
   Bool ->
   Provenance ->
   Set Name ->
-  m (Binder Ix builtin -> Expr Ix builtin -> Expr Ix builtin, [Binder Ix builtin], [Name])
+  m (Binder builtin -> Expr builtin -> Expr builtin, [Binder builtin], [Name])
 createBinders isType p idents = do
   FuncState {..} <- ask
   let identsAndTypes = LinkedHashMap.filterWithKey (\i _ -> Set.member i idents) resourceDeclarations

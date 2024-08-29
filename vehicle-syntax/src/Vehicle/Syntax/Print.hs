@@ -9,7 +9,6 @@ import Prettyprinter (Doc, Pretty (..))
 import Vehicle.Syntax.AST
 import Vehicle.Syntax.BNFC.Delaborate.External as External (delab)
 import Vehicle.Syntax.BNFC.Delaborate.Internal as Internal (delab)
-import Vehicle.Syntax.Builtin
 import Vehicle.Syntax.External.Print as External (printTree)
 import Vehicle.Syntax.Internal.Print as Internal (printTree)
 
@@ -28,23 +27,23 @@ class Printable a where
   printExternal :: a -> Doc b
   printExternal = pretty . bnfcPrintHack . printExternal'
 
-instance Printable (Arg Name Builtin) where
+instance Printable Arg where
   printInternal' = Internal.printTree . Internal.delab
   printExternal' = External.printTree . External.delab
 
-instance Printable (Binder Name Builtin) where
+instance Printable Binder where
   printInternal' = Internal.printTree . Internal.delab
   printExternal' = External.printTree . External.delab
 
-instance Printable (Expr Name Builtin) where
+instance Printable Expr where
   printInternal' = Internal.printTree . Internal.delab
   printExternal' = External.printTree . External.delab
 
-instance Printable (Decl Name Builtin) where
+instance Printable Decl where
   printInternal' = Internal.printTree . Internal.delab
   printExternal' = External.printTree . External.delab
 
-instance Printable (Prog Name Builtin) where
+instance Printable Prog where
   printInternal' = Internal.printTree . Internal.delab
   printExternal' = External.printTree . External.delab
 

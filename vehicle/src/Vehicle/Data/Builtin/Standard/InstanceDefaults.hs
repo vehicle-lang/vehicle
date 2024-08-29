@@ -8,8 +8,8 @@ import Vehicle.Compile.Type.Constraint.Core (parseInstanceGoal)
 import Vehicle.Compile.Type.Constraint.InstanceDefaultSolver
 import Vehicle.Compile.Type.Core
 import Vehicle.Data.Builtin.Standard.Core
-import Vehicle.Data.Expr.Interface
-import Vehicle.Data.Expr.Value
+import Vehicle.Data.Code.Interface
+import Vehicle.Data.Code.Value
 
 instance HasInstanceDefaults Builtin where
   getCandidatesFromConstraint = getCandidates

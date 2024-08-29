@@ -27,8 +27,8 @@ import Vehicle.Data.DeBruijn
 -- constraints as instance arguments to the declaration.
 generaliseOverUnsolvedConstraints ::
   (TCM builtin m) =>
-  Decl Ix builtin ->
-  m (Decl Ix builtin)
+  Decl builtin ->
+  m (Decl builtin)
 generaliseOverUnsolvedConstraints decl =
   logCompilerPass MidDetail "generalisation over unsolved type-class constraints" $ do
     unsolvedTypeClassConstraints <- traverse substMetas =<< getActiveInstanceConstraints
@@ -42,9 +42,9 @@ generaliseOverUnsolvedConstraints decl =
 generaliseOverConstraint ::
   (TCM builtin m) =>
   [WithContext (Constraint builtin)] ->
-  (Decl Ix builtin, [WithContext (InstanceConstraint builtin)]) ->
+  (Decl builtin, [WithContext (InstanceConstraint builtin)]) ->
   WithContext (InstanceConstraint builtin) ->
-  m (Decl Ix builtin, [WithContext (InstanceConstraint builtin)])
+  m (Decl builtin, [WithContext (InstanceConstraint builtin)])
 generaliseOverConstraint allConstraints (decl, rejected) c@(WithContext tc ctx) = do
   -- Find any unsolved meta variables that are transitively linked
   -- by constraints of the same type.
@@ -65,9 +65,9 @@ generaliseOverConstraint allConstraints (decl, rejected) c@(WithContext tc ctx) 
 
 prependConstraint ::
   (TCM builtin m) =>
-  Decl Ix builtin ->
+  Decl builtin ->
   WithContext (InstanceConstraint builtin) ->
-  m (Decl Ix builtin)
+  m (Decl builtin)
 prependConstraint decl (WithContext (Resolve _origin meta relevance expr) ctx) = do
   let p = originalProvenance ctx
   let typeClass = quote p 0 expr
@@ -85,8 +85,8 @@ prependConstraint decl (WithContext (Resolve _origin meta relevance expr) ctx) =
 generaliseOverUnsolvedMetaVariables ::
   forall builtin m.
   (TCM builtin m) =>
-  Decl Ix builtin ->
-  m (Decl Ix builtin)
+  Decl builtin ->
+  m (Decl builtin)
 generaliseOverUnsolvedMetaVariables decl =
   logCompilerPass MidDetail "generalisation of unsolved metas in declaration type" $ do
     let declType = typeOf decl
@@ -109,9 +109,9 @@ generaliseOverUnsolvedMetaVariables decl =
 quantifyOverMeta ::
   forall builtin m.
   (TCM builtin m) =>
-  Decl Ix builtin ->
+  Decl builtin ->
   MetaID ->
-  m (Decl Ix builtin)
+  m (Decl builtin)
 quantifyOverMeta decl meta = do
   metaCtx <- getMetaCtx (Proxy @builtin) meta
   metaType <- substMetas =<< getMetaType meta
@@ -128,7 +128,7 @@ quantifyOverMeta decl meta = do
         let binderDisplayForm = BinderDisplayForm (OnlyName binderName) True
         prependBinderAndSolveMeta meta binderDisplayForm (Implicit True) Relevant metaType decl
 
-isMeta :: Expr Ix builtin -> Bool
+isMeta :: Expr builtin -> Bool
 isMeta Meta {} = True
 isMeta (App Meta {} _) = True
 isMeta _ = False
@@ -143,9 +143,9 @@ prependBinderAndSolveMeta ::
   BinderDisplayForm ->
   Visibility ->
   Relevance ->
-  Type Ix builtin ->
-  Decl Ix builtin ->
-  m (Decl Ix builtin)
+  Type builtin ->
+  Decl builtin ->
+  m (Decl builtin)
 prependBinderAndSolveMeta meta f v r binderType decl = do
   -- All the metas contained within the type of the binder about to be
   -- appended cannot have any dependencies on variables later on in the expression.
@@ -186,9 +186,9 @@ prependBinderAndSolveMeta meta f v r binderType decl = do
 removeContextsOfMetasIn ::
   forall builtin m.
   (TCM builtin m) =>
-  Type Ix builtin ->
-  Decl Ix builtin ->
-  m (Type Ix builtin, Decl Ix builtin)
+  Type builtin ->
+  Decl builtin ->
+  m (Type builtin, Decl builtin)
 removeContextsOfMetasIn binderType decl =
   logCompilerPass MaxDetail "removing dependencies from dependent metas" $ do
     metasInBinder <- metasIn binderType
@@ -202,10 +202,10 @@ removeContextsOfMetasIn binderType decl =
         logCompilerPassOutput (prettyVerbose substDecl)
         return (substBinderType, substDecl)
 
-addNewArgumentToMetaUses :: MetaID -> Decl Ix builtin -> Decl Ix builtin
+addNewArgumentToMetaUses :: MetaID -> Decl builtin -> Decl builtin
 addNewArgumentToMetaUses meta = fmap (go (-1))
   where
-    go :: Lv -> Expr Ix builtin -> Expr Ix builtin
+    go :: Lv -> Expr builtin -> Expr builtin
     go d expr = case expr of
       Meta p m
         | m == meta -> App (Meta p m) [newVar p]

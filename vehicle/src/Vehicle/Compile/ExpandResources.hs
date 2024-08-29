@@ -24,8 +24,8 @@ import Vehicle.Compile.Normalise.Quote
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print.Warning ()
 import Vehicle.Data.Builtin.Standard.Core
-import Vehicle.Data.Expr.Interface
-import Vehicle.Data.Expr.Value
+import Vehicle.Data.Code.Interface
+import Vehicle.Data.Code.Value
 import Vehicle.Prelude.Warning (CompileWarning (..))
 
 -- | Calculates the context for external resources, reading them from disk and
@@ -34,8 +34,8 @@ expandResources ::
   forall m.
   (MonadIO m, MonadCompile m) =>
   Resources ->
-  Prog Ix Builtin ->
-  m (Prog Ix Builtin, NetworkContext, FreeCtx Builtin, ResourcesIntegrityInfo)
+  Prog Builtin ->
+  m (Prog Builtin, NetworkContext, FreeCtx Builtin, ResourcesIntegrityInfo)
 expandResources resources prog =
   logCompilerPass MinDetail "expansion of external resources" $ do
     ((progWithoutResources, (networkCtx, inferableParameterCtx, _explicitParameterCtx)), partialFreeCtx) <-
@@ -60,10 +60,10 @@ mkFunctionDefFromResource p ident typ normValue = do
 -- | Goes through the program finding all
 -- the resources, comparing the data against the type in the spec, and making
 -- note of the values for implicit parameters.
-readResourcesInProg :: (MonadReadResources m) => Prog Ix Builtin -> m (Prog Ix Builtin)
+readResourcesInProg :: (MonadReadResources m) => Prog Builtin -> m (Prog Builtin)
 readResourcesInProg (Main ds) = Main <$> readResourcesInDecls ds
 
-readResourcesInDecls :: (MonadReadResources m) => [Decl Ix Builtin] -> m [Decl Ix Builtin]
+readResourcesInDecls :: (MonadReadResources m) => [Decl Builtin] -> m [Decl Builtin]
 readResourcesInDecls = \case
   [] -> return []
   decl : decls -> do

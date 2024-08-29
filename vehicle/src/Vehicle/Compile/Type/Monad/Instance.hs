@@ -21,7 +21,6 @@ import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Builtin (NormalisableBuiltin)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Data.Builtin.Interface (BuiltinHasStandardData)
@@ -41,7 +40,7 @@ clearFreshNamesInternal :: (Monad m) => TypeCheckerTInternals builtin m ()
 clearFreshNamesInternal =
   modify (\TypeCheckerState {..} -> TypeCheckerState {freshNameState = 0, ..})
 
-getFreshNameInternal :: (Monad m) => Type Ix builtin -> TypeCheckerTInternals builtin2 m Name
+getFreshNameInternal :: (Monad m) => Type builtin -> TypeCheckerTInternals builtin2 m Name
 getFreshNameInternal _typ = do
   nameID <- gets freshNameState
   modify (\TypeCheckerState {..} -> TypeCheckerState {freshNameState = nameID + 1, ..})

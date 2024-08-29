@@ -50,21 +50,21 @@ fromEdges outEdges = do
 constructGraph ::
   forall m builtin.
   (MonadLogger m) =>
-  Prog Ix builtin ->
+  Prog builtin ->
   m DependencyGraph
 constructGraph prog = do
   depsList <- goProg prog
   return $ fromEdges depsList
   where
-    goProg :: (MonadLogger m) => Prog Ix builtin -> m DependencyList
+    goProg :: (MonadLogger m) => Prog builtin -> m DependencyList
     goProg (Main ds) = traverse goDecl ds
 
-    goDecl :: (MonadLogger m) => Decl Ix builtin -> m (Identifier, Dependencies)
+    goDecl :: (MonadLogger m) => Decl builtin -> m (Identifier, Dependencies)
     goDecl d = do
       deps <- execWriterT (traverse_ go d)
       return (identifierOf d, deps)
 
-    go :: forall m1. (MonadLogger m1, MonadWriter [Identifier] m1) => Expr Ix builtin -> m1 ()
+    go :: forall m1. (MonadLogger m1, MonadWriter [Identifier] m1) => Expr builtin -> m1 ()
     go = \case
       BoundVar {} -> return ()
       Universe {} -> return ()
@@ -81,9 +81,9 @@ constructGraph prog = do
 
 analyseDependenciesAndPrune ::
   (MonadCompile m) =>
-  Prog Ix expr ->
+  Prog expr ->
   DeclarationNames ->
-  m (Prog Ix expr)
+  m (Prog expr)
 analyseDependenciesAndPrune prog declarationsToCompile = do
   if null declarationsToCompile
     then return prog

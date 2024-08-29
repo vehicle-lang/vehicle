@@ -22,7 +22,7 @@ data ParseError
   | FunctionWithMismatchedNames Provenance Name Name
   | -- Annotations
     InvalidAnnotationOption Provenance Name Name [Name]
-  | InvalidAnnotationOptionValue Name (Expr Name Builtin)
+  | InvalidAnnotationOptionValue Name Expr
   | MissingAnnotationOption Provenance Text Name
   | DuplicateAnnotationOption Provenance Text Name
   | -- Other

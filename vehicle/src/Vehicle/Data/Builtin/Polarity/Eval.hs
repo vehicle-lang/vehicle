@@ -3,11 +3,11 @@
 module Vehicle.Data.Builtin.Polarity.Eval where
 
 import Vehicle.Compile.Normalise.Builtin hiding (evalFoldList)
-import Vehicle.Compile.Prelude (GenericArg (..), MonadLogger, explicit)
+import Vehicle.Compile.Prelude (MonadLogger)
 import Vehicle.Data.Builtin.Polarity.Core (PolarityBuiltin)
 import Vehicle.Data.Builtin.Polarity.Core qualified as P
 import Vehicle.Data.Builtin.Standard.Core
-import Vehicle.Data.Expr.Value
+import Vehicle.Data.Code.Value
 import Vehicle.Prelude
 
 instance NormalisableBuiltin PolarityBuiltin where

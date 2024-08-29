@@ -27,8 +27,8 @@ import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
 import Vehicle.Data.Builtin.Loss
-import Vehicle.Data.Expr.Interface (pattern INot)
-import Vehicle.Data.Expr.Value (VBinder, Value (..), WHNFBoundEnv, WHNFClosure (..), WHNFValue, boundContextToEnv, extendEnvWithBound, extendEnvWithDefined)
+import Vehicle.Data.Code.Interface (pattern INot)
+import Vehicle.Data.Code.Value (VBinder, Value (..), WHNFBoundEnv, WHNFClosure (..), WHNFValue, boundContextToEnv, extendEnvWithBound, extendEnvWithDefined)
 import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (..))
 import Vehicle.Syntax.Builtin (Builtin)
 import Vehicle.Syntax.Builtin qualified as V
@@ -94,7 +94,7 @@ compileLogic logicID dsl = do
   where
     go ::
       DifferentiableLogicImplementation ->
-      [(DifferentiableLogicField, Expr Ix Builtin)] ->
+      [(DifferentiableLogicField, Expr Builtin)] ->
       m DifferentiableLogicImplementation
     go impl [] = return impl
     go impl ((field, expr) : fields) = do
@@ -189,7 +189,7 @@ instance EvaluableClosure MixedClosure LossBuiltin where
 normStandardExprToLoss ::
   (MonadLogic m) =>
   WHNFBoundEnv Builtin ->
-  Expr Ix Builtin ->
+  Expr Builtin ->
   m MixedLossValue
 normStandardExprToLoss boundEnv expr = do
   standardValue <- normaliseInEnv boundEnv expr
@@ -216,7 +216,7 @@ convertToLossBuiltins e = do
     VBoundVar v spine -> do
       VBoundVar v <$> traverseArgs convertToLossBuiltins spine
     VBuiltin b spine -> do
-      convertBuiltin b =<< traverseArgs convertToLossBuiltins spine
+      convertBuiltinToLoss b =<< traverseArgs convertToLossBuiltins spine
     VPi binder body -> do
       binder' <- traverse convertToLossBuiltins binder
       body' <- addBinderToContext binder' $ convertToLossBuiltins body
@@ -227,13 +227,13 @@ convertToLossBuiltins e = do
   showExit result
   return result
 
-convertBuiltin ::
+convertBuiltinToLoss ::
   forall m.
   (MonadLogic m) =>
   Builtin ->
   MixedLossSpine ->
   m MixedLossValue
-convertBuiltin builtin spine = convert builtin
+convertBuiltinToLoss builtin spine = convert builtin
   where
     convert :: Builtin -> m MixedLossValue
     convert b = case b of
@@ -333,9 +333,6 @@ convertBuiltin builtin spine = convert builtin
     unchangedBuiltin :: LossBuiltin -> m MixedLossValue
     unchangedBuiltin b = return $ VBuiltin b spine
 
-convertNot :: (MonadLogic m) => MixedLossSpine -> m MixedLossValue
-convertNot = convertBuiltin (V.BuiltinFunction V.Not)
-
 translateExists :: (MonadLogic m) => MixedLossSpine -> m MixedLossValue
 translateExists spine = do
   disjunct <- lookupLogicField Disjunction
@@ -349,7 +346,7 @@ translateForall spine = case spine of
       LossClos {} -> developerError "Should not be evaluating standard closures"
     let newSpine = [explicit (VLam binder negBody)]
     existsExpr <- translateExists newSpine
-    convertNot [explicit existsExpr]
+    convertBuiltinToLoss (V.BuiltinFunction V.Not) [explicit existsExpr]
   _ -> unexpectedExprError currentPass (pretty V.Forall <+> prettyVerbose spine)
 
 --------------------------------------------------------------------------------

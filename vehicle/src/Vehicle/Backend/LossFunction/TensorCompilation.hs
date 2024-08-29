@@ -24,7 +24,7 @@ import Vehicle.Data.Builtin.Loss (LossBuiltin)
 import Vehicle.Data.Builtin.Loss qualified as L
 import Vehicle.Data.Builtin.Tensor (TensorBuiltin)
 import Vehicle.Data.Builtin.Tensor qualified as T
-import Vehicle.Data.Expr.Value
+import Vehicle.Data.Code.Value
 import Vehicle.Data.Tensor
 import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (StdForeachIndex), pattern TensorIdent)
 import Vehicle.Prelude.Warning
@@ -75,7 +75,7 @@ getDeclProvenance = do
 convertExprToTensorValue ::
   (MonadTensor m) =>
   WHNFBoundEnv Builtin ->
-  Expr Ix Builtin ->
+  Expr Builtin ->
   m (NFValue TensorBuiltin)
 convertExprToTensorValue env expr = do
   x <- switchToMonadLogic $ normStandardExprToLoss env expr

@@ -14,7 +14,7 @@ import Vehicle.Data.Builtin.Standard
 
 data ObjectFileContents = ObjectFileContents
   { fileHash :: Int,
-    typeResult :: Prog Ix Builtin
+    typeResult :: Prog Builtin
   }
   deriving (Generic)
 
@@ -28,7 +28,7 @@ readObjectFile ::
   (MonadLogger m, MonadIO m) =>
   FilePath ->
   SpecificationText ->
-  m (Maybe (Prog Ix Builtin))
+  m (Maybe (Prog Builtin))
 readObjectFile specificationFile spec = do
   let interfaceFile = getObjectFileFromSpecificationFile specificationFile
   errorOrContents <- readAndDecodeVersioned interfaceFile
@@ -73,7 +73,7 @@ writeObjectFile ::
   (MonadIO m) =>
   FilePath ->
   SpecificationText ->
-  Prog Ix Builtin ->
+  Prog Builtin ->
   m ()
 writeObjectFile specificationFile spec result = do
   let interfaceFile = getObjectFileFromSpecificationFile specificationFile

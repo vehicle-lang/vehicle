@@ -22,10 +22,10 @@ import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Resource (NetworkType (..), dimensions)
-import Vehicle.Data.Expr.Boolean
-import Vehicle.Data.Expr.Interface
-import Vehicle.Data.Expr.Linear
-import Vehicle.Data.Expr.Value
+import Vehicle.Data.Code.BooleanExpr
+import Vehicle.Data.Code.Interface
+import Vehicle.Data.Code.LinearExpr
+import Vehicle.Data.Code.Value
 import Vehicle.Data.Hashing ()
 import Vehicle.Data.QuantifiedVariable
 import Vehicle.Data.Tensor
@@ -499,7 +499,7 @@ type MonadQueryStructure m =
     MonadState GlobalCtx m
   )
 
-getGlobalBoundCtx :: (MonadQueryStructure m) => m (BoundCtx (Type Ix QueryBuiltin))
+getGlobalBoundCtx :: (MonadQueryStructure m) => m (BoundCtx (Type QueryBuiltin))
 getGlobalBoundCtx = gets (variableCtxToBoundCtx . (fmap snd . LinkedHashMap.toList . globalBoundVarCtx))
 
 getGlobalNamedBoundCtx :: (MonadQueryStructure m) => m NamedBoundCtx
@@ -595,10 +595,10 @@ reduceTensorExpr (Sparse coeff constant) = do
 --------------------------------------------------------------------------------
 -- Context operations
 
-variableCtxToBoundCtx :: (Pretty variable) => [variable] -> BoundCtx (Type Ix builtin)
+variableCtxToBoundCtx :: (Pretty variable) => [variable] -> BoundCtx (Type builtin)
 variableCtxToBoundCtx ctx = zipWith variableCtxToBoundCtxEntry [0 .. Ix (length ctx - 1)] ctx
   where
-    variableCtxToBoundCtxEntry ix var = mkDefaultBinder (layoutAsText $ pretty var) (BoundVar mempty ix)
+    variableCtxToBoundCtxEntry ix var = mkDefaultBinder (BoundVar mempty ix) (Just (layoutAsText $ pretty var))
 
 --------------------------------------------------------------------------------
 -- Vector operation patterns

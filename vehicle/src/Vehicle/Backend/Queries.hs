@@ -22,9 +22,9 @@ import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print.Warning ()
 import Vehicle.Data.Builtin.Standard
-import Vehicle.Data.Expr.Boolean
-import Vehicle.Data.Expr.Interface
-import Vehicle.Data.Expr.Value
+import Vehicle.Data.Code.BooleanExpr
+import Vehicle.Data.Code.Interface
+import Vehicle.Data.Code.Value
 import Vehicle.Prelude.Warning (CompileWarning (..))
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat
@@ -43,7 +43,7 @@ currentPass = "compilation of properties"
 compileToQueries ::
   (MonadStdIO m, MonadCompile m) =>
   QueryFormat ->
-  Prog Ix Builtin ->
+  Prog Builtin ->
   Resources ->
   Maybe FilePath ->
   m ()
@@ -78,11 +78,11 @@ compileToQueries queryFormat typedProg resources maybeVerificationFolder =
 
 compileDecls ::
   (MonadStdIO m, MonadCompile m, MonadFreeContext Builtin m) =>
-  Prog Ix Builtin ->
+  Prog Builtin ->
   QueryFormat ->
   NetworkContext ->
   PropertyID ->
-  [Decl Ix Builtin] ->
+  [Decl Builtin] ->
   Maybe FilePath ->
   m [(Name, MultiProperty ())]
 compileDecls _ _ _ _ [] _ = return []
@@ -120,9 +120,9 @@ updateMetaData (queryFormat, networkCtx, declProvenance, propertyID, outputLocat
 
 compilePropertyDecl ::
   (MonadStdIO m, MonadCompile m, MonadFreeContext Builtin m) =>
-  Prog Ix Builtin ->
+  Prog Builtin ->
   MultiPropertyMetaData ->
-  Expr Ix Builtin ->
+  Expr Builtin ->
   m (Name, MultiProperty ())
 compilePropertyDecl prog propertyData@(_, _, declProv@(ident, _), _, _) expr = do
   logCompilerPass MinDetail ("found property" <+> quotePretty ident) $ do
@@ -132,7 +132,7 @@ compilePropertyDecl prog propertyData@(_, _, declProv@(ident, _), _, _) expr = d
         `catchError` handlePropertyCompileError prog propertyData
     return (nameOf (fst declProv), multiProperty)
 
-handlePropertyCompileError :: (MonadCompile m) => Prog Ix Builtin -> MultiPropertyMetaData -> CompileError -> m a
+handlePropertyCompileError :: (MonadCompile m) => Prog Builtin -> MultiPropertyMetaData -> CompileError -> m a
 handlePropertyCompileError prog (queryFormat, _, declProv, _, _) e = case e of
   UnsupportedNonLinearConstraint {} -> throwError =<< diagnoseNonLinearity (queryFormatID queryFormat) prog declProv
   UnsupportedAlternatingQuantifiers {} -> throwError =<< diagnoseAlternatingQuantifiers (queryFormatID queryFormat) prog declProv

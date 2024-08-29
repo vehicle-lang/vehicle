@@ -8,8 +8,8 @@ import Data.Text (Text)
 import GHC.Generics (Generic)
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Interface
+import Vehicle.Data.Code.Value
 import Vehicle.Data.DSL
-import Vehicle.Data.Expr.Value
 import Vehicle.Syntax.Builtin hiding (Builtin (BuiltinConstructor, BuiltinFunction))
 import Vehicle.Syntax.Builtin qualified as S
 
@@ -158,7 +158,7 @@ instance ConvertableBuiltin LinearityBuiltin S.Builtin where
   convertBuiltin p = \case
     BuiltinConstructor c -> Builtin p (S.BuiltinConstructor c)
     BuiltinFunction f -> Builtin p (S.BuiltinFunction f)
-    b -> FreeVar p $ stdlibIdentifier (layoutAsText $ pretty b)
+    b -> cheatConvertBuiltin p $ pretty b
 
 instance PrintableBuiltin LinearityBuiltin where
   isCoercion = const False
@@ -203,7 +203,7 @@ instance BuiltinHasRatLiterals LinearityBuiltin where
 -----------------------------------------------------------------------------
 -- Patterns
 
-pattern LinearityExpr :: Provenance -> Linearity -> Expr var LinearityBuiltin
+pattern LinearityExpr :: Provenance -> Linearity -> Expr LinearityBuiltin
 pattern LinearityExpr p lin = Builtin p (Linearity lin)
 
 pattern VLinearityExpr :: Linearity -> WHNFValue LinearityBuiltin

@@ -3,20 +3,20 @@ module Vehicle.Compile.Prelude.Utils where
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Maybe (mapMaybe)
+import Vehicle.Data.Code.Expr
 import Vehicle.Prelude
-import Vehicle.Syntax.AST
 
 --------------------------------------------------------------------------------
 -- Utility functions
 
-isTypeUniverse :: Expr var builtin -> Bool
+isTypeUniverse :: Expr builtin -> Bool
 isTypeUniverse TypeUniverse {} = True
 isTypeUniverse _ = False
 
 --------------------------------------------------------------------------------
 -- Enumeration functions
 
-freeNamesIn :: Expr var builtin -> [Identifier]
+freeNamesIn :: Expr builtin -> [Identifier]
 freeNamesIn = \case
   FreeVar _ ident -> [ident]
   BoundVar {} -> []
@@ -32,11 +32,11 @@ freeNamesIn = \case
 --------------------------------------------------------------------------------
 -- Destruction functions
 
-toHead :: Expr var builtin -> (Expr var builtin, [Arg var builtin])
+toHead :: Expr builtin -> (Expr builtin, [Arg builtin])
 toHead (App fun args) = (fun, NonEmpty.toList args)
 toHead e = (e, [])
 
-exprHead :: Expr var builtin -> Expr var builtin
+exprHead :: Expr builtin -> Expr builtin
 exprHead = fst . toHead
 
 onlyExplicit :: NonEmpty (GenericArg expr) -> [expr]
@@ -45,7 +45,7 @@ onlyExplicit args = argExpr <$> filter isExplicit (NonEmpty.toList args)
 --------------------------------------------------------------------------------
 -- Views
 
-getMetaID :: Expr var builtin -> Maybe MetaID
+getMetaID :: Expr builtin -> Maybe MetaID
 getMetaID e = case exprHead e of
   Meta _ m -> Just m
   _ -> Nothing
@@ -61,7 +61,7 @@ getExplicitArg arg
   | isExplicit arg = Just (argExpr arg)
   | otherwise = Nothing
 
-getImplicitArg :: Arg var builtin -> Maybe (Expr var builtin)
+getImplicitArg :: Arg builtin -> Maybe (Expr builtin)
 getImplicitArg arg
   | isImplicit arg = Just (argExpr arg)
   | otherwise = Nothing
@@ -71,5 +71,5 @@ getRelevantArg arg
   | isRelevant arg = Just (argExpr arg)
   | otherwise = Nothing
 
-filterOutNonExplicitArgs :: NonEmpty (Arg var builtin) -> [Expr var builtin]
+filterOutNonExplicitArgs :: NonEmpty (Arg builtin) -> [Expr builtin]
 filterOutNonExplicitArgs args = mapMaybe getExplicitArg (NonEmpty.toList args)

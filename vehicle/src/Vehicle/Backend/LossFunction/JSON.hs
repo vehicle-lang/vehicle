@@ -11,21 +11,20 @@ import Data.Aeson.Encode.Pretty (encodePretty')
 import Data.Aeson.Types (object)
 import Data.Bifunctor (Bifunctor (..))
 import Data.ByteString.Lazy.Char8 (unpack)
-import Data.Coerce (coerce)
 import Data.List.NonEmpty qualified as NonEmpty (filter, toList)
 import Data.Maybe (mapMaybe)
+import GHC.Generics (Generic)
 import Vehicle.Compile.Arity
-import Vehicle.Compile.Descope (descopeRelExprInEmptyCtx)
+import Vehicle.Compile.Descope (MonadDescope, ixToProperName, runMonadDescopeT)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Prelude (GenericBoundCtx, GenericFreeCtx, HasType (..), getExplicitArg)
+import Vehicle.Compile.Prelude (BinderNamingForm (..), DefAbstractSort (..), Doc, GenericBoundCtx, GenericDecl (..), GenericFreeCtx, HasName, HasType (..), Identifier, Name, Position, Provenance (..), Range (..), getExplicitArg, prettyJSONConfig)
+import Vehicle.Compile.Prelude qualified as S
 import Vehicle.Compile.Print
 import Vehicle.Data.Builtin.Tensor
 import Vehicle.Data.DeBruijn
-import Vehicle.Data.Expr.Relevant
-import Vehicle.Prelude
+import Vehicle.Data.Universe (UniverseLevel (..))
+import Vehicle.Prelude (HasName (..), Position (..), Pretty (..), indent, jsonOptions, line, quotePretty, squotes, (<+>))
 import Vehicle.Prelude.Logging.Class
-import Vehicle.Syntax.AST (Position (..), Provenance (..), UniverseLevel)
-import Vehicle.Syntax.AST qualified as V
 
 --------------------------------------------------------------------------------
 -- Public method
@@ -33,36 +32,66 @@ import Vehicle.Syntax.AST qualified as V
 compileProgToJSON ::
   forall m a.
   (MonadCompile m) =>
-  V.Prog Ix TensorBuiltin ->
+  S.Prog TensorBuiltin ->
   m (Doc a)
-compileProgToJSON prog = do
-  logCompilerPass MinDetail currentPass $ do
-    jProg <- runReaderT (toJProg prog) mempty
-    let namedProg = fmapRelProg descopeRelExprInEmptyCtx jProg
-    let json = toJSON namedProg
-    return $ pretty $ unpack $ encodePretty' prettyJSONConfig json
+compileProgToJSON prog = logCompilerPass MinDetail currentPass $ do
+  jProg <- runReaderT (runMonadDescopeT (toJProg prog)) mempty
+  let json = toJSON jProg
+  return $ pretty $ unpack $ encodePretty' prettyJSONConfig json
 
 --------------------------------------------------------------------------------
 -- Conversion of JExpr to JSON
 
-type JProg var = RelProg var TensorBuiltin
+--------------------------------------------------------------------------------
+-- Relevant expressions
 
-type JDecl var = RelDecl var TensorBuiltin
+-- This file contains an AST that ideally only contains computationally relevant
+-- information suitable for exporting to the Python interpreter. This ambition
+-- is not yet quite achieved, as it still contains universes and full pi-types,
+-- but ideally this should be fixed once we get irrelevance up and running.
 
-type JExpr var = RelExpr var TensorBuiltin
+newtype JProg
+  = Main [JDecl]
+  deriving (Generic)
 
-type JBinder var = RelBinder var TensorBuiltin
+data JDecl
+  = Postulate Provenance Name JExpr
+  | Function Provenance Name JExpr JExpr
+  deriving (Generic)
 
-instance (ToJSON var) => ToJSON (JProg var) where
+data JExpr
+  = Universe Provenance Int
+  | App JExpr [JExpr]
+  | -- | Because we're probably not going to a functional language we
+    -- need to mark partial applications as such to avoid excessive currying.
+    PartialApp Arity JExpr [JExpr]
+  | Pi Provenance JBinder JExpr
+  | Builtin Provenance TensorBuiltin
+  | BoundVar Provenance Name
+  | FreeVar Provenance Name
+  | Let Provenance JExpr JBinder JExpr
+  | Lam Provenance [JBinder] JExpr
+  deriving (Generic)
+
+data JBinder = Binder Provenance (Maybe Name) JExpr
+  deriving (Generic)
+
+instance HasName JBinder (Maybe Name) where
+  nameOf (Binder _ name _) = name
+
+--------------------------------------------------------------------------------
+-- Utils
+
+instance ToJSON JProg where
   toJSON = genericToJSON jsonOptions
 
-instance (ToJSON var) => ToJSON (JDecl var) where
+instance ToJSON JDecl where
   toJSON = genericToJSON jsonOptions
 
-instance (ToJSON var) => ToJSON (JExpr var) where
+instance ToJSON JExpr where
   toJSON = genericToJSON jsonOptions
 
-instance (ToJSON var) => ToJSON (JBinder var) where
+instance ToJSON JBinder where
   toJSON = genericToJSON jsonOptions
 
 instance ToJSON TensorBuiltin where
@@ -75,7 +104,7 @@ instance ToJSON UniverseLevel where
   toJSON = genericToJSON jsonOptions
 
 instance ToJSON Provenance where
-  toJSON (V.Provenance (V.Range start end) _) =
+  toJSON (Provenance (Range start end) _) =
     object
       [ "tag" .= toJSON @String "Provenance",
         "contents" .= toJSON @[Int] [posLine start, posColumn start, posLine end, posColumn end]
@@ -89,42 +118,43 @@ currentPass = "conversion to JSON"
 
 type MonadJSON m =
   ( MonadCompile m,
-    MonadReader (GenericFreeCtx Arity, GenericBoundCtx Arity) m
+    MonadReader (GenericFreeCtx Arity, GenericBoundCtx Arity) m,
+    MonadDescope m
   )
 
-toJProg :: (MonadJSON m) => V.Prog Ix TensorBuiltin -> m (JProg Ix)
-toJProg (V.Main ds) = Main <$> toJDecls ds
+toJProg :: (MonadJSON m) => S.Prog TensorBuiltin -> m JProg
+toJProg (S.Main ds) = Main <$> toJDecls ds
 
-toJDecls :: (MonadJSON m) => [V.Decl Ix TensorBuiltin] -> m [JDecl Ix]
+toJDecls :: (MonadJSON m) => [S.Decl TensorBuiltin] -> m [JDecl]
 toJDecls [] = return []
 toJDecls (decl : decls) = do
-  decl' <- logCompilerPass MinDetail (currentPass <+> "of" <+> quotePretty (V.identifierOf decl)) $ do
-    case decl of
-      V.DefAbstract p i s t -> case s of
-        V.NetworkDef -> resourceError s
-        V.DatasetDef -> resourceError s
-        V.ParameterDef {} -> resourceError s
-        V.PostulateDef {} -> DefPostulate p (V.nameOf i) <$> toJExpr t
-      V.DefFunction p i _anns t e -> do
-        t' <- toJExpr t
-        e' <- toJExpr e
-        return $ DefFunction p (V.nameOf i) t' e'
+  decl' <- logCompilerPass MinDetail (currentPass <+> "of" <+> quotePretty (S.identifierOf decl)) $ case decl of
+    DefAbstract p i s t -> case s of
+      NetworkDef -> resourceError s
+      DatasetDef -> resourceError s
+      ParameterDef {} -> resourceError s
+      PostulateDef {} -> Postulate p (S.nameOf i) <$> toJExpr t
+    DefFunction p i _anns t e -> do
+      t' <- toJExpr t
+      e' <- toJExpr e
+      return $ Function p (nameOf i) t' e'
 
   decls' <- addDeclToContext decl (toJDecls decls)
   return $ decl' : decls'
 
-toJExpr :: forall m. (MonadJSON m) => V.Expr Ix TensorBuiltin -> m (JExpr Ix)
+toJExpr :: forall m. (MonadJSON m) => S.Expr TensorBuiltin -> m JExpr
 toJExpr expr = do
   showEntry expr
   result <- case expr of
-    V.Hole {} -> resolutionError currentPass "Hole"
-    V.Meta {} -> resolutionError currentPass "Meta"
-    V.Universe p l -> return $ Universe p (coerce l)
-    V.Builtin p b -> return $ Builtin p b
-    V.BoundVar p v -> return $ BoundVar p v
-    V.FreeVar p v -> return $ FreeVar p $ V.nameOf v
-    -- Otherwise, calculate whether function is partial or not.
-    V.App fun args -> do
+    S.Hole {} -> resolutionError currentPass "Hole"
+    S.Meta {} -> resolutionError currentPass "Meta"
+    S.Universe p (UniverseLevel l) -> return $ Universe p l
+    S.Builtin p b -> return $ Builtin p b
+    S.FreeVar p v -> return $ FreeVar p $ S.nameOf v
+    S.BoundVar p v -> do
+      n <- ixToProperName p v
+      return $ BoundVar p n
+    S.App fun args -> do
       fun' <- toJExpr fun
       let explicitArgs = mapMaybe getExplicitArg (NonEmpty.toList args)
       args' <- traverse toJExpr explicitArgs
@@ -135,83 +165,83 @@ toJExpr expr = do
           | arity == length args' -> return $ App fun' args'
           | arity > length args' -> return $ PartialApp arity fun' args'
           | otherwise -> arityError fun arity explicitArgs args'
-    V.Pi p binder body -> Pi p <$> toJBinder binder <*> addBinderToContext binder (toJExpr body)
-    V.Lam p binder _ -> do
+    S.Pi p binder body ->
+      Pi p <$> toJBinder binder <*> addBinderToContext binder (toJExpr body)
+    S.Lam p binder _ -> do
       (foldedBinders, body) <- foldLamBinders expr
-      Lam p <$> toJBinders foldedBinders <*> addBinderToContext binder (toJExpr body)
-    V.Let p bound binder body ->
+      (jBinders, jBody) <- toJBinders (binder : foldedBinders) (toJExpr body)
+      return $ Lam p jBinders jBody
+    S.Let p bound binder body ->
       Let p <$> toJExpr bound <*> toJBinder binder <*> addBinderToContext binder (toJExpr body)
   showExit result
   return result
 
 foldLamBinders ::
   (MonadJSON m) =>
-  V.Expr Ix TensorBuiltin ->
-  m ([V.Binder Ix TensorBuiltin], V.Expr Ix TensorBuiltin)
+  S.Expr TensorBuiltin ->
+  m ([S.Binder TensorBuiltin], S.Expr TensorBuiltin)
 foldLamBinders = \case
-  V.Lam _ binder body -> addBinderToContext binder (first (binder :) <$> foldLamBinders body)
+  S.Lam _ binder body -> addBinderToContext binder (first (binder :) <$> foldLamBinders body)
   expr -> return ([], expr)
 
-toJBinder :: (MonadJSON m) => V.Binder Ix TensorBuiltin -> m (JBinder Ix)
+toJBinder :: (MonadJSON m) => S.Binder TensorBuiltin -> m JBinder
 toJBinder binder = do
   type' <- toJExpr $ typeOf binder
-  let p = V.binderProvenance binder
-  let maybeName = case V.namingForm (V.binderDisplayForm binder) of
-        V.NameAndType n -> Just n
-        V.OnlyName n -> Just n
-        V.OnlyType -> Nothing
+  let p = S.binderProvenance binder
+  let maybeName = case S.namingForm (S.binderDisplayForm binder) of
+        NameAndType n -> Just n
+        OnlyName n -> Just n
+        OnlyType -> Nothing
   return $ Binder p maybeName type'
 
-toJBinders :: (MonadJSON m) => [V.Binder Ix TensorBuiltin] -> m [JBinder Ix]
-toJBinders = \case
-  [] -> return []
-  (b : bs) -> do
-    b' <- toJBinder b
-    bs' <- addBinderToContext b $ toJBinders bs
-    return $ b' : bs'
+toJBinders :: (MonadJSON m) => [S.Binder TensorBuiltin] -> m JExpr -> m ([JBinder], JExpr)
+toJBinders [] body = ([],) <$> body
+toJBinders (b : bs) body = do
+  b' <- toJBinder b
+  (bs', body') <- addBinderToContext b $ toJBinders bs body
+  return (b' : bs', body')
 
 -- | TODO maybe move to Arity module.
 functionArity ::
   forall m.
   (MonadJSON m) =>
-  V.Expr Ix TensorBuiltin ->
+  S.Expr TensorBuiltin ->
   m Arity
 functionArity = go
   where
-    go :: (MonadJSON m) => V.Expr Ix TensorBuiltin -> m Arity
+    go :: (MonadJSON m) => S.Expr TensorBuiltin -> m Arity
     go fun = do
-      result <- case fun of
-        V.App fn args -> do
+      case fun of
+        S.App fn args -> do
           arity <- go fn
-          return $ arity - length (NonEmpty.filter V.isExplicit args)
-        V.Universe {} -> illTypedError currentPass (prettyVerbose fun)
-        V.Pi {} -> illTypedError currentPass (prettyVerbose fun)
-        V.Meta {} -> illTypedError currentPass (prettyVerbose fun)
-        V.Hole {} -> illTypedError currentPass (prettyVerbose fun)
-        V.FreeVar _p ident -> getFreeVarArity ident
-        V.BoundVar _ ix -> getBoundVarArity ix
-        V.Lam _ binder body -> addBinderToContext binder ((1 +) <$> go body)
-        V.Builtin _ b -> do
+          return $ arity - length (NonEmpty.filter S.isExplicit args)
+        S.Universe {} -> illTypedError currentPass (prettyVerbose fun)
+        S.Pi {} -> illTypedError currentPass (prettyVerbose fun)
+        S.Meta {} -> illTypedError currentPass (prettyVerbose fun)
+        S.Hole {} -> illTypedError currentPass (prettyVerbose fun)
+        S.FreeVar _p ident -> getFreeVarArity ident
+        S.BoundVar _ ix -> getBoundVarArity ix
+        S.Lam _ binder body -> addBinderToContext binder ((1 +) <$> go body)
+        S.Builtin _ b -> do
           return $ arityOf b
-        V.Let _ _bound binder body ->
+        S.Let _ _bound binder body ->
           addBinderToContext binder $ go body
-      return result
 
-addBinderToContext :: (MonadJSON m) => V.Binder Ix TensorBuiltin -> m a -> m a
+addBinderToContext :: (MonadJSON m) => S.Binder TensorBuiltin -> m a -> m a
 addBinderToContext binder =
   local (second (explicitArityFromType (typeOf binder) :))
 
-addDeclToContext :: (MonadJSON m) => V.Decl Ix TensorBuiltin -> m a -> m a
+addDeclToContext :: (MonadJSON m) => S.Decl TensorBuiltin -> m a -> m a
 addDeclToContext decl =
   local (second (explicitArityFromType (typeOf decl) :))
 
-getFreeVarArity :: (MonadJSON m) => V.Identifier -> m Arity
+getFreeVarArity :: (MonadJSON m) => Identifier -> m Arity
 getFreeVarArity ident = lookupInFreeCtx currentPass ident =<< asks fst
 
 getBoundVarArity :: (MonadJSON m) => Ix -> m Arity
 getBoundVarArity ix = asks (lookupIxInBoundCtx currentPass ix . snd)
 
-resourceError :: (MonadCompile m) => V.DefAbstractSort -> m a
+resourceError :: (MonadCompile m) => DefAbstractSort -> m a
 resourceError resourceType =
   compilerDeveloperError $
     "All"
@@ -219,7 +249,7 @@ resourceError resourceType =
       <+> "declarations should have been removed before"
       <+> squotes currentPass
 
-arityError :: (MonadCompile m) => V.Expr Ix TensorBuiltin -> Arity -> [V.Expr Ix TensorBuiltin] -> [JExpr Ix] -> m a
+arityError :: (MonadCompile m) => S.Expr TensorBuiltin -> Arity -> [S.Expr TensorBuiltin] -> [JExpr] -> m a
 arityError fun arity explicitArgs args =
   compilerDeveloperError $
     "Number of args is greater than arity:"
@@ -239,12 +269,11 @@ arityError fun arity explicitArgs args =
               <+> prettyVerbose (length args)
         )
 
-showEntry :: (MonadJSON m) => V.Expr Ix TensorBuiltin -> m ()
+showEntry :: (MonadJSON m) => S.Expr TensorBuiltin -> m ()
 showEntry e = do
   (_, ctx) <- ask
   logDebug MaxDetail $ "tensor-enter:" <+> pretty (length ctx) <+> prettyVerbose e
   incrCallDepth
 
-showExit :: (MonadJSON m) => JExpr Ix -> m ()
-showExit _e = do
-  decrCallDepth
+showExit :: (MonadJSON m) => JExpr -> m ()
+showExit _e = decrCallDepth

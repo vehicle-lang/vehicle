@@ -15,8 +15,8 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad (MonadTypeChecker)
 import Vehicle.Compile.Type.Monad.Class (addConstraints, solveMeta, substMetas)
 import Vehicle.Data.Builtin.Linearity.Core
-import Vehicle.Data.Expr.Interface
-import Vehicle.Data.Expr.Value
+import Vehicle.Data.Code.Interface
+import Vehicle.Data.Code.Value
 import Vehicle.Syntax.Builtin
 
 solveLinearityConstraint ::

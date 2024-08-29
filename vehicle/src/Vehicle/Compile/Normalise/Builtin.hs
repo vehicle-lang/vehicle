@@ -8,10 +8,9 @@ import Control.Monad (zipWithM)
 import Data.Foldable (foldrM)
 import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (PrintableBuiltin)
 import Vehicle.Data.Builtin.Interface (BuiltinHasStandardData (..))
-import Vehicle.Data.Expr.Interface
-import Vehicle.Data.Expr.Value
+import Vehicle.Data.Code.Interface
+import Vehicle.Data.Code.Value
 import Vehicle.Syntax.Builtin
 
 -- Okay so the important thing to remember about this module is that we have
@@ -43,12 +42,12 @@ type EvalBuiltinApp m builtin =
   EvalApp (WHNFValue builtin) m ->
   Eval builtin m ->
   builtin ->
-  [Arg Ix builtin] ->
+  [Arg builtin] ->
   m (WHNFValue builtin)
 
 type Eval builtin m =
   (MonadCompile m) =>
-  Expr Ix builtin ->
+  Expr builtin ->
   m (WHNFValue builtin)
 
 -- | A type-class for builtins that can be normalised compositionally.

@@ -17,9 +17,9 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
-import Vehicle.Data.Builtin.Interface (TypableBuiltin (..))
-import Vehicle.Data.DeBruijn
-import Vehicle.Data.Expr.Value
+import Vehicle.Compile.Type.Monad.Class (TypableBuiltin (..))
+import Vehicle.Data.Code.Value
+import Vehicle.Data.Universe (UniverseLevel (..))
 import Prelude hiding (pi)
 
 --------------------------------------------------------------------------------
@@ -33,7 +33,7 @@ import Prelude hiding (pi)
 -- type-checking pass.
 type MonadBidirectional builtin m =
   ( TCM builtin m,
-    MonadBoundContext (Type Ix builtin) m,
+    MonadBoundContext (Type builtin) m,
     MonadReader Relevance m
   )
 
@@ -41,10 +41,10 @@ runMonadBidirectional ::
   forall m builtin a.
   (TCM builtin m) =>
   Proxy builtin ->
-  BoundContextT (Type Ix builtin) (ReaderT Relevance m) a ->
+  BoundContextT (Type builtin) (ReaderT Relevance m) a ->
   m a
 runMonadBidirectional _ x =
-  runReaderT (runFreshBoundContextT (Proxy @(Type Ix builtin)) x) Relevant
+  runReaderT (runFreshBoundContextT (Proxy @(Type builtin)) x) Relevant
 
 --------------------------------------------------------------------------------
 -- Checking
@@ -56,9 +56,9 @@ runMonadBidirectional _ x =
 checkExpr ::
   forall builtin m.
   (MonadBidirectional builtin m) =>
-  Type Ix builtin ->
-  Expr Ix builtin ->
-  m (Expr Ix builtin)
+  Type builtin ->
+  Expr builtin ->
+  m (Expr builtin)
 checkExpr expectedType expr = do
   showCheckEntry expectedType expr
   res <- case (expectedType, expr) of
@@ -107,9 +107,9 @@ checkExpr expectedType expr = do
 
 viaInfer ::
   (MonadBidirectional builtin m) =>
-  Type Ix builtin ->
-  Expr Ix builtin ->
-  m (Expr Ix builtin)
+  Type builtin ->
+  Expr builtin ->
+  m (Expr builtin)
 viaInfer expectedType expr = do
   let p = provenanceOf expr
   -- Switch to inference mode
@@ -128,8 +128,8 @@ viaInfer expectedType expr = do
 inferExpr ::
   forall builtin m.
   (MonadBidirectional builtin m) =>
-  Expr Ix builtin ->
-  m (Expr Ix builtin, Type Ix builtin)
+  Expr builtin ->
+  m (Expr builtin, Type builtin)
 inferExpr e = do
   showInferEntry e
   res <- case e of
@@ -142,7 +142,7 @@ inferExpr e = do
       -- Replace the hole with meta-variable.
       -- NOTE, different uses of the same hole name will be interpreted
       -- as different meta-variables.
-      boundCtx <- getBoundCtx (Proxy @(Type Ix builtin))
+      boundCtx <- getBoundCtx (Proxy @(Type builtin))
       metaType <- unnormalised <$> freshMetaExpr p (TypeUniverse p 0) boundCtx
       metaExpr <- unnormalised <$> freshMetaExpr p metaType boundCtx
       return (metaExpr, metaType)
@@ -159,7 +159,7 @@ inferExpr e = do
       (checkedFun, checkedFunType) <- inferExpr fun
       inferApp checkedFun checkedFunType (NonEmpty.toList args)
     BoundVar p i -> do
-      ctx <- getBoundCtx (Proxy @(Type Ix builtin))
+      ctx <- getBoundCtx (Proxy @(Type builtin))
       let binder = lookupIxInBoundCtx currentPass i ctx
       currentRelevance <- getCurrentRelevance (Proxy @builtin)
       if currentRelevance == Relevant && relevanceOf binder == Irrelevant
@@ -221,10 +221,10 @@ inferExpr e = do
 -- list of arguments as well as the result type.
 inferApp ::
   (MonadBidirectional builtin m) =>
-  Expr Ix builtin ->
-  Type Ix builtin ->
-  [Arg Ix builtin] ->
-  m (Expr Ix builtin, Type Ix builtin)
+  Expr builtin ->
+  Type builtin ->
+  [Arg builtin] ->
+  m (Expr builtin, Type builtin)
 inferApp fun funType args = do
   (appliedFunType, checkedArgs) <- inferArgs (fun, args, funType) funType args
   return (normAppList fun checkedArgs, appliedFunType)
@@ -237,10 +237,10 @@ inferApp fun funType args = do
 inferArgs ::
   forall builtin m.
   (MonadBidirectional builtin m) =>
-  (Expr Ix builtin, [Arg Ix builtin], Type Ix builtin) -> -- The original function and its arguments
-  Type Ix builtin -> -- Type of the function
-  [Arg Ix builtin] -> -- User-provided arguments of the function
-  m (Type Ix builtin, [Arg Ix builtin])
+  (Expr builtin, [Arg builtin], Type builtin) -> -- The original function and its arguments
+  Type builtin -> -- Type of the function
+  [Arg builtin] -> -- User-provided arguments of the function
+  m (Type builtin, [Arg builtin])
 inferArgs original@(fun, _, _) piT@(Pi _ binder resultType) args
   | isExplicit binder && null args = return (piT, [])
   | otherwise = do
@@ -253,7 +253,7 @@ inferArgs original@(fun, _, _) piT@(Pi _ binder resultType) args
         (arg : remainingArgs)
           | visibilityOf arg == visibility -> return (Just arg, remainingArgs)
           | isExplicit binder -> do
-              boundCtx <- getNamedBoundCtx (Proxy @(Type Ix builtin))
+              boundCtx <- getNamedBoundCtx (Proxy @(Type builtin))
               throwError $ TypingError $ MissingExplicitArgument boundCtx binder arg
           | otherwise -> return (Nothing, args)
 
@@ -267,7 +267,7 @@ inferArgs original@(fun, _, _) piT@(Pi _ binder resultType) args
               checkExpr (typeOf binder) (argExpr arg)
           return $ Arg p visibility relevance checkedArgExpr
         Nothing -> do
-          boundCtx <- getBoundCtx (Proxy @(Type Ix builtin))
+          boundCtx <- getBoundCtx (Proxy @(Type builtin))
           newArg <- instantiateArgForNonExplicitBinder boundCtx p original binder
           return $ fmap unnormalised newArg
 
@@ -287,7 +287,7 @@ inferArgs origin@(fun, originalArgs, _) nonPiType args =
   case (nonPiType, args) of
     (_, []) -> return (nonPiType, [])
     (Meta {}, a : _) -> do
-      ctx <- getBoundCtx (Proxy @(Type Ix builtin))
+      ctx <- getBoundCtx (Proxy @(Type builtin))
       let p = provenanceOf nonPiType
       typeMeta <- unnormalised <$> freshMetaExpr p (TypeUniverse p 0) ctx
       let newBinder = Binder p (BinderDisplayForm OnlyType False) (visibilityOf a) (relevanceOf a) typeMeta
@@ -296,7 +296,7 @@ inferArgs origin@(fun, originalArgs, _) nonPiType args =
       checkExprTypesEqual p (argExpr a) nonPiType newType
       inferArgs origin newType args
     _ -> do
-      ctx <- getNamedBoundCtx (Proxy @(Type Ix builtin))
+      ctx <- getNamedBoundCtx (Proxy @(Type builtin))
       throwError $ TypingError $ FunctionTypeMismatch ctx fun originalArgs nonPiType args
 
 -------------------------------------------------------------------------------
@@ -306,12 +306,12 @@ checkExprTypesEqual ::
   forall builtin m.
   (MonadBidirectional builtin m) =>
   Provenance ->
-  Expr Ix builtin ->
-  Type Ix builtin ->
-  Type Ix builtin ->
+  Expr builtin ->
+  Type builtin ->
+  Type builtin ->
   m ()
 checkExprTypesEqual p expr expectedType actualType = do
-  ctx <- getBoundCtx (Proxy @(Type Ix builtin))
+  ctx <- getBoundCtx (Proxy @(Type builtin))
   let origin =
         CheckingExprType $
           CheckingExpr
@@ -326,11 +326,11 @@ checkBinderTypesEqual ::
   (MonadBidirectional builtin m) =>
   Provenance ->
   Maybe Name ->
-  Type Ix builtin ->
-  Type Ix builtin ->
+  Type builtin ->
+  Type builtin ->
   m ()
 checkBinderTypesEqual p binderName expectedType actualType = do
-  ctx <- getBoundCtx (Proxy @(Type Ix builtin))
+  ctx <- getBoundCtx (Proxy @(Type builtin))
   let origin =
         CheckingBinderType $
           CheckingBinder
@@ -357,22 +357,22 @@ setRelevance _ relevance = local (relevance <>)
 currentPass :: Doc a
 currentPass = "bidirectional type-checking"
 
-showCheckEntry :: forall builtin m. (MonadBidirectional builtin m) => Type Ix builtin -> Expr Ix builtin -> m ()
+showCheckEntry :: forall builtin m. (MonadBidirectional builtin m) => Type builtin -> Expr builtin -> m ()
 showCheckEntry t e = do
   logDebug MaxDetail $ "check-entry" <+> prettyVerbose e <+> ":" <+> prettyVerbose t -- <+> "::::" <+> prettyVerbose ctx)
   incrCallDepth
 
-showCheckExit :: (MonadBidirectional builtin m) => Expr Ix builtin -> m ()
+showCheckExit :: (MonadBidirectional builtin m) => Expr builtin -> m ()
 showCheckExit e = do
   decrCallDepth
   logDebug MaxDetail $ "check-exit " <+> prettyVerbose e
 
-showInferEntry :: (MonadBidirectional builtin m) => Expr Ix builtin -> m ()
+showInferEntry :: (MonadBidirectional builtin m) => Expr builtin -> m ()
 showInferEntry e = do
   logDebug MaxDetail $ "infer-entry" <+> prettyVerbose e
   incrCallDepth
 
-showInferExit :: (MonadBidirectional builtin m) => (Expr Ix builtin, Type Ix builtin) -> m ()
+showInferExit :: (MonadBidirectional builtin m) => (Expr builtin, Type builtin) -> m ()
 showInferExit (e, t) = do
   decrCallDepth
   logDebug MaxDetail $ "infer-exit " <+> prettyVerbose e <+> ":" <+> prettyVerbose t

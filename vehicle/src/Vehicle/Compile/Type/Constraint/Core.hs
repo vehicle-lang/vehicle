@@ -23,8 +23,8 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad (MonadTypeChecker, TCM, copyContext, freshMetaIdAndExpr, trackSolvedMetas)
+import Vehicle.Data.Code.Value
 import Vehicle.Data.DSL
-import Vehicle.Data.Expr.Value
 
 -- | Attempts to solve as many constraints as possible. Takes in
 -- the set of meta-variables solved since the solver was last run and outputs
@@ -98,7 +98,7 @@ createSubInstance ::
   (ConstraintContext builtin, InstanceConstraintOrigin builtin) ->
   Relevance ->
   WHNFValue builtin ->
-  m (Expr Ix builtin, WithContext (Constraint builtin))
+  m (Expr builtin, WithContext (Constraint builtin))
 createSubInstance (ctx, origin) r t = do
   let p = provenanceOf ctx
   newCtx <- copyContext ctx
@@ -125,7 +125,7 @@ extractHeadFromInstanceCandidate candidate@InstanceCandidate {..} = do
           <> "Problematic subexpr:"
             <+> problemDoc
 
-findInstanceGoalHead :: Expr Ix builtin -> Either (Expr Ix builtin) builtin
+findInstanceGoalHead :: Expr builtin -> Either (Expr builtin) builtin
 findInstanceGoalHead = \case
   Pi _ binder body
     | not (isExplicit binder) -> findInstanceGoalHead body
@@ -140,7 +140,7 @@ parseInstanceGoal ::
   m (InstanceGoal builtin)
 parseInstanceGoal e = go [] e
   where
-    go :: Telescope Ix builtin -> WHNFValue builtin -> m (InstanceGoal builtin)
+    go :: Telescope builtin -> WHNFValue builtin -> m (InstanceGoal builtin)
     go telescope = \case
       VPi binder _body
         | not (isExplicit binder) -> compilerDeveloperError "Instance goals with telescopes not yet supported"

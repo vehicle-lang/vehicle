@@ -9,6 +9,7 @@ import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), asks, runReaderT)
 import Control.Monad.Writer (MonadWriter (..), execWriterT)
 import Data.Bifunctor (Bifunctor (..))
+import Data.Foldable (traverse_)
 import Data.List (elemIndex)
 import Data.Map (Map)
 import Data.Map qualified as Map
@@ -16,19 +17,18 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (PrintableBuiltin, prettyFriendly)
+import Vehicle.Compile.Print (prettyFriendly)
+import Vehicle.Data.Builtin.Standard.Core
+import Vehicle.Data.Universe (UniverseLevel (..))
+import Vehicle.Syntax.AST.Expr qualified as S
 
-scopeCheck ::
-  (MonadCompile m, PrintableBuiltin builtin) =>
-  Imports ->
-  Prog Name builtin ->
-  m (Prog Ix builtin)
+scopeCheck :: (MonadCompile m) => Imports -> S.Prog -> m (Prog Builtin)
 scopeCheck imports e = logCompilerPass MinDetail "scope checking" $ do
   let importCtx = getImportCtx imports
   prog <- runReaderT (scopeProg e) importCtx
   return prog
 
-scopeCheckClosedExpr :: (MonadCompile m) => Expr Name builtin -> m (Expr Ix builtin)
+scopeCheckClosedExpr :: (MonadCompile m) => S.Expr -> m (Expr Builtin)
 scopeCheckClosedExpr e = runReaderT (scopeExpr e) (mempty, mempty)
 
 --------------------------------------------------------------------------------
@@ -42,10 +42,10 @@ type MonadScope m =
 --------------------------------------------------------------------------------
 -- Algorithm
 
-scopeProg :: (MonadScope m, PrintableBuiltin builtin) => Prog Name builtin -> m (Prog Ix builtin)
+scopeProg :: (MonadScope m) => S.Prog -> m (Prog Builtin)
 scopeProg (Main ds) = Main <$> scopeDecls ds
 
-scopeDecls :: (MonadScope m, PrintableBuiltin builtin) => [Decl Name builtin] -> m [Decl Ix builtin]
+scopeDecls :: (MonadScope m) => [S.Decl] -> m [Decl Builtin]
 scopeDecls = \case
   [] -> return []
   (d : ds) -> do
@@ -60,7 +60,7 @@ scopeDecls = \case
         ds' <- bindDecl ident (scopeDecls ds)
         return (d' : ds')
 
-scopeDecl :: (MonadScope m, PrintableBuiltin builtin) => Decl Name builtin -> m (Decl Ix builtin)
+scopeDecl :: (MonadScope m) => S.Decl -> m (Decl Builtin)
 scopeDecl decl = logCompilerPass MidDetail ("scoping" <+> quotePretty (identifierOf decl)) $ do
   result <- case decl of
     DefAbstract p ident r t ->
@@ -70,11 +70,7 @@ scopeDecl decl = logCompilerPass MidDetail ("scoping" <+> quotePretty (identifie
   logCompilerPassOutput (prettyFriendly result)
   return result
 
-scopeDeclExpr ::
-  (MonadScope m) =>
-  Bool ->
-  Expr Name builtin ->
-  m (Expr Ix builtin)
+scopeDeclExpr :: (MonadScope m) => Bool -> S.Expr -> m (Expr Builtin)
 scopeDeclExpr generalise expr = do
   freeCtx <- ask
 
@@ -93,7 +89,7 @@ bindDecl ident = local (Map.insert (nameOf ident) ident)
 
 type GeneralisableVariable = (Provenance, Name)
 
-generaliseExpr :: (MonadCompile m) => DeclScopeCtx -> Expr Name builtin -> m (Expr Name builtin)
+generaliseExpr :: (MonadCompile m) => DeclScopeCtx -> S.Expr -> m S.Expr
 generaliseExpr declContext expr = do
   candidates <- findGeneralisableVariables declContext expr
   generaliseOverVariables (reverse candidates) expr
@@ -101,46 +97,60 @@ generaliseExpr declContext expr = do
 findGeneralisableVariables ::
   (MonadCompile m) =>
   DeclScopeCtx ->
-  Expr Name builtin ->
+  S.Expr ->
   m [GeneralisableVariable]
 findGeneralisableVariables declContext expr =
-  execWriterT (runReaderT (traverseExpr registerUnusedVars binderNoOp expr) (declContext, mempty))
+  execWriterT (runReaderT (findVariables expr) (declContext, mempty))
   where
-    registerUnusedVars ::
-      (MonadTraverse m, MonadWriter [GeneralisableVariable] m) =>
-      VarUpdate m Name Name
-    registerUnusedVars p symbol = do
-      (freeCtx, boundCtx) <- ask
+    findVariables :: (MonadTraverse m, MonadWriter [GeneralisableVariable] m) => S.Expr -> m ()
+    findVariables = \case
+      S.Var p v -> registerVar p v
+      S.Universe {} -> return ()
+      S.Hole {} -> return ()
+      S.Builtin {} -> return ()
+      S.App fun args -> do
+        findVariables fun
+        traverse_ (traverse_ findVariables) args
+      S.Pi _ binder res ->
+        findVariablesBinder binder $ findVariables res
+      S.Lam _ binder body -> do
+        findVariablesBinder binder $ findVariables body
+      S.Let _ bound binder body -> do
+        findVariables bound
+        findVariablesBinder binder $ findVariables body
 
+    findVariablesBinder :: (MonadTraverse m, MonadWriter [GeneralisableVariable] m) => S.Binder -> m () -> m ()
+    findVariablesBinder binder update = do
+      traverse_ findVariables binder
+      local (second (nameOf binder :)) update
+
+    registerVar :: (MonadTraverse m, MonadWriter [GeneralisableVariable] m) => Provenance -> Name -> m ()
+    registerVar p symbol = do
+      (freeCtx, boundCtx) <- ask
       when (Map.notMember symbol freeCtx && notElem (Just symbol) boundCtx) $ do
         tell [(p, symbol)]
-
-      return $ BoundVar p symbol
-
-    binderNoOp :: (MonadScopeExpr m) => Binder Name builtin -> m ()
-    binderNoOp _ = return ()
 
 generaliseOverVariables ::
   (MonadCompile m) =>
   [GeneralisableVariable] ->
-  Expr Name builtin ->
-  m (Expr Name builtin)
+  S.Expr ->
+  m S.Expr
 generaliseOverVariables vars e = fst <$> foldM generalise (e, mempty) vars
   where
     generalise ::
       (MonadCompile m) =>
-      (Expr Name builtin, Set Name) ->
+      (S.Expr, Set Name) ->
       GeneralisableVariable ->
-      m (Expr Name builtin, Set Name)
+      m (S.Expr, Set Name)
     generalise (expr, seenNames) (p, name)
       | name `Set.member` seenNames = return (expr, seenNames)
       | otherwise = do
           logDebug MaxDetail $
             "Generalising over unbound variable" <+> quotePretty name
-          let binderType = mkHole p ("typeOf[" <> name <> "]")
+          let binderType = S.mkHole p ("typeOf[" <> name <> "]")
           let binderDisplayForm = BinderDisplayForm (OnlyName name) True
           let binder = Binder p binderDisplayForm (Implicit True) Relevant binderType
-          let newExpr = Pi p binder expr
+          let newExpr = S.Pi p binder expr
           return (newExpr, Set.insert name seenNames)
 
 --------------------------------------------------------------------------------
@@ -151,11 +161,11 @@ type MonadScopeExpr m =
     MonadReader (DeclScopeCtx, LocalScopeCtx) m
   )
 
-scopeExpr :: (MonadScopeExpr m) => Expr Name builtin -> m (Expr Ix builtin)
+scopeExpr :: (MonadScopeExpr m) => S.Expr -> m (Expr Builtin)
 scopeExpr = traverseExpr scopeVar scopeBinder
 
 -- | Find the index for a given name of a given sort.
-scopeVar :: (MonadScopeExpr m) => VarUpdate m Name Ix
+scopeVar :: (MonadScopeExpr m) => VarUpdate m
 scopeVar p symbol = do
   (freeCtx, boundCtx) <- ask
 
@@ -166,10 +176,7 @@ scopeVar p symbol = do
       Nothing -> do
         throwError $ UnboundName p symbol
 
-scopeBinder ::
-  (MonadScopeExpr m) =>
-  Binder Name builtin ->
-  m ()
+scopeBinder :: (MonadScopeExpr m) => S.Binder -> m ()
 scopeBinder binder = case nameOf binder of
   Nothing -> return ()
   Just name -> do
@@ -189,11 +196,10 @@ type MonadTraverse m =
     MonadReader (DeclScopeCtx, LocalScopeCtx) m
   )
 
-type VarUpdate m var1 var2 =
-  forall builtin. Provenance -> var1 -> m (Expr var2 builtin)
+type VarUpdate m =
+  forall builtin. Provenance -> Name -> m (Expr builtin)
 
-type BinderUpdate m var1 =
-  forall builtin. Binder var1 builtin -> m ()
+type BinderUpdate m = S.Binder -> m ()
 
 type DeclScopeCtx = Map Name Identifier
 
@@ -201,26 +207,24 @@ type LocalScopeCtx = [Maybe Name]
 
 traverseExpr ::
   (MonadTraverse m) =>
-  VarUpdate m var1 var2 ->
-  BinderUpdate m var1 ->
-  Expr var1 builtin ->
-  m (Expr var2 builtin)
+  VarUpdate m ->
+  BinderUpdate m ->
+  S.Expr ->
+  m (Expr Builtin)
 traverseExpr f g e = do
   result <- case e of
-    BoundVar p v -> f p v
-    FreeVar p v -> return $ FreeVar p v
-    Universe p l -> return $ Universe p l
-    Meta p i -> return $ Meta p i
-    Hole p n -> return $ Hole p n
-    Builtin p op -> return $ Builtin p op
-    App fun args -> App <$> traverseExpr f g fun <*> traverse (traverse (traverseExpr f g)) args
-    Pi p binder res ->
+    S.Var p v -> f p v
+    S.Universe p -> return $ Universe p (UniverseLevel 0)
+    S.Hole p n -> return $ Hole p n
+    S.Builtin p op -> return $ Builtin p op
+    S.App fun args -> App <$> traverseExpr f g fun <*> traverse (traverse (traverseExpr f g)) args
+    S.Pi p binder res ->
       traverseBinder f g binder $ \binder' ->
         Pi p binder' <$> traverseExpr f g res
-    Lam p binder body -> do
+    S.Lam p binder body -> do
       traverseBinder f g binder $ \binder' ->
         Lam p binder' <$> traverseExpr f g body
-    Let p bound binder body -> do
+    S.Let p bound binder body -> do
       bound' <- traverseExpr f g bound
       traverseBinder f g binder $ \binder' ->
         Let p bound' binder' <$> traverseExpr f g body
@@ -229,11 +233,11 @@ traverseExpr f g e = do
 
 traverseBinder ::
   (MonadTraverse m) =>
-  VarUpdate m var1 var2 ->
-  BinderUpdate m var1 ->
-  Binder var1 builtin ->
-  (Binder var2 builtin -> m (Expr var2 builtin)) ->
-  m (Expr var2 builtin)
+  VarUpdate m ->
+  BinderUpdate m ->
+  S.Binder ->
+  (Binder Builtin -> m (Expr Builtin)) ->
+  m (Expr Builtin)
 traverseBinder f g binder update = do
   g binder
   binder' <- traverse (traverseExpr f g) binder
@@ -246,7 +250,7 @@ logScopeEntry e = do
   incrCallDepth
   logDebug MaxDetail $ "scope-entry" <+> prettyVerbose e -- <+> "in" <+> pretty ctx
 
-logScopeExit :: MonadTraverse m => Expr Ix -> m ()
+logScopeExit :: MonadTraverse m => Expr -> m ()
 logScopeExit e = do
   logDebug MaxDetail $ "scope-exit " <+> prettyVerbose e
   decrCallDepth
@@ -256,7 +260,7 @@ getImportCtx imports =
   Map.fromList $
     [getEntry d | imp <- imports, let Main ds = imp, d <- ds]
   where
-    getEntry :: Decl Ix builtin -> (Name, Identifier)
+    getEntry :: Decl builtin -> (Name, Identifier)
     getEntry d = do
       let ident = identifierOf d
       (nameOf ident, ident)

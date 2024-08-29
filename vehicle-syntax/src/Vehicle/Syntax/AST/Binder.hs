@@ -165,7 +165,10 @@ mapBinderNamingForm f Binder {..} =
       ..
     }
 
-mkDefaultBinder :: Name -> expr -> GenericBinder expr
-mkDefaultBinder name = Binder mempty displayForm Explicit Relevant
-  where
-    displayForm = BinderDisplayForm (OnlyName name) True
+mkDefaultBinderDisplayForm :: Maybe Name -> BinderDisplayForm
+mkDefaultBinderDisplayForm = \case
+  Just name -> BinderDisplayForm (OnlyName name) True
+  Nothing -> BinderDisplayForm OnlyType True
+
+mkDefaultBinder :: expr -> Maybe Name -> GenericBinder expr
+mkDefaultBinder typ name = Binder mempty (mkDefaultBinderDisplayForm name) Explicit Relevant typ

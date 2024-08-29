@@ -15,8 +15,7 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Meta.Variable
 import Vehicle.Compile.Type.Monad
-import Vehicle.Data.Builtin.Interface
-import Vehicle.Data.Expr.Value
+import Vehicle.Data.Code.Value
 
 class HasInstanceDefaults builtin where
   getCandidatesFromConstraint ::
@@ -36,7 +35,7 @@ type MonadInstanceDefault builtin m =
 -- | Tries to add new unification constraints using default values.
 addNewConstraintUsingDefaults ::
   (TCM builtin m, HasInstanceDefaults builtin) =>
-  Maybe (Decl Ix builtin) ->
+  Maybe (Decl builtin) ->
   m Bool
 addNewConstraintUsingDefaults maybeDecl = do
   logDebug MaxDetail $ "Temporarily stuck" <> line
@@ -63,7 +62,7 @@ addNewConstraintUsingDefaults maybeDecl = do
 getDefaultableConstraints ::
   forall builtin m.
   (MonadInstanceDefault builtin m) =>
-  Maybe (Decl Ix builtin) ->
+  Maybe (Decl builtin) ->
   m [WithContext (InstanceConstraint builtin)]
 getDefaultableConstraints maybeDecl = do
   typeClassConstraints <- getActiveInstanceConstraints

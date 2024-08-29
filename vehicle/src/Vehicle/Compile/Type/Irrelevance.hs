@@ -11,14 +11,13 @@ import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Data.Builtin.Interface
-import Vehicle.Data.DeBruijn
-import Vehicle.Data.Expr.Interface
+import Vehicle.Data.Code.Interface
 
 -- | Removes all irrelevant code from the program/expression.
 removeIrrelevantCodeFromProg ::
   (MonadCompile m, BuiltinHasStandardData builtin, PrintableBuiltin builtin) =>
-  Prog Ix builtin ->
-  m (Prog Ix builtin)
+  Prog builtin ->
+  m (Prog builtin)
 removeIrrelevantCodeFromProg x = do
   logCompilerPass MinDetail "removal of irrelevant code" $ do
     result <- remove x
@@ -44,7 +43,7 @@ instance (RemoveIrrelevantCode m expr) => RemoveIrrelevantCode m (GenericProg ex
 instance (RemoveIrrelevantCode m expr) => RemoveIrrelevantCode m (GenericDecl expr) where
   remove = traverse remove
 
-instance (BuiltinHasStandardData builtin) => RemoveIrrelevantCode m (Expr Ix builtin) where
+instance (BuiltinHasStandardData builtin) => RemoveIrrelevantCode m (Expr builtin) where
   remove expr = do
     -- showRemoveEntry expr
     result <- case expr of
@@ -85,12 +84,12 @@ removeArgs = traverse remove . filter isRelevant
 --------------------------------------------------------------------------------
 -- Debug functions
 
-showRemoveEntry :: (MonadRemove m) => Expr Ix builtin -> m ()
+showRemoveEntry :: (MonadRemove m) => Expr builtin -> m ()
 showRemoveEntry _e = do
   -- logDebug MaxDetail ("remove-entry" <+> prettyVerbose e)
   incrCallDepth
 
-showRemoveExit :: (MonadRemove m) => Expr Ix builtin -> m ()
+showRemoveExit :: (MonadRemove m) => Expr builtin -> m ()
 showRemoveExit _e = do
   -- logDebug MaxDetail ("remove-exit " <+> prettyVerbose e)
   decrCallDepth

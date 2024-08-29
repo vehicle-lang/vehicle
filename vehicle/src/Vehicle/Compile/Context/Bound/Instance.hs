@@ -3,6 +3,7 @@
 module Vehicle.Compile.Context.Bound.Instance where
 
 import Control.Monad.Except (MonadError (..))
+import Control.Monad.Identity (Identity (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..), asks, mapReaderT)
 import Control.Monad.State (MonadState (..))
 import Control.Monad.Writer
@@ -10,7 +11,6 @@ import Data.Bifunctor (Bifunctor (..))
 import Data.Data (Proxy)
 import Vehicle.Compile.Context.Bound.Class
 import Vehicle.Compile.Context.Bound.Core
-import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Prelude
 
 --------------------------------------------------------------------------------
@@ -21,17 +21,25 @@ newtype BoundContextT expr m a = BoundContextT
   }
   deriving (Functor, Applicative, Monad)
 
+type BoundContext expr a = BoundContextT expr Identity a
+
 -- | Runs a computation in the context monad allowing you to keep track of the
 -- context. Note that you must still call `addDeclToCtx` and `addBinderToCtx`
 -- manually in the right places.
 runBoundContextT :: (Monad m) => BoundCtx expr -> BoundContextT expr m a -> m a
 runBoundContextT ctx (BoundContextT contextFn) = runReaderT contextFn (ctx, 0)
 
+runBoundContext :: BoundCtx expr -> BoundContext expr a -> a
+runBoundContext ctx fn = runIdentity $ runBoundContextT ctx fn
+
 -- | Runs a computation in the context monad allowing you to keep track of the
 -- context. Note that you must still call `addDeclToCtx` and `addBinderToCtx`
 -- manually in the right places.
 runFreshBoundContextT :: (Monad m) => Proxy expr -> BoundContextT expr m a -> m a
 runFreshBoundContextT _ = runBoundContextT mempty
+
+runFreshBoundContext :: Proxy expr -> BoundContext expr a -> a
+runFreshBoundContext p fn = runIdentity $ runFreshBoundContextT p fn
 
 instance MonadTrans (BoundContextT expr) where
   lift = BoundContextT . lift
@@ -66,7 +74,7 @@ instance (MonadReader s m) => MonadReader s (BoundContextT expr m) where
   ask = lift ask
   local = mapBoundContextT . local
 
-instance (MonadCompile m) => MonadBoundContext expr (BoundContextT expr m) where
+instance (Monad m) => MonadBoundContext expr (BoundContextT expr m) where
   addBinderToContext binder cont = BoundContextT $ do
     local (first (binder :)) (unBoundContextT cont)
 

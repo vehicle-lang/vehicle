@@ -7,8 +7,8 @@ import GHC.Generics (Generic)
 import System.Console.ANSI (Color (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Standard.Core
-import Vehicle.Data.Expr.Boolean (MaybeTrivial (..))
-import Vehicle.Data.Expr.Interface
+import Vehicle.Data.Code.BooleanExpr (MaybeTrivial (..))
+import Vehicle.Data.Code.Interface
 import Vehicle.Data.QuantifiedVariable
 import Vehicle.Data.Tensor (RationalTensor)
 import Vehicle.Verify.Core
@@ -91,7 +91,7 @@ prettyUserVariableAssignment :: (OriginalUserVariable, RationalTensor) -> Doc a
 prettyUserVariableAssignment (OriginalUserVariable {..}, variableValue) =
   pretty userTensorVarName <> ":" <+> pretty variableValue
 
-assignmentToExpr :: TensorShape -> [Rational] -> Expr Ix Builtin
+assignmentToExpr :: TensorShape -> [Rational] -> Expr Builtin
 assignmentToExpr [] [x] = IRatLiteral mempty (toRational x)
 assignmentToExpr [] _ = developerError "Malformed tensor"
 assignmentToExpr (dim : dims) xs = do

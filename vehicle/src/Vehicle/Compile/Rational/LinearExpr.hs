@@ -14,9 +14,9 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Data.Builtin.Standard
-import Vehicle.Data.Expr.Interface
-import Vehicle.Data.Expr.Linear (LinearExpr, addExprs, constantExpr, isConstant, scaleExpr, singletonVarExpr)
-import Vehicle.Data.Expr.Value
+import Vehicle.Data.Code.Interface
+import Vehicle.Data.Code.LinearExpr (LinearExpr, addExprs, constantExpr, isConstant, scaleExpr, singletonVarExpr)
+import Vehicle.Data.Code.Value
 import Vehicle.Data.QuantifiedVariable
 import Vehicle.Data.Tensor (RationalTensor, Tensor (..), zeroTensor)
 import Prelude hiding (Applicative (..))

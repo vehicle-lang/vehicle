@@ -18,7 +18,7 @@ diagnoseNonLinearity ::
   forall m.
   (MonadCompile m) =>
   QueryFormatID ->
-  Prog Ix Builtin ->
+  Prog Builtin ->
   DeclProvenance ->
   m CompileError
 diagnoseNonLinearity queryFormat prog propertyProv@(propertyIdentifier, _) = do
@@ -45,7 +45,7 @@ diagnoseAlternatingQuantifiers ::
   forall m.
   (MonadCompile m) =>
   QueryFormatID ->
-  Prog Ix Builtin ->
+  Prog Builtin ->
   DeclProvenance ->
   m CompileError
 diagnoseAlternatingQuantifiers queryFormat prog propertyProv@(propertyIdentifier, _) = do
@@ -68,7 +68,7 @@ diagnoseAlternatingQuantifiers queryFormat prog propertyProv@(propertyIdentifier
     handleUnexpectedError err =
       throwError $ UnsupportedAlternatingQuantifiers queryFormat propertyProv (Left err)
 
-findDeclType :: (MonadCompile m) => Identifier -> Prog Ix builtin -> m (Expr Ix builtin)
+findDeclType :: (MonadCompile m) => Identifier -> Prog builtin -> m (Expr builtin)
 findDeclType ident (Main decls) = do
   let candidates = filter (\decl -> identifierOf decl == ident) decls
   case candidates of

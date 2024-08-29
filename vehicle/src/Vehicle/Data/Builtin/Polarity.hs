@@ -9,15 +9,15 @@ import Vehicle.Compile.Error (compilerDeveloperError)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Monad
+import Vehicle.Compile.Type.Monad.Class (TypableBuiltin (typeBuiltin))
 import Vehicle.Compile.Type.Subsystem.InputOutputInsertion
-import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Polarity.AnnotationRestrictions (assertUnquantifiedPolarity, checkNetworkType)
 import Vehicle.Data.Builtin.Polarity.Core
 import Vehicle.Data.Builtin.Polarity.Core as Core hiding (BuiltinFunction)
 import Vehicle.Data.Builtin.Polarity.Eval ()
 import Vehicle.Data.Builtin.Polarity.PolaritySolver
 import Vehicle.Data.Builtin.Polarity.Type
-import Vehicle.Data.Expr.Value
+import Vehicle.Data.Code.Value
 import Vehicle.Syntax.Builtin hiding (Builtin (..))
 import Vehicle.Syntax.Builtin qualified as S
 
@@ -44,7 +44,7 @@ freshPolarityMeta p = freshMetaExpr p (TypeUniverse p 0) mempty
 convertToPolarityTypes ::
   forall m.
   (MonadTypeChecker PolarityBuiltin m) =>
-  BuiltinUpdate m Ix S.Builtin PolarityBuiltin
+  BuiltinUpdate m S.Builtin PolarityBuiltin
 convertToPolarityTypes p b args = case b of
   S.BuiltinConstructor c -> return $ normAppList (Builtin p (BuiltinConstructor c)) args
   S.BuiltinFunction f -> return $ normAppList (Builtin p (BuiltinFunction f)) args

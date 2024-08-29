@@ -5,14 +5,14 @@ where
 
 import Data.Text qualified as Text
 import Vehicle.Data.Builtin.Polarity.Core
+import Vehicle.Data.Code.Expr
 import Vehicle.Data.DSL
-import Vehicle.Data.DeBruijn
-import Vehicle.Syntax.AST
+import Vehicle.Prelude
 import Vehicle.Syntax.Builtin hiding (Builtin (..))
 import Prelude hiding (pi)
 
 -- | Return the type of the provided builtin.
-typePolarityBuiltin :: Provenance -> PolarityBuiltin -> Type Ix PolarityBuiltin
+typePolarityBuiltin :: Provenance -> PolarityBuiltin -> Type PolarityBuiltin
 typePolarityBuiltin p b = fromDSL p $ case b of
   BuiltinConstructor c -> typeOfConstructor c
   BuiltinFunction f -> typeOfBuiltinFunction f

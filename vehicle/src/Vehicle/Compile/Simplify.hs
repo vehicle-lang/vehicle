@@ -3,11 +3,15 @@ module Vehicle.Compile.Simplify
   )
 where
 
-import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty (filter)
 import Data.Text qualified as Text
-import Vehicle.Compile.Prelude
-import Vehicle.Data.Builtin.Interface (PrintableBuiltin (isCoercion))
+import Vehicle.Data.Builtin.Standard.Core ()
+import Vehicle.Data.Code.Expr (PrintableBuiltin (..))
+import Vehicle.Syntax.AST.Arg
+import Vehicle.Syntax.AST.Expr
+import Vehicle.Syntax.AST.Relevance (Relevance (..))
+import Vehicle.Syntax.AST.Visibility (Visibility (..), visibilityOf)
 import Vehicle.Syntax.Builtin
 
 -- | Note that these operations can be seen as undoing parts of the type-checking,
@@ -19,76 +23,76 @@ class Simplify a where
   -- | Shortens vectors
   shortenVec :: a -> a
 
-instance Simplify (Prog Name Builtin) where
+instance Simplify Prog where
   uninsert = fmap uninsert
   shortenVec = fmap shortenVec
 
-instance Simplify (Decl Name Builtin) where
+instance Simplify Decl where
   uninsert = fmap uninsert
   shortenVec = fmap shortenVec
 
-instance Simplify (Expr Name Builtin) where
-  uninsert expr = case expr of
-    Universe {} -> expr
-    Hole {} -> expr
-    Meta {} -> expr
-    Builtin {} -> expr
-    BoundVar {} -> expr
-    FreeVar {} -> expr
-    Pi p binder result -> Pi p (uninsert binder) (uninsert result)
-    Let p bound binder body -> Let p (uninsert bound) (uninsert binder) (uninsert body)
-    Lam p binder body -> Lam p (uninsert binder) (uninsert body)
-    App fun args -> do
-      let fun' = uninsert fun
-      let args' = simplifyArgs args
-      -- Remove automatically inserted cast functions
-      if isLiteralCast fun' && not (null args')
-        then argExpr $ last args'
-        else normAppList fun' args'
+instance Simplify Expr where
+  uninsert = mapApp $ \fun args -> do
+    let fun' = uninsert fun
+    let args' = simplifyArgs args
+    -- Remove automatically inserted cast functions
+    if isLiteralCast fun' && not (null args')
+      then argExpr $ last args'
+      else normAppList fun' args'
 
-  shortenVec = mapBuiltins $ \p b args ->
-    case b of
-      BuiltinConstructor (LVec n) -> case getHeadMidTail args of
+  shortenVec = mapApp $ \fun args ->
+    case fun of
+      Builtin p (BuiltinConstructor LVec {}) -> case getHeadMidTail args of
         Just (firstArg, numberOfMiddleAgs, lastArg)
           | numberOfMiddleAgs > 3 ->
               normAppList
-                (Builtin p (BuiltinConstructor (LVec n)))
+                fun
                 [ firstArg,
-                  Arg p Explicit Relevant (FreeVar p (stdlibIdentifier ("<" <> n2 <> " more>"))),
+                  Arg p Explicit Relevant (Var p ("<" <> n2 <> " more>")),
                   lastArg
                 ]
           where
             n2 = Text.pack $ show $ length args - 2
-        _ -> normAppList (Builtin p b) args
-      _ -> normAppList (Builtin p b) args
+        _ -> App fun args
+      _ -> App fun args
     where
-      getHeadMidTail :: forall a. [a] -> Maybe (a, Int, a)
-      getHeadMidTail [] = Nothing
-      getHeadMidTail (x : xs) = go 0 xs
+      getHeadMidTail :: forall a. NonEmpty a -> Maybe (a, Int, a)
+      getHeadMidTail (x :| xs) = go 0 xs
         where
           go :: Int -> [a] -> Maybe (a, Int, a)
           go _ [] = Nothing
           go l [e] = Just (x, l, e)
           go l (_ : ys) = go (l + 1) ys
 
-instance Simplify (Binder Name Builtin) where
+instance Simplify Binder where
   uninsert = fmap uninsert
   shortenVec = fmap shortenVec
 
-instance Simplify (Arg Name Builtin) where
+instance Simplify Arg where
   uninsert = fmap uninsert
   shortenVec = fmap shortenVec
 
-simplifyArgs :: NonEmpty (Arg Name Builtin) -> [Arg Name Builtin]
+mapApp :: (Expr -> NonEmpty Arg -> Expr) -> Expr -> Expr
+mapApp f expr = case expr of
+  Universe {} -> expr
+  Hole {} -> expr
+  Builtin {} -> expr
+  Var {} -> expr
+  Pi p binder result -> Pi p (fmap (mapApp f) binder) (mapApp f result)
+  Let p bound binder body -> Let p (mapApp f bound) (fmap (mapApp f) binder) (mapApp f body)
+  Lam p binder body -> Lam p (fmap (mapApp f) binder) (mapApp f body)
+  App fun args -> f fun args
+
+simplifyArgs :: NonEmpty Arg -> [Arg]
 simplifyArgs = fmap uninsert . NonEmpty.filter (not . wasInserted)
 
-wasInserted :: Arg var builtin -> Bool
+wasInserted :: Arg -> Bool
 wasInserted arg = case visibilityOf arg of
   Implicit True -> True
   Instance True -> True
   _ -> False
 
-isLiteralCast :: Expr var Builtin -> Bool
+isLiteralCast :: Expr -> Bool
 isLiteralCast = \case
   Builtin _ b -> isCoercion b
   _ -> False

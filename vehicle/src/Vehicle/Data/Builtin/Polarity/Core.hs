@@ -5,14 +5,13 @@ import Data.Hashable (Hashable (..))
 import Data.List.NonEmpty (NonEmpty)
 import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
-import Prettyprinter (Pretty (..), (<+>))
 import Vehicle.Data.Builtin.Interface
+import Vehicle.Data.Builtin.Standard.Core qualified as S
+import Vehicle.Data.Code.Expr
+import Vehicle.Data.Code.Value
 import Vehicle.Data.DSL
-import Vehicle.Data.Expr.Value
-import Vehicle.Prelude (layoutAsText)
-import Vehicle.Syntax.AST
+import Vehicle.Prelude
 import Vehicle.Syntax.Builtin hiding (Builtin (BuiltinConstructor, BuiltinFunction))
-import Vehicle.Syntax.Builtin qualified as S
 
 --------------------------------------------------------------------------------
 -- PolarityProvenance
@@ -126,6 +125,15 @@ instance Pretty PolarityBuiltin where
     Polarity l -> pretty l
     PolarityRelation c -> pretty c
 
+instance ConvertableBuiltin PolarityBuiltin S.Builtin where
+  convertBuiltin p = \case
+    BuiltinConstructor c -> Builtin p (S.BuiltinConstructor c)
+    BuiltinFunction f -> Builtin p (S.BuiltinFunction f)
+    b -> cheatConvertBuiltin p $ pretty b
+
+instance PrintableBuiltin PolarityBuiltin where
+  isCoercion = const False
+
 instance BuiltinHasStandardData PolarityBuiltin where
   mkBuiltinFunction = BuiltinFunction
   getBuiltinFunction = \case
@@ -163,19 +171,10 @@ instance BuiltinHasRatLiterals PolarityBuiltin where
     _ -> Nothing
   mkRatBuiltinLit x = BuiltinConstructor (LRat x)
 
-instance ConvertableBuiltin PolarityBuiltin S.Builtin where
-  convertBuiltin p = \case
-    BuiltinConstructor c -> Builtin p (S.BuiltinConstructor c)
-    BuiltinFunction f -> Builtin p (S.BuiltinFunction f)
-    b -> FreeVar p $ stdlibIdentifier (layoutAsText $ pretty b)
-
-instance PrintableBuiltin PolarityBuiltin where
-  isCoercion = const False
-
 -----------------------------------------------------------------------------
 -- Type synonyms
 
-pattern PolarityExpr :: Provenance -> Polarity -> Expr var PolarityBuiltin
+pattern PolarityExpr :: Provenance -> Polarity -> Expr PolarityBuiltin
 pattern PolarityExpr p pol = Builtin p (Polarity pol)
 
 pattern VPolarityExpr :: Polarity -> WHNFValue PolarityBuiltin

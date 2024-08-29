@@ -12,7 +12,7 @@ import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.ExpandResources.Dataset.IDX (readIDX)
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Standard
-import Vehicle.Data.Expr.Value
+import Vehicle.Data.Code.Value
 
 --------------------------------------------------------------------------------
 -- Dataset parsing

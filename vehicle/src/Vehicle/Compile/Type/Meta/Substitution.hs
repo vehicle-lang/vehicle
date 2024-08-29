@@ -13,7 +13,7 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Meta.Variable (MetaInfo (..))
-import Vehicle.Data.Expr.Value
+import Vehicle.Data.Code.Value
 
 --------------------------------------------------------------------------------
 -- Substitution operation
@@ -45,7 +45,7 @@ instance (MetaSubstitutable m builtin a) => MetaSubstitutable m builtin (Generic
 instance (MetaSubstitutable m builtin a) => MetaSubstitutable m builtin (GenericBinder a) where
   subst s = traverse (subst s)
 
-instance MetaSubstitutable m builtin (Expr Ix builtin) where
+instance MetaSubstitutable m builtin (Expr builtin) where
   subst s expr =
     -- logCompilerPass MaxDetail (prettyVerbose ex) $
     case expr of
@@ -69,8 +69,8 @@ substApp ::
   forall builtin m.
   (MonadFreeContext builtin m, NormalisableBuiltin builtin) =>
   MetaSubstitution builtin ->
-  (Expr Ix builtin, [Arg Ix builtin]) ->
-  m (Expr Ix builtin)
+  (Expr builtin, [Arg builtin]) ->
+  m (Expr builtin)
 substApp s (fun@(Meta _ m), mArgs) = do
   case MetaMap.lookup m s of
     Nothing -> normAppList fun <$> subst s mArgs

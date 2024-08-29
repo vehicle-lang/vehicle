@@ -16,7 +16,6 @@ import Data.Text (Text)
 import Vehicle.Syntax.AST
 import Vehicle.Syntax.BNFC.Elaborate.External
 import Vehicle.Syntax.BNFC.Utils (ParseLocation)
-import Vehicle.Syntax.Builtin
 import Vehicle.Syntax.External.Abs qualified as External (Expr, Prog)
 import Vehicle.Syntax.External.Layout as External (resolveLayout)
 import Vehicle.Syntax.External.Lex as External (Token)
@@ -30,10 +29,10 @@ readAndParseProg :: (MonadError ParseError m) => ParseLocation -> Text -> m Part
 readAndParseProg modul txt =
   castBNFCError (partiallyElabProg modul) (parseExternalProg txt)
 
-parseDecl :: (MonadError ParseError m) => ParseLocation -> PartiallyParsedDecl -> m (Decl Name Builtin)
+parseDecl :: (MonadError ParseError m) => ParseLocation -> PartiallyParsedDecl -> m Decl
 parseDecl = elaborateDecl
 
-parseExpr :: (MonadError ParseError m) => ParseLocation -> UnparsedExpr -> m (Expr Name Builtin)
+parseExpr :: (MonadError ParseError m) => ParseLocation -> UnparsedExpr -> m Expr
 parseExpr = elaborateExpr
 
 readExpr :: (MonadError ParseError m) => Text -> m UnparsedExpr

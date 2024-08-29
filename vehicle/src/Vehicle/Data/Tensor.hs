@@ -9,7 +9,7 @@ import Data.List.Split (chunksOf)
 import Data.Vector (Vector)
 import Data.Vector qualified as Vector
 import GHC.Generics (Generic)
-import Vehicle.Data.Expr.Linear
+import Vehicle.Data.Code.LinearExpr
 import Vehicle.Prelude
 
 --------------------------------------------------------------------------------

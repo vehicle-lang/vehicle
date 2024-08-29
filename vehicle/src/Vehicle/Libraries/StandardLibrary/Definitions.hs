@@ -7,7 +7,6 @@ import Data.Maybe (isJust)
 import Data.Text (pack)
 import GHC.Generics (Generic)
 import Vehicle.Prelude
-import Vehicle.Syntax.AST
 import Vehicle.Syntax.Builtin
 
 pattern TensorIdent :: Identifier
@@ -64,6 +63,9 @@ instance Hashable StdLibFunction
 
 instance HasIdentifier StdLibFunction where
   identifierOf f = stdlibIdentifier $ pack $ show f
+
+instance HasName StdLibFunction Name where
+  nameOf = nameOf . identifierOf
 
 stdLibFunctions :: Map Name StdLibFunction
 stdLibFunctions = Map.fromList $ fmap (\f -> (pack $ show f, f)) [minBound .. maxBound]

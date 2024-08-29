@@ -10,14 +10,14 @@ import Vehicle.Data.Builtin.Loss.Core
 import Vehicle.Data.Builtin.Standard.Core (Builtin)
 import Vehicle.Data.Builtin.Tensor (TensorBuiltin)
 import Vehicle.Data.Builtin.Tensor qualified as T
-import Vehicle.Data.Expr.Value (BoundEnv, NFValue, Spine, VBinder, VDecl, Value (..), WHNFClosure (..))
+import Vehicle.Data.Code.Value (BoundEnv, NFValue, Spine, VBinder, VDecl, Value (..), WHNFClosure (..))
 import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (..))
 
 --------------------------------------------------------------------------------
 -- Closures
 
 data LossClosure
-  = LossClosure (BoundEnv MixedClosure LossBuiltin) (Expr Ix LossBuiltin)
+  = LossClosure (BoundEnv MixedClosure LossBuiltin) (Expr LossBuiltin)
 
 -- | Okay, so closures for loss functions are complicated. How compilation
 -- currently works is that we first do standard normalisation on the `Builtin`
