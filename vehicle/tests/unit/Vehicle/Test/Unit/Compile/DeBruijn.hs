@@ -5,7 +5,6 @@ import Test.Tasty.HUnit (assertBool)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Data.Code.Interface
-import Vehicle.Data.DeBruijn (liftDBIndices, substDBInto)
 import Vehicle.Syntax.Builtin
 import Vehicle.Test.Unit.Common (unitTestCase)
 
