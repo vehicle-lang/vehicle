@@ -66,11 +66,7 @@ instance NoThunks DefAbstractSort
 instance NoThunks Annotation
 
 -- Vehicle.Syntax.AST.Expr
-instance NoThunks UniverseLevel
-instance (NoThunks var, NoThunks builtin) => NoThunks (Expr builtin)
-
--- Vehicle.Data.Meta
-instance NoThunks MetaID
+instance NoThunks Expr
 
 -- Vehicle.Syntax.AST.Name
 instance NoThunks Module
