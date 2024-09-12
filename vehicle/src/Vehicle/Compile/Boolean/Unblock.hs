@@ -80,9 +80,11 @@ unblockNonVector actions expr = case expr of
   IIf {} -> return expr
   IForall {} -> return expr
   IExists {} -> return expr
+  -- Can be removed?
   IVectorEqualFull spine@(IVecEqSpine t _ _ _ _ _)
     | isRatTensor (argExpr t) -> return expr
     | otherwise -> appHiddenStdlibDef StdEqualsVector spine
+  -- Can be removed?
   IVectorNotEqualFull spine@(IVecEqSpine t _ _ _ _ _)
     | isRatTensor (argExpr t) -> return expr
     | otherwise -> appHiddenStdlibDef StdNotEqualsVector spine
@@ -137,8 +139,8 @@ unblockNonVectorOp2 ::
 unblockNonVectorOp2 actions b evalOp2 x y implArgs = do
   x' <- unblockNonVector actions x
   y' <- unblockNonVector actions y
-  flip liftIf x' $ \x'' ->
-    flip liftIf y' $ \y'' ->
+  liftIf x' $ \x'' ->
+    liftIf y' $ \y'' ->
       forceEvalSimple b evalOp2 (implArgs <> [explicit x'', explicit y''])
 
 unblockVectorOp2 ::
@@ -164,7 +166,7 @@ unblockFoldVector ::
   m (WHNFValue Builtin)
 unblockFoldVector actions t1 t2 n f e xs = do
   xs' <- unblockVector actions True xs
-  flip liftIf xs' $ \xs'' ->
+  liftIf xs' $ \xs'' ->
     forceEval FoldVector (evalFoldVector normaliseApp) [t1, t2, n, explicit f, explicit e, explicit xs'']
 
 unblockMapVector ::
@@ -178,7 +180,7 @@ unblockMapVector ::
   m (WHNFValue Builtin)
 unblockMapVector actions t1 t2 n f xs = do
   xs' <- unblockVector actions True xs
-  flip liftIf xs' $ \xs'' ->
+  liftIf xs' $ \xs'' ->
     forceEval MapVector (evalMapVector normaliseApp) [t1, t2, n, explicit f, explicit xs'']
 
 unblockZipWith ::
@@ -195,8 +197,8 @@ unblockZipWith ::
 unblockZipWith actions t1 t2 t3 n f xs ys = do
   xs' <- unblockVector actions True xs
   ys' <- unblockVector actions True ys
-  flip liftIf xs' $ \xs'' ->
-    flip liftIf ys' $ \ys'' ->
+  liftIf xs' $ \xs'' ->
+    liftIf ys' $ \ys'' ->
       forceEval ZipWithVector (evalZipWith normaliseApp) [t1, t2, t3, n, explicit f, explicit xs'', explicit ys'']
 
 unblockAt ::
@@ -211,7 +213,7 @@ unblockAt ::
 unblockAt actions t n c i = case c of
   IVecLiteral {} -> do
     i' <- unblockNonVector actions i
-    flip liftIf i' $ \i'' -> do
+    liftIf i' $ \i'' -> do
       forceEvalSimple At evalAt [t, n, explicit c, explicit i'']
   IMapVector _ _ t2 f xs -> appAt f [(t2, n, xs)] i
   IZipWithVector t1 t2 _ _ f xs ys -> appAt f [(t1, n, xs), (t2, n, ys)] i
@@ -247,7 +249,7 @@ unblockIndices ::
   m (WHNFValue Builtin)
 unblockIndices actions n = do
   n' <- unblockNonVector actions n
-  flip liftIf n' $ \n'' ->
+  liftIf n' $ \n'' ->
     forceEvalSimple Indices (evalIndices (VBuiltinFunction Indices)) (explicit <$> [n''])
 
 forceEval ::
@@ -366,8 +368,8 @@ purifyRatOp2 ::
 purifyRatOp2 actions mkOp evalOp2 x y = do
   x' <- purify actions x
   y' <- purify actions y
-  flip liftIf x' $ \x'' ->
-    flip liftIf y' $ \y'' ->
+  liftIf x' $ \x'' ->
+    liftIf y' $ \y'' ->
       return $ evalOp2 (mkOp x'' y'') [explicit x'', explicit y'']
 
 purifyNegRat ::
@@ -377,7 +379,7 @@ purifyNegRat ::
   m (WHNFValue Builtin)
 purifyNegRat actions x = do
   x' <- purify actions x
-  flip liftIf x' $ \x'' ->
+  liftIf x' $ \x'' ->
     return $ evalNegRat (INeg NegRat x'') [explicit x'']
 
 traverseVectorOp2 ::
@@ -391,8 +393,8 @@ traverseVectorOp2 ::
 traverseVectorOp2 f fn spinePrefix xs ys = do
   xs' <- f xs
   ys' <- f ys
-  flip liftIf xs' $ \xs'' ->
-    flip liftIf ys' $ \ys'' -> do
+  liftIf xs' $ \xs'' ->
+    liftIf ys' $ \ys'' -> do
       let newSpine = spinePrefix <> (Arg mempty Explicit Relevant <$> [xs'', ys''])
       case (xs'', ys'') of
         (IVecLiteral {}, IVecLiteral {}) -> appHiddenStdlibDef fn newSpine
