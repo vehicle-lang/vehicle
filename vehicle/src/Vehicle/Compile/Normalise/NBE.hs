@@ -165,9 +165,7 @@ evalApp freeEnv fun args@(a : as) = do
           visibilityError currentPass (prettyVerbose fun) (prettyVerbose args)
       | otherwise -> do
           body' <- evalClosure freeEnv closure (binder, argExpr a)
-          case as of
-            [] -> return body'
-            (b : bs) -> evalApp freeEnv body' (b : bs)
+          evalApp freeEnv body' as
     VUniverse {} -> unexpectedExprError currentPass ("VUniverse" <+> prettyVerbose args)
     VPi {} -> unexpectedExprError currentPass ("VPi" <+> prettyVerbose args)
 
