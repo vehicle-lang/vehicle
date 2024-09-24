@@ -72,9 +72,6 @@ calculate the maximum score and then require it to be less than 0.2:
 
 .. code-block:: agda
 
-   max : Rat -> Rat -> Rat
-   max x y = if x <= y then x else y
-
    largestScore : Tensor Rat [10] -> Rat
    largestScore xs = fold max 0 xs
 
@@ -82,9 +79,9 @@ calculate the maximum score and then require it to be less than 0.2:
    isUncertainAbout x = largestScore (classify x) <= 0.2
 
 However, this definition would experience an exponential blow-up when
-compiled down to low-level verification queries, as each branch of the
-10 :code:`if` statements would need to be explored. In total 1024 queries
-would be generated.
+compiled down to low-level verification queries, as :code:`max` is compiled down
+to an :code:`if` statement and each branch of the 10 :code:`if` statements would
+need to be explored. In total 1024 queries would be generated.
 
 This blow-up can be avoided by instead using a "relational" approach to
 encoding the constraint, instead stating that all classes scores must be less
