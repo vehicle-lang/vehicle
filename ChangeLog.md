@@ -1,5 +1,9 @@
 # Changelog for Vehicle
 
+## Version 0.15
+
+* Added functions `min` and `max` over rationals.
+
 ## Version 0.14.1
 
 * Removed `Explicit` as a command line compilation target option as it never worked.
