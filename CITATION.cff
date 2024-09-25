@@ -14,11 +14,11 @@ authors:
     given-names: "Marco"
   - family-names: "Komendantskaya"
     given-names: "Ekaterina"
-version: "0.14.1"
-date-released: "2024-06-14"
+version: "0.15.0"
+date-released: "2024-09-25"
 license: "MIT"
 type: "software"
-repository-artifact: "https://github.com/vehicle-lang/vehicle/releases/tag/v0.14.1"
+repository-artifact: "https://github.com/vehicle-lang/vehicle/releases/tag/v0.15.0"
 repository-code: "https://github.com/vehicle-lang/vehicle"
 references:
   - authors:
