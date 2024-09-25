@@ -80,6 +80,12 @@ references:
     url: "https://arxiv.org/abs/2202.05207"
 identifiers:
   - type: url
+    value: "https://github.com/vehicle-lang/vehicle/releases/tag/v0.15.0"
+    description: "The GitHub release URL of tag v0.15.0."
+  - type: url
+    value: "https://pypi.org/project/vehicle-lang/0.15.0/"
+    description: "The PyPI release URL of version 0.15.0."
+  - type: url
     value: "https://github.com/vehicle-lang/vehicle/releases/tag/v0.14.1"
     description: "The GitHub release URL of tag v0.14.1."
   - type: url
