@@ -170,20 +170,28 @@ the set of operations supported by ``Index`` types is extremely limited:
      - Example
    * - Less than or equal
      - :code:`<=`
-     - :code:`Index d -> Index d -> Bool`
+     - :code:`Index d1 -> Index d2 -> Bool`
      - :code:`x <= y`
    * - Less than
      - :code:`<`
-     - :code:`Index d -> Index d -> Bool`
+     - :code:`Index d1 -> Index d2 -> Bool`
      - :code:`x < y`
    * - Greater than or equal
      - :code:`>=`
-     - :code:`Index d -> Index d -> Bool`
+     - :code:`Index d1 -> Index d2 -> Bool`
      - :code:`x >= y`
    * - Greater than
      - :code:`>`
-     - :code:`Index d -> Index d -> Bool`
+     - :code:`Index d1 -> Index d2 -> Bool`
      - :code:`x >= y`
+   * - Min
+     - :code:`min`
+     - :code:`Index d1 -> Index d2 -> Bool`
+     - :code:`min x y`
+   * - Max
+     - :code:`max`
+     - :code:`Index d1 -> Index d2 -> Bool`
+     - :code:`max x y`
 
 Non-constant sizes
 ------------------

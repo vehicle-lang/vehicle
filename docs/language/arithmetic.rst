@@ -49,6 +49,14 @@ The available operations over naturals are:
      - :code:`>`
      - :code:`Nat -> Nat -> Bool`
      - :code:`x >= y`
+   * - Min
+     - :code:`min`
+     - :code:`Nat -> Nat -> Bool`
+     - :code:`min x y`
+   * - Max
+     - :code:`max`
+     - :code:`Nat -> Nat -> Bool`
+     - :code:`max x y`
 
 Note that inequalities can be chained, so that ``x < y <= z`` will be
 expanded to ``x < y and y <= z``.
@@ -105,6 +113,14 @@ The available operations over rationals are:
      - :code:`>`
      - :code:`Rat -> Rat -> Bool`
      - :code:`x >= y`
+   * - Min
+     - :code:`min`
+     - :code:`Rat -> Rat -> Bool`
+     - :code:`min x y`
+   * - Max
+     - :code:`max`
+     - :code:`Rat -> Rat -> Bool`
+     - :code:`max x y`
 
 
 .. note::
