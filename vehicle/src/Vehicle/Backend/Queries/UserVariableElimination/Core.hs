@@ -278,18 +278,6 @@ instance Pretty Assertion where
     RationalIneq ineq -> pretty ineq
     TensorEq eq -> pretty eq
 
-checkTriviality :: Assertion -> MaybeTrivial Assertion
-checkTriviality ass = case ass of
-  RationalEq RationalEquality {..} -> case isConstant rationalEqExpr of
-    Nothing -> NonTrivial ass
-    Just d -> Trivial (d == 0)
-  RationalIneq RationalInequality {..} -> case isConstant rationalIneqExpr of
-    Nothing -> NonTrivial ass
-    Just d -> Trivial ((if strictness == Strict then (<) else (<=)) d 0)
-  TensorEq TensorEquality {..} -> case isConstant tensorEqExpr of
-    Nothing -> NonTrivial ass
-    Just d -> Trivial (isZero d)
-
 prettyAssertions :: [Assertion] -> Doc a
 prettyAssertions assertions =
   vsep (fmap pretty assertions)
@@ -349,6 +337,18 @@ mapAssertionExprs ft fr ass = checkTriviality $ case ass of
   TensorEq TensorEquality {..} -> TensorEq $ TensorEquality $ ft tensorEqExpr
   RationalEq RationalEquality {..} -> RationalEq $ RationalEquality $ fr rationalEqExpr
   RationalIneq RationalInequality {..} -> RationalIneq $ RationalInequality strictness (fr rationalIneqExpr)
+
+checkTriviality :: Assertion -> MaybeTrivial Assertion
+checkTriviality ass = case ass of
+  RationalEq RationalEquality {..} -> case isConstant rationalEqExpr of
+    Nothing -> NonTrivial ass
+    Just d -> Trivial (d == 0)
+  RationalIneq RationalInequality {..} -> case isConstant rationalIneqExpr of
+    Nothing -> NonTrivial ass
+    Just d -> Trivial ((if strictness == Strict then (<) else (<=)) d 0)
+  TensorEq TensorEquality {..} -> case isConstant tensorEqExpr of
+    Nothing -> NonTrivial ass
+    Just d -> Trivial (isZero d)
 
 substituteTensorEq ::
   (OriginalUserVariable, LinearExpr TensorVariable RationalTensor) ->
@@ -514,7 +514,7 @@ lookupVarByLevel :: (MonadState GlobalCtx m) => Lv -> m Variable
 lookupVarByLevel lv = do
   GlobalCtx {..} <- get
   case LinkedHashMap.lookup lv globalBoundVarCtx of
-    Nothing -> developerError "Cannout find variable var"
+    Nothing -> developerError "Cannot find variable var"
     Just v -> return v
 
 getReducedVariableExprFor :: (MonadState GlobalCtx m) => Lv -> m (Maybe (WHNFValue QueryBuiltin))

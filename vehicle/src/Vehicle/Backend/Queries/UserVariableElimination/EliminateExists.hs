@@ -96,9 +96,9 @@ solveTensorVariable userTensorVar solutions = \case
     foldlM (solveExists fromRationalAssertion solveRationalVariable) initial userRationalVars
   Inequalities {} ->
     compilerDeveloperError $
-      "When trying to solve rational variable"
+      "When trying to solve tensor variable"
         <+> quotePretty userTensorVar
-        <+> "found unexpected tensor inequalities."
+        <+> "found unexpected rational inequalities."
 
 --------------------------------------------------------------------------------
 -- UserRationalVariables and equalities/constraints

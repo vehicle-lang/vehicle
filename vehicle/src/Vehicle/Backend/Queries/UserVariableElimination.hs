@@ -73,21 +73,18 @@ eliminateUserVariables = go
       -- Mixed cases --
       -----------------
       -- In the next three cases, we can only fail to unblock these cases because
-      -- we can't evaluate networks applied to constant arguments.
+      -- we can't evaluate networks applied to constant arguments or because of if statements.
       --
       -- (if (forall x . f x > 0) then x else 0) > 0
       --
-      -- When we have that ability then  case can be turned to an error.
-      -- These cases can happen, e.g.
+      -- When we have the ability to evaluate networks then this case can be turned to a
+      -- call to purify..
       INot {} -> compileUnquantifiedQuerySet expr
       IEqual {} -> compileUnquantifiedQuerySet expr
       INotEqual {} -> compileUnquantifiedQuerySet expr
       IOrder {} -> compileUnquantifiedQuerySet expr
       IVectorEqual {} -> compileUnquantifiedQuerySet expr
       IVectorNotEqual {} -> compileUnquantifiedQuerySet expr
-      -- This final case can only occur at all because
-      -- we can't evaluate networks applied to constant arguments.
-      -- When we have that ability we can replace it with an error.
       _ -> compileUnquantifiedQuerySet expr
 
 compileQuantifiedQuerySet ::

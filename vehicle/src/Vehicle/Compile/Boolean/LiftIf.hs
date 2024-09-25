@@ -18,18 +18,18 @@ import Vehicle.Data.Code.Value
 
 liftIf ::
   (Monad m) =>
-  (WHNFValue Builtin -> m (WHNFValue Builtin)) ->
   WHNFValue Builtin ->
+  (WHNFValue Builtin -> m (WHNFValue Builtin)) ->
   m (WHNFValue Builtin)
-liftIf k (IIf t cond e1 e2) = IIf t cond <$> liftIf k e1 <*> liftIf k e2
-liftIf k e = k e
+liftIf (IIf t cond e1 e2) k = IIf t cond <$> liftIf e1 k <*> liftIf e2 k
+liftIf e k = k e
 
 liftIfArg ::
   (Monad m) =>
-  (WHNFArg Builtin -> m (WHNFValue Builtin)) ->
   WHNFArg Builtin ->
+  (WHNFArg Builtin -> m (WHNFValue Builtin)) ->
   m (WHNFValue Builtin)
-liftIfArg k (Arg p v r e) = liftIf (k . Arg p v r) e
+liftIfArg (Arg p v r e) k = liftIf e (k . Arg p v r)
 
 liftIfSpine ::
   (Monad m) =>
@@ -37,7 +37,7 @@ liftIfSpine ::
   (WHNFSpine Builtin -> m (WHNFValue Builtin)) ->
   m (WHNFValue Builtin)
 liftIfSpine [] k = k []
-liftIfSpine (x : xs) k = liftIfArg (\a -> liftIfSpine xs (\as -> k (a : as))) x
+liftIfSpine (x : xs) k = liftIfArg x (\a -> liftIfSpine xs (\as -> k (a : as)))
 
 unfoldIf ::
   (Monad m, MonadFreeContext Builtin m) =>
