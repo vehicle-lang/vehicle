@@ -186,7 +186,7 @@ lookupIxValueInEnv ::
   Ix ->
   Value builtin
 lookupIxValueInEnv boundEnv ix = do
-  snd $ lookupIxInBoundCtx currentPass ix boundEnv
+  snd $ lookupIxInBoundCtx ix boundEnv
 
 -----------------------------------------------------------------------------
 -- Other

@@ -6,7 +6,6 @@ import Data.List (sortOn)
 import Data.List.NonEmpty (NonEmpty, sort)
 import Data.Set qualified as Set
 import Vehicle.Data.Assertion (UnderConstrainedVariableStatus, prettyUnderConstrainedVariable)
-import Vehicle.Data.QuantifiedVariable
 import Vehicle.Prelude
 import Vehicle.Prelude.Warning
 import Vehicle.Verify.Core
@@ -79,7 +78,7 @@ instance Pretty SummarisedCompileWarning where
         <> line
         <> indent 2 (vsep $ fmap prettyQueries (sortOn (\(qs, _) -> sort qs) varsByQueryID))
       where
-        prettyQueries :: (NonEmpty QueryID, [(NetworkElementVariable, UnderConstrainedVariableStatus)]) -> Doc a
+        prettyQueries :: (NonEmpty QueryID, [(Name, UnderConstrainedVariableStatus)]) -> Doc a
         prettyQueries (queryIDs, vars) =
           "In" <+> prettyQueryIDs queryIDs
             <> ":"

@@ -7,77 +7,102 @@
         "queries": {
           "unDisjunctAll": [
             {
-              "variableReconstruction": [
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      1,
-                      1
-                    ],
-                    "classifier₀[input]",
-                    [
-                      "classifier₀[input]!0!0"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      2
-                    ],
-                    "classifier₀[output]",
-                    [
-                      "classifier₀[output]!0",
-                      "classifier₀[output]!1"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "SolveTensorEquality",
-                  "contents": [
+              "variableReconstruction": {
+                "variableStore": [
+                  [
+                    0,
                     "perturbation",
-                    {
-                      "constantValue": {
-                        "value": [
-                          {
-                            "numerator": 1,
+                    null
+                  ],
+                  [
+                    1,
+                    "perturbation!0!0",
+                    null
+                  ],
+                  [
+                    2,
+                    "classifier₀[input]",
+                    null
+                  ],
+                  [
+                    3,
+                    "classifier₀[input]!0!0",
+                    "x0"
+                  ],
+                  [
+                    4,
+                    "classifier₀[output]",
+                    null
+                  ],
+                  [
+                    5,
+                    "classifier₀[output]!0",
+                    "y0"
+                  ],
+                  [
+                    6,
+                    "classifier₀[output]!1",
+                    "y1"
+                  ]
+                ],
+                "reconstructionSteps": [
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        1,
+                        1
+                      ],
+                      2,
+                      [
+                        3
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        2
+                      ],
+                      4,
+                      [
+                        5,
+                        6
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "SolveTensorEquality",
+                    "contents": [
+                      0,
+                      {
+                        "constantValue": {
+                          "value": [
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ],
+                          "tag": "Tensor",
+                          "shape": [
+                            1,
+                            1
+                          ]
+                        },
+                        "coefficients": {
+                          "2": {
+                            "numerator": -1,
                             "denominator": 1
                           }
-                        ],
-                        "tag": "Tensor",
-                        "shape": [
-                          1,
-                          1
-                        ]
-                      },
-                      "coefficients": {
-                        "classifier₀[input]": {
-                          "numerator": -1,
-                          "denominator": 1
                         }
                       }
-                    }
-                  ]
-                }
-              ],
-              "queryVariableMapping": [
-                [
-                  "x0",
-                  "classifier₀[input]!0!0"
-                ],
-                [
-                  "y0",
-                  "classifier₀[output]!0"
-                ],
-                [
-                  "y1",
-                  "classifier₀[output]!1"
+                    ]
+                  }
                 ]
-              ],
+              },
               "queryAddress": [
                 {
                   "propertyName": "robust",

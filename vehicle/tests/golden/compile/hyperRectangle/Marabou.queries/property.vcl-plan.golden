@@ -7,336 +7,535 @@
         "queries": {
           "unDisjunctAll": [
             {
-              "variableReconstruction": [
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      30
-                    ],
-                    "classifier₀[input]",
-                    [
-                      "classifier₀[input]!0",
-                      "classifier₀[input]!1",
-                      "classifier₀[input]!2",
-                      "classifier₀[input]!3",
-                      "classifier₀[input]!4",
-                      "classifier₀[input]!5",
-                      "classifier₀[input]!6",
-                      "classifier₀[input]!7",
-                      "classifier₀[input]!8",
-                      "classifier₀[input]!9",
-                      "classifier₀[input]!10",
-                      "classifier₀[input]!11",
-                      "classifier₀[input]!12",
-                      "classifier₀[input]!13",
-                      "classifier₀[input]!14",
-                      "classifier₀[input]!15",
-                      "classifier₀[input]!16",
-                      "classifier₀[input]!17",
-                      "classifier₀[input]!18",
-                      "classifier₀[input]!19",
-                      "classifier₀[input]!20",
-                      "classifier₀[input]!21",
-                      "classifier₀[input]!22",
-                      "classifier₀[input]!23",
-                      "classifier₀[input]!24",
-                      "classifier₀[input]!25",
-                      "classifier₀[input]!26",
-                      "classifier₀[input]!27",
-                      "classifier₀[input]!28",
-                      "classifier₀[input]!29"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      2
-                    ],
-                    "classifier₀[output]",
-                    [
-                      "classifier₀[output]!0",
-                      "classifier₀[output]!1"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "SolveTensorEquality",
-                  "contents": [
+              "variableReconstruction": {
+                "variableStore": [
+                  [
+                    0,
                     "x",
-                    {
-                      "constantValue": {
-                        "value": [
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
+                    null
+                  ],
+                  [
+                    1,
+                    "x!0",
+                    null
+                  ],
+                  [
+                    2,
+                    "x!1",
+                    null
+                  ],
+                  [
+                    3,
+                    "x!2",
+                    null
+                  ],
+                  [
+                    4,
+                    "x!3",
+                    null
+                  ],
+                  [
+                    5,
+                    "x!4",
+                    null
+                  ],
+                  [
+                    6,
+                    "x!5",
+                    null
+                  ],
+                  [
+                    7,
+                    "x!6",
+                    null
+                  ],
+                  [
+                    8,
+                    "x!7",
+                    null
+                  ],
+                  [
+                    9,
+                    "x!8",
+                    null
+                  ],
+                  [
+                    10,
+                    "x!9",
+                    null
+                  ],
+                  [
+                    11,
+                    "x!10",
+                    null
+                  ],
+                  [
+                    12,
+                    "x!11",
+                    null
+                  ],
+                  [
+                    13,
+                    "x!12",
+                    null
+                  ],
+                  [
+                    14,
+                    "x!13",
+                    null
+                  ],
+                  [
+                    15,
+                    "x!14",
+                    null
+                  ],
+                  [
+                    16,
+                    "x!15",
+                    null
+                  ],
+                  [
+                    17,
+                    "x!16",
+                    null
+                  ],
+                  [
+                    18,
+                    "x!17",
+                    null
+                  ],
+                  [
+                    19,
+                    "x!18",
+                    null
+                  ],
+                  [
+                    20,
+                    "x!19",
+                    null
+                  ],
+                  [
+                    21,
+                    "x!20",
+                    null
+                  ],
+                  [
+                    22,
+                    "x!21",
+                    null
+                  ],
+                  [
+                    23,
+                    "x!22",
+                    null
+                  ],
+                  [
+                    24,
+                    "x!23",
+                    null
+                  ],
+                  [
+                    25,
+                    "x!24",
+                    null
+                  ],
+                  [
+                    26,
+                    "x!25",
+                    null
+                  ],
+                  [
+                    27,
+                    "x!26",
+                    null
+                  ],
+                  [
+                    28,
+                    "x!27",
+                    null
+                  ],
+                  [
+                    29,
+                    "x!28",
+                    null
+                  ],
+                  [
+                    30,
+                    "x!29",
+                    null
+                  ],
+                  [
+                    31,
+                    "classifier₀[input]",
+                    null
+                  ],
+                  [
+                    32,
+                    "classifier₀[input]!0",
+                    "x0"
+                  ],
+                  [
+                    33,
+                    "classifier₀[input]!1",
+                    "x1"
+                  ],
+                  [
+                    34,
+                    "classifier₀[input]!2",
+                    "x2"
+                  ],
+                  [
+                    35,
+                    "classifier₀[input]!3",
+                    "x3"
+                  ],
+                  [
+                    36,
+                    "classifier₀[input]!4",
+                    "x4"
+                  ],
+                  [
+                    37,
+                    "classifier₀[input]!5",
+                    "x5"
+                  ],
+                  [
+                    38,
+                    "classifier₀[input]!6",
+                    "x6"
+                  ],
+                  [
+                    39,
+                    "classifier₀[input]!7",
+                    "x7"
+                  ],
+                  [
+                    40,
+                    "classifier₀[input]!8",
+                    "x8"
+                  ],
+                  [
+                    41,
+                    "classifier₀[input]!9",
+                    "x9"
+                  ],
+                  [
+                    42,
+                    "classifier₀[input]!10",
+                    "x10"
+                  ],
+                  [
+                    43,
+                    "classifier₀[input]!11",
+                    "x11"
+                  ],
+                  [
+                    44,
+                    "classifier₀[input]!12",
+                    "x12"
+                  ],
+                  [
+                    45,
+                    "classifier₀[input]!13",
+                    "x13"
+                  ],
+                  [
+                    46,
+                    "classifier₀[input]!14",
+                    "x14"
+                  ],
+                  [
+                    47,
+                    "classifier₀[input]!15",
+                    "x15"
+                  ],
+                  [
+                    48,
+                    "classifier₀[input]!16",
+                    "x16"
+                  ],
+                  [
+                    49,
+                    "classifier₀[input]!17",
+                    "x17"
+                  ],
+                  [
+                    50,
+                    "classifier₀[input]!18",
+                    "x18"
+                  ],
+                  [
+                    51,
+                    "classifier₀[input]!19",
+                    "x19"
+                  ],
+                  [
+                    52,
+                    "classifier₀[input]!20",
+                    "x20"
+                  ],
+                  [
+                    53,
+                    "classifier₀[input]!21",
+                    "x21"
+                  ],
+                  [
+                    54,
+                    "classifier₀[input]!22",
+                    "x22"
+                  ],
+                  [
+                    55,
+                    "classifier₀[input]!23",
+                    "x23"
+                  ],
+                  [
+                    56,
+                    "classifier₀[input]!24",
+                    "x24"
+                  ],
+                  [
+                    57,
+                    "classifier₀[input]!25",
+                    "x25"
+                  ],
+                  [
+                    58,
+                    "classifier₀[input]!26",
+                    "x26"
+                  ],
+                  [
+                    59,
+                    "classifier₀[input]!27",
+                    "x27"
+                  ],
+                  [
+                    60,
+                    "classifier₀[input]!28",
+                    "x28"
+                  ],
+                  [
+                    61,
+                    "classifier₀[input]!29",
+                    "x29"
+                  ],
+                  [
+                    62,
+                    "classifier₀[output]",
+                    null
+                  ],
+                  [
+                    63,
+                    "classifier₀[output]!0",
+                    "y0"
+                  ],
+                  [
+                    64,
+                    "classifier₀[output]!1",
+                    "y1"
+                  ]
+                ],
+                "reconstructionSteps": [
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        30
+                      ],
+                      31,
+                      [
+                        32,
+                        33,
+                        34,
+                        35,
+                        36,
+                        37,
+                        38,
+                        39,
+                        40,
+                        41,
+                        42,
+                        43,
+                        44,
+                        45,
+                        46,
+                        47,
+                        48,
+                        49,
+                        50,
+                        51,
+                        52,
+                        53,
+                        54,
+                        55,
+                        56,
+                        57,
+                        58,
+                        59,
+                        60,
+                        61
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        2
+                      ],
+                      62,
+                      [
+                        63,
+                        64
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "SolveTensorEquality",
+                    "contents": [
+                      0,
+                      {
+                        "constantValue": {
+                          "value": [
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ],
+                          "tag": "Tensor",
+                          "shape": [
+                            30
+                          ]
+                        },
+                        "coefficients": {
+                          "31": {
+                            "numerator": 1,
                             "denominator": 1
                           }
-                        ],
-                        "tag": "Tensor",
-                        "shape": [
-                          30
-                        ]
-                      },
-                      "coefficients": {
-                        "classifier₀[input]": {
-                          "numerator": 1,
-                          "denominator": 1
                         }
                       }
-                    }
-                  ]
-                }
-              ],
-              "queryVariableMapping": [
-                [
-                  "x0",
-                  "classifier₀[input]!0"
-                ],
-                [
-                  "x1",
-                  "classifier₀[input]!1"
-                ],
-                [
-                  "x2",
-                  "classifier₀[input]!2"
-                ],
-                [
-                  "x3",
-                  "classifier₀[input]!3"
-                ],
-                [
-                  "x4",
-                  "classifier₀[input]!4"
-                ],
-                [
-                  "x5",
-                  "classifier₀[input]!5"
-                ],
-                [
-                  "x6",
-                  "classifier₀[input]!6"
-                ],
-                [
-                  "x7",
-                  "classifier₀[input]!7"
-                ],
-                [
-                  "x8",
-                  "classifier₀[input]!8"
-                ],
-                [
-                  "x9",
-                  "classifier₀[input]!9"
-                ],
-                [
-                  "x10",
-                  "classifier₀[input]!10"
-                ],
-                [
-                  "x11",
-                  "classifier₀[input]!11"
-                ],
-                [
-                  "x12",
-                  "classifier₀[input]!12"
-                ],
-                [
-                  "x13",
-                  "classifier₀[input]!13"
-                ],
-                [
-                  "x14",
-                  "classifier₀[input]!14"
-                ],
-                [
-                  "x15",
-                  "classifier₀[input]!15"
-                ],
-                [
-                  "x16",
-                  "classifier₀[input]!16"
-                ],
-                [
-                  "x17",
-                  "classifier₀[input]!17"
-                ],
-                [
-                  "x18",
-                  "classifier₀[input]!18"
-                ],
-                [
-                  "x19",
-                  "classifier₀[input]!19"
-                ],
-                [
-                  "x20",
-                  "classifier₀[input]!20"
-                ],
-                [
-                  "x21",
-                  "classifier₀[input]!21"
-                ],
-                [
-                  "x22",
-                  "classifier₀[input]!22"
-                ],
-                [
-                  "x23",
-                  "classifier₀[input]!23"
-                ],
-                [
-                  "x24",
-                  "classifier₀[input]!24"
-                ],
-                [
-                  "x25",
-                  "classifier₀[input]!25"
-                ],
-                [
-                  "x26",
-                  "classifier₀[input]!26"
-                ],
-                [
-                  "x27",
-                  "classifier₀[input]!27"
-                ],
-                [
-                  "x28",
-                  "classifier₀[input]!28"
-                ],
-                [
-                  "x29",
-                  "classifier₀[input]!29"
-                ],
-                [
-                  "y0",
-                  "classifier₀[output]!0"
-                ],
-                [
-                  "y1",
-                  "classifier₀[output]!1"
+                    ]
+                  }
                 ]
-              ],
+              },
               "queryAddress": [
                 {
                   "propertyName": "property",

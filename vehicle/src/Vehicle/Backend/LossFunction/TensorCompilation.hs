@@ -21,7 +21,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Builtin (evalTensorBuiltin, filterOutIrrelevantArgs)
 import Vehicle.Compile.Normalise.NBE (normaliseInEnv, traverseClosure)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (PrettyFriendly, PrettyVerbose, prettyFriendly, prettyVerbose)
+import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Tensor
 import Vehicle.Data.Code.Interface
@@ -495,26 +495,28 @@ extendConstTensor :: VArg TensorBuiltin -> VArg TensorBuiltin -> VArg TensorBuil
 extendConstTensor t x dim dims = IDimensionDataOp ConstTensor [t, x, makeExplicitDims dim dims]
 
 convertHigherOrderFunction ::
-  (MonadLogger m, MonadNameContext m, Pretty fn, PrettyFriendly (Contextualised b NamedBoundCtx), PrettyVerbose b) =>
+  (MonadLogger m, MonadNameContext m, Pretty fn) =>
   fn ->
-  (b -> m a) ->
-  b ->
+  (Value TensorBuiltin -> m a) ->
+  Value TensorBuiltin ->
   m a
 convertHigherOrderFunction origFn convert lamBody = do
-  showEntry ("enter-" <> pretty origFn) lamBody
+  ctx <- getNameContext
+  logDebug MaxDetail $ "enter-" <+> ":" <+> prettyFriendly (WithContext lamBody ctx)
+  incrCallDepth
   result <- convert lamBody
   decrCallDepth
   logDebug MaxDetail ("exit-" <> pretty origFn)
   return result
 
-showEntry :: (MonadLogger m, MonadNameContext m, PrettyFriendly (Contextualised b NamedBoundCtx), PrettyVerbose b) => Doc a -> b -> m ()
+showEntry :: (MonadLogger m, MonadNameContext m) => Doc a -> Value Builtin -> m ()
 showEntry doc e = do
   ctx <- getNameContext
   -- logDebug MaxDetail $ doc <+> ":" <+> prettyVerbose e
   logDebug MaxDetail $ doc <+> ":" <+> prettyFriendly (WithContext e ctx)
   incrCallDepth
 
-showExit :: (MonadLogger m, MonadNameContext m, PrettyFriendly (Contextualised b NamedBoundCtx), PrettyVerbose b) => Doc a -> b -> m ()
+showExit :: (MonadLogger m, MonadNameContext m) => Doc a -> Value TensorBuiltin -> m ()
 showExit doc e = do
   ctx <- getNameContext
   decrCallDepth

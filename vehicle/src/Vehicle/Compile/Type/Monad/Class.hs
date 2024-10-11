@@ -431,7 +431,7 @@ addConstraints constraints = do
 addUnificationConstraints :: (MonadTypeChecker builtin m) => [WithContext (UnificationConstraint builtin)] -> m ()
 addUnificationConstraints constraints = do
   unless (null constraints) $ do
-    logDebug MaxDetail ("add-constraints " <> align (prettyExternal constraints))
+    logDebug MaxDetail ("add-constraints:" <> line <> indent 2 (vcat (fmap prettyExternal constraints)))
 
   modifyMetaCtx $ \TypeCheckerState {..} ->
     TypeCheckerState {unificationConstraints = unificationConstraints ++ constraints, ..}
@@ -439,7 +439,7 @@ addUnificationConstraints constraints = do
 addInstanceConstraints :: (MonadTypeChecker builtin m) => [WithContext (InstanceConstraint builtin)] -> m ()
 addInstanceConstraints constraints = do
   unless (null constraints) $ do
-    logDebug MaxDetail ("add-constraints " <> align (prettyExternal constraints))
+    logDebug MaxDetail ("add-constraints:" <> line <> indent 2 (vcat (fmap prettyExternal constraints)))
 
   modifyMetaCtx $ \TypeCheckerState {..} ->
     TypeCheckerState {typeClassConstraints = typeClassConstraints ++ constraints, ..}

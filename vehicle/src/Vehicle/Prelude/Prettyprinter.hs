@@ -72,6 +72,9 @@ numberedList elems = vsep (zipWith (\i e -> pretty i <> "." <+> e) [(1 :: Int) .
 prettyFlatList :: [Doc ann] -> Doc ann
 prettyFlatList xs = "[" <+> commaSep xs <+> "]"
 
+prettyMultiLineList :: [Doc ann] -> Doc ann
+prettyMultiLineList xs = "[" <+> vcat xs <> line <> "]"
+
 prettyNonEmptyList :: NonEmpty (Doc ann) -> Doc ann
 prettyNonEmptyList xs = case NonEmpty.init xs of
   [] -> NonEmpty.last xs

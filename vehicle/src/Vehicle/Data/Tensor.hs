@@ -55,8 +55,8 @@ instance (FromJSON a) => FromJSON (Tensor a) where
 mapTensor :: (a -> b) -> Tensor a -> Tensor b
 mapTensor = fmap
 
-tensorAll :: (a -> Bool) -> Tensor a -> Bool
-tensorAll f (Tensor _ vs) = Vector.all f vs
+allTensor :: (a -> Bool) -> Tensor a -> Bool
+allTensor f (Tensor _ vs) = Vector.all f vs
 
 zipWithTensor :: (a -> b -> c) -> Tensor a -> Tensor b -> Tensor c
 zipWithTensor f t1 t2 =

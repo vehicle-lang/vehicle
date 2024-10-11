@@ -11,76 +11,96 @@
               "queries": {
                 "unDisjunctAll": [
                   {
-                    "variableReconstruction": [
-                      {
-                        "tag": "ReconstructTensor",
-                        "contents": [
-                          false,
-                          [
-                            2,
-                            2
-                          ],
+                    "variableReconstruction": {
+                      "variableStore": [
+                        [
+                          0,
                           "f₀[input]",
-                          [
-                            "f₀[input]!0!0",
-                            "f₀[input]!1!0",
-                            "f₀[input]!0!1",
-                            "f₀[input]!1!1"
-                          ]
-                        ]
-                      },
-                      {
-                        "tag": "ReconstructTensor",
-                        "contents": [
-                          false,
-                          [
-                            2,
-                            2
-                          ],
+                          null
+                        ],
+                        [
+                          1,
+                          "f₀[input]!0!0",
+                          "x0"
+                        ],
+                        [
+                          2,
+                          "f₀[input]!1!0",
+                          "x1"
+                        ],
+                        [
+                          3,
+                          "f₀[input]!0!1",
+                          "x2"
+                        ],
+                        [
+                          4,
+                          "f₀[input]!1!1",
+                          "x3"
+                        ],
+                        [
+                          5,
                           "f₀[output]",
-                          [
-                            "f₀[output]!0!0",
-                            "f₀[output]!1!0",
-                            "f₀[output]!0!1",
-                            "f₀[output]!1!1"
-                          ]
+                          null
+                        ],
+                        [
+                          6,
+                          "f₀[output]!0!0",
+                          "y0"
+                        ],
+                        [
+                          7,
+                          "f₀[output]!1!0",
+                          "y1"
+                        ],
+                        [
+                          8,
+                          "f₀[output]!0!1",
+                          "y2"
+                        ],
+                        [
+                          9,
+                          "f₀[output]!1!1",
+                          "y3"
                         ]
-                      }
-                    ],
-                    "queryVariableMapping": [
-                      [
-                        "x0",
-                        "f₀[input]!0!0"
                       ],
-                      [
-                        "x1",
-                        "f₀[input]!1!0"
-                      ],
-                      [
-                        "x2",
-                        "f₀[input]!0!1"
-                      ],
-                      [
-                        "x3",
-                        "f₀[input]!1!1"
-                      ],
-                      [
-                        "y0",
-                        "f₀[output]!0!0"
-                      ],
-                      [
-                        "y1",
-                        "f₀[output]!1!0"
-                      ],
-                      [
-                        "y2",
-                        "f₀[output]!0!1"
-                      ],
-                      [
-                        "y3",
-                        "f₀[output]!1!1"
+                      "reconstructionSteps": [
+                        {
+                          "tag": "ReconstructTensor",
+                          "contents": [
+                            false,
+                            [
+                              2,
+                              2
+                            ],
+                            0,
+                            [
+                              1,
+                              2,
+                              3,
+                              4
+                            ]
+                          ]
+                        },
+                        {
+                          "tag": "ReconstructTensor",
+                          "contents": [
+                            false,
+                            [
+                              2,
+                              2
+                            ],
+                            5,
+                            [
+                              6,
+                              7,
+                              8,
+                              9
+                            ]
+                          ]
+                        }
                       ]
-                    ],
+                    },
                     "queryAddress": [
                       {
                         "propertyName": "p",
@@ -125,76 +145,96 @@
               "queries": {
                 "unDisjunctAll": [
                   {
-                    "variableReconstruction": [
-                      {
-                        "tag": "ReconstructTensor",
-                        "contents": [
-                          false,
-                          [
-                            2,
-                            2
-                          ],
+                    "variableReconstruction": {
+                      "variableStore": [
+                        [
+                          0,
                           "f₀[input]",
-                          [
-                            "f₀[input]!0!0",
-                            "f₀[input]!1!0",
-                            "f₀[input]!0!1",
-                            "f₀[input]!1!1"
-                          ]
-                        ]
-                      },
-                      {
-                        "tag": "ReconstructTensor",
-                        "contents": [
-                          false,
-                          [
-                            2,
-                            2
-                          ],
+                          null
+                        ],
+                        [
+                          1,
+                          "f₀[input]!0!0",
+                          "x0"
+                        ],
+                        [
+                          2,
+                          "f₀[input]!1!0",
+                          "x1"
+                        ],
+                        [
+                          3,
+                          "f₀[input]!0!1",
+                          "x2"
+                        ],
+                        [
+                          4,
+                          "f₀[input]!1!1",
+                          "x3"
+                        ],
+                        [
+                          5,
                           "f₀[output]",
-                          [
-                            "f₀[output]!0!0",
-                            "f₀[output]!1!0",
-                            "f₀[output]!0!1",
-                            "f₀[output]!1!1"
-                          ]
+                          null
+                        ],
+                        [
+                          6,
+                          "f₀[output]!0!0",
+                          "y0"
+                        ],
+                        [
+                          7,
+                          "f₀[output]!1!0",
+                          "y1"
+                        ],
+                        [
+                          8,
+                          "f₀[output]!0!1",
+                          "y2"
+                        ],
+                        [
+                          9,
+                          "f₀[output]!1!1",
+                          "y3"
                         ]
-                      }
-                    ],
-                    "queryVariableMapping": [
-                      [
-                        "x0",
-                        "f₀[input]!0!0"
                       ],
-                      [
-                        "x1",
-                        "f₀[input]!1!0"
-                      ],
-                      [
-                        "x2",
-                        "f₀[input]!0!1"
-                      ],
-                      [
-                        "x3",
-                        "f₀[input]!1!1"
-                      ],
-                      [
-                        "y0",
-                        "f₀[output]!0!0"
-                      ],
-                      [
-                        "y1",
-                        "f₀[output]!1!0"
-                      ],
-                      [
-                        "y2",
-                        "f₀[output]!0!1"
-                      ],
-                      [
-                        "y3",
-                        "f₀[output]!1!1"
+                      "reconstructionSteps": [
+                        {
+                          "tag": "ReconstructTensor",
+                          "contents": [
+                            false,
+                            [
+                              2,
+                              2
+                            ],
+                            0,
+                            [
+                              1,
+                              2,
+                              3,
+                              4
+                            ]
+                          ]
+                        },
+                        {
+                          "tag": "ReconstructTensor",
+                          "contents": [
+                            false,
+                            [
+                              2,
+                              2
+                            ],
+                            5,
+                            [
+                              6,
+                              7,
+                              8,
+                              9
+                            ]
+                          ]
+                        }
                       ]
-                    ],
+                    },
                     "queryAddress": [
                       {
                         "propertyName": "p",
@@ -239,76 +279,96 @@
               "queries": {
                 "unDisjunctAll": [
                   {
-                    "variableReconstruction": [
-                      {
-                        "tag": "ReconstructTensor",
-                        "contents": [
-                          false,
-                          [
-                            2,
-                            2
-                          ],
+                    "variableReconstruction": {
+                      "variableStore": [
+                        [
+                          0,
                           "f₀[input]",
-                          [
-                            "f₀[input]!0!0",
-                            "f₀[input]!1!0",
-                            "f₀[input]!0!1",
-                            "f₀[input]!1!1"
-                          ]
-                        ]
-                      },
-                      {
-                        "tag": "ReconstructTensor",
-                        "contents": [
-                          false,
-                          [
-                            2,
-                            2
-                          ],
+                          null
+                        ],
+                        [
+                          1,
+                          "f₀[input]!0!0",
+                          "x0"
+                        ],
+                        [
+                          2,
+                          "f₀[input]!1!0",
+                          "x1"
+                        ],
+                        [
+                          3,
+                          "f₀[input]!0!1",
+                          "x2"
+                        ],
+                        [
+                          4,
+                          "f₀[input]!1!1",
+                          "x3"
+                        ],
+                        [
+                          5,
                           "f₀[output]",
-                          [
-                            "f₀[output]!0!0",
-                            "f₀[output]!1!0",
-                            "f₀[output]!0!1",
-                            "f₀[output]!1!1"
-                          ]
+                          null
+                        ],
+                        [
+                          6,
+                          "f₀[output]!0!0",
+                          "y0"
+                        ],
+                        [
+                          7,
+                          "f₀[output]!1!0",
+                          "y1"
+                        ],
+                        [
+                          8,
+                          "f₀[output]!0!1",
+                          "y2"
+                        ],
+                        [
+                          9,
+                          "f₀[output]!1!1",
+                          "y3"
                         ]
-                      }
-                    ],
-                    "queryVariableMapping": [
-                      [
-                        "x0",
-                        "f₀[input]!0!0"
                       ],
-                      [
-                        "x1",
-                        "f₀[input]!1!0"
-                      ],
-                      [
-                        "x2",
-                        "f₀[input]!0!1"
-                      ],
-                      [
-                        "x3",
-                        "f₀[input]!1!1"
-                      ],
-                      [
-                        "y0",
-                        "f₀[output]!0!0"
-                      ],
-                      [
-                        "y1",
-                        "f₀[output]!1!0"
-                      ],
-                      [
-                        "y2",
-                        "f₀[output]!0!1"
-                      ],
-                      [
-                        "y3",
-                        "f₀[output]!1!1"
+                      "reconstructionSteps": [
+                        {
+                          "tag": "ReconstructTensor",
+                          "contents": [
+                            false,
+                            [
+                              2,
+                              2
+                            ],
+                            0,
+                            [
+                              1,
+                              2,
+                              3,
+                              4
+                            ]
+                          ]
+                        },
+                        {
+                          "tag": "ReconstructTensor",
+                          "contents": [
+                            false,
+                            [
+                              2,
+                              2
+                            ],
+                            5,
+                            [
+                              6,
+                              7,
+                              8,
+                              9
+                            ]
+                          ]
+                        }
                       ]
-                    ],
+                    },
                     "queryAddress": [
                       {
                         "propertyName": "p",
@@ -353,76 +413,96 @@
               "queries": {
                 "unDisjunctAll": [
                   {
-                    "variableReconstruction": [
-                      {
-                        "tag": "ReconstructTensor",
-                        "contents": [
-                          false,
-                          [
-                            2,
-                            2
-                          ],
+                    "variableReconstruction": {
+                      "variableStore": [
+                        [
+                          0,
                           "f₀[input]",
-                          [
-                            "f₀[input]!0!0",
-                            "f₀[input]!1!0",
-                            "f₀[input]!0!1",
-                            "f₀[input]!1!1"
-                          ]
-                        ]
-                      },
-                      {
-                        "tag": "ReconstructTensor",
-                        "contents": [
-                          false,
-                          [
-                            2,
-                            2
-                          ],
+                          null
+                        ],
+                        [
+                          1,
+                          "f₀[input]!0!0",
+                          "x0"
+                        ],
+                        [
+                          2,
+                          "f₀[input]!1!0",
+                          "x1"
+                        ],
+                        [
+                          3,
+                          "f₀[input]!0!1",
+                          "x2"
+                        ],
+                        [
+                          4,
+                          "f₀[input]!1!1",
+                          "x3"
+                        ],
+                        [
+                          5,
                           "f₀[output]",
-                          [
-                            "f₀[output]!0!0",
-                            "f₀[output]!1!0",
-                            "f₀[output]!0!1",
-                            "f₀[output]!1!1"
-                          ]
+                          null
+                        ],
+                        [
+                          6,
+                          "f₀[output]!0!0",
+                          "y0"
+                        ],
+                        [
+                          7,
+                          "f₀[output]!1!0",
+                          "y1"
+                        ],
+                        [
+                          8,
+                          "f₀[output]!0!1",
+                          "y2"
+                        ],
+                        [
+                          9,
+                          "f₀[output]!1!1",
+                          "y3"
                         ]
-                      }
-                    ],
-                    "queryVariableMapping": [
-                      [
-                        "x0",
-                        "f₀[input]!0!0"
                       ],
-                      [
-                        "x1",
-                        "f₀[input]!1!0"
-                      ],
-                      [
-                        "x2",
-                        "f₀[input]!0!1"
-                      ],
-                      [
-                        "x3",
-                        "f₀[input]!1!1"
-                      ],
-                      [
-                        "y0",
-                        "f₀[output]!0!0"
-                      ],
-                      [
-                        "y1",
-                        "f₀[output]!1!0"
-                      ],
-                      [
-                        "y2",
-                        "f₀[output]!0!1"
-                      ],
-                      [
-                        "y3",
-                        "f₀[output]!1!1"
+                      "reconstructionSteps": [
+                        {
+                          "tag": "ReconstructTensor",
+                          "contents": [
+                            false,
+                            [
+                              2,
+                              2
+                            ],
+                            0,
+                            [
+                              1,
+                              2,
+                              3,
+                              4
+                            ]
+                          ]
+                        },
+                        {
+                          "tag": "ReconstructTensor",
+                          "contents": [
+                            false,
+                            [
+                              2,
+                              2
+                            ],
+                            5,
+                            [
+                              6,
+                              7,
+                              8,
+                              9
+                            ]
+                          ]
+                        }
                       ]
-                    ],
+                    },
                     "queryAddress": [
                       {
                         "propertyName": "p",

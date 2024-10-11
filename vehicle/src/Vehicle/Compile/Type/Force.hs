@@ -88,7 +88,6 @@ forceBuiltin ::
   Spine builtin ->
   m (Maybe (Value builtin), MetaSet)
 forceBuiltin subst b spine = do
-  logDebug MaxDetail $ prettyVerbose spine
   (maybeUnblockedSpine, blockingMetas) <- forceBuiltinSpine subst spine 0 (blockingArgs b)
   finalValue <- traverse (normaliseBuiltin b) maybeUnblockedSpine
   return (finalValue, blockingMetas)

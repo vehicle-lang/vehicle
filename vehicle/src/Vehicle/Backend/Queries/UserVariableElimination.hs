@@ -35,6 +35,7 @@ import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.Code.Value
+import Vehicle.Data.Tensor (RationalTensor)
 import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (StdEqualsVector, StdNotEqualsVector))
 import Vehicle.Verify.Core (NetworkContextInfo (..), QuerySetNegationStatus)
 import Vehicle.Verify.QueryFormat (QueryFormat (..), supportsStrictInequalities)
@@ -212,15 +213,15 @@ compileExists binder env body = do
     -- Create the user variable
     namedCtx <- getGlobalNamedBoundCtx
     propertyProv <- asks propertyProvenance
-    (userVar, userVarShape) <- createUserVar propertyProv namedCtx binder
+    (userVarName, userVarShape) <- createUserVar propertyProv namedCtx binder
 
     -- Update the global context
     globalCtx <- get
-    let (userVarExpr, newGlobalCtx) = addUserVarToGlobalContext userVar userVarShape globalCtx
+    let (userVar, newGlobalCtx) = addUserVarToGlobalContext userVarName userVarShape globalCtx
     put newGlobalCtx
 
     -- Normalise the expression
-    let newEnv = extendEnvWithDefined userVarExpr binder env
+    let newEnv = extendEnvWithDefined (VBoundVar userVar []) binder env
     normExpr <- normaliseInEnv newEnv body
 
     -- Recursively compile the expression.
@@ -313,7 +314,7 @@ unblockFreeVectorVariable unblockVector reduceVectorVars ident spine = do
 
 compileRationalAssertion ::
   (MonadQueryStructure m) =>
-  (LinearExpr -> LinearExpr -> Assertion) ->
+  (LinearExpr RationalTensor -> LinearExpr RationalTensor -> Assertion) ->
   Value Builtin ->
   Value Builtin ->
   m (MaybeTrivial Partitions)
@@ -331,7 +332,7 @@ compileTensorAssertion ::
   Value Builtin ->
   m (MaybeTrivial Partitions)
 compileTensorAssertion spinePrefix x y = do
-  result <- compileTensorLinearRelation getTensorVariable x y
+  result <- compileTensorLinearRelation getTensorVariableShape x y
   case result of
     Left (UnhandlableExpr e) -> compilerDeveloperError ("unexpected tensor expression" <+> prettyVerbose e)
     Left NonLinearity -> throwError catchableUnsupportedNonLinearConstraint

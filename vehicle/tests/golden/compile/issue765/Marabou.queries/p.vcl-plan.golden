@@ -7,49 +7,64 @@
         "queries": {
           "unDisjunctAll": [
             {
-              "variableReconstruction": [
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      2
-                    ],
+              "variableReconstruction": {
+                "variableStore": [
+                  [
+                    0,
                     "f₀[input]",
-                    [
-                      "f₀[input]!0",
-                      "f₀[input]!1"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      1
-                    ],
+                    null
+                  ],
+                  [
+                    1,
+                    "f₀[input]!0",
+                    "x0"
+                  ],
+                  [
+                    2,
+                    "f₀[input]!1",
+                    "x1"
+                  ],
+                  [
+                    3,
                     "f₀[output]",
-                    [
-                      "f₀[output]!0"
-                    ]
+                    null
+                  ],
+                  [
+                    4,
+                    "f₀[output]!0",
+                    "y0"
                   ]
-                }
-              ],
-              "queryVariableMapping": [
-                [
-                  "x0",
-                  "f₀[input]!0"
                 ],
-                [
-                  "x1",
-                  "f₀[input]!1"
-                ],
-                [
-                  "y0",
-                  "f₀[output]!0"
+                "reconstructionSteps": [
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        2
+                      ],
+                      0,
+                      [
+                        1,
+                        2
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        1
+                      ],
+                      3,
+                      [
+                        4
+                      ]
+                    ]
+                  }
                 ]
-              ],
+              },
               "queryAddress": [
                 {
                   "propertyName": "p",

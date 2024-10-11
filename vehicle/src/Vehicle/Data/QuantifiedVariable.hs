@@ -28,27 +28,27 @@ import Vehicle.Prelude
 
 -- | A variable. Empty indices means that is a tensor variable, otherwise
 -- its a variable representing an element of a tensor.
-type Variable = Name
+type Variable = Lv
 
-makeTensorVariable :: Name -> Variable
+makeTensorVariable :: Lv -> Variable
 makeTensorVariable = id
 
 reduceTensorVariable ::
   Lv ->
-  TensorVariable ->
+  Name ->
   TensorShape ->
-  ([(Lv, ElementVariable)], Value Builtin)
-reduceTensorVariable dbLevel var shape = runSupply (go shape []) [dbLevel ..]
+  ([(ElementVariable, Name)], Value Builtin)
+reduceTensorVariable lv varName shape = runSupply (go shape []) [lv ..]
   where
-    createRatVar :: TensorIndices -> Lv -> ([(Lv, ElementVariable)], Value Builtin)
-    createRatVar indices lv = do
-      let name = var <> Text.pack (showTensorIndices indices)
-      ([(lv, name)], VBoundVar lv [])
+    createRatVar :: TensorIndices -> Lv -> ([(ElementVariable, Name)], Value Builtin)
+    createRatVar indices currentLv = do
+      let name = varName <> Text.pack (showTensorIndices indices)
+      ([(currentLv, name)], VBoundVar currentLv [])
 
     go ::
       TensorShape ->
       TensorIndices ->
-      Supply Lv ([(Lv, ElementVariable)], Value Builtin)
+      Supply Lv ([(ElementVariable, Name)], Value Builtin)
     go dims indices = case dims of
       [] -> createRatVar (reverse indices) <$> demand
       d : ds -> do
@@ -75,7 +75,9 @@ data TensorVariableInfo = TensorVariableInfo
     -- | The tensor literal expression containing the element variables above.
     reducedVarExpr :: Value Builtin,
     -- The shape of the tensor
-    tensorVariableShape :: TensorShape
+    tensorVariableShape :: TensorShape,
+    -- | `Nothing` = user variable, `Input` = network input variable, `Output` = network output variable
+    tensorVariableType :: Maybe InputOrOutput
   }
 
 --------------------------------------------------------------------------------
@@ -91,7 +93,7 @@ prettyRationalAsFloat p = do
 
 -- | A (satisfying) assignment to a set of user-level variables.
 newtype UserVariableAssignment
-  = UserVariableAssignment [(TensorVariable, RationalTensor)]
+  = UserVariableAssignment [(Name, RationalTensor)]
   deriving (Generic)
 
 instance ToJSON UserVariableAssignment

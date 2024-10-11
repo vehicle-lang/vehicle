@@ -7,143 +7,177 @@
         "queries": {
           "unDisjunctAll": [
             {
-              "variableReconstruction": [
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      1
-                    ],
-                    "f₀[input]",
-                    [
-                      "f₀[input]!0"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      1
-                    ],
-                    "f₀[output]",
-                    [
-                      "f₀[output]!0"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "SolveRationalInequalities",
-                  "contents": [
+              "variableReconstruction": {
+                "variableStore": [
+                  [
+                    0,
                     "x",
-                    {
-                      "upperBounds": [
-                        {
-                          "strictness": "NonStrict",
-                          "inequalityExpr": {
-                            "constantValue": {
-                              "value": [
-                                {
-                                  "numerator": -1,
+                    null
+                  ],
+                  [
+                    1,
+                    "x",
+                    null
+                  ],
+                  [
+                    2,
+                    "y",
+                    null
+                  ],
+                  [
+                    3,
+                    "y",
+                    null
+                  ],
+                  [
+                    4,
+                    "f₀[input]",
+                    null
+                  ],
+                  [
+                    5,
+                    "f₀[input]!0",
+                    "x0"
+                  ],
+                  [
+                    6,
+                    "f₀[output]",
+                    null
+                  ],
+                  [
+                    7,
+                    "f₀[output]!0",
+                    "y0"
+                  ]
+                ],
+                "reconstructionSteps": [
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        1
+                      ],
+                      4,
+                      [
+                        5
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        1
+                      ],
+                      6,
+                      [
+                        7
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "SolveRationalInequalities",
+                    "contents": [
+                      1,
+                      {
+                        "upperBounds": [
+                          {
+                            "strictness": "NonStrict",
+                            "inequalityExpr": {
+                              "constantValue": {
+                                "value": [
+                                  {
+                                    "numerator": -1,
+                                    "denominator": 2
+                                  }
+                                ],
+                                "tag": "Tensor",
+                                "shape": []
+                              },
+                              "coefficients": {
+                                "5": {
+                                  "numerator": 1,
                                   "denominator": 2
                                 }
-                              ],
-                              "tag": "Tensor",
-                              "shape": []
-                            },
-                            "coefficients": {
-                              "f₀[input]!0": {
-                                "numerator": 1,
-                                "denominator": 2
                               }
                             }
                           }
-                        }
-                      ],
-                      "lowerBounds": [
-                        {
-                          "strictness": "NonStrict",
-                          "inequalityExpr": {
-                            "constantValue": {
-                              "value": [
-                                {
-                                  "numerator": 1,
-                                  "denominator": 1
-                                }
-                              ],
-                              "tag": "Tensor",
-                              "shape": []
-                            },
-                            "coefficients": {}
-                          }
-                        }
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    true,
-                    [],
-                    "x",
-                    [
-                      "x"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "SolveRationalEquality",
-                  "contents": [
-                    "y",
-                    {
-                      "constantValue": {
-                        "value": [
+                        ],
+                        "lowerBounds": [
                           {
-                            "numerator": 0,
+                            "strictness": "NonStrict",
+                            "inequalityExpr": {
+                              "constantValue": {
+                                "value": [
+                                  {
+                                    "numerator": 1,
+                                    "denominator": 1
+                                  }
+                                ],
+                                "tag": "Tensor",
+                                "shape": []
+                              },
+                              "coefficients": {}
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      true,
+                      [],
+                      0,
+                      [
+                        1
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "SolveRationalEquality",
+                    "contents": [
+                      3,
+                      {
+                        "constantValue": {
+                          "value": [
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ],
+                          "tag": "Tensor",
+                          "shape": []
+                        },
+                        "coefficients": {
+                          "5": {
+                            "numerator": 1,
+                            "denominator": 1
+                          },
+                          "1": {
+                            "numerator": -2,
                             "denominator": 1
                           }
-                        ],
-                        "tag": "Tensor",
-                        "shape": []
-                      },
-                      "coefficients": {
-                        "x": {
-                          "numerator": -2,
-                          "denominator": 1
-                        },
-                        "f₀[input]!0": {
-                          "numerator": 1,
-                          "denominator": 1
                         }
                       }
-                    }
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    true,
-                    [],
-                    "y",
-                    [
-                      "y"
                     ]
-                  ]
-                }
-              ],
-              "queryVariableMapping": [
-                [
-                  "x0",
-                  "f₀[input]!0"
-                ],
-                [
-                  "y0",
-                  "f₀[output]!0"
+                  },
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      true,
+                      [],
+                      2,
+                      [
+                        3
+                      ]
+                    ]
+                  }
                 ]
-              ],
+              },
               "queryAddress": [
                 {
                   "propertyName": "underConstrainedVar2",

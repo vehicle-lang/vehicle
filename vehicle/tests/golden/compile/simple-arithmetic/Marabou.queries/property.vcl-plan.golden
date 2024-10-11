@@ -7,44 +7,58 @@
         "queries": {
           "unDisjunctAll": [
             {
-              "variableReconstruction": [
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      1
-                    ],
+              "variableReconstruction": {
+                "variableStore": [
+                  [
+                    0,
                     "f₀[input]",
-                    [
-                      "f₀[input]!0"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      1
-                    ],
+                    null
+                  ],
+                  [
+                    1,
+                    "f₀[input]!0",
+                    "x0"
+                  ],
+                  [
+                    2,
                     "f₀[output]",
-                    [
-                      "f₀[output]!0"
-                    ]
+                    null
+                  ],
+                  [
+                    3,
+                    "f₀[output]!0",
+                    "y0"
                   ]
-                }
-              ],
-              "queryVariableMapping": [
-                [
-                  "x0",
-                  "f₀[input]!0"
                 ],
-                [
-                  "y0",
-                  "f₀[output]!0"
+                "reconstructionSteps": [
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        1
+                      ],
+                      0,
+                      [
+                        1
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        1
+                      ],
+                      2,
+                      [
+                        3
+                      ]
+                    ]
+                  }
                 ]
-              ],
+              },
               "queryAddress": [
                 {
                   "propertyName": "property",

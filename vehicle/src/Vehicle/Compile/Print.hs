@@ -18,7 +18,7 @@ module Vehicle.Compile.Print
   )
 where
 
-import Data.Bifunctor (bimap)
+import Data.Bifunctor (Bifunctor (..))
 import Data.Foldable qualified as NonEmpty
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap (assocs)
@@ -32,15 +32,22 @@ import Vehicle.Compile.Print.Builtin (ConvertableBuiltin, PrintableBuiltin)
 import Vehicle.Compile.Simplify
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
+import Vehicle.Data.Assertion (Assertion (..), Bounds (..), Equality, Inequality, equalityExpr, inequalityExpr, strictness)
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.BooleanExpr
+import Vehicle.Data.Code.LinearExpr (Constant (..), LinearExpr, prettyLinearExpr)
 import Vehicle.Data.Code.Value
+import Vehicle.Data.Tensor (RationalTensor)
 import Vehicle.Syntax.AST.Expr qualified as S
 import Vehicle.Syntax.Print
 
 --------------------------------------------------------------------------------
 -- Public methods
 --------------------------------------------------------------------------------
+
+type In a b = (a, b)
+
+type NoCtx = ()
 
 type VerboseTags = 'Unnamed ('ShortVectors ('As 'Internal))
 
@@ -54,18 +61,16 @@ type PrettyExternal a = PrettyWith ExternalTags a
 
 type PrettyFriendly a = PrettyWith FriendlyTags a
 
--- | Prints to the internal language in all it's gory detail. Does not convert
---  (Co)DeBruijn indices back to names. Useful for debugging.
-prettyVerbose :: (PrettyVerbose a) => a -> Doc b
-prettyVerbose = prettyWith @VerboseTags
+-- | Prints to the internal language in all it's gory detail. Useful for debugging.
+prettyVerbose :: (PrettyVerbose (a `In` NoCtx)) => a -> Doc b
+prettyVerbose x = prettyWith @VerboseTags (x, ())
 
--- | Prints to the internal language in all it's gory detail. Does not convert
---  (Co)DeBruijn indices back to names. Useful for debugging.
+-- | Prints to the internal language in all it's gory detail. Useful for debugging.
 prettyExternal :: (PrettyExternal a) => a -> Doc b
 prettyExternal = prettyWith @ExternalTags
 
 -- | Prints to the external language for things that need to be displayed to
---  the user. Must provide the context of the thing being printed.
+-- the user. Must provide the context of the thing being printed.
 prettyFriendly :: (PrettyFriendly a) => a -> Doc b
 prettyFriendly = prettyWith @FriendlyTags
 
@@ -74,10 +79,10 @@ prettyFriendly = prettyWith @FriendlyTags
 -- be empty.
 prettyFriendlyEmptyCtx ::
   forall f builtin b.
-  (PrettyFriendly (Contextualised (f builtin) NamedBoundCtx)) =>
+  (PrettyFriendly (f builtin `In` NamedBoundCtx)) =>
   f builtin ->
   Doc b
-prettyFriendlyEmptyCtx x = prettyFriendly (WithContext x emptyNamedCtx)
+prettyFriendlyEmptyCtx x = prettyFriendly (x, emptyNamedCtx)
 
 --------------------------------------------------------------------------------
 -- Printing strategies
@@ -100,98 +105,84 @@ data Tags
 -- are needed in order to convert something into a printable form. It should not
 -- be confused with the actual operations needed to do so.
 data Strategy
-  = PrintAs VehicleLang
-  | QuoteValue Strategy
+  = SetupContext Strategy
   | DescopeNaively Strategy
   | DescopeWithNames Strategy
-  | DiscardConstraintCtx Strategy
-  | KeepConstraintCtx Strategy
+  | PrintAs VehicleLang
+  | QuoteValue Strategy
   | UninsertArgsAndBinders Strategy
   | ShortenVectors Strategy
-  | MapTuple2 Strategy Strategy
-  | MapTuple3 Strategy Strategy Strategy
-  | Opaque Strategy
   | Pretty
 
 -- | This type family computes the correct printing strategy given the tags
 -- and the type of the expression.
-type family StrategyFor (tags :: Tags) a :: Strategy where --------------------
--- Generic syntax --
---------------------
--- The strategy for printing `Arg`, `Binder` is just the same strategy as to print the expressions they contain.
-  StrategyFor tags (GenericArg expr) = StrategyFor tags expr
-  StrategyFor tags (GenericBinder expr) = StrategyFor tags expr
-  StrategyFor tags (Contextualised (GenericArg expr) NamedBoundCtx) = StrategyFor tags (Contextualised expr NamedBoundCtx)
-  StrategyFor tags (Contextualised (GenericBinder expr) NamedBoundCtx) = StrategyFor tags (Contextualised expr NamedBoundCtx)
+type family StrategyFor (tags :: Tags) a :: Strategy where
   ----------
   -- Expr --
   ----------
   -- To convert any named representation to the target language, simply convert it.
-  StrategyFor ('As lang) S.Prog = 'PrintAs lang
-  StrategyFor ('As lang) S.Decl = 'PrintAs lang
   StrategyFor ('As lang) S.Expr = 'PrintAs lang
-  -- To convert an expression from a `Name` representation to a `Name` representation is a no-op.
-  StrategyFor ('Named tags) S.Prog = StrategyFor tags S.Prog
-  StrategyFor ('Named tags) S.Decl = StrategyFor tags S.Decl
   StrategyFor ('Named tags) S.Expr = StrategyFor tags S.Expr
-  -- To convert an expression using a Ix representation but whose missing names have been supplied
-  -- to a named representation.
-  StrategyFor ('Named tags) (Prog builtin) = StrategyFor ('Named tags) (Contextualised (Expr builtin) NamedBoundCtx)
-  StrategyFor ('Named tags) (Decl builtin) = StrategyFor ('Named tags) (Contextualised (Expr builtin) NamedBoundCtx)
-  StrategyFor ('Named tags) (Contextualised (Expr builtin) NamedBoundCtx) = 'DescopeWithNames (StrategyFor tags S.Expr)
-  -- To print a DB expr in an unnamed representation, simply naively descope.
-  StrategyFor ('Unnamed tags) (Prog builtin) = 'DescopeNaively (StrategyFor tags S.Expr)
-  StrategyFor ('Unnamed tags) (Decl builtin) = 'DescopeNaively (StrategyFor tags S.Expr)
-  StrategyFor ('Unnamed tags) (Expr builtin) = 'DescopeNaively (StrategyFor tags S.Expr)
-  -----------
-  -- Value --
-  -----------
+  StrategyFor ('Unnamed tags) S.Expr = StrategyFor tags S.Expr
+  -------------------------
+  -- Variable conversion --
+  -------------------------
+  -- Converting an `Expr` with DeBruijn indices to a named representation requires a named bound context to descope.
+  -- Otherwise converting it to an unnamed representation we descope naively by just converting the variables directly
+  StrategyFor ('Named tags) (Expr builtin `In` NamedBoundCtx) = 'DescopeWithNames (StrategyFor tags S.Expr)
+  StrategyFor ('Unnamed tags) (Expr builtin `In` ctx) = 'DescopeNaively (StrategyFor tags S.Expr)
   -- To print a `Value` we need to quote it first. Note that we convert it to a `Builtin` representation immediately
-  StrategyFor ('Named tags) (VDecl builtin) = StrategyFor ('Named tags) (Contextualised (Value builtin) NamedBoundCtx)
-  StrategyFor ('Named tags) (Contextualised (Value builtin) NamedBoundCtx) = 'QuoteValue (StrategyFor ('Named tags) (Contextualised (Expr Builtin) NamedBoundCtx))
-  StrategyFor ('Unnamed tags) (Value builtin) = 'DescopeNaively (StrategyFor tags S.Expr)
-  -----------
-  -- State --
-  -----------
-  -- Objects for which we want to block the strategy computation on.
-  StrategyFor ('Named tags) (Contextualised (Constraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised (Value builtin) NamedBoundCtx))
-  StrategyFor ('Named tags) (Contextualised (InstanceConstraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised (Value builtin) NamedBoundCtx))
-  StrategyFor ('Named tags) (Contextualised (UnificationConstraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised (Value builtin) NamedBoundCtx))
-  StrategyFor ('Unnamed tags) (Contextualised (Constraint builtin) (ConstraintContext builtin)) = 'DiscardConstraintCtx (StrategyFor ('Unnamed tags) (Value builtin))
-  StrategyFor ('Unnamed tags) (Contextualised (InstanceConstraint builtin) (ConstraintContext builtin)) = 'DiscardConstraintCtx (StrategyFor ('Unnamed tags) (Value builtin))
-  StrategyFor ('Unnamed tags) (Contextualised (UnificationConstraint builtin) (ConstraintContext builtin)) = 'DiscardConstraintCtx (StrategyFor ('Unnamed tags) (Value builtin))
+  StrategyFor ('Named tags) (Value builtin `In` NamedBoundCtx) = 'QuoteValue (StrategyFor ('Named tags) (Expr Builtin `In` NamedBoundCtx))
+  StrategyFor ('Unnamed tags) (Value builtin `In` ctx) = 'DescopeNaively (StrategyFor tags S.Expr)
+  -- Converting an `Expr` with DeBruijn indices to a named representation requires a named bound context to descope.
+  -- Otherwise converting it to an unnamed representation we descope naively by just converting the variables directly
+  StrategyFor ('Named tags) (LinearExpr constant `In` NamedBoundCtx) = 'DescopeWithNames (StrategyFor tags (constant `In` NamedBoundCtx))
+  StrategyFor ('Unnamed tags) (LinearExpr constant `In` ctx) = 'DescopeNaively (StrategyFor tags (constant `In` ctx))
   --------------------------------
   -- Distributing over functors --
   --------------------------------
-  -- Contextualised functors
-  StrategyFor tags (Contextualised (a, b) ctx) = 'MapTuple2 (StrategyFor tags (Contextualised a ctx)) (StrategyFor tags (Contextualised b ctx))
-  StrategyFor tags (Contextualised [a] ctx) = StrategyFor tags [Contextualised a ctx]
-  StrategyFor tags (Contextualised (Maybe a) ctx) = StrategyFor tags (Maybe (Contextualised a ctx))
-  StrategyFor tags (Contextualised (ConjunctAll a) ctx) = StrategyFor tags (ConjunctAll (Contextualised a ctx))
-  -- StrategyFor tags (Contextualised Text ctx) = StrategyFor tags Text
-  -- Plain functors
-  StrategyFor tags (a, b) = 'MapTuple2 (StrategyFor tags a) (StrategyFor tags b)
-  StrategyFor tags (a, b, c) = 'MapTuple3 (StrategyFor tags a) (StrategyFor tags b) (StrategyFor tags c)
-  StrategyFor tags [a] = 'Opaque (StrategyFor tags a)
-  StrategyFor tags (Maybe a) = 'Opaque (StrategyFor tags a)
-  StrategyFor tags (ConjunctAll a) = 'Opaque (StrategyFor tags a)
-  StrategyFor tags (DisjunctAll a) = 'Opaque (StrategyFor tags a)
-  StrategyFor tags (MaybeTrivial a) = 'Opaque (StrategyFor tags a)
-  StrategyFor tags (IntMap a) = 'Opaque (StrategyFor tags a)
-  StrategyFor tags (MetaMap a) = 'Opaque (StrategyFor tags a)
+  StrategyFor tags ([a] `In` ctx) = StrategyFor tags (a `In` ctx)
+  StrategyFor tags (Maybe a `In` ctx) = StrategyFor tags (a `In` ctx)
+  StrategyFor tags (ConjunctAll a `In` ctx) = StrategyFor tags (a `In` ctx)
+  StrategyFor tags (DisjunctAll a `In` ctx) = StrategyFor tags (a `In` ctx)
+  StrategyFor tags (BooleanExpr a `In` ctx) = StrategyFor tags (a `In` ctx)
+  StrategyFor tags (MaybeTrivial a `In` ctx) = StrategyFor tags (a `In` ctx)
+  StrategyFor tags (IntMap a `In` ctx) = StrategyFor tags (a `In` ctx)
+  StrategyFor tags (MetaMap a `In` ctx) = StrategyFor tags (a `In` ctx)
+  StrategyFor tags (Equality constant `In` ctx) = StrategyFor tags (LinearExpr constant `In` ctx)
+  StrategyFor tags (Inequality constant `In` ctx) = StrategyFor tags (LinearExpr constant `In` ctx)
+  StrategyFor tags (Bounds constant `In` ctx) = StrategyFor tags (Inequality constant `In` ctx)
+  StrategyFor tags (Assertion `In` ctx) = StrategyFor tags (LinearExpr RationalTensor `In` ctx)
+  StrategyFor tags (GenericProg expr `In` ctx) = (StrategyFor tags (expr `In` ctx))
+  StrategyFor tags (GenericDecl expr `In` ctx) = (StrategyFor tags (expr `In` ctx))
+  StrategyFor tags (GenericArg expr `In` ctx) = (StrategyFor tags (expr `In` ctx))
+  StrategyFor tags (GenericBinder expr `In` ctx) = (StrategyFor tags (expr `In` ctx))
+  -----------------
+  -- Constraints --
+  -----------------
+  StrategyFor tags (InstanceConstraint builtin `In` ConstraintContext builtin) = StrategyFor tags (Value builtin `In` NamedBoundCtx)
+  StrategyFor tags (UnificationConstraint builtin `In` ConstraintContext builtin) = StrategyFor tags (Value builtin `In` NamedBoundCtx)
+  StrategyFor tags (Constraint builtin `In` ConstraintContext builtin) = StrategyFor tags (Value builtin `In` NamedBoundCtx)
+  ------------
+  -- Pretty --
+  ------------
+  -- Things that we just pretty print.
+  StrategyFor tags (Int `In` ctx) = 'Pretty
+  StrategyFor tags (Text `In` ctx) = 'Pretty
+  StrategyFor tags (RationalTensor `In` ctx) = 'Pretty
   --------------------
   -- Simplification --
   --------------------
   StrategyFor ('Uninserted tags) a = 'UninsertArgsAndBinders (StrategyFor tags a)
   StrategyFor ('ShortVectors tags) a = 'ShortenVectors (StrategyFor tags a)
-  ------------
-  -- Pretty --
-  ------------
-  -- Things that we just pretty print.
-  StrategyFor tags () = 'Pretty
-  StrategyFor tags Int = 'Pretty
-  StrategyFor tags Text = 'Pretty
-  -- StrategyFor tags (GenericBinder ()) = 'Pretty
+  -------------------
+  -- Context setup --
+  -------------------
+  StrategyFor tags (GenericProg expr) = 'SetupContext (StrategyFor tags (GenericProg expr `In` NamedBoundCtx))
+  StrategyFor tags (GenericDecl expr) = 'SetupContext (StrategyFor tags (GenericDecl expr `In` NamedBoundCtx))
+  StrategyFor tags (Contextualised object ctx) = 'SetupContext (StrategyFor tags (object `In` ctx))
+  StrategyFor tags (Contextualised object ctx `In` NoCtx) = 'SetupContext (StrategyFor tags (object `In` ctx))
+  -- StrategyFor tags (Contextualised object (ConstraintContext builtin)) = 'SetupContext (StrategyFor tags (object `In` NamedBoundCtx))
   ----------------
   -- Error case --
   ----------------
@@ -222,7 +213,151 @@ prettyWith :: forall tags a b. (PrettyWith tags a) => a -> Doc b
 prettyWith = prettyUsing @(StrategyFor tags a) @a @b
 
 --------------------------------------------------------------------------------
--- Printing to internal language
+-- SetupContext
+
+instance (PrettyUsing rest (object `In` ctx)) => PrettyUsing ('SetupContext rest) (Contextualised object ctx) where
+  prettyUsing (WithContext e ctx) = prettyUsing @rest (e, ctx)
+
+instance (PrettyUsing rest (object `In` ctx)) => PrettyUsing ('SetupContext rest) (Contextualised object ctx `In` NoCtx) where
+  prettyUsing (WithContext e ctx, _) = prettyUsing @rest (e, ctx)
+
+instance (PrettyUsing rest (GenericProg expr `In` NamedBoundCtx)) => PrettyUsing ('SetupContext rest) (GenericProg expr) where
+  prettyUsing prog = prettyUsing @rest (prog, emptyNamedCtx)
+
+instance (PrettyUsing rest (GenericDecl expr `In` NamedBoundCtx)) => PrettyUsing ('SetupContext rest) (GenericDecl expr) where
+  prettyUsing decl = prettyUsing @rest (decl, emptyNamedCtx)
+
+--------------------------------------------------------------------------------
+-- DescopeNaively
+
+-- Convert closed terms from DeBruijn representation to named representation naively
+-- (It would be nice if we could `Functor` instances going, but I can't get it to work
+-- with the type-classes without getting ambiguties)
+
+-- Expr
+
+instance (PrettyUsing rest S.Expr, PrintableBuiltin builtin) => PrettyUsing ('DescopeNaively rest) (Expr builtin `In` ctx) where
+  prettyUsing (e, _ctx) = prettyUsing @rest $ descopeExprNaively e
+
+instance
+  (PrettyUsing rest S.Arg, PrintableBuiltin builtin) =>
+  PrettyUsing ('DescopeNaively rest) (Arg builtin `In` ctx)
+  where
+  prettyUsing (e, _ctx) = prettyUsing @rest $ fmap descopeExprNaively e
+
+instance
+  (PrettyUsing rest S.Binder, PrintableBuiltin builtin) =>
+  PrettyUsing ('DescopeNaively rest) (Binder builtin `In` ctx)
+  where
+  prettyUsing (e, _ctx) = prettyUsing @rest $ fmap descopeExprNaively e
+
+instance
+  (PrettyUsing rest S.Decl, PrintableBuiltin builtin) =>
+  PrettyUsing ('DescopeNaively rest) (Decl builtin `In` ctx)
+  where
+  prettyUsing (e, _ctx) = prettyUsing @rest $ fmap descopeExprNaively e
+
+instance
+  (PrettyUsing rest S.Prog, PrintableBuiltin builtin) =>
+  PrettyUsing ('DescopeNaively rest) (Prog builtin `In` ctx)
+  where
+  prettyUsing (e, _ctx) = prettyUsing @rest $ fmap descopeExprNaively e
+
+-- Value
+
+instance (PrettyUsing rest S.Expr, PrintableBuiltin builtin) => PrettyUsing ('DescopeNaively rest) (Value builtin `In` ctx) where
+  prettyUsing (e, _ctx) = prettyUsing @rest $ descopeValueNaively @builtin e
+
+instance
+  (PrettyUsing rest S.Arg, PrintableBuiltin builtin) =>
+  PrettyUsing ('DescopeNaively rest) (VArg builtin `In` ctx)
+  where
+  prettyUsing (e, _ctx) = prettyUsing @rest $ fmap descopeValueNaively e
+
+instance
+  (PrettyUsing rest S.Binder, PrintableBuiltin builtin) =>
+  PrettyUsing ('DescopeNaively rest) (VBinder builtin `In` ctx)
+  where
+  prettyUsing (e, _ctx) = prettyUsing @rest $ fmap descopeValueNaively e
+
+instance
+  (PrettyUsing rest S.Decl, PrintableBuiltin builtin) =>
+  PrettyUsing ('DescopeNaively rest) (VDecl builtin `In` ctx)
+  where
+  prettyUsing (e, _ctx) = prettyUsing @rest $ fmap descopeValueNaively e
+
+instance
+  (PrettyUsing rest S.Prog, PrintableBuiltin builtin) =>
+  PrettyUsing ('DescopeNaively rest) (VProg builtin `In` ctx)
+  where
+  prettyUsing (e, _ctx) = prettyUsing @rest $ fmap descopeValueNaively e
+
+-- Linear expression
+
+instance
+  (Constant constant, PrettyUsing rest (constant `In` ctx)) =>
+  PrettyUsing ('DescopeNaively rest) (LinearExpr constant `In` ctx)
+  where
+  prettyUsing (lexp, ctx) = prettyLinearExpr pretty (prettyUsing @rest . (,ctx)) lexp
+
+--------------------------------------------------------------------------------
+-- 'DescopeWithNames
+
+-- Convert open terms from DeBruijn representation to named representation
+-- (It would be nice if we could `Functor` instances going, but I can't get it to work
+-- with the type-classes without getting ambiguties)
+
+-- Expr
+
+instance
+  (PrettyUsing rest S.Expr, PrintableBuiltin builtin) =>
+  PrettyUsing ('DescopeWithNames rest) (Expr builtin `In` NamedBoundCtx)
+  where
+  prettyUsing (e, ctx) = prettyUsing @rest $ descopeExpr e ctx
+
+instance
+  (PrettyUsing rest S.Arg, PrintableBuiltin builtin) =>
+  PrettyUsing ('DescopeWithNames rest) (Arg builtin `In` NamedBoundCtx)
+  where
+  prettyUsing (e, ctx) = prettyUsing @rest $ fmap (`descopeExpr` ctx) e
+
+instance
+  (PrettyUsing rest S.Binder, PrintableBuiltin builtin) =>
+  PrettyUsing ('DescopeWithNames rest) (Binder builtin `In` NamedBoundCtx)
+  where
+  prettyUsing (e, ctx) = prettyUsing @rest $ fmap (`descopeExpr` ctx) e
+
+instance
+  (PrettyUsing rest S.Decl, PrintableBuiltin builtin) =>
+  PrettyUsing ('DescopeWithNames rest) (Decl builtin `In` NamedBoundCtx)
+  where
+  prettyUsing (e, ctx) = prettyUsing @rest $ fmap (`descopeExpr` ctx) e
+
+instance
+  (PrettyUsing rest S.Prog, PrintableBuiltin builtin) =>
+  PrettyUsing ('DescopeWithNames rest) (Prog builtin `In` NamedBoundCtx)
+  where
+  prettyUsing (e, ctx) = prettyUsing @rest $ fmap (`descopeExpr` ctx) e
+
+-- Value
+
+-- LinearExpr
+
+instance
+  (Constant constant, PrettyUsing rest (constant `In` NamedBoundCtx)) =>
+  PrettyUsing ('DescopeWithNames rest) (LinearExpr constant `In` NamedBoundCtx)
+  where
+  prettyUsing (lexp, ctx) = prettyLinearExpr prettyVar prettyConst lexp
+    where
+      prettyConst c = prettyUsing @rest (c, ctx)
+      prettyVar lv = case lookupLvInBoundCtx lv ctx of
+        Nothing -> developerError $ "Missing name for variable" <+> pretty lv
+        Just n -> pretty n
+
+--------------------------------------------------------------------------------
+-- 'PrintAs
+
+-- Internal
 
 instance PrettyUsing ('PrintAs 'Internal) S.Prog where
   prettyUsing (Main decls) =
@@ -241,8 +376,7 @@ instance PrettyUsing ('PrintAs 'Internal) S.Arg where
 instance PrettyUsing ('PrintAs 'Internal) S.Binder where
   prettyUsing = printInternal
 
---------------------------------------------------------------------------------
--- Printing to external language
+-- External
 
 instance PrettyUsing ('PrintAs 'External) S.Prog where
   prettyUsing (Main decls) =
@@ -262,60 +396,6 @@ instance PrettyUsing ('PrintAs 'External) S.Binder where
   prettyUsing = printExternal
 
 --------------------------------------------------------------------------------
--- Convert closed terms from DeBruijn representation to named representation naively
-
-instance (PrettyUsing rest S.Prog, PrintableBuiltin builtin) => PrettyUsing ('DescopeNaively rest) (Prog builtin) where
-  prettyUsing prog = prettyUsing @rest $ fmap descopeExprNaively prog
-
-instance (PrettyUsing rest S.Decl, PrintableBuiltin builtin) => PrettyUsing ('DescopeNaively rest) (Decl builtin) where
-  prettyUsing decl = prettyUsing @rest $ fmap descopeExprNaively decl
-
-instance (PrettyUsing rest S.Expr, PrintableBuiltin builtin) => PrettyUsing ('DescopeNaively rest) (Expr builtin) where
-  prettyUsing = prettyUsing @rest . descopeExprNaively
-
-instance (PrettyUsing rest S.Arg, PrintableBuiltin builtin) => PrettyUsing ('DescopeNaively rest) (Arg builtin) where
-  prettyUsing arg = prettyUsing @rest $ fmap descopeExprNaively arg
-
-instance (PrettyUsing rest S.Binder, PrintableBuiltin builtin) => PrettyUsing ('DescopeNaively rest) (Binder builtin) where
-  prettyUsing binder = prettyUsing @rest $ fmap descopeExprNaively binder
-
-instance (PrettyUsing rest S.Expr, PrintableBuiltin builtin) => PrettyUsing ('DescopeNaively rest) (Value builtin) where
-  prettyUsing = prettyUsing @rest . descopeValueNaively @builtin
-
-instance (PrettyUsing rest S.Arg, PrintableBuiltin builtin) => PrettyUsing ('DescopeNaively rest) (VArg builtin) where
-  prettyUsing arg = prettyUsing @rest $ fmap (descopeValueNaively @builtin) arg
-
-instance (PrettyUsing rest S.Binder, PrintableBuiltin builtin) => PrettyUsing ('DescopeNaively rest) (VBinder builtin) where
-  prettyUsing binder = prettyUsing @rest $ fmap (descopeValueNaively @builtin) binder
-
---------------------------------------------------------------------------------
--- Convert open terms from DeBruijn representation to named representation
-
-instance (PrettyUsing rest S.Prog, PrintableBuiltin builtin) => PrettyUsing ('DescopeWithNames rest) (Prog builtin) where
-  prettyUsing prog = prettyUsing @rest $ fmap descopeExprInEmptyCtx prog
-
-instance (PrettyUsing rest S.Decl, PrintableBuiltin builtin) => PrettyUsing ('DescopeWithNames rest) (Decl builtin) where
-  prettyUsing decl = prettyUsing @rest $ fmap descopeExprInEmptyCtx decl
-
-instance
-  (PrettyUsing rest S.Expr, PrintableBuiltin builtin) =>
-  PrettyUsing ('DescopeWithNames rest) (Contextualised (Expr builtin) NamedBoundCtx)
-  where
-  prettyUsing e = prettyUsing @rest $ descopeExpr e
-
-instance
-  (PrettyUsing rest S.Arg, PrintableBuiltin builtin) =>
-  PrettyUsing ('DescopeWithNames rest) (Contextualised (Arg builtin) NamedBoundCtx)
-  where
-  prettyUsing (WithContext e ctx) = prettyUsing @rest $ fmap (\a -> descopeExpr (WithContext a ctx)) e
-
-instance
-  (PrettyUsing rest S.Binder, PrintableBuiltin builtin) =>
-  PrettyUsing ('DescopeWithNames rest) (Contextualised (Binder builtin) NamedBoundCtx)
-  where
-  prettyUsing (WithContext e ctx) = prettyUsing @rest $ fmap (\a -> descopeExpr (WithContext a ctx)) e
-
---------------------------------------------------------------------------------
 -- Simplification
 
 instance
@@ -330,63 +410,8 @@ instance
   where
   prettyUsing e = prettyUsing @rest (shortenVec e)
 
---------------------------------------------------------------------------------
--- Other
-
-instance
-  (PrettyUsing rest a) =>
-  PrettyUsing ('Opaque rest) [a]
-  where
-  prettyUsing es = list (prettyUsing @rest <$> es)
-
-instance
-  (PrettyUsing rest a) =>
-  PrettyUsing ('Opaque rest) (Maybe a)
-  where
-  prettyUsing = \case
-    Nothing -> ""
-    Just x -> prettyUsing @rest x
-
-instance (PrettyUsing rest a) => PrettyUsing ('Opaque rest) (IntMap a) where
-  prettyUsing es = prettyIntMap (prettyUsing @rest <$> es)
-
-instance (PrettyUsing resta a, PrettyUsing restb b) => PrettyUsing ('MapTuple2 resta restb) (a, b) where
-  prettyUsing (e1, e2) = "(" <> prettyUsing @resta e1 <> "," <+> prettyUsing @restb e2 <> ")"
-
-instance
-  (PrettyUsing resta (Contextualised a ctx), PrettyUsing restb (Contextualised b ctx)) =>
-  PrettyUsing ('MapTuple2 resta restb) (Contextualised (a, b) ctx)
-  where
-  prettyUsing (WithContext (e1, e2) ctx) =
-    parens (prettyUsing @resta (WithContext e1 ctx) <> "," <+> prettyUsing @restb (WithContext e2 ctx))
-
-instance
-  (PrettyUsing resta a, PrettyUsing restb b, PrettyUsing restc c) =>
-  PrettyUsing ('MapTuple3 resta restb restc) (a, b, c)
-  where
-  prettyUsing (e1, e2, e3) =
-    "("
-      <> prettyUsing @resta e1
-      <> ","
-        <+> prettyUsing @restb e2
-      <> ","
-        <+> prettyUsing @restc e3
-      <> ")"
-
---------------------------------------------------------------------------------
--- Instances which defer to primitive pretty instances
-
-instance PrettyUsing 'Pretty Int where
-  prettyUsing = pretty
-
-instance PrettyUsing 'Pretty Text where
-  prettyUsing = pretty
-
-instance
-  (PrettyUsing rest Text) =>
-  (PrettyUsing rest (Contextualised Text ctx))
-  where
-  prettyUsing = prettyUsing @rest . objectIn
+instance (Pretty a) => PrettyUsing 'Pretty (a `In` ctx) where
+  prettyUsing (x, _) = pretty x
 
 --------------------------------------------------------------------------------
 -- Instances for normalised types
@@ -416,12 +441,12 @@ instance
   prettyUsing e = prettyUsing @rest $ fmap (unnormalise @(Value builtin) @(Expr Builtin) 0) e
 
 instance
-  (PrettyUsing rest (Contextualised (Expr Builtin) NamedBoundCtx), ConvertableBuiltin builtin Builtin) =>
-  PrettyUsing ('QuoteValue rest) (Contextualised (Value builtin) NamedBoundCtx)
+  (PrettyUsing rest (Expr Builtin `In` NamedBoundCtx), ConvertableBuiltin builtin Builtin) =>
+  PrettyUsing ('QuoteValue rest) (Value builtin `In` NamedBoundCtx)
   where
-  prettyUsing (WithContext e ctx) = do
+  prettyUsing (e, ctx) = do
     let e' = unnormalise @(Value builtin) @(Expr Builtin) (Lv $ length ctx) e
-    prettyUsing @rest (WithContext e' ctx)
+    prettyUsing @rest (e', ctx)
 
 instance PrettyUsing rest (GenericBinder ()) where
   prettyUsing b = maybe "_" pretty (nameOf b)
@@ -429,86 +454,117 @@ instance PrettyUsing rest (GenericBinder ()) where
 --------------------------------------------------------------------------------
 -- Instances for constraints
 
-prettyUnify :: Doc a -> Doc a -> Doc a
-prettyUnify e1 e2 = e1 <+> "~" <+> e2
-
-prettyTypeClass :: MetaID -> Doc a -> Doc a
-prettyTypeClass m expr = pretty m <+> "<=" <+> expr
-
-prettyConstraintContext :: Doc a -> ConstraintContext builtin -> Doc a
-prettyConstraintContext constraint ctx =
-  "#" <> pretty (constraintID ctx) <> ". " <+> constraint -- <+> pretty ctx
+prettyConstraintContext :: ConstraintContext builtin -> Doc a
+prettyConstraintContext ctx =
+  "#" <> pretty (constraintID ctx) <> ". " -- <+> pretty ctx
 
 instance
-  (PrettyUsing rest (Value builtin)) =>
-  PrettyUsing ('DiscardConstraintCtx rest) (Contextualised (UnificationConstraint builtin) (ConstraintContext builtin))
+  (PrettyUsing rest (Value builtin `In` NamedBoundCtx)) =>
+  PrettyUsing rest (UnificationConstraint builtin `In` ConstraintContext builtin)
   where
-  prettyUsing (WithContext (Unify _ e1 e2) ctx) = do
-    let e1' = prettyUsing @rest (e1 :: Value builtin)
-    let e2' = prettyUsing @rest (e2 :: Value builtin)
-    prettyConstraintContext (prettyUnify e1' e2') ctx
+  prettyUsing (Unify _ e1 e2, ctx) = do
+    let e1' = prettyUsing @rest (e1, namedBoundCtxOf ctx)
+    let e2' = prettyUsing @rest (e2, namedBoundCtxOf ctx)
+    prettyConstraintContext ctx <+> e1' <+> "~" <+> e2'
 
 instance
-  (PrettyUsing rest (Value builtin)) =>
-  PrettyUsing ('DiscardConstraintCtx rest) (Contextualised (InstanceConstraint builtin) (ConstraintContext builtin))
+  (PrettyUsing rest (Value builtin `In` NamedBoundCtx)) =>
+  PrettyUsing rest (InstanceConstraint builtin `In` ConstraintContext builtin)
   where
-  prettyUsing (WithContext (Resolve _ m _ expr) ctx) = do
-    let expr' = prettyUsing @rest (expr :: Value builtin)
-    prettyConstraintContext (prettyTypeClass m expr') ctx
+  prettyUsing (Resolve _ m _ expr, ctx) = do
+    let expr' = prettyUsing @rest (expr, namedBoundCtxOf ctx)
+    prettyConstraintContext ctx <+> pretty m <+> "<=" <+> expr'
 
 instance
-  (PrettyUsing rest (Contextualised (Value builtin) NamedBoundCtx)) =>
-  PrettyUsing ('KeepConstraintCtx rest) (Contextualised (UnificationConstraint builtin) (ConstraintContext builtin))
-  where
-  prettyUsing (WithContext (Unify _ e1 e2) ctx) = do
-    let e1' = prettyUsing @rest (WithContext e1 (namedBoundCtxOf ctx))
-    let e2' = prettyUsing @rest (WithContext e2 (namedBoundCtxOf ctx))
-    prettyConstraintContext (prettyUnify e1' e2') ctx
-
-instance
-  (PrettyUsing rest (Contextualised (Value builtin) NamedBoundCtx)) =>
-  PrettyUsing ('KeepConstraintCtx rest) (Contextualised (InstanceConstraint builtin) (ConstraintContext builtin))
-  where
-  prettyUsing (WithContext (Resolve _ m _ expr) ctx) = do
-    let expr' = prettyUsing @rest (WithContext expr (namedBoundCtxOf ctx))
-    prettyConstraintContext (prettyTypeClass m expr') ctx
-
-instance
-  ( PrettyUsing rest (Contextualised (UnificationConstraint builtin) (ConstraintContext builtin)),
-    PrettyUsing rest (Contextualised (InstanceConstraint builtin) (ConstraintContext builtin))
+  ( PrettyUsing rest (UnificationConstraint builtin `In` ctx),
+    PrettyUsing rest (InstanceConstraint builtin `In` ctx)
   ) =>
-  PrettyUsing rest (Contextualised (Constraint builtin) (ConstraintContext builtin))
+  PrettyUsing rest (Constraint builtin `In` ctx)
   where
-  prettyUsing (WithContext c ctx) = case c of
-    UnificationConstraint uc -> prettyUsing @rest (WithContext uc ctx)
-    InstanceConstraint tc -> prettyUsing @rest (WithContext tc ctx)
+  prettyUsing (c, ctx) = case c of
+    UnificationConstraint uc -> prettyUsing @rest (uc, ctx)
+    InstanceConstraint tc -> prettyUsing @rest (tc, ctx)
 
 --------------------------------------------------------------------------------
--- Instances for opaque types
-
-instance (PrettyUsing rest a) => PrettyUsing ('Opaque rest) (MetaMap a) where
-  prettyUsing (MetaMap m) = prettyMapEntries entries
-    where
-      entries = fmap (bimap MetaID (prettyUsing @rest)) (IntMap.assocs m)
-
-instance (PrettyUsing rest a) => PrettyUsing ('Opaque rest) (ConjunctAll a) where
-  prettyUsing (ConjunctAll cs) = concatWith (\x y -> x <> line <> y) docs
-    where
-      docs = NonEmpty.toList (fmap (prettyUsing @rest) cs)
-
-instance (PrettyUsing rest a) => PrettyUsing ('Opaque rest) (DisjunctAll a) where
-  prettyUsing (DisjunctAll cs) = concatWith (\x y -> x <> line <> "or" <> y) docs
-    where
-      docs = NonEmpty.toList (fmap (prettyUsing @rest) cs)
-
-instance (PrettyUsing rest a) => PrettyUsing ('Opaque rest) (MaybeTrivial a) where
-  prettyUsing = \case
-    Trivial True -> "True"
-    Trivial False -> "False"
-    NonTrivial x -> prettyUsing @rest x
+-- Assertions
 
 instance
-  (Functor f, PrettyUsing ('Opaque rest) (f (Contextualised a ctx))) =>
-  PrettyUsing ('Opaque rest) (Contextualised (f a) ctx)
+  (Constant constant, PrettyUsing rest (LinearExpr constant `In` ctx)) =>
+  PrettyUsing rest (Equality constant `In` ctx)
   where
-  prettyUsing (WithContext cs ctx) = prettyUsing @('Opaque rest) $ fmap (`WithContext` ctx) cs
+  prettyUsing (e, ctx) = prettyUsing @rest (equalityExpr e, ctx) <+> "== 0"
+
+instance
+  (Constant constant, PrettyUsing rest (LinearExpr constant `In` ctx)) =>
+  PrettyUsing rest (Inequality constant `In` ctx)
+  where
+  prettyUsing (e, ctx) =
+    prettyUsing @rest (inequalityExpr e, ctx)
+      <+> (if strictness e == Strict then "<" else "<=")
+      <+> "0.0"
+
+instance
+  (Constant constant, PrettyUsing rest (Inequality constant `In` ctx)) =>
+  PrettyUsing rest (Bounds constant `In` ctx)
+  where
+  prettyUsing (Bounds {..}, ctx) =
+    "below by max"
+      <+> vsep (fmap (prettyUsing @rest . (,ctx)) lowerBounds)
+      <+> "and"
+      <+> "above by min"
+      <+> vsep (fmap (prettyUsing @rest . (,ctx)) upperBounds)
+
+instance
+  ( PrettyUsing rest (Inequality RationalTensor `In` ctx),
+    PrettyUsing rest (Equality RationalTensor `In` ctx)
+  ) =>
+  PrettyUsing rest (Assertion `In` ctx)
+  where
+  prettyUsing (e, ctx) = case e of
+    RationalEq eq -> prettyUsing @rest (eq, ctx)
+    RationalIneq ineq -> prettyUsing @rest (ineq, ctx)
+    TensorEq eq -> prettyUsing @rest (eq, ctx)
+
+--------------------------------------------------------------------------------
+-- Instances for functors types
+
+instance
+  (PrettyUsing rest (a `In` ctx)) =>
+  PrettyUsing rest ([a] `In` ctx)
+  where
+  prettyUsing (es, ctx) = list (prettyUsing @rest . (,ctx) <$> es)
+
+instance
+  (PrettyUsing rest (a `In` ctx)) =>
+  PrettyUsing rest (Maybe a `In` ctx)
+  where
+  prettyUsing (e, ctx) = case e of
+    Nothing -> ""
+    Just x -> prettyUsing @rest (x, ctx)
+
+instance (PrettyUsing rest (a `In` ctx)) => PrettyUsing rest (MetaMap a `In` ctx) where
+  prettyUsing (MetaMap m, ctx) = prettyMapEntries entries
+    where
+      entries = fmap (bimap MetaID (prettyUsing @rest . (,ctx))) (IntMap.assocs m)
+
+instance (PrettyUsing rest (a `In` ctx)) => PrettyUsing rest (MaybeTrivial a `In` ctx) where
+  prettyUsing (e, ctx) = case e of
+    Trivial True -> "True"
+    Trivial False -> "False"
+    NonTrivial x -> prettyUsing @rest (x, ctx)
+
+instance (PrettyUsing rest (a `In` ctx)) => PrettyUsing rest (ConjunctAll a `In` ctx) where
+  prettyUsing (ConjunctAll cs, ctx) = "and" <> line <> indent 2 (vsep docs)
+    where
+      docs = NonEmpty.toList (fmap (prettyUsing @rest . (,ctx)) cs)
+
+instance (PrettyUsing rest (a `In` ctx)) => PrettyUsing rest (DisjunctAll a `In` ctx) where
+  prettyUsing (DisjunctAll cs, ctx) = "or" <> line <> indent 2 (vsep docs)
+    where
+      docs = NonEmpty.toList (fmap (prettyUsing @rest . (,ctx)) cs)
+
+instance (PrettyUsing rest (a `In` ctx)) => PrettyUsing rest (BooleanExpr a `In` ctx) where
+  prettyUsing (e, ctx) = case e of
+    Query x -> prettyUsing @rest (x, ctx)
+    Disjunct xs -> prettyUsing @rest (xs, ctx)
+    Conjunct xs -> prettyUsing @rest (xs, ctx)

@@ -12,11 +12,12 @@ import Data.LinkedHashMap qualified as LinkedHashMap
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Maybe (catMaybes)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Vector qualified as Vector
 import GHC.Generics
-import Vehicle.Compile.Context.Free
+import Vehicle.Compile.Context.Free.Class (MonadFreeContext)
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.Prelude
@@ -33,6 +34,7 @@ import Vehicle.Data.QuantifiedVariable
 import Vehicle.Data.Tensor
 import Vehicle.Libraries.StandardLibrary.Definitions
 import Vehicle.Verify.Core
+import Vehicle.Verify.QueryFormat.Core (QueryVariable)
 import Vehicle.Verify.QueryFormat.Interface
 
 --------------------------------------------------------------------------------
@@ -67,7 +69,7 @@ data PropertyMetaData = PropertyMetaData
 -- Global state
 
 data GlobalCtx = GlobalCtx
-  { globalBoundVarCtx :: !(LinkedHashMap Lv Variable),
+  { globalBoundVarCtx :: !(GenericBoundCtx Name),
     tensorVariableInfo :: !(HashMap TensorVariable TensorVariableInfo),
     networkApplications :: !(LinkedHashMap NetworkApplication NetworkApplicationReplacement)
   }
@@ -75,41 +77,38 @@ data GlobalCtx = GlobalCtx
 emptyGlobalCtx :: GlobalCtx
 emptyGlobalCtx =
   GlobalCtx
-    { globalBoundVarCtx = LinkedHashMap.empty,
+    { globalBoundVarCtx = mempty,
       tensorVariableInfo = mempty,
       networkApplications = LinkedHashMap.empty
     }
 
-addVectorVarToBoundVarCtx ::
-  (Lv, TensorVariable) ->
-  [(Lv, ElementVariable)] ->
-  LinkedHashMap Lv Variable
-addVectorVarToBoundVarCtx tensorVar elemVars =
-  LinkedHashMap.union (LinkedHashMap.fromList elemVars) (LinkedHashMap.fromList [tensorVar])
+addVectorVarToBoundVarCtx :: Name -> [(ElementVariable, Name)] -> GenericBoundCtx Name -> GenericBoundCtx Name
+addVectorVarToBoundVarCtx tensorVar elemVars ctx = reverse (fmap snd elemVars) <> [tensorVar] <> ctx
 
 addUserVarToGlobalContext ::
-  TensorVariable ->
+  Name ->
   TensorShape ->
   GlobalCtx ->
-  (Value Builtin, GlobalCtx)
-addUserVarToGlobalContext userVar shape GlobalCtx {..} = do
+  (TensorVariable, GlobalCtx)
+addUserVarToGlobalContext userVarName shape GlobalCtx {..} = do
   -- Create the unreduced and reduced versions of the user variables.
   let currentLevel = Lv $ length globalBoundVarCtx
-  let (reducedUseVars, reducedUserVarExpr) = reduceTensorVariable (currentLevel + 1) userVar shape
-  let userVarExpr = VBoundVar currentLevel []
+  let (reducedUseVars, reducedUserVarExpr) = reduceTensorVariable (currentLevel + 1) userVarName shape
+  let userVar = currentLevel
   let variableInfo =
         TensorVariableInfo
-          { elementVariables = fmap snd reducedUseVars,
+          { elementVariables = fmap fst reducedUseVars,
             reducedVarExpr = reducedUserVarExpr,
-            tensorVariableShape = shape
+            tensorVariableShape = shape,
+            tensorVariableType = Nothing
           }
   let newGlobalCtx =
         GlobalCtx
-          { globalBoundVarCtx = LinkedHashMap.union (addVectorVarToBoundVarCtx (currentLevel, userVar) reducedUseVars) globalBoundVarCtx,
+          { globalBoundVarCtx = addVectorVarToBoundVarCtx userVarName reducedUseVars globalBoundVarCtx,
             tensorVariableInfo = HashMap.insert userVar variableInfo tensorVariableInfo,
             ..
           }
-  (userVarExpr, newGlobalCtx)
+  (userVar, newGlobalCtx)
 
 addNetworkApplicationToGlobalCtx ::
   (MonadLogger m) =>
@@ -126,36 +125,37 @@ addNetworkApplicationToGlobalCtx app@(networkName, _) networkInfo GlobalCtx {..}
   -- user tensor variables in terms of it).
   let inputLv = Lv $ length globalBoundVarCtx
   let inputShape = dimensions (inputTensor (networkType networkInfo))
-  let inputVar = makeTensorVariable $ layoutAsText $ createNetworkVarName networkName applicationNumber Input
-  let (reducedInputVars, reducedInputVarsExpr) = reduceTensorVariable (inputLv + 1) inputVar inputShape
+  let inputVarName = layoutAsText $ createNetworkVarName networkName applicationNumber Input
+  let inputVar = makeTensorVariable inputLv
+  let (reducedInputVars, reducedInputVarsExpr) = reduceTensorVariable (inputLv + 1) inputVarName inputShape
   let inputVarExpr = VBoundVar inputLv []
   let inputVarInfo =
         TensorVariableInfo
-          { elementVariables = fmap snd reducedInputVars,
+          { elementVariables = fmap fst reducedInputVars,
             reducedVarExpr = reducedInputVarsExpr,
-            tensorVariableShape = inputShape
+            tensorVariableShape = inputShape,
+            tensorVariableType = Just Input
           }
 
   -- Create a tensor of variables for the output of the network.
   let outputLv = inputLv + 1 + Lv (length reducedInputVars)
   let outputShape = dimensions (outputTensor (networkType networkInfo))
-  let outputVar = makeTensorVariable $ layoutAsText $ createNetworkVarName networkName applicationNumber Output
-  let (reducedOutputVars, reducedOutputVarsExpr) = reduceTensorVariable (outputLv + 1) outputVar outputShape
+  let outputVarName = layoutAsText $ createNetworkVarName networkName applicationNumber Output
+  let outputVar = makeTensorVariable outputLv
+  let (reducedOutputVars, reducedOutputVarsExpr) = reduceTensorVariable (outputLv + 1) outputVarName outputShape
   let outputVarExpr = VBoundVar outputLv []
   let outputVarInfo =
         TensorVariableInfo
-          { elementVariables = fmap snd reducedOutputVars,
+          { elementVariables = fmap fst reducedOutputVars,
             reducedVarExpr = reducedOutputVarsExpr,
-            tensorVariableShape = outputShape
+            tensorVariableShape = outputShape,
+            tensorVariableType = Just Output
           }
 
   -- Create the context extension of the bound context.
   let newGlobalBoundVarCtx =
-        LinkedHashMap.unions
-          [ addVectorVarToBoundVarCtx (outputLv, outputVar) reducedOutputVars,
-            addVectorVarToBoundVarCtx (inputLv, inputVar) reducedInputVars,
-            globalBoundVarCtx
-          ]
+        addVectorVarToBoundVarCtx outputVarName reducedOutputVars $
+          addVectorVarToBoundVarCtx inputVarName reducedInputVars globalBoundVarCtx
 
   -- Create the object to store information about the application
   let appInfo =
@@ -182,17 +182,24 @@ addNetworkApplicationToGlobalCtx app@(networkName, _) networkInfo GlobalCtx {..}
   return (inputVarExpr, outputVarExpr, newGlobalCtx)
 
 --------------------------------------------------------------------------------
--- Partitions
+-- Reconstructions
 
-type AssertionTree = BooleanExpr Assertion
+data VariableType = UserVariable | OtherVariable
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData VariableType
+
+instance ToJSON VariableType
+
+instance FromJSON VariableType
 
 -- | One step in the process for transforming unreduced user variables into
 -- reduced network input and output variables.
 data UserVariableReconstructionStep
-  = SolveTensorEquality TensorVariable LinearExpr
-  | SolveRationalEquality UserElementVariable LinearExpr
-  | SolveRationalInequalities UserElementVariable Bounds
-  | ReconstructTensor Bool TensorShape TensorVariable [ElementVariable]
+  = SolveTensorEquality TensorVariable (LinearExpr RationalTensor)
+  | SolveRationalEquality UserElementVariable (LinearExpr RationalTensor)
+  | SolveRationalInequalities UserElementVariable (Bounds RationalTensor)
+  | ReconstructTensor VariableType TensorShape TensorVariable [ElementVariable]
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData UserVariableReconstructionStep
@@ -203,29 +210,53 @@ instance FromJSON UserVariableReconstructionStep
 
 instance Pretty UserVariableReconstructionStep where
   pretty = \case
-    SolveTensorEquality v s -> "Equation:" <+> pretty v <+> "=" <+> pretty s
-    SolveRationalEquality v s -> "Equation:" <+> pretty v <+> "=" <+> pretty s
-    SolveRationalInequalities v s -> "Inequalities:" <+> pretty v <+> "bounded" <+> pretty s
+    SolveTensorEquality v s -> "Equation:" <+> pretty v <+> "=" <+> prettyVerbose s
+    SolveRationalEquality v s -> "Equation:" <+> pretty v <+> "=" <+> prettyVerbose s
+    SolveRationalInequalities v s -> "Inequalities:" <+> pretty v <+> "bounded" <+> prettyVerbose s
     ReconstructTensor _ _ v vs -> "Reconstruct:" <+> pretty v <+> "from" <+> prettyList vs
+
+-- Storing the Variable is unnessary and is just for readability. We can get
+-- rid of it if we switch to a non-human readable format for the .vcl-plan files.
+type VariableStore = GenericBoundCtx (Variable, Name, Maybe QueryVariable)
 
 -- | The steps for transforming unreduced user variables into reduced network
 -- input and output varibles.
 -- These are used to recreate a satisfying assignment for the user variables
 -- from the satisfying assignment for the network variables spat out by the
 -- verifier.
---
 -- The steps are stored in the same order they occured during compilation.
-type UserVariableReconstruction = [UserVariableReconstructionStep]
+data UserVariableReconstruction = Reconstruction
+  { variableStore :: VariableStore,
+    reconstructionSteps :: [UserVariableReconstructionStep]
+  }
+  deriving (Generic)
 
-type Partition = (UserVariableReconstruction, AssertionTree)
+instance NFData UserVariableReconstruction
 
-newtype Partitions = Partitions (Map UserVariableReconstruction AssertionTree)
+instance ToJSON UserVariableReconstruction
+
+instance FromJSON UserVariableReconstruction
+
+getQueryVariableCtx :: UserVariableReconstruction -> GenericBoundCtx (Maybe QueryVariable)
+getQueryVariableCtx d = fmap (\(_, _, c) -> c) (variableStore d)
+
+getVehicleVariableCtx :: UserVariableReconstruction -> GenericBoundCtx Name
+getVehicleVariableCtx d = fmap (\(_, b, _) -> b) (variableStore d)
+
+getQueryVariables :: UserVariableReconstruction -> [QueryVariable]
+getQueryVariables = catMaybes . getQueryVariableCtx
+
+--------------------------------------------------------------------------------
+-- Partitions
+
+type AssertionTree = BooleanExpr Assertion
+
+type Partition = ([UserVariableReconstructionStep], AssertionTree)
+
+newtype Partitions = Partitions (Map [UserVariableReconstructionStep] AssertionTree)
 
 partitionsToDisjuncts :: Partitions -> DisjunctAll Partition
 partitionsToDisjuncts (Partitions ps) = DisjunctAll $ NonEmpty.fromList $ Map.toList ps
-
-instance Pretty Partitions where
-  pretty = pretty . partitionsToDisjuncts
 
 andPartitions :: Partitions -> Partitions -> Partitions
 andPartitions (Partitions xs) (Partitions ys) = do
@@ -238,7 +269,7 @@ orPartitions :: Partitions -> Partitions -> Partitions
 orPartitions (Partitions p1) (Partitions p2) =
   Partitions $ Map.unionWith orBoolExpr p1 p2
 
-mkSinglePartition :: (UserVariableReconstruction, MaybeTrivial AssertionTree) -> MaybeTrivial Partitions
+mkSinglePartition :: ([UserVariableReconstructionStep], MaybeTrivial AssertionTree) -> MaybeTrivial Partitions
 mkSinglePartition (solutions, maybeAssertion) =
   fmap (Partitions . Map.singleton solutions) maybeAssertion
 
@@ -259,37 +290,23 @@ type MonadQueryStructure m =
     MonadState GlobalCtx m
   )
 
-getGlobalBoundCtx :: (MonadQueryStructure m) => m (BoundCtx (Type Builtin))
-getGlobalBoundCtx = gets (variableCtxToBoundCtx . (fmap snd . LinkedHashMap.toList . globalBoundVarCtx))
-
 getGlobalNamedBoundCtx :: (MonadQueryStructure m) => m NamedBoundCtx
-getGlobalNamedBoundCtx = toNamedBoundCtx <$> getGlobalBoundCtx
+getGlobalNamedBoundCtx = gets (fmap Just . globalBoundVarCtx)
 
 prettyFriendlyInCtx :: (MonadQueryStructure m) => Value Builtin -> m (Doc a)
-prettyFriendlyInCtx e = do
-  ctx <- toNamedBoundCtx <$> getGlobalBoundCtx
-  return $ prettyFriendly (WithContext e ctx)
+prettyFriendlyInCtx e = prettyFriendly . WithContext e <$> getGlobalNamedBoundCtx
 
-lookupVarByLevel :: (MonadState GlobalCtx m) => Lv -> m Variable
-lookupVarByLevel lv = do
-  GlobalCtx {..} <- get
-  case LinkedHashMap.lookup lv globalBoundVarCtx of
-    Nothing -> developerError "Cannot find variable var"
-    Just v -> return v
-
-getTensorVariable :: (MonadState GlobalCtx m) => Lv -> m (TensorVariable, TensorShape)
-getTensorVariable lv = do
-  var <- lookupVarByLevel lv
+getTensorVariableShape :: (MonadState GlobalCtx m) => TensorVariable -> m TensorShape
+getTensorVariableShape var = do
   globalCtx <- get
   let info = getTensorVariableInfo globalCtx var
-  return (var, tensorVariableShape info)
+  return (tensorVariableShape info)
 
 getRationalVariable :: (MonadState GlobalCtx m) => Lv -> m ElementVariable
 getRationalVariable lv = do
-  var <- lookupVarByLevel lv
   ctx <- get
-  case HashMap.lookup var (tensorVariableInfo ctx) of
-    Nothing -> return var
+  case HashMap.lookup lv (tensorVariableInfo ctx) of
+    Nothing -> return lv
     Just info -> do
       let rvs = elementVariables info
       case rvs of
@@ -308,15 +325,14 @@ getReducedVariablesFor :: GlobalCtx -> TensorVariable -> [ElementVariable]
 getReducedVariablesFor globalCtx var = elementVariables $ getTensorVariableInfo globalCtx var
 
 getReducedVariableExprFor :: (MonadState GlobalCtx m, MonadLogger m) => Lv -> m (Maybe (Value Builtin))
-getReducedVariableExprFor lv = do
+getReducedVariableExprFor var = do
   ctx <- get
-  var <- lookupVarByLevel lv
   return $ reducedVarExpr <$> HashMap.lookup var (tensorVariableInfo ctx)
 
 reduceTensorExpr ::
   GlobalCtx ->
-  LinearExpr ->
-  [LinearExpr]
+  LinearExpr RationalTensor ->
+  [LinearExpr RationalTensor]
 reduceTensorExpr globalCtx (Sparse coeff constant) = do
   let constValues = Vector.toList $ tensorValue constant
   let numRatEqs = product (tensorShape constant)
@@ -328,7 +344,7 @@ reduceTensorExpr globalCtx (Sparse coeff constant) = do
       [([ElementVariable], Coefficient)] ->
       [Rational] ->
       Int ->
-      LinearExpr
+      LinearExpr RationalTensor
     mkRatEquality coeffs consts i =
       Sparse (Map.fromList (fmap (first (!! i)) coeffs)) (Tensor mempty [consts !! i])
 

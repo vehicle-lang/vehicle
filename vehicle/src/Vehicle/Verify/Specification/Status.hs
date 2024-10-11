@@ -87,7 +87,7 @@ prettyNameAndStatus :: Text -> Bool -> Doc a
 prettyNameAndStatus name verified = do
   pretty (statusSymbol verified) <+> pretty name
 
-prettyUserVariableAssignment :: (TensorVariable, RationalTensor) -> Doc a
+prettyUserVariableAssignment :: (Name, RationalTensor) -> Doc a
 prettyUserVariableAssignment (var, variableValue) =
   pretty var <> ":" <+> pretty variableValue
 

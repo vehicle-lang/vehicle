@@ -11,7 +11,8 @@ import Prettyprinter (list)
 import Vehicle.Backend.LossFunction.Core (BooleanDifferentiableLogicField, TensorDifferentiableLogicField)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (PrettyFriendly, PrintableBuiltin)
+import Vehicle.Compile.Print (PrettyFriendly)
+import Vehicle.Compile.Print.Builtin
 import Vehicle.Compile.Type.Core
 import Vehicle.Data.Assertion (UnderConstrainedVariableStatus)
 import Vehicle.Data.Builtin.Linearity
@@ -19,8 +20,6 @@ import Vehicle.Data.Builtin.Polarity
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Builtin.Tensor
 import Vehicle.Data.Code.Value
-import Vehicle.Data.DeBruijn
-import Vehicle.Data.QuantifiedVariable (UserElementVariable)
 import Vehicle.Data.Tensor (TensorShape)
 import Vehicle.Syntax.Parse (ParseError, ParseLocation)
 import Vehicle.Verify.QueryFormat.Core
@@ -98,7 +97,7 @@ data CompileError
     UnsupportedLossOperation DeclProvenance Provenance (Doc Void)
   | UnsupportedHigherOrderTensorCode DeclProvenance NamedBoundCtx (Value Builtin) NamedBoundCtx (Value TensorBuiltin)
   | UnableToLiftLogicFieldToTensors DifferentiableLogicID TensorDifferentiableLogicField (BooleanDifferentiableLogicField, Value Builtin) NamedBoundCtx (Value Builtin)
-  | NoQuantifierDomainFound DeclProvenance (GenericBinder ()) (Maybe [(UserElementVariable, UnderConstrainedVariableStatus)])
+  | NoQuantifierDomainFound DeclProvenance (GenericBinder ()) (Maybe [(Name, UnderConstrainedVariableStatus)])
   | -- ITP backend errors
     UnsupportedPolymorphicEquality ITP Provenance Name
   | -- Other
@@ -173,17 +172,6 @@ internalScopingError pass ident =
         <+> quotePretty ident
         <+> "not found in scope..."
 
-outOfBoundsError :: Doc () -> GenericBoundCtx a -> Ix -> b
-outOfBoundsError pass ctx i =
-  developerError $
-    "Internal scoping error during"
-      <+> pass
-      <> ":"
-        <+> "the bound context of length"
-        <+> quotePretty (length ctx)
-        <+> "is smaller than the found DB index"
-        <+> pretty i
-
 -- | Looks up the declaration associated the provided `Identifier`, throwing
 -- an error if that identifier is out of scope.
 lookupInFreeCtx ::
@@ -195,25 +183,3 @@ lookupInFreeCtx ::
 lookupInFreeCtx pass ident ctx = case Map.lookup ident ctx of
   Nothing -> internalScopingError pass ident
   Just x -> return x
-
--- | Looks up the value associated with the variable given the provided `Lv`, throwing
--- an error if that level is out of scope.
-lookupLvInBoundCtx ::
-  Doc () ->
-  Lv ->
-  GenericBoundCtx a ->
-  a
-lookupLvInBoundCtx pass lv ctx = case lookupLv ctx lv of
-  Nothing -> outOfBoundsError pass ctx (dbLevelToIndex (Lv $ length ctx) lv)
-  Just x -> x
-
--- | Looks up the value associated with the variable given the provided `Ix`, throwing
--- an error if that index is out of scope.
-lookupIxInBoundCtx ::
-  Doc () ->
-  Ix ->
-  GenericBoundCtx a ->
-  a
-lookupIxInBoundCtx pass ix ctx = case lookupIx ctx ix of
-  Nothing -> outOfBoundsError pass ctx ix
-  Just x -> x

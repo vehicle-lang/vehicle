@@ -96,7 +96,7 @@ binding = Binder p (BinderDisplayForm (OnlyName "x") False) Explicit Relevant
 mkNoOpEnv :: Lv -> BoundEnv builtin
 mkNoOpEnv boundCtxSize = reverse [mkDefaultEnvEntry "_" (VBoundVar i []) | i <- [0 .. boundCtxSize - 1]]
   where
-    mkDefaultEnvEntry :: Name -> Value builtin -> EnvEntry closure builtin
+    mkDefaultEnvEntry :: Name -> Value builtin -> EnvEntry builtin
     mkDefaultEnvEntry name value = (Binder mempty displayForm Explicit Relevant (), value)
       where
         displayForm = BinderDisplayForm (OnlyName name) True

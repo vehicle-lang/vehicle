@@ -5,7 +5,7 @@ import Control.Monad (foldM)
 import Data.Foldable (foldlM)
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set qualified as Set
 import Data.Vector qualified as Vector
 import Vehicle.Backend.Queries.UserVariableElimination.Core
@@ -14,7 +14,6 @@ import Vehicle.Compile.Prelude
 import Vehicle.Data.Code.LinearExpr (evaluateExpr)
 import Vehicle.Data.QuantifiedVariable
 import Vehicle.Data.Tensor (RationalTensor, Tensor (..), TensorShape)
-import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
 import Vehicle.Verify.Verifier.Core
 
@@ -23,16 +22,17 @@ import Vehicle.Verify.Verifier.Core
 
 reconstructUserVars ::
   (MonadLogger m) =>
-  QueryVariableMapping ->
   UserVariableReconstruction ->
   QueryVariableAssignment ->
   m UserVariableAssignment
-reconstructUserVars queryVariableMapping steps networkVariableAssignment =
+reconstructUserVars (Reconstruction variables steps) networkVariableAssignment =
   logCompilerPass MidDetail "calculation of problem space witness" $ do
+    let queryVariables = fmap (\(_a, _b, c) -> c) variables
+    let vehicleVariableCtx = reverse $ fmap (\(_a, b, _c) -> b) variables
     logDebug MidDetail $ pretty steps
-    let assignment = createInitialAssignment queryVariableMapping networkVariableAssignment
+    let assignment = createInitialAssignment queryVariables networkVariableAssignment
     alteredAssignment <- foldlM applyReconstructionStep assignment steps
-    let finalAssignment = createFinalAssignment alteredAssignment
+    finalAssignment <- createFinalAssignment vehicleVariableCtx alteredAssignment
     logDebug MidDetail $ "User variables:" <+> pretty finalAssignment
     return finalAssignment
 
@@ -66,11 +66,11 @@ lookupRationalVariables VariableAssignment {..} vars = right reverse $ foldM op 
       Just _ -> developerError "Rational variables should have an empty tensor shape"
 
 createInitialAssignment ::
-  [(QueryVariable, NetworkElementVariable)] ->
+  GenericBoundCtx (Maybe QueryVariable) ->
   QueryVariableAssignment ->
   MixedVariableAssignment
-createInitialAssignment queryVariableMapping (QueryVariableAssignment valuesByQueryVar) = do
-  let queryVariableMap = Map.fromList queryVariableMapping
+createInitialAssignment queryVariables (QueryVariableAssignment valuesByQueryVar) = do
+  let queryVariableMap = Map.fromList $ mapMaybe (\(a, v) -> fmap (,v) a) $ zip queryVariables [0 ..]
   let mapQueryVariable var = fromMaybe (developerError ("Missing query variable" <+> pretty var)) (Map.lookup var queryVariableMap)
   let valuesByNetworkVar = (\v -> Tensor [] [v]) <$> Map.mapKeys mapQueryVariable valuesByQueryVar
   VariableAssignment
@@ -86,8 +86,9 @@ applyReconstructionStep ::
 applyReconstructionStep assignment@VariableAssignment {..} step = do
   logDebug MidDetail $ "Variable assignment:" <> line <> indent 2 (pretty assignment)
   case step of
-    ReconstructTensor isUserVariable shape var individualVars ->
-      unreduceVariable isUserVariable shape var individualVars assignment
+    ReconstructTensor varType shape var individualVars ->
+      logCompilerSection MidDetail ("Collapsing variables" <+> pretty individualVars <+> "to single variable" <+> pretty var) $
+        unreduceVariable varType shape var individualVars assignment
     SolveRationalEquality var eq -> do
       logCompilerSection MidDetail ("Reintroducing rational Gaussian-eliminated variable" <+> quotePretty var) $ do
         logDebug MidDetail $ "Using" <+> pretty step
@@ -131,13 +132,13 @@ applyReconstructionStep assignment@VariableAssignment {..} step = do
 -- assignment.
 unreduceVariable ::
   (MonadLogger m) =>
-  Bool ->
+  VariableType ->
   TensorShape ->
   TensorVariable ->
   [ElementVariable] ->
   MixedVariableAssignment ->
   m MixedVariableAssignment
-unreduceVariable isUserVariable shape variable reducedVariables assignment@VariableAssignment {..} = do
+unreduceVariable varType shape variable reducedVariables assignment@VariableAssignment {..} = do
   let variableResults = lookupRationalVariables assignment reducedVariables
   case variableResults of
     Left missingVar ->
@@ -148,17 +149,21 @@ unreduceVariable isUserVariable shape variable reducedVariables assignment@Varia
           <+> "unable to find variable"
           <+> pretty missingVar
     Right values -> do
-      logDebug MaxDetail $
-        "Collapsing variables" <+> pretty reducedVariables <+> "to single variable" <+> pretty variable
       let unreducedValue = Tensor shape (Vector.fromList values)
       return $
         assignment
           { variableValues = Map.insert variable unreducedValue variableValues,
-            userVariables = if isUserVariable then variable : userVariables else userVariables
+            userVariables = if varType == UserVariable then variable : userVariables else userVariables
           }
 
-createFinalAssignment :: MixedVariableAssignment -> UserVariableAssignment
-createFinalAssignment (VariableAssignment {..}) = do
+createFinalAssignment ::
+  (MonadLogger m) =>
+  GenericBoundCtx Name ->
+  MixedVariableAssignment ->
+  m UserVariableAssignment
+createFinalAssignment vehicleVariables (VariableAssignment {..}) = do
   let userVarSet = Set.fromList userVariables
   let userVarAssignments = Map.filterWithKey (\v _ -> v `Set.member` userVarSet) variableValues
-  UserVariableAssignment $ Map.toList userVarAssignments
+  let lookupName lv = lookupLvInBoundCtx lv vehicleVariables
+  let stringVarAssignments = Map.mapKeys lookupName userVarAssignments
+  return $ UserVariableAssignment $ Map.toList stringVarAssignments

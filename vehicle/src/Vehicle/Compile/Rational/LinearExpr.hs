@@ -16,7 +16,7 @@ import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.LinearExpr (LinearExpr, addExprs, constantExpr, isConstant, scaleExpr, singletonVarExpr)
 import Vehicle.Data.Code.Value
 import Vehicle.Data.QuantifiedVariable
-import Vehicle.Data.Tensor (RationalTensor, Tensor (..), TensorShape)
+import Vehicle.Data.Tensor (RationalTensor, Tensor (..), TensorShape, zeroTensor)
 import Prelude hiding (Applicative (..))
 
 type MonadCompileLinearExpr m =
@@ -34,7 +34,7 @@ data LinearityError
 compileRatLinearRelation ::
   (MonadLogger m) =>
   (Lv -> ExceptT LinearityError m ElementVariable) ->
-  (LinearExpr -> LinearExpr -> relation) ->
+  (LinearExpr RationalTensor -> LinearExpr RationalTensor -> relation) ->
   Value Builtin ->
   Value Builtin ->
   m (Either LinearityError relation)
@@ -49,16 +49,16 @@ compileRatLinearExpr ::
   (MonadCompileLinearExpr m) =>
   (Lv -> m ElementVariable) ->
   Value Builtin ->
-  m LinearExpr
+  m (LinearExpr RationalTensor)
 compileRatLinearExpr handleVar = go
   where
-    go :: Value Builtin -> m LinearExpr
+    go :: Value Builtin -> m (LinearExpr RationalTensor)
     go e = case e of
       ----------------
       -- Base cases --
       ----------------
       IRatLiteral _ l -> return $ constantExpr (Tensor [] [l])
-      VBoundVar lv [] -> singletonVarExpr [] <$> handleVar lv
+      VBoundVar lv [] -> singletonVarExpr (zeroTensor []) <$> handleVar lv
       ---------------------
       -- Inductive cases --
       ---------------------
@@ -88,25 +88,25 @@ compileRatLinearExpr handleVar = go
 
 compileTensorLinearRelation ::
   (MonadLogger m) =>
-  (Lv -> ExceptT LinearityError m (TensorVariable, TensorShape)) ->
+  (Lv -> ExceptT LinearityError m TensorShape) ->
   Value Builtin ->
   Value Builtin ->
-  m (Either LinearityError (Maybe (LinearExpr, LinearExpr)))
-compileTensorLinearRelation handleVar x y = do
+  m (Either LinearityError (Maybe (LinearExpr RationalTensor, LinearExpr RationalTensor)))
+compileTensorLinearRelation lookupVar x y = do
   runExceptT $ do
-    x' <- compileTensorLinearExpr handleVar x
-    y' <- compileTensorLinearExpr handleVar y
+    x' <- compileTensorLinearExpr lookupVar x
+    y' <- compileTensorLinearExpr lookupVar y
     return $ liftA2 (,) x' y'
 
 compileTensorLinearExpr ::
   forall m.
   (MonadCompileLinearExpr m) =>
-  (Lv -> m (TensorVariable, TensorShape)) ->
+  (Lv -> m TensorShape) ->
   Value Builtin ->
-  m (Maybe LinearExpr)
-compileTensorLinearExpr handleVar = go
+  m (Maybe (LinearExpr RationalTensor))
+compileTensorLinearExpr lookupVar = go
   where
-    go :: Value Builtin -> m (Maybe LinearExpr)
+    go :: Value Builtin -> m (Maybe (LinearExpr RationalTensor))
     go e = case e of
       ---------------------
       -- Inductive cases --
@@ -119,8 +119,8 @@ compileTensorLinearExpr handleVar = go
       IVecLiteral {} -> do
         return (constantExpr <$> getRationalTensor e)
       VBoundVar lv [] -> do
-        (var, shape) <- handleVar lv
-        return $ Just $ singletonVarExpr shape var
+        shape <- lookupVar lv
+        return $ Just $ singletonVarExpr (zeroTensor shape) lv
       _ -> return Nothing
 
 getRationalTensor :: Value Builtin -> Maybe RationalTensor

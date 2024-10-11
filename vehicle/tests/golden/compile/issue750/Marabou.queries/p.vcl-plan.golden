@@ -7,130 +7,176 @@
         "queries": {
           "unDisjunctAll": [
             {
-              "variableReconstruction": [
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      1
-                    ],
-                    "f₀[input]",
-                    [
-                      "f₀[input]!0"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      1
-                    ],
-                    "f₀[output]",
-                    [
-                      "f₀[output]!0"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      1
-                    ],
-                    "f₁[input]",
-                    [
-                      "f₁[input]!0"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      1
-                    ],
-                    "f₁[output]",
-                    [
-                      "f₁[output]!0"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "SolveTensorEquality",
-                  "contents": [
+              "variableReconstruction": {
+                "variableStore": [
+                  [
+                    0,
                     "x",
-                    {
-                      "constantValue": {
-                        "value": [
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          }
-                        ],
-                        "tag": "Tensor",
-                        "shape": [
-                          1
-                        ]
-                      },
-                      "coefficients": {
-                        "f₀[input]": {
-                          "numerator": 1,
-                          "denominator": 1
-                        }
-                      }
-                    }
-                  ]
-                },
-                {
-                  "tag": "SolveTensorEquality",
-                  "contents": [
+                    null
+                  ],
+                  [
+                    1,
+                    "x!0",
+                    null
+                  ],
+                  [
+                    2,
                     "y",
-                    {
-                      "constantValue": {
-                        "value": [
-                          {
-                            "numerator": 0,
+                    null
+                  ],
+                  [
+                    3,
+                    "y!0",
+                    null
+                  ],
+                  [
+                    4,
+                    "f₀[input]",
+                    null
+                  ],
+                  [
+                    5,
+                    "f₀[input]!0",
+                    "x0"
+                  ],
+                  [
+                    6,
+                    "f₀[output]",
+                    null
+                  ],
+                  [
+                    7,
+                    "f₀[output]!0",
+                    "y0"
+                  ],
+                  [
+                    8,
+                    "f₁[input]",
+                    null
+                  ],
+                  [
+                    9,
+                    "f₁[input]!0",
+                    "x1"
+                  ],
+                  [
+                    10,
+                    "f₁[output]",
+                    null
+                  ],
+                  [
+                    11,
+                    "f₁[output]!0",
+                    "y1"
+                  ]
+                ],
+                "reconstructionSteps": [
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        1
+                      ],
+                      4,
+                      [
+                        5
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        1
+                      ],
+                      6,
+                      [
+                        7
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        1
+                      ],
+                      8,
+                      [
+                        9
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        1
+                      ],
+                      10,
+                      [
+                        11
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "SolveTensorEquality",
+                    "contents": [
+                      0,
+                      {
+                        "constantValue": {
+                          "value": [
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ],
+                          "tag": "Tensor",
+                          "shape": [
+                            1
+                          ]
+                        },
+                        "coefficients": {
+                          "4": {
+                            "numerator": 1,
                             "denominator": 1
                           }
-                        ],
-                        "tag": "Tensor",
-                        "shape": [
-                          1
-                        ]
-                      },
-                      "coefficients": {
-                        "f₁[input]": {
-                          "numerator": 1,
-                          "denominator": 1
                         }
                       }
-                    }
-                  ]
-                }
-              ],
-              "queryVariableMapping": [
-                [
-                  "x0",
-                  "f₀[input]!0"
-                ],
-                [
-                  "x1",
-                  "f₁[input]!0"
-                ],
-                [
-                  "y0",
-                  "f₀[output]!0"
-                ],
-                [
-                  "y1",
-                  "f₁[output]!0"
+                    ]
+                  },
+                  {
+                    "tag": "SolveTensorEquality",
+                    "contents": [
+                      2,
+                      {
+                        "constantValue": {
+                          "value": [
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ],
+                          "tag": "Tensor",
+                          "shape": [
+                            1
+                          ]
+                        },
+                        "coefficients": {
+                          "8": {
+                            "numerator": 1,
+                            "denominator": 1
+                          }
+                        }
+                      }
+                    ]
+                  }
                 ]
-              ],
+              },
               "queryAddress": [
                 {
                   "propertyName": "p",

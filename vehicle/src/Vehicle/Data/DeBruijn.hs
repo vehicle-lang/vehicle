@@ -13,6 +13,7 @@ where
 
 import Control.DeepSeq (NFData)
 import Control.Monad.Reader (MonadReader (..))
+import Data.Aeson (FromJSON, FromJSONKey, ToJSON, ToJSONKey)
 import Data.Hashable (Hashable (..))
 import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
@@ -47,7 +48,7 @@ instance Pretty Ix where
 newtype Lv = Lv
   { unLv :: Int
   }
-  deriving (Eq, Ord, Num, Enum, Show, Generic)
+  deriving (Eq, Ord, Num, Enum, Show, Generic, ToJSON, FromJSON, ToJSONKey, FromJSONKey)
 
 instance NFData Lv
 

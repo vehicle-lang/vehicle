@@ -8,10 +8,10 @@ See https://github.com/vehicle-lang/vehicle/issues/74 for further details.
 
 Warning: In property 'identity', the following network input variables do not always have both a lower and a upper bound. This is not currently supported by the Marabou query format.
   In queries 1, 2, 3, 4, 5, 6, 7, 8, 9 and 10:
-    decode₀[input]!0 - no lower or upper bound
-    decode₀[input]!1 - no lower or upper bound
     encode₀[input]!0 - no lower or upper bound
     encode₀[input]!1 - no lower or upper bound
+    encode₀[input]!2 - no lower or upper bound
+    encode₀[input]!3 - no lower or upper bound
     ... 2 more ...
-    encode₀[input]!4 - no lower or upper bound
+    decode₀[input]!1 - no lower or upper bound
 [m

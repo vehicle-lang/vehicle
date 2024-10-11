@@ -12,7 +12,6 @@ import Vehicle.Compile.Print.Builtin
 import Vehicle.Data.Builtin.Interface (BuiltinHasNatLiterals, BuiltinHasRatType (mkRatBuiltinType), BuiltinHasVecType)
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value (VBinder, Value)
-import Vehicle.Data.QuantifiedVariable
 import Vehicle.Data.Tensor (TensorShape)
 import Prelude hiding (Applicative (..))
 
@@ -33,12 +32,12 @@ createUserVar ::
   DeclProvenance ->
   NamedBoundCtx ->
   VBinder builtin ->
-  m (TensorVariable, TensorShape)
+  m (Name, TensorShape)
 createUserVar propertyProvenance namedCtx binder = do
   let varName = getBinderName binder
   checkUserVariableNameIsUnique propertyProvenance namedCtx varName
   varDimensions <- checkUserVariableType propertyProvenance binder
-  return (makeTensorVariable varName, varDimensions)
+  return (varName, varDimensions)
 
 checkUserVariableNameIsUnique ::
   (MonadCompile m) =>

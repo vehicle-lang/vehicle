@@ -40,6 +40,7 @@ import System.Process (readProcessWithExitCode)
 import System.ProgressBar
 import System.Random
 import Vehicle.Backend.Agda.Interact (writeResultToFile)
+import Vehicle.Backend.Queries.UserVariableElimination.Core (getQueryVariables)
 import Vehicle.Backend.Queries.UserVariableElimination.VariableReconstruction (reconstructUserVars)
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Code.BooleanExpr
@@ -48,6 +49,7 @@ import Vehicle.Data.Tensor (Tensor (..))
 import Vehicle.Prelude.IO qualified as VIO (MonadStdIO (writeStdoutLn))
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat
+import Vehicle.Verify.QueryFormat.Core
 import Vehicle.Verify.Specification
 import Vehicle.Verify.Specification.Status
 import Vehicle.Verify.Verifier
@@ -363,7 +365,7 @@ verifyQuery ::
   (MonadVerifyProperty m) =>
   QueryMetaData ->
   m (QueryResult UserVariableAssignment)
-verifyQuery (QueryMetaData queryAddress metaNetwork queryVariableMapping userVars) = do
+verifyQuery (QueryMetaData queryAddress metaNetwork reconstruction) = do
   logCompilerSection MidDetail ("Verifying query" <+> quotePretty queryAddress) $ do
     (verifierSettings@VerifierSettings {..}, folder, progressBar) <- ask
     let queryFile = folder </> calculateQueryFileName queryAddress
@@ -378,8 +380,8 @@ verifyQuery (QueryMetaData queryAddress metaNetwork queryVariableMapping userVar
           return $ SAT Nothing
         SAT (Just witness) -> do
           logDebug MidDetail $ "Query is SAT (witness provided)" <> line
-          checkWitness queryVariableMapping witness
-          problemSpaceWitness <- reconstructUserVars queryVariableMapping userVars witness
+          checkWitness (getQueryVariables reconstruction) witness
+          problemSpaceWitness <- reconstructUserVars reconstruction witness
           return $ SAT $ Just problemSpaceWitness
         UnSAT -> do
           logDebug MidDetail $ "Query is UnSAT" <> line
@@ -426,9 +428,9 @@ invokeVerifier VerifierSettings {..} metaNetworkEntries queryFile = do
   -- Parse the result
   parseOutput verifier out
 
-checkWitness :: (MonadError VerificationError m) => QueryVariableMapping -> QueryVariableAssignment -> m ()
-checkWitness queryVariableMapping (QueryVariableAssignment witness) = do
-  let allVariables = Set.fromList $ fmap fst queryVariableMapping
+checkWitness :: (MonadError VerificationError m) => [QueryVariable] -> QueryVariableAssignment -> m ()
+checkWitness queryVariables (QueryVariableAssignment witness) = do
+  let allVariables = Set.fromList queryVariables
   let providedVariables = Map.keysSet witness
   let missingVariables = Set.difference allVariables providedVariables
   unless (Set.null missingVariables) $

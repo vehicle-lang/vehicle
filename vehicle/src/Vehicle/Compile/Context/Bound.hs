@@ -9,10 +9,11 @@ module Vehicle.Compile.Context.Bound
 where
 
 import Data.Proxy (Proxy (..))
+import GHC.Stack (HasCallStack)
 import Vehicle.Compile.Context.Bound.Class as X
 import Vehicle.Compile.Context.Bound.Core as X
 import Vehicle.Compile.Context.Bound.Instance as X
-import Vehicle.Compile.Error (MonadCompile, lookupIxInBoundCtx, lookupLvInBoundCtx)
+import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Normalise.Quote qualified as Quote (unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (PrettyFriendly, prettyFriendly)
@@ -29,23 +30,21 @@ prettyFriendlyInCtx p value = do
 
 getBoundVarByIx ::
   forall expr m.
-  (MonadBoundContext expr m, MonadCompile m) =>
+  (MonadBoundContext expr m, MonadCompile m, HasCallStack) =>
   Proxy expr ->
-  CompilerPass ->
   Ix ->
   m (GenericBinder expr)
-getBoundVarByIx _ compilerPass ix =
-  lookupIxInBoundCtx compilerPass ix <$> getBoundCtx (Proxy @expr)
+getBoundVarByIx _ ix =
+  lookupIxInBoundCtx ix <$> getBoundCtx (Proxy @expr)
 
 getBoundVarByLv ::
   forall expr m.
-  (MonadBoundContext expr m, MonadCompile m) =>
+  (MonadBoundContext expr m, MonadCompile m, HasCallStack) =>
   Proxy expr ->
-  CompilerPass ->
   Lv ->
   m (GenericBinder expr)
-getBoundVarByLv _ compilerPass lv =
-  lookupLvInBoundCtx compilerPass lv <$> getBoundCtx (Proxy @expr)
+getBoundVarByLv _ lv =
+  lookupLvInBoundCtx lv <$> getBoundCtx (Proxy @expr)
 
 unnormalise ::
   forall expr m.

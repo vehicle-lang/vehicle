@@ -21,14 +21,14 @@ import Vehicle.Syntax.AST.Expr qualified as S
 --------------------------------------------------------------------------------
 -- Interface
 
-descopeExpr :: (PrintableBuiltin builtin) => Contextualised (Expr builtin) NamedBoundCtx -> S.Expr
-descopeExpr (WithContext e ctx) = do
+descopeExpr :: (PrintableBuiltin builtin) => Expr builtin -> NamedBoundCtx -> S.Expr
+descopeExpr e ctx = do
   let binderCtx = fmap (mkExplicitBinder ()) ctx
   let fun = genericDescopeExpr (ixToName Named) (convertExprBuiltins e)
   runNameContext binderCtx fun
 
 descopeExprInEmptyCtx :: (PrintableBuiltin builtin) => Expr builtin -> S.Expr
-descopeExprInEmptyCtx e = descopeExpr (WithContext e mempty)
+descopeExprInEmptyCtx e = descopeExpr e mempty
 
 descopeExprNaively :: (PrintableBuiltin builtin) => Expr builtin -> S.Expr
 descopeExprNaively e = do

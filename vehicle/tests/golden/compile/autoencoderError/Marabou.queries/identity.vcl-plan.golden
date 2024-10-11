@@ -7,170 +7,236 @@
         "queries": {
           "unDisjunctAll": [
             {
-              "variableReconstruction": [
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      2
-                    ],
-                    "decode₀[input]",
-                    [
-                      "decode₀[input]!0",
-                      "decode₀[input]!1"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      5
-                    ],
-                    "decode₀[output]",
-                    [
-                      "decode₀[output]!0",
-                      "decode₀[output]!1",
-                      "decode₀[output]!2",
-                      "decode₀[output]!3",
-                      "decode₀[output]!4"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      5
-                    ],
-                    "encode₀[input]",
-                    [
-                      "encode₀[input]!0",
-                      "encode₀[input]!1",
-                      "encode₀[input]!2",
-                      "encode₀[input]!3",
-                      "encode₀[input]!4"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      2
-                    ],
-                    "encode₀[output]",
-                    [
-                      "encode₀[output]!0",
-                      "encode₀[output]!1"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "SolveTensorEquality",
-                  "contents": [
+              "variableReconstruction": {
+                "variableStore": [
+                  [
+                    0,
                     "x",
-                    {
-                      "constantValue": {
-                        "value": [
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
+                    null
+                  ],
+                  [
+                    1,
+                    "x!0",
+                    null
+                  ],
+                  [
+                    2,
+                    "x!1",
+                    null
+                  ],
+                  [
+                    3,
+                    "x!2",
+                    null
+                  ],
+                  [
+                    4,
+                    "x!3",
+                    null
+                  ],
+                  [
+                    5,
+                    "x!4",
+                    null
+                  ],
+                  [
+                    6,
+                    "encode₀[input]",
+                    null
+                  ],
+                  [
+                    7,
+                    "encode₀[input]!0",
+                    "x0"
+                  ],
+                  [
+                    8,
+                    "encode₀[input]!1",
+                    "x1"
+                  ],
+                  [
+                    9,
+                    "encode₀[input]!2",
+                    "x2"
+                  ],
+                  [
+                    10,
+                    "encode₀[input]!3",
+                    "x3"
+                  ],
+                  [
+                    11,
+                    "encode₀[input]!4",
+                    "x4"
+                  ],
+                  [
+                    12,
+                    "encode₀[output]",
+                    null
+                  ],
+                  [
+                    13,
+                    "encode₀[output]!0",
+                    "y5"
+                  ],
+                  [
+                    14,
+                    "encode₀[output]!1",
+                    "y6"
+                  ],
+                  [
+                    15,
+                    "decode₀[input]",
+                    null
+                  ],
+                  [
+                    16,
+                    "decode₀[input]!0",
+                    "x5"
+                  ],
+                  [
+                    17,
+                    "decode₀[input]!1",
+                    "x6"
+                  ],
+                  [
+                    18,
+                    "decode₀[output]",
+                    null
+                  ],
+                  [
+                    19,
+                    "decode₀[output]!0",
+                    "y0"
+                  ],
+                  [
+                    20,
+                    "decode₀[output]!1",
+                    "y1"
+                  ],
+                  [
+                    21,
+                    "decode₀[output]!2",
+                    "y2"
+                  ],
+                  [
+                    22,
+                    "decode₀[output]!3",
+                    "y3"
+                  ],
+                  [
+                    23,
+                    "decode₀[output]!4",
+                    "y4"
+                  ]
+                ],
+                "reconstructionSteps": [
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        5
+                      ],
+                      6,
+                      [
+                        7,
+                        8,
+                        9,
+                        10,
+                        11
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        2
+                      ],
+                      12,
+                      [
+                        13,
+                        14
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        2
+                      ],
+                      15,
+                      [
+                        16,
+                        17
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        5
+                      ],
+                      18,
+                      [
+                        19,
+                        20,
+                        21,
+                        22,
+                        23
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "SolveTensorEquality",
+                    "contents": [
+                      0,
+                      {
+                        "constantValue": {
+                          "value": [
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ],
+                          "tag": "Tensor",
+                          "shape": [
+                            5
+                          ]
+                        },
+                        "coefficients": {
+                          "6": {
+                            "numerator": 1,
                             "denominator": 1
                           }
-                        ],
-                        "tag": "Tensor",
-                        "shape": [
-                          5
-                        ]
-                      },
-                      "coefficients": {
-                        "encode₀[input]": {
-                          "numerator": 1,
-                          "denominator": 1
                         }
                       }
-                    }
-                  ]
-                }
-              ],
-              "queryVariableMapping": [
-                [
-                  "x0",
-                  "encode₀[input]!0"
-                ],
-                [
-                  "x1",
-                  "encode₀[input]!1"
-                ],
-                [
-                  "x2",
-                  "encode₀[input]!2"
-                ],
-                [
-                  "x3",
-                  "encode₀[input]!3"
-                ],
-                [
-                  "x4",
-                  "encode₀[input]!4"
-                ],
-                [
-                  "x5",
-                  "decode₀[input]!0"
-                ],
-                [
-                  "x6",
-                  "decode₀[input]!1"
-                ],
-                [
-                  "y0",
-                  "encode₀[output]!0"
-                ],
-                [
-                  "y1",
-                  "encode₀[output]!1"
-                ],
-                [
-                  "y2",
-                  "decode₀[output]!0"
-                ],
-                [
-                  "y3",
-                  "decode₀[output]!1"
-                ],
-                [
-                  "y4",
-                  "decode₀[output]!2"
-                ],
-                [
-                  "y5",
-                  "decode₀[output]!3"
-                ],
-                [
-                  "y6",
-                  "decode₀[output]!4"
+                    ]
+                  }
                 ]
-              ],
+              },
               "queryAddress": [
                 {
                   "propertyName": "identity",
@@ -223,170 +289,236 @@
               ]
             },
             {
-              "variableReconstruction": [
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      2
-                    ],
-                    "decode₀[input]",
-                    [
-                      "decode₀[input]!0",
-                      "decode₀[input]!1"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      5
-                    ],
-                    "decode₀[output]",
-                    [
-                      "decode₀[output]!0",
-                      "decode₀[output]!1",
-                      "decode₀[output]!2",
-                      "decode₀[output]!3",
-                      "decode₀[output]!4"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      5
-                    ],
-                    "encode₀[input]",
-                    [
-                      "encode₀[input]!0",
-                      "encode₀[input]!1",
-                      "encode₀[input]!2",
-                      "encode₀[input]!3",
-                      "encode₀[input]!4"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      2
-                    ],
-                    "encode₀[output]",
-                    [
-                      "encode₀[output]!0",
-                      "encode₀[output]!1"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "SolveTensorEquality",
-                  "contents": [
+              "variableReconstruction": {
+                "variableStore": [
+                  [
+                    0,
                     "x",
-                    {
-                      "constantValue": {
-                        "value": [
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
+                    null
+                  ],
+                  [
+                    1,
+                    "x!0",
+                    null
+                  ],
+                  [
+                    2,
+                    "x!1",
+                    null
+                  ],
+                  [
+                    3,
+                    "x!2",
+                    null
+                  ],
+                  [
+                    4,
+                    "x!3",
+                    null
+                  ],
+                  [
+                    5,
+                    "x!4",
+                    null
+                  ],
+                  [
+                    6,
+                    "encode₀[input]",
+                    null
+                  ],
+                  [
+                    7,
+                    "encode₀[input]!0",
+                    "x0"
+                  ],
+                  [
+                    8,
+                    "encode₀[input]!1",
+                    "x1"
+                  ],
+                  [
+                    9,
+                    "encode₀[input]!2",
+                    "x2"
+                  ],
+                  [
+                    10,
+                    "encode₀[input]!3",
+                    "x3"
+                  ],
+                  [
+                    11,
+                    "encode₀[input]!4",
+                    "x4"
+                  ],
+                  [
+                    12,
+                    "encode₀[output]",
+                    null
+                  ],
+                  [
+                    13,
+                    "encode₀[output]!0",
+                    "y5"
+                  ],
+                  [
+                    14,
+                    "encode₀[output]!1",
+                    "y6"
+                  ],
+                  [
+                    15,
+                    "decode₀[input]",
+                    null
+                  ],
+                  [
+                    16,
+                    "decode₀[input]!0",
+                    "x5"
+                  ],
+                  [
+                    17,
+                    "decode₀[input]!1",
+                    "x6"
+                  ],
+                  [
+                    18,
+                    "decode₀[output]",
+                    null
+                  ],
+                  [
+                    19,
+                    "decode₀[output]!0",
+                    "y0"
+                  ],
+                  [
+                    20,
+                    "decode₀[output]!1",
+                    "y1"
+                  ],
+                  [
+                    21,
+                    "decode₀[output]!2",
+                    "y2"
+                  ],
+                  [
+                    22,
+                    "decode₀[output]!3",
+                    "y3"
+                  ],
+                  [
+                    23,
+                    "decode₀[output]!4",
+                    "y4"
+                  ]
+                ],
+                "reconstructionSteps": [
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        5
+                      ],
+                      6,
+                      [
+                        7,
+                        8,
+                        9,
+                        10,
+                        11
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        2
+                      ],
+                      12,
+                      [
+                        13,
+                        14
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        2
+                      ],
+                      15,
+                      [
+                        16,
+                        17
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        5
+                      ],
+                      18,
+                      [
+                        19,
+                        20,
+                        21,
+                        22,
+                        23
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "SolveTensorEquality",
+                    "contents": [
+                      0,
+                      {
+                        "constantValue": {
+                          "value": [
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ],
+                          "tag": "Tensor",
+                          "shape": [
+                            5
+                          ]
+                        },
+                        "coefficients": {
+                          "6": {
+                            "numerator": 1,
                             "denominator": 1
                           }
-                        ],
-                        "tag": "Tensor",
-                        "shape": [
-                          5
-                        ]
-                      },
-                      "coefficients": {
-                        "encode₀[input]": {
-                          "numerator": 1,
-                          "denominator": 1
                         }
                       }
-                    }
-                  ]
-                }
-              ],
-              "queryVariableMapping": [
-                [
-                  "x0",
-                  "encode₀[input]!0"
-                ],
-                [
-                  "x1",
-                  "encode₀[input]!1"
-                ],
-                [
-                  "x2",
-                  "encode₀[input]!2"
-                ],
-                [
-                  "x3",
-                  "encode₀[input]!3"
-                ],
-                [
-                  "x4",
-                  "encode₀[input]!4"
-                ],
-                [
-                  "x5",
-                  "decode₀[input]!0"
-                ],
-                [
-                  "x6",
-                  "decode₀[input]!1"
-                ],
-                [
-                  "y0",
-                  "encode₀[output]!0"
-                ],
-                [
-                  "y1",
-                  "encode₀[output]!1"
-                ],
-                [
-                  "y2",
-                  "decode₀[output]!0"
-                ],
-                [
-                  "y3",
-                  "decode₀[output]!1"
-                ],
-                [
-                  "y4",
-                  "decode₀[output]!2"
-                ],
-                [
-                  "y5",
-                  "decode₀[output]!3"
-                ],
-                [
-                  "y6",
-                  "decode₀[output]!4"
+                    ]
+                  }
                 ]
-              ],
+              },
               "queryAddress": [
                 {
                   "propertyName": "identity",
@@ -439,170 +571,236 @@
               ]
             },
             {
-              "variableReconstruction": [
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      2
-                    ],
-                    "decode₀[input]",
-                    [
-                      "decode₀[input]!0",
-                      "decode₀[input]!1"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      5
-                    ],
-                    "decode₀[output]",
-                    [
-                      "decode₀[output]!0",
-                      "decode₀[output]!1",
-                      "decode₀[output]!2",
-                      "decode₀[output]!3",
-                      "decode₀[output]!4"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      5
-                    ],
-                    "encode₀[input]",
-                    [
-                      "encode₀[input]!0",
-                      "encode₀[input]!1",
-                      "encode₀[input]!2",
-                      "encode₀[input]!3",
-                      "encode₀[input]!4"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      2
-                    ],
-                    "encode₀[output]",
-                    [
-                      "encode₀[output]!0",
-                      "encode₀[output]!1"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "SolveTensorEquality",
-                  "contents": [
+              "variableReconstruction": {
+                "variableStore": [
+                  [
+                    0,
                     "x",
-                    {
-                      "constantValue": {
-                        "value": [
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
+                    null
+                  ],
+                  [
+                    1,
+                    "x!0",
+                    null
+                  ],
+                  [
+                    2,
+                    "x!1",
+                    null
+                  ],
+                  [
+                    3,
+                    "x!2",
+                    null
+                  ],
+                  [
+                    4,
+                    "x!3",
+                    null
+                  ],
+                  [
+                    5,
+                    "x!4",
+                    null
+                  ],
+                  [
+                    6,
+                    "encode₀[input]",
+                    null
+                  ],
+                  [
+                    7,
+                    "encode₀[input]!0",
+                    "x0"
+                  ],
+                  [
+                    8,
+                    "encode₀[input]!1",
+                    "x1"
+                  ],
+                  [
+                    9,
+                    "encode₀[input]!2",
+                    "x2"
+                  ],
+                  [
+                    10,
+                    "encode₀[input]!3",
+                    "x3"
+                  ],
+                  [
+                    11,
+                    "encode₀[input]!4",
+                    "x4"
+                  ],
+                  [
+                    12,
+                    "encode₀[output]",
+                    null
+                  ],
+                  [
+                    13,
+                    "encode₀[output]!0",
+                    "y5"
+                  ],
+                  [
+                    14,
+                    "encode₀[output]!1",
+                    "y6"
+                  ],
+                  [
+                    15,
+                    "decode₀[input]",
+                    null
+                  ],
+                  [
+                    16,
+                    "decode₀[input]!0",
+                    "x5"
+                  ],
+                  [
+                    17,
+                    "decode₀[input]!1",
+                    "x6"
+                  ],
+                  [
+                    18,
+                    "decode₀[output]",
+                    null
+                  ],
+                  [
+                    19,
+                    "decode₀[output]!0",
+                    "y0"
+                  ],
+                  [
+                    20,
+                    "decode₀[output]!1",
+                    "y1"
+                  ],
+                  [
+                    21,
+                    "decode₀[output]!2",
+                    "y2"
+                  ],
+                  [
+                    22,
+                    "decode₀[output]!3",
+                    "y3"
+                  ],
+                  [
+                    23,
+                    "decode₀[output]!4",
+                    "y4"
+                  ]
+                ],
+                "reconstructionSteps": [
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        5
+                      ],
+                      6,
+                      [
+                        7,
+                        8,
+                        9,
+                        10,
+                        11
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        2
+                      ],
+                      12,
+                      [
+                        13,
+                        14
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        2
+                      ],
+                      15,
+                      [
+                        16,
+                        17
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        5
+                      ],
+                      18,
+                      [
+                        19,
+                        20,
+                        21,
+                        22,
+                        23
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "SolveTensorEquality",
+                    "contents": [
+                      0,
+                      {
+                        "constantValue": {
+                          "value": [
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ],
+                          "tag": "Tensor",
+                          "shape": [
+                            5
+                          ]
+                        },
+                        "coefficients": {
+                          "6": {
+                            "numerator": 1,
                             "denominator": 1
                           }
-                        ],
-                        "tag": "Tensor",
-                        "shape": [
-                          5
-                        ]
-                      },
-                      "coefficients": {
-                        "encode₀[input]": {
-                          "numerator": 1,
-                          "denominator": 1
                         }
                       }
-                    }
-                  ]
-                }
-              ],
-              "queryVariableMapping": [
-                [
-                  "x0",
-                  "encode₀[input]!0"
-                ],
-                [
-                  "x1",
-                  "encode₀[input]!1"
-                ],
-                [
-                  "x2",
-                  "encode₀[input]!2"
-                ],
-                [
-                  "x3",
-                  "encode₀[input]!3"
-                ],
-                [
-                  "x4",
-                  "encode₀[input]!4"
-                ],
-                [
-                  "x5",
-                  "decode₀[input]!0"
-                ],
-                [
-                  "x6",
-                  "decode₀[input]!1"
-                ],
-                [
-                  "y0",
-                  "encode₀[output]!0"
-                ],
-                [
-                  "y1",
-                  "encode₀[output]!1"
-                ],
-                [
-                  "y2",
-                  "decode₀[output]!0"
-                ],
-                [
-                  "y3",
-                  "decode₀[output]!1"
-                ],
-                [
-                  "y4",
-                  "decode₀[output]!2"
-                ],
-                [
-                  "y5",
-                  "decode₀[output]!3"
-                ],
-                [
-                  "y6",
-                  "decode₀[output]!4"
+                    ]
+                  }
                 ]
-              ],
+              },
               "queryAddress": [
                 {
                   "propertyName": "identity",
@@ -655,170 +853,236 @@
               ]
             },
             {
-              "variableReconstruction": [
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      2
-                    ],
-                    "decode₀[input]",
-                    [
-                      "decode₀[input]!0",
-                      "decode₀[input]!1"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      5
-                    ],
-                    "decode₀[output]",
-                    [
-                      "decode₀[output]!0",
-                      "decode₀[output]!1",
-                      "decode₀[output]!2",
-                      "decode₀[output]!3",
-                      "decode₀[output]!4"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      5
-                    ],
-                    "encode₀[input]",
-                    [
-                      "encode₀[input]!0",
-                      "encode₀[input]!1",
-                      "encode₀[input]!2",
-                      "encode₀[input]!3",
-                      "encode₀[input]!4"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      2
-                    ],
-                    "encode₀[output]",
-                    [
-                      "encode₀[output]!0",
-                      "encode₀[output]!1"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "SolveTensorEquality",
-                  "contents": [
+              "variableReconstruction": {
+                "variableStore": [
+                  [
+                    0,
                     "x",
-                    {
-                      "constantValue": {
-                        "value": [
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
+                    null
+                  ],
+                  [
+                    1,
+                    "x!0",
+                    null
+                  ],
+                  [
+                    2,
+                    "x!1",
+                    null
+                  ],
+                  [
+                    3,
+                    "x!2",
+                    null
+                  ],
+                  [
+                    4,
+                    "x!3",
+                    null
+                  ],
+                  [
+                    5,
+                    "x!4",
+                    null
+                  ],
+                  [
+                    6,
+                    "encode₀[input]",
+                    null
+                  ],
+                  [
+                    7,
+                    "encode₀[input]!0",
+                    "x0"
+                  ],
+                  [
+                    8,
+                    "encode₀[input]!1",
+                    "x1"
+                  ],
+                  [
+                    9,
+                    "encode₀[input]!2",
+                    "x2"
+                  ],
+                  [
+                    10,
+                    "encode₀[input]!3",
+                    "x3"
+                  ],
+                  [
+                    11,
+                    "encode₀[input]!4",
+                    "x4"
+                  ],
+                  [
+                    12,
+                    "encode₀[output]",
+                    null
+                  ],
+                  [
+                    13,
+                    "encode₀[output]!0",
+                    "y5"
+                  ],
+                  [
+                    14,
+                    "encode₀[output]!1",
+                    "y6"
+                  ],
+                  [
+                    15,
+                    "decode₀[input]",
+                    null
+                  ],
+                  [
+                    16,
+                    "decode₀[input]!0",
+                    "x5"
+                  ],
+                  [
+                    17,
+                    "decode₀[input]!1",
+                    "x6"
+                  ],
+                  [
+                    18,
+                    "decode₀[output]",
+                    null
+                  ],
+                  [
+                    19,
+                    "decode₀[output]!0",
+                    "y0"
+                  ],
+                  [
+                    20,
+                    "decode₀[output]!1",
+                    "y1"
+                  ],
+                  [
+                    21,
+                    "decode₀[output]!2",
+                    "y2"
+                  ],
+                  [
+                    22,
+                    "decode₀[output]!3",
+                    "y3"
+                  ],
+                  [
+                    23,
+                    "decode₀[output]!4",
+                    "y4"
+                  ]
+                ],
+                "reconstructionSteps": [
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        5
+                      ],
+                      6,
+                      [
+                        7,
+                        8,
+                        9,
+                        10,
+                        11
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        2
+                      ],
+                      12,
+                      [
+                        13,
+                        14
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        2
+                      ],
+                      15,
+                      [
+                        16,
+                        17
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        5
+                      ],
+                      18,
+                      [
+                        19,
+                        20,
+                        21,
+                        22,
+                        23
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "SolveTensorEquality",
+                    "contents": [
+                      0,
+                      {
+                        "constantValue": {
+                          "value": [
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ],
+                          "tag": "Tensor",
+                          "shape": [
+                            5
+                          ]
+                        },
+                        "coefficients": {
+                          "6": {
+                            "numerator": 1,
                             "denominator": 1
                           }
-                        ],
-                        "tag": "Tensor",
-                        "shape": [
-                          5
-                        ]
-                      },
-                      "coefficients": {
-                        "encode₀[input]": {
-                          "numerator": 1,
-                          "denominator": 1
                         }
                       }
-                    }
-                  ]
-                }
-              ],
-              "queryVariableMapping": [
-                [
-                  "x0",
-                  "encode₀[input]!0"
-                ],
-                [
-                  "x1",
-                  "encode₀[input]!1"
-                ],
-                [
-                  "x2",
-                  "encode₀[input]!2"
-                ],
-                [
-                  "x3",
-                  "encode₀[input]!3"
-                ],
-                [
-                  "x4",
-                  "encode₀[input]!4"
-                ],
-                [
-                  "x5",
-                  "decode₀[input]!0"
-                ],
-                [
-                  "x6",
-                  "decode₀[input]!1"
-                ],
-                [
-                  "y0",
-                  "encode₀[output]!0"
-                ],
-                [
-                  "y1",
-                  "encode₀[output]!1"
-                ],
-                [
-                  "y2",
-                  "decode₀[output]!0"
-                ],
-                [
-                  "y3",
-                  "decode₀[output]!1"
-                ],
-                [
-                  "y4",
-                  "decode₀[output]!2"
-                ],
-                [
-                  "y5",
-                  "decode₀[output]!3"
-                ],
-                [
-                  "y6",
-                  "decode₀[output]!4"
+                    ]
+                  }
                 ]
-              ],
+              },
               "queryAddress": [
                 {
                   "propertyName": "identity",
@@ -871,170 +1135,236 @@
               ]
             },
             {
-              "variableReconstruction": [
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      2
-                    ],
-                    "decode₀[input]",
-                    [
-                      "decode₀[input]!0",
-                      "decode₀[input]!1"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      5
-                    ],
-                    "decode₀[output]",
-                    [
-                      "decode₀[output]!0",
-                      "decode₀[output]!1",
-                      "decode₀[output]!2",
-                      "decode₀[output]!3",
-                      "decode₀[output]!4"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      5
-                    ],
-                    "encode₀[input]",
-                    [
-                      "encode₀[input]!0",
-                      "encode₀[input]!1",
-                      "encode₀[input]!2",
-                      "encode₀[input]!3",
-                      "encode₀[input]!4"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      2
-                    ],
-                    "encode₀[output]",
-                    [
-                      "encode₀[output]!0",
-                      "encode₀[output]!1"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "SolveTensorEquality",
-                  "contents": [
+              "variableReconstruction": {
+                "variableStore": [
+                  [
+                    0,
                     "x",
-                    {
-                      "constantValue": {
-                        "value": [
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
+                    null
+                  ],
+                  [
+                    1,
+                    "x!0",
+                    null
+                  ],
+                  [
+                    2,
+                    "x!1",
+                    null
+                  ],
+                  [
+                    3,
+                    "x!2",
+                    null
+                  ],
+                  [
+                    4,
+                    "x!3",
+                    null
+                  ],
+                  [
+                    5,
+                    "x!4",
+                    null
+                  ],
+                  [
+                    6,
+                    "encode₀[input]",
+                    null
+                  ],
+                  [
+                    7,
+                    "encode₀[input]!0",
+                    "x0"
+                  ],
+                  [
+                    8,
+                    "encode₀[input]!1",
+                    "x1"
+                  ],
+                  [
+                    9,
+                    "encode₀[input]!2",
+                    "x2"
+                  ],
+                  [
+                    10,
+                    "encode₀[input]!3",
+                    "x3"
+                  ],
+                  [
+                    11,
+                    "encode₀[input]!4",
+                    "x4"
+                  ],
+                  [
+                    12,
+                    "encode₀[output]",
+                    null
+                  ],
+                  [
+                    13,
+                    "encode₀[output]!0",
+                    "y5"
+                  ],
+                  [
+                    14,
+                    "encode₀[output]!1",
+                    "y6"
+                  ],
+                  [
+                    15,
+                    "decode₀[input]",
+                    null
+                  ],
+                  [
+                    16,
+                    "decode₀[input]!0",
+                    "x5"
+                  ],
+                  [
+                    17,
+                    "decode₀[input]!1",
+                    "x6"
+                  ],
+                  [
+                    18,
+                    "decode₀[output]",
+                    null
+                  ],
+                  [
+                    19,
+                    "decode₀[output]!0",
+                    "y0"
+                  ],
+                  [
+                    20,
+                    "decode₀[output]!1",
+                    "y1"
+                  ],
+                  [
+                    21,
+                    "decode₀[output]!2",
+                    "y2"
+                  ],
+                  [
+                    22,
+                    "decode₀[output]!3",
+                    "y3"
+                  ],
+                  [
+                    23,
+                    "decode₀[output]!4",
+                    "y4"
+                  ]
+                ],
+                "reconstructionSteps": [
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        5
+                      ],
+                      6,
+                      [
+                        7,
+                        8,
+                        9,
+                        10,
+                        11
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        2
+                      ],
+                      12,
+                      [
+                        13,
+                        14
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        2
+                      ],
+                      15,
+                      [
+                        16,
+                        17
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        5
+                      ],
+                      18,
+                      [
+                        19,
+                        20,
+                        21,
+                        22,
+                        23
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "SolveTensorEquality",
+                    "contents": [
+                      0,
+                      {
+                        "constantValue": {
+                          "value": [
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ],
+                          "tag": "Tensor",
+                          "shape": [
+                            5
+                          ]
+                        },
+                        "coefficients": {
+                          "6": {
+                            "numerator": 1,
                             "denominator": 1
                           }
-                        ],
-                        "tag": "Tensor",
-                        "shape": [
-                          5
-                        ]
-                      },
-                      "coefficients": {
-                        "encode₀[input]": {
-                          "numerator": 1,
-                          "denominator": 1
                         }
                       }
-                    }
-                  ]
-                }
-              ],
-              "queryVariableMapping": [
-                [
-                  "x0",
-                  "encode₀[input]!0"
-                ],
-                [
-                  "x1",
-                  "encode₀[input]!1"
-                ],
-                [
-                  "x2",
-                  "encode₀[input]!2"
-                ],
-                [
-                  "x3",
-                  "encode₀[input]!3"
-                ],
-                [
-                  "x4",
-                  "encode₀[input]!4"
-                ],
-                [
-                  "x5",
-                  "decode₀[input]!0"
-                ],
-                [
-                  "x6",
-                  "decode₀[input]!1"
-                ],
-                [
-                  "y0",
-                  "encode₀[output]!0"
-                ],
-                [
-                  "y1",
-                  "encode₀[output]!1"
-                ],
-                [
-                  "y2",
-                  "decode₀[output]!0"
-                ],
-                [
-                  "y3",
-                  "decode₀[output]!1"
-                ],
-                [
-                  "y4",
-                  "decode₀[output]!2"
-                ],
-                [
-                  "y5",
-                  "decode₀[output]!3"
-                ],
-                [
-                  "y6",
-                  "decode₀[output]!4"
+                    ]
+                  }
                 ]
-              ],
+              },
               "queryAddress": [
                 {
                   "propertyName": "identity",
@@ -1087,170 +1417,236 @@
               ]
             },
             {
-              "variableReconstruction": [
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      2
-                    ],
-                    "decode₀[input]",
-                    [
-                      "decode₀[input]!0",
-                      "decode₀[input]!1"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      5
-                    ],
-                    "decode₀[output]",
-                    [
-                      "decode₀[output]!0",
-                      "decode₀[output]!1",
-                      "decode₀[output]!2",
-                      "decode₀[output]!3",
-                      "decode₀[output]!4"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      5
-                    ],
-                    "encode₀[input]",
-                    [
-                      "encode₀[input]!0",
-                      "encode₀[input]!1",
-                      "encode₀[input]!2",
-                      "encode₀[input]!3",
-                      "encode₀[input]!4"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      2
-                    ],
-                    "encode₀[output]",
-                    [
-                      "encode₀[output]!0",
-                      "encode₀[output]!1"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "SolveTensorEquality",
-                  "contents": [
+              "variableReconstruction": {
+                "variableStore": [
+                  [
+                    0,
                     "x",
-                    {
-                      "constantValue": {
-                        "value": [
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
+                    null
+                  ],
+                  [
+                    1,
+                    "x!0",
+                    null
+                  ],
+                  [
+                    2,
+                    "x!1",
+                    null
+                  ],
+                  [
+                    3,
+                    "x!2",
+                    null
+                  ],
+                  [
+                    4,
+                    "x!3",
+                    null
+                  ],
+                  [
+                    5,
+                    "x!4",
+                    null
+                  ],
+                  [
+                    6,
+                    "encode₀[input]",
+                    null
+                  ],
+                  [
+                    7,
+                    "encode₀[input]!0",
+                    "x0"
+                  ],
+                  [
+                    8,
+                    "encode₀[input]!1",
+                    "x1"
+                  ],
+                  [
+                    9,
+                    "encode₀[input]!2",
+                    "x2"
+                  ],
+                  [
+                    10,
+                    "encode₀[input]!3",
+                    "x3"
+                  ],
+                  [
+                    11,
+                    "encode₀[input]!4",
+                    "x4"
+                  ],
+                  [
+                    12,
+                    "encode₀[output]",
+                    null
+                  ],
+                  [
+                    13,
+                    "encode₀[output]!0",
+                    "y5"
+                  ],
+                  [
+                    14,
+                    "encode₀[output]!1",
+                    "y6"
+                  ],
+                  [
+                    15,
+                    "decode₀[input]",
+                    null
+                  ],
+                  [
+                    16,
+                    "decode₀[input]!0",
+                    "x5"
+                  ],
+                  [
+                    17,
+                    "decode₀[input]!1",
+                    "x6"
+                  ],
+                  [
+                    18,
+                    "decode₀[output]",
+                    null
+                  ],
+                  [
+                    19,
+                    "decode₀[output]!0",
+                    "y0"
+                  ],
+                  [
+                    20,
+                    "decode₀[output]!1",
+                    "y1"
+                  ],
+                  [
+                    21,
+                    "decode₀[output]!2",
+                    "y2"
+                  ],
+                  [
+                    22,
+                    "decode₀[output]!3",
+                    "y3"
+                  ],
+                  [
+                    23,
+                    "decode₀[output]!4",
+                    "y4"
+                  ]
+                ],
+                "reconstructionSteps": [
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        5
+                      ],
+                      6,
+                      [
+                        7,
+                        8,
+                        9,
+                        10,
+                        11
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        2
+                      ],
+                      12,
+                      [
+                        13,
+                        14
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        2
+                      ],
+                      15,
+                      [
+                        16,
+                        17
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        5
+                      ],
+                      18,
+                      [
+                        19,
+                        20,
+                        21,
+                        22,
+                        23
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "SolveTensorEquality",
+                    "contents": [
+                      0,
+                      {
+                        "constantValue": {
+                          "value": [
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ],
+                          "tag": "Tensor",
+                          "shape": [
+                            5
+                          ]
+                        },
+                        "coefficients": {
+                          "6": {
+                            "numerator": 1,
                             "denominator": 1
                           }
-                        ],
-                        "tag": "Tensor",
-                        "shape": [
-                          5
-                        ]
-                      },
-                      "coefficients": {
-                        "encode₀[input]": {
-                          "numerator": 1,
-                          "denominator": 1
                         }
                       }
-                    }
-                  ]
-                }
-              ],
-              "queryVariableMapping": [
-                [
-                  "x0",
-                  "encode₀[input]!0"
-                ],
-                [
-                  "x1",
-                  "encode₀[input]!1"
-                ],
-                [
-                  "x2",
-                  "encode₀[input]!2"
-                ],
-                [
-                  "x3",
-                  "encode₀[input]!3"
-                ],
-                [
-                  "x4",
-                  "encode₀[input]!4"
-                ],
-                [
-                  "x5",
-                  "decode₀[input]!0"
-                ],
-                [
-                  "x6",
-                  "decode₀[input]!1"
-                ],
-                [
-                  "y0",
-                  "encode₀[output]!0"
-                ],
-                [
-                  "y1",
-                  "encode₀[output]!1"
-                ],
-                [
-                  "y2",
-                  "decode₀[output]!0"
-                ],
-                [
-                  "y3",
-                  "decode₀[output]!1"
-                ],
-                [
-                  "y4",
-                  "decode₀[output]!2"
-                ],
-                [
-                  "y5",
-                  "decode₀[output]!3"
-                ],
-                [
-                  "y6",
-                  "decode₀[output]!4"
+                    ]
+                  }
                 ]
-              ],
+              },
               "queryAddress": [
                 {
                   "propertyName": "identity",
@@ -1303,170 +1699,236 @@
               ]
             },
             {
-              "variableReconstruction": [
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      2
-                    ],
-                    "decode₀[input]",
-                    [
-                      "decode₀[input]!0",
-                      "decode₀[input]!1"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      5
-                    ],
-                    "decode₀[output]",
-                    [
-                      "decode₀[output]!0",
-                      "decode₀[output]!1",
-                      "decode₀[output]!2",
-                      "decode₀[output]!3",
-                      "decode₀[output]!4"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      5
-                    ],
-                    "encode₀[input]",
-                    [
-                      "encode₀[input]!0",
-                      "encode₀[input]!1",
-                      "encode₀[input]!2",
-                      "encode₀[input]!3",
-                      "encode₀[input]!4"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      2
-                    ],
-                    "encode₀[output]",
-                    [
-                      "encode₀[output]!0",
-                      "encode₀[output]!1"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "SolveTensorEquality",
-                  "contents": [
+              "variableReconstruction": {
+                "variableStore": [
+                  [
+                    0,
                     "x",
-                    {
-                      "constantValue": {
-                        "value": [
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
+                    null
+                  ],
+                  [
+                    1,
+                    "x!0",
+                    null
+                  ],
+                  [
+                    2,
+                    "x!1",
+                    null
+                  ],
+                  [
+                    3,
+                    "x!2",
+                    null
+                  ],
+                  [
+                    4,
+                    "x!3",
+                    null
+                  ],
+                  [
+                    5,
+                    "x!4",
+                    null
+                  ],
+                  [
+                    6,
+                    "encode₀[input]",
+                    null
+                  ],
+                  [
+                    7,
+                    "encode₀[input]!0",
+                    "x0"
+                  ],
+                  [
+                    8,
+                    "encode₀[input]!1",
+                    "x1"
+                  ],
+                  [
+                    9,
+                    "encode₀[input]!2",
+                    "x2"
+                  ],
+                  [
+                    10,
+                    "encode₀[input]!3",
+                    "x3"
+                  ],
+                  [
+                    11,
+                    "encode₀[input]!4",
+                    "x4"
+                  ],
+                  [
+                    12,
+                    "encode₀[output]",
+                    null
+                  ],
+                  [
+                    13,
+                    "encode₀[output]!0",
+                    "y5"
+                  ],
+                  [
+                    14,
+                    "encode₀[output]!1",
+                    "y6"
+                  ],
+                  [
+                    15,
+                    "decode₀[input]",
+                    null
+                  ],
+                  [
+                    16,
+                    "decode₀[input]!0",
+                    "x5"
+                  ],
+                  [
+                    17,
+                    "decode₀[input]!1",
+                    "x6"
+                  ],
+                  [
+                    18,
+                    "decode₀[output]",
+                    null
+                  ],
+                  [
+                    19,
+                    "decode₀[output]!0",
+                    "y0"
+                  ],
+                  [
+                    20,
+                    "decode₀[output]!1",
+                    "y1"
+                  ],
+                  [
+                    21,
+                    "decode₀[output]!2",
+                    "y2"
+                  ],
+                  [
+                    22,
+                    "decode₀[output]!3",
+                    "y3"
+                  ],
+                  [
+                    23,
+                    "decode₀[output]!4",
+                    "y4"
+                  ]
+                ],
+                "reconstructionSteps": [
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        5
+                      ],
+                      6,
+                      [
+                        7,
+                        8,
+                        9,
+                        10,
+                        11
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        2
+                      ],
+                      12,
+                      [
+                        13,
+                        14
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        2
+                      ],
+                      15,
+                      [
+                        16,
+                        17
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        5
+                      ],
+                      18,
+                      [
+                        19,
+                        20,
+                        21,
+                        22,
+                        23
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "SolveTensorEquality",
+                    "contents": [
+                      0,
+                      {
+                        "constantValue": {
+                          "value": [
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ],
+                          "tag": "Tensor",
+                          "shape": [
+                            5
+                          ]
+                        },
+                        "coefficients": {
+                          "6": {
+                            "numerator": 1,
                             "denominator": 1
                           }
-                        ],
-                        "tag": "Tensor",
-                        "shape": [
-                          5
-                        ]
-                      },
-                      "coefficients": {
-                        "encode₀[input]": {
-                          "numerator": 1,
-                          "denominator": 1
                         }
                       }
-                    }
-                  ]
-                }
-              ],
-              "queryVariableMapping": [
-                [
-                  "x0",
-                  "encode₀[input]!0"
-                ],
-                [
-                  "x1",
-                  "encode₀[input]!1"
-                ],
-                [
-                  "x2",
-                  "encode₀[input]!2"
-                ],
-                [
-                  "x3",
-                  "encode₀[input]!3"
-                ],
-                [
-                  "x4",
-                  "encode₀[input]!4"
-                ],
-                [
-                  "x5",
-                  "decode₀[input]!0"
-                ],
-                [
-                  "x6",
-                  "decode₀[input]!1"
-                ],
-                [
-                  "y0",
-                  "encode₀[output]!0"
-                ],
-                [
-                  "y1",
-                  "encode₀[output]!1"
-                ],
-                [
-                  "y2",
-                  "decode₀[output]!0"
-                ],
-                [
-                  "y3",
-                  "decode₀[output]!1"
-                ],
-                [
-                  "y4",
-                  "decode₀[output]!2"
-                ],
-                [
-                  "y5",
-                  "decode₀[output]!3"
-                ],
-                [
-                  "y6",
-                  "decode₀[output]!4"
+                    ]
+                  }
                 ]
-              ],
+              },
               "queryAddress": [
                 {
                   "propertyName": "identity",
@@ -1519,170 +1981,236 @@
               ]
             },
             {
-              "variableReconstruction": [
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      2
-                    ],
-                    "decode₀[input]",
-                    [
-                      "decode₀[input]!0",
-                      "decode₀[input]!1"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      5
-                    ],
-                    "decode₀[output]",
-                    [
-                      "decode₀[output]!0",
-                      "decode₀[output]!1",
-                      "decode₀[output]!2",
-                      "decode₀[output]!3",
-                      "decode₀[output]!4"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      5
-                    ],
-                    "encode₀[input]",
-                    [
-                      "encode₀[input]!0",
-                      "encode₀[input]!1",
-                      "encode₀[input]!2",
-                      "encode₀[input]!3",
-                      "encode₀[input]!4"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      2
-                    ],
-                    "encode₀[output]",
-                    [
-                      "encode₀[output]!0",
-                      "encode₀[output]!1"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "SolveTensorEquality",
-                  "contents": [
+              "variableReconstruction": {
+                "variableStore": [
+                  [
+                    0,
                     "x",
-                    {
-                      "constantValue": {
-                        "value": [
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
+                    null
+                  ],
+                  [
+                    1,
+                    "x!0",
+                    null
+                  ],
+                  [
+                    2,
+                    "x!1",
+                    null
+                  ],
+                  [
+                    3,
+                    "x!2",
+                    null
+                  ],
+                  [
+                    4,
+                    "x!3",
+                    null
+                  ],
+                  [
+                    5,
+                    "x!4",
+                    null
+                  ],
+                  [
+                    6,
+                    "encode₀[input]",
+                    null
+                  ],
+                  [
+                    7,
+                    "encode₀[input]!0",
+                    "x0"
+                  ],
+                  [
+                    8,
+                    "encode₀[input]!1",
+                    "x1"
+                  ],
+                  [
+                    9,
+                    "encode₀[input]!2",
+                    "x2"
+                  ],
+                  [
+                    10,
+                    "encode₀[input]!3",
+                    "x3"
+                  ],
+                  [
+                    11,
+                    "encode₀[input]!4",
+                    "x4"
+                  ],
+                  [
+                    12,
+                    "encode₀[output]",
+                    null
+                  ],
+                  [
+                    13,
+                    "encode₀[output]!0",
+                    "y5"
+                  ],
+                  [
+                    14,
+                    "encode₀[output]!1",
+                    "y6"
+                  ],
+                  [
+                    15,
+                    "decode₀[input]",
+                    null
+                  ],
+                  [
+                    16,
+                    "decode₀[input]!0",
+                    "x5"
+                  ],
+                  [
+                    17,
+                    "decode₀[input]!1",
+                    "x6"
+                  ],
+                  [
+                    18,
+                    "decode₀[output]",
+                    null
+                  ],
+                  [
+                    19,
+                    "decode₀[output]!0",
+                    "y0"
+                  ],
+                  [
+                    20,
+                    "decode₀[output]!1",
+                    "y1"
+                  ],
+                  [
+                    21,
+                    "decode₀[output]!2",
+                    "y2"
+                  ],
+                  [
+                    22,
+                    "decode₀[output]!3",
+                    "y3"
+                  ],
+                  [
+                    23,
+                    "decode₀[output]!4",
+                    "y4"
+                  ]
+                ],
+                "reconstructionSteps": [
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        5
+                      ],
+                      6,
+                      [
+                        7,
+                        8,
+                        9,
+                        10,
+                        11
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        2
+                      ],
+                      12,
+                      [
+                        13,
+                        14
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        2
+                      ],
+                      15,
+                      [
+                        16,
+                        17
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        5
+                      ],
+                      18,
+                      [
+                        19,
+                        20,
+                        21,
+                        22,
+                        23
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "SolveTensorEquality",
+                    "contents": [
+                      0,
+                      {
+                        "constantValue": {
+                          "value": [
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ],
+                          "tag": "Tensor",
+                          "shape": [
+                            5
+                          ]
+                        },
+                        "coefficients": {
+                          "6": {
+                            "numerator": 1,
                             "denominator": 1
                           }
-                        ],
-                        "tag": "Tensor",
-                        "shape": [
-                          5
-                        ]
-                      },
-                      "coefficients": {
-                        "encode₀[input]": {
-                          "numerator": 1,
-                          "denominator": 1
                         }
                       }
-                    }
-                  ]
-                }
-              ],
-              "queryVariableMapping": [
-                [
-                  "x0",
-                  "encode₀[input]!0"
-                ],
-                [
-                  "x1",
-                  "encode₀[input]!1"
-                ],
-                [
-                  "x2",
-                  "encode₀[input]!2"
-                ],
-                [
-                  "x3",
-                  "encode₀[input]!3"
-                ],
-                [
-                  "x4",
-                  "encode₀[input]!4"
-                ],
-                [
-                  "x5",
-                  "decode₀[input]!0"
-                ],
-                [
-                  "x6",
-                  "decode₀[input]!1"
-                ],
-                [
-                  "y0",
-                  "encode₀[output]!0"
-                ],
-                [
-                  "y1",
-                  "encode₀[output]!1"
-                ],
-                [
-                  "y2",
-                  "decode₀[output]!0"
-                ],
-                [
-                  "y3",
-                  "decode₀[output]!1"
-                ],
-                [
-                  "y4",
-                  "decode₀[output]!2"
-                ],
-                [
-                  "y5",
-                  "decode₀[output]!3"
-                ],
-                [
-                  "y6",
-                  "decode₀[output]!4"
+                    ]
+                  }
                 ]
-              ],
+              },
               "queryAddress": [
                 {
                   "propertyName": "identity",
@@ -1735,170 +2263,236 @@
               ]
             },
             {
-              "variableReconstruction": [
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      2
-                    ],
-                    "decode₀[input]",
-                    [
-                      "decode₀[input]!0",
-                      "decode₀[input]!1"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      5
-                    ],
-                    "decode₀[output]",
-                    [
-                      "decode₀[output]!0",
-                      "decode₀[output]!1",
-                      "decode₀[output]!2",
-                      "decode₀[output]!3",
-                      "decode₀[output]!4"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      5
-                    ],
-                    "encode₀[input]",
-                    [
-                      "encode₀[input]!0",
-                      "encode₀[input]!1",
-                      "encode₀[input]!2",
-                      "encode₀[input]!3",
-                      "encode₀[input]!4"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      2
-                    ],
-                    "encode₀[output]",
-                    [
-                      "encode₀[output]!0",
-                      "encode₀[output]!1"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "SolveTensorEquality",
-                  "contents": [
+              "variableReconstruction": {
+                "variableStore": [
+                  [
+                    0,
                     "x",
-                    {
-                      "constantValue": {
-                        "value": [
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
+                    null
+                  ],
+                  [
+                    1,
+                    "x!0",
+                    null
+                  ],
+                  [
+                    2,
+                    "x!1",
+                    null
+                  ],
+                  [
+                    3,
+                    "x!2",
+                    null
+                  ],
+                  [
+                    4,
+                    "x!3",
+                    null
+                  ],
+                  [
+                    5,
+                    "x!4",
+                    null
+                  ],
+                  [
+                    6,
+                    "encode₀[input]",
+                    null
+                  ],
+                  [
+                    7,
+                    "encode₀[input]!0",
+                    "x0"
+                  ],
+                  [
+                    8,
+                    "encode₀[input]!1",
+                    "x1"
+                  ],
+                  [
+                    9,
+                    "encode₀[input]!2",
+                    "x2"
+                  ],
+                  [
+                    10,
+                    "encode₀[input]!3",
+                    "x3"
+                  ],
+                  [
+                    11,
+                    "encode₀[input]!4",
+                    "x4"
+                  ],
+                  [
+                    12,
+                    "encode₀[output]",
+                    null
+                  ],
+                  [
+                    13,
+                    "encode₀[output]!0",
+                    "y5"
+                  ],
+                  [
+                    14,
+                    "encode₀[output]!1",
+                    "y6"
+                  ],
+                  [
+                    15,
+                    "decode₀[input]",
+                    null
+                  ],
+                  [
+                    16,
+                    "decode₀[input]!0",
+                    "x5"
+                  ],
+                  [
+                    17,
+                    "decode₀[input]!1",
+                    "x6"
+                  ],
+                  [
+                    18,
+                    "decode₀[output]",
+                    null
+                  ],
+                  [
+                    19,
+                    "decode₀[output]!0",
+                    "y0"
+                  ],
+                  [
+                    20,
+                    "decode₀[output]!1",
+                    "y1"
+                  ],
+                  [
+                    21,
+                    "decode₀[output]!2",
+                    "y2"
+                  ],
+                  [
+                    22,
+                    "decode₀[output]!3",
+                    "y3"
+                  ],
+                  [
+                    23,
+                    "decode₀[output]!4",
+                    "y4"
+                  ]
+                ],
+                "reconstructionSteps": [
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        5
+                      ],
+                      6,
+                      [
+                        7,
+                        8,
+                        9,
+                        10,
+                        11
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        2
+                      ],
+                      12,
+                      [
+                        13,
+                        14
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        2
+                      ],
+                      15,
+                      [
+                        16,
+                        17
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        5
+                      ],
+                      18,
+                      [
+                        19,
+                        20,
+                        21,
+                        22,
+                        23
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "SolveTensorEquality",
+                    "contents": [
+                      0,
+                      {
+                        "constantValue": {
+                          "value": [
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ],
+                          "tag": "Tensor",
+                          "shape": [
+                            5
+                          ]
+                        },
+                        "coefficients": {
+                          "6": {
+                            "numerator": 1,
                             "denominator": 1
                           }
-                        ],
-                        "tag": "Tensor",
-                        "shape": [
-                          5
-                        ]
-                      },
-                      "coefficients": {
-                        "encode₀[input]": {
-                          "numerator": 1,
-                          "denominator": 1
                         }
                       }
-                    }
-                  ]
-                }
-              ],
-              "queryVariableMapping": [
-                [
-                  "x0",
-                  "encode₀[input]!0"
-                ],
-                [
-                  "x1",
-                  "encode₀[input]!1"
-                ],
-                [
-                  "x2",
-                  "encode₀[input]!2"
-                ],
-                [
-                  "x3",
-                  "encode₀[input]!3"
-                ],
-                [
-                  "x4",
-                  "encode₀[input]!4"
-                ],
-                [
-                  "x5",
-                  "decode₀[input]!0"
-                ],
-                [
-                  "x6",
-                  "decode₀[input]!1"
-                ],
-                [
-                  "y0",
-                  "encode₀[output]!0"
-                ],
-                [
-                  "y1",
-                  "encode₀[output]!1"
-                ],
-                [
-                  "y2",
-                  "decode₀[output]!0"
-                ],
-                [
-                  "y3",
-                  "decode₀[output]!1"
-                ],
-                [
-                  "y4",
-                  "decode₀[output]!2"
-                ],
-                [
-                  "y5",
-                  "decode₀[output]!3"
-                ],
-                [
-                  "y6",
-                  "decode₀[output]!4"
+                    ]
+                  }
                 ]
-              ],
+              },
               "queryAddress": [
                 {
                   "propertyName": "identity",
@@ -1951,170 +2545,236 @@
               ]
             },
             {
-              "variableReconstruction": [
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      2
-                    ],
-                    "decode₀[input]",
-                    [
-                      "decode₀[input]!0",
-                      "decode₀[input]!1"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      5
-                    ],
-                    "decode₀[output]",
-                    [
-                      "decode₀[output]!0",
-                      "decode₀[output]!1",
-                      "decode₀[output]!2",
-                      "decode₀[output]!3",
-                      "decode₀[output]!4"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      5
-                    ],
-                    "encode₀[input]",
-                    [
-                      "encode₀[input]!0",
-                      "encode₀[input]!1",
-                      "encode₀[input]!2",
-                      "encode₀[input]!3",
-                      "encode₀[input]!4"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    false,
-                    [
-                      2
-                    ],
-                    "encode₀[output]",
-                    [
-                      "encode₀[output]!0",
-                      "encode₀[output]!1"
-                    ]
-                  ]
-                },
-                {
-                  "tag": "SolveTensorEquality",
-                  "contents": [
+              "variableReconstruction": {
+                "variableStore": [
+                  [
+                    0,
                     "x",
-                    {
-                      "constantValue": {
-                        "value": [
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
-                            "denominator": 1
-                          },
-                          {
-                            "numerator": 0,
+                    null
+                  ],
+                  [
+                    1,
+                    "x!0",
+                    null
+                  ],
+                  [
+                    2,
+                    "x!1",
+                    null
+                  ],
+                  [
+                    3,
+                    "x!2",
+                    null
+                  ],
+                  [
+                    4,
+                    "x!3",
+                    null
+                  ],
+                  [
+                    5,
+                    "x!4",
+                    null
+                  ],
+                  [
+                    6,
+                    "encode₀[input]",
+                    null
+                  ],
+                  [
+                    7,
+                    "encode₀[input]!0",
+                    "x0"
+                  ],
+                  [
+                    8,
+                    "encode₀[input]!1",
+                    "x1"
+                  ],
+                  [
+                    9,
+                    "encode₀[input]!2",
+                    "x2"
+                  ],
+                  [
+                    10,
+                    "encode₀[input]!3",
+                    "x3"
+                  ],
+                  [
+                    11,
+                    "encode₀[input]!4",
+                    "x4"
+                  ],
+                  [
+                    12,
+                    "encode₀[output]",
+                    null
+                  ],
+                  [
+                    13,
+                    "encode₀[output]!0",
+                    "y5"
+                  ],
+                  [
+                    14,
+                    "encode₀[output]!1",
+                    "y6"
+                  ],
+                  [
+                    15,
+                    "decode₀[input]",
+                    null
+                  ],
+                  [
+                    16,
+                    "decode₀[input]!0",
+                    "x5"
+                  ],
+                  [
+                    17,
+                    "decode₀[input]!1",
+                    "x6"
+                  ],
+                  [
+                    18,
+                    "decode₀[output]",
+                    null
+                  ],
+                  [
+                    19,
+                    "decode₀[output]!0",
+                    "y0"
+                  ],
+                  [
+                    20,
+                    "decode₀[output]!1",
+                    "y1"
+                  ],
+                  [
+                    21,
+                    "decode₀[output]!2",
+                    "y2"
+                  ],
+                  [
+                    22,
+                    "decode₀[output]!3",
+                    "y3"
+                  ],
+                  [
+                    23,
+                    "decode₀[output]!4",
+                    "y4"
+                  ]
+                ],
+                "reconstructionSteps": [
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        5
+                      ],
+                      6,
+                      [
+                        7,
+                        8,
+                        9,
+                        10,
+                        11
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        2
+                      ],
+                      12,
+                      [
+                        13,
+                        14
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        2
+                      ],
+                      15,
+                      [
+                        16,
+                        17
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      false,
+                      [
+                        5
+                      ],
+                      18,
+                      [
+                        19,
+                        20,
+                        21,
+                        22,
+                        23
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "SolveTensorEquality",
+                    "contents": [
+                      0,
+                      {
+                        "constantValue": {
+                          "value": [
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            },
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ],
+                          "tag": "Tensor",
+                          "shape": [
+                            5
+                          ]
+                        },
+                        "coefficients": {
+                          "6": {
+                            "numerator": 1,
                             "denominator": 1
                           }
-                        ],
-                        "tag": "Tensor",
-                        "shape": [
-                          5
-                        ]
-                      },
-                      "coefficients": {
-                        "encode₀[input]": {
-                          "numerator": 1,
-                          "denominator": 1
                         }
                       }
-                    }
-                  ]
-                }
-              ],
-              "queryVariableMapping": [
-                [
-                  "x0",
-                  "encode₀[input]!0"
-                ],
-                [
-                  "x1",
-                  "encode₀[input]!1"
-                ],
-                [
-                  "x2",
-                  "encode₀[input]!2"
-                ],
-                [
-                  "x3",
-                  "encode₀[input]!3"
-                ],
-                [
-                  "x4",
-                  "encode₀[input]!4"
-                ],
-                [
-                  "x5",
-                  "decode₀[input]!0"
-                ],
-                [
-                  "x6",
-                  "decode₀[input]!1"
-                ],
-                [
-                  "y0",
-                  "encode₀[output]!0"
-                ],
-                [
-                  "y1",
-                  "encode₀[output]!1"
-                ],
-                [
-                  "y2",
-                  "decode₀[output]!0"
-                ],
-                [
-                  "y3",
-                  "decode₀[output]!1"
-                ],
-                [
-                  "y4",
-                  "decode₀[output]!2"
-                ],
-                [
-                  "y5",
-                  "decode₀[output]!3"
-                ],
-                [
-                  "y6",
-                  "decode₀[output]!4"
+                    ]
+                  }
                 ]
-              ],
+              },
               "queryAddress": [
                 {
                   "propertyName": "identity",
