@@ -569,10 +569,14 @@ pattern IDimensionTypeOp b args <- (getDimensionTypeOp -> Just (b, args))
     IDimensionTypeOp b args = mkDimensionTypeOp b args
 
 pattern ITensorType :: (HasDimensionTypes expr) => GenericArg expr -> GenericArg expr -> expr
-pattern ITensorType tElem dims = IDimensionTypeOp TensorType [tElem, dims]
+pattern ITensorType tElem dims <- IDimensionTypeOp TensorType [tElem, dims]
+  where
+    ITensorType tElem dims = IDimensionTypeOp TensorType [tElem, dims]
 
 pattern IDimType :: (HasDimensionTypes expr) => GenericArg expr -> expr
-pattern IDimType size = IDimensionTypeOp DimensionType [size]
+pattern IDimType size <- IDimensionTypeOp DimensionType [size]
+  where
+    IDimType size = IDimensionTypeOp DimensionType [size]
 
 class HasDimensionData expr where
   mkDimensionDataOp :: DimensionDataBuiltin -> [GenericArg expr] -> expr
@@ -596,16 +600,24 @@ pattern IDimNil :: (HasDimensionData expr) => expr
 pattern IDimNil = INullaryDimensionDataOp DimensionNil
 
 pattern IDimCons :: (HasDimensionData expr) => GenericArg expr -> GenericArg expr -> expr
-pattern IDimCons x xs = IDimensionDataOp DimensionCons [x, xs]
+pattern IDimCons x xs <- IDimensionDataOp DimensionCons [x, xs]
+  where
+    IDimCons x xs = IDimensionDataOp DimensionCons [x, xs]
 
 pattern IDimIndex :: (HasDimensionData expr) => GenericArg expr -> Int -> expr
-pattern IDimIndex dim t = IDimensionDataOp (DimensionIndex t) [dim]
+pattern IDimIndex dim t <- IDimensionDataOp (DimensionIndex t) [dim]
+  where
+    IDimIndex dim t = IDimensionDataOp (DimensionIndex t) [dim]
 
 pattern IDimIndexTensor :: (HasDimensionData expr) => GenericArg expr -> Tensor Int -> expr
-pattern IDimIndexTensor dim t = IDimensionDataOp (DimensionIndexTensor t) [dim]
+pattern IDimIndexTensor dim t <- IDimensionDataOp (DimensionIndexTensor t) [dim]
+  where
+    IDimIndexTensor dim t = IDimensionDataOp (DimensionIndexTensor t) [dim]
 
 pattern IConstTensor :: (HasDimensionData expr) => GenericArg expr -> GenericArg expr -> GenericArg expr -> expr
-pattern IConstTensor typ value dims = IDimensionDataOp ConstTensor [typ, value, dims]
+pattern IConstTensor typ value dims <- IDimensionDataOp ConstTensor [typ, value, dims]
+  where
+    IConstTensor typ value dims = IDimensionDataOp ConstTensor [typ, value, dims]
 
 pattern IDimIndexConstTensor :: (HasDimensionTypes expr, HasDimensionData expr) => GenericArg expr -> Int -> GenericArg expr -> expr
 pattern IDimIndexConstTensor dim b dims <- IConstTensor _ (argExpr -> IDimIndex dim b) dims
