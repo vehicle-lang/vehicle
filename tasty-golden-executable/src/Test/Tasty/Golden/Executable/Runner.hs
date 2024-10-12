@@ -398,8 +398,8 @@ acceptTestProduced testProduces (IgnoreFiles testIgnores) = do
         oldTestSpecProduces <- testSpecProduces . acceptTestSpec <$> get
         let newTestSpecProduces =
               [ testSpecProducesPattern
-                | testSpecProducesPattern <- oldTestSpecProduces,
-                  any (testSpecProducesPattern `match`) actualFiles
+              | testSpecProducesPattern <- oldTestSpecProduces,
+                any (testSpecProducesPattern `match`) actualFiles
               ]
         modify $ \acceptState@AcceptState {..} ->
           acceptState {acceptTestSpec = acceptTestSpec {testSpecProduces = newTestSpecProduces}}
@@ -450,9 +450,9 @@ findTestProducesActual testIgnoreFiles = do
   -- Filter out the files copied by 'copyTestNeeds' or matched by 'testIgnoreFiles'.
   let tempFilesProducedAndNotIgnored =
         [ file
-          | file <- tempFiles,
-            file `notElem` testNeeds,
-            and [not (ignore `match` file) | ignore <- testIgnoreFiles]
+        | file <- tempFiles,
+          file `notElem` testNeeds,
+          and [not (ignore `match` file) | ignore <- testIgnoreFiles]
         ]
   return tempFilesProducedAndNotIgnored
 

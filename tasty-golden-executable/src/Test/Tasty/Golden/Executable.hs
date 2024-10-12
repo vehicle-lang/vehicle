@@ -33,7 +33,7 @@ makeTestTreeFromFile testOptions testSpecFile = do
   TestSpecs testSpecs <- readTestSpecsFile testSpecFile
   return
     [ someLocalOptions testOptions (singleTest (testSpecName testSpec) testSpec)
-      | testSpec <- NonEmpty.toList testSpecs
+    | testSpec <- NonEmpty.toList testSpecs
     ]
 
 -- | Create a test tree from all test specifications in a directory, recursively.

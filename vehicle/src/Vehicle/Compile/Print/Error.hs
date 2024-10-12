@@ -320,7 +320,7 @@ instance MeaningfulError CompileError where
         mkRes :: [Endo (DSLExpr builtin)]
         mkRes =
           [ Endo $ \tRes -> pi Nothing (visibilityOf arg) (relevanceOf arg) (tHole ("arg" <> pack (show i))) (const tRes)
-            | (i, arg) <- zip [0 :: Int ..] args
+          | (i, arg) <- zip [0 :: Int ..] args
           ]
 
         expectedType :: Expr builtin

@@ -36,8 +36,7 @@ solveLinearityConstraint _ (WithContext constraint ctx) = do
 -- Constraint solving
 
 type MonadLinearitySolver m =
-  ( MonadTypeChecker LinearityBuiltin m
-  )
+  (MonadTypeChecker LinearityBuiltin m)
 
 type LinearitySolver =
   forall m.
