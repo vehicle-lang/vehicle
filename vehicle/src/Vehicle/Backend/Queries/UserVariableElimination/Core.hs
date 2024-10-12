@@ -52,10 +52,8 @@ type NetworkApplication = (Name, WHNFSpine QueryBuiltin)
 data NetworkApplicationReplacement = NetworkApplicationReplacement
   { networkApp :: NetworkApplication,
     networkInfo :: NetworkContextInfo,
-    inputVar :: OriginalNetworkVariable,
     inputVarExpr :: WHNFValue QueryBuiltin,
     inputRationalVars :: [NetworkRationalVariable],
-    outputVar :: OriginalNetworkVariable,
     outputVarExpr :: WHNFValue QueryBuiltin,
     outputRationalVars :: [NetworkRationalVariable]
   }
@@ -168,10 +166,8 @@ addNetworkApplicationToGlobalCtx app@(networkName, _) networkInfo GlobalCtx {..}
         NetworkApplicationReplacement
           { networkApp = app,
             networkInfo = networkInfo,
-            inputVar = inputVar,
             inputVarExpr = inputVarExpr,
             inputRationalVars = fmap snd reducedInputVars,
-            outputVar = outputVar,
             outputVarExpr = outputVarExpr,
             outputRationalVars = fmap snd reducedOutputVars
           }
