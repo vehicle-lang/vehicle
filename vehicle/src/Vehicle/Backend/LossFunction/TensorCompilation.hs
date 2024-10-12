@@ -7,8 +7,9 @@ module Vehicle.Backend.LossFunction.TensorCompilation
   )
 where
 
+import Control.Monad (void)
 import Control.Monad.Except (MonadError (..))
-import Control.Monad.Reader (MonadReader (..), void)
+import Control.Monad.Reader (MonadReader (..))
 import Control.Monad.Trans.Reader (ReaderT (..))
 import Data.List.NonEmpty (NonEmpty (..))
 import Vehicle.Backend.LossFunction.Core (pattern VLam2)
