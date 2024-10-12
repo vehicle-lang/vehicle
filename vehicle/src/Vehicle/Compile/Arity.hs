@@ -6,6 +6,9 @@ import Vehicle.Prelude (isExplicit)
 
 type Arity = Int
 
+class HasArity a where
+  arityOf :: a -> Arity
+
 arityFromVType :: Value closure builtin -> Arity
 arityFromVType = \case
   VPi _ r -> 1 + arityFromVType r

@@ -5,8 +5,9 @@ import Data.Aeson (ToJSON)
 import Data.Aeson.Types (FromJSON)
 import Data.Hashable (Hashable)
 import GHC.Generics
+import Vehicle.Data.Builtin.Core (BuiltinType (..))
+import Vehicle.Data.Tensor (TensorShape)
 import Vehicle.Prelude
-import Vehicle.Syntax.Builtin (BuiltinType (..))
 
 --------------------------------------------------------------------------------
 -- Networks

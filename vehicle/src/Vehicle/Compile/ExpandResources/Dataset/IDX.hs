@@ -24,6 +24,7 @@ import Vehicle.Compile.Print
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
+import Vehicle.Data.Tensor (TensorShape)
 
 -- | Reads the IDX dataset from the provided file, checking that the user type
 -- matches the type of the stored data.

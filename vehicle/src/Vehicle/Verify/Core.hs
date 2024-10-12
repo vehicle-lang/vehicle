@@ -11,11 +11,11 @@ import GHC.Generics (Generic)
 import System.FilePath ((<.>))
 import Vehicle.Compile.Context.Bound.Core (GenericBoundCtx)
 import Vehicle.Compile.Resource
+import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Code.BooleanExpr
-import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.QuantifiedVariable
+import Vehicle.Data.Tensor (TensorIndices, showTensorIndices)
 import Vehicle.Prelude
-import Vehicle.Syntax.Builtin.BasicOperations
 
 --------------------------------------------------------------------------------
 -- Meta-network

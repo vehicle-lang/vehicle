@@ -1,4 +1,4 @@
-module Vehicle.Data.Builtin.Polarity.AnnotationRestrictions
+module Vehicle.Compile.Type.Constraint.PolarityAnnotationRestrictions
   ( assertUnquantifiedPolarity,
     checkNetworkType,
   )
@@ -9,7 +9,7 @@ import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
-import Vehicle.Data.Builtin.Polarity.Core
+import Vehicle.Data.Builtin.Polarity
 import Vehicle.Data.Code.Value
 
 checkNetworkType ::

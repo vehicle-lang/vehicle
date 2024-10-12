@@ -2,13 +2,14 @@ module Vehicle.Data.Code.DSL where
 
 import Data.List.NonEmpty (NonEmpty (..))
 import Vehicle.Data.Builtin.Interface
-import Vehicle.Data.Builtin.Standard.Core
+import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.DSL
+import Vehicle.Data.Tensor (Tensor, tensorShape)
 import Vehicle.Prelude
 import Prelude hiding (pi)
 
 --------------------------------------------------------------------------------
--- Types DSL
+-- Standard types DSL
 
 builtinType :: (BuiltinHasStandardTypes builtin) => BuiltinType -> DSLExpr builtin
 builtinType = builtin . mkBuiltinType
@@ -143,3 +144,75 @@ hasRatLits t = typeClass HasRatLits [t]
 
 hasVecLits :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 hasVecLits n d = typeClass HasVecLits [n, d]
+
+--------------------------------------------------------------------------------
+-- Tensor types DSL
+
+dimensionTypeBuiltin :: (BuiltinHasDimensionTypes builtin) => DimensionTypeBuiltin -> DSLExpr builtin
+dimensionTypeBuiltin = builtin . mkDimensionTypeBuiltin
+
+tDim :: (BuiltinHasDimensionTypes builtin) => DSLExpr builtin
+tDim = dimensionTypeBuiltin DimensionType
+
+tDims :: (BuiltinHasDimensionTypes builtin) => DSLExpr builtin
+tDims = dimensionTypeBuiltin DimensionsType
+
+tDimIndex :: (BuiltinHasDimensionTypes builtin) => DSLExpr builtin -> DSLExpr builtin
+tDimIndex dim = dimensionTypeBuiltin DimensionIndexType @@ [dim]
+
+tTensor :: (BuiltinHasDimensionTypes builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+tTensor tElem dims = dimensionTypeBuiltin TensorType @@ [tElem, dims]
+
+forAllDim :: (BuiltinHasDimensionTypes builtin) => (DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
+forAllDim = forAllIrrelevant "dim" tDim
+
+forAllDims :: (BuiltinHasDimensionTypes builtin) => (DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
+forAllDims = forAllIrrelevant "dims" tDims
+
+--------------------------------------------------------------------------------
+-- Tensor data
+
+dimensionDataBuiltin :: (BuiltinHasDimensionData builtin) => DimensionDataBuiltin -> DSLExpr builtin
+dimensionDataBuiltin = builtin . mkDimensionDataBuiltin
+
+tNil :: (BuiltinHasDimensionData builtin) => DSLExpr builtin
+tNil = dimensionDataBuiltin DimensionNil
+
+tCons :: (BuiltinHasDimensionData builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+tCons dim dims = dimensionDataBuiltin DimensionCons @@ [dim, dims]
+
+tSingletonDim :: (BuiltinHasDimensionTypes builtin, BuiltinHasDimensionData builtin) => Int -> DSLExpr builtin
+tSingletonDim dim = tCons (constDim dim) tNil
+
+constDim :: (BuiltinHasDimensionData builtin) => Int -> DSLExpr builtin
+constDim n = dimensionDataBuiltin (Dimension n)
+
+shapeOf :: (BuiltinHasDimensionData builtin) => Tensor a -> DSLExpr builtin
+shapeOf t = foldr (tCons . constDim) tNil (tensorShape t)
+
+constTensor :: (BuiltinHasDimensionData builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+constTensor t x dims = dimensionDataBuiltin ConstTensor @@@ [t] @@ [x, dims]
+
+--------------------------------------------------------------------------------
+-- Rational tensors data
+
+tRatTensor :: (BuiltinHasRatTensor builtin, BuiltinHasDimensionTypes builtin) => DSLExpr builtin -> DSLExpr builtin
+tRatTensor = tTensor tRatElemType
+
+ratTensorBuiltin :: (BuiltinHasRatTensor builtin) => RatTensorBuiltin -> DSLExpr builtin
+ratTensorBuiltin = builtin . mkRatTensorBuiltin
+
+tRatElemType :: (BuiltinHasRatTensor builtin) => DSLExpr builtin
+tRatElemType = ratTensorBuiltin RatType
+
+--------------------------------------------------------------------------------
+-- Rational tensors data
+
+tBoolTensor :: (BuiltinHasBoolTensor builtin, BuiltinHasDimensionTypes builtin) => DSLExpr builtin -> DSLExpr builtin
+tBoolTensor = tTensor tBoolElemType
+
+boolTensorBuiltin :: (BuiltinHasBoolTensor builtin) => BoolTensorBuiltin -> DSLExpr builtin
+boolTensorBuiltin = builtin . mkBoolTensorBuiltin
+
+tBoolElemType :: (BuiltinHasBoolTensor builtin) => DSLExpr builtin
+tBoolElemType = boolTensorBuiltin BoolType

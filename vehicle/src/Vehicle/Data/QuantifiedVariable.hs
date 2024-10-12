@@ -9,12 +9,12 @@ import Data.Map qualified as Map
 import GHC.Generics (Generic)
 import Numeric (showFFloat)
 import Prettyprinter (brackets)
+import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
 import Vehicle.Data.DeBruijn
-import Vehicle.Data.Tensor (RationalTensor)
+import Vehicle.Data.Tensor
 import Vehicle.Prelude
-import Vehicle.Syntax.Builtin
 
 --------------------------------------------------------------------------------
 -- User tensor variables
@@ -248,36 +248,3 @@ instance FromJSON UserVariableAssignment
 instance Pretty UserVariableAssignment where
   pretty (UserVariableAssignment assignment) =
     vsep (fmap pretty assignment)
-
---------------------------------------------------------------------------------
--- Variable status
-
-data UnderConstrainedVariableStatus
-  = Unconstrained
-  | BoundedAbove
-  | BoundedBelow
-  deriving (Show, Eq, Ord)
-
-instance Pretty UnderConstrainedVariableStatus where
-  pretty = \case
-    Unconstrained -> "Unconstrained"
-    BoundedAbove -> "BoundedAbove"
-    BoundedBelow -> "BoundedBelow"
-
-instance Semigroup UnderConstrainedVariableStatus where
-  Unconstrained <> r = r
-  r <> Unconstrained = r
-  BoundedAbove <> r = r
-  r <> BoundedAbove = r
-  BoundedBelow <> BoundedBelow = BoundedBelow
-
-prettyUnderConstrainedVariables :: (Pretty var) => [(var, UnderConstrainedVariableStatus)] -> Doc a
-prettyUnderConstrainedVariables vars =
-  indent 2 (vsep $ fmap prettyUnderConstrainedVariable vars)
-
-prettyUnderConstrainedVariable :: (Pretty var) => (var, UnderConstrainedVariableStatus) -> Doc a
-prettyUnderConstrainedVariable (var, constraint) =
-  pretty var <+> "-" <+> case constraint of
-    Unconstrained -> "no lower or upper bound"
-    BoundedAbove -> "no lower bound"
-    BoundedBelow -> "no upper bound"

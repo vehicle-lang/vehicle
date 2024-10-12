@@ -25,6 +25,7 @@ import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
+import Vehicle.Data.Tensor (TensorIndices)
 import Vehicle.Prelude.Warning (CompileWarning (..))
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat

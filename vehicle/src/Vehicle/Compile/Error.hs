@@ -8,18 +8,20 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.Map qualified as Map
 import Data.Void (Void)
 import Prettyprinter (list)
-import Vehicle.Backend.LossFunction.Core (DifferentiableLogicField)
+import Vehicle.Backend.LossFunction.Core (BooleanDifferentiableLogicField, TensorDifferentiableLogicField)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Print (PrettyFriendly, PrintableBuiltin)
 import Vehicle.Compile.Type.Core
-import Vehicle.Data.Builtin.Interface (BuiltinHasStandardData)
-import Vehicle.Data.Builtin.Linearity.Core
-import Vehicle.Data.Builtin.Polarity.Core
-import Vehicle.Data.Builtin.Standard.Core
+import Vehicle.Data.Assertion (UnderConstrainedVariableStatus)
+import Vehicle.Data.Builtin.Linearity
+import Vehicle.Data.Builtin.Polarity
+import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Builtin.Tensor
 import Vehicle.Data.Code.Value
 import Vehicle.Data.DeBruijn
-import Vehicle.Data.QuantifiedVariable (UnderConstrainedVariableStatus, UserRationalVariable)
+import Vehicle.Data.QuantifiedVariable (UserRationalVariable)
+import Vehicle.Data.Tensor (TensorShape)
 import Vehicle.Syntax.Parse (ParseError, ParseLocation)
 import Vehicle.Verify.QueryFormat.Core
 
@@ -46,7 +48,7 @@ data CompileError
   | -- Type checking errors
     UnresolvedHole Provenance Name
   | forall builtin.
-    (PrintableBuiltin builtin, Show builtin, BuiltinHasStandardData builtin) =>
+    (PrintableBuiltin builtin, Show builtin) =>
     TypingError (TypingError builtin)
   | UnsolvedMetas (NonEmpty (MetaID, Provenance))
   | RelevantUseOfIrrelevantVariable Provenance Name
@@ -85,13 +87,17 @@ data CompileError
     PropertyTypeUnsupported DeclProvenance (GluedType Builtin)
   | NoPropertiesFound
   | -- Verification backend errors
-    UnsupportedVariableType DeclProvenance Provenance Name (WHNFType Builtin) (WHNFType Builtin) [Builtin]
-  | HigherOrderVectors DeclProvenance NamedBoundCtx (NFType TensorBuiltin) (NFType TensorBuiltin)
+    forall closure builtin.
+    (PrintableBuiltin builtin, Show closure, Eq closure, Eq builtin, PrettyFriendly (Contextualised (VType closure builtin) NamedBoundCtx)) =>
+    UnsupportedVariableType DeclProvenance Provenance Name (VType closure builtin) (VType closure builtin) [builtin]
+  | HigherOrderVectors DeclProvenance NamedBoundCtx (WHNFType TensorBuiltin) (WHNFType TensorBuiltin)
   | UnsupportedAlternatingQuantifiers QueryFormatID DeclProvenance (Either CompileError (Quantifier, Provenance, PolarityProvenance))
   | DuplicateQuantifierNames DeclProvenance Name
   | UnsupportedNonLinearConstraint QueryFormatID DeclProvenance (Either CompileError NonLinearitySource)
   | -- Loss backend errors
-    UnsupportedIfOperation (Either DeclProvenance DifferentiableLogicField) Provenance
+    UnsupportedLossOperation DeclProvenance Provenance (Doc Void)
+  | UnsupportedHigherOrderTensorCode DeclProvenance NamedBoundCtx (WHNFValue Builtin) NamedBoundCtx (WHNFValue TensorBuiltin)
+  | UnableToLiftLogicFieldToTensors DifferentiableLogicID TensorDifferentiableLogicField (BooleanDifferentiableLogicField, WHNFValue Builtin) NamedBoundCtx (WHNFValue Builtin)
   | NoQuantifierDomainFound DeclProvenance (GenericBinder ()) (Maybe [(UserRationalVariable, UnderConstrainedVariableStatus)])
   | -- ITP backend errors
     UnsupportedPolymorphicEquality ITP Provenance Name

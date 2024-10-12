@@ -97,7 +97,8 @@
                     {
                       "upperBounds": [
                         {
-                          "boundValue": {
+                          "strictness": "NonStrict",
+                          "inequalityExpr": {
                             "constantValue": {
                               "numerator": -13,
                               "denominator": 2
@@ -127,8 +128,7 @@
                                 }
                               ]
                             ]
-                          },
-                          "boundStrictness": "NonStrict"
+                          }
                         }
                       ],
                       "lowerBounds": []
@@ -220,7 +220,8 @@
                       "upperBounds": [],
                       "lowerBounds": [
                         {
-                          "boundValue": {
+                          "strictness": "NonStrict",
+                          "inequalityExpr": {
                             "constantValue": {
                               "numerator": 9,
                               "denominator": 4
@@ -247,8 +248,7 @@
                                 }
                               ]
                             ]
-                          },
-                          "boundStrictness": "NonStrict"
+                          }
                         }
                       ]
                     }
@@ -271,7 +271,8 @@
                     {
                       "upperBounds": [
                         {
-                          "boundValue": {
+                          "strictness": "NonStrict",
+                          "inequalityExpr": {
                             "constantValue": {
                               "numerator": -5,
                               "denominator": 4
@@ -298,13 +299,13 @@
                                 }
                               ]
                             ]
-                          },
-                          "boundStrictness": "NonStrict"
+                          }
                         }
                       ],
                       "lowerBounds": [
                         {
-                          "boundValue": {
+                          "strictness": "NonStrict",
+                          "inequalityExpr": {
                             "constantValue": {
                               "numerator": 1,
                               "denominator": 1
@@ -331,18 +332,17 @@
                                 }
                               ]
                             ]
-                          },
-                          "boundStrictness": "NonStrict"
+                          }
                         },
                         {
-                          "boundValue": {
+                          "strictness": "NonStrict",
+                          "inequalityExpr": {
                             "constantValue": {
                               "numerator": 2,
                               "denominator": 1
                             },
                             "coefficients": []
-                          },
-                          "boundStrictness": "NonStrict"
+                          }
                         }
                       ]
                     }

@@ -13,7 +13,8 @@ import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError)
 import Vehicle.Compile.Normalise.Builtin (NormalisableBuiltin)
 import Vehicle.Compile.Normalise.NBE (normaliseInEnv)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyExternal, prettyFriendly, prettyVerbose)
+import Vehicle.Compile.Print (PrintableBuiltin, prettyExternal, prettyFriendly, prettyVerbose)
+import Vehicle.Compile.Type.Builtin (TypableBuiltin)
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta
   ( HasMetas (..),
@@ -25,8 +26,6 @@ import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Meta.Set (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Meta.Substitution as MetaSubstitution (MetaSubstitutable (..))
-import Vehicle.Data.Builtin.Interface
-import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.Value
 
 --------------------------------------------------------------------------------
@@ -93,7 +92,7 @@ emptyTypeCheckerState =
 -- The type-checking monad class
 
 -- | The type-checking monad.
-class (MonadCompile m, MonadFreeContext builtin m, NormalisableBuiltin builtin) => MonadTypeChecker builtin m where
+class (MonadCompile m, MonadFreeContext builtin m, NormalisableBuiltin builtin, Eq builtin, TypableBuiltin builtin) => MonadTypeChecker builtin m where
   getMetaState :: m (TypeCheckerState builtin)
   modifyMetaCtx :: (TypeCheckerState builtin -> TypeCheckerState builtin) -> m ()
   getFreshName :: Type builtin -> m Name
@@ -127,62 +126,6 @@ instance (MonadTypeChecker builtin m) => MonadTypeChecker builtin (BoundContextT
   getFreshName = lift . getFreshName
   clearFreshNames = lift . clearFreshNames
   getInstanceCandidates = lift getInstanceCandidates
-
---------------------------------------------------------------------------------
--- Abstract interface for a type system.
-
-class (PrintableBuiltin builtin) => TypableBuiltin builtin where
-  -- | Construct a type for the builtin
-  typeBuiltin :: Provenance -> builtin -> Type builtin
-
--- | A class that provides an abstract interface for a set of builtins.
-class (Eq builtin, BuiltinHasStandardData builtin, TypableBuiltin builtin) => HasTypeSystem builtin where
-  convertFromStandardBuiltins ::
-    (MonadTypeChecker builtin m) =>
-    BuiltinUpdate m Builtin builtin
-
-  -- | Can meta-variables be dependent on their context?
-  useDependentMetas :: Proxy builtin -> Bool
-
-  restrictNetworkType ::
-    (MonadTypeChecker builtin m) =>
-    DeclProvenance ->
-    GluedType builtin ->
-    m (Type builtin)
-
-  restrictDatasetType ::
-    (MonadTypeChecker builtin m) =>
-    DeclProvenance ->
-    GluedType builtin ->
-    m (Type builtin)
-
-  restrictParameterType ::
-    (MonadTypeChecker builtin m) =>
-    ParameterSort ->
-    DeclProvenance ->
-    GluedType builtin ->
-    m (Type builtin)
-
-  restrictPropertyType ::
-    (MonadTypeChecker builtin m) =>
-    DeclProvenance ->
-    GluedType builtin ->
-    m ()
-
-  addAuxiliaryInputOutputConstraints ::
-    (MonadTypeChecker builtin m) => Decl builtin -> m (Decl builtin)
-
-  generateDefaultConstraint ::
-    (MonadTypeChecker builtin m) =>
-    Maybe (Decl builtin) ->
-    m Bool
-
-  -- | Solves a type-class constraint
-  solveInstance ::
-    (MonadTypeChecker builtin m, MonadFreeContext builtin m) =>
-    InstanceCandidateDatabase builtin ->
-    WithContext (InstanceConstraint builtin) ->
-    m ()
 
 --------------------------------------------------------------------------------
 -- Operations

@@ -9,32 +9,7 @@ import Data.Maybe (fromMaybe)
 import GHC.Generics (Generic)
 import Vehicle.Prelude
 
---------------------------------------------------------------------------------
--- Coefficients
-
--- At the moment we only support rational coefficients.
-type Coefficient = Rational
-
---------------------------------------------------------------------------------
--- Constant interface
-
--- If we're ever to support matrix multiplication we'll need to make this a full
--- field structure.
---
--- However, we run into issues that we can't define a `zero` element as we don't
--- don't have access to the dimensions of tensors at the type level due to the
--- lack of dependent types.
-class (Pretty constant) => IsConstant constant where
-  isZero :: constant -> Bool
-  scaleConstant :: Coefficient -> constant -> constant
-  addConstants :: Coefficient -> Coefficient -> constant -> constant -> constant
-
-instance IsConstant Rational where
-  isZero = (== 0.0)
-  scaleConstant = (*)
-  addConstants a b x y = a * x + b * y
-
---------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 -- Sparse representations of linear expressions
 
 data LinearExpr variable constant = Sparse
@@ -57,12 +32,27 @@ constantExpr = Sparse mempty
 singletonVarExpr :: constant -> variable -> LinearExpr variable constant
 singletonVarExpr zero var = Sparse (Map.singleton var 1) zero
 
-prettyCoefficientVar ::
+linearExprToExpr ::
+  (Bool -> constant -> expr) ->
+  (Bool -> (variable, Coefficient) -> expr) ->
+  (expr -> expr -> expr) ->
+  LinearExpr variable constant ->
+  expr
+linearExprToExpr constantToExpr variableToExpr combineExprs (Sparse coefficients constant) = do
+  let coeffVars = Map.toList coefficients
+  case coeffVars of
+    [] -> constantToExpr True constant
+    (x : xs) -> do
+      let varDocs = variableToExpr True x : fmap (variableToExpr False) xs
+      let constDoc = constantToExpr False constant
+      foldr1 combineExprs (varDocs <> [constDoc])
+
+prettyVariable ::
   (Pretty variable) =>
   Bool ->
   (variable, Coefficient) ->
   Doc a
-prettyCoefficientVar isFirst (variable, coefficient) = do
+prettyVariable isFirst (variable, coefficient) = do
   let sign
         | coefficient > 0 = if isFirst then "" else "+ "
         | otherwise = if isFirst then "-" else "- "
@@ -78,22 +68,14 @@ prettyCoefficientVar isFirst (variable, coefficient) = do
 -- | Pretty prints a constant value given a set of dimensions.
 -- Note, an alternative would be to go via the Vehicle AST and pretty print
 -- that, but we run into dependency cycle issues.
-prettyConstant :: (IsConstant constant) => Bool -> constant -> Doc a
+prettyConstant :: (IsConstant constant, Pretty constant) => Bool -> constant -> Doc a
 prettyConstant isFirst value
   | not isFirst && isZero value = ""
   | not isFirst = " + " <> pretty value
   | otherwise = pretty value
 
-instance (Pretty variable, IsConstant constant) => Pretty (LinearExpr variable constant) where
-  pretty (Sparse coefficients constant) = do
-    -- Append an empty variable name for the constant at the end
-    let coeffVars = Map.toList coefficients
-    case coeffVars of
-      [] -> prettyConstant True constant
-      (x : xs) -> do
-        let varDocs = prettyCoefficientVar True x : fmap (prettyCoefficientVar False) xs
-        let constDoc = prettyConstant False constant
-        hsep varDocs <> constDoc
+instance (Pretty variable, Pretty constant, IsConstant constant) => Pretty (LinearExpr variable constant) where
+  pretty = linearExprToExpr prettyConstant prettyVariable (<>)
 
 addExprs ::
   (Ord variable, IsConstant constant) =>

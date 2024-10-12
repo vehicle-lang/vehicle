@@ -33,7 +33,7 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyFriendly, prettyFriendlyEmptyCtx, prettyVerbose)
+import Vehicle.Compile.Print (PrintableBuiltin, prettyFriendly, prettyFriendlyEmptyCtx, prettyVerbose)
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.Interface

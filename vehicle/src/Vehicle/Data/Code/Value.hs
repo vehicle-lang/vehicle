@@ -6,7 +6,7 @@ import Data.Maybe (fromMaybe)
 import GHC.Generics
 import Vehicle.Compile.Context.Bound.Core
 import Vehicle.Data.Builtin.Interface
-import Vehicle.Data.Builtin.Standard.Core (BuiltinFunction)
+import Vehicle.Data.Builtin.Standard (BuiltinFunction)
 import Vehicle.Data.Code.Expr (Expr)
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.DeBruijn
@@ -18,12 +18,6 @@ import Vehicle.Prelude
 
 -- | Closures for weak-head normal-form.
 data WHNFClosure builtin = WHNFClosure (BoundEnv (WHNFClosure builtin) builtin) (Expr builtin)
-  deriving (Eq, Show, Generic)
-
------------------------------------------------------------------------------
--- NF closures
-
-newtype NFClosure builtin = NFClosure (Value (NFClosure builtin) builtin)
   deriving (Eq, Show, Generic)
 
 -----------------------------------------------------------------------------
@@ -40,6 +34,8 @@ data Value closure builtin
   | VLam !(VBinder closure builtin) !closure
   | VPi !(VBinder closure builtin) !(Value closure builtin)
   deriving (Eq, Show, Generic)
+
+type VType closure builtin = Value closure builtin
 
 type VArg closure builtin = GenericArg (Value closure builtin)
 
@@ -89,9 +85,7 @@ extendEnvWithDefined ::
   BoundEnv closure builtin
 extendEnvWithDefined value binder env = (void binder, value) : env
 
-boundContextToEnv ::
-  GenericBoundCtx (GenericBinder expr) ->
-  BoundEnv closure builtin
+boundContextToEnv :: BoundCtx expr -> BoundEnv closure builtin
 boundContextToEnv ctx = do
   let numberedCtx = zip ctx (reverse [0 .. Lv (length ctx - 1)])
   fmap (\(binder, lv) -> (void binder, VBoundVar lv [])) numberedCtx
@@ -122,24 +116,11 @@ type WHNFSpine builtin = Spine (WHNFClosure builtin) builtin
 
 type WHNFDecl builtin = GenericDecl (WHNFValue builtin)
 
+type WHNFProg builtin = GenericProg (WHNFValue builtin)
+
 type WHNFBoundEnv builtin = BoundEnv (WHNFClosure builtin) builtin
 
 type WHNFFreeEnv builtin = FreeEnv (WHNFClosure builtin) builtin
-
------------------------------------------------------------------------------
--- NF
-
-type NFValue builtin = Value (NFClosure builtin) builtin
-
-type NFEnv builtin = BoundEnv (NFClosure builtin) builtin
-
-type NFType builtin = NFValue builtin
-
-type NFArg builtin = VArg (NFClosure builtin) builtin
-
-type NFBinder builtin = VBinder (NFClosure builtin) builtin
-
-type NFSpine builtin = Spine (NFClosure builtin) builtin
 
 -----------------------------------------------------------------------------
 -- Patterns
@@ -257,11 +238,23 @@ instance (BuiltinHasRatLiterals builtin) => HasRatLits (Value closure builtin) w
     _ -> Nothing
   mkRatLit _p x = VBuiltin (mkRatBuiltinLit x) mempty
 
+instance (BuiltinHasRatType builtin) => HasRatType (Value closure builtin) where
+  getRatType e = case e of
+    VBuiltin (isRatBuiltinType -> True) [] -> Just mempty
+    _ -> Nothing
+  mkRatType _p = VBuiltin mkRatBuiltinType []
+
 instance (BuiltinHasVecLiterals builtin) => HasStandardVecLits (Value closure builtin) where
   getHomoVector = \case
     VBuiltin (getVecBuiltinLit -> Just {}) (t : xs) -> Just (t, xs)
     _ -> Nothing
   mkHomoVector t xs = VBuiltin (mkVecBuiltinLit (length xs)) (t : xs)
+
+instance (BuiltinHasVecType builtin) => HasVecType (Value closure builtin) where
+  getVectorType e = case e of
+    VBuiltin (isVecBuiltinType -> True) [t, n] -> Just (mempty, t, n)
+    _ -> Nothing
+  mkVectorType _p t n = VBuiltin mkVecBuiltinType [t, n]
 
 instance (BuiltinHasListLiterals builtin) => HasStandardListLits (Value closure builtin) where
   getNil = \case
@@ -273,6 +266,30 @@ instance (BuiltinHasListLiterals builtin) => HasStandardListLits (Value closure 
     VBuiltin (isBuiltinCons -> True) [t, x, xs] -> Just (mempty, t, x, xs)
     _ -> Nothing
   mkCons t x xs = VBuiltin mkBuiltinCons [t, x, xs]
+
+instance (BuiltinHasRatTensor builtin) => HasRatTensors (Value closure builtin) where
+  getRatTensorOp e = case e of
+    VBuiltin (getRatTensorBuiltin -> Just op) args -> Just (op, args)
+    _ -> Nothing
+  mkRatTensorOp op = VBuiltin (mkRatTensorBuiltin op)
+
+instance (BuiltinHasBoolTensor builtin) => HasBoolTensors (Value closure builtin) where
+  getBoolTensorOp e = case e of
+    VBuiltin (getBoolTensorBuiltin -> Just op) args -> Just (op, args)
+    _ -> Nothing
+  mkBoolTensorOp op = VBuiltin (mkBoolTensorBuiltin op)
+
+instance (BuiltinHasDimensionTypes builtin) => HasDimensionTypes (Value closure builtin) where
+  getDimensionTypeOp e = case e of
+    VBuiltin (getDimensionTypeBuiltin -> Just op) args -> Just (op, args)
+    _ -> Nothing
+  mkDimensionTypeOp op = VBuiltin (mkDimensionTypeBuiltin op)
+
+instance (BuiltinHasDimensionData builtin) => HasDimensionData (Value closure builtin) where
+  getDimensionDataOp e = case e of
+    VBuiltin (getDimensionDataBuiltin -> Just op) args -> Just (op, args)
+    _ -> Nothing
+  mkDimensionDataOp op = VBuiltin (mkDimensionDataBuiltin op)
 
 --------------------------------------------------------------------------------
 -- WHNFValue Function patterns

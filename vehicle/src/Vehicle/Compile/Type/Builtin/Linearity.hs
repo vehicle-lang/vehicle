@@ -1,21 +1,29 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-module Vehicle.Data.Builtin.Linearity.Type
+module Vehicle.Compile.Type.Builtin.Linearity
   ( typeLinearityBuiltin,
+    isLinearityBuiltinConstructor,
   )
 where
 
 import Data.Text qualified as Text
 import Vehicle.Compile.Prelude
-import Vehicle.Data.Builtin.Linearity.Core
+import Vehicle.Data.Builtin.Core hiding (Builtin (..))
+import Vehicle.Data.Builtin.Linearity
 import Vehicle.Data.DSL
-import Vehicle.Syntax.Builtin hiding (Builtin (..))
+
+isLinearityBuiltinConstructor :: LinearityBuiltin -> Bool
+isLinearityBuiltinConstructor = \case
+  LinearityConstructor {} -> True
+  LinearityFunction {} -> False
+  Linearity {} -> True
+  LinearityRelation {} -> True
 
 -- | Return the type of the provided builtin.
 typeLinearityBuiltin :: Provenance -> LinearityBuiltin -> Type LinearityBuiltin
 typeLinearityBuiltin p b = fromDSL p $ case b of
-  BuiltinConstructor c -> typeOfConstructor c
-  BuiltinFunction f -> typeOfBuiltinFunction f
+  LinearityConstructor c -> typeOfConstructor c
+  LinearityFunction f -> typeOfBuiltinFunction f
   Linearity {} -> tLin
   LinearityRelation r -> typeOfLinearityRelation r
 

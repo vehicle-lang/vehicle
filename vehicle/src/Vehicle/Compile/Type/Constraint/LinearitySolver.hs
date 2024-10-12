@@ -1,7 +1,4 @@
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-
-{-# HLINT ignore "Use max" #-}
-module Vehicle.Data.Builtin.Linearity.LinearitySolver
+module Vehicle.Compile.Type.Constraint.LinearitySolver
   ( solveLinearityConstraint,
   )
 where
@@ -14,10 +11,10 @@ import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad (MonadTypeChecker)
 import Vehicle.Compile.Type.Monad.Class (addConstraints, solveMeta, substMetas)
-import Vehicle.Data.Builtin.Linearity.Core
+import Vehicle.Data.Builtin.Core
+import Vehicle.Data.Builtin.Linearity
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
-import Vehicle.Syntax.Builtin
 
 solveLinearityConstraint ::
   (MonadLinearitySolver m) =>
@@ -78,6 +75,9 @@ solveOp2Linearity shortCircuitLHS shortCircuitRHS combine info@(ctx, _) [lin1, l
     (VLinearityExpr l1, VLinearityExpr l2) -> Just $ do
       let p = originalProvenance ctx
       let linRes = VLinearityExpr $ combine p l1 l2
+      logDebug MaxDetail $ pretty $ show l1
+      logDebug MaxDetail $ pretty $ show l2
+      logDebug MaxDetail $ pretty $ show $ combine p l1 l2
       resEq <- createInstanceUnification info res linRes
       return $ Progress [resEq]
     (VLinearityExpr Constant, _)
@@ -109,7 +109,13 @@ solveFunctionLinearity _ _ _ = Nothing
 -- Operations over linearities
 
 maxLinearityOp :: Provenance -> Linearity -> Linearity -> Linearity
-maxLinearityOp _p l1 l2 = if l1 >= l2 then l1 else l2
+maxLinearityOp _p l1 l2 = case (l1, l2) of
+  (Constant, _) -> l2
+  (_, Constant) -> l1
+  -- Note it's actually important that we return the left one here, as it ensures we print network output over network input.
+  (Linear {}, Linear {}) -> l1
+  (NonLinear {}, _) -> l1
+  (_, NonLinear {}) -> l2
 
 mulLinearityOp :: Provenance -> Linearity -> Linearity -> Linearity
 mulLinearityOp p l1 l2 = case (l1, l2) of

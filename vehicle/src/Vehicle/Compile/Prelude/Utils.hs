@@ -71,5 +71,5 @@ getRelevantArg arg
   | isRelevant arg = Just (argExpr arg)
   | otherwise = Nothing
 
-filterOutNonExplicitArgs :: NonEmpty (Arg builtin) -> [Expr builtin]
-filterOutNonExplicitArgs args = mapMaybe getExplicitArg (NonEmpty.toList args)
+filterOutNonExplicitArgs :: [GenericArg expr] -> [expr]
+filterOutNonExplicitArgs = mapMaybe getExplicitArg

@@ -1,56 +1,91 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Vehicle.Data.Builtin.Standard
-  ( module Core,
-    module Vehicle.Data.Builtin.Standard,
+  ( module Syntax,
   )
 where
 
-import Vehicle.Compile.Error
-import Vehicle.Compile.Prelude
-import Vehicle.Compile.Type.Constraint.Core (malformedConstraintError)
-import Vehicle.Compile.Type.Constraint.IndexSolver
-import Vehicle.Compile.Type.Constraint.InstanceDefaultSolver
-import Vehicle.Compile.Type.Constraint.InstanceSolver
-import Vehicle.Compile.Type.Core
-import Vehicle.Compile.Type.Monad
-import Vehicle.Compile.Type.Monad.Class (TypableBuiltin (typeBuiltin))
-import Vehicle.Data.Builtin.Standard.AnnotationRestrictions
-import Vehicle.Data.Builtin.Standard.Core as Core
-import Vehicle.Data.Builtin.Standard.Eval ()
-import Vehicle.Data.Builtin.Standard.InstanceDefaults ()
-import Vehicle.Data.Builtin.Standard.Type
-import Vehicle.Data.Code.Value
-import Prelude hiding (pi)
+import Vehicle.Data.Builtin.Core as Syntax
+import Vehicle.Data.Builtin.Interface
 
 -----------------------------------------------------------------------------
--- Standard builtins
------------------------------------------------------------------------------
+-- Classes
 
-instance TypableBuiltin Builtin where
-  typeBuiltin = typeStandardBuiltin
+instance BuiltinHasBoolLiterals Builtin where
+  mkBoolBuiltinLit b = BuiltinConstructor (LBool b)
+  getBoolBuiltinLit = \case
+    BuiltinConstructor (LBool b) -> Just b
+    _ -> Nothing
 
-instance HasTypeSystem Builtin where
-  convertFromStandardBuiltins = convertToTypingBuiltins
-  useDependentMetas _ = True
-  restrictNetworkType = restrictStandardNetworkType
-  restrictDatasetType = restrictStandardDatasetType
-  restrictParameterType = restrictStandardParameterType
-  restrictPropertyType = restrictStandardPropertyType
-  solveInstance = solveInstanceConstraint
-  addAuxiliaryInputOutputConstraints = return
-  generateDefaultConstraint = addNewConstraintUsingDefaults
+instance BuiltinHasIndexLiterals Builtin where
+  getIndexBuiltinLit e = case e of
+    BuiltinConstructor (LIndex n) -> Just n
+    _ -> Nothing
+  mkIndexBuiltinLit x = BuiltinConstructor (LIndex x)
 
-convertToTypingBuiltins :: (MonadCompile m) => BuiltinUpdate m Builtin Builtin
-convertToTypingBuiltins p t args = return $ normAppList (Builtin p t) args
+instance BuiltinHasNatLiterals Builtin where
+  getNatBuiltinLit e = case e of
+    BuiltinConstructor (LNat b) -> Just b
+    _ -> Nothing
+  mkNatBuiltinLit x = BuiltinConstructor (LNat x)
 
-solveInstanceConstraint ::
-  (TCM Builtin m) =>
-  InstanceCandidateDatabase Builtin ->
-  WithContext (InstanceConstraint Builtin) ->
-  m ()
-solveInstanceConstraint database constraint@(WithContext (Resolve _ _ _ goal) _) = do
-  case goal of
-    VBuiltin NatInDomainConstraint _ -> solveIndexConstraint constraint
-    VBuiltin {} -> resolveInstance database constraint
-    _ -> malformedConstraintError constraint
+instance BuiltinHasRatLiterals Builtin where
+  getRatBuiltinLit e = case e of
+    BuiltinConstructor (LRat b) -> Just b
+    _ -> Nothing
+  mkRatBuiltinLit x = BuiltinConstructor (LRat x)
+
+instance BuiltinHasRatType Builtin where
+  isRatBuiltinType e = case e of
+    BuiltinType Rat -> True
+    _ -> False
+  mkRatBuiltinType = BuiltinType Rat
+
+instance BuiltinHasListLiterals Builtin where
+  isBuiltinNil e = case e of
+    BuiltinConstructor Nil -> True
+    _ -> False
+  mkBuiltinNil = BuiltinConstructor Nil
+
+  isBuiltinCons e = case e of
+    BuiltinConstructor Cons -> True
+    _ -> False
+  mkBuiltinCons = BuiltinConstructor Cons
+
+instance BuiltinHasVecLiterals Builtin where
+  getVecBuiltinLit e = case e of
+    BuiltinConstructor (LVec n) -> Just n
+    _ -> Nothing
+  mkVecBuiltinLit n = BuiltinConstructor (LVec n)
+
+instance BuiltinHasVecType Builtin where
+  isVecBuiltinType e = case e of
+    BuiltinType Vector -> True
+    _ -> False
+  mkVecBuiltinType = BuiltinType Vector
+
+instance BuiltinHasStandardTypeClasses Builtin where
+  mkBuiltinTypeClass = TypeClass
+
+instance BuiltinHasStandardTypes Builtin where
+  mkBuiltinType = BuiltinType
+  getBuiltinType = \case
+    BuiltinType c -> Just c
+    _ -> Nothing
+
+  mkNatInDomainConstraint = NatInDomainConstraint
+
+instance BuiltinHasStandardData Builtin where
+  mkBuiltinFunction = BuiltinFunction
+  getBuiltinFunction = \case
+    BuiltinFunction c -> Just c
+    _ -> Nothing
+
+  mkBuiltinConstructor = BuiltinConstructor
+  getBuiltinConstructor = \case
+    BuiltinConstructor c -> Just c
+    _ -> Nothing
+
+  getBuiltinTypeClassOp = \case
+    TypeClassOp op -> Just op
+    _ -> Nothing

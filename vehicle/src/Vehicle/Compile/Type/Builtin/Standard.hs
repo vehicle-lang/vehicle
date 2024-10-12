@@ -1,6 +1,6 @@
-module Vehicle.Data.Builtin.Standard.Type
-  ( typeStandardBuiltin,
-    typeBuiltin,
+module Vehicle.Compile.Type.Builtin.Standard
+  ( isStandardConstructor,
+    typeStandardBuiltin,
     typeOfBuiltinConstructor,
     typeOfBuiltinFunction,
     typeOfBuiltinType,
@@ -10,23 +10,22 @@ where
 
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Interface
-import Vehicle.Data.Builtin.Standard.Core
+import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.DSL
 import Prelude hiding (pi)
 
 -- | Return the type of the provided builtin.
-typeBuiltin :: Provenance -> Builtin -> Type Builtin
-typeBuiltin p b = fromDSL p $ case b of
-  BuiltinConstructor c -> typeOfBuiltinConstructor c
-  BuiltinFunction f -> typeOfBuiltinFunction f
-  TypeClassOp tcOp -> typeOfTypeClassOp tcOp
-  TypeClass tc -> typeOfTypeClass tc
-  BuiltinType s -> typeOfBuiltinType s
-  NatInDomainConstraint {} -> typeOfNatInDomainConstraint
+isStandardConstructor :: Builtin -> Bool
+isStandardConstructor = \case
+  BuiltinConstructor {} -> True
+  BuiltinFunction {} -> False
+  TypeClassOp {} -> False
+  TypeClass {} -> True
+  BuiltinType {} -> True
+  NatInDomainConstraint {} -> True
 
--- ResourceConstraint c -> _
-
+-- | Return the type of the provided builtin.
 typeStandardBuiltin :: Provenance -> Builtin -> Type Builtin
 typeStandardBuiltin p b = fromDSL p $ case b of
   BuiltinConstructor c -> typeOfBuiltinConstructor c
@@ -198,16 +197,16 @@ typeOfCons =
 typeOfAt :: (HasStandardBuiltins builtin) => DSLExpr builtin
 typeOfAt =
   forAll "A" type0 $ \tElem ->
-    forAllIrrelevantNat "n" $ \tDim ->
-      tVector tElem tDim ~> tIndex tDim ~> tElem
+    forAllIrrelevantNat "n" $ \n ->
+      tVector tElem n ~> tIndex n ~> tElem
 
 typeOfZipWith :: (HasStandardBuiltins builtin) => DSLExpr builtin
 typeOfZipWith =
   forAll "A" type0 $ \t1 ->
     forAll "B" type0 $ \t2 ->
       forAll "C" type0 $ \t3 ->
-        forAllIrrelevantNat "n" $ \tDim ->
-          (t1 ~> t2 ~> t3) ~> tVector t1 tDim ~> tVector t2 tDim ~> tVector t3 tDim
+        forAllIrrelevantNat "n" $ \n ->
+          (t1 ~> t2 ~> t3) ~> tVector t1 n ~> tVector t2 n ~> tVector t3 n
 
 typeOfMap :: (HasStandardBuiltins builtin) => DSLExpr builtin -> DSLExpr builtin
 typeOfMap f =

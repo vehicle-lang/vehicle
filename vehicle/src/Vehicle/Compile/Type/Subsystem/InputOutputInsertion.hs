@@ -7,10 +7,11 @@ import Control.Monad.State (MonadState (..), evalStateT, modify)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
-import Vehicle.Compile.Type.Monad (TCM, createFreshInstanceConstraint, freshMetaExpr)
+import Vehicle.Compile.Type.Monad
+import Vehicle.Data.Builtin.Core
+import Vehicle.Data.Builtin.Interface (BuiltinHasStandardData)
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
-import Vehicle.Syntax.Builtin
 
 -------------------------------------------------------------------------------
 -- Inserting polarity and linearity constraints to capture function application
@@ -20,7 +21,7 @@ import Vehicle.Syntax.Builtin
 -- meta variables, and then relates the the two by adding a new suitable
 -- constraint.
 addFunctionAuxiliaryInputOutputConstraints ::
-  (TCM builtin m) =>
+  (MonadTypeChecker builtin m, BuiltinHasStandardData builtin) =>
   (FunctionPosition -> builtin) ->
   Decl builtin ->
   m (Decl builtin)
@@ -33,7 +34,7 @@ addFunctionAuxiliaryInputOutputConstraints mkConstraint = \case
   d -> return d
 
 decomposePiType ::
-  (TCM builtin m, MonadState (MetaMap (Expr builtin)) m) =>
+  (MonadTypeChecker builtin m, MonadState (MetaMap (Expr builtin)) m, BuiltinHasStandardData builtin) =>
   (FunctionPosition -> builtin) ->
   DeclProvenance ->
   Int ->
@@ -56,7 +57,7 @@ decomposePiType mkConstraint declProv@(ident, p) inputNumber = \case
     addFunctionConstraint mkConstraint (p, position) outputType
 
 addFunctionConstraint ::
-  (TCM builtin m, MonadState (MetaMap (Expr builtin)) m) =>
+  (MonadTypeChecker builtin m, MonadState (MetaMap (Expr builtin)) m, BuiltinHasStandardData builtin) =>
   (FunctionPosition -> builtin) ->
   (Provenance, FunctionPosition) ->
   Expr builtin ->

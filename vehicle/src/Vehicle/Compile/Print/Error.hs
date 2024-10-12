@@ -16,14 +16,16 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
+import Vehicle.Compile.Print.Builtin
 import Vehicle.Compile.Type.Core
+import Vehicle.Data.Assertion (prettyUnderConstrainedVariable)
 import Vehicle.Data.Builtin.Linearity
 import Vehicle.Data.Builtin.Polarity
-import Vehicle.Data.Builtin.Standard.Core
+import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
 import Vehicle.Data.DSL
-import Vehicle.Data.QuantifiedVariable (prettyUnderConstrainedVariables)
+import Vehicle.Data.Universe (UniverseLevel (..))
 import Vehicle.Libraries.StandardLibrary.Definitions (pattern TensorIdent)
 import Vehicle.Syntax.Parse (ParseError (..))
 import Prelude hiding (pi)
@@ -461,7 +463,9 @@ instance MeaningfulError CompileError where
 
         calculateOpType :: NamedBoundCtx -> [Arg builtin] -> Doc a
         calculateOpType dbCtx args = do
-          let argsToSubst = fmap argExpr args <> [IUnitLiteral mempty]
+          -- Don't know the actual solution so construct arbitrary term
+          let tcSolution = Universe mempty (UniverseLevel 0)
+          let argsToSubst = fmap argExpr args <> [tcSolution]
           let inferedOpType = instantiateTelescope tcOpType argsToSubst
           prettyFriendly (WithContext inferedOpType dbCtx)
 
@@ -1169,15 +1173,15 @@ instance MeaningfulError CompileError where
             problem = "No properties found in file.",
             fix = Just $ "an expression is labelled as a property by giving it type" <+> squotes (pretty Bool) <+> "."
           }
-    UnsupportedIfOperation _declProv ifProv ->
+    UnsupportedLossOperation _declProv p op ->
       UError $
         UserError
-          { provenance = ifProv,
+          { provenance = p,
             problem =
               "Loss functions do not yet support compilation of"
-                <+> quotePretty If
+                <+> squotes op
                 <+> ".",
-            fix = Just "choose a different differential logic"
+            fix = Nothing
           }
     DuplicateQuantifierNames (identifier, p) name ->
       UError $
@@ -1203,7 +1207,7 @@ instance MeaningfulError CompileError where
                 <> line
                   <+> indent 2 (prettyFriendly (WithContext vecTyp ctx))
                 <> line
-                <> "Vectors with elements of type" <+> squotes (prettyFriendly (WithContext elemTyp ctx)) <+> "cannot currently be compiled:",
+                <> "Vectors with elements of type" <+> squotes (prettyFriendly (WithContext elemTyp ctx)) <+> "cannot currently be compiled to loss functions",
             fix = Nothing
           }
     NoQuantifierDomainFound (ident, _p) binder maybeUnboundedVariables ->
@@ -1217,8 +1221,44 @@ instance MeaningfulError CompileError where
                 <+> quotePretty (nameOf binder)
                 <+> case maybeUnboundedVariables of
                   Nothing -> "has no bounds at all on it's value."
-                  Just unboundedVariables -> "is missing the following bounds:" <> line <> prettyUnderConstrainedVariables unboundedVariables,
+                  Just unboundedVariables ->
+                    "is missing the following bounds:"
+                      <> line
+                      <> indent 2 (vsep $ dotDotList 5 $ fmap prettyUnderConstrainedVariable unboundedVariables),
             fix = Just "Add inequalities that restrict the value of the variable both below and above."
+          }
+    UnsupportedHigherOrderTensorCode (ident, p) originalCtx originalExpr blockedCtx blockedExpr ->
+      UError $
+        UserError
+          { provenance = p,
+            problem =
+              "While compiling property"
+                <+> quotePretty ident
+                <+> "found the following expression cannot be efficiently compiled to tensors:"
+                <> line
+                <> indent 2 (prettyFriendly (WithContext originalExpr originalCtx))
+                <> line
+                <> "In particular the operation that Vehicle doesn't know how to lift to tensors is:"
+                <> line
+                <> indent 2 (prettyFriendly (WithContext blockedExpr blockedCtx)),
+            fix = Nothing
+          }
+    UnableToLiftLogicFieldToTensors logicID _tensorField (boolField, value) ctx problematicValue ->
+      UError $
+        UserError
+          { provenance = mempty,
+            problem =
+              "While compiling the logic"
+                <+> quotePretty logicID
+                <+> "unable to lift differentiable logic field"
+                <> line
+                <> indent 2 (quotePretty boolField <> ":" <+> prettyFriendlyEmptyCtx value)
+                <> line
+                <> "to a corresponding tensor operation."
+                  <+> "In particular, unable to lift"
+                <> line
+                <> indent 2 (prettyFriendly (WithContext problematicValue ctx)),
+            fix = Nothing
           }
 
 datasetDimensionsFix :: Doc a -> Identifier -> FilePath -> Doc a

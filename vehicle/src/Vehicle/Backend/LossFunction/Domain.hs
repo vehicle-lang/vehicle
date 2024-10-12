@@ -1,306 +1,394 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
+{-# HLINT ignore "Avoid NonEmpty.unzip" #-}
+
 module Vehicle.Backend.LossFunction.Domain
-  ( -- extractSearchDomain,
-  -- Domain (..),
+  ( extractSearchDomain,
+    Domain (..),
   )
 where
 
+import Vehicle.Compile.Context.Name
+import Vehicle.Compile.Error
+import Vehicle.Compile.Prelude
+import Vehicle.Data.Builtin.Tensor
+import Vehicle.Data.Code.Value
+
 {-
-import Control.Applicative (Applicative (..))
-import Control.Monad (when)
+import Vehicle.Data.DeBruijn
+import Control.Monad (foldM, unless)
 import Control.Monad.Except (MonadError (..), runExceptT, void)
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Data.Either (partitionEithers)
+import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Proxy (Proxy (..))
-import Vehicle.Backend.LossFunction.Core (MixedLossBinder, MixedLossValue)
-import Vehicle.Compile.Boolean.LiftIf (unfoldIf)
-import Vehicle.Compile.Boolean.LowerNot (lowerNot)
-import Vehicle.Compile.Boolean.Unblock (ReduceVectorVars, UnblockingActions (..))
-import Vehicle.Compile.Boolean.Unblock qualified as Unblocking
-import Vehicle.Compile.Context.Bound (MonadBoundContext, getNamedBoundCtx)
-import Vehicle.Compile.Context.Free (MonadFreeContext)
-import Vehicle.Compile.Error (CompileError (..), MonadCompile, unexpectedExprError)
+import Data.Tuple (swap)
+import Vehicle.Backend.LossFunction.Core
+import Vehicle.Compile.Context.Name (MonadNameContext)
+import Vehicle.Compile.Error (CompileError (..), MonadCompile, compilerDeveloperError)
+import Vehicle.Compile.FourierMotzkinElimination (fourierMotzkinElimination)
 import Vehicle.Compile.Normalise.NBE (normaliseInEnv)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
-import Vehicle.Compile.Rational.LinearExpr
-import Vehicle.Compile.Variable (createUserVar)
+import Vehicle.Data.Assertion (Bound, Bounds, Inequality (..), UnderConstrainedVariableStatus, checkBoundsExist, mkInequality, pattern Bound)
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Builtin.Tensor (TensorBuiltin (..))
 import Vehicle.Data.Code.Interface
-import Vehicle.Data.Code.LinearExpr (addExprs, rearrangeExprToSolveFor)
+import Vehicle.Data.Code.LinearExpr (LinearExpr, addExprs, constantExpr, linearExprToExpr, scaleExpr, singletonVarExpr, isConstant)
 import Vehicle.Data.Code.Value
 import Vehicle.Data.QuantifiedVariable
-
+import Vehicle.Data.Tensor (mapTensor)
+-}
 type MonadDomain m =
   ( MonadCompile m,
-    MonadBoundContext MixedLossValue m,
-    MonadFreeContext Builtin m
+    MonadNameContext m
   )
+
+data Domain = Domain
+  { lowerBound :: WHNFValue TensorBuiltin,
+    upperBound :: WHNFValue TensorBuiltin
+  }
+
+extractSearchDomain ::
+  (MonadDomain m) =>
+  DeclProvenance ->
+  WHNFBinder TensorBuiltin ->
+  Lv ->
+  WHNFValue TensorBuiltin ->
+  m (Domain, WHNFValue TensorBuiltin)
+extractSearchDomain _propertyProv _binder _lv value = do
+  {-
+  _variableInfo <- case typeOf binder of
+    ITensorType _ dims -> do
+      maybeReducedVars <- case getDimensions dims of
+        Just tensorShape -> do
+          logDebug MaxDetail $ "Found concrete tensor shape" <+> pretty tensorShape
+          let userVar = OriginalUserVariable (getBinderName binder) tensorShape
+          let (reducedUseVars, _vectorExpr) = reduceVariable userTensorVarDimensions (lv + 1) userVar
+          return $ Just reducedUseVars
+        Nothing -> do
+          logDebug MaxDetail $ "Found non-concrete tensor shape" <+> prettyVerbose dims
+          return Nothing
+
+      return $ VariableInfo
+        { tensorVarLv = lv,
+          tensorVarName = getBinderName binder,
+          elementVars = maybeReducedVars
+        }
+    _ -> compilerDeveloperError "Unexpected quantifier type"
+  -}
+  -- Normalise the body
+  let fakeBound = VBuiltin (TensorRat $ RatLiteral 0) []
+  return (Domain fakeBound fakeBound, value)
+
+{-
+  -- Search for constraints
+  (constraints, remainder) <- flip runReaderT variableInfo $ findConstraints value
+  maybeDomain <- extractDomainFromConstraints variableInfo constraints
+  case maybeDomain of
+    Left missingCostraints -> throwError $ NoQuantifierDomainFound propertyProv (void binder) (Just missingCostraints)
+    Right domain -> return (domain, remainder)
+
+--------------------------------------------------------------------------------
+-- Constraints
+
+type TensorElementInequality = Inequality UserRationalVariable (WHNFValue TensorBuiltin)
+
+type TensorInequality = Inequality Name (WHNFValue TensorBuiltin)
+
+type VariableConstraint = Either TensorElementInequality TensorInequality
+
+type VariableConstraints = [VariableConstraint]
+
+splitConstraints :: VariableConstraints -> ([TensorElementInequality], [TensorInequality])
+splitConstraints = partitionEithers
+
+pattern NoConstraints :: VariableConstraints
+pattern NoConstraints = []
+
+type ConstrainedValue = (VariableConstraints, WHNFValue TensorBuiltin)
+
+unconstrained ::  WHNFValue TensorBuiltin -> ConstrainedValue
+unconstrained = (NoConstraints,)
+
+updateConstrainedValue ::
+  WHNFValue TensorBuiltin ->
+  ConstrainedValue ->
+  ConstrainedValue
+updateConstrainedValue originalExpr = \case
+  constr@(_ : _, _) -> constr
+  ([], _) -> ([], originalExpr)
+
+instance IsConstant (WHNFValue TensorBuiltin) where
+  isZero = \case
+    -- This is only semi-decidable, probably need to think harder about what
+    -- to do here.
+    IRatLiteral _ 0 -> True
+    _ -> False
+  scaleConstant c = IMul MulRat (IRatLiteral mempty c)
+  addConstants c1 c2 e1 e2 =
+    IAdd AddRat (scaleConstant c1 e1) (scaleConstant c2 e2)
+
+--------------------------------------------------------------------------------
+-- Constraints
+
+-- | Information for the variable whose domain we are trying to find.
+data VariableInfo = VariableInfo
+  { tensorVarLv :: Lv,
+    tensorVarName :: Name,
+    elementVars :: Maybe [(Lv, UserRationalVariable)]
+  }
 
 type MonadSearch m =
   ( MonadDomain m,
     MonadReader VariableInfo m
   )
 
--- | Information for the variable whose domain we are trying to find.
-data VariableInfo = VariableInfo
-  { variableLv :: Lv,
-    vectorExpr :: WHNFValue Builtin,
-    reducedVars :: [(Lv, UserRationalVariable)]
-  }
-
-extractSearchDomain ::
-  (MonadDomain m) =>
-  DeclProvenance ->
-  MixedLossBinder ->
-  Lv ->
-  WHNFClosure Builtin ->
-  m (Domain, WHNFValue Builtin)
-extractSearchDomain propertyProv binder lv (WHNFClosure env expr) = do
-  -- Convert the binder
-  namedCtx <- getNamedBoundCtx (Proxy @MixedLossValue)
-  let originalTypedBinder = fmap _ binder
-  userVar <- createUserVar propertyProv namedCtx originalTypedBinder
-  let envEntry@(reducedUseVars, _) = reduceVariable userTensorVarDimensions (lv + 1) userVar
-  let variableInfo = _
-
-  -- Normalise the body
-  let newEnv = extendEnvWithBound lv binder env
-  value <- normaliseInEnv newEnv expr
-
-  -- Search for constraints
-  (maybeConstraints, remainder) <- flip runReaderT _ $ findConstraints value
-  case maybeConstraints of
-    Nothing -> throwError $ NoQuantifierDomainFound propertyProv (void binder) Nothing
-    Just constraints -> do
-      let maybeDomain = extractDomainFromConstraints constraints reducedUseVars
-      case maybeDomain of
-        Left missingCostraints -> throwError $ NoQuantifierDomainFound propertyProv (void binder) (Just missingCostraints)
-        Right domain -> return (domain, remainder)
-
---------------------------------------------------------------------------------
--- Constraints
-
-data VariableConstraints = VariableConstraints
-  { lowerBounds :: Map Lv (NFValue TensorBuiltin),
-    upperBounds :: Map Lv (NFValue TensorBuiltin)
-  }
-
-instance Semigroup VariableConstraints where
-  x <> y =
-    VariableConstraints
-      { lowerBounds = Map.unionWith (\u v -> VBuiltin MaxRatTensor (explicit <$> [u, v])) (lowerBounds x) (lowerBounds y),
-        upperBounds = Map.unionWith (\u v -> VBuiltin MinRatTensor (explicit <$> [u, v])) (upperBounds x) (upperBounds y)
-      }
-
-instance Monoid VariableConstraints where
-  mempty = VariableConstraints mempty mempty
-
-type ConstrainedValue = (Maybe VariableConstraints, WHNFValue Builtin)
-
-updateConstrainedValue ::
-  WHNFValue Builtin ->
-  ConstrainedValue ->
-  ConstrainedValue
-updateConstrainedValue originalExpr = \case
-  constr@(Just {}, _) -> constr
-  (Nothing, _) -> (Nothing, originalExpr)
-
 --------------------------------------------------------------------------------
 -- Domain
 
-data Domain = Domain
-  { lowerBound :: NFValue TensorBuiltin,
-    upperBound :: NFValue TensorBuiltin
-  }
-
 extractDomainFromConstraints ::
+  (MonadCompile m) =>
+  VariableInfo ->
   VariableConstraints ->
-  [(Lv, UserRationalVariable)] ->
-  Either [(UserRationalVariable, UnderConstrainedVariableStatus)] Domain
-extractDomainFromConstraints VariableConstraints {..} allVariables = do
-  let lowerBoundExprs = flip map allVariables $ \(lv, var) ->
-        case (Map.lookup lv lowerBounds, Map.lookup lv upperBounds) of
-          (Just x, Just y) -> Right (x, y)
-          (Just {}, Nothing) -> Left (var, BoundedBelow)
-          (Nothing, Just {}) -> Left (var, BoundedAbove)
-          (Nothing, Nothing) -> Left (var, Unconstrained)
+  m (Either [(UserRationalVariable, UnderConstrainedVariableStatus)] Domain)
+extractDomainFromConstraints VariableInfo{..} constraints = do
+  let (tensorElementInequalities, tensorInequalities) = splitConstraints constraints
 
-  let (missingVars, presentVarBounds) = partitionEithers lowerBoundExprs
-  if not $ null missingVars
-    then Left missingVars
-    else do
-      let n = length allVariables
-      let (lowerBoundElements, upperBoundElements) = unzip presentVarBounds
-      let lowerBoundExpr = VBuiltin (StackRatTensor n) (explicit <$> lowerBoundElements)
-      let upperBoundExpr = VBuiltin (StackRatTensor n) (explicit <$> upperBoundElements)
-      Right $ Domain lowerBoundExpr upperBoundExpr
+  (tensorBounds, remainingInequalities) <- fourierMotzkinElimination tensorVarName tensorInequalities
+
+  unless (null remainingInequalities) $ do
+    compilerDeveloperError "Found unused tensor inequalities when solving for bounds. Not currently implemented."
+
+  case checkBoundsExist (tensorVarName, tensorBounds) of
+    Right (lowerBounds, upperBounds) -> do
+      unless (null tensorElementInequalities) $ do
+        compilerDeveloperError "Found mixed tensor and element inequalities when solving for bounds. Not currently implemented."
+      return $ Right $ Domain _ _
+    Left _ -> do
+      (remainingElementInequalities, results) <- foldM extractVarBounds (tensorElementInequalities, mempty) (fmap snd elementVars)
+
+      unless (null remainingElementInequalities) $ do
+        compilerDeveloperError "Found unused element inequalities when solving for bounds. Not currently implemented."
+
+      let (unsolvedVars, solvedVars) = partitionEithers (fmap checkBoundsExist results)
+      if not $ null unsolvedVars
+        then return $ Left unsolvedVars
+        else do
+          let (lowerBounds, upperBounds) = NonEmpty.unzip solvedVars
+          let varMap = Map.fromList (fmap swap tensorElementVars)
+          let lowerBoundElements = fmap (convertBoundToExpr varMap IMax) lowerBounds
+          let upperBoundElements = fmap (convertBoundToExpr varMap IMin) upperBounds
+          let tensorShape = userTensorVarDimensions tensorVar
+          let lowerBoundExpr = tensorLikeToExpr id tensorShape lowerBoundElements
+          let upperBoundExpr = tensorLikeToExpr id tensorShape upperBoundElements
+          return $ Right $ Domain lowerBoundExpr upperBoundExpr
+
+extractVarBounds ::
+  (MonadCompile m) =>
+  ([TensorElementInequality], [(UserRationalVariable, Bounds UserRationalVariable (WHNFValue TensorBuiltin))]) ->
+  UserRationalVariable ->
+  m ([TensorElementInequality], [(UserRationalVariable, Bounds UserRationalVariable (WHNFValue TensorBuiltin))])
+extractVarBounds (currentConstraints, solutions) var = do
+  (bounds, newInequalities) <- fourierMotzkinElimination var currentConstraints
+  return (newInequalities, (var, bounds) : solutions)
+
+convertBoundToExpr ::
+  Map UserRationalVariable Lv ->
+  (WHNFValue TensorBuiltin -> WHNFValue TensorBuiltin -> WHNFValue TensorBuiltin) ->
+  NonEmpty (Bound UserRationalVariable (WHNFValue TensorBuiltin)) ->
+  WHNFValue TensorBuiltin
+convertBoundToExpr varMap op bounds = foldr1 _ (fmap convertBound bounds)
+  where
+    -- Ignore strictness for the moment.
+
+    convertConstant _first c = c
+    convertVariable _first (v, c) = case Map.lookup v varMap of
+      Nothing -> developerError $ "Missing variable Lv for" <+> pretty v
+      Just lv -> IMul MulRat (IRatLiteral mempty c) (VBoundVar lv [])
+    convertBound (Bound _strictness value) = linearExprToExpr convertConstant convertVariable (IAdd AddRat) value
 
 --------------------------------------------------------------------------------
 -- Constraint search
 
-findConstraints :: (MonadSearch m) => WHNFValue Builtin -> m ConstrainedValue
-findConstraints expr = case expr of
-  ----------------------------------
-  -- No useful domain information --
-  ----------------------------------
-  IBoolLiteral {} -> return (Nothing, expr)
-  IExists {} -> return (Nothing, expr)
-  IForall {} -> return (Nothing, expr)
-  INotEqual {} -> return (Nothing, expr)
-  IOr {} -> return (Nothing, expr) -- Handle disjoint domains?
+findConstraints :: (MonadSearch m) => WHNFValue TensorBuiltin -> m ConstrainedValue
+findConstraints expr = case toBoolTensorView expr of
+  -------------------------
+  -- Unuseful base cases --
+  -------------------------
+  VBoolTensor {} -> return $ unconstrained expr
+  VConstBoolTensor {} -> return $ unconstrained expr
+  VQuantifyRatTensor {} -> return $ unconstrained expr
+  VEqualsRatTensor Neq _ _ -> return $ unconstrained expr
+  -- These two cases need to be altered if we are to handle disjoint domains?
+  VOrTensor {} -> return $ unconstrained expr
+  VReduceOrTensor {} -> return $ unconstrained expr
+  -- Maybe we can do something with these?
+  VReduceAndTensor {} -> return $ unconstrained expr
+  VStackBoolTensor {} -> return $ unconstrained expr
   ----------------
-  -- Base cases --
+  -- Useful base cases --
   ----------------
-  IOrder OrderRat op _x _y -> tryPurifyAssertion expr (handleRatInequality op)
+  VOrderRatTensor op x y -> handleRatInequality op x y
   ---------------------
   -- Recursive cases --
   ---------------------
-  INot e -> handleNot e
-  IIf _ c x y -> updateConstrainedValue expr <$> (findConstraints =<< unfoldIf c x y)
-  IEqual EqRat x y -> updateConstrainedValue expr <$> findConstraints (unfoldEquality x y)
-  IAnd x y -> do
+  VEqualsRatTensor Eq x y ->
+    updateConstrainedValue expr <$> findConstraints (unfoldEquality x y)
+  VAndTensor x y -> do
     (cx, x') <- findConstraints x
     (cy, y') <- findConstraints y
-    return (liftA2 (<>) cx cy, IAnd x' y')
-  _ -> unblockBoolExpr expr
+    return (cx <> cy, IAnd x' y')
+  VNotTensor x -> handleNot x
 
 handleNot ::
-  (MonadSearch m) =>
-  WHNFValue Builtin ->
+  forall m . (MonadSearch m) =>
+  WHNFValue TensorBuiltin ->
   m ConstrainedValue
 handleNot expr = do
-  loweredExpr <- lowerNot return expr
+  loweredExpr <- lowerBoolTensor expr
   case loweredExpr of
-    INot {} -> return (Nothing, expr)
+    INot {} -> return $ unconstrained expr
     newExpr -> updateConstrainedValue expr <$> findConstraints newExpr
+  where
+    lowerBoolTensor :: WHNFValue TensorBuiltin -> m (WHNFValue TensorBuiltin)
+    lowerBoolTensor e = fromBoolTensorView <$> case toBoolTensorView e of
+      ----------------
+      -- Base cases --
+      ----------------
+      VBoolTensor t -> return $ VBoolTensor $ mapTensor not t
+      VOrderRatTensor op x y -> return $ VOrderRatTensor (neg op) x y
+      VEqualsRatTensor op x y -> return $ VEqualsRatTensor (neg op) x y
+      VQuantifyRatTensor op fn -> return $ VQuantifyRatTensor (neg op) fn
+      VNotTensor x -> return $ toBoolTensorView x
+      ---------------------
+      -- Inductive cases --
+      ---------------------
+      VConstBoolTensor v dims -> VConstBoolTensor <$> lowerBool v <*> pure dims
+      VOrTensor x y -> VAndTensor <$> lowerBoolTensor x <*> lowerBoolTensor y
+      VAndTensor x y -> VOrTensor <$> lowerBoolTensor x <*> lowerBoolTensor y
+      VStackBoolTensor n xs -> VStackBoolTensor n <$> traverse lowerBoolTensor xs
+      ---------------------
+      -- Unhandled cases --
+      ---------------------
+      -- We can handle these cases if we know the dimension of the vector concretely?
+      VReduceAndTensor {} -> return $ VNotTensor e
+      VReduceOrTensor {} -> return $ VNotTensor e
+
+    lowerBool :: WHNFValue TensorBuiltin -> m (WHNFValue TensorBuiltin)
+    lowerBool = \case
+      INullaryBoolTensorOp (BoolLiteral b) -> return $ INullaryBoolTensorOp (BoolLiteral b)
+      e -> developerError $ "Unexpected expression of type Bool:" <+> prettyVerbose e
 
 unfoldEquality ::
-  WHNFValue Builtin ->
-  WHNFValue Builtin ->
-  WHNFValue Builtin
+  WHNFValue TensorBuiltin ->
+  WHNFValue TensorBuiltin ->
+  WHNFValue TensorBuiltin
 unfoldEquality x y = IAnd (IOrderRat Le x y) (IOrderRat Ge x y)
-
---------------------------------------------------------------------------------
--- Unblocking
-
-tryPurifyAssertion ::
-  (MonadSearch m) =>
-  WHNFValue Builtin ->
-  (WHNFValue Builtin -> WHNFValue Builtin -> m ConstrainedValue) ->
-  m ConstrainedValue
-tryPurifyAssertion value whenPure = do
-  ctx <- getNamedBoundCtx (Proxy @MixedLossValue)
-  result <- runExceptT (Unblocking.tryPurifyAssertion ctx unblockingActions value)
-  case result of
-    Left _blocked -> return (Nothing, value)
-    Right (Right (x, y)) -> whenPure x y
-    Right (Left purified) -> updateConstrainedValue value <$> findConstraints purified
-
-unblockBoolExpr ::
-  (MonadSearch m) =>
-  WHNFValue Builtin ->
-  m ConstrainedValue
-unblockBoolExpr value = do
-  ctx <- getNamedBoundCtx (Proxy @MixedLossValue)
-  result <- runExceptT (Unblocking.unblockBoolExpr ctx unblockingActions value)
-  case result of
-    Left {} -> return (Nothing, value)
-    Right unblockedValue -> do
-      constrainedValue <- findConstraints unblockedValue
-      return $ updateConstrainedValue value constrainedValue
-
-unblockingActions ::
-  (MonadError (WHNFValue Builtin) m, MonadReader VariableInfo m) =>
-  UnblockingActions m
-unblockingActions =
-  UnblockingActions
-    { unblockFreeVectorVar = unblockFreeVectorVariable,
-      unblockBoundVectorVar = unblockBoundVectorVariable
-    }
-
-unblockFreeVectorVariable ::
-  (MonadError (WHNFValue Builtin) m) =>
-  (ReduceVectorVars -> WHNFValue Builtin -> m (WHNFValue Builtin)) ->
-  ReduceVectorVars ->
-  Identifier ->
-  WHNFSpine Builtin ->
-  m (WHNFValue Builtin)
-unblockFreeVectorVariable _unblockVector _reduceVectorVars ident spine =
-  throwError $ VFreeVar ident spine
-
-unblockBoundVectorVariable ::
-  (MonadError (WHNFValue Builtin) m, MonadReader VariableInfo m) =>
-  Lv ->
-  m (WHNFValue Builtin)
-unblockBoundVectorVariable lv = do
-  VariableInfo {..} <- ask
-
-  when (lv /= variableLv) $
-    throwError $
-      VBoundVar lv []
-
-  return vectorExpr
 
 --------------------------------------------------------------------------------
 -- Compilation of inequalities
 
+-- | At the moment we only handle linear constraints, and consider all variables
+-- equally. In theory we should be able to handle much more complex domains but
+-- issues such as the postivity or negativity of arbitrary expressions come into
+-- play when solving the inequalities so leaving at this for now.
 handleRatInequality ::
   (MonadSearch m) =>
   OrderOp ->
-  WHNFValue Builtin ->
-  WHNFValue Builtin ->
+  WHNFValue TensorBuiltin ->
+  WHNFValue TensorBuiltin ->
   m ConstrainedValue
 handleRatInequality op e1 e2 = do
-  let e = ISub SubRat e1 e2
-  result <- runExceptT (compileRatLinearExpr e)
+  result <- compileRatLinearRelation (mkInequality op) e1 e2
+  let noResult = (NoConstraints, IOrderRat op e1 e2)
+  let exprDoc = IBoolTensorOp (OrderRatTensor op) [explicit e1, explicit e2]
   case result of
-    Right (Linear a b) -> do
-      case op of
-        Le -> return (_, ITrueExpr mempty)
-    _ -> return (Nothing, IOrderRat op e1 e2)
+    Left blockingExpr -> do
+      logDebug MaxDetail $
+        "Couldn't compile"
+          <+> prettyVerbose exprDoc
+          <+> "to a bound"
+          <+> "as encountered not currently handled expr"
+          <+> prettyVerbose blockingExpr
+      return noResult
+    Right inequality -> do
+      return ([Left inequality], ITrueExpr mempty)
 
-data Bound
-  = Constant (NFValue TensorBuiltin)
-  | Linear (NFValue TensorBuiltin) (NFValue TensorBuiltin)
+compileRatLinearRelation ::
+  (MonadLogger m, MonadReader VariableInfo m) =>
+  (LinearExp -> LinearExp -> relation) ->
+  WHNFValue TensorBuiltin ->
+  WHNFValue TensorBuiltin ->
+  m (Either (WHNFValue TensorBuiltin) relation)
+compileRatLinearRelation mkRelation x y = do
+  runExceptT $ do
+    x' <- compileRatLinearExpr x
+    y' <- compileRatLinearExpr y
+    return $ mkRelation x' y'
+
+type LinearExp = LinearExpr UserRationalVariable (WHNFValue TensorBuiltin)
 
 compileRatLinearExpr ::
   forall m.
-  (MonadLogger m, MonadError NonLinearity m) =>
-  WHNFValue Builtin ->
-  m Bound
+  (MonadLogger m, MonadReader VariableInfo m, MonadError (WHNFValue TensorBuiltin) m) =>
+  WHNFValue TensorBuiltin ->
+  m LinearExp
 compileRatLinearExpr = go
   where
-    go :: WHNFValue Builtin -> m Bound
-    go e = case e of
+    go :: WHNFValue TensorBuiltin -> m LinearExp
+    go expr = case toRatTensorView expr of
       ----------------
       -- Base cases --
       ----------------
-      IRatLiteral _ l -> return $ Constant _
-      VBoundVar lv [] -> return $ Linear _ _
+      VRatTensor {} -> return $ constantExpr expr
+      VConstRatTensor {} -> return $ constantExpr expr
+      VStackRatTensor _ _ -> _
+      VRatTensorVar lv -> do
+        VariableInfo {..} <- ask
+        let result = lookup lv reducedVars
+        case result of
+          Just var -> return $ singletonVarExpr (IRatLiteral mempty 0) var
+          Nothing -> return $ constantExpr (VBoundVar lv [])
       ---------------------
       -- Inductive cases --
       ---------------------
-      INeg NegRat v -> scaleExpr (-1) <$> go v
-      IAdd AddRat e1 e2 -> addExprs 1 1 <$> go e1 <*> go e2
-      ISub SubRat e1 e2 -> addExprs 1 (-1) <$> go e1 <*> go e2
-      IMul MulRat e1 e2 -> do
-        e1' <- go e1
-        e2' <- go e2
-        case (e1', e2') of
-          (Constant c1, Constant c2) -> return $ scaleExpr c1 e2'
+      VNegRatTensor x -> scaleExpr (-1) <$> go x
+      VAddRatTensor x y -> addExprs 1 1 <$> go x <*> go y
+      VSubRatTensor x y -> addExprs 1 (-1) <$> go x <*> go y
+      VMulRatTensor x y -> do
+        e1' <- go x
+        e2' <- go y
+        case (isConstTensor e1', isConstTensor e2') of
+          (Just c1, _) -> return $ scaleExpr c1 e2'
           (_, Just c2) -> return $ scaleExpr c2 e1'
-          _ -> throwError NonLinearity
-      IDiv DivRat e1 e2 -> do
-        e1' <- go e1
-        e2' <- go e2
-        case isConstant e2' of
-          (Just c2) -> return $ scaleExpr (1 / c2) e1'
-          _ -> throwError NonLinearity
+          _ -> throwError expr
+      VDivRatTensor x y -> do
+        x' <- go x
+        y' <- go y
+        case isConstTensor y' of
+          (Just c2) -> return $ scaleExpr (1 / c2) x'
+          _ -> throwError expr
       -----------------
       -- Error cases --
       -----------------
-      ex -> unexpectedExprError "compile linear rational expression" $ prettyVerbose ex
--}
+      VReduceAddRatTensor {} -> throwError expr
+      VReduceMulRatTensor {} -> throwError expr
+      VReduceMinRatTensor {} -> throwError expr
+      VReduceMaxRatTensor {} -> throwError expr
+      VSearchRatTensor {} -> throwError expr
+      -- These could be handled by splitting into two constraints?
+      VMinRatTensor {} -> throwError expr
+      VMaxRatTensor {} -> throwError expr
+
+isConstTensor :: LinearExp -> Maybe Rational
+isConstTensor expr = case isConstant expr of
+  Just (toRatTensorView -> VConstRatTensor (INullaryRatTensorOp (RatLiteral c)) _) -> Just c
+  _ -> Nothing
+
+currentPass :: CompilerPass
+currentPass = "DomainSearch"
+  -}

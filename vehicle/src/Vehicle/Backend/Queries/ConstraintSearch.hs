@@ -13,6 +13,7 @@ import Data.Void (Void)
 import Vehicle.Backend.Queries.UserVariableElimination.Core
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
+import Vehicle.Data.Assertion
 import Vehicle.Data.Code.BooleanExpr
 
 --------------------------------------------------------------------------------
@@ -23,13 +24,13 @@ import Vehicle.Data.Code.BooleanExpr
 -- field so we can either look for rational equalities, tensor equalities or
 -- no equalties at all.
 data ConstrainedAssertionTree equality
-  = Equality !equality !(MaybeTrivial AssertionTree)
+  = SingleEquality !equality !(MaybeTrivial AssertionTree)
   | Inequalities !(ConjunctAll RationalInequality) !(MaybeTrivial AssertionTree)
   | NoConstraints !AssertionTree
 
 instance (Pretty equality) => Pretty (ConstrainedAssertionTree equality) where
   pretty = \case
-    Equality eq r -> "Equalities[" <+> pretty (eq, r) <+> "]"
+    SingleEquality eq r -> "SingleEquality[" <+> pretty (eq, r) <+> "]"
     Inequalities ineqs r -> "Inequalities[" <+> pretty (ineqs, r) <+> "]"
     NoConstraints r -> "NoConstraints[" <+> pretty r <+> "]"
 
@@ -88,7 +89,7 @@ findVariableConstraints fromAssertion var = go
       ConstrainedAssertionTree equality ->
       Either (ConstrainedAssertionTree equality) (ConstrainedAssertionTree Void)
     shortCircuitConstraints disjunctedTree constraint = case constraint of
-      Equality eq remaining -> Left $ Equality eq (andTrivial andBoolExpr remaining (NonTrivial disjunctedTree))
+      SingleEquality eq remaining -> Left $ SingleEquality eq (andTrivial andBoolExpr remaining (NonTrivial disjunctedTree))
       Inequalities ineq remaining -> Right (Inequalities ineq remaining)
       NoConstraints ineq -> Right (NoConstraints ineq)
 

@@ -15,9 +15,9 @@ import Vehicle.Compile.Context.Free.Class
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
+import Vehicle.Compile.Type.Builtin (TypableBuiltin (..))
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
-import Vehicle.Compile.Type.Monad.Class (TypableBuiltin (..))
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Universe (UniverseLevel (..))
 import Prelude hiding (pi)
@@ -32,14 +32,14 @@ import Prelude hiding (pi)
 -- | Type checking monad with additional bound context for the bidirectional
 -- type-checking pass.
 type MonadBidirectional builtin m =
-  ( TCM builtin m,
+  ( MonadTypeChecker builtin m,
     MonadBoundContext (Type builtin) m,
     MonadReader Relevance m
   )
 
 runMonadBidirectional ::
   forall m builtin a.
-  (TCM builtin m) =>
+  (MonadTypeChecker builtin m) =>
   Proxy builtin ->
   BoundContextT (Type builtin) (ReaderT Relevance m) a ->
   m a
@@ -263,7 +263,7 @@ inferArgs original@(fun, _, _) piT@(Pi _ binder resultType) args
         Just arg -> do
           let relevance = relevanceOf binder
           checkedArgExpr <-
-            setRelevance (Proxy @builtin) relevance $
+            setCurrentRelevance (Proxy @builtin) relevance $
               checkExpr (typeOf binder) (argExpr arg)
           return $ Arg p visibility relevance checkedArgExpr
         Nothing -> do
@@ -343,13 +343,13 @@ checkBinderTypesEqual p binderName expectedType actualType = do
 getCurrentRelevance :: (MonadBidirectional builtin m) => Proxy builtin -> m Relevance
 getCurrentRelevance _ = ask
 
-setRelevance ::
+setCurrentRelevance ::
   (MonadBidirectional builtin m) =>
   Proxy builtin ->
   Relevance ->
   m c ->
   m c
-setRelevance _ relevance = local (relevance <>)
+setCurrentRelevance _ relevance = local (relevance <>)
 
 --------------------------------------------------------------------------------
 -- Debug functions

@@ -13,6 +13,7 @@ import Vehicle.Compile.Resource
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
+import Vehicle.Data.Tensor (TensorShape)
 import Vehicle.Verify.Core (NetworkContextInfo (..))
 
 --------------------------------------------------------------------------------

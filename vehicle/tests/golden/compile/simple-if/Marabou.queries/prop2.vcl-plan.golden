@@ -298,14 +298,14 @@
                     {
                       "upperBounds": [
                         {
-                          "boundValue": {
+                          "strictness": "NonStrict",
+                          "inequalityExpr": {
                             "constantValue": {
                               "numerator": 0,
                               "denominator": 1
                             },
                             "coefficients": []
-                          },
-                          "boundStrictness": "NonStrict"
+                          }
                         }
                       ],
                       "lowerBounds": []

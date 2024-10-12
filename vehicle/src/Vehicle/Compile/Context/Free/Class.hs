@@ -11,6 +11,7 @@ import Vehicle.Compile.Context.Bound
 import Vehicle.Compile.Context.Free.Core
 import Vehicle.Compile.Error (MonadCompile, lookupInFreeCtx)
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Print.Builtin
 import Vehicle.Data.Code.Value
 import Vehicle.Libraries.StandardLibrary.Definitions
 

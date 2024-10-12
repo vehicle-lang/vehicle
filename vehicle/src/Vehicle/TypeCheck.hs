@@ -22,11 +22,12 @@ import Vehicle.Compile.Print
 import Vehicle.Compile.Print.Error
 import Vehicle.Compile.Scope (scopeCheck, scopeCheckClosedExpr)
 import Vehicle.Compile.Type (typeCheckExpr, typeCheckProg)
+import Vehicle.Compile.Type.Constraint.InstanceBuiltins
 import Vehicle.Compile.Type.Subsystem
-import Vehicle.Data.Builtin.Linearity.Core (LinearityBuiltin)
-import Vehicle.Data.Builtin.Polarity.Core (PolarityBuiltin)
+import Vehicle.Compile.Type.System (convertToTypingBuiltins)
+import Vehicle.Data.Builtin.Linearity (LinearityBuiltin)
+import Vehicle.Data.Builtin.Polarity (PolarityBuiltin)
 import Vehicle.Data.Builtin.Standard
-import Vehicle.Data.Builtin.Standard.InstanceBuiltins
 import Vehicle.Libraries (Library (..), LibraryInfo (..), findLibraryContentFile)
 import Vehicle.Libraries.StandardLibrary (standardLibrary)
 import Vehicle.Prelude.Logging.Instance

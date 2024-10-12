@@ -23,7 +23,7 @@ import Vehicle.Compile.Normalise.NBE (normaliseInEmptyEnv)
 import Vehicle.Compile.Normalise.Quote
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print.Warning ()
-import Vehicle.Data.Builtin.Standard.Core
+import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
 import Vehicle.Prelude.Warning (CompileWarning (..))

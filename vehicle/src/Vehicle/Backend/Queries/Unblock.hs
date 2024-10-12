@@ -1,4 +1,4 @@
-module Vehicle.Compile.Boolean.Unblock
+module Vehicle.Backend.Queries.Unblock
   ( unblockBoolExpr,
     tryPurifyAssertion,
     UnblockingActions (..),
@@ -6,10 +6,11 @@ module Vehicle.Compile.Boolean.Unblock
   )
 where
 
+import Vehicle.Backend.Queries.UserVariableElimination.Core
 import Vehicle.Compile.Boolean.LiftIf
 import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.Builtin
+import Vehicle.Compile.Normalise.Builtin hiding (evalOp2)
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
@@ -22,10 +23,7 @@ import Vehicle.Libraries.StandardLibrary.Definitions
 -- Unblocking
 --------------------------------------------------------------------------------
 
-type MonadUnblock m =
-  ( MonadLogger m,
-    MonadFreeContext Builtin m
-  )
+type MonadUnblock m = MonadQueryStructure m
 
 data UnblockingActions m = UnblockingActions
   { unblockFreeVectorVar ::
@@ -275,12 +273,12 @@ forceEvalSimple b evalFn = forceEval b (\orig args -> return $ evalFn orig args)
 
 tryPurifyAssertion ::
   (MonadUnblock m) =>
-  NamedBoundCtx ->
   UnblockingActions m ->
   WHNFValue Builtin ->
   m (Either (WHNFValue Builtin) (WHNFValue Builtin, WHNFValue Builtin))
-tryPurifyAssertion ctx actions assertion = do
-  let assertionDoc = prettyFriendly (WithContext assertion ctx)
+tryPurifyAssertion actions assertion = do
+  preCtx <- getGlobalNamedBoundCtx
+  let assertionDoc = prettyFriendly (WithContext assertion preCtx)
   logDebug MaxDetail $ line <> "Trying to purify" <+> squotes assertionDoc
   incrCallDepth
 
@@ -290,7 +288,8 @@ tryPurifyAssertion ctx actions assertion = do
     IVectorEqualFull (IVecEqSpine t1 t2 n sol xs ys) -> purifyVectorOp2 actions StdEqualsVector [t1, t2, n, sol] xs ys
     _ -> unexpectedExprError "purifying assertion" assertionDoc
 
-  let unblockedAssertionDoc = prettyFriendly (WithContext unblockedExpr ctx)
+  postCtx <- getGlobalNamedBoundCtx
+  let unblockedAssertionDoc = prettyFriendly (WithContext unblockedExpr postCtx)
   logDebug MaxDetail $ "Result" <+> squotes unblockedAssertionDoc
 
   let onPurified x y = do

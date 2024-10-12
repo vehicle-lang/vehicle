@@ -4,8 +4,8 @@ import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertBool)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
+import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.Interface
-import Vehicle.Syntax.Builtin
 import Vehicle.Test.Unit.Common (unitTestCase)
 
 --------------------------------------------------------------------------------

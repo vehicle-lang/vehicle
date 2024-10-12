@@ -1,86 +1,117 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Vehicle.Backend.LossFunction.JSON
-  ( compileProgToJSON,
+  ( convertToJSONProg,
+    convertFromJSONProg,
   )
 where
 
-import Control.Monad.Reader (MonadReader (..), ReaderT (..), asks)
 import Data.Aeson (KeyValue (..), ToJSON (..), genericToJSON)
-import Data.Aeson.Encode.Pretty (encodePretty')
 import Data.Aeson.Types (object)
-import Data.Bifunctor (Bifunctor (..))
-import Data.ByteString.Lazy.Char8 (unpack)
-import Data.List.NonEmpty qualified as NonEmpty (filter, toList)
-import Data.Maybe (mapMaybe)
+import Data.List (elemIndex)
+import Data.Ratio (Ratio, denominator, numerator, (%))
 import GHC.Generics (Generic)
+import Prettyprinter (Pretty (..), (<+>))
 import Vehicle.Compile.Arity
-import Vehicle.Compile.Descope (MonadDescope, ixToProperName, runMonadDescopeT)
+import Vehicle.Compile.Context.Name
 import Vehicle.Compile.Error
-import Vehicle.Compile.Prelude (BinderNamingForm (..), DefAbstractSort (..), Doc, GenericBoundCtx, GenericDecl (..), GenericFreeCtx, HasName, HasType (..), Identifier, Name, Position, Provenance (..), Range (..), getExplicitArg, prettyJSONConfig)
-import Vehicle.Compile.Prelude qualified as S
+import Vehicle.Compile.Normalise.NBE (eval)
+import Vehicle.Compile.Prelude (Decl, Doc, Expr (..), GenericArg (..), Ix (..), ModulePath (..), Name, Position, Prog, Provenance (..), Range (..), filterOutNonExplicitArgs, getBinderName, mkExplicitBinder, normAppList)
 import Vehicle.Compile.Print
-import Vehicle.Data.Builtin.Tensor
-import Vehicle.Data.DeBruijn
-import Vehicle.Data.Universe (UniverseLevel (..))
-import Vehicle.Prelude (HasName (..), Position (..), Pretty (..), indent, jsonOptions, line, quotePretty, squotes, (<+>))
+import Vehicle.Compile.Type.Irrelevance (removeIrrelevantCodeFromProg)
+import Vehicle.Data.Builtin.Loss (DimensionDataBuiltin, DimensionTypeBuiltin, LossTensorBuiltin (..), RatTensorBuiltin)
+import Vehicle.Data.Builtin.Loss qualified as L
+import Vehicle.Data.Builtin.Tensor ()
+import Vehicle.Data.Code.Interface
+import Vehicle.Data.Code.Value
+import Vehicle.Data.Tensor (Tensor, mapTensor)
+import Vehicle.Prelude (Annotation (..), GenericDecl (..), GenericProg (..), HasName (..), HasType (..), Identifier (..), Position (..), explicit, indent, jsonOptions, line, squotes)
 import Vehicle.Prelude.Logging.Class
+import Vehicle.Syntax.Prelude (developerError)
 
 --------------------------------------------------------------------------------
 -- Public method
 
-compileProgToJSON ::
-  forall m a.
-  (MonadCompile m) =>
-  S.Prog TensorBuiltin ->
-  m (Doc a)
-compileProgToJSON prog = logCompilerPass MinDetail currentPass $ do
-  jProg <- runReaderT (runMonadDescopeT (toJProg prog)) mempty
-  let json = toJSON jProg
-  return $ pretty $ unpack $ encodePretty' prettyJSONConfig json
+convertToJSONProg :: (MonadCompile m) => Prog LossTensorBuiltin -> m JProg
+convertToJSONProg prog =
+  logCompilerPass MinDetail currentPass $ do
+    relevantProg <- removeIrrelevantCodeFromProg prog
+    runFreshNameContextT $ convertProg relevantProg
+
+convertFromJSONProg :: JProg -> Prog LossTensorBuiltin
+convertFromJSONProg = fromJProg
 
 --------------------------------------------------------------------------------
--- Conversion of JExpr to JSON
-
---------------------------------------------------------------------------------
--- Relevant expressions
-
--- This file contains an AST that ideally only contains computationally relevant
--- information suitable for exporting to the Python interpreter. This ambition
--- is not yet quite achieved, as it still contains universes and full pi-types,
--- but ideally this should be fixed once we get irrelevance up and running.
+-- The AST exported to JSON
 
 newtype JProg
-  = Main [JDecl]
+  = JProg [JDecl]
   deriving (Generic)
 
 data JDecl
-  = Postulate Provenance Name JExpr
-  | Function Provenance Name JExpr JExpr
+  = JDecl Name JExpr JExpr
   deriving (Generic)
 
 data JExpr
-  = Universe Provenance Int
-  | App JExpr [JExpr]
-  | -- | Because we're probably not going to a functional language we
-    -- need to mark partial applications as such to avoid excessive currying.
-    PartialApp Arity JExpr [JExpr]
-  | Pi Provenance JBinder JExpr
-  | Builtin Provenance TensorBuiltin
-  | BoundVar Provenance Name
-  | FreeVar Provenance Name
-  | Let Provenance JExpr JBinder JExpr
-  | Lam Provenance [JBinder] JExpr
-  deriving (Generic)
+  = -- Types
+    RatType
+  | TensorType JExpr
+  | DimensionType
+  | DimensionsType
+  | DimensionIndexType
+  | Fun JExpr JExpr
+  | -- Rational tensors
+    Lambda Name JExpr JExpr
+  | Var Name [JExpr]
+  | RatTensor (Tensor Rat)
+  | RatLiteral Rat
+  | NegRatTensor JExpr
+  | AddRatTensor JExpr JExpr
+  | SubRatTensor JExpr JExpr
+  | MulRatTensor JExpr JExpr
+  | DivRatTensor JExpr JExpr
+  | MinRatTensor JExpr JExpr
+  | MaxRatTensor JExpr JExpr
+  | ReduceAddRatTensor JExpr
+  | ReduceMulRatTensor JExpr
+  | ReduceMinRatTensor JExpr
+  | ReduceMaxRatTensor JExpr
+  | SearchRatTensor JExpr JExpr JExpr JExpr -- (ReductionOp, LowerBound, UpperBound, SearchLambda)
+  -- Dimensions
+  | Dimension Int
+  | DimensionNil
+  | DimensionCons JExpr JExpr
+  | DimensionIndex Int
+  | DimensionIndexTensor (Tensor Int)
+  | DimensionLookup JExpr JExpr
+  | ConstTensor JExpr JExpr
+  | StackTensor [JExpr]
+  deriving (Show, Generic)
 
-data JBinder = Binder Provenance (Maybe Name) JExpr
-  deriving (Generic)
+-- | Tensorflow doesn't support arbitrary precision integers. We should think
+-- about this in the more future, about the actual precision the tensor backend
+-- can represent rationals in, e.g. Storable.getSize, Haskell int64, etc.
+type Rat = Ratio Int
 
-instance HasName JBinder (Maybe Name) where
-  nameOf (Binder _ name _) = name
+mapRatio :: (Integral b) => (a -> b) -> Ratio a -> Ratio b
+mapRatio f r = do
+  let num = f $ numerator r
+  let denom = f $ denominator r
+  num % denom
+
+toRat :: Rational -> Rat
+toRat = mapRatio toInt
+  where
+    toInt x
+      | x < toInteger (minBound :: Int) = developerError $ "Underflow converting" <+> pretty x <+> "to `Int`"
+      | x > toInteger (maxBound :: Int) = developerError $ "Overflow converting" <+> pretty x <+> "to `Int`"
+      | otherwise = fromInteger x
+
+fromRat :: Rat -> Rational
+fromRat = mapRatio toInteger
 
 --------------------------------------------------------------------------------
--- Utils
+-- JSON instances
 
 instance ToJSON JProg where
   toJSON = genericToJSON jsonOptions
@@ -91,16 +122,7 @@ instance ToJSON JDecl where
 instance ToJSON JExpr where
   toJSON = genericToJSON jsonOptions
 
-instance ToJSON JBinder where
-  toJSON = genericToJSON jsonOptions
-
-instance ToJSON TensorBuiltin where
-  toJSON = genericToJSON jsonOptions
-
 instance ToJSON Position where
-  toJSON = genericToJSON jsonOptions
-
-instance ToJSON UniverseLevel where
   toJSON = genericToJSON jsonOptions
 
 instance ToJSON Provenance where
@@ -111,169 +133,219 @@ instance ToJSON Provenance where
       ]
 
 --------------------------------------------------------------------------------
--- Conversion Expr to JExpr
+-- Conversion of JExpr to JSON
 
 currentPass :: Doc a
 currentPass = "conversion to JSON"
 
 type MonadJSON m =
   ( MonadCompile m,
-    MonadReader (GenericFreeCtx Arity, GenericBoundCtx Arity) m,
-    MonadDescope m
+    MonadNameContext m
   )
 
-toJProg :: (MonadJSON m) => S.Prog TensorBuiltin -> m JProg
-toJProg (S.Main ds) = Main <$> toJDecls ds
+convertProg :: (MonadJSON m) => Prog LossTensorBuiltin -> m JProg
+convertProg (Main decls) = JProg <$> traverse convertDecl decls
 
-toJDecls :: (MonadJSON m) => [S.Decl TensorBuiltin] -> m [JDecl]
-toJDecls [] = return []
-toJDecls (decl : decls) = do
-  decl' <- logCompilerPass MinDetail (currentPass <+> "of" <+> quotePretty (S.identifierOf decl)) $ case decl of
-    DefAbstract p i s t -> case s of
-      NetworkDef -> resourceError s
-      DatasetDef -> resourceError s
-      ParameterDef {} -> resourceError s
-      PostulateDef {} -> Postulate p (S.nameOf i) <$> toJExpr t
-    DefFunction p i _anns t e -> do
-      t' <- toJExpr t
-      e' <- toJExpr e
-      return $ Function p (nameOf i) t' e'
+convertDecl :: (MonadJSON m) => Decl LossTensorBuiltin -> m JDecl
+convertDecl = \case
+  DefAbstract {} -> compilerDeveloperError "Found abstract definition when converting to JSON"
+  DefFunction _ ident _ typ body -> do
+    typ' <- convertExpr mempty typ
+    expr' <- convertExpr mempty body
+    return $ JDecl (nameOf ident) typ' expr'
 
-  decls' <- addDeclToContext decl (toJDecls decls)
-  return $ decl' : decls'
+convertExpr :: (MonadJSON m) => WHNFBoundEnv LossTensorBuiltin -> Expr LossTensorBuiltin -> m JExpr
+convertExpr env body = convertValue =<< eval mempty env body
 
-toJExpr :: forall m. (MonadJSON m) => S.Expr TensorBuiltin -> m JExpr
-toJExpr expr = do
+convertValue :: (MonadJSON m) => WHNFValue LossTensorBuiltin -> m JExpr
+convertValue expr = do
   showEntry expr
   result <- case expr of
-    S.Hole {} -> resolutionError currentPass "Hole"
-    S.Meta {} -> resolutionError currentPass "Meta"
-    S.Universe p (UniverseLevel l) -> return $ Universe p l
-    S.Builtin p b -> return $ Builtin p b
-    S.FreeVar p v -> return $ FreeVar p $ S.nameOf v
-    S.BoundVar p v -> do
-      n <- ixToProperName p v
-      return $ BoundVar p n
-    S.App fun args -> do
-      fun' <- toJExpr fun
-      let explicitArgs = mapMaybe getExplicitArg (NonEmpty.toList args)
-      args' <- traverse toJExpr explicitArgs
-      arity <- functionArity fun
-      case args' of
-        [] -> return fun'
-        _ : _
-          | arity == length args' -> return $ App fun' args'
-          | arity > length args' -> return $ PartialApp arity fun' args'
-          | otherwise -> arityError fun arity explicitArgs args'
-    S.Pi p binder body ->
-      Pi p <$> toJBinder binder <*> addBinderToContext binder (toJExpr body)
-    S.Lam p binder _ -> do
-      (foldedBinders, body) <- foldLamBinders expr
-      (jBinders, jBody) <- toJBinders (binder : foldedBinders) (toJExpr body)
-      return $ Lam p jBinders jBody
-    S.Let p bound binder body ->
-      Let p <$> toJExpr bound <*> toJBinder binder <*> addBinderToContext binder (toJExpr body)
+    VMeta {} -> resolutionError currentPass "VMeta"
+    VFreeVar {} -> resolutionError currentPass "VFreeVar"
+    VUniverse {} -> resolutionError currentPass "Universe"
+    VLam binder (WHNFClosure env body) -> do
+      let name = getBinderName binder
+      typ' <- convertValue (typeOf binder)
+      lv <- getBinderDepth
+      let newEnv = extendEnvWithBound lv binder env
+      body' <- addNameToContext binder $ convertExpr newEnv body
+      return $ Lambda name typ' body'
+    VPi binder body -> do
+      typ' <- convertValue (typeOf binder)
+      body' <- addNameToContext binder $ convertValue body
+      return $ Fun typ' body'
+    VBuiltin b spine -> convertBuiltin b $ filterOutNonExplicitArgs spine
+    VBoundVar v spine -> do
+      name <- lvToProperName mempty v
+      spine' <- traverse (convertValue . argExpr) spine
+      return $ Var name spine'
   showExit result
   return result
 
-foldLamBinders ::
-  (MonadJSON m) =>
-  S.Expr TensorBuiltin ->
-  m ([S.Binder TensorBuiltin], S.Expr TensorBuiltin)
-foldLamBinders = \case
-  S.Lam _ binder body -> addBinderToContext binder (first (binder :) <$> foldLamBinders body)
-  expr -> return ([], expr)
+convertBuiltin :: (MonadJSON m) => LossTensorBuiltin -> [WHNFValue LossTensorBuiltin] -> m JExpr
+convertBuiltin b spine = case b of
+  LossTensorRat op -> case op of
+    L.RatTensor t -> convertNullaryOp b (RatTensor $ mapTensor toRat t) spine
+    L.RatType -> convertNullaryOp b RatType spine
+    L.RatLiteral r -> convertNullaryOp b (RatLiteral (toRat r)) spine
+    L.NegRatTensor -> convertUnaryOp b NegRatTensor spine
+    L.AddRatTensor -> convertBinaryOp b AddRatTensor spine
+    L.SubRatTensor -> convertBinaryOp b SubRatTensor spine
+    L.MulRatTensor -> convertBinaryOp b MulRatTensor spine
+    L.DivRatTensor -> convertBinaryOp b DivRatTensor spine
+    L.MinRatTensor -> convertBinaryOp b MinRatTensor spine
+    L.MaxRatTensor -> convertBinaryOp b MaxRatTensor spine
+    L.ReduceAddRatTensor -> convertUnaryOp b ReduceAddRatTensor spine
+    L.ReduceMulRatTensor -> convertUnaryOp b ReduceMulRatTensor spine
+    L.ReduceMinRatTensor -> convertUnaryOp b ReduceMinRatTensor spine
+    L.ReduceMaxRatTensor -> convertUnaryOp b ReduceMaxRatTensor spine
+    L.SearchRatTensor -> convertSearch spine
+  LossTensorDimData op -> case op of
+    L.Dimension n -> convertNullaryOp b (Dimension n) spine
+    L.DimensionNil -> convertNullaryOp b DimensionNil spine
+    L.DimensionCons -> convertBinaryOp b DimensionCons spine
+    L.DimensionIndex n -> convertNullaryOp b (DimensionIndex n) spine
+    L.DimensionIndexTensor t -> convertNullaryOp b (DimensionIndexTensor t) spine
+    L.DimensionLookup -> convertBinaryOp b DimensionLookup spine
+    L.StackTensor n -> convertNaryOp b (n + 2) StackTensor spine
+    L.ConstTensor -> convertBinaryOp b ConstTensor spine
+  LossTensorDimType op -> case op of
+    L.DimensionType -> convertNullaryOp b DimensionType spine
+    L.DimensionsType -> convertNullaryOp b DimensionsType spine
+    L.DimensionIndexType -> convertIndexType spine
+    L.TensorType -> convertTensorType spine
 
-toJBinder :: (MonadJSON m) => S.Binder TensorBuiltin -> m JBinder
-toJBinder binder = do
-  type' <- toJExpr $ typeOf binder
-  let p = S.binderProvenance binder
-  let maybeName = case S.namingForm (S.binderDisplayForm binder) of
-        NameAndType n -> Just n
-        OnlyName n -> Just n
-        OnlyType -> Nothing
-  return $ Binder p maybeName type'
+convertNullaryOp :: (MonadJSON m) => LossTensorBuiltin -> JExpr -> [WHNFValue LossTensorBuiltin] -> m JExpr
+convertNullaryOp b fn = \case
+  [] -> return fn
+  spine -> arityError b 0 spine
 
-toJBinders :: (MonadJSON m) => [S.Binder TensorBuiltin] -> m JExpr -> m ([JBinder], JExpr)
-toJBinders [] body = ([],) <$> body
-toJBinders (b : bs) body = do
-  b' <- toJBinder b
-  (bs', body') <- addBinderToContext b $ toJBinders bs body
-  return (b' : bs', body')
+convertUnaryOp :: (MonadJSON m) => LossTensorBuiltin -> (JExpr -> JExpr) -> [WHNFValue LossTensorBuiltin] -> m JExpr
+convertUnaryOp b fn = \case
+  [x] -> fn <$> convertValue x
+  spine -> arityError b 1 spine
 
--- | TODO maybe move to Arity module.
-functionArity ::
-  forall m.
-  (MonadJSON m) =>
-  S.Expr TensorBuiltin ->
-  m Arity
-functionArity = go
-  where
-    go :: (MonadJSON m) => S.Expr TensorBuiltin -> m Arity
-    go fun = do
-      case fun of
-        S.App fn args -> do
-          arity <- go fn
-          return $ arity - length (NonEmpty.filter S.isExplicit args)
-        S.Universe {} -> illTypedError currentPass (prettyVerbose fun)
-        S.Pi {} -> illTypedError currentPass (prettyVerbose fun)
-        S.Meta {} -> illTypedError currentPass (prettyVerbose fun)
-        S.Hole {} -> illTypedError currentPass (prettyVerbose fun)
-        S.FreeVar _p ident -> getFreeVarArity ident
-        S.BoundVar _ ix -> getBoundVarArity ix
-        S.Lam _ binder body -> addBinderToContext binder ((1 +) <$> go body)
-        S.Builtin _ b -> do
-          return $ arityOf b
-        S.Let _ _bound binder body ->
-          addBinderToContext binder $ go body
+convertBinaryOp :: (MonadJSON m) => LossTensorBuiltin -> (JExpr -> JExpr -> JExpr) -> [WHNFValue LossTensorBuiltin] -> m JExpr
+convertBinaryOp b fn = \case
+  [x, y] -> fn <$> convertValue x <*> convertValue y
+  spine -> arityError b 2 spine
 
-addBinderToContext :: (MonadJSON m) => S.Binder TensorBuiltin -> m a -> m a
-addBinderToContext binder =
-  local (second (explicitArityFromType (typeOf binder) :))
+convertNaryOp :: (MonadJSON m) => LossTensorBuiltin -> Int -> ([JExpr] -> JExpr) -> [WHNFValue LossTensorBuiltin] -> m JExpr
+convertNaryOp b n fn spine
+  | length spine == n = fn <$> traverse convertValue spine
+  | otherwise = arityError b n spine
 
-addDeclToContext :: (MonadJSON m) => S.Decl TensorBuiltin -> m a -> m a
-addDeclToContext decl =
-  local (second (explicitArityFromType (typeOf decl) :))
+convertTensorType :: (MonadJSON m) => [WHNFValue LossTensorBuiltin] -> m JExpr
+convertTensorType = \case
+  [tElem, _dims] -> TensorType <$> convertValue tElem
+  spine -> arityError (LossTensorDimType L.TensorType) 2 spine
 
-getFreeVarArity :: (MonadJSON m) => Identifier -> m Arity
-getFreeVarArity ident = lookupInFreeCtx currentPass ident =<< asks fst
+convertIndexType :: (MonadJSON m) => [WHNFValue LossTensorBuiltin] -> m JExpr
+convertIndexType = \case
+  [_dim] -> return DimensionIndexType
+  spine -> arityError (LossTensorDimType L.DimensionIndexType) 1 spine
 
-getBoundVarArity :: (MonadJSON m) => Ix -> m Arity
-getBoundVarArity ix = asks (lookupIxInBoundCtx currentPass ix . snd)
+convertSearch :: (MonadJSON m) => [WHNFValue LossTensorBuiltin] -> m JExpr
+convertSearch = \case
+  [unaryOp, lowerBound, upperBound, fn] -> SearchRatTensor <$> convertValue unaryOp <*> convertValue lowerBound <*> convertValue upperBound <*> convertValue fn
+  spine -> arityError (show L.SearchRatTensor) 5 spine
 
-resourceError :: (MonadCompile m) => DefAbstractSort -> m a
-resourceError resourceType =
+arityError :: (MonadCompile m, Pretty fn) => fn -> Arity -> [WHNFValue LossTensorBuiltin] -> m a
+arityError fun arity explicitArgs =
   compilerDeveloperError $
-    "All"
-      <+> quotePretty resourceType
-      <+> "declarations should have been removed before"
-      <+> squotes currentPass
-
-arityError :: (MonadCompile m) => S.Expr TensorBuiltin -> Arity -> [S.Expr TensorBuiltin] -> [JExpr] -> m a
-arityError fun arity explicitArgs args =
-  compilerDeveloperError $
-    "Number of args is greater than arity:"
+    "Number of args is different from expected arity:"
       <> line
       <> indent
         2
         ( "fun:"
-            <+> prettyVerbose fun
+            <+> pretty fun
             <> line
             <> "fun-arity:"
-              <+> prettyVerbose arity
-            <> line
-            <> "args:"
-              <+> prettyVerbose explicitArgs
+            <+> pretty arity
             <> line
             <> "args-len:"
-              <+> prettyVerbose (length args)
+            <+> prettyVerbose (length explicitArgs)
+            <> line
+            <> "args:"
+            <+> prettyVerbose explicitArgs
         )
 
-showEntry :: (MonadJSON m) => S.Expr TensorBuiltin -> m ()
+showEntry :: (MonadJSON m) => WHNFValue LossTensorBuiltin -> m ()
 showEntry e = do
-  (_, ctx) <- ask
-  logDebug MaxDetail $ "tensor-enter:" <+> pretty (length ctx) <+> prettyVerbose e
+  logDebug MaxDetail $ "json-enter:" <+> prettyVerbose e
   incrCallDepth
 
 showExit :: (MonadJSON m) => JExpr -> m ()
-showExit _e = decrCallDepth
+showExit _e = do
+  logDebug MaxDetail "json-exit"
+  decrCallDepth
+
+--------------------------------------------------------------------------------
+-- Conversion back (for printing purposes)
+
+fromJProg :: JProg -> Prog LossTensorBuiltin
+fromJProg = \case
+  JProg decls -> Main (fmap fromJDecl decls)
+
+fromJDecl :: JDecl -> Decl LossTensorBuiltin
+fromJDecl = \case
+  JDecl name typ body ->
+    runFreshNameContext $ do
+      typ' <- fromJExpr typ
+      body' <- fromJExpr body
+      let ident = Identifier (ModulePath []) name
+      return $ DefFunction mempty ident [AnnProperty] typ' body'
+
+fromJExpr :: (MonadNameContext m) => JExpr -> m (Expr LossTensorBuiltin)
+fromJExpr = \case
+  Lambda name typ body -> do
+    typ' <- fromJExpr typ
+    let binder' = mkExplicitBinder typ' (Just name)
+    body' <- addNameToContext binder' (fromJExpr body)
+    return $ Lam mempty binder' body'
+  Fun input output -> do
+    input' <- fromJExpr input
+    let binder' = mkExplicitBinder input' Nothing
+    Pi mempty binder' <$> fromJExpr output
+  Var name spine -> do
+    nameCtx <- getNameContext
+    let ix = maybe (developerError ("ill-scoped JExpr, no variable" <+> squotes (pretty name))) Ix (elemIndex (Just name) nameCtx)
+    spine' <- traverse fromJExpr spine
+    return $ normAppList (BoundVar mempty ix) (fmap explicit spine')
+  RatType -> fromRatOp L.RatType []
+  TensorType t -> fromDimType L.TensorType [t]
+  DimensionType -> fromDimType L.DimensionType []
+  DimensionsType -> fromDimType L.DimensionsType []
+  DimensionIndexType -> fromDimType L.DimensionIndexType []
+  RatTensor t -> fromRatOp (L.RatTensor (mapTensor fromRat t)) []
+  RatLiteral r -> fromRatOp (L.RatLiteral (fromRat r)) []
+  NegRatTensor e -> fromRatOp L.NegRatTensor [e]
+  AddRatTensor e1 e2 -> fromRatOp L.AddRatTensor [e1, e2]
+  SubRatTensor e1 e2 -> fromRatOp L.SubRatTensor [e1, e2]
+  MulRatTensor e1 e2 -> fromRatOp L.MulRatTensor [e1, e2]
+  DivRatTensor e1 e2 -> fromRatOp L.DivRatTensor [e1, e2]
+  MinRatTensor e1 e2 -> fromRatOp L.MinRatTensor [e1, e2]
+  MaxRatTensor e1 e2 -> fromRatOp L.MaxRatTensor [e1, e2]
+  ReduceAddRatTensor e -> fromRatOp L.ReduceAddRatTensor [e]
+  ReduceMulRatTensor e -> fromRatOp L.ReduceMulRatTensor [e]
+  ReduceMinRatTensor e -> fromRatOp L.ReduceMinRatTensor [e]
+  ReduceMaxRatTensor e -> fromRatOp L.ReduceMaxRatTensor [e]
+  SearchRatTensor e1 e2 e3 e4 -> fromRatOp L.SearchRatTensor [e1, e2, e3, e4]
+  Dimension d -> fromDimData (L.Dimension d) []
+  DimensionNil -> fromDimData L.DimensionNil []
+  DimensionCons e1 e2 -> fromDimData L.DimensionCons [e1, e2]
+  DimensionIndex i -> fromDimData (L.DimensionIndex i) []
+  DimensionIndexTensor t -> fromDimData (L.DimensionIndexTensor t) []
+  DimensionLookup xs i -> fromDimData L.DimensionLookup [xs, i]
+  ConstTensor c ds -> fromDimData L.ConstTensor [c, ds]
+  StackTensor xs -> fromDimData (L.StackTensor (length xs)) xs
+
+fromRatOp :: (MonadNameContext m) => RatTensorBuiltin -> [JExpr] -> m (Expr LossTensorBuiltin)
+fromRatOp op xs = IRatTensorOp op . fmap explicit <$> traverse fromJExpr xs
+
+fromDimType :: (MonadNameContext m) => DimensionTypeBuiltin -> [JExpr] -> m (Expr LossTensorBuiltin)
+fromDimType op xs = IDimensionTypeOp op . fmap explicit <$> traverse fromJExpr xs
+
+fromDimData :: (MonadNameContext m) => DimensionDataBuiltin -> [JExpr] -> m (Expr LossTensorBuiltin)
+fromDimData op xs = IDimensionDataOp op . fmap explicit <$> traverse fromJExpr xs

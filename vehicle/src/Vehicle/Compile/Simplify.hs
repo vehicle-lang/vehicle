@@ -6,13 +6,13 @@ where
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty (filter)
 import Data.Text qualified as Text
-import Vehicle.Data.Builtin.Standard.Core ()
-import Vehicle.Data.Code.Expr (PrintableBuiltin (..))
+import Vehicle.Compile.Print.Builtin
+import Vehicle.Data.Builtin.Core
+import Vehicle.Data.Builtin.Standard ()
 import Vehicle.Syntax.AST.Arg
 import Vehicle.Syntax.AST.Expr
 import Vehicle.Syntax.AST.Relevance (Relevance (..))
 import Vehicle.Syntax.AST.Visibility (Visibility (..), visibilityOf)
-import Vehicle.Syntax.Builtin
 
 -- | Note that these operations can be seen as undoing parts of the type-checking,
 -- and therefore the resulting code is not guaranteed to be well-typed.

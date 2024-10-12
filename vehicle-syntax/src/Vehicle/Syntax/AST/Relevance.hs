@@ -34,6 +34,7 @@ instance Monoid Relevance where
 
 class HasRelevance a where
   relevanceOf :: a -> Relevance
+  setRelevance :: Relevance -> a -> a
 
 isRelevant :: (HasRelevance a) => a -> Bool
 isRelevant x = relevanceOf x == Relevant

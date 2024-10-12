@@ -1,13 +1,13 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-module Vehicle.Data.Builtin.Standard.InstanceDefaults where
+module Vehicle.Compile.Type.Constraint.InstanceDefaults where
 
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Constraint.Core (parseInstanceGoal)
 import Vehicle.Compile.Type.Constraint.InstanceDefaultSolver
 import Vehicle.Compile.Type.Core
-import Vehicle.Data.Builtin.Standard.Core
+import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
 

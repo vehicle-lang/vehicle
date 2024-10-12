@@ -25,6 +25,7 @@ module Vehicle.Data.DSL
     forAllExpl,
     forAll,
     forAllInstance,
+    forAllIrrelevant,
     forAllTypes,
     forAllTypePairs,
     forAllTypeTriples,
@@ -193,6 +194,9 @@ forAllExpl name = pi (Just name) Explicit Relevant
 
 forAll :: Name -> DSLExpr builtin -> (DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
 forAll name = pi (Just name) (Implicit False) Relevant
+
+forAllIrrelevant :: Name -> DSLExpr builtin -> (DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
+forAllIrrelevant name = pi (Just name) (Implicit False) Irrelevant
 
 forAllInstance :: Name -> DSLExpr builtin -> (DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
 forAllInstance name = pi (Just name) (Instance False) Relevant

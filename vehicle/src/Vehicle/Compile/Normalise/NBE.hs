@@ -9,6 +9,8 @@ module Vehicle.Compile.Normalise.NBE
     normaliseBuiltin,
     eval,
     evalApp,
+    traverseClosure,
+    traverseClosureGeneric,
   )
 where
 
@@ -16,9 +18,11 @@ import Data.Data (Proxy (..))
 import Data.List.NonEmpty as NonEmpty (toList)
 import Vehicle.Compile.Context.Bound.Class (MonadBoundContext (..))
 import Vehicle.Compile.Context.Free.Class (MonadFreeContext (..), getFreeEnv)
+import Vehicle.Compile.Context.Name (MonadNameContext, addNameToContext, getBinderContext)
 import Vehicle.Compile.Descope (DescopableClosure)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Builtin (NormalisableBuiltin (..), filterOutIrrelevantArgs)
+import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Data.Code.Value
@@ -104,6 +108,7 @@ instance EvaluableClosure (WHNFClosure builtin) builtin where
 
 type MonadNorm closure builtin m =
   ( MonadLogger m,
+    Show closure,
     EvaluableClosure closure builtin,
     DescopableClosure closure,
     NormalisableBuiltin builtin,
@@ -249,3 +254,33 @@ showAppExit result = do
   logDebug MaxDetail $ "nbe-app-exit:" <+> prettyVerbose result
   return ()
 -}
+
+traverseClosure ::
+  forall builtin1 builtin2 m.
+  (MonadLogger m, MonadNameContext m, NormalisableBuiltin builtin1, PrintableBuiltin builtin2) =>
+  (WHNFValue builtin1 -> m (WHNFValue builtin2)) ->
+  FreeEnv (WHNFClosure builtin1) builtin1 ->
+  WHNFBinder builtin1 ->
+  WHNFClosure builtin1 ->
+  m (WHNFClosure builtin2)
+traverseClosure traverseValue freeEnv binder closure =
+  fst <$> traverseClosureGeneric traverseValue (,()) freeEnv binder closure
+
+traverseClosureGeneric ::
+  forall builtin1 builtin2 m a b.
+  (MonadLogger m, MonadNameContext m, NormalisableBuiltin builtin1, PrintableBuiltin builtin2) =>
+  (WHNFValue builtin1 -> m a) ->
+  (a -> (WHNFValue builtin2, b)) ->
+  FreeEnv (WHNFClosure builtin1) builtin1 ->
+  WHNFBinder builtin1 ->
+  WHNFClosure builtin1 ->
+  m (WHNFClosure builtin2, b)
+traverseClosureGeneric traverseValue splitResult freeCtx binder (WHNFClosure env body) = do
+  ctx <- getBinderContext
+  let lv = boundCtxLv ctx
+  let newEnv = extendEnvWithBound lv binder env
+  recResult <- addNameToContext binder $ traverseValue =<< eval freeCtx newEnv body
+  let (normBody, remainder) = splitResult recResult
+  let finalEnv = boundContextToEnv ctx
+  let finalBody = quote mempty (lv + 1) normBody
+  return (WHNFClosure finalEnv finalBody, remainder)

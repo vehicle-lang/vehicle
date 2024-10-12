@@ -34,9 +34,11 @@ instance HasProvenance (GenericArg expr) where
 
 instance HasVisibility (GenericArg expr) where
   visibilityOf = argVisibility
+  setVisibility r Arg {..} = Arg {argVisibility = r, ..}
 
 instance HasRelevance (GenericArg expr) where
   relevanceOf = argRelevance
+  setRelevance r Arg {..} = Arg {argRelevance = r, ..}
 
 --------------------------------------------------------------------------------
 -- Patterns
@@ -100,6 +102,11 @@ explicit = Arg mempty Explicit Relevant
 -- the compiler.
 implicit :: expr -> GenericArg expr
 implicit = Arg mempty (Implicit True) Relevant
+
+-- | Constructs an implicit relevant argument marked as being inserted by
+-- the compiler.
+implicitIrrelevant :: expr -> GenericArg expr
+implicitIrrelevant = Arg mempty (Implicit True) Irrelevant
 
 --------------------------------------------------------------------------------
 -- Args

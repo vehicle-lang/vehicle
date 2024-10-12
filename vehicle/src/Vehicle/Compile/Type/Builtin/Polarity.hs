@@ -1,21 +1,29 @@
-module Vehicle.Data.Builtin.Polarity.Type
+module Vehicle.Compile.Type.Builtin.Polarity
   ( typePolarityBuiltin,
+    isPolarityBuiltinConstructor,
   )
 where
 
 import Data.Text qualified as Text
-import Vehicle.Data.Builtin.Polarity.Core
+import Vehicle.Data.Builtin.Core hiding (Builtin (..))
+import Vehicle.Data.Builtin.Polarity
 import Vehicle.Data.Code.Expr
 import Vehicle.Data.DSL
 import Vehicle.Prelude
-import Vehicle.Syntax.Builtin hiding (Builtin (..))
 import Prelude hiding (pi)
+
+isPolarityBuiltinConstructor :: PolarityBuiltin -> Bool
+isPolarityBuiltinConstructor = \case
+  PolarityConstructor {} -> True
+  PolarityFunction {} -> False
+  Polarity {} -> True
+  PolarityRelation {} -> True
 
 -- | Return the type of the provided builtin.
 typePolarityBuiltin :: Provenance -> PolarityBuiltin -> Type PolarityBuiltin
 typePolarityBuiltin p b = fromDSL p $ case b of
-  BuiltinConstructor c -> typeOfConstructor c
-  BuiltinFunction f -> typeOfBuiltinFunction f
+  PolarityConstructor c -> typeOfConstructor c
+  PolarityFunction f -> typeOfBuiltinFunction f
   Polarity {} -> tPol
   PolarityRelation r -> typeOfPolarityRelation r
 

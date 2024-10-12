@@ -1,3 +1,3 @@
 @property;
 reachable : (Tensor Rat -> Tensor Rat) -> Tensor Rat;
-reachable f = search (*) (\ x -> reduceSum (- (max (const[ 0.0 ] (1 :: nil)) (f x - [const[ 0.0 ] nil]) + max (const[ 0.0 ] (1 :: nil)) ([const[ 0.0 ] nil] - f x))) + const[ 0.0 ] nil)
+reachable f = search (\ xs -> reduceMul xs) 0.0 0.0 (\ x -> reduceAdd (- (max (const 0.0 (1 :: nil)) (f x - const 0.0 (1 :: nil)) + max (const 0.0 (1 :: nil)) (const 0.0 (1 :: nil) - f x))))

@@ -18,7 +18,7 @@ import Data.Set qualified as Set
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
-import Vehicle.Data.Builtin.Standard.Core
+import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Universe (UniverseLevel (..))
 import Vehicle.Syntax.AST.Expr qualified as S
 
