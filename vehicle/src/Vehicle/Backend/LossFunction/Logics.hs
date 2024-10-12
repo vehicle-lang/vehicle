@@ -243,8 +243,7 @@ parameterisedYagerTranslation p =
     orOp = mkOp2 tRat $ \x y ->
       ratLit 1
         -: lmin
-          ( ((x ^: p) +: (y ^: p)) ^: (1 / p)
-          )
+          (((x ^: p) +: (y ^: p)) ^: (1 / p))
           (ratLit 1)
 
 --------------------------------------------------------------------------------

@@ -29,8 +29,7 @@ removeIrrelevantCode x = runIdentity $ remove x
 -- Remove polarity and linearity annotations
 
 type MonadRemove m =
-  ( Monad m
-  )
+  (Monad m)
 
 class RemoveIrrelevantCode m a where
   remove :: (MonadRemove m) => a -> m a
