@@ -39,7 +39,7 @@ typeDimensionData = \case
       tElem ~> tDims ~> tTensor tElem tDims
   StackTensor n ->
     forAll "A" type0 $ \tElem ->
-      forAllExpl "dims" tDims $ \dims ->
+      forAllDims $ \dims ->
         let result = tTensor tElem (tCons (constDim n) dims)
          in iterate (\r -> tTensor tElem dims ~> r) result !! n
   DimensionLookup ->

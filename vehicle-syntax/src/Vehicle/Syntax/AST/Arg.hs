@@ -103,6 +103,11 @@ explicit = Arg mempty Explicit Relevant
 implicit :: expr -> GenericArg expr
 implicit = Arg mempty (Implicit True) Relevant
 
+-- | Constructs an implicit relevant argument marked as being inserted by
+-- the compiler.
+implicitIrrelevant :: expr -> GenericArg expr
+implicitIrrelevant = Arg mempty (Implicit True) Irrelevant
+
 --------------------------------------------------------------------------------
 -- Args
 

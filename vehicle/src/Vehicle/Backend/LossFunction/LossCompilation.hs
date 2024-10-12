@@ -158,7 +158,11 @@ translateConstant tensor = do
   trueExpr <- getLogicField L.TruthityElement
   falseExpr <- getLogicField L.FalsityElement
   let convertBool b = if b then trueExpr else falseExpr
-  let foldLayer shape elems = IDimensionDataOp (StackTensor (head shape)) (explicit <$> elems)
+  let foldLayer shape elems = do
+        let tElem = implicit IRatElementType
+        let dims = implicitIrrelevant (foldr (\d ds -> IDimCons (explicit (IDim d)) (explicit ds)) IDimNil shape)
+        let args = tElem : dims : (explicit <$> elems)
+        IDimensionDataOp (StackTensor (length elems)) args
   return $ foldMapTensor convertBool foldLayer tensor
 
 translateQuantifier :: (MonadLogic m) => Quantifier -> WHNFSpine TensorBuiltin -> m (WHNFValue LossTensorBuiltin)
