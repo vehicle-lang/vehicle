@@ -5,6 +5,7 @@ import Control.Monad.Reader (MonadReader (..))
 import Control.Monad.State (MonadState (..), gets)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Bifunctor (Bifunctor (..))
+import Data.Char.SScript (subscript)
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HashMap (insert, lookup)
 import Data.LinkedHashMap (LinkedHashMap)
@@ -16,6 +17,7 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Vector qualified as Vector
 import GHC.Generics
+import Prettyprinter (brackets)
 import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
@@ -131,7 +133,7 @@ addNetworkApplicationToGlobalCtx app@(networkName, _) networkInfo GlobalCtx {..}
   let inputLv = Lv $ length globalBoundVarCtx
   let inputVar =
         OriginalNetworkVariable
-          { networkName = networkName,
+          { networkVarName = createNetworkVarName networkName applicationNumber Input,
             application = applicationNumber,
             networkTensorVarDimensions = dimensions (inputTensor (networkType networkInfo)),
             inputOrOutput = Input,
@@ -144,7 +146,7 @@ addNetworkApplicationToGlobalCtx app@(networkName, _) networkInfo GlobalCtx {..}
   let outputLv = inputLv + 1 + Lv (length reducedInputVars)
   let outputVar =
         OriginalNetworkVariable
-          { networkName = networkName,
+          { networkVarName = createNetworkVarName networkName applicationNumber Output,
             application = applicationNumber,
             networkTensorVarDimensions = dimensions (outputTensor (networkType networkInfo)),
             inputOrOutput = Output,
@@ -188,6 +190,13 @@ addNetworkApplicationToGlobalCtx app@(networkName, _) networkInfo GlobalCtx {..}
           }
 
   (appInfo, newGlobalCtx)
+
+createNetworkVarName :: Name -> Int -> InputOrOutput -> Name
+createNetworkVarName networkName application inputOrOutput =
+  layoutAsText $
+    pretty networkName
+      <> pretty (fmap subscript (show application))
+      <> brackets (pretty inputOrOutput)
 
 --------------------------------------------------------------------------------
 -- Partitions

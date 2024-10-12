@@ -15,10 +15,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 5,
+                        "networkVarName": "decode₀[input]",
                         "networkTensorVarDimensions": [
                           2
                         ],
-                        "networkName": "decode",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -32,10 +32,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 5,
+                            "networkVarName": "decode₀[input]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -49,10 +49,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 5,
+                            "networkVarName": "decode₀[input]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -68,10 +68,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 2,
+                        "networkVarName": "decode₀[output]",
                         "networkTensorVarDimensions": [
                           5
                         ],
-                        "networkName": "decode",
                         "inputOrOutput": "Output",
                         "application": 0
                       }
@@ -85,10 +85,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -102,10 +102,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -119,10 +119,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -136,10 +136,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -153,10 +153,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -172,10 +172,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 0,
+                        "networkVarName": "encode₀[input]",
                         "networkTensorVarDimensions": [
                           5
                         ],
-                        "networkName": "encode",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -189,10 +189,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -206,10 +206,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -223,10 +223,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -240,10 +240,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -257,10 +257,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -276,10 +276,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 0,
+                        "networkVarName": "encode₀[output]",
                         "networkTensorVarDimensions": [
                           2
                         ],
-                        "networkName": "encode",
                         "inputOrOutput": "Output",
                         "application": 0
                       }
@@ -293,10 +293,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[output]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -310,10 +310,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[output]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -366,10 +366,10 @@
                             "tag": "NetworkTensorVar",
                             "contents": {
                               "startingIndex": 0,
+                              "networkVarName": "encode₀[input]",
                               "networkTensorVarDimensions": [
                                 5
                               ],
-                              "networkName": "encode",
                               "inputOrOutput": "Input",
                               "application": 0
                             }
@@ -400,10 +400,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -414,10 +414,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -428,10 +428,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -442,10 +442,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -456,10 +456,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -470,10 +470,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[output]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -484,10 +484,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[output]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -498,10 +498,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 5,
+                      "networkVarName": "decode₀[input]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -512,10 +512,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 5,
+                      "networkVarName": "decode₀[input]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -526,10 +526,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -540,10 +540,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -554,10 +554,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -568,10 +568,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -582,10 +582,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -644,10 +644,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 5,
+                        "networkVarName": "decode₀[input]",
                         "networkTensorVarDimensions": [
                           2
                         ],
-                        "networkName": "decode",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -661,10 +661,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 5,
+                            "networkVarName": "decode₀[input]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -678,10 +678,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 5,
+                            "networkVarName": "decode₀[input]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -697,10 +697,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 2,
+                        "networkVarName": "decode₀[output]",
                         "networkTensorVarDimensions": [
                           5
                         ],
-                        "networkName": "decode",
                         "inputOrOutput": "Output",
                         "application": 0
                       }
@@ -714,10 +714,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -731,10 +731,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -748,10 +748,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -765,10 +765,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -782,10 +782,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -801,10 +801,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 0,
+                        "networkVarName": "encode₀[input]",
                         "networkTensorVarDimensions": [
                           5
                         ],
-                        "networkName": "encode",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -818,10 +818,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -835,10 +835,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -852,10 +852,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -869,10 +869,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -886,10 +886,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -905,10 +905,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 0,
+                        "networkVarName": "encode₀[output]",
                         "networkTensorVarDimensions": [
                           2
                         ],
-                        "networkName": "encode",
                         "inputOrOutput": "Output",
                         "application": 0
                       }
@@ -922,10 +922,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[output]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -939,10 +939,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[output]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -995,10 +995,10 @@
                             "tag": "NetworkTensorVar",
                             "contents": {
                               "startingIndex": 0,
+                              "networkVarName": "encode₀[input]",
                               "networkTensorVarDimensions": [
                                 5
                               ],
-                              "networkName": "encode",
                               "inputOrOutput": "Input",
                               "application": 0
                             }
@@ -1029,10 +1029,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -1043,10 +1043,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -1057,10 +1057,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -1071,10 +1071,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -1085,10 +1085,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -1099,10 +1099,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[output]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -1113,10 +1113,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[output]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -1127,10 +1127,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 5,
+                      "networkVarName": "decode₀[input]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -1141,10 +1141,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 5,
+                      "networkVarName": "decode₀[input]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -1155,10 +1155,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -1169,10 +1169,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -1183,10 +1183,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -1197,10 +1197,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -1211,10 +1211,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -1273,10 +1273,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 5,
+                        "networkVarName": "decode₀[input]",
                         "networkTensorVarDimensions": [
                           2
                         ],
-                        "networkName": "decode",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -1290,10 +1290,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 5,
+                            "networkVarName": "decode₀[input]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -1307,10 +1307,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 5,
+                            "networkVarName": "decode₀[input]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -1326,10 +1326,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 2,
+                        "networkVarName": "decode₀[output]",
                         "networkTensorVarDimensions": [
                           5
                         ],
-                        "networkName": "decode",
                         "inputOrOutput": "Output",
                         "application": 0
                       }
@@ -1343,10 +1343,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -1360,10 +1360,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -1377,10 +1377,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -1394,10 +1394,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -1411,10 +1411,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -1430,10 +1430,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 0,
+                        "networkVarName": "encode₀[input]",
                         "networkTensorVarDimensions": [
                           5
                         ],
-                        "networkName": "encode",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -1447,10 +1447,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -1464,10 +1464,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -1481,10 +1481,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -1498,10 +1498,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -1515,10 +1515,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -1534,10 +1534,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 0,
+                        "networkVarName": "encode₀[output]",
                         "networkTensorVarDimensions": [
                           2
                         ],
-                        "networkName": "encode",
                         "inputOrOutput": "Output",
                         "application": 0
                       }
@@ -1551,10 +1551,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[output]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -1568,10 +1568,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[output]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -1624,10 +1624,10 @@
                             "tag": "NetworkTensorVar",
                             "contents": {
                               "startingIndex": 0,
+                              "networkVarName": "encode₀[input]",
                               "networkTensorVarDimensions": [
                                 5
                               ],
-                              "networkName": "encode",
                               "inputOrOutput": "Input",
                               "application": 0
                             }
@@ -1658,10 +1658,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -1672,10 +1672,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -1686,10 +1686,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -1700,10 +1700,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -1714,10 +1714,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -1728,10 +1728,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[output]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -1742,10 +1742,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[output]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -1756,10 +1756,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 5,
+                      "networkVarName": "decode₀[input]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -1770,10 +1770,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 5,
+                      "networkVarName": "decode₀[input]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -1784,10 +1784,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -1798,10 +1798,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -1812,10 +1812,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -1826,10 +1826,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -1840,10 +1840,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -1902,10 +1902,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 5,
+                        "networkVarName": "decode₀[input]",
                         "networkTensorVarDimensions": [
                           2
                         ],
-                        "networkName": "decode",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -1919,10 +1919,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 5,
+                            "networkVarName": "decode₀[input]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -1936,10 +1936,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 5,
+                            "networkVarName": "decode₀[input]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -1955,10 +1955,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 2,
+                        "networkVarName": "decode₀[output]",
                         "networkTensorVarDimensions": [
                           5
                         ],
-                        "networkName": "decode",
                         "inputOrOutput": "Output",
                         "application": 0
                       }
@@ -1972,10 +1972,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -1989,10 +1989,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -2006,10 +2006,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -2023,10 +2023,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -2040,10 +2040,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -2059,10 +2059,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 0,
+                        "networkVarName": "encode₀[input]",
                         "networkTensorVarDimensions": [
                           5
                         ],
-                        "networkName": "encode",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -2076,10 +2076,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -2093,10 +2093,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -2110,10 +2110,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -2127,10 +2127,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -2144,10 +2144,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -2163,10 +2163,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 0,
+                        "networkVarName": "encode₀[output]",
                         "networkTensorVarDimensions": [
                           2
                         ],
-                        "networkName": "encode",
                         "inputOrOutput": "Output",
                         "application": 0
                       }
@@ -2180,10 +2180,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[output]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -2197,10 +2197,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[output]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -2253,10 +2253,10 @@
                             "tag": "NetworkTensorVar",
                             "contents": {
                               "startingIndex": 0,
+                              "networkVarName": "encode₀[input]",
                               "networkTensorVarDimensions": [
                                 5
                               ],
-                              "networkName": "encode",
                               "inputOrOutput": "Input",
                               "application": 0
                             }
@@ -2287,10 +2287,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -2301,10 +2301,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -2315,10 +2315,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -2329,10 +2329,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -2343,10 +2343,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -2357,10 +2357,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[output]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -2371,10 +2371,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[output]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -2385,10 +2385,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 5,
+                      "networkVarName": "decode₀[input]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -2399,10 +2399,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 5,
+                      "networkVarName": "decode₀[input]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -2413,10 +2413,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -2427,10 +2427,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -2441,10 +2441,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -2455,10 +2455,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -2469,10 +2469,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -2531,10 +2531,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 5,
+                        "networkVarName": "decode₀[input]",
                         "networkTensorVarDimensions": [
                           2
                         ],
-                        "networkName": "decode",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -2548,10 +2548,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 5,
+                            "networkVarName": "decode₀[input]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -2565,10 +2565,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 5,
+                            "networkVarName": "decode₀[input]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -2584,10 +2584,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 2,
+                        "networkVarName": "decode₀[output]",
                         "networkTensorVarDimensions": [
                           5
                         ],
-                        "networkName": "decode",
                         "inputOrOutput": "Output",
                         "application": 0
                       }
@@ -2601,10 +2601,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -2618,10 +2618,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -2635,10 +2635,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -2652,10 +2652,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -2669,10 +2669,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -2688,10 +2688,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 0,
+                        "networkVarName": "encode₀[input]",
                         "networkTensorVarDimensions": [
                           5
                         ],
-                        "networkName": "encode",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -2705,10 +2705,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -2722,10 +2722,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -2739,10 +2739,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -2756,10 +2756,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -2773,10 +2773,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -2792,10 +2792,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 0,
+                        "networkVarName": "encode₀[output]",
                         "networkTensorVarDimensions": [
                           2
                         ],
-                        "networkName": "encode",
                         "inputOrOutput": "Output",
                         "application": 0
                       }
@@ -2809,10 +2809,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[output]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -2826,10 +2826,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[output]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -2882,10 +2882,10 @@
                             "tag": "NetworkTensorVar",
                             "contents": {
                               "startingIndex": 0,
+                              "networkVarName": "encode₀[input]",
                               "networkTensorVarDimensions": [
                                 5
                               ],
-                              "networkName": "encode",
                               "inputOrOutput": "Input",
                               "application": 0
                             }
@@ -2916,10 +2916,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -2930,10 +2930,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -2944,10 +2944,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -2958,10 +2958,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -2972,10 +2972,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -2986,10 +2986,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[output]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -3000,10 +3000,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[output]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -3014,10 +3014,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 5,
+                      "networkVarName": "decode₀[input]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -3028,10 +3028,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 5,
+                      "networkVarName": "decode₀[input]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -3042,10 +3042,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -3056,10 +3056,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -3070,10 +3070,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -3084,10 +3084,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -3098,10 +3098,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -3160,10 +3160,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 5,
+                        "networkVarName": "decode₀[input]",
                         "networkTensorVarDimensions": [
                           2
                         ],
-                        "networkName": "decode",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -3177,10 +3177,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 5,
+                            "networkVarName": "decode₀[input]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -3194,10 +3194,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 5,
+                            "networkVarName": "decode₀[input]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -3213,10 +3213,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 2,
+                        "networkVarName": "decode₀[output]",
                         "networkTensorVarDimensions": [
                           5
                         ],
-                        "networkName": "decode",
                         "inputOrOutput": "Output",
                         "application": 0
                       }
@@ -3230,10 +3230,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -3247,10 +3247,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -3264,10 +3264,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -3281,10 +3281,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -3298,10 +3298,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -3317,10 +3317,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 0,
+                        "networkVarName": "encode₀[input]",
                         "networkTensorVarDimensions": [
                           5
                         ],
-                        "networkName": "encode",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -3334,10 +3334,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -3351,10 +3351,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -3368,10 +3368,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -3385,10 +3385,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -3402,10 +3402,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -3421,10 +3421,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 0,
+                        "networkVarName": "encode₀[output]",
                         "networkTensorVarDimensions": [
                           2
                         ],
-                        "networkName": "encode",
                         "inputOrOutput": "Output",
                         "application": 0
                       }
@@ -3438,10 +3438,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[output]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -3455,10 +3455,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[output]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -3511,10 +3511,10 @@
                             "tag": "NetworkTensorVar",
                             "contents": {
                               "startingIndex": 0,
+                              "networkVarName": "encode₀[input]",
                               "networkTensorVarDimensions": [
                                 5
                               ],
-                              "networkName": "encode",
                               "inputOrOutput": "Input",
                               "application": 0
                             }
@@ -3545,10 +3545,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -3559,10 +3559,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -3573,10 +3573,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -3587,10 +3587,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -3601,10 +3601,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -3615,10 +3615,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[output]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -3629,10 +3629,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[output]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -3643,10 +3643,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 5,
+                      "networkVarName": "decode₀[input]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -3657,10 +3657,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 5,
+                      "networkVarName": "decode₀[input]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -3671,10 +3671,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -3685,10 +3685,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -3699,10 +3699,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -3713,10 +3713,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -3727,10 +3727,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -3789,10 +3789,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 5,
+                        "networkVarName": "decode₀[input]",
                         "networkTensorVarDimensions": [
                           2
                         ],
-                        "networkName": "decode",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -3806,10 +3806,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 5,
+                            "networkVarName": "decode₀[input]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -3823,10 +3823,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 5,
+                            "networkVarName": "decode₀[input]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -3842,10 +3842,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 2,
+                        "networkVarName": "decode₀[output]",
                         "networkTensorVarDimensions": [
                           5
                         ],
-                        "networkName": "decode",
                         "inputOrOutput": "Output",
                         "application": 0
                       }
@@ -3859,10 +3859,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -3876,10 +3876,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -3893,10 +3893,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -3910,10 +3910,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -3927,10 +3927,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -3946,10 +3946,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 0,
+                        "networkVarName": "encode₀[input]",
                         "networkTensorVarDimensions": [
                           5
                         ],
-                        "networkName": "encode",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -3963,10 +3963,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -3980,10 +3980,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -3997,10 +3997,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -4014,10 +4014,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -4031,10 +4031,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -4050,10 +4050,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 0,
+                        "networkVarName": "encode₀[output]",
                         "networkTensorVarDimensions": [
                           2
                         ],
-                        "networkName": "encode",
                         "inputOrOutput": "Output",
                         "application": 0
                       }
@@ -4067,10 +4067,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[output]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -4084,10 +4084,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[output]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -4140,10 +4140,10 @@
                             "tag": "NetworkTensorVar",
                             "contents": {
                               "startingIndex": 0,
+                              "networkVarName": "encode₀[input]",
                               "networkTensorVarDimensions": [
                                 5
                               ],
-                              "networkName": "encode",
                               "inputOrOutput": "Input",
                               "application": 0
                             }
@@ -4174,10 +4174,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -4188,10 +4188,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -4202,10 +4202,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -4216,10 +4216,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -4230,10 +4230,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -4244,10 +4244,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[output]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -4258,10 +4258,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[output]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -4272,10 +4272,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 5,
+                      "networkVarName": "decode₀[input]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -4286,10 +4286,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 5,
+                      "networkVarName": "decode₀[input]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -4300,10 +4300,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -4314,10 +4314,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -4328,10 +4328,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -4342,10 +4342,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -4356,10 +4356,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -4418,10 +4418,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 5,
+                        "networkVarName": "decode₀[input]",
                         "networkTensorVarDimensions": [
                           2
                         ],
-                        "networkName": "decode",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -4435,10 +4435,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 5,
+                            "networkVarName": "decode₀[input]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -4452,10 +4452,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 5,
+                            "networkVarName": "decode₀[input]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -4471,10 +4471,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 2,
+                        "networkVarName": "decode₀[output]",
                         "networkTensorVarDimensions": [
                           5
                         ],
-                        "networkName": "decode",
                         "inputOrOutput": "Output",
                         "application": 0
                       }
@@ -4488,10 +4488,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -4505,10 +4505,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -4522,10 +4522,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -4539,10 +4539,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -4556,10 +4556,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -4575,10 +4575,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 0,
+                        "networkVarName": "encode₀[input]",
                         "networkTensorVarDimensions": [
                           5
                         ],
-                        "networkName": "encode",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -4592,10 +4592,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -4609,10 +4609,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -4626,10 +4626,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -4643,10 +4643,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -4660,10 +4660,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -4679,10 +4679,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 0,
+                        "networkVarName": "encode₀[output]",
                         "networkTensorVarDimensions": [
                           2
                         ],
-                        "networkName": "encode",
                         "inputOrOutput": "Output",
                         "application": 0
                       }
@@ -4696,10 +4696,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[output]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -4713,10 +4713,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[output]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -4769,10 +4769,10 @@
                             "tag": "NetworkTensorVar",
                             "contents": {
                               "startingIndex": 0,
+                              "networkVarName": "encode₀[input]",
                               "networkTensorVarDimensions": [
                                 5
                               ],
-                              "networkName": "encode",
                               "inputOrOutput": "Input",
                               "application": 0
                             }
@@ -4803,10 +4803,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -4817,10 +4817,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -4831,10 +4831,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -4845,10 +4845,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -4859,10 +4859,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -4873,10 +4873,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[output]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -4887,10 +4887,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[output]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -4901,10 +4901,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 5,
+                      "networkVarName": "decode₀[input]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -4915,10 +4915,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 5,
+                      "networkVarName": "decode₀[input]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -4929,10 +4929,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -4943,10 +4943,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -4957,10 +4957,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -4971,10 +4971,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -4985,10 +4985,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -5047,10 +5047,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 5,
+                        "networkVarName": "decode₀[input]",
                         "networkTensorVarDimensions": [
                           2
                         ],
-                        "networkName": "decode",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -5064,10 +5064,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 5,
+                            "networkVarName": "decode₀[input]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -5081,10 +5081,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 5,
+                            "networkVarName": "decode₀[input]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -5100,10 +5100,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 2,
+                        "networkVarName": "decode₀[output]",
                         "networkTensorVarDimensions": [
                           5
                         ],
-                        "networkName": "decode",
                         "inputOrOutput": "Output",
                         "application": 0
                       }
@@ -5117,10 +5117,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -5134,10 +5134,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -5151,10 +5151,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -5168,10 +5168,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -5185,10 +5185,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -5204,10 +5204,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 0,
+                        "networkVarName": "encode₀[input]",
                         "networkTensorVarDimensions": [
                           5
                         ],
-                        "networkName": "encode",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -5221,10 +5221,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -5238,10 +5238,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -5255,10 +5255,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -5272,10 +5272,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -5289,10 +5289,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -5308,10 +5308,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 0,
+                        "networkVarName": "encode₀[output]",
                         "networkTensorVarDimensions": [
                           2
                         ],
-                        "networkName": "encode",
                         "inputOrOutput": "Output",
                         "application": 0
                       }
@@ -5325,10 +5325,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[output]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -5342,10 +5342,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[output]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -5398,10 +5398,10 @@
                             "tag": "NetworkTensorVar",
                             "contents": {
                               "startingIndex": 0,
+                              "networkVarName": "encode₀[input]",
                               "networkTensorVarDimensions": [
                                 5
                               ],
-                              "networkName": "encode",
                               "inputOrOutput": "Input",
                               "application": 0
                             }
@@ -5432,10 +5432,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -5446,10 +5446,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -5460,10 +5460,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -5474,10 +5474,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -5488,10 +5488,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -5502,10 +5502,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[output]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -5516,10 +5516,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[output]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -5530,10 +5530,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 5,
+                      "networkVarName": "decode₀[input]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -5544,10 +5544,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 5,
+                      "networkVarName": "decode₀[input]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -5558,10 +5558,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -5572,10 +5572,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -5586,10 +5586,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -5600,10 +5600,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -5614,10 +5614,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -5676,10 +5676,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 5,
+                        "networkVarName": "decode₀[input]",
                         "networkTensorVarDimensions": [
                           2
                         ],
-                        "networkName": "decode",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -5693,10 +5693,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 5,
+                            "networkVarName": "decode₀[input]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -5710,10 +5710,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 5,
+                            "networkVarName": "decode₀[input]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -5729,10 +5729,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 2,
+                        "networkVarName": "decode₀[output]",
                         "networkTensorVarDimensions": [
                           5
                         ],
-                        "networkName": "decode",
                         "inputOrOutput": "Output",
                         "application": 0
                       }
@@ -5746,10 +5746,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -5763,10 +5763,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -5780,10 +5780,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -5797,10 +5797,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -5814,10 +5814,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 2,
+                            "networkVarName": "decode₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "decode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -5833,10 +5833,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 0,
+                        "networkVarName": "encode₀[input]",
                         "networkTensorVarDimensions": [
                           5
                         ],
-                        "networkName": "encode",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -5850,10 +5850,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -5867,10 +5867,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -5884,10 +5884,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -5901,10 +5901,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -5918,10 +5918,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -5937,10 +5937,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 0,
+                        "networkVarName": "encode₀[output]",
                         "networkTensorVarDimensions": [
                           2
                         ],
-                        "networkName": "encode",
                         "inputOrOutput": "Output",
                         "application": 0
                       }
@@ -5954,10 +5954,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[output]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -5971,10 +5971,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "encode₀[output]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "encode",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -6027,10 +6027,10 @@
                             "tag": "NetworkTensorVar",
                             "contents": {
                               "startingIndex": 0,
+                              "networkVarName": "encode₀[input]",
                               "networkTensorVarDimensions": [
                                 5
                               ],
-                              "networkName": "encode",
                               "inputOrOutput": "Input",
                               "application": 0
                             }
@@ -6061,10 +6061,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -6075,10 +6075,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -6089,10 +6089,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -6103,10 +6103,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -6117,10 +6117,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -6131,10 +6131,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[output]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -6145,10 +6145,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "encode₀[output]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "encode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -6159,10 +6159,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 5,
+                      "networkVarName": "decode₀[input]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -6173,10 +6173,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 5,
+                      "networkVarName": "decode₀[input]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -6187,10 +6187,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -6201,10 +6201,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -6215,10 +6215,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -6229,10 +6229,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -6243,10 +6243,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 2,
+                      "networkVarName": "decode₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "decode",
                       "inputOrOutput": "Output",
                       "application": 0
                     }

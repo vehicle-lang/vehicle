@@ -15,10 +15,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 0,
+                        "networkVarName": "f₀[input]",
                         "networkTensorVarDimensions": [
                           1
                         ],
-                        "networkName": "f",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -32,10 +32,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "f₀[input]",
                             "networkTensorVarDimensions": [
                               1
                             ],
-                            "networkName": "f",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -50,47 +50,11 @@
                     {
                       "tag": "NetworkTensorVar",
                       "contents": {
-                        "startingIndex": 1,
-                        "networkTensorVarDimensions": [
-                          1
-                        ],
-                        "networkName": "f",
-                        "inputOrOutput": "Input",
-                        "application": 1
-                      }
-                    },
-                    [
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            0
-                          ],
-                          "originalVar": {
-                            "startingIndex": 1,
-                            "networkTensorVarDimensions": [
-                              1
-                            ],
-                            "networkName": "f",
-                            "inputOrOutput": "Input",
-                            "application": 1
-                          }
-                        }
-                      }
-                    ]
-                  ]
-                },
-                {
-                  "tag": "ReconstructTensor",
-                  "contents": [
-                    {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
                         "startingIndex": 0,
+                        "networkVarName": "f₀[output]",
                         "networkTensorVarDimensions": [
                           1
                         ],
-                        "networkName": "f",
                         "inputOrOutput": "Output",
                         "application": 0
                       }
@@ -104,10 +68,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "f₀[output]",
                             "networkTensorVarDimensions": [
                               1
                             ],
-                            "networkName": "f",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -123,10 +87,46 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 1,
+                        "networkVarName": "f₁[input]",
                         "networkTensorVarDimensions": [
                           1
                         ],
-                        "networkName": "f",
+                        "inputOrOutput": "Input",
+                        "application": 1
+                      }
+                    },
+                    [
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            0
+                          ],
+                          "originalVar": {
+                            "startingIndex": 1,
+                            "networkVarName": "f₁[input]",
+                            "networkTensorVarDimensions": [
+                              1
+                            ],
+                            "inputOrOutput": "Input",
+                            "application": 1
+                          }
+                        }
+                      }
+                    ]
+                  ]
+                },
+                {
+                  "tag": "ReconstructTensor",
+                  "contents": [
+                    {
+                      "tag": "NetworkTensorVar",
+                      "contents": {
+                        "startingIndex": 1,
+                        "networkVarName": "f₁[output]",
+                        "networkTensorVarDimensions": [
+                          1
+                        ],
                         "inputOrOutput": "Output",
                         "application": 1
                       }
@@ -140,10 +140,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 1,
+                            "networkVarName": "f₁[output]",
                             "networkTensorVarDimensions": [
                               1
                             ],
-                            "networkName": "f",
                             "inputOrOutput": "Output",
                             "application": 1
                           }
@@ -177,10 +177,10 @@
                               ],
                               "originalVar": {
                                 "startingIndex": 0,
+                                "networkVarName": "f₀[input]",
                                 "networkTensorVarDimensions": [
                                   1
                                 ],
-                                "networkName": "f",
                                 "inputOrOutput": "Input",
                                 "application": 0
                               }
@@ -244,10 +244,10 @@
                               ],
                               "originalVar": {
                                 "startingIndex": 1,
+                                "networkVarName": "f₁[input]",
                                 "networkTensorVarDimensions": [
                                   1
                                 ],
-                                "networkName": "f",
                                 "inputOrOutput": "Input",
                                 "application": 1
                               }
@@ -303,10 +303,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "f₀[input]",
                       "networkTensorVarDimensions": [
                         1
                       ],
-                      "networkName": "f",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -317,10 +317,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "f₀[output]",
                       "networkTensorVarDimensions": [
                         1
                       ],
-                      "networkName": "f",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -331,10 +331,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 1,
+                      "networkVarName": "f₁[input]",
                       "networkTensorVarDimensions": [
                         1
                       ],
-                      "networkName": "f",
                       "inputOrOutput": "Input",
                       "application": 1
                     }
@@ -345,10 +345,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 1,
+                      "networkVarName": "f₁[output]",
                       "networkTensorVarDimensions": [
                         1
                       ],
-                      "networkName": "f",
                       "inputOrOutput": "Output",
                       "application": 1
                     }

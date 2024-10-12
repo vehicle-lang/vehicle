@@ -15,10 +15,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 0,
+                        "networkVarName": "andGate₀[input]",
                         "networkTensorVarDimensions": [
                           2
                         ],
-                        "networkName": "andGate",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -32,10 +32,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "andGate₀[input]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "andGate",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -49,10 +49,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "andGate₀[input]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "andGate",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -68,10 +68,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 0,
+                        "networkVarName": "andGate₀[output]",
                         "networkTensorVarDimensions": [
                           1
                         ],
-                        "networkName": "andGate",
                         "inputOrOutput": "Output",
                         "application": 0
                       }
@@ -85,10 +85,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "andGate₀[output]",
                             "networkTensorVarDimensions": [
                               1
                             ],
-                            "networkName": "andGate",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -122,10 +122,10 @@
                               ],
                               "originalVar": {
                                 "startingIndex": 0,
+                                "networkVarName": "andGate₀[input]",
                                 "networkTensorVarDimensions": [
                                   2
                                 ],
-                                "networkName": "andGate",
                                 "inputOrOutput": "Input",
                                 "application": 0
                               }
@@ -189,10 +189,10 @@
                               ],
                               "originalVar": {
                                 "startingIndex": 0,
+                                "networkVarName": "andGate₀[input]",
                                 "networkTensorVarDimensions": [
                                   2
                                 ],
-                                "networkName": "andGate",
                                 "inputOrOutput": "Input",
                                 "application": 0
                               }
@@ -248,10 +248,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "andGate₀[input]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "andGate",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -262,10 +262,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "andGate₀[input]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "andGate",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -276,10 +276,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "andGate₀[output]",
                       "networkTensorVarDimensions": [
                         1
                       ],
-                      "networkName": "andGate",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -318,10 +318,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 0,
+                        "networkVarName": "andGate₀[input]",
                         "networkTensorVarDimensions": [
                           2
                         ],
-                        "networkName": "andGate",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -335,10 +335,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "andGate₀[input]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "andGate",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -352,10 +352,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "andGate₀[input]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "andGate",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -371,10 +371,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 0,
+                        "networkVarName": "andGate₀[output]",
                         "networkTensorVarDimensions": [
                           1
                         ],
-                        "networkName": "andGate",
                         "inputOrOutput": "Output",
                         "application": 0
                       }
@@ -388,10 +388,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "andGate₀[output]",
                             "networkTensorVarDimensions": [
                               1
                             ],
-                            "networkName": "andGate",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -425,10 +425,10 @@
                               ],
                               "originalVar": {
                                 "startingIndex": 0,
+                                "networkVarName": "andGate₀[input]",
                                 "networkTensorVarDimensions": [
                                   2
                                 ],
-                                "networkName": "andGate",
                                 "inputOrOutput": "Input",
                                 "application": 0
                               }
@@ -492,10 +492,10 @@
                               ],
                               "originalVar": {
                                 "startingIndex": 0,
+                                "networkVarName": "andGate₀[input]",
                                 "networkTensorVarDimensions": [
                                   2
                                 ],
-                                "networkName": "andGate",
                                 "inputOrOutput": "Input",
                                 "application": 0
                               }
@@ -551,10 +551,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "andGate₀[input]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "andGate",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -565,10 +565,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "andGate₀[input]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "andGate",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -579,10 +579,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "andGate₀[output]",
                       "networkTensorVarDimensions": [
                         1
                       ],
-                      "networkName": "andGate",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -621,10 +621,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 0,
+                        "networkVarName": "andGate₀[input]",
                         "networkTensorVarDimensions": [
                           2
                         ],
-                        "networkName": "andGate",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -638,10 +638,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "andGate₀[input]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "andGate",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -655,10 +655,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "andGate₀[input]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "andGate",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -674,10 +674,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 0,
+                        "networkVarName": "andGate₀[output]",
                         "networkTensorVarDimensions": [
                           1
                         ],
-                        "networkName": "andGate",
                         "inputOrOutput": "Output",
                         "application": 0
                       }
@@ -691,10 +691,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "andGate₀[output]",
                             "networkTensorVarDimensions": [
                               1
                             ],
-                            "networkName": "andGate",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -728,10 +728,10 @@
                               ],
                               "originalVar": {
                                 "startingIndex": 0,
+                                "networkVarName": "andGate₀[input]",
                                 "networkTensorVarDimensions": [
                                   2
                                 ],
-                                "networkName": "andGate",
                                 "inputOrOutput": "Input",
                                 "application": 0
                               }
@@ -795,10 +795,10 @@
                               ],
                               "originalVar": {
                                 "startingIndex": 0,
+                                "networkVarName": "andGate₀[input]",
                                 "networkTensorVarDimensions": [
                                   2
                                 ],
-                                "networkName": "andGate",
                                 "inputOrOutput": "Input",
                                 "application": 0
                               }
@@ -854,10 +854,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "andGate₀[input]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "andGate",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -868,10 +868,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "andGate₀[input]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "andGate",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -882,10 +882,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "andGate₀[output]",
                       "networkTensorVarDimensions": [
                         1
                       ],
-                      "networkName": "andGate",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -924,10 +924,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 0,
+                        "networkVarName": "andGate₀[input]",
                         "networkTensorVarDimensions": [
                           2
                         ],
-                        "networkName": "andGate",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -941,10 +941,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "andGate₀[input]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "andGate",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -958,10 +958,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "andGate₀[input]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "andGate",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -977,10 +977,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 0,
+                        "networkVarName": "andGate₀[output]",
                         "networkTensorVarDimensions": [
                           1
                         ],
-                        "networkName": "andGate",
                         "inputOrOutput": "Output",
                         "application": 0
                       }
@@ -994,10 +994,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "andGate₀[output]",
                             "networkTensorVarDimensions": [
                               1
                             ],
-                            "networkName": "andGate",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -1031,10 +1031,10 @@
                               ],
                               "originalVar": {
                                 "startingIndex": 0,
+                                "networkVarName": "andGate₀[input]",
                                 "networkTensorVarDimensions": [
                                   2
                                 ],
-                                "networkName": "andGate",
                                 "inputOrOutput": "Input",
                                 "application": 0
                               }
@@ -1098,10 +1098,10 @@
                               ],
                               "originalVar": {
                                 "startingIndex": 0,
+                                "networkVarName": "andGate₀[input]",
                                 "networkTensorVarDimensions": [
                                   2
                                 ],
-                                "networkName": "andGate",
                                 "inputOrOutput": "Input",
                                 "application": 0
                               }
@@ -1157,10 +1157,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "andGate₀[input]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "andGate",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -1171,10 +1171,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "andGate₀[input]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "andGate",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -1185,10 +1185,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "andGate₀[output]",
                       "networkTensorVarDimensions": [
                         1
                       ],
-                      "networkName": "andGate",
                       "inputOrOutput": "Output",
                       "application": 0
                     }

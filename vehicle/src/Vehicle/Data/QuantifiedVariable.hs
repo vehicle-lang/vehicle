@@ -2,13 +2,11 @@ module Vehicle.Data.QuantifiedVariable where
 
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, FromJSONKey, ToJSON, ToJSONKey)
-import Data.Char.SScript
 import Data.Hashable (Hashable)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import GHC.Generics (Generic)
 import Numeric (showFFloat)
-import Prettyprinter (brackets)
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
@@ -42,11 +40,11 @@ instance Pretty OriginalUserVariable where
 -- | Network input and output variables
 data OriginalNetworkVariable = OriginalNetworkVariable
   { -- | The name of the network this variable belongs to.
-    networkName :: Name,
-    -- | Whether its an input or an output variable
-    inputOrOutput :: InputOrOutput,
+    networkVarName :: Name,
     -- | The dimensions of the variable
     networkTensorVarDimensions :: TensorShape,
+    -- | Whether its an input or an output variable
+    inputOrOutput :: InputOrOutput,
     -- | The position in the list of applications of `networkName`
     application :: Int,
     -- | Index starting
@@ -63,10 +61,23 @@ instance FromJSON OriginalNetworkVariable
 instance Hashable OriginalNetworkVariable
 
 instance Pretty OriginalNetworkVariable where
-  pretty OriginalNetworkVariable {..} =
-    pretty networkName
-      <> pretty (fmap subscript (show application))
-      <> brackets (pretty inputOrOutput)
+  pretty OriginalNetworkVariable {..} = pretty networkVarName
+
+{-
+
+data NetworkVariableInfo = NetworkVariableInfo
+  { -- | Whether its an input or an output variable
+    inputOrOutput :: InputOrOutput,
+    -- | The position in the list of applications of `networkName`
+    application :: Int,
+    -- | Index starting
+    startingIndex :: Int,
+    -- | Variables for each of it's elements
+    elementVariables :: [NetworkRationalVariable],
+    -- | The tensor literal expression containing the element variables above.
+    reducedOutputVarExpr :: WHNFValue Builtin
+  }
+-}
 
 --------------------------------------------------------------------------------
 -- Reduced variables

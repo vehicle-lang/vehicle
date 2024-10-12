@@ -15,10 +15,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 0,
+                        "networkVarName": "classifier₀[input]",
                         "networkTensorVarDimensions": [
                           30
                         ],
-                        "networkName": "classifier",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -32,10 +32,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "classifier₀[input]",
                             "networkTensorVarDimensions": [
                               30
                             ],
-                            "networkName": "classifier",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -49,10 +49,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "classifier₀[input]",
                             "networkTensorVarDimensions": [
                               30
                             ],
-                            "networkName": "classifier",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -66,10 +66,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "classifier₀[input]",
                             "networkTensorVarDimensions": [
                               30
                             ],
-                            "networkName": "classifier",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -83,10 +83,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "classifier₀[input]",
                             "networkTensorVarDimensions": [
                               30
                             ],
-                            "networkName": "classifier",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -100,10 +100,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "classifier₀[input]",
                             "networkTensorVarDimensions": [
                               30
                             ],
-                            "networkName": "classifier",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -117,10 +117,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "classifier₀[input]",
                             "networkTensorVarDimensions": [
                               30
                             ],
-                            "networkName": "classifier",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -134,10 +134,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "classifier₀[input]",
                             "networkTensorVarDimensions": [
                               30
                             ],
-                            "networkName": "classifier",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -151,10 +151,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "classifier₀[input]",
                             "networkTensorVarDimensions": [
                               30
                             ],
-                            "networkName": "classifier",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -168,10 +168,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "classifier₀[input]",
                             "networkTensorVarDimensions": [
                               30
                             ],
-                            "networkName": "classifier",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -185,10 +185,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "classifier₀[input]",
                             "networkTensorVarDimensions": [
                               30
                             ],
-                            "networkName": "classifier",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -202,10 +202,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "classifier₀[input]",
                             "networkTensorVarDimensions": [
                               30
                             ],
-                            "networkName": "classifier",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -219,10 +219,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "classifier₀[input]",
                             "networkTensorVarDimensions": [
                               30
                             ],
-                            "networkName": "classifier",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -236,10 +236,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "classifier₀[input]",
                             "networkTensorVarDimensions": [
                               30
                             ],
-                            "networkName": "classifier",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -253,10 +253,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "classifier₀[input]",
                             "networkTensorVarDimensions": [
                               30
                             ],
-                            "networkName": "classifier",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -270,10 +270,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "classifier₀[input]",
                             "networkTensorVarDimensions": [
                               30
                             ],
-                            "networkName": "classifier",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -287,10 +287,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "classifier₀[input]",
                             "networkTensorVarDimensions": [
                               30
                             ],
-                            "networkName": "classifier",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -304,10 +304,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "classifier₀[input]",
                             "networkTensorVarDimensions": [
                               30
                             ],
-                            "networkName": "classifier",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -321,10 +321,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "classifier₀[input]",
                             "networkTensorVarDimensions": [
                               30
                             ],
-                            "networkName": "classifier",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -338,10 +338,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "classifier₀[input]",
                             "networkTensorVarDimensions": [
                               30
                             ],
-                            "networkName": "classifier",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -355,10 +355,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "classifier₀[input]",
                             "networkTensorVarDimensions": [
                               30
                             ],
-                            "networkName": "classifier",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -372,10 +372,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "classifier₀[input]",
                             "networkTensorVarDimensions": [
                               30
                             ],
-                            "networkName": "classifier",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -389,10 +389,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "classifier₀[input]",
                             "networkTensorVarDimensions": [
                               30
                             ],
-                            "networkName": "classifier",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -406,10 +406,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "classifier₀[input]",
                             "networkTensorVarDimensions": [
                               30
                             ],
-                            "networkName": "classifier",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -423,10 +423,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "classifier₀[input]",
                             "networkTensorVarDimensions": [
                               30
                             ],
-                            "networkName": "classifier",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -440,10 +440,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "classifier₀[input]",
                             "networkTensorVarDimensions": [
                               30
                             ],
-                            "networkName": "classifier",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -457,10 +457,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "classifier₀[input]",
                             "networkTensorVarDimensions": [
                               30
                             ],
-                            "networkName": "classifier",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -474,10 +474,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "classifier₀[input]",
                             "networkTensorVarDimensions": [
                               30
                             ],
-                            "networkName": "classifier",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -491,10 +491,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "classifier₀[input]",
                             "networkTensorVarDimensions": [
                               30
                             ],
-                            "networkName": "classifier",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -508,10 +508,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "classifier₀[input]",
                             "networkTensorVarDimensions": [
                               30
                             ],
-                            "networkName": "classifier",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -525,10 +525,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "classifier₀[input]",
                             "networkTensorVarDimensions": [
                               30
                             ],
-                            "networkName": "classifier",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -544,10 +544,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 0,
+                        "networkVarName": "classifier₀[output]",
                         "networkTensorVarDimensions": [
                           2
                         ],
-                        "networkName": "classifier",
                         "inputOrOutput": "Output",
                         "application": 0
                       }
@@ -561,10 +561,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "classifier₀[output]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "classifier",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -578,10 +578,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "classifier₀[output]",
                             "networkTensorVarDimensions": [
                               2
                             ],
-                            "networkName": "classifier",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -734,10 +734,10 @@
                             "tag": "NetworkTensorVar",
                             "contents": {
                               "startingIndex": 0,
+                              "networkVarName": "classifier₀[input]",
                               "networkTensorVarDimensions": [
                                 30
                               ],
-                              "networkName": "classifier",
                               "inputOrOutput": "Input",
                               "application": 0
                             }
@@ -768,10 +768,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "classifier₀[input]",
                       "networkTensorVarDimensions": [
                         30
                       ],
-                      "networkName": "classifier",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -782,10 +782,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "classifier₀[input]",
                       "networkTensorVarDimensions": [
                         30
                       ],
-                      "networkName": "classifier",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -796,10 +796,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "classifier₀[input]",
                       "networkTensorVarDimensions": [
                         30
                       ],
-                      "networkName": "classifier",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -810,10 +810,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "classifier₀[input]",
                       "networkTensorVarDimensions": [
                         30
                       ],
-                      "networkName": "classifier",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -824,10 +824,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "classifier₀[input]",
                       "networkTensorVarDimensions": [
                         30
                       ],
-                      "networkName": "classifier",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -838,10 +838,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "classifier₀[input]",
                       "networkTensorVarDimensions": [
                         30
                       ],
-                      "networkName": "classifier",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -852,10 +852,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "classifier₀[input]",
                       "networkTensorVarDimensions": [
                         30
                       ],
-                      "networkName": "classifier",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -866,10 +866,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "classifier₀[input]",
                       "networkTensorVarDimensions": [
                         30
                       ],
-                      "networkName": "classifier",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -880,10 +880,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "classifier₀[input]",
                       "networkTensorVarDimensions": [
                         30
                       ],
-                      "networkName": "classifier",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -894,10 +894,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "classifier₀[input]",
                       "networkTensorVarDimensions": [
                         30
                       ],
-                      "networkName": "classifier",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -908,10 +908,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "classifier₀[input]",
                       "networkTensorVarDimensions": [
                         30
                       ],
-                      "networkName": "classifier",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -922,10 +922,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "classifier₀[input]",
                       "networkTensorVarDimensions": [
                         30
                       ],
-                      "networkName": "classifier",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -936,10 +936,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "classifier₀[input]",
                       "networkTensorVarDimensions": [
                         30
                       ],
-                      "networkName": "classifier",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -950,10 +950,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "classifier₀[input]",
                       "networkTensorVarDimensions": [
                         30
                       ],
-                      "networkName": "classifier",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -964,10 +964,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "classifier₀[input]",
                       "networkTensorVarDimensions": [
                         30
                       ],
-                      "networkName": "classifier",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -978,10 +978,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "classifier₀[input]",
                       "networkTensorVarDimensions": [
                         30
                       ],
-                      "networkName": "classifier",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -992,10 +992,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "classifier₀[input]",
                       "networkTensorVarDimensions": [
                         30
                       ],
-                      "networkName": "classifier",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -1006,10 +1006,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "classifier₀[input]",
                       "networkTensorVarDimensions": [
                         30
                       ],
-                      "networkName": "classifier",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -1020,10 +1020,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "classifier₀[input]",
                       "networkTensorVarDimensions": [
                         30
                       ],
-                      "networkName": "classifier",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -1034,10 +1034,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "classifier₀[input]",
                       "networkTensorVarDimensions": [
                         30
                       ],
-                      "networkName": "classifier",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -1048,10 +1048,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "classifier₀[input]",
                       "networkTensorVarDimensions": [
                         30
                       ],
-                      "networkName": "classifier",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -1062,10 +1062,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "classifier₀[input]",
                       "networkTensorVarDimensions": [
                         30
                       ],
-                      "networkName": "classifier",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -1076,10 +1076,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "classifier₀[input]",
                       "networkTensorVarDimensions": [
                         30
                       ],
-                      "networkName": "classifier",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -1090,10 +1090,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "classifier₀[input]",
                       "networkTensorVarDimensions": [
                         30
                       ],
-                      "networkName": "classifier",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -1104,10 +1104,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "classifier₀[input]",
                       "networkTensorVarDimensions": [
                         30
                       ],
-                      "networkName": "classifier",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -1118,10 +1118,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "classifier₀[input]",
                       "networkTensorVarDimensions": [
                         30
                       ],
-                      "networkName": "classifier",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -1132,10 +1132,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "classifier₀[input]",
                       "networkTensorVarDimensions": [
                         30
                       ],
-                      "networkName": "classifier",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -1146,10 +1146,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "classifier₀[input]",
                       "networkTensorVarDimensions": [
                         30
                       ],
-                      "networkName": "classifier",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -1160,10 +1160,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "classifier₀[input]",
                       "networkTensorVarDimensions": [
                         30
                       ],
-                      "networkName": "classifier",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -1174,10 +1174,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "classifier₀[input]",
                       "networkTensorVarDimensions": [
                         30
                       ],
-                      "networkName": "classifier",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -1188,10 +1188,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "classifier₀[output]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "classifier",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -1202,10 +1202,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "classifier₀[output]",
                       "networkTensorVarDimensions": [
                         2
                       ],
-                      "networkName": "classifier",
                       "inputOrOutput": "Output",
                       "application": 0
                     }

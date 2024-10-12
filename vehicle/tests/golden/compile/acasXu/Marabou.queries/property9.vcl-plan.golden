@@ -15,10 +15,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 0,
+                        "networkVarName": "acasXu₀[input]",
                         "networkTensorVarDimensions": [
                           5
                         ],
-                        "networkName": "acasXu",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -32,10 +32,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "acasXu₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "acasXu",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -49,10 +49,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "acasXu₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "acasXu",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -66,10 +66,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "acasXu₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "acasXu",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -83,10 +83,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "acasXu₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "acasXu",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -100,10 +100,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "acasXu₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "acasXu",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -119,10 +119,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 0,
+                        "networkVarName": "acasXu₀[output]",
                         "networkTensorVarDimensions": [
                           5
                         ],
-                        "networkName": "acasXu",
                         "inputOrOutput": "Output",
                         "application": 0
                       }
@@ -136,10 +136,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "acasXu₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "acasXu",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -153,10 +153,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "acasXu₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "acasXu",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -170,10 +170,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "acasXu₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "acasXu",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -187,10 +187,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "acasXu₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "acasXu",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -204,10 +204,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "acasXu₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "acasXu",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -245,10 +245,10 @@
                               ],
                               "originalVar": {
                                 "startingIndex": 0,
+                                "networkVarName": "acasXu₀[input]",
                                 "networkTensorVarDimensions": [
                                   5
                                 ],
-                                "networkName": "acasXu",
                                 "inputOrOutput": "Input",
                                 "application": 0
                               }
@@ -292,10 +292,10 @@
                               ],
                               "originalVar": {
                                 "startingIndex": 0,
+                                "networkVarName": "acasXu₀[input]",
                                 "networkTensorVarDimensions": [
                                   5
                                 ],
-                                "networkName": "acasXu",
                                 "inputOrOutput": "Input",
                                 "application": 0
                               }
@@ -339,10 +339,10 @@
                               ],
                               "originalVar": {
                                 "startingIndex": 0,
+                                "networkVarName": "acasXu₀[input]",
                                 "networkTensorVarDimensions": [
                                   5
                                 ],
-                                "networkName": "acasXu",
                                 "inputOrOutput": "Input",
                                 "application": 0
                               }
@@ -386,10 +386,10 @@
                               ],
                               "originalVar": {
                                 "startingIndex": 0,
+                                "networkVarName": "acasXu₀[input]",
                                 "networkTensorVarDimensions": [
                                   5
                                 ],
-                                "networkName": "acasXu",
                                 "inputOrOutput": "Input",
                                 "application": 0
                               }
@@ -433,10 +433,10 @@
                               ],
                               "originalVar": {
                                 "startingIndex": 0,
+                                "networkVarName": "acasXu₀[input]",
                                 "networkTensorVarDimensions": [
                                   5
                                 ],
-                                "networkName": "acasXu",
                                 "inputOrOutput": "Input",
                                 "application": 0
                               }
@@ -554,10 +554,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "acasXu₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "acasXu",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -568,10 +568,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "acasXu₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "acasXu",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -582,10 +582,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "acasXu₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "acasXu",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -596,10 +596,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "acasXu₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "acasXu",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -610,10 +610,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "acasXu₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "acasXu",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -624,10 +624,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "acasXu₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "acasXu",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -638,10 +638,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "acasXu₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "acasXu",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -652,10 +652,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "acasXu₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "acasXu",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -666,10 +666,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "acasXu₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "acasXu",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -680,10 +680,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "acasXu₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "acasXu",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -722,10 +722,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 0,
+                        "networkVarName": "acasXu₀[input]",
                         "networkTensorVarDimensions": [
                           5
                         ],
-                        "networkName": "acasXu",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -739,10 +739,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "acasXu₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "acasXu",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -756,10 +756,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "acasXu₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "acasXu",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -773,10 +773,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "acasXu₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "acasXu",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -790,10 +790,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "acasXu₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "acasXu",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -807,10 +807,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "acasXu₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "acasXu",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -826,10 +826,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 0,
+                        "networkVarName": "acasXu₀[output]",
                         "networkTensorVarDimensions": [
                           5
                         ],
-                        "networkName": "acasXu",
                         "inputOrOutput": "Output",
                         "application": 0
                       }
@@ -843,10 +843,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "acasXu₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "acasXu",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -860,10 +860,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "acasXu₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "acasXu",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -877,10 +877,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "acasXu₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "acasXu",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -894,10 +894,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "acasXu₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "acasXu",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -911,10 +911,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "acasXu₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "acasXu",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -952,10 +952,10 @@
                               ],
                               "originalVar": {
                                 "startingIndex": 0,
+                                "networkVarName": "acasXu₀[input]",
                                 "networkTensorVarDimensions": [
                                   5
                                 ],
-                                "networkName": "acasXu",
                                 "inputOrOutput": "Input",
                                 "application": 0
                               }
@@ -999,10 +999,10 @@
                               ],
                               "originalVar": {
                                 "startingIndex": 0,
+                                "networkVarName": "acasXu₀[input]",
                                 "networkTensorVarDimensions": [
                                   5
                                 ],
-                                "networkName": "acasXu",
                                 "inputOrOutput": "Input",
                                 "application": 0
                               }
@@ -1046,10 +1046,10 @@
                               ],
                               "originalVar": {
                                 "startingIndex": 0,
+                                "networkVarName": "acasXu₀[input]",
                                 "networkTensorVarDimensions": [
                                   5
                                 ],
-                                "networkName": "acasXu",
                                 "inputOrOutput": "Input",
                                 "application": 0
                               }
@@ -1093,10 +1093,10 @@
                               ],
                               "originalVar": {
                                 "startingIndex": 0,
+                                "networkVarName": "acasXu₀[input]",
                                 "networkTensorVarDimensions": [
                                   5
                                 ],
-                                "networkName": "acasXu",
                                 "inputOrOutput": "Input",
                                 "application": 0
                               }
@@ -1140,10 +1140,10 @@
                               ],
                               "originalVar": {
                                 "startingIndex": 0,
+                                "networkVarName": "acasXu₀[input]",
                                 "networkTensorVarDimensions": [
                                   5
                                 ],
-                                "networkName": "acasXu",
                                 "inputOrOutput": "Input",
                                 "application": 0
                               }
@@ -1261,10 +1261,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "acasXu₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "acasXu",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -1275,10 +1275,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "acasXu₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "acasXu",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -1289,10 +1289,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "acasXu₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "acasXu",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -1303,10 +1303,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "acasXu₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "acasXu",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -1317,10 +1317,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "acasXu₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "acasXu",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -1331,10 +1331,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "acasXu₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "acasXu",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -1345,10 +1345,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "acasXu₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "acasXu",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -1359,10 +1359,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "acasXu₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "acasXu",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -1373,10 +1373,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "acasXu₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "acasXu",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -1387,10 +1387,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "acasXu₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "acasXu",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -1429,10 +1429,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 0,
+                        "networkVarName": "acasXu₀[input]",
                         "networkTensorVarDimensions": [
                           5
                         ],
-                        "networkName": "acasXu",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -1446,10 +1446,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "acasXu₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "acasXu",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -1463,10 +1463,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "acasXu₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "acasXu",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -1480,10 +1480,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "acasXu₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "acasXu",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -1497,10 +1497,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "acasXu₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "acasXu",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -1514,10 +1514,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "acasXu₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "acasXu",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -1533,10 +1533,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 0,
+                        "networkVarName": "acasXu₀[output]",
                         "networkTensorVarDimensions": [
                           5
                         ],
-                        "networkName": "acasXu",
                         "inputOrOutput": "Output",
                         "application": 0
                       }
@@ -1550,10 +1550,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "acasXu₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "acasXu",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -1567,10 +1567,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "acasXu₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "acasXu",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -1584,10 +1584,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "acasXu₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "acasXu",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -1601,10 +1601,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "acasXu₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "acasXu",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -1618,10 +1618,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "acasXu₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "acasXu",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -1659,10 +1659,10 @@
                               ],
                               "originalVar": {
                                 "startingIndex": 0,
+                                "networkVarName": "acasXu₀[input]",
                                 "networkTensorVarDimensions": [
                                   5
                                 ],
-                                "networkName": "acasXu",
                                 "inputOrOutput": "Input",
                                 "application": 0
                               }
@@ -1706,10 +1706,10 @@
                               ],
                               "originalVar": {
                                 "startingIndex": 0,
+                                "networkVarName": "acasXu₀[input]",
                                 "networkTensorVarDimensions": [
                                   5
                                 ],
-                                "networkName": "acasXu",
                                 "inputOrOutput": "Input",
                                 "application": 0
                               }
@@ -1753,10 +1753,10 @@
                               ],
                               "originalVar": {
                                 "startingIndex": 0,
+                                "networkVarName": "acasXu₀[input]",
                                 "networkTensorVarDimensions": [
                                   5
                                 ],
-                                "networkName": "acasXu",
                                 "inputOrOutput": "Input",
                                 "application": 0
                               }
@@ -1800,10 +1800,10 @@
                               ],
                               "originalVar": {
                                 "startingIndex": 0,
+                                "networkVarName": "acasXu₀[input]",
                                 "networkTensorVarDimensions": [
                                   5
                                 ],
-                                "networkName": "acasXu",
                                 "inputOrOutput": "Input",
                                 "application": 0
                               }
@@ -1847,10 +1847,10 @@
                               ],
                               "originalVar": {
                                 "startingIndex": 0,
+                                "networkVarName": "acasXu₀[input]",
                                 "networkTensorVarDimensions": [
                                   5
                                 ],
-                                "networkName": "acasXu",
                                 "inputOrOutput": "Input",
                                 "application": 0
                               }
@@ -1968,10 +1968,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "acasXu₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "acasXu",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -1982,10 +1982,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "acasXu₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "acasXu",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -1996,10 +1996,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "acasXu₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "acasXu",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -2010,10 +2010,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "acasXu₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "acasXu",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -2024,10 +2024,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "acasXu₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "acasXu",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -2038,10 +2038,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "acasXu₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "acasXu",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -2052,10 +2052,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "acasXu₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "acasXu",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -2066,10 +2066,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "acasXu₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "acasXu",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -2080,10 +2080,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "acasXu₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "acasXu",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -2094,10 +2094,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "acasXu₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "acasXu",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -2136,10 +2136,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 0,
+                        "networkVarName": "acasXu₀[input]",
                         "networkTensorVarDimensions": [
                           5
                         ],
-                        "networkName": "acasXu",
                         "inputOrOutput": "Input",
                         "application": 0
                       }
@@ -2153,10 +2153,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "acasXu₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "acasXu",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -2170,10 +2170,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "acasXu₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "acasXu",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -2187,10 +2187,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "acasXu₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "acasXu",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -2204,10 +2204,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "acasXu₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "acasXu",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -2221,10 +2221,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "acasXu₀[input]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "acasXu",
                             "inputOrOutput": "Input",
                             "application": 0
                           }
@@ -2240,10 +2240,10 @@
                       "tag": "NetworkTensorVar",
                       "contents": {
                         "startingIndex": 0,
+                        "networkVarName": "acasXu₀[output]",
                         "networkTensorVarDimensions": [
                           5
                         ],
-                        "networkName": "acasXu",
                         "inputOrOutput": "Output",
                         "application": 0
                       }
@@ -2257,10 +2257,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "acasXu₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "acasXu",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -2274,10 +2274,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "acasXu₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "acasXu",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -2291,10 +2291,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "acasXu₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "acasXu",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -2308,10 +2308,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "acasXu₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "acasXu",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -2325,10 +2325,10 @@
                           ],
                           "originalVar": {
                             "startingIndex": 0,
+                            "networkVarName": "acasXu₀[output]",
                             "networkTensorVarDimensions": [
                               5
                             ],
-                            "networkName": "acasXu",
                             "inputOrOutput": "Output",
                             "application": 0
                           }
@@ -2366,10 +2366,10 @@
                               ],
                               "originalVar": {
                                 "startingIndex": 0,
+                                "networkVarName": "acasXu₀[input]",
                                 "networkTensorVarDimensions": [
                                   5
                                 ],
-                                "networkName": "acasXu",
                                 "inputOrOutput": "Input",
                                 "application": 0
                               }
@@ -2413,10 +2413,10 @@
                               ],
                               "originalVar": {
                                 "startingIndex": 0,
+                                "networkVarName": "acasXu₀[input]",
                                 "networkTensorVarDimensions": [
                                   5
                                 ],
-                                "networkName": "acasXu",
                                 "inputOrOutput": "Input",
                                 "application": 0
                               }
@@ -2460,10 +2460,10 @@
                               ],
                               "originalVar": {
                                 "startingIndex": 0,
+                                "networkVarName": "acasXu₀[input]",
                                 "networkTensorVarDimensions": [
                                   5
                                 ],
-                                "networkName": "acasXu",
                                 "inputOrOutput": "Input",
                                 "application": 0
                               }
@@ -2507,10 +2507,10 @@
                               ],
                               "originalVar": {
                                 "startingIndex": 0,
+                                "networkVarName": "acasXu₀[input]",
                                 "networkTensorVarDimensions": [
                                   5
                                 ],
-                                "networkName": "acasXu",
                                 "inputOrOutput": "Input",
                                 "application": 0
                               }
@@ -2554,10 +2554,10 @@
                               ],
                               "originalVar": {
                                 "startingIndex": 0,
+                                "networkVarName": "acasXu₀[input]",
                                 "networkTensorVarDimensions": [
                                   5
                                 ],
-                                "networkName": "acasXu",
                                 "inputOrOutput": "Input",
                                 "application": 0
                               }
@@ -2675,10 +2675,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "acasXu₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "acasXu",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -2689,10 +2689,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "acasXu₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "acasXu",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -2703,10 +2703,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "acasXu₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "acasXu",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -2717,10 +2717,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "acasXu₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "acasXu",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -2731,10 +2731,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "acasXu₀[input]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "acasXu",
                       "inputOrOutput": "Input",
                       "application": 0
                     }
@@ -2745,10 +2745,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "acasXu₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "acasXu",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -2759,10 +2759,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "acasXu₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "acasXu",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -2773,10 +2773,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "acasXu₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "acasXu",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -2787,10 +2787,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "acasXu₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "acasXu",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
@@ -2801,10 +2801,10 @@
                     ],
                     "originalVar": {
                       "startingIndex": 0,
+                      "networkVarName": "acasXu₀[output]",
                       "networkTensorVarDimensions": [
                         5
                       ],
-                      "networkName": "acasXu",
                       "inputOrOutput": "Output",
                       "application": 0
                     }
