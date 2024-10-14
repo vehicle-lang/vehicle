@@ -14,3 +14,6 @@ instance Pretty QueryFormatID where
   pretty = \case
     MarabouQueries -> "Marabou query format"
     VNNLibQueries -> "VNNLib query format"
+
+-- | A variable used in a query.
+type QueryVariable = Name

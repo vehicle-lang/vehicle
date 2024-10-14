@@ -26,7 +26,7 @@ import Data.IDX.Internal
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map qualified as Map
 import Data.Monoid (Sum (..))
-import Data.Set qualified as Set (difference, fromList, map, null)
+import Data.Set qualified as Set (difference, fromList, null)
 import Data.Text (intercalate, pack, unpack)
 import Data.Text.IO qualified as TIO
 import Data.Text.Lazy qualified as LazyText
@@ -43,7 +43,7 @@ import Vehicle.Backend.Agda.Interact (writeResultToFile)
 import Vehicle.Backend.Queries.UserVariableElimination.VariableReconstruction (reconstructUserVars)
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Code.BooleanExpr
-import Vehicle.Data.QuantifiedVariable (NetworkVariableAssignment (..), OriginalUserVariable (..), UserVariableAssignment (..))
+import Vehicle.Data.QuantifiedVariable (OriginalUserVariable (..), UserVariableAssignment (..))
 import Vehicle.Data.Tensor (Tensor (..))
 import Vehicle.Prelude.IO qualified as VIO (MonadStdIO (writeStdoutLn))
 import Vehicle.Verify.Core
@@ -51,6 +51,7 @@ import Vehicle.Verify.QueryFormat
 import Vehicle.Verify.Specification
 import Vehicle.Verify.Specification.Status
 import Vehicle.Verify.Verifier
+import Vehicle.Verify.Verifier.Core (QueryVariableAssignment (..))
 
 --------------------------------------------------------------------------------
 -- Specification
@@ -362,7 +363,7 @@ verifyQuery ::
   (MonadVerifyProperty m) =>
   QueryMetaData ->
   m (QueryResult UserVariableAssignment)
-verifyQuery (QueryMetaData queryAddress metaNetwork userVars) = do
+verifyQuery (QueryMetaData queryAddress metaNetwork queryVariableMapping userVars) = do
   logCompilerSection MidDetail ("Verifying query" <+> quotePretty queryAddress) $ do
     (verifierSettings@VerifierSettings {..}, folder, progressBar) <- ask
     let queryFile = folder </> calculateQueryFileName queryAddress
@@ -377,8 +378,8 @@ verifyQuery (QueryMetaData queryAddress metaNetwork userVars) = do
           return $ SAT Nothing
         SAT (Just witness) -> do
           logDebug MidDetail $ "Query is SAT (witness provided)" <> line
-          checkWitness metaNetwork witness
-          problemSpaceWitness <- reconstructUserVars userVars witness
+          checkWitness queryVariableMapping witness
+          problemSpaceWitness <- reconstructUserVars queryVariableMapping userVars witness
           return $ SAT $ Just problemSpaceWitness
         UnSAT -> do
           logDebug MidDetail $ "Query is UnSAT" <> line
@@ -394,15 +395,16 @@ invokeVerifier ::
   VerifierSettings ->
   MetaNetwork ->
   QueryFile ->
-  m (QueryResult NetworkVariableAssignment)
-invokeVerifier VerifierSettings {..} metaNetwork queryFile = do
+  m (QueryResult QueryVariableAssignment)
+invokeVerifier VerifierSettings {..} metaNetworkEntries queryFile = do
   -- Check query supported
-  when (supportsMultipleNetworkApplications verifier && length (networkEntries metaNetwork) > 1) $
+  let usesMultipleNetworks = length metaNetworkEntries > 1
+  when (usesMultipleNetworks && not (supportsMultipleNetworkApplications verifier)) $
     throwError $
-      UnsupportedMultipleNetworks metaNetwork
+      UnsupportedMultipleNetworks metaNetworkEntries
 
   -- Prepare the command
-  let args = prepareArgs verifier metaNetwork queryFile <> verifierExtraArgs
+  let args = prepareArgs verifier metaNetworkEntries queryFile <> verifierExtraArgs
   let command = unwords (verifierExecutable : args)
 
   -- Run the verification command
@@ -422,17 +424,16 @@ invokeVerifier VerifierSettings {..} metaNetwork queryFile = do
     _ -> return ()
 
   -- Parse the result
-  parseOutput verifier metaNetwork out
+  parseOutput verifier out
 
-checkWitness :: (MonadVerifyProperty m, MonadError VerificationError m) => MetaNetwork -> NetworkVariableAssignment -> m ()
-checkWitness MetaNetwork {..} (NetworkVariableAssignment witness) = do
-  let allVariables = Set.fromList variables
+checkWitness :: (MonadError VerificationError m) => QueryVariableMapping -> QueryVariableAssignment -> m ()
+checkWitness queryVariableMapping (QueryVariableAssignment witness) = do
+  let allVariables = Set.fromList $ fmap fst queryVariableMapping
   let providedVariables = Map.keysSet witness
   let missingVariables = Set.difference allVariables providedVariables
-  unless (Set.null missingVariables) $ do
-    (VerifierSettings {..}, _, _) <- ask
-    let queryFormat = queryFormats $ verifierQueryFormatID verifier
-    throwError $ VerifierIncompleteWitness (Set.map (layoutAsString . compileVar queryFormat) missingVariables)
+  unless (Set.null missingVariables) $
+    throwError $
+      VerifierIncompleteWitness missingVariables
 
 handleVerificationError ::
   (MonadVerifyProperty m) =>
@@ -453,7 +454,7 @@ handleVerificationError verifier verifierExecutable metaNetwork queryAddress que
 
   let finalMessage = "\n\nError: " <> verificationErrorMessage <> reproducerMessage
   writeStderrLn (layoutAsText finalMessage)
-  liftIO $ exitFailure
+  liftIO exitFailure
 
 createReproducer ::
   (MonadIO m) =>
@@ -465,7 +466,7 @@ createReproducer ::
 createReproducer verifier verifierExecutable metaNetwork queryFile = do
   -- Create the reproducer directory
   vehiclePath <- getVehiclePath
-  randomNumber <- liftIO $ (randomIO :: IO Int)
+  randomNumber <- liftIO (randomIO :: IO Int)
   let reproducerDir = vehiclePath </> "reproducers" </> show (abs randomNumber)
   liftIO $ createDirectoryIfMissing True reproducerDir
 
@@ -481,13 +482,11 @@ createReproducer verifier verifierExecutable metaNetwork queryFile = do
 
   -- Copy the network files over
   copiedMetaNetwork <- liftIO $ do
-    let MetaNetwork {..} = metaNetwork
-    newNetworkEntries <- forM networkEntries $ \MetaNetworkEntry {metaNetworkEntryInfo = NetworkContextInfo {..}, ..} -> do
+    forM metaNetwork $ \MetaNetworkEntry {metaNetworkEntryInfo = NetworkContextInfo {..}, ..} -> do
       newNetworkFilePath <- copyOverFile networkFilepath
       return $ MetaNetworkEntry {metaNetworkEntryInfo = NetworkContextInfo {networkFilepath = newNetworkFilePath, ..}, ..}
-    return $ MetaNetwork {networkEntries = newNetworkEntries, ..}
 
-  command <- return $ unwords (verifierExecutable : prepareArgs verifier copiedMetaNetwork copiedQueryFile)
+  let command = unwords (verifierExecutable : prepareArgs verifier copiedMetaNetwork copiedQueryFile)
 
   -- Return the explanatory text
   return $

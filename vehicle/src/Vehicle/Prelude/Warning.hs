@@ -11,6 +11,7 @@ import Data.Map (Map)
 import Data.Map qualified as Map (insertWith, singleton, toList, unionWith)
 import Data.Set (Set)
 import Data.Set qualified as Set (singleton)
+import Data.Tuple (swap)
 import Vehicle.Compile.Context.Bound.Core
 import Vehicle.Data.Assertion
 import Vehicle.Data.Builtin.Core
@@ -31,7 +32,7 @@ data CompileWarning
   | UnderSpecifiedProblemSpaceVar PropertyAddress UserRationalVariable
   | UnsoundStrictOrderConversion QueryFormatID QueryAddress
   | AllConstantNetworkInputVars QueryFormatID QueryAddress
-  | UnboundedNetworkInputVariables QueryFormatID QueryAddress MetaNetwork [(NetworkRationalVariable, UnderConstrainedVariableStatus)]
+  | UnboundedNetworkInputVariables QueryFormatID QueryAddress [(NetworkRationalVariable, UnderConstrainedVariableStatus)]
 
 data SummarisedCompileWarning
   = UnusedResourcesSummary ExternalResource (Set Name)
@@ -44,7 +45,7 @@ data SummarisedCompileWarning
 --------------------------------------------------------------------------------
 -- Combinable compile warnings
 
-type UnderConstrainedSignature = (MetaNetwork, [(NetworkRationalVariable, UnderConstrainedVariableStatus)])
+type UnderConstrainedSignature = [(NetworkRationalVariable, UnderConstrainedVariableStatus)]
 
 data CombiningState = CombiningState
   { uniqueWarnings :: [SummarisedCompileWarning],
@@ -85,9 +86,9 @@ addWarningToState CombiningState {..} = \case
       { allConstantNetworkInputVars = Map.insertWith (<>) (queryFormat, propertyAddress) [queryID] allConstantNetworkInputVars,
         ..
       }
-  UnboundedNetworkInputVariables queryFormat (propertyAddress, queryID) metaNetwork vars ->
+  UnboundedNetworkInputVariables queryFormat (propertyAddress, queryID) vars ->
     CombiningState
-      { unboundedNetworkInputs = Map.insertWith (Map.unionWith (<>)) (queryFormat, propertyAddress) (Map.singleton (metaNetwork, vars) [queryID]) unboundedNetworkInputs,
+      { unboundedNetworkInputs = Map.insertWith (Map.unionWith (<>)) (queryFormat, propertyAddress) (Map.singleton vars [queryID]) unboundedNetworkInputs,
         ..
       }
 
@@ -115,7 +116,7 @@ combineAllConstantNetworkInputVars ((queryFormatID, property), queries) = AllCon
 
 combineUnboundedNetworkInputVars :: ((QueryFormatID, PropertyAddress), Map UnderConstrainedSignature (NonEmpty QueryID)) -> SummarisedCompileWarning
 combineUnboundedNetworkInputVars ((queryFormatID, property), constraintsBySignature) = do
-  let result = (\((_metaNetwork, constraints), queries) -> (queries, constraints)) <$> Map.toList constraintsBySignature
+  let result = swap <$> Map.toList constraintsBySignature
   UnboundedNetworkInputVariablesSummary queryFormatID property result
 
 compareWarning :: SummarisedCompileWarning -> SummarisedCompileWarning -> Ordering

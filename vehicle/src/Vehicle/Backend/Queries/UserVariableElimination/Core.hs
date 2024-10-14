@@ -5,7 +5,6 @@ import Control.Monad.Reader (MonadReader (..))
 import Control.Monad.State (MonadState (..), gets)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Bifunctor (Bifunctor (..))
-import Data.Char.SScript (subscript)
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HashMap (insert, lookup)
 import Data.LinkedHashMap (LinkedHashMap)
@@ -17,7 +16,6 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Vector qualified as Vector
 import GHC.Generics
-import Prettyprinter (brackets)
 import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
@@ -55,9 +53,9 @@ data NetworkApplicationReplacement = NetworkApplicationReplacement
   { networkApp :: NetworkApplication,
     networkInfo :: NetworkContextInfo,
     inputVarExpr :: WHNFValue QueryBuiltin,
-    inputRationalVars :: [NetworkRationalVariable],
+    inputVariable :: OriginalNetworkVariable,
     outputVarExpr :: WHNFValue QueryBuiltin,
-    outputRationalVars :: [NetworkRationalVariable]
+    outputVariable :: OriginalNetworkVariable
   }
 
 --------------------------------------------------------------------------------
@@ -77,7 +75,7 @@ data PropertyMetaData = PropertyMetaData
 data GlobalCtx = GlobalCtx
   { globalBoundVarCtx :: !(LinkedHashMap Lv Variable),
     userVariableReductions :: !(HashMap OriginalUserVariable ([UserRationalVariable], WHNFValue QueryBuiltin)),
-    networkVariableReductions :: !(HashMap OriginalNetworkVariable ([NetworkRationalVariable], WHNFValue QueryBuiltin)),
+    networkVariableReductions :: !(HashMap OriginalNetworkVariable NetworkVariableInfo),
     networkApplications :: !(LinkedHashMap NetworkApplication NetworkApplicationReplacement)
   }
 
@@ -133,27 +131,33 @@ addNetworkApplicationToGlobalCtx app@(networkName, _) networkInfo GlobalCtx {..}
   let inputLv = Lv $ length globalBoundVarCtx
   let inputVar =
         OriginalNetworkVariable
-          { networkVarName = createNetworkVarName networkName applicationNumber Input,
-            application = applicationNumber,
-            networkTensorVarDimensions = dimensions (inputTensor (networkType networkInfo)),
-            inputOrOutput = Input,
-            startingIndex = sum (fmap (length . inputRationalVars . snd) metaNetworkSoFar)
+          { networkVarName = layoutAsText $ createNetworkVarName networkName applicationNumber Input,
+            networkTensorVarDimensions = dimensions (inputTensor (networkType networkInfo))
           }
   let (reducedInputVars, reducedInputVarsExpr) = reduceVariable networkTensorVarDimensions (inputLv + 1) inputVar
   let inputVarExpr = VBoundVar inputLv []
+  let inputVarInfo =
+        NetworkVariableInfo
+          { inputOrOutput = Input,
+            elementVariables = fmap snd reducedInputVars,
+            reducedNetworkVarExpr = reducedInputVarsExpr
+          }
 
   -- Create a tensor of variables for the output of the network.
   let outputLv = inputLv + 1 + Lv (length reducedInputVars)
   let outputVar =
         OriginalNetworkVariable
-          { networkVarName = createNetworkVarName networkName applicationNumber Output,
-            application = applicationNumber,
-            networkTensorVarDimensions = dimensions (outputTensor (networkType networkInfo)),
-            inputOrOutput = Output,
-            startingIndex = sum (fmap (length . outputRationalVars . snd) metaNetworkSoFar)
+          { networkVarName = layoutAsText $ createNetworkVarName networkName applicationNumber Output,
+            networkTensorVarDimensions = dimensions (outputTensor (networkType networkInfo))
           }
   let (reducedOutputVars, reducedOutputVarsExpr) = reduceVariable networkTensorVarDimensions (outputLv + 1) outputVar
   let outputVarExpr = VBoundVar outputLv []
+  let outputVarInfo =
+        NetworkVariableInfo
+          { inputOrOutput = Output,
+            elementVariables = fmap snd reducedOutputVars,
+            reducedNetworkVarExpr = reducedOutputVarsExpr
+          }
 
   -- Create the context extension of the bound context.
   let newGlobalBoundVarCtx =
@@ -169,16 +173,16 @@ addNetworkApplicationToGlobalCtx app@(networkName, _) networkInfo GlobalCtx {..}
           { networkApp = app,
             networkInfo = networkInfo,
             inputVarExpr = inputVarExpr,
-            inputRationalVars = fmap snd reducedInputVars,
+            inputVariable = inputVar,
             outputVarExpr = outputVarExpr,
-            outputRationalVars = fmap snd reducedOutputVars
+            outputVariable = outputVar
           }
 
   let newNetworkVariableReductions =
-        HashMap.insert inputVar (fmap snd reducedInputVars, reducedInputVarsExpr) $
+        HashMap.insert inputVar inputVarInfo $
           HashMap.insert
             outputVar
-            (fmap snd reducedOutputVars, reducedOutputVarsExpr)
+            outputVarInfo
             networkVariableReductions
 
   let newGlobalCtx =
@@ -190,13 +194,6 @@ addNetworkApplicationToGlobalCtx app@(networkName, _) networkInfo GlobalCtx {..}
           }
 
   (appInfo, newGlobalCtx)
-
-createNetworkVarName :: Name -> Int -> InputOrOutput -> Name
-createNetworkVarName networkName application inputOrOutput =
-  layoutAsText $
-    pretty networkName
-      <> pretty (fmap subscript (show application))
-      <> brackets (pretty inputOrOutput)
 
 --------------------------------------------------------------------------------
 -- Partitions
@@ -300,7 +297,7 @@ getReducedVariableExprFor lv = do
   var <- lookupVarByLevel lv
   case var of
     TensorVar (UserTensorVar v) -> return (snd <$> HashMap.lookup v userVariableReductions)
-    TensorVar (NetworkTensorVar v) -> return (snd <$> HashMap.lookup v networkVariableReductions)
+    TensorVar (NetworkTensorVar v) -> return (reducedNetworkVarExpr <$> HashMap.lookup v networkVariableReductions)
     _ -> return Nothing
 
 getTensorVariable :: (MonadState GlobalCtx m) => Lv -> m TensorVariable
@@ -332,27 +329,29 @@ getReducedUserVariablesFor var = do
       compilerDeveloperError $
         "User variable" <+> pretty var <+> "has no reductions"
 
-getReducedNetworkVariablesFor :: (MonadCompile m) => GlobalCtx -> OriginalNetworkVariable -> m [NetworkRationalVariable]
-getReducedNetworkVariablesFor GlobalCtx {..} var = do
+getReducedNetworkVariableInfo :: GlobalCtx -> OriginalNetworkVariable -> NetworkVariableInfo
+getReducedNetworkVariableInfo GlobalCtx {..} var = do
   case HashMap.lookup var networkVariableReductions of
-    Just (vars, _) -> return vars
+    Just info -> info
     Nothing ->
-      compilerDeveloperError $
+      developerError $
         "Network variable" <+> pretty var <+> "has no reductions"
+
+getReducedNetworkVariablesFor :: GlobalCtx -> OriginalNetworkVariable -> [NetworkRationalVariable]
+getReducedNetworkVariablesFor globalCtx var =
+  elementVariables (getReducedNetworkVariableInfo globalCtx var)
 
 getReducedVariablesFor :: (MonadState GlobalCtx m) => TensorVariable -> m [RationalVariable]
 getReducedVariablesFor var = do
-  GlobalCtx {..} <- get
+  globalCtx@GlobalCtx {..} <- get
   case var of
-    NetworkTensorVar v -> case HashMap.lookup v networkVariableReductions of
-      Just (vars, _) -> return $ fmap NetworkRationalVar vars
-      Nothing -> developerError $ "Network variable" <+> pretty var <+> "has no reductions"
+    NetworkTensorVar v -> return (NetworkRationalVar <$> getReducedNetworkVariablesFor globalCtx v)
     UserTensorVar v -> case HashMap.lookup v userVariableReductions of
       Just (vars, _) -> return $ fmap UserRationalVar vars
       Nothing -> developerError $ "User variable" <+> pretty var <+> "has no reductions"
 
 reduceTensorExpr ::
-  (MonadQueryStructure m) =>
+  (MonadState GlobalCtx m) =>
   LinearExpr TensorVariable RationalTensor ->
   m [LinearExpr RationalVariable Rational]
 reduceTensorExpr (Sparse coeff constant) = do

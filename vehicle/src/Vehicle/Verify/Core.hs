@@ -1,21 +1,22 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
+{-# HLINT ignore "Use newtype instead of data" #-}
 module Vehicle.Verify.Core where
 
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON)
-import Data.List.NonEmpty (NonEmpty)
-import Data.List.NonEmpty qualified as NonEmpty
-import Data.Set (Set)
-import Data.Set qualified as Set
+import Data.Char.SScript (subscript)
+import Data.Map (Map)
 import Data.Text (Text, unpack)
 import GHC.Generics (Generic)
+import Prettyprinter (brackets)
 import System.FilePath ((<.>))
-import Vehicle.Compile.Context.Bound.Core (GenericBoundCtx)
 import Vehicle.Compile.Resource
 import Vehicle.Data.Builtin.Core
-import Vehicle.Data.Code.BooleanExpr
-import Vehicle.Data.QuantifiedVariable
+import Vehicle.Data.QuantifiedVariable (NetworkRationalVariable)
 import Vehicle.Data.Tensor (TensorIndices, showTensorIndices)
 import Vehicle.Prelude
+import Vehicle.Verify.QueryFormat.Core
 
 --------------------------------------------------------------------------------
 -- Meta-network
@@ -51,20 +52,16 @@ instance Pretty MetaNetworkEntry where
       <> softline
       <> pretty (networkType metaNetworkEntryInfo)
 
--- <> softline <> parens (pretty metaNetworkEntryFilePath)
+-- | A mapping from query variables (i.e. those used by the verifier)
+-- and the internal variable representation (i.e. those used by Vehicle)
+type QueryVariableMapping = [(QueryVariable, NetworkRationalVariable)]
 
 -- | A list of neural networks used in a given query.
-data MetaNetwork = MetaNetwork
-  { networkEntries :: [MetaNetworkEntry],
-    variables :: [NetworkRationalVariable]
-  }
-  deriving (Eq, Ord, Show, Generic)
+type MetaNetwork = [MetaNetworkEntry]
 
-instance NFData MetaNetwork
-
-instance ToJSON MetaNetwork
-
-instance FromJSON MetaNetwork
+-- | A (satisfying) assignment to a set of reduced network-level variables.
+newtype NetworkVariableAssignment
+  = NetworkVariableAssignment (Map NetworkRationalVariable Rational)
 
 --------------------------------------------------------------------------------
 -- Queries misc
@@ -167,21 +164,20 @@ flipQueryRel = \case
   EqualRel -> EqualRel
   OrderRel op -> OrderRel (flipOrder op)
 
--- A single assertion for a query.
-data QueryAssertion = QueryAssertion
-  { lhs :: !(NonEmpty (Coefficient, NetworkRationalVariable)),
-    rel :: !QueryRelation,
-    rhs :: !Rational
-  }
+createNetworkVarName :: Name -> Int -> InputOrOutput -> Doc a
+createNetworkVarName networkName application inputOrOutput =
+  pretty networkName
+    <> pretty (fmap subscript (show application))
+    <> brackets (pretty inputOrOutput)
 
-instance Pretty QueryAssertion where
-  pretty (QueryAssertion lhs rel rhs) = pretty lhs <> pretty rel <> pretty rhs
+--------------------------------------------------------------------------------
+-- Network assignments
 
-queryAssertionVariables :: QueryAssertion -> Set NetworkRationalVariable
-queryAssertionVariables = Set.fromList . fmap snd . NonEmpty.toList . lhs
-
--- | The contents of a single query for a verifier.
-data QueryContents = QueryContents
-  { queryVariables :: GenericBoundCtx NetworkRationalVariable,
-    queryAssertions :: ConjunctAll QueryAssertion
-  }
+{-
+instance Pretty NetworkVariableAssignment where
+  pretty (NetworkVariableAssignment assignment) = do
+    vsep (prettyVariable <$> Map.toList assignment)
+    where
+      prettyVariable :: (NetworkVerifierVariable, Rational) -> Doc a
+      prettyVariable (var, value) = "x" <> pretty var <> ":" <+> pretty value
+-}

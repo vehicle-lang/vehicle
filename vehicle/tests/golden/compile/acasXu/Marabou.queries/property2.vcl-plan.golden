@@ -14,13 +14,10 @@
                     {
                       "tag": "NetworkTensorVar",
                       "contents": {
-                        "startingIndex": 0,
                         "networkVarName": "acasXu₀[input]",
                         "networkTensorVarDimensions": [
                           5
-                        ],
-                        "inputOrOutput": "Input",
-                        "application": 0
+                        ]
                       }
                     },
                     [
@@ -28,50 +25,13 @@
                         "tag": "NetworkRationalVar",
                         "contents": {
                           "tensorIndices": [
-                            4
+                            0
                           ],
                           "originalVar": {
-                            "startingIndex": 0,
                             "networkVarName": "acasXu₀[input]",
                             "networkTensorVarDimensions": [
                               5
-                            ],
-                            "inputOrOutput": "Input",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            3
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkVarName": "acasXu₀[input]",
-                            "networkTensorVarDimensions": [
-                              5
-                            ],
-                            "inputOrOutput": "Input",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            2
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkVarName": "acasXu₀[input]",
-                            "networkTensorVarDimensions": [
-                              5
-                            ],
-                            "inputOrOutput": "Input",
-                            "application": 0
+                            ]
                           }
                         }
                       },
@@ -82,13 +42,10 @@
                             1
                           ],
                           "originalVar": {
-                            "startingIndex": 0,
                             "networkVarName": "acasXu₀[input]",
                             "networkTensorVarDimensions": [
                               5
-                            ],
-                            "inputOrOutput": "Input",
-                            "application": 0
+                            ]
                           }
                         }
                       },
@@ -96,16 +53,41 @@
                         "tag": "NetworkRationalVar",
                         "contents": {
                           "tensorIndices": [
-                            0
+                            2
                           ],
                           "originalVar": {
-                            "startingIndex": 0,
                             "networkVarName": "acasXu₀[input]",
                             "networkTensorVarDimensions": [
                               5
-                            ],
-                            "inputOrOutput": "Input",
-                            "application": 0
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            3
+                          ],
+                          "originalVar": {
+                            "networkVarName": "acasXu₀[input]",
+                            "networkTensorVarDimensions": [
+                              5
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            4
+                          ],
+                          "originalVar": {
+                            "networkVarName": "acasXu₀[input]",
+                            "networkTensorVarDimensions": [
+                              5
+                            ]
                           }
                         }
                       }
@@ -118,13 +100,10 @@
                     {
                       "tag": "NetworkTensorVar",
                       "contents": {
-                        "startingIndex": 0,
                         "networkVarName": "acasXu₀[output]",
                         "networkTensorVarDimensions": [
                           5
-                        ],
-                        "inputOrOutput": "Output",
-                        "application": 0
+                        ]
                       }
                     },
                     [
@@ -132,50 +111,13 @@
                         "tag": "NetworkRationalVar",
                         "contents": {
                           "tensorIndices": [
-                            4
+                            0
                           ],
                           "originalVar": {
-                            "startingIndex": 0,
                             "networkVarName": "acasXu₀[output]",
                             "networkTensorVarDimensions": [
                               5
-                            ],
-                            "inputOrOutput": "Output",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            3
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkVarName": "acasXu₀[output]",
-                            "networkTensorVarDimensions": [
-                              5
-                            ],
-                            "inputOrOutput": "Output",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            2
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkVarName": "acasXu₀[output]",
-                            "networkTensorVarDimensions": [
-                              5
-                            ],
-                            "inputOrOutput": "Output",
-                            "application": 0
+                            ]
                           }
                         }
                       },
@@ -186,13 +128,10 @@
                             1
                           ],
                           "originalVar": {
-                            "startingIndex": 0,
                             "networkVarName": "acasXu₀[output]",
                             "networkTensorVarDimensions": [
                               5
-                            ],
-                            "inputOrOutput": "Output",
-                            "application": 0
+                            ]
                           }
                         }
                       },
@@ -200,16 +139,41 @@
                         "tag": "NetworkRationalVar",
                         "contents": {
                           "tensorIndices": [
-                            0
+                            2
                           ],
                           "originalVar": {
-                            "startingIndex": 0,
                             "networkVarName": "acasXu₀[output]",
                             "networkTensorVarDimensions": [
                               5
-                            ],
-                            "inputOrOutput": "Output",
-                            "application": 0
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            3
+                          ],
+                          "originalVar": {
+                            "networkVarName": "acasXu₀[output]",
+                            "networkTensorVarDimensions": [
+                              5
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        "tag": "NetworkRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            4
+                          ],
+                          "originalVar": {
+                            "networkVarName": "acasXu₀[output]",
+                            "networkTensorVarDimensions": [
+                              5
+                            ]
                           }
                         }
                       }
@@ -221,7 +185,7 @@
                   "contents": [
                     {
                       "tensorIndices": [
-                        0
+                        4
                       ],
                       "originalVar": {
                         "userTensorVarName": "x",
@@ -232,8 +196,8 @@
                     },
                     {
                       "constantValue": {
-                        "numerator": 19791091,
-                        "denominator": 1000
+                        "numerator": 600,
+                        "denominator": 1
                       },
                       "coefficients": [
                         [
@@ -241,116 +205,19 @@
                             "tag": "NetworkRationalVar",
                             "contents": {
                               "tensorIndices": [
-                                0
+                                4
                               ],
                               "originalVar": {
-                                "startingIndex": 0,
                                 "networkVarName": "acasXu₀[input]",
                                 "networkTensorVarDimensions": [
                                   5
-                                ],
-                                "inputOrOutput": "Input",
-                                "application": 0
+                                ]
                               }
                             }
                           },
                           {
-                            "numerator": 60261,
+                            "numerator": 1200,
                             "denominator": 1
-                          }
-                        ]
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "tag": "SolveRationalEquality",
-                  "contents": [
-                    {
-                      "tensorIndices": [
-                        1
-                      ],
-                      "originalVar": {
-                        "userTensorVarName": "x",
-                        "userTensorVarDimensions": [
-                          5
-                        ]
-                      }
-                    },
-                    {
-                      "constantValue": {
-                        "numerator": 0,
-                        "denominator": 1
-                      },
-                      "coefficients": [
-                        [
-                          {
-                            "tag": "NetworkRationalVar",
-                            "contents": {
-                              "tensorIndices": [
-                                1
-                              ],
-                              "originalVar": {
-                                "startingIndex": 0,
-                                "networkVarName": "acasXu₀[input]",
-                                "networkTensorVarDimensions": [
-                                  5
-                                ],
-                                "inputOrOutput": "Input",
-                                "application": 0
-                              }
-                            }
-                          },
-                          {
-                            "numerator": 392699,
-                            "denominator": 62500
-                          }
-                        ]
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "tag": "SolveRationalEquality",
-                  "contents": [
-                    {
-                      "tensorIndices": [
-                        2
-                      ],
-                      "originalVar": {
-                        "userTensorVarName": "x",
-                        "userTensorVarDimensions": [
-                          5
-                        ]
-                      }
-                    },
-                    {
-                      "constantValue": {
-                        "numerator": 0,
-                        "denominator": 1
-                      },
-                      "coefficients": [
-                        [
-                          {
-                            "tag": "NetworkRationalVar",
-                            "contents": {
-                              "tensorIndices": [
-                                2
-                              ],
-                              "originalVar": {
-                                "startingIndex": 0,
-                                "networkVarName": "acasXu₀[input]",
-                                "networkTensorVarDimensions": [
-                                  5
-                                ],
-                                "inputOrOutput": "Input",
-                                "application": 0
-                              }
-                            }
-                          },
-                          {
-                            "numerator": 392699,
-                            "denominator": 62500
                           }
                         ]
                       ]
@@ -385,13 +252,10 @@
                                 3
                               ],
                               "originalVar": {
-                                "startingIndex": 0,
                                 "networkVarName": "acasXu₀[input]",
                                 "networkTensorVarDimensions": [
                                   5
-                                ],
-                                "inputOrOutput": "Input",
-                                "application": 0
+                                ]
                               }
                             }
                           },
@@ -409,7 +273,7 @@
                   "contents": [
                     {
                       "tensorIndices": [
-                        4
+                        2
                       ],
                       "originalVar": {
                         "userTensorVarName": "x",
@@ -420,7 +284,7 @@
                     },
                     {
                       "constantValue": {
-                        "numerator": 600,
+                        "numerator": 0,
                         "denominator": 1
                       },
                       "coefficients": [
@@ -429,21 +293,106 @@
                             "tag": "NetworkRationalVar",
                             "contents": {
                               "tensorIndices": [
-                                4
+                                2
                               ],
                               "originalVar": {
-                                "startingIndex": 0,
                                 "networkVarName": "acasXu₀[input]",
                                 "networkTensorVarDimensions": [
                                   5
-                                ],
-                                "inputOrOutput": "Input",
-                                "application": 0
+                                ]
                               }
                             }
                           },
                           {
-                            "numerator": 1200,
+                            "numerator": 392699,
+                            "denominator": 62500
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "tag": "SolveRationalEquality",
+                  "contents": [
+                    {
+                      "tensorIndices": [
+                        1
+                      ],
+                      "originalVar": {
+                        "userTensorVarName": "x",
+                        "userTensorVarDimensions": [
+                          5
+                        ]
+                      }
+                    },
+                    {
+                      "constantValue": {
+                        "numerator": 0,
+                        "denominator": 1
+                      },
+                      "coefficients": [
+                        [
+                          {
+                            "tag": "NetworkRationalVar",
+                            "contents": {
+                              "tensorIndices": [
+                                1
+                              ],
+                              "originalVar": {
+                                "networkVarName": "acasXu₀[input]",
+                                "networkTensorVarDimensions": [
+                                  5
+                                ]
+                              }
+                            }
+                          },
+                          {
+                            "numerator": 392699,
+                            "denominator": 62500
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "tag": "SolveRationalEquality",
+                  "contents": [
+                    {
+                      "tensorIndices": [
+                        0
+                      ],
+                      "originalVar": {
+                        "userTensorVarName": "x",
+                        "userTensorVarDimensions": [
+                          5
+                        ]
+                      }
+                    },
+                    {
+                      "constantValue": {
+                        "numerator": 19791091,
+                        "denominator": 1000
+                      },
+                      "coefficients": [
+                        [
+                          {
+                            "tag": "NetworkRationalVar",
+                            "contents": {
+                              "tensorIndices": [
+                                0
+                              ],
+                              "originalVar": {
+                                "networkVarName": "acasXu₀[input]",
+                                "networkTensorVarDimensions": [
+                                  5
+                                ]
+                              }
+                            }
+                          },
+                          {
+                            "numerator": 60261,
                             "denominator": 1
                           }
                         ]
@@ -468,35 +417,7 @@
                         "tag": "UserRationalVar",
                         "contents": {
                           "tensorIndices": [
-                            4
-                          ],
-                          "originalVar": {
-                            "userTensorVarName": "x",
-                            "userTensorVarDimensions": [
-                              5
-                            ]
-                          }
-                        }
-                      },
-                      {
-                        "tag": "UserRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            3
-                          ],
-                          "originalVar": {
-                            "userTensorVarName": "x",
-                            "userTensorVarDimensions": [
-                              5
-                            ]
-                          }
-                        }
-                      },
-                      {
-                        "tag": "UserRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            2
+                            0
                           ],
                           "originalVar": {
                             "userTensorVarName": "x",
@@ -524,7 +445,35 @@
                         "tag": "UserRationalVar",
                         "contents": {
                           "tensorIndices": [
-                            0
+                            2
+                          ],
+                          "originalVar": {
+                            "userTensorVarName": "x",
+                            "userTensorVarDimensions": [
+                              5
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        "tag": "UserRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            3
+                          ],
+                          "originalVar": {
+                            "userTensorVarName": "x",
+                            "userTensorVarDimensions": [
+                              5
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        "tag": "UserRationalVar",
+                        "contents": {
+                          "tensorIndices": [
+                            4
                           ],
                           "originalVar": {
                             "userTensorVarName": "x",
@@ -538,6 +487,148 @@
                   ]
                 }
               ],
+              "queryVariableMapping": [
+                [
+                  "x0",
+                  {
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "networkVarName": "acasXu₀[input]",
+                      "networkTensorVarDimensions": [
+                        5
+                      ]
+                    }
+                  }
+                ],
+                [
+                  "x1",
+                  {
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "networkVarName": "acasXu₀[input]",
+                      "networkTensorVarDimensions": [
+                        5
+                      ]
+                    }
+                  }
+                ],
+                [
+                  "x2",
+                  {
+                    "tensorIndices": [
+                      2
+                    ],
+                    "originalVar": {
+                      "networkVarName": "acasXu₀[input]",
+                      "networkTensorVarDimensions": [
+                        5
+                      ]
+                    }
+                  }
+                ],
+                [
+                  "x3",
+                  {
+                    "tensorIndices": [
+                      3
+                    ],
+                    "originalVar": {
+                      "networkVarName": "acasXu₀[input]",
+                      "networkTensorVarDimensions": [
+                        5
+                      ]
+                    }
+                  }
+                ],
+                [
+                  "x4",
+                  {
+                    "tensorIndices": [
+                      4
+                    ],
+                    "originalVar": {
+                      "networkVarName": "acasXu₀[input]",
+                      "networkTensorVarDimensions": [
+                        5
+                      ]
+                    }
+                  }
+                ],
+                [
+                  "y0",
+                  {
+                    "tensorIndices": [
+                      0
+                    ],
+                    "originalVar": {
+                      "networkVarName": "acasXu₀[output]",
+                      "networkTensorVarDimensions": [
+                        5
+                      ]
+                    }
+                  }
+                ],
+                [
+                  "y1",
+                  {
+                    "tensorIndices": [
+                      1
+                    ],
+                    "originalVar": {
+                      "networkVarName": "acasXu₀[output]",
+                      "networkTensorVarDimensions": [
+                        5
+                      ]
+                    }
+                  }
+                ],
+                [
+                  "y2",
+                  {
+                    "tensorIndices": [
+                      2
+                    ],
+                    "originalVar": {
+                      "networkVarName": "acasXu₀[output]",
+                      "networkTensorVarDimensions": [
+                        5
+                      ]
+                    }
+                  }
+                ],
+                [
+                  "y3",
+                  {
+                    "tensorIndices": [
+                      3
+                    ],
+                    "originalVar": {
+                      "networkVarName": "acasXu₀[output]",
+                      "networkTensorVarDimensions": [
+                        5
+                      ]
+                    }
+                  }
+                ],
+                [
+                  "y4",
+                  {
+                    "tensorIndices": [
+                      4
+                    ],
+                    "originalVar": {
+                      "networkVarName": "acasXu₀[output]",
+                      "networkTensorVarDimensions": [
+                        5
+                      ]
+                    }
+                  }
+                ]
+              ],
               "queryAddress": [
                 {
                   "propertyName": "property2",
@@ -546,172 +637,28 @@
                 },
                 1
               ],
-              "metaNetwork": {
-                "variables": [
-                  {
-                    "tensorIndices": [
-                      4
-                    ],
-                    "originalVar": {
-                      "startingIndex": 0,
-                      "networkVarName": "acasXu₀[input]",
-                      "networkTensorVarDimensions": [
-                        5
-                      ],
-                      "inputOrOutput": "Input",
-                      "application": 0
-                    }
-                  },
-                  {
-                    "tensorIndices": [
-                      3
-                    ],
-                    "originalVar": {
-                      "startingIndex": 0,
-                      "networkVarName": "acasXu₀[input]",
-                      "networkTensorVarDimensions": [
-                        5
-                      ],
-                      "inputOrOutput": "Input",
-                      "application": 0
-                    }
-                  },
-                  {
-                    "tensorIndices": [
-                      2
-                    ],
-                    "originalVar": {
-                      "startingIndex": 0,
-                      "networkVarName": "acasXu₀[input]",
-                      "networkTensorVarDimensions": [
-                        5
-                      ],
-                      "inputOrOutput": "Input",
-                      "application": 0
-                    }
-                  },
-                  {
-                    "tensorIndices": [
-                      1
-                    ],
-                    "originalVar": {
-                      "startingIndex": 0,
-                      "networkVarName": "acasXu₀[input]",
-                      "networkTensorVarDimensions": [
-                        5
-                      ],
-                      "inputOrOutput": "Input",
-                      "application": 0
-                    }
-                  },
-                  {
-                    "tensorIndices": [
-                      0
-                    ],
-                    "originalVar": {
-                      "startingIndex": 0,
-                      "networkVarName": "acasXu₀[input]",
-                      "networkTensorVarDimensions": [
-                        5
-                      ],
-                      "inputOrOutput": "Input",
-                      "application": 0
-                    }
-                  },
-                  {
-                    "tensorIndices": [
-                      4
-                    ],
-                    "originalVar": {
-                      "startingIndex": 0,
-                      "networkVarName": "acasXu₀[output]",
-                      "networkTensorVarDimensions": [
-                        5
-                      ],
-                      "inputOrOutput": "Output",
-                      "application": 0
-                    }
-                  },
-                  {
-                    "tensorIndices": [
-                      3
-                    ],
-                    "originalVar": {
-                      "startingIndex": 0,
-                      "networkVarName": "acasXu₀[output]",
-                      "networkTensorVarDimensions": [
-                        5
-                      ],
-                      "inputOrOutput": "Output",
-                      "application": 0
-                    }
-                  },
-                  {
-                    "tensorIndices": [
-                      2
-                    ],
-                    "originalVar": {
-                      "startingIndex": 0,
-                      "networkVarName": "acasXu₀[output]",
-                      "networkTensorVarDimensions": [
-                        5
-                      ],
-                      "inputOrOutput": "Output",
-                      "application": 0
-                    }
-                  },
-                  {
-                    "tensorIndices": [
-                      1
-                    ],
-                    "originalVar": {
-                      "startingIndex": 0,
-                      "networkVarName": "acasXu₀[output]",
-                      "networkTensorVarDimensions": [
-                        5
-                      ],
-                      "inputOrOutput": "Output",
-                      "application": 0
-                    }
-                  },
-                  {
-                    "tensorIndices": [
-                      0
-                    ],
-                    "originalVar": {
-                      "startingIndex": 0,
-                      "networkVarName": "acasXu₀[output]",
-                      "networkTensorVarDimensions": [
-                        5
-                      ],
-                      "inputOrOutput": "Output",
-                      "application": 0
-                    }
-                  }
-                ],
-                "networkEntries": [
-                  {
-                    "metaNetworkEntryName": "acasXu",
-                    "metaNetworkEntryInfo": {
-                      "networkType": {
-                        "outputTensor": {
-                          "dimensions": [
-                            5
-                          ],
-                          "baseType": []
-                        },
-                        "inputTensor": {
-                          "dimensions": [
-                            5
-                          ],
-                          "baseType": []
-                        }
+              "metaNetwork": [
+                {
+                  "metaNetworkEntryName": "acasXu",
+                  "metaNetworkEntryInfo": {
+                    "networkType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
                       },
-                      "networkFilepath": "fake.onnx"
-                    }
+                      "inputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "networkFilepath": "fake.onnx"
                   }
-                ]
-              }
+                }
+              ]
             }
           ]
         },

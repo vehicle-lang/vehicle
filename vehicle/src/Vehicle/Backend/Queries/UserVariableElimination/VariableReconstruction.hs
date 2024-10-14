@@ -5,7 +5,7 @@ import Data.Foldable (foldlM)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Map.Strict qualified as HashMap
-import Data.Maybe (mapMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Vector qualified as Vector
 import Vehicle.Backend.Queries.UserVariableElimination.Core
 import Vehicle.Compile.FourierMotzkinElimination
@@ -13,19 +13,23 @@ import Vehicle.Compile.Prelude
 import Vehicle.Data.Code.LinearExpr (evaluateExpr)
 import Vehicle.Data.QuantifiedVariable
 import Vehicle.Data.Tensor (RationalTensor, Tensor (..))
+import Vehicle.Verify.Core
+import Vehicle.Verify.QueryFormat.Core
+import Vehicle.Verify.Verifier.Core
 
 --------------------------------------------------------------------------------
 -- Variable reconstruction
 
 reconstructUserVars ::
   (MonadLogger m) =>
+  QueryVariableMapping ->
   UserVariableReconstruction ->
-  NetworkVariableAssignment ->
+  QueryVariableAssignment ->
   m UserVariableAssignment
-reconstructUserVars steps networkVariableAssignment =
+reconstructUserVars queryVariableMapping steps networkVariableAssignment =
   logCompilerPass MidDetail "calculation of problem space witness" $ do
     logDebug MidDetail $ pretty steps
-    let assignment = createInitialAssignment networkVariableAssignment
+    let assignment = createInitialAssignment queryVariableMapping networkVariableAssignment
     alteredAssignment <- foldlM applyReconstructionStep assignment steps
     let finalAssignment = createFinalAssignment alteredAssignment
     logDebug MidDetail $ "User variables:" <+> pretty finalAssignment
@@ -51,11 +55,7 @@ lookupRationalVariable ::
   MixedVariableAssignment ->
   RationalVariable ->
   Maybe Rational
-lookupRationalVariable VariableAssignment {..} var = do
-  let maybeValue = Map.lookup var rationalVariables
-  case maybeValue of
-    Nothing -> Nothing
-    Just value -> Just value
+lookupRationalVariable VariableAssignment {..} var = Map.lookup var rationalVariables
 
 -- | Lookups the values in the variable assignment and removes them from the
 -- assignment. Returns either the first missing variable or the list of values
@@ -71,11 +71,15 @@ lookupRationalVariables assignment = foldM op []
       Just value -> Right (value : values)
 
 createInitialAssignment ::
-  NetworkVariableAssignment ->
+  [(QueryVariable, NetworkRationalVariable)] ->
+  QueryVariableAssignment ->
   MixedVariableAssignment
-createInitialAssignment (NetworkVariableAssignment values) = do
+createInitialAssignment queryVariableMapping (QueryVariableAssignment valuesByQueryVar) = do
+  let queryVariableMap = Map.fromList queryVariableMapping
+  let mapQueryVariable var = fromMaybe (developerError ("Missing query variable" <+> pretty var)) (Map.lookup var queryVariableMap)
+  let valuesByNetworkVar = Map.mapKeys mapQueryVariable valuesByQueryVar
   VariableAssignment
-    { rationalVariables = HashMap.mapKeys NetworkRationalVar values,
+    { rationalVariables = HashMap.mapKeys NetworkRationalVar valuesByNetworkVar,
       tensorVariables = mempty
     }
 

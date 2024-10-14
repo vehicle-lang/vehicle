@@ -3,8 +3,6 @@ module Vehicle.Data.QuantifiedVariable where
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, FromJSONKey, ToJSON, ToJSONKey)
 import Data.Hashable (Hashable)
-import Data.Map (Map)
-import Data.Map qualified as Map
 import GHC.Generics (Generic)
 import Numeric (showFFloat)
 import Vehicle.Data.Builtin.Core
@@ -42,13 +40,7 @@ data OriginalNetworkVariable = OriginalNetworkVariable
   { -- | The name of the network this variable belongs to.
     networkVarName :: Name,
     -- | The dimensions of the variable
-    networkTensorVarDimensions :: TensorShape,
-    -- | Whether its an input or an output variable
-    inputOrOutput :: InputOrOutput,
-    -- | The position in the list of applications of `networkName`
-    application :: Int,
-    -- | Index starting
-    startingIndex :: Int
+    networkTensorVarDimensions :: TensorShape
   }
   deriving (Show, Eq, Ord, Generic)
 
@@ -63,21 +55,14 @@ instance Hashable OriginalNetworkVariable
 instance Pretty OriginalNetworkVariable where
   pretty OriginalNetworkVariable {..} = pretty networkVarName
 
-{-
-
 data NetworkVariableInfo = NetworkVariableInfo
   { -- | Whether its an input or an output variable
     inputOrOutput :: InputOrOutput,
-    -- | The position in the list of applications of `networkName`
-    application :: Int,
-    -- | Index starting
-    startingIndex :: Int,
     -- | Variables for each of it's elements
     elementVariables :: [NetworkRationalVariable],
     -- | The tensor literal expression containing the element variables above.
-    reducedOutputVarExpr :: WHNFValue Builtin
+    reducedNetworkVarExpr :: WHNFValue Builtin
   }
--}
 
 --------------------------------------------------------------------------------
 -- Reduced variables
@@ -112,9 +97,7 @@ reduceVariable ::
   ([(Lv, ReducedVariable variable)], WHNFValue Builtin)
 reduceVariable varDims dbLevel var
   | null (varDims var) = createRatVar [] dbLevel
-  | otherwise = do
-      let (vars, expr) = runSupply (go (varDims var) []) [dbLevel ..]
-      (reverse vars, expr)
+  | otherwise = runSupply (go (varDims var) []) [dbLevel ..]
   where
     createRatVar :: TensorIndices -> Lv -> ([(Lv, ReducedVariable variable)], WHNFValue Builtin)
     createRatVar indices lv = ([(lv, ReducedVariable var indices)], VBoundVar lv [])
@@ -141,11 +124,6 @@ reduceVariable varDims dbLevel var
 type UserRationalVariable = ReducedVariable OriginalUserVariable
 
 type NetworkRationalVariable = ReducedVariable OriginalNetworkVariable
-
-computeAbsoluteIndex :: NetworkRationalVariable -> Int
-computeAbsoluteIndex ReducedVariable {..} = do
-  let offset = startingIndex originalVar
-  offset + computeFlatIndex (networkTensorVarDimensions originalVar) tensorIndices
 
 --------------------------------------------------------------------------------
 -- All variables
@@ -229,20 +207,6 @@ prettyRationalAsFloat :: Rational -> Doc a
 prettyRationalAsFloat p = do
   let f = realToFrac p :: Double
   pretty $ showFFloat Nothing f ""
-
---------------------------------------------------------------------------------
--- Network assignments
-
--- | A (satisfying) assignment to a set of reduced network-level variables.
-newtype NetworkVariableAssignment
-  = NetworkVariableAssignment (Map NetworkRationalVariable Rational)
-
-instance Pretty NetworkVariableAssignment where
-  pretty (NetworkVariableAssignment assignment) = do
-    vsep (prettyVariable <$> Map.toList assignment)
-    where
-      prettyVariable :: (NetworkRationalVariable, Rational) -> Doc a
-      prettyVariable (var, value) = "x" <> pretty var <> ":" <+> pretty value
 
 --------------------------------------------------------------------------------
 -- User variable assignments

@@ -32,9 +32,10 @@ import Vehicle.Verify.Core
 data QueryMetaData = QueryMetaData
   { queryAddress :: !QueryAddress,
     metaNetwork :: !MetaNetwork,
+    queryVariableMapping :: !QueryVariableMapping,
     variableReconstruction :: !UserVariableReconstruction
   }
-  deriving (Show, Generic)
+  deriving (Generic)
 
 instance NFData QueryMetaData
 
