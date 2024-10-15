@@ -14,10 +14,16 @@ jobs:
         os:
           - name: "Linux"
             type: ubuntu-latest
+            arch: "x86_64"
           - name: "macOS"
-            type: "macos-latest"
+            type: "macos-12"
+            arch: "x86_64"
+          - name: "macOS"
+            type: "macos-14"
+            arch: "arm64"
           - name: "Windows"
             type: "windows-latest"
+            arch: "amd64"
         haskell:
           - ghc:
               version: "9.4.8"
@@ -31,6 +37,7 @@ jobs:
           - os:
               name: Linux
               type: ubuntu-latest
+              arch: "x86_64"
             haskell:
               ghc:
                 version: "9.8.1"
@@ -44,6 +51,7 @@ jobs:
           - os:
               name: Linux
               type: ubuntu-latest
+              arch: "x86_64"
             haskell:
               ghc:
                 version: "9.6.4"
@@ -56,6 +64,7 @@ jobs:
           - os:
               name: Linux
               type: ubuntu-latest
+              arch: "x86_64"
             haskell:
               ghc:
                 version: "9.2.8"
@@ -68,6 +77,7 @@ jobs:
           - os:
               name: Linux
               type: ubuntu-latest
+              arch: "x86_64"
             haskell:
               ghc:
                 version: "9.0.2"
@@ -80,6 +90,7 @@ jobs:
           - os:
               name: Linux
               type: ubuntu-latest
+              arch: "x86_64"
             haskell:
               ghc:
                 version: "8.10.7"
@@ -92,6 +103,7 @@ jobs:
           - os:
               name: Linux
               type: ubuntu-latest
+              arch: "x86_64"
             haskell:
               ghc:
                 version: "9.4.8"
@@ -106,6 +118,7 @@ jobs:
           # - os:
           #     name: Linux
           #     type: ubuntu-latest
+          #     arch: "x86_64"
           #   haskell:
           #     ghc:
           #       version: "9.4.8"
@@ -119,6 +132,7 @@ jobs:
           # - os:
           #     name: Linux
           #     type: ubuntu-latest
+          #     arch: "x86_64"
           #   haskell:
           #     ghc:
           #       version: "9.4.8"
@@ -127,7 +141,7 @@ jobs:
           #       project-file: "cabal.project.ghc-debug.nothunks.ghc-9.4.8"
           #       extra-args: "-fghc-debug -fnothunks"
 
-    name: vehicle / ${{ matrix.os.name }} - GHC ${{ matrix.haskell.ghc.version }} ${{ matrix.haskell.cabal.extra-args }}
+    name: vehicle / ${{ matrix.os.name }} - ${{ matrix.os.arch }} - GHC ${{ matrix.haskell.ghc.version }} ${{ matrix.haskell.cabal.extra-args }}
     runs-on: ${{ matrix.os.type }}
 
     steps:
