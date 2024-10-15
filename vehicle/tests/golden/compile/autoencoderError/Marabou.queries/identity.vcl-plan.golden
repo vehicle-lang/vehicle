@@ -12,13 +12,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "decode₀[input]",
-                        "networkTensorVarDimensions": [
-                          2
-                        ]
-                      }
+                      "tensorVarName": "decode₀[input]",
+                      "tensorVarDimensions": [
+                        2
+                      ]
                     },
                     [
                       {
@@ -28,8 +25,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[input]",
+                            "tensorVarDimensions": [
                               2
                             ]
                           }
@@ -42,8 +39,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[input]",
+                            "tensorVarDimensions": [
                               2
                             ]
                           }
@@ -56,13 +53,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "decode₀[output]",
-                        "networkTensorVarDimensions": [
-                          5
-                        ]
-                      }
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
+                        5
+                      ]
                     },
                     [
                       {
@@ -72,8 +66,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -86,8 +80,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -100,8 +94,8 @@
                             2
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -114,8 +108,8 @@
                             3
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -128,8 +122,8 @@
                             4
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -142,13 +136,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "encode₀[input]",
-                        "networkTensorVarDimensions": [
-                          5
-                        ]
-                      }
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
+                        5
+                      ]
                     },
                     [
                       {
@@ -158,8 +149,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -172,8 +163,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -186,8 +177,8 @@
                             2
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -200,8 +191,8 @@
                             3
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -214,8 +205,8 @@
                             4
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -228,13 +219,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "encode₀[output]",
-                        "networkTensorVarDimensions": [
-                          2
-                        ]
-                      }
+                      "tensorVarName": "encode₀[output]",
+                      "tensorVarDimensions": [
+                        2
+                      ]
                     },
                     [
                       {
@@ -244,8 +232,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[output]",
+                            "tensorVarDimensions": [
                               2
                             ]
                           }
@@ -258,8 +246,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[output]",
+                            "tensorVarDimensions": [
                               2
                             ]
                           }
@@ -272,8 +260,8 @@
                   "tag": "SolveTensorEquality",
                   "contents": [
                     {
-                      "userTensorVarName": "x",
-                      "userTensorVarDimensions": [
+                      "tensorVarName": "x",
+                      "tensorVarDimensions": [
                         5
                       ]
                     },
@@ -309,13 +297,10 @@
                       "coefficients": [
                         [
                           {
-                            "tag": "NetworkTensorVar",
-                            "contents": {
-                              "networkVarName": "encode₀[input]",
-                              "networkTensorVarDimensions": [
-                                5
-                              ]
-                            }
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
+                              5
+                            ]
                           },
                           {
                             "numerator": 1,
@@ -335,8 +320,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -349,8 +334,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -363,8 +348,8 @@
                       2
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -377,8 +362,8 @@
                       3
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -391,8 +376,8 @@
                       4
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -405,8 +390,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[input]",
+                      "tensorVarDimensions": [
                         2
                       ]
                     }
@@ -419,8 +404,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[input]",
+                      "tensorVarDimensions": [
                         2
                       ]
                     }
@@ -433,8 +418,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[output]",
+                      "tensorVarDimensions": [
                         2
                       ]
                     }
@@ -447,8 +432,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[output]",
+                      "tensorVarDimensions": [
                         2
                       ]
                     }
@@ -461,8 +446,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -475,8 +460,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -489,8 +474,8 @@
                       2
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -503,8 +488,8 @@
                       3
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -517,8 +502,8 @@
                       4
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -582,13 +567,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "decode₀[input]",
-                        "networkTensorVarDimensions": [
-                          2
-                        ]
-                      }
+                      "tensorVarName": "decode₀[input]",
+                      "tensorVarDimensions": [
+                        2
+                      ]
                     },
                     [
                       {
@@ -598,8 +580,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[input]",
+                            "tensorVarDimensions": [
                               2
                             ]
                           }
@@ -612,8 +594,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[input]",
+                            "tensorVarDimensions": [
                               2
                             ]
                           }
@@ -626,13 +608,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "decode₀[output]",
-                        "networkTensorVarDimensions": [
-                          5
-                        ]
-                      }
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
+                        5
+                      ]
                     },
                     [
                       {
@@ -642,8 +621,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -656,8 +635,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -670,8 +649,8 @@
                             2
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -684,8 +663,8 @@
                             3
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -698,8 +677,8 @@
                             4
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -712,13 +691,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "encode₀[input]",
-                        "networkTensorVarDimensions": [
-                          5
-                        ]
-                      }
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
+                        5
+                      ]
                     },
                     [
                       {
@@ -728,8 +704,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -742,8 +718,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -756,8 +732,8 @@
                             2
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -770,8 +746,8 @@
                             3
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -784,8 +760,8 @@
                             4
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -798,13 +774,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "encode₀[output]",
-                        "networkTensorVarDimensions": [
-                          2
-                        ]
-                      }
+                      "tensorVarName": "encode₀[output]",
+                      "tensorVarDimensions": [
+                        2
+                      ]
                     },
                     [
                       {
@@ -814,8 +787,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[output]",
+                            "tensorVarDimensions": [
                               2
                             ]
                           }
@@ -828,8 +801,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[output]",
+                            "tensorVarDimensions": [
                               2
                             ]
                           }
@@ -842,8 +815,8 @@
                   "tag": "SolveTensorEquality",
                   "contents": [
                     {
-                      "userTensorVarName": "x",
-                      "userTensorVarDimensions": [
+                      "tensorVarName": "x",
+                      "tensorVarDimensions": [
                         5
                       ]
                     },
@@ -879,13 +852,10 @@
                       "coefficients": [
                         [
                           {
-                            "tag": "NetworkTensorVar",
-                            "contents": {
-                              "networkVarName": "encode₀[input]",
-                              "networkTensorVarDimensions": [
-                                5
-                              ]
-                            }
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
+                              5
+                            ]
                           },
                           {
                             "numerator": 1,
@@ -905,8 +875,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -919,8 +889,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -933,8 +903,8 @@
                       2
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -947,8 +917,8 @@
                       3
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -961,8 +931,8 @@
                       4
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -975,8 +945,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[input]",
+                      "tensorVarDimensions": [
                         2
                       ]
                     }
@@ -989,8 +959,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[input]",
+                      "tensorVarDimensions": [
                         2
                       ]
                     }
@@ -1003,8 +973,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[output]",
+                      "tensorVarDimensions": [
                         2
                       ]
                     }
@@ -1017,8 +987,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[output]",
+                      "tensorVarDimensions": [
                         2
                       ]
                     }
@@ -1031,8 +1001,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -1045,8 +1015,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -1059,8 +1029,8 @@
                       2
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -1073,8 +1043,8 @@
                       3
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -1087,8 +1057,8 @@
                       4
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -1152,13 +1122,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "decode₀[input]",
-                        "networkTensorVarDimensions": [
-                          2
-                        ]
-                      }
+                      "tensorVarName": "decode₀[input]",
+                      "tensorVarDimensions": [
+                        2
+                      ]
                     },
                     [
                       {
@@ -1168,8 +1135,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[input]",
+                            "tensorVarDimensions": [
                               2
                             ]
                           }
@@ -1182,8 +1149,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[input]",
+                            "tensorVarDimensions": [
                               2
                             ]
                           }
@@ -1196,13 +1163,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "decode₀[output]",
-                        "networkTensorVarDimensions": [
-                          5
-                        ]
-                      }
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
+                        5
+                      ]
                     },
                     [
                       {
@@ -1212,8 +1176,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -1226,8 +1190,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -1240,8 +1204,8 @@
                             2
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -1254,8 +1218,8 @@
                             3
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -1268,8 +1232,8 @@
                             4
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -1282,13 +1246,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "encode₀[input]",
-                        "networkTensorVarDimensions": [
-                          5
-                        ]
-                      }
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
+                        5
+                      ]
                     },
                     [
                       {
@@ -1298,8 +1259,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -1312,8 +1273,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -1326,8 +1287,8 @@
                             2
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -1340,8 +1301,8 @@
                             3
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -1354,8 +1315,8 @@
                             4
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -1368,13 +1329,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "encode₀[output]",
-                        "networkTensorVarDimensions": [
-                          2
-                        ]
-                      }
+                      "tensorVarName": "encode₀[output]",
+                      "tensorVarDimensions": [
+                        2
+                      ]
                     },
                     [
                       {
@@ -1384,8 +1342,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[output]",
+                            "tensorVarDimensions": [
                               2
                             ]
                           }
@@ -1398,8 +1356,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[output]",
+                            "tensorVarDimensions": [
                               2
                             ]
                           }
@@ -1412,8 +1370,8 @@
                   "tag": "SolveTensorEquality",
                   "contents": [
                     {
-                      "userTensorVarName": "x",
-                      "userTensorVarDimensions": [
+                      "tensorVarName": "x",
+                      "tensorVarDimensions": [
                         5
                       ]
                     },
@@ -1449,13 +1407,10 @@
                       "coefficients": [
                         [
                           {
-                            "tag": "NetworkTensorVar",
-                            "contents": {
-                              "networkVarName": "encode₀[input]",
-                              "networkTensorVarDimensions": [
-                                5
-                              ]
-                            }
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
+                              5
+                            ]
                           },
                           {
                             "numerator": 1,
@@ -1475,8 +1430,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -1489,8 +1444,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -1503,8 +1458,8 @@
                       2
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -1517,8 +1472,8 @@
                       3
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -1531,8 +1486,8 @@
                       4
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -1545,8 +1500,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[input]",
+                      "tensorVarDimensions": [
                         2
                       ]
                     }
@@ -1559,8 +1514,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[input]",
+                      "tensorVarDimensions": [
                         2
                       ]
                     }
@@ -1573,8 +1528,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[output]",
+                      "tensorVarDimensions": [
                         2
                       ]
                     }
@@ -1587,8 +1542,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[output]",
+                      "tensorVarDimensions": [
                         2
                       ]
                     }
@@ -1601,8 +1556,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -1615,8 +1570,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -1629,8 +1584,8 @@
                       2
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -1643,8 +1598,8 @@
                       3
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -1657,8 +1612,8 @@
                       4
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -1722,13 +1677,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "decode₀[input]",
-                        "networkTensorVarDimensions": [
-                          2
-                        ]
-                      }
+                      "tensorVarName": "decode₀[input]",
+                      "tensorVarDimensions": [
+                        2
+                      ]
                     },
                     [
                       {
@@ -1738,8 +1690,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[input]",
+                            "tensorVarDimensions": [
                               2
                             ]
                           }
@@ -1752,8 +1704,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[input]",
+                            "tensorVarDimensions": [
                               2
                             ]
                           }
@@ -1766,13 +1718,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "decode₀[output]",
-                        "networkTensorVarDimensions": [
-                          5
-                        ]
-                      }
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
+                        5
+                      ]
                     },
                     [
                       {
@@ -1782,8 +1731,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -1796,8 +1745,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -1810,8 +1759,8 @@
                             2
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -1824,8 +1773,8 @@
                             3
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -1838,8 +1787,8 @@
                             4
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -1852,13 +1801,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "encode₀[input]",
-                        "networkTensorVarDimensions": [
-                          5
-                        ]
-                      }
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
+                        5
+                      ]
                     },
                     [
                       {
@@ -1868,8 +1814,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -1882,8 +1828,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -1896,8 +1842,8 @@
                             2
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -1910,8 +1856,8 @@
                             3
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -1924,8 +1870,8 @@
                             4
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -1938,13 +1884,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "encode₀[output]",
-                        "networkTensorVarDimensions": [
-                          2
-                        ]
-                      }
+                      "tensorVarName": "encode₀[output]",
+                      "tensorVarDimensions": [
+                        2
+                      ]
                     },
                     [
                       {
@@ -1954,8 +1897,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[output]",
+                            "tensorVarDimensions": [
                               2
                             ]
                           }
@@ -1968,8 +1911,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[output]",
+                            "tensorVarDimensions": [
                               2
                             ]
                           }
@@ -1982,8 +1925,8 @@
                   "tag": "SolveTensorEquality",
                   "contents": [
                     {
-                      "userTensorVarName": "x",
-                      "userTensorVarDimensions": [
+                      "tensorVarName": "x",
+                      "tensorVarDimensions": [
                         5
                       ]
                     },
@@ -2019,13 +1962,10 @@
                       "coefficients": [
                         [
                           {
-                            "tag": "NetworkTensorVar",
-                            "contents": {
-                              "networkVarName": "encode₀[input]",
-                              "networkTensorVarDimensions": [
-                                5
-                              ]
-                            }
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
+                              5
+                            ]
                           },
                           {
                             "numerator": 1,
@@ -2045,8 +1985,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -2059,8 +1999,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -2073,8 +2013,8 @@
                       2
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -2087,8 +2027,8 @@
                       3
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -2101,8 +2041,8 @@
                       4
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -2115,8 +2055,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[input]",
+                      "tensorVarDimensions": [
                         2
                       ]
                     }
@@ -2129,8 +2069,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[input]",
+                      "tensorVarDimensions": [
                         2
                       ]
                     }
@@ -2143,8 +2083,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[output]",
+                      "tensorVarDimensions": [
                         2
                       ]
                     }
@@ -2157,8 +2097,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[output]",
+                      "tensorVarDimensions": [
                         2
                       ]
                     }
@@ -2171,8 +2111,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -2185,8 +2125,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -2199,8 +2139,8 @@
                       2
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -2213,8 +2153,8 @@
                       3
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -2227,8 +2167,8 @@
                       4
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -2292,13 +2232,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "decode₀[input]",
-                        "networkTensorVarDimensions": [
-                          2
-                        ]
-                      }
+                      "tensorVarName": "decode₀[input]",
+                      "tensorVarDimensions": [
+                        2
+                      ]
                     },
                     [
                       {
@@ -2308,8 +2245,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[input]",
+                            "tensorVarDimensions": [
                               2
                             ]
                           }
@@ -2322,8 +2259,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[input]",
+                            "tensorVarDimensions": [
                               2
                             ]
                           }
@@ -2336,13 +2273,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "decode₀[output]",
-                        "networkTensorVarDimensions": [
-                          5
-                        ]
-                      }
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
+                        5
+                      ]
                     },
                     [
                       {
@@ -2352,8 +2286,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -2366,8 +2300,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -2380,8 +2314,8 @@
                             2
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -2394,8 +2328,8 @@
                             3
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -2408,8 +2342,8 @@
                             4
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -2422,13 +2356,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "encode₀[input]",
-                        "networkTensorVarDimensions": [
-                          5
-                        ]
-                      }
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
+                        5
+                      ]
                     },
                     [
                       {
@@ -2438,8 +2369,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -2452,8 +2383,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -2466,8 +2397,8 @@
                             2
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -2480,8 +2411,8 @@
                             3
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -2494,8 +2425,8 @@
                             4
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -2508,13 +2439,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "encode₀[output]",
-                        "networkTensorVarDimensions": [
-                          2
-                        ]
-                      }
+                      "tensorVarName": "encode₀[output]",
+                      "tensorVarDimensions": [
+                        2
+                      ]
                     },
                     [
                       {
@@ -2524,8 +2452,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[output]",
+                            "tensorVarDimensions": [
                               2
                             ]
                           }
@@ -2538,8 +2466,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[output]",
+                            "tensorVarDimensions": [
                               2
                             ]
                           }
@@ -2552,8 +2480,8 @@
                   "tag": "SolveTensorEquality",
                   "contents": [
                     {
-                      "userTensorVarName": "x",
-                      "userTensorVarDimensions": [
+                      "tensorVarName": "x",
+                      "tensorVarDimensions": [
                         5
                       ]
                     },
@@ -2589,13 +2517,10 @@
                       "coefficients": [
                         [
                           {
-                            "tag": "NetworkTensorVar",
-                            "contents": {
-                              "networkVarName": "encode₀[input]",
-                              "networkTensorVarDimensions": [
-                                5
-                              ]
-                            }
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
+                              5
+                            ]
                           },
                           {
                             "numerator": 1,
@@ -2615,8 +2540,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -2629,8 +2554,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -2643,8 +2568,8 @@
                       2
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -2657,8 +2582,8 @@
                       3
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -2671,8 +2596,8 @@
                       4
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -2685,8 +2610,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[input]",
+                      "tensorVarDimensions": [
                         2
                       ]
                     }
@@ -2699,8 +2624,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[input]",
+                      "tensorVarDimensions": [
                         2
                       ]
                     }
@@ -2713,8 +2638,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[output]",
+                      "tensorVarDimensions": [
                         2
                       ]
                     }
@@ -2727,8 +2652,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[output]",
+                      "tensorVarDimensions": [
                         2
                       ]
                     }
@@ -2741,8 +2666,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -2755,8 +2680,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -2769,8 +2694,8 @@
                       2
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -2783,8 +2708,8 @@
                       3
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -2797,8 +2722,8 @@
                       4
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -2862,13 +2787,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "decode₀[input]",
-                        "networkTensorVarDimensions": [
-                          2
-                        ]
-                      }
+                      "tensorVarName": "decode₀[input]",
+                      "tensorVarDimensions": [
+                        2
+                      ]
                     },
                     [
                       {
@@ -2878,8 +2800,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[input]",
+                            "tensorVarDimensions": [
                               2
                             ]
                           }
@@ -2892,8 +2814,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[input]",
+                            "tensorVarDimensions": [
                               2
                             ]
                           }
@@ -2906,13 +2828,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "decode₀[output]",
-                        "networkTensorVarDimensions": [
-                          5
-                        ]
-                      }
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
+                        5
+                      ]
                     },
                     [
                       {
@@ -2922,8 +2841,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -2936,8 +2855,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -2950,8 +2869,8 @@
                             2
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -2964,8 +2883,8 @@
                             3
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -2978,8 +2897,8 @@
                             4
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -2992,13 +2911,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "encode₀[input]",
-                        "networkTensorVarDimensions": [
-                          5
-                        ]
-                      }
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
+                        5
+                      ]
                     },
                     [
                       {
@@ -3008,8 +2924,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -3022,8 +2938,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -3036,8 +2952,8 @@
                             2
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -3050,8 +2966,8 @@
                             3
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -3064,8 +2980,8 @@
                             4
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -3078,13 +2994,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "encode₀[output]",
-                        "networkTensorVarDimensions": [
-                          2
-                        ]
-                      }
+                      "tensorVarName": "encode₀[output]",
+                      "tensorVarDimensions": [
+                        2
+                      ]
                     },
                     [
                       {
@@ -3094,8 +3007,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[output]",
+                            "tensorVarDimensions": [
                               2
                             ]
                           }
@@ -3108,8 +3021,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[output]",
+                            "tensorVarDimensions": [
                               2
                             ]
                           }
@@ -3122,8 +3035,8 @@
                   "tag": "SolveTensorEquality",
                   "contents": [
                     {
-                      "userTensorVarName": "x",
-                      "userTensorVarDimensions": [
+                      "tensorVarName": "x",
+                      "tensorVarDimensions": [
                         5
                       ]
                     },
@@ -3159,13 +3072,10 @@
                       "coefficients": [
                         [
                           {
-                            "tag": "NetworkTensorVar",
-                            "contents": {
-                              "networkVarName": "encode₀[input]",
-                              "networkTensorVarDimensions": [
-                                5
-                              ]
-                            }
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
+                              5
+                            ]
                           },
                           {
                             "numerator": 1,
@@ -3185,8 +3095,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -3199,8 +3109,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -3213,8 +3123,8 @@
                       2
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -3227,8 +3137,8 @@
                       3
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -3241,8 +3151,8 @@
                       4
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -3255,8 +3165,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[input]",
+                      "tensorVarDimensions": [
                         2
                       ]
                     }
@@ -3269,8 +3179,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[input]",
+                      "tensorVarDimensions": [
                         2
                       ]
                     }
@@ -3283,8 +3193,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[output]",
+                      "tensorVarDimensions": [
                         2
                       ]
                     }
@@ -3297,8 +3207,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[output]",
+                      "tensorVarDimensions": [
                         2
                       ]
                     }
@@ -3311,8 +3221,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -3325,8 +3235,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -3339,8 +3249,8 @@
                       2
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -3353,8 +3263,8 @@
                       3
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -3367,8 +3277,8 @@
                       4
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -3432,13 +3342,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "decode₀[input]",
-                        "networkTensorVarDimensions": [
-                          2
-                        ]
-                      }
+                      "tensorVarName": "decode₀[input]",
+                      "tensorVarDimensions": [
+                        2
+                      ]
                     },
                     [
                       {
@@ -3448,8 +3355,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[input]",
+                            "tensorVarDimensions": [
                               2
                             ]
                           }
@@ -3462,8 +3369,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[input]",
+                            "tensorVarDimensions": [
                               2
                             ]
                           }
@@ -3476,13 +3383,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "decode₀[output]",
-                        "networkTensorVarDimensions": [
-                          5
-                        ]
-                      }
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
+                        5
+                      ]
                     },
                     [
                       {
@@ -3492,8 +3396,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -3506,8 +3410,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -3520,8 +3424,8 @@
                             2
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -3534,8 +3438,8 @@
                             3
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -3548,8 +3452,8 @@
                             4
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -3562,13 +3466,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "encode₀[input]",
-                        "networkTensorVarDimensions": [
-                          5
-                        ]
-                      }
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
+                        5
+                      ]
                     },
                     [
                       {
@@ -3578,8 +3479,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -3592,8 +3493,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -3606,8 +3507,8 @@
                             2
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -3620,8 +3521,8 @@
                             3
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -3634,8 +3535,8 @@
                             4
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -3648,13 +3549,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "encode₀[output]",
-                        "networkTensorVarDimensions": [
-                          2
-                        ]
-                      }
+                      "tensorVarName": "encode₀[output]",
+                      "tensorVarDimensions": [
+                        2
+                      ]
                     },
                     [
                       {
@@ -3664,8 +3562,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[output]",
+                            "tensorVarDimensions": [
                               2
                             ]
                           }
@@ -3678,8 +3576,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[output]",
+                            "tensorVarDimensions": [
                               2
                             ]
                           }
@@ -3692,8 +3590,8 @@
                   "tag": "SolveTensorEquality",
                   "contents": [
                     {
-                      "userTensorVarName": "x",
-                      "userTensorVarDimensions": [
+                      "tensorVarName": "x",
+                      "tensorVarDimensions": [
                         5
                       ]
                     },
@@ -3729,13 +3627,10 @@
                       "coefficients": [
                         [
                           {
-                            "tag": "NetworkTensorVar",
-                            "contents": {
-                              "networkVarName": "encode₀[input]",
-                              "networkTensorVarDimensions": [
-                                5
-                              ]
-                            }
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
+                              5
+                            ]
                           },
                           {
                             "numerator": 1,
@@ -3755,8 +3650,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -3769,8 +3664,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -3783,8 +3678,8 @@
                       2
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -3797,8 +3692,8 @@
                       3
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -3811,8 +3706,8 @@
                       4
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -3825,8 +3720,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[input]",
+                      "tensorVarDimensions": [
                         2
                       ]
                     }
@@ -3839,8 +3734,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[input]",
+                      "tensorVarDimensions": [
                         2
                       ]
                     }
@@ -3853,8 +3748,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[output]",
+                      "tensorVarDimensions": [
                         2
                       ]
                     }
@@ -3867,8 +3762,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[output]",
+                      "tensorVarDimensions": [
                         2
                       ]
                     }
@@ -3881,8 +3776,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -3895,8 +3790,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -3909,8 +3804,8 @@
                       2
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -3923,8 +3818,8 @@
                       3
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -3937,8 +3832,8 @@
                       4
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -4002,13 +3897,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "decode₀[input]",
-                        "networkTensorVarDimensions": [
-                          2
-                        ]
-                      }
+                      "tensorVarName": "decode₀[input]",
+                      "tensorVarDimensions": [
+                        2
+                      ]
                     },
                     [
                       {
@@ -4018,8 +3910,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[input]",
+                            "tensorVarDimensions": [
                               2
                             ]
                           }
@@ -4032,8 +3924,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[input]",
+                            "tensorVarDimensions": [
                               2
                             ]
                           }
@@ -4046,13 +3938,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "decode₀[output]",
-                        "networkTensorVarDimensions": [
-                          5
-                        ]
-                      }
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
+                        5
+                      ]
                     },
                     [
                       {
@@ -4062,8 +3951,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -4076,8 +3965,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -4090,8 +3979,8 @@
                             2
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -4104,8 +3993,8 @@
                             3
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -4118,8 +4007,8 @@
                             4
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -4132,13 +4021,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "encode₀[input]",
-                        "networkTensorVarDimensions": [
-                          5
-                        ]
-                      }
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
+                        5
+                      ]
                     },
                     [
                       {
@@ -4148,8 +4034,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -4162,8 +4048,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -4176,8 +4062,8 @@
                             2
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -4190,8 +4076,8 @@
                             3
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -4204,8 +4090,8 @@
                             4
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -4218,13 +4104,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "encode₀[output]",
-                        "networkTensorVarDimensions": [
-                          2
-                        ]
-                      }
+                      "tensorVarName": "encode₀[output]",
+                      "tensorVarDimensions": [
+                        2
+                      ]
                     },
                     [
                       {
@@ -4234,8 +4117,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[output]",
+                            "tensorVarDimensions": [
                               2
                             ]
                           }
@@ -4248,8 +4131,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[output]",
+                            "tensorVarDimensions": [
                               2
                             ]
                           }
@@ -4262,8 +4145,8 @@
                   "tag": "SolveTensorEquality",
                   "contents": [
                     {
-                      "userTensorVarName": "x",
-                      "userTensorVarDimensions": [
+                      "tensorVarName": "x",
+                      "tensorVarDimensions": [
                         5
                       ]
                     },
@@ -4299,13 +4182,10 @@
                       "coefficients": [
                         [
                           {
-                            "tag": "NetworkTensorVar",
-                            "contents": {
-                              "networkVarName": "encode₀[input]",
-                              "networkTensorVarDimensions": [
-                                5
-                              ]
-                            }
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
+                              5
+                            ]
                           },
                           {
                             "numerator": 1,
@@ -4325,8 +4205,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -4339,8 +4219,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -4353,8 +4233,8 @@
                       2
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -4367,8 +4247,8 @@
                       3
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -4381,8 +4261,8 @@
                       4
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -4395,8 +4275,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[input]",
+                      "tensorVarDimensions": [
                         2
                       ]
                     }
@@ -4409,8 +4289,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[input]",
+                      "tensorVarDimensions": [
                         2
                       ]
                     }
@@ -4423,8 +4303,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[output]",
+                      "tensorVarDimensions": [
                         2
                       ]
                     }
@@ -4437,8 +4317,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[output]",
+                      "tensorVarDimensions": [
                         2
                       ]
                     }
@@ -4451,8 +4331,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -4465,8 +4345,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -4479,8 +4359,8 @@
                       2
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -4493,8 +4373,8 @@
                       3
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -4507,8 +4387,8 @@
                       4
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -4572,13 +4452,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "decode₀[input]",
-                        "networkTensorVarDimensions": [
-                          2
-                        ]
-                      }
+                      "tensorVarName": "decode₀[input]",
+                      "tensorVarDimensions": [
+                        2
+                      ]
                     },
                     [
                       {
@@ -4588,8 +4465,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[input]",
+                            "tensorVarDimensions": [
                               2
                             ]
                           }
@@ -4602,8 +4479,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[input]",
+                            "tensorVarDimensions": [
                               2
                             ]
                           }
@@ -4616,13 +4493,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "decode₀[output]",
-                        "networkTensorVarDimensions": [
-                          5
-                        ]
-                      }
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
+                        5
+                      ]
                     },
                     [
                       {
@@ -4632,8 +4506,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -4646,8 +4520,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -4660,8 +4534,8 @@
                             2
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -4674,8 +4548,8 @@
                             3
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -4688,8 +4562,8 @@
                             4
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -4702,13 +4576,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "encode₀[input]",
-                        "networkTensorVarDimensions": [
-                          5
-                        ]
-                      }
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
+                        5
+                      ]
                     },
                     [
                       {
@@ -4718,8 +4589,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -4732,8 +4603,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -4746,8 +4617,8 @@
                             2
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -4760,8 +4631,8 @@
                             3
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -4774,8 +4645,8 @@
                             4
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -4788,13 +4659,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "encode₀[output]",
-                        "networkTensorVarDimensions": [
-                          2
-                        ]
-                      }
+                      "tensorVarName": "encode₀[output]",
+                      "tensorVarDimensions": [
+                        2
+                      ]
                     },
                     [
                       {
@@ -4804,8 +4672,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[output]",
+                            "tensorVarDimensions": [
                               2
                             ]
                           }
@@ -4818,8 +4686,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[output]",
+                            "tensorVarDimensions": [
                               2
                             ]
                           }
@@ -4832,8 +4700,8 @@
                   "tag": "SolveTensorEquality",
                   "contents": [
                     {
-                      "userTensorVarName": "x",
-                      "userTensorVarDimensions": [
+                      "tensorVarName": "x",
+                      "tensorVarDimensions": [
                         5
                       ]
                     },
@@ -4869,13 +4737,10 @@
                       "coefficients": [
                         [
                           {
-                            "tag": "NetworkTensorVar",
-                            "contents": {
-                              "networkVarName": "encode₀[input]",
-                              "networkTensorVarDimensions": [
-                                5
-                              ]
-                            }
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
+                              5
+                            ]
                           },
                           {
                             "numerator": 1,
@@ -4895,8 +4760,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -4909,8 +4774,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -4923,8 +4788,8 @@
                       2
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -4937,8 +4802,8 @@
                       3
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -4951,8 +4816,8 @@
                       4
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -4965,8 +4830,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[input]",
+                      "tensorVarDimensions": [
                         2
                       ]
                     }
@@ -4979,8 +4844,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[input]",
+                      "tensorVarDimensions": [
                         2
                       ]
                     }
@@ -4993,8 +4858,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[output]",
+                      "tensorVarDimensions": [
                         2
                       ]
                     }
@@ -5007,8 +4872,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[output]",
+                      "tensorVarDimensions": [
                         2
                       ]
                     }
@@ -5021,8 +4886,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -5035,8 +4900,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -5049,8 +4914,8 @@
                       2
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -5063,8 +4928,8 @@
                       3
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -5077,8 +4942,8 @@
                       4
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -5142,13 +5007,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "decode₀[input]",
-                        "networkTensorVarDimensions": [
-                          2
-                        ]
-                      }
+                      "tensorVarName": "decode₀[input]",
+                      "tensorVarDimensions": [
+                        2
+                      ]
                     },
                     [
                       {
@@ -5158,8 +5020,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[input]",
+                            "tensorVarDimensions": [
                               2
                             ]
                           }
@@ -5172,8 +5034,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[input]",
+                            "tensorVarDimensions": [
                               2
                             ]
                           }
@@ -5186,13 +5048,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "decode₀[output]",
-                        "networkTensorVarDimensions": [
-                          5
-                        ]
-                      }
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
+                        5
+                      ]
                     },
                     [
                       {
@@ -5202,8 +5061,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -5216,8 +5075,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -5230,8 +5089,8 @@
                             2
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -5244,8 +5103,8 @@
                             3
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -5258,8 +5117,8 @@
                             4
                           ],
                           "originalVar": {
-                            "networkVarName": "decode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "decode₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -5272,13 +5131,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "encode₀[input]",
-                        "networkTensorVarDimensions": [
-                          5
-                        ]
-                      }
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
+                        5
+                      ]
                     },
                     [
                       {
@@ -5288,8 +5144,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -5302,8 +5158,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -5316,8 +5172,8 @@
                             2
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -5330,8 +5186,8 @@
                             3
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -5344,8 +5200,8 @@
                             4
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -5358,13 +5214,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "encode₀[output]",
-                        "networkTensorVarDimensions": [
-                          2
-                        ]
-                      }
+                      "tensorVarName": "encode₀[output]",
+                      "tensorVarDimensions": [
+                        2
+                      ]
                     },
                     [
                       {
@@ -5374,8 +5227,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[output]",
+                            "tensorVarDimensions": [
                               2
                             ]
                           }
@@ -5388,8 +5241,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "encode₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "encode₀[output]",
+                            "tensorVarDimensions": [
                               2
                             ]
                           }
@@ -5402,8 +5255,8 @@
                   "tag": "SolveTensorEquality",
                   "contents": [
                     {
-                      "userTensorVarName": "x",
-                      "userTensorVarDimensions": [
+                      "tensorVarName": "x",
+                      "tensorVarDimensions": [
                         5
                       ]
                     },
@@ -5439,13 +5292,10 @@
                       "coefficients": [
                         [
                           {
-                            "tag": "NetworkTensorVar",
-                            "contents": {
-                              "networkVarName": "encode₀[input]",
-                              "networkTensorVarDimensions": [
-                                5
-                              ]
-                            }
+                            "tensorVarName": "encode₀[input]",
+                            "tensorVarDimensions": [
+                              5
+                            ]
                           },
                           {
                             "numerator": 1,
@@ -5465,8 +5315,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -5479,8 +5329,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -5493,8 +5343,8 @@
                       2
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -5507,8 +5357,8 @@
                       3
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -5521,8 +5371,8 @@
                       4
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -5535,8 +5385,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[input]",
+                      "tensorVarDimensions": [
                         2
                       ]
                     }
@@ -5549,8 +5399,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[input]",
+                      "tensorVarDimensions": [
                         2
                       ]
                     }
@@ -5563,8 +5413,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[output]",
+                      "tensorVarDimensions": [
                         2
                       ]
                     }
@@ -5577,8 +5427,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "encode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "encode₀[output]",
+                      "tensorVarDimensions": [
                         2
                       ]
                     }
@@ -5591,8 +5441,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -5605,8 +5455,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -5619,8 +5469,8 @@
                       2
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -5633,8 +5483,8 @@
                       3
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -5647,8 +5497,8 @@
                       4
                     ],
                     "originalVar": {
-                      "networkVarName": "decode₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "decode₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }

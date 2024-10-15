@@ -12,13 +12,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "f₀[input]",
-                        "networkTensorVarDimensions": [
-                          1
-                        ]
-                      }
+                      "tensorVarName": "f₀[input]",
+                      "tensorVarDimensions": [
+                        1
+                      ]
                     },
                     [
                       {
@@ -28,8 +25,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "f₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "f₀[input]",
+                            "tensorVarDimensions": [
                               1
                             ]
                           }
@@ -42,13 +39,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "f₀[output]",
-                        "networkTensorVarDimensions": [
-                          1
-                        ]
-                      }
+                      "tensorVarName": "f₀[output]",
+                      "tensorVarDimensions": [
+                        1
+                      ]
                     },
                     [
                       {
@@ -58,8 +52,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "f₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "f₀[output]",
+                            "tensorVarDimensions": [
                               1
                             ]
                           }
@@ -72,13 +66,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "f₁[input]",
-                        "networkTensorVarDimensions": [
-                          1
-                        ]
-                      }
+                      "tensorVarName": "f₁[input]",
+                      "tensorVarDimensions": [
+                        1
+                      ]
                     },
                     [
                       {
@@ -88,8 +79,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "f₁[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "f₁[input]",
+                            "tensorVarDimensions": [
                               1
                             ]
                           }
@@ -102,13 +93,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "f₁[output]",
-                        "networkTensorVarDimensions": [
-                          1
-                        ]
-                      }
+                      "tensorVarName": "f₁[output]",
+                      "tensorVarDimensions": [
+                        1
+                      ]
                     },
                     [
                       {
@@ -118,8 +106,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "f₁[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "f₁[output]",
+                            "tensorVarDimensions": [
                               1
                             ]
                           }
@@ -134,8 +122,8 @@
                     {
                       "tensorIndices": [],
                       "originalVar": {
-                        "userTensorVarName": "x1",
-                        "userTensorVarDimensions": []
+                        "tensorVarName": "x1",
+                        "tensorVarDimensions": []
                       }
                     },
                     {
@@ -152,8 +140,8 @@
                                 0
                               ],
                               "originalVar": {
-                                "networkVarName": "f₀[input]",
-                                "networkTensorVarDimensions": [
+                                "tensorVarName": "f₀[input]",
+                                "tensorVarDimensions": [
                                   1
                                 ]
                               }
@@ -172,11 +160,8 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "UserTensorVar",
-                      "contents": {
-                        "userTensorVarName": "x1",
-                        "userTensorVarDimensions": []
-                      }
+                      "tensorVarName": "x1",
+                      "tensorVarDimensions": []
                     },
                     [
                       {
@@ -184,8 +169,8 @@
                         "contents": {
                           "tensorIndices": [],
                           "originalVar": {
-                            "userTensorVarName": "x1",
-                            "userTensorVarDimensions": []
+                            "tensorVarName": "x1",
+                            "tensorVarDimensions": []
                           }
                         }
                       }
@@ -198,8 +183,8 @@
                     {
                       "tensorIndices": [],
                       "originalVar": {
-                        "userTensorVarName": "x2",
-                        "userTensorVarDimensions": []
+                        "tensorVarName": "x2",
+                        "tensorVarDimensions": []
                       }
                     },
                     {
@@ -216,8 +201,8 @@
                                 0
                               ],
                               "originalVar": {
-                                "networkVarName": "f₁[input]",
-                                "networkTensorVarDimensions": [
+                                "tensorVarName": "f₁[input]",
+                                "tensorVarDimensions": [
                                   1
                                 ]
                               }
@@ -236,11 +221,8 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "UserTensorVar",
-                      "contents": {
-                        "userTensorVarName": "x2",
-                        "userTensorVarDimensions": []
-                      }
+                      "tensorVarName": "x2",
+                      "tensorVarDimensions": []
                     },
                     [
                       {
@@ -248,8 +230,8 @@
                         "contents": {
                           "tensorIndices": [],
                           "originalVar": {
-                            "userTensorVarName": "x2",
-                            "userTensorVarDimensions": []
+                            "tensorVarName": "x2",
+                            "tensorVarDimensions": []
                           }
                         }
                       }
@@ -265,8 +247,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "f₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "f₀[input]",
+                      "tensorVarDimensions": [
                         1
                       ]
                     }
@@ -279,8 +261,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "f₁[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "f₁[input]",
+                      "tensorVarDimensions": [
                         1
                       ]
                     }
@@ -293,8 +275,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "f₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "f₀[output]",
+                      "tensorVarDimensions": [
                         1
                       ]
                     }
@@ -307,8 +289,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "f₁[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "f₁[output]",
+                      "tensorVarDimensions": [
                         1
                       ]
                     }

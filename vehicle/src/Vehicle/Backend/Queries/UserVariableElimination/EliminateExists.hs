@@ -26,7 +26,7 @@ import Vehicle.Prelude.Warning (CompileWarning (..))
 eliminateExists ::
   (MonadQueryStructure m) =>
   MaybeTrivial Partitions ->
-  OriginalUserVariable ->
+  TensorVariable ->
   m (MaybeTrivial Partitions)
 eliminateExists partitions userVariable = do
   logDebug MidDetail ""
@@ -58,20 +58,20 @@ solveExists searchCriteria solveVarConstraints partitions userVar = do
 --------------------------------------------------------------------------------
 -- Tensor equalities
 
-fromTensorAssertion :: OriginalUserVariable -> Assertion -> ConstrainedAssertionTree TensorEquality
+fromTensorAssertion :: TensorVariable -> Assertion -> ConstrainedAssertionTree TensorEquality
 fromTensorAssertion var = \case
-  TensorEq eq | equalityExpr eq `referencesVariable` UserTensorVar var -> SingleEquality eq (Trivial True)
+  TensorEq eq | equalityExpr eq `referencesVariable` var -> SingleEquality eq (Trivial True)
   assertion -> NoConstraints (Query assertion)
 
 solveTensorVariable ::
   (MonadSolveExists m) =>
-  OriginalUserVariable ->
+  TensorVariable ->
   UserVariableReconstruction ->
   ConstrainedAssertionTree TensorEquality ->
   m (MaybeTrivial Partitions)
 solveTensorVariable userTensorVar solutions = \case
   SingleEquality (Equality tensorEq) remainingTree -> do
-    let (_, rearrangedEq) = rearrangeExprToSolveFor (UserTensorVar userTensorVar) tensorEq
+    let (_, rearrangedEq) = rearrangeExprToSolveFor userTensorVar tensorEq
     let solution = SolveTensorEquality userTensorVar rearrangedEq
     logDebug MaxDetail $
       "Solving"
@@ -92,7 +92,7 @@ solveTensorVariable userTensorVar solutions = \case
   NoConstraints tree -> do
     logDebug MaxDetail "No constraints on original variable found"
     userRationalVars <- getReducedUserVariablesFor userTensorVar
-    let updatedSolutions = ReconstructTensor (UserTensorVar userTensorVar) (fmap UserRationalVar userRationalVars) : solutions
+    let updatedSolutions = ReconstructTensor userTensorVar (fmap UserRationalVar userRationalVars) : solutions
     let initial = mkSinglePartition (updatedSolutions, NonTrivial tree)
     foldlM (solveExists fromRationalAssertion solveRationalVariable) initial userRationalVars
   Inequalities {} ->

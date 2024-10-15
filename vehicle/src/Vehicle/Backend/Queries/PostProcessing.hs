@@ -93,7 +93,7 @@ reconstructNetworkTensorVars ::
   m UserVariableReconstruction
 reconstructNetworkTensorVars GlobalCtx {..} solutions = do
   let networkTensorVars = sortOn fst $ HashMap.toList networkVariableReductions
-  let mkStep (var, NetworkVariableInfo {..}) = ReconstructTensor (NetworkTensorVar var) (fmap NetworkRationalVar elementVariables)
+  let mkStep (var, NetworkVariableInfo {..}) = ReconstructTensor var (fmap NetworkRationalVar elementVariables)
   return $ foldr (\v -> (mkStep v :)) solutions networkTensorVars
 
 --------------------------------------------------------------------------------

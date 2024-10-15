@@ -5,7 +5,7 @@ import Data.Foldable (foldlM)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Map.Strict qualified as HashMap
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Maybe (fromMaybe)
 import Data.Vector qualified as Vector
 import Vehicle.Backend.Queries.UserVariableElimination.Core
 import Vehicle.Compile.FourierMotzkinElimination
@@ -116,7 +116,7 @@ applyReconstructionStep assignment@VariableAssignment {..} step = do
             logDebug MidDetail $ "Result:" <+> pretty var <+> "=" <+> pretty value
             return $
               VariableAssignment
-                { tensorVariables = Map.insert (UserTensorVar var) value tensorVariables,
+                { tensorVariables = Map.insert var value tensorVariables,
                   ..
                 }
     SolveRationalInequalities var solution -> do
@@ -153,7 +153,7 @@ unreduceVariable variable reducedVariables assignment@VariableAssignment {..} = 
     Right values -> do
       logDebug MaxDetail $
         "Collapsing variables" <+> pretty reducedVariables <+> "to single variable" <+> pretty variable
-      let unreducedValue = Tensor (tensorVariableDims variable) (Vector.fromList values)
+      let unreducedValue = Tensor (tensorVarDimensions variable) (Vector.fromList values)
       return $
         assignment
           { tensorVariables = Map.insert variable unreducedValue tensorVariables
@@ -163,9 +163,4 @@ createFinalAssignment ::
   MixedVariableAssignment ->
   UserVariableAssignment
 createFinalAssignment (VariableAssignment {..}) = do
-  UserVariableAssignment $ mapMaybe getUserOriginalVariable (Map.toList tensorVariables)
-  where
-    getUserOriginalVariable :: (TensorVariable, RationalTensor) -> Maybe (OriginalUserVariable, RationalTensor)
-    getUserOriginalVariable (var, value) = case var of
-      NetworkTensorVar {} -> Nothing
-      UserTensorVar v -> Just (v, value)
+  UserVariableAssignment $ Map.toList tensorVariables

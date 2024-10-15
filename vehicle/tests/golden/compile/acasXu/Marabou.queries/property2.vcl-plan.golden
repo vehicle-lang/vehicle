@@ -12,13 +12,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "acasXu₀[input]",
-                        "networkTensorVarDimensions": [
-                          5
-                        ]
-                      }
+                      "tensorVarName": "acasXu₀[input]",
+                      "tensorVarDimensions": [
+                        5
+                      ]
                     },
                     [
                       {
@@ -28,8 +25,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "acasXu₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "acasXu₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -42,8 +39,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "acasXu₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "acasXu₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -56,8 +53,8 @@
                             2
                           ],
                           "originalVar": {
-                            "networkVarName": "acasXu₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "acasXu₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -70,8 +67,8 @@
                             3
                           ],
                           "originalVar": {
-                            "networkVarName": "acasXu₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "acasXu₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -84,8 +81,8 @@
                             4
                           ],
                           "originalVar": {
-                            "networkVarName": "acasXu₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "acasXu₀[input]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -98,13 +95,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "acasXu₀[output]",
-                        "networkTensorVarDimensions": [
-                          5
-                        ]
-                      }
+                      "tensorVarName": "acasXu₀[output]",
+                      "tensorVarDimensions": [
+                        5
+                      ]
                     },
                     [
                       {
@@ -114,8 +108,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "acasXu₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "acasXu₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -128,8 +122,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "acasXu₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "acasXu₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -142,8 +136,8 @@
                             2
                           ],
                           "originalVar": {
-                            "networkVarName": "acasXu₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "acasXu₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -156,8 +150,8 @@
                             3
                           ],
                           "originalVar": {
-                            "networkVarName": "acasXu₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "acasXu₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -170,8 +164,8 @@
                             4
                           ],
                           "originalVar": {
-                            "networkVarName": "acasXu₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "acasXu₀[output]",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -188,8 +182,8 @@
                         4
                       ],
                       "originalVar": {
-                        "userTensorVarName": "x",
-                        "userTensorVarDimensions": [
+                        "tensorVarName": "x",
+                        "tensorVarDimensions": [
                           5
                         ]
                       }
@@ -208,8 +202,8 @@
                                 4
                               ],
                               "originalVar": {
-                                "networkVarName": "acasXu₀[input]",
-                                "networkTensorVarDimensions": [
+                                "tensorVarName": "acasXu₀[input]",
+                                "tensorVarDimensions": [
                                   5
                                 ]
                               }
@@ -232,8 +226,8 @@
                         3
                       ],
                       "originalVar": {
-                        "userTensorVarName": "x",
-                        "userTensorVarDimensions": [
+                        "tensorVarName": "x",
+                        "tensorVarDimensions": [
                           5
                         ]
                       }
@@ -252,8 +246,8 @@
                                 3
                               ],
                               "originalVar": {
-                                "networkVarName": "acasXu₀[input]",
-                                "networkTensorVarDimensions": [
+                                "tensorVarName": "acasXu₀[input]",
+                                "tensorVarDimensions": [
                                   5
                                 ]
                               }
@@ -276,8 +270,8 @@
                         2
                       ],
                       "originalVar": {
-                        "userTensorVarName": "x",
-                        "userTensorVarDimensions": [
+                        "tensorVarName": "x",
+                        "tensorVarDimensions": [
                           5
                         ]
                       }
@@ -296,8 +290,8 @@
                                 2
                               ],
                               "originalVar": {
-                                "networkVarName": "acasXu₀[input]",
-                                "networkTensorVarDimensions": [
+                                "tensorVarName": "acasXu₀[input]",
+                                "tensorVarDimensions": [
                                   5
                                 ]
                               }
@@ -320,8 +314,8 @@
                         1
                       ],
                       "originalVar": {
-                        "userTensorVarName": "x",
-                        "userTensorVarDimensions": [
+                        "tensorVarName": "x",
+                        "tensorVarDimensions": [
                           5
                         ]
                       }
@@ -340,8 +334,8 @@
                                 1
                               ],
                               "originalVar": {
-                                "networkVarName": "acasXu₀[input]",
-                                "networkTensorVarDimensions": [
+                                "tensorVarName": "acasXu₀[input]",
+                                "tensorVarDimensions": [
                                   5
                                 ]
                               }
@@ -364,8 +358,8 @@
                         0
                       ],
                       "originalVar": {
-                        "userTensorVarName": "x",
-                        "userTensorVarDimensions": [
+                        "tensorVarName": "x",
+                        "tensorVarDimensions": [
                           5
                         ]
                       }
@@ -384,8 +378,8 @@
                                 0
                               ],
                               "originalVar": {
-                                "networkVarName": "acasXu₀[input]",
-                                "networkTensorVarDimensions": [
+                                "tensorVarName": "acasXu₀[input]",
+                                "tensorVarDimensions": [
                                   5
                                 ]
                               }
@@ -404,13 +398,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "UserTensorVar",
-                      "contents": {
-                        "userTensorVarName": "x",
-                        "userTensorVarDimensions": [
-                          5
-                        ]
-                      }
+                      "tensorVarName": "x",
+                      "tensorVarDimensions": [
+                        5
+                      ]
                     },
                     [
                       {
@@ -420,8 +411,8 @@
                             0
                           ],
                           "originalVar": {
-                            "userTensorVarName": "x",
-                            "userTensorVarDimensions": [
+                            "tensorVarName": "x",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -434,8 +425,8 @@
                             1
                           ],
                           "originalVar": {
-                            "userTensorVarName": "x",
-                            "userTensorVarDimensions": [
+                            "tensorVarName": "x",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -448,8 +439,8 @@
                             2
                           ],
                           "originalVar": {
-                            "userTensorVarName": "x",
-                            "userTensorVarDimensions": [
+                            "tensorVarName": "x",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -462,8 +453,8 @@
                             3
                           ],
                           "originalVar": {
-                            "userTensorVarName": "x",
-                            "userTensorVarDimensions": [
+                            "tensorVarName": "x",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -476,8 +467,8 @@
                             4
                           ],
                           "originalVar": {
-                            "userTensorVarName": "x",
-                            "userTensorVarDimensions": [
+                            "tensorVarName": "x",
+                            "tensorVarDimensions": [
                               5
                             ]
                           }
@@ -495,8 +486,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "acasXu₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "acasXu₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -509,8 +500,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "acasXu₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "acasXu₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -523,8 +514,8 @@
                       2
                     ],
                     "originalVar": {
-                      "networkVarName": "acasXu₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "acasXu₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -537,8 +528,8 @@
                       3
                     ],
                     "originalVar": {
-                      "networkVarName": "acasXu₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "acasXu₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -551,8 +542,8 @@
                       4
                     ],
                     "originalVar": {
-                      "networkVarName": "acasXu₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "acasXu₀[input]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -565,8 +556,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "acasXu₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "acasXu₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -579,8 +570,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "acasXu₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "acasXu₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -593,8 +584,8 @@
                       2
                     ],
                     "originalVar": {
-                      "networkVarName": "acasXu₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "acasXu₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -607,8 +598,8 @@
                       3
                     ],
                     "originalVar": {
-                      "networkVarName": "acasXu₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "acasXu₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }
@@ -621,8 +612,8 @@
                       4
                     ],
                     "originalVar": {
-                      "networkVarName": "acasXu₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "acasXu₀[output]",
+                      "tensorVarDimensions": [
                         5
                       ]
                     }

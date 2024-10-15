@@ -120,7 +120,7 @@ compileTensorLinearExpr handleVar = go
         return (constantExpr <$> getRationalTensor e)
       VBoundVar lv [] -> do
         var <- handleVar lv
-        return $ Just $ singletonVarExpr (zeroTensor $ tensorVariableDims var) var
+        return $ Just $ singletonVarExpr (zeroTensor $ tensorVarDimensions var) var
       _ -> return Nothing
 
 getRationalTensor :: WHNFValue Builtin -> Maybe RationalTensor

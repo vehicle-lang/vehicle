@@ -13,47 +13,32 @@ import Vehicle.Data.Tensor
 import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
--- User tensor variables
+-- Tensor variables
 
-data OriginalUserVariable = OriginalUserVariable
-  { userTensorVarName :: Name,
-    userTensorVarDimensions :: TensorShape
+-- | Both user and network variables
+data TensorVariable = TensorVariable
+  { tensorVarName :: Name,
+    tensorVarDimensions :: TensorShape
   }
   deriving (Show, Eq, Ord, Generic)
 
-instance NFData OriginalUserVariable
+instance NFData TensorVariable
 
-instance ToJSON OriginalUserVariable
+instance Hashable TensorVariable
 
-instance FromJSON OriginalUserVariable
+instance ToJSON TensorVariable
 
-instance Hashable OriginalUserVariable
+instance FromJSON TensorVariable
 
-instance Pretty OriginalUserVariable where
-  pretty = pretty . userTensorVarName
+instance ToJSONKey TensorVariable
+
+instance FromJSONKey TensorVariable
+
+instance Pretty TensorVariable where
+  pretty = pretty . tensorVarName
 
 --------------------------------------------------------------------------------
 -- Network tensor variables
-
--- | Network input and output variables
-data OriginalNetworkVariable = OriginalNetworkVariable
-  { -- | The name of the network this variable belongs to.
-    networkVarName :: Name,
-    -- | The dimensions of the variable
-    networkTensorVarDimensions :: TensorShape
-  }
-  deriving (Show, Eq, Ord, Generic)
-
-instance NFData OriginalNetworkVariable
-
-instance ToJSON OriginalNetworkVariable
-
-instance FromJSON OriginalNetworkVariable
-
-instance Hashable OriginalNetworkVariable
-
-instance Pretty OriginalNetworkVariable where
-  pretty OriginalNetworkVariable {..} = pretty networkVarName
 
 data NetworkVariableInfo = NetworkVariableInfo
   { -- | Variables for each of it's elements
@@ -119,9 +104,9 @@ reduceVariable varDims dbLevel var
 -- Reduced user variables
 
 -- | Variables entered by the user
-type UserRationalVariable = ReducedVariable OriginalUserVariable
+type UserRationalVariable = ReducedVariable TensorVariable
 
-type NetworkRationalVariable = ReducedVariable OriginalNetworkVariable
+type NetworkRationalVariable = ReducedVariable TensorVariable
 
 --------------------------------------------------------------------------------
 -- All variables
@@ -146,35 +131,6 @@ instance Pretty RationalVariable where
   pretty = \case
     UserRationalVar v -> pretty v
     NetworkRationalVar v -> pretty v
-
---------------------------------------------------------------------------------
--- Tensor variables
-
--- | Both user and network variables
-data TensorVariable
-  = UserTensorVar OriginalUserVariable
-  | NetworkTensorVar OriginalNetworkVariable
-  deriving (Show, Eq, Ord, Generic)
-
-instance NFData TensorVariable
-
-instance ToJSON TensorVariable
-
-instance FromJSON TensorVariable
-
-instance ToJSONKey TensorVariable
-
-instance FromJSONKey TensorVariable
-
-instance Pretty TensorVariable where
-  pretty = \case
-    UserTensorVar v -> pretty v
-    NetworkTensorVar v -> pretty v
-
-tensorVariableDims :: TensorVariable -> TensorShape
-tensorVariableDims = \case
-  UserTensorVar v -> userTensorVarDimensions v
-  NetworkTensorVar v -> networkTensorVarDimensions v
 
 --------------------------------------------------------------------------------
 -- Tensor variables
@@ -211,7 +167,7 @@ prettyRationalAsFloat p = do
 
 -- | A (satisfying) assignment to a set of user-level variables.
 newtype UserVariableAssignment
-  = UserVariableAssignment [(OriginalUserVariable, RationalTensor)]
+  = UserVariableAssignment [(TensorVariable, RationalTensor)]
   deriving (Generic)
 
 instance ToJSON UserVariableAssignment

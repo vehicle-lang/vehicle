@@ -12,13 +12,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "classifier₀[input]",
-                        "networkTensorVarDimensions": [
-                          30
-                        ]
-                      }
+                      "tensorVarName": "classifier₀[input]",
+                      "tensorVarDimensions": [
+                        30
+                      ]
                     },
                     [
                       {
@@ -28,8 +25,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "classifier₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "classifier₀[input]",
+                            "tensorVarDimensions": [
                               30
                             ]
                           }
@@ -42,8 +39,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "classifier₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "classifier₀[input]",
+                            "tensorVarDimensions": [
                               30
                             ]
                           }
@@ -56,8 +53,8 @@
                             2
                           ],
                           "originalVar": {
-                            "networkVarName": "classifier₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "classifier₀[input]",
+                            "tensorVarDimensions": [
                               30
                             ]
                           }
@@ -70,8 +67,8 @@
                             3
                           ],
                           "originalVar": {
-                            "networkVarName": "classifier₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "classifier₀[input]",
+                            "tensorVarDimensions": [
                               30
                             ]
                           }
@@ -84,8 +81,8 @@
                             4
                           ],
                           "originalVar": {
-                            "networkVarName": "classifier₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "classifier₀[input]",
+                            "tensorVarDimensions": [
                               30
                             ]
                           }
@@ -98,8 +95,8 @@
                             5
                           ],
                           "originalVar": {
-                            "networkVarName": "classifier₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "classifier₀[input]",
+                            "tensorVarDimensions": [
                               30
                             ]
                           }
@@ -112,8 +109,8 @@
                             6
                           ],
                           "originalVar": {
-                            "networkVarName": "classifier₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "classifier₀[input]",
+                            "tensorVarDimensions": [
                               30
                             ]
                           }
@@ -126,8 +123,8 @@
                             7
                           ],
                           "originalVar": {
-                            "networkVarName": "classifier₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "classifier₀[input]",
+                            "tensorVarDimensions": [
                               30
                             ]
                           }
@@ -140,8 +137,8 @@
                             8
                           ],
                           "originalVar": {
-                            "networkVarName": "classifier₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "classifier₀[input]",
+                            "tensorVarDimensions": [
                               30
                             ]
                           }
@@ -154,8 +151,8 @@
                             9
                           ],
                           "originalVar": {
-                            "networkVarName": "classifier₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "classifier₀[input]",
+                            "tensorVarDimensions": [
                               30
                             ]
                           }
@@ -168,8 +165,8 @@
                             10
                           ],
                           "originalVar": {
-                            "networkVarName": "classifier₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "classifier₀[input]",
+                            "tensorVarDimensions": [
                               30
                             ]
                           }
@@ -182,8 +179,8 @@
                             11
                           ],
                           "originalVar": {
-                            "networkVarName": "classifier₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "classifier₀[input]",
+                            "tensorVarDimensions": [
                               30
                             ]
                           }
@@ -196,8 +193,8 @@
                             12
                           ],
                           "originalVar": {
-                            "networkVarName": "classifier₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "classifier₀[input]",
+                            "tensorVarDimensions": [
                               30
                             ]
                           }
@@ -210,8 +207,8 @@
                             13
                           ],
                           "originalVar": {
-                            "networkVarName": "classifier₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "classifier₀[input]",
+                            "tensorVarDimensions": [
                               30
                             ]
                           }
@@ -224,8 +221,8 @@
                             14
                           ],
                           "originalVar": {
-                            "networkVarName": "classifier₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "classifier₀[input]",
+                            "tensorVarDimensions": [
                               30
                             ]
                           }
@@ -238,8 +235,8 @@
                             15
                           ],
                           "originalVar": {
-                            "networkVarName": "classifier₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "classifier₀[input]",
+                            "tensorVarDimensions": [
                               30
                             ]
                           }
@@ -252,8 +249,8 @@
                             16
                           ],
                           "originalVar": {
-                            "networkVarName": "classifier₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "classifier₀[input]",
+                            "tensorVarDimensions": [
                               30
                             ]
                           }
@@ -266,8 +263,8 @@
                             17
                           ],
                           "originalVar": {
-                            "networkVarName": "classifier₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "classifier₀[input]",
+                            "tensorVarDimensions": [
                               30
                             ]
                           }
@@ -280,8 +277,8 @@
                             18
                           ],
                           "originalVar": {
-                            "networkVarName": "classifier₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "classifier₀[input]",
+                            "tensorVarDimensions": [
                               30
                             ]
                           }
@@ -294,8 +291,8 @@
                             19
                           ],
                           "originalVar": {
-                            "networkVarName": "classifier₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "classifier₀[input]",
+                            "tensorVarDimensions": [
                               30
                             ]
                           }
@@ -308,8 +305,8 @@
                             20
                           ],
                           "originalVar": {
-                            "networkVarName": "classifier₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "classifier₀[input]",
+                            "tensorVarDimensions": [
                               30
                             ]
                           }
@@ -322,8 +319,8 @@
                             21
                           ],
                           "originalVar": {
-                            "networkVarName": "classifier₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "classifier₀[input]",
+                            "tensorVarDimensions": [
                               30
                             ]
                           }
@@ -336,8 +333,8 @@
                             22
                           ],
                           "originalVar": {
-                            "networkVarName": "classifier₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "classifier₀[input]",
+                            "tensorVarDimensions": [
                               30
                             ]
                           }
@@ -350,8 +347,8 @@
                             23
                           ],
                           "originalVar": {
-                            "networkVarName": "classifier₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "classifier₀[input]",
+                            "tensorVarDimensions": [
                               30
                             ]
                           }
@@ -364,8 +361,8 @@
                             24
                           ],
                           "originalVar": {
-                            "networkVarName": "classifier₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "classifier₀[input]",
+                            "tensorVarDimensions": [
                               30
                             ]
                           }
@@ -378,8 +375,8 @@
                             25
                           ],
                           "originalVar": {
-                            "networkVarName": "classifier₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "classifier₀[input]",
+                            "tensorVarDimensions": [
                               30
                             ]
                           }
@@ -392,8 +389,8 @@
                             26
                           ],
                           "originalVar": {
-                            "networkVarName": "classifier₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "classifier₀[input]",
+                            "tensorVarDimensions": [
                               30
                             ]
                           }
@@ -406,8 +403,8 @@
                             27
                           ],
                           "originalVar": {
-                            "networkVarName": "classifier₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "classifier₀[input]",
+                            "tensorVarDimensions": [
                               30
                             ]
                           }
@@ -420,8 +417,8 @@
                             28
                           ],
                           "originalVar": {
-                            "networkVarName": "classifier₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "classifier₀[input]",
+                            "tensorVarDimensions": [
                               30
                             ]
                           }
@@ -434,8 +431,8 @@
                             29
                           ],
                           "originalVar": {
-                            "networkVarName": "classifier₀[input]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "classifier₀[input]",
+                            "tensorVarDimensions": [
                               30
                             ]
                           }
@@ -448,13 +445,10 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "networkVarName": "classifier₀[output]",
-                        "networkTensorVarDimensions": [
-                          2
-                        ]
-                      }
+                      "tensorVarName": "classifier₀[output]",
+                      "tensorVarDimensions": [
+                        2
+                      ]
                     },
                     [
                       {
@@ -464,8 +458,8 @@
                             0
                           ],
                           "originalVar": {
-                            "networkVarName": "classifier₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "classifier₀[output]",
+                            "tensorVarDimensions": [
                               2
                             ]
                           }
@@ -478,8 +472,8 @@
                             1
                           ],
                           "originalVar": {
-                            "networkVarName": "classifier₀[output]",
-                            "networkTensorVarDimensions": [
+                            "tensorVarName": "classifier₀[output]",
+                            "tensorVarDimensions": [
                               2
                             ]
                           }
@@ -492,8 +486,8 @@
                   "tag": "SolveTensorEquality",
                   "contents": [
                     {
-                      "userTensorVarName": "x",
-                      "userTensorVarDimensions": [
+                      "tensorVarName": "x",
+                      "tensorVarDimensions": [
                         30
                       ]
                     },
@@ -629,13 +623,10 @@
                       "coefficients": [
                         [
                           {
-                            "tag": "NetworkTensorVar",
-                            "contents": {
-                              "networkVarName": "classifier₀[input]",
-                              "networkTensorVarDimensions": [
-                                30
-                              ]
-                            }
+                            "tensorVarName": "classifier₀[input]",
+                            "tensorVarDimensions": [
+                              30
+                            ]
                           },
                           {
                             "numerator": 1,
@@ -655,8 +646,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "classifier₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "classifier₀[input]",
+                      "tensorVarDimensions": [
                         30
                       ]
                     }
@@ -669,8 +660,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "classifier₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "classifier₀[input]",
+                      "tensorVarDimensions": [
                         30
                       ]
                     }
@@ -683,8 +674,8 @@
                       2
                     ],
                     "originalVar": {
-                      "networkVarName": "classifier₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "classifier₀[input]",
+                      "tensorVarDimensions": [
                         30
                       ]
                     }
@@ -697,8 +688,8 @@
                       3
                     ],
                     "originalVar": {
-                      "networkVarName": "classifier₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "classifier₀[input]",
+                      "tensorVarDimensions": [
                         30
                       ]
                     }
@@ -711,8 +702,8 @@
                       4
                     ],
                     "originalVar": {
-                      "networkVarName": "classifier₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "classifier₀[input]",
+                      "tensorVarDimensions": [
                         30
                       ]
                     }
@@ -725,8 +716,8 @@
                       5
                     ],
                     "originalVar": {
-                      "networkVarName": "classifier₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "classifier₀[input]",
+                      "tensorVarDimensions": [
                         30
                       ]
                     }
@@ -739,8 +730,8 @@
                       6
                     ],
                     "originalVar": {
-                      "networkVarName": "classifier₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "classifier₀[input]",
+                      "tensorVarDimensions": [
                         30
                       ]
                     }
@@ -753,8 +744,8 @@
                       7
                     ],
                     "originalVar": {
-                      "networkVarName": "classifier₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "classifier₀[input]",
+                      "tensorVarDimensions": [
                         30
                       ]
                     }
@@ -767,8 +758,8 @@
                       8
                     ],
                     "originalVar": {
-                      "networkVarName": "classifier₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "classifier₀[input]",
+                      "tensorVarDimensions": [
                         30
                       ]
                     }
@@ -781,8 +772,8 @@
                       9
                     ],
                     "originalVar": {
-                      "networkVarName": "classifier₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "classifier₀[input]",
+                      "tensorVarDimensions": [
                         30
                       ]
                     }
@@ -795,8 +786,8 @@
                       10
                     ],
                     "originalVar": {
-                      "networkVarName": "classifier₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "classifier₀[input]",
+                      "tensorVarDimensions": [
                         30
                       ]
                     }
@@ -809,8 +800,8 @@
                       11
                     ],
                     "originalVar": {
-                      "networkVarName": "classifier₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "classifier₀[input]",
+                      "tensorVarDimensions": [
                         30
                       ]
                     }
@@ -823,8 +814,8 @@
                       12
                     ],
                     "originalVar": {
-                      "networkVarName": "classifier₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "classifier₀[input]",
+                      "tensorVarDimensions": [
                         30
                       ]
                     }
@@ -837,8 +828,8 @@
                       13
                     ],
                     "originalVar": {
-                      "networkVarName": "classifier₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "classifier₀[input]",
+                      "tensorVarDimensions": [
                         30
                       ]
                     }
@@ -851,8 +842,8 @@
                       14
                     ],
                     "originalVar": {
-                      "networkVarName": "classifier₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "classifier₀[input]",
+                      "tensorVarDimensions": [
                         30
                       ]
                     }
@@ -865,8 +856,8 @@
                       15
                     ],
                     "originalVar": {
-                      "networkVarName": "classifier₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "classifier₀[input]",
+                      "tensorVarDimensions": [
                         30
                       ]
                     }
@@ -879,8 +870,8 @@
                       16
                     ],
                     "originalVar": {
-                      "networkVarName": "classifier₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "classifier₀[input]",
+                      "tensorVarDimensions": [
                         30
                       ]
                     }
@@ -893,8 +884,8 @@
                       17
                     ],
                     "originalVar": {
-                      "networkVarName": "classifier₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "classifier₀[input]",
+                      "tensorVarDimensions": [
                         30
                       ]
                     }
@@ -907,8 +898,8 @@
                       18
                     ],
                     "originalVar": {
-                      "networkVarName": "classifier₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "classifier₀[input]",
+                      "tensorVarDimensions": [
                         30
                       ]
                     }
@@ -921,8 +912,8 @@
                       19
                     ],
                     "originalVar": {
-                      "networkVarName": "classifier₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "classifier₀[input]",
+                      "tensorVarDimensions": [
                         30
                       ]
                     }
@@ -935,8 +926,8 @@
                       20
                     ],
                     "originalVar": {
-                      "networkVarName": "classifier₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "classifier₀[input]",
+                      "tensorVarDimensions": [
                         30
                       ]
                     }
@@ -949,8 +940,8 @@
                       21
                     ],
                     "originalVar": {
-                      "networkVarName": "classifier₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "classifier₀[input]",
+                      "tensorVarDimensions": [
                         30
                       ]
                     }
@@ -963,8 +954,8 @@
                       22
                     ],
                     "originalVar": {
-                      "networkVarName": "classifier₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "classifier₀[input]",
+                      "tensorVarDimensions": [
                         30
                       ]
                     }
@@ -977,8 +968,8 @@
                       23
                     ],
                     "originalVar": {
-                      "networkVarName": "classifier₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "classifier₀[input]",
+                      "tensorVarDimensions": [
                         30
                       ]
                     }
@@ -991,8 +982,8 @@
                       24
                     ],
                     "originalVar": {
-                      "networkVarName": "classifier₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "classifier₀[input]",
+                      "tensorVarDimensions": [
                         30
                       ]
                     }
@@ -1005,8 +996,8 @@
                       25
                     ],
                     "originalVar": {
-                      "networkVarName": "classifier₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "classifier₀[input]",
+                      "tensorVarDimensions": [
                         30
                       ]
                     }
@@ -1019,8 +1010,8 @@
                       26
                     ],
                     "originalVar": {
-                      "networkVarName": "classifier₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "classifier₀[input]",
+                      "tensorVarDimensions": [
                         30
                       ]
                     }
@@ -1033,8 +1024,8 @@
                       27
                     ],
                     "originalVar": {
-                      "networkVarName": "classifier₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "classifier₀[input]",
+                      "tensorVarDimensions": [
                         30
                       ]
                     }
@@ -1047,8 +1038,8 @@
                       28
                     ],
                     "originalVar": {
-                      "networkVarName": "classifier₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "classifier₀[input]",
+                      "tensorVarDimensions": [
                         30
                       ]
                     }
@@ -1061,8 +1052,8 @@
                       29
                     ],
                     "originalVar": {
-                      "networkVarName": "classifier₀[input]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "classifier₀[input]",
+                      "tensorVarDimensions": [
                         30
                       ]
                     }
@@ -1075,8 +1066,8 @@
                       0
                     ],
                     "originalVar": {
-                      "networkVarName": "classifier₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "classifier₀[output]",
+                      "tensorVarDimensions": [
                         2
                       ]
                     }
@@ -1089,8 +1080,8 @@
                       1
                     ],
                     "originalVar": {
-                      "networkVarName": "classifier₀[output]",
-                      "networkTensorVarDimensions": [
+                      "tensorVarName": "classifier₀[output]",
+                      "tensorVarDimensions": [
                         2
                       ]
                     }

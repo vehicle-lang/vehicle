@@ -167,13 +167,13 @@ mapAssertionExprs ft fr ass = checkTriviality $ case ass of
   RationalIneq Inequality {..} -> RationalIneq $ Inequality strictness (fr inequalityExpr)
 
 substituteTensorEq ::
-  (OriginalUserVariable, LinearExpr TensorVariable RationalTensor) ->
+  (TensorVariable, LinearExpr TensorVariable RationalTensor) ->
   Map RationalVariable (LinearExpr RationalVariable Rational) ->
   Assertion ->
   MaybeTrivial Assertion
 substituteTensorEq (var, solution) ratSolutions =
   mapAssertionExprs
-    (eliminateVar (UserTensorVar var) solution)
+    (eliminateVar var solution)
     eliminateRatVars
   where
     -- Usually the expression being substituted into is much smaller than the number of tensor
