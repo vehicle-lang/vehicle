@@ -16,7 +16,7 @@ import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.LinearExpr (LinearExpr, addExprs, constantExpr, isConstant, scaleExpr, singletonVarExpr)
 import Vehicle.Data.Code.Value
 import Vehicle.Data.QuantifiedVariable
-import Vehicle.Data.Tensor (RationalTensor, Tensor (..), TensorShape, zeroTensor)
+import Vehicle.Data.Tensor (RationalTensor, Tensor (..), TensorShape)
 import Prelude hiding (Applicative (..))
 
 type MonadCompileLinearExpr m =
@@ -34,7 +34,7 @@ data LinearityError
 compileRatLinearRelation ::
   (MonadLogger m) =>
   (Lv -> ExceptT LinearityError m ElementVariable) ->
-  (LinearExpr ElementVariable Rational -> LinearExpr ElementVariable Rational -> relation) ->
+  (LinearExpr -> LinearExpr -> relation) ->
   WHNFValue Builtin ->
   WHNFValue Builtin ->
   m (Either LinearityError relation)
@@ -49,16 +49,16 @@ compileRatLinearExpr ::
   (MonadCompileLinearExpr m) =>
   (Lv -> m ElementVariable) ->
   WHNFValue Builtin ->
-  m (LinearExpr ElementVariable Rational)
+  m LinearExpr
 compileRatLinearExpr handleVar = go
   where
-    go :: WHNFValue Builtin -> m (LinearExpr ElementVariable Rational)
+    go :: WHNFValue Builtin -> m LinearExpr
     go e = case e of
       ----------------
       -- Base cases --
       ----------------
-      IRatLiteral _ l -> return $ constantExpr l
-      VBoundVar lv [] -> singletonVarExpr 0 <$> handleVar lv
+      IRatLiteral _ l -> return $ constantExpr (Tensor [] [l])
+      VBoundVar lv [] -> singletonVarExpr [] <$> handleVar lv
       ---------------------
       -- Inductive cases --
       ---------------------
@@ -69,14 +69,14 @@ compileRatLinearExpr handleVar = go
         e1' <- go e1
         e2' <- go e2
         case (isConstant e1', isConstant e2') of
-          (Just c1, _) -> return $ scaleExpr c1 e2'
-          (_, Just c2) -> return $ scaleExpr c2 e1'
+          (Just (Tensor [] [c1]), _) -> return $ scaleExpr c1 e2'
+          (_, Just (Tensor [] [c2])) -> return $ scaleExpr c2 e1'
           _ -> throwError NonLinearity
       IDiv DivRat e1 e2 -> do
         e1' <- go e1
         e2' <- go e2
         case isConstant e2' of
-          (Just c2) -> return $ scaleExpr (1 / c2) e1'
+          (Just (Tensor [] [c2])) -> return $ scaleExpr (1 / c2) e1'
           _ -> throwError NonLinearity
       -----------------
       -- Error cases --
@@ -91,7 +91,7 @@ compileTensorLinearRelation ::
   (Lv -> ExceptT LinearityError m (TensorVariable, TensorShape)) ->
   WHNFValue Builtin ->
   WHNFValue Builtin ->
-  m (Either LinearityError (Maybe (LinearExpr TensorVariable RationalTensor, LinearExpr TensorVariable RationalTensor)))
+  m (Either LinearityError (Maybe (LinearExpr, LinearExpr)))
 compileTensorLinearRelation handleVar x y = do
   runExceptT $ do
     x' <- compileTensorLinearExpr handleVar x
@@ -103,10 +103,10 @@ compileTensorLinearExpr ::
   (MonadCompileLinearExpr m) =>
   (Lv -> m (TensorVariable, TensorShape)) ->
   WHNFValue Builtin ->
-  m (Maybe (LinearExpr TensorVariable RationalTensor))
+  m (Maybe LinearExpr)
 compileTensorLinearExpr handleVar = go
   where
-    go :: WHNFValue Builtin -> m (Maybe (LinearExpr TensorVariable RationalTensor))
+    go :: WHNFValue Builtin -> m (Maybe LinearExpr)
     go e = case e of
       ---------------------
       -- Inductive cases --
@@ -120,7 +120,7 @@ compileTensorLinearExpr handleVar = go
         return (constantExpr <$> getRationalTensor e)
       VBoundVar lv [] -> do
         (var, shape) <- handleVar lv
-        return $ Just $ singletonVarExpr (zeroTensor shape) var
+        return $ Just $ singletonVarExpr shape var
       _ -> return Nothing
 
 getRationalTensor :: WHNFValue Builtin -> Maybe RationalTensor

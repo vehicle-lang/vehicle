@@ -66,8 +66,14 @@
                     "x",
                     {
                       "constantValue": {
-                        "numerator": 0,
-                        "denominator": 1
+                        "value": [
+                          {
+                            "numerator": 0,
+                            "denominator": 1
+                          }
+                        ],
+                        "tag": "Tensor",
+                        "shape": []
                       },
                       "coefficients": {
                         "f₀[input]!0": {
@@ -219,8 +225,14 @@
                     "x",
                     {
                       "constantValue": {
-                        "numerator": 0,
-                        "denominator": 1
+                        "value": [
+                          {
+                            "numerator": 0,
+                            "denominator": 1
+                          }
+                        ],
+                        "tag": "Tensor",
+                        "shape": []
                       },
                       "coefficients": {
                         "f₁[input]!0": {

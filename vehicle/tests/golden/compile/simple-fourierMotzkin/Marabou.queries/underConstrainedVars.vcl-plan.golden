@@ -55,8 +55,14 @@
                           "strictness": "NonStrict",
                           "inequalityExpr": {
                             "constantValue": {
-                              "numerator": 2,
-                              "denominator": 1
+                              "value": [
+                                {
+                                  "numerator": 2,
+                                  "denominator": 1
+                                }
+                              ],
+                              "tag": "Tensor",
+                              "shape": []
                             },
                             "coefficients": {}
                           }
@@ -76,8 +82,14 @@
                           "strictness": "NonStrict",
                           "inequalityExpr": {
                             "constantValue": {
-                              "numerator": 1,
-                              "denominator": 1
+                              "value": [
+                                {
+                                  "numerator": 1,
+                                  "denominator": 1
+                                }
+                              ],
+                              "tag": "Tensor",
+                              "shape": []
                             },
                             "coefficients": {
                               "x!3": {
@@ -102,8 +114,14 @@
                           "strictness": "NonStrict",
                           "inequalityExpr": {
                             "constantValue": {
-                              "numerator": 5,
-                              "denominator": 2
+                              "value": [
+                                {
+                                  "numerator": 5,
+                                  "denominator": 2
+                                }
+                              ],
+                              "tag": "Tensor",
+                              "shape": []
                             },
                             "coefficients": {
                               "x!3": {
@@ -123,8 +141,14 @@
                     "x!0",
                     {
                       "constantValue": {
-                        "numerator": 0,
-                        "denominator": 1
+                        "value": [
+                          {
+                            "numerator": 0,
+                            "denominator": 1
+                          }
+                        ],
+                        "tag": "Tensor",
+                        "shape": []
                       },
                       "coefficients": {
                         "x!1": {

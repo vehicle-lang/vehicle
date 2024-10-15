@@ -36,15 +36,10 @@ import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Interface
 
 --------------------------------------------------------------------------------
--- Builtins
-
-type QueryBuiltin = Builtin
-
---------------------------------------------------------------------------------
 -- Network applications
 
 -- | A single application of a neural network to a set of arguments.
-type NetworkApplication = (Name, WHNFSpine QueryBuiltin)
+type NetworkApplication = (Name, WHNFSpine Builtin)
 
 -- | Bookkeeping information associated with an application that describes
 -- the variables and corresponding expressions that replace a given
@@ -53,7 +48,7 @@ data NetworkApplicationReplacement = NetworkApplicationReplacement
   { networkApp :: NetworkApplication,
     networkInfo :: NetworkContextInfo,
     inputVariable :: TensorVariable,
-    outputVarExpr :: WHNFValue QueryBuiltin,
+    outputVarExpr :: WHNFValue Builtin,
     outputVariable :: TensorVariable
   }
 
@@ -96,7 +91,7 @@ addUserVarToGlobalContext ::
   TensorVariable ->
   TensorShape ->
   GlobalCtx ->
-  (WHNFValue QueryBuiltin, GlobalCtx)
+  (WHNFValue Builtin, GlobalCtx)
 addUserVarToGlobalContext userVar shape GlobalCtx {..} = do
   -- Create the unreduced and reduced versions of the user variables.
   let currentLevel = Lv $ length globalBoundVarCtx
@@ -121,7 +116,7 @@ addNetworkApplicationToGlobalCtx ::
   NetworkApplication ->
   NetworkContextInfo ->
   GlobalCtx ->
-  m (WHNFValue QueryBuiltin, WHNFValue QueryBuiltin, GlobalCtx)
+  m (WHNFValue Builtin, WHNFValue Builtin, GlobalCtx)
 addNetworkApplicationToGlobalCtx app@(networkName, _) networkInfo GlobalCtx {..} = do
   let metaNetworkSoFar = LinkedHashMap.toList networkApplications
   let applicationNumber = length $ filter (\((name, _), _) -> name == networkName) metaNetworkSoFar
@@ -194,9 +189,9 @@ type AssertionTree = BooleanExpr Assertion
 -- | One step in the process for transforming unreduced user variables into
 -- reduced network input and output variables.
 data UserVariableReconstructionStep
-  = SolveTensorEquality TensorVariable (LinearExpr TensorVariable RationalTensor)
-  | SolveRationalEquality UserElementVariable (LinearExpr ElementVariable Rational)
-  | SolveRationalInequalities UserElementVariable (Bounds ElementVariable Rational)
+  = SolveTensorEquality TensorVariable LinearExpr
+  | SolveRationalEquality UserElementVariable LinearExpr
+  | SolveRationalInequalities UserElementVariable Bounds
   | ReconstructTensor Bool TensorShape TensorVariable [ElementVariable]
   deriving (Eq, Ord, Show, Generic)
 
@@ -254,7 +249,7 @@ mkTrivialPartition assertion = mkSinglePartition (mempty, NonTrivial $ Query ass
 -- Monads
 
 type MonadPropertyStructure m =
-  ( MonadFreeContext QueryBuiltin m,
+  ( MonadFreeContext Builtin m,
     MonadReader PropertyMetaData m,
     MonadCompile m
   )
@@ -264,13 +259,13 @@ type MonadQueryStructure m =
     MonadState GlobalCtx m
   )
 
-getGlobalBoundCtx :: (MonadQueryStructure m) => m (BoundCtx (Type QueryBuiltin))
+getGlobalBoundCtx :: (MonadQueryStructure m) => m (BoundCtx (Type Builtin))
 getGlobalBoundCtx = gets (variableCtxToBoundCtx . (fmap snd . LinkedHashMap.toList . globalBoundVarCtx))
 
 getGlobalNamedBoundCtx :: (MonadQueryStructure m) => m NamedBoundCtx
 getGlobalNamedBoundCtx = toNamedBoundCtx <$> getGlobalBoundCtx
 
-prettyFriendlyInCtx :: (MonadQueryStructure m) => WHNFValue QueryBuiltin -> m (Doc a)
+prettyFriendlyInCtx :: (MonadQueryStructure m) => WHNFValue Builtin -> m (Doc a)
 prettyFriendlyInCtx e = do
   ctx <- toNamedBoundCtx <$> getGlobalBoundCtx
   return $ prettyFriendly (WithContext e ctx)
@@ -312,7 +307,7 @@ getTensorVariableInfo GlobalCtx {..} var = do
 getReducedVariablesFor :: GlobalCtx -> TensorVariable -> [ElementVariable]
 getReducedVariablesFor globalCtx var = elementVariables $ getTensorVariableInfo globalCtx var
 
-getReducedVariableExprFor :: (MonadState GlobalCtx m, MonadLogger m) => Lv -> m (Maybe (WHNFValue QueryBuiltin))
+getReducedVariableExprFor :: (MonadState GlobalCtx m, MonadLogger m) => Lv -> m (Maybe (WHNFValue Builtin))
 getReducedVariableExprFor lv = do
   ctx <- get
   var <- lookupVarByLevel lv
@@ -320,8 +315,8 @@ getReducedVariableExprFor lv = do
 
 reduceTensorExpr ::
   GlobalCtx ->
-  LinearExpr TensorVariable RationalTensor ->
-  [LinearExpr ElementVariable Rational]
+  LinearExpr ->
+  [LinearExpr]
 reduceTensorExpr globalCtx (Sparse coeff constant) = do
   let constValues = Vector.toList $ tensorValue constant
   let numRatEqs = product (tensorShape constant)
@@ -333,8 +328,9 @@ reduceTensorExpr globalCtx (Sparse coeff constant) = do
       [([ElementVariable], Coefficient)] ->
       [Rational] ->
       Int ->
-      LinearExpr ElementVariable Rational
-    mkRatEquality coeffs consts i = Sparse (Map.fromList (fmap (first (!! i)) coeffs)) (consts !! i)
+      LinearExpr
+    mkRatEquality coeffs consts i =
+      Sparse (Map.fromList (fmap (first (!! i)) coeffs)) (Tensor mempty [consts !! i])
 
 --------------------------------------------------------------------------------
 -- Context operations
@@ -349,15 +345,15 @@ variableCtxToBoundCtx ctx = zipWith variableCtxToBoundCtxEntry [0 .. Ix (length 
 
 mkVVectorEquality ::
   TensorShape ->
-  WHNFValue QueryBuiltin ->
-  WHNFValue QueryBuiltin ->
-  WHNFValue QueryBuiltin
+  WHNFValue Builtin ->
+  WHNFValue Builtin ->
+  WHNFValue Builtin
 mkVVectorEquality dimensions e1 e2 = do
   mkVectorEquality (fmap (INatLiteral mempty) dimensions) (Arg mempty Explicit Relevant <$> [e1, e2])
   where
     -- Would definitely be nicer to somehow reuse the type-class resolution machinery here,
     -- but it seems incredibly complicated to setup...
-    mkVectorEquality :: [WHNFValue QueryBuiltin] -> WHNFSpine QueryBuiltin -> WHNFValue QueryBuiltin
+    mkVectorEquality :: [WHNFValue Builtin] -> WHNFSpine Builtin -> WHNFValue Builtin
     mkVectorEquality dims spine =
       let p = mempty
        in case dims of

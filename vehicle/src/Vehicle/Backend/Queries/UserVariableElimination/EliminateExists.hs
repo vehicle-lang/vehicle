@@ -59,7 +59,7 @@ solveExists searchCriteria solveVarConstraints partitions userVar = do
 --------------------------------------------------------------------------------
 -- Tensor equalities
 
-fromTensorAssertion :: TensorVariable -> Assertion -> ConstrainedAssertionTree TensorEquality
+fromTensorAssertion :: TensorVariable -> Assertion -> ConstrainedAssertionTree Equality
 fromTensorAssertion var = \case
   TensorEq eq | equalityExpr eq `referencesVariable` var -> SingleEquality eq (Trivial True)
   assertion -> NoConstraints (Query assertion)
@@ -68,7 +68,7 @@ solveTensorVariable ::
   (MonadSolveExists m) =>
   TensorVariable ->
   UserVariableReconstruction ->
-  ConstrainedAssertionTree TensorEquality ->
+  ConstrainedAssertionTree Equality ->
   m (MaybeTrivial Partitions)
 solveTensorVariable userTensorVar solutions = \case
   SingleEquality (Equality tensorEq) remainingTree -> do
@@ -108,7 +108,7 @@ solveTensorVariable userTensorVar solutions = \case
 --------------------------------------------------------------------------------
 -- UserRationalVariables and equalities/constraints
 
-fromRationalAssertion :: UserElementVariable -> Assertion -> ConstrainedAssertionTree RationalEquality
+fromRationalAssertion :: UserElementVariable -> Assertion -> ConstrainedAssertionTree Equality
 fromRationalAssertion var = \case
   RationalEq eq | equalityExpr eq `referencesVariable` var -> SingleEquality eq (Trivial True)
   RationalIneq ineq | inequalityExpr ineq `referencesVariable` var -> Inequalities (ConjunctAll [ineq]) (Trivial True)
@@ -118,7 +118,7 @@ solveRationalVariable ::
   (MonadSolveExists m) =>
   UserElementVariable ->
   UserVariableReconstruction ->
-  ConstrainedAssertionTree RationalEquality ->
+  ConstrainedAssertionTree Equality ->
   m (MaybeTrivial Partitions)
 solveRationalVariable var solutions constraint =
   mkSinglePartition <$> case constraint of
@@ -142,7 +142,7 @@ solveRationalInequalities ::
   (MonadSolveExists m) =>
   UserElementVariable ->
   UserVariableReconstruction ->
-  [RationalInequality] ->
+  [Inequality] ->
   MaybeTrivial AssertionTree ->
   m (UserVariableReconstruction, MaybeTrivial AssertionTree)
 solveRationalInequalities var solutions ineqs remainingTree = do

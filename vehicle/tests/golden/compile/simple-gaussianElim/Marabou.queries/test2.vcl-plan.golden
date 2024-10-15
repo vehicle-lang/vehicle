@@ -41,8 +41,14 @@
                     "a",
                     {
                       "constantValue": {
-                        "numerator": 0,
-                        "denominator": 1
+                        "value": [
+                          {
+                            "numerator": 0,
+                            "denominator": 1
+                          }
+                        ],
+                        "tag": "Tensor",
+                        "shape": []
                       },
                       "coefficients": {
                         "g₀[input]!1": {
@@ -74,8 +80,14 @@
                     "b",
                     {
                       "constantValue": {
-                        "numerator": 0,
-                        "denominator": 1
+                        "value": [
+                          {
+                            "numerator": 0,
+                            "denominator": 1
+                          }
+                        ],
+                        "tag": "Tensor",
+                        "shape": []
                       },
                       "coefficients": {
                         "g₀[input]!0": {

@@ -27,6 +27,7 @@ import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.QuantifiedVariable
+import Vehicle.Data.Tensor (Tensor (..))
 import Vehicle.Prelude.Warning (CompileWarning (..))
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
@@ -130,7 +131,7 @@ convertToNetworkRatVarAssertions globalCtx = go
 makeQueryAssertion ::
   (MonadCompile m) =>
   Relation ->
-  LinearExpr ElementVariable Rational ->
+  LinearExpr ->
   m (QueryAssertion NetworkElementVariable)
 makeQueryAssertion relation (Sparse coefficients constant) = do
   let finalRelation = case relation of
@@ -143,7 +144,9 @@ makeQueryAssertion relation (Sparse coefficients constant) = do
     (c : cs) -> return $ c :| cs
     [] -> compilerDeveloperError "Found trivial assertion"
 
-  let finalRHS = -constant
+  let finalRHS = case constant of
+        Tensor [] [v] -> -v
+        _ -> developerError "Query assertions should be 0d tensors"
 
   return $
     QueryAssertion

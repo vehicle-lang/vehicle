@@ -30,23 +30,6 @@ import Vehicle.Prelude
 -- its a variable representing an element of a tensor.
 type Variable = Name
 
-{-
-instance NFData Variable
-
-instance Hashable Variable
-
-instance ToJSON Variable
-
-instance FromJSON Variable
-
-instance ToJSONKey Variable
-
-instance FromJSONKey Variable
-
-instance Pretty Variable where
-  pretty Variable{..} = pretty varName
--}
-
 makeTensorVariable :: Name -> Variable
 makeTensorVariable = id
 

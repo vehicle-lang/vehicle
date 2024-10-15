@@ -40,8 +40,14 @@
                     "a",
                     {
                       "constantValue": {
-                        "numerator": -2,
-                        "denominator": 1
+                        "value": [
+                          {
+                            "numerator": -2,
+                            "denominator": 1
+                          }
+                        ],
+                        "tag": "Tensor",
+                        "shape": []
                       },
                       "coefficients": {
                         "f₀[input]!0": {
