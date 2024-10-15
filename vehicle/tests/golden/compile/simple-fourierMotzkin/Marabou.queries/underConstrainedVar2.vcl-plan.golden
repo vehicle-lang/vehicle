@@ -44,8 +44,14 @@
                           "strictness": "NonStrict",
                           "inequalityExpr": {
                             "constantValue": {
-                              "numerator": -1,
-                              "denominator": 2
+                              "value": [
+                                {
+                                  "numerator": -1,
+                                  "denominator": 2
+                                }
+                              ],
+                              "tag": "Tensor",
+                              "shape": []
                             },
                             "coefficients": {
                               "f₀[input]!0": {
@@ -61,8 +67,14 @@
                           "strictness": "NonStrict",
                           "inequalityExpr": {
                             "constantValue": {
-                              "numerator": 1,
-                              "denominator": 1
+                              "value": [
+                                {
+                                  "numerator": 1,
+                                  "denominator": 1
+                                }
+                              ],
+                              "tag": "Tensor",
+                              "shape": []
                             },
                             "coefficients": {}
                           }
@@ -88,8 +100,14 @@
                     "y",
                     {
                       "constantValue": {
-                        "numerator": 0,
-                        "denominator": 1
+                        "value": [
+                          {
+                            "numerator": 0,
+                            "denominator": 1
+                          }
+                        ],
+                        "tag": "Tensor",
+                        "shape": []
                       },
                       "coefficients": {
                         "x": {

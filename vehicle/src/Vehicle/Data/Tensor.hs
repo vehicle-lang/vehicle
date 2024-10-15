@@ -9,7 +9,7 @@ import Data.List.Split (chunksOf)
 import Data.Vector (Vector)
 import Data.Vector qualified as Vector
 import GHC.Generics (Generic)
-import Vehicle.Prelude.Misc (IsConstant (..), jsonOptions)
+import Vehicle.Prelude.Misc (jsonOptions)
 import Vehicle.Prelude.Prettyprinter (Pretty (..), prettyFlatList)
 import Vehicle.Syntax.Prelude (developerError)
 
@@ -52,13 +52,11 @@ instance (FromJSON a) => FromJSON (Tensor a) where
         { fieldLabelModifier = stripFieldNamePrefix
         }
 
-instance (IsConstant a) => IsConstant (Tensor a) where
-  isZero = Vector.all isZero . tensorValue
-  scaleConstant v = fmap (scaleConstant v)
-  addConstants a b = zipWithTensor (addConstants a b)
-
 mapTensor :: (a -> b) -> Tensor a -> Tensor b
 mapTensor = fmap
+
+tensorAll :: (a -> Bool) -> Tensor a -> Bool
+tensorAll f (Tensor _ vs) = Vector.all f vs
 
 zipWithTensor :: (a -> b -> c) -> Tensor a -> Tensor b -> Tensor c
 zipWithTensor f t1 t2 =

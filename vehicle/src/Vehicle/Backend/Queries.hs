@@ -144,7 +144,7 @@ handlePropertyCompileError prog (queryFormat, _, declProv, _, _) e = case e of
 -- type `Bool`.
 compileMultiProperty ::
   forall m.
-  (MonadStdIO m, MonadFreeContext QueryBuiltin m, MonadCompile m) =>
+  (MonadStdIO m, MonadFreeContext Builtin m, MonadCompile m) =>
   MultiPropertyMetaData ->
   WHNFValue Builtin ->
   m (MultiProperty ())

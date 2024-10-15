@@ -41,8 +41,14 @@
                     "x!1",
                     {
                       "constantValue": {
-                        "numerator": -4,
-                        "denominator": 1
+                        "value": [
+                          {
+                            "numerator": -4,
+                            "denominator": 1
+                          }
+                        ],
+                        "tag": "Tensor",
+                        "shape": []
                       },
                       "coefficients": {
                         "controller₀[input]!1": {
@@ -59,8 +65,14 @@
                     "x!0",
                     {
                       "constantValue": {
-                        "numerator": -4,
-                        "denominator": 1
+                        "value": [
+                          {
+                            "numerator": -4,
+                            "denominator": 1
+                          }
+                        ],
+                        "tag": "Tensor",
+                        "shape": []
                       },
                       "coefficients": {
                         "controller₀[input]!0": {
@@ -166,8 +178,14 @@
                     "x!1",
                     {
                       "constantValue": {
-                        "numerator": -4,
-                        "denominator": 1
+                        "value": [
+                          {
+                            "numerator": -4,
+                            "denominator": 1
+                          }
+                        ],
+                        "tag": "Tensor",
+                        "shape": []
                       },
                       "coefficients": {
                         "controller₀[input]!1": {
@@ -184,8 +202,14 @@
                     "x!0",
                     {
                       "constantValue": {
-                        "numerator": -4,
-                        "denominator": 1
+                        "value": [
+                          {
+                            "numerator": -4,
+                            "denominator": 1
+                          }
+                        ],
+                        "tag": "Tensor",
+                        "shape": []
                       },
                       "coefficients": {
                         "controller₀[input]!0": {

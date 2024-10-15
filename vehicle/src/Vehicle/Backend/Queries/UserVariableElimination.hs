@@ -33,9 +33,8 @@ import Vehicle.Data.Assertion
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.Interface
-import Vehicle.Data.Code.LinearExpr (LinearExpr)
+import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.Code.Value
-import Vehicle.Data.QuantifiedVariable
 import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (StdEqualsVector, StdNotEqualsVector))
 import Vehicle.Verify.Core (NetworkContextInfo (..), QuerySetNegationStatus)
 import Vehicle.Verify.QueryFormat (QueryFormat (..), supportsStrictInequalities)
@@ -131,8 +130,8 @@ compileQuerySetPartitions isPropertyNegated maybePartitions = case maybePartitio
 -- of assertions implicitly existentially quantified by a set of network
 -- input/output variables.
 compileBoolExpr ::
-  (MonadQueryStructure m, MonadWriter [WHNFValue QueryBuiltin] m) =>
-  WHNFValue QueryBuiltin ->
+  (MonadQueryStructure m, MonadWriter [WHNFValue Builtin] m) =>
+  WHNFValue Builtin ->
   m (MaybeTrivial Partitions)
 compileBoolExpr expr = case expr of
   ----------------
@@ -156,16 +155,16 @@ compileBoolExpr expr = case expr of
   _ -> compileBoolExpr =<< unblockBoolExpr expr
 
 eliminateNot ::
-  (MonadQueryStructure m, MonadWriter [WHNFValue QueryBuiltin] m) =>
-  WHNFValue QueryBuiltin ->
-  m (WHNFValue QueryBuiltin)
+  (MonadQueryStructure m, MonadWriter [WHNFValue Builtin] m) =>
+  WHNFValue Builtin ->
+  m (WHNFValue Builtin)
 eliminateNot = lowerNot (eliminateNot <=< unblockBoolExpr)
 
 eliminateNotEqualRat ::
   (MonadQueryStructure m) =>
-  WHNFValue QueryBuiltin ->
-  WHNFValue QueryBuiltin ->
-  m (WHNFValue QueryBuiltin)
+  WHNFValue Builtin ->
+  WHNFValue Builtin ->
+  m (WHNFValue Builtin)
 eliminateNotEqualRat x y = do
   PropertyMetaData {..} <- ask
   if supportsStrictInequalities queryFormat
@@ -174,8 +173,8 @@ eliminateNotEqualRat x y = do
 
 eliminateNotVectorEqual ::
   (MonadQueryStructure m) =>
-  WHNFSpine QueryBuiltin ->
-  m (WHNFValue QueryBuiltin)
+  WHNFSpine Builtin ->
+  m (WHNFValue Builtin)
 eliminateNotVectorEqual = appHiddenStdlibDef StdNotEqualsVector
 
 tryPurifyAssertion ::
@@ -202,9 +201,9 @@ unblockBoolExpr value = do
 
 compileExists ::
   (MonadQueryStructure m) =>
-  WHNFBinder QueryBuiltin ->
-  WHNFBoundEnv QueryBuiltin ->
-  Expr QueryBuiltin ->
+  WHNFBinder Builtin ->
+  WHNFBoundEnv Builtin ->
+  Expr Builtin ->
   m (MaybeTrivial Partitions)
 compileExists binder env body = do
   let varName = getBinderName binder
@@ -264,7 +263,7 @@ unblockingActions =
 unblockBoundVectorVariable ::
   (MonadQuantifierBody m) =>
   Lv ->
-  m (WHNFValue QueryBuiltin)
+  m (WHNFValue Builtin)
 unblockBoundVectorVariable lv = do
   maybeReduction <- getReducedVariableExprFor lv
   case maybeReduction of
@@ -276,8 +275,8 @@ unblockFreeVectorVariable ::
   (ReduceVectorVars -> WHNFValue Builtin -> m (WHNFValue Builtin)) ->
   ReduceVectorVars ->
   Identifier ->
-  WHNFSpine QueryBuiltin ->
-  m (WHNFValue QueryBuiltin)
+  WHNFSpine Builtin ->
+  m (WHNFValue Builtin)
 unblockFreeVectorVariable unblockVector reduceVectorVars ident spine = do
   let networkName = nameOf ident
   networkContext <- asks networkCtx
@@ -314,9 +313,9 @@ unblockFreeVectorVariable unblockVector reduceVectorVars ident spine = do
 
 compileRationalAssertion ::
   (MonadQueryStructure m) =>
-  (LinearExpr ElementVariable Rational -> LinearExpr ElementVariable Rational -> Assertion) ->
-  WHNFValue QueryBuiltin ->
-  WHNFValue QueryBuiltin ->
+  (LinearExpr -> LinearExpr -> Assertion) ->
+  WHNFValue Builtin ->
+  WHNFValue Builtin ->
   m (MaybeTrivial Partitions)
 compileRationalAssertion mkAssertion x y = do
   result <- compileRatLinearRelation getRationalVariable mkAssertion x y
@@ -326,10 +325,10 @@ compileRationalAssertion mkAssertion x y = do
     Right assertion -> return $ mkTrivialPartition assertion
 
 compileTensorAssertion ::
-  (MonadQueryStructure m, MonadWriter [WHNFValue QueryBuiltin] m) =>
-  WHNFSpine QueryBuiltin ->
-  WHNFValue QueryBuiltin ->
-  WHNFValue QueryBuiltin ->
+  (MonadQueryStructure m, MonadWriter [WHNFValue Builtin] m) =>
+  WHNFSpine Builtin ->
+  WHNFValue Builtin ->
+  WHNFValue Builtin ->
   m (MaybeTrivial Partitions)
 compileTensorAssertion spinePrefix x y = do
   result <- compileTensorLinearRelation getTensorVariable x y

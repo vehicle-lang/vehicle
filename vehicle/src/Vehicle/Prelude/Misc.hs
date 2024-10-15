@@ -231,19 +231,3 @@ getModify f = do
 
 -- At the moment we only support rational coefficients.
 type Coefficient = Rational
-
--- If we're ever to support matrix multiplication we'll need to make this a full
--- field structure.
---
--- However, we run into issues that we can't define a `zero` element as we don't
--- don't have access to the dimensions of tensors at the type level due to the
--- lack of dependent types.
-class IsConstant constant where
-  isZero :: constant -> Bool
-  scaleConstant :: Coefficient -> constant -> constant
-  addConstants :: Coefficient -> Coefficient -> constant -> constant -> constant
-
-instance IsConstant Rational where
-  isZero = (== 0.0)
-  scaleConstant = (*)
-  addConstants a b x y = a * x + b * y

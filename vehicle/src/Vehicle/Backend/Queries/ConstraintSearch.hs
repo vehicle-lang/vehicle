@@ -25,7 +25,7 @@ import Vehicle.Data.Code.BooleanExpr
 -- no equalties at all.
 data ConstrainedAssertionTree equality
   = SingleEquality !equality !(MaybeTrivial AssertionTree)
-  | Inequalities !(ConjunctAll RationalInequality) !(MaybeTrivial AssertionTree)
+  | Inequalities !(ConjunctAll Inequality) !(MaybeTrivial AssertionTree)
   | NoConstraints !AssertionTree
 
 instance (Pretty equality) => Pretty (ConstrainedAssertionTree equality) where
