@@ -3,12 +3,10 @@ module Vehicle.Backend.Queries.PostProcessing
   )
 where
 
-import Control.DeepSeq (force)
 import Control.Monad (forM, unless, when)
 import Control.Monad.Reader (MonadReader (..))
 import Control.Monad.State (MonadState, get)
 import Data.Bifunctor (Bifunctor (..))
-import Data.Either (partitionEithers)
 import Data.Foldable (foldlM)
 import Data.HashMap.Strict qualified as HashMap
 import Data.LinkedHashMap qualified as LinkedHashMap
@@ -93,7 +91,7 @@ reconstructNetworkTensorVars ::
   m UserVariableReconstruction
 reconstructNetworkTensorVars GlobalCtx {..} solutions = do
   let networkTensorVars = sortOn fst $ HashMap.toList networkVariableReductions
-  let mkStep (var, NetworkVariableInfo {..}) = ReconstructTensor var (fmap NetworkRationalVar elementVariables)
+  let mkStep (var, NetworkVariableInfo {..}) = ReconstructTensor var elementVariables
   return $ foldr (\v -> (mkStep v :)) solutions networkTensorVars
 
 --------------------------------------------------------------------------------
@@ -128,7 +126,7 @@ convertToNetworkRatVarAssertions = go
 makeQueryAssertion ::
   (MonadCompile m) =>
   Relation ->
-  LinearExpr RationalVariable Rational ->
+  LinearExpr ElementVariable Rational ->
   m (QueryAssertion NetworkRationalVariable)
 makeQueryAssertion relation (Sparse coefficients constant) = do
   let finalRelation = case relation of
@@ -137,13 +135,7 @@ makeQueryAssertion relation (Sparse coefficients constant) = do
         LessThanOrEqual -> OrderRel Le
 
   let rationalVarCoefs = swap <$> Map.toList coefficients
-  let (userVarCoefs, networkVarCoefs) = force $ partitionEithers (fmap splitRationalVar rationalVarCoefs)
-
-  unless (null userVarCoefs) $
-    compilerDeveloperError $
-      "Found unsolved user variables" <+> pretty (fmap snd userVarCoefs)
-
-  finalLHS <- case networkVarCoefs of
+  finalLHS <- case rationalVarCoefs of
     (c : cs) -> return $ c :| cs
     [] -> compilerDeveloperError "Found trivial assertion"
 
@@ -155,13 +147,6 @@ makeQueryAssertion relation (Sparse coefficients constant) = do
         rel = finalRelation,
         rhs = finalRHS
       }
-
-splitRationalVar ::
-  (Coefficient, RationalVariable) ->
-  Either (Coefficient, UserRationalVariable) (Coefficient, NetworkRationalVariable)
-splitRationalVar (c, var) = case var of
-  UserRationalVar v -> Left (c, v)
-  NetworkRationalVar v -> Right (c, v)
 
 --------------------------------------------------------------------------------
 -- Step 3: calculate the actual set of network applications involved

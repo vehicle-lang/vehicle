@@ -20,19 +20,16 @@
                     },
                     [
                       {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            0,
-                            0
-                          ],
-                          "originalVar": {
-                            "tensorVarName": "classifier₀[input]",
-                            "tensorVarDimensions": [
-                              1,
-                              1
-                            ]
-                          }
+                        "tensorIndices": [
+                          0,
+                          0
+                        ],
+                        "originalVar": {
+                          "tensorVarName": "classifier₀[input]",
+                          "tensorVarDimensions": [
+                            1,
+                            1
+                          ]
                         }
                       }
                     ]
@@ -49,31 +46,25 @@
                     },
                     [
                       {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            0
-                          ],
-                          "originalVar": {
-                            "tensorVarName": "classifier₀[output]",
-                            "tensorVarDimensions": [
-                              2
-                            ]
-                          }
+                        "tensorIndices": [
+                          0
+                        ],
+                        "originalVar": {
+                          "tensorVarName": "classifier₀[output]",
+                          "tensorVarDimensions": [
+                            2
+                          ]
                         }
                       },
                       {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            1
-                          ],
-                          "originalVar": {
-                            "tensorVarName": "classifier₀[output]",
-                            "tensorVarDimensions": [
-                              2
-                            ]
-                          }
+                        "tensorIndices": [
+                          1
+                        ],
+                        "originalVar": {
+                          "tensorVarName": "classifier₀[output]",
+                          "tensorVarDimensions": [
+                            2
+                          ]
                         }
                       }
                     ]

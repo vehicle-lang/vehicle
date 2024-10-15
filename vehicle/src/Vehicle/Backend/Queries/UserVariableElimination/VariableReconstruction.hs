@@ -4,7 +4,6 @@ import Control.Monad (foldM)
 import Data.Foldable (foldlM)
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Map.Strict qualified as HashMap
 import Data.Maybe (fromMaybe)
 import Data.Vector qualified as Vector
 import Vehicle.Backend.Queries.UserVariableElimination.Core
@@ -40,7 +39,7 @@ reconstructUserVars queryVariableMapping steps networkVariableAssignment =
 
 data MixedVariableAssignment = VariableAssignment
   { tensorVariables :: Map TensorVariable RationalTensor,
-    rationalVariables :: Map RationalVariable Rational
+    rationalVariables :: Map ElementVariable Rational
   }
 
 instance Pretty MixedVariableAssignment where
@@ -53,7 +52,7 @@ instance Pretty MixedVariableAssignment where
 -- | Lookup the value of the variable in an assignment.
 lookupRationalVariable ::
   MixedVariableAssignment ->
-  RationalVariable ->
+  ElementVariable ->
   Maybe Rational
 lookupRationalVariable VariableAssignment {..} var = Map.lookup var rationalVariables
 
@@ -62,8 +61,8 @@ lookupRationalVariable VariableAssignment {..} var = Map.lookup var rationalVari
 -- and the resulting assignment.
 lookupRationalVariables ::
   MixedVariableAssignment ->
-  [RationalVariable] ->
-  Either RationalVariable [Rational]
+  [ElementVariable] ->
+  Either ElementVariable [Rational]
 lookupRationalVariables assignment = foldM op []
   where
     op values var = case lookupRationalVariable assignment var of
@@ -79,7 +78,7 @@ createInitialAssignment queryVariableMapping (QueryVariableAssignment valuesByQu
   let mapQueryVariable var = fromMaybe (developerError ("Missing query variable" <+> pretty var)) (Map.lookup var queryVariableMap)
   let valuesByNetworkVar = Map.mapKeys mapQueryVariable valuesByQueryVar
   VariableAssignment
-    { rationalVariables = HashMap.mapKeys NetworkRationalVar valuesByNetworkVar,
+    { rationalVariables = valuesByNetworkVar,
       tensorVariables = mempty
     }
 
@@ -103,7 +102,7 @@ applyReconstructionStep assignment@VariableAssignment {..} step = do
             logDebug MidDetail $ "Result:" <+> pretty var <+> "=" <+> pretty value
             return $
               VariableAssignment
-                { rationalVariables = Map.insert (UserRationalVar var) value rationalVariables,
+                { rationalVariables = Map.insert var value rationalVariables,
                   ..
                 }
     SolveTensorEquality var eq -> do
@@ -127,7 +126,7 @@ applyReconstructionStep assignment@VariableAssignment {..} step = do
           Right value ->
             return $
               VariableAssignment
-                { rationalVariables = Map.insert (UserRationalVar var) value rationalVariables,
+                { rationalVariables = Map.insert var value rationalVariables,
                   ..
                 }
 
@@ -137,7 +136,7 @@ applyReconstructionStep assignment@VariableAssignment {..} step = do
 unreduceVariable ::
   (MonadLogger m) =>
   TensorVariable ->
-  [RationalVariable] ->
+  [ElementVariable] ->
   MixedVariableAssignment ->
   m MixedVariableAssignment
 unreduceVariable variable reducedVariables assignment@VariableAssignment {..} = do

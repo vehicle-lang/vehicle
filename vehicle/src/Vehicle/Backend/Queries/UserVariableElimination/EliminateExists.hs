@@ -85,14 +85,14 @@ solveTensorVariable userTensorVar solutions = \case
     -- Generate accompanying rational solutions
     rationalRearrangedEqs <- reduceTensorExpr rearrangedEq
     userRationalVars <- getReducedUserVariablesFor userTensorVar
-    let solutionMap = Map.fromList $ zip (fmap UserRationalVar userRationalVars) rationalRearrangedEqs
+    let solutionMap = Map.fromList $ zip userRationalVars rationalRearrangedEqs
     -- Update tree
     let updatedTree = fmap (fmap (substituteTensorEq (userTensorVar, tensorEq) solutionMap)) remainingTree
     return $ mkSinglePartition (solution : solutions, filterTrivialAtoms updatedTree)
   NoConstraints tree -> do
     logDebug MaxDetail "No constraints on original variable found"
     userRationalVars <- getReducedUserVariablesFor userTensorVar
-    let updatedSolutions = ReconstructTensor userTensorVar (fmap UserRationalVar userRationalVars) : solutions
+    let updatedSolutions = ReconstructTensor userTensorVar userRationalVars : solutions
     let initial = mkSinglePartition (updatedSolutions, NonTrivial tree)
     foldlM (solveExists fromRationalAssertion solveRationalVariable) initial userRationalVars
   Inequalities {} ->
@@ -106,8 +106,8 @@ solveTensorVariable userTensorVar solutions = \case
 
 fromRationalAssertion :: UserRationalVariable -> Assertion -> ConstrainedAssertionTree RationalEquality
 fromRationalAssertion var = \case
-  RationalEq eq | equalityExpr eq `referencesVariable` UserRationalVar var -> SingleEquality eq (Trivial True)
-  RationalIneq ineq | inequalityExpr ineq `referencesVariable` UserRationalVar var -> Inequalities (ConjunctAll [ineq]) (Trivial True)
+  RationalEq eq | equalityExpr eq `referencesVariable` var -> SingleEquality eq (Trivial True)
+  RationalIneq ineq | inequalityExpr ineq `referencesVariable` var -> Inequalities (ConjunctAll [ineq]) (Trivial True)
   assertion -> NoConstraints (Query assertion)
 
 solveRationalVariable ::
@@ -119,7 +119,7 @@ solveRationalVariable ::
 solveRationalVariable var solutions constraint =
   mkSinglePartition <$> case constraint of
     SingleEquality (Equality eq) remainingTree -> do
-      let (_, rearrangedEq) = rearrangeExprToSolveFor (UserRationalVar var) eq
+      let (_, rearrangedEq) = rearrangeExprToSolveFor var eq
       let solution = SolveRationalEquality var rearrangedEq
       logDebug MaxDetail $
         "Solving"
@@ -143,7 +143,7 @@ solveRationalInequalities ::
   m (UserVariableReconstruction, MaybeTrivial AssertionTree)
 solveRationalInequalities var solutions ineqs remainingTree = do
   PropertyMetaData {..} <- ask
-  (solution, newInequalities) <- fourierMotzkinElimination (UserRationalVar var) ineqs
+  (solution, newInequalities) <- fourierMotzkinElimination var ineqs
   let step = SolveRationalInequalities var solution
   logDebug MaxDetail $
     "Solving"

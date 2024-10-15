@@ -77,9 +77,9 @@ partition var = foldr categorise (Bounds [] [], [])
 -- required variable that is missing from the assignment or the reconstructed
 -- value.
 reconstructFourierMotzkinVariableValue ::
-  Map RationalVariable Rational ->
-  Bounds RationalVariable Rational ->
-  Either RationalVariable Rational
+  Map ElementVariable Rational ->
+  Bounds ElementVariable Rational ->
+  Either ElementVariable Rational
 reconstructFourierMotzkinVariableValue assignment solution = do
   let initialMax = (-infinity, NonStrict)
   let initialMin = (infinity, NonStrict)
@@ -102,8 +102,8 @@ reconstructFourierMotzkinVariableValue assignment solution = do
   where
     evaluateMinValue ::
       (Rational, Strictness) ->
-      LowerBound RationalVariable Rational ->
-      Either RationalVariable (Rational, Strictness)
+      LowerBound ElementVariable Rational ->
+      Either ElementVariable (Rational, Strictness)
     evaluateMinValue current@(currentMin, _) (Bound rel expr) = do
       value <- evaluateExpr expr assignment
       return $
@@ -113,8 +113,8 @@ reconstructFourierMotzkinVariableValue assignment solution = do
 
     evaluateMaxValue ::
       (Rational, Strictness) ->
-      UpperBound RationalVariable Rational ->
-      Either RationalVariable (Rational, Strictness)
+      UpperBound ElementVariable Rational ->
+      Either ElementVariable (Rational, Strictness)
     evaluateMaxValue current@(currentMax, _) (Bound rel expr) = do
       value <- evaluateExpr expr assignment
       return $

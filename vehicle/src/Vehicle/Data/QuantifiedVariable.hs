@@ -50,45 +50,43 @@ data NetworkVariableInfo = NetworkVariableInfo
 --------------------------------------------------------------------------------
 -- Reduced variables
 
-data ReducedVariable variable = ReducedVariable
-  { originalVar :: variable,
+data ElementVariable = ElementVariable
+  { originalVar :: TensorVariable,
     tensorIndices :: TensorIndices
   }
   deriving (Show, Eq, Ord, Generic)
 
-instance (NFData variable) => NFData (ReducedVariable variable)
+instance NFData ElementVariable
 
-instance (Pretty variable) => Pretty (ReducedVariable variable) where
-  pretty ReducedVariable {..} =
+instance Pretty ElementVariable where
+  pretty ElementVariable {..} =
     pretty originalVar <> pretty (showTensorIndices tensorIndices)
 
-instance (FromJSON variable) => FromJSON (ReducedVariable variable)
+instance FromJSON ElementVariable
 
-instance (FromJSON variable) => FromJSONKey (ReducedVariable variable)
+instance FromJSONKey ElementVariable
 
-instance (ToJSON variable) => ToJSON (ReducedVariable variable)
+instance ToJSON ElementVariable
 
-instance (ToJSON variable) => ToJSONKey (ReducedVariable variable)
+instance ToJSONKey ElementVariable
 
-instance (Hashable variable) => Hashable (ReducedVariable variable)
+instance Hashable ElementVariable
 
 reduceVariable ::
-  forall variable.
-  (variable -> TensorShape) ->
   Lv ->
-  variable ->
-  ([(Lv, ReducedVariable variable)], WHNFValue Builtin)
-reduceVariable varDims dbLevel var
-  | null (varDims var) = createRatVar [] dbLevel
-  | otherwise = runSupply (go (varDims var) []) [dbLevel ..]
+  TensorVariable ->
+  ([(Lv, ElementVariable)], WHNFValue Builtin)
+reduceVariable dbLevel var
+  | null (tensorVarDimensions var) = createRatVar [] dbLevel
+  | otherwise = runSupply (go (tensorVarDimensions var) []) [dbLevel ..]
   where
-    createRatVar :: TensorIndices -> Lv -> ([(Lv, ReducedVariable variable)], WHNFValue Builtin)
-    createRatVar indices lv = ([(lv, ReducedVariable var indices)], VBoundVar lv [])
+    createRatVar :: TensorIndices -> Lv -> ([(Lv, ElementVariable)], WHNFValue Builtin)
+    createRatVar indices lv = ([(lv, ElementVariable var indices)], VBoundVar lv [])
 
     go ::
       TensorShape ->
       TensorIndices ->
-      Supply Lv ([(Lv, ReducedVariable variable)], WHNFValue Builtin)
+      Supply Lv ([(Lv, ElementVariable)], WHNFValue Builtin)
     go dims indices = case dims of
       [] -> createRatVar (reverse indices) <$> demand
       d : ds -> do
@@ -104,40 +102,16 @@ reduceVariable varDims dbLevel var
 -- Reduced user variables
 
 -- | Variables entered by the user
-type UserRationalVariable = ReducedVariable TensorVariable
+type UserRationalVariable = ElementVariable
 
-type NetworkRationalVariable = ReducedVariable TensorVariable
+type NetworkRationalVariable = ElementVariable
 
 --------------------------------------------------------------------------------
 -- All variables
 
--- | Both user and network variables
-data RationalVariable
-  = UserRationalVar UserRationalVariable
-  | NetworkRationalVar NetworkRationalVariable
-  deriving (Show, Eq, Ord, Generic)
-
-instance NFData RationalVariable
-
-instance ToJSON RationalVariable
-
-instance FromJSON RationalVariable
-
-instance ToJSONKey RationalVariable
-
-instance FromJSONKey RationalVariable
-
-instance Pretty RationalVariable where
-  pretty = \case
-    UserRationalVar v -> pretty v
-    NetworkRationalVar v -> pretty v
-
---------------------------------------------------------------------------------
--- Tensor variables
-
--- | Both user and network variables
+-- | Both tensor and element variables
 data Variable
-  = RationalVar RationalVariable
+  = RationalVar ElementVariable
   | TensorVar TensorVariable
   deriving (Show, Eq, Ord, Generic)
 

@@ -37,7 +37,7 @@ checkRationalEqualityTriviality (Equality e) = case isConstant e of
   Nothing -> Nothing
   Just c -> Just $ c == 0.0
 
-type RationalEquality = Equality RationalVariable Rational
+type RationalEquality = Equality ElementVariable Rational
 
 type TensorEquality = Equality TensorVariable RationalTensor
 
@@ -75,7 +75,7 @@ mkInequality op e1 e2 =
     Gt -> Inequality Strict (addExprs (-1) 1 e1 e2)
     Ge -> Inequality NonStrict (addExprs (-1) 1 e1 e2)
 
-type RationalInequality = Inequality RationalVariable Rational
+type RationalInequality = Inequality ElementVariable Rational
 
 -- | Checks whether an assertion is trivial or not. Returns `Nothing` if
 -- non-trivial, and otherwise `Just b` where `b` is the value of the assertion
@@ -141,8 +141,8 @@ assertionRel = \case
     | otherwise -> LessThanOrEqual
 
 eqToAssertion ::
-  LinearExpr RationalVariable Rational ->
-  LinearExpr RationalVariable Rational ->
+  LinearExpr ElementVariable Rational ->
+  LinearExpr ElementVariable Rational ->
   Assertion
 eqToAssertion e1 e2 = do
   let e = addExprs 1 (-1) e1 e2
@@ -158,7 +158,7 @@ tensorEqToAssertion e1 e2 = do
 
 mapAssertionExprs ::
   (LinearExpr TensorVariable RationalTensor -> LinearExpr TensorVariable RationalTensor) ->
-  (LinearExpr RationalVariable Rational -> LinearExpr RationalVariable Rational) ->
+  (LinearExpr ElementVariable Rational -> LinearExpr ElementVariable Rational) ->
   Assertion ->
   MaybeTrivial Assertion
 mapAssertionExprs ft fr ass = checkTriviality $ case ass of
@@ -168,7 +168,7 @@ mapAssertionExprs ft fr ass = checkTriviality $ case ass of
 
 substituteTensorEq ::
   (TensorVariable, LinearExpr TensorVariable RationalTensor) ->
-  Map RationalVariable (LinearExpr RationalVariable Rational) ->
+  Map ElementVariable (LinearExpr ElementVariable Rational) ->
   Assertion ->
   MaybeTrivial Assertion
 substituteTensorEq (var, solution) ratSolutions =
@@ -178,22 +178,21 @@ substituteTensorEq (var, solution) ratSolutions =
   where
     -- Usually the expression being substituted into is much smaller than the number of tensor
     -- variables so we traverse the expression instead of folding over the subsitutions
-    eliminateRatVars :: LinearExpr RationalVariable Rational -> LinearExpr RationalVariable Rational
+    eliminateRatVars :: LinearExpr ElementVariable Rational -> LinearExpr ElementVariable Rational
     eliminateRatVars expr = do
       let varExprs = lookupVar <$> Map.toList (coefficients expr)
-      let constantExp = Sparse (mempty @(Map RationalVariable Coefficient)) (constantValue expr)
+      let constantExp = Sparse (mempty @(Map ElementVariable Coefficient)) (constantValue expr)
       foldr (addExprs 1 1) constantExp varExprs
 
-    lookupVar :: (RationalVariable, Coefficient) -> LinearExpr RationalVariable Rational
+    lookupVar :: (ElementVariable, Coefficient) -> LinearExpr ElementVariable Rational
     lookupVar (v, c) = do
       let vc = Sparse (Map.singleton v c) 0
       case Map.lookup v ratSolutions of
         Nothing -> vc
         Just sol -> eliminateVar v sol vc
 
-substituteRationalEq :: UserRationalVariable -> LinearExpr RationalVariable Rational -> Assertion -> MaybeTrivial Assertion
-substituteRationalEq var solution =
-  mapAssertionExprs id (eliminateVar (UserRationalVar var) solution)
+substituteRationalEq :: UserRationalVariable -> LinearExpr ElementVariable Rational -> Assertion -> MaybeTrivial Assertion
+substituteRationalEq var solution = mapAssertionExprs id (eliminateVar var solution)
 
 --------------------------------------------------------------------------------
 -- Bounds

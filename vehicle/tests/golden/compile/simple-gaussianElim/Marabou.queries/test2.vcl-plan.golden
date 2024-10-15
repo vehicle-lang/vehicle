@@ -19,31 +19,25 @@
                     },
                     [
                       {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            0
-                          ],
-                          "originalVar": {
-                            "tensorVarName": "g₀[input]",
-                            "tensorVarDimensions": [
-                              2
-                            ]
-                          }
+                        "tensorIndices": [
+                          0
+                        ],
+                        "originalVar": {
+                          "tensorVarName": "g₀[input]",
+                          "tensorVarDimensions": [
+                            2
+                          ]
                         }
                       },
                       {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            1
-                          ],
-                          "originalVar": {
-                            "tensorVarName": "g₀[input]",
-                            "tensorVarDimensions": [
-                              2
-                            ]
-                          }
+                        "tensorIndices": [
+                          1
+                        ],
+                        "originalVar": {
+                          "tensorVarName": "g₀[input]",
+                          "tensorVarDimensions": [
+                            2
+                          ]
                         }
                       }
                     ]
@@ -60,17 +54,14 @@
                     },
                     [
                       {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            0
-                          ],
-                          "originalVar": {
-                            "tensorVarName": "g₀[output]",
-                            "tensorVarDimensions": [
-                              1
-                            ]
-                          }
+                        "tensorIndices": [
+                          0
+                        ],
+                        "originalVar": {
+                          "tensorVarName": "g₀[output]",
+                          "tensorVarDimensions": [
+                            1
+                          ]
                         }
                       }
                     ]
@@ -94,17 +85,14 @@
                       "coefficients": [
                         [
                           {
-                            "tag": "NetworkRationalVar",
-                            "contents": {
-                              "tensorIndices": [
-                                0
-                              ],
-                              "originalVar": {
-                                "tensorVarName": "g₀[input]",
-                                "tensorVarDimensions": [
-                                  2
-                                ]
-                              }
+                            "tensorIndices": [
+                              0
+                            ],
+                            "originalVar": {
+                              "tensorVarName": "g₀[input]",
+                              "tensorVarDimensions": [
+                                2
+                              ]
                             }
                           },
                           {
@@ -114,17 +102,14 @@
                         ],
                         [
                           {
-                            "tag": "NetworkRationalVar",
-                            "contents": {
-                              "tensorIndices": [
-                                1
-                              ],
-                              "originalVar": {
-                                "tensorVarName": "g₀[input]",
-                                "tensorVarDimensions": [
-                                  2
-                                ]
-                              }
+                            "tensorIndices": [
+                              1
+                            ],
+                            "originalVar": {
+                              "tensorVarName": "g₀[input]",
+                              "tensorVarDimensions": [
+                                2
+                              ]
                             }
                           },
                           {
@@ -145,13 +130,10 @@
                     },
                     [
                       {
-                        "tag": "UserRationalVar",
-                        "contents": {
-                          "tensorIndices": [],
-                          "originalVar": {
-                            "tensorVarName": "a",
-                            "tensorVarDimensions": []
-                          }
+                        "tensorIndices": [],
+                        "originalVar": {
+                          "tensorVarName": "a",
+                          "tensorVarDimensions": []
                         }
                       }
                     ]
@@ -175,13 +157,10 @@
                       "coefficients": [
                         [
                           {
-                            "tag": "UserRationalVar",
-                            "contents": {
-                              "tensorIndices": [],
-                              "originalVar": {
-                                "tensorVarName": "a",
-                                "tensorVarDimensions": []
-                              }
+                            "tensorIndices": [],
+                            "originalVar": {
+                              "tensorVarName": "a",
+                              "tensorVarDimensions": []
                             }
                           },
                           {
@@ -191,17 +170,14 @@
                         ],
                         [
                           {
-                            "tag": "NetworkRationalVar",
-                            "contents": {
-                              "tensorIndices": [
-                                0
-                              ],
-                              "originalVar": {
-                                "tensorVarName": "g₀[input]",
-                                "tensorVarDimensions": [
-                                  2
-                                ]
-                              }
+                            "tensorIndices": [
+                              0
+                            ],
+                            "originalVar": {
+                              "tensorVarName": "g₀[input]",
+                              "tensorVarDimensions": [
+                                2
+                              ]
                             }
                           },
                           {
@@ -222,13 +198,10 @@
                     },
                     [
                       {
-                        "tag": "UserRationalVar",
-                        "contents": {
-                          "tensorIndices": [],
-                          "originalVar": {
-                            "tensorVarName": "b",
-                            "tensorVarDimensions": []
-                          }
+                        "tensorIndices": [],
+                        "originalVar": {
+                          "tensorVarName": "b",
+                          "tensorVarDimensions": []
                         }
                       }
                     ]

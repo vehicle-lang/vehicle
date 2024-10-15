@@ -33,8 +33,8 @@ data LinearityError
 
 compileRatLinearRelation ::
   (MonadLogger m) =>
-  (Lv -> ExceptT LinearityError m RationalVariable) ->
-  (LinearExpr RationalVariable Rational -> LinearExpr RationalVariable Rational -> relation) ->
+  (Lv -> ExceptT LinearityError m ElementVariable) ->
+  (LinearExpr ElementVariable Rational -> LinearExpr ElementVariable Rational -> relation) ->
   WHNFValue Builtin ->
   WHNFValue Builtin ->
   m (Either LinearityError relation)
@@ -47,12 +47,12 @@ compileRatLinearRelation handleVar mkRelation x y = do
 compileRatLinearExpr ::
   forall m.
   (MonadCompileLinearExpr m) =>
-  (Lv -> m RationalVariable) ->
+  (Lv -> m ElementVariable) ->
   WHNFValue Builtin ->
-  m (LinearExpr RationalVariable Rational)
+  m (LinearExpr ElementVariable Rational)
 compileRatLinearExpr handleVar = go
   where
-    go :: WHNFValue Builtin -> m (LinearExpr RationalVariable Rational)
+    go :: WHNFValue Builtin -> m (LinearExpr ElementVariable Rational)
     go e = case e of
       ----------------
       -- Base cases --

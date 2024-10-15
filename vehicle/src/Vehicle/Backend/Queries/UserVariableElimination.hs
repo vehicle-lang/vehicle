@@ -314,7 +314,7 @@ unblockFreeVectorVariable unblockVector reduceVectorVars ident spine = do
 
 compileRationalAssertion ::
   (MonadQueryStructure m) =>
-  (LinearExpr RationalVariable Rational -> LinearExpr RationalVariable Rational -> Assertion) ->
+  (LinearExpr ElementVariable Rational -> LinearExpr ElementVariable Rational -> Assertion) ->
   WHNFValue QueryBuiltin ->
   WHNFValue QueryBuiltin ->
   m (MaybeTrivial Partitions)

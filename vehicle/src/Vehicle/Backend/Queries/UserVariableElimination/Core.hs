@@ -89,13 +89,12 @@ emptyGlobalCtx =
     }
 
 addVectorVarToBoundVarCtx ::
-  (ReducedVariable TensorVariable -> RationalVariable) ->
   (Lv, TensorVariable) ->
-  [(Lv, ReducedVariable TensorVariable)] ->
+  [(Lv, ElementVariable)] ->
   LinkedHashMap Lv Variable
-addVectorVarToBoundVarCtx fromVar2 tensorVar elemVars = do
+addVectorVarToBoundVarCtx tensorVar elemVars = do
   let tensorVar' = second TensorVar tensorVar
-  let elemVars' = fmap (second (RationalVar . fromVar2)) elemVars
+  let elemVars' = fmap (second RationalVar) elemVars
   LinkedHashMap.union (LinkedHashMap.fromList elemVars') (LinkedHashMap.fromList [tensorVar'])
 
 addUserVarToGlobalContext ::
@@ -105,11 +104,11 @@ addUserVarToGlobalContext ::
 addUserVarToGlobalContext userVar GlobalCtx {..} = do
   -- Create the unreduced and reduced versions of the user variables.
   let currentLevel = Lv $ length globalBoundVarCtx
-  let envEntry@(reducedUseVars, _) = reduceVariable tensorVarDimensions (currentLevel + 1) userVar
+  let envEntry@(reducedUseVars, _) = reduceVariable (currentLevel + 1) userVar
   let userVarExpr = VBoundVar currentLevel []
   let newGlobalCtx =
         GlobalCtx
-          { globalBoundVarCtx = LinkedHashMap.union (addVectorVarToBoundVarCtx UserRationalVar (currentLevel, userVar) reducedUseVars) globalBoundVarCtx,
+          { globalBoundVarCtx = LinkedHashMap.union (addVectorVarToBoundVarCtx (currentLevel, userVar) reducedUseVars) globalBoundVarCtx,
             userVariableReductions = HashMap.insert userVar (first (fmap snd) envEntry) userVariableReductions,
             ..
           }
@@ -133,7 +132,7 @@ addNetworkApplicationToGlobalCtx app@(networkName, _) networkInfo GlobalCtx {..}
           { tensorVarName = layoutAsText $ createNetworkVarName networkName applicationNumber Input,
             tensorVarDimensions = dimensions (inputTensor (networkType networkInfo))
           }
-  let (reducedInputVars, reducedInputVarsExpr) = reduceVariable tensorVarDimensions (inputLv + 1) inputVar
+  let (reducedInputVars, reducedInputVarsExpr) = reduceVariable (inputLv + 1) inputVar
   let inputVarExpr = VBoundVar inputLv []
   let inputVarInfo =
         NetworkVariableInfo
@@ -148,7 +147,7 @@ addNetworkApplicationToGlobalCtx app@(networkName, _) networkInfo GlobalCtx {..}
           { tensorVarName = layoutAsText $ createNetworkVarName networkName applicationNumber Output,
             tensorVarDimensions = dimensions (outputTensor (networkType networkInfo))
           }
-  let (reducedOutputVars, reducedOutputVarsExpr) = reduceVariable tensorVarDimensions (outputLv + 1) outputVar
+  let (reducedOutputVars, reducedOutputVarsExpr) = reduceVariable (outputLv + 1) outputVar
   let outputVarExpr = VBoundVar outputLv []
   let outputVarInfo =
         NetworkVariableInfo
@@ -159,8 +158,8 @@ addNetworkApplicationToGlobalCtx app@(networkName, _) networkInfo GlobalCtx {..}
   -- Create the context extension of the bound context.
   let newGlobalBoundVarCtx =
         LinkedHashMap.unions
-          [ addVectorVarToBoundVarCtx NetworkRationalVar (outputLv, outputVar) reducedOutputVars,
-            addVectorVarToBoundVarCtx NetworkRationalVar (inputLv, inputVar) reducedInputVars,
+          [ addVectorVarToBoundVarCtx (outputLv, outputVar) reducedOutputVars,
+            addVectorVarToBoundVarCtx (inputLv, inputVar) reducedInputVars,
             globalBoundVarCtx
           ]
 
@@ -201,9 +200,9 @@ type AssertionTree = BooleanExpr Assertion
 -- reduced network input and output variables.
 data UserVariableReconstructionStep
   = SolveTensorEquality TensorVariable (LinearExpr TensorVariable RationalTensor)
-  | SolveRationalEquality UserRationalVariable (LinearExpr RationalVariable Rational)
-  | SolveRationalInequalities UserRationalVariable (Bounds RationalVariable Rational)
-  | ReconstructTensor TensorVariable [RationalVariable]
+  | SolveRationalEquality UserRationalVariable (LinearExpr ElementVariable Rational)
+  | SolveRationalInequalities UserRationalVariable (Bounds ElementVariable Rational)
+  | ReconstructTensor TensorVariable [ElementVariable]
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData UserVariableReconstructionStep
@@ -307,7 +306,7 @@ getTensorVariable lv = do
     TensorVar v -> return v
     _ -> developerError "Expected tensor variable but found rational variable"
 
-getRationalVariable :: (MonadState GlobalCtx m) => Lv -> m RationalVariable
+getRationalVariable :: (MonadState GlobalCtx m) => Lv -> m ElementVariable
 getRationalVariable lv = do
   var <- lookupVarByLevel lv
   case var of
@@ -341,19 +340,19 @@ getReducedNetworkVariablesFor :: GlobalCtx -> TensorVariable -> [NetworkRational
 getReducedNetworkVariablesFor globalCtx var =
   elementVariables (getReducedNetworkVariableInfo globalCtx var)
 
-getReducedVariablesFor :: (MonadState GlobalCtx m) => TensorVariable -> m [RationalVariable]
+getReducedVariablesFor :: (MonadState GlobalCtx m) => TensorVariable -> m [ElementVariable]
 getReducedVariablesFor var = do
   GlobalCtx {..} <- get
   case HashMap.lookup var userVariableReductions of
-    Just (vars, _) -> return $ fmap UserRationalVar vars
+    Just (vars, _) -> return vars
     Nothing -> case HashMap.lookup var networkVariableReductions of
-      Just r -> return (NetworkRationalVar <$> elementVariables r)
+      Just r -> return (elementVariables r)
       Nothing -> developerError $ "Variable" <+> pretty var <+> "has no reductions"
 
 reduceTensorExpr ::
   (MonadState GlobalCtx m) =>
   LinearExpr TensorVariable RationalTensor ->
-  m [LinearExpr RationalVariable Rational]
+  m [LinearExpr ElementVariable Rational]
 reduceTensorExpr (Sparse coeff constant) = do
   let constValues = Vector.toList $ tensorValue constant
   let numRatEqs = product (tensorShape constant)
@@ -362,10 +361,10 @@ reduceTensorExpr (Sparse coeff constant) = do
   return asserts
   where
     mkRatEquality ::
-      [([RationalVariable], Coefficient)] ->
+      [([ElementVariable], Coefficient)] ->
       [Rational] ->
       Int ->
-      LinearExpr RationalVariable Rational
+      LinearExpr ElementVariable Rational
     mkRatEquality coeffs consts i = Sparse (Map.fromList (fmap (first (!! i)) coeffs)) (consts !! i)
 
 --------------------------------------------------------------------------------
