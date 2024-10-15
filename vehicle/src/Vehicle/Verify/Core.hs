@@ -13,7 +13,7 @@ import Prettyprinter (brackets)
 import System.FilePath ((<.>))
 import Vehicle.Compile.Resource
 import Vehicle.Data.Builtin.Core
-import Vehicle.Data.QuantifiedVariable (NetworkRationalVariable)
+import Vehicle.Data.QuantifiedVariable (NetworkElementVariable)
 import Vehicle.Data.Tensor (TensorIndices, showTensorIndices)
 import Vehicle.Prelude
 import Vehicle.Verify.QueryFormat.Core
@@ -54,14 +54,14 @@ instance Pretty MetaNetworkEntry where
 
 -- | A mapping from query variables (i.e. those used by the verifier)
 -- and the internal variable representation (i.e. those used by Vehicle)
-type QueryVariableMapping = [(QueryVariable, NetworkRationalVariable)]
+type QueryVariableMapping = [(QueryVariable, NetworkElementVariable)]
 
 -- | A list of neural networks used in a given query.
 type MetaNetwork = [MetaNetworkEntry]
 
 -- | A (satisfying) assignment to a set of reduced network-level variables.
 newtype NetworkVariableAssignment
-  = NetworkVariableAssignment (Map NetworkRationalVariable Rational)
+  = NetworkVariableAssignment (Map NetworkElementVariable Rational)
 
 --------------------------------------------------------------------------------
 -- Queries misc

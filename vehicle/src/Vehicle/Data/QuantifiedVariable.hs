@@ -42,7 +42,7 @@ instance Pretty TensorVariable where
 
 data NetworkVariableInfo = NetworkVariableInfo
   { -- | Variables for each of it's elements
-    elementVariables :: [NetworkRationalVariable],
+    elementVariables :: [NetworkElementVariable],
     -- | The tensor literal expression containing the element variables above.
     reducedNetworkVarExpr :: WHNFValue Builtin
   }
@@ -98,13 +98,10 @@ reduceVariable dbLevel var
         let userVars = concat elementUserVars
         return (userVars, mkVecExpr subexprs)
 
---------------------------------------------------------------------------------
--- Reduced user variables
-
 -- | Variables entered by the user
-type UserRationalVariable = ElementVariable
+type UserElementVariable = ElementVariable
 
-type NetworkRationalVariable = ElementVariable
+type NetworkElementVariable = ElementVariable
 
 --------------------------------------------------------------------------------
 -- All variables

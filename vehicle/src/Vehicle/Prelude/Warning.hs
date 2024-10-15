@@ -29,27 +29,27 @@ import Vehicle.Verify.QueryFormat.Core
 data CompileWarning
   = UnusedResources ExternalResource (Set Name)
   | TrivialProperty PropertyAddress Bool
-  | UnderSpecifiedProblemSpaceVar PropertyAddress UserRationalVariable
+  | UnderSpecifiedProblemSpaceVar PropertyAddress UserElementVariable
   | UnsoundStrictOrderConversion QueryFormatID QueryAddress
   | AllConstantNetworkInputVars QueryFormatID QueryAddress
-  | UnboundedNetworkInputVariables QueryFormatID QueryAddress [(NetworkRationalVariable, UnderConstrainedVariableStatus)]
+  | UnboundedNetworkInputVariables QueryFormatID QueryAddress [(NetworkElementVariable, UnderConstrainedVariableStatus)]
 
 data SummarisedCompileWarning
   = UnusedResourcesSummary ExternalResource (Set Name)
   | TrivialPropertySummary PropertyAddress Bool
-  | UnderSpecifiedProblemSpaceVariablesSummary PropertyAddress (Set UserRationalVariable)
+  | UnderSpecifiedProblemSpaceVariablesSummary PropertyAddress (Set UserElementVariable)
   | UnsoundStrictOrderConversionsSummary QueryFormatID PropertyAddress Int
   | AllConstantNetworkInputVariablesSummary QueryFormatID PropertyAddress (NonEmpty QueryID)
-  | UnboundedNetworkInputVariablesSummary QueryFormatID PropertyAddress [(NonEmpty QueryID, [(NetworkRationalVariable, UnderConstrainedVariableStatus)])]
+  | UnboundedNetworkInputVariablesSummary QueryFormatID PropertyAddress [(NonEmpty QueryID, [(NetworkElementVariable, UnderConstrainedVariableStatus)])]
 
 --------------------------------------------------------------------------------
 -- Combinable compile warnings
 
-type UnderConstrainedSignature = [(NetworkRationalVariable, UnderConstrainedVariableStatus)]
+type UnderConstrainedSignature = [(NetworkElementVariable, UnderConstrainedVariableStatus)]
 
 data CombiningState = CombiningState
   { uniqueWarnings :: [SummarisedCompileWarning],
-    underSpecifiedProblemSpaceVars :: Map PropertyAddress (Set UserRationalVariable),
+    underSpecifiedProblemSpaceVars :: Map PropertyAddress (Set UserElementVariable),
     unsoundStrictnessConversions :: Map (QueryFormatID, PropertyAddress) Int,
     allConstantNetworkInputVars :: Map (QueryFormatID, PropertyAddress) (NonEmpty QueryID),
     unboundedNetworkInputs :: Map (QueryFormatID, PropertyAddress) (Map UnderConstrainedSignature (NonEmpty QueryID)),
@@ -105,7 +105,7 @@ stateToWarnings CombiningState {..} =
       <> fmap combineAllConstantNetworkInputVars (Map.toList allConstantNetworkInputVars)
       <> fmap combineUnboundedNetworkInputVars (Map.toList unboundedNetworkInputs)
 
-combineUnderSpecifiedProblemSpaceVars :: (PropertyAddress, Set UserRationalVariable) -> SummarisedCompileWarning
+combineUnderSpecifiedProblemSpaceVars :: (PropertyAddress, Set UserElementVariable) -> SummarisedCompileWarning
 combineUnderSpecifiedProblemSpaceVars (property, vars) = UnderSpecifiedProblemSpaceVariablesSummary property vars
 
 combineUnsoundStrictnessConversions :: ((QueryFormatID, PropertyAddress), Int) -> SummarisedCompileWarning

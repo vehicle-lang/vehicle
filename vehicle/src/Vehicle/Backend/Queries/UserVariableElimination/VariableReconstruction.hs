@@ -70,7 +70,7 @@ lookupRationalVariables assignment = foldM op []
       Just value -> Right (value : values)
 
 createInitialAssignment ::
-  [(QueryVariable, NetworkRationalVariable)] ->
+  [(QueryVariable, NetworkElementVariable)] ->
   QueryVariableAssignment ->
   MixedVariableAssignment
 createInitialAssignment queryVariableMapping (QueryVariableAssignment valuesByQueryVar) = do

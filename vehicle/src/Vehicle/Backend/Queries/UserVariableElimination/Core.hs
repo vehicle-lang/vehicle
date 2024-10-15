@@ -52,7 +52,6 @@ type NetworkApplication = (Name, WHNFSpine QueryBuiltin)
 data NetworkApplicationReplacement = NetworkApplicationReplacement
   { networkApp :: NetworkApplication,
     networkInfo :: NetworkContextInfo,
-    inputVarExpr :: WHNFValue QueryBuiltin,
     inputVariable :: TensorVariable,
     outputVarExpr :: WHNFValue QueryBuiltin,
     outputVariable :: TensorVariable
@@ -74,7 +73,7 @@ data PropertyMetaData = PropertyMetaData
 
 data GlobalCtx = GlobalCtx
   { globalBoundVarCtx :: !(LinkedHashMap Lv Variable),
-    userVariableReductions :: !(HashMap TensorVariable ([UserRationalVariable], WHNFValue QueryBuiltin)),
+    userVariableReductions :: !(HashMap TensorVariable ([UserElementVariable], WHNFValue QueryBuiltin)),
     networkVariableReductions :: !(HashMap TensorVariable NetworkVariableInfo),
     networkApplications :: !(LinkedHashMap NetworkApplication NetworkApplicationReplacement)
   }
@@ -118,7 +117,7 @@ addNetworkApplicationToGlobalCtx ::
   NetworkApplication ->
   NetworkContextInfo ->
   GlobalCtx ->
-  (NetworkApplicationReplacement, GlobalCtx)
+  (WHNFValue QueryBuiltin, WHNFValue QueryBuiltin, GlobalCtx)
 addNetworkApplicationToGlobalCtx app@(networkName, _) networkInfo GlobalCtx {..} = do
   let metaNetworkSoFar = LinkedHashMap.toList networkApplications
   let applicationNumber = length $ filter (\((name, _), _) -> name == networkName) metaNetworkSoFar
@@ -168,7 +167,6 @@ addNetworkApplicationToGlobalCtx app@(networkName, _) networkInfo GlobalCtx {..}
         NetworkApplicationReplacement
           { networkApp = app,
             networkInfo = networkInfo,
-            inputVarExpr = inputVarExpr,
             inputVariable = inputVar,
             outputVarExpr = outputVarExpr,
             outputVariable = outputVar
@@ -189,7 +187,7 @@ addNetworkApplicationToGlobalCtx app@(networkName, _) networkInfo GlobalCtx {..}
             ..
           }
 
-  (appInfo, newGlobalCtx)
+  (inputVarExpr, outputVarExpr, newGlobalCtx)
 
 --------------------------------------------------------------------------------
 -- Partitions
@@ -200,8 +198,8 @@ type AssertionTree = BooleanExpr Assertion
 -- reduced network input and output variables.
 data UserVariableReconstructionStep
   = SolveTensorEquality TensorVariable (LinearExpr TensorVariable RationalTensor)
-  | SolveRationalEquality UserRationalVariable (LinearExpr ElementVariable Rational)
-  | SolveRationalInequalities UserRationalVariable (Bounds ElementVariable Rational)
+  | SolveRationalEquality UserElementVariable (LinearExpr ElementVariable Rational)
+  | SolveRationalInequalities UserElementVariable (Bounds ElementVariable Rational)
   | ReconstructTensor TensorVariable [ElementVariable]
   deriving (Eq, Ord, Show, Generic)
 
@@ -319,7 +317,7 @@ getRationalVariable lv = do
             [rv] -> return rv
             _ -> developerError "Mismatched tensor dimensions!"
 
-getReducedUserVariablesFor :: (MonadQueryStructure m) => TensorVariable -> m [UserRationalVariable]
+getReducedUserVariablesFor :: (MonadQueryStructure m) => TensorVariable -> m [UserElementVariable]
 getReducedUserVariablesFor var = do
   GlobalCtx {..} <- get
   case HashMap.lookup var userVariableReductions of
@@ -336,7 +334,7 @@ getReducedNetworkVariableInfo GlobalCtx {..} var = do
       developerError $
         "Network variable" <+> pretty var <+> "has no reductions"
 
-getReducedNetworkVariablesFor :: GlobalCtx -> TensorVariable -> [NetworkRationalVariable]
+getReducedNetworkVariablesFor :: GlobalCtx -> TensorVariable -> [NetworkElementVariable]
 getReducedNetworkVariablesFor globalCtx var =
   elementVariables (getReducedNetworkVariableInfo globalCtx var)
 

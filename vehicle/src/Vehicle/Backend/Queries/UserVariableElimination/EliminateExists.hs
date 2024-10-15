@@ -104,7 +104,7 @@ solveTensorVariable userTensorVar solutions = \case
 --------------------------------------------------------------------------------
 -- UserRationalVariables and equalities/constraints
 
-fromRationalAssertion :: UserRationalVariable -> Assertion -> ConstrainedAssertionTree RationalEquality
+fromRationalAssertion :: UserElementVariable -> Assertion -> ConstrainedAssertionTree RationalEquality
 fromRationalAssertion var = \case
   RationalEq eq | equalityExpr eq `referencesVariable` var -> SingleEquality eq (Trivial True)
   RationalIneq ineq | inequalityExpr ineq `referencesVariable` var -> Inequalities (ConjunctAll [ineq]) (Trivial True)
@@ -112,7 +112,7 @@ fromRationalAssertion var = \case
 
 solveRationalVariable ::
   (MonadSolveExists m) =>
-  UserRationalVariable ->
+  UserElementVariable ->
   UserVariableReconstruction ->
   ConstrainedAssertionTree RationalEquality ->
   m (MaybeTrivial Partitions)
@@ -136,7 +136,7 @@ solveRationalVariable var solutions constraint =
 
 solveRationalInequalities ::
   (MonadSolveExists m) =>
-  UserRationalVariable ->
+  UserElementVariable ->
   UserVariableReconstruction ->
   [RationalInequality] ->
   MaybeTrivial AssertionTree ->

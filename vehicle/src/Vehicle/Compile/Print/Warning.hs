@@ -79,7 +79,7 @@ instance Pretty SummarisedCompileWarning where
         <> line
         <> indent 2 (vsep $ fmap prettyQueries (sortOn (\(qs, _) -> sort qs) varsByQueryID))
       where
-        prettyQueries :: (NonEmpty QueryID, [(NetworkRationalVariable, UnderConstrainedVariableStatus)]) -> Doc a
+        prettyQueries :: (NonEmpty QueryID, [(NetworkElementVariable, UnderConstrainedVariableStatus)]) -> Doc a
         prettyQueries (queryIDs, vars) =
           "In" <+> prettyQueryIDs queryIDs
             <> ":"

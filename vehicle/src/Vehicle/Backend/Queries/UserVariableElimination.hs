@@ -305,12 +305,12 @@ unblockFreeVectorVariable unblockVector reduceVectorVars ident spine = do
                     <> line
                     <> indent 2 exprDoc
 
-            let (appInfo, newGlobalCtx) = addNetworkApplicationToGlobalCtx networkApp networkInfo globalCtx
+            let (inputVarExpr, outputVarExpr, newGlobalCtx) = addNetworkApplicationToGlobalCtx networkApp networkInfo globalCtx
             let inputDims = dimensions (inputTensor (networkType networkInfo))
-            let inputEquality = mkVVectorEquality inputDims (inputVarExpr appInfo) input
+            let inputEquality = mkVVectorEquality inputDims inputVarExpr input
             put newGlobalCtx
             tell [inputEquality]
-            unblockVector reduceVectorVars (outputVarExpr appInfo)
+            unblockVector reduceVectorVars outputVarExpr
 
 compileRationalAssertion ::
   (MonadQueryStructure m) =>

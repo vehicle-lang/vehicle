@@ -95,7 +95,7 @@ extractSearchDomain _propertyProv _binder _lv value = do
 --------------------------------------------------------------------------------
 -- Constraints
 
-type TensorElementInequality = Inequality UserRationalVariable (WHNFValue TensorBuiltin)
+type TensorElementInequality = Inequality UserElementVariable (WHNFValue TensorBuiltin)
 
 type TensorInequality = Inequality Name (WHNFValue TensorBuiltin)
 
@@ -139,7 +139,7 @@ instance IsConstant (WHNFValue TensorBuiltin) where
 data VariableInfo = VariableInfo
   { tensorVarLv :: Lv,
     tensorVarName :: Name,
-    elementVars :: Maybe [(Lv, UserRationalVariable)]
+    elementVars :: Maybe [(Lv, UserElementVariable)]
   }
 
 type MonadSearch m =
@@ -154,7 +154,7 @@ extractDomainFromConstraints ::
   (MonadCompile m) =>
   VariableInfo ->
   VariableConstraints ->
-  m (Either [(UserRationalVariable, UnderConstrainedVariableStatus)] Domain)
+  m (Either [(UserElementVariable, UnderConstrainedVariableStatus)] Domain)
 extractDomainFromConstraints VariableInfo{..} constraints = do
   let (tensorElementInequalities, tensorInequalities) = splitConstraints constraints
 
@@ -189,17 +189,17 @@ extractDomainFromConstraints VariableInfo{..} constraints = do
 
 extractVarBounds ::
   (MonadCompile m) =>
-  ([TensorElementInequality], [(UserRationalVariable, Bounds UserRationalVariable (WHNFValue TensorBuiltin))]) ->
-  UserRationalVariable ->
-  m ([TensorElementInequality], [(UserRationalVariable, Bounds UserRationalVariable (WHNFValue TensorBuiltin))])
+  ([TensorElementInequality], [(UserElementVariable, Bounds UserElementVariable (WHNFValue TensorBuiltin))]) ->
+  UserElementVariable ->
+  m ([TensorElementInequality], [(UserElementVariable, Bounds UserElementVariable (WHNFValue TensorBuiltin))])
 extractVarBounds (currentConstraints, solutions) var = do
   (bounds, newInequalities) <- fourierMotzkinElimination var currentConstraints
   return (newInequalities, (var, bounds) : solutions)
 
 convertBoundToExpr ::
-  Map UserRationalVariable Lv ->
+  Map UserElementVariable Lv ->
   (WHNFValue TensorBuiltin -> WHNFValue TensorBuiltin -> WHNFValue TensorBuiltin) ->
-  NonEmpty (Bound UserRationalVariable (WHNFValue TensorBuiltin)) ->
+  NonEmpty (Bound UserElementVariable (WHNFValue TensorBuiltin)) ->
   WHNFValue TensorBuiltin
 convertBoundToExpr varMap op bounds = foldr1 _ (fmap convertBound bounds)
   where
@@ -330,7 +330,7 @@ compileRatLinearRelation mkRelation x y = do
     y' <- compileRatLinearExpr y
     return $ mkRelation x' y'
 
-type LinearExp = LinearExpr UserRationalVariable (WHNFValue TensorBuiltin)
+type LinearExp = LinearExpr UserElementVariable (WHNFValue TensorBuiltin)
 
 compileRatLinearExpr ::
   forall m.

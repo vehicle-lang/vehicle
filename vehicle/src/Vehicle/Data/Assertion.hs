@@ -191,7 +191,7 @@ substituteTensorEq (var, solution) ratSolutions =
         Nothing -> vc
         Just sol -> eliminateVar v sol vc
 
-substituteRationalEq :: UserRationalVariable -> LinearExpr ElementVariable Rational -> Assertion -> MaybeTrivial Assertion
+substituteRationalEq :: UserElementVariable -> LinearExpr ElementVariable Rational -> Assertion -> MaybeTrivial Assertion
 substituteRationalEq var solution = mapAssertionExprs id (eliminateVar var solution)
 
 --------------------------------------------------------------------------------
