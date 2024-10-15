@@ -138,8 +138,7 @@ addNetworkApplicationToGlobalCtx app@(networkName, _) networkInfo GlobalCtx {..}
   let inputVarExpr = VBoundVar inputLv []
   let inputVarInfo =
         NetworkVariableInfo
-          { inputOrOutput = Input,
-            elementVariables = fmap snd reducedInputVars,
+          { elementVariables = fmap snd reducedInputVars,
             reducedNetworkVarExpr = reducedInputVarsExpr
           }
 
@@ -154,8 +153,7 @@ addNetworkApplicationToGlobalCtx app@(networkName, _) networkInfo GlobalCtx {..}
   let outputVarExpr = VBoundVar outputLv []
   let outputVarInfo =
         NetworkVariableInfo
-          { inputOrOutput = Output,
-            elementVariables = fmap snd reducedOutputVars,
+          { elementVariables = fmap snd reducedOutputVars,
             reducedNetworkVarExpr = reducedOutputVarsExpr
           }
 

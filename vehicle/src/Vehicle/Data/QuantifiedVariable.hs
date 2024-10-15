@@ -56,9 +56,7 @@ instance Pretty OriginalNetworkVariable where
   pretty OriginalNetworkVariable {..} = pretty networkVarName
 
 data NetworkVariableInfo = NetworkVariableInfo
-  { -- | Whether its an input or an output variable
-    inputOrOutput :: InputOrOutput,
-    -- | Variables for each of it's elements
+  { -- | Variables for each of it's elements
     elementVariables :: [NetworkRationalVariable],
     -- | The tensor literal expression containing the element variables above.
     reducedNetworkVarExpr :: WHNFValue Builtin
