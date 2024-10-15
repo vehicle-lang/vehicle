@@ -13,72 +13,44 @@ import Vehicle.Data.Tensor
 import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
--- Tensor variables
+-- Variables
 
--- | Both user and network variables
-data TensorVariable = TensorVariable
-  { tensorVarName :: Name
+-- | A variable. Empty indices means that is a tensor variable, otherwise
+-- its a variable representing an element of a tensor.
+data Variable = Variable
+  { varName :: Name,
+    varIndices :: TensorIndices
   }
   deriving (Show, Eq, Ord, Generic)
 
-instance NFData TensorVariable
+instance NFData Variable
 
-instance Hashable TensorVariable
+instance Hashable Variable
 
-instance ToJSON TensorVariable
+instance ToJSON Variable
 
-instance FromJSON TensorVariable
+instance FromJSON Variable
 
-instance ToJSONKey TensorVariable
+instance ToJSONKey Variable
 
-instance FromJSONKey TensorVariable
+instance FromJSONKey Variable
 
-instance Pretty TensorVariable where
-  pretty = pretty . tensorVarName
+instance Pretty Variable where
+  pretty Variable {..} =
+    pretty varName <> pretty (showTensorIndices varIndices)
 
-data TensorVariableInfo = TensorVariableInfo
-  { -- | Variables for each of it's elements
-    elementVariables :: [NetworkElementVariable],
-    -- | The tensor literal expression containing the element variables above.
-    reducedVarExpr :: WHNFValue Builtin,
-    -- The shape of the tensor
-    tensorVariableShape :: TensorShape
-  }
+makeTensorVariable :: Name -> Variable
+makeTensorVariable name = Variable name mempty
 
---------------------------------------------------------------------------------
--- Reduced variables
-
-data ElementVariable = ElementVariable
-  { originalVar :: TensorVariable,
-    tensorIndices :: TensorIndices
-  }
-  deriving (Show, Eq, Ord, Generic)
-
-instance NFData ElementVariable
-
-instance Pretty ElementVariable where
-  pretty ElementVariable {..} =
-    pretty originalVar <> pretty (showTensorIndices tensorIndices)
-
-instance FromJSON ElementVariable
-
-instance FromJSONKey ElementVariable
-
-instance ToJSON ElementVariable
-
-instance ToJSONKey ElementVariable
-
-instance Hashable ElementVariable
-
-reduceVariable ::
+reduceTensorVariable ::
   Lv ->
   TensorVariable ->
   TensorShape ->
   ([(Lv, ElementVariable)], WHNFValue Builtin)
-reduceVariable dbLevel var shape = runSupply (go shape []) [dbLevel ..]
+reduceTensorVariable dbLevel var shape = runSupply (go shape []) [dbLevel ..]
   where
     createRatVar :: TensorIndices -> Lv -> ([(Lv, ElementVariable)], WHNFValue Builtin)
-    createRatVar indices lv = ([(lv, ElementVariable var indices)], VBoundVar lv [])
+    createRatVar indices lv = ([(lv, Variable (varName var) indices)], VBoundVar lv [])
 
     go ::
       TensorShape ->
@@ -95,32 +67,23 @@ reduceVariable dbLevel var shape = runSupply (go shape []) [dbLevel ..]
         let userVars = concat elementUserVars
         return (userVars, mkVecExpr subexprs)
 
+type TensorVariable = Variable
+
+type ElementVariable = Variable
+
 -- | Variables entered by the user
 type UserElementVariable = ElementVariable
 
 type NetworkElementVariable = ElementVariable
 
---------------------------------------------------------------------------------
--- All variables
-
--- | Both tensor and element variables
-data Variable
-  = RationalVar ElementVariable
-  | TensorVar TensorVariable
-  deriving (Show, Eq, Ord, Generic)
-
-instance ToJSON Variable
-
-instance FromJSON Variable
-
-instance ToJSONKey Variable
-
-instance FromJSONKey Variable
-
-instance Pretty Variable where
-  pretty = \case
-    RationalVar v -> pretty v
-    TensorVar v -> pretty v
+data TensorVariableInfo = TensorVariableInfo
+  { -- | Variables for each of it's elements
+    elementVariables :: [NetworkElementVariable],
+    -- | The tensor literal expression containing the element variables above.
+    reducedVarExpr :: WHNFValue Builtin,
+    -- The shape of the tensor
+    tensorVariableShape :: TensorShape
+  }
 
 --------------------------------------------------------------------------------
 -- Constants

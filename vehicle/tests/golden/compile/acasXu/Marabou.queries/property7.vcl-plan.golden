@@ -15,48 +15,39 @@
                       5
                     ],
                     {
-                      "tensorVarName": "acasXu₀[input]"
+                      "varName": "acasXu₀[input]",
+                      "varIndices": []
                     },
                     [
                       {
-                        "tensorIndices": [
+                        "varName": "acasXu₀[input]",
+                        "varIndices": [
                           0
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "acasXu₀[input]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "acasXu₀[input]",
+                        "varIndices": [
                           1
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "acasXu₀[input]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "acasXu₀[input]",
+                        "varIndices": [
                           2
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "acasXu₀[input]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "acasXu₀[input]",
+                        "varIndices": [
                           3
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "acasXu₀[input]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "acasXu₀[input]",
+                        "varIndices": [
                           4
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "acasXu₀[input]"
-                        }
+                        ]
                       }
                     ]
                   ]
@@ -68,48 +59,39 @@
                       5
                     ],
                     {
-                      "tensorVarName": "acasXu₀[output]"
+                      "varName": "acasXu₀[output]",
+                      "varIndices": []
                     },
                     [
                       {
-                        "tensorIndices": [
+                        "varName": "acasXu₀[output]",
+                        "varIndices": [
                           0
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "acasXu₀[output]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "acasXu₀[output]",
+                        "varIndices": [
                           1
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "acasXu₀[output]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "acasXu₀[output]",
+                        "varIndices": [
                           2
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "acasXu₀[output]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "acasXu₀[output]",
+                        "varIndices": [
                           3
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "acasXu₀[output]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "acasXu₀[output]",
+                        "varIndices": [
                           4
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "acasXu₀[output]"
-                        }
+                        ]
                       }
                     ]
                   ]
@@ -118,12 +100,10 @@
                   "tag": "SolveRationalEquality",
                   "contents": [
                     {
-                      "tensorIndices": [
+                      "varName": "x",
+                      "varIndices": [
                         4
-                      ],
-                      "originalVar": {
-                        "tensorVarName": "x"
-                      }
+                      ]
                     },
                     {
                       "constantValue": {
@@ -133,12 +113,10 @@
                       "coefficients": [
                         [
                           {
-                            "tensorIndices": [
+                            "varName": "acasXu₀[input]",
+                            "varIndices": [
                               4
-                            ],
-                            "originalVar": {
-                              "tensorVarName": "acasXu₀[input]"
-                            }
+                            ]
                           },
                           {
                             "numerator": 1200,
@@ -153,12 +131,10 @@
                   "tag": "SolveRationalEquality",
                   "contents": [
                     {
-                      "tensorIndices": [
+                      "varName": "x",
+                      "varIndices": [
                         3
-                      ],
-                      "originalVar": {
-                        "tensorVarName": "x"
-                      }
+                      ]
                     },
                     {
                       "constantValue": {
@@ -168,12 +144,10 @@
                       "coefficients": [
                         [
                           {
-                            "tensorIndices": [
+                            "varName": "acasXu₀[input]",
+                            "varIndices": [
                               3
-                            ],
-                            "originalVar": {
-                              "tensorVarName": "acasXu₀[input]"
-                            }
+                            ]
                           },
                           {
                             "numerator": 1100,
@@ -188,12 +162,10 @@
                   "tag": "SolveRationalEquality",
                   "contents": [
                     {
-                      "tensorIndices": [
+                      "varName": "x",
+                      "varIndices": [
                         2
-                      ],
-                      "originalVar": {
-                        "tensorVarName": "x"
-                      }
+                      ]
                     },
                     {
                       "constantValue": {
@@ -203,12 +175,10 @@
                       "coefficients": [
                         [
                           {
-                            "tensorIndices": [
+                            "varName": "acasXu₀[input]",
+                            "varIndices": [
                               2
-                            ],
-                            "originalVar": {
-                              "tensorVarName": "acasXu₀[input]"
-                            }
+                            ]
                           },
                           {
                             "numerator": 392699,
@@ -223,12 +193,10 @@
                   "tag": "SolveRationalEquality",
                   "contents": [
                     {
-                      "tensorIndices": [
+                      "varName": "x",
+                      "varIndices": [
                         1
-                      ],
-                      "originalVar": {
-                        "tensorVarName": "x"
-                      }
+                      ]
                     },
                     {
                       "constantValue": {
@@ -238,12 +206,10 @@
                       "coefficients": [
                         [
                           {
-                            "tensorIndices": [
+                            "varName": "acasXu₀[input]",
+                            "varIndices": [
                               1
-                            ],
-                            "originalVar": {
-                              "tensorVarName": "acasXu₀[input]"
-                            }
+                            ]
                           },
                           {
                             "numerator": 392699,
@@ -258,12 +224,10 @@
                   "tag": "SolveRationalEquality",
                   "contents": [
                     {
-                      "tensorIndices": [
+                      "varName": "x",
+                      "varIndices": [
                         0
-                      ],
-                      "originalVar": {
-                        "tensorVarName": "x"
-                      }
+                      ]
                     },
                     {
                       "constantValue": {
@@ -273,12 +237,10 @@
                       "coefficients": [
                         [
                           {
-                            "tensorIndices": [
+                            "varName": "acasXu₀[input]",
+                            "varIndices": [
                               0
-                            ],
-                            "originalVar": {
-                              "tensorVarName": "acasXu₀[input]"
-                            }
+                            ]
                           },
                           {
                             "numerator": 60261,
@@ -296,48 +258,39 @@
                       5
                     ],
                     {
-                      "tensorVarName": "x"
+                      "varName": "x",
+                      "varIndices": []
                     },
                     [
                       {
-                        "tensorIndices": [
+                        "varName": "x",
+                        "varIndices": [
                           0
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "x"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "x",
+                        "varIndices": [
                           1
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "x"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "x",
+                        "varIndices": [
                           2
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "x"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "x",
+                        "varIndices": [
                           3
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "x"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "x",
+                        "varIndices": [
                           4
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "x"
-                        }
+                        ]
                       }
                     ]
                   ]
@@ -347,111 +300,91 @@
                 [
                   "x0",
                   {
-                    "tensorIndices": [
+                    "varName": "acasXu₀[input]",
+                    "varIndices": [
                       0
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "acasXu₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "x1",
                   {
-                    "tensorIndices": [
+                    "varName": "acasXu₀[input]",
+                    "varIndices": [
                       1
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "acasXu₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "x2",
                   {
-                    "tensorIndices": [
+                    "varName": "acasXu₀[input]",
+                    "varIndices": [
                       2
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "acasXu₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "x3",
                   {
-                    "tensorIndices": [
+                    "varName": "acasXu₀[input]",
+                    "varIndices": [
                       3
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "acasXu₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "x4",
                   {
-                    "tensorIndices": [
+                    "varName": "acasXu₀[input]",
+                    "varIndices": [
                       4
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "acasXu₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "y0",
                   {
-                    "tensorIndices": [
+                    "varName": "acasXu₀[output]",
+                    "varIndices": [
                       0
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "acasXu₀[output]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "y1",
                   {
-                    "tensorIndices": [
+                    "varName": "acasXu₀[output]",
+                    "varIndices": [
                       1
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "acasXu₀[output]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "y2",
                   {
-                    "tensorIndices": [
+                    "varName": "acasXu₀[output]",
+                    "varIndices": [
                       2
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "acasXu₀[output]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "y3",
                   {
-                    "tensorIndices": [
+                    "varName": "acasXu₀[output]",
+                    "varIndices": [
                       3
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "acasXu₀[output]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "y4",
                   {
-                    "tensorIndices": [
+                    "varName": "acasXu₀[output]",
+                    "varIndices": [
                       4
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "acasXu₀[output]"
-                    }
+                    ]
                   }
                 ]
               ],
@@ -495,48 +428,39 @@
                       5
                     ],
                     {
-                      "tensorVarName": "acasXu₀[input]"
+                      "varName": "acasXu₀[input]",
+                      "varIndices": []
                     },
                     [
                       {
-                        "tensorIndices": [
+                        "varName": "acasXu₀[input]",
+                        "varIndices": [
                           0
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "acasXu₀[input]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "acasXu₀[input]",
+                        "varIndices": [
                           1
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "acasXu₀[input]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "acasXu₀[input]",
+                        "varIndices": [
                           2
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "acasXu₀[input]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "acasXu₀[input]",
+                        "varIndices": [
                           3
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "acasXu₀[input]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "acasXu₀[input]",
+                        "varIndices": [
                           4
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "acasXu₀[input]"
-                        }
+                        ]
                       }
                     ]
                   ]
@@ -548,48 +472,39 @@
                       5
                     ],
                     {
-                      "tensorVarName": "acasXu₀[output]"
+                      "varName": "acasXu₀[output]",
+                      "varIndices": []
                     },
                     [
                       {
-                        "tensorIndices": [
+                        "varName": "acasXu₀[output]",
+                        "varIndices": [
                           0
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "acasXu₀[output]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "acasXu₀[output]",
+                        "varIndices": [
                           1
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "acasXu₀[output]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "acasXu₀[output]",
+                        "varIndices": [
                           2
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "acasXu₀[output]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "acasXu₀[output]",
+                        "varIndices": [
                           3
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "acasXu₀[output]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "acasXu₀[output]",
+                        "varIndices": [
                           4
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "acasXu₀[output]"
-                        }
+                        ]
                       }
                     ]
                   ]
@@ -598,12 +513,10 @@
                   "tag": "SolveRationalEquality",
                   "contents": [
                     {
-                      "tensorIndices": [
+                      "varName": "x",
+                      "varIndices": [
                         4
-                      ],
-                      "originalVar": {
-                        "tensorVarName": "x"
-                      }
+                      ]
                     },
                     {
                       "constantValue": {
@@ -613,12 +526,10 @@
                       "coefficients": [
                         [
                           {
-                            "tensorIndices": [
+                            "varName": "acasXu₀[input]",
+                            "varIndices": [
                               4
-                            ],
-                            "originalVar": {
-                              "tensorVarName": "acasXu₀[input]"
-                            }
+                            ]
                           },
                           {
                             "numerator": 1200,
@@ -633,12 +544,10 @@
                   "tag": "SolveRationalEquality",
                   "contents": [
                     {
-                      "tensorIndices": [
+                      "varName": "x",
+                      "varIndices": [
                         3
-                      ],
-                      "originalVar": {
-                        "tensorVarName": "x"
-                      }
+                      ]
                     },
                     {
                       "constantValue": {
@@ -648,12 +557,10 @@
                       "coefficients": [
                         [
                           {
-                            "tensorIndices": [
+                            "varName": "acasXu₀[input]",
+                            "varIndices": [
                               3
-                            ],
-                            "originalVar": {
-                              "tensorVarName": "acasXu₀[input]"
-                            }
+                            ]
                           },
                           {
                             "numerator": 1100,
@@ -668,12 +575,10 @@
                   "tag": "SolveRationalEquality",
                   "contents": [
                     {
-                      "tensorIndices": [
+                      "varName": "x",
+                      "varIndices": [
                         2
-                      ],
-                      "originalVar": {
-                        "tensorVarName": "x"
-                      }
+                      ]
                     },
                     {
                       "constantValue": {
@@ -683,12 +588,10 @@
                       "coefficients": [
                         [
                           {
-                            "tensorIndices": [
+                            "varName": "acasXu₀[input]",
+                            "varIndices": [
                               2
-                            ],
-                            "originalVar": {
-                              "tensorVarName": "acasXu₀[input]"
-                            }
+                            ]
                           },
                           {
                             "numerator": 392699,
@@ -703,12 +606,10 @@
                   "tag": "SolveRationalEquality",
                   "contents": [
                     {
-                      "tensorIndices": [
+                      "varName": "x",
+                      "varIndices": [
                         1
-                      ],
-                      "originalVar": {
-                        "tensorVarName": "x"
-                      }
+                      ]
                     },
                     {
                       "constantValue": {
@@ -718,12 +619,10 @@
                       "coefficients": [
                         [
                           {
-                            "tensorIndices": [
+                            "varName": "acasXu₀[input]",
+                            "varIndices": [
                               1
-                            ],
-                            "originalVar": {
-                              "tensorVarName": "acasXu₀[input]"
-                            }
+                            ]
                           },
                           {
                             "numerator": 392699,
@@ -738,12 +637,10 @@
                   "tag": "SolveRationalEquality",
                   "contents": [
                     {
-                      "tensorIndices": [
+                      "varName": "x",
+                      "varIndices": [
                         0
-                      ],
-                      "originalVar": {
-                        "tensorVarName": "x"
-                      }
+                      ]
                     },
                     {
                       "constantValue": {
@@ -753,12 +650,10 @@
                       "coefficients": [
                         [
                           {
-                            "tensorIndices": [
+                            "varName": "acasXu₀[input]",
+                            "varIndices": [
                               0
-                            ],
-                            "originalVar": {
-                              "tensorVarName": "acasXu₀[input]"
-                            }
+                            ]
                           },
                           {
                             "numerator": 60261,
@@ -776,48 +671,39 @@
                       5
                     ],
                     {
-                      "tensorVarName": "x"
+                      "varName": "x",
+                      "varIndices": []
                     },
                     [
                       {
-                        "tensorIndices": [
+                        "varName": "x",
+                        "varIndices": [
                           0
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "x"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "x",
+                        "varIndices": [
                           1
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "x"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "x",
+                        "varIndices": [
                           2
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "x"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "x",
+                        "varIndices": [
                           3
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "x"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "x",
+                        "varIndices": [
                           4
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "x"
-                        }
+                        ]
                       }
                     ]
                   ]
@@ -827,111 +713,91 @@
                 [
                   "x0",
                   {
-                    "tensorIndices": [
+                    "varName": "acasXu₀[input]",
+                    "varIndices": [
                       0
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "acasXu₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "x1",
                   {
-                    "tensorIndices": [
+                    "varName": "acasXu₀[input]",
+                    "varIndices": [
                       1
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "acasXu₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "x2",
                   {
-                    "tensorIndices": [
+                    "varName": "acasXu₀[input]",
+                    "varIndices": [
                       2
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "acasXu₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "x3",
                   {
-                    "tensorIndices": [
+                    "varName": "acasXu₀[input]",
+                    "varIndices": [
                       3
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "acasXu₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "x4",
                   {
-                    "tensorIndices": [
+                    "varName": "acasXu₀[input]",
+                    "varIndices": [
                       4
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "acasXu₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "y0",
                   {
-                    "tensorIndices": [
+                    "varName": "acasXu₀[output]",
+                    "varIndices": [
                       0
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "acasXu₀[output]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "y1",
                   {
-                    "tensorIndices": [
+                    "varName": "acasXu₀[output]",
+                    "varIndices": [
                       1
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "acasXu₀[output]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "y2",
                   {
-                    "tensorIndices": [
+                    "varName": "acasXu₀[output]",
+                    "varIndices": [
                       2
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "acasXu₀[output]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "y3",
                   {
-                    "tensorIndices": [
+                    "varName": "acasXu₀[output]",
+                    "varIndices": [
                       3
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "acasXu₀[output]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "y4",
                   {
-                    "tensorIndices": [
+                    "varName": "acasXu₀[output]",
+                    "varIndices": [
                       4
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "acasXu₀[output]"
-                    }
+                    ]
                   }
                 ]
               ],

@@ -89,10 +89,8 @@ addVectorVarToBoundVarCtx ::
   (Lv, TensorVariable) ->
   [(Lv, ElementVariable)] ->
   LinkedHashMap Lv Variable
-addVectorVarToBoundVarCtx tensorVar elemVars = do
-  let tensorVar' = second TensorVar tensorVar
-  let elemVars' = fmap (second RationalVar) elemVars
-  LinkedHashMap.union (LinkedHashMap.fromList elemVars') (LinkedHashMap.fromList [tensorVar'])
+addVectorVarToBoundVarCtx tensorVar elemVars =
+  LinkedHashMap.union (LinkedHashMap.fromList elemVars) (LinkedHashMap.fromList [tensorVar])
 
 addUserVarToGlobalContext ::
   TensorVariable ->
@@ -102,7 +100,7 @@ addUserVarToGlobalContext ::
 addUserVarToGlobalContext userVar shape GlobalCtx {..} = do
   -- Create the unreduced and reduced versions of the user variables.
   let currentLevel = Lv $ length globalBoundVarCtx
-  let (reducedUseVars, reducedUserVarExpr) = reduceVariable (currentLevel + 1) userVar shape
+  let (reducedUseVars, reducedUserVarExpr) = reduceTensorVariable (currentLevel + 1) userVar shape
   let userVarExpr = VBoundVar currentLevel []
   let variableInfo =
         TensorVariableInfo
@@ -133,11 +131,8 @@ addNetworkApplicationToGlobalCtx app@(networkName, _) networkInfo GlobalCtx {..}
   -- user tensor variables in terms of it).
   let inputLv = Lv $ length globalBoundVarCtx
   let inputShape = dimensions (inputTensor (networkType networkInfo))
-  let inputVar =
-        TensorVariable
-          { tensorVarName = layoutAsText $ createNetworkVarName networkName applicationNumber Input
-          }
-  let (reducedInputVars, reducedInputVarsExpr) = reduceVariable (inputLv + 1) inputVar inputShape
+  let inputVar = makeTensorVariable $ layoutAsText $ createNetworkVarName networkName applicationNumber Input
+  let (reducedInputVars, reducedInputVarsExpr) = reduceTensorVariable (inputLv + 1) inputVar inputShape
   let inputVarExpr = VBoundVar inputLv []
   let inputVarInfo =
         TensorVariableInfo
@@ -149,11 +144,8 @@ addNetworkApplicationToGlobalCtx app@(networkName, _) networkInfo GlobalCtx {..}
   -- Create a tensor of variables for the output of the network.
   let outputLv = inputLv + 1 + Lv (length reducedInputVars)
   let outputShape = dimensions (outputTensor (networkType networkInfo))
-  let outputVar =
-        TensorVariable
-          { tensorVarName = layoutAsText $ createNetworkVarName networkName applicationNumber Output
-          }
-  let (reducedOutputVars, reducedOutputVarsExpr) = reduceVariable (outputLv + 1) outputVar outputShape
+  let outputVar = makeTensorVariable $ layoutAsText $ createNetworkVarName networkName applicationNumber Output
+  let (reducedOutputVars, reducedOutputVarsExpr) = reduceTensorVariable (outputLv + 1) outputVar outputShape
   let outputVarExpr = VBoundVar outputLv []
   let outputVarInfo =
         TensorVariableInfo
@@ -293,21 +285,18 @@ lookupVarByLevel lv = do
 getTensorVariable :: (MonadState GlobalCtx m) => Lv -> m (TensorVariable, TensorShape)
 getTensorVariable lv = do
   var <- lookupVarByLevel lv
-  case var of
-    TensorVar v -> do
-      globalCtx <- get
-      let info = getTensorVariableInfo globalCtx v
-      return (v, tensorVariableShape info)
-    _ -> developerError "Expected tensor variable but found rational variable"
+  globalCtx <- get
+  let info = getTensorVariableInfo globalCtx var
+  return (var, tensorVariableShape info)
 
 getRationalVariable :: (MonadState GlobalCtx m) => Lv -> m ElementVariable
 getRationalVariable lv = do
   var <- lookupVarByLevel lv
-  case var of
-    RationalVar rv -> return rv
-    TensorVar tv -> do
-      ctx <- get
-      let rvs = getReducedVariablesFor ctx tv
+  ctx <- get
+  case HashMap.lookup var (tensorVariableInfo ctx) of
+    Nothing -> return var
+    Just info -> do
+      let rvs = elementVariables info
       case rvs of
         [rv] -> return rv
         _ -> developerError "Mismatched tensor dimensions!"
@@ -327,11 +316,7 @@ getReducedVariableExprFor :: (MonadState GlobalCtx m, MonadLogger m) => Lv -> m 
 getReducedVariableExprFor lv = do
   ctx <- get
   var <- lookupVarByLevel lv
-  case var of
-    RationalVar {} -> return Nothing
-    TensorVar tensorVar -> do
-      let tensorVarInfo = getTensorVariableInfo ctx tensorVar
-      return $ Just $ reducedVarExpr tensorVarInfo
+  return $ reducedVarExpr <$> HashMap.lookup var (tensorVariableInfo ctx)
 
 reduceTensorExpr ::
   GlobalCtx ->

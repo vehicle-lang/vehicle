@@ -15,248 +15,189 @@
                       30
                     ],
                     {
-                      "tensorVarName": "classifier₀[input]"
+                      "varName": "classifier₀[input]",
+                      "varIndices": []
                     },
                     [
                       {
-                        "tensorIndices": [
+                        "varName": "classifier₀[input]",
+                        "varIndices": [
                           0
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "classifier₀[input]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "classifier₀[input]",
+                        "varIndices": [
                           1
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "classifier₀[input]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "classifier₀[input]",
+                        "varIndices": [
                           2
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "classifier₀[input]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "classifier₀[input]",
+                        "varIndices": [
                           3
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "classifier₀[input]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "classifier₀[input]",
+                        "varIndices": [
                           4
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "classifier₀[input]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "classifier₀[input]",
+                        "varIndices": [
                           5
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "classifier₀[input]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "classifier₀[input]",
+                        "varIndices": [
                           6
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "classifier₀[input]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "classifier₀[input]",
+                        "varIndices": [
                           7
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "classifier₀[input]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "classifier₀[input]",
+                        "varIndices": [
                           8
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "classifier₀[input]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "classifier₀[input]",
+                        "varIndices": [
                           9
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "classifier₀[input]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "classifier₀[input]",
+                        "varIndices": [
                           10
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "classifier₀[input]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "classifier₀[input]",
+                        "varIndices": [
                           11
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "classifier₀[input]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "classifier₀[input]",
+                        "varIndices": [
                           12
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "classifier₀[input]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "classifier₀[input]",
+                        "varIndices": [
                           13
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "classifier₀[input]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "classifier₀[input]",
+                        "varIndices": [
                           14
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "classifier₀[input]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "classifier₀[input]",
+                        "varIndices": [
                           15
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "classifier₀[input]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "classifier₀[input]",
+                        "varIndices": [
                           16
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "classifier₀[input]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "classifier₀[input]",
+                        "varIndices": [
                           17
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "classifier₀[input]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "classifier₀[input]",
+                        "varIndices": [
                           18
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "classifier₀[input]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "classifier₀[input]",
+                        "varIndices": [
                           19
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "classifier₀[input]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "classifier₀[input]",
+                        "varIndices": [
                           20
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "classifier₀[input]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "classifier₀[input]",
+                        "varIndices": [
                           21
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "classifier₀[input]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "classifier₀[input]",
+                        "varIndices": [
                           22
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "classifier₀[input]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "classifier₀[input]",
+                        "varIndices": [
                           23
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "classifier₀[input]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "classifier₀[input]",
+                        "varIndices": [
                           24
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "classifier₀[input]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "classifier₀[input]",
+                        "varIndices": [
                           25
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "classifier₀[input]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "classifier₀[input]",
+                        "varIndices": [
                           26
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "classifier₀[input]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "classifier₀[input]",
+                        "varIndices": [
                           27
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "classifier₀[input]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "classifier₀[input]",
+                        "varIndices": [
                           28
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "classifier₀[input]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "classifier₀[input]",
+                        "varIndices": [
                           29
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "classifier₀[input]"
-                        }
+                        ]
                       }
                     ]
                   ]
@@ -268,24 +209,21 @@
                       2
                     ],
                     {
-                      "tensorVarName": "classifier₀[output]"
+                      "varName": "classifier₀[output]",
+                      "varIndices": []
                     },
                     [
                       {
-                        "tensorIndices": [
+                        "varName": "classifier₀[output]",
+                        "varIndices": [
                           0
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "classifier₀[output]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "classifier₀[output]",
+                        "varIndices": [
                           1
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "classifier₀[output]"
-                        }
+                        ]
                       }
                     ]
                   ]
@@ -294,7 +232,8 @@
                   "tag": "SolveTensorEquality",
                   "contents": [
                     {
-                      "tensorVarName": "x"
+                      "varName": "x",
+                      "varIndices": []
                     },
                     {
                       "constantValue": {
@@ -428,7 +367,8 @@
                       "coefficients": [
                         [
                           {
-                            "tensorVarName": "classifier₀[input]"
+                            "varName": "classifier₀[input]",
+                            "varIndices": []
                           },
                           {
                             "numerator": 1,
@@ -444,353 +384,289 @@
                 [
                   "x0",
                   {
-                    "tensorIndices": [
+                    "varName": "classifier₀[input]",
+                    "varIndices": [
                       0
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "classifier₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "x1",
                   {
-                    "tensorIndices": [
+                    "varName": "classifier₀[input]",
+                    "varIndices": [
                       1
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "classifier₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "x2",
                   {
-                    "tensorIndices": [
+                    "varName": "classifier₀[input]",
+                    "varIndices": [
                       2
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "classifier₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "x3",
                   {
-                    "tensorIndices": [
+                    "varName": "classifier₀[input]",
+                    "varIndices": [
                       3
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "classifier₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "x4",
                   {
-                    "tensorIndices": [
+                    "varName": "classifier₀[input]",
+                    "varIndices": [
                       4
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "classifier₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "x5",
                   {
-                    "tensorIndices": [
+                    "varName": "classifier₀[input]",
+                    "varIndices": [
                       5
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "classifier₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "x6",
                   {
-                    "tensorIndices": [
+                    "varName": "classifier₀[input]",
+                    "varIndices": [
                       6
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "classifier₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "x7",
                   {
-                    "tensorIndices": [
+                    "varName": "classifier₀[input]",
+                    "varIndices": [
                       7
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "classifier₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "x8",
                   {
-                    "tensorIndices": [
+                    "varName": "classifier₀[input]",
+                    "varIndices": [
                       8
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "classifier₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "x9",
                   {
-                    "tensorIndices": [
+                    "varName": "classifier₀[input]",
+                    "varIndices": [
                       9
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "classifier₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "x10",
                   {
-                    "tensorIndices": [
+                    "varName": "classifier₀[input]",
+                    "varIndices": [
                       10
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "classifier₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "x11",
                   {
-                    "tensorIndices": [
+                    "varName": "classifier₀[input]",
+                    "varIndices": [
                       11
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "classifier₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "x12",
                   {
-                    "tensorIndices": [
+                    "varName": "classifier₀[input]",
+                    "varIndices": [
                       12
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "classifier₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "x13",
                   {
-                    "tensorIndices": [
+                    "varName": "classifier₀[input]",
+                    "varIndices": [
                       13
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "classifier₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "x14",
                   {
-                    "tensorIndices": [
+                    "varName": "classifier₀[input]",
+                    "varIndices": [
                       14
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "classifier₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "x15",
                   {
-                    "tensorIndices": [
+                    "varName": "classifier₀[input]",
+                    "varIndices": [
                       15
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "classifier₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "x16",
                   {
-                    "tensorIndices": [
+                    "varName": "classifier₀[input]",
+                    "varIndices": [
                       16
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "classifier₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "x17",
                   {
-                    "tensorIndices": [
+                    "varName": "classifier₀[input]",
+                    "varIndices": [
                       17
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "classifier₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "x18",
                   {
-                    "tensorIndices": [
+                    "varName": "classifier₀[input]",
+                    "varIndices": [
                       18
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "classifier₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "x19",
                   {
-                    "tensorIndices": [
+                    "varName": "classifier₀[input]",
+                    "varIndices": [
                       19
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "classifier₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "x20",
                   {
-                    "tensorIndices": [
+                    "varName": "classifier₀[input]",
+                    "varIndices": [
                       20
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "classifier₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "x21",
                   {
-                    "tensorIndices": [
+                    "varName": "classifier₀[input]",
+                    "varIndices": [
                       21
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "classifier₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "x22",
                   {
-                    "tensorIndices": [
+                    "varName": "classifier₀[input]",
+                    "varIndices": [
                       22
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "classifier₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "x23",
                   {
-                    "tensorIndices": [
+                    "varName": "classifier₀[input]",
+                    "varIndices": [
                       23
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "classifier₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "x24",
                   {
-                    "tensorIndices": [
+                    "varName": "classifier₀[input]",
+                    "varIndices": [
                       24
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "classifier₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "x25",
                   {
-                    "tensorIndices": [
+                    "varName": "classifier₀[input]",
+                    "varIndices": [
                       25
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "classifier₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "x26",
                   {
-                    "tensorIndices": [
+                    "varName": "classifier₀[input]",
+                    "varIndices": [
                       26
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "classifier₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "x27",
                   {
-                    "tensorIndices": [
+                    "varName": "classifier₀[input]",
+                    "varIndices": [
                       27
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "classifier₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "x28",
                   {
-                    "tensorIndices": [
+                    "varName": "classifier₀[input]",
+                    "varIndices": [
                       28
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "classifier₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "x29",
                   {
-                    "tensorIndices": [
+                    "varName": "classifier₀[input]",
+                    "varIndices": [
                       29
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "classifier₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "y0",
                   {
-                    "tensorIndices": [
+                    "varName": "classifier₀[output]",
+                    "varIndices": [
                       0
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "classifier₀[output]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "y1",
                   {
-                    "tensorIndices": [
+                    "varName": "classifier₀[output]",
+                    "varIndices": [
                       1
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "classifier₀[output]"
-                    }
+                    ]
                   }
                 ]
               ],

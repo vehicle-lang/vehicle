@@ -15,16 +15,15 @@
                       1
                     ],
                     {
-                      "tensorVarName": "f₀[input]"
+                      "varName": "f₀[input]",
+                      "varIndices": []
                     },
                     [
                       {
-                        "tensorIndices": [
+                        "varName": "f₀[input]",
+                        "varIndices": [
                           0
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "f₀[input]"
-                        }
+                        ]
                       }
                     ]
                   ]
@@ -36,16 +35,15 @@
                       1
                     ],
                     {
-                      "tensorVarName": "f₀[output]"
+                      "varName": "f₀[output]",
+                      "varIndices": []
                     },
                     [
                       {
-                        "tensorIndices": [
+                        "varName": "f₀[output]",
+                        "varIndices": [
                           0
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "f₀[output]"
-                        }
+                        ]
                       }
                     ]
                   ]
@@ -54,10 +52,8 @@
                   "tag": "SolveRationalInequalities",
                   "contents": [
                     {
-                      "tensorIndices": [],
-                      "originalVar": {
-                        "tensorVarName": "x"
-                      }
+                      "varName": "x",
+                      "varIndices": []
                     },
                     {
                       "upperBounds": [
@@ -71,12 +67,10 @@
                             "coefficients": [
                               [
                                 {
-                                  "tensorIndices": [
+                                  "varName": "f₀[input]",
+                                  "varIndices": [
                                     0
-                                  ],
-                                  "originalVar": {
-                                    "tensorVarName": "f₀[input]"
-                                  }
+                                  ]
                                 },
                                 {
                                   "numerator": 1,
@@ -107,14 +101,13 @@
                   "contents": [
                     [],
                     {
-                      "tensorVarName": "x"
+                      "varName": "x",
+                      "varIndices": []
                     },
                     [
                       {
-                        "tensorIndices": [],
-                        "originalVar": {
-                          "tensorVarName": "x"
-                        }
+                        "varName": "x",
+                        "varIndices": []
                       }
                     ]
                   ]
@@ -123,10 +116,8 @@
                   "tag": "SolveRationalEquality",
                   "contents": [
                     {
-                      "tensorIndices": [],
-                      "originalVar": {
-                        "tensorVarName": "y"
-                      }
+                      "varName": "y",
+                      "varIndices": []
                     },
                     {
                       "constantValue": {
@@ -136,12 +127,10 @@
                       "coefficients": [
                         [
                           {
-                            "tensorIndices": [
+                            "varName": "f₀[input]",
+                            "varIndices": [
                               0
-                            ],
-                            "originalVar": {
-                              "tensorVarName": "f₀[input]"
-                            }
+                            ]
                           },
                           {
                             "numerator": 1,
@@ -150,10 +139,8 @@
                         ],
                         [
                           {
-                            "tensorIndices": [],
-                            "originalVar": {
-                              "tensorVarName": "x"
-                            }
+                            "varName": "x",
+                            "varIndices": []
                           },
                           {
                             "numerator": -1,
@@ -169,14 +156,13 @@
                   "contents": [
                     [],
                     {
-                      "tensorVarName": "y"
+                      "varName": "y",
+                      "varIndices": []
                     },
                     [
                       {
-                        "tensorIndices": [],
-                        "originalVar": {
-                          "tensorVarName": "y"
-                        }
+                        "varName": "y",
+                        "varIndices": []
                       }
                     ]
                   ]
@@ -186,23 +172,19 @@
                 [
                   "x0",
                   {
-                    "tensorIndices": [
+                    "varName": "f₀[input]",
+                    "varIndices": [
                       0
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "f₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "y0",
                   {
-                    "tensorIndices": [
+                    "varName": "f₀[output]",
+                    "varIndices": [
                       0
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "f₀[output]"
-                    }
+                    ]
                   }
                 ]
               ],

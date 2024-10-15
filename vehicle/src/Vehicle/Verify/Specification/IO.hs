@@ -43,7 +43,7 @@ import Vehicle.Backend.Agda.Interact (writeResultToFile)
 import Vehicle.Backend.Queries.UserVariableElimination.VariableReconstruction (reconstructUserVars)
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Code.BooleanExpr
-import Vehicle.Data.QuantifiedVariable (TensorVariable (..), UserVariableAssignment (..))
+import Vehicle.Data.QuantifiedVariable (UserVariableAssignment (..), varName)
 import Vehicle.Data.Tensor (Tensor (..))
 import Vehicle.Prelude.IO qualified as VIO (MonadStdIO (writeStdoutLn))
 import Vehicle.Verify.Core
@@ -525,7 +525,7 @@ outputPropertyResult verificationCache address result@(PropertyStatus status) = 
       let witnessFolder = verificationCache </> layoutAsString (pretty address) <> "-assignments"
       liftIO $ createDirectoryIfMissing True witnessFolder
       forM_ assignments $ \(var, Tensor varDims value) -> do
-        let file = witnessFolder </> unpack (tensorVarName var)
+        let file = witnessFolder </> unpack (varName var)
         let dims = Vector.fromList varDims
         -- TODO got to be a better way to do this conversion...
         let unboxedVector = Vector.fromList $ BoxedVector.toList (fmap realToFrac value)

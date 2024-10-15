@@ -16,17 +16,16 @@
                       1
                     ],
                     {
-                      "tensorVarName": "classifier₀[input]"
+                      "varName": "classifier₀[input]",
+                      "varIndices": []
                     },
                     [
                       {
-                        "tensorIndices": [
+                        "varName": "classifier₀[input]",
+                        "varIndices": [
                           0,
                           0
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "classifier₀[input]"
-                        }
+                        ]
                       }
                     ]
                   ]
@@ -38,24 +37,21 @@
                       2
                     ],
                     {
-                      "tensorVarName": "classifier₀[output]"
+                      "varName": "classifier₀[output]",
+                      "varIndices": []
                     },
                     [
                       {
-                        "tensorIndices": [
+                        "varName": "classifier₀[output]",
+                        "varIndices": [
                           0
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "classifier₀[output]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "classifier₀[output]",
+                        "varIndices": [
                           1
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "classifier₀[output]"
-                        }
+                        ]
                       }
                     ]
                   ]
@@ -64,7 +60,8 @@
                   "tag": "SolveTensorEquality",
                   "contents": [
                     {
-                      "tensorVarName": "perturbation"
+                      "varName": "perturbation",
+                      "varIndices": []
                     },
                     {
                       "constantValue": {
@@ -83,7 +80,8 @@
                       "coefficients": [
                         [
                           {
-                            "tensorVarName": "classifier₀[input]"
+                            "varName": "classifier₀[input]",
+                            "varIndices": []
                           },
                           {
                             "numerator": -1,
@@ -99,35 +97,29 @@
                 [
                   "x0",
                   {
-                    "tensorIndices": [
+                    "varName": "classifier₀[input]",
+                    "varIndices": [
                       0,
                       0
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "classifier₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "y0",
                   {
-                    "tensorIndices": [
+                    "varName": "classifier₀[output]",
+                    "varIndices": [
                       0
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "classifier₀[output]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "y1",
                   {
-                    "tensorIndices": [
+                    "varName": "classifier₀[output]",
+                    "varIndices": [
                       1
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "classifier₀[output]"
-                    }
+                    ]
                   }
                 ]
               ],

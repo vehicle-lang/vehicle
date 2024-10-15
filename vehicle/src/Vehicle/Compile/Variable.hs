@@ -43,7 +43,7 @@ createUserVar propertyProvenance namedCtx binder = do
   let varName = getBinderName binder
   checkUserVariableNameIsUnique propertyProvenance namedCtx varName
   varDimensions <- checkUserVariableType propertyProvenance binder
-  return (TensorVariable varName, varDimensions)
+  return (makeTensorVariable varName, varDimensions)
 
 checkUserVariableNameIsUnique ::
   (MonadCompile m) =>

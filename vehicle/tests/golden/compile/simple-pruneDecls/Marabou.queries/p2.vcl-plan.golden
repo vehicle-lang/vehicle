@@ -15,24 +15,21 @@
                       2
                     ],
                     {
-                      "tensorVarName": "g₀[input]"
+                      "varName": "g₀[input]",
+                      "varIndices": []
                     },
                     [
                       {
-                        "tensorIndices": [
+                        "varName": "g₀[input]",
+                        "varIndices": [
                           0
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "g₀[input]"
-                        }
+                        ]
                       },
                       {
-                        "tensorIndices": [
+                        "varName": "g₀[input]",
+                        "varIndices": [
                           1
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "g₀[input]"
-                        }
+                        ]
                       }
                     ]
                   ]
@@ -44,16 +41,15 @@
                       1
                     ],
                     {
-                      "tensorVarName": "g₀[output]"
+                      "varName": "g₀[output]",
+                      "varIndices": []
                     },
                     [
                       {
-                        "tensorIndices": [
+                        "varName": "g₀[output]",
+                        "varIndices": [
                           0
-                        ],
-                        "originalVar": {
-                          "tensorVarName": "g₀[output]"
-                        }
+                        ]
                       }
                     ]
                   ]
@@ -62,7 +58,8 @@
                   "tag": "SolveTensorEquality",
                   "contents": [
                     {
-                      "tensorVarName": "x"
+                      "varName": "x",
+                      "varIndices": []
                     },
                     {
                       "constantValue": {
@@ -84,7 +81,8 @@
                       "coefficients": [
                         [
                           {
-                            "tensorVarName": "g₀[input]"
+                            "varName": "g₀[input]",
+                            "varIndices": []
                           },
                           {
                             "numerator": 1,
@@ -100,34 +98,28 @@
                 [
                   "x0",
                   {
-                    "tensorIndices": [
+                    "varName": "g₀[input]",
+                    "varIndices": [
                       0
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "g₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "x1",
                   {
-                    "tensorIndices": [
+                    "varName": "g₀[input]",
+                    "varIndices": [
                       1
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "g₀[input]"
-                    }
+                    ]
                   }
                 ],
                 [
                   "y0",
                   {
-                    "tensorIndices": [
+                    "varName": "g₀[output]",
+                    "varIndices": [
                       0
-                    ],
-                    "originalVar": {
-                      "tensorVarName": "g₀[output]"
-                    }
+                    ]
                   }
                 ]
               ],
