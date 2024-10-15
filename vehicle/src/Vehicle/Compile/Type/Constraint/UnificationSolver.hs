@@ -62,7 +62,6 @@ solveUnificationConstraint (WithContext (Unify origin' e1 e2) ctx) = do
   metaSubst <- getMetaSubstitution (Proxy @builtin)
   (ne1', e1BlockingMetas) <- forceHead metaSubst ctx e1
   (ne2', e2BlockingMetas) <- forceHead metaSubst ctx e2
-  logDebug MaxDetail $ pretty e2BlockingMetas
 
   -- In theory this substitution shouldn't be needed, but in practice it is as if
   -- not all the meta-variables are substituted through then the scope of some
@@ -75,12 +74,12 @@ solveUnificationConstraint (WithContext (Unify origin' e1 e2) ctx) = do
   case result of
     Success newConstraints -> do
       addUnificationConstraints newConstraints
-    SoftFailure blockingMetas
-      | not (MetaSet.null blockingMetas) -> do
-          let normConstraint = WithContext nu ctx
-          let blockedConstraint = blockConstraintOn normConstraint blockingMetas
-          addUnificationConstraints [blockedConstraint]
-    _ -> throwError $ TypingError $ FailedUnificationConstraints [WithContext nu ctx]
+    SoftFailure blockingMetas -> do
+      let normConstraint = WithContext nu ctx
+      let blockedConstraint = blockConstraintOn normConstraint blockingMetas
+      addUnificationConstraints [blockedConstraint]
+    HardFailure ->
+      throwError $ TypingError $ FailedUnificationConstraints [WithContext nu ctx]
 
 data UnificationResult builtin
   = Success [WithContext (UnificationConstraint builtin)]
@@ -109,7 +108,7 @@ unification ::
   MetaSet ->
   (WHNFValue builtin, WHNFValue builtin) ->
   m (UnificationResult builtin)
-unification info@(ctx, _) reductionBlockingMetas = \case
+unification info@(ctx, _) blockingMetas = \case
   -----------------------
   -- Rigid-rigid cases --
   -----------------------
@@ -140,10 +139,14 @@ unification info@(ctx, _) reductionBlockingMetas = \case
   ----------------------
   VMeta meta spine :~: e -> solveFlexRigid ctx (meta, spine) e
   e :~: VMeta meta spine -> solveFlexRigid ctx (meta, spine) e
-  -----------
-  -- Other --
-  -----------
-  _ -> return $ SoftFailure reductionBlockingMetas
+  ------------------
+  -- Blocked case --
+  ------------------
+  _ ->
+    return $
+      if MetaSet.null blockingMetas
+        then HardFailure
+        else SoftFailure blockingMetas
 
 solveTrivially :: (MonadUnify builtin m) => m (UnificationResult builtin)
 solveTrivially = do

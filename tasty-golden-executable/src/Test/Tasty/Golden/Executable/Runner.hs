@@ -46,7 +46,7 @@ import Test.Tasty (TestName)
 import Test.Tasty.Golden.Executable.Error
 import Test.Tasty.Golden.Executable.TestSpec (TestSpec (..))
 import Test.Tasty.Golden.Executable.TestSpec.Accept (Accept (..))
-import Test.Tasty.Golden.Executable.TestSpec.External (AllowlistExternals (..))
+import Test.Tasty.Golden.Executable.TestSpec.External (AllowlistExternals (..), External)
 import Test.Tasty.Golden.Executable.TestSpec.FilePattern (FilePattern, addExtension, asLiteral, glob, match)
 import Test.Tasty.Golden.Executable.TestSpec.Ignore (Ignore (..), IgnoreFiles (..), IgnoreLines (..))
 import Test.Tasty.Golden.Executable.TestSpec.SizeOnly (SizeOnlyExtensions, toSizeOnlyExtensionsSet)
@@ -59,39 +59,43 @@ import Text.Printf (printf)
 
 instance IsTest TestSpec where
   run :: OptionSet -> TestSpec -> (Progress -> IO ()) -> IO Result
-  run options testSpec@(TestSpec {testSpecIgnore = Ignore {..}, ..}) _progress
-    | not $ isEnabled testSpec = return testSkip
-    | not $ isAllowed (lookupOption options) testSpec = return testSkip
-    | otherwise = do
-        -- Create loose equality based on the ignore options
-        let maybeLooseEq
-              | ignoreLines == mempty = Nothing
-              | otherwise = Just $ makeLooseEq (ignoreLines <> lookupOption options)
-        -- Create test environment
-        runTestIO testSpecDirectory testSpecName $ do
-          -- Copy needs to test environment
-          copyTestNeeds testSpecNeeds
-          -- Run test command
-          (stdout, stderr) <- runTestRun testSpecRun
-          -- Check if --accept was passed, and act accordingly:
-          if unAccept (lookupOption options)
-            then do
-              -- Update .golden file for stderr
-              acceptStderr stderr
-              -- Update .golden file for stdout
-              acceptStdout stdout
-              -- Update produced .golden files
-              acceptTestProduced testSpecProduces (ignoreFiles <> lookupOption options)
-            else do
-              maybeError <- execWriterT $ do
-                -- Diff stderr
-                diffStderr maybeLooseEq stderr
-                -- Diff stdout
-                diffStdout maybeLooseEq stdout
-                -- Diff produced files
-                diffTestProduced maybeLooseEq testSpecProduces (ignoreFiles <> lookupOption options) (lookupOption options)
+  run options testSpec@(TestSpec {testSpecIgnore = Ignore {..}, ..}) _progress =
+    if not $ isEnabled testSpec
+      then return $ testSkip "disabled"
+      else do
+        let missingExternals = checkExternals (lookupOption options) testSpec
+        if not $ null missingExternals
+          then return $ testSkip $ "missing externals: " <> show missingExternals
+          else do
+            -- Create loose equality based on the ignore options
+            let maybeLooseEq
+                  | ignoreLines == mempty = Nothing
+                  | otherwise = Just $ makeLooseEq (ignoreLines <> lookupOption options)
+            -- Create test environment
+            runTestIO testSpecDirectory testSpecName $ do
+              -- Copy needs to test environment
+              copyTestNeeds testSpecNeeds
+              -- Run test command
+              (stdout, stderr) <- runTestRun testSpecRun
+              -- Check if --accept was passed, and act accordingly:
+              if unAccept (lookupOption options)
+                then do
+                  -- Update .golden file for stderr
+                  acceptStderr stderr
+                  -- Update .golden file for stdout
+                  acceptStdout stdout
+                  -- Update produced .golden files
+                  acceptTestProduced testSpecProduces (ignoreFiles <> lookupOption options)
+                else do
+                  maybeError <- execWriterT $ do
+                    -- Diff stderr
+                    diffStderr maybeLooseEq stderr
+                    -- Diff stdout
+                    diffStdout maybeLooseEq stdout
+                    -- Diff produced files
+                    diffTestProduced maybeLooseEq testSpecProduces (ignoreFiles <> lookupOption options) (lookupOption options)
 
-              maybe (return ()) throw maybeError
+                  maybe (return ()) throw maybeError
 
   testOptions :: Tagged TestSpec [OptionDescription]
   testOptions =
@@ -104,13 +108,13 @@ instance IsTest TestSpec where
       ]
 
 -- | 'Result' of a skipped test.
-testSkip :: Result
-testSkip = (testPassed "") {resultShortDescription = "SKIP"}
+testSkip :: String -> Result
+testSkip reason = (testPassed "") {resultShortDescription = "SKIP (" <> reason <> ")"}
 
 -- | Whether or not the required externals are allowed.
-isAllowed :: AllowlistExternals -> TestSpec -> Bool
-isAllowed (AllowlistExternals allowlistExternals) (TestSpec {..}) =
-  Set.fromList testSpecExternals `Set.isSubsetOf` Set.fromList allowlistExternals
+checkExternals :: AllowlistExternals -> TestSpec -> [External]
+checkExternals (AllowlistExternals allowlistExternals) (TestSpec {..}) =
+  Set.toList $ Set.difference (Set.fromList testSpecExternals) (Set.fromList allowlistExternals)
 
 -- | Whether or not the test is enabled.
 isEnabled :: TestSpec -> Bool

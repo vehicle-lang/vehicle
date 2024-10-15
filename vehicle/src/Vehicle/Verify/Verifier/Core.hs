@@ -3,9 +3,9 @@
 module Vehicle.Verify.Verifier.Core where
 
 import Control.Monad.Error.Class (MonadError (..))
+import Data.Map (Map)
 import Data.Set (Set)
 import Vehicle.Compile.Prelude
-import Vehicle.Data.QuantifiedVariable
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
 
@@ -37,9 +37,16 @@ type VerifierExecutable = FilePath
 type PrepareVerifierArgs =
   MetaNetwork -> QueryFile -> [String]
 
+-- | A (satisfying) assignment to a set of reduced network-level variables.
+newtype QueryVariableAssignment
+  = QueryVariableAssignment (Map QueryVariable Rational)
+
 -- | The type of methods that parse the output of the verifier.
 type ParseVerifierOutput =
-  forall m. (MonadError VerificationError m, MonadLogger m) => MetaNetwork -> String -> m (QueryResult NetworkVariableAssignment)
+  forall m.
+  (MonadError VerificationError m, MonadLogger m) =>
+  String ->
+  m (QueryResult QueryVariableAssignment)
 
 -- | A complete verifier implementation
 data Verifier = Verifier
@@ -62,7 +69,7 @@ data VerificationError
   | VerifierTerminatedByOS Int
   | VerifierError String
   | VerifierOutputMalformed (forall a. Doc a)
-  | VerifierIncompleteWitness (Set String)
+  | VerifierIncompleteWitness (Set QueryVariable)
 
 --------------------------------------------------------------------------------
 -- Error messages
@@ -74,11 +81,11 @@ data VerificationErrorAction = VerificationErrorAction
 
 convertVerificationError :: Verifier -> QueryAddress -> VerificationError -> VerificationErrorAction
 convertVerificationError Verifier {..} (propertyAddress, queryID) = \case
-  UnsupportedMultipleNetworks metaNetwork ->
+  UnsupportedMultipleNetworks metaNetworkEntries ->
     VerificationErrorAction
       { reproducerIsUseful = False,
         verificationErrorMessage = do
-          let networkNames = fmap metaNetworkEntryName (networkEntries metaNetwork)
+          let networkNames = fmap metaNetworkEntryName metaNetworkEntries
           let duplicateNetworkNames = findDuplicates networkNames
           "The"
             <+> verifierDoc

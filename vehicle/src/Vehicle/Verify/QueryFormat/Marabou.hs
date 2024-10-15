@@ -10,7 +10,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Vehicle.Compile.Error (CompileError (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Core
-import Vehicle.Data.QuantifiedVariable
+import Vehicle.Data.QuantifiedVariable (prettyRationalAsFloat)
 import Vehicle.Prelude.Warning
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
@@ -24,26 +24,29 @@ marabouQueryFormat :: QueryFormat
 marabouQueryFormat =
   QueryFormat
     { queryFormatID = MarabouQueries,
-      formatQuery = compileMarabouQuery,
       supportsStrictInequalities = False,
-      compileVar = compileMarabouVar,
-      queryOutputFormat =
-        ExternalOutputFormat
-          { formatName = pretty MarabouQueries,
-            formatVersion = Nothing,
-            commentToken = "//",
-            emptyLines = False
-          }
+      queryOutputFormat = outputFormat,
+      compileQuery = compileMarabouQuery,
+      compileVariable = compileMarabouVar
     }
 
--- | Compiles an expression representing a single Marabou query. The expression
--- passed should only have conjunctions and existential quantifiers at the boolean
--- level.
-compileMarabouQuery ::
-  (MonadLogger m, MonadError CompileError m) =>
-  QueryAddress ->
-  QueryContents ->
-  m QueryText
+outputFormat :: ExternalOutputFormat
+outputFormat =
+  ExternalOutputFormat
+    { formatName = pretty MarabouQueries,
+      formatVersion = Nothing,
+      commentToken = "//",
+      emptyLines = False
+    }
+
+-- | Compiles an individual variable
+compileMarabouVar :: CompileQueryVariable
+compileMarabouVar inputOrOutput ioIndex = do
+  let name = if inputOrOutput == Input then "x" else "y"
+  layoutAsText $ name <> pretty ioIndex
+
+-- | Compiles an expression representing a single Marabou query.
+compileMarabouQuery :: CompileQuery
 compileMarabouQuery address (QueryContents _variables assertions) = do
   assertionDocs <- forM assertions (compileAssertion address)
   let assertionsDoc = vsep assertionDocs
@@ -52,7 +55,7 @@ compileMarabouQuery address (QueryContents _variables assertions) = do
 compileAssertion ::
   (MonadLogger m, MonadError CompileError m) =>
   QueryAddress ->
-  QueryAssertion ->
+  QueryAssertion QueryVariable ->
   m (Doc a)
 compileAssertion address QueryAssertion {..} = do
   let (coeffVars', rel', constant', multipleVariables) = case lhs of
@@ -83,14 +86,8 @@ compileRel address = \case
     logWarning (UnsoundStrictOrderConversion MarabouQueries address)
     return ">="
 
-compileCoefVar :: Bool -> (Coefficient, NetworkRationalVariable) -> Doc a
-compileCoefVar False (1, var) = compileMarabouVar var
-compileCoefVar True (1, var) = "+" <> compileMarabouVar var
-compileCoefVar _ (-1, var) = "-" <> compileMarabouVar var
-compileCoefVar _ (coefficient, var) = prettyRationalAsFloat coefficient <> compileMarabouVar var
-
-compileMarabouVar :: NetworkRationalVariable -> Doc a
-compileMarabouVar var = do
-  let name = if inputOrOutput (originalVar var) == Input then "x" else "y"
-  let index = computeAbsoluteIndex var
-  name <> pretty index
+compileCoefVar :: Bool -> (Coefficient, QueryVariable) -> Doc a
+compileCoefVar False (1, var) = pretty var
+compileCoefVar True (1, var) = "+" <> pretty var
+compileCoefVar _ (-1, var) = "-" <> pretty var
+compileCoefVar _ (coefficient, var) = prettyRationalAsFloat coefficient <> pretty var

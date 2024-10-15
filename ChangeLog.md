@@ -1,5 +1,9 @@
 # Changelog for Vehicle
 
+## Version 0.16
+
+* Decreased the size of generated verification plan files by 75%
+
 ## Version 0.15
 
 * Added functions `min` and `max` over rationals.

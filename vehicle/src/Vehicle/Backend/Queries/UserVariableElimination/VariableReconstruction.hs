@@ -1,31 +1,36 @@
 module Vehicle.Backend.Queries.UserVariableElimination.VariableReconstruction where
 
+import Control.Arrow (ArrowChoice (..))
 import Control.Monad (foldM)
 import Data.Foldable (foldlM)
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Map.Strict qualified as HashMap
-import Data.Maybe (mapMaybe)
+import Data.Maybe (fromMaybe)
+import Data.Set qualified as Set
 import Data.Vector qualified as Vector
 import Vehicle.Backend.Queries.UserVariableElimination.Core
 import Vehicle.Compile.FourierMotzkinElimination
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Code.LinearExpr (evaluateExpr)
 import Vehicle.Data.QuantifiedVariable
-import Vehicle.Data.Tensor (RationalTensor, Tensor (..))
+import Vehicle.Data.Tensor (RationalTensor, Tensor (..), TensorShape)
+import Vehicle.Verify.Core
+import Vehicle.Verify.QueryFormat.Core
+import Vehicle.Verify.Verifier.Core
 
 --------------------------------------------------------------------------------
 -- Variable reconstruction
 
 reconstructUserVars ::
   (MonadLogger m) =>
+  QueryVariableMapping ->
   UserVariableReconstruction ->
-  NetworkVariableAssignment ->
+  QueryVariableAssignment ->
   m UserVariableAssignment
-reconstructUserVars steps networkVariableAssignment =
+reconstructUserVars queryVariableMapping steps networkVariableAssignment =
   logCompilerPass MidDetail "calculation of problem space witness" $ do
     logDebug MidDetail $ pretty steps
-    let assignment = createInitialAssignment networkVariableAssignment
+    let assignment = createInitialAssignment queryVariableMapping networkVariableAssignment
     alteredAssignment <- foldlM applyReconstructionStep assignment steps
     let finalAssignment = createFinalAssignment alteredAssignment
     logDebug MidDetail $ "User variables:" <+> pretty finalAssignment
@@ -36,7 +41,8 @@ reconstructUserVars steps networkVariableAssignment =
 
 data MixedVariableAssignment = VariableAssignment
   { tensorVariables :: Map TensorVariable RationalTensor,
-    rationalVariables :: Map RationalVariable Rational
+    rationalVariables :: Map ElementVariable Rational,
+    userVariables :: [TensorVariable]
   }
 
 instance Pretty MixedVariableAssignment where
@@ -49,34 +55,35 @@ instance Pretty MixedVariableAssignment where
 -- | Lookup the value of the variable in an assignment.
 lookupRationalVariable ::
   MixedVariableAssignment ->
-  RationalVariable ->
+  ElementVariable ->
   Maybe Rational
-lookupRationalVariable VariableAssignment {..} var = do
-  let maybeValue = Map.lookup var rationalVariables
-  case maybeValue of
-    Nothing -> Nothing
-    Just value -> Just value
+lookupRationalVariable VariableAssignment {..} var = Map.lookup var rationalVariables
 
 -- | Lookups the values in the variable assignment and removes them from the
 -- assignment. Returns either the first missing variable or the list of values
 -- and the resulting assignment.
 lookupRationalVariables ::
   MixedVariableAssignment ->
-  [RationalVariable] ->
-  Either RationalVariable [Rational]
-lookupRationalVariables assignment = foldM op []
+  [ElementVariable] ->
+  Either ElementVariable [Rational]
+lookupRationalVariables assignment vars = right reverse $ foldM op [] vars
   where
     op values var = case lookupRationalVariable assignment var of
       Nothing -> Left var
       Just value -> Right (value : values)
 
 createInitialAssignment ::
-  NetworkVariableAssignment ->
+  [(QueryVariable, NetworkElementVariable)] ->
+  QueryVariableAssignment ->
   MixedVariableAssignment
-createInitialAssignment (NetworkVariableAssignment values) = do
+createInitialAssignment queryVariableMapping (QueryVariableAssignment valuesByQueryVar) = do
+  let queryVariableMap = Map.fromList queryVariableMapping
+  let mapQueryVariable var = fromMaybe (developerError ("Missing query variable" <+> pretty var)) (Map.lookup var queryVariableMap)
+  let valuesByNetworkVar = Map.mapKeys mapQueryVariable valuesByQueryVar
   VariableAssignment
-    { rationalVariables = HashMap.mapKeys NetworkRationalVar values,
-      tensorVariables = mempty
+    { rationalVariables = valuesByNetworkVar,
+      tensorVariables = mempty,
+      userVariables = mempty
     }
 
 applyReconstructionStep ::
@@ -87,8 +94,8 @@ applyReconstructionStep ::
 applyReconstructionStep assignment@VariableAssignment {..} step = do
   logDebug MidDetail $ "Variable assignment:" <> line <> indent 2 (pretty assignment)
   case step of
-    ReconstructTensor var individualVars ->
-      unreduceVariable var individualVars assignment
+    ReconstructTensor isUserVariable shape var individualVars ->
+      unreduceVariable isUserVariable shape var individualVars assignment
     SolveRationalEquality var eq -> do
       logCompilerSection MidDetail ("Reintroducing Gaussian-eliminated variable" <+> quotePretty var) $ do
         logDebug MidDetail $ "Using" <+> pretty step
@@ -99,7 +106,7 @@ applyReconstructionStep assignment@VariableAssignment {..} step = do
             logDebug MidDetail $ "Result:" <+> pretty var <+> "=" <+> pretty value
             return $
               VariableAssignment
-                { rationalVariables = Map.insert (UserRationalVar var) value rationalVariables,
+                { rationalVariables = Map.insert var value rationalVariables,
                   ..
                 }
     SolveTensorEquality var eq -> do
@@ -112,7 +119,8 @@ applyReconstructionStep assignment@VariableAssignment {..} step = do
             logDebug MidDetail $ "Result:" <+> pretty var <+> "=" <+> pretty value
             return $
               VariableAssignment
-                { tensorVariables = Map.insert (UserTensorVar var) value tensorVariables,
+                { tensorVariables = Map.insert var value tensorVariables,
+                  userVariables = var : userVariables,
                   ..
                 }
     SolveRationalInequalities var solution -> do
@@ -123,7 +131,7 @@ applyReconstructionStep assignment@VariableAssignment {..} step = do
           Right value ->
             return $
               VariableAssignment
-                { rationalVariables = Map.insert (UserRationalVar var) value rationalVariables,
+                { rationalVariables = Map.insert var value rationalVariables,
                   ..
                 }
 
@@ -132,11 +140,13 @@ applyReconstructionStep assignment@VariableAssignment {..} step = do
 -- assignment.
 unreduceVariable ::
   (MonadLogger m) =>
+  Bool ->
+  TensorShape ->
   TensorVariable ->
-  [RationalVariable] ->
+  [ElementVariable] ->
   MixedVariableAssignment ->
   m MixedVariableAssignment
-unreduceVariable variable reducedVariables assignment@VariableAssignment {..} = do
+unreduceVariable isUserVariable shape variable reducedVariables assignment@VariableAssignment {..} = do
   let variableResults = lookupRationalVariables assignment reducedVariables
   case variableResults of
     Left missingVar ->
@@ -149,19 +159,17 @@ unreduceVariable variable reducedVariables assignment@VariableAssignment {..} = 
     Right values -> do
       logDebug MaxDetail $
         "Collapsing variables" <+> pretty reducedVariables <+> "to single variable" <+> pretty variable
-      let unreducedValue = Tensor (tensorVariableDims variable) (Vector.fromList values)
+      let unreducedValue = Tensor shape (Vector.fromList values)
       return $
         assignment
-          { tensorVariables = Map.insert variable unreducedValue tensorVariables
+          { tensorVariables = Map.insert variable unreducedValue tensorVariables,
+            userVariables = if isUserVariable then variable : userVariables else userVariables
           }
 
 createFinalAssignment ::
   MixedVariableAssignment ->
   UserVariableAssignment
 createFinalAssignment (VariableAssignment {..}) = do
-  UserVariableAssignment $ mapMaybe getUserOriginalVariable (Map.toList tensorVariables)
-  where
-    getUserOriginalVariable :: (TensorVariable, RationalTensor) -> Maybe (OriginalUserVariable, RationalTensor)
-    getUserOriginalVariable (var, value) = case var of
-      NetworkTensorVar {} -> Nothing
-      UserTensorVar v -> Just (v, value)
+  let userVarSet = Set.fromList userVariables
+  let userVarAssignments = Map.filterWithKey (\v _ -> v `Set.member` userVarSet) tensorVariables
+  UserVariableAssignment $ Map.toList userVarAssignments

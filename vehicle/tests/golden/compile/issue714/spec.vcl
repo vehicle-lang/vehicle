@@ -117,11 +117,11 @@ minValues =
 
 normalise : InputVector -> NormalisedInputVector
 normalise x = foreach i .
-  let max = maxValues ! i in
-  let min = minValues ! i in
-  if max == min
+  let maxValue = maxValues ! i in
+  let minValue = minValues ! i in
+  if maxValue == minValue
     then x ! i
-    else (x ! i - min) / (max - min)
+    else (x ! i - minValue) / (maxValue - minValue)
 
 -------------
 -- Network --

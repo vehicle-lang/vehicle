@@ -11,105 +11,35 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
-                    {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "startingIndex": 0,
-                        "networkTensorVarDimensions": [
-                          1,
-                          1
-                        ],
-                        "networkName": "classifier",
-                        "inputOrOutput": "Input",
-                        "application": 0
-                      }
-                    },
+                    false,
                     [
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            0,
-                            0
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              1,
-                              1
-                            ],
-                            "networkName": "classifier",
-                            "inputOrOutput": "Input",
-                            "application": 0
-                          }
-                        }
-                      }
+                      1,
+                      1
+                    ],
+                    "classifier₀[input]",
+                    [
+                      "classifier₀[input]!0!0"
                     ]
                   ]
                 },
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
-                    {
-                      "tag": "NetworkTensorVar",
-                      "contents": {
-                        "startingIndex": 0,
-                        "networkTensorVarDimensions": [
-                          2
-                        ],
-                        "networkName": "classifier",
-                        "inputOrOutput": "Output",
-                        "application": 0
-                      }
-                    },
+                    false,
                     [
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            1
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              2
-                            ],
-                            "networkName": "classifier",
-                            "inputOrOutput": "Output",
-                            "application": 0
-                          }
-                        }
-                      },
-                      {
-                        "tag": "NetworkRationalVar",
-                        "contents": {
-                          "tensorIndices": [
-                            0
-                          ],
-                          "originalVar": {
-                            "startingIndex": 0,
-                            "networkTensorVarDimensions": [
-                              2
-                            ],
-                            "networkName": "classifier",
-                            "inputOrOutput": "Output",
-                            "application": 0
-                          }
-                        }
-                      }
+                      2
+                    ],
+                    "classifier₀[output]",
+                    [
+                      "classifier₀[output]!0",
+                      "classifier₀[output]!1"
                     ]
                   ]
                 },
                 {
                   "tag": "SolveTensorEquality",
                   "contents": [
-                    {
-                      "userTensorVarName": "perturbation",
-                      "userTensorVarDimensions": [
-                        1,
-                        1
-                      ]
-                    },
+                    "perturbation",
                     {
                       "constantValue": {
                         "value": [
@@ -124,30 +54,29 @@
                           1
                         ]
                       },
-                      "coefficients": [
-                        [
-                          {
-                            "tag": "NetworkTensorVar",
-                            "contents": {
-                              "startingIndex": 0,
-                              "networkTensorVarDimensions": [
-                                1,
-                                1
-                              ],
-                              "networkName": "classifier",
-                              "inputOrOutput": "Input",
-                              "application": 0
-                            }
-                          },
-                          {
-                            "numerator": -1,
-                            "denominator": 1
-                          }
-                        ]
-                      ]
+                      "coefficients": {
+                        "classifier₀[input]": {
+                          "numerator": -1,
+                          "denominator": 1
+                        }
+                      }
                     }
                   ]
                 }
+              ],
+              "queryVariableMapping": [
+                [
+                  "x0",
+                  "classifier₀[input]!0!0"
+                ],
+                [
+                  "y0",
+                  "classifier₀[output]!0"
+                ],
+                [
+                  "y1",
+                  "classifier₀[output]!1"
+                ]
               ],
               "queryAddress": [
                 {
@@ -157,77 +86,29 @@
                 },
                 1
               ],
-              "metaNetwork": {
-                "variables": [
-                  {
-                    "tensorIndices": [
-                      0,
-                      0
-                    ],
-                    "originalVar": {
-                      "startingIndex": 0,
-                      "networkTensorVarDimensions": [
-                        1,
-                        1
-                      ],
-                      "networkName": "classifier",
-                      "inputOrOutput": "Input",
-                      "application": 0
-                    }
-                  },
-                  {
-                    "tensorIndices": [
-                      1
-                    ],
-                    "originalVar": {
-                      "startingIndex": 0,
-                      "networkTensorVarDimensions": [
-                        2
-                      ],
-                      "networkName": "classifier",
-                      "inputOrOutput": "Output",
-                      "application": 0
-                    }
-                  },
-                  {
-                    "tensorIndices": [
-                      0
-                    ],
-                    "originalVar": {
-                      "startingIndex": 0,
-                      "networkTensorVarDimensions": [
-                        2
-                      ],
-                      "networkName": "classifier",
-                      "inputOrOutput": "Output",
-                      "application": 0
-                    }
-                  }
-                ],
-                "networkEntries": [
-                  {
-                    "metaNetworkEntryName": "classifier",
-                    "metaNetworkEntryInfo": {
-                      "networkType": {
-                        "outputTensor": {
-                          "dimensions": [
-                            2
-                          ],
-                          "baseType": []
-                        },
-                        "inputTensor": {
-                          "dimensions": [
-                            1,
-                            1
-                          ],
-                          "baseType": []
-                        }
+              "metaNetwork": [
+                {
+                  "metaNetworkEntryName": "classifier",
+                  "metaNetworkEntryInfo": {
+                    "networkType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          2
+                        ],
+                        "baseType": []
                       },
-                      "networkFilepath": "fake.onnx"
-                    }
+                      "inputTensor": {
+                        "dimensions": [
+                          1,
+                          1
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "networkFilepath": "fake.onnx"
                   }
-                ]
-              }
+                }
+              ]
             }
           ]
         },

@@ -1,14 +1,21 @@
-module Vehicle.Data.QuantifiedVariable where
+module Vehicle.Data.QuantifiedVariable
+  ( Variable,
+    makeTensorVariable,
+    reduceTensorVariable,
+    TensorVariableInfo (..),
+    TensorVariable,
+    UserElementVariable,
+    ElementVariable,
+    NetworkElementVariable,
+    prettyRationalAsFloat,
+    UserVariableAssignment (..),
+  )
+where
 
-import Control.DeepSeq (NFData)
-import Data.Aeson (FromJSON, FromJSONKey, ToJSON, ToJSONKey)
-import Data.Char.SScript
-import Data.Hashable (Hashable)
-import Data.Map (Map)
-import Data.Map qualified as Map
+import Data.Aeson (FromJSON, ToJSON)
+import Data.Text qualified as Text
 import GHC.Generics (Generic)
 import Numeric (showFFloat)
-import Prettyprinter (brackets)
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
@@ -17,101 +24,48 @@ import Vehicle.Data.Tensor
 import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
--- User tensor variables
+-- Variables
 
-data OriginalUserVariable = OriginalUserVariable
-  { userTensorVarName :: Name,
-    userTensorVarDimensions :: TensorShape
-  }
-  deriving (Show, Eq, Ord, Generic)
+-- | A variable. Empty indices means that is a tensor variable, otherwise
+-- its a variable representing an element of a tensor.
+type Variable = Name
 
-instance NFData OriginalUserVariable
+{-
+instance NFData Variable
 
-instance ToJSON OriginalUserVariable
+instance Hashable Variable
 
-instance FromJSON OriginalUserVariable
+instance ToJSON Variable
 
-instance Hashable OriginalUserVariable
+instance FromJSON Variable
 
-instance Pretty OriginalUserVariable where
-  pretty = pretty . userTensorVarName
+instance ToJSONKey Variable
 
---------------------------------------------------------------------------------
--- Network tensor variables
+instance FromJSONKey Variable
 
--- | Network input and output variables
-data OriginalNetworkVariable = OriginalNetworkVariable
-  { -- | The name of the network this variable belongs to.
-    networkName :: Name,
-    -- | Whether its an input or an output variable
-    inputOrOutput :: InputOrOutput,
-    -- | The dimensions of the variable
-    networkTensorVarDimensions :: TensorShape,
-    -- | The position in the list of applications of `networkName`
-    application :: Int,
-    -- | Index starting
-    startingIndex :: Int
-  }
-  deriving (Show, Eq, Ord, Generic)
+instance Pretty Variable where
+  pretty Variable{..} = pretty varName
+-}
 
-instance NFData OriginalNetworkVariable
+makeTensorVariable :: Name -> Variable
+makeTensorVariable = id
 
-instance ToJSON OriginalNetworkVariable
-
-instance FromJSON OriginalNetworkVariable
-
-instance Hashable OriginalNetworkVariable
-
-instance Pretty OriginalNetworkVariable where
-  pretty OriginalNetworkVariable {..} =
-    pretty networkName
-      <> pretty (fmap subscript (show application))
-      <> brackets (pretty inputOrOutput)
-
---------------------------------------------------------------------------------
--- Reduced variables
-
-data ReducedVariable variable = ReducedVariable
-  { originalVar :: variable,
-    tensorIndices :: TensorIndices
-  }
-  deriving (Show, Eq, Ord, Generic)
-
-instance (NFData variable) => NFData (ReducedVariable variable)
-
-instance (Pretty variable) => Pretty (ReducedVariable variable) where
-  pretty ReducedVariable {..} =
-    pretty originalVar <> pretty (showTensorIndices tensorIndices)
-
-instance (FromJSON variable) => FromJSON (ReducedVariable variable)
-
-instance (FromJSON variable) => FromJSONKey (ReducedVariable variable)
-
-instance (ToJSON variable) => ToJSON (ReducedVariable variable)
-
-instance (ToJSON variable) => ToJSONKey (ReducedVariable variable)
-
-instance (Hashable variable) => Hashable (ReducedVariable variable)
-
-reduceVariable ::
-  forall variable.
-  (variable -> TensorShape) ->
+reduceTensorVariable ::
   Lv ->
-  variable ->
-  ([(Lv, ReducedVariable variable)], WHNFValue Builtin)
-reduceVariable varDims dbLevel var
-  | null (varDims var) = createRatVar [] dbLevel
-  | otherwise = do
-      let (vars, expr) = runSupply (go (varDims var) []) [dbLevel ..]
-      (reverse vars, expr)
+  TensorVariable ->
+  TensorShape ->
+  ([(Lv, ElementVariable)], WHNFValue Builtin)
+reduceTensorVariable dbLevel var shape = runSupply (go shape []) [dbLevel ..]
   where
-    createRatVar :: TensorIndices -> Lv -> ([(Lv, ReducedVariable variable)], WHNFValue Builtin)
-    createRatVar indices lv = ([(lv, ReducedVariable var indices)], VBoundVar lv [])
+    createRatVar :: TensorIndices -> Lv -> ([(Lv, ElementVariable)], WHNFValue Builtin)
+    createRatVar indices lv = do
+      let name = var <> Text.pack (showTensorIndices indices)
+      ([(lv, name)], VBoundVar lv [])
 
     go ::
       TensorShape ->
       TensorIndices ->
-      Supply Lv ([(Lv, ReducedVariable variable)], WHNFValue Builtin)
+      Supply Lv ([(Lv, ElementVariable)], WHNFValue Builtin)
     go dims indices = case dims of
       [] -> createRatVar (reverse indices) <$> demand
       d : ds -> do
@@ -123,93 +77,23 @@ reduceVariable varDims dbLevel var
         let userVars = concat elementUserVars
         return (userVars, mkVecExpr subexprs)
 
---------------------------------------------------------------------------------
--- Reduced user variables
+type TensorVariable = Variable
+
+type ElementVariable = Variable
 
 -- | Variables entered by the user
-type UserRationalVariable = ReducedVariable OriginalUserVariable
+type UserElementVariable = ElementVariable
 
-type NetworkRationalVariable = ReducedVariable OriginalNetworkVariable
+type NetworkElementVariable = ElementVariable
 
-computeAbsoluteIndex :: NetworkRationalVariable -> Int
-computeAbsoluteIndex ReducedVariable {..} = do
-  let offset = startingIndex originalVar
-  offset + computeFlatIndex (networkTensorVarDimensions originalVar) tensorIndices
-
---------------------------------------------------------------------------------
--- All variables
-
--- | Both user and network variables
-data RationalVariable
-  = UserRationalVar UserRationalVariable
-  | NetworkRationalVar NetworkRationalVariable
-  deriving (Show, Eq, Ord, Generic)
-
-instance NFData RationalVariable
-
-instance ToJSON RationalVariable
-
-instance FromJSON RationalVariable
-
-instance ToJSONKey RationalVariable
-
-instance FromJSONKey RationalVariable
-
-instance Pretty RationalVariable where
-  pretty = \case
-    UserRationalVar v -> pretty v
-    NetworkRationalVar v -> pretty v
-
---------------------------------------------------------------------------------
--- Tensor variables
-
--- | Both user and network variables
-data TensorVariable
-  = UserTensorVar OriginalUserVariable
-  | NetworkTensorVar OriginalNetworkVariable
-  deriving (Show, Eq, Ord, Generic)
-
-instance NFData TensorVariable
-
-instance ToJSON TensorVariable
-
-instance FromJSON TensorVariable
-
-instance ToJSONKey TensorVariable
-
-instance FromJSONKey TensorVariable
-
-instance Pretty TensorVariable where
-  pretty = \case
-    UserTensorVar v -> pretty v
-    NetworkTensorVar v -> pretty v
-
-tensorVariableDims :: TensorVariable -> TensorShape
-tensorVariableDims = \case
-  UserTensorVar v -> userTensorVarDimensions v
-  NetworkTensorVar v -> networkTensorVarDimensions v
-
---------------------------------------------------------------------------------
--- Tensor variables
-
--- | Both user and network variables
-data Variable
-  = RationalVar RationalVariable
-  | TensorVar TensorVariable
-  deriving (Show, Eq, Ord, Generic)
-
-instance ToJSON Variable
-
-instance FromJSON Variable
-
-instance ToJSONKey Variable
-
-instance FromJSONKey Variable
-
-instance Pretty Variable where
-  pretty = \case
-    RationalVar v -> pretty v
-    TensorVar v -> pretty v
+data TensorVariableInfo = TensorVariableInfo
+  { -- | Variables for each of it's elements
+    elementVariables :: [NetworkElementVariable],
+    -- | The tensor literal expression containing the element variables above.
+    reducedVarExpr :: WHNFValue Builtin,
+    -- The shape of the tensor
+    tensorVariableShape :: TensorShape
+  }
 
 --------------------------------------------------------------------------------
 -- Constants
@@ -220,25 +104,11 @@ prettyRationalAsFloat p = do
   pretty $ showFFloat Nothing f ""
 
 --------------------------------------------------------------------------------
--- Network assignments
-
--- | A (satisfying) assignment to a set of reduced network-level variables.
-newtype NetworkVariableAssignment
-  = NetworkVariableAssignment (Map NetworkRationalVariable Rational)
-
-instance Pretty NetworkVariableAssignment where
-  pretty (NetworkVariableAssignment assignment) = do
-    vsep (prettyVariable <$> Map.toList assignment)
-    where
-      prettyVariable :: (NetworkRationalVariable, Rational) -> Doc a
-      prettyVariable (var, value) = "x" <> pretty var <> ":" <+> pretty value
-
---------------------------------------------------------------------------------
 -- User variable assignments
 
 -- | A (satisfying) assignment to a set of user-level variables.
 newtype UserVariableAssignment
-  = UserVariableAssignment [(OriginalUserVariable, RationalTensor)]
+  = UserVariableAssignment [(TensorVariable, RationalTensor)]
   deriving (Generic)
 
 instance ToJSON UserVariableAssignment

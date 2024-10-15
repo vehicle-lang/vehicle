@@ -213,11 +213,11 @@ compileExists binder env body = do
     -- Create the user variable
     namedCtx <- getGlobalNamedBoundCtx
     propertyProv <- asks propertyProvenance
-    userVar <- createUserVar propertyProv namedCtx binder
+    (userVar, userVarShape) <- createUserVar propertyProv namedCtx binder
 
     -- Update the global context
     globalCtx <- get
-    let (userVarExpr, newGlobalCtx) = addUserVarToGlobalContext userVar globalCtx
+    let (userVarExpr, newGlobalCtx) = addUserVarToGlobalContext userVar userVarShape globalCtx
     put newGlobalCtx
 
     -- Normalise the expression
@@ -305,16 +305,16 @@ unblockFreeVectorVariable unblockVector reduceVectorVars ident spine = do
                     <> line
                     <> indent 2 exprDoc
 
-            let (appInfo, newGlobalCtx) = addNetworkApplicationToGlobalCtx networkApp networkInfo globalCtx
+            (inputVarExpr, outputVarExpr, newGlobalCtx) <- addNetworkApplicationToGlobalCtx networkApp networkInfo globalCtx
             let inputDims = dimensions (inputTensor (networkType networkInfo))
-            let inputEquality = mkVVectorEquality inputDims (inputVarExpr appInfo) input
+            let inputEquality = mkVVectorEquality inputDims inputVarExpr input
             put newGlobalCtx
             tell [inputEquality]
-            unblockVector reduceVectorVars (outputVarExpr appInfo)
+            unblockVector reduceVectorVars outputVarExpr
 
 compileRationalAssertion ::
   (MonadQueryStructure m) =>
-  (LinearExpr RationalVariable Rational -> LinearExpr RationalVariable Rational -> Assertion) ->
+  (LinearExpr ElementVariable Rational -> LinearExpr ElementVariable Rational -> Assertion) ->
   WHNFValue QueryBuiltin ->
   WHNFValue QueryBuiltin ->
   m (MaybeTrivial Partitions)

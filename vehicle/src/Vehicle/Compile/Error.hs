@@ -20,7 +20,7 @@ import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Builtin.Tensor
 import Vehicle.Data.Code.Value
 import Vehicle.Data.DeBruijn
-import Vehicle.Data.QuantifiedVariable (UserRationalVariable)
+import Vehicle.Data.QuantifiedVariable (UserElementVariable)
 import Vehicle.Data.Tensor (TensorShape)
 import Vehicle.Syntax.Parse (ParseError, ParseLocation)
 import Vehicle.Verify.QueryFormat.Core
@@ -98,7 +98,7 @@ data CompileError
     UnsupportedLossOperation DeclProvenance Provenance (Doc Void)
   | UnsupportedHigherOrderTensorCode DeclProvenance NamedBoundCtx (WHNFValue Builtin) NamedBoundCtx (WHNFValue TensorBuiltin)
   | UnableToLiftLogicFieldToTensors DifferentiableLogicID TensorDifferentiableLogicField (BooleanDifferentiableLogicField, WHNFValue Builtin) NamedBoundCtx (WHNFValue Builtin)
-  | NoQuantifierDomainFound DeclProvenance (GenericBinder ()) (Maybe [(UserRationalVariable, UnderConstrainedVariableStatus)])
+  | NoQuantifierDomainFound DeclProvenance (GenericBinder ()) (Maybe [(UserElementVariable, UnderConstrainedVariableStatus)])
   | -- ITP backend errors
     UnsupportedPolymorphicEquality ITP Provenance Name
   | -- Other

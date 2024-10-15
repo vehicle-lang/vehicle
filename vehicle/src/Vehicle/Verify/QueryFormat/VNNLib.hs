@@ -4,7 +4,7 @@ import Control.Monad (forM)
 import Data.List.NonEmpty qualified as NonEmpty
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Core
-import Vehicle.Data.QuantifiedVariable
+import Vehicle.Data.QuantifiedVariable (prettyRationalAsFloat)
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
 import Vehicle.Verify.QueryFormat.Interface
@@ -17,32 +17,39 @@ vnnlibQueryFormat :: QueryFormat
 vnnlibQueryFormat =
   QueryFormat
     { queryFormatID = VNNLibQueries,
-      formatQuery = compileVNNLibQuery,
       supportsStrictInequalities = True,
-      compileVar = compileVNNLibVar,
-      queryOutputFormat =
-        ExternalOutputFormat
-          { formatName = pretty VNNLibQueries,
-            formatVersion = Nothing,
-            commentToken = ";",
-            emptyLines = True
-          }
+      compileVariable = compileVNNLibVar,
+      compileQuery = compileVNNLibQuery,
+      queryOutputFormat = outputFormat
     }
 
--- | Compiles an expression representing a single Marabou query. The expression
--- passed should only have conjunctions and existential quantifiers at the boolean
--- level.
-compileVNNLibQuery :: (MonadLogger m) => QueryAddress -> QueryContents -> m QueryText
+outputFormat :: ExternalOutputFormat
+outputFormat =
+  ExternalOutputFormat
+    { formatName = pretty VNNLibQueries,
+      formatVersion = Nothing,
+      commentToken = ";",
+      emptyLines = True
+    }
+
+-- | Compiles an individual variable
+compileVNNLibVar :: CompileQueryVariable
+compileVNNLibVar inputOrOutput ioIndex = do
+  let name = if inputOrOutput == Input then "X" else "Y"
+  layoutAsText $ name <> "_" <> pretty ioIndex
+
+-- | Compiles an expression representing a single VNNLib query.
+compileVNNLibQuery :: CompileQuery
 compileVNNLibQuery _address (QueryContents variables assertions) = do
   variableDocs <- forM variables compileVariableDecl
   assertionDocs <- forM assertions compileAssertion
   let assertionsDoc = vsep assertionDocs <> line <> vsep variableDocs
   return $ layoutAsText assertionsDoc
 
-compileVariableDecl :: (MonadLogger m) => NetworkRationalVariable -> m (Doc a)
-compileVariableDecl var = return $ parens ("declare-fun" <+> compileVNNLibVar var <+> "() Real")
+compileVariableDecl :: (MonadLogger m) => QueryVariable -> m (Doc a)
+compileVariableDecl var = return $ parens ("declare-fun" <+> pretty var <+> "() Real")
 
-compileAssertion :: (MonadLogger m) => QueryAssertion -> m (Doc a)
+compileAssertion :: (MonadLogger m) => QueryAssertion QueryVariable -> m (Doc a)
 compileAssertion QueryAssertion {..} = do
   let compiledRel = compileRel rel
   let compiledLHS = foldl compileCoefVar "" (NonEmpty.tail lhs)
@@ -57,15 +64,9 @@ compileRel = \case
   OrderRel Lt -> "<"
   OrderRel Gt -> ">"
 
-compileCoefVar :: Doc a -> (Coefficient, NetworkRationalVariable) -> Doc a
+compileCoefVar :: Doc a -> (Coefficient, QueryVariable) -> Doc a
 compileCoefVar r (coef, var)
-  | coef == 1 = "+" <+> parens r <+> compileVNNLibVar var
-  | coef == -1 = "-" <+> parens r <+> compileVNNLibVar var
-  | coef < 0 = "-" <+> parens r <+> parens ("*" <+> prettyRationalAsFloat (-coef) <+> compileVNNLibVar var)
-  | otherwise = "+" <+> parens r <+> parens ("*" <+> prettyRationalAsFloat coef <+> compileVNNLibVar var)
-
-compileVNNLibVar :: NetworkRationalVariable -> Doc a
-compileVNNLibVar var = do
-  let name = if inputOrOutput (originalVar var) == Input then "X" else "Y"
-  let index = computeAbsoluteIndex var
-  name <> "_" <> pretty index
+  | coef == 1 = "+" <+> parens r <+> pretty var
+  | coef == -1 = "-" <+> parens r <+> pretty var
+  | coef < 0 = "-" <+> parens r <+> parens ("*" <+> prettyRationalAsFloat (-coef) <+> pretty var)
+  | otherwise = "+" <+> parens r <+> parens ("*" <+> prettyRationalAsFloat coef <+> pretty var)

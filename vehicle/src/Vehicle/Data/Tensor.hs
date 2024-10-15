@@ -10,7 +10,7 @@ import Data.Vector (Vector)
 import Data.Vector qualified as Vector
 import GHC.Generics (Generic)
 import Vehicle.Prelude.Misc (IsConstant (..), jsonOptions)
-import Vehicle.Prelude.Prettyprinter (Pretty (..), prettyFlatList, (<+>))
+import Vehicle.Prelude.Prettyprinter (Pretty (..), prettyFlatList)
 import Vehicle.Syntax.Prelude (developerError)
 
 --------------------------------------------------------------------------------
@@ -19,14 +19,6 @@ import Vehicle.Syntax.Prelude (developerError)
 type TensorShape = [Int]
 
 type TensorIndices = [Int]
-
-computeFlatIndex :: TensorShape -> TensorIndices -> Int
-computeFlatIndex = go
-  where
-    go :: TensorShape -> TensorIndices -> Int
-    go [] [] = 0
-    go (d : ds) (i : is) | i < d = i * product ds + go ds is
-    go ds is = developerError $ "Invalid flat tensor arguments" <+> pretty ds <+> pretty is
 
 showTensorIndices :: TensorIndices -> String
 showTensorIndices xs = concatMap (\v -> "!" <> show v) (reverse xs)

@@ -33,8 +33,8 @@ data LinearityError
 
 compileRatLinearRelation ::
   (MonadLogger m) =>
-  (Lv -> ExceptT LinearityError m RationalVariable) ->
-  (LinearExpr RationalVariable Rational -> LinearExpr RationalVariable Rational -> relation) ->
+  (Lv -> ExceptT LinearityError m ElementVariable) ->
+  (LinearExpr ElementVariable Rational -> LinearExpr ElementVariable Rational -> relation) ->
   WHNFValue Builtin ->
   WHNFValue Builtin ->
   m (Either LinearityError relation)
@@ -47,12 +47,12 @@ compileRatLinearRelation handleVar mkRelation x y = do
 compileRatLinearExpr ::
   forall m.
   (MonadCompileLinearExpr m) =>
-  (Lv -> m RationalVariable) ->
+  (Lv -> m ElementVariable) ->
   WHNFValue Builtin ->
-  m (LinearExpr RationalVariable Rational)
+  m (LinearExpr ElementVariable Rational)
 compileRatLinearExpr handleVar = go
   where
-    go :: WHNFValue Builtin -> m (LinearExpr RationalVariable Rational)
+    go :: WHNFValue Builtin -> m (LinearExpr ElementVariable Rational)
     go e = case e of
       ----------------
       -- Base cases --
@@ -88,7 +88,7 @@ compileRatLinearExpr handleVar = go
 
 compileTensorLinearRelation ::
   (MonadLogger m) =>
-  (Lv -> ExceptT LinearityError m TensorVariable) ->
+  (Lv -> ExceptT LinearityError m (TensorVariable, TensorShape)) ->
   WHNFValue Builtin ->
   WHNFValue Builtin ->
   m (Either LinearityError (Maybe (LinearExpr TensorVariable RationalTensor, LinearExpr TensorVariable RationalTensor)))
@@ -101,7 +101,7 @@ compileTensorLinearRelation handleVar x y = do
 compileTensorLinearExpr ::
   forall m.
   (MonadCompileLinearExpr m) =>
-  (Lv -> m TensorVariable) ->
+  (Lv -> m (TensorVariable, TensorShape)) ->
   WHNFValue Builtin ->
   m (Maybe (LinearExpr TensorVariable RationalTensor))
 compileTensorLinearExpr handleVar = go
@@ -119,8 +119,8 @@ compileTensorLinearExpr handleVar = go
       IVecLiteral {} -> do
         return (constantExpr <$> getRationalTensor e)
       VBoundVar lv [] -> do
-        var <- handleVar lv
-        return $ Just $ singletonVarExpr (zeroTensor $ tensorVariableDims var) var
+        (var, shape) <- handleVar lv
+        return $ Just $ singletonVarExpr (zeroTensor shape) var
       _ -> return Nothing
 
 getRationalTensor :: WHNFValue Builtin -> Maybe RationalTensor
