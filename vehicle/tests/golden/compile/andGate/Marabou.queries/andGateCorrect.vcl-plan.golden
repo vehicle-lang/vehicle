@@ -11,11 +11,11 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    [
+                      2
+                    ],
                     {
-                      "tensorVarName": "andGate₀[input]",
-                      "tensorVarDimensions": [
-                        2
-                      ]
+                      "tensorVarName": "andGate₀[input]"
                     },
                     [
                       {
@@ -23,10 +23,7 @@
                           0
                         ],
                         "originalVar": {
-                          "tensorVarName": "andGate₀[input]",
-                          "tensorVarDimensions": [
-                            2
-                          ]
+                          "tensorVarName": "andGate₀[input]"
                         }
                       },
                       {
@@ -34,10 +31,7 @@
                           1
                         ],
                         "originalVar": {
-                          "tensorVarName": "andGate₀[input]",
-                          "tensorVarDimensions": [
-                            2
-                          ]
+                          "tensorVarName": "andGate₀[input]"
                         }
                       }
                     ]
@@ -46,11 +40,11 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    [
+                      1
+                    ],
                     {
-                      "tensorVarName": "andGate₀[output]",
-                      "tensorVarDimensions": [
-                        1
-                      ]
+                      "tensorVarName": "andGate₀[output]"
                     },
                     [
                       {
@@ -58,10 +52,7 @@
                           0
                         ],
                         "originalVar": {
-                          "tensorVarName": "andGate₀[output]",
-                          "tensorVarDimensions": [
-                            1
-                          ]
+                          "tensorVarName": "andGate₀[output]"
                         }
                       }
                     ]
@@ -73,8 +64,7 @@
                     {
                       "tensorIndices": [],
                       "originalVar": {
-                        "tensorVarName": "x1",
-                        "tensorVarDimensions": []
+                        "tensorVarName": "x1"
                       }
                     },
                     {
@@ -89,10 +79,7 @@
                               0
                             ],
                             "originalVar": {
-                              "tensorVarName": "andGate₀[input]",
-                              "tensorVarDimensions": [
-                                2
-                              ]
+                              "tensorVarName": "andGate₀[input]"
                             }
                           },
                           {
@@ -107,16 +94,15 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    [],
                     {
-                      "tensorVarName": "x1",
-                      "tensorVarDimensions": []
+                      "tensorVarName": "x1"
                     },
                     [
                       {
                         "tensorIndices": [],
                         "originalVar": {
-                          "tensorVarName": "x1",
-                          "tensorVarDimensions": []
+                          "tensorVarName": "x1"
                         }
                       }
                     ]
@@ -128,8 +114,7 @@
                     {
                       "tensorIndices": [],
                       "originalVar": {
-                        "tensorVarName": "x2",
-                        "tensorVarDimensions": []
+                        "tensorVarName": "x2"
                       }
                     },
                     {
@@ -144,10 +129,7 @@
                               1
                             ],
                             "originalVar": {
-                              "tensorVarName": "andGate₀[input]",
-                              "tensorVarDimensions": [
-                                2
-                              ]
+                              "tensorVarName": "andGate₀[input]"
                             }
                           },
                           {
@@ -162,16 +144,15 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    [],
                     {
-                      "tensorVarName": "x2",
-                      "tensorVarDimensions": []
+                      "tensorVarName": "x2"
                     },
                     [
                       {
                         "tensorIndices": [],
                         "originalVar": {
-                          "tensorVarName": "x2",
-                          "tensorVarDimensions": []
+                          "tensorVarName": "x2"
                         }
                       }
                     ]
@@ -186,10 +167,7 @@
                       0
                     ],
                     "originalVar": {
-                      "tensorVarName": "andGate₀[input]",
-                      "tensorVarDimensions": [
-                        2
-                      ]
+                      "tensorVarName": "andGate₀[input]"
                     }
                   }
                 ],
@@ -200,10 +178,7 @@
                       1
                     ],
                     "originalVar": {
-                      "tensorVarName": "andGate₀[input]",
-                      "tensorVarDimensions": [
-                        2
-                      ]
+                      "tensorVarName": "andGate₀[input]"
                     }
                   }
                 ],
@@ -214,10 +189,7 @@
                       0
                     ],
                     "originalVar": {
-                      "tensorVarName": "andGate₀[output]",
-                      "tensorVarDimensions": [
-                        1
-                      ]
+                      "tensorVarName": "andGate₀[output]"
                     }
                   }
                 ]
@@ -258,11 +230,11 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    [
+                      2
+                    ],
                     {
-                      "tensorVarName": "andGate₀[input]",
-                      "tensorVarDimensions": [
-                        2
-                      ]
+                      "tensorVarName": "andGate₀[input]"
                     },
                     [
                       {
@@ -270,10 +242,7 @@
                           0
                         ],
                         "originalVar": {
-                          "tensorVarName": "andGate₀[input]",
-                          "tensorVarDimensions": [
-                            2
-                          ]
+                          "tensorVarName": "andGate₀[input]"
                         }
                       },
                       {
@@ -281,10 +250,7 @@
                           1
                         ],
                         "originalVar": {
-                          "tensorVarName": "andGate₀[input]",
-                          "tensorVarDimensions": [
-                            2
-                          ]
+                          "tensorVarName": "andGate₀[input]"
                         }
                       }
                     ]
@@ -293,11 +259,11 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    [
+                      1
+                    ],
                     {
-                      "tensorVarName": "andGate₀[output]",
-                      "tensorVarDimensions": [
-                        1
-                      ]
+                      "tensorVarName": "andGate₀[output]"
                     },
                     [
                       {
@@ -305,10 +271,7 @@
                           0
                         ],
                         "originalVar": {
-                          "tensorVarName": "andGate₀[output]",
-                          "tensorVarDimensions": [
-                            1
-                          ]
+                          "tensorVarName": "andGate₀[output]"
                         }
                       }
                     ]
@@ -320,8 +283,7 @@
                     {
                       "tensorIndices": [],
                       "originalVar": {
-                        "tensorVarName": "x1",
-                        "tensorVarDimensions": []
+                        "tensorVarName": "x1"
                       }
                     },
                     {
@@ -336,10 +298,7 @@
                               0
                             ],
                             "originalVar": {
-                              "tensorVarName": "andGate₀[input]",
-                              "tensorVarDimensions": [
-                                2
-                              ]
+                              "tensorVarName": "andGate₀[input]"
                             }
                           },
                           {
@@ -354,16 +313,15 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    [],
                     {
-                      "tensorVarName": "x1",
-                      "tensorVarDimensions": []
+                      "tensorVarName": "x1"
                     },
                     [
                       {
                         "tensorIndices": [],
                         "originalVar": {
-                          "tensorVarName": "x1",
-                          "tensorVarDimensions": []
+                          "tensorVarName": "x1"
                         }
                       }
                     ]
@@ -375,8 +333,7 @@
                     {
                       "tensorIndices": [],
                       "originalVar": {
-                        "tensorVarName": "x2",
-                        "tensorVarDimensions": []
+                        "tensorVarName": "x2"
                       }
                     },
                     {
@@ -391,10 +348,7 @@
                               1
                             ],
                             "originalVar": {
-                              "tensorVarName": "andGate₀[input]",
-                              "tensorVarDimensions": [
-                                2
-                              ]
+                              "tensorVarName": "andGate₀[input]"
                             }
                           },
                           {
@@ -409,16 +363,15 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    [],
                     {
-                      "tensorVarName": "x2",
-                      "tensorVarDimensions": []
+                      "tensorVarName": "x2"
                     },
                     [
                       {
                         "tensorIndices": [],
                         "originalVar": {
-                          "tensorVarName": "x2",
-                          "tensorVarDimensions": []
+                          "tensorVarName": "x2"
                         }
                       }
                     ]
@@ -433,10 +386,7 @@
                       0
                     ],
                     "originalVar": {
-                      "tensorVarName": "andGate₀[input]",
-                      "tensorVarDimensions": [
-                        2
-                      ]
+                      "tensorVarName": "andGate₀[input]"
                     }
                   }
                 ],
@@ -447,10 +397,7 @@
                       1
                     ],
                     "originalVar": {
-                      "tensorVarName": "andGate₀[input]",
-                      "tensorVarDimensions": [
-                        2
-                      ]
+                      "tensorVarName": "andGate₀[input]"
                     }
                   }
                 ],
@@ -461,10 +408,7 @@
                       0
                     ],
                     "originalVar": {
-                      "tensorVarName": "andGate₀[output]",
-                      "tensorVarDimensions": [
-                        1
-                      ]
+                      "tensorVarName": "andGate₀[output]"
                     }
                   }
                 ]
@@ -505,11 +449,11 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    [
+                      2
+                    ],
                     {
-                      "tensorVarName": "andGate₀[input]",
-                      "tensorVarDimensions": [
-                        2
-                      ]
+                      "tensorVarName": "andGate₀[input]"
                     },
                     [
                       {
@@ -517,10 +461,7 @@
                           0
                         ],
                         "originalVar": {
-                          "tensorVarName": "andGate₀[input]",
-                          "tensorVarDimensions": [
-                            2
-                          ]
+                          "tensorVarName": "andGate₀[input]"
                         }
                       },
                       {
@@ -528,10 +469,7 @@
                           1
                         ],
                         "originalVar": {
-                          "tensorVarName": "andGate₀[input]",
-                          "tensorVarDimensions": [
-                            2
-                          ]
+                          "tensorVarName": "andGate₀[input]"
                         }
                       }
                     ]
@@ -540,11 +478,11 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    [
+                      1
+                    ],
                     {
-                      "tensorVarName": "andGate₀[output]",
-                      "tensorVarDimensions": [
-                        1
-                      ]
+                      "tensorVarName": "andGate₀[output]"
                     },
                     [
                       {
@@ -552,10 +490,7 @@
                           0
                         ],
                         "originalVar": {
-                          "tensorVarName": "andGate₀[output]",
-                          "tensorVarDimensions": [
-                            1
-                          ]
+                          "tensorVarName": "andGate₀[output]"
                         }
                       }
                     ]
@@ -567,8 +502,7 @@
                     {
                       "tensorIndices": [],
                       "originalVar": {
-                        "tensorVarName": "x1",
-                        "tensorVarDimensions": []
+                        "tensorVarName": "x1"
                       }
                     },
                     {
@@ -583,10 +517,7 @@
                               0
                             ],
                             "originalVar": {
-                              "tensorVarName": "andGate₀[input]",
-                              "tensorVarDimensions": [
-                                2
-                              ]
+                              "tensorVarName": "andGate₀[input]"
                             }
                           },
                           {
@@ -601,16 +532,15 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    [],
                     {
-                      "tensorVarName": "x1",
-                      "tensorVarDimensions": []
+                      "tensorVarName": "x1"
                     },
                     [
                       {
                         "tensorIndices": [],
                         "originalVar": {
-                          "tensorVarName": "x1",
-                          "tensorVarDimensions": []
+                          "tensorVarName": "x1"
                         }
                       }
                     ]
@@ -622,8 +552,7 @@
                     {
                       "tensorIndices": [],
                       "originalVar": {
-                        "tensorVarName": "x2",
-                        "tensorVarDimensions": []
+                        "tensorVarName": "x2"
                       }
                     },
                     {
@@ -638,10 +567,7 @@
                               1
                             ],
                             "originalVar": {
-                              "tensorVarName": "andGate₀[input]",
-                              "tensorVarDimensions": [
-                                2
-                              ]
+                              "tensorVarName": "andGate₀[input]"
                             }
                           },
                           {
@@ -656,16 +582,15 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    [],
                     {
-                      "tensorVarName": "x2",
-                      "tensorVarDimensions": []
+                      "tensorVarName": "x2"
                     },
                     [
                       {
                         "tensorIndices": [],
                         "originalVar": {
-                          "tensorVarName": "x2",
-                          "tensorVarDimensions": []
+                          "tensorVarName": "x2"
                         }
                       }
                     ]
@@ -680,10 +605,7 @@
                       0
                     ],
                     "originalVar": {
-                      "tensorVarName": "andGate₀[input]",
-                      "tensorVarDimensions": [
-                        2
-                      ]
+                      "tensorVarName": "andGate₀[input]"
                     }
                   }
                 ],
@@ -694,10 +616,7 @@
                       1
                     ],
                     "originalVar": {
-                      "tensorVarName": "andGate₀[input]",
-                      "tensorVarDimensions": [
-                        2
-                      ]
+                      "tensorVarName": "andGate₀[input]"
                     }
                   }
                 ],
@@ -708,10 +627,7 @@
                       0
                     ],
                     "originalVar": {
-                      "tensorVarName": "andGate₀[output]",
-                      "tensorVarDimensions": [
-                        1
-                      ]
+                      "tensorVarName": "andGate₀[output]"
                     }
                   }
                 ]
@@ -752,11 +668,11 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    [
+                      2
+                    ],
                     {
-                      "tensorVarName": "andGate₀[input]",
-                      "tensorVarDimensions": [
-                        2
-                      ]
+                      "tensorVarName": "andGate₀[input]"
                     },
                     [
                       {
@@ -764,10 +680,7 @@
                           0
                         ],
                         "originalVar": {
-                          "tensorVarName": "andGate₀[input]",
-                          "tensorVarDimensions": [
-                            2
-                          ]
+                          "tensorVarName": "andGate₀[input]"
                         }
                       },
                       {
@@ -775,10 +688,7 @@
                           1
                         ],
                         "originalVar": {
-                          "tensorVarName": "andGate₀[input]",
-                          "tensorVarDimensions": [
-                            2
-                          ]
+                          "tensorVarName": "andGate₀[input]"
                         }
                       }
                     ]
@@ -787,11 +697,11 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    [
+                      1
+                    ],
                     {
-                      "tensorVarName": "andGate₀[output]",
-                      "tensorVarDimensions": [
-                        1
-                      ]
+                      "tensorVarName": "andGate₀[output]"
                     },
                     [
                       {
@@ -799,10 +709,7 @@
                           0
                         ],
                         "originalVar": {
-                          "tensorVarName": "andGate₀[output]",
-                          "tensorVarDimensions": [
-                            1
-                          ]
+                          "tensorVarName": "andGate₀[output]"
                         }
                       }
                     ]
@@ -814,8 +721,7 @@
                     {
                       "tensorIndices": [],
                       "originalVar": {
-                        "tensorVarName": "x1",
-                        "tensorVarDimensions": []
+                        "tensorVarName": "x1"
                       }
                     },
                     {
@@ -830,10 +736,7 @@
                               0
                             ],
                             "originalVar": {
-                              "tensorVarName": "andGate₀[input]",
-                              "tensorVarDimensions": [
-                                2
-                              ]
+                              "tensorVarName": "andGate₀[input]"
                             }
                           },
                           {
@@ -848,16 +751,15 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    [],
                     {
-                      "tensorVarName": "x1",
-                      "tensorVarDimensions": []
+                      "tensorVarName": "x1"
                     },
                     [
                       {
                         "tensorIndices": [],
                         "originalVar": {
-                          "tensorVarName": "x1",
-                          "tensorVarDimensions": []
+                          "tensorVarName": "x1"
                         }
                       }
                     ]
@@ -869,8 +771,7 @@
                     {
                       "tensorIndices": [],
                       "originalVar": {
-                        "tensorVarName": "x2",
-                        "tensorVarDimensions": []
+                        "tensorVarName": "x2"
                       }
                     },
                     {
@@ -885,10 +786,7 @@
                               1
                             ],
                             "originalVar": {
-                              "tensorVarName": "andGate₀[input]",
-                              "tensorVarDimensions": [
-                                2
-                              ]
+                              "tensorVarName": "andGate₀[input]"
                             }
                           },
                           {
@@ -903,16 +801,15 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    [],
                     {
-                      "tensorVarName": "x2",
-                      "tensorVarDimensions": []
+                      "tensorVarName": "x2"
                     },
                     [
                       {
                         "tensorIndices": [],
                         "originalVar": {
-                          "tensorVarName": "x2",
-                          "tensorVarDimensions": []
+                          "tensorVarName": "x2"
                         }
                       }
                     ]
@@ -927,10 +824,7 @@
                       0
                     ],
                     "originalVar": {
-                      "tensorVarName": "andGate₀[input]",
-                      "tensorVarDimensions": [
-                        2
-                      ]
+                      "tensorVarName": "andGate₀[input]"
                     }
                   }
                 ],
@@ -941,10 +835,7 @@
                       1
                     ],
                     "originalVar": {
-                      "tensorVarName": "andGate₀[input]",
-                      "tensorVarDimensions": [
-                        2
-                      ]
+                      "tensorVarName": "andGate₀[input]"
                     }
                   }
                 ],
@@ -955,10 +846,7 @@
                       0
                     ],
                     "originalVar": {
-                      "tensorVarName": "andGate₀[output]",
-                      "tensorVarDimensions": [
-                        1
-                      ]
+                      "tensorVarName": "andGate₀[output]"
                     }
                   }
                 ]

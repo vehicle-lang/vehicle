@@ -11,7 +11,7 @@ import Vehicle.Compile.FourierMotzkinElimination
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Code.LinearExpr (evaluateExpr)
 import Vehicle.Data.QuantifiedVariable
-import Vehicle.Data.Tensor (RationalTensor, Tensor (..))
+import Vehicle.Data.Tensor (RationalTensor, Tensor (..), TensorShape)
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
 import Vehicle.Verify.Verifier.Core
@@ -90,8 +90,8 @@ applyReconstructionStep ::
 applyReconstructionStep assignment@VariableAssignment {..} step = do
   logDebug MidDetail $ "Variable assignment:" <> line <> indent 2 (pretty assignment)
   case step of
-    ReconstructTensor var individualVars ->
-      unreduceVariable var individualVars assignment
+    ReconstructTensor shape var individualVars ->
+      unreduceVariable shape var individualVars assignment
     SolveRationalEquality var eq -> do
       logCompilerSection MidDetail ("Reintroducing Gaussian-eliminated variable" <+> quotePretty var) $ do
         logDebug MidDetail $ "Using" <+> pretty step
@@ -135,11 +135,12 @@ applyReconstructionStep assignment@VariableAssignment {..} step = do
 -- assignment.
 unreduceVariable ::
   (MonadLogger m) =>
+  TensorShape ->
   TensorVariable ->
   [ElementVariable] ->
   MixedVariableAssignment ->
   m MixedVariableAssignment
-unreduceVariable variable reducedVariables assignment@VariableAssignment {..} = do
+unreduceVariable shape variable reducedVariables assignment@VariableAssignment {..} = do
   let variableResults = lookupRationalVariables assignment reducedVariables
   case variableResults of
     Left missingVar ->
@@ -152,7 +153,7 @@ unreduceVariable variable reducedVariables assignment@VariableAssignment {..} = 
     Right values -> do
       logDebug MaxDetail $
         "Collapsing variables" <+> pretty reducedVariables <+> "to single variable" <+> pretty variable
-      let unreducedValue = Tensor (tensorVarDimensions variable) (Vector.fromList values)
+      let unreducedValue = Tensor shape (Vector.fromList values)
       return $
         assignment
           { tensorVariables = Map.insert variable unreducedValue tensorVariables

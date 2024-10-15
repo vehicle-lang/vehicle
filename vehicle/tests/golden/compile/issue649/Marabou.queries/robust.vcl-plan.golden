@@ -11,12 +11,12 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    [
+                      1,
+                      1
+                    ],
                     {
-                      "tensorVarName": "classifier₀[input]",
-                      "tensorVarDimensions": [
-                        1,
-                        1
-                      ]
+                      "tensorVarName": "classifier₀[input]"
                     },
                     [
                       {
@@ -25,11 +25,7 @@
                           0
                         ],
                         "originalVar": {
-                          "tensorVarName": "classifier₀[input]",
-                          "tensorVarDimensions": [
-                            1,
-                            1
-                          ]
+                          "tensorVarName": "classifier₀[input]"
                         }
                       }
                     ]
@@ -38,11 +34,11 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    [
+                      2
+                    ],
                     {
-                      "tensorVarName": "classifier₀[output]",
-                      "tensorVarDimensions": [
-                        2
-                      ]
+                      "tensorVarName": "classifier₀[output]"
                     },
                     [
                       {
@@ -50,10 +46,7 @@
                           0
                         ],
                         "originalVar": {
-                          "tensorVarName": "classifier₀[output]",
-                          "tensorVarDimensions": [
-                            2
-                          ]
+                          "tensorVarName": "classifier₀[output]"
                         }
                       },
                       {
@@ -61,10 +54,7 @@
                           1
                         ],
                         "originalVar": {
-                          "tensorVarName": "classifier₀[output]",
-                          "tensorVarDimensions": [
-                            2
-                          ]
+                          "tensorVarName": "classifier₀[output]"
                         }
                       }
                     ]
@@ -74,11 +64,7 @@
                   "tag": "SolveTensorEquality",
                   "contents": [
                     {
-                      "tensorVarName": "perturbation",
-                      "tensorVarDimensions": [
-                        1,
-                        1
-                      ]
+                      "tensorVarName": "perturbation"
                     },
                     {
                       "constantValue": {
@@ -97,11 +83,7 @@
                       "coefficients": [
                         [
                           {
-                            "tensorVarName": "classifier₀[input]",
-                            "tensorVarDimensions": [
-                              1,
-                              1
-                            ]
+                            "tensorVarName": "classifier₀[input]"
                           },
                           {
                             "numerator": -1,
@@ -122,11 +104,7 @@
                       0
                     ],
                     "originalVar": {
-                      "tensorVarName": "classifier₀[input]",
-                      "tensorVarDimensions": [
-                        1,
-                        1
-                      ]
+                      "tensorVarName": "classifier₀[input]"
                     }
                   }
                 ],
@@ -137,10 +115,7 @@
                       0
                     ],
                     "originalVar": {
-                      "tensorVarName": "classifier₀[output]",
-                      "tensorVarDimensions": [
-                        2
-                      ]
+                      "tensorVarName": "classifier₀[output]"
                     }
                   }
                 ],
@@ -151,10 +126,7 @@
                       1
                     ],
                     "originalVar": {
-                      "tensorVarName": "classifier₀[output]",
-                      "tensorVarDimensions": [
-                        2
-                      ]
+                      "tensorVarName": "classifier₀[output]"
                     }
                   }
                 ]

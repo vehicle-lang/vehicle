@@ -11,11 +11,11 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    [
+                      30
+                    ],
                     {
-                      "tensorVarName": "classifier₀[input]",
-                      "tensorVarDimensions": [
-                        30
-                      ]
+                      "tensorVarName": "classifier₀[input]"
                     },
                     [
                       {
@@ -23,10 +23,7 @@
                           0
                         ],
                         "originalVar": {
-                          "tensorVarName": "classifier₀[input]",
-                          "tensorVarDimensions": [
-                            30
-                          ]
+                          "tensorVarName": "classifier₀[input]"
                         }
                       },
                       {
@@ -34,10 +31,7 @@
                           1
                         ],
                         "originalVar": {
-                          "tensorVarName": "classifier₀[input]",
-                          "tensorVarDimensions": [
-                            30
-                          ]
+                          "tensorVarName": "classifier₀[input]"
                         }
                       },
                       {
@@ -45,10 +39,7 @@
                           2
                         ],
                         "originalVar": {
-                          "tensorVarName": "classifier₀[input]",
-                          "tensorVarDimensions": [
-                            30
-                          ]
+                          "tensorVarName": "classifier₀[input]"
                         }
                       },
                       {
@@ -56,10 +47,7 @@
                           3
                         ],
                         "originalVar": {
-                          "tensorVarName": "classifier₀[input]",
-                          "tensorVarDimensions": [
-                            30
-                          ]
+                          "tensorVarName": "classifier₀[input]"
                         }
                       },
                       {
@@ -67,10 +55,7 @@
                           4
                         ],
                         "originalVar": {
-                          "tensorVarName": "classifier₀[input]",
-                          "tensorVarDimensions": [
-                            30
-                          ]
+                          "tensorVarName": "classifier₀[input]"
                         }
                       },
                       {
@@ -78,10 +63,7 @@
                           5
                         ],
                         "originalVar": {
-                          "tensorVarName": "classifier₀[input]",
-                          "tensorVarDimensions": [
-                            30
-                          ]
+                          "tensorVarName": "classifier₀[input]"
                         }
                       },
                       {
@@ -89,10 +71,7 @@
                           6
                         ],
                         "originalVar": {
-                          "tensorVarName": "classifier₀[input]",
-                          "tensorVarDimensions": [
-                            30
-                          ]
+                          "tensorVarName": "classifier₀[input]"
                         }
                       },
                       {
@@ -100,10 +79,7 @@
                           7
                         ],
                         "originalVar": {
-                          "tensorVarName": "classifier₀[input]",
-                          "tensorVarDimensions": [
-                            30
-                          ]
+                          "tensorVarName": "classifier₀[input]"
                         }
                       },
                       {
@@ -111,10 +87,7 @@
                           8
                         ],
                         "originalVar": {
-                          "tensorVarName": "classifier₀[input]",
-                          "tensorVarDimensions": [
-                            30
-                          ]
+                          "tensorVarName": "classifier₀[input]"
                         }
                       },
                       {
@@ -122,10 +95,7 @@
                           9
                         ],
                         "originalVar": {
-                          "tensorVarName": "classifier₀[input]",
-                          "tensorVarDimensions": [
-                            30
-                          ]
+                          "tensorVarName": "classifier₀[input]"
                         }
                       },
                       {
@@ -133,10 +103,7 @@
                           10
                         ],
                         "originalVar": {
-                          "tensorVarName": "classifier₀[input]",
-                          "tensorVarDimensions": [
-                            30
-                          ]
+                          "tensorVarName": "classifier₀[input]"
                         }
                       },
                       {
@@ -144,10 +111,7 @@
                           11
                         ],
                         "originalVar": {
-                          "tensorVarName": "classifier₀[input]",
-                          "tensorVarDimensions": [
-                            30
-                          ]
+                          "tensorVarName": "classifier₀[input]"
                         }
                       },
                       {
@@ -155,10 +119,7 @@
                           12
                         ],
                         "originalVar": {
-                          "tensorVarName": "classifier₀[input]",
-                          "tensorVarDimensions": [
-                            30
-                          ]
+                          "tensorVarName": "classifier₀[input]"
                         }
                       },
                       {
@@ -166,10 +127,7 @@
                           13
                         ],
                         "originalVar": {
-                          "tensorVarName": "classifier₀[input]",
-                          "tensorVarDimensions": [
-                            30
-                          ]
+                          "tensorVarName": "classifier₀[input]"
                         }
                       },
                       {
@@ -177,10 +135,7 @@
                           14
                         ],
                         "originalVar": {
-                          "tensorVarName": "classifier₀[input]",
-                          "tensorVarDimensions": [
-                            30
-                          ]
+                          "tensorVarName": "classifier₀[input]"
                         }
                       },
                       {
@@ -188,10 +143,7 @@
                           15
                         ],
                         "originalVar": {
-                          "tensorVarName": "classifier₀[input]",
-                          "tensorVarDimensions": [
-                            30
-                          ]
+                          "tensorVarName": "classifier₀[input]"
                         }
                       },
                       {
@@ -199,10 +151,7 @@
                           16
                         ],
                         "originalVar": {
-                          "tensorVarName": "classifier₀[input]",
-                          "tensorVarDimensions": [
-                            30
-                          ]
+                          "tensorVarName": "classifier₀[input]"
                         }
                       },
                       {
@@ -210,10 +159,7 @@
                           17
                         ],
                         "originalVar": {
-                          "tensorVarName": "classifier₀[input]",
-                          "tensorVarDimensions": [
-                            30
-                          ]
+                          "tensorVarName": "classifier₀[input]"
                         }
                       },
                       {
@@ -221,10 +167,7 @@
                           18
                         ],
                         "originalVar": {
-                          "tensorVarName": "classifier₀[input]",
-                          "tensorVarDimensions": [
-                            30
-                          ]
+                          "tensorVarName": "classifier₀[input]"
                         }
                       },
                       {
@@ -232,10 +175,7 @@
                           19
                         ],
                         "originalVar": {
-                          "tensorVarName": "classifier₀[input]",
-                          "tensorVarDimensions": [
-                            30
-                          ]
+                          "tensorVarName": "classifier₀[input]"
                         }
                       },
                       {
@@ -243,10 +183,7 @@
                           20
                         ],
                         "originalVar": {
-                          "tensorVarName": "classifier₀[input]",
-                          "tensorVarDimensions": [
-                            30
-                          ]
+                          "tensorVarName": "classifier₀[input]"
                         }
                       },
                       {
@@ -254,10 +191,7 @@
                           21
                         ],
                         "originalVar": {
-                          "tensorVarName": "classifier₀[input]",
-                          "tensorVarDimensions": [
-                            30
-                          ]
+                          "tensorVarName": "classifier₀[input]"
                         }
                       },
                       {
@@ -265,10 +199,7 @@
                           22
                         ],
                         "originalVar": {
-                          "tensorVarName": "classifier₀[input]",
-                          "tensorVarDimensions": [
-                            30
-                          ]
+                          "tensorVarName": "classifier₀[input]"
                         }
                       },
                       {
@@ -276,10 +207,7 @@
                           23
                         ],
                         "originalVar": {
-                          "tensorVarName": "classifier₀[input]",
-                          "tensorVarDimensions": [
-                            30
-                          ]
+                          "tensorVarName": "classifier₀[input]"
                         }
                       },
                       {
@@ -287,10 +215,7 @@
                           24
                         ],
                         "originalVar": {
-                          "tensorVarName": "classifier₀[input]",
-                          "tensorVarDimensions": [
-                            30
-                          ]
+                          "tensorVarName": "classifier₀[input]"
                         }
                       },
                       {
@@ -298,10 +223,7 @@
                           25
                         ],
                         "originalVar": {
-                          "tensorVarName": "classifier₀[input]",
-                          "tensorVarDimensions": [
-                            30
-                          ]
+                          "tensorVarName": "classifier₀[input]"
                         }
                       },
                       {
@@ -309,10 +231,7 @@
                           26
                         ],
                         "originalVar": {
-                          "tensorVarName": "classifier₀[input]",
-                          "tensorVarDimensions": [
-                            30
-                          ]
+                          "tensorVarName": "classifier₀[input]"
                         }
                       },
                       {
@@ -320,10 +239,7 @@
                           27
                         ],
                         "originalVar": {
-                          "tensorVarName": "classifier₀[input]",
-                          "tensorVarDimensions": [
-                            30
-                          ]
+                          "tensorVarName": "classifier₀[input]"
                         }
                       },
                       {
@@ -331,10 +247,7 @@
                           28
                         ],
                         "originalVar": {
-                          "tensorVarName": "classifier₀[input]",
-                          "tensorVarDimensions": [
-                            30
-                          ]
+                          "tensorVarName": "classifier₀[input]"
                         }
                       },
                       {
@@ -342,10 +255,7 @@
                           29
                         ],
                         "originalVar": {
-                          "tensorVarName": "classifier₀[input]",
-                          "tensorVarDimensions": [
-                            30
-                          ]
+                          "tensorVarName": "classifier₀[input]"
                         }
                       }
                     ]
@@ -354,11 +264,11 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    [
+                      2
+                    ],
                     {
-                      "tensorVarName": "classifier₀[output]",
-                      "tensorVarDimensions": [
-                        2
-                      ]
+                      "tensorVarName": "classifier₀[output]"
                     },
                     [
                       {
@@ -366,10 +276,7 @@
                           0
                         ],
                         "originalVar": {
-                          "tensorVarName": "classifier₀[output]",
-                          "tensorVarDimensions": [
-                            2
-                          ]
+                          "tensorVarName": "classifier₀[output]"
                         }
                       },
                       {
@@ -377,10 +284,7 @@
                           1
                         ],
                         "originalVar": {
-                          "tensorVarName": "classifier₀[output]",
-                          "tensorVarDimensions": [
-                            2
-                          ]
+                          "tensorVarName": "classifier₀[output]"
                         }
                       }
                     ]
@@ -390,10 +294,7 @@
                   "tag": "SolveTensorEquality",
                   "contents": [
                     {
-                      "tensorVarName": "x",
-                      "tensorVarDimensions": [
-                        30
-                      ]
+                      "tensorVarName": "x"
                     },
                     {
                       "constantValue": {
@@ -527,10 +428,7 @@
                       "coefficients": [
                         [
                           {
-                            "tensorVarName": "classifier₀[input]",
-                            "tensorVarDimensions": [
-                              30
-                            ]
+                            "tensorVarName": "classifier₀[input]"
                           },
                           {
                             "numerator": 1,
@@ -550,10 +448,7 @@
                       0
                     ],
                     "originalVar": {
-                      "tensorVarName": "classifier₀[input]",
-                      "tensorVarDimensions": [
-                        30
-                      ]
+                      "tensorVarName": "classifier₀[input]"
                     }
                   }
                 ],
@@ -564,10 +459,7 @@
                       1
                     ],
                     "originalVar": {
-                      "tensorVarName": "classifier₀[input]",
-                      "tensorVarDimensions": [
-                        30
-                      ]
+                      "tensorVarName": "classifier₀[input]"
                     }
                   }
                 ],
@@ -578,10 +470,7 @@
                       2
                     ],
                     "originalVar": {
-                      "tensorVarName": "classifier₀[input]",
-                      "tensorVarDimensions": [
-                        30
-                      ]
+                      "tensorVarName": "classifier₀[input]"
                     }
                   }
                 ],
@@ -592,10 +481,7 @@
                       3
                     ],
                     "originalVar": {
-                      "tensorVarName": "classifier₀[input]",
-                      "tensorVarDimensions": [
-                        30
-                      ]
+                      "tensorVarName": "classifier₀[input]"
                     }
                   }
                 ],
@@ -606,10 +492,7 @@
                       4
                     ],
                     "originalVar": {
-                      "tensorVarName": "classifier₀[input]",
-                      "tensorVarDimensions": [
-                        30
-                      ]
+                      "tensorVarName": "classifier₀[input]"
                     }
                   }
                 ],
@@ -620,10 +503,7 @@
                       5
                     ],
                     "originalVar": {
-                      "tensorVarName": "classifier₀[input]",
-                      "tensorVarDimensions": [
-                        30
-                      ]
+                      "tensorVarName": "classifier₀[input]"
                     }
                   }
                 ],
@@ -634,10 +514,7 @@
                       6
                     ],
                     "originalVar": {
-                      "tensorVarName": "classifier₀[input]",
-                      "tensorVarDimensions": [
-                        30
-                      ]
+                      "tensorVarName": "classifier₀[input]"
                     }
                   }
                 ],
@@ -648,10 +525,7 @@
                       7
                     ],
                     "originalVar": {
-                      "tensorVarName": "classifier₀[input]",
-                      "tensorVarDimensions": [
-                        30
-                      ]
+                      "tensorVarName": "classifier₀[input]"
                     }
                   }
                 ],
@@ -662,10 +536,7 @@
                       8
                     ],
                     "originalVar": {
-                      "tensorVarName": "classifier₀[input]",
-                      "tensorVarDimensions": [
-                        30
-                      ]
+                      "tensorVarName": "classifier₀[input]"
                     }
                   }
                 ],
@@ -676,10 +547,7 @@
                       9
                     ],
                     "originalVar": {
-                      "tensorVarName": "classifier₀[input]",
-                      "tensorVarDimensions": [
-                        30
-                      ]
+                      "tensorVarName": "classifier₀[input]"
                     }
                   }
                 ],
@@ -690,10 +558,7 @@
                       10
                     ],
                     "originalVar": {
-                      "tensorVarName": "classifier₀[input]",
-                      "tensorVarDimensions": [
-                        30
-                      ]
+                      "tensorVarName": "classifier₀[input]"
                     }
                   }
                 ],
@@ -704,10 +569,7 @@
                       11
                     ],
                     "originalVar": {
-                      "tensorVarName": "classifier₀[input]",
-                      "tensorVarDimensions": [
-                        30
-                      ]
+                      "tensorVarName": "classifier₀[input]"
                     }
                   }
                 ],
@@ -718,10 +580,7 @@
                       12
                     ],
                     "originalVar": {
-                      "tensorVarName": "classifier₀[input]",
-                      "tensorVarDimensions": [
-                        30
-                      ]
+                      "tensorVarName": "classifier₀[input]"
                     }
                   }
                 ],
@@ -732,10 +591,7 @@
                       13
                     ],
                     "originalVar": {
-                      "tensorVarName": "classifier₀[input]",
-                      "tensorVarDimensions": [
-                        30
-                      ]
+                      "tensorVarName": "classifier₀[input]"
                     }
                   }
                 ],
@@ -746,10 +602,7 @@
                       14
                     ],
                     "originalVar": {
-                      "tensorVarName": "classifier₀[input]",
-                      "tensorVarDimensions": [
-                        30
-                      ]
+                      "tensorVarName": "classifier₀[input]"
                     }
                   }
                 ],
@@ -760,10 +613,7 @@
                       15
                     ],
                     "originalVar": {
-                      "tensorVarName": "classifier₀[input]",
-                      "tensorVarDimensions": [
-                        30
-                      ]
+                      "tensorVarName": "classifier₀[input]"
                     }
                   }
                 ],
@@ -774,10 +624,7 @@
                       16
                     ],
                     "originalVar": {
-                      "tensorVarName": "classifier₀[input]",
-                      "tensorVarDimensions": [
-                        30
-                      ]
+                      "tensorVarName": "classifier₀[input]"
                     }
                   }
                 ],
@@ -788,10 +635,7 @@
                       17
                     ],
                     "originalVar": {
-                      "tensorVarName": "classifier₀[input]",
-                      "tensorVarDimensions": [
-                        30
-                      ]
+                      "tensorVarName": "classifier₀[input]"
                     }
                   }
                 ],
@@ -802,10 +646,7 @@
                       18
                     ],
                     "originalVar": {
-                      "tensorVarName": "classifier₀[input]",
-                      "tensorVarDimensions": [
-                        30
-                      ]
+                      "tensorVarName": "classifier₀[input]"
                     }
                   }
                 ],
@@ -816,10 +657,7 @@
                       19
                     ],
                     "originalVar": {
-                      "tensorVarName": "classifier₀[input]",
-                      "tensorVarDimensions": [
-                        30
-                      ]
+                      "tensorVarName": "classifier₀[input]"
                     }
                   }
                 ],
@@ -830,10 +668,7 @@
                       20
                     ],
                     "originalVar": {
-                      "tensorVarName": "classifier₀[input]",
-                      "tensorVarDimensions": [
-                        30
-                      ]
+                      "tensorVarName": "classifier₀[input]"
                     }
                   }
                 ],
@@ -844,10 +679,7 @@
                       21
                     ],
                     "originalVar": {
-                      "tensorVarName": "classifier₀[input]",
-                      "tensorVarDimensions": [
-                        30
-                      ]
+                      "tensorVarName": "classifier₀[input]"
                     }
                   }
                 ],
@@ -858,10 +690,7 @@
                       22
                     ],
                     "originalVar": {
-                      "tensorVarName": "classifier₀[input]",
-                      "tensorVarDimensions": [
-                        30
-                      ]
+                      "tensorVarName": "classifier₀[input]"
                     }
                   }
                 ],
@@ -872,10 +701,7 @@
                       23
                     ],
                     "originalVar": {
-                      "tensorVarName": "classifier₀[input]",
-                      "tensorVarDimensions": [
-                        30
-                      ]
+                      "tensorVarName": "classifier₀[input]"
                     }
                   }
                 ],
@@ -886,10 +712,7 @@
                       24
                     ],
                     "originalVar": {
-                      "tensorVarName": "classifier₀[input]",
-                      "tensorVarDimensions": [
-                        30
-                      ]
+                      "tensorVarName": "classifier₀[input]"
                     }
                   }
                 ],
@@ -900,10 +723,7 @@
                       25
                     ],
                     "originalVar": {
-                      "tensorVarName": "classifier₀[input]",
-                      "tensorVarDimensions": [
-                        30
-                      ]
+                      "tensorVarName": "classifier₀[input]"
                     }
                   }
                 ],
@@ -914,10 +734,7 @@
                       26
                     ],
                     "originalVar": {
-                      "tensorVarName": "classifier₀[input]",
-                      "tensorVarDimensions": [
-                        30
-                      ]
+                      "tensorVarName": "classifier₀[input]"
                     }
                   }
                 ],
@@ -928,10 +745,7 @@
                       27
                     ],
                     "originalVar": {
-                      "tensorVarName": "classifier₀[input]",
-                      "tensorVarDimensions": [
-                        30
-                      ]
+                      "tensorVarName": "classifier₀[input]"
                     }
                   }
                 ],
@@ -942,10 +756,7 @@
                       28
                     ],
                     "originalVar": {
-                      "tensorVarName": "classifier₀[input]",
-                      "tensorVarDimensions": [
-                        30
-                      ]
+                      "tensorVarName": "classifier₀[input]"
                     }
                   }
                 ],
@@ -956,10 +767,7 @@
                       29
                     ],
                     "originalVar": {
-                      "tensorVarName": "classifier₀[input]",
-                      "tensorVarDimensions": [
-                        30
-                      ]
+                      "tensorVarName": "classifier₀[input]"
                     }
                   }
                 ],
@@ -970,10 +778,7 @@
                       0
                     ],
                     "originalVar": {
-                      "tensorVarName": "classifier₀[output]",
-                      "tensorVarDimensions": [
-                        2
-                      ]
+                      "tensorVarName": "classifier₀[output]"
                     }
                   }
                 ],
@@ -984,10 +789,7 @@
                       1
                     ],
                     "originalVar": {
-                      "tensorVarName": "classifier₀[output]",
-                      "tensorVarDimensions": [
-                        2
-                      ]
+                      "tensorVarName": "classifier₀[output]"
                     }
                   }
                 ]

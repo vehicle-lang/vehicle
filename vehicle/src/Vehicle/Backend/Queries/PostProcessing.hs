@@ -5,7 +5,7 @@ where
 
 import Control.Monad (forM, unless, when)
 import Control.Monad.Reader (MonadReader (..))
-import Control.Monad.State (MonadState, get)
+import Control.Monad.State (get)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Foldable (foldlM)
 import Data.HashMap.Strict qualified as HashMap
@@ -47,7 +47,7 @@ convertPartitionsToQueries partitions = do
 
   allQueries <- forM (partitionsToDisjuncts partitions) $ \(reconstruction, assertionTree) -> do
     fullReconstruction <- reconstructNetworkTensorVars globalCtx reconstruction
-    networkVarAssertions <- convertToNetworkRatVarAssertions assertionTree
+    networkVarAssertions <- convertToNetworkRatVarAssertions globalCtx assertionTree
     let dnfTree = exprToDNF networkVarAssertions
     forM dnfTree $ \assertions -> do
       -- Calculate query address
@@ -90,8 +90,11 @@ reconstructNetworkTensorVars ::
   UserVariableReconstruction ->
   m UserVariableReconstruction
 reconstructNetworkTensorVars GlobalCtx {..} solutions = do
-  let networkTensorVars = sortOn fst $ HashMap.toList networkVariableReductions
-  let mkStep (var, NetworkVariableInfo {..}) = ReconstructTensor var elementVariables
+  let networkApplicationInfos = snd <$> LinkedHashMap.toList networkApplications
+  let networkVariables = Set.fromList $ concatMap (\r -> [inputVariable r, outputVariable r]) networkApplicationInfos
+  let allTensorVars = filter (\(var, _) -> var `Set.member` networkVariables) $ HashMap.toList tensorVariableInfo
+  let networkTensorVars = sortOn fst allTensorVars
+  let mkStep (var, TensorVariableInfo {..}) = ReconstructTensor tensorVariableShape var elementVariables
   return $ foldr (\v -> (mkStep v :)) solutions networkTensorVars
 
 --------------------------------------------------------------------------------
@@ -100,10 +103,11 @@ reconstructNetworkTensorVars GlobalCtx {..} solutions = do
 
 convertToNetworkRatVarAssertions ::
   forall m.
-  (MonadCompile m, MonadState GlobalCtx m) =>
+  (MonadCompile m) =>
+  GlobalCtx ->
   AssertionTree ->
   m (BooleanExpr (QueryAssertion NetworkElementVariable))
-convertToNetworkRatVarAssertions = go
+convertToNetworkRatVarAssertions globalCtx = go
   where
     go :: BooleanExpr Assertion -> m (BooleanExpr (QueryAssertion NetworkElementVariable))
     go = \case
@@ -114,7 +118,7 @@ convertToNetworkRatVarAssertions = go
     convert :: Assertion -> m (BooleanExpr (QueryAssertion NetworkElementVariable))
     convert = \case
       TensorEq (Equality tensorEquality) -> do
-        rationalEqualities <- reduceTensorExpr tensorEquality
+        let rationalEqualities = reduceTensorExpr globalCtx tensorEquality
         let assertions = fmap (Query . RationalEq . Equality) rationalEqualities
         go $ Conjunct $ ConjunctAll (NonEmpty.fromList assertions)
       RationalEq (Equality expr) ->
@@ -171,7 +175,7 @@ isApplicationUsed ::
   NetworkApplicationReplacement ->
   Bool
 isApplicationUsed globalCtx referencedVars NetworkApplicationReplacement {..} = do
-  let lookupVar = getReducedNetworkVariablesFor globalCtx
+  let lookupVar = getReducedVariablesFor globalCtx
   let appVars = Set.fromList (lookupVar inputVariable <> lookupVar outputVariable)
   not $ Set.disjoint referencedVars appVars
 
@@ -192,7 +196,7 @@ checkIfNetworkInputsBounded ::
   ConjunctAll (QueryAssertion NetworkElementVariable) ->
   m ()
 checkIfNetworkInputsBounded globalCtx queryFormatID queryAddress metaNetworkApps constraints = do
-  let inputVariables = concatMap (\app -> getReducedNetworkVariablesFor globalCtx (inputVariable app)) metaNetworkApps
+  let inputVariables = concatMap (\app -> getReducedVariablesFor globalCtx (inputVariable app)) metaNetworkApps
 
   finalStatuses <- variableConstraintStatus inputVariables constraints
 
@@ -298,12 +302,12 @@ compileVariables ::
   NetworkApplicationReplacement ->
   m IndexingState
 compileVariables compileVariable globalCtx IndexingState {..} NetworkApplicationReplacement {..} = do
-  let appInputVariables = getReducedNetworkVariablesFor globalCtx inputVariable
+  let appInputVariables = getReducedVariablesFor globalCtx inputVariable
   let numberedInputVariables = zip [length inputVariableMapping ..] appInputVariables
   let newInputVariables = fmap (first (compileVariable Input)) numberedInputVariables
 
   -- Calculate the reindexed variables
-  let appOutputVariables = getReducedNetworkVariablesFor globalCtx outputVariable
+  let appOutputVariables = getReducedVariablesFor globalCtx outputVariable
   let numberedOutputVariables = zip [length outputVariableMapping ..] appOutputVariables
   let newOutputVariables = fmap (first (compileVariable Output)) numberedOutputVariables
 

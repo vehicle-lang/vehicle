@@ -4,6 +4,7 @@ module Vehicle.Backend.Queries.UserVariableElimination.EliminateExists
 where
 
 import Control.Monad.Reader (MonadReader (..))
+import Control.Monad.State (MonadState (..))
 import Data.Foldable (foldlM)
 import Data.Map qualified as Map
 import Vehicle.Backend.Queries.ConstraintSearch
@@ -83,17 +84,20 @@ solveTensorVariable userTensorVar solutions = \case
         <> indent 2 (pretty remainingTree)
 
     -- Generate accompanying rational solutions
-    rationalRearrangedEqs <- reduceTensorExpr rearrangedEq
-    userRationalVars <- getReducedUserVariablesFor userTensorVar
+    globalCtx <- get
+    let rationalRearrangedEqs = reduceTensorExpr globalCtx rearrangedEq
+    let userRationalVars = getReducedVariablesFor globalCtx userTensorVar
     let solutionMap = Map.fromList $ zip userRationalVars rationalRearrangedEqs
     -- Update tree
     let updatedTree = fmap (fmap (substituteTensorEq (userTensorVar, tensorEq) solutionMap)) remainingTree
     return $ mkSinglePartition (solution : solutions, filterTrivialAtoms updatedTree)
   NoConstraints tree -> do
     logDebug MaxDetail "No constraints on original variable found"
-    userRationalVars <- getReducedUserVariablesFor userTensorVar
-    let updatedSolutions = ReconstructTensor userTensorVar userRationalVars : solutions
-    let initial = mkSinglePartition (updatedSolutions, NonTrivial tree)
+    globalCtx <- get
+    let varInfo = getTensorVariableInfo globalCtx userTensorVar
+    let userRationalVars = elementVariables varInfo
+    let step = ReconstructTensor (tensorVariableShape varInfo) userTensorVar userRationalVars
+    let initial = mkSinglePartition (step : solutions, NonTrivial tree)
     foldlM (solveExists fromRationalAssertion solveRationalVariable) initial userRationalVars
   Inequalities {} ->
     compilerDeveloperError $

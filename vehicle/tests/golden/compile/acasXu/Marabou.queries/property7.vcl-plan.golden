@@ -11,11 +11,11 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    [
+                      5
+                    ],
                     {
-                      "tensorVarName": "acasXu₀[input]",
-                      "tensorVarDimensions": [
-                        5
-                      ]
+                      "tensorVarName": "acasXu₀[input]"
                     },
                     [
                       {
@@ -23,10 +23,7 @@
                           0
                         ],
                         "originalVar": {
-                          "tensorVarName": "acasXu₀[input]",
-                          "tensorVarDimensions": [
-                            5
-                          ]
+                          "tensorVarName": "acasXu₀[input]"
                         }
                       },
                       {
@@ -34,10 +31,7 @@
                           1
                         ],
                         "originalVar": {
-                          "tensorVarName": "acasXu₀[input]",
-                          "tensorVarDimensions": [
-                            5
-                          ]
+                          "tensorVarName": "acasXu₀[input]"
                         }
                       },
                       {
@@ -45,10 +39,7 @@
                           2
                         ],
                         "originalVar": {
-                          "tensorVarName": "acasXu₀[input]",
-                          "tensorVarDimensions": [
-                            5
-                          ]
+                          "tensorVarName": "acasXu₀[input]"
                         }
                       },
                       {
@@ -56,10 +47,7 @@
                           3
                         ],
                         "originalVar": {
-                          "tensorVarName": "acasXu₀[input]",
-                          "tensorVarDimensions": [
-                            5
-                          ]
+                          "tensorVarName": "acasXu₀[input]"
                         }
                       },
                       {
@@ -67,10 +55,7 @@
                           4
                         ],
                         "originalVar": {
-                          "tensorVarName": "acasXu₀[input]",
-                          "tensorVarDimensions": [
-                            5
-                          ]
+                          "tensorVarName": "acasXu₀[input]"
                         }
                       }
                     ]
@@ -79,11 +64,11 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    [
+                      5
+                    ],
                     {
-                      "tensorVarName": "acasXu₀[output]",
-                      "tensorVarDimensions": [
-                        5
-                      ]
+                      "tensorVarName": "acasXu₀[output]"
                     },
                     [
                       {
@@ -91,10 +76,7 @@
                           0
                         ],
                         "originalVar": {
-                          "tensorVarName": "acasXu₀[output]",
-                          "tensorVarDimensions": [
-                            5
-                          ]
+                          "tensorVarName": "acasXu₀[output]"
                         }
                       },
                       {
@@ -102,10 +84,7 @@
                           1
                         ],
                         "originalVar": {
-                          "tensorVarName": "acasXu₀[output]",
-                          "tensorVarDimensions": [
-                            5
-                          ]
+                          "tensorVarName": "acasXu₀[output]"
                         }
                       },
                       {
@@ -113,10 +92,7 @@
                           2
                         ],
                         "originalVar": {
-                          "tensorVarName": "acasXu₀[output]",
-                          "tensorVarDimensions": [
-                            5
-                          ]
+                          "tensorVarName": "acasXu₀[output]"
                         }
                       },
                       {
@@ -124,10 +100,7 @@
                           3
                         ],
                         "originalVar": {
-                          "tensorVarName": "acasXu₀[output]",
-                          "tensorVarDimensions": [
-                            5
-                          ]
+                          "tensorVarName": "acasXu₀[output]"
                         }
                       },
                       {
@@ -135,10 +108,7 @@
                           4
                         ],
                         "originalVar": {
-                          "tensorVarName": "acasXu₀[output]",
-                          "tensorVarDimensions": [
-                            5
-                          ]
+                          "tensorVarName": "acasXu₀[output]"
                         }
                       }
                     ]
@@ -152,10 +122,7 @@
                         4
                       ],
                       "originalVar": {
-                        "tensorVarName": "x",
-                        "tensorVarDimensions": [
-                          5
-                        ]
+                        "tensorVarName": "x"
                       }
                     },
                     {
@@ -170,10 +137,7 @@
                               4
                             ],
                             "originalVar": {
-                              "tensorVarName": "acasXu₀[input]",
-                              "tensorVarDimensions": [
-                                5
-                              ]
+                              "tensorVarName": "acasXu₀[input]"
                             }
                           },
                           {
@@ -193,10 +157,7 @@
                         3
                       ],
                       "originalVar": {
-                        "tensorVarName": "x",
-                        "tensorVarDimensions": [
-                          5
-                        ]
+                        "tensorVarName": "x"
                       }
                     },
                     {
@@ -211,10 +172,7 @@
                               3
                             ],
                             "originalVar": {
-                              "tensorVarName": "acasXu₀[input]",
-                              "tensorVarDimensions": [
-                                5
-                              ]
+                              "tensorVarName": "acasXu₀[input]"
                             }
                           },
                           {
@@ -234,10 +192,7 @@
                         2
                       ],
                       "originalVar": {
-                        "tensorVarName": "x",
-                        "tensorVarDimensions": [
-                          5
-                        ]
+                        "tensorVarName": "x"
                       }
                     },
                     {
@@ -252,10 +207,7 @@
                               2
                             ],
                             "originalVar": {
-                              "tensorVarName": "acasXu₀[input]",
-                              "tensorVarDimensions": [
-                                5
-                              ]
+                              "tensorVarName": "acasXu₀[input]"
                             }
                           },
                           {
@@ -275,10 +227,7 @@
                         1
                       ],
                       "originalVar": {
-                        "tensorVarName": "x",
-                        "tensorVarDimensions": [
-                          5
-                        ]
+                        "tensorVarName": "x"
                       }
                     },
                     {
@@ -293,10 +242,7 @@
                               1
                             ],
                             "originalVar": {
-                              "tensorVarName": "acasXu₀[input]",
-                              "tensorVarDimensions": [
-                                5
-                              ]
+                              "tensorVarName": "acasXu₀[input]"
                             }
                           },
                           {
@@ -316,10 +262,7 @@
                         0
                       ],
                       "originalVar": {
-                        "tensorVarName": "x",
-                        "tensorVarDimensions": [
-                          5
-                        ]
+                        "tensorVarName": "x"
                       }
                     },
                     {
@@ -334,10 +277,7 @@
                               0
                             ],
                             "originalVar": {
-                              "tensorVarName": "acasXu₀[input]",
-                              "tensorVarDimensions": [
-                                5
-                              ]
+                              "tensorVarName": "acasXu₀[input]"
                             }
                           },
                           {
@@ -352,11 +292,11 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    [
+                      5
+                    ],
                     {
-                      "tensorVarName": "x",
-                      "tensorVarDimensions": [
-                        5
-                      ]
+                      "tensorVarName": "x"
                     },
                     [
                       {
@@ -364,10 +304,7 @@
                           0
                         ],
                         "originalVar": {
-                          "tensorVarName": "x",
-                          "tensorVarDimensions": [
-                            5
-                          ]
+                          "tensorVarName": "x"
                         }
                       },
                       {
@@ -375,10 +312,7 @@
                           1
                         ],
                         "originalVar": {
-                          "tensorVarName": "x",
-                          "tensorVarDimensions": [
-                            5
-                          ]
+                          "tensorVarName": "x"
                         }
                       },
                       {
@@ -386,10 +320,7 @@
                           2
                         ],
                         "originalVar": {
-                          "tensorVarName": "x",
-                          "tensorVarDimensions": [
-                            5
-                          ]
+                          "tensorVarName": "x"
                         }
                       },
                       {
@@ -397,10 +328,7 @@
                           3
                         ],
                         "originalVar": {
-                          "tensorVarName": "x",
-                          "tensorVarDimensions": [
-                            5
-                          ]
+                          "tensorVarName": "x"
                         }
                       },
                       {
@@ -408,10 +336,7 @@
                           4
                         ],
                         "originalVar": {
-                          "tensorVarName": "x",
-                          "tensorVarDimensions": [
-                            5
-                          ]
+                          "tensorVarName": "x"
                         }
                       }
                     ]
@@ -426,10 +351,7 @@
                       0
                     ],
                     "originalVar": {
-                      "tensorVarName": "acasXu₀[input]",
-                      "tensorVarDimensions": [
-                        5
-                      ]
+                      "tensorVarName": "acasXu₀[input]"
                     }
                   }
                 ],
@@ -440,10 +362,7 @@
                       1
                     ],
                     "originalVar": {
-                      "tensorVarName": "acasXu₀[input]",
-                      "tensorVarDimensions": [
-                        5
-                      ]
+                      "tensorVarName": "acasXu₀[input]"
                     }
                   }
                 ],
@@ -454,10 +373,7 @@
                       2
                     ],
                     "originalVar": {
-                      "tensorVarName": "acasXu₀[input]",
-                      "tensorVarDimensions": [
-                        5
-                      ]
+                      "tensorVarName": "acasXu₀[input]"
                     }
                   }
                 ],
@@ -468,10 +384,7 @@
                       3
                     ],
                     "originalVar": {
-                      "tensorVarName": "acasXu₀[input]",
-                      "tensorVarDimensions": [
-                        5
-                      ]
+                      "tensorVarName": "acasXu₀[input]"
                     }
                   }
                 ],
@@ -482,10 +395,7 @@
                       4
                     ],
                     "originalVar": {
-                      "tensorVarName": "acasXu₀[input]",
-                      "tensorVarDimensions": [
-                        5
-                      ]
+                      "tensorVarName": "acasXu₀[input]"
                     }
                   }
                 ],
@@ -496,10 +406,7 @@
                       0
                     ],
                     "originalVar": {
-                      "tensorVarName": "acasXu₀[output]",
-                      "tensorVarDimensions": [
-                        5
-                      ]
+                      "tensorVarName": "acasXu₀[output]"
                     }
                   }
                 ],
@@ -510,10 +417,7 @@
                       1
                     ],
                     "originalVar": {
-                      "tensorVarName": "acasXu₀[output]",
-                      "tensorVarDimensions": [
-                        5
-                      ]
+                      "tensorVarName": "acasXu₀[output]"
                     }
                   }
                 ],
@@ -524,10 +428,7 @@
                       2
                     ],
                     "originalVar": {
-                      "tensorVarName": "acasXu₀[output]",
-                      "tensorVarDimensions": [
-                        5
-                      ]
+                      "tensorVarName": "acasXu₀[output]"
                     }
                   }
                 ],
@@ -538,10 +439,7 @@
                       3
                     ],
                     "originalVar": {
-                      "tensorVarName": "acasXu₀[output]",
-                      "tensorVarDimensions": [
-                        5
-                      ]
+                      "tensorVarName": "acasXu₀[output]"
                     }
                   }
                 ],
@@ -552,10 +450,7 @@
                       4
                     ],
                     "originalVar": {
-                      "tensorVarName": "acasXu₀[output]",
-                      "tensorVarDimensions": [
-                        5
-                      ]
+                      "tensorVarName": "acasXu₀[output]"
                     }
                   }
                 ]
@@ -596,11 +491,11 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    [
+                      5
+                    ],
                     {
-                      "tensorVarName": "acasXu₀[input]",
-                      "tensorVarDimensions": [
-                        5
-                      ]
+                      "tensorVarName": "acasXu₀[input]"
                     },
                     [
                       {
@@ -608,10 +503,7 @@
                           0
                         ],
                         "originalVar": {
-                          "tensorVarName": "acasXu₀[input]",
-                          "tensorVarDimensions": [
-                            5
-                          ]
+                          "tensorVarName": "acasXu₀[input]"
                         }
                       },
                       {
@@ -619,10 +511,7 @@
                           1
                         ],
                         "originalVar": {
-                          "tensorVarName": "acasXu₀[input]",
-                          "tensorVarDimensions": [
-                            5
-                          ]
+                          "tensorVarName": "acasXu₀[input]"
                         }
                       },
                       {
@@ -630,10 +519,7 @@
                           2
                         ],
                         "originalVar": {
-                          "tensorVarName": "acasXu₀[input]",
-                          "tensorVarDimensions": [
-                            5
-                          ]
+                          "tensorVarName": "acasXu₀[input]"
                         }
                       },
                       {
@@ -641,10 +527,7 @@
                           3
                         ],
                         "originalVar": {
-                          "tensorVarName": "acasXu₀[input]",
-                          "tensorVarDimensions": [
-                            5
-                          ]
+                          "tensorVarName": "acasXu₀[input]"
                         }
                       },
                       {
@@ -652,10 +535,7 @@
                           4
                         ],
                         "originalVar": {
-                          "tensorVarName": "acasXu₀[input]",
-                          "tensorVarDimensions": [
-                            5
-                          ]
+                          "tensorVarName": "acasXu₀[input]"
                         }
                       }
                     ]
@@ -664,11 +544,11 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    [
+                      5
+                    ],
                     {
-                      "tensorVarName": "acasXu₀[output]",
-                      "tensorVarDimensions": [
-                        5
-                      ]
+                      "tensorVarName": "acasXu₀[output]"
                     },
                     [
                       {
@@ -676,10 +556,7 @@
                           0
                         ],
                         "originalVar": {
-                          "tensorVarName": "acasXu₀[output]",
-                          "tensorVarDimensions": [
-                            5
-                          ]
+                          "tensorVarName": "acasXu₀[output]"
                         }
                       },
                       {
@@ -687,10 +564,7 @@
                           1
                         ],
                         "originalVar": {
-                          "tensorVarName": "acasXu₀[output]",
-                          "tensorVarDimensions": [
-                            5
-                          ]
+                          "tensorVarName": "acasXu₀[output]"
                         }
                       },
                       {
@@ -698,10 +572,7 @@
                           2
                         ],
                         "originalVar": {
-                          "tensorVarName": "acasXu₀[output]",
-                          "tensorVarDimensions": [
-                            5
-                          ]
+                          "tensorVarName": "acasXu₀[output]"
                         }
                       },
                       {
@@ -709,10 +580,7 @@
                           3
                         ],
                         "originalVar": {
-                          "tensorVarName": "acasXu₀[output]",
-                          "tensorVarDimensions": [
-                            5
-                          ]
+                          "tensorVarName": "acasXu₀[output]"
                         }
                       },
                       {
@@ -720,10 +588,7 @@
                           4
                         ],
                         "originalVar": {
-                          "tensorVarName": "acasXu₀[output]",
-                          "tensorVarDimensions": [
-                            5
-                          ]
+                          "tensorVarName": "acasXu₀[output]"
                         }
                       }
                     ]
@@ -737,10 +602,7 @@
                         4
                       ],
                       "originalVar": {
-                        "tensorVarName": "x",
-                        "tensorVarDimensions": [
-                          5
-                        ]
+                        "tensorVarName": "x"
                       }
                     },
                     {
@@ -755,10 +617,7 @@
                               4
                             ],
                             "originalVar": {
-                              "tensorVarName": "acasXu₀[input]",
-                              "tensorVarDimensions": [
-                                5
-                              ]
+                              "tensorVarName": "acasXu₀[input]"
                             }
                           },
                           {
@@ -778,10 +637,7 @@
                         3
                       ],
                       "originalVar": {
-                        "tensorVarName": "x",
-                        "tensorVarDimensions": [
-                          5
-                        ]
+                        "tensorVarName": "x"
                       }
                     },
                     {
@@ -796,10 +652,7 @@
                               3
                             ],
                             "originalVar": {
-                              "tensorVarName": "acasXu₀[input]",
-                              "tensorVarDimensions": [
-                                5
-                              ]
+                              "tensorVarName": "acasXu₀[input]"
                             }
                           },
                           {
@@ -819,10 +672,7 @@
                         2
                       ],
                       "originalVar": {
-                        "tensorVarName": "x",
-                        "tensorVarDimensions": [
-                          5
-                        ]
+                        "tensorVarName": "x"
                       }
                     },
                     {
@@ -837,10 +687,7 @@
                               2
                             ],
                             "originalVar": {
-                              "tensorVarName": "acasXu₀[input]",
-                              "tensorVarDimensions": [
-                                5
-                              ]
+                              "tensorVarName": "acasXu₀[input]"
                             }
                           },
                           {
@@ -860,10 +707,7 @@
                         1
                       ],
                       "originalVar": {
-                        "tensorVarName": "x",
-                        "tensorVarDimensions": [
-                          5
-                        ]
+                        "tensorVarName": "x"
                       }
                     },
                     {
@@ -878,10 +722,7 @@
                               1
                             ],
                             "originalVar": {
-                              "tensorVarName": "acasXu₀[input]",
-                              "tensorVarDimensions": [
-                                5
-                              ]
+                              "tensorVarName": "acasXu₀[input]"
                             }
                           },
                           {
@@ -901,10 +742,7 @@
                         0
                       ],
                       "originalVar": {
-                        "tensorVarName": "x",
-                        "tensorVarDimensions": [
-                          5
-                        ]
+                        "tensorVarName": "x"
                       }
                     },
                     {
@@ -919,10 +757,7 @@
                               0
                             ],
                             "originalVar": {
-                              "tensorVarName": "acasXu₀[input]",
-                              "tensorVarDimensions": [
-                                5
-                              ]
+                              "tensorVarName": "acasXu₀[input]"
                             }
                           },
                           {
@@ -937,11 +772,11 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    [
+                      5
+                    ],
                     {
-                      "tensorVarName": "x",
-                      "tensorVarDimensions": [
-                        5
-                      ]
+                      "tensorVarName": "x"
                     },
                     [
                       {
@@ -949,10 +784,7 @@
                           0
                         ],
                         "originalVar": {
-                          "tensorVarName": "x",
-                          "tensorVarDimensions": [
-                            5
-                          ]
+                          "tensorVarName": "x"
                         }
                       },
                       {
@@ -960,10 +792,7 @@
                           1
                         ],
                         "originalVar": {
-                          "tensorVarName": "x",
-                          "tensorVarDimensions": [
-                            5
-                          ]
+                          "tensorVarName": "x"
                         }
                       },
                       {
@@ -971,10 +800,7 @@
                           2
                         ],
                         "originalVar": {
-                          "tensorVarName": "x",
-                          "tensorVarDimensions": [
-                            5
-                          ]
+                          "tensorVarName": "x"
                         }
                       },
                       {
@@ -982,10 +808,7 @@
                           3
                         ],
                         "originalVar": {
-                          "tensorVarName": "x",
-                          "tensorVarDimensions": [
-                            5
-                          ]
+                          "tensorVarName": "x"
                         }
                       },
                       {
@@ -993,10 +816,7 @@
                           4
                         ],
                         "originalVar": {
-                          "tensorVarName": "x",
-                          "tensorVarDimensions": [
-                            5
-                          ]
+                          "tensorVarName": "x"
                         }
                       }
                     ]
@@ -1011,10 +831,7 @@
                       0
                     ],
                     "originalVar": {
-                      "tensorVarName": "acasXu₀[input]",
-                      "tensorVarDimensions": [
-                        5
-                      ]
+                      "tensorVarName": "acasXu₀[input]"
                     }
                   }
                 ],
@@ -1025,10 +842,7 @@
                       1
                     ],
                     "originalVar": {
-                      "tensorVarName": "acasXu₀[input]",
-                      "tensorVarDimensions": [
-                        5
-                      ]
+                      "tensorVarName": "acasXu₀[input]"
                     }
                   }
                 ],
@@ -1039,10 +853,7 @@
                       2
                     ],
                     "originalVar": {
-                      "tensorVarName": "acasXu₀[input]",
-                      "tensorVarDimensions": [
-                        5
-                      ]
+                      "tensorVarName": "acasXu₀[input]"
                     }
                   }
                 ],
@@ -1053,10 +864,7 @@
                       3
                     ],
                     "originalVar": {
-                      "tensorVarName": "acasXu₀[input]",
-                      "tensorVarDimensions": [
-                        5
-                      ]
+                      "tensorVarName": "acasXu₀[input]"
                     }
                   }
                 ],
@@ -1067,10 +875,7 @@
                       4
                     ],
                     "originalVar": {
-                      "tensorVarName": "acasXu₀[input]",
-                      "tensorVarDimensions": [
-                        5
-                      ]
+                      "tensorVarName": "acasXu₀[input]"
                     }
                   }
                 ],
@@ -1081,10 +886,7 @@
                       0
                     ],
                     "originalVar": {
-                      "tensorVarName": "acasXu₀[output]",
-                      "tensorVarDimensions": [
-                        5
-                      ]
+                      "tensorVarName": "acasXu₀[output]"
                     }
                   }
                 ],
@@ -1095,10 +897,7 @@
                       1
                     ],
                     "originalVar": {
-                      "tensorVarName": "acasXu₀[output]",
-                      "tensorVarDimensions": [
-                        5
-                      ]
+                      "tensorVarName": "acasXu₀[output]"
                     }
                   }
                 ],
@@ -1109,10 +908,7 @@
                       2
                     ],
                     "originalVar": {
-                      "tensorVarName": "acasXu₀[output]",
-                      "tensorVarDimensions": [
-                        5
-                      ]
+                      "tensorVarName": "acasXu₀[output]"
                     }
                   }
                 ],
@@ -1123,10 +919,7 @@
                       3
                     ],
                     "originalVar": {
-                      "tensorVarName": "acasXu₀[output]",
-                      "tensorVarDimensions": [
-                        5
-                      ]
+                      "tensorVarName": "acasXu₀[output]"
                     }
                   }
                 ],
@@ -1137,10 +930,7 @@
                       4
                     ],
                     "originalVar": {
-                      "tensorVarName": "acasXu₀[output]",
-                      "tensorVarDimensions": [
-                        5
-                      ]
+                      "tensorVarName": "acasXu₀[output]"
                     }
                   }
                 ]

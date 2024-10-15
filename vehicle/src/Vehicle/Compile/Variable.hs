@@ -38,12 +38,12 @@ createUserVar ::
   DeclProvenance ->
   NamedBoundCtx ->
   VBinder closure builtin ->
-  m TensorVariable
+  m (TensorVariable, TensorShape)
 createUserVar propertyProvenance namedCtx binder = do
   let varName = getBinderName binder
   checkUserVariableNameIsUnique propertyProvenance namedCtx varName
   varDimensions <- checkUserVariableType propertyProvenance binder
-  return $ TensorVariable varName varDimensions
+  return (TensorVariable varName, varDimensions)
 
 checkUserVariableNameIsUnique ::
   (MonadCompile m) =>

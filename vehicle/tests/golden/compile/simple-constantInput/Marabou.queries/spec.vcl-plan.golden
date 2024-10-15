@@ -11,11 +11,11 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    [
+                      2
+                    ],
                     {
-                      "tensorVarName": "f₀[input]",
-                      "tensorVarDimensions": [
-                        2
-                      ]
+                      "tensorVarName": "f₀[input]"
                     },
                     [
                       {
@@ -23,10 +23,7 @@
                           0
                         ],
                         "originalVar": {
-                          "tensorVarName": "f₀[input]",
-                          "tensorVarDimensions": [
-                            2
-                          ]
+                          "tensorVarName": "f₀[input]"
                         }
                       },
                       {
@@ -34,10 +31,7 @@
                           1
                         ],
                         "originalVar": {
-                          "tensorVarName": "f₀[input]",
-                          "tensorVarDimensions": [
-                            2
-                          ]
+                          "tensorVarName": "f₀[input]"
                         }
                       }
                     ]
@@ -46,11 +40,11 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    [
+                      1
+                    ],
                     {
-                      "tensorVarName": "f₀[output]",
-                      "tensorVarDimensions": [
-                        1
-                      ]
+                      "tensorVarName": "f₀[output]"
                     },
                     [
                       {
@@ -58,10 +52,7 @@
                           0
                         ],
                         "originalVar": {
-                          "tensorVarName": "f₀[output]",
-                          "tensorVarDimensions": [
-                            1
-                          ]
+                          "tensorVarName": "f₀[output]"
                         }
                       }
                     ]
@@ -73,8 +64,7 @@
                     {
                       "tensorIndices": [],
                       "originalVar": {
-                        "tensorVarName": "x",
-                        "tensorVarDimensions": []
+                        "tensorVarName": "x"
                       }
                     },
                     {
@@ -89,10 +79,7 @@
                               0
                             ],
                             "originalVar": {
-                              "tensorVarName": "f₀[input]",
-                              "tensorVarDimensions": [
-                                2
-                              ]
+                              "tensorVarName": "f₀[input]"
                             }
                           },
                           {
@@ -107,16 +94,15 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    [],
                     {
-                      "tensorVarName": "x",
-                      "tensorVarDimensions": []
+                      "tensorVarName": "x"
                     },
                     [
                       {
                         "tensorIndices": [],
                         "originalVar": {
-                          "tensorVarName": "x",
-                          "tensorVarDimensions": []
+                          "tensorVarName": "x"
                         }
                       }
                     ]
@@ -131,10 +117,7 @@
                       0
                     ],
                     "originalVar": {
-                      "tensorVarName": "f₀[input]",
-                      "tensorVarDimensions": [
-                        2
-                      ]
+                      "tensorVarName": "f₀[input]"
                     }
                   }
                 ],
@@ -145,10 +128,7 @@
                       1
                     ],
                     "originalVar": {
-                      "tensorVarName": "f₀[input]",
-                      "tensorVarDimensions": [
-                        2
-                      ]
+                      "tensorVarName": "f₀[input]"
                     }
                   }
                 ],
@@ -159,10 +139,7 @@
                       0
                     ],
                     "originalVar": {
-                      "tensorVarName": "f₀[output]",
-                      "tensorVarDimensions": [
-                        1
-                      ]
+                      "tensorVarName": "f₀[output]"
                     }
                   }
                 ]

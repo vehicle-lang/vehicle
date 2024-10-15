@@ -73,8 +73,7 @@ data PropertyMetaData = PropertyMetaData
 
 data GlobalCtx = GlobalCtx
   { globalBoundVarCtx :: !(LinkedHashMap Lv Variable),
-    userVariableReductions :: !(HashMap TensorVariable ([UserElementVariable], WHNFValue QueryBuiltin)),
-    networkVariableReductions :: !(HashMap TensorVariable NetworkVariableInfo),
+    tensorVariableInfo :: !(HashMap TensorVariable TensorVariableInfo),
     networkApplications :: !(LinkedHashMap NetworkApplication NetworkApplicationReplacement)
   }
 
@@ -82,8 +81,7 @@ emptyGlobalCtx :: GlobalCtx
 emptyGlobalCtx =
   GlobalCtx
     { globalBoundVarCtx = LinkedHashMap.empty,
-      userVariableReductions = mempty,
-      networkVariableReductions = mempty,
+      tensorVariableInfo = mempty,
       networkApplications = LinkedHashMap.empty
     }
 
@@ -98,26 +96,34 @@ addVectorVarToBoundVarCtx tensorVar elemVars = do
 
 addUserVarToGlobalContext ::
   TensorVariable ->
+  TensorShape ->
   GlobalCtx ->
   (WHNFValue QueryBuiltin, GlobalCtx)
-addUserVarToGlobalContext userVar GlobalCtx {..} = do
+addUserVarToGlobalContext userVar shape GlobalCtx {..} = do
   -- Create the unreduced and reduced versions of the user variables.
   let currentLevel = Lv $ length globalBoundVarCtx
-  let envEntry@(reducedUseVars, _) = reduceVariable (currentLevel + 1) userVar
+  let (reducedUseVars, reducedUserVarExpr) = reduceVariable (currentLevel + 1) userVar shape
   let userVarExpr = VBoundVar currentLevel []
+  let variableInfo =
+        TensorVariableInfo
+          { elementVariables = fmap snd reducedUseVars,
+            reducedVarExpr = reducedUserVarExpr,
+            tensorVariableShape = shape
+          }
   let newGlobalCtx =
         GlobalCtx
           { globalBoundVarCtx = LinkedHashMap.union (addVectorVarToBoundVarCtx (currentLevel, userVar) reducedUseVars) globalBoundVarCtx,
-            userVariableReductions = HashMap.insert userVar (first (fmap snd) envEntry) userVariableReductions,
+            tensorVariableInfo = HashMap.insert userVar variableInfo tensorVariableInfo,
             ..
           }
   (userVarExpr, newGlobalCtx)
 
 addNetworkApplicationToGlobalCtx ::
+  (MonadLogger m) =>
   NetworkApplication ->
   NetworkContextInfo ->
   GlobalCtx ->
-  (WHNFValue QueryBuiltin, WHNFValue QueryBuiltin, GlobalCtx)
+  m (WHNFValue QueryBuiltin, WHNFValue QueryBuiltin, GlobalCtx)
 addNetworkApplicationToGlobalCtx app@(networkName, _) networkInfo GlobalCtx {..} = do
   let metaNetworkSoFar = LinkedHashMap.toList networkApplications
   let applicationNumber = length $ filter (\((name, _), _) -> name == networkName) metaNetworkSoFar
@@ -126,32 +132,34 @@ addNetworkApplicationToGlobalCtx app@(networkName, _) networkInfo GlobalCtx {..}
   -- (avoiding prematurely normalising so that we can potentially solve
   -- user tensor variables in terms of it).
   let inputLv = Lv $ length globalBoundVarCtx
+  let inputShape = dimensions (inputTensor (networkType networkInfo))
   let inputVar =
         TensorVariable
-          { tensorVarName = layoutAsText $ createNetworkVarName networkName applicationNumber Input,
-            tensorVarDimensions = dimensions (inputTensor (networkType networkInfo))
+          { tensorVarName = layoutAsText $ createNetworkVarName networkName applicationNumber Input
           }
-  let (reducedInputVars, reducedInputVarsExpr) = reduceVariable (inputLv + 1) inputVar
+  let (reducedInputVars, reducedInputVarsExpr) = reduceVariable (inputLv + 1) inputVar inputShape
   let inputVarExpr = VBoundVar inputLv []
   let inputVarInfo =
-        NetworkVariableInfo
+        TensorVariableInfo
           { elementVariables = fmap snd reducedInputVars,
-            reducedNetworkVarExpr = reducedInputVarsExpr
+            reducedVarExpr = reducedInputVarsExpr,
+            tensorVariableShape = inputShape
           }
 
   -- Create a tensor of variables for the output of the network.
   let outputLv = inputLv + 1 + Lv (length reducedInputVars)
+  let outputShape = dimensions (outputTensor (networkType networkInfo))
   let outputVar =
         TensorVariable
-          { tensorVarName = layoutAsText $ createNetworkVarName networkName applicationNumber Output,
-            tensorVarDimensions = dimensions (outputTensor (networkType networkInfo))
+          { tensorVarName = layoutAsText $ createNetworkVarName networkName applicationNumber Output
           }
-  let (reducedOutputVars, reducedOutputVarsExpr) = reduceVariable (outputLv + 1) outputVar
+  let (reducedOutputVars, reducedOutputVarsExpr) = reduceVariable (outputLv + 1) outputVar outputShape
   let outputVarExpr = VBoundVar outputLv []
   let outputVarInfo =
-        NetworkVariableInfo
+        TensorVariableInfo
           { elementVariables = fmap snd reducedOutputVars,
-            reducedNetworkVarExpr = reducedOutputVarsExpr
+            reducedVarExpr = reducedOutputVarsExpr,
+            tensorVariableShape = outputShape
           }
 
   -- Create the context extension of the bound context.
@@ -172,22 +180,19 @@ addNetworkApplicationToGlobalCtx app@(networkName, _) networkInfo GlobalCtx {..}
             outputVariable = outputVar
           }
 
-  let newNetworkVariableReductions =
+  let newTensorVariableInfo =
         HashMap.insert inputVar inputVarInfo $
-          HashMap.insert
-            outputVar
-            outputVarInfo
-            networkVariableReductions
+          HashMap.insert outputVar outputVarInfo tensorVariableInfo
 
   let newGlobalCtx =
         GlobalCtx
           { globalBoundVarCtx = newGlobalBoundVarCtx,
-            networkVariableReductions = newNetworkVariableReductions,
+            tensorVariableInfo = newTensorVariableInfo,
             networkApplications = LinkedHashMap.insert app appInfo networkApplications,
             ..
           }
 
-  (inputVarExpr, outputVarExpr, newGlobalCtx)
+  return (inputVarExpr, outputVarExpr, newGlobalCtx)
 
 --------------------------------------------------------------------------------
 -- Partitions
@@ -200,7 +205,7 @@ data UserVariableReconstructionStep
   = SolveTensorEquality TensorVariable (LinearExpr TensorVariable RationalTensor)
   | SolveRationalEquality UserElementVariable (LinearExpr ElementVariable Rational)
   | SolveRationalInequalities UserElementVariable (Bounds ElementVariable Rational)
-  | ReconstructTensor TensorVariable [ElementVariable]
+  | ReconstructTensor TensorShape TensorVariable [ElementVariable]
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData UserVariableReconstructionStep
@@ -214,7 +219,7 @@ instance Pretty UserVariableReconstructionStep where
     SolveTensorEquality v s -> "Equation:" <+> pretty v <+> "=" <+> pretty s
     SolveRationalEquality v s -> "Equation:" <+> pretty v <+> "=" <+> pretty s
     SolveRationalInequalities v s -> "Inequalities:" <+> pretty v <+> "bounded" <+> pretty s
-    ReconstructTensor v vs -> "Reconstruct:" <+> pretty v <+> "from" <+> prettyList vs
+    ReconstructTensor _ v vs -> "Reconstruct:" <+> pretty v <+> "from" <+> prettyList vs
 
 -- | The steps for transforming unreduced user variables into reduced network
 -- input and output varibles.
@@ -285,23 +290,14 @@ lookupVarByLevel lv = do
     Nothing -> developerError "Cannot find variable var"
     Just v -> return v
 
-getReducedVariableExprFor :: (MonadState GlobalCtx m) => Lv -> m (Maybe (WHNFValue QueryBuiltin))
-getReducedVariableExprFor lv = do
-  GlobalCtx {..} <- get
-  var <- lookupVarByLevel lv
-  case var of
-    RationalVar {} -> return Nothing
-    TensorVar v -> case HashMap.lookup v userVariableReductions of
-      Just (_, expr) -> return $ Just expr
-      Nothing -> case HashMap.lookup v networkVariableReductions of
-        Just info -> return $ Just $ reducedNetworkVarExpr info
-        Nothing -> developerError "Missing reductions for tensor variable"
-
-getTensorVariable :: (MonadState GlobalCtx m) => Lv -> m TensorVariable
+getTensorVariable :: (MonadState GlobalCtx m) => Lv -> m (TensorVariable, TensorShape)
 getTensorVariable lv = do
   var <- lookupVarByLevel lv
   case var of
-    TensorVar v -> return v
+    TensorVar v -> do
+      globalCtx <- get
+      let info = getTensorVariableInfo globalCtx v
+      return (v, tensorVariableShape info)
     _ -> developerError "Expected tensor variable but found rational variable"
 
 getRationalVariable :: (MonadState GlobalCtx m) => Lv -> m ElementVariable
@@ -309,54 +305,44 @@ getRationalVariable lv = do
   var <- lookupVarByLevel lv
   case var of
     RationalVar rv -> return rv
-    TensorVar tv
-      | not (null (tensorVarDimensions tv)) -> developerError $ "Expected rational variable but found tensor variable" <+> pretty var
-      | otherwise -> do
-          rvs <- getReducedVariablesFor tv
-          case rvs of
-            [rv] -> return rv
-            _ -> developerError "Mismatched tensor dimensions!"
+    TensorVar tv -> do
+      ctx <- get
+      let rvs = getReducedVariablesFor ctx tv
+      case rvs of
+        [rv] -> return rv
+        _ -> developerError "Mismatched tensor dimensions!"
 
-getReducedUserVariablesFor :: (MonadQueryStructure m) => TensorVariable -> m [UserElementVariable]
-getReducedUserVariablesFor var = do
-  GlobalCtx {..} <- get
-  case HashMap.lookup var userVariableReductions of
-    Just (vars, _) -> return vars
-    Nothing ->
-      compilerDeveloperError $
-        "User variable" <+> pretty var <+> "has no reductions"
-
-getReducedNetworkVariableInfo :: GlobalCtx -> TensorVariable -> NetworkVariableInfo
-getReducedNetworkVariableInfo GlobalCtx {..} var = do
-  case HashMap.lookup var networkVariableReductions of
+getTensorVariableInfo :: GlobalCtx -> TensorVariable -> TensorVariableInfo
+getTensorVariableInfo GlobalCtx {..} var = do
+  case HashMap.lookup var tensorVariableInfo of
     Just info -> info
     Nothing ->
       developerError $
-        "Network variable" <+> pretty var <+> "has no reductions"
+        "Network variable" <+> pretty var <+> "has no associated meta-information"
 
-getReducedNetworkVariablesFor :: GlobalCtx -> TensorVariable -> [NetworkElementVariable]
-getReducedNetworkVariablesFor globalCtx var =
-  elementVariables (getReducedNetworkVariableInfo globalCtx var)
+getReducedVariablesFor :: GlobalCtx -> TensorVariable -> [ElementVariable]
+getReducedVariablesFor globalCtx var = elementVariables $ getTensorVariableInfo globalCtx var
 
-getReducedVariablesFor :: (MonadState GlobalCtx m) => TensorVariable -> m [ElementVariable]
-getReducedVariablesFor var = do
-  GlobalCtx {..} <- get
-  case HashMap.lookup var userVariableReductions of
-    Just (vars, _) -> return vars
-    Nothing -> case HashMap.lookup var networkVariableReductions of
-      Just r -> return (elementVariables r)
-      Nothing -> developerError $ "Variable" <+> pretty var <+> "has no reductions"
+getReducedVariableExprFor :: (MonadState GlobalCtx m, MonadLogger m) => Lv -> m (Maybe (WHNFValue QueryBuiltin))
+getReducedVariableExprFor lv = do
+  ctx <- get
+  var <- lookupVarByLevel lv
+  case var of
+    RationalVar {} -> return Nothing
+    TensorVar tensorVar -> do
+      let tensorVarInfo = getTensorVariableInfo ctx tensorVar
+      return $ Just $ reducedVarExpr tensorVarInfo
 
 reduceTensorExpr ::
-  (MonadState GlobalCtx m) =>
+  GlobalCtx ->
   LinearExpr TensorVariable RationalTensor ->
-  m [LinearExpr ElementVariable Rational]
-reduceTensorExpr (Sparse coeff constant) = do
+  [LinearExpr ElementVariable Rational]
+reduceTensorExpr globalCtx (Sparse coeff constant) = do
   let constValues = Vector.toList $ tensorValue constant
   let numRatEqs = product (tensorShape constant)
-  coeffList <- traverse (\(v, c) -> (,c) <$> getReducedVariablesFor v) (Map.toList coeff)
+  let coeffList = fmap (first (getReducedVariablesFor globalCtx)) (Map.toList coeff)
   let asserts = fmap (mkRatEquality coeffList constValues) [0 .. numRatEqs - 1]
-  return asserts
+  asserts
   where
     mkRatEquality ::
       [([ElementVariable], Coefficient)] ->

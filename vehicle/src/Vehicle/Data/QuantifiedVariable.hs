@@ -17,8 +17,7 @@ import Vehicle.Prelude
 
 -- | Both user and network variables
 data TensorVariable = TensorVariable
-  { tensorVarName :: Name,
-    tensorVarDimensions :: TensorShape
+  { tensorVarName :: Name
   }
   deriving (Show, Eq, Ord, Generic)
 
@@ -37,14 +36,13 @@ instance FromJSONKey TensorVariable
 instance Pretty TensorVariable where
   pretty = pretty . tensorVarName
 
---------------------------------------------------------------------------------
--- Network tensor variables
-
-data NetworkVariableInfo = NetworkVariableInfo
+data TensorVariableInfo = TensorVariableInfo
   { -- | Variables for each of it's elements
     elementVariables :: [NetworkElementVariable],
     -- | The tensor literal expression containing the element variables above.
-    reducedNetworkVarExpr :: WHNFValue Builtin
+    reducedVarExpr :: WHNFValue Builtin,
+    -- The shape of the tensor
+    tensorVariableShape :: TensorShape
   }
 
 --------------------------------------------------------------------------------
@@ -75,10 +73,9 @@ instance Hashable ElementVariable
 reduceVariable ::
   Lv ->
   TensorVariable ->
+  TensorShape ->
   ([(Lv, ElementVariable)], WHNFValue Builtin)
-reduceVariable dbLevel var
-  | null (tensorVarDimensions var) = createRatVar [] dbLevel
-  | otherwise = runSupply (go (tensorVarDimensions var) []) [dbLevel ..]
+reduceVariable dbLevel var shape = runSupply (go shape []) [dbLevel ..]
   where
     createRatVar :: TensorIndices -> Lv -> ([(Lv, ElementVariable)], WHNFValue Builtin)
     createRatVar indices lv = ([(lv, ElementVariable var indices)], VBoundVar lv [])
