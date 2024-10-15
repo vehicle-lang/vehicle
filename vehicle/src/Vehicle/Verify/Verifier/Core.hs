@@ -3,6 +3,7 @@
 module Vehicle.Verify.Verifier.Core where
 
 import Control.Monad.Error.Class (MonadError (..))
+import Data.Map (Map)
 import Data.Set (Set)
 import Vehicle.Compile.Prelude
 import Vehicle.Verify.Core
@@ -11,7 +12,6 @@ import Vehicle.Verify.QueryFormat.Core
 # ifdef mingw32_HOST_OS
 # else
 import System.Posix.Signals
-import Data.Map (Map)
 # endif
 
 --------------------------------------------------------------------------------
