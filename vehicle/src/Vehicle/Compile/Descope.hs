@@ -1,6 +1,5 @@
 module Vehicle.Compile.Descope
-  ( DescopableClosure (..),
-    descopeExpr,
+  ( descopeExpr,
     descopeExprInEmptyCtx,
     descopeExprNaively,
     descopeValueNaively,
@@ -39,8 +38,8 @@ descopeExprNaively e = do
 -- | Note that you cannot descope `Value` non-naively as you can't descope
 -- closures properly. You have to quote the `Value` first.
 descopeValueNaively ::
-  (PrintableBuiltin builtin, DescopableClosure closure) =>
-  Value closure builtin ->
+  (PrintableBuiltin builtin) =>
+  Value builtin ->
   S.Expr
 descopeValueNaively e = runFreshNameContext (genericDescopeValue Naive e)
 
@@ -93,23 +92,19 @@ genericDescopeExpr f e = showScopeExit $ case showScopeEntry e of
 --------------------------------------------------------------------------------
 -- Value
 
-class DescopableClosure closure where
-  descopeClosure :: (MonadNameContext m) => VarStrategy -> GenericBinder expr -> closure -> m S.Expr
-
-instance (PrintableBuiltin builtin) => DescopableClosure (WHNFClosure builtin) where
-  descopeClosure :: forall m binder. (MonadNameContext m) => VarStrategy -> GenericBinder binder -> WHNFClosure builtin -> m S.Expr
-  descopeClosure f _binder (WHNFClosure env body) = do
-    body' <- genericDescopeExpr (ixToName f) $ convertExprBuiltins body
-    env' <- traverse (genericDescopeValue f) (cheatEnvToValues env) :: m [S.Expr]
-    let envExpr = S.normAppList (S.Var mempty "ENV") $ fmap (Arg mempty Explicit Relevant) env'
-    return $ S.App envExpr [explicit body']
+descopeClosure :: forall m binder builtin. (PrintableBuiltin builtin, MonadNameContext m) => VarStrategy -> GenericBinder binder -> Closure builtin -> m S.Expr
+descopeClosure f _binder (Closure env body) = do
+  body' <- genericDescopeExpr (ixToName f) $ convertExprBuiltins body
+  env' <- traverse (genericDescopeValue f) (cheatEnvToValues env) :: m [S.Expr]
+  let envExpr = S.normAppList (S.Var mempty "ENV") $ fmap (Arg mempty Explicit Relevant) env'
+  return $ S.App envExpr [explicit body']
 
 -- | This function is not meant to do anything sensible and is merely
 -- used for printing `WHNF`s in a readable form.
 genericDescopeValue ::
-  (MonadNameContext m, DescopableClosure closure, PrintableBuiltin builtin) =>
+  (MonadNameContext m, PrintableBuiltin builtin) =>
   VarStrategy ->
-  Value closure builtin ->
+  Value builtin ->
   m S.Expr
 genericDescopeValue f e = case e of
   VUniverse u ->

@@ -37,10 +37,10 @@ reduceTensorVariable ::
   Lv ->
   TensorVariable ->
   TensorShape ->
-  ([(Lv, ElementVariable)], WHNFValue Builtin)
+  ([(Lv, ElementVariable)], Value Builtin)
 reduceTensorVariable dbLevel var shape = runSupply (go shape []) [dbLevel ..]
   where
-    createRatVar :: TensorIndices -> Lv -> ([(Lv, ElementVariable)], WHNFValue Builtin)
+    createRatVar :: TensorIndices -> Lv -> ([(Lv, ElementVariable)], Value Builtin)
     createRatVar indices lv = do
       let name = var <> Text.pack (showTensorIndices indices)
       ([(lv, name)], VBoundVar lv [])
@@ -48,7 +48,7 @@ reduceTensorVariable dbLevel var shape = runSupply (go shape []) [dbLevel ..]
     go ::
       TensorShape ->
       TensorIndices ->
-      Supply Lv ([(Lv, ElementVariable)], WHNFValue Builtin)
+      Supply Lv ([(Lv, ElementVariable)], Value Builtin)
     go dims indices = case dims of
       [] -> createRatVar (reverse indices) <$> demand
       d : ds -> do
@@ -73,7 +73,7 @@ data TensorVariableInfo = TensorVariableInfo
   { -- | Variables for each of it's elements
     elementVariables :: [NetworkElementVariable],
     -- | The tensor literal expression containing the element variables above.
-    reducedVarExpr :: WHNFValue Builtin,
+    reducedVarExpr :: Value Builtin,
     -- The shape of the tensor
     tensorVariableShape :: TensorShape
   }

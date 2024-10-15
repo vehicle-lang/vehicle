@@ -24,7 +24,7 @@ import Vehicle.Data.Builtin.Loss
 import Vehicle.Data.Builtin.Tensor (TensorBuiltin (..))
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.Code.Interface
-import Vehicle.Data.Code.Value (Value (..), WHNFClosure (..), WHNFValue, boundContextToEnv, pattern VBuiltinFunction)
+import Vehicle.Data.Code.Value (Closure (..), Value (..), boundContextToEnv, pattern VBuiltinFunction)
 import Vehicle.Data.DSL
 import Vehicle.Syntax.Builtin
   ( AddDomain (..),
@@ -69,9 +69,9 @@ compileLogicField ::
   (MonadCompile m) =>
   DifferentiableLogicID ->
   DifferentialLogicDSL ->
-  Map TensorDifferentiableLogicField (WHNFValue LossTensorBuiltin) ->
+  Map TensorDifferentiableLogicField (Value LossTensorBuiltin) ->
   TensorDifferentiableLogicField ->
-  m (Map TensorDifferentiableLogicField (WHNFValue LossTensorBuiltin))
+  m (Map TensorDifferentiableLogicField (Value LossTensorBuiltin))
 compileLogicField logicID dsl impl field =
   logCompilerSection MaxDetail ("compiling tensor-field" <+> quotePretty field) $ do
     let tensorExprFn = case field of
@@ -114,7 +114,7 @@ compileBool ::
 compileBool field dsl = do
   let expr = lookupLogicField field dsl
   value <- eval mempty mempty expr
-  case value :: WHNFValue Builtin of
+  case value :: Value Builtin of
     IRatLiteral _ l -> return $ IRatTensorOp (RatLiteral l) []
     _ -> developerError $ "Expecting arity 1 function for" <+> pretty field <> "but found" <+> prettyFriendlyEmptyCtx value
 
@@ -162,19 +162,19 @@ extractOp1Body ::
   (MonadCompileField m) =>
   DifferentialLogicDSL ->
   BooleanDifferentiableLogicField ->
-  (WHNFValue Builtin -> NameContextT (ExceptT (WHNFValue Builtin) m) a) ->
+  (Value Builtin -> NameContextT (ExceptT (Value Builtin) m) a) ->
   m a
 extractOp1Body dsl field process = do
   op1 <- eval mempty mempty (lookupLogicField field dsl)
   case op1 of
-    VLam binder (WHNFClosure [] body) -> runBodyExtraction (field, op1) process [void binder] body
+    VLam binder (Closure [] body) -> runBodyExtraction (field, op1) process [void binder] body
     fn -> developerError $ "Expecting arity 1 function for" <+> pretty field <> "but found" <+> prettyFriendlyEmptyCtx fn
 
 extractOp2Body ::
   (MonadCompileField m) =>
   DifferentialLogicDSL ->
   BooleanDifferentiableLogicField ->
-  (WHNFValue Builtin -> NameContextT (ExceptT (WHNFValue Builtin) m) a) ->
+  (Value Builtin -> NameContextT (ExceptT (Value Builtin) m) a) ->
   m a
 extractOp2Body dsl field process = do
   op2 <- eval mempty mempty (lookupLogicField field dsl)
@@ -184,8 +184,8 @@ extractOp2Body dsl field process = do
 
 runBodyExtraction ::
   (MonadCompileField m) =>
-  (BooleanDifferentiableLogicField, WHNFValue Builtin) ->
-  (WHNFValue Builtin -> NameContextT (ExceptT (WHNFValue Builtin) m) a) ->
+  (BooleanDifferentiableLogicField, Value Builtin) ->
+  (Value Builtin -> NameContextT (ExceptT (Value Builtin) m) a) ->
   BoundCtx () ->
   Expr Builtin ->
   m a
@@ -267,13 +267,13 @@ reduceOp = \case
 
 type MonadCompileBody m =
   ( MonadLogger m,
-    MonadError (WHNFValue Builtin) m,
+    MonadError (Value Builtin) m,
     MonadNameContext m
   )
 
 liftOp1Body ::
   (MonadCompileBody m) =>
-  WHNFValue Builtin ->
+  Value Builtin ->
   m (DSLExpr TensorBuiltin -> DSLExpr TensorBuiltin -> DSLExpr TensorBuiltin)
 liftOp1Body = convertHigherOrderFunction "liftOp1" $ \case
   VBuiltinFunction (liftOp -> Just liftedOp) [argExpr -> e] -> do
@@ -292,7 +292,7 @@ liftOp1Body = convertHigherOrderFunction "liftOp1" $ \case
 
 liftOp2Body ::
   (MonadCompileBody m) =>
-  WHNFValue Builtin ->
+  Value Builtin ->
   m (DSLExpr TensorBuiltin -> DSLExpr TensorBuiltin -> DSLExpr TensorBuiltin -> DSLExpr TensorBuiltin)
 liftOp2Body = convertHigherOrderFunction "liftOp2" $ \case
   VBuiltinFunction (liftOp -> Just liftedOp) [argExpr -> e] -> do
@@ -312,7 +312,7 @@ liftOp2Body = convertHigherOrderFunction "liftOp2" $ \case
 
 reduceOp2Body ::
   (MonadCompileBody m) =>
-  WHNFValue Builtin ->
+  Value Builtin ->
   m (DSLExpr TensorBuiltin -> DSLExpr TensorBuiltin -> DSLExpr TensorBuiltin)
 reduceOp2Body = convertHigherOrderFunction "reduction" $ \case
   VBuiltinFunction (reduceOp -> Just reducedOp) [argExpr -> VBoundVar 0 [], argExpr -> VBoundVar 1 []] ->
@@ -322,8 +322,8 @@ reduceOp2Body = convertHigherOrderFunction "reduction" $ \case
 convertHigherOrderFunction ::
   (MonadLogger m, MonadNameContext m) =>
   Doc a ->
-  (WHNFValue Builtin -> m a) ->
-  WHNFValue Builtin ->
+  (Value Builtin -> m a) ->
+  Value Builtin ->
   m a
 convertHigherOrderFunction field convert lamBody = do
   ctx <- getNameContext

@@ -24,7 +24,7 @@ parseParameterValue ::
   ParameterValues ->
   DeclProvenance ->
   GluedType Builtin ->
-  m (WHNFValue Builtin)
+  m (Value Builtin)
 parseParameterValue parameterValues decl@(ident, _) parameterType = do
   implicitParams <- getInferableParameterContext
 
@@ -50,24 +50,24 @@ parseParameterValue parameterValues decl@(ident, _) parameterType = do
     Nothing -> throwError $ ResourceNotProvided decl Parameter
     Just value -> parser decl value
 
-parseBool :: (MonadCompile m) => DeclProvenance -> String -> m (WHNFValue Builtin)
+parseBool :: (MonadCompile m) => DeclProvenance -> String -> m (Value Builtin)
 parseBool decl value = case readMaybe value of
   Just v -> return $ IBoolLiteral mempty v
   Nothing -> throwError $ ParameterValueUnparsable decl value Bool
 
-parseNat :: (MonadCompile m) => DeclProvenance -> String -> m (WHNFValue Builtin)
+parseNat :: (MonadCompile m) => DeclProvenance -> String -> m (Value Builtin)
 parseNat decl value = case readMaybe value of
   Just v
     | v >= 0 -> return $ INatLiteral mempty v
     | otherwise -> throwError $ ParameterValueInvalidNat decl v
   Nothing -> throwError $ ParameterValueUnparsable decl value Nat
 
-parseRat :: (MonadCompile m) => DeclProvenance -> String -> m (WHNFValue Builtin)
+parseRat :: (MonadCompile m) => DeclProvenance -> String -> m (Value Builtin)
 parseRat decl value = case rational (pack value) of
   Left _err -> throwError $ ParameterValueUnparsable decl value Rat
   Right (v, _) -> return $ IRatLiteral mempty v
 
-parseIndex :: (MonadCompile m) => Int -> DeclProvenance -> String -> m (WHNFValue Builtin)
+parseIndex :: (MonadCompile m) => Int -> DeclProvenance -> String -> m (Value Builtin)
 parseIndex n decl value = case readMaybe value of
   Nothing -> throwError $ ParameterValueUnparsable decl value Index
   Just v ->

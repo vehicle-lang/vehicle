@@ -89,7 +89,7 @@ getMetaDependencies = \case
   (ExplicitArg _ _ (BoundVar _ i)) : args -> i : getMetaDependencies args
   _ -> []
 
-getNormMetaDependencies :: [WHNFArg builtin] -> ([Lv], WHNFSpine builtin)
+getNormMetaDependencies :: [VArg builtin] -> ([Lv], Spine builtin)
 getNormMetaDependencies = \case
   (ExplicitArg _ _ (VBoundVar i [])) : args -> first (i :) $ getNormMetaDependencies args
   spine -> ([], spine)
@@ -116,7 +116,7 @@ instance HasMetas (Expr builtin) where
     Lam _ binder body -> do findMetas binder; findMetas body
     App fun args -> do findMetas fun; findMetas args
 
-instance HasMetas (WHNFValue builtin) where
+instance HasMetas (Value builtin) where
   findMetas expr = case expr of
     VMeta m spine -> do
       tell (MetaSet.singleton m)

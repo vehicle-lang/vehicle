@@ -58,19 +58,19 @@ data CompileError
   | UnsupportedResourceFormat DeclProvenance ExternalResource String
   | UnableToParseResource DeclProvenance ExternalResource String
   | -- Unsupported networks
-    NetworkTypeHasVariableSizeTensor DeclProvenance (GluedType Builtin) (WHNFType Builtin) InputOrOutput
+    NetworkTypeHasVariableSizeTensor DeclProvenance (GluedType Builtin) (VType Builtin) InputOrOutput
   | NetworkTypeHasImplicitSizeTensor DeclProvenance (GluedType Builtin) Identifier InputOrOutput
   | NetworkTypeIsNotAFunction DeclProvenance (GluedType Builtin)
-  | NetworkTypeIsNotOverTensors DeclProvenance (GluedType Builtin) (WHNFType Builtin) InputOrOutput
-  | NetworkTypeHasNonExplicitArguments DeclProvenance (GluedType Builtin) (WHNFBinder Builtin)
-  | NetworkTypeHasUnsupportedElementType DeclProvenance (GluedType Builtin) (WHNFType Builtin) InputOrOutput
+  | NetworkTypeIsNotOverTensors DeclProvenance (GluedType Builtin) (VType Builtin) InputOrOutput
+  | NetworkTypeHasNonExplicitArguments DeclProvenance (GluedType Builtin) (VBinder Builtin)
+  | NetworkTypeHasUnsupportedElementType DeclProvenance (GluedType Builtin) (VType Builtin) InputOrOutput
   | -- Unsupported datasets
     DatasetTypeUnsupportedContainer DeclProvenance (GluedType Builtin)
-  | DatasetTypeUnsupportedElement DeclProvenance (GluedType Builtin) (WHNFType Builtin)
-  | DatasetVariableSizeTensor DeclProvenance (GluedType Builtin) (WHNFType Builtin)
+  | DatasetTypeUnsupportedElement DeclProvenance (GluedType Builtin) (VType Builtin)
+  | DatasetVariableSizeTensor DeclProvenance (GluedType Builtin) (VType Builtin)
   | DatasetDimensionSizeMismatch DeclProvenance FilePath Int Int TensorShape TensorShape
   | DatasetDimensionsMismatch DeclProvenance FilePath (GluedExpr Builtin) TensorShape
-  | DatasetTypeMismatch DeclProvenance FilePath (GluedType Builtin) (WHNFType Builtin) (Doc Void)
+  | DatasetTypeMismatch DeclProvenance FilePath (GluedType Builtin) (VType Builtin) (Doc Void)
   | DatasetInvalidIndex DeclProvenance FilePath Int Int
   | DatasetInvalidNat DeclProvenance FilePath Int
   | -- Unsupported parameters
@@ -87,17 +87,17 @@ data CompileError
     PropertyTypeUnsupported DeclProvenance (GluedType Builtin)
   | NoPropertiesFound
   | -- Verification backend errors
-    forall closure builtin.
-    (PrintableBuiltin builtin, Show closure, Eq closure, Eq builtin, PrettyFriendly (Contextualised (VType closure builtin) NamedBoundCtx)) =>
-    UnsupportedVariableType DeclProvenance Provenance Name (VType closure builtin) (VType closure builtin) [builtin]
-  | HigherOrderVectors DeclProvenance NamedBoundCtx (WHNFType TensorBuiltin) (WHNFType TensorBuiltin)
+    forall builtin.
+    (PrintableBuiltin builtin, Eq builtin, PrettyFriendly (Contextualised (VType builtin) NamedBoundCtx)) =>
+    UnsupportedVariableType DeclProvenance Provenance Name (VType builtin) (VType builtin) [builtin]
+  | HigherOrderVectors DeclProvenance NamedBoundCtx (VType TensorBuiltin) (VType TensorBuiltin)
   | UnsupportedAlternatingQuantifiers QueryFormatID DeclProvenance (Either CompileError (Quantifier, Provenance, PolarityProvenance))
   | DuplicateQuantifierNames DeclProvenance Name
   | UnsupportedNonLinearConstraint QueryFormatID DeclProvenance (Either CompileError NonLinearitySource)
   | -- Loss backend errors
     UnsupportedLossOperation DeclProvenance Provenance (Doc Void)
-  | UnsupportedHigherOrderTensorCode DeclProvenance NamedBoundCtx (WHNFValue Builtin) NamedBoundCtx (WHNFValue TensorBuiltin)
-  | UnableToLiftLogicFieldToTensors DifferentiableLogicID TensorDifferentiableLogicField (BooleanDifferentiableLogicField, WHNFValue Builtin) NamedBoundCtx (WHNFValue Builtin)
+  | UnsupportedHigherOrderTensorCode DeclProvenance NamedBoundCtx (Value Builtin) NamedBoundCtx (Value TensorBuiltin)
+  | UnableToLiftLogicFieldToTensors DifferentiableLogicID TensorDifferentiableLogicField (BooleanDifferentiableLogicField, Value Builtin) NamedBoundCtx (Value Builtin)
   | NoQuantifierDomainFound DeclProvenance (GenericBinder ()) (Maybe [(UserElementVariable, UnderConstrainedVariableStatus)])
   | -- ITP backend errors
     UnsupportedPolymorphicEquality ITP Provenance Name

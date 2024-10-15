@@ -53,7 +53,7 @@ data CombiningState = CombiningState
     unsoundStrictnessConversions :: Map (QueryFormatID, PropertyAddress) Int,
     allConstantNetworkInputVars :: Map (QueryFormatID, PropertyAddress) (NonEmpty QueryID),
     unboundedNetworkInputs :: Map (QueryFormatID, PropertyAddress) (Map UnderConstrainedSignature (NonEmpty QueryID)),
-    inefficientTensorCode :: Map Name [(Builtin, NamedBoundCtx, WHNFValue TensorBuiltin)]
+    inefficientTensorCode :: Map Name [(Builtin, NamedBoundCtx, Value TensorBuiltin)]
   }
 
 emptyState :: CombiningState

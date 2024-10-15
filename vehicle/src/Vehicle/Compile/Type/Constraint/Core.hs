@@ -75,7 +75,7 @@ malformedConstraintError c =
 unify ::
   (MonadTypeChecker builtin m) =>
   (ConstraintContext builtin, UnificationConstraintOrigin builtin) ->
-  (WHNFValue builtin, WHNFValue builtin) ->
+  (Value builtin, Value builtin) ->
   m (WithContext (UnificationConstraint builtin))
 unify (ctx, origin) (e1, e2) =
   WithContext (Unify origin e1 e2) <$> copyContext ctx
@@ -84,8 +84,8 @@ unify (ctx, origin) (e1, e2) =
 createInstanceUnification ::
   (MonadTypeChecker builtin m) =>
   (ConstraintContext builtin, InstanceConstraintOrigin builtin) ->
-  WHNFValue builtin ->
-  WHNFValue builtin ->
+  Value builtin ->
+  Value builtin ->
   m (WithContext (Constraint builtin))
 createInstanceUnification (ctx, origin) e1 e2 = do
   let unifyOrigin = CheckingInstanceType origin
@@ -97,7 +97,7 @@ createSubInstance ::
   (MonadTypeChecker builtin m) =>
   (ConstraintContext builtin, InstanceConstraintOrigin builtin) ->
   Relevance ->
-  WHNFValue builtin ->
+  Value builtin ->
   m (Expr builtin, WithContext (Constraint builtin))
 createSubInstance (ctx, origin) r t = do
   let p = provenanceOf ctx
@@ -136,11 +136,11 @@ findInstanceGoalHead = \case
 parseInstanceGoal ::
   forall m builtin.
   (MonadCompile m, PrintableBuiltin builtin) =>
-  WHNFValue builtin ->
+  Value builtin ->
   m (InstanceGoal builtin)
 parseInstanceGoal e = go [] e
   where
-    go :: Telescope builtin -> WHNFValue builtin -> m (InstanceGoal builtin)
+    go :: Telescope builtin -> Value builtin -> m (InstanceGoal builtin)
     go telescope = \case
       VPi binder _body
         | not (isExplicit binder) -> compilerDeveloperError "Instance goals with telescopes not yet supported"

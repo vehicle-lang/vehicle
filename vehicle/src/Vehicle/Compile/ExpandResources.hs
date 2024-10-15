@@ -47,7 +47,7 @@ expandResources resources prog =
     integrityInfo <- generateResourcesIntegrityInfo resources
     return (progWithoutResources, networkCtx, freeCtx, integrityInfo)
 
-mkFunctionDefFromResource :: Provenance -> Identifier -> GluedType Builtin -> WHNFValue Builtin -> FreeCtxEntry Builtin
+mkFunctionDefFromResource :: Provenance -> Identifier -> GluedType Builtin -> Value Builtin -> FreeCtxEntry Builtin
 mkFunctionDefFromResource p ident typ normValue = do
   -- We're doing something wrong here as we only really need the value.
   -- We should really be storing the parameter values in their own environment,

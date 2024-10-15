@@ -154,17 +154,17 @@ convertDecl = \case
     expr' <- convertExpr mempty body
     return $ JDecl (nameOf ident) typ' expr'
 
-convertExpr :: (MonadJSON m) => WHNFBoundEnv LossTensorBuiltin -> Expr LossTensorBuiltin -> m JExpr
+convertExpr :: (MonadJSON m) => BoundEnv LossTensorBuiltin -> Expr LossTensorBuiltin -> m JExpr
 convertExpr env body = convertValue =<< eval mempty env body
 
-convertValue :: (MonadJSON m) => WHNFValue LossTensorBuiltin -> m JExpr
+convertValue :: (MonadJSON m) => Value LossTensorBuiltin -> m JExpr
 convertValue expr = do
   showEntry expr
   result <- case expr of
     VMeta {} -> resolutionError currentPass "VMeta"
     VFreeVar {} -> resolutionError currentPass "VFreeVar"
     VUniverse {} -> resolutionError currentPass "Universe"
-    VLam binder (WHNFClosure env body) -> do
+    VLam binder (Closure env body) -> do
       let name = getBinderName binder
       typ' <- convertValue (typeOf binder)
       lv <- getBinderDepth
@@ -183,7 +183,7 @@ convertValue expr = do
   showExit result
   return result
 
-convertBuiltin :: (MonadJSON m) => LossTensorBuiltin -> [WHNFValue LossTensorBuiltin] -> m JExpr
+convertBuiltin :: (MonadJSON m) => LossTensorBuiltin -> [Value LossTensorBuiltin] -> m JExpr
 convertBuiltin b spine = case b of
   LossTensorRat op -> case op of
     L.RatTensor t -> convertNullaryOp b (RatTensor $ mapTensor toRat t) spine
@@ -216,42 +216,42 @@ convertBuiltin b spine = case b of
     L.DimensionIndexType -> convertIndexType spine
     L.TensorType -> convertTensorType spine
 
-convertNullaryOp :: (MonadJSON m) => LossTensorBuiltin -> JExpr -> [WHNFValue LossTensorBuiltin] -> m JExpr
+convertNullaryOp :: (MonadJSON m) => LossTensorBuiltin -> JExpr -> [Value LossTensorBuiltin] -> m JExpr
 convertNullaryOp b fn = \case
   [] -> return fn
   spine -> arityError b 0 spine
 
-convertUnaryOp :: (MonadJSON m) => LossTensorBuiltin -> (JExpr -> JExpr) -> [WHNFValue LossTensorBuiltin] -> m JExpr
+convertUnaryOp :: (MonadJSON m) => LossTensorBuiltin -> (JExpr -> JExpr) -> [Value LossTensorBuiltin] -> m JExpr
 convertUnaryOp b fn = \case
   [x] -> fn <$> convertValue x
   spine -> arityError b 1 spine
 
-convertBinaryOp :: (MonadJSON m) => LossTensorBuiltin -> (JExpr -> JExpr -> JExpr) -> [WHNFValue LossTensorBuiltin] -> m JExpr
+convertBinaryOp :: (MonadJSON m) => LossTensorBuiltin -> (JExpr -> JExpr -> JExpr) -> [Value LossTensorBuiltin] -> m JExpr
 convertBinaryOp b fn = \case
   [x, y] -> fn <$> convertValue x <*> convertValue y
   spine -> arityError b 2 spine
 
-convertNaryOp :: (MonadJSON m) => LossTensorBuiltin -> Int -> ([JExpr] -> JExpr) -> [WHNFValue LossTensorBuiltin] -> m JExpr
+convertNaryOp :: (MonadJSON m) => LossTensorBuiltin -> Int -> ([JExpr] -> JExpr) -> [Value LossTensorBuiltin] -> m JExpr
 convertNaryOp b n fn spine
   | length spine == n = fn <$> traverse convertValue spine
   | otherwise = arityError b n spine
 
-convertTensorType :: (MonadJSON m) => [WHNFValue LossTensorBuiltin] -> m JExpr
+convertTensorType :: (MonadJSON m) => [Value LossTensorBuiltin] -> m JExpr
 convertTensorType = \case
   [tElem, _dims] -> TensorType <$> convertValue tElem
   spine -> arityError (LossTensorDimType L.TensorType) 2 spine
 
-convertIndexType :: (MonadJSON m) => [WHNFValue LossTensorBuiltin] -> m JExpr
+convertIndexType :: (MonadJSON m) => [Value LossTensorBuiltin] -> m JExpr
 convertIndexType = \case
   [_dim] -> return DimensionIndexType
   spine -> arityError (LossTensorDimType L.DimensionIndexType) 1 spine
 
-convertSearch :: (MonadJSON m) => [WHNFValue LossTensorBuiltin] -> m JExpr
+convertSearch :: (MonadJSON m) => [Value LossTensorBuiltin] -> m JExpr
 convertSearch = \case
   [unaryOp, lowerBound, upperBound, fn] -> SearchRatTensor <$> convertValue unaryOp <*> convertValue lowerBound <*> convertValue upperBound <*> convertValue fn
   spine -> arityError (show L.SearchRatTensor) 5 spine
 
-arityError :: (MonadCompile m, Pretty fn) => fn -> Arity -> [WHNFValue LossTensorBuiltin] -> m a
+arityError :: (MonadCompile m, Pretty fn) => fn -> Arity -> [Value LossTensorBuiltin] -> m a
 arityError fun arity explicitArgs =
   compilerDeveloperError $
     "Number of args is different from expected arity:"
@@ -271,7 +271,7 @@ arityError fun arity explicitArgs =
             <+> prettyVerbose explicitArgs
         )
 
-showEntry :: (MonadJSON m) => WHNFValue LossTensorBuiltin -> m ()
+showEntry :: (MonadJSON m) => Value LossTensorBuiltin -> m ()
 showEntry e = do
   logDebug MaxDetail $ "json-enter:" <+> prettyVerbose e
   incrCallDepth

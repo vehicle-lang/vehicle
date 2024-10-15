@@ -24,7 +24,7 @@ type InferableParameterEntry = (DeclProvenance, ExternalResource, Int)
 
 type InferableParameterContext = Map Identifier (Provenance, GluedType Builtin, Maybe InferableParameterEntry)
 
-type ExplicitParameterContext = Map Identifier (WHNFValue Builtin)
+type ExplicitParameterContext = Map Identifier (Value Builtin)
 
 --------------------------------------------------------------------------------
 -- The resource monad
@@ -71,7 +71,7 @@ noteInferableParameter p ident paramType =
 noteExplicitParameter ::
   (MonadExpandResources m) =>
   Identifier ->
-  WHNFValue Builtin ->
+  Value Builtin ->
   m ()
 noteExplicitParameter ident value =
   modify (\(u, v, w) -> (u, v, Map.insert ident value w))

@@ -11,7 +11,7 @@ type GenericFreeCtx a = Map Identifier a
 
 type FreeCtxEntry builtin =
   ( Decl builtin,
-    WHNFDecl builtin
+    VDecl builtin
   )
 
 type FreeCtx builtin = GenericFreeCtx (FreeCtxEntry builtin)

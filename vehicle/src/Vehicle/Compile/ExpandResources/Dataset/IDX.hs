@@ -33,7 +33,7 @@ readIDX ::
   FilePath ->
   DeclProvenance ->
   GluedType Builtin ->
-  m (WHNFValue Builtin)
+  m (Value Builtin)
 readIDX file decl expectedType = do
   contents <- readIDXFile decl file
   case contents of
@@ -72,7 +72,7 @@ parseIDX ::
   (MonadExpandResources m, Vector.Unbox a) =>
   ParseContext m a ->
   Vector a ->
-  m (WHNFValue Builtin)
+  m (Value Builtin)
 parseIDX ctx@(_, _, expectedDatasetType, actualDatasetDims, _) elems = do
   parseContainer ctx True actualDatasetDims elems (normalised expectedDatasetType)
 
@@ -82,8 +82,8 @@ parseContainer ::
   Bool ->
   TensorShape ->
   Vector a ->
-  WHNFType Builtin ->
-  m (WHNFValue Builtin)
+  VType Builtin ->
+  m (Value Builtin)
 parseContainer ctx topLevel actualDims elems expectedType = case expectedType of
   IListType _ expectedElemType -> parseList ctx expectedElemType actualDims elems
   IVectorType _ expectedElemType expectedDim -> parseVector ctx actualDims elems expectedElemType expectedDim
@@ -97,9 +97,9 @@ parseVector ::
   ParseContext m a ->
   TensorShape ->
   Vector a ->
-  WHNFType Builtin ->
-  WHNFValue Builtin ->
-  m (WHNFValue Builtin)
+  VType Builtin ->
+  Value Builtin ->
+  m (Value Builtin)
 parseVector ctx [] _ _ _ = dimensionMismatchError ctx
 parseVector ctx@(decl, file, _, allDims, _) (actualDim : actualDims) elems expectedElemType expectedDim = do
   currentDim <- case expectedDim of
@@ -128,10 +128,10 @@ parseVector ctx@(decl, file, _, allDims, _) (actualDim : actualDims) elems expec
 parseList ::
   (MonadExpandResources m, Vector.Unbox a) =>
   ParseContext m a ->
-  WHNFType Builtin ->
+  VType Builtin ->
   TensorShape ->
   Vector a ->
-  m (WHNFValue Builtin)
+  m (Value Builtin)
 parseList ctx expectedElemType actualDims actualElems =
   case actualDims of
     [] -> dimensionMismatchError ctx
@@ -146,8 +146,8 @@ parseElement ::
   ParseContext m a ->
   TensorShape ->
   Vector a ->
-  WHNFType Builtin ->
-  m (WHNFValue Builtin)
+  VType Builtin ->
+  m (Value Builtin)
 parseElement ctx@(_, _, _, _, elemParser) dims elems expectedType
   | not (null dims) = dimensionMismatchError ctx
   | Vector.length elems /= 1 = compilerDeveloperError "Malformed IDX file: mismatch between dimensions and acutal data"
@@ -161,7 +161,7 @@ type ParseContext m a =
     ElemParser m a
   )
 
-type ElemParser m a = a -> WHNFType Builtin -> m (WHNFValue Builtin)
+type ElemParser m a = a -> VType Builtin -> m (Value Builtin)
 
 doubleElemParser ::
   (MonadExpandResources m) =>
@@ -200,7 +200,7 @@ partitionData dim dims content = do
   i <- [0 .. dim - 1]
   return $ Vector.slice (i * entrySize) entrySize content
 
-variableSizeError :: (MonadCompile m) => ParseContext m a -> WHNFValue Builtin -> m b
+variableSizeError :: (MonadCompile m) => ParseContext m a -> Value Builtin -> m b
 variableSizeError (decl, _, expectedDatasetType, _, _) dim =
   throwError $ DatasetVariableSizeTensor decl expectedDatasetType dim
 

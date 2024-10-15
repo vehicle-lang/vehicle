@@ -26,7 +26,7 @@ type MonadCompileLinearExpr m =
 
 data LinearityError
   = NonLinearity
-  | UnhandlableExpr (WHNFValue Builtin)
+  | UnhandlableExpr (Value Builtin)
 
 --------------------------------------------------------------------------------
 -- Rational expression
@@ -35,8 +35,8 @@ compileRatLinearRelation ::
   (MonadLogger m) =>
   (Lv -> ExceptT LinearityError m ElementVariable) ->
   (LinearExpr -> LinearExpr -> relation) ->
-  WHNFValue Builtin ->
-  WHNFValue Builtin ->
+  Value Builtin ->
+  Value Builtin ->
   m (Either LinearityError relation)
 compileRatLinearRelation handleVar mkRelation x y = do
   runExceptT $ do
@@ -48,11 +48,11 @@ compileRatLinearExpr ::
   forall m.
   (MonadCompileLinearExpr m) =>
   (Lv -> m ElementVariable) ->
-  WHNFValue Builtin ->
+  Value Builtin ->
   m LinearExpr
 compileRatLinearExpr handleVar = go
   where
-    go :: WHNFValue Builtin -> m LinearExpr
+    go :: Value Builtin -> m LinearExpr
     go e = case e of
       ----------------
       -- Base cases --
@@ -89,8 +89,8 @@ compileRatLinearExpr handleVar = go
 compileTensorLinearRelation ::
   (MonadLogger m) =>
   (Lv -> ExceptT LinearityError m (TensorVariable, TensorShape)) ->
-  WHNFValue Builtin ->
-  WHNFValue Builtin ->
+  Value Builtin ->
+  Value Builtin ->
   m (Either LinearityError (Maybe (LinearExpr, LinearExpr)))
 compileTensorLinearRelation handleVar x y = do
   runExceptT $ do
@@ -102,11 +102,11 @@ compileTensorLinearExpr ::
   forall m.
   (MonadCompileLinearExpr m) =>
   (Lv -> m (TensorVariable, TensorShape)) ->
-  WHNFValue Builtin ->
+  Value Builtin ->
   m (Maybe LinearExpr)
 compileTensorLinearExpr handleVar = go
   where
-    go :: WHNFValue Builtin -> m (Maybe LinearExpr)
+    go :: Value Builtin -> m (Maybe LinearExpr)
     go e = case e of
       ---------------------
       -- Inductive cases --
@@ -123,10 +123,10 @@ compileTensorLinearExpr handleVar = go
         return $ Just $ singletonVarExpr shape var
       _ -> return Nothing
 
-getRationalTensor :: WHNFValue Builtin -> Maybe RationalTensor
+getRationalTensor :: Value Builtin -> Maybe RationalTensor
 getRationalTensor expr = uncurry Tensor <$> go expr
   where
-    go :: WHNFValue Builtin -> Maybe (TensorShape, Vector Rational)
+    go :: Value Builtin -> Maybe (TensorShape, Vector Rational)
     go = \case
       IRatLiteral _ r -> Just ([], Vector.singleton (fromRational r))
       IVecLiteral _ xs -> do

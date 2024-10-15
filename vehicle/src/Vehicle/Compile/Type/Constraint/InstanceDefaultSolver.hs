@@ -90,14 +90,14 @@ getDefaultableConstraints maybeDecl = do
 
 data Candidate builtin = Candidate
   { candidateTypeClass :: builtin,
-    candidateMetaExpr :: WHNFValue builtin,
+    candidateMetaExpr :: Value builtin,
     candidateInfo :: InstanceConstraintInfo builtin,
-    candidateSolution :: WHNFValue builtin
+    candidateSolution :: Value builtin
   }
 
 instance (PrintableBuiltin builtin) => Pretty (Candidate builtin) where
   pretty Candidate {..} =
-    prettyVerbose candidateMetaExpr <+> "~" <+> prettyVerbose (VBuiltin @(WHNFClosure builtin) @builtin candidateTypeClass [])
+    prettyVerbose candidateMetaExpr <+> "~" <+> prettyVerbose (VBuiltin @builtin candidateTypeClass [])
 
 data CandidateStatus builtin
   = Valid (Candidate builtin)
@@ -129,7 +129,7 @@ generateConstraintUsingDefaults constraints = do
           <+> "="
           <+> prettyVerbose candidateSolution
           <+> "         "
-          <> parens ("from" <+> prettyVerbose (VBuiltin @(WHNFClosure builtin) @builtin candidateTypeClass []))
+          <> parens ("from" <+> prettyVerbose (VBuiltin @builtin candidateTypeClass []))
       newConstraint <- createInstanceUnification candidateInfo candidateMetaExpr candidateSolution
       return $ Just newConstraint
 

@@ -45,7 +45,7 @@ solveInDomain ::
   forall m.
   (MonadTypeChecker Builtin m) =>
   WithContext (InstanceConstraint Builtin) ->
-  [WHNFType Builtin] ->
+  [VType Builtin] ->
   m (Maybe MetaSet)
 solveInDomain c [value, typ] = case typ of
   (getNMeta -> Just {}) -> return $ blockOnMetas [typ]
@@ -67,7 +67,7 @@ solveInDomain c [value, typ] = case typ of
     ctx = contextOf c
 solveInDomain c _ = malformedConstraintError c
 
-blockOnMetas :: [WHNFValue Builtin] -> Maybe MetaSet
+blockOnMetas :: [Value Builtin] -> Maybe MetaSet
 blockOnMetas args = do
   let metas = mapMaybe getNMeta args
   if null metas
@@ -78,12 +78,12 @@ findLowerBound ::
   forall m.
   (MonadTypeChecker Builtin m) =>
   ConstraintContext Builtin ->
-  WHNFType Builtin ->
-  WHNFType Builtin ->
+  VType Builtin ->
+  VType Builtin ->
   m (MetaSet, Int)
 findLowerBound ctx value indexSize = go indexSize
   where
-    go :: WHNFType Builtin -> m (MetaSet, Int)
+    go :: VType Builtin -> m (MetaSet, Int)
     go = \case
       VMeta m _ ->
         return (MetaSet.singleton m, 0)

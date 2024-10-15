@@ -29,8 +29,8 @@ forceHead ::
   (MonadForce builtin m) =>
   MetaSubstitution builtin ->
   ConstraintContext builtin ->
-  WHNFValue builtin ->
-  m (WHNFValue builtin, MetaSet)
+  Value builtin ->
+  m (Value builtin, MetaSet)
 forceHead subst ctx expr = do
   (maybeForcedExpr, blockingMetas) <- forceExpr subst expr
   forcedExpr <- case maybeForcedExpr of
@@ -50,8 +50,8 @@ forceHead subst ctx expr = do
 forceExpr ::
   (MonadForce builtin m) =>
   MetaSubstitution builtin ->
-  WHNFValue builtin ->
-  m (Maybe (WHNFValue builtin), MetaSet)
+  Value builtin ->
+  m (Maybe (Value builtin), MetaSet)
 forceExpr subst = \case
   VMeta m spine -> forceMeta subst m spine
   VBuiltin b spine -> forceBuiltin subst b spine
@@ -61,8 +61,8 @@ forceMeta ::
   (MonadForce builtin m) =>
   MetaSubstitution builtin ->
   MetaID ->
-  WHNFSpine builtin ->
-  m (Maybe (WHNFValue builtin), MetaSet)
+  Spine builtin ->
+  m (Maybe (Value builtin), MetaSet)
 forceMeta subst m spine = do
   case MetaMap.lookup m subst of
     Just solution -> do
@@ -75,8 +75,8 @@ forceMeta subst m spine = do
 forceArg ::
   (MonadForce builtin m) =>
   MetaSubstitution builtin ->
-  WHNFArg builtin ->
-  m (Maybe (WHNFArg builtin), MetaSet)
+  VArg builtin ->
+  m (Maybe (VArg builtin), MetaSet)
 forceArg subst arg = do
   (maybeResult, blockingMetas) <- unpairArg <$> traverse (forceExpr subst) arg
   return (sequenceA maybeResult, blockingMetas)
@@ -85,8 +85,8 @@ forceBuiltin ::
   (MonadForce builtin m) =>
   MetaSubstitution builtin ->
   builtin ->
-  WHNFSpine builtin ->
-  m (Maybe (WHNFValue builtin), MetaSet)
+  Spine builtin ->
+  m (Maybe (Value builtin), MetaSet)
 forceBuiltin subst b spine = do
   logDebug MaxDetail $ prettyVerbose spine
   (maybeUnblockedSpine, blockingMetas) <- forceBuiltinSpine subst spine 0 (blockingArgs b)
@@ -96,10 +96,10 @@ forceBuiltin subst b spine = do
 forceBuiltinSpine ::
   (MonadForce builtin m) =>
   MetaSubstitution builtin ->
-  WHNFSpine builtin ->
+  Spine builtin ->
   Int ->
   [Int] ->
-  m (Maybe (WHNFSpine builtin), MetaSet)
+  m (Maybe (Spine builtin), MetaSet)
 forceBuiltinSpine _subst [] _currentIndex _blockingArgs = return (Nothing, mempty)
 forceBuiltinSpine _subst _args _currentIndex [] = return (Nothing, mempty)
 forceBuiltinSpine subst (arg : args) currentIndex (blockingIndex : blockingIndices) = do

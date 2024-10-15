@@ -16,22 +16,19 @@ unnormalise = quote mempty
 -----------------------------------------------------------------------------
 -- Quoting closures
 
-class QuoteClosure closure builtin where
-  quoteClosure :: Provenance -> Lv -> (GenericBinder expr, closure) -> Expr builtin
+quoteClosure :: (ConvertableBuiltin builtin1 builtin2) => Provenance -> Lv -> (GenericBinder expr, Closure builtin1) -> Expr builtin2
+quoteClosure p lv (binder, Closure env body) = do
+  -- Here we deliberately avoid using the standard `quote . eval` approach below
+  -- on the body of the lambda, in order to avoid the dependency cycles that
+  -- prevent us from printing during NBE.
+  --
+  -- normBody <- runReaderT (eval (liftEnvOverBinder p env) body) mempty
+  -- quotedBody <- quote (level + 1) normBody
+  let newEnv = extendEnvWithBound lv binder env
+  let subst = quoteCtx p (lv + 1) newEnv
+  substituteDB 0 subst (convertExprBuiltins body)
 
-instance (ConvertableBuiltin builtin1 builtin2) => QuoteClosure (WHNFClosure builtin1) builtin2 where
-  quoteClosure p lv (binder, WHNFClosure env body) = do
-    -- Here we deliberately avoid using the standard `quote . eval` approach below
-    -- on the body of the lambda, in order to avoid the dependency cycles that
-    -- prevent us from printing during NBE.
-    --
-    -- normBody <- runReaderT (eval (liftEnvOverBinder p env) body) mempty
-    -- quotedBody <- quote (level + 1) normBody
-    let newEnv = extendEnvWithBound lv binder env
-    let subst = quoteCtx p (lv + 1) newEnv
-    substituteDB 0 subst (convertExprBuiltins body)
-
-quoteCtx :: (ConvertableBuiltin builtin1 builtin2, QuoteClosure closure builtin2) => Provenance -> Lv -> BoundEnv closure builtin1 -> Substitution (Expr builtin2)
+quoteCtx :: (ConvertableBuiltin builtin1 builtin2) => Provenance -> Lv -> BoundEnv builtin1 -> Substitution (Expr builtin2)
 quoteCtx p level env i = case lookupIx env i of
   Nothing -> developerError $ "Mis-sized environment" <+> pretty (length env) <+> "when quoting variable" <+> pretty i
   Just (_binder, value) -> Right (quote p level value)
@@ -42,7 +39,7 @@ quoteCtx p level env i = case lookupIx env i of
 class Quote a b where
   quote :: Provenance -> Lv -> a -> b
 
-instance (ConvertableBuiltin builtin1 builtin2, QuoteClosure closure builtin2) => Quote (Value closure builtin1) (Expr builtin2) where
+instance (ConvertableBuiltin builtin1 builtin2) => Quote (Value builtin1) (Expr builtin2) where
   quote p level = \case
     VUniverse u -> Universe p u
     VMeta m spine -> quoteApp level p (Meta p m) spine

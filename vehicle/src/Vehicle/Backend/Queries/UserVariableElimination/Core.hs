@@ -39,7 +39,7 @@ import Vehicle.Verify.QueryFormat.Interface
 -- Network applications
 
 -- | A single application of a neural network to a set of arguments.
-type NetworkApplication = (Name, WHNFSpine Builtin)
+type NetworkApplication = (Name, Spine Builtin)
 
 -- | Bookkeeping information associated with an application that describes
 -- the variables and corresponding expressions that replace a given
@@ -48,7 +48,7 @@ data NetworkApplicationReplacement = NetworkApplicationReplacement
   { networkApp :: NetworkApplication,
     networkInfo :: NetworkContextInfo,
     inputVariable :: TensorVariable,
-    outputVarExpr :: WHNFValue Builtin,
+    outputVarExpr :: Value Builtin,
     outputVariable :: TensorVariable
   }
 
@@ -91,7 +91,7 @@ addUserVarToGlobalContext ::
   TensorVariable ->
   TensorShape ->
   GlobalCtx ->
-  (WHNFValue Builtin, GlobalCtx)
+  (Value Builtin, GlobalCtx)
 addUserVarToGlobalContext userVar shape GlobalCtx {..} = do
   -- Create the unreduced and reduced versions of the user variables.
   let currentLevel = Lv $ length globalBoundVarCtx
@@ -116,7 +116,7 @@ addNetworkApplicationToGlobalCtx ::
   NetworkApplication ->
   NetworkContextInfo ->
   GlobalCtx ->
-  m (WHNFValue Builtin, WHNFValue Builtin, GlobalCtx)
+  m (Value Builtin, Value Builtin, GlobalCtx)
 addNetworkApplicationToGlobalCtx app@(networkName, _) networkInfo GlobalCtx {..} = do
   let metaNetworkSoFar = LinkedHashMap.toList networkApplications
   let applicationNumber = length $ filter (\((name, _), _) -> name == networkName) metaNetworkSoFar
@@ -265,7 +265,7 @@ getGlobalBoundCtx = gets (variableCtxToBoundCtx . (fmap snd . LinkedHashMap.toLi
 getGlobalNamedBoundCtx :: (MonadQueryStructure m) => m NamedBoundCtx
 getGlobalNamedBoundCtx = toNamedBoundCtx <$> getGlobalBoundCtx
 
-prettyFriendlyInCtx :: (MonadQueryStructure m) => WHNFValue Builtin -> m (Doc a)
+prettyFriendlyInCtx :: (MonadQueryStructure m) => Value Builtin -> m (Doc a)
 prettyFriendlyInCtx e = do
   ctx <- toNamedBoundCtx <$> getGlobalBoundCtx
   return $ prettyFriendly (WithContext e ctx)
@@ -307,7 +307,7 @@ getTensorVariableInfo GlobalCtx {..} var = do
 getReducedVariablesFor :: GlobalCtx -> TensorVariable -> [ElementVariable]
 getReducedVariablesFor globalCtx var = elementVariables $ getTensorVariableInfo globalCtx var
 
-getReducedVariableExprFor :: (MonadState GlobalCtx m, MonadLogger m) => Lv -> m (Maybe (WHNFValue Builtin))
+getReducedVariableExprFor :: (MonadState GlobalCtx m, MonadLogger m) => Lv -> m (Maybe (Value Builtin))
 getReducedVariableExprFor lv = do
   ctx <- get
   var <- lookupVarByLevel lv
@@ -345,15 +345,15 @@ variableCtxToBoundCtx ctx = zipWith variableCtxToBoundCtxEntry [0 .. Ix (length 
 
 mkVVectorEquality ::
   TensorShape ->
-  WHNFValue Builtin ->
-  WHNFValue Builtin ->
-  WHNFValue Builtin
+  Value Builtin ->
+  Value Builtin ->
+  Value Builtin
 mkVVectorEquality dimensions e1 e2 = do
   mkVectorEquality (fmap (INatLiteral mempty) dimensions) (Arg mempty Explicit Relevant <$> [e1, e2])
   where
     -- Would definitely be nicer to somehow reuse the type-class resolution machinery here,
     -- but it seems incredibly complicated to setup...
-    mkVectorEquality :: [WHNFValue Builtin] -> WHNFSpine Builtin -> WHNFValue Builtin
+    mkVectorEquality :: [Value Builtin] -> Spine Builtin -> Value Builtin
     mkVectorEquality dims spine =
       let p = mempty
        in case dims of

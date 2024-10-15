@@ -27,22 +27,22 @@ type MonadUnblock m = MonadQueryStructure m
 
 data UnblockingActions m = UnblockingActions
   { unblockFreeVectorVar ::
-      (ReduceVectorVars -> WHNFValue Builtin -> m (WHNFValue Builtin)) ->
+      (ReduceVectorVars -> Value Builtin -> m (Value Builtin)) ->
       ReduceVectorVars ->
       Identifier ->
-      WHNFSpine Builtin ->
-      m (WHNFValue Builtin),
+      Spine Builtin ->
+      m (Value Builtin),
     unblockBoundVectorVar ::
       Lv ->
-      m (WHNFValue Builtin)
+      m (Value Builtin)
   }
 
 unblockBoolExpr ::
   (MonadUnblock m) =>
   NamedBoundCtx ->
   UnblockingActions m ->
-  WHNFValue Builtin ->
-  m (WHNFValue Builtin)
+  Value Builtin ->
+  m (Value Builtin)
 unblockBoolExpr ctx actions expr = do
   let exprDoc = prettyFriendly (WithContext expr ctx)
   logDebug MaxDetail $ line <> "Unblocking" <+> squotes exprDoc
@@ -65,8 +65,8 @@ type ReduceVectorVars = Bool
 unblockNonVector ::
   (MonadUnblock m) =>
   UnblockingActions m ->
-  WHNFValue Builtin ->
-  m (WHNFValue Builtin)
+  Value Builtin ->
+  m (Value Builtin)
 unblockNonVector actions expr = case expr of
   IBoolLiteral {} -> return expr
   IIndexLiteral {} -> return expr
@@ -102,8 +102,8 @@ unblockVector ::
   (MonadUnblock m) =>
   UnblockingActions m ->
   ReduceVectorVars ->
-  WHNFValue Builtin ->
-  m (WHNFValue Builtin)
+  Value Builtin ->
+  m (Value Builtin)
 unblockVector actions reduceVectorVars expr = case expr of
   VBoundVar v []
     | reduceVectorVars -> unblockBoundVectorVar actions v
@@ -129,11 +129,11 @@ unblockNonVectorOp2 ::
   (MonadUnblock m) =>
   UnblockingActions m ->
   BuiltinFunction ->
-  (WHNFValue Builtin -> WHNFSpine Builtin -> WHNFValue Builtin) ->
-  WHNFValue Builtin ->
-  WHNFValue Builtin ->
-  WHNFSpine Builtin ->
-  m (WHNFValue Builtin)
+  (Value Builtin -> Spine Builtin -> Value Builtin) ->
+  Value Builtin ->
+  Value Builtin ->
+  Spine Builtin ->
+  m (Value Builtin)
 unblockNonVectorOp2 actions b evalOp2 x y implArgs = do
   x' <- unblockNonVector actions x
   y' <- unblockNonVector actions y
@@ -146,22 +146,22 @@ unblockVectorOp2 ::
   UnblockingActions m ->
   ReduceVectorVars ->
   StdLibFunction ->
-  WHNFSpine Builtin ->
-  WHNFValue Builtin ->
-  WHNFValue Builtin ->
-  m (WHNFValue Builtin)
+  Spine Builtin ->
+  Value Builtin ->
+  Value Builtin ->
+  m (Value Builtin)
 unblockVectorOp2 actions reduceVectorVars = traverseVectorOp2 (unblockVector actions reduceVectorVars)
 
 unblockFoldVector ::
   (MonadUnblock m) =>
   UnblockingActions m ->
-  WHNFArg Builtin ->
-  WHNFArg Builtin ->
-  WHNFArg Builtin ->
-  WHNFValue Builtin ->
-  WHNFValue Builtin ->
-  WHNFValue Builtin ->
-  m (WHNFValue Builtin)
+  VArg Builtin ->
+  VArg Builtin ->
+  VArg Builtin ->
+  Value Builtin ->
+  Value Builtin ->
+  Value Builtin ->
+  m (Value Builtin)
 unblockFoldVector actions t1 t2 n f e xs = do
   xs' <- unblockVector actions True xs
   liftIf xs' $ \xs'' ->
@@ -170,12 +170,12 @@ unblockFoldVector actions t1 t2 n f e xs = do
 unblockMapVector ::
   (MonadUnblock m) =>
   UnblockingActions m ->
-  WHNFArg Builtin ->
-  WHNFArg Builtin ->
-  WHNFArg Builtin ->
-  WHNFValue Builtin ->
-  WHNFValue Builtin ->
-  m (WHNFValue Builtin)
+  VArg Builtin ->
+  VArg Builtin ->
+  VArg Builtin ->
+  Value Builtin ->
+  Value Builtin ->
+  m (Value Builtin)
 unblockMapVector actions t1 t2 n f xs = do
   xs' <- unblockVector actions True xs
   liftIf xs' $ \xs'' ->
@@ -184,14 +184,14 @@ unblockMapVector actions t1 t2 n f xs = do
 unblockZipWith ::
   (MonadUnblock m) =>
   UnblockingActions m ->
-  WHNFArg Builtin ->
-  WHNFArg Builtin ->
-  WHNFArg Builtin ->
-  WHNFArg Builtin ->
-  WHNFValue Builtin ->
-  WHNFValue Builtin ->
-  WHNFValue Builtin ->
-  m (WHNFValue Builtin)
+  VArg Builtin ->
+  VArg Builtin ->
+  VArg Builtin ->
+  VArg Builtin ->
+  Value Builtin ->
+  Value Builtin ->
+  Value Builtin ->
+  m (Value Builtin)
 unblockZipWith actions t1 t2 t3 n f xs ys = do
   xs' <- unblockVector actions True xs
   ys' <- unblockVector actions True ys
@@ -203,11 +203,11 @@ unblockAt ::
   forall m.
   (MonadUnblock m) =>
   UnblockingActions m ->
-  WHNFArg Builtin ->
-  WHNFArg Builtin ->
-  WHNFValue Builtin ->
-  WHNFValue Builtin ->
-  m (WHNFValue Builtin)
+  VArg Builtin ->
+  VArg Builtin ->
+  Value Builtin ->
+  Value Builtin ->
+  m (Value Builtin)
 unblockAt actions t n c i = case c of
   IVecLiteral {} -> do
     i' <- unblockNonVector actions i
@@ -225,17 +225,17 @@ unblockAt actions t n c i = case c of
   where
     appAt ::
       (MonadUnblock m) =>
-      WHNFValue Builtin ->
-      [(WHNFArg Builtin, WHNFArg Builtin, WHNFValue Builtin)] ->
-      WHNFValue Builtin ->
-      m (WHNFValue Builtin)
+      Value Builtin ->
+      [(VArg Builtin, VArg Builtin, Value Builtin)] ->
+      Value Builtin ->
+      m (Value Builtin)
     appAt f args index = normaliseApp f =<< traverse (appIndexToArg index) args
 
     appIndexToArg ::
       (MonadUnblock m) =>
-      WHNFValue Builtin ->
-      (WHNFArg Builtin, WHNFArg Builtin, WHNFValue Builtin) ->
-      m (WHNFArg Builtin)
+      Value Builtin ->
+      (VArg Builtin, VArg Builtin, Value Builtin) ->
+      m (VArg Builtin)
     appIndexToArg index (t', n', xs) =
       Arg mempty Explicit Relevant
         <$> unblockAt actions t' n' xs index
@@ -243,8 +243,8 @@ unblockAt actions t n c i = case c of
 unblockIndices ::
   (MonadUnblock m) =>
   UnblockingActions m ->
-  WHNFValue Builtin ->
-  m (WHNFValue Builtin)
+  Value Builtin ->
+  m (Value Builtin)
 unblockIndices actions n = do
   n' <- unblockNonVector actions n
   liftIf n' $ \n'' ->
@@ -253,9 +253,9 @@ unblockIndices actions n = do
 forceEval ::
   (MonadLogger m) =>
   BuiltinFunction ->
-  (WHNFValue Builtin -> WHNFSpine Builtin -> m (WHNFValue Builtin)) ->
-  WHNFSpine Builtin ->
-  m (WHNFValue Builtin)
+  (Value Builtin -> Spine Builtin -> m (Value Builtin)) ->
+  Spine Builtin ->
+  m (Value Builtin)
 forceEval b evalFn args = evalFn cannotEvalError $ filterOutIrrelevantArgs args
   where
     cannotEvalError = developerError $ "Unexpectedly blocked expression" <+> prettyVerbose (VBuiltin (BuiltinFunction b) args)
@@ -263,9 +263,9 @@ forceEval b evalFn args = evalFn cannotEvalError $ filterOutIrrelevantArgs args
 forceEvalSimple ::
   (MonadLogger m) =>
   BuiltinFunction ->
-  (WHNFValue Builtin -> WHNFSpine Builtin -> WHNFValue Builtin) ->
-  WHNFSpine Builtin ->
-  m (WHNFValue Builtin)
+  (Value Builtin -> Spine Builtin -> Value Builtin) ->
+  Spine Builtin ->
+  m (Value Builtin)
 forceEvalSimple b evalFn = forceEval b (\orig args -> return $ evalFn orig args)
 
 --------------------------------------------------------------------------------
@@ -274,8 +274,8 @@ forceEvalSimple b evalFn = forceEval b (\orig args -> return $ evalFn orig args)
 tryPurifyAssertion ::
   (MonadUnblock m) =>
   UnblockingActions m ->
-  WHNFValue Builtin ->
-  m (Either (WHNFValue Builtin) (WHNFValue Builtin, WHNFValue Builtin))
+  Value Builtin ->
+  m (Either (Value Builtin) (Value Builtin, Value Builtin))
 tryPurifyAssertion actions assertion = do
   preCtx <- getGlobalNamedBoundCtx
   let assertionDoc = prettyFriendly (WithContext assertion preCtx)
@@ -311,8 +311,8 @@ tryPurifyAssertion actions assertion = do
 purify ::
   (MonadUnblock m) =>
   UnblockingActions m ->
-  WHNFValue Builtin ->
-  m (WHNFValue Builtin)
+  Value Builtin ->
+  m (Value Builtin)
 purify actions expr = case expr of
   -- Rational operators
   IRatLiteral {} -> return expr
@@ -338,9 +338,9 @@ purify actions expr = case expr of
 purifyVectorLiteral ::
   (MonadUnblock m) =>
   UnblockingActions m ->
-  WHNFArg Builtin ->
-  WHNFSpine Builtin ->
-  m (WHNFValue Builtin)
+  VArg Builtin ->
+  Spine Builtin ->
+  m (Value Builtin)
 purifyVectorLiteral actions t xs = do
   xs' <- traverse (traverse (purify actions)) xs
   liftIfSpine xs' $ \xs'' ->
@@ -350,20 +350,20 @@ purifyVectorOp2 ::
   (MonadUnblock m) =>
   UnblockingActions m ->
   StdLibFunction ->
-  WHNFSpine Builtin ->
-  WHNFValue Builtin ->
-  WHNFValue Builtin ->
-  m (WHNFValue Builtin)
+  Spine Builtin ->
+  Value Builtin ->
+  Value Builtin ->
+  m (Value Builtin)
 purifyVectorOp2 actions = traverseVectorOp2 (purify actions)
 
 purifyRatOp2 ::
   (MonadUnblock m) =>
   UnblockingActions m ->
-  (WHNFValue Builtin -> WHNFValue Builtin -> WHNFValue Builtin) ->
-  (WHNFValue Builtin -> WHNFSpine Builtin -> WHNFValue Builtin) ->
-  WHNFValue Builtin ->
-  WHNFValue Builtin ->
-  m (WHNFValue Builtin)
+  (Value Builtin -> Value Builtin -> Value Builtin) ->
+  (Value Builtin -> Spine Builtin -> Value Builtin) ->
+  Value Builtin ->
+  Value Builtin ->
+  m (Value Builtin)
 purifyRatOp2 actions mkOp evalOp2 x y = do
   x' <- purify actions x
   y' <- purify actions y
@@ -374,8 +374,8 @@ purifyRatOp2 actions mkOp evalOp2 x y = do
 purifyNegRat ::
   (MonadUnblock m) =>
   UnblockingActions m ->
-  WHNFValue Builtin ->
-  m (WHNFValue Builtin)
+  Value Builtin ->
+  m (Value Builtin)
 purifyNegRat actions x = do
   x' <- purify actions x
   liftIf x' $ \x'' ->
@@ -383,12 +383,12 @@ purifyNegRat actions x = do
 
 traverseVectorOp2 ::
   (MonadUnblock m) =>
-  (WHNFValue Builtin -> m (WHNFValue Builtin)) ->
+  (Value Builtin -> m (Value Builtin)) ->
   StdLibFunction ->
-  WHNFSpine Builtin ->
-  WHNFValue Builtin ->
-  WHNFValue Builtin ->
-  m (WHNFValue Builtin)
+  Spine Builtin ->
+  Value Builtin ->
+  Value Builtin ->
+  m (Value Builtin)
 traverseVectorOp2 f fn spinePrefix xs ys = do
   xs' <- f xs
   ys' <- f ys
@@ -399,7 +399,7 @@ traverseVectorOp2 f fn spinePrefix xs ys = do
         (IVecLiteral {}, IVecLiteral {}) -> appHiddenStdlibDef fn newSpine
         _ -> return $ IStandardLib fn newSpine
 
-isRatTensor :: WHNFType Builtin -> Bool
+isRatTensor :: VType Builtin -> Bool
 isRatTensor = \case
   IRatType {} -> True
   IVectorType _ tElem _ -> isRatTensor tElem

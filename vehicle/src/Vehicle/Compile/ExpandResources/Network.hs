@@ -51,12 +51,12 @@ getNetworkType decl networkType = case normalised networkType of
         return networkDetails
   _ -> compilerDeveloperError "Should have caught the fact that the network type is not a function during type-checking"
   where
-    getTensorType :: InputOrOutput -> WHNFType Builtin -> m NetworkTensorType
+    getTensorType :: InputOrOutput -> VType Builtin -> m NetworkTensorType
     getTensorType io tensorType = do
       (baseType, dims) <- go True tensorType
       return $ NetworkTensorType baseType dims
       where
-        go :: Bool -> WHNFType Builtin -> m (NetworkBaseType, TensorShape)
+        go :: Bool -> VType Builtin -> m (NetworkBaseType, TensorShape)
         go topLevel = \case
           IVectorType _ tElem dim -> do
             d <- getTensorDimension io dim
@@ -69,7 +69,7 @@ getNetworkType decl networkType = case normalised networkType of
                 elemType <- getElementType t
                 return (elemType, [])
 
-    getTensorDimension :: InputOrOutput -> WHNFType Builtin -> m Int
+    getTensorDimension :: InputOrOutput -> VType Builtin -> m Int
     getTensorDimension io dim = case dim of
       INatLiteral _ n -> return n
       VFreeVar varIdent _ -> do
@@ -84,7 +84,7 @@ getNetworkType decl networkType = case normalised networkType of
               Just value -> getTensorDimension io value
       _ -> throwError $ NetworkTypeHasVariableSizeTensor decl networkType dim io
 
-    getElementType :: WHNFType Builtin -> m NetworkBaseType
+    getElementType :: VType Builtin -> m NetworkBaseType
     getElementType = \case
       IRatType {} -> return NetworkRatType
       _ -> typingError

@@ -17,7 +17,7 @@ import Vehicle.Prelude
 -- WHNF closures
 
 -- | Closures for weak-head normal-form.
-data WHNFClosure builtin = WHNFClosure (BoundEnv (WHNFClosure builtin) builtin) (Expr builtin)
+data Closure builtin = Closure (BoundEnv builtin) (Expr builtin)
   deriving (Eq, Show, Generic)
 
 -----------------------------------------------------------------------------
@@ -25,34 +25,30 @@ data WHNFClosure builtin = WHNFClosure (BoundEnv (WHNFClosure builtin) builtin) 
 
 -- | A normalised expression. Internal invariant is that it should always be
 -- well-typed.
-data Value closure builtin
+data Value builtin
   = VUniverse !UniverseLevel
-  | VMeta !MetaID !(Spine closure builtin)
-  | VFreeVar !Identifier !(Spine closure builtin)
-  | VBoundVar !Lv !(Spine closure builtin)
-  | VBuiltin !builtin !(Spine closure builtin)
-  | VLam !(VBinder closure builtin) !closure
-  | VPi !(VBinder closure builtin) !(Value closure builtin)
+  | VMeta !MetaID !(Spine builtin)
+  | VFreeVar !Identifier !(Spine builtin)
+  | VBoundVar !Lv !(Spine builtin)
+  | VBuiltin !builtin !(Spine builtin)
+  | VLam !(VBinder builtin) !(Closure builtin)
+  | VPi !(VBinder builtin) !(Value builtin)
   deriving (Eq, Show, Generic)
 
-type VType closure builtin = Value closure builtin
+type VType builtin = Value builtin
 
-type VArg closure builtin = GenericArg (Value closure builtin)
+type VArg builtin = GenericArg (Value builtin)
 
-type VBinder closure builtin = GenericBinder (Value closure builtin)
+type VBinder builtin = GenericBinder (Value builtin)
 
-type VDecl closure builtin = GenericDecl (Value closure builtin)
+type VDecl builtin = GenericDecl (Value builtin)
 
-type VProg closure builtin = GenericProg (Value closure builtin)
+type VProg builtin = GenericProg (Value builtin)
 
 -- | A list of arguments for an application that cannot be normalised.
-type Spine closure builtin = [VArg closure builtin]
+type Spine builtin = [VArg builtin]
 
-traverseSpine ::
-  (Monad m) =>
-  (Value strategy1 builtin1 -> m (Value strategy2 builtin2)) ->
-  Spine strategy1 builtin1 ->
-  m (Spine strategy2 builtin2)
+traverseSpine :: (Monad m) => (Value builtin1 -> m (Value builtin2)) -> Spine builtin1 -> m (Spine builtin2)
 traverseSpine f = traverse (traverse f)
 
 -----------------------------------------------------------------------------
@@ -61,11 +57,11 @@ traverseSpine f = traverse (traverse f)
 -- | The information stored for each variable in the environment. We choose
 -- to store the binder as it's a convenient mechanism for passing through
 -- name, relevance for pretty printing and debugging.
-type EnvEntry closure builtin = (GenericBinder (), Value closure builtin)
+type EnvEntry builtin = (GenericBinder (), Value builtin)
 
-type BoundEnv closure builtin = GenericBoundCtx (EnvEntry closure builtin)
+type BoundEnv builtin = GenericBoundCtx (EnvEntry builtin)
 
-emptyBoundEnv :: BoundEnv closure builtin
+emptyBoundEnv :: BoundEnv builtin
 emptyBoundEnv = mempty
 
 -- | Note that the `ctxSize` must come from the current context and not a
@@ -74,71 +70,50 @@ emptyBoundEnv = mempty
 extendEnvWithBound ::
   Lv ->
   GenericBinder expr ->
-  BoundEnv closure builtin ->
-  BoundEnv closure builtin
+  BoundEnv builtin ->
+  BoundEnv builtin
 extendEnvWithBound ctxSize = extendEnvWithDefined (VBoundVar ctxSize [])
 
 extendEnvWithDefined ::
-  Value closure builtin ->
+  Value builtin ->
   GenericBinder expr ->
-  BoundEnv closure builtin ->
-  BoundEnv closure builtin
+  BoundEnv builtin ->
+  BoundEnv builtin
 extendEnvWithDefined value binder env = (void binder, value) : env
 
-boundContextToEnv :: BoundCtx expr -> BoundEnv closure builtin
+boundContextToEnv :: BoundCtx expr -> BoundEnv builtin
 boundContextToEnv ctx = do
   let numberedCtx = zip ctx (reverse [0 .. Lv (length ctx - 1)])
   fmap (\(binder, lv) -> (void binder, VBoundVar lv [])) numberedCtx
 
 -- | Converts an environment to set of values suitable for printing
-cheatEnvToValues :: BoundEnv closure builtin -> GenericBoundCtx (Value closure builtin)
+cheatEnvToValues :: BoundEnv builtin -> GenericBoundCtx (Value builtin)
 cheatEnvToValues = fmap envEntryToValue
   where
-    envEntryToValue :: EnvEntry closure builtin -> Value closure builtin
+    envEntryToValue :: EnvEntry builtin -> Value builtin
     envEntryToValue (binder, value) = do
       let ident = stdlibIdentifier (fromMaybe "_" (nameOf binder) <> " =")
       VFreeVar ident [explicit value]
 
-type FreeEnv closure builtin = Map Identifier (VDecl closure builtin)
-
------------------------------------------------------------------------------
--- WHNF
-
-type WHNFValue builtin = Value (WHNFClosure builtin) builtin
-
-type WHNFType builtin = WHNFValue builtin
-
-type WHNFArg builtin = VArg (WHNFClosure builtin) builtin
-
-type WHNFBinder builtin = VBinder (WHNFClosure builtin) builtin
-
-type WHNFSpine builtin = Spine (WHNFClosure builtin) builtin
-
-type WHNFDecl builtin = GenericDecl (WHNFValue builtin)
-
-type WHNFProg builtin = GenericProg (WHNFValue builtin)
-
-type WHNFBoundEnv builtin = BoundEnv (WHNFClosure builtin) builtin
-
-type WHNFFreeEnv builtin = FreeEnv (WHNFClosure builtin) builtin
+type FreeEnv builtin = Map Identifier (VDecl builtin)
 
 -----------------------------------------------------------------------------
 -- Patterns
 
-isNTypeUniverse :: Value closure builtin -> Bool
+isNTypeUniverse :: Value builtin -> Bool
 isNTypeUniverse VUniverse {} = True
 isNTypeUniverse _ = False
 
-isNMeta :: Value closure builtin -> Bool
+isNMeta :: Value builtin -> Bool
 isNMeta VMeta {} = True
 isNMeta _ = False
 
-isVBoundVar :: Value closure builtin -> Bool
+isVBoundVar :: Value builtin -> Bool
 isVBoundVar = \case
   VBoundVar {} -> True
   _ -> False
 
-getNMeta :: Value closure builtin -> Maybe MetaID
+getNMeta :: Value builtin -> Maybe MetaID
 getNMeta (VMeta m _) = Just m
 getNMeta _ = Nothing
 
@@ -148,7 +123,7 @@ getNMeta _ = Nothing
 -- | A pair of an unnormalised and normalised expression.
 data GluedExpr builtin = Glued
   { unnormalised :: Expr builtin,
-    normalised :: WHNFValue builtin
+    normalised :: Value builtin
   }
   deriving (Show, Generic)
 
@@ -165,7 +140,7 @@ type GluedDecl builtin = GenericDecl (GluedExpr builtin)
 
 traverseNormalised ::
   (Monad m) =>
-  (WHNFValue builtin -> m (WHNFValue builtin)) ->
+  (Value builtin -> m (Value builtin)) ->
   GluedExpr builtin ->
   m (GluedExpr builtin)
 traverseNormalised f (Glued u n) = Glued u <$> f n
@@ -180,7 +155,7 @@ traverseUnnormalised f (Glued u n) = Glued <$> f u <*> pure n
 -----------------------------------------------------------------------------
 -- Instances
 
-instance (BuiltinHasStandardTypes builtin) => HasStandardTypes (Value closure builtin) where
+instance (BuiltinHasStandardTypes builtin) => HasStandardTypes (Value builtin) where
   mkType _p b = VBuiltin (mkBuiltinType b)
   getType e = case e of
     VBuiltin b args -> case getBuiltinType b of
@@ -188,7 +163,7 @@ instance (BuiltinHasStandardTypes builtin) => HasStandardTypes (Value closure bu
       Nothing -> Nothing
     _ -> Nothing
 
-instance (BuiltinHasStandardData builtin) => HasStandardData (Value closure builtin) where
+instance (BuiltinHasStandardData builtin) => HasStandardData (Value builtin) where
   mkFunction _p b = VBuiltin (mkBuiltinFunction b)
   getFunction e = case e of
     VBuiltin b args -> case getBuiltinFunction b of
@@ -214,49 +189,49 @@ instance (BuiltinHasStandardData builtin) => HasStandardData (Value closure buil
       Nothing -> Nothing
     _ -> Nothing
 
-instance (BuiltinHasBoolLiterals builtin) => HasBoolLits (Value closure builtin) where
+instance (BuiltinHasBoolLiterals builtin) => HasBoolLits (Value builtin) where
   getBoolLit = \case
     VBuiltin (getBoolBuiltinLit -> Just b) [] -> Just (mempty, b)
     _ -> Nothing
   mkBoolLit _p b = VBuiltin (mkBoolBuiltinLit b) []
 
-instance (BuiltinHasIndexLiterals builtin) => HasIndexLits (Value closure builtin) where
+instance (BuiltinHasIndexLiterals builtin) => HasIndexLits (Value builtin) where
   getIndexLit e = case e of
     VBuiltin (getIndexBuiltinLit -> Just n) [] -> Just (mempty, n)
     _ -> Nothing
   mkIndexLit _p x = VBuiltin (mkIndexBuiltinLit x) mempty
 
-instance (BuiltinHasNatLiterals builtin) => HasNatLits (Value closure builtin) where
+instance (BuiltinHasNatLiterals builtin) => HasNatLits (Value builtin) where
   getNatLit e = case e of
     VBuiltin (getNatBuiltinLit -> Just b) [] -> Just (mempty, b)
     _ -> Nothing
   mkNatLit _p x = VBuiltin (mkNatBuiltinLit x) mempty
 
-instance (BuiltinHasRatLiterals builtin) => HasRatLits (Value closure builtin) where
+instance (BuiltinHasRatLiterals builtin) => HasRatLits (Value builtin) where
   getRatLit e = case e of
     VBuiltin (getRatBuiltinLit -> Just b) [] -> Just (mempty, b)
     _ -> Nothing
   mkRatLit _p x = VBuiltin (mkRatBuiltinLit x) mempty
 
-instance (BuiltinHasRatType builtin) => HasRatType (Value closure builtin) where
+instance (BuiltinHasRatType builtin) => HasRatType (Value builtin) where
   getRatType e = case e of
     VBuiltin (isRatBuiltinType -> True) [] -> Just mempty
     _ -> Nothing
   mkRatType _p = VBuiltin mkRatBuiltinType []
 
-instance (BuiltinHasVecLiterals builtin) => HasStandardVecLits (Value closure builtin) where
+instance (BuiltinHasVecLiterals builtin) => HasStandardVecLits (Value builtin) where
   getHomoVector = \case
     VBuiltin (getVecBuiltinLit -> Just {}) (t : xs) -> Just (t, xs)
     _ -> Nothing
   mkHomoVector t xs = VBuiltin (mkVecBuiltinLit (length xs)) (t : xs)
 
-instance (BuiltinHasVecType builtin) => HasVecType (Value closure builtin) where
+instance (BuiltinHasVecType builtin) => HasVecType (Value builtin) where
   getVectorType e = case e of
     VBuiltin (isVecBuiltinType -> True) [t, n] -> Just (mempty, t, n)
     _ -> Nothing
   mkVectorType _p t n = VBuiltin mkVecBuiltinType [t, n]
 
-instance (BuiltinHasListLiterals builtin) => HasStandardListLits (Value closure builtin) where
+instance (BuiltinHasListLiterals builtin) => HasStandardListLits (Value builtin) where
   getNil = \case
     VBuiltin (isBuiltinNil -> True) [t] -> Just (mempty, t)
     _ -> Nothing
@@ -267,35 +242,35 @@ instance (BuiltinHasListLiterals builtin) => HasStandardListLits (Value closure 
     _ -> Nothing
   mkCons t x xs = VBuiltin mkBuiltinCons [t, x, xs]
 
-instance (BuiltinHasRatTensor builtin) => HasRatTensors (Value closure builtin) where
+instance (BuiltinHasRatTensor builtin) => HasRatTensors (Value builtin) where
   getRatTensorOp e = case e of
     VBuiltin (getRatTensorBuiltin -> Just op) args -> Just (op, args)
     _ -> Nothing
   mkRatTensorOp op = VBuiltin (mkRatTensorBuiltin op)
 
-instance (BuiltinHasBoolTensor builtin) => HasBoolTensors (Value closure builtin) where
+instance (BuiltinHasBoolTensor builtin) => HasBoolTensors (Value builtin) where
   getBoolTensorOp e = case e of
     VBuiltin (getBoolTensorBuiltin -> Just op) args -> Just (op, args)
     _ -> Nothing
   mkBoolTensorOp op = VBuiltin (mkBoolTensorBuiltin op)
 
-instance (BuiltinHasDimensionTypes builtin) => HasDimensionTypes (Value closure builtin) where
+instance (BuiltinHasDimensionTypes builtin) => HasDimensionTypes (Value builtin) where
   getDimensionTypeOp e = case e of
     VBuiltin (getDimensionTypeBuiltin -> Just op) args -> Just (op, args)
     _ -> Nothing
   mkDimensionTypeOp op = VBuiltin (mkDimensionTypeBuiltin op)
 
-instance (BuiltinHasDimensionData builtin) => HasDimensionData (Value closure builtin) where
+instance (BuiltinHasDimensionData builtin) => HasDimensionData (Value builtin) where
   getDimensionDataOp e = case e of
     VBuiltin (getDimensionDataBuiltin -> Just op) args -> Just (op, args)
     _ -> Nothing
   mkDimensionDataOp op = VBuiltin (mkDimensionDataBuiltin op)
 
 --------------------------------------------------------------------------------
--- WHNFValue Function patterns
+-- Value Function patterns
 
 -- TODO this should really be removed.
-pattern VBuiltinFunction :: (BuiltinHasStandardData builtin) => BuiltinFunction -> Spine closure builtin -> Value closure builtin
+pattern VBuiltinFunction :: (BuiltinHasStandardData builtin) => BuiltinFunction -> Spine builtin -> Value builtin
 pattern VBuiltinFunction f args <- VBuiltin (getBuiltinFunction -> Just f) args
   where
     VBuiltinFunction f args = VBuiltin (mkBuiltinFunction f) args

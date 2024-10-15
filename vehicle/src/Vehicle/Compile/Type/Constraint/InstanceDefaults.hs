@@ -108,8 +108,8 @@ getCandidates ctx (Resolve origin _ _ expr) = do
 getCandidatesFromArgs ::
   InstanceConstraintInfo Builtin ->
   Builtin ->
-  WHNFValue Builtin ->
-  WHNFSpine Builtin ->
+  Value Builtin ->
+  Spine Builtin ->
   [Candidate Builtin]
 getCandidatesFromArgs info tc solution ts = map mkCandidate (filter (isNMeta . argExpr) ts)
   where

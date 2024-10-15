@@ -9,7 +9,7 @@ type Arity = Int
 class HasArity a where
   arityOf :: a -> Arity
 
-arityFromVType :: Value closure builtin -> Arity
+arityFromVType :: Value builtin -> Arity
 arityFromVType = \case
   VPi _ r -> 1 + arityFromVType r
   _ -> 0
