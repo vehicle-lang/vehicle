@@ -89,7 +89,7 @@ applyReconstructionStep assignment@VariableAssignment {..} step = do
     ReconstructTensor isUserVariable shape var individualVars ->
       unreduceVariable isUserVariable shape var individualVars assignment
     SolveRationalEquality var eq -> do
-      logCompilerSection MidDetail ("Reintroducing Gaussian-eliminated variable" <+> quotePretty var) $ do
+      logCompilerSection MidDetail ("Reintroducing rational Gaussian-eliminated variable" <+> quotePretty var) $ do
         logDebug MidDetail $ "Using" <+> pretty step
         let errorOrValue = evaluateExpr eq variableValues
         case errorOrValue of
@@ -99,10 +99,10 @@ applyReconstructionStep assignment@VariableAssignment {..} step = do
             return $
               VariableAssignment
                 { variableValues = Map.insert var value variableValues,
-                  userVariables = var : userVariables
+                  userVariables = userVariables
                 }
     SolveTensorEquality var eq -> do
-      logCompilerSection MidDetail ("Reintroducing Gaussian-eliminated variable" <+> quotePretty var) $ do
+      logCompilerSection MidDetail ("Reintroducing tensor Gaussian-eliminated variable" <+> quotePretty var) $ do
         logDebug MidDetail $ "Using" <+> pretty step
         let errorOrValue = evaluateExpr eq variableValues
         case errorOrValue of
