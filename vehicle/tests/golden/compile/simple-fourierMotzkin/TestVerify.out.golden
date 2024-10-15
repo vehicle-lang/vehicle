@@ -1,4 +1,4 @@
 Verifying properties:
   underConstrainedVars [...........................................] 0/1 queries  underConstrainedVars [===========================================] 1/1 queries
     result: [92m🗸[m - witness found
-      x: [ -7.3, 7.5, -0.5, 2.25, 0.0 ]
+      x: [ -9.3, 9.5, -1.0, 3.0, 0.0 ]

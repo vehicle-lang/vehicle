@@ -11,6 +11,7 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    false,
                     [
                       2
                     ],
@@ -24,6 +25,7 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    false,
                     [
                       1
                     ],
@@ -54,6 +56,7 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    true,
                     [],
                     "x1",
                     [
@@ -82,6 +85,7 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    true,
                     [],
                     "x2",
                     [
@@ -140,6 +144,7 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    false,
                     [
                       2
                     ],
@@ -153,6 +158,7 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    false,
                     [
                       1
                     ],
@@ -183,6 +189,7 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    true,
                     [],
                     "x1",
                     [
@@ -211,6 +218,7 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    true,
                     [],
                     "x2",
                     [
@@ -269,6 +277,7 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    false,
                     [
                       2
                     ],
@@ -282,6 +291,7 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    false,
                     [
                       1
                     ],
@@ -312,6 +322,7 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    true,
                     [],
                     "x1",
                     [
@@ -340,6 +351,7 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    true,
                     [],
                     "x2",
                     [
@@ -398,6 +410,7 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    false,
                     [
                       2
                     ],
@@ -411,6 +424,7 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    false,
                     [
                       1
                     ],
@@ -441,6 +455,7 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    true,
                     [],
                     "x1",
                     [
@@ -469,6 +484,7 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    true,
                     [],
                     "x2",
                     [

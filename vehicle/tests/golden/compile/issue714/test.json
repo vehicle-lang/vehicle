@@ -1,6 +1,6 @@
 {
   "name": "MarabouVerify",
-  "run": "vehicle verify -s spec.vcl -v Marabou -n classify:network.onnx -d inputDataset:features.idx",
+  "run": "vehicle verify -s spec.vcl -v Marabou -n classify:network.onnx -d inputDataset:features.idx --logging MaxDetail",
   "needs": [
     "spec.vcl",
     "network.onnx",

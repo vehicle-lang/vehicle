@@ -11,6 +11,7 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    false,
                     [
                       30
                     ],
@@ -52,6 +53,7 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    false,
                     [
                       2
                     ],

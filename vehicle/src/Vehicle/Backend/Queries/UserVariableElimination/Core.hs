@@ -197,7 +197,7 @@ data UserVariableReconstructionStep
   = SolveTensorEquality TensorVariable (LinearExpr TensorVariable RationalTensor)
   | SolveRationalEquality UserElementVariable (LinearExpr ElementVariable Rational)
   | SolveRationalInequalities UserElementVariable (Bounds ElementVariable Rational)
-  | ReconstructTensor TensorShape TensorVariable [ElementVariable]
+  | ReconstructTensor Bool TensorShape TensorVariable [ElementVariable]
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData UserVariableReconstructionStep
@@ -211,7 +211,7 @@ instance Pretty UserVariableReconstructionStep where
     SolveTensorEquality v s -> "Equation:" <+> pretty v <+> "=" <+> pretty s
     SolveRationalEquality v s -> "Equation:" <+> pretty v <+> "=" <+> pretty s
     SolveRationalInequalities v s -> "Inequalities:" <+> pretty v <+> "bounded" <+> pretty s
-    ReconstructTensor _ v vs -> "Reconstruct:" <+> pretty v <+> "from" <+> prettyList vs
+    ReconstructTensor _ _ v vs -> "Reconstruct:" <+> pretty v <+> "from" <+> prettyList vs
 
 -- | The steps for transforming unreduced user variables into reduced network
 -- input and output varibles.

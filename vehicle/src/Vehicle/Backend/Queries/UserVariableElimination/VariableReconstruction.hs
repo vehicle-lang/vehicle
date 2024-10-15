@@ -1,10 +1,12 @@
 module Vehicle.Backend.Queries.UserVariableElimination.VariableReconstruction where
 
+import Control.Arrow (ArrowChoice (..))
 import Control.Monad (foldM)
 import Data.Foldable (foldlM)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
+import Data.Set qualified as Set
 import Data.Vector qualified as Vector
 import Vehicle.Backend.Queries.UserVariableElimination.Core
 import Vehicle.Compile.FourierMotzkinElimination
@@ -39,7 +41,8 @@ reconstructUserVars queryVariableMapping steps networkVariableAssignment =
 
 data MixedVariableAssignment = VariableAssignment
   { tensorVariables :: Map TensorVariable RationalTensor,
-    rationalVariables :: Map ElementVariable Rational
+    rationalVariables :: Map ElementVariable Rational,
+    userVariables :: [TensorVariable]
   }
 
 instance Pretty MixedVariableAssignment where
@@ -63,7 +66,7 @@ lookupRationalVariables ::
   MixedVariableAssignment ->
   [ElementVariable] ->
   Either ElementVariable [Rational]
-lookupRationalVariables assignment = foldM op []
+lookupRationalVariables assignment vars = right reverse $ foldM op [] vars
   where
     op values var = case lookupRationalVariable assignment var of
       Nothing -> Left var
@@ -79,7 +82,8 @@ createInitialAssignment queryVariableMapping (QueryVariableAssignment valuesByQu
   let valuesByNetworkVar = Map.mapKeys mapQueryVariable valuesByQueryVar
   VariableAssignment
     { rationalVariables = valuesByNetworkVar,
-      tensorVariables = mempty
+      tensorVariables = mempty,
+      userVariables = mempty
     }
 
 applyReconstructionStep ::
@@ -90,8 +94,8 @@ applyReconstructionStep ::
 applyReconstructionStep assignment@VariableAssignment {..} step = do
   logDebug MidDetail $ "Variable assignment:" <> line <> indent 2 (pretty assignment)
   case step of
-    ReconstructTensor shape var individualVars ->
-      unreduceVariable shape var individualVars assignment
+    ReconstructTensor isUserVariable shape var individualVars ->
+      unreduceVariable isUserVariable shape var individualVars assignment
     SolveRationalEquality var eq -> do
       logCompilerSection MidDetail ("Reintroducing Gaussian-eliminated variable" <+> quotePretty var) $ do
         logDebug MidDetail $ "Using" <+> pretty step
@@ -116,6 +120,7 @@ applyReconstructionStep assignment@VariableAssignment {..} step = do
             return $
               VariableAssignment
                 { tensorVariables = Map.insert var value tensorVariables,
+                  userVariables = var : userVariables,
                   ..
                 }
     SolveRationalInequalities var solution -> do
@@ -135,12 +140,13 @@ applyReconstructionStep assignment@VariableAssignment {..} step = do
 -- assignment.
 unreduceVariable ::
   (MonadLogger m) =>
+  Bool ->
   TensorShape ->
   TensorVariable ->
   [ElementVariable] ->
   MixedVariableAssignment ->
   m MixedVariableAssignment
-unreduceVariable shape variable reducedVariables assignment@VariableAssignment {..} = do
+unreduceVariable isUserVariable shape variable reducedVariables assignment@VariableAssignment {..} = do
   let variableResults = lookupRationalVariables assignment reducedVariables
   case variableResults of
     Left missingVar ->
@@ -156,11 +162,14 @@ unreduceVariable shape variable reducedVariables assignment@VariableAssignment {
       let unreducedValue = Tensor shape (Vector.fromList values)
       return $
         assignment
-          { tensorVariables = Map.insert variable unreducedValue tensorVariables
+          { tensorVariables = Map.insert variable unreducedValue tensorVariables,
+            userVariables = if isUserVariable then variable : userVariables else userVariables
           }
 
 createFinalAssignment ::
   MixedVariableAssignment ->
   UserVariableAssignment
 createFinalAssignment (VariableAssignment {..}) = do
-  UserVariableAssignment $ Map.toList tensorVariables
+  let userVarSet = Set.fromList userVariables
+  let userVarAssignments = Map.filterWithKey (\v _ -> v `Set.member` userVarSet) tensorVariables
+  UserVariableAssignment $ Map.toList userVarAssignments

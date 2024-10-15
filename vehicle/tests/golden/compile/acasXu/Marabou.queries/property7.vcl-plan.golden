@@ -11,6 +11,7 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    false,
                     [
                       5
                     ],
@@ -27,6 +28,7 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    false,
                     [
                       5
                     ],
@@ -133,6 +135,7 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    true,
                     [
                       5
                     ],
@@ -225,6 +228,7 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    false,
                     [
                       5
                     ],
@@ -241,6 +245,7 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    false,
                     [
                       5
                     ],
@@ -347,6 +352,7 @@
                 {
                   "tag": "ReconstructTensor",
                   "contents": [
+                    true,
                     [
                       5
                     ],

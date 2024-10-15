@@ -96,7 +96,7 @@ solveTensorVariable userTensorVar solutions = \case
     globalCtx <- get
     let varInfo = getTensorVariableInfo globalCtx userTensorVar
     let userRationalVars = elementVariables varInfo
-    let step = ReconstructTensor (tensorVariableShape varInfo) userTensorVar userRationalVars
+    let step = ReconstructTensor True (tensorVariableShape varInfo) userTensorVar userRationalVars
     let initial = mkSinglePartition (step : solutions, NonTrivial tree)
     foldlM (solveExists fromRationalAssertion solveRationalVariable) initial userRationalVars
   Inequalities {} ->

@@ -94,7 +94,7 @@ reconstructNetworkTensorVars GlobalCtx {..} solutions = do
   let networkVariables = Set.fromList $ concatMap (\r -> [inputVariable r, outputVariable r]) networkApplicationInfos
   let allTensorVars = filter (\(var, _) -> var `Set.member` networkVariables) $ HashMap.toList tensorVariableInfo
   let networkTensorVars = sortOn fst allTensorVars
-  let mkStep (var, TensorVariableInfo {..}) = ReconstructTensor tensorVariableShape var elementVariables
+  let mkStep (var, TensorVariableInfo {..}) = ReconstructTensor False tensorVariableShape var elementVariables
   return $ foldr (\v -> (mkStep v :)) solutions networkTensorVars
 
 --------------------------------------------------------------------------------

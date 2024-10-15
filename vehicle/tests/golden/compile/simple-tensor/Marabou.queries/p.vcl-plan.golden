@@ -15,6 +15,7 @@
                       {
                         "tag": "ReconstructTensor",
                         "contents": [
+                          false,
                           [
                             2,
                             2
@@ -31,6 +32,7 @@
                       {
                         "tag": "ReconstructTensor",
                         "contents": [
+                          false,
                           [
                             2,
                             2
@@ -127,6 +129,7 @@
                       {
                         "tag": "ReconstructTensor",
                         "contents": [
+                          false,
                           [
                             2,
                             2
@@ -143,6 +146,7 @@
                       {
                         "tag": "ReconstructTensor",
                         "contents": [
+                          false,
                           [
                             2,
                             2
@@ -239,6 +243,7 @@
                       {
                         "tag": "ReconstructTensor",
                         "contents": [
+                          false,
                           [
                             2,
                             2
@@ -255,6 +260,7 @@
                       {
                         "tag": "ReconstructTensor",
                         "contents": [
+                          false,
                           [
                             2,
                             2
@@ -351,6 +357,7 @@
                       {
                         "tag": "ReconstructTensor",
                         "contents": [
+                          false,
                           [
                             2,
                             2
@@ -367,6 +374,7 @@
                       {
                         "tag": "ReconstructTensor",
                         "contents": [
+                          false,
                           [
                             2,
                             2
