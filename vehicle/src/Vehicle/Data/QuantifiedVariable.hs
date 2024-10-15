@@ -1,8 +1,19 @@
-module Vehicle.Data.QuantifiedVariable where
+module Vehicle.Data.QuantifiedVariable
+  ( Variable,
+    makeTensorVariable,
+    reduceTensorVariable,
+    TensorVariableInfo (..),
+    TensorVariable,
+    UserElementVariable,
+    ElementVariable,
+    NetworkElementVariable,
+    prettyRationalAsFloat,
+    UserVariableAssignment (..),
+  )
+where
 
-import Control.DeepSeq (NFData)
-import Data.Aeson (FromJSON, FromJSONKey, ToJSON, ToJSONKey)
-import Data.Hashable (Hashable)
+import Data.Aeson (FromJSON, ToJSON)
+import Data.Text qualified as Text
 import GHC.Generics (Generic)
 import Numeric (showFFloat)
 import Vehicle.Data.Builtin.Core
@@ -17,12 +28,9 @@ import Vehicle.Prelude
 
 -- | A variable. Empty indices means that is a tensor variable, otherwise
 -- its a variable representing an element of a tensor.
-data Variable = Variable
-  { varName :: Name,
-    varIndices :: TensorIndices
-  }
-  deriving (Show, Eq, Ord, Generic)
+type Variable = Name
 
+{-
 instance NFData Variable
 
 instance Hashable Variable
@@ -36,11 +44,11 @@ instance ToJSONKey Variable
 instance FromJSONKey Variable
 
 instance Pretty Variable where
-  pretty Variable {..} =
-    pretty varName <> pretty (showTensorIndices varIndices)
+  pretty Variable{..} = pretty varName
+-}
 
 makeTensorVariable :: Name -> Variable
-makeTensorVariable name = Variable name mempty
+makeTensorVariable = id
 
 reduceTensorVariable ::
   Lv ->
@@ -50,7 +58,9 @@ reduceTensorVariable ::
 reduceTensorVariable dbLevel var shape = runSupply (go shape []) [dbLevel ..]
   where
     createRatVar :: TensorIndices -> Lv -> ([(Lv, ElementVariable)], WHNFValue Builtin)
-    createRatVar indices lv = ([(lv, Variable (varName var) indices)], VBoundVar lv [])
+    createRatVar indices lv = do
+      let name = var <> Text.pack (showTensorIndices indices)
+      ([(lv, name)], VBoundVar lv [])
 
     go ::
       TensorShape ->

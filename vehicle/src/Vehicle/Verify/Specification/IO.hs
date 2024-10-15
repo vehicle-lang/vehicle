@@ -27,7 +27,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map qualified as Map
 import Data.Monoid (Sum (..))
 import Data.Set qualified as Set (difference, fromList, null)
-import Data.Text (intercalate, pack, unpack)
+import Data.Text (intercalate, pack)
 import Data.Text.IO qualified as TIO
 import Data.Text.Lazy qualified as LazyText
 import Data.Vector qualified as BoxedVector
@@ -43,7 +43,7 @@ import Vehicle.Backend.Agda.Interact (writeResultToFile)
 import Vehicle.Backend.Queries.UserVariableElimination.VariableReconstruction (reconstructUserVars)
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Code.BooleanExpr
-import Vehicle.Data.QuantifiedVariable (UserVariableAssignment (..), varName)
+import Vehicle.Data.QuantifiedVariable (UserVariableAssignment (..))
 import Vehicle.Data.Tensor (Tensor (..))
 import Vehicle.Prelude.IO qualified as VIO (MonadStdIO (writeStdoutLn))
 import Vehicle.Verify.Core
@@ -525,7 +525,7 @@ outputPropertyResult verificationCache address result@(PropertyStatus status) = 
       let witnessFolder = verificationCache </> layoutAsString (pretty address) <> "-assignments"
       liftIO $ createDirectoryIfMissing True witnessFolder
       forM_ assignments $ \(var, Tensor varDims value) -> do
-        let file = witnessFolder </> unpack (varName var)
+        let file = witnessFolder </> show var
         let dims = Vector.fromList varDims
         -- TODO got to be a better way to do this conversion...
         let unboxedVector = Vector.fromList $ BoxedVector.toList (fmap realToFrac value)

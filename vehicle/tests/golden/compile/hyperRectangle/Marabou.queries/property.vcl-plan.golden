@@ -14,191 +14,38 @@
                     [
                       30
                     ],
-                    {
-                      "varName": "classifier₀[input]",
-                      "varIndices": []
-                    },
+                    "classifier₀[input]",
                     [
-                      {
-                        "varName": "classifier₀[input]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "classifier₀[input]",
-                        "varIndices": [
-                          1
-                        ]
-                      },
-                      {
-                        "varName": "classifier₀[input]",
-                        "varIndices": [
-                          2
-                        ]
-                      },
-                      {
-                        "varName": "classifier₀[input]",
-                        "varIndices": [
-                          3
-                        ]
-                      },
-                      {
-                        "varName": "classifier₀[input]",
-                        "varIndices": [
-                          4
-                        ]
-                      },
-                      {
-                        "varName": "classifier₀[input]",
-                        "varIndices": [
-                          5
-                        ]
-                      },
-                      {
-                        "varName": "classifier₀[input]",
-                        "varIndices": [
-                          6
-                        ]
-                      },
-                      {
-                        "varName": "classifier₀[input]",
-                        "varIndices": [
-                          7
-                        ]
-                      },
-                      {
-                        "varName": "classifier₀[input]",
-                        "varIndices": [
-                          8
-                        ]
-                      },
-                      {
-                        "varName": "classifier₀[input]",
-                        "varIndices": [
-                          9
-                        ]
-                      },
-                      {
-                        "varName": "classifier₀[input]",
-                        "varIndices": [
-                          10
-                        ]
-                      },
-                      {
-                        "varName": "classifier₀[input]",
-                        "varIndices": [
-                          11
-                        ]
-                      },
-                      {
-                        "varName": "classifier₀[input]",
-                        "varIndices": [
-                          12
-                        ]
-                      },
-                      {
-                        "varName": "classifier₀[input]",
-                        "varIndices": [
-                          13
-                        ]
-                      },
-                      {
-                        "varName": "classifier₀[input]",
-                        "varIndices": [
-                          14
-                        ]
-                      },
-                      {
-                        "varName": "classifier₀[input]",
-                        "varIndices": [
-                          15
-                        ]
-                      },
-                      {
-                        "varName": "classifier₀[input]",
-                        "varIndices": [
-                          16
-                        ]
-                      },
-                      {
-                        "varName": "classifier₀[input]",
-                        "varIndices": [
-                          17
-                        ]
-                      },
-                      {
-                        "varName": "classifier₀[input]",
-                        "varIndices": [
-                          18
-                        ]
-                      },
-                      {
-                        "varName": "classifier₀[input]",
-                        "varIndices": [
-                          19
-                        ]
-                      },
-                      {
-                        "varName": "classifier₀[input]",
-                        "varIndices": [
-                          20
-                        ]
-                      },
-                      {
-                        "varName": "classifier₀[input]",
-                        "varIndices": [
-                          21
-                        ]
-                      },
-                      {
-                        "varName": "classifier₀[input]",
-                        "varIndices": [
-                          22
-                        ]
-                      },
-                      {
-                        "varName": "classifier₀[input]",
-                        "varIndices": [
-                          23
-                        ]
-                      },
-                      {
-                        "varName": "classifier₀[input]",
-                        "varIndices": [
-                          24
-                        ]
-                      },
-                      {
-                        "varName": "classifier₀[input]",
-                        "varIndices": [
-                          25
-                        ]
-                      },
-                      {
-                        "varName": "classifier₀[input]",
-                        "varIndices": [
-                          26
-                        ]
-                      },
-                      {
-                        "varName": "classifier₀[input]",
-                        "varIndices": [
-                          27
-                        ]
-                      },
-                      {
-                        "varName": "classifier₀[input]",
-                        "varIndices": [
-                          28
-                        ]
-                      },
-                      {
-                        "varName": "classifier₀[input]",
-                        "varIndices": [
-                          29
-                        ]
-                      }
+                      "classifier₀[input]!0",
+                      "classifier₀[input]!1",
+                      "classifier₀[input]!2",
+                      "classifier₀[input]!3",
+                      "classifier₀[input]!4",
+                      "classifier₀[input]!5",
+                      "classifier₀[input]!6",
+                      "classifier₀[input]!7",
+                      "classifier₀[input]!8",
+                      "classifier₀[input]!9",
+                      "classifier₀[input]!10",
+                      "classifier₀[input]!11",
+                      "classifier₀[input]!12",
+                      "classifier₀[input]!13",
+                      "classifier₀[input]!14",
+                      "classifier₀[input]!15",
+                      "classifier₀[input]!16",
+                      "classifier₀[input]!17",
+                      "classifier₀[input]!18",
+                      "classifier₀[input]!19",
+                      "classifier₀[input]!20",
+                      "classifier₀[input]!21",
+                      "classifier₀[input]!22",
+                      "classifier₀[input]!23",
+                      "classifier₀[input]!24",
+                      "classifier₀[input]!25",
+                      "classifier₀[input]!26",
+                      "classifier₀[input]!27",
+                      "classifier₀[input]!28",
+                      "classifier₀[input]!29"
                     ]
                   ]
                 },
@@ -208,33 +55,17 @@
                     [
                       2
                     ],
-                    {
-                      "varName": "classifier₀[output]",
-                      "varIndices": []
-                    },
+                    "classifier₀[output]",
                     [
-                      {
-                        "varName": "classifier₀[output]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "classifier₀[output]",
-                        "varIndices": [
-                          1
-                        ]
-                      }
+                      "classifier₀[output]!0",
+                      "classifier₀[output]!1"
                     ]
                   ]
                 },
                 {
                   "tag": "SolveTensorEquality",
                   "contents": [
-                    {
-                      "varName": "x",
-                      "varIndices": []
-                    },
+                    "x",
                     {
                       "constantValue": {
                         "value": [
@@ -364,18 +195,12 @@
                           30
                         ]
                       },
-                      "coefficients": [
-                        [
-                          {
-                            "varName": "classifier₀[input]",
-                            "varIndices": []
-                          },
-                          {
-                            "numerator": 1,
-                            "denominator": 1
-                          }
-                        ]
-                      ]
+                      "coefficients": {
+                        "classifier₀[input]": {
+                          "numerator": 1,
+                          "denominator": 1
+                        }
+                      }
                     }
                   ]
                 }
@@ -383,291 +208,131 @@
               "queryVariableMapping": [
                 [
                   "x0",
-                  {
-                    "varName": "classifier₀[input]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "classifier₀[input]!0"
                 ],
                 [
                   "x1",
-                  {
-                    "varName": "classifier₀[input]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "classifier₀[input]!1"
                 ],
                 [
                   "x2",
-                  {
-                    "varName": "classifier₀[input]",
-                    "varIndices": [
-                      2
-                    ]
-                  }
+                  "classifier₀[input]!2"
                 ],
                 [
                   "x3",
-                  {
-                    "varName": "classifier₀[input]",
-                    "varIndices": [
-                      3
-                    ]
-                  }
+                  "classifier₀[input]!3"
                 ],
                 [
                   "x4",
-                  {
-                    "varName": "classifier₀[input]",
-                    "varIndices": [
-                      4
-                    ]
-                  }
+                  "classifier₀[input]!4"
                 ],
                 [
                   "x5",
-                  {
-                    "varName": "classifier₀[input]",
-                    "varIndices": [
-                      5
-                    ]
-                  }
+                  "classifier₀[input]!5"
                 ],
                 [
                   "x6",
-                  {
-                    "varName": "classifier₀[input]",
-                    "varIndices": [
-                      6
-                    ]
-                  }
+                  "classifier₀[input]!6"
                 ],
                 [
                   "x7",
-                  {
-                    "varName": "classifier₀[input]",
-                    "varIndices": [
-                      7
-                    ]
-                  }
+                  "classifier₀[input]!7"
                 ],
                 [
                   "x8",
-                  {
-                    "varName": "classifier₀[input]",
-                    "varIndices": [
-                      8
-                    ]
-                  }
+                  "classifier₀[input]!8"
                 ],
                 [
                   "x9",
-                  {
-                    "varName": "classifier₀[input]",
-                    "varIndices": [
-                      9
-                    ]
-                  }
+                  "classifier₀[input]!9"
                 ],
                 [
                   "x10",
-                  {
-                    "varName": "classifier₀[input]",
-                    "varIndices": [
-                      10
-                    ]
-                  }
+                  "classifier₀[input]!10"
                 ],
                 [
                   "x11",
-                  {
-                    "varName": "classifier₀[input]",
-                    "varIndices": [
-                      11
-                    ]
-                  }
+                  "classifier₀[input]!11"
                 ],
                 [
                   "x12",
-                  {
-                    "varName": "classifier₀[input]",
-                    "varIndices": [
-                      12
-                    ]
-                  }
+                  "classifier₀[input]!12"
                 ],
                 [
                   "x13",
-                  {
-                    "varName": "classifier₀[input]",
-                    "varIndices": [
-                      13
-                    ]
-                  }
+                  "classifier₀[input]!13"
                 ],
                 [
                   "x14",
-                  {
-                    "varName": "classifier₀[input]",
-                    "varIndices": [
-                      14
-                    ]
-                  }
+                  "classifier₀[input]!14"
                 ],
                 [
                   "x15",
-                  {
-                    "varName": "classifier₀[input]",
-                    "varIndices": [
-                      15
-                    ]
-                  }
+                  "classifier₀[input]!15"
                 ],
                 [
                   "x16",
-                  {
-                    "varName": "classifier₀[input]",
-                    "varIndices": [
-                      16
-                    ]
-                  }
+                  "classifier₀[input]!16"
                 ],
                 [
                   "x17",
-                  {
-                    "varName": "classifier₀[input]",
-                    "varIndices": [
-                      17
-                    ]
-                  }
+                  "classifier₀[input]!17"
                 ],
                 [
                   "x18",
-                  {
-                    "varName": "classifier₀[input]",
-                    "varIndices": [
-                      18
-                    ]
-                  }
+                  "classifier₀[input]!18"
                 ],
                 [
                   "x19",
-                  {
-                    "varName": "classifier₀[input]",
-                    "varIndices": [
-                      19
-                    ]
-                  }
+                  "classifier₀[input]!19"
                 ],
                 [
                   "x20",
-                  {
-                    "varName": "classifier₀[input]",
-                    "varIndices": [
-                      20
-                    ]
-                  }
+                  "classifier₀[input]!20"
                 ],
                 [
                   "x21",
-                  {
-                    "varName": "classifier₀[input]",
-                    "varIndices": [
-                      21
-                    ]
-                  }
+                  "classifier₀[input]!21"
                 ],
                 [
                   "x22",
-                  {
-                    "varName": "classifier₀[input]",
-                    "varIndices": [
-                      22
-                    ]
-                  }
+                  "classifier₀[input]!22"
                 ],
                 [
                   "x23",
-                  {
-                    "varName": "classifier₀[input]",
-                    "varIndices": [
-                      23
-                    ]
-                  }
+                  "classifier₀[input]!23"
                 ],
                 [
                   "x24",
-                  {
-                    "varName": "classifier₀[input]",
-                    "varIndices": [
-                      24
-                    ]
-                  }
+                  "classifier₀[input]!24"
                 ],
                 [
                   "x25",
-                  {
-                    "varName": "classifier₀[input]",
-                    "varIndices": [
-                      25
-                    ]
-                  }
+                  "classifier₀[input]!25"
                 ],
                 [
                   "x26",
-                  {
-                    "varName": "classifier₀[input]",
-                    "varIndices": [
-                      26
-                    ]
-                  }
+                  "classifier₀[input]!26"
                 ],
                 [
                   "x27",
-                  {
-                    "varName": "classifier₀[input]",
-                    "varIndices": [
-                      27
-                    ]
-                  }
+                  "classifier₀[input]!27"
                 ],
                 [
                   "x28",
-                  {
-                    "varName": "classifier₀[input]",
-                    "varIndices": [
-                      28
-                    ]
-                  }
+                  "classifier₀[input]!28"
                 ],
                 [
                   "x29",
-                  {
-                    "varName": "classifier₀[input]",
-                    "varIndices": [
-                      29
-                    ]
-                  }
+                  "classifier₀[input]!29"
                 ],
                 [
                   "y0",
-                  {
-                    "varName": "classifier₀[output]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "classifier₀[output]!0"
                 ],
                 [
                   "y1",
-                  {
-                    "varName": "classifier₀[output]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "classifier₀[output]!1"
                 ]
               ],
               "queryAddress": [

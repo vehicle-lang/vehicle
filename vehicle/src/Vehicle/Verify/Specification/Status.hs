@@ -88,8 +88,8 @@ prettyNameAndStatus name verified = do
   pretty (statusSymbol verified) <+> pretty name
 
 prettyUserVariableAssignment :: (TensorVariable, RationalTensor) -> Doc a
-prettyUserVariableAssignment (Variable {..}, variableValue) =
-  pretty varName <> ":" <+> pretty variableValue
+prettyUserVariableAssignment (var, variableValue) =
+  pretty var <> ":" <+> pretty variableValue
 
 assignmentToExpr :: TensorShape -> [Rational] -> Expr Builtin
 assignmentToExpr [] [x] = IRatLiteral mempty (toRational x)

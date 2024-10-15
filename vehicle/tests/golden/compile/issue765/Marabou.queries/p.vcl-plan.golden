@@ -14,23 +14,10 @@
                     [
                       2
                     ],
-                    {
-                      "varName": "f₀[input]",
-                      "varIndices": []
-                    },
+                    "f₀[input]",
                     [
-                      {
-                        "varName": "f₀[input]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "f₀[input]",
-                        "varIndices": [
-                          1
-                        ]
-                      }
+                      "f₀[input]!0",
+                      "f₀[input]!1"
                     ]
                   ]
                 },
@@ -40,17 +27,9 @@
                     [
                       1
                     ],
-                    {
-                      "varName": "f₀[output]",
-                      "varIndices": []
-                    },
+                    "f₀[output]",
                     [
-                      {
-                        "varName": "f₀[output]",
-                        "varIndices": [
-                          0
-                        ]
-                      }
+                      "f₀[output]!0"
                     ]
                   ]
                 }
@@ -58,30 +37,15 @@
               "queryVariableMapping": [
                 [
                   "x0",
-                  {
-                    "varName": "f₀[input]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "f₀[input]!0"
                 ],
                 [
                   "x1",
-                  {
-                    "varName": "f₀[input]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "f₀[input]!1"
                 ],
                 [
                   "y0",
-                  {
-                    "varName": "f₀[output]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "f₀[output]!0"
                 ]
               ],
               "queryAddress": [

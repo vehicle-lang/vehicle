@@ -14,23 +14,10 @@
                     [
                       2
                     ],
-                    {
-                      "varName": "decode₀[input]",
-                      "varIndices": []
-                    },
+                    "decode₀[input]",
                     [
-                      {
-                        "varName": "decode₀[input]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[input]",
-                        "varIndices": [
-                          1
-                        ]
-                      }
+                      "decode₀[input]!0",
+                      "decode₀[input]!1"
                     ]
                   ]
                 },
@@ -40,41 +27,13 @@
                     [
                       5
                     ],
-                    {
-                      "varName": "decode₀[output]",
-                      "varIndices": []
-                    },
+                    "decode₀[output]",
                     [
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          1
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          2
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          3
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          4
-                        ]
-                      }
+                      "decode₀[output]!0",
+                      "decode₀[output]!1",
+                      "decode₀[output]!2",
+                      "decode₀[output]!3",
+                      "decode₀[output]!4"
                     ]
                   ]
                 },
@@ -84,41 +43,13 @@
                     [
                       5
                     ],
-                    {
-                      "varName": "encode₀[input]",
-                      "varIndices": []
-                    },
+                    "encode₀[input]",
                     [
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          1
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          2
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          3
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          4
-                        ]
-                      }
+                      "encode₀[input]!0",
+                      "encode₀[input]!1",
+                      "encode₀[input]!2",
+                      "encode₀[input]!3",
+                      "encode₀[input]!4"
                     ]
                   ]
                 },
@@ -128,33 +59,17 @@
                     [
                       2
                     ],
-                    {
-                      "varName": "encode₀[output]",
-                      "varIndices": []
-                    },
+                    "encode₀[output]",
                     [
-                      {
-                        "varName": "encode₀[output]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[output]",
-                        "varIndices": [
-                          1
-                        ]
-                      }
+                      "encode₀[output]!0",
+                      "encode₀[output]!1"
                     ]
                   ]
                 },
                 {
                   "tag": "SolveTensorEquality",
                   "contents": [
-                    {
-                      "varName": "x",
-                      "varIndices": []
-                    },
+                    "x",
                     {
                       "constantValue": {
                         "value": [
@@ -184,18 +99,12 @@
                           5
                         ]
                       },
-                      "coefficients": [
-                        [
-                          {
-                            "varName": "encode₀[input]",
-                            "varIndices": []
-                          },
-                          {
-                            "numerator": 1,
-                            "denominator": 1
-                          }
-                        ]
-                      ]
+                      "coefficients": {
+                        "encode₀[input]": {
+                          "numerator": 1,
+                          "denominator": 1
+                        }
+                      }
                     }
                   ]
                 }
@@ -203,129 +112,59 @@
               "queryVariableMapping": [
                 [
                   "x0",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "encode₀[input]!0"
                 ],
                 [
                   "x1",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "encode₀[input]!1"
                 ],
                 [
                   "x2",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      2
-                    ]
-                  }
+                  "encode₀[input]!2"
                 ],
                 [
                   "x3",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      3
-                    ]
-                  }
+                  "encode₀[input]!3"
                 ],
                 [
                   "x4",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      4
-                    ]
-                  }
+                  "encode₀[input]!4"
                 ],
                 [
                   "x5",
-                  {
-                    "varName": "decode₀[input]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "decode₀[input]!0"
                 ],
                 [
                   "x6",
-                  {
-                    "varName": "decode₀[input]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "decode₀[input]!1"
                 ],
                 [
                   "y0",
-                  {
-                    "varName": "encode₀[output]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "encode₀[output]!0"
                 ],
                 [
                   "y1",
-                  {
-                    "varName": "encode₀[output]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "encode₀[output]!1"
                 ],
                 [
                   "y2",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "decode₀[output]!0"
                 ],
                 [
                   "y3",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "decode₀[output]!1"
                 ],
                 [
                   "y4",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      2
-                    ]
-                  }
+                  "decode₀[output]!2"
                 ],
                 [
                   "y5",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      3
-                    ]
-                  }
+                  "decode₀[output]!3"
                 ],
                 [
                   "y6",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      4
-                    ]
-                  }
+                  "decode₀[output]!4"
                 ]
               ],
               "queryAddress": [
@@ -387,23 +226,10 @@
                     [
                       2
                     ],
-                    {
-                      "varName": "decode₀[input]",
-                      "varIndices": []
-                    },
+                    "decode₀[input]",
                     [
-                      {
-                        "varName": "decode₀[input]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[input]",
-                        "varIndices": [
-                          1
-                        ]
-                      }
+                      "decode₀[input]!0",
+                      "decode₀[input]!1"
                     ]
                   ]
                 },
@@ -413,41 +239,13 @@
                     [
                       5
                     ],
-                    {
-                      "varName": "decode₀[output]",
-                      "varIndices": []
-                    },
+                    "decode₀[output]",
                     [
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          1
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          2
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          3
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          4
-                        ]
-                      }
+                      "decode₀[output]!0",
+                      "decode₀[output]!1",
+                      "decode₀[output]!2",
+                      "decode₀[output]!3",
+                      "decode₀[output]!4"
                     ]
                   ]
                 },
@@ -457,41 +255,13 @@
                     [
                       5
                     ],
-                    {
-                      "varName": "encode₀[input]",
-                      "varIndices": []
-                    },
+                    "encode₀[input]",
                     [
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          1
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          2
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          3
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          4
-                        ]
-                      }
+                      "encode₀[input]!0",
+                      "encode₀[input]!1",
+                      "encode₀[input]!2",
+                      "encode₀[input]!3",
+                      "encode₀[input]!4"
                     ]
                   ]
                 },
@@ -501,33 +271,17 @@
                     [
                       2
                     ],
-                    {
-                      "varName": "encode₀[output]",
-                      "varIndices": []
-                    },
+                    "encode₀[output]",
                     [
-                      {
-                        "varName": "encode₀[output]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[output]",
-                        "varIndices": [
-                          1
-                        ]
-                      }
+                      "encode₀[output]!0",
+                      "encode₀[output]!1"
                     ]
                   ]
                 },
                 {
                   "tag": "SolveTensorEquality",
                   "contents": [
-                    {
-                      "varName": "x",
-                      "varIndices": []
-                    },
+                    "x",
                     {
                       "constantValue": {
                         "value": [
@@ -557,18 +311,12 @@
                           5
                         ]
                       },
-                      "coefficients": [
-                        [
-                          {
-                            "varName": "encode₀[input]",
-                            "varIndices": []
-                          },
-                          {
-                            "numerator": 1,
-                            "denominator": 1
-                          }
-                        ]
-                      ]
+                      "coefficients": {
+                        "encode₀[input]": {
+                          "numerator": 1,
+                          "denominator": 1
+                        }
+                      }
                     }
                   ]
                 }
@@ -576,129 +324,59 @@
               "queryVariableMapping": [
                 [
                   "x0",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "encode₀[input]!0"
                 ],
                 [
                   "x1",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "encode₀[input]!1"
                 ],
                 [
                   "x2",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      2
-                    ]
-                  }
+                  "encode₀[input]!2"
                 ],
                 [
                   "x3",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      3
-                    ]
-                  }
+                  "encode₀[input]!3"
                 ],
                 [
                   "x4",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      4
-                    ]
-                  }
+                  "encode₀[input]!4"
                 ],
                 [
                   "x5",
-                  {
-                    "varName": "decode₀[input]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "decode₀[input]!0"
                 ],
                 [
                   "x6",
-                  {
-                    "varName": "decode₀[input]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "decode₀[input]!1"
                 ],
                 [
                   "y0",
-                  {
-                    "varName": "encode₀[output]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "encode₀[output]!0"
                 ],
                 [
                   "y1",
-                  {
-                    "varName": "encode₀[output]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "encode₀[output]!1"
                 ],
                 [
                   "y2",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "decode₀[output]!0"
                 ],
                 [
                   "y3",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "decode₀[output]!1"
                 ],
                 [
                   "y4",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      2
-                    ]
-                  }
+                  "decode₀[output]!2"
                 ],
                 [
                   "y5",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      3
-                    ]
-                  }
+                  "decode₀[output]!3"
                 ],
                 [
                   "y6",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      4
-                    ]
-                  }
+                  "decode₀[output]!4"
                 ]
               ],
               "queryAddress": [
@@ -760,23 +438,10 @@
                     [
                       2
                     ],
-                    {
-                      "varName": "decode₀[input]",
-                      "varIndices": []
-                    },
+                    "decode₀[input]",
                     [
-                      {
-                        "varName": "decode₀[input]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[input]",
-                        "varIndices": [
-                          1
-                        ]
-                      }
+                      "decode₀[input]!0",
+                      "decode₀[input]!1"
                     ]
                   ]
                 },
@@ -786,41 +451,13 @@
                     [
                       5
                     ],
-                    {
-                      "varName": "decode₀[output]",
-                      "varIndices": []
-                    },
+                    "decode₀[output]",
                     [
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          1
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          2
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          3
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          4
-                        ]
-                      }
+                      "decode₀[output]!0",
+                      "decode₀[output]!1",
+                      "decode₀[output]!2",
+                      "decode₀[output]!3",
+                      "decode₀[output]!4"
                     ]
                   ]
                 },
@@ -830,41 +467,13 @@
                     [
                       5
                     ],
-                    {
-                      "varName": "encode₀[input]",
-                      "varIndices": []
-                    },
+                    "encode₀[input]",
                     [
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          1
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          2
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          3
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          4
-                        ]
-                      }
+                      "encode₀[input]!0",
+                      "encode₀[input]!1",
+                      "encode₀[input]!2",
+                      "encode₀[input]!3",
+                      "encode₀[input]!4"
                     ]
                   ]
                 },
@@ -874,33 +483,17 @@
                     [
                       2
                     ],
-                    {
-                      "varName": "encode₀[output]",
-                      "varIndices": []
-                    },
+                    "encode₀[output]",
                     [
-                      {
-                        "varName": "encode₀[output]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[output]",
-                        "varIndices": [
-                          1
-                        ]
-                      }
+                      "encode₀[output]!0",
+                      "encode₀[output]!1"
                     ]
                   ]
                 },
                 {
                   "tag": "SolveTensorEquality",
                   "contents": [
-                    {
-                      "varName": "x",
-                      "varIndices": []
-                    },
+                    "x",
                     {
                       "constantValue": {
                         "value": [
@@ -930,18 +523,12 @@
                           5
                         ]
                       },
-                      "coefficients": [
-                        [
-                          {
-                            "varName": "encode₀[input]",
-                            "varIndices": []
-                          },
-                          {
-                            "numerator": 1,
-                            "denominator": 1
-                          }
-                        ]
-                      ]
+                      "coefficients": {
+                        "encode₀[input]": {
+                          "numerator": 1,
+                          "denominator": 1
+                        }
+                      }
                     }
                   ]
                 }
@@ -949,129 +536,59 @@
               "queryVariableMapping": [
                 [
                   "x0",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "encode₀[input]!0"
                 ],
                 [
                   "x1",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "encode₀[input]!1"
                 ],
                 [
                   "x2",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      2
-                    ]
-                  }
+                  "encode₀[input]!2"
                 ],
                 [
                   "x3",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      3
-                    ]
-                  }
+                  "encode₀[input]!3"
                 ],
                 [
                   "x4",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      4
-                    ]
-                  }
+                  "encode₀[input]!4"
                 ],
                 [
                   "x5",
-                  {
-                    "varName": "decode₀[input]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "decode₀[input]!0"
                 ],
                 [
                   "x6",
-                  {
-                    "varName": "decode₀[input]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "decode₀[input]!1"
                 ],
                 [
                   "y0",
-                  {
-                    "varName": "encode₀[output]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "encode₀[output]!0"
                 ],
                 [
                   "y1",
-                  {
-                    "varName": "encode₀[output]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "encode₀[output]!1"
                 ],
                 [
                   "y2",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "decode₀[output]!0"
                 ],
                 [
                   "y3",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "decode₀[output]!1"
                 ],
                 [
                   "y4",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      2
-                    ]
-                  }
+                  "decode₀[output]!2"
                 ],
                 [
                   "y5",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      3
-                    ]
-                  }
+                  "decode₀[output]!3"
                 ],
                 [
                   "y6",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      4
-                    ]
-                  }
+                  "decode₀[output]!4"
                 ]
               ],
               "queryAddress": [
@@ -1133,23 +650,10 @@
                     [
                       2
                     ],
-                    {
-                      "varName": "decode₀[input]",
-                      "varIndices": []
-                    },
+                    "decode₀[input]",
                     [
-                      {
-                        "varName": "decode₀[input]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[input]",
-                        "varIndices": [
-                          1
-                        ]
-                      }
+                      "decode₀[input]!0",
+                      "decode₀[input]!1"
                     ]
                   ]
                 },
@@ -1159,41 +663,13 @@
                     [
                       5
                     ],
-                    {
-                      "varName": "decode₀[output]",
-                      "varIndices": []
-                    },
+                    "decode₀[output]",
                     [
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          1
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          2
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          3
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          4
-                        ]
-                      }
+                      "decode₀[output]!0",
+                      "decode₀[output]!1",
+                      "decode₀[output]!2",
+                      "decode₀[output]!3",
+                      "decode₀[output]!4"
                     ]
                   ]
                 },
@@ -1203,41 +679,13 @@
                     [
                       5
                     ],
-                    {
-                      "varName": "encode₀[input]",
-                      "varIndices": []
-                    },
+                    "encode₀[input]",
                     [
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          1
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          2
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          3
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          4
-                        ]
-                      }
+                      "encode₀[input]!0",
+                      "encode₀[input]!1",
+                      "encode₀[input]!2",
+                      "encode₀[input]!3",
+                      "encode₀[input]!4"
                     ]
                   ]
                 },
@@ -1247,33 +695,17 @@
                     [
                       2
                     ],
-                    {
-                      "varName": "encode₀[output]",
-                      "varIndices": []
-                    },
+                    "encode₀[output]",
                     [
-                      {
-                        "varName": "encode₀[output]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[output]",
-                        "varIndices": [
-                          1
-                        ]
-                      }
+                      "encode₀[output]!0",
+                      "encode₀[output]!1"
                     ]
                   ]
                 },
                 {
                   "tag": "SolveTensorEquality",
                   "contents": [
-                    {
-                      "varName": "x",
-                      "varIndices": []
-                    },
+                    "x",
                     {
                       "constantValue": {
                         "value": [
@@ -1303,18 +735,12 @@
                           5
                         ]
                       },
-                      "coefficients": [
-                        [
-                          {
-                            "varName": "encode₀[input]",
-                            "varIndices": []
-                          },
-                          {
-                            "numerator": 1,
-                            "denominator": 1
-                          }
-                        ]
-                      ]
+                      "coefficients": {
+                        "encode₀[input]": {
+                          "numerator": 1,
+                          "denominator": 1
+                        }
+                      }
                     }
                   ]
                 }
@@ -1322,129 +748,59 @@
               "queryVariableMapping": [
                 [
                   "x0",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "encode₀[input]!0"
                 ],
                 [
                   "x1",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "encode₀[input]!1"
                 ],
                 [
                   "x2",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      2
-                    ]
-                  }
+                  "encode₀[input]!2"
                 ],
                 [
                   "x3",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      3
-                    ]
-                  }
+                  "encode₀[input]!3"
                 ],
                 [
                   "x4",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      4
-                    ]
-                  }
+                  "encode₀[input]!4"
                 ],
                 [
                   "x5",
-                  {
-                    "varName": "decode₀[input]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "decode₀[input]!0"
                 ],
                 [
                   "x6",
-                  {
-                    "varName": "decode₀[input]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "decode₀[input]!1"
                 ],
                 [
                   "y0",
-                  {
-                    "varName": "encode₀[output]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "encode₀[output]!0"
                 ],
                 [
                   "y1",
-                  {
-                    "varName": "encode₀[output]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "encode₀[output]!1"
                 ],
                 [
                   "y2",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "decode₀[output]!0"
                 ],
                 [
                   "y3",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "decode₀[output]!1"
                 ],
                 [
                   "y4",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      2
-                    ]
-                  }
+                  "decode₀[output]!2"
                 ],
                 [
                   "y5",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      3
-                    ]
-                  }
+                  "decode₀[output]!3"
                 ],
                 [
                   "y6",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      4
-                    ]
-                  }
+                  "decode₀[output]!4"
                 ]
               ],
               "queryAddress": [
@@ -1506,23 +862,10 @@
                     [
                       2
                     ],
-                    {
-                      "varName": "decode₀[input]",
-                      "varIndices": []
-                    },
+                    "decode₀[input]",
                     [
-                      {
-                        "varName": "decode₀[input]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[input]",
-                        "varIndices": [
-                          1
-                        ]
-                      }
+                      "decode₀[input]!0",
+                      "decode₀[input]!1"
                     ]
                   ]
                 },
@@ -1532,41 +875,13 @@
                     [
                       5
                     ],
-                    {
-                      "varName": "decode₀[output]",
-                      "varIndices": []
-                    },
+                    "decode₀[output]",
                     [
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          1
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          2
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          3
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          4
-                        ]
-                      }
+                      "decode₀[output]!0",
+                      "decode₀[output]!1",
+                      "decode₀[output]!2",
+                      "decode₀[output]!3",
+                      "decode₀[output]!4"
                     ]
                   ]
                 },
@@ -1576,41 +891,13 @@
                     [
                       5
                     ],
-                    {
-                      "varName": "encode₀[input]",
-                      "varIndices": []
-                    },
+                    "encode₀[input]",
                     [
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          1
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          2
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          3
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          4
-                        ]
-                      }
+                      "encode₀[input]!0",
+                      "encode₀[input]!1",
+                      "encode₀[input]!2",
+                      "encode₀[input]!3",
+                      "encode₀[input]!4"
                     ]
                   ]
                 },
@@ -1620,33 +907,17 @@
                     [
                       2
                     ],
-                    {
-                      "varName": "encode₀[output]",
-                      "varIndices": []
-                    },
+                    "encode₀[output]",
                     [
-                      {
-                        "varName": "encode₀[output]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[output]",
-                        "varIndices": [
-                          1
-                        ]
-                      }
+                      "encode₀[output]!0",
+                      "encode₀[output]!1"
                     ]
                   ]
                 },
                 {
                   "tag": "SolveTensorEquality",
                   "contents": [
-                    {
-                      "varName": "x",
-                      "varIndices": []
-                    },
+                    "x",
                     {
                       "constantValue": {
                         "value": [
@@ -1676,18 +947,12 @@
                           5
                         ]
                       },
-                      "coefficients": [
-                        [
-                          {
-                            "varName": "encode₀[input]",
-                            "varIndices": []
-                          },
-                          {
-                            "numerator": 1,
-                            "denominator": 1
-                          }
-                        ]
-                      ]
+                      "coefficients": {
+                        "encode₀[input]": {
+                          "numerator": 1,
+                          "denominator": 1
+                        }
+                      }
                     }
                   ]
                 }
@@ -1695,129 +960,59 @@
               "queryVariableMapping": [
                 [
                   "x0",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "encode₀[input]!0"
                 ],
                 [
                   "x1",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "encode₀[input]!1"
                 ],
                 [
                   "x2",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      2
-                    ]
-                  }
+                  "encode₀[input]!2"
                 ],
                 [
                   "x3",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      3
-                    ]
-                  }
+                  "encode₀[input]!3"
                 ],
                 [
                   "x4",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      4
-                    ]
-                  }
+                  "encode₀[input]!4"
                 ],
                 [
                   "x5",
-                  {
-                    "varName": "decode₀[input]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "decode₀[input]!0"
                 ],
                 [
                   "x6",
-                  {
-                    "varName": "decode₀[input]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "decode₀[input]!1"
                 ],
                 [
                   "y0",
-                  {
-                    "varName": "encode₀[output]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "encode₀[output]!0"
                 ],
                 [
                   "y1",
-                  {
-                    "varName": "encode₀[output]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "encode₀[output]!1"
                 ],
                 [
                   "y2",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "decode₀[output]!0"
                 ],
                 [
                   "y3",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "decode₀[output]!1"
                 ],
                 [
                   "y4",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      2
-                    ]
-                  }
+                  "decode₀[output]!2"
                 ],
                 [
                   "y5",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      3
-                    ]
-                  }
+                  "decode₀[output]!3"
                 ],
                 [
                   "y6",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      4
-                    ]
-                  }
+                  "decode₀[output]!4"
                 ]
               ],
               "queryAddress": [
@@ -1879,23 +1074,10 @@
                     [
                       2
                     ],
-                    {
-                      "varName": "decode₀[input]",
-                      "varIndices": []
-                    },
+                    "decode₀[input]",
                     [
-                      {
-                        "varName": "decode₀[input]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[input]",
-                        "varIndices": [
-                          1
-                        ]
-                      }
+                      "decode₀[input]!0",
+                      "decode₀[input]!1"
                     ]
                   ]
                 },
@@ -1905,41 +1087,13 @@
                     [
                       5
                     ],
-                    {
-                      "varName": "decode₀[output]",
-                      "varIndices": []
-                    },
+                    "decode₀[output]",
                     [
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          1
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          2
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          3
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          4
-                        ]
-                      }
+                      "decode₀[output]!0",
+                      "decode₀[output]!1",
+                      "decode₀[output]!2",
+                      "decode₀[output]!3",
+                      "decode₀[output]!4"
                     ]
                   ]
                 },
@@ -1949,41 +1103,13 @@
                     [
                       5
                     ],
-                    {
-                      "varName": "encode₀[input]",
-                      "varIndices": []
-                    },
+                    "encode₀[input]",
                     [
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          1
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          2
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          3
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          4
-                        ]
-                      }
+                      "encode₀[input]!0",
+                      "encode₀[input]!1",
+                      "encode₀[input]!2",
+                      "encode₀[input]!3",
+                      "encode₀[input]!4"
                     ]
                   ]
                 },
@@ -1993,33 +1119,17 @@
                     [
                       2
                     ],
-                    {
-                      "varName": "encode₀[output]",
-                      "varIndices": []
-                    },
+                    "encode₀[output]",
                     [
-                      {
-                        "varName": "encode₀[output]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[output]",
-                        "varIndices": [
-                          1
-                        ]
-                      }
+                      "encode₀[output]!0",
+                      "encode₀[output]!1"
                     ]
                   ]
                 },
                 {
                   "tag": "SolveTensorEquality",
                   "contents": [
-                    {
-                      "varName": "x",
-                      "varIndices": []
-                    },
+                    "x",
                     {
                       "constantValue": {
                         "value": [
@@ -2049,18 +1159,12 @@
                           5
                         ]
                       },
-                      "coefficients": [
-                        [
-                          {
-                            "varName": "encode₀[input]",
-                            "varIndices": []
-                          },
-                          {
-                            "numerator": 1,
-                            "denominator": 1
-                          }
-                        ]
-                      ]
+                      "coefficients": {
+                        "encode₀[input]": {
+                          "numerator": 1,
+                          "denominator": 1
+                        }
+                      }
                     }
                   ]
                 }
@@ -2068,129 +1172,59 @@
               "queryVariableMapping": [
                 [
                   "x0",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "encode₀[input]!0"
                 ],
                 [
                   "x1",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "encode₀[input]!1"
                 ],
                 [
                   "x2",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      2
-                    ]
-                  }
+                  "encode₀[input]!2"
                 ],
                 [
                   "x3",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      3
-                    ]
-                  }
+                  "encode₀[input]!3"
                 ],
                 [
                   "x4",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      4
-                    ]
-                  }
+                  "encode₀[input]!4"
                 ],
                 [
                   "x5",
-                  {
-                    "varName": "decode₀[input]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "decode₀[input]!0"
                 ],
                 [
                   "x6",
-                  {
-                    "varName": "decode₀[input]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "decode₀[input]!1"
                 ],
                 [
                   "y0",
-                  {
-                    "varName": "encode₀[output]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "encode₀[output]!0"
                 ],
                 [
                   "y1",
-                  {
-                    "varName": "encode₀[output]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "encode₀[output]!1"
                 ],
                 [
                   "y2",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "decode₀[output]!0"
                 ],
                 [
                   "y3",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "decode₀[output]!1"
                 ],
                 [
                   "y4",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      2
-                    ]
-                  }
+                  "decode₀[output]!2"
                 ],
                 [
                   "y5",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      3
-                    ]
-                  }
+                  "decode₀[output]!3"
                 ],
                 [
                   "y6",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      4
-                    ]
-                  }
+                  "decode₀[output]!4"
                 ]
               ],
               "queryAddress": [
@@ -2252,23 +1286,10 @@
                     [
                       2
                     ],
-                    {
-                      "varName": "decode₀[input]",
-                      "varIndices": []
-                    },
+                    "decode₀[input]",
                     [
-                      {
-                        "varName": "decode₀[input]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[input]",
-                        "varIndices": [
-                          1
-                        ]
-                      }
+                      "decode₀[input]!0",
+                      "decode₀[input]!1"
                     ]
                   ]
                 },
@@ -2278,41 +1299,13 @@
                     [
                       5
                     ],
-                    {
-                      "varName": "decode₀[output]",
-                      "varIndices": []
-                    },
+                    "decode₀[output]",
                     [
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          1
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          2
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          3
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          4
-                        ]
-                      }
+                      "decode₀[output]!0",
+                      "decode₀[output]!1",
+                      "decode₀[output]!2",
+                      "decode₀[output]!3",
+                      "decode₀[output]!4"
                     ]
                   ]
                 },
@@ -2322,41 +1315,13 @@
                     [
                       5
                     ],
-                    {
-                      "varName": "encode₀[input]",
-                      "varIndices": []
-                    },
+                    "encode₀[input]",
                     [
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          1
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          2
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          3
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          4
-                        ]
-                      }
+                      "encode₀[input]!0",
+                      "encode₀[input]!1",
+                      "encode₀[input]!2",
+                      "encode₀[input]!3",
+                      "encode₀[input]!4"
                     ]
                   ]
                 },
@@ -2366,33 +1331,17 @@
                     [
                       2
                     ],
-                    {
-                      "varName": "encode₀[output]",
-                      "varIndices": []
-                    },
+                    "encode₀[output]",
                     [
-                      {
-                        "varName": "encode₀[output]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[output]",
-                        "varIndices": [
-                          1
-                        ]
-                      }
+                      "encode₀[output]!0",
+                      "encode₀[output]!1"
                     ]
                   ]
                 },
                 {
                   "tag": "SolveTensorEquality",
                   "contents": [
-                    {
-                      "varName": "x",
-                      "varIndices": []
-                    },
+                    "x",
                     {
                       "constantValue": {
                         "value": [
@@ -2422,18 +1371,12 @@
                           5
                         ]
                       },
-                      "coefficients": [
-                        [
-                          {
-                            "varName": "encode₀[input]",
-                            "varIndices": []
-                          },
-                          {
-                            "numerator": 1,
-                            "denominator": 1
-                          }
-                        ]
-                      ]
+                      "coefficients": {
+                        "encode₀[input]": {
+                          "numerator": 1,
+                          "denominator": 1
+                        }
+                      }
                     }
                   ]
                 }
@@ -2441,129 +1384,59 @@
               "queryVariableMapping": [
                 [
                   "x0",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "encode₀[input]!0"
                 ],
                 [
                   "x1",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "encode₀[input]!1"
                 ],
                 [
                   "x2",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      2
-                    ]
-                  }
+                  "encode₀[input]!2"
                 ],
                 [
                   "x3",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      3
-                    ]
-                  }
+                  "encode₀[input]!3"
                 ],
                 [
                   "x4",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      4
-                    ]
-                  }
+                  "encode₀[input]!4"
                 ],
                 [
                   "x5",
-                  {
-                    "varName": "decode₀[input]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "decode₀[input]!0"
                 ],
                 [
                   "x6",
-                  {
-                    "varName": "decode₀[input]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "decode₀[input]!1"
                 ],
                 [
                   "y0",
-                  {
-                    "varName": "encode₀[output]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "encode₀[output]!0"
                 ],
                 [
                   "y1",
-                  {
-                    "varName": "encode₀[output]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "encode₀[output]!1"
                 ],
                 [
                   "y2",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "decode₀[output]!0"
                 ],
                 [
                   "y3",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "decode₀[output]!1"
                 ],
                 [
                   "y4",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      2
-                    ]
-                  }
+                  "decode₀[output]!2"
                 ],
                 [
                   "y5",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      3
-                    ]
-                  }
+                  "decode₀[output]!3"
                 ],
                 [
                   "y6",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      4
-                    ]
-                  }
+                  "decode₀[output]!4"
                 ]
               ],
               "queryAddress": [
@@ -2625,23 +1498,10 @@
                     [
                       2
                     ],
-                    {
-                      "varName": "decode₀[input]",
-                      "varIndices": []
-                    },
+                    "decode₀[input]",
                     [
-                      {
-                        "varName": "decode₀[input]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[input]",
-                        "varIndices": [
-                          1
-                        ]
-                      }
+                      "decode₀[input]!0",
+                      "decode₀[input]!1"
                     ]
                   ]
                 },
@@ -2651,41 +1511,13 @@
                     [
                       5
                     ],
-                    {
-                      "varName": "decode₀[output]",
-                      "varIndices": []
-                    },
+                    "decode₀[output]",
                     [
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          1
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          2
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          3
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          4
-                        ]
-                      }
+                      "decode₀[output]!0",
+                      "decode₀[output]!1",
+                      "decode₀[output]!2",
+                      "decode₀[output]!3",
+                      "decode₀[output]!4"
                     ]
                   ]
                 },
@@ -2695,41 +1527,13 @@
                     [
                       5
                     ],
-                    {
-                      "varName": "encode₀[input]",
-                      "varIndices": []
-                    },
+                    "encode₀[input]",
                     [
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          1
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          2
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          3
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          4
-                        ]
-                      }
+                      "encode₀[input]!0",
+                      "encode₀[input]!1",
+                      "encode₀[input]!2",
+                      "encode₀[input]!3",
+                      "encode₀[input]!4"
                     ]
                   ]
                 },
@@ -2739,33 +1543,17 @@
                     [
                       2
                     ],
-                    {
-                      "varName": "encode₀[output]",
-                      "varIndices": []
-                    },
+                    "encode₀[output]",
                     [
-                      {
-                        "varName": "encode₀[output]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[output]",
-                        "varIndices": [
-                          1
-                        ]
-                      }
+                      "encode₀[output]!0",
+                      "encode₀[output]!1"
                     ]
                   ]
                 },
                 {
                   "tag": "SolveTensorEquality",
                   "contents": [
-                    {
-                      "varName": "x",
-                      "varIndices": []
-                    },
+                    "x",
                     {
                       "constantValue": {
                         "value": [
@@ -2795,18 +1583,12 @@
                           5
                         ]
                       },
-                      "coefficients": [
-                        [
-                          {
-                            "varName": "encode₀[input]",
-                            "varIndices": []
-                          },
-                          {
-                            "numerator": 1,
-                            "denominator": 1
-                          }
-                        ]
-                      ]
+                      "coefficients": {
+                        "encode₀[input]": {
+                          "numerator": 1,
+                          "denominator": 1
+                        }
+                      }
                     }
                   ]
                 }
@@ -2814,129 +1596,59 @@
               "queryVariableMapping": [
                 [
                   "x0",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "encode₀[input]!0"
                 ],
                 [
                   "x1",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "encode₀[input]!1"
                 ],
                 [
                   "x2",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      2
-                    ]
-                  }
+                  "encode₀[input]!2"
                 ],
                 [
                   "x3",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      3
-                    ]
-                  }
+                  "encode₀[input]!3"
                 ],
                 [
                   "x4",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      4
-                    ]
-                  }
+                  "encode₀[input]!4"
                 ],
                 [
                   "x5",
-                  {
-                    "varName": "decode₀[input]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "decode₀[input]!0"
                 ],
                 [
                   "x6",
-                  {
-                    "varName": "decode₀[input]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "decode₀[input]!1"
                 ],
                 [
                   "y0",
-                  {
-                    "varName": "encode₀[output]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "encode₀[output]!0"
                 ],
                 [
                   "y1",
-                  {
-                    "varName": "encode₀[output]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "encode₀[output]!1"
                 ],
                 [
                   "y2",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "decode₀[output]!0"
                 ],
                 [
                   "y3",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "decode₀[output]!1"
                 ],
                 [
                   "y4",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      2
-                    ]
-                  }
+                  "decode₀[output]!2"
                 ],
                 [
                   "y5",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      3
-                    ]
-                  }
+                  "decode₀[output]!3"
                 ],
                 [
                   "y6",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      4
-                    ]
-                  }
+                  "decode₀[output]!4"
                 ]
               ],
               "queryAddress": [
@@ -2998,23 +1710,10 @@
                     [
                       2
                     ],
-                    {
-                      "varName": "decode₀[input]",
-                      "varIndices": []
-                    },
+                    "decode₀[input]",
                     [
-                      {
-                        "varName": "decode₀[input]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[input]",
-                        "varIndices": [
-                          1
-                        ]
-                      }
+                      "decode₀[input]!0",
+                      "decode₀[input]!1"
                     ]
                   ]
                 },
@@ -3024,41 +1723,13 @@
                     [
                       5
                     ],
-                    {
-                      "varName": "decode₀[output]",
-                      "varIndices": []
-                    },
+                    "decode₀[output]",
                     [
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          1
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          2
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          3
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          4
-                        ]
-                      }
+                      "decode₀[output]!0",
+                      "decode₀[output]!1",
+                      "decode₀[output]!2",
+                      "decode₀[output]!3",
+                      "decode₀[output]!4"
                     ]
                   ]
                 },
@@ -3068,41 +1739,13 @@
                     [
                       5
                     ],
-                    {
-                      "varName": "encode₀[input]",
-                      "varIndices": []
-                    },
+                    "encode₀[input]",
                     [
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          1
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          2
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          3
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          4
-                        ]
-                      }
+                      "encode₀[input]!0",
+                      "encode₀[input]!1",
+                      "encode₀[input]!2",
+                      "encode₀[input]!3",
+                      "encode₀[input]!4"
                     ]
                   ]
                 },
@@ -3112,33 +1755,17 @@
                     [
                       2
                     ],
-                    {
-                      "varName": "encode₀[output]",
-                      "varIndices": []
-                    },
+                    "encode₀[output]",
                     [
-                      {
-                        "varName": "encode₀[output]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[output]",
-                        "varIndices": [
-                          1
-                        ]
-                      }
+                      "encode₀[output]!0",
+                      "encode₀[output]!1"
                     ]
                   ]
                 },
                 {
                   "tag": "SolveTensorEquality",
                   "contents": [
-                    {
-                      "varName": "x",
-                      "varIndices": []
-                    },
+                    "x",
                     {
                       "constantValue": {
                         "value": [
@@ -3168,18 +1795,12 @@
                           5
                         ]
                       },
-                      "coefficients": [
-                        [
-                          {
-                            "varName": "encode₀[input]",
-                            "varIndices": []
-                          },
-                          {
-                            "numerator": 1,
-                            "denominator": 1
-                          }
-                        ]
-                      ]
+                      "coefficients": {
+                        "encode₀[input]": {
+                          "numerator": 1,
+                          "denominator": 1
+                        }
+                      }
                     }
                   ]
                 }
@@ -3187,129 +1808,59 @@
               "queryVariableMapping": [
                 [
                   "x0",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "encode₀[input]!0"
                 ],
                 [
                   "x1",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "encode₀[input]!1"
                 ],
                 [
                   "x2",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      2
-                    ]
-                  }
+                  "encode₀[input]!2"
                 ],
                 [
                   "x3",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      3
-                    ]
-                  }
+                  "encode₀[input]!3"
                 ],
                 [
                   "x4",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      4
-                    ]
-                  }
+                  "encode₀[input]!4"
                 ],
                 [
                   "x5",
-                  {
-                    "varName": "decode₀[input]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "decode₀[input]!0"
                 ],
                 [
                   "x6",
-                  {
-                    "varName": "decode₀[input]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "decode₀[input]!1"
                 ],
                 [
                   "y0",
-                  {
-                    "varName": "encode₀[output]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "encode₀[output]!0"
                 ],
                 [
                   "y1",
-                  {
-                    "varName": "encode₀[output]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "encode₀[output]!1"
                 ],
                 [
                   "y2",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "decode₀[output]!0"
                 ],
                 [
                   "y3",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "decode₀[output]!1"
                 ],
                 [
                   "y4",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      2
-                    ]
-                  }
+                  "decode₀[output]!2"
                 ],
                 [
                   "y5",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      3
-                    ]
-                  }
+                  "decode₀[output]!3"
                 ],
                 [
                   "y6",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      4
-                    ]
-                  }
+                  "decode₀[output]!4"
                 ]
               ],
               "queryAddress": [
@@ -3371,23 +1922,10 @@
                     [
                       2
                     ],
-                    {
-                      "varName": "decode₀[input]",
-                      "varIndices": []
-                    },
+                    "decode₀[input]",
                     [
-                      {
-                        "varName": "decode₀[input]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[input]",
-                        "varIndices": [
-                          1
-                        ]
-                      }
+                      "decode₀[input]!0",
+                      "decode₀[input]!1"
                     ]
                   ]
                 },
@@ -3397,41 +1935,13 @@
                     [
                       5
                     ],
-                    {
-                      "varName": "decode₀[output]",
-                      "varIndices": []
-                    },
+                    "decode₀[output]",
                     [
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          1
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          2
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          3
-                        ]
-                      },
-                      {
-                        "varName": "decode₀[output]",
-                        "varIndices": [
-                          4
-                        ]
-                      }
+                      "decode₀[output]!0",
+                      "decode₀[output]!1",
+                      "decode₀[output]!2",
+                      "decode₀[output]!3",
+                      "decode₀[output]!4"
                     ]
                   ]
                 },
@@ -3441,41 +1951,13 @@
                     [
                       5
                     ],
-                    {
-                      "varName": "encode₀[input]",
-                      "varIndices": []
-                    },
+                    "encode₀[input]",
                     [
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          1
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          2
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          3
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[input]",
-                        "varIndices": [
-                          4
-                        ]
-                      }
+                      "encode₀[input]!0",
+                      "encode₀[input]!1",
+                      "encode₀[input]!2",
+                      "encode₀[input]!3",
+                      "encode₀[input]!4"
                     ]
                   ]
                 },
@@ -3485,33 +1967,17 @@
                     [
                       2
                     ],
-                    {
-                      "varName": "encode₀[output]",
-                      "varIndices": []
-                    },
+                    "encode₀[output]",
                     [
-                      {
-                        "varName": "encode₀[output]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "encode₀[output]",
-                        "varIndices": [
-                          1
-                        ]
-                      }
+                      "encode₀[output]!0",
+                      "encode₀[output]!1"
                     ]
                   ]
                 },
                 {
                   "tag": "SolveTensorEquality",
                   "contents": [
-                    {
-                      "varName": "x",
-                      "varIndices": []
-                    },
+                    "x",
                     {
                       "constantValue": {
                         "value": [
@@ -3541,18 +2007,12 @@
                           5
                         ]
                       },
-                      "coefficients": [
-                        [
-                          {
-                            "varName": "encode₀[input]",
-                            "varIndices": []
-                          },
-                          {
-                            "numerator": 1,
-                            "denominator": 1
-                          }
-                        ]
-                      ]
+                      "coefficients": {
+                        "encode₀[input]": {
+                          "numerator": 1,
+                          "denominator": 1
+                        }
+                      }
                     }
                   ]
                 }
@@ -3560,129 +2020,59 @@
               "queryVariableMapping": [
                 [
                   "x0",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "encode₀[input]!0"
                 ],
                 [
                   "x1",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "encode₀[input]!1"
                 ],
                 [
                   "x2",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      2
-                    ]
-                  }
+                  "encode₀[input]!2"
                 ],
                 [
                   "x3",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      3
-                    ]
-                  }
+                  "encode₀[input]!3"
                 ],
                 [
                   "x4",
-                  {
-                    "varName": "encode₀[input]",
-                    "varIndices": [
-                      4
-                    ]
-                  }
+                  "encode₀[input]!4"
                 ],
                 [
                   "x5",
-                  {
-                    "varName": "decode₀[input]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "decode₀[input]!0"
                 ],
                 [
                   "x6",
-                  {
-                    "varName": "decode₀[input]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "decode₀[input]!1"
                 ],
                 [
                   "y0",
-                  {
-                    "varName": "encode₀[output]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "encode₀[output]!0"
                 ],
                 [
                   "y1",
-                  {
-                    "varName": "encode₀[output]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "encode₀[output]!1"
                 ],
                 [
                   "y2",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "decode₀[output]!0"
                 ],
                 [
                   "y3",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "decode₀[output]!1"
                 ],
                 [
                   "y4",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      2
-                    ]
-                  }
+                  "decode₀[output]!2"
                 ],
                 [
                   "y5",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      3
-                    ]
-                  }
+                  "decode₀[output]!3"
                 ],
                 [
                   "y6",
-                  {
-                    "varName": "decode₀[output]",
-                    "varIndices": [
-                      4
-                    ]
-                  }
+                  "decode₀[output]!4"
                 ]
               ],
               "queryAddress": [

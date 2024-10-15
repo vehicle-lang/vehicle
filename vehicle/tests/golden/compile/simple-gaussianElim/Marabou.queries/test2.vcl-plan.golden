@@ -14,23 +14,10 @@
                     [
                       2
                     ],
-                    {
-                      "varName": "g₀[input]",
-                      "varIndices": []
-                    },
+                    "g₀[input]",
                     [
-                      {
-                        "varName": "g₀[input]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "g₀[input]",
-                        "varIndices": [
-                          1
-                        ]
-                      }
+                      "g₀[input]!0",
+                      "g₀[input]!1"
                     ]
                   ]
                 },
@@ -40,58 +27,31 @@
                     [
                       1
                     ],
-                    {
-                      "varName": "g₀[output]",
-                      "varIndices": []
-                    },
+                    "g₀[output]",
                     [
-                      {
-                        "varName": "g₀[output]",
-                        "varIndices": [
-                          0
-                        ]
-                      }
+                      "g₀[output]!0"
                     ]
                   ]
                 },
                 {
                   "tag": "SolveRationalEquality",
                   "contents": [
-                    {
-                      "varName": "a",
-                      "varIndices": []
-                    },
+                    "a",
                     {
                       "constantValue": {
                         "numerator": 0,
                         "denominator": 1
                       },
-                      "coefficients": [
-                        [
-                          {
-                            "varName": "g₀[input]",
-                            "varIndices": [
-                              0
-                            ]
-                          },
-                          {
-                            "numerator": 2,
-                            "denominator": 1
-                          }
-                        ],
-                        [
-                          {
-                            "varName": "g₀[input]",
-                            "varIndices": [
-                              1
-                            ]
-                          },
-                          {
-                            "numerator": -1,
-                            "denominator": 1
-                          }
-                        ]
-                      ]
+                      "coefficients": {
+                        "g₀[input]!1": {
+                          "numerator": -1,
+                          "denominator": 1
+                        },
+                        "g₀[input]!0": {
+                          "numerator": 2,
+                          "denominator": 1
+                        }
+                      }
                     }
                   ]
                 },
@@ -99,54 +59,31 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     [],
-                    {
-                      "varName": "a",
-                      "varIndices": []
-                    },
+                    "a",
                     [
-                      {
-                        "varName": "a",
-                        "varIndices": []
-                      }
+                      "a"
                     ]
                   ]
                 },
                 {
                   "tag": "SolveRationalEquality",
                   "contents": [
-                    {
-                      "varName": "b",
-                      "varIndices": []
-                    },
+                    "b",
                     {
                       "constantValue": {
                         "numerator": 0,
                         "denominator": 1
                       },
-                      "coefficients": [
-                        [
-                          {
-                            "varName": "a",
-                            "varIndices": []
-                          },
-                          {
-                            "numerator": -1,
-                            "denominator": 1
-                          }
-                        ],
-                        [
-                          {
-                            "varName": "g₀[input]",
-                            "varIndices": [
-                              0
-                            ]
-                          },
-                          {
-                            "numerator": 1,
-                            "denominator": 1
-                          }
-                        ]
-                      ]
+                      "coefficients": {
+                        "g₀[input]!0": {
+                          "numerator": 1,
+                          "denominator": 1
+                        },
+                        "a": {
+                          "numerator": -1,
+                          "denominator": 1
+                        }
+                      }
                     }
                   ]
                 },
@@ -154,15 +91,9 @@
                   "tag": "ReconstructTensor",
                   "contents": [
                     [],
-                    {
-                      "varName": "b",
-                      "varIndices": []
-                    },
+                    "b",
                     [
-                      {
-                        "varName": "b",
-                        "varIndices": []
-                      }
+                      "b"
                     ]
                   ]
                 }
@@ -170,30 +101,15 @@
               "queryVariableMapping": [
                 [
                   "x0",
-                  {
-                    "varName": "g₀[input]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "g₀[input]!0"
                 ],
                 [
                   "x1",
-                  {
-                    "varName": "g₀[input]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "g₀[input]!1"
                 ],
                 [
                   "y0",
-                  {
-                    "varName": "g₀[output]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "g₀[output]!0"
                 ]
               ],
               "queryAddress": [

@@ -14,41 +14,13 @@
                     [
                       5
                     ],
-                    {
-                      "varName": "acasXu₀[input]",
-                      "varIndices": []
-                    },
+                    "acasXu₀[input]",
                     [
-                      {
-                        "varName": "acasXu₀[input]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "acasXu₀[input]",
-                        "varIndices": [
-                          1
-                        ]
-                      },
-                      {
-                        "varName": "acasXu₀[input]",
-                        "varIndices": [
-                          2
-                        ]
-                      },
-                      {
-                        "varName": "acasXu₀[input]",
-                        "varIndices": [
-                          3
-                        ]
-                      },
-                      {
-                        "varName": "acasXu₀[input]",
-                        "varIndices": [
-                          4
-                        ]
-                      }
+                      "acasXu₀[input]!0",
+                      "acasXu₀[input]!1",
+                      "acasXu₀[input]!2",
+                      "acasXu₀[input]!3",
+                      "acasXu₀[input]!4"
                     ]
                   ]
                 },
@@ -58,196 +30,103 @@
                     [
                       5
                     ],
-                    {
-                      "varName": "acasXu₀[output]",
-                      "varIndices": []
-                    },
+                    "acasXu₀[output]",
                     [
-                      {
-                        "varName": "acasXu₀[output]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "acasXu₀[output]",
-                        "varIndices": [
-                          1
-                        ]
-                      },
-                      {
-                        "varName": "acasXu₀[output]",
-                        "varIndices": [
-                          2
-                        ]
-                      },
-                      {
-                        "varName": "acasXu₀[output]",
-                        "varIndices": [
-                          3
-                        ]
-                      },
-                      {
-                        "varName": "acasXu₀[output]",
-                        "varIndices": [
-                          4
-                        ]
-                      }
+                      "acasXu₀[output]!0",
+                      "acasXu₀[output]!1",
+                      "acasXu₀[output]!2",
+                      "acasXu₀[output]!3",
+                      "acasXu₀[output]!4"
                     ]
                   ]
                 },
                 {
                   "tag": "SolveRationalEquality",
                   "contents": [
-                    {
-                      "varName": "x",
-                      "varIndices": [
-                        4
-                      ]
-                    },
+                    "x!4",
                     {
                       "constantValue": {
                         "numerator": 600,
                         "denominator": 1
                       },
-                      "coefficients": [
-                        [
-                          {
-                            "varName": "acasXu₀[input]",
-                            "varIndices": [
-                              4
-                            ]
-                          },
-                          {
-                            "numerator": 1200,
-                            "denominator": 1
-                          }
-                        ]
-                      ]
+                      "coefficients": {
+                        "acasXu₀[input]!4": {
+                          "numerator": 1200,
+                          "denominator": 1
+                        }
+                      }
                     }
                   ]
                 },
                 {
                   "tag": "SolveRationalEquality",
                   "contents": [
-                    {
-                      "varName": "x",
-                      "varIndices": [
-                        3
-                      ]
-                    },
+                    "x!3",
                     {
                       "constantValue": {
                         "numerator": 650,
                         "denominator": 1
                       },
-                      "coefficients": [
-                        [
-                          {
-                            "varName": "acasXu₀[input]",
-                            "varIndices": [
-                              3
-                            ]
-                          },
-                          {
-                            "numerator": 1100,
-                            "denominator": 1
-                          }
-                        ]
-                      ]
+                      "coefficients": {
+                        "acasXu₀[input]!3": {
+                          "numerator": 1100,
+                          "denominator": 1
+                        }
+                      }
                     }
                   ]
                 },
                 {
                   "tag": "SolveRationalEquality",
                   "contents": [
-                    {
-                      "varName": "x",
-                      "varIndices": [
-                        2
-                      ]
-                    },
+                    "x!2",
                     {
                       "constantValue": {
                         "numerator": 0,
                         "denominator": 1
                       },
-                      "coefficients": [
-                        [
-                          {
-                            "varName": "acasXu₀[input]",
-                            "varIndices": [
-                              2
-                            ]
-                          },
-                          {
-                            "numerator": 392699,
-                            "denominator": 62500
-                          }
-                        ]
-                      ]
+                      "coefficients": {
+                        "acasXu₀[input]!2": {
+                          "numerator": 392699,
+                          "denominator": 62500
+                        }
+                      }
                     }
                   ]
                 },
                 {
                   "tag": "SolveRationalEquality",
                   "contents": [
-                    {
-                      "varName": "x",
-                      "varIndices": [
-                        1
-                      ]
-                    },
+                    "x!1",
                     {
                       "constantValue": {
                         "numerator": 0,
                         "denominator": 1
                       },
-                      "coefficients": [
-                        [
-                          {
-                            "varName": "acasXu₀[input]",
-                            "varIndices": [
-                              1
-                            ]
-                          },
-                          {
-                            "numerator": 392699,
-                            "denominator": 62500
-                          }
-                        ]
-                      ]
+                      "coefficients": {
+                        "acasXu₀[input]!1": {
+                          "numerator": 392699,
+                          "denominator": 62500
+                        }
+                      }
                     }
                   ]
                 },
                 {
                   "tag": "SolveRationalEquality",
                   "contents": [
-                    {
-                      "varName": "x",
-                      "varIndices": [
-                        0
-                      ]
-                    },
+                    "x!0",
                     {
                       "constantValue": {
                         "numerator": 19791091,
                         "denominator": 1000
                       },
-                      "coefficients": [
-                        [
-                          {
-                            "varName": "acasXu₀[input]",
-                            "varIndices": [
-                              0
-                            ]
-                          },
-                          {
-                            "numerator": 60261,
-                            "denominator": 1
-                          }
-                        ]
-                      ]
+                      "coefficients": {
+                        "acasXu₀[input]!0": {
+                          "numerator": 60261,
+                          "denominator": 1
+                        }
+                      }
                     }
                   ]
                 },
@@ -257,41 +136,13 @@
                     [
                       5
                     ],
-                    {
-                      "varName": "x",
-                      "varIndices": []
-                    },
+                    "x",
                     [
-                      {
-                        "varName": "x",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "x",
-                        "varIndices": [
-                          1
-                        ]
-                      },
-                      {
-                        "varName": "x",
-                        "varIndices": [
-                          2
-                        ]
-                      },
-                      {
-                        "varName": "x",
-                        "varIndices": [
-                          3
-                        ]
-                      },
-                      {
-                        "varName": "x",
-                        "varIndices": [
-                          4
-                        ]
-                      }
+                      "x!0",
+                      "x!1",
+                      "x!2",
+                      "x!3",
+                      "x!4"
                     ]
                   ]
                 }
@@ -299,93 +150,43 @@
               "queryVariableMapping": [
                 [
                   "x0",
-                  {
-                    "varName": "acasXu₀[input]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "acasXu₀[input]!0"
                 ],
                 [
                   "x1",
-                  {
-                    "varName": "acasXu₀[input]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "acasXu₀[input]!1"
                 ],
                 [
                   "x2",
-                  {
-                    "varName": "acasXu₀[input]",
-                    "varIndices": [
-                      2
-                    ]
-                  }
+                  "acasXu₀[input]!2"
                 ],
                 [
                   "x3",
-                  {
-                    "varName": "acasXu₀[input]",
-                    "varIndices": [
-                      3
-                    ]
-                  }
+                  "acasXu₀[input]!3"
                 ],
                 [
                   "x4",
-                  {
-                    "varName": "acasXu₀[input]",
-                    "varIndices": [
-                      4
-                    ]
-                  }
+                  "acasXu₀[input]!4"
                 ],
                 [
                   "y0",
-                  {
-                    "varName": "acasXu₀[output]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "acasXu₀[output]!0"
                 ],
                 [
                   "y1",
-                  {
-                    "varName": "acasXu₀[output]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "acasXu₀[output]!1"
                 ],
                 [
                   "y2",
-                  {
-                    "varName": "acasXu₀[output]",
-                    "varIndices": [
-                      2
-                    ]
-                  }
+                  "acasXu₀[output]!2"
                 ],
                 [
                   "y3",
-                  {
-                    "varName": "acasXu₀[output]",
-                    "varIndices": [
-                      3
-                    ]
-                  }
+                  "acasXu₀[output]!3"
                 ],
                 [
                   "y4",
-                  {
-                    "varName": "acasXu₀[output]",
-                    "varIndices": [
-                      4
-                    ]
-                  }
+                  "acasXu₀[output]!4"
                 ]
               ],
               "queryAddress": [
@@ -427,41 +228,13 @@
                     [
                       5
                     ],
-                    {
-                      "varName": "acasXu₀[input]",
-                      "varIndices": []
-                    },
+                    "acasXu₀[input]",
                     [
-                      {
-                        "varName": "acasXu₀[input]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "acasXu₀[input]",
-                        "varIndices": [
-                          1
-                        ]
-                      },
-                      {
-                        "varName": "acasXu₀[input]",
-                        "varIndices": [
-                          2
-                        ]
-                      },
-                      {
-                        "varName": "acasXu₀[input]",
-                        "varIndices": [
-                          3
-                        ]
-                      },
-                      {
-                        "varName": "acasXu₀[input]",
-                        "varIndices": [
-                          4
-                        ]
-                      }
+                      "acasXu₀[input]!0",
+                      "acasXu₀[input]!1",
+                      "acasXu₀[input]!2",
+                      "acasXu₀[input]!3",
+                      "acasXu₀[input]!4"
                     ]
                   ]
                 },
@@ -471,196 +244,103 @@
                     [
                       5
                     ],
-                    {
-                      "varName": "acasXu₀[output]",
-                      "varIndices": []
-                    },
+                    "acasXu₀[output]",
                     [
-                      {
-                        "varName": "acasXu₀[output]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "acasXu₀[output]",
-                        "varIndices": [
-                          1
-                        ]
-                      },
-                      {
-                        "varName": "acasXu₀[output]",
-                        "varIndices": [
-                          2
-                        ]
-                      },
-                      {
-                        "varName": "acasXu₀[output]",
-                        "varIndices": [
-                          3
-                        ]
-                      },
-                      {
-                        "varName": "acasXu₀[output]",
-                        "varIndices": [
-                          4
-                        ]
-                      }
+                      "acasXu₀[output]!0",
+                      "acasXu₀[output]!1",
+                      "acasXu₀[output]!2",
+                      "acasXu₀[output]!3",
+                      "acasXu₀[output]!4"
                     ]
                   ]
                 },
                 {
                   "tag": "SolveRationalEquality",
                   "contents": [
-                    {
-                      "varName": "x",
-                      "varIndices": [
-                        4
-                      ]
-                    },
+                    "x!4",
                     {
                       "constantValue": {
                         "numerator": 600,
                         "denominator": 1
                       },
-                      "coefficients": [
-                        [
-                          {
-                            "varName": "acasXu₀[input]",
-                            "varIndices": [
-                              4
-                            ]
-                          },
-                          {
-                            "numerator": 1200,
-                            "denominator": 1
-                          }
-                        ]
-                      ]
+                      "coefficients": {
+                        "acasXu₀[input]!4": {
+                          "numerator": 1200,
+                          "denominator": 1
+                        }
+                      }
                     }
                   ]
                 },
                 {
                   "tag": "SolveRationalEquality",
                   "contents": [
-                    {
-                      "varName": "x",
-                      "varIndices": [
-                        3
-                      ]
-                    },
+                    "x!3",
                     {
                       "constantValue": {
                         "numerator": 650,
                         "denominator": 1
                       },
-                      "coefficients": [
-                        [
-                          {
-                            "varName": "acasXu₀[input]",
-                            "varIndices": [
-                              3
-                            ]
-                          },
-                          {
-                            "numerator": 1100,
-                            "denominator": 1
-                          }
-                        ]
-                      ]
+                      "coefficients": {
+                        "acasXu₀[input]!3": {
+                          "numerator": 1100,
+                          "denominator": 1
+                        }
+                      }
                     }
                   ]
                 },
                 {
                   "tag": "SolveRationalEquality",
                   "contents": [
-                    {
-                      "varName": "x",
-                      "varIndices": [
-                        2
-                      ]
-                    },
+                    "x!2",
                     {
                       "constantValue": {
                         "numerator": 0,
                         "denominator": 1
                       },
-                      "coefficients": [
-                        [
-                          {
-                            "varName": "acasXu₀[input]",
-                            "varIndices": [
-                              2
-                            ]
-                          },
-                          {
-                            "numerator": 392699,
-                            "denominator": 62500
-                          }
-                        ]
-                      ]
+                      "coefficients": {
+                        "acasXu₀[input]!2": {
+                          "numerator": 392699,
+                          "denominator": 62500
+                        }
+                      }
                     }
                   ]
                 },
                 {
                   "tag": "SolveRationalEquality",
                   "contents": [
-                    {
-                      "varName": "x",
-                      "varIndices": [
-                        1
-                      ]
-                    },
+                    "x!1",
                     {
                       "constantValue": {
                         "numerator": 0,
                         "denominator": 1
                       },
-                      "coefficients": [
-                        [
-                          {
-                            "varName": "acasXu₀[input]",
-                            "varIndices": [
-                              1
-                            ]
-                          },
-                          {
-                            "numerator": 392699,
-                            "denominator": 62500
-                          }
-                        ]
-                      ]
+                      "coefficients": {
+                        "acasXu₀[input]!1": {
+                          "numerator": 392699,
+                          "denominator": 62500
+                        }
+                      }
                     }
                   ]
                 },
                 {
                   "tag": "SolveRationalEquality",
                   "contents": [
-                    {
-                      "varName": "x",
-                      "varIndices": [
-                        0
-                      ]
-                    },
+                    "x!0",
                     {
                       "constantValue": {
                         "numerator": 19791091,
                         "denominator": 1000
                       },
-                      "coefficients": [
-                        [
-                          {
-                            "varName": "acasXu₀[input]",
-                            "varIndices": [
-                              0
-                            ]
-                          },
-                          {
-                            "numerator": 60261,
-                            "denominator": 1
-                          }
-                        ]
-                      ]
+                      "coefficients": {
+                        "acasXu₀[input]!0": {
+                          "numerator": 60261,
+                          "denominator": 1
+                        }
+                      }
                     }
                   ]
                 },
@@ -670,41 +350,13 @@
                     [
                       5
                     ],
-                    {
-                      "varName": "x",
-                      "varIndices": []
-                    },
+                    "x",
                     [
-                      {
-                        "varName": "x",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "x",
-                        "varIndices": [
-                          1
-                        ]
-                      },
-                      {
-                        "varName": "x",
-                        "varIndices": [
-                          2
-                        ]
-                      },
-                      {
-                        "varName": "x",
-                        "varIndices": [
-                          3
-                        ]
-                      },
-                      {
-                        "varName": "x",
-                        "varIndices": [
-                          4
-                        ]
-                      }
+                      "x!0",
+                      "x!1",
+                      "x!2",
+                      "x!3",
+                      "x!4"
                     ]
                   ]
                 }
@@ -712,93 +364,43 @@
               "queryVariableMapping": [
                 [
                   "x0",
-                  {
-                    "varName": "acasXu₀[input]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "acasXu₀[input]!0"
                 ],
                 [
                   "x1",
-                  {
-                    "varName": "acasXu₀[input]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "acasXu₀[input]!1"
                 ],
                 [
                   "x2",
-                  {
-                    "varName": "acasXu₀[input]",
-                    "varIndices": [
-                      2
-                    ]
-                  }
+                  "acasXu₀[input]!2"
                 ],
                 [
                   "x3",
-                  {
-                    "varName": "acasXu₀[input]",
-                    "varIndices": [
-                      3
-                    ]
-                  }
+                  "acasXu₀[input]!3"
                 ],
                 [
                   "x4",
-                  {
-                    "varName": "acasXu₀[input]",
-                    "varIndices": [
-                      4
-                    ]
-                  }
+                  "acasXu₀[input]!4"
                 ],
                 [
                   "y0",
-                  {
-                    "varName": "acasXu₀[output]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "acasXu₀[output]!0"
                 ],
                 [
                   "y1",
-                  {
-                    "varName": "acasXu₀[output]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "acasXu₀[output]!1"
                 ],
                 [
                   "y2",
-                  {
-                    "varName": "acasXu₀[output]",
-                    "varIndices": [
-                      2
-                    ]
-                  }
+                  "acasXu₀[output]!2"
                 ],
                 [
                   "y3",
-                  {
-                    "varName": "acasXu₀[output]",
-                    "varIndices": [
-                      3
-                    ]
-                  }
+                  "acasXu₀[output]!3"
                 ],
                 [
                   "y4",
-                  {
-                    "varName": "acasXu₀[output]",
-                    "varIndices": [
-                      4
-                    ]
-                  }
+                  "acasXu₀[output]!4"
                 ]
               ],
               "queryAddress": [

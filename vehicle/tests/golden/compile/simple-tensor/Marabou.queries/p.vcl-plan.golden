@@ -19,39 +19,12 @@
                             2,
                             2
                           ],
-                          {
-                            "varName": "f₀[input]",
-                            "varIndices": []
-                          },
+                          "f₀[input]",
                           [
-                            {
-                              "varName": "f₀[input]",
-                              "varIndices": [
-                                0,
-                                0
-                              ]
-                            },
-                            {
-                              "varName": "f₀[input]",
-                              "varIndices": [
-                                0,
-                                1
-                              ]
-                            },
-                            {
-                              "varName": "f₀[input]",
-                              "varIndices": [
-                                1,
-                                0
-                              ]
-                            },
-                            {
-                              "varName": "f₀[input]",
-                              "varIndices": [
-                                1,
-                                1
-                              ]
-                            }
+                            "f₀[input]!0!0",
+                            "f₀[input]!1!0",
+                            "f₀[input]!0!1",
+                            "f₀[input]!1!1"
                           ]
                         ]
                       },
@@ -62,39 +35,12 @@
                             2,
                             2
                           ],
-                          {
-                            "varName": "f₀[output]",
-                            "varIndices": []
-                          },
+                          "f₀[output]",
                           [
-                            {
-                              "varName": "f₀[output]",
-                              "varIndices": [
-                                0,
-                                0
-                              ]
-                            },
-                            {
-                              "varName": "f₀[output]",
-                              "varIndices": [
-                                0,
-                                1
-                              ]
-                            },
-                            {
-                              "varName": "f₀[output]",
-                              "varIndices": [
-                                1,
-                                0
-                              ]
-                            },
-                            {
-                              "varName": "f₀[output]",
-                              "varIndices": [
-                                1,
-                                1
-                              ]
-                            }
+                            "f₀[output]!0!0",
+                            "f₀[output]!1!0",
+                            "f₀[output]!0!1",
+                            "f₀[output]!1!1"
                           ]
                         ]
                       }
@@ -102,83 +48,35 @@
                     "queryVariableMapping": [
                       [
                         "x0",
-                        {
-                          "varName": "f₀[input]",
-                          "varIndices": [
-                            0,
-                            0
-                          ]
-                        }
+                        "f₀[input]!0!0"
                       ],
                       [
                         "x1",
-                        {
-                          "varName": "f₀[input]",
-                          "varIndices": [
-                            0,
-                            1
-                          ]
-                        }
+                        "f₀[input]!1!0"
                       ],
                       [
                         "x2",
-                        {
-                          "varName": "f₀[input]",
-                          "varIndices": [
-                            1,
-                            0
-                          ]
-                        }
+                        "f₀[input]!0!1"
                       ],
                       [
                         "x3",
-                        {
-                          "varName": "f₀[input]",
-                          "varIndices": [
-                            1,
-                            1
-                          ]
-                        }
+                        "f₀[input]!1!1"
                       ],
                       [
                         "y0",
-                        {
-                          "varName": "f₀[output]",
-                          "varIndices": [
-                            0,
-                            0
-                          ]
-                        }
+                        "f₀[output]!0!0"
                       ],
                       [
                         "y1",
-                        {
-                          "varName": "f₀[output]",
-                          "varIndices": [
-                            0,
-                            1
-                          ]
-                        }
+                        "f₀[output]!1!0"
                       ],
                       [
                         "y2",
-                        {
-                          "varName": "f₀[output]",
-                          "varIndices": [
-                            1,
-                            0
-                          ]
-                        }
+                        "f₀[output]!0!1"
                       ],
                       [
                         "y3",
-                        {
-                          "varName": "f₀[output]",
-                          "varIndices": [
-                            1,
-                            1
-                          ]
-                        }
+                        "f₀[output]!1!1"
                       ]
                     ],
                     "queryAddress": [
@@ -233,39 +131,12 @@
                             2,
                             2
                           ],
-                          {
-                            "varName": "f₀[input]",
-                            "varIndices": []
-                          },
+                          "f₀[input]",
                           [
-                            {
-                              "varName": "f₀[input]",
-                              "varIndices": [
-                                0,
-                                0
-                              ]
-                            },
-                            {
-                              "varName": "f₀[input]",
-                              "varIndices": [
-                                0,
-                                1
-                              ]
-                            },
-                            {
-                              "varName": "f₀[input]",
-                              "varIndices": [
-                                1,
-                                0
-                              ]
-                            },
-                            {
-                              "varName": "f₀[input]",
-                              "varIndices": [
-                                1,
-                                1
-                              ]
-                            }
+                            "f₀[input]!0!0",
+                            "f₀[input]!1!0",
+                            "f₀[input]!0!1",
+                            "f₀[input]!1!1"
                           ]
                         ]
                       },
@@ -276,39 +147,12 @@
                             2,
                             2
                           ],
-                          {
-                            "varName": "f₀[output]",
-                            "varIndices": []
-                          },
+                          "f₀[output]",
                           [
-                            {
-                              "varName": "f₀[output]",
-                              "varIndices": [
-                                0,
-                                0
-                              ]
-                            },
-                            {
-                              "varName": "f₀[output]",
-                              "varIndices": [
-                                0,
-                                1
-                              ]
-                            },
-                            {
-                              "varName": "f₀[output]",
-                              "varIndices": [
-                                1,
-                                0
-                              ]
-                            },
-                            {
-                              "varName": "f₀[output]",
-                              "varIndices": [
-                                1,
-                                1
-                              ]
-                            }
+                            "f₀[output]!0!0",
+                            "f₀[output]!1!0",
+                            "f₀[output]!0!1",
+                            "f₀[output]!1!1"
                           ]
                         ]
                       }
@@ -316,83 +160,35 @@
                     "queryVariableMapping": [
                       [
                         "x0",
-                        {
-                          "varName": "f₀[input]",
-                          "varIndices": [
-                            0,
-                            0
-                          ]
-                        }
+                        "f₀[input]!0!0"
                       ],
                       [
                         "x1",
-                        {
-                          "varName": "f₀[input]",
-                          "varIndices": [
-                            0,
-                            1
-                          ]
-                        }
+                        "f₀[input]!1!0"
                       ],
                       [
                         "x2",
-                        {
-                          "varName": "f₀[input]",
-                          "varIndices": [
-                            1,
-                            0
-                          ]
-                        }
+                        "f₀[input]!0!1"
                       ],
                       [
                         "x3",
-                        {
-                          "varName": "f₀[input]",
-                          "varIndices": [
-                            1,
-                            1
-                          ]
-                        }
+                        "f₀[input]!1!1"
                       ],
                       [
                         "y0",
-                        {
-                          "varName": "f₀[output]",
-                          "varIndices": [
-                            0,
-                            0
-                          ]
-                        }
+                        "f₀[output]!0!0"
                       ],
                       [
                         "y1",
-                        {
-                          "varName": "f₀[output]",
-                          "varIndices": [
-                            0,
-                            1
-                          ]
-                        }
+                        "f₀[output]!1!0"
                       ],
                       [
                         "y2",
-                        {
-                          "varName": "f₀[output]",
-                          "varIndices": [
-                            1,
-                            0
-                          ]
-                        }
+                        "f₀[output]!0!1"
                       ],
                       [
                         "y3",
-                        {
-                          "varName": "f₀[output]",
-                          "varIndices": [
-                            1,
-                            1
-                          ]
-                        }
+                        "f₀[output]!1!1"
                       ]
                     ],
                     "queryAddress": [
@@ -447,39 +243,12 @@
                             2,
                             2
                           ],
-                          {
-                            "varName": "f₀[input]",
-                            "varIndices": []
-                          },
+                          "f₀[input]",
                           [
-                            {
-                              "varName": "f₀[input]",
-                              "varIndices": [
-                                0,
-                                0
-                              ]
-                            },
-                            {
-                              "varName": "f₀[input]",
-                              "varIndices": [
-                                0,
-                                1
-                              ]
-                            },
-                            {
-                              "varName": "f₀[input]",
-                              "varIndices": [
-                                1,
-                                0
-                              ]
-                            },
-                            {
-                              "varName": "f₀[input]",
-                              "varIndices": [
-                                1,
-                                1
-                              ]
-                            }
+                            "f₀[input]!0!0",
+                            "f₀[input]!1!0",
+                            "f₀[input]!0!1",
+                            "f₀[input]!1!1"
                           ]
                         ]
                       },
@@ -490,39 +259,12 @@
                             2,
                             2
                           ],
-                          {
-                            "varName": "f₀[output]",
-                            "varIndices": []
-                          },
+                          "f₀[output]",
                           [
-                            {
-                              "varName": "f₀[output]",
-                              "varIndices": [
-                                0,
-                                0
-                              ]
-                            },
-                            {
-                              "varName": "f₀[output]",
-                              "varIndices": [
-                                0,
-                                1
-                              ]
-                            },
-                            {
-                              "varName": "f₀[output]",
-                              "varIndices": [
-                                1,
-                                0
-                              ]
-                            },
-                            {
-                              "varName": "f₀[output]",
-                              "varIndices": [
-                                1,
-                                1
-                              ]
-                            }
+                            "f₀[output]!0!0",
+                            "f₀[output]!1!0",
+                            "f₀[output]!0!1",
+                            "f₀[output]!1!1"
                           ]
                         ]
                       }
@@ -530,83 +272,35 @@
                     "queryVariableMapping": [
                       [
                         "x0",
-                        {
-                          "varName": "f₀[input]",
-                          "varIndices": [
-                            0,
-                            0
-                          ]
-                        }
+                        "f₀[input]!0!0"
                       ],
                       [
                         "x1",
-                        {
-                          "varName": "f₀[input]",
-                          "varIndices": [
-                            0,
-                            1
-                          ]
-                        }
+                        "f₀[input]!1!0"
                       ],
                       [
                         "x2",
-                        {
-                          "varName": "f₀[input]",
-                          "varIndices": [
-                            1,
-                            0
-                          ]
-                        }
+                        "f₀[input]!0!1"
                       ],
                       [
                         "x3",
-                        {
-                          "varName": "f₀[input]",
-                          "varIndices": [
-                            1,
-                            1
-                          ]
-                        }
+                        "f₀[input]!1!1"
                       ],
                       [
                         "y0",
-                        {
-                          "varName": "f₀[output]",
-                          "varIndices": [
-                            0,
-                            0
-                          ]
-                        }
+                        "f₀[output]!0!0"
                       ],
                       [
                         "y1",
-                        {
-                          "varName": "f₀[output]",
-                          "varIndices": [
-                            0,
-                            1
-                          ]
-                        }
+                        "f₀[output]!1!0"
                       ],
                       [
                         "y2",
-                        {
-                          "varName": "f₀[output]",
-                          "varIndices": [
-                            1,
-                            0
-                          ]
-                        }
+                        "f₀[output]!0!1"
                       ],
                       [
                         "y3",
-                        {
-                          "varName": "f₀[output]",
-                          "varIndices": [
-                            1,
-                            1
-                          ]
-                        }
+                        "f₀[output]!1!1"
                       ]
                     ],
                     "queryAddress": [
@@ -661,39 +355,12 @@
                             2,
                             2
                           ],
-                          {
-                            "varName": "f₀[input]",
-                            "varIndices": []
-                          },
+                          "f₀[input]",
                           [
-                            {
-                              "varName": "f₀[input]",
-                              "varIndices": [
-                                0,
-                                0
-                              ]
-                            },
-                            {
-                              "varName": "f₀[input]",
-                              "varIndices": [
-                                0,
-                                1
-                              ]
-                            },
-                            {
-                              "varName": "f₀[input]",
-                              "varIndices": [
-                                1,
-                                0
-                              ]
-                            },
-                            {
-                              "varName": "f₀[input]",
-                              "varIndices": [
-                                1,
-                                1
-                              ]
-                            }
+                            "f₀[input]!0!0",
+                            "f₀[input]!1!0",
+                            "f₀[input]!0!1",
+                            "f₀[input]!1!1"
                           ]
                         ]
                       },
@@ -704,39 +371,12 @@
                             2,
                             2
                           ],
-                          {
-                            "varName": "f₀[output]",
-                            "varIndices": []
-                          },
+                          "f₀[output]",
                           [
-                            {
-                              "varName": "f₀[output]",
-                              "varIndices": [
-                                0,
-                                0
-                              ]
-                            },
-                            {
-                              "varName": "f₀[output]",
-                              "varIndices": [
-                                0,
-                                1
-                              ]
-                            },
-                            {
-                              "varName": "f₀[output]",
-                              "varIndices": [
-                                1,
-                                0
-                              ]
-                            },
-                            {
-                              "varName": "f₀[output]",
-                              "varIndices": [
-                                1,
-                                1
-                              ]
-                            }
+                            "f₀[output]!0!0",
+                            "f₀[output]!1!0",
+                            "f₀[output]!0!1",
+                            "f₀[output]!1!1"
                           ]
                         ]
                       }
@@ -744,83 +384,35 @@
                     "queryVariableMapping": [
                       [
                         "x0",
-                        {
-                          "varName": "f₀[input]",
-                          "varIndices": [
-                            0,
-                            0
-                          ]
-                        }
+                        "f₀[input]!0!0"
                       ],
                       [
                         "x1",
-                        {
-                          "varName": "f₀[input]",
-                          "varIndices": [
-                            0,
-                            1
-                          ]
-                        }
+                        "f₀[input]!1!0"
                       ],
                       [
                         "x2",
-                        {
-                          "varName": "f₀[input]",
-                          "varIndices": [
-                            1,
-                            0
-                          ]
-                        }
+                        "f₀[input]!0!1"
                       ],
                       [
                         "x3",
-                        {
-                          "varName": "f₀[input]",
-                          "varIndices": [
-                            1,
-                            1
-                          ]
-                        }
+                        "f₀[input]!1!1"
                       ],
                       [
                         "y0",
-                        {
-                          "varName": "f₀[output]",
-                          "varIndices": [
-                            0,
-                            0
-                          ]
-                        }
+                        "f₀[output]!0!0"
                       ],
                       [
                         "y1",
-                        {
-                          "varName": "f₀[output]",
-                          "varIndices": [
-                            0,
-                            1
-                          ]
-                        }
+                        "f₀[output]!1!0"
                       ],
                       [
                         "y2",
-                        {
-                          "varName": "f₀[output]",
-                          "varIndices": [
-                            1,
-                            0
-                          ]
-                        }
+                        "f₀[output]!0!1"
                       ],
                       [
                         "y3",
-                        {
-                          "varName": "f₀[output]",
-                          "varIndices": [
-                            1,
-                            1
-                          ]
-                        }
+                        "f₀[output]!1!1"
                       ]
                     ],
                     "queryAddress": [

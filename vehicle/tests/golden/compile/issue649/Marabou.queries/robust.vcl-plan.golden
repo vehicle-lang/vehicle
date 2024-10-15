@@ -15,18 +15,9 @@
                       1,
                       1
                     ],
-                    {
-                      "varName": "classifier₀[input]",
-                      "varIndices": []
-                    },
+                    "classifier₀[input]",
                     [
-                      {
-                        "varName": "classifier₀[input]",
-                        "varIndices": [
-                          0,
-                          0
-                        ]
-                      }
+                      "classifier₀[input]!0!0"
                     ]
                   ]
                 },
@@ -36,33 +27,17 @@
                     [
                       2
                     ],
-                    {
-                      "varName": "classifier₀[output]",
-                      "varIndices": []
-                    },
+                    "classifier₀[output]",
                     [
-                      {
-                        "varName": "classifier₀[output]",
-                        "varIndices": [
-                          0
-                        ]
-                      },
-                      {
-                        "varName": "classifier₀[output]",
-                        "varIndices": [
-                          1
-                        ]
-                      }
+                      "classifier₀[output]!0",
+                      "classifier₀[output]!1"
                     ]
                   ]
                 },
                 {
                   "tag": "SolveTensorEquality",
                   "contents": [
-                    {
-                      "varName": "perturbation",
-                      "varIndices": []
-                    },
+                    "perturbation",
                     {
                       "constantValue": {
                         "value": [
@@ -77,18 +52,12 @@
                           1
                         ]
                       },
-                      "coefficients": [
-                        [
-                          {
-                            "varName": "classifier₀[input]",
-                            "varIndices": []
-                          },
-                          {
-                            "numerator": -1,
-                            "denominator": 1
-                          }
-                        ]
-                      ]
+                      "coefficients": {
+                        "classifier₀[input]": {
+                          "numerator": -1,
+                          "denominator": 1
+                        }
+                      }
                     }
                   ]
                 }
@@ -96,31 +65,15 @@
               "queryVariableMapping": [
                 [
                   "x0",
-                  {
-                    "varName": "classifier₀[input]",
-                    "varIndices": [
-                      0,
-                      0
-                    ]
-                  }
+                  "classifier₀[input]!0!0"
                 ],
                 [
                   "y0",
-                  {
-                    "varName": "classifier₀[output]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "classifier₀[output]!0"
                 ],
                 [
                   "y1",
-                  {
-                    "varName": "classifier₀[output]",
-                    "varIndices": [
-                      1
-                    ]
-                  }
+                  "classifier₀[output]!1"
                 ]
               ],
               "queryAddress": [

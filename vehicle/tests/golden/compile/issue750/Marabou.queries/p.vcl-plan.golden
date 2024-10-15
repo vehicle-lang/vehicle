@@ -14,17 +14,9 @@
                     [
                       1
                     ],
-                    {
-                      "varName": "f₀[input]",
-                      "varIndices": []
-                    },
+                    "f₀[input]",
                     [
-                      {
-                        "varName": "f₀[input]",
-                        "varIndices": [
-                          0
-                        ]
-                      }
+                      "f₀[input]!0"
                     ]
                   ]
                 },
@@ -34,17 +26,9 @@
                     [
                       1
                     ],
-                    {
-                      "varName": "f₀[output]",
-                      "varIndices": []
-                    },
+                    "f₀[output]",
                     [
-                      {
-                        "varName": "f₀[output]",
-                        "varIndices": [
-                          0
-                        ]
-                      }
+                      "f₀[output]!0"
                     ]
                   ]
                 },
@@ -54,17 +38,9 @@
                     [
                       1
                     ],
-                    {
-                      "varName": "f₁[input]",
-                      "varIndices": []
-                    },
+                    "f₁[input]",
                     [
-                      {
-                        "varName": "f₁[input]",
-                        "varIndices": [
-                          0
-                        ]
-                      }
+                      "f₁[input]!0"
                     ]
                   ]
                 },
@@ -74,27 +50,16 @@
                     [
                       1
                     ],
-                    {
-                      "varName": "f₁[output]",
-                      "varIndices": []
-                    },
+                    "f₁[output]",
                     [
-                      {
-                        "varName": "f₁[output]",
-                        "varIndices": [
-                          0
-                        ]
-                      }
+                      "f₁[output]!0"
                     ]
                   ]
                 },
                 {
                   "tag": "SolveTensorEquality",
                   "contents": [
-                    {
-                      "varName": "x",
-                      "varIndices": []
-                    },
+                    "x",
                     {
                       "constantValue": {
                         "value": [
@@ -108,28 +73,19 @@
                           1
                         ]
                       },
-                      "coefficients": [
-                        [
-                          {
-                            "varName": "f₀[input]",
-                            "varIndices": []
-                          },
-                          {
-                            "numerator": 1,
-                            "denominator": 1
-                          }
-                        ]
-                      ]
+                      "coefficients": {
+                        "f₀[input]": {
+                          "numerator": 1,
+                          "denominator": 1
+                        }
+                      }
                     }
                   ]
                 },
                 {
                   "tag": "SolveTensorEquality",
                   "contents": [
-                    {
-                      "varName": "y",
-                      "varIndices": []
-                    },
+                    "y",
                     {
                       "constantValue": {
                         "value": [
@@ -143,18 +99,12 @@
                           1
                         ]
                       },
-                      "coefficients": [
-                        [
-                          {
-                            "varName": "f₁[input]",
-                            "varIndices": []
-                          },
-                          {
-                            "numerator": 1,
-                            "denominator": 1
-                          }
-                        ]
-                      ]
+                      "coefficients": {
+                        "f₁[input]": {
+                          "numerator": 1,
+                          "denominator": 1
+                        }
+                      }
                     }
                   ]
                 }
@@ -162,39 +112,19 @@
               "queryVariableMapping": [
                 [
                   "x0",
-                  {
-                    "varName": "f₀[input]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "f₀[input]!0"
                 ],
                 [
                   "x1",
-                  {
-                    "varName": "f₁[input]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "f₁[input]!0"
                 ],
                 [
                   "y0",
-                  {
-                    "varName": "f₀[output]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "f₀[output]!0"
                 ],
                 [
                   "y1",
-                  {
-                    "varName": "f₁[output]",
-                    "varIndices": [
-                      0
-                    ]
-                  }
+                  "f₁[output]!0"
                 ]
               ],
               "queryAddress": [
