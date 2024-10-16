@@ -22,7 +22,7 @@ data TypingError builtin
   | FailedInstanceConstraint (ConstraintContext builtin) (InstanceConstraintOrigin builtin) (InstanceGoal builtin) [WithContext (InstanceCandidate builtin)]
   | UnsolvedConstraints (NonEmpty (WithContext (Constraint builtin)))
   | FailedIndexConstraintTooBig (ConstraintContext builtin) Int Int
-  | FailedIndexConstraintUnknown (ConstraintContext builtin) (WHNFValue builtin) (WHNFType builtin)
+  | FailedIndexConstraintUnknown (ConstraintContext builtin) (Value builtin) (VType builtin)
   deriving (Show)
 
 --------------------------------------------------------------------------------
@@ -123,7 +123,7 @@ data InstanceConstraint builtin = Resolve
   { instanceOrigin :: InstanceConstraintOrigin builtin,
     instanceSolutionMeta :: MetaID,
     instanceRelevance :: Relevance,
-    instanceGoal :: WHNFValue builtin
+    instanceGoal :: Value builtin
   }
   deriving (Show)
 
@@ -144,7 +144,7 @@ type instance
 data InstanceGoal builtin = InstanceGoal
   { goalTelescope :: Telescope builtin,
     goalHead :: builtin,
-    goalSpine :: WHNFSpine builtin
+    goalSpine :: Spine builtin
   }
   deriving (Show)
 
@@ -187,8 +187,8 @@ data UnificationConstraintOrigin builtin
 data UnificationConstraint builtin
   = Unify
       (UnificationConstraintOrigin builtin)
-      (WHNFValue builtin)
-      (WHNFValue builtin)
+      (Value builtin)
+      (Value builtin)
   deriving (Show)
 
 type instance

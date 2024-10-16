@@ -45,25 +45,25 @@ import Vehicle.Data.Tensor (Tensor, foldTensor, mapTensor, zipWithTensor)
 -- methods of normalisation.
 type EvalBuiltinApp m builtin =
   (MonadCompile m) =>
-  EvalApp (WHNFValue builtin) m ->
+  EvalApp (Value builtin) m ->
   Eval builtin m ->
   builtin ->
   [Arg builtin] ->
-  m (WHNFValue builtin)
+  m (Value builtin)
 
 type Eval builtin m =
   (MonadCompile m) =>
   Expr builtin ->
-  m (WHNFValue builtin)
+  m (Value builtin)
 
 evalTypeClassOp ::
   (MonadLogger m, BuiltinHasStandardData builtin, Show builtin) =>
-  (BuiltinFunction -> EvalBuiltin (Value closure builtin) m) ->
-  EvalApp (Value closure builtin) m ->
-  Value closure builtin ->
+  (BuiltinFunction -> EvalBuiltin (Value builtin) m) ->
+  EvalApp (Value builtin) m ->
+  Value builtin ->
   builtin ->
-  Spine closure builtin ->
-  m (Value closure builtin)
+  Spine builtin ->
+  m (Value builtin)
 evalTypeClassOp evalFn evalApp originalExpr b normArgs
   | isTypeClassOp b = do
       (inst, remainingArgs) <- findInstanceArg b normArgs
@@ -457,12 +457,12 @@ class (PrintableBuiltin builtin) => NormalisableBuiltin builtin where
   -- and irrelevant arguments), the builtin that is in the head position
   -- and the list of computationally relevant arguments.
   evalBuiltinApp ::
-    (MonadLogger m, Show closure) =>
-    EvalApp (Value closure builtin) m ->
-    Value closure builtin ->
+    (MonadLogger m) =>
+    EvalApp (Value builtin) m ->
+    Value builtin ->
     builtin ->
-    Spine closure builtin ->
-    m (Value closure builtin)
+    Spine builtin ->
+    m (Value builtin)
 
   blockingArgs ::
     builtin ->
@@ -544,7 +544,7 @@ instance NormalisableBuiltin Builtin where
     BuiltinFunction f -> functionBlockingArgs f
     _ -> []
 
-evalTensorBuiltin :: (Show closure) => TensorBuiltin -> EvalSimpleBuiltin (Value closure TensorBuiltin)
+evalTensorBuiltin :: TensorBuiltin -> EvalSimpleBuiltin (Value TensorBuiltin)
 evalTensorBuiltin b originalExpr spine =
   case b of
     TensorRat op -> evalRatTensorBuiltin op originalExpr spine
@@ -608,7 +608,7 @@ instance NormalisableBuiltin LinearityBuiltin where
     _ -> []
 
 -- Need foldList at the type-level to evaluate the Tensor definition
-evalLinearityFoldList :: EvalBuiltin (Value closure LinearityBuiltin) m
+evalLinearityFoldList :: EvalBuiltin (Value LinearityBuiltin) m
 evalLinearityFoldList evalApp originalExpr args =
   case args of
     [_a, _b, _c, _f, e, argExpr -> VBuiltin (LinearityConstructor Nil) []] -> return $ argExpr e
@@ -661,7 +661,7 @@ instance NormalisableBuiltin PolarityBuiltin where
     _ -> []
 
 -- Need foldList at the type-level to evaluate the Tensor definition
-evalPolarityFoldList :: EvalBuiltin (Value closure PolarityBuiltin) m
+evalPolarityFoldList :: EvalBuiltin (Value PolarityBuiltin) m
 evalPolarityFoldList evalApp originalExpr args =
   case args of
     [_a, _b, _c, _f, e, argExpr -> VBuiltin (PolarityConstructor Nil) []] -> return $ argExpr e

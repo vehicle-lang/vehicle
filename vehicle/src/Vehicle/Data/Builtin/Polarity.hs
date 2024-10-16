@@ -167,7 +167,7 @@ instance BuiltinHasRatLiterals PolarityBuiltin where
 pattern PolarityExpr :: Provenance -> Polarity -> Expr PolarityBuiltin
 pattern PolarityExpr p pol = Builtin p (Polarity pol)
 
-pattern VPolarityExpr :: Polarity -> WHNFValue PolarityBuiltin
+pattern VPolarityExpr :: Polarity -> Value PolarityBuiltin
 pattern VPolarityExpr l <- VBuiltin (Polarity l) []
   where
     VPolarityExpr l = VBuiltin (Polarity l) []

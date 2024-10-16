@@ -77,7 +77,7 @@ substApp s (fun@(Meta _ m), mArgs) = do
     Just value -> subst s $ substArgs (unnormalised value) mArgs
 substApp s (fun, args) = normAppList <$> subst s fun <*> subst s args
 
-instance MetaSubstitutable m builtin (WHNFValue builtin) where
+instance MetaSubstitutable m builtin (Value builtin) where
   subst s expr = case expr of
     VMeta m args -> do
       case MetaMap.lookup m s of
@@ -100,8 +100,8 @@ instance MetaSubstitutable m builtin (WHNFValue builtin) where
     VLam binder body -> VLam <$> subst s binder <*> subst s body
     VPi binder body -> VPi <$> subst s binder <*> subst s body
 
-instance MetaSubstitutable m builtin (WHNFClosure builtin) where
-  subst s (WHNFClosure env body) = WHNFClosure <$> subst s env <*> subst s body
+instance MetaSubstitutable m builtin (Closure builtin) where
+  subst s (Closure env body) = Closure <$> subst s env <*> subst s body
 
 instance MetaSubstitutable m builtin (GluedExpr builtin) where
   subst s (Glued a b) = Glued <$> subst s a <*> subst s b

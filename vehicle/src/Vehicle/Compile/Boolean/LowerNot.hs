@@ -26,12 +26,12 @@ type MonadDropNot m =
 lowerNot ::
   forall m.
   (MonadDropNot m) =>
-  (WHNFValue Builtin -> m (WHNFValue Builtin)) ->
-  WHNFValue Builtin ->
-  m (WHNFValue Builtin)
+  (Value Builtin -> m (Value Builtin)) ->
+  Value Builtin ->
+  m (Value Builtin)
 lowerNot whenBlocked = go
   where
-    go :: WHNFValue Builtin -> m (WHNFValue Builtin)
+    go :: Value Builtin -> m (Value Builtin)
     go = \case
       ----------------
       -- Base cases --
@@ -44,8 +44,8 @@ lowerNot whenBlocked = go
       -- it is not yet unnormalised. However, it's fine to stop here as we'll
       -- simply continue to normalise it once we re-encounter it again after
       -- normalising the quantifier.
-      IForall args (VLam binder (WHNFClosure env body)) -> return $ IExists args (VLam binder (WHNFClosure env (INot body)))
-      IExists args (VLam binder (WHNFClosure env body)) -> return $ IForall args (VLam binder (WHNFClosure env (INot body)))
+      IForall args (VLam binder (Closure env body)) -> return $ IExists args (VLam binder (Closure env (INot body)))
+      IExists args (VLam binder (Closure env body)) -> return $ IForall args (VLam binder (Closure env (INot body)))
       -- It's not enough simply to negate the free variable, we also need
       -- to negate the instance argument solution for the function
       -- which is a function accepting two arguments and returning a bool.
@@ -59,7 +59,7 @@ lowerNot whenBlocked = go
       IIf t c x y -> IIf t c <$> go x <*> go y
       expr -> whenBlocked expr
 
-negVectorEqSpine :: (MonadDropNot m) => WHNFSpine Builtin -> m (WHNFSpine Builtin)
+negVectorEqSpine :: (MonadDropNot m) => Spine Builtin -> m (Spine Builtin)
 negVectorEqSpine (IVecEqSpine a b n fn x y) = do
   fn' <- appHiddenStdlibDef StdNotBoolOp2 [a, b, fn]
   return $ IVecEqSpine a b n (Arg mempty Explicit Relevant fn') x y

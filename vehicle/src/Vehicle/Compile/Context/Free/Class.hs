@@ -103,14 +103,14 @@ getDecl ::
   Proxy builtin ->
   CompilerPass ->
   Identifier ->
-  m (WHNFDecl builtin)
+  m (VDecl builtin)
 getDecl proxy compilerPass ident =
   snd <$> getDeclEntry proxy compilerPass ident
 
 getFreeEnv ::
   forall builtin m.
   (MonadFreeContext builtin m) =>
-  m (WHNFFreeEnv builtin)
+  m (FreeEnv builtin)
 getFreeEnv = do
   ctx <- getFreeCtx (Proxy @builtin)
   return $ fmap snd ctx

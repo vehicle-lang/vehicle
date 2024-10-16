@@ -54,14 +54,14 @@ getDeclProvenance = ask
 --------------------------------------------------------------------------------
 -- Conversion from loss expressions
 
-convertExpr :: (MonadTensor m) => WHNFBoundEnv Builtin -> Expr Builtin -> m (WHNFValue TensorBuiltin)
+convertExpr :: (MonadTensor m) => BoundEnv Builtin -> Expr Builtin -> m (Value TensorBuiltin)
 convertExpr env expr = do
   convertValue =<< normaliseInEnv env expr
 
-convertValue :: forall m. (MonadTensor m) => WHNFValue Builtin -> m (WHNFValue TensorBuiltin)
+convertValue :: forall m. (MonadTensor m) => Value Builtin -> m (Value TensorBuiltin)
 convertValue = go
   where
-    go :: WHNFValue Builtin -> m (WHNFValue TensorBuiltin)
+    go :: Value Builtin -> m (Value TensorBuiltin)
     go e = do
       showEntry "tensor-enter" e
       result <- case e of
@@ -88,7 +88,7 @@ convertValue = go
       showExit "tensor-exit" result
       return result
 
-convertBuiltinToTensors :: (MonadTensor m) => Builtin -> WHNFSpine Builtin -> m (WHNFValue TensorBuiltin)
+convertBuiltinToTensors :: (MonadTensor m) => Builtin -> Spine Builtin -> m (Value TensorBuiltin)
 convertBuiltinToTensors b args = case b of
   BuiltinType t -> convertBuiltinType t =<< traverseSpine convertValue args
   BuiltinConstructor c -> convertBuiltinConstructor c =<< traverseSpine convertValue args
@@ -97,7 +97,7 @@ convertBuiltinToTensors b args = case b of
   TypeClassOp {} -> unexpectedExprError currentPass "TypeClassOp"
   NatInDomainConstraint -> unexpectedExprError currentPass "NatInDomainConstraint"
 
-convertBuiltinType :: (MonadTensor m) => BuiltinType -> WHNFSpine TensorBuiltin -> m (WHNFValue TensorBuiltin)
+convertBuiltinType :: (MonadTensor m) => BuiltinType -> Spine TensorBuiltin -> m (Value TensorBuiltin)
 convertBuiltinType t args = case t of
   Unit -> unexpectedExprError currentPass "Unit"
   Nat -> return $ IDimensionTypeOp DimensionType []
@@ -107,7 +107,7 @@ convertBuiltinType t args = case t of
   Rat -> return $ ITensorType (explicit IRatElementType) (explicit IDimNil)
   Vector -> convertVectorType args
 
-convertBuiltinConstructor :: (MonadTensor m) => BuiltinConstructor -> WHNFSpine TensorBuiltin -> m (WHNFValue TensorBuiltin)
+convertBuiltinConstructor :: (MonadTensor m) => BuiltinConstructor -> Spine TensorBuiltin -> m (Value TensorBuiltin)
 convertBuiltinConstructor c args = case c of
   LUnit -> unexpectedExprError currentPass "LUnit"
   Nil -> unsupportedOperation c
@@ -118,7 +118,7 @@ convertBuiltinConstructor c args = case c of
   LRat v -> return $ IRatConstTensor v (explicit IDimNil)
   LVec {} -> convertVector args
 
-convertBuiltinFunction :: (MonadTensor m) => BuiltinFunction -> WHNFSpine Builtin -> m (WHNFValue TensorBuiltin)
+convertBuiltinFunction :: (MonadTensor m) => BuiltinFunction -> Spine Builtin -> m (Value TensorBuiltin)
 convertBuiltinFunction b args = do
   let tensorArgs = traverseSpine convertValue args
   let prependSize0 = (Arg mempty (Implicit True) Irrelevant IDimNil :)
@@ -189,13 +189,13 @@ unsupportedOperation t = do
 --------------------------------------------------------------------------------
 -- Simple function conversion
 
-convertIndexType :: (MonadTensor m) => WHNFSpine TensorBuiltin -> m (WHNFValue TensorBuiltin)
+convertIndexType :: (MonadTensor m) => Spine TensorBuiltin -> m (Value TensorBuiltin)
 convertIndexType = \case
   [dim] -> do
     return $ ITensorType (explicit (IDimType dim)) (explicit IDimNil)
   _ -> unexpectedExprError currentPass "Index has incorrect number of arguments"
 
-convertVectorType :: (MonadTensor m) => WHNFSpine TensorBuiltin -> m (WHNFValue TensorBuiltin)
+convertVectorType :: (MonadTensor m) => Spine TensorBuiltin -> m (Value TensorBuiltin)
 convertVectorType = \case
   [elemType, dim] -> case argExpr elemType of
     ITensorType tBaseElem dims -> return $ ITensorType tBaseElem (explicit $ IDimCons (explicit (argExpr dim)) dims)
@@ -206,7 +206,7 @@ convertVectorType = \case
       throwError $ HigherOrderVectors declProv boundCtx vecType unknownElemType
   _ -> unexpectedExprError currentPass "Vector has incorrect number of arguments"
 
-convertVector :: (MonadTensor m) => WHNFSpine TensorBuiltin -> m (WHNFValue TensorBuiltin)
+convertVector :: (MonadTensor m) => Spine TensorBuiltin -> m (Value TensorBuiltin)
 convertVector args = case args of
   [] -> compilerDeveloperError "Malformed LVec found."
   t : xs -> case argExpr t of
@@ -222,14 +222,14 @@ convertVector args = case args of
 
 convertVectorElems ::
   (MonadTensor m, Eq a, Pretty a) =>
-  WHNFArg TensorBuiltin ->
-  (WHNFSpine TensorBuiltin -> WHNFValue TensorBuiltin) ->
-  (Tensor a -> WHNFValue TensorBuiltin) ->
-  (WHNFValue TensorBuiltin -> Maybe (Provenance, Tensor a)) ->
-  (a -> WHNFArg TensorBuiltin -> WHNFValue TensorBuiltin) ->
-  (WHNFValue TensorBuiltin -> Maybe a) ->
-  WHNFSpine TensorBuiltin ->
-  m (WHNFValue TensorBuiltin)
+  VArg TensorBuiltin ->
+  (Spine TensorBuiltin -> Value TensorBuiltin) ->
+  (Tensor a -> Value TensorBuiltin) ->
+  (Value TensorBuiltin -> Maybe (Provenance, Tensor a)) ->
+  (a -> VArg TensorBuiltin -> Value TensorBuiltin) ->
+  (Value TensorBuiltin -> Maybe a) ->
+  Spine TensorBuiltin ->
+  m (Value TensorBuiltin)
 convertVectorElems elementDims mkStack mkLiteralTensor getLiteralTensor mkConstantTensor getConstantTensor = \case
   -- If we're in a zero dimension vector, simply return the empty tensor
   [] -> return $ mkStack []
@@ -246,7 +246,7 @@ convertVectorElems elementDims mkStack mkLiteralTensor getLiteralTensor mkConsta
           -- Otherwise we have to manually stack the tensor
           _ -> return $ mkStack (x : xs)
 
-convertAt :: (MonadTensor m) => WHNFSpine TensorBuiltin -> m (WHNFValue TensorBuiltin)
+convertAt :: (MonadTensor m) => Spine TensorBuiltin -> m (Value TensorBuiltin)
 convertAt = \case
   [argExpr -> ITensorType tElem dims, dim, xs, i] -> do
     let tElem' = setVisibility (Implicit True) tElem
@@ -255,13 +255,13 @@ convertAt = \case
     return $ IDimensionDataOp DimensionLookup [tElem', dim', dims', xs, i]
   _ -> unexpectedExprError currentPass "'!'"
 
-convertDim :: (MonadTensor m) => WHNFArg Builtin -> m (WHNFArg TensorBuiltin)
+convertDim :: (MonadTensor m) => VArg Builtin -> m (VArg TensorBuiltin)
 convertDim arg = setVisibility Explicit . setRelevance Relevant <$> traverse convertValue arg
 
 --------------------------------------------------------------------------------
 -- Higher order function conversion
 
-convertFoldVector :: forall m. (MonadTensor m) => WHNFSpine Builtin -> m (WHNFValue TensorBuiltin)
+convertFoldVector :: forall m. (MonadTensor m) => Spine Builtin -> m (Value TensorBuiltin)
 convertFoldVector spine = case spine of
   [_dim, _a, _b, argExpr -> VLam2 binder1 env binder2 body, e, xs] -> do
     lv <- getBinderDepth
@@ -276,7 +276,7 @@ convertFoldVector spine = case spine of
     return $ evalTensorBuiltinApp pointwiseOp [dimsArg, e', explicit foldResult]
   _ -> unexpectedExprError currentPass $ "'foldVector'" <+> prettyVerbose spine
   where
-    go :: Lv -> WHNFValue TensorBuiltin -> m (TensorBuiltin, TensorBuiltin, WHNFValue TensorBuiltin)
+    go :: Lv -> Value TensorBuiltin -> m (TensorBuiltin, TensorBuiltin, Value TensorBuiltin)
     go lv = convertHigherOrderFunction FoldVector $ \value -> case getSimpleBinaryOp lv value of
       Just (op, dims) -> case op of
         (TensorBool AndBoolTensor) -> return (TensorBool ReduceAndTensor, op, dims)
@@ -288,12 +288,12 @@ convertFoldVector spine = case spine of
         _ -> cannotConvertError 2 (Right FoldVector) spine value
       _ -> cannotConvertError 2 (Right FoldVector) spine value
 
-    getSimpleBinaryOp :: Lv -> WHNFValue TensorBuiltin -> Maybe (TensorBuiltin, WHNFValue TensorBuiltin)
+    getSimpleBinaryOp :: Lv -> Value TensorBuiltin -> Maybe (TensorBuiltin, Value TensorBuiltin)
     getSimpleBinaryOp lv e = case e of
       VBuiltin b [argExpr -> dims, argExpr -> VBoundVar lv1 [], argExpr -> VBoundVar lv2 []] | lv1 == lv && lv2 == lv + 1 -> Just (b, dims)
       _ -> Nothing
 
-convertZipWith :: forall m. (MonadTensor m) => WHNFSpine Builtin -> m (WHNFValue TensorBuiltin)
+convertZipWith :: forall m. (MonadTensor m) => Spine Builtin -> m (Value TensorBuiltin)
 convertZipWith spine = case spine of
   [_a, _b, _c, dim, argExpr -> VLam2 binder1 env binder2 body, xs, ys] -> do
     lv <- getBinderDepth
@@ -307,7 +307,7 @@ convertZipWith spine = case spine of
     liftedBody dim' xs' ys'
   _ -> unexpectedExprError currentPass $ "'zipWith'" <+> prettyVerbose spine
   where
-    go :: Lv -> WHNFValue TensorBuiltin -> m (WHNFArg TensorBuiltin -> WHNFArg TensorBuiltin -> WHNFArg TensorBuiltin -> m (WHNFValue TensorBuiltin))
+    go :: Lv -> Value TensorBuiltin -> m (VArg TensorBuiltin -> VArg TensorBuiltin -> VArg TensorBuiltin -> m (Value TensorBuiltin))
     go lv = convertHigherOrderFunction ZipWithVector $ \case
       VBuiltin op@(isPointwiseLiftable -> Just {}) [argExpr -> dims, argExpr -> e] -> do
         e' <- go lv e
@@ -329,9 +329,9 @@ convertZipWith spine = case spine of
         | v == lv - 1 -> return $ \_dim _xs ys -> return $ argExpr ys
       blockedExpr -> cannotConvertError 2 (Right ZipWithVector) spine blockedExpr
 
-convertMapVector :: forall m. (MonadTensor m) => WHNFSpine Builtin -> m (WHNFValue TensorBuiltin)
+convertMapVector :: forall m. (MonadTensor m) => Spine Builtin -> m (Value TensorBuiltin)
 convertMapVector spine = case spine of
-  [dim, _a, _b, argExpr -> VLam binder (WHNFClosure env body), xs] -> do
+  [dim, _a, _b, argExpr -> VLam binder (Closure env body), xs] -> do
     lv <- getBinderDepth
     liftedBody <- addNameToContext binder $ do
       tensorBody <- convertExpr (extendEnvWithBound lv binder env) body
@@ -343,7 +343,7 @@ convertMapVector spine = case spine of
     return $ liftedBody dim' xs'
   _ -> unexpectedExprError currentPass $ "'mapVector'" <+> prettyVerbose spine
   where
-    go :: Lv -> WHNFValue TensorBuiltin -> m (WHNFArg TensorBuiltin -> WHNFArg TensorBuiltin -> WHNFValue TensorBuiltin)
+    go :: Lv -> Value TensorBuiltin -> m (VArg TensorBuiltin -> VArg TensorBuiltin -> Value TensorBuiltin)
     go lv = convertHigherOrderFunction MapVector $ \case
       VBuiltin op@(isPointwiseLiftable -> Just {}) [dims, argExpr -> e1, argExpr -> e2] -> do
         -- Distribute the `forallIndex` across a liftable operation (e.g. `and`).
@@ -358,9 +358,9 @@ convertMapVector spine = case spine of
       blockedExpr ->
         cannotConvertError 1 (Right MapVector) spine blockedExpr
 
-convertForeachIndex :: forall m. (MonadTensor m) => WHNFSpine Builtin -> m (WHNFValue TensorBuiltin)
+convertForeachIndex :: forall m. (MonadTensor m) => Spine Builtin -> m (Value TensorBuiltin)
 convertForeachIndex spine = case spine of
-  [argExpr -> typ, dim, argExpr -> VLam binder (WHNFClosure env body)] -> do
+  [argExpr -> typ, dim, argExpr -> VLam binder (Closure env body)] -> do
     typ' <- convertValue typ
     lv <- getBinderDepth
     addNameToContext binder $ do
@@ -369,7 +369,7 @@ convertForeachIndex spine = case spine of
       go lv typ' dim' body'
   _ -> unexpectedExprError currentPass "'foreachIndex'"
   where
-    go :: Lv -> WHNFValue TensorBuiltin -> WHNFArg TensorBuiltin -> WHNFValue TensorBuiltin -> m (WHNFValue TensorBuiltin)
+    go :: Lv -> Value TensorBuiltin -> VArg TensorBuiltin -> Value TensorBuiltin -> m (Value TensorBuiltin)
     go lv resultType dim = convertHigherOrderFunction StdForeachIndex $ \case
       VBuiltin b@(isPointwiseLiftable -> Just tElem) [argExpr -> dims, e] -> do
         -- Distribute the `forallIndex` across a liftable operation (e.g. `and`).
@@ -474,7 +474,7 @@ isReduction = \case
 currentPass :: CompilerPass
 currentPass = "conversion to tensors"
 
-cannotConvertError :: (MonadTensor m) => Arity -> Either StdLibFunction BuiltinFunction -> WHNFSpine Builtin -> WHNFValue TensorBuiltin -> m b
+cannotConvertError :: (MonadTensor m) => Arity -> Either StdLibFunction BuiltinFunction -> Spine Builtin -> Value TensorBuiltin -> m b
 cannotConvertError arity fn args problematicExpr = do
   prov <- getDeclProvenance
   problematicCtx <- getNameContext
@@ -482,16 +482,16 @@ cannotConvertError arity fn args problematicExpr = do
   let originalExpr = either (VFreeVar . identifierOf) (VBuiltin . BuiltinFunction) fn args
   throwError $ UnsupportedHigherOrderTensorCode prov originalCtx originalExpr problematicCtx problematicExpr
 
-evalTensorBuiltinApp :: TensorBuiltin -> WHNFSpine TensorBuiltin -> WHNFValue TensorBuiltin
+evalTensorBuiltinApp :: TensorBuiltin -> Spine TensorBuiltin -> Value TensorBuiltin
 evalTensorBuiltinApp op spine = evalTensorBuiltin op (VBuiltin op spine) (filterOutIrrelevantArgs spine)
 
-makeImplicitDims :: WHNFArg TensorBuiltin -> WHNFValue TensorBuiltin -> WHNFArg TensorBuiltin
+makeImplicitDims :: VArg TensorBuiltin -> Value TensorBuiltin -> VArg TensorBuiltin
 makeImplicitDims dim dims = Arg mempty (Implicit True) Irrelevant (IDimCons dim (explicit dims))
 
-makeExplicitDims :: WHNFArg TensorBuiltin -> WHNFArg TensorBuiltin -> WHNFArg TensorBuiltin
+makeExplicitDims :: VArg TensorBuiltin -> VArg TensorBuiltin -> VArg TensorBuiltin
 makeExplicitDims dim dims = Arg mempty Explicit Relevant (IDimCons dim dims)
 
-extendConstTensor :: WHNFArg TensorBuiltin -> WHNFArg TensorBuiltin -> WHNFArg TensorBuiltin -> WHNFArg TensorBuiltin -> WHNFValue TensorBuiltin
+extendConstTensor :: VArg TensorBuiltin -> VArg TensorBuiltin -> VArg TensorBuiltin -> VArg TensorBuiltin -> Value TensorBuiltin
 extendConstTensor t x dim dims = IDimensionDataOp ConstTensor [t, x, makeExplicitDims dim dims]
 
 convertHigherOrderFunction ::

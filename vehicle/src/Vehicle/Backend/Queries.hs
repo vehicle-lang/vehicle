@@ -146,11 +146,11 @@ compileMultiProperty ::
   forall m.
   (MonadStdIO m, MonadFreeContext Builtin m, MonadCompile m) =>
   MultiPropertyMetaData ->
-  WHNFValue Builtin ->
+  Value Builtin ->
   m (MultiProperty ())
 compileMultiProperty multiPropertyMetaData = go []
   where
-    go :: TensorIndices -> WHNFValue Builtin -> m (MultiProperty ())
+    go :: TensorIndices -> Value Builtin -> m (MultiProperty ())
     go indices expr = case expr of
       IVecLiteral _ es -> do
         let es' = zip [0 :: Int ..] es
@@ -165,7 +165,7 @@ compileMultiProperty multiPropertyMetaData = go []
 -- Compiles an individual property
 compileSingleProperty ::
   (MonadPropertyStructure m, MonadStdIO m) =>
-  WHNFValue Builtin ->
+  Value Builtin ->
   m ()
 compileSingleProperty expr = do
   queries <- flip runSupplyT [1 :: QueryID ..] $ eliminateUserVariables expr

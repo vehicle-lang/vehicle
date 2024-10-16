@@ -48,17 +48,17 @@ type MonadDomain m =
   )
 
 data Domain = Domain
-  { lowerBound :: WHNFValue TensorBuiltin,
-    upperBound :: WHNFValue TensorBuiltin
+  { lowerBound :: Value TensorBuiltin,
+    upperBound :: Value TensorBuiltin
   }
 
 extractSearchDomain ::
   (MonadDomain m) =>
   DeclProvenance ->
-  WHNFBinder TensorBuiltin ->
+  VBinder TensorBuiltin ->
   Lv ->
-  WHNFValue TensorBuiltin ->
-  m (Domain, WHNFValue TensorBuiltin)
+  Value TensorBuiltin ->
+  m (Domain, Value TensorBuiltin)
 extractSearchDomain _propertyProv _binder _lv value = do
   {-
   _variableInfo <- case typeOf binder of
@@ -95,9 +95,9 @@ extractSearchDomain _propertyProv _binder _lv value = do
 --------------------------------------------------------------------------------
 -- Constraints
 
-type TensorElementInequality = Inequality UserElementVariable (WHNFValue TensorBuiltin)
+type TensorElementInequality = Inequality UserElementVariable (Value TensorBuiltin)
 
-type TensorInequality = Inequality Name (WHNFValue TensorBuiltin)
+type TensorInequality = Inequality Name (Value TensorBuiltin)
 
 type VariableConstraint = Either TensorElementInequality TensorInequality
 
@@ -109,20 +109,20 @@ splitConstraints = partitionEithers
 pattern NoConstraints :: VariableConstraints
 pattern NoConstraints = []
 
-type ConstrainedValue = (VariableConstraints, WHNFValue TensorBuiltin)
+type ConstrainedValue = (VariableConstraints, Value TensorBuiltin)
 
-unconstrained ::  WHNFValue TensorBuiltin -> ConstrainedValue
+unconstrained ::  Value TensorBuiltin -> ConstrainedValue
 unconstrained = (NoConstraints,)
 
 updateConstrainedValue ::
-  WHNFValue TensorBuiltin ->
+  Value TensorBuiltin ->
   ConstrainedValue ->
   ConstrainedValue
 updateConstrainedValue originalExpr = \case
   constr@(_ : _, _) -> constr
   ([], _) -> ([], originalExpr)
 
-instance IsConstant (WHNFValue TensorBuiltin) where
+instance IsConstant (Value TensorBuiltin) where
   isZero = \case
     -- This is only semi-decidable, probably need to think harder about what
     -- to do here.
@@ -189,18 +189,18 @@ extractDomainFromConstraints VariableInfo{..} constraints = do
 
 extractVarBounds ::
   (MonadCompile m) =>
-  ([TensorElementInequality], [(UserElementVariable, Bounds UserElementVariable (WHNFValue TensorBuiltin))]) ->
+  ([TensorElementInequality], [(UserElementVariable, Bounds UserElementVariable (Value TensorBuiltin))]) ->
   UserElementVariable ->
-  m ([TensorElementInequality], [(UserElementVariable, Bounds UserElementVariable (WHNFValue TensorBuiltin))])
+  m ([TensorElementInequality], [(UserElementVariable, Bounds UserElementVariable (Value TensorBuiltin))])
 extractVarBounds (currentConstraints, solutions) var = do
   (bounds, newInequalities) <- fourierMotzkinElimination var currentConstraints
   return (newInequalities, (var, bounds) : solutions)
 
 convertBoundToExpr ::
   Map UserElementVariable Lv ->
-  (WHNFValue TensorBuiltin -> WHNFValue TensorBuiltin -> WHNFValue TensorBuiltin) ->
-  NonEmpty (Bound UserElementVariable (WHNFValue TensorBuiltin)) ->
-  WHNFValue TensorBuiltin
+  (Value TensorBuiltin -> Value TensorBuiltin -> Value TensorBuiltin) ->
+  NonEmpty (Bound UserElementVariable (Value TensorBuiltin)) ->
+  Value TensorBuiltin
 convertBoundToExpr varMap op bounds = foldr1 _ (fmap convertBound bounds)
   where
     -- Ignore strictness for the moment.
@@ -214,7 +214,7 @@ convertBoundToExpr varMap op bounds = foldr1 _ (fmap convertBound bounds)
 --------------------------------------------------------------------------------
 -- Constraint search
 
-findConstraints :: (MonadSearch m) => WHNFValue TensorBuiltin -> m ConstrainedValue
+findConstraints :: (MonadSearch m) => Value TensorBuiltin -> m ConstrainedValue
 findConstraints expr = case toBoolTensorView expr of
   -------------------------
   -- Unuseful base cases --
@@ -246,7 +246,7 @@ findConstraints expr = case toBoolTensorView expr of
 
 handleNot ::
   forall m . (MonadSearch m) =>
-  WHNFValue TensorBuiltin ->
+  Value TensorBuiltin ->
   m ConstrainedValue
 handleNot expr = do
   loweredExpr <- lowerBoolTensor expr
@@ -254,7 +254,7 @@ handleNot expr = do
     INot {} -> return $ unconstrained expr
     newExpr -> updateConstrainedValue expr <$> findConstraints newExpr
   where
-    lowerBoolTensor :: WHNFValue TensorBuiltin -> m (WHNFValue TensorBuiltin)
+    lowerBoolTensor :: Value TensorBuiltin -> m (Value TensorBuiltin)
     lowerBoolTensor e = fromBoolTensorView <$> case toBoolTensorView e of
       ----------------
       -- Base cases --
@@ -278,15 +278,15 @@ handleNot expr = do
       VReduceAndTensor {} -> return $ VNotTensor e
       VReduceOrTensor {} -> return $ VNotTensor e
 
-    lowerBool :: WHNFValue TensorBuiltin -> m (WHNFValue TensorBuiltin)
+    lowerBool :: Value TensorBuiltin -> m (Value TensorBuiltin)
     lowerBool = \case
       INullaryBoolTensorOp (BoolLiteral b) -> return $ INullaryBoolTensorOp (BoolLiteral b)
       e -> developerError $ "Unexpected expression of type Bool:" <+> prettyVerbose e
 
 unfoldEquality ::
-  WHNFValue TensorBuiltin ->
-  WHNFValue TensorBuiltin ->
-  WHNFValue TensorBuiltin
+  Value TensorBuiltin ->
+  Value TensorBuiltin ->
+  Value TensorBuiltin
 unfoldEquality x y = IAnd (IOrderRat Le x y) (IOrderRat Ge x y)
 
 --------------------------------------------------------------------------------
@@ -299,8 +299,8 @@ unfoldEquality x y = IAnd (IOrderRat Le x y) (IOrderRat Ge x y)
 handleRatInequality ::
   (MonadSearch m) =>
   OrderOp ->
-  WHNFValue TensorBuiltin ->
-  WHNFValue TensorBuiltin ->
+  Value TensorBuiltin ->
+  Value TensorBuiltin ->
   m ConstrainedValue
 handleRatInequality op e1 e2 = do
   result <- compileRatLinearRelation (mkInequality op) e1 e2
@@ -321,25 +321,25 @@ handleRatInequality op e1 e2 = do
 compileRatLinearRelation ::
   (MonadLogger m, MonadReader VariableInfo m) =>
   (LinearExp -> LinearExp -> relation) ->
-  WHNFValue TensorBuiltin ->
-  WHNFValue TensorBuiltin ->
-  m (Either (WHNFValue TensorBuiltin) relation)
+  Value TensorBuiltin ->
+  Value TensorBuiltin ->
+  m (Either (Value TensorBuiltin) relation)
 compileRatLinearRelation mkRelation x y = do
   runExceptT $ do
     x' <- compileRatLinearExpr x
     y' <- compileRatLinearExpr y
     return $ mkRelation x' y'
 
-type LinearExp = LinearExpr UserElementVariable (WHNFValue TensorBuiltin)
+type LinearExp = LinearExpr UserElementVariable (Value TensorBuiltin)
 
 compileRatLinearExpr ::
   forall m.
-  (MonadLogger m, MonadReader VariableInfo m, MonadError (WHNFValue TensorBuiltin) m) =>
-  WHNFValue TensorBuiltin ->
+  (MonadLogger m, MonadReader VariableInfo m, MonadError (Value TensorBuiltin) m) =>
+  Value TensorBuiltin ->
   m LinearExp
 compileRatLinearExpr = go
   where
-    go :: WHNFValue TensorBuiltin -> m LinearExp
+    go :: Value TensorBuiltin -> m LinearExp
     go expr = case toRatTensorView expr of
       ----------------
       -- Base cases --

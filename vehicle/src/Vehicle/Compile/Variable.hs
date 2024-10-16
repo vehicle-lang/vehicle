@@ -7,11 +7,9 @@ where
 import Control.Monad (when)
 import Control.Monad.Except (MonadError (..))
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.Quote (QuoteClosure)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print.Builtin
 import Vehicle.Data.Builtin.Interface (BuiltinHasNatLiterals, BuiltinHasRatType (mkRatBuiltinType), BuiltinHasVecType)
-import Vehicle.Data.Builtin.Standard (Builtin)
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value (VBinder, Value)
 import Vehicle.Data.QuantifiedVariable
@@ -21,23 +19,20 @@ import Prelude hiding (Applicative (..))
 --------------------------------------------------------------------------------
 -- Extraction
 
-type MonadCreateUserVar closure builtin m =
+type MonadCreateUserVar builtin m =
   ( MonadCompile m,
     BuiltinHasRatType builtin,
     BuiltinHasVecType builtin,
     BuiltinHasNatLiterals builtin,
     PrintableBuiltin builtin,
-    Show closure,
-    Eq closure,
-    Eq builtin,
-    QuoteClosure closure Builtin
+    Eq builtin
   )
 
 createUserVar ::
-  (MonadCreateUserVar closure builtin m) =>
+  (MonadCreateUserVar builtin m) =>
   DeclProvenance ->
   NamedBoundCtx ->
-  VBinder closure builtin ->
+  VBinder builtin ->
   m (TensorVariable, TensorShape)
 createUserVar propertyProvenance namedCtx binder = do
   let varName = getBinderName binder
@@ -58,14 +53,14 @@ checkUserVariableNameIsUnique propertyProvenance namedCtx varName = do
       DuplicateQuantifierNames propertyProvenance varName
 
 checkUserVariableType ::
-  forall m closure builtin.
-  (MonadCreateUserVar closure builtin m) =>
+  forall m builtin.
+  (MonadCreateUserVar builtin m) =>
   DeclProvenance ->
-  VBinder closure builtin ->
+  VBinder builtin ->
   m TensorShape
 checkUserVariableType propertyProvenance binder = go (typeOf binder)
   where
-    go :: Value closure builtin -> m TensorShape
+    go :: Value builtin -> m TensorShape
     go = \case
       IRatType {} -> return []
       IVectorType _ tElem (INatLiteral _ d) -> do

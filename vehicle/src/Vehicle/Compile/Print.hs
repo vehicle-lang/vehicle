@@ -26,7 +26,7 @@ import Data.Text (Text)
 import GHC.TypeLits (ErrorMessage (..), TypeError)
 import Prettyprinter (list)
 import Vehicle.Compile.Descope
-import Vehicle.Compile.Normalise.Quote (QuoteClosure, unnormalise)
+import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print.Builtin (ConvertableBuiltin, PrintableBuiltin)
 import Vehicle.Compile.Simplify
@@ -147,19 +147,19 @@ type family StrategyFor (tags :: Tags) a :: Strategy where --------------------
   -- Value --
   -----------
   -- To print a `Value` we need to quote it first. Note that we convert it to a `Builtin` representation immediately
-  StrategyFor ('Named tags) (VDecl closure builtin) = StrategyFor ('Named tags) (Contextualised (Value closure builtin) NamedBoundCtx)
-  StrategyFor ('Named tags) (Contextualised (Value closure builtin) NamedBoundCtx) = 'QuoteValue (StrategyFor ('Named tags) (Contextualised (Expr Builtin) NamedBoundCtx))
-  StrategyFor ('Unnamed tags) (Value closure builtin) = 'DescopeNaively (StrategyFor tags S.Expr)
+  StrategyFor ('Named tags) (VDecl builtin) = StrategyFor ('Named tags) (Contextualised (Value builtin) NamedBoundCtx)
+  StrategyFor ('Named tags) (Contextualised (Value builtin) NamedBoundCtx) = 'QuoteValue (StrategyFor ('Named tags) (Contextualised (Expr Builtin) NamedBoundCtx))
+  StrategyFor ('Unnamed tags) (Value builtin) = 'DescopeNaively (StrategyFor tags S.Expr)
   -----------
   -- State --
   -----------
   -- Objects for which we want to block the strategy computation on.
-  StrategyFor ('Named tags) (Contextualised (Constraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised (WHNFValue builtin) NamedBoundCtx))
-  StrategyFor ('Named tags) (Contextualised (InstanceConstraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised (WHNFValue builtin) NamedBoundCtx))
-  StrategyFor ('Named tags) (Contextualised (UnificationConstraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised (WHNFValue builtin) NamedBoundCtx))
-  StrategyFor ('Unnamed tags) (Contextualised (Constraint builtin) (ConstraintContext builtin)) = 'DiscardConstraintCtx (StrategyFor ('Unnamed tags) (WHNFValue builtin))
-  StrategyFor ('Unnamed tags) (Contextualised (InstanceConstraint builtin) (ConstraintContext builtin)) = 'DiscardConstraintCtx (StrategyFor ('Unnamed tags) (WHNFValue builtin))
-  StrategyFor ('Unnamed tags) (Contextualised (UnificationConstraint builtin) (ConstraintContext builtin)) = 'DiscardConstraintCtx (StrategyFor ('Unnamed tags) (WHNFValue builtin))
+  StrategyFor ('Named tags) (Contextualised (Constraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised (Value builtin) NamedBoundCtx))
+  StrategyFor ('Named tags) (Contextualised (InstanceConstraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised (Value builtin) NamedBoundCtx))
+  StrategyFor ('Named tags) (Contextualised (UnificationConstraint builtin) (ConstraintContext builtin)) = 'KeepConstraintCtx (StrategyFor ('Named tags) (Contextualised (Value builtin) NamedBoundCtx))
+  StrategyFor ('Unnamed tags) (Contextualised (Constraint builtin) (ConstraintContext builtin)) = 'DiscardConstraintCtx (StrategyFor ('Unnamed tags) (Value builtin))
+  StrategyFor ('Unnamed tags) (Contextualised (InstanceConstraint builtin) (ConstraintContext builtin)) = 'DiscardConstraintCtx (StrategyFor ('Unnamed tags) (Value builtin))
+  StrategyFor ('Unnamed tags) (Contextualised (UnificationConstraint builtin) (ConstraintContext builtin)) = 'DiscardConstraintCtx (StrategyFor ('Unnamed tags) (Value builtin))
   --------------------------------
   -- Distributing over functors --
   --------------------------------
@@ -279,14 +279,14 @@ instance (PrettyUsing rest S.Arg, PrintableBuiltin builtin) => PrettyUsing ('Des
 instance (PrettyUsing rest S.Binder, PrintableBuiltin builtin) => PrettyUsing ('DescopeNaively rest) (Binder builtin) where
   prettyUsing binder = prettyUsing @rest $ fmap descopeExprNaively binder
 
-instance (PrettyUsing rest S.Expr, PrintableBuiltin builtin, DescopableClosure closure) => PrettyUsing ('DescopeNaively rest) (Value closure builtin) where
-  prettyUsing = prettyUsing @rest . descopeValueNaively @builtin @closure
+instance (PrettyUsing rest S.Expr, PrintableBuiltin builtin) => PrettyUsing ('DescopeNaively rest) (Value builtin) where
+  prettyUsing = prettyUsing @rest . descopeValueNaively @builtin
 
-instance (PrettyUsing rest S.Arg, PrintableBuiltin builtin, DescopableClosure closure) => PrettyUsing ('DescopeNaively rest) (VArg closure builtin) where
-  prettyUsing arg = prettyUsing @rest $ fmap (descopeValueNaively @builtin @closure) arg
+instance (PrettyUsing rest S.Arg, PrintableBuiltin builtin) => PrettyUsing ('DescopeNaively rest) (VArg builtin) where
+  prettyUsing arg = prettyUsing @rest $ fmap (descopeValueNaively @builtin) arg
 
-instance (PrettyUsing rest S.Binder, PrintableBuiltin builtin, DescopableClosure closure) => PrettyUsing ('DescopeNaively rest) (VBinder closure builtin) where
-  prettyUsing binder = prettyUsing @rest $ fmap (descopeValueNaively @builtin @closure) binder
+instance (PrettyUsing rest S.Binder, PrintableBuiltin builtin) => PrettyUsing ('DescopeNaively rest) (VBinder builtin) where
+  prettyUsing binder = prettyUsing @rest $ fmap (descopeValueNaively @builtin) binder
 
 --------------------------------------------------------------------------------
 -- Convert open terms from DeBruijn representation to named representation
@@ -392,35 +392,35 @@ instance
 -- Instances for normalised types
 
 instance
-  (PrettyUsing rest (Expr Builtin), ConvertableBuiltin builtin Builtin, QuoteClosure closure Builtin) =>
-  PrettyUsing ('QuoteValue rest) (Value closure builtin)
+  (PrettyUsing rest (Expr Builtin), ConvertableBuiltin builtin Builtin) =>
+  PrettyUsing ('QuoteValue rest) (Value builtin)
   where
-  prettyUsing e = prettyUsing @rest $ unnormalise @(Value closure builtin) @(Expr Builtin) 0 e
+  prettyUsing e = prettyUsing @rest $ unnormalise @(Value builtin) @(Expr Builtin) 0 e
 
 instance
-  (PrettyUsing rest (Arg Builtin), ConvertableBuiltin builtin Builtin, QuoteClosure closure Builtin) =>
-  PrettyUsing ('QuoteValue rest) (VArg closure builtin)
+  (PrettyUsing rest (Arg Builtin), ConvertableBuiltin builtin Builtin) =>
+  PrettyUsing ('QuoteValue rest) (VArg builtin)
   where
-  prettyUsing e = prettyUsing @rest $ fmap (unnormalise @(Value closure builtin) @(Expr Builtin) 0) e
+  prettyUsing e = prettyUsing @rest $ fmap (unnormalise @(Value builtin) @(Expr Builtin) 0) e
 
 instance
-  (PrettyUsing rest (Binder Builtin), ConvertableBuiltin builtin Builtin, QuoteClosure closure Builtin) =>
-  PrettyUsing ('QuoteValue rest) (VBinder closure builtin)
+  (PrettyUsing rest (Binder Builtin), ConvertableBuiltin builtin Builtin) =>
+  PrettyUsing ('QuoteValue rest) (VBinder builtin)
   where
-  prettyUsing e = prettyUsing @rest $ fmap (unnormalise @(Value closure builtin) @(Expr Builtin) 0) e
+  prettyUsing e = prettyUsing @rest $ fmap (unnormalise @(Value builtin) @(Expr Builtin) 0) e
 
 instance
-  (PrettyUsing rest (Decl Builtin), ConvertableBuiltin builtin Builtin, QuoteClosure closure Builtin) =>
-  PrettyUsing ('QuoteValue rest) (VDecl closure builtin)
+  (PrettyUsing rest (Decl Builtin), ConvertableBuiltin builtin Builtin) =>
+  PrettyUsing ('QuoteValue rest) (VDecl builtin)
   where
-  prettyUsing e = prettyUsing @rest $ fmap (unnormalise @(Value closure builtin) @(Expr Builtin) 0) e
+  prettyUsing e = prettyUsing @rest $ fmap (unnormalise @(Value builtin) @(Expr Builtin) 0) e
 
 instance
-  (PrettyUsing rest (Contextualised (Expr Builtin) NamedBoundCtx), ConvertableBuiltin builtin Builtin, QuoteClosure closure Builtin) =>
-  PrettyUsing ('QuoteValue rest) (Contextualised (Value closure builtin) NamedBoundCtx)
+  (PrettyUsing rest (Contextualised (Expr Builtin) NamedBoundCtx), ConvertableBuiltin builtin Builtin) =>
+  PrettyUsing ('QuoteValue rest) (Contextualised (Value builtin) NamedBoundCtx)
   where
   prettyUsing (WithContext e ctx) = do
-    let e' = unnormalise @(Value closure builtin) @(Expr Builtin) (Lv $ length ctx) e
+    let e' = unnormalise @(Value builtin) @(Expr Builtin) (Lv $ length ctx) e
     prettyUsing @rest (WithContext e' ctx)
 
 instance PrettyUsing rest (GenericBinder ()) where
@@ -440,24 +440,24 @@ prettyConstraintContext constraint ctx =
   "#" <> pretty (constraintID ctx) <> ". " <+> constraint -- <+> pretty ctx
 
 instance
-  (PrettyUsing rest (WHNFValue builtin)) =>
+  (PrettyUsing rest (Value builtin)) =>
   PrettyUsing ('DiscardConstraintCtx rest) (Contextualised (UnificationConstraint builtin) (ConstraintContext builtin))
   where
   prettyUsing (WithContext (Unify _ e1 e2) ctx) = do
-    let e1' = prettyUsing @rest (e1 :: WHNFValue builtin)
-    let e2' = prettyUsing @rest (e2 :: WHNFValue builtin)
+    let e1' = prettyUsing @rest (e1 :: Value builtin)
+    let e2' = prettyUsing @rest (e2 :: Value builtin)
     prettyConstraintContext (prettyUnify e1' e2') ctx
 
 instance
-  (PrettyUsing rest (WHNFValue builtin)) =>
+  (PrettyUsing rest (Value builtin)) =>
   PrettyUsing ('DiscardConstraintCtx rest) (Contextualised (InstanceConstraint builtin) (ConstraintContext builtin))
   where
   prettyUsing (WithContext (Resolve _ m _ expr) ctx) = do
-    let expr' = prettyUsing @rest (expr :: WHNFValue builtin)
+    let expr' = prettyUsing @rest (expr :: Value builtin)
     prettyConstraintContext (prettyTypeClass m expr') ctx
 
 instance
-  (PrettyUsing rest (Contextualised (WHNFValue builtin) NamedBoundCtx)) =>
+  (PrettyUsing rest (Contextualised (Value builtin) NamedBoundCtx)) =>
   PrettyUsing ('KeepConstraintCtx rest) (Contextualised (UnificationConstraint builtin) (ConstraintContext builtin))
   where
   prettyUsing (WithContext (Unify _ e1 e2) ctx) = do
@@ -466,7 +466,7 @@ instance
     prettyConstraintContext (prettyUnify e1' e2') ctx
 
 instance
-  (PrettyUsing rest (Contextualised (WHNFValue builtin) NamedBoundCtx)) =>
+  (PrettyUsing rest (Contextualised (Value builtin) NamedBoundCtx)) =>
   PrettyUsing ('KeepConstraintCtx rest) (Contextualised (InstanceConstraint builtin) (ConstraintContext builtin))
   where
   prettyUsing (WithContext (Resolve _ m _ expr) ctx) = do

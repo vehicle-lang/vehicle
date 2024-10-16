@@ -20,8 +20,8 @@ appHiddenStdlibDef ::
   forall builtin m.
   (MonadFreeContext builtin m, NormalisableBuiltin builtin) =>
   StdLibFunction ->
-  WHNFSpine builtin ->
-  m (WHNFValue builtin)
+  Spine builtin ->
+  m (Value builtin)
 appHiddenStdlibDef fn spine = do
   (_fnDef, normBody) <- getHiddenStdLibDecl (Proxy @builtin) fn
   case bodyOf normBody of

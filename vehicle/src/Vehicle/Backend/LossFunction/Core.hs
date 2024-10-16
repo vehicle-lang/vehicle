@@ -8,7 +8,7 @@ import GHC.Generics (Generic)
 import Vehicle.Backend.Prelude (DifferentiableLogicID)
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Loss
-import Vehicle.Data.Code.Value (Value (..), WHNFBinder, WHNFBoundEnv, WHNFClosure (..), WHNFValue)
+import Vehicle.Data.Code.Value (BoundEnv, Closure (..), VBinder, Value (..))
 import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (..))
 
 --------------------------------------------------------------------------------
@@ -56,7 +56,7 @@ instance Pretty TensorDifferentiableLogicField where
   pretty = pretty . show
 
 type DifferentiableLogicImplementation =
-  Map TensorDifferentiableLogicField (WHNFValue LossTensorBuiltin)
+  Map TensorDifferentiableLogicField (Value LossTensorBuiltin)
 
 type CompiledDifferentiableLogic = (DifferentiableLogicID, DifferentiableLogicImplementation)
 
@@ -130,7 +130,7 @@ data RatTensorView expr
   | VReduceMaxRatTensor expr
   | VSearchRatTensor expr expr expr expr
 
-fromRatTensorView :: (BuiltinHasRatTensor builtin, BuiltinHasDimensionData builtin) => RatTensorView (WHNFValue builtin) -> WHNFValue builtin
+fromRatTensorView :: (BuiltinHasRatTensor builtin, BuiltinHasDimensionData builtin) => RatTensorView (Value builtin) -> Value builtin
 fromRatTensorView = \case
   VRatTensor y -> INullaryRatTensorOp (RatTensor y)
   VNegRatTensor x -> IRatTensorOp NegRatTensor (explicit <$> [x])
@@ -149,7 +149,7 @@ fromRatTensorView = \case
   VSearchRatTensor reduce lower upper fn -> IRatTensorOp SearchRatTensor (explicit <$> [reduce, lower, upper, fn])
   VRatTensorVar v -> VBoundVar v []
 
-toRatTensorView :: (BuiltinHasRatTensor builtin, BuiltinHasDimensionData builtin) => WHNFValue builtin -> RatTensorView (WHNFValue builtin)
+toRatTensorView :: (BuiltinHasRatTensor builtin, BuiltinHasDimensionData builtin) => Value builtin -> RatTensorView (Value builtin)
 toRatTensorView expr = case getRatTensorOp expr of
   Just (RatTensor b, []) -> VRatTensor b
   Just (NegRatTensor, [x]) -> VNegRatTensor (argExpr x)
@@ -181,5 +181,5 @@ preservedStdLibOps =
     [ StdForeachIndex
     ]
 
-pattern VLam2 :: WHNFBinder builtin -> WHNFBoundEnv builtin -> Binder builtin -> Expr builtin -> WHNFValue builtin
-pattern VLam2 binder1 env binder2 body <- VLam binder1 (WHNFClosure env (Lam _ binder2 body))
+pattern VLam2 :: VBinder builtin -> BoundEnv builtin -> Binder builtin -> Expr builtin -> Value builtin
+pattern VLam2 binder1 env binder2 body <- VLam binder1 (Closure env (Lam _ binder2 body))

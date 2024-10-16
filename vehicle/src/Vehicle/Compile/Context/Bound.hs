@@ -16,7 +16,7 @@ import Vehicle.Compile.Error (MonadCompile, lookupIxInBoundCtx, lookupLvInBoundC
 import Vehicle.Compile.Normalise.Quote qualified as Quote (unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (PrettyFriendly, prettyFriendly)
-import Vehicle.Data.Code.Value (WHNFValue)
+import Vehicle.Data.Code.Value (Value)
 
 prettyFriendlyInCtx ::
   (MonadBoundContext expr m, MonadLogger m, PrettyFriendly (Contextualised a NamedBoundCtx)) =>
@@ -50,7 +50,7 @@ getBoundVarByLv _ compilerPass lv =
 unnormalise ::
   forall expr m.
   (MonadBoundContext expr m, Show expr) =>
-  WHNFValue expr ->
+  Value expr ->
   m (Expr expr)
 unnormalise e = do
   lv <- getCurrentLv (Proxy @expr)

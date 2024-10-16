@@ -49,11 +49,11 @@ import Prelude hiding (Applicative (..))
 eliminateUserVariables ::
   forall m.
   (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m) =>
-  WHNFValue Builtin ->
+  Value Builtin ->
   m (Property QueryMetaData)
 eliminateUserVariables = go
   where
-    go :: WHNFValue Builtin -> m (Property QueryMetaData)
+    go :: Value Builtin -> m (Property QueryMetaData)
     go expr = case expr of
       ----------------
       -- Base cases --
@@ -65,9 +65,9 @@ eliminateUserVariables = go
       IAnd e1 e2 -> andTrivial andBoolExpr <$> go e1 <*> go e2
       IOr e1 e2 -> orTrivial orBoolExpr <$> go e1 <*> go e2
       IIf _ c x y -> go =<< unfoldIf c x y
-      IExists _ (VLam binder (WHNFClosure env body)) ->
+      IExists _ (VLam binder (Closure env body)) ->
         compileQuantifiedQuerySet False binder env body
-      IForall _ (VLam binder (WHNFClosure env body)) ->
+      IForall _ (VLam binder (Closure env body)) ->
         compileQuantifiedQuerySet True binder env (INot body)
       -----------------
       -- Mixed cases --
@@ -90,12 +90,12 @@ eliminateUserVariables = go
 compileQuantifiedQuerySet ::
   (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m) =>
   Bool ->
-  WHNFBinder Builtin ->
-  WHNFBoundEnv Builtin ->
+  VBinder Builtin ->
+  BoundEnv Builtin ->
   Expr Builtin ->
   m (Property QueryMetaData)
 compileQuantifiedQuerySet isPropertyNegated binder env body = do
-  let subsectionDoc = "compilation of set of quantified queries:" <+> prettyFriendlyEmptyCtx (IExists [] (VLam binder (WHNFClosure env body)))
+  let subsectionDoc = "compilation of set of quantified queries:" <+> prettyFriendlyEmptyCtx (IExists [] (VLam binder (Closure env body)))
   logCompilerPass MaxDetail subsectionDoc $ do
     flip evalStateT emptyGlobalCtx $ do
       maybePartitions <- compileExists binder env body
@@ -104,7 +104,7 @@ compileQuantifiedQuerySet isPropertyNegated binder env body = do
 -- | We only need this because we can't evaluate networks in the compiler.
 compileUnquantifiedQuerySet ::
   (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m) =>
-  WHNFValue Builtin ->
+  Value Builtin ->
   m (Property QueryMetaData)
 compileUnquantifiedQuerySet value = do
   let subsectionDoc = "compilation of set of unquantified queries:" <+> prettyFriendlyEmptyCtx value
@@ -130,8 +130,8 @@ compileQuerySetPartitions isPropertyNegated maybePartitions = case maybePartitio
 -- of assertions implicitly existentially quantified by a set of network
 -- input/output variables.
 compileBoolExpr ::
-  (MonadQueryStructure m, MonadWriter [WHNFValue Builtin] m) =>
-  WHNFValue Builtin ->
+  (MonadQueryStructure m, MonadWriter [Value Builtin] m) =>
+  Value Builtin ->
   m (MaybeTrivial Partitions)
 compileBoolExpr expr = case expr of
   ----------------
@@ -151,20 +151,20 @@ compileBoolExpr expr = case expr of
   IIf _ c x y -> compileBoolExpr =<< unfoldIf c x y
   IAnd x y -> andTrivial andPartitions <$> compileBoolExpr x <*> compileBoolExpr y
   IOr x y -> orTrivial orPartitions <$> compileBoolExpr x <*> compileBoolExpr y
-  IExists _ (VLam binder (WHNFClosure env body)) -> compileExists binder env body
+  IExists _ (VLam binder (Closure env body)) -> compileExists binder env body
   _ -> compileBoolExpr =<< unblockBoolExpr expr
 
 eliminateNot ::
-  (MonadQueryStructure m, MonadWriter [WHNFValue Builtin] m) =>
-  WHNFValue Builtin ->
-  m (WHNFValue Builtin)
+  (MonadQueryStructure m, MonadWriter [Value Builtin] m) =>
+  Value Builtin ->
+  m (Value Builtin)
 eliminateNot = lowerNot (eliminateNot <=< unblockBoolExpr)
 
 eliminateNotEqualRat ::
   (MonadQueryStructure m) =>
-  WHNFValue Builtin ->
-  WHNFValue Builtin ->
-  m (WHNFValue Builtin)
+  Value Builtin ->
+  Value Builtin ->
+  m (Value Builtin)
 eliminateNotEqualRat x y = do
   PropertyMetaData {..} <- ask
   if supportsStrictInequalities queryFormat
@@ -173,14 +173,14 @@ eliminateNotEqualRat x y = do
 
 eliminateNotVectorEqual ::
   (MonadQueryStructure m) =>
-  WHNFSpine Builtin ->
-  m (WHNFValue Builtin)
+  Spine Builtin ->
+  m (Value Builtin)
 eliminateNotVectorEqual = appHiddenStdlibDef StdNotEqualsVector
 
 tryPurifyAssertion ::
   (MonadQuantifierBody m) =>
-  WHNFValue Builtin ->
-  (WHNFValue Builtin -> WHNFValue Builtin -> m (MaybeTrivial Partitions)) ->
+  Value Builtin ->
+  (Value Builtin -> Value Builtin -> m (MaybeTrivial Partitions)) ->
   m (MaybeTrivial Partitions)
 tryPurifyAssertion expr whenAlreadyPure = do
   result <- Unblocking.tryPurifyAssertion unblockingActions expr
@@ -190,8 +190,8 @@ tryPurifyAssertion expr whenAlreadyPure = do
 
 unblockBoolExpr ::
   (MonadQuantifierBody m) =>
-  WHNFValue Builtin ->
-  m (WHNFValue Builtin)
+  Value Builtin ->
+  m (Value Builtin)
 unblockBoolExpr value = do
   ctx <- getGlobalNamedBoundCtx
   Unblocking.unblockBoolExpr ctx unblockingActions value
@@ -201,8 +201,8 @@ unblockBoolExpr value = do
 
 compileExists ::
   (MonadQueryStructure m) =>
-  WHNFBinder Builtin ->
-  WHNFBoundEnv Builtin ->
+  VBinder Builtin ->
+  BoundEnv Builtin ->
   Expr Builtin ->
   m (MaybeTrivial Partitions)
 compileExists binder env body = do
@@ -234,7 +234,7 @@ compileExists binder env body = do
     -- Solve for the user variable.
     eliminateExists finalPartitions userVar
 
-networkEqualitiesToPartition :: (MonadQueryStructure m) => [WHNFValue Builtin] -> m (MaybeTrivial Partitions)
+networkEqualitiesToPartition :: (MonadQueryStructure m) => [Value Builtin] -> m (MaybeTrivial Partitions)
 networkEqualitiesToPartition networkEqualities = do
   logDebugM MaxDetail $ do
     networkEqDocs <- traverse prettyFriendlyInCtx networkEqualities
@@ -250,7 +250,7 @@ networkEqualitiesToPartition networkEqualities = do
 
 type MonadQuantifierBody m =
   ( MonadQueryStructure m,
-    MonadWriter [WHNFValue Builtin] m
+    MonadWriter [Value Builtin] m
   )
 
 unblockingActions :: (MonadQuantifierBody m) => UnblockingActions m
@@ -263,7 +263,7 @@ unblockingActions =
 unblockBoundVectorVariable ::
   (MonadQuantifierBody m) =>
   Lv ->
-  m (WHNFValue Builtin)
+  m (Value Builtin)
 unblockBoundVectorVariable lv = do
   maybeReduction <- getReducedVariableExprFor lv
   case maybeReduction of
@@ -272,11 +272,11 @@ unblockBoundVectorVariable lv = do
 
 unblockFreeVectorVariable ::
   (MonadQuantifierBody m) =>
-  (ReduceVectorVars -> WHNFValue Builtin -> m (WHNFValue Builtin)) ->
+  (ReduceVectorVars -> Value Builtin -> m (Value Builtin)) ->
   ReduceVectorVars ->
   Identifier ->
-  WHNFSpine Builtin ->
-  m (WHNFValue Builtin)
+  Spine Builtin ->
+  m (Value Builtin)
 unblockFreeVectorVariable unblockVector reduceVectorVars ident spine = do
   let networkName = nameOf ident
   networkContext <- asks networkCtx
@@ -314,8 +314,8 @@ unblockFreeVectorVariable unblockVector reduceVectorVars ident spine = do
 compileRationalAssertion ::
   (MonadQueryStructure m) =>
   (LinearExpr -> LinearExpr -> Assertion) ->
-  WHNFValue Builtin ->
-  WHNFValue Builtin ->
+  Value Builtin ->
+  Value Builtin ->
   m (MaybeTrivial Partitions)
 compileRationalAssertion mkAssertion x y = do
   result <- compileRatLinearRelation getRationalVariable mkAssertion x y
@@ -325,10 +325,10 @@ compileRationalAssertion mkAssertion x y = do
     Right assertion -> return $ mkTrivialPartition assertion
 
 compileTensorAssertion ::
-  (MonadQueryStructure m, MonadWriter [WHNFValue Builtin] m) =>
-  WHNFSpine Builtin ->
-  WHNFValue Builtin ->
-  WHNFValue Builtin ->
+  (MonadQueryStructure m, MonadWriter [Value Builtin] m) =>
+  Spine Builtin ->
+  Value Builtin ->
+  Value Builtin ->
   m (MaybeTrivial Partitions)
 compileTensorAssertion spinePrefix x y = do
   result <- compileTensorLinearRelation getTensorVariable x y

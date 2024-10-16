@@ -55,7 +55,7 @@ etaExpand declIdent originalType originalBody = do
     go ::
       forall n.
       (MonadBoundContext builtin n, MonadCompile n) =>
-      WHNFType builtin ->
+      VType builtin ->
       Expr builtin ->
       n (Expr builtin)
     go typ body = case (typ, body) of

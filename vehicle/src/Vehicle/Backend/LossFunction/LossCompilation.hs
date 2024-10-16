@@ -23,7 +23,7 @@ import Vehicle.Data.Builtin.Loss
 import Vehicle.Data.Builtin.Tensor (EqualityOp (..), OrderOp (..), TensorBuiltin (..))
 import Vehicle.Data.Builtin.Tensor qualified as T
 import Vehicle.Data.Code.Interface
-import Vehicle.Data.Code.Value (Value (..), WHNFArg, WHNFBinder, WHNFBoundEnv, WHNFClosure (..), WHNFSpine, WHNFValue, boundContextToEnv, extendEnvWithBound, traverseSpine)
+import Vehicle.Data.Code.Value (BoundEnv, Closure (..), Spine, VArg, VBinder, Value (..), boundContextToEnv, extendEnvWithBound, traverseSpine)
 import Vehicle.Data.Tensor (Tensor (..), foldMapTensor)
 
 --------------------------------------------------------------------------------
@@ -59,7 +59,7 @@ getDeclProvenance = do
   (prov, _) <- ask
   return prov
 
-getLogicField :: (MonadLogic m) => TensorDifferentiableLogicField -> m (WHNFValue LossTensorBuiltin)
+getLogicField :: (MonadLogic m) => TensorDifferentiableLogicField -> m (Value LossTensorBuiltin)
 getLogicField field = do
   logic <- getLogic
   lookupLogicField field logic
@@ -75,16 +75,16 @@ lookupLogicField field logic = do
 
 convertExpr ::
   (MonadLogic m) =>
-  WHNFBoundEnv TensorBuiltin ->
+  BoundEnv TensorBuiltin ->
   Expr TensorBuiltin ->
-  m (WHNFValue LossTensorBuiltin)
+  m (Value LossTensorBuiltin)
 convertExpr env expr = convertValue =<< eval mempty env expr
 
 convertValue ::
   forall m.
   (MonadLogic m) =>
-  WHNFValue TensorBuiltin ->
-  m (WHNFValue LossTensorBuiltin)
+  Value TensorBuiltin ->
+  m (Value LossTensorBuiltin)
 convertValue e = do
   showEntry e
   result <- case e of
@@ -114,8 +114,8 @@ convertBuiltinToLoss ::
   forall m.
   (MonadLogic m) =>
   TensorBuiltin ->
-  WHNFSpine TensorBuiltin ->
-  m (WHNFValue LossTensorBuiltin)
+  Spine TensorBuiltin ->
+  m (Value LossTensorBuiltin)
 convertBuiltinToLoss b spine = case b of
   T.TensorRat r -> unchangedBuiltin (LossTensorRat r)
   T.TensorDimData s -> unchangedBuiltin (LossTensorDimData s)
@@ -141,19 +141,19 @@ convertBuiltinToLoss b spine = case b of
     T.ReduceAndTensor -> changedBuiltin L.ReduceConjunction
     T.ReduceOrTensor -> changedBuiltin L.ReduceDisjunction
   where
-    changedBuiltin :: TensorDifferentiableLogicField -> m (WHNFValue LossTensorBuiltin)
+    changedBuiltin :: TensorDifferentiableLogicField -> m (Value LossTensorBuiltin)
     changedBuiltin field = substField field =<< traverseSpine convertValue spine
 
-    unchangedBuiltin :: LossTensorBuiltin -> m (WHNFValue LossTensorBuiltin)
+    unchangedBuiltin :: LossTensorBuiltin -> m (Value LossTensorBuiltin)
     unchangedBuiltin op = VBuiltin op <$> traverseSpine convertValue spine
 
-substField :: (MonadLogic m) => TensorDifferentiableLogicField -> WHNFSpine LossTensorBuiltin -> m (WHNFValue LossTensorBuiltin)
+substField :: (MonadLogic m) => TensorDifferentiableLogicField -> Spine LossTensorBuiltin -> m (Value LossTensorBuiltin)
 substField field spine = do
   fn <- getLogicField field
   logDebug MaxDetail $ "subst-field" <+> pretty field <> ":" <+> prettyFriendlyEmptyCtx fn
   evalApp mempty fn spine
 
-translateConstant :: (MonadLogic m) => Tensor Bool -> m (WHNFValue LossTensorBuiltin)
+translateConstant :: (MonadLogic m) => Tensor Bool -> m (Value LossTensorBuiltin)
 translateConstant tensor = do
   trueExpr <- getLogicField L.TruthityElement
   falseExpr <- getLogicField L.FalsityElement
@@ -165,9 +165,9 @@ translateConstant tensor = do
         IDimensionDataOp (StackTensor (length elems)) args
   return $ foldMapTensor convertBool foldLayer tensor
 
-translateQuantifier :: (MonadLogic m) => Quantifier -> WHNFSpine TensorBuiltin -> m (WHNFValue LossTensorBuiltin)
+translateQuantifier :: (MonadLogic m) => Quantifier -> Spine TensorBuiltin -> m (Value LossTensorBuiltin)
 translateQuantifier q = \case
-  [dims, argExpr -> VLam binder (WHNFClosure env body)] -> do
+  [dims, argExpr -> VLam binder (Closure env body)] -> do
     -- Normalise the body
     lv <- getBinderDepth
     let newEnv = extendEnvWithBound lv binder env
@@ -183,11 +183,11 @@ translateQuantifier q = \case
 
 translateForall ::
   (MonadLogic m) =>
-  WHNFArg TensorBuiltin ->
-  WHNFArg LossTensorBuiltin ->
-  WHNFBinder TensorBuiltin ->
-  WHNFValue TensorBuiltin ->
-  m (WHNFValue LossTensorBuiltin)
+  VArg TensorBuiltin ->
+  VArg LossTensorBuiltin ->
+  VBinder TensorBuiltin ->
+  Value TensorBuiltin ->
+  m (Value LossTensorBuiltin)
 translateForall dims lossDims binder body = do
   let newBody = IBoolTensorOp NotBoolTensor [dims, explicit body]
   result <- translateExists lossDims binder newBody
@@ -195,10 +195,10 @@ translateForall dims lossDims binder body = do
 
 translateExists ::
   (MonadLogic m) =>
-  WHNFArg LossTensorBuiltin ->
-  WHNFBinder TensorBuiltin ->
-  WHNFValue TensorBuiltin ->
-  m (WHNFValue LossTensorBuiltin)
+  VArg LossTensorBuiltin ->
+  VBinder TensorBuiltin ->
+  Value TensorBuiltin ->
+  m (Value LossTensorBuiltin)
 translateExists lossDims binder bodyValue = logCompilerSection MaxDetail "convert-exists" $ do
   boundCtx <- getBinderContext
   let lv = boundCtxLv boundCtx
@@ -223,7 +223,7 @@ translateExists lossDims binder bodyValue = logCompilerSection MaxDetail "conver
   -- Reform the closure
   let lossBody = quote mempty (lv + 1) normLossBody
   let finalEnv = boundContextToEnv boundCtx
-  let lossPredicate = VLam lossBinder (WHNFClosure finalEnv lossBody)
+  let lossPredicate = VLam lossBinder (Closure finalEnv lossBody)
 
   let newArgs = lossDims : (explicit <$> [reductionOp, lossLowerBounds, lossUpperBounds, lossPredicate])
 
@@ -235,14 +235,14 @@ translateExists lossDims binder bodyValue = logCompilerSection MaxDetail "conver
 currentPass :: CompilerPass
 currentPass = "logic translation"
 
-showEntry :: (MonadLogger m, MonadNameContext m) => WHNFValue TensorBuiltin -> m ()
+showEntry :: (MonadLogger m, MonadNameContext m) => Value TensorBuiltin -> m ()
 showEntry e = do
   ctx <- getNameContext
   -- logDebug MaxDetail $ doc <+> ":" <+> prettyVerbose e
   logDebug MaxDetail $ "enter-loss" <+> ":" <+> prettyFriendly (WithContext e ctx)
   incrCallDepth
 
-showExit :: (MonadLogger m, MonadNameContext m) => WHNFValue LossTensorBuiltin -> m ()
+showExit :: (MonadLogger m, MonadNameContext m) => Value LossTensorBuiltin -> m ()
 showExit e = do
   ctx <- getNameContext
   decrCallDepth
