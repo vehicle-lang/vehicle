@@ -16,7 +16,7 @@ authors:
     given-names: "Ekaterina"
 version: "0.15.0"
 date-released: "2024-09-25"
-license: "MIT"
+license: "BSD-3-Clause"
 type: "software"
 repository-artifact: "https://github.com/vehicle-lang/vehicle/releases/tag/v0.15.0"
 repository-code: "https://github.com/vehicle-lang/vehicle"
