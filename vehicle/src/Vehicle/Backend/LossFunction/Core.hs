@@ -117,10 +117,10 @@ toBoolTensorView expr = case getBoolTensorOp expr of
 
 -- | A view on all possible expressions that can have type `Tensor Rat`.
 data RatTensorView expr
-  = VConstRatTensor (GenericArg expr) expr expr
+  = VConstRatTensor expr expr
   | VRatTensor (Tensor Rational)
   | VRatTensorVar Lv
-  | VStackRatTensor (GenericArg expr) (GenericArg expr) Int [expr]
+  | VStackRatTensor Int (GenericArg expr) [expr]
   | VNegRatTensor (GenericArg expr) expr
   | VAddRatTensor (GenericArg expr) expr expr
   | VSubRatTensor (GenericArg expr) expr expr
@@ -148,8 +148,8 @@ fromRatTensorView = \case
   VReduceMulRatTensor dims x -> IRatTensorOp ReduceMulRatTensor [dims, explicit x]
   VReduceMinRatTensor dims x -> IRatTensorOp ReduceMinRatTensor [dims, explicit x]
   VReduceMaxRatTensor dims x -> IRatTensorOp ReduceMaxRatTensor [dims, explicit x]
-  VConstRatTensor dims x y -> IDimensionDataOp ConstTensor [dims, explicit x, explicit y]
-  VStackRatTensor tElem elemDims n xs -> IDimensionDataOp (StackTensor n) (tElem : elemDims : (explicit <$> xs))
+  VConstRatTensor x dims -> IDimensionDataOp ConstTensor [implicit IRatElementType, explicit x, explicit dims]
+  VStackRatTensor n elemDims xs -> IDimensionDataOp (StackTensor n) (implicit IRatElementType : elemDims : (explicit <$> xs))
   VSearchRatTensor dims reduce lower upper fn -> IRatTensorOp SearchRatTensor (dims : (explicit <$> [reduce, lower, upper, fn]))
   VRatTensorVar v -> VBoundVar v []
 
@@ -169,8 +169,8 @@ toRatTensorView expr = case getRatTensorOp expr of
   Just (ReduceMaxRatTensor, [dims, x]) -> VReduceMaxRatTensor dims (argExpr x)
   Just (SearchRatTensor, [dims, reduce, lower, upper, fn]) -> VSearchRatTensor dims (argExpr reduce) (argExpr lower) (argExpr upper) (argExpr fn)
   Nothing -> case getDimensionDataOp expr of
-    Just (ConstTensor, [tElem, x, y]) -> VConstRatTensor tElem (argExpr x) (argExpr y)
-    Just (StackTensor n, tElem : dims : args) -> VStackRatTensor tElem dims n (fmap argExpr args)
+    Just (ConstTensor, [argExpr -> IRatElementType, x, dims]) -> VConstRatTensor (argExpr x) (argExpr dims)
+    Just (StackTensor n, (argExpr -> IRatElementType) : dims : args) -> VStackRatTensor n dims (fmap argExpr args)
     _ -> developerError "ill-typed RatTensor expression"
   _ -> developerError "ill-typed RatTensor expression"
 

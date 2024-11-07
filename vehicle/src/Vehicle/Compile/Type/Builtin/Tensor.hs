@@ -34,7 +34,7 @@ typeDimensionData = \case
     forAllDim $ \dim -> tDimIndex dim
   DimensionIndexTensor t ->
     forAllDim $ \dim -> tTensor (tDimIndex dim) (shapeOf t)
-  ConstTensor {} ->
+  ConstTensor ->
     forAll "A" type0 $ \tElem ->
       tElem ~> tDims ~> tTensor tElem tDims
   StackTensor n ->

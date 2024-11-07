@@ -22,9 +22,6 @@ import Control.Monad.Except (MonadError (..), runExceptT)
 import Control.Monad.Reader (MonadReader (..), ReaderT (..), asks)
 import Data.Either (partitionEithers)
 import Data.List.NonEmpty (NonEmpty)
-import Data.Map (Map)
-import Data.Map qualified as Map
-import Data.Tuple (swap)
 import Vehicle.Backend.LossFunction.Core
 import Vehicle.Compile.Context.Name
 import Vehicle.Compile.Error
@@ -35,12 +32,14 @@ import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Builtin.Tensor
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
-import Vehicle.Data.QuantifiedVariable (reduceTensorVariable, Variable)
-import Vehicle.Data.Tensor (mapTensor, Tensor, TensorShape)
-import Vehicle.Data.Assertion (UnderConstrainedVariableStatus, checkBoundsExist, Bounds(..), Bound, pattern Bound, mkInequality, Inequality)
-import Data.Set qualified as Set (unions, insert, disjoint, fromList, notMember)
+import Vehicle.Data.QuantifiedVariable (reduceTensorVariable, Variable, TensorVariable)
+import Vehicle.Data.Tensor (mapTensor, TensorShape)
+import Vehicle.Data.Assertion (UnderConstrainedVariableStatus, checkBoundsExist, Bounds(..), Bound, pattern Bound, mkInequality, Inequality(..), LowerBound, UpperBound)
+import Data.Set qualified as Set (unions, insert, disjoint)
 import Data.Set (Set)
 import Vehicle.Data.Code.LinearExpr
+import Vehicle.Compile.Normalise.Builtin
+import Data.List (partition)
 -}
 
 type MonadDomain m =
@@ -61,37 +60,41 @@ extractSearchDomain ::
   Value TensorBuiltin ->
   m (Domain, Value TensorBuiltin)
 extractSearchDomain _propertyProv _binder _lv value = do
-  -- Normalise the body
   let fakeBound = VBuiltin (TensorRat $ RatLiteral 0) []
   return (Domain fakeBound fakeBound, value)
 
 {-
-  variableInfo <- case typeOf binder of
-    ITensorType _ dims -> do
-      maybeReducedVars <- case getDimensions dims of
-        Just tensorShape -> do
-          logDebug MaxDetail $ "Found concrete tensor shape" <+> pretty tensorShape
-          let userVar = getBinderName binder
-          let (reducedUseVars, _vectorExpr) = reduceTensorVariable (lv + 1) userVar tensorShape
-          return $ Just reducedUseVars
-        Nothing -> do
-          logDebug MaxDetail $ "Found non-concrete tensor shape" <+> prettyVerbose dims
-          return Nothing
+  let varName = getBinderName binder
 
-      return $
-        VariableInfo
-          { tensorVarLv = lv,
-            tensorVarName = getBinderName binder,
-            variablesByLv = _,
-            maybeElementVariables = _
-          }
+  dims <- case typeOf binder of
+    ITensorType _ dims -> return dims
     _ -> compilerDeveloperError "Unexpected quantifier type"
+
+  (newNames, elementInfo) <- case getDimensions dims of
+    Just tensorShape -> do
+      logDebug MaxDetail $ "Found concrete tensor shape" <+> pretty tensorShape
+      let (reducedUseVars, _vectorExpr) = reduceTensorVariable (lv + 1) varName tensorShape
+      let elementInfo = Just $ VariableElementsInfo tensorShape (fmap fst reducedUseVars)
+      let newNames = varName : fmap snd reducedUseVars
+      return (newNames, elementInfo)
+    Nothing -> do
+      logDebug MaxDetail $ "Found non-concrete tensor shape" <+> prettyVerbose dims
+      return ([varName], Nothing)
+
+  let variableInfo = VariableInfo
+        { tensorVarLv = lv,
+          tensorVarName = varName,
+          tensorVarShape = argExpr dims,
+          tensorVarElements = elementInfo,
+          tensorAndElementVariables = Set.fromList _
+        }
 
   -- Search for constraints
   (constraints, remainder) <- flip runReaderT variableInfo $ findConstraints value
   maybeDomain <- extractDomainFromConstraints variableInfo constraints
   case maybeDomain of
-    Left missingCostraints -> throwError $ NoQuantifierDomainFound propertyProv (void binder) (Just missingCostraints)
+    Left missingCostraints ->
+      throwError $ NoQuantifierDomainFound propertyProv (void binder) (Just missingCostraints)
     Right domain -> return (domain, remainder)
 
 --------------------------------------------------------------------------------
@@ -121,8 +124,7 @@ updateConstrainedValue originalExpr = \case
   constr@(_ : _, _) -> constr
   ([], _) -> ([], originalExpr)
 
-{-
-instance IsConstant (Value TensorBuiltin) where
+instance Constant (Value TensorBuiltin) where
   isZero = \case
     -- This is only semi-decidable, probably need to think harder about what
     -- to do here.
@@ -131,18 +133,16 @@ instance IsConstant (Value TensorBuiltin) where
   scaleConstant c = IMul MulRat (IRatLiteral mempty c)
   addConstants c1 c2 e1 e2 =
     IAdd AddRat (scaleConstant c1 e1) (scaleConstant c2 e2)
--}
 
 getConstant :: LinearExpr (Value TensorBuiltin) -> Maybe Rational
-getConstant = _
+getConstant e = case isConstant e of
+  Just x -> case toRatTensorView x of
+    VConstRatTensor (IRatLiteral _ r) _ -> Just r
+    _ -> Nothing
+  Nothing -> Nothing
 
 zeroExpr :: VariableShape -> Value TensorBuiltin
-zeroExpr tensorShape = IConstTensor _ _ _
-
-instance Constant (Value TensorBuiltin) where
-  addConstants = _
-  scaleConstant = _
-  isZero = _
+zeroExpr tensorShape = fromRatTensorView $ VConstRatTensor (IRatLiteral mempty 0) tensorShape
 
 --------------------------------------------------------------------------------
 -- Constraints
@@ -151,12 +151,20 @@ instance Constant (Value TensorBuiltin) where
 data VariableInfo = VariableInfo
   { tensorVarLv :: Lv,
     tensorVarName :: Name,
-    variablesByLv :: Map Lv (VariableShape, Variable),
-    maybeElementVariables :: Maybe (TensorShape, [Variable])
+    tensorVarShape :: VariableShape,
+    tensorAndElementVariables :: Set Variable,
+    tensorVarElements :: Maybe VariableElementsInfo
   }
 
-allVariables :: VariableInfo -> Set Lv
-allVariables VariableInfo{..} = Set.insert tensorVarLv _
+data VariableElementsInfo = VariableElementsInfo
+  { concreteShape :: TensorShape
+  , elementVariables :: [Variable]
+  }
+
+lookupVariableShape :: Lv -> VariableInfo -> Maybe VariableShape
+lookupVariableShape lv VariableInfo{..}
+  | lv == tensorVarLv = Just tensorVarShape
+  | otherwise = fmap (const (dimSingleton 1)) tensorVarElements
 
 type MonadSearch m =
   ( MonadDomain m,
@@ -172,21 +180,23 @@ extractDomainFromConstraints ::
   VariableConstraints ->
   m (Either [(Variable, UnderConstrainedVariableStatus)] Domain)
 extractDomainFromConstraints VariableInfo {..} constraints = do
-  let (tensorElementInequalities, tensorInequalities) = splitConstraints constraints
-
-  (tensorBounds, remainingInequalities) <- fourierMotzkinElimination tensorVarName tensorInequalities
+  let (tensorElementInequalities, tensorInequalities) = splitConstraints tensorVarLv constraints
+  (tensorBounds, remainingInequalities) <- fourierMotzkinElimination tensorVarLv tensorInequalities
 
   unless (null remainingInequalities) $
     compilerDeveloperError "Found unused tensor inequalities when solving for bounds. Not currently implemented."
 
-  case checkBoundsExist (tensorVarName, tensorBounds) of
+  case checkBoundsExist (tensorVarLv, tensorBounds) of
     Right (lowerBounds, upperBounds) -> do
       unless (null tensorElementInequalities) $
         compilerDeveloperError "Found mixed tensor and element inequalities when solving for bounds. Not currently implemented."
-      return $ Right $ Domain (convertBoundsToExpr _ _ lowerBounds) (convertBoundsToExpr _ _ upperBounds)
-    Left failedTensorVarResult -> case maybeElementVariables of
+      let lowerBoundsExpr = convertLowerBounds tensorVarShape lowerBounds
+      let upperBoundsExpr = convertUpperBounds tensorVarShape upperBounds
+      return $ Right $ Domain lowerBoundsExpr upperBoundsExpr
+
+    Left failedTensorVarResult -> case tensorVarElements of
       Nothing -> return $ Left [failedTensorVarResult]
-      Just (tensorShape, elementVariables) -> do
+      Just VariableElementsInfo{..} -> do
         (remainingElementInequalities, results) <- foldM extractVarBounds (tensorElementInequalities, mempty) elementVariables
 
         unless (null remainingElementInequalities) $
@@ -197,11 +207,10 @@ extractDomainFromConstraints VariableInfo {..} constraints = do
           then return $ Left unsolvedVars
           else do
             let (lowerBounds, upperBounds) = unzip solvedVars
-            let varMap = _
-            let lowerBoundElements = fmap (convertBoundsToExpr varMap _) lowerBounds
-            let upperBoundElements = fmap (convertBoundsToExpr varMap _) upperBounds
-            let lowerBoundExpr = tensorLikeToExpr id tensorShape lowerBoundElements
-            let upperBoundExpr = tensorLikeToExpr id tensorShape upperBoundElements
+            let lowerBoundElements = fmap (convertLowerBounds (dimSingleton 1)) lowerBounds
+            let upperBoundElements = fmap (convertUpperBounds (dimSingleton 1)) upperBounds
+            let lowerBoundExpr = tensorLikeToExpr id concreteShape lowerBoundElements
+            let upperBoundExpr = tensorLikeToExpr id concreteShape upperBoundElements
             return $ Right $ Domain lowerBoundExpr upperBoundExpr
 
 extractVarBounds ::
@@ -213,23 +222,36 @@ extractVarBounds (currentConstraints, solutions) var = do
   (bounds, newInequalities) <- fourierMotzkinElimination var currentConstraints
   return (newInequalities, (var, bounds) : solutions)
 
+convertLowerBounds ::
+  VariableShape ->
+  NonEmpty (LowerBound (Value TensorBuiltin)) ->
+  Value TensorBuiltin
+convertLowerBounds shape = convertBoundsToExpr $ \x y -> do
+  let defaultExpr = fromRatTensorView $ VMaxRatTensor (implicitIrrelevant shape) x y
+  evalMaxRatTensor defaultExpr [explicit x, explicit y]
+
+convertUpperBounds ::
+  VariableShape ->
+  NonEmpty (UpperBound (Value TensorBuiltin)) ->
+  Value TensorBuiltin
+convertUpperBounds shape = convertBoundsToExpr $ \x y -> do
+  let defaultExpr = fromRatTensorView $ VMinRatTensor (implicitIrrelevant shape) x y
+  evalMinRatTensor defaultExpr [explicit x, explicit y]
+
 convertBoundsToExpr ::
-  Map Variable Lv ->
   (Value TensorBuiltin -> Value TensorBuiltin -> Value TensorBuiltin) ->
   NonEmpty (Bound (Value TensorBuiltin)) ->
   Value TensorBuiltin
-convertBoundsToExpr varMap op bounds = foldr1 _ (fmap convertBound bounds)
+convertBoundsToExpr op bounds = foldr1 op (fmap convertBound bounds)
   where
-    -- Ignore strictness for the moment.
-
     convertConstant _first c = c
-    convertVariable _first (v, c) = case Map.lookup v varMap of
-      Nothing -> developerError $ "Missing variable Lv for" <+> pretty v
-      Just lv -> IMul MulRat (IRatLiteral mempty c) (VBoundVar lv [])
-    convertBound (Bound _strictness value) = linearExprToExpr convertConstant convertVariable (IAdd AddRat) value
+    convertVariable _first (v, c) = IMul MulRat (IRatLiteral mempty c) (VBoundVar v [])
+    convertBound (Bound _strictness value) =
+      -- Ignore strictness for the moment.
+      linearExprToExpr convertConstant convertVariable (IAdd AddRat) value
 
-splitConstraints :: VariableConstraints -> ([TensorInequality], [TensorInequality])
-splitConstraints = _
+splitConstraints :: TensorVariable -> VariableConstraints -> ([TensorInequality], [TensorInequality])
+splitConstraints var = partition (\ineq -> inequalityExpr ineq `referencesVariable` var)
 
 --------------------------------------------------------------------------------
 -- Constraint search
@@ -368,11 +390,11 @@ compileRatLinearExpr expr = case toRatTensorView expr of
   ----------------
   VRatTensor {} -> return $ constantExpr expr
   VConstRatTensor {} -> return $ constantExpr expr
-  VRatTensorVar lv -> do
-    VariableInfo {..} <- ask
-    case Map.lookup lv variablesByLv of
-      Just (varShape, var) -> return $ singletonVarExpr (zeroExpr varShape) var
-      Nothing -> return $ constantExpr (VBoundVar lv [])
+  VRatTensorVar var -> do
+    variableInfo <- ask
+    return $ case lookupVariableShape var variableInfo of
+      Just shape -> singletonVarExpr (zeroExpr shape) var
+      Nothing -> constantExpr (VBoundVar var [])
   ---------------------
   -- Inductive cases --
   ---------------------
@@ -401,7 +423,7 @@ compileRatLinearExpr expr = case toRatTensorView expr of
   where
     unhandled :: m (LinearExpr (Value TensorBuiltin))
     unhandled = do
-      quantifiedVariables <- asks allVariables
+      quantifiedVariables <- asks tensorAndElementVariables
       if Set.disjoint quantifiedVariables (variablesIn expr)
         then return $ constantExpr expr
         else throwError expr
@@ -421,5 +443,4 @@ variablesInSpine spine = Set.unions (fmap (variablesIn . argExpr) spine)
 
 currentPass :: CompilerPass
 currentPass = "DomainSearch"
-
-  -}
+-}
