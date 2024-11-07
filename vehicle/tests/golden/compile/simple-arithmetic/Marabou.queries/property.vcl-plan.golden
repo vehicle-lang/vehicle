@@ -34,7 +34,7 @@
                   {
                     "tag": "ReconstructTensor",
                     "contents": [
-                      false,
+                      "OtherVariable",
                       [
                         1
                       ],
@@ -47,7 +47,7 @@
                   {
                     "tag": "ReconstructTensor",
                     "contents": [
-                      false,
+                      "OtherVariable",
                       [
                         1
                       ],
