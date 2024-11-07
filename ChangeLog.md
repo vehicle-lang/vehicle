@@ -4,6 +4,8 @@
 
 * Decreased the size of generated verification plan files by 75%
 
+* Improved the ordering of constraints in generated query files.
+
 ## Version 0.15
 
 * Added functions `min` and `max` over rationals.
