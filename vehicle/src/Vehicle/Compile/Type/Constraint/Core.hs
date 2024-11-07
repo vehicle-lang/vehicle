@@ -5,7 +5,6 @@ module Vehicle.Compile.Type.Constraint.Core
     extractHeadFromInstanceCandidate,
     findInstanceGoalHead,
     parseInstanceGoal,
-    unify,
     createInstanceUnification,
     createSubInstance,
     mkCandidate,
@@ -71,15 +70,6 @@ malformedConstraintError :: (PrintableBuiltin builtin, MonadCompile m) => WithCo
 malformedConstraintError c =
   compilerDeveloperError $ "Malformed type-class constraint:" <+> prettyVerbose c
 
--- | Create a new unification constraint, copying the context as appropriate.
-unify ::
-  (MonadTypeChecker builtin m) =>
-  (ConstraintContext builtin, UnificationConstraintOrigin builtin) ->
-  (Value builtin, Value builtin) ->
-  m (WithContext (UnificationConstraint builtin))
-unify (ctx, origin) (e1, e2) =
-  WithContext (Unify origin e1 e2) <$> copyContext ctx
-
 -- | Create a new unification constraint as a subgoal of an existing instance constraint.
 createInstanceUnification ::
   (MonadTypeChecker builtin m) =>
@@ -89,7 +79,7 @@ createInstanceUnification ::
   m (WithContext (Constraint builtin))
 createInstanceUnification (ctx, origin) e1 e2 = do
   let unifyOrigin = CheckingInstanceType origin
-  constraint <- unify (ctx, unifyOrigin) (e1, e2)
+  constraint <- WithContext (Unify unifyOrigin e1 e2) <$> copyContext ctx
   return $ mapObject UnificationConstraint constraint
 
 -- | Creates an instance constraint as a subgoal of an existing instance constraint.
