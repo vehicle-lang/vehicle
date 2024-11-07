@@ -77,12 +77,12 @@
                   [
                     13,
                     "encode₀[output]!0",
-                    "y5"
+                    "y0"
                   ],
                   [
                     14,
                     "encode₀[output]!1",
-                    "y6"
+                    "y1"
                   ],
                   [
                     15,
@@ -107,27 +107,27 @@
                   [
                     19,
                     "decode₀[output]!0",
-                    "y0"
+                    "y2"
                   ],
                   [
                     20,
                     "decode₀[output]!1",
-                    "y1"
+                    "y3"
                   ],
                   [
                     21,
                     "decode₀[output]!2",
-                    "y2"
+                    "y4"
                   ],
                   [
                     22,
                     "decode₀[output]!3",
-                    "y3"
+                    "y5"
                   ],
                   [
                     23,
                     "decode₀[output]!4",
-                    "y4"
+                    "y6"
                   ]
                 ],
                 "reconstructionSteps": [
@@ -359,12 +359,12 @@
                   [
                     13,
                     "encode₀[output]!0",
-                    "y5"
+                    "y0"
                   ],
                   [
                     14,
                     "encode₀[output]!1",
-                    "y6"
+                    "y1"
                   ],
                   [
                     15,
@@ -389,27 +389,27 @@
                   [
                     19,
                     "decode₀[output]!0",
-                    "y0"
+                    "y2"
                   ],
                   [
                     20,
                     "decode₀[output]!1",
-                    "y1"
+                    "y3"
                   ],
                   [
                     21,
                     "decode₀[output]!2",
-                    "y2"
+                    "y4"
                   ],
                   [
                     22,
                     "decode₀[output]!3",
-                    "y3"
+                    "y5"
                   ],
                   [
                     23,
                     "decode₀[output]!4",
-                    "y4"
+                    "y6"
                   ]
                 ],
                 "reconstructionSteps": [
@@ -641,12 +641,12 @@
                   [
                     13,
                     "encode₀[output]!0",
-                    "y5"
+                    "y0"
                   ],
                   [
                     14,
                     "encode₀[output]!1",
-                    "y6"
+                    "y1"
                   ],
                   [
                     15,
@@ -671,27 +671,27 @@
                   [
                     19,
                     "decode₀[output]!0",
-                    "y0"
+                    "y2"
                   ],
                   [
                     20,
                     "decode₀[output]!1",
-                    "y1"
+                    "y3"
                   ],
                   [
                     21,
                     "decode₀[output]!2",
-                    "y2"
+                    "y4"
                   ],
                   [
                     22,
                     "decode₀[output]!3",
-                    "y3"
+                    "y5"
                   ],
                   [
                     23,
                     "decode₀[output]!4",
-                    "y4"
+                    "y6"
                   ]
                 ],
                 "reconstructionSteps": [
@@ -923,12 +923,12 @@
                   [
                     13,
                     "encode₀[output]!0",
-                    "y5"
+                    "y0"
                   ],
                   [
                     14,
                     "encode₀[output]!1",
-                    "y6"
+                    "y1"
                   ],
                   [
                     15,
@@ -953,27 +953,27 @@
                   [
                     19,
                     "decode₀[output]!0",
-                    "y0"
+                    "y2"
                   ],
                   [
                     20,
                     "decode₀[output]!1",
-                    "y1"
+                    "y3"
                   ],
                   [
                     21,
                     "decode₀[output]!2",
-                    "y2"
+                    "y4"
                   ],
                   [
                     22,
                     "decode₀[output]!3",
-                    "y3"
+                    "y5"
                   ],
                   [
                     23,
                     "decode₀[output]!4",
-                    "y4"
+                    "y6"
                   ]
                 ],
                 "reconstructionSteps": [
@@ -1205,12 +1205,12 @@
                   [
                     13,
                     "encode₀[output]!0",
-                    "y5"
+                    "y0"
                   ],
                   [
                     14,
                     "encode₀[output]!1",
-                    "y6"
+                    "y1"
                   ],
                   [
                     15,
@@ -1235,27 +1235,27 @@
                   [
                     19,
                     "decode₀[output]!0",
-                    "y0"
+                    "y2"
                   ],
                   [
                     20,
                     "decode₀[output]!1",
-                    "y1"
+                    "y3"
                   ],
                   [
                     21,
                     "decode₀[output]!2",
-                    "y2"
+                    "y4"
                   ],
                   [
                     22,
                     "decode₀[output]!3",
-                    "y3"
+                    "y5"
                   ],
                   [
                     23,
                     "decode₀[output]!4",
-                    "y4"
+                    "y6"
                   ]
                 ],
                 "reconstructionSteps": [
@@ -1487,12 +1487,12 @@
                   [
                     13,
                     "encode₀[output]!0",
-                    "y5"
+                    "y0"
                   ],
                   [
                     14,
                     "encode₀[output]!1",
-                    "y6"
+                    "y1"
                   ],
                   [
                     15,
@@ -1517,27 +1517,27 @@
                   [
                     19,
                     "decode₀[output]!0",
-                    "y0"
+                    "y2"
                   ],
                   [
                     20,
                     "decode₀[output]!1",
-                    "y1"
+                    "y3"
                   ],
                   [
                     21,
                     "decode₀[output]!2",
-                    "y2"
+                    "y4"
                   ],
                   [
                     22,
                     "decode₀[output]!3",
-                    "y3"
+                    "y5"
                   ],
                   [
                     23,
                     "decode₀[output]!4",
-                    "y4"
+                    "y6"
                   ]
                 ],
                 "reconstructionSteps": [
@@ -1769,12 +1769,12 @@
                   [
                     13,
                     "encode₀[output]!0",
-                    "y5"
+                    "y0"
                   ],
                   [
                     14,
                     "encode₀[output]!1",
-                    "y6"
+                    "y1"
                   ],
                   [
                     15,
@@ -1799,27 +1799,27 @@
                   [
                     19,
                     "decode₀[output]!0",
-                    "y0"
+                    "y2"
                   ],
                   [
                     20,
                     "decode₀[output]!1",
-                    "y1"
+                    "y3"
                   ],
                   [
                     21,
                     "decode₀[output]!2",
-                    "y2"
+                    "y4"
                   ],
                   [
                     22,
                     "decode₀[output]!3",
-                    "y3"
+                    "y5"
                   ],
                   [
                     23,
                     "decode₀[output]!4",
-                    "y4"
+                    "y6"
                   ]
                 ],
                 "reconstructionSteps": [
@@ -2051,12 +2051,12 @@
                   [
                     13,
                     "encode₀[output]!0",
-                    "y5"
+                    "y0"
                   ],
                   [
                     14,
                     "encode₀[output]!1",
-                    "y6"
+                    "y1"
                   ],
                   [
                     15,
@@ -2081,27 +2081,27 @@
                   [
                     19,
                     "decode₀[output]!0",
-                    "y0"
+                    "y2"
                   ],
                   [
                     20,
                     "decode₀[output]!1",
-                    "y1"
+                    "y3"
                   ],
                   [
                     21,
                     "decode₀[output]!2",
-                    "y2"
+                    "y4"
                   ],
                   [
                     22,
                     "decode₀[output]!3",
-                    "y3"
+                    "y5"
                   ],
                   [
                     23,
                     "decode₀[output]!4",
-                    "y4"
+                    "y6"
                   ]
                 ],
                 "reconstructionSteps": [
@@ -2333,12 +2333,12 @@
                   [
                     13,
                     "encode₀[output]!0",
-                    "y5"
+                    "y0"
                   ],
                   [
                     14,
                     "encode₀[output]!1",
-                    "y6"
+                    "y1"
                   ],
                   [
                     15,
@@ -2363,27 +2363,27 @@
                   [
                     19,
                     "decode₀[output]!0",
-                    "y0"
+                    "y2"
                   ],
                   [
                     20,
                     "decode₀[output]!1",
-                    "y1"
+                    "y3"
                   ],
                   [
                     21,
                     "decode₀[output]!2",
-                    "y2"
+                    "y4"
                   ],
                   [
                     22,
                     "decode₀[output]!3",
-                    "y3"
+                    "y5"
                   ],
                   [
                     23,
                     "decode₀[output]!4",
-                    "y4"
+                    "y6"
                   ]
                 ],
                 "reconstructionSteps": [
@@ -2615,12 +2615,12 @@
                   [
                     13,
                     "encode₀[output]!0",
-                    "y5"
+                    "y0"
                   ],
                   [
                     14,
                     "encode₀[output]!1",
-                    "y6"
+                    "y1"
                   ],
                   [
                     15,
@@ -2645,27 +2645,27 @@
                   [
                     19,
                     "decode₀[output]!0",
-                    "y0"
+                    "y2"
                   ],
                   [
                     20,
                     "decode₀[output]!1",
-                    "y1"
+                    "y3"
                   ],
                   [
                     21,
                     "decode₀[output]!2",
-                    "y2"
+                    "y4"
                   ],
                   [
                     22,
                     "decode₀[output]!3",
-                    "y3"
+                    "y5"
                   ],
                   [
                     23,
                     "decode₀[output]!4",
-                    "y4"
+                    "y6"
                   ]
                 ],
                 "reconstructionSteps": [

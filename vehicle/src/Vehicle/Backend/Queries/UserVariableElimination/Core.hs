@@ -1,3 +1,6 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
+{-# HLINT ignore "Use fewer imports" #-}
 module Vehicle.Backend.Queries.UserVariableElimination.Core where
 
 import Control.DeepSeq (NFData)
@@ -5,8 +8,6 @@ import Control.Monad.Reader (MonadReader (..))
 import Control.Monad.State (MonadState (..), gets)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Bifunctor (Bifunctor (..))
-import Data.HashMap.Strict (HashMap)
-import Data.HashMap.Strict qualified as HashMap (insert, lookup)
 import Data.LinkedHashMap (LinkedHashMap)
 import Data.LinkedHashMap qualified as LinkedHashMap
 import Data.List.NonEmpty qualified as NonEmpty
@@ -70,7 +71,7 @@ data PropertyMetaData = PropertyMetaData
 
 data GlobalCtx = GlobalCtx
   { globalBoundVarCtx :: !(GenericBoundCtx Name),
-    tensorVariableInfo :: !(HashMap TensorVariable TensorVariableInfo),
+    tensorVariableInfo :: !(Map TensorVariable TensorVariableInfo),
     networkApplications :: !(LinkedHashMap NetworkApplication NetworkApplicationReplacement)
   }
 
@@ -105,7 +106,7 @@ addUserVarToGlobalContext userVarName shape GlobalCtx {..} = do
   let newGlobalCtx =
         GlobalCtx
           { globalBoundVarCtx = addVectorVarToBoundVarCtx userVarName reducedUseVars globalBoundVarCtx,
-            tensorVariableInfo = HashMap.insert userVar variableInfo tensorVariableInfo,
+            tensorVariableInfo = Map.insert userVar variableInfo tensorVariableInfo,
             ..
           }
   (userVar, newGlobalCtx)
@@ -168,8 +169,8 @@ addNetworkApplicationToGlobalCtx app@(networkName, _) networkInfo GlobalCtx {..}
           }
 
   let newTensorVariableInfo =
-        HashMap.insert inputVar inputVarInfo $
-          HashMap.insert outputVar outputVarInfo tensorVariableInfo
+        Map.insert inputVar inputVarInfo $
+          Map.insert outputVar outputVarInfo tensorVariableInfo
 
   let newGlobalCtx =
         GlobalCtx
@@ -303,10 +304,10 @@ getTensorVariableShape var = do
   return (tensorVariableShape info)
 
 getRationalVariable :: (MonadState GlobalCtx m) => Lv -> m ElementVariable
-getRationalVariable lv = do
+getRationalVariable var = do
   ctx <- get
-  case HashMap.lookup lv (tensorVariableInfo ctx) of
-    Nothing -> return lv
+  case Map.lookup var (tensorVariableInfo ctx) of
+    Nothing -> return var
     Just info -> do
       let rvs = elementVariables info
       case rvs of
@@ -315,7 +316,7 @@ getRationalVariable lv = do
 
 getTensorVariableInfo :: GlobalCtx -> TensorVariable -> TensorVariableInfo
 getTensorVariableInfo GlobalCtx {..} var = do
-  case HashMap.lookup var tensorVariableInfo of
+  case Map.lookup var tensorVariableInfo of
     Just info -> info
     Nothing ->
       developerError $
@@ -327,7 +328,7 @@ getReducedVariablesFor globalCtx var = elementVariables $ getTensorVariableInfo 
 getReducedVariableExprFor :: (MonadState GlobalCtx m, MonadLogger m) => Lv -> m (Maybe (Value Builtin))
 getReducedVariableExprFor var = do
   ctx <- get
-  return $ reducedVarExpr <$> HashMap.lookup var (tensorVariableInfo ctx)
+  return $ reducedVarExpr <$> Map.lookup var (tensorVariableInfo ctx)
 
 reduceTensorExpr ::
   GlobalCtx ->

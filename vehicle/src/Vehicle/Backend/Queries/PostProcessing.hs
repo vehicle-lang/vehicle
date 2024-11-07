@@ -8,7 +8,6 @@ import Control.Monad.Reader (MonadReader (..))
 import Control.Monad.State (get)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Foldable (foldlM)
-import Data.HashMap.Strict qualified as HashMap
 import Data.LinkedHashMap qualified as LinkedHashMap
 import Data.List (sort, sortOn)
 import Data.List.NonEmpty (NonEmpty (..))
@@ -96,7 +95,7 @@ reconstructNetworkTensorVars ::
 reconstructNetworkTensorVars GlobalCtx {..} solutions = do
   let networkApplicationInfos = snd <$> LinkedHashMap.toList networkApplications
   let networkVariables = Set.fromList $ concatMap (\r -> [inputVariable r, outputVariable r]) networkApplicationInfos
-  let allTensorVars = filter (\(var, _) -> var `Set.member` networkVariables) $ HashMap.toList tensorVariableInfo
+  let allTensorVars = filter (\(var, _) -> var `Set.member` networkVariables) $ Map.toList tensorVariableInfo
   let networkTensorVars = sortOn fst allTensorVars
   let mkStep (var, TensorVariableInfo {..}) = ReconstructTensor OtherVariable tensorVariableShape var elementVariables
   return $ foldr (\v -> (mkStep v :)) solutions networkTensorVars
@@ -282,7 +281,7 @@ compileQueryVariables ::
 compileQueryVariables globalCtx compileVariable metaNetworkApps assertions = do
   -- Compute the set of new input and output variables
   let initialState = IndexingState mempty mempty mempty
-  let tensorVars = HashMap.toList (tensorVariableInfo globalCtx)
+  let tensorVars = sortOn fst $ Map.toList (tensorVariableInfo globalCtx)
   let usedNetworkTensorVars = Set.fromList $ concatMap (\x -> [inputVariable x, outputVariable x]) metaNetworkApps
   let compileVars = compileTensorVariable compileVariable (globalBoundVarCtx globalCtx) usedNetworkTensorVars
   indexingState@IndexingState {..} <- foldlM compileVars initialState tensorVars
