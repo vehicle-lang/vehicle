@@ -387,6 +387,27 @@ class Expression(AST):
 
 
 @dataclass(frozen=True)
+class Binder(AST):
+    provenance: Provenance = field(repr=False)
+    name: Optional[Name]
+    type: Expression
+
+
+@dataclass(frozen=True)
+class Pi(Expression):
+    provenance: Provenance = field(repr=False)
+    binder: Binder
+    body: Expression
+
+
+@dataclass(frozen=True)
+class Lam(Expression):
+    provenance: Provenance = field(repr=False)
+    binder: Binder
+    body: Expression
+
+
+@dataclass(frozen=True)
 class App(Expression):
     provenance: Provenance = field(repr=False)
     function: Expression
@@ -402,14 +423,7 @@ class PartialApp(Expression):
 
 
 @dataclass(frozen=True)
-class Binder(AST):
-    provenance: Provenance = field(repr=False)
-    name: Optional[Name]
-    type: Expression
-
-
-@dataclass(frozen=True)
-class BoundVar(Expression):
+class Var(Expression):
     provenance: Provenance = field(repr=False)
     name: Name
 
@@ -418,40 +432,6 @@ class BoundVar(Expression):
 class Builtin(Expression):
     provenance: Provenance = field(repr=False)
     builtin: Union[BuiltinConstant, BuiltinFunction, BuiltinLiteral, BuiltinType]
-
-
-@dataclass(frozen=True)
-class FreeVar(Expression):
-    provenance: Provenance = field(repr=False)
-    name: Name
-
-
-@dataclass(frozen=True)
-class Lam(Expression):
-    provenance: Provenance = field(repr=False)
-    binders: Sequence[Binder]
-    body: Expression
-
-
-@dataclass(frozen=True)
-class Let(Expression):
-    provenance: Provenance = field(repr=False)
-    bound: Expression
-    binder: Binder
-    body: Expression
-
-
-@dataclass(frozen=True)
-class Pi(Expression):
-    provenance: Provenance = field(repr=False)
-    binder: Binder
-    body: Expression
-
-
-@dataclass(frozen=True)
-class Universe(Expression):
-    provenance: Provenance = field(repr=False)
-    level: UniverseLevel
 
 
 ################################################################################

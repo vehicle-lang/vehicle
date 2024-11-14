@@ -94,18 +94,19 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                 self.ignored_types.append(name)
 
     def translate_DefFunction(self, declaration: vcl.DefFunction) -> py.stmt:
-        if isinstance(declaration.body, vcl.Lam):
+        body = declaration.body
+        binders = []
+        while isinstance(body, vcl.Lam):
+            binders.append(self.translate_binder(body.binder))
+            body = body.body
+
+        if binders:
             return py.FunctionDef(
                 name=declaration.name,
-                args=py_binder(
-                    *(
-                        self.translate_binder(binder)
-                        for binder in declaration.body.binders
-                    )
-                ),
+                args=py_binder(*binders),
                 body=[
                     py.Return(
-                        value=self.translate_expression(declaration.body.body),
+                        value=self.translate_expression(body),
                         **asdict(declaration.provenance),
                     )
                 ],
@@ -184,11 +185,9 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             meetOrJoin, loss = expression.arguments
             if not isinstance(loss, vcl.Lam):
                 raise VehicleOptimiseTypeError(expression)
-            if len(loss.binders) != 1:
-                raise VehicleOptimiseTypeError(expression)
             # NOTE: We extract the name of the bound variable from the lambda,
             #       which should be the _second_ argument.
-            name = loss.binders[0].name
+            name = loss.binder.name
             return py_app(
                 py_builtin(
                     builtin=expression.function.builtin.__class__.__name__,
@@ -227,7 +226,7 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             provenance=expression.provenance,
         )
 
-    def translate_BoundVar(self, expression: vcl.BoundVar) -> py.expr:
+    def translate_Var(self, expression: vcl.Var) -> py.expr:
         return py_name(expression.name, provenance=expression.provenance)
 
     def translate_Builtin(self, expression: vcl.Builtin) -> py.expr:
@@ -292,16 +291,9 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                 provenance=expression.provenance,
             )
 
-    def translate_FreeVar(self, expression: vcl.FreeVar) -> py.expr:
-        # NOTE: We ignore any declaration where translation touches a type.
-        if expression.name in self.ignored_types:
-            raise EraseType()
-        else:
-            return py_name(expression.name, provenance=expression.provenance)
-
     def translate_Lam(self, expression: vcl.Lam) -> py.expr:
         return py.Lambda(
-            args=py_binder(*(map(self.translate_binder, expression.binders))),
+            args=py_binder(self.translate_binder(expression.binder)),
             body=self.translate_expression(expression.body),
             **asdict(expression.provenance),
         )
@@ -315,9 +307,6 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             *map(self.translate_expression, expression.arguments),
             provenance=expression.provenance,
         )
-
-    def translate_Universe(self, _expression: vcl.Universe) -> py.expr:
-        raise EraseType()
 
 
 def py_name(name: vcl.Name, *, provenance: vcl.Provenance) -> py.Name:

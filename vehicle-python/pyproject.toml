@@ -15,7 +15,7 @@ readme = 'README.md'
 license = { file = 'LICENSE' }
 dynamic = ["version"]
 requires-python = ">=3.9,<3.14"
-dependencies = ["typing_extensions >=4.6,<5"]
+dependencies = ["typing_extensions >=4.6,<5", "jaxtyping>=0.2, <0.3"]
 
 [project.optional-dependencies]
 test = ["pytest >=7.1,<9", "packaging >=23", "pygments >=2.14, <3"]
