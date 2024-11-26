@@ -4,7 +4,8 @@ module Vehicle.Compile.Type.Constraint.IndexSolver
   )
 where
 
-import Control.Monad.Except (MonadError (..), forM)
+import Control.Monad (forM)
+import Control.Monad.Except (MonadError (..))
 import Data.Maybe (mapMaybe)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
