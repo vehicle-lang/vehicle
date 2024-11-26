@@ -41,14 +41,15 @@ class cabal_build_ext(setuptools.command.build_ext.build_ext):
 
         # Taken from distutils:
         # https://github.com/pypa/distutils/blob/4435cec31b8eb5712aa8bf993bea3f07051c24d8/distutils/command/build_ext.py#L504-L513
-        if ext.sources is None or not isinstance(ext.sources, (list, tuple)):
+        sources = ext.sources.copy()
+        if sources is None or not isinstance(sources, (list, tuple)):
             raise distutils.errors.DistutilsSetupError(
                 "in 'ext_modules' option (extension '%s'), "
                 "'sources' must be present and must be "
                 "a list of source filenames" % ext.name
             )
         # sort to make the resulting .so file build reproducible
-        sources = ext.sources.copy().sort()
+        sources.sort()
 
         # First, scan the sources for SWIG definition files (.i), run
         # SWIG on 'em to create .c files, and modify the sources list
