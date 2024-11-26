@@ -8,6 +8,7 @@ import Control.Monad.Except (MonadError (..))
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
+import Vehicle.Compile.Type.Core (emptyInstanceDatabase)
 import Vehicle.Compile.Type.Subsystem (typeCheckWithSubsystem)
 import Vehicle.Data.Builtin.Linearity
 import Vehicle.Data.Builtin.Polarity
@@ -28,7 +29,7 @@ diagnoseNonLinearity queryFormat prog propertyProv@(propertyIdentifier, _) = do
       <+> quotePretty propertyIdentifier
       <> line
 
-  subTypedProg <- typeCheckWithSubsystem mempty handleUnexpectedError prog
+  subTypedProg <- typeCheckWithSubsystem emptyInstanceDatabase handleUnexpectedError prog
 
   -- Extract and diagnose the type.
   propertyType <- findDeclType propertyIdentifier subTypedProg
@@ -55,7 +56,7 @@ diagnoseAlternatingQuantifiers queryFormat prog propertyProv@(propertyIdentifier
       <+> quotePretty propertyIdentifier
       <> line
 
-  subTypedProg <- typeCheckWithSubsystem mempty handleUnexpectedError prog
+  subTypedProg <- typeCheckWithSubsystem emptyInstanceDatabase handleUnexpectedError prog
 
   -- Extract and diagnose the type.
   propertyType <- findDeclType propertyIdentifier subTypedProg

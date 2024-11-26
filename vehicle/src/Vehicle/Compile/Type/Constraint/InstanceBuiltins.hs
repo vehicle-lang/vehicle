@@ -7,17 +7,20 @@ where
 
 import Data.Bifunctor (Bifunctor (..))
 import Data.HashMap.Strict qualified as Map
+import Vehicle.Compile.Prelude (developerError)
 import Vehicle.Compile.Type.Constraint.Core
-import Vehicle.Compile.Type.Core (InstanceCandidate, InstanceCandidateDatabase)
+import Vehicle.Compile.Type.Core (InstanceCandidate (..), InstanceDatabase (..))
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.DSL hiding (builtin)
 import Vehicle.Libraries.StandardLibrary.Definitions
 
-standardBuiltinInstances :: InstanceCandidateDatabase Builtin
+standardBuiltinInstances :: InstanceDatabase Builtin
 standardBuiltinInstances = do
-  let tcAndCandidates = fmap (second (: []) . extractHeadFromInstanceCandidate) candidates
-  Map.fromListWith (<>) tcAndCandidates
+  let tcAndCandidates = fmap (second (: []) . extractHeadFromInstanceCandidate) allInstances
+  let instances = Map.fromListWith (<>) tcAndCandidates
+  let defaults = Map.mapMaybe findDefault instances
+  InstanceDatabase instances defaults
 
 --------------------------------------------------------------------------------
 -- Builtin instances
@@ -28,15 +31,16 @@ standardBuiltinInstances = do
 -- Also note that annoyingly because of a lack of first class records we have
 -- to duplicate the context for both the candidate and the candidate's solution.
 
-candidates :: [InstanceCandidate Builtin]
-candidates =
+allInstances :: [InstanceCandidate Builtin]
+allInstances =
   mkCandidate
     <$> [
           ----------------
           -- HasRatLits --
           ----------------
           ( hasRatLits tRat,
-            builtin (FromRat FromRatToRat)
+            builtin (FromRat FromRatToRat),
+            False
           ),
           ----------------
           -- HasNatLits --
@@ -44,13 +48,16 @@ candidates =
           ( forAllIrrelevantNat "n" $ \n ->
               hasNatLits (tIndex n),
             irrelImplNatLam "n" $ \n ->
-              builtin (FromNat FromNatToIndex) .@@@ [n]
+              builtin (FromNat FromNatToIndex) .@@@ [n],
+            False
           ),
           ( hasNatLits tNat,
-            builtin (FromNat FromNatToNat)
+            builtin (FromNat FromNatToNat),
+            True
           ),
           ( hasNatLits tRat,
-            builtin (FromNat FromNatToRat)
+            builtin (FromNat FromNatToRat),
+            False
           ),
           ----------------
           -- HasVecLits --
@@ -58,27 +65,32 @@ candidates =
           ( forAllIrrelevantNat "n" $ \n ->
               hasVecLits n (tVectorFunctor n),
             irrelImplNatLam "n" $ \n ->
-              free StdVectorToVector .@@@ [n]
+              free StdVectorToVector .@@@ [n],
+            False
           ),
           ( forAllIrrelevantNat "n" $ \n ->
               hasVecLits n tListRaw,
             irrelImplNatLam "n" $ \n ->
-              free StdVectorToList .@@@ [n]
+              free StdVectorToList .@@@ [n],
+            True
           ),
           ------------
           -- HasNeg --
           ------------
           ( hasNeg tRat tRat,
-            builtin (Neg NegRat)
+            builtin (Neg NegRat),
+            False
           ),
           ------------
           -- HasAdd --
           ------------
           ( hasAdd tNat tNat tNat,
-            builtin (Add AddNat)
+            builtin (Add AddNat),
+            True
           ),
           ( hasAdd tRat tRat tRat,
-            builtin (Add AddRat)
+            builtin (Add AddRat),
+            False
           ),
           ( forAllTypeTriples $ \t1 t2 t3 ->
               forAllIrrelevantNat "n" $ \n ->
@@ -87,13 +99,15 @@ candidates =
             implTypeTripleLam $ \t1 t2 t3 ->
               irrelImplNatLam "n" $ \n ->
                 instLam "add" (hasAdd t1 t2 t3) $ \add ->
-                  free StdAddVector @@@ [t1, t2, t3] .@@@ [n] @@@@ [add]
+                  free StdAddVector @@@ [t1, t2, t3] .@@@ [n] @@@@ [add],
+            False
           ),
           ------------
           -- HasSub --
           ------------
           ( hasSub tRat tRat tRat,
-            builtin (Sub SubRat)
+            builtin (Sub SubRat),
+            False
           ),
           ( forAllTypeTriples $ \t1 t2 t3 ->
               forAllIrrelevantNat "n" $ \n ->
@@ -102,40 +116,48 @@ candidates =
             implTypeTripleLam $ \t1 t2 t3 ->
               irrelImplNatLam "n" $ \n ->
                 instLam "sub" (hasSub t1 t2 t3) $ \sub ->
-                  free StdSubVector @@@ [t1, t2, t3] .@@@ [n] @@@@ [sub]
+                  free StdSubVector @@@ [t1, t2, t3] .@@@ [n] @@@@ [sub],
+            False
           ),
           ------------
           -- HasMul --
           ------------
           ( hasMul tNat tNat tNat,
-            builtin (Mul MulNat)
+            builtin (Mul MulNat),
+            False
           ),
           ( hasMul tRat tRat tRat,
-            builtin (Mul MulRat)
+            builtin (Mul MulRat),
+            False
           ),
           ------------
           -- HasDiv --
           ------------
           ( hasDiv tRat tRat tRat,
-            builtin (Div DivRat)
+            builtin (Div DivRat),
+            False
           ),
           ------------
           -- HasMap --
           ------------
           ( hasMap tListRaw,
-            builtin MapList
+            builtin MapList,
+            True
           ),
           ( forAllIrrelevantNat "n" $ \n -> hasMap (tVectorFunctor n),
-            irrelImplNatLam "n" $ \n -> builtin MapVector .@@@ [n]
+            irrelImplNatLam "n" $ \n -> builtin MapVector .@@@ [n],
+            False
           ),
           ------------
           -- HasFold --
           ------------
           ( hasFold tListRaw,
-            builtin FoldList
+            builtin FoldList,
+            True
           ),
           ( forAllIrrelevantNat "n" $ \n -> hasFold (tVectorFunctor n),
-            irrelImplNatLam "n" $ \n -> builtin FoldVector .@@@ [n]
+            irrelImplNatLam "n" $ \n -> builtin FoldVector .@@@ [n],
+            False
           )
         ]
       <> orderCandidates Le
@@ -147,37 +169,43 @@ candidates =
       <> quantifierCandidates Forall StdForallIndex
       <> quantifierCandidates Exists StdExistsIndex
   where
-    orderCandidates :: OrderOp -> [(StandardDSLExpr, StandardDSLExpr)]
+    orderCandidates :: OrderOp -> [(StandardDSLExpr, StandardDSLExpr, Bool)]
     orderCandidates op =
       [ ( forAll "n1" tNat $ \n1 ->
             forAll "n2" tNat $ \n2 ->
               hasOrd op (tIndex n1) (tIndex n2),
           implLam "n1" tNat $ \n1 ->
             implLam "n2" tNat $ \n2 ->
-              builtin (Order OrderIndex op) @@@ [n1, n2]
+              builtin (Order OrderIndex op) @@@ [n1, n2],
+          False
         ),
         ( hasOrd op tNat tNat,
-          builtin (Order OrderNat op)
+          builtin (Order OrderNat op),
+          True
         ),
         ( hasOrd op tRat tRat,
-          builtin (Order OrderRat op)
+          builtin (Order OrderRat op),
+          False
         )
       ]
 
-    eqCandidates :: EqualityOp -> StdLibFunction -> [(StandardDSLExpr, StandardDSLExpr)]
+    eqCandidates :: EqualityOp -> StdLibFunction -> [(StandardDSLExpr, StandardDSLExpr, Bool)]
     eqCandidates op vectorOp =
       [ ( forAll "n1" tNat $ \n1 ->
             forAll "n2" tNat $ \n2 ->
               hasEq op (tIndex n1) (tIndex n2),
           implLam "n1" tNat $ \n1 ->
             implLam "n2" tNat $ \n2 ->
-              builtin (Equals EqIndex op) @@@ [n1, n2]
+              builtin (Equals EqIndex op) @@@ [n1, n2],
+          False
         ),
         ( hasEq op tNat tNat,
-          builtin (Equals EqNat op)
+          builtin (Equals EqNat op),
+          True
         ),
         ( hasEq op tRat tRat,
-          builtin (Equals EqRat op)
+          builtin (Equals EqRat op),
+          False
         ),
         ( forAll "t1" type0 $ \t1 ->
             forAll "t2" type0 $ \t2 ->
@@ -188,22 +216,25 @@ candidates =
             implLam "t2" type0 $ \t2 ->
               irrelImplNatLam "n" $ \n ->
                 instLam "eq" (hasEq op t1 t2) $ \eq ->
-                  free vectorOp @@@ [t1, t2] .@@@ [n] @@@@ [eq]
+                  free vectorOp @@@ [t1, t2] .@@@ [n] @@@@ [eq],
+          False
         )
       ]
 
     quantifierCandidates ::
       Quantifier ->
       StdLibFunction ->
-      [(StandardDSLExpr, StandardDSLExpr)]
+      [(StandardDSLExpr, StandardDSLExpr, Bool)]
     quantifierCandidates q indexOp =
       [ ( hasQuantifier q tRat,
-          builtin (Quantifier q)
+          builtin (Quantifier q),
+          False
         ),
         ( forAllNat $ \n ->
             hasQuantifier q (tIndex n),
           implLam "n" tNat $ \n ->
-            free indexOp @@ [n]
+            free indexOp @@ [n],
+          False
         ),
         ( forAllTypes $ \t ->
             forAllNat $ \n ->
@@ -211,8 +242,9 @@ candidates =
                 ~~~> hasQuantifier q (tVector t n),
           implLam "t1" type0 $ \t ->
             irrelImplNatLam "n" $ \_n ->
-              instLam "quant" (hasQuantifier q t) $ \quant -> quant
-              -- THIS IS A BUG (see #837)
+              instLam "quant" (hasQuantifier q t) $ \quant -> quant,
+          -- THIS IS A BUG (see #837)
+          False
         )
       ]
 
@@ -220,3 +252,11 @@ type StandardDSLExpr = DSLExpr Builtin
 
 builtin :: BuiltinFunction -> StandardDSLExpr
 builtin = builtinFunction
+
+findDefault :: [InstanceCandidate builtin] -> Maybe (InstanceCandidate builtin)
+findDefault instances = do
+  let defaultInstances = filter defaultInstance instances
+  case defaultInstances of
+    [] -> Nothing
+    [inst] -> Just inst
+    _ -> developerError "Multiple default instances found"

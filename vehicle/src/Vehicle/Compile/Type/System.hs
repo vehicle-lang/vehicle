@@ -7,9 +7,8 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Type.Builtin (TypableBuiltin)
 import Vehicle.Compile.Type.Constraint.Core
-import Vehicle.Compile.Type.Constraint.IndexSolver (solveIndexConstraint)
+import Vehicle.Compile.Type.Constraint.IndexSolver (solveDefaultIndexConstraints, solveIndexConstraint)
 import Vehicle.Compile.Type.Constraint.InstanceDefaultSolver (addNewConstraintUsingDefaults)
-import Vehicle.Compile.Type.Constraint.InstanceDefaults ()
 import Vehicle.Compile.Type.Constraint.InstanceSolver
 import Vehicle.Compile.Type.Constraint.LinearityAnnotationRestrictions
 import Vehicle.Compile.Type.Constraint.LinearitySolver
@@ -67,13 +66,14 @@ class (Eq builtin, NormalisableBuiltin builtin, TypableBuiltin builtin) => HasTy
 
   generateDefaultConstraint ::
     (MonadTypeChecker builtin m) =>
+    InstanceDatabase builtin ->
     Maybe (Decl builtin) ->
     m Bool
 
   -- | Solves a type-class constraint
   solveInstance ::
     (MonadTypeChecker builtin m, MonadFreeContext builtin m) =>
-    InstanceCandidateDatabase builtin ->
+    InstanceDatabase builtin ->
     WithContext (InstanceConstraint builtin) ->
     m ()
 
@@ -87,22 +87,22 @@ instance HasTypeSystem Builtin where
   restrictDatasetType = restrictStandardDatasetType
   restrictParameterType = restrictStandardParameterType
   restrictPropertyType = restrictStandardPropertyType
-  solveInstance = solveInstanceConstraint
+  solveInstance = solveStandardInstanceConstraint
   addAuxiliaryInputOutputConstraints = return
-  generateDefaultConstraint = addNewConstraintUsingDefaults
+  generateDefaultConstraint = addNewConstraintUsingDefaults solveDefaultIndexConstraints
 
 convertToTypingBuiltins :: (MonadCompile m) => BuiltinUpdate m Builtin Builtin
 convertToTypingBuiltins p t args = return $ normAppList (Builtin p t) args
 
-solveInstanceConstraint ::
+solveStandardInstanceConstraint ::
   (MonadTypeChecker Builtin m) =>
-  InstanceCandidateDatabase Builtin ->
+  InstanceDatabase Builtin ->
   WithContext (InstanceConstraint Builtin) ->
   m ()
-solveInstanceConstraint database constraint@(WithContext (Resolve _ _ _ goal) _) = do
-  case goal of
+solveStandardInstanceConstraint database constraint = do
+  case instanceGoal (objectIn constraint) of
     VBuiltin NatInDomainConstraint _ -> solveIndexConstraint constraint
-    VBuiltin {} -> resolveInstance database constraint
+    VBuiltin {} -> solveInstanceConstraint database constraint
     _ -> malformedConstraintError constraint
 
 -------------------------------------------------------------------------------
@@ -116,7 +116,7 @@ instance HasTypeSystem LinearityBuiltin where
   restrictPropertyType _ _ = return ()
   solveInstance = solveLinearityConstraint
   addAuxiliaryInputOutputConstraints = addFunctionAuxiliaryInputOutputConstraints (LinearityRelation . FunctionLinearity)
-  generateDefaultConstraint = const $ return False
+  generateDefaultConstraint _ _ = return False
 
 freshLinearityMeta :: (MonadTypeChecker LinearityBuiltin m) => Provenance -> m (GluedExpr LinearityBuiltin)
 freshLinearityMeta p = freshMetaExpr p (TypeUniverse p 0) mempty
@@ -160,7 +160,7 @@ instance HasTypeSystem PolarityBuiltin where
   restrictPropertyType _ _ = return ()
   solveInstance = solvePolarityConstraint
   addAuxiliaryInputOutputConstraints = addFunctionAuxiliaryInputOutputConstraints (PolarityRelation . FunctionPolarity)
-  generateDefaultConstraint = const $ return False
+  generateDefaultConstraint _ _ = return False
 
 freshPolarityMeta :: (MonadTypeChecker PolarityBuiltin m) => Provenance -> m (GluedExpr PolarityBuiltin)
 freshPolarityMeta p = freshMetaExpr p (TypeUniverse p 0) mempty

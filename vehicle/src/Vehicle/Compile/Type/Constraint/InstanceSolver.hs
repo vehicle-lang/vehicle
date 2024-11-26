@@ -1,12 +1,12 @@
 module Vehicle.Compile.Type.Constraint.InstanceSolver
-  ( resolveInstance,
+  ( solveInstanceConstraint,
+    acceptCandidate,
   )
 where
 
 import Control.Monad.Except (MonadError (..))
-import Data.HashMap.Strict qualified as Map
 import Data.Hashable (Hashable)
-import Data.Maybe (catMaybes, fromMaybe)
+import Data.Maybe (catMaybes)
 import Data.Proxy (Proxy (..))
 import Prettyprinter (list)
 import Vehicle.Compile.Error
@@ -24,19 +24,19 @@ import Vehicle.Data.DeBruijn (dbLevelToIndex)
 --------------------------------------------------------------------------------
 -- Public interface
 
-resolveInstance ::
+solveInstanceConstraint ::
   forall builtin m.
   (Hashable builtin, MonadInstance builtin m) =>
-  InstanceCandidateDatabase builtin ->
+  InstanceDatabase builtin ->
   WithContext (InstanceConstraint builtin) ->
   m ()
-resolveInstance allCandidates (WithContext constraint ctx) = do
-  normConstraint@(Resolve origin meta relevance expr) <- substMetas constraint
-  logDebug MaxDetail $ "Forced:" <+> prettyFriendly (WithContext normConstraint ctx)
+solveInstanceConstraint database constraint = do
+  normConstraint <- substMetas constraint
+  logDebug MaxDetail $ "Forced:" <+> prettyFriendly normConstraint
 
-  goal <- parseInstanceGoal expr
-  let candidates = fromMaybe [] $ Map.lookup (goalHead goal) allCandidates
-  solveInstanceGoal candidates ctx origin meta relevance goal
+  let goal = parseInstanceGoal normConstraint
+  let candidates = lookupInstances database goal
+  solveInstanceGoal normConstraint candidates goal
 
 --------------------------------------------------------------------------------
 -- Algorithm
@@ -52,20 +52,15 @@ type MonadInstance builtin m =
 solveInstanceGoal ::
   forall builtin m.
   (MonadInstance builtin m) =>
+  WithContext (InstanceConstraint builtin) ->
   [InstanceCandidate builtin] ->
-  ConstraintContext builtin ->
-  InstanceConstraintOrigin builtin ->
-  MetaID ->
-  Relevance ->
   InstanceGoal builtin ->
   m ()
-solveInstanceGoal rawBuiltinCandidates ctx origin meta relevance goal = do
-  let boundCtx = boundContext ctx
-
-  -- The builtin candidates have access to the entire bound context
-  let builtinCandidates = fmap (`WithContext` boundCtx) rawBuiltinCandidates
-  -- Find the candidates in the bound context.
+solveInstanceGoal constraint rawBuiltinCandidates goal = do
+  let boundCtx = boundContext $ contextOf constraint
   candidatesInBoundCtx <- findCandidatesInBoundCtx goal boundCtx
+  -- The previously declared candidates have access to the entire bound context
+  let builtinCandidates = fmap (`WithContext` boundCtx) rawBuiltinCandidates
   let allCandidates = builtinCandidates <> candidatesInBoundCtx
 
   logDebug MaxDetail $
@@ -80,7 +75,7 @@ solveInstanceGoal rawBuiltinCandidates ctx origin meta relevance goal = do
       <> line
 
   -- Try all candidates
-  successfulCandidates <- catMaybes <$> traverse (checkCandidate (ctx, origin) meta goal) allCandidates
+  successfulCandidates <- catMaybes <$> traverse (checkCandidate constraint goal) allCandidates
 
   case successfulCandidates of
     -- If there is a single valid candidate then we adopt the resulting state
@@ -90,15 +85,15 @@ solveInstanceGoal rawBuiltinCandidates ctx origin meta relevance goal = do
 
     -- If there are no valid candidates then we fail.
     [] -> do
-      substOrigin <- substMetas origin
-      throwError $ TypingError $ FailedInstanceConstraint ctx substOrigin goal allCandidates
+      finalConstraint <- substMetas constraint
+      throwError $ TypingError $ FailedInstanceConstraint finalConstraint allCandidates
 
     -- Otherwise there are still multiple valid candidates so we're forced to block.
     _ -> do
       logDebug MaxDetail "Multiple possible candidates found so deferring."
-      let constraint = WithContext (InstanceConstraint (Resolve origin meta relevance (goalExpr goal))) ctx
+      let newConstraint = mapObject InstanceConstraint constraint
       -- TODO can we be more precise with the set of blocking metas?
-      blockedConstraint <- blockConstraintOn constraint <$> getUnsolvedMetas (Proxy @builtin)
+      blockedConstraint <- blockConstraintOn newConstraint <$> getUnsolvedMetas (Proxy @builtin)
       addConstraints [blockedConstraint]
 
 -- | Locates any more candidates that are in the bound context of the constraint
@@ -121,7 +116,8 @@ findCandidatesInBoundCtx goal ctx = go ctx
             let candidate =
                   InstanceCandidate
                     { candidateExpr = binderType,
-                      candidateSolution = BoundVar mempty (dbLevelToIndex (Lv $ length ctx) (Lv $ length localCtx))
+                      candidateSolution = BoundVar mempty (dbLevelToIndex (Lv $ length ctx) (Lv $ length localCtx)),
+                      defaultInstance = False
                     }
             return $ WithContext candidate localCtx : candidates
           _ -> return candidates
@@ -132,41 +128,16 @@ findCandidatesInBoundCtx goal ctx = go ctx
 checkCandidate ::
   forall builtin m.
   (MonadInstance builtin m) =>
-  InstanceConstraintInfo builtin ->
-  MetaID ->
+  WithContext (InstanceConstraint builtin) ->
   InstanceGoal builtin ->
   WithContext (InstanceCandidate builtin) ->
   m (Maybe (WithContext (InstanceCandidate builtin), TypeCheckerState builtin))
-checkCandidate info@(constraintCtx, constraintOrigin) meta goal@InstanceGoal {..} candidate = do
+checkCandidate constraint goal candidate = do
   let candidateDoc = squotes (prettyCandidate candidate)
   logCompilerPass MaxDetail ("trying candidate instance" <+> candidateDoc) $ do
     result <- runTypeCheckerTHypothetically $ do
-      -- Allow the candidate to access all the arguments in the goal telescope.
-      let goalCtxExtension = goalTelescope
-      let extendedGoalCtx = goalCtxExtension ++ boundContext constraintCtx
-      let extendedGoalInfo = (setConstraintBoundCtx constraintCtx extendedGoalCtx, constraintOrigin)
-
-      logCompilerSection MaxDetail "hypothetically accepting candidate" $ do
-        -- Instantiate the candidate telescope with metas and subst into body.
-        (substCandidateExpr, substCandidateSolution, recInstanceConstraints) <-
-          instantiateCandidateTelescope goalCtxExtension info candidate
-
-        -- Unify the goal and candidate bodies
-        unificationConstraint <-
-          createInstanceUnification extendedGoalInfo (goalExpr goal) substCandidateExpr
-
-        -- Replace the provenance of the final solution with the provenance of where the
-        -- constraint was generated. This is needed to get the information to propagate
-        -- properly for the polarity and linearity types, otherwise the provenance ends
-        -- up empty as the candidates are constructed independently.
-        let finalCandidateSolution = replaceProvenance (provenanceOf constraintCtx) substCandidateSolution
-
-        -- Add the solution of the type-class as well (if we had first class records
-        -- then we wouldn't need to do this manually).
-        solveMeta meta finalCandidateSolution extendedGoalCtx
-
-        addConstraints (unificationConstraint : recInstanceConstraints)
-
+      logCompilerSection MaxDetail "hypothetically accepting candidate" $
+        acceptCandidate constraint goal candidate
       runUnificationSolver (Proxy @builtin) mempty
 
     case result of
@@ -177,6 +148,37 @@ checkCandidate info@(constraintCtx, constraintOrigin) meta goal@InstanceGoal {..
       Right (_, state) -> do
         logDebug MaxDetail $ "Keeping" <+> candidateDoc <+> "as a possibility" <> line
         return $ Just (candidate, state)
+
+acceptCandidate ::
+  (MonadInstance builtin m) =>
+  WithContext (InstanceConstraint builtin) ->
+  InstanceGoal builtin ->
+  WithContext (InstanceCandidate builtin) ->
+  m ()
+acceptCandidate (WithContext Resolve {..} constraintCtx) goal candidate = do
+  -- Allow the candidate to access all the arguments in the goal telescope.
+  let goalCtxExtension = goalTelescope goal
+  let extendedGoalCtx = goalCtxExtension ++ boundContext constraintCtx
+  let extendedGoalInfo = (setConstraintBoundCtx constraintCtx extendedGoalCtx, instanceOrigin)
+
+  -- Instantiate the candidate telescope with metas and subst into body.
+  (substCandidateExpr, substCandidateSolution, recInstanceConstraints) <-
+    instantiateCandidateTelescope goalCtxExtension (constraintCtx, instanceOrigin) candidate
+
+  -- Unify the goal and candidate bodies
+  unificationConstraint <- createInstanceUnification extendedGoalInfo (goalExpr goal) substCandidateExpr
+
+  -- Replace the provenance of the final solution with the provenance of where the
+  -- constraint was generated. This is needed to get the information to propagate
+  -- properly for the polarity and linearity types, otherwise the provenance ends
+  -- up empty as the candidates are constructed independently.
+  let finalCandidateSolution = replaceProvenance (provenanceOf constraintCtx) substCandidateSolution
+
+  -- Add the solution of the type-class as well (if we had first class records
+  -- then we wouldn't need to do this manually).
+  solveMeta instanceSolutionMeta finalCandidateSolution extendedGoalCtx
+
+  addConstraints (unificationConstraint : recInstanceConstraints)
 
 -- | Generate meta variables for each binder in the telescope of the candidate
 -- and then substitute them into the candidate expression.

@@ -33,7 +33,7 @@ type TypeCheckerTInternals builtin m =
   FreeContextT
     builtin
     ( ReaderT
-        (InstanceCandidateDatabase builtin)
+        (InstanceDatabase builtin)
         (StateT (TypeCheckerState builtin) m)
     )
 
@@ -58,7 +58,7 @@ newtype TypeCheckerT builtin m a = TypeCheckerT
 runTypeCheckerT ::
   (Monad m) =>
   FreeCtx builtin ->
-  InstanceCandidateDatabase builtin ->
+  InstanceDatabase builtin ->
   TypeCheckerState builtin ->
   TypeCheckerT builtin m a ->
   m (a, TypeCheckerState builtin)

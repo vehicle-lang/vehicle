@@ -124,22 +124,22 @@ findInstanceGoalHead = \case
   expr -> Left expr
 
 parseInstanceGoal ::
-  forall m builtin.
-  (MonadCompile m, PrintableBuiltin builtin) =>
-  Value builtin ->
-  m (InstanceGoal builtin)
-parseInstanceGoal e = go [] e
+  forall builtin.
+  (PrintableBuiltin builtin) =>
+  WithContext (InstanceConstraint builtin) ->
+  InstanceGoal builtin
+parseInstanceGoal (WithContext c _) = go [] (instanceGoal c)
   where
-    go :: Telescope builtin -> Value builtin -> m (InstanceGoal builtin)
+    go :: Telescope builtin -> Value builtin -> InstanceGoal builtin
     go telescope = \case
       VPi binder _body
-        | not (isExplicit binder) -> compilerDeveloperError "Instance goals with telescopes not yet supported"
-      VBuiltin b spine -> return $ InstanceGoal telescope b spine
-      _ -> compilerDeveloperError $ "Malformed instance goal" <+> prettyVerbose e
+        | not (isExplicit binder) -> developerError "Instance goals with telescopes not yet supported"
+      VBuiltin b spine -> InstanceGoal telescope b spine
+      _ -> developerError $ "Malformed instance goal" <+> prettyVerbose (instanceGoal c)
 
-mkCandidate :: (DSLExpr builtin, DSLExpr builtin) -> InstanceCandidate builtin
-mkCandidate (expr, solution) = do
+mkCandidate :: (DSLExpr builtin, DSLExpr builtin, Bool) -> InstanceCandidate builtin
+mkCandidate (expr, solution, defaultInstance) = do
   let p = mempty
   let expr' = fromDSL p expr
   let solution' = fromDSL p solution
-  InstanceCandidate expr' solution'
+  InstanceCandidate expr' solution' defaultInstance

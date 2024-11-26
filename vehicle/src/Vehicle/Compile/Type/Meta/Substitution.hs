@@ -117,7 +117,7 @@ instance MetaSubstitutable m builtin (UnificationConstraint builtin) where
 
 instance MetaSubstitutable m builtin (InstanceConstraint builtin) where
   subst s (Resolve origin m r e) = do
-    Resolve origin <$> substMetaID s m <*> pure r <*> subst s e
+    Resolve <$> subst s origin <*> substMetaID s m <*> pure r <*> subst s e
 
 -- This is a massive hack, and only works because we only have instance resolution
 -- for types in the loss typing subsystem which doesn't use dependently types.

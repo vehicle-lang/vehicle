@@ -4,6 +4,8 @@ module Vehicle.Compile.Type.Core where
 
 import Data.Bifunctor (Bifunctor (..))
 import Data.HashMap.Strict (HashMap)
+import Data.HashMap.Strict qualified as Map (findWithDefault, lookup)
+import Data.Hashable (Hashable)
 import Data.List.NonEmpty (NonEmpty)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
@@ -19,7 +21,7 @@ data TypingError builtin
   = MissingExplicitArgument NamedBoundCtx (Binder builtin) (Arg builtin)
   | FunctionTypeMismatch NamedBoundCtx (Expr builtin) [Arg builtin] (Expr builtin) [Arg builtin]
   | FailedUnificationConstraints (NonEmpty (WithContext (UnificationConstraint builtin)))
-  | FailedInstanceConstraint (ConstraintContext builtin) (InstanceConstraintOrigin builtin) (InstanceGoal builtin) [WithContext (InstanceCandidate builtin)]
+  | FailedInstanceConstraint (WithContext (InstanceConstraint builtin)) [WithContext (InstanceCandidate builtin)]
   | UnsolvedConstraints (NonEmpty (WithContext (Constraint builtin)))
   | FailedIndexConstraintTooBig (ConstraintContext builtin) Int Int
   | FailedIndexConstraintUnknown (ConstraintContext builtin) (Value builtin) (VType builtin)
@@ -133,7 +135,8 @@ type instance
 
 data InstanceCandidate builtin = InstanceCandidate
   { candidateExpr :: Expr builtin,
-    candidateSolution :: Expr builtin
+    candidateSolution :: Expr builtin,
+    defaultInstance :: Bool
   }
   deriving (Show)
 
@@ -156,8 +159,19 @@ type InstanceConstraintInfo builtin =
 -- | Stores the list of instance candidates currently in scope.
 -- We use a HashMap rather than an ordinary Map as not all builtins may be
 -- totally ordered (e.g. PolarityBuiltin and LinearityBuiltin)
-type InstanceCandidateDatabase builtin =
-  HashMap builtin [InstanceCandidate builtin]
+data InstanceDatabase builtin = InstanceDatabase
+  { instances :: HashMap builtin [InstanceCandidate builtin],
+    defaultInstances :: HashMap builtin (InstanceCandidate builtin)
+  }
+
+emptyInstanceDatabase :: (Hashable builtin) => InstanceDatabase builtin
+emptyInstanceDatabase = InstanceDatabase mempty mempty
+
+lookupInstances :: (Hashable builtin) => InstanceDatabase builtin -> InstanceGoal builtin -> [InstanceCandidate builtin]
+lookupInstances database goal = Map.findWithDefault [] (goalHead goal) (instances database)
+
+lookupDefaultInstance :: (Hashable builtin) => InstanceDatabase builtin -> InstanceGoal builtin -> Maybe (InstanceCandidate builtin)
+lookupDefaultInstance database goal = Map.lookup (goalHead goal) (defaultInstances database)
 
 --------------------------------------------------------------------------------
 -- Unification constraints

@@ -33,7 +33,7 @@ import Vehicle.Data.Code.Value
 typeCheckProg ::
   forall builtin m.
   (HasTypeSystem builtin, NormalisableBuiltin builtin, MonadCompile m) =>
-  InstanceCandidateDatabase builtin ->
+  InstanceDatabase builtin ->
   FreeCtx builtin ->
   Prog Builtin ->
   m (Prog builtin)
@@ -46,7 +46,7 @@ typeCheckProg instanceCandidates freeCtx (Main uncheckedProg) =
 typeCheckExpr ::
   forall builtin m.
   (HasTypeSystem builtin, NormalisableBuiltin builtin, MonadCompile m) =>
-  InstanceCandidateDatabase builtin ->
+  InstanceDatabase builtin ->
   FreeCtx builtin ->
   Expr Builtin ->
   m (Expr builtin)
@@ -207,7 +207,8 @@ solveConstraints d = logCompilerPass MidDetail "constraint solving" $ do
         if allConstraintsBlocked
           then do
             -- If no constraints are unblocked then try generating new constraints using defaults.
-            successfullyGeneratedDefault <- generateDefaultConstraint decl
+            instanceCandidates <- getInstanceCandidates
+            successfullyGeneratedDefault <- generateDefaultConstraint instanceCandidates decl
             when successfullyGeneratedDefault $
               -- If new constraints generated then continue solving.
               loopOverConstraints mempty loopNumber decl

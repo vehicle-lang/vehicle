@@ -18,7 +18,7 @@ import Vehicle.Data.Code.Value
 
 solveLinearityConstraint ::
   (MonadLinearitySolver m) =>
-  InstanceCandidateDatabase LinearityBuiltin ->
+  InstanceDatabase LinearityBuiltin ->
   WithContext (InstanceConstraint LinearityBuiltin) ->
   m ()
 solveLinearityConstraint _ (WithContext constraint ctx) = do

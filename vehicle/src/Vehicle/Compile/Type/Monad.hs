@@ -54,7 +54,7 @@ import Vehicle.Data.Code.Value
 runTypeCheckerTInitially ::
   (Monad m) =>
   FreeCtx builtin ->
-  InstanceCandidateDatabase builtin ->
+  InstanceDatabase builtin ->
   TypeCheckerT builtin m a ->
   m a
 runTypeCheckerTInitially freeCtx instanceCandidates e =

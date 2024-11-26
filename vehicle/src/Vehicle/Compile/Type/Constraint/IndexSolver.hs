@@ -1,6 +1,10 @@
-module Vehicle.Compile.Type.Constraint.IndexSolver where
+module Vehicle.Compile.Type.Constraint.IndexSolver
+  ( solveIndexConstraint,
+    solveDefaultIndexConstraints,
+  )
+where
 
-import Control.Monad.Except (MonadError (..))
+import Control.Monad.Except (MonadError (..), forM)
 import Data.Maybe (mapMaybe)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
@@ -14,8 +18,10 @@ import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
 
+--------------------------------------------------------------------------------
+-- Solve index constraints
+
 solveIndexConstraint ::
-  forall m.
   (MonadTypeChecker Builtin m) =>
   WithContext (InstanceConstraint Builtin) ->
   m ()
@@ -34,9 +40,6 @@ solveIndexConstraint constraint = do
           let blockedConstraint = blockConstraintOn (mapObject InstanceConstraint normConstraint) metas
           addConstraints [blockedConstraint]
     _ -> compilerDeveloperError $ "Malformed instance goal" <+> prettyFriendly normConstraint
-
---------------------------------------------------------------------------------
--- InDomain
 
 -- | Function signature for constraints solved by type class resolution.
 -- This should eventually be refactored out so all are solved by instance
@@ -96,3 +99,32 @@ findLowerBound ctx value indexSize = go indexSize
         (m2, b2) <- go e2
         return (m1 <> m2, b1 + b2)
       _ -> throwError $ TypingError $ FailedIndexConstraintUnknown ctx value indexSize
+
+--------------------------------------------------------------------------------
+-- Default index constraints
+
+solveDefaultIndexConstraints ::
+  (MonadTypeChecker Builtin m) =>
+  [WithContext (InstanceConstraint Builtin)] ->
+  m Bool
+solveDefaultIndexConstraints defaultableConstraints = do
+  results <- forM defaultableConstraints solveDefaultIndexConstraint
+  return $ or results
+
+solveDefaultIndexConstraint ::
+  (MonadTypeChecker Builtin m) =>
+  WithContext (InstanceConstraint Builtin) ->
+  m Bool
+solveDefaultIndexConstraint constraint = do
+  let goal = parseInstanceGoal constraint
+  case (goalHead goal, goalSpine goal) of
+    (NatInDomainConstraint, [n, argExpr -> IIndexType _ size]) -> do
+      let succN = case argExpr n of
+            INatLiteral p x -> INatLiteral p (x + 1)
+            n' -> IAdd AddNat n' (INatLiteral mempty 1)
+
+      let constraintInfo = (contextOf constraint, instanceOrigin $ objectIn constraint)
+      newSizeConstraint <- createInstanceUnification constraintInfo size succN
+      addConstraints [newSizeConstraint]
+      return True
+    _ -> return False

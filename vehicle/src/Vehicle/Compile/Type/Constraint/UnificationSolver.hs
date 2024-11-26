@@ -10,6 +10,7 @@ import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap
 import Data.IntSet qualified as IntSet
 import Data.List (intersect)
+import Data.List.NonEmpty (NonEmpty)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Proxy (Proxy (..))
 import Prettyprinter (sep)
@@ -64,8 +65,9 @@ solveUnificationConstraint constraint = do
     Success -> return ()
     Blocked blockedConstraints ->
       addUnificationConstraints blockedConstraints
-    HardFailure ->
-      throwError $ TypingError $ FailedUnificationConstraints [constraint]
+    HardFailure failedConstraints -> do
+      finalFailedConstraints <- traverse substMetas failedConstraints
+      throwError $ TypingError $ FailedUnificationConstraints finalFailedConstraints
 
 solve ::
   forall builtin m.
@@ -89,13 +91,14 @@ solve (WithContext (Unify origin e1 e2) ctx) = do
 data UnificationResult builtin
   = Success
   | -- | Always an error
-    HardFailure
+    HardFailure (NonEmpty (WithContext (UnificationConstraint builtin)))
   | -- | Only an error when further reduction will never occur.
     Blocked [WithContext (UnificationConstraint builtin)]
 
 instance Semigroup (UnificationResult builtin) where
-  HardFailure <> _ = HardFailure
-  _ <> HardFailure = HardFailure
+  HardFailure r1 <> HardFailure r2 = HardFailure (r1 <> r2)
+  r1@HardFailure {} <> _ = r1
+  _ <> r2@HardFailure {} = r2
   Blocked m1 <> Blocked m2 = Blocked (m1 <> m2)
   r1@Blocked {} <> _ = r1
   _ <> r2@Blocked {} = r2
@@ -126,7 +129,7 @@ block ::
 block (WithContext constraint ctx, originalBlockingMetas) maybeRefinedBlockingMetas = do
   let blockingMetas = fromMaybe originalBlockingMetas maybeRefinedBlockingMetas
   if MetaSet.null blockingMetas
-    then return HardFailure
+    then return $ HardFailure [WithContext constraint ctx]
     else do
       newConstraint <- WithContext constraint <$> copyContext ctx
       let blockedConstraint = blockConstraintOn newConstraint blockingMetas
@@ -140,7 +143,7 @@ unification ::
   ConstraintInfo builtin ->
   (Value builtin, Value builtin) ->
   m (UnificationResult builtin)
-unification info = \case
+unification info@(constraint, _) = \case
   -----------------------
   -- Rigid-rigid cases --
   -----------------------
@@ -152,7 +155,7 @@ unification info = \case
     | v1 == v2 -> solveSpine info spine1 spine2
   VBuiltin b1 spine1 :~: VBuiltin b2 spine2
     | b1 == b2 -> solveSpine info spine1 spine2
-    | isConstructor b1 && isConstructor b2 -> return HardFailure
+    | isConstructor b1 && isConstructor b2 -> return $ HardFailure [constraint]
   VPi binder1 body1 :~: VPi binder2 body2
     | visibilityMatches binder1 binder2 -> solvePi info (binder1, body1) (binder2, body2)
   VLam binder1 body1 :~: VLam binder2 body2 ->
@@ -186,8 +189,8 @@ solveArg ::
   ConstraintInfo builtin ->
   (VArg builtin, VArg builtin) ->
   m (UnificationResult builtin)
-solveArg info (arg1, arg2)
-  | not (visibilityMatches arg1 arg2) = return HardFailure
+solveArg info@(constraint, _) (arg1, arg2)
+  | not (visibilityMatches arg1 arg2) = return $ HardFailure [constraint]
   -- Don't unify instances, they should be uniquely determined by the type.
   | isInstance arg1 = return Success
   | otherwise = subUnify info (argExpr arg1, argExpr arg2)
@@ -198,8 +201,8 @@ solveSpine ::
   Spine builtin ->
   Spine builtin ->
   m (UnificationResult builtin)
-solveSpine info args1 args2
-  | length args1 /= length args2 = return HardFailure
+solveSpine info@(constraint, _) args1 args2
+  | length args1 /= length args2 = return $ HardFailure [constraint]
   | otherwise = mconcat <$> traverse (solveArg info) (zip args1 args2)
 
 solveLam ::

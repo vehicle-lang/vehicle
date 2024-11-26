@@ -1,43 +1,45 @@
 module Vehicle.Compile.Type.Constraint.InstanceDefaultSolver
-  ( HasInstanceDefaults (..),
-    addNewConstraintUsingDefaults,
-    Candidate (..),
+  ( addNewConstraintUsingDefaults,
   )
 where
 
-import Control.Monad (filterM, foldM)
+import Control.Monad (filterM)
+import Data.Hashable (Hashable)
+import Data.Maybe (mapMaybe)
 import Data.Proxy (Proxy (..))
-import Vehicle.Compile.Error
+import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (PrintableBuiltin, prettyVerbose)
-import Vehicle.Compile.Type.Constraint.Core (createInstanceUnification)
+import Vehicle.Compile.Type.Constraint.Core (parseInstanceGoal)
+import Vehicle.Compile.Type.Constraint.InstanceSolver (acceptCandidate)
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Meta.Variable
 import Vehicle.Compile.Type.Monad.Class
-import Vehicle.Data.Code.Value
-
-class HasInstanceDefaults builtin where
-  getCandidatesFromConstraint ::
-    forall m.
-    (MonadCompile m) =>
-    ConstraintContext builtin ->
-    InstanceConstraint builtin ->
-    m [Candidate builtin]
-
-  compareCandidates :: Candidate builtin -> Candidate builtin -> Maybe Ordering
 
 type MonadInstanceDefault builtin m =
-  ( MonadTypeChecker builtin m,
-    HasInstanceDefaults builtin
+  ( MonadTypeChecker builtin m
   )
+
+newtype DefaultCandidate builtin
+  = DefaultCandidate
+      ( WithContext (InstanceConstraint builtin),
+        InstanceGoal builtin,
+        InstanceCandidate builtin
+      )
+
+instance (PrintableBuiltin builtin) => Pretty (DefaultCandidate builtin) where
+  pretty (DefaultCandidate (constraint, _, candidate)) =
+    prettyVerbose constraint <+> "~" <+> prettyVerbose (candidateExpr candidate)
 
 -- | Tries to add new unification constraints using default values.
 addNewConstraintUsingDefaults ::
-  (MonadTypeChecker builtin m, HasInstanceDefaults builtin) =>
+  (MonadTypeChecker builtin m, Hashable builtin) =>
+  ([WithContext (InstanceConstraint builtin)] -> m Bool) ->
+  InstanceDatabase builtin ->
   Maybe (Decl builtin) ->
   m Bool
-addNewConstraintUsingDefaults maybeDecl = do
+addNewConstraintUsingDefaults handleNonStandardConstraints instanceDatabase maybeDecl = do
   logDebug MaxDetail $ "Temporarily stuck" <> line
 
   logCompilerPass
@@ -52,12 +54,13 @@ addNewConstraintUsingDefaults maybeDecl = do
           <> indent 2 (prettyVerbose defaultableConstraints)
           <> line
 
-      result <- generateConstraintUsingDefaults defaultableConstraints
+      result <- chooseDefaultConstraint instanceDatabase defaultableConstraints
       case result of
-        Nothing -> return False
-        Just newConstraint -> do
-          addConstraints [newConstraint]
+        Just candidate -> do
+          acceptDefaultCandidate candidate
           return True
+        Nothing ->
+          handleNonStandardConstraints defaultableConstraints
 
 getDefaultableConstraints ::
   forall builtin m.
@@ -85,77 +88,37 @@ getDefaultableConstraints maybeDecl = do
         return $ MetaSet.disjoint constraintMetas typeMetas
     _ -> return typeClassConstraints
 
---------------------------------------------------------------------------------
--- Default solutions to type-class constraints
-
-data Candidate builtin = Candidate
-  { candidateTypeClass :: builtin,
-    candidateMetaExpr :: Value builtin,
-    candidateInfo :: InstanceConstraintInfo builtin,
-    candidateSolution :: Value builtin
-  }
-
-instance (PrintableBuiltin builtin) => Pretty (Candidate builtin) where
-  pretty Candidate {..} =
-    prettyVerbose candidateMetaExpr <+> "~" <+> prettyVerbose (VBuiltin @builtin candidateTypeClass [])
-
-data CandidateStatus builtin
-  = Valid (Candidate builtin)
-  | None
-  | Invalid
-
-instance (PrintableBuiltin builtin) => Pretty (CandidateStatus builtin) where
-  pretty = \case
-    Valid c -> pretty c
-    None -> "none encountered"
-    Invalid -> "incompatible"
-
-generateConstraintUsingDefaults ::
+chooseDefaultConstraint ::
   forall builtin m.
-  (MonadInstanceDefault builtin m) =>
+  (MonadCompile m, PrintableBuiltin builtin, Hashable builtin) =>
+  InstanceDatabase builtin ->
   [WithContext (InstanceConstraint builtin)] ->
-  m (Maybe (WithContext (Constraint builtin)))
-generateConstraintUsingDefaults constraints = do
-  strongestConstraint <- findStrongestConstraint constraints
-  case strongestConstraint of
-    None -> do
+  m (Maybe (DefaultCandidate builtin))
+chooseDefaultConstraint instanceDatabase constraints = do
+  let defaults = mapMaybe (findDefault instanceDatabase) constraints
+  case defaults of
+    [] -> do
       logDebug MaxDetail "No default solution found"
       return Nothing
-    Invalid -> return Nothing
-    Valid Candidate {..} -> do
-      logDebug MaxDetail $
-        "using default"
-          <+> prettyVerbose candidateMetaExpr
-          <+> "="
-          <+> prettyVerbose candidateSolution
-          <+> "         "
-          <> parens ("from" <+> prettyVerbose (VBuiltin @builtin candidateTypeClass []))
-      newConstraint <- createInstanceUnification candidateInfo candidateMetaExpr candidateSolution
-      return $ Just newConstraint
+    candidate : _ -> do
+      return $ Just candidate
 
-findStrongestConstraint ::
+findDefault ::
+  (PrintableBuiltin builtin, Hashable builtin) =>
+  InstanceDatabase builtin ->
+  WithContext (InstanceConstraint builtin) ->
+  Maybe (DefaultCandidate builtin)
+findDefault database constraint = do
+  let goal = parseInstanceGoal constraint
+  case lookupDefaultInstance database goal of
+    Just candidate -> Just $ DefaultCandidate (constraint, goal, candidate)
+    Nothing -> Nothing
+
+acceptDefaultCandidate ::
   (MonadInstanceDefault builtin m) =>
-  [WithContext (InstanceConstraint builtin)] ->
-  m (CandidateStatus builtin)
-findStrongestConstraint [] = return None
-findStrongestConstraint (c@(WithContext constraint ctx) : cs) = do
-  recResult <- findStrongestConstraint cs
-
-  logCompilerSection MaxDetail ("considering" <+> squotes (prettyVerbose c)) $ do
-    candidates <- getCandidatesFromConstraint ctx constraint
-
-    newStrongest <- foldM strongest recResult candidates
-    logDebug MaxDetail $ indent 2 $ "status:" <+> pretty newStrongest
-    return newStrongest
-
-strongest ::
-  (MonadInstanceDefault builtin m) =>
-  CandidateStatus builtin ->
-  Candidate builtin ->
-  m (CandidateStatus builtin)
-strongest Invalid _ = return Invalid
-strongest None x = return $ Valid x
-strongest y@(Valid c1) c2 = do
-  case compareCandidates c1 c2 of
-    Just GT -> return $ Valid c2
-    _ -> return y
+  DefaultCandidate builtin ->
+  m ()
+acceptDefaultCandidate c@(DefaultCandidate (constraint, goal, candidate)) = do
+  logDebug MaxDetail $ "using default" <+> pretty c
+  removeInstanceConstraint constraint
+  acceptCandidate constraint goal (WithContext candidate (boundContextOf $ contextOf constraint))

@@ -431,7 +431,7 @@ instance MeaningfulError CompileError where
           }
       where
         argTypeDoc = prettyFriendly $ WithContext (typeOf argBinder) ctx
-    TypingError (FailedInstanceConstraint ctx origin _goal candidates :: TypingError builtin) ->
+    TypingError (FailedInstanceConstraint (WithContext constraint ctx) candidates :: TypingError builtin) ->
       UError $
         UserError
           { provenance = provenanceOf ctx,
@@ -452,7 +452,7 @@ instance MeaningfulError CompileError where
             fix = Nothing
           }
       where
-        InstanceConstraintOrigin tcOp tcOpArgs tcOpType tc = origin
+        InstanceConstraintOrigin tcOp tcOpArgs tcOpType tc = instanceOrigin constraint
 
         deducedType = calculateOpType (namedBoundCtxOf ctx) $ case tc of
           App _ as -> NonEmpty.toList as

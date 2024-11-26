@@ -18,7 +18,7 @@ import Vehicle.Data.Code.Value
 
 solvePolarityConstraint ::
   (MonadPolaritySolver m) =>
-  InstanceCandidateDatabase PolarityBuiltin ->
+  InstanceDatabase PolarityBuiltin ->
   WithContext (InstanceConstraint PolarityBuiltin) ->
   m ()
 solvePolarityConstraint _ (WithContext constraint ctx) = do

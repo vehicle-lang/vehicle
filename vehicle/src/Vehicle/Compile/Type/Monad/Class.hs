@@ -97,7 +97,7 @@ class (MonadCompile m, MonadFreeContext builtin m, NormalisableBuiltin builtin, 
   modifyMetaCtx :: (TypeCheckerState builtin -> TypeCheckerState builtin) -> m ()
   getFreshName :: Type builtin -> m Name
   clearFreshNames :: Proxy builtin -> m ()
-  getInstanceCandidates :: m (InstanceCandidateDatabase builtin)
+  getInstanceCandidates :: m (InstanceDatabase builtin)
 
 instance (Monoid w, MonadTypeChecker builtin m) => MonadTypeChecker builtin (WriterT w m) where
   getMetaState = lift getMetaState
@@ -416,6 +416,12 @@ setConstraints constraints = do
 
 setInstanceConstraints :: (MonadTypeChecker builtin m) => [WithContext (InstanceConstraint builtin)] -> m ()
 setInstanceConstraints newConstraints = modifyMetaCtx $ \TypeCheckerState {..} ->
+  TypeCheckerState {typeClassConstraints = newConstraints, ..}
+
+removeInstanceConstraint :: forall builtin m. (MonadTypeChecker builtin m) => WithContext (InstanceConstraint builtin) -> m ()
+removeInstanceConstraint constraint = modifyMetaCtx @builtin $ \TypeCheckerState {..} -> do
+  let idOf = constraintID . contextOf
+  let newConstraints = filter (\c -> idOf constraint /= idOf c) typeClassConstraints
   TypeCheckerState {typeClassConstraints = newConstraints, ..}
 
 setUnificationConstraints :: (MonadTypeChecker builtin m) => [WithContext (UnificationConstraint builtin)] -> m ()

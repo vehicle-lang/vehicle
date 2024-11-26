@@ -12,7 +12,7 @@ import Vehicle.Compile.Normalise.Builtin (NormalisableBuiltin, findInstanceArg)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (PrintableBuiltin, prettyExternal)
 import Vehicle.Compile.Type (typeCheckProg)
-import Vehicle.Compile.Type.Core (InstanceCandidateDatabase)
+import Vehicle.Compile.Type.Core (InstanceDatabase)
 import Vehicle.Compile.Type.Irrelevance (removeIrrelevantCodeFromProg)
 import Vehicle.Compile.Type.System
 import Vehicle.Data.Builtin.Interface
@@ -21,7 +21,7 @@ import Vehicle.Data.Builtin.Standard
 typeCheckWithSubsystem ::
   forall builtin m.
   (HasTypeSystem builtin, NormalisableBuiltin builtin, MonadCompile m) =>
-  InstanceCandidateDatabase builtin ->
+  InstanceDatabase builtin ->
   (forall a. CompileError -> m a) ->
   Prog Builtin ->
   m (Prog builtin)
