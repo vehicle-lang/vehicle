@@ -9,6 +9,7 @@ module Vehicle.Compile.Normalise.NBE
     normaliseClosure,
     eval,
     evalApp,
+    evalClosure,
     traverseClosure,
     traverseClosureGeneric,
   )

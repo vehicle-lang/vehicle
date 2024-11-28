@@ -112,6 +112,9 @@ instance (MetaSubstitutable m builtin expr) => MetaSubstitutable m builtin (Gene
 instance (MetaSubstitutable m builtin expr) => MetaSubstitutable m builtin (GenericProg expr) where
   subst s (Main ds) = Main <$> traverse (subst s) ds
 
+instance MetaSubstitutable m builtin (ApplicationConstraint builtin) where
+  subst s (InferArgs m1 m2 insertionProblem) = InferArgs m1 m2 <$> subst s insertionProblem
+
 instance MetaSubstitutable m builtin (UnificationConstraint builtin) where
   subst s (Unify origin e1 e2) = Unify <$> subst s origin <*> subst s e1 <*> subst s e2
 
@@ -133,11 +136,22 @@ instance MetaSubstitutable m builtin (Constraint builtin) where
   subst s = \case
     UnificationConstraint c -> UnificationConstraint <$> subst s c
     InstanceConstraint c -> InstanceConstraint <$> subst s c
+    ApplicationConstraint c -> ApplicationConstraint <$> subst s c
 
 instance (MetaSubstitutable m builtin constraint) => MetaSubstitutable m builtin (Contextualised constraint (ConstraintContext builtin)) where
   subst s (WithContext constraint context) = do
     newConstraint <- subst s constraint
     return $ WithContext newConstraint context
+
+instance MetaSubstitutable m builtin (ArgInsertionProblem builtin) where
+  subst s (ArgInsertionProblem originalFun originalArgs originalType checkedArgs currentExpectedType uncheckedArgs) =
+    ArgInsertionProblem
+      <$> subst s originalFun
+      <*> subst s originalArgs
+      <*> subst s originalType
+      <*> subst s checkedArgs
+      <*> subst s currentExpectedType
+      <*> subst s uncheckedArgs
 
 instance MetaSubstitutable m builtin (InstanceConstraintOrigin builtin) where
   subst s (InstanceConstraintOrigin tcOp tcOpArgs tcOpType tc) =

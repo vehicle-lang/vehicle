@@ -7,6 +7,7 @@ import Control.Monad.Trans.Class (lift)
 import Control.Monad.Writer (WriterT (..))
 import Data.Maybe (fromMaybe)
 import Data.Proxy (Proxy (..))
+import Prettyprinter (fill)
 import Vehicle.Compile.Context.Bound.Instance
 import Vehicle.Compile.Context.Free.Class (MonadFreeContext)
 import Vehicle.Compile.Error (MonadCompile, compilerDeveloperError)
@@ -69,8 +70,9 @@ data TypeCheckerState builtin = TypeCheckerState
     -- NB: these are stored in *reverse* order from which they were created.
     metaInfo :: [MetaInfo builtin],
     currentSubstitution :: MetaSubstitution builtin,
+    applicationConstraints :: [WithContext (ApplicationConstraint builtin)],
     unificationConstraints :: [WithContext (UnificationConstraint builtin)],
-    typeClassConstraints :: [WithContext (InstanceConstraint builtin)],
+    instanceConstraints :: [WithContext (InstanceConstraint builtin)],
     freshNameState :: FreshNameState,
     solvedMetaState :: SolvedMetaState,
     nextConstraintID :: ConstraintID
@@ -81,8 +83,9 @@ emptyTypeCheckerState =
   TypeCheckerState
     { metaInfo = mempty,
       currentSubstitution = mempty,
+      applicationConstraints = mempty,
       unificationConstraints = mempty,
-      typeClassConstraints = mempty,
+      instanceConstraints = mempty,
       freshNameState = 0,
       solvedMetaState = SolvedMetaState mempty,
       nextConstraintID = 0
@@ -372,7 +375,7 @@ prettyMetas _ metas = do
   return $ prettySetLike docs
 
 prettyMeta :: forall builtin m a. (MonadTypeChecker builtin m) => Proxy builtin -> MetaID -> m (Doc a)
-prettyMeta _ meta = prettyMetaInternal meta <$> getMetaType @builtin meta
+prettyMeta _ meta = fill 3 . prettyMetaInternal meta <$> getMetaType @builtin meta
 
 prettyMetaInternal :: (PrintableBuiltin builtin) => MetaID -> Type builtin -> Doc a
 prettyMetaInternal m t = pretty m <+> ":" <+> prettyVerbose t
@@ -396,43 +399,50 @@ generateFreshConstraintID _ = do
     TypeCheckerState {nextConstraintID = nextConstraintID + 1, ..}
   return freshID
 
+createFreshConstraintCtx ::
+  forall builtin m.
+  (MonadTypeChecker builtin m) =>
+  Provenance ->
+  Provenance ->
+  BoundCtx (Type builtin) ->
+  m (ConstraintContext builtin)
+createFreshConstraintCtx originalProvenance creationProvenance ctx = do
+  cid <- generateFreshConstraintID (Proxy @builtin)
+  return $ ConstraintContext cid originalProvenance creationProvenance unknownBlockingStatus ctx
+
 getActiveConstraints :: (MonadTypeChecker builtin m) => m [WithContext (Constraint builtin)]
 getActiveConstraints = do
   us <- fmap (mapObject UnificationConstraint) <$> getActiveUnificationConstraints
   ts <- fmap (mapObject InstanceConstraint) <$> getActiveInstanceConstraints
-  return $ us <> ts
+  as <- fmap (mapObject ApplicationConstraint) <$> getActiveApplicationConstraints
+  return $ us <> ts <> as
 
 getActiveUnificationConstraints :: (MonadTypeChecker builtin m) => m [WithContext (UnificationConstraint builtin)]
 getActiveUnificationConstraints = getsMetaCtx unificationConstraints
 
 getActiveInstanceConstraints :: (MonadTypeChecker builtin m) => m [WithContext (InstanceConstraint builtin)]
-getActiveInstanceConstraints = getsMetaCtx typeClassConstraints
+getActiveInstanceConstraints = getsMetaCtx instanceConstraints
 
-setConstraints :: (MonadTypeChecker builtin m) => [WithContext (Constraint builtin)] -> m ()
-setConstraints constraints = do
-  let (us, ts) = separateConstraints constraints
-  setUnificationConstraints us
-  setInstanceConstraints ts
+getActiveApplicationConstraints :: (MonadTypeChecker builtin m) => m [WithContext (ApplicationConstraint builtin)]
+getActiveApplicationConstraints = getsMetaCtx applicationConstraints
 
 setInstanceConstraints :: (MonadTypeChecker builtin m) => [WithContext (InstanceConstraint builtin)] -> m ()
 setInstanceConstraints newConstraints = modifyMetaCtx $ \TypeCheckerState {..} ->
-  TypeCheckerState {typeClassConstraints = newConstraints, ..}
+  TypeCheckerState {instanceConstraints = newConstraints, ..}
+
+setApplicationConstraints :: (MonadTypeChecker builtin m) => [WithContext (ApplicationConstraint builtin)] -> m ()
+setApplicationConstraints newConstraints = modifyMetaCtx $ \TypeCheckerState {..} ->
+  TypeCheckerState {applicationConstraints = newConstraints, ..}
 
 removeInstanceConstraint :: forall builtin m. (MonadTypeChecker builtin m) => WithContext (InstanceConstraint builtin) -> m ()
 removeInstanceConstraint constraint = modifyMetaCtx @builtin $ \TypeCheckerState {..} -> do
   let idOf = constraintID . contextOf
-  let newConstraints = filter (\c -> idOf constraint /= idOf c) typeClassConstraints
-  TypeCheckerState {typeClassConstraints = newConstraints, ..}
+  let newConstraints = filter (\c -> idOf constraint /= idOf c) instanceConstraints
+  TypeCheckerState {instanceConstraints = newConstraints, ..}
 
 setUnificationConstraints :: (MonadTypeChecker builtin m) => [WithContext (UnificationConstraint builtin)] -> m ()
 setUnificationConstraints newConstraints = modifyMetaCtx $ \TypeCheckerState {..} ->
   TypeCheckerState {unificationConstraints = newConstraints, ..}
-
-addConstraints :: (MonadTypeChecker builtin m) => [WithContext (Constraint builtin)] -> m ()
-addConstraints constraints = do
-  let (us, ts) = separateConstraints constraints
-  addUnificationConstraints us
-  addInstanceConstraints ts
 
 addUnificationConstraints :: (MonadTypeChecker builtin m) => [WithContext (UnificationConstraint builtin)] -> m ()
 addUnificationConstraints constraints = do
@@ -448,29 +458,14 @@ addInstanceConstraints constraints = do
     logDebug MaxDetail ("add-constraints:" <> line <> indent 2 (vcat (fmap prettyExternal constraints)))
 
   modifyMetaCtx $ \TypeCheckerState {..} ->
-    TypeCheckerState {typeClassConstraints = typeClassConstraints ++ constraints, ..}
+    TypeCheckerState {instanceConstraints = instanceConstraints ++ constraints, ..}
 
--- | Adds an entirely new unification constraint (as opposed to one
--- derived from another constraint).
-createFreshUnificationConstraint ::
-  forall builtin m.
-  (MonadTypeChecker builtin m) =>
-  Provenance ->
-  BoundCtx (Type builtin) ->
-  UnificationConstraintOrigin builtin ->
-  Type builtin ->
-  Type builtin ->
-  m ()
-createFreshUnificationConstraint p ctx origin expectedType actualType = do
-  let env = boundContextToEnv ctx
-  normExpectedType <- normaliseInEnv env expectedType
-  normActualType <- normaliseInEnv env actualType
-  cid <- generateFreshConstraintID (Proxy @builtin)
-  let context = ConstraintContext cid p p unknownBlockingStatus ctx
-  let unification = Unify origin normExpectedType normActualType
-  let constraint = WithContext unification context
+addApplicationConstraint :: (MonadTypeChecker builtin m) => WithContext (ApplicationConstraint builtin) -> m ()
+addApplicationConstraint constraint = do
+  logDebug MaxDetail ("add-constraints:" <> line <> indent 2 (prettyExternal constraint))
 
-  addUnificationConstraints [constraint]
+  modifyMetaCtx $ \TypeCheckerState {..} ->
+    TypeCheckerState {applicationConstraints = applicationConstraints ++ [constraint], ..}
 
 -- | Create a new fresh copy of the context for a new constraint
 copyContext :: forall builtin m. (MonadTypeChecker builtin m) => ConstraintContext builtin -> m (ConstraintContext builtin)

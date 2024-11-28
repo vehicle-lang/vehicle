@@ -2,7 +2,6 @@
 
 module Vehicle.Compile.Type.Core where
 
-import Data.Bifunctor (Bifunctor (..))
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as Map (findWithDefault, lookup)
 import Data.Hashable (Hashable)
@@ -111,6 +110,36 @@ contextDBLevel :: ConstraintContext builtin -> Lv
 contextDBLevel = Lv . length . boundContext
 
 --------------------------------------------------------------------------------
+-- Application constraints
+
+-- | A constraint that says when the unchecked arguments to the function are correctly
+-- augmented with the suitable missing implicits and instance arguments, then it has
+-- the current expected type.
+data ArgInsertionProblem builtin = ArgInsertionProblem
+  { originalFun :: Expr builtin,
+    originalArgs :: [Arg builtin],
+    originalType :: Type builtin,
+    checkedArgs :: [Arg builtin],
+    currentExpectedType :: Type builtin,
+    uncheckedArgs :: [Arg builtin]
+  }
+  deriving (Show)
+
+data ApplicationConstraint builtin = InferArgs
+  { typeSolutionMeta :: MetaID,
+    exprSolutionMeta :: MetaID,
+    argInsertionProblem :: ArgInsertionProblem builtin
+  }
+  deriving (Show)
+
+solutionSoFar :: ArgInsertionProblem builtin -> Expr builtin
+solutionSoFar ArgInsertionProblem {..} = normAppList originalFun (reverse checkedArgs)
+
+type instance
+  WithContext (ApplicationConstraint builtin) =
+    Contextualised (ApplicationConstraint builtin) (ConstraintContext builtin)
+
+--------------------------------------------------------------------------------
 -- Instance constraints
 
 data InstanceConstraintOrigin builtin = InstanceConstraintOrigin
@@ -217,6 +246,8 @@ data Constraint builtin
     UnificationConstraint (UnificationConstraint builtin)
   | -- | Represents that the provided type must have the required functionality
     InstanceConstraint (InstanceConstraint builtin)
+  | -- | Represents that
+    ApplicationConstraint (ApplicationConstraint builtin)
   deriving (Show)
 
 type instance
@@ -227,12 +258,6 @@ getTypeClassConstraint :: WithContext (Constraint builtin) -> Maybe (WithContext
 getTypeClassConstraint (WithContext constraint ctx) = case constraint of
   InstanceConstraint tc -> Just (WithContext tc ctx)
   _ -> Nothing
-
-separateConstraints :: [WithContext (Constraint builtin)] -> ([WithContext (UnificationConstraint builtin)], [WithContext (InstanceConstraint builtin)])
-separateConstraints [] = ([], [])
-separateConstraints (WithContext c ctx : cs) = case c of
-  UnificationConstraint uc -> first (WithContext uc ctx :) (separateConstraints cs)
-  InstanceConstraint tc -> second (WithContext tc ctx :) (separateConstraints cs)
 
 blockConstraintOn ::
   Contextualised c (ConstraintContext builtin) ->
@@ -251,11 +276,11 @@ constraintIsBlocked solvedMetas c = isBlocked solvedMetas (contextOf c)
 
 data ConstraintProgress builtin
   = Stuck MetaSet
-  | Progress [WithContext (Constraint builtin)]
+  | Progress [WithContext (UnificationConstraint builtin)] [WithContext (InstanceConstraint builtin)]
   deriving (Show)
 
 instance Semigroup (ConstraintProgress builtin) where
   Stuck m1 <> Stuck m2 = Stuck (m1 <> m2)
   Stuck {} <> x@Progress {} = x
   x@Progress {} <> Stuck {} = x
-  Progress r1 <> Progress r2 = Progress (r1 <> r2)
+  Progress u1 r1 <> Progress u2 r2 = Progress (u1 <> u2) (r1 <> r2)

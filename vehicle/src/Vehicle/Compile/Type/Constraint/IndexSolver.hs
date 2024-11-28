@@ -38,8 +38,8 @@ solveIndexConstraint constraint = do
           let solution = IUnitLiteral (provenanceOf ctx)
           solveMeta meta solution (boundContext ctx)
         Just metas -> do
-          let blockedConstraint = blockConstraintOn (mapObject InstanceConstraint normConstraint) metas
-          addConstraints [blockedConstraint]
+          let blockedConstraint = blockConstraintOn normConstraint metas
+          addInstanceConstraints [blockedConstraint]
     _ -> compilerDeveloperError $ "Malformed instance goal" <+> prettyFriendly normConstraint
 
 -- | Function signature for constraints solved by type class resolution.
@@ -126,6 +126,6 @@ solveDefaultIndexConstraint constraint = do
 
       let constraintInfo = (contextOf constraint, instanceOrigin $ objectIn constraint)
       newSizeConstraint <- createInstanceUnification constraintInfo size succN
-      addConstraints [newSizeConstraint]
+      addUnificationConstraints [newSizeConstraint]
       return True
     _ -> return False

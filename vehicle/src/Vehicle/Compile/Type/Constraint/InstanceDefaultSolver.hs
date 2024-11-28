@@ -68,7 +68,7 @@ getDefaultableConstraints ::
   Maybe (Decl builtin) ->
   m [WithContext (InstanceConstraint builtin)]
 getDefaultableConstraints maybeDecl = do
-  typeClassConstraints <- getActiveInstanceConstraints
+  instanceConstraints <- getActiveInstanceConstraints
   case maybeDecl of
     Just decl | not (isAbstractDecl decl) -> do
       -- We only want to generate default solutions for constraints
@@ -83,10 +83,10 @@ getDefaultableConstraints maybeDecl = do
         unsolvedMetasInTypeDoc <- prettyMetas (Proxy @builtin) typeMetas
         return $ "Metas transitively related to type-signature:" <+> unsolvedMetasInTypeDoc
 
-      flip filterM typeClassConstraints $ \tc -> do
+      flip filterM instanceConstraints $ \tc -> do
         constraintMetas <- metasIn (objectIn tc)
         return $ MetaSet.disjoint constraintMetas typeMetas
-    _ -> return typeClassConstraints
+    _ -> return instanceConstraints
 
 chooseDefaultConstraint ::
   forall builtin m.

@@ -24,12 +24,12 @@ module Vehicle.Compile.Type.Monad
     copyContext,
     createFreshUnificationConstraint,
     createFreshInstanceConstraint,
+    createFreshApplicationConstraint,
     getActiveConstraints,
     getActiveUnificationConstraints,
     getActiveInstanceConstraints,
     setInstanceConstraints,
     setUnificationConstraints,
-    addConstraints,
     addUnificationConstraints,
     -- Other
     clearMetaCtx,
@@ -47,6 +47,7 @@ import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Builtin (TypableBuiltin (..))
 import Vehicle.Compile.Type.Core
+import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Compile.Type.Monad.Instance
 import Vehicle.Data.Code.Value
@@ -106,6 +107,51 @@ freshMetaExpr ::
   m (GluedExpr builtin)
 freshMetaExpr p t boundCtx = snd <$> freshMetaIdAndExpr p t boundCtx
 
+-- | Adds an entirely new unification constraint (as opposed to one
+-- derived from another constraint).
+createFreshUnificationConstraint ::
+  forall builtin m.
+  (MonadTypeChecker builtin m) =>
+  Provenance ->
+  BoundCtx (Type builtin) ->
+  UnificationConstraintOrigin builtin ->
+  Type builtin ->
+  Type builtin ->
+  m ()
+createFreshUnificationConstraint p ctx origin expectedType actualType = do
+  let env = boundContextToEnv ctx
+  normExpectedType <- normaliseInEnv env expectedType
+  normActualType <- normaliseInEnv env actualType
+  context <- createFreshConstraintCtx p p ctx
+  let unification = Unify origin normExpectedType normActualType
+  let constraint = WithContext unification context
+
+  addUnificationConstraints [constraint]
+
+createFreshApplicationConstraint ::
+  forall builtin m.
+  (MonadTypeChecker builtin m) =>
+  BoundCtx (Type builtin) ->
+  ArgInsertionProblem builtin ->
+  MetaSet ->
+  m (Expr builtin, Type builtin)
+createFreshApplicationConstraint ctx problem blockingMetas = do
+  let p = provenanceOf $ originalFun problem
+  (typeMeta, finalType) <- freshMetaIdAndExpr p (TypeUniverse p 0) ctx
+  (exprMeta, finalExpr) <- freshMetaIdAndExpr p (unnormalised finalType) ctx
+
+  let constraint =
+        InferArgs
+          { exprSolutionMeta = exprMeta,
+            typeSolutionMeta = typeMeta,
+            argInsertionProblem = problem
+          }
+
+  context <- createFreshConstraintCtx p p ctx
+  let blockedConstraint = WithContext constraint (blockCtxOn blockingMetas context)
+  addApplicationConstraint blockedConstraint
+  return (unnormalised finalExpr, unnormalised finalType)
+
 -- | Adds an entirely new type-class constraint (as opposed to one
 -- derived from another constraint).
 createFreshInstanceConstraint ::
@@ -131,8 +177,7 @@ createFreshInstanceConstraint boundCtx (fun, funArgs, funType) relevance tcExpr 
   (meta, metaExpr) <- freshMetaIdAndExpr p tcExpr boundCtx
 
   let originProvenance = provenanceOf tcExpr
-  cid <- generateFreshConstraintID (Proxy @builtin)
-  let context = ConstraintContext cid originProvenance p unknownBlockingStatus boundCtx
+  context <- createFreshConstraintCtx originProvenance p boundCtx
   nTCExpr <- normaliseInEnv env tcExpr
   let constraint = WithContext (Resolve origin meta relevance nTCExpr) context
 

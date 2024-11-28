@@ -76,11 +76,10 @@ createInstanceUnification ::
   (ConstraintContext builtin, InstanceConstraintOrigin builtin) ->
   Value builtin ->
   Value builtin ->
-  m (WithContext (Constraint builtin))
+  m (WithContext (UnificationConstraint builtin))
 createInstanceUnification (ctx, origin) e1 e2 = do
   let unifyOrigin = CheckingInstanceType origin
-  constraint <- WithContext (Unify unifyOrigin e1 e2) <$> copyContext ctx
-  return $ mapObject UnificationConstraint constraint
+  WithContext (Unify unifyOrigin e1 e2) <$> copyContext ctx
 
 -- | Creates an instance constraint as a subgoal of an existing instance constraint.
 createSubInstance ::
@@ -88,14 +87,14 @@ createSubInstance ::
   (ConstraintContext builtin, InstanceConstraintOrigin builtin) ->
   Relevance ->
   Value builtin ->
-  m (Expr builtin, WithContext (Constraint builtin))
+  m (Expr builtin, WithContext (InstanceConstraint builtin))
 createSubInstance (ctx, origin) r t = do
   let p = provenanceOf ctx
   newCtx <- copyContext ctx
   let dbLevel = contextDBLevel ctx
   let newTypeClassExpr = quote p dbLevel t
   (meta, metaExpr) <- freshMetaIdAndExpr p newTypeClassExpr (boundContext ctx)
-  let newConstraint = InstanceConstraint (Resolve origin meta r t)
+  let newConstraint = Resolve origin meta r t
   return (unnormalised metaExpr, WithContext newConstraint newCtx)
 
 extractHeadFromInstanceCandidate ::

@@ -12,6 +12,7 @@ import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
+import Vehicle.Compile.Type.Monad.Class (addInstanceConstraints)
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Polarity
 import Vehicle.Data.Code.Interface
@@ -62,7 +63,7 @@ solveNegPolarity info@(ctx, _) [arg1, res] = case arg1 of
   VPolarityExpr pol -> Just $ do
     let resPol = VPolarityExpr $ negatePolarity (provenanceOf ctx) pol
     resEq <- createInstanceUnification info res resPol
-    return $ Progress [resEq]
+    return $ Progress [resEq] []
   _ -> Nothing
 solveNegPolarity _ _ = Nothing
 
@@ -75,7 +76,7 @@ solveQuantifierPolarity q info@(ctx, _) [lam, res] = case lam of
     let lv = contextDBLevel ctx
     resultPolarity <- normaliseClosure lv binder resPol
     (_, addConstraint) <- createSubInstance info Irrelevant (VBuiltin tc (explicit <$> [resultPolarity, res]))
-    return $ Progress [binderEq, addConstraint]
+    return $ Progress [binderEq] [addConstraint]
   _ -> Nothing
 solveQuantifierPolarity _ _c _ = Nothing
 
@@ -86,7 +87,7 @@ solveAddPolarityOp q info@(ctx, _) [arg, res] = case arg of
     let p = originalProvenance ctx
     let resPol = VPolarityExpr $ addPolarityOp p q inputPol
     domEq <- createInstanceUnification info res resPol
-    return $ Progress [domEq]
+    return $ Progress [domEq] []
   _ -> Nothing
 solveAddPolarityOp _ _ _ = Nothing
 
@@ -95,13 +96,13 @@ solveMaxPolarityOp info [arg1, arg2, res] = case (arg1, arg2) of
   (VPolarityExpr pol1, VPolarityExpr pol2) -> Just $ do
     let pol3 = VPolarityExpr $ maxPolarityOp pol1 pol2
     resEq <- createInstanceUnification info res pol3
-    return $ Progress [resEq]
+    return $ Progress [resEq] []
   (_, VPolarityExpr Unquantified) -> Just $ do
     resEq <- createInstanceUnification info arg1 res
-    return $ Progress [resEq]
+    return $ Progress [resEq] []
   (VPolarityExpr Unquantified, _) -> Just $ do
     resEq <- createInstanceUnification info arg2 res
-    return $ Progress [resEq]
+    return $ Progress [resEq] []
   (getNMeta -> Just m1, _) -> blockOn [m1]
   (_, getNMeta -> Just m2) -> blockOn [m2]
   _ -> Nothing
@@ -112,7 +113,7 @@ solveEqPolarity eq info@(ctx, _) [arg1, arg2, res] = case (arg1, arg2) of
   (VPolarityExpr pol1, VPolarityExpr pol2) -> Just $ do
     let pol3 = VPolarityExpr $ eqPolarityOp eq (provenanceOf ctx) pol1 pol2
     resEq <- createInstanceUnification info res pol3
-    return $ Progress [resEq]
+    return $ Progress [resEq] []
   (getNMeta -> Just m1, _) -> blockOn [m1]
   (_, getNMeta -> Just m2) -> blockOn [m2]
   _ -> Nothing
@@ -123,7 +124,7 @@ solveImplPolarity info@(ctx, _) [arg1, arg2, res] = case (arg1, arg2) of
   (VPolarityExpr pol1, VPolarityExpr pol2) -> Just $ do
     let pol3 = VPolarityExpr $ implPolarityOp (provenanceOf ctx) pol1 pol2
     resEq <- createInstanceUnification info res pol3
-    return $ Progress [resEq]
+    return $ Progress [resEq] []
   (getNMeta -> Just m1, _) -> blockOn [m1]
   (_, getNMeta -> Just m2) -> blockOn [m2]
   _ -> Nothing
@@ -137,7 +138,7 @@ solveFunctionPolarity functionPosition info@(ctx, _) [arg, res] = case (arg, res
     let addFuncProv pp = PolFunctionProvenance p pp functionPosition
     let pol3 = VPolarityExpr $ mapPolarityProvenance addFuncProv pol
     resEq <- createInstanceUnification info res pol3
-    return $ Progress [resEq]
+    return $ Progress [resEq] []
   (VPi binder1 closure1, VPi binder2 closure2) -> Just $ do
     let tc = PolarityRelation $ FunctionPolarity functionPosition
     (_, binderConstraint) <- createSubInstance info Irrelevant (VBuiltin tc (explicit <$> [typeOf binder1, typeOf binder2]))
@@ -145,7 +146,7 @@ solveFunctionPolarity functionPosition info@(ctx, _) [arg, res] = case (arg, res
     body1 <- normaliseClosure lv binder1 closure1
     body2 <- normaliseClosure lv binder2 closure2
     (_, bodyConstraint) <- createSubInstance info Irrelevant (VBuiltin tc (explicit <$> [body1, body2]))
-    return $ Progress [binderConstraint, bodyConstraint]
+    return $ Progress [] [binderConstraint, bodyConstraint]
   _ -> Nothing
 solveFunctionPolarity _ _ _ = Nothing
 
@@ -234,12 +235,11 @@ handleConstraintProgress ::
   ConstraintProgress PolarityBuiltin ->
   m ()
 handleConstraintProgress originalConstraint@(WithContext (Resolve _ m _ _) ctx) = \case
-  Stuck metas -> do
-    let blockedConstraint = blockConstraintOn (mapObject InstanceConstraint originalConstraint) metas
-    addConstraints [blockedConstraint]
-  Progress newConstraints -> do
+  Stuck metas -> addInstanceConstraints [blockConstraintOn originalConstraint metas]
+  Progress newUnificationConstraints newInstanceConstraints -> do
     solveMeta m (IUnitLiteral (provenanceOf ctx)) (boundContext ctx)
-    addConstraints newConstraints
+    addUnificationConstraints newUnificationConstraints
+    addInstanceConstraints newInstanceConstraints
 
 getTypeClass :: (MonadCompile m) => Value PolarityBuiltin -> m (PolarityRelation, Spine PolarityBuiltin)
 getTypeClass = \case

@@ -1,7 +1,7 @@
 module Vehicle.TypeCheck
   ( TypeCheckOptions (..),
     typeCheck,
-    typeCheckExpr,
+    typeCheckSolitaryExpr,
     parseAndTypeCheckExpr,
     typeCheckUserProg,
     loadLibrary,
@@ -21,7 +21,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Print.Error
 import Vehicle.Compile.Scope (scopeCheck, scopeCheckClosedExpr)
-import Vehicle.Compile.Type (typeCheckExpr, typeCheckProg)
+import Vehicle.Compile.Type (typeCheckProg, typeCheckSolitaryExpr)
 import Vehicle.Compile.Type.Constraint.InstanceBuiltins
 import Vehicle.Compile.Type.Core (emptyInstanceDatabase)
 import Vehicle.Compile.Type.Subsystem
@@ -60,7 +60,7 @@ parseAndTypeCheckExpr expr = do
   freeCtx <- createFreeCtx [standardLibraryProg]
   vehicleExpr <- parseExprText expr
   scopedExpr <- scopeCheckClosedExpr vehicleExpr
-  typedExpr <- typeCheckExpr standardBuiltinInstances freeCtx scopedExpr
+  typedExpr <- typeCheckSolitaryExpr standardBuiltinInstances freeCtx scopedExpr
   convertBackToStandardBuiltin typedExpr
 
 parseExprText :: (MonadCompile m) => (FilePath, Text) -> m S.Expr

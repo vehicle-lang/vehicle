@@ -6,12 +6,13 @@ module Vehicle.Prelude.Prettyprinter
   )
 where
 
+-- This stuff we re-export
+
+import Data.Bifunctor (Bifunctor (..))
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap (toAscList)
 import Data.IntSet (IntSet)
 import Data.IntSet qualified as IntSet (toAscList)
--- This stuff we re-export
-
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
@@ -109,26 +110,14 @@ quotePretty = squotes . pretty
 --------------------------------------------------------------------------------
 -- Pretty printing of datatypes
 
-prettyIntMap :: IntMap (Doc a) -> Doc a
-prettyIntMap = prettyMapEntries . IntMap.toAscList
-
 prettyMap :: (Pretty key, Pretty value) => Map key value -> Doc a
-prettyMap = prettyMapEntries . Map.toAscList . fmap pretty
+prettyMap = prettyMapEntries . fmap (bimap pretty pretty) . Map.toAscList
 
-prettyMapEntries :: (Pretty key) => [(key, Doc a)] -> Doc a
-prettyMapEntries entries = result
+prettyMapEntries :: [(Doc a, Doc a)] -> Doc a
+prettyMapEntries entries = prettySetLike entries'
   where
     (keys, values) = unzip entries
-    keys' = fmap pretty keys
-    entries' = zipWith (\k v -> k <+> ":=" <+> v) keys' values
-    result =
-      "{"
-        <+> align
-          ( group
-              (concatWith (\x y -> x <> ";" <> line <> y) entries')
-              <> softline
-              <> "}"
-          )
+    entries' = zipWith (\k v -> k <+> ":=" <+> v) keys values
 
 prettySet :: (Pretty value) => Set value -> Doc b
 prettySet xs = prettySetLike (pretty <$> Set.toList xs)
@@ -136,18 +125,15 @@ prettySet xs = prettySetLike (pretty <$> Set.toList xs)
 prettySetLike :: [Doc a] -> Doc a
 prettySetLike xs =
   "{"
-    <+> align
-      ( group
-          (concatWith (\x y -> x <> ";" <> line <> y) xs)
-          <> softline
-          <> "}"
-      )
+    <+> group (concatWith (\x y -> x <> line <> ";" <+> y) xs)
+    <> line
+    <> "}"
 
 instance Pretty IntSet where
   pretty m = pretty (IntSet.toAscList m)
 
 instance (Pretty a) => Pretty (IntMap a) where
-  pretty = prettyIntMap . fmap pretty
+  pretty = prettyMapEntries . fmap (bimap pretty pretty) . IntMap.toAscList
 
 instance Pretty Version where
   pretty = pretty . showVersion

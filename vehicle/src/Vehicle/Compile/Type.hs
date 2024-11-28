@@ -1,6 +1,6 @@
 module Vehicle.Compile.Type
   ( typeCheckProg,
-    typeCheckExpr,
+    typeCheckSolitaryExpr,
   )
 where
 
@@ -15,6 +15,7 @@ import Vehicle.Compile.Normalise.Builtin (NormalisableBuiltin)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Bidirectional
+import Vehicle.Compile.Type.Constraint.ApplicationSolver (runApplicationSolver)
 import Vehicle.Compile.Type.Constraint.Core (runConstraintSolver)
 import Vehicle.Compile.Type.Constraint.UnificationSolver
 import Vehicle.Compile.Type.Core
@@ -43,17 +44,17 @@ typeCheckProg instanceCandidates freeCtx (Main uncheckedProg) =
       xs <- typeCheckDecls uncheckedProg
       return $ Main xs
 
-typeCheckExpr ::
+typeCheckSolitaryExpr ::
   forall builtin m.
   (HasTypeSystem builtin, NormalisableBuiltin builtin, MonadCompile m) =>
   InstanceDatabase builtin ->
   FreeCtx builtin ->
   Expr Builtin ->
   m (Expr builtin)
-typeCheckExpr instanceCandidates freeCtx expr1 = do
+typeCheckSolitaryExpr instanceCandidates freeCtx expr1 = do
   runTypeCheckerTInitially freeCtx instanceCandidates $ do
     expr2 <- convertExprFromStandardTypes expr1
-    (expr3, _exprType) <- runMonadBidirectional (Proxy @builtin) $ inferExpr expr2
+    (expr3, _exprType) <- inferExprType mempty Relevant expr2
     solveConstraints @builtin Nothing
     expr4 <- substMetas expr3
     checkAllUnknownsSolved (Proxy @builtin)
@@ -134,8 +135,9 @@ typeCheckFunction p ident anns typ body = do
 
   -- Type check the body.
   let pass = bidirectionalPassDoc <+> "body of" <+> quotePretty ident
-  checkedBody <- logCompilerPass MidDetail pass $ do
-    runMonadBidirectional (Proxy @builtin) $ checkExpr checkedType body
+  checkedBody <-
+    logCompilerPass MidDetail pass $
+      checkExprType mempty Relevant checkedType body
 
   -- Reconstruct the function.
   let checkedDecl = DefFunction p ident anns checkedType checkedBody
@@ -167,7 +169,7 @@ checkDeclType :: forall builtin m. (TCM builtin m) => Identifier -> Expr builtin
 checkDeclType ident declType = do
   let pass = bidirectionalPassDoc <+> "type of" <+> quotePretty ident
   logCompilerPass MidDetail pass $ do
-    runMonadBidirectional (Proxy @builtin) $ checkExpr (TypeUniverse mempty 0) declType
+    checkExprType mempty Relevant (TypeUniverse mempty 0) declType
 
 restrictAbstractDefType ::
   (TCM builtin m) =>
@@ -216,16 +218,21 @@ solveConstraints d = logCompilerPass MidDetail "constraint solving" $ do
             -- If we have made useful progress then start a new pass
             let passDoc = "constraint solving pass" <+> pretty loopNumber
             newMetasSolved <- logCompilerPass MaxDetail passDoc $ do
+              metasSolvedDuringApplications <-
+                trackSolvedMetas (Proxy @builtin) $
+                  runApplicationSolver (Proxy @builtin) recentlySolvedMetas
+
               metasSolvedDuringUnification <-
                 trackSolvedMetas (Proxy @builtin) $
-                  runUnificationSolver (Proxy @builtin) recentlySolvedMetas
+                  runUnificationSolver (Proxy @builtin) (metasSolvedDuringApplications <> recentlySolvedMetas)
 
               logUnsolvedUnknowns updatedDecl (Just recentlySolvedMetas)
 
               metasSolvedDuringInstanceResolution <-
                 trackSolvedMetas (Proxy @builtin) $
-                  runInstanceSolver (Proxy @builtin) metasSolvedDuringUnification
-              return metasSolvedDuringInstanceResolution
+                  runInstanceSolver (Proxy @builtin) (metasSolvedDuringUnification <> metasSolvedDuringApplications)
+
+              return (metasSolvedDuringInstanceResolution <> metasSolvedDuringUnification)
 
             loopOverConstraints newMetasSolved (loopNumber + 1) updatedDecl
 
@@ -318,7 +325,7 @@ logUnsolvedUnknowns maybeDecl maybeSolvedMetas = do
     return $
       "current-solution:"
         <> line
-        <> prettyVerbose (fmap unnormalised updatedSubst)
+        <> indent 2 (prettyVerbose (fmap unnormalised updatedSubst))
         <> line
         <> "unsolved-metas:"
         <> line

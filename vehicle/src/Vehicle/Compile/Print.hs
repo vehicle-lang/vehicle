@@ -24,7 +24,7 @@ import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap (assocs)
 import Data.Text (Text)
 import GHC.TypeLits (ErrorMessage (..), TypeError)
-import Prettyprinter (list)
+import Prettyprinter (fill, list)
 import Vehicle.Compile.Descope
 import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
@@ -160,8 +160,10 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   -----------------
   -- Constraints --
   -----------------
+  StrategyFor tags (ArgInsertionProblem builtin `In` NamedBoundCtx) = StrategyFor tags (Expr builtin `In` NamedBoundCtx)
   StrategyFor tags (InstanceConstraint builtin `In` ConstraintContext builtin) = StrategyFor tags (Value builtin `In` NamedBoundCtx)
   StrategyFor tags (UnificationConstraint builtin `In` ConstraintContext builtin) = StrategyFor tags (Value builtin `In` NamedBoundCtx)
+  StrategyFor tags (ApplicationConstraint builtin `In` ConstraintContext builtin) = StrategyFor tags (Value builtin `In` NamedBoundCtx)
   StrategyFor tags (Constraint builtin `In` ConstraintContext builtin) = StrategyFor tags (Value builtin `In` NamedBoundCtx)
   ------------
   -- Pretty --
@@ -448,11 +450,36 @@ instance
     let e' = unnormalise @(Value builtin) @(Expr Builtin) (Lv $ length ctx) e
     prettyUsing @rest (e', ctx)
 
+instance
+  (PrettyUsing rest (Arg builtin `In` NamedBoundCtx), ConvertableBuiltin builtin Builtin) =>
+  PrettyUsing ('QuoteValue rest) (Arg builtin `In` NamedBoundCtx)
+  where
+  prettyUsing (e, ctx) = prettyUsing @rest (e, ctx)
+
+instance
+  (PrettyUsing rest (Expr builtin `In` NamedBoundCtx), ConvertableBuiltin builtin Builtin) =>
+  PrettyUsing ('QuoteValue rest) (Expr builtin `In` NamedBoundCtx)
+  where
+  prettyUsing (e, ctx) = prettyUsing @rest (e, ctx)
+
 instance PrettyUsing rest (GenericBinder ()) where
   prettyUsing b = maybe "_" pretty (nameOf b)
 
 --------------------------------------------------------------------------------
 -- Instances for constraints
+
+instance
+  ( PrettyUsing rest (Expr builtin `In` NamedBoundCtx),
+    PrettyUsing rest (Arg builtin `In` NamedBoundCtx)
+  ) =>
+  PrettyUsing rest (ArgInsertionProblem builtin `In` NamedBoundCtx)
+  where
+  prettyUsing (problem, ctx) = do
+    let checkedExpr = solutionSoFar problem
+    let checkedExprDoc = prettyUsing @rest (checkedExpr, ctx)
+    let expectedTypeDoc = prettyUsing @rest (currentExpectedType problem, ctx)
+    let uncheckedArgsDoc = prettyUsing @rest (uncheckedArgs problem, ctx)
+    parens (checkedExprDoc <+> ":" <+> expectedTypeDoc) <+> "@" <+> uncheckedArgsDoc
 
 prettyConstraintContext :: ConstraintContext builtin -> Doc a
 prettyConstraintContext ctx =
@@ -476,14 +503,24 @@ instance
     prettyConstraintContext ctx <+> pretty m <+> "<=" <+> expr'
 
 instance
+  (PrettyUsing rest (ArgInsertionProblem builtin `In` NamedBoundCtx)) =>
+  PrettyUsing rest (ApplicationConstraint builtin `In` ConstraintContext builtin)
+  where
+  prettyUsing (InferArgs {..}, ctx) = do
+    let problemDoc = prettyUsing @rest (argInsertionProblem, namedBoundCtxOf ctx)
+    prettyConstraintContext ctx <+> parens (pretty exprSolutionMeta <+> "=" <+> problemDoc) <+> ":" <+> pretty typeSolutionMeta
+
+instance
   ( PrettyUsing rest (UnificationConstraint builtin `In` ctx),
-    PrettyUsing rest (InstanceConstraint builtin `In` ctx)
+    PrettyUsing rest (InstanceConstraint builtin `In` ctx),
+    PrettyUsing rest (ApplicationConstraint builtin `In` ctx)
   ) =>
   PrettyUsing rest (Constraint builtin `In` ctx)
   where
   prettyUsing (c, ctx) = case c of
     UnificationConstraint uc -> prettyUsing @rest (uc, ctx)
     InstanceConstraint tc -> prettyUsing @rest (tc, ctx)
+    ApplicationConstraint tc -> prettyUsing @rest (tc, ctx)
 
 --------------------------------------------------------------------------------
 -- Assertions
@@ -545,7 +582,7 @@ instance
 instance (PrettyUsing rest (a `In` ctx)) => PrettyUsing rest (MetaMap a `In` ctx) where
   prettyUsing (MetaMap m, ctx) = prettyMapEntries entries
     where
-      entries = fmap (bimap MetaID (prettyUsing @rest . (,ctx))) (IntMap.assocs m)
+      entries = fmap (bimap (fill 3 . pretty . MetaID) (prettyUsing @rest . (,ctx))) (IntMap.assocs m)
 
 instance (PrettyUsing rest (a `In` ctx)) => PrettyUsing rest (MaybeTrivial a `In` ctx) where
   prettyUsing (e, ctx) = case e of

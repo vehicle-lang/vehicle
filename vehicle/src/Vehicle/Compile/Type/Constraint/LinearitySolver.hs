@@ -10,8 +10,8 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Core
-import Vehicle.Compile.Type.Monad (MonadTypeChecker)
-import Vehicle.Compile.Type.Monad.Class (addConstraints, solveMeta, substMetas)
+import Vehicle.Compile.Type.Monad (MonadTypeChecker, addUnificationConstraints)
+import Vehicle.Compile.Type.Monad.Class (addInstanceConstraints, solveMeta, substMetas)
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Linearity
 import Vehicle.Data.Code.Interface
@@ -64,7 +64,7 @@ solveQuantifierLinearity _ info@(ctx, _) [VPi binder closure, res] = Just $ do
   domEq <- createInstanceUnification info (typeOf binder) domainLin
   resultType <- normaliseClosure (contextDBLevel ctx) binder closure
   resEq <- createInstanceUnification info res resultType
-  return $ Progress [domEq, resEq]
+  return $ Progress [domEq, resEq] []
 solveQuantifierLinearity _ _ _ = Nothing
 
 solveOp2Linearity ::
@@ -81,15 +81,15 @@ solveOp2Linearity shortCircuitLHS shortCircuitRHS combine info@(ctx, _) [lin1, l
       logDebug MaxDetail $ pretty $ show l2
       logDebug MaxDetail $ pretty $ show $ combine p l1 l2
       resEq <- createInstanceUnification info res linRes
-      return $ Progress [resEq]
+      return $ Progress [resEq] []
     (VLinearityExpr Constant, _)
       | shortCircuitLHS -> Just $ do
           resEq <- createInstanceUnification info lin2 res
-          return $ Progress [resEq]
+          return $ Progress [resEq] []
     (_, VLinearityExpr Constant)
       | shortCircuitRHS -> Just $ do
           resEq <- createInstanceUnification info lin1 res
-          return $ Progress [resEq]
+          return $ Progress [resEq] []
     (getNMeta -> Just m1, _) -> blockOn [m1]
     (_, getNMeta -> Just m2) -> blockOn [m2]
     _ -> Nothing
@@ -103,7 +103,7 @@ solveFunctionLinearity functionPosition info@(ctx, _) [arg, res] = case arg of
     let addFuncProv pp = LinFunctionProvenance p pp functionPosition
     let resLin = VLinearityExpr $ mapLinearityProvenance addFuncProv lin
     resEq <- createInstanceUnification info res resLin
-    return $ Progress [resEq]
+    return $ Progress [resEq] []
   _ -> Nothing
 solveFunctionLinearity _ _ _ = Nothing
 
@@ -150,12 +150,11 @@ handleConstraintProgress ::
   ConstraintProgress LinearityBuiltin ->
   m ()
 handleConstraintProgress originalConstraint@(WithContext (Resolve _ m _ _) ctx) = \case
-  Stuck metas -> do
-    let blockedConstraint = blockConstraintOn (mapObject InstanceConstraint originalConstraint) metas
-    addConstraints [blockedConstraint]
-  Progress newConstraints -> do
+  Stuck metas -> addInstanceConstraints [blockConstraintOn originalConstraint metas]
+  Progress newUnificationConstraints newInstanceConstraints -> do
     solveMeta m (IUnitLiteral (provenanceOf ctx)) (boundContext ctx)
-    addConstraints newConstraints
+    addUnificationConstraints newUnificationConstraints
+    addInstanceConstraints newInstanceConstraints
 
 getTypeClass :: (MonadCompile m) => Value LinearityBuiltin -> m (LinearityRelation, Spine LinearityBuiltin)
 getTypeClass = \case

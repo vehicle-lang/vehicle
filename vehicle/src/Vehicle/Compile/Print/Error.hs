@@ -405,6 +405,8 @@ instance MeaningfulError CompileError where
           InstanceConstraint (Resolve InstanceConstraintOrigin {..} _ _ _) ->
             "insufficient information to find a valid type for the overloaded expression"
               <+> squotes (prettyTypeClassConstraintOriginExpr ctx checkedInstanceOp checkedInstanceOpArgs)
+          ApplicationConstraint {} ->
+            "unsolved application constraint: " <+> prettyFriendly (WithContext constraint ctx)
     UnsolvedMetas ms ->
       UError $
         UserError

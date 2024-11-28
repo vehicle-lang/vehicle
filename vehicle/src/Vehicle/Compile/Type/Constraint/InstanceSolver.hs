@@ -18,6 +18,7 @@ import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Constraint.UnificationSolver (runUnificationSolver)
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
+import Vehicle.Compile.Type.Monad.Class (addInstanceConstraints)
 import Vehicle.Data.Code.Value
 import Vehicle.Data.DeBruijn (dbLevelToIndex)
 
@@ -91,10 +92,9 @@ solveInstanceGoal constraint rawBuiltinCandidates goal = do
     -- Otherwise there are still multiple valid candidates so we're forced to block.
     _ -> do
       logDebug MaxDetail "Multiple possible candidates found so deferring."
-      let newConstraint = mapObject InstanceConstraint constraint
       -- TODO can we be more precise with the set of blocking metas?
-      blockedConstraint <- blockConstraintOn newConstraint <$> getUnsolvedMetas (Proxy @builtin)
-      addConstraints [blockedConstraint]
+      blockedConstraint <- blockConstraintOn constraint <$> getUnsolvedMetas (Proxy @builtin)
+      addInstanceConstraints [blockedConstraint]
 
 -- | Locates any more candidates that are in the bound context of the constraint
 findCandidatesInBoundCtx ::
@@ -164,9 +164,11 @@ acceptCandidate (WithContext Resolve {..} constraintCtx) goal candidate = do
   -- Instantiate the candidate telescope with metas and subst into body.
   (substCandidateExpr, substCandidateSolution, recInstanceConstraints) <-
     instantiateCandidateTelescope goalCtxExtension (constraintCtx, instanceOrigin) candidate
+  addInstanceConstraints recInstanceConstraints
 
   -- Unify the goal and candidate bodies
   unificationConstraint <- createInstanceUnification extendedGoalInfo (goalExpr goal) substCandidateExpr
+  addUnificationConstraints [unificationConstraint]
 
   -- Replace the provenance of the final solution with the provenance of where the
   -- constraint was generated. This is needed to get the information to propagate
@@ -178,8 +180,6 @@ acceptCandidate (WithContext Resolve {..} constraintCtx) goal candidate = do
   -- then we wouldn't need to do this manually).
   solveMeta instanceSolutionMeta finalCandidateSolution extendedGoalCtx
 
-  addConstraints (unificationConstraint : recInstanceConstraints)
-
 -- | Generate meta variables for each binder in the telescope of the candidate
 -- and then substitute them into the candidate expression.
 instantiateCandidateTelescope ::
@@ -188,7 +188,7 @@ instantiateCandidateTelescope ::
   BoundCtx (Type builtin) ->
   InstanceConstraintInfo builtin ->
   WithContext (InstanceCandidate builtin) ->
-  m (Value builtin, Expr builtin, [WithContext (Constraint builtin)])
+  m (Value builtin, Expr builtin, [WithContext (InstanceConstraint builtin)])
 instantiateCandidateTelescope goalCtxExtension (constraintCtx, constraintOrigin) candidate = do
   let WithContext InstanceCandidate {..} candidateCtx = candidate
   logCompilerSection MaxDetail "instantiating candidate telescope" $ do
@@ -200,8 +200,8 @@ instantiateCandidateTelescope goalCtxExtension (constraintCtx, constraintOrigin)
   where
     go ::
       (MonadInstance builtin m) =>
-      (Type builtin, Expr builtin, [WithContext (Constraint builtin)], BoundCtx (Type builtin)) ->
-      m (Type builtin, Expr builtin, [WithContext (Constraint builtin)], BoundCtx (Type builtin))
+      (Type builtin, Expr builtin, [WithContext (InstanceConstraint builtin)], BoundCtx (Type builtin)) ->
+      m (Type builtin, Expr builtin, [WithContext (InstanceConstraint builtin)], BoundCtx (Type builtin))
     go = \case
       (Pi _ exprBinder exprBody, Lam _ _solutionBinder solutionBody, constraints, boundCtx) -> do
         let binderType = typeOf exprBinder

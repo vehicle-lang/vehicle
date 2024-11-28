@@ -76,9 +76,9 @@ solve ::
   m (UnificationResult builtin)
 solve (WithContext (Unify origin e1 e2) ctx) = do
   -- Force the heads of both expressions
-  metaSubst <- getMetaSubstitution (Proxy @builtin)
-  (ne1, e1BlockingMetas) <- forceHead metaSubst ctx e1
-  (ne2, e2BlockingMetas) <- forceHead metaSubst ctx e2
+  let namedCtx = namedBoundCtxOf ctx
+  (ne1, e1BlockingMetas) <- forceHead namedCtx e1
+  (ne2, e2BlockingMetas) <- forceHead namedCtx e2
 
   -- Construct the new constraint information
   let blockingMetas = e1BlockingMetas <> e2BlockingMetas
@@ -211,20 +211,17 @@ solveClosure ::
   (VBinder builtin, Closure builtin) ->
   (VBinder builtin, Closure builtin) ->
   m (UnificationResult builtin)
-solveClosure info@(WithContext constraint ctx, blockingMeta) (binder1, Closure env1 body1) (binder2, Closure env2 body2) = do
+solveClosure info@(constraint, _) (binder1, Closure env1 body1) (binder2, Closure env2 body2) = do
   -- Unify binder constraints
   binderConstraint <- subUnify info (typeOf binder1, typeOf binder2)
 
   -- Evaluate the normalised bodies of the lambdas
-  let lv = contextDBLevel ctx
+  let lv = contextDBLevel (contextOf constraint)
   nbody1 <- normaliseInEnv (extendEnvWithBound lv binder1 env1) body1
   nbody2 <- normaliseInEnv (extendEnvWithBound lv binder2 env2) body2
 
   -- Update the context.
-  -- NOTE: that we have to unnormalise here indicates something is wrong.
-  let unnormBinder = fmap (unnormalise lv) binder1
-  let newCtx = updateConstraintBoundCtx ctx (unnormBinder :)
-  let updatedInfo = (WithContext constraint newCtx, blockingMeta)
+  let updatedInfo = updateInfoUnderBinder info (binder1, binder2)
 
   -- Unify the two bodies
   bodyConstraint <- subUnify updatedInfo (nbody1, nbody2)
@@ -354,6 +351,17 @@ createMetaWithRestrictedDependencies ctx meta newDependencies = do
     solveMeta meta substMetaExpr (boundContext ctx)
 
     return $ normalised newMetaExpr
+
+updateInfoUnderBinder ::
+  ConstraintInfo builtin ->
+  (VBinder builtin, VBinder builtin) ->
+  ConstraintInfo builtin
+updateInfoUnderBinder (WithContext constraint ctx, blockingMeta) (binder1, _binder2) = do
+  -- Update the context.
+  -- NOTE: that we have to unnormalise here indicates something is wrong.
+  let unnormBinder = fmap (unnormalise (contextDBLevel ctx)) binder1
+  let newCtx = updateConstraintBoundCtx ctx (unnormBinder :)
+  (WithContext constraint newCtx, blockingMeta)
 
 --------------------------------------------------------------------------------
 -- Argument patterns

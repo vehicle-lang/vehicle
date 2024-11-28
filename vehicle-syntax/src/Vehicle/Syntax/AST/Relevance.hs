@@ -5,6 +5,7 @@ import Data.Aeson (ToJSON)
 import Data.Hashable (Hashable)
 import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
+import Prettyprinter (Pretty (..))
 
 --------------------------------------------------------------------------------
 -- Data
@@ -28,6 +29,11 @@ instance Semigroup Relevance where
 
 instance Monoid Relevance where
   mempty = Relevant
+
+instance Pretty Relevance where
+  pretty = \case
+    Relevant -> "relevant"
+    Irrelevant -> "irrelevant"
 
 --------------------------------------------------------------------------------
 -- Type class

@@ -149,7 +149,17 @@ instance HasMetas (InstanceConstraint builtin) where
 instance HasMetas (UnificationConstraint builtin) where
   findMetas (Unify _ e1 e2) = do findMetas e1; findMetas e2
 
+instance HasMetas (ArgInsertionProblem builtin) where
+  findMetas ArgInsertionProblem {..} = do
+    findMetas originalFun
+    findMetas checkedArgs
+    findMetas uncheckedArgs
+
+instance HasMetas (ApplicationConstraint builtin) where
+  findMetas (InferArgs _ _ insertionProblem) = findMetas insertionProblem
+
 instance HasMetas (Constraint builtin) where
   findMetas = \case
     UnificationConstraint c -> findMetas c
     InstanceConstraint c -> findMetas c
+    ApplicationConstraint c -> findMetas c
