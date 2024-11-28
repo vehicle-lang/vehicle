@@ -7,14 +7,12 @@ module Vehicle.Backend.LossFunction.TensorCompilation
   )
 where
 
-import Control.Monad (void)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..))
 import Control.Monad.Trans.Reader (ReaderT (..))
 import Data.List.NonEmpty (NonEmpty (..))
 import Vehicle.Backend.LossFunction.Core (pattern VLam2)
 import Vehicle.Compile.Arity (Arity)
-import Vehicle.Compile.Context.Bound
 import Vehicle.Compile.Context.Free.Class (MonadFreeContext, getFreeEnv)
 import Vehicle.Compile.Context.Name (MonadNameContext, addNameToContext, getBinderDepth, getNameContext)
 import Vehicle.Compile.Error
@@ -76,10 +74,11 @@ convertValue = go
           VBoundVar v <$> traverseArgs go spine
         VBuiltin b spine ->
           convertBuiltinToTensors b spine
-        VPi binder body -> do
+        VPi binder closure -> do
           binder' <- traverse go binder
-          body' <- addBinderToContext (void binder) $ go body
-          return $ VPi binder' body'
+          freeEnv <- getFreeEnv
+          closure' <- traverseClosure convertValue freeEnv binder closure
+          return $ VPi binder' closure'
         VLam binder closure -> do
           binder' <- traverse go binder
           freeEnv <- getFreeEnv

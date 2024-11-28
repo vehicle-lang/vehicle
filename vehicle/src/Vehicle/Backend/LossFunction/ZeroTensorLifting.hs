@@ -3,10 +3,10 @@ module Vehicle.Backend.LossFunction.ZeroTensorLifting
   )
 where
 
-import Data.Tuple (swap)
 import Vehicle.Compile.Context.Name
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBE (traverseClosure, traverseClosureGeneric)
+import Vehicle.Compile.Normalise.NBE (eval, traverseClosure)
+import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
 import Vehicle.Data.Builtin.Loss
@@ -37,9 +37,22 @@ liftDecl ::
   (VType LossTensorBuiltin, Value LossTensorBuiltin) ->
   m (VType LossTensorBuiltin, Value LossTensorBuiltin)
 liftDecl (t, e) = case (t, e) of
-  (VPi piBinder piBody, VLam lamBinder closure) -> do
-    (newClosure, newPiBody) <- traverseClosureGeneric (\lamBody -> liftDecl (piBody, lamBody)) swap mempty lamBinder closure
-    return (VPi piBinder newPiBody, VLam lamBinder newClosure)
+  (VPi piBinder (Closure piEnv piBody), VLam lamBinder (Closure lamEnv lamBody)) -> do
+    ctx <- getBinderContext
+    let lv = boundCtxLv ctx
+    let newPiEnv = extendEnvWithBound lv piBinder piEnv
+    let newLamEnv = extendEnvWithBound lv lamBinder lamEnv
+
+    (resultPiBody, resultLamBody) <- addNameToContext lamBinder $ do
+      normPiBody <- eval mempty newPiEnv piBody
+      normLamBody <- eval mempty newLamEnv lamBody
+      liftDecl (normPiBody, normLamBody)
+
+    let finalPiBody = quote mempty (lv + 1) resultPiBody
+    let finalLamBody = quote mempty (lv + 1) resultLamBody
+
+    let finalEnv = boundContextToEnv ctx
+    return (VPi piBinder (Closure finalEnv finalPiBody), VLam lamBinder (Closure finalEnv finalLamBody))
   (typ, body) -> do
     let (wasZeroDimensional, newType) = liftType typ
     liftedBody <- liftExpr wasZeroDimensional body

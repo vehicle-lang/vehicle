@@ -8,6 +8,7 @@ where
 
 import Control.Monad.Except (MonadError (..))
 import Vehicle.Compile.Error
+import Vehicle.Compile.Normalise.NBE (normaliseClosure)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Data.Builtin.Standard
@@ -111,12 +112,13 @@ restrictStandardNetworkType decl networkType = case normalised networkType of
   -- \|Decomposes the Pi types in a network type signature, checking that the
   -- binders are explicit and their types are equal. Returns a function that
   -- prepends the max linearity constraint.
-  VPi binder result
+  VPi binder closure
     | visibilityOf binder /= Explicit ->
         throwError $ NetworkTypeHasNonExplicitArguments decl networkType binder
     | otherwise -> do
         checkTensorType Input (typeOf binder)
-        checkTensorType Output result
+        resultType <- normaliseClosure 0 binder closure
+        checkTensorType Output resultType
         return $ unnormalised networkType
   _ -> throwError $ NetworkTypeIsNotAFunction decl networkType
   where

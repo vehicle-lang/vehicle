@@ -5,7 +5,7 @@ module Vehicle.Compile.Type.Constraint.PolarityAnnotationRestrictions
 where
 
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.Quote (Quote (..))
+import Vehicle.Compile.Normalise.Quote (Quote (..), quoteClosure)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
@@ -22,9 +22,9 @@ checkNetworkType (_, p) networkType = case normalised networkType of
   -- \|Decomposes the Pi types in a network type signature, checking that the
   -- binders are explicit and their types are equal. Returns a function that
   -- prepends the max linearity constraint.
-  VPi binder result -> do
+  VPi binder closure -> do
     let inputPol = quote mempty 0 (typeOf binder)
-    let outputPol = quote mempty 0 result
+    let outputPol = quoteClosure mempty 0 (binder, closure)
 
     createFreshUnificationConstraint p mempty CheckingAuxiliary (PolarityExpr p Unquantified) inputPol
     createFreshUnificationConstraint p mempty CheckingAuxiliary (PolarityExpr p Unquantified) outputPol

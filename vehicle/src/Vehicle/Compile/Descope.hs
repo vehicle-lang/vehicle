@@ -120,9 +120,9 @@ genericDescopeValue f e = case e of
     var <- S.Var p <$> lvToName f p v
     args <- traverseArgs (genericDescopeValue f) spine
     return $ S.normAppList var args
-  VPi binder body -> do
+  VPi binder closure -> do
     binder' <- traverse (genericDescopeValue f) binder
-    body' <- addNameToContext binder $ genericDescopeValue f body
+    body' <- addNameToContext binder $ descopeClosure f binder closure
     return $ S.Pi p binder' body'
   VLam binder closure -> do
     binder' <- traverse (genericDescopeValue f) binder

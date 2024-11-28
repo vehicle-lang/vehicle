@@ -174,12 +174,12 @@ convertValue expr = do
     VUniverse {} -> resolutionError currentPass "Universe"
     VLam binder closure -> do
       binder' <- convertBinder binder
-      body' <- convertClosure binder closure
-      return $ Lam binder' body'
-    VPi binder body -> do
+      closure' <- convertClosure binder closure
+      return $ Lam binder' closure'
+    VPi binder closure -> do
       typ' <- convertValue (typeOf binder)
-      body' <- addNameToContext binder $ convertValue body
-      return $ Pi typ' body'
+      closure' <- convertClosure binder closure
+      return $ Pi typ' closure'
     VBuiltin b spine -> convertBuiltin b $ filterOutNonExplicitArgs spine
     VBoundVar v spine -> do
       name <- lvToProperName mempty v

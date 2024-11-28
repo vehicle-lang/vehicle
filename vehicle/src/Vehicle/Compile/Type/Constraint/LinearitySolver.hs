@@ -5,6 +5,7 @@ where
 
 import Data.Maybe (mapMaybe)
 import Vehicle.Compile.Error
+import Vehicle.Compile.Normalise.NBE (normaliseClosure)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Type.Constraint.Core
@@ -57,11 +58,12 @@ solve = \case
 
 solveQuantifierLinearity :: Quantifier -> LinearitySolver
 solveQuantifierLinearity _ _ [getNMeta -> Just m, _] = blockOn [m]
-solveQuantifierLinearity _ info [VPi binder body, res] = Just $ do
+solveQuantifierLinearity _ info@(ctx, _) [VPi binder closure, res] = Just $ do
   let varName = getBinderName binder
   let domainLin = VLinearityExpr (Linear (QuantifiedVariableProvenance (provenanceOf binder) varName))
   domEq <- createInstanceUnification info (typeOf binder) domainLin
-  resEq <- createInstanceUnification info res body
+  resultType <- normaliseClosure (contextDBLevel ctx) binder closure
+  resEq <- createInstanceUnification info res resultType
   return $ Progress [domEq, resEq]
 solveQuantifierLinearity _ _ _ = Nothing
 

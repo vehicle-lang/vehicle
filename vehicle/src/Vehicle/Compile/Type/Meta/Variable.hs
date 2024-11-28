@@ -125,8 +125,11 @@ instance HasMetas (Value builtin) where
     VBuiltin _ spine -> findMetas spine
     VFreeVar _ spine -> findMetas spine
     VBoundVar _ spine -> findMetas spine
-    VPi binder result -> do findMetas binder; findMetas result
-    VLam {} -> compilerDeveloperError "Finding metas in lambda not yet supported."
+    VPi binder closure -> do findMetas binder; findMetas closure
+    VLam binder closure -> do findMetas binder; findMetas closure
+
+instance HasMetas (Closure builtin) where
+  findMetas (Closure env expr) = do findMetas (fmap snd env); findMetas expr
 
 instance (HasMetas expr) => HasMetas (GenericArg expr) where
   findMetas = mapM_ findMetas

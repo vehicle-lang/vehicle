@@ -5,7 +5,7 @@ module Vehicle.Compile.Type.Constraint.LinearityAnnotationRestrictions
 where
 
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.Quote (Quote (..))
+import Vehicle.Compile.Normalise.Quote (Quote (..), quoteClosure)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
@@ -22,9 +22,9 @@ checkLinearityNetworkType (ident, p) networkType = case normalised networkType o
   -- \|Decomposes the Pi types in a network type signature, checking that the
   -- binders are explicit and their types are equal. Returns a function that
   -- prepends the max linearity constraint.
-  VPi binder result -> do
+  VPi binder closure -> do
     let inputLin = quote mempty 0 (typeOf binder)
-    let outputLin = quote mempty 0 result
+    let outputLin = quoteClosure mempty 0 (binder, closure)
 
     -- The linearity of the output of a network is the max of 1) Linear (as outputs
     -- are also variables) and 2) the linearity of its input. So prepend this

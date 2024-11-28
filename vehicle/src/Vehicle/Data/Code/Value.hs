@@ -32,7 +32,7 @@ data Value builtin
   | VBoundVar !Lv !(Spine builtin)
   | VBuiltin !builtin !(Spine builtin)
   | VLam !(VBinder builtin) !(Closure builtin)
-  | VPi !(VBinder builtin) !(Value builtin)
+  | VPi !(VBinder builtin) !(Closure builtin)
   deriving (Eq, Show, Generic)
 
 type VType builtin = Value builtin

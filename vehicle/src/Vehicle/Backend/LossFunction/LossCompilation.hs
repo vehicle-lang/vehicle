@@ -99,10 +99,10 @@ convertValue e = do
       VBoundVar v <$> traverseArgs convertValue spine
     VBuiltin b spine -> do
       convertBuiltinToLoss b spine
-    VPi binder body -> do
+    VPi binder closure -> do
       binder' <- traverse convertValue binder
-      body' <- addNameToContext binder $ convertValue body
-      return $ VPi binder' body'
+      closure' <- traverseClosure convertValue mempty binder closure
+      return $ VPi binder' closure'
     VLam binder closure -> do
       binder' <- traverse convertValue binder
       closure' <- traverseClosure convertValue mempty binder closure

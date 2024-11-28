@@ -6,6 +6,7 @@ module Vehicle.Compile.Normalise.NBE
     normaliseInEmptyEnv,
     normaliseApp,
     normaliseBuiltin,
+    normaliseClosure,
     eval,
     evalApp,
     traverseClosure,
@@ -78,10 +79,25 @@ normaliseBuiltin b spine = do
   freeEnv <- getFreeEnv
   evalBuiltin freeEnv b spine
 
+normaliseClosure ::
+  (MonadNorm builtin m, MonadFreeContext builtin m) =>
+  Lv ->
+  VBinder builtin ->
+  Closure builtin ->
+  m (Value builtin)
+normaliseClosure lv binder closure = do
+  freeEnv <- getFreeEnv
+  evalClosure freeEnv closure (binder, VBoundVar lv [])
+
 -----------------------------------------------------------------------------
 -- Evaluation of closures
 
-evalClosure :: (MonadNorm builtin m) => FreeEnv builtin -> Closure builtin -> (VBinder builtin, Value builtin) -> m (Value builtin)
+evalClosure ::
+  (MonadNorm builtin m) =>
+  FreeEnv builtin ->
+  Closure builtin ->
+  (VBinder builtin, Value builtin) ->
+  m (Value builtin)
 evalClosure freeEnv (Closure env body) (binder, arg) = do
   let newEnv = extendEnvWithDefined arg binder env
   eval freeEnv newEnv body
@@ -115,9 +131,7 @@ eval freeEnv boundEnv expr = do
       return $ VLam binder' (Closure boundEnv body)
     Pi _ binder body -> do
       binder' <- traverse (eval freeEnv boundEnv) binder
-      let newBoundEnv = extendEnvWithBound (Lv $ length boundEnv) binder' boundEnv
-      body' <- eval freeEnv newBoundEnv body
-      return $ VPi binder' body'
+      return $ VPi binder' (Closure boundEnv body)
     Let _ bound binder body -> do
       binder' <- traverse (eval freeEnv boundEnv) binder
       boundNormExpr <- eval freeEnv boundEnv bound

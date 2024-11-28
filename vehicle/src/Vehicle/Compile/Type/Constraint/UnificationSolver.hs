@@ -156,10 +156,10 @@ unification info@(constraint, _) = \case
   VBuiltin b1 spine1 :~: VBuiltin b2 spine2
     | b1 == b2 -> solveSpine info spine1 spine2
     | isConstructor b1 && isConstructor b2 -> return $ HardFailure [constraint]
-  VPi binder1 body1 :~: VPi binder2 body2
-    | visibilityMatches binder1 binder2 -> solvePi info (binder1, body1) (binder2, body2)
-  VLam binder1 body1 :~: VLam binder2 body2 ->
-    solveLam info (binder1, body1) (binder2, body2)
+  VPi binder1 closure1 :~: VPi binder2 closure2
+    | visibilityMatches binder1 binder2 -> solveClosure info (binder1, closure1) (binder2, closure2)
+  VLam binder1 closure1 :~: VLam binder2 closure2 ->
+    solveClosure info (binder1, closure1) (binder2, closure2)
   ---------------------
   -- Flex-flex cases --
   ---------------------
@@ -205,13 +205,13 @@ solveSpine info@(constraint, _) args1 args2
   | length args1 /= length args2 = return $ HardFailure [constraint]
   | otherwise = mconcat <$> traverse (solveArg info) (zip args1 args2)
 
-solveLam ::
+solveClosure ::
   (MonadUnify builtin m) =>
   ConstraintInfo builtin ->
   (VBinder builtin, Closure builtin) ->
   (VBinder builtin, Closure builtin) ->
   m (UnificationResult builtin)
-solveLam info@(WithContext constraint ctx, blockingMeta) (binder1, Closure env1 body1) (binder2, Closure env2 body2) = do
+solveClosure info@(WithContext constraint ctx, blockingMeta) (binder1, Closure env1 body1) (binder2, Closure env2 body2) = do
   -- Unify binder constraints
   binderConstraint <- subUnify info (typeOf binder1, typeOf binder2)
 
@@ -230,20 +230,6 @@ solveLam info@(WithContext constraint ctx, blockingMeta) (binder1, Closure env1 
   bodyConstraint <- subUnify updatedInfo (nbody1, nbody2)
 
   -- Return the result
-  return $ binderConstraint <> bodyConstraint
-
-solvePi ::
-  (MonadUnify builtin m) =>
-  ConstraintInfo builtin ->
-  (VBinder builtin, Value builtin) ->
-  (VBinder builtin, Value builtin) ->
-  m (UnificationResult builtin)
-solvePi info (binder1, body1) (binder2, body2) = do
-  -- !!TODO!! Block until binders are solved
-  -- One possible implementation, blocked metas = set of sets where outer is conjunction and inner is disjunction
-  -- BOB: this effectively blocks until the binders are solved, because we usually just try to eagerly solve problems
-  binderConstraint <- subUnify info (typeOf binder1, typeOf binder2)
-  bodyConstraint <- subUnify info (body1, body2)
   return $ binderConstraint <> bodyConstraint
 
 solveFlexFlex ::
@@ -334,10 +320,10 @@ pruneMetaDependencies ctx (solvingMetaID, solvingMetaSpine) attemptedSolution = 
       VBuiltin b spine -> VBuiltin b <$> traverse (traverse go) spine
       VBoundVar v spine -> VBoundVar v <$> traverse (traverse go) spine
       VFreeVar v spine -> VFreeVar v <$> traverse (traverse go) spine
-      VPi binder result -> VPi <$> traverse go binder <*> go result
       -- Definitely going to have come back and fix this one later.
       -- Can't inspect the metas in the environment, as not every variable
-      -- in the environment will be used?
+      -- in the environment will be used? But maybe we can?
+      VPi {} -> return expr -- VPi <$> traverse go binder <*> go result
       VLam {} -> return expr
 
 createMetaWithRestrictedDependencies ::

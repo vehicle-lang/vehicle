@@ -50,9 +50,9 @@ instance (ConvertableBuiltin builtin1 builtin2) => Quote (Value builtin1) (Expr 
     VBuiltin b spine -> do
       let fn = convertBuiltin p b
       quoteApp level p fn spine
-    VPi binder body -> do
+    VPi binder closure -> do
       let quotedBinder = quote p level binder
-      let quotedBody = quote p (level + 1) body
+      let quotedBody = quoteClosure p level (binder, closure)
       Pi p quotedBinder quotedBody
     VLam binder closure -> do
       let quotedBinder = quote p level binder

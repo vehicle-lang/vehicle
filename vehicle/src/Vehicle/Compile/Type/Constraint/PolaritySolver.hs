@@ -6,6 +6,7 @@ where
 import Control.Monad.Except (MonadError (..))
 import Data.Maybe (mapMaybe)
 import Vehicle.Compile.Error
+import Vehicle.Compile.Normalise.NBE (normaliseClosure)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Type.Constraint.Core
@@ -66,12 +67,14 @@ solveNegPolarity info@(ctx, _) [arg1, res] = case arg1 of
 solveNegPolarity _ _ = Nothing
 
 solveQuantifierPolarity :: Quantifier -> PolaritySolver
-solveQuantifierPolarity q info [lam, res] = case lam of
+solveQuantifierPolarity q info@(ctx, _) [lam, res] = case lam of
   (getNMeta -> Just m) -> blockOn [m]
   (VPi binder resPol) -> Just $ do
     binderEq <- createInstanceUnification info (typeOf binder) (VPolarityExpr Unquantified)
     let tc = PolarityRelation $ AddPolarity q
-    (_, addConstraint) <- createSubInstance info Irrelevant (VBuiltin tc (Arg mempty Explicit Relevant <$> [resPol, res]))
+    let lv = contextDBLevel ctx
+    resultPolarity <- normaliseClosure lv binder resPol
+    (_, addConstraint) <- createSubInstance info Irrelevant (VBuiltin tc (explicit <$> [resultPolarity, res]))
     return $ Progress [binderEq, addConstraint]
   _ -> Nothing
 solveQuantifierPolarity _ _c _ = Nothing
@@ -135,10 +138,13 @@ solveFunctionPolarity functionPosition info@(ctx, _) [arg, res] = case (arg, res
     let pol3 = VPolarityExpr $ mapPolarityProvenance addFuncProv pol
     resEq <- createInstanceUnification info res pol3
     return $ Progress [resEq]
-  (VPi binder1 body1, VPi binder2 body2) -> Just $ do
+  (VPi binder1 closure1, VPi binder2 closure2) -> Just $ do
     let tc = PolarityRelation $ FunctionPolarity functionPosition
-    (_, binderConstraint) <- createSubInstance info Irrelevant (VBuiltin tc (Arg mempty Explicit Relevant <$> [typeOf binder1, typeOf binder2]))
-    (_, bodyConstraint) <- createSubInstance info Irrelevant (VBuiltin tc (Arg mempty Explicit Relevant <$> [body1, body2]))
+    (_, binderConstraint) <- createSubInstance info Irrelevant (VBuiltin tc (explicit <$> [typeOf binder1, typeOf binder2]))
+    let lv = contextDBLevel ctx
+    body1 <- normaliseClosure lv binder1 closure1
+    body2 <- normaliseClosure lv binder2 closure2
+    (_, bodyConstraint) <- createSubInstance info Irrelevant (VBuiltin tc (explicit <$> [body1, body2]))
     return $ Progress [binderConstraint, bodyConstraint]
   _ -> Nothing
 solveFunctionPolarity _ _ _ = Nothing

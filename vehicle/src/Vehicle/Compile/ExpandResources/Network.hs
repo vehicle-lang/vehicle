@@ -7,6 +7,7 @@ import Control.Monad.Except (MonadError (..))
 import Data.Map qualified as Map
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
+import Vehicle.Compile.Normalise.NBE (normaliseClosure)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Resource
@@ -42,11 +43,12 @@ getNetworkType ::
   GluedType Builtin ->
   m NetworkType
 getNetworkType decl networkType = case normalised networkType of
-  VPi binder result
+  VPi binder closure
     | visibilityOf binder /= Explicit -> typingError
     | otherwise -> do
         inputDetails <- getTensorType Input (typeOf binder)
-        outputDetails <- getTensorType Output result
+        resultType <- normaliseClosure 0 binder closure
+        outputDetails <- getTensorType Output resultType
         let networkDetails = NetworkType inputDetails outputDetails
         return networkDetails
   _ -> compilerDeveloperError "Should have caught the fact that the network type is not a function during type-checking"

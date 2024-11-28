@@ -1,18 +1,12 @@
 module Vehicle.Compile.Arity where
 
 import Vehicle.Data.Code.Expr
-import Vehicle.Data.Code.Value
 import Vehicle.Prelude (isExplicit)
 
 type Arity = Int
 
 class HasArity a where
   arityOf :: a -> Arity
-
-arityFromVType :: Value builtin -> Arity
-arityFromVType = \case
-  VPi _ r -> 1 + arityFromVType r
-  _ -> 0
 
 -- | This is only safe when the type is known to be in normalised type.
 explicitArityFromType :: Type builtin -> Arity
