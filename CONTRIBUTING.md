@@ -466,12 +466,12 @@ We recommend you install Python using [pyenv].
 
 1. Install [pyenv] following the instructions on the website: <https://github.com/pyenv/pyenv#installation>
 
-2. Install the latest release of each supported Python version. Currently, those are 3.7, 3.8, 3.9, 3.10, and 3.11.
+2. Install the latest release of each supported Python version.
 
    Run the following command:
 
    ```sh
-   pyenv install 3.7 3.8 3.9 3.10 3.11
+   pyenv install 3.9 3.10 3.11 3.12 3.13
    ```
 
 3. Check if your installation was successful.

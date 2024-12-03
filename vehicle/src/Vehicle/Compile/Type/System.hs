@@ -13,12 +13,12 @@ import Vehicle.Compile.Type.Constraint.InstanceSolver
 import Vehicle.Compile.Type.Constraint.LinearitySolver
 import Vehicle.Compile.Type.Constraint.PolaritySolver
 import Vehicle.Compile.Type.Core
-import Vehicle.Compile.Type.Monad (freshMetaExpr, createFreshUnificationConstraint, createFreshInstanceConstraint)
+import Vehicle.Compile.Type.Monad (createFreshInstanceConstraint, createFreshUnificationConstraint, freshMetaExpr)
 import Vehicle.Compile.Type.Monad.Class (MonadTypeChecker)
 import Vehicle.Compile.Type.Subsystem.InputOutputInsertion (addFunctionAuxiliaryInputOutputConstraints)
 import Vehicle.Data.Builtin.Linearity
 import Vehicle.Data.Builtin.Polarity
-import Vehicle.Data.Builtin.Standard (Builtin (..), BuiltinType (..), TypeClass(..))
+import Vehicle.Data.Builtin.Standard (Builtin (..), BuiltinType (..), TypeClass (..))
 import Vehicle.Data.Code.Value
 
 -- | The type-checking monad.

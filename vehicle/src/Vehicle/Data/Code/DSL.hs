@@ -145,13 +145,13 @@ hasRatLits t = typeClass HasRatLits [t]
 hasVecLits :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 hasVecLits n d = typeClass HasVecLits [n, d]
 
-validPropertyType ::  (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
+validPropertyType :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
 validPropertyType t = typeClass ValidPropertyType [t]
 
-validInferableParameterType ::  (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
+validInferableParameterType :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
 validInferableParameterType t = typeClass (ValidParameterType Inferable) [t]
 
-validNonInferableParameterType ::  (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
+validNonInferableParameterType :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
 validNonInferableParameterType t = typeClass (ValidParameterType NonInferable) [t]
 
 validNetworkTensorType :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin

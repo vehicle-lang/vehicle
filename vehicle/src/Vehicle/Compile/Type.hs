@@ -104,7 +104,7 @@ typeCheckAbstractDef p ident defSort uncheckedType = do
   checkedType <- checkDeclType ident uncheckedType
   finalCheckedType <- restrictAbstractDefType defSort (ident, p) checkedType
   let checkedDecl = DefAbstract p ident defSort finalCheckedType
-  
+
   solveConstraints (Just checkedDecl)
   substCheckedType <- substMetas finalCheckedType
 
@@ -126,9 +126,10 @@ typeCheckFunction ::
   m (Decl builtin)
 typeCheckFunction p ident anns typ body = do
   checkedType <- checkDeclType ident typ
-  finalCheckedType <- if isProperty anns
-    then restrictDeclType RestrictedProperty (ident, p) checkedType
-    else return checkedType
+  finalCheckedType <-
+    if isProperty anns
+      then restrictDeclType RestrictedProperty (ident, p) checkedType
+      else return checkedType
 
   -- Type check the body.
   let pass = bidirectionalPassDoc <+> "body of" <+> quotePretty ident

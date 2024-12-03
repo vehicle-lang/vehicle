@@ -4,15 +4,15 @@ module Vehicle.Compile.Type.Subsystem.InputOutputInsertion
 where
 
 import Control.Monad.State (MonadState (..), evalStateT, modify)
+import Vehicle.Compile.Context.Free (getFreeEnv)
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Type.Core (InstanceConstraintOrigin (..), InstanceTypeRestrictionOrigin (..))
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
 import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Monad
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Interface (BuiltinHasStandardData)
 import Vehicle.Data.Code.Value
-import Vehicle.Compile.Type.Core (InstanceConstraintOrigin(..), InstanceTypeRestrictionOrigin (..))
-import Vehicle.Compile.Context.Free (getFreeEnv)
 
 -------------------------------------------------------------------------------
 -- Inserting polarity and linearity constraints to capture function application
@@ -60,7 +60,7 @@ decomposePiType mkConstraint declProv@(ident, _) inputNumber = \case
 addFunctionConstraint ::
   (MonadTypeChecker builtin m, MonadState (MetaMap (Expr builtin)) m, BuiltinHasStandardData builtin) =>
   builtin ->
-  DeclProvenance -> 
+  DeclProvenance ->
   FunctionPosition ->
   Expr builtin ->
   m (Expr builtin)
@@ -84,7 +84,7 @@ addFunctionConstraint constraint declProv@(_, declP) position existingExpr = do
 
   freeEnv <- getFreeEnv
   let declSort = developerError "function IO constraints should never fail"
-  let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin freeEnv declProv declSort existingExpr 
+  let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin freeEnv declProv declSort existingExpr
   _ <- createFreshInstanceConstraint mempty declP origin Irrelevant tcExpr
 
   return newExpr

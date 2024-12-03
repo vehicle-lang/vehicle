@@ -60,7 +60,7 @@ typeOfTypeClass tc = case tc of
   ValidNetworkTensorType -> type0 ~> type0
   ValidDatasetType -> type0 ~> type0
   ValidDatasetElementType -> type0 ~> type0
-  
+
 typeOfTypeClassOp :: (HasStandardBuiltins builtin, BuiltinHasStandardTypeClasses builtin) => TypeClassOp -> DSLExpr builtin
 typeOfTypeClassOp b = case b of
   NegTC -> typeOfTCOp1 hasNeg

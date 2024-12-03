@@ -12,6 +12,7 @@ import System.FilePath
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
+import Vehicle.Compile.Print.TypingError
 import Vehicle.Data.Assertion (prettyUnderConstrainedVariable)
 import Vehicle.Data.Builtin.Linearity
 import Vehicle.Data.Builtin.Polarity
@@ -20,7 +21,6 @@ import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
 import Vehicle.Syntax.Parse (ParseError (..))
 import Prelude hiding (pi)
-import Vehicle.Compile.Print.TypingError
 
 --------------------------------------------------------------------------------
 -- User errors
@@ -346,71 +346,71 @@ instance MeaningfulError CompileError where
         entity = if resourceType == Parameter then "value" else "file"
 
     -- Network errors
-{-
-    NetworkTypeIsNotAFunction (ident, _p) networkType ->
-      UError $
-        UserError
-          { provenance = provenanceOf networkType,
-            problem =
-              unsupportedAnnotationTypeDescription (pretty NetworkDef) ident networkType
-                <+> "as it is not a function.",
-            fix =
-              Just $
-                supportedNetworkTypeDescription
-                  <+> "Provide both an input type and output type for your network."
-          }
-    NetworkTypeIsNotOverTensors (ident, _p) networkType nonTensorType io ->
-      UError $
-        UserError
-          { provenance = provenanceOf networkType,
-            problem =
-              unsupportedAnnotationTypeDescription (pretty NetworkDef) ident networkType
-                <+> "as the"
-                <+> pretty io
-                <+> squotes (prettyFriendlyEmptyCtx nonTensorType)
-                <+> "is not one of"
-                <+> list [pretty Vector, pretty (identifierName TensorIdent)]
-                <> ".",
-            fix =
-              Just $
-                supportedNetworkTypeDescription
-                  <+> "Ensure the"
-                  <+> pretty io
-                  <+> "of the network is a Tensor"
-          }
-    NetworkTypeHasNonExplicitArguments (ident, _p) networkType binder ->
-      UError $
-        UserError
-          { provenance = provenanceOf binder,
-            problem =
-              unsupportedAnnotationTypeDescription (pretty NetworkDef) ident networkType
-                <+> "as it contains the non-explicit argument of type"
-                <+> squotes (prettyFriendlyEmptyCtx (typeOf binder))
-                <> ".",
-            fix =
-              Just $
-                supportedNetworkTypeDescription
-                  <+> "Remove the non-explicit argument."
-          }
-    NetworkTypeHasUnsupportedElementType (ident, _p) networkType elementType io ->
-      UError $
-        UserError
-          { provenance = provenanceOf networkType,
-            problem =
-              unsupportedAnnotationTypeDescription (pretty NetworkDef) ident networkType
-                <+> "as"
-                <+> pretty io
-                <> "s of type"
-                  <+> squotes (prettyFriendlyEmptyCtx elementType)
-                  <+> "are not currently supported.",
-            fix =
-              Just $
-                supportedNetworkTypeDescription
-                  <+> "Ensure that the network"
-                  <+> pretty io
-                  <+> "uses"
-                  <+> "supported types."
-          }-}
+    {-
+        NetworkTypeIsNotAFunction (ident, _p) networkType ->
+          UError $
+            UserError
+              { provenance = provenanceOf networkType,
+                problem =
+                  unsupportedAnnotationTypeDescription (pretty NetworkDef) ident networkType
+                    <+> "as it is not a function.",
+                fix =
+                  Just $
+                    supportedNetworkTypeDescription
+                      <+> "Provide both an input type and output type for your network."
+              }
+        NetworkTypeIsNotOverTensors (ident, _p) networkType nonTensorType io ->
+          UError $
+            UserError
+              { provenance = provenanceOf networkType,
+                problem =
+                  unsupportedAnnotationTypeDescription (pretty NetworkDef) ident networkType
+                    <+> "as the"
+                    <+> pretty io
+                    <+> squotes (prettyFriendlyEmptyCtx nonTensorType)
+                    <+> "is not one of"
+                    <+> list [pretty Vector, pretty (identifierName TensorIdent)]
+                    <> ".",
+                fix =
+                  Just $
+                    supportedNetworkTypeDescription
+                      <+> "Ensure the"
+                      <+> pretty io
+                      <+> "of the network is a Tensor"
+              }
+        NetworkTypeHasNonExplicitArguments (ident, _p) networkType binder ->
+          UError $
+            UserError
+              { provenance = provenanceOf binder,
+                problem =
+                  unsupportedAnnotationTypeDescription (pretty NetworkDef) ident networkType
+                    <+> "as it contains the non-explicit argument of type"
+                    <+> squotes (prettyFriendlyEmptyCtx (typeOf binder))
+                    <> ".",
+                fix =
+                  Just $
+                    supportedNetworkTypeDescription
+                      <+> "Remove the non-explicit argument."
+              }
+        NetworkTypeHasUnsupportedElementType (ident, _p) networkType elementType io ->
+          UError $
+            UserError
+              { provenance = provenanceOf networkType,
+                problem =
+                  unsupportedAnnotationTypeDescription (pretty NetworkDef) ident networkType
+                    <+> "as"
+                    <+> pretty io
+                    <> "s of type"
+                      <+> squotes (prettyFriendlyEmptyCtx elementType)
+                      <+> "are not currently supported.",
+                fix =
+                  Just $
+                    supportedNetworkTypeDescription
+                      <+> "Ensure that the network"
+                      <+> pretty io
+                      <+> "uses"
+                      <+> "supported types."
+              }-}
     NetworkTypeHasVariableSizeTensor (ident, _p) networkType tDim io ->
       UError $
         UserError
@@ -680,8 +680,6 @@ instance MeaningfulError CompileError where
                   <+> "be used as the dimension of a dataset"
                   <+> "(networks will be supported later)."
           }
-      
-
     --------------------
     -- Backend errors --
     --------------------

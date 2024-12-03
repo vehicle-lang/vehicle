@@ -419,12 +419,13 @@ instantiateArgForNonExplicitBinder boundCtx p (fun, funArgs, funType) binder = d
     Implicit {} -> freshMetaExpr p binderType boundCtx
     Instance {} -> do
       let origin =
-            InstanceArgOrigin $ ArgOrigin
-            { checkedInstanceOp = fun,
-              checkedInstanceOpArgs = funArgs,
-              checkedInstanceOpType = funType,
-              checkedInstanceType = binderType
-            }
+            InstanceArgOrigin $
+              ArgOrigin
+                { checkedInstanceOp = fun,
+                  checkedInstanceOpArgs = funArgs,
+                  checkedInstanceOpType = funType,
+                  checkedInstanceType = binderType
+                }
       createFreshInstanceConstraint boundCtx (provenanceOf fun) origin (relevanceOf binder) binderType
   return $ Arg p (markInserted $ visibilityOf binder) (relevanceOf binder) checkedExpr
 

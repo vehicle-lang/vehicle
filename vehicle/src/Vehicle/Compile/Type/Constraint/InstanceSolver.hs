@@ -5,9 +5,11 @@ module Vehicle.Compile.Type.Constraint.InstanceSolver
 where
 
 import Control.Monad.Except (MonadError (..))
+import Data.Either (partitionEithers)
 import Data.Hashable (Hashable)
 import Data.Proxy (Proxy (..))
 import Prettyprinter (list)
+import Vehicle.Compile.Context.Free (getFreeEnv)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE (normaliseInEnv)
 import Vehicle.Compile.Prelude
@@ -20,8 +22,6 @@ import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Monad.Class (addInstanceConstraints)
 import Vehicle.Data.Code.Value
 import Vehicle.Data.DeBruijn (dbLevelToIndex)
-import Vehicle.Compile.Context.Free (getFreeEnv)
-import Data.Either (partitionEithers)
 
 --------------------------------------------------------------------------------
 -- Public interface
@@ -77,7 +77,7 @@ solveInstanceGoal constraint rawBuiltinCandidates goal = do
       <> line
 
   -- Try all candidates
-  (unsuccessfulCandidates, successfulCandidates) <- 
+  (unsuccessfulCandidates, successfulCandidates) <-
     partitionEithers <$> traverse (checkCandidate constraint goal) allCandidates
 
   case successfulCandidates of
@@ -251,7 +251,7 @@ replaceProvenance p = go
       Pi _ binder res -> Pi p (fmap go binder) (go res)
       Let _ e1 binder e2 -> Let p (go e1) (fmap go binder) (go e2)
       Lam _ binder e -> Lam p (fmap go binder) (go e)
-  
+
 extractCandidateError :: CompileError -> UnAnnDoc
 extractCandidateError err = case details err of
   UError e -> problem e

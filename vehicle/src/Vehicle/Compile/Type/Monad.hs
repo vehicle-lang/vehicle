@@ -150,7 +150,7 @@ createFreshApplicationConstraint ctx problem blockingMetas = do
   let blockedConstraint = WithContext constraint (blockCtxOn blockingMetas context)
   addApplicationConstraint blockedConstraint
   return (unnormalised finalExpr, unnormalised finalType)
-  
+
 -- | Adds an entirely new type-class constraint (as opposed to one
 -- derived from another constraint).
 createFreshInstanceConstraint ::

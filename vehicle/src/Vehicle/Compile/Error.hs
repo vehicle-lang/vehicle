@@ -4,11 +4,15 @@ module Vehicle.Compile.Error where
 
 import Control.Exception (IOException)
 import Control.Monad.Except (MonadError, throwError)
+import Data.List.NonEmpty (NonEmpty)
 import Data.Map qualified as Map
+import Data.Text (Text)
+import Data.Typeable (Proxy)
 import Data.Void (Void)
 import Prettyprinter (list)
 import Vehicle.Backend.LossFunction.Core (BooleanDifferentiableLogicField, TensorDifferentiableLogicField)
 import Vehicle.Backend.Prelude
+import Vehicle.Compile.Normalise.Builtin (NormalisableBuiltin)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (PrettyFriendly)
 import Vehicle.Compile.Print.Builtin
@@ -22,10 +26,6 @@ import Vehicle.Data.Code.Value
 import Vehicle.Data.Tensor (TensorShape)
 import Vehicle.Syntax.Parse (ParseError, ParseLocation)
 import Vehicle.Verify.QueryFormat.Core
-import Vehicle.Compile.Normalise.Builtin (NormalisableBuiltin)
-import Data.Text (Text)
-import Data.List.NonEmpty (NonEmpty)
-import Data.Typeable (Proxy)
 
 --------------------------------------------------------------------------------
 -- Compilation monad
@@ -38,35 +38,39 @@ type MonadCompile m =
 --------------------------------------------------------------------------------
 -- Typing errors
 
-data MissingExplicitArgError builtin = MissingExplicitArgError 
-  { _ctx :: NamedBoundCtx
-  , explicitBinder :: Binder builtin
-  , nonExplicitArg :: Arg builtin
-  } deriving (Show)
+data MissingExplicitArgError builtin = MissingExplicitArgError
+  { _ctx :: NamedBoundCtx,
+    explicitBinder :: Binder builtin,
+    nonExplicitArg :: Arg builtin
+  }
+  deriving (Show)
 
 data RelevantUseOfIrrelevantVariableError builtin = RelevantUseOfIrrelevantVariableError
-  { _proxy :: Proxy builtin
-  , _provenance :: Provenance
-  , irrelevantVariableName :: Name
-  } deriving (Show)
+  { _proxy :: Proxy builtin,
+    _provenance :: Provenance,
+    irrelevantVariableName :: Name
+  }
+  deriving (Show)
 
 data FunctionTypeMismatchError builtin = FunctionTypeMismatchError
-  { _ctx :: NamedBoundCtx
-  , originalFunction :: Expr builtin
-  , currentExpectedType :: Expr builtin
-  , currentUncheckedArgs :: [Arg builtin]
-  } deriving (Show)
+  { _ctx :: NamedBoundCtx,
+    originalFunction :: Expr builtin,
+    currentExpectedType :: Expr builtin,
+    currentUncheckedArgs :: [Arg builtin]
+  }
+  deriving (Show)
 
 newtype FailedUnificationConstraintsError builtin = FailedUnificationConstraintsError
   { failedConstraints :: NonEmpty (WithContext (UnificationConstraint builtin))
-  } deriving (Show)
+  }
+  deriving (Show)
 
-data FailedInstanceConstraintError builtin = 
-  FailedInstanceConstraintError
-  { _freeEnv :: FreeEnv builtin
-  , failedConstraint :: WithContext (InstanceConstraint builtin)
-  , exploredCandidates :: [(WithContext (InstanceCandidate builtin), UnAnnDoc)]
-  } deriving (Show)
+data FailedInstanceConstraintError builtin = FailedInstanceConstraintError
+  { _freeEnv :: FreeEnv builtin,
+    failedConstraint :: WithContext (InstanceConstraint builtin),
+    exploredCandidates :: [(WithContext (InstanceCandidate builtin), UnAnnDoc)]
+  }
+  deriving (Show)
 
 -- | Errors thrown during type-checking
 data TypingError builtin
@@ -220,7 +224,6 @@ lookupInFreeCtx ::
 lookupInFreeCtx pass ident ctx = case Map.lookup ident ctx of
   Nothing -> internalScopingError pass ident
   Just x -> return x
-
 
 --------------------------------------------------------------------------------
 -- The final error type

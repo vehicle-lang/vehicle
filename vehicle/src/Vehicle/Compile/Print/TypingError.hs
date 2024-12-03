@@ -1,31 +1,31 @@
 module Vehicle.Compile.Print.TypingError
-  ( typingErrorDetails
-  , prettyIdentName
-  , unsupportedAnnotationTypeDescription
+  ( typingErrorDetails,
+    prettyIdentName,
+    unsupportedAnnotationTypeDescription,
   )
 where
 
+import Control.Monad.Identity (Identity (..))
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Monoid (Endo (..))
 import Data.Text (Text, pack)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.Quote (unnormalise, Quote (..))
+import Vehicle.Compile.Normalise.Builtin (NormalisableBuiltin)
+import Vehicle.Compile.Normalise.NBE (eval, evalClosure)
+import Vehicle.Compile.Normalise.Quote (Quote (..), unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Print.Builtin
 import Vehicle.Compile.Type.Core
 import Vehicle.Data.Code.Value
 import Vehicle.Data.DSL
-import Prelude hiding (pi)
 import Vehicle.Prelude.Logging (SilentLoggerT, runSilentLoggerT)
-import Control.Monad.Identity (Identity (..))
-import Vehicle.Compile.Normalise.NBE (eval, evalClosure)
-import Vehicle.Compile.Normalise.Builtin (NormalisableBuiltin)
-import Data.List.NonEmpty (NonEmpty(..))
-import Vehicle.Syntax.Builtin (BuiltinType(..))
+import Vehicle.Syntax.Builtin (BuiltinType (..))
+import Prelude hiding (pi)
 
 typingErrorDetails ::
-  forall builtin .
+  forall builtin.
   (Eq builtin, PrintableBuiltin builtin, NormalisableBuiltin builtin) =>
   TypingError builtin ->
   UserError
@@ -35,7 +35,6 @@ typingErrorDetails = \case
   FailedUnificationConstraints err -> failedUnificationConstraintsError err
   FailedInstanceConstraint err -> failedInstanceConstraintError err
   RelevantUseOfIrrelevantVariable err -> relevantUseOfIrrelevantVariableError err
-
   FailedIndexConstraintTooBig ctx v n ->
     UserError
       { provenance = provenanceOf ctx,
@@ -65,47 +64,45 @@ typingErrorDetails = \case
         problem = constraintOriginMessage,
         fix = Just "try adding more type annotations"
       }
-      where
-        WithContext constraint ctx = NonEmpty.head cs
-        nameCtx = namedBoundCtxOf ctx
+    where
+      WithContext constraint ctx = NonEmpty.head cs
+      nameCtx = namedBoundCtxOf ctx
 
-        constraintOriginMessage = case constraint of
-          UnificationConstraint (Unify origin _ _) -> case origin of
-            CheckingExprType CheckingExpr {..} ->
-              "expected"
-                <+> squotes (prettyUnificationConstraintOriginExpr ctx checkedExpr)
-                <+> "to be of type"
-                <+> squotes (prettyFriendly $ WithContext checkedExprExpectedType nameCtx)
-                <+> "but was unable to prove it."
-            CheckingBinderType CheckingBinder {..} ->
-              "expected the variable"
-                <+> squotes (pretty checkedBinderName)
-                <+> "to be of type"
-                <+> squotes (prettyFriendly $ WithContext checkedBinderActualType nameCtx)
-                <+> "but was unable to prove it."
-            CheckingInstanceType instanceOrigin ->
-              instanceOriginConstraintMessage instanceOrigin
-            CheckingAuxiliary ->
-              developerError "Auxiliary constraints should not be unsolved."
-          InstanceConstraint (Resolve instanceOrigin _ _ _) -> instanceOriginConstraintMessage instanceOrigin
+      constraintOriginMessage = case constraint of
+        UnificationConstraint (Unify origin _ _) -> case origin of
+          CheckingExprType CheckingExpr {..} ->
+            "expected"
+              <+> squotes (prettyUnificationConstraintOriginExpr ctx checkedExpr)
+              <+> "to be of type"
+              <+> squotes (prettyFriendly $ WithContext checkedExprExpectedType nameCtx)
+              <+> "but was unable to prove it."
+          CheckingBinderType CheckingBinder {..} ->
+            "expected the variable"
+              <+> squotes (pretty checkedBinderName)
+              <+> "to be of type"
+              <+> squotes (prettyFriendly $ WithContext checkedBinderActualType nameCtx)
+              <+> "but was unable to prove it."
+          CheckingInstanceType instanceOrigin ->
+            instanceOriginConstraintMessage instanceOrigin
+          CheckingAuxiliary ->
+            developerError "Auxiliary constraints should not be unsolved."
+        InstanceConstraint (Resolve instanceOrigin _ _ _) -> instanceOriginConstraintMessage instanceOrigin
+        ApplicationConstraint {} ->
+          "unsolved application constraint: " <+> prettyFriendly (WithContext constraint ctx)
 
-          ApplicationConstraint {} ->
-            "unsolved application constraint: " <+> prettyFriendly (WithContext constraint ctx)
-
-        instanceOriginConstraintMessage = \case
-          InstanceArgOrigin ArgOrigin {..} ->
-            "insufficient information to find a valid type for the overloaded expression"
-              <+> squotes (prettyTypeClassConstraintOriginExpr ctx checkedInstanceOp checkedInstanceOpArgs)
-          InstanceTypeRestrictionOrigin {} -> developerError "Unexpected type-restriction error"
-
+      instanceOriginConstraintMessage = \case
+        InstanceArgOrigin ArgOrigin {..} ->
+          "insufficient information to find a valid type for the overloaded expression"
+            <+> squotes (prettyTypeClassConstraintOriginExpr ctx checkedInstanceOp checkedInstanceOpArgs)
+        InstanceTypeRestrictionOrigin {} -> developerError "Unexpected type-restriction error"
   UnsolvedMetas _ ms ->
-        UserError
-          { provenance = p,
-            problem = "Unable to infer type of bound variable",
-            fix = Just "add more type annotations"
-          }
-      where
-        (_, p) = NonEmpty.head ms
+    UserError
+      { provenance = p,
+        problem = "Unable to infer type of bound variable",
+        fix = Just "add more type annotations"
+      }
+    where
+      (_, p) = NonEmpty.head ms
 
 --------------------------------------------------------------------------------
 -- Individual errors
@@ -113,7 +110,7 @@ typingErrorDetails = \case
 -- MissingExplicitArgError
 
 missingExplicitArgError ::
-  PrintableBuiltin builtin =>
+  (PrintableBuiltin builtin) =>
   MissingExplicitArgError builtin ->
   UserError
 missingExplicitArgError (MissingExplicitArgError ctx explicitBinder nonExplicitArg) = do
@@ -137,8 +134,8 @@ missingExplicitArgError (MissingExplicitArgError ctx explicitBinder nonExplicitA
 -- FunctionTypeMismatchError
 
 functionTypeMismatchError ::
-  forall builtin .
-  PrintableBuiltin builtin =>
+  forall builtin.
+  (PrintableBuiltin builtin) =>
   FunctionTypeMismatchError builtin ->
   UserError
 functionTypeMismatchError (FunctionTypeMismatchError ctx fun nonPiType args) = do
@@ -154,15 +151,14 @@ functionTypeMismatchError (FunctionTypeMismatchError ctx fun nonPiType args) = d
       fix = Nothing
     }
   where
+    mkRes :: [Endo (DSLExpr builtin)]
+    mkRes =
+      [ Endo $ \tRes -> pi Nothing (visibilityOf arg) (relevanceOf arg) (tHole ("arg" <> pack (show i))) (const tRes)
+        | (i, arg) <- zip [0 :: Int ..] args
+      ]
 
-  mkRes :: [Endo (DSLExpr builtin)]
-  mkRes =
-    [ Endo $ \tRes -> pi Nothing (visibilityOf arg) (relevanceOf arg) (tHole ("arg" <> pack (show i))) (const tRes)
-      | (i, arg) <- zip [0 :: Int ..] args
-    ]
-
-  expectedType :: Expr builtin
-  expectedType = fromDSL mempty (appEndo (mconcat mkRes) (tHole "res"))
+    expectedType :: Expr builtin
+    expectedType = fromDSL mempty (appEndo (mconcat mkRes) (tHole "res"))
 
 --------------------------------------------------------------------------------
 -- RelevantUseOfIrrelevantVariableError
@@ -172,64 +168,64 @@ relevantUseOfIrrelevantVariableError ::
   UserError
 relevantUseOfIrrelevantVariableError (RelevantUseOfIrrelevantVariableError _ p name) =
   UserError
-  { provenance = p,
-    problem = "cannot use irrelevant variable" <+> quotePretty name <+> "in an relevant context",
-    fix = Nothing
-  }
+    { provenance = p,
+      problem = "cannot use irrelevant variable" <+> quotePretty name <+> "in an relevant context",
+      fix = Nothing
+    }
 
 --------------------------------------------------------------------------------
 -- FailedUnificationConstraintsError
 
 failedUnificationConstraintsError ::
-  forall builtin .
-  PrintableBuiltin builtin =>
+  forall builtin.
+  (PrintableBuiltin builtin) =>
   FailedUnificationConstraintsError builtin ->
   UserError
 failedUnificationConstraintsError (FailedUnificationConstraintsError (err :| _)) = failedConstraintMessage err
   where
-  failedConstraintMessage :: WithContext (UnificationConstraint builtin) -> UserError
-  failedConstraintMessage (WithContext (Unify origin e1 e2) ctx) = do
-    let boundCtx = namedBoundCtxOf ctx
-    let originMessage = case origin of
-          CheckingExprType CheckingExpr {..} ->
-            "expected"
-              <+> squotes (prettyUnificationConstraintOriginExpr ctx checkedExpr)
-              <+> "to be of type"
-              <+> squotes (prettyFriendly (WithContext checkedExprExpectedType boundCtx))
-              <+> "but was found to be of type"
-              <+> squotes (prettyFriendly (WithContext checkedExprActualType boundCtx))
-          CheckingBinderType CheckingBinder {..} ->
-            "expected the variable"
-              <+> quotePretty checkedBinderName
-              <+> "to be of type"
-              <+> squotes (prettyFriendly $ WithContext checkedBinderExpectedType boundCtx)
-              <+> "but was found to be of type"
-              <+> squotes (prettyFriendly $ WithContext checkedBinderActualType boundCtx)
-          CheckingInstanceType (InstanceArgOrigin ArgOrigin {..}) ->
-            "unable to find a consistent type for the overloaded expression"
-              <+> squotes (prettyTypeClassConstraintOriginExpr ctx checkedInstanceOp checkedInstanceOpArgs)
-          CheckingInstanceType (InstanceTypeRestrictionOrigin {}) ->
-            ""
-          CheckingAuxiliary ->
-            developerError "Auxiliary constraints should not be unsolved."
-    UserError
-      { provenance = provenanceOf ctx,
-        problem =
-          originMessage
-            <> "."
-              <+> "In particular"
-              <+> squotes (prettyFriendly (WithContext e1 boundCtx))
-              <+> "is not equal to"
-              <+> squotes (prettyFriendly (WithContext e2 boundCtx))
-            <> ".",
-        fix = Just "check your types"
-      }
+    failedConstraintMessage :: WithContext (UnificationConstraint builtin) -> UserError
+    failedConstraintMessage (WithContext (Unify origin e1 e2) ctx) = do
+      let boundCtx = namedBoundCtxOf ctx
+      let originMessage = case origin of
+            CheckingExprType CheckingExpr {..} ->
+              "expected"
+                <+> squotes (prettyUnificationConstraintOriginExpr ctx checkedExpr)
+                <+> "to be of type"
+                <+> squotes (prettyFriendly (WithContext checkedExprExpectedType boundCtx))
+                <+> "but was found to be of type"
+                <+> squotes (prettyFriendly (WithContext checkedExprActualType boundCtx))
+            CheckingBinderType CheckingBinder {..} ->
+              "expected the variable"
+                <+> quotePretty checkedBinderName
+                <+> "to be of type"
+                <+> squotes (prettyFriendly $ WithContext checkedBinderExpectedType boundCtx)
+                <+> "but was found to be of type"
+                <+> squotes (prettyFriendly $ WithContext checkedBinderActualType boundCtx)
+            CheckingInstanceType (InstanceArgOrigin ArgOrigin {..}) ->
+              "unable to find a consistent type for the overloaded expression"
+                <+> squotes (prettyTypeClassConstraintOriginExpr ctx checkedInstanceOp checkedInstanceOpArgs)
+            CheckingInstanceType (InstanceTypeRestrictionOrigin {}) ->
+              ""
+            CheckingAuxiliary ->
+              developerError "Auxiliary constraints should not be unsolved."
+      UserError
+        { provenance = provenanceOf ctx,
+          problem =
+            originMessage
+              <> "."
+                <+> "In particular"
+                <+> squotes (prettyFriendly (WithContext e1 boundCtx))
+                <+> "is not equal to"
+                <+> squotes (prettyFriendly (WithContext e2 boundCtx))
+              <> ".",
+          fix = Just "check your types"
+        }
 
 --------------------------------------------------------------------------------
 -- FailedInstanceConstraintError
 
 failedInstanceConstraintError ::
-  forall builtin .
+  forall builtin.
   (Eq builtin, NormalisableBuiltin builtin, PrintableBuiltin builtin) =>
   FailedInstanceConstraintError builtin ->
   UserError
@@ -250,9 +246,9 @@ typeRestrictionError (TypeRestrictionOrigin freeEnv (ident, p) sort typ) _candid
       problem =
         unsupportedAnnotationTypeDescription (pretty sort) ident gluedType
           <> "."
-          <+> "The possible valid types for"
-          <+> quotePretty sort
-          <+> "annotated declarations are:"
+            <+> "The possible valid types for"
+            <+> quotePretty sort
+            <+> "annotated declarations are:"
           <> line
           <> indent 2 (prettyAllowedTypes supportedTypes),
       fix =
@@ -261,21 +257,21 @@ typeRestrictionError (TypeRestrictionOrigin freeEnv (ident, p) sort typ) _candid
             <+> prettyIdentName ident
             <+> "to a supported type"
     }
-      where
-        supportedTypes = case sort of
-          RestrictedProperty -> ["Bool", "Vector Bool n", "Tensor Bool ns"]
-          RestrictedParameter Inferable -> [pretty Nat]
-          RestrictedParameter NonInferable -> map pretty [Bool, Index, Nat, Rat]
-          RestrictedDataset -> ["List A    " <+> datasetElementTypes, "Vector A n" <+> datasetElementTypes]
-          RestrictedNetwork -> ["Tensor Rat [a_1, ..., a_n] -> Tensor Rat [b_1, ..., b_n]  (where 'a_i' and 'b_i' are all constants at compile time)"]
-        
-        datasetElementTypes = "(where A is either `Index n`, `Nat`, `Rat`, `List A`, `Vector A n`)"
+  where
+    supportedTypes = case sort of
+      RestrictedProperty -> ["Bool", "Vector Bool n", "Tensor Bool ns"]
+      RestrictedParameter Inferable -> [pretty Nat]
+      RestrictedParameter NonInferable -> map pretty [Bool, Index, Nat, Rat]
+      RestrictedDataset -> ["List A    " <+> datasetElementTypes, "Vector A n" <+> datasetElementTypes]
+      RestrictedNetwork -> ["Tensor Rat [a_1, ..., a_n] -> Tensor Rat [b_1, ..., b_n]  (where 'a_i' and 'b_i' are all constants at compile time)"]
 
-        prettyAllowedTypes :: [Doc a] -> Doc a
-        prettyAllowedTypes ts = vsep ((\(t, no) -> pretty no <> "." <+> t) <$> zip ts [1::Int ..])
+    datasetElementTypes = "(where A is either `Index n`, `Nat`, `Rat`, `List A`, `Vector A n`)"
+
+    prettyAllowedTypes :: [Doc a] -> Doc a
+    prettyAllowedTypes ts = vsep ((\(t, no) -> pretty no <> "." <+> t) <$> zip ts [1 :: Int ..])
 
 instanceArgOriginError ::
-  forall builtin .
+  forall builtin.
   (PrintableBuiltin builtin, NormalisableBuiltin builtin) =>
   FreeEnv builtin ->
   ConstraintContext builtin ->
@@ -284,33 +280,34 @@ instanceArgOriginError ::
   UserError
 instanceArgOriginError freeEnv ctx (ArgOrigin tcOp tcOpArgs tcOpType _tc) candidates =
   UserError
-  { provenance = provenanceOf ctx,
-    problem = "unable to work out a valid type for the overloaded expression"
-      <+> originExpr
-      <> "."
-      <> line
-      <> "The possible options explored were:"
-      <> line
-      <> indent 2 (vsep (fmap candidateOpType (zip [1 ..] candidates))),
-    fix = Nothing
-  }
-  where
-      originExpr :: Doc a
-      originExpr = squotes (prettyTypeClassConstraintOriginExpr ctx tcOp tcOpArgs)
-
-      actualArgs = if isCoercionExpr tcOp then tcOpArgs else []
-
-      -- This assumes that the parameters of the type-class instance are the first arguments of the type-class operation.
-      -- e.g. if `HasAdd t1 t2 t3` then `add` has type `forall {t1 t2 t3} . X`. If this is not the case then this function
-      -- will not work.
-      candidateOpType :: (Int, (WithContext (InstanceCandidate builtin), UnAnnDoc)) -> UnAnnDoc
-      candidateOpType (no, (candidate, err)) = do
-        let (candidateTypeArgs, solutionCtx) = calculateInstanceCandidateTypeArgs candidate
-        let finalTypeDoc = calculateInstanceDisplayType freeEnv solutionCtx tcOpType candidateTypeArgs actualArgs
-        pretty no
-          <> "." <+> finalTypeDoc
+    { provenance = provenanceOf ctx,
+      problem =
+        "unable to work out a valid type for the overloaded expression"
+          <+> originExpr
+          <> "."
           <> line
-          <> indent 2 ("- rejected:" <+> err)
+          <> "The possible options explored were:"
+          <> line
+          <> indent 2 (vsep (fmap candidateOpType (zip [1 ..] candidates))),
+      fix = Nothing
+    }
+  where
+    originExpr :: Doc a
+    originExpr = squotes (prettyTypeClassConstraintOriginExpr ctx tcOp tcOpArgs)
+
+    actualArgs = if isCoercionExpr tcOp then tcOpArgs else []
+
+    -- This assumes that the parameters of the type-class instance are the first arguments of the type-class operation.
+    -- e.g. if `HasAdd t1 t2 t3` then `add` has type `forall {t1 t2 t3} . X`. If this is not the case then this function
+    -- will not work.
+    candidateOpType :: (Int, (WithContext (InstanceCandidate builtin), UnAnnDoc)) -> UnAnnDoc
+    candidateOpType (no, (candidate, err)) = do
+      let (candidateTypeArgs, solutionCtx) = calculateInstanceCandidateTypeArgs candidate
+      let finalTypeDoc = calculateInstanceDisplayType freeEnv solutionCtx tcOpType candidateTypeArgs actualArgs
+      pretty no
+        <> "." <+> finalTypeDoc
+        <> line
+        <> indent 2 ("- rejected:" <+> err)
 
 calculateInstanceCandidateTypeArgs ::
   forall builtin.
@@ -410,7 +407,6 @@ prettyUnificationConstraintOriginExpr ctx expr =
 
 runNorm :: SilentLoggerT Identity b -> b
 runNorm = fst . runIdentity . runSilentLoggerT
-
 
 unsupportedAnnotationTypeDescription ::
   (Eq builtin, PrintableBuiltin builtin) =>

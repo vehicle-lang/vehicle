@@ -136,13 +136,14 @@ data InstanceArgOrigin builtin = ArgOrigin
   deriving (Show)
 
 data InstanceTypeRestrictionOrigin builtin = TypeRestrictionOrigin
-  { freeEnv :: FreeEnv builtin
-  , restrictedDeclProv :: DeclProvenance
-  , restrictedDeclSort :: RestrictedDecl
-  , restrictedDeclType :: Type builtin
-  } deriving (Show)
+  { freeEnv :: FreeEnv builtin,
+    restrictedDeclProv :: DeclProvenance,
+    restrictedDeclSort :: RestrictedDecl,
+    restrictedDeclType :: Type builtin
+  }
+  deriving (Show)
 
-data InstanceConstraintOrigin builtin 
+data InstanceConstraintOrigin builtin
   = InstanceArgOrigin (InstanceArgOrigin builtin)
   | InstanceTypeRestrictionOrigin (InstanceTypeRestrictionOrigin builtin)
   deriving (Show)

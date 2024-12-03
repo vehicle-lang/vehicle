@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
 {-# HLINT ignore "Use const" #-}
 {-# HLINT ignore "Use id" #-}
 
@@ -40,9 +41,9 @@ allInstances =
           -----------------------
           -- ValidPropertyType --
           -----------------------
-          ( validPropertyType tBool
-          , unitLit
-          , False
+          ( validPropertyType tBool,
+            unitLit,
+            False
           ),
           ( forAllTypes $ \t ->
               forAllIrrelevantNat "n" $ \n ->
@@ -57,118 +58,118 @@ allInstances =
           ------------------------------------
           -- ValidNonInferableParameterType --
           ------------------------------------
-          ( validNonInferableParameterType tBool
-          , unitLit
-          , False
+          ( validNonInferableParameterType tBool,
+            unitLit,
+            False
           ),
           ( forAllIrrelevantNat "n" $ \n ->
-              validNonInferableParameterType (tIndex n)
-          , irrelImplNatLam "n" $ \_n ->
-              unitLit
-          , False
+              validNonInferableParameterType (tIndex n),
+            irrelImplNatLam "n" $ \_n ->
+              unitLit,
+            False
           ),
-          ( validNonInferableParameterType tNat
-          , unitLit
-          , False
+          ( validNonInferableParameterType tNat,
+            unitLit,
+            False
           ),
-          ( validNonInferableParameterType tRat
-          , unitLit
-          , False
+          ( validNonInferableParameterType tRat,
+            unitLit,
+            False
           ),
           ---------------------------------
           -- ValidInferableParameterType --
           ---------------------------------
-          ( validInferableParameterType tNat
-          , unitLit
-          , False
+          ( validInferableParameterType tNat,
+            unitLit,
+            False
           ),
           ----------------------
           -- ValidDatasetType --
           ----------------------
           ( forAllTypes $ \t ->
-              validDatasetElementType t .~~~> 
-                validDatasetType (tList t)
-          , implLam "t" type0 $ \t ->
+              validDatasetElementType t
+                .~~~> validDatasetType (tList t),
+            implLam "t" type0 $ \t ->
               instLam "r1" (validDatasetElementType t) $ \_ ->
-                tUnit
-          , False
+                tUnit,
+            False
           ),
           ( forAllTypes $ \t ->
               forAllIrrelevantNat "n" $ \n ->
-                validDatasetElementType t .~~~> 
-                  validDatasetType (tVector t n)
-          , implLam "t" type0 $ \t ->
+                validDatasetElementType t
+                  .~~~> validDatasetType (tVector t n),
+            implLam "t" type0 $ \t ->
               irrelImplNatLam "n" $ \_n ->
                 instLam "r1" (validDatasetElementType t) $ \_ ->
-                  tUnit
-          , False
+                  tUnit,
+            False
           ),
           ( forAllTypes $ \t ->
-              validDatasetElementType t .~~~> 
-                validDatasetElementType (tList t)
-          , implLam "t" type0 $ \t ->
+              validDatasetElementType t
+                .~~~> validDatasetElementType (tList t),
+            implLam "t" type0 $ \t ->
               instLam "r1" (validDatasetElementType t) $ \_ ->
-                tUnit
-          , False
+                tUnit,
+            False
           ),
           ( forAllTypes $ \t ->
               forAllIrrelevantNat "n" $ \n ->
-                validDatasetElementType t .~~~> 
-                  validDatasetElementType (tVector t n)
-          , implLam "t" type0 $ \t ->
+                validDatasetElementType t
+                  .~~~> validDatasetElementType (tVector t n),
+            implLam "t" type0 $ \t ->
               irrelImplNatLam "n" $ \_n ->
                 instLam "r1" (validDatasetElementType t) $ \_ ->
-                  tUnit
-          , False
+                  tUnit,
+            False
           ),
-          ( validDatasetElementType tBool
-          , tUnit
-          , False
+          ( validDatasetElementType tBool,
+            tUnit,
+            False
           ),
           ( forAllIrrelevantNat "n" $ \n ->
-              validDatasetElementType (tIndex n)
-          , irrelImplNatLam "n" $ \_n ->
-              tUnit
-          , False
+              validDatasetElementType (tIndex n),
+            irrelImplNatLam "n" $ \_n ->
+              tUnit,
+            False
           ),
-          ( validDatasetElementType tNat
-          , tUnit
-          , False
+          ( validDatasetElementType tNat,
+            tUnit,
+            False
           ),
-          ( validDatasetElementType tRat
-          , tUnit
-          , False
+          ( validDatasetElementType tRat,
+            tUnit,
+            False
           ),
           ----------------------
           -- ValidNetworkType --
           ----------------------
           ( forAllTypePairs $ \t1 t2 ->
-              validNetworkTensorType t1 .~~~> 
-                validNetworkTensorType t2 .~~~> 
-                  validNetworkType (t1 ~> t2)
-          , implTypeDoubleLam $ \t1 t2 ->
+              validNetworkTensorType t1
+                .~~~> validNetworkTensorType t2
+                .~~~> validNetworkType (t1 ~> t2),
+            implTypeDoubleLam $ \t1 t2 ->
               instLam "r1" (validNetworkTensorType t1) $ \_ ->
                 instLam "r2" (validNetworkTensorType t2) $ \_ ->
-                  tUnit
-          , False
+                  tUnit,
+            False
           ),
           ( forAllTypes $ \t ->
               forAllIrrelevantNat "n1" $ \n1 ->
                 forAllIrrelevantNat "n2" $ \n2 ->
-                  validNetworkTensorType (tVector t n1) .~~~>
-                    validNetworkTensorType (tVector (tVector t n1) n2) 
-          , implLam "t" type0 $ \t -> 
-              irrelImplNatLam "n1" $ \n1 -> 
-                irrelImplNatLam "n2" $ \_n2 -> 
+                  validNetworkTensorType (tVector t n1)
+                    .~~~> validNetworkTensorType (tVector (tVector t n1) n2),
+            implLam "t" type0 $ \t ->
+              irrelImplNatLam "n1" $ \n1 ->
+                irrelImplNatLam "n2" $ \_n2 ->
                   instLam "r1" (validNetworkTensorType (tVector t n1)) $ \_ ->
-                    tUnit
-          , False
+                    tUnit,
+            False
           ),
           ( forAllIrrelevantNat "n" $ \n ->
-              validNetworkTensorType (tVector tRat n) 
-          , irrelImplNatLam "n" $ \_n -> 
-              tUnit
-          , False
+              validNetworkTensorType (tVector tRat n),
+            irrelImplNatLam "n" $ \_n ->
+              tUnit,
+            False
           ),
           ----------------
           -- HasRatLits --
