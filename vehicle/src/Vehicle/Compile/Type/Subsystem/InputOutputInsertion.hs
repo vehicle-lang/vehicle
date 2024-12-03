@@ -10,8 +10,9 @@ import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Monad
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Interface (BuiltinHasStandardData)
-import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
+import Vehicle.Compile.Type.Core (InstanceConstraintOrigin(..), InstanceTypeRestrictionOrigin (..))
+import Vehicle.Compile.Context.Free (getFreeEnv)
 
 -------------------------------------------------------------------------------
 -- Inserting polarity and linearity constraints to capture function application
@@ -40,11 +41,11 @@ decomposePiType ::
   Int ->
   Type builtin ->
   m (Type builtin)
-decomposePiType mkConstraint declProv@(ident, p) inputNumber = \case
+decomposePiType mkConstraint declProv@(ident, _) inputNumber = \case
   Pi p' binder res
     | isExplicit binder -> do
         let position = FunctionInput (nameOf ident) inputNumber
-        newType <- addFunctionConstraint mkConstraint (p, position) (typeOf binder)
+        newType <- addFunctionConstraint (mkConstraint position) declProv position (typeOf binder)
         let newBinder = replaceBinderType newType binder
         newBody <- decomposePiType mkConstraint declProv (inputNumber + 1) res
         return $ Pi p' newBinder newBody
@@ -54,15 +55,16 @@ decomposePiType mkConstraint declProv@(ident, p) inputNumber = \case
     -- Reset the state to empty
     modify (const mempty)
     let position = FunctionOutput (nameOf ident)
-    addFunctionConstraint mkConstraint (p, position) outputType
+    addFunctionConstraint (mkConstraint position) declProv position outputType
 
 addFunctionConstraint ::
   (MonadTypeChecker builtin m, MonadState (MetaMap (Expr builtin)) m, BuiltinHasStandardData builtin) =>
-  (FunctionPosition -> builtin) ->
-  (Provenance, FunctionPosition) ->
+  builtin ->
+  DeclProvenance -> 
+  FunctionPosition ->
   Expr builtin ->
   m (Expr builtin)
-addFunctionConstraint mkConstraint (declProv, position) existingExpr = do
+addFunctionConstraint constraint declProv@(_, declP) position existingExpr = do
   let p = provenanceOf existingExpr
   newExpr <- case existingExpr of
     Meta _ metaID -> do
@@ -75,12 +77,14 @@ addFunctionConstraint mkConstraint (declProv, position) existingExpr = do
         Just existingMeta -> return existingMeta
     _ -> unnormalised <$> freshMetaExpr p (TypeUniverse p 0) mempty
 
-  let constraintArgs =
-        Arg p Explicit Relevant <$> case position of
-          FunctionInput {} -> [newExpr, existingExpr]
-          FunctionOutput {} -> [existingExpr, newExpr]
-  let tcExpr = BuiltinExpr declProv (mkConstraint position) constraintArgs
+  let constraintArgs = case position of
+        FunctionInput {} -> [newExpr, existingExpr]
+        FunctionOutput {} -> [existingExpr, newExpr]
+  let tcExpr = BuiltinExpr declP constraint (explicit <$> constraintArgs)
 
-  _ <- createFreshInstanceConstraint mempty (existingExpr, mempty, IUnitLiteral p) Irrelevant tcExpr
+  freeEnv <- getFreeEnv
+  let declSort = developerError "function IO constraints should never fail"
+  let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin freeEnv declProv declSort existingExpr 
+  _ <- createFreshInstanceConstraint mempty declP origin Irrelevant tcExpr
 
   return newExpr

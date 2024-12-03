@@ -33,7 +33,6 @@ module Vehicle.Compile.Type.Monad
     addUnificationConstraints,
     -- Other
     clearMetaCtx,
-    instantiateArgForNonExplicitBinder,
     glueNBE,
   )
 where
@@ -42,7 +41,7 @@ import Control.Monad.Except (MonadError (..), runExceptT)
 import Control.Monad.Trans.Except (ExceptT)
 import Data.Proxy (Proxy (..))
 import Vehicle.Compile.Context.Free
-import Vehicle.Compile.Error (CompileError (..), compilerDeveloperError)
+import Vehicle.Compile.Error (CompileError (..))
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Builtin (TypableBuiltin (..))
@@ -151,29 +150,20 @@ createFreshApplicationConstraint ctx problem blockingMetas = do
   let blockedConstraint = WithContext constraint (blockCtxOn blockingMetas context)
   addApplicationConstraint blockedConstraint
   return (unnormalised finalExpr, unnormalised finalType)
-
+  
 -- | Adds an entirely new type-class constraint (as opposed to one
 -- derived from another constraint).
 createFreshInstanceConstraint ::
   forall builtin m.
   (MonadTypeChecker builtin m) =>
   BoundCtx (Type builtin) ->
-  (Expr builtin, [Arg builtin], Type builtin) ->
+  Provenance ->
+  InstanceConstraintOrigin builtin ->
   Relevance ->
   Type builtin ->
   m (GluedExpr builtin)
-createFreshInstanceConstraint boundCtx (fun, funArgs, funType) relevance tcExpr = do
-  let origin =
-        InstanceConstraintOrigin
-          { checkedInstanceOp = fun,
-            checkedInstanceOpArgs = funArgs,
-            checkedInstanceOpType = funType,
-            checkedInstanceType = tcExpr
-          }
-
+createFreshInstanceConstraint boundCtx p origin relevance tcExpr = do
   let env = boundContextToEnv boundCtx
-
-  let p = provenanceOf fun
   (meta, metaExpr) <- freshMetaIdAndExpr p tcExpr boundCtx
 
   let originProvenance = provenanceOf tcExpr
@@ -184,18 +174,3 @@ createFreshInstanceConstraint boundCtx (fun, funArgs, funType) relevance tcExpr 
   addInstanceConstraints [constraint]
 
   return metaExpr
-
-instantiateArgForNonExplicitBinder ::
-  (MonadTypeChecker builtin m) =>
-  BoundCtx (Type builtin) ->
-  Provenance ->
-  (Expr builtin, [Arg builtin], Type builtin) ->
-  Binder builtin ->
-  m (GluedArg builtin)
-instantiateArgForNonExplicitBinder boundCtx p origin binder = do
-  let binderType = typeOf binder
-  checkedExpr <- case visibilityOf binder of
-    Explicit {} -> compilerDeveloperError "Should not be instantiating Arg for explicit Binder"
-    Implicit {} -> freshMetaExpr p binderType boundCtx
-    Instance {} -> createFreshInstanceConstraint boundCtx origin (relevanceOf binder) binderType
-  return $ Arg p (markInserted $ visibilityOf binder) (relevanceOf binder) checkedExpr

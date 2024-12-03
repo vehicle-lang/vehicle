@@ -1,7 +1,6 @@
-Error in file 'invalidElementType.vcl' at Line 2, Columns 1-16: The type of @dataset 'trainingDataset':
+Error in file 'invalidElementType.vcl' at Line 2, Columns 19-23: The type of @dataset 'trainingDataset':
   List (Nat -> Nat)
-is not supported as it has elements of an unsupported type:
-  Nat -> Nat
-Only the following element types are allowed for datasets:
-  Index, Nat, Rat
-Fix: change the element type of 'trainingDataset' to a supported type.
+is not supported. The possible valid types for '@dataset' annotated declarations are:
+  1. List A     (where A is either `Index n`, `Nat`, `Rat`, `List A`, `Vector A n`)
+  2. Vector A n (where A is either `Index n`, `Nat`, `Rat`, `List A`, `Vector A n`)
+Fix: change the type of 'trainingDataset' to a supported type

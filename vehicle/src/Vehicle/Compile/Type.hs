@@ -102,20 +102,14 @@ typeCheckAbstractDef ::
   m (Decl builtin)
 typeCheckAbstractDef p ident defSort uncheckedType = do
   checkedType <- checkDeclType ident uncheckedType
-  let checkedDecl = DefAbstract p ident defSort checkedType
+  finalCheckedType <- restrictAbstractDefType defSort (ident, p) checkedType
+  let checkedDecl = DefAbstract p ident defSort finalCheckedType
+  
   solveConstraints (Just checkedDecl)
-  substCheckedType <- substMetas checkedType
+  substCheckedType <- substMetas finalCheckedType
 
-  -- Add extra constraints on the type. Need to have called
-  -- solve constraints beforehand in order to allow for normalisation,
-  -- but really only need to have solved type-class constraints.
-  gluedType <- glueNBE emptyBoundEnv substCheckedType
-  updatedCheckedType <- restrictAbstractDefType defSort (ident, p) gluedType
-  let updatedCheckedDecl = DefAbstract p ident defSort updatedCheckedType
+  let substDecl = DefAbstract p ident defSort substCheckedType
 
-  solveConstraints (Just updatedCheckedDecl)
-
-  substDecl <- substMetas updatedCheckedDecl
   logUnsolvedUnknowns (Just substDecl) Nothing
 
   finalDecl <- generaliseOverUnsolvedMetaVariables substDecl
@@ -132,27 +126,25 @@ typeCheckFunction ::
   m (Decl builtin)
 typeCheckFunction p ident anns typ body = do
   checkedType <- checkDeclType ident typ
+  finalCheckedType <- if isProperty anns
+    then restrictDeclType RestrictedProperty (ident, p) checkedType
+    else return checkedType
 
   -- Type check the body.
   let pass = bidirectionalPassDoc <+> "body of" <+> quotePretty ident
   checkedBody <-
     logCompilerPass MidDetail pass $
-      checkExprType mempty Relevant checkedType body
+      checkExprType mempty Relevant finalCheckedType body
 
   -- Reconstruct the function.
-  let checkedDecl = DefFunction p ident anns checkedType checkedBody
+  let checkedDecl = DefFunction p ident anns finalCheckedType checkedBody
 
   -- Solve constraints and substitute through.
   solveConstraints (Just checkedDecl)
   substDecl <- substMetas checkedDecl
 
   if isProperty anns
-    then do
-      gluedDeclType <- glueNBE emptyBoundEnv (typeOf substDecl)
-      restrictPropertyType (ident, p) gluedDeclType
-      solveConstraints (Just substDecl)
-      substAgainDecl <- substMetas substDecl
-      return substAgainDecl
+    then return substDecl
     else do
       -- Otherwise if not a property then generalise over unsolved meta-variables.
       checkedDecl1 <-
@@ -175,16 +167,16 @@ restrictAbstractDefType ::
   (TCM builtin m) =>
   DefAbstractSort ->
   DeclProvenance ->
-  GluedType builtin ->
+  Type builtin ->
   m (Type builtin)
 restrictAbstractDefType resource decl@(ident, _) defType = do
   let resourceName = pretty resource <+> quotePretty ident
   logCompilerPass MidDetail ("checking suitability of the type of" <+> resourceName) $ do
     case resource of
-      ParameterDef sort -> restrictParameterType sort decl defType
-      DatasetDef -> restrictDatasetType decl defType
-      NetworkDef -> restrictNetworkType decl defType
-      PostulateDef {} -> return $ unnormalised defType
+      ParameterDef sort -> restrictDeclType (RestrictedParameter sort) decl defType
+      DatasetDef -> restrictDeclType RestrictedDataset decl defType
+      NetworkDef -> restrictDeclType RestrictedNetwork decl defType
+      PostulateDef {} -> return defType
 
 -------------------------------------------------------------------------------
 -- Constraint solving
@@ -284,7 +276,7 @@ checkAllMetasSolved proxy = do
               origin <- getMetaProvenance proxy meta
               return (meta, origin)
           )
-      throwError $ UnsolvedMetas metasAndOrigins
+      throwError $ TypingError $ UnsolvedMetas proxy metasAndOrigins
 
 logUnsolvedUnknowns :: forall builtin m. (TCM builtin m) => Maybe (Decl builtin) -> Maybe MetaSet -> m ()
 logUnsolvedUnknowns maybeDecl maybeSolvedMetas = do

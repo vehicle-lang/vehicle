@@ -1,5 +1,6 @@
-Error in file 'invalidContainerType.vcl' at Line 2, Columns 1-16: The type of @dataset 'trainingDataset':
+Error in file 'invalidContainerType.vcl' at Line 2, Columns 19-22: The type of @dataset 'trainingDataset':
   Nat
-is not supported. Only the following types are allowed for datasets:
-  List, Vector, Tensor
-Fix: change the type of 'trainingDataset' to a supported type.
+is not supported. The possible valid types for '@dataset' annotated declarations are:
+  1. List A     (where A is either `Index n`, `Nat`, `Rat`, `List A`, `Vector A n`)
+  2. Vector A n (where A is either `Index n`, `Nat`, `Rat`, `List A`, `Vector A n`)
+Fix: change the type of 'trainingDataset' to a supported type

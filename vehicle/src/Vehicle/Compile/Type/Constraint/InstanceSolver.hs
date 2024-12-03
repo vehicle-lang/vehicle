@@ -6,7 +6,6 @@ where
 
 import Control.Monad.Except (MonadError (..))
 import Data.Hashable (Hashable)
-import Data.Maybe (catMaybes)
 import Data.Proxy (Proxy (..))
 import Prettyprinter (list)
 import Vehicle.Compile.Error
@@ -21,6 +20,8 @@ import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Monad.Class (addInstanceConstraints)
 import Vehicle.Data.Code.Value
 import Vehicle.Data.DeBruijn (dbLevelToIndex)
+import Vehicle.Compile.Context.Free (getFreeEnv)
+import Data.Either (partitionEithers)
 
 --------------------------------------------------------------------------------
 -- Public interface
@@ -76,7 +77,8 @@ solveInstanceGoal constraint rawBuiltinCandidates goal = do
       <> line
 
   -- Try all candidates
-  successfulCandidates <- catMaybes <$> traverse (checkCandidate constraint goal) allCandidates
+  (unsuccessfulCandidates, successfulCandidates) <- 
+    partitionEithers <$> traverse (checkCandidate constraint goal) allCandidates
 
   case successfulCandidates of
     -- If there is a single valid candidate then we adopt the resulting state
@@ -86,8 +88,9 @@ solveInstanceGoal constraint rawBuiltinCandidates goal = do
 
     -- If there are no valid candidates then we fail.
     [] -> do
+      freeEnv <- getFreeEnv
       finalConstraint <- substMetas constraint
-      throwError $ TypingError $ FailedInstanceConstraint finalConstraint allCandidates
+      throwError $ TypingError $ FailedInstanceConstraint $ FailedInstanceConstraintError freeEnv finalConstraint unsuccessfulCandidates
 
     -- Otherwise there are still multiple valid candidates so we're forced to block.
     _ -> do
@@ -131,7 +134,7 @@ checkCandidate ::
   WithContext (InstanceConstraint builtin) ->
   InstanceGoal builtin ->
   WithContext (InstanceCandidate builtin) ->
-  m (Maybe (WithContext (InstanceCandidate builtin), TypeCheckerState builtin))
+  m (Either (WithContext (InstanceCandidate builtin), UnAnnDoc) (WithContext (InstanceCandidate builtin), TypeCheckerState builtin))
 checkCandidate constraint goal candidate = do
   let candidateDoc = squotes (prettyCandidate candidate)
   logCompilerPass MaxDetail ("trying candidate instance" <+> candidateDoc) $ do
@@ -144,10 +147,10 @@ checkCandidate constraint goal candidate = do
       Left err -> do
         logDebug MaxDetail $ line <> "Rejecting" <+> candidateDoc <+> "as a possibility"
         logDebug MaxDetail $ indent 2 (pretty (details err)) <> line
-        return Nothing
+        return $ Left (candidate, extractCandidateError err)
       Right (_, state) -> do
         logDebug MaxDetail $ "Keeping" <+> candidateDoc <+> "as a possibility" <> line
-        return $ Just (candidate, state)
+        return $ Right (candidate, state)
 
 acceptCandidate ::
   (MonadInstance builtin m) =>
@@ -248,3 +251,8 @@ replaceProvenance p = go
       Pi _ binder res -> Pi p (fmap go binder) (go res)
       Let _ e1 binder e2 -> Let p (go e1) (fmap go binder) (go e2)
       Lam _ binder e -> Lam p (fmap go binder) (go e)
+  
+extractCandidateError :: CompileError -> UnAnnDoc
+extractCandidateError err = case details err of
+  UError e -> problem e
+  _ -> developerError "Unexpected error type when extracting error for instances"

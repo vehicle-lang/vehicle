@@ -5,26 +5,11 @@ module Vehicle.Compile.Type.Core where
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as Map (findWithDefault, lookup)
 import Data.Hashable (Hashable)
-import Data.List.NonEmpty (NonEmpty)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
 import Vehicle.Compile.Type.Meta.Set (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Data.Code.Value
-
---------------------------------------------------------------------------------
--- Typing errors
-
--- | Errors in bidirectional type-checking
-data TypingError builtin
-  = MissingExplicitArgument NamedBoundCtx (Binder builtin) (Arg builtin)
-  | FunctionTypeMismatch NamedBoundCtx (Expr builtin) [Arg builtin] (Expr builtin) [Arg builtin]
-  | FailedUnificationConstraints (NonEmpty (WithContext (UnificationConstraint builtin)))
-  | FailedInstanceConstraint (WithContext (InstanceConstraint builtin)) [WithContext (InstanceCandidate builtin)]
-  | UnsolvedConstraints (NonEmpty (WithContext (Constraint builtin)))
-  | FailedIndexConstraintTooBig (ConstraintContext builtin) Int Int
-  | FailedIndexConstraintUnknown (ConstraintContext builtin) (Value builtin) (VType builtin)
-  deriving (Show)
 
 --------------------------------------------------------------------------------
 -- Meta variable substitution
@@ -142,12 +127,24 @@ type instance
 --------------------------------------------------------------------------------
 -- Instance constraints
 
-data InstanceConstraintOrigin builtin = InstanceConstraintOrigin
+data InstanceArgOrigin builtin = ArgOrigin
   { checkedInstanceOp :: Expr builtin,
     checkedInstanceOpArgs :: [Arg builtin],
     checkedInstanceOpType :: Type builtin,
     checkedInstanceType :: Type builtin
   }
+  deriving (Show)
+
+data InstanceTypeRestrictionOrigin builtin = TypeRestrictionOrigin
+  { freeEnv :: FreeEnv builtin
+  , restrictedDeclProv :: DeclProvenance
+  , restrictedDeclSort :: RestrictedDecl
+  , restrictedDeclType :: Type builtin
+  } deriving (Show)
+
+data InstanceConstraintOrigin builtin 
+  = InstanceArgOrigin (InstanceArgOrigin builtin)
+  | InstanceTypeRestrictionOrigin (InstanceTypeRestrictionOrigin builtin)
   deriving (Show)
 
 data InstanceConstraint builtin = Resolve
@@ -284,3 +281,22 @@ instance Semigroup (ConstraintProgress builtin) where
   Stuck {} <> x@Progress {} = x
   x@Progress {} <> Stuck {} = x
   Progress u1 r1 <> Progress u2 r2 = Progress (u1 <> u2) (r1 <> r2)
+
+--------------------------------------------------------------------------------
+-- Restrictions on decl types
+--------------------------------------------------------------------------------
+-- The set of declarations that have type restrictions
+
+data RestrictedDecl
+  = RestrictedParameter ParameterSort
+  | RestrictedProperty
+  | RestrictedNetwork
+  | RestrictedDataset
+  deriving (Show)
+
+instance Pretty RestrictedDecl where
+  pretty = \case
+    RestrictedParameter s -> pretty (ParameterDef s)
+    RestrictedProperty {} -> "@property"
+    RestrictedNetwork {} -> pretty NetworkDef
+    RestrictedDataset {} -> pretty DatasetDef

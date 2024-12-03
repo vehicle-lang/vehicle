@@ -4,7 +4,6 @@ module Vehicle.Compile.Error where
 
 import Control.Exception (IOException)
 import Control.Monad.Except (MonadError, throwError)
-import Data.List.NonEmpty (NonEmpty)
 import Data.Map qualified as Map
 import Data.Void (Void)
 import Prettyprinter (list)
@@ -23,6 +22,10 @@ import Vehicle.Data.Code.Value
 import Vehicle.Data.Tensor (TensorShape)
 import Vehicle.Syntax.Parse (ParseError, ParseLocation)
 import Vehicle.Verify.QueryFormat.Core
+import Vehicle.Compile.Normalise.Builtin (NormalisableBuiltin)
+import Data.Text (Text)
+import Data.List.NonEmpty (NonEmpty)
+import Data.Typeable (Proxy)
 
 --------------------------------------------------------------------------------
 -- Compilation monad
@@ -31,6 +34,52 @@ type MonadCompile m =
   ( MonadLogger m,
     MonadError CompileError m
   )
+
+--------------------------------------------------------------------------------
+-- Typing errors
+
+data MissingExplicitArgError builtin = MissingExplicitArgError 
+  { _ctx :: NamedBoundCtx
+  , explicitBinder :: Binder builtin
+  , nonExplicitArg :: Arg builtin
+  } deriving (Show)
+
+data RelevantUseOfIrrelevantVariableError builtin = RelevantUseOfIrrelevantVariableError
+  { _proxy :: Proxy builtin
+  , _provenance :: Provenance
+  , irrelevantVariableName :: Name
+  } deriving (Show)
+
+data FunctionTypeMismatchError builtin = FunctionTypeMismatchError
+  { _ctx :: NamedBoundCtx
+  , originalFunction :: Expr builtin
+  , currentExpectedType :: Expr builtin
+  , currentUncheckedArgs :: [Arg builtin]
+  } deriving (Show)
+
+newtype FailedUnificationConstraintsError builtin = FailedUnificationConstraintsError
+  { failedConstraints :: NonEmpty (WithContext (UnificationConstraint builtin))
+  } deriving (Show)
+
+data FailedInstanceConstraintError builtin = 
+  FailedInstanceConstraintError
+  { _freeEnv :: FreeEnv builtin
+  , failedConstraint :: WithContext (InstanceConstraint builtin)
+  , exploredCandidates :: [(WithContext (InstanceCandidate builtin), UnAnnDoc)]
+  } deriving (Show)
+
+-- | Errors thrown during type-checking
+data TypingError builtin
+  = MissingExplicitArg (MissingExplicitArgError builtin)
+  | FunctionTypeMismatch (FunctionTypeMismatchError builtin)
+  | RelevantUseOfIrrelevantVariable (RelevantUseOfIrrelevantVariableError builtin)
+  | FailedUnificationConstraints (FailedUnificationConstraintsError builtin)
+  | FailedInstanceConstraint (FailedInstanceConstraintError builtin)
+  | FailedIndexConstraintTooBig (ConstraintContext builtin) Int Int
+  | FailedIndexConstraintUnknown (ConstraintContext builtin) (Value builtin) (VType builtin)
+  | UnsolvedConstraints (NonEmpty (WithContext (Constraint builtin)))
+  | UnsolvedMetas (Proxy builtin) (NonEmpty (MetaID, Provenance))
+  deriving (Show)
 
 --------------------------------------------------------------------------------
 -- Compilation errors
@@ -45,12 +94,9 @@ data CompileError
   | DeclarationBoundShadowing Provenance Name
   | MissingPrunedName Name
   | -- Type checking errors
-    UnresolvedHole Provenance Name
-  | forall builtin.
-    (PrintableBuiltin builtin, Show builtin) =>
+    forall builtin.
+    (Eq builtin, PrintableBuiltin builtin, NormalisableBuiltin builtin, Show builtin) =>
     TypingError (TypingError builtin)
-  | UnsolvedMetas (NonEmpty (MetaID, Provenance))
-  | RelevantUseOfIrrelevantVariable Provenance Name
   | -- Resource loading errors
     ResourceNotProvided DeclProvenance ExternalResource
   | ResourceIOError DeclProvenance ExternalResource IOException
@@ -59,32 +105,23 @@ data CompileError
   | -- Unsupported networks
     NetworkTypeHasVariableSizeTensor DeclProvenance (GluedType Builtin) (VType Builtin) InputOrOutput
   | NetworkTypeHasImplicitSizeTensor DeclProvenance (GluedType Builtin) Identifier InputOrOutput
-  | NetworkTypeIsNotAFunction DeclProvenance (GluedType Builtin)
-  | NetworkTypeIsNotOverTensors DeclProvenance (GluedType Builtin) (VType Builtin) InputOrOutput
-  | NetworkTypeHasNonExplicitArguments DeclProvenance (GluedType Builtin) (VBinder Builtin)
-  | NetworkTypeHasUnsupportedElementType DeclProvenance (GluedType Builtin) (VType Builtin) InputOrOutput
   | -- Unsupported datasets
-    DatasetTypeUnsupportedContainer DeclProvenance (GluedType Builtin)
-  | DatasetTypeUnsupportedElement DeclProvenance (GluedType Builtin) (VType Builtin)
-  | DatasetVariableSizeTensor DeclProvenance (GluedType Builtin) (VType Builtin)
+    DatasetVariableSizeTensor DeclProvenance (GluedType Builtin) (VType Builtin)
   | DatasetDimensionSizeMismatch DeclProvenance FilePath Int Int TensorShape TensorShape
   | DatasetDimensionsMismatch DeclProvenance FilePath (GluedExpr Builtin) TensorShape
   | DatasetTypeMismatch DeclProvenance FilePath (GluedType Builtin) (VType Builtin) (Doc Void)
   | DatasetInvalidIndex DeclProvenance FilePath Int Int
   | DatasetInvalidNat DeclProvenance FilePath Int
   | -- Unsupported parameters
-    ParameterTypeUnsupported DeclProvenance (GluedType Builtin)
-  | ParameterTypeVariableSizeIndex DeclProvenance (GluedType Builtin)
+    ParameterTypeVariableSizeIndex DeclProvenance (GluedType Builtin)
   | ParameterTypeInferableParameterIndex DeclProvenance Identifier
   | ParameterValueUnparsable DeclProvenance String BuiltinType
   | ParameterValueInvalidIndex DeclProvenance Int Int
   | ParameterValueInvalidNat DeclProvenance Int
-  | InferableParameterTypeUnsupported DeclProvenance (GluedType Builtin)
   | InferableParameterContradictory Identifier (DeclProvenance, ExternalResource, Int) (DeclProvenance, ExternalResource, Int)
   | InferableParameterUninferrable DeclProvenance
   | -- Unsupported properties
-    PropertyTypeUnsupported DeclProvenance (GluedType Builtin)
-  | NoPropertiesFound
+    NoPropertiesFound
   | -- Verification backend errors
     forall builtin.
     (PrintableBuiltin builtin, Eq builtin, PrettyFriendly (Contextualised (VType builtin) NamedBoundCtx)) =>
@@ -183,3 +220,38 @@ lookupInFreeCtx ::
 lookupInFreeCtx pass ident ctx = case Map.lookup ident ctx of
   Nothing -> internalScopingError pass ident
   Just x -> return x
+
+
+--------------------------------------------------------------------------------
+-- The final error type
+
+-- | Errors from external code that we have no control over.
+--  These may be either user or developer errors but in general we
+--  can't distinguish between the two.
+newtype ExternalError = ExternalError Text
+
+-- | Errors that are the user's responsibility to fix.
+data UserError = UserError
+  { provenance :: Provenance,
+    problem :: UnAnnDoc,
+    fix :: Maybe UnAnnDoc
+  }
+
+data VehicleError
+  = UError UserError
+  | EError ExternalError
+  | DError (Doc ())
+
+instance Pretty VehicleError where
+  pretty (UError (UserError p prob probFix)) =
+    unAnnotate $
+      "Error in"
+        <+> pretty p
+        <> ":"
+          <+> prob
+        <> maybe "" (\fix -> line <> fixText fix) probFix
+  pretty (EError (ExternalError text)) = pretty text
+  pretty (DError text) = unAnnotate text
+
+fixText :: Doc ann -> Doc ann
+fixText t = "Fix:" <+> t

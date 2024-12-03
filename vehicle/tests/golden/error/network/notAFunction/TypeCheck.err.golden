@@ -1,6 +1,5 @@
 Error in file 'notAFunction.vcl' at Line 2, Columns 5-8: The type of @network 'f':
   Rat
-is not supported as it is not a function.
-Fix: Only networks of the following types are allowed:
-  Tensor Rat [a_1, ..., a_n] -> Tensor Rat [b_1, ..., b_n]
-where 'a_i' and 'b_i' are all constants. Provide both an input type and output type for your network.
+is not supported. The possible valid types for '@network' annotated declarations are:
+  1. Tensor Rat [a_1, ..., a_n] -> Tensor Rat [b_1, ..., b_n]  (where 'a_i' and 'b_i' are all constants at compile time)
+Fix: change the type of 'f' to a supported type

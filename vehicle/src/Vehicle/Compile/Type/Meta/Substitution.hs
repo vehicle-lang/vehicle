@@ -153,9 +153,18 @@ instance MetaSubstitutable m builtin (ArgInsertionProblem builtin) where
       <*> subst s currentExpectedType
       <*> subst s uncheckedArgs
 
+instance MetaSubstitutable m builtin (InstanceArgOrigin builtin) where
+  subst s (ArgOrigin tcOp tcOpArgs tcOpType tc) =
+    ArgOrigin <$> subst s tcOp <*> subst s tcOpArgs <*> subst s tcOpType <*> subst s tc
+
+instance MetaSubstitutable m builtin (InstanceTypeRestrictionOrigin builtin) where
+  subst s (TypeRestrictionOrigin env n sort t) =
+    TypeRestrictionOrigin env n sort <$> subst s t
+
 instance MetaSubstitutable m builtin (InstanceConstraintOrigin builtin) where
-  subst s (InstanceConstraintOrigin tcOp tcOpArgs tcOpType tc) =
-    InstanceConstraintOrigin <$> subst s tcOp <*> subst s tcOpArgs <*> subst s tcOpType <*> subst s tc
+  subst s = \case
+    InstanceTypeRestrictionOrigin t -> InstanceTypeRestrictionOrigin <$> subst s t
+    InstanceArgOrigin t -> InstanceArgOrigin <$> subst s t
 
 instance MetaSubstitutable m builtin (UnificationConstraintOrigin builtin) where
   subst s = \case

@@ -6,7 +6,6 @@ module Vehicle.Compile.Normalise.Builtin where
 
 import Control.Monad (zipWithM)
 import Data.Foldable (foldrM)
-import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print.Builtin
 import Vehicle.Data.Builtin.Core
@@ -44,7 +43,7 @@ import Vehicle.Data.Tensor (Tensor, foldTensor, mapTensor, zipWithTensor)
 -- Differential logics all normalise to the same type but have different
 -- methods of normalisation.
 type EvalBuiltinApp m builtin =
-  (MonadCompile m) =>
+  (MonadLogger m) =>
   EvalApp (Value builtin) m ->
   Eval builtin m ->
   builtin ->
@@ -52,7 +51,7 @@ type EvalBuiltinApp m builtin =
   m (Value builtin)
 
 type Eval builtin m =
-  (MonadCompile m) =>
+  (MonadLogger m) =>
   Expr builtin ->
   m (Value builtin)
 

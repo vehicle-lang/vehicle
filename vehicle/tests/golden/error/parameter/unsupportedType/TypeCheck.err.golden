@@ -1,5 +1,8 @@
-Error in file 'unsupportedType.vcl' at Line 2, Columns 1-2: The type of @parameter 'n':
+Error in file 'unsupportedType.vcl' at Line 2, Columns 5-15: The type of @parameter 'n':
   Nat -> Nat
-is not supported. Only the following types are allowed for parameters:
-  Bool, Index, Nat, Rat
-Fix: change the element type of 'n' to a supported type.
+is not supported. The possible valid types for '@parameter' annotated declarations are:
+  1. Bool
+  2. Index
+  3. Nat
+  4. Rat
+Fix: change the type of 'n' to a supported type

@@ -5,7 +5,7 @@ import Vehicle.Data.Builtin.Linearity (LinearityBuiltin (..))
 import Vehicle.Data.Builtin.Loss (LossTensorBuiltin (..))
 import Vehicle.Data.Builtin.Polarity (PolarityBuiltin (..))
 import Vehicle.Data.Builtin.Tensor (TensorBuiltin (..))
-import Vehicle.Data.Code.Expr (Expr (..), mapBuiltins, normAppList, pattern BuiltinExpr)
+import Vehicle.Data.Code.Expr (Expr (..), mapBuiltins, normAppList, pattern BuiltinExpr, pattern App)
 import Vehicle.Data.Code.Interface (tensorToExpr)
 import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction (..))
 import Vehicle.Prelude
@@ -153,3 +153,9 @@ instance PrintableBuiltin TensorBuiltin where
 
 instance PrintableBuiltin LossTensorBuiltin where
   isCoercion = const False
+
+isCoercionExpr :: PrintableBuiltin builtin => Expr builtin -> Bool
+isCoercionExpr = \case
+  Builtin _ b -> isCoercion b
+  App (Builtin _ b) _ -> isCoercion b
+  _ -> False

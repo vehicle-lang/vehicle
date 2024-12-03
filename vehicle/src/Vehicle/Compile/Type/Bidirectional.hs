@@ -194,7 +194,7 @@ inferExpr e = do
       if currentRelevance == Relevant && relevanceOf binder == Irrelevant
         then do
           let varName = fromMaybe "<unknown>" $ nameOf binder
-          throwError $ RelevantUseOfIrrelevantVariable p varName
+          throwError $ TypingError $ RelevantUseOfIrrelevantVariable $ RelevantUseOfIrrelevantVariableError (Proxy @builtin) p varName
         else do
           let liftedCheckedType = liftDBIndices (Lv $ unIx i + 1) (typeOf binder)
           return (BoundVar p i, liftedCheckedType)
@@ -340,7 +340,7 @@ solveArgInsertionProblem ctx problem@ArgInsertionProblem {..} = do
               -- Otherwise we're truely stuck and we error.
               | otherwise -> do
                   let boundCtx = toNamedBoundCtx ctx
-                  throwError $ TypingError $ FunctionTypeMismatch boundCtx originalFun originalArgs currentExpectedType uncheckedArgs
+                  throwError $ TypingError $ FunctionTypeMismatch $ FunctionTypeMismatchError boundCtx originalFun currentExpectedType uncheckedArgs
 
 forceApplicationHeadType ::
   (MonadTypeChecker builtin m) =>
@@ -370,7 +370,7 @@ checkArgsAgainstPiType ctx problem binder resultType
         [] -> return (Nothing, args)
         (arg : remainingArgs)
           | visibilityOf arg == visibility -> return (Just arg, remainingArgs)
-          | isExplicit binder -> throwError $ TypingError $ MissingExplicitArgument (toNamedBoundCtx ctx) binder arg
+          | isExplicit binder -> throwError $ TypingError $ MissingExplicitArg $ MissingExplicitArgError (toNamedBoundCtx ctx) binder arg
           | otherwise -> return (Nothing, args)
 
       -- Calculate what the new checked arg should be, create a fresh meta
@@ -404,6 +404,29 @@ argInsertionProblemSolved ::
   m (ArgInsertionProblemSolution builtin)
 argInsertionProblemSolved problem@ArgInsertionProblem {..} =
   return $ Right (solutionSoFar problem, currentExpectedType)
+
+instantiateArgForNonExplicitBinder ::
+  (MonadTypeChecker builtin m) =>
+  BoundCtx (Type builtin) ->
+  Provenance ->
+  (Expr builtin, [Arg builtin], Type builtin) ->
+  Binder builtin ->
+  m (GluedArg builtin)
+instantiateArgForNonExplicitBinder boundCtx p (fun, funArgs, funType) binder = do
+  let binderType = typeOf binder
+  checkedExpr <- case visibilityOf binder of
+    Explicit {} -> compilerDeveloperError "Should not be instantiating Arg for explicit Binder"
+    Implicit {} -> freshMetaExpr p binderType boundCtx
+    Instance {} -> do
+      let origin =
+            InstanceArgOrigin $ ArgOrigin
+            { checkedInstanceOp = fun,
+              checkedInstanceOpArgs = funArgs,
+              checkedInstanceOpType = funType,
+              checkedInstanceType = binderType
+            }
+      createFreshInstanceConstraint boundCtx (provenanceOf fun) origin (relevanceOf binder) binderType
+  return $ Arg p (markInserted $ visibilityOf binder) (relevanceOf binder) checkedExpr
 
 --------------------------------------------------------------------------------
 -- Debug functions

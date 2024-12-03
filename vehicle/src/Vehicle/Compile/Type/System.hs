@@ -1,6 +1,6 @@
 module Vehicle.Compile.Type.System where
 
-import Vehicle.Compile.Context.Free (MonadFreeContext)
+import Vehicle.Compile.Context.Free (MonadFreeContext, getFreeEnv)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Builtin (NormalisableBuiltin)
 import Vehicle.Compile.Prelude
@@ -10,18 +10,15 @@ import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Constraint.IndexSolver (solveDefaultIndexConstraints, solveIndexConstraint)
 import Vehicle.Compile.Type.Constraint.InstanceDefaultSolver (addNewConstraintUsingDefaults)
 import Vehicle.Compile.Type.Constraint.InstanceSolver
-import Vehicle.Compile.Type.Constraint.LinearityAnnotationRestrictions
 import Vehicle.Compile.Type.Constraint.LinearitySolver
-import Vehicle.Compile.Type.Constraint.PolarityAnnotationRestrictions
 import Vehicle.Compile.Type.Constraint.PolaritySolver
-import Vehicle.Compile.Type.Constraint.StandardAnnotationRestrictions
 import Vehicle.Compile.Type.Core
-import Vehicle.Compile.Type.Monad (freshMetaExpr)
+import Vehicle.Compile.Type.Monad (freshMetaExpr, createFreshUnificationConstraint, createFreshInstanceConstraint)
 import Vehicle.Compile.Type.Monad.Class (MonadTypeChecker)
 import Vehicle.Compile.Type.Subsystem.InputOutputInsertion (addFunctionAuxiliaryInputOutputConstraints)
 import Vehicle.Data.Builtin.Linearity
 import Vehicle.Data.Builtin.Polarity
-import Vehicle.Data.Builtin.Standard (Builtin (..), BuiltinType (..))
+import Vehicle.Data.Builtin.Standard (Builtin (..), BuiltinType (..), TypeClass(..))
 import Vehicle.Data.Code.Value
 
 -- | The type-checking monad.
@@ -36,30 +33,12 @@ class (Eq builtin, NormalisableBuiltin builtin, TypableBuiltin builtin) => HasTy
     (MonadTypeChecker builtin m) =>
     BuiltinUpdate m Builtin builtin
 
-  restrictNetworkType ::
+  restrictDeclType ::
     (MonadTypeChecker builtin m) =>
+    RestrictedDecl ->
     DeclProvenance ->
-    GluedType builtin ->
+    Type builtin ->
     m (Type builtin)
-
-  restrictDatasetType ::
-    (MonadTypeChecker builtin m) =>
-    DeclProvenance ->
-    GluedType builtin ->
-    m (Type builtin)
-
-  restrictParameterType ::
-    (MonadTypeChecker builtin m) =>
-    ParameterSort ->
-    DeclProvenance ->
-    GluedType builtin ->
-    m (Type builtin)
-
-  restrictPropertyType ::
-    (MonadTypeChecker builtin m) =>
-    DeclProvenance ->
-    GluedType builtin ->
-    m ()
 
   addAuxiliaryInputOutputConstraints ::
     (MonadTypeChecker builtin m) => Decl builtin -> m (Decl builtin)
@@ -83,10 +62,7 @@ class (Eq builtin, NormalisableBuiltin builtin, TypableBuiltin builtin) => HasTy
 
 instance HasTypeSystem Builtin where
   convertFromStandardBuiltins = convertToTypingBuiltins
-  restrictNetworkType = restrictStandardNetworkType
-  restrictDatasetType = restrictStandardDatasetType
-  restrictParameterType = restrictStandardParameterType
-  restrictPropertyType = restrictStandardPropertyType
+  restrictDeclType = restrictStandardDeclType
   solveInstance = solveStandardInstanceConstraint
   addAuxiliaryInputOutputConstraints = return
   generateDefaultConstraint = addNewConstraintUsingDefaults solveDefaultIndexConstraints
@@ -105,21 +81,42 @@ solveStandardInstanceConstraint database constraint = do
     VBuiltin {} -> solveInstanceConstraint database constraint
     _ -> malformedConstraintError constraint
 
+restrictStandardDeclType ::
+  forall m.
+  (MonadTypeChecker Builtin m) =>
+  RestrictedDecl ->
+  DeclProvenance ->
+  Type Builtin ->
+  m (Type Builtin)
+restrictStandardDeclType declSort (ident, p) typ = do
+  env <- getFreeEnv
+  let tc = case declSort of
+        RestrictedProperty -> ValidPropertyType
+        RestrictedParameter s -> ValidParameterType s
+        RestrictedDataset -> ValidDatasetType
+        RestrictedNetwork -> ValidNetworkType
+
+  let expr = BuiltinExpr p (TypeClass tc) [explicit typ]
+  let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin env (ident, provenanceOf typ) declSort typ
+  _ <- createFreshInstanceConstraint mempty p origin Irrelevant expr
+  return typ
+
 -------------------------------------------------------------------------------
 -- Linearity
 
 instance HasTypeSystem LinearityBuiltin where
   convertFromStandardBuiltins = convertToLinearityTypes
-  restrictNetworkType = checkLinearityNetworkType
-  restrictDatasetType = assertConstantLinearity
-  restrictParameterType = const assertConstantLinearity
-  restrictPropertyType _ _ = return ()
+  restrictDeclType = \case
+    RestrictedNetwork -> restrictLinearityNetworkType
+    RestrictedDataset -> assertConstantLinearity
+    RestrictedParameter {} -> assertConstantLinearity
+    RestrictedProperty {} -> const return
   solveInstance = solveLinearityConstraint
   addAuxiliaryInputOutputConstraints = addFunctionAuxiliaryInputOutputConstraints (LinearityRelation . FunctionLinearity)
   generateDefaultConstraint _ _ = return False
 
-freshLinearityMeta :: (MonadTypeChecker LinearityBuiltin m) => Provenance -> m (GluedExpr LinearityBuiltin)
-freshLinearityMeta p = freshMetaExpr p (TypeUniverse p 0) mempty
+freshLinearityMeta :: (MonadTypeChecker LinearityBuiltin m) => Provenance -> m (Expr LinearityBuiltin)
+freshLinearityMeta p = unnormalised <$> freshMetaExpr p (TypeUniverse p 0) mempty
 
 convertToLinearityTypes ::
   forall m.
@@ -130,10 +127,10 @@ convertToLinearityTypes p b args = case b of
   BuiltinConstructor c -> return $ normAppList (Builtin p (LinearityConstructor c)) args
   BuiltinType s -> case s of
     Unit -> return $ Builtin p $ Linearity Constant
-    Bool -> unnormalised <$> freshLinearityMeta p
-    Index -> unnormalised <$> freshLinearityMeta p
-    Nat -> unnormalised <$> freshLinearityMeta p
-    Rat -> unnormalised <$> freshLinearityMeta p
+    Bool -> freshLinearityMeta p
+    Index -> freshLinearityMeta p
+    Nat -> freshLinearityMeta p
+    Rat -> freshLinearityMeta p
     List -> case args of
       [tElem] -> return $ argExpr tElem
       _ -> monomorphisationError "List"
@@ -149,21 +146,56 @@ convertToLinearityTypes p b args = case b of
       compilerDeveloperError $
         "Monomorphisation should have got rid of" <+> squotes name <+> "s but found" <+> prettyVerbose args
 
+restrictLinearityNetworkType ::
+  forall m.
+  (MonadTypeChecker LinearityBuiltin m) =>
+  DeclProvenance ->
+  Type LinearityBuiltin ->
+  m (Type LinearityBuiltin)
+restrictLinearityNetworkType (ident, p) networkType = do
+  inputLin <- freshLinearityMeta p
+  outputLin <- freshLinearityMeta p
+
+  let inputLinBinder = Binder p (BinderDisplayForm OnlyType False) Explicit Relevant inputLin
+  let functionNetworkType = Pi p inputLinBinder outputLin
+  createFreshUnificationConstraint p mempty CheckingAuxiliary networkType functionNetworkType
+
+  -- The linearity of the output of a network is the max of 1) Linear (as outputs
+  -- are also variables) and 2) the linearity of its input. So prepend this
+  -- constraint to the front of the type.
+  logDebug MaxDetail "Appending `MaxLinearity` constraint to network type"
+  let outputLinProvenance = Linear $ NetworkOutputProvenance p (nameOf ident)
+  let linConstraintArgs = [LinearityExpr p outputLinProvenance, inputLin, outputLin]
+  let linConstraint = App (Builtin p (LinearityRelation MaxLinearity)) (Arg p Explicit Relevant <$> linConstraintArgs)
+  let linConstraintBinder = Binder p (BinderDisplayForm OnlyType False) (Instance True) Irrelevant linConstraint
+
+  return $ Pi p linConstraintBinder functionNetworkType
+
+assertConstantLinearity ::
+  (MonadTypeChecker LinearityBuiltin m) =>
+  DeclProvenance ->
+  Type LinearityBuiltin ->
+  m (Type LinearityBuiltin)
+assertConstantLinearity (_, p) t = do
+  createFreshUnificationConstraint p mempty CheckingAuxiliary (LinearityExpr p Constant) t
+  return t
+
 -------------------------------------------------------------------------------
 -- Polarity
 
 instance HasTypeSystem PolarityBuiltin where
   convertFromStandardBuiltins = convertToPolarityTypes
-  restrictNetworkType = checkNetworkType
-  restrictDatasetType = assertUnquantifiedPolarity
-  restrictParameterType = const assertUnquantifiedPolarity
-  restrictPropertyType _ _ = return ()
+  restrictDeclType = \case
+    RestrictedNetwork -> restrictPolarityNetworkType
+    RestrictedDataset -> assertUnquantifiedPolarity
+    RestrictedParameter {} -> assertUnquantifiedPolarity
+    RestrictedProperty -> const return
   solveInstance = solvePolarityConstraint
   addAuxiliaryInputOutputConstraints = addFunctionAuxiliaryInputOutputConstraints (PolarityRelation . FunctionPolarity)
   generateDefaultConstraint _ _ = return False
 
-freshPolarityMeta :: (MonadTypeChecker PolarityBuiltin m) => Provenance -> m (GluedExpr PolarityBuiltin)
-freshPolarityMeta p = freshMetaExpr p (TypeUniverse p 0) mempty
+freshPolarityMeta :: (MonadTypeChecker PolarityBuiltin m) => Provenance -> m (Expr PolarityBuiltin)
+freshPolarityMeta p = unnormalised <$> freshMetaExpr p (TypeUniverse p 0) mempty
 
 convertToPolarityTypes ::
   forall m.
@@ -174,10 +206,10 @@ convertToPolarityTypes p b args = case b of
   BuiltinFunction f -> return $ normAppList (Builtin p (PolarityFunction f)) args
   BuiltinType s -> case s of
     Unit -> return $ PolarityExpr p Unquantified
-    Bool -> unnormalised <$> freshPolarityMeta p
+    Bool -> freshPolarityMeta p
     Index -> return $ PolarityExpr p Unquantified
     Nat -> return $ PolarityExpr p Unquantified
-    Rat -> unnormalised <$> freshPolarityMeta p
+    Rat -> freshPolarityMeta p
     List -> case args of
       [tElem] -> return $ argExpr tElem
       _ -> monomorphisationError "List"
@@ -192,3 +224,27 @@ convertToPolarityTypes p b args = case b of
     monomorphisationError name =
       compilerDeveloperError $
         "Monomorphisation should have got rid of partially applied" <+> name <+> "types but found" <+> prettyVerbose args
+
+restrictPolarityNetworkType ::
+  forall m.
+  (MonadTypeChecker PolarityBuiltin m) =>
+  DeclProvenance ->
+  Type PolarityBuiltin ->
+  m (Type PolarityBuiltin)
+restrictPolarityNetworkType (_, p) networkType = do
+  let inputPol = PolarityExpr p Unquantified
+  let outputPol = PolarityExpr p Unquantified
+
+  let inputPolBinder = Binder p (BinderDisplayForm OnlyType False) Explicit Relevant inputPol
+  let functionNetworkType = Pi p inputPolBinder outputPol
+  createFreshUnificationConstraint p mempty CheckingAuxiliary networkType functionNetworkType
+  return networkType
+
+assertUnquantifiedPolarity ::
+  (MonadTypeChecker PolarityBuiltin m) =>
+  DeclProvenance ->
+  Type PolarityBuiltin ->
+  m (Type PolarityBuiltin)
+assertUnquantifiedPolarity (_, p) t = do
+  createFreshUnificationConstraint p mempty CheckingAuxiliary (PolarityExpr p Unquantified) t
+  return t

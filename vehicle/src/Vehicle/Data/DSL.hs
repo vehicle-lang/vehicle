@@ -30,6 +30,7 @@ module Vehicle.Data.DSL
     forAllTypePairs,
     forAllTypeTriples,
     implTypeTripleLam,
+    implTypeDoubleLam,
     builtin,
     tHole,
   )
@@ -148,6 +149,12 @@ implLam n = lam n (Implicit False) Relevant
 
 instLam :: Name -> DSLExpr builtin -> (DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
 instLam n = lam n (Instance False) Relevant
+
+implTypeDoubleLam :: (DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
+implTypeDoubleLam f =
+  implLam "t1" type0 $ \t1 ->
+    implLam "t2" type0 $ \t2 ->
+      f t1 t2
 
 implTypeTripleLam :: (DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
 implTypeTripleLam f =

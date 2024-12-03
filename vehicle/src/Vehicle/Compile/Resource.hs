@@ -3,7 +3,6 @@ module Vehicle.Compile.Resource where
 import Control.DeepSeq (NFData)
 import Data.Aeson (ToJSON)
 import Data.Aeson.Types (FromJSON)
-import Data.Hashable (Hashable)
 import GHC.Generics
 import Vehicle.Data.Builtin.Core (BuiltinType (..))
 import Vehicle.Data.Tensor (TensorShape)
@@ -65,22 +64,3 @@ instance FromJSON NetworkBaseType
 instance Pretty NetworkBaseType where
   pretty = \case
     NetworkRatType -> pretty Rat
-
---------------------------------------------------------------------------------
--- Resource constraints
-
-data ResourceConstraint
-  = IsValidParameterType
-  | IsValidDatasetType
-  | IsValidNetworkType
-  | IsValidPropertyType
-  deriving (Show, Eq, Ord, Generic)
-
-instance Hashable ResourceConstraint
-
-instance Pretty ResourceConstraint where
-  pretty = \case
-    IsValidParameterType -> "IsValidParameterType"
-    IsValidDatasetType -> "IsValidDatasetType"
-    IsValidNetworkType -> "IsValidNetworkType"
-    IsValidPropertyType -> "IsValidPropertyType"

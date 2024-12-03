@@ -7,6 +7,7 @@ import Prettyprinter (Pretty (..))
 import Vehicle.Syntax.AST.Name
 import Vehicle.Syntax.AST.Provenance
 import Vehicle.Syntax.AST.Type
+import Data.Hashable (Hashable)
 
 --------------------------------------------------------------------------------
 -- Declarations
@@ -97,11 +98,13 @@ isAbstractDecl = \case
 data ParameterSort
   = Inferable
   | NonInferable
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Ord, Show, Generic)
 
 instance NFData ParameterSort
 
 instance Serialize ParameterSort
+
+instance Hashable ParameterSort
 
 instance Pretty ParameterSort where
   pretty = \case

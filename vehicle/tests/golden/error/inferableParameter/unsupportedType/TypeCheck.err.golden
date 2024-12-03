@@ -1,4 +1,5 @@
-Error in file 'unsupportedType.vcl' at Line 2, Columns 1-2: The type of @parameter 'n':
+Error in file 'unsupportedType.vcl' at Line 2, Columns 5-8: The type of @parameter 'n':
   Rat
-is not supported. Inferable parameters must be of type 'Nat'.
-Fix: either change the type of 'n' or make the parameter non-inferable and provide the value manually.
+is not supported. The possible valid types for '@parameter' annotated declarations are:
+  1. Nat
+Fix: change the type of 'n' to a supported type

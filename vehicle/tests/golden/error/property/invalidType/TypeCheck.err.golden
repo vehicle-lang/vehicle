@@ -1,5 +1,7 @@
-Error in file 'invalidType.vcl' at Line 2, Columns 1-2: The type of @property 'p':
+Error in file 'invalidType.vcl' at Line 2, Columns 5-8: The type of @property 'p':
   Rat
-is not supported. Only the following types are allowed for '@property's:
-  Bool, Vector Bool n, Tensor Bool ns
-Fix: either change the type of 'p' to a supported type or remove the '@property' annotation.
+is not supported. The possible valid types for '@property' annotated declarations are:
+  1. Bool
+  2. Vector Bool n
+  3. Tensor Bool ns
+Fix: change the type of 'p' to a supported type

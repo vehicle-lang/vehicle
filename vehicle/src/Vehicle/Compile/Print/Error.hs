@@ -7,62 +7,23 @@ module Vehicle.Compile.Print.Error
 where
 
 import Control.Monad.Except (ExceptT, runExceptT)
-import Data.List.NonEmpty qualified as NonEmpty
-import Data.Monoid (Endo (..))
-import Data.Text (Text, pack)
-import Prettyprinter (list)
+import Data.Text (pack)
 import System.FilePath
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
-import Vehicle.Compile.Print.Builtin
-import Vehicle.Compile.Type.Core
 import Vehicle.Data.Assertion (prettyUnderConstrainedVariable)
 import Vehicle.Data.Builtin.Linearity
 import Vehicle.Data.Builtin.Polarity
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
-import Vehicle.Data.DSL
-import Vehicle.Data.Universe (UniverseLevel (..))
-import Vehicle.Libraries.StandardLibrary.Definitions (pattern TensorIdent)
 import Vehicle.Syntax.Parse (ParseError (..))
 import Prelude hiding (pi)
+import Vehicle.Compile.Print.TypingError
 
 --------------------------------------------------------------------------------
 -- User errors
-
--- | Errors that are the user's responsibility to fix.
-data UserError = UserError
-  { provenance :: Provenance,
-    problem :: UnAnnDoc,
-    fix :: Maybe UnAnnDoc
-  }
-
--- | Errors from external code that we have no control over.
---  These may be either user or developer errors but in general we
---  can't distinguish between the two.
-newtype ExternalError = ExternalError Text
-
-data VehicleError
-  = UError UserError
-  | EError ExternalError
-  | DError (Doc ())
-
-instance Pretty VehicleError where
-  pretty (UError (UserError p prob probFix)) =
-    unAnnotate $
-      "Error in"
-        <+> pretty p
-        <> ":"
-          <+> prob
-        <> maybe "" (\fix -> line <> fixText fix) probFix
-  pretty (EError (ExternalError text)) = pretty text
-  pretty (DError text) = unAnnotate text
-
-fixText :: Doc ann -> Doc ann
-fixText t = "Fix:" <+> t
 
 logCompileError ::
   (MonadLogger m) =>
@@ -300,228 +261,7 @@ instance MeaningfulError CompileError where
     -- Typing --
     ------------
 
-    TypingError (FunctionTypeMismatch ctx fun _originalArgs nonPiType args :: TypingError builtin) ->
-      UError $
-        UserError
-          { provenance = p,
-            problem =
-              "expected"
-                -- <+> squotes (prettyFriendly $ WithContext fun ctx)
-                <+> squotes (prettyVerbose fun)
-                <+> "to have something of type"
-                <+> squotes (prettyFriendly $ WithContext expectedType ctx)
-                <+> "but inferred type"
-                <+> squotes (prettyFriendly $ WithContext nonPiType ctx),
-            fix = Nothing
-          }
-      where
-        p = provenanceOf fun
-
-        mkRes :: [Endo (DSLExpr builtin)]
-        mkRes =
-          [ Endo $ \tRes -> pi Nothing (visibilityOf arg) (relevanceOf arg) (tHole ("arg" <> pack (show i))) (const tRes)
-            | (i, arg) <- zip [0 :: Int ..] args
-          ]
-
-        expectedType :: Expr builtin
-        expectedType = fromDSL p (appEndo (mconcat mkRes) (tHole "res"))
-    UnresolvedHole p name ->
-      UError $
-        UserError
-          { provenance = p,
-            problem = "the type of" <+> squotes (pretty name) <+> "could not be resolved",
-            fix = Nothing
-          }
-    TypingError (FailedUnificationConstraints cs) ->
-      UError $
-        UserError
-          { provenance = provenanceOf ctx,
-            problem =
-              constraintOriginMessage
-                <> "."
-                  <+> "In particular"
-                  <+> squotes (prettyFriendly (WithContext e1 boundCtx))
-                  <+> "is not equal to"
-                  <+> squotes (prettyFriendly (WithContext e2 boundCtx))
-                <> ".",
-            fix = Just "check your types"
-          }
-      where
-        WithContext (Unify origin e1 e2) ctx = NonEmpty.head cs
-        boundCtx = namedBoundCtxOf ctx
-
-        constraintOriginMessage = case origin of
-          CheckingExprType CheckingExpr {..} ->
-            "expected"
-              <+> squotes (prettyUnificationConstraintOriginExpr ctx checkedExpr)
-              <+> "to be of type"
-              <+> squotes (prettyFriendly (WithContext checkedExprExpectedType boundCtx))
-              <+> "but was found to be of type"
-              <+> squotes (prettyFriendly (WithContext checkedExprActualType boundCtx))
-          CheckingBinderType CheckingBinder {..} ->
-            "expected the variable"
-              <+> quotePretty checkedBinderName
-              <+> "to be of type"
-              <+> squotes (prettyFriendly $ WithContext checkedBinderExpectedType boundCtx)
-              <+> "but was found to be of type"
-              <+> squotes (prettyFriendly $ WithContext checkedBinderActualType boundCtx)
-          CheckingInstanceType InstanceConstraintOrigin {..} ->
-            "unable to find a consistent type for the overloaded expression"
-              <+> squotes (prettyTypeClassConstraintOriginExpr ctx checkedInstanceOp checkedInstanceOpArgs)
-          CheckingAuxiliary ->
-            developerError "Auxiliary constraints should not be unsolved."
-    TypingError (UnsolvedConstraints cs) ->
-      UError $
-        UserError
-          { provenance = provenanceOf ctx,
-            problem = constraintOriginMessage <> ".", -- <+>
-            -- "In particular unable to solve the constraint:" <+>
-            --  prettyFriendlyDB nameCtx constraint
-            fix = Just "try adding more type annotations"
-          }
-      where
-        WithContext constraint ctx = NonEmpty.head cs
-        nameCtx = namedBoundCtxOf ctx
-
-        constraintOriginMessage = case constraint of
-          UnificationConstraint (Unify origin _ _) -> case origin of
-            CheckingExprType CheckingExpr {..} ->
-              "expected"
-                <+> squotes (prettyUnificationConstraintOriginExpr ctx checkedExpr)
-                <+> "to be of type"
-                <+> squotes (prettyFriendly $ WithContext checkedExprExpectedType nameCtx)
-                <+> "but was unable to prove it."
-            CheckingBinderType CheckingBinder {..} ->
-              "expected the variable"
-                <+> squotes (pretty checkedBinderName)
-                <+> "to be of type"
-                <+> squotes (prettyFriendly $ WithContext checkedBinderActualType nameCtx)
-                <+> "but was unable to prove it."
-            CheckingInstanceType InstanceConstraintOrigin {..} ->
-              "insufficient information to find a valid type for the overloaded expression"
-                <+> squotes (prettyTypeClassConstraintOriginExpr ctx checkedInstanceOp checkedInstanceOpArgs)
-            CheckingAuxiliary ->
-              developerError "Auxiliary constraints should not be unsolved."
-          InstanceConstraint (Resolve InstanceConstraintOrigin {..} _ _ _) ->
-            "insufficient information to find a valid type for the overloaded expression"
-              <+> squotes (prettyTypeClassConstraintOriginExpr ctx checkedInstanceOp checkedInstanceOpArgs)
-          ApplicationConstraint {} ->
-            "unsolved application constraint: " <+> prettyFriendly (WithContext constraint ctx)
-    UnsolvedMetas ms ->
-      UError $
-        UserError
-          { provenance = p,
-            problem = "Unable to infer type of bound variable",
-            fix = Just "add more type annotations"
-          }
-      where
-        (_, p) = NonEmpty.head ms
-    TypingError (MissingExplicitArgument ctx argBinder arg) ->
-      UError $
-        UserError
-          { provenance = provenanceOf arg,
-            problem =
-              "expected an"
-                <+> pretty Explicit
-                <+> "argument of type"
-                <+> argTypeDoc
-                <+> "but instead found"
-                <+> pretty (visibilityOf arg)
-                <+> "argument"
-                <+> squotes (prettyFriendly $ WithContext (argExpr arg) ctx),
-            fix = Just $ "try inserting an argument of type" <+> argTypeDoc
-          }
-      where
-        argTypeDoc = prettyFriendly $ WithContext (typeOf argBinder) ctx
-    TypingError (FailedInstanceConstraint (WithContext constraint ctx) candidates :: TypingError builtin) ->
-      UError $
-        UserError
-          { provenance = provenanceOf ctx,
-            problem =
-              "unable to work out a valid type for the overloaded expression"
-                <+> originExpr
-                <> "."
-                <> line
-                <> "Type checking has deduced that it is of type:"
-                <> line
-                <> indent 2 deducedType
-                <> line
-                <> "but"
-                  <+> originExpr
-                  <+> "has only the following valid types:"
-                <> line
-                <> indent 2 (vsep (fmap calculateCandidateType candidates)),
-            fix = Nothing
-          }
-      where
-        InstanceConstraintOrigin tcOp tcOpArgs tcOpType tc = instanceOrigin constraint
-
-        deducedType = calculateOpType (namedBoundCtxOf ctx) $ case tc of
-          App _ as -> NonEmpty.toList as
-          _ -> []
-
-        originExpr :: Doc a
-        originExpr = squotes (prettyTypeClassConstraintOriginExpr ctx tcOp tcOpArgs)
-
-        calculateOpType :: NamedBoundCtx -> [Arg builtin] -> Doc a
-        calculateOpType dbCtx args = do
-          -- Don't know the actual solution so construct arbitrary term
-          let tcSolution = Universe mempty (UniverseLevel 0)
-          let argsToSubst = fmap argExpr args <> [tcSolution]
-          let inferedOpType = instantiateTelescope tcOpType argsToSubst
-          prettyFriendly (WithContext inferedOpType dbCtx)
-
-        calculateCandidateType :: WithContext (InstanceCandidate builtin) -> Doc a
-        calculateCandidateType (WithContext candidate typingCtx) =
-          go typingCtx (candidateExpr candidate)
-          where
-            go :: BoundCtx (Expr builtin) -> Expr builtin -> Doc a
-            go dbCtx = \case
-              App (Builtin _ _tc) args ->
-                calculateOpType (toNamedBoundCtx dbCtx) (NonEmpty.toList args)
-              Pi _ binder result ->
-                go (binder : dbCtx) result
-              _ -> "UNSUPPORTED PRINTING"
-
-        instantiateTelescope :: Expr builtin -> [Expr builtin] -> Expr builtin
-        instantiateTelescope expr arguments = case (expr, arguments) of
-          (_, []) -> expr
-          (Pi _ _binder body, arg : args) -> do
-            let body' = arg `substDBInto` body
-            instantiateTelescope body' args
-          _ -> developerError "Malformed type-class operation type"
-    TypingError (FailedIndexConstraintTooBig ctx v n) ->
-      UError $
-        UserError
-          { provenance = provenanceOf ctx,
-            problem =
-              "the value"
-                <+> squotes (pretty v)
-                <+> "is too big to"
-                <+> "be used as an index of size"
-                <+> squotes (pretty n)
-                <> ".",
-            fix = Nothing
-          }
-    TypingError (FailedIndexConstraintUnknown ctx v t) ->
-      UError $
-        UserError
-          { provenance = provenanceOf ctx,
-            problem =
-              "unable to determine if"
-                <+> squotes (prettyFriendly (WithContext v (namedBoundCtxOf ctx)))
-                <+> "is a valid index of size"
-                <+> squotes (prettyFriendly (WithContext t (namedBoundCtxOf ctx)))
-                <> ".",
-            fix = Nothing
-          }
-    RelevantUseOfIrrelevantVariable p name ->
-      UError $
-        UserError
-          { provenance = p,
-            problem = "cannot use irrelevant variable" <+> quotePretty name <+> "in an relevant context",
-            fix = Nothing
-          }
+    TypingError t -> UError $ typingErrorDetails t
     QuantifiedIfCondition ctx ->
       UError $
         UserError
@@ -606,7 +346,7 @@ instance MeaningfulError CompileError where
         entity = if resourceType == Parameter then "value" else "file"
 
     -- Network errors
-
+{-
     NetworkTypeIsNotAFunction (ident, _p) networkType ->
       UError $
         UserError
@@ -670,7 +410,7 @@ instance MeaningfulError CompileError where
                   <+> pretty io
                   <+> "uses"
                   <+> "supported types."
-          }
+          }-}
     NetworkTypeHasVariableSizeTensor (ident, _p) networkType tDim io ->
       UError $
         UserError
@@ -681,7 +421,7 @@ instance MeaningfulError CompileError where
                 <+> pretty io
                 <+> "tensor"
                 <+> squotes (prettyFriendlyEmptyCtx tDim)
-                <+> "is not a constant.",
+                <+> "is not a constant at compile time.",
             fix =
               Just $
                 supportedNetworkTypeDescription
@@ -705,50 +445,6 @@ instance MeaningfulError CompileError where
                   <+> "to an explicit value"
           }
     -- Dataset errors
-
-    DatasetTypeUnsupportedContainer (ident, p) datasetType ->
-      UError $
-        UserError
-          { provenance = p,
-            problem =
-              unsupportedAnnotationTypeDescription (pretty DatasetDef) ident datasetType
-                <> "."
-                  <+> "Only the following types are allowed for"
-                  <+> pretty Dataset
-                <> "s:"
-                <> line
-                <> indent 2 (prettyAllowedBuiltins supportedTypes),
-            fix =
-              Just $
-                "change the type of"
-                  <+> prettyIdentName ident
-                  <+> "to a supported type."
-          }
-      where
-        supportedTypes = map pretty [List, Vector] <> [pretty (identifierName TensorIdent)]
-    DatasetTypeUnsupportedElement (ident, p) datasetType elementType ->
-      UError $
-        UserError
-          { provenance = p,
-            problem =
-              unsupportedAnnotationTypeDescription (pretty DatasetDef) ident datasetType
-                <+> "as it has elements of an unsupported type:"
-                <> line
-                <> indent 2 (prettyFriendlyEmptyCtx elementType)
-                <> line
-                <> "Only the following element types are allowed for"
-                  <+> pretty Dataset
-                <> "s:"
-                <> line
-                <> indent 2 (prettyAllowedBuiltins supportedTypes),
-            fix =
-              Just $
-                "change the element type of"
-                  <+> prettyIdentName ident
-                  <+> "to a supported type."
-          }
-      where
-        supportedTypes = map pretty [Index, Nat, Rat]
     DatasetVariableSizeTensor (ident, p) datasetType variableDim ->
       UError $
         UserError
@@ -866,27 +562,6 @@ instance MeaningfulError CompileError where
             fix = Just $ datasetDimensionsFix "type" ident file
           }
     -- Parameter errors
-
-    ParameterTypeUnsupported (ident, p) expectedType ->
-      UError $
-        UserError
-          { provenance = p,
-            problem =
-              unsupportedAnnotationTypeDescription (pretty (ParameterDef NonInferable)) ident expectedType
-                <> "."
-                  <+> "Only the following types are allowed for"
-                  <+> pretty Parameter
-                <> "s:"
-                <> line
-                <> indent 2 (prettyAllowedBuiltins supportedTypes),
-            fix =
-              Just $
-                "change the element type of"
-                  <+> prettyIdentName ident
-                  <+> "to a supported type."
-          }
-      where
-        supportedTypes = map pretty [Bool, Index, Nat, Rat]
     ParameterValueUnparsable (ident, p) value expectedType ->
       UError $
         UserError
@@ -972,20 +647,6 @@ instance MeaningfulError CompileError where
                 "either replace the inferable parameter with a concrete value or"
                   <+> "open an issue on the Github tracker to request support."
           }
-    InferableParameterTypeUnsupported (ident, p) expectedType ->
-      UError $
-        UserError
-          { provenance = p,
-            problem =
-              unsupportedAnnotationTypeDescription (pretty (ParameterDef Inferable)) ident expectedType
-                <> "."
-                  <+> "Inferable parameters must be of type 'Nat'.",
-            fix =
-              Just $
-                "either change the type of"
-                  <+> prettyIdentName ident
-                  <+> "or make the parameter non-inferable and provide the value manually."
-          }
     InferableParameterContradictory ident ((ident1, _p1), r1, v1) ((ident2, p2), r2, v2) ->
       UError $
         UserError
@@ -1019,28 +680,7 @@ instance MeaningfulError CompileError where
                   <+> "be used as the dimension of a dataset"
                   <+> "(networks will be supported later)."
           }
-    PropertyTypeUnsupported (ident, p) actualType ->
-      UError $
-        UserError
-          { provenance = p,
-            problem =
-              unsupportedAnnotationTypeDescription (pretty AnnProperty) ident actualType
-                <> "."
-                  <+> "Only the following types are allowed for"
-                  <+> quotePretty AnnProperty
-                <> "s:"
-                <> line
-                <> indent 2 (prettyAllowedBuiltins supportedTypes),
-            fix =
-              Just $
-                "either change the type of"
-                  <+> prettyIdentName ident
-                  <+> "to a supported type or remove the"
-                  <+> quotePretty AnnProperty
-                  <+> "annotation."
-          }
-      where
-        supportedTypes = ["Bool", "Vector Bool n", "Tensor Bool ns"]
+      
 
     --------------------
     -- Backend errors --
@@ -1274,41 +914,6 @@ datasetDimensionsFix feature ident file =
     <+> quotePretty (takeFileName file)
     <+> "is in the format you were expecting."
 
-unsupportedAnnotationTypeDescription ::
-  (Eq builtin, PrintableBuiltin builtin) =>
-  Doc a ->
-  Identifier ->
-  GluedType builtin ->
-  Doc a
-unsupportedAnnotationTypeDescription annotation ident resourceType =
-  "The type of"
-    <+> annotation
-    <+> quotePretty (nameOf ident :: Text)
-    <> ":"
-    <> line
-    <> indent 2 (prettyFriendlyEmptyCtx unreducedResourceType)
-    <> line
-    <> ( if reducedResourceType == unreducedResourceType
-           then ""
-           else
-             "which reduces to:"
-               <> line
-               <> indent 2 (prettyFriendlyEmptyCtx reducedResourceType)
-               <> line
-       )
-    <> "is not supported"
-  where
-    unreducedResourceType = unnormalised resourceType
-    reducedResourceType = unnormalise 0 (normalised resourceType)
-
-supportedNetworkTypeDescription :: Doc a
-supportedNetworkTypeDescription =
-  "Only networks of the following types are allowed:"
-    <> line
-    <> indent 2 "Tensor Rat [a_1, ..., a_n] -> Tensor Rat [b_1, ..., b_n]"
-    <> line
-    <> "where 'a_i' and 'b_i' are all constants."
-
 errorInSubsystemMessage :: Doc a -> CompileError -> Doc a
 errorInSubsystemMessage task err =
   line
@@ -1404,9 +1009,6 @@ prettyAuxiliaryFunctionProvenance = \case
   FunctionInput n _ -> "which is used as an input to the function" <+> quotePretty n
   FunctionOutput n -> "which is returned as an output of the function" <+> quotePretty n
 
-prettyAllowedBuiltins :: [Doc b] -> Doc b
-prettyAllowedBuiltins = commaSep
-
 prettyOrdinal :: Doc b -> Int -> Maybe Int -> Doc b
 prettyOrdinal object argNo argTotal
   | argTotal == Just 1 = "the" <+> object
@@ -1426,27 +1028,10 @@ prettyOrdinal object argNo argTotal
       9 -> "ninth"
       _ -> developerError "Cannot convert ordinal"
 
-prettyTypeClassConstraintOriginExpr ::
-  (PrintableBuiltin builtin) =>
-  ConstraintContext builtin ->
-  Expr builtin ->
-  [Arg builtin] ->
-  Doc a
-prettyTypeClassConstraintOriginExpr ctx fun args = do
-  let expr = case fun of
-        -- We don't want to print out the actual coercion functions as the user is
-        -- oblivious to them. Instead we want to print out what they are applied to.
-        Builtin _ b | isCoercion b -> argExpr $ last args
-        _ -> fun
-  prettyFriendly $ WithContext expr (namedBoundCtxOf ctx)
-
-prettyUnificationConstraintOriginExpr ::
-  (PrintableBuiltin builtin) =>
-  ConstraintContext builtin ->
-  Expr builtin ->
-  Doc a
-prettyUnificationConstraintOriginExpr ctx expr =
-  prettyFriendly $ WithContext expr (namedBoundCtxOf ctx)
-
-prettyIdentName :: Identifier -> Doc a
-prettyIdentName ident = quotePretty (nameOf ident :: Name)
+supportedNetworkTypeDescription :: Doc a
+supportedNetworkTypeDescription =
+  "Only networks of the following types are allowed:"
+    <> line
+    <> indent 2 "Tensor Rat [a_1, ..., a_n] -> Tensor Rat [b_1, ..., b_n]"
+    <> line
+    <> "where 'a_i' and 'b_i' are all constants at compile time."

@@ -514,6 +514,12 @@ compileBuiltin _p b args = case b of
     HasFold -> unsupportedError
     HasMap -> unsupportedError
     HasQuantifierIn {} -> unsupportedError
+    ValidPropertyType -> unsupportedError
+    ValidParameterType {} -> unsupportedError
+    ValidNetworkType {} -> unsupportedError
+    ValidNetworkTensorType {} -> unsupportedError
+    ValidDatasetType {} -> unsupportedError
+    ValidDatasetElementType {} -> unsupportedError
   TypeClassOp op -> case op of
     QuantifierTC q -> case reverse args of
       (ExplicitArg _ _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier q [binder] body

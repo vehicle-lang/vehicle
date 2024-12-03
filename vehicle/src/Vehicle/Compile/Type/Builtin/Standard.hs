@@ -54,7 +54,13 @@ typeOfTypeClass tc = case tc of
   HasNatLits {} -> type0 ~> type0
   HasRatLits -> type0 ~> type0
   HasVecLits {} -> tNat ~> type0 ~> type0
-
+  ValidPropertyType -> type0 ~> type0
+  ValidParameterType {} -> type0 ~> type0
+  ValidNetworkType -> type0 ~> type0
+  ValidNetworkTensorType -> type0 ~> type0
+  ValidDatasetType -> type0 ~> type0
+  ValidDatasetElementType -> type0 ~> type0
+  
 typeOfTypeClassOp :: (HasStandardBuiltins builtin, BuiltinHasStandardTypeClasses builtin) => TypeClassOp -> DSLExpr builtin
 typeOfTypeClassOp b = case b of
   NegTC -> typeOfTCOp1 hasNeg

@@ -67,7 +67,7 @@ solveUnificationConstraint constraint = do
       addUnificationConstraints blockedConstraints
     HardFailure failedConstraints -> do
       finalFailedConstraints <- traverse substMetas failedConstraints
-      throwError $ TypingError $ FailedUnificationConstraints finalFailedConstraints
+      throwError $ TypingError $ FailedUnificationConstraints $ FailedUnificationConstraintsError finalFailedConstraints
 
 solve ::
   forall builtin m.
