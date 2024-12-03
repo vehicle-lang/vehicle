@@ -1,13 +1,13 @@
 module Vehicle.Syntax.AST.Decl where
 
 import Control.DeepSeq (NFData)
+import Data.Hashable (Hashable)
 import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..))
 import Vehicle.Syntax.AST.Name
 import Vehicle.Syntax.AST.Provenance
 import Vehicle.Syntax.AST.Type
-import Data.Hashable (Hashable)
 
 --------------------------------------------------------------------------------
 -- Declarations

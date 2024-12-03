@@ -5,8 +5,8 @@ import Data.Hashable (Hashable (..))
 import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), (<+>))
-import Vehicle.Syntax.Builtin.BasicOperations
 import Vehicle.Syntax.AST.Decl (ParameterSort)
+import Vehicle.Syntax.Builtin.BasicOperations
 
 --------------------------------------------------------------------------------
 -- Type classes
