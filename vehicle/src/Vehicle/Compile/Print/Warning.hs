@@ -112,9 +112,11 @@ prettyObjectsAndTensorIndices prettyObject name (ids, indices) = do
 
 prettyObjectsAndTensorIndicesList :: (Ord a) => (NonEmpty a -> Doc b) -> PropertyName -> NonEmpty (a, TensorIndices) -> Doc b
 prettyObjectsAndTensorIndicesList prettyObject name objectsAndIndices = do
+  -- Singleton.nonEmpty doesn't exist until base 4.15
+  let nonEmptySingleton x = [x]
   -- First map by indices that share the same objects
-  let indicesMap = Map.fromListWith (<>) (NonEmpty.toList $ fmap (second NonEmpty.singleton) objectsAndIndices)
+  let indicesMap = Map.fromListWith (<>) (NonEmpty.toList $ fmap (second nonEmptySingleton) objectsAndIndices)
   -- Then find the objects that share the same queries
-  let objectsMap = Map.fromListWith (<>) $ fmap (second NonEmpty.singleton . swap) (Map.toList indicesMap)
+  let objectsMap = Map.fromListWith (<>) $ fmap (second nonEmptySingleton . swap) (Map.toList indicesMap)
   let finalGroups = fmap swap $ Map.toList objectsMap
   indent 2 (vsep (fmap (\x -> "-" <+> prettyObjectsAndTensorIndices prettyObject name x) finalGroups))
