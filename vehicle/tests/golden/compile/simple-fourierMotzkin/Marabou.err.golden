@@ -1,5 +1,6 @@
 [93m
-Warning: In property 'unusedVar' the quantified variable 'y' is not always directly related to the input or output of a network. This is frequently indicative of a bug in the specification.
+Warning: In property 'unusedVar' there are quantified variables that not always directly related to the input or output of a network. This is frequently indicative of a bug in the specification. These variables are:
+  - variable 'y'
 
 
 Warning: In property 'unusedVar', the following network input variables do not always have both a lower and a upper bound. This is not currently supported by the Marabou query format.
@@ -7,7 +8,8 @@ Warning: In property 'unusedVar', the following network input variables do not a
     f₀[input]!0 - no lower or upper bound
 
 
-Warning: In property 'underConstrainedVar1' the quantified variable 'x' is not always directly related to the input or output of a network. This is frequently indicative of a bug in the specification.
+Warning: In property 'underConstrainedVar1' there are quantified variables that not always directly related to the input or output of a network. This is frequently indicative of a bug in the specification. These variables are:
+  - variable 'x'
 
 
 Warning: In property 'underConstrainedVar1', the following network input variables do not always have both a lower and a upper bound. This is not currently supported by the Marabou query format.
@@ -15,7 +17,8 @@ Warning: In property 'underConstrainedVar1', the following network input variabl
     f₀[input]!0 - no upper bound
 
 
-Warning: In property 'underConstrainedVar2' the quantified variable 'x' is not always directly related to the input or output of a network. This is frequently indicative of a bug in the specification.
+Warning: In property 'underConstrainedVar2' there are quantified variables that not always directly related to the input or output of a network. This is frequently indicative of a bug in the specification. These variables are:
+  - variable 'x'
 
 
 Warning: In property 'underConstrainedVar2', the following network input variables do not always have both a lower and a upper bound. This is not currently supported by the Marabou query format.
@@ -23,7 +26,8 @@ Warning: In property 'underConstrainedVar2', the following network input variabl
     f₀[input]!0 - no upper bound
 
 
-Warning: In property 'underConstrainedVars' the quantified variables 'x!1', 'x!2', 'x!3', 'x!4' are not always directly related to the input or output of a network. This is frequently indicative of a bug in the specification.
+Warning: In property 'underConstrainedVars' there are quantified variables that not always directly related to the input or output of a network. This is frequently indicative of a bug in the specification. These variables are:
+  - variables 'x!1', 'x!2', 'x!3' and 'x!4'
 
 
 Warning: In property 'underConstrainedVars', the following network input variables do not always have both a lower and a upper bound. This is not currently supported by the Marabou query format.

@@ -8,6 +8,8 @@
 
 * Improved the ordering of constraints in generated query files.
 
+* When multiple similar warnings are thrown at different indices of the same property vector (i.e. properties of type `Vector Bool n`), they are now collapsed into a single warning.
+
 ## Version 0.15
 
 * Added functions `min` and `max` over rationals.

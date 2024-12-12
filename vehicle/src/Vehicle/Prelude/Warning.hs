@@ -6,17 +6,17 @@ module Vehicle.Prelude.Warning
 where
 
 import Data.List (sortBy)
-import Data.List.NonEmpty (NonEmpty, sort)
+import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
 import Data.Map qualified as Map (insertWith, singleton, toList, unionWith)
 import Data.Set (Set)
-import Data.Set qualified as Set (singleton)
 import Data.Tuple (swap)
 import Vehicle.Compile.Context.Bound.Core
 import Vehicle.Data.Assertion
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Tensor
 import Vehicle.Data.Code.Value
+import Vehicle.Data.Tensor (TensorIndices)
 import Vehicle.Prelude (Name)
 import Vehicle.Resource (ExternalResource)
 import Vehicle.Verify.Core
@@ -36,10 +36,10 @@ data CompileWarning
 data SummarisedCompileWarning
   = UnusedResourcesSummary ExternalResource (Set Name)
   | TrivialPropertySummary PropertyAddress Bool
-  | UnderSpecifiedProblemSpaceVariablesSummary PropertyAddress (Set Name)
-  | UnsoundStrictOrderConversionsSummary QueryFormatID PropertyAddress Int
-  | AllConstantNetworkInputVariablesSummary QueryFormatID PropertyAddress (NonEmpty QueryID)
-  | UnboundedNetworkInputVariablesSummary QueryFormatID PropertyAddress [(NonEmpty QueryID, [(Name, UnderConstrainedVariableStatus)])]
+  | UnderSpecifiedProblemSpaceVariablesSummary PropertyID PropertyName (NonEmpty (Name, TensorIndices))
+  | UnsoundStrictOrderConversionsSummary QueryFormatID PropertyID PropertyName Int
+  | AllConstantNetworkInputVariablesSummary QueryFormatID PropertyID PropertyName (NonEmpty (QueryID, TensorIndices))
+  | UnboundedNetworkInputVariablesSummary QueryFormatID PropertyID PropertyName [(NonEmpty QueryID, [(Name, UnderConstrainedVariableStatus)])]
 
 --------------------------------------------------------------------------------
 -- Combinable compile warnings
@@ -48,10 +48,10 @@ type UnderConstrainedSignature = [(Name, UnderConstrainedVariableStatus)]
 
 data CombiningState = CombiningState
   { uniqueWarnings :: [SummarisedCompileWarning],
-    underSpecifiedProblemSpaceVars :: Map PropertyAddress (Set Name),
-    unsoundStrictnessConversions :: Map (QueryFormatID, PropertyAddress) Int,
-    allConstantNetworkInputVars :: Map (QueryFormatID, PropertyAddress) (NonEmpty QueryID),
-    unboundedNetworkInputs :: Map (QueryFormatID, PropertyAddress) (Map UnderConstrainedSignature (NonEmpty QueryID)),
+    underSpecifiedProblemSpaceVars :: Map (PropertyID, PropertyName) (NonEmpty (Name, TensorIndices)),
+    unsoundStrictnessConversions :: Map (QueryFormatID, PropertyID, PropertyName) Int,
+    allConstantNetworkInputVars :: Map (QueryFormatID, PropertyID, PropertyName) (NonEmpty (QueryID, TensorIndices)),
+    unboundedNetworkInputs :: Map (QueryFormatID, PropertyID, PropertyName) (Map UnderConstrainedSignature (NonEmpty QueryID)),
     inefficientTensorCode :: Map Name [(Builtin, NamedBoundCtx, Value TensorBuiltin)]
   }
 
@@ -70,24 +70,25 @@ addWarningToState CombiningState {..} = \case
       { uniqueWarnings = TrivialPropertySummary r names : uniqueWarnings,
         ..
       }
-  UnderSpecifiedProblemSpaceVar property var ->
+  UnderSpecifiedProblemSpaceVar PropertyAddress {..} var ->
     CombiningState
-      { underSpecifiedProblemSpaceVars = Map.insertWith (<>) property (Set.singleton var) underSpecifiedProblemSpaceVars,
+      { underSpecifiedProblemSpaceVars = Map.insertWith (<>) (propertyID, propertyName) [(var, propertyIndices)] underSpecifiedProblemSpaceVars,
         ..
       }
-  UnsoundStrictOrderConversion queryFormat (propertyAddress, _queryID) ->
+  UnsoundStrictOrderConversion queryFormat (PropertyAddress {..}, _queryID) ->
     CombiningState
-      { unsoundStrictnessConversions = Map.insertWith (+) (queryFormat, propertyAddress) 1 unsoundStrictnessConversions,
+      { unsoundStrictnessConversions = Map.insertWith (+) (queryFormat, propertyID, propertyName) 1 unsoundStrictnessConversions,
         ..
       }
-  AllConstantNetworkInputVars queryFormat (propertyAddress, queryID) ->
+  AllConstantNetworkInputVars queryFormat (PropertyAddress {..}, queryID) ->
     CombiningState
-      { allConstantNetworkInputVars = Map.insertWith (<>) (queryFormat, propertyAddress) [queryID] allConstantNetworkInputVars,
+      { allConstantNetworkInputVars =
+          Map.insertWith (<>) (queryFormat, propertyID, propertyName) [(queryID, propertyIndices)] allConstantNetworkInputVars,
         ..
       }
-  UnboundedNetworkInputVariables queryFormat (propertyAddress, queryID) vars ->
+  UnboundedNetworkInputVariables queryFormat (PropertyAddress {..}, queryID) vars ->
     CombiningState
-      { unboundedNetworkInputs = Map.insertWith (Map.unionWith (<>)) (queryFormat, propertyAddress) (Map.singleton vars [queryID]) unboundedNetworkInputs,
+      { unboundedNetworkInputs = Map.insertWith (Map.unionWith (<>)) (queryFormat, propertyID, propertyName) (Map.singleton vars [queryID]) unboundedNetworkInputs,
         ..
       }
 
@@ -97,36 +98,37 @@ groupWarnings warnings = stateToWarnings $ foldl addWarningToState emptyState wa
 stateToWarnings :: CombiningState -> [SummarisedCompileWarning]
 stateToWarnings CombiningState {..} =
   sortBy compareWarning $
-    do
-      uniqueWarnings
+    uniqueWarnings
       <> fmap combineUnderSpecifiedProblemSpaceVars (Map.toList underSpecifiedProblemSpaceVars)
       <> fmap combineUnsoundStrictnessConversions (Map.toList unsoundStrictnessConversions)
       <> fmap combineAllConstantNetworkInputVars (Map.toList allConstantNetworkInputVars)
       <> fmap combineUnboundedNetworkInputVars (Map.toList unboundedNetworkInputs)
 
-combineUnderSpecifiedProblemSpaceVars :: (PropertyAddress, Set Name) -> SummarisedCompileWarning
-combineUnderSpecifiedProblemSpaceVars (property, vars) = UnderSpecifiedProblemSpaceVariablesSummary property vars
+combineUnderSpecifiedProblemSpaceVars :: ((PropertyID, PropertyName), NonEmpty (Name, TensorIndices)) -> SummarisedCompileWarning
+combineUnderSpecifiedProblemSpaceVars ((propertyID, property), vars) = UnderSpecifiedProblemSpaceVariablesSummary propertyID property vars
 
-combineUnsoundStrictnessConversions :: ((QueryFormatID, PropertyAddress), Int) -> SummarisedCompileWarning
-combineUnsoundStrictnessConversions ((queryFormatID, property), number) = UnsoundStrictOrderConversionsSummary queryFormatID property number
+combineUnsoundStrictnessConversions :: ((QueryFormatID, PropertyID, PropertyName), Int) -> SummarisedCompileWarning
+combineUnsoundStrictnessConversions ((queryFormatID, propertyID, property), number) =
+  UnsoundStrictOrderConversionsSummary queryFormatID propertyID property number
 
-combineAllConstantNetworkInputVars :: ((QueryFormatID, PropertyAddress), NonEmpty QueryID) -> SummarisedCompileWarning
-combineAllConstantNetworkInputVars ((queryFormatID, property), queries) = AllConstantNetworkInputVariablesSummary queryFormatID property (sort queries)
+combineAllConstantNetworkInputVars :: ((QueryFormatID, PropertyID, PropertyName), NonEmpty (QueryID, TensorIndices)) -> SummarisedCompileWarning
+combineAllConstantNetworkInputVars ((queryFormatID, propertyID, property), queries) =
+  AllConstantNetworkInputVariablesSummary queryFormatID propertyID property queries
 
-combineUnboundedNetworkInputVars :: ((QueryFormatID, PropertyAddress), Map UnderConstrainedSignature (NonEmpty QueryID)) -> SummarisedCompileWarning
-combineUnboundedNetworkInputVars ((queryFormatID, property), constraintsBySignature) = do
+combineUnboundedNetworkInputVars :: ((QueryFormatID, PropertyID, PropertyName), Map UnderConstrainedSignature (NonEmpty QueryID)) -> SummarisedCompileWarning
+combineUnboundedNetworkInputVars ((queryFormatID, propertyID, property), constraintsBySignature) = do
   let result = swap <$> Map.toList constraintsBySignature
-  UnboundedNetworkInputVariablesSummary queryFormatID property result
+  UnboundedNetworkInputVariablesSummary queryFormatID propertyID property result
 
 compareWarning :: SummarisedCompileWarning -> SummarisedCompileWarning -> Ordering
 compareWarning w1 w2 = compare (warningPropertyId w1) (warningPropertyId w2)
   where
     warningPropertyId :: SummarisedCompileWarning -> Maybe PropertyID
     warningPropertyId w =
-      propertyID <$> case w of
+      case w of
         UnusedResourcesSummary {} -> Nothing
-        TrivialPropertySummary address _ -> Just address
-        UnderSpecifiedProblemSpaceVariablesSummary address _ -> Just address
-        UnsoundStrictOrderConversionsSummary _ address _ -> Just address
-        AllConstantNetworkInputVariablesSummary _ address _ -> Just address
-        UnboundedNetworkInputVariablesSummary _ address _ -> Just address
+        TrivialPropertySummary address _ -> Just $ propertyID address
+        UnderSpecifiedProblemSpaceVariablesSummary propertyID _ _ -> Just propertyID
+        UnsoundStrictOrderConversionsSummary _ propertyID _ _ -> Just propertyID
+        AllConstantNetworkInputVariablesSummary _ propertyID _ _ -> Just propertyID
+        UnboundedNetworkInputVariablesSummary _ propertyID _ _ -> Just propertyID
