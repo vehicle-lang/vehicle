@@ -17,6 +17,10 @@
 
 * When Vehicle has finished verifying a vector of properties, Vehicle will now output the stats about the number verified, falsified, timed-out and errored.
 
+* Added command-line option `--no-warnings` which prevents Vehicle from printing warnings
+
+* Added command-line option `--no-sat-print` to `vehicle verify` mode which prevents Vehicle from printing witnesses and counter-examples found during verification.
+
 ## Version 0.15
 
 * Added functions `min` and `max` over rationals.

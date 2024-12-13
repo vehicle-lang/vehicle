@@ -42,7 +42,7 @@ instance Exception GoldenFilesNotFoundError
 handleGoldenFilesNotFoundError :: GoldenFilesNotFoundError -> IO Result
 handleGoldenFilesNotFoundError GoldenFilesNotFoundError {..} = do
   let message =
-        printf "Could not find golden files: %s" $
+        printf "Could not run test as could not find golden files: %s" $
           List.intercalate ", " (show <$> goldenFilesNotFound)
   return $ testFailed message
 

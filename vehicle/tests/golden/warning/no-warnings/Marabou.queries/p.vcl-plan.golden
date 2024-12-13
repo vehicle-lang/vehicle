@@ -1,0 +1,135 @@
+{
+  "queryMetaData": {
+    "tag": "NonTrivial",
+    "contents": {
+      "tag": "Query",
+      "contents": {
+        "queries": {
+          "unDisjunctAll": [
+            {
+              "variableReconstruction": {
+                "variableStore": [
+                  [
+                    0,
+                    "x",
+                    null
+                  ],
+                  [
+                    1,
+                    "x!0",
+                    null
+                  ],
+                  [
+                    2,
+                    "f₀[input]",
+                    null
+                  ],
+                  [
+                    3,
+                    "f₀[input]!0",
+                    "x0"
+                  ],
+                  [
+                    4,
+                    "f₀[output]",
+                    null
+                  ],
+                  [
+                    5,
+                    "f₀[output]!0",
+                    "y0"
+                  ]
+                ],
+                "reconstructionSteps": [
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      "OtherVariable",
+                      [
+                        1
+                      ],
+                      2,
+                      [
+                        3
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensor",
+                    "contents": [
+                      "OtherVariable",
+                      [
+                        1
+                      ],
+                      4,
+                      [
+                        5
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "SolveTensorEquality",
+                    "contents": [
+                      0,
+                      {
+                        "constantValue": {
+                          "value": [
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ],
+                          "tag": "Tensor",
+                          "shape": [
+                            1
+                          ]
+                        },
+                        "coefficients": {
+                          "2": {
+                            "numerator": 1,
+                            "denominator": 1
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              "queryAddress": [
+                {
+                  "propertyName": "p",
+                  "propertyIndices": [],
+                  "propertyID": 0
+                },
+                1
+              ],
+              "metaNetwork": [
+                {
+                  "metaNetworkEntryName": "f",
+                  "metaNetworkEntryInfo": {
+                    "networkType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          1
+                        ],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          1
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "networkFilepath": "fake.onnx"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "negated": true
+      }
+    }
+  }
+}

@@ -61,6 +61,6 @@ lowerNot whenBlocked = go
 
 negVectorEqSpine :: (MonadDropNot m) => Spine Builtin -> m (Spine Builtin)
 negVectorEqSpine (IVecEqSpine a b n fn x y) = do
-  fn' <- appHiddenStdlibDef StdNotBoolOp2 [a, b, fn]
+  fn' <- appHiddenStdlibDef StdNotBoolOp2 [a, b, explicit $ argExpr fn]
   return $ IVecEqSpine a b n (Arg mempty Explicit Relevant fn') x y
 negVectorEqSpine spine = compilerDeveloperError $ "Malformed equality spine" <+> prettyVerbose spine

@@ -110,6 +110,10 @@ for the ``verify`` command when ``specification`` is a ``.vcl`` file.
     The location to write out the verification cache that provides a permanent record
     of the results of the verification. See the sections below for more detail.
 
+.. option:: --no-sat-print
+
+    Prevents Vehicle from printing witnesses and counter-examples found during verification.
+
 .. warning::
 
     The :code:`verify` command is not atomic.
@@ -229,6 +233,10 @@ The full list of available command line arguments are as follows:
     See description above for ``verify`` mode.
 
 .. option:: --verifier-location, -l
+
+    See description above for ``verify`` mode.
+
+.. option:: --no-sat-print
 
     See description above for ``verify`` mode.
 

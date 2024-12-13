@@ -30,7 +30,8 @@ import Vehicle.Prelude.Warning
 
 data LoggingSettings = LoggingSettings
   { putLogLn :: Text -> IO (),
-    loggingLevel :: LoggingLevel
+    loggingLevel :: LoggingLevel,
+    noWarnings :: Bool
   }
 
 --------------------------------------------------------------------------------
@@ -118,7 +119,7 @@ runLoggerT loggingSettings@LoggingSettings {..} value = do
       then runSilentLoggerT value
       else runLoudLoggerT loggingSettings value
 
-  unless (null warnings) $
+  unless (null warnings || noWarnings) $
     liftIO $
       putLogLn $
         pack $

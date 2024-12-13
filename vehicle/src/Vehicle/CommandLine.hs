@@ -74,7 +74,8 @@ data Options = Options
 data GlobalOptions = GlobalOptions
   { version :: Bool,
     logFile :: Maybe FilePath,
-    loggingLevel :: LoggingLevel
+    loggingLevel :: LoggingLevel,
+    noWarnings :: Bool
   }
   deriving (Eq, Show)
 
@@ -83,7 +84,8 @@ defaultGlobalOptions =
   GlobalOptions
     { version = False,
       logFile = Nothing,
-      loggingLevel = defaultLoggingLevel
+      loggingLevel = defaultLoggingLevel,
+      noWarnings = False
     }
 
 data ModeOptions
@@ -112,7 +114,7 @@ declaration = Opt "e" "declaration"
 verifier-location = Opt "l" "verifier-location"
 module-name       = Opt "m" "module-name"
 network           = Opt "n" "network"
-output        = Opt "o" "output"
+output            = Opt "o" "output"
 parameter         = Opt "p" "parameter"
 queries           = Opt "q" "queries"
 --  - r
@@ -151,6 +153,7 @@ globalOptionsParser =
     <$> showVersionParser
     <*> redirectLogsParser
     <*> loggingLevelParser
+    <*> noWarningsParser
 
 --------------------------------------------------------------------------------
 -- Modes
@@ -232,6 +235,7 @@ verifyParser =
     <*> verifierParser
     <*> verifierLocationParser
     <*> verifierExtraArgsParser
+    <*> noSatPrintParser
 
 verifyParserInfo :: ParserInfo ModeOptions
 verifyParserInfo = info (Verify <$> verifyParser) verifyDescription
@@ -333,6 +337,12 @@ loggingLevelParser =
       <> value defaultLoggingLevel
       <> showDefault
       <> help loggingLevelHelp
+
+noWarningsParser :: Parser Bool
+noWarningsParser = do
+  switch $
+    long "no-warnings"
+      <> help "Suppress the printing of warnings."
 
 verifySpecificationParser :: Parser FilePath
 verifySpecificationParser =
@@ -501,6 +511,12 @@ verifierExtraArgsParser =
         <> metavar "STRING"
         <> help
           "Extra arguments to pass through to the verifier when verifying each query."
+
+noSatPrintParser :: Parser Bool
+noSatPrintParser = do
+  switch $
+    long "no-sat-print"
+      <> help "Suppress the printing of witnesses and counter-examples found during verification."
 
 exportTargetParser :: Parser ITP
 exportTargetParser =

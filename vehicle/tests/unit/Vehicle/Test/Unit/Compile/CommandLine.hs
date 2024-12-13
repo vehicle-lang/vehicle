@@ -54,11 +54,12 @@ noModeTests =
           },
       parserTest
         "logging"
-        "vehicle --logging MinDetail"
+        "vehicle --logging MinDetail --no-warnings"
         $ Options
           { globalOptions =
               defaultGlobalOptions
-                { loggingLevel = MinDetail
+                { loggingLevel = MinDetail,
+                  noWarnings = True
                 },
             modeOptions = Nothing
           }
@@ -127,7 +128,8 @@ verifyTests =
                       verifierID = Marabou,
                       verifierLocation = Just "bin/Marabou",
                       verificationCache = Just "local/outputFolder",
-                      verifierExtraArgs = Nothing
+                      verifierExtraArgs = Nothing,
+                      noSatPrint = False
                     }
           },
       parserTest
@@ -150,7 +152,8 @@ verifyTests =
                       verifierID = Marabou,
                       verifierLocation = Nothing,
                       verificationCache = Nothing,
-                      verifierExtraArgs = Nothing
+                      verifierExtraArgs = Nothing,
+                      noSatPrint = False
                     }
           },
       parserTest
@@ -164,7 +167,8 @@ verifyTests =
         \--parameter p:7.3 \
         \--network f2:test/myNetwork2.onnx \
         \--verifier Marabou \
-        \--verifier-args --verbose=True"
+        \--verifier-args --verbose=True \
+        \--no-sat-print"
         Options
           { globalOptions = defaultGlobalOptions,
             modeOptions =
@@ -179,7 +183,8 @@ verifyTests =
                       verifierID = Marabou,
                       verifierLocation = Nothing,
                       verificationCache = Nothing,
-                      verifierExtraArgs = Just "--verbose=True"
+                      verifierExtraArgs = Just "--verbose=True",
+                      noSatPrint = True
                     }
           }
     ]

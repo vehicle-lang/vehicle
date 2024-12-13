@@ -72,14 +72,15 @@ runVehicle Options {..} = do
             Export options -> export logSettings options
 
 withLogger :: (MonadStdIO IO) => GlobalOptions -> (LoggingSettings -> IO a) -> IO a
-withLogger GlobalOptions {logFile, loggingLevel} action =
+withLogger GlobalOptions {logFile, loggingLevel, noWarnings} action = do
+  let runAction logLn = action LoggingSettings {putLogLn = logLn, loggingLevel, noWarnings}
   case logFile of
-    Nothing -> action LoggingSettings {putLogLn = VIO.writeStderrLn, loggingLevel}
+    Nothing -> runAction VIO.writeStderrLn
     Just fp -> do
       createDirectoryIfMissing True (takeDirectory fp)
       withFile fp WriteMode $ \logHandle -> do
         hSetBuffering logHandle NoBuffering
-        action LoggingSettings {putLogLn = TextIO.hPutStrLn logHandle, loggingLevel}
+        runAction (TextIO.hPutStrLn logHandle)
 
 execParserWithArgs :: ParserInfo a -> [String] -> IO a
 execParserWithArgs parserInfo args =

@@ -2,7 +2,7 @@ Usage: vehicle verify (-s|--specification FILE) [-y|--property NAME]
                       [-n|--network NAME:FILE] [-d|--dataset NAME:FILE] 
                       [-p|--parameter NAME:VALUE] [-c|--cache FILE]
                       (-v|--verifier VERIFIER) [-l|--verifier-location FILE] 
-                      [-a|--verifier-args STRING]
+                      [-a|--verifier-args STRING] [--no-sat-print]
 
   Verify whether properties in a .vcl specification file are true or false.
 
@@ -40,4 +40,6 @@ Available options:
   -a,--verifier-args STRING
                            Extra arguments to pass through to the verifier when
                            verifying each query.
+  --no-sat-print           Suppress the printing of witnesses and
+                           counter-examples found during verification.
   -h,--help                Show this help text

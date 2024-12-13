@@ -292,7 +292,8 @@ logPropertyStatus status = tell $ case status of
 data VerifierSettings = VerifierSettings
   { verifier :: Verifier,
     verifierExecutable :: VerifierExecutable,
-    verifierExtraArgs :: [String]
+    verifierExtraArgs :: [String],
+    noSatPrint :: Bool
   }
 
 type MonadVerify m =
@@ -573,15 +574,17 @@ outputPropertyResult ::
   PropertyStatus ->
   m ()
 outputPropertyResult verifierSettings verificationCache address result = do
+  let VerifierSettings {..} = verifierSettings
   VIO.writeStdoutLn (layoutAsText $ "    result: " <> pretty result)
   writePropertyResult verificationCache address (isVerified result)
   case result of
     PropertyCompleted status -> case status of
       NonTrivial (_, SAT (Just (UserVariableAssignment assignments))) -> do
         -- Output assignments to command line
-        let assignmentDocs = vsep (fmap prettyUserVariableAssignment assignments)
-        let witnessDoc = indent 6 assignmentDocs
-        liftIO $ TIO.hPutStrLn stdout (layoutAsText witnessDoc)
+        unless noSatPrint $ do
+          let assignmentDocs = vsep (fmap prettyUserVariableAssignment assignments)
+          let witnessDoc = indent 6 assignmentDocs
+          liftIO $ TIO.hPutStrLn stdout (layoutAsText witnessDoc)
 
         -- Output assignments to file
         let witnessFolder = verificationCache </> layoutAsString (pretty address) <> "-assignments"
@@ -595,7 +598,6 @@ outputPropertyResult verifierSettings verificationCache address result = do
           liftIO $ encodeIDXFile idxData file
       _ -> return ()
     PropertyErrored (QueryMetaData {..}, err) -> do
-      let VerifierSettings {..} = verifierSettings
       let VerificationErrorAction {..} = convertVerificationError verifier queryAddress err
 
       reproducerMessage <-
