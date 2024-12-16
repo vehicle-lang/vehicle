@@ -39,7 +39,7 @@ solveIndexConstraint constraint = do
           solveMeta meta solution (boundContext ctx)
         Just metas -> do
           let blockedConstraint = blockConstraintOn normConstraint metas
-          addInstanceConstraints [blockedConstraint]
+          addAuxiliaryInstanceConstraints [blockedConstraint]
     _ -> compilerDeveloperError $ "Malformed instance goal" <+> prettyFriendly normConstraint
 
 -- | Function signature for constraints solved by type class resolution.
@@ -116,15 +116,14 @@ solveDefaultIndexConstraint ::
   (MonadTypeChecker Builtin m) =>
   WithContext (InstanceConstraint Builtin) ->
   m Bool
-solveDefaultIndexConstraint constraint = do
-  let goal = parseInstanceGoal constraint
-  case (goalHead goal, goalSpine goal) of
-    (NatInDomainConstraint, [n, argExpr -> IIndexType _ size]) -> do
+solveDefaultIndexConstraint (WithContext constraint ctx) = do
+  case instanceGoal constraint of
+    (VBuiltin NatInDomainConstraint [n, argExpr -> IIndexType _ size]) -> do
       let succN = case argExpr n of
             INatLiteral p x -> INatLiteral p (x + 1)
             n' -> IAdd AddNat n' (INatLiteral mempty 1)
 
-      let constraintInfo = (contextOf constraint, instanceOrigin $ objectIn constraint)
+      let constraintInfo = (ctx, instanceOrigin constraint)
       newSizeConstraint <- createInstanceUnification constraintInfo size succN
       addUnificationConstraints [newSizeConstraint]
       return True

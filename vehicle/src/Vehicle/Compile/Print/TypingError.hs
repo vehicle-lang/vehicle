@@ -84,9 +84,8 @@ typingErrorDetails = \case
               <+> "but was unable to prove it."
           CheckingInstanceType instanceOrigin ->
             instanceOriginConstraintMessage instanceOrigin
-          CheckingAuxiliary ->
-            developerError "Auxiliary constraints should not be unsolved."
         InstanceConstraint (Resolve instanceOrigin _ _ _) -> instanceOriginConstraintMessage instanceOrigin
+        -- AuxiliaryConstraint (Auxiliary auxiliaryOrigin _ _) -> auxiliaryOriginConstraintMessage auxiliaryOrigin
         ApplicationConstraint {} ->
           "unsolved application constraint: " <+> prettyFriendly (WithContext constraint ctx)
 
@@ -206,8 +205,6 @@ failedUnificationConstraintsError (FailedUnificationConstraintsError (err :| _))
                 <+> squotes (prettyTypeClassConstraintOriginExpr ctx checkedInstanceOp checkedInstanceOpArgs)
             CheckingInstanceType (InstanceTypeRestrictionOrigin {}) ->
               ""
-            CheckingAuxiliary ->
-              developerError "Auxiliary constraints should not be unsolved."
       UserError
         { provenance = provenanceOf ctx,
           problem =

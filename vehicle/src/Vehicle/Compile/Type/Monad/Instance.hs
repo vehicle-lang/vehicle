@@ -17,6 +17,7 @@ import Control.Monad.State
   )
 import Control.Monad.Trans (MonadTrans)
 import Control.Monad.Trans.Class (lift)
+import Data.Hashable (Hashable)
 import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Builtin (NormalisableBuiltin)
@@ -80,7 +81,7 @@ instance (PrintableBuiltin builtin, MonadCompile m) => MonadFreeContext builtin 
   hideStdLibDecls p f = TypeCheckerT . hideStdLibDecls p f . unTypeCheckerT
   getHiddenStdLibDecl p = TypeCheckerT . getHiddenStdLibDecl p
 
-instance (Eq builtin, PrintableBuiltin builtin, NormalisableBuiltin builtin, TypableBuiltin builtin, MonadCompile m) => MonadTypeChecker builtin (TypeCheckerT builtin m) where
+instance (Eq builtin, Hashable builtin, PrintableBuiltin builtin, NormalisableBuiltin builtin, TypableBuiltin builtin, MonadCompile m) => MonadTypeChecker builtin (TypeCheckerT builtin m) where
   getMetaState = TypeCheckerT get
   modifyMetaCtx f = TypeCheckerT $ modify f
   getFreshName typ = TypeCheckerT $ getFreshNameInternal typ

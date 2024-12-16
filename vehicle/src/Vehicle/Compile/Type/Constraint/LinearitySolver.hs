@@ -11,7 +11,7 @@ import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad (MonadTypeChecker, addUnificationConstraints)
-import Vehicle.Compile.Type.Monad.Class (addInstanceConstraints, solveMeta, substMetas)
+import Vehicle.Compile.Type.Monad.Class (addAuxiliaryInstanceConstraints, solveMeta, substMetas)
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Linearity
 import Vehicle.Data.Code.Interface
@@ -19,10 +19,9 @@ import Vehicle.Data.Code.Value
 
 solveLinearityConstraint ::
   (MonadLinearitySolver m) =>
-  InstanceDatabase LinearityBuiltin ->
   WithContext (InstanceConstraint LinearityBuiltin) ->
   m ()
-solveLinearityConstraint _ (WithContext constraint ctx) = do
+solveLinearityConstraint (WithContext constraint ctx) = do
   normConstraint@(Resolve origin _ _ expr) <- substMetas constraint
   logDebug MaxDetail $ "Forced:" <+> prettyFriendly (WithContext normConstraint ctx)
 
@@ -45,7 +44,7 @@ type LinearitySolver =
   (MonadLinearitySolver m) =>
   InstanceConstraintInfo LinearityBuiltin ->
   [VType LinearityBuiltin] ->
-  Maybe (m (ConstraintProgress LinearityBuiltin))
+  Maybe (m (AuxiliaryConstraintProgress LinearityBuiltin))
 
 solve :: LinearityRelation -> LinearitySolver
 solve = \case
@@ -147,14 +146,14 @@ powLinearityOp p l1 l2 = case (l1, l2) of
 handleConstraintProgress ::
   (MonadTypeChecker LinearityBuiltin m) =>
   WithContext (InstanceConstraint LinearityBuiltin) ->
-  ConstraintProgress LinearityBuiltin ->
+  AuxiliaryConstraintProgress LinearityBuiltin ->
   m ()
 handleConstraintProgress originalConstraint@(WithContext (Resolve _ m _ _) ctx) = \case
-  Stuck metas -> addInstanceConstraints [blockConstraintOn originalConstraint metas]
-  Progress newUnificationConstraints newInstanceConstraints -> do
+  Stuck metas -> addAuxiliaryInstanceConstraints [blockConstraintOn originalConstraint metas]
+  Progress newUnificationConstraints newAuxiliaryConstraints -> do
     solveMeta m (IUnitLiteral (provenanceOf ctx)) (boundContext ctx)
     addUnificationConstraints newUnificationConstraints
-    addInstanceConstraints newInstanceConstraints
+    addAuxiliaryInstanceConstraints newAuxiliaryConstraints
 
 getTypeClass :: (MonadCompile m) => Value LinearityBuiltin -> m (LinearityRelation, Spine LinearityBuiltin)
 getTypeClass = \case

@@ -8,6 +8,7 @@ module Vehicle.Compile.Type.Constraint.Core
     createInstanceUnification,
     createSubInstance,
     mkCandidate,
+    AuxiliaryConstraintProgress (..),
   )
 where
 
@@ -31,12 +32,13 @@ import Vehicle.Data.DSL
 runConstraintSolver ::
   forall builtin m constraint.
   (MonadTypeChecker builtin m, PrettyExternal (Contextualised constraint (ConstraintContext builtin))) =>
+  Proxy builtin ->
   m [Contextualised constraint (ConstraintContext builtin)] ->
   ([Contextualised constraint (ConstraintContext builtin)] -> m ()) ->
   (Contextualised constraint (ConstraintContext builtin) -> m ()) ->
   MetaSet ->
   m ()
-runConstraintSolver getConstraints setConstraints attemptToSolveConstraint = loop 0
+runConstraintSolver proxy getConstraints setConstraints attemptToSolveConstraint = loop 0
   where
     loop :: Int -> MetaSet -> m ()
     loop loopNumber recentMetasSolved = do
@@ -54,21 +56,35 @@ runConstraintSolver getConstraints setConstraints attemptToSolveConstraint = loo
               -- We have made useful progress so start a new pass
               setConstraints blockedConstraints
 
-              solvedMetas <- trackSolvedMetas (Proxy @builtin) $ do
+              solvedMetas <- trackSolvedMetas proxy $ do
                 forM_ unblockedConstraints $ \constraint -> do
                   logCompilerSection MaxDetail ("trying:" <+> prettyExternal constraint) $ do
                     attemptToSolveConstraint constraint
 
               loop (loopNumber + 1) solvedMetas
 
-blockOn :: (MonadCompile m) => [MetaID] -> Maybe (m (ConstraintProgress builtin))
+data AuxiliaryConstraintProgress builtin
+  = Stuck MetaSet
+  | Progress [WithContext (UnificationConstraint builtin)] [WithContext (InstanceConstraint builtin)]
+  deriving (Show)
+
+instance Semigroup (AuxiliaryConstraintProgress builtin) where
+  Stuck m1 <> Stuck m2 = Stuck (m1 <> m2)
+  Stuck {} <> x@Progress {} = x
+  x@Progress {} <> Stuck {} = x
+  Progress u1 r1 <> Progress u2 r2 = Progress (u1 <> u2) (r1 <> r2)
+
+blockOn :: (MonadCompile m) => [MetaID] -> Maybe (m (AuxiliaryConstraintProgress builtin))
 blockOn metas = Just $ do
   logDebug MaxDetail $ "stuck-on metas" <+> pretty metas
   return $ Stuck $ MetaSet.fromList metas
 
-malformedConstraintError :: (PrintableBuiltin builtin, MonadCompile m) => WithContext (InstanceConstraint builtin) -> m a
+malformedConstraintError ::
+  (PrintableBuiltin builtin, MonadCompile m) =>
+  WithContext (InstanceConstraint builtin) ->
+  m a
 malformedConstraintError c =
-  compilerDeveloperError $ "Malformed type-class constraint:" <+> prettyVerbose c
+  compilerDeveloperError $ "Malformed auxiliary constraint:" <+> prettyVerbose c
 
 -- | Create a new unification constraint as a subgoal of an existing instance constraint.
 createInstanceUnification ::

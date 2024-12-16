@@ -12,7 +12,7 @@ import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
-import Vehicle.Compile.Type.Monad.Class (addInstanceConstraints)
+import Vehicle.Compile.Type.Monad.Class (addAuxiliaryInstanceConstraints)
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Polarity
 import Vehicle.Data.Code.Interface
@@ -20,10 +20,9 @@ import Vehicle.Data.Code.Value
 
 solvePolarityConstraint ::
   (MonadPolaritySolver m) =>
-  InstanceDatabase PolarityBuiltin ->
   WithContext (InstanceConstraint PolarityBuiltin) ->
   m ()
-solvePolarityConstraint _ (WithContext constraint ctx) = do
+solvePolarityConstraint (WithContext constraint ctx) = do
   normConstraint@(Resolve origin _ _ expr) <- substMetas constraint
   logDebug MaxDetail $ "Forced:" <+> prettyFriendly (WithContext normConstraint ctx)
 
@@ -44,7 +43,7 @@ type PolaritySolver =
   (MonadPolaritySolver m) =>
   InstanceConstraintInfo PolarityBuiltin ->
   [VType PolarityBuiltin] ->
-  Maybe (m (ConstraintProgress PolarityBuiltin))
+  Maybe (m (AuxiliaryConstraintProgress PolarityBuiltin))
 
 solve :: PolarityRelation -> PolaritySolver
 solve = \case
@@ -232,14 +231,14 @@ implPolarityOp p pol1 pol2 =
 handleConstraintProgress ::
   (MonadTypeChecker PolarityBuiltin m) =>
   WithContext (InstanceConstraint PolarityBuiltin) ->
-  ConstraintProgress PolarityBuiltin ->
+  AuxiliaryConstraintProgress PolarityBuiltin ->
   m ()
 handleConstraintProgress originalConstraint@(WithContext (Resolve _ m _ _) ctx) = \case
-  Stuck metas -> addInstanceConstraints [blockConstraintOn originalConstraint metas]
-  Progress newUnificationConstraints newInstanceConstraints -> do
+  Stuck metas -> addAuxiliaryInstanceConstraints [blockConstraintOn originalConstraint metas]
+  Progress newUnificationConstraints newAuxiliaryConstraints -> do
     solveMeta m (IUnitLiteral (provenanceOf ctx)) (boundContext ctx)
     addUnificationConstraints newUnificationConstraints
-    addInstanceConstraints newInstanceConstraints
+    addAuxiliaryInstanceConstraints newAuxiliaryConstraints
 
 getTypeClass :: (MonadCompile m) => Value PolarityBuiltin -> m (PolarityRelation, Spine PolarityBuiltin)
 getTypeClass = \case

@@ -171,7 +171,6 @@ instance MetaSubstitutable m builtin (UnificationConstraintOrigin builtin) where
     CheckingExprType c -> CheckingExprType <$> subst s c
     CheckingBinderType c -> CheckingBinderType <$> subst s c
     CheckingInstanceType c -> CheckingInstanceType <$> subst s c
-    CheckingAuxiliary -> return CheckingAuxiliary
 
 instance MetaSubstitutable m builtin (CheckingExprType builtin) where
   subst s (CheckingExpr e t1 t2) = CheckingExpr <$> subst s e <*> subst s t1 <*> subst s t2

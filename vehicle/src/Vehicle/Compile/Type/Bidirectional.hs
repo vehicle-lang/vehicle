@@ -23,6 +23,7 @@ import Vehicle.Compile.Type.Force (forceHead)
 import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad
+import Vehicle.Compile.Type.System (HasTypeSystem (..), TCM)
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Universe (UniverseLevel (..))
 import Prelude hiding (pi)
@@ -37,7 +38,7 @@ import Prelude hiding (pi)
 -- | Type checking monad with additional bound context for the bidirectional
 -- type-checking pass.
 type MonadBidirectional builtin m =
-  ( MonadTypeChecker builtin m,
+  ( TCM builtin m,
     MonadBoundContext (Type builtin) m,
     MonadReader Relevance m
   )
@@ -60,7 +61,7 @@ runMonadBidirectional ctx relevance x =
 -- version of the expression with the necessary implicit and instance arguments
 -- inserted.
 checkExprType ::
-  (MonadTypeChecker builtin m) =>
+  (TCM builtin m) =>
   BoundCtx (Type builtin) ->
   Relevance ->
   Type builtin ->
@@ -144,7 +145,7 @@ viaInfer expectedType expr = do
 -- Inference
 
 inferExprType ::
-  (MonadTypeChecker builtin m) =>
+  (TCM builtin m) =>
   BoundCtx (Type builtin) ->
   Relevance ->
   Expr builtin ->
@@ -310,7 +311,7 @@ type ArgInsertionProblemSolution builtin =
 
 -- | Deals with insertion of missing implicits and instance arguments
 solveArgInsertionProblem ::
-  (MonadTypeChecker builtin m) =>
+  (TCM builtin m) =>
   BoundCtx (Type builtin) ->
   ArgInsertionProblem builtin ->
   m (ArgInsertionProblemSolution builtin)
@@ -353,7 +354,7 @@ forceApplicationHeadType ctx typ = do
   return (quote (provenanceOf typ) (boundCtxLv ctx) forcedType, blockingMetas)
 
 checkArgsAgainstPiType ::
-  (MonadTypeChecker builtin m) =>
+  (TCM builtin m) =>
   BoundCtx (Type builtin) ->
   ArgInsertionProblem builtin ->
   Binder builtin ->
@@ -406,7 +407,7 @@ argInsertionProblemSolved problem@ArgInsertionProblem {..} =
   return $ Right (solutionSoFar problem, currentExpectedType)
 
 instantiateArgForNonExplicitBinder ::
-  (MonadTypeChecker builtin m) =>
+  (TCM builtin m) =>
   BoundCtx (Type builtin) ->
   Provenance ->
   (Expr builtin, [Arg builtin], Type builtin) ->
@@ -426,7 +427,7 @@ instantiateArgForNonExplicitBinder boundCtx p (fun, funArgs, funType) binder = d
                   checkedInstanceOpType = funType,
                   checkedInstanceType = binderType
                 }
-      createFreshInstanceConstraint boundCtx (provenanceOf fun) origin (relevanceOf binder) binderType
+      createFreshInstanceConstraint (isAuxiliaryConstraint binderType) boundCtx (provenanceOf fun) origin (relevanceOf binder) binderType
   return $ Arg p (markInserted $ visibilityOf binder) (relevanceOf binder) checkedExpr
 
 --------------------------------------------------------------------------------

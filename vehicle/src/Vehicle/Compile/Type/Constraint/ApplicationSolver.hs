@@ -15,10 +15,11 @@ import Vehicle.Compile.Type.System
 -- | Attempts to solve as many type-class constraints as possible. Takes in
 -- the set of meta-variables solved since the solver was last run and outputs
 -- the set of meta-variables solved during this run.
-runApplicationSolver :: forall builtin m. (TCM builtin m) => Proxy builtin -> MetaSet -> m ()
-runApplicationSolver _ metasSolved = do
+runApplicationSolver :: (TCM builtin m) => Proxy builtin -> MetaSet -> m ()
+runApplicationSolver proxy metasSolved = do
   logCompilerPass MaxDetail ("application solver run" <> line) $
-    runConstraintSolver @builtin
+    runConstraintSolver
+      proxy
       getActiveApplicationConstraints
       setApplicationConstraints
       solveApplicationConstraint

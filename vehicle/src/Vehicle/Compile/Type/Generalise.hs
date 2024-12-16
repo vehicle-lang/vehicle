@@ -5,8 +5,9 @@ module Vehicle.Compile.Type.Generalise
 where
 
 import Control.Monad (foldM, forM)
+import Control.Monad.Except (MonadError (..))
 import Data.Data (Proxy (..))
-import Data.List.NonEmpty ((<|))
+import Data.List.NonEmpty (NonEmpty (..), (<|))
 import Data.Maybe (fromMaybe)
 import Vehicle.Compile.Context.Bound
 import Vehicle.Compile.Error
@@ -17,6 +18,7 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad
+import Vehicle.Compile.Type.Monad.Class (getActiveAuxiliaryInstanceConstraints, setAuxiliaryInstanceConstraints)
 import Vehicle.Data.DeBruijn
 
 --------------------------------------------------------------------------------
@@ -26,18 +28,29 @@ import Vehicle.Data.DeBruijn
 -- metas that occur in the type of the declaration. It then appends these
 -- constraints as instance arguments to the declaration.
 generaliseOverUnsolvedConstraints ::
+  forall builtin m.
   (MonadTypeChecker builtin m) =>
   Decl builtin ->
   m (Decl builtin)
 generaliseOverUnsolvedConstraints decl =
   logCompilerPass MidDetail "generalisation over unsolved type-class constraints" $ do
-    unsolvedTypeClassConstraints <- traverse substMetas =<< getActiveInstanceConstraints
-    unsolvedConstraints <- traverse substMetas =<< getActiveConstraints
+    unsolvedInstanceConstraints <- getActiveInstanceConstraints
+    unsolvedAuxiliaryConstraints <- getActiveAuxiliaryInstanceConstraints
 
-    (generalisedDecl, rejectedTypeClassConstraints) <-
-      foldM (generaliseOverConstraint unsolvedConstraints) (decl, []) unsolvedTypeClassConstraints
-    setInstanceConstraints rejectedTypeClassConstraints
-    return generalisedDecl
+    unsolvedConstraints <- traverse substMetas =<< getActiveConstraints
+    generalisableConstraints <- traverse substMetas (unsolvedInstanceConstraints <> unsolvedAuxiliaryConstraints)
+
+    (generalisedDecl, rejectedGeneralisableConstraints) <-
+      foldM (generaliseOverConstraint unsolvedConstraints) (decl, []) generalisableConstraints
+
+    case rejectedGeneralisableConstraints of
+      (c : cs) -> do
+        let ungeneralisableConstraints = fmap (mapObject InstanceConstraint) (c :| cs)
+        throwError $ TypingError $ UnsolvedConstraints ungeneralisableConstraints
+      [] -> do
+        setInstanceConstraints @builtin mempty
+        setAuxiliaryInstanceConstraints @builtin mempty
+        return generalisedDecl
 
 generaliseOverConstraint ::
   (MonadTypeChecker builtin m) =>

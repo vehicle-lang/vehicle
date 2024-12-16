@@ -17,6 +17,8 @@ import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Bidirectional
 import Vehicle.Compile.Type.Constraint.ApplicationSolver (runApplicationSolver)
 import Vehicle.Compile.Type.Constraint.Core (runConstraintSolver)
+import Vehicle.Compile.Type.Constraint.InstanceDefaultSolver (addNewInstanceConstraintUsingDefaults)
+import Vehicle.Compile.Type.Constraint.InstanceSolver (runInstanceSolver)
 import Vehicle.Compile.Type.Constraint.UnificationSolver
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Generalise
@@ -202,44 +204,56 @@ solveConstraints d = logCompilerPass MidDetail "constraint solving" $ do
         if allConstraintsBlocked
           then do
             -- If no constraints are unblocked then try generating new constraints using defaults.
-            instanceCandidates <- getInstanceCandidates
-            successfullyGeneratedDefault <- generateDefaultConstraint instanceCandidates decl
-            when successfullyGeneratedDefault $
+            logDebug MaxDetail $ "Temporarily stuck" <> line
+
+            success <- logCompilerPass MidDetail "trying to generate a new constraint using instance defaults" $ do
+              success <- addNewInstanceConstraintUsingDefaults decl
+              if success
+                then return True
+                else generateDefaultAuxiliaryConstraint decl
+
+            when success $
               -- If new constraints generated then continue solving.
               loopOverConstraints mempty loopNumber decl
           else do
             -- If we have made useful progress then start a new pass
             let passDoc = "constraint solving pass" <+> pretty loopNumber
             newMetasSolved <- logCompilerPass MaxDetail passDoc $ do
-              metasSolvedDuringApplications <-
-                trackSolvedMetas (Proxy @builtin) $
-                  runApplicationSolver (Proxy @builtin) recentlySolvedMetas
-
-              metasSolvedDuringUnification <-
-                trackSolvedMetas (Proxy @builtin) $
-                  runUnificationSolver (Proxy @builtin) (metasSolvedDuringApplications <> recentlySolvedMetas)
-
               logUnsolvedUnknowns updatedDecl (Just recentlySolvedMetas)
-
-              metasSolvedDuringInstanceResolution <-
-                trackSolvedMetas (Proxy @builtin) $
-                  runInstanceSolver (Proxy @builtin) (metasSolvedDuringUnification <> metasSolvedDuringApplications)
-
-              return (metasSolvedDuringInstanceResolution <> metasSolvedDuringUnification)
-
+              runSolvers recentlySolvedMetas
             loopOverConstraints newMetasSolved (loopNumber + 1) updatedDecl
+
+    runSolvers :: (TCM builtin m) => MetaSet -> m MetaSet
+    runSolvers recentlySolvedMetas = do
+      metasSolvedDuringApplications <-
+        trackSolvedMetas (Proxy @builtin) $
+          runApplicationSolver (Proxy @builtin) recentlySolvedMetas
+
+      metasSolvedDuringUnification <-
+        trackSolvedMetas (Proxy @builtin) $
+          runUnificationSolver (Proxy @builtin) (metasSolvedDuringApplications <> recentlySolvedMetas)
+
+      metasSolvedDuringInstanceResolution <-
+        trackSolvedMetas (Proxy @builtin) $
+          runInstanceSolver (Proxy @builtin) (metasSolvedDuringUnification <> metasSolvedDuringApplications <> recentlySolvedMetas)
+
+      metasSolvedDuringAuxiliaryResolution <-
+        trackSolvedMetas (Proxy @builtin) $
+          runAuxiliarySolver (Proxy @builtin) (metasSolvedDuringUnification <> metasSolvedDuringApplications <> metasSolvedDuringInstanceResolution)
+
+      return (metasSolvedDuringInstanceResolution <> metasSolvedDuringUnification <> metasSolvedDuringAuxiliaryResolution)
 
 -- | Attempts to solve as many type-class constraints as possible. Takes in
 -- the set of meta-variables solved since the solver was last run and outputs
 -- the set of meta-variables solved during this run.
-runInstanceSolver :: forall builtin m. (TCM builtin m) => Proxy builtin -> MetaSet -> m ()
-runInstanceSolver _ metasSolved = do
-  instanceCandidates <- getInstanceCandidates
-  logCompilerPass MaxDetail ("instance solver run" <> line) $
-    runConstraintSolver @builtin
-      getActiveInstanceConstraints
-      setInstanceConstraints
-      (solveInstance instanceCandidates)
+runAuxiliarySolver :: (TCM builtin m) => Proxy builtin -> MetaSet -> m ()
+runAuxiliarySolver proxy metasSolved = do
+  logCompilerPass MaxDetail ("auxiliary solver run" <> line) $
+    runConstraintSolver
+      proxy
+      getActiveAuxiliaryInstanceConstraints
+      setAuxiliaryInstanceConstraints
+      solveAuxiliaryInstanceConstraint
       metasSolved
 
 -------------------------------------------------------------------------------

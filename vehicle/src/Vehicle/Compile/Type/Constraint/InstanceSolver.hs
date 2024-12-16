@@ -1,5 +1,5 @@
 module Vehicle.Compile.Type.Constraint.InstanceSolver
-  ( solveInstanceConstraint,
+  ( runInstanceSolver,
     acceptCandidate,
   )
 where
@@ -18,6 +18,7 @@ import Vehicle.Compile.Print.Error (MeaningfulError (..))
 import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Constraint.UnificationSolver (runUnificationSolver)
 import Vehicle.Compile.Type.Core
+import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Monad.Class (addInstanceConstraints)
 import Vehicle.Data.Code.Value
@@ -26,19 +27,18 @@ import Vehicle.Data.DeBruijn (dbLevelToIndex)
 --------------------------------------------------------------------------------
 -- Public interface
 
-solveInstanceConstraint ::
-  forall builtin m.
-  (Hashable builtin, MonadInstance builtin m) =>
-  InstanceDatabase builtin ->
-  WithContext (InstanceConstraint builtin) ->
-  m ()
-solveInstanceConstraint database constraint = do
-  normConstraint <- substMetas constraint
-  logDebug MaxDetail $ "Forced:" <+> prettyFriendly normConstraint
-
-  let goal = parseInstanceGoal normConstraint
-  let candidates = lookupInstances database goal
-  solveInstanceGoal normConstraint candidates goal
+-- | Attempts to solve as many type-class constraints as possible. Takes in
+-- the set of meta-variables solved since the solver was last run and outputs
+-- the set of meta-variables solved during this run.
+runInstanceSolver :: (MonadInstance builtin m) => Proxy builtin -> MetaSet -> m ()
+runInstanceSolver proxy metasSolved = do
+  logCompilerPass MaxDetail ("instance solver run" <> line) $
+    runConstraintSolver
+      proxy
+      getActiveInstanceConstraints
+      setInstanceConstraints
+      solveInstanceConstraint
+      metasSolved
 
 --------------------------------------------------------------------------------
 -- Algorithm
@@ -50,6 +50,20 @@ type MonadInstance builtin m =
 
 -- The algorithm for this is taken from
 -- https://agda.readthedocs.io/en/v2.6.2.2/language/instance-arguments.html#instance-resolution
+
+solveInstanceConstraint ::
+  forall builtin m.
+  (Hashable builtin, MonadInstance builtin m) =>
+  WithContext (InstanceConstraint builtin) ->
+  m ()
+solveInstanceConstraint constraint = do
+  normConstraint <- substMetas constraint
+  logDebug MaxDetail $ "Forced:" <+> prettyFriendly normConstraint
+
+  let goal = parseInstanceGoal normConstraint
+  database <- getInstanceCandidates
+  let candidates = lookupInstances database goal
+  solveInstanceGoal normConstraint candidates goal
 
 solveInstanceGoal ::
   forall builtin m.

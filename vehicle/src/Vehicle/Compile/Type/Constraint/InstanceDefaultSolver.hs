@@ -1,5 +1,6 @@
 module Vehicle.Compile.Type.Constraint.InstanceDefaultSolver
-  ( addNewConstraintUsingDefaults,
+  ( addNewInstanceConstraintUsingDefaults,
+    getDefaultableConstraints,
   )
 where
 
@@ -7,9 +8,8 @@ import Control.Monad (filterM)
 import Data.Hashable (Hashable)
 import Data.Maybe (mapMaybe)
 import Data.Proxy (Proxy (..))
-import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (PrintableBuiltin, prettyVerbose)
+import Vehicle.Compile.Print (In, NoCtx, PrettyVerbose, PrintableBuiltin, prettyVerbose)
 import Vehicle.Compile.Type.Constraint.Core (parseInstanceGoal)
 import Vehicle.Compile.Type.Constraint.InstanceSolver (acceptCandidate)
 import Vehicle.Compile.Type.Core
@@ -32,44 +32,29 @@ instance (PrintableBuiltin builtin) => Pretty (DefaultCandidate builtin) where
   pretty (DefaultCandidate (constraint, _, candidate)) =
     prettyVerbose constraint <+> "~" <+> prettyVerbose (candidateExpr candidate)
 
--- | Tries to add new unification constraints using default values.
-addNewConstraintUsingDefaults ::
+addNewInstanceConstraintUsingDefaults ::
+  forall builtin m.
   (MonadTypeChecker builtin m, Hashable builtin) =>
-  ([WithContext (InstanceConstraint builtin)] -> m Bool) ->
-  InstanceDatabase builtin ->
   Maybe (Decl builtin) ->
   m Bool
-addNewConstraintUsingDefaults handleNonStandardConstraints instanceDatabase maybeDecl = do
-  logDebug MaxDetail $ "Temporarily stuck" <> line
-
-  logCompilerPass
-    MidDetail
-    "trying to generate a new constraint using instance defaults"
-    $ do
-      -- Calculate the set of candidate constraints
-      defaultableConstraints <- getDefaultableConstraints maybeDecl
-      logDebug MaxDetail $
-        "Suitable instance constraints:"
-          <> line
-          <> indent 2 (prettyVerbose defaultableConstraints)
-          <> line
-
-      result <- chooseDefaultConstraint instanceDatabase defaultableConstraints
-      case result of
-        Just candidate -> do
-          acceptDefaultCandidate candidate
-          return True
-        Nothing ->
-          handleNonStandardConstraints defaultableConstraints
+addNewInstanceConstraintUsingDefaults maybeDecl = do
+  instanceConstraints <- getActiveInstanceConstraints @builtin
+  defaultableConstraints <- getDefaultableConstraints maybeDecl instanceConstraints
+  result <- chooseDefaultConstraint defaultableConstraints
+  case result of
+    Just candidate -> do
+      acceptDefaultCandidate candidate
+      return True
+    Nothing -> return False
 
 getDefaultableConstraints ::
-  forall builtin m.
-  (MonadInstanceDefault builtin m) =>
+  forall constraint ctx builtin m.
+  (MonadInstanceDefault builtin m, HasMetas constraint, PrettyVerbose (Contextualised constraint ctx `In` NoCtx)) =>
   Maybe (Decl builtin) ->
-  m [WithContext (InstanceConstraint builtin)]
-getDefaultableConstraints maybeDecl = do
-  instanceConstraints <- getActiveInstanceConstraints
-  case maybeDecl of
+  [Contextualised constraint ctx] ->
+  m [Contextualised constraint ctx]
+getDefaultableConstraints maybeDecl possibleConstraints = do
+  result <- case maybeDecl of
     Just decl | not (isAbstractDecl decl) -> do
       -- We only want to generate default solutions for constraints
       -- that *don't* appear in the type of the declaration, as those will be
@@ -83,18 +68,26 @@ getDefaultableConstraints maybeDecl = do
         unsolvedMetasInTypeDoc <- prettyMetas (Proxy @builtin) typeMetas
         return $ "Metas transitively related to type-signature:" <+> unsolvedMetasInTypeDoc
 
-      flip filterM instanceConstraints $ \tc -> do
+      flip filterM possibleConstraints $ \tc -> do
         constraintMetas <- metasIn (objectIn tc)
         return $ MetaSet.disjoint constraintMetas typeMetas
-    _ -> return instanceConstraints
+    _ -> return possibleConstraints
+
+  logDebug MaxDetail $
+    "Suitable defaultable constraints:"
+      <> line
+      <> indent 2 (prettyVerbose result)
+      <> line
+
+  return result
 
 chooseDefaultConstraint ::
   forall builtin m.
-  (MonadCompile m, PrintableBuiltin builtin, Hashable builtin) =>
-  InstanceDatabase builtin ->
+  (MonadTypeChecker builtin m) =>
   [WithContext (InstanceConstraint builtin)] ->
   m (Maybe (DefaultCandidate builtin))
-chooseDefaultConstraint instanceDatabase constraints = do
+chooseDefaultConstraint constraints = do
+  instanceDatabase <- getInstanceCandidates
   let defaults = mapMaybe (findDefault instanceDatabase) constraints
   case defaults of
     [] -> do

@@ -85,6 +85,6 @@ addFunctionConstraint constraint declProv@(_, declP) position existingExpr = do
   freeEnv <- getFreeEnv
   let declSort = developerError "function IO constraints should never fail"
   let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin freeEnv declProv declSort existingExpr
-  _ <- createFreshInstanceConstraint mempty declP origin Irrelevant tcExpr
+  _ <- createFreshInstanceConstraint True mempty declP origin Irrelevant tcExpr
 
   return newExpr

@@ -221,7 +221,6 @@ data UnificationConstraintOrigin builtin
   = CheckingExprType (CheckingExprType builtin)
   | CheckingBinderType (CheckingBinderType builtin)
   | CheckingInstanceType (InstanceConstraintOrigin builtin)
-  | CheckingAuxiliary
   deriving (Show)
 
 -- | A constraint representing that a pair of expressions should be equal
@@ -244,18 +243,13 @@ data Constraint builtin
     UnificationConstraint (UnificationConstraint builtin)
   | -- | Represents that the provided type must have the required functionality
     InstanceConstraint (InstanceConstraint builtin)
-  | -- | Represents that
+  | -- | Represents an implicit/instance application argument insertion problem
     ApplicationConstraint (ApplicationConstraint builtin)
   deriving (Show)
 
 type instance
   WithContext (Constraint builtin) =
     Contextualised (Constraint builtin) (ConstraintContext builtin)
-
-getTypeClassConstraint :: WithContext (Constraint builtin) -> Maybe (WithContext (InstanceConstraint builtin))
-getTypeClassConstraint (WithContext constraint ctx) = case constraint of
-  InstanceConstraint tc -> Just (WithContext tc ctx)
-  _ -> Nothing
 
 blockConstraintOn ::
   Contextualised c (ConstraintContext builtin) ->
@@ -268,20 +262,6 @@ isBlocked solvedMetas ctx = isStillBlocked solvedMetas (blockedBy ctx)
 
 constraintIsBlocked :: MetaSet -> Contextualised c (ConstraintContext builtin) -> Bool
 constraintIsBlocked solvedMetas c = isBlocked solvedMetas (contextOf c)
-
---------------------------------------------------------------------------------
--- Progress in solving meta-variable constraints
-
-data ConstraintProgress builtin
-  = Stuck MetaSet
-  | Progress [WithContext (UnificationConstraint builtin)] [WithContext (InstanceConstraint builtin)]
-  deriving (Show)
-
-instance Semigroup (ConstraintProgress builtin) where
-  Stuck m1 <> Stuck m2 = Stuck (m1 <> m2)
-  Stuck {} <> x@Progress {} = x
-  x@Progress {} <> Stuck {} = x
-  Progress u1 r1 <> Progress u2 r2 = Progress (u1 <> u2) (r1 <> r2)
 
 --------------------------------------------------------------------------------
 -- Restrictions on decl types

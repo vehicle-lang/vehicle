@@ -11,6 +11,8 @@ module Vehicle.Compile.Print
     PrettyExternal,
     PrintableBuiltin,
     Tags (..),
+    In,
+    NoCtx,
     prettyVerbose,
     prettyFriendly,
     prettyExternal,

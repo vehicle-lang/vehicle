@@ -151,18 +151,19 @@ createFreshApplicationConstraint ctx problem blockingMetas = do
   addApplicationConstraint blockedConstraint
   return (unnormalised finalExpr, unnormalised finalType)
 
--- | Adds an entirely new type-class constraint (as opposed to one
+-- | Adds an entirely new instance constraint (as opposed to one
 -- derived from another constraint).
 createFreshInstanceConstraint ::
   forall builtin m.
   (MonadTypeChecker builtin m) =>
+  Bool ->
   BoundCtx (Type builtin) ->
   Provenance ->
   InstanceConstraintOrigin builtin ->
   Relevance ->
   Type builtin ->
   m (GluedExpr builtin)
-createFreshInstanceConstraint boundCtx p origin relevance tcExpr = do
+createFreshInstanceConstraint auxiliaryConstraint boundCtx p origin relevance tcExpr = do
   let env = boundContextToEnv boundCtx
   (meta, metaExpr) <- freshMetaIdAndExpr p tcExpr boundCtx
 
@@ -171,6 +172,8 @@ createFreshInstanceConstraint boundCtx p origin relevance tcExpr = do
   nTCExpr <- normaliseInEnv env tcExpr
   let constraint = WithContext (Resolve origin meta relevance nTCExpr) context
 
-  addInstanceConstraints [constraint]
+  if auxiliaryConstraint
+    then addAuxiliaryInstanceConstraints [constraint]
+    else addInstanceConstraints [constraint]
 
   return metaExpr
