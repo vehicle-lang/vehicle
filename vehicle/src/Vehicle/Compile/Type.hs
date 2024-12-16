@@ -210,9 +210,7 @@ solveConstraints d = logCompilerPass MidDetail "constraint solving" $ do
           else do
             -- If no constraints are unblocked then try generating new constraints using defaults.
             logDebug MaxDetail $ "Temporarily stuck" <> line
-
             success <- tryToUnstick updatedDecl
-
             when success $
               -- If new constraints generated then continue solving.
               loopOverConstraints loopNumber decl
@@ -236,15 +234,21 @@ solveConstraints d = logCompilerPass MidDetail "constraint solving" $ do
     tryToUnstick :: (TCM builtin m) => Maybe (Decl builtin) -> m Bool
     tryToUnstick decl = do
       -- First try to increase the depth limit for instance search
-      -- runInstanceSolver proxy 0 mempty
+      solvedMetas <- logCompilerPass MidDetail "trying to increase the depth for instance search" $ do
+        trackSolvedMetas (Proxy @builtin) $ runInstanceSolver (Proxy @builtin) 1
 
-      success <- logCompilerPass MidDetail "trying to generate a new constraint using instance defaults" $ do
-        success <- addNewInstanceConstraintUsingDefaults decl
-        if success
-          then return True
-          else generateDefaultAuxiliaryConstraint decl
+      if not (MetaSet.null solvedMetas)
+        then return True
+        else do
+          -- Then if that fails try to use default instances
+          success <- logCompilerPass MidDetail "trying to generate a new constraint using instance defaults" $ do
+            addNewInstanceConstraintUsingDefaults decl
 
-      return success
+          if success
+            then return True
+            else logCompilerPass MidDetail "trying to generate a new constraint using instance defaults" $ do
+              -- Then if that fails try to use default auxiliary instances
+              generateDefaultAuxiliaryConstraint decl
 
 -- | Attempts to solve as many type-class constraints as possible. Takes in
 -- the set of meta-variables solved since the solver was last run and outputs
