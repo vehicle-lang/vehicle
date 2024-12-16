@@ -183,12 +183,6 @@ instance (BuiltinHasStandardData builtin) => HasStandardData (Value builtin) whe
     VFreeVar ident args -> Just (mempty, ident, args)
     _ -> Nothing
 
-  getTypeClassOp e = case e of
-    VBuiltin b args -> case getBuiltinTypeClassOp b of
-      Just op -> Just (mempty, op, args)
-      Nothing -> Nothing
-    _ -> Nothing
-
 instance (BuiltinHasBoolLiterals builtin) => HasBoolLits (Value builtin) where
   getBoolLit = \case
     VBuiltin (getBoolBuiltinLit -> Just b) [] -> Just (mempty, b)

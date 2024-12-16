@@ -140,8 +140,6 @@ class HasStandardData expr where
   mkFreeVar :: Provenance -> Identifier -> [GenericArg expr] -> expr
   getFreeVar :: expr -> Maybe (Provenance, Identifier, [GenericArg expr])
 
-  getTypeClassOp :: expr -> Maybe (Provenance, TypeClassOp, [GenericArg expr])
-
 --------------------------------------------------------------------------------
 -- BuiltinHasStandardTypes
 

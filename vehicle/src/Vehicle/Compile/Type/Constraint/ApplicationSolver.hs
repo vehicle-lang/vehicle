@@ -8,22 +8,20 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Bidirectional (solveArgInsertionProblem)
 import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Core
-import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Compile.Type.System
 
 -- | Attempts to solve as many type-class constraints as possible. Takes in
 -- the set of meta-variables solved since the solver was last run and outputs
 -- the set of meta-variables solved during this run.
-runApplicationSolver :: (TCM builtin m) => Proxy builtin -> MetaSet -> m ()
-runApplicationSolver proxy metasSolved = do
+runApplicationSolver :: (TCM builtin m) => Proxy builtin -> m ()
+runApplicationSolver proxy = do
   logCompilerPass MaxDetail ("application solver run" <> line) $
     runConstraintSolver
       proxy
       getActiveApplicationConstraints
       setApplicationConstraints
       solveApplicationConstraint
-      metasSolved
 
 solveApplicationConstraint ::
   (TCM builtin m) =>

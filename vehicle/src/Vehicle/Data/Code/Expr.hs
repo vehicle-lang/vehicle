@@ -323,12 +323,6 @@ instance (BuiltinHasStandardData builtin) => HasStandardData (Expr builtin) wher
     Just (p, ident, args) -> Just (p, ident, args)
     _ -> Nothing
 
-  getTypeClassOp e = case getBuiltinApp e of
-    Just (p, b, args) -> case getBuiltinTypeClassOp b of
-      Just f -> Just (p, f, args)
-      Nothing -> Nothing
-    _ -> Nothing
-
 instance (BuiltinHasBoolLiterals builtin) => HasBoolLits (Expr builtin) where
   getBoolLit e = case e of
     Builtin _ (getBoolBuiltinLit -> Just b) -> Just (mempty, b)

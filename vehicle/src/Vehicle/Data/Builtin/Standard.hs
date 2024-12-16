@@ -85,7 +85,3 @@ instance BuiltinHasStandardData Builtin where
   getBuiltinConstructor = \case
     BuiltinConstructor c -> Just c
     _ -> Nothing
-
-  getBuiltinTypeClassOp = \case
-    TypeClassOp op -> Just op
-    _ -> Nothing

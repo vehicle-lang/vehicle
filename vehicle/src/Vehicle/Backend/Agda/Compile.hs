@@ -78,7 +78,7 @@ logEntry :: (MonadAgdaCompile m) => Expr Builtin -> m ()
 logEntry e = do
   incrCallDepth
   ctx <- getNamedBoundCtx (Proxy @())
-  logDebug MaxDetail $ "compile-entry" <+> prettyFriendly (WithContext e ctx)
+  logDebug MaxDetail $ "compile-entry" <+> prettyExternal (WithContext e ctx)
 
 logExit :: (MonadAgdaCompile m) => Code -> m ()
 logExit e = do
@@ -587,9 +587,7 @@ compileBuiltin _p b args = case b of
     Quantifier q -> case reverse args of
       (ExplicitArg _ _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier q [binder] body
       _ -> unsupportedArgsError
-    FromNat dom -> case reverse args of
-      (_inst : value : _) -> compileFromNat dom <$> compileArg value
-      _ -> unsupportedArgsError
+    FromNat dom -> compileFromNat dom args
     FromRat dom -> case reverse args of
       (value : _) -> compileFromRat dom <$> compileArg value
       _ -> unsupportedArgsError
@@ -619,10 +617,11 @@ compileBuiltin _p b args = case b of
 
     unsupportedArgsError :: (MonadAgdaCompile m) => m a
     unsupportedArgsError = do
-      ctx <- getNamedBoundCtx (Proxy @())
       compilerDeveloperError $
         "compilation of"
-          <+> prettyFriendly (WithContext (normAppList (Builtin mempty b) args) ctx)
+          <+> quotePretty b
+          <+> "with args"
+          <+> prettyVerbose args
           <+> "to Agda unsupported"
 
     resolveInstance :: (MonadAgdaCompile m) => Builtin -> [Arg Builtin] -> m Code
@@ -745,11 +744,22 @@ compileNeg dom args = do
 
   annotateInfixOp1 [dependency] 8 (Just qualifier) "-" args
 
-compileFromNat :: FromNatDomain -> Code -> Code
-compileFromNat dom value = case dom of
-  FromNatToIndex -> agdaNatToFin [value]
-  FromNatToNat -> value
-  FromNatToRat -> agdaDivRat [agdaPosInt [value], "1"]
+compileFromNat :: (MonadAgdaCompile m) => FromNatDomain -> [Arg Builtin] -> m Code
+compileFromNat dom args = case (dom, args) of
+  (FromNatToNat, [value, _]) -> compileExpr $ argExpr value
+  (FromNatToRat, [value, _]) -> do
+    v <- compileExpr $ argExpr value
+    return $ agdaDivRat [agdaPosInt [v], "1"]
+  (FromNatToIndex, [_inst, value, _]) -> do
+    v <- compileExpr $ argExpr value
+    return $ agdaNatToFin [v]
+  _ -> do
+    compilerDeveloperError $
+      "compilation of"
+        <+> quotePretty (FromNat dom)
+        <+> "with args"
+        <+> prettyVerbose args
+        <+> "to Agda unsupported"
 
 compileFromRat :: FromRatDomain -> Code -> Code
 compileFromRat dom arg = case dom of

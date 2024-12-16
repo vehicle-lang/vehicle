@@ -55,7 +55,7 @@ type Eval builtin m =
   Expr builtin ->
   m (Value builtin)
 
-evalTypeClassOp ::
+evalBuiltinFunction ::
   (MonadLogger m, BuiltinHasStandardData builtin, Show builtin) =>
   (BuiltinFunction -> EvalBuiltin (Value builtin) m) ->
   EvalApp (Value builtin) m ->
@@ -63,13 +63,10 @@ evalTypeClassOp ::
   builtin ->
   Spine builtin ->
   m (Value builtin)
-evalTypeClassOp evalFn evalApp originalExpr b normArgs
-  | isTypeClassOp b = do
-      (inst, remainingArgs) <- findInstanceArg b normArgs
-      evalApp inst remainingArgs
-  | otherwise = case getBuiltinFunction b of
-      Nothing -> return originalExpr
-      Just f -> evalFn f evalApp originalExpr normArgs
+evalBuiltinFunction evalFn evalApp originalExpr b normArgs =
+  case getBuiltinFunction b of
+    Nothing -> return originalExpr
+    Just f -> evalFn f evalApp originalExpr normArgs
 
 findInstanceArg :: (MonadLogger m, Show op) => op -> [GenericArg a] -> m (a, [GenericArg a])
 findInstanceArg op = \case
@@ -504,7 +501,7 @@ functionBlockingArgs = \case
   Implies -> []
 
 instance NormalisableBuiltin Builtin where
-  evalBuiltinApp = evalTypeClassOp $ \b evalApp originalValue args -> case b of
+  evalBuiltinApp = evalBuiltinFunction $ \b evalApp originalValue args -> case b of
     Quantifier {} -> return originalValue
     Not -> return $ evalNot originalValue args
     And -> return $ evalAnd originalValue args
@@ -565,7 +562,7 @@ instance NormalisableBuiltin LossTensorBuiltin where
   blockingArgs = developerError "forcing not yet implemented for tensor builtins"
 
 instance NormalisableBuiltin LinearityBuiltin where
-  evalBuiltinApp = evalTypeClassOp $ \b evalApp originalValue args -> case b of
+  evalBuiltinApp = evalBuiltinFunction $ \b evalApp originalValue args -> case b of
     Quantifier {} -> return originalValue
     Not -> return $ evalNot originalValue args
     And -> return $ evalAnd originalValue args
@@ -618,7 +615,7 @@ evalLinearityFoldList evalApp originalExpr args =
     _ -> return originalExpr
 
 instance NormalisableBuiltin PolarityBuiltin where
-  evalBuiltinApp = evalTypeClassOp $ \b evalApp originalValue args -> case b of
+  evalBuiltinApp = evalBuiltinFunction $ \b evalApp originalValue args -> case b of
     Quantifier {} -> return originalValue
     Not -> return $ evalNot originalValue args
     And -> return $ evalAnd originalValue args

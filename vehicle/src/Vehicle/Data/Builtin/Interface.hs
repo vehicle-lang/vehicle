@@ -84,13 +84,6 @@ class BuiltinHasStandardData builtin where
   mkBuiltinFunction :: BuiltinFunction -> builtin
   getBuiltinFunction :: builtin -> Maybe BuiltinFunction
 
-  getBuiltinTypeClassOp :: builtin -> Maybe TypeClassOp
-
-  isTypeClassOp :: builtin -> Bool
-  isTypeClassOp b = case getBuiltinTypeClassOp b of
-    Just {} -> True
-    Nothing -> False
-
 --------------------------------------------------------------------------------
 -- BuiltinHasStandardTypes
 

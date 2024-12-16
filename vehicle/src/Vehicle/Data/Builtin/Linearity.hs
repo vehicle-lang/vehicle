@@ -154,8 +154,6 @@ instance BuiltinHasStandardData LinearityBuiltin where
     LinearityConstructor c -> Just c
     _ -> Nothing
 
-  getBuiltinTypeClassOp = const Nothing
-
 instance BuiltinHasBoolLiterals LinearityBuiltin where
   mkBoolBuiltinLit b = LinearityConstructor (LBool b)
   getBoolBuiltinLit = \case

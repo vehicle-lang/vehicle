@@ -12,9 +12,7 @@ module Vehicle.Compile.Type.Constraint.Core
   )
 where
 
-import Control.Monad (forM_)
 import Data.Data (Proxy (..))
-import Data.List (partition)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
@@ -22,7 +20,8 @@ import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
-import Vehicle.Compile.Type.Monad (MonadTypeChecker, copyContext, freshMetaIdAndExpr, trackSolvedMetas)
+import Vehicle.Compile.Type.Monad (MonadTypeChecker, copyContext, freshMetaIdAndExpr)
+import Vehicle.Compile.Type.Monad.Class (getIsUnblockedFn)
 import Vehicle.Data.Code.Value
 import Vehicle.Data.DSL
 
@@ -36,32 +35,40 @@ runConstraintSolver ::
   m [Contextualised constraint (ConstraintContext builtin)] ->
   ([Contextualised constraint (ConstraintContext builtin)] -> m ()) ->
   (Contextualised constraint (ConstraintContext builtin) -> m ()) ->
-  MetaSet ->
   m ()
-runConstraintSolver proxy getConstraints setConstraints attemptToSolveConstraint = loop 0
+runConstraintSolver _ getConstraints setConstraints attemptToSolveConstraint = loop 0
   where
-    loop :: Int -> MetaSet -> m ()
-    loop loopNumber recentMetasSolved = do
+    loop :: Int -> m ()
+    loop loopNumber = do
       unsolvedConstraints <- getConstraints
 
       if null unsolvedConstraints
         then return mempty
         else do
-          let isUnblocked = not . constraintIsBlocked recentMetasSolved
-          let (unblockedConstraints, blockedConstraints) = partition isUnblocked unsolvedConstraints
+          isUnblocked <- getIsUnblockedFn
 
-          if null unblockedConstraints
-            then return mempty
-            else do
+          case findFirstConstraint isUnblocked unsolvedConstraints of
+            Nothing -> return mempty
+            Just (unblockedConstraint, remainingConstraints) -> do
               -- We have made useful progress so start a new pass
-              setConstraints blockedConstraints
+              setConstraints remainingConstraints
 
-              solvedMetas <- trackSolvedMetas proxy $ do
-                forM_ unblockedConstraints $ \constraint -> do
-                  logCompilerSection MaxDetail ("trying:" <+> prettyExternal constraint) $ do
-                    attemptToSolveConstraint constraint
+              logCompilerSection MaxDetail ("trying:" <+> prettyExternal unblockedConstraint) $
+                attemptToSolveConstraint unblockedConstraint
 
-              loop (loopNumber + 1) solvedMetas
+              loop (loopNumber + 1)
+
+-- | Find the first constraint satisfying `p` appending all the constraints that don't satisfy it to
+-- the end of the list, so we don't search through them again immediately next time.
+findFirstConstraint :: forall a. (a -> Bool) -> [a] -> Maybe (a, [a])
+findFirstConstraint p xs = (\(found, seen, unseen) -> (found, unseen <> seen)) <$> go xs
+  where
+    go :: [a] -> Maybe (a, [a], [a])
+    go = \case
+      [] -> Nothing
+      c : cs
+        | p c -> Just (c, [], cs)
+        | otherwise -> fmap (\(found, seen, unseen) -> (found, c : seen, unseen)) (go cs)
 
 data AuxiliaryConstraintProgress builtin
   = Stuck MetaSet

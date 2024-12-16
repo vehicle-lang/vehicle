@@ -21,10 +21,11 @@ import Vehicle.Compile.Context.Bound.Class (MonadBoundContext (..))
 import Vehicle.Compile.Context.Free.Class (MonadFreeContext (..), getFreeEnv)
 import Vehicle.Compile.Context.Name (MonadNameContext, addNameToContext, getBinderContext)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.Builtin (NormalisableBuiltin (..), filterOutIrrelevantArgs)
+import Vehicle.Compile.Normalise.Builtin (NormalisableBuiltin (..), filterOutIrrelevantArgs, findInstanceArg)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
+import Vehicle.Compile.Print.Builtin (PrintableBuiltin (..))
 import Vehicle.Data.Code.Value
 
 -- import Control.Monad (when)
@@ -179,10 +180,15 @@ evalBuiltin ::
   Spine builtin ->
   m (Value builtin)
 evalBuiltin freeEnv b args = do
-  let relArgs = filterOutIrrelevantArgs args
-  -- when (length relArgs /= length (spine <> args)) $ do
-  --   compilerDeveloperError $ "Bang" <> line <> prettyVerbose relArgs <> line <> prettyVerbose fun <> line <> prettyVerbose args <> line <> "Boom"
-  evalBuiltinApp (evalApp freeEnv) (VBuiltin b args) b relArgs
+  if isTypeClassOp b
+    then do
+      (inst, remainingArgs) <- findInstanceArg b args
+      evalApp freeEnv inst remainingArgs
+    else do
+      let relArgs = filterOutIrrelevantArgs args
+      -- when (length relArgs /= length (spine <> args)) $ do
+      --   compilerDeveloperError $ "Bang" <> line <> prettyVerbose relArgs <> line <> prettyVerbose fun <> line <> prettyVerbose args <> line <> "Boom"
+      evalBuiltinApp (evalApp freeEnv) (VBuiltin b args) b relArgs
 
 lookupIdentValueInEnv ::
   forall builtin m.

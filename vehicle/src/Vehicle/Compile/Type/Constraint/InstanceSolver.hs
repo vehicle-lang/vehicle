@@ -18,7 +18,6 @@ import Vehicle.Compile.Print.Error (MeaningfulError (..))
 import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Constraint.UnificationSolver (runUnificationSolver)
 import Vehicle.Compile.Type.Core
-import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Monad.Class (addInstanceConstraints)
 import Vehicle.Data.Code.Value
@@ -30,15 +29,18 @@ import Vehicle.Data.DeBruijn (dbLevelToIndex)
 -- | Attempts to solve as many type-class constraints as possible. Takes in
 -- the set of meta-variables solved since the solver was last run and outputs
 -- the set of meta-variables solved during this run.
-runInstanceSolver :: (MonadInstance builtin m) => Proxy builtin -> MetaSet -> m ()
-runInstanceSolver proxy metasSolved = do
+runInstanceSolver ::
+  (MonadInstance builtin m) =>
+  Proxy builtin ->
+  InstanceSearchDepth ->
+  m ()
+runInstanceSolver proxy depth = do
   logCompilerPass MaxDetail ("instance solver run" <> line) $
     runConstraintSolver
       proxy
       getActiveInstanceConstraints
       setInstanceConstraints
-      solveInstanceConstraint
-      metasSolved
+      (solveInstanceConstraint depth)
 
 --------------------------------------------------------------------------------
 -- Algorithm
@@ -54,25 +56,27 @@ type MonadInstance builtin m =
 solveInstanceConstraint ::
   forall builtin m.
   (Hashable builtin, MonadInstance builtin m) =>
+  InstanceSearchDepth ->
   WithContext (InstanceConstraint builtin) ->
   m ()
-solveInstanceConstraint constraint = do
+solveInstanceConstraint depth constraint = do
   normConstraint <- substMetas constraint
   logDebug MaxDetail $ "Forced:" <+> prettyFriendly normConstraint
 
   let goal = parseInstanceGoal normConstraint
   database <- getInstanceCandidates
   let candidates = lookupInstances database goal
-  solveInstanceGoal normConstraint candidates goal
+  solveInstanceGoal depth normConstraint candidates goal
 
 solveInstanceGoal ::
   forall builtin m.
   (MonadInstance builtin m) =>
+  InstanceSearchDepth ->
   WithContext (InstanceConstraint builtin) ->
   [InstanceCandidate builtin] ->
   InstanceGoal builtin ->
   m ()
-solveInstanceGoal constraint rawBuiltinCandidates goal = do
+solveInstanceGoal depth constraint rawBuiltinCandidates goal = do
   let boundCtx = boundContext $ contextOf constraint
   candidatesInBoundCtx <- findCandidatesInBoundCtx goal boundCtx
   -- The previously declared candidates have access to the entire bound context
@@ -89,10 +93,11 @@ solveInstanceGoal constraint rawBuiltinCandidates goal = do
       <> line
       <> indent 2 (list (fmap prettyCandidate candidatesInBoundCtx))
       <> line
+      <> "Depth:" <+> pretty depth
 
   -- Try all candidates
   (unsuccessfulCandidates, successfulCandidates) <-
-    partitionEithers <$> traverse (checkCandidate constraint goal) allCandidates
+    partitionEithers <$> traverse (checkCandidate depth constraint goal) allCandidates
 
   case successfulCandidates of
     -- If there is a single valid candidate then we adopt the resulting state
@@ -145,17 +150,24 @@ findCandidatesInBoundCtx goal ctx = go ctx
 checkCandidate ::
   forall builtin m.
   (MonadInstance builtin m) =>
+  InstanceSearchDepth ->
   WithContext (InstanceConstraint builtin) ->
   InstanceGoal builtin ->
   WithContext (InstanceCandidate builtin) ->
   m (Either (WithContext (InstanceCandidate builtin), UnAnnDoc) (WithContext (InstanceCandidate builtin), TypeCheckerState builtin))
-checkCandidate constraint goal candidate = do
+checkCandidate depth constraint goal candidate = do
   let candidateDoc = squotes (prettyCandidate candidate)
   logCompilerPass MaxDetail ("trying candidate instance" <+> candidateDoc) $ do
     result <- runTypeCheckerTHypothetically $ do
       logCompilerSection MaxDetail "hypothetically accepting candidate" $
         acceptCandidate constraint goal candidate
-      runUnificationSolver (Proxy @builtin) mempty
+
+      -- Run the solvers to check for conflicts
+      let proxy = Proxy @builtin
+      runUnificationSolver proxy
+      if depth == 0
+        then return mempty
+        else runInstanceSolver proxy (depth - 1)
 
     case result of
       Left err -> do

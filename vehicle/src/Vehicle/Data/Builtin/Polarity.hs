@@ -135,8 +135,6 @@ instance BuiltinHasStandardData PolarityBuiltin where
     PolarityConstructor c -> Just c
     _ -> Nothing
 
-  getBuiltinTypeClassOp = const Nothing
-
 instance BuiltinHasBoolLiterals PolarityBuiltin where
   mkBoolBuiltinLit b = PolarityConstructor (LBool b)
   getBoolBuiltinLit = \case

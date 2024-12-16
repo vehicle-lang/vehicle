@@ -170,6 +170,15 @@ getMetaSubstitution ::
   m (MetaSubstitution builtin)
 getMetaSubstitution _ = currentSubstitution <$> getMetaState
 
+getIsUnblockedFn ::
+  forall builtin m constraint.
+  (MonadTypeChecker builtin m) =>
+  m (Contextualised constraint (ConstraintContext builtin) -> Bool)
+getIsUnblockedFn = do
+  metasSolved <- MetaMap.keys <$> getMetaSubstitution (Proxy @builtin)
+  let isUnblocked = not . constraintIsBlocked metasSolved
+  return isUnblocked
+
 substMetas ::
   forall builtin m a.
   (MonadTypeChecker builtin m, MetaSubstitutable m builtin a) =>

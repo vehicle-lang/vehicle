@@ -133,6 +133,13 @@ class (Show builtin, Pretty builtin, ConvertableBuiltin builtin Builtin) => Prin
   -- builtin type. Used for printing.
   isCoercion :: builtin -> Bool
 
+  getBuiltinTypeClassOp :: builtin -> Maybe TypeClassOp
+
+  isTypeClassOp :: builtin -> Bool
+  isTypeClassOp b = case getBuiltinTypeClassOp b of
+    Just {} -> True
+    Nothing -> False
+
 instance PrintableBuiltin Builtin where
   isCoercion = \case
     BuiltinFunction FromNat {} -> True
@@ -142,17 +149,29 @@ instance PrintableBuiltin Builtin where
     TypeClassOp FromVecTC {} -> True
     _ -> False
 
+  getBuiltinTypeClassOp = \case
+    TypeClassOp op -> Just op
+    _ -> Nothing
+
 instance PrintableBuiltin PolarityBuiltin where
   isCoercion = const False
+
+  getBuiltinTypeClassOp = const Nothing
 
 instance PrintableBuiltin LinearityBuiltin where
   isCoercion = const False
 
+  getBuiltinTypeClassOp = const Nothing
+
 instance PrintableBuiltin TensorBuiltin where
   isCoercion = const False
 
+  getBuiltinTypeClassOp = const Nothing
+
 instance PrintableBuiltin LossTensorBuiltin where
   isCoercion = const False
+
+  getBuiltinTypeClassOp = const Nothing
 
 isCoercionExpr :: (PrintableBuiltin builtin) => Expr builtin -> Bool
 isCoercionExpr = \case
