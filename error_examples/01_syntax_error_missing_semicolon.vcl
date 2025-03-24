@@ -1,4 +1,3 @@
 x : Bool
-x = True
-y : Bool
+x = True y : Bool
 y = False

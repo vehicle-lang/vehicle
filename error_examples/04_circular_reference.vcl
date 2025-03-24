@@ -1,4 +1,3 @@
-x : Bool
-x = y
-y : Bool
-y = x
+a : Nat
+a = b + 1
+b = a + 1

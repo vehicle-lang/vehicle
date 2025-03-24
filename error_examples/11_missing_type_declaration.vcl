@@ -1,1 +1,1 @@
-x = 5
+property p = x
