@@ -126,6 +126,8 @@ instance Hashable OrderDomain
 
 instance Serialize OrderDomain
 
+instance ToJSON OrderDomain
+
 instance Pretty OrderDomain where
   pretty = \case
     OrderNat -> "Nat"
@@ -144,6 +146,8 @@ instance Hashable EqualityDomain
 
 instance Serialize EqualityDomain
 
+instance ToJSON EqualityDomain
+
 instance Pretty EqualityDomain where
   pretty = \case
     EqIndex -> "Index"
@@ -159,6 +163,8 @@ instance NFData NegDomain
 instance Hashable NegDomain
 
 instance Serialize NegDomain
+
+instance ToJSON NegDomain
 
 instance Pretty NegDomain where
   pretty = \case
@@ -179,6 +185,8 @@ instance Hashable AddDomain
 
 instance Serialize AddDomain
 
+instance ToJSON AddDomain
+
 instance Pretty AddDomain where
   pretty = \case
     AddNat -> "Nat"
@@ -193,6 +201,8 @@ instance NFData SubDomain
 instance Hashable SubDomain
 
 instance Serialize SubDomain
+
+instance ToJSON SubDomain
 
 instance Pretty SubDomain where
   pretty = \case
@@ -217,6 +227,8 @@ instance Hashable MulDomain
 
 instance Serialize MulDomain
 
+instance ToJSON MulDomain
+
 instance Pretty MulDomain where
   pretty = \case
     MulNat -> "Nat"
@@ -231,6 +243,8 @@ instance NFData DivDomain
 instance Hashable DivDomain
 
 instance Serialize DivDomain
+
+instance ToJSON DivDomain
 
 instance Pretty DivDomain where
   pretty = \case
@@ -258,6 +272,8 @@ instance NFData FromNatDomain
 
 instance Hashable FromNatDomain
 
+instance ToJSON FromNatDomain
+
 data FromRatDomain
   = FromRatToRat
   deriving (Eq, Ord, Show, Generic)
@@ -271,6 +287,8 @@ instance NFData FromRatDomain
 instance Hashable FromRatDomain
 
 instance Serialize FromRatDomain
+
+instance ToJSON FromRatDomain
 
 data BuiltinFunction
   = Not
@@ -308,6 +326,8 @@ instance NFData BuiltinFunction
 instance Hashable BuiltinFunction
 
 instance Serialize BuiltinFunction
+
+instance ToJSON BuiltinFunction
 
 -- TODO all the show instances should really be obtainable from the grammar
 -- somehow.
@@ -354,6 +374,8 @@ instance NFData Builtin
 instance Hashable Builtin
 
 instance Serialize Builtin
+
+instance ToJSON Builtin
 
 -- TODO all the show instances should really be obtainable from the grammar
 -- somehow.

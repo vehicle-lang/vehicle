@@ -7,6 +7,7 @@ module Vehicle.Prelude.IO
     vehicleLibraryExtension,
     removeFileIfExists,
     fatalError,
+    fatalErrorAsJSON,
     programOutput,
     getVehiclePath,
     ExternalOutputFormat (..),
@@ -24,11 +25,14 @@ import Control.Monad.Reader (ReaderT)
 import Control.Monad.State (StateT)
 import Control.Monad.Trans.Class (MonadTrans (lift))
 import Control.Monad.Writer (WriterT)
+import Data.Aeson (encode, object, (.=))
+import qualified Data.ByteString.Lazy.Char8 as BLC
+import Data.List (findIndex, isInfixOf)
 import Data.Text (Text)
 import Data.Version (Version)
 import Prettyprinter (Doc)
 import System.Directory (createDirectoryIfMissing, removeFile)
-import System.Environment (getEnvironment, lookupEnv)
+import System.Environment (getEnvironment, lookupEnv, getArgs)
 import System.Exit (exitFailure)
 import System.FilePath ((</>))
 import System.IO (hPrint, stderr)
@@ -124,6 +128,161 @@ fatalError :: (MonadIO m) => Doc a -> m b
 fatalError message = liftIO $ do
   hPrint stderr message
   exitFailure
+
+-- 检查是否为语法错误的函数
+isSyntaxError :: String -> Bool
+isSyntaxError s = "syntax error" `isInfixOf` s || "syntax error:" `isInfixOf` s
+
+fatalErrorAsJSON :: String -> IO ()
+fatalErrorAsJSON msg = do
+  args <- getArgs  -- 直接从系统获取命令行参数
+  let (file, origLine, origColumn) = extractLocationInfo msg
+  -- 直接从args中获取文件名
+  let fileName = case dropWhile (/= "-s") args of
+                   ("-s":fname:_) -> fname  -- 找到 -s 后面的文件名
+                   _ -> case filter (\arg -> ".vcl" `isInfixOf` arg) args of
+                          (fname:_) -> fname  -- 查找以.vcl结尾的参数
+                          _ -> file     -- 使用原始提取的文件名
+                          
+  -- 从语法错误消息中提取特定的行号和列号
+  let (lineNum, colNum) = 
+        if isSyntaxError msg
+        then
+          let syntaxLine = matchSyntaxErrorLine msg
+              syntaxCol = matchSyntaxErrorColumn msg
+          in if syntaxLine > 0 && syntaxCol > 0
+             then (syntaxLine, syntaxCol)
+             else if origLine > 0 && origColumn > 0
+                  then (origLine, origColumn)
+                  else (1, 1)  -- 默认值
+        else if origLine > 0 && origColumn > 0
+             then (origLine, origColumn)
+             else (1, 1)  -- 默认值
+             
+  let errProv = 
+        object [ "file" .= fileName
+               , "range" .= object [ "start" .= object [ "line" .= lineNum, "column" .= colNum ]
+                                   , "end" .= object [ "line" .= lineNum, "column" .= (colNum + 1) ]
+                                   ]
+               ]
+  BLC.putStrLn $ encode $ object [ "error" .= msg, "provenance" .= errProv ]
+  exitFailure
+
+-- | 从错误消息中提取位置信息
+-- 尝试匹配形如 "Error in file 'filename' at Line X, Columns Y-Z" 的错误消息
+-- 或者 "syntax error at line X, column Y before ..." 的语法错误
+extractLocationInfo :: String -> (String, Int, Int)
+extractLocationInfo msg =
+  case matchErrorFile msg of
+    Just file -> 
+      let line = matchErrorLine msg
+          column = matchErrorColumn msg
+      in (file, line, column)
+    Nothing -> 
+      -- 检查是否为语法错误
+      if isSyntaxError msg
+      then
+        let line = matchSyntaxErrorLine msg
+            column = matchSyntaxErrorColumn msg
+            -- 从错误上下文中提取文件路径，格式通常为 error_examples/xx_filename.vcl
+            filename = extractSyntaxErrorFilename msg
+        in if line > 0 && column > 0
+           then (filename, line, column)
+           else (filename, 0, 0)
+      else 
+        ("unknown", 0, 0)
+  where
+    -- 尝试从语法错误消息中提取文件名
+    extractSyntaxErrorFilename :: String -> String
+    extractSyntaxErrorFilename s =
+      -- 尝试先查找带有.vcl扩展名的文件路径
+      let parts = words s
+          possibleFiles = filter (\w -> ".vcl" `isInfixOf` w) parts
+      in if not (null possibleFiles)
+         then head possibleFiles  -- 返回找到的第一个文件名
+         else 
+           -- 如果找不到，再尝试找到错误示例目录
+           let dirMatches = filter (\w -> "error_examples/" `isInfixOf` w) parts
+           in if not (null dirMatches)
+              then head dirMatches -- 返回找到的第一个目录
+              else "unknown"  -- 如果都找不到，返回unknown
+    
+    -- 提取文件名
+    matchErrorFile :: String -> Maybe String
+    matchErrorFile s =
+      case dropWhile (/= '\'') s of
+        [] -> Nothing
+        _ : rest ->
+          case span (/= '\'') rest of
+            (file, _) -> Just file
+
+    -- 提取行号
+    matchErrorLine :: String -> Int
+    matchErrorLine s =
+      case dropWhile (/= 'L') s of
+        [] -> 0
+        'L' : 'i' : 'n' : 'e' : ' ' : rest ->
+          case span isDigit (dropWhile (not . isDigit) rest) of
+            (digits, _) -> if null digits then 0 else read digits
+        _ -> matchErrorLine (drop 1 s)
+
+    -- 提取列号
+    matchErrorColumn :: String -> Int
+    matchErrorColumn s =
+      case dropWhile (/= 'C') s of
+        [] -> 0
+        'C' : 'o' : 'l' : 'u' : 'm' : 'n' : ' ' : rest ->
+          case span isDigit (dropWhile (not . isDigit) rest) of
+            (digits, _) -> if null digits then 0 else read digits
+        'C' : 'o' : 'l' : 'u' : 'm' : 'n' : 's' : ' ' : rest ->
+          case span isDigit (dropWhile (not . isDigit) rest) of
+            (digits, _) -> if null digits then 0 else read digits
+        _ -> matchErrorColumn (drop 1 s)
+
+-- 从语法错误消息中提取行号
+matchSyntaxErrorLine :: String -> Int
+matchSyntaxErrorLine errMsg = 
+  let result = 
+        if "syntax error at line " `isInfixOf` errMsg
+        then 
+          let parts = words errMsg
+              lineIndex = findIndex (\w -> w == "line") parts
+          in case lineIndex of
+               Just idx -> 
+                 if idx + 1 < length parts
+                 then 
+                   let lineStr = filter (/= ',') $ parts !! (idx + 1)
+                   in if all isDigit lineStr
+                      then read lineStr
+                      else 0
+                 else 0
+               Nothing -> 0
+        else 0
+  in result
+
+-- 从语法错误消息中提取列号
+matchSyntaxErrorColumn :: String -> Int
+matchSyntaxErrorColumn errMsg = 
+  let result = 
+        if "column " `isInfixOf` errMsg
+        then 
+          let parts = words errMsg
+              colIndex = findIndex (\w -> w == "column") parts
+          in case colIndex of
+               Just idx -> 
+                 if idx + 1 < length parts
+                 then 
+                   let colStr = filter (\c -> isDigit c || c == '.') $ parts !! (idx + 1)
+                   in if all isDigit colStr
+                      then read colStr
+                      else 0
+                 else 0
+               Nothing -> 0
+        else 0
+  in result
+
+isDigit :: Char -> Bool
+isDigit c = c >= '0' && c <= '9'
 
 programOutput :: (MonadIO m) => Doc a -> m ()
 programOutput message = liftIO $ print message

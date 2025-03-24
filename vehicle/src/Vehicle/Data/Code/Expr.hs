@@ -9,7 +9,9 @@ import Control.Monad.Writer (MonadWriter (..), execWriter)
 import Data.Bifunctor (Bifunctor (..))
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
-import Data.Serialize (Serialize)
+import Data.Serialize (Serialize(..))
+import Data.Serialize.Get (getListOf, getWord8)
+import Data.Serialize.Put (putListOf, putWord8)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import GHC.Generics (Generic)
@@ -123,7 +125,38 @@ pattern App f xs <- UnsafeApp f xs
 
 instance (NFData builtin) => NFData (Expr builtin)
 
-instance (Serialize builtin) => Serialize (Expr builtin)
+instance (Serialize builtin) => Serialize (Expr builtin) where
+  put expr = case expr of
+    Universe p l -> putWord8 0 >> put p >> put l
+    Hole p i -> putWord8 1 >> put p >> put i
+    Meta p i -> putWord8 2 >> put p >> put i
+    App e args -> putWord8 3 >> put e >> putListOf put (NonEmpty.toList args)
+    Pi p dom cod -> putWord8 4 >> put p >> put dom >> put cod
+    Builtin p b -> putWord8 5 >> put p >> put b
+    BoundVar p i -> putWord8 6 >> put p >> put i
+    FreeVar p i -> putWord8 7 >> put p >> put i
+    Let p b e body -> putWord8 8 >> put p >> put b >> put e >> put body
+    Lam p b body -> putWord8 9 >> put p >> put b >> put body
+  
+  get = do
+    tag <- getWord8
+    case tag of
+      0 -> Universe <$> get <*> get
+      1 -> Hole <$> get <*> get
+      2 -> Meta <$> get <*> get
+      3 -> do
+        e <- get
+        args <- getListOf get
+        case NonEmpty.nonEmpty args of
+          Nothing -> fail "getApp: empty args list"
+          Just neArgs -> pure (App e neArgs)
+      4 -> Pi <$> get <*> get <*> get
+      5 -> Builtin <$> get <*> get
+      6 -> BoundVar <$> get <*> get
+      7 -> FreeVar <$> get <*> get
+      8 -> Let <$> get <*> get <*> get <*> get
+      9 -> Lam <$> get <*> get <*> get
+      _ -> fail $ "getExpr: unknown tag " ++ show tag
 
 instance HasProvenance (Expr builtin) where
   provenanceOf = \case

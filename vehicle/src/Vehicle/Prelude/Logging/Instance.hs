@@ -31,7 +31,8 @@ import Vehicle.Prelude.Warning
 data LoggingSettings = LoggingSettings
   { putLogLn :: Text -> IO (),
     loggingLevel :: LoggingLevel,
-    noWarnings :: Bool
+    noWarnings :: Bool,
+    errorAsJSON :: Bool
   }
 
 --------------------------------------------------------------------------------

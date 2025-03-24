@@ -36,6 +36,9 @@ import Vehicle.Syntax.AST.Name (Name)
 import Vehicle.Syntax.AST.Prog (GenericProg)
 import Vehicle.Syntax.AST.Provenance (HasProvenance (..), Provenance, fillInProvenance)
 import Vehicle.Syntax.Builtin (Builtin)
+import Data.Aeson (ToJSON)
+import Control.DeepSeq (NFData)
+import Data.Serialize (Serialize)
 
 --------------------------------------------------------------------------------
 -- Expressions
@@ -89,6 +92,12 @@ data Expr
       Binder -- Bound expression name.
       Expr -- Expression body.
   deriving (Eq, Show, Generic)
+
+instance NFData Expr
+
+instance Serialize Expr
+
+instance ToJSON Expr
 
 --------------------------------------------------------------------------------
 -- The AST datatypes specialised to the Expr type

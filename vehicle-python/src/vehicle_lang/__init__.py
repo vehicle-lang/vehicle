@@ -7,6 +7,7 @@ from .compile.error import VehiclePropertyNotFound as VehiclePropertyNotFound
 # from .compile.python import load_loss_function as load_loss_function
 from .error import VehicleError as VehicleError
 from .error import VehicleInternalError as VehicleInternalError
+from .error import VehicleSyntaxError as VehicleSyntaxError
 from .session.error import VehicleSessionClosed as VehicleSessionClosed
 from .session.error import VehicleSessionUsed as VehicleSessionUsed
 from .typing import AnyOptimiser as AnyOptimiser
@@ -31,6 +32,7 @@ __all__: List[str] = [
     "VehicleBuiltinUnsupported",
     "VehicleInternalError",
     "VehiclePropertyNotFound",
+    "VehicleSyntaxError",
     # Argument types
     "DeclarationName",
     "QuantifiedVariableName",

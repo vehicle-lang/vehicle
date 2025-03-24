@@ -1,6 +1,7 @@
 module Vehicle.Syntax.AST.Decl where
 
 import Control.DeepSeq (NFData)
+import Data.Aeson (ToJSON(..), genericToJSON, defaultOptions)
 import Data.Hashable (Hashable)
 import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
@@ -106,6 +107,9 @@ instance Serialize ParameterSort
 
 instance Hashable ParameterSort
 
+instance ToJSON ParameterSort where
+  toJSON = genericToJSON defaultOptions
+
 instance Pretty ParameterSort where
   pretty = \case
     Inferable -> "(infer=True)"
@@ -121,6 +125,9 @@ data DefAbstractSort
 instance NFData DefAbstractSort
 
 instance Serialize DefAbstractSort
+
+instance ToJSON DefAbstractSort where
+  toJSON = genericToJSON defaultOptions
 
 instance Pretty DefAbstractSort where
   pretty t =
@@ -151,6 +158,9 @@ data Annotation
 instance NFData Annotation
 
 instance Serialize Annotation
+
+instance ToJSON Annotation where
+  toJSON = genericToJSON defaultOptions
 
 instance Pretty Annotation where
   pretty = \case

@@ -60,6 +60,8 @@ instance Serialize EqualityOp
 
 instance NFData EqualityOp
 
+instance ToJSON EqualityOp
+
 instance Pretty EqualityOp where
   pretty = \case
     Eq -> "=="
@@ -89,6 +91,8 @@ instance NFData OrderOp
 instance Hashable OrderOp
 
 instance Serialize OrderOp
+
+instance ToJSON OrderOp
 
 instance Pretty OrderOp where
   pretty = \case
