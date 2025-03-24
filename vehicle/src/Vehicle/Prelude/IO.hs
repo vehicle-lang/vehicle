@@ -129,22 +129,22 @@ fatalError message = liftIO $ do
   hPrint stderr message
   exitFailure
 
--- 检查是否为语法错误的函数
+-- Function to check if the error is a syntax error
 isSyntaxError :: String -> Bool
 isSyntaxError s = "syntax error" `isInfixOf` s || "syntax error:" `isInfixOf` s
 
 fatalErrorAsJSON :: String -> IO ()
 fatalErrorAsJSON msg = do
-  args <- getArgs  -- 直接从系统获取命令行参数
+  args <- getArgs  -- Get command line arguments directly from the system
   let (file, origLine, origColumn) = extractLocationInfo msg
-  -- 直接从args中获取文件名
+  -- Extract filename from args
   let fileName = case dropWhile (/= "-s") args of
-                   ("-s":fname:_) -> fname  -- 找到 -s 后面的文件名
+                   ("-s":fname:_) -> fname  -- Find the filename after -s
                    _ -> case filter (\arg -> ".vcl" `isInfixOf` arg) args of
-                          (fname:_) -> fname  -- 查找以.vcl结尾的参数
-                          _ -> file     -- 使用原始提取的文件名
+                          (fname:_) -> fname  -- Look for arguments ending with .vcl
+                          _ -> file     -- Use the originally extracted filename
                           
-  -- 从语法错误消息中提取特定的行号和列号
+  -- Extract specific line and column numbers from syntax error messages
   let (lineNum, colNum) = 
         if isSyntaxError msg
         then
@@ -154,10 +154,10 @@ fatalErrorAsJSON msg = do
              then (syntaxLine, syntaxCol)
              else if origLine > 0 && origColumn > 0
                   then (origLine, origColumn)
-                  else (1, 1)  -- 默认值
+                  else (1, 1)  -- Default values
         else if origLine > 0 && origColumn > 0
              then (origLine, origColumn)
-             else (1, 1)  -- 默认值
+             else (1, 1)  -- Default values
              
   let errProv = 
         object [ "file" .= fileName
@@ -168,9 +168,9 @@ fatalErrorAsJSON msg = do
   BLC.putStrLn $ encode $ object [ "error" .= msg, "provenance" .= errProv ]
   exitFailure
 
--- | 从错误消息中提取位置信息
--- 尝试匹配形如 "Error in file 'filename' at Line X, Columns Y-Z" 的错误消息
--- 或者 "syntax error at line X, column Y before ..." 的语法错误
+-- | Extract location information from error messages
+-- Tries to match patterns like "Error in file 'filename' at Line X, Columns Y-Z"
+-- or "syntax error at line X, column Y before ..." for syntax errors
 extractLocationInfo :: String -> (String, Int, Int)
 extractLocationInfo msg =
   case matchErrorFile msg of
@@ -179,12 +179,12 @@ extractLocationInfo msg =
           column = matchErrorColumn msg
       in (file, line, column)
     Nothing -> 
-      -- 检查是否为语法错误
+      -- Check if it's a syntax error
       if isSyntaxError msg
       then
         let line = matchSyntaxErrorLine msg
             column = matchSyntaxErrorColumn msg
-            -- 从错误上下文中提取文件路径，格式通常为 error_examples/xx_filename.vcl
+            -- Extract file path from error context, typically in format error_examples/xx_filename.vcl
             filename = extractSyntaxErrorFilename msg
         in if line > 0 && column > 0
            then (filename, line, column)
@@ -192,22 +192,22 @@ extractLocationInfo msg =
       else 
         ("unknown", 0, 0)
   where
-    -- 尝试从语法错误消息中提取文件名
+    -- Try to extract filename from syntax error message
     extractSyntaxErrorFilename :: String -> String
     extractSyntaxErrorFilename s =
-      -- 尝试先查找带有.vcl扩展名的文件路径
+      -- First try to find paths with .vcl extension
       let parts = words s
           possibleFiles = filter (\w -> ".vcl" `isInfixOf` w) parts
       in if not (null possibleFiles)
-         then head possibleFiles  -- 返回找到的第一个文件名
+         then head possibleFiles  -- Return first filename found
          else 
-           -- 如果找不到，再尝试找到错误示例目录
+           -- If not found, try to find error examples directory
            let dirMatches = filter (\w -> "error_examples/" `isInfixOf` w) parts
            in if not (null dirMatches)
-              then head dirMatches -- 返回找到的第一个目录
-              else "unknown"  -- 如果都找不到，返回unknown
+              then head dirMatches -- Return first directory found
+              else "unknown"  -- Return "unknown" if nothing found
     
-    -- 提取文件名
+    -- Extract filename
     matchErrorFile :: String -> Maybe String
     matchErrorFile s =
       case dropWhile (/= '\'') s of
@@ -216,7 +216,7 @@ extractLocationInfo msg =
           case span (/= '\'') rest of
             (file, _) -> Just file
 
-    -- 提取行号
+    -- Extract line number
     matchErrorLine :: String -> Int
     matchErrorLine s =
       case dropWhile (/= 'L') s of
@@ -226,7 +226,7 @@ extractLocationInfo msg =
             (digits, _) -> if null digits then 0 else read digits
         _ -> matchErrorLine (drop 1 s)
 
-    -- 提取列号
+    -- Extract column number
     matchErrorColumn :: String -> Int
     matchErrorColumn s =
       case dropWhile (/= 'C') s of
@@ -239,7 +239,7 @@ extractLocationInfo msg =
             (digits, _) -> if null digits then 0 else read digits
         _ -> matchErrorColumn (drop 1 s)
 
--- 从语法错误消息中提取行号
+-- Extract line number from syntax error message
 matchSyntaxErrorLine :: String -> Int
 matchSyntaxErrorLine errMsg = 
   let result = 
@@ -260,7 +260,7 @@ matchSyntaxErrorLine errMsg =
         else 0
   in result
 
--- 从语法错误消息中提取列号
+-- Extract column number from syntax error message
 matchSyntaxErrorColumn :: String -> Int
 matchSyntaxErrorColumn errMsg = 
   let result = 
