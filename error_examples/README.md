@@ -1,189 +1,216 @@
-# Vehicle 错误示例文件集
+# Vehicle Error Example Files
 
-本文件夹包含多个 Vehicle 语言的错误示例，用于测试和展示 Vehicle 的错误报告功能，特别是JSON格式的错误输出。
+This folder contains multiple error examples in the Vehicle language, used to test and demonstrate the error reporting functionality of Vehicle, especially the JSON format error output.
 
-## 错误文件说明
+## Error File Descriptions
 
-### 语法错误
+### Syntax Errors
 
 1. **01_syntax_error_missing_semicolon.vcl**
-   - 错误：缺少分号
-   - 正确写法：在语句末尾添加分号
-   - 调用方式：`cabal exec vehicle -- --json-error check -s error_examples/01_syntax_error_missing_semicolon.vcl`
+   - Error: Missing semicolon
+   - Correct Usage: Add a semicolon at the end of the statement
+   - Command: `cabal exec vehicle -- --json-error check -s error_examples/01_syntax_error_missing_semicolon.vcl`
 
 2. **02_syntax_error_unfinished_expr.vcl**
-   - 错误：表达式未完成
-   - 正确写法：完成表达式
-   - 调用方式：`cabal exec vehicle -- --json-error check -s error_examples/02_syntax_error_unfinished_expr.vcl`
+   - Error: Unfinished expression
+   - Correct Usage: Complete the expression
+   - Command: `cabal exec vehicle -- --json-error check -s error_examples/02_syntax_error_unfinished_expr.vcl`
 
 3. **03_syntax_error_unbalanced_paren.vcl**
-   - 错误：括号不匹配
-   - 正确写法：添加缺失的括号
-   - 调用方式：`cabal exec vehicle -- --json-error check -s error_examples/03_syntax_error_unbalanced_paren.vcl`
+   - Error: Unmatched parentheses
+   - Correct Usage: Add the missing parentheses
+   - Command: `cabal exec vehicle -- --json-error check -s error_examples/03_syntax_error_unbalanced_paren.vcl`
 
-### 引用错误
+### Reference Errors
 
 4. **04_circular_reference.vcl**
-   - 错误：循环引用
-   - 正确写法：解除循环依赖
-   - 调用方式：`cabal exec vehicle -- --json-error check -s error_examples/04_circular_reference.vcl`
+   - Error: Circular reference
+   - Correct Usage: Break the circular dependency
+   - Command: `cabal exec vehicle -- --json-error check -s error_examples/04_circular_reference.vcl`
 
-### 函数错误
+### Function Errors
 
 5. **05_function_redefinition.vcl**
-   - 错误：函数重定义
-   - 正确写法：确保函数名唯一
-   - 调用方式：`cabal exec vehicle -- --json-error check -s error_examples/05_function_redefinition.vcl`
+   - Error: Function redefinition
+   - Correct Usage: Ensure function names are unique
+   - Command: `cabal exec vehicle -- --json-error check -s error_examples/05_function_redefinition.vcl`
 
-### 类型错误
+### Type Errors
 
 6. **06_type_mismatch.vcl**
-   - 错误：类型不匹配
-   - 正确写法：使用正确的类型
-   - 调用方式：`cabal exec vehicle -- --json-error check -s error_examples/06_type_mismatch.vcl`
+   - Error: Type mismatch
+   - Correct Usage: Use the correct type
+   - Command: `cabal exec vehicle -- --json-error check -s error_examples/06_type_mismatch.vcl`
 
 7. **07_missing_arguments.vcl**
-   - 错误：缺少参数
-   - 正确写法：提供所有必需参数
-   - 调用方式：`cabal exec vehicle -- --json-error check -s error_examples/07_missing_arguments.vcl`
+   - Error: Missing arguments
+   - Correct Usage: Provide all required arguments
+   - Command: `cabal exec vehicle -- --json-error check -s error_examples/07_missing_arguments.vcl`
 
 8. **08_too_many_arguments.vcl**
-   - 错误：参数过多
-   - 正确写法：只提供所需参数
-   - 调用方式：`cabal exec vehicle -- --json-error check -s error_examples/08_too_many_arguments.vcl`
+   - Error: Too many arguments
+   - Correct Usage: Provide only the necessary arguments
+   - Command: `cabal exec vehicle -- --json-error check -s error_examples/08_too_many_arguments.vcl`
 
 9. **09_undefined_type.vcl**
-   - 错误：未定义类型
-   - 正确写法：使用已定义的类型或定义新类型
-   - 调用方式：`cabal exec vehicle -- --json-error check -s error_examples/09_undefined_type.vcl`
+   - Error: Undefined type
+   - Correct Usage: Use a defined type or define a new type
+   - Command: `cabal exec vehicle -- --json-error check -s error_examples/09_undefined_type.vcl`
 
 10. **10_invalid_annotation.vcl**
-    - 错误：无效注解
-    - 正确写法：使用正确的注解格式
-    - 调用方式：`cabal exec vehicle -- --json-error check -s error_examples/10_invalid_annotation.vcl`
+    - Error: Invalid annotation
+    - Correct Usage: Use the correct annotation format
+    - Command: `cabal exec vehicle -- --json-error check -s error_examples/10_invalid_annotation.vcl`
 
 11. **11_missing_type_declaration.vcl**
-    - 错误：缺少类型声明
-    - 正确写法：添加必要的类型声明
-    - 调用方式：`cabal exec vehicle -- --json-error check -s error_examples/11_missing_type_declaration.vcl`
+    - Error: Missing type declaration
+    - Correct Usage: Add the necessary type declaration
+    - Command: `cabal exec vehicle -- --json-error check -s error_examples/11_missing_type_declaration.vcl`
 
 12. **12_inconsistent_vector.vcl**
-    - 错误：向量元素类型不一致
-    - 正确写法：使用相同类型的元素
-    - 调用方式：`cabal exec vehicle -- --json-error check -s error_examples/12_inconsistent_vector.vcl`
+    - Error: Inconsistent vector element types
+    - Correct Usage: Use elements of the same type
+    - Command: `cabal exec vehicle -- --json-error check -s error_examples/12_inconsistent_vector.vcl`
 
 13. **13_float_as_int.vcl**
-    - 错误：将浮点数用作整数
-    - 正确写法：使用正确的数值类型
-    - 调用方式：`cabal exec vehicle -- --json-error check -s error_examples/13_float_as_int.vcl`
+    - Error: Using float as integer
+    - Correct Usage: Use the correct numeric type
+    - Command: `cabal exec vehicle -- --json-error check -s error_examples/13_float_as_int.vcl`
 
 14. **14_property_not_bool.vcl**
-    - 错误：属性不是布尔值
-    - 正确写法：确保属性为布尔类型
-    - 调用方式：`cabal exec vehicle -- --json-error check -s error_examples/14_property_not_bool.vcl`
+    - Error: Property is not a boolean
+    - Correct Usage: Ensure the property is of boolean type
+    - Command: `cabal exec vehicle -- --json-error check -s error_examples/14_property_not_bool.vcl`
 
 15. **15_function_type_mismatch.vcl**
-    - 错误：函数类型不匹配
-    - 正确写法：修正函数类型或使用方式
-    - 调用方式：`cabal exec vehicle -- --json-error check -s error_examples/15_function_type_mismatch.vcl`
+    - Error: Function type mismatch
+    - Correct Usage: Correct the function type or usage
+    - Command: `cabal exec vehicle -- --json-error check -s error_examples/15_function_type_mismatch.vcl`
 
 16. **16_wrong_argument_type.vcl**
-    - 错误：参数类型错误
-    - 正确写法：使用正确类型的参数
-    - 调用方式：`cabal exec vehicle -- --json-error check -s error_examples/16_wrong_argument_type.vcl`
+    - Error: Wrong argument type
+    - Correct Usage: Use the correct type of argument
+    - Command: `cabal exec vehicle -- --json-error check -s error_examples/16_wrong_argument_type.vcl`
 
 17. **17_vector_size_mismatch.vcl**
-    - 错误：向量大小不匹配
-    - 正确写法：使用相同大小的向量
-    - 调用方式：`cabal exec vehicle -- --json-error check -s error_examples/17_vector_size_mismatch.vcl`
+    - Error: Vector size mismatch
+    - Correct Usage: Use vectors of the same size
+    - Command: `cabal exec vehicle -- --json-error check -s error_examples/17_vector_size_mismatch.vcl`
 
-### 其他错误
+### Other Errors
 
 18. **18_invalid_tokens.vcl**
-    - 错误：无效的标记
-    - 正确写法：使用有效的语法标记
-    - 调用方式：`cabal exec vehicle -- --json-error check -s error_examples/18_invalid_tokens.vcl`
+    - Error: Invalid tokens
+    - Correct Usage: Use valid syntax tokens
+    - Command: `cabal exec vehicle -- --json-error check -s error_examples/18_invalid_tokens.vcl`
 
 19. **19_duplicate_definition.vcl**
-    - 错误：重复定义
-    - 正确写法：确保每个标识符只定义一次
-    - 调用方式：`cabal exec vehicle -- --json-error check -s error_examples/19_duplicate_definition.vcl`
+    - Error: Duplicate definition
+    - Correct Usage: Ensure each identifier is defined only once
+    - Command: `cabal exec vehicle -- --json-error check -s error_examples/19_duplicate_definition.vcl`
 
 20. **20_custom_type_mismatch.vcl**
-    - 错误：自定义类型不匹配
-    - 正确写法：遵循自定义类型的定义
-    - 调用方式：`cabal exec vehicle -- --json-error check -s error_examples/20_custom_type_mismatch.vcl`
+    - Error: Custom type mismatch
+    - Correct Usage: Follow the custom type definition
+    - Command: `cabal exec vehicle -- --json-error check -s error_examples/20_custom_type_mismatch.vcl`
 
 21. **21_type_error_operation.vcl**
-    - 错误：操作类型错误
-    - 正确写法：使用适合该操作的类型
-    - 调用方式：`cabal exec vehicle -- --json-error check -s error_examples/21_type_error_operation.vcl`
+    - Error: Type error in operation
+    - Correct Usage: Use a type suitable for the operation
+    - Command: `cabal exec vehicle -- --json-error check -s error_examples/21_type_error_operation.vcl`
 
 22. **22_invalid_index.vcl**
-    - 错误：无效索引
-    - 正确写法：使用有效的索引值
-    - 调用方式：`cabal exec vehicle -- --json-error check -s error_examples/22_invalid_index.vcl`
+    - Error: Invalid index
+    - Correct Usage: Use a valid index value
+    - Command: `cabal exec vehicle -- --json-error check -s error_examples/22_invalid_index.vcl`
 
 23. **23_duplicate_annotation.vcl**
-    - 错误：重复注解
-    - 正确写法：避免重复的注解
-    - 调用方式：`cabal exec vehicle -- --json-error check -s error_examples/23_duplicate_annotation.vcl`
+    - Error: Duplicate annotation
+    - Correct Usage: Avoid duplicate annotations
+    - Command: `cabal exec vehicle -- --json-error check -s error_examples/23_duplicate_annotation.vcl`
 
 24. **24_index_out_of_bounds.vcl**
-    - 错误：索引越界
-    - 正确写法：使用范围内的索引
-    - 调用方式：`cabal exec vehicle -- --json-error check -s error_examples/24_index_out_of_bounds.vcl`
+    - Error: Index out of bounds
+    - Correct Usage: Use an index within the range
+    - Command: `cabal exec vehicle -- --json-error check -s error_examples/24_index_out_of_bounds.vcl`
 
 25. **25_non_numeric_index.vcl**
-    - 错误：非数字索引
-    - 正确写法：使用数字索引
-    - 调用方式：`cabal exec vehicle -- --json-error check -s error_examples/25_non_numeric_index.vcl`
+    - Error: Non-numeric index
+    - Correct Usage: Use a numeric index
+    - Command: `cabal exec vehicle -- --json-error check -s error_examples/25_non_numeric_index.vcl`
 
 26. **26_invalid_quantifier.vcl**
-    - 错误：无效的量词
-    - 正确写法：使用有效的量词语法
-    - 调用方式：`cabal exec vehicle -- --json-error check -s error_examples/26_invalid_quantifier.vcl`
+    - Error: Invalid quantifier
+    - Correct Usage: Use valid quantifier syntax
+    - Command: `cabal exec vehicle -- --json-error check -s error_examples/26_invalid_quantifier.vcl`
 
-## 使用方法
+## Usage
 
-要查看单个错误文件的JSON错误输出，使用以下命令格式：
-
-```bash
-cabal exec vehicle -- --json-error check -s error_examples/文件名.vcl
-```
-
-如需格式化JSON输出以便于阅读，可以使用：
+To view the JSON error output of a single error file, use the following command format:
 
 ```bash
-cabal exec vehicle -- --json-error check -s error_examples/文件名.vcl 2>/tmp/error.json && cat /tmp/error.json | python3 -m json.tool
+cabal exec vehicle -- --json-error check -s error_examples/filename.vcl
 ```
 
-## 错误输出解析
+To format the JSON output for readability, you can use:
 
-JSON错误输出包含以下主要字段：
-- `error`: 完整的错误消息，包含文件名、位置和详细错误描述
-- `provenance`: 错误位置信息，包含以下子字段：
-  - `file`: 文件名
-  - `range`: 错误范围，包含 `start` 和 `end` 位置，每个位置包含 `line` 和 `column` 值
+```bash
+cabal exec vehicle -- --json-error check -s error_examples/filename.vcl 2>/tmp/error.json && cat /tmp/error.json | python3 -m json.tool
+```
 
-示例输出：
+## Error Output Parsing
+
+The JSON error output contains the following main fields:
+- `error`: The complete error message, including the filename, location, and detailed error description
+- `provenance`: Error location information, containing the following subfields:
+  - `file`: Filename
+  - `range`: Error range, including `start` and `end` positions, each with `line` and `column` values
+
+Example Output:
 ```json
 {
   "error": "Error in file 'test.vcl' at Line 1, Columns 18-19: the value '5' is too big to be used as an index of size '3'.",
+  /* Error message field: Contains the complete error description, formatted as "Error in file '[filename]' at Line [line number], Columns [column range]: [specific error description]" */
+  
   "provenance": {
-    "file": "test.vcl",
+    /* Error location information: Contains precise location data where the error occurred */
+    "file": "test.vcl",  /* Filename where the error is located */
     "range": {
+      /* Error range information: Determines the exact location of the error in the code */
       "end": {
-        "column": 19,
-        "line": 1
+        /* Error end position */
+        "column": 19,  /* End column number: counting starts from 1 */
+        "line": 1      /* End line number: counting starts from 1 */
       },
       "start": {
-        "column": 18,
-        "line": 1
+        /* Error start position */
+        "column": 18,  /* Start column number: counting starts from 1 */
+        "line": 1      /* Start line number: counting starts from 1 */
       }
     }
   }
 }
 ```
 
-通过分析这些JSON输出，可以评估错误报告的质量和有用性。 
+### Error Field Parsing Details
+
+1. **Main Error Information**
+   - The `error` field contains a human-readable complete error description
+   - Includes filename, line number, column number, and specific error explanation
+   - Used for quickly understanding the nature and location of the error
+
+2. **Location Information Structure**
+   - `provenance` contains machine-parsable location data
+   - Facilitates precise error location in IDEs and other tools
+   - Can be used for automatic navigation to the error location or highlighting the error code segment
+
+3. **Range Notation**
+   - `range` provides the precise range of the error
+   - `start` and `end` together define the code range to be highlighted
+   - For single-character errors, `start` and `end` line and column values may be the same
+   - For errors spanning multiple lines, line numbers will differ
+
+4. **Application Example**
+   - In the example above, the error is located at columns 18-19 of line 1
+   - The error type is index out of bounds: attempting to access an index beyond the vector size
+   - The index value '5' exceeds the vector size of '3'
