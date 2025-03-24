@@ -71,7 +71,7 @@ instance MeaningfulError CompileError where
 
     ParseError _module parseError -> case parseError of
       RawParseError text ->
-        let -- 尝试从错误消息中提取行列号
+        let -- Extract line and column numbers from error message
             extractLineCol :: String -> (Int, Int)
             extractLineCol msg =
               let linePattern = "syntax error at line "
@@ -97,10 +97,10 @@ instance MeaningfulError CompileError where
                   colNum = findNum columnPattern msg
                in (lineNum, colNum)
 
-            -- 提取位置信息
+            -- Extract position information
             (ln, col) = extractLineCol text
 
-            -- 创建位置信息
+            -- Create provenance information
             provInfo =
               if ln > 0 && col > 0
                 then
