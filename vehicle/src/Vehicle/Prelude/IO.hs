@@ -26,13 +26,13 @@ import Control.Monad.State (StateT)
 import Control.Monad.Trans.Class (MonadTrans (lift))
 import Control.Monad.Writer (WriterT)
 import Data.Aeson (encode, object, (.=))
-import qualified Data.ByteString.Lazy.Char8 as BLC
+import Data.ByteString.Lazy.Char8 qualified as BLC
 import Data.List (findIndex, isInfixOf)
 import Data.Text (Text)
 import Data.Version (Version)
 import Prettyprinter (Doc)
 import System.Directory (createDirectoryIfMissing, removeFile)
-import System.Environment (getEnvironment, lookupEnv, getArgs)
+import System.Environment (getArgs, getEnvironment, lookupEnv)
 import System.Exit (exitFailure)
 import System.FilePath ((</>))
 import System.IO (hPrint, stderr)
@@ -135,37 +135,41 @@ isSyntaxError s = "syntax error" `isInfixOf` s || "syntax error:" `isInfixOf` s
 
 fatalErrorAsJSON :: String -> IO ()
 fatalErrorAsJSON msg = do
-  args <- getArgs  -- Get command line arguments directly from the system
+  args <- getArgs -- Get command line arguments directly from the system
   let (file, origLine, origColumn) = extractLocationInfo msg
   -- Extract filename from args
   let fileName = case dropWhile (/= "-s") args of
-                   ("-s":fname:_) -> fname  -- Find the filename after -s
-                   _ -> case filter (\arg -> ".vcl" `isInfixOf` arg) args of
-                          (fname:_) -> fname  -- Look for arguments ending with .vcl
-                          _ -> file     -- Use the originally extracted filename
-                          
+        ("-s" : fname : _) -> fname -- Find the filename after -s
+        _ -> case filter (\arg -> ".vcl" `isInfixOf` arg) args of
+          (fname : _) -> fname -- Look for arguments ending with .vcl
+          _ -> file -- Use the originally extracted filename
+
   -- Extract specific line and column numbers from syntax error messages
-  let (lineNum, colNum) = 
+  let (lineNum, colNum) =
         if isSyntaxError msg
-        then
-          let syntaxLine = matchSyntaxErrorLine msg
-              syntaxCol = matchSyntaxErrorColumn msg
-          in if syntaxLine > 0 && syntaxCol > 0
-             then (syntaxLine, syntaxCol)
-             else if origLine > 0 && origColumn > 0
-                  then (origLine, origColumn)
-                  else (1, 1)  -- Default values
-        else if origLine > 0 && origColumn > 0
-             then (origLine, origColumn)
-             else (1, 1)  -- Default values
-             
-  let errProv = 
-        object [ "file" .= fileName
-               , "range" .= object [ "start" .= object [ "line" .= lineNum, "column" .= colNum ]
-                                   , "end" .= object [ "line" .= lineNum, "column" .= (colNum + 1) ]
-                                   ]
-               ]
-  BLC.putStrLn $ encode $ object [ "error" .= msg, "provenance" .= errProv ]
+          then
+            let syntaxLine = matchSyntaxErrorLine msg
+                syntaxCol = matchSyntaxErrorColumn msg
+             in if syntaxLine > 0 && syntaxCol > 0
+                  then (syntaxLine, syntaxCol)
+                  else
+                    if origLine > 0 && origColumn > 0
+                      then (origLine, origColumn)
+                      else (1, 1) -- Default values
+          else
+            if origLine > 0 && origColumn > 0
+              then (origLine, origColumn)
+              else (1, 1) -- Default values
+  let errProv =
+        object
+          [ "file" .= fileName,
+            "range"
+              .= object
+                [ "start" .= object ["line" .= lineNum, "column" .= colNum],
+                  "end" .= object ["line" .= lineNum, "column" .= (colNum + 1)]
+                ]
+          ]
+  BLC.putStrLn $ encode $ object ["error" .= msg, "provenance" .= errProv]
   exitFailure
 
 -- | Extract location information from error messages
@@ -174,23 +178,23 @@ fatalErrorAsJSON msg = do
 extractLocationInfo :: String -> (String, Int, Int)
 extractLocationInfo msg =
   case matchErrorFile msg of
-    Just file -> 
+    Just file ->
       let line = matchErrorLine msg
           column = matchErrorColumn msg
-      in (file, line, column)
-    Nothing -> 
+       in (file, line, column)
+    Nothing ->
       -- Check if it's a syntax error
       if isSyntaxError msg
-      then
-        let line = matchSyntaxErrorLine msg
-            column = matchSyntaxErrorColumn msg
-            -- Extract file path from error context, typically in format error_examples/xx_filename.vcl
-            filename = extractSyntaxErrorFilename msg
-        in if line > 0 && column > 0
-           then (filename, line, column)
-           else (filename, 0, 0)
-      else 
-        ("unknown", 0, 0)
+        then
+          let line = matchSyntaxErrorLine msg
+              column = matchSyntaxErrorColumn msg
+              -- Extract file path from error context, typically in format error_examples/xx_filename.vcl
+              filename = extractSyntaxErrorFilename msg
+           in if line > 0 && column > 0
+                then (filename, line, column)
+                else (filename, 0, 0)
+        else
+          ("unknown", 0, 0)
   where
     -- Try to extract filename from syntax error message
     extractSyntaxErrorFilename :: String -> String
@@ -198,15 +202,15 @@ extractLocationInfo msg =
       -- First try to find paths with .vcl extension
       let parts = words s
           possibleFiles = filter (\w -> ".vcl" `isInfixOf` w) parts
-      in if not (null possibleFiles)
-         then head possibleFiles  -- Return first filename found
-         else 
-           -- If not found, try to find error examples directory
-           let dirMatches = filter (\w -> "error_examples/" `isInfixOf` w) parts
-           in if not (null dirMatches)
-              then head dirMatches -- Return first directory found
-              else "unknown"  -- Return "unknown" if nothing found
-    
+       in if not (null possibleFiles)
+            then head possibleFiles -- Return first filename found
+            else
+              -- If not found, try to find error examples directory
+              let dirMatches = filter (\w -> "error_examples/" `isInfixOf` w) parts
+               in if not (null dirMatches)
+                    then head dirMatches -- Return first directory found
+                    else "unknown" -- Return "unknown" if nothing found
+
     -- Extract filename
     matchErrorFile :: String -> Maybe String
     matchErrorFile s =
@@ -241,45 +245,45 @@ extractLocationInfo msg =
 
 -- Extract line number from syntax error message
 matchSyntaxErrorLine :: String -> Int
-matchSyntaxErrorLine errMsg = 
-  let result = 
+matchSyntaxErrorLine errMsg =
+  let result =
         if "syntax error at line " `isInfixOf` errMsg
-        then 
-          let parts = words errMsg
-              lineIndex = findIndex (\w -> w == "line") parts
-          in case lineIndex of
-               Just idx -> 
-                 if idx + 1 < length parts
-                 then 
-                   let lineStr = filter (/= ',') $ parts !! (idx + 1)
-                   in if all isDigit lineStr
-                      then read lineStr
+          then
+            let parts = words errMsg
+                lineIndex = findIndex (\w -> w == "line") parts
+             in case lineIndex of
+                  Just idx ->
+                    if idx + 1 < length parts
+                      then
+                        let lineStr = filter (/= ',') $ parts !! (idx + 1)
+                         in if all isDigit lineStr
+                              then read lineStr
+                              else 0
                       else 0
-                 else 0
-               Nothing -> 0
-        else 0
-  in result
+                  Nothing -> 0
+          else 0
+   in result
 
 -- Extract column number from syntax error message
 matchSyntaxErrorColumn :: String -> Int
-matchSyntaxErrorColumn errMsg = 
-  let result = 
+matchSyntaxErrorColumn errMsg =
+  let result =
         if "column " `isInfixOf` errMsg
-        then 
-          let parts = words errMsg
-              colIndex = findIndex (\w -> w == "column") parts
-          in case colIndex of
-               Just idx -> 
-                 if idx + 1 < length parts
-                 then 
-                   let colStr = filter (\c -> isDigit c || c == '.') $ parts !! (idx + 1)
-                   in if all isDigit colStr
-                      then read colStr
+          then
+            let parts = words errMsg
+                colIndex = findIndex (\w -> w == "column") parts
+             in case colIndex of
+                  Just idx ->
+                    if idx + 1 < length parts
+                      then
+                        let colStr = filter (\c -> isDigit c || c == '.') $ parts !! (idx + 1)
+                         in if all isDigit colStr
+                              then read colStr
+                              else 0
                       else 0
-                 else 0
-               Nothing -> 0
-        else 0
-  in result
+                  Nothing -> 0
+          else 0
+   in result
 
 isDigit :: Char -> Bool
 isDigit c = c >= '0' && c <= '9'
