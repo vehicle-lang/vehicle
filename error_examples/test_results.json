@@ -1,0 +1,501 @@
+{
+  "timestamp": "Tue Mar 25 09:40:10 AWST 2025",
+  "tests": [{
+      "file": "01_syntax_error_missing_semicolon.vcl",
+      "result": {
+        "error": "Error in file '01_syntax_error_missing_semicolon.vcl' at Line 2, Columns 10-11: The name 'y' is not in scope",
+        "provenance": {
+          "file": "error_examples/01_syntax_error_missing_semicolon.vcl",
+          "range": {
+            "end": {
+              "column": 11,
+              "line": 2
+            },
+            "start": {
+              "column": 10,
+              "line": 2
+            }
+          }
+        }
+      }
+    },
+    {
+      "file": "02_syntax_error_unfinished_expr.vcl",
+      "result": {
+        "error": "Error in file '02_syntax_error_unfinished_expr.vcl' at Line 2, Columns 12-13: syntax error: syntax error at line 2, column 12 before `;' (in file: error_examples/02_syntax_error_unfinished_expr.vcl)",
+        "provenance": {
+          "file": "error_examples/02_syntax_error_unfinished_expr.vcl",
+          "range": {
+            "end": {
+              "column": 13,
+              "line": 2
+            },
+            "start": {
+              "column": 12,
+              "line": 2
+            }
+          }
+        }
+      }
+    },
+    {
+      "file": "03_syntax_error_unbalanced_paren.vcl",
+      "result": {
+        "error": "Error in file '03_syntax_error_unbalanced_paren.vcl' at Line 2, Columns 15-16: syntax error: syntax error at line 2, column 15 before `;' (in file: error_examples/03_syntax_error_unbalanced_paren.vcl)",
+        "provenance": {
+          "file": "error_examples/03_syntax_error_unbalanced_paren.vcl",
+          "range": {
+            "end": {
+              "column": 16,
+              "line": 2
+            },
+            "start": {
+              "column": 15,
+              "line": 2
+            }
+          }
+        }
+      }
+    },
+    {
+      "file": "04_circular_reference.vcl",
+      "result": {
+        "error": "Error in file '04_circular_reference.vcl' at Line 2, Columns 5-6: The name 'b' is not in scope",
+        "provenance": {
+          "file": "error_examples/04_circular_reference.vcl",
+          "range": {
+            "end": {
+              "column": 6,
+              "line": 2
+            },
+            "start": {
+              "column": 5,
+              "line": 2
+            }
+          }
+        }
+      }
+    },
+    {
+      "file": "05_function_redefinition.vcl",
+      "result": {
+        "error": "Error in file '05_function_redefinition.vcl' at Line 2, Columns 7-8: syntax error: syntax error at line 2, column 7 before `)' (in file: error_examples/05_function_redefinition.vcl)",
+        "provenance": {
+          "file": "error_examples/05_function_redefinition.vcl",
+          "range": {
+            "end": {
+              "column": 8,
+              "line": 2
+            },
+            "start": {
+              "column": 7,
+              "line": 2
+            }
+          }
+        }
+      }
+    },
+    {
+      "file": "06_type_mismatch.vcl",
+      "result": {
+        "error": "Error in file '06_type_mismatch.vcl' at Line 2, Columns 5-6: unable to work out a valid type for the overloaded expression '5'.\nThe possible options explored were:\n  1. Nat -> {{NatInDomainConstraint _ Rat }} -> Rat\n    - rejected: unable to find a consistent type for the overloaded expression '5'. In particular 'Bool' is not equal to 'Rat'.\n  2. Nat -> {{NatInDomainConstraint _ Nat }} -> Nat\n    - rejected: unable to find a consistent type for the overloaded expression '5'. In particular 'Bool' is not equal to 'Nat'.\n  3. Nat -> {{NatInDomainConstraint _ (Index n) }} -> Index n\n    - rejected: unable to find a consistent type for the overloaded expression '5'. In particular 'Bool' is not equal to 'Index ?3'.",
+        "provenance": {
+          "file": "error_examples/06_type_mismatch.vcl",
+          "range": {
+            "end": {
+              "column": 6,
+              "line": 2
+            },
+            "start": {
+              "column": 5,
+              "line": 2
+            }
+          }
+        }
+      }
+    },
+    {
+      "file": "07_missing_arguments.vcl",
+      "result": {
+        "error": "Error in file '07_missing_arguments.vcl' at Line 1, Columns 13-14: syntax error: syntax error at line 1, column 13 before `,' (in file: error_examples/07_missing_arguments.vcl)",
+        "provenance": {
+          "file": "error_examples/07_missing_arguments.vcl",
+          "range": {
+            "end": {
+              "column": 14,
+              "line": 1
+            },
+            "start": {
+              "column": 13,
+              "line": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "file": "08_too_many_arguments.vcl",
+      "result": {
+        "error": "Error in file '08_too_many_arguments.vcl' at Line 1, Columns 13-14: syntax error: syntax error at line 1, column 13 before `,' (in file: error_examples/08_too_many_arguments.vcl)",
+        "provenance": {
+          "file": "error_examples/08_too_many_arguments.vcl",
+          "range": {
+            "end": {
+              "column": 14,
+              "line": 1
+            },
+            "start": {
+              "column": 13,
+              "line": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "file": "09_undefined_type.vcl",
+      "result": {
+        "error": "Error in file '09_undefined_type.vcl' at Line 2, Columns 5-6: unable to work out a valid type for the overloaded expression '5'.\nThe possible options explored were:\n  1. Nat -> {{NatInDomainConstraint _ Rat }} -> Rat\n    - rejected: unable to find a consistent type for the overloaded expression '5'. In particular 'NoSuchType' is not equal to 'Rat'.\n  2. Nat -> {{NatInDomainConstraint _ Nat }} -> Nat\n    - rejected: unable to find a consistent type for the overloaded expression '5'. In particular 'NoSuchType' is not equal to 'Nat'.\n  3. Nat -> {{NatInDomainConstraint _ (Index n) }} -> Index n\n    - rejected: unable to find a consistent type for the overloaded expression '5'. In particular 'NoSuchType' is not equal to 'Index (?5 NoSuchType)'.",
+        "provenance": {
+          "file": "error_examples/09_undefined_type.vcl",
+          "range": {
+            "end": {
+              "column": 6,
+              "line": 2
+            },
+            "start": {
+              "column": 5,
+              "line": 2
+            }
+          }
+        }
+      }
+    },
+    {
+      "file": "10_invalid_annotation.vcl",
+      "result": {
+        "error": "Error in file '10_invalid_annotation.vcl' at Line 2, Columns 6-9: The name 'Int' is not in scope",
+        "provenance": {
+          "file": "error_examples/10_invalid_annotation.vcl",
+          "range": {
+            "end": {
+              "column": 7,
+              "line": 2
+            },
+            "start": {
+              "column": 6,
+              "line": 2
+            }
+          }
+        }
+      }
+    },
+    {
+      "file": "11_missing_type_declaration.vcl",
+      "result": {
+        "error": "Error in file '11_missing_type_declaration.vcl' at Line 1, Columns 14-15: The name 'x' is not in scope",
+        "provenance": {
+          "file": "error_examples/11_missing_type_declaration.vcl",
+          "range": {
+            "end": {
+              "column": 15,
+              "line": 1
+            },
+            "start": {
+              "column": 14,
+              "line": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "file": "12_inconsistent_vector.vcl",
+      "result": {
+        "error": "Error in file '12_inconsistent_vector.vcl' at Line 2, Columns 5-6: unable to work out a valid type for the overloaded expression '[1, True, 3]'.\nThe possible options explored were:\n  1. Malformed type-class operation type 𝓵3 𝓵5 and args [List]\n    - rejected: expected '[1, True, 3]' to be of type 'Vector Int 3' but was found to be of type 'List Bool'. In particular 'Vector Int 3' is not equal to 'List Bool'.\n  2. Malformed type-class operation type 𝓵3 𝓵5 and args [ (lambda (A : Type) ((Vector 𝓲0) .( 𝓲1))) ]\n    - rejected: expected '[1, True, 3]' to be of type 'Vector Int 3' but was found to be of type 'Vector Bool 3'. In particular 'Int' is not equal to 'Bool'.",
+        "provenance": {
+          "file": "error_examples/12_inconsistent_vector.vcl",
+          "range": {
+            "end": {
+              "column": 6,
+              "line": 2
+            },
+            "start": {
+              "column": 5,
+              "line": 2
+            }
+          }
+        }
+      }
+    },
+    {
+      "file": "13_float_as_int.vcl",
+      "result": {
+        "error": "Error in file '13_float_as_int.vcl' at Line 2, Columns 5-9: unable to work out a valid type for the overloaded expression '10.5'.\nThe possible options explored were:\n  1. Rat -> Rat\n    - rejected: unable to find a consistent type for the overloaded expression '10.5'. In particular 'Int' is not equal to 'Rat'.",
+        "provenance": {
+          "file": "error_examples/13_float_as_int.vcl",
+          "range": {
+            "end": {
+              "column": 6,
+              "line": 2
+            },
+            "start": {
+              "column": 5,
+              "line": 2
+            }
+          }
+        }
+      }
+    },
+    {
+      "file": "14_property_not_bool.vcl",
+      "result": {
+        "error": "Error in file '14_property_not_bool.vcl' at Line 2, Columns 5-8: The type of @property 'p':\n  forallT {Int} . Int\nis not supported. The possible valid types for '@property' annotated declarations are:\n  1. Bool\n  2. Vector Bool n\n  3. Tensor Bool ns\nFix: change the type of 'p' to a supported type",
+        "provenance": {
+          "file": "error_examples/14_property_not_bool.vcl",
+          "range": {
+            "end": {
+              "column": 6,
+              "line": 2
+            },
+            "start": {
+              "column": 5,
+              "line": 2
+            }
+          }
+        }
+      }
+    },
+    {
+      "file": "15_function_type_mismatch.vcl",
+      "result": {
+        "error": "Error in file '15_function_type_mismatch.vcl' at Line 2, Columns 1-5: no definition provided for the declaration 'func'.\nFix: either provide a definition for 'func' or mark it as an external resource by adding an appropriate annotation, i.e. @network, @dataset or @parameter.",
+        "provenance": {
+          "file": "error_examples/15_function_type_mismatch.vcl",
+          "range": {
+            "end": {
+              "column": 2,
+              "line": 2
+            },
+            "start": {
+              "column": 1,
+              "line": 2
+            }
+          }
+        }
+      }
+    },
+    {
+      "file": "16_wrong_argument_type.vcl",
+      "result": {
+        "error": "Error in file '16_wrong_argument_type.vcl' at Line 1, Columns 4-5: syntax error: syntax error at line 1, column 4 before `)' (in file: error_examples/16_wrong_argument_type.vcl)",
+        "provenance": {
+          "file": "error_examples/16_wrong_argument_type.vcl",
+          "range": {
+            "end": {
+              "column": 5,
+              "line": 1
+            },
+            "start": {
+              "column": 4,
+              "line": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "file": "17_vector_size_mismatch.vcl",
+      "result": {
+        "error": "Error in file '17_vector_size_mismatch.vcl' at Line 2, Columns 5-6: unable to work out a valid type for the overloaded expression '[1, 2, 3]'.\nThe possible options explored were:\n  1. Malformed type-class operation type 𝓵3 𝓵5 and args [List]\n    - rejected: expected '[1, 2, 3]' to be of type 'Vector Int 2' but was found to be of type 'List (?16 Int)'. In particular 'Vector Int 2' is not equal to 'List (?16 Int)'.\n  2. Malformed type-class operation type 𝓵3 𝓵5 and args [ (lambda (A : Type) ((Vector 𝓲0) .( 𝓲1))) ]\n    - rejected: expected '[1, 2, 3]' to be of type 'Vector Int 2' but was found to be of type 'Vector Int 3'. In particular '2' is not equal to '3'.",
+        "provenance": {
+          "file": "error_examples/17_vector_size_mismatch.vcl",
+          "range": {
+            "end": {
+              "column": 6,
+              "line": 2
+            },
+            "start": {
+              "column": 5,
+              "line": 2
+            }
+          }
+        }
+      }
+    },
+    {
+      "file": "18_invalid_tokens.vcl",
+      "result": {
+        "error": "Error in file '18_invalid_tokens.vcl' at Line 2, Columns 26-30: The name 'some' is not in scope",
+        "provenance": {
+          "file": "error_examples/18_invalid_tokens.vcl",
+          "range": {
+            "end": {
+              "column": 27,
+              "line": 2
+            },
+            "start": {
+              "column": 26,
+              "line": 2
+            }
+          }
+        }
+      }
+    },
+    {
+      "file": "19_duplicate_definition.vcl",
+      "result": {
+        "error": "Error in file '19_duplicate_definition.vcl' at Line 3, Columns 1-2: multiple declarations found with the name 'x'\nFix: remove or rename the duplicate definitions",
+        "provenance": {
+          "file": "error_examples/19_duplicate_definition.vcl",
+          "range": {
+            "end": {
+              "column": 2,
+              "line": 3
+            },
+            "start": {
+              "column": 1,
+              "line": 3
+            }
+          }
+        }
+      }
+    },
+    {
+      "file": "20_custom_type_mismatch.vcl",
+      "result": {
+        "error": "Error in file '20_custom_type_mismatch.vcl' at Line 3, Columns 7-8: syntax error: syntax error at line 3, column 7 before `=' (in file: error_examples/20_custom_type_mismatch.vcl)",
+        "provenance": {
+          "file": "error_examples/20_custom_type_mismatch.vcl",
+          "range": {
+            "end": {
+              "column": 8,
+              "line": 3
+            },
+            "start": {
+              "column": 7,
+              "line": 3
+            }
+          }
+        }
+      }
+    },
+    {
+      "file": "21_type_error_operation.vcl",
+      "result": {
+        "error": "Error in file '21_type_error_operation.vcl' at Line 1, Columns 1-2: syntax error: syntax error at line 1, column 1 before `forall' (in file: error_examples/21_type_error_operation.vcl)",
+        "provenance": {
+          "file": "error_examples/21_type_error_operation.vcl",
+          "range": {
+            "end": {
+              "column": 2,
+              "line": 1
+            },
+            "start": {
+              "column": 1,
+              "line": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "file": "22_invalid_index.vcl",
+      "result": {
+        "error": "Error in file '22_invalid_index.vcl' at Line 1, Columns 1-2: no definition provided for the declaration 'x'.\nFix: either provide a definition for 'x' or mark it as an external resource by adding an appropriate annotation, i.e. @network, @dataset or @parameter.",
+        "provenance": {
+          "file": "error_examples/22_invalid_index.vcl",
+          "range": {
+            "end": {
+              "column": 2,
+              "line": 1
+            },
+            "start": {
+              "column": 1,
+              "line": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "file": "23_duplicate_annotation.vcl",
+      "result": {
+        "error": "Error in file '23_duplicate_annotation.vcl' at Line 3, Columns 1-2: abstract declaration 'x' cannot simulataneously be annotated with both '@network' and '@network'.\nFix: remove one of annotations.",
+        "provenance": {
+          "file": "error_examples/23_duplicate_annotation.vcl",
+          "range": {
+            "end": {
+              "column": 2,
+              "line": 3
+            },
+            "start": {
+              "column": 1,
+              "line": 3
+            }
+          }
+        }
+      }
+    },
+    {
+      "file": "24_index_out_of_bounds.vcl",
+      "result": {
+        "error": "Error in file '24_index_out_of_bounds.vcl' at Line 1, Columns 17-18: the value '5' is too big to be used as an index of size '3'.",
+        "provenance": {
+          "file": "error_examples/24_index_out_of_bounds.vcl",
+          "range": {
+            "end": {
+              "column": 18,
+              "line": 1
+            },
+            "start": {
+              "column": 17,
+              "line": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "file": "25_non_numeric_index.vcl",
+      "result": {
+        "error": "Error in file '25_non_numeric_index.vcl' at Line 2, Columns 9-10: syntax error: syntax error at line 2, column 9 before `#error' (in file: error_examples/25_non_numeric_index.vcl)",
+        "provenance": {
+          "file": "error_examples/25_non_numeric_index.vcl",
+          "range": {
+            "end": {
+              "column": 10,
+              "line": 2
+            },
+            "start": {
+              "column": 9,
+              "line": 2
+            }
+          }
+        }
+      }
+    },
+    {
+      "file": "26_invalid_quantifier.vcl",
+      "result": {
+        "error": "Error in file '26_invalid_quantifier.vcl' at Line 1, Columns 1-2: syntax error: syntax error at line 1, column 1 before `forall' (in file: error_examples/26_invalid_quantifier.vcl)",
+        "provenance": {
+          "file": "error_examples/26_invalid_quantifier.vcl",
+          "range": {
+            "end": {
+              "column": 2,
+              "line": 1
+            },
+            "start": {
+              "column": 1,
+              "line": 1
+            }
+          }
+        }
+      }
+    }
+  ],
+  "statistics": {
+    "total_files": 26
+  }
+}
