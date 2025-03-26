@@ -3,10 +3,14 @@ module Vehicle.Compile.Print.Error
     VehicleError (..),
     MeaningfulError (..),
     logCompileError,
+    logCompileErrorAsJSON,
   )
 where
 
 import Control.Monad.Except (ExceptT, runExceptT)
+import Data.Char (isDigit)
+import Data.List (isInfixOf, isPrefixOf)
+import Data.List.Split (splitOn)
 import Data.Text (pack)
 import System.FilePath
 import Vehicle.Compile.Error
@@ -36,6 +40,18 @@ logCompileError x = do
     Right _ -> return ()
   return e'
 
+-- | Like 'logCompileError' but also formats errors as JSON
+logCompileErrorAsJSON ::
+  (MonadLogger m) =>
+  ExceptT CompileError m a ->
+  m (Either CompileError a)
+logCompileErrorAsJSON x = do
+  e' <- runExceptT x
+  case e' of
+    Left err -> logDebug MinDetail (pretty (details err))
+    Right _ -> return ()
+  return e'
+
 --------------------------------------------------------------------------------
 -- Meaningful error classes
 
@@ -55,11 +71,49 @@ instance MeaningfulError CompileError where
 
     ParseError _module parseError -> case parseError of
       RawParseError text ->
-        EError $
-          ExternalError
-            -- TODO need to revamp this error, BNFC must provide some more
-            -- information than a simple string surely?
-            (pack text)
+        let -- Extract line and column numbers from error message
+            extractLineCol :: String -> (Int, Int)
+            extractLineCol msg =
+              let linePattern = "syntax error at line "
+                  columnPattern = " column "
+
+                  findNum :: String -> String -> Int
+                  findNum pat str =
+                    if isPrefixOf linePattern str && pat == linePattern
+                      then
+                        let start = drop (length linePattern) str
+                            digits = takeWhile isDigit start
+                         in if null digits then 0 else read digits
+                      else
+                        if isInfixOf columnPattern str && pat == columnPattern
+                          then
+                            let parts = splitOn columnPattern str
+                                afterCol = if length parts > 1 then parts !! 1 else ""
+                                digits = takeWhile isDigit afterCol
+                             in if null digits then 0 else read digits
+                          else 0
+
+                  lineNum = findNum linePattern msg
+                  colNum = findNum columnPattern msg
+               in (lineNum, colNum)
+
+            -- Extract position information
+            (ln, col) = extractLineCol text
+
+            -- Create provenance information
+            provInfo =
+              if ln > 0 && col > 0
+                then
+                  Provenance (Range (Position ln col) (Position ln (col + 1))) (snd _module)
+                else noProvenance
+         in UError $
+              UserError
+                { provenance = provInfo,
+                  problem =
+                    "syntax error:" <+> pretty (pack text) <+> "(in file:" <+> pretty (pack (snd _module)) <> ")",
+                  fix =
+                    Nothing
+                }
       UnannotatedAbstractDef p name ->
         UError $
           UserError

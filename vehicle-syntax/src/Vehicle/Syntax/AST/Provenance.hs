@@ -13,6 +13,7 @@ module Vehicle.Syntax.AST.Provenance
 where
 
 import Control.DeepSeq (NFData (..))
+import Data.Aeson (ToJSON(..), object, (.=))
 import Data.Hashable (Hashable (..))
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
@@ -165,3 +166,12 @@ instance (HasProvenance a) => HasProvenance (NonEmpty a) where
 
 instance (HasProvenance a) => HasProvenance (a, b) where
   provenanceOf = provenanceOf . fst
+
+instance ToJSON Position where
+  toJSON (Position l c) = object [ "line" .= l, "column" .= c ]
+
+instance ToJSON Range where
+  toJSON (Range start end) = object [ "start" .= start, "end" .= end ]
+
+instance ToJSON Provenance where
+  toJSON (Provenance range file) = object [ "range" .= range, "file" .= file ]

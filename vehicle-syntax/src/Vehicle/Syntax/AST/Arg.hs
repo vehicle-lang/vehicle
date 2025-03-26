@@ -1,8 +1,13 @@
 module Vehicle.Syntax.AST.Arg where
 
 import Control.DeepSeq (NFData)
-import Data.Serialize (Serialize)
+import Data.Serialize (Serialize(..))
+import Data.Serialize.Get (getListOf)
+import Data.Serialize.Put (putListOf)
+import Data.List.NonEmpty (NonEmpty)
+import qualified Data.List.NonEmpty as NonEmpty
 import GHC.Generics (Generic)
+import Data.Aeson (ToJSON(..))
 import Vehicle.Syntax.AST.Binder
 import Vehicle.Syntax.AST.Provenance
 import Vehicle.Syntax.AST.Relevance
@@ -28,6 +33,16 @@ data GenericArg expr = Arg
 instance (NFData expr) => NFData (GenericArg expr)
 
 instance (Serialize expr) => Serialize (GenericArg expr)
+
+instance (ToJSON expr) => ToJSON (GenericArg expr)
+
+instance (Serialize expr) => Serialize (NonEmpty (GenericArg expr)) where
+  put = putListOf put . NonEmpty.toList
+  get = do
+    list <- getListOf get
+    case NonEmpty.nonEmpty list of
+      Nothing -> fail "getNonEmptyListOf: empty list"
+      Just neList -> pure neList
 
 instance HasProvenance (GenericArg expr) where
   provenanceOf = argProvenance

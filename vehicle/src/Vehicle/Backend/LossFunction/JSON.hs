@@ -6,8 +6,7 @@ module Vehicle.Backend.LossFunction.JSON
   )
 where
 
-import Data.Aeson (KeyValue (..), ToJSON (..), genericToJSON)
-import Data.Aeson.Types (object)
+import Data.Aeson (ToJSON (..), genericToJSON)
 import Data.List (elemIndex)
 import Data.Ratio (Ratio, denominator, numerator, (%))
 import GHC.Generics (Generic)
@@ -16,7 +15,7 @@ import Vehicle.Compile.Arity
 import Vehicle.Compile.Context.Name
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE (eval)
-import Vehicle.Compile.Prelude (Doc, HasProvenance (..), Ix (..), ModulePath (..), Name, Position, Provenance (..), Range (..), filterOutNonExplicitArgs, getBinderName, mkExplicitBinder, normAppList)
+import Vehicle.Compile.Prelude (Doc, HasProvenance (..), Ix (..), ModulePath (..), Name, Provenance (..), filterOutNonExplicitArgs, getBinderName, mkExplicitBinder, normAppList)
 import Vehicle.Compile.Prelude qualified as S (Binder, Decl, Expr (..), GenericDecl (..), GenericProg (..), Prog)
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Irrelevance (removeIrrelevantCodeFromProg)
@@ -26,7 +25,7 @@ import Vehicle.Data.Builtin.Tensor ()
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Tensor (Tensor, mapTensor)
-import Vehicle.Prelude (Annotation (..), GenericArg (..), HasName (..), HasType (..), Identifier (..), Position (..), explicit, indent, jsonOptions, line, squotes)
+import Vehicle.Prelude (Annotation (..), GenericArg (..), HasName (..), HasType (..), Identifier (..), explicit, indent, jsonOptions, line, squotes)
 import Vehicle.Prelude.Logging.Class
 import Vehicle.Syntax.Prelude (developerError)
 
@@ -104,6 +103,10 @@ mapRatio f r = do
   let denom = f $ denominator r
   num % denom
 
+fromRat :: Rat -> Rational
+fromRat = mapRatio toInteger
+
+-- | Convert a Rational to a Rat
 toRat :: Rational -> Rat
 toRat = mapRatio toInt
   where
@@ -111,9 +114,6 @@ toRat = mapRatio toInt
       | x < toInteger (minBound :: Int) = developerError $ "Underflow converting" <+> pretty x <+> "to `Int`"
       | x > toInteger (maxBound :: Int) = developerError $ "Overflow converting" <+> pretty x <+> "to `Int`"
       | otherwise = fromInteger x
-
-fromRat :: Rat -> Rational
-fromRat = mapRatio toInteger
 
 --------------------------------------------------------------------------------
 -- JSON instances
@@ -129,16 +129,6 @@ instance ToJSON JExpr where
 
 instance ToJSON JBinder where
   toJSON = genericToJSON jsonOptions
-
-instance ToJSON Position where
-  toJSON = genericToJSON jsonOptions
-
-instance ToJSON Provenance where
-  toJSON (Provenance (Range start end) _) =
-    object
-      [ "tag" .= toJSON @String "Provenance",
-        "contents" .= toJSON @[Int] [posLine start, posColumn start, posLine end, posColumn end]
-      ]
 
 --------------------------------------------------------------------------------
 -- Conversion of JExpr to JSON

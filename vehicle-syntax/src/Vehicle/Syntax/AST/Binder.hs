@@ -7,6 +7,7 @@ import Data.Hashable (Hashable (..))
 import Data.Serialize (Serialize)
 import Data.Serialize.Text ()
 import GHC.Generics (Generic)
+import Data.Aeson (ToJSON(..))
 import Vehicle.Syntax.AST.Name (HasName (..), Name)
 import Vehicle.Syntax.AST.Provenance (HasProvenance (..), Provenance)
 import Vehicle.Syntax.AST.Relevance (HasRelevance (..), Relevance (..))
@@ -29,6 +30,8 @@ data BinderNamingForm
 instance NFData BinderNamingForm
 
 instance Serialize BinderNamingForm
+
+instance ToJSON BinderNamingForm
 
 instance Hashable BinderNamingForm where
   -- We deliberately ignore the binder naming form when hashing
@@ -67,6 +70,8 @@ instance NFData BinderDisplayForm
 
 instance Hashable BinderDisplayForm
 
+instance ToJSON BinderDisplayForm
+
 instance HasName BinderDisplayForm (Maybe Name) where
   nameOf = nameOf . namingForm
 
@@ -99,6 +104,8 @@ data GenericBinder value = Binder
 instance (NFData expr) => NFData (GenericBinder expr)
 
 instance (Serialize expr) => Serialize (GenericBinder expr)
+
+instance (ToJSON expr) => ToJSON (GenericBinder expr)
 
 instance HasProvenance (GenericBinder expr) where
   provenanceOf = binderProvenance

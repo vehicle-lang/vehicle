@@ -3,6 +3,8 @@ module Vehicle.Syntax.Parse.Error
   )
 where
 
+import Data.Aeson (ToJSON(..), genericToJSON, defaultOptions)
+import GHC.Generics (Generic)
 import Data.Text (Text)
 import Vehicle.Syntax.AST
 import Vehicle.Syntax.Builtin
@@ -29,4 +31,7 @@ data ParseError
     UnknownBuiltin Provenance Text
   | MissingVariables Provenance Name
   | UnchainableOrders Provenance OrderOp OrderOp
-  deriving (Show)
+  deriving (Show, Generic)
+
+instance ToJSON ParseError where
+  toJSON = genericToJSON defaultOptions
