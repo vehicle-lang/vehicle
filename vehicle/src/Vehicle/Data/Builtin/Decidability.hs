@@ -291,8 +291,8 @@ instance NormalisableBuiltin DecidabilityBuiltin where
     DecidabilityBuiltinTypeClassOp {} -> True
     _ -> False
 
-  isCast e = case e of
-    DecidabilityBuiltinFunction BoolTensorToType -> Just $ forceEvalSimpleBuiltin e evalBoolTensorToType
+  isCast p e = case e of
+    DecidabilityBuiltinFunction BoolTensorToType -> Just $ forceEvalSimpleBuiltin p e evalBoolTensorToType
     _ -> Nothing
 
 evalBoolTensorToType ::

@@ -242,7 +242,7 @@ instance NormalisableBuiltin LinearityBuiltin where
     _ -> noBlockingArgs
 
   isTypeClassOp _ = False
-  isCast _ = Nothing
+  isCast _ _ = Nothing
 
 --------------------------------------------------------------------------------
 -- DSL

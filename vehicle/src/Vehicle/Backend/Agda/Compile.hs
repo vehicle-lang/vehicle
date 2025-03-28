@@ -420,17 +420,22 @@ compileApp fun args = do
       cFun <- compileExpr fun
       annotateApp [] Nothing cFun userArgs
 
-compileDerivedFunction :: (MonadAgdaCompile m) => DerivedFunction -> [Arg DecidabilityBuiltin] -> m Code
+compileDerivedFunction ::
+  (MonadAgdaCompile m) =>
+  DerivedFunction ->
+  [Arg DecidabilityBuiltin] ->
+  m Code
 compileDerivedFunction fn args = case fn of
   QuantifyIndex q -> case q of
     Exists -> annotateApp [VehicleUtils] Nothing "existsIndex" args
     Forall -> annotateApp [VehicleUtils] Nothing "forallIndex" args
   AppendList -> annotateInfixApp [DataList] 5 Nothing "_++_" args
-  QuantifyInList {} -> unsupported
+  QuantifyInList q -> case q of
+    Exists -> annotateApp [DataList] (Just listQualifier) "any" args
+    Forall -> annotateApp [DataList] (Just listQualifier) "all" args
   TypeAnn -> annotateInfixApp [FunctionBase] 0 Nothing "_∋_" args
-  CompareRatTensorReduced {} -> unsupported
-  where
-    unsupported = developerError $ "Compilation of stdlib function" <+> quotePretty fn <+> "not implemented"
+  CompareRatTensorReduced op ->
+    annotateInfixApp [DataTensor] 4 Nothing ("_" <> comparisonOperatorBase True op <> "_") args
 
 --------------------------------------------------------------------------------
 -- Compilation of builtins
@@ -496,7 +501,7 @@ compileBuiltinFunction f args = case f of
   Max MaxRatTensor -> annotateInfixApp [DataTensor] 7 (Just tensorQualifier) "_⊔_" args
   CompareIndex op -> annotateInfixApp [VehicleUtils, DataFin] 4 Nothing (comparisonOperator True op) args
   CompareNat op -> annotateInfixApp [VehicleUtils, DataNat] 4 Nothing (comparisonOperator True op) args
-  CompareRatTensorPointwise op -> annotateInfixApp [VehicleUtils, DataTensor] 4 Nothing (comparisonOperator True op) args
+  CompareRatTensorPointwise op -> annotateInfixApp [VehicleUtils, DataTensor] 4 Nothing ("_" <> comparisonOperatorBase True op <> "∙_") args
   FoldList -> annotateApp [DataList] (Just listQualifier) "foldr" args
   MapList -> annotateApp [DataList] (Just listQualifier) "map" args
   ReduceAndTensor -> annotateApp [DataTensor] Nothing "reduceAnd" args

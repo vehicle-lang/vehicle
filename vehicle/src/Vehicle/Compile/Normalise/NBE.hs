@@ -29,6 +29,7 @@ import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Interface.Normalise
   ( EvalScheme (..),
     NormalisableBuiltin (..),
+    isBlocked,
   )
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Code.Interface (IsArgs (..))
@@ -183,28 +184,19 @@ evalBuiltin ::
   builtin ->
   Spine builtin ->
   m (Value builtin)
-evalBuiltin freeEnv b args
-  | not (isTypeClassOp b) = do
-      -- logDebug MaxDetail $ pretty b
-      -- logDebug MaxDetail $ prettyVerbose args
-      result <- evaluateBuiltin freeEnv b args
-      -- logDebug MaxDetail $ prettyVerbose result
-      return result
+evalBuiltin freeEnv b spine
+  | not (isTypeClassOp b) = case evalScheme b of
+      Simple evalFn -> maybe (return $ VBuiltin b spine) evalFn (getExpr accessSpine spine)
+      NonSimple evalFn -> maybe (return $ VBuiltin b spine) (evalFn (evalApp freeEnv)) (getExpr accessSpine spine)
+      Derived ident -> do
+        blocked <- isBlocked b spine
+        if blocked
+          then return $ VBuiltin b spine
+          else evalApp freeEnv (lookupIdentValueInEnv freeEnv ident) spine
+      None -> return $ VBuiltin b spine
   | otherwise = do
-      (inst, remainingArgs) <- findInstanceArg b args
+      (inst, remainingArgs) <- findInstanceArg b spine
       evalApp freeEnv inst remainingArgs
-
-evaluateBuiltin ::
-  (MonadLogger m, NormalisableBuiltin builtin) =>
-  FreeEnv builtin ->
-  builtin ->
-  Spine builtin ->
-  m (Value builtin)
-evaluateBuiltin freeEnv b spine = case evalScheme b of
-  Simple evalFn -> maybe (return $ VBuiltin b spine) evalFn (getExpr accessSpine spine)
-  NonSimple evalFn -> maybe (return $ VBuiltin b spine) (evalFn (evalApp freeEnv)) (getExpr accessSpine spine)
-  Derived ident -> evalApp freeEnv (lookupIdentValueInEnv freeEnv ident) spine
-  None -> return $ VBuiltin b spine
 
 findInstanceArg :: (MonadLogger m, Show op) => op -> [GenericArg a] -> m (a, [GenericArg a])
 findInstanceArg op = \case

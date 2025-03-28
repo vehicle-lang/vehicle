@@ -4,6 +4,7 @@ import Control.Monad.Except (ExceptT, mapExceptT)
 import Control.Monad.Identity (IdentityT, mapIdentityT)
 import Control.Monad.Reader (ReaderT (..), mapReaderT)
 import Control.Monad.State (StateT (..), mapStateT)
+import Control.Monad.Trans.Maybe (MaybeT, mapMaybeT)
 import Control.Monad.Writer
 import Data.Data (Proxy (..))
 import Data.Vector.Internal.Check (HasCallStack)
@@ -51,6 +52,10 @@ instance (MonadFreeContext builtin m) => MonadFreeContext builtin (SupplyT s m) 
 
 instance (MonadFreeContext builtin m) => MonadFreeContext builtin (ExceptT s m) where
   addDeclEntryToContext = mapExceptT . addDeclEntryToContext
+  getFreeCtx = lift . getFreeCtx
+
+instance (MonadFreeContext builtin m) => MonadFreeContext builtin (MaybeT m) where
+  addDeclEntryToContext = mapMaybeT . addDeclEntryToContext
   getFreeCtx = lift . getFreeCtx
 
 --------------------------------------------------------------------------------

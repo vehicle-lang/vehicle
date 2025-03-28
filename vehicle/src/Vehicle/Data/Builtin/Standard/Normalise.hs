@@ -83,19 +83,20 @@ instance NormalisableBuiltin Builtin where
   blockingArgs = \case
     BuiltinFunction f -> functionBlockingArgs f
     BuiltinCast c -> castBlockingArgs c
+    DerivedFunction f -> derivedFunctionBlockingArgs f
     _ -> noBlockingArgs
 
   isTypeClassOp = \case
     TypeClassOp {} -> True
     _ -> False
 
-  isCast b = case b of
+  isCast p b = case b of
     BuiltinCast c -> Just $ case c of
-      FromNat FromNatToNat -> forceEvalSimpleBuiltin b evalFromNatToNat
-      FromNat FromNatToIndex -> forceEvalSimpleBuiltin b evalFromNatToIndex
-      FromNat FromNatToRat -> forceEvalSimpleBuiltin b evalFromNatToRat
-      FromRat FromRatToRat -> forceEvalSimpleBuiltin b evalFromRatToRat
-      FromVectorToList -> forceEvalSimpleBuiltin b evalVectorToList
+      FromNat FromNatToNat -> forceEvalSimpleBuiltin p b evalFromNatToNat
+      FromNat FromNatToIndex -> forceEvalSimpleBuiltin p b evalFromNatToIndex
+      FromNat FromNatToRat -> forceEvalSimpleBuiltin p b evalFromNatToRat
+      FromRat FromRatToRat -> forceEvalSimpleBuiltin p b evalFromRatToRat
+      FromVectorToList -> forceEvalSimpleBuiltin p b evalVectorToList
     _ -> Nothing
 
 evalFromNatToNat :: (MonadNormBuiltin m) => EvalSimple FromNatToSimpleArgs expr Builtin m

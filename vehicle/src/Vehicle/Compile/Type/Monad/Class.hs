@@ -4,6 +4,7 @@ import Control.Monad (foldM, unless)
 import Control.Monad.Reader (ReaderT (..))
 import Control.Monad.State (StateT (..))
 import Control.Monad.Trans.Class (lift)
+import Control.Monad.Trans.Maybe (MaybeT)
 import Control.Monad.Writer (WriterT (..))
 import Data.Hashable (Hashable)
 import Data.IntSet (IntSet)
@@ -138,6 +139,13 @@ instance (MonadTypeChecker builtin m) => MonadTypeChecker builtin (BoundContextT
   getInstanceCandidates = lift getInstanceCandidates
 
 instance (MonadTypeChecker builtin m) => MonadTypeChecker builtin (SupplyT a m) where
+  getTypeCheckerState = lift getTypeCheckerState
+  modifyTypeCheckerState = lift . modifyTypeCheckerState
+  getFreshName = lift . getFreshName
+  clearFreshNames = lift . clearFreshNames
+  getInstanceCandidates = lift getInstanceCandidates
+
+instance (MonadTypeChecker builtin m) => MonadTypeChecker builtin (MaybeT m) where
   getTypeCheckerState = lift getTypeCheckerState
   modifyTypeCheckerState = lift . modifyTypeCheckerState
   getFreshName = lift . getFreshName

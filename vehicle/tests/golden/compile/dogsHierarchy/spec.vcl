@@ -5,7 +5,7 @@ numberOfDogs = 6
 
 type Dog = Index numberOfDogs
 
-unknownDog     = 0
+-- unknownDog     = 0
 
 greatDane      = 1
 germanShepherd = 2

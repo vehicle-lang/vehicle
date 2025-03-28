@@ -3,4 +3,4 @@ The possible options explored were:
   1. (Tensor Rat ds -> Bool) -> Bool
     - rejected: unable to find a consistent type for the overloaded expression 'forall'. In particular 'Nat' is not equal to 'Rat'.
   2. (Index n -> Bool) -> Bool
-    - rejected: unable to find a consistent type for the overloaded expression 'forall'. In particular 'Tensor Nat [2]' is not equal to 'Index ?27'.
+    - rejected: unable to find a consistent type for the overloaded expression 'forall'. In particular 'Tensor Nat [2]' is not equal to 'Index ?34'.

@@ -92,14 +92,7 @@ monomorphiseDecls top decl = do
     logDebug MaxDetail $ prettyExternal decl <> line
     newDecls <- monomorphiseDecl top decl
     forM_ newDecls collectReferences
-    {-
-    recursiveReferences <- gets (Map.element ident)
-    recursiveDecls <-
-      if recursiveReferences
-        then monomorphiseDecls False decl
-        else return []
-    -}
-    return newDecls -- <> recursiveDecls)
+    return newDecls
 
 monomorphiseDecl :: (MonadCollect builtin m) => Bool -> Decl builtin -> m [Decl builtin]
 monomorphiseDecl top decl =

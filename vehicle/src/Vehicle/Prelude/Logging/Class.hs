@@ -22,6 +22,7 @@ import Control.Monad.Identity (IdentityT (..))
 import Control.Monad.Reader (ReaderT (..))
 import Control.Monad.State (StateT (..))
 import Control.Monad.Trans (MonadTrans (..))
+import Control.Monad.Trans.Maybe (MaybeT)
 import Control.Monad.Writer (WriterT (..))
 import Data.Text (Text)
 import Data.Text qualified as Text (unpack)
@@ -126,6 +127,15 @@ instance (MonadLogger m) => MonadLogger (SupplyT s m) where
   logWarning = lift . logWarning
 
 instance (MonadLogger m) => MonadLogger (IdentityT m) where
+  setCallDepth = lift . setCallDepth
+  getCallDepth = lift getCallDepth
+  incrCallDepth = lift incrCallDepth
+  decrCallDepth = lift decrCallDepth
+  getDebugLevel = lift getDebugLevel
+  logMessage = lift . logMessage
+  logWarning = lift . logWarning
+
+instance (MonadLogger m) => MonadLogger (MaybeT m) where
   setCallDepth = lift . setCallDepth
   getCallDepth = lift getCallDepth
   incrCallDepth = lift incrCallDepth

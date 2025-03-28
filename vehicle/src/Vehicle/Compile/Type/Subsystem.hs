@@ -51,7 +51,10 @@ decidabilityTypeCheck prog = do
       MonoSettings
         { isMonomorphisableBinder = not . isExplicit
         }
-  errorOrDecProg <- typeCheckWithSubsystem DecidabilityTypes decidabilityBuiltinInstances monoProg
+  instanceFreeProg2 <- resolveInstanceArgumentsAndCasts monoProg
+
+  -- Type-check with subsystem.
+  errorOrDecProg <- typeCheckWithSubsystem DecidabilityTypes decidabilityBuiltinInstances instanceFreeProg2
   decProg <- case errorOrDecProg of
     Left err -> throwError err
     Right decProg -> return decProg
@@ -106,7 +109,9 @@ resolveInstanceArgumentsAndCasts ::
 resolveInstanceArgumentsAndCasts prog =
   logCompilerPass MaxDetail "resolution of instance arguments and casts" $ do
     flip traverseDecls prog $ \decl -> do
+      logDebug MaxDetail $ prettyExternal decl
       decl1 <- traverse (traverseBuiltinsM removeBuiltinInstances) decl
+      logDebug MaxDetail $ prettyExternal decl1
       decl2 <- traverse (traverseBuiltinsM removeCasts) decl1
       return decl2
   where
@@ -124,7 +129,7 @@ resolveInstanceArgumentsAndCasts prog =
       | otherwise = return $ normAppList (Builtin p b) args
 
     removeCasts :: BuiltinUpdate m builtin builtin
-    removeCasts p b args = case isCast b of
+    removeCasts p b args = case isCast p b of
       Just f -> f args
       Nothing -> return $ normAppList (Builtin p b) args
 
@@ -151,14 +156,7 @@ resolveAppendLists = traverse (traverseBuiltinsM evalAppend)
     evalAppend p b args = case b of
       DerivedFunction AppendList -> return $ evalAppendList p args
       _ -> return $ normAppList (Builtin p b) args
-    {-
-        removeFreeInstances :: FreeVarUpdate m builtin
-        removeFreeInstances recGo p ident args = do
-          args' <- traverse (traverse recGo) args
-          if ident == identifierOf StdAppendList
-            then return $ evalAppendList args'
-            else return $ normAppList (FreeVar p ident) args'
-    -}
+
     evalAppendList :: Provenance -> [Arg Builtin] -> Expr Builtin
     evalAppendList p = \case
       args@[t, xs, ys] -> case argExpr xs of
@@ -192,15 +190,5 @@ removeImplicitArgs prog =
       Hole {} -> return expr
       Builtin {} -> return expr
       Pi p binder res -> Pi p <$> traverse go binder <*> go res
-      Lam p binder body
-        | isExplicit binder || not (isTypeUniverse (typeOf binder)) ->
-            Lam p <$> traverse go binder <*> go body
-        | otherwise -> do
-            -- TODO This is a massive hack to get around the unused implicit
-            -- {l} argument in `mapVector` in the standard library that isn't
-            -- handled by monomorphisation.
-            -- STILL NEEDED?
-            body' <- go body
-            let removedBody = Hole p "_" `substDBInto` body'
-            return removedBody
+      Lam p binder body -> Lam p <$> traverse go binder <*> go body
       Let p bound binder body -> Let p <$> go bound <*> traverse go binder <*> go body

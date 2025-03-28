@@ -5,9 +5,9 @@ module Vehicle.Data.Builtin.Interface.Normalise where
 
 import Control.Applicative ((<|>))
 import Control.Monad (foldM, zipWithM)
+import Control.Monad.Writer (Any (..), MonadWriter (..), execWriterT)
 import Data.Maybe (fromMaybe, isJust)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Interface.Print (PrintableBuiltin)
@@ -53,20 +53,19 @@ class (PrintableBuiltin builtin) => NormalisableBuiltin builtin where
   evalScheme :: (MonadLogger m) => builtin -> EvalScheme builtin m
   blockingArgs :: builtin -> BlockingArgs
   isTypeClassOp :: builtin -> Bool
-  isCast :: (MonadLogger m) => builtin -> Maybe ([GenericArg (Expr builtin)] -> m (Expr builtin))
+  isCast :: (MonadLogger m) => Provenance -> builtin -> Maybe ([GenericArg (Expr builtin)] -> m (Expr builtin))
 
 forceEvalSimpleBuiltin ::
   (IsArgs args, MonadLogger m, Pretty builtin, PrintableBuiltin builtin) =>
+  Provenance ->
   builtin ->
   EvalSimple args Expr builtin m ->
   [GenericArg (Expr builtin)] ->
   m (Expr builtin)
-forceEvalSimpleBuiltin b eval spine =
+forceEvalSimpleBuiltin p b eval spine =
   case getExpr accessSpine spine of
     Just args -> eval args
-    Nothing ->
-      developerError $
-        "Should not be evaluating" <+> quotePretty b <+> "with incomplete args of" <+> prettyVerbose spine
+    Nothing -> return $ normAppList (Builtin p b) spine
 
 --------------------------------------------------------------------------------
 -- Evaluation
@@ -550,6 +549,7 @@ type BlockingArguments builtin = [Value builtin]
 data BlockingArgs
   = Unknown
   | Known [Int]
+  deriving (Eq)
 
 noBlockingArgs :: BlockingArgs
 noBlockingArgs = Known []
@@ -626,6 +626,14 @@ functionBlockingArgs = \case
   Iterate -> Known [2]
   StackTensor -> Unknown
 
+derivedFunctionBlockingArgs :: DerivedFunction -> BlockingArgs
+derivedFunctionBlockingArgs = \case
+  TypeAnn -> noBlockingArgs
+  QuantifyIndex {} -> Known [0]
+  QuantifyInList {} -> Known [2]
+  CompareRatTensorReduced {} -> Known [1, 2]
+  AppendList -> Known [1, 2]
+
 castBlockingArgs :: BuiltinCast -> BlockingArgs
 castBlockingArgs = \case
   FromVectorToList -> Known [1]
@@ -633,3 +641,57 @@ castBlockingArgs = \case
   FromNat FromNatToNat -> Known [0]
   FromNat FromNatToRat -> Known [0]
   FromRat FromRatToRat -> noBlockingArgs
+
+traverseBlockingArgs ::
+  forall m builtin.
+  (MonadLogger m, NormalisableBuiltin builtin) =>
+  (Value builtin -> m (Value builtin)) ->
+  builtin ->
+  Spine builtin ->
+  m (Spine builtin)
+traverseBlockingArgs f b spine = case blockingArgs b of
+  Unknown -> traverseSpine f spine
+  Known xs -> recurse spine 0 xs
+  where
+    recurse ::
+      Spine builtin ->
+      Int ->
+      [Int] ->
+      m (Spine builtin)
+    recurse [] _currentIndex _blockingArgs = return []
+    recurse args _currentIndex [] = return args
+    recurse (arg : args) currentIndex (blockingIndex : blockingIndices)
+      | currentIndex == blockingIndex = do
+          arg' <- traverse f arg
+          args' <- recurse args (currentIndex + 1) blockingIndices
+          return $ arg' : args'
+      | otherwise = do
+          args' <- recurse args (currentIndex + 1) (blockingIndex : blockingIndices)
+          return $ arg : args'
+
+isValueBlocked ::
+  (NormalisableBuiltin builtin) =>
+  (MonadLogger m, MonadWriter Any m) =>
+  Value builtin ->
+  m (Value builtin)
+isValueBlocked v = do
+  let blocked = case v of
+        VUniverse {} -> False
+        VMeta {} -> True
+        VFreeVar {} -> False
+        VBoundVar {} -> False
+        VLam {} -> False
+        VPi {} -> False
+        VBuiltin b _ -> blockingArgs b /= noBlockingArgs
+  tell (Any blocked)
+  return v
+
+isBlocked ::
+  forall m builtin.
+  (MonadLogger m, NormalisableBuiltin builtin) =>
+  builtin ->
+  Spine builtin ->
+  m Bool
+isBlocked b args = do
+  u <- execWriterT @m $ traverseBlockingArgs isValueBlocked b args
+  return $ getAny u

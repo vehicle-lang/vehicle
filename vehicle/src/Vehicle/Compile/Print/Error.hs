@@ -842,9 +842,10 @@ instance MeaningfulError CompileError where
             problem =
               "Unable to compile declaration"
                 <+> quotePretty ident
-                <+> "as it is not used in any properties and therefore unable to decide"
+                <+> "as it is both not used in any properties and the type is not precisely defined"
+                <+> "and therefore unable to decide"
                 <+> "whether or not it should be lifted to the type-level.",
-            fix = Just "remove the declaration or use it in a property."
+            fix = Just "either remove the declaration, or add a type signature or use it in a property."
           }
 
 datasetDimensionsFix :: Doc a -> Identifier -> FilePath -> Doc a

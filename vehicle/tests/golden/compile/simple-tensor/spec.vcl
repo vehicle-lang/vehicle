@@ -1,4 +1,3 @@
-{-
 @network
 f : Tensor Rat [2,2] -> Tensor Rat [2,2]
 
@@ -19,7 +18,7 @@ addition = twoD + twoD
 
 subtraction : Tensor Rat [2, 2]
 subtraction = twoD - twoD
--}
+
 @property
 p : Bool
-p = forall (i : Index 1) . True -- (f subtraction + addition) ! i ! j >= 0
+p = forall i j . (f subtraction + addition) ! i ! j >= 0
