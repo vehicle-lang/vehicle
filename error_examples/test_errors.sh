@@ -24,7 +24,7 @@ do
   fi
   
   # Execute test and capture output
-  output=$(cabal exec vehicle -- --json-error check -s "$file" 2>&1)
+  output=$(cabal exec vehicle -- --json check -s "$file" 2>&1)
   
   # Add results to output file
   echo "    {" >> error_examples/test_results.json

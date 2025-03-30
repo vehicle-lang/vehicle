@@ -76,7 +76,7 @@ data GlobalOptions = GlobalOptions
     logFile :: Maybe FilePath,
     loggingLevel :: LoggingLevel,
     noWarnings :: Bool,
-    outputErrorAsJSON :: Bool
+    json :: Bool
   }
   deriving (Eq, Show)
 
@@ -87,7 +87,7 @@ defaultGlobalOptions =
       logFile = Nothing,
       loggingLevel = defaultLoggingLevel,
       noWarnings = False,
-      outputErrorAsJSON = False
+      json = False
     }
 
 data ModeOptions
@@ -156,7 +156,7 @@ globalOptionsParser =
     <*> redirectLogsParser
     <*> loggingLevelParser
     <*> noWarningsParser
-    <*> outputErrorAsJSONParser
+    <*> jsonParser
 
 --------------------------------------------------------------------------------
 -- Modes
@@ -577,8 +577,8 @@ verifyCacheParser =
 compileCacheParser :: Parser (Maybe FilePath)
 compileCacheParser = optional exportCacheParser
 
-outputErrorAsJSONParser :: Parser Bool
-outputErrorAsJSONParser =
+jsonParser :: Parser Bool
+jsonParser =
   switch $
-    long "json-error"
+    long "json"
       <> help "Output any error messages as JSON instead of text."

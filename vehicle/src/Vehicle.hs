@@ -52,7 +52,7 @@ rethrowExitCode = throwIO
 
 uncaughtException :: (MonadStdIO IO) => GlobalOptions -> SomeException -> IO ()
 uncaughtException opts (SomeException e) = do
-  if outputErrorAsJSON opts
+  if json opts
     then do
       let jsonError = encode $ object ["error" .= displayException e]
       liftIO $ hPutStrLn stderr (BLC.unpack jsonError)
@@ -69,7 +69,7 @@ runVehicle Options {..} = do
         then writeStdoutLn (Text.pack preciseVehicleVersion)
         else case modeOptions of
           Nothing ->
-            if outputErrorAsJSON globalOptions
+            if json globalOptions
               then
                 fatalErrorAsJSON
                   "No mode provided. Please use one of 'typeCheck', 'compile', 'verify', 'check', 'export'"
@@ -84,8 +84,8 @@ runVehicle Options {..} = do
             Export options -> export logSettings options
 
 withLogger :: (MonadStdIO IO) => GlobalOptions -> (LoggingSettings -> IO a) -> IO a
-withLogger GlobalOptions {logFile, loggingLevel, noWarnings, outputErrorAsJSON} action = do
-  let runAction logLn = action LoggingSettings {putLogLn = logLn, loggingLevel, noWarnings, errorAsJSON = outputErrorAsJSON}
+withLogger GlobalOptions {logFile, loggingLevel, noWarnings, json} action = do
+  let runAction logLn = action LoggingSettings {putLogLn = logLn, loggingLevel, noWarnings, errorAsJSON = json}
   case logFile of
     Nothing -> runAction writeStderrLn
     Just fp -> do
