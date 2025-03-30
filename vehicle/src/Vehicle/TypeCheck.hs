@@ -35,9 +35,25 @@ import Vehicle.Prelude.Logging.Instance
 import Vehicle.Syntax.AST.Expr qualified as S
 import Vehicle.Syntax.Parse
 import Vehicle.Verify.Specification.IO
-import Prelude (Either(..), Eq, FilePath, IO, Maybe(..), Show, 
-                filter, fmap, mempty, return, show, traverse, undefined,
-                ($), (<$>), (<>), (=<<))
+import Prelude
+  ( Either (..),
+    Eq,
+    FilePath,
+    IO,
+    Maybe (..),
+    Show,
+    filter,
+    fmap,
+    mempty,
+    return,
+    show,
+    traverse,
+    undefined,
+    ($),
+    (<$>),
+    (<>),
+    (=<<),
+  )
 
 data TypeCheckOptions = TypeCheckOptions
   { specification :: FilePath,
@@ -153,7 +169,7 @@ runCompileMonad loggingSettings x = do
   let errorAsJSON = Vehicle.Prelude.Logging.Instance.errorAsJSON loggingSettings
   errorOrResult <- runLoggerT loggingSettings (logCompileError x)
   case errorOrResult of
-    Left err -> 
+    Left err ->
       if errorAsJSON
         then liftIO $ do
           fatalErrorAsJSON $ show $ pretty $ details err

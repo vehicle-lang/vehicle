@@ -349,9 +349,10 @@ instance MeaningfulError CompileError where
                     )
           }
       where
-        (entity, var) = case resourceType of
-          Parameter -> ("value", "VALUE")
-          _ -> ("file", "FILEPATH")
+        (entity, var) =
+          case resourceType of
+            Parameter -> ("value", "VALUE")
+            _ -> ("file", "FILEPATH")
     UnsupportedResourceFormat (ident, p) resourceType fileExtension ->
       UError $
         UserError
@@ -397,7 +398,10 @@ instance MeaningfulError CompileError where
             fix = Nothing
           }
       where
-        entity = if resourceType == Parameter then "value" else "file"
+        entity =
+          if resourceType == Parameter
+            then "value"
+            else "file"
 
     -- Network errors
     {-

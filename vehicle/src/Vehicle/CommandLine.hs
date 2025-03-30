@@ -42,7 +42,13 @@ import Options.Applicative
     switch,
     value,
   )
-import Vehicle.Backend.Prelude (DifferentiableLogicID, ITP, Target (..), TypingSystem (..), findTarget)
+import Vehicle.Backend.Prelude
+  ( DifferentiableLogicID,
+    ITP,
+    Target (..),
+    TypingSystem (..),
+    findTarget,
+  )
 import Vehicle.Compile (CompileOptions (..))
 import Vehicle.Export (ExportOptions (..))
 import Vehicle.Prelude

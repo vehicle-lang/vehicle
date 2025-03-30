@@ -5,7 +5,14 @@ module Vehicle
   )
 where
 
-import Control.Exception (Exception (..), Handler (..), SomeException (..), catches, handle, throwIO)
+import Control.Exception
+  ( Exception (..),
+    Handler (..),
+    SomeException (..),
+    catches,
+    handle,
+    throwIO,
+  )
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Aeson (encode, object, (.=))
 import Data.ByteString.Lazy.Char8 qualified as BLC (unpack)
@@ -25,7 +32,12 @@ import System.IO
     utf8,
     withFile,
   )
-import Vehicle.CommandLine (GlobalOptions (..), ModeOptions (..), Options (..), commandLineOptionsParserInfo)
+import Vehicle.CommandLine
+  ( GlobalOptions (..),
+    ModeOptions (..),
+    Options (..),
+    commandLineOptionsParserInfo,
+  )
 import Vehicle.Compile (compile)
 import Vehicle.Export (export)
 import Vehicle.Prelude

@@ -16,8 +16,6 @@ module Vehicle.Prelude.IO
 where
 
 import Control.Exception (catch, throwIO)
--- import Control.Monad (forM_)
-
 import Control.Monad.Except (ExceptT)
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Identity (IdentityT)
@@ -138,11 +136,13 @@ fatalErrorAsJSON msg = do
   args <- getArgs -- Get command line arguments directly from the system
   let (file, origLine, origColumn) = extractLocationInfo msg
   -- Extract filename from args
-  let fileName = case dropWhile (/= "-s") args of
-        ("-s" : fname : _) -> fname -- Find the filename after -s
-        _ -> case filter (\arg -> ".vcl" `isInfixOf` arg) args of
-          (fname : _) -> fname -- Look for arguments ending with .vcl
-          _ -> file -- Use the originally extracted filename
+  let fileName =
+        case dropWhile (/= "-s") args of
+          ("-s" : fname : _) -> fname -- Find the filename after -s
+          _ ->
+            case filter (\arg -> ".vcl" `isInfixOf` arg) args of
+              (fname : _) -> fname -- Look for arguments ending with .vcl
+              _ -> file -- Use the originally extracted filename
 
   -- Extract specific line and column numbers from syntax error messages
   let (lineNum, colNum) =
