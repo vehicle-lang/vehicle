@@ -1,5 +1,5 @@
 import json
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 
 class VehicleError(Exception):

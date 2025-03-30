@@ -171,7 +171,7 @@ Example Output:
 {
   "error": "Error in file 'test.vcl' at Line 1, Columns 18-19: the value '5' is too big to be used as an index of size '3'.",
   /* Error message field: Contains the complete error description, formatted as "Error in file '[filename]' at Line [line number], Columns [column range]: [specific error description]" */
-  
+
   "provenance": {
     /* Error location information: Contains precise location data where the error occurred */
     "file": "test.vcl",  /* Filename where the error is located */

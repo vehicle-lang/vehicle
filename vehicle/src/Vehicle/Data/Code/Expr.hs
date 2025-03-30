@@ -137,7 +137,7 @@ instance (Serialize builtin) => Serialize (Expr builtin) where
     FreeVar p i -> putWord8 7 >> put p >> put i
     Let p b e body -> putWord8 8 >> put p >> put b >> put e >> put body
     Lam p b body -> putWord8 9 >> put p >> put b >> put body
-  
+
   get = do
     tag <- getWord8
     case tag of

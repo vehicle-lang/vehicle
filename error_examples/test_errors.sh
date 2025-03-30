@@ -15,17 +15,17 @@ do
   # Get the base filename
   filename=`basename $file`
   echo "Testing: $filename"
-  
+
   # Add comma if not first entry
   if [ "$first" = true ]; then
     first=false
   else
     echo "    ," >> error_examples/test_results.json
   fi
-  
+
   # Execute test and capture output
   output=$(cabal exec vehicle -- --json check -s "$file" 2>&1)
-  
+
   # Add results to output file
   echo "    {" >> error_examples/test_results.json
   echo "      \"file\": \"$filename\"," >> error_examples/test_results.json
