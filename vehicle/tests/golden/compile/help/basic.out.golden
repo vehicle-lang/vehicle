@@ -1,6 +1,7 @@
 Vehicle - a program for enforcing neural network specifications
 
-Usage: vehicle [-v|--version] [--logging ARG] [--no-warnings] [COMMAND]
+Usage: vehicle [-v|--version] [--logging ARG] [--no-warnings] [-j|--json] 
+               [COMMAND]
 
 Available options:
   -v,--version             Show version information.
@@ -9,6 +10,7 @@ Available options:
                            NoDetail, MinDetail, MidDetail, MaxDetail
                            (default: NoDetail)
   --no-warnings            Suppress the printing of warnings.
+  -j,--json                Output any error messages as JSON instead of text.
   -h,--help                Show this help text
 
 Available commands:

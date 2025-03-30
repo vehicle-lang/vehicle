@@ -211,7 +211,7 @@ compileParser =
     <*> outputParser
     <*> modulePrefixOption
     <*> compileCacheParser
-    <*> outputAsJSONParser
+    <*> compileOutputAsJSONParser
 
 compileParserInfo :: ParserInfo ModeOptions
 compileParserInfo = info (Compile <$> compileParser) compileDescription
@@ -449,10 +449,10 @@ outputParser =
         <> metavar "FILE"
         <> help "Output location for compiled file(s). Defaults to stdout if not provided."
 
-outputAsJSONParser :: Parser Bool
-outputAsJSONParser =
+compileOutputAsJSONParser :: Parser Bool
+compileOutputAsJSONParser =
   switch $
-    long "json"
+    long "output-json"
       <> short 'j'
       <> help "Output the program as JSON instead of text."
       <> internal
@@ -581,4 +581,5 @@ jsonParser :: Parser Bool
 jsonParser =
   switch $
     long "json"
+      <> short 'j'
       <> help "Output any error messages as JSON instead of text."
