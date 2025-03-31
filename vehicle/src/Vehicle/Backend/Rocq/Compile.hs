@@ -443,20 +443,21 @@ compileBuiltin b args = case b of
     Iterate -> unsupportedError
     PowRat -> unsupportedError
   DecidabilityBuiltinFunction f -> case f of
-    TypeTrue -> return "True"
-    TypeFalse -> return "False"
-    TypeNot -> annotateInfixApp [] 75 "~ _" (Just "not") args
-    TypeAnd -> annotateInfixApp [] 80 "_ /\\ _" (Just "and") args
-    TypeOr -> annotateInfixApp [] 85 "_ \\/ _" (Just "or") args
-    TypeImplies -> annotateInfixApp [RequireImport MathcompSsreflectSsrbool] minPrecedence "_ -> _" (Just "implies") args
-    TypeCompareIndex op -> compileComparison CIndex op args
-    TypeCompareNat op -> compileComparison CNat op args
-    TypeCompareRatTensorPointwise op -> compileComparison CRatTensor op args
-    BoolTensorToType -> monoError
-    TypeQuantifyIndex q -> case q of
+    PropType -> return "Prop"
+    PropTrue -> return "True"
+    PropFalse -> return "False"
+    PropNot -> annotateInfixApp [] 75 "~ _" (Just "not") args
+    PropAnd -> annotateInfixApp [] 80 "_ /\\ _" (Just "and") args
+    PropOr -> annotateInfixApp [] 85 "_ \\/ _" (Just "or") args
+    PropImplies -> annotateInfixApp [RequireImport MathcompSsreflectSsrbool] minPrecedence "_ -> _" (Just "implies") args
+    PropCompareIndex op -> compileComparison CIndex op args
+    PropCompareNat op -> compileComparison CNat op args
+    PropCompareRatTensorPointwise op -> compileComparison CRatTensor op args
+    BoolTensorToProp -> monoError
+    PropQuantifyIndex q -> case q of
       Forall -> annotateApp [RequireImport VehicleStd] "forallIndex" args
       Exists -> annotateApp [RequireImport VehicleStd] "existsIndex" args
-    TypeQuantifyInList q -> case q of
+    PropQuantifyInList q -> case q of
       Forall -> annotateApp [RequireImport VehicleStd] "forallInList" args
       Exists -> annotateApp [RequireImport VehicleStd] "existsInList" args
   DecidabilityBuiltinTypeClass {} -> monoError
