@@ -315,7 +315,7 @@ compileExpr expr = do
 
 compileType :: UniverseLevel -> Code
 compileType (UniverseLevel l)
-  | l == 0 = "Prop"
+  | l == 0 = "Type"
   | otherwise = undefined -- annotateConstant [] ("Prop" <> pretty l)
 
 compileLetBinder ::
@@ -418,7 +418,7 @@ compileBuiltin b args = case b of
     Sub SubRatTensor -> annotateInfixApp [RequireImport VehicleTensor, Open TensorScope] 50 "_ -%t _" (Just "subt") args
     Mul MulRatTensor -> annotateInfixApp [RequireImport VehicleTensor, Open TensorScope] 40 "_ *%t _" (Just "mult") args
     Div DivRatTensor -> annotateInfixApp [RequireImport VehicleTensor, Open TensorScope] 40 "_ /%t _" (Just "divt") args
-    Neg NegRatTensor -> annotateApp [RequireImport VehicleTensor] "negt" args
+    Neg NegRatTensor -> annotateApp [RequireImport VehicleTensor] "oppt" args
     Min MinRatTensor -> annotateApp [RequireImport VehicleTensor] "mint" args
     Max MaxRatTensor -> annotateApp [RequireImport VehicleTensor] "maxt" args
     CompareIndex op -> compileComparison CIndex op args

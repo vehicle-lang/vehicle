@@ -20,6 +20,20 @@
     "produces": ["Agda.agda"]
   },
   {
+    "name": "Rocq",
+    "run": "vehicle compile -s spec.vcl -t Rocq -o Rocq.v",
+    "needs": ["spec.vcl"],
+    "produces": ["Rocq.v"]
+  },
+  {
+    "name": "RocqVerify",
+    "run": "vehicle compile -s spec.vcl -t Rocq -o Rocq.v && coqc -vok Rocq.v -w none",
+    "needs": ["spec.vcl"],
+    "produces": ["Rocq.v"],
+    "externals": ["coqc"],
+    "ignore": {"files": [".Rocq.aux", "Rocq.glob", "Rocq.vok"]}
+  },
+  {
     "name": "DL2Loss",
     "run": "vehicle compile -s spec.vcl -t DL2Loss -o DL2Loss.vcl --network controller:controller.onnx ",
     "needs": ["spec.vcl"],

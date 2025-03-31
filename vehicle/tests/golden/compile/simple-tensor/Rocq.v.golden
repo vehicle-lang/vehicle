@@ -17,14 +17,23 @@ Require Import vehicle.tensor.
 Require Import vehicle.std.
 Import DefaultTupleProdOrder.
 Open Scope ring_scope.
+Open Scope tensor_scope.
 Open Scope order_scope.
 
 Parameter R : realType.
 
-Parameter f : tensor R (1%N :: nil) -> tensor R (1%N :: nil).
+Parameter f : tensor R (2%N :: (2%N :: nil)) -> tensor R (2%N :: (2%N :: nil)).
 
-Axiom prop1 : forall x, if gtRatTensorReduced x (0 : R) then tnth (f (stack [tuple x])) 0 > (0 : R) else tnth (f (stack [tuple x])) 0 <= (0 : R).
+Definition zeroD : tensor R nil := 5 / 2 : R.
 
-Axiom prop2 : exists x, tnth (f (stack [tuple (if gtRatTensorReduced x (0 : R) then x else (1 / 5 : R))])) 0 >= (0 : R).
+Definition oneD : tensor R (2%N :: nil) := stack [tuple zeroD; (1 : R)].
 
-Axiom prop3 : exists x, if gtRatTensorReduced (tnth (f (stack [tuple x])) 0) (0 : R) then x >= (0 : R) else x < (0 : R).
+Definition twoD : tensor R (2%N :: (2%N :: nil)) := stack [tuple oneD; stack [tuple (2 : R); (3 : R)]].
+
+Definition lookup2D : tensor R nil := tnth (tnth twoD 0) 1.
+
+Definition addition : tensor R (2%N :: (2%N :: nil)) := twoD +%t twoD.
+
+Definition subtraction : tensor R (2%N :: (2%N :: nil)) := twoD -%t twoD.
+
+Axiom p : forallIndex (fun i => forallIndex (fun j => tnth (tnth (f subtraction +%t addition) i) j >= (0 : R))).
