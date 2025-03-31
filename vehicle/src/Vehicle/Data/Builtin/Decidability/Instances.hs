@@ -34,8 +34,8 @@ allInstances =
             tBool,
             False
           ),
-          ( decTypeClass IsBoolType [type0],
-            type0,
+          ( decTypeClass IsBoolType [tProp],
+            tProp,
             False
           )
         ]
@@ -45,17 +45,17 @@ allInstances =
                  bs,
              False
            ),
-           ( decTypeClass HasBoolTensorLiterals [type0IgnoreDims],
-             decFunction BoolTensorToType,
+           ( decTypeClass HasBoolTensorLiterals [propIgnoreDims],
+             decFunction BoolTensorToProp,
              False
            )
          ]
-      <> dimsCandidate HasNot Not TypeNot
-      <> dimsCandidate HasAnd And TypeAnd
-      <> dimsCandidate HasOr Or TypeOr
-      <> dimsCandidate HasImplies Implies TypeImplies
-      <> dimsCandidate HasReduceAndTensor ReduceAndTensor TypeAnd
-      <> dimsCandidate HasReduceOrTensor ReduceOrTensor TypeOr
+      <> dimsCandidate HasNot Not PropNot
+      <> dimsCandidate HasAnd And PropAnd
+      <> dimsCandidate HasOr Or PropOr
+      <> dimsCandidate HasImplies Implies PropImplies
+      <> dimsCandidate HasReduceAndTensor ReduceAndTensor PropAnd
+      <> dimsCandidate HasReduceOrTensor ReduceOrTensor PropOr
       <> comparisonCandidates Le
       <> comparisonCandidates Lt
       <> comparisonCandidates Ge
@@ -72,9 +72,9 @@ allInstances =
              tTensorRaw @@ [tBool],
              False
            ),
-           ( isTensorType type0,
+           ( isTensorType tProp,
              lam "ds" Explicit Relevant tDims $ \_ds ->
-               type0,
+               tProp,
              False
            ),
            ( isTensorType tNat,
@@ -92,9 +92,6 @@ type TempCandidate = (DSLExpr DecidabilityBuiltin, DSLExpr DecidabilityBuiltin, 
 decTypeClass :: DecidabilityBuiltinTypeClass -> NonEmpty (DSLExpr DecidabilityBuiltin) -> DSLExpr DecidabilityBuiltin
 decTypeClass tc args = builtin (DecidabilityBuiltinTypeClass tc) @@ args
 
-decFunction :: DecidabilityBuiltinFunction -> DSLExpr DecidabilityBuiltin
-decFunction f = builtin (DecidabilityBuiltinFunction f)
-
 dimsCandidate ::
   DecidabilityBuiltinTypeClass ->
   BuiltinFunction ->
@@ -108,7 +105,7 @@ dimsCandidate tc standardOp typeOp =
       False
     ),
     ( forAllDims $ \dims ->
-        decTypeClass tc [type0IgnoreDims, dims],
+        decTypeClass tc [propIgnoreDims, dims],
       lamDims $ \_dims ->
         decFunction typeOp,
       False
@@ -125,7 +122,7 @@ nonDimsCandidate tc standardOp typeOp =
       standardOp,
       False
     ),
-    ( decTypeClass tc [type0],
+    ( decTypeClass tc [tProp],
       decFunction typeOp,
       False
     )
@@ -133,10 +130,10 @@ nonDimsCandidate tc standardOp typeOp =
 
 comparisonCandidates :: ComparisonOp -> [TempCandidate]
 comparisonCandidates op =
-  nonDimsCandidate (HasCompareIndex op) (builtinFunction $ CompareIndex op) (TypeCompareIndex op)
-    <> nonDimsCandidate (HasCompareNat op) (builtinFunction $ CompareNat op) (TypeCompareNat op)
-    <> dimsCandidate (HasCompareRatTensorPointwise op) (CompareRatTensorPointwise op) (TypeCompareRatTensorPointwise op)
-    <> nonDimsCandidate (HasCompareRatTensorReduced op) (builtinDerivedFunction $ CompareRatTensorReduced op) (TypeCompareRatTensorPointwise op)
+  nonDimsCandidate (HasCompareIndex op) (builtinFunction $ CompareIndex op) (PropCompareIndex op)
+    <> nonDimsCandidate (HasCompareNat op) (builtinFunction $ CompareNat op) (PropCompareNat op)
+    <> dimsCandidate (HasCompareRatTensorPointwise op) (CompareRatTensorPointwise op) (PropCompareRatTensorPointwise op)
+    <> nonDimsCandidate (HasCompareRatTensorReduced op) (builtinDerivedFunction $ CompareRatTensorReduced op) (PropCompareRatTensorPointwise op)
 
 quantifierCandidates :: Quantifier -> [TempCandidate]
 quantifierCandidates q =
@@ -144,16 +141,16 @@ quantifierCandidates q =
       builtinDerivedFunction (QuantifyIndex q),
       False
     ),
-    ( decTypeClass (HasQuantifyIndex q) [type0],
-      decFunction (TypeQuantifyIndex q),
+    ( decTypeClass (HasQuantifyIndex q) [tProp],
+      decFunction (PropQuantifyIndex q),
       False
     ),
     ( decTypeClass (HasQuantifyInList q) [tTensor tBool dimNil],
       builtinDerivedFunction (QuantifyInList q),
       False
     ),
-    ( decTypeClass (HasQuantifyInList q) [type0],
-      decFunction (TypeQuantifyInList q),
+    ( decTypeClass (HasQuantifyInList q) [tProp],
+      decFunction (PropQuantifyInList q),
       False
     )
   ]

@@ -48,7 +48,7 @@ typeDecidabilityBuiltin = \case
   StandardBuiltinType t -> typeOfBuiltinType t
   StandardBuiltinConstructor c -> typeOfBuiltinConstructor c
   StandardBuiltinFunction f -> case f of
-    QuantifyRatTensor {} -> forAllDims $ \_dims -> forAllTypes $ \t -> (t ~> type0) ~> type0
+    QuantifyRatTensor {} -> forAllDims $ \_dims -> forAllTypes $ \t -> (t ~> tProp) ~> tProp
     _ -> typeOfBuiltinFunction f
   StandardBuiltinDerivedFunction f -> typeOfDerivedFunction f
   DecidabilityBuiltinTypeClass t -> typeDecidableTypeClass t
@@ -118,18 +118,19 @@ tensorOpConstraint c f =
 
 typeDecidableFunction :: DecidabilityBuiltinFunction -> DSLExpr DecidabilityBuiltin
 typeDecidableFunction = \case
-  BoolTensorToType -> typeOfCast type0
-  TypeTrue -> type0
-  TypeFalse -> type0
-  TypeNot -> typeOp1 type0
-  TypeAnd -> typeOp2 type0
-  TypeOr -> typeOp2 type0
-  TypeImplies -> typeOp2 type0
-  TypeCompareIndex _op -> typeOfCompareIndex type0
-  TypeCompareNat _op -> typeOfCompareNat type0
-  TypeCompareRatTensorPointwise _op -> typeOfCompareRatTensorPointwise type0IgnoreDims type0
-  TypeQuantifyIndex _q -> typeOfQuantifyIndex type0
-  TypeQuantifyInList _q -> typeOfQuantifyInList type0
+  PropType -> type0
+  BoolTensorToProp -> typeOfCast tProp
+  PropTrue -> tProp
+  PropFalse -> tProp
+  PropNot -> typeOp1 tProp
+  PropAnd -> typeOp2 tProp
+  PropOr -> typeOp2 tProp
+  PropImplies -> typeOp2 tProp
+  PropCompareIndex _op -> typeOfCompareIndex tProp
+  PropCompareNat _op -> typeOfCompareNat tProp
+  PropCompareRatTensorPointwise _op -> typeOfCompareRatTensorPointwise propIgnoreDims tProp
+  PropQuantifyIndex _q -> typeOfQuantifyIndex tProp
+  PropQuantifyInList _q -> typeOfQuantifyInList tProp
 
 typeOfCompareIndex :: DSLExpr DecidabilityBuiltin -> DSLExpr DecidabilityBuiltin
 typeOfCompareIndex tRes =
@@ -271,7 +272,7 @@ restrictDecidabilityDeclType rDecl declProv@(_, p) declType = do
   let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin freeEnv declProv rDecl declType
   case rDecl of
     RestrictedProperty -> do
-      let desiredType = Universe mempty 0
+      let desiredType = Builtin mempty (DecidabilityBuiltinFunction PropType)
       createFreshUnificationConstraint p mempty (CheckingInstanceType origin) desiredType declType
       return declType
     _ -> return declType

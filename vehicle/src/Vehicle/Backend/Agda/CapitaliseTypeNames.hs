@@ -11,7 +11,7 @@ import Vehicle.Compile.Context.Free (MonadFreeContext, addDeclToContext, runFres
 import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Normalise.NBE (normaliseClosure, normaliseInEmptyEnv)
 import Vehicle.Compile.Prelude
-import Vehicle.Data.Builtin.Decidability (DecidabilityBuiltin (..))
+import Vehicle.Data.Builtin.Decidability (DecidabilityBuiltin (..), DecidabilityBuiltinFunction (..))
 import Vehicle.Data.Code.Value (Value (..))
 
 --------------------------------------------------------------------------------
@@ -96,7 +96,7 @@ isTypeDef t = case t of
   _ -> return False
   where
     go :: Lv -> Value DecidabilityBuiltin -> m Bool
-    go _ (VUniverse 0) = return True
+    go _ (VBuiltin (DecidabilityBuiltinFunction PropType) []) = return True
     go lv (VPi binder closure) = do
       result <- normaliseClosure lv binder closure
       go (lv + 1) result

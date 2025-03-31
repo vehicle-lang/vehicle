@@ -67,19 +67,20 @@ instance Hashable DecidabilityBuiltinTypeClassOp
 -- | Constructors for types in the language. The types and type-classes
 -- are viewed as constructors for `Type`.
 data DecidabilityBuiltinFunction
-  = BoolTensorToType
-  | TypeTrue
-  | TypeFalse
-  | TypeNot
-  | TypeAnd
-  | TypeOr
-  | TypeImplies
-  | TypeCompareNat ComparisonOp
-  | TypeCompareIndex ComparisonOp
-  | TypeCompareRatTensorPointwise ComparisonOp
+  = PropType
+  | BoolTensorToProp
+  | PropTrue
+  | PropFalse
+  | PropNot
+  | PropAnd
+  | PropOr
+  | PropImplies
+  | PropCompareNat ComparisonOp
+  | PropCompareIndex ComparisonOp
+  | PropCompareRatTensorPointwise ComparisonOp
   | -- Taken from DerivedFunctions
-    TypeQuantifyIndex Quantifier
-  | TypeQuantifyInList Quantifier
+    PropQuantifyIndex Quantifier
+  | PropQuantifyInList Quantifier
   deriving (Eq, Ord, Show, Generic)
 
 instance Hashable DecidabilityBuiltinFunction
@@ -214,20 +215,21 @@ instance Pretty DecidabilityBuiltinTypeClass where
 
 instance Pretty DecidabilityBuiltinFunction where
   pretty = \case
-    TypeTrue -> "true" <> symbol
-    TypeFalse -> "false" <> symbol
-    TypeNot -> pretty Not <> symbol
-    TypeAnd -> pretty And <> symbol
-    TypeOr -> pretty Or <> symbol
-    TypeImplies -> pretty Implies <> symbol
-    TypeCompareNat op -> pretty (CompareNat op) <> symbol
-    TypeCompareIndex op -> pretty (CompareIndex op) <> symbol
-    TypeCompareRatTensorPointwise op -> pretty (CompareRatTensorPointwise op) <> symbol
-    BoolTensorToType -> "boolTensorToType"
-    TypeQuantifyIndex q -> pretty (QuantifyIndex q) <> symbol
-    TypeQuantifyInList q -> pretty (QuantifyInList q) <> symbol
+    PropType -> "Prop"
+    BoolTensorToProp -> "boolTensorToType"
+    PropTrue -> "true" <> symbol
+    PropFalse -> "false" <> symbol
+    PropNot -> pretty Not <> symbol
+    PropAnd -> pretty And <> symbol
+    PropOr -> pretty Or <> symbol
+    PropImplies -> pretty Implies <> symbol
+    PropCompareNat op -> pretty (CompareNat op) <> symbol
+    PropCompareIndex op -> pretty (CompareIndex op) <> symbol
+    PropCompareRatTensorPointwise op -> pretty (CompareRatTensorPointwise op) <> symbol
+    PropQuantifyIndex q -> pretty (QuantifyIndex q) <> symbol
+    PropQuantifyInList q -> pretty (QuantifyInList q) <> symbol
     where
-      symbol = "ᵗ"
+      symbol = "ᵖ"
 
 instance Pretty DecidabilityBuiltinConstructor where
   pretty = \case
@@ -292,7 +294,7 @@ instance NormalisableBuiltin DecidabilityBuiltin where
     _ -> False
 
   isCast p e = case e of
-    DecidabilityBuiltinFunction BoolTensorToType -> Just $ forceEvalSimpleBuiltin p e evalBoolTensorToType
+    DecidabilityBuiltinFunction BoolTensorToProp -> Just $ forceEvalSimpleBuiltin p e evalBoolTensorToType
     _ -> Nothing
 
 evalBoolTensorToType ::
@@ -301,9 +303,9 @@ evalBoolTensorToType ::
   m (expr DecidabilityBuiltin)
 evalBoolTensorToType args = return $ case args of
   TensorOp1Args _ (getExpr accessBuiltinC -> Just (StandardBuiltinConstructor (BoolTensorLiteral t), [])) -> do
-    let op = if anyTensor not t then TypeFalse else TypeTrue
+    let op = if anyTensor not t then PropFalse else PropTrue
     mkExpr accessBuiltinC (DecidabilityBuiltinFunction op, [])
-  _ -> developerError $ "Should not be possible to have non-literal" <+> pretty BoolTensorToType <+> "args"
+  _ -> developerError $ "Should not be possible to have non-literal" <+> pretty BoolTensorToProp <+> "args"
 
 --------------------------------------------------------------------------------
 -- DSL
@@ -311,8 +313,14 @@ evalBoolTensorToType args = return $ case args of
 isTensorType :: DSLExpr DecidabilityBuiltin -> DSLExpr DecidabilityBuiltin
 isTensorType tElem = builtin (DecidabilityBuiltinTypeClass IsTensorType) @@ [tElem]
 
-type0IgnoreDims :: DSLExpr DecidabilityBuiltin
-type0IgnoreDims = lam "ds" Explicit Irrelevant tDims $ const type0
+decFunction :: DecidabilityBuiltinFunction -> DSLExpr DecidabilityBuiltin
+decFunction f = builtin (DecidabilityBuiltinFunction f)
+
+tProp :: DSLExpr DecidabilityBuiltin
+tProp = decFunction PropType
+
+propIgnoreDims :: DSLExpr DecidabilityBuiltin
+propIgnoreDims = lam "ds" Explicit Irrelevant tDims $ const tProp
 
 builtinDerivedFunction :: DerivedFunction -> DSLExpr DecidabilityBuiltin
 builtinDerivedFunction = builtin . StandardBuiltinDerivedFunction
