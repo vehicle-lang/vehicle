@@ -541,20 +541,21 @@ compileDecidabilityBuiltinFunction ::
   [Arg DecidabilityBuiltin] ->
   m Code
 compileDecidabilityBuiltinFunction f args = case f of
-  BoolTensorToType -> monoError f
-  TypeTrue -> return $ annotateConstant [DataUnit] "⊤"
-  TypeFalse -> return $ annotateConstant [DataEmpty] "⊥"
-  TypeNot -> annotateInfixApp [RelNullary] 3 Nothing "¬_" args
-  TypeAnd -> annotateInfixApp [DataProduct] 2 Nothing "_×_" args
-  TypeOr -> annotateInfixApp [DataSum] 1 Nothing "_⊎_" args
-  TypeImplies -> annotateInfixApp [] minPrecedence Nothing "_→_" args
-  TypeCompareIndex op -> annotateInfixApp [VehicleUtils, DataFin] 4 Nothing (comparisonOperator False op) args
-  TypeCompareNat op -> annotateInfixApp [VehicleUtils, DataNat] 4 Nothing (comparisonOperator False op) args
-  TypeCompareRatTensorPointwise op -> annotateInfixApp [VehicleUtils, DataTensor] 4 Nothing (comparisonOperator False op) args
-  TypeQuantifyIndex q -> case q of
+  PropType -> return $ compileType 0
+  BoolTensorToProp -> monoError f
+  PropTrue -> return $ annotateConstant [DataUnit] "⊤"
+  PropFalse -> return $ annotateConstant [DataEmpty] "⊥"
+  PropNot -> annotateInfixApp [RelNullary] 3 Nothing "¬_" args
+  PropAnd -> annotateInfixApp [DataProduct] 2 Nothing "_×_" args
+  PropOr -> annotateInfixApp [DataSum] 1 Nothing "_⊎_" args
+  PropImplies -> annotateInfixApp [] minPrecedence Nothing "_→_" args
+  PropCompareIndex op -> annotateInfixApp [VehicleUtils, DataFin] 4 Nothing (comparisonOperator False op) args
+  PropCompareNat op -> annotateInfixApp [VehicleUtils, DataNat] 4 Nothing (comparisonOperator False op) args
+  PropCompareRatTensorPointwise op -> annotateInfixApp [VehicleUtils, DataTensor] 4 Nothing (comparisonOperator False op) args
+  PropQuantifyIndex q -> case q of
     Forall -> annotateApp [DataFinAll] (Just finQualifier) "All" args
     Exists -> annotateApp [DataFinAny] (Just finQualifier) "All" args
-  TypeQuantifyInList q -> case q of
+  PropQuantifyInList q -> case q of
     Forall -> annotateApp [DataListAll] (Just listQualifier) "All" args
     Exists -> annotateApp [DataListAny] (Just listQualifier) "Any" args
 
