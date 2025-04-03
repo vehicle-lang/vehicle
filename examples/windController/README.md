@@ -1,7 +1,7 @@
 # Car controller example
 
 A simple car controller that is formally proven to always keep the car on the road in the face of noisy sensor data and an unpredictable cross-wind. The
-specification is verified in Marabou and can then be exported to Agda and
+specification is verified in Marabou and can then be exported to Agda and Rocq and
 combined with a larger proof to prove that the car never leaves the road. A full
 description of the setup can be found in Section 2.1 of the [Vehicle paper](https://arxiv.org/pdf/2202.05207v1.pdf)).
 
@@ -12,6 +12,8 @@ This folder contains the following files:
 - `windController.vcl` - the specification describing the desired behaviour.
 
 - `agdaProof/SafetyProof.agda` - the Agda proof the car never leaves the road.
+
+- `rocqProof/SafetyProof.v` - the Rocq proof the car never leaves the road.
 
 ## Verifying using Marabou
 
@@ -30,7 +32,7 @@ which can then be used by Agda in the next step.
 
 The intermediate Marabou queries can be found in `examples/windController/verificationResult`.
 
-## Compiling to specification to Agda
+## Compiling to specification to an ITP backend
 
 The (verified) specification may then be compiled to Agda by running the command:
 
@@ -42,6 +44,8 @@ vehicle export \
 ```
 
 The full proof safety which makes uses of the generated Agda version of the specification in `agdaProof/WindControllerSpec.agda` is found in `agdaProof/SafetyProof.agda`.
+
+This can be equivalently achieved using Rocq, the full proof script can be found in `rocqProof/SafetyProof.v`.
 
 ## Generated files
 

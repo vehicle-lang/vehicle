@@ -564,7 +564,7 @@ compileBoolLiteral = \case
   False -> "false"
 
 compileRatLiteral :: Rational -> Code
-compileRatLiteral r = annotate ([RequireImport MathcompAlgebraSsralg, Open RingScope], minPrecedence) rat
+compileRatLiteral r = annotate ([RequireImport MathcompRealsReals, RequireImport MathcompAlgebraSsralg, Open RingScope], minPrecedence) rat
   where
     num = pretty $ numerator r
     denom = pretty $ denominator r
