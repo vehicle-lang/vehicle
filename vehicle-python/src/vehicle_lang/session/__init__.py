@@ -103,7 +103,7 @@ class Session(SessionContextManager):
         stderr_fd = sys.stderr.fileno()
 
         # Create a pseudo-terminal pair to capture stdout
-        master_fd, slave_fd = pty.openpty()
+        provider_fd, receiver_fd = pty.openpty()
         # Create a pipe to capture stderr
         pread_fd, pwrite_fd = os.pipe()
 
@@ -112,11 +112,11 @@ class Session(SessionContextManager):
 
         try:
             # Redirect stdout and stderr
-            os.dup2(slave_fd, stdout_fd)
+            os.dup2(receiver_fd, stdout_fd)
             os.dup2(pwrite_fd, stderr_fd)
 
             # Close unused write ends
-            os.close(slave_fd)
+            os.close(receiver_fd)
             os.close(pwrite_fd)
 
             with temporary_files("log", prefix="vehicle") as (log,):
@@ -135,7 +135,7 @@ class Session(SessionContextManager):
 
         out_lines = []
 
-        with os.fdopen(master_fd, "r") as f:
+        with os.fdopen(provider_fd, "r") as f:
             try:
                 while line := f.readline():
                     out_lines.append(line)
