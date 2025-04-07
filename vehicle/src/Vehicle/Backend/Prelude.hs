@@ -48,6 +48,20 @@ instance Read TypingSystem where
     _ -> []
 
 --------------------------------------------------------------------------------
+-- Different Listable Entities
+
+data ListableEntities
+  = ExternalResources
+  | Properties
+  deriving (Eq, Show, Bounded, Enum)
+
+instance Read ListableEntities where
+  readsPrec _d x = case x of
+    "Resources" -> [(ExternalResources, [])]
+    "Properties" -> [(Properties, [])]
+    _ -> []
+
+--------------------------------------------------------------------------------
 -- Action
 
 data Target

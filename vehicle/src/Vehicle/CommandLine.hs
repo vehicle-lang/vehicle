@@ -42,9 +42,10 @@ import Options.Applicative
     switch,
     value,
   )
-import Vehicle.Backend.Prelude (DifferentiableLogicID, ITP, Target (..), TypingSystem (..), findTarget)
+import Vehicle.Backend.Prelude (DifferentiableLogicID, ITP, ListableEntities (..), Target (..), TypingSystem (..), findTarget)
 import Vehicle.Compile (CompileOptions (..))
 import Vehicle.Export (ExportOptions (..))
+import Vehicle.List (ListOptions (..))
 import Vehicle.Prelude
   ( Doc,
     enumerate,
@@ -94,6 +95,7 @@ data ModeOptions
   | Verify VerifyOptions
   | Validate ValidateOptions
   | Export ExportOptions
+  | List ListOptions
   deriving (Eq, Show)
 
 --------------------------------------------------------------------------------
@@ -167,6 +169,7 @@ modeOptionsParser =
         <> command "verify" verifyParserInfo
         <> command "validate" validateParserInfo
         <> command "export" exportParserInfo
+        <> command "list" listParserInfo
 
 --------------------------------------------------------------------------------
 -- Check mode
@@ -187,6 +190,27 @@ typeCheckParser =
 
 typeCheckParserInfo :: ParserInfo ModeOptions
 typeCheckParserInfo = info (Check <$> typeCheckParser) typeCheckDescription
+
+--------------------------------------------------------------------------------
+-- List mode
+
+listDescription :: InfoMod ModeOptions
+listDescription =
+  progDesc $
+    "List entities for a "
+      <> specificationFileExtension
+      <> " specification file"
+      <> "."
+
+listParser :: Parser ListOptions
+listParser =
+  ListOptions
+    <$> specificationParser
+    <*> listEntitiesParser
+    <*> outputAsJSONParser
+
+listParserInfo :: ParserInfo ModeOptions
+listParserInfo = info (List <$> listParser) listDescription
 
 --------------------------------------------------------------------------------
 -- Compile mode
@@ -295,6 +319,11 @@ allVerifiersFormats = map show (enumerate @QueryFormatID)
 allLossFunctionDLs :: [String]
 allLossFunctionDLs = map show (enumerate @DifferentiableLogicID)
 
+allListableEntities :: [Doc a]
+allListableEntities = flip map (enumerate @ListableEntities) $ \case
+  ExternalResources -> "i) Resources - (default) list all the networks, datasets, and parameters in the specification"
+  Properties -> "ii) Properties - list all the properties in the specification"
+
 allTargets :: [String]
 allTargets = allLossFunctionDLs <> allVerifiersFormats <> allITPs
 
@@ -375,6 +404,24 @@ typeSystemParser =
               )
         )
       <> value Standard
+
+listEntitiesParser :: Parser ListableEntities
+listEntitiesParser =
+  option auto $
+    long "listEntities"
+      <> short 'l'
+      <> help
+        ( "Which Entities are listed. "
+            <> layoutAsString
+              ( line
+                  <> line
+                  <> indent
+                    2
+                    ( vsep allListableEntities
+                    )
+              )
+        )
+      <> value ExternalResources
 
 specificationParser :: Parser FilePath
 specificationParser =

@@ -25,6 +25,7 @@ import System.IO
 import Vehicle.CommandLine (GlobalOptions (..), ModeOptions (..), Options (..), commandLineOptionsParserInfo)
 import Vehicle.Compile (compile)
 import Vehicle.Export (export)
+import Vehicle.List (list)
 import Vehicle.Prelude
 import Vehicle.Prelude.IO as VIO (MonadStdIO (writeStderrLn), fatalError, programOutput)
 import Vehicle.Prelude.Logging
@@ -64,13 +65,14 @@ runVehicle Options {..} = do
         else case modeOptions of
           Nothing ->
             fatalError
-              "No mode provided. Please use one of 'typeCheck', 'compile', 'verify', 'check', 'export'"
+              "No mode provided. Please use one of 'check', 'compile','verify', 'check', 'export', 'list'"
           Just mode -> case mode of
             Check options -> typeCheck logSettings options
             Compile options -> compile logSettings options
             Verify options -> verify logSettings options
             Validate options -> validate logSettings options
             Export options -> export logSettings options
+            List options -> list logSettings options
 
 withLogger :: (MonadStdIO IO) => GlobalOptions -> (LoggingSettings -> IO a) -> IO a
 withLogger GlobalOptions {logFile, loggingLevel, noWarnings} action = do
