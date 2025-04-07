@@ -4,9 +4,8 @@ from typing import Union
 from .. import session
 from ..error import VehicleError
 
-def validate(
-    cache: Union[str, Path]
-) -> str:
+
+def validate(cache: Union[str, Path]) -> str:
     """
     Validate a verification result to check whether it still holds.
 
@@ -21,6 +20,6 @@ def validate(
     if exc != 0:
         raise VehicleError(f"{err}")
     elif not out:
-        return ''
+        return ""
 
     return out
