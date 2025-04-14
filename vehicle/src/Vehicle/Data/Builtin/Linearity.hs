@@ -10,6 +10,7 @@ import Data.Text (Text)
 import GHC.Generics (Generic)
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Interface
+import Vehicle.Data.Builtin.Interface.Blocked (BlockingStatus (..), functionBlockingStatus)
 import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Code.Expr
@@ -237,9 +238,9 @@ instance NormalisableBuiltin LinearityBuiltin where
     LinearityFunction _ -> None
     _ -> None
 
-  blockingArgs = \case
-    LinearityFunction f -> functionBlockingArgs f
-    _ -> noBlockingArgs
+  blockingStatus b spine = case b of
+    LinearityFunction f -> functionBlockingStatus f spine
+    _ -> DoesNotReduce
 
   isTypeClassOp _ = False
   isCast _ _ = Nothing

@@ -9,6 +9,7 @@ import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Interface
+import Vehicle.Data.Builtin.Interface.Blocked (BlockingStatus (DoesNotReduce), functionBlockingStatus)
 import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.DSL
@@ -213,9 +214,9 @@ instance NormalisableBuiltin PolarityBuiltin where
     PolarityFunction _ -> None
     _ -> None
 
-  blockingArgs = \case
-    PolarityFunction f -> functionBlockingArgs f
-    _ -> noBlockingArgs
+  blockingStatus b spine = case b of
+    PolarityFunction f -> functionBlockingStatus f spine
+    _ -> DoesNotReduce
 
   isTypeClassOp _ = False
   isCast _ _ = Nothing

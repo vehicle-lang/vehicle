@@ -14,7 +14,8 @@ import Vehicle.Compile.Type.Monad.Class
   ( MonadTypeChecker,
     getMetaInfo,
   )
-import Vehicle.Data.Builtin.Interface.Normalise (traverseBlockingArgs)
+import Vehicle.Data.Builtin.Interface.Blocked (BlockingStatus (..))
+import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Code.Value
 
 -----------------------------------------------------------------------------
@@ -78,11 +79,13 @@ forceBuiltin ::
   builtin ->
   Spine builtin ->
   m (Maybe (Value builtin), MetaSet)
-forceBuiltin b spine = do
-  (maybeUnblockedSpine, blockingMetas) <-
-    runWriterT $ runMaybeT $ traverseBlockingArgs forceBlockingArg b spine
-  finalValue <- traverse (normaliseBuiltin b) maybeUnblockedSpine
-  return (finalValue, blockingMetas)
+forceBuiltin b spine = case blockingStatus b spine of
+  Blocked traverseBlocking -> do
+    (maybeUnblockedSpine, blockingMetas) <-
+      runWriterT $ runMaybeT $ traverseBlocking forceBlockingArg
+    finalValue <- traverse (normaliseBuiltin b) maybeUnblockedSpine
+    return (finalValue, blockingMetas)
+  _ -> return (Just (VBuiltin b spine), mempty)
 
 forceBlockingArg ::
   (MonadForce builtin m) =>

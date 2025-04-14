@@ -9,7 +9,8 @@ import GHC.Generics (Generic)
 import Prettyprinter (brackets)
 import Vehicle.Compile.Normalise.NBE (NormalisableBuiltin)
 import Vehicle.Data.Builtin.Interface
-import Vehicle.Data.Builtin.Interface.Normalise (BlockingArgs (..), EvalScheme (..), MonadNormBuiltin, NormalisableBuiltin (..), evalFoldList, evalIterate, forceEvalSimpleBuiltin)
+import Vehicle.Data.Builtin.Interface.Blocked
+import Vehicle.Data.Builtin.Interface.Normalise (EvalScheme (..), MonadNormBuiltin, NormalisableBuiltin (..), evalFoldList, evalIterate, forceEvalSimpleBuiltin)
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Standard (Builtin, BuiltinConstructor (..), BuiltinFunction (..), BuiltinType, DerivedFunction)
 import Vehicle.Data.Code.DSL (tDims)
@@ -285,9 +286,9 @@ instance NormalisableBuiltin DecidabilityBuiltin where
     StandardBuiltinFunction FoldList -> NonSimple evalFoldList
     _ -> None
 
-  blockingArgs = \case
-    StandardBuiltinFunction Iterate -> Known [2]
-    _ -> Known []
+  blockingStatus b spine = case b of
+    StandardBuiltinFunction Iterate -> functionBlockingStatus Iterate spine
+    _ -> DoesNotReduce
 
   isTypeClassOp = \case
     DecidabilityBuiltinTypeClassOp {} -> True

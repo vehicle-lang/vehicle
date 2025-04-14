@@ -236,6 +236,7 @@ library
     Vehicle.Data.Builtin.Decidability
     Vehicle.Data.Builtin.Decidability.Instances
     Vehicle.Data.Builtin.Decidability.Type
+    Vehicle.Data.Builtin.Interface.Blocked
     Vehicle.Data.Builtin.Interface.InputOutputInsertion
     Vehicle.Data.Builtin.Interface.Normalise
     Vehicle.Data.Builtin.Interface.Print

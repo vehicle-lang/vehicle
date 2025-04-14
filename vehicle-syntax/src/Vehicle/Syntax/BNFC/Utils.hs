@@ -103,7 +103,7 @@ tokGt = mkToken B.TokGt ">"
 
 tokEqPoint = mkToken B.TokEqPoint "==."
 
-tokNePoint = mkToken B.TokNePoint "=!."
+tokNePoint = mkToken B.TokNePoint "!=."
 
 tokLePoint = mkToken B.TokLePoint "<=."
 

@@ -25,7 +25,7 @@ import Vehicle.Compile.Context.Name (getNameContext, runFreshNameContextT)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyExternal, prettyFriendlyEmptyCtx, prettyVerbose)
+import Vehicle.Compile.Print (prettyFriendly, prettyFriendlyEmptyCtx, prettyVerbose)
 import Vehicle.Compile.Rational.LinearExpr (LinearityError (..), compileLinearRelation)
 import Vehicle.Compile.Resource (NetworkTensorType (..), NetworkType (..))
 import Vehicle.Compile.Variable (createUserVar)
@@ -382,7 +382,7 @@ catchableUnsupportedNonLinearConstraint =
 showTopLevelEntry :: (MonadCompile m) => Value Builtin -> m ()
 showTopLevelEntry v = do
   logDebugM MaxDetail $ do
-    let vDoc = prettyExternal (WithContext v emptyNamedCtx)
+    let vDoc = prettyFriendly (WithContext v emptyNamedCtx)
     return $ "top-elim-enter" <+> vDoc
   incrCallDepth
 
@@ -397,7 +397,7 @@ showTopLevelExit v = do
 showEntry :: (MonadQueryStructure m) => Value Builtin -> m ()
 showEntry v = do
   logDebugM MaxDetail $ do
-    vDoc <- prettyExternalInCtx v
+    vDoc <- prettyFriendlyInCtx v
     return $ "elim-enter" <+> vDoc
   incrCallDepth
 

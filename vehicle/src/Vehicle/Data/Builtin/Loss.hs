@@ -282,7 +282,7 @@ instance NormalisableBuiltin LossBuiltin where
       SearchRatTensor {} -> None
     _ -> None
 
-  blockingArgs = developerError "Blocking arguments not yet implemented for LossBuiltin"
+  blockingStatus = developerError "Blocking arguments not yet implemented for LossBuiltin"
 
   isTypeClassOp _ = False
 

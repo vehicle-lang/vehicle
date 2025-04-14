@@ -59,11 +59,11 @@ lowerNot lv onBlocked expr = do
       VOr args -> fromBoolValue . VAnd <$> traverseTensorOp2Args go args
       VAnd args -> fromBoolValue . VOr <$> traverseTensorOp2Args go args
       VBoolIf args -> fromBoolValue . VBoolIf <$> traverseIfArgBranches go args
+      VReduceOrTensor args -> fromBoolValue . VReduceAndTensor <$> traverseTensorOp2Args go args
+      VReduceAndTensor args -> fromBoolValue . VReduceOrTensor <$> traverseTensorOp2Args go args
       -------------------
       -- Blocked cases --
       -------------------
-      VReduceOrTensor {} -> onBlocked e
-      VReduceAndTensor {} -> onBlocked e
       VBoolAt {} -> onBlocked e
       VBoolForeach {} -> onBlocked e
 
