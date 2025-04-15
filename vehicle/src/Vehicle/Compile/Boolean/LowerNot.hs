@@ -40,10 +40,11 @@ lowerNot lv onBlocked expr = do
       -- Base cases --
       ----------------
       VNot (TensorOp1Args _dims x) -> return x
-      VBoolTensorLiteral b -> return $ fromBoolValue $ VBoolTensorLiteral (fmap not b)
+      VBoolLiteral b -> return $ fromBoolValue $ VBoolLiteral (fmap not b)
       VCompareIndex (op, args) -> return $ fromBoolValue $ VCompareIndex (neg op, args)
       VCompareNat (op, args) -> return $ fromBoolValue $ VCompareNat (neg op, args)
-      VCompareRatTensor (op, args) -> return $ fromBoolValue $ VCompareRatTensor (neg op, args)
+      VCompareRatTensorReduced (op, args) -> return $ fromBoolValue $ VCompareRatTensorReduced (neg op, args)
+      VCompareRatTensorPointwise (op, args) -> return $ fromBoolValue $ VCompareRatTensorPointwise (neg op, args)
       -- We can't actually lower the `not` through the body of the quantifier as
       -- it is not yet unnormalised. However, it's fine to stop here as we'll
       -- simply continue to normalise it once we re-encounter it again after
@@ -54,8 +55,6 @@ lowerNot lv onBlocked expr = do
       ---------------------
       -- Inductive cases --
       ---------------------
-      VConstBoolTensor args -> fromBoolValue . VConstBoolTensor <$> traverseConstTensorValue go args
-      VBoolStackTensor args -> fromBoolValue . VBoolStackTensor <$> traverseStackTensorElements go args
       VOr args -> fromBoolValue . VAnd <$> traverseTensorOp2Args go args
       VAnd args -> fromBoolValue . VOr <$> traverseTensorOp2Args go args
       VBoolIf args -> fromBoolValue . VBoolIf <$> traverseIfArgBranches go args
@@ -65,7 +64,6 @@ lowerNot lv onBlocked expr = do
       -- Blocked cases --
       -------------------
       VBoolAt {} -> onBlocked e
-      VBoolForeach {} -> onBlocked e
 
 notClosure :: Lv -> VArg Builtin -> Closure Builtin -> Closure Builtin
 notClosure lv dims (Closure env body) = do

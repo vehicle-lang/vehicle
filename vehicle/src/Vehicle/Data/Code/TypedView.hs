@@ -7,7 +7,7 @@ module Vehicle.Data.Code.TypedView
     NatValue (..),
     toNatValue,
     fromNatValue,
-    BoolTensorValue (..),
+    BoolValue (..),
     toBoolValue,
     fromBoolValue,
     RatTensorValue (..),
@@ -132,6 +132,58 @@ fromNatValue = \case
 -- Bool
 
 -- | A view on all possible expressions that can have type `Tensor Bool`.
+data BoolValue
+  = VBoolLiteral (Tensor Bool)
+  | VNot (TensorOp1Args (Value Builtin))
+  | VAnd (TensorOp2Args (Value Builtin))
+  | VOr (TensorOp2Args (Value Builtin))
+  | VCompareIndex (ComparisonOp, IndexComparisonArgs (Value Builtin))
+  | VCompareNat (ComparisonOp, Op2Args (Value Builtin))
+  | VCompareRatTensorPointwise (ComparisonOp, TensorOp2Args (Value Builtin))
+  | VCompareRatTensorReduced (ComparisonOp, TensorOp2Args (Value Builtin))
+  | VReduceAndTensor (TensorOp2Args (Value Builtin))
+  | VReduceOrTensor (TensorOp2Args (Value Builtin))
+  | VQuantifyRatTensor Quantifier (VArg Builtin) (VBinder Builtin) (Closure Builtin)
+  | VBoolIf (IfArgs (Value Builtin))
+  | VBoolAt (AtArgs (Value Builtin))
+
+toBoolValue :: (HasCallStack) => Value Builtin -> BoolValue
+toBoolValue expr = case expr of
+  (getExpr accessBoolTensorLiteral -> Just t) -> VBoolTensorLiteral t
+  (getExpr accessAndTensor -> Just args) -> VAnd args
+  (getExpr accessOrTensor -> Just args) -> VOr args
+  (getExpr accessNotTensor -> Just args) -> VNot args
+  (getExpr accessCompareRatTensorPointwise -> Just args) -> VCompareRatTensorPointwise args
+  (getExpr accessCompareRatTensorReduced -> Just args) -> VCompareRatTensorReduced args
+  (getExpr accessCompareNat -> Just args) -> VCompareNat args
+  (getExpr accessCompareIndex -> Just args) -> VCompareIndex args
+  (getExpr accessQuantifyRatTensor -> Just (op, dims, VLam binder closure)) -> VQuantifyRatTensor op dims binder closure
+  (getExpr accessReduceAnd -> Just args) -> VReduceAndTensor args
+  (getExpr accessReduceOr -> Just args) -> VReduceOrTensor args
+  (getExpr accessAtTensor -> Just args) -> VBoolAt args
+  (getExpr accessIf -> Just args) -> VBoolIf args
+  _ -> developerError $ "ill-typed RatTensor expression:" <+> prettyVerbose expr
+
+fromBoolValue :: BoolValue -> Value Builtin
+fromBoolValue = \case
+  VBoolLiteral y -> mkExpr accessBoolTensorLiteral y
+  VAnd args -> mkExpr accessAndTensor args
+  VOr args -> mkExpr accessOrTensor args
+  VNot args -> mkExpr accessNotTensor args
+  VCompareNat args -> mkExpr accessCompareNat args
+  VCompareIndex args -> mkExpr accessCompareIndex args
+  VCompareRatTensorPointwise args -> mkExpr accessCompareRatTensorPointwise args
+  VCompareRatTensorReduced args -> mkExpr accessCompareRatTensorReduced args
+  VQuantifyRatTensor q dims binder closure -> mkExpr accessQuantifyRatTensor (q, dims, VLam binder closure)
+  VReduceAndTensor args -> mkExpr accessReduceAnd args
+  VReduceOrTensor args -> mkExpr accessReduceOr args
+  VBoolIf args -> mkExpr accessIf args
+  VBoolAt args -> mkExpr accessAtTensor args
+
+-------------------------------------------------------------------------------
+-- Bool
+{-
+-- | A view on all possible expressions that can have type `Tensor Bool`.
 data BoolTensorValue
   = VBoolTensorLiteral (Tensor Bool)
   | VNot (TensorOp1Args (Value Builtin))
@@ -139,7 +191,8 @@ data BoolTensorValue
   | VOr (TensorOp2Args (Value Builtin))
   | VCompareIndex (ComparisonOp, IndexComparisonArgs (Value Builtin))
   | VCompareNat (ComparisonOp, Op2Args (Value Builtin))
-  | VCompareRatTensor (ComparisonOp, TensorOp2Args (Value Builtin))
+  | VCompareRatTensorPointwise (ComparisonOp, TensorOp2Args (Value Builtin))
+  | VCompareRatTensorReduced (ComparisonOp, TensorOp2Args (Value Builtin))
   | VReduceAndTensor (TensorOp2Args (Value Builtin))
   | VReduceOrTensor (TensorOp2Args (Value Builtin))
   | VQuantifyRatTensor Quantifier (VArg Builtin) (VBinder Builtin) (Closure Builtin)
@@ -149,13 +202,14 @@ data BoolTensorValue
   | VBoolAt (AtArgs (Value Builtin))
   | VBoolForeach (ForeachArgs (Value Builtin))
 
-toBoolValue :: (HasCallStack) => Value Builtin -> BoolTensorValue
-toBoolValue expr = case expr of
+toBoolTensorValue :: (HasCallStack) => Value Builtin -> BoolTensorValue
+toBoolTensorValue expr = case expr of
   (getExpr accessBoolTensorLiteral -> Just t) -> VBoolTensorLiteral t
   (getExpr accessAndTensor -> Just args) -> VAnd args
   (getExpr accessOrTensor -> Just args) -> VOr args
   (getExpr accessNotTensor -> Just args) -> VNot args
-  (getExpr accessCompareRatTensor -> Just args) -> VCompareRatTensor args
+  (getExpr accessCompareRatTensorPointwise -> Just args) -> VCompareRatTensorPointwise args
+  (getExpr accessCompareRatTensorReduced -> Just args) -> VCompareRatTensorReduced args
   (getExpr accessCompareNat -> Just args) -> VCompareNat args
   (getExpr accessCompareIndex -> Just args) -> VCompareIndex args
   (getExpr accessQuantifyRatTensor -> Just (op, dims, VLam binder closure)) -> VQuantifyRatTensor op dims binder closure
@@ -168,15 +222,16 @@ toBoolValue expr = case expr of
   (getExpr accessIf -> Just args) -> VBoolIf args
   _ -> developerError $ "ill-typed RatTensor expression:" <+> prettyVerbose expr
 
-fromBoolValue :: BoolTensorValue -> Value Builtin
-fromBoolValue = \case
+fromBoolTensorValue :: BoolTensorValue -> Value Builtin
+fromBoolTensorValue = \case
   VBoolTensorLiteral y -> mkExpr accessBoolTensorLiteral y
   VAnd args -> mkExpr accessAndTensor args
   VOr args -> mkExpr accessOrTensor args
   VNot args -> mkExpr accessNotTensor args
   VCompareNat args -> mkExpr accessCompareNat args
   VCompareIndex args -> mkExpr accessCompareIndex args
-  VCompareRatTensor args -> mkExpr accessCompareRatTensor args
+  VCompareRatTensorPointwise args -> mkExpr accessCompareRatTensorPointwise args
+  VCompareRatTensorReduced args -> mkExpr accessCompareRatTensorReduced args
   VQuantifyRatTensor q dims binder closure -> mkExpr accessQuantifyRatTensor (q, dims, VLam binder closure)
   VReduceAndTensor args -> mkExpr accessReduceAnd args
   VReduceOrTensor args -> mkExpr accessReduceOr args
@@ -185,7 +240,7 @@ fromBoolValue = \case
   VBoolStackTensor args -> mkExpr accessStackTensor args
   VBoolAt args -> mkExpr accessAtTensor args
   VBoolForeach args -> mkExpr accessForeachTensor args
-
+-}
 -------------------------------------------------------------------------------
 -- Tensor Rat
 

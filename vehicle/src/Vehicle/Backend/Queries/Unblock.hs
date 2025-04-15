@@ -71,7 +71,10 @@ tryPurifyAssertion actions op args = do
       return ("result:" <+> unblockedAssertionDoc)
 
     case toBoolValue unblockedExpr of
-      VCompareRatTensor (_, newArgs) -> do
+      VCompareRatTensorReduced (_, newArgs) -> do
+        logDebug MaxDetail "status: pure"
+        return $ Right newArgs
+      VCompareRatTensorPointwise (_, newArgs) -> do
         logDebug MaxDetail "status: pure"
         return $ Right newArgs
       _ -> do
@@ -88,23 +91,25 @@ unblockBoolTensorValue expr = do
   showEntry expr
   showExit =<< case toBoolValue expr of
     -- Already unblocked
-    VBoolTensorLiteral {} -> return expr
+    VBoolLiteral {} -> return expr
     VAnd {} -> return expr
     VOr {} -> return expr
     VNot {} -> return expr
     VBoolIf {} -> return expr
-    VCompareRatTensor {} -> return expr
+    VCompareRatTensorReduced {} -> return expr
+    VCompareRatTensorPointwise {} -> return expr
     VQuantifyRatTensor {} -> return expr
     -- Recursively unblock
     VReduceAndTensor args -> unblockReduceTensor unblock evalReduceAndTensor args
     VReduceOrTensor args -> unblockReduceTensor unblock evalReduceOrTensor args
     VCompareIndex (op, args) -> unblockIndexOp2 (evalCompareIndex op) args
     VCompareNat (op, args) -> unblockOp2 unblock (evalCompareNat op) args
-    VConstBoolTensor args -> unblockConstTensor args
-    VBoolStackTensor args -> unblockStackTensor unblock args
+    -- VConstBoolTensor args -> unblockConstTensor args
+    -- VBoolStackTensor args -> unblockStackTensor unblock args
     VBoolAt args -> unblockAtTensor unblock args
-    VBoolForeach args -> unblockForeachTensor args
   where
+    -- VBoolForeach args -> unblockForeachTensor args
+
     unblock = unblockBoolTensorValue
 
 data Depth = VarLevel | NonVarLevel

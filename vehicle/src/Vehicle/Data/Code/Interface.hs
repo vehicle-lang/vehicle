@@ -439,8 +439,11 @@ accessCompareIndex = accessOpAndArgs accessCompareIndexBuiltin
 accessCompareNat :: (HasBoolExpr expr builtin) => NatComparisonAccessor (expr builtin) ComparisonOp
 accessCompareNat = accessOpAndArgs accessCompareNatBuiltin
 
-accessCompareRatTensor :: (HasBoolExpr expr builtin) => RatTensorComparisonAccessor (expr builtin) ComparisonOp
-accessCompareRatTensor = accessOpAndArgs accessCompareRatTensorBuiltin
+accessCompareRatTensorPointwise :: (HasBoolExpr expr builtin) => RatTensorComparisonAccessor (expr builtin) ComparisonOp
+accessCompareRatTensorPointwise = accessOpAndArgs accessCompareRatTensorPointwiseBuiltin
+
+accessCompareRatTensorReduced :: (HasBoolExpr expr builtin) => RatTensorComparisonAccessor (expr builtin) ComparisonOp
+accessCompareRatTensorReduced = accessOpAndArgs accessCompareRatTensorReducedBuiltin
 
 accessQuantifyRatTensor :: (HasBoolExpr expr builtin) => Accessor (expr builtin) (Quantifier, GenericArg (expr builtin), expr builtin)
 accessQuantifyRatTensor =

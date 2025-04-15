@@ -46,7 +46,8 @@ class BuiltinHasBoolLiterals builtin where
 
   accessCompareIndexBuiltin :: Accessor builtin ComparisonOp
   accessCompareNatBuiltin :: Accessor builtin ComparisonOp
-  accessCompareRatTensorBuiltin :: Accessor builtin ComparisonOp
+  accessCompareRatTensorPointwiseBuiltin :: Accessor builtin ComparisonOp
+  accessCompareRatTensorReducedBuiltin :: Accessor builtin ComparisonOp
 
   accessQuantifyRatTensorBuiltin :: Accessor builtin Quantifier
 

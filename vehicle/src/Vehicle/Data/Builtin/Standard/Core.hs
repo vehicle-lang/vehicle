@@ -78,6 +78,15 @@ compareRatTensorPointwiseAccessor =
       mkExpr = \op -> BuiltinFunction (CompareRatTensorPointwise op)
     }
 
+compareRatTensorReducedAccessor :: Accessor Builtin ComparisonOp
+compareRatTensorReducedAccessor =
+  Access
+    { getExpr = \case
+        DerivedFunction (CompareRatTensorReduced op) -> Just op
+        _ -> Nothing,
+      mkExpr = \op -> DerivedFunction (CompareRatTensorReduced op)
+    }
+
 instance BuiltinHasBoolLiterals Builtin where
   accessBoolTensorLitBuiltin =
     Access
@@ -97,7 +106,8 @@ instance BuiltinHasBoolLiterals Builtin where
 
   accessCompareIndexBuiltin = compareIndexAccessor
   accessCompareNatBuiltin = compareNatAccessor
-  accessCompareRatTensorBuiltin = compareRatTensorPointwiseAccessor
+  accessCompareRatTensorPointwiseBuiltin = compareRatTensorPointwiseAccessor
+  accessCompareRatTensorReducedBuiltin = compareRatTensorReducedAccessor
 
   accessQuantifyRatTensorBuiltin =
     Access

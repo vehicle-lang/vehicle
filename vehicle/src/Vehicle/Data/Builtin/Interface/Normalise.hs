@@ -397,7 +397,7 @@ evalCompareRatTensor ::
   EvalSimple TensorOp2Args Value builtin m
 evalCompareRatTensor op =
   evalHeteroTensorOp2
-    (mkExpr accessCompareRatTensorBuiltin op)
+    (mkExpr accessCompareRatTensorPointwiseBuiltin op)
     accessRatTensorLiteral
     accessBoolTensorLiteral
     (comparisonOp op)
