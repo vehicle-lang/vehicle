@@ -40,7 +40,7 @@ lowerNot lv onBlocked expr = do
       -- Base cases --
       ----------------
       VNot (TensorOp1Args _dims x) -> return x
-      VBoolLiteral b -> return $ fromBoolValue $ VBoolLiteral (fmap not b)
+      VBoolLiteral b -> return $ fromBoolValue $ VBoolLiteral (not b)
       VCompareIndex (op, args) -> return $ fromBoolValue $ VCompareIndex (neg op, args)
       VCompareNat (op, args) -> return $ fromBoolValue $ VCompareNat (neg op, args)
       VCompareRatTensorReduced (op, args) -> return $ fromBoolValue $ VCompareRatTensorReduced (neg op, args)

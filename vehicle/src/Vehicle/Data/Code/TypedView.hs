@@ -10,6 +10,9 @@ module Vehicle.Data.Code.TypedView
     BoolValue (..),
     toBoolValue,
     fromBoolValue,
+    BoolTensorValue (..),
+    toBoolTensorValue,
+    fromBoolTensorValue,
     RatTensorValue (..),
     toRatTensorValue,
     fromRatTensorValue,
@@ -25,7 +28,7 @@ import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
 import Vehicle.Data.DeBruijn
-import Vehicle.Data.Tensor (Tensor)
+import Vehicle.Data.Tensor (Tensor, pattern ZeroDimTensor)
 import Vehicle.Prelude
 
 -------------------------------------------------------------------------------
@@ -133,7 +136,7 @@ fromNatValue = \case
 
 -- | A view on all possible expressions that can have type `Tensor Bool`.
 data BoolValue
-  = VBoolLiteral (Tensor Bool)
+  = VBoolLiteral Bool
   | VNot (TensorOp1Args (Value Builtin))
   | VAnd (TensorOp2Args (Value Builtin))
   | VOr (TensorOp2Args (Value Builtin))
@@ -149,7 +152,7 @@ data BoolValue
 
 toBoolValue :: (HasCallStack) => Value Builtin -> BoolValue
 toBoolValue expr = case expr of
-  (getExpr accessBoolTensorLiteral -> Just t) -> VBoolTensorLiteral t
+  (getExpr accessBoolTensorLiteral -> Just (ZeroDimTensor v)) -> VBoolLiteral v
   (getExpr accessAndTensor -> Just args) -> VAnd args
   (getExpr accessOrTensor -> Just args) -> VOr args
   (getExpr accessNotTensor -> Just args) -> VNot args
@@ -162,11 +165,11 @@ toBoolValue expr = case expr of
   (getExpr accessReduceOr -> Just args) -> VReduceOrTensor args
   (getExpr accessAtTensor -> Just args) -> VBoolAt args
   (getExpr accessIf -> Just args) -> VBoolIf args
-  _ -> developerError $ "ill-typed RatTensor expression:" <+> prettyVerbose expr
+  _ -> developerError $ "ill-typed Bool expression:" <+> prettyVerbose expr
 
 fromBoolValue :: BoolValue -> Value Builtin
 fromBoolValue = \case
-  VBoolLiteral y -> mkExpr accessBoolTensorLiteral y
+  VBoolLiteral y -> mkExpr accessBoolTensorLiteral (ZeroDimTensor y)
   VAnd args -> mkExpr accessAndTensor args
   VOr args -> mkExpr accessOrTensor args
   VNot args -> mkExpr accessNotTensor args
@@ -182,6 +185,21 @@ fromBoolValue = \case
 
 -------------------------------------------------------------------------------
 -- Bool
+data BoolTensorValue
+  = VBoolTensorLiteral (Tensor Bool)
+  | VBoolStackTensor (StackTensorArgs (Value Builtin))
+
+toBoolTensorValue :: (HasCallStack) => Value Builtin -> Maybe BoolTensorValue
+toBoolTensorValue expr = case expr of
+  (getExpr accessBoolTensorLiteral -> Just t) -> Just $ VBoolTensorLiteral t
+  (getExpr accessStackTensor -> Just args) -> Just $ VBoolStackTensor args
+  _ -> Nothing -- developerError $ "ill-typed BoolTensor expression:" <+> prettyVerbose expr
+
+fromBoolTensorValue :: BoolTensorValue -> Value Builtin
+fromBoolTensorValue = \case
+  VBoolTensorLiteral y -> mkExpr accessBoolTensorLiteral y
+  VBoolStackTensor args -> mkExpr accessStackTensor args
+
 {-
 -- | A view on all possible expressions that can have type `Tensor Bool`.
 data BoolTensorValue
@@ -198,7 +216,6 @@ data BoolTensorValue
   | VQuantifyRatTensor Quantifier (VArg Builtin) (VBinder Builtin) (Closure Builtin)
   | VBoolIf (IfArgs (Value Builtin))
   | VConstBoolTensor (ConstTensorArgs (Value Builtin))
-  | VBoolStackTensor (StackTensorArgs (Value Builtin))
   | VBoolAt (AtArgs (Value Builtin))
   | VBoolForeach (ForeachArgs (Value Builtin))
 

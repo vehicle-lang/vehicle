@@ -36,7 +36,6 @@ import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
-import Vehicle.Data.Tensor (Tensor, pattern ZeroDimTensor)
 import Vehicle.Verify.Core (NetworkContextInfo (..), QuerySetNegationStatus)
 import Vehicle.Verify.QueryFormat (QueryFormat (..), supportsStrictInequalities)
 import Vehicle.Verify.Specification
@@ -58,7 +57,7 @@ eliminateUserVariables expr = do
     ----------------
     -- Base cases --
     ----------------
-    VBoolLiteral b -> compileTrivial b
+    VBoolLiteral b -> return $ Trivial b
     VQuantifyRatTensor Exists dims binder closure -> compileQuantifiedQuerySet False dims binder closure
     VQuantifyRatTensor Forall dims binder closure -> do
       let negatedClosure = notClosure 0 dims closure
@@ -92,14 +91,6 @@ eliminateUserVariables expr = do
     VCompareRatTensorPointwise {} -> developerError "Compile pointwise comparison not supported"
   where
     unblock e = runFreshNameContextT (Unblocking.unblockBoolExpr e)
-
-compileTrivial ::
-  (MonadPropertyStructure m) =>
-  Tensor Bool ->
-  m (MaybeTrivial a)
-compileTrivial x = case x of
-  ZeroDimTensor b -> return $ Trivial b
-  _ -> developerError "Should not be compiling tensors of booleans"
 
 compileQuantifiedQuerySet ::
   (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m) =>
@@ -152,8 +143,9 @@ compileBoolExpr expr = do
     ----------------
     -- Base cases --
     ----------------
-    VBoolLiteral bs -> compileTrivial bs
+    VBoolLiteral b -> return $ Trivial b
     VCompareRatTensorReduced (op, args) -> purifyAndCompileAssertion op args
+    VCompareRatTensorPointwise (op, args) -> purifyAndCompileAssertion op args
     VQuantifyRatTensor Forall _ _ _ -> throwError catchableUnsupportedAlternatingQuantifiersError
     ---------------------
     -- Recursive cases --

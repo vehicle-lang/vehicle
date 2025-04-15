@@ -22,7 +22,7 @@ import Vehicle.Compile.Print.Warning ()
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.Interface
-import Vehicle.Data.Code.TypedView (BoolTensorValue (..), fromBoolValue, toBoolValue)
+import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Tensor (TensorIndices)
 import Vehicle.Prelude.Warning (CompileWarning (..))
@@ -152,12 +152,12 @@ compileMultiProperty ::
 compileMultiProperty multiPropertyMetaData = go []
   where
     go :: TensorIndices -> Value Builtin -> m (MultiProperty ())
-    go indices expr = case toBoolValue expr of
-      VBoolStackTensor args -> do
+    go indices expr = case toBoolTensorValue expr of
+      Just (VBoolStackTensor args) -> do
         let es' = zip [0 :: Int ..] $ stackElements args
         MultiProperty <$> traverse (\(i, e) -> go (i : indices) e) es'
-      VBoolTensorLiteral bs | not (null (tensorShape bs)) -> do
-        let es' = zip [0 :: Int ..] (fromBoolValue . VBoolTensorLiteral <$> unstack bs)
+      Just (VBoolTensorLiteral bs) | not (null (tensorShape bs)) -> do
+        let es' = zip [0 :: Int ..] (fromBoolTensorValue . VBoolTensorLiteral <$> unstack bs)
         MultiProperty <$> traverse (\(i, e) -> go (i : indices) e) es'
       _ -> do
         let propertyMetaData@PropertyMetaData {..} = updateMetaData multiPropertyMetaData indices
