@@ -37,7 +37,7 @@ import Vehicle.Data.Assertion (Bounds (..), Inequality, NormalisedRelation (..))
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.BooleanExpr
-import Vehicle.Data.Code.LinearExpr (Constant (..), LinearExpr, prettyLinearExpr)
+import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Tensor (RatTensor)
 import Vehicle.Syntax.AST.Expr qualified as S
@@ -138,8 +138,8 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor ('Unnamed tags) (Value builtin `In` ctx) = 'DescopeNaively (StrategyFor tags S.Expr)
   -- Converting an `Expr` with DeBruijn indices to a named representation requires a named bound context to descope.
   -- Otherwise converting it to an unnamed representation we descope naively by just converting the variables directly
-  StrategyFor ('Named tags) (LinearExpr constant `In` NamedBoundCtx) = 'DescopeWithNames (StrategyFor tags (constant `In` NamedBoundCtx))
-  StrategyFor ('Unnamed tags) (LinearExpr constant `In` ctx) = 'DescopeNaively (StrategyFor tags (constant `In` ctx))
+  StrategyFor ('Named tags) (LinearExpr variable constant `In` NamedBoundCtx) = 'DescopeWithNames (StrategyFor tags (constant `In` NamedBoundCtx))
+  StrategyFor ('Unnamed tags) (LinearExpr variable constant `In` ctx) = 'DescopeNaively (StrategyFor tags (constant `In` ctx))
   -------------------
   -- Context setup --
   -------------------
@@ -161,8 +161,8 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor tags (MaybeTrivial a `In` ctx) = StrategyFor tags (a `In` ctx)
   StrategyFor tags (IntMap a `In` ctx) = StrategyFor tags (a `In` ctx)
   StrategyFor tags (MetaMap a `In` ctx) = StrategyFor tags (a `In` ctx)
-  StrategyFor tags (NormalisedRelation rel constant `In` ctx) = StrategyFor tags (LinearExpr constant `In` ctx)
-  StrategyFor tags (Bounds constant `In` ctx) = StrategyFor tags (Inequality constant `In` ctx)
+  StrategyFor tags (NormalisedRelation rel variable constant `In` ctx) = StrategyFor tags (LinearExpr variable constant `In` ctx)
+  StrategyFor tags (Bounds variable constant `In` ctx) = StrategyFor tags (Inequality variable constant `In` ctx)
   StrategyFor tags (GenericProg expr `In` ctx) = (StrategyFor tags (expr `In` ctx))
   StrategyFor tags (GenericDecl expr `In` ctx) = (StrategyFor tags (expr `In` ctx))
   StrategyFor tags (GenericArg expr `In` ctx) = (StrategyFor tags (expr `In` ctx))
@@ -310,10 +310,13 @@ instance
 -- Linear expression
 
 instance
-  (Constant constant, PrettyUsing rest (constant `In` ctx)) =>
-  PrettyUsing ('DescopeNaively rest) (LinearExpr constant `In` ctx)
+  (VariableLike variable, ConstantLike constant, PrettyUsing rest (constant `In` ctx)) =>
+  PrettyUsing ('DescopeNaively rest) (LinearExpr variable constant `In` ctx)
   where
-  prettyUsing (lexp, ctx) = prettyLinearExpr pretty (prettyUsing @rest . (,ctx)) lexp
+  prettyUsing (lexp, ctx) = do
+    let prettyVar = pretty . toLv
+    let prettyConst = prettyUsing @rest . (,ctx)
+    prettyLinearExpr prettyVar prettyConst lexp
 
 --------------------------------------------------------------------------------
 -- 'DescopeWithNames
@@ -359,15 +362,17 @@ instance
 -- LinearExpr
 
 instance
-  (Constant constant, PrettyUsing rest (constant `In` NamedBoundCtx)) =>
-  PrettyUsing ('DescopeWithNames rest) (LinearExpr constant `In` NamedBoundCtx)
+  (VariableLike variable, ConstantLike constant, PrettyUsing rest (constant `In` NamedBoundCtx)) =>
+  PrettyUsing ('DescopeWithNames rest) (LinearExpr variable constant `In` NamedBoundCtx)
   where
   prettyUsing (lexp, ctx) = prettyLinearExpr prettyVar prettyConst lexp
     where
       prettyConst c = prettyUsing @rest (c, ctx)
-      prettyVar lv = case lookupLvInBoundCtx lv ctx of
-        Nothing -> developerError $ "Missing name for variable" <+> pretty lv
-        Just n -> pretty n
+      prettyVar var = do
+        let lv = toLv var
+        case lookupLvInBoundCtx lv ctx of
+          Nothing -> developerError $ "Missing name for variable" <+> pretty lv
+          Just n -> pretty n
 
 --------------------------------------------------------------------------------
 -- 'PrintAs
@@ -572,14 +577,14 @@ instance
 -- Assertions
 
 instance
-  (Constant constant, Pretty rel, PrettyUsing rest (LinearExpr constant `In` ctx)) =>
-  PrettyUsing rest (NormalisedRelation rel constant `In` ctx)
+  (ConstantLike constant, Pretty rel, PrettyUsing rest (LinearExpr variable constant `In` ctx)) =>
+  PrettyUsing rest (NormalisedRelation rel variable constant `In` ctx)
   where
   prettyUsing (e, ctx) = prettyUsing @rest (linearExpr e, ctx) <+> pretty (relation e) <+> "0"
 
 instance
-  (Constant constant, PrettyUsing rest (Inequality constant `In` ctx)) =>
-  PrettyUsing rest (Bounds constant `In` ctx)
+  (ConstantLike constant, PrettyUsing rest (Inequality variable constant `In` ctx)) =>
+  PrettyUsing rest (Bounds variable constant `In` ctx)
   where
   prettyUsing (Bounds {..}, ctx) =
     "below by max"

@@ -14,17 +14,85 @@ module Vehicle.Verify.Specification
     specificationPropertyNames,
     SpecificationCacheIndex (..),
     PropertyVerificationPlan (..),
+    UserVariableCompilationStep (..),
+    VariableCompilationTrace (..),
+    VariableStore,
+    getQueryVariables,
+    getVehicleVariableCtx,
+    getQueryVariableMap,
   )
 where
 
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON)
+import Data.Map (Map)
+import Data.Maybe (mapMaybe)
 import GHC.Generics (Generic)
-import Vehicle.Backend.Queries.UserVariableElimination.Core
-import Vehicle.Compile.Prelude (Name)
+import Vehicle.Compile.Prelude (GenericBoundCtx, Lv, Name)
+import Vehicle.Data.Assertion
 import Vehicle.Data.Code.BooleanExpr
+import Vehicle.Data.Code.LinearExpr
+import Vehicle.Data.QuantifiedVariable
 import Vehicle.Resource (ResourcesIntegrityInfo)
+import Vehicle.Syntax.Tensor
 import Vehicle.Verify.Core
+import Vehicle.Verify.QueryFormat.Core
+
+--------------------------------------------------------------------------------
+-- User variable
+
+-- | One step in the process for transforming unreduced user variables into
+-- reduced network input and output variables.
+data UserVariableCompilationStep
+  = SolveEquality UserTensorVariable (LinearExpr UserOrNetworkTensorVariable RatTensor)
+  | SolveInequalities UserTensorVariable (Bounds UserOrNetworkTensorVariable RatTensor)
+  | ReconstructUserTensor UserTensorVariable (Tensor UserTensorVariable)
+  | ReconstructNetworkTensor NetworkTensorVariable (Tensor NetworkElementVariable)
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData UserVariableCompilationStep
+
+instance ToJSON UserVariableCompilationStep
+
+instance FromJSON UserVariableCompilationStep
+
+-- | The steps for transforming unreduced user variables into reduced network
+-- input and output varibles.
+-- These are used to recreate a satisfying assignment for the user variables
+-- from the satisfying assignment for the network variables spat out by the
+-- verifier.
+-- The steps are stored in the same order they occured during compilation.
+newtype VariableCompilationTrace = Reconstruction
+  { reconstructionSteps :: [UserVariableCompilationStep]
+  }
+  deriving (Generic)
+
+instance NFData VariableCompilationTrace
+
+instance ToJSON VariableCompilationTrace
+
+instance FromJSON VariableCompilationTrace
+
+--------------------------------------------------------------------------------
+-- Variable store
+
+-- Storing the Variable is unnessary and is just for readability. We can get
+-- rid of it if we switch to a non-human readable format for the .vcl-plan files.
+type VariableStore = GenericBoundCtx (Lv, Name, Maybe QueryVariable)
+
+{-
+getQueryVariableCtx :: VariableCompilationTrace -> GenericBoundCtx (Maybe QueryVariable)
+getQueryVariableCtx d = fmap (\(_, _, c) -> c) (variableStore d)
+
+-}
+getVehicleVariableCtx :: VariableStore -> GenericBoundCtx Name
+getVehicleVariableCtx = fmap (\(_, b, _) -> b)
+
+getQueryVariables :: VariableStore -> [QueryVariable]
+getQueryVariables = mapMaybe (\(_, _, c) -> c)
+
+getQueryVariableMap :: VariableStore -> Map QueryVariable NetworkElementVariable
+getQueryVariableMap = _
 
 --------------------------------------------------------------------------------
 -- Query meta data
@@ -32,7 +100,8 @@ import Vehicle.Verify.Core
 data QueryMetaData = QueryMetaData
   { queryAddress :: !QueryAddress,
     metaNetwork :: !MetaNetwork,
-    variableReconstruction :: !UserVariableReconstruction
+    variableStore :: !VariableStore,
+    variableCompilationTrace :: !VariableCompilationTrace
   }
   deriving (Generic)
 
@@ -42,11 +111,6 @@ instance ToJSON QueryMetaData
 
 instance FromJSON QueryMetaData
 
-{-
-instance Pretty QueryMetaData where
-  pretty (QueryMetaData _ metaNetwork _userVar) =
-    "Meta-network:" <+> pretty metaNetwork
--}
 --------------------------------------------------------------------------------
 -- Query set
 

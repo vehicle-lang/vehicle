@@ -26,6 +26,12 @@ type TensorIndices = [Int]
 showTensorIndices :: TensorIndices -> String
 showTensorIndices xs = concatMap (\v -> "!" <> show v) (reverse xs)
 
+class HasShape a where
+  shapeOf :: a -> TensorShape
+
+isZeroDimensional :: (HasShape a) => a -> Bool
+isZeroDimensional v = null (shapeOf v)
+
 --------------------------------------------------------------------------------
 -- Tensor value
 

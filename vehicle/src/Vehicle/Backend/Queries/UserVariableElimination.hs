@@ -1,7 +1,7 @@
 module Vehicle.Backend.Queries.UserVariableElimination
   ( eliminateUserVariables,
-    UserVariableReconstruction,
-    UserVariableReconstructionStep (..),
+    VariableCompilationTrace,
+    UserVariableCompilationStep (..),
   )
 where
 
@@ -18,6 +18,7 @@ import Vehicle.Backend.Queries.PostProcessing (convertPartitionsToQueries)
 import Vehicle.Backend.Queries.Unblock (UnblockingActions (..))
 import Vehicle.Backend.Queries.Unblock qualified as Unblocking
 import Vehicle.Backend.Queries.UserVariableElimination.Core
+import Vehicle.Backend.Queries.UserVariableElimination.Core (getTensorVariableInfo)
 import Vehicle.Backend.Queries.UserVariableElimination.EliminateExists (solveExists)
 import Vehicle.Compile.Boolean.LiftIf (unfoldIf)
 import Vehicle.Compile.Boolean.LowerNot (lowerNot, notClosure)
@@ -34,8 +35,10 @@ import Vehicle.Data.Builtin.Interface.Normalise (evalAt, evalCompareRatTensor, e
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.Interface
+import Vehicle.Data.Code.LinearExpr (VariableLike (..))
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
+import Vehicle.Data.QuantifiedVariable
 import Vehicle.Verify.Core (NetworkContextInfo (..), QuerySetNegationStatus)
 import Vehicle.Verify.QueryFormat (QueryFormat (..), supportsStrictInequalities)
 import Vehicle.Verify.Specification
@@ -60,6 +63,7 @@ eliminateUserVariables expr = do
     VBoolLiteral b -> return $ Trivial b
     VQuantifyRatTensor Exists dims binder closure -> compileQuantifiedQuerySet False dims binder closure
     VQuantifyRatTensor Forall dims binder closure -> do
+      logDebug MaxDetail $ "Negating" <+> pretty Forall
       let negatedClosure = notClosure 0 dims closure
       compileQuantifiedQuerySet True dims binder negatedClosure
     ---------------------
@@ -122,7 +126,7 @@ compileUnquantifiedQuerySet value = do
 compileQuerySetPartitions ::
   (MonadQueryStructure m, MonadSupply QueryID m, MonadStdIO m) =>
   QuerySetNegationStatus ->
-  MaybeTrivial Partitions ->
+  MaybeTrivial (Partitions UserOrNetworkTensorVariable) ->
   m (Property QueryMetaData)
 compileQuerySetPartitions isPropertyNegated maybePartitions = case maybePartitions of
   Trivial b -> return $ Trivial (b `xor` isPropertyNegated)
@@ -136,7 +140,7 @@ compileQuerySetPartitions isPropertyNegated maybePartitions = case maybePartitio
 compileBoolExpr ::
   (MonadQueryStructure m, MonadWriter [Value Builtin] m) =>
   Value Builtin ->
-  m (MaybeTrivial Partitions)
+  m (MaybeTrivial (Partitions UserOrNetworkTensorVariable))
 compileBoolExpr expr = do
   showEntry expr
   showExit =<< case toBoolValue expr of
@@ -173,16 +177,12 @@ purifyAndCompileAssertion ::
   (MonadQuantifierBody m) =>
   ComparisonOp ->
   TensorOp2Args (Value Builtin) ->
-  m (MaybeTrivial Partitions)
+  m (MaybeTrivial (Partitions UserOrNetworkTensorVariable))
 purifyAndCompileAssertion op args
   | op == Ne =
       -- We can't handle negative equalities so just eliminate it
       compileBoolExpr =<< eliminateNotEqualRatTensor args
   | otherwise = do
-      let shape = case getDims (argExpr (tensorOp2Dims args)) of
-            Nothing -> developerError $ "Non-concrete dimensions found" <+> prettyVerbose (argExpr (tensorOp2Dims args))
-            Just concreteShape -> concreteShape
-
       logDebug MaxDetail ""
       recurseOrResult <- logCompilerPass MaxDetail "assertion compilation" $ do
         logDebugM MaxDetail $ do
@@ -196,32 +196,43 @@ purifyAndCompileAssertion op args
               valueDoc <- prettyFriendlyInCtx purifiedValue
               return $ "Additional boolean structure found:" <+> valueDoc
             return $ Left purifiedValue
-          Right (TensorOp2Args _ xs ys) -> do
-            maybeLinearRel <- compileLinearRelation shape xs ys
-            case maybeLinearRel of
-              Right (e1, e2) -> do
-                let assertion = comparisonToAssertion op e1 e2
-                logDebugM MaxDetail $ do
-                  assertionDoc <- prettyFriendlyInCtx assertion
-                  return $ "Final assertion:" <+> assertionDoc
-                return $ Right assertion
-              Left NonLinearity ->
-                throwError catchableUnsupportedNonLinearConstraint
-              Left (UnexpectedExpr e) ->
-                developerError ("unexpected expression" <+> prettyVerbose e)
-              Left (UnreducedExpr e) -> do
-                logDebugM MaxDetail $ do
-                  exprDoc <- prettyFriendlyInCtx e
-                  return $ "Non-variable expression found:" <+> exprDoc
-                elementComparisonValue <- eliminateTensorAssertion op args
-                logDebugM MaxDetail $ do
-                  newValueDoc <- prettyFriendlyInCtx elementComparisonValue
-                  return $ "Converting to element comparison:" <+> newValueDoc
-                return $ Left elementComparisonValue
+          Right purifiedArgs -> compilePurifiedAssertion op purifiedArgs
 
       case recurseOrResult of
         Left value -> compileBoolExpr value
         Right assertion -> return $ mkTrivialPartition assertion
+
+compilePurifiedAssertion ::
+  (MonadQuantifierBody m) =>
+  ComparisonOp ->
+  TensorOp2Args (Value Builtin) ->
+  m (Either (Value Builtin) (Assertion UserOrNetworkTensorVariable))
+compilePurifiedAssertion op args@(TensorOp2Args dims xs ys) = do
+  let shape = case getDims (argExpr dims) of
+        Nothing -> developerError $ "Non-concrete dimensions found" <+> prettyVerbose dims
+        Just concreteShape -> concreteShape
+
+  maybeLinearRel <- compileLinearRelation _ shape xs ys
+  case maybeLinearRel of
+    Right (e1, e2) -> do
+      let assertion = comparisonToAssertion op e1 e2
+      logDebugM MaxDetail $ do
+        assertionDoc <- prettyFriendlyInCtx assertion
+        return $ "Final assertion:" <+> assertionDoc
+      return $ Right assertion
+    Left NonLinearity ->
+      throwError catchableUnsupportedNonLinearConstraint
+    Left (UnexpectedExpr e) ->
+      developerError ("unexpected expression" <+> prettyVerbose e)
+    Left (UnreducedExpr e) -> do
+      logDebugM MaxDetail $ do
+        exprDoc <- prettyFriendlyInCtx e
+        return $ "Non-variable expression found:" <+> exprDoc
+      elementComparisonValue <- eliminateTensorAssertion op args
+      logDebugM MaxDetail $ do
+        newValueDoc <- prettyFriendlyInCtx elementComparisonValue
+        return $ "Converting to element comparison:" <+> newValueDoc
+      return $ Left elementComparisonValue
 
 --------------------------------------------------------------------------------
 -- Unblocking
@@ -239,7 +250,7 @@ unblockQuantifiedBoundVar ::
   Lv ->
   m (Value Builtin)
 unblockQuantifiedBoundVar lv = do
-  maybeReduction <- getReducedVariableExprFor lv
+  maybeReduction <- reducedVarExpr $ getTensorVariableInfo lv
   case maybeReduction of
     Just vectorReduction -> return vectorReduction
     Nothing -> return $ VBoundVar lv []
@@ -309,7 +320,7 @@ eliminateExists ::
   (MonadQueryStructure m) =>
   VBinder Builtin ->
   Closure Builtin ->
-  m (MaybeTrivial Partitions)
+  m (MaybeTrivial (Partitions UserOrNetworkTensorVariable))
 eliminateExists binder (Closure env body) = do
   let varName = getBinderName binder
   let subpassDoc = "elimination of quantified variable" <+> quotePretty varName
@@ -324,11 +335,11 @@ eliminateExists binder (Closure env body) = do
 
     -- Update the global context
     globalCtx <- get
-    let (userVar, newGlobalCtx) = addUserVarToGlobalContext userVarName userVarShape globalCtx
+    (userVar, newGlobalCtx) <- addUserVarToGlobalContext userVarName userVarShape globalCtx
     put newGlobalCtx
 
     -- Normalise the expression
-    let newEnv = extendEnvWithDefined (VBoundVar userVar []) binder env
+    let newEnv = extendEnvWithDefined (VBoundVar (toLv userVar) []) binder env
     normExpr <- normaliseInEnv newEnv body
 
     -- Recursively compile the expression.
@@ -345,7 +356,7 @@ eliminateExists binder (Closure env body) = do
 networkEqualitiesToPartition ::
   (MonadQueryStructure m) =>
   [Value Builtin] ->
-  m (MaybeTrivial Partitions)
+  m (MaybeTrivial (Partitions UserOrNetworkTensorVariable))
 networkEqualitiesToPartition networkEqualities = do
   logDebugM MaxDetail $ do
     networkEqDocs <- traverse prettyFriendlyInCtx networkEqualities
@@ -400,7 +411,10 @@ showEntry v = do
     return $ "elim-enter" <+> vDoc
   incrCallDepth
 
-showExit :: (MonadQueryStructure m) => MaybeTrivial Partitions -> m (MaybeTrivial Partitions)
+showExit ::
+  (MonadQueryStructure m) =>
+  MaybeTrivial (Partitions UserOrNetworkTensorVariable) ->
+  m (MaybeTrivial (Partitions UserOrNetworkTensorVariable))
 showExit v = do
   decrCallDepth
   logDebugM MaxDetail $ do

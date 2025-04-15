@@ -564,8 +564,8 @@ isValueBlocked v = do
   let blocked = case v of
         VUniverse {} -> False
         VMeta {} -> True
-        VFreeVar {} -> False
-        VBoundVar {} -> False
+        VFreeVar {} -> True
+        VBoundVar {} -> True
         VLam {} -> False
         VPi {} -> False
         VBuiltin b spine -> case blockingStatus b spine of

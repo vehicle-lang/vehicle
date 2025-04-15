@@ -41,7 +41,6 @@ import System.Process (readProcessWithExitCode)
 import System.ProgressBar
 import System.Random
 import Vehicle.Backend.Agda.Interact (writeResultToFile)
-import Vehicle.Backend.Queries.UserVariableElimination.Core (getQueryVariables)
 import Vehicle.Backend.Queries.UserVariableElimination.VariableReconstruction (reconstructUserVars)
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Code.BooleanExpr
@@ -442,7 +441,7 @@ verifyQuery ::
   (MonadVerifyProperty m) =>
   QueryMetaData ->
   m (QueryResult UserVariableAssignment)
-verifyQuery queryMetaData@(QueryMetaData queryAddress metaNetwork reconstruction) = do
+verifyQuery queryMetaData@(QueryMetaData queryAddress metaNetwork variables reconstruction) = do
   logCompilerSection MidDetail ("Verifying query" <+> quotePretty queryAddress) $ do
     (verifierSettings, verificationCache, progressBar) <- ask
     let queryFile = calculateQueryFileName verificationCache queryAddress
@@ -457,8 +456,8 @@ verifyQuery queryMetaData@(QueryMetaData queryAddress metaNetwork reconstruction
           return $ SAT Nothing
         SAT (Just witness) -> do
           logDebug MidDetail $ "Query is SAT (witness provided)" <> line
-          checkWitness (getQueryVariables reconstruction) witness
-          problemSpaceWitness <- reconstructUserVars reconstruction witness
+          checkWitness (getQueryVariables variables) witness
+          problemSpaceWitness <- reconstructUserVars variables reconstruction witness
           return $ SAT $ Just problemSpaceWitness
         UnSAT -> do
           logDebug MidDetail $ "Query is UnSAT" <> line
