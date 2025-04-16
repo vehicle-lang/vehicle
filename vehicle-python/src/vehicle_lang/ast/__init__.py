@@ -89,42 +89,57 @@ class DimensionIndex(AST):
 # Abstract AST Nodes
 ################################################################################
 
+
 @dataclass(frozen=True, init=False)
 class BuiltinLiteral(AST):
     # Abstract base for literal values
     value: Any
-    def __init__(self) -> None: raise TypeError("Cannot instantiate abstract class")
+
+    def __init__(self) -> None:
+        raise TypeError("Cannot instantiate abstract class")
+
 
 @dataclass(frozen=True, init=False)
 class BuiltinConstant(AST):
     # Abstract base for constant symbols
-    def __init__(self) -> None: raise TypeError("Cannot instantiate abstract class")
+    def __init__(self) -> None:
+        raise TypeError("Cannot instantiate abstract class")
+
 
 @dataclass(frozen=True, init=False)
 class BuiltinType(AST):
     # Abstract base for built-in type symbols
-    def __init__(self) -> None: raise TypeError("Cannot instantiate abstract class")
+    def __init__(self) -> None:
+        raise TypeError("Cannot instantiate abstract class")
+
 
 @dataclass(frozen=True, init=False)
 class BuiltinFunction(AST):
     # Abstract base for built-in function symbols
-    def __init__(self) -> None: raise TypeError("Cannot instantiate abstract class")
+    def __init__(self) -> None:
+        raise TypeError("Cannot instantiate abstract class")
+
 
 @dataclass(frozen=True, init=False)
 class Expression(AST):
     # Abstract base for expression nodes
-    def __init__(self) -> None: raise TypeError("Cannot instantiate abstract class")
+    def __init__(self) -> None:
+        raise TypeError("Cannot instantiate abstract class")
+
 
 @dataclass(frozen=True, init=False)
 class Declaration(AST, metaclass=ABCMeta):
     # Abstract base for top-level declarations
-    def __init__(self) -> None: raise TypeError("Cannot instantiate abstract class")
+    def __init__(self) -> None:
+        raise TypeError("Cannot instantiate abstract class")
 
 
 # Type Alias for common Union used in function arguments/bodies
 # ==============================================================================
 
-FunctionInput: TypeAlias = Union[BuiltinFunction, Expression, BuiltinConstant, BuiltinLiteral]
+FunctionInput: TypeAlias = Union[
+    BuiltinFunction, Expression, BuiltinConstant, BuiltinLiteral
+]
 
 
 ################################################################################
@@ -165,7 +180,7 @@ class RatLiteral(BuiltinLiteral):
 ################################################################################
 # Builtin Constants
 ################################################################################
-    
+
 
 @dataclass(frozen=True)
 class Unit(BuiltinConstant):
@@ -260,12 +275,12 @@ class OrBoolTensor(BuiltinFunction):
 
 @dataclass(frozen=True)
 class NegRatTensor(BuiltinFunction):
-    body: Sequence[FunctionInput]               
+    body: Sequence[FunctionInput]
 
 
 @dataclass(frozen=True)
 class AddRatTensor(BuiltinFunction):
-    body: Sequence[FunctionInput]                
+    body: Sequence[FunctionInput]
 
 
 @dataclass(frozen=True)
@@ -275,7 +290,7 @@ class SubRatTensor(BuiltinFunction):
 
 @dataclass(frozen=True)
 class MulRatTensor(BuiltinFunction):
-    body: Sequence[FunctionInput] 
+    body: Sequence[FunctionInput]
 
 
 @dataclass(frozen=True)
@@ -285,7 +300,7 @@ class DivRatTensor(BuiltinFunction):
 
 @dataclass(frozen=True)
 class EqRatTensor(BuiltinFunction):
-    body: Sequence[FunctionInput] 
+    body: Sequence[FunctionInput]
 
 
 @dataclass(frozen=True)
@@ -300,7 +315,7 @@ class LeRatTensor(BuiltinFunction):
 
 @dataclass(frozen=True)
 class LtRatTensor(BuiltinFunction):
-    body: Sequence[FunctionInput] 
+    body: Sequence[FunctionInput]
 
 
 @dataclass(frozen=True)
@@ -310,12 +325,12 @@ class GeRatTensor(BuiltinFunction):
 
 @dataclass(frozen=True)
 class GtRatTensor(BuiltinFunction):
-    body: Sequence[FunctionInput] 
+    body: Sequence[FunctionInput]
 
 
 @dataclass(frozen=True)
 class PowRatTensor(BuiltinFunction):
-    body: Sequence[FunctionInput] 
+    body: Sequence[FunctionInput]
 
 
 @dataclass(frozen=True)
@@ -330,12 +345,12 @@ class MaxRatTensor(BuiltinFunction):
 
 @dataclass(frozen=True)
 class ReduceAndBoolTensor(BuiltinFunction):
-    body: Sequence[FunctionInput]      
+    body: Sequence[FunctionInput]
 
 
 @dataclass(frozen=True)
 class ReduceOrBoolTensor(BuiltinFunction):
-    body: Sequence[FunctionInput]          
+    body: Sequence[FunctionInput]
 
 
 @dataclass(frozen=True)
@@ -402,12 +417,12 @@ class ConstRatTensor(BuiltinFunction):
 
 @dataclass(frozen=True)
 class FoldList(BuiltinFunction):
-    body: Sequence[FunctionInput] 
+    body: Sequence[FunctionInput]
 
 
 @dataclass(frozen=True)
 class MapList(BuiltinFunction):
-    body: Sequence[FunctionInput] 
+    body: Sequence[FunctionInput]
 
 
 @dataclass(frozen=True)
@@ -417,12 +432,12 @@ class MapRatTensor(BuiltinFunction):
 
 @dataclass(frozen=True)
 class ZipWithRatTensor(BuiltinFunction):
-    body: Sequence[FunctionInput] 
+    body: Sequence[FunctionInput]
 
 
 @dataclass(frozen=True)
 class IndicesIndexTensor(BuiltinFunction):
-    body: Sequence[FunctionInput] 
+    body: Sequence[FunctionInput]
 
 
 @dataclass(frozen=True)
