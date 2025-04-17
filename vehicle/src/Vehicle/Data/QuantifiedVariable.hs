@@ -3,8 +3,8 @@ module Vehicle.Data.QuantifiedVariable
     reduceTensorVariable,
     TensorVariableInfo (..),
     UserOrNetworkTensorVariable,
-    UserTensorVariable,
-    mkUserTensorVariable,
+    UserVariable,
+    mkUserVariable,
     NetworkTensorVariable,
     mkNetworkTensorVariable,
     NetworkElementVariable,
@@ -32,91 +32,88 @@ import Vehicle.Prelude
 --------------------------------------------------------------------------------
 -- Tensor variables
 
--- | Tensor variables that are bound by the user in their original program via
--- either `forall` or `exists` quantifiers. May have any shape.
-newtype UserTensorVariable = UserTensorVariable Lv
+-- | Tensor variables that are directly bound by the user in their original
+-- program via `forall`/`exists` quantifiers. May have any shape.
+newtype UserVariable = UserVariable Lv
   deriving (Show, Eq, Ord, Generic)
 
-instance VariableLike UserTensorVariable where
+instance VariableLike UserVariable where
   toLv = coerce
 
-instance NFData UserTensorVariable
+instance NFData UserVariable
 
-instance ToJSON UserTensorVariable
+instance ToJSON UserVariable
 
-instance FromJSON UserTensorVariable
+instance FromJSON UserVariable
 
-mkUserTensorVariable :: Lv -> UserTensorVariable
-mkUserTensorVariable = UserTensorVariable
+mkUserVariable :: Lv -> UserVariable
+mkUserVariable = UserVariable
 
--- | Tensor variables that represent the inputs and outputs of a network
+-- | Tensor variables that represent the top-level inputs and outputs of a network
 -- application and are introduced by the compiler. May have any shape.
-newtype NetworkTensorVariable = NetworkTensorVariable Lv
+newtype NetworkIOVariable = NetworkIOVariable Lv
   deriving (Show, Eq, Ord, Generic)
 
-instance VariableLike NetworkTensorVariable where
+instance VariableLike NetworkIOVariable where
   toLv = coerce
 
-instance NFData NetworkTensorVariable
+instance NFData NetworkIOVariable
 
-instance ToJSON NetworkTensorVariable
+instance ToJSON NetworkIOVariable
 
-instance FromJSON NetworkTensorVariable
+instance FromJSON NetworkIOVariable
 
-mkNetworkTensorVariable :: Lv -> NetworkTensorVariable
+mkNetworkTensorVariable :: Lv -> NetworkIOVariable
 mkNetworkTensorVariable = NetworkTensorVariable
 
 -- | Variables that may be either tensor variables or user variables.
-newtype UserOrNetworkTensorVariable = UserOrNetworkTensorVariable Lv
+newtype TensorVariable = TensorVariable Lv
   deriving (Show, Eq, Ord, Generic)
 
-instance VariableLike UserOrNetworkTensorVariable where
+instance VariableLike TensorVariable where
   toLv = coerce
 
-instance NFData UserOrNetworkTensorVariable
+instance NFData TensorVariable
 
-instance ToJSON UserOrNetworkTensorVariable
+instance ToJSON TensorVariable
 
-instance ToJSONKey UserOrNetworkTensorVariable
+instance ToJSONKey TensorVariable
 
-instance FromJSON UserOrNetworkTensorVariable
+instance FromJSON TensorVariable
 
-instance FromJSONKey UserOrNetworkTensorVariable
+instance FromJSONKey TensorVariable
 
-class (VariableLike variable) => TensorVariable variable where
-  toTensorVar :: variable -> UserOrNetworkTensorVariable
+class (VariableLike variable) => TensorVariableLike variable where
+  toTensorVar :: variable -> TensorVariable
 
-instance TensorVariable UserTensorVariable where
+instance TensorVariableLike UserVariable where
   toTensorVar = coerce
 
-instance TensorVariable NetworkTensorVariable where
-  toTensorVar = coerce
-
-instance TensorVariable UserOrNetworkTensorVariable where
+instance TensorVariableLike NetworkIOVariable where
   toTensorVar = coerce
 
 --------------------------------------------------------------------------------
 -- Element variables
 
-newtype NetworkElementVariable = NetworkElementVariable Lv
+newtype NetworkIOElementVariable = NetworkIOElementVariable Lv
   deriving (Ord, Eq)
 
 reduceTensorVariable ::
   Lv ->
   Name ->
   TensorShape ->
-  ([Name], Tensor NetworkElementVariable, Value Builtin)
+  ([Name], Tensor TensorVariable, Value Builtin)
 reduceTensorVariable lv varName shape = runSupply [lv + 1 ..] $ go shape []
   where
-    elementVariable :: TensorIndices -> Lv -> ([Name], Tensor NetworkElementVariable, Value Builtin)
+    elementVariable :: TensorIndices -> Lv -> ([Name], Tensor TensorVariable, Value Builtin)
     elementVariable indices currentLv = do
       let name = varName <> Text.pack (showTensorIndices indices)
-      ([name], ZeroDimTensor $ NetworkElementVariable currentLv, VBoundVar currentLv [])
+      ([name], ZeroDimTensor $ TensorVariable currentLv, VBoundVar currentLv [])
 
     go ::
       TensorShape ->
       TensorIndices ->
-      Supply Lv ([Name], Tensor NetworkElementVariable, Value Builtin)
+      Supply Lv ([Name], Tensor TensorVariable, Value Builtin)
     go dims indices = case dims of
       [] -> elementVariable (reverse indices) <$> demand
       d : ds -> do

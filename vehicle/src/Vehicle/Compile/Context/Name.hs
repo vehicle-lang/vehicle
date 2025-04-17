@@ -61,7 +61,13 @@ lvToProperName p lv = do
     Just (Just name) -> return name
 
 -- | Throw an |IndexOutOfBounds| error using an arbitrary var.
-varOutOfBounds :: (MonadNameContext m, Pretty var, HasCallStack) => Doc a -> Provenance -> var -> NamedBoundCtx -> m a
+varOutOfBounds ::
+  (MonadNameContext m, Pretty var, HasCallStack) =>
+  Doc a ->
+  Provenance ->
+  var ->
+  NamedBoundCtx ->
+  m a
 varOutOfBounds varType p var ctx =
   developerError $
     "During descoping found"

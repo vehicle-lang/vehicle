@@ -6,7 +6,7 @@ where
 
 -- Needed as Applicative is exported by Prelude in GHC 9.6 and above.
 import Control.Applicative (Applicative (..))
-import Control.Monad.Except (MonadError (..), runExceptT)
+import Control.Monad.Except (MonadError (..), MonadTrans (..), runExceptT)
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.Interface
@@ -31,21 +31,21 @@ data LinearityError
 
 compileLinearRelation ::
   (MonadLogger m, VariableLike variable) =>
-  (Lv -> variable) ->
+  (Lv -> m variable) ->
   TensorShape ->
   Value Builtin ->
   Value Builtin ->
   m (Either LinearityError (LinearExpr variable RatTensor, LinearExpr variable RatTensor))
 compileLinearRelation toVar shape x y = do
   runExceptT $ do
-    x' <- compile toVar shape x
-    y' <- compile toVar shape y
+    x' <- compile (lift . toVar) shape x
+    y' <- compile (lift . toVar) shape y
     return (x', y')
 
 compile ::
   forall m variable.
   (MonadCompileLinearExpr m, VariableLike variable) =>
-  (Lv -> variable) ->
+  (Lv -> m variable) ->
   TensorShape ->
   Value Builtin ->
   m (LinearExpr variable RatTensor)
@@ -58,8 +58,8 @@ compile toVar shape = go
       ----------------
       VRatTensorLiteral t -> do
         return $ constantExpr t
-      VRatTensorVar lv ->
-        return $ singletonVarExpr (zeroTensor shape) (toVar lv)
+      VRatTensorVar lv -> do
+        singletonVarExpr (zeroTensor shape) <$> toVar lv
       ---------------------
       -- Inductive cases --
       ---------------------

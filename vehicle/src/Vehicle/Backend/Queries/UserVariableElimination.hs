@@ -10,15 +10,14 @@ import Control.Applicative (Applicative (..))
 import Control.Monad (forM)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), asks)
-import Control.Monad.State (MonadState (..), evalStateT)
+import Control.Monad.State (MonadState (..), StateT (..))
 import Control.Monad.Writer (MonadWriter (..), WriterT (..))
 import Data.LinkedHashMap qualified as LinkedHashMap
 import Data.Map qualified as Map
-import Vehicle.Backend.Queries.PostProcessing (convertPartitionsToQueries)
+import Vehicle.Backend.Queries.PostProcessing (compilePartitionsToQueries)
 import Vehicle.Backend.Queries.Unblock (UnblockingActions (..))
 import Vehicle.Backend.Queries.Unblock qualified as Unblocking
 import Vehicle.Backend.Queries.UserVariableElimination.Core
-import Vehicle.Backend.Queries.UserVariableElimination.Core (getTensorVariableInfo)
 import Vehicle.Backend.Queries.UserVariableElimination.EliminateExists (solveExists)
 import Vehicle.Compile.Boolean.LiftIf (unfoldIf)
 import Vehicle.Compile.Boolean.LowerNot (lowerNot, notClosure)
@@ -105,9 +104,8 @@ compileQuantifiedQuerySet ::
   m (Property QueryMetaData)
 compileQuantifiedQuerySet isPropertyNegated _dims binder closure = do
   logCompilerPass MaxDetail "compilation of query set" $ do
-    flip evalStateT emptyGlobalCtx $ do
-      maybePartitions <- eliminateExists binder closure
-      compileQuerySetPartitions isPropertyNegated maybePartitions
+    (maybePartitions, globalCtx) <- runStateT (eliminateExists binder closure) emptyGlobalCtx
+    compileQuerySetPartitions globalCtx isPropertyNegated maybePartitions
 
 -- | We only need this because we can't evaluate networks in the compiler.
 compileUnquantifiedQuerySet ::
@@ -117,21 +115,23 @@ compileUnquantifiedQuerySet ::
 compileUnquantifiedQuerySet value = do
   let subsectionDoc = "compilation of set of unquantified queries:" <+> prettyFriendlyEmptyCtx value
   logCompilerPass MaxDetail subsectionDoc $ do
-    flip evalStateT emptyGlobalCtx $ do
+    (maybePartitions, globalCtx) <- flip runStateT emptyGlobalCtx $ do
       (maybePartitions, equalities) <- runWriterT $ compileBoolExpr value
       networkEqPartitions <- networkEqualitiesToPartition equalities
-      let allPartitions = andTrivial andPartitions maybePartitions networkEqPartitions
-      compileQuerySetPartitions False allPartitions
+      return $ andTrivial andPartitions maybePartitions networkEqPartitions
+    compileQuerySetPartitions globalCtx False maybePartitions
 
 compileQuerySetPartitions ::
-  (MonadQueryStructure m, MonadSupply QueryID m, MonadStdIO m) =>
+  (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m) =>
+  GlobalCtx ->
   QuerySetNegationStatus ->
   MaybeTrivial (Partitions UserOrNetworkTensorVariable) ->
   m (Property QueryMetaData)
-compileQuerySetPartitions isPropertyNegated maybePartitions = case maybePartitions of
+compileQuerySetPartitions globalCtx isPropertyNegated maybePartitions = case maybePartitions of
   Trivial b -> return $ Trivial (b `xor` isPropertyNegated)
   NonTrivial partitions -> do
-    queries <- convertPartitionsToQueries partitions
+    propertyMetaData <- ask
+    queries <- compilePartitionsToQueries globalCtx propertyMetaData partitions
     return $ NonTrivial $ Query $ QuerySet isPropertyNegated queries
 
 -- | Attempts to compile an arbitrary expression of type `Bool` down to a tree
@@ -212,7 +212,7 @@ compilePurifiedAssertion op args@(TensorOp2Args dims xs ys) = do
         Nothing -> developerError $ "Non-concrete dimensions found" <+> prettyVerbose dims
         Just concreteShape -> concreteShape
 
-  maybeLinearRel <- compileLinearRelation _ shape xs ys
+  maybeLinearRel <- compileLinearRelation findVariableFromLevel shape xs ys
   case maybeLinearRel of
     Right (e1, e2) -> do
       let assertion = comparisonToAssertion op e1 e2
@@ -234,6 +234,13 @@ compilePurifiedAssertion op args@(TensorOp2Args dims xs ys) = do
         return $ "Converting to element comparison:" <+> newValueDoc
       return $ Left elementComparisonValue
 
+findVariableFromLevel :: (MonadQueryStructure m) => Lv -> m UserOrNetworkTensorVariable
+findVariableFromLevel lv = do
+  maybeInfo <- getTensorVariableInfo lv
+  case maybeInfo of
+    Nothing -> _
+    Just _ -> _
+
 --------------------------------------------------------------------------------
 -- Unblocking
 
@@ -250,9 +257,9 @@ unblockQuantifiedBoundVar ::
   Lv ->
   m (Value Builtin)
 unblockQuantifiedBoundVar lv = do
-  maybeReduction <- reducedVarExpr $ getTensorVariableInfo lv
-  case maybeReduction of
-    Just vectorReduction -> return vectorReduction
+  maybeInfo <- getTensorVariableInfo lv
+  case maybeInfo of
+    Just info -> return $ reducedVarExpr info
     Nothing -> return $ VBoundVar lv []
 
 unblockNetworkApplication ::
