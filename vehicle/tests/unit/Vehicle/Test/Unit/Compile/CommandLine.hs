@@ -7,7 +7,7 @@ import Data.Map qualified as Map (fromList)
 import Options.Applicative (ParserResult (..), defaultPrefs, execParserPure)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertEqual, assertFailure, testCase)
-import Vehicle.Backend.Prelude (TypingSystem (..))
+import Vehicle.Backend.Prelude (ListableEntities (ExternalResources), TypingSystem (..))
 import Vehicle.CommandLine
   ( GlobalOptions (..),
     ModeOptions (..),
@@ -15,6 +15,7 @@ import Vehicle.CommandLine
     commandLineOptionsParserInfo,
     defaultGlobalOptions,
   )
+import Vehicle.List (ListOptions (..))
 import Vehicle.Prelude
   ( Pretty (pretty),
     developerError,
@@ -35,7 +36,8 @@ commandLineParserTests =
     [ noModeTests,
       checkModeTests,
       verifyTests,
-      validateModeTests
+      validateModeTests,
+      listModeTests
     ]
 
 noModeTests :: TestTree
@@ -81,6 +83,27 @@ checkModeTests =
                   TypeCheckOptions
                     { specification = "test/spec.vcl",
                       typingSystem = Standard
+                    }
+          }
+    ]
+
+listModeTests :: TestTree
+listModeTests =
+  testGroup
+    "listMode"
+    [ parserTest
+        "basic"
+        "vehicle list \
+        \--specification test/spec.vcl"
+        $ Options
+          { globalOptions = defaultGlobalOptions,
+            modeOptions =
+              Just $
+                List $
+                  ListOptions
+                    { specification = "test/spec.vcl",
+                      listEntities = ExternalResources,
+                      outputAsJSON = False
                     }
           }
     ]
