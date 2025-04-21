@@ -14,8 +14,8 @@ import Vehicle.Prelude.Logging.Instance
 import Vehicle.TypeCheck (TypeCheckOptions (..), runCompileMonad, typeCheckUserProg)
 
 data ListOptions = ListOptions
-  { specification :: FilePath,
-    listEntities :: ListableEntities,
+  { listEntities :: ListableEntities,
+    specification :: FilePath,
     outputAsJSON :: Bool
   }
   deriving (Eq, Show)
@@ -32,13 +32,25 @@ list loggingSettings ListOptions {..} = runCompileMonad loggingSettings $ do
   let mergedProg = mergeImports imports typedProg
   printResources mergedProg listEntities outputAsJSON
 
-printResources :: (MonadIO m, MonadCompile m, PrintableBuiltin builtin) => Prog builtin -> ListableEntities -> Bool -> m ()
+printResources ::
+  (MonadIO m, MonadCompile m, PrintableBuiltin builtin) =>
+  Prog builtin ->
+  ListableEntities ->
+  Bool ->
+  m ()
 printResources (Main decls) listEntities outputAsJSON = do
-  let filteredDecls =
-        if listEntities == ExternalResources
-          then filter isAbstractDecl decls
-          else filter isPropertyDecl decls
-  let listDecls = fmap (\decl -> convertDeclToListEntity decl (if listEntities == ExternalResources then pack $ show $ pretty (abstractSortOf decl) else "@property")) filteredDecls
+  let filterFn = case listEntities of
+        ExternalResources -> isAbstractDecl
+        Properties -> isPropertyDecl
+  let filteredDecls = filter filterFn decls
+  let listDecls =
+        fmap
+          ( \decl ->
+              convertDeclToListEntity
+                decl
+                (if listEntities == ExternalResources then pretty (abstractSortOf decl) else "@property")
+          )
+          filteredDecls
   let outputDocs =
         if outputAsJSON
           then pretty $ unpack $ encodePretty' prettyJSONConfig $ toJSON listDecls
@@ -56,12 +68,15 @@ data ListEntity = ListEntity
 instance ToJSON ListEntity
 
 instance Pretty ListEntity where
-  pretty listEntity = pretty (entitySort listEntity) <+> pretty (entityName listEntity) <+> pretty (entityType listEntity)
+  pretty listEntity =
+    pretty (entitySort listEntity)
+      <+> pretty (entityName listEntity)
+      <+> pretty (entityType listEntity)
 
-convertDeclToListEntity :: (PrintableBuiltin builtin) => Decl builtin -> Name -> ListEntity
+convertDeclToListEntity :: (PrintableBuiltin builtin) => Decl builtin -> Doc a -> ListEntity
 convertDeclToListEntity decl entitySort =
   ListEntity
-    { entitySort = entitySort,
+    { entitySort = pack $ show entitySort,
       entityName = identifierName $ identifierOf decl,
       entityType = pack $ show $ prettyFriendlyEmptyCtx (typeOf decl)
     }
