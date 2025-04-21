@@ -7,7 +7,7 @@ import Data.Map qualified as Map (fromList)
 import Options.Applicative (ParserResult (..), defaultPrefs, execParserPure)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertEqual, assertFailure, testCase)
-import Vehicle.Backend.Prelude (ListableEntities (ExternalResources), TypingSystem (..))
+import Vehicle.Backend.Prelude (ListableEntities (..), TypingSystem (..))
 import Vehicle.CommandLine
   ( GlobalOptions (..),
     ModeOptions (..),
@@ -92,8 +92,8 @@ listModeTests =
   testGroup
     "listMode"
     [ parserTest
-        "basic"
-        "vehicle list \
+        "list resources"
+        "vehicle list resources \
         \--specification test/spec.vcl"
         $ Options
           { globalOptions = defaultGlobalOptions,
@@ -101,8 +101,23 @@ listModeTests =
               Just $
                 List $
                   ListOptions
-                    { specification = "test/spec.vcl",
-                      listEntities = ExternalResources,
+                    { listEntities = ExternalResources,
+                      specification = "test/spec.vcl",
+                      outputAsJSON = False
+                    }
+          },
+      parserTest
+        "list properties"
+        "vehicle list properties \
+        \--specification test/spec.vcl"
+        $ Options
+          { globalOptions = defaultGlobalOptions,
+            modeOptions =
+              Just $
+                List $
+                  ListOptions
+                    { listEntities = Properties,
+                      specification = "test/spec.vcl",
                       outputAsJSON = False
                     }
           }
