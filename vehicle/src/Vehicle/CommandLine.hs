@@ -205,8 +205,8 @@ listDescription =
 listParser :: Parser ListOptions
 listParser =
   ListOptions
-    <$> specificationParser
-    <*> listEntitiesParser
+    <$> listModeParser
+    <*> specificationParser
     <*> outputAsJSONParser
 
 listParserInfo :: ParserInfo ModeOptions
@@ -319,11 +319,6 @@ allVerifiersFormats = map show (enumerate @QueryFormatID)
 allLossFunctionDLs :: [String]
 allLossFunctionDLs = map show (enumerate @DifferentiableLogicID)
 
-allListableEntities :: [Doc a]
-allListableEntities = flip map (enumerate @ListableEntities) $ \case
-  ExternalResources -> "i) Resources - (default) list all the networks, datasets, and parameters in the specification"
-  Properties -> "ii) Properties - list all the properties in the specification"
-
 allTargets :: [String]
 allTargets = allLossFunctionDLs <> allVerifiersFormats <> allITPs
 
@@ -405,23 +400,21 @@ typeSystemParser =
         )
       <> value Standard
 
-listEntitiesParser :: Parser ListableEntities
-listEntitiesParser =
-  option auto $
-    long "listEntities"
-      <> short 'l'
-      <> help
-        ( "Which Entities are listed. "
-            <> layoutAsString
-              ( line
-                  <> line
-                  <> indent
-                    2
-                    ( vsep allListableEntities
-                    )
-              )
+listModeParser :: Parser ListableEntities
+listModeParser =
+  hsubparser $
+    command
+      "resources"
+      ( info
+          (pure ExternalResources)
+          (progDesc "List all networks, datasets, and parameters in the specification.")
+      )
+      <> command
+        "properties"
+        ( info
+            (pure Properties)
+            (progDesc "List all properties in the specification.")
         )
-      <> value ExternalResources
 
 specificationParser :: Parser FilePath
 specificationParser =
