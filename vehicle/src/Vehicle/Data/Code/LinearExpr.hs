@@ -15,8 +15,9 @@ import Vehicle.Prelude
 -- Variables
 
 -- | A variable.
-class (Ord variable) => VariableLike variable where
+class (Eq variable, Ord variable) => VariableLike variable where
   toLv :: variable -> Lv
+  fromLv :: Lv -> variable
 
 -------------------------------------------------------------------------------
 -- Constants

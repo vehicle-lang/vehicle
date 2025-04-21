@@ -10,7 +10,7 @@ import Control.Applicative (Applicative (..))
 import Control.Monad (forM)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), asks)
-import Control.Monad.State (MonadState (..), StateT (..))
+import Control.Monad.State (MonadState (..), StateT (..), gets)
 import Control.Monad.Writer (MonadWriter (..), WriterT (..))
 import Data.LinkedHashMap qualified as LinkedHashMap
 import Data.Map qualified as Map
@@ -125,7 +125,7 @@ compileQuerySetPartitions ::
   (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m) =>
   GlobalCtx ->
   QuerySetNegationStatus ->
-  MaybeTrivial (Partitions UserOrNetworkTensorVariable) ->
+  MaybeTrivial (Partitions TensorVariable) ->
   m (Property QueryMetaData)
 compileQuerySetPartitions globalCtx isPropertyNegated maybePartitions = case maybePartitions of
   Trivial b -> return $ Trivial (b `xor` isPropertyNegated)
@@ -140,7 +140,7 @@ compileQuerySetPartitions globalCtx isPropertyNegated maybePartitions = case may
 compileBoolExpr ::
   (MonadQueryStructure m, MonadWriter [Value Builtin] m) =>
   Value Builtin ->
-  m (MaybeTrivial (Partitions UserOrNetworkTensorVariable))
+  m (MaybeTrivial (Partitions TensorVariable))
 compileBoolExpr expr = do
   showEntry expr
   showExit =<< case toBoolValue expr of
@@ -177,7 +177,7 @@ purifyAndCompileAssertion ::
   (MonadQuantifierBody m) =>
   ComparisonOp ->
   TensorOp2Args (Value Builtin) ->
-  m (MaybeTrivial (Partitions UserOrNetworkTensorVariable))
+  m (MaybeTrivial (Partitions TensorVariable))
 purifyAndCompileAssertion op args
   | op == Ne =
       -- We can't handle negative equalities so just eliminate it
@@ -206,7 +206,7 @@ compilePurifiedAssertion ::
   (MonadQuantifierBody m) =>
   ComparisonOp ->
   TensorOp2Args (Value Builtin) ->
-  m (Either (Value Builtin) (Assertion UserOrNetworkTensorVariable))
+  m (Either (Value Builtin) (Assertion TensorVariable))
 compilePurifiedAssertion op args@(TensorOp2Args dims xs ys) = do
   let shape = case getDims (argExpr dims) of
         Nothing -> developerError $ "Non-concrete dimensions found" <+> prettyVerbose dims
@@ -234,12 +234,8 @@ compilePurifiedAssertion op args@(TensorOp2Args dims xs ys) = do
         return $ "Converting to element comparison:" <+> newValueDoc
       return $ Left elementComparisonValue
 
-findVariableFromLevel :: (MonadQueryStructure m) => Lv -> m UserOrNetworkTensorVariable
-findVariableFromLevel lv = do
-  maybeInfo <- getTensorVariableInfo lv
-  case maybeInfo of
-    Nothing -> _
-    Just _ -> _
+findVariableFromLevel :: (MonadQueryStructure m) => Lv -> m TensorVariable
+findVariableFromLevel = return . TensorVariable
 
 --------------------------------------------------------------------------------
 -- Unblocking
@@ -257,9 +253,9 @@ unblockQuantifiedBoundVar ::
   Lv ->
   m (Value Builtin)
 unblockQuantifiedBoundVar lv = do
-  maybeInfo <- getTensorVariableInfo lv
-  case maybeInfo of
-    Just info -> return $ reducedVarExpr info
+  maybeChildExpr <- gets $ lookupChildVariablesExpr (TensorVariable lv)
+  case maybeChildExpr of
+    Just expr -> return expr
     Nothing -> return $ VBoundVar lv []
 
 unblockNetworkApplication ::
@@ -270,7 +266,7 @@ unblockNetworkApplication networkApp@(networkName, NetworkAppArgs arg) = do
   globalCtx <- get
   case LinkedHashMap.lookup networkApp (networkApplications globalCtx) of
     Just existingAppInfo ->
-      return $ outputVarExpr existingAppInfo
+      return $ VBoundVar (toLv $ outputVariable existingAppInfo) []
     Nothing -> do
       networkContext <- asks networkCtx
       networkInfo <- case Map.lookup networkName networkContext of
@@ -327,7 +323,7 @@ eliminateExists ::
   (MonadQueryStructure m) =>
   VBinder Builtin ->
   Closure Builtin ->
-  m (MaybeTrivial (Partitions UserOrNetworkTensorVariable))
+  m (MaybeTrivial (Partitions TensorVariable))
 eliminateExists binder (Closure env body) = do
   let varName = getBinderName binder
   let subpassDoc = "elimination of quantified variable" <+> quotePretty varName
@@ -363,7 +359,7 @@ eliminateExists binder (Closure env body) = do
 networkEqualitiesToPartition ::
   (MonadQueryStructure m) =>
   [Value Builtin] ->
-  m (MaybeTrivial (Partitions UserOrNetworkTensorVariable))
+  m (MaybeTrivial (Partitions TensorVariable))
 networkEqualitiesToPartition networkEqualities = do
   logDebugM MaxDetail $ do
     networkEqDocs <- traverse prettyFriendlyInCtx networkEqualities
@@ -420,8 +416,8 @@ showEntry v = do
 
 showExit ::
   (MonadQueryStructure m) =>
-  MaybeTrivial (Partitions UserOrNetworkTensorVariable) ->
-  m (MaybeTrivial (Partitions UserOrNetworkTensorVariable))
+  MaybeTrivial (Partitions TensorVariable) ->
+  m (MaybeTrivial (Partitions TensorVariable))
 showExit v = do
   decrCallDepth
   logDebugM MaxDetail $ do

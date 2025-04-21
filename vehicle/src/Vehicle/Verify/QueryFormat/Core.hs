@@ -16,5 +16,5 @@ instance Pretty QueryFormatID where
     VNNLibQueries -> "VNNLib query format"
 
 -- | A variable used in a query.
--- In a one-to-one correspondence with `NetworkElementVariable`
+-- In a one-to-one correspondence with `NetworkIOElementVariable`
 type QueryVariable = Name

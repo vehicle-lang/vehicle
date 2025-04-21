@@ -2,15 +2,18 @@
 
 module Vehicle.Backend.Queries.UserVariableElimination.Core where
 
-import Control.Applicative ((<|>))
 import Control.Monad.Reader (MonadReader (..))
 import Control.Monad.State (MonadState (..), StateT, gets)
 import Data.Bifunctor (Bifunctor (..))
+import Data.Coerce (coerce)
 import Data.LinkedHashMap (LinkedHashMap)
 import Data.LinkedHashMap qualified as LinkedHashMap
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Maybe (fromMaybe)
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Vehicle.Compile.Context.Bound.Class (MonadBoundContext (..))
 import Vehicle.Compile.Context.Free.Class (MonadFreeContext)
 import Vehicle.Compile.Context.Name (MonadNameContext, getNameContext)
@@ -33,23 +36,6 @@ import Vehicle.Verify.QueryFormat.Interface
 import Vehicle.Verify.Specification
 
 --------------------------------------------------------------------------------
--- Network applications
-
--- | A single application of a neural network to a set of arguments.
-type NetworkApplication = (Name, NetworkAppArgs (Value Builtin))
-
--- | Bookkeeping information associated with an application that describes
--- the variables and corresponding expressions that replace a given
--- NetworkApplication.
-data NetworkApplicationReplacement = NetworkApplicationReplacement
-  { networkApp :: NetworkApplication,
-    networkInfo :: NetworkContextInfo,
-    inputVariable :: NetworkTensorVariable,
-    outputVarExpr :: Value Builtin,
-    outputVariable :: NetworkTensorVariable
-  }
-
---------------------------------------------------------------------------------
 -- Reader state
 
 data PropertyMetaData = PropertyMetaData
@@ -63,10 +49,23 @@ data PropertyMetaData = PropertyMetaData
 --------------------------------------------------------------------------------
 -- Global state
 
+-- | A single application of a neural network to a set of arguments.
+type NetworkApplication = (Name, NetworkAppArgs (Value Builtin))
+
+-- | Bookkeeping information associated with an application that describes
+-- the variables and corresponding expressions that replace a given
+-- NetworkApplication.
+data NetworkApplicationReplacement = NetworkApplicationReplacement
+  { networkApp :: NetworkApplication,
+    networkInfo :: NetworkContextInfo,
+    inputVariable :: NetworkIOVariable,
+    outputVariable :: NetworkIOVariable
+  }
+
 data GlobalCtx = GlobalCtx
-  { globalBoundVarCtx :: !(GenericBoundCtx Name),
-    userTensorVariableInfo :: !(Map UserTensorVariable TensorVariableInfo),
-    networkTensorVariableInfo :: !(Map NetworkTensorVariable TensorVariableInfo),
+  { globalBoundVarCtx :: !(GenericBoundCtx TensorVariableInfo),
+    userTensorVariables :: !(Set UserVariable),
+    networkTensorVariables :: !(Set NetworkIOVariable),
     networkApplications :: !(LinkedHashMap NetworkApplication NetworkApplicationReplacement)
   }
 
@@ -74,35 +73,56 @@ emptyGlobalCtx :: GlobalCtx
 emptyGlobalCtx =
   GlobalCtx
     { globalBoundVarCtx = mempty,
-      networkTensorVariableInfo = mempty,
-      userTensorVariableInfo = mempty,
+      networkTensorVariables = mempty,
+      userTensorVariables = mempty,
       networkApplications = LinkedHashMap.empty
     }
 
-addVectorVarToBoundVarCtx :: Name -> [Name] -> GenericBoundCtx Name -> GenericBoundCtx Name
-addVectorVarToBoundVarCtx tensorVar elementVars ctx = reverse elementVars <> [tensorVar] <> ctx
+lookupTensorVariableInfo ::
+  (TensorVariableLike variable) =>
+  variable ->
+  GlobalCtx ->
+  TensorVariableInfo
+lookupTensorVariableInfo var GlobalCtx {..} =
+  lookupLvInBoundCtx (toLv var) globalBoundVarCtx
+
+lookupChildVariablesExpr ::
+  (TensorVariableLike variable) =>
+  variable ->
+  GlobalCtx ->
+  Maybe (Value Builtin)
+lookupChildVariablesExpr var ctx = do
+  let userInfo = lookupTensorVariableInfo var ctx
+  snd <$> childrenVariables userInfo
+
+lookupChildVariables ::
+  (TensorVariableLike variable) =>
+  variable ->
+  GlobalCtx ->
+  Maybe (Tensor TensorVariable)
+lookupChildVariables var ctx = do
+  let userInfo = lookupTensorVariableInfo var ctx
+  fst <$> childrenVariables userInfo
+
+addVectorVarToBoundVarCtx :: [TensorVariableInfo] -> GenericBoundCtx TensorVariableInfo -> GenericBoundCtx TensorVariableInfo
+addVectorVarToBoundVarCtx newVars ctx = reverse newVars <> ctx
 
 addUserVarToGlobalContext ::
   (MonadLogger m) =>
   Name ->
   TensorShape ->
   GlobalCtx ->
-  m (UserTensorVariable, GlobalCtx)
+  m (UserVariable, GlobalCtx)
 addUserVarToGlobalContext userVarName shape GlobalCtx {..} = do
   -- Create the unreduced and reduced versions of the user variables.
-  let currentLevel = Lv $ length globalBoundVarCtx
-  let (reducedVariableNames, reducedVariables, reducedVariablesExpr) = reduceTensorVariable currentLevel userVarName shape
-  let userVar = mkUserTensorVariable currentLevel
-  let variableInfo =
-        TensorVariableInfo
-          { elementVariables = reducedVariables,
-            reducedVarExpr = reducedVariablesExpr,
-            tensorVariableType = Nothing
-          }
+  let userVar = mkUserVariable $ Lv $ length globalBoundVarCtx
+  let newVarsTelescope = reduceTensorVariable userVar userVarName shape
+  let newCtx = addVectorVarToBoundVarCtx newVarsTelescope globalBoundVarCtx
+  let newUserVars = Set.insert userVar userTensorVariables
   let newGlobalCtx =
         GlobalCtx
-          { globalBoundVarCtx = addVectorVarToBoundVarCtx userVarName reducedVariableNames globalBoundVarCtx,
-            userTensorVariableInfo = Map.insert userVar variableInfo userTensorVariableInfo,
+          { globalBoundVarCtx = newCtx,
+            userTensorVariables = newUserVars,
             ..
           }
   return (userVar, newGlobalCtx)
@@ -116,42 +136,28 @@ addNetworkApplicationToGlobalCtx ::
 addNetworkApplicationToGlobalCtx app@(networkName, _) networkInfo GlobalCtx {..} = do
   let metaNetworkSoFar = LinkedHashMap.toList networkApplications
   let applicationNumber = length $ filter (\((name, _), _) -> name == networkName) metaNetworkSoFar
+  let ctxSize = length globalBoundVarCtx
 
   -- Create a single variable for the input of the network to
   -- (avoiding prematurely normalising so that we can potentially solve
   -- user tensor variables in terms of it).
-  let inputLv = Lv $ length globalBoundVarCtx
+  let inputVar = mkNetworkTensorVariable $ Lv ctxSize
   let inputShape = dimensions (inputTensor (networkType networkInfo))
   let inputVarName = layoutAsText $ createNetworkVarName networkName applicationNumber Input
-  let inputVar = mkNetworkTensorVariable inputLv
-  let (reducedInputVarNames, reducedInputVars, reducedInputVarsExpr) = reduceTensorVariable inputLv inputVarName inputShape
-  let inputVarExpr = VBoundVar inputLv []
-
-  let inputVarInfo =
-        TensorVariableInfo
-          { elementVariables = reducedInputVars,
-            reducedVarExpr = reducedInputVarsExpr,
-            tensorVariableType = Just Input
-          }
+  let inputVarsTelescope = reduceTensorVariable inputVar inputVarName inputShape
+  let inputVarExpr = VBoundVar (toLv inputVar) []
 
   -- Create a tensor of variables for the output of the network.
-  let outputLv = inputLv + 1 + Lv (length reducedInputVarNames)
+  let outputVar = mkNetworkTensorVariable $ Lv (ctxSize + 1 + length inputVarsTelescope)
   let outputShape = dimensions (outputTensor (networkType networkInfo))
   let outputVarName = layoutAsText $ createNetworkVarName networkName applicationNumber Output
-  let outputVar = mkNetworkTensorVariable outputLv
-  let (reducedOutputVarNames, reducedOutputVars, reducedOutputVarsExpr) = reduceTensorVariable outputLv outputVarName outputShape
-  let outputVarExpr = VBoundVar outputLv []
-  let outputVarInfo =
-        TensorVariableInfo
-          { elementVariables = reducedOutputVars,
-            reducedVarExpr = reducedOutputVarsExpr,
-            tensorVariableType = Just Output
-          }
+  let outputVarsTelescope = reduceTensorVariable outputVar outputVarName outputShape
+  let outputVarExpr = VBoundVar (toLv outputVar) []
 
   -- Create the context extension of the bound context.
   let newGlobalBoundVarCtx =
-        addVectorVarToBoundVarCtx outputVarName reducedOutputVarNames $
-          addVectorVarToBoundVarCtx inputVarName reducedInputVarNames globalBoundVarCtx
+        addVectorVarToBoundVarCtx outputVarsTelescope $
+          addVectorVarToBoundVarCtx inputVarsTelescope globalBoundVarCtx
 
   -- Create the object to store information about the application
   let appInfo =
@@ -159,18 +165,17 @@ addNetworkApplicationToGlobalCtx app@(networkName, _) networkInfo GlobalCtx {..}
           { networkApp = app,
             networkInfo = networkInfo,
             inputVariable = inputVar,
-            outputVarExpr = outputVarExpr,
             outputVariable = outputVar
           }
 
-  let newTensorVariableInfo =
-        Map.insert inputVar inputVarInfo $
-          Map.insert outputVar outputVarInfo networkTensorVariableInfo
+  let newNetworkVars =
+        Set.insert inputVar $
+          Set.insert outputVar networkTensorVariables
 
   let newGlobalCtx =
         GlobalCtx
           { globalBoundVarCtx = newGlobalBoundVarCtx,
-            networkTensorVariableInfo = newTensorVariableInfo,
+            networkTensorVariables = newNetworkVars,
             networkApplications = LinkedHashMap.insert app appInfo networkApplications,
             ..
           }
@@ -181,7 +186,7 @@ instance (Monad m) => MonadBoundContext () (StateT GlobalCtx m) where
   addBinderToContext = developerError "Cannot add binder to context in GlobalCtx"
   getBoundCtx _p = do
     nameCtx <- gets globalBoundVarCtx
-    return $ map (mkExplicitBinder () . Just) nameCtx
+    return $ map (mkExplicitBinder () . Just . variableName) nameCtx
 
 --------------------------------------------------------------------------------
 -- Partitions
@@ -255,43 +260,38 @@ prettyFriendlyInCtx e = prettyFriendly . WithContext e <$> getNameContext
 prettyExternalInCtx :: (MonadNameContext m, PrettyExternal (Contextualised a NamedBoundCtx)) => a -> m (Doc b)
 prettyExternalInCtx e = prettyExternal . WithContext e <$> getNameContext
 
-getNetworkElementVariables :: GlobalCtx -> NetworkTensorVariable -> Tensor NetworkElementVariable
-getNetworkElementVariables GlobalCtx {..} var = do
-  case Map.lookup var networkTensorVariableInfo of
-    Just info -> elementVariables info
+lookupNetworkElementVariables ::
+  GlobalCtx ->
+  NetworkIOVariable ->
+  Tensor NetworkIOElementVariable
+lookupNetworkElementVariables globalCtx var =
+  case lookupChildVariables var globalCtx of
+    Just childVariables -> coerce childVariables
     Nothing ->
       developerError $
         "Variable"
-          <+> quotePretty (lookupLvInBoundCtx (toLv var) globalBoundVarCtx)
+          <+> quotePretty (variableName $ lookupTensorVariableInfo var globalCtx)
           <+> "has no associated meta-information"
-
-getTensorVariableInfo ::
-  (MonadState GlobalCtx m, MonadLogger m) =>
-  Lv ->
-  m (Maybe TensorVariableInfo)
-getTensorVariableInfo var = do
-  GlobalCtx {..} <- get
-  let userInfo = Map.lookup (mkUserTensorVariable var) userTensorVariableInfo
-  let networkInfo = Map.lookup (mkNetworkTensorVariable var) networkTensorVariableInfo
-  return (userInfo <|> networkInfo)
 
 reduceTensorExpr ::
   GlobalCtx ->
-  LinearExpr NetworkTensorVariable RatTensor ->
-  [LinearExpr NetworkTensorVariable RatTensor]
+  LinearExpr TensorVariable RatTensor ->
+  [LinearExpr TensorVariable RatTensor]
 reduceTensorExpr globalCtx (Sparse coeff constant) = do
+  let equationIDs = [0 .. product (tensorShape constant) - 1]
   let constValues = tensorToList constant
-  let numRatEqs = product (tensorShape constant)
-  let coeffList = fmap (first (tensorToList . getNetworkElementVariables globalCtx)) (Map.toList coeff)
-  let asserts = fmap (mkRatEquality coeffList constValues) [0 .. numRatEqs - 1]
-  asserts
+  let malformedVariableError = developerError "Expecting a non-zero tensor variable"
+  let findChildVariables var = fromMaybe malformedVariableError $ lookupChildVariables var globalCtx
+  let findChildVariablesAndCoefficient = first (tensorToList . findChildVariables)
+  let coeffList = fmap findChildVariablesAndCoefficient (Map.toList coeff)
+  fmap (mkZeroDimEquality coeffList constValues) equationIDs
   where
-    mkRatEquality ::
-      [([NetworkTensorVariable], Coefficient)] ->
+    mkZeroDimEquality ::
+      [([TensorVariable], Coefficient)] ->
       [Rational] ->
       Int ->
-      LinearExpr NetworkTensorVariable RatTensor
-    mkRatEquality coeffs consts i =
+      LinearExpr TensorVariable RatTensor
+    mkZeroDimEquality coeffs consts i =
       Sparse (Map.fromList (fmap (first (!! i)) coeffs)) (ZeroDimTensor (consts !! i))
 
 --------------------------------------------------------------------------------

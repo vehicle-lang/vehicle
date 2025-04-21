@@ -39,9 +39,11 @@ import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.Code.Value
+import Vehicle.Data.QuantifiedVariable (TensorVariable)
 import Vehicle.Data.Tensor (RatTensor)
 import Vehicle.Syntax.AST.Expr qualified as S
 import Vehicle.Syntax.Print
+import Vehicle.Verify.Specification (UserVariableCompilationStep (..))
 
 --------------------------------------------------------------------------------
 -- Public methods
@@ -317,6 +319,16 @@ instance
     let prettyVar = pretty . toLv
     let prettyConst = prettyUsing @rest . (,ctx)
     prettyLinearExpr prettyVar prettyConst lexp
+
+instance
+  (PrettyUsing rest (LinearExpr TensorVariable RatTensor `In` ctx)) =>
+  PrettyUsing rest (UserVariableCompilationStep `In` ctx)
+  where
+  prettyUsing (step, ctx) = case step of
+    SolveEquality var expr -> pretty var <+> prettyUsing @rest (expr, ctx)
+    SolveInequalities var bounds -> pretty var <+> prettyUsing @rest (bounds, ctx)
+    ReconstructUserTensor var childVars -> pretty var <+> "->" <+> pretty childVars
+    ReconstructNetworkTensor var childVars -> pretty var <+> "->" <+> pretty childVars
 
 --------------------------------------------------------------------------------
 -- 'DescopeWithNames

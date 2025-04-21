@@ -18,6 +18,7 @@ module Vehicle.Verify.Specification
     VariableCompilationTrace (..),
     VariableStore,
     getQueryVariables,
+    getUserVariables,
     getVehicleVariableCtx,
     getQueryVariableMap,
   )
@@ -44,10 +45,10 @@ import Vehicle.Verify.QueryFormat.Core
 -- | One step in the process for transforming unreduced user variables into
 -- reduced network input and output variables.
 data UserVariableCompilationStep
-  = SolveEquality UserTensorVariable (LinearExpr UserOrNetworkTensorVariable RatTensor)
-  | SolveInequalities UserTensorVariable (Bounds UserOrNetworkTensorVariable RatTensor)
-  | ReconstructUserTensor UserTensorVariable (Tensor UserTensorVariable)
-  | ReconstructNetworkTensor NetworkTensorVariable (Tensor NetworkElementVariable)
+  = SolveEquality UserVariable (LinearExpr TensorVariable RatTensor)
+  | SolveInequalities UserVariable (Bounds TensorVariable RatTensor)
+  | ReconstructUserTensor UserVariable (Tensor UserVariable)
+  | ReconstructNetworkTensor NetworkIOVariable (Tensor NetworkIOVariable)
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData UserVariableCompilationStep
@@ -88,10 +89,13 @@ getQueryVariableCtx d = fmap (\(_, _, c) -> c) (variableStore d)
 getVehicleVariableCtx :: VariableStore -> GenericBoundCtx Name
 getVehicleVariableCtx = fmap (\(_, b, _) -> b)
 
-getQueryVariables :: VariableStore -> [QueryVariable]
-getQueryVariables = mapMaybe (\(_, _, c) -> c)
+getUserVariables :: VariableStore -> [UserVariable]
+getUserVariables = _
 
-getQueryVariableMap :: VariableStore -> Map QueryVariable NetworkElementVariable
+getQueryVariables :: VariableStore -> [QueryVariable]
+getQueryVariables = _
+
+getQueryVariableMap :: VariableStore -> Map QueryVariable NetworkIOElementVariable
 getQueryVariableMap = _
 
 --------------------------------------------------------------------------------

@@ -3,7 +3,7 @@ module Vehicle.Backend.Queries.UserVariableElimination.VariableReconstruction wh
 import Data.Foldable (foldlM)
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Maybe (fromMaybe)
 import Vehicle.Compile.FourierMotzkinElimination
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Assertion
@@ -29,7 +29,7 @@ reconstructUserVars variables (Reconstruction steps) networkVariableAssignment =
     let vehicleVariableCtx = getVehicleVariableCtx variables
     logDebug MidDetail $ pretty steps
     let assignment = createInitialAssignment queryVariableMap networkVariableAssignment
-    alteredAssignment <- foldlM applyReconstructionStep assignment steps
+    alteredAssignment <- foldlM (applyReconstructionStep _) assignment steps
     finalAssignment <- createFinalAssignment vehicleVariableCtx alteredAssignment
     logDebug MidDetail $ "User variables:" <+> pretty finalAssignment
     return finalAssignment
@@ -37,29 +37,17 @@ reconstructUserVars variables (Reconstruction steps) networkVariableAssignment =
 --------------------------------------------------------------------------------
 -- Mixed variable assignments
 
-data MixedVariableAssignment = VariableAssignment
-  { userVariableValues :: Map UserTensorVariable RatTensor,
-    networkVariableValues :: Map NetworkTensorVariable RatTensor
-  }
-
-instance Pretty MixedVariableAssignment where
-  pretty VariableAssignment {..} =
-    "User variable values:" <+> prettyMap userVariableValues
-      <> line
-      <> "Network variable values:" <+> pretty networkVariableValues
+type MixedVariableAssignment = Map TensorVariable RatTensor
 
 createInitialAssignment ::
-  Map QueryVariable NetworkElementVariable ->
+  Map QueryVariable NetworkIOElementVariable ->
   QueryVariableAssignment ->
   MixedVariableAssignment
 createInitialAssignment queryVariableMap (QueryVariableAssignment valuesByQueryVar) = do
   let missingVariable var = developerError ("Missing query variable" <+> pretty var)
   let mapQueryVariable var = _ $ fromMaybe (missingVariable var) (Map.lookup var queryVariableMap)
   let valuesByNetworkVar = ZeroDimTensor <$> Map.mapKeys mapQueryVariable valuesByQueryVar
-  VariableAssignment
-    { networkVariableValues = valuesByNetworkVar,
-      userVariableValues = mempty
-    }
+  valuesByNetworkVar
 
 applyReconstructionStep ::
   (MonadLogger m) =>
@@ -79,47 +67,40 @@ solveEquality ::
   (MonadLogger m) =>
   NamedBoundCtx ->
   MixedVariableAssignment ->
-  UserTensorVariable ->
-  LinearExpr UserOrNetworkTensorVariable RatTensor ->
+  UserVariable ->
+  LinearExpr TensorVariable RatTensor ->
   m MixedVariableAssignment
-solveEquality ctx assignment@VariableAssignment {..} var equality = do
+solveEquality ctx assignment var equality = do
   logCompilerSection MidDetail ("Reintroducing Gaussian-eliminated variable" <+> quotePretty var) $ do
-    let value = handleMissingError ctx var $ evaluateExpr equality networkVariableValues
+    let value = handleMissingError ctx var $ evaluateExpr equality assignment
     logDebug MidDetail $ "Result:" <+> pretty var <+> "=" <+> pretty value
-    return $
-      assignment
-        { userVariableValues = Map.insert var value userVariableValues
-        }
+    return $ Map.insert (toTensorVar var) value assignment
 
 solveInequalities ::
   (MonadLogger m) =>
   NamedBoundCtx ->
   MixedVariableAssignment ->
-  UserTensorVariable ->
-  Bounds UserOrNetworkTensorVariable RatTensor ->
+  UserVariable ->
+  Bounds TensorVariable RatTensor ->
   m MixedVariableAssignment
-solveInequalities ctx assignment@VariableAssignment {..} var solution = do
+solveInequalities ctx assignment var solution = do
   let doc = "Reintroducing Fourier-Motzkin-eliminated variable" <+> quotePretty var
   logCompilerSection MidDetail doc $ do
-    let value = handleMissingError ctx var $ reconstructFourierMotzkinVariableValue networkVariableValues solution
-    return $
-      assignment
-        { userVariableValues = Map.insert var value userVariableValues
-        }
+    let value = handleMissingError ctx var $ reconstructFourierMotzkinVariableValue assignment solution
+    return $ Map.insert (toTensorVar var) value assignment
 
 constructUserTensorVariableFromElements ::
   (MonadLogger m) =>
   NamedBoundCtx ->
   MixedVariableAssignment ->
-  UserTensorVariable ->
-  Tensor UserTensorVariable ->
+  UserVariable ->
+  Tensor UserVariable ->
   m MixedVariableAssignment
-constructUserTensorVariableFromElements ctx assignment@VariableAssignment {..} variable elementVariables = do
+constructUserTensorVariableFromElements ctx assignment variable elementVariables = do
   let doc = "Collapsing user variables" <+> pretty elementVariables <+> "to single variable" <+> pretty variable
   logCompilerSection MidDetail doc $ do
-    let variableValue = handleMissingError ctx variable $ lookupElementVariables userVariableValues elementVariables
-    let newUserVariableValues = Map.insert variable variableValue userVariableValues
-    return $ assignment {userVariableValues = newUserVariableValues}
+    let variableValue = handleMissingError ctx variable $ lookupElementVariables assignment elementVariables
+    return $ Map.insert (toTensorVar variable) variableValue assignment
 
 -- | Unreduces a previously reduced variable, removing the normalised
 -- values from the assignment and adding the unreduced value back to the
@@ -128,15 +109,14 @@ constructNetworkTensorVariableFromElements ::
   (MonadLogger m) =>
   NamedBoundCtx ->
   MixedVariableAssignment ->
-  NetworkTensorVariable ->
-  Tensor NetworkTensorVariable ->
+  NetworkIOVariable ->
+  Tensor NetworkIOVariable ->
   m MixedVariableAssignment
-constructNetworkTensorVariableFromElements ctx assignment@VariableAssignment {..} var elementVariables = do
+constructNetworkTensorVariableFromElements ctx assignment var elementVariables = do
   let doc = "Collapsing network variables" <+> pretty elementVariables <+> "to single variable" <+> pretty variable
   logCompilerSection MidDetail doc $ do
     let variableValue = handleMissingError ctx var $ lookupElementVariables networkVariableValues elementVariables
-    let newNetworkVariableValues = Map.insert var variableValue networkVariableValues
-    return $ assignment {networkVariableValues = newNetworkVariableValues}
+    return $ Map.insert (toTensorVar var) variableValue assignment
 
 handleMissingError :: (VariableLike v1, VariableLike v2) => NamedBoundCtx -> v1 -> Either v2 a -> a
 handleMissingError ctx var errorOrResult = case errorOrResult of
@@ -174,7 +154,7 @@ createFinalAssignment ::
   GenericBoundCtx Name ->
   MixedVariableAssignment ->
   m UserVariableAssignment
-createFinalAssignment vehicleVariables (VariableAssignment {..}) = do
+createFinalAssignment vehicleVariables assignment = do
   let lookupName lv = lookupLvInBoundCtx lv vehicleVariables
   let stringVarAssignments = Map.mapKeys (lookupName . toLv) userVariableValues
   return $ UserVariableAssignment $ Map.toList stringVarAssignments

@@ -26,8 +26,8 @@ import Vehicle.Data.Tensor (RatTensor)
 -- field so we can either look for rational equalities, tensor equalities or
 -- no equalties at all.
 data ConstrainedAssertionTree
-  = SingleEquality !(Equality UserOrNetworkTensorVariable RatTensor) !(MaybeTrivial (AssertionTree UserOrNetworkTensorVariable))
-  | Inequalities ![Inequality UserOrNetworkTensorVariable RatTensor] !(MaybeTrivial (AssertionTree UserOrNetworkTensorVariable))
+  = SingleEquality !(Equality TensorVariable RatTensor) !(MaybeTrivial (AssertionTree TensorVariable))
+  | Inequalities ![Inequality TensorVariable RatTensor] !(MaybeTrivial (AssertionTree TensorVariable))
 
 instance Pretty ConstrainedAssertionTree where
   pretty = \case
@@ -38,7 +38,7 @@ instance Pretty ConstrainedAssertionTree where
 -- | A scheme for pulling out constraints from assertions. Used to control
 -- which assertions are considered valid constraints.
 type ConstraintSearchCriteria =
-  UserTensorVariable -> Assertion UserOrNetworkTensorVariable -> ConstrainedAssertionTree
+  UserVariable -> Assertion TensorVariable -> ConstrainedAssertionTree
 
 --------------------------------------------------------------------------------
 -- Algorithm
@@ -49,12 +49,12 @@ findVariableConstraints ::
   forall m.
   (MonadCompile m) =>
   ConstraintSearchCriteria ->
-  UserTensorVariable ->
-  AssertionTree UserOrNetworkTensorVariable ->
+  UserVariable ->
+  AssertionTree TensorVariable ->
   m (DisjunctAll ConstrainedAssertionTree)
 findVariableConstraints fromAssertion var = go
   where
-    go :: AssertionTree UserOrNetworkTensorVariable -> m (DisjunctAll ConstrainedAssertionTree)
+    go :: AssertionTree TensorVariable -> m (DisjunctAll ConstrainedAssertionTree)
     go = \case
       Query assertion -> return $ DisjunctAll [fromAssertion var assertion]
       Disjunct xs -> disjunctDisjuncts <$> traverse go xs
@@ -64,9 +64,9 @@ findVariableConstraints fromAssertion var = go
         return $ snd rs'
 
     andDisjuncts ::
-      (AssertionTree UserOrNetworkTensorVariable, DisjunctAll ConstrainedAssertionTree) ->
-      AssertionTree UserOrNetworkTensorVariable ->
-      m (AssertionTree UserOrNetworkTensorVariable, DisjunctAll ConstrainedAssertionTree)
+      (AssertionTree TensorVariable, DisjunctAll ConstrainedAssertionTree) ->
+      AssertionTree TensorVariable ->
+      m (AssertionTree TensorVariable, DisjunctAll ConstrainedAssertionTree)
     andDisjuncts (x, r1) y = do
       let (shortCircuitedLHS, remainingLHS) = partitionEithers $ fmap (shortCircuitConstraints y) (disjunctsToList r1)
       result <-
@@ -86,7 +86,7 @@ findVariableConstraints fromAssertion var = go
         [] -> compilerDeveloperError "The conjunctions of non-empty disjunctions should be non-empty."
 
     shortCircuitConstraints ::
-      AssertionTree UserOrNetworkTensorVariable ->
+      AssertionTree TensorVariable ->
       ConstrainedAssertionTree ->
       Either ConstrainedAssertionTree ConstrainedAssertionTree
     shortCircuitConstraints disjunctedTree constraint = case constraint of
