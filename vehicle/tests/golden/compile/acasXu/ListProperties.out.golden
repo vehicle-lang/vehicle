@@ -1,0 +1,10 @@
+[ @property property1 Bool
+, @property property2 Bool
+, @property property3 Bool
+, @property property4 Bool
+, @property property5 Bool
+, @property property6 Bool
+, @property property7 Bool
+, @property property8 Bool
+, @property property9 Bool
+, @property property10 Bool ]

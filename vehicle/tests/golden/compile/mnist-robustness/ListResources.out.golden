@@ -1,0 +1,5 @@
+[ @network classifier Image -> Vector Rat 10
+, @parameter epsilon Rat
+, @parameter n Nat
+, @dataset trainingImages Vector Image n
+, @dataset trainingLabels Vector Label n ]
