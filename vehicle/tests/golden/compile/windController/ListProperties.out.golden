@@ -1,1 +1,7 @@
-[@property safe Bool]
+[
+  {
+    "entityType": "Bool",
+    "entitySort": "@property",
+    "entityName": "safe"
+  }
+]

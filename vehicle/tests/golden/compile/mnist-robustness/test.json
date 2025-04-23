@@ -6,12 +6,12 @@
   },
   {
     "name": "ListResources",
-    "run": "vehicle list resources -s spec.vcl",
+    "run": "vehicle list resources -s spec.vcl -j",
     "needs": ["spec.vcl"]
   },
   {
     "name": "ListProperties",
-    "run": "vehicle list properties -s spec.vcl",
+    "run": "vehicle list properties -s spec.vcl -j",
     "needs": ["spec.vcl"]
   },
   {

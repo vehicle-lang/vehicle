@@ -1,1 +1,7 @@
-[@network acasXu InputVector -> OutputVector]
+[
+  {
+    "entityType": "InputVector -> OutputVector",
+    "entitySort": "@network",
+    "entityName": "acasXu"
+  }
+]

@@ -1,1 +1,7 @@
-[@property robust Vector Bool n]
+[
+  {
+    "entityType": "Vector Bool n",
+    "entitySort": "@property",
+    "entityName": "robust"
+  }
+]
