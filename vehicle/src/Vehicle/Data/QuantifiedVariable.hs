@@ -1,27 +1,22 @@
 module Vehicle.Data.QuantifiedVariable
   ( TensorVariable (..),
-    reduceTensorVariable,
     TensorVariableInfo (..),
     UserVariable (..),
-    mkUserVariable,
     NetworkIOVariable (..),
-    mkNetworkTensorVariable,
     NetworkIOElementVariable (..),
     prettyRationalAsFloat,
     UserVariableAssignment (..),
     TensorVariableLike (..),
+    variableValue,
   )
 where
 
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, FromJSONKey, ToJSON, ToJSONKey)
 import Data.Coerce (coerce)
-import Data.Text qualified as Text
 import GHC.Generics (Generic)
 import Numeric (showFFloat)
 import Vehicle.Data.Builtin.Core
-import Vehicle.Data.Builtin.Interface
-import Vehicle.Data.Code.Interface (StackTensorArgs (..), accessStackTensor, mkDims, pattern INatLiteral, pattern INatType)
 import Vehicle.Data.Code.LinearExpr (VariableLike (..))
 import Vehicle.Data.Code.Value
 import Vehicle.Data.DeBruijn
@@ -52,8 +47,8 @@ instance ToJSON UserVariable
 
 instance FromJSON UserVariable
 
-mkUserVariable :: Lv -> UserVariable
-mkUserVariable = UserVariable
+variableValue :: (VariableLike variable) => variable -> Value builtin
+variableValue var = VBoundVar (toLv var) []
 
 -- | Tensor variables that represent quantities used as the direct
 -- inputs and outputs of a network application.
@@ -80,9 +75,6 @@ instance NFData NetworkIOVariable
 instance ToJSON NetworkIOVariable
 
 instance FromJSON NetworkIOVariable
-
-mkNetworkTensorVariable :: Lv -> NetworkIOVariable
-mkNetworkTensorVariable = NetworkIOVariable
 
 -- | Variables that may be either be a `NetworkIOVariable` or
 -- a `UserVariable`, or variables that represent sub-tensors
@@ -128,56 +120,21 @@ data TensorVariableInfo = TensorVariableInfo
     childrenVariables :: Maybe (Tensor TensorVariable, Value Builtin)
   }
 
-reduceTensorVariable ::
-  forall variable.
-  (TensorVariableLike variable) =>
-  variable ->
-  Name ->
-  TensorShape ->
-  [TensorVariableInfo]
-reduceTensorVariable var varName shape = do
-  let (reducedVariablesInfo, reducedVariables) = case shape of
-        [] -> (mempty, Nothing)
-        _ -> do
-          let (reducedVarsInfo, tensors, value) = runSupply [toLv var + 1 ..] $ go shape []
-          (reducedVarsInfo, Just (tensors, value))
-  let variableInfo =
-        TensorVariableInfo
-          { variableName = varName,
-            parentVariable = Nothing,
-            childrenVariables = reducedVariables
-          }
-  variableInfo : reducedVariablesInfo
-  where
-    elementVariable ::
-      TensorIndices ->
-      Lv ->
-      ([TensorVariableInfo], Tensor TensorVariable, Value Builtin)
-    elementVariable indices currentLv = do
-      let name = varName <> Text.pack (showTensorIndices indices)
-      let tensorVariableInfo = TensorVariableInfo name (Just (toTensorVar var, indices)) Nothing
-      ([tensorVariableInfo], ZeroDimTensor $ fromLv currentLv, VBoundVar currentLv [])
-
-    go ::
-      TensorShape ->
-      TensorIndices ->
-      Supply Lv ([TensorVariableInfo], Tensor TensorVariable, Value Builtin)
-    go dims indices = case dims of
-      [] -> elementVariable (reverse indices) <$> demand
-      d : ds -> do
-        -- Use the list monad to create a nested list of all possible indices into the tensor
-        let allIndices = [0 .. d - 1]
-
-        -- Generate the corresponding names from the indices
-        (elementVarNames, elementVars, elementExprs) <- unzip3 <$> traverse (\i -> go ds (i : indices)) allIndices
-        let varsNames = concat elementVarNames
-        let vars = stack ds elementVars
-        let args = StackTensorArgs (implicit INatType) (INatLiteral d) (implicit $ mkDims ds) elementExprs
-        let varsExpr = mkExpr accessStackTensor args
-        return (varsNames, vars, varsExpr)
-
 newtype NetworkIOElementVariable = NetworkIOElementVariable Lv
-  deriving (Ord, Eq)
+  deriving (Ord, Eq, Generic)
+
+instance NFData NetworkIOElementVariable
+
+instance ToJSON NetworkIOElementVariable
+
+instance FromJSON NetworkIOElementVariable
+
+instance VariableLike NetworkIOElementVariable where
+  toLv = coerce
+  fromLv = coerce
+
+instance TensorVariableLike NetworkIOElementVariable where
+  toTensorVar = coerce
 
 --------------------------------------------------------------------------------
 -- Constants

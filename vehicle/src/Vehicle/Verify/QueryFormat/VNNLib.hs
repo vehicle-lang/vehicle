@@ -4,6 +4,7 @@ import Control.Monad (forM)
 import Data.List.NonEmpty qualified as NonEmpty
 import Vehicle.Compile.Prelude
 import Vehicle.Data.QuantifiedVariable (prettyRationalAsFloat)
+import Vehicle.Syntax.Tensor (flattenIndices)
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
 import Vehicle.Verify.QueryFormat.Interface
@@ -33,9 +34,10 @@ outputFormat =
 
 -- | Compiles an individual variable
 compileVNNLibVar :: CompileQueryVariable
-compileVNNLibVar inputOrOutput ioIndex = do
+compileVNNLibVar QueryVariableInfo {..} = do
   let name = if inputOrOutput == Input then "X" else "Y"
-  layoutAsText $ name <> "_" <> pretty ioIndex
+  let index = flattenIndices parentVariableShape parentVariableIndices
+  layoutAsText $ name <> "_" <> pretty index
 
 -- | Compiles an expression representing a single VNNLib query.
 compileVNNLibQuery :: CompileQuery

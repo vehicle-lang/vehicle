@@ -34,7 +34,6 @@ import Vehicle.Data.Builtin.Interface.Normalise (evalAt, evalCompareRatTensor, e
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.Interface
-import Vehicle.Data.Code.LinearExpr (VariableLike (..))
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
 import Vehicle.Data.QuantifiedVariable
@@ -263,23 +262,29 @@ unblockNetworkApplication ::
   NetworkApplication ->
   m (Value Builtin)
 unblockNetworkApplication networkApp@(networkName, NetworkAppArgs arg) = do
-  globalCtx <- get
-  case LinkedHashMap.lookup networkApp (networkApplications globalCtx) of
-    Just existingAppInfo ->
-      return $ VBoundVar (toLv $ outputVariable existingAppInfo) []
-    Nothing -> do
-      networkContext <- asks networkCtx
-      networkInfo <- case Map.lookup networkName networkContext of
-        Nothing -> compilerDeveloperError $ "Expecting" <+> quotePretty networkName <+> "to be a @network"
-        Just info -> return info
+  nameCtx <- getNameContext
+  let doc = "unblock-network-app" <+> pretty networkName <+> prettyFriendly (WithContext arg nameCtx)
+  logCompilerSection MaxDetail doc $ do
+    globalCtx <- get
+    case LinkedHashMap.lookup networkApp (networkApplications globalCtx) of
+      Just existingAppInfo ->
+        return $ variableValue (outputVariable existingAppInfo)
+      Nothing -> do
+        networkContext <- asks networkCtx
+        networkInfo <- case Map.lookup networkName networkContext of
+          Nothing -> compilerDeveloperError $ "Expecting" <+> quotePretty networkName <+> "to be a @network"
+          Just info -> return info
 
-      (inputVarExpr, outputVarExpr, newGlobalCtx) <- addNetworkApplicationToGlobalCtx networkApp networkInfo globalCtx
-      let inputDims = dimensions (inputTensor (networkType networkInfo))
-      let inputDimsExpr = implicitIrrelevant $ mkDims inputDims
-      let inputEquality = fromBoolValue $ VCompareRatTensorReduced (Eq, TensorOp2Args inputDimsExpr inputVarExpr arg)
-      put newGlobalCtx
-      tell [inputEquality]
-      return outputVarExpr
+        (inputVarExpr, outputVarExpr, newGlobalCtx) <- addNetworkApplicationToGlobalCtx networkApp networkInfo globalCtx
+        let inputDims = dimensions (inputTensor (networkType networkInfo))
+        let inputDimsExpr = implicitIrrelevant $ mkDims inputDims
+        let inputEquality = fromBoolValue $ VCompareRatTensorReduced (Eq, TensorOp2Args inputDimsExpr inputVarExpr arg)
+        put newGlobalCtx
+        newNameCtx <- getNameContext
+        logDebug MaxDetail $ "note-input-equality" <+> prettyFriendly (WithContext inputEquality newNameCtx)
+        tell [inputEquality]
+        logDebug MaxDetail $ "new-expr" <+> prettyFriendly (WithContext outputVarExpr newNameCtx)
+        return outputVarExpr
 
 --------------------------------------------------------------------------------
 -- Elimination operations
@@ -342,7 +347,7 @@ eliminateExists binder (Closure env body) = do
     put newGlobalCtx
 
     -- Normalise the expression
-    let newEnv = extendEnvWithDefined (VBoundVar (toLv userVar) []) binder env
+    let newEnv = extendEnvWithDefined (variableValue userVar) binder env
     normExpr <- normaliseInEnv newEnv body
 
     -- Recursively compile the expression.

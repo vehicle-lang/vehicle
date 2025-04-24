@@ -11,6 +11,7 @@ import Vehicle.Compile.Error (CompileError (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Data.QuantifiedVariable (prettyRationalAsFloat)
 import Vehicle.Prelude.Warning
+import Vehicle.Syntax.Tensor (flattenIndices)
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
 import Vehicle.Verify.QueryFormat.Interface
@@ -40,9 +41,10 @@ outputFormat =
 
 -- | Compiles an individual variable
 compileMarabouVar :: CompileQueryVariable
-compileMarabouVar inputOrOutput ioIndex = do
+compileMarabouVar QueryVariableInfo {..} = do
   let name = if inputOrOutput == Input then "x" else "y"
-  layoutAsText $ name <> pretty ioIndex
+  let index = flattenIndices parentVariableShape parentVariableIndices
+  layoutAsText $ name <> pretty index
 
 -- | Compiles an expression representing a single Marabou query.
 compileMarabouQuery :: CompileQuery

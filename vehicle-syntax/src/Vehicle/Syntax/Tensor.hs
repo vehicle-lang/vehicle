@@ -13,7 +13,7 @@ import Data.Vector qualified as Vector
 import Data.Vector.Instances ()
 import Data.Vector.Serialize ()
 import GHC.Generics (Generic)
-import Prettyprinter (Pretty (..), concatWith, surround, (<+>))
+import Prettyprinter (Doc, Pretty (..), concatWith, surround, (<+>))
 import Vehicle.Syntax.Prelude (developerError)
 
 --------------------------------------------------------------------------------
@@ -25,6 +25,10 @@ type TensorIndices = [Int]
 
 showTensorIndices :: TensorIndices -> String
 showTensorIndices xs = concatMap (\v -> "!" <> show v) (reverse xs)
+
+flattenIndices :: TensorIndices -> TensorShape -> Int
+flattenIndices indices shape =
+  sum $ zipWith (*) indices (scanr1 (*) (1 : init shape))
 
 class HasShape a where
   shapeOf :: a -> TensorShape
@@ -109,6 +113,9 @@ instance Traversable Tensor where
       Constant v -> Constant <$> f v
       Values vs -> Values <$> traverse f vs
 
+instance HasShape (Tensor a) where
+  shapeOf = tensorShape
+
 tensorToVector :: Tensor a -> Vector a
 tensorToVector (Tensor shape values) =
   tensorValuesToVector shape values
@@ -175,8 +182,13 @@ foldMapTensorLike mkValue mkVec (_ : ds) xs = do
   let elems = fmap (foldMapTensorLike mkValue mkVec ds) inputVarIndicesChunks
   mkVec ds elems
 
+prettyTensor :: (a -> Doc b) -> Tensor a -> Doc b
+prettyTensor prettyElement = do
+  let prettyRow _dims bs = "[" <+> concatWith (surround ", ") bs <+> "]"
+  foldMapTensor prettyElement prettyRow
+
 instance (Pretty a) => Pretty (Tensor a) where
-  pretty = foldMapTensor pretty (\_dims bs -> "[" <+> concatWith (surround ", ") bs <+> "]")
+  pretty = prettyTensor pretty
 
 type BoolTensor = Tensor Bool
 

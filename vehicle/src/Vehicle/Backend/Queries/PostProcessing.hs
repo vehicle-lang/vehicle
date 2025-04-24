@@ -4,17 +4,16 @@ module Vehicle.Backend.Queries.PostProcessing
 where
 
 import Control.Monad (forM, unless, when)
-import Control.Monad.Reader (MonadReader (..))
-import Control.Monad.State (gets)
 import Data.Bifunctor (Bifunctor (..))
+import Data.Coerce (coerce)
 import Data.Foldable (foldlM)
 import Data.LinkedHashMap qualified as LinkedHashMap
-import Data.List (sort, sortOn)
+import Data.List (sort)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Tuple (swap)
@@ -25,12 +24,12 @@ import Vehicle.Data.Assertion
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.QuantifiedVariable
-import Vehicle.Data.Tensor (isZeroDimensional, tensorShape, tensorToList)
+import Vehicle.Data.Tensor hiding (Constant)
 import Vehicle.Prelude.Warning (CompileWarning (..))
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
 import Vehicle.Verify.QueryFormat.Interface
-import Vehicle.Verify.Specification (QueryMetaData (..), UserVariableCompilationStep (..), VariableCompilationTrace (..), VariableStore, getQueryVariables)
+import Vehicle.Verify.Specification (QueryMetaData (..), UserVariableCompilationStep (..), VariableCompilationTrace (..), VariableStore (..), getQueryVariables)
 import Vehicle.Verify.Specification.IO (writeVerificationQuery)
 
 --------------------------------------------------------------------------------
@@ -38,7 +37,7 @@ import Vehicle.Verify.Specification.IO (writeVerificationQuery)
 
 -- | Converts a set of partitions to a set of individual queries
 compilePartitionsToQueries ::
-  (MonadLogger m, MonadStdIO m, MonadSupply QueryID m) =>
+  (MonadCompile m, MonadStdIO m, MonadSupply QueryID m) =>
   GlobalCtx ->
   PropertyMetaData ->
   Partitions TensorVariable ->
@@ -56,7 +55,7 @@ compilePartitionsToQueries globalCtx metaData partitions = do
   return $ disjunctDisjuncts allQueries
 
 compilePartitionToQuery ::
-  (MonadLogger m, MonadStdIO m, MonadSupply QueryID m) =>
+  (MonadCompile m, MonadStdIO m, MonadSupply QueryID m) =>
   GlobalCtx ->
   PropertyMetaData ->
   [UserVariableCompilationStep] ->
@@ -78,8 +77,6 @@ compilePartitionToQuery globalCtx PropertyMetaData {..} compilationSteps asserti
     -- Convert to query variables
     (variableStore, queryAssertions) <-
       compileQueryVariables globalCtx (compileVariable queryFormat) metaNetworkApps assertions
-
-    logDebug MaxDetail $ "Variable mapping:" <+> pretty variableStore
 
     -- Construct the meta-data object
     let reconstruction = Reconstruction compilationSteps
@@ -110,7 +107,8 @@ reduceAllRemainingNetworkTensorVariables globalCtx (compilationTrace, assertions
   logCompilerPass MaxDetail "eliminating remaining tensor assertions" $ do
     -- Update the compilation trace
     let networkTensorVars = sort $ Set.toList (networkTensorVariables globalCtx)
-    let mkStep var = ReconstructNetworkTensor var (lookupNetworkElementVariables globalCtx var)
+    let findElementVars var = coerce $ lookupNetworkElementVariables globalCtx var
+    let mkStep var = ReconstructTensorVariable (coerce var) (findElementVars var)
     let newSteps = foldr (\v -> (mkStep v :)) compilationTrace networkTensorVars
 
     -- Create the assertions
@@ -130,8 +128,10 @@ reduceAllRemainingNetworkTensorVariables globalCtx (compilationTrace, assertions
       Assertion TensorVariable ->
       m (BooleanExpr (Assertion NetworkIOElementVariable))
     convert (NormalisedRelation relation linearExpr)
-      | isZeroDimensional linearExpr =
-          return $ Query $ NormalisedRelation relation _
+      | isZeroDimensional linearExpr = do
+          -- TODO maybe we should actually check here rather than just casting
+          let castExpr = mapVariables coerce linearExpr
+          return $ Query $ NormalisedRelation relation castExpr
       | otherwise = do
           let rationalEqualities = reduceTensorExpr globalCtx linearExpr
           let reducedAssertions = fmap (Query . NormalisedRelation OEq) rationalEqualities
@@ -195,7 +195,7 @@ makeMetaNetwork = fmap $ \NetworkApplicationReplacement {..} ->
 
 -- | Checks for presence of under-constrained input variables.
 checkIfNetworkInputsBounded ::
-  (MonadCompile m, MonadReader PropertyMetaData m) =>
+  (MonadCompile m) =>
   GlobalCtx ->
   QueryFormatID ->
   QueryAddress ->
@@ -285,29 +285,36 @@ compileQueryVariables ::
   [NetworkApplicationReplacement] ->
   ConjunctAll (QueryAssertion NetworkIOElementVariable) ->
   m (VariableStore, ConjunctAll (QueryAssertion QueryVariable))
-compileQueryVariables globalCtx compileVariable metaNetworkApps assertions = do
+compileQueryVariables globalCtx@GlobalCtx {..} compileVariable metaNetworkApps assertions = do
   -- Compute the set of new input and output variables
-  let initialState = IndexingState mempty mempty mempty
+  let initialState = IndexingState mempty mempty
   let compileVarsFn = compileTensorVariable compileVariable globalCtx
-  indexingState@IndexingState {..} <- foldlM compileVarsFn initialState metaNetworkApps
+  indexingState <- foldlM compileVarsFn initialState metaNetworkApps
 
   -- Make the queries more asthetically pleasing
-  let prettifiedAssertions = prettifyQueryContents indexingState assertions
+  let nameCtx = completeNamedCtx globalCtx
+  let prettifiedAssertions = prettifyQueryContents nameCtx indexingState assertions
 
   -- Substitute them through the assertions
-  let sortedVariableStore = sortOn (\(v, _, _) -> v) variableStore
-  let substitution = Map.fromList (mapMaybe (\(v, _, s) -> fmap (v,) s) sortedVariableStore)
+  let queryVariableMapping = Map.union (networkInputVariables indexingState) (networkOutputVariables indexingState)
+  let substitution = Map.fromList (swap <$> Map.toList queryVariableMapping)
   let newAssertions = fmap (substAssertionVariables substitution) prettifiedAssertions
 
-  return (sortedVariableStore, newAssertions)
+  let variableStore =
+        VariableStore
+          { queryVariableMapping = queryVariableMapping,
+            vehicleVariableCtx = nameCtx,
+            userVariables = userTensorVariables
+          }
+  return (variableStore, newAssertions)
 
 data IndexingState = IndexingState
-  { networkInputVariables :: [NetworkIOElementVariable],
-    networkOutputVariables :: [NetworkIOElementVariable],
-    variableStore :: VariableStore
+  { networkInputVariables :: Map QueryVariable NetworkIOElementVariable,
+    networkOutputVariables :: Map QueryVariable NetworkIOElementVariable
   }
 
 compileTensorVariable ::
+  forall m.
   (MonadCompile m) =>
   CompileQueryVariable ->
   GlobalCtx ->
@@ -315,21 +322,45 @@ compileTensorVariable ::
   NetworkApplicationReplacement ->
   m IndexingState
 compileTensorVariable compileQueryVar globalCtx IndexingState {..} NetworkApplicationReplacement {..} = do
-  inputChildVars <- gets (lookupChildVariables inputVariable)
-  outputChildVars <- gets (lookupChildVariables outputVariable)
-
-  let inputElementVars = maybe [] tensorToList inputChildVars
-  let outputElementVars = maybe [] tensorToList outputChildVars
-
-  let inputQueryVars = fmap (compileQueryVar _) inputElementVars
-  let outputQueryVars = fmap (compileQueryVar _) outputElementVars
-
+  inputChildVars <- compileVariables Input inputVariable
+  outputChildVars <- compileVariables Input outputVariable
   return $
     IndexingState
-      { networkInputVariables = inputElementVars <> networkInputVariables,
-        networkOutputVariables = outputElementVars <> networkOutputVariables,
-        variableStore = [tensorEntry] <> elementEntries <> variableStore
+      { networkInputVariables = inputChildVars <> networkInputVariables,
+        networkOutputVariables = outputChildVars <> networkOutputVariables
       }
+  where
+    compileVariables ::
+      InputOrOutput ->
+      NetworkIOVariable ->
+      m (Map QueryVariable NetworkIOElementVariable)
+    compileVariables inputOrOutput var = do
+      let TensorVariableInfo {..} = lookupTensorVariableInfo var globalCtx
+      let childVars = case childrenVariables of
+            Nothing -> ZeroDimTensor $ coerce var
+            Just (childVariables, _) -> coerce childVariables
+      let compileVar = compileQueryVariable variableName inputOrOutput (shapeOf childVars)
+      networkQueryVarPairs <- traverse compileVar (tensorToList childVars)
+      return $ Map.fromList networkQueryVarPairs
+
+    compileQueryVariable ::
+      Name ->
+      InputOrOutput ->
+      TensorShape ->
+      NetworkIOElementVariable ->
+      m (QueryVariable, NetworkIOElementVariable)
+    compileQueryVariable parentVarName io parentShape var = do
+      let varInfo = lookupTensorVariableInfo var globalCtx
+      let indices = maybe [] snd (parentVariable varInfo)
+      let queryInfo =
+            QueryVariableInfo
+              { inputOrOutput = io,
+                parentVariableName = parentVarName,
+                parentVariableShape = parentShape,
+                parentVariableIndices = indices
+              }
+      let compiledVar = compileQueryVar queryInfo
+      return (compiledVar, var)
 
 substAssertionVariables ::
   Map NetworkIOElementVariable QueryVariable ->
@@ -348,27 +379,35 @@ substAssertionVariables subst QueryAssertion {..} = do
 -- Step 5: prettyify assertions
 
 prettifyQueryContents ::
+  CompleteNamedBoundCtx ->
   IndexingState ->
   ConjunctAll (QueryAssertion NetworkIOElementVariable) ->
   ConjunctAll (QueryAssertion NetworkIOElementVariable)
-prettifyQueryContents indexingState (ConjunctAll conjuncts) = do
-  let optimisedConjuncts = fmap (optimiseAssertionReadability indexingState) conjuncts
+prettifyQueryContents ctx indexingState (ConjunctAll conjuncts) = do
+  let optimiseFn = optimiseAssertionReadability ctx indexingState
+  let optimisedConjuncts = fmap optimiseFn conjuncts
   ConjunctAll $ NonEmpty.sortBy compareAssertion optimisedConjuncts
 
 -- | Applies various optimisations to an assertion to improve readability:
 optimiseAssertionReadability ::
+  CompleteNamedBoundCtx ->
   IndexingState ->
   QueryAssertion NetworkIOElementVariable ->
   QueryAssertion NetworkIOElementVariable
-optimiseAssertionReadability IndexingState {..} (QueryAssertion lhs rel rhs) = do
-  let variableList = sort networkInputVariables <> sort networkOutputVariables
+optimiseAssertionReadability ctx IndexingState {..} (QueryAssertion lhs rel rhs) = do
+  let variableList = sort (Map.elems networkInputVariables) <> sort (Map.elems networkOutputVariables)
   let variableIndexMap = Map.fromList $ zip variableList [(0 :: Int) ..]
   let missingVar v = do
-        let (_, n, _) = lookupLvInBoundCtx v variableStore
+        let n = lookupLvInBoundCtx (toLv v) ctx
         developerError $ "Missing network variable" <+> pretty n
   let getIndex v = fromMaybe (missingVar v) $ Map.lookup v variableIndexMap
-  -- Put positive coefficients before negative ones, inputs before outputs, and then sort by index
-  let sortedLHS = NonEmpty.sortWith (\(c, v) -> (negate (abs c), getIndex v)) lhs
+
+  -- Sort the assertion by putting:
+  --   - positive coefficients before negative ones,
+  --   - inputs before outputs
+  --   - finally sort by index
+  let sortedLHS =
+        NonEmpty.sortWith (\(c, v) -> (negate (abs c), getIndex v)) lhs
 
   -- Make the properties a tiny bit nicer by checking if all the vars are
   -- negative and if so negating everything.

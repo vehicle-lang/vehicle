@@ -64,5 +64,5 @@ statusSymbol verified = do
   setTextColour colour symbol
 
 prettyUserVariableAssignment :: (Name, RatTensor) -> Doc a
-prettyUserVariableAssignment (var, variableValue) =
-  pretty var <> ":" <+> pretty variableValue
+prettyUserVariableAssignment (var, value) =
+  pretty var <> ":" <+> pretty value

@@ -8,8 +8,9 @@ import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
 import GHC.Generics (Generic)
 import Vehicle.Data.DeBruijn (Lv)
-import Vehicle.Data.Tensor (RatTensor, Tensor (..), allTensor, zipWithTensor, pattern ZeroDimTensor)
+import Vehicle.Data.Tensor (HasShape, RatTensor, Tensor (..), allTensor, zipWithTensor, pattern ZeroDimTensor)
 import Vehicle.Prelude
+import Vehicle.Syntax.Tensor (HasShape (..))
 
 -------------------------------------------------------------------------------
 -- Variables
@@ -61,6 +62,20 @@ instance (NFData variable, NFData constant) => NFData (LinearExpr variable const
 instance (ToJSONKey variable, ToJSON constant) => ToJSON (LinearExpr variable constant)
 
 instance (Ord variable, FromJSONKey variable, FromJSON constant) => FromJSON (LinearExpr variable constant)
+
+instance (HasShape constant) => HasShape (LinearExpr variable constant) where
+  shapeOf = shapeOf . constantValue
+
+mapVariables ::
+  (Ord variable2) =>
+  (variable1 -> variable2) ->
+  LinearExpr variable1 constant ->
+  LinearExpr variable2 constant
+mapVariables f Sparse {..} =
+  Sparse
+    { coefficients = Map.mapKeys f coefficients,
+      ..
+    }
 
 constantExpr :: (Ord variable) => constant -> LinearExpr variable constant
 constantExpr = Sparse mempty

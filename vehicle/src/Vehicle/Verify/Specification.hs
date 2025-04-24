@@ -16,20 +16,21 @@ module Vehicle.Verify.Specification
     PropertyVerificationPlan (..),
     UserVariableCompilationStep (..),
     VariableCompilationTrace (..),
-    VariableStore,
+    VariableStore (..),
     getQueryVariables,
-    getUserVariables,
     getVehicleVariableCtx,
     getQueryVariableMap,
+    getUserVariables,
   )
 where
 
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Map (Map)
-import Data.Maybe (mapMaybe)
+import Data.Map qualified as Map
+import Data.Set (Set)
 import GHC.Generics (Generic)
-import Vehicle.Compile.Prelude (GenericBoundCtx, Lv, Name)
+import Vehicle.Compile.Prelude (CompleteNamedBoundCtx, Name)
 import Vehicle.Data.Assertion
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.LinearExpr
@@ -47,8 +48,7 @@ import Vehicle.Verify.QueryFormat.Core
 data UserVariableCompilationStep
   = SolveEquality UserVariable (LinearExpr TensorVariable RatTensor)
   | SolveInequalities UserVariable (Bounds TensorVariable RatTensor)
-  | ReconstructUserTensor UserVariable (Tensor UserVariable)
-  | ReconstructNetworkTensor NetworkIOVariable (Tensor NetworkIOVariable)
+  | ReconstructTensorVariable TensorVariable (Tensor TensorVariable)
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData UserVariableCompilationStep
@@ -79,24 +79,34 @@ instance FromJSON VariableCompilationTrace
 
 -- Storing the Variable is unnessary and is just for readability. We can get
 -- rid of it if we switch to a non-human readable format for the .vcl-plan files.
-type VariableStore = GenericBoundCtx (Lv, Name, Maybe QueryVariable)
+data VariableStore = VariableStore
+  { queryVariableMapping :: Map QueryVariable NetworkIOElementVariable,
+    vehicleVariableCtx :: CompleteNamedBoundCtx,
+    userVariables :: Set UserVariable
+  }
+  deriving (Generic)
+
+instance NFData VariableStore
+
+instance ToJSON VariableStore
+
+instance FromJSON VariableStore
 
 {-
 getQueryVariableCtx :: VariableCompilationTrace -> GenericBoundCtx (Maybe QueryVariable)
 getQueryVariableCtx d = fmap (\(_, _, c) -> c) (variableStore d)
-
 -}
-getVehicleVariableCtx :: VariableStore -> GenericBoundCtx Name
-getVehicleVariableCtx = fmap (\(_, b, _) -> b)
+getVehicleVariableCtx :: VariableStore -> CompleteNamedBoundCtx
+getVehicleVariableCtx VariableStore {..} = vehicleVariableCtx
 
-getUserVariables :: VariableStore -> [UserVariable]
-getUserVariables = _
+getUserVariables :: VariableStore -> Set UserVariable
+getUserVariables VariableStore {..} = userVariables
 
 getQueryVariables :: VariableStore -> [QueryVariable]
-getQueryVariables = _
+getQueryVariables VariableStore {..} = Map.keys queryVariableMapping
 
 getQueryVariableMap :: VariableStore -> Map QueryVariable NetworkIOElementVariable
-getQueryVariableMap = _
+getQueryVariableMap = queryVariableMapping
 
 --------------------------------------------------------------------------------
 -- Query meta data

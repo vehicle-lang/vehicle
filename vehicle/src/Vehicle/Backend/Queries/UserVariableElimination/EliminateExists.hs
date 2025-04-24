@@ -115,7 +115,7 @@ solveVariableByReducing ::
   m (MaybeTrivial (Partitions TensorVariable))
 solveVariableByReducing compilationTrace userVar userElementVars originalTree = do
   logDebug MaxDetail "No equality constraints on original tensor variable found"
-  let step = ReconstructUserTensor userVar userElementVars
+  let step = ReconstructTensorVariable (coerce userVar) (coerce userElementVars)
   let initial = mkSingletonPartitions (step : compilationTrace, NonTrivial originalTree)
   foldlM solveExists initial (tensorToList userElementVars)
 

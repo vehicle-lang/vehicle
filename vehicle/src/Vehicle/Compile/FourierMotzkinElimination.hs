@@ -79,10 +79,10 @@ partition var = foldr categorise (Bounds [] [], [])
 reconstructFourierMotzkinVariableValue ::
   forall variable.
   (VariableLike variable) =>
-  Map variable RatTensor ->
   Bounds variable RatTensor ->
+  Map variable RatTensor ->
   Either variable RatTensor
-reconstructFourierMotzkinVariableValue assignment solution = do
+reconstructFourierMotzkinVariableValue solution assignment = do
   let initialMax = (-infinity, NonStrict)
   let initialMin = (infinity, NonStrict)
   (lowerBound, minRel) <- foldM evaluateMaxValue initialMax (lowerBounds solution)

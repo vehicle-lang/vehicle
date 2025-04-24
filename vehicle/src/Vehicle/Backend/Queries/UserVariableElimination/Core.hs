@@ -14,6 +14,7 @@ import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
+import Data.Text qualified as Text
 import Vehicle.Compile.Context.Bound.Class (MonadBoundContext (..))
 import Vehicle.Compile.Context.Free.Class (MonadFreeContext)
 import Vehicle.Compile.Context.Name (MonadNameContext, getNameContext)
@@ -25,8 +26,9 @@ import Vehicle.Compile.Resource (NetworkType (..), dimensions)
 import Vehicle.Data.Assertion
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Code.BooleanExpr
-import Vehicle.Data.Code.Interface (NetworkAppArgs)
+import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.LinearExpr
+import Vehicle.Data.Code.TypedView (RatTensorValue (VRatStackTensor), TypeValue (..), fromRatTensorValue, fromTypeValue)
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Hashing ()
 import Vehicle.Data.QuantifiedVariable
@@ -78,6 +80,9 @@ emptyGlobalCtx =
       networkApplications = LinkedHashMap.empty
     }
 
+completeNamedCtx :: GlobalCtx -> CompleteNamedBoundCtx
+completeNamedCtx GlobalCtx {..} = fmap variableName globalBoundVarCtx
+
 lookupTensorVariableInfo ::
   (TensorVariableLike variable) =>
   variable ->
@@ -104,8 +109,77 @@ lookupChildVariables var ctx = do
   let userInfo = lookupTensorVariableInfo var ctx
   fst <$> childrenVariables userInfo
 
+lookupZeroDimVariables ::
+  (TensorVariableLike variable) =>
+  variable ->
+  GlobalCtx ->
+  Tensor TensorVariable
+lookupZeroDimVariables var ctx =
+  fromMaybe (ZeroDimTensor (toTensorVar var)) (lookupChildVariables var ctx)
+
 addVectorVarToBoundVarCtx :: [TensorVariableInfo] -> GenericBoundCtx TensorVariableInfo -> GenericBoundCtx TensorVariableInfo
 addVectorVarToBoundVarCtx newVars ctx = reverse newVars <> ctx
+
+reduceTensorVariable ::
+  forall variable.
+  (TensorVariableLike variable) =>
+  variable ->
+  Name ->
+  TensorShape ->
+  [TensorVariableInfo]
+reduceTensorVariable var varName shape = do
+  let (reducedVariablesInfo, reducedVariables) = case shape of
+        [] -> (mempty, Nothing)
+        _ -> do
+          let (reducedVarsInfo, tensors) = runSupply [toLv var + 1 ..] $ go shape []
+
+          (reducedVarsInfo, Just (tensors, tensorVariablesToExpr tensors))
+  let variableInfo =
+        TensorVariableInfo
+          { variableName = varName,
+            parentVariable = Nothing,
+            childrenVariables = reducedVariables
+          }
+  variableInfo : reducedVariablesInfo
+  where
+    elementVariable ::
+      TensorIndices ->
+      Lv ->
+      ([TensorVariableInfo], Tensor TensorVariable)
+    elementVariable indices currentLv = do
+      let name = varName <> Text.pack (showTensorIndices indices)
+      let tensorVariableInfo = TensorVariableInfo name (Just (toTensorVar var, indices)) Nothing
+      ([tensorVariableInfo], ZeroDimTensor $ fromLv currentLv)
+
+    go ::
+      TensorShape ->
+      TensorIndices ->
+      Supply Lv ([TensorVariableInfo], Tensor TensorVariable)
+    go dims indices = case dims of
+      [] -> elementVariable (reverse indices) <$> demand
+      d : ds -> do
+        -- Use the list monad to create a nested list of all possible indices into the tensor
+        let allIndices = [0 .. d - 1]
+
+        -- Generate the corresponding names from the indices
+        (elementVarNames, elementVars) <- unzip <$> traverse (\i -> go ds (i : indices)) allIndices
+        let varsNames = concat elementVarNames
+        let vars = stack ds elementVars
+        return (varsNames, vars)
+
+tensorVariablesToExpr :: Tensor TensorVariable -> Value Builtin
+tensorVariablesToExpr = foldMapTensor mkElem mkRow
+  where
+    mkElem :: TensorVariable -> Value Builtin
+    mkElem v = VBoundVar (toLv v) mempty
+
+    mkRow :: TensorShape -> [Value Builtin] -> Value Builtin
+    mkRow ds xs = do
+      let dim = INatLiteral (length xs)
+      let dims = mkDims ds
+      let typ = fromTypeValue $ VRatTensorType dims
+      let args = StackTensorArgs (implicit typ) dim (implicit dims) xs
+      fromRatTensorValue $ VRatStackTensor args
 
 addUserVarToGlobalContext ::
   (MonadLogger m) =>
@@ -115,7 +189,7 @@ addUserVarToGlobalContext ::
   m (UserVariable, GlobalCtx)
 addUserVarToGlobalContext userVarName shape GlobalCtx {..} = do
   -- Create the unreduced and reduced versions of the user variables.
-  let userVar = mkUserVariable $ Lv $ length globalBoundVarCtx
+  let userVar = UserVariable $ Lv $ length globalBoundVarCtx
   let newVarsTelescope = reduceTensorVariable userVar userVarName shape
   let newCtx = addVectorVarToBoundVarCtx newVarsTelescope globalBoundVarCtx
   let newUserVars = Set.insert userVar userTensorVariables
@@ -141,14 +215,14 @@ addNetworkApplicationToGlobalCtx app@(networkName, _) networkInfo GlobalCtx {..}
   -- Create a single variable for the input of the network to
   -- (avoiding prematurely normalising so that we can potentially solve
   -- user tensor variables in terms of it).
-  let inputVar = mkNetworkTensorVariable $ Lv ctxSize
+  let inputVar = NetworkIOVariable $ Lv ctxSize
   let inputShape = dimensions (inputTensor (networkType networkInfo))
   let inputVarName = layoutAsText $ createNetworkVarName networkName applicationNumber Input
   let inputVarsTelescope = reduceTensorVariable inputVar inputVarName inputShape
   let inputVarExpr = VBoundVar (toLv inputVar) []
 
   -- Create a tensor of variables for the output of the network.
-  let outputVar = mkNetworkTensorVariable $ Lv (ctxSize + 1 + length inputVarsTelescope)
+  let outputVar = NetworkIOVariable $ Lv (ctxSize + length inputVarsTelescope)
   let outputShape = dimensions (outputTensor (networkType networkInfo))
   let outputVarName = layoutAsText $ createNetworkVarName networkName applicationNumber Output
   let outputVarsTelescope = reduceTensorVariable outputVar outputVarName outputShape

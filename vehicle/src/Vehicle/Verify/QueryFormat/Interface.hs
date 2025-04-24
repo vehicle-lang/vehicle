@@ -4,24 +4,26 @@ import Control.Monad.Except (MonadError)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Text (Text)
 import Vehicle.Compile.Error (CompileError)
-import Vehicle.Compile.Prelude (Coefficient, ExternalOutputFormat, InputOrOutput, MonadLogger, Pretty (..))
+import Vehicle.Compile.Prelude (Coefficient, ExternalOutputFormat, InputOrOutput, MonadLogger, Name, Pretty (..))
 import Vehicle.Data.Code.BooleanExpr (ConjunctAll)
+import Vehicle.Data.Tensor (TensorIndices, TensorShape)
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
 
 -- | Returns the string representation used by the query format
 -- for a given network variable.
 type CompileQueryVariable =
-  -- Does this variable represent an input or an output
-  InputOrOutput ->
-  -- The shape of the overall tensor that contains the element variable.
-  -- TensorShape ->
-  -- The location of the element variable in the overall tensor.
-  -- TensorIndices ->
   -- The position of the variable in the list of all input/output variables
-  Int ->
+  QueryVariableInfo ->
   -- The returned string representation.
   QueryVariable
+
+data QueryVariableInfo = QueryVariableInfo
+  { inputOrOutput :: InputOrOutput,
+    parentVariableName :: Name,
+    parentVariableShape :: TensorShape,
+    parentVariableIndices :: TensorIndices
+  }
 
 -- A single assertion for a query.
 data QueryAssertion variable = QueryAssertion
