@@ -23,6 +23,8 @@ import Data.Bifunctor (Bifunctor (..))
 import Data.Foldable qualified as NonEmpty
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap (assocs)
+import Data.Map (Map)
+import Data.Map qualified as Map
 import Data.Text (Text)
 import GHC.Exts qualified as GHC (Constraint)
 import GHC.TypeLits
@@ -217,6 +219,7 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor tags (GenericArg expr `In` ctx) = (StrategyFor tags (expr `In` ctx))
   StrategyFor tags (GenericBinder expr `In` ctx) = (StrategyFor tags (expr `In` ctx))
   StrategyFor tags (Tensor a `In` ctx) = 'Functor (StrategyFor tags (a `In` ctx))
+  StrategyFor tags (Map a b `In` ctx) = 'Branch (StrategyFor tags (a `In` ctx)) (StrategyFor tags (b `In` ctx))
   -----------------
   -- Constraints --
   -----------------
@@ -432,6 +435,12 @@ instance
   PrettyUsing rest (NetworkIOVariable `In` ctx)
   where
   prettyUsing (var, ctx) = prettyUsing @rest (variableValue @NetworkIOVariable @Builtin var, ctx)
+
+instance
+  (PrettyUsing rest (Value Builtin `In` ctx)) =>
+  PrettyUsing rest (NetworkIOElementVariable `In` ctx)
+  where
+  prettyUsing (var, ctx) = prettyUsing @rest (variableValue @NetworkIOElementVariable @Builtin var, ctx)
 
 instance
   ( PrettyUsing restVar (TensorVariable `In` ctx),
@@ -782,3 +791,14 @@ instance
   PrettyUsing ('Functor rest) (Tensor a `In` ctx)
   where
   prettyUsing (t, ctx) = prettyTensor (\e -> prettyUsing @rest (e, ctx)) t
+
+instance
+  ( PrettyUsing restKey (a `In` ctx),
+    PrettyUsing restValue (b `In` ctx)
+  ) =>
+  PrettyUsing ('Branch restKey restValue) (Map a b `In` ctx)
+  where
+  prettyUsing (x, ctx) = do
+    let prettyKey v = prettyUsing @restKey (v, ctx)
+    let prettyValue v = prettyUsing @restValue (v, ctx)
+    prettyMapEntries $ fmap (bimap prettyKey prettyValue) (Map.toList x)

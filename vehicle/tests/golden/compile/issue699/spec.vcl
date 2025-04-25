@@ -8,6 +8,7 @@ validImage x = forall i j . 0 <= x ! i ! j <= 1
 @network
 classifier : Image -> Tensor Rat [10]
 
+scaler : Image -> Rat
 scaler x = classifier x ! 0 + classifier x ! 1 + classifier x ! 2 + classifier x ! 3 + classifier x ! 4 + classifier x ! 5 + classifier x ! 6 + classifier x ! 7 + classifier x ! 8 + classifier x ! 9
 
 scaleCOutput : Image -> Label -> Rat

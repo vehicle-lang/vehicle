@@ -26,8 +26,8 @@ type TensorIndices = [Int]
 showTensorIndices :: TensorIndices -> String
 showTensorIndices xs = concatMap (\v -> "!" <> show v) (reverse xs)
 
-flattenIndices :: TensorIndices -> TensorShape -> Int
-flattenIndices indices shape =
+flattenIndices :: TensorShape -> TensorIndices -> Int
+flattenIndices shape indices =
   sum $ zipWith (*) indices (scanr1 (*) (1 : init shape))
 
 class HasShape a where

@@ -275,7 +275,8 @@ instance ConvertableBuiltin DecidabilityBuiltin Builtin where
     DecidabilityBuiltinFunction f -> cheatConvertBuiltin p (pretty f)
 
 instance PrintableBuiltin DecidabilityBuiltin where
-  coercionArgs _ = Nothing
+  coercionArgs = const Nothing
+  isDerivedBuiltin = const Nothing
 
 --------------------------------------------------------------------------------
 -- Normalisation

@@ -18,7 +18,7 @@ import Vehicle.Data.Code.DSL
 import Vehicle.Data.Code.Expr
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.DSL
-import Vehicle.Prelude (GenericArg (..))
+import Vehicle.Prelude (GenericArg (..), HasIdentifier (identifierOf))
 import Vehicle.Syntax.Sugar (BinderType (..))
 
 -----------------------------------------------------------------------------
@@ -255,6 +255,10 @@ instance PrintableBuiltin Builtin where
     TypeClassOp FromNatTC {} -> Just $ \args -> argExpr $ last args
     TypeClassOp FromRatTC {} -> Just $ \args -> argExpr $ last args
     TypeClassOp VecLiteralTC {} -> Just $ \args -> normAppList (Builtin mempty b) args
+    _ -> Nothing
+
+  isDerivedBuiltin b = case b of
+    DerivedFunction f -> Just $ identifierOf f
     _ -> Nothing
 
 ---------------------------------------------------------------------------------

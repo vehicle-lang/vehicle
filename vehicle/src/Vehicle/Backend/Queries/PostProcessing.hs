@@ -20,6 +20,7 @@ import Data.Tuple (swap)
 import Vehicle.Backend.Queries.UserVariableElimination.Core
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Data.Assertion
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.LinearExpr
@@ -298,7 +299,7 @@ compileQueryVariables globalCtx@GlobalCtx {..} compileVariable metaNetworkApps a
   -- Substitute them through the assertions
   let queryVariableMapping = Map.union (networkInputVariables indexingState) (networkOutputVariables indexingState)
   let substitution = Map.fromList (swap <$> Map.toList queryVariableMapping)
-  let newAssertions = fmap (substAssertionVariables substitution) prettifiedAssertions
+  let newAssertions = fmap (substAssertionVariables nameCtx substitution) prettifiedAssertions
 
   let variableStore =
         VariableStore
@@ -323,7 +324,7 @@ compileTensorVariable ::
   m IndexingState
 compileTensorVariable compileQueryVar globalCtx IndexingState {..} NetworkApplicationReplacement {..} = do
   inputChildVars <- compileVariables Input inputVariable
-  outputChildVars <- compileVariables Input outputVariable
+  outputChildVars <- compileVariables Output outputVariable
   return $
     IndexingState
       { networkInputVariables = inputChildVars <> networkInputVariables,
@@ -363,17 +364,21 @@ compileTensorVariable compileQueryVar globalCtx IndexingState {..} NetworkApplic
       return (compiledVar, var)
 
 substAssertionVariables ::
+  CompleteNamedBoundCtx ->
   Map NetworkIOElementVariable QueryVariable ->
   QueryAssertion NetworkIOElementVariable ->
   QueryAssertion QueryVariable
-substAssertionVariables subst QueryAssertion {..} = do
+substAssertionVariables nameCtx subst QueryAssertion {..} = do
   let newLHS = fmap (second substVar) lhs
   QueryAssertion {lhs = newLHS, ..}
   where
     substVar :: NetworkIOElementVariable -> QueryVariable
     substVar var = case Map.lookup var subst of
-      Nothing -> developerError "Malformed network variable subsitution"
       Just newVar -> newVar
+      Nothing ->
+        developerError $
+          "Malformed network variable subsitution. Missing"
+            <+> prettyFriendly (WithContext var nameCtx)
 
 --------------------------------------------------------------------------------
 -- Step 5: prettyify assertions

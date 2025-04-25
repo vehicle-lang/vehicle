@@ -227,7 +227,8 @@ instance ConvertableBuiltin LinearityBuiltin Builtin where
     b -> cheatConvertBuiltin p $ pretty b
 
 instance PrintableBuiltin LinearityBuiltin where
-  coercionArgs _ = Nothing
+  coercionArgs = const Nothing
+  isDerivedBuiltin = const Nothing
 
 --------------------------------------------------------------------------------
 -- Normalisation

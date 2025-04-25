@@ -341,4 +341,5 @@ instance ConvertableBuiltin LossBuiltin Builtin where
     LossBuiltinFunction op -> convertBuiltin p op
 
 instance PrintableBuiltin LossBuiltin where
-  coercionArgs _ = Nothing
+  coercionArgs = const Nothing
+  isDerivedBuiltin = const Nothing

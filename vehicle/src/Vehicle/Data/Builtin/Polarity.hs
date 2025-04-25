@@ -204,6 +204,7 @@ instance ConvertableBuiltin PolarityBuiltin Builtin where
 
 instance PrintableBuiltin PolarityBuiltin where
   coercionArgs _ = Nothing
+  isDerivedBuiltin = const Nothing
 
 -----------------------------------------------------------------------------
 -- Normalisation

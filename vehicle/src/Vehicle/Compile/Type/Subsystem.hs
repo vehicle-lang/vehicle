@@ -43,18 +43,12 @@ linearityTypeCheck prog = do
 
 decidabilityTypeCheck :: (MonadCompile m) => Prog Builtin -> m (Prog DecidabilityBuiltin)
 decidabilityTypeCheck prog = do
-  instanceFreeProg <- resolveInstanceArgumentsAndCasts prog
-  -- For aesthetic reasons evaluate all `appendLists` that result from the `HasTensorTC` type-class resolution mechanism
-  appendListFreeProg <- resolveAppendLists instanceFreeProg
-  monoProg <-
-    monomorphise appendListFreeProg $
-      MonoSettings
-        { isMonomorphisableBinder = not . isExplicit
-        }
-  instanceFreeProg2 <- resolveInstanceArgumentsAndCasts monoProg
+  -- For aesthetic reasons evaluate all `appendLists` that result from
+  -- the `HasTensorTC` type-class resolution mechanism
+  appendListFreeProg <- resolveAppendLists prog
 
   -- Type-check with subsystem.
-  errorOrDecProg <- typeCheckWithSubsystem DecidabilityTypes decidabilityBuiltinInstances instanceFreeProg2
+  errorOrDecProg <- typeCheckWithSubsystem DecidabilityTypes decidabilityBuiltinInstances appendListFreeProg
   decProg <- case errorOrDecProg of
     Left err -> throwError err
     Right decProg -> return decProg
@@ -62,7 +56,8 @@ decidabilityTypeCheck prog = do
   monoDecProg <-
     monomorphise decProg $
       MonoSettings
-        { isMonomorphisableBinder = \binder -> not (isExplicit binder) || isDeclTypeClassBinder binder
+        { isMonomorphisableBinder = \binder -> not (isExplicit binder) || isDeclTypeClassBinder binder,
+          keepUnusedDeclaration = isUserCode
         }
   instanceFreeDecProg <- resolveInstanceArgumentsAndCasts monoDecProg
   return instanceFreeDecProg
@@ -93,12 +88,7 @@ simplifyTypes ::
   m (Prog Builtin)
 simplifyTypes prog = do
   irrelevantFreeProg <- removeIrrelevantCodeFromProg prog
-  monomorphisedProg <-
-    monomorphise irrelevantFreeProg $
-      MonoSettings
-        { isMonomorphisableBinder = not . isExplicit
-        }
-  implicitFreeProg <- removeImplicitArgs monomorphisedProg
+  implicitFreeProg <- removeImplicitArgs irrelevantFreeProg
   return implicitFreeProg
 
 resolveInstanceArgumentsAndCasts ::

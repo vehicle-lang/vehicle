@@ -40,8 +40,18 @@ import Vehicle.Data.Hashing ()
 --------------------------------------------------------------------------------
 -- Public interface
 
+-- Example of where you can't expand out literal casts until
+-- monomorphisation has been completed.
+--
+-- n : {{HasNatLiterals t}} -> t
+-- n = 1
+--
+-- t : Rat
+-- t = n {{fromNatToRat}}
+
 data MonomorphisationSettings builtin = MonoSettings
-  { isMonomorphisableBinder :: Binder builtin -> Bool
+  { isMonomorphisableBinder :: Binder builtin -> Bool,
+    keepUnusedDeclaration :: Identifier -> Bool
   }
 
 -- | Tries to monomorphise any polymorphic functions by creating a copy per
@@ -80,22 +90,32 @@ type MonadCollect builtin m =
     PrintableBuiltin builtin
   )
 
-monomorphiseProg :: (MonadCollect builtin m) => Prog builtin -> m (Prog builtin)
+monomorphiseProg ::
+  (MonadCollect builtin m) =>
+  Prog builtin ->
+  m (Prog builtin)
 monomorphiseProg (Main decls) = do
   logCompilerPass MaxDetail "collecting monomorphisation sites" $ do
-    Main . reverse . concat <$> traverse (monomorphiseDecls True) (reverse decls)
+    monoedDecls <- traverse monomorphiseDecls (reverse decls)
+    return $ Main $ reverse $ concat monoedDecls
 
-monomorphiseDecls :: (MonadCollect builtin m) => Bool -> Decl builtin -> m [Decl builtin]
-monomorphiseDecls top decl = do
+monomorphiseDecls ::
+  (MonadCollect builtin m) =>
+  Decl builtin ->
+  m [Decl builtin]
+monomorphiseDecls decl = do
   let ident = identifierOf decl
   logCompilerPass MaxDetail (quotePretty ident) $ do
     logDebug MaxDetail $ prettyExternal decl <> line
-    newDecls <- monomorphiseDecl top decl
+    newDecls <- monomorphiseDecl decl
     forM_ newDecls collectReferences
     return newDecls
 
-monomorphiseDecl :: (MonadCollect builtin m) => Bool -> Decl builtin -> m [Decl builtin]
-monomorphiseDecl top decl =
+monomorphiseDecl ::
+  (MonadCollect builtin m) =>
+  Decl builtin ->
+  m [Decl builtin]
+monomorphiseDecl decl =
   logCompilerPass MaxDetail "monomorphising based on previous applications" $ do
     let ident = identifierOf decl
     maybeApplications <- gets (Map.lookup ident)
@@ -103,34 +123,66 @@ monomorphiseDecl top decl =
       DefAbstract {} -> do
         logDebug MaxDetail "Not monomorphising as an abstract declaration"
         return [decl]
-      DefFunction p _ anns typ e -> do
-        MonoSettings {..} <- ask
-        case maybeApplications of
-          Nothing -> do
-            logDebug MaxDetail $ "No applications of" <+> quotePretty ident <+> "found."
-            if isUserCode decl
-              then do
-                let fakeArgs = explicit (Hole mempty "fakeArg") : fakeArgs
-                let (argsToMono, _) = obtainArgsToMonomorphise isMonomorphisableBinder typ fakeArgs
-                if not (null argsToMono)
-                  then throwError $ UnusedMonomorphisableDeclaration p ident
-                  else do
-                    logDebug MaxDetail "Keeping declaration"
-                    return [decl]
-              else do
-                logDebug MaxDetail "Discarding declaration"
-                return []
-          Just applications -> do
-            logDebug MaxDetail $ "Existing applications:" <> line <> indent 2 (prettyMultiLineList $ NonEmpty.toList (fmap prettyVerbose applications))
-            monomorphisations <- calculateMonomorphisations typ applications
-            logDebug MaxDetail $ "Unique monomorphisable applications:" <> line <> indent 2 (prettyMultiLineList (fmap prettyVerbose monomorphisations))
-            let numberOfApplications = length monomorphisations
-            let allFreeVarsInArgs = Set.unions (freeVarsIn . argExpr <$> concat monomorphisations)
-            let createNewName = numberOfApplications > 1 || not top || ident `Set.member` allFreeVarsInArgs
-            traverse (performMonomorphisation (p, ident, anns, typ, e) createNewName) monomorphisations
-
+      DefFunction p _ anns typ body -> do
+        let handle = maybe handleUnusedDecl handleUsedDecl maybeApplications
+        handle p ident anns typ body
     modify (Map.delete ident)
     return result
+
+handleUsedDecl ::
+  (MonadCollect builtin m) =>
+  NonEmpty [Arg builtin] ->
+  Provenance ->
+  Identifier ->
+  [Annotation] ->
+  Type builtin ->
+  Expr builtin ->
+  m [Decl builtin]
+handleUsedDecl applications p ident anns typ body = do
+  logDebug MaxDetail $
+    "Found applications:"
+      <> line
+      <> indent 2 (prettyMultiLineList $ NonEmpty.toList (fmap prettyVerbose applications))
+
+  monomorphisations <- calculateMonomorphisations typ applications
+
+  logDebug MaxDetail $
+    "Unique monomorphisable applications:"
+      <> line
+      <> indent 2 (prettyMultiLineList (fmap prettyVerbose monomorphisations))
+
+  let numberOfApplications = length monomorphisations
+  let allFreeVarsInArgs = Set.unions (freeVarsIn . argExpr <$> concat monomorphisations)
+  let createNewName = numberOfApplications > 1 || ident `Set.member` allFreeVarsInArgs
+  traverse (performMonomorphisation (p, ident, anns, typ, body) createNewName) monomorphisations
+
+handleUnusedDecl ::
+  (MonadCollect builtin m) =>
+  Provenance ->
+  Identifier ->
+  [Annotation] ->
+  Type builtin ->
+  Expr builtin ->
+  m [Decl builtin]
+handleUnusedDecl p ident anns typ body = do
+  MonoSettings {..} <- ask
+  logDebug MaxDetail $ "No applications of" <+> quotePretty ident <+> "found."
+
+  if not (keepUnusedDeclaration ident)
+    then do
+      -- Work out if the unused declaration needs to be monomorphised
+      let fakeArgs = explicit (Hole mempty "fakeArg") : fakeArgs
+      let (argsToMono, _) = obtainArgsToMonomorphise isMonomorphisableBinder typ fakeArgs
+      let needsToBeMonomorphised = not (null argsToMono)
+
+      if needsToBeMonomorphised
+        then throwError $ UnusedMonomorphisableDeclaration p ident
+        else do
+          logDebug MaxDetail "Keeping declaration"
+          return [DefFunction p ident anns typ body]
+    else do
+      logDebug MaxDetail "Discarding declaration"
+      return []
 
 calculateMonomorphisations ::
   (MonadCollect builtin m) =>
@@ -185,10 +237,25 @@ substituteArgsThrough = \case
 collectReferences :: forall builtin m. (MonadCollect builtin m) => Decl builtin -> m ()
 collectReferences decl =
   logCompilerPass MaxDetail ("collecting internal applications for" <+> quotePretty (identifierOf decl)) $ do
+    -- TODO do this in a single traversal
     traverse_ (traverseFreeVarsM (const id) collectReference) decl
+    traverse_ (traverseBuiltinsM collectDerivedReference) decl
   where
     collectReference :: FreeVarUpdate m builtin
     collectReference recGo p ident args = do
+      args' <- traverse (traverse recGo) args
+      foundApplication ident args'
+      return $ normAppList (FreeVar p ident) args
+
+    collectDerivedReference :: BuiltinUpdate m builtin builtin
+    collectDerivedReference p b args = do
+      case isDerivedBuiltin b of
+        Just ident -> foundApplication ident args
+        Nothing -> return ()
+      return $ normAppList (Builtin p b) args
+
+    foundApplication :: Identifier -> [Arg builtin] -> m ()
+    foundApplication ident args = do
       logDebug MaxDetail $
         "Found application:"
           <> line
@@ -198,9 +265,7 @@ collectReferences decl =
                 <> line
                 <> "arguments:" <+> prettyVerbose args
             )
-      args' <- traverse (traverse recGo) args
-      modify (Map.insert ident [args'])
-      return $ normAppList (FreeVar p ident) args
+      modify (Map.insert ident [args])
 
 --------------------------------------------------------------------------------
 -- Forward pass - insert the monorphised identifiers

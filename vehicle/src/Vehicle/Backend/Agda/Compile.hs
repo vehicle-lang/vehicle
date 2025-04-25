@@ -554,7 +554,7 @@ compileDecidabilityBuiltinFunction f args = case f of
   PropCompareRatTensorPointwise op -> annotateInfixApp [VehicleUtils, DataTensor] 4 Nothing (comparisonOperator False op) args
   PropQuantifyIndex q -> case q of
     Forall -> annotateApp [DataFinAll] (Just finQualifier) "All" args
-    Exists -> annotateApp [DataFinAny] (Just finQualifier) "All" args
+    Exists -> annotateApp [DataFinAny] (Just finQualifier) "Any" args
   PropQuantifyInList q -> case q of
     Forall -> annotateApp [DataListAll] (Just listQualifier) "All" args
     Exists -> annotateApp [DataListAny] (Just listQualifier) "Any" args

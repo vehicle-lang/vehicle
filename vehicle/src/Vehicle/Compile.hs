@@ -8,6 +8,7 @@ import Data.Aeson (ToJSON (..))
 import Data.Aeson.Encode.Pretty (encodePretty')
 import Data.ByteString.Lazy.Char8 (unpack)
 import Data.Maybe (mapMaybe)
+import Data.Set qualified as Set
 import Vehicle.Backend.Agda
 import Vehicle.Backend.LossFunction (convertToLossTensors)
 import Vehicle.Backend.LossFunction.JSON
@@ -18,7 +19,7 @@ import Vehicle.Backend.Queries
 import Vehicle.Compile.Dependency (analyseDependenciesAndPrune)
 import Vehicle.Compile.Error
 import Vehicle.Compile.FunctionaliseResources (functionaliseResources)
-import Vehicle.Compile.Monomorphisation (hoistInferableParameters)
+import Vehicle.Compile.Monomorphisation (MonomorphisationSettings (..), hoistInferableParameters, monomorphise)
 import Vehicle.Compile.Prelude as CompilePrelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Type.Subsystem
@@ -46,27 +47,51 @@ data CompileOptions = CompileOptions
   deriving (Eq, Show)
 
 compile :: (MonadStdIO IO) => LoggingSettings -> CompileOptions -> IO ()
-compile loggingSettings options@CompileOptions {..} = runCompileMonad loggingSettings $ do
-  (imports, prog) <-
-    typeCheckUserProg $
-      TypeCheckOptions
-        { specification = specification,
-          secondaryTypeSystem = Nothing
-        }
+compile loggingSettings options@CompileOptions {..} =
+  runCompileMonad loggingSettings $ do
+    (imports, prog) <-
+      typeCheckUserProg $
+        TypeCheckOptions
+          { specification = specification,
+            secondaryTypeSystem = Nothing
+          }
 
-  case target of
-    VerifierQueries queryFormatID -> do
-      let mergedProg = mergeImports imports prog
-      prunedProg <- analyseDependenciesAndPrune mergedProg declarationsToCompile
-      let resources = Resources specification networkLocations datasetLocations parameterValues
-      compileToQueryFormat prunedProg resources queryFormatID output
-    LossFunction differentiableLogic -> do
-      let mergedProg = mergeImports imports prog
-      prunedProg <- analyseDependenciesAndPrune mergedProg declarationsToCompile
-      compileToLossFunction differentiableLogic prunedProg output outputAsJSON
-    ITP itp -> do
-      prunedProg <- analyseDependenciesAndPrune prog declarationsToCompile
-      compileToITP itp options prunedProg
+    let mergedProg = case target of
+          VerifierQueries {} -> mergeImports imports prog
+          LossFunction {} -> mergeImports imports prog
+          ITP {} -> prog
+
+    simplifiedProg <- simplifyProgram mergedProg declarationsToCompile
+
+    case target of
+      VerifierQueries queryFormatID -> do
+        let resources = Resources specification networkLocations datasetLocations parameterValues
+        compileToQueryFormat simplifiedProg resources queryFormatID output
+      LossFunction differentiableLogic ->
+        compileToLossFunction differentiableLogic simplifiedProg output outputAsJSON
+      ITP itp ->
+        compileToITP itp options simplifiedProg
+
+simplifyProgram ::
+  (MonadCompile m) =>
+  Prog Builtin ->
+  DeclarationNames ->
+  m (Prog Builtin)
+simplifyProgram prog declarationsToCompile = do
+  let keepUnusedDeclaration =
+        if null declarationsToCompile
+          then const True
+          else do
+            let declsToCompile = Set.fromList declarationsToCompile
+            \ident -> Set.member (nameOf ident) declsToCompile
+  monomorphisedProg <-
+    monomorphise prog $
+      MonoSettings
+        { isMonomorphisableBinder = not . isExplicit,
+          keepUnusedDeclaration = keepUnusedDeclaration
+        }
+  castFreeProgram <- resolveInstanceArgumentsAndCasts monomorphisedProg
+  return castFreeProgram
 
 --------------------------------------------------------------------------------
 -- Backend-specific compilation functions
