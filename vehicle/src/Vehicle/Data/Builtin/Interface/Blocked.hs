@@ -87,7 +87,6 @@ derivedFunctionBlockingStatus f spine = case f of
   QuantifyIndex {} -> fixedStatus [0] spine
   QuantifyInList {} -> fixedStatus [2] spine
   CompareRatTensorReduced {} -> fixedStatus [1, 2] spine
-  AppendList -> fixedStatus [1, 2] spine
 
 castBlockingStatus :: BuiltinCast -> Spine builtin -> BlockingStatus builtin
 castBlockingStatus f spine = case f of

@@ -429,7 +429,6 @@ compileDerivedFunction fn args = case fn of
   QuantifyIndex q -> case q of
     Exists -> annotateApp [VehicleUtils] Nothing "existsIndex" args
     Forall -> annotateApp [VehicleUtils] Nothing "forallIndex" args
-  AppendList -> annotateInfixApp [DataList] 5 Nothing "_++_" args
   QuantifyInList q -> case q of
     Exists -> annotateApp [DataList] (Just listQualifier) "any" args
     Forall -> annotateApp [DataList] (Just listQualifier) "all" args
@@ -456,13 +455,14 @@ compileBuiltinType ::
   [Arg DecidabilityBuiltin] ->
   m Code
 compileBuiltinType t args = case t of
-  BoolType -> return $ compileType (UniverseLevel 0)
-  RatType -> return $ annotateConstant [DataRat] ratQualifier
   UnitType -> return $ annotateConstant [DataUnit] "⊤"
-  NatType -> return $ annotateConstant [DataNat] natQualifier
-  ListType -> annotateApp [DataList] Nothing "List" args
-  TensorType -> annotateApp [DataTensor] Nothing "Tensor" args
+  BoolType -> return $ compileType (UniverseLevel 0)
   IndexType -> annotateApp [DataFin] Nothing "Fin" args
+  NatType -> return $ annotateConstant [DataNat] natQualifier
+  RatType -> return $ annotateConstant [DataRat] ratQualifier
+  ListType -> annotateApp [DataList] Nothing "List" args
+  VectorType -> annotateApp [DataVector] Nothing "Vector" args
+  TensorType -> annotateApp [DataTensor] Nothing "Tensor" args
 
 compileBuiltinConstructor ::
   (MonadAgdaCompile m) =>

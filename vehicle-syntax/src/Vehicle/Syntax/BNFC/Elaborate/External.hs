@@ -357,6 +357,7 @@ elabExpr expr = case expr of
   B.Rat tk -> castToTensorType V.RatType tk
   B.Nat tk -> builtinType V.NatType tk []
   B.List tk -> builtinType V.ListType tk []
+  B.Vector tk -> builtinType V.VectorType tk []
   B.Tensor tk -> builtinTypeClassOp V.TensorTypeTC tk []
   B.Nil tk -> constructor V.Nil tk []
   B.Cons e1 tk e2 -> constructor V.Cons tk [e1, e2]

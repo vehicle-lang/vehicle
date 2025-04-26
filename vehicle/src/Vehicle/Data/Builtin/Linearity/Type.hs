@@ -206,8 +206,9 @@ convertToLinearityTypes p b args = case b of
     IndexType -> freshLinearityMeta p
     NatType -> freshLinearityMeta p
     ListType -> return $ extractElementType b args
+    VectorType -> return $ extractElementType b args
     TensorType -> return $ extractElementType b args
-  DerivedFunction f -> return $ FreeVar p (identifierOf f)
+  DerivedFunction f -> return $ normAppList (FreeVar p (identifierOf f)) args
   TypeClass {} -> monomorphisationError b args
   TypeClassOp {} -> monomorphisationError b args
   NatInDomainConstraint -> monomorphisationError b args

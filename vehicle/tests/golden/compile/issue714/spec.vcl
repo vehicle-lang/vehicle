@@ -139,7 +139,7 @@ datasetSize : Nat
 datasetSize = 8
 
 @dataset
-inputDataset : Tensor InputVector [datasetSize]
+inputDataset : Vector InputVector [datasetSize]
 
 @property
 isSane : Bool

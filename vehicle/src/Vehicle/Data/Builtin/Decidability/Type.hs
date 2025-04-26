@@ -61,7 +61,6 @@ typeOfDerivedFunction = \case
   QuantifyIndex {} -> forAllDim Relevant $ \d -> (tIndex d ~> tBool) ~> tBool
   QuantifyInList {} -> forAllTypes $ \t -> (t ~> tBool) ~> tList t ~> tBool
   CompareRatTensorReduced {} -> forAllDims $ \dims -> tRatTensor dims ~> tRatTensor dims ~> tBoolTensor dimNil
-  AppendList {} -> forAllTypes $ \t -> tList t ~> tList t ~> tList t
 
 typeDecidableTypeClass :: DecidabilityBuiltinTypeClass -> DSLExpr DecidabilityBuiltin
 typeDecidableTypeClass = \case
@@ -248,7 +247,6 @@ convertToDecidabilityBuiltins p b args =
       TypeAnn -> sameDerivedFunction f
       QuantifyIndex q -> convertToAndAddHoles (QuantifyIndexTC q) 1
       QuantifyInList q -> convertToAndAddHoles (QuantifyInListTC q) 1
-      AppendList -> sameDerivedFunction f
       CompareRatTensorReduced op -> convertToAndAddHoles (CompareRatTensorReducedTC op) 1
     _ -> monomorphisationError b args
   where

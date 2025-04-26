@@ -218,6 +218,7 @@ convertToPolarityTypes p b args = case b of
     IndexType -> return $ PolarityExpr p Unquantified
     NatType -> return $ PolarityExpr p Unquantified
     ListType -> return $ extractElementType b args
+    VectorType -> return $ extractElementType b args
     TensorType -> return $ extractElementType b args
   DerivedFunction f -> return $ FreeVar p (identifierOf f)
   TypeClass {} -> monomorphisationError b args

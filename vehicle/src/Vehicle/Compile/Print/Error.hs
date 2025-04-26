@@ -903,9 +903,9 @@ prettyQuantifierArticle q =
   (if q == Forall then "a" else "an") <+> squotes (pretty q)
 
 prettyPolarityProvenance :: Provenance -> Quantifier -> PolarityProvenance -> Doc a
-prettyPolarityProvenance topQuantifierProv topQuantifier bottomQuantifierProvenance =
+prettyPolarityProvenance topQuantifierProv topQuantifier bottomQuantifierProvenance = do
   let bottomQuantifier = neg topQuantifier
-   in numberedList $ reverse (finalLine : go bottomQuantifier bottomQuantifierProvenance)
+  numberedList $ reverse (finalLine : go bottomQuantifier bottomQuantifierProvenance)
   where
     go :: Quantifier -> PolarityProvenance -> [Doc a]
     go q = \case

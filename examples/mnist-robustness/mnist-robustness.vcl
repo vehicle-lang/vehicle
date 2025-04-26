@@ -77,10 +77,10 @@ n : Nat
 -- training labels. Note that we use the previously declared parameter `n`
 -- to enforce that they are the same size.
 @dataset
-trainingImages : Tensor Image [n]
+trainingImages : Vector Image n
 
 @dataset
-trainingLabels : Tensor Label [n]
+trainingLabels : Vector Label n
 
 -- We then say that the network is robust if it is robust around every pair
 -- of input images and output labels. Note the use of the `foreach`
@@ -91,5 +91,5 @@ trainingLabels : Tensor Label [n]
 -- report if the network was robust around *every* image in the dataset, a
 -- state of affairs which is unlikely to be true.
 @property
-robust : Tensor Bool [n]
+robust : Vector Bool n
 robust = foreach i . robustAround (trainingImages ! i) (trainingLabels ! i)

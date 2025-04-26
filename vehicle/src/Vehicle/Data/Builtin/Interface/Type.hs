@@ -29,11 +29,12 @@ typeOfBuiltinType :: (HasStandardBuiltins builtin) => BuiltinType -> DSLExpr bui
 typeOfBuiltinType = \case
   UnitType -> type0
   BoolType -> type0
+  IndexType -> tNat .~> type0
   NatType -> type0
   RatType -> type0
+  VectorType -> type0 ~> tDim .~> type0
   ListType -> type0 ~> type0
   TensorType -> type0 ~> tDims .~> type0
-  IndexType -> tNat .~> type0
 
 typeOfBuiltinFunction :: (HasStandardBuiltins builtin) => BuiltinFunction -> DSLExpr builtin
 typeOfBuiltinFunction = \case

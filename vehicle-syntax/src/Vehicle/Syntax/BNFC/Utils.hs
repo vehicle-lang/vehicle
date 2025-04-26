@@ -61,6 +61,8 @@ tokElemOf = mkToken B.TokElemOf ":"
 
 tokLambda = mkToken B.TokLambda "\\"
 
+tokVector = mkToken B.TokVector "Vector"
+
 tokTensor = mkToken B.TokTensor "Tensor"
 
 tokUnit = mkToken B.TokUnit "Unit"

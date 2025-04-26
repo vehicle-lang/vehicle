@@ -4,7 +4,7 @@ type Image = Tensor Rat [28, 28]
 classifier : Image -> Tensor Rat [10]
 
 @dataset
-images : Tensor Image [1]
+images : Vector Image [1]
 
 @property
 p : Bool

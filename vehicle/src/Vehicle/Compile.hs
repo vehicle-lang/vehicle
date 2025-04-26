@@ -56,19 +56,16 @@ compile loggingSettings options@CompileOptions {..} =
             secondaryTypeSystem = Nothing
           }
 
-    let mergedProg = case target of
-          VerifierQueries {} -> mergeImports imports prog
-          LossFunction {} -> mergeImports imports prog
-          ITP {} -> prog
-
-    simplifiedProg <- simplifyProgram mergedProg declarationsToCompile
+    simplifiedProg <- simplifyProgram prog declarationsToCompile
 
     case target of
       VerifierQueries queryFormatID -> do
         let resources = Resources specification networkLocations datasetLocations parameterValues
-        compileToQueryFormat simplifiedProg resources queryFormatID output
-      LossFunction differentiableLogic ->
-        compileToLossFunction differentiableLogic simplifiedProg output outputAsJSON
+        let mergedProg = mergeImports imports simplifiedProg
+        compileToQueryFormat mergedProg resources queryFormatID output
+      LossFunction differentiableLogic -> do
+        let mergedProg = mergeImports imports simplifiedProg
+        compileToLossFunction differentiableLogic mergedProg output outputAsJSON
       ITP itp ->
         compileToITP itp options simplifiedProg
 

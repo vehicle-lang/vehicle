@@ -221,14 +221,12 @@ allInstances =
               tTensor tRat ds,
             False
           ),
-          ( forAllIrrelevant "ds1" tDims $ \ds1 ->
-              forAllIrrelevant "ds2" tDims $ \ds2 ->
-                forAllTypes $ \t ->
-                  isTensorType (tTensor t ds1) ds2,
-            lamDims $ \ds1 ->
-              lamDims $ \ds2 ->
-                implLam "t" type0 $ \t ->
-                  tTensor t (builtinDerivedFunction AppendList @@@ [tNat] @@ [ds2, ds1]),
+          ( forAllIrrelevant "ds" tDims $ \ds ->
+              forAllTypes $ \t ->
+                isTensorType (tTensor t dimNil) ds,
+            lamDims $ \ds ->
+              implLam "t" type0 $ \t ->
+                tTensor t ds,
             False
           ),
           ------------

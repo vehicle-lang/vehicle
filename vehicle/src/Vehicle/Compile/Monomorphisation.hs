@@ -119,67 +119,59 @@ monomorphiseDecl decl =
   logCompilerPass MaxDetail "monomorphising based on previous applications" $ do
     let ident = identifierOf decl
     maybeApplications <- gets (Map.lookup ident)
-    result <- case decl of
-      DefAbstract {} -> do
-        logDebug MaxDetail "Not monomorphising as an abstract declaration"
-        return [decl]
-      DefFunction p _ anns typ body -> do
-        let handle = maybe handleUnusedDecl handleUsedDecl maybeApplications
-        handle p ident anns typ body
+    let handle = maybe handleUnusedDecl handleUsedDecl maybeApplications
+    result <- handle decl
     modify (Map.delete ident)
     return result
 
 handleUsedDecl ::
   (MonadCollect builtin m) =>
   NonEmpty [Arg builtin] ->
-  Provenance ->
-  Identifier ->
-  [Annotation] ->
-  Type builtin ->
-  Expr builtin ->
+  Decl builtin ->
   m [Decl builtin]
-handleUsedDecl applications p ident anns typ body = do
+handleUsedDecl applications decl = do
   logDebug MaxDetail $
     "Found applications:"
       <> line
       <> indent 2 (prettyMultiLineList $ NonEmpty.toList (fmap prettyVerbose applications))
 
-  monomorphisations <- calculateMonomorphisations typ applications
+  monomorphisations <- calculateMonomorphisations (typeOf decl) applications
 
   logDebug MaxDetail $
     "Unique monomorphisable applications:"
       <> line
       <> indent 2 (prettyMultiLineList (fmap prettyVerbose monomorphisations))
 
-  let numberOfApplications = length monomorphisations
-  let allFreeVarsInArgs = Set.unions (freeVarsIn . argExpr <$> concat monomorphisations)
-  let createNewName = numberOfApplications > 1 || ident `Set.member` allFreeVarsInArgs
-  traverse (performMonomorphisation (p, ident, anns, typ, body) createNewName) monomorphisations
+  case decl of
+    DefAbstract {} -> do
+      logDebug MaxDetail "Not monomorphising as an abstract declaration"
+      return [decl]
+    DefFunction p ident anns typ body -> do
+      let numberOfApplications = length monomorphisations
+      let allFreeVarsInArgs = Set.unions (freeVarsIn . argExpr <$> concat monomorphisations)
+      let createNewName = numberOfApplications > 1 || ident `Set.member` allFreeVarsInArgs
+      traverse (performMonomorphisation (p, ident, anns, typ, body) createNewName) monomorphisations
 
 handleUnusedDecl ::
   (MonadCollect builtin m) =>
-  Provenance ->
-  Identifier ->
-  [Annotation] ->
-  Type builtin ->
-  Expr builtin ->
+  Decl builtin ->
   m [Decl builtin]
-handleUnusedDecl p ident anns typ body = do
+handleUnusedDecl decl = do
   MonoSettings {..} <- ask
-  logDebug MaxDetail $ "No applications of" <+> quotePretty ident <+> "found."
+  logDebug MaxDetail "No applications of found."
 
-  if not (keepUnusedDeclaration ident)
+  if keepUnusedDeclaration (identifierOf decl)
     then do
       -- Work out if the unused declaration needs to be monomorphised
       let fakeArgs = explicit (Hole mempty "fakeArg") : fakeArgs
-      let (argsToMono, _) = obtainArgsToMonomorphise isMonomorphisableBinder typ fakeArgs
+      let (argsToMono, _) = obtainArgsToMonomorphise isMonomorphisableBinder (typeOf decl) fakeArgs
       let needsToBeMonomorphised = not (null argsToMono)
 
       if needsToBeMonomorphised
-        then throwError $ UnusedMonomorphisableDeclaration p ident
+        then throwError $ UnusedMonomorphisableDeclaration (provenanceOf decl) (identifierOf decl)
         else do
           logDebug MaxDetail "Keeping declaration"
-          return [DefFunction p ident anns typ body]
+          return [decl]
     else do
       logDebug MaxDetail "Discarding declaration"
       return []

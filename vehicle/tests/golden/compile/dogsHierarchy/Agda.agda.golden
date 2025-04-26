@@ -63,7 +63,7 @@ IsFirstChoice : Image → Dog → Set
 IsFirstChoice x dog1 = let scores = score x in Fin.All (λ d → d ≉ dog1 → (scores ! dog1) > (scores ! d))
 
 IsSecondChoice : Image → Dog → Set
-IsSecondChoice x dog2 = let scores = score x in Fin.All (λ dog1 → IsFirstChoice x dog1 × Fin.All (λ d → d ≉ dog1 × d ≉ dog2 → (scores ! dog2) > (scores ! d)))
+IsSecondChoice x dog2 = let scores = score x in Fin.Any (λ dog1 → IsFirstChoice x dog1 × Fin.All (λ d → d ≉ dog1 × d ≉ dog2 → (scores ! dog2) > (scores ! d)))
 
 NoConfusionWith : Image → List Dog → List Dog → Set
 NoConfusionWith x dogs1 dogs2 = List.All (λ dog1 → List.All (λ dog2 → ¬ (IsFirstChoice x dog1 × IsSecondChoice x dog2)) dogs2) dogs1

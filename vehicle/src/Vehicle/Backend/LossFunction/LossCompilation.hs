@@ -138,6 +138,7 @@ convertBuiltinToLoss b spine = case b of
     S.IndexType -> unchangedType IndexType
     S.NatType -> unchangedType NatType
     S.ListType -> unchangedType ListType
+    S.VectorType -> developerError "Vector not yet supported"
     S.TensorType -> unchangedType TensorType
   S.BuiltinFunction f -> case f of
     --------------

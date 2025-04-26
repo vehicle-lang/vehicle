@@ -52,22 +52,6 @@ import Vehicle.Verify.Specification (UserVariableCompilationStep (..))
 -- Public methods
 --------------------------------------------------------------------------------
 
-type In a b = (a, b)
-
-type NoCtx = ()
-
-type VerboseTags = 'Unnamed ('ShortVectors ('As 'Internal))
-
-type ExternalTags = 'Named ('ShortVectors ('As 'External))
-
-type FriendlyTags = 'Named ('Cleaned ('As 'External))
-
-type PrettyVerbose a = PrettyWith VerboseTags a
-
-type PrettyExternal a = PrettyWith ExternalTags a
-
-type PrettyFriendly a = PrettyWith FriendlyTags a
-
 -- | Prints to the internal language in all it's gory detail. Useful for debugging.
 prettyVerbose :: (PrettyVerbose (a `In` NoCtx)) => a -> Doc b
 prettyVerbose x = prettyWith @VerboseTags (x, ())
@@ -94,6 +78,14 @@ prettyFriendlyEmptyCtx x = prettyFriendly (x, emptyNamedCtx)
 --------------------------------------------------------------------------------
 -- Printing strategies
 --------------------------------------------------------------------------------
+-- Utilities
+
+type In a b = (a, b)
+
+type NoCtx = ()
+
+--------------------------------------------------------------------------------
+-- Tags
 
 -- Tags denote at a high-level how you want the term to be printed.
 data Tags
@@ -107,6 +99,9 @@ data Tags
     Cleaned Tags
   | -- | The `ShortVectors` tag ensures that long vectors are printed out concisely.
     ShortVectors Tags
+
+--------------------------------------------------------------------------------
+-- Strategies
 
 -- | A strategy is an abstract representation of the sequence of operations that
 -- are needed in order to convert something into a printable form. It should not
@@ -124,6 +119,17 @@ data Strategy
   | Branch Strategy Strategy
   | Pretty
 
+{-
+-- Testing code, do not delete!
+-- Fill in `TestType` and inspect the hole to see what it reduces to.
+type TestType = LinearExpr TensorVariable RatTensor `In` NamedBoundCtx
+
+data MyProxy (a :: Strategy) = MyProxy
+test :: MyProxy (StrategyFor FriendlyTags TestType)
+test = _
+-}
+
+-- A type-class for printing out strategies to type-level strings
 type family ShowStrategy (s :: Strategy) :: Symbol where
   ShowStrategy ('SetupContext s) = AppendSymbol "SetupContext → " (ShowStrategy s)
   ShowStrategy ('AlterContext s) = AppendSymbol "AlterContext → " (ShowStrategy s)
@@ -143,34 +149,10 @@ type family ShowStrategy (s :: Strategy) :: Symbol where
       )
   ShowStrategy 'Pretty = "Pretty"
 
+-- | A type family you can attach to the instances below to get
+-- a trace of instance resolution printed out.
 type family Debug (strat :: Strategy) (msg :: Symbol) :: GHC.Constraint where
   Debug strat msg = TypeError ('Text "Debug: " ':<>: 'Text (ShowStrategy strat) ':<>: 'Text msg)
-
--- StrategyFor ('Named ('Cleaned ('As 'External))))
---   (Contextualised (Assertion TensorVariable) NamedBoundCtx)
-
--- 'SetupContext (StrategyFor ('Named ('Cleaned ('As 'External)))
---   (Assertion TensorVariable `In` NamedBoundCtx))
--- =
---   (NormalisedRelation Relation TensorVariable RatTensor `In` NamedBoundCtx)
-
--- 'SetupContext (StrategyFor ('Named ('Cleaned ('As 'External)))
---   (LinearExpr TensorVariable RatTensor `In` NamedBoundCtx))
-
--- 'SetupContext ('Branch
---   (StrategyFor ('Named ('Cleaned ('As 'External))) TensorVariable)
---   (StrategyFor ('Named ('Cleaned ('As 'External))) (Tensor Rat))
--- )
-
--- 'SetupContext ('Branch
---   (StrategyFor ('Named ('Cleaned ('As 'External))) (Value Builtin))
---   ('Functor (StrategyFor ('Named ('Cleaned ('As 'External))) Rat))
--- )
-
--- 'SetupContext ('Branch
---   (StrategyFor ('Named ('Cleaned ('As 'External))) (Value Builtin))
---   ('Functor 'Pretty)
--- )
 
 -- | This type family computes the correct printing strategy given the tags
 -- and the type of the expression.
@@ -278,16 +260,6 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
           ':$$: 'Text "Perhaps you could add support to Vehicle.Compile.Print.StrategyFor?"
       )
 
--- Testing code, do not delete!
-
--- Fill in `TestType` and inspect the hole to see what it reduces to.
-{-
-type TestType = LinearExpr TensorVariable RatTensor `In` NamedBoundCtx
-
-data MyProxy (a :: Strategy) = MyProxy
-test :: MyProxy (StrategyFor FriendlyTags TestType)
-test = _
--}
 --------------------------------------------------------------------------------
 -- Executing printing strategies
 --------------------------------------------------------------------------------
@@ -295,6 +267,18 @@ test = _
 -- | A type synonym that takes the tags and the type and computes the strategy
 -- for the combination to guide type-class resolution.
 type PrettyWith tags a = PrettyUsing (StrategyFor tags a) a
+
+type VerboseTags = 'Unnamed ('ShortVectors ('As 'Internal))
+
+type ExternalTags = 'Named ('ShortVectors ('As 'External))
+
+type FriendlyTags = 'Named ('Cleaned ('As 'External))
+
+type PrettyVerbose a = PrettyWith VerboseTags a
+
+type PrettyExternal a = PrettyWith ExternalTags a
+
+type PrettyFriendly a = PrettyWith FriendlyTags a
 
 class PrettyUsing (strategy :: Strategy) a where
   prettyUsing :: a -> Doc b
