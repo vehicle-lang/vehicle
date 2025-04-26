@@ -15,8 +15,13 @@ def check(
     :param specification: The path to the Vehicle specification file to verify.
     :param typeSystem: The typing system that should be used.
     """
-    args = ["check", "--check", str(specification)]
-    args.extend(["--typeSystem", typeSystem._vehicle_option_name])
+    args = [
+        "check",
+        "--specification",
+        str(specification),
+        "--typeSystem",
+        typeSystem._vehicle_option_name,
+    ]
 
     # Call Vehicle
     exc, out, err, _ = session.check_output(args)
