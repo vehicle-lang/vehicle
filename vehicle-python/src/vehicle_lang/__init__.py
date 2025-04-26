@@ -10,6 +10,8 @@ from .compile.error import VehiclePropertyNotFound as VehiclePropertyNotFound
 from .error import VehicleError as VehicleError
 from .error import VehicleInternalError as VehicleInternalError
 from .export import export_to_solver as export_to_solver
+from .list import list_properties as list_properties
+from .list import list_resources as list_resources
 from .session.error import VehicleSessionClosed as VehicleSessionClosed
 from .session.error import VehicleSessionUsed as VehicleSessionUsed
 from .typing import AnyOptimiser as AnyOptimiser
@@ -36,8 +38,11 @@ __all__: List[str] = [
     "verify",
     # Validate,
     "validate",
-    # export
+    # Export
     "export_to_solver",
+    # List
+    "list_resources",
+    "list_properties",
     # Error types
     "VehicleError",
     "VehicleSessionClosed",
