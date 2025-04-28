@@ -306,7 +306,7 @@ These tests are specified in `test.json` files in [tests/golden](./vehicle/tests
     "run": "vehicle compile -s spec.vcl -t Rocq -o Rocq.v && coqc -vok Rocq.v -w none",
     "needs": ["spec.vcl"],
     "produces": ["Rocq.v"],
-    "externals": ["coqc"],
+    "external": ["coqc"],
     "ignore": {"files": [".Rocq.aux", "Rocq.glob", "Rocq.vok"]}
   },
   {

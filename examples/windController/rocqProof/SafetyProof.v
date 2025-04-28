@@ -110,11 +110,9 @@ Proof. by rewrite /onRoad normr0. Qed.
 
 Theorem initialState_safe : safeState initialState.
 Proof.
-    split. 
-        rewrite /safeDistanceFromEdge /nextPosition_windShift/= addr0 addr0 normr0 /roadWidth /maxWindShift.
-        by lra.
-    split.
-        rewrite /accurateSensorReading /nextPosition_windShift/= subr0 normr0 /maxSensorError. by lra.
+    repeat apply conj. 
+    rewrite /safeDistanceFromEdge /nextPosition_windShift/= !addr0 normr0 /roadWidth /maxWindShift. by lra.
+    rewrite /accurateSensorReading /nextPosition_windShift/= subr0 normr0 /maxSensorError. by lra.
     rewrite /sensorReadingNotOffRoad normr0 /roadWidth /maxSensorError. by lra.
 Qed.
 
@@ -126,7 +124,6 @@ Lemma controller_lem :
 Proof.
     move=> x y Hx Hy.
     rewrite /controller.
-    pose H := WindControllerSpec.safe (toTensor x y).
     replace (roadWidth - maxWindShift - 3 * maxSensorError) with (125 / 100 : R); 
         last by rewrite /roadWidth /maxWindShift /maxSensorError; lra.
     rewrite real_lter_norml//=.
@@ -135,13 +132,12 @@ Proof.
     replace (- y) with (- tnth (toTensor x y) WindControllerSpec.previousSensor);
         last by rewrite /WindControllerSpec.previousSensor.
     replace 0 with WindControllerSpec.velocity; last by [].
-    apply: H.
+    apply (WindControllerSpec.safe (toTensor x y)).
     rewrite /toTensor /WindControllerSpec.safeInput. 
     replace (325 / 100) with (roadWidth + maxSensorError); last by rewrite /roadWidth /maxSensorError; lra.
-    move=> [[ |m]]; move=> Hi. move: Hx;
-    rewrite real_lter_norml; try by apply num_real. by apply.
-    move: m Hi. move=> [|m'] Hi. rewrite /tnth/=. move: Hy; by rewrite real_lter_norml//=.
-    by easy.
+    elim; case. by move: Hx; rewrite real_lter_norml; last by apply num_real.
+    case. move=> i. by move: Hy; rewrite real_lter_norml; last by apply num_real.
+    by auto.
 Qed.
 
 Lemma valid_imp_nextState_accurateSensor : 
@@ -150,9 +146,7 @@ Lemma valid_imp_nextState_accurateSensor :
 Proof.
     move=> o [H1 H2] s. rewrite /accurateSensorReading/=.
     set (v := position s + velocity s + (windSpeed s + windShift o)).
-    rewrite opprD addrA.
-    replace (v - v) with (0 : R); last by lra.
-    rewrite sub0r normrN. apply: H1.
+    rewrite opprD addrA addrC addrN addr0 normrN. by apply: H1.
 Qed.
 
 
@@ -161,11 +155,11 @@ Lemma valid_and_safe_imp_nextState_onRoad :
     forall s, safeState s ->
     onRoad (nextState o s).
 Proof.
-    rewrite /validObservation /safeState. move=> o [Hsensor Hws] s. move=> [Hsafedist [Haccsensor Hsenonroad]].
+    rewrite /validObservation /safeState. move=> o [Hsensor Hws] s [Hsafedist [Haccsensor Hsenonroad]].
     rewrite /onRoad/= addrA.
     apply /Order.le_trans; first by apply ler_normD.
     rewrite -lerBrDr.
-    unfold safeDistanceFromEdge in Hsafedist. 
+    rewrite /safeDistanceFromEdge in Hsafedist. 
     apply /Order.le_trans; first apply Order.POrderTheory.ltW; first by apply: Hsafedist.
     by apply lerB.
 Qed.

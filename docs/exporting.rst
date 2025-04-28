@@ -130,12 +130,11 @@ Currently Rocq does not integrate with Vehicle's verification cache,
 meaning that it is up to the user to garuntee that the compiled specification
 does not become out of date with the Vehicle spec.
 
-Poor tensor integration with mathcomp
+Poor tensor integration with Mathcomp
 #####################################
 
 Currently, tensors are implemented using nested mathcomp tuple types and does not
 directly interface with mathcomp's structure hierarchy. This can lead to issues
-when considering properties with tensor arithmetic.
-
-If mathcomp gains a native tensor data structure, then this limitation could be
-lifted and even negate the requirement of the :code:`vehicle-rocq` companion library.
+when considering properties with tensor arithmetic. Users are encouraged to, when
+possible, express tensor properties using universal quantification over indicies.
+This generally leads to neater proofs.
