@@ -1,5 +1,18 @@
 # Changelog for Vehicle
 
+## Version 0.17
+
+* A new command `list` with sub-commands `resources` and `properties`, to list resources and properties in a vehicle.
+  specification.
+
+* Exposed the other modes' functionality in Python in the `vehicle_lang` module as:
+  - `check`
+  - `compile_to_query`
+  - `validate`
+  - `export_to_solver`
+  - `list_resources` and `list_properties` which output as JSON
+
+
 ## Version 0.16.1
 
 * Fixed detection of Marabou timeouts.
