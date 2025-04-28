@@ -12,7 +12,6 @@
   - `export_to_solver`
   - `list_resources` and `list_properties` which output as JSON
 
-
 ## Version 0.16.1
 
 * Fixed detection of Marabou timeouts.
