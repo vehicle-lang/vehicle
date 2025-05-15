@@ -133,9 +133,6 @@
           cp ${./tasty-golden-executable}/tasty-golden-executable.cabal vendor/tasty-golden-executable/
           cp -r ${./tasty-golden-executable}/src vendor/tasty-golden-executable/
           
-          # Debug - show the vendor directory structure
-          echo "Vendor directory structure:"
-          find vendor -type f | sort
         '';
         preBuild = ''
           # Copy in the SWIG-generated wrapper
@@ -143,20 +140,63 @@
         '';
       });
     # Python bindings with pre-built Haskell library
-    vehiclePython = pkgs.python3Packages.buildPythonPackage {
-      pname = "vehicle-lang";
+    # Create a pure Python package without a C extension that just wraps the vehicle executable
+    vehiclePython = pkgs.stdenv.mkDerivation {
+      name = "python3-vehicle-lang";
       version = "0.16.1";
-      src = ./vehicle-python;
-      format = "setuptools";
       
-      # Don't attempt to build the binding ourselves
-      dontBuild = true;
+      # Use vehicle-python directory but exclude the binding parts
+      src = pkgs.runCommand "vehicle-python-pure" {} ''
+        mkdir -p $out/src/vehicle_lang
+        cp -r ${./vehicle-python}/src/vehicle_lang/*.py $out/src/vehicle_lang/
+        cp -r ${./vehicle-python}/src/vehicle_lang/py.typed $out/src/vehicle_lang/
+        
+        # Copy all subdirectories
+        for dir in $(find ${./vehicle-python}/src/vehicle_lang -mindepth 1 -type d); do
+          base_name=$(basename "$dir")
+          if [ -d "$dir" ]; then
+            mkdir -p $out/src/vehicle_lang/$base_name
+            cp -r $dir/* $out/src/vehicle_lang/$base_name/
+          fi
+        done
+        
+        # Create a simple setup.py
+        cat > $out/setup.py << EOF
+from setuptools import setup, find_packages
+
+setup(
+    name="vehicle-lang",
+    version="0.16.1",
+    packages=find_packages("src"),
+    package_dir={"": "src"},
+    package_data={"vehicle_lang": ["py.typed"]},
+    python_requires=">=3.8",
+    install_requires=[
+        "numpy",
+        "pygments",
+        "tensorflow",
+    ],
+)
+EOF
+        
+        # Create a stub _binding.py module
+        cat > $out/src/vehicle_lang/_binding.py << EOF
+print("Using stub Vehicle Python binding - calling vehicle executable directly")
+import os
+import subprocess
+
+def vehicle_main(*args):
+    vehicle_path = os.environ.get("VEHICLE_PATH", "vehicle")
+    subprocess.run([vehicle_path] + list(args))
+EOF
+      '';
       
       nativeBuildInputs = [
-        pkgs.swig
-        haskellPackages.vehicle
-        haskellPackages.vehicle-syntax
-        haskellPackages.tasty-golden-executable
+        pkgs.python3
+        pkgs.python3Packages.setuptools
+        pkgs.python3Packages.wheel
+        pkgs.unzip
+        pkgs.makeWrapper
       ];
       
       propagatedBuildInputs = with pkgs.python3Packages; [
@@ -165,69 +205,53 @@
         tensorflow
       ];
       
+      buildPhase = ''
+        # Build the Python package
+        ${pkgs.python3}/bin/python3 setup.py bdist_wheel
+      '';
+      
       installPhase = ''
-        # Create directories
-        mkdir -p $out/lib/python${pkgs.python3.pythonVersion}/site-packages/vehicle_lang
+        # Install the wheel directly without pip
+        mkdir -p $out/lib/python${pkgs.python3.pythonVersion}/site-packages
         
-        # Create a temporary copy of the source that we can modify
-        cp -r $src/src/vehicle_lang $TMP/vehicle_lang
-        chmod -R +w $TMP/vehicle_lang
+        # Extract the wheel directly
+        cd dist
+        unzip -q *.whl -d $out/lib/python${pkgs.python3.pythonVersion}/site-packages/
         
-        # Copy all Python files from temp location
-        cp -r $TMP/vehicle_lang/*.py $out/lib/python${pkgs.python3.pythonVersion}/site-packages/vehicle_lang/
-        
-        # Copy py.typed if it exists
-        if [ -f $TMP/vehicle_lang/py.typed ]; then
-          cp $TMP/vehicle_lang/py.typed $out/lib/python${pkgs.python3.pythonVersion}/site-packages/vehicle_lang/
-        fi
-        
-        # Copy subdirectories
-        for dir in $(find $TMP/vehicle_lang -type d -not -path "$TMP/vehicle_lang"); do
-          if [ -d "$dir" ]; then
-            rel_dir=''${dir#$TMP/vehicle_lang/}
-            target_dir=$out/lib/python${pkgs.python3.pythonVersion}/site-packages/vehicle_lang/$rel_dir
-            mkdir -p "$target_dir"
-            
-            # Copy files from this subdirectory
-            for file in $(find "$dir" -maxdepth 1 -type f); do
-              cp "$file" "$target_dir"/
-            done
-          fi
-        done
-        
-        # Copy the Haskell shared library for the binding
-        if [ -d ${vehicle-lang}/lib ]; then
-          find ${vehicle-lang}/lib -name "lib_binding.*" -type f -exec cp {} $out/lib/python${pkgs.python3.pythonVersion}/site-packages/vehicle_lang/_binding.so \;
-        else
-          # Create a stub binding if the real one isn't available
-          echo 'print("Warning: Using stub Vehicle Python binding - Haskell binding is not available")' > $out/lib/python${pkgs.python3.pythonVersion}/site-packages/vehicle_lang/_binding.py
-        fi
-        
-        # Add the vehicle executable to PATH
+        # Copy the vehicle executable
         mkdir -p $out/bin
-        ln -s ${haskellPackages.vehicle}/bin/vehicle $out/bin/
+        ln -s ${haskellPackages.vehicle}/bin/vehicle $out/bin/vehicle
         
-        # Create minimal egg-info
-        mkdir -p $out/lib/python${pkgs.python3.pythonVersion}/site-packages/vehicle_lang-0.16.1.egg-info
-        echo "Metadata-Version: 2.1
-Name: vehicle-lang
-Version: 0.16.1
-Summary: Vehicle Python Bindings
-Home-page: https://github.com/vehicle-lang/vehicle
-Author: Vehicle Team
-License: MIT" > $out/lib/python${pkgs.python3.pythonVersion}/site-packages/vehicle_lang-0.16.1.egg-info/PKG-INFO
+        # Create a wrapper script
+        cat > $out/bin/vehicle-python << EOF
+#!/usr/bin/env python3
+import vehicle_lang
+vehicle_lang.__main__.main()
+EOF
+        chmod +x $out/bin/vehicle-python
       '';
       
       # Set up runtime environment
       postFixup = ''
-        wrapProgram $out/lib/python${pkgs.python3.pythonVersion}/site-packages/vehicle_lang/_binding.so \
-          --set VEHICLE_PATH ${haskellPackages.vehicle}/bin/vehicle \
-          --prefix PATH : ${haskellPackages.vehicle}/bin \
-          --prefix LD_LIBRARY_PATH : ${pkgs.lib.makeLibraryPath [
-            pkgs.gmp
-            pkgs.ncurses
-            pkgs.python3
-          ]}
+        # Wrap Python scripts with correct environment
+        for script in $(find $out/bin -executable -type f); do
+          wrapProgram $script \
+            --set VEHICLE_PATH ${haskellPackages.vehicle}/bin/vehicle \
+            --prefix PATH : ${haskellPackages.vehicle}/bin \
+            --prefix PYTHONPATH : "$out/lib/python${pkgs.python3.pythonVersion}/site-packages:$PYTHONPATH" \
+            --prefix LD_LIBRARY_PATH : ${pkgs.lib.makeLibraryPath [
+              pkgs.gmp
+              pkgs.ncurses
+              pkgs.python3
+            ]}
+        done
+        
+        # Fix Python shebangs if needed
+        for f in $(find $out -type f -name "*.py"); do
+          if grep -q "/usr/bin/env python" "$f"; then
+            substituteInPlace $f --replace "/usr/bin/env python" "python"
+          fi
+        done
       '';
       
       doCheck = false;
