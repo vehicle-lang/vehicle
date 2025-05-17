@@ -17,8 +17,8 @@
     systems = nixpkgs.lib.systems.flakeExposed;
     imports = [ inputs.haskell-flake.flakeModule ];
     debug = true;
-    perSystem = { self', system, config, pkgs, lib, ... }: 
-    let 
+    perSystem = { self', system, config, pkgs, lib, ... }:
+    let
     # Override config to allow broken packages
     pkgs = import nixpkgs {
       inherit system;
@@ -93,10 +93,10 @@
           (callCabal2nix "vehicle-python-binding" ./vehicle-python {})
           [ vehicle tasty-golden-executable optparse-applicative BNFC text ])
       ) (old: {
-        
+
         # Make sure GCC can find Python.h and vendor files are available
         preConfigure = ''
-          export IS_NIX_BUILD=1          
+          export IS_NIX_BUILD=1
           echo "pwd: "
           echo $(pwd)
           ls -l ../
@@ -127,7 +127,7 @@
           cp -r ${./tasty-golden-executable}/src vendor/tasty-golden-executable/
 
           mkdir -p src/vehicle_lang
-          cp -r --no-preserve=mode $src/src/vehicle_lang ./src/ 
+          cp -r --no-preserve=mode $src/src/vehicle_lang ./src/
 
           # Generate binding_wrap.c directly within the vehicle-lang build directory
           # The source files (binding.i and binding.def) are already available via $src
@@ -135,10 +135,10 @@
           ${pkgs.swig}/bin/swig -python -o binding_wrap.c binding.i
           cd ../..
         '';
-      });    
+      });
     # # Build the Haskell library with the C wrapper
-    # vehicle-lang = with (haskellPackages pkgs); pkgs.haskell.lib.overrideCabal 
-    #   (pkgs.haskell.lib.doJailbreak 
+    # vehicle-lang = with (haskellPackages pkgs); pkgs.haskell.lib.overrideCabal
+    #   (pkgs.haskell.lib.doJailbreak
     #     (pkgs.haskell.lib.addExtraLibraries
     #       (callCabal2nix "vehicle-python-binding" ./vehicle-python {})
     #       [ vehicle tasty-golden-executable optparse-applicative BNFC text ])
@@ -148,22 +148,22 @@
     #       # Find Python include directory
     #       pythonIncludeDir=${pkgs.python3}/include/python3.12
     #       configureFlags+=" --extra-include-dirs=$pythonIncludeDir"
-          
-    #       # Create a clean vendor directory 
+
+    #       # Create a clean vendor directory
     #       rm -rf vendor
     #       mkdir -p vendor
-          
+
     #       # Copy necessary files for vehicle-syntax
     #       mkdir -p vendor/vehicle-syntax/src/Vehicle/Syntax
     #       cp ${./vehicle-syntax}/src/Vehicle/Syntax/External.cf vendor/vehicle-syntax/src/Vehicle/Syntax/
     #       cp ${./vehicle-syntax}/src/Vehicle/Syntax/Internal.cf vendor/vehicle-syntax/src/Vehicle/Syntax/
     #       cp ${./vehicle-syntax}/vehicle-syntax.cabal vendor/vehicle-syntax/
-          
+
     #       # Copy necessary files for vehicle - use copying instead of symlinks
     #       mkdir -p vendor/vehicle/src
     #       cp ${./vehicle}/vehicle.cabal vendor/vehicle/
     #       cp -r ${./vehicle}/src/Vehicle vendor/vehicle/src/
-          
+
     #       # Copy necessary files for tasty-golden-executable - use copying instead of symlinks
     #       mkdir -p vendor/tasty-golden-executable
     #       cp ${./tasty-golden-executable}/tasty-golden-executable.cabal vendor/tasty-golden-executable/
@@ -190,7 +190,7 @@
                 paths.projectRoot = ./.;
                 paths.projectRootFile = "flake.nix";
                 paths.package = ./vehicle-python/.;
-                
+
                 # Inject the needed dependencies
                 deps = {
                   vehicle = (haskellPackages pkgs).vehicle;

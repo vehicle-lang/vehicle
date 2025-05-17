@@ -24,6 +24,7 @@ ext_module = setuptools.Extension(
 class cabal_build_ext(setuptools.command.build_ext.build_ext):
     is_nix_build = os.environ.get("IS_NIX_BUILD") is not None
     swig_path = os.environ.get("SWIG_OUTPUT_PATH")
+
     def finalize_options(self) -> None:
         super().finalize_options()
 
@@ -90,23 +91,23 @@ class cabal_build_ext(setuptools.command.build_ext.build_ext):
             )
 
     def cabal_build_ext(self, ext: setuptools.Extension) -> None:
-            
+
         # build native extension and pygments lexer with cabal
         self.mkpath(self.build_temp)
-                # copy native extension
+        # copy native extension
         lib_filename = self.get_cabal_foreign_library_filename(ext)
         ext_fullpath = self.get_ext_fullpath(ext.name)
-        
+
         if not self.is_nix_build:
             self.cabal(["build"], env={"INSTALLDIR": self.build_temp, **os.environ})
 
         self.mkpath(os.path.dirname(ext_fullpath))
-        
+
         if self.is_nix_build:
             lib_pre = self.swig_path
         else:
             lib_pre = self.build_temp
-        
+
         self.copy_file(os.path.join(lib_pre, lib_filename), ext_fullpath)
         # copy pygments lexer
         mod_fullpath = os.path.join(
