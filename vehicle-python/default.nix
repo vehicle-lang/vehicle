@@ -19,6 +19,7 @@ in {
     # SWIG is now injected from flake.nix to avoid duplicate definitions
     cabal = nixpkgs.haskellPackages.cabal-install;
     ghc = nixpkgs.ghcWithPackages;
+    swig = nixpkgs.swig;
     # Extra attributes that can be passed in from flake.nix
   };
   
@@ -78,22 +79,22 @@ in {
     #install = ''
     # '';
     # After installation, make sure the vehicle executable is available
-    postInstall = ''
-      if [ -n "${if config.deps.vehicle != null then "${config.deps.vehicle}" else ""}" ]; then
-        # Create a wrapper script to run vehicle
-        mkdir -p $out/bin
-        cat > $out/bin/vehicle-python << EOF
-        #!/bin/sh
-        export VEHICLE_PATH=${config.deps.vehicle}/bin/vehicle
-        exec python -m vehicle_lang "\$@"
-        EOF
+    # postInstall = ''
+    #   if [ -n "${if config.deps.vehicle != null then "${config.deps.vehicle}" else ""}" ]; then
+    #     # Create a wrapper script to run vehicle
+    #     mkdir -p $out/bin
+    #     cat > $out/bin/vehicle-python << EOF
+    #     #!/bin/sh
+    #     export VEHICLE_PATH=${config.deps.vehicle}/bin/vehicle
+    #     exec python -m vehicle_lang "\$@"
+    #     EOF
 
-        chmod +x $out/bin/vehicle-python
+    #     chmod +x $out/bin/vehicle-python
         
-        # Link the vehicle executable for direct access
-        ln -sf ${config.deps.vehicle}/bin/vehicle $out/bin/vehicle
-      fi
-    '';
+    #     # Link the vehicle executable for direct access
+    #     ln -sf ${config.deps.vehicle}/bin/vehicle $out/bin/vehicle
+    #   fi
+    # '';
   };
 
   buildPythonPackage = {
@@ -111,70 +112,3 @@ in {
   
   pip.flattenDependencies = true;
 }
-
-
-
-# {
-#   lib, 
-#   pkgs ? import <nixpkgs> {}, 
-#   python3 ? pkgs.python3,
-#   pythonPackages ? python3.pkgs,
-#   vehicle ? null,
-#   vehicleSyntax ? null
-# }:
-
-# let
-#   # If vehicle and vehicleSyntax are not provided, try to build them
-#   vehicleDrv = if vehicle != null then vehicle else 
-#     pkgs.haskellPackages.callCabal2nix "vehicle" ../vehicle {};
-  
-#   vehicleSyntaxDrv = if vehicleSyntax != null then vehicleSyntax else
-#     pkgs.haskellPackages.callCabal2nix "vehicle-syntax" ../vehicle-syntax {};
-
-# in pythonPackages.buildPythonPackage {
-#   pname = "vehicle-lang";
-#   version = "0.16.1";  # Match version from cabal file
-#   src = ./.;
-#   format = "setuptools";
-  
-#   buildInputs = [
-#     vehicleDrv
-#     vehicleSyntaxDrv
-#     pkgs.swig
-#     pkgs.cabal-install
-#     pythonPackages.setuptools
-#     pythonPackages.wheel
-#   ];
-  
-#   propagatedBuildInputs = with pythonPackages; [
-#     numpy
-#     pygments
-#     tensorflow
-#     pytest
-#   ];
-  
-#   preBuild = ''
-#     # Set up the environment to build the Haskell foreign library
-#     export VEHICLE_PATH=${vehicleDrv}/bin/vehicle
-    
-#     # Build the foreign library
-#     cabal build foreign-library:_binding --verbose --ghc-options="-dynamic"
-    
-#     # Find and copy the shared library to the appropriate location
-#     mkdir -p src/vehicle_lang
-#     find dist-newstyle -name "lib_binding*.so" -o -name "lib_binding*.dylib" -o -name "_binding.dll" -exec cp {} src/vehicle_lang/ \;
-#   '';
-  
-#   checkInputs = with pythonPackages; [
-#     pytest
-#   ];
-  
-#   doCheck = false;  # Disable tests for now
-  
-#   meta = with lib; {
-#     description = "Python bindings for Vehicle language";
-#     homepage = "https://github.com/vehicle-lang/vehicle";
-#     license = licenses.mit;
-#     maintainers = with maintainers; [ ];
-#   };
-# }

@@ -26,8 +26,13 @@
         allowBroken = true;
         allowUnfree = true;
       };
-      overlays = [ (old: new: { haskellPackages = (haskellPackages new)
-                              ; ghcWithPackages = new.ghc.withPackages (p: with p; [vehicle-syntax tasty-golden-executable vehicle]);}) ];
+      overlays = [ (old: new:
+        { haskellPackages = (haskellPackages new)
+          ; ghcWithPackages = new.ghc.withPackages (p:
+              with p;
+              [vehicle-syntax tasty-golden-executable vehicle]);
+        })
+      ];
     };
 
     # Setup for Agda
@@ -81,28 +86,8 @@
       };
     });
 
-    # Process the SWIG interface file to generate C wrapper
-    swigGen = pkgs.stdenv.mkDerivation {
-      name = "vehicle-swig-gen";
-      src = ./vehicle-python;
-      
-      nativeBuildInputs = [ pkgs.swig pkgs.python3 ];
-      
-      buildPhase = ''
-        cd src/vehicle_lang
-        swig -python -o binding_wrap.c binding.i
-        cd ../..
-      '';
-      
-      installPhase = ''
-        mkdir -p $out/src/vehicle_lang
-        cp src/vehicle_lang/binding_wrap.c $out/src/vehicle_lang/
-        cp src/vehicle_lang/binding.i $out/src/vehicle_lang/
-        cp src/vehicle_lang/binding.def $out/src/vehicle_lang/
-      '';
-    };
     # Build the Haskell library with the C wrapper
-    vehicle-lang = with (haskellPackages pkgs); pkgs.haskell.lib.overrideCabal
+    vehicle-python-bindings = with (haskellPackages pkgs); pkgs.haskell.lib.overrideCabal
       (pkgs.haskell.lib.doJailbreak
         (pkgs.haskell.lib.addExtraLibraries
           (callCabal2nix "vehicle-python-binding" ./vehicle-python {})
@@ -111,7 +96,7 @@
         
         # Make sure GCC can find Python.h and vendor files are available
         preConfigure = ''
-          
+          export IS_NIX_BUILD=1          
           echo "pwd: "
           echo $(pwd)
           ls -l ../
@@ -140,8 +125,9 @@
           mkdir -p vendor/tasty-golden-executable
           cp ${./tasty-golden-executable}/tasty-golden-executable.cabal vendor/tasty-golden-executable/
           cp -r ${./tasty-golden-executable}/src vendor/tasty-golden-executable/
+
           mkdir -p src/vehicle_lang
-          cp -r $src/src/vehicle_lang ./src/ 
+          cp -r --no-preserve=mode $src/src/vehicle_lang ./src/ 
 
           # Generate binding_wrap.c directly within the vehicle-lang build directory
           # The source files (binding.i and binding.def) are already available via $src
@@ -194,13 +180,13 @@
     packages = {
       inherit agdaWithPackages pythonEnv;
       inherit ((haskellPackages pkgs)) vehicle vehicle-syntax tasty-golden-executable;
-      inherit vehicle-lang;
+      inherit vehicle-python-bindings;
       default = (haskellPackages pkgs).vehicle;
       vp = inputs.dream2nix.lib.evalModules {
             packageSets.nixpkgs = pkgs;
             modules = [
               ./vehicle-python/default.nix
-              {
+              ({pkgs , ...}: {
                 paths.projectRoot = ./.;
                 paths.projectRootFile = "flake.nix";
                 paths.package = ./vehicle-python/.;
@@ -208,14 +194,15 @@
                 # Inject the needed dependencies
                 deps = {
                   vehicle = (haskellPackages pkgs).vehicle;
-                  swig = pkgs.swig;
                 };
                 # Set environment variables for the build
-                env.BINDING_WRAP_PATH = "${swigGen}/src/vehicle_lang/binding_wrap.c";
+                env.BINDING_WRAP_PATH = let
+                  version = "9.8.4";  #(haskellPackages pkgs).ghc.version;
+                in "${vehicle-python-bindings}/lib/ghc-${version}/lib";
                 env.USE_SWIG_WRAPPER = "1";
                 env.VEHICLE_PATH = "${(haskellPackages pkgs).vehicle}/bin/vehicle";
-                env.SWIG_PATH = "${pkgs.swig}/bin/swig";
-              }
+                env.IS_NIX_BUILD = "1";
+              })
             ];
           };
     };
