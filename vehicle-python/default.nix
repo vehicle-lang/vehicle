@@ -34,10 +34,11 @@ in {
       config.deps.pythonPackages.packaging
       config.deps.pythonPackages.setuptools
     ];
-
+    
     shellHook = ''
     export PYTHONPATH=${config.mkDerivation.src}:$PYTHONPATH
     '';
+    
     # Set up the build environment
     preConfigure = ''
       # Ensure tools are in PATH
@@ -78,7 +79,7 @@ in {
         echo "Using vehicle executable at $VEHICLE_PATH"
       fi
     '';
-
+  };
   buildPythonPackage = {
     pyproject = true;
   };
