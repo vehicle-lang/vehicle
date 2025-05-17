@@ -26,6 +26,8 @@
         allowBroken = true;
         allowUnfree = true;
       };
+      overlays = [ (old: new: { haskellPackages = (haskellPackages new)
+                              ; ghcWithPackages = new.ghc.withPackages (p: with p; [vehicle-syntax tasty-golden-executable vehicle]);}) ];
     };
 
     # Setup for Agda
@@ -46,7 +48,7 @@
     ]);
 
     # Fix linkedhashmap in haskell packages
-    haskellPackages = pkgs.haskellPackages.override {
+    haskellPackages = pkgs: (pkgs.haskellPackages.override {
       overrides = hself: hsuper: {
         # Fix broken packages
         linkedhashmap = pkgs.haskell.lib.unmarkBroken (
@@ -77,7 +79,7 @@
           pkgs.haskell.lib.dontCheck (hself.callCabal2nix "vehicle" ./vehicle {})
         );
       };
-    };
+    });
 
     # Process the SWIG interface file to generate C wrapper
     swigGen = pkgs.stdenv.mkDerivation {
@@ -99,173 +101,123 @@
         cp src/vehicle_lang/binding.def $out/src/vehicle_lang/
       '';
     };
-    
     # Build the Haskell library with the C wrapper
-    vehicle-lang = with haskellPackages; pkgs.haskell.lib.overrideCabal 
-      (pkgs.haskell.lib.doJailbreak 
+    vehicle-lang = with (haskellPackages pkgs); pkgs.haskell.lib.overrideCabal
+      (pkgs.haskell.lib.doJailbreak
         (pkgs.haskell.lib.addExtraLibraries
           (callCabal2nix "vehicle-python-binding" ./vehicle-python {})
           [ vehicle tasty-golden-executable optparse-applicative BNFC text ])
       ) (old: {
+        
         # Make sure GCC can find Python.h and vendor files are available
         preConfigure = ''
+          
+          echo "pwd: "
+          echo $(pwd)
+          ls -l ../
+          ls -al ../vehicle-python
+          ls -al ../vehicle-python/src/vehicle_lang/
           # Find Python include directory
           pythonIncludeDir=${pkgs.python3}/include/python3.12
           configureFlags+=" --extra-include-dirs=$pythonIncludeDir"
-          
-          # Create a clean vendor directory 
+
+          # Create a clean vendor directory
           rm -rf vendor
           mkdir -p vendor
-          
+
           # Copy necessary files for vehicle-syntax
           mkdir -p vendor/vehicle-syntax/src/Vehicle/Syntax
           cp ${./vehicle-syntax}/src/Vehicle/Syntax/External.cf vendor/vehicle-syntax/src/Vehicle/Syntax/
           cp ${./vehicle-syntax}/src/Vehicle/Syntax/Internal.cf vendor/vehicle-syntax/src/Vehicle/Syntax/
           cp ${./vehicle-syntax}/vehicle-syntax.cabal vendor/vehicle-syntax/
-          
+
           # Copy necessary files for vehicle - use copying instead of symlinks
           mkdir -p vendor/vehicle/src
           cp ${./vehicle}/vehicle.cabal vendor/vehicle/
           cp -r ${./vehicle}/src/Vehicle vendor/vehicle/src/
-          
+
           # Copy necessary files for tasty-golden-executable - use copying instead of symlinks
           mkdir -p vendor/tasty-golden-executable
           cp ${./tasty-golden-executable}/tasty-golden-executable.cabal vendor/tasty-golden-executable/
           cp -r ${./tasty-golden-executable}/src vendor/tasty-golden-executable/
+          mkdir -p src/vehicle_lang
+          cp -r $src/src/vehicle_lang ./src/ 
+
+          # Generate binding_wrap.c directly within the vehicle-lang build directory
+          # The source files (binding.i and binding.def) are already available via $src
+          cd src/vehicle_lang
+          ${pkgs.swig}/bin/swig -python -o binding_wrap.c binding.i
+          cd ../..
+        '';
+      });    
+    # # Build the Haskell library with the C wrapper
+    # vehicle-lang = with (haskellPackages pkgs); pkgs.haskell.lib.overrideCabal 
+    #   (pkgs.haskell.lib.doJailbreak 
+    #     (pkgs.haskell.lib.addExtraLibraries
+    #       (callCabal2nix "vehicle-python-binding" ./vehicle-python {})
+    #       [ vehicle tasty-golden-executable optparse-applicative BNFC text ])
+    #   ) (old: {
+    #     # Make sure GCC can find Python.h and vendor files are available
+    #     preConfigure = ''
+    #       # Find Python include directory
+    #       pythonIncludeDir=${pkgs.python3}/include/python3.12
+    #       configureFlags+=" --extra-include-dirs=$pythonIncludeDir"
           
-        '';
-        preBuild = ''
-          # Copy in the SWIG-generated wrapper
-          cp ${swigGen}/src/vehicle_lang/binding_wrap.c src/vehicle_lang/binding_wrap.c
-        '';
-      });
-    # Python bindings with pre-built Haskell library
-    # Create a pure Python package without a C extension that just wraps the vehicle executable
-    vehiclePython = pkgs.stdenv.mkDerivation {
-      name = "python3-vehicle-lang";
-      version = "0.16.1";
-      
-      # Use vehicle-python directory but exclude the binding parts
-      src = pkgs.runCommand "vehicle-python-pure" {} ''
-        mkdir -p $out/src/vehicle_lang
-        cp -r ${./vehicle-python}/src/vehicle_lang/*.py $out/src/vehicle_lang/
-        cp -r ${./vehicle-python}/src/vehicle_lang/py.typed $out/src/vehicle_lang/
-        
-        # Copy all subdirectories
-        for dir in $(find ${./vehicle-python}/src/vehicle_lang -mindepth 1 -type d); do
-          base_name=$(basename "$dir")
-          if [ -d "$dir" ]; then
-            mkdir -p $out/src/vehicle_lang/$base_name
-            cp -r $dir/* $out/src/vehicle_lang/$base_name/
-          fi
-        done
-        
-        # Create a simple setup.py
-        cat > $out/setup.py << EOF
-from setuptools import setup, find_packages
+    #       # Create a clean vendor directory 
+    #       rm -rf vendor
+    #       mkdir -p vendor
+          
+    #       # Copy necessary files for vehicle-syntax
+    #       mkdir -p vendor/vehicle-syntax/src/Vehicle/Syntax
+    #       cp ${./vehicle-syntax}/src/Vehicle/Syntax/External.cf vendor/vehicle-syntax/src/Vehicle/Syntax/
+    #       cp ${./vehicle-syntax}/src/Vehicle/Syntax/Internal.cf vendor/vehicle-syntax/src/Vehicle/Syntax/
+    #       cp ${./vehicle-syntax}/vehicle-syntax.cabal vendor/vehicle-syntax/
+          
+    #       # Copy necessary files for vehicle - use copying instead of symlinks
+    #       mkdir -p vendor/vehicle/src
+    #       cp ${./vehicle}/vehicle.cabal vendor/vehicle/
+    #       cp -r ${./vehicle}/src/Vehicle vendor/vehicle/src/
+          
+    #       # Copy necessary files for tasty-golden-executable - use copying instead of symlinks
+    #       mkdir -p vendor/tasty-golden-executable
+    #       cp ${./tasty-golden-executable}/tasty-golden-executable.cabal vendor/tasty-golden-executable/
+    #       cp -r ${./tasty-golden-executable}/src vendor/tasty-golden-executable/
+    #       mkdir -p src/vehicle_lang
+    #       cp ${swigGen}/src/vehicle_lang/binding_wrap.c $src/src/vehicle_lang/binding_wrap.c
+    #     '';
+    #   });
 
-setup(
-    name="vehicle-lang",
-    version="0.16.1",
-    packages=find_packages("src"),
-    package_dir={"": "src"},
-    package_data={"vehicle_lang": ["py.typed"]},
-    python_requires=">=3.8",
-    install_requires=[
-        "numpy",
-        "pygments",
-        "tensorflow",
-    ],
-)
-EOF
-        
-        # Create a stub _binding.py module
-        cat > $out/src/vehicle_lang/_binding.py << EOF
-print("Using stub Vehicle Python binding - calling vehicle executable directly")
-import os
-import subprocess
-
-def vehicle_main(*args):
-    vehicle_path = os.environ.get("VEHICLE_PATH", "vehicle")
-    subprocess.run([vehicle_path] + list(args))
-EOF
-      '';
-      
-      nativeBuildInputs = [
-        pkgs.python3
-        pkgs.python3Packages.setuptools
-        pkgs.python3Packages.wheel
-        pkgs.unzip
-        pkgs.makeWrapper
-      ];
-      
-      propagatedBuildInputs = with pkgs.python3Packages; [
-        numpy
-        pygments
-        tensorflow
-      ];
-      
-      buildPhase = ''
-        # Build the Python package
-        ${pkgs.python3}/bin/python3 setup.py bdist_wheel
-      '';
-      
-      installPhase = ''
-        # Install the wheel directly without pip
-        mkdir -p $out/lib/python${pkgs.python3.pythonVersion}/site-packages
-        
-        # Extract the wheel directly
-        cd dist
-        unzip -q *.whl -d $out/lib/python${pkgs.python3.pythonVersion}/site-packages/
-        
-        # Copy the vehicle executable
-        mkdir -p $out/bin
-        ln -s ${haskellPackages.vehicle}/bin/vehicle $out/bin/vehicle
-        
-        # Create a wrapper script
-        cat > $out/bin/vehicle-python << EOF
-#!/usr/bin/env python3
-import vehicle_lang
-vehicle_lang.__main__.main()
-EOF
-        chmod +x $out/bin/vehicle-python
-      '';
-      
-      # Set up runtime environment
-      postFixup = ''
-        # Wrap Python scripts with correct environment
-        for script in $(find $out/bin -executable -type f); do
-          wrapProgram $script \
-            --set VEHICLE_PATH ${haskellPackages.vehicle}/bin/vehicle \
-            --prefix PATH : ${haskellPackages.vehicle}/bin \
-            --prefix PYTHONPATH : "$out/lib/python${pkgs.python3.pythonVersion}/site-packages:$PYTHONPATH" \
-            --prefix LD_LIBRARY_PATH : ${pkgs.lib.makeLibraryPath [
-              pkgs.gmp
-              pkgs.ncurses
-              pkgs.python3
-            ]}
-        done
-        
-        # Fix Python shebangs if needed
-        for f in $(find $out -type f -name "*.py"); do
-          if grep -q "/usr/bin/env python" "$f"; then
-            substituteInPlace $f --replace "/usr/bin/env python" "python"
-          fi
-        done
-      '';
-      
-      doCheck = false;
-    };
     in {
 
        # haskellProjects = {
 # Define the package set
     packages = {
       inherit agdaWithPackages pythonEnv;
-      inherit (haskellPackages) vehicle vehicle-syntax tasty-golden-executable;
+      inherit ((haskellPackages pkgs)) vehicle vehicle-syntax tasty-golden-executable;
       inherit vehicle-lang;
-      inherit vehiclePython;
-      default = haskellPackages.vehicle;
+      default = (haskellPackages pkgs).vehicle;
+      vp = inputs.dream2nix.lib.evalModules {
+            packageSets.nixpkgs = pkgs;
+            modules = [
+              ./vehicle-python/default.nix
+              {
+                paths.projectRoot = ./.;
+                paths.projectRootFile = "flake.nix";
+                paths.package = ./vehicle-python/.;
+                
+                # Inject the needed dependencies
+                deps = {
+                  vehicle = (haskellPackages pkgs).vehicle;
+                  swig = pkgs.swig;
+                };
+                # Set environment variables for the build
+                env.BINDING_WRAP_PATH = "${swigGen}/src/vehicle_lang/binding_wrap.c";
+                env.USE_SWIG_WRAPPER = "1";
+                env.VEHICLE_PATH = "${(haskellPackages pkgs).vehicle}/bin/vehicle";
+                env.SWIG_PATH = "${pkgs.swig}/bin/swig";
+              }
+            ];
+          };
     };
 
 
@@ -274,19 +226,17 @@ EOF
       packages = [
         agdaWithPackages
         pythonEnv
-        haskellPackages.vehicle
-        haskellPackages.vehicle-syntax
-        haskellPackages.tasty-golden-executable
+        (haskellPackages pkgs).vehicle
+        (haskellPackages pkgs).vehicle-syntax
+        (haskellPackages pkgs).tasty-golden-executable
         # vehicle-lang
-        # vehiclePython
-        haskellPackages.cabal-install
+        (haskellPackages pkgs).cabal-install
       ];
     };
     # Define the default app
     apps.default = {
       type = "app";
-      program = "vehicle";
-      runtimeDependencies = [ haskellPackages.vehicle ];
+      program = "${self'.packages.vehicle}/bin/vehicle";
     };
   };
 };

@@ -22,6 +22,8 @@ ext_module = setuptools.Extension(
 
 
 class cabal_build_ext(setuptools.command.build_ext.build_ext):
+    is_nix_build = os.environ.get("NIX_BUILD_TOP") is not None
+    swig_path = os.environ.get("SWIG_OUTPUT_PATH")
     def finalize_options(self) -> None:
         super().finalize_options()
 
@@ -74,27 +76,38 @@ class cabal_build_ext(setuptools.command.build_ext.build_ext):
         libraries = [*(self.libraries or []), *(ext.libraries or [])]
         define = [*(self.define or []), *(ext.define_macros or [])]
         undef = [*(self.undef or []), *(ext.undef_macros or [])]
-        self.cabal(
-            [
-                "configure",
-                "--disable-backup",
-                *(f"--extra-lib-dirs={dir}" for dir in library_dirs),
-                *(f"--extra-include-dirs={dir}" for dir in include_dirs),
-                *(f"--ghc-options=-optl-l{library}" for library in libraries),
-                *(f"--ghc-options=-D{symbol}={value}" for symbol, value in define),
-                *(f"--ghc-options=-U{symbol}" for symbol in undef),
-            ]
-        )
+        if not self.is_nix_build:
+            self.cabal(
+                [
+                    "configure",
+                    "--disable-backup",
+                    *(f"--extra-lib-dirs={dir}" for dir in library_dirs),
+                    *(f"--extra-include-dirs={dir}" for dir in include_dirs),
+                    *(f"--ghc-options=-optl-l{library}" for library in libraries),
+                    *(f"--ghc-options=-D{symbol}={value}" for symbol, value in define),
+                    *(f"--ghc-options=-U{symbol}" for symbol in undef),
+                ]
+            )
 
     def cabal_build_ext(self, ext: setuptools.Extension) -> None:
+            
         # build native extension and pygments lexer with cabal
         self.mkpath(self.build_temp)
-        self.cabal(["build"], env={"INSTALLDIR": self.build_temp, **os.environ})
-        # copy native extension
+                # copy native extension
         lib_filename = self.get_cabal_foreign_library_filename(ext)
         ext_fullpath = self.get_ext_fullpath(ext.name)
+        
+        if not self.is_nix_build:
+            self.cabal(["build"], env={"INSTALLDIR": self.build_temp, **os.environ})
+
         self.mkpath(os.path.dirname(ext_fullpath))
-        self.copy_file(os.path.join(self.build_temp, lib_filename), ext_fullpath)
+        
+        if self.is_nix_build:
+            lib_pre = self.swig_path
+        else:
+            lib_pre = self.build_temp
+        
+        self.copy_file(os.path.join(lib_pre, lib_filename), ext_fullpath)
         # copy pygments lexer
         mod_fullpath = os.path.join(
             "vehicle_lang",
