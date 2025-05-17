@@ -91,6 +91,6 @@ in {
                          ++ (lib.lists.flatten (lib.attrsets.attrValues pyproject.project.optional-dependencies))
                          ++ pyproject.build-system.requires;
 
-  pip.editables = { vehicle-lang = ./.; }; 
+  pip.editables = { vehicle-lang = ./.; };
   pip.flattenDependencies = true;
 }

@@ -24,6 +24,7 @@ ext_module = setuptools.Extension(
 class cabal_build_ext(setuptools.command.build_ext.build_ext):
     is_nix_build = os.environ.get("IS_NIX_BUILD") is not None
     haskell_lib = os.environ.get("SWIG_OUTPUT_PATH")
+
     def finalize_options(self) -> None:
         super().finalize_options()
 
