@@ -40,18 +40,6 @@
       ps.standard-library
     ]);
 
-    # Python environment with all needed packages
-    pythonEnv = pkgs.python3.withPackages (ps: with ps; [
-      numpy
-      tensorflow
-      pytest
-      pygments
-      pip
-      setuptools
-      wheel
-      pyyaml
-    ]);
-
     # Fix linkedhashmap in haskell packages
     haskellPackages = pkgs: (pkgs.haskellPackages.override {
       overrides = hself: hsuper: {
@@ -178,7 +166,7 @@
        # haskellProjects = {
 # Define the package set
     packages = {
-      inherit agdaWithPackages pythonEnv;
+      inherit agdaWithPackages;
       inherit ((haskellPackages pkgs)) vehicle vehicle-syntax tasty-golden-executable;
       inherit vehicle-python-bindings;
       default = (haskellPackages pkgs).vehicle;
@@ -212,7 +200,6 @@
       # inputsFrom = [];
       packages = [
         agdaWithPackages
-        pythonEnv
         (haskellPackages pkgs).vehicle
         (haskellPackages pkgs).vehicle-syntax
         (haskellPackages pkgs).tasty-golden-executable

@@ -23,8 +23,7 @@ ext_module = setuptools.Extension(
 
 class cabal_build_ext(setuptools.command.build_ext.build_ext):
     is_nix_build = os.environ.get("IS_NIX_BUILD") is not None
-    swig_path = os.environ.get("SWIG_OUTPUT_PATH")
-
+    haskell_lib = os.environ.get("SWIG_OUTPUT_PATH")
     def finalize_options(self) -> None:
         super().finalize_options()
 
@@ -57,7 +56,8 @@ class cabal_build_ext(setuptools.command.build_ext.build_ext):
         # First, scan the sources for SWIG definition files (.i), run
         # SWIG on 'em to create .c files, and modify the sources list
         # accordingly.
-        # sources = self.swig_sources(sources, ext)  # type: ignore[no-untyped-call]
+        if not self.is_nix_build:
+            sources = self.swig_sources(sources, ext)  # type: ignore[no-untyped-call]
 
         # Next, build the sources with Cabal.
         # NOTE: This requires a valid .cabal file that defines a foreign library called _binding.
@@ -104,7 +104,7 @@ class cabal_build_ext(setuptools.command.build_ext.build_ext):
         self.mkpath(os.path.dirname(ext_fullpath))
 
         if self.is_nix_build:
-            lib_pre = self.swig_path
+            lib_pre = self.haskell_lib
         else:
             lib_pre = self.build_temp
 

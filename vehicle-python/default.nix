@@ -35,6 +35,9 @@ in {
       config.deps.pythonPackages.setuptools
     ];
 
+    shellHook = ''
+    export PYTHONPATH=${config.mkDerivation.src}:$PYTHONPATH
+    '';
     # Set up the build environment
     preConfigure = ''
       # Ensure tools are in PATH
@@ -76,27 +79,6 @@ in {
       fi
     '';
 
-    #install = ''
-    # '';
-    # After installation, make sure the vehicle executable is available
-    # postInstall = ''
-    #   if [ -n "${if config.deps.vehicle != null then "${config.deps.vehicle}" else ""}" ]; then
-    #     # Create a wrapper script to run vehicle
-    #     mkdir -p $out/bin
-    #     cat > $out/bin/vehicle-python << EOF
-    #     #!/bin/sh
-    #     export VEHICLE_PATH=${config.deps.vehicle}/bin/vehicle
-    #     exec python -m vehicle_lang "\$@"
-    #     EOF
-
-    #     chmod +x $out/bin/vehicle-python
-
-    #     # Link the vehicle executable for direct access
-    #     ln -sf ${config.deps.vehicle}/bin/vehicle $out/bin/vehicle
-    #   fi
-    # '';
-  };
-
   buildPythonPackage = {
     pyproject = true;
   };
@@ -109,6 +91,6 @@ in {
                          ++ (lib.lists.flatten (lib.attrsets.attrValues pyproject.project.optional-dependencies))
                          ++ pyproject.build-system.requires;
 
-
+  pip.editables = { vehicle-lang = ./.; }; 
   pip.flattenDependencies = true;
 }
