@@ -105,7 +105,10 @@ class cabal_build_ext(setuptools.command.build_ext.build_ext):
         self.mkpath(os.path.dirname(ext_fullpath))
 
         if self.is_nix_build:
-            lib_pre = self.haskell_lib
+            if self.haskell_lib is None:
+                assert false
+            else:
+                lib_pre = self.haskell_lib
         else:
             lib_pre = self.build_temp
 
