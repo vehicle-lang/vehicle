@@ -124,53 +124,8 @@
           cd ../..
         '';
       });
-    # # Build the Haskell library with the C wrapper
-    # vehicle-lang = with (haskellPackages pkgs); pkgs.haskell.lib.overrideCabal
-    #   (pkgs.haskell.lib.doJailbreak
-    #     (pkgs.haskell.lib.addExtraLibraries
-    #       (callCabal2nix "vehicle-python-binding" ./vehicle-python {})
-    #       [ vehicle tasty-golden-executable optparse-applicative BNFC text ])
-    #   ) (old: {
-    #     # Make sure GCC can find Python.h and vendor files are available
-    #     preConfigure = ''
-    #       # Find Python include directory
-    #       pythonIncludeDir=${pkgs.python3}/include/python3.12
-    #       configureFlags+=" --extra-include-dirs=$pythonIncludeDir"
 
-    #       # Create a clean vendor directory
-    #       rm -rf vendor
-    #       mkdir -p vendor
-
-    #       # Copy necessary files for vehicle-syntax
-    #       mkdir -p vendor/vehicle-syntax/src/Vehicle/Syntax
-    #       cp ${./vehicle-syntax}/src/Vehicle/Syntax/External.cf vendor/vehicle-syntax/src/Vehicle/Syntax/
-    #       cp ${./vehicle-syntax}/src/Vehicle/Syntax/Internal.cf vendor/vehicle-syntax/src/Vehicle/Syntax/
-    #       cp ${./vehicle-syntax}/vehicle-syntax.cabal vendor/vehicle-syntax/
-
-    #       # Copy necessary files for vehicle - use copying instead of symlinks
-    #       mkdir -p vendor/vehicle/src
-    #       cp ${./vehicle}/vehicle.cabal vendor/vehicle/
-    #       cp -r ${./vehicle}/src/Vehicle vendor/vehicle/src/
-
-    #       # Copy necessary files for tasty-golden-executable - use copying instead of symlinks
-    #       mkdir -p vendor/tasty-golden-executable
-    #       cp ${./tasty-golden-executable}/tasty-golden-executable.cabal vendor/tasty-golden-executable/
-    #       cp -r ${./tasty-golden-executable}/src vendor/tasty-golden-executable/
-    #       mkdir -p src/vehicle_lang
-    #       cp ${swigGen}/src/vehicle_lang/binding_wrap.c $src/src/vehicle_lang/binding_wrap.c
-    #     '';
-    #   });
-
-    in {
-
-       # haskellProjects = {
-# Define the package set
-    packages = {
-      inherit agdaWithPackages;
-      inherit ((haskellPackages pkgs)) vehicle vehicle-syntax tasty-golden-executable;
-      inherit vehicle-python-bindings;
-      default = (haskellPackages pkgs).vehicle;
-      vp = inputs.dream2nix.lib.evalModules {
+    vp = inputs.dream2nix.lib.evalModules {
             packageSets.nixpkgs = pkgs;
             modules = [
               ./vehicle-python/default.nix
@@ -193,17 +148,27 @@
               })
             ];
           };
+    in {
+
+       # haskellProjects = {
+# Define the package set
+    packages = {
+      inherit agdaWithPackages;
+      inherit ((haskellPackages pkgs)) vehicle vehicle-syntax tasty-golden-executable;
+      inherit vehicle-python-bindings;
+      default = (haskellPackages pkgs).vehicle;
+      inherit vp;
     };
 
 
     devShells.default = pkgs.mkShell {
-      # inputsFrom = [];
+      inputsFrom = [vp.devShell];
       packages = [
         agdaWithPackages
         (haskellPackages pkgs).vehicle
         (haskellPackages pkgs).vehicle-syntax
         (haskellPackages pkgs).tasty-golden-executable
-        # vehicle-lang
+        vehicle-python-bindings
         (haskellPackages pkgs).cabal-install
       ];
     };
