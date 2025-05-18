@@ -33,6 +33,7 @@ in {
       config.deps.pythonPackages.find-libpython
       config.deps.pythonPackages.packaging
       config.deps.pythonPackages.setuptools
+      config.deps.pythonPackages.jupyter
     ];
 
     shellHook = ''
@@ -82,16 +83,25 @@ in {
   };
   buildPythonPackage = {
     pyproject = true;
+    pythonImportsCheck = [
+      "vehicle_lang"
+    ];
   };
 
   name = pyproject.project.name;
   version = pyproject.project.version;
 
   # Include SWIG in the build process
+  # Collect all dependencies but manually exclude tensorboard
   pip.requirementsList = pyproject.project.dependencies
                          ++ (lib.lists.flatten (lib.attrsets.attrValues pyproject.project.optional-dependencies))
-                         ++ pyproject.build-system.requires;
+                         ++ pyproject.build-system.requires
+                         ++ [ "jupyter" ];
+  
 
-  pip.editables = { vehicle-lang = ./.; };
+  pip.editables = { vehicle-lang = "${config.mkDerivation.src}"; };
   pip.flattenDependencies = true;
 }
+
+
+  

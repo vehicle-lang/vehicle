@@ -162,7 +162,20 @@
 
 
     devShells.default = pkgs.mkShell {
-      inputsFrom = [vp.devShell];
+      # Remove the tensorboard collision by creating a modified Python environment
+      inputsFrom = let 
+        # Get the original dev shell from vp but filter out TensorBoard
+        vpDevInputs = builtins.filter (x: 
+          !(pkgs.lib.hasPrefix "python3.12-tensorboard-" (builtins.baseNameOf (builtins.toString x)))) 
+          (builtins.concatLists 
+            (builtins.map (x: if builtins.hasAttr "buildInputs" x then x.buildInputs else []) 
+              (if builtins.hasAttr "inputsFrom" vp.devShell then vp.devShell.inputsFrom else [vp.devShell])
+            )
+          );
+      in [
+        # Create a new shell with filtered inputs
+        (pkgs.mkShell { buildInputs = vpDevInputs; })
+      ];
       packages = [
         agdaWithPackages
         (haskellPackages pkgs).vehicle
