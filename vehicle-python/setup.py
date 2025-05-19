@@ -106,7 +106,7 @@ class cabal_build_ext(setuptools.command.build_ext.build_ext):
 
         if self.is_nix_build:
             if self.haskell_lib is None:
-                assert false
+                raise ValueError("haskell_lib is not set, but is required for Nix builds")
             else:
                 lib_pre = self.haskell_lib
         else:
