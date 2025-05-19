@@ -37,7 +37,7 @@ in {
     ];
 
     shellHook = ''
-    export PYTHONPATH=${config.mkDerivation.src}:$PYTHONPATH
+    export PYTHONPATH=/nix/store/cinxrk0fsfa4cpyk02rknyy6qpwb21k2-python3.12-vehicle_lang-0.16.1/lib/python3.12/site-packages:$PYTHONPATH
     '';
 
     # Set up the build environment
@@ -51,6 +51,7 @@ in {
       # Set up Python path for dependencies from pyproject.toml
       PIP_DEPS_PATH="$(${config.deps.python}/bin/python -c 'import site; print(site.getsitepackages()[0])')"
       export PYTHONPATH="$PIP_DEPS_PATH:$PYTHONPATH"
+      export PYTHONPATH="$PYTHONPATH"
       echo $PYTHONPATH
 
       # Create missing README.md and LICENSE files

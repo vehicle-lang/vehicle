@@ -143,7 +143,6 @@
                   version = "9.8.4";  #(haskellPackages pkgs).ghc.version;
                 in "${vehicle-python-bindings}/lib/ghc-${version}/lib";
                 env.USE_SWIG_WRAPPER = "1";
-                env.VEHICLE_PATH = "${(haskellPackages pkgs).vehicle}/bin/vehicle";
                 env.IS_NIX_BUILD = "1";
               })
             ];
