@@ -18,7 +18,7 @@
     imports = [ inputs.haskell-flake.flakeModule
     inputs.flake-parts.flakeModules.easyOverlay
     ];
-    debug = true;
+    #debug = true;
     perSystem = { self', system, config, pkgs, lib, ... }:
     let
       haskellOverlay = (old: new:
@@ -153,12 +153,16 @@
         ];
       };
     in {
-
-      # haskellProjects = {
+        overlayAttrs = {
+          inherit (config.packages)
+            vehicle vehicle-syntax vehicle-python-bindings tasty-golden-executable;
+          vehicle-lang = (vp.packages.default) ;
+        };
+        # haskellProjects = {
         # Define the package set
         packages = {
-          inherit agdaWithPackages;
-          default = (haskellPackages pkgs).vehicle;
+          vehicle = (haskellPackages pkgs).vehicle;
+          default = config.packages.vehicle;
           inherit vp;
         };
 
