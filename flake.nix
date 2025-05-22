@@ -178,10 +178,10 @@
 
 <<<<<<< HEAD
           inputsFrom = [config.devShells.haskell];
-          packages = let vpDevInputs = builtins.filter (x: 
-          !(pkgs.lib.hasPrefix "python3.12-tensorboard-" (builtins.baseNameOf (builtins.toString x)))) 
-          (builtins.concatLists 
-          (builtins.map (x: if builtins.hasAttr "buildInputs" x then x.buildInputs else []) 
+          packages = let vpDevInputs = builtins.filter (x:
+          !(pkgs.lib.hasPrefix "python3.12-tensorboard-" (builtins.baseNameOf (builtins.toString x))))
+          (builtins.concatLists
+          (builtins.map (x: if builtins.hasAttr "buildInputs" x then x.buildInputs else [])
           (if builtins.hasAttr "inputsFrom" vp.devShell then vp.devShell.inputsFrom else [vp.devShell])
           )
           );

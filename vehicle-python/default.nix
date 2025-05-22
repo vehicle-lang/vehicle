@@ -103,6 +103,3 @@ in {
   pip.editables = { vehicle-lang = "${config.mkDerivation.src}"; };
   pip.flattenDependencies = true;
 }
-
-
-
