@@ -98,11 +98,11 @@ in {
                          ++ (lib.lists.flatten (lib.attrsets.attrValues pyproject.project.optional-dependencies))
                          ++ pyproject.build-system.requires
                          ++ [ "jupyter" ];
-  
+
 
   pip.editables = { vehicle-lang = "${config.mkDerivation.src}"; };
   pip.flattenDependencies = true;
 }
 
 
-  
+

@@ -176,6 +176,7 @@
           # Remove the tensorboard collision by creating a modified Python environment
           # # Get the original dev shell from vp but filter out TensorBoard
 
+<<<<<<< HEAD
           inputsFrom = [config.devShells.haskell];
           packages = let vpDevInputs = builtins.filter (x: 
           !(pkgs.lib.hasPrefix "python3.12-tensorboard-" (builtins.baseNameOf (builtins.toString x)))) 
