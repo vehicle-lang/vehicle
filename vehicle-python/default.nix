@@ -36,8 +36,10 @@ in {
       config.deps.pythonPackages.jupyter
     ];
 
+    # TODO: This nix path should not be hard-coded but you
+    #       can't run the stuff in the module from the shell if it's not there
     shellHook = ''
-    export PYTHONPATH=/nix/store/cinxrk0fsfa4cpyk02rknyy6qpwb21k2-python3.12-vehicle_lang-0.16.1/lib/python3.12/site-packages:$PYTHONPATH
+    export PYTHONPATH=./vehicle-python/src/vehicle_lang:$PYTHONPATH
     '';
 
     # Set up the build environment
