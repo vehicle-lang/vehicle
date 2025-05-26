@@ -18,5 +18,9 @@
   {
     "name": "export",
     "run": "vehicle export --help"
+  },
+  {
+    "name": "list",
+    "run": "vehicle list --help"
   }
 ]

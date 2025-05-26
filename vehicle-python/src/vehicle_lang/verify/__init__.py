@@ -15,7 +15,7 @@ def verify(
     verifier: Verifier = Verifier.Marabou,
     verifier_location: Optional[Union[str, Path]] = None,
     cache: Optional[Union[str, Path]] = None,
-) -> None:
+) -> str:
     """
     Check whether properties in a Vehicle specification hold.
 
@@ -56,7 +56,8 @@ def verify(
 
     # Check for errors
     if exc != 0:
-        raise VehicleError(err or out or log or "unknown error")
-    if out is None:
-        raise VehicleError("no output")
-    return None
+        raise VehicleError(f"{err}")
+    elif not out:
+        raise VehicleError(f"Vehicle produced no output")
+
+    return out

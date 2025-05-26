@@ -56,9 +56,10 @@ compileVariableDecl var = return $ parens ("declare-fun" <+> pretty var <+> "Rea
 compileAssertion :: (MonadLogger m) => QueryAssertion QueryVariable -> m (Doc a)
 compileAssertion QueryAssertion {..} = do
   let compiledRel = compileRel rel
-  let compiledLHS = foldl compileCoefVar "" (NonEmpty.tail lhs)
+  let (headVar NonEmpty.:| tailVars) = lhs
+  let compiledLHS = foldl compileCoefVar (compileCoefFirstVar headVar) tailVars
   let compiledRHS = prettyRationalAsFloat rhs
-  return $ parens ("assert" <+> compiledRel <+> compiledLHS <+> compiledRHS)
+  return $ parens ("assert" <+> compiledRel <+> parens compiledLHS <+> compiledRHS)
 
 compileRel :: QueryRelation -> Doc a
 compileRel = \case
@@ -67,6 +68,13 @@ compileRel = \case
   GeRel -> ">="
   LtRel -> "<"
   GtRel -> ">"
+
+compileCoefFirstVar :: (Coefficient, QueryVariable) -> Doc a
+compileCoefFirstVar (coef, var)
+  | coef == 1 = "+" <+> pretty var
+  | coef == -1 = "-" <+> pretty var
+  | coef < 0 = "-" <+> parens ("*" <+> prettyRationalAsFloat (-coef) <+> pretty var)
+  | otherwise = "*" <+> prettyRationalAsFloat coef <+> pretty var
 
 compileCoefVar :: Doc a -> (Coefficient, QueryVariable) -> Doc a
 compileCoefVar r (coef, var)

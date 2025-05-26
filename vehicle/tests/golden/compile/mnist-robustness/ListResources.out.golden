@@ -1,0 +1,27 @@
+[
+  {
+    "entityType": "Image -> Vector Rat 10",
+    "entitySort": "@network",
+    "entityName": "classifier"
+  },
+  {
+    "entityType": "Rat",
+    "entitySort": "@parameter",
+    "entityName": "epsilon"
+  },
+  {
+    "entityType": "Nat",
+    "entitySort": "@parameter",
+    "entityName": "n"
+  },
+  {
+    "entityType": "Vector Image n",
+    "entitySort": "@dataset",
+    "entityName": "trainingImages"
+  },
+  {
+    "entityType": "Vector Label n",
+    "entitySort": "@dataset",
+    "entityName": "trainingLabels"
+  }
+]

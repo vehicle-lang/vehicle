@@ -61,6 +61,11 @@ annotationsOf = \case
   DefFunction _ _ anns _ _ -> anns
   DefAbstract {} -> []
 
+abstractSortOf :: GenericDecl expr -> Maybe DefAbstractSort
+abstractSortOf decl = case decl of
+  DefAbstract _ _ sort _ -> Just sort
+  DefFunction {} -> Nothing
+
 -- | Traverses the type and body of a declaration using the first and
 -- second provided functions respectively.
 -- Use |traverse| if you want to traverse them using the same function.
