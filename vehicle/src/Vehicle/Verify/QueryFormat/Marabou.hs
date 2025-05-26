@@ -25,6 +25,7 @@ marabouQueryFormat =
   QueryFormat
     { queryFormatID = MarabouQueries,
       supportsStrictInequalities = False,
+      supportsMultipleNetworks = False,
       queryOutputFormat = outputFormat,
       compileQuery = compileMarabouQuery,
       compileVariable = compileMarabouVar

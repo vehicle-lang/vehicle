@@ -3,6 +3,7 @@ module Vehicle.Compile.Print.Error
     VehicleError (..),
     MeaningfulError (..),
     logCompileError,
+    multipleNetworkErrorMessages,
   )
 where
 
@@ -847,6 +848,13 @@ instance MeaningfulError CompileError where
                 <+> "whether or not it should be lifted to the type-level.",
             fix = Just "either remove the declaration, or add a type signature or use it in a property."
           }
+    UnsupportedMultipleNetworkApplications queryFormat (_, p) apps ->
+      UError $
+        UserError
+          { provenance = p,
+            problem = multipleNetworkErrorMessages (pretty queryFormat) (fmap fst apps),
+            fix = Just "this is on our road map to fix, but please open an issue on the Issue tracker with your use-case."
+          }
 
 datasetDimensionsFix :: Doc a -> Identifier -> FilePath -> Doc a
 datasetDimensionsFix feature ident file =
@@ -978,3 +986,19 @@ supportedNetworkTypeDescription =
     <> indent 2 "Tensor Rat [a_1, ..., a_n] -> Tensor Rat [b_1, ..., b_n]"
     <> line
     <> "where 'a_i' and 'b_i' are all constants at compile time."
+
+multipleNetworkErrorMessages :: Doc a -> [Name] -> Doc a
+multipleNetworkErrorMessages verifier networkNames = do
+  let duplicateNetworkNames = findDuplicates networkNames
+  "The"
+    <+> verifier
+    <+> "currently doesn't support properties that involve"
+    <+> if null duplicateNetworkNames
+      then
+        "multiple networks. This property involves:"
+          <> line
+          <> indent 2 (vsep $ fmap (\n -> "the network" <+> squotes (pretty n)) networkNames)
+      else
+        "multiple applications of the same network. This property applies:"
+          <> line
+          <> indent 2 (vsep $ fmap (\(n, v) -> "the network" <+> squotes (pretty n) <+> pretty v <+> "times") duplicateNetworkNames)

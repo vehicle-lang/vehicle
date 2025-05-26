@@ -20,7 +20,9 @@ type CompileQueryVariable =
 
 data QueryVariableInfo = QueryVariableInfo
   { inputOrOutput :: InputOrOutput,
-    parentVariableName :: Name,
+    networkName :: Name,
+    numberOfNetworkApps :: Int,
+    networkAppIndex :: Int,
     parentVariableShape :: TensorShape,
     parentVariableIndices :: TensorIndices
   }
@@ -54,6 +56,7 @@ data QueryFormat = QueryFormat
   { queryFormatID :: QueryFormatID,
     queryOutputFormat :: ExternalOutputFormat,
     supportsStrictInequalities :: Bool,
+    supportsMultipleNetworks :: Bool,
     compileVariable :: CompileQueryVariable,
     compileQuery :: CompileQuery
   }

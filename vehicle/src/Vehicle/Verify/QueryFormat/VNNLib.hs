@@ -18,6 +18,7 @@ vnnlibQueryFormat =
   QueryFormat
     { queryFormatID = VNNLibQueries,
       supportsStrictInequalities = True,
+      supportsMultipleNetworks = True,
       compileVariable = compileVNNLibVar,
       compileQuery = compileVNNLibQuery,
       queryOutputFormat = outputFormat
@@ -35,7 +36,9 @@ outputFormat =
 -- | Compiles an individual variable
 compileVNNLibVar :: CompileQueryVariable
 compileVNNLibVar QueryVariableInfo {..} = do
-  let name = if inputOrOutput == Input then "X" else "Y"
+  let io = if inputOrOutput == Input then "X" else "Y"
+  let networkIndex = if numberOfNetworkApps > 1 then pretty (networkAppIndex + 1) else ""
+  let name = pretty networkName <> "@" <> networkIndex <> "@" <> io
   let index = flattenIndices parentVariableShape parentVariableIndices
   layoutAsText $ name <> "_" <> pretty index
 
@@ -48,14 +51,14 @@ compileVNNLibQuery _address (QueryContents variables assertions) = do
   return $ layoutAsText assertionsDoc
 
 compileVariableDecl :: (MonadLogger m) => QueryVariable -> m (Doc a)
-compileVariableDecl var = return $ parens ("declare-fun" <+> pretty var <+> "() Real")
+compileVariableDecl var = return $ parens ("declare-fun" <+> pretty var <+> "Real")
 
 compileAssertion :: (MonadLogger m) => QueryAssertion QueryVariable -> m (Doc a)
 compileAssertion QueryAssertion {..} = do
   let compiledRel = compileRel rel
   let compiledLHS = foldl compileCoefVar "" (NonEmpty.tail lhs)
   let compiledRHS = prettyRationalAsFloat rhs
-  return $ parens "assert" <+> parens (compiledRel <+> parens compiledLHS <+> compiledRHS)
+  return $ parens ("assert" <+> compiledRel <+> compiledLHS <+> compiledRHS)
 
 compileRel :: QueryRelation -> Doc a
 compileRel = \case

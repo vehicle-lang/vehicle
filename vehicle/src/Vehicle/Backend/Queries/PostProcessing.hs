@@ -4,6 +4,7 @@ module Vehicle.Backend.Queries.PostProcessing
 where
 
 import Control.Monad (forM, unless, when)
+import Control.Monad.Except (MonadError (..))
 import Data.Bifunctor (Bifunctor (..))
 import Data.Coerce (coerce)
 import Data.Foldable (foldlM)
@@ -20,7 +21,7 @@ import Data.Tuple (swap)
 import Vehicle.Backend.Queries.UserVariableElimination.Core
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyFriendly)
+import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
 import Vehicle.Data.Assertion
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.LinearExpr
@@ -69,11 +70,15 @@ compilePartitionToQuery globalCtx PropertyMetaData {..} compilationSteps asserti
 
   logCompilerPass MaxDetail ("compiling query" <+> pretty queryID) $ do
     -- Calculate the meta network for the network
+    let formatID = queryFormatID queryFormat
     let metaNetworkApps = calculateMetaNetworkApplications globalCtx assertions
+    when (length metaNetworkApps > 1 && not (supportsMultipleNetworks queryFormat)) $ do
+      throwError $ UnsupportedMultipleNetworkApplications formatID propertyProvenance (fmap networkApp metaNetworkApps)
+
     let metaNetwork = makeMetaNetwork metaNetworkApps
 
     -- Check if all variables have lower and upper bounds
-    checkIfNetworkInputsBounded globalCtx (queryFormatID queryFormat) queryAddress metaNetworkApps assertions
+    checkIfNetworkInputsBounded globalCtx formatID queryAddress metaNetworkApps assertions
 
     -- Convert to query variables
     (variableStore, queryAssertions) <-
@@ -287,13 +292,20 @@ compileQueryVariables ::
   ConjunctAll (QueryAssertion NetworkIOElementVariable) ->
   m (VariableStore, ConjunctAll (QueryAssertion QueryVariable))
 compileQueryVariables globalCtx@GlobalCtx {..} compileVariable metaNetworkApps assertions = do
+  -- Group network applications
+  let f :: NetworkApplicationReplacement -> (Name, [NetworkApplicationReplacement])
+      f m = (fst $ networkApp m, [m])
+  let networkAppsByName = Map.elems $ Map.fromListWith (<>) (fmap f metaNetworkApps)
+
   -- Compute the set of new input and output variables
   let initialState = IndexingState mempty mempty
   let compileVarsFn = compileTensorVariable compileVariable globalCtx
-  indexingState <- foldlM compileVarsFn initialState metaNetworkApps
+  let compileNetworks state apps = foldlM (compileVarsFn (length apps)) state (zip [0 ..] apps)
+  indexingState <- foldlM compileNetworks initialState networkAppsByName
 
   -- Make the queries more asthetically pleasing
   let nameCtx = completeNamedCtx globalCtx
+  logDebug MaxDetail $ prettyVerbose (fmap (fst . networkApp) metaNetworkApps)
   let prettifiedAssertions = prettifyQueryContents nameCtx indexingState assertions
 
   -- Substitute them through the assertions
@@ -319,16 +331,27 @@ compileTensorVariable ::
   (MonadCompile m) =>
   CompileQueryVariable ->
   GlobalCtx ->
+  Int ->
   IndexingState ->
-  NetworkApplicationReplacement ->
+  (Int, NetworkApplicationReplacement) ->
   m IndexingState
-compileTensorVariable compileQueryVar globalCtx IndexingState {..} NetworkApplicationReplacement {..} = do
+compileTensorVariable compileQueryVar globalCtx totalAppsWithName IndexingState {..} (appIndex, NetworkApplicationReplacement {..}) = do
   inputChildVars <- compileVariables Input inputVariable
   outputChildVars <- compileVariables Output outputVariable
+  let merge =
+        Map.unionWith
+          ( \a b ->
+              developerError
+                ( "Duplicate compiled variables for"
+                    <+> pretty (toLv a)
+                    <+> "and"
+                    <+> pretty (toLv b)
+                )
+          )
   return $
     IndexingState
-      { networkInputVariables = inputChildVars <> networkInputVariables,
-        networkOutputVariables = outputChildVars <> networkOutputVariables
+      { networkInputVariables = merge inputChildVars networkInputVariables,
+        networkOutputVariables = merge outputChildVars networkOutputVariables
       }
   where
     compileVariables ::
@@ -340,23 +363,24 @@ compileTensorVariable compileQueryVar globalCtx IndexingState {..} NetworkApplic
       let childVars = case childrenVariables of
             Nothing -> ZeroDimTensor $ coerce var
             Just (childVariables, _) -> coerce childVariables
-      let compileVar = compileQueryVariable variableName inputOrOutput (shapeOf childVars)
+      let compileVar = compileQueryVariable inputOrOutput (shapeOf childVars)
       networkQueryVarPairs <- traverse compileVar (tensorToList childVars)
       return $ Map.fromList networkQueryVarPairs
 
     compileQueryVariable ::
-      Name ->
       InputOrOutput ->
       TensorShape ->
       NetworkIOElementVariable ->
       m (QueryVariable, NetworkIOElementVariable)
-    compileQueryVariable parentVarName io parentShape var = do
+    compileQueryVariable io parentShape var = do
       let varInfo = lookupTensorVariableInfo var globalCtx
       let indices = maybe [] snd (parentVariable varInfo)
       let queryInfo =
             QueryVariableInfo
               { inputOrOutput = io,
-                parentVariableName = parentVarName,
+                networkName = fst networkApp,
+                numberOfNetworkApps = totalAppsWithName,
+                networkAppIndex = appIndex,
                 parentVariableShape = parentShape,
                 parentVariableIndices = indices
               }
@@ -404,7 +428,10 @@ optimiseAssertionReadability ctx IndexingState {..} (QueryAssertion lhs rel rhs)
   let variableIndexMap = Map.fromList $ zip variableList [(0 :: Int) ..]
   let missingVar v = do
         let n = lookupLvInBoundCtx (toLv v) ctx
-        developerError $ "Missing network variable" <+> pretty n
+        developerError $
+          "Missing network variable" <+> pretty n <+> "in:"
+            <> line
+            <> indent 2 (prettyFriendly (WithContext variableList ctx))
   let getIndex v = fromMaybe (missingVar v) $ Map.lookup v variableIndexMap
 
   -- Sort the assertion by putting:

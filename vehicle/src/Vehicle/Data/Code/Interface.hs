@@ -333,7 +333,7 @@ instance IsArgs IterateArgs where
 newtype NetworkAppArgs expr = NetworkAppArgs
   { networkAppArg :: expr
   }
-  deriving (Generic, Eq)
+  deriving (Generic, Show, Eq)
 
 instance (Hashable expr) => Hashable (NetworkAppArgs expr)
 

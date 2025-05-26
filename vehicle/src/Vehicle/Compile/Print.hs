@@ -201,6 +201,7 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor tags (GenericArg expr `In` ctx) = (StrategyFor tags (expr `In` ctx))
   StrategyFor tags (GenericBinder expr `In` ctx) = (StrategyFor tags (expr `In` ctx))
   StrategyFor tags (Tensor a `In` ctx) = 'Functor (StrategyFor tags (a `In` ctx))
+  StrategyFor tags ((a, b) `In` ctx) = 'Branch (StrategyFor tags (a `In` ctx)) (StrategyFor tags (b `In` ctx))
   StrategyFor tags (Map a b `In` ctx) = 'Branch (StrategyFor tags (a `In` ctx)) (StrategyFor tags (b `In` ctx))
   -----------------
   -- Constraints --

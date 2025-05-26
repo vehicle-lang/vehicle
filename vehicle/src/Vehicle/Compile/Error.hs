@@ -18,6 +18,7 @@ import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Linearity
 import Vehicle.Data.Builtin.Polarity
 import Vehicle.Data.Builtin.Standard.Core
+import Vehicle.Data.Code.Interface (NetworkAppArgs)
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Tensor (TensorShape)
 import Vehicle.Syntax.Parse (ParseError, ParseLocation)
@@ -127,6 +128,7 @@ data CompileError
   | UnsupportedAlternatingQuantifiers QueryFormatID DeclProvenance (Either CompileError (Quantifier, Provenance, PolarityProvenance))
   | DuplicateQuantifierNames DeclProvenance Name
   | UnsupportedNonLinearConstraint QueryFormatID DeclProvenance (Either CompileError NonLinearitySource)
+  | UnsupportedMultipleNetworkApplications QueryFormatID DeclProvenance [(Name, NetworkAppArgs (Value Builtin))]
   | VariableSizeTensorQuantification DeclProvenance NamedBoundCtx (VBinder Builtin) (VType Builtin)
   | -- Loss backend errors
     UnsupportedLossOperation DeclProvenance Provenance (Doc Void)
