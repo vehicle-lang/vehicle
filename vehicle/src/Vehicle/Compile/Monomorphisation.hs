@@ -285,7 +285,9 @@ replacePreviousApplications shouldMonomorphiseBinder prog =
     replaceCandidateApplication recGo p ident args = do
       maybeSolution <- asks (Map.lookup ident)
       case maybeSolution of
-        Nothing -> return $ normAppList (FreeVar p ident) args
+        Nothing -> do
+          args' <- traverseArgs recGo args
+          return $ normAppList (FreeVar p ident) args'
         Just (typ, applications) -> do
           logCompilerSection2 MaxDetail "replacing monomorphised application" $ do
             logDebug MaxDetail $ "function: " <+> pretty ident

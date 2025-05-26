@@ -7,16 +7,20 @@
 {-# OPTIONS --allow-exec #-}
 
 open import Vehicle
-open import Data.Integer as ℤ using (ℤ)
+open import Vehicle.Utils
+open import Vehicle.Data.Tensor
 open import Data.Rational as ℚ using (ℚ)
 open import Data.Fin as Fin using (Fin; #_)
-open import Data.Vec.Functional renaming ([] to []ᵥ; _∷_ to _∷ᵥ_)
+open import Data.List.Base
 
 module Agda where
 
-untyped : λ A → Vector A 1 ℚ
-untyped = ℤ.+ 0 ℚ./ 1 ∷ᵥ []ᵥ
+untyped : Tensor ℚ (1 ∷ [])
+untyped = stack 0
 
-postulate f : Vector ℚ 1 → Vector ℚ 1
+empty : Tensor ℚ (0 ∷ [])
+empty = stack
 
-postulate p : f untyped (# 0) ℚ.≥ ℤ.+ 0 ℚ./ 1
+postulate f : Tensor ℚ (1 ∷ []) → Tensor ℚ (1 ∷ [])
+
+postulate p : (f untyped ! # 0) ≥ 0
