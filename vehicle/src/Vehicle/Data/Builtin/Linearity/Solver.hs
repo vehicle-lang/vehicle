@@ -56,9 +56,9 @@ type LinearitySolver =
 solve :: LinearityRelation -> LinearitySolver
 solve = \case
   MaxLinearity -> solveOp2Linearity True True maxLinearityOp
-  MulLinearity -> solveOp2Linearity True True mulLinearityOp
-  DivLinearity -> solveOp2Linearity False True divLinearityOp
-  PowLinearity -> solveOp2Linearity False False powLinearityOp
+  MulLinearity p -> solveOp2Linearity True True (mulLinearityOp p)
+  DivLinearity p -> solveOp2Linearity False True (divLinearityOp p)
+  PowLinearity p -> solveOp2Linearity False False (powLinearityOp p)
   FunctionLinearity position -> solveFunctionLinearity position
   QuantifierLinearity q -> solveQuantifierLinearity q
 
@@ -76,13 +76,12 @@ solveQuantifierLinearity _ _ _ = Nothing
 solveOp2Linearity ::
   Bool ->
   Bool ->
-  (Provenance -> Linearity -> Linearity -> Linearity) ->
+  (Linearity -> Linearity -> Linearity) ->
   LinearitySolver
-solveOp2Linearity shortCircuitLHS shortCircuitRHS combine info@(ctx, _) [lin1, lin2, res] =
+solveOp2Linearity shortCircuitLHS shortCircuitRHS combine info [lin1, lin2, res] =
   case (lin1, lin2) of
     (VLinearityExpr l1, VLinearityExpr l2) -> Just $ do
-      let p = originalProvenance ctx
-      let linRes = VLinearityExpr $ combine p l1 l2
+      let linRes = VLinearityExpr $ combine l1 l2
       resEq <- createInstanceUnification info res linRes
       return $ Progress [resEq] []
     (VLinearityExpr Constant, _)
@@ -113,8 +112,8 @@ solveFunctionLinearity _ _ _ = Nothing
 --------------------------------------------------------------------------------
 -- Operations over linearities
 
-maxLinearityOp :: Provenance -> Linearity -> Linearity -> Linearity
-maxLinearityOp _p l1 l2 = case (l1, l2) of
+maxLinearityOp :: Linearity -> Linearity -> Linearity
+maxLinearityOp l1 l2 = case (l1, l2) of
   (Constant, _) -> l2
   (_, Constant) -> l1
   -- Note it's actually important that we return the left one here, as it ensures we print network output over network input.

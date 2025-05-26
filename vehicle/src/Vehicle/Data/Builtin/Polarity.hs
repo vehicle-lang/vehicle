@@ -81,8 +81,8 @@ mapPolarityProvenance f = \case
 
 data PolarityRelation
   = NegPolarity
-  | QuantifierPolarity Quantifier
-  | AddPolarity Quantifier
+  | QuantifierPolarity Provenance Quantifier
+  | AddPolarity Provenance Quantifier
   | ImpliesPolarity
   | IfPolarity
   | MaxPolarity
@@ -98,8 +98,8 @@ instance Hashable PolarityRelation
 instance Pretty PolarityRelation where
   pretty = \case
     NegPolarity -> "NegPolarity"
-    AddPolarity q -> "AddPolarity" <+> pretty q
-    QuantifierPolarity q -> "QuantifierPolarity" <+> pretty q
+    AddPolarity _ q -> "AddPolarity" <+> pretty q
+    QuantifierPolarity _ q -> "QuantifierPolarity" <+> pretty q
     ImpliesPolarity -> "ImpliesPolarity"
     MaxPolarity -> "MaxPolarity"
     IfPolarity -> "IfPolarity"
@@ -249,8 +249,8 @@ unquantified = builtin (Polarity Unquantified)
 polarityTypeClass :: PolarityRelation -> NonEmpty PolarityDSLExpr -> PolarityDSLExpr
 polarityTypeClass tc args = builtin (PolarityRelation tc) @@ args
 
-quantifierPolarity :: Quantifier -> PolarityDSLExpr -> PolarityDSLExpr -> PolarityDSLExpr
-quantifierPolarity q l1 l2 = polarityTypeClass (QuantifierPolarity q) [l1, l2]
+quantifierPolarity :: Provenance -> Quantifier -> PolarityDSLExpr -> PolarityDSLExpr -> PolarityDSLExpr
+quantifierPolarity p q l1 l2 = polarityTypeClass (QuantifierPolarity p q) [l1, l2]
 
 maxPolarity :: PolarityDSLExpr -> PolarityDSLExpr -> PolarityDSLExpr -> PolarityDSLExpr
 maxPolarity l1 l2 l3 = polarityTypeClass MaxPolarity [l1, l2, l3]

@@ -27,7 +27,7 @@ import Prelude hiding (iterate)
 --------------------------------------------------------------------------------
 
 instance TypableBuiltin LinearityBuiltin where
-  typeBuiltin p b = return (fromDSL p $ typeLinearityBuiltin b)
+  typeBuiltin p b = return (fromDSL p $ typeLinearityBuiltin p b)
   useDependentMetas _ = False
   isConstructor = isLinearityBuiltinConstructor
   isCastConstraint _ = False
@@ -40,15 +40,15 @@ isLinearityBuiltinConstructor = \case
   LinearityRelation {} -> True
 
 -- | Return the type of the provided builtin.
-typeLinearityBuiltin :: LinearityBuiltin -> LinearityDSLExpr
-typeLinearityBuiltin = \case
+typeLinearityBuiltin :: Provenance -> LinearityBuiltin -> LinearityDSLExpr
+typeLinearityBuiltin p = \case
   LinearityConstructor c -> typeOfConstructor c
-  LinearityFunction f -> typeOfBuiltinFunction f
+  LinearityFunction f -> typeOfBuiltinFunction p f
   Linearity {} -> tLin
   LinearityRelation r -> typeOfLinearityRelation r
 
-typeOfBuiltinFunction :: BuiltinFunction -> LinearityDSLExpr
-typeOfBuiltinFunction = \case
+typeOfBuiltinFunction :: Provenance -> BuiltinFunction -> LinearityDSLExpr
+typeOfBuiltinFunction p = \case
   -- Boolean operations
   Not {} -> typeOfOp1
   Implies -> typeOfOp2 maxLinearity
@@ -60,18 +60,18 @@ typeOfBuiltinFunction = \case
   ReduceOrTensor -> typeOfOp2 maxLinearity
   -- Arithmetic operations
   Add {} -> typeOfOp2 maxLinearity
-  Mul {} -> typeOfOp2 mulLinearity
+  Mul {} -> typeOfOp2 (mulLinearity p)
   Neg {} -> typeOfOp1
   Sub {} -> typeOfOp2 maxLinearity
-  Div {} -> typeOfOp2 divLinearity
+  Div {} -> typeOfOp2 (divLinearity p)
   Min {} -> typeOfOp2 maxLinearity
   Max {} -> typeOfOp2 maxLinearity
-  PowRat {} -> typeOfOp2 powLinearity
+  PowRat {} -> typeOfOp2 (powLinearity p)
   ReduceAddRatTensor -> typeOfOp2 maxLinearity
   ReduceMulRatTensor ->
     forAllLinearityTriples $ \l1 l2 l3 ->
       forAllLinearities $ \l4 ->
-        mulLinearity l2 l2 l3 .~~~> mulLinearity l1 l3 l4 .~~~> l1 ~> l2 ~> l3
+        mulLinearity p l2 l2 l3 .~~~> mulLinearity p l1 l3 l4 .~~~> l1 ~> l2 ~> l3
   ReduceMinRatTensor -> typeOfOp2 maxLinearity
   ReduceMaxRatTensor -> typeOfOp2 maxLinearity
   -- Comparisons
@@ -102,9 +102,9 @@ typeOfConstructor = \case
 typeOfLinearityRelation :: LinearityRelation -> LinearityDSLExpr
 typeOfLinearityRelation = \case
   MaxLinearity -> tLin ~> tLin ~> tLin ~> type0
-  MulLinearity -> tLin ~> tLin ~> tLin ~> type0
-  DivLinearity -> tLin ~> tLin ~> tLin ~> type0
-  PowLinearity -> tLin ~> tLin ~> tLin ~> type0
+  MulLinearity {} -> tLin ~> tLin ~> tLin ~> type0
+  DivLinearity {} -> tLin ~> tLin ~> tLin ~> type0
+  PowLinearity {} -> tLin ~> tLin ~> tLin ~> type0
   FunctionLinearity {} -> tLin ~> tLin ~> type0
   QuantifierLinearity {} -> (tLin ~> tLin) ~> tLin ~> type0
 

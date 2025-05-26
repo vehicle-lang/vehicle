@@ -134,7 +134,7 @@ createFreshApplicationConstraint ctx problem blockingMetas = do
             argInsertionProblem = problem
           }
 
-  context <- createFreshConstraintCtx p p ctx
+  context <- createFreshConstraintCtx p ctx
   let blockedConstraint = WithContext constraint (blockCtxOn blockingMetas context)
   addApplicationConstraint blockedConstraint
   return (finalExpr, finalType)
@@ -155,8 +155,7 @@ createFreshInstanceConstraint auxiliaryConstraint boundCtx p origin relevance tc
   let env = boundContextToEnv boundCtx
   (metaID, metaExpr) <- freshSolutionMeta p tcExpr boundCtx
 
-  let originProvenance = provenanceOf tcExpr
-  context <- createFreshConstraintCtx originProvenance p boundCtx
+  context <- createFreshConstraintCtx p boundCtx
   nTCExpr <- normaliseInEnv env tcExpr
   let goal = parseInstanceGoal nTCExpr
   let constraint = WithContext (Resolve origin metaID relevance goal) context

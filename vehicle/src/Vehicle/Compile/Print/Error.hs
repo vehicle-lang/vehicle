@@ -939,11 +939,11 @@ prettyPolarityProvenance topQuantifierProv topQuantifier bottomQuantifierProvena
         <+> "in"
         <+> pretty topQuantifierProv
 
-prettyLinearityProvenance :: forall a. LinearityProvenance -> Doc a -> Doc a
+prettyLinearityProvenance :: forall a. LinearityProof -> Doc a -> Doc a
 prettyLinearityProvenance lp location =
   line <> indent 2 (numberedList $ reverse (finalLine : go lp)) <> line
   where
-    go :: LinearityProvenance -> [Doc a]
+    go :: LinearityProof -> [Doc a]
     go = \case
       QuantifiedVariableProvenance p v ->
         ["the quantified variable" <+> quotePretty v <+> "introduced in" <+> pretty p]

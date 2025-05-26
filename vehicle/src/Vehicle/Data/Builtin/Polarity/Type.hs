@@ -27,7 +27,7 @@ import Prelude hiding (iterate, pi)
 --------------------------------------------------------------------------------
 
 instance TypableBuiltin PolarityBuiltin where
-  typeBuiltin p b = return (fromDSL p $ typePolarityBuiltin b)
+  typeBuiltin p b = return (fromDSL p $ typePolarityBuiltin p b)
   useDependentMetas _ = False
   isConstructor = isPolarityBuiltinConstructor
   isCastConstraint _ = False
@@ -40,15 +40,15 @@ isPolarityBuiltinConstructor = \case
   PolarityRelation {} -> True
 
 -- | Return the type of the provided builtin.
-typePolarityBuiltin :: PolarityBuiltin -> PolarityDSLExpr
-typePolarityBuiltin = \case
+typePolarityBuiltin :: Provenance -> PolarityBuiltin -> PolarityDSLExpr
+typePolarityBuiltin p = \case
   PolarityConstructor c -> typeOfConstructor c
-  PolarityFunction f -> typeOfBuiltinFunction f
+  PolarityFunction f -> typeOfBuiltinFunction p f
   Polarity {} -> tPol
   PolarityRelation r -> typeOfPolarityRelation r
 
-typeOfBuiltinFunction :: BuiltinFunction -> PolarityDSLExpr
-typeOfBuiltinFunction = \case
+typeOfBuiltinFunction :: Provenance -> BuiltinFunction -> PolarityDSLExpr
+typeOfBuiltinFunction p = \case
   -- Boolean operations
   Not {} -> typeOfOp1 negPolarity
   Implies -> typeOfOp2 impliesPolarity
@@ -56,7 +56,7 @@ typeOfBuiltinFunction = \case
   Or {} -> typeOfOp2 maxPolarity
   ReduceAndTensor -> typeOfOp2 maxPolarity
   ReduceOrTensor -> typeOfOp2 maxPolarity
-  QuantifyRatTensor q -> typeOfQuantifier q
+  QuantifyRatTensor q -> typeOfQuantifier p q
   If -> typeOfIf
   -- Comparisons
   CompareNat {} -> typeOfOp2 maxPolarity
@@ -78,10 +78,10 @@ typeOfBuiltinFunction = \case
   -- Container functions
   FoldList -> typeOfFold
   MapList -> typeOfMap
-  At -> forAllPolarities $ \p -> p ~> unquantified ~> p
+  At -> forAllPolarities $ \pol -> pol ~> unquantified ~> pol
   StackTensor -> typeOfStack
-  ConstTensor -> forAllPolarities $ \p -> p ~> unquantified ~> p
-  Foreach -> forAllPolarities $ \p -> p ~> p
+  ConstTensor -> forAllPolarities $ \pol -> pol ~> unquantified ~> pol
+  Foreach -> forAllPolarities $ \pol -> pol ~> pol
   Iterate -> typeOfIterate
 
 typeOfConstructor :: BuiltinConstructor -> PolarityDSLExpr
@@ -155,11 +155,11 @@ typeOfMap =
     forAllPolarities $ \p2 ->
       (p1 ~> p2) ~> p1 ~> p2
 
-typeOfQuantifier :: Quantifier -> PolarityDSLExpr
-typeOfQuantifier q =
+typeOfQuantifier :: Provenance -> Quantifier -> PolarityDSLExpr
+typeOfQuantifier p q =
   forAll "f" type0 $ \tLam ->
     forAll "A" type0 $ \tRes ->
-      quantifierPolarity q tLam tRes
+      quantifierPolarity p q tLam tRes
         .~~~> tLam
         ~> tRes
 
