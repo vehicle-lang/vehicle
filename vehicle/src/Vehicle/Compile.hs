@@ -4,6 +4,8 @@ module Vehicle.Compile
   )
 where
 
+import Control.Monad (unless)
+import Control.Monad.Except (MonadError (..))
 import Data.Aeson (ToJSON (..))
 import Data.Aeson.Encode.Pretty (encodePretty')
 import Data.ByteString.Lazy.Char8 (unpack)
@@ -56,6 +58,7 @@ compile loggingSettings options@CompileOptions {..} =
             secondaryTypeSystem = Nothing
           }
 
+    checkDeclarationNamesPresent prog declarationsToCompile
     simplifiedProg <- simplifyProgram prog declarationsToCompile
 
     case target of
@@ -89,6 +92,15 @@ simplifyProgram prog declarationsToCompile = do
         }
   castFreeProgram <- resolveInstanceArgumentsAndCasts monomorphisedProg
   return castFreeProgram
+
+checkDeclarationNamesPresent :: (MonadCompile m) => Prog Builtin -> DeclarationNames -> m ()
+checkDeclarationNamesPresent (Main decls) requestedDeclNames = do
+  let actualDeclNames = Set.fromList $ fmap nameOf decls
+  let missingNames = Set.fromList requestedDeclNames `Set.difference` actualDeclNames
+  unless (Set.null missingNames) $
+    throwError $
+      MissingRequestedDeclarations $
+        Set.toList missingNames
 
 --------------------------------------------------------------------------------
 -- Backend-specific compilation functions

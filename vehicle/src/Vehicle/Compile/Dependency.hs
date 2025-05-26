@@ -4,7 +4,6 @@ module Vehicle.Compile.Dependency
 where
 
 import Control.Monad (forM)
-import Control.Monad.Except (MonadError (..))
 import Control.Monad.Writer (MonadWriter (..), execWriterT)
 import Data.Foldable (traverse_)
 import Data.Graph (Graph, Vertex, dfs, graphFromEdges, vertices)
@@ -92,7 +91,9 @@ analyseDependenciesAndPrune prog declarationsToCompile
         startingVertices <- forM declarationsToCompile $ \name ->
           case vertexFromIdent dependencyGraph (Identifier (ModulePath [User]) name) of
             Just vertex -> return vertex
-            Nothing -> throwError $ MissingPrunedName name
+            Nothing ->
+              -- This should have been caught earlier when we first prune the declarations
+              compilerDeveloperError $ "Missing requested declaration" <+> quotePretty name
 
         let declsToPrune = notReachableFrom dependencyGraph startingVertices
         logDebug MaxDetail $ "Pruning:" <+> indent 2 (prettySet declsToPrune)

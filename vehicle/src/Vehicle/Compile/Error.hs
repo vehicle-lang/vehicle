@@ -94,7 +94,7 @@ data CompileError
     UnboundName Provenance Name
   | DeclarationDeclarationShadowing Provenance Name Identifier
   | DeclarationBoundShadowing Provenance Name
-  | MissingPrunedName Name
+  | MissingRequestedDeclarations [Name]
   | -- Type checking errors
     forall builtin.
     (Eq builtin, PrintableBuiltin builtin, NormalisableBuiltin builtin, Show builtin) =>

@@ -218,21 +218,18 @@ instance MeaningfulError CompileError where
     -------------
     -- Scoping --
     -------------
-    MissingPrunedName name ->
+    MissingRequestedDeclarations names ->
       UError $
         UserError
           { provenance = mempty,
             -- TODO can use Levenschtein distance to search contexts/builtins
             problem =
-              "Was asked to compile declaration"
-                <+> quotePretty name
-                <+> "but no declaration exists with that name in the specification.",
+              "Requested to compile the declaration"
+                <+> quotePretty (head names)
+                <+> "but no declarations exist with that name in the specification.",
             fix =
-              Just $
-                "check the spelling of"
-                  <+> quotePretty name
-                  <+> "or that the"
-                  <+> "right specification is being used."
+              Just
+                "check the spelling of the names and that the correct specification is being used."
           }
     UnboundName p name ->
       UError $
