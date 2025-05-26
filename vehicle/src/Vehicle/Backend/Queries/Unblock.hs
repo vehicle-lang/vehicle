@@ -100,17 +100,14 @@ unblockBoolTensorValue expr = do
     VCompareRatTensorPointwise {} -> return expr
     VQuantifyRatTensor {} -> return expr
     -- Recursively unblock
-    VReduceAndTensor args -> unblockReduceTensor unblock evalReduceAndTensor args
-    VReduceOrTensor args -> unblockReduceTensor unblock evalReduceOrTensor args
+    VReduceAndTensor args -> unblockReduceTensor unblockBoolTensorValue evalReduceAndTensor args
+    VReduceOrTensor args -> unblockReduceTensor unblockBoolTensorValue evalReduceOrTensor args
     VCompareIndex (op, args) -> unblockIndexOp2 (evalCompareIndex op) args
-    VCompareNat (op, args) -> unblockOp2 unblock (evalCompareNat op) args
+    VCompareNat (op, args) -> unblockOp2 unblockBoolTensorValue (evalCompareNat op) args
     -- VConstBoolTensor args -> unblockConstTensor args
     -- VBoolStackTensor args -> unblockStackTensor unblock args
-    VBoolAt args -> unblockAtTensor unblock args
-  where
     -- VBoolForeach args -> unblockForeachTensor args
-
-    unblock = unblockBoolTensorValue
+    VBoolAt args -> unblockAtTensor unblockBoolTensorValue args
 
 data Depth = VarLevel | NonVarLevel
   deriving (Eq)
@@ -147,13 +144,6 @@ unblockRatTensorValue actions@UnblockingActions {..} lv expr = do
 
 eliminateMinMax :: (MonadPurify m) => TensorOp2Args (Value Builtin) -> m (Value Builtin)
 eliminateMinMax (TensorOp2Args {}) = developerError "Elimination of min/max not yet implemented"
-
-{-
-case toDimensionsValue (argExpr dims) of
-  VDimsNil -> _
-  VDimsCons d ds -> _
-  _ -> _
--}
 
 unblockDimensionsValue :: UnblockingFunction m
 unblockDimensionsValue expr = case toDimensionsValue expr of

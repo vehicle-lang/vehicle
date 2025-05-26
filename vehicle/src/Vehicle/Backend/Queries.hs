@@ -24,9 +24,9 @@ import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
-import Vehicle.Data.Tensor (TensorIndices)
+import Vehicle.Data.Tensor (TensorIndices, isZeroDimensional)
 import Vehicle.Prelude.Warning (CompileWarning (..))
-import Vehicle.Syntax.Tensor (Tensor (..), unstack)
+import Vehicle.Syntax.Tensor (unstack)
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat
 import Vehicle.Verify.Specification
@@ -156,7 +156,7 @@ compileMultiProperty multiPropertyMetaData = go []
       Just (VBoolStackTensor args) -> do
         let es' = zip [0 :: Int ..] $ stackElements args
         MultiProperty <$> traverse (\(i, e) -> go (i : indices) e) es'
-      Just (VBoolTensorLiteral bs) | not (null (tensorShape bs)) -> do
+      Just (VBoolTensorLiteral bs) | not (isZeroDimensional bs) -> do
         let es' = zip [0 :: Int ..] (fromBoolTensorValue . VBoolTensorLiteral <$> unstack bs)
         MultiProperty <$> traverse (\(i, e) -> go (i : indices) e) es'
       _ -> do

@@ -29,15 +29,15 @@
                     "contents": [
                       0,
                       {
-                        "tensorValue": {
-                          "tag": "Values",
-                          "contents": [
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            2
+                          ],
+                          [
                             1,
                             2
                           ]
-                        },
-                        "tensorShape": [
-                          2
                         ]
                       }
                     ]
@@ -47,12 +47,12 @@
                     "contents": [
                       3,
                       {
-                        "tensorValue": {
-                          "tag": "Constant",
-                          "contents": 4
-                        },
-                        "tensorShape": [
-                          1
+                        "tag": "ConstantTensor",
+                        "contents": [
+                          [
+                            1
+                          ],
+                          4
                         ]
                       }
                     ]

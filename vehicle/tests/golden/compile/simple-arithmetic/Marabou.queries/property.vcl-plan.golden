@@ -27,11 +27,11 @@
                     "contents": [
                       0,
                       {
-                        "tensorValue": {
-                          "tag": "Constant",
-                          "contents": 1
-                        },
-                        "tensorShape": [
+                        "tag": "ConstantTensor",
+                        "contents": [
+                          [
+                            1
+                          ],
                           1
                         ]
                       }
@@ -42,12 +42,12 @@
                     "contents": [
                       2,
                       {
-                        "tensorValue": {
-                          "tag": "Constant",
-                          "contents": 3
-                        },
-                        "tensorShape": [
-                          1
+                        "tag": "ConstantTensor",
+                        "contents": [
+                          [
+                            1
+                          ],
+                          3
                         ]
                       }
                     ]

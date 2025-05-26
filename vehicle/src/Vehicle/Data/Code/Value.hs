@@ -85,6 +85,9 @@ boundContextToEnv ctx = do
   let numberedCtx = zip ctx (reverse [0 .. Lv (length ctx - 1)])
   fmap (\(binder, lv) -> (void binder, VBoundVar lv [])) numberedCtx
 
+boundEnvToCtx :: BoundEnv builtin -> NamedBoundCtx
+boundEnvToCtx env = toNamedBoundCtx (fmap fst env)
+
 -- | Converts an environment to set of values suitable for printing
 cheatEnvToValues :: BoundEnv builtin -> GenericBoundCtx (Value builtin)
 cheatEnvToValues = fmap envEntryToValue

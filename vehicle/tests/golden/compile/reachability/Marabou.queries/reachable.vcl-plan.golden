@@ -34,15 +34,15 @@
                     "contents": [
                       3,
                       {
-                        "tensorValue": {
-                          "tag": "Values",
-                          "contents": [
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            2
+                          ],
+                          [
                             4,
                             5
                           ]
-                        },
-                        "tensorShape": [
-                          2
                         ]
                       }
                     ]
@@ -52,12 +52,12 @@
                     "contents": [
                       6,
                       {
-                        "tensorValue": {
-                          "tag": "Constant",
-                          "contents": 7
-                        },
-                        "tensorShape": [
-                          1
+                        "tag": "ConstantTensor",
+                        "contents": [
+                          [
+                            1
+                          ],
+                          7
                         ]
                       }
                     ]
@@ -68,15 +68,15 @@
                       0,
                       {
                         "constantValue": {
-                          "tensorValue": {
-                            "tag": "Constant",
-                            "contents": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [
+                              2
+                            ],
+                            {
                               "numerator": 0,
                               "denominator": 1
                             }
-                          },
-                          "tensorShape": [
-                            2
                           ]
                         },
                         "coefficients": [

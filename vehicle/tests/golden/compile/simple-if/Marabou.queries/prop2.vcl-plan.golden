@@ -30,12 +30,12 @@
                     "contents": [
                       1,
                       {
-                        "tensorValue": {
-                          "tag": "Constant",
-                          "contents": 2
-                        },
-                        "tensorShape": [
-                          1
+                        "tag": "ConstantTensor",
+                        "contents": [
+                          [
+                            1
+                          ],
+                          2
                         ]
                       }
                     ]
@@ -45,12 +45,12 @@
                     "contents": [
                       3,
                       {
-                        "tensorValue": {
-                          "tag": "Constant",
-                          "contents": 4
-                        },
-                        "tensorShape": [
-                          1
+                        "tag": "ConstantTensor",
+                        "contents": [
+                          [
+                            1
+                          ],
+                          4
                         ]
                       }
                     ]
@@ -61,14 +61,14 @@
                       0,
                       {
                         "constantValue": {
-                          "tensorValue": {
-                            "tag": "Constant",
-                            "contents": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
                               "numerator": 0,
                               "denominator": 1
                             }
-                          },
-                          "tensorShape": []
+                          ]
                         },
                         "coefficients": [
                           [
@@ -139,12 +139,12 @@
                     "contents": [
                       1,
                       {
-                        "tensorValue": {
-                          "tag": "Constant",
-                          "contents": 2
-                        },
-                        "tensorShape": [
-                          1
+                        "tag": "ConstantTensor",
+                        "contents": [
+                          [
+                            1
+                          ],
+                          2
                         ]
                       }
                     ]
@@ -154,12 +154,12 @@
                     "contents": [
                       3,
                       {
-                        "tensorValue": {
-                          "tag": "Constant",
-                          "contents": 4
-                        },
-                        "tensorShape": [
-                          1
+                        "tag": "ConstantTensor",
+                        "contents": [
+                          [
+                            1
+                          ],
+                          4
                         ]
                       }
                     ]
@@ -174,14 +174,14 @@
                             "relation": "NonStrict",
                             "linearExpr": {
                               "constantValue": {
-                                "tensorValue": {
-                                  "tag": "Constant",
-                                  "contents": {
+                                "tag": "ConstantTensor",
+                                "contents": [
+                                  [],
+                                  {
                                     "numerator": 0,
                                     "denominator": 1
                                   }
-                                },
-                                "tensorShape": []
+                                ]
                               },
                               "coefficients": []
                             }

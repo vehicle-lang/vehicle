@@ -7,66 +7,59 @@
         "queries": {
           "unDisjunctAll": [
             {
-              "variableReconstruction": {
-                "variableStore": [
-                  [
-                    0,
-                    "f₀[input]",
-                    null
-                  ],
-                  [
-                    1,
-                    "f₀[input]!0",
-                    "x0"
-                  ],
-                  [
-                    2,
-                    "f₀[input]!1",
-                    "x1"
-                  ],
-                  [
-                    3,
-                    "f₀[output]",
-                    null
-                  ],
-                  [
-                    4,
-                    "f₀[output]!0",
-                    "y0"
-                  ],
-                  [
-                    5,
-                    "f₀[output]!1",
-                    "y1"
-                  ]
+              "variableStore": {
+                "vehicleVariableCtx": [
+                  "f₀[output]!1",
+                  "f₀[output]!0",
+                  "f₀[output]",
+                  "f₀[input]!1",
+                  "f₀[input]!0",
+                  "f₀[input]"
                 ],
+                "userVariables": [],
+                "queryVariableMapping": {
+                  "y1": 5,
+                  "y0": 4,
+                  "x1": 2,
+                  "x0": 1
+                }
+              },
+              "variableCompilationTrace": {
                 "reconstructionSteps": [
                   {
-                    "tag": "ReconstructTensor",
+                    "tag": "ReconstructTensorVariable",
                     "contents": [
-                      "OtherVariable",
-                      [
-                        2
-                      ],
                       0,
-                      [
-                        1,
-                        2
-                      ]
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            2
+                          ],
+                          [
+                            1,
+                            2
+                          ]
+                        ]
+                      }
                     ]
                   },
                   {
-                    "tag": "ReconstructTensor",
+                    "tag": "ReconstructTensorVariable",
                     "contents": [
-                      "OtherVariable",
-                      [
-                        2
-                      ],
                       3,
-                      [
-                        4,
-                        5
-                      ]
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            2
+                          ],
+                          [
+                            4,
+                            5
+                          ]
+                        ]
+                      }
                     ]
                   }
                 ]

@@ -15,7 +15,7 @@ import Vehicle.Data.Builtin.Interface.Blocked
 import Vehicle.Data.Builtin.Interface.Print (PrintableBuiltin)
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
-import Vehicle.Data.Tensor (Tensor, at, foldTensor, stack, unstack, zipWithTensor, pattern ConstantTensor, pattern ZeroDimTensor)
+import Vehicle.Data.Tensor (Tensor, at, foldTensor, mapTensor, stack, unstack, zipWithTensor, pattern ConstantTensor, pattern ZeroDimTensor)
 
 -- Okay so the important thing to remember about this module is that we have
 -- a variety of different typing schemes for builtins (standard, polarity,
@@ -115,7 +115,7 @@ evalNonSimple evalApp accessBuiltin eval args = do
 
 evalTensorOp1 ::
   forall builtin a m.
-  (MonadNormBuiltin m, HasTensorExpr Value builtin) =>
+  (MonadNormBuiltin m, HasTensorExpr Value builtin, Eq a) =>
   Accessor builtin () ->
   Accessor (Value builtin) (Tensor a) ->
   (a -> a) ->
@@ -126,7 +126,7 @@ evalTensorOp1 accessBuiltinOp accessLit op args =
     eval :: EvalSimplePartial TensorOp1Args builtin m
     eval = \case
       TensorOp1Args _ds (getExpr accessLit -> Just t) ->
-        Just $ return $ mkExpr accessLit $ fmap op t
+        Just $ return $ mkExpr accessLit $ mapTensor op t
       TensorOp1Args (argExpr -> ICons _ d _) (getExpr accessConstTensor -> Just xs) ->
         Just $ mkExpr accessConstTensor <$> traverseConstTensorValue (evalFull d) xs
       TensorOp1Args (argExpr -> ICons _ d _) (getExpr accessStackTensor -> Just xs) ->
@@ -227,6 +227,8 @@ evalReduceTensor accessReductionOp accessLit evalOp2 op2 args =
         Just $ return $ mkExpr accessLit $ foldTensor op2 e xs
       TensorOp2Args (argExpr -> ICons _ _ ds) e (getExpr accessStackTensor -> Just xs) ->
         Just $ foldM (foldFn e (implicitIrrelevant ds)) e (stackElements xs)
+      TensorOp2Args (argExpr -> INil _) _e xs ->
+        Just $ return xs
       _ -> Nothing
 
     evalFull :: VArg builtin -> Value builtin -> Value builtin -> m (Value builtin)
@@ -376,7 +378,7 @@ evalPowRat ::
   (MonadNormBuiltin m, HasRatExpr Value builtin, BuiltinHasNatLiterals builtin) =>
   EvalSimple TensorOp2Args Value builtin m
 evalPowRat = \case
-  TensorOp2Args _ (IRatTensor xs) (INatLiteral n) -> return $ IRatTensor (fmap (^^ n) xs)
+  TensorOp2Args _ (IRatTensor xs) (INatLiteral n) -> return $ IRatTensor (mapTensor (^^ n) xs)
   args -> return $ mkExpr accessPowRatTensor args
 
 evalReduceAddRatTensor :: (MonadNormBuiltin m, HasRatExpr Value builtin, PrintableBuiltin builtin) => EvalSimple TensorReductionArgs Value builtin m

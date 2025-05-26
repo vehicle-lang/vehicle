@@ -8,7 +8,7 @@ import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
 import GHC.Generics (Generic)
 import Vehicle.Data.DeBruijn (Lv)
-import Vehicle.Data.Tensor (HasShape, RatTensor, Tensor (..), allTensor, zipWithTensor, pattern ZeroDimTensor)
+import Vehicle.Data.Tensor (HasShape, RatTensor, allTensor, mapTensor, zipWithTensor, pattern ZeroDimTensor)
 import Vehicle.Prelude
 import Vehicle.Syntax.Tensor (HasShape (..))
 
@@ -36,17 +36,15 @@ instance ConstantLike RatTensor where
   addConstants a b = zipWithTensor (\x y -> a * x + b * y)
 
   scaleConstant :: Coefficient -> RatTensor -> RatTensor
-  scaleConstant a = fmap (\x -> a * x)
+  scaleConstant a = mapTensor (\x -> a * x)
 
   isZero :: RatTensor -> Bool
   isZero = allTensor (== 0)
 
 extractRationalConstant :: RatTensor -> Rational
 extractRationalConstant = \case
-  (ZeroDimTensor v) -> v
-  t ->
-    developerError $
-      "FM-elimination doesn't yet work over tensors (called on tensor of shape" <+> pretty (tensorShape t) <+> ")"
+  ZeroDimTensor v -> v
+  t -> developerError $ "Cannot extract constant from multi-dim tensor" <+> pretty t
 
 -------------------------------------------------------------------------------
 -- Sparse representations of linear expressions

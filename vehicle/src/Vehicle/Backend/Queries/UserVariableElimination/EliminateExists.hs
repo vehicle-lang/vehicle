@@ -20,7 +20,7 @@ import Vehicle.Data.Assertion
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.LinearExpr (LinearExpr, VariableLike (..), rearrangeExprToSolveFor, referencesVariable)
 import Vehicle.Data.QuantifiedVariable
-import Vehicle.Data.Tensor (RatTensor, tensorToList)
+import Vehicle.Data.Tensor as Tensor (RatTensor, toList)
 import Vehicle.Prelude.Warning (CompileWarning (..))
 import Vehicle.Syntax.Tensor (Tensor)
 import Vehicle.Verify.Specification
@@ -96,7 +96,7 @@ solveVariableViaEquality ::
 solveVariableViaEquality compilationTrace userVar maybeChildVars equality remainingTree = do
   let (_, rearrangedExpr) = rearrangeExprToSolveFor (toTensorVar userVar) (linearExpr equality)
   let varEquality = (toTensorVar userVar, rearrangedExpr)
-  let childVars = maybe [] tensorToList maybeChildVars
+  let childVars = maybe [] Tensor.toList maybeChildVars
   globalCtx <- get
   let childEqualities = zip childVars $ reduceTensorExpr globalCtx rearrangedExpr
   let solutionMap = Map.fromList $ varEquality : childEqualities
@@ -117,7 +117,7 @@ solveVariableByReducing compilationTrace userVar userElementVars originalTree = 
   logDebug MaxDetail "No equality constraints on original tensor variable found"
   let step = ReconstructTensorVariable (coerce userVar) (coerce userElementVars)
   let initial = mkSingletonPartitions (step : compilationTrace, NonTrivial originalTree)
-  foldlM solveExists initial (tensorToList userElementVars)
+  foldlM solveExists initial (Tensor.toList userElementVars)
 
 solveVariableViaInequalities ::
   (MonadSolveExists m) =>

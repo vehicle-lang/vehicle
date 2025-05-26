@@ -32,7 +32,7 @@ import Vehicle.Data.Code.TypedView (RatTensorValue (VRatStackTensor), TypeValue 
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Hashing ()
 import Vehicle.Data.QuantifiedVariable
-import Vehicle.Data.Tensor
+import Vehicle.Data.Tensor as Tensor
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Interface
 import Vehicle.Verify.Specification
@@ -352,11 +352,11 @@ reduceTensorExpr ::
   LinearExpr TensorVariable RatTensor ->
   [LinearExpr TensorVariable RatTensor]
 reduceTensorExpr globalCtx (Sparse coeff constant) = do
-  let equationIDs = [0 .. product (tensorShape constant) - 1]
-  let constValues = tensorToList constant
+  let equationIDs = [0 .. product (shapeOf constant) - 1]
+  let constValues = Tensor.toList constant
   let malformedVariableError = developerError "Expecting a non-zero tensor variable"
   let findChildVariables var = fromMaybe malformedVariableError $ lookupChildVariables var globalCtx
-  let findChildVariablesAndCoefficient = first (tensorToList . findChildVariables)
+  let findChildVariablesAndCoefficient = first (Tensor.toList . findChildVariables)
   let coeffList = fmap findChildVariablesAndCoefficient (Map.toList coeff)
   fmap (mkZeroDimEquality coeffList constValues) equationIDs
   where

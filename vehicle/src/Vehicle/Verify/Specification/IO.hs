@@ -45,7 +45,7 @@ import Vehicle.Backend.Queries.UserVariableElimination.VariableReconstruction (r
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.QuantifiedVariable (UserVariableAssignment (..))
-import Vehicle.Data.Tensor (Tensor (..), tensorToVector)
+import Vehicle.Data.Tensor as Tensor (HasShape (..), toVector)
 import Vehicle.Prelude.IO qualified as VIO (MonadStdIO (writeStdoutLn))
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat
@@ -611,9 +611,9 @@ outputPropertyResult verifierSettings verificationCache address result = do
         liftIO $ createDirectoryIfMissing True witnessFolder
         forM_ assignments $ \(var, tensor) -> do
           let file = witnessFolder </> show var
-          let dims = Vector.fromList (tensorShape tensor)
+          let dims = Vector.fromList (shapeOf tensor)
           -- TODO got to be a better way to do this conversion...
-          let unboxedVector = Vector.fromList $ BoxedVector.toList (fmap realToFrac (tensorToVector tensor))
+          let unboxedVector = Vector.fromList $ BoxedVector.toList (fmap realToFrac (Tensor.toVector tensor))
           let idxData = IDXDoubles IDXDouble dims unboxedVector
           liftIO $ encodeIDXFile idxData file
       _ -> return ()

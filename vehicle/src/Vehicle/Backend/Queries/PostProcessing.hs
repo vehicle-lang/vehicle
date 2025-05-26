@@ -26,7 +26,7 @@ import Vehicle.Data.Assertion
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.QuantifiedVariable
-import Vehicle.Data.Tensor hiding (Constant)
+import Vehicle.Data.Tensor as Tensor
 import Vehicle.Prelude.Warning (CompileWarning (..))
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
@@ -188,7 +188,7 @@ isApplicationUsed ::
   NetworkApplicationReplacement ->
   Bool
 isApplicationUsed globalCtx referencedVars NetworkApplicationReplacement {..} = do
-  let lookupVar = tensorToList . lookupNetworkElementVariables globalCtx
+  let lookupVar = Tensor.toList . lookupNetworkElementVariables globalCtx
   let appVars = Set.fromList (lookupVar inputVariable <> lookupVar outputVariable)
   not $ Set.disjoint referencedVars appVars
 
@@ -210,7 +210,7 @@ checkIfNetworkInputsBounded ::
   m ()
 checkIfNetworkInputsBounded globalCtx queryFormatID queryAddress metaNetworkApps constraints = do
   logCompilerPass MaxDetail "network variable bounds checks" $ do
-    let appInputElementVariables app = tensorToList $ lookupNetworkElementVariables globalCtx (inputVariable app)
+    let appInputElementVariables app = Tensor.toList $ lookupNetworkElementVariables globalCtx (inputVariable app)
     let allInputElementVariables = concatMap appInputElementVariables metaNetworkApps
 
     finalStatuses <- variableConstraintStatus allInputElementVariables constraints
@@ -310,6 +310,7 @@ compileQueryVariables globalCtx@GlobalCtx {..} compileVariable metaNetworkApps a
 
   -- Substitute them through the assertions
   let queryVariableMapping = Map.union (networkInputVariables indexingState) (networkOutputVariables indexingState)
+  logDebug MaxDetail $ prettyFriendly (WithContext queryVariableMapping nameCtx)
   let substitution = Map.fromList (swap <$> Map.toList queryVariableMapping)
   let newAssertions = fmap (substAssertionVariables nameCtx substitution) prettifiedAssertions
 
@@ -364,7 +365,7 @@ compileTensorVariable compileQueryVar globalCtx totalAppsWithName IndexingState 
             Nothing -> ZeroDimTensor $ coerce var
             Just (childVariables, _) -> coerce childVariables
       let compileVar = compileQueryVariable inputOrOutput (shapeOf childVars)
-      networkQueryVarPairs <- traverse compileVar (tensorToList childVars)
+      networkQueryVarPairs <- traverse compileVar (Tensor.toList childVars)
       return $ Map.fromList networkQueryVarPairs
 
     compileQueryVariable ::
@@ -401,8 +402,10 @@ substAssertionVariables nameCtx subst QueryAssertion {..} = do
       Just newVar -> newVar
       Nothing ->
         developerError $
-          "Malformed network variable subsitution. Missing"
+          "Malformed network variable substitution. Missing"
             <+> prettyFriendly (WithContext var nameCtx)
+            <+> "in"
+            <+> prettyFriendly (WithContext (Map.keys subst) nameCtx)
 
 --------------------------------------------------------------------------------
 -- Step 5: prettyify assertions

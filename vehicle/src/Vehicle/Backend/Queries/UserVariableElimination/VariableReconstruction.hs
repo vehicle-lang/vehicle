@@ -13,7 +13,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Data.Code.LinearExpr (VariableLike (..), evaluateExpr)
 import Vehicle.Data.QuantifiedVariable
-import Vehicle.Data.Tensor (RatTensor, Tensor (..), pattern ZeroDimTensor)
+import Vehicle.Data.Tensor (RatTensor, Tensor (..), traverseTensor, pattern ZeroDimTensor)
 import Vehicle.Verify.QueryFormat.Core
 import Vehicle.Verify.Specification
 import Vehicle.Verify.Verifier.Core
@@ -88,7 +88,7 @@ constructTensorVariableFromElements ::
   MixedVariableAssignment ->
   Either TensorVariable RatTensor
 constructTensorVariableFromElements elementVariables assignment =
-  traverse (lookupElementVariable assignment) (coerce elementVariables)
+  traverseTensor (lookupElementVariable assignment) (coerce elementVariables)
   where
     -- \| Lookups the values in the variable assignment and removes them from the
     -- assignment. Returns either the first missing variable or the list of values

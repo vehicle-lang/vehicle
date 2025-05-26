@@ -9,7 +9,7 @@ import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Code.BooleanExpr (MaybeTrivial (..))
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.Hashing ()
-import Vehicle.Data.Tensor (HasShape, RatTensor, Tensor (..), allTensor)
+import Vehicle.Data.Tensor (HasShape, RatTensor, allTensor)
 import Vehicle.Prelude
 import Vehicle.Syntax.Tensor (HasShape (..))
 
@@ -103,7 +103,7 @@ inequalityToNormRelation r = case relation r of
 type Assertion variable = NormalisedRelation Relation variable RatTensor
 
 instance HasShape (Assertion variable) where
-  shapeOf assertion = tensorShape (constantValue $ linearExpr assertion)
+  shapeOf assertion = shapeOf (constantValue $ linearExpr assertion)
 
 comparisonToAssertion ::
   (VariableLike variable) =>

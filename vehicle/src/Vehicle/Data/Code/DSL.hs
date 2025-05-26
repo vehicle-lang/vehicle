@@ -3,7 +3,7 @@ module Vehicle.Data.Code.DSL where
 import Data.List.NonEmpty (NonEmpty (..))
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.DSL
-import Vehicle.Data.Tensor (Tensor (..), pattern ZeroDimTensor)
+import Vehicle.Data.Tensor as T (Tensor, shapeOf, pattern ZeroDimTensor)
 import Vehicle.Prelude
 import Vehicle.Syntax.Builtin
 import Prelude hiding (pi)
@@ -80,7 +80,7 @@ unitLit :: (BuiltinHasStandardData builtin) => DSLExpr builtin
 unitLit = builtinConstructor UnitLiteral
 
 shapeOf :: (BuiltinHasStandardData builtin, BuiltinHasStandardTypes builtin) => Tensor a -> DSLExpr builtin
-shapeOf t = foldr (\x xs -> cons tNat (natLit x) xs) (nil tNat) (tensorShape t)
+shapeOf t = foldr (\x xs -> cons tNat (natLit x) xs) (nil tNat) (T.shapeOf t)
 
 --------------------------------------------------------------------------------
 -- Functions DSL

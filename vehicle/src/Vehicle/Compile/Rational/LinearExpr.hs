@@ -13,7 +13,7 @@ import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.LinearExpr (LinearExpr, VariableLike, addExprs, constantExpr, isConstant, scaleExpr, singletonVarExpr)
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
-import Vehicle.Data.Tensor (RatTensor, TensorShape, zeroTensor, pattern ZeroDimTensor)
+import Vehicle.Data.Tensor (RatTensor, TensorShape, pattern ConstantTensor, pattern ZeroDimTensor)
 import Prelude hiding (Applicative (..))
 
 type MonadCompileLinearExpr m =
@@ -59,7 +59,7 @@ compile toVar shape = go
       VRatTensorLiteral t -> do
         return $ constantExpr t
       VRatTensorVar lv -> do
-        singletonVarExpr (zeroTensor shape) <$> toVar lv
+        singletonVarExpr (ConstantTensor shape 0) <$> toVar lv
       ---------------------
       -- Inductive cases --
       ---------------------

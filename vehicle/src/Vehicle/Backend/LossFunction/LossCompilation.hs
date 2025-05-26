@@ -25,7 +25,7 @@ import Vehicle.Data.Builtin.Loss
 import Vehicle.Data.Code.Interface (TensorOp1Args (..), mkDims, pattern INatLiteral, pattern INatType)
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value (BoundEnv, Closure (..), Spine, VArg, VBinder, Value (..), boundContextToEnv, extendEnvWithBound, traverseSpine)
-import Vehicle.Data.Tensor (Tensor (..), foldMapTensor)
+import Vehicle.Data.Tensor (Tensor, foldMapTensor)
 
 --------------------------------------------------------------------------------
 -- Monad
