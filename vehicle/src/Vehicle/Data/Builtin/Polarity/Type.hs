@@ -220,7 +220,7 @@ convertToPolarityTypes p b args = case b of
     ListType -> return $ extractElementType b args
     VectorType -> return $ extractElementType b args
     TensorType -> return $ extractElementType b args
-  DerivedFunction f -> return $ FreeVar p (identifierOf f)
+  DerivedFunction f -> return $ normAppList (FreeVar p (identifierOf f)) args
   TypeClass {} -> monomorphisationError b args
   BuiltinCast {} -> monomorphisationError b args
   TypeClassOp {} -> monomorphisationError b args

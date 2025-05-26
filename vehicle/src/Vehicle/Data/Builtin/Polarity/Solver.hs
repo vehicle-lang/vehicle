@@ -23,7 +23,10 @@ solvePolarityConstraint ::
   m ()
 solvePolarityConstraint constraintWithCtx = do
   normConstraintWithCtx@(WithContext normConstraint@(Resolve origin _ _ goal) ctx) <- substMetas constraintWithCtx
-  logDebug MaxDetail $ "Forced:" <+> prettyFriendly normConstraintWithCtx
+  logDebugM MaxDetail $ do
+    let forcedExpr = goalExpr $ instanceGoal $ objectIn normConstraintWithCtx
+    let boundCtx = namedBoundCtxOf $ contextOf normConstraintWithCtx
+    return $ "forced goal:" <+> prettyFriendly (WithContext forcedExpr boundCtx)
 
   (tc, spine) <- getTypeClass goal
   let maybeProgress = solve tc (ctx, origin) (mapMaybe getExplicitArg spine)
@@ -85,13 +88,14 @@ solveQuantifierPolarity p q info@(ctx, _) [lam, res] = case lam of
 solveQuantifierPolarity _ _ _c _ = Nothing
 
 solveAddPolarityOp :: Provenance -> Quantifier -> PolaritySolver
-solveAddPolarityOp p q info [arg, res] = case arg of
-  (getNMeta -> Just m) -> blockOn [m]
-  VPolarityExpr inputPol -> Just $ do
-    let resPol = VPolarityExpr $ addPolarityOp p q inputPol
-    domEq <- createInstanceUnification info res resPol
-    return $ Progress [domEq] []
-  _ -> Nothing
+solveAddPolarityOp p q info [arg, res] = do
+  case arg of
+    (getNMeta -> Just m) -> blockOn [m]
+    VPolarityExpr inputPol -> Just $ do
+      let resPol = VPolarityExpr $ addPolarityOp p q inputPol
+      domEq <- createInstanceUnification info res resPol
+      return $ Progress [domEq] []
+    _ -> Nothing
 solveAddPolarityOp _ _ _ _ = Nothing
 
 solveMaxPolarityOp :: PolaritySolver
