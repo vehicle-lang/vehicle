@@ -36,8 +36,6 @@ advises x i = forall j . j != i => classifier x ! i > classifier x ! j
 @parameter
 epsilon : Rat
 
-epsilon : Tensor Rat [2,3]
-
 -- Next we define what it means for an image `x` to be in a ball of
 -- size epsilon around 0.
 boundedByEpsilon : Image -> Bool

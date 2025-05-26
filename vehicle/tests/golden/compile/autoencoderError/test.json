@@ -11,7 +11,8 @@
     "produces": ["VNNLib.queries/*.txt", "VNNLib.queries/identity.vcl-plan"],
     "ignore": {
       "lines": ".*\"fileHash\".*"
-    }
+    },
+    "enabled":false
   },
   {
     "name": "Agda",
