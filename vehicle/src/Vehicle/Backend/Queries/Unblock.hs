@@ -103,7 +103,7 @@ unblockBoolTensorValue expr = do
     VReduceAndTensor args -> unblockReduceTensor unblockBoolTensorValue evalReduceAndTensor args
     VReduceOrTensor args -> unblockReduceTensor unblockBoolTensorValue evalReduceOrTensor args
     VCompareIndex (op, args) -> unblockIndexOp2 (evalCompareIndex op) args
-    VCompareNat (op, args) -> unblockOp2 unblockBoolTensorValue (evalCompareNat op) args
+    VCompareNat (op, args) -> unblockOp2 return (evalCompareNat op) args
     -- VConstBoolTensor args -> unblockConstTensor args
     -- VBoolStackTensor args -> unblockStackTensor unblock args
     -- VBoolForeach args -> unblockForeachTensor args
