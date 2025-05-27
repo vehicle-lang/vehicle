@@ -69,7 +69,7 @@ eliminateUserVariables expr = do
     ---------------------
     VAnd (TensorOp2Args _dims e1 e2) -> andTrivial andBoolExpr <$> eliminateUserVariables e1 <*> eliminateUserVariables e2
     VOr (TensorOp2Args _dims e1 e2) -> orTrivial orBoolExpr <$> eliminateUserVariables e1 <*> eliminateUserVariables e2
-    VBoolIf args -> eliminateUserVariables =<< unfoldIf args
+    VBoolIf args -> eliminateUserVariables =<< runFreshNameContextT (unfoldIf args)
     -------------------------
     -- Blocked expressions --
     -------------------------
@@ -78,7 +78,7 @@ eliminateUserVariables expr = do
     VBoolAt {} -> eliminateUserVariables =<< unblock expr
     VCompareIndex {} -> eliminateUserVariables =<< unblock expr
     VCompareNat {} -> eliminateUserVariables =<< unblock expr
-    VNot {} -> eliminateUserVariables =<< lowerNot 0 unblock expr
+    VNot args -> eliminateUserVariables =<< lowerNot 0 unblock args
     -----------------
     -- Mixed cases --
     -----------------
@@ -153,9 +153,9 @@ compileBoolExpr expr = do
     ---------------------
     -- Recursive cases --
     ---------------------
-    VNot (TensorOp1Args _ e) -> do
+    VNot arg -> do
       lv <- boundCtxLv <$> getNameContext
-      compileBoolExpr =<< lowerNot lv Unblocking.unblockBoolExpr e
+      compileBoolExpr =<< lowerNot lv Unblocking.unblockBoolExpr arg
     VBoolIf args -> compileBoolExpr =<< unfoldIf args
     VAnd (TensorOp2Args _dims x y) -> andTrivial andPartitions <$> compileBoolExpr x <*> compileBoolExpr y
     VOr (TensorOp2Args _dims x y) -> orTrivial orPartitions <$> compileBoolExpr x <*> compileBoolExpr y

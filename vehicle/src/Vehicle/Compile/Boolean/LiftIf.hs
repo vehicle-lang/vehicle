@@ -7,7 +7,9 @@ module Vehicle.Compile.Boolean.LiftIf
 where
 
 import Vehicle.Compile.Context.Free (MonadFreeContext)
+import Vehicle.Compile.Context.Name (MonadNameContext, getNameContext)
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.Interface
@@ -45,13 +47,16 @@ liftIfValues [] k = k []
 liftIfValues (x : xs) k = liftIf x (\a -> liftIfValues xs (\as -> k (a : as)))
 
 unfoldIf ::
-  (Monad m, MonadFreeContext Builtin m) =>
+  (Monad m, MonadNameContext m, MonadFreeContext Builtin m) =>
   IfArgs (Value Builtin) ->
   m (Value Builtin)
 unfoldIf (IfArgs _ c x y) = do
-  logDebug MaxDetail "elim-if"
   let dims = implicitIrrelevant (mkDims [])
   cAndX <- evalAnd (TensorOp2Args dims c x)
   notC <- evalNot (TensorOp1Args dims c)
   notCAndY <- evalAnd (TensorOp2Args dims notC y)
-  evalOr (TensorOp2Args dims cAndX notCAndY)
+  result <- evalOr (TensorOp2Args dims cAndX notCAndY)
+  logDebugM MaxDetail $ do
+    nameCtx <- getNameContext
+    return $ "elim-if" <+> prettyFriendly (WithContext result nameCtx)
+  return result

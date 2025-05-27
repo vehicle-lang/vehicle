@@ -28,11 +28,11 @@ lowerNot ::
   (MonadDropNot m) =>
   Lv ->
   (Value Builtin -> m (Value Builtin)) ->
-  Value Builtin ->
+  TensorOp1Args (Value Builtin) ->
   m (Value Builtin)
-lowerNot lv onBlocked expr = do
-  logDebug MaxDetail "push-in `not`"
-  go expr
+lowerNot lv onBlocked (TensorOp1Args _ arg) = do
+  logDebug MaxDetail "push-not"
+  go arg
   where
     go :: Value Builtin -> m (Value Builtin)
     go e = case toBoolValue e of
@@ -43,8 +43,12 @@ lowerNot lv onBlocked expr = do
       VBoolLiteral b -> return $ fromBoolValue $ VBoolLiteral (not b)
       VCompareIndex (op, args) -> return $ fromBoolValue $ VCompareIndex (neg op, args)
       VCompareNat (op, args) -> return $ fromBoolValue $ VCompareNat (neg op, args)
-      VCompareRatTensorReduced (op, args) -> return $ fromBoolValue $ VCompareRatTensorReduced (neg op, args)
-      VCompareRatTensorPointwise (op, args) -> return $ fromBoolValue $ VCompareRatTensorPointwise (neg op, args)
+      VCompareRatTensorReduced (op, args) -> do
+        logDebug MaxDetail "Hit1"
+        return $ fromBoolValue $ VCompareRatTensorReduced (neg op, args)
+      VCompareRatTensorPointwise (op, args) -> do
+        logDebug MaxDetail "Hit2"
+        return $ fromBoolValue $ VCompareRatTensorPointwise (neg op, args)
       -- We can't actually lower the `not` through the body of the quantifier as
       -- it is not yet unnormalised. However, it's fine to stop here as we'll
       -- simply continue to normalise it once we re-encounter it again after
