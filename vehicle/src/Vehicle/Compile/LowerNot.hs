@@ -1,4 +1,4 @@
-module Vehicle.Compile.Boolean.LowerNot
+module Vehicle.Compile.LowerNot
   ( lowerNot,
     notClosure,
   )

@@ -194,8 +194,6 @@ library
     Vehicle.Backend.Queries.UserVariableElimination.EliminateExists
     Vehicle.Backend.Queries.UserVariableElimination.VariableReconstruction
     Vehicle.Compile.Arity
-    Vehicle.Compile.Boolean.LiftIf
-    Vehicle.Compile.Boolean.LowerNot
     Vehicle.Compile.Context.Bound.Class
     Vehicle.Compile.Context.Bound.Core
     Vehicle.Compile.Context.Bound.Instance
@@ -207,6 +205,9 @@ library
     Vehicle.Compile.ExpandResources.Dataset.IDX
     Vehicle.Compile.FourierMotzkinElimination
     Vehicle.Compile.FunctionaliseResources
+    Vehicle.Compile.LiftIf
+    Vehicle.Compile.LiftMinMax
+    Vehicle.Compile.LowerNot
     Vehicle.Compile.ObjectFile
     Vehicle.Compile.Prelude.Utils
     Vehicle.Compile.Print.Warning

@@ -19,10 +19,10 @@ import Vehicle.Backend.Queries.Unblock (UnblockingActions (..))
 import Vehicle.Backend.Queries.Unblock qualified as Unblocking
 import Vehicle.Backend.Queries.UserVariableElimination.Core
 import Vehicle.Backend.Queries.UserVariableElimination.EliminateExists (solveExists)
-import Vehicle.Compile.Boolean.LiftIf (unfoldIf)
-import Vehicle.Compile.Boolean.LowerNot (lowerNot, notClosure)
 import Vehicle.Compile.Context.Name (getNameContext, runFreshNameContextT)
 import Vehicle.Compile.Error
+import Vehicle.Compile.LiftIf (unfoldIf)
+import Vehicle.Compile.LowerNot (lowerNot, notClosure)
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyFriendlyEmptyCtx, prettyVerbose)

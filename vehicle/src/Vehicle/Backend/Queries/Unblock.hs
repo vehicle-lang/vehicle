@@ -8,10 +8,10 @@ where
 
 import Control.Monad (when)
 import Vehicle.Backend.Queries.UserVariableElimination.Core
-import Vehicle.Compile.Boolean.LiftIf
 import Vehicle.Compile.Context.Free (MonadFreeContext, getFreeEnv)
 import Vehicle.Compile.Context.Name (MonadNameContext, getNameContext)
 import Vehicle.Compile.Error
+import Vehicle.Compile.LiftIf
 import Vehicle.Compile.Normalise.NBE (evalApp)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
@@ -61,9 +61,14 @@ tryPurifyAssertion ::
   ComparisonOp ->
   TensorOp2Args (Value Builtin) ->
   m (Either (Value Builtin) (TensorOp2Args (Value Builtin)))
-tryPurifyAssertion actions op args = do
+tryPurifyAssertion actions op (TensorOp2Args ds xs ys) = do
   logCompilerPass MaxDetail "purification" $ do
-    unblockedExpr <- unblockTensorOp2 (unblockRatTensorValue actions VarLevel) (evalCompareRatTensor op) args
+    xs' <- unblockRatTensorValue actions VarLevel xs
+    ys' <- unblockRatTensorValue actions VarLevel ys
+    unblockedExpr <-
+      liftIf xs' $ \xs'' ->
+        liftIf ys' $ \ys'' ->
+          evalCompareRatTensor op $ TensorOp2Args ds xs'' ys''
 
     logDebugM MaxDetail $ do
       ctx <- getNameContext
@@ -79,7 +84,26 @@ tryPurifyAssertion actions op args = do
         return $ Right newArgs
       _ -> do
         logDebug MaxDetail "status: impure"
-        return $ Left unblockedExpr
+        Left <$> eliminateImpurities unblockedExpr
+
+{-
+data Impurity
+  = LiftedIf (IfArgs (Value Builtin))
+  | LiftedMinMax (Bool, ComparisonOp, _)
+
+findImpurity :: Value Builtin -> Maybe Impurity
+findImpurity expr = case toBoolValue expr of
+  VBoolIf args -> Just $ LiftedIf args
+  VCompareRatTensorReduced (op, newArgs) -> do
+    logDebug MaxDetail "status: pure"
+    return $ Right newArgs
+  VCompareRatTensorPointwise (_, newArgs) -> do
+    logDebug MaxDetail "status: pure"
+    return $ Right newArgs
+  _ -> unexpectedExprError _ _
+  where
+    findMinMaxImpurity ::
+-}
 
 --------------------------------------------------------------------------------
 -- Unblocking types

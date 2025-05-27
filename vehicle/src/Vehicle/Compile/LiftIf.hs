@@ -1,6 +1,5 @@
-module Vehicle.Compile.Boolean.LiftIf
+module Vehicle.Compile.LiftIf
   ( liftIf,
-    liftIfArg,
     liftIfValues,
     unfoldIf,
   )
@@ -30,13 +29,6 @@ liftIf ::
   m (Value Builtin)
 liftIf (IIf t cond e1 e2) k = IIf t cond <$> liftIf e1 k <*> liftIf e2 k
 liftIf e k = k e
-
-liftIfArg ::
-  (Monad m) =>
-  VArg Builtin ->
-  (VArg Builtin -> m (Value Builtin)) ->
-  m (Value Builtin)
-liftIfArg (Arg p v r e) k = liftIf e (k . Arg p v r)
 
 liftIfValues ::
   (Monad m) =>
