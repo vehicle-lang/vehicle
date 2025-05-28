@@ -50,5 +50,5 @@ unfoldIf (IfArgs _ c x y) = do
   result <- evalOr (TensorOp2Args dims cAndX notCAndY)
   logDebugM MaxDetail $ do
     nameCtx <- getNameContext
-    return $ "elim-if" <+> prettyFriendly (WithContext result nameCtx)
+    return $ "unfold-if" <+> prettyFriendly (WithContext result nameCtx)
   return result

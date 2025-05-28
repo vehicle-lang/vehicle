@@ -55,6 +55,9 @@ unblockBoolExpr expr = do
   decrCallDepth
   return unblockedExpr
 
+--------------------------------------------------------------------------------
+-- Purification
+
 tryPurifyAssertion ::
   (MonadPurify m) =>
   UnblockingActions m ->
@@ -75,38 +78,50 @@ tryPurifyAssertion actions op (TensorOp2Args ds xs ys) = do
       let unblockedAssertionDoc = prettyFriendly (WithContext unblockedExpr ctx)
       return ("result:" <+> unblockedAssertionDoc)
 
-    case toBoolValue unblockedExpr of
-      VCompareRatTensorReduced (_, newArgs) -> do
+    case findImpurity unblockedExpr of
+      Right newArgs -> do
         logDebug MaxDetail "status: pure"
         return $ Right newArgs
-      VCompareRatTensorPointwise (_, newArgs) -> do
-        logDebug MaxDetail "status: pure"
-        return $ Right newArgs
-      _ -> do
+      Left impurity -> do
         logDebug MaxDetail "status: impure"
-        Left <$> eliminateImpurities unblockedExpr
+        Left <$> eliminateImpurities impurity
 
-{-
 data Impurity
   = LiftedIf (IfArgs (Value Builtin))
-  | LiftedMinMax (Bool, ComparisonOp, _)
+  | LiftedMinMax (Bool, TensorOp2Args (Value Builtin)) ComparisonOp (Value Builtin)
 
-findImpurity :: Value Builtin -> Maybe Impurity
+findImpurity :: Value Builtin -> Either Impurity (TensorOp2Args (Value Builtin))
 findImpurity expr = case toBoolValue expr of
-  VBoolIf args -> Just $ LiftedIf args
-  VCompareRatTensorReduced (op, newArgs) -> do
-    logDebug MaxDetail "status: pure"
-    return $ Right newArgs
-  VCompareRatTensorPointwise (_, newArgs) -> do
-    logDebug MaxDetail "status: pure"
-    return $ Right newArgs
-  _ -> unexpectedExprError _ _
+  VBoolIf args -> Left $ LiftedIf args
+  VCompareRatTensorPointwise (op, args) -> maybe (Right args) Left $ findMinMaxImpurity op args
+  _ -> unexpectedExprError "purification" (prettyVerbose expr)
   where
-    findMinMaxImpurity ::
--}
+    findMinMaxImpurity :: ComparisonOp -> TensorOp2Args (Value Builtin) -> Maybe Impurity
+    findMinMaxImpurity op (TensorOp2Args _ e1 e2) = case (toRatTensorValue e1, toRatTensorValue e2) of
+      (VMinRatTensor args, _) -> Just $ LiftedMinMax (True, args) op e2
+      (_, VMinRatTensor args) -> Just $ LiftedMinMax (True, args) (flipOrder op) e1
+      (VMaxRatTensor args, _) -> Just $ LiftedMinMax (False, args) op e2
+      (_, VMaxRatTensor args) -> Just $ LiftedMinMax (False, args) (flipOrder op) e1
+      _ -> Nothing
+
+eliminateImpurities :: (MonadPurify m) => Impurity -> m (Value Builtin)
+eliminateImpurities impurity = do
+  case impurity of
+    LiftedIf args -> unfoldIf args
+    LiftedMinMax (isMin, TensorOp2Args dims e1 e2) op value -> do
+      let comparison1 = fromBoolValue $ VCompareRatTensorPointwise (op, TensorOp2Args dims e1 value)
+      let comparison2 = fromBoolValue $ VCompareRatTensorPointwise (op, TensorOp2Args dims e2 value)
+      let logicalArgs = TensorOp2Args dims comparison1 comparison2
+      if op == Le || op == Lt
+        then (if isMin then evalOr else evalAnd) logicalArgs
+        else
+          if op == Ge || op == Gt
+            then (if isMin then evalAnd else evalOr) logicalArgs
+            else
+              developerError $ "Support for min/max with" <+> pretty op <+> "not yet implemented"
 
 --------------------------------------------------------------------------------
--- Unblocking types
+-- Main unblocking functions
 
 type UnblockingFunction m = (MonadUnblock m) => Value Builtin -> m (Value Builtin)
 
@@ -143,8 +158,8 @@ unblockRatTensorValue actions@UnblockingActions {..} lv expr = do
     -- Rational operators
     VRatTensorLiteral {} -> return expr
     VIfRatTensor {} -> return expr
-    VMinRatTensor args -> eliminateMinMax args
-    VMaxRatTensor args -> eliminateMinMax args
+    VMinRatTensor {} -> return expr
+    VMaxRatTensor {} -> return expr
     -- Recursively purify
     VNegRatTensor args -> unblockTensorOp1 (unblock lv) evalNegRatTensor args
     VAddRatTensor args -> unblockTensorOp2 (unblock lv) evalAddRatTensor args
@@ -165,9 +180,6 @@ unblockRatTensorValue actions@UnblockingActions {..} lv expr = do
     VRatForeach args -> unblockForeachTensor args
   where
     unblock = unblockRatTensorValue actions
-
-eliminateMinMax :: (MonadPurify m) => TensorOp2Args (Value Builtin) -> m (Value Builtin)
-eliminateMinMax (TensorOp2Args {}) = developerError "Elimination of min/max not yet implemented"
 
 unblockDimensionsValue :: UnblockingFunction m
 unblockDimensionsValue expr = case toDimensionsValue expr of

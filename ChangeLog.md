@@ -10,6 +10,8 @@
 
 * Pointwise `min` and `max` now work over `Tensor`s.
 
+* Improved compilation of `min` and `max` so that in some cases they generate exponentially less queries.
+
 * Better error messages for typing errors
 
 * Fixed bug where `type` declarations with parameters were handled incorrectly.
