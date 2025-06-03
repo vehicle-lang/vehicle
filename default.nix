@@ -43,7 +43,7 @@
       runHook postBuild
     '';
 
-    
+
     #buildInputs = [config.deps.zlib];
   };
 }
