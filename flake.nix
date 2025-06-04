@@ -145,7 +145,7 @@
             };
             # Set environment variables for the build
             env.BINDING_WRAP_PATH = let
-              vsn = lib.strings.intersperse "." (lib.strings.stringToCharacters ghcVsn);
+              vsn = lib.strings.concatStrings (lib.strings.intersperse "." (lib.strings.stringToCharacters ghcVsn));
             in "${pkgs.haskellPackages.vehicle-python-bindings}/lib/ghc-${vsn}/lib";
             env.USE_SWIG_WRAPPER = "1";
             env.IS_NIX_BUILD = "1";
