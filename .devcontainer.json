@@ -1,0 +1,9 @@
+{
+  "image":"mcr.microsoft.com/devcontainers/base:alpine",
+  "features": {
+    "ghcr.io/devcontainers/features/nix:1": {
+      "multiUser": true,
+      "version": "latest"
+    }
+  }
+}
