@@ -145,8 +145,8 @@
             };
             # Set environment variables for the build
             env.BINDING_WRAP_PATH = let
-              version = lib.strings.intersperse "." ghcVsn;
-            in "${pkgs.haskellPackages.vehicle-python-bindings}/lib/ghc-${version}/lib";
+              vsn = lib.strings.intersperse "." (lib.strings.stringToCharacters ghcVsn);
+            in "${pkgs.haskellPackages.vehicle-python-bindings}/lib/ghc-${vsn}/lib";
             env.USE_SWIG_WRAPPER = "1";
             env.IS_NIX_BUILD = "1";
           })
@@ -156,7 +156,7 @@
       overlayAttrs = {
         inherit (config.packages)
         vehicle vehicle-syntax vehicle-python-bindings tasty-golden-executable;
-        vehicle-lang = (vp.packages.default) ;
+        vehicle-lang = (vp.packages.default);
       };
       # haskellProjects = {
         # Define the package set
@@ -179,17 +179,6 @@
           inherit vp;
         };
 
-        #overlays.default = haskellOverlay;
-        devShells.haskell = pkgs.haskellPackages.developPackage {
-          root = ./vehicle;
-          modifier = drv:
-          pkgs.haskell.lib.addBuildTools drv (with pkgs.haskellPackages;
-          [ haskell-language-server
-          cabal-install
-          pkgs.ghcWithPackages
-          ]);
-          # inputsFrom = [];
-        };
         # devShells.default = pkgs.mkShell {
         #   # Remove the tensorboard collision by creating a modified Python environment
         #   # # Get the original dev shell from vp but filter out TensorBoard
@@ -209,7 +198,7 @@
         # Define the default app
         apps.default = {
           type = "app";
-          program = "${self'.packages.vehicle}/bin/vehicle";
+          program = "${self'.packages.default}/bin/vehicle";
         };
     };
   };
