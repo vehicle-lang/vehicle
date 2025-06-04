@@ -44,6 +44,6 @@
     '';
 
 
-    #buildInputs = [config.deps.zlib];
+    buildInputs = [config.deps.zlib];
   };
 }

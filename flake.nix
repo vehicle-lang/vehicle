@@ -21,7 +21,7 @@
     #debug = true;
     perSystem = { self', system, config, pkgs, lib, ... }:
     let
-      ghcVsn = "948";
+      ghcVsn = "981";
       haskellOverlay = (final: prev: { haskellPackages = (haskellPackages final); });
       devOverlay = (final: prev: {
         ghcWithPackages = final.haskellPackages.ghc.withPackages (p:
