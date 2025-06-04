@@ -28,3 +28,9 @@ packages:
   -- without building a full sdist for `vehicle-python`. To avoid this, vehicle-python
   -- is not included in the main `cabal.project` file.
   -- vehicle-python/vehicle-python-binding.cabal
+
+source-repository-package
+    type:     git
+    location: https://github.com/vehicle-lang/onnxruntime-hs.git
+    tag:      c325bb756dad1c1788e3d891b08af8945f294791
+    subdir:   .

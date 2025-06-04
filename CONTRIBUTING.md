@@ -68,10 +68,16 @@ cd vehicle
 
 #### Dependencies
 
-Building the Vehicle compiler requires the Haskell compiler, called [GHC], and the Haskell package manager, called [Cabal]. The Vehicle compiler can be built with:
+Building the Vehicle compiler requires:
+1. the Haskell compiler, called [GHC],
+2. the Haskell package manager, called [Cabal].
+3. the OnnxRuntime libraries
+
+The Vehicle compiler can be built with:
 
 - _at least_ the latest three major releases of GHC; and
 - the latest major release of Cabal.
+- version >=1.21 of OnnxRuntime
 
 We recommend that you install [our preferred version of GHC](#the-preferred-version-of-ghc)
 
@@ -125,6 +131,12 @@ If you'd like to use a different version of GHC, you can find the list of versio
 ##### The preferred version of GHC
 
 The preferred version of GHC is currently _GHC 9.4.8_, which is the version of GHC we recommend you use, and which is required to build the Python bindings.
+
+##### Installing OnnxRuntime
+
+Once OnnxRuntime is installed find the path to the `lib` and `includes` directories
+and then run
+
 
 #### Building
 
