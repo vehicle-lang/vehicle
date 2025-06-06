@@ -81,7 +81,7 @@ typeOfBuiltinFunction p = \case
   At -> forAllPolarities $ \pol -> pol ~> unquantified ~> pol
   StackTensor -> typeOfStack
   ConstTensor -> forAllPolarities $ \pol -> pol ~> unquantified ~> pol
-  Foreach -> forAllPolarities $ \pol -> pol ~> pol
+  Foreach -> forAllPolarities $ \pol -> (unquantified ~> pol) ~> pol
   Iterate -> typeOfIterate
 
 typeOfConstructor :: BuiltinConstructor -> PolarityDSLExpr

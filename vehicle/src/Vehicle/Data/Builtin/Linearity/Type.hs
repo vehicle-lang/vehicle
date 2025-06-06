@@ -84,7 +84,7 @@ typeOfBuiltinFunction p = \case
   At -> typeOfAt
   StackTensor -> typeOfStack
   ConstTensor -> forAllLinearities $ \l -> l ~> constant ~> l
-  Foreach -> forAllLinearities $ \l -> l ~> l
+  Foreach -> forAllLinearities $ \l -> (constant ~> l) ~> l
   Iterate -> typeOfIterate
 
 typeOfConstructor :: BuiltinConstructor -> LinearityDSLExpr
