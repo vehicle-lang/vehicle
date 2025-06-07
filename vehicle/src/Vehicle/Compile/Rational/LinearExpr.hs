@@ -6,7 +6,8 @@ where
 
 -- Needed as Applicative is exported by Prelude in GHC 9.6 and above.
 import Control.Applicative (Applicative (..))
-import Control.Monad.Except (MonadError (..), MonadTrans (..), runExceptT)
+import Control.Monad.Except (MonadError (..), runExceptT)
+import Control.Monad.Trans (MonadTrans (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.Interface

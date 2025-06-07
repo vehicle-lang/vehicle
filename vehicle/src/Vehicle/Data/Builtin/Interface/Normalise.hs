@@ -5,9 +5,10 @@ module Vehicle.Data.Builtin.Interface.Normalise where
 
 import Control.Applicative ((<|>))
 import Control.Monad (foldM, zipWithM)
-import Control.Monad.Writer (Any (..), execWriterT)
+import Control.Monad.Writer (execWriterT)
 import Control.Monad.Writer.Class
 import Data.Maybe (fromMaybe, isJust)
+import Data.Semigroup (Any (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Interface

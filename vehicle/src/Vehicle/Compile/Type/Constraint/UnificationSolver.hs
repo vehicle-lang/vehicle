@@ -8,7 +8,8 @@ module Vehicle.Compile.Type.Constraint.UnificationSolver
   )
 where
 
-import Control.Monad.Except (MonadError (..), forM)
+import Control.Monad (forM)
+import Control.Monad.Except (MonadError (..))
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap
 import Data.IntSet qualified as IntSet
