@@ -24,9 +24,11 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Data.Builtin.Decidability
+import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Standard (BuiltinType (..))
 import Vehicle.Data.Builtin.Standard hiding (TensorType)
 import Vehicle.Data.Code.Expr ()
+import Vehicle.Data.Code.Interface (IsArgs (..), VecLitArgs (..))
 import Vehicle.Data.Universe (UniverseLevel (..))
 import Vehicle.Syntax.Sugar
 import Vehicle.Syntax.Tensor (Tensor, TensorShape, foldMapTensor)
@@ -475,6 +477,7 @@ compileBuiltinConstructor c args = case c of
   UnitLiteral -> return $ annotateConstant [DataUnit] "tt"
   IndexLiteral n -> return $ compileIndexLiteral n
   NatLiteral n -> return $ compileNatLiteral n
+  VectorLiteral -> compileVecLiteral args
   NatTensorLiteral t -> return $ compileTensorLiteral compileNatLiteral t
   BoolTensorLiteral t -> return $ compileTensorLiteral compileBoolLiteral t
   RatTensorLiteral t -> return $ compileTensorLiteral compileRatLiteral t
@@ -514,7 +517,8 @@ compileBuiltinFunction f args = case f of
   QuantifyRatTensor q -> case reverse args of
     (ExplicitArg _ _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier q [binder] body
     _ -> unsupportedArgsError
-  At -> annotateInfixApp [DataTensor] (-1) Nothing "_!_" args
+  AtTensor -> annotateInfixApp [DataTensor] (-1) Nothing "_!_" args
+  AtVector -> annotateInfixApp [FunctionBase] (-1) Nothing "_$_" args
   If -> annotateInfixApp [DataBool] 0 Nothing "if_then_else_" args
   Foreach -> annotateApp [DataTensor] Nothing "foreach" args
   StackTensor {} -> annotateApp [DataTensor] Nothing "stack" args
@@ -591,13 +595,21 @@ compileRatLiteral r
     num = compileIntLiteral (fromInteger $ numerator r)
     denom = compileNatLiteral (fromInteger $ denominator r)
 
--- | Compiling tensor literals. No literals in Agda so have to go via cons.
+-- | Compiling vector literals. No literals in Agda so have to go via cons.
+toVec :: [Code] -> Code
+toVec = foldr (\v vs -> annotate ([], 5) (v <> "∷ᵥ" <> vs)) "[]ᵥ"
+
+compileVecLiteral :: (MonadAgdaCompile m) => [Arg DecidabilityBuiltin] -> m Code
+compileVecLiteral xs = case getExpr accessSpine xs of
+  Just (VecLitArgs _t _d ds) -> toVec <$> traverse compileExpr ds
+  Nothing -> developerError "Malformed type-checked vector literal"
+
 compileTensorLiteral :: (a -> Code) -> Tensor a -> Code
 compileTensorLiteral compileElement =
   foldMapTensor compileElement compileTensorLayer
   where
     compileTensorLayer :: TensorShape -> [Code] -> Code
-    compileTensorLayer _shape = foldr (\x xs -> annotate ([], 5) (x <> "∷ᵥ" <> xs)) "[]ᵥ"
+    compileTensorLayer _shape = toVec
 
 compileBoolLiteral :: Bool -> Code
 compileBoolLiteral = \case

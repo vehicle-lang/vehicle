@@ -81,7 +81,8 @@ typeOfBuiltinFunction p = \case
   -- Container functions
   FoldList -> typeOfFold
   MapList -> typeOfMap
-  At -> typeOfAt
+  AtVector -> typeOfAt
+  AtTensor -> typeOfAt
   StackTensor -> typeOfStack
   ConstTensor -> forAllLinearities $ \l -> l ~> constant ~> l
   Foreach -> forAllLinearities $ \l -> (constant ~> l) ~> l
@@ -94,6 +95,7 @@ typeOfConstructor = \case
   UnitLiteral {} -> constant
   IndexLiteral {} -> constant
   NatLiteral {} -> constant
+  VectorLiteral {} -> typeOfVectorLiteral
   NatTensorLiteral {} -> constant
   BoolTensorLiteral {} -> constant
   IndexTensorLiteral {} -> constant
@@ -131,12 +133,12 @@ typeOfIf =
           ~> lRes
 
 typeOfAt :: LinearityDSLExpr
-typeOfAt = forAllLinearities $ \l -> l ~> constant ~> l
+typeOfAt = typeOfOp2 maxLinearity
 
 typeOfFold :: LinearityDSLExpr
 typeOfFold =
   forAllLinearityTriples $ \l1 l2 l3 ->
-    maxLinearity l1 l2 l3 .~~~> (l1 ~> l2 ~> l3) ~> l2 ~> l1 ~> l3
+    maxLinearity l1 l2 l3 .~~~> (l1 ~> l2 ~> l3) ~> l1 ~> l2 ~> l3
 
 typeOfMap :: LinearityDSLExpr
 typeOfMap =

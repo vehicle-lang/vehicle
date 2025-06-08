@@ -19,7 +19,6 @@ open import Data.Product using (_,_)
 open import Data.Float.Base using (Float; _≤ᵇ_)
 open import Data.List.Base using ([]; _∷_)
 open import Data.List.Relation.Binary.Infix.Heterogeneous.Properties using (infix?)
-open import Data.Unit.Base using (⊤; tt)
 open import Data.Rational.Base as ℚ using (ℚ; ↥_; ↧_)
 open import Relation.Nullary using (does)
 open import Relation.Binary.Core using (Rel)
@@ -90,11 +89,26 @@ instance
 ------------------------------------------------------------------------
 -- Tensor
 ------------------------------------------------------------------------
-
 {-
-allIndex : (Fin n → Bool) → Bool
-allIndex = ?
+open import Function.Nary.NonDependent
+open import Data.Unit.Polymorphic using (tt)
 
-existsIndex : (Fin n → Bool) → Bool
-existsIndex = ?
+uniformLevels : ∀ n (l : Level) → Levels n
+uniformLevels ℕ.zero l = tt
+uniformLevels (suc n) l = l , uniformLevels n l
+
+uniformSets : ∀ n {a} → Set a → Sets n (uniformLevels n a)
+uniformSets ℕ.zero A = tt
+uniformSets (suc n) A = A , uniformSets n A
+
+iterate : ∀ {a} {A : Set a} → (A → A) → ℕ → A → A
+iterate f ℕ.zero a = a
+iterate f (suc n) a = iterate f n (f a)
+
+vecLit : ∀ {A : Set} (n : ℕ) → uniformSets n A ⇉ Vector A n
+vecLit {A} ℕ.zero = Vector.[]
+vecLit {A} (suc n) a = mapₙ n (a Vector.∷_) (vecLit n)
+
+test : Vector ℕ 2
+test = vecLit 2 1 2
 -}

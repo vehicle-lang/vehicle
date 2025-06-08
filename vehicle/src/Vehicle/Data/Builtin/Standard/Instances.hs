@@ -83,6 +83,16 @@ allInstances =
             False
           ),
           ( forAllTypes $ \t ->
+              forAllDim Irrelevant $ \d ->
+                validDatasetListElementType t
+                  .~~~> validDatasetType (tVector t d),
+            implLam "t" type0 $ \t ->
+              lam "d" (Implicit False) Irrelevant tDim $ \_d ->
+                instLam "r1" (validDatasetListElementType t) $ \_ ->
+                  tUnit,
+            False
+          ),
+          ( forAllTypes $ \t ->
               forAllDims $ \ds ->
                 validDatasetTensorElementType t
                   .~~~> validDatasetType (tTensor t ds),
@@ -271,6 +281,27 @@ allInstances =
           ( forAllDims $ \dims -> hasDiv (tRatTensor dims) (tRatTensor dims) (tRatTensor dims),
             lamDims $ \dims -> builtinFunction (Div DivRatTensor) .@@@ [dims],
             False
+          ),
+          ------------
+          -- HasAt --
+          ------------
+          ( forAllTypes $ \tElem ->
+              forAllDim Irrelevant $ \d ->
+                hasAt (tVector tElem d) (tIndex d) tElem,
+            lamType $ \tElem ->
+              lamDim $ \d ->
+                builtinFunction AtVector @@@ [tElem] .@@@ [d],
+            True
+          ),
+          ( forAllTypes $ \tElem ->
+              forAllDim Irrelevant $ \d ->
+                forAllDims $ \ds ->
+                  hasAt (tTensor tElem (cons tDim d ds)) (tIndex d) (tTensor tElem ds),
+            lamType $ \tElem ->
+              lamDim $ \d ->
+                lamDims $ \ds ->
+                  builtinFunction AtTensor @@@ [tElem] .@@@ [d, ds],
+            True
           ),
           ------------
           -- HasMap --

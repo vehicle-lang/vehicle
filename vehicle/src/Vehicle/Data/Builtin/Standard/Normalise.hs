@@ -64,7 +64,8 @@ instance NormalisableBuiltin Builtin where
       ReduceOrTensor -> Simple evalReduceOrTensor
       If -> Simple evalIf
       Implies -> Simple evalImplies
-      At -> Simple evalAt
+      AtVector -> Simple evalAtVector
+      AtTensor -> Simple evalAtTensor
       StackTensor -> Simple evalStackTensor
       ConstTensor -> Simple evalConstTensor
       FoldList -> NonSimple evalFoldList

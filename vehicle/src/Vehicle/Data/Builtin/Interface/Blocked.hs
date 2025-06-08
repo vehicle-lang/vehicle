@@ -67,7 +67,8 @@ functionBlockingStatus b spine = case b of
   CompareNat _op -> fixedStatus [0, 1] spine
   CompareRatTensorPointwise _op -> fixedStatus [1, 2] spine
   If -> fixedStatus [1] spine
-  At -> fixedStatus [3, 4] spine
+  AtTensor -> fixedStatus [3, 4] spine
+  AtVector -> fixedStatus [2, 3] spine
   FoldList -> fixedStatus [4] spine
   MapList -> fixedStatus [3] spine
   ConstTensor -> fixedStatus [0, 1] spine

@@ -148,7 +148,7 @@ data BoolValue
   | VReduceOrTensor (TensorOp2Args (Value Builtin))
   | VQuantifyRatTensor Quantifier (VArg Builtin) (VBinder Builtin) (Closure Builtin)
   | VBoolIf (IfArgs (Value Builtin))
-  | VBoolAt (AtArgs (Value Builtin))
+  | VBoolAt (AtTensorArgs (Value Builtin))
 
 toBoolValue :: (HasCallStack) => Value Builtin -> BoolValue
 toBoolValue expr = case expr of
@@ -216,7 +216,7 @@ data BoolTensorValue
   | VQuantifyRatTensor Quantifier (VArg Builtin) (VBinder Builtin) (Closure Builtin)
   | VBoolIf (IfArgs (Value Builtin))
   | VConstBoolTensor (ConstTensorArgs (Value Builtin))
-  | VBoolAt (AtArgs (Value Builtin))
+  | VBoolAt (AtTensorArgs (Value Builtin))
   | VBoolForeach (ForeachArgs (Value Builtin))
 
 toBoolTensorValue :: (HasCallStack) => Value Builtin -> BoolTensorValue
@@ -280,7 +280,7 @@ data RatTensorValue
   | VNetworkApp Identifier (NetworkAppArgs (Value Builtin))
   | VRatConstTensor (ConstTensorArgs (Value Builtin))
   | VRatStackTensor (StackTensorArgs (Value Builtin))
-  | VRatAt (AtArgs (Value Builtin))
+  | VRatAt (AtTensorArgs (Value Builtin))
   | VRatForeach (ForeachArgs (Value Builtin))
 
 toRatTensorValue :: (HasCallStack) => Value Builtin -> RatTensorValue

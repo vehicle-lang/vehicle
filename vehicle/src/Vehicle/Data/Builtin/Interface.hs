@@ -72,6 +72,10 @@ class BuiltinHasListLiterals builtin where
   accessMapListBuiltin :: Accessor builtin ()
   accessFoldListBuiltin :: Accessor builtin ()
 
+class BuiltinHasVectors builtin where
+  accessVecLitBuiltin :: Accessor builtin ()
+  accessAtVectorBuiltin :: Accessor builtin ()
+
 class BuiltinHasTensors builtin where
   accessStackTensorBuiltin :: Accessor builtin ()
   accessConstTensorBuiltin :: Accessor builtin ()

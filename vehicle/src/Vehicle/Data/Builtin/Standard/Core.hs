@@ -199,10 +199,21 @@ instance BuiltinHasListLiterals Builtin where
   accessMapListBuiltin = functionAccessor MapList
   accessFoldListBuiltin = functionAccessor FoldList
 
+instance BuiltinHasVectors Builtin where
+  accessVecLitBuiltin =
+    Access
+      { getExpr = \case
+          BuiltinConstructor Cons -> Just ()
+          _ -> Nothing,
+        mkExpr = \() -> BuiltinConstructor Cons
+      }
+
+  accessAtVectorBuiltin = functionAccessor AtVector
+
 instance BuiltinHasTensors Builtin where
   accessConstTensorBuiltin = functionAccessor ConstTensor
   accessStackTensorBuiltin = functionAccessor StackTensor
-  accessAtTensorBuiltin = functionAccessor At
+  accessAtTensorBuiltin = functionAccessor AtTensor
 
 instance BuiltinHasForeach Builtin where
   accessForeachTensorBuiltin = functionAccessor Foreach

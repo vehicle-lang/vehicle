@@ -274,7 +274,7 @@ instance NormalisableBuiltin LossBuiltin where
       ReduceMulRatTensor -> Simple evalReduceMulRatTensor
       ReduceMinRatTensor -> Simple evalReduceMinRatTensor
       ReduceMaxRatTensor -> Simple evalReduceMaxRatTensor
-      At -> Simple evalAt
+      At -> Simple evalAtTensor
       StackTensor -> Simple evalStackTensor
       ConstTensor -> Simple evalConstTensor
       FoldList -> NonSimple evalFoldList

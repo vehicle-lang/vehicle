@@ -131,6 +131,7 @@ convertBuiltinToLoss b spine = case b of
     S.NatTensorLiteral x -> unchangedConstructor $ NatTensorLiteral x
     S.RatTensorLiteral x -> unchangedConstructor $ RatTensorLiteral x
     S.IndexTensorLiteral x -> unchangedConstructor $ IndexTensorLiteral x
+    S.VectorLiteral -> unsupportedBuiltin
   S.BuiltinType t -> case t of
     S.BoolType -> return $ VBuiltin (LossBuiltinType RatType) []
     S.RatType -> unchangedType RatType
@@ -176,7 +177,7 @@ convertBuiltinToLoss b spine = case b of
     S.ReduceMulRatTensor -> unchangedFunction ReduceMulRatTensor
     S.ReduceMinRatTensor -> unchangedFunction ReduceMinRatTensor
     S.ReduceMaxRatTensor -> unchangedFunction ReduceMaxRatTensor
-    S.At -> unchangedFunction At
+    S.AtTensor -> unchangedFunction At
     S.StackTensor -> unchangedFunction StackTensor
     S.ConstTensor -> unchangedFunction ConstTensor
     S.Foreach -> developerError "Conversion of `foreach` not yet supported"
@@ -188,6 +189,7 @@ convertBuiltinToLoss b spine = case b of
     S.FoldList -> unsupportedBuiltin
     S.MapList -> unsupportedBuiltin
     S.Iterate -> unsupportedBuiltin
+    S.AtVector -> unsupportedBuiltin
   S.BuiltinCast {} -> unsupportedBuiltin
   S.DerivedFunction {} -> unsupportedBuiltin
   ----------------------

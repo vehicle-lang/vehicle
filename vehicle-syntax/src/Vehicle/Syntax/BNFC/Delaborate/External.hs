@@ -227,7 +227,8 @@ delabBuiltinFunction fun args = case fun of
   V.CompareNat op -> delabTypeClassOp (V.CompareTC op) args
   V.FoldList -> delabTypeClassOp V.FoldTC args
   V.MapList -> delabTypeClassOp V.MapTC args
-  V.At -> delabInfixOp2 B.At tokAt args
+  V.AtTensor -> delabInfixOp2 B.At tokAt args
+  V.AtVector -> delabInfixOp2 B.At tokAt args
   V.Foreach -> delabForeach args
   V.ReduceAndTensor -> delabApp (B.ReduceAnd tokReduceAnd) args
   V.ReduceOrTensor -> delabApp (B.ReduceOr tokReduceOr) args
@@ -276,8 +277,9 @@ delabConstructor fun args = case fun of
   V.Nil -> delabApp (B.Nil tokNil) args
   V.UnitLiteral -> return $ B.Literal B.UnitLiteral
   V.NatLiteral x -> return $ B.Literal $ B.NatLiteral $ delabNatLit x
-  V.NatTensorLiteral t -> cheatDelabPretty t []
   V.IndexLiteral x -> return $ B.Literal $ B.NatLiteral $ delabNatLit x
+  V.VectorLiteral -> delabVecLiteral args
+  V.NatTensorLiteral t -> cheatDelabPretty t []
   V.IndexTensorLiteral t -> cheatDelabPretty t []
   V.RatTensorLiteral t -> cheatDelabPretty t []
   V.BoolTensorLiteral t -> cheatDelabPretty t []
@@ -301,6 +303,7 @@ delabTypeClassOp op args = case op of
     V.Gt -> delabInfixOp2 B.Gt tokGt args
   V.MapTC -> delabApp (B.Map tokMap) args
   V.FoldTC -> delabApp (B.Fold tokFold) args
+  V.AtTC -> delabInfixOp2 B.At tokAt args
   V.QuantifierTC q -> delabQuantifier q args
   V.TensorTypeTC -> cheatDelabPretty op args
 

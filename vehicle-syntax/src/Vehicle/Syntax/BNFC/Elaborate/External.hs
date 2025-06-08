@@ -385,7 +385,7 @@ elabExpr expr = case expr of
   B.Min tk -> builtinFunction (V.Min V.MinRatTensor) tk []
   B.Max tk -> builtinFunction (V.Max V.MaxRatTensor) tk []
   B.Neg tk e -> builtinTypeClassOp V.NegTC tk [e]
-  B.At e1 tk e2 -> builtinFunction V.At tk [e1, e2]
+  B.At e1 tk e2 -> builtinTypeClassOp V.AtTC tk [e1, e2]
   B.Map tk -> builtinTypeClassOp V.MapTC tk []
   B.Fold tk -> builtinTypeClassOp V.FoldTC tk []
   B.ReduceOr tk -> builtinFunction V.ReduceOrTensor tk []

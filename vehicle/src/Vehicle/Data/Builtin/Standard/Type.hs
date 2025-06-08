@@ -67,6 +67,7 @@ typeOfTypeClass tc = case tc of
   HasMul -> type0 ~> type0 ~> type0 ~> type0
   HasDiv -> type0 ~> type0 ~> type0 ~> type0
   HasNeg -> type0 ~> type0 ~> type0
+  HasAt -> type0 ~> type0 ~> type0
   HasMap -> (type0 ~> type0) ~> type0
   HasFold -> (type0 ~> type0) ~> type0
   HasQuantifierIn {} -> type0 ~> type0 ~> type0
@@ -97,6 +98,7 @@ typeOfTypeClassOp b = case b of
   MulTC -> typeOfTCOp2 hasMul
   DivTC -> typeOfTCOp2 hasDiv
   CompareTC op -> typeOfTCComparisonOp $ hasCompare op
+  AtTC -> typeOfTCOp2 hasAt
   MapTC -> forAll "f" (type0 ~> type0) $ \f -> hasMap f ~~~> typeOfMap f
   FoldTC -> forAll "f" (type0 ~> type0) $ \f -> hasFold f ~~~> typeOfFold f
   QuantifierTC q ->

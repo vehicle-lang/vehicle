@@ -30,7 +30,7 @@ import Vehicle.Compile.Rational.LinearExpr (LinearityError (..), compileLinearRe
 import Vehicle.Compile.Resource (NetworkTensorType (..), NetworkType (..))
 import Vehicle.Compile.Variable (createUserVar)
 import Vehicle.Data.Assertion
-import Vehicle.Data.Builtin.Interface.Normalise (evalAt, evalCompareRatTensor, evalReduceAndTensor, evalStackTensor)
+import Vehicle.Data.Builtin.Interface.Normalise (evalAtTensor, evalCompareRatTensor, evalReduceAndTensor, evalStackTensor)
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.Interface
@@ -313,7 +313,7 @@ eliminateTensorAssertion op (TensorOp2Args dims xs ys) =
     ICons _ d@(INatLiteral n) ds -> do
       let tElem = implicit $ fromTypeValue VRatType
       let dsArg = implicitIrrelevant ds
-      let mkAt vs i = evalAt (AtArgs tElem (implicitIrrelevant d) dsArg vs (IIndexLiteral i))
+      let mkAt vs i = evalAtTensor (AtTensorArgs tElem (implicitIrrelevant d) dsArg vs (IIndexLiteral i))
       let mkStackElement i = do
             xsi <- mkAt xs i
             ysi <- mkAt ys i

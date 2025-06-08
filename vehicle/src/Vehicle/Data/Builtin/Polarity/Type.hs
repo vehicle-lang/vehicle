@@ -78,7 +78,8 @@ typeOfBuiltinFunction p = \case
   -- Container functions
   FoldList -> typeOfFold
   MapList -> typeOfMap
-  At -> forAllPolarities $ \pol -> pol ~> unquantified ~> pol
+  AtVector -> typeOfAt
+  AtTensor -> typeOfAt
   StackTensor -> typeOfStack
   ConstTensor -> forAllPolarities $ \pol -> pol ~> unquantified ~> pol
   Foreach -> forAllPolarities $ \pol -> (unquantified ~> pol) ~> pol
@@ -93,6 +94,7 @@ typeOfConstructor = \case
   UnitLiteral {} -> unquantified
   IndexLiteral {} -> unquantified
   NatLiteral {} -> unquantified
+  VectorLiteral {} -> typeOfVectorLiteral
   NatTensorLiteral {} -> unquantified
   BoolTensorLiteral {} -> unquantified
   IndexTensorLiteral {} -> unquantified
@@ -137,6 +139,9 @@ typeOfIf =
         ~> pArg1
         ~> pArg2
         ~> pRes
+
+typeOfAt :: PolarityDSLExpr
+typeOfAt = typeOfOp2 maxPolarity
 
 typeOfNil :: PolarityDSLExpr
 typeOfNil = unquantified

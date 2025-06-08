@@ -117,8 +117,7 @@ eliminateImpurities impurity = do
         else
           if op == Ge || op == Gt
             then (if isMin then evalAnd else evalOr) logicalArgs
-            else
-              developerError $ "Support for min/max with" <+> pretty op <+> "not yet implemented"
+            else developerError $ "Support for min/max with" <+> pretty op <+> "not yet implemented"
 
 --------------------------------------------------------------------------------
 -- Main unblocking functions
@@ -290,14 +289,14 @@ unblockStackTensor unblock (StackTensorArgs tElem d ds xss) = do
 unblockAtTensor ::
   (MonadUnblock m) =>
   UnblockingFunction m ->
-  AtArgs (Value Builtin) ->
+  AtTensorArgs (Value Builtin) ->
   m (Value Builtin)
-unblockAtTensor unblock (AtArgs tElem d ds xs i) = do
+unblockAtTensor unblock (AtTensorArgs tElem d ds xs i) = do
   xs' <- unblock xs
   i' <- unblockIndexValue i
   liftIf xs' $ \xs'' ->
     liftIf i' $ \i'' -> do
-      evalAt $ AtArgs tElem d ds xs'' i''
+      evalAtTensor $ AtTensorArgs tElem d ds xs'' i''
 
 unblockForeachTensor ::
   (MonadUnblock m) =>

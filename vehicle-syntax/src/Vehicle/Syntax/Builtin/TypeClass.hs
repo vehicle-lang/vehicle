@@ -23,6 +23,7 @@ data TypeClass
   | HasFold
   | HasMap
   | HasQuantifierIn Quantifier
+  | HasAt
   | -- Literal type-classes
     HasNatLits
   | HasRatLits
@@ -62,6 +63,7 @@ instance Pretty TypeClass where
     HasNatLits -> "HasNatLiterals"
     HasRatLits -> "HasRatLiterals"
     HasVecLits -> "HasVecLiterals"
+    HasAt -> "Hat"
     IsTensorType -> "IsTensorType"
     ValidPropertyType -> "ValidPropertyType"
     ValidParameterType {} -> "ValidParameterType"
@@ -87,6 +89,7 @@ data TypeClassOp
   | MulTC
   | DivTC
   | CompareTC ComparisonOp
+  | AtTC
   | MapTC
   | FoldTC
   | QuantifierTC Quantifier
@@ -110,6 +113,7 @@ instance Pretty TypeClassOp where
     FromRatTC -> "fromRat"
     VecLiteralTC {} -> "vec"
     CompareTC op -> pretty op
+    AtTC -> "!"
     MapTC -> "map"
     FoldTC -> "fold"
     QuantifierTC q -> pretty q

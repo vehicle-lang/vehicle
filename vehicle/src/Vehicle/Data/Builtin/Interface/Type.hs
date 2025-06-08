@@ -81,7 +81,8 @@ typeOfBuiltinFunction = \case
   -- Container functions
   FoldList -> typeOfFold tListRaw
   MapList -> typeOfMap tListRaw
-  At -> typeOfAt
+  AtVector -> typeOfAtVector
+  AtTensor -> typeOfAtTensor
   StackTensor -> typeOfStackTensor
   ConstTensor -> typeOfConstTensor
   Foreach -> typeOfForeach
@@ -94,6 +95,7 @@ typeOfBuiltinConstructor = \case
   UnitLiteral -> tUnit
   IndexLiteral {} -> forAllIrrelevantNat "n" $ \n -> tIndex n
   NatLiteral {} -> tNat
+  VectorLiteral {} -> typeOfVecLiteral
   NatTensorLiteral t -> tNatTensor (shapeOf t)
   BoolTensorLiteral t -> tBoolTensor (shapeOf t)
   IndexTensorLiteral t -> forAllIrrelevantNat "n" $ \n -> tTensor (tIndex n) (shapeOf t)
@@ -151,8 +153,14 @@ typeOfCons =
   forAll "A" type0 $ \tElem ->
     tElem ~> tList tElem ~> tList tElem
 
-typeOfAt :: (HasStandardBuiltins builtin) => DSLExpr builtin
-typeOfAt =
+typeOfAtVector :: (HasStandardBuiltins builtin) => DSLExpr builtin
+typeOfAtVector =
+  forAll "A" type0 $ \tElem ->
+    forAllDim Irrelevant $ \d ->
+      tVector tElem d ~> tIndex d ~> tElem
+
+typeOfAtTensor :: (HasStandardBuiltins builtin) => DSLExpr builtin
+typeOfAtTensor =
   forAll "A" type0 $ \tElem ->
     forAllDim Irrelevant $ \d ->
       forAllDims $ \ds ->
@@ -161,6 +169,12 @@ typeOfAt =
 typeOfVecLiteralCast :: (HasStandardBuiltins builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 typeOfVecLiteralCast tCont tElem d =
   iterate type0 (\fn t -> tElem ~> fn @@ [t]) d tCont
+
+typeOfVecLiteral :: (HasStandardBuiltins builtin) => DSLExpr builtin
+typeOfVecLiteral =
+  forAllTypes $ \t ->
+    forAllDim Relevant $ \d ->
+      typeOfVecLiteralCast (tVector t d) t d
 
 typeOfStackTensor :: (HasStandardBuiltins builtin) => DSLExpr builtin
 typeOfStackTensor =

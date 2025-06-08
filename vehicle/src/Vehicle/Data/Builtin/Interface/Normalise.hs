@@ -410,6 +410,19 @@ evalCompareRatTensor op =
     Nothing
 
 -----------------------------------------------------------------------------
+-- Generic vector operations
+
+evalAtVector ::
+  forall builtin m.
+  (MonadNormBuiltin m, BuiltinHasIndexLiterals builtin, HasVectorExpr Value builtin) =>
+  EvalSimple AtVectorArgs Value builtin m
+evalAtVector args@(AtVectorArgs _t _d vector index) = do
+  fromMaybe (return $ mkExpr accessAtVector args) $
+    case (vector, index) of
+      (IVecLiteral _t _d xs, IIndexLiteral i) -> Just $ return $ xs !! i
+      _ -> Nothing
+
+-----------------------------------------------------------------------------
 -- Generic tensor operations
 
 data TensorLiteralAccessor builtin
@@ -430,11 +443,11 @@ class HasPrimitives builtin where
   tensorOp1s :: (MonadNormBuiltin m) => [TensorOp1EvalData builtin m]
   tensorOp2s :: (MonadNormBuiltin m) => [TensorOp2EvalData builtin m]
 
-evalAt ::
+evalAtTensor ::
   forall builtin m.
   (MonadNormBuiltin m, HasPrimitives builtin, BuiltinHasListLiterals builtin, BuiltinHasIndexLiterals builtin, HasTensorExpr Value builtin) =>
-  EvalSimple AtArgs Value builtin m
-evalAt args@(AtArgs t d ds tensor index) = do
+  EvalSimple AtTensorArgs Value builtin m
+evalAtTensor args@(AtTensorArgs t d ds tensor index) = do
   fromMaybe (return $ mkExpr accessAtTensor args) $
     goOp1 tensorOp1s
       <|> goOp2 tensorOp2s
@@ -448,7 +461,7 @@ evalAt args@(AtArgs t d ds tensor index) = do
         _ -> Nothing
   where
     recEvalAt :: Value builtin -> m (Value builtin)
-    recEvalAt ys = evalAt (AtArgs t d ds ys index)
+    recEvalAt ys = evalAtTensor (AtTensorArgs t d ds ys index)
 
     goOp1 :: [TensorOp1EvalData builtin m] -> Maybe (m (Value builtin))
     goOp1 = \case

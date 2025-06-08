@@ -63,6 +63,7 @@ data BuiltinConstructor
   | UnitLiteral
   | IndexLiteral Int
   | NatLiteral Int
+  | VectorLiteral
   | BoolTensorLiteral (Tensor Bool)
   | IndexTensorLiteral (Tensor Int)
   | NatTensorLiteral (Tensor Int)
@@ -82,6 +83,7 @@ instance Pretty BuiltinConstructor where
     UnitLiteral -> "()"
     NatLiteral n -> pretty n
     IndexLiteral n -> pretty n
+    VectorLiteral -> "vec"
     BoolTensorLiteral x -> pretty x
     NatTensorLiteral x -> pretty x
     IndexTensorLiteral x -> pretty x
@@ -120,12 +122,14 @@ data BuiltinFunction
   | ReduceMinRatTensor
   | ReduceMaxRatTensor
   | Foreach
-  | -- Generic tensor operations
-    At
+  | -- Tensor operations
+    AtTensor
   | StackTensor
   | ConstTensor
   | Iterate
-  | -- Comparison expressions
+  | -- Vector operations
+    AtVector
+  | -- List operations
     FoldList
   | MapList
   deriving (Eq, Ord, Show, Generic)
@@ -167,7 +171,8 @@ instance Pretty BuiltinFunction where
     MapList -> "mapList"
     Foreach -> "foreach"
     Iterate -> "iterate"
-    At -> "!"
+    AtTensor -> "!t"
+    AtVector -> "!v"
     StackTensor {} -> "stack"
     ConstTensor -> "const"
 

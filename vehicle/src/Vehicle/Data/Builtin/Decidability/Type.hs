@@ -229,7 +229,8 @@ convertToDecidabilityBuiltins p b args =
         MapList -> sameFunction MapList
         Foreach -> sameFunction Foreach
         Iterate -> sameFunction Iterate
-        At -> sameFunction At
+        AtVector -> sameFunction AtVector
+        AtTensor -> sameFunction AtTensor
         StackTensor -> sameFunction StackTensor
         ConstTensor -> sameFunction ConstTensor
     BuiltinConstructor c -> case c of
