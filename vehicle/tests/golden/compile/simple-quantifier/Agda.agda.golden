@@ -24,6 +24,4 @@ postulate f : Tensor ℚ (1 ∷ []) → Tensor ℚ (1 ∷ [])
 
 postulate expandedExpr : ∀ x → (x ! # 0) ≥ (f x ! # 0)
 
-postulate sequential : ∀ x → ∀ y → (f x ! # 0) ≥ (f y ! # 0)
-
 postulate parallel : ∀ x → (f x ! # 0) ≥ 0 × ∃ λ x → (f x ! # 0) ≥ 5
