@@ -63,7 +63,7 @@ instance Pretty TypeClass where
     HasNatLits -> "HasNatLiterals"
     HasRatLits -> "HasRatLiterals"
     HasVecLits -> "HasVecLiterals"
-    HasAt -> "Hat"
+    HasAt -> "HasAt"
     IsTensorType -> "IsTensorType"
     ValidPropertyType -> "ValidPropertyType"
     ValidParameterType {} -> "ValidParameterType"

@@ -291,7 +291,7 @@ allInstances =
             lamType $ \tElem ->
               lamDim $ \d ->
                 builtinFunction AtVector @@@ [tElem] .@@@ [d],
-            True
+            False
           ),
           ( forAllTypes $ \tElem ->
               forAllDim Irrelevant $ \d ->
@@ -301,7 +301,7 @@ allInstances =
               lamDim $ \d ->
                 lamDims $ \ds ->
                   builtinFunction AtTensor @@@ [tElem] .@@@ [d, ds],
-            True
+            False
           ),
           ------------
           -- HasMap --
