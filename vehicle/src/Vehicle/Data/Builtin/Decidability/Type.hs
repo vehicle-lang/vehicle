@@ -66,6 +66,7 @@ typeDecidableTypeClass :: DecidabilityBuiltinTypeClass -> DSLExpr DecidabilityBu
 typeDecidableTypeClass = \case
   IsBoolType -> type0 ~> type0
   IsTensorType -> type0 ~> type0
+  IsVectorType -> type0 ~> type0
   HasBoolTensorLiterals -> type0 ~> type0
   HasNot -> (tDims ~> type0) ~> tDims ~> type0
   HasAnd -> (tDims ~> type0) ~> tDims ~> type0
@@ -87,6 +88,11 @@ typeDecidableTypeClassOp = \case
     forAllExpl "t" type0 $ \t ->
       isTensorType t
         ~~~> tDims
+        .~> type0
+  VectorTypeTC ->
+    forAllExpl "t" type0 $ \t ->
+      isVectorType t
+        ~~~> tDim
         .~> type0
   NotTC -> tensorOpConstraint HasNot (\t dims -> typeOp1 (t .@@ [dims]))
   AndTC -> tensorOpConstraint HasAnd (\t dims -> typeOp2 (t .@@ [dims]))
@@ -227,7 +233,8 @@ convertToDecidabilityBuiltins p b args =
         ReduceMaxRatTensor -> sameFunction ReduceMaxRatTensor
         FoldList -> sameFunction FoldList
         MapList -> sameFunction MapList
-        Foreach -> sameFunction Foreach
+        ForeachVector -> sameFunction ForeachVector
+        ForeachTensor -> sameFunction ForeachTensor
         Iterate -> sameFunction Iterate
         AtVector -> sameFunction AtVector
         AtTensor -> sameFunction AtTensor
@@ -242,6 +249,7 @@ convertToDecidabilityBuiltins p b args =
       let b' = case s of
             BoolType -> DecidabilityBuiltinTypeClassOp BoolTypeTC
             TensorType -> DecidabilityBuiltinTypeClassOp TensorTypeTC
+            VectorType -> DecidabilityBuiltinTypeClassOp VectorTypeTC
             _ -> StandardBuiltinType s
       return $ normAppList (Builtin p b') args
     DerivedFunction f -> case f of

@@ -121,14 +121,15 @@ data BuiltinFunction
   | ReduceMulRatTensor
   | ReduceMinRatTensor
   | ReduceMaxRatTensor
-  | Foreach
   | -- Tensor operations
     AtTensor
   | StackTensor
   | ConstTensor
   | Iterate
+  | ForeachTensor
   | -- Vector operations
     AtVector
+  | ForeachVector
   | -- List operations
     FoldList
   | MapList
@@ -169,7 +170,8 @@ instance Pretty BuiltinFunction where
     CompareRatTensorPointwise op -> comparisonOpName op <> "RatTensorPointwise"
     FoldList -> "foldList"
     MapList -> "mapList"
-    Foreach -> "foreach"
+    ForeachTensor -> "foreachTensor"
+    ForeachVector -> "foreachVector"
     Iterate -> "iterate"
     AtTensor -> "!t"
     AtVector -> "!v"

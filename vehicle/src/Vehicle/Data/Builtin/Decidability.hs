@@ -28,6 +28,7 @@ import Vehicle.Syntax.Sugar (BinderType (..))
 data DecidabilityBuiltinTypeClass
   = IsBoolType
   | IsTensorType
+  | IsVectorType
   | HasBoolTensorLiterals
   | HasNot
   | HasAnd
@@ -48,6 +49,7 @@ instance Hashable DecidabilityBuiltinTypeClass
 data DecidabilityBuiltinTypeClassOp
   = BoolTypeTC
   | TensorTypeTC
+  | VectorTypeTC
   | FromBoolTensorLitTC
   | NotTC
   | AndTC
@@ -186,7 +188,8 @@ instance BuiltinHasListLiterals DecidabilityBuiltin where
 
 instance BuiltinHasBinders DecidabilityBuiltin where
   getBuiltinBinder = \case
-    StandardBuiltinFunction Foreach -> Just ForeachBinder
+    StandardBuiltinFunction ForeachTensor -> Just ForeachBinder
+    StandardBuiltinFunction ForeachVector -> Just ForeachBinder
     StandardBuiltinFunction (QuantifyRatTensor q) -> Just $ QuantifierBinder q
     _ -> Nothing
 
@@ -204,6 +207,7 @@ instance Pretty DecidabilityBuiltinTypeClass where
     HasBoolTensorLiterals -> pretty $ show t
     IsBoolType -> pretty $ show t
     IsTensorType -> pretty $ show t
+    IsVectorType -> pretty $ show t
     HasNot -> pretty $ show t
     HasAnd -> pretty $ show t
     HasOr -> pretty $ show t
@@ -240,6 +244,7 @@ instance Pretty DecidabilityBuiltinTypeClassOp where
   pretty t = case t of
     BoolTypeTC -> pretty $ show t
     TensorTypeTC -> pretty $ show t
+    VectorTypeTC -> pretty $ show t
     FromBoolTensorLitTC -> pretty $ show t
     NotTC -> pretty $ show t
     AndTC -> pretty $ show t
@@ -314,6 +319,9 @@ evalBoolTensorToType args = return $ case args of
 
 isTensorType :: DSLExpr DecidabilityBuiltin -> DSLExpr DecidabilityBuiltin
 isTensorType tElem = builtin (DecidabilityBuiltinTypeClass IsTensorType) @@ [tElem]
+
+isVectorType :: DSLExpr DecidabilityBuiltin -> DSLExpr DecidabilityBuiltin
+isVectorType tElem = builtin (DecidabilityBuiltinTypeClass IsVectorType) @@ [tElem]
 
 decFunction :: DecidabilityBuiltinFunction -> DSLExpr DecidabilityBuiltin
 decFunction f = builtin (DecidabilityBuiltinFunction f)

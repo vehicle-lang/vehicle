@@ -82,7 +82,8 @@ typeOfBuiltinFunction p = \case
   AtTensor -> typeOfAt
   StackTensor -> typeOfStack
   ConstTensor -> forAllPolarities $ \pol -> pol ~> unquantified ~> pol
-  Foreach -> forAllPolarities $ \pol -> (unquantified ~> pol) ~> pol
+  ForeachTensor -> typeOfForeach
+  ForeachVector -> typeOfForeach
   Iterate -> typeOfIterate
 
 typeOfConstructor :: BuiltinConstructor -> PolarityDSLExpr
@@ -142,6 +143,9 @@ typeOfIf =
 
 typeOfAt :: PolarityDSLExpr
 typeOfAt = typeOfOp2 maxPolarity
+
+typeOfForeach :: PolarityDSLExpr
+typeOfForeach = forAllPolarities $ \pol -> (unquantified ~> pol) ~> pol
 
 typeOfNil :: PolarityDSLExpr
 typeOfNil = unquantified

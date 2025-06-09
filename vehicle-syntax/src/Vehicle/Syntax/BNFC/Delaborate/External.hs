@@ -229,7 +229,8 @@ delabBuiltinFunction fun args = case fun of
   V.MapList -> delabTypeClassOp V.MapTC args
   V.AtTensor -> delabInfixOp2 B.At tokAt args
   V.AtVector -> delabInfixOp2 B.At tokAt args
-  V.Foreach -> delabForeach args
+  V.ForeachTensor -> delabForeach args
+  V.ForeachVector -> delabForeach args
   V.ReduceAndTensor -> delabApp (B.ReduceAnd tokReduceAnd) args
   V.ReduceOrTensor -> delabApp (B.ReduceOr tokReduceOr) args
   -- Builtins not yet in the surface syntax.
@@ -304,6 +305,7 @@ delabTypeClassOp op args = case op of
   V.MapTC -> delabApp (B.Map tokMap) args
   V.FoldTC -> delabApp (B.Fold tokFold) args
   V.AtTC -> delabInfixOp2 B.At tokAt args
+  V.ForeachTC -> delabForeach args
   V.QuantifierTC q -> delabQuantifier q args
   V.TensorTypeTC -> cheatDelabPretty op args
 
@@ -402,7 +404,7 @@ delabForeach args = case reverse args of
     binders' <- traverse delabNameBinder (binder : foldedBinders)
     body' <- delabM foldedBody
     return $ B.Foreach tokForeach binders' tokDot body'
-  _ -> cheatDelabPretty V.Foreach args
+  _ -> cheatDelabPretty V.ForeachTC args
 
 delabAnn :: B.TokAnnotation -> [B.DeclAnnOption] -> B.Decl
 delabAnn name [] = B.DefAnn name B.DeclAnnWithoutOpts

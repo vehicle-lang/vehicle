@@ -12,6 +12,7 @@ open import Data.Char.Properties as Char using (_≟_)
 open import Data.String using (String; _++_; lines; toList)
 open import Data.Integer.Base as ℤ using (ℤ; +_; -[1+_])
 open import Data.Nat.Base as ℕ using (ℕ; suc)
+open import Data.Fin using (Fin)
 open import Data.Vec.Base using (Vec; []; _∷_)
 open import Data.Vec.Functional as Vector using (Vector)
 open import Data.Vec.Recursive using (_^_; toVec)
@@ -89,26 +90,6 @@ instance
 ------------------------------------------------------------------------
 -- Tensor
 ------------------------------------------------------------------------
-{-
-open import Function.Nary.NonDependent
-open import Data.Unit.Polymorphic using (tt)
 
-uniformLevels : ∀ n (l : Level) → Levels n
-uniformLevels ℕ.zero l = tt
-uniformLevels (suc n) l = l , uniformLevels n l
-
-uniformSets : ∀ n {a} → Set a → Sets n (uniformLevels n a)
-uniformSets ℕ.zero A = tt
-uniformSets (suc n) A = A , uniformSets n A
-
-iterate : ∀ {a} {A : Set a} → (A → A) → ℕ → A → A
-iterate f ℕ.zero a = a
-iterate f (suc n) a = iterate f n (f a)
-
-vecLit : ∀ {A : Set} (n : ℕ) → uniformSets n A ⇉ Vector A n
-vecLit {A} ℕ.zero = Vector.[]
-vecLit {A} (suc n) a = mapₙ n (a Vector.∷_) (vecLit n)
-
-test : Vector ℕ 2
-test = vecLit 2 1 2
--}
+foreachVector : ∀ {n} {A : Set} → (Fin n → A) → Vector A n
+foreachVector v = v

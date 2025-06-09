@@ -300,13 +300,13 @@ unblockAtTensor unblock (AtTensorArgs tElem d ds xs i) = do
 
 unblockForeachTensor ::
   (MonadUnblock m) =>
-  ForeachArgs (Value Builtin) ->
+  ForeachTensorArgs (Value Builtin) ->
   m (Value Builtin)
-unblockForeachTensor (ForeachArgs tElem d ds fn) = do
+unblockForeachTensor (ForeachTensorArgs tElem d ds fn) = do
   d' <- unblockNatValue d
   liftIf d' $ \d'' -> do
     freeEnv <- getFreeEnv
-    evalForeach (evalApp freeEnv) $ ForeachArgs tElem d'' ds fn
+    evalForeachTensor (evalApp freeEnv) $ ForeachTensorArgs tElem d'' ds fn
 
 --------------------------------------------------------------------------------
 -- Unblocking operations

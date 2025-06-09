@@ -38,7 +38,7 @@ instance HasBinders Expr where
     Pi _ binder body -> Just (PiBinder, binder, body)
     Lam _ binder body -> Just (LamBinder, binder, body)
     App (Builtin _ (TypeClassOp (QuantifierTC q))) ((argExpr -> Lam _ binder body) :| []) -> Just (QuantifierBinder q, binder, body)
-    App (Builtin _ (BuiltinFunction Foreach)) ((argExpr -> Lam _ binder body) :| []) -> Just (ForeachBinder, binder, body)
+    App (Builtin _ (TypeClassOp ForeachTC)) ((argExpr -> Lam _ binder body) :| []) -> Just (ForeachBinder, binder, body)
     _ -> Nothing
 
   getLetBinder = \case

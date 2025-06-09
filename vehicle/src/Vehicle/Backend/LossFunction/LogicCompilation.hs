@@ -239,7 +239,8 @@ isLiftableOp = \case
   ReduceMaxRatTensor -> False
   StackTensor {} -> False
   ConstTensor -> False
-  Foreach -> False
+  ForeachTensor -> False
+  ForeachVector -> False
   Iterate -> False
 
 reduceOp :: BuiltinFunction -> Maybe BuiltinFunction
@@ -275,7 +276,8 @@ reduceOp = \case
   ReduceMaxRatTensor -> Nothing
   StackTensor {} -> Nothing
   ConstTensor -> Nothing
-  Foreach -> Nothing
+  ForeachTensor -> Nothing
+  ForeachVector -> Nothing
   Iterate -> Nothing
 
 type MonadCompileBody m =

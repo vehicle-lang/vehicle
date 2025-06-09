@@ -536,16 +536,27 @@ evalConstTensor args@(ConstTensorArgs _t xs ds) =
           _ -> developerError "Non-zero dimensional tensor argument for ConstTensor"
         Nothing -> go dims prims
 
-evalForeach ::
+evalForeachTensor ::
   (MonadLogger m, HasPrimitives builtin, HasTensorExpr Value builtin, BuiltinHasNatLiterals builtin, BuiltinHasIndexLiterals builtin, BuiltinHasForeach builtin) =>
   EvalApp builtin m ->
-  ForeachArgs (Value builtin) ->
+  ForeachTensorArgs (Value builtin) ->
   m (Value builtin)
-evalForeach evalApp args@(ForeachArgs t d ds f) = case d of
+evalForeachTensor evalApp args@(ForeachTensorArgs t d ds f) = case d of
   INatLiteral n -> do
     xs <- traverse (\i -> evalApp f [explicit (IIndexLiteral i)]) [0 .. (n - 1 :: Int)]
     evalStackTensor (StackTensorArgs t d ds xs)
   _ -> return $ mkExpr accessForeachTensor args
+
+evalForeachVector ::
+  (MonadLogger m, HasPrimitives builtin, HasVectorExpr Value builtin, BuiltinHasNatLiterals builtin, BuiltinHasIndexLiterals builtin, BuiltinHasForeach builtin) =>
+  EvalApp builtin m ->
+  ForeachVectorArgs (Value builtin) ->
+  m (Value builtin)
+evalForeachVector evalApp args@(ForeachVectorArgs t d f) = case d of
+  INatLiteral n -> do
+    xs <- traverse (\i -> evalApp f [explicit (IIndexLiteral i)]) [0 .. (n - 1 :: Int)]
+    return $ IVecLiteral t d xs
+  _ -> return $ mkExpr accessForeachVector args
 
 evalIterate ::
   (MonadLogger m, BuiltinHasNatLiterals builtin, BuiltinHasIterate builtin) =>

@@ -24,6 +24,7 @@ data TypeClass
   | HasMap
   | HasQuantifierIn Quantifier
   | HasAt
+  | HasForeach
   | -- Literal type-classes
     HasNatLits
   | HasRatLits
@@ -64,6 +65,7 @@ instance Pretty TypeClass where
     HasRatLits -> "HasRatLiterals"
     HasVecLits -> "HasVecLiterals"
     HasAt -> "HasAt"
+    HasForeach -> "HasForeach"
     IsTensorType -> "IsTensorType"
     ValidPropertyType -> "ValidPropertyType"
     ValidParameterType {} -> "ValidParameterType"
@@ -92,6 +94,7 @@ data TypeClassOp
   | AtTC
   | MapTC
   | FoldTC
+  | ForeachTC
   | QuantifierTC Quantifier
   | TensorTypeTC
   deriving (Eq, Ord, Generic, Show)
@@ -116,5 +119,6 @@ instance Pretty TypeClassOp where
     AtTC -> "!"
     MapTC -> "map"
     FoldTC -> "fold"
+    ForeachTC -> "foreach"
     QuantifierTC q -> pretty q
     TensorTypeTC -> "TensorTC"

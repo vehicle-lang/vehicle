@@ -85,7 +85,8 @@ typeOfBuiltinFunction p = \case
   AtTensor -> typeOfAt
   StackTensor -> typeOfStack
   ConstTensor -> forAllLinearities $ \l -> l ~> constant ~> l
-  Foreach -> forAllLinearities $ \l -> (constant ~> l) ~> l
+  ForeachTensor -> typeOfForeach
+  ForeachVector -> typeOfForeach
   Iterate -> typeOfIterate
 
 typeOfConstructor :: BuiltinConstructor -> LinearityDSLExpr
@@ -134,6 +135,9 @@ typeOfIf =
 
 typeOfAt :: LinearityDSLExpr
 typeOfAt = typeOfOp2 maxLinearity
+
+typeOfForeach :: LinearityDSLExpr
+typeOfForeach = forAllLinearities $ \l -> (constant ~> l) ~> l
 
 typeOfFold :: LinearityDSLExpr
 typeOfFold =

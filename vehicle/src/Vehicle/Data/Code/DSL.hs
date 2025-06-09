@@ -31,6 +31,9 @@ tTensor tElem ds = tTensorRaw @@ [tElem] .@@ [ds]
 tVector :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 tVector tElem d = builtinType VectorType @@ [tElem] .@@ [d]
 
+tVectorRaw :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin
+tVectorRaw = builtinType VectorType
+
 tListRaw :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin
 tListRaw = builtinType ListType
 
@@ -138,6 +141,9 @@ hasNeg t1 t2 = typeClass HasNeg [t1, t2]
 
 hasAt :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 hasAt tCont tInd tRes = typeClass HasAt [tCont, tInd, tRes]
+
+hasForeach :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+hasForeach tInd tElem tRes = typeClass HasForeach [tInd, tElem, tRes]
 
 hasMap :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
 hasMap tCont = typeClass HasMap [tCont]

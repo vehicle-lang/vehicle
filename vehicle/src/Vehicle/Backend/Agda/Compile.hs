@@ -520,7 +520,8 @@ compileBuiltinFunction f args = case f of
   AtTensor -> annotateInfixApp [DataTensor] (-1) Nothing "_!_" args
   AtVector -> annotateInfixApp [FunctionBase] (-1) Nothing "_$_" args
   If -> annotateInfixApp [DataBool] 0 Nothing "if_then_else_" args
-  Foreach -> annotateApp [DataTensor] Nothing "foreach" args
+  ForeachTensor -> annotateApp [DataTensor] Nothing "foreach" args
+  ForeachVector -> annotateApp [VehicleUtils] Nothing "foreachVector" args
   StackTensor {} -> annotateApp [DataTensor] Nothing "stack" args
   Iterate -> unsupportedError
   PowRat -> unsupportedError

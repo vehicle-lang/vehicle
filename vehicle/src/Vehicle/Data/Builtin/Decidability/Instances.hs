@@ -84,6 +84,20 @@ allInstances =
            ( isTensorType tRat,
              tTensorRaw @@ [tRat],
              False
+           ),
+           ------------------
+           -- IsVectorType --
+           ------------------
+           ( isVectorType tProp,
+             lam "d" Explicit Relevant tDim $ \_d ->
+               tProp,
+             False
+           ),
+           ( forAllTypes $ \tElem ->
+               isVectorType tElem,
+             lamType $ \tElem ->
+               tVectorRaw @@ [tElem],
+             False
            )
          ]
 

@@ -85,7 +85,8 @@ typeOfBuiltinFunction = \case
   AtTensor -> typeOfAtTensor
   StackTensor -> typeOfStackTensor
   ConstTensor -> typeOfConstTensor
-  Foreach -> typeOfForeach
+  ForeachTensor -> typeOfForeachTensor
+  ForeachVector -> typeOfForeachVector
   Iterate -> forAllTypes $ \t -> ((t ~> t) ~> t ~> t) ~> tNat ~> t
 
 typeOfBuiltinConstructor :: (HasStandardBuiltins builtin) => BuiltinConstructor -> DSLExpr builtin
@@ -183,12 +184,22 @@ typeOfStackTensor =
       forAllDims $ \ds ->
         typeOfVecLiteralCast (tTensor t (dimCons d ds)) (tTensor t ds) d
 
-typeOfForeach :: (HasStandardBuiltins builtin) => DSLExpr builtin
-typeOfForeach =
+typeOfForeach :: DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+typeOfForeach tCont tInd tElem =
+  (tInd ~> tElem) ~> tCont
+
+typeOfForeachTensor :: (HasStandardBuiltins builtin) => DSLExpr builtin
+typeOfForeachTensor =
   forAll "A" type0 $ \tElem ->
     forAll "d" tDim $ \d ->
       forAllDims $ \ds ->
-        (tIndex d ~> tTensor tElem ds) ~> tTensor tElem (dimCons d ds)
+        typeOfForeach (tTensor tElem (dimCons d ds)) (tIndex d) (tTensor tElem ds)
+
+typeOfForeachVector :: (HasStandardBuiltins builtin) => DSLExpr builtin
+typeOfForeachVector =
+  forAll "A" type0 $ \tElem ->
+    forAll "d" tDim $ \d ->
+      typeOfForeach (tVector tElem d) (tIndex d) tElem
 
 typeOfMap :: (HasStandardBuiltins builtin) => DSLExpr builtin -> DSLExpr builtin
 typeOfMap f =

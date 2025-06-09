@@ -216,7 +216,8 @@ instance BuiltinHasTensors Builtin where
   accessAtTensorBuiltin = functionAccessor AtTensor
 
 instance BuiltinHasForeach Builtin where
-  accessForeachTensorBuiltin = functionAccessor Foreach
+  accessForeachTensorBuiltin = functionAccessor ForeachTensor
+  accessForeachVectorBuiltin = functionAccessor ForeachVector
 
 instance BuiltinHasStandardTypeClasses Builtin where
   mkBuiltinTypeClass = TypeClass
@@ -252,7 +253,8 @@ instance BuiltinHasIterate Builtin where
 
 instance BuiltinHasBinders Builtin where
   getBuiltinBinder = \case
-    BuiltinFunction Foreach -> Just ForeachBinder
+    BuiltinFunction ForeachVector -> Just ForeachBinder
+    BuiltinFunction ForeachTensor -> Just ForeachBinder
     BuiltinFunction (QuantifyRatTensor q) -> Just $ QuantifierBinder q
     _ -> Nothing
 

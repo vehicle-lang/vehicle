@@ -661,7 +661,7 @@ elabForeach tk binders body = do
 
   let mkForeach binder newBody =
         V.normAppList
-          (V.Builtin p $ V.BuiltinFunction V.Foreach)
+          (V.Builtin p $ V.TypeClassOp V.ForeachTC)
           [ mkArg mempty V.Explicit (V.Lam (V.provenanceOf binder) binder newBody)
           ]
 

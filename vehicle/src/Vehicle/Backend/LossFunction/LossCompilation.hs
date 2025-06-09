@@ -180,7 +180,8 @@ convertBuiltinToLoss b spine = case b of
     S.AtTensor -> unchangedFunction At
     S.StackTensor -> unchangedFunction StackTensor
     S.ConstTensor -> unchangedFunction ConstTensor
-    S.Foreach -> developerError "Conversion of `foreach` not yet supported"
+    S.ForeachVector -> developerError "Conversion of `foreach` not yet supported"
+    S.ForeachTensor -> developerError "Conversion of `foreach` not yet supported"
     -----------------
     -- Unsupported --
     -----------------

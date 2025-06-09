@@ -281,7 +281,7 @@ data RatTensorValue
   | VRatConstTensor (ConstTensorArgs (Value Builtin))
   | VRatStackTensor (StackTensorArgs (Value Builtin))
   | VRatAt (AtTensorArgs (Value Builtin))
-  | VRatForeach (ForeachArgs (Value Builtin))
+  | VRatForeach (ForeachTensorArgs (Value Builtin))
 
 toRatTensorValue :: (HasCallStack) => Value Builtin -> RatTensorValue
 toRatTensorValue expr = case expr of

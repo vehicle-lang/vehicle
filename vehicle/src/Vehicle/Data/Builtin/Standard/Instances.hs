@@ -43,6 +43,16 @@ allInstances =
               tUnit,
             False
           ),
+          ( forAllTypes $ \tElem ->
+              forAllDims $ \d ->
+                validPropertyType tElem
+                  .~~~> validPropertyType (tVector tElem d),
+            lamType $ \tElem ->
+              lamDim $ \_d ->
+                instLam "r1" (validPropertyType tElem) $ \_inst ->
+                  tUnit,
+            False
+          ),
           ------------------------------------
           -- ValidNonInferableParameterType --
           ------------------------------------
@@ -301,6 +311,27 @@ allInstances =
               lamDim $ \d ->
                 lamDims $ \ds ->
                   builtinFunction AtTensor @@@ [tElem] .@@@ [d, ds],
+            False
+          ),
+          ------------
+          -- HasForeach --
+          ------------
+          ( forAllTypes $ \tElem ->
+              forAllDim Relevant $ \d ->
+                hasForeach (tVector tElem d) (tIndex d) tElem,
+            lamType $ \tElem ->
+              lam "d" (Implicit False) Relevant tDim $ \d ->
+                builtinFunction ForeachVector @@@ [tElem, d],
+            False
+          ),
+          ( forAllTypes $ \tElem ->
+              forAllDim Relevant $ \d ->
+                forAllDims $ \ds ->
+                  hasForeach (tTensor tElem (cons tDim d ds)) (tIndex d) (tTensor tElem ds),
+            lamType $ \tElem ->
+              lam "d" (Implicit False) Relevant tDim $ \d ->
+                lamDims $ \ds ->
+                  builtinFunction ForeachTensor @@@ [tElem, d] .@@@ [ds],
             False
           ),
           ------------

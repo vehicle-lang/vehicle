@@ -78,7 +78,8 @@ functionBlockingStatus b spine = case b of
   ReduceMaxRatTensor -> fixedStatus [1] spine
   ReduceOrTensor -> fixedStatus [1] spine
   ReduceAndTensor -> fixedStatus [1] spine
-  Foreach -> fixedStatus [1] spine
+  ForeachTensor -> fixedStatus [1] spine
+  ForeachVector -> fixedStatus [1] spine
   Iterate -> fixedStatus [2] spine
   StackTensor -> stackBlockingStatus spine
 

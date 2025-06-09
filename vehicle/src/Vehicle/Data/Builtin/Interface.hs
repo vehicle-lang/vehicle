@@ -83,6 +83,7 @@ class BuiltinHasTensors builtin where
 
 class BuiltinHasForeach builtin where
   accessForeachTensorBuiltin :: Accessor builtin ()
+  accessForeachVectorBuiltin :: Accessor builtin ()
 
 class (BuiltinHasTensors builtin) => BuiltinHasRatLiterals builtin where
   accessRatTensorLitBuiltin :: Accessor builtin (Tensor Rational)
