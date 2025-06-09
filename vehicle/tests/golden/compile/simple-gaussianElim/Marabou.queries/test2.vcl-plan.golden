@@ -116,14 +116,14 @@
                             0,
                             {
                               "numerator": -1,
-                              "denominator": 2
+                              "denominator": 1
                             }
                           ],
                           [
-                            4,
+                            3,
                             {
                               "numerator": 1,
-                              "denominator": 2
+                              "denominator": 1
                             }
                           ]
                         ]

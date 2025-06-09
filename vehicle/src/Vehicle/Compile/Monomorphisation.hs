@@ -293,8 +293,8 @@ replacePreviousApplications shouldMonomorphiseBinder prog =
             logDebug MaxDetail $ "function: " <+> pretty ident
             logDebug MaxDetail $ "arguments:" <+> prettyVerbose args
             let (argsToMono, remainingArgs) = obtainArgsToMonomorphise shouldMonomorphiseBinder typ args
-            logDebug MidDetail $ "arguments-to-mono:" <+> prettyVerbose argsToMono
-            logDebug MidDetail $ "remaining-mono:" <+> prettyVerbose remainingArgs
+            logDebug MaxDetail $ "arguments-to-mono:" <+> prettyVerbose argsToMono
+            logDebug MaxDetail $ "remaining-mono:" <+> prettyVerbose remainingArgs
             case HashMap.lookup argsToMono applications of
               Nothing -> developerError $ "Missing application of" <+> pretty ident
               Just newIdent -> do

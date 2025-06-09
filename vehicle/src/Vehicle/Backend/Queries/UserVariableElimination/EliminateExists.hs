@@ -41,7 +41,8 @@ solveExists ::
 solveExists maybePartitions userVar = case maybePartitions of
   Trivial b -> return $ Trivial b
   NonTrivial partitions -> do
-    newPartitions <- traverse (solvePartition userVar) (partitionsToDisjuncts partitions)
+    let disjunctedPartitions = partitionsToDisjuncts partitions
+    newPartitions <- traverse (solvePartition userVar) disjunctedPartitions
     return $ foldr1 (orTrivial orPartitions) (disjunctDisjuncts newPartitions)
 
 --------------------------------------------------------------------------------
@@ -60,15 +61,15 @@ solvePartition userVar partition@(_, tree) = do
     return $
       "Solving for" <+> quotePretty userVarName <+> "in:" <> line <> indent 2 treeDoc <> line
 
-  constraints <- findVariableConstraints checkAssertion userVar tree
+  constraints <- findConstraints (constraintReferencesVariable userVar) tree
   traverse (solveVariableViaConstraints partition userVar) constraints
 
-checkAssertion :: ConstraintSearchCriteria
-checkAssertion var assertion@NormalisedRelation {..}
+constraintReferencesVariable :: UserVariable -> ConstraintSearchCriteria
+constraintReferencesVariable var assertion@NormalisedRelation {..}
   | linearExpr `referencesVariable` toTensorVar var = case splitRelation assertion of
-      Right equality -> SingleEquality equality (Trivial True)
-      Left inequality -> Inequalities [inequality] (Trivial True)
-  | otherwise = Inequalities [] $ NonTrivial $ Query assertion
+      Right equality -> (SingleEquality equality, Trivial True)
+      Left inequality -> (Inequalities [inequality], Trivial True)
+  | otherwise = (Inequalities [], NonTrivial $ Query assertion)
 
 solveVariableViaConstraints ::
   (MonadSolveExists m) =>
@@ -76,12 +77,12 @@ solveVariableViaConstraints ::
   UserVariable ->
   ConstrainedAssertionTree ->
   m (MaybeTrivial (Partitions TensorVariable))
-solveVariableViaConstraints (compilationTrace, originalTree) userVar constrainedTree = do
+solveVariableViaConstraints (compilationTrace, originalTree) userVar (varConstraints, remainingTree) = do
   maybeChildVariables <- gets (lookupChildVariables userVar)
-  case constrainedTree of
-    SingleEquality equality remainingTree ->
+  case varConstraints of
+    SingleEquality equality ->
       solveVariableViaEquality compilationTrace userVar maybeChildVariables equality remainingTree
-    Inequalities ineqs remainingTree -> case maybeChildVariables of
+    Inequalities ineqs -> case maybeChildVariables of
       Just childVariables -> solveVariableByReducing compilationTrace userVar (coerce childVariables) originalTree
       Nothing -> solveVariableViaInequalities compilationTrace userVar ineqs remainingTree
 
@@ -103,7 +104,7 @@ solveVariableViaEquality compilationTrace userVar maybeChildVars equality remain
   let updatedTree = solutionMap `substituteThrough` remainingTree
   let newCompilationTrace = SolveEquality userVar rearrangedExpr : compilationTrace
   -- Update tree
-  logEqualitySolved userVar rearrangedExpr remainingTree updatedTree
+  logEqualitySolved userVar rearrangedExpr updatedTree
   return $ mkSingletonPartitions (newCompilationTrace, updatedTree)
 
 solveVariableByReducing ::
@@ -114,10 +115,13 @@ solveVariableByReducing ::
   AssertionTree TensorVariable ->
   m (MaybeTrivial (Partitions TensorVariable))
 solveVariableByReducing compilationTrace userVar userElementVars originalTree = do
-  logDebug MaxDetail "No equality constraints on original tensor variable found"
-  let step = ReconstructTensorVariable (coerce userVar) (coerce userElementVars)
-  let initial = mkSingletonPartitions (step : compilationTrace, NonTrivial originalTree)
-  foldlM solveExists initial (Tensor.toList userElementVars)
+  ctx <- getNameContext
+  let userVarName = lookupLvInBoundCtx (toLv userVar) ctx
+  logDebug MaxDetail $ "No equality constraints on original tensor variable" <+> quotePretty userVarName <+> "found"
+  logCompilerSection MaxDetail ("Solving for elements of" <+> quotePretty userVarName) $ do
+    let step = ReconstructTensorVariable (coerce userVar) (coerce userElementVars)
+    let initial = mkSingletonPartitions (step : compilationTrace, NonTrivial originalTree)
+    foldlM solveExists initial (Tensor.toList userElementVars)
 
 solveVariableViaInequalities ::
   (MonadSolveExists m) =>
@@ -150,20 +154,15 @@ logEqualitySolved ::
   UserVariable ->
   LinearExpr TensorVariable RatTensor ->
   MaybeTrivial (AssertionTree TensorVariable) ->
-  MaybeTrivial (AssertionTree TensorVariable) ->
   m ()
-logEqualitySolved var rearrangedEq remainingTree updatedTree =
+logEqualitySolved var rearrangedEq updatedTree =
   logDebugM MaxDetail $ do
     ctx <- getNameContext
     let varName = lookupLvInBoundCtx (toLv var) ctx
     return $
-      "Solving"
+      "Eliminating" <+> quotePretty varName <+> "using"
         <> line
         <> indent 2 (pretty varName <+> "=" <+> prettyFriendly (WithContext rearrangedEq ctx))
-        <> line
-        <> "in context:"
-        <> line
-        <> indent 2 (prettyFriendly (WithContext remainingTree ctx))
         <> line
         <> "to get:"
         <> line

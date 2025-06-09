@@ -23,6 +23,7 @@ import Data.Bifunctor (Bifunctor (..))
 import Data.Foldable qualified as NonEmpty
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap (assocs)
+import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Text (Text)
@@ -189,6 +190,7 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   -- Distributing over functors --
   --------------------------------
   StrategyFor tags ([a] `In` ctx) = 'Functor (StrategyFor tags (a `In` ctx))
+  StrategyFor tags (NonEmpty a `In` ctx) = 'Functor (StrategyFor tags (a `In` ctx))
   StrategyFor tags (Maybe a `In` ctx) = 'Functor (StrategyFor tags (a `In` ctx))
   StrategyFor tags (ConjunctAll a `In` ctx) = 'Functor (StrategyFor tags (a `In` ctx))
   StrategyFor tags (DisjunctAll a `In` ctx) = 'Functor (StrategyFor tags (a `In` ctx))
@@ -728,6 +730,12 @@ instance
   PrettyUsing ('Functor rest) ([a] `In` ctx)
   where
   prettyUsing (es, ctx) = prettyFlatList (prettyUsing @rest . (,ctx) <$> es)
+
+instance
+  (PrettyUsing rest (a `In` ctx)) =>
+  PrettyUsing ('Functor rest) (NonEmpty a `In` ctx)
+  where
+  prettyUsing (es, ctx) = prettyUsing @('Functor rest) (NonEmpty.toList es, ctx)
 
 instance
   (PrettyUsing rest (a `In` ctx)) =>
