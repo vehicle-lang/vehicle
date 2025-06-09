@@ -1,19 +1,11 @@
-{
-  dream2nix,
-  config,
-  lib,
-  ...
-}: let
-  pyproject =
-    builtins.fromTOML
+{ dream2nix, config, lib, ... }:
+let
+  pyproject = builtins.fromTOML
     (builtins.readFile (config.mkDerivation.src + /pyproject.toml));
 in {
-  imports = [
-    dream2nix.modules.dream2nix.pip
-  ];
+  imports = [ dream2nix.modules.dream2nix.pip ];
 
-
-  deps = {nixpkgs, ...}: {
+  deps = { nixpkgs, ... }: {
     python = nixpkgs.python312;
     pythonPackages = nixpkgs.python312Packages;
     # SWIG is now injected from flake.nix to avoid duplicate definitions
@@ -39,7 +31,7 @@ in {
     # TODO: This nix path should not be hard-coded but you
     #       can't run the stuff in the module from the shell if it's not there
     shellHook = ''
-    export PYTHONPATH=./vehicle-python/src/vehicle_lang:$PYTHONPATH
+      export PYTHONPATH=./vehicle-python/src/vehicle_lang:$PYTHONPATH
     '';
 
     # Set up the build environment
@@ -86,9 +78,7 @@ in {
   };
   buildPythonPackage = {
     pyproject = true;
-    pythonImportsCheck = [
-      "vehicle_lang"
-    ];
+    pythonImportsCheck = [ "vehicle_lang" ];
   };
 
   name = pyproject.project.name;
@@ -96,12 +86,16 @@ in {
 
   # Include SWIG in the build process
   # Collect all dependencies but manually exclude tensorboard
-  pip.requirementsList = pyproject.project.dependencies
-                         ++ (lib.lists.flatten (lib.attrsets.attrValues pyproject.project.optional-dependencies))
-                         ++ pyproject.build-system.requires
-                         ++ [ "jupyter" ];
-
+  pip.requirementsList = pyproject.project.dependencies ++ (lib.lists.flatten
+    (lib.attrsets.attrValues pyproject.project.optional-dependencies))
+    ++ pyproject.build-system.requires ++ [ "jupyter" ];
 
   pip.editables = { vehicle-lang = "${config.mkDerivation.src}"; };
+  # pip.overrides = {
+  #   tqdm = {
+  #     buildPythonPackage.pyproject = true;
+  #     mkDerivation.nativeBuildInputs = [ config.deps.python.pkgs.flit-core ];
+  #   };
+  # };
   pip.flattenDependencies = true;
 }
