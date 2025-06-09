@@ -145,6 +145,14 @@ tokReduceAnd = mkToken B.TokReduceAnd "reduceAnd"
 
 tokReduceOr = mkToken B.TokReduceOr "reduceOr"
 
+tokReduceAdd = mkToken B.TokReduceAdd "reduceAdd"
+
+tokReduceMul = mkToken B.TokReduceMul "reduceMul"
+
+tokReduceMin = mkToken B.TokReduceMin "reduceMin"
+
+tokReduceMax = mkToken B.TokReduceMax "reduceMax"
+
 tokHasAdd = mkToken B.TokHasAdd "HasAdd"
 
 tokHasSub = mkToken B.TokHasSub "HasSub"

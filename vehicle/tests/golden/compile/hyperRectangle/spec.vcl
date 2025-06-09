@@ -23,10 +23,10 @@ n : Nat
 inputs : Tensor Rat [n, inputSize]
 
 minList : Tensor Rat [n] -> Rat
-minList v = fold min 0 v
+minList v = reduceMin 0 v
 
 maxList : Tensor Rat [n] -> Rat
-maxList v = fold max 1 v
+maxList v = reduceMax 1 v
 
 inputTranspose : Tensor Rat [inputSize, n]
 inputTranspose = foreach i . foreach j . inputs ! j ! i

@@ -234,10 +234,10 @@ delabBuiltinFunction fun args = case fun of
   V.ReduceOrTensor -> delabApp (B.ReduceOr tokReduceOr) args
   -- Builtins not yet in the surface syntax.
   V.PowRat -> rawDelab
-  V.ReduceAddRatTensor -> rawDelab
-  V.ReduceMulRatTensor -> rawDelab
-  V.ReduceMaxRatTensor -> rawDelab
-  V.ReduceMinRatTensor -> rawDelab
+  V.ReduceAddRatTensor -> delabApp (B.ReduceAdd tokReduceAdd) args
+  V.ReduceMulRatTensor -> delabApp (B.ReduceMul tokReduceMul) args
+  V.ReduceMaxRatTensor -> delabApp (B.ReduceMax tokReduceMax) args
+  V.ReduceMinRatTensor -> delabApp (B.ReduceMin tokReduceMin) args
   V.StackTensor {} -> rawDelab
   V.ConstTensor -> rawDelab
   V.Iterate -> rawDelab
