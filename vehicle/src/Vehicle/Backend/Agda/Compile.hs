@@ -548,6 +548,7 @@ compileDecidabilityBuiltinFunction ::
 compileDecidabilityBuiltinFunction f args = case f of
   PropType -> return $ compileType 0
   BoolTensorToProp -> monoError f
+  BoolVectorToProp -> monoError f
   PropTrue -> return $ annotateConstant [DataUnit] "⊤"
   PropFalse -> return $ annotateConstant [DataEmpty] "⊥"
   PropNot -> annotateInfixApp [RelNullary] 3 Nothing "¬_" args

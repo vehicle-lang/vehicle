@@ -203,9 +203,9 @@ instance BuiltinHasVectors Builtin where
   accessVecLitBuiltin =
     Access
       { getExpr = \case
-          BuiltinConstructor Cons -> Just ()
+          BuiltinConstructor VectorLiteral -> Just ()
           _ -> Nothing,
-        mkExpr = \() -> BuiltinConstructor Cons
+        mkExpr = \() -> BuiltinConstructor VectorLiteral
       }
 
   accessAtVectorBuiltin = functionAccessor AtVector

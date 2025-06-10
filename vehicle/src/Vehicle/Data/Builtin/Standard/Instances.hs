@@ -201,7 +201,15 @@ allInstances =
             implLam "t" type0 $ \t ->
               lamDim $ \d ->
                 lamDims $ \ds ->
-                  builtinFunction StackTensor @@@ [t] @@@ [d] .@@@ [ds],
+                  builtinFunction StackTensor @@@ [t, d] .@@@ [ds],
+            False
+          ),
+          ( forAllTypes $ \t ->
+              forAllDim Irrelevant $ \d ->
+                hasVecLits (tVector t d) t d,
+            implLam "t" type0 $ \t ->
+              lamDim $ \d ->
+                builtinConstructor VectorLiteral @@@ [t, d],
             False
           ),
           ( forAllTypes $ \t ->

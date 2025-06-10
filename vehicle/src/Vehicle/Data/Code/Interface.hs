@@ -92,6 +92,21 @@ instance IsArgs IndexComparisonArgs where
         mkExpr = \(IndexCompArgs n1 n2 x y) -> [n1, n2, explicit x, explicit y]
       }
 
+-- | Arguments for vector op operations
+data VectorOp1Args expr = VectorOp1Args
+  { vectorOp1Dim :: GenericArg expr,
+    vectorOp1Arg :: expr
+  }
+
+instance IsArgs VectorOp1Args where
+  accessSpine =
+    Access
+      { getExpr = \case
+          [d, x] -> Just $ VectorOp1Args d (argExpr x)
+          _ -> Nothing,
+        mkExpr = \(VectorOp1Args d x) -> [d, explicit x]
+      }
+
 -- | Arguments for unary tensor operations (e.g. -, not)
 data TensorOp1Args expr = TensorOp1Args
   { tensorOp1Dims :: GenericArg expr,
