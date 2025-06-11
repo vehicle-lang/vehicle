@@ -18,7 +18,7 @@ import Vehicle.Data.Code.DSL
 import Vehicle.Data.Code.Expr
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.DSL
-import Vehicle.Prelude (GenericArg (..))
+import Vehicle.Prelude (GenericArg (..), HasIdentifier (identifierOf))
 import Vehicle.Syntax.Sugar (BinderType (..))
 
 -----------------------------------------------------------------------------
@@ -78,6 +78,15 @@ compareRatTensorPointwiseAccessor =
       mkExpr = \op -> BuiltinFunction (CompareRatTensorPointwise op)
     }
 
+compareRatTensorReducedAccessor :: Accessor Builtin ComparisonOp
+compareRatTensorReducedAccessor =
+  Access
+    { getExpr = \case
+        DerivedFunction (CompareRatTensorReduced op) -> Just op
+        _ -> Nothing,
+      mkExpr = \op -> DerivedFunction (CompareRatTensorReduced op)
+    }
+
 instance BuiltinHasBoolLiterals Builtin where
   accessBoolTensorLitBuiltin =
     Access
@@ -97,7 +106,8 @@ instance BuiltinHasBoolLiterals Builtin where
 
   accessCompareIndexBuiltin = compareIndexAccessor
   accessCompareNatBuiltin = compareNatAccessor
-  accessCompareRatTensorBuiltin = compareRatTensorPointwiseAccessor
+  accessCompareRatTensorPointwiseBuiltin = compareRatTensorPointwiseAccessor
+  accessCompareRatTensorReducedBuiltin = compareRatTensorReducedAccessor
 
   accessQuantifyRatTensorBuiltin =
     Access
@@ -189,13 +199,25 @@ instance BuiltinHasListLiterals Builtin where
   accessMapListBuiltin = functionAccessor MapList
   accessFoldListBuiltin = functionAccessor FoldList
 
+instance BuiltinHasVectors Builtin where
+  accessVecLitBuiltin =
+    Access
+      { getExpr = \case
+          BuiltinConstructor VectorLiteral -> Just ()
+          _ -> Nothing,
+        mkExpr = \() -> BuiltinConstructor VectorLiteral
+      }
+
+  accessAtVectorBuiltin = functionAccessor AtVector
+
 instance BuiltinHasTensors Builtin where
   accessConstTensorBuiltin = functionAccessor ConstTensor
   accessStackTensorBuiltin = functionAccessor StackTensor
-  accessAtTensorBuiltin = functionAccessor At
+  accessAtTensorBuiltin = functionAccessor AtTensor
 
 instance BuiltinHasForeach Builtin where
-  accessForeachTensorBuiltin = functionAccessor Foreach
+  accessForeachTensorBuiltin = functionAccessor ForeachTensor
+  accessForeachVectorBuiltin = functionAccessor ForeachVector
 
 instance BuiltinHasStandardTypeClasses Builtin where
   mkBuiltinTypeClass = TypeClass
@@ -231,7 +253,8 @@ instance BuiltinHasIterate Builtin where
 
 instance BuiltinHasBinders Builtin where
   getBuiltinBinder = \case
-    BuiltinFunction Foreach -> Just ForeachBinder
+    BuiltinFunction ForeachVector -> Just ForeachBinder
+    BuiltinFunction ForeachTensor -> Just ForeachBinder
     BuiltinFunction (QuantifyRatTensor q) -> Just $ QuantifierBinder q
     _ -> Nothing
 
@@ -245,6 +268,10 @@ instance PrintableBuiltin Builtin where
     TypeClassOp FromNatTC {} -> Just $ \args -> argExpr $ last args
     TypeClassOp FromRatTC {} -> Just $ \args -> argExpr $ last args
     TypeClassOp VecLiteralTC {} -> Just $ \args -> normAppList (Builtin mempty b) args
+    _ -> Nothing
+
+  isDerivedBuiltin b = case b of
+    DerivedFunction f -> Just $ identifierOf f
     _ -> Nothing
 
 ---------------------------------------------------------------------------------

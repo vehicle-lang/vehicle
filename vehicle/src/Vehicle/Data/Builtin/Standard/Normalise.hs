@@ -4,6 +4,7 @@ module Vehicle.Data.Builtin.Standard.Normalise () where
 
 import Vehicle.Data.Builtin.Core as Syntax
 import Vehicle.Data.Builtin.Interface
+import Vehicle.Data.Builtin.Interface.Blocked
 import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.Interface
@@ -63,12 +64,14 @@ instance NormalisableBuiltin Builtin where
       ReduceOrTensor -> Simple evalReduceOrTensor
       If -> Simple evalIf
       Implies -> Simple evalImplies
-      At -> Simple evalAt
+      AtVector -> Simple evalAtVector
+      AtTensor -> Simple evalAtTensor
       StackTensor -> Simple evalStackTensor
       ConstTensor -> Simple evalConstTensor
       FoldList -> NonSimple evalFoldList
       MapList -> NonSimple evalMapList
-      Foreach -> NonSimple evalForeach
+      ForeachTensor -> NonSimple evalForeachTensor
+      ForeachVector -> NonSimple evalForeachTensor
       Iterate -> NonSimple evalIterate
       QuantifyRatTensor {} -> None
     BuiltinCast c -> case c of
@@ -80,11 +83,11 @@ instance NormalisableBuiltin Builtin where
     DerivedFunction f -> Derived (identifierOf f)
     _ -> None
 
-  blockingArgs = \case
-    BuiltinFunction f -> functionBlockingArgs f
-    BuiltinCast c -> castBlockingArgs c
-    DerivedFunction f -> derivedFunctionBlockingArgs f
-    _ -> noBlockingArgs
+  blockingStatus = \case
+    BuiltinFunction f -> functionBlockingStatus f
+    BuiltinCast c -> castBlockingStatus c
+    DerivedFunction f -> derivedFunctionBlockingStatus f
+    _ -> return DoesNotReduce
 
   isTypeClassOp = \case
     TypeClassOp {} -> True

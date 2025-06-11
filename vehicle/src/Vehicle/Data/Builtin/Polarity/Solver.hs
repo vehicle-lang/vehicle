@@ -23,7 +23,10 @@ solvePolarityConstraint ::
   m ()
 solvePolarityConstraint constraintWithCtx = do
   normConstraintWithCtx@(WithContext normConstraint@(Resolve origin _ _ goal) ctx) <- substMetas constraintWithCtx
-  logDebug MaxDetail $ "Forced:" <+> prettyFriendly normConstraintWithCtx
+  logDebugM MaxDetail $ do
+    let forcedExpr = goalExpr $ instanceGoal $ objectIn normConstraintWithCtx
+    let boundCtx = namedBoundCtxOf $ contextOf normConstraintWithCtx
+    return $ "forced goal:" <+> prettyFriendly (WithContext forcedExpr boundCtx)
 
   (tc, spine) <- getTypeClass goal
   let maybeProgress = solve tc (ctx, origin) (mapMaybe getExplicitArg spine)
@@ -54,8 +57,8 @@ type PolaritySolver =
 solve :: PolarityRelation -> PolaritySolver
 solve = \case
   NegPolarity -> solveNegPolarity
-  QuantifierPolarity q -> solveQuantifierPolarity q
-  AddPolarity q -> solveAddPolarityOp q
+  QuantifierPolarity p q -> solveQuantifierPolarity p q
+  AddPolarity p q -> solveAddPolarityOp p q
   ImpliesPolarity -> solveImplPolarity
   MaxPolarity -> solveMaxPolarityOp
   FunctionPolarity position -> solveFunctionPolarity position
@@ -71,29 +74,29 @@ solveNegPolarity info@(ctx, _) [arg1, res] = case arg1 of
   _ -> Nothing
 solveNegPolarity _ _ = Nothing
 
-solveQuantifierPolarity :: Quantifier -> PolaritySolver
-solveQuantifierPolarity q info@(ctx, _) [lam, res] = case lam of
+solveQuantifierPolarity :: Provenance -> Quantifier -> PolaritySolver
+solveQuantifierPolarity p q info@(ctx, _) [lam, res] = case lam of
   (getNMeta -> Just m) -> blockOn [m]
   (VPi binder resPol) -> Just $ do
     binderEq <- createInstanceUnification info (typeOf binder) (VPolarityExpr Unquantified)
-    let tc = PolarityRelation $ AddPolarity q
+    let tc = PolarityRelation $ AddPolarity p q
     let lv = contextDBLevel ctx
     resultPolarity <- normaliseClosure lv binder resPol
     (_, addConstraint) <- createDerivedInstanceConstraint info Irrelevant (VBuiltin tc (explicit <$> [resultPolarity, res]))
     return $ Progress [binderEq] [addConstraint]
   _ -> Nothing
-solveQuantifierPolarity _ _c _ = Nothing
+solveQuantifierPolarity _ _ _c _ = Nothing
 
-solveAddPolarityOp :: Quantifier -> PolaritySolver
-solveAddPolarityOp q info@(ctx, _) [arg, res] = case arg of
-  (getNMeta -> Just m) -> blockOn [m]
-  VPolarityExpr inputPol -> Just $ do
-    let p = originalProvenance ctx
-    let resPol = VPolarityExpr $ addPolarityOp p q inputPol
-    domEq <- createInstanceUnification info res resPol
-    return $ Progress [domEq] []
-  _ -> Nothing
-solveAddPolarityOp _ _ _ = Nothing
+solveAddPolarityOp :: Provenance -> Quantifier -> PolaritySolver
+solveAddPolarityOp p q info [arg, res] = do
+  case arg of
+    (getNMeta -> Just m) -> blockOn [m]
+    VPolarityExpr inputPol -> Just $ do
+      let resPol = VPolarityExpr $ addPolarityOp p q inputPol
+      domEq <- createInstanceUnification info res resPol
+      return $ Progress [domEq] []
+    _ -> Nothing
+solveAddPolarityOp _ _ _ _ = Nothing
 
 solveMaxPolarityOp :: PolaritySolver
 solveMaxPolarityOp info [arg1, arg2, res] = case (arg1, arg2) of

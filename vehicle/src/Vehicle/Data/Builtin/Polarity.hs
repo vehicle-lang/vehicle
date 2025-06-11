@@ -9,6 +9,7 @@ import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Interface
+import Vehicle.Data.Builtin.Interface.Blocked (BlockingStatus (DoesNotReduce), functionBlockingStatus)
 import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.DSL
@@ -80,8 +81,8 @@ mapPolarityProvenance f = \case
 
 data PolarityRelation
   = NegPolarity
-  | QuantifierPolarity Quantifier
-  | AddPolarity Quantifier
+  | QuantifierPolarity Provenance Quantifier
+  | AddPolarity Provenance Quantifier
   | ImpliesPolarity
   | IfPolarity
   | MaxPolarity
@@ -97,8 +98,8 @@ instance Hashable PolarityRelation
 instance Pretty PolarityRelation where
   pretty = \case
     NegPolarity -> "NegPolarity"
-    AddPolarity q -> "AddPolarity" <+> pretty q
-    QuantifierPolarity q -> "QuantifierPolarity" <+> pretty q
+    AddPolarity _ q -> "AddPolarity" <+> pretty q
+    QuantifierPolarity _ q -> "QuantifierPolarity" <+> pretty q
     ImpliesPolarity -> "ImpliesPolarity"
     MaxPolarity -> "MaxPolarity"
     IfPolarity -> "IfPolarity"
@@ -203,6 +204,7 @@ instance ConvertableBuiltin PolarityBuiltin Builtin where
 
 instance PrintableBuiltin PolarityBuiltin where
   coercionArgs _ = Nothing
+  isDerivedBuiltin = const Nothing
 
 -----------------------------------------------------------------------------
 -- Normalisation
@@ -213,9 +215,9 @@ instance NormalisableBuiltin PolarityBuiltin where
     PolarityFunction _ -> None
     _ -> None
 
-  blockingArgs = \case
-    PolarityFunction f -> functionBlockingArgs f
-    _ -> noBlockingArgs
+  blockingStatus b spine = case b of
+    PolarityFunction f -> functionBlockingStatus f spine
+    _ -> DoesNotReduce
 
   isTypeClassOp _ = False
   isCast _ _ = Nothing
@@ -247,8 +249,8 @@ unquantified = builtin (Polarity Unquantified)
 polarityTypeClass :: PolarityRelation -> NonEmpty PolarityDSLExpr -> PolarityDSLExpr
 polarityTypeClass tc args = builtin (PolarityRelation tc) @@ args
 
-quantifierPolarity :: Quantifier -> PolarityDSLExpr -> PolarityDSLExpr -> PolarityDSLExpr
-quantifierPolarity q l1 l2 = polarityTypeClass (QuantifierPolarity q) [l1, l2]
+quantifierPolarity :: Provenance -> Quantifier -> PolarityDSLExpr -> PolarityDSLExpr -> PolarityDSLExpr
+quantifierPolarity p q l1 l2 = polarityTypeClass (QuantifierPolarity p q) [l1, l2]
 
 maxPolarity :: PolarityDSLExpr -> PolarityDSLExpr -> PolarityDSLExpr -> PolarityDSLExpr
 maxPolarity l1 l2 l3 = polarityTypeClass MaxPolarity [l1, l2, l3]

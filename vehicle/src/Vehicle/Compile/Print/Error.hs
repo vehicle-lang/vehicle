@@ -3,6 +3,7 @@ module Vehicle.Compile.Print.Error
     VehicleError (..),
     MeaningfulError (..),
     logCompileError,
+    multipleNetworkErrorMessages,
   )
 where
 
@@ -217,21 +218,18 @@ instance MeaningfulError CompileError where
     -------------
     -- Scoping --
     -------------
-    MissingPrunedName name ->
+    MissingRequestedDeclarations names ->
       UError $
         UserError
           { provenance = mempty,
             -- TODO can use Levenschtein distance to search contexts/builtins
             problem =
-              "Was asked to compile declaration"
-                <+> quotePretty name
-                <+> "but no declaration exists with that name in the specification.",
+              "Requested to compile the declaration"
+                <+> quotePretty (head names)
+                <+> "but no declarations exist with that name in the specification.",
             fix =
-              Just $
-                "check the spelling of"
-                  <+> quotePretty name
-                  <+> "or that the"
-                  <+> "right specification is being used."
+              Just
+                "check the spelling of the names and that the correct specification is being used."
           }
     UnboundName p name ->
       UError $
@@ -847,6 +845,13 @@ instance MeaningfulError CompileError where
                 <+> "whether or not it should be lifted to the type-level.",
             fix = Just "either remove the declaration, or add a type signature or use it in a property."
           }
+    UnsupportedMultipleNetworkApplications queryFormat (_, p) apps ->
+      UError $
+        UserError
+          { provenance = p,
+            problem = multipleNetworkErrorMessages (pretty queryFormat) (fmap fst apps),
+            fix = Just "this is on our road map to fix, but please open an issue on the Issue tracker with your use-case."
+          }
 
 datasetDimensionsFix :: Doc a -> Identifier -> FilePath -> Doc a
 datasetDimensionsFix feature ident file =
@@ -903,9 +908,9 @@ prettyQuantifierArticle q =
   (if q == Forall then "a" else "an") <+> squotes (pretty q)
 
 prettyPolarityProvenance :: Provenance -> Quantifier -> PolarityProvenance -> Doc a
-prettyPolarityProvenance topQuantifierProv topQuantifier bottomQuantifierProvenance =
+prettyPolarityProvenance topQuantifierProv topQuantifier bottomQuantifierProvenance = do
   let bottomQuantifier = neg topQuantifier
-   in numberedList $ reverse (finalLine : go bottomQuantifier bottomQuantifierProvenance)
+  numberedList $ reverse (finalLine : go bottomQuantifier bottomQuantifierProvenance)
   where
     go :: Quantifier -> PolarityProvenance -> [Doc a]
     go q = \case
@@ -931,11 +936,11 @@ prettyPolarityProvenance topQuantifierProv topQuantifier bottomQuantifierProvena
         <+> "in"
         <+> pretty topQuantifierProv
 
-prettyLinearityProvenance :: forall a. LinearityProvenance -> Doc a -> Doc a
+prettyLinearityProvenance :: forall a. LinearityProof -> Doc a -> Doc a
 prettyLinearityProvenance lp location =
   line <> indent 2 (numberedList $ reverse (finalLine : go lp)) <> line
   where
-    go :: LinearityProvenance -> [Doc a]
+    go :: LinearityProof -> [Doc a]
     go = \case
       QuantifiedVariableProvenance p v ->
         ["the quantified variable" <+> quotePretty v <+> "introduced in" <+> pretty p]
@@ -978,3 +983,19 @@ supportedNetworkTypeDescription =
     <> indent 2 "Tensor Rat [a_1, ..., a_n] -> Tensor Rat [b_1, ..., b_n]"
     <> line
     <> "where 'a_i' and 'b_i' are all constants at compile time."
+
+multipleNetworkErrorMessages :: Doc a -> [Name] -> Doc a
+multipleNetworkErrorMessages verifier networkNames = do
+  let duplicateNetworkNames = findDuplicates networkNames
+  "The"
+    <+> verifier
+    <+> "currently doesn't support properties that involve"
+    <+> if null duplicateNetworkNames
+      then
+        "multiple networks. This property involves:"
+          <> line
+          <> indent 2 (vsep $ fmap (\n -> "the network" <+> squotes (pretty n)) networkNames)
+      else
+        "multiple applications of the same network. This property applies:"
+          <> line
+          <> indent 2 (vsep $ fmap (\(n, v) -> "the network" <+> squotes (pretty n) <+> pretty v <+> "times") duplicateNetworkNames)

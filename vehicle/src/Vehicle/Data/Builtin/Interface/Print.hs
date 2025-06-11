@@ -48,6 +48,8 @@ class (Show builtin, Pretty builtin, ConvertableBuiltin builtin Builtin) => Prin
   -- builtin type. Used for printing.
   coercionArgs :: builtin -> Maybe ([Arg builtin] -> Expr builtin)
 
+  isDerivedBuiltin :: builtin -> Maybe Identifier
+
 isCoercionExpr :: (PrintableBuiltin builtin) => Expr builtin -> Bool
 isCoercionExpr = \case
   Builtin _ b -> isJust $ coercionArgs b

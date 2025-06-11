@@ -1,7 +1,7 @@
 module Vehicle.Backend.Queries.UserVariableElimination
   ( eliminateUserVariables,
-    UserVariableReconstruction,
-    UserVariableReconstructionStep (..),
+    VariableCompilationTrace,
+    UserVariableCompilationStep (..),
   )
 where
 
@@ -10,33 +10,33 @@ import Control.Applicative (Applicative (..))
 import Control.Monad (forM)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), asks)
-import Control.Monad.State (MonadState (..), evalStateT)
+import Control.Monad.State (MonadState (..), StateT (..), gets)
 import Control.Monad.Writer (MonadWriter (..), WriterT (..))
 import Data.LinkedHashMap qualified as LinkedHashMap
 import Data.Map qualified as Map
-import Vehicle.Backend.Queries.PostProcessing (convertPartitionsToQueries)
+import Vehicle.Backend.Queries.PostProcessing (compilePartitionsToQueries)
 import Vehicle.Backend.Queries.Unblock (UnblockingActions (..))
 import Vehicle.Backend.Queries.Unblock qualified as Unblocking
 import Vehicle.Backend.Queries.UserVariableElimination.Core
 import Vehicle.Backend.Queries.UserVariableElimination.EliminateExists (solveExists)
-import Vehicle.Compile.Boolean.LiftIf (unfoldIf)
-import Vehicle.Compile.Boolean.LowerNot (lowerNot, notClosure)
 import Vehicle.Compile.Context.Name (getNameContext, runFreshNameContextT)
 import Vehicle.Compile.Error
+import Vehicle.Compile.LiftIf (unfoldIf)
+import Vehicle.Compile.LowerNot (lowerNot, notClosure)
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyExternal, prettyFriendlyEmptyCtx, prettyVerbose)
+import Vehicle.Compile.Print (prettyFriendly, prettyFriendlyEmptyCtx, prettyVerbose)
 import Vehicle.Compile.Rational.LinearExpr (LinearityError (..), compileLinearRelation)
 import Vehicle.Compile.Resource (NetworkTensorType (..), NetworkType (..))
 import Vehicle.Compile.Variable (createUserVar)
 import Vehicle.Data.Assertion
-import Vehicle.Data.Builtin.Interface.Normalise (EvalSimple, evalAt, evalCompareRatTensor, evalReduceAndTensor, evalStackTensor)
+import Vehicle.Data.Builtin.Interface.Normalise (evalAtTensor, evalCompareRatTensor, evalReduceAndTensor, evalStackTensor)
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
-import Vehicle.Data.Tensor (Tensor, pattern ZeroDimTensor)
+import Vehicle.Data.QuantifiedVariable
 import Vehicle.Verify.Core (NetworkContextInfo (..), QuerySetNegationStatus)
 import Vehicle.Verify.QueryFormat (QueryFormat (..), supportsStrictInequalities)
 import Vehicle.Verify.Specification
@@ -58,9 +58,10 @@ eliminateUserVariables expr = do
     ----------------
     -- Base cases --
     ----------------
-    VBoolTensorLiteral b -> compileTrivial b
+    VBoolLiteral b -> return $ Trivial b
     VQuantifyRatTensor Exists dims binder closure -> compileQuantifiedQuerySet False dims binder closure
     VQuantifyRatTensor Forall dims binder closure -> do
+      logDebug MaxDetail $ "Negating" <+> pretty Forall
       let negatedClosure = notClosure 0 dims closure
       compileQuantifiedQuerySet True dims binder negatedClosure
     ---------------------
@@ -68,19 +69,16 @@ eliminateUserVariables expr = do
     ---------------------
     VAnd (TensorOp2Args _dims e1 e2) -> andTrivial andBoolExpr <$> eliminateUserVariables e1 <*> eliminateUserVariables e2
     VOr (TensorOp2Args _dims e1 e2) -> orTrivial orBoolExpr <$> eliminateUserVariables e1 <*> eliminateUserVariables e2
-    VBoolIf args -> eliminateUserVariables =<< unfoldIf args
+    VBoolIf args -> eliminateUserVariables =<< runFreshNameContextT (unfoldIf args)
     -------------------------
     -- Blocked expressions --
     -------------------------
     VReduceAndTensor {} -> eliminateUserVariables =<< unblock expr
     VReduceOrTensor {} -> eliminateUserVariables =<< unblock expr
     VBoolAt {} -> eliminateUserVariables =<< unblock expr
-    VBoolStackTensor {} -> eliminateUserVariables =<< unblock expr
-    VConstBoolTensor {} -> eliminateUserVariables =<< unblock expr
-    VBoolForeach {} -> eliminateUserVariables =<< unblock expr
     VCompareIndex {} -> eliminateUserVariables =<< unblock expr
     VCompareNat {} -> eliminateUserVariables =<< unblock expr
-    VNot {} -> eliminateUserVariables =<< lowerNot 0 unblock expr
+    VNot args -> eliminateUserVariables =<< lowerNot 0 unblock args
     -----------------
     -- Mixed cases --
     -----------------
@@ -91,17 +89,10 @@ eliminateUserVariables expr = do
     --
     -- When we have the ability to evaluate networks then this case can be turned to a
     -- call to purify.
-    VCompareRatTensor {} -> compileUnquantifiedQuerySet expr
+    VCompareRatTensorReduced {} -> compileUnquantifiedQuerySet expr
+    VCompareRatTensorPointwise {} -> developerError "Compile pointwise comparison not supported"
   where
     unblock e = runFreshNameContextT (Unblocking.unblockBoolExpr e)
-
-compileTrivial ::
-  (MonadPropertyStructure m) =>
-  Tensor Bool ->
-  m (MaybeTrivial a)
-compileTrivial x = case x of
-  ZeroDimTensor b -> return $ Trivial b
-  _ -> developerError "Should not be compiling tensors of booleans"
 
 compileQuantifiedQuerySet ::
   (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m) =>
@@ -112,9 +103,8 @@ compileQuantifiedQuerySet ::
   m (Property QueryMetaData)
 compileQuantifiedQuerySet isPropertyNegated _dims binder closure = do
   logCompilerPass MaxDetail "compilation of query set" $ do
-    flip evalStateT emptyGlobalCtx $ do
-      maybePartitions <- eliminateExists binder closure
-      compileQuerySetPartitions isPropertyNegated maybePartitions
+    (maybePartitions, globalCtx) <- runStateT (eliminateExists binder closure) emptyGlobalCtx
+    compileQuerySetPartitions globalCtx isPropertyNegated maybePartitions
 
 -- | We only need this because we can't evaluate networks in the compiler.
 compileUnquantifiedQuerySet ::
@@ -124,21 +114,23 @@ compileUnquantifiedQuerySet ::
 compileUnquantifiedQuerySet value = do
   let subsectionDoc = "compilation of set of unquantified queries:" <+> prettyFriendlyEmptyCtx value
   logCompilerPass MaxDetail subsectionDoc $ do
-    flip evalStateT emptyGlobalCtx $ do
+    (maybePartitions, globalCtx) <- flip runStateT emptyGlobalCtx $ do
       (maybePartitions, equalities) <- runWriterT $ compileBoolExpr value
       networkEqPartitions <- networkEqualitiesToPartition equalities
-      let allPartitions = andTrivial andPartitions maybePartitions networkEqPartitions
-      compileQuerySetPartitions False allPartitions
+      return $ andTrivial andPartitions maybePartitions networkEqPartitions
+    compileQuerySetPartitions globalCtx False maybePartitions
 
 compileQuerySetPartitions ::
-  (MonadQueryStructure m, MonadSupply QueryID m, MonadStdIO m) =>
+  (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m) =>
+  GlobalCtx ->
   QuerySetNegationStatus ->
-  MaybeTrivial Partitions ->
+  MaybeTrivial (Partitions TensorVariable) ->
   m (Property QueryMetaData)
-compileQuerySetPartitions isPropertyNegated maybePartitions = case maybePartitions of
+compileQuerySetPartitions globalCtx isPropertyNegated maybePartitions = case maybePartitions of
   Trivial b -> return $ Trivial (b `xor` isPropertyNegated)
   NonTrivial partitions -> do
-    queries <- convertPartitionsToQueries partitions
+    propertyMetaData <- ask
+    queries <- compilePartitionsToQueries globalCtx propertyMetaData partitions
     return $ NonTrivial $ Query $ QuerySet isPropertyNegated queries
 
 -- | Attempts to compile an arbitrary expression of type `Bool` down to a tree
@@ -147,47 +139,53 @@ compileQuerySetPartitions isPropertyNegated maybePartitions = case maybePartitio
 compileBoolExpr ::
   (MonadQueryStructure m, MonadWriter [Value Builtin] m) =>
   Value Builtin ->
-  m (MaybeTrivial Partitions)
+  m (MaybeTrivial (Partitions TensorVariable))
 compileBoolExpr expr = do
   showEntry expr
   showExit =<< case toBoolValue expr of
     ----------------
     -- Base cases --
     ----------------
-    VBoolTensorLiteral bs -> compileTrivial bs
-    VCompareRatTensor (op, args) -> purifyAndCompileAssertion op args
+    VBoolLiteral b -> return $ Trivial b
+    VCompareRatTensorReduced (op, args) -> purifyAndCompileAssertion op args
+    VCompareRatTensorPointwise (op, args) -> purifyAndCompileAssertion op args
     VQuantifyRatTensor Forall _ _ _ -> throwError catchableUnsupportedAlternatingQuantifiersError
     ---------------------
     -- Recursive cases --
     ---------------------
-    VNot (TensorOp1Args _ e) -> do
+    VNot arg -> do
       lv <- boundCtxLv <$> getNameContext
-      compileBoolExpr =<< lowerNot lv Unblocking.unblockBoolExpr e
+      compileBoolExpr =<< lowerNot lv Unblocking.unblockBoolExpr arg
     VBoolIf args -> compileBoolExpr =<< unfoldIf args
     VAnd (TensorOp2Args _dims x y) -> andTrivial andPartitions <$> compileBoolExpr x <*> compileBoolExpr y
     VOr (TensorOp2Args _dims x y) -> orTrivial orPartitions <$> compileBoolExpr x <*> compileBoolExpr y
     VQuantifyRatTensor Exists _ binder closure -> eliminateExists binder closure
-    _ -> compileBoolExpr =<< Unblocking.unblockBoolExpr expr
+    VCompareNat {} -> unblockAndRec expr
+    VCompareIndex {} -> unblockAndRec expr
+    VReduceAndTensor {} -> unblockAndRec expr
+    VReduceOrTensor {} -> unblockAndRec expr
+    VBoolAt {} -> unblockAndRec expr
+  where
+    -- VBoolForeach {} -> unblockAndRec expr
+    -- VBoolStackTensor {} -> unblockAndRec expr
+    -- _ -> compileBoolExpr =<< Unblocking.unblockBoolExpr expr
+
+    unblockAndRec e = compileBoolExpr =<< Unblocking.unblockBoolExpr e
 
 purifyAndCompileAssertion ::
   (MonadQuantifierBody m) =>
   ComparisonOp ->
   TensorOp2Args (Value Builtin) ->
-  m (MaybeTrivial Partitions)
+  m (MaybeTrivial (Partitions TensorVariable))
 purifyAndCompileAssertion op args
   | op == Ne =
       -- We can't handle negative equalities so just eliminate it
       compileBoolExpr =<< eliminateNotEqualRatTensor args
   | otherwise = do
-      let evalOp = evalCompareRatTensor op
-      let shape = case getDims (argExpr (tensorOp2Dims args)) of
-            Nothing -> developerError $ "Non-concrete dimensions found" <+> prettyVerbose (argExpr (tensorOp2Dims args))
-            Just concreteShape -> concreteShape
-
       logDebug MaxDetail ""
       recurseOrResult <- logCompilerPass MaxDetail "assertion compilation" $ do
         logDebugM MaxDetail $ do
-          assertionDoc <- prettyFriendlyInCtx $ fromBoolValue $ VCompareRatTensor (op, args)
+          assertionDoc <- prettyFriendlyInCtx $ fromBoolValue $ VCompareRatTensorReduced (op, args)
           return $ "assertion:" <+> assertionDoc <> line
 
         maybePurifiedValue <- Unblocking.tryPurifyAssertion unblockingActions op args
@@ -197,32 +195,46 @@ purifyAndCompileAssertion op args
               valueDoc <- prettyFriendlyInCtx purifiedValue
               return $ "Additional boolean structure found:" <+> valueDoc
             return $ Left purifiedValue
-          Right (TensorOp2Args _ xs ys) -> do
-            maybeLinearRel <- compileLinearRelation shape xs ys
-            case maybeLinearRel of
-              Right (e1, e2) -> do
-                let assertion = comparisonToAssertion op e1 e2
-                logDebugM MaxDetail $ do
-                  assertionDoc <- prettyFriendlyInCtx assertion
-                  return $ "Final assertion:" <+> assertionDoc
-                return $ Right assertion
-              Left NonLinearity ->
-                throwError catchableUnsupportedNonLinearConstraint
-              Left (UnexpectedExpr e) ->
-                developerError ("unexpected expression" <+> prettyVerbose e)
-              Left (UnreducedExpr e) -> do
-                logDebugM MaxDetail $ do
-                  exprDoc <- prettyFriendlyInCtx e
-                  return $ "Non-variable expression found:" <+> exprDoc
-                elementComparisonValue <- eliminateTensorAssertion evalOp args
-                logDebugM MaxDetail $ do
-                  newValueDoc <- prettyFriendlyInCtx elementComparisonValue
-                  return $ "Converting to element comparison:" <+> newValueDoc
-                return $ Left elementComparisonValue
+          Right purifiedArgs -> compilePurifiedAssertion op purifiedArgs
 
       case recurseOrResult of
         Left value -> compileBoolExpr value
         Right assertion -> return $ mkTrivialPartition assertion
+
+compilePurifiedAssertion ::
+  (MonadQuantifierBody m) =>
+  ComparisonOp ->
+  TensorOp2Args (Value Builtin) ->
+  m (Either (Value Builtin) (Assertion TensorVariable))
+compilePurifiedAssertion op args@(TensorOp2Args dims xs ys) = do
+  let shape = case getDims (argExpr dims) of
+        Nothing -> developerError $ "Non-concrete dimensions found" <+> prettyVerbose dims
+        Just concreteShape -> concreteShape
+
+  maybeLinearRel <- compileLinearRelation findVariableFromLevel shape xs ys
+  case maybeLinearRel of
+    Right (e1, e2) -> do
+      let assertion = comparisonToAssertion op e1 e2
+      logDebugM MaxDetail $ do
+        assertionDoc <- prettyFriendlyInCtx assertion
+        return $ "Final assertion:" <+> assertionDoc
+      return $ Right assertion
+    Left NonLinearity ->
+      throwError catchableUnsupportedNonLinearConstraint
+    Left (UnexpectedExpr e) ->
+      developerError ("unexpected expression" <+> prettyVerbose e)
+    Left (UnreducedExpr e) -> do
+      logDebugM MaxDetail $ do
+        exprDoc <- prettyFriendlyInCtx e
+        return $ "Non-variable expression found:" <+> exprDoc
+      elementComparisonValue <- eliminateTensorAssertion op args
+      logDebugM MaxDetail $ do
+        newValueDoc <- prettyFriendlyInCtx elementComparisonValue
+        return $ "Converting to element comparison:" <+> newValueDoc
+      return $ Left elementComparisonValue
+
+findVariableFromLevel :: (MonadQueryStructure m) => Lv -> m TensorVariable
+findVariableFromLevel = return . TensorVariable
 
 --------------------------------------------------------------------------------
 -- Unblocking
@@ -240,9 +252,9 @@ unblockQuantifiedBoundVar ::
   Lv ->
   m (Value Builtin)
 unblockQuantifiedBoundVar lv = do
-  maybeReduction <- getReducedVariableExprFor lv
-  case maybeReduction of
-    Just vectorReduction -> return vectorReduction
+  maybeChildExpr <- gets $ lookupChildVariablesExpr (TensorVariable lv)
+  case maybeChildExpr of
+    Just expr -> return expr
     Nothing -> return $ VBoundVar lv []
 
 unblockNetworkApplication ::
@@ -250,23 +262,29 @@ unblockNetworkApplication ::
   NetworkApplication ->
   m (Value Builtin)
 unblockNetworkApplication networkApp@(networkName, NetworkAppArgs arg) = do
-  globalCtx <- get
-  case LinkedHashMap.lookup networkApp (networkApplications globalCtx) of
-    Just existingAppInfo ->
-      return $ outputVarExpr existingAppInfo
-    Nothing -> do
-      networkContext <- asks networkCtx
-      networkInfo <- case Map.lookup networkName networkContext of
-        Nothing -> compilerDeveloperError $ "Expecting" <+> quotePretty networkName <+> "to be a @network"
-        Just info -> return info
+  nameCtx <- getNameContext
+  let doc = "unblock-network-app" <+> pretty networkName <+> prettyFriendly (WithContext arg nameCtx)
+  logCompilerSection MaxDetail doc $ do
+    globalCtx <- get
+    case LinkedHashMap.lookup networkApp (networkApplications globalCtx) of
+      Just existingAppInfo ->
+        return $ variableValue (outputVariable existingAppInfo)
+      Nothing -> do
+        networkContext <- asks networkCtx
+        networkInfo <- case Map.lookup networkName networkContext of
+          Nothing -> compilerDeveloperError $ "Expecting" <+> quotePretty networkName <+> "to be a @network"
+          Just info -> return info
 
-      (inputVarExpr, outputVarExpr, newGlobalCtx) <- addNetworkApplicationToGlobalCtx networkApp networkInfo globalCtx
-      let inputDims = dimensions (inputTensor (networkType networkInfo))
-      let inputDimsExpr = implicitIrrelevant $ mkDims inputDims
-      let inputEquality = fromBoolValue $ VCompareRatTensor (Eq, TensorOp2Args inputDimsExpr inputVarExpr arg)
-      put newGlobalCtx
-      tell [inputEquality]
-      return outputVarExpr
+        (inputVarExpr, outputVarExpr, newGlobalCtx) <- addNetworkApplicationToGlobalCtx networkApp networkInfo globalCtx
+        let inputDims = dimensions (inputTensor (networkType networkInfo))
+        let inputDimsExpr = implicitIrrelevant $ mkDims inputDims
+        let inputEquality = fromBoolValue $ VCompareRatTensorReduced (Eq, TensorOp2Args inputDimsExpr inputVarExpr arg)
+        put newGlobalCtx
+        newNameCtx <- getNameContext
+        logDebug MaxDetail $ "note-input-equality" <+> prettyFriendly (WithContext inputEquality newNameCtx)
+        tell [inputEquality]
+        logDebug MaxDetail $ "new-expr" <+> prettyFriendly (WithContext outputVarExpr newNameCtx)
+        return outputVarExpr
 
 --------------------------------------------------------------------------------
 -- Elimination operations
@@ -280,26 +298,26 @@ eliminateNotEqualRatTensor args@(TensorOp2Args dims _ _) = do
   if supportsStrictInequalities queryFormat
     then throwError $ UnsupportedInequality (queryFormatID queryFormat) propertyProvenance
     else do
-      let leq = fromBoolValue $ VCompareRatTensor (Le, args)
-      let geq = fromBoolValue $ VCompareRatTensor (Ge, args)
+      let leq = fromBoolValue $ VCompareRatTensorReduced (Le, args)
+      let geq = fromBoolValue $ VCompareRatTensorReduced (Ge, args)
       return $ fromBoolValue $ VOr (TensorOp2Args dims leq geq)
 
 eliminateTensorAssertion ::
   forall m.
   (MonadQueryStructure m) =>
-  EvalSimple TensorOp2Args Value Builtin m ->
+  ComparisonOp ->
   TensorOp2Args (Value Builtin) ->
   m (Value Builtin)
-eliminateTensorAssertion evalFn (TensorOp2Args dims xs ys) =
+eliminateTensorAssertion op (TensorOp2Args dims xs ys) =
   case argExpr dims of
     ICons _ d@(INatLiteral n) ds -> do
       let tElem = implicit $ fromTypeValue VRatType
       let dsArg = implicitIrrelevant ds
-      let mkAt vs i = evalAt (AtArgs tElem (implicitIrrelevant d) dsArg vs (IIndexLiteral i))
+      let mkAt vs i = evalAtTensor (AtTensorArgs tElem (implicitIrrelevant d) dsArg vs (IIndexLiteral i))
       let mkStackElement i = do
             xsi <- mkAt xs i
             ysi <- mkAt ys i
-            evalFn (TensorOp2Args (implicitIrrelevant ds) xsi ysi)
+            evalCompareRatTensor op (TensorOp2Args (implicitIrrelevant ds) xsi ysi)
       stackElements <- traverse mkStackElement [0 .. (n - 1)] :: m [Value Builtin]
       stackExpr <- evalStackTensor (StackTensorArgs tElem d dsArg stackElements)
       evalReduceAndTensor (TensorOp2Args dims (IBoolLiteral True) stackExpr)
@@ -310,7 +328,7 @@ eliminateExists ::
   (MonadQueryStructure m) =>
   VBinder Builtin ->
   Closure Builtin ->
-  m (MaybeTrivial Partitions)
+  m (MaybeTrivial (Partitions TensorVariable))
 eliminateExists binder (Closure env body) = do
   let varName = getBinderName binder
   let subpassDoc = "elimination of quantified variable" <+> quotePretty varName
@@ -325,11 +343,11 @@ eliminateExists binder (Closure env body) = do
 
     -- Update the global context
     globalCtx <- get
-    let (userVar, newGlobalCtx) = addUserVarToGlobalContext userVarName userVarShape globalCtx
+    (userVar, newGlobalCtx) <- addUserVarToGlobalContext userVarName userVarShape globalCtx
     put newGlobalCtx
 
     -- Normalise the expression
-    let newEnv = extendEnvWithDefined (VBoundVar userVar []) binder env
+    let newEnv = extendEnvWithDefined (variableValue userVar) binder env
     normExpr <- normaliseInEnv newEnv body
 
     -- Recursively compile the expression.
@@ -346,11 +364,11 @@ eliminateExists binder (Closure env body) = do
 networkEqualitiesToPartition ::
   (MonadQueryStructure m) =>
   [Value Builtin] ->
-  m (MaybeTrivial Partitions)
+  m (MaybeTrivial (Partitions TensorVariable))
 networkEqualitiesToPartition networkEqualities = do
   logDebugM MaxDetail $ do
     networkEqDocs <- traverse prettyFriendlyInCtx networkEqualities
-    return $ "Network equalities generated:" <> line <> indent 2 (vsep networkEqDocs)
+    return $ line <> "Network equalities generated:" <> line <> indent 2 (vsep networkEqDocs) <> line
 
   results <- forM networkEqualities $ \equality -> do
     (partitions, newNetworkEqualities) <- runWriterT (compileBoolExpr equality)
@@ -382,7 +400,7 @@ catchableUnsupportedNonLinearConstraint =
 showTopLevelEntry :: (MonadCompile m) => Value Builtin -> m ()
 showTopLevelEntry v = do
   logDebugM MaxDetail $ do
-    let vDoc = prettyExternal (WithContext v emptyNamedCtx)
+    let vDoc = prettyFriendly (WithContext v emptyNamedCtx)
     return $ "top-elim-enter" <+> vDoc
   incrCallDepth
 
@@ -397,11 +415,14 @@ showTopLevelExit v = do
 showEntry :: (MonadQueryStructure m) => Value Builtin -> m ()
 showEntry v = do
   logDebugM MaxDetail $ do
-    vDoc <- prettyExternalInCtx v
+    vDoc <- prettyFriendlyInCtx v
     return $ "elim-enter" <+> vDoc
   incrCallDepth
 
-showExit :: (MonadQueryStructure m) => MaybeTrivial Partitions -> m (MaybeTrivial Partitions)
+showExit ::
+  (MonadQueryStructure m) =>
+  MaybeTrivial (Partitions TensorVariable) ->
+  m (MaybeTrivial (Partitions TensorVariable))
 showExit v = do
   decrCallDepth
   logDebugM MaxDetail $ do

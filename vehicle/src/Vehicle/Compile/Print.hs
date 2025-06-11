@@ -23,8 +23,12 @@ import Data.Bifunctor (Bifunctor (..))
 import Data.Foldable qualified as NonEmpty
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap (assocs)
+import Data.List.NonEmpty (NonEmpty)
+import Data.Map (Map)
+import Data.Map qualified as Map
 import Data.Text (Text)
-import GHC.TypeLits (ErrorMessage (..), TypeError)
+import GHC.Exts qualified as GHC (Constraint)
+import GHC.TypeLits
 import Prettyprinter (fill)
 import Vehicle.Compile.Descope
 import Vehicle.Compile.Normalise.Quote (unnormalise)
@@ -37,31 +41,17 @@ import Vehicle.Data.Assertion (Bounds (..), Inequality, NormalisedRelation (..))
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.BooleanExpr
-import Vehicle.Data.Code.LinearExpr (Constant (..), LinearExpr, prettyLinearExpr)
+import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.Code.Value
-import Vehicle.Data.Tensor (RatTensor)
+import Vehicle.Data.QuantifiedVariable (NetworkIOElementVariable, NetworkIOVariable, TensorVariable, TensorVariableLike (..), UserVariable, variableValue)
+import Vehicle.Data.Tensor (RatTensor, Tensor, prettyTensor)
 import Vehicle.Syntax.AST.Expr qualified as S
 import Vehicle.Syntax.Print
+import Vehicle.Verify.Specification (UserVariableCompilationStep (..))
 
 --------------------------------------------------------------------------------
 -- Public methods
 --------------------------------------------------------------------------------
-
-type In a b = (a, b)
-
-type NoCtx = ()
-
-type VerboseTags = 'Unnamed ('ShortVectors ('As 'Internal))
-
-type ExternalTags = 'Named ('ShortVectors ('As 'External))
-
-type FriendlyTags = 'Named ('Cleaned ('As 'External))
-
-type PrettyVerbose a = PrettyWith VerboseTags a
-
-type PrettyExternal a = PrettyWith ExternalTags a
-
-type PrettyFriendly a = PrettyWith FriendlyTags a
 
 -- | Prints to the internal language in all it's gory detail. Useful for debugging.
 prettyVerbose :: (PrettyVerbose (a `In` NoCtx)) => a -> Doc b
@@ -89,6 +79,14 @@ prettyFriendlyEmptyCtx x = prettyFriendly (x, emptyNamedCtx)
 --------------------------------------------------------------------------------
 -- Printing strategies
 --------------------------------------------------------------------------------
+-- Utilities
+
+type In a b = (a, b)
+
+type NoCtx = ()
+
+--------------------------------------------------------------------------------
+-- Tags
 
 -- Tags denote at a high-level how you want the term to be printed.
 data Tags
@@ -103,18 +101,59 @@ data Tags
   | -- | The `ShortVectors` tag ensures that long vectors are printed out concisely.
     ShortVectors Tags
 
+--------------------------------------------------------------------------------
+-- Strategies
+
 -- | A strategy is an abstract representation of the sequence of operations that
 -- are needed in order to convert something into a printable form. It should not
 -- be confused with the actual operations needed to do so.
 data Strategy
   = SetupContext Strategy
+  | AlterContext Strategy
   | DescopeNaively Strategy
   | DescopeWithNames Strategy
+  | Functor Strategy
   | PrintAs VehicleLang
   | QuoteValue Strategy
   | Clean Strategy
   | ShortenVectors Strategy
+  | Branch Strategy Strategy
   | Pretty
+
+{-
+-- Testing code, do not delete!
+-- Fill in `TestType` and inspect the hole to see what it reduces to.
+type TestType = LinearExpr TensorVariable RatTensor `In` NamedBoundCtx
+
+data MyProxy (a :: Strategy) = MyProxy
+test :: MyProxy (StrategyFor FriendlyTags TestType)
+test = _
+-}
+
+-- A type-class for printing out strategies to type-level strings
+type family ShowStrategy (s :: Strategy) :: Symbol where
+  ShowStrategy ('SetupContext s) = AppendSymbol "SetupContext → " (ShowStrategy s)
+  ShowStrategy ('AlterContext s) = AppendSymbol "AlterContext → " (ShowStrategy s)
+  ShowStrategy ('DescopeNaively s) = AppendSymbol "DescopeNaively → " (ShowStrategy s)
+  ShowStrategy ('DescopeWithNames s) = AppendSymbol "DescopeWithNames → " (ShowStrategy s)
+  ShowStrategy ('Functor s) = AppendSymbol "Functor → " (ShowStrategy s)
+  ShowStrategy ('PrintAs lang) = "PrintAs"
+  ShowStrategy ('QuoteValue s) = AppendSymbol "QuoteValue → " (ShowStrategy s)
+  ShowStrategy ('Clean s) = AppendSymbol "Clean → " (ShowStrategy s)
+  ShowStrategy ('ShortenVectors s) = AppendSymbol "ShortenVectors → " (ShowStrategy s)
+  ShowStrategy ('Branch s1 s2) =
+    AppendSymbol
+      "Branch("
+      ( AppendSymbol
+          (ShowStrategy s1)
+          (AppendSymbol ") (" (AppendSymbol (ShowStrategy s2) ")"))
+      )
+  ShowStrategy 'Pretty = "Pretty"
+
+-- | A type family you can attach to the instances below to get
+-- a trace of instance resolution printed out.
+type family Debug (strat :: Strategy) (msg :: Symbol) :: GHC.Constraint where
+  Debug strat msg = TypeError ('Text "Debug: " ':<>: 'Text (ShowStrategy strat) ':<>: 'Text msg)
 
 -- | This type family computes the correct printing strategy given the tags
 -- and the type of the expression.
@@ -136,15 +175,12 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   -- To print a `Value` we need to quote it first. Note that we convert it to a `Builtin` representation immediately
   StrategyFor ('Named tags) (Value builtin `In` NamedBoundCtx) = 'QuoteValue (StrategyFor ('Named tags) (Expr Builtin `In` NamedBoundCtx))
   StrategyFor ('Unnamed tags) (Value builtin `In` ctx) = 'DescopeNaively (StrategyFor tags S.Expr)
-  -- Converting an `Expr` with DeBruijn indices to a named representation requires a named bound context to descope.
-  -- Otherwise converting it to an unnamed representation we descope naively by just converting the variables directly
-  StrategyFor ('Named tags) (LinearExpr constant `In` NamedBoundCtx) = 'DescopeWithNames (StrategyFor tags (constant `In` NamedBoundCtx))
-  StrategyFor ('Unnamed tags) (LinearExpr constant `In` ctx) = 'DescopeNaively (StrategyFor tags (constant `In` ctx))
   -------------------
   -- Context setup --
   -------------------
   StrategyFor tags (GenericProg expr) = 'SetupContext (StrategyFor tags (GenericProg expr `In` NamedBoundCtx))
   StrategyFor tags (GenericDecl expr) = 'SetupContext (StrategyFor tags (GenericDecl expr `In` NamedBoundCtx))
+  StrategyFor tags (Contextualised object CompleteNamedBoundCtx) = 'AlterContext (StrategyFor tags (Contextualised object NamedBoundCtx))
   StrategyFor tags (Contextualised object ctx) = 'SetupContext (StrategyFor tags (object `In` ctx))
   StrategyFor tags (Contextualised object ctx `In` NoCtx) = 'SetupContext (StrategyFor tags (object `In` ctx))
   StrategyFor tags (S.Expr `In` NoCtx) = 'SetupContext (StrategyFor tags S.Expr)
@@ -153,20 +189,22 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   --------------------------------
   -- Distributing over functors --
   --------------------------------
-  StrategyFor tags ([a] `In` ctx) = StrategyFor tags (a `In` ctx)
-  StrategyFor tags (Maybe a `In` ctx) = StrategyFor tags (a `In` ctx)
-  StrategyFor tags (ConjunctAll a `In` ctx) = StrategyFor tags (a `In` ctx)
-  StrategyFor tags (DisjunctAll a `In` ctx) = StrategyFor tags (a `In` ctx)
-  StrategyFor tags (BooleanExpr a `In` ctx) = StrategyFor tags (a `In` ctx)
-  StrategyFor tags (MaybeTrivial a `In` ctx) = StrategyFor tags (a `In` ctx)
-  StrategyFor tags (IntMap a `In` ctx) = StrategyFor tags (a `In` ctx)
-  StrategyFor tags (MetaMap a `In` ctx) = StrategyFor tags (a `In` ctx)
-  StrategyFor tags (NormalisedRelation rel constant `In` ctx) = StrategyFor tags (LinearExpr constant `In` ctx)
-  StrategyFor tags (Bounds constant `In` ctx) = StrategyFor tags (Inequality constant `In` ctx)
+  StrategyFor tags ([a] `In` ctx) = 'Functor (StrategyFor tags (a `In` ctx))
+  StrategyFor tags (NonEmpty a `In` ctx) = 'Functor (StrategyFor tags (a `In` ctx))
+  StrategyFor tags (Maybe a `In` ctx) = 'Functor (StrategyFor tags (a `In` ctx))
+  StrategyFor tags (ConjunctAll a `In` ctx) = 'Functor (StrategyFor tags (a `In` ctx))
+  StrategyFor tags (DisjunctAll a `In` ctx) = 'Functor (StrategyFor tags (a `In` ctx))
+  StrategyFor tags (BooleanExpr a `In` ctx) = 'Functor (StrategyFor tags (a `In` ctx))
+  StrategyFor tags (MaybeTrivial a `In` ctx) = 'Functor (StrategyFor tags (a `In` ctx))
+  StrategyFor tags (IntMap a `In` ctx) = 'Functor (StrategyFor tags (a `In` ctx))
+  StrategyFor tags (MetaMap a `In` ctx) = 'Functor (StrategyFor tags (a `In` ctx))
   StrategyFor tags (GenericProg expr `In` ctx) = (StrategyFor tags (expr `In` ctx))
   StrategyFor tags (GenericDecl expr `In` ctx) = (StrategyFor tags (expr `In` ctx))
   StrategyFor tags (GenericArg expr `In` ctx) = (StrategyFor tags (expr `In` ctx))
   StrategyFor tags (GenericBinder expr `In` ctx) = (StrategyFor tags (expr `In` ctx))
+  StrategyFor tags (Tensor a `In` ctx) = 'Functor (StrategyFor tags (a `In` ctx))
+  StrategyFor tags ((a, b) `In` ctx) = 'Branch (StrategyFor tags (a `In` ctx)) (StrategyFor tags (b `In` ctx))
+  StrategyFor tags (Map a b `In` ctx) = 'Branch (StrategyFor tags (a `In` ctx)) (StrategyFor tags (b `In` ctx))
   -----------------
   -- Constraints --
   -----------------
@@ -176,13 +214,34 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor tags (ApplicationConstraint builtin `In` ConstraintContext builtin) = StrategyFor tags (Value builtin `In` NamedBoundCtx)
   StrategyFor tags (Constraint builtin `In` ConstraintContext builtin) = StrategyFor tags (Value builtin `In` NamedBoundCtx)
   StrategyFor tags (MetaInfo builtin `In` NoCtx) = StrategyFor tags (Value builtin `In` NamedBoundCtx)
+  ---------------------
+  -- Query variables --
+  ---------------------
+  StrategyFor tags (UserVariable `In` ctx) =
+    StrategyFor tags (Value Builtin `In` ctx)
+  StrategyFor tags (NetworkIOElementVariable `In` ctx) =
+    StrategyFor tags (Value Builtin `In` ctx)
+  StrategyFor tags (TensorVariable `In` ctx) =
+    StrategyFor tags (Value Builtin `In` ctx)
+  StrategyFor tags (NormalisedRelation rel variable constant `In` ctx) =
+    StrategyFor tags (LinearExpr variable constant `In` ctx)
+  StrategyFor tags (Bounds variable constant `In` ctx) =
+    StrategyFor tags (Inequality variable constant `In` ctx)
+  StrategyFor tags (LinearExpr variable constant `In` ctx) =
+    'Branch
+      (StrategyFor tags (variable `In` NamedBoundCtx))
+      (StrategyFor tags (constant `In` NamedBoundCtx))
+  StrategyFor tags (UserVariableCompilationStep `In` ctx) =
+    'Branch
+      (StrategyFor tags (TensorVariable `In` ctx))
+      (StrategyFor tags (LinearExpr TensorVariable RatTensor `In` ctx))
   ------------
   -- Pretty --
   ------------
   -- Things that we just pretty print.
   StrategyFor tags (Int `In` ctx) = 'Pretty
   StrategyFor tags (Text `In` ctx) = 'Pretty
-  StrategyFor tags (RatTensor `In` ctx) = 'Pretty
+  StrategyFor tags (Rational `In` ctx) = 'Pretty
   --------------------
   -- Simplification --
   --------------------
@@ -211,6 +270,18 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
 -- | A type synonym that takes the tags and the type and computes the strategy
 -- for the combination to guide type-class resolution.
 type PrettyWith tags a = PrettyUsing (StrategyFor tags a) a
+
+type VerboseTags = 'Unnamed ('ShortVectors ('As 'Internal))
+
+type ExternalTags = 'Named ('ShortVectors ('As 'External))
+
+type FriendlyTags = 'Named ('Cleaned ('As 'External))
+
+type PrettyVerbose a = PrettyWith VerboseTags a
+
+type PrettyExternal a = PrettyWith ExternalTags a
+
+type PrettyFriendly a = PrettyWith FriendlyTags a
 
 class PrettyUsing (strategy :: Strategy) a where
   prettyUsing :: a -> Doc b
@@ -241,6 +312,12 @@ instance (PrettyUsing rest S.Arg) => PrettyUsing ('SetupContext rest) (S.Arg `In
 
 instance (PrettyUsing rest S.Binder) => PrettyUsing ('SetupContext rest) (S.Binder `In` NoCtx) where
   prettyUsing (e, ()) = prettyUsing @rest e
+
+instance
+  (PrettyUsing rest (Contextualised object NamedBoundCtx)) =>
+  PrettyUsing ('AlterContext rest) (Contextualised object CompleteNamedBoundCtx)
+  where
+  prettyUsing (WithContext e ctx) = prettyUsing @rest (WithContext e $ fmap Just ctx)
 
 --------------------------------------------------------------------------------
 -- DescopeNaively
@@ -302,7 +379,10 @@ instance
   prettyUsing (e, _ctx) = prettyUsing @rest $ fmap descopeValueNaively e
 
 instance
-  (PrettyUsing rest S.Prog, PrintableBuiltin builtin) =>
+  ( PrettyUsing rest S.Prog,
+    PrintableBuiltin builtin,
+    Debug ('DescopeNaively rest) "Resolve LinearExpr"
+  ) =>
   PrettyUsing ('DescopeNaively rest) (VProg builtin `In` ctx)
   where
   prettyUsing (e, _ctx) = prettyUsing @rest $ fmap descopeValueNaively e
@@ -310,10 +390,62 @@ instance
 -- Linear expression
 
 instance
-  (Constant constant, PrettyUsing rest (constant `In` ctx)) =>
-  PrettyUsing ('DescopeNaively rest) (LinearExpr constant `In` ctx)
+  ( VariableLike variable,
+    ConstantLike constant,
+    PrettyUsing restVariable (variable `In` ctx),
+    PrettyUsing restConstant (constant `In` ctx)
+  ) =>
+  PrettyUsing ('Branch restVariable restConstant) (LinearExpr variable constant `In` ctx)
   where
-  prettyUsing (lexp, ctx) = prettyLinearExpr pretty (prettyUsing @rest . (,ctx)) lexp
+  prettyUsing (lexp, ctx) = do
+    let prettyVar var = prettyUsing @restVariable (var, ctx)
+    let prettyConst constant = prettyUsing @restConstant (constant, ctx)
+    prettyLinearExpr prettyVar prettyConst lexp
+
+--------------------------------------------------------------------------------
+-- Query variables
+
+instance
+  (PrettyUsing rest (Value Builtin `In` ctx)) =>
+  PrettyUsing rest (TensorVariable `In` ctx)
+  where
+  prettyUsing (var, ctx) = prettyUsing @rest (variableValue @TensorVariable @Builtin var, ctx)
+
+instance
+  (PrettyUsing rest (Value Builtin `In` ctx)) =>
+  PrettyUsing rest (UserVariable `In` ctx)
+  where
+  prettyUsing (var, ctx) = prettyUsing @rest (variableValue @UserVariable @Builtin var, ctx)
+
+instance
+  (PrettyUsing rest (Value Builtin `In` ctx)) =>
+  PrettyUsing rest (NetworkIOVariable `In` ctx)
+  where
+  prettyUsing (var, ctx) = prettyUsing @rest (variableValue @NetworkIOVariable @Builtin var, ctx)
+
+instance
+  (PrettyUsing rest (Value Builtin `In` ctx)) =>
+  PrettyUsing rest (NetworkIOElementVariable `In` ctx)
+  where
+  prettyUsing (var, ctx) = prettyUsing @rest (variableValue @NetworkIOElementVariable @Builtin var, ctx)
+
+instance
+  ( PrettyUsing restVar (TensorVariable `In` ctx),
+    PrettyUsing restLinExp (LinearExpr TensorVariable RatTensor `In` ctx)
+  ) =>
+  PrettyUsing ('Branch restVar restLinExp) (UserVariableCompilationStep `In` ctx)
+  where
+  prettyUsing (step, ctx) = case step of
+    SolveEquality var expr ->
+      prettyUsing @restVar (toTensorVar var, ctx)
+        <+> prettyUsing @restLinExp (expr, ctx)
+    SolveInequalities var bounds ->
+      prettyUsing @restVar (toTensorVar var, ctx)
+        <+> prettyUsing @restLinExp (bounds, ctx)
+    ReconstructTensorVariable var childVars ->
+      prettyUsing @restVar (var, ctx)
+        <+> "->"
+        <+> prettyUsing @('Functor restVar) (childVars, ctx)
 
 --------------------------------------------------------------------------------
 -- 'DescopeWithNames
@@ -359,15 +491,17 @@ instance
 -- LinearExpr
 
 instance
-  (Constant constant, PrettyUsing rest (constant `In` NamedBoundCtx)) =>
-  PrettyUsing ('DescopeWithNames rest) (LinearExpr constant `In` NamedBoundCtx)
+  (VariableLike variable, ConstantLike constant, PrettyUsing rest (constant `In` NamedBoundCtx)) =>
+  PrettyUsing ('DescopeWithNames rest) (LinearExpr variable constant `In` NamedBoundCtx)
   where
   prettyUsing (lexp, ctx) = prettyLinearExpr prettyVar prettyConst lexp
     where
       prettyConst c = prettyUsing @rest (c, ctx)
-      prettyVar lv = case lookupLvInBoundCtx lv ctx of
-        Nothing -> developerError $ "Missing name for variable" <+> pretty lv
-        Just n -> pretty n
+      prettyVar var = do
+        let lv = toLv var
+        case lookupLvInBoundCtx lv ctx of
+          Nothing -> developerError $ "Missing name for variable" <+> pretty lv
+          Just n -> pretty n
 
 --------------------------------------------------------------------------------
 -- 'PrintAs
@@ -491,7 +625,7 @@ instance
     let checkedExpr = solutionSoFar problem
     let checkedExprDoc = prettyUsing @rest (checkedExpr, ctx)
     let expectedTypeDoc = prettyUsing @rest (currentExpectedType problem, ctx)
-    let uncheckedArgsDoc = prettyUsing @rest (uncheckedArgs problem, ctx)
+    let uncheckedArgsDoc = prettyUsing @('Functor rest) (uncheckedArgs problem, ctx)
     parens (checkedExprDoc <+> ":" <+> expectedTypeDoc) <+> "@" <+> uncheckedArgsDoc
 
 prettyConstraint :: ConstraintContext builtin -> Doc a -> Doc a
@@ -572,14 +706,14 @@ instance
 -- Assertions
 
 instance
-  (Constant constant, Pretty rel, PrettyUsing rest (LinearExpr constant `In` ctx)) =>
-  PrettyUsing rest (NormalisedRelation rel constant `In` ctx)
+  (ConstantLike constant, Pretty rel, PrettyUsing rest (LinearExpr variable constant `In` ctx)) =>
+  PrettyUsing rest (NormalisedRelation rel variable constant `In` ctx)
   where
   prettyUsing (e, ctx) = prettyUsing @rest (linearExpr e, ctx) <+> pretty (relation e) <+> "0"
 
 instance
-  (Constant constant, PrettyUsing rest (Inequality constant `In` ctx)) =>
-  PrettyUsing rest (Bounds constant `In` ctx)
+  (ConstantLike constant, PrettyUsing rest (Inequality variable constant `In` ctx)) =>
+  PrettyUsing rest (Bounds variable constant `In` ctx)
   where
   prettyUsing (Bounds {..}, ctx) =
     "below by max"
@@ -593,33 +727,71 @@ instance
 
 instance
   (PrettyUsing rest (a `In` ctx)) =>
-  PrettyUsing rest ([a] `In` ctx)
+  PrettyUsing ('Functor rest) ([a] `In` ctx)
   where
   prettyUsing (es, ctx) = prettyFlatList (prettyUsing @rest . (,ctx) <$> es)
 
-instance (PrettyUsing rest (a `In` ctx)) => PrettyUsing rest (MetaMap a `In` ctx) where
+instance
+  (PrettyUsing rest (a `In` ctx)) =>
+  PrettyUsing ('Functor rest) (NonEmpty a `In` ctx)
+  where
+  prettyUsing (es, ctx) = prettyUsing @('Functor rest) (NonEmpty.toList es, ctx)
+
+instance
+  (PrettyUsing rest (a `In` ctx)) =>
+  PrettyUsing ('Functor rest) (MetaMap a `In` ctx)
+  where
   prettyUsing (MetaMap m, ctx) = prettyMapEntries entries
     where
       entries = fmap (bimap (fill 3 . pretty . MetaID) (prettyUsing @rest . (,ctx))) (IntMap.assocs m)
 
-instance (PrettyUsing rest (a `In` ctx)) => PrettyUsing rest (MaybeTrivial a `In` ctx) where
+instance
+  (PrettyUsing rest (a `In` ctx)) =>
+  PrettyUsing ('Functor rest) (MaybeTrivial a `In` ctx)
+  where
   prettyUsing (e, ctx) = case e of
     Trivial True -> "True"
     Trivial False -> "False"
     NonTrivial x -> prettyUsing @rest (x, ctx)
 
-instance (PrettyUsing rest (a `In` ctx)) => PrettyUsing rest (ConjunctAll a `In` ctx) where
+instance
+  (PrettyUsing rest (a `In` ctx)) =>
+  PrettyUsing ('Functor rest) (ConjunctAll a `In` ctx)
+  where
   prettyUsing (ConjunctAll cs, ctx) = "and" <> line <> indent 2 (vsep docs)
     where
       docs = NonEmpty.toList (fmap (prettyUsing @rest . (,ctx)) cs)
 
-instance (PrettyUsing rest (a `In` ctx)) => PrettyUsing rest (DisjunctAll a `In` ctx) where
+instance
+  (PrettyUsing rest (a `In` ctx)) =>
+  PrettyUsing ('Functor rest) (DisjunctAll a `In` ctx)
+  where
   prettyUsing (DisjunctAll cs, ctx) = "or" <> line <> indent 2 (vsep docs)
     where
       docs = NonEmpty.toList (fmap (prettyUsing @rest . (,ctx)) cs)
 
-instance (PrettyUsing rest (a `In` ctx)) => PrettyUsing rest (BooleanExpr a `In` ctx) where
+instance
+  (PrettyUsing rest (a `In` ctx)) =>
+  PrettyUsing ('Functor rest) (BooleanExpr a `In` ctx)
+  where
   prettyUsing (e, ctx) = case e of
     Query x -> prettyUsing @rest (x, ctx)
-    Disjunct xs -> prettyUsing @rest (xs, ctx)
-    Conjunct xs -> prettyUsing @rest (xs, ctx)
+    Disjunct xs -> prettyUsing @('Functor ('Functor rest)) (xs, ctx)
+    Conjunct xs -> prettyUsing @('Functor ('Functor rest)) (xs, ctx)
+
+instance
+  (PrettyUsing rest (a `In` ctx)) =>
+  PrettyUsing ('Functor rest) (Tensor a `In` ctx)
+  where
+  prettyUsing (t, ctx) = prettyTensor (\e -> prettyUsing @rest (e, ctx)) t
+
+instance
+  ( PrettyUsing restKey (a `In` ctx),
+    PrettyUsing restValue (b `In` ctx)
+  ) =>
+  PrettyUsing ('Branch restKey restValue) (Map a b `In` ctx)
+  where
+  prettyUsing (x, ctx) = do
+    let prettyKey v = prettyUsing @restKey (v, ctx)
+    let prettyValue v = prettyUsing @restValue (v, ctx)
+    prettyMapEntries $ fmap (bimap prettyKey prettyValue) (Map.toList x)

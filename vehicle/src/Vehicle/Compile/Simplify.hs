@@ -85,16 +85,21 @@ removeInsertedCasts fun args
   | null args = fun
   | otherwise = case fun of
       Builtin p b -> case b of
-        BuiltinCast FromNat {} -> argExpr $ last $ simplifyArgs args
-        BuiltinCast FromRat {} -> argExpr $ last $ simplifyArgs args
+        BuiltinCast FromNat {} -> simplifyAndGetLastArg fun args
+        BuiltinCast FromRat {} -> simplifyAndGetLastArg fun args
+        TypeClassOp FromNatTC {} -> simplifyAndGetLastArg fun args
+        TypeClassOp FromRatTC {} -> simplifyAndGetLastArg fun args
+        TypeClassOp TensorTypeTC -> normAppList (Builtin p (BuiltinType TensorType)) $ simplifyArgs args
         BuiltinFunction StackTensor -> normAppList (Builtin p (TypeClassOp VecLiteralTC)) $ simplifyArgs args
         BuiltinConstructor Cons -> delabList fun args
         BuiltinType TensorType -> delabTensorType $ simplifyArgs args
-        TypeClassOp FromNatTC {} -> argExpr $ last $ simplifyArgs args
-        TypeClassOp FromRatTC {} -> argExpr $ last $ simplifyArgs args
-        TypeClassOp TensorTypeTC -> normAppList (Builtin p (BuiltinType TensorType)) $ simplifyArgs args
         _ -> normAppList fun $ simplifyArgs args
       _ -> normAppList fun $ simplifyArgs args
+
+simplifyAndGetLastArg :: Expr -> NonEmpty Arg -> Expr
+simplifyAndGetLastArg fun args = case simplifyArgs args of
+  [] -> fun
+  res -> argExpr $ last res
 
 simplifyArgs :: NonEmpty Arg -> [Arg]
 simplifyArgs = fmap clean . NonEmpty.filter (not . wasInserted)

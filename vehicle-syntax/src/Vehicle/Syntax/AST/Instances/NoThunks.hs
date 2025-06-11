@@ -25,7 +25,7 @@ instance NoThunks OrderDomain
 instance NoThunks Quantifier
 
 -- Now Vehicle.Data.Builtin.Linearity
--- instance NoThunks LinearityProvenance
+-- instance NoThunks LinearityProof
 -- instance NoThunks Linearity
 -- instance NoThunks LinearityTypeClass
 

@@ -88,6 +88,24 @@ class DifferentiableLogic(Enum):
         }[self]
 
 
+class QueryFormat(Enum):
+    """
+    The query formats supported by Vehicle.
+    """
+
+    VNNLib = 1
+    Marabou = 2
+    Agda = 3
+
+    @property
+    def _vehicle_option_name(self) -> str:
+        return {
+            QueryFormat.VNNLib: "VNNLibQueries",
+            QueryFormat.Marabou: "MarabouQueries",
+            QueryFormat.Agda: "Agda",
+        }[self]
+
+
 class Verifier(Enum):
     """
     The neural network verifiers supported by Vehicle.
@@ -105,3 +123,33 @@ class Verifier(Enum):
         return {
             Verifier.Marabou: "Marabou",
         }[self]
+
+
+class TypeSystem(Enum):
+    """
+    The type system supported used to check a vehicle specification
+    """
+
+    Standard = 1
+    Polarity = 2
+    Linearity = 3
+
+    @property
+    def _vehicle_option_name(self) -> str:
+        return {
+            TypeSystem.Standard: "Standard",
+            TypeSystem.Polarity: "Polarity",
+            TypeSystem.Linearity: "Linearity",
+        }[self]
+
+
+class ExportTarget(Enum):
+    """
+    The target to export to. Only Agda is currently supported.
+    """
+
+    Agda = 1
+
+    @property
+    def _vehicle_option_name(self) -> str:
+        return {ExportTarget.Agda: "Agda"}[self]

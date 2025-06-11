@@ -14,7 +14,6 @@ data DerivedFunction
   | QuantifyIndex Quantifier
   | QuantifyInList Quantifier
   | CompareRatTensorReduced ComparisonOp
-  | AppendList
   deriving (Eq, Show, Ord, Generic)
 
 instance Pretty DerivedFunction where
@@ -22,7 +21,6 @@ instance Pretty DerivedFunction where
     TypeAnn -> "typeAnn"
     QuantifyIndex q -> pretty q <> "Index"
     QuantifyInList q -> pretty q <> "InList"
-    AppendList -> "appendList"
     CompareRatTensorReduced op -> comparisonOpName op <> "RatTensorReduced"
 
 instance HasIdentifier DerivedFunction where

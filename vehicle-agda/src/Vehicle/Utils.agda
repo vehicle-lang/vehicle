@@ -12,6 +12,7 @@ open import Data.Char.Properties as Char using (_≟_)
 open import Data.String using (String; _++_; lines; toList)
 open import Data.Integer.Base as ℤ using (ℤ; +_; -[1+_])
 open import Data.Nat.Base as ℕ using (ℕ; suc)
+open import Data.Fin using (Fin)
 open import Data.Vec.Base using (Vec; []; _∷_)
 open import Data.Vec.Functional as Vector using (Vector)
 open import Data.Vec.Recursive using (_^_; toVec)
@@ -19,7 +20,6 @@ open import Data.Product using (_,_)
 open import Data.Float.Base using (Float; _≤ᵇ_)
 open import Data.List.Base using ([]; _∷_)
 open import Data.List.Relation.Binary.Infix.Heterogeneous.Properties using (infix?)
-open import Data.Unit.Base using (⊤; tt)
 open import Data.Rational.Base as ℚ using (ℚ; ↥_; ↧_)
 open import Relation.Nullary using (does)
 open import Relation.Binary.Core using (Rel)
@@ -91,10 +91,5 @@ instance
 -- Tensor
 ------------------------------------------------------------------------
 
-{-
-allIndex : (Fin n → Bool) → Bool
-allIndex = ?
-
-existsIndex : (Fin n → Bool) → Bool
-existsIndex = ?
--}
+foreachVector : ∀ {n} {A : Set} → (Fin n → A) → Vector A n
+foreachVector v = v

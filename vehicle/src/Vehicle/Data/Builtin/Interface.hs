@@ -46,7 +46,8 @@ class BuiltinHasBoolLiterals builtin where
 
   accessCompareIndexBuiltin :: Accessor builtin ComparisonOp
   accessCompareNatBuiltin :: Accessor builtin ComparisonOp
-  accessCompareRatTensorBuiltin :: Accessor builtin ComparisonOp
+  accessCompareRatTensorPointwiseBuiltin :: Accessor builtin ComparisonOp
+  accessCompareRatTensorReducedBuiltin :: Accessor builtin ComparisonOp
 
   accessQuantifyRatTensorBuiltin :: Accessor builtin Quantifier
 
@@ -71,6 +72,10 @@ class BuiltinHasListLiterals builtin where
   accessMapListBuiltin :: Accessor builtin ()
   accessFoldListBuiltin :: Accessor builtin ()
 
+class BuiltinHasVectors builtin where
+  accessVecLitBuiltin :: Accessor builtin ()
+  accessAtVectorBuiltin :: Accessor builtin ()
+
 class BuiltinHasTensors builtin where
   accessStackTensorBuiltin :: Accessor builtin ()
   accessConstTensorBuiltin :: Accessor builtin ()
@@ -78,6 +83,7 @@ class BuiltinHasTensors builtin where
 
 class BuiltinHasForeach builtin where
   accessForeachTensorBuiltin :: Accessor builtin ()
+  accessForeachVectorBuiltin :: Accessor builtin ()
 
 class (BuiltinHasTensors builtin) => BuiltinHasRatLiterals builtin where
   accessRatTensorLitBuiltin :: Accessor builtin (Tensor Rational)

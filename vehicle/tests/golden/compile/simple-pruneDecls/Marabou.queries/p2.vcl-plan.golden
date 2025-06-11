@@ -7,104 +7,87 @@
         "queries": {
           "unDisjunctAll": [
             {
-              "variableReconstruction": {
-                "variableStore": [
-                  [
-                    0,
-                    "x",
-                    null
-                  ],
-                  [
-                    1,
-                    "x!0",
-                    null
-                  ],
-                  [
-                    2,
-                    "x!1",
-                    null
-                  ],
-                  [
-                    3,
-                    "g₀[input]",
-                    null
-                  ],
-                  [
-                    4,
-                    "g₀[input]!0",
-                    "x0"
-                  ],
-                  [
-                    5,
-                    "g₀[input]!1",
-                    "x1"
-                  ],
-                  [
-                    6,
-                    "g₀[output]",
-                    null
-                  ],
-                  [
-                    7,
-                    "g₀[output]!0",
-                    "y0"
-                  ]
+              "variableStore": {
+                "vehicleVariableCtx": [
+                  "g₀[output]!0",
+                  "g₀[output]",
+                  "g₀[input]!1",
+                  "g₀[input]!0",
+                  "g₀[input]",
+                  "x!1",
+                  "x!0",
+                  "x"
                 ],
+                "userVariables": [
+                  0
+                ],
+                "queryVariableMapping": {
+                  "y0": 7,
+                  "x1": 5,
+                  "x0": 4
+                }
+              },
+              "variableCompilationTrace": {
                 "reconstructionSteps": [
                   {
-                    "tag": "ReconstructTensor",
+                    "tag": "ReconstructTensorVariable",
                     "contents": [
-                      "OtherVariable",
-                      [
-                        2
-                      ],
                       3,
-                      [
-                        4,
-                        5
-                      ]
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            2
+                          ],
+                          [
+                            4,
+                            5
+                          ]
+                        ]
+                      }
                     ]
                   },
                   {
-                    "tag": "ReconstructTensor",
+                    "tag": "ReconstructTensorVariable",
                     "contents": [
-                      "OtherVariable",
-                      [
-                        1
-                      ],
                       6,
-                      [
-                        7
-                      ]
+                      {
+                        "tag": "ConstantTensor",
+                        "contents": [
+                          [
+                            1
+                          ],
+                          7
+                        ]
+                      }
                     ]
                   },
                   {
-                    "tag": "SolveTensorEquality",
+                    "tag": "SolveEquality",
                     "contents": [
                       0,
                       {
                         "constantValue": {
-                          "value": [
-                            {
-                              "numerator": 0,
-                              "denominator": 1
-                            },
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [
+                              2
+                            ],
                             {
                               "numerator": 0,
                               "denominator": 1
                             }
-                          ],
-                          "tag": "Tensor",
-                          "shape": [
-                            2
                           ]
                         },
-                        "coefficients": {
-                          "3": {
-                            "numerator": 1,
-                            "denominator": 1
-                          }
-                        }
+                        "coefficients": [
+                          [
+                            3,
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
                       }
                     ]
                   }

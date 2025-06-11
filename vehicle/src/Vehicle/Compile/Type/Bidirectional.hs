@@ -322,7 +322,7 @@ createFreshUnificationConstraint p ctx origin expectedType actualType = do
   let env = boundContextToEnv ctx
   normExpectedType <- normaliseInEnv env expectedType
   normActualType <- normaliseInEnv env actualType
-  context <- createFreshConstraintCtx p p ctx
+  context <- createFreshConstraintCtx p ctx
   let unification = Unify origin normExpectedType normActualType
   solveUnificationConstraint (WithContext unification context)
 

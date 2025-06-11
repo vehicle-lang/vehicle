@@ -222,19 +222,20 @@ showExit _ _ = return ()
 
 {-
 showEntry :: (MonadNorm builtin m) => BoundEnv builtin -> Expr builtin -> m ()
-showEntry _boundEnv expr = do
-  -- logDebug MidDetail $ "nbe-entry" <+> prettyFriendly (WithContext expr (fmap fst boundEnv)) <+> "   { boundEnv=" <+> hang 0 (prettyVerbose boundEnv) <+> "}"
-  logDebug MidDetail $ "nbe-entry" <+> prettyVerbose expr -- <+> "   { boundEnv=" <+> prettyVerbose boundEnv <+> "}"
+showEntry boundEnv expr = do
+  logDebug MidDetail $ "nbe-entry" <+> prettyFriendly (WithContext expr (boundEnvToCtx boundEnv))
+  -- logDebug MidDetail $ "nbe-entry" <+> prettyVerbose expr -- <+> "   { boundEnv=" <+> prettyVerbose boundEnv <+> "}"
   incrCallDepth
   return ()
 
 showExit :: (MonadNorm builtin m) => BoundEnv builtin -> Value builtin -> m ()
-showExit _boundEnv result = do
+showExit boundEnv result = do
   decrCallDepth
-  logDebug MidDetail $ "nbe-exit" <+> prettyVerbose result
-  -- logDebug MidDetail $ "nbe-exit" <+> prettyFriendly (WithContext result (fmap fst boundEnv))
+  -- logDebug MidDetail $ "nbe-exit" <+> prettyVerbose result
+  logDebug MidDetail $ "nbe-exit" <+> prettyFriendly (WithContext result (boundEnvToCtx boundEnv))
   return ()
 -}
+
 showApp :: (MonadNorm builtin m) => Value builtin -> Spine builtin -> m ()
 showApp _ _ = return ()
 

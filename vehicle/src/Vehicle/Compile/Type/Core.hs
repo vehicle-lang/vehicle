@@ -51,9 +51,7 @@ instance Pretty ConstraintID where
 data ConstraintContext builtin = ConstraintContext
   { -- | The id for the constraint, used primarily for logging purposes.
     constraintID :: ConstraintID,
-    -- | The original provenance of the constraint
-    originalProvenance :: Provenance,
-    -- | Where the constraint was instantiated
+    -- | Which term in the source code directly caused the constraint to be instantiated
     creationProvenance :: Provenance,
     -- | The set of metas blocking progress on this constraint.
     -- If |Nothing| then the set is unknown.
@@ -69,15 +67,15 @@ instance Pretty (ConstraintContext builtin) where
 -- <+> "<boundCtx=" <> pretty (length (boundContext ctx)) <> ">"
 
 instance HasProvenance (ConstraintContext builtin) where
-  provenanceOf (ConstraintContext _ _ creationProvenance _ _) = creationProvenance
+  provenanceOf (ConstraintContext _ creationProvenance _ _) = creationProvenance
 
 instance HasBoundCtx (ConstraintContext builtin) (Type builtin) where
   boundContextOf = boundContext
 
 blockCtxOn :: MetaSet -> ConstraintContext builtin -> ConstraintContext builtin
-blockCtxOn metas (ConstraintContext cid originProv creationProv _ ctx) =
+blockCtxOn metas (ConstraintContext cid creationProv _ ctx) =
   let status = BlockingStatus (Just metas)
-   in ConstraintContext cid originProv creationProv status ctx
+   in ConstraintContext cid creationProv status ctx
 
 updateConstraintBoundCtx ::
   ConstraintContext builtin ->

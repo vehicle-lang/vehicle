@@ -92,6 +92,21 @@ instance IsArgs IndexComparisonArgs where
         mkExpr = \(IndexCompArgs n1 n2 x y) -> [n1, n2, explicit x, explicit y]
       }
 
+-- | Arguments for vector op operations
+data VectorOp1Args expr = VectorOp1Args
+  { vectorOp1Dim :: GenericArg expr,
+    vectorOp1Arg :: expr
+  }
+
+instance IsArgs VectorOp1Args where
+  accessSpine =
+    Access
+      { getExpr = \case
+          [d, x] -> Just $ VectorOp1Args d (argExpr x)
+          _ -> Nothing,
+        mkExpr = \(VectorOp1Args d x) -> [d, explicit x]
+      }
+
 -- | Arguments for unary tensor operations (e.g. -, not)
 data TensorOp1Args expr = TensorOp1Args
   { tensorOp1Dims :: GenericArg expr,
@@ -146,8 +161,40 @@ instance IsArgs IfArgs where
 traverseIfArgBranches :: (Applicative f) => (t -> f t) -> IfArgs t -> f (IfArgs t)
 traverseIfArgBranches f (IfArgs t c x y) = IfArgs t c <$> f x <*> f y
 
+data VecLitArgs expr = VecLitArgs
+  { vecLitType :: GenericArg expr,
+    vecLitDim :: expr,
+    vecLitElements :: [expr]
+  }
+
+instance IsArgs VecLitArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          t : d : xs -> Just $ VecLitArgs t (argExpr d) (fmap argExpr xs)
+          _ -> Nothing,
+        mkExpr = \(VecLitArgs t d xs) -> t : implicitIrrelevant d : fmap explicit xs
+      }
+
 -- | Arguments for `!`
-data AtArgs expr = AtArgs
+data AtVectorArgs expr = AtVectorArgs
+  { atType :: GenericArg expr,
+    atDim :: GenericArg expr,
+    atVector :: expr,
+    atIndex :: expr
+  }
+
+instance IsArgs AtVectorArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          [t, d, xs, i] -> Just $ AtVectorArgs t d (argExpr xs) (argExpr i)
+          _ -> Nothing,
+        mkExpr = \(AtVectorArgs t d xs i) -> [t, d, explicit xs, explicit i]
+      }
+
+-- | Arguments for `!`
+data AtTensorArgs expr = AtTensorArgs
   { atType :: GenericArg expr,
     atFirstDim :: GenericArg expr,
     atRemainingDims :: GenericArg expr,
@@ -155,13 +202,13 @@ data AtArgs expr = AtArgs
     atIndex :: expr
   }
 
-instance IsArgs AtArgs where
+instance IsArgs AtTensorArgs where
   accessSpine =
     Access
       { getExpr = \case
-          [t, d, ds, xs, i] -> Just $ AtArgs t d ds (argExpr xs) (argExpr i)
+          [t, d, ds, xs, i] -> Just $ AtTensorArgs t d ds (argExpr xs) (argExpr i)
           _ -> Nothing,
-        mkExpr = \(AtArgs t d ds xs i) -> [t, d, ds, explicit xs, explicit i]
+        mkExpr = \(AtTensorArgs t d ds xs i) -> [t, d, ds, explicit xs, explicit i]
       }
 
 -- | Arguments for `ConstTensor`
@@ -213,21 +260,37 @@ traverseStackTensorElements f StackTensorArgs {..} = do
   stackElements' <- traverse f stackElements
   return $ StackTensorArgs {stackElements = stackElements', ..}
 
--- | Arguments for `Forfach`
-data ForeachArgs expr = ForeachArgs
-  { foreachType :: GenericArg expr,
-    foreachFirstDim :: expr,
-    foreachRemainingDims :: GenericArg expr,
-    foreachFn :: expr
+-- | Arguments for `ForeachTensor`
+data ForeachTensorArgs expr = ForeachTensorArgs
+  { foreachTensorType :: GenericArg expr,
+    foreachTensorFirstDim :: expr,
+    foreachTensorRemainingDims :: GenericArg expr,
+    foreachTensorFn :: expr
   }
 
-instance IsArgs ForeachArgs where
+instance IsArgs ForeachTensorArgs where
   accessSpine =
     Access
       { getExpr = \case
-          [t, d, ds, fn] -> Just $ ForeachArgs t (argExpr d) ds (argExpr fn)
+          [t, d, ds, fn] -> Just $ ForeachTensorArgs t (argExpr d) ds (argExpr fn)
           _ -> Nothing,
-        mkExpr = \(ForeachArgs t d ds fn) -> [t, implicit d, ds, explicit fn]
+        mkExpr = \(ForeachTensorArgs t d ds fn) -> [t, implicit d, ds, explicit fn]
+      }
+
+-- | Arguments for `ForeachVector`
+data ForeachVectorArgs expr = ForeachVectorArgs
+  { foreachVectorType :: GenericArg expr,
+    foreachVectorDim :: expr,
+    foreachVectorFn :: expr
+  }
+
+instance IsArgs ForeachVectorArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          [t, d, fn] -> Just $ ForeachVectorArgs t (argExpr d) (argExpr fn)
+          _ -> Nothing,
+        mkExpr = \(ForeachVectorArgs t d fn) -> [t, implicit d, explicit fn]
       }
 
 -- | Arguments for `FromNat`
@@ -333,7 +396,7 @@ instance IsArgs IterateArgs where
 newtype NetworkAppArgs expr = NetworkAppArgs
   { networkAppArg :: expr
   }
-  deriving (Generic, Eq)
+  deriving (Generic, Show, Eq)
 
 instance (Hashable expr) => Hashable (NetworkAppArgs expr)
 
@@ -439,8 +502,11 @@ accessCompareIndex = accessOpAndArgs accessCompareIndexBuiltin
 accessCompareNat :: (HasBoolExpr expr builtin) => NatComparisonAccessor (expr builtin) ComparisonOp
 accessCompareNat = accessOpAndArgs accessCompareNatBuiltin
 
-accessCompareRatTensor :: (HasBoolExpr expr builtin) => RatTensorComparisonAccessor (expr builtin) ComparisonOp
-accessCompareRatTensor = accessOpAndArgs accessCompareRatTensorBuiltin
+accessCompareRatTensorPointwise :: (HasBoolExpr expr builtin) => RatTensorComparisonAccessor (expr builtin) ComparisonOp
+accessCompareRatTensorPointwise = accessOpAndArgs accessCompareRatTensorPointwiseBuiltin
+
+accessCompareRatTensorReduced :: (HasBoolExpr expr builtin) => RatTensorComparisonAccessor (expr builtin) ComparisonOp
+accessCompareRatTensorReduced = accessOpAndArgs accessCompareRatTensorReducedBuiltin
 
 accessQuantifyRatTensor :: (HasBoolExpr expr builtin) => Accessor (expr builtin) (Quantifier, GenericArg (expr builtin), expr builtin)
 accessQuantifyRatTensor =
@@ -651,6 +717,31 @@ getDims v = case getDimsExprs v of
   Right xs -> traverse getDim xs
 
 --------------------------------------------------------------------------------
+-- Vector
+
+type HasVectorExpr expr builtin =
+  ( HasBuiltinConstructor expr,
+    BuiltinHasVectors builtin,
+    BuiltinHasNatLiterals builtin
+  )
+
+accessVecLit :: (HasVectorExpr expr builtin) => Accessor (expr builtin) (VecLitArgs (expr builtin))
+accessVecLit = accessArgs accessVecLitBuiltin
+
+accessAtVector :: (HasVectorExpr expr builtin) => Accessor (expr builtin) (AtVectorArgs (expr builtin))
+accessAtVector = accessArgs accessAtVectorBuiltin
+
+accessForeachVector ::
+  (HasBuiltinConstructor expr, BuiltinHasForeach builtin) =>
+  Accessor (expr builtin) (ForeachVectorArgs (expr builtin))
+accessForeachVector = accessArgs accessForeachVectorBuiltin
+
+pattern IVecLiteral :: (HasVectorExpr expr builtin) => GenericArg (expr builtin) -> expr builtin -> [expr builtin] -> expr builtin
+pattern IVecLiteral t d xs <- (getExpr accessVecLit -> Just (VecLitArgs t d xs))
+  where
+    IVecLiteral t d xs = mkExpr accessVecLit (VecLitArgs t d xs)
+
+--------------------------------------------------------------------------------
 -- Tensors
 
 type HasTensorExpr expr builtin =
@@ -666,12 +757,12 @@ accessStackTensor = accessArgs accessStackTensorBuiltin
 accessConstTensor :: (HasTensorExpr expr builtin) => Accessor (expr builtin) (ConstTensorArgs (expr builtin))
 accessConstTensor = accessArgs accessConstTensorBuiltin
 
-accessAtTensor :: (HasTensorExpr expr builtin) => Accessor (expr builtin) (AtArgs (expr builtin))
+accessAtTensor :: (HasTensorExpr expr builtin) => Accessor (expr builtin) (AtTensorArgs (expr builtin))
 accessAtTensor = accessArgs accessAtTensorBuiltin
 
 accessForeachTensor ::
   (HasBuiltinConstructor expr, BuiltinHasForeach builtin) =>
-  Accessor (expr builtin) (ForeachArgs (expr builtin))
+  Accessor (expr builtin) (ForeachTensorArgs (expr builtin))
 accessForeachTensor = accessArgs accessForeachTensorBuiltin
 
 accessIterate ::

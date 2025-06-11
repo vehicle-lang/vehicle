@@ -26,8 +26,7 @@ import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
-import Vehicle.Data.Tensor (TensorShape)
-import Vehicle.Syntax.Tensor (Tensor (..), TensorValue (..))
+import Vehicle.Data.Tensor as Tensor (Tensor, TensorShape, fromVector, mapTensor)
 
 -- | Reads the IDX dataset from the provided file, checking that the user type
 -- matches the type of the stored data.
@@ -179,8 +178,8 @@ doubleElemParser ::
   ElemParser m Double
 doubleElemParser decl datasetType file dims values expectedElementType =
   case toTypeValue expectedElementType of
-    VRatType {} ->
-      return $ IRatTensor (toRational <$> Tensor dims (Values $ V.convert values))
+    VRatType {} -> do
+      return $ IRatTensor (mapTensor toRational (toTensor dims values))
     _ -> do
       throwError $ DatasetTypeMismatch decl file datasetType expectedElementType "Rat"
 
@@ -196,12 +195,12 @@ intElemParser decl datasetType file dims values expectedElementType = do
     VIndexType (INatLiteral n) -> do
       let invalid = Vector.filter (\value -> value < 0 || value >= n) values
       if Vector.null invalid
-        then return $ IIndexTensor (Tensor dims (Values $ V.convert values))
+        then return $ IIndexTensor (toTensor dims values)
         else throwError $ DatasetInvalidIndex decl file (Vector.head invalid) n
     VNatType {} -> do
       let invalid = Vector.filter (< 0) values
       if Vector.null invalid
-        then return $ INatTensor (Tensor dims (Values $ V.convert values))
+        then return $ INatTensor (toTensor dims values)
         else throwError $ DatasetInvalidNat decl file (Vector.head invalid)
     _ ->
       throwError $ DatasetTypeMismatch decl file datasetType expectedElementType "Int"
@@ -212,6 +211,9 @@ partitionData dim dims content = do
   let entrySize = product dims
   i <- [0 .. dim - 1]
   return $ Vector.slice (i * entrySize) entrySize content
+
+toTensor :: (Eq a, Vector.Unbox a) => TensorShape -> Vector a -> Tensor a
+toTensor shape values = Tensor.fromVector shape (V.convert values)
 
 variableSizeError :: (MonadCompile m) => ParseContext m a -> Value Builtin -> m b
 variableSizeError (decl, _, expectedDatasetType, _, _) dim =

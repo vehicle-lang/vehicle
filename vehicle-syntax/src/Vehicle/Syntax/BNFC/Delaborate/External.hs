@@ -200,7 +200,6 @@ delabDerivedFunction fun args = case fun of
   V.TypeAnn -> delabInfixOp2 B.Ann tokElemOf (reverse args)
   V.QuantifyIndex q -> delabTypeClassOp (V.QuantifierTC q) args
   V.QuantifyInList q -> delabQuantifierIn q args
-  V.AppendList -> cheatDelabPretty fun args
   V.CompareRatTensorReduced op -> delabTypeClassOp (V.CompareTC op) args
 
 delabBuiltinFunction :: (MonadDelab m) => V.BuiltinFunction -> [V.Arg] -> m B.Expr
@@ -228,16 +227,18 @@ delabBuiltinFunction fun args = case fun of
   V.CompareNat op -> delabTypeClassOp (V.CompareTC op) args
   V.FoldList -> delabTypeClassOp V.FoldTC args
   V.MapList -> delabTypeClassOp V.MapTC args
-  V.At -> delabInfixOp2 B.At tokAt args
-  V.Foreach -> delabForeach args
+  V.AtTensor -> delabInfixOp2 B.At tokAt args
+  V.AtVector -> delabInfixOp2 B.At tokAt args
+  V.ForeachTensor -> delabForeach args
+  V.ForeachVector -> delabForeach args
   V.ReduceAndTensor -> delabApp (B.ReduceAnd tokReduceAnd) args
   V.ReduceOrTensor -> delabApp (B.ReduceOr tokReduceOr) args
   -- Builtins not yet in the surface syntax.
   V.PowRat -> rawDelab
-  V.ReduceAddRatTensor -> rawDelab
-  V.ReduceMulRatTensor -> rawDelab
-  V.ReduceMaxRatTensor -> rawDelab
-  V.ReduceMinRatTensor -> rawDelab
+  V.ReduceAddRatTensor -> delabApp (B.ReduceAdd tokReduceAdd) args
+  V.ReduceMulRatTensor -> delabApp (B.ReduceMul tokReduceMul) args
+  V.ReduceMaxRatTensor -> delabApp (B.ReduceMax tokReduceMax) args
+  V.ReduceMinRatTensor -> delabApp (B.ReduceMin tokReduceMin) args
   V.StackTensor {} -> rawDelab
   V.ConstTensor -> rawDelab
   V.Iterate -> rawDelab
@@ -252,6 +253,7 @@ delabBuiltinType fun args = case fun of
   V.IndexType -> delabApp (B.Index tokIndex) args
   V.NatType -> delabApp (B.Nat tokNat) args
   V.ListType -> delabApp (B.List tokList) args
+  V.VectorType -> delabApp (B.Vector tokVector) args
   V.TensorType -> delabApp (B.Tensor tokTensor) args
 
 delabTypeClass :: (MonadDelab m) => V.TypeClass -> [V.Arg] -> m B.Expr
@@ -276,8 +278,9 @@ delabConstructor fun args = case fun of
   V.Nil -> delabApp (B.Nil tokNil) args
   V.UnitLiteral -> return $ B.Literal B.UnitLiteral
   V.NatLiteral x -> return $ B.Literal $ B.NatLiteral $ delabNatLit x
-  V.NatTensorLiteral t -> cheatDelabPretty t []
   V.IndexLiteral x -> return $ B.Literal $ B.NatLiteral $ delabNatLit x
+  V.VectorLiteral -> delabVecLiteral args
+  V.NatTensorLiteral t -> cheatDelabPretty t []
   V.IndexTensorLiteral t -> cheatDelabPretty t []
   V.RatTensorLiteral t -> cheatDelabPretty t []
   V.BoolTensorLiteral t -> cheatDelabPretty t []
@@ -301,6 +304,8 @@ delabTypeClassOp op args = case op of
     V.Gt -> delabInfixOp2 B.Gt tokGt args
   V.MapTC -> delabApp (B.Map tokMap) args
   V.FoldTC -> delabApp (B.Fold tokFold) args
+  V.AtTC -> delabInfixOp2 B.At tokAt args
+  V.ForeachTC -> delabForeach args
   V.QuantifierTC q -> delabQuantifier q args
   V.TensorTypeTC -> cheatDelabPretty op args
 
@@ -399,7 +404,7 @@ delabForeach args = case reverse args of
     binders' <- traverse delabNameBinder (binder : foldedBinders)
     body' <- delabM foldedBody
     return $ B.Foreach tokForeach binders' tokDot body'
-  _ -> cheatDelabPretty V.Foreach args
+  _ -> cheatDelabPretty V.ForeachTC args
 
 delabAnn :: B.TokAnnotation -> [B.DeclAnnOption] -> B.Decl
 delabAnn name [] = B.DefAnn name B.DeclAnnWithoutOpts

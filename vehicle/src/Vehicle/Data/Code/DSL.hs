@@ -3,7 +3,7 @@ module Vehicle.Data.Code.DSL where
 import Data.List.NonEmpty (NonEmpty (..))
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.DSL
-import Vehicle.Data.Tensor (Tensor (..), pattern ZeroDimTensor)
+import Vehicle.Data.Tensor as T (Tensor, shapeOf, pattern ZeroDimTensor)
 import Vehicle.Prelude
 import Vehicle.Syntax.Builtin
 import Prelude hiding (pi)
@@ -27,6 +27,12 @@ tTensorRaw = builtinType TensorType
 
 tTensor :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 tTensor tElem ds = tTensorRaw @@ [tElem] .@@ [ds]
+
+tVector :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+tVector tElem d = builtinType VectorType @@ [tElem] .@@ [d]
+
+tVectorRaw :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin
+tVectorRaw = builtinType VectorType
 
 tListRaw :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin
 tListRaw = builtinType ListType
@@ -80,7 +86,7 @@ unitLit :: (BuiltinHasStandardData builtin) => DSLExpr builtin
 unitLit = builtinConstructor UnitLiteral
 
 shapeOf :: (BuiltinHasStandardData builtin, BuiltinHasStandardTypes builtin) => Tensor a -> DSLExpr builtin
-shapeOf t = foldr (\x xs -> cons tNat (natLit x) xs) (nil tNat) (tensorShape t)
+shapeOf t = foldr (\x xs -> cons tNat (natLit x) xs) (nil tNat) (T.shapeOf t)
 
 --------------------------------------------------------------------------------
 -- Functions DSL
@@ -132,6 +138,12 @@ hasDiv = numOp2TypeClass HasDiv
 
 hasNeg :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 hasNeg t1 t2 = typeClass HasNeg [t1, t2]
+
+hasAt :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+hasAt tCont tInd tRes = typeClass HasAt [tCont, tInd, tRes]
+
+hasForeach :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+hasForeach tInd tElem tRes = typeClass HasForeach [tInd, tElem, tRes]
 
 hasMap :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
 hasMap tCont = typeClass HasMap [tCont]

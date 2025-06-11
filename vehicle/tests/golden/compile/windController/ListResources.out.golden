@@ -1,0 +1,7 @@
+[
+  {
+    "entityType": "InputVector -> OutputVector",
+    "entitySort": "@network",
+    "entityName": "controller"
+  }
+]

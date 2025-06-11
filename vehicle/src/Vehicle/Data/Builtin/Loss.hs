@@ -274,7 +274,7 @@ instance NormalisableBuiltin LossBuiltin where
       ReduceMulRatTensor -> Simple evalReduceMulRatTensor
       ReduceMinRatTensor -> Simple evalReduceMinRatTensor
       ReduceMaxRatTensor -> Simple evalReduceMaxRatTensor
-      At -> Simple evalAt
+      At -> Simple evalAtTensor
       StackTensor -> Simple evalStackTensor
       ConstTensor -> Simple evalConstTensor
       FoldList -> NonSimple evalFoldList
@@ -282,7 +282,7 @@ instance NormalisableBuiltin LossBuiltin where
       SearchRatTensor {} -> None
     _ -> None
 
-  blockingArgs = developerError "Blocking arguments not yet implemented for LossBuiltin"
+  blockingStatus = developerError "Blocking arguments not yet implemented for LossBuiltin"
 
   isTypeClassOp _ = False
 
@@ -341,4 +341,5 @@ instance ConvertableBuiltin LossBuiltin Builtin where
     LossBuiltinFunction op -> convertBuiltin p op
 
 instance PrintableBuiltin LossBuiltin where
-  coercionArgs _ = Nothing
+  coercionArgs = const Nothing
+  isDerivedBuiltin = const Nothing

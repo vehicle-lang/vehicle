@@ -5,15 +5,18 @@ module Vehicle.Data.Builtin.Interface.Normalise where
 
 import Control.Applicative ((<|>))
 import Control.Monad (foldM, zipWithM)
-import Control.Monad.Writer (Any (..), MonadWriter (..), execWriterT)
+import Control.Monad.Writer (execWriterT)
+import Control.Monad.Writer.Class
 import Data.Maybe (fromMaybe, isJust)
+import Data.Semigroup (Any (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Interface
+import Vehicle.Data.Builtin.Interface.Blocked
 import Vehicle.Data.Builtin.Interface.Print (PrintableBuiltin)
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
-import Vehicle.Data.Tensor (Tensor, at, foldTensor, stack, unstack, zipWithTensor, pattern ConstantTensor, pattern ZeroDimTensor)
+import Vehicle.Data.Tensor (Tensor, at, foldTensor, mapTensor, stack, unstack, zipWithTensor, pattern ConstantTensor, pattern ZeroDimTensor)
 
 -- Okay so the important thing to remember about this module is that we have
 -- a variety of different typing schemes for builtins (standard, polarity,
@@ -51,7 +54,7 @@ data EvalScheme builtin m
 -- | A type-class for builtins that can be normalised compositionally.
 class (PrintableBuiltin builtin) => NormalisableBuiltin builtin where
   evalScheme :: (MonadLogger m) => builtin -> EvalScheme builtin m
-  blockingArgs :: builtin -> BlockingArgs
+  blockingStatus :: builtin -> Spine builtin -> BlockingStatus builtin
   isTypeClassOp :: builtin -> Bool
   isCast :: (MonadLogger m) => Provenance -> builtin -> Maybe ([GenericArg (Expr builtin)] -> m (Expr builtin))
 
@@ -113,7 +116,7 @@ evalNonSimple evalApp accessBuiltin eval args = do
 
 evalTensorOp1 ::
   forall builtin a m.
-  (MonadNormBuiltin m, HasTensorExpr Value builtin) =>
+  (MonadNormBuiltin m, HasTensorExpr Value builtin, Eq a) =>
   Accessor builtin () ->
   Accessor (Value builtin) (Tensor a) ->
   (a -> a) ->
@@ -124,7 +127,7 @@ evalTensorOp1 accessBuiltinOp accessLit op args =
     eval :: EvalSimplePartial TensorOp1Args builtin m
     eval = \case
       TensorOp1Args _ds (getExpr accessLit -> Just t) ->
-        Just $ return $ mkExpr accessLit $ fmap op t
+        Just $ return $ mkExpr accessLit $ mapTensor op t
       TensorOp1Args (argExpr -> ICons _ d _) (getExpr accessConstTensor -> Just xs) ->
         Just $ mkExpr accessConstTensor <$> traverseConstTensorValue (evalFull d) xs
       TensorOp1Args (argExpr -> ICons _ d _) (getExpr accessStackTensor -> Just xs) ->
@@ -225,6 +228,8 @@ evalReduceTensor accessReductionOp accessLit evalOp2 op2 args =
         Just $ return $ mkExpr accessLit $ foldTensor op2 e xs
       TensorOp2Args (argExpr -> ICons _ _ ds) e (getExpr accessStackTensor -> Just xs) ->
         Just $ foldM (foldFn e (implicitIrrelevant ds)) e (stackElements xs)
+      TensorOp2Args (argExpr -> INil _) _e xs ->
+        Just $ return xs
       _ -> Nothing
 
     evalFull :: VArg builtin -> Value builtin -> Value builtin -> m (Value builtin)
@@ -374,7 +379,7 @@ evalPowRat ::
   (MonadNormBuiltin m, HasRatExpr Value builtin, BuiltinHasNatLiterals builtin) =>
   EvalSimple TensorOp2Args Value builtin m
 evalPowRat = \case
-  TensorOp2Args _ (IRatTensor xs) (INatLiteral n) -> return $ IRatTensor (fmap (^^ n) xs)
+  TensorOp2Args _ (IRatTensor xs) (INatLiteral n) -> return $ IRatTensor (mapTensor (^^ n) xs)
   args -> return $ mkExpr accessPowRatTensor args
 
 evalReduceAddRatTensor :: (MonadNormBuiltin m, HasRatExpr Value builtin, PrintableBuiltin builtin) => EvalSimple TensorReductionArgs Value builtin m
@@ -395,7 +400,7 @@ evalCompareRatTensor ::
   EvalSimple TensorOp2Args Value builtin m
 evalCompareRatTensor op =
   evalHeteroTensorOp2
-    (mkExpr accessCompareRatTensorBuiltin op)
+    (mkExpr accessCompareRatTensorPointwiseBuiltin op)
     accessRatTensorLiteral
     accessBoolTensorLiteral
     (comparisonOp op)
@@ -403,6 +408,19 @@ evalCompareRatTensor op =
     Nothing
     Nothing
     Nothing
+
+-----------------------------------------------------------------------------
+-- Generic vector operations
+
+evalAtVector ::
+  forall builtin m.
+  (MonadNormBuiltin m, BuiltinHasIndexLiterals builtin, HasVectorExpr Value builtin) =>
+  EvalSimple AtVectorArgs Value builtin m
+evalAtVector args@(AtVectorArgs _t _d vector index) = do
+  fromMaybe (return $ mkExpr accessAtVector args) $
+    case (vector, index) of
+      (IVecLiteral _t _d xs, IIndexLiteral i) -> Just $ return $ xs !! i
+      _ -> Nothing
 
 -----------------------------------------------------------------------------
 -- Generic tensor operations
@@ -425,11 +443,11 @@ class HasPrimitives builtin where
   tensorOp1s :: (MonadNormBuiltin m) => [TensorOp1EvalData builtin m]
   tensorOp2s :: (MonadNormBuiltin m) => [TensorOp2EvalData builtin m]
 
-evalAt ::
+evalAtTensor ::
   forall builtin m.
   (MonadNormBuiltin m, HasPrimitives builtin, BuiltinHasListLiterals builtin, BuiltinHasIndexLiterals builtin, HasTensorExpr Value builtin) =>
-  EvalSimple AtArgs Value builtin m
-evalAt args@(AtArgs t d ds tensor index) = do
+  EvalSimple AtTensorArgs Value builtin m
+evalAtTensor args@(AtTensorArgs t d ds tensor index) = do
   fromMaybe (return $ mkExpr accessAtTensor args) $
     goOp1 tensorOp1s
       <|> goOp2 tensorOp2s
@@ -443,7 +461,7 @@ evalAt args@(AtArgs t d ds tensor index) = do
         _ -> Nothing
   where
     recEvalAt :: Value builtin -> m (Value builtin)
-    recEvalAt ys = evalAt (AtArgs t d ds ys index)
+    recEvalAt ys = evalAtTensor (AtTensorArgs t d ds ys index)
 
     goOp1 :: [TensorOp1EvalData builtin m] -> Maybe (m (Value builtin))
     goOp1 = \case
@@ -518,16 +536,27 @@ evalConstTensor args@(ConstTensorArgs _t xs ds) =
           _ -> developerError "Non-zero dimensional tensor argument for ConstTensor"
         Nothing -> go dims prims
 
-evalForeach ::
+evalForeachTensor ::
   (MonadLogger m, HasPrimitives builtin, HasTensorExpr Value builtin, BuiltinHasNatLiterals builtin, BuiltinHasIndexLiterals builtin, BuiltinHasForeach builtin) =>
   EvalApp builtin m ->
-  ForeachArgs (Value builtin) ->
+  ForeachTensorArgs (Value builtin) ->
   m (Value builtin)
-evalForeach evalApp args@(ForeachArgs t d ds f) = case d of
+evalForeachTensor evalApp args@(ForeachTensorArgs t d ds f) = case d of
   INatLiteral n -> do
     xs <- traverse (\i -> evalApp f [explicit (IIndexLiteral i)]) [0 .. (n - 1 :: Int)]
     evalStackTensor (StackTensorArgs t d ds xs)
   _ -> return $ mkExpr accessForeachTensor args
+
+evalForeachVector ::
+  (MonadLogger m, HasPrimitives builtin, HasVectorExpr Value builtin, BuiltinHasNatLiterals builtin, BuiltinHasIndexLiterals builtin, BuiltinHasForeach builtin) =>
+  EvalApp builtin m ->
+  ForeachVectorArgs (Value builtin) ->
+  m (Value builtin)
+evalForeachVector evalApp args@(ForeachVectorArgs t d f) = case d of
+  INatLiteral n -> do
+    xs <- traverse (\i -> evalApp f [explicit (IIndexLiteral i)]) [0 .. (n - 1 :: Int)]
+    return $ IVecLiteral t d xs
+  _ -> return $ mkExpr accessForeachVector args
 
 evalIterate ::
   (MonadLogger m, BuiltinHasNatLiterals builtin, BuiltinHasIterate builtin) =>
@@ -541,107 +570,7 @@ evalIterate evalApp args@(IterateArgs t f n e) = case n of
     evalApp f [explicit recFn, explicit e]
   _ -> return $ mkExpr accessIterate args
 
------------------------------------------------------------------------------
--- Blocking arguments
-
-type BlockingArguments builtin = [Value builtin]
-
-data BlockingArgs
-  = Unknown
-  | Known [Int]
-  deriving (Eq)
-
-noBlockingArgs :: BlockingArgs
-noBlockingArgs = Known []
-
-blockingArgsNot :: BlockingArgs
-blockingArgsNot = Known [1]
-
-blockingArgsAnd :: BlockingArgs
-blockingArgsAnd = Known [1, 2]
-
-blockingArgsOr :: BlockingArgs
-blockingArgsOr = Known [1, 2]
-
-blockingArgsNeg :: NegDomain -> BlockingArgs
-blockingArgsNeg = \case
-  NegRatTensor -> Known [1]
-
-blockingArgsAdd :: AddDomain -> BlockingArgs
-blockingArgsAdd = \case
-  AddNat -> Known [0, 1]
-  AddRatTensor -> Known [1, 2]
-
-blockingArgsMul :: MulDomain -> BlockingArgs
-blockingArgsMul = \case
-  MulNat -> Known [0, 1]
-  MulRatTensor -> Known [1, 2]
-
-blockingArgsSub :: SubDomain -> BlockingArgs
-blockingArgsSub = \case
-  SubRatTensor -> Known [1, 2]
-
-blockingArgsDiv :: DivDomain -> BlockingArgs
-blockingArgsDiv = \case
-  DivRatTensor -> Known [1, 2]
-
-blockingArgsMin :: MinDomain -> BlockingArgs
-blockingArgsMin = \case
-  MinRatTensor -> Known [1, 2]
-
-blockingArgsMax :: MaxDomain -> BlockingArgs
-blockingArgsMax = \case
-  MaxRatTensor -> Known [1, 2]
-
-functionBlockingArgs :: BuiltinFunction -> BlockingArgs
-functionBlockingArgs = \case
-  QuantifyRatTensor {} -> noBlockingArgs
-  Not -> blockingArgsNot
-  And -> blockingArgsAnd
-  Or -> blockingArgsOr
-  Neg dom -> blockingArgsNeg dom
-  Add dom -> blockingArgsAdd dom
-  Sub dom -> blockingArgsSub dom
-  Mul dom -> blockingArgsMul dom
-  Div dom -> blockingArgsDiv dom
-  Min dom -> blockingArgsMin dom
-  Max dom -> blockingArgsMax dom
-  PowRat -> Known [0, 1]
-  CompareIndex _op -> Known [2, 3]
-  CompareNat _op -> Known [0, 1]
-  CompareRatTensorPointwise _op -> Known [1, 2]
-  If -> Known [1]
-  At -> Known [3, 4]
-  FoldList -> Known [4]
-  MapList -> Known [3]
-  Implies -> noBlockingArgs
-  ConstTensor -> Known [0, 1]
-  ReduceAddRatTensor -> Known [1]
-  ReduceMulRatTensor -> Known [1]
-  ReduceMinRatTensor -> Known [1]
-  ReduceMaxRatTensor -> Known [1]
-  ReduceOrTensor -> Known [1]
-  ReduceAndTensor -> Known [1]
-  Foreach -> Known [1]
-  Iterate -> Known [2]
-  StackTensor -> Unknown
-
-derivedFunctionBlockingArgs :: DerivedFunction -> BlockingArgs
-derivedFunctionBlockingArgs = \case
-  TypeAnn -> noBlockingArgs
-  QuantifyIndex {} -> Known [0]
-  QuantifyInList {} -> Known [2]
-  CompareRatTensorReduced {} -> Known [1, 2]
-  AppendList -> Known [1, 2]
-
-castBlockingArgs :: BuiltinCast -> BlockingArgs
-castBlockingArgs = \case
-  FromVectorToList -> Known [1]
-  FromNat FromNatToIndex -> Known [1]
-  FromNat FromNatToNat -> Known [0]
-  FromNat FromNatToRat -> Known [0]
-  FromRat FromRatToRat -> noBlockingArgs
-
+{-
 traverseBlockingArgs ::
   forall m builtin.
   (MonadLogger m, NormalisableBuiltin builtin) =>
@@ -649,25 +578,9 @@ traverseBlockingArgs ::
   builtin ->
   Spine builtin ->
   m (Spine builtin)
-traverseBlockingArgs f b spine = case blockingArgs b of
-  Unknown -> traverseSpine f spine
-  Known xs -> recurse spine 0 xs
-  where
-    recurse ::
-      Spine builtin ->
-      Int ->
-      [Int] ->
-      m (Spine builtin)
-    recurse [] _currentIndex _blockingArgs = return []
-    recurse args _currentIndex [] = return args
-    recurse (arg : args) currentIndex (blockingIndex : blockingIndices)
-      | currentIndex == blockingIndex = do
-          arg' <- traverse f arg
-          args' <- recurse args (currentIndex + 1) blockingIndices
-          return $ arg' : args'
-      | otherwise = do
-          args' <- recurse args (currentIndex + 1) (blockingIndex : blockingIndices)
-          return $ arg : args'
+traverseBlockingArgs f b spine =
+  traverseArgsAtIndices f spine 0 (blockingArgs b spine)
+  -}
 
 isValueBlocked ::
   (NormalisableBuiltin builtin) =>
@@ -678,11 +591,15 @@ isValueBlocked v = do
   let blocked = case v of
         VUniverse {} -> False
         VMeta {} -> True
-        VFreeVar {} -> False
-        VBoundVar {} -> False
+        VFreeVar {} -> True
+        VBoundVar {} -> True
         VLam {} -> False
         VPi {} -> False
-        VBuiltin b _ -> blockingArgs b /= noBlockingArgs
+        VBuiltin b spine -> case blockingStatus b spine of
+          InsufficientArgs -> True
+          DoesNotReduce -> False
+          AlwaysReduces -> False
+          Blocked {} -> True
   tell (Any blocked)
   return v
 
@@ -692,6 +609,10 @@ isBlocked ::
   builtin ->
   Spine builtin ->
   m Bool
-isBlocked b args = do
-  u <- execWriterT @m $ traverseBlockingArgs isValueBlocked b args
-  return $ getAny u
+isBlocked b spine = case blockingStatus b spine of
+  InsufficientArgs -> return True
+  DoesNotReduce -> return False
+  AlwaysReduces -> return False
+  Blocked traverseBlockedArgs -> do
+    u <- execWriterT @m $ traverseBlockedArgs isValueBlocked
+    return $ getAny u

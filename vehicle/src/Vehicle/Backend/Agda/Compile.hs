@@ -24,9 +24,11 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Data.Builtin.Decidability
+import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Standard (BuiltinType (..))
 import Vehicle.Data.Builtin.Standard hiding (TensorType)
 import Vehicle.Data.Code.Expr ()
+import Vehicle.Data.Code.Interface (IsArgs (..), VecLitArgs (..))
 import Vehicle.Data.Universe (UniverseLevel (..))
 import Vehicle.Syntax.Sugar
 import Vehicle.Syntax.Tensor (Tensor, TensorShape, foldMapTensor)
@@ -429,7 +431,6 @@ compileDerivedFunction fn args = case fn of
   QuantifyIndex q -> case q of
     Exists -> annotateApp [VehicleUtils] Nothing "existsIndex" args
     Forall -> annotateApp [VehicleUtils] Nothing "forallIndex" args
-  AppendList -> annotateInfixApp [DataList] 5 Nothing "_++_" args
   QuantifyInList q -> case q of
     Exists -> annotateApp [DataList] (Just listQualifier) "any" args
     Forall -> annotateApp [DataList] (Just listQualifier) "all" args
@@ -456,13 +457,14 @@ compileBuiltinType ::
   [Arg DecidabilityBuiltin] ->
   m Code
 compileBuiltinType t args = case t of
-  BoolType -> return $ compileType (UniverseLevel 0)
-  RatType -> return $ annotateConstant [DataRat] ratQualifier
   UnitType -> return $ annotateConstant [DataUnit] "⊤"
-  NatType -> return $ annotateConstant [DataNat] natQualifier
-  ListType -> annotateApp [DataList] Nothing "List" args
-  TensorType -> annotateApp [DataTensor] Nothing "Tensor" args
+  BoolType -> return $ compileType (UniverseLevel 0)
   IndexType -> annotateApp [DataFin] Nothing "Fin" args
+  NatType -> return $ annotateConstant [DataNat] natQualifier
+  RatType -> return $ annotateConstant [DataRat] ratQualifier
+  ListType -> annotateApp [DataList] Nothing "List" args
+  VectorType -> annotateApp [DataVector] Nothing "Vector" args
+  TensorType -> annotateApp [DataTensor] Nothing "Tensor" args
 
 compileBuiltinConstructor ::
   (MonadAgdaCompile m) =>
@@ -475,6 +477,7 @@ compileBuiltinConstructor c args = case c of
   UnitLiteral -> return $ annotateConstant [DataUnit] "tt"
   IndexLiteral n -> return $ compileIndexLiteral n
   NatLiteral n -> return $ compileNatLiteral n
+  VectorLiteral -> compileVecLiteral args
   NatTensorLiteral t -> return $ compileTensorLiteral compileNatLiteral t
   BoolTensorLiteral t -> return $ compileTensorLiteral compileBoolLiteral t
   RatTensorLiteral t -> return $ compileTensorLiteral compileRatLiteral t
@@ -514,9 +517,11 @@ compileBuiltinFunction f args = case f of
   QuantifyRatTensor q -> case reverse args of
     (ExplicitArg _ _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier q [binder] body
     _ -> unsupportedArgsError
-  At -> annotateInfixApp [DataTensor] (-1) Nothing "_!_" args
+  AtTensor -> annotateInfixApp [DataTensor] (-1) Nothing "_!_" args
+  AtVector -> annotateInfixApp [FunctionBase] (-1) Nothing "_$_" args
   If -> annotateInfixApp [DataBool] 0 Nothing "if_then_else_" args
-  Foreach -> annotateApp [DataTensor] Nothing "foreach" args
+  ForeachTensor -> annotateApp [DataTensor] Nothing "foreach" args
+  ForeachVector -> annotateApp [VehicleUtils] Nothing "foreachVector" args
   StackTensor {} -> annotateApp [DataTensor] Nothing "stack" args
   Iterate -> unsupportedError
   PowRat -> unsupportedError
@@ -543,6 +548,7 @@ compileDecidabilityBuiltinFunction ::
 compileDecidabilityBuiltinFunction f args = case f of
   PropType -> return $ compileType 0
   BoolTensorToProp -> monoError f
+  BoolVectorToProp -> monoError f
   PropTrue -> return $ annotateConstant [DataUnit] "⊤"
   PropFalse -> return $ annotateConstant [DataEmpty] "⊥"
   PropNot -> annotateInfixApp [RelNullary] 3 Nothing "¬_" args
@@ -554,7 +560,7 @@ compileDecidabilityBuiltinFunction f args = case f of
   PropCompareRatTensorPointwise op -> annotateInfixApp [VehicleUtils, DataTensor] 4 Nothing (comparisonOperator False op) args
   PropQuantifyIndex q -> case q of
     Forall -> annotateApp [DataFinAll] (Just finQualifier) "All" args
-    Exists -> annotateApp [DataFinAny] (Just finQualifier) "All" args
+    Exists -> annotateApp [DataFinAny] (Just finQualifier) "Any" args
   PropQuantifyInList q -> case q of
     Forall -> annotateApp [DataListAll] (Just listQualifier) "All" args
     Exists -> annotateApp [DataListAny] (Just listQualifier) "Any" args
@@ -591,13 +597,21 @@ compileRatLiteral r
     num = compileIntLiteral (fromInteger $ numerator r)
     denom = compileNatLiteral (fromInteger $ denominator r)
 
--- | Compiling tensor literals. No literals in Agda so have to go via cons.
+-- | Compiling vector literals. No literals in Agda so have to go via cons.
+toVec :: [Code] -> Code
+toVec = foldr (\v vs -> annotate ([], 5) (v <> "∷ᵥ" <> vs)) "[]ᵥ"
+
+compileVecLiteral :: (MonadAgdaCompile m) => [Arg DecidabilityBuiltin] -> m Code
+compileVecLiteral xs = case getExpr accessSpine xs of
+  Just (VecLitArgs _t _d ds) -> toVec <$> traverse compileExpr ds
+  Nothing -> developerError "Malformed type-checked vector literal"
+
 compileTensorLiteral :: (a -> Code) -> Tensor a -> Code
 compileTensorLiteral compileElement =
   foldMapTensor compileElement compileTensorLayer
   where
     compileTensorLayer :: TensorShape -> [Code] -> Code
-    compileTensorLayer _shape = foldr (\x xs -> annotate ([], 5) (x <> "∷ᵥ" <> xs)) "[]ᵥ"
+    compileTensorLayer _shape = toVec
 
 compileBoolLiteral :: Bool -> Code
 compileBoolLiteral = \case

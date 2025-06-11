@@ -357,6 +357,7 @@ elabExpr expr = case expr of
   B.Rat tk -> castToTensorType V.RatType tk
   B.Nat tk -> builtinType V.NatType tk []
   B.List tk -> builtinType V.ListType tk []
+  B.Vector tk -> builtinType V.VectorType tk []
   B.Tensor tk -> builtinTypeClassOp V.TensorTypeTC tk []
   B.Nil tk -> constructor V.Nil tk []
   B.Cons e1 tk e2 -> constructor V.Cons tk [e1, e2]
@@ -384,11 +385,15 @@ elabExpr expr = case expr of
   B.Min tk -> builtinFunction (V.Min V.MinRatTensor) tk []
   B.Max tk -> builtinFunction (V.Max V.MaxRatTensor) tk []
   B.Neg tk e -> builtinTypeClassOp V.NegTC tk [e]
-  B.At e1 tk e2 -> builtinFunction V.At tk [e1, e2]
+  B.At e1 tk e2 -> builtinTypeClassOp V.AtTC tk [e1, e2]
   B.Map tk -> builtinTypeClassOp V.MapTC tk []
   B.Fold tk -> builtinTypeClassOp V.FoldTC tk []
   B.ReduceOr tk -> builtinFunction V.ReduceOrTensor tk []
   B.ReduceAnd tk -> builtinFunction V.ReduceAndTensor tk []
+  B.ReduceAdd tk -> builtinFunction V.ReduceAddRatTensor tk []
+  B.ReduceMul tk -> builtinFunction V.ReduceMulRatTensor tk []
+  B.ReduceMin tk -> builtinFunction V.ReduceMinRatTensor tk []
+  B.ReduceMax tk -> builtinFunction V.ReduceMaxRatTensor tk []
   B.HasEq tk -> builtinTypeClass (V.HasCompare V.Eq) tk []
   B.HasNotEq tk -> builtinTypeClass (V.HasCompare V.Ne) tk []
   B.HasLeq tk -> builtinTypeClass (V.HasCompare V.Le) tk []
@@ -656,7 +661,7 @@ elabForeach tk binders body = do
 
   let mkForeach binder newBody =
         V.normAppList
-          (V.Builtin p $ V.BuiltinFunction V.Foreach)
+          (V.Builtin p $ V.TypeClassOp V.ForeachTC)
           [ mkArg mempty V.Explicit (V.Lam (V.provenanceOf binder) binder newBody)
           ]
 

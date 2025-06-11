@@ -23,7 +23,7 @@ import Vehicle.Compile.Type.Irrelevance (removeIrrelevantCodeFromProg)
 import Vehicle.Data.Builtin.Loss (LossBuiltin (..), LossBuiltinConstructor, LossBuiltinFunction, LossBuiltinType)
 import Vehicle.Data.Builtin.Loss qualified as L
 import Vehicle.Data.Code.Value
-import Vehicle.Data.Tensor (Tensor)
+import Vehicle.Data.Tensor (Tensor, mapTensor)
 import Vehicle.Prelude (Annotation (..), GenericArg (..), HasName (..), HasType (..), Identifier (..), Position (..), explicit, indent, jsonOptions, line, resolutionError, squotes)
 import Vehicle.Prelude.Logging.Class
 import Vehicle.Syntax.Prelude (developerError)
@@ -214,7 +214,7 @@ convertBuiltin b spine = case b of
     L.IndexTensorLiteral _ -> unsupported
     L.NatLiteral x -> convertNullaryOp b (Dimension x) spine
     L.NatTensorLiteral _ -> unsupported
-    L.RatTensorLiteral t -> convertNullaryOp b (RatTensor $ fmap toRat t) spine
+    L.RatTensorLiteral t -> convertNullaryOp b (RatTensor $ mapTensor toRat t) spine
   LossBuiltinFunction op -> case op of
     L.Add L.AddRatTensor -> convertBinaryOp b AddRatTensor spine
     L.Mul L.MulRatTensor -> convertBinaryOp b MulRatTensor spine
@@ -339,7 +339,7 @@ fromJExpr = \case
   DimensionType -> toType L.NatType []
   DimensionsType -> toType L.ListType [DimensionType]
   DimensionIndexType -> toType L.IndexType []
-  RatTensor t -> toConstructor (L.RatTensorLiteral (fmap fromRat t)) []
+  RatTensor t -> toConstructor (L.RatTensorLiteral (mapTensor fromRat t)) []
   NegRatTensor e -> toFunction (L.Neg L.NegRatTensor) [e]
   AddRatTensor e1 e2 -> toFunction (L.Add L.AddRatTensor) [e1, e2]
   SubRatTensor e1 e2 -> toFunction (L.Sub L.SubRatTensor) [e1, e2]

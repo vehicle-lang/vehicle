@@ -43,6 +43,16 @@ allInstances =
               tUnit,
             False
           ),
+          ( forAllTypes $ \tElem ->
+              forAllDims $ \d ->
+                validPropertyType tElem
+                  .~~~> validPropertyType (tVector tElem d),
+            lamType $ \tElem ->
+              lamDim $ \_d ->
+                instLam "r1" (validPropertyType tElem) $ \_inst ->
+                  tUnit,
+            False
+          ),
           ------------------------------------
           -- ValidNonInferableParameterType --
           ------------------------------------
@@ -80,6 +90,16 @@ allInstances =
             implLam "t" type0 $ \t ->
               instLam "r1" (validDatasetListElementType t) $ \_ ->
                 tUnit,
+            False
+          ),
+          ( forAllTypes $ \t ->
+              forAllDim Irrelevant $ \d ->
+                validDatasetListElementType t
+                  .~~~> validDatasetType (tVector t d),
+            implLam "t" type0 $ \t ->
+              lam "d" (Implicit False) Irrelevant tDim $ \_d ->
+                instLam "r1" (validDatasetListElementType t) $ \_ ->
+                  tUnit,
             False
           ),
           ( forAllTypes $ \t ->
@@ -181,7 +201,15 @@ allInstances =
             implLam "t" type0 $ \t ->
               lamDim $ \d ->
                 lamDims $ \ds ->
-                  builtinFunction StackTensor @@@ [t] @@@ [d] .@@@ [ds],
+                  builtinFunction StackTensor @@@ [t, d] .@@@ [ds],
+            False
+          ),
+          ( forAllTypes $ \t ->
+              forAllDim Irrelevant $ \d ->
+                hasVecLits (tVector t d) t d,
+            implLam "t" type0 $ \t ->
+              lamDim $ \d ->
+                builtinConstructor VectorLiteral @@@ [t, d],
             False
           ),
           ( forAllTypes $ \t ->
@@ -221,14 +249,12 @@ allInstances =
               tTensor tRat ds,
             False
           ),
-          ( forAllIrrelevant "ds1" tDims $ \ds1 ->
-              forAllIrrelevant "ds2" tDims $ \ds2 ->
-                forAllTypes $ \t ->
-                  isTensorType (tTensor t ds1) ds2,
-            lamDims $ \ds1 ->
-              lamDims $ \ds2 ->
-                implLam "t" type0 $ \t ->
-                  tTensor t (builtinDerivedFunction AppendList @@@ [tNat] @@ [ds2, ds1]),
+          ( forAllIrrelevant "ds" tDims $ \ds ->
+              forAllTypes $ \t ->
+                isTensorType (tTensor t dimNil) ds,
+            lamDims $ \ds ->
+              implLam "t" type0 $ \t ->
+                tTensor t ds,
             False
           ),
           ------------
@@ -272,6 +298,48 @@ allInstances =
           ------------
           ( forAllDims $ \dims -> hasDiv (tRatTensor dims) (tRatTensor dims) (tRatTensor dims),
             lamDims $ \dims -> builtinFunction (Div DivRatTensor) .@@@ [dims],
+            False
+          ),
+          ------------
+          -- HasAt --
+          ------------
+          ( forAllTypes $ \tElem ->
+              forAllDim Irrelevant $ \d ->
+                hasAt (tVector tElem d) (tIndex d) tElem,
+            lamType $ \tElem ->
+              lamDim $ \d ->
+                builtinFunction AtVector @@@ [tElem] .@@@ [d],
+            False
+          ),
+          ( forAllTypes $ \tElem ->
+              forAllDim Irrelevant $ \d ->
+                forAllDims $ \ds ->
+                  hasAt (tTensor tElem (cons tDim d ds)) (tIndex d) (tTensor tElem ds),
+            lamType $ \tElem ->
+              lamDim $ \d ->
+                lamDims $ \ds ->
+                  builtinFunction AtTensor @@@ [tElem] .@@@ [d, ds],
+            False
+          ),
+          ------------
+          -- HasForeach --
+          ------------
+          ( forAllTypes $ \tElem ->
+              forAllDim Relevant $ \d ->
+                hasForeach (tVector tElem d) (tIndex d) tElem,
+            lamType $ \tElem ->
+              lam "d" (Implicit False) Relevant tDim $ \d ->
+                builtinFunction ForeachVector @@@ [tElem, d],
+            False
+          ),
+          ( forAllTypes $ \tElem ->
+              forAllDim Relevant $ \d ->
+                forAllDims $ \ds ->
+                  hasForeach (tTensor tElem (cons tDim d ds)) (tIndex d) (tTensor tElem ds),
+            lamType $ \tElem ->
+              lam "d" (Implicit False) Relevant tDim $ \d ->
+                lamDims $ \ds ->
+                  builtinFunction ForeachTensor @@@ [tElem, d] .@@@ [ds],
             False
           ),
           ------------

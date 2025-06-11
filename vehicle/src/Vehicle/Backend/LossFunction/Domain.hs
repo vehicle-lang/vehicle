@@ -73,7 +73,7 @@ extractSearchDomain _propertyProv _binder _lv value = do
   (newNames, elementInfo) <- case getDimensions dims of
     Just tensorShape -> do
       logDebug MaxDetail $ "Found concrete tensor shape" <+> pretty tensorShape
-      let (reducedUseVars, _vectorExpr) = reduceTensorVariable (lv + 1) varName tensorShape
+      let (reducedUseVars, _vectorExpr) = reduceTensorVariable lv varName tensorShape
       let elementInfo = Just $ VariableElementsInfo tensorShape (fmap fst reducedUseVars)
       let newNames = varName : fmap snd reducedUseVars
       return (newNames, elementInfo)

@@ -2,7 +2,7 @@
 // and should not be modified manually!
 // Metadata:
 //  - Marabou query format version: unknown
-//  - Vehicle version: 0.16.0+dev
+//  - Vehicle version: 0.16.1+dev
 +y0 -y1 <= 0.0
 +y0 -y2 <= 0.0
 +y0 -y3 <= 0.0
@@ -16,8 +16,6 @@ x1 <= 0.5
 x1 >= -0.5
 x1 >= -0.009549298572188877
 x2 = 0.0
-x2 <= 0.5
-x2 >= -0.5
 x3 <= 0.5
 x3 >= -0.5
 x3 >= 0.3181818181818182

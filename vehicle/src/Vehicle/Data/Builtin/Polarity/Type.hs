@@ -27,7 +27,7 @@ import Prelude hiding (iterate, pi)
 --------------------------------------------------------------------------------
 
 instance TypableBuiltin PolarityBuiltin where
-  typeBuiltin p b = return (fromDSL p $ typePolarityBuiltin b)
+  typeBuiltin p b = return (fromDSL p $ typePolarityBuiltin p b)
   useDependentMetas _ = False
   isConstructor = isPolarityBuiltinConstructor
   isCastConstraint _ = False
@@ -40,15 +40,15 @@ isPolarityBuiltinConstructor = \case
   PolarityRelation {} -> True
 
 -- | Return the type of the provided builtin.
-typePolarityBuiltin :: PolarityBuiltin -> PolarityDSLExpr
-typePolarityBuiltin = \case
+typePolarityBuiltin :: Provenance -> PolarityBuiltin -> PolarityDSLExpr
+typePolarityBuiltin p = \case
   PolarityConstructor c -> typeOfConstructor c
-  PolarityFunction f -> typeOfBuiltinFunction f
+  PolarityFunction f -> typeOfBuiltinFunction p f
   Polarity {} -> tPol
   PolarityRelation r -> typeOfPolarityRelation r
 
-typeOfBuiltinFunction :: BuiltinFunction -> PolarityDSLExpr
-typeOfBuiltinFunction = \case
+typeOfBuiltinFunction :: Provenance -> BuiltinFunction -> PolarityDSLExpr
+typeOfBuiltinFunction p = \case
   -- Boolean operations
   Not {} -> typeOfOp1 negPolarity
   Implies -> typeOfOp2 impliesPolarity
@@ -56,7 +56,7 @@ typeOfBuiltinFunction = \case
   Or {} -> typeOfOp2 maxPolarity
   ReduceAndTensor -> typeOfOp2 maxPolarity
   ReduceOrTensor -> typeOfOp2 maxPolarity
-  QuantifyRatTensor q -> typeOfQuantifier q
+  QuantifyRatTensor q -> typeOfQuantifier p q
   If -> typeOfIf
   -- Comparisons
   CompareNat {} -> typeOfOp2 maxPolarity
@@ -78,10 +78,12 @@ typeOfBuiltinFunction = \case
   -- Container functions
   FoldList -> typeOfFold
   MapList -> typeOfMap
-  At -> forAllPolarities $ \p -> p ~> unquantified ~> p
+  AtVector -> typeOfAt
+  AtTensor -> typeOfAt
   StackTensor -> typeOfStack
-  ConstTensor -> forAllPolarities $ \p -> p ~> unquantified ~> p
-  Foreach -> forAllPolarities $ \p -> p ~> p
+  ConstTensor -> forAllPolarities $ \pol -> pol ~> unquantified ~> pol
+  ForeachTensor -> typeOfForeach
+  ForeachVector -> typeOfForeach
   Iterate -> typeOfIterate
 
 typeOfConstructor :: BuiltinConstructor -> PolarityDSLExpr
@@ -93,6 +95,7 @@ typeOfConstructor = \case
   UnitLiteral {} -> unquantified
   IndexLiteral {} -> unquantified
   NatLiteral {} -> unquantified
+  VectorLiteral {} -> typeOfVectorLiteral
   NatTensorLiteral {} -> unquantified
   BoolTensorLiteral {} -> unquantified
   IndexTensorLiteral {} -> unquantified
@@ -138,6 +141,12 @@ typeOfIf =
         ~> pArg2
         ~> pRes
 
+typeOfAt :: PolarityDSLExpr
+typeOfAt = typeOfOp2 maxPolarity
+
+typeOfForeach :: PolarityDSLExpr
+typeOfForeach = forAllPolarities $ \pol -> (unquantified ~> pol) ~> pol
+
 typeOfNil :: PolarityDSLExpr
 typeOfNil = unquantified
 
@@ -155,11 +164,11 @@ typeOfMap =
     forAllPolarities $ \p2 ->
       (p1 ~> p2) ~> p1 ~> p2
 
-typeOfQuantifier :: Quantifier -> PolarityDSLExpr
-typeOfQuantifier q =
+typeOfQuantifier :: Provenance -> Quantifier -> PolarityDSLExpr
+typeOfQuantifier p q =
   forAll "f" type0 $ \tLam ->
     forAll "A" type0 $ \tRes ->
-      quantifierPolarity q tLam tRes
+      quantifierPolarity p q tLam tRes
         .~~~> tLam
         ~> tRes
 
@@ -218,8 +227,9 @@ convertToPolarityTypes p b args = case b of
     IndexType -> return $ PolarityExpr p Unquantified
     NatType -> return $ PolarityExpr p Unquantified
     ListType -> return $ extractElementType b args
+    VectorType -> return $ extractElementType b args
     TensorType -> return $ extractElementType b args
-  DerivedFunction f -> return $ FreeVar p (identifierOf f)
+  DerivedFunction f -> return $ normAppList (FreeVar p (identifierOf f)) args
   TypeClass {} -> monomorphisationError b args
   BuiltinCast {} -> monomorphisationError b args
   TypeClassOp {} -> monomorphisationError b args

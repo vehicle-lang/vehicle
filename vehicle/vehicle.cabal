@@ -1,6 +1,6 @@
 cabal-version:      3.4
 name:               vehicle
-version:            0.16.0
+version:            0.16.1
 description:
   Please see the README on GitHub at <https://github.com/vehicle-lang/vehicle#readme>
 
@@ -165,6 +165,7 @@ library
     Vehicle.Libraries
     Vehicle.Libraries.Core
     Vehicle.Libraries.StandardLibrary
+    Vehicle.List
     Vehicle.Prelude
     Vehicle.Prelude.Logging
     Vehicle.Prelude.Warning
@@ -196,8 +197,6 @@ library
     Vehicle.Backend.Queries.UserVariableElimination.EliminateExists
     Vehicle.Backend.Queries.UserVariableElimination.VariableReconstruction
     Vehicle.Compile.Arity
-    Vehicle.Compile.Boolean.LiftIf
-    Vehicle.Compile.Boolean.LowerNot
     Vehicle.Compile.Context.Bound.Class
     Vehicle.Compile.Context.Bound.Core
     Vehicle.Compile.Context.Bound.Instance
@@ -209,6 +208,9 @@ library
     Vehicle.Compile.ExpandResources.Dataset.IDX
     Vehicle.Compile.FourierMotzkinElimination
     Vehicle.Compile.FunctionaliseResources
+    Vehicle.Compile.LiftIf
+    Vehicle.Compile.LiftMinMax
+    Vehicle.Compile.LowerNot
     Vehicle.Compile.ObjectFile
     Vehicle.Compile.Prelude.Utils
     Vehicle.Compile.Print.Warning
@@ -239,6 +241,7 @@ library
     Vehicle.Data.Builtin.Decidability
     Vehicle.Data.Builtin.Decidability.Instances
     Vehicle.Data.Builtin.Decidability.Type
+    Vehicle.Data.Builtin.Interface.Blocked
     Vehicle.Data.Builtin.Interface.InputOutputInsertion
     Vehicle.Data.Builtin.Interface.Normalise
     Vehicle.Data.Builtin.Interface.Print

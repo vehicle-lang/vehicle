@@ -27,7 +27,7 @@ import Prelude hiding (iterate)
 --------------------------------------------------------------------------------
 
 instance TypableBuiltin LinearityBuiltin where
-  typeBuiltin p b = return (fromDSL p $ typeLinearityBuiltin b)
+  typeBuiltin p b = return (fromDSL p $ typeLinearityBuiltin p b)
   useDependentMetas _ = False
   isConstructor = isLinearityBuiltinConstructor
   isCastConstraint _ = False
@@ -40,15 +40,15 @@ isLinearityBuiltinConstructor = \case
   LinearityRelation {} -> True
 
 -- | Return the type of the provided builtin.
-typeLinearityBuiltin :: LinearityBuiltin -> LinearityDSLExpr
-typeLinearityBuiltin = \case
+typeLinearityBuiltin :: Provenance -> LinearityBuiltin -> LinearityDSLExpr
+typeLinearityBuiltin p = \case
   LinearityConstructor c -> typeOfConstructor c
-  LinearityFunction f -> typeOfBuiltinFunction f
+  LinearityFunction f -> typeOfBuiltinFunction p f
   Linearity {} -> tLin
   LinearityRelation r -> typeOfLinearityRelation r
 
-typeOfBuiltinFunction :: BuiltinFunction -> LinearityDSLExpr
-typeOfBuiltinFunction = \case
+typeOfBuiltinFunction :: Provenance -> BuiltinFunction -> LinearityDSLExpr
+typeOfBuiltinFunction p = \case
   -- Boolean operations
   Not {} -> typeOfOp1
   Implies -> typeOfOp2 maxLinearity
@@ -60,18 +60,18 @@ typeOfBuiltinFunction = \case
   ReduceOrTensor -> typeOfOp2 maxLinearity
   -- Arithmetic operations
   Add {} -> typeOfOp2 maxLinearity
-  Mul {} -> typeOfOp2 mulLinearity
+  Mul {} -> typeOfOp2 (mulLinearity p)
   Neg {} -> typeOfOp1
   Sub {} -> typeOfOp2 maxLinearity
-  Div {} -> typeOfOp2 divLinearity
+  Div {} -> typeOfOp2 (divLinearity p)
   Min {} -> typeOfOp2 maxLinearity
   Max {} -> typeOfOp2 maxLinearity
-  PowRat {} -> typeOfOp2 powLinearity
+  PowRat {} -> typeOfOp2 (powLinearity p)
   ReduceAddRatTensor -> typeOfOp2 maxLinearity
   ReduceMulRatTensor ->
     forAllLinearityTriples $ \l1 l2 l3 ->
       forAllLinearities $ \l4 ->
-        mulLinearity l2 l2 l3 .~~~> mulLinearity l1 l3 l4 .~~~> l1 ~> l2 ~> l3
+        mulLinearity p l2 l2 l3 .~~~> mulLinearity p l1 l3 l4 .~~~> l1 ~> l2 ~> l3
   ReduceMinRatTensor -> typeOfOp2 maxLinearity
   ReduceMaxRatTensor -> typeOfOp2 maxLinearity
   -- Comparisons
@@ -81,10 +81,12 @@ typeOfBuiltinFunction = \case
   -- Container functions
   FoldList -> typeOfFold
   MapList -> typeOfMap
-  At -> typeOfAt
+  AtVector -> typeOfAt
+  AtTensor -> typeOfAt
   StackTensor -> typeOfStack
   ConstTensor -> forAllLinearities $ \l -> l ~> constant ~> l
-  Foreach -> forAllLinearities $ \l -> l ~> l
+  ForeachTensor -> typeOfForeach
+  ForeachVector -> typeOfForeach
   Iterate -> typeOfIterate
 
 typeOfConstructor :: BuiltinConstructor -> LinearityDSLExpr
@@ -94,6 +96,7 @@ typeOfConstructor = \case
   UnitLiteral {} -> constant
   IndexLiteral {} -> constant
   NatLiteral {} -> constant
+  VectorLiteral {} -> typeOfVectorLiteral
   NatTensorLiteral {} -> constant
   BoolTensorLiteral {} -> constant
   IndexTensorLiteral {} -> constant
@@ -102,9 +105,9 @@ typeOfConstructor = \case
 typeOfLinearityRelation :: LinearityRelation -> LinearityDSLExpr
 typeOfLinearityRelation = \case
   MaxLinearity -> tLin ~> tLin ~> tLin ~> type0
-  MulLinearity -> tLin ~> tLin ~> tLin ~> type0
-  DivLinearity -> tLin ~> tLin ~> tLin ~> type0
-  PowLinearity -> tLin ~> tLin ~> tLin ~> type0
+  MulLinearity {} -> tLin ~> tLin ~> tLin ~> type0
+  DivLinearity {} -> tLin ~> tLin ~> tLin ~> type0
+  PowLinearity {} -> tLin ~> tLin ~> tLin ~> type0
   FunctionLinearity {} -> tLin ~> tLin ~> type0
   QuantifierLinearity {} -> (tLin ~> tLin) ~> tLin ~> type0
 
@@ -131,12 +134,15 @@ typeOfIf =
           ~> lRes
 
 typeOfAt :: LinearityDSLExpr
-typeOfAt = forAllLinearities $ \l -> l ~> constant ~> l
+typeOfAt = typeOfOp2 maxLinearity
+
+typeOfForeach :: LinearityDSLExpr
+typeOfForeach = forAllLinearities $ \l -> (constant ~> l) ~> l
 
 typeOfFold :: LinearityDSLExpr
 typeOfFold =
   forAllLinearityTriples $ \l1 l2 l3 ->
-    maxLinearity l1 l2 l3 .~~~> (l1 ~> l2 ~> l3) ~> l2 ~> l1 ~> l3
+    maxLinearity l1 l2 l3 .~~~> (l1 ~> l2 ~> l3) ~> l1 ~> l2 ~> l3
 
 typeOfMap :: LinearityDSLExpr
 typeOfMap =
@@ -206,8 +212,9 @@ convertToLinearityTypes p b args = case b of
     IndexType -> freshLinearityMeta p
     NatType -> freshLinearityMeta p
     ListType -> return $ extractElementType b args
+    VectorType -> return $ extractElementType b args
     TensorType -> return $ extractElementType b args
-  DerivedFunction f -> return $ FreeVar p (identifierOf f)
+  DerivedFunction f -> return $ normAppList (FreeVar p (identifierOf f)) args
   TypeClass {} -> monomorphisationError b args
   TypeClassOp {} -> monomorphisationError b args
   NatInDomainConstraint -> monomorphisationError b args

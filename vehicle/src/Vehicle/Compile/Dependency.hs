@@ -4,12 +4,11 @@ module Vehicle.Compile.Dependency
 where
 
 import Control.Monad (forM)
-import Control.Monad.Except (MonadError (..))
 import Control.Monad.Writer (MonadWriter (..), execWriterT)
 import Data.Foldable (traverse_)
-import Data.Graph (Graph, Vertex, dfs, graphFromEdges)
+import Data.Graph (Graph, Vertex, dfs, graphFromEdges, vertices)
 import Data.Set (Set)
-import Data.Set qualified as Set (fromList, member)
+import Data.Set qualified as Set (difference, fromList, notMember)
 import Data.Tree qualified as Tree
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
@@ -87,22 +86,29 @@ analyseDependenciesAndPrune ::
 analyseDependenciesAndPrune prog declarationsToCompile
   | null declarationsToCompile = return prog
   | otherwise = do
-      dependencyGraph <- constructGraph prog
-      startingVertices <- forM declarationsToCompile $ \name ->
-        case vertexFromIdent dependencyGraph (Identifier (ModulePath [User]) name) of
-          Just vertex -> return vertex
-          Nothing -> throwError $ MissingPrunedName name
+      logCompilerPass MinDetail "Pruning unused declarations" $ do
+        dependencyGraph <- constructGraph prog
+        startingVertices <- forM declarationsToCompile $ \name ->
+          case vertexFromIdent dependencyGraph (Identifier (ModulePath [User]) name) of
+            Just vertex -> return vertex
+            Nothing ->
+              -- This should have been caught earlier when we first prune the declarations
+              compilerDeveloperError $ "Missing requested declaration" <+> quotePretty name
 
-      let declsToKeep = reachableFrom dependencyGraph startingVertices
-      return $ pruneProg prog declsToKeep
+        let declsToPrune = notReachableFrom dependencyGraph startingVertices
+        logDebug MaxDetail $ "Pruning:" <+> indent 2 (prettySet declsToPrune)
+
+        return $ pruneProg prog declsToPrune
 
 pruneProg :: GenericProg expr -> Set Identifier -> GenericProg expr
-pruneProg (Main ds) declsToKeep = Main $ filter keepDecl ds
+pruneProg (Main ds) declsToPrune = Main $ filter keepDecl ds
   where
     keepDecl :: GenericDecl expr -> Bool
-    keepDecl d = identifierOf d `Set.member` declsToKeep
+    keepDecl d = identifierOf d `Set.notMember` declsToPrune
 
-reachableFrom :: DependencyGraph -> [Vertex] -> Set Identifier
-reachableFrom DependencyGraph {..} origin = do
+notReachableFrom :: DependencyGraph -> [Vertex] -> Set Identifier
+notReachableFrom DependencyGraph {..} origin = do
   let forest = dfs graph origin
-  Set.fromList $ concatMap (fmap identFromVertex . Tree.flatten) forest
+  let reachableIdents = Set.fromList $ concatMap (fmap identFromVertex . Tree.flatten) forest
+  let allIdents = Set.fromList $ fmap identFromVertex (vertices graph)
+  Set.difference allIdents reachableIdents

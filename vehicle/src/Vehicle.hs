@@ -10,9 +10,10 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as Text (pack)
 import Data.Text.IO qualified as TextIO (hPutStrLn)
 import GHC.IO.Encoding (setLocaleEncoding)
-import Options.Applicative (ParserInfo, defaultPrefs, execParserPure, handleParseResult)
+import Options.Applicative (ParserInfo, ParserResult (CompletionInvoked, Failure, Success), defaultPrefs, execCompletion, execParserPure, renderFailure)
 import System.Directory (createDirectoryIfMissing)
-import System.Exit (ExitCode (..), exitFailure, exitSuccess)
+import System.Environment (getProgName)
+import System.Exit (ExitCode (..), exitFailure, exitSuccess, exitWith)
 import System.FilePath (takeDirectory)
 import System.IO
   ( BufferMode (NoBuffering),
@@ -24,8 +25,9 @@ import System.IO
 import Vehicle.CommandLine (GlobalOptions (..), ModeOptions (..), Options (..), commandLineOptionsParserInfo)
 import Vehicle.Compile (compile)
 import Vehicle.Export (export)
+import Vehicle.List (list)
 import Vehicle.Prelude
-import Vehicle.Prelude.IO as VIO (MonadStdIO (writeStderrLn))
+import Vehicle.Prelude.IO as VIO (MonadStdIO (writeStderrLn), fatalError, programOutput)
 import Vehicle.Prelude.Logging
 import Vehicle.TypeCheck (typeCheck)
 import Vehicle.Validate (validate)
@@ -63,13 +65,14 @@ runVehicle Options {..} = do
         else case modeOptions of
           Nothing ->
             fatalError
-              "No mode provided. Please use one of 'typeCheck', 'compile', 'verify', 'check', 'export'"
+              "No mode provided. Please use one of 'check', 'compile','verify', 'check', 'export', 'list'"
           Just mode -> case mode of
             Check options -> typeCheck logSettings options
             Compile options -> compile logSettings options
             Verify options -> verify logSettings options
             Validate options -> validate logSettings options
             Export options -> export logSettings options
+            List options -> list logSettings options
 
 withLogger :: (MonadStdIO IO) => GlobalOptions -> (LoggingSettings -> IO a) -> IO a
 withLogger GlobalOptions {logFile, loggingLevel, noWarnings} action = do
@@ -92,3 +95,19 @@ handleExitCode = return . fromExitCode
     fromExitCode :: ExitCode -> Int
     fromExitCode ExitSuccess = 0
     fromExitCode (ExitFailure exitCode) = exitCode
+
+-- Inlining Options.Applicative handleParserResult to enable stdout and stderr to be piped
+handleParseResult :: ParserResult a -> IO a
+handleParseResult (Success a) = return a
+handleParseResult (Failure failure) = do
+  progn <- getProgName
+  let (msg, exit) = renderFailure failure progn
+  case exit of
+    ExitSuccess -> VIO.programOutput (pretty msg)
+    _ -> VIO.fatalError (pretty msg)
+  exitWith exit
+handleParseResult (CompletionInvoked compl) = do
+  progn <- getProgName
+  msg <- execCompletion compl progn
+  VIO.programOutput (pretty msg)
+  exitSuccess

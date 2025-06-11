@@ -26,11 +26,12 @@ position token TokLet       {"let"};
 position token TokType      {"Type"};
 position token TokUnit      {"Unit"};
 position token TokBool      {"Bool"};
+position token TokIndex     {"Index"};
 position token TokNat       {"Nat"};
 position token TokRat       {"Rat"};
-position token TokTensor    {"Tensor"};
 position token TokList      {"List"};
-position token TokIndex     {"Index"};
+position token TokVector    {"Vector"};
+position token TokTensor    {"Tensor"};
 
 position token TokForall    {"forall"};
 position token TokExists    {"exists"};
@@ -65,8 +66,13 @@ position token TokSeqClose   {"]"};
 position token TokAt         {"!"};
 position token TokMap        {"map"};
 position token TokFold       {"fold"};
-position token TokReduceOr   {"reduceOr"};
-position token TokReduceAnd  {"reduceAnd"};
+
+position token TokReduceOr  {"reduceOr"};
+position token TokReduceAnd {"reduceAnd"};
+position token TokReduceAdd {"reduceAdd"};
+position token TokReduceMul {"reduceMul"};
+position token TokReduceMin {"reduceMin"};
+position token TokReduceMax {"reduceMax"};
 
 position token TokHasLeq    {"HasLeq"};
 position token TokHasEq     {"HasEq"};
@@ -174,7 +180,7 @@ If.      Expr4  ::= TokIf Expr5 TokThen Expr5 TokElse Expr5;
 Impl.    Expr5  ::= Expr6 TokImpl Expr5;
 And.     Expr7  ::= Expr8 TokAnd Expr7;
 Or.      Expr7  ::= Expr8 TokOr  Expr7;
-Not.     Expr11 ::= TokNot Expr11;
+Not.     Expr14 ::= TokNot Expr14;
 Eq.      Expr8  ::= Expr8 TokEq Expr9;
 Ne.      Expr8  ::= Expr8 TokNe Expr9;
 Le.      Expr8  ::= Expr8 TokLe Expr9;
@@ -205,17 +211,24 @@ Cons.       Expr4  ::= Expr5 TokCons Expr4;
 At.         Expr12 ::= Expr12 TokAt Expr13;
 Map.        Expr15 ::= TokMap;
 Fold.       Expr15 ::= TokFold;
+
+-- Tensors
 ReduceOr.   Expr15 ::= TokReduceOr;
 ReduceAnd.  Expr15 ::= TokReduceAnd;
+ReduceAdd.  Expr15 ::= TokReduceAdd;
+ReduceMul.  Expr15 ::= TokReduceMul;
+ReduceMin.  Expr15 ::= TokReduceMin;
+ReduceMax.  Expr15 ::= TokReduceMax;
 
 -- Primitive types.
 Unit.    Expr15 ::= TokUnit;
 Bool.    Expr15 ::= TokBool;
-Rat.     Expr15 ::= TokRat;
-Nat.     Expr15 ::= TokNat;
-List.    Expr14 ::= TokList;
-Tensor.  Expr14 ::= TokTensor;
 Index.   Expr14 ::= TokIndex;
+Nat.     Expr15 ::= TokNat;
+Rat.     Expr15 ::= TokRat;
+List.    Expr14 ::= TokList;
+Vector.  Expr14 ::= TokVector;
+Tensor.  Expr14 ::= TokTensor;
 
 -- Type classes.
 HasEq.    Expr15 ::= TokHasEq;

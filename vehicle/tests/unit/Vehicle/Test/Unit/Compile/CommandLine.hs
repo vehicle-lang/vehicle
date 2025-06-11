@@ -7,7 +7,7 @@ import Data.Map qualified as Map (fromList)
 import Options.Applicative (ParserResult (..), defaultPrefs, execParserPure)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertEqual, assertFailure, testCase)
-import Vehicle.Backend.Prelude (SecondaryTypeSystem (..))
+import Vehicle.Backend.Prelude (ListableEntities (..))
 import Vehicle.CommandLine
   ( GlobalOptions (..),
     ModeOptions (..),
@@ -15,6 +15,7 @@ import Vehicle.CommandLine
     commandLineOptionsParserInfo,
     defaultGlobalOptions,
   )
+import Vehicle.List (ListOptions (..))
 import Vehicle.Prelude
   ( Pretty (pretty),
     developerError,
@@ -35,7 +36,8 @@ commandLineParserTests =
     [ noModeTests,
       checkModeTests,
       verifyTests,
-      validateModeTests
+      validateModeTests,
+      listModeTests
     ]
 
 noModeTests :: TestTree
@@ -80,7 +82,43 @@ checkModeTests =
                 Check $
                   TypeCheckOptions
                     { specification = "test/spec.vcl",
-                      typingSystem = Standard
+                      secondaryTypeSystem = Nothing
+                    }
+          }
+    ]
+
+listModeTests :: TestTree
+listModeTests =
+  testGroup
+    "listMode"
+    [ parserTest
+        "list resources"
+        "vehicle list resources \
+        \--specification test/spec.vcl"
+        $ Options
+          { globalOptions = defaultGlobalOptions,
+            modeOptions =
+              Just $
+                List $
+                  ListOptions
+                    { listEntities = ExternalResources,
+                      specification = "test/spec.vcl",
+                      outputAsJSON = False
+                    }
+          },
+      parserTest
+        "list properties"
+        "vehicle list properties \
+        \--specification test/spec.vcl"
+        $ Options
+          { globalOptions = defaultGlobalOptions,
+            modeOptions =
+              Just $
+                List $
+                  ListOptions
+                    { listEntities = Properties,
+                      specification = "test/spec.vcl",
+                      outputAsJSON = False
                     }
           }
     ]

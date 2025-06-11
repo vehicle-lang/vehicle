@@ -11,92 +11,73 @@
               "queries": {
                 "unDisjunctAll": [
                   {
-                    "variableReconstruction": {
-                      "variableStore": [
-                        [
-                          0,
-                          "f₀[input]",
-                          null
-                        ],
-                        [
-                          1,
-                          "f₀[input]!0!0",
-                          "x0"
-                        ],
-                        [
-                          2,
-                          "f₀[input]!1!0",
-                          "x1"
-                        ],
-                        [
-                          3,
-                          "f₀[input]!0!1",
-                          "x2"
-                        ],
-                        [
-                          4,
-                          "f₀[input]!1!1",
-                          "x3"
-                        ],
-                        [
-                          5,
-                          "f₀[output]",
-                          null
-                        ],
-                        [
-                          6,
-                          "f₀[output]!0!0",
-                          "y0"
-                        ],
-                        [
-                          7,
-                          "f₀[output]!1!0",
-                          "y1"
-                        ],
-                        [
-                          8,
-                          "f₀[output]!0!1",
-                          "y2"
-                        ],
-                        [
-                          9,
-                          "f₀[output]!1!1",
-                          "y3"
-                        ]
+                    "variableStore": {
+                      "vehicleVariableCtx": [
+                        "f₀[output]!1!1",
+                        "f₀[output]!0!1",
+                        "f₀[output]!1!0",
+                        "f₀[output]!0!0",
+                        "f₀[output]",
+                        "f₀[input]!1!1",
+                        "f₀[input]!0!1",
+                        "f₀[input]!1!0",
+                        "f₀[input]!0!0",
+                        "f₀[input]"
                       ],
+                      "userVariables": [],
+                      "queryVariableMapping": {
+                        "y3": 9,
+                        "y2": 8,
+                        "y1": 7,
+                        "y0": 6,
+                        "x3": 4,
+                        "x2": 3,
+                        "x1": 2,
+                        "x0": 1
+                      }
+                    },
+                    "variableCompilationTrace": {
                       "reconstructionSteps": [
                         {
-                          "tag": "ReconstructTensor",
+                          "tag": "ReconstructTensorVariable",
                           "contents": [
-                            "OtherVariable",
-                            [
-                              2,
-                              2
-                            ],
                             0,
-                            [
-                              1,
-                              2,
-                              3,
-                              4
-                            ]
+                            {
+                              "tag": "DenseTensor",
+                              "contents": [
+                                [
+                                  2,
+                                  2
+                                ],
+                                [
+                                  1,
+                                  2,
+                                  3,
+                                  4
+                                ]
+                              ]
+                            }
                           ]
                         },
                         {
-                          "tag": "ReconstructTensor",
+                          "tag": "ReconstructTensorVariable",
                           "contents": [
-                            "OtherVariable",
-                            [
-                              2,
-                              2
-                            ],
                             5,
-                            [
-                              6,
-                              7,
-                              8,
-                              9
-                            ]
+                            {
+                              "tag": "DenseTensor",
+                              "contents": [
+                                [
+                                  2,
+                                  2
+                                ],
+                                [
+                                  6,
+                                  7,
+                                  8,
+                                  9
+                                ]
+                              ]
+                            }
                           ]
                         }
                       ]
@@ -145,92 +126,73 @@
               "queries": {
                 "unDisjunctAll": [
                   {
-                    "variableReconstruction": {
-                      "variableStore": [
-                        [
-                          0,
-                          "f₀[input]",
-                          null
-                        ],
-                        [
-                          1,
-                          "f₀[input]!0!0",
-                          "x0"
-                        ],
-                        [
-                          2,
-                          "f₀[input]!1!0",
-                          "x1"
-                        ],
-                        [
-                          3,
-                          "f₀[input]!0!1",
-                          "x2"
-                        ],
-                        [
-                          4,
-                          "f₀[input]!1!1",
-                          "x3"
-                        ],
-                        [
-                          5,
-                          "f₀[output]",
-                          null
-                        ],
-                        [
-                          6,
-                          "f₀[output]!0!0",
-                          "y0"
-                        ],
-                        [
-                          7,
-                          "f₀[output]!1!0",
-                          "y1"
-                        ],
-                        [
-                          8,
-                          "f₀[output]!0!1",
-                          "y2"
-                        ],
-                        [
-                          9,
-                          "f₀[output]!1!1",
-                          "y3"
-                        ]
+                    "variableStore": {
+                      "vehicleVariableCtx": [
+                        "f₀[output]!1!1",
+                        "f₀[output]!0!1",
+                        "f₀[output]!1!0",
+                        "f₀[output]!0!0",
+                        "f₀[output]",
+                        "f₀[input]!1!1",
+                        "f₀[input]!0!1",
+                        "f₀[input]!1!0",
+                        "f₀[input]!0!0",
+                        "f₀[input]"
                       ],
+                      "userVariables": [],
+                      "queryVariableMapping": {
+                        "y3": 9,
+                        "y2": 8,
+                        "y1": 7,
+                        "y0": 6,
+                        "x3": 4,
+                        "x2": 3,
+                        "x1": 2,
+                        "x0": 1
+                      }
+                    },
+                    "variableCompilationTrace": {
                       "reconstructionSteps": [
                         {
-                          "tag": "ReconstructTensor",
+                          "tag": "ReconstructTensorVariable",
                           "contents": [
-                            "OtherVariable",
-                            [
-                              2,
-                              2
-                            ],
                             0,
-                            [
-                              1,
-                              2,
-                              3,
-                              4
-                            ]
+                            {
+                              "tag": "DenseTensor",
+                              "contents": [
+                                [
+                                  2,
+                                  2
+                                ],
+                                [
+                                  1,
+                                  2,
+                                  3,
+                                  4
+                                ]
+                              ]
+                            }
                           ]
                         },
                         {
-                          "tag": "ReconstructTensor",
+                          "tag": "ReconstructTensorVariable",
                           "contents": [
-                            "OtherVariable",
-                            [
-                              2,
-                              2
-                            ],
                             5,
-                            [
-                              6,
-                              7,
-                              8,
-                              9
-                            ]
+                            {
+                              "tag": "DenseTensor",
+                              "contents": [
+                                [
+                                  2,
+                                  2
+                                ],
+                                [
+                                  6,
+                                  7,
+                                  8,
+                                  9
+                                ]
+                              ]
+                            }
                           ]
                         }
                       ]
@@ -279,92 +241,73 @@
               "queries": {
                 "unDisjunctAll": [
                   {
-                    "variableReconstruction": {
-                      "variableStore": [
-                        [
-                          0,
-                          "f₀[input]",
-                          null
-                        ],
-                        [
-                          1,
-                          "f₀[input]!0!0",
-                          "x0"
-                        ],
-                        [
-                          2,
-                          "f₀[input]!1!0",
-                          "x1"
-                        ],
-                        [
-                          3,
-                          "f₀[input]!0!1",
-                          "x2"
-                        ],
-                        [
-                          4,
-                          "f₀[input]!1!1",
-                          "x3"
-                        ],
-                        [
-                          5,
-                          "f₀[output]",
-                          null
-                        ],
-                        [
-                          6,
-                          "f₀[output]!0!0",
-                          "y0"
-                        ],
-                        [
-                          7,
-                          "f₀[output]!1!0",
-                          "y1"
-                        ],
-                        [
-                          8,
-                          "f₀[output]!0!1",
-                          "y2"
-                        ],
-                        [
-                          9,
-                          "f₀[output]!1!1",
-                          "y3"
-                        ]
+                    "variableStore": {
+                      "vehicleVariableCtx": [
+                        "f₀[output]!1!1",
+                        "f₀[output]!0!1",
+                        "f₀[output]!1!0",
+                        "f₀[output]!0!0",
+                        "f₀[output]",
+                        "f₀[input]!1!1",
+                        "f₀[input]!0!1",
+                        "f₀[input]!1!0",
+                        "f₀[input]!0!0",
+                        "f₀[input]"
                       ],
+                      "userVariables": [],
+                      "queryVariableMapping": {
+                        "y3": 9,
+                        "y2": 8,
+                        "y1": 7,
+                        "y0": 6,
+                        "x3": 4,
+                        "x2": 3,
+                        "x1": 2,
+                        "x0": 1
+                      }
+                    },
+                    "variableCompilationTrace": {
                       "reconstructionSteps": [
                         {
-                          "tag": "ReconstructTensor",
+                          "tag": "ReconstructTensorVariable",
                           "contents": [
-                            "OtherVariable",
-                            [
-                              2,
-                              2
-                            ],
                             0,
-                            [
-                              1,
-                              2,
-                              3,
-                              4
-                            ]
+                            {
+                              "tag": "DenseTensor",
+                              "contents": [
+                                [
+                                  2,
+                                  2
+                                ],
+                                [
+                                  1,
+                                  2,
+                                  3,
+                                  4
+                                ]
+                              ]
+                            }
                           ]
                         },
                         {
-                          "tag": "ReconstructTensor",
+                          "tag": "ReconstructTensorVariable",
                           "contents": [
-                            "OtherVariable",
-                            [
-                              2,
-                              2
-                            ],
                             5,
-                            [
-                              6,
-                              7,
-                              8,
-                              9
-                            ]
+                            {
+                              "tag": "DenseTensor",
+                              "contents": [
+                                [
+                                  2,
+                                  2
+                                ],
+                                [
+                                  6,
+                                  7,
+                                  8,
+                                  9
+                                ]
+                              ]
+                            }
                           ]
                         }
                       ]
@@ -413,92 +356,73 @@
               "queries": {
                 "unDisjunctAll": [
                   {
-                    "variableReconstruction": {
-                      "variableStore": [
-                        [
-                          0,
-                          "f₀[input]",
-                          null
-                        ],
-                        [
-                          1,
-                          "f₀[input]!0!0",
-                          "x0"
-                        ],
-                        [
-                          2,
-                          "f₀[input]!1!0",
-                          "x1"
-                        ],
-                        [
-                          3,
-                          "f₀[input]!0!1",
-                          "x2"
-                        ],
-                        [
-                          4,
-                          "f₀[input]!1!1",
-                          "x3"
-                        ],
-                        [
-                          5,
-                          "f₀[output]",
-                          null
-                        ],
-                        [
-                          6,
-                          "f₀[output]!0!0",
-                          "y0"
-                        ],
-                        [
-                          7,
-                          "f₀[output]!1!0",
-                          "y1"
-                        ],
-                        [
-                          8,
-                          "f₀[output]!0!1",
-                          "y2"
-                        ],
-                        [
-                          9,
-                          "f₀[output]!1!1",
-                          "y3"
-                        ]
+                    "variableStore": {
+                      "vehicleVariableCtx": [
+                        "f₀[output]!1!1",
+                        "f₀[output]!0!1",
+                        "f₀[output]!1!0",
+                        "f₀[output]!0!0",
+                        "f₀[output]",
+                        "f₀[input]!1!1",
+                        "f₀[input]!0!1",
+                        "f₀[input]!1!0",
+                        "f₀[input]!0!0",
+                        "f₀[input]"
                       ],
+                      "userVariables": [],
+                      "queryVariableMapping": {
+                        "y3": 9,
+                        "y2": 8,
+                        "y1": 7,
+                        "y0": 6,
+                        "x3": 4,
+                        "x2": 3,
+                        "x1": 2,
+                        "x0": 1
+                      }
+                    },
+                    "variableCompilationTrace": {
                       "reconstructionSteps": [
                         {
-                          "tag": "ReconstructTensor",
+                          "tag": "ReconstructTensorVariable",
                           "contents": [
-                            "OtherVariable",
-                            [
-                              2,
-                              2
-                            ],
                             0,
-                            [
-                              1,
-                              2,
-                              3,
-                              4
-                            ]
+                            {
+                              "tag": "DenseTensor",
+                              "contents": [
+                                [
+                                  2,
+                                  2
+                                ],
+                                [
+                                  1,
+                                  2,
+                                  3,
+                                  4
+                                ]
+                              ]
+                            }
                           ]
                         },
                         {
-                          "tag": "ReconstructTensor",
+                          "tag": "ReconstructTensorVariable",
                           "contents": [
-                            "OtherVariable",
-                            [
-                              2,
-                              2
-                            ],
                             5,
-                            [
-                              6,
-                              7,
-                              8,
-                              9
-                            ]
+                            {
+                              "tag": "DenseTensor",
+                              "contents": [
+                                [
+                                  2,
+                                  2
+                                ],
+                                [
+                                  6,
+                                  7,
+                                  8,
+                                  9
+                                ]
+                              ]
+                            }
                           ]
                         }
                       ]

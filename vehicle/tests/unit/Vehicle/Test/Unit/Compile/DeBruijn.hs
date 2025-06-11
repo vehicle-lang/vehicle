@@ -23,21 +23,21 @@ substitutionTests =
     substTest
     [ SubstitutionTest
         { name = "UnderLambdaClosed",
-          value = INatLiteral p 2,
+          value = INatLiteral 2,
           expr = Lam p (binding (INatType p)) (BoundVar p 0),
           expected = Lam p (binding (INatType p)) (BoundVar p 0)
         },
       SubstitutionTest
         { name = "UnderLambdaOpenBody",
-          value = INatLiteral p 2,
+          value = INatLiteral 2,
           expr = Lam p (binding (INatType p)) (BoundVar p 1),
-          expected = Lam p (binding (INatType p)) (INatLiteral p 2)
+          expected = Lam p (binding (INatType p)) (INatLiteral 2)
         },
       SubstitutionTest
         { name = "UnderLambdaOpenType",
-          value = INatLiteral p 2,
+          value = INatLiteral 2,
           expr = Lam p (binding (BoundVar p 0)) (BoundVar p 0),
-          expected = Lam p (binding (INatLiteral p 2)) (BoundVar p 0)
+          expected = Lam p (binding (INatLiteral 2)) (BoundVar p 0)
         }
     ]
 

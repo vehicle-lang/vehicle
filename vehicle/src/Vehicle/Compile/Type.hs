@@ -77,7 +77,11 @@ typeCheckDecl uncheckedDecl =
   logCompilerPass MidDetail ("typing" <+> quotePretty (identifierOf uncheckedDecl)) $ do
     logDebug MidDetail $ prettyExternal uncheckedDecl <> line
 
-    convertedDecl <- traverse convertFromStandardBuiltins uncheckedDecl
+    convertedDecl <- logCompilerSection MaxDetail "Converting builtins" $ do
+      traverse convertFromStandardBuiltins uncheckedDecl
+
+    logDebug MidDetail $ prettyExternal convertedDecl
+
     setCurrentDecl $ Just convertedDecl
 
     decl <- case convertedDecl of

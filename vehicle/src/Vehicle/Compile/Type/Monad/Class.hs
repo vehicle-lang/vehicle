@@ -390,12 +390,11 @@ createFreshConstraintCtx ::
   forall builtin m.
   (MonadTypeChecker builtin m) =>
   Provenance ->
-  Provenance ->
   BoundCtx (Type builtin) ->
   m (ConstraintContext builtin)
-createFreshConstraintCtx originalProvenance creationProvenance ctx = do
+createFreshConstraintCtx creationProvenance ctx = do
   cid <- generateFreshConstraintID (Proxy @builtin)
-  return $ ConstraintContext cid originalProvenance creationProvenance unknownBlockingStatus ctx
+  return $ ConstraintContext cid creationProvenance unknownBlockingStatus ctx
 
 getActiveConstraints :: (MonadTypeChecker builtin m) => m [WithContext (Constraint builtin)]
 getActiveConstraints = do
@@ -497,10 +496,10 @@ copyContext ::
   ConstraintContext builtin ->
   Maybe (BoundCtx (Type builtin)) ->
   m (ConstraintContext builtin)
-copyContext (ConstraintContext _ originProv creationProv _ ctx) maybeNewCtx = do
+copyContext (ConstraintContext _ creationProv _ ctx) maybeNewCtx = do
   newID <- generateFreshConstraintID (Proxy @builtin)
   let newCtx = fromMaybe ctx maybeNewCtx
-  return $ ConstraintContext newID originProv creationProv unknownBlockingStatus newCtx
+  return $ ConstraintContext newID creationProv unknownBlockingStatus newCtx
 
 --------------------------------------------------------------------------------
 -- Constraints

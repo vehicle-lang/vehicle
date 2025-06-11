@@ -4,12 +4,14 @@ module Vehicle.Backend.Queries.Error
   )
 where
 
-import Control.Monad.Except (MonadError (..))
-import Vehicle.Compile.Dependency (analyseDependenciesAndPrune)
+import Data.List.NonEmpty qualified as NonEmpty
 import Vehicle.Compile.Error
+import Vehicle.Compile.Monomorphisation (MonomorphisationSettings (MonoSettings, isMonomorphisableBinder, keepUnusedDeclaration), monomorphise)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyVerbose)
-import Vehicle.Compile.Type.Subsystem (linearityTypeCheck, polarityTypeCheck)
+import Vehicle.Compile.Print
+import Vehicle.Compile.Type.Irrelevance (removeIrrelevantCodeFromProg)
+import Vehicle.Compile.Type.Subsystem (linearityTypeCheck, polarityTypeCheck, resolveInstanceArgumentsAndCasts)
+import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Linearity
 import Vehicle.Data.Builtin.Linearity.Type ()
 import Vehicle.Data.Builtin.Polarity
@@ -25,27 +27,13 @@ diagnoseNonLinearity ::
   DeclProvenance ->
   m CompileError
 diagnoseNonLinearity queryFormat prog propertyProv@(propertyIdentifier, _) = do
-  setCallDepth 0
-  logDebug MinDetail $
-    "ERROR: found non-linear property. Switching to linearity type-checking mode for"
-      <+> quotePretty propertyIdentifier
-      <> line
-
-  prunedProg <- analyseDependenciesAndPrune prog [nameOf propertyIdentifier]
-  errorOrLinearityProg <- linearityTypeCheck prunedProg
-  case errorOrLinearityProg of
-    Left err -> handleUnexpectedError err
-    Right linearityProg -> do
-      -- Extract and diagnose the type.
-      propertyType <- findDeclType propertyIdentifier linearityProg
-      case propertyType of
-        Builtin _ (Linearity (NonLinear source)) -> do
-          return $ UnsupportedNonLinearConstraint queryFormat propertyProv (Right source)
-        _ -> handleUnexpectedError (DevError $ "Unexpected linearity type for property" <+> quotePretty propertyIdentifier)
-  where
-    handleUnexpectedError :: (MonadCompile m) => CompileError -> m CompileError
-    handleUnexpectedError err =
-      return $ UnsupportedNonLinearConstraint queryFormat propertyProv (Left err)
+  errorOrOrigin <- diagnoseSpecIncompatiblility prog propertyIdentifier linearityTypeCheck
+  let origin = case errorOrOrigin of
+        Left err -> Left err
+        Right originType -> case originType of
+          Builtin _ (Linearity (NonLinear source)) -> Right source
+          _ -> Left $ unexpectedOriginType propertyIdentifier
+  return $ UnsupportedNonLinearConstraint queryFormat propertyProv origin
 
 diagnoseAlternatingQuantifiers ::
   forall m.
@@ -55,27 +43,70 @@ diagnoseAlternatingQuantifiers ::
   DeclProvenance ->
   m CompileError
 diagnoseAlternatingQuantifiers queryFormat prog propertyProv@(propertyIdentifier, _) = do
+  errorOrOrigin <- diagnoseSpecIncompatiblility prog propertyIdentifier polarityTypeCheck
+  let origin = case errorOrOrigin of
+        Left err -> Left err
+        Right originType -> case originType of
+          Builtin _ (Polarity (MixedSequential q p pp2)) -> Right (q, p, pp2)
+          _ -> Left $ unexpectedOriginType propertyIdentifier
+  return $ UnsupportedAlternatingQuantifiers queryFormat propertyProv origin
+
+diagnoseSpecIncompatiblility ::
+  (MonadCompile m) =>
+  Prog Builtin ->
+  Identifier ->
+  (Prog Builtin -> m (Either CompileError (Prog builtin))) ->
+  m (Either CompileError (Type builtin))
+diagnoseSpecIncompatiblility prog propertyIdentifier typeCheck = do
   setCallDepth 0
   logDebug MinDetail $
-    "ERROR: found property with alternating quantifiers. Switching to polarity type-checking mode for"
+    "ERROR: found uncompilable property."
+      <+> "Switching to linearity type-checking mode for"
       <+> quotePretty propertyIdentifier
       <> line
 
-  prunedProg <- analyseDependenciesAndPrune prog [nameOf propertyIdentifier]
-  errorOrPolarityProg <- polarityTypeCheck prunedProg
-  case errorOrPolarityProg of
-    Left err -> handleUnexpectedError err
-    Right polarityProg -> do
-      -- Extract and diagnose the type.
-      propertyType <- findDeclType propertyIdentifier polarityProg
-      case propertyType of
-        Builtin _ (Polarity (MixedSequential q p pp2)) -> do
-          throwError $ UnsupportedAlternatingQuantifiers queryFormat propertyProv (Right (q, p, pp2))
-        _ -> compilerDeveloperError $ "Unexpected polarity type for property" <+> quotePretty propertyIdentifier <> ":" <+> prettyVerbose propertyType
+  monomorphisedProg <-
+    monomorphise prog $
+      MonoSettings
+        { isMonomorphisableBinder = not . isExplicit,
+          keepUnusedDeclaration = (== propertyIdentifier)
+        }
+  irrelevantFreeProg <- removeIrrelevantCodeFromProg monomorphisedProg
+  implicitFreeProg <- removeImplicitArgs irrelevantFreeProg
+  instanceFreeProg <- resolveInstanceArgumentsAndCasts implicitFreeProg
+  errorOrLinearityProg <- typeCheck instanceFreeProg
+
+  case errorOrLinearityProg of
+    Left err -> return $ Left err
+    Right linearityProg -> Right <$> findDeclType propertyIdentifier linearityProg
+
+removeImplicitArgs ::
+  forall m builtin.
+  (MonadCompile m, PrintableBuiltin builtin) =>
+  Prog builtin ->
+  m (Prog builtin)
+removeImplicitArgs prog =
+  logCompilerPass MaxDetail "removal of implicit arguments" $ do
+    result <- traverse go prog
+    logCompilerPassOutput $ prettyExternal result
+    return result
   where
-    handleUnexpectedError :: (MonadCompile m) => CompileError -> m CompileError
-    handleUnexpectedError err =
-      return $ UnsupportedAlternatingQuantifiers queryFormat propertyProv (Left err)
+    go :: Expr builtin -> m (Expr builtin)
+    go expr = case expr of
+      App fun args -> do
+        fun' <- go fun
+        let nonImplicitArgs = NonEmpty.filter (not . isImplicit) args
+        nonImplicitArgs' <- traverse (traverse go) nonImplicitArgs
+        return $ normAppList fun' nonImplicitArgs'
+      BoundVar {} -> return expr
+      FreeVar {} -> return expr
+      Universe {} -> return expr
+      Meta {} -> return expr
+      Hole {} -> return expr
+      Builtin {} -> return expr
+      Pi p binder res -> Pi p <$> traverse go binder <*> go res
+      Lam p binder body -> Lam p <$> traverse go binder <*> go body
+      Let p bound binder body -> Let p <$> go bound <*> traverse go binder <*> go body
 
 findDeclType :: (MonadCompile m) => Identifier -> Prog builtin -> m (Expr builtin)
 findDeclType ident (Main decls) = do
@@ -83,3 +114,8 @@ findDeclType ident (Main decls) = do
   case candidates of
     [property] -> return $ typeOf property
     _ -> compilerDeveloperError $ "Could not find property" <+> quotePretty ident <+> "in program after subtyping."
+
+unexpectedOriginType :: Identifier -> CompileError
+unexpectedOriginType ident =
+  DevError $
+    "Unexpected secondary type for property" <+> quotePretty ident

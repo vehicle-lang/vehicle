@@ -1,0 +1,12 @@
+Usage: vehicle list COMMAND (-s|--specification FILE)
+
+  List entities for a .vcl specification file.
+
+Available options:
+  -s,--specification FILE  The .vcl file containing the specification.
+  -h,--help                Show this help text
+
+Available commands:
+  resources                List all networks, datasets, and parameters in the
+                           specification.
+  properties               List all properties in the specification.

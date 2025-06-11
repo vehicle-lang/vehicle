@@ -1,7 +1,32 @@
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-
-{-# HLINT ignore "Use section" #-}
-module Vehicle.Syntax.Tensor where
+module Vehicle.Syntax.Tensor
+  ( TensorShape,
+    TensorIndices,
+    showTensorIndices,
+    flattenIndices,
+    HasShape (..),
+    isZeroDimensional,
+    Tensor (ConstantTensor),
+    BoolTensor,
+    RatTensor,
+    IndexTensor,
+    NatTensor,
+    pattern ZeroDimTensor,
+    allTensor,
+    anyTensor,
+    zipWithTensor,
+    prettyTensor,
+    stack,
+    unstack,
+    at,
+    foldTensor,
+    foldMapTensor,
+    mapTensor,
+    traverseTensor,
+    toList,
+    toVector,
+    fromVector,
+  )
+where
 
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON)
@@ -11,9 +36,10 @@ import Data.Serialize (Serialize)
 import Data.Vector (Vector)
 import Data.Vector qualified as Vector
 import Data.Vector.Instances ()
+import Data.Vector.Internal.Check (HasCallStack)
 import Data.Vector.Serialize ()
 import GHC.Generics (Generic)
-import Prettyprinter (Pretty (..), concatWith, surround, (<+>))
+import Prettyprinter (Doc, Pretty (..), concatWith, surround, (<+>))
 import Vehicle.Syntax.Prelude (developerError)
 
 --------------------------------------------------------------------------------
@@ -26,63 +52,23 @@ type TensorIndices = [Int]
 showTensorIndices :: TensorIndices -> String
 showTensorIndices xs = concatMap (\v -> "!" <> show v) (reverse xs)
 
---------------------------------------------------------------------------------
--- Tensor value
+flattenIndices :: TensorShape -> TensorIndices -> Int
+flattenIndices shape indices =
+  sum $ zipWith (*) indices (scanr (*) 1 (init shape))
 
-data TensorValue a = Constant a | Values (Vector a)
-  deriving (Show, Eq, Ord, Generic)
+class HasShape a where
+  shapeOf :: a -> TensorShape
 
-instance Functor TensorValue where
-  fmap f = \case
-    Constant v -> Constant $ f v
-    Values vs -> Values $ fmap f vs
-
-tensorValuesToVector :: TensorShape -> TensorValue a -> Vector a
-tensorValuesToVector shape = \case
-  Constant v -> Vector.replicate (product shape) v
-  Values vs -> vs
-
-instance (NFData a) => NFData (TensorValue a)
-
-instance (Serialize a) => Serialize (TensorValue a)
-
-instance (Hashable a) => Hashable (TensorValue a)
-
-instance (ToJSON a) => ToJSON (TensorValue a)
-
-instance (FromJSON a) => FromJSON (TensorValue a)
-
-allValues :: (a -> Bool) -> TensorValue a -> Bool
-allValues f = \case
-  Constant v -> f v
-  Values vs -> Vector.all f vs
-
-anyValues :: (a -> Bool) -> TensorValue a -> Bool
-anyValues f = \case
-  Constant v -> f v
-  Values vs -> Vector.any f vs
-
-atValues :: [Int] -> Int -> TensorValue a -> TensorValue a
-atValues elemDims d = \case
-  Constant v -> Constant v
-  Values vs -> do
-    let stride = product elemDims
-    Values $ Vector.slice (d * stride) stride vs
-
-zipWithValues :: (a -> b -> c) -> TensorValue a -> TensorValue b -> TensorValue c
-zipWithValues f c d = case (c, d) of
-  (Constant v, _) -> fmap (f v) d
-  (_, Constant u) -> fmap (flip f u) c
-  (Values vs, Values us) -> Values $ Vector.zipWith f vs us
+isZeroDimensional :: (HasShape a) => a -> Bool
+isZeroDimensional v = null (shapeOf v)
 
 --------------------------------------------------------------------------------
 -- Tensor constants
 
-data Tensor a = Tensor
-  { tensorShape :: TensorShape,
-    tensorValue :: TensorValue a
-  }
-  deriving (Show, Eq, Ord, Generic, Functor)
+data Tensor a
+  = DenseTensor TensorShape (Vector a)
+  | ConstantTensor TensorShape a
+  deriving (Show, Eq, Ord, Generic)
 
 instance (NFData a) => NFData (Tensor a)
 
@@ -94,72 +80,105 @@ instance (ToJSON a) => ToJSON (Tensor a)
 
 instance (FromJSON a) => FromJSON (Tensor a)
 
+toVector :: Tensor a -> Vector a
+toVector = \case
+  ConstantTensor shape value -> Vector.replicate (product shape) value
+  DenseTensor _ values -> values
+
+fromVector :: (Eq a) => TensorShape -> Vector a -> Tensor a
+fromVector shape values
+  | Vector.null values = DenseTensor shape values
+  | Vector.all (== Vector.head values) values = ConstantTensor shape (Vector.head values)
+  | otherwise = DenseTensor shape values
+
+fromVectorSlice :: (Eq a) => Int -> TensorShape -> Vector a -> Int -> Tensor a
+fromVectorSlice stride sliceShape values strideIndex =
+  fromVector sliceShape $ Vector.slice (strideIndex * stride) stride values
+
+mapTensor :: (Eq b) => (a -> b) -> Tensor a -> Tensor b
+mapTensor f = \case
+  DenseTensor shape values -> fromVector shape $ fmap f values
+  ConstantTensor shape value -> ConstantTensor shape (f value)
+
 instance Foldable Tensor where
-  foldr f e t = foldr f e (tensorToVector t)
+  foldr f e t = foldr f e (toVector t)
 
-instance Traversable Tensor where
-  traverse f (Tensor shape values) =
-    Tensor shape <$> case values of
-      Constant v -> Constant <$> f v
-      Values vs -> Values <$> traverse f vs
+traverseTensor :: (Applicative m, Eq b) => (a -> m b) -> Tensor a -> m (Tensor b)
+traverseTensor f = \case
+  DenseTensor shape values -> fromVector shape <$> traverse f values
+  ConstantTensor shape value -> ConstantTensor shape <$> f value
 
-tensorToVector :: Tensor a -> Vector a
-tensorToVector (Tensor shape values) =
-  tensorValuesToVector shape values
+instance HasShape (Tensor a) where
+  shapeOf = \case
+    ConstantTensor shape _ -> shape
+    DenseTensor shape _ -> shape
 
-tensorToList :: Tensor a -> [a]
-tensorToList = Vector.toList . tensorToVector
+toList :: Tensor a -> [a]
+toList = Vector.toList . toVector
+
+innerMap :: (a -> b) -> (Vector a -> b) -> Tensor a -> b
+innerMap f fs = \case
+  ConstantTensor _ value -> f value
+  DenseTensor _ values -> fs values
 
 allTensor :: (a -> Bool) -> Tensor a -> Bool
-allTensor f = allValues f . tensorValue
+allTensor f = innerMap f (Vector.all f)
 
 anyTensor :: (a -> Bool) -> Tensor a -> Bool
-anyTensor f = anyValues f . tensorValue
+anyTensor f = innerMap f (Vector.any f)
 
-zipWithTensor :: (a -> b -> c) -> Tensor a -> Tensor b -> Tensor c
-zipWithTensor f (Tensor shape c) (Tensor _shape d) = Tensor shape (zipWithValues f c d)
+zipWithTensor :: (Eq c) => (a -> b -> c) -> Tensor a -> Tensor b -> Tensor c
+zipWithTensor f xs ys = case (xs, ys) of
+  (ConstantTensor shape u, ConstantTensor _ v) -> ConstantTensor shape (f u v)
+  (DenseTensor shape us, ConstantTensor _ v) -> fromVector shape $ fmap (`f` v) us
+  (ConstantTensor shape u, DenseTensor _ vs) -> fromVector shape $ fmap (f u) vs
+  (DenseTensor shape us, DenseTensor _ vs) -> fromVector shape $ Vector.zipWith f us vs
 
 foldTensor :: (a -> a -> a) -> Tensor a -> Tensor a -> Tensor a
-foldTensor f e t = case tensorToList t of
+foldTensor f e t = case toList t of
   [] -> e
   (x : xs) -> ZeroDimTensor $ foldr f x xs
 
-at :: Tensor a -> Int -> Tensor a
-at (Tensor shape values) i = case shape of
+at :: (HasCallStack, Eq a) => Tensor a -> Int -> Tensor a
+at xs i = case shapeOf xs of
   [] -> developerError "Indexing into a zero-dimensional tensor"
   d : ds
-    | i < d -> Tensor ds (atValues ds i values)
-    | otherwise -> developerError $ "Index" <+> pretty i <+> "out of bounds in tensor of shape" <+> pretty shape
+    | i >= d ->
+        developerError $
+          "Index" <+> pretty i <+> "out of bounds in tensor of shape" <+> pretty (d : ds)
+    | otherwise -> case xs of
+        ConstantTensor _ value -> ConstantTensor ds value
+        DenseTensor _ values -> do
+          let stride = product ds
+          fromVectorSlice stride ds values i
 
 stack :: (Eq a) => [Int] -> [Tensor a] -> Tensor a
 stack ds ts = do
   let dims = length ts : ds
-  let values = fmap tensorValue ts
-  let elems = case allConstant values of
-        Just v -> Constant v
-        Nothing -> Values $ Vector.concat $ fmap tensorToVector ts
-  Tensor dims elems
+  case allConstant ts of
+    Just v -> ConstantTensor dims v
+    Nothing -> fromVector dims $ Vector.concat $ fmap toVector ts
   where
-    allConstant :: (Eq a) => [TensorValue a] -> Maybe a
+    allConstant :: (Eq a) => [Tensor a] -> Maybe a
     allConstant [] = Nothing
     allConstant (x : xs) = case x of
-      Constant v
+      ConstantTensor _ v
         | all (== x) xs -> Just v
         | otherwise -> Nothing
       _ -> Nothing
 
-unstack :: Tensor a -> [Tensor a]
-unstack (Tensor shape values) = case shape of
+unstack :: (HasCallStack, Eq a) => Tensor a -> [Tensor a]
+unstack xs = case shapeOf xs of
   [] -> []
-  d : ds -> case values of
-    Constant v -> replicate d (Tensor ds $ Constant v)
-    Values vs -> do
-      let s = product ds
-      fmap (\i -> Tensor ds $ Values $ Vector.slice (i * s) ((i + 1) * s) vs) [0 .. d - 1]
+  d : ds -> case xs of
+    ConstantTensor _ value -> replicate d (ConstantTensor ds value)
+    DenseTensor _ values -> do
+      let stride = product ds
+      fmap (fromVectorSlice stride ds values) [0 .. d - 1]
 
 foldMapTensor :: forall a b. (a -> b) -> (TensorShape -> [b] -> b) -> Tensor a -> b
 foldMapTensor mkValue mkVec t =
-  foldMapTensorLike mkValue mkVec (tensorShape t) (tensorToList t)
+  foldMapTensorLike mkValue mkVec (shapeOf t) (toList t)
 
 foldMapTensorLike :: (a -> b) -> (TensorShape -> [b] -> b) -> TensorShape -> [a] -> b
 foldMapTensorLike mkValue _mkVec [] [x] = mkValue x
@@ -169,8 +188,13 @@ foldMapTensorLike mkValue mkVec (_ : ds) xs = do
   let elems = fmap (foldMapTensorLike mkValue mkVec ds) inputVarIndicesChunks
   mkVec ds elems
 
+prettyTensor :: (a -> Doc b) -> Tensor a -> Doc b
+prettyTensor prettyElement = do
+  let prettyRow _dims bs = "[" <+> concatWith (surround ", ") bs <+> "]"
+  foldMapTensor prettyElement prettyRow
+
 instance (Pretty a) => Pretty (Tensor a) where
-  pretty = foldMapTensor pretty (\_dims bs -> "[" <+> concatWith (surround ", ") bs <+> "]")
+  pretty = prettyTensor pretty
 
 type BoolTensor = Tensor Bool
 
@@ -179,15 +203,6 @@ type NatTensor = Tensor Int
 type IndexTensor = Tensor Int
 
 type RatTensor = Tensor Rational
-
-zeroTensor :: TensorShape -> RatTensor
-zeroTensor dims = Tensor dims (Constant 0)
-
-singletonTensor :: a -> Tensor a
-singletonTensor a = Tensor [1] (Constant a)
-
-pattern ConstantTensor :: TensorShape -> a -> Tensor a
-pattern ConstantTensor dims v = (Tensor dims (Constant v))
 
 -- | Represents a plain value, with zero dimensions
 pattern ZeroDimTensor :: a -> Tensor a

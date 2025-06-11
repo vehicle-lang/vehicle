@@ -6,7 +6,6 @@ module Vehicle.Verify.Core where
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Char.SScript (subscript)
-import Data.Map (Map)
 import Data.Text (Text, unpack)
 import GHC.Generics (Generic)
 import Prettyprinter (brackets)
@@ -14,7 +13,6 @@ import System.FilePath ((<.>), (</>))
 import Vehicle.Compile.Resource
 import Vehicle.Data.Assertion (Relation (..))
 import Vehicle.Data.Builtin.Core
-import Vehicle.Data.Code.LinearExpr (Variable)
 import Vehicle.Data.Tensor (TensorIndices, showTensorIndices)
 import Vehicle.Prelude
 
@@ -54,10 +52,6 @@ instance Pretty MetaNetworkEntry where
 
 -- | A list of neural networks used in a given query.
 type MetaNetwork = [MetaNetworkEntry]
-
--- | A (satisfying) assignment to a set of reduced network-level variables.
-newtype NetworkVariableAssignment
-  = NetworkVariableAssignment (Map Variable Rational)
 
 --------------------------------------------------------------------------------
 -- Queries misc

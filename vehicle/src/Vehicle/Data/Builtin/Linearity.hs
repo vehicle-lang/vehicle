@@ -10,6 +10,7 @@ import Data.Text (Text)
 import GHC.Generics (Generic)
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Interface
+import Vehicle.Data.Builtin.Interface.Blocked (BlockingStatus (..), functionBlockingStatus)
 import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Code.Expr
@@ -17,55 +18,54 @@ import Vehicle.Data.DSL
 import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
--- LinearityProvenance
+-- LinearityProof
 
--- TODO
--- 1) rename LinearityProvenance to LinearityProof
+-- | A proof that a term is linear
 -- 2) mimic AST nodes names
-data LinearityProvenance
+data LinearityProof
   = QuantifiedVariableProvenance Provenance Text
   | NetworkOutputProvenance Provenance Text
-  | LinFunctionProvenance Provenance LinearityProvenance FunctionPosition
+  | LinFunctionProvenance Provenance LinearityProof FunctionPosition
   deriving (Show, Generic)
 
-instance Serialize LinearityProvenance
+instance Serialize LinearityProof
 
-instance Eq LinearityProvenance where
+instance Eq LinearityProof where
   _x == _y = True
 
-instance NFData LinearityProvenance where
+instance NFData LinearityProof where
   rnf _x = ()
 
-instance Hashable LinearityProvenance where
+instance Hashable LinearityProof where
   hashWithSalt s _p = s
 
 --------------------------------------------------------------------------------
 -- NonLinearity
 
--- | Possible sources of non-linearity in the program
-data NonLinearitySource
+-- | A proof that a term is non-linear
+data NonLinearityProof
   = -- | A multiplication where both arguments are linear
-    LinearTimesLinear Provenance LinearityProvenance LinearityProvenance
+    LinearTimesLinear Provenance LinearityProof LinearityProof
   | -- | A division where the divisor is linear.
-    DivideByLinear Provenance LinearityProvenance
+    DivideByLinear Provenance LinearityProof
   | -- | An power where the base is linear
-    PowLinearBase Provenance LinearityProvenance
+    PowLinearBase Provenance LinearityProof
   | -- | An power where the exponent is linear
-    PowLinearExponent Provenance LinearityProvenance
+    PowLinearExponent Provenance LinearityProof
   deriving (Eq, Show, Generic)
 
-instance Pretty NonLinearitySource where
+instance Pretty NonLinearityProof where
   pretty = \case
     LinearTimesLinear {} -> "X*X"
     DivideByLinear {} -> "?/X"
     PowLinearBase {} -> "X^?"
     PowLinearExponent {} -> "?^X"
 
-instance NFData NonLinearitySource
+instance NFData NonLinearityProof
 
-instance Hashable NonLinearitySource
+instance Hashable NonLinearityProof
 
-instance Serialize NonLinearitySource
+instance Serialize NonLinearityProof
 
 --------------------------------------------------------------------------------
 -- Linearity
@@ -74,8 +74,8 @@ instance Serialize NonLinearitySource
 -- constant, linear or non-linear expression.
 data Linearity
   = Constant
-  | Linear LinearityProvenance
-  | NonLinear NonLinearitySource
+  | Linear LinearityProof
+  | NonLinear NonLinearityProof
   deriving (Eq, Show, Generic)
 
 instance NFData Linearity
@@ -91,7 +91,7 @@ instance Pretty Linearity where
     NonLinear nl -> "NonLinear[" <+> pretty nl <+> "]"
 
 mapLinearityProvenance ::
-  (LinearityProvenance -> LinearityProvenance) ->
+  (LinearityProof -> LinearityProof) ->
   Linearity ->
   Linearity
 mapLinearityProvenance f = \case
@@ -106,9 +106,9 @@ mapLinearityProvenance f = \case
 
 data LinearityRelation
   = MaxLinearity
-  | MulLinearity
-  | DivLinearity
-  | PowLinearity
+  | MulLinearity Provenance
+  | DivLinearity Provenance
+  | PowLinearity Provenance
   | FunctionLinearity FunctionPosition
   | QuantifierLinearity Quantifier
   deriving (Eq, Generic, Show)
@@ -122,9 +122,9 @@ instance Hashable LinearityRelation
 instance Pretty LinearityRelation where
   pretty = \case
     MaxLinearity -> "MaxLinearity"
-    MulLinearity -> "MulLinearity"
-    DivLinearity -> "DivLinearity"
-    PowLinearity -> "PowLinearity"
+    MulLinearity _p -> "MulLinearity"
+    DivLinearity _p -> "DivLinearity"
+    PowLinearity _p -> "PowLinearity"
     QuantifierLinearity q -> "QuantifierLinearity[" <> pretty q <> "]"
     FunctionLinearity p -> "FunctionLinearity[" <> pretty p <> "]"
 
@@ -226,7 +226,8 @@ instance ConvertableBuiltin LinearityBuiltin Builtin where
     b -> cheatConvertBuiltin p $ pretty b
 
 instance PrintableBuiltin LinearityBuiltin where
-  coercionArgs _ = Nothing
+  coercionArgs = const Nothing
+  isDerivedBuiltin = const Nothing
 
 --------------------------------------------------------------------------------
 -- Normalisation
@@ -237,9 +238,9 @@ instance NormalisableBuiltin LinearityBuiltin where
     LinearityFunction _ -> None
     _ -> None
 
-  blockingArgs = \case
-    LinearityFunction f -> functionBlockingArgs f
-    _ -> noBlockingArgs
+  blockingStatus b spine = case b of
+    LinearityFunction f -> functionBlockingStatus f spine
+    _ -> DoesNotReduce
 
   isTypeClassOp _ = False
   isCast _ _ = Nothing
@@ -267,14 +268,14 @@ linearityRelation tc args = builtin (LinearityRelation tc) @@ args
 maxLinearity :: LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr
 maxLinearity l1 l2 l3 = linearityRelation MaxLinearity [l1, l2, l3]
 
-mulLinearity :: LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr
-mulLinearity l1 l2 l3 = linearityRelation MulLinearity [l1, l2, l3]
+mulLinearity :: Provenance -> LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr
+mulLinearity p l1 l2 l3 = linearityRelation (MulLinearity p) [l1, l2, l3]
 
-divLinearity :: LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr
-divLinearity l1 l2 l3 = linearityRelation DivLinearity [l1, l2, l3]
+divLinearity :: Provenance -> LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr
+divLinearity p l1 l2 l3 = linearityRelation (DivLinearity p) [l1, l2, l3]
 
-powLinearity :: LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr
-powLinearity l1 l2 l3 = linearityRelation PowLinearity [l1, l2, l3]
+powLinearity :: Provenance -> LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr
+powLinearity p l1 l2 l3 = linearityRelation (PowLinearity p) [l1, l2, l3]
 
 quantLinearity :: Quantifier -> LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr
 quantLinearity q l1 l2 = linearityRelation (QuantifierLinearity q) [l1, l2]

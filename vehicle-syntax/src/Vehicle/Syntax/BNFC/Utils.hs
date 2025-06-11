@@ -61,6 +61,8 @@ tokElemOf = mkToken B.TokElemOf ":"
 
 tokLambda = mkToken B.TokLambda "\\"
 
+tokVector = mkToken B.TokVector "Vector"
+
 tokTensor = mkToken B.TokTensor "Tensor"
 
 tokUnit = mkToken B.TokUnit "Unit"
@@ -103,7 +105,7 @@ tokGt = mkToken B.TokGt ">"
 
 tokEqPoint = mkToken B.TokEqPoint "==."
 
-tokNePoint = mkToken B.TokNePoint "=!."
+tokNePoint = mkToken B.TokNePoint "!=."
 
 tokLePoint = mkToken B.TokLePoint "<=."
 
@@ -142,6 +144,14 @@ tokFold = mkToken B.TokFold "fold"
 tokReduceAnd = mkToken B.TokReduceAnd "reduceAnd"
 
 tokReduceOr = mkToken B.TokReduceOr "reduceOr"
+
+tokReduceAdd = mkToken B.TokReduceAdd "reduceAdd"
+
+tokReduceMul = mkToken B.TokReduceMul "reduceMul"
+
+tokReduceMin = mkToken B.TokReduceMin "reduceMin"
+
+tokReduceMax = mkToken B.TokReduceMax "reduceMax"
 
 tokHasAdd = mkToken B.TokHasAdd "HasAdd"
 
