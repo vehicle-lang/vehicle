@@ -140,6 +140,8 @@ viaInfer expectedType expr = do
   (checkedExpr, actualType) <- inferExpr expr
   -- Insert any needed implicit or instance arguments
   (appliedCheckedExpr, resultType) <- inferApp checkedExpr actualType []
+  logDebug MaxDetail $ prettyVerbose expectedType
+  logDebug MaxDetail $ prettyVerbose resultType
   -- Check the expected and the actual types are equal
   checkExprTypesEqual p expr expectedType resultType
   return appliedCheckedExpr
@@ -483,6 +485,7 @@ showCheckExit :: forall builtin m. (MonadBidirectional builtin m) => Expr builti
 showCheckExit e = do
   decrCallDepth
   ctx <- getNamedBoundCtx (Proxy @(Type builtin))
+  logDebug MaxDetail $ "check-exit " <+> prettyVerbose e -- (WithContext e ctx)
   logDebug MaxDetail $ "check-exit " <+> prettyExternal (WithContext e ctx)
 
 showInferEntry :: forall builtin m. (MonadBidirectional builtin m) => Expr builtin -> m ()

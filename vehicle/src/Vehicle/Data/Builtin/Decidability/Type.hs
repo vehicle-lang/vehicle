@@ -84,42 +84,44 @@ typeDecidableTypeClassOp = \case
         ~~~> tDim
         .~> type0
   VectorTypeClassFieldTC field ->
-    forAll "t" (type0 ~> tDim ~> type0) $ \t ->
-      builtinDecidableTypeClass (HasVectorTypeClassField field)
-        @@ [t]
-        ~~~> case field of
-          FieldFromVectorLiteral ->
-            forAllTypes $ \tElem ->
-              forAllDim Irrelevant $ \d ->
-                tVector tElem d ~> t @@ [tElem] .@@ [d]
-          FieldForeachVector ->
-            forAllTypes $ \tElem ->
-              forAllDim Relevant $ \d ->
-                (tIndex d ~> tElem) ~> t @@ [tElem] .@@ [d]
-          FieldAtVector ->
-            forAllTypes $ \tElem ->
-              forAllDim Relevant $ \d ->
-                t @@ [tElem] .@@ [d] ~> (tIndex d ~> tElem)
+    forAll "vector" (type0 ~> tDim ~> type0) $ \vectorSol ->
+      let vector e d = vectorSol @@ [e] .@@ [d]
+       in builtinDecidableTypeClass (HasVectorTypeClassField field)
+            @@ [vectorSol]
+            ~~~> case field of
+              FieldFromVectorLiteral ->
+                forAllTypes $ \tElem ->
+                  forAllDim Irrelevant $ \d ->
+                    tVector tElem d ~> vector tElem d
+              FieldForeachVector ->
+                forAllTypes $ \tElem ->
+                  forAllDim Relevant $ \d ->
+                    (tIndex d ~> tElem) ~> vector tElem d
+              FieldAtVector ->
+                forAllTypes $ \tElem ->
+                  forAllDim Relevant $ \d ->
+                    vector tElem d ~> (tIndex d ~> tElem)
   TensorTypeClassFieldTC field ->
-    forAll "t" (tDims ~> type0) $ \t ->
-      builtinDecidableTypeClass (HasTensorTypeClassField field)
-        @@ [t]
-        ~~~> case field of
-          FieldFromBoolTensorLiteral -> forAllDims $ \ds -> tBoolTensor ds ~> t .@@ [ds]
-          FieldNot -> forAllDims $ \ds -> typeOp1 (t .@@ [ds])
-          FieldAnd -> forAllDims $ \ds -> typeOp2 (t .@@ [ds])
-          FieldOr -> forAllDims $ \ds -> typeOp2 (t .@@ [ds])
-          FieldImplies -> forAllDims $ \ds -> typeOp2 (t .@@ [ds])
-          FieldReduceAnd -> forAllDims $ \ds -> t .@@ [dimNil] ~> t .@@ [ds] ~> t .@@ [dimNil]
-          FieldReduceOr -> forAllDims $ \ds -> t .@@ [dimNil] ~> t .@@ [ds] ~> t .@@ [dimNil]
-          FieldForeachTensor -> forAllDim Relevant $ \d -> forAllDims $ \ds -> (tIndex d ~> t .@@ [ds]) ~> t .@@ [d, ds]
-          FieldAtTensor -> forAllDim Relevant $ \d -> forAllDims $ \ds -> t .@@ [d, ds] ~> (tIndex d ~> t .@@ [ds])
-          FieldCompareIndex {} -> typeOfCompareIndex (t .@@ [dimNil])
-          FieldCompareNat {} -> typeOfCompareNat (t .@@ [dimNil])
-          FieldCompareRatTensorPointwise {} -> forAllDims $ \ds -> tTensor tRat ds ~> tTensor tRat ds ~> t .@@ [ds]
-          FieldCompareRatTensorReduced {} -> typeOfCompareRatTensorReduced (t .@@ [dimNil])
-          FieldQuantifyInList {} -> typeOfQuantifyInList t
-          FieldQuantifyIndex {} -> typeOfQuantifyIndex t
+    forAll "tensor" (tDims ~> type0 ~> type0) $ \tensorSol ->
+      let tensor e ds = tensorSol @@ [e] .@@ [ds]
+       in builtinDecidableTypeClass (HasTensorTypeClassField field)
+            @@ [tensorSol]
+            ~~~> case field of
+              FieldFromBoolTensorLiteral -> forAllDims $ \ds -> tBoolTensor ds ~> tensor tBool ds
+              FieldNot -> forAllDims $ \ds -> typeOp1 (tensor tBool ds)
+              FieldAnd -> forAllDims $ \ds -> typeOp2 (tensor tBool ds)
+              FieldOr -> forAllDims $ \ds -> typeOp2 (tensor tBool ds)
+              FieldImplies -> forAllDims $ \ds -> typeOp2 (tensor tBool ds)
+              FieldReduceAnd -> forAllDims $ \ds -> tensor tBool dimNil ~> tensor tBool ds ~> tensor tBool dimNil
+              FieldReduceOr -> forAllDims $ \ds -> tensor tBool dimNil ~> tensor tBool ds ~> tensor tBool dimNil
+              FieldForeachTensor -> forAllTypes $ \tElem -> forAllDim Relevant $ \d -> forAllDims $ \ds -> (tIndex d ~> tensor tElem ds) ~> tensor tElem (cons tDim d ds)
+              FieldAtTensor -> forAllTypes $ \tElem -> forAllDim Relevant $ \d -> forAllDims $ \ds -> tensor tElem (cons tDim d ds) ~> (tIndex d ~> tensor tElem ds)
+              FieldCompareIndex {} -> typeOfCompareIndex (tensor tBool dimNil)
+              FieldCompareNat {} -> typeOfCompareNat (tensor tBool dimNil)
+              FieldCompareRatTensorPointwise {} -> forAllDims $ \ds -> tTensor tRat ds ~> tTensor tRat ds ~> tensor tBool ds
+              FieldCompareRatTensorReduced {} -> forAllDims $ \ds -> tTensor tRat ds ~> tTensor tRat ds ~> tensor tBool dimNil
+              FieldQuantifyInList {} -> typeOfQuantifyInList tensorSol
+              FieldQuantifyIndex {} -> forAllDim Relevant $ \d -> (tIndex d ~> tTensor tBool dimNil) ~> tTensor tBool dimNil
 
 constraint :: DecidabilityBuiltinTypeClass -> (DSLExpr DecidabilityBuiltin -> DSLExpr DecidabilityBuiltin) -> DSLExpr DecidabilityBuiltin
 constraint c f =
@@ -139,9 +141,12 @@ typeDecidableFunction = \case
   PropImplies -> typeOp2 tProp
   PropCompareIndex _op -> typeOfCompareIndex tProp
   PropCompareNat _op -> typeOfCompareNat tProp
-  PropCompareRatTensorPointwise _op -> typeOfCompareRatTensorPointwise propIgnoreDims tProp
+  PropCompareRatTensorPointwise _op -> forAllDims $ \ds -> tTensor tRat ds ~> tTensor tRat ds ~> tProp
   PropQuantifyIndex _q -> typeOfQuantifyIndex tProp
   PropQuantifyInList _q -> typeOfQuantifyInList tProp
+  PropNaryProduct -> developerError "PropNaryProduct not supported"
+  PropNaryProductAt -> developerError "PropNaryProduct not supported"
+  PropNaryProductForeach -> developerError "PropNaryProduct not supported"
 
 typeOfCompareIndex :: DSLExpr DecidabilityBuiltin -> DSLExpr DecidabilityBuiltin
 typeOfCompareIndex tRes =
@@ -151,12 +156,6 @@ typeOfCompareIndex tRes =
 
 typeOfCompareNat :: DSLExpr DecidabilityBuiltin -> DSLExpr DecidabilityBuiltin
 typeOfCompareNat tRes = tNat ~> tNat ~> tRes
-
-typeOfCompareRatTensorPointwise :: DSLExpr DecidabilityBuiltin -> DSLExpr DecidabilityBuiltin -> DSLExpr DecidabilityBuiltin
-typeOfCompareRatTensorPointwise tRes dims = tTensor tRat dims ~> tTensor tRat dims ~> tRes .@@ [dims]
-
-typeOfCompareRatTensorReduced :: DSLExpr DecidabilityBuiltin -> DSLExpr DecidabilityBuiltin
-typeOfCompareRatTensorReduced t = forAllDims $ \dims -> tTensor tRat dims ~> tTensor tRat dims ~> t
 
 typeOfCastBoolTensor :: DSLExpr DecidabilityBuiltin -> DSLExpr DecidabilityBuiltin
 typeOfCastBoolTensor t = forAllDims $ \dims -> tBoolTensor dims ~> t .@@ [dims]
@@ -168,7 +167,7 @@ typeOfQuantifyIndex :: DSLExpr DecidabilityBuiltin -> DSLExpr DecidabilityBuilti
 typeOfQuantifyIndex t = forAllDim Relevant $ \d -> (tIndex d ~> t) ~> t
 
 typeOfQuantifyInList :: DSLExpr DecidabilityBuiltin -> DSLExpr DecidabilityBuiltin
-typeOfQuantifyInList t = forAllTypes $ \tElem -> (tElem ~> t) ~> tList tElem ~> t
+typeOfQuantifyInList t = forAllTypes $ \tElem -> (tElem ~> t) ~> tList tElem ~> t @@ [tBool] .@@ [dimNil]
 
 typeOp1 :: DSLExpr DecidabilityBuiltin -> DSLExpr DecidabilityBuiltin
 typeOp1 t = t ~> t
@@ -211,24 +210,24 @@ convertToDecidabilityBuiltins ::
   forall m.
   (MonadTypeChecker DecidabilityBuiltin m) =>
   BuiltinUpdate m Builtin DecidabilityBuiltin
-convertToDecidabilityBuiltins p b args =
+convertToDecidabilityBuiltins p b args = return $
   case b of
     BuiltinFunction f -> do
       case f of
         -- Convert to type-classes for resolution
-        Not -> convertTo (TensorTypeClassFieldTC FieldNot)
-        And -> convertTo (TensorTypeClassFieldTC FieldAnd)
-        Or -> convertTo (TensorTypeClassFieldTC FieldOr)
-        Implies -> convertTo (TensorTypeClassFieldTC FieldImplies)
-        CompareRatTensorPointwise op -> convertTo (TensorTypeClassFieldTC $ FieldCompareRatTensorPointwise op)
-        ForeachTensor -> convertTo (TensorTypeClassFieldTC FieldForeachTensor)
-        ReduceAndTensor -> convertToAndAddHoles (TensorTypeClassFieldTC FieldReduceAnd) 1
-        ReduceOrTensor -> convertToAndAddHoles (TensorTypeClassFieldTC FieldReduceOr) 1
-        CompareIndex op -> convertToAndAddHoles (TensorTypeClassFieldTC $ FieldCompareIndex op) 1
-        CompareNat op -> convertTo (TensorTypeClassFieldTC $ FieldCompareNat op)
-        ForeachVector -> convertTo (VectorTypeClassFieldTC FieldForeachVector)
-        AtVector -> convertTo (VectorTypeClassFieldTC FieldAtVector)
-        AtTensor -> convertTo (TensorTypeClassFieldTC FieldAtTensor)
+        Not -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC FieldNot)
+        And -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC FieldAnd)
+        Or -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC FieldOr)
+        Implies -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC FieldImplies)
+        CompareRatTensorPointwise op -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC $ FieldCompareRatTensorPointwise op)
+        ForeachTensor -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC FieldForeachTensor)
+        ReduceAndTensor -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC FieldReduceAnd)
+        ReduceOrTensor -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC FieldReduceOr)
+        ForeachVector -> insertTypeArgumentAndConvertTo (VectorTypeClassFieldTC FieldForeachVector)
+        AtVector -> insertTypeArgumentAndConvertTo (VectorTypeClassFieldTC FieldAtVector)
+        AtTensor -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC FieldAtTensor)
+        CompareIndex op -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC $ FieldCompareIndex op)
+        CompareNat op -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC $ FieldCompareNat op)
         -- Nothing needs to change
         QuantifyRatTensor {} -> sameFunction f
         If -> sameFunction f
@@ -252,34 +251,33 @@ convertToDecidabilityBuiltins p b args =
     BuiltinConstructor c -> do
       let original = normAppList (Builtin p (StandardBuiltinConstructor c)) args
       case c of
-        BoolTensorLiteral {} -> return $ castWith (TensorTypeClassFieldTC FieldFromBoolTensorLiteral) original
-        VectorLiteral {} -> return $ castWith (VectorTypeClassFieldTC FieldFromVectorLiteral) original
-        _ -> return original
+        BoolTensorLiteral {} -> castWith (TensorTypeClassFieldTC FieldFromBoolTensorLiteral) original
+        VectorLiteral {} -> castWith (VectorTypeClassFieldTC FieldFromVectorLiteral) original
+        _ -> original
     BuiltinType s -> do
       let b' = case s of
             BoolType -> DecidabilityBuiltinTypeClassOp BoolTypeTC
             TensorType -> DecidabilityBuiltinTypeClassOp TensorTypeTC
             VectorType -> DecidabilityBuiltinTypeClassOp VectorTypeTC
             _ -> StandardBuiltinType s
-      return $ normAppList (Builtin p b') args
+      normAppList (Builtin p b') args
     DerivedFunction f -> case f of
       TypeAnn -> sameDerivedFunction f
-      QuantifyIndex q -> convertToAndAddHoles (TensorTypeClassFieldTC $ FieldQuantifyIndex q) 1
-      QuantifyInList q -> convertToAndAddHoles (TensorTypeClassFieldTC $ FieldQuantifyInList q) 1
-      CompareRatTensorReduced op -> convertToAndAddHoles (TensorTypeClassFieldTC $ FieldCompareRatTensorReduced op) 1
+      QuantifyIndex q -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC $ FieldQuantifyIndex q)
+      QuantifyInList q -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC $ FieldQuantifyInList q)
+      CompareRatTensorReduced op -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC $ FieldCompareRatTensorReduced op)
     _ -> monomorphisationError b args
   where
     -- Nothing changes
-    sameDerivedFunction f = return $ normAppList (Builtin p (StandardBuiltinDerivedFunction f)) args
-    sameFunction f = return $ normAppList (Builtin p (StandardBuiltinFunction f)) args
+    sameDerivedFunction f = normAppList (Builtin p (StandardBuiltinDerivedFunction f)) args
+    sameFunction f = normAppList (Builtin p (StandardBuiltinFunction f)) args
 
     -- Apply a cast
     castWith f original = normAppList (Builtin p $ DecidabilityBuiltinTypeClassOp f) [explicit original]
 
-    convertToAndAddHoles t numberOfHoles = do
-      let holeArgs = replicate numberOfHoles (implicit (Hole p "_"))
-      return $ normAppList (Builtin p (DecidabilityBuiltinTypeClassOp t)) (holeArgs <> args)
-    convertTo t = convertToAndAddHoles t 0
+    insertTypeArgumentAndConvertTo f = do
+      let newArgs = implicit (Hole p "_") : args
+      normAppList (Builtin p $ DecidabilityBuiltinTypeClassOp f) newArgs
 
 restrictDecidabilityDeclType ::
   forall m.

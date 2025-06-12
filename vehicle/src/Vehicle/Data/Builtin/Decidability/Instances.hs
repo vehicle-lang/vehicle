@@ -71,6 +71,8 @@ allInstances =
       <> tensorTypeClassCandidate FieldReduceAnd (builtinFunction ReduceAndTensor) PropAnd
       <> tensorTypeClassCandidate FieldReduceOr (builtinFunction ReduceOrTensor) PropOr
       <> tensorTypeClassCandidate FieldFromBoolTensorLiteral boolTensorToBoolTensor BoolTensorToProp
+      <> tensorTypeClassCandidate FieldAtTensor (builtinFunction AtTensor) PropNaryProductAt
+      <> tensorTypeClassCandidate FieldForeachTensor (builtinFunction ForeachTensor) PropNaryProductForeach
       <> comparisonCandidates Le
       <> comparisonCandidates Lt
       <> comparisonCandidates Ge
@@ -95,8 +97,8 @@ allInstances =
            )
          ]
       <> vectorTypeClassCandidate FieldFromVectorLiteral vectorToVector BoolVectorToProp
-      <> vectorTypeClassCandidate FieldAtVector (builtinFunction AtVector) _
-      <> vectorTypeClassCandidate FieldForeachVector (builtinFunction ForeachVector) _
+      <> vectorTypeClassCandidate FieldAtVector (builtinFunction AtVector) PropNaryProductAt
+      <> vectorTypeClassCandidate FieldForeachVector (builtinFunction ForeachVector) PropNaryProductForeach
 
 type TempCandidate = (DSLExpr DecidabilityBuiltin, DSLExpr DecidabilityBuiltin, Bool)
 
@@ -136,11 +138,11 @@ tensorTypeClassCandidate ::
   DecidabilityBuiltinFunction ->
   [TempCandidate]
 tensorTypeClassCandidate field standardOp typeOp =
-  [ ( decTypeClass (HasTensorTypeClassField field) [tTensorRaw @@ [tBool]],
+  [ ( decTypeClass (HasTensorTypeClassField field) [tTensorRaw],
       standardOp,
       False
     ),
-    ( decTypeClass (HasTensorTypeClassField field) [propIgnoreDims],
+    ( decTypeClass (HasTensorTypeClassField field) [propIgnoreElemAndDims],
       decFunction typeOp,
       False
     )

@@ -12,8 +12,8 @@ import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Interface.Blocked
 import Vehicle.Data.Builtin.Interface.Normalise (EvalScheme (..), MonadNormBuiltin, NormalisableBuiltin (..), evalFoldList, evalIterate, forceEvalSimpleBuiltin)
 import Vehicle.Data.Builtin.Interface.Print
-import Vehicle.Data.Builtin.Standard (Builtin, BuiltinConstructor (..), BuiltinFunction (..), BuiltinType, DerivedFunction)
-import Vehicle.Data.Code.DSL (tDim, tDims)
+import Vehicle.Data.Builtin.Standard (Builtin, BuiltinConstructor (..), BuiltinFunction (..), BuiltinType (..), DerivedFunction)
+import Vehicle.Data.Code.DSL (tDim)
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.DSL
 import Vehicle.Data.Tensor (BoolTensor, anyTensor)
@@ -88,6 +88,9 @@ data DecidabilityBuiltinFunction
   | PropCompareNat ComparisonOp
   | PropCompareIndex ComparisonOp
   | PropCompareRatTensorPointwise ComparisonOp
+  | PropNaryProduct
+  | PropNaryProductAt
+  | PropNaryProductForeach
   | -- Taken from DerivedFunctions
     PropQuantifyIndex Quantifier
   | PropQuantifyInList Quantifier
@@ -241,6 +244,9 @@ instance Pretty DecidabilityBuiltinFunction where
     PropCompareRatTensorPointwise op -> pretty (CompareRatTensorPointwise op) <> symbol
     PropQuantifyIndex q -> pretty (QuantifyIndex q) <> symbol
     PropQuantifyInList q -> pretty (QuantifyInList q) <> symbol
+    PropNaryProduct -> pretty VectorType <> symbol
+    PropNaryProductForeach -> pretty ForeachVector <> symbol
+    PropNaryProductAt -> pretty AtVector <> symbol
     where
       symbol = "ᵖ"
 
@@ -340,9 +346,6 @@ decFunction f = builtin (DecidabilityBuiltinFunction f)
 
 tProp :: DSLExpr DecidabilityBuiltin
 tProp = decFunction PropType
-
-propIgnoreDims :: DSLExpr DecidabilityBuiltin
-propIgnoreDims = lam "ds" Explicit Irrelevant tDims $ const tProp
 
 propIgnoreElemAndDims :: DSLExpr DecidabilityBuiltin
 propIgnoreElemAndDims =
