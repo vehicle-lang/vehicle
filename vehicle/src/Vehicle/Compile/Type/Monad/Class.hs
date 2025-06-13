@@ -69,12 +69,14 @@ exitSolvedMetaTrackingRegion (SolvedMetaState state) = SolvedMetaState $
 -- | State for generating fresh names.
 type FreshNameState = Int
 
+type DeclIsUnused = Bool
+
 -- | The meta-variables and constraints relating the variables currently in scope.
 data TypeCheckerState builtin = TypeCheckerState
-  { -- | The origin and type of each meta variable.
+  { currentDecl :: Maybe (Decl builtin, DeclIsUnused),
+    -- | The origin and type of each meta variable.
     -- NB: these are stored in *reverse* order from which they were created.
     metaVariableCtx :: MetaVariableContext builtin,
-    currentDecl :: Maybe (Decl builtin),
     applicationConstraints :: [WithContext (ApplicationConstraint builtin)],
     unificationConstraints :: [WithContext (UnificationConstraint builtin)],
     instanceConstraints :: [WithContext (InstanceConstraint builtin)],
@@ -88,8 +90,8 @@ data TypeCheckerState builtin = TypeCheckerState
 emptyTypeCheckerState :: TypeCheckerState builtin
 emptyTypeCheckerState =
   TypeCheckerState
-    { metaVariableCtx = mempty,
-      currentDecl = Nothing,
+    { currentDecl = Nothing,
+      metaVariableCtx = mempty,
       applicationConstraints = mempty,
       unificationConstraints = mempty,
       instanceConstraints = mempty,
@@ -361,7 +363,7 @@ prettyMetaInternal m t = pretty m <+> ":" <+> prettyVerbose t
 clearMetaCtx :: forall builtin m. (MonadTypeChecker builtin m) => Proxy builtin -> m ()
 clearMetaCtx _ = do
   logDebug MaxDetail "Clearing meta-variable context"
-  modifyTypeCheckerState @builtin (const emptyTypeCheckerState)
+  modifyTypeCheckerState @builtin $ const emptyTypeCheckerState
 
 getSubstMetaType :: forall builtin m. (MonadTypeChecker builtin m) => MetaID -> m (Type builtin)
 getSubstMetaType m = do
@@ -505,19 +507,23 @@ copyContext (ConstraintContext _ creationProv _ ctx) maybeNewCtx = do
 -- Constraints
 --------------------------------------------------------------------------------
 
-setCurrentDecl :: forall builtin m. (MonadTypeChecker builtin m) => Maybe (Decl builtin) -> m ()
+setCurrentDecl :: forall builtin m. (MonadTypeChecker builtin m) => Maybe (Decl builtin, DeclIsUnused) -> m ()
 setCurrentDecl maybeDecl = modifyTypeCheckerState $ \TypeCheckerState {..} ->
   TypeCheckerState {currentDecl = maybeDecl, ..}
 
-getCurrentDecl :: forall builtin m. (MonadTypeChecker builtin m) => m (Maybe (Decl builtin))
-getCurrentDecl = do
+getCurrentDeclAndUnused :: forall builtin m. (MonadTypeChecker builtin m) => m (Maybe (Decl builtin, DeclIsUnused))
+getCurrentDeclAndUnused = do
   maybeDecl <- currentDecl <$> getTypeCheckerState @builtin
   case maybeDecl of
     Nothing -> return Nothing
-    Just decl -> do
+    Just (decl, isUnused) -> do
       substDecl <- substMetas decl
-      setCurrentDecl (Just decl)
-      return $ Just substDecl
+      let result = Just (substDecl, isUnused)
+      setCurrentDecl result
+      return result
+
+getCurrentDecl :: forall builtin m. (MonadTypeChecker builtin m) => m (Maybe (Decl builtin))
+getCurrentDecl = (fst <$>) <$> getCurrentDeclAndUnused @builtin
 
 glueNBE ::
   (MonadFreeContext builtin m, NormalisableBuiltin builtin) =>

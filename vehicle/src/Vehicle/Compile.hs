@@ -18,7 +18,7 @@ import Vehicle.Backend.LossFunction.LogicCompilation (compileLogic)
 import Vehicle.Backend.LossFunction.Logics (dslFor)
 import Vehicle.Backend.Prelude
 import Vehicle.Backend.Queries
-import Vehicle.Compile.Dependency (analyseDependenciesAndPrune)
+import Vehicle.Compile.Dependency
 import Vehicle.Compile.Error
 import Vehicle.Compile.FunctionaliseResources (functionaliseResources)
 import Vehicle.Compile.Monomorphisation (MonomorphisationSettings (..), hoistInferableParameters, monomorphise)
@@ -125,7 +125,8 @@ compileToITP ::
 compileToITP itp CompileOptions {..} typedProg@(Main ds) = do
   -- Prune all standard-library declarations that aren't used.
   let declsToCompile = mapMaybe (\d -> if isUserCode d then Just (nameOf d) else Nothing) ds
-  prunedProg <- analyseDependenciesAndPrune typedProg declsToCompile
+  let dependencyGraph = createDependencyGraph typedProg
+  prunedProg <- pruneUnusedDeclarations typedProg dependencyGraph declsToCompile
 
   -- Analyse the program to find out which `Bool`s are decidable and which aren't.
   decProg <- decidabilityTypeCheck prunedProg

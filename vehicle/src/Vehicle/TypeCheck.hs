@@ -85,15 +85,14 @@ typeCheckUserProg TypeCheckOptions {..} = do
 -- not load networks and datasets from disk.
 typeCheckProgram ::
   (MonadIO m, MonadCompile m) =>
-  ParseLocation ->
+  Module ->
   Imports ->
-  SpecificationText ->
+  S.Prog ->
   m (Prog Builtin)
-typeCheckProgram modul imports spec = do
-  vehicleProg <- parseProgText modul spec
+typeCheckProgram modl imports vehicleProg = do
   scopedProg <- scopeCheck imports vehicleProg
   freeCtx <- createFreeCtx imports
-  typedProg <- typeCheckProg standardBuiltinInstances freeCtx scopedProg
+  typedProg <- typeCheckProg modl standardBuiltinInstances freeCtx scopedProg
   traverse convertBackToStandardBuiltin typedProg
 
 -- | Parses and type-checks the program but does
@@ -110,7 +109,8 @@ typeCheckOrLoadProg modl imports specificationFile = do
   case interfaceFileResult of
     Just result -> return result
     Nothing -> do
-      result <- typeCheckProgram (ModulePath [modl], specificationFile) imports spec
+      vehicleProg <- parseProgText (ModulePath [modl], specificationFile) spec
+      result <- typeCheckProgram modl imports vehicleProg
       writeObjectFile specificationFile spec result
       return result
 

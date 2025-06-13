@@ -73,7 +73,7 @@ typeCheckWithSubsystem ::
 typeCheckWithSubsystem typingSystem instanceCandidates prog = do
   callDepth <- getCallDepth
   logCompilerPass MinDetail ("typing using" <+> quotePretty typingSystem <+> "type subsystem") $ do
-    result <- runExceptT $ typeCheckProg instanceCandidates mempty prog
+    result <- runExceptT $ typeCheckProg User instanceCandidates mempty prog
     -- Need to reset the call depth explicitly as type-checking may have errored.
     setCallDepth (callDepth + 1)
     return result

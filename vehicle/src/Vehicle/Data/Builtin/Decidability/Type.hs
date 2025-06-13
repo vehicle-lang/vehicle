@@ -8,7 +8,6 @@ where
 import Data.Proxy (Proxy (..))
 import Vehicle.Compile.Context.Free (getDeclType, getFreeEnv)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Type.Bidirectional (createFreshUnificationConstraint)
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.System
@@ -64,27 +63,19 @@ typeOfDerivedFunction = \case
 
 typeDecidableTypeClass :: DecidabilityBuiltinTypeClass -> DSLExpr DecidabilityBuiltin
 typeDecidableTypeClass = \case
-  IsBoolType -> type0 ~> type0
-  IsTensorType -> type0 ~> type0
-  IsVectorType -> type0 ~> type0
-  HasTensorTypeClassField _f -> (tDim ~> type0) ~> type0
-  HasVectorTypeClassField _f -> (tDim ~> type0) ~> type0
+  IsTensorType -> type0
+  IsVectorType -> type0
+  HasTensorTypeClassField _f -> absTensorType ~> type0
+  HasVectorTypeClassField _f -> absVectorType ~> type0
+  ValidPropertyType -> type0 ~> type0
+  ValidNetworkType -> type0 ~> type0
 
 typeDecidableTypeClassOp :: DecidabilityBuiltinTypeClassOp -> DSLExpr DecidabilityBuiltin
 typeDecidableTypeClassOp = \case
-  BoolTypeTC -> constraint IsBoolType (const type0)
-  TensorTypeTC ->
-    forAllExpl "t" type0 $ \t ->
-      isTensorType t
-        ~~~> tDims
-        .~> type0
-  VectorTypeTC ->
-    forAllExpl "t" type0 $ \t ->
-      isVectorType t
-        ~~~> tDim
-        .~> type0
+  TensorTypeTC -> isTensorType ~~~> absTensorType
+  VectorTypeTC -> isVectorType ~~~> absTensorType
   VectorTypeClassFieldTC field ->
-    forAll "vector" (type0 ~> tDim ~> type0) $ \vectorSol ->
+    forAll "vector" absVectorType $ \vectorSol ->
       let vector e d = vectorSol @@ [e] .@@ [d]
        in builtinDecidableTypeClass (HasVectorTypeClassField field)
             @@ [vectorSol]
@@ -102,7 +93,7 @@ typeDecidableTypeClassOp = \case
                   forAllDim Relevant $ \d ->
                     vector tElem d ~> (tIndex d ~> tElem)
   TensorTypeClassFieldTC field ->
-    forAll "tensor" (tDims ~> type0 ~> type0) $ \tensorSol ->
+    forAll "tensor" absTensorType $ \tensorSol ->
       let tensor e ds = tensorSol @@ [e] .@@ [ds]
        in builtinDecidableTypeClass (HasTensorTypeClassField field)
             @@ [tensorSol]
@@ -123,10 +114,11 @@ typeDecidableTypeClassOp = \case
               FieldQuantifyInList {} -> typeOfQuantifyInList tensorSol
               FieldQuantifyIndex {} -> typeOfQuantifyIndex tensorSol
 
-constraint :: DecidabilityBuiltinTypeClass -> (DSLExpr DecidabilityBuiltin -> DSLExpr DecidabilityBuiltin) -> DSLExpr DecidabilityBuiltin
-constraint c f =
-  forAllTypes $ \t ->
-    builtinDecidableTypeClass c @@ [t] ~~~> f t
+absTensorType :: DSLExpr DecidabilityBuiltin
+absTensorType = type0 ~> tDims .~> type0
+
+absVectorType :: DSLExpr DecidabilityBuiltin
+absVectorType = type0 ~> tDim .~> type0
 
 typeDecidableFunction :: DecidabilityBuiltinFunction -> DSLExpr DecidabilityBuiltin
 typeDecidableFunction = \case
@@ -142,8 +134,8 @@ typeDecidableFunction = \case
   PropCompareIndex _op -> typeOfCompareIndex tProp
   PropCompareNat _op -> typeOfCompareNat tProp
   PropCompareRatTensorPointwise _op -> forAllDims $ \ds -> tTensor tRat ds ~> tTensor tRat ds ~> tProp
-  PropQuantifyIndex _q -> typeOfQuantifyIndex propIgnoreElemAndDims
-  PropQuantifyInList _q -> typeOfQuantifyInList propIgnoreElemAndDims
+  PropQuantifyIndex _q -> typeOfQuantifyIndex propTensor
+  PropQuantifyInList _q -> typeOfQuantifyInList propTensor
   PropNaryProduct -> developerError "PropNaryProduct not supported"
   PropNaryProductAt -> developerError "PropNaryProduct not supported"
   PropNaryProductForeach -> developerError "PropNaryProduct not supported"
@@ -256,7 +248,6 @@ convertToDecidabilityBuiltins p b args = return $
         _ -> original
     BuiltinType s -> do
       let b' = case s of
-            BoolType -> DecidabilityBuiltinTypeClassOp BoolTypeTC
             TensorType -> DecidabilityBuiltinTypeClassOp TensorTypeTC
             VectorType -> DecidabilityBuiltinTypeClassOp VectorTypeTC
             _ -> StandardBuiltinType s
@@ -286,12 +277,19 @@ restrictDecidabilityDeclType ::
   DeclProvenance ->
   Type DecidabilityBuiltin ->
   m (Type DecidabilityBuiltin)
-restrictDecidabilityDeclType rDecl declProv@(_, p) declType = do
-  freeEnv <- getFreeEnv
-  let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin freeEnv declProv rDecl declType
-  case rDecl of
-    RestrictedProperty -> do
-      let desiredType = Builtin mempty (DecidabilityBuiltinFunction PropType)
-      createFreshUnificationConstraint p mempty (CheckingInstanceType origin) desiredType declType
-      return declType
-    _ -> return declType
+restrictDecidabilityDeclType declSort (ident, p) declType = do
+  let maybeTypeClass = case declSort of
+        RestrictedProperty -> Just ValidPropertyType
+        RestrictedNetwork -> Just ValidNetworkType
+        _ -> Nothing
+
+  case maybeTypeClass of
+    Nothing -> return ()
+    Just tc -> do
+      freeEnv <- getFreeEnv
+      let expr = BuiltinExpr p (DecidabilityBuiltinTypeClass tc) [explicit declType]
+      let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin freeEnv (ident, provenanceOf declType) declSort declType
+      _ <- createFreshInstanceConstraint False mempty p origin Irrelevant expr
+      return ()
+
+  return declType

@@ -10,7 +10,10 @@ import Data.IntSet qualified as IntSet
 import Data.List (sortOn)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Proxy (Proxy (..))
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Vehicle.Compile.Context.Free
+import Vehicle.Compile.Dependency (completelyUnusedDeclarations, createDependencyGraph)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
@@ -35,14 +38,19 @@ import Vehicle.Data.Builtin.Standard
 typeCheckProg ::
   forall builtin m.
   (HasTypeSystem builtin, NormalisableBuiltin builtin, MonadCompile m) =>
+  Module ->
   InstanceDatabase builtin ->
   FreeCtx builtin ->
   Prog Builtin ->
   m (Prog builtin)
-typeCheckProg instanceCandidates freeCtx (Main uncheckedProg) =
+typeCheckProg modul instanceCandidates freeCtx prog@(Main uncheckedProg) =
   logCompilerPass MinDetail "type checking" $
     runTypeCheckerTInitially freeCtx instanceCandidates $ do
-      xs <- typeCheckDecls uncheckedProg
+      let unusedDecls = case modul of
+            User -> completelyUnusedDeclarations (createDependencyGraph prog)
+            _ -> mempty
+      logDebug MaxDetail $ "Good" <+> prettySet unusedDecls
+      xs <- typeCheckDecls unusedDecls uncheckedProg
       return $ Main xs
 
 typeCheckSolitaryExpr ::
@@ -64,16 +72,16 @@ typeCheckSolitaryExpr instanceCandidates freeCtx expr1 = do
 -------------------------------------------------------------------------------
 -- Type-class for things that can be type-checked
 
-typeCheckDecls :: forall builtin m. (TCM builtin m) => [Decl Builtin] -> m [Decl builtin]
-typeCheckDecls = \case
+typeCheckDecls :: (TCM builtin m) => Set Identifier -> [Decl Builtin] -> m [Decl builtin]
+typeCheckDecls unusedDecls = \case
   [] -> return []
   d : ds -> do
-    typedDecl <- typeCheckDecl d
-    checkedDecls <- addDeclToContext typedDecl $ typeCheckDecls ds
+    typedDecl <- typeCheckDecl d (identifierOf d `Set.member` unusedDecls)
+    checkedDecls <- addDeclToContext typedDecl $ typeCheckDecls unusedDecls ds
     return $ typedDecl : checkedDecls
 
-typeCheckDecl :: forall builtin m. (TCM builtin m) => Decl Builtin -> m (Decl builtin)
-typeCheckDecl uncheckedDecl =
+typeCheckDecl :: forall builtin m. (TCM builtin m) => Decl Builtin -> DeclIsUnused -> m (Decl builtin)
+typeCheckDecl uncheckedDecl isUnused =
   logCompilerPass MidDetail ("typing" <+> quotePretty (identifierOf uncheckedDecl)) $ do
     logDebug MidDetail $ prettyExternal uncheckedDecl <> line
 
@@ -82,11 +90,11 @@ typeCheckDecl uncheckedDecl =
 
     logDebug MidDetail $ prettyExternal convertedDecl
 
-    setCurrentDecl $ Just convertedDecl
+    setCurrentDecl $ Just (convertedDecl, isUnused)
 
     decl <- case convertedDecl of
-      DefAbstract p n r t -> typeCheckAbstractDef p n r t
-      DefFunction p n b t e -> typeCheckFunction p n b t e
+      DefAbstract p n r t -> typeCheckAbstractDef p n r t isUnused
+      DefFunction p n b t e -> typeCheckFunction p n b t e isUnused
 
     checkAllUnknownsSolved (Proxy @builtin)
     finalDecl <- substMetas decl
@@ -102,11 +110,12 @@ typeCheckAbstractDef ::
   Identifier ->
   DefAbstractSort ->
   Type builtin ->
+  DeclIsUnused ->
   m (Decl builtin)
-typeCheckAbstractDef p ident defSort uncheckedType = do
+typeCheckAbstractDef p ident defSort uncheckedType isUnused = do
   checkedType <- checkDeclType ident uncheckedType
   finalCheckedType <- restrictAbstractDefType defSort (ident, p) checkedType
-  setCurrentDecl $ Just $ DefAbstract p ident defSort finalCheckedType
+  setCurrentDecl $ Just (DefAbstract p ident defSort finalCheckedType, isUnused)
 
   solveConstraints (Proxy @builtin)
   let substDecl = DefAbstract p ident defSort finalCheckedType
@@ -124,8 +133,9 @@ typeCheckFunction ::
   [Annotation] ->
   Type builtin ->
   Expr builtin ->
+  DeclIsUnused ->
   m (Decl builtin)
-typeCheckFunction p ident anns typ body = do
+typeCheckFunction p ident anns typ body isUnused = do
   checkedType <- checkDeclType ident typ
   finalCheckedType <-
     if isProperty anns
@@ -143,7 +153,7 @@ typeCheckFunction p ident anns typ body = do
   let checkedDecl = DefFunction p ident anns finalCheckedType checkedBody
 
   -- Solve constraints and substitute through.
-  setCurrentDecl $ Just checkedDecl
+  setCurrentDecl $ Just (checkedDecl, isUnused)
   solveConstraints (Proxy @builtin)
   substDecl <- substMetas checkedDecl
 

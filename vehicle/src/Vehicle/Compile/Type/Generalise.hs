@@ -279,7 +279,7 @@ prependBinderAndSolve decl (meta, binder) =
     finalDecl <- traverseDeclTypeAndExpr alterType alterBody substDecl
 
     -- Substitute the new meta solution through.
-    setCurrentDecl $ Just finalDecl
+    setCurrentDecl $ Just (finalDecl, False)
 
     logCompilerPassOutput $ prettyExternal finalDecl
     return finalDecl

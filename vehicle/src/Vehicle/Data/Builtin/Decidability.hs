@@ -13,7 +13,7 @@ import Vehicle.Data.Builtin.Interface.Blocked
 import Vehicle.Data.Builtin.Interface.Normalise (EvalScheme (..), MonadNormBuiltin, NormalisableBuiltin (..), evalFoldList, evalIterate, forceEvalSimpleBuiltin)
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Standard (Builtin, BuiltinConstructor (..), BuiltinFunction (..), BuiltinType (..), DerivedFunction)
-import Vehicle.Data.Code.DSL (tDim)
+import Vehicle.Data.Code.DSL (tDim, tDims)
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.DSL
 import Vehicle.Data.Tensor (BoolTensor, anyTensor)
@@ -54,18 +54,18 @@ data VectorTypeClassField
 instance Hashable VectorTypeClassField
 
 data DecidabilityBuiltinTypeClass
-  = IsBoolType
-  | IsTensorType
+  = IsTensorType
   | IsVectorType
   | HasTensorTypeClassField TensorTypeClassField
   | HasVectorTypeClassField VectorTypeClassField
+  | ValidPropertyType
+  | ValidNetworkType
   deriving (Eq, Ord, Show, Generic)
 
 instance Hashable DecidabilityBuiltinTypeClass
 
 data DecidabilityBuiltinTypeClassOp
-  = BoolTypeTC
-  | TensorTypeTC
+  = TensorTypeTC
   | VectorTypeTC
   | TensorTypeClassFieldTC TensorTypeClassField
   | VectorTypeClassFieldTC VectorTypeClassField
@@ -224,9 +224,10 @@ instance Pretty DecidabilityBuiltinTypeClass where
   pretty t = case t of
     HasTensorTypeClassField {} -> pretty $ show t
     HasVectorTypeClassField {} -> pretty $ show t
-    IsBoolType -> pretty $ show t
     IsTensorType -> pretty $ show t
     IsVectorType -> pretty $ show t
+    ValidPropertyType -> pretty $ show t
+    ValidNetworkType -> pretty $ show t
 
 instance Pretty DecidabilityBuiltinFunction where
   pretty = \case
@@ -256,7 +257,6 @@ instance Pretty DecidabilityBuiltinConstructor where
 
 instance Pretty DecidabilityBuiltinTypeClassOp where
   pretty t = case t of
-    BoolTypeTC -> pretty $ show t
     TensorTypeTC -> pretty $ show t
     VectorTypeTC -> pretty $ show t
     TensorTypeClassFieldTC {} -> pretty $ show t
@@ -335,11 +335,11 @@ evalBoolVectorToProp args = return $ case args of
 --------------------------------------------------------------------------------
 -- DSL
 
-isTensorType :: DSLExpr DecidabilityBuiltin -> DSLExpr DecidabilityBuiltin
-isTensorType tElem = builtin (DecidabilityBuiltinTypeClass IsTensorType) @@ [tElem]
+isTensorType :: DSLExpr DecidabilityBuiltin
+isTensorType = builtin (DecidabilityBuiltinTypeClass IsTensorType)
 
-isVectorType :: DSLExpr DecidabilityBuiltin -> DSLExpr DecidabilityBuiltin
-isVectorType tElem = builtin (DecidabilityBuiltinTypeClass IsVectorType) @@ [tElem]
+isVectorType :: DSLExpr DecidabilityBuiltin
+isVectorType = builtin (DecidabilityBuiltinTypeClass IsVectorType)
 
 decFunction :: DecidabilityBuiltinFunction -> DSLExpr DecidabilityBuiltin
 decFunction f = builtin (DecidabilityBuiltinFunction f)
@@ -347,8 +347,16 @@ decFunction f = builtin (DecidabilityBuiltinFunction f)
 tProp :: DSLExpr DecidabilityBuiltin
 tProp = decFunction PropType
 
-propIgnoreElemAndDims :: DSLExpr DecidabilityBuiltin
-propIgnoreElemAndDims =
+propTensor :: DSLExpr DecidabilityBuiltin
+propTensor =
+  lam "t" Explicit Relevant type0 $
+    const $
+      lam "ds" Explicit Irrelevant tDims $
+        const
+          tProp
+
+propVector :: DSLExpr DecidabilityBuiltin
+propVector =
   lam "t" Explicit Relevant type0 $
     const $
       lam "d" Explicit Irrelevant tDim $

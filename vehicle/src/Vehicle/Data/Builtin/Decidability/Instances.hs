@@ -15,8 +15,6 @@ import Vehicle.Data.Builtin.Core (BuiltinFunction (..), DerivedFunction (..))
 import Vehicle.Data.Builtin.Decidability
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.DSL
-import Vehicle.Prelude (Relevance (..))
-import Vehicle.Syntax.AST.Visibility (Visibility (..))
 
 decidabilityBuiltinInstances :: InstanceDatabase DecidabilityBuiltin
 decidabilityBuiltinInstances = makeInstanceDatabase allInstances mempty
@@ -32,35 +30,34 @@ allInstances =
   mkCandidate
     <$>
     --------------
-    -- Booleans --
+    -- Property --
     --------------
-    [ ( decTypeClass IsBoolType [tBool],
-        tBool,
-        False
-      ),
-      ( decTypeClass IsBoolType [tProp],
-        tProp,
+    [ ( decTypeClass ValidPropertyType [tProp],
+        tUnit,
         False
       )
     ]
       -------------
+      -- Network --
+      -------------
+      <> [ ( forAllDims $ \ds1 ->
+               forAllDims $ \ds2 ->
+                 decTypeClass ValidNetworkType [tRatTensor ds1 ~> tRatTensor ds2],
+             lamDims $ \_ds1 ->
+               lamDims $ \_ds2 ->
+                 tUnit,
+             False
+           )
+         ]
+      -------------
       -- Tensors --
       -------------
-      <> [ ( isTensorType tBool,
-             tTensorRaw @@ [tBool],
-             False
+      <> [ ( isTensorType,
+             tTensorRaw,
+             True
            ),
-           ( isTensorType tProp,
-             lam "ds" Explicit Relevant tDims $ \_ds ->
-               tProp,
-             False
-           ),
-           ( isTensorType tNat,
-             tTensorRaw @@ [tNat],
-             False
-           ),
-           ( isTensorType tRat,
-             tTensorRaw @@ [tRat],
+           ( isTensorType,
+             propTensor,
              False
            )
          ]
@@ -81,18 +78,15 @@ allInstances =
       <> comparisonCandidates Ne
       <> quantifierCandidates Forall
       <> quantifierCandidates Exists
-      ------------------
-      -- IsVectorType --
-      ------------------
-      <> [ ( isVectorType tProp,
-             lam "d" Explicit Relevant tDim $ \_d ->
-               tProp,
-             False
+      -------------
+      -- Vectors --
+      -------------
+      <> [ ( isVectorType,
+             tVectorRaw,
+             True
            ),
-           ( forAllTypes $ \tElem ->
-               isVectorType tElem,
-             lamType $ \tElem ->
-               tVectorRaw @@ [tElem],
+           ( isVectorType,
+             propVector,
              False
            )
          ]
@@ -126,7 +120,7 @@ vectorTypeClassCandidate field standardOp typeOp =
       standardOp,
       False
     ),
-    ( decTypeClass (HasVectorTypeClassField field) [propIgnoreElemAndDims],
+    ( decTypeClass (HasVectorTypeClassField field) [propVector],
       decFunction typeOp,
       False
     )
@@ -142,7 +136,7 @@ tensorTypeClassCandidate field standardOp typeOp =
       standardOp,
       False
     ),
-    ( decTypeClass (HasTensorTypeClassField field) [propIgnoreElemAndDims],
+    ( decTypeClass (HasTensorTypeClassField field) [propTensor],
       decFunction typeOp,
       False
     )

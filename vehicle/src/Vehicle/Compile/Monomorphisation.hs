@@ -8,7 +8,6 @@ module Vehicle.Compile.Monomorphisation
 where
 
 import Control.Monad (forM_)
-import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..), asks)
 import Control.Monad.State
   ( MonadState (..),
@@ -168,7 +167,10 @@ handleUnusedDecl decl = do
       let needsToBeMonomorphised = not (null argsToMono)
 
       if needsToBeMonomorphised
-        then throwError $ UnusedMonomorphisableDeclaration (provenanceOf decl) (identifierOf decl)
+        then do
+          -- All unused declarations shouldn't have any implicit type-parameters as they
+          -- should have been resolved by generalisation at type-checking time (special case).
+          developerError $ "Unexpected non-monomorphisable decl:" <> line <> indent 2 (prettyExternal decl)
         else do
           logDebug MaxDetail "Keeping declaration"
           return [decl]
