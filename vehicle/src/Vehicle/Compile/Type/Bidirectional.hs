@@ -140,8 +140,6 @@ viaInfer expectedType expr = do
   (checkedExpr, actualType) <- inferExpr expr
   -- Insert any needed implicit or instance arguments
   (appliedCheckedExpr, resultType) <- inferApp checkedExpr actualType []
-  logDebug MaxDetail $ prettyVerbose expectedType
-  logDebug MaxDetail $ prettyVerbose resultType
   -- Check the expected and the actual types are equal
   checkExprTypesEqual p expr expectedType resultType
   return appliedCheckedExpr

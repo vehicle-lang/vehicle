@@ -121,7 +121,7 @@ typeDecidableTypeClassOp = \case
               FieldCompareRatTensorPointwise {} -> forAllDims $ \ds -> tTensor tRat ds ~> tTensor tRat ds ~> tensor tBool ds
               FieldCompareRatTensorReduced {} -> forAllDims $ \ds -> tTensor tRat ds ~> tTensor tRat ds ~> tensor tBool dimNil
               FieldQuantifyInList {} -> typeOfQuantifyInList tensorSol
-              FieldQuantifyIndex {} -> forAllDim Relevant $ \d -> (tIndex d ~> tTensor tBool dimNil) ~> tTensor tBool dimNil
+              FieldQuantifyIndex {} -> typeOfQuantifyIndex tensorSol
 
 constraint :: DecidabilityBuiltinTypeClass -> (DSLExpr DecidabilityBuiltin -> DSLExpr DecidabilityBuiltin) -> DSLExpr DecidabilityBuiltin
 constraint c f =
@@ -142,8 +142,8 @@ typeDecidableFunction = \case
   PropCompareIndex _op -> typeOfCompareIndex tProp
   PropCompareNat _op -> typeOfCompareNat tProp
   PropCompareRatTensorPointwise _op -> forAllDims $ \ds -> tTensor tRat ds ~> tTensor tRat ds ~> tProp
-  PropQuantifyIndex _q -> typeOfQuantifyIndex tProp
-  PropQuantifyInList _q -> typeOfQuantifyInList tProp
+  PropQuantifyIndex _q -> typeOfQuantifyIndex propIgnoreElemAndDims
+  PropQuantifyInList _q -> typeOfQuantifyInList propIgnoreElemAndDims
   PropNaryProduct -> developerError "PropNaryProduct not supported"
   PropNaryProductAt -> developerError "PropNaryProduct not supported"
   PropNaryProductForeach -> developerError "PropNaryProduct not supported"
@@ -164,10 +164,10 @@ typeOfCastVector :: DSLExpr DecidabilityBuiltin -> DSLExpr DecidabilityBuiltin -
 typeOfCastVector tElem tRes = forAllDim Irrelevant $ \d -> tVector tElem d ~> tRes .@@ [d]
 
 typeOfQuantifyIndex :: DSLExpr DecidabilityBuiltin -> DSLExpr DecidabilityBuiltin
-typeOfQuantifyIndex t = forAllDim Relevant $ \d -> (tIndex d ~> t) ~> t
+typeOfQuantifyIndex t = forAllDim Relevant $ \d -> (tIndex d ~> t @@ [tBool] .@@ [dimNil]) ~> t @@ [tBool] .@@ [dimNil]
 
 typeOfQuantifyInList :: DSLExpr DecidabilityBuiltin -> DSLExpr DecidabilityBuiltin
-typeOfQuantifyInList t = forAllTypes $ \tElem -> (tElem ~> t) ~> tList tElem ~> t @@ [tBool] .@@ [dimNil]
+typeOfQuantifyInList t = forAllTypes $ \tElem -> (tElem ~> t @@ [tBool] .@@ [dimNil]) ~> tList tElem ~> t @@ [tBool] .@@ [dimNil]
 
 typeOp1 :: DSLExpr DecidabilityBuiltin -> DSLExpr DecidabilityBuiltin
 typeOp1 t = t ~> t
