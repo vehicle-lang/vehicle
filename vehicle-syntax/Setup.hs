@@ -29,6 +29,7 @@ import Distribution.Simple.Utils
     moreRecentFile,
     notice,
   )
+import Distribution.Utils.Path (getSymbolicPath)
 import Distribution.Types.LocalBuildInfo (LocalBuildInfo (LocalBuildInfo, withPrograms))
 import Distribution.Types.PackageDescription (PackageDescription (PackageDescription, extraSrcFiles, extraTmpFiles))
 import Distribution.Verbosity (normal)
@@ -70,21 +71,22 @@ preProcessBnfc packageDescription localBuildInfo _userHooks buildFlags = do
   let PackageDescription {extraSrcFiles, extraTmpFiles} = packageDescription
   let LocalBuildInfo {withPrograms} = localBuildInfo
   forM_ extraSrcFiles $ \extraSrcFile ->
-    when (".cf" `isSuffixOf` extraSrcFile) $ do
+    when (".cf" `isSuffixOf` getSymbolicPath extraSrcFile) $ do
       -- Example:
       --   extraSrcFile      = "src/Vehicle/Syntax/External.cf"
       --   outputPrefix      = "Vehicle/Syntax"
       --   namespacePrefix   = "Vehicle.Syntax"
       --   outputDir         = "autogen/Vehicle/Syntax/External"
-      let outputPrefix = makeRelative srcDir (takeDirectory extraSrcFile)
+      let extraSrcFilePath = getSymbolicPath extraSrcFile
+      let outputPrefix = makeRelative srcDir (takeDirectory extraSrcFilePath)
       let namespacePrefix = intercalate "." (splitDirectories outputPrefix)
-      let outputDir = autogenDir </> outputPrefix </> takeBaseName extraSrcFile
-      let targetFiles = filter (outputDir `isPrefixOf`) extraTmpFiles
-      shouldCompile <- and <$> mapM (extraSrcFile `moreRecentFile`) targetFiles
+      let outputDir = autogenDir </> outputPrefix </> takeBaseName extraSrcFilePath
+      let targetFiles = filter (outputDir `isPrefixOf`) (map getSymbolicPath extraTmpFiles)
+      shouldCompile <- and <$> mapM (extraSrcFilePath `moreRecentFile`) targetFiles
       when shouldCompile $ do
         notice verbosity $
           unlines $
-            ("Compiling " ++ extraSrcFile ++ "to generate:")
+            ("Compiling " ++ extraSrcFilePath ++ "to generate:")
               : map ("- " ++) targetFiles
         runDbProgram verbosity bnfcProgram withPrograms $
           concat
@@ -94,7 +96,7 @@ preProcessBnfc packageDescription localBuildInfo _userHooks buildFlags = do
               ["--text-token"],
               ["--name-space=" ++ namespacePrefix | not (null namespacePrefix)],
               ["--outputdir=" ++ autogenDir],
-              [extraSrcFile]
+              [extraSrcFilePath]
             ]
 
 bnfcProgram :: Program

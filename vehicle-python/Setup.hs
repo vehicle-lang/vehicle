@@ -14,6 +14,7 @@ import Distribution.Simple.Setup (BuildFlags (..), ConfigFlags (..), fromFlagOrD
 import Distribution.Simple.Utils (die', info)
 import Distribution.Types.LocalBuildInfo (componentNameCLBIs)
 import Distribution.Types.UnqualComponentName (UnqualComponentName, unUnqualComponentName)
+import Distribution.Utils.Path (getSymbolicPath)
 import Distribution.Verbosity (Verbosity, normal)
 import System.Directory (copyFile, doesDirectoryExist, getCurrentDirectory, removeDirectoryRecursive, removeFile, renameDirectory)
 import System.Environment (getEnv)
@@ -101,7 +102,7 @@ getForeignLibFileName foreignLibName
 getPackageDir :: LocalBuildInfo -> IO FilePath
 getPackageDir localBuildInfo = do
   let LocalBuildInfo {cabalFilePath, pkgDescrFile} = localBuildInfo
-  maybe getCurrentDirectory (return . takeDirectory) (cabalFilePath <|> pkgDescrFile)
+  maybe getCurrentDirectory (return . takeDirectory . getSymbolicPath) (cabalFilePath <|> pkgDescrFile)
 
 getInstallDir :: Verbosity -> IO (Maybe FilePath)
 getInstallDir verbosity =
