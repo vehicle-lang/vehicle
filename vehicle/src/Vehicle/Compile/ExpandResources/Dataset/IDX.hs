@@ -15,16 +15,22 @@ import Data.IDX
     isIDXIntegral,
   )
 import Data.Map qualified as Map
+import Data.Vector.Generic qualified as V
 import Data.Vector.Unboxed (Vector)
 import Data.Vector.Unboxed qualified as Vector
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
+import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.Interface
+import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
-import Vehicle.Data.Tensor (TensorShape)
+import Vehicle.Data.Tensor as Tensor (Tensor, TensorShape, fromVector, mapTensor)
+
+-- The current dimension in the dataset being parsed
+type CurrentDimension = Int
 
 -- | Reads the IDX dataset from the provided file, checking that the user type
 -- matches the type of the stored data.
@@ -73,85 +79,122 @@ parseIDX ::
   ParseContext m a ->
   Vector a ->
   m (Value Builtin)
-parseIDX ctx@(_, _, expectedDatasetType, actualDatasetDims, _) elems = do
-  parseContainer ctx True actualDatasetDims elems (normalised expectedDatasetType)
+parseIDX ctx@(_, _, expectedDatasetType, actualDatasetDims, _) elems =
+  parseContainer ctx 0 actualDatasetDims elems (normalised expectedDatasetType)
 
 parseContainer ::
   (MonadExpandResources m, Vector.Unbox a) =>
   ParseContext m a ->
-  Bool ->
+  CurrentDimension ->
   TensorShape ->
   Vector a ->
   VType Builtin ->
   m (Value Builtin)
-parseContainer ctx topLevel actualDims elems expectedType = case expectedType of
-  IListType _ expectedElemType -> parseList ctx expectedElemType actualDims elems
-  IVectorType _ expectedElemType expectedDim -> parseVector ctx actualDims elems expectedElemType expectedDim
-  _ ->
-    if topLevel
-      then typingError ctx
-      else parseElement ctx actualDims elems expectedType
+parseContainer ctx currentDim actualDims elems expectedType = case toTypeValue expectedType of
+  VListType expectedElemType -> parseList ctx currentDim expectedElemType actualDims elems
+  VVectorType expectedElemType dim -> parseVector ctx currentDim expectedElemType dim actualDims elems
+  VBoolTensorType expectedDims -> parseTensor ctx currentDim actualDims elems (fromTypeValue VBoolType) expectedDims
+  VRatTensorType expectedDims -> parseTensor ctx currentDim actualDims elems (fromTypeValue VRatType) expectedDims
+  VNatTensorType expectedDims -> parseTensor ctx currentDim actualDims elems (fromTypeValue VNatType) expectedDims
+  VIndexTensorType n expectedDims -> parseTensor ctx currentDim actualDims elems (fromTypeValue $ VIndexType n) expectedDims
+  _
+    | currentDim == 0 -> typingError ctx
+    | otherwise -> parseElements ctx actualDims elems expectedType
 
-parseVector ::
+parseTensor ::
   (MonadExpandResources m, Vector.Unbox a) =>
   ParseContext m a ->
+  CurrentDimension ->
   TensorShape ->
   Vector a ->
   VType Builtin ->
   Value Builtin ->
   m (Value Builtin)
-parseVector ctx [] _ _ _ = dimensionMismatchError ctx
-parseVector ctx@(decl, file, _, allDims, _) (actualDim : actualDims) elems expectedElemType expectedDim = do
-  currentDim <- case expectedDim of
-    INatLiteral _ n ->
-      if n == actualDim
-        then return actualDim
-        else throwError $ DatasetDimensionSizeMismatch decl file n actualDim allDims (actualDim : actualDims)
-    VFreeVar dimIdent _ -> do
+parseTensor ctx currentDim actualDims elems expectedElemType expectedDims = do
+  checkTensorDimensions ctx currentDim expectedDims actualDims
+  parseElements ctx actualDims elems expectedElemType
+
+checkTensorDimensions ::
+  (MonadExpandResources m) =>
+  ParseContext m a ->
+  CurrentDimension ->
+  VType Builtin ->
+  TensorShape ->
+  m ()
+checkTensorDimensions ctx dimNo expectedShape actualShape = case (toDimensionsValue expectedShape, actualShape) of
+  (VDimsNil, []) -> return ()
+  (VDimsCons dim dims, d : ds) -> do
+    checkDimension ctx dimNo dim d
+    checkTensorDimensions ctx (dimNo + 1) dims ds
+  _ -> dimensionMismatchError ctx
+
+checkDimension ::
+  (MonadExpandResources m) =>
+  ParseContext m a ->
+  CurrentDimension ->
+  VType Builtin ->
+  Int ->
+  m ()
+checkDimension ctx@(decl, file, _, _, _) currentDim expectedDimValue actualDim = do
+  case toNatValue expectedDimValue of
+    VNatLiteral expectedDim
+      | expectedDim == actualDim -> return ()
+      | otherwise -> do
+          throwError $ DatasetDimensionSizeMismatch decl file expectedDim actualDim currentDim
+    VNatParameter dimIdent -> do
       implicitParams <- getInferableParameterContext
       let newEntry = (decl, Dataset, actualDim)
       case Map.lookup dimIdent implicitParams of
-        Nothing -> variableSizeError ctx expectedDim
-        Just (p, declType, Nothing) -> do
-          addPossibleInferableParameterSolution dimIdent p declType newEntry
-          return actualDim
-        Just (_, _, Just existingEntry@(_, _, value)) ->
-          if value == actualDim
-            then return value
-            else throwError $ InferableParameterContradictory dimIdent existingEntry newEntry
-    _ -> variableSizeError ctx expectedDim
-
-  let rows = partitionData currentDim actualDims elems
-  rowExprs <- traverse (\es -> parseContainer ctx False actualDims es expectedElemType) rows
-  return $ mkVecExpr rowExprs
+        Nothing -> variableSizeError ctx expectedDimValue
+        Just (p, declType, entry) -> case entry of
+          Nothing -> addPossibleInferableParameterSolution dimIdent p declType newEntry
+          Just existingEntry@(_, _, value)
+            | value == actualDim -> return ()
+            | otherwise -> throwError $ InferableParameterContradictory dimIdent existingEntry newEntry
+    _ -> variableSizeError ctx expectedDimValue
 
 parseList ::
   (MonadExpandResources m, Vector.Unbox a) =>
   ParseContext m a ->
+  CurrentDimension ->
   VType Builtin ->
   TensorShape ->
   Vector a ->
   m (Value Builtin)
-parseList ctx expectedElemType actualDims actualElems =
+parseList ctx currentDim expectedElemType actualDims actualElems =
   case actualDims of
     [] -> dimensionMismatchError ctx
     d : ds -> do
       let splitElems = partitionData d ds actualElems
-      exprs <- traverse (\es -> parseContainer ctx False ds es expectedElemType) splitElems
-      -- TODO should insert proper type here.
-      return $ mkListExpr (IUnitType mempty) exprs
+      exprs <- traverse (\es -> parseContainer ctx (currentDim + 1) ds es expectedElemType) splitElems
+      return $ mkListExpr expectedElemType exprs
 
-parseElement ::
+parseVector ::
+  (MonadExpandResources m, Vector.Unbox a) =>
+  ParseContext m a ->
+  CurrentDimension ->
+  VType Builtin ->
+  Value Builtin ->
+  TensorShape ->
+  Vector a ->
+  m (Value Builtin)
+parseVector ctx currentDim expectedElemType expectedDim actualDims actualElems =
+  case actualDims of
+    [] -> dimensionMismatchError ctx
+    d : ds -> do
+      checkDimension ctx currentDim expectedDim d
+      let splitElems = partitionData d ds actualElems
+      exprs <- traverse (\es -> parseContainer ctx (currentDim + 1) ds es expectedElemType) splitElems
+      return $ mkExpr accessVecLit (VecLitArgs (implicit expectedElemType) expectedDim exprs)
+
+parseElements ::
   (MonadExpandResources m, Vector.Unbox a) =>
   ParseContext m a ->
   TensorShape ->
   Vector a ->
   VType Builtin ->
   m (Value Builtin)
-parseElement ctx@(_, _, _, _, elemParser) dims elems expectedType
-  | not (null dims) = dimensionMismatchError ctx
-  | Vector.length elems /= 1 = compilerDeveloperError "Malformed IDX file: mismatch between dimensions and acutal data"
-  | otherwise = elemParser (Vector.head elems) expectedType
+parseElements (_, _, _, _, elemParser) = elemParser
 
 type ParseContext m a =
   ( DeclProvenance, -- The provenance of the dataset declaration
@@ -161,7 +204,7 @@ type ParseContext m a =
     ElemParser m a
   )
 
-type ElemParser m a = a -> VType Builtin -> m (Value Builtin)
+type ElemParser m a = TensorShape -> Vector a -> VType Builtin -> m (Value Builtin)
 
 doubleElemParser ::
   (MonadExpandResources m) =>
@@ -169,11 +212,12 @@ doubleElemParser ::
   GluedType Builtin ->
   FilePath ->
   ElemParser m Double
-doubleElemParser decl datasetType file value expectedElementType = case expectedElementType of
-  IRatType {} ->
-    return $ IRatLiteral mempty (toRational value)
-  _ -> do
-    throwError $ DatasetTypeMismatch decl file datasetType expectedElementType "Rat"
+doubleElemParser decl datasetType file dims values expectedElementType =
+  case toTypeValue expectedElementType of
+    VRatType {} -> do
+      return $ IRatTensor (mapTensor toRational (toTensor dims values))
+    _ -> do
+      throwError $ DatasetTypeMismatch decl file datasetType expectedElementType "Rat"
 
 intElemParser ::
   (MonadExpandResources m) =>
@@ -181,17 +225,21 @@ intElemParser ::
   GluedType Builtin ->
   FilePath ->
   ElemParser m Int
-intElemParser decl datasetType file value expectedElementType = case expectedElementType of
-  IIndexType _ (INatLiteral _ n) ->
-    if value >= 0 && value < n
-      then return $ IIndexLiteral mempty value
-      else throwError $ DatasetInvalidIndex decl file value n
-  INatType {} ->
-    if value >= 0
-      then return $ INatLiteral mempty value
-      else throwError $ DatasetInvalidNat decl file value
-  _ ->
-    throwError $ DatasetTypeMismatch decl file datasetType expectedElementType "Int"
+intElemParser decl datasetType file dims values expectedElementType = do
+  case toTypeValue expectedElementType of
+    VIndexType (INatLiteral n) -> case (dims, Vector.toList values) of
+      ([], [value]) -> do
+        if 0 <= value && value < n
+          then return $ IIndexLiteral value
+          else throwError $ DatasetInvalidIndex decl file value n
+      _ -> developerError "Should not be parsing tensors of indices"
+    VNatType {} -> do
+      let invalid = Vector.filter (< 0) values
+      if Vector.null invalid
+        then return $ INatTensor (toTensor dims values)
+        else throwError $ DatasetInvalidNat decl file (Vector.head invalid)
+    _ ->
+      throwError $ DatasetTypeMismatch decl file datasetType expectedElementType "Int"
 
 -- | Split data by the first dimension of the C-Array.
 partitionData :: (Vector.Unbox a) => Int -> TensorShape -> Vector a -> [Vector a]
@@ -199,6 +247,9 @@ partitionData dim dims content = do
   let entrySize = product dims
   i <- [0 .. dim - 1]
   return $ Vector.slice (i * entrySize) entrySize content
+
+toTensor :: (Eq a, Vector.Unbox a) => TensorShape -> Vector a -> Tensor a
+toTensor shape values = Tensor.fromVector shape (V.convert values)
 
 variableSizeError :: (MonadCompile m) => ParseContext m a -> Value Builtin -> m b
 variableSizeError (decl, _, expectedDatasetType, _, _) dim =
@@ -211,6 +262,6 @@ dimensionMismatchError (decl, file, expectedDatasetType, actualDatasetDims, _) =
 typingError :: (MonadCompile m) => ParseContext m a -> m b
 typingError (_, _, expectedDatasetType, _, _) =
   compilerDeveloperError $
-    "Invalid parameter type"
-      <+> squotes (prettyVerbose (unnormalised expectedDatasetType))
+    "Invalid dataset type"
+      <+> squotes (prettyVerbose (normalised expectedDatasetType))
       <+> "should have been caught during type-checking"

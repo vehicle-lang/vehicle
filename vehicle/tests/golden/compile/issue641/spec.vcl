@@ -1,10 +1,10 @@
 type Image = Tensor Rat [28, 28]
 
 @network
-classifier : Image -> Vector Rat 10
+classifier : Image -> Tensor Rat [10]
 
 @dataset
-images : Vector Image 1
+images : Vector Image [1]
 
 @property
 p : Bool

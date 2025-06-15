@@ -22,13 +22,14 @@ import Vehicle.Compile.Print
 import Vehicle.Compile.Print.Error
 import Vehicle.Compile.Scope (scopeCheck, scopeCheckClosedExpr)
 import Vehicle.Compile.Type (typeCheckProg, typeCheckSolitaryExpr)
-import Vehicle.Compile.Type.Constraint.InstanceBuiltins
-import Vehicle.Compile.Type.Core (emptyInstanceDatabase)
 import Vehicle.Compile.Type.Subsystem
-import Vehicle.Compile.Type.System (convertToTypingBuiltins)
-import Vehicle.Data.Builtin.Linearity (LinearityBuiltin)
-import Vehicle.Data.Builtin.Polarity (PolarityBuiltin)
+import Vehicle.Data.Builtin.Decidability.Type ()
+import Vehicle.Data.Builtin.Interface.Print
+import Vehicle.Data.Builtin.Linearity.Type ()
+import Vehicle.Data.Builtin.Polarity.Type ()
 import Vehicle.Data.Builtin.Standard
+import Vehicle.Data.Builtin.Standard.Instances
+import Vehicle.Data.Builtin.Standard.Type ()
 import Vehicle.Libraries (Library (..), LibraryInfo (..), findLibraryContentFile)
 import Vehicle.Libraries.StandardLibrary (standardLibrary)
 import Vehicle.Prelude.Logging.Instance
@@ -38,7 +39,7 @@ import Vehicle.Verify.Specification.IO
 
 data TypeCheckOptions = TypeCheckOptions
   { specification :: FilePath,
-    typingSystem :: TypingSystem
+    secondaryTypeSystem :: Maybe SecondaryTypeSystem
   }
   deriving (Eq, Show)
 
@@ -46,10 +47,11 @@ typeCheck :: (MonadStdIO IO) => LoggingSettings -> TypeCheckOptions -> IO ()
 typeCheck loggingSettings options@TypeCheckOptions {..} = runCompileMonad loggingSettings $ do
   (imports, typedProg) <- typeCheckUserProg options
   let mergedProg = mergeImports imports typedProg
-  case typingSystem of
-    Standard -> return ()
-    Linearity -> printPropertyTypes =<< typeCheckWithSubsystem @LinearityBuiltin emptyInstanceDatabase throwError mergedProg
-    Polarity -> printPropertyTypes =<< typeCheckWithSubsystem @PolarityBuiltin emptyInstanceDatabase throwError mergedProg
+  case secondaryTypeSystem of
+    Nothing -> return ()
+    Just LinearityTypes -> printPropertyTypes =<< linearityTypeCheck mergedProg
+    Just PolarityTypes -> printPropertyTypes =<< polarityTypeCheck mergedProg
+    Just DecidabilityTypes -> printPropertyTypes . Right =<< decidabilityTypeCheck mergedProg
 
 --------------------------------------------------------------------------------
 -- Useful functions that apply to multiple compiler passes
@@ -83,15 +85,14 @@ typeCheckUserProg TypeCheckOptions {..} = do
 -- not load networks and datasets from disk.
 typeCheckProgram ::
   (MonadIO m, MonadCompile m) =>
-  ParseLocation ->
+  Module ->
   Imports ->
-  SpecificationText ->
+  S.Prog ->
   m (Prog Builtin)
-typeCheckProgram modul imports spec = do
-  vehicleProg <- parseProgText modul spec
+typeCheckProgram modl imports vehicleProg = do
   scopedProg <- scopeCheck imports vehicleProg
   freeCtx <- createFreeCtx imports
-  typedProg <- typeCheckProg standardBuiltinInstances freeCtx scopedProg
+  typedProg <- typeCheckProg modl standardBuiltinInstances freeCtx scopedProg
   traverse convertBackToStandardBuiltin typedProg
 
 -- | Parses and type-checks the program but does
@@ -108,7 +109,8 @@ typeCheckOrLoadProg modl imports specificationFile = do
   case interfaceFileResult of
     Just result -> return result
     Nothing -> do
-      result <- typeCheckProgram (ModulePath [modl], specificationFile) imports spec
+      vehicleProg <- parseProgText (ModulePath [modl], specificationFile) spec
+      result <- typeCheckProgram modl imports vehicleProg
       writeObjectFile specificationFile spec result
       return result
 
@@ -127,18 +129,20 @@ loadLibrary library = do
     libraryFile <- findLibraryContentFile library
     typeCheckOrLoadProg StdLib mempty libraryFile
 
-printPropertyTypes :: (MonadIO m, MonadCompile m, PrintableBuiltin builtin) => Prog builtin -> m ()
-printPropertyTypes (Main decls) = do
-  let properties = filter isPropertyDecl decls
-  let propertyDocs = fmap propertySummary properties
-  let outputDoc = concatWith (\a b -> a <> line <> b) propertyDocs
-  programOutput outputDoc
-  where
-    propertySummary :: (PrintableBuiltin builtin) => Decl builtin -> Doc a
-    propertySummary decl = do
-      let propertyName = pretty $ identifierName $ identifierOf decl
-      let propertyType = prettyFriendlyEmptyCtx (typeOf decl)
-      propertyName <+> ":" <+> propertyType
+printPropertyTypes :: (MonadIO m, MonadCompile m, PrintableBuiltin builtin) => Either CompileError (Prog builtin) -> m ()
+printPropertyTypes = \case
+  Left err -> throwError err
+  Right (Main decls) -> do
+    let properties = filter isPropertyDecl decls
+    let propertyDocs = fmap propertySummary properties
+    let outputDoc = concatWith (\a b -> a <> line <> b) propertyDocs
+    programOutput outputDoc
+    where
+      propertySummary :: (PrintableBuiltin builtin) => Decl builtin -> Doc a
+      propertySummary decl = do
+        let propertyName = pretty $ identifierName $ identifierOf decl
+        let propertyType = prettyFriendlyEmptyCtx (typeOf decl)
+        propertyName <+> ":" <+> propertyType
 
 runCompileMonad ::
   forall m a.
@@ -165,8 +169,7 @@ createFreeCtx ::
   m (FreeCtx Builtin)
 createFreeCtx imports = do
   let decls = [d | imp <- imports, let Main ds = imp, d <- ds]
-  convertedDecls <- traverse (traverse (traverseBuiltinsM convertToTypingBuiltins)) decls
-  runFreshFreeContextT (Proxy @Builtin) (calculateCtx convertedDecls)
+  runFreshFreeContextT (Proxy @Builtin) (calculateCtx decls)
   where
     calculateCtx ::
       (MonadFreeContext Builtin m) =>
@@ -174,4 +177,4 @@ createFreeCtx imports = do
       m (FreeCtx Builtin)
     calculateCtx = \case
       [] -> getFreeCtx (Proxy @Builtin)
-      d : ds -> addDeclToContext (Proxy @Builtin) d $ calculateCtx ds
+      d : ds -> addDeclToContext d $ calculateCtx ds

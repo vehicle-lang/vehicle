@@ -5,6 +5,7 @@ module Vehicle.Compile.Context.Name where
 
 import Control.Monad (void)
 import Data.Proxy (Proxy (..))
+import GHC.Stack (HasCallStack)
 import Vehicle.Compile.Context.Bound.Class
 import Vehicle.Compile.Context.Bound.Core
 import Vehicle.Compile.Context.Bound.Instance (BoundContext, BoundContextT, runBoundContext, runBoundContextT, runFreshBoundContext, runFreshBoundContextT)
@@ -15,11 +16,15 @@ type MonadNameContext m = MonadBoundContext () m
 
 type NameContextT m = BoundContextT () m
 
-runNameContext :: BoundCtx () -> BoundContext () a -> a
-runNameContext = runBoundContext
+runNameContext :: NamedBoundCtx -> BoundContext () a -> a
+runNameContext ctx = do
+  let binderCtx = fmap (mkExplicitBinder ()) ctx
+  runBoundContext binderCtx
 
-runNameContextT :: (Monad m) => BoundCtx () -> NameContextT m a -> m a
-runNameContextT = runBoundContextT
+runNameContextT :: (Monad m) => NamedBoundCtx -> NameContextT m a -> m a
+runNameContextT ctx = do
+  let binderCtx = fmap (mkExplicitBinder ()) ctx
+  runBoundContextT binderCtx
 
 runFreshNameContext :: BoundContext () a -> a
 runFreshNameContext = runFreshBoundContext (Proxy @())
@@ -39,29 +44,37 @@ getNameContext = getNamedBoundCtx (Proxy @())
 getBinderDepth :: (MonadNameContext m) => m Lv
 getBinderDepth = getCurrentLv (Proxy @())
 
-ixToProperName :: (MonadNameContext m) => Provenance -> Ix -> m Name
+ixToProperName :: (MonadNameContext m, HasCallStack) => Provenance -> Ix -> m Name
 ixToProperName p ix = do
   ctx <- getNameContext
   case lookupIx ctx ix of
-    Nothing -> varOutOfBounds "DeBruijn index" p ix (length ctx)
+    Nothing -> varOutOfBounds "DeBruijn index" p ix ctx
     Just Nothing -> return "_"
     Just (Just name) -> return name
 
-lvToProperName :: (MonadNameContext m) => Provenance -> Lv -> m Name
+lvToProperName :: (MonadNameContext m, HasCallStack) => Provenance -> Lv -> m Name
 lvToProperName p lv = do
   ctx <- getNameContext
   case lookupLv ctx lv of
-    Nothing -> varOutOfBounds "DeBruijn level" p lv (length ctx)
+    Nothing -> varOutOfBounds "DeBruijn level" p lv ctx
     Just Nothing -> return "_"
     Just (Just name) -> return name
 
 -- | Throw an |IndexOutOfBounds| error using an arbitrary var.
-varOutOfBounds :: (MonadNameContext m, Pretty var) => Doc a -> Provenance -> var -> Int -> m a
-varOutOfBounds varType p var ctxSize =
+varOutOfBounds ::
+  (MonadNameContext m, Pretty var, HasCallStack) =>
+  Doc a ->
+  Provenance ->
+  var ->
+  NamedBoundCtx ->
+  m a
+varOutOfBounds varType p var ctx =
   developerError $
     "During descoping found"
       <+> varType
       <+> pretty var
-      <+> "greater than current context size"
-      <+> pretty ctxSize
+      <+> "greater than the size"
+      <+> quotePretty (length ctx)
+      <+> "of the current context"
+      <+> pretty ctx
       <+> parens (pretty p)

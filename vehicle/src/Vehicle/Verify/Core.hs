@@ -6,14 +6,13 @@ module Vehicle.Verify.Core where
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Char.SScript (subscript)
-import Data.Map (Map)
 import Data.Text (Text, unpack)
 import GHC.Generics (Generic)
 import Prettyprinter (brackets)
 import System.FilePath ((<.>), (</>))
 import Vehicle.Compile.Resource
+import Vehicle.Data.Assertion (Relation (..))
 import Vehicle.Data.Builtin.Core
-import Vehicle.Data.QuantifiedVariable (NetworkElementVariable)
 import Vehicle.Data.Tensor (TensorIndices, showTensorIndices)
 import Vehicle.Prelude
 
@@ -53,10 +52,6 @@ instance Pretty MetaNetworkEntry where
 
 -- | A list of neural networks used in a given query.
 type MetaNetwork = [MetaNetworkEntry]
-
--- | A (satisfying) assignment to a set of reduced network-level variables.
-newtype NetworkVariableAssignment
-  = NetworkVariableAssignment (Map NetworkElementVariable Rational)
 
 --------------------------------------------------------------------------------
 -- Queries misc
@@ -149,19 +144,34 @@ calculateQueryFileName verificationCache (propertyAddress, queryID) = do
 -- Queries
 
 data QueryRelation
-  = EqualRel
-  | OrderRel OrderOp
+  = EqRel
+  | LeRel
+  | LtRel
+  | GeRel
+  | GtRel
   deriving (Show, Eq, Ord)
 
 instance Pretty QueryRelation where
   pretty = \case
-    EqualRel -> "="
-    OrderRel op -> pretty op
+    EqRel -> pretty Eq
+    LeRel -> pretty Le
+    LtRel -> pretty Lt
+    GeRel -> pretty Ge
+    GtRel -> pretty Gt
+
+relationToQueryRelation :: Relation -> QueryRelation
+relationToQueryRelation = \case
+  OEq -> EqRel
+  OLt -> LtRel
+  OLe -> LeRel
 
 flipQueryRel :: QueryRelation -> QueryRelation
 flipQueryRel = \case
-  EqualRel -> EqualRel
-  OrderRel op -> OrderRel (flipOrder op)
+  EqRel -> EqRel
+  LeRel -> GeRel
+  LtRel -> GtRel
+  GeRel -> LeRel
+  GtRel -> GtRel
 
 createNetworkVarName :: Name -> Int -> InputOrOutput -> Doc a
 createNetworkVarName networkName application inputOrOutput =

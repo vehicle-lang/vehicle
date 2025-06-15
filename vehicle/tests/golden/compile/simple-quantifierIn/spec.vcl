@@ -1,7 +1,7 @@
 @network
-f : Vector Rat 2 -> Vector Rat 1
+f : Tensor Rat [2] -> Tensor Rat [1]
 
-dataset : List (Vector Rat 2)
+dataset : List (Tensor Rat [2])
 dataset = [[0.5,1.0]]
 
 @property

@@ -10,77 +10,43 @@ typeAnn t a = a
 -- Bool
 --------------------------------------------------------------------------------
 
-notBoolOp2 : (A -> B -> Bool) -> (A -> B -> Bool)
-notBoolOp2 f x y = not (f x y)
+implies : Tensor Bool dims -> Tensor Bool dims -> Tensor Bool dims
+implies x y = (not x) or y
 
---------------------------------------------------------------------------------
--- Orderings
---------------------------------------------------------------------------------
+forallInList : (A -> Bool) -> List A -> Bool
+forallInList f xs = fold (\x y -> x and y) True (map f xs)
 
-min : {{HasLeq a a}} -> a -> a -> a
-min x y = if x <= y then x else y
-
-max : {{HasLeq a a}} -> a -> a -> a
-max x y = if y <= x then x else y
-
---------------------------------------------------------------------------------
--- List
---------------------------------------------------------------------------------
-
-vectorToList : forallT {@0 n} {A} . Vector A n -> List A
-vectorToList = fold (\x xs -> x :: xs) nil
-
---------------------------------------------------------------------------------
--- Foldable
---------------------------------------------------------------------------------
-
-bigAnd : forallT {f : Type -> Type} . {{HasFold f}} -> f Bool -> Bool
-bigAnd = fold (\x y -> x and y) True
-
-bigOr : forallT {f : Type -> Type} . {{HasFold f}} -> f Bool -> Bool
-bigOr = fold (\x y -> x or y) False
-
-forallIn : forallT {t : Type -> Type} . {{HasFold t}} -> {{HasMap t}} -> (A -> Bool) -> t A -> Bool
-forallIn f xs = bigAnd (map f xs)
-
-existsIn : forallT {t : Type -> Type} . {{HasFold t}} -> {{HasMap t}} -> (A -> Bool) -> t A -> Bool
-existsIn f xs = bigOr (map f xs)
-
---------------------------------------------------------------------------------
--- Vector
---------------------------------------------------------------------------------
-
-vectorToVector : forallT {@0 n} {A} . Vector A n -> Vector A n
-vectorToVector xs = xs
-
-addVector : forallT {@0 n} . {{HasAdd A B C}} -> Vector A n -> Vector B n -> Vector C n
-addVector = zipWith (\x y -> x + y)
-
-subVector : forallT {@0 n} . {{HasSub A B C}} -> Vector A n -> Vector B n -> Vector C n
-subVector = zipWith (\x y -> x - y)
-
-equalsVector : forallT {@0 n} . {{HasEq A B}} -> Vector A n -> Vector B n -> Bool
-equalsVector xs ys = bigAnd (zipWith (\x y -> x == y) xs ys)
-
-notEqualsVector : forallT {@0 n} . {{HasNotEq A B}} -> Vector A n -> Vector B n -> Bool
-notEqualsVector xs ys = bigOr (zipWith (\x y -> x != y) xs ys)
-
---------------------------------------------------------------------------------
--- Index
---------------------------------------------------------------------------------
-
-foreachIndex : forallT n . (Index n -> A) -> Vector A n
-foreachIndex n f = map f (indices n)
-
-existsIndex : forallT n . (Index n -> Bool) -> Bool
-existsIndex n f = bigOr (foreachIndex n f)
-
-forallIndex : forallT n . (Index n -> Bool) -> Bool
-forallIndex n f = bigAnd (foreachIndex n f)
+existsInList : (A -> Bool) -> List A -> Bool
+existsInList f xs = fold (\x y -> x or y) False (map f xs)
 
 --------------------------------------------------------------------------------
 -- Tensor
 --------------------------------------------------------------------------------
 
-Tensor : Type -> List Nat -> Type
-Tensor A ds = fold (\d t -> Vector t d) A ds
+eqRatTensorReduced : Tensor Rat dims -> Tensor Rat dims -> Bool
+eqRatTensorReduced xs ys = reduceAnd True (xs ==. ys)
+
+neRatTensorReduced : Tensor Rat dims -> Tensor Rat dims -> Bool
+neRatTensorReduced xs ys = not (eqRatTensorReduced xs ys)
+
+leRatTensorReduced : Tensor Rat dims -> Tensor Rat dims -> Bool
+leRatTensorReduced xs ys = reduceAnd True (xs <=. ys)
+
+ltRatTensorReduced : Tensor Rat dims -> Tensor Rat dims -> Bool
+ltRatTensorReduced xs ys = reduceAnd True (xs <. ys)
+
+geRatTensorReduced : Tensor Rat dims -> Tensor Rat dims -> Bool
+geRatTensorReduced xs ys = reduceAnd True (xs >=. ys)
+
+gtRatTensorReduced : Tensor Rat dims -> Tensor Rat dims -> Bool
+gtRatTensorReduced xs ys = reduceAnd True (xs >. ys)
+
+--------------------------------------------------------------------------------
+-- Index
+--------------------------------------------------------------------------------
+
+existsIndex : forallT {n} . (Index n -> Bool) -> Bool
+existsIndex f = reduceOr False (foreach i . f i)
+
+forallIndex : forallT {n} . (Index n -> Bool) -> Bool
+forallIndex f = reduceAnd True (foreach i . f i)

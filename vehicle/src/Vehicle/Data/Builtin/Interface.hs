@@ -1,6 +1,8 @@
 module Vehicle.Data.Builtin.Interface where
 
 import Vehicle.Data.Builtin.Core
+import Vehicle.Data.Tensor (Tensor)
+import Vehicle.Syntax.Sugar (BinderType)
 
 --------------------------------------------------------------------------------
 -- Interface to standard builtins
@@ -22,88 +24,99 @@ import Vehicle.Data.Builtin.Core
 --------------------------------------------------------------------------------
 -- HasBool
 
-class BuiltinHasBoolLiterals builtin where
-  mkBoolBuiltinLit :: Bool -> builtin
-  getBoolBuiltinLit :: builtin -> Maybe Bool
+type Destruct expr v = expr -> Maybe v
 
---------------------------------------------------------------------------------
--- HasIndex
+type Construct expr v = v -> expr
+
+data Accessor expr v = Access
+  { getExpr :: Destruct expr v,
+    mkExpr :: Construct expr v
+  }
+
+class BuiltinHasBoolLiterals builtin where
+  accessBoolTensorLitBuiltin :: Accessor builtin (Tensor Bool)
+
+  accessNotBuiltin :: Accessor builtin ()
+  accessAndBuiltin :: Accessor builtin ()
+  accessOrBuiltin :: Accessor builtin ()
+  accessImpliesBuiltin :: Accessor builtin ()
+  accessReduceAndBuiltin :: Accessor builtin ()
+  accessReduceOrBuiltin :: Accessor builtin ()
+  accessIfBuiltin :: Accessor builtin ()
+
+  accessCompareIndexBuiltin :: Accessor builtin ComparisonOp
+  accessCompareNatBuiltin :: Accessor builtin ComparisonOp
+  accessCompareRatTensorPointwiseBuiltin :: Accessor builtin ComparisonOp
+  accessCompareRatTensorReducedBuiltin :: Accessor builtin ComparisonOp
+
+  accessQuantifyRatTensorBuiltin :: Accessor builtin Quantifier
 
 class BuiltinHasIndexLiterals builtin where
-  mkIndexBuiltinLit :: Int -> builtin
-  getIndexBuiltinLit :: builtin -> Maybe Int
-
---------------------------------------------------------------------------------
--- HasNat
+  accessIndexLitBuiltin :: Accessor builtin Int
 
 class BuiltinHasNatLiterals builtin where
-  mkNatBuiltinLit :: Int -> builtin
-  getNatBuiltinLit :: builtin -> Maybe Int
+  accessNatLitBuiltin :: Accessor builtin Int
+  accessNatTensorLitBuiltin :: Accessor builtin (Tensor Int)
 
---------------------------------------------------------------------------------
--- HasRat
+  accessAddNatBuiltin :: Accessor builtin ()
+  accessMulNatBuiltin :: Accessor builtin ()
 
-class BuiltinHasRatLiterals builtin where
-  mkRatBuiltinLit :: Rational -> builtin
-  getRatBuiltinLit :: builtin -> Maybe Rational
-
-class (BuiltinHasRatLiterals builtin) => BuiltinHasRatType builtin where
-  mkRatBuiltinType :: builtin
-  isRatBuiltinType :: builtin -> Bool
-
---------------------------------------------------------------------------------
--- HasList
+class BuiltinHasNatType builtin where
+  accessNatTypeBuiltin :: Accessor builtin ()
 
 class BuiltinHasListLiterals builtin where
-  mkBuiltinNil :: builtin
-  isBuiltinNil :: builtin -> Bool
+  accessNilBuiltin :: Accessor builtin ()
+  accessConsBuiltin :: Accessor builtin ()
 
-  mkBuiltinCons :: builtin
-  isBuiltinCons :: builtin -> Bool
+  accessMapListBuiltin :: Accessor builtin ()
+  accessFoldListBuiltin :: Accessor builtin ()
 
---------------------------------------------------------------------------------
--- HasVector
+class BuiltinHasVectors builtin where
+  accessVecLitBuiltin :: Accessor builtin ()
+  accessAtVectorBuiltin :: Accessor builtin ()
 
-class BuiltinHasVecLiterals builtin where
-  mkVecBuiltinLit :: Int -> builtin
-  getVecBuiltinLit :: builtin -> Maybe Int
+class BuiltinHasTensors builtin where
+  accessStackTensorBuiltin :: Accessor builtin ()
+  accessConstTensorBuiltin :: Accessor builtin ()
+  accessAtTensorBuiltin :: Accessor builtin ()
 
-class (BuiltinHasVecLiterals builtin) => BuiltinHasVecType builtin where
-  mkVecBuiltinType :: builtin
-  isVecBuiltinType :: builtin -> Bool
+class BuiltinHasForeach builtin where
+  accessForeachTensorBuiltin :: Accessor builtin ()
+  accessForeachVectorBuiltin :: Accessor builtin ()
 
---------------------------------------------------------------------------------
--- BuiltinHasStandardData
+class (BuiltinHasTensors builtin) => BuiltinHasRatLiterals builtin where
+  accessRatTensorLitBuiltin :: Accessor builtin (Tensor Rational)
+
+  accessNegRatTensorBuiltin :: Accessor builtin ()
+  accessAddRatTensorBuiltin :: Accessor builtin ()
+  accessMulRatTensorBuiltin :: Accessor builtin ()
+  accessSubRatTensorBuiltin :: Accessor builtin ()
+  accessDivRatTensorBuiltin :: Accessor builtin ()
+  accessMinRatTensorBuiltin :: Accessor builtin ()
+  accessMaxRatTensorBuiltin :: Accessor builtin ()
+  accessPowRatTensorBuiltin :: Accessor builtin ()
+  accessReduceAddRatBuiltin :: Accessor builtin ()
+  accessReduceMulRatBuiltin :: Accessor builtin ()
+  accessReduceMinRatBuiltin :: Accessor builtin ()
+  accessReduceMaxRatBuiltin :: Accessor builtin ()
 
 -- | Indicates that this set of builtins has the standard builtin constructors
 -- and functions.
 class BuiltinHasStandardData builtin where
-  mkBuiltinConstructor :: BuiltinConstructor -> builtin
-  getBuiltinConstructor :: builtin -> Maybe BuiltinConstructor
-
-  mkBuiltinFunction :: BuiltinFunction -> builtin
-  getBuiltinFunction :: builtin -> Maybe BuiltinFunction
-
---------------------------------------------------------------------------------
--- BuiltinHasStandardTypes
+  accessBuiltinConstructor :: Accessor builtin BuiltinConstructor
+  accessBuiltinFunction :: Accessor builtin BuiltinFunction
 
 -- | Indicates that this set of builtins has the standard set of types.
 class BuiltinHasStandardTypes builtin where
-  mkBuiltinType :: BuiltinType -> builtin
-  getBuiltinType :: builtin -> Maybe BuiltinType
+  accessBuiltinType :: Accessor builtin BuiltinType
 
-  mkNatInDomainConstraint :: builtin
-
---------------------------------------------------------------------------------
--- HasStandardBuiltins
+class BuiltinHasIterate builtin where
+  accessIterateBuiltin :: Accessor builtin ()
 
 -- | Indicates that this set of builtins has the standard set of constructors,
 -- functions and types.
 class BuiltinHasStandardTypeClasses builtin where
   mkBuiltinTypeClass :: TypeClass -> builtin
-
---------------------------------------------------------------------------------
--- HasStandardBuiltins
 
 -- | Indicates that this set of builtins has the standard set of constructors,
 -- functions and types.
@@ -112,24 +125,5 @@ type HasStandardBuiltins builtin =
     BuiltinHasStandardData builtin
   )
 
---------------------------------------------------------------------------------
--- HasTensorBuiltins
-
-class BuiltinHasRatTensor builtin where
-  mkRatTensorBuiltin :: RatTensorBuiltin -> builtin
-  getRatTensorBuiltin :: builtin -> Maybe RatTensorBuiltin
-
-class (BuiltinHasRatTensor builtin) => BuiltinHasBoolTensor builtin where
-  mkBoolTensorBuiltin :: BoolTensorBuiltin -> builtin
-  getBoolTensorBuiltin :: builtin -> Maybe BoolTensorBuiltin
-
---------------------------------------------------------------------------------
--- Dimension builtins
-
-class BuiltinHasDimensionTypes builtin where
-  mkDimensionTypeBuiltin :: DimensionTypeBuiltin -> builtin
-  getDimensionTypeBuiltin :: builtin -> Maybe DimensionTypeBuiltin
-
-class BuiltinHasDimensionData builtin where
-  mkDimensionDataBuiltin :: DimensionDataBuiltin -> builtin
-  getDimensionDataBuiltin :: builtin -> Maybe DimensionDataBuiltin
+class BuiltinHasBinders builtin where
+  getBuiltinBinder :: builtin -> Maybe BinderType

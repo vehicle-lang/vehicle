@@ -1,6 +1,6 @@
 [
   {
-    "entityType": "Image -> Vector Rat 10",
+    "entityType": "Image -> Tensor Rat [10]",
     "entitySort": "@network",
     "entityName": "classifier"
   },

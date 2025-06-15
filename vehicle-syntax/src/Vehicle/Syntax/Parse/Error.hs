@@ -28,5 +28,5 @@ data ParseError
   | -- Other
     UnknownBuiltin Provenance Text
   | MissingVariables Provenance Name
-  | UnchainableOrders Provenance OrderOp OrderOp
+  | UnchainableComparisons Provenance ComparisonOp ComparisonOp
   deriving (Show)

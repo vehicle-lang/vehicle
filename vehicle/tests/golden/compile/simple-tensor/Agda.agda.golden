@@ -11,30 +11,34 @@ open import Vehicle.Utils
 open import Vehicle.Data.Tensor
 open import Data.Integer as ℤ using (ℤ)
 open import Data.Rational as ℚ using (ℚ)
+open import Data.Fin as Fin using (Fin; #_)
+open import Data.Vec.Functional.Relation.Unary.All as Fin
 open import Data.List.Base
-open import Data.Vec.Functional renaming ([] to []ᵥ; _∷_ to _∷ᵥ_)
 
 module Agda where
 
 postulate f : Tensor ℚ (2 ∷ (2 ∷ [])) → Tensor ℚ (2 ∷ (2 ∷ []))
 
 zeroD : Tensor ℚ []
-zeroD = ℤ.+ 5 ℚ./ 2
+zeroD = ℤ.+ 5 / 2
 
 oneD : Tensor ℚ (2 ∷ [])
-oneD = zeroD ∷ᵥ (ℤ.+ 1 ℚ./ 1 ∷ᵥ []ᵥ)
+oneD = stack zeroD 1
 
 twoD : Tensor ℚ (2 ∷ (2 ∷ []))
-twoD = oneD ∷ᵥ ((ℤ.+ 2 ℚ./ 1 ∷ᵥ (ℤ.+ 3 ℚ./ 1 ∷ᵥ []ᵥ)) ∷ᵥ []ᵥ)
+twoD = stack oneD (stack 2 3)
+
+lookup2D : Tensor ℚ []
+lookup2D = (twoD ! # 0) ! # 1
 
 addition : Tensor ℚ (2 ∷ (2 ∷ []))
-addition = twoD ⊕ twoD
+addition = twoD 𝕋.⊕ twoD
 
 subtraction : Tensor ℚ (2 ∷ (2 ∷ []))
-subtraction = twoD ⊖ twoD
+subtraction = twoD 𝕋.⊖ twoD
 
 abstract
-  p : ∀ i → ∀ j → f subtraction ⊕ addition i j ℚ.≥ ℤ.+ 0 ℚ./ 1
+  p : Fin.All (λ i → Fin.All (λ j → ((f subtraction 𝕋.⊕ addition ! i) ! j) ≥ 0))
   p = checkSpecification record
     { cache = "Marabou.queries"
     }

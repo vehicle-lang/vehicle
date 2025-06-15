@@ -11,7 +11,6 @@ import Control.Monad.Writer (WriterT (..), tell)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (maybeToList)
-import Data.Proxy (Proxy (..))
 import Data.Set qualified as Set
 import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Error
@@ -69,18 +68,18 @@ readResourcesInDecls = \case
   decl : decls -> do
     (newDecl, newDeclEntry) <- case decl of
       DefFunction {} -> do
-        entry <- mkDeclCtxEntry (Proxy @Builtin) decl
+        entry <- mkDeclCtxEntry decl
         return (Just decl, entry)
       DefAbstract p ident defType declType -> do
         normDeclType <- normaliseInEmptyEnv declType
         let gluedType = Glued declType normDeclType
         case defType of
           PostulateDef {} -> do
-            entry <- mkDeclCtxEntry (Proxy @Builtin) decl
+            entry <- mkDeclCtxEntry decl
             return (Just decl, entry)
           ParameterDef sort -> case sort of
             Inferable -> do
-              entry <- mkDeclCtxEntry (Proxy @Builtin) decl
+              entry <- mkDeclCtxEntry decl
               noteInferableParameter p ident gluedType
               return (Nothing, entry)
             NonInferable -> do
@@ -101,7 +100,7 @@ readResourcesInDecls = \case
             addNetworkType ident networkDetails
             let newDeclEntry = (DefAbstract p ident defType declType, DefAbstract p ident defType normDeclType)
             tell (Map.singleton ident newDeclEntry)
-            entry <- mkDeclCtxEntry (Proxy @Builtin) decl
+            entry <- mkDeclCtxEntry decl
             return (Nothing, entry)
 
     decls' <-
@@ -137,7 +136,7 @@ fillInInferableParameters freeCtx inferableCtx =
       Nothing -> throwError $ InferableParameterUninferrable (ident, p)
       Just ((_, inferProv), _, v) -> do
         logDebug MaxDetail $ "Inferred" <+> quotePretty ident <+> "as" <+> quotePretty v
-        let decl = mkFunctionDefFromResource inferProv ident declType (INatLiteral inferProv v)
+        let decl = mkFunctionDefFromResource inferProv ident declType (INatLiteral v)
         return $ Map.insert ident decl ctx
 
 warnIfUnusedResources ::

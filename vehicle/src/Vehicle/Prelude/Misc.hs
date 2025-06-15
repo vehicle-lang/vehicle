@@ -93,6 +93,18 @@ partitionM f = partitionMaybeM (\v -> do r <- f v; return $ if r then Just v els
 filterByIndex :: (Int -> Bool) -> [a] -> [a]
 filterByIndex f xs = fmap snd $ filter (f . fst) $ zip [0 ..] xs
 
+findFirstAndCycle :: forall a. (a -> Bool) -> [a] -> Maybe (a, [a])
+findFirstAndCycle p xs = (\(v, as, bs) -> (v, bs <> as)) <$> go xs
+  where
+    go :: [a] -> Maybe (a, [a], [a])
+    go = \case
+      [] -> Nothing
+      a : as
+        | p a -> Just (a, [], as)
+        | otherwise -> case go as of
+            Nothing -> Nothing
+            Just (v, bs, cs) -> Just (v, a : bs, cs)
+
 countOccurrences :: (Ord a) => [a] -> Map a Int
 countOccurrences = foldr (\v -> Map.insertWith (+) v 1) mempty
 
@@ -108,6 +120,10 @@ capitaliseFirstLetter name
   | otherwise =
       let (firstLetter, remainder) = Text.splitAt 1 name
        in Text.toUpper firstLetter <> remainder
+
+iterateM :: (Monad m) => (a -> m a) -> a -> Int -> m a
+iterateM _ e 0 = return e
+iterateM f e n = f =<< iterateM f e (n - 1)
 
 oneHot :: Int -> Int -> a -> [Maybe a]
 oneHot i l x
@@ -153,6 +169,14 @@ listOrd leq (x : xs) (y : ys) = le || (eq && listOrd leq xs ys)
   where
     le = leq x y && not (leq y x)
     eq = leq x y && leq y x
+
+findAndDeleteElem :: (a -> Bool) -> [a] -> Maybe (a, [a])
+findAndDeleteElem p = go id
+  where
+    go _ [] = Nothing
+    go prefix (x : xs)
+      | p x = Just (x, prefix xs)
+      | otherwise = go (prefix . (x :)) xs
 
 -- | Used to distinguish between inputs and outputs of neural networks.
 data InputOrOutput

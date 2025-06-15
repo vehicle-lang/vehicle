@@ -13,7 +13,6 @@ import GHC.Stack (HasCallStack)
 import Vehicle.Compile.Context.Bound.Class as X
 import Vehicle.Compile.Context.Bound.Core as X
 import Vehicle.Compile.Context.Bound.Instance as X
-import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Normalise.Quote qualified as Quote (unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (PrettyFriendly, prettyFriendly)
@@ -30,7 +29,7 @@ prettyFriendlyInCtx p value = do
 
 getBoundVarByIx ::
   forall expr m.
-  (MonadBoundContext expr m, MonadCompile m, HasCallStack) =>
+  (MonadBoundContext expr m, HasCallStack) =>
   Proxy expr ->
   Ix ->
   m (GenericBinder expr)
@@ -39,7 +38,7 @@ getBoundVarByIx _ ix =
 
 getBoundVarByLv ::
   forall expr m.
-  (MonadBoundContext expr m, MonadCompile m, HasCallStack) =>
+  (MonadBoundContext expr m, HasCallStack) =>
   Proxy expr ->
   Lv ->
   m (GenericBinder expr)

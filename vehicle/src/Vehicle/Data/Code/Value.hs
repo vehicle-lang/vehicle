@@ -6,7 +6,6 @@ import Data.Maybe (fromMaybe)
 import GHC.Generics
 import Vehicle.Compile.Context.Bound.Core
 import Vehicle.Data.Builtin.Interface
-import Vehicle.Data.Builtin.Standard (BuiltinFunction)
 import Vehicle.Data.Code.Expr (Expr)
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.DeBruijn
@@ -86,6 +85,9 @@ boundContextToEnv ctx = do
   let numberedCtx = zip ctx (reverse [0 .. Lv (length ctx - 1)])
   fmap (\(binder, lv) -> (void binder, VBoundVar lv [])) numberedCtx
 
+boundEnvToCtx :: BoundEnv builtin -> NamedBoundCtx
+boundEnvToCtx env = toNamedBoundCtx (fmap fst env)
+
 -- | Converts an environment to set of values suitable for printing
 cheatEnvToValues :: BoundEnv builtin -> GenericBoundCtx (Value builtin)
 cheatEnvToValues = fmap envEntryToValue
@@ -155,116 +157,11 @@ traverseUnnormalised f (Glued u n) = Glued <$> f u <*> pure n
 -----------------------------------------------------------------------------
 -- Instances
 
-instance (BuiltinHasStandardTypes builtin) => HasStandardTypes (Value builtin) where
-  mkType _p b = VBuiltin (mkBuiltinType b)
-  getType e = case e of
-    VBuiltin b args -> case getBuiltinType b of
-      Just t -> Just (mempty, t, args)
-      Nothing -> Nothing
-    _ -> Nothing
-
-instance (BuiltinHasStandardData builtin) => HasStandardData (Value builtin) where
-  mkFunction _p b = VBuiltin (mkBuiltinFunction b)
-  getFunction e = case e of
-    VBuiltin b args -> case getBuiltinFunction b of
-      Just t -> Just (mempty, t, args)
-      Nothing -> Nothing
-    _ -> Nothing
-
-  mkConstructor _p b = VBuiltin (mkBuiltinConstructor b)
-  getConstructor e = case e of
-    VBuiltin b args -> case getBuiltinConstructor b of
-      Just t -> Just (mempty, t, args)
-      Nothing -> Nothing
-    _ -> Nothing
-
-  mkFreeVar _p = VFreeVar
-  getFreeVar = \case
-    VFreeVar ident args -> Just (mempty, ident, args)
-    _ -> Nothing
-
-instance (BuiltinHasBoolLiterals builtin) => HasBoolLits (Value builtin) where
-  getBoolLit = \case
-    VBuiltin (getBoolBuiltinLit -> Just b) [] -> Just (mempty, b)
-    _ -> Nothing
-  mkBoolLit _p b = VBuiltin (mkBoolBuiltinLit b) []
-
-instance (BuiltinHasIndexLiterals builtin) => HasIndexLits (Value builtin) where
-  getIndexLit e = case e of
-    VBuiltin (getIndexBuiltinLit -> Just n) [] -> Just (mempty, n)
-    _ -> Nothing
-  mkIndexLit _p x = VBuiltin (mkIndexBuiltinLit x) mempty
-
-instance (BuiltinHasNatLiterals builtin) => HasNatLits (Value builtin) where
-  getNatLit e = case e of
-    VBuiltin (getNatBuiltinLit -> Just b) [] -> Just (mempty, b)
-    _ -> Nothing
-  mkNatLit _p x = VBuiltin (mkNatBuiltinLit x) mempty
-
-instance (BuiltinHasRatLiterals builtin) => HasRatLits (Value builtin) where
-  getRatLit e = case e of
-    VBuiltin (getRatBuiltinLit -> Just b) [] -> Just (mempty, b)
-    _ -> Nothing
-  mkRatLit _p x = VBuiltin (mkRatBuiltinLit x) mempty
-
-instance (BuiltinHasRatType builtin) => HasRatType (Value builtin) where
-  getRatType e = case e of
-    VBuiltin (isRatBuiltinType -> True) [] -> Just mempty
-    _ -> Nothing
-  mkRatType _p = VBuiltin mkRatBuiltinType []
-
-instance (BuiltinHasVecLiterals builtin) => HasStandardVecLits (Value builtin) where
-  getHomoVector = \case
-    VBuiltin (getVecBuiltinLit -> Just {}) (t : xs) -> Just (t, xs)
-    _ -> Nothing
-  mkHomoVector t xs = VBuiltin (mkVecBuiltinLit (length xs)) (t : xs)
-
-instance (BuiltinHasVecType builtin) => HasVecType (Value builtin) where
-  getVectorType e = case e of
-    VBuiltin (isVecBuiltinType -> True) [t, n] -> Just (mempty, t, n)
-    _ -> Nothing
-  mkVectorType _p t n = VBuiltin mkVecBuiltinType [t, n]
-
-instance (BuiltinHasListLiterals builtin) => HasStandardListLits (Value builtin) where
-  getNil = \case
-    VBuiltin (isBuiltinNil -> True) [t] -> Just (mempty, t)
-    _ -> Nothing
-  mkNil t = VBuiltin mkBuiltinNil [t]
-
-  getCons = \case
-    VBuiltin (isBuiltinCons -> True) [t, x, xs] -> Just (mempty, t, x, xs)
-    _ -> Nothing
-  mkCons t x xs = VBuiltin mkBuiltinCons [t, x, xs]
-
-instance (BuiltinHasRatTensor builtin) => HasRatTensors (Value builtin) where
-  getRatTensorOp e = case e of
-    VBuiltin (getRatTensorBuiltin -> Just op) args -> Just (op, args)
-    _ -> Nothing
-  mkRatTensorOp op = VBuiltin (mkRatTensorBuiltin op)
-
-instance (BuiltinHasBoolTensor builtin) => HasBoolTensors (Value builtin) where
-  getBoolTensorOp e = case e of
-    VBuiltin (getBoolTensorBuiltin -> Just op) args -> Just (op, args)
-    _ -> Nothing
-  mkBoolTensorOp op = VBuiltin (mkBoolTensorBuiltin op)
-
-instance (BuiltinHasDimensionTypes builtin) => HasDimensionTypes (Value builtin) where
-  getDimensionTypeOp e = case e of
-    VBuiltin (getDimensionTypeBuiltin -> Just op) args -> Just (op, args)
-    _ -> Nothing
-  mkDimensionTypeOp op = VBuiltin (mkDimensionTypeBuiltin op)
-
-instance (BuiltinHasDimensionData builtin) => HasDimensionData (Value builtin) where
-  getDimensionDataOp e = case e of
-    VBuiltin (getDimensionDataBuiltin -> Just op) args -> Just (op, args)
-    _ -> Nothing
-  mkDimensionDataOp op = VBuiltin (mkDimensionDataBuiltin op)
-
---------------------------------------------------------------------------------
--- Value Function patterns
-
--- TODO this should really be removed.
-pattern VBuiltinFunction :: (BuiltinHasStandardData builtin) => BuiltinFunction -> Spine builtin -> Value builtin
-pattern VBuiltinFunction f args <- VBuiltin (getBuiltinFunction -> Just f) args
-  where
-    VBuiltinFunction f args = VBuiltin (mkBuiltinFunction f) args
+instance (HasBuiltinConstructor Value) where
+  accessBuiltinC =
+    Access
+      { getExpr = \case
+          VBuiltin b spine -> Just (b, spine)
+          _ -> Nothing,
+        mkExpr = uncurry VBuiltin
+      }

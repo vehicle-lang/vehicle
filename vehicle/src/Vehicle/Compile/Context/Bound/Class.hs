@@ -1,7 +1,6 @@
 module Vehicle.Compile.Context.Bound.Class where
 
 import Control.Monad.Reader
-import Control.Monad.State
 import Control.Monad.Writer
 import Data.Data (Proxy (..))
 import Vehicle.Compile.Context.Bound.Core
@@ -23,10 +22,6 @@ instance (Monoid w, MonadBoundContext expr m) => MonadBoundContext expr (WriterT
 
 instance (MonadBoundContext expr m) => MonadBoundContext expr (ReaderT w m) where
   addBinderToContext = mapReaderT . addBinderToContext
-  getBoundCtx = lift . getBoundCtx
-
-instance (MonadBoundContext expr m) => MonadBoundContext expr (StateT w m) where
-  addBinderToContext = mapStateT . addBinderToContext
   getBoundCtx = lift . getBoundCtx
 
 --------------------------------------------------------------------------------
@@ -51,6 +46,9 @@ getCurrentLv p = boundCtxLv <$> getBoundCtx p
 -- | State for generating fresh names.
 type FreshNameState = Int
 
+freshName :: Int -> Name
+freshName i = "_x" <> layoutAsText (pretty i)
+
 -- TODO not currently sound.
 getFreshName ::
   forall expr m.
@@ -59,7 +57,7 @@ getFreshName ::
   m Name
 getFreshName _t = do
   boundCtx <- getBoundCtx (Proxy @expr)
-  return $ "_x" <> layoutAsText (pretty (length boundCtx))
+  return $ freshName (length boundCtx)
 
 getBinderNameOrFreshName :: (MonadBoundContext expr m) => Maybe Name -> expr -> m Name
 getBinderNameOrFreshName piName typ = case piName of

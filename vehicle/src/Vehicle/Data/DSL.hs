@@ -41,7 +41,6 @@ import Data.Maybe (fromMaybe)
 import Vehicle.Data.Code.Expr
 import Vehicle.Data.DeBruijn
 import Vehicle.Data.Universe
-import Vehicle.Libraries.StandardLibrary.Definitions (StdLibFunction)
 import Vehicle.Prelude
 import Prelude hiding (pi)
 
@@ -56,7 +55,6 @@ class DSL expr where
   app :: expr -> NonEmpty (Visibility, Relevance, expr) -> expr
   pi :: Maybe Name -> Visibility -> Relevance -> expr -> (expr -> expr) -> expr
   lam :: Name -> Visibility -> Relevance -> expr -> (expr -> expr) -> expr
-  free :: StdLibFunction -> expr
 
 newtype DSLExpr builtin = DSL
   { unDSL :: Provenance -> Lv -> Expr builtin
@@ -103,9 +101,6 @@ instance DSL (DSLExpr builtin) where
     let fun' = unDSL fun p i
         args' = fmap (\(v, r, e) -> Arg p v r (unDSL e p i)) args
      in App fun' args'
-
-  free stdlibFn = DSL $ \p _i ->
-    FreeVar p (identifierOf stdlibFn)
 
 --------------------------------------------------------------------------------
 -- AST

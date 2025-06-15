@@ -21,23 +21,23 @@ position token TypeToken ({"Type"} digit+);
 position token Natural (digit+ '.' digit+);
 position token Rational (digit+ '.' digit+);
 
+-- * Modalities
+
+Irrelevant. Modality ::= "@0";
+
+separator Modality "";
+
 -- * Binders
 
-RelevantExplicitBinder.   Binder ::= "(" NameToken ":" Expr ")";
-RelevantImplicitBinder.   Binder ::= "{" NameToken ":" Expr "}";
-RelevantInstanceBinder.   Binder ::= "{{" NameToken ":" Expr "}}";
-IrrelevantExplicitBinder. Binder ::= ".(" NameToken ":" Expr ")";
-IrrelevantImplicitBinder. Binder ::= ".{" NameToken ":" Expr "}";
-IrrelevantInstanceBinder. Binder ::= ".{{" NameToken ":" Expr "}}";
+ExplicitBinder. Binder ::= "(" [Modality] NameToken ":" Expr ")";
+ImplicitBinder. Binder ::= "{" [Modality] NameToken ":" Expr "}";
+InstanceBinder. Binder ::= "{{" [Modality] NameToken ":" Expr "}}";
 
 -- * Function arguments
 
-RelevantExplicitArg.   Arg ::= Expr1;
-RelevantImplicitArg.   Arg ::= "{" Expr "}";
-RelevantInstanceArg.   Arg ::= "{{" Expr "}}";
-IrrelevantExplicitArg. Arg ::= ".(" Expr ")";
-IrrelevantImplicitArg. Arg ::= ".{" Expr "}";
-IrrelevantInstanceArg. Arg ::= ".{{" Expr "}}";
+ExplicitArg. Arg ::= [Modality] Expr1;
+ImplicitArg. Arg ::= "{" [Modality] Expr "}";
+InstanceArg. Arg ::= "{{" [Modality] Expr "}}";
 
 -- * Literals
 

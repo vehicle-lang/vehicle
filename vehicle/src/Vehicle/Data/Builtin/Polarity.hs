@@ -1,3 +1,5 @@
+-- | Builtins for deciding whether or not a given expression uses alternating quantifiers
+-- or not during compilation to verifier queries.
 module Vehicle.Data.Builtin.Polarity where
 
 import Control.DeepSeq (NFData (..))
@@ -5,10 +7,11 @@ import Data.Hashable (Hashable (..))
 import Data.List.NonEmpty (NonEmpty)
 import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
-import Vehicle.Data.Builtin.Core hiding (Builtin (BuiltinConstructor, BuiltinFunction))
+import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Interface
-import Vehicle.Data.Code.Expr
-import Vehicle.Data.Code.Value
+import Vehicle.Data.Builtin.Interface.Blocked (BlockingStatus (DoesNotReduce), functionBlockingStatus)
+import Vehicle.Data.Builtin.Interface.Normalise
+import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.DSL
 import Vehicle.Prelude
 
@@ -20,7 +23,6 @@ data PolarityProvenance
   = QuantifierProvenance Provenance
   | NegateProvenance Provenance PolarityProvenance
   | LHSImpliesProvenance Provenance PolarityProvenance
-  | EqProvenance Provenance PolarityProvenance EqualityOp
   | PolFunctionProvenance Provenance PolarityProvenance FunctionPosition
   deriving (Generic)
 
@@ -70,7 +72,7 @@ mapPolarityProvenance f = \case
   Unquantified -> Unquantified
   Quantified q pp -> Quantified q (f pp)
   MixedParallel pp1 pp2 -> MixedParallel (f pp1) (f pp2)
-  -- At the moment we don't change non-linear provenance because we
+  -- At the moment we don't change non-Polar provenance because we
   -- want the minimal example.
   MixedSequential q p pp -> MixedSequential q p pp
 
@@ -79,9 +81,8 @@ mapPolarityProvenance f = \case
 
 data PolarityRelation
   = NegPolarity
-  | QuantifierPolarity Quantifier
-  | AddPolarity Quantifier
-  | EqPolarity EqualityOp
+  | QuantifierPolarity Provenance Quantifier
+  | AddPolarity Provenance Quantifier
   | ImpliesPolarity
   | IfPolarity
   | MaxPolarity
@@ -97,9 +98,8 @@ instance Hashable PolarityRelation
 instance Pretty PolarityRelation where
   pretty = \case
     NegPolarity -> "NegPolarity"
-    AddPolarity q -> "AddPolarity" <+> pretty q
-    QuantifierPolarity q -> "QuantifierPolarity" <+> pretty q
-    EqPolarity eq -> "EqPolarity" <+> pretty eq
+    AddPolarity _ q -> "AddPolarity" <+> pretty q
+    QuantifierPolarity _ q -> "QuantifierPolarity" <+> pretty q
     ImpliesPolarity -> "ImpliesPolarity"
     MaxPolarity -> "MaxPolarity"
     IfPolarity -> "IfPolarity"
@@ -124,51 +124,103 @@ instance Pretty PolarityBuiltin where
     Polarity l -> pretty l
     PolarityRelation c -> pretty c
 
+functionAccessor :: BuiltinFunction -> Accessor PolarityBuiltin ()
+functionAccessor b =
+  Access
+    { getExpr = \case
+        PolarityFunction b1 | b == b1 -> Just ()
+        _ -> Nothing,
+      mkExpr = \() -> PolarityFunction b
+    }
+
 instance BuiltinHasStandardData PolarityBuiltin where
-  mkBuiltinFunction = PolarityFunction
-  getBuiltinFunction = \case
-    PolarityFunction c -> Just c
-    _ -> Nothing
+  accessBuiltinFunction =
+    Access
+      { mkExpr = PolarityFunction,
+        getExpr = \case
+          PolarityFunction c -> Just c
+          _ -> Nothing
+      }
 
-  mkBuiltinConstructor = PolarityConstructor
-  getBuiltinConstructor = \case
-    PolarityConstructor c -> Just c
-    _ -> Nothing
-
-instance BuiltinHasBoolLiterals PolarityBuiltin where
-  mkBoolBuiltinLit b = PolarityConstructor (LBool b)
-  getBoolBuiltinLit = \case
-    PolarityConstructor (LBool b) -> Just b
-    _ -> Nothing
-
-instance BuiltinHasIndexLiterals PolarityBuiltin where
-  getIndexBuiltinLit e = case e of
-    PolarityConstructor (LIndex n) -> Just n
-    _ -> Nothing
-  mkIndexBuiltinLit x = PolarityConstructor (LIndex x)
+  accessBuiltinConstructor =
+    Access
+      { mkExpr = PolarityConstructor,
+        getExpr = \case
+          PolarityConstructor c -> Just c
+          _ -> Nothing
+      }
 
 instance BuiltinHasNatLiterals PolarityBuiltin where
-  getNatBuiltinLit e = case e of
-    PolarityConstructor (LNat b) -> Just b
-    _ -> Nothing
-  mkNatBuiltinLit x = PolarityConstructor (LNat x)
+  accessNatLitBuiltin =
+    Access
+      { getExpr = \case
+          PolarityConstructor (NatLiteral n) -> Just n
+          _ -> Nothing,
+        mkExpr = PolarityConstructor . NatLiteral
+      }
 
-instance BuiltinHasRatLiterals PolarityBuiltin where
-  getRatBuiltinLit e = case e of
-    PolarityConstructor (LRat b) -> Just b
-    _ -> Nothing
-  mkRatBuiltinLit x = PolarityConstructor (LRat x)
+  accessNatTensorLitBuiltin =
+    Access
+      { getExpr = \case
+          PolarityConstructor (NatTensorLiteral b) -> Just b
+          _ -> Nothing,
+        mkExpr = PolarityConstructor . NatTensorLiteral
+      }
+
+  accessAddNatBuiltin = functionAccessor (Add AddNat)
+  accessMulNatBuiltin = functionAccessor (Mul MulNat)
+
+instance BuiltinHasListLiterals PolarityBuiltin where
+  accessNilBuiltin =
+    Access
+      { getExpr = \case
+          PolarityConstructor Nil -> Just ()
+          _ -> Nothing,
+        mkExpr = \() -> PolarityConstructor Nil
+      }
+
+  accessConsBuiltin =
+    Access
+      { getExpr = \case
+          PolarityConstructor Cons -> Just ()
+          _ -> Nothing,
+        mkExpr = \() -> PolarityConstructor Cons
+      }
+
+  accessMapListBuiltin = functionAccessor MapList
+  accessFoldListBuiltin = functionAccessor FoldList
+
+instance BuiltinHasIterate PolarityBuiltin where
+  accessIterateBuiltin = functionAccessor Iterate
 
 -----------------------------------------------------------------------------
--- Type synonyms
+-- Printing
 
-pattern PolarityExpr :: Provenance -> Polarity -> Expr PolarityBuiltin
-pattern PolarityExpr p pol = Builtin p (Polarity pol)
+instance ConvertableBuiltin PolarityBuiltin Builtin where
+  convertBuiltin p = \case
+    PolarityConstructor c -> convertBuiltin p c
+    PolarityFunction f -> convertBuiltin p f
+    b -> cheatConvertBuiltin p $ pretty b
 
-pattern VPolarityExpr :: Polarity -> Value PolarityBuiltin
-pattern VPolarityExpr l <- VBuiltin (Polarity l) []
-  where
-    VPolarityExpr l = VBuiltin (Polarity l) []
+instance PrintableBuiltin PolarityBuiltin where
+  coercionArgs _ = Nothing
+  isDerivedBuiltin = const Nothing
+
+-----------------------------------------------------------------------------
+-- Normalisation
+
+instance NormalisableBuiltin PolarityBuiltin where
+  evalScheme b = case b of
+    PolarityFunction Iterate -> NonSimple evalIterate
+    PolarityFunction _ -> None
+    _ -> None
+
+  blockingStatus b spine = case b of
+    PolarityFunction f -> functionBlockingStatus f spine
+    _ -> DoesNotReduce
+
+  isTypeClassOp _ = False
+  isCast _ _ = Nothing
 
 -----------------------------------------------------------------------------
 -- DSL
@@ -197,17 +249,14 @@ unquantified = builtin (Polarity Unquantified)
 polarityTypeClass :: PolarityRelation -> NonEmpty PolarityDSLExpr -> PolarityDSLExpr
 polarityTypeClass tc args = builtin (PolarityRelation tc) @@ args
 
-quantifierPolarity :: Quantifier -> PolarityDSLExpr -> PolarityDSLExpr -> PolarityDSLExpr
-quantifierPolarity q l1 l2 = polarityTypeClass (QuantifierPolarity q) [l1, l2]
+quantifierPolarity :: Provenance -> Quantifier -> PolarityDSLExpr -> PolarityDSLExpr -> PolarityDSLExpr
+quantifierPolarity p q l1 l2 = polarityTypeClass (QuantifierPolarity p q) [l1, l2]
 
 maxPolarity :: PolarityDSLExpr -> PolarityDSLExpr -> PolarityDSLExpr -> PolarityDSLExpr
 maxPolarity l1 l2 l3 = polarityTypeClass MaxPolarity [l1, l2, l3]
 
 ifPolarity :: PolarityDSLExpr -> PolarityDSLExpr -> PolarityDSLExpr -> PolarityDSLExpr -> PolarityDSLExpr
 ifPolarity l1 l2 l3 l4 = polarityTypeClass IfPolarity [l1, l2, l3, l4]
-
-eqPolarity :: EqualityOp -> PolarityDSLExpr -> PolarityDSLExpr -> PolarityDSLExpr -> PolarityDSLExpr
-eqPolarity eq p1 p2 p3 = polarityTypeClass (EqPolarity eq) [p1, p2, p3]
 
 impliesPolarity :: PolarityDSLExpr -> PolarityDSLExpr -> PolarityDSLExpr -> PolarityDSLExpr
 impliesPolarity l1 l2 l3 = polarityTypeClass ImpliesPolarity [l1, l2, l3]

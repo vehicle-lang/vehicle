@@ -35,8 +35,11 @@ type family WithContext a
 mapObject :: (a -> b) -> Contextualised a ctx -> Contextualised b ctx
 mapObject f WithContext {..} = WithContext {objectIn = f objectIn, ..}
 
+mapContextOf :: (ctx1 -> ctx2) -> Contextualised object ctx1 -> Contextualised object ctx2
+mapContextOf f WithContext {..} = WithContext {contextOf = f contextOf, ..}
+
 -------------------------------------------------------------------------------
--- Utilities for traversing auxiliary arguments.
+-- Imports
 
 type Imports = [Prog Builtin]
 

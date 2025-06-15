@@ -3,13 +3,11 @@ module Vehicle.Backend.Queries
   )
 where
 
-import Control.DeepSeq (force)
 import Control.Monad (when)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Data.Maybe (isNothing, maybeToList)
-import Data.Proxy (Proxy (..))
 import System.Directory (createDirectoryIfMissing)
 import Vehicle.Backend.Queries.Error
 import Vehicle.Backend.Queries.UserVariableElimination (eliminateUserVariables)
@@ -24,9 +22,11 @@ import Vehicle.Compile.Print.Warning ()
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.Interface
+import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Tensor (TensorIndices)
 import Vehicle.Prelude.Warning (CompileWarning (..))
+import Vehicle.Syntax.Tensor (unstack)
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat
 import Vehicle.Verify.Specification
@@ -91,12 +91,11 @@ compileDecls prog queryFormat networkCtx propertyID (d : ds) outputLocation = do
   property <- case d of
     DefFunction p ident anns _ body
       | isProperty anns -> do
-          hideStdLibDecls (Proxy @Builtin) vectorOperations $ do
-            let propertyData = (queryFormat, networkCtx, (ident, p), propertyID, outputLocation)
-            Just <$> compilePropertyDecl prog propertyData body
+          let propertyData = (queryFormat, networkCtx, (ident, p), propertyID, outputLocation)
+          Just <$> compilePropertyDecl prog propertyData body
     _ -> return Nothing
 
-  addDeclToContext (Proxy @Builtin) d $ do
+  addDeclToContext d $ do
     let newPropertyID = if isNothing property then propertyID else propertyID + 1
     properties <- compileDecls prog queryFormat networkCtx newPropertyID ds outputLocation
     return $ maybeToList property ++ properties
@@ -126,7 +125,7 @@ compilePropertyDecl ::
   Expr Builtin ->
   m (Name, MultiProperty ())
 compilePropertyDecl prog propertyData@(_, _, declProv@(ident, _), _, _) expr = do
-  logCompilerPass MinDetail ("found property" <+> quotePretty ident) $ do
+  logCompilerPass MinDetail ("property" <+> quotePretty ident) $ do
     normalisedExpr <- normaliseInEmptyEnv expr
     multiProperty <-
       compileMultiProperty propertyData normalisedExpr
@@ -134,10 +133,12 @@ compilePropertyDecl prog propertyData@(_, _, declProv@(ident, _), _, _) expr = d
     return (nameOf (fst declProv), multiProperty)
 
 handlePropertyCompileError :: (MonadCompile m) => Prog Builtin -> MultiPropertyMetaData -> CompileError -> m a
-handlePropertyCompileError prog (queryFormat, _, declProv, _, _) e = case e of
-  UnsupportedNonLinearConstraint {} -> throwError =<< diagnoseNonLinearity (queryFormatID queryFormat) prog declProv
-  UnsupportedAlternatingQuantifiers {} -> throwError =<< diagnoseAlternatingQuantifiers (queryFormatID queryFormat) prog declProv
-  _ -> throwError e
+handlePropertyCompileError prog (queryFormat, _, declProv, _, _) e = do
+  let formatID = queryFormatID queryFormat
+  case e of
+    UnsupportedNonLinearConstraint {} -> throwError =<< diagnoseNonLinearity formatID prog declProv
+    UnsupportedAlternatingQuantifiers {} -> throwError =<< diagnoseAlternatingQuantifiers formatID prog declProv
+    _ -> throwError e
 
 -- | Compiles a property of type `Tensor Bool dims` for some variable `dims`,
 -- by recursing through the levels of vectors until it reaches something of
@@ -151,11 +152,17 @@ compileMultiProperty ::
 compileMultiProperty multiPropertyMetaData = go []
   where
     go :: TensorIndices -> Value Builtin -> m (MultiProperty ())
-    go indices expr = case expr of
-      IVecLiteral _ es -> do
-        let es' = zip [0 :: Int ..] es
-        MultiProperty <$> traverse (\(i, e) -> go (i : indices) (argExpr e)) es'
-      _ -> do
+    go indices expr = case toBoolTensorValue expr of
+      Just (VBoolStackTensor args) -> do
+        let es' = zip [0 :: Int ..] $ stackElements args
+        MultiProperty <$> traverse (\(i, e) -> go (i : indices) e) es'
+      Just (VBoolTensorLiteral bs) -> do
+        let es' = zip [0 :: Int ..] (fromBoolTensorValue . VBoolTensorLiteral <$> unstack bs)
+        MultiProperty <$> traverse (\(i, e) -> go (i : indices) e) es'
+      Just (VBoolVecLiteral args) -> do
+        let es' = zip [0 :: Int ..] $ vecLitElements args
+        MultiProperty <$> traverse (\(i, e) -> go (i : indices) e) es'
+      Nothing -> do
         let propertyMetaData@PropertyMetaData {..} = updateMetaData multiPropertyMetaData indices
         flip runReaderT propertyMetaData $ do
           logCompilerPass MinDetail ("property" <+> quotePretty propertyAddress) $ do
@@ -168,12 +175,12 @@ compileSingleProperty ::
   Value Builtin ->
   m ()
 compileSingleProperty expr = do
-  queries <- flip runSupplyT [1 :: QueryID ..] $ eliminateUserVariables expr
+  queries <- runSupplyT [1 :: QueryID ..] $ eliminateUserVariables expr
 
   PropertyMetaData {..} <- ask
 
   -- Warn if trivial.
-  case force queries of
+  case queries of
     Trivial status -> logWarning (TrivialProperty propertyAddress status)
     _ -> return ()
 

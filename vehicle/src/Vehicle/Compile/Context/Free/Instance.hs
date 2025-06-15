@@ -2,26 +2,23 @@
 
 module Vehicle.Compile.Context.Free.Instance where
 
-import Control.Monad qualified as Monad (unless)
 import Control.Monad.Except (MonadError (..))
-import Control.Monad.Reader (MonadReader (..), ReaderT (..), asks, mapReaderT)
+import Control.Monad.Reader (MonadReader (..), ReaderT (..), mapReaderT)
 import Control.Monad.State
-import Data.Bifunctor (Bifunctor (..))
 import Data.Data (Proxy (..))
 import Data.Map qualified as Map
-import Data.Set qualified as Set
 import Vehicle.Compile.Context.Free.Class
 import Vehicle.Compile.Context.Free.Core
-import Vehicle.Compile.Error (MonadCompile, lookupInFreeCtx)
+import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print.Builtin
+import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Prelude.IO qualified as VIO
 
 --------------------------------------------------------------------------------
 -- Free variable context monad instantiation
 
 newtype FreeContextT builtin m a = FreeContextT
-  { unFreeContextT :: ReaderT (FreeCtx builtin, FreeCtx builtin) m a
+  { unFreeContextT :: ReaderT (FreeCtx builtin) m a
   }
   deriving (Functor, Applicative, Monad)
 
@@ -29,7 +26,7 @@ newtype FreeContextT builtin m a = FreeContextT
 -- context. Note that you must still call `addDeclToCtx` and `addBinderToCtx`
 -- manually in the right places.
 runFreeContextT :: (Monad m) => FreeCtx builtin -> FreeContextT builtin m a -> m a
-runFreeContextT ctx (FreeContextT contextFn) = runReaderT contextFn (ctx, mempty)
+runFreeContextT ctx (FreeContextT contextFn) = runReaderT contextFn ctx
 
 -- | Runs a computation in the context monad allowing you to keep track of the
 -- context. Note that you must still call `addDeclToCtx` and `addBinderToCtx`
@@ -88,23 +85,6 @@ instance
   where
   addDeclEntryToContext entry@(decl, _) cont = FreeContextT $ do
     let updateCtx = Map.insert (identifierOf decl) entry
-    local (first updateCtx) (unFreeContextT cont)
+    local updateCtx (unFreeContextT cont)
 
-  getFreeCtx _ =
-    FreeContextT $
-      asks fst
-
-  hideStdLibDecls _ fns x =
-    FreeContextT $
-      local hideDecls (unFreeContextT x)
-    where
-      hideDecls (decls, hiddenDecls) = do
-        Monad.unless (Map.null hiddenDecls) $ do
-          developerError "Hiding stdlib-decls twice not allowed"
-        let fnIdents = Set.map identifierOf fns
-        let unhiddenDecls = alterKeys fnIdents (bimap convertToPostulate convertToPostulate) decls
-        (unhiddenDecls, decls)
-
-  getHiddenStdLibDecl _ fn = FreeContextT $ do
-    hiddenDecls <- asks snd
-    lookupInFreeCtx "lookupStdlibDef" (identifierOf fn) hiddenDecls
+  getFreeCtx _ = FreeContextT ask

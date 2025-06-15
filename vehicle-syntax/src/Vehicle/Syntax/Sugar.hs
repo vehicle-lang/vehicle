@@ -1,3 +1,5 @@
+{-# LANGUAGE ViewPatterns #-}
+
 module Vehicle.Syntax.Sugar
   ( BinderType (..),
     HasBinders (..),
@@ -24,6 +26,7 @@ data BinderType
   = PiBinder
   | LamBinder
   | QuantifierBinder Quantifier
+  | ForeachBinder
   deriving (Eq)
 
 class HasBinders expr where
@@ -34,7 +37,8 @@ instance HasBinders Expr where
   getBinder = \case
     Pi _ binder body -> Just (PiBinder, binder, body)
     Lam _ binder body -> Just (LamBinder, binder, body)
-    QuantifierExpr binder body q -> Just (QuantifierBinder q, binder, body)
+    App (Builtin _ (TypeClassOp (QuantifierTC q))) ((argExpr -> Lam _ binder body) :| []) -> Just (QuantifierBinder q, binder, body)
+    App (Builtin _ (TypeClassOp ForeachTC)) ((argExpr -> Lam _ binder body) :| []) -> Just (ForeachBinder, binder, body)
     _ -> Nothing
 
   getLetBinder = \case
@@ -44,10 +48,6 @@ instance HasBinders Expr where
 data BinderFoldTarget expr
   = FoldableBinder BinderType (GenericBinder expr)
   | FunFold
-
-pattern QuantifierExpr :: Binder -> Expr -> Quantifier -> Expr
-pattern QuantifierExpr binder body q <-
-  App (Builtin _ (TypeClassOp (QuantifierTC q))) (RelevantExplicitArg _ (Lam _ binder body) :| [])
 
 foldBinders :: (Show expr, HasBinders expr) => BinderType -> GenericBinder expr -> expr -> ([GenericBinder expr], expr)
 foldBinders binderType binder = foldBinders' (FoldableBinder binderType binder)

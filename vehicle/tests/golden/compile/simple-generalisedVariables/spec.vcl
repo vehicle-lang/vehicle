@@ -1,8 +1,8 @@
-id : a -> a
-id x = x
+genId : a -> a
+genId x = x
 
 natId : Rat -> Rat
-natId = id
+natId = genId
 
 -- fst : a -> b -> a
 -- fst x y = x

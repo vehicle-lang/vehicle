@@ -1,8 +1,10 @@
 module Vehicle.Backend.LossFunction.ZeroTensorLifting
-  ( liftZeroDimensionalTensors,
+  (
   )
 where
 
+{-
+import Data.Tuple (swap)
 import Vehicle.Compile.Context.Name
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE (eval, traverseClosure)
@@ -24,8 +26,8 @@ type MonadLiftZeroDims m =
 
 liftZeroDimensionalTensors ::
   (MonadLiftZeroDims m) =>
-  VDecl LossTensorBuiltin ->
-  m (VDecl LossTensorBuiltin)
+  VDecl LossBuiltin ->
+  m (VDecl LossBuiltin)
 liftZeroDimensionalTensors = \case
   decl@DefAbstract {} -> return decl
   DefFunction p ident anns typ body -> do
@@ -34,8 +36,8 @@ liftZeroDimensionalTensors = \case
 
 liftDecl ::
   (MonadLiftZeroDims m) =>
-  (VType LossTensorBuiltin, Value LossTensorBuiltin) ->
-  m (VType LossTensorBuiltin, Value LossTensorBuiltin)
+  (VType LossBuiltin, Value LossBuiltin) ->
+  m (VType LossBuiltin, Value LossBuiltin)
 liftDecl (t, e) = case (t, e) of
   (VPi piBinder (Closure piEnv piBody), VLam lamBinder (Closure lamEnv lamBody)) -> do
     ctx <- getBinderContext
@@ -58,7 +60,7 @@ liftDecl (t, e) = case (t, e) of
     liftedBody <- liftExpr wasZeroDimensional body
     return (newType, liftedBody)
 
-liftExpr :: (MonadLiftZeroDims m) => Bool -> Value LossTensorBuiltin -> m (Value LossTensorBuiltin)
+liftExpr :: (MonadLiftZeroDims m) => Bool -> Value LossBuiltin -> m (Value LossBuiltin)
 liftExpr zeroDims e = do
   showEntry zeroDims e
   result <- case e of
@@ -79,7 +81,7 @@ liftExpr zeroDims e = do
   showExit result
   return result
 
-liftBuiltin :: (MonadLiftZeroDims m) => Bool -> LossTensorBuiltin -> Spine LossTensorBuiltin -> m (Value LossTensorBuiltin)
+liftBuiltin :: (MonadLiftZeroDims m) => Bool -> LossBuiltin -> Spine LossBuiltin -> m (Value LossBuiltin)
 liftBuiltin zeroDims b spine = case b of
   LossTensorDimType {} -> unexpected
   LossTensorRat r -> case r of
@@ -110,33 +112,33 @@ liftBuiltin zeroDims b spine = case b of
   where
     unexpected = unexpectedExprError currentPass (pretty b)
 
-liftTensor :: Tensor Rational -> Value LossTensorBuiltin
+liftTensor :: Tensor Rational -> Value LossBuiltin
 liftTensor Tensor {..} = IRatTensor $ Tensor {tensorShape = 1 : tensorShape, ..}
 
-liftPointwiseOp :: (MonadLiftZeroDims m) => Bool -> LossTensorBuiltin -> Spine LossTensorBuiltin -> m (Value LossTensorBuiltin)
+liftPointwiseOp :: (MonadLiftZeroDims m) => Bool -> LossBuiltin -> Spine LossBuiltin -> m (Value LossBuiltin)
 liftPointwiseOp zeroDims b (dims : args) = do
   args' <- traverseSpine (liftExpr zeroDims) args
   let dims' = if zeroDims then replaceArgExpr (dimSingleton 1) dims else dims
   return $ VBuiltin b (dims' : args')
 liftPointwiseOp _ _ [] = unexpectedExprError currentPass "bad-pointwise-args"
 
-liftReduction :: (MonadLiftZeroDims m) => LossTensorBuiltin -> Spine LossTensorBuiltin -> m (Value LossTensorBuiltin)
+liftReduction :: (MonadLiftZeroDims m) => LossBuiltin -> Spine LossBuiltin -> m (Value LossBuiltin)
 liftReduction b (dims : args) = do
   args' <- traverseSpine (liftExpr False) args
   return $ VBuiltin b (dims : args')
 liftReduction _ _ = unexpectedExprError currentPass "bad-reduction-args"
 
-liftConst :: Spine LossTensorBuiltin -> Value LossTensorBuiltin
+liftConst :: Spine LossBuiltin -> Value LossBuiltin
 liftConst [tElem, value, dims] = IConstTensor tElem value (replaceArgExpr (dimSingleton 1) dims)
 liftConst spine = unexpectedExprError currentPass (prettyVerbose $ IDimensionDataOp ConstTensor spine)
 
-liftStack :: (MonadLiftZeroDims m) => Int -> Spine LossTensorBuiltin -> m (Value LossTensorBuiltin)
+liftStack :: (MonadLiftZeroDims m) => Int -> Spine LossBuiltin -> m (Value LossBuiltin)
 liftStack n (tElem : dims : values) = do
   values' <- traverseSpine (liftExpr False) values
   return $ IDimensionDataOp (StackTensor n) (tElem : dims : values')
 liftStack n spine = unexpectedExprError currentPass (prettyVerbose $ IDimensionDataOp (StackTensor n) spine)
 
-liftSearch :: (MonadLiftZeroDims m) => Spine LossTensorBuiltin -> m (Value LossTensorBuiltin)
+liftSearch :: (MonadLiftZeroDims m) => Spine LossBuiltin -> m (Value LossBuiltin)
 liftSearch = \case
   [dims, op, lower, upper, argExpr -> fn] -> case fn of
     VLam binder closure -> do
@@ -149,25 +151,25 @@ liftSearch = \case
     _ -> unexpectedExprError currentPass "bad-search-lam"
   _ -> unexpectedExprError currentPass "bad-search-args"
 
-liftType :: VType LossTensorBuiltin -> (Bool, VType LossTensorBuiltin)
+liftType :: VType LossBuiltin -> (Bool, VType LossBuiltin)
 liftType = \case
   ITensorType tElem (argExpr -> IDimNil) -> (True, ITensorType tElem (explicit (dimSingleton 1)))
   typ -> (False, typ)
 
-liftDimensionLookup :: (MonadLiftZeroDims m) => Spine LossTensorBuiltin -> m (Value LossTensorBuiltin)
+liftDimensionLookup :: (MonadLiftZeroDims m) => Spine LossBuiltin -> m (Value LossBuiltin)
 liftDimensionLookup [tElem, dim, dims, xs, i] = do
   xs' <- traverse (liftExpr False) xs
   return $ IDimensionDataOp DimensionLookup [tElem, dim, dims, xs', i]
 liftDimensionLookup spine = unexpectedExprError currentPass (prettyVerbose $ IDimensionDataOp DimensionLookup spine)
 
-showEntry :: (MonadLogger m, MonadNameContext m) => Bool -> Value LossTensorBuiltin -> m ()
+showEntry :: (MonadLogger m, MonadNameContext m) => Bool -> Value LossBuiltin -> m ()
 showEntry is0D e = do
   ctx <- getNameContext
   -- logDebug MaxDetail $ doc <+> ":" <+> prettyVerbose e
   logDebug MaxDetail $ "enter-lift0D-" <> pretty is0D <+> ":" <+> prettyFriendly (WithContext e ctx)
   incrCallDepth
 
-showExit :: (MonadLogger m, MonadNameContext m) => Value LossTensorBuiltin -> m ()
+showExit :: (MonadLogger m, MonadNameContext m) => Value LossBuiltin -> m ()
 showExit e = do
   ctx <- getNameContext
   decrCallDepth
@@ -175,3 +177,4 @@ showExit e = do
 
 currentPass :: Doc a
 currentPass = "zero-tensor-lifting"
+-}

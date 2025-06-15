@@ -9,4 +9,4 @@ epsilon = foreach i . 0.1
 
 @property
 identity : Bool
-identity = forall x i . (x - epsilon) ! i <= decode (encode x) ! i <= (x + epsilon) ! i
+identity = forall x . x - epsilon <= decode (encode x) <= x + epsilon

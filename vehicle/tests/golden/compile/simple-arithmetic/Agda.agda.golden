@@ -7,16 +7,20 @@
 {-# OPTIONS --allow-exec #-}
 
 open import Vehicle
-open import Data.Integer as ℤ using (ℤ)
+open import Vehicle.Utils
+open import Vehicle.Data.Tensor
 open import Data.Rational as ℚ using (ℚ)
 open import Data.Fin as Fin using (Fin; #_)
-open import Data.Vec.Functional renaming ([] to []ᵥ; _∷_ to _∷ᵥ_)
+open import Data.List.Base
 
 module Agda where
 
-natLitNatLitDiv : ℚ
-natLitNatLitDiv = (ℤ.+ 1 ℚ./ 1) ℚ.÷ (ℤ.+ 2 ℚ./ 1)
+precedence : Tensor ℚ [] → Tensor ℚ [] → Tensor ℚ [] → Tensor ℚ []
+precedence x y z = (x 𝕋.⊕ 2 𝕋.* y) 𝕋.⊖ z 𝕋.÷ y
 
-postulate f : Vector ℚ 1 → Vector ℚ 1
+natLitNatLitDiv : Tensor ℚ []
+natLitNatLitDiv = 1 𝕋.÷ 2
 
-postulate property : f (natLitNatLitDiv ∷ᵥ []ᵥ) (# 0) ℚ.≥ ℤ.+ 0 ℚ./ 1
+postulate f : Tensor ℚ (1 ∷ []) → Tensor ℚ (1 ∷ [])
+
+postulate property : (f (stack natLitNatLitDiv) ! # 0) ≥ 0

@@ -3,17 +3,19 @@
 {-# HLINT ignore "Use <|>" #-}
 module Vehicle.Compile.Type.Force where
 
-import Data.Data (Proxy (..))
-import Data.Maybe (fromMaybe)
-import Vehicle.Compile.Normalise.Builtin (NormalisableBuiltin (..))
+import Control.Monad.Trans.Maybe (MaybeT (..))
+import Control.Monad.Writer (WriterT (..))
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyFriendly)
-import Vehicle.Compile.Type.Meta (MetaSet)
-import Vehicle.Compile.Type.Meta.Map qualified as MetaMap (lookup)
-import Vehicle.Compile.Type.Meta.Set qualified as MetaSet (singleton, unions)
-import Vehicle.Compile.Type.Monad (MonadTypeChecker)
-import Vehicle.Compile.Type.Monad.Class (getMetaSubstitution)
+import Vehicle.Compile.Print (prettyExternal)
+import Vehicle.Compile.Type.Meta (MetaSet, metaSolution)
+import Vehicle.Compile.Type.Meta.Set qualified as MetaSet (singleton)
+import Vehicle.Compile.Type.Monad.Class
+  ( MonadTypeChecker,
+    getMetaInfo,
+  )
+import Vehicle.Data.Builtin.Interface.Blocked (BlockingStatus (..))
+import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Code.Value
 
 -----------------------------------------------------------------------------
@@ -39,9 +41,9 @@ forceHead ctx expr = do
     Just forcedExpr -> do
       logDebug MaxDetail $
         "forced"
-          <+> prettyFriendly (WithContext expr ctx)
+          <+> squotes (prettyExternal (WithContext expr ctx))
           <+> "to"
-          <+> prettyFriendly (WithContext forcedExpr ctx)
+          <+> squotes (prettyExternal (WithContext forcedExpr ctx))
       return forcedExpr
   return (forcedExpr, blockingMetas)
 
@@ -63,8 +65,8 @@ forceMeta ::
   Spine builtin ->
   m (Maybe (Value builtin), MetaSet)
 forceMeta m spine = do
-  subst <- getMetaSubstitution (Proxy @builtin)
-  case MetaMap.lookup m subst of
+  metaInfo <- getMetaInfo m
+  case metaSolution metaInfo of
     Just solution -> do
       normMetaExpr <- normaliseApp (normalised solution) spine
       (maybeForcedExpr, blockingMetas) <- forceExpr normMetaExpr
@@ -72,41 +74,21 @@ forceMeta m spine = do
       return (forcedExpr, blockingMetas)
     Nothing -> return (Nothing, MetaSet.singleton m)
 
-forceArg ::
-  (MonadForce builtin m) =>
-  VArg builtin ->
-  m (Maybe (VArg builtin), MetaSet)
-forceArg arg = do
-  (maybeResult, blockingMetas) <- unpairArg <$> traverse forceExpr arg
-  return (sequenceA maybeResult, blockingMetas)
-
 forceBuiltin ::
   (MonadForce builtin m) =>
   builtin ->
   Spine builtin ->
   m (Maybe (Value builtin), MetaSet)
-forceBuiltin b spine = do
-  (maybeUnblockedSpine, blockingMetas) <- forceBuiltinSpine spine 0 (blockingArgs b)
-  finalValue <- traverse (normaliseBuiltin b) maybeUnblockedSpine
-  return (finalValue, blockingMetas)
+forceBuiltin b spine = case blockingStatus b spine of
+  Blocked traverseBlocking -> do
+    (maybeUnblockedSpine, blockingMetas) <-
+      runWriterT $ runMaybeT $ traverseBlocking forceBlockingArg
+    finalValue <- traverse (normaliseBuiltin b) maybeUnblockedSpine
+    return (finalValue, blockingMetas)
+  _ -> return (Just (VBuiltin b spine), mempty)
 
-forceBuiltinSpine ::
+forceBlockingArg ::
   (MonadForce builtin m) =>
-  Spine builtin ->
-  Int ->
-  [Int] ->
-  m (Maybe (Spine builtin), MetaSet)
-forceBuiltinSpine [] _currentIndex _blockingArgs = return (Nothing, mempty)
-forceBuiltinSpine _args _currentIndex [] = return (Nothing, mempty)
-forceBuiltinSpine (arg : args) currentIndex (blockingIndex : blockingIndices) = do
-  (maybeUnblockedArgs, argsBlockingMetas) <- forceBuiltinSpine args (currentIndex + 1) (blockingIndex : blockingIndices)
-
-  if currentIndex /= blockingIndex
-    then return ((arg :) <$> maybeUnblockedArgs, argsBlockingMetas)
-    else do
-      (maybeUnblockedArg, argBlockingMetas) <- forceArg arg
-      let newBlockingMetas = MetaSet.unions [argBlockingMetas, argsBlockingMetas]
-      let newFinalArgs = case maybeUnblockedArg of
-            Just unblockedArg -> Just (unblockedArg : fromMaybe args maybeUnblockedArgs)
-            Nothing -> (arg :) <$> maybeUnblockedArgs
-      return (newFinalArgs, newBlockingMetas)
+  Value builtin ->
+  MaybeT (WriterT MetaSet m) (Value builtin)
+forceBlockingArg value = MaybeT $ WriterT $ forceExpr value

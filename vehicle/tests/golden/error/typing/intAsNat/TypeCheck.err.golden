@@ -1,4 +1,4 @@
 Error in file 'intAsNat.vcl' at Line 2, Columns 7-8: unable to work out a valid type for the overloaded expression '-'.
 The possible options explored were:
-  1. Rat -> Rat
-    - rejected: unable to find a consistent type for the overloaded expression '-'. In particular 'Nat' is not equal to 'Rat'.
+  1. Tensor Rat ds -> Tensor Rat A
+    - rejected: unable to find a consistent type for the overloaded expression '-'. In particular 'Nat' is not equal to 'Tensor Rat ?6'.

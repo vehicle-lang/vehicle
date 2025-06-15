@@ -1,84 +1,140 @@
 module Vehicle.Data.QuantifiedVariable
-  ( Variable,
-    makeTensorVariable,
-    reduceTensorVariable,
+  ( TensorVariable (..),
     TensorVariableInfo (..),
-    TensorVariable,
-    UserElementVariable,
-    ElementVariable,
-    NetworkElementVariable,
+    UserVariable (..),
+    NetworkIOVariable (..),
+    NetworkIOElementVariable (..),
     prettyRationalAsFloat,
     UserVariableAssignment (..),
+    TensorVariableLike (..),
+    variableValue,
   )
 where
 
-import Data.Aeson (FromJSON, ToJSON)
-import Data.Text qualified as Text
+import Control.DeepSeq (NFData)
+import Data.Aeson (FromJSON, FromJSONKey, ToJSON, ToJSONKey)
+import Data.Coerce (coerce)
 import GHC.Generics (Generic)
 import Numeric (showFFloat)
 import Vehicle.Data.Builtin.Core
-import Vehicle.Data.Code.Interface
+import Vehicle.Data.Code.LinearExpr (VariableLike (..))
 import Vehicle.Data.Code.Value
 import Vehicle.Data.DeBruijn
 import Vehicle.Data.Tensor
 import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
--- Variables
+-- Tensor variables
 
--- | A variable. Empty indices means that is a tensor variable, otherwise
--- its a variable representing an element of a tensor.
-type Variable = Lv
+-- | Tensor variables represent quantities that are directly bound by the user
+-- in their original program via `forall`/`exists` quantifiers, e.g.
+--
+--   `forall (v : Tensor Rat 2)`
+--
+-- will get mapped to 3 variables
+--
+--   v = [v_0, v_1]
+newtype UserVariable = UserVariable Lv
+  deriving (Show, Eq, Ord, Generic)
 
-makeTensorVariable :: Lv -> Variable
-makeTensorVariable = id
+instance VariableLike UserVariable where
+  toLv = coerce
+  fromLv = coerce
 
-reduceTensorVariable ::
-  Lv ->
-  Name ->
-  TensorShape ->
-  ([(ElementVariable, Name)], Value Builtin)
-reduceTensorVariable lv varName shape = runSupply (go shape []) [lv ..]
-  where
-    createRatVar :: TensorIndices -> Lv -> ([(ElementVariable, Name)], Value Builtin)
-    createRatVar indices currentLv = do
-      let name = varName <> Text.pack (showTensorIndices indices)
-      ([(currentLv, name)], VBoundVar currentLv [])
+instance NFData UserVariable
 
-    go ::
-      TensorShape ->
-      TensorIndices ->
-      Supply Lv ([(ElementVariable, Name)], Value Builtin)
-    go dims indices = case dims of
-      [] -> createRatVar (reverse indices) <$> demand
-      d : ds -> do
-        -- Use the list monad to create a nested list of all possible indices into the tensor
-        let allIndices = [0 .. d - 1]
+instance ToJSON UserVariable
 
-        -- Generate the corresponding names from the indices
-        (elementUserVars, subexprs) <- unzip <$> traverse (\i -> go ds (i : indices)) allIndices
-        let userVars = concat elementUserVars
-        return (userVars, mkVecExpr subexprs)
+instance FromJSON UserVariable
 
-type TensorVariable = Variable
+variableValue :: (VariableLike variable) => variable -> Value builtin
+variableValue var = VBoundVar (toLv var) []
 
-type ElementVariable = Variable
+-- | Tensor variables that represent quantities used as the direct
+-- inputs and outputs of a network application.
+-- They are introduced by the compiler.
+-- For example,
+--
+--   @network f : Tensor Rat [1] -> Tensor Rat [2]
+--
+--   ... f <e> ...
+--
+-- gets mapped to the five variables
+--
+--   x = [x_0]
+--   y = [y_0, y_1]
+newtype NetworkIOVariable = NetworkIOVariable Lv
+  deriving (Show, Eq, Ord, Generic)
 
--- | Variables entered by the user
-type UserElementVariable = ElementVariable
+instance VariableLike NetworkIOVariable where
+  toLv = coerce
+  fromLv = coerce
 
-type NetworkElementVariable = ElementVariable
+instance NFData NetworkIOVariable
+
+instance ToJSON NetworkIOVariable
+
+instance FromJSON NetworkIOVariable
+
+-- | Variables that may be either be a `NetworkIOVariable` or
+-- a `UserVariable`, or variables that represent sub-tensors
+-- within those variables.
+newtype TensorVariable = TensorVariable Lv
+  deriving (Show, Eq, Ord, Generic)
+
+instance VariableLike TensorVariable where
+  toLv = coerce
+  fromLv = coerce
+
+instance NFData TensorVariable
+
+instance ToJSON TensorVariable
+
+instance ToJSONKey TensorVariable
+
+instance FromJSON TensorVariable
+
+instance FromJSONKey TensorVariable
+
+class (VariableLike variable) => TensorVariableLike variable where
+  toTensorVar :: variable -> TensorVariable
+
+instance TensorVariableLike TensorVariable where
+  toTensorVar = coerce
+
+instance TensorVariableLike UserVariable where
+  toTensorVar = coerce
+
+instance TensorVariableLike NetworkIOVariable where
+  toTensorVar = coerce
+
+--------------------------------------------------------------------------------
+-- Element variables
 
 data TensorVariableInfo = TensorVariableInfo
-  { -- | Variables for each of it's elements
-    elementVariables :: [NetworkElementVariable],
-    -- | The tensor literal expression containing the element variables above.
-    reducedVarExpr :: Value Builtin,
-    -- The shape of the tensor
-    tensorVariableShape :: TensorShape,
-    -- | `Nothing` = user variable, `Input` = network input variable, `Output` = network output variable
-    tensorVariableType :: Maybe InputOrOutput
+  { variableName :: Name,
+    -- | If this variable represents a sub-tensor of a variable tensor
+    -- then this stores the reference to that variable, and the index.
+    parentVariable :: Maybe (TensorVariable, TensorIndices),
+    -- | Variables for each of it's elements
+    childrenVariables :: Maybe (Tensor TensorVariable, Value Builtin)
   }
+
+newtype NetworkIOElementVariable = NetworkIOElementVariable Lv
+  deriving (Ord, Eq, Generic)
+
+instance NFData NetworkIOElementVariable
+
+instance ToJSON NetworkIOElementVariable
+
+instance FromJSON NetworkIOElementVariable
+
+instance VariableLike NetworkIOElementVariable where
+  toLv = coerce
+  fromLv = coerce
+
+instance TensorVariableLike NetworkIOElementVariable where
+  toTensorVar = coerce
 
 --------------------------------------------------------------------------------
 -- Constants
@@ -93,7 +149,7 @@ prettyRationalAsFloat p = do
 
 -- | A (satisfying) assignment to a set of user-level variables.
 newtype UserVariableAssignment
-  = UserVariableAssignment [(Name, RationalTensor)]
+  = UserVariableAssignment [(Name, RatTensor)]
   deriving (Generic)
 
 instance ToJSON UserVariableAssignment

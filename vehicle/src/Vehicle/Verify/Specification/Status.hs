@@ -1,14 +1,11 @@
 module Vehicle.Verify.Specification.Status where
 
-import Data.List.Split (chunksOf)
 import Data.Set (Set)
 import System.Console.ANSI (Color (..))
 import Vehicle.Compile.Prelude
-import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.BooleanExpr (MaybeTrivial (..))
-import Vehicle.Data.Code.Interface
 import Vehicle.Data.QuantifiedVariable
-import Vehicle.Data.Tensor (RationalTensor, TensorShape)
+import Vehicle.Data.Tensor (RatTensor)
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core (QueryVariable)
 import Vehicle.Verify.Specification (QueryMetaData)
@@ -66,15 +63,6 @@ statusSymbol verified = do
         Just False -> (Red, "✗")
   setTextColour colour symbol
 
-prettyUserVariableAssignment :: (Name, RationalTensor) -> Doc a
-prettyUserVariableAssignment (var, variableValue) =
-  pretty var <> ":" <+> pretty variableValue
-
-assignmentToExpr :: TensorShape -> [Rational] -> Expr Builtin
-assignmentToExpr [] [x] = IRatLiteral mempty (toRational x)
-assignmentToExpr [] _ = developerError "Malformed tensor"
-assignmentToExpr (dim : dims) xs = do
-  let vecConstructor = Builtin mempty (BuiltinConstructor $ LVec dim)
-  let inputVarIndicesChunks = chunksOf (product dims) xs
-  let elems = fmap (Arg mempty Explicit Relevant . assignmentToExpr dims) inputVarIndicesChunks
-  normAppList vecConstructor elems
+prettyUserVariableAssignment :: (Name, RatTensor) -> Doc a
+prettyUserVariableAssignment (var, value) =
+  pretty var <> ":" <+> pretty value

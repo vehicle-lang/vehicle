@@ -1,7 +1,7 @@
 module Vehicle.Compile.Normalise.Quote where
 
 import Vehicle.Compile.Context.Bound.Core
-import Vehicle.Compile.Print.Builtin
+import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Code.Expr
 import Vehicle.Data.Code.Value
 import Vehicle.Data.DeBruijn (Lv, Substitution, dbLevelToIndex)

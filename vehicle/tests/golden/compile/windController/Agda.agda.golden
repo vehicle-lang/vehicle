@@ -13,6 +13,7 @@ open import Data.Product
 open import Data.Integer as ℤ using (ℤ)
 open import Data.Rational as ℚ using (ℚ)
 open import Data.Fin as Fin using (Fin; #_)
+open import Data.Vec.Functional.Relation.Unary.All as Fin
 open import Data.List.Base
 
 module Agda where
@@ -35,12 +36,12 @@ velocity = # 0
 postulate controller : InputVector → OutputVector
 
 normalise : InputVector → InputVector
-normalise x = λ i → (x i ⊕ ℤ.+ 4 ℚ./ 1) ℚ.÷ (ℤ.+ 8 ℚ./ 1)
+normalise x = foreach (λ i → ((x ! i) 𝕋.⊕ 4) 𝕋.÷ 8)
 
 SafeInput : InputVector → Set
-SafeInput x = ∀ i → ℚ.- (ℤ.+ 13 ℚ./ 4) ℚ.≤ x i × x i ℚ.≤ ℤ.+ 13 ℚ./ 4
+SafeInput x = Fin.All (λ i → 𝕋.- (ℤ.+ 13 / 4) ≤ (x ! i) × (x ! i) ≤ ℤ.+ 13 / 4)
 
 SafeOutput : InputVector → Set
-SafeOutput x = let y = controller (normalise x) velocity in ℚ.- (ℤ.+ 5 ℚ./ 4) ℚ.< (y ⊕ (ℤ.+ 2 ℚ./ 1) ℚ.* x currentSensor) ⊖ x previousSensor × (y ⊕ (ℤ.+ 2 ℚ./ 1) ℚ.* x currentSensor) ⊖ x previousSensor ℚ.< ℤ.+ 5 ℚ./ 4
+SafeOutput x = let y = controller (normalise x) ! velocity in 𝕋.- (ℤ.+ 5 / 4) < (y 𝕋.⊕ 2 𝕋.* (x ! currentSensor)) 𝕋.⊖ (x ! previousSensor) × (y 𝕋.⊕ 2 𝕋.* (x ! currentSensor)) 𝕋.⊖ (x ! previousSensor) < ℤ.+ 5 / 4
 
 postulate safe : ∀ x → SafeInput x → SafeOutput x

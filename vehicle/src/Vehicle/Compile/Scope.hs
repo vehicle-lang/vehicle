@@ -245,16 +245,17 @@ traverseBinder f g binder update = do
   local (second updateCtx) (update binder')
 
 {-
-logScopeEntry :: MonadTraverse m => Expr UnscopedBinding -> m ()
+logScopeEntry :: MonadTraverse m => S.Expr -> m ()
 logScopeEntry e = do
   incrCallDepth
   logDebug MaxDetail $ "scope-entry" <+> prettyVerbose e -- <+> "in" <+> pretty ctx
 
-logScopeExit :: MonadTraverse m => Expr -> m ()
+logScopeExit :: MonadTraverse m => S.Expr -> m ()
 logScopeExit e = do
   logDebug MaxDetail $ "scope-exit " <+> prettyVerbose e
   decrCallDepth
 -}
+
 getImportCtx :: Imports -> DeclScopeCtx
 getImportCtx imports =
   Map.fromList $

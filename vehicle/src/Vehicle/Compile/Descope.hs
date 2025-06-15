@@ -12,8 +12,8 @@ where
 
 import Vehicle.Compile.Context.Name
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print.Builtin
-import Vehicle.Data.Builtin.Standard (Builtin)
+import Vehicle.Data.Builtin.Interface.Print
+import Vehicle.Data.Builtin.Standard.Core (Builtin)
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Universe (UniverseLevel)
 import Vehicle.Syntax.AST.Expr qualified as S
@@ -22,10 +22,9 @@ import Vehicle.Syntax.AST.Expr qualified as S
 -- Interface
 
 descopeExpr :: (PrintableBuiltin builtin) => Expr builtin -> NamedBoundCtx -> S.Expr
-descopeExpr e ctx = do
-  let binderCtx = fmap (mkExplicitBinder ()) ctx
-  let fun = genericDescopeExpr (ixToName Named) (convertExprBuiltins e)
-  runNameContext binderCtx fun
+descopeExpr e ctx =
+  runNameContext ctx $
+    genericDescopeExpr (ixToName Named) (convertExprBuiltins e)
 
 descopeExprInEmptyCtx :: (PrintableBuiltin builtin) => Expr builtin -> S.Expr
 descopeExprInEmptyCtx e = descopeExpr e mempty
@@ -64,7 +63,7 @@ lvToName s p lv = case s of
 -- Expr
 
 genericDescopeExpr :: (MonadNameContext m) => VarConversion Ix m -> Expr Builtin -> m S.Expr
-genericDescopeExpr f e = showScopeExit $ case showScopeEntry e of
+genericDescopeExpr f e = showDescopeExit $ case showDescopeEntry e of
   Universe p l -> return $ descopeUniverse p l
   Hole p name -> return $ S.Hole p name
   Builtin p op -> return $ S.Builtin p op
@@ -92,7 +91,13 @@ genericDescopeExpr f e = showScopeExit $ case showScopeEntry e of
 --------------------------------------------------------------------------------
 -- Value
 
-descopeClosure :: forall m binder builtin. (PrintableBuiltin builtin, MonadNameContext m) => VarStrategy -> GenericBinder binder -> Closure builtin -> m S.Expr
+descopeClosure ::
+  forall m binder builtin.
+  (PrintableBuiltin builtin, MonadNameContext m) =>
+  VarStrategy ->
+  GenericBinder binder ->
+  Closure builtin ->
+  m S.Expr
 descopeClosure f _binder (Closure env body) = do
   body' <- genericDescopeExpr (ixToName f) $ convertExprBuiltins body
   env' <- traverse (genericDescopeValue f) (cheatEnvToValues env) :: m [S.Expr]
@@ -143,10 +148,18 @@ descopeFreeVar p ident = S.Var p (nameOf ident)
 --------------------------------------------------------------------------------
 -- Logging and errors
 
-showScopeEntry :: Expr builtin -> Expr builtin
-showScopeEntry e = e
+showDescopeEntry :: Expr Builtin -> Expr Builtin
+showDescopeEntry e = e
 
-showScopeExit :: (Monad m) => m S.Expr -> m S.Expr
-showScopeExit m = do
+showDescopeExit :: (Monad m) => m S.Expr -> m S.Expr
+showDescopeExit m = m
+
+{-
+showDescopeEntry :: Expr Builtin -> Expr Builtin
+showDescopeEntry e = trace ("enter: " <> show e) e
+
+showDescopeExit :: (Monad m) => m S.Expr -> m S.Expr
+showDescopeExit m = do
   e <- m
-  return e
+  return $ trace ("exit: " <> show e) e
+-}

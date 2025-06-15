@@ -1,6 +1,8 @@
 Error in file 'incorrectTensorLength.vcl' at Line 2, Columns 10-11: unable to work out a valid type for the overloaded expression '[1]'.
 The possible options explored were:
-  1. Malformed type-class operation type 𝓵2 𝓵4 and args [List]
-    - rejected: expected '[1]' to be of type 'Vector Nat 2' but was found to be of type 'List ?8'. In particular 'Vector Nat 2' is not equal to 'List ?8'.
-  2. Malformed type-class operation type 𝓵2 𝓵4 and args [ (lambda (A : Type) ((Vector 𝓲0) .( 𝓲1))) ]
-    - rejected: expected '[1]' to be of type 'Vector Nat 2' but was found to be of type 'Vector Nat 1'. In particular '2' is not equal to '1'.
+  1. List t
+    - rejected: unable to find a consistent type for the overloaded expression '[1]'. In particular 'Tensor Nat [2]' is not equal to 'List ?20'.
+  2. Vector t d
+    - rejected: unable to find a consistent type for the overloaded expression '[1]'. In particular 'Tensor Nat [2]' is not equal to 'Vector ?20 ?21'.
+  3. Tensor t (d :: ds)
+    - rejected: unable to find a consistent type for the overloaded expression '[1]'. In particular '1' is not equal to '2'.

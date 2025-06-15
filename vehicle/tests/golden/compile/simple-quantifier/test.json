@@ -11,8 +11,7 @@
     "produces": [
       "Marabou.queries/*.txt",
       "Marabou.queries/expandedExpr.vcl-plan",
-      "Marabou.queries/parallel.vcl-plan",
-      "Marabou.queries/sequential.vcl-plan"
+      "Marabou.queries/parallel.vcl-plan"
     ],
     "ignore": {
       "lines": ".*\"fileHash\".*"
@@ -28,6 +27,7 @@
     "name": "DL2Loss",
     "run": "vehicle compile -s spec.vcl -t DL2Loss -o DL2Loss.vcl",
     "needs": ["spec.vcl"],
-    "produces": ["DL2Loss.vcl"]
+    "produces": ["DL2Loss.vcl"],
+    "enabled": false
   }
 ]

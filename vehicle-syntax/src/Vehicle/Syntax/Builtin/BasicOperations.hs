@@ -1,24 +1,8 @@
 -- | This module exports the datatype representations of the core builtin symbols.
-module Vehicle.Syntax.Builtin.BasicOperations
-  ( Quantifier (..),
-    EqualityOp (..),
-    equalityOp,
-    equalityOpName,
-    OrderOp (..),
-    orderOp,
-    orderOpName,
-    Strictness (..),
-    isStrict,
-    isForward,
-    flipStrictness,
-    flipOrder,
-    chainable,
-    FunctionPosition (..),
-  )
-where
+module Vehicle.Syntax.Builtin.BasicOperations where
 
 import Control.DeepSeq (NFData (..))
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson (ToJSON)
 import Data.Hashable (Hashable (..))
 import Data.Serialize (Serialize)
 import Data.Serialize.Text ()
@@ -47,105 +31,78 @@ instance Pretty FunctionPosition where
     FunctionOutput n -> "Output[" <> pretty n <> "]"
 
 --------------------------------------------------------------------------------
--- EqualityOp
+-- Comparisons
 
-data EqualityOp
-  = Eq
-  | Neq
-  deriving (Eq, Ord, Show, Generic)
-
-instance Hashable EqualityOp
-
-instance Serialize EqualityOp
-
-instance NFData EqualityOp
-
-instance Pretty EqualityOp where
-  pretty = \case
-    Eq -> "=="
-    Neq -> "!="
-
-equalityOpName :: EqualityOp -> Doc a
-equalityOpName = \case
-  Eq -> "equals"
-  Neq -> "notEquals"
-
-equalityOp :: (Eq a) => EqualityOp -> (a -> a -> Bool)
-equalityOp Eq = (==)
-equalityOp Neq = (/=)
-
---------------------------------------------------------------------------------
--- Orders
-
-data OrderOp
+data ComparisonOp
   = Le
   | Lt
   | Ge
   | Gt
+  | Eq
+  | Ne
   deriving (Eq, Ord, Show, Generic)
 
-instance NFData OrderOp
+instance NFData ComparisonOp
 
-instance Hashable OrderOp
+instance Hashable ComparisonOp
 
-instance Serialize OrderOp
+instance Serialize ComparisonOp
 
-instance Pretty OrderOp where
+instance Pretty ComparisonOp where
   pretty = \case
     Le -> "<="
     Lt -> "<"
     Ge -> ">="
     Gt -> ">"
+    Eq -> "=="
+    Ne -> "!="
 
-orderOp :: (Ord a) => OrderOp -> (a -> a -> Bool)
-orderOp Le = (<=)
-orderOp Lt = (<)
-orderOp Ge = (>=)
-orderOp Gt = (>)
+comparisonOp :: (Ord a) => ComparisonOp -> (a -> a -> Bool)
+comparisonOp Le = (<=)
+comparisonOp Lt = (<)
+comparisonOp Ge = (>=)
+comparisonOp Gt = (>)
+comparisonOp Eq = (==)
+comparisonOp Ne = (/=)
 
-orderOpName :: OrderOp -> Doc a
-orderOpName = \case
-  Le -> "leq"
+comparisonOpName :: ComparisonOp -> Doc a
+comparisonOpName = \case
+  Le -> "le"
   Lt -> "lt"
-  Ge -> "geq"
+  Ge -> "ge"
   Gt -> "gt"
+  Eq -> "eq"
+  Ne -> "ne"
 
-isStrict :: OrderOp -> Bool
+isStrict :: ComparisonOp -> Bool
 isStrict order = order == Lt || order == Gt
 
-isForward :: OrderOp -> Bool
+isForward :: ComparisonOp -> Bool
 isForward order = order == Lt || order == Le
 
-flipStrictness :: OrderOp -> OrderOp
+flipStrictness :: ComparisonOp -> ComparisonOp
 flipStrictness = \case
   Le -> Lt
   Lt -> Le
   Ge -> Gt
   Gt -> Ge
+  Eq -> Eq
+  Ne -> Ne
 
-flipOrder :: OrderOp -> OrderOp
+flipOrder :: ComparisonOp -> ComparisonOp
 flipOrder = \case
   Le -> Ge
   Lt -> Gt
   Ge -> Le
   Gt -> Lt
+  Eq -> Eq
+  Ne -> Ne
 
-chainable :: OrderOp -> OrderOp -> Bool
-chainable e1 e2 = e1 == e2 || e1 == flipStrictness e2
+isOrder :: ComparisonOp -> Bool
+isOrder op = not (op == Eq || op == Ne)
 
---------------------------------------------------------------------------------
--- Strictness
-
-data Strictness
-  = Strict
-  | NonStrict
-  deriving (Show, Eq, Ord, Generic)
-
-instance NFData Strictness
-
-instance ToJSON Strictness
-
-instance FromJSON Strictness
+chainable :: ComparisonOp -> ComparisonOp -> Bool
+chainable e1 e2 = (e1 == e2 || e1 == flipStrictness e2) && e1 /= Ne
 
 --------------------------------------------------------------------------------
 -- Quantifiers
@@ -167,3 +124,166 @@ instance Pretty Quantifier where
   pretty = \case
     Forall -> "forall"
     Exists -> "exists"
+
+--------------------------------------------------------------------------------
+-- Domains
+
+data NegDomain
+  = NegRatTensor
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData NegDomain
+
+instance Hashable NegDomain
+
+instance Serialize NegDomain
+
+instance Pretty NegDomain where
+  pretty = \case
+    NegRatTensor -> "RatTensor"
+
+data AddDomain
+  = AddNat
+  | AddRatTensor
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData AddDomain
+
+instance Hashable AddDomain
+
+instance Serialize AddDomain
+
+instance Pretty AddDomain where
+  pretty = \case
+    AddNat -> "Nat"
+    AddRatTensor -> "RatTensor"
+
+data SubDomain
+  = SubRatTensor
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData SubDomain
+
+instance Hashable SubDomain
+
+instance Serialize SubDomain
+
+instance Pretty SubDomain where
+  pretty = \case
+    SubRatTensor -> "RatTensor"
+
+data MulDomain
+  = MulNat
+  | MulRatTensor
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData MulDomain
+
+instance Hashable MulDomain
+
+instance Serialize MulDomain
+
+instance Pretty MulDomain where
+  pretty = \case
+    MulNat -> "Nat"
+    MulRatTensor -> "RatTensor"
+
+data DivDomain
+  = DivRatTensor
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData DivDomain
+
+instance Hashable DivDomain
+
+instance Serialize DivDomain
+
+instance Pretty DivDomain where
+  pretty = \case
+    DivRatTensor -> "RatTensor"
+
+data MinDomain
+  = MinRatTensor
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData MinDomain
+
+instance Hashable MinDomain
+
+instance Serialize MinDomain
+
+instance Pretty MinDomain where
+  pretty = \case
+    MinRatTensor -> "RatTensor"
+
+data MaxDomain
+  = MaxRatTensor
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData MaxDomain
+
+instance Hashable MaxDomain
+
+instance Serialize MaxDomain
+
+instance Pretty MaxDomain where
+  pretty = \case
+    MaxRatTensor -> "RatTensor"
+
+data FromRatDomain
+  = FromRatToRat
+  deriving (Eq, Ord, Show, Generic)
+
+instance Pretty FromRatDomain where
+  pretty = \case
+    FromRatToRat -> "Rat"
+
+instance NFData FromRatDomain
+
+instance Hashable FromRatDomain
+
+instance Serialize FromRatDomain
+
+data FromNatDomain
+  = -- This is actually needed as it takes an empty type-class parameter (see typing module)
+    FromNatToNat
+  | FromNatToIndex
+  | FromNatToRat
+  deriving (Eq, Ord, Show, Generic)
+
+instance Pretty FromNatDomain where
+  pretty = \case
+    FromNatToNat -> "Nat"
+    FromNatToIndex -> "Index"
+    FromNatToRat -> "Rat"
+
+instance Serialize FromNatDomain
+
+instance NFData FromNatDomain
+
+instance Hashable FromNatDomain
+
+{-
+--------------------------------------------------------------------------------
+-- Tensor element types
+
+data TensorElementType
+  = BoolElementType
+  | IndexElementType
+  | NatElementType
+  | RatElementType
+  deriving (Eq, Ord, Generic, Show)
+
+instance NFData TensorElementType
+
+instance Hashable TensorElementType
+
+instance Serialize TensorElementType
+
+instance Pretty TensorElementType where
+  pretty = \case
+    BoolElementType -> "Bool"
+    NatElementType -> "Bool"
+    IndexElementType -> "Bool"
+    RatElementType -> "Rat"
+-}

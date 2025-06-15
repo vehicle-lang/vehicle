@@ -1,3 +1,4 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Vehicle.Compile.Type.Core where
@@ -6,15 +7,9 @@ import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as Map (findWithDefault, lookup)
 import Data.Hashable (Hashable)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
 import Vehicle.Compile.Type.Meta.Set (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Data.Code.Value
-
---------------------------------------------------------------------------------
--- Meta variable substitution
-
-type MetaSubstitution builtin = MetaMap (GluedExpr builtin)
 
 --------------------------------------------------------------------------------
 -- Constraints
@@ -31,7 +26,7 @@ newtype BlockingStatus = BlockingStatus (Maybe MetaSet)
 instance Pretty BlockingStatus where
   pretty (BlockingStatus status) = case status of
     Nothing -> ""
-    Just v -> "blockedBy:" <+> pretty v
+    Just v -> prettyFlatList (fmap pretty (MetaSet.toList v))
 
 unknownBlockingStatus :: BlockingStatus
 unknownBlockingStatus = BlockingStatus Nothing
@@ -45,14 +40,18 @@ isStillBlocked solvedMetas (BlockingStatus status) =
 --------------------------------------------------------------------------------
 -- Constraint contexts
 
-type ConstraintID = Int
+newtype ConstraintID = ConstraintID
+  { unConstraintID :: Int
+  }
+  deriving (Show, Ord, Eq, Num)
+
+instance Pretty ConstraintID where
+  pretty (ConstraintID cid) = "#" <> pretty cid
 
 data ConstraintContext builtin = ConstraintContext
   { -- | The id for the constraint, used primarily for logging purposes.
     constraintID :: ConstraintID,
-    -- | The original provenance of the constraint
-    originalProvenance :: Provenance,
-    -- | Where the constraint was instantiated
+    -- | Which term in the source code directly caused the constraint to be instantiated
     creationProvenance :: Provenance,
     -- | The set of metas blocking progress on this constraint.
     -- If |Nothing| then the set is unknown.
@@ -68,15 +67,15 @@ instance Pretty (ConstraintContext builtin) where
 -- <+> "<boundCtx=" <> pretty (length (boundContext ctx)) <> ">"
 
 instance HasProvenance (ConstraintContext builtin) where
-  provenanceOf (ConstraintContext _ _ creationProvenance _ _) = creationProvenance
+  provenanceOf (ConstraintContext _ creationProvenance _ _) = creationProvenance
 
 instance HasBoundCtx (ConstraintContext builtin) (Type builtin) where
   boundContextOf = boundContext
 
 blockCtxOn :: MetaSet -> ConstraintContext builtin -> ConstraintContext builtin
-blockCtxOn metas (ConstraintContext cid originProv creationProv _ ctx) =
+blockCtxOn metas (ConstraintContext cid creationProv _ ctx) =
   let status = BlockingStatus (Just metas)
-   in ConstraintContext cid originProv creationProv status ctx
+   in ConstraintContext cid creationProv status ctx
 
 updateConstraintBoundCtx ::
   ConstraintContext builtin ->
@@ -92,7 +91,7 @@ setConstraintBoundCtx ::
 setConstraintBoundCtx ctx v = updateConstraintBoundCtx ctx (const v)
 
 contextDBLevel :: ConstraintContext builtin -> Lv
-contextDBLevel = Lv . length . boundContext
+contextDBLevel = boundCtxLv . boundContext
 
 --------------------------------------------------------------------------------
 -- Application constraints
@@ -106,13 +105,14 @@ data ArgInsertionProblem builtin = ArgInsertionProblem
     originalType :: Type builtin,
     checkedArgs :: [Arg builtin],
     currentExpectedType :: Type builtin,
-    uncheckedArgs :: [Arg builtin]
+    uncheckedArgs :: [Arg builtin],
+    contextRelevance :: Relevance
   }
   deriving (Show)
 
 data ApplicationConstraint builtin = InferArgs
-  { typeSolutionMeta :: MetaID,
-    exprSolutionMeta :: MetaID,
+  { typeSolution :: MetaID,
+    exprSolution :: MetaID,
     argInsertionProblem :: ArgInsertionProblem builtin
   }
   deriving (Show)
@@ -148,11 +148,21 @@ data InstanceConstraintOrigin builtin
   | InstanceTypeRestrictionOrigin (InstanceTypeRestrictionOrigin builtin)
   deriving (Show)
 
+data InstanceGoal builtin = InstanceGoal
+  { goalTelescope :: Telescope builtin,
+    goalHead :: builtin,
+    goalSpine :: Spine builtin
+  }
+  deriving (Show)
+
+goalExpr :: InstanceGoal builtin -> Value builtin
+goalExpr InstanceGoal {..} = VBuiltin goalHead goalSpine
+
 data InstanceConstraint builtin = Resolve
   { instanceOrigin :: InstanceConstraintOrigin builtin,
-    instanceSolutionMeta :: MetaID,
+    instanceSolution :: MetaID,
     instanceRelevance :: Relevance,
-    instanceGoal :: Value builtin
+    instanceGoal :: InstanceGoal builtin
   }
   deriving (Show)
 
@@ -171,13 +181,6 @@ type instance
   WithContext (InstanceCandidate builtin) =
     Contextualised (InstanceCandidate builtin) (BoundCtx (Type builtin))
 
-data InstanceGoal builtin = InstanceGoal
-  { goalTelescope :: Telescope builtin,
-    goalHead :: builtin,
-    goalSpine :: Spine builtin
-  }
-  deriving (Show)
-
 type InstanceConstraintInfo builtin =
   ( ConstraintContext builtin,
     InstanceConstraintOrigin builtin
@@ -190,11 +193,12 @@ type InstanceSearchDepth = Int
 -- totally ordered (e.g. PolarityBuiltin and LinearityBuiltin)
 data InstanceDatabase builtin = InstanceDatabase
   { instances :: HashMap builtin [InstanceCandidate builtin],
-    defaultInstances :: HashMap builtin (InstanceCandidate builtin)
+    defaultInstances :: HashMap builtin (InstanceCandidate builtin),
+    instanceSearchDepth :: HashMap builtin InstanceSearchDepth
   }
 
 emptyInstanceDatabase :: (Hashable builtin) => InstanceDatabase builtin
-emptyInstanceDatabase = InstanceDatabase mempty mempty
+emptyInstanceDatabase = InstanceDatabase mempty mempty mempty
 
 lookupInstances :: (Hashable builtin) => InstanceDatabase builtin -> InstanceGoal builtin -> [InstanceCandidate builtin]
 lookupInstances database goal = Map.findWithDefault [] (goalHead goal) (instances database)
@@ -202,26 +206,21 @@ lookupInstances database goal = Map.findWithDefault [] (goalHead goal) (instance
 lookupDefaultInstance :: (Hashable builtin) => InstanceDatabase builtin -> InstanceGoal builtin -> Maybe (InstanceCandidate builtin)
 lookupDefaultInstance database goal = Map.lookup (goalHead goal) (defaultInstances database)
 
+lookupSearchDepth :: (Hashable builtin) => InstanceDatabase builtin -> InstanceGoal builtin -> InstanceSearchDepth
+lookupSearchDepth database goal = Map.findWithDefault 0 (goalHead goal) (instanceSearchDepth database)
+
 --------------------------------------------------------------------------------
 -- Unification constraints
 
 data CheckingExprType builtin = CheckingExpr
-  { checkedExpr :: Expr builtin,
+  { checkedExpr :: Either (Maybe Name) (Expr builtin),
     checkedExprExpectedType :: Type builtin,
     checkedExprActualType :: Expr builtin
   }
   deriving (Show)
 
-data CheckingBinderType builtin = CheckingBinder
-  { checkedBinderName :: Maybe Name,
-    checkedBinderExpectedType :: Type builtin,
-    checkedBinderActualType :: Type builtin
-  }
-  deriving (Show)
-
 data UnificationConstraintOrigin builtin
   = CheckingExprType (CheckingExprType builtin)
-  | CheckingBinderType (CheckingBinderType builtin)
   | CheckingInstanceType (InstanceConstraintOrigin builtin)
   deriving (Show)
 

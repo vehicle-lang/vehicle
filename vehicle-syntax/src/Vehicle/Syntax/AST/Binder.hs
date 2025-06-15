@@ -118,7 +118,7 @@ instance HasType (GenericBinder expr) expr where
   typeOf = binderValue
 
 --------------------------------------------------------------------------------
--- Binders
+-- Pattern synonyms for binders
 
 pattern ExplicitBinder :: Provenance -> expr -> GenericBinder expr
 pattern ExplicitBinder p t <- Binder p _ Explicit Relevant t

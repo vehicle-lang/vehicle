@@ -14,17 +14,99 @@ module Vehicle.Verify.Specification
     specificationPropertyNames,
     SpecificationCacheIndex (..),
     PropertyVerificationPlan (..),
+    UserVariableCompilationStep (..),
+    VariableCompilationTrace (..),
+    VariableStore (..),
+    getQueryVariables,
+    getVehicleVariableCtx,
+    getQueryVariableMap,
+    getUserVariables,
   )
 where
 
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON)
+import Data.Map (Map)
+import Data.Map qualified as Map
+import Data.Set (Set)
 import GHC.Generics (Generic)
-import Vehicle.Backend.Queries.UserVariableElimination.Core
-import Vehicle.Compile.Prelude (Name)
+import Vehicle.Compile.Prelude (CompleteNamedBoundCtx, Name)
+import Vehicle.Data.Assertion
 import Vehicle.Data.Code.BooleanExpr
+import Vehicle.Data.Code.LinearExpr
+import Vehicle.Data.QuantifiedVariable
 import Vehicle.Resource (ResourcesIntegrityInfo)
+import Vehicle.Syntax.Tensor
 import Vehicle.Verify.Core
+import Vehicle.Verify.QueryFormat.Core
+
+--------------------------------------------------------------------------------
+-- User variable
+
+-- | One step in the process for transforming unreduced user variables into
+-- reduced network input and output variables.
+data UserVariableCompilationStep
+  = SolveEquality UserVariable (LinearExpr TensorVariable RatTensor)
+  | SolveInequalities UserVariable (Bounds TensorVariable RatTensor)
+  | ReconstructTensorVariable TensorVariable (Tensor TensorVariable)
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData UserVariableCompilationStep
+
+instance ToJSON UserVariableCompilationStep
+
+instance FromJSON UserVariableCompilationStep
+
+-- | The steps for transforming unreduced user variables into reduced network
+-- input and output varibles.
+-- These are used to recreate a satisfying assignment for the user variables
+-- from the satisfying assignment for the network variables spat out by the
+-- verifier.
+-- The steps are stored in the same order they occured during compilation.
+newtype VariableCompilationTrace = Reconstruction
+  { reconstructionSteps :: [UserVariableCompilationStep]
+  }
+  deriving (Generic)
+
+instance NFData VariableCompilationTrace
+
+instance ToJSON VariableCompilationTrace
+
+instance FromJSON VariableCompilationTrace
+
+--------------------------------------------------------------------------------
+-- Variable store
+
+-- Storing the Variable is unnessary and is just for readability. We can get
+-- rid of it if we switch to a non-human readable format for the .vcl-plan files.
+data VariableStore = VariableStore
+  { queryVariableMapping :: Map QueryVariable NetworkIOElementVariable,
+    vehicleVariableCtx :: CompleteNamedBoundCtx,
+    userVariables :: Set UserVariable
+  }
+  deriving (Generic)
+
+instance NFData VariableStore
+
+instance ToJSON VariableStore
+
+instance FromJSON VariableStore
+
+{-
+getQueryVariableCtx :: VariableCompilationTrace -> GenericBoundCtx (Maybe QueryVariable)
+getQueryVariableCtx d = fmap (\(_, _, c) -> c) (variableStore d)
+-}
+getVehicleVariableCtx :: VariableStore -> CompleteNamedBoundCtx
+getVehicleVariableCtx VariableStore {..} = vehicleVariableCtx
+
+getUserVariables :: VariableStore -> Set UserVariable
+getUserVariables VariableStore {..} = userVariables
+
+getQueryVariables :: VariableStore -> [QueryVariable]
+getQueryVariables VariableStore {..} = Map.keys queryVariableMapping
+
+getQueryVariableMap :: VariableStore -> Map QueryVariable NetworkIOElementVariable
+getQueryVariableMap = queryVariableMapping
 
 --------------------------------------------------------------------------------
 -- Query meta data
@@ -32,7 +114,8 @@ import Vehicle.Verify.Core
 data QueryMetaData = QueryMetaData
   { queryAddress :: !QueryAddress,
     metaNetwork :: !MetaNetwork,
-    variableReconstruction :: !UserVariableReconstruction
+    variableStore :: !VariableStore,
+    variableCompilationTrace :: !VariableCompilationTrace
   }
   deriving (Generic)
 
@@ -42,11 +125,6 @@ instance ToJSON QueryMetaData
 
 instance FromJSON QueryMetaData
 
-{-
-instance Pretty QueryMetaData where
-  pretty (QueryMetaData _ metaNetwork _userVar) =
-    "Meta-network:" <+> pretty metaNetwork
--}
 --------------------------------------------------------------------------------
 -- Query set
 

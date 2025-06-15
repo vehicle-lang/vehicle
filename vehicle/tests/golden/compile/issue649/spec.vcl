@@ -10,7 +10,7 @@ validImage x = forall i j . 0 <= x ! i ! j <= 1
 
 --The network takes an image and returns a vector of scores
 @network
-classifier : Image -> Vector Rat 2
+classifier : Image -> Tensor Rat [2]
 
 --The classifier scores a given label above all others
 advises : Image -> Label -> Bool

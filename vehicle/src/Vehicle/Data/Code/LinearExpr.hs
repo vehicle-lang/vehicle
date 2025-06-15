@@ -2,20 +2,28 @@ module Vehicle.Data.Code.LinearExpr where
 
 import Control.DeepSeq (NFData)
 import Control.Monad (foldM)
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson (FromJSON, FromJSONKey, ToJSON, ToJSONKey)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
 import GHC.Generics (Generic)
 import Vehicle.Data.DeBruijn (Lv)
-import Vehicle.Data.QuantifiedVariable (Variable)
-import Vehicle.Data.Tensor (RationalTensor, Tensor (..), allTensor, zipWithTensor)
+import Vehicle.Data.Tensor (HasShape, RatTensor, allTensor, mapTensor, zipWithTensor, pattern ZeroDimTensor)
 import Vehicle.Prelude
+import Vehicle.Syntax.Tensor (HasShape (..))
+
+-------------------------------------------------------------------------------
+-- Variables
+
+-- | A variable.
+class (Eq variable, Ord variable) => VariableLike variable where
+  toLv :: variable -> Lv
+  fromLv :: Lv -> variable
 
 -------------------------------------------------------------------------------
 -- Constants
 
-class Constant constant where
+class ConstantLike constant where
   addConstants :: Coefficient -> Coefficient -> constant -> constant -> constant
   scaleConstant :: Coefficient -> constant -> constant
 
@@ -23,53 +31,63 @@ class Constant constant where
   -- identity when added.
   isZero :: constant -> Bool
 
-instance Constant RationalTensor where
-  addConstants :: Coefficient -> Coefficient -> RationalTensor -> RationalTensor -> RationalTensor
+instance ConstantLike RatTensor where
+  addConstants :: Coefficient -> Coefficient -> RatTensor -> RatTensor -> RatTensor
   addConstants a b = zipWithTensor (\x y -> a * x + b * y)
 
-  scaleConstant :: Coefficient -> RationalTensor -> RationalTensor
-  scaleConstant a = fmap (\x -> a * x)
+  scaleConstant :: Coefficient -> RatTensor -> RatTensor
+  scaleConstant a = mapTensor (\x -> a * x)
 
-  isZero :: RationalTensor -> Bool
+  isZero :: RatTensor -> Bool
   isZero = allTensor (== 0)
 
-{-
-extractTensorConstant :: Maybe RationalTensor -> RationalTensor
-extractTensorConstant Nothing = 0
-extractTensorConstant (Just v) = v
--}
-extractRationalConstant :: RationalTensor -> Rational
-extractRationalConstant (Tensor [] [v]) = v
-extractRationalConstant _ = developerError "FM-elimination doesn't yet work over tensors"
+extractRationalConstant :: RatTensor -> Rational
+extractRationalConstant = \case
+  ZeroDimTensor v -> v
+  t -> developerError $ "Cannot extract constant from multi-dim tensor" <+> pretty t
 
 -------------------------------------------------------------------------------
 -- Sparse representations of linear expressions
 
-data LinearExpr constant = Sparse
-  { coefficients :: Map Variable Coefficient,
+data LinearExpr variable constant = Sparse
+  { coefficients :: Map variable Coefficient,
     constantValue :: constant
   }
   deriving (Show, Eq, Ord, Generic)
 
-instance (NFData constant) => NFData (LinearExpr constant)
+instance (NFData variable, NFData constant) => NFData (LinearExpr variable constant)
 
-instance (ToJSON constant) => ToJSON (LinearExpr constant)
+instance (ToJSONKey variable, ToJSON constant) => ToJSON (LinearExpr variable constant)
 
-instance (FromJSON constant) => FromJSON (LinearExpr constant)
+instance (Ord variable, FromJSONKey variable, FromJSON constant) => FromJSON (LinearExpr variable constant)
 
-constantExpr :: constant -> LinearExpr constant
+instance (HasShape constant) => HasShape (LinearExpr variable constant) where
+  shapeOf = shapeOf . constantValue
+
+mapVariables ::
+  (Ord variable2) =>
+  (variable1 -> variable2) ->
+  LinearExpr variable1 constant ->
+  LinearExpr variable2 constant
+mapVariables f Sparse {..} =
+  Sparse
+    { coefficients = Map.mapKeys f coefficients,
+      ..
+    }
+
+constantExpr :: (Ord variable) => constant -> LinearExpr variable constant
 constantExpr = Sparse mempty
 
 -- This is a bit annoying as we can't reconstruct `zero` purely from the type alone,
 -- see comment on `IsConstant` type-class so we have to pass it explicitly.
-singletonVarExpr :: constant -> Variable -> LinearExpr constant
+singletonVarExpr :: constant -> variable -> LinearExpr variable constant
 singletonVarExpr zero var = Sparse (Map.singleton var 1) zero
 
 linearExprToExpr ::
   (Bool -> constant -> expr) ->
-  (Bool -> (Variable, Coefficient) -> expr) ->
+  (Bool -> (variable, Coefficient) -> expr) ->
   (expr -> expr -> expr) ->
-  LinearExpr constant ->
+  LinearExpr variable constant ->
   expr
 linearExprToExpr constantToExpr variableToExpr combineExprs (Sparse coefficients constant) = do
   let coeffVars = Map.toList coefficients
@@ -81,12 +99,12 @@ linearExprToExpr constantToExpr variableToExpr combineExprs (Sparse coefficients
       foldr1 combineExprs (varDocs <> [constDoc])
 
 addExprs ::
-  (Constant constant) =>
+  (VariableLike variable, ConstantLike constant) =>
   Coefficient ->
   Coefficient ->
-  LinearExpr constant ->
-  LinearExpr constant ->
-  LinearExpr constant
+  LinearExpr variable constant ->
+  LinearExpr variable constant ->
+  LinearExpr variable constant
 addExprs c1 c2 (Sparse coeff1 const1) (Sparse coeff2 const2) = do
   -- We should really be able to do this in one operation, but the API isn't flexible enough.
   let coeff1' = if c1 == 1 then coeff1 else Map.map (c1 *) coeff1
@@ -95,46 +113,61 @@ addExprs c1 c2 (Sparse coeff1 const1) (Sparse coeff2 const2) = do
   let rconst = addConstants c1 c2 const1 const2
   Sparse rcoeff rconst
 
-scaleExpr :: (Constant constant) => Coefficient -> LinearExpr constant -> LinearExpr constant
+scaleExpr :: (ConstantLike constant) => Coefficient -> LinearExpr variable constant -> LinearExpr variable constant
 scaleExpr c (Sparse coefficients constant) =
   Sparse (Map.map (c *) coefficients) (scaleConstant c constant)
 
-lookupCoefficient :: LinearExpr constant -> Variable -> Coefficient
+lookupCoefficient :: (VariableLike variable) => LinearExpr variable constant -> variable -> Coefficient
 lookupCoefficient (Sparse coefficients _) v = fromMaybe 0 $ Map.lookup v coefficients
 
-referencesVariable :: LinearExpr constant -> Variable -> Bool
+referencesVariable :: (VariableLike variable) => LinearExpr variable constant -> variable -> Bool
 referencesVariable (Sparse coefficients _) v = v `Map.member` coefficients
 
-isConstant :: LinearExpr constant -> Maybe constant
+isConstant :: LinearExpr variable constant -> Maybe constant
 isConstant (Sparse coeff constant)
   | Map.null coeff = Just constant
   | otherwise = Nothing
 
-evaluateExpr :: forall constant. (Constant constant) => LinearExpr constant -> Map Variable constant -> Either Variable constant
+evaluateExpr :: forall constant variable. (VariableLike variable, ConstantLike constant) => LinearExpr variable constant -> Map variable constant -> Either variable constant
 evaluateExpr expr assignment = do
   let Sparse coefficients constant = expr
   foldM op constant (Map.toList coefficients)
   where
-    op :: constant -> (Variable, Coefficient) -> Either Variable constant
+    op :: constant -> (variable, Coefficient) -> Either variable constant
     op total (var, coeff) = case Map.lookup var assignment of
       Nothing -> Left var
       Just value -> Right $ addConstants 1 coeff total value
 
-eliminateVar :: (Constant constant) => Variable -> LinearExpr constant -> LinearExpr constant -> LinearExpr constant
-eliminateVar var solution row = do
-  let varCoefficient = lookupCoefficient row var
-  if varCoefficient == 0
-    then row
-    else do
-      let resultExpr = addExprs 1 varCoefficient row solution
-      resultExpr
-        { coefficients = Map.delete var $ coefficients resultExpr
-        }
+eliminateVars ::
+  forall variable constant.
+  (VariableLike variable, ConstantLike constant) =>
+  Map variable (LinearExpr variable constant) ->
+  LinearExpr variable constant ->
+  Either constant (LinearExpr variable constant)
+eliminateVars solutions expr@(Sparse coeffs _) = do
+  let relevantVars = Map.intersectionWith (,) solutions coeffs
+  let newExpr = foldr elim expr (Map.toList relevantVars)
+  case isConstant newExpr of
+    Just c -> Left c
+    Nothing -> Right newExpr
+  where
+    elim :: (variable, (LinearExpr variable constant, Coefficient)) -> LinearExpr variable constant -> LinearExpr variable constant
+    elim (var, (sol, coef)) row
+      | coef == 0 = row
+      | otherwise = do
+          let resultExpr = addExprs 1 coef row sol
+          resultExpr
+            { coefficients = Map.delete var $ coefficients resultExpr
+            }
 
 -- | Takes an assertion `c_0*x_0 + ... + c_i*x_i + ... c_n * x_n` and
 -- returns (c_i, -(c_0/c_i)*x_0 ... - (c_n/c_i) * x_n), i.e.
 -- the expression is the expression equal to `x_i`.
-rearrangeExprToSolveFor :: (Constant constant) => Variable -> LinearExpr constant -> (Coefficient, LinearExpr constant)
+rearrangeExprToSolveFor ::
+  (VariableLike variable, ConstantLike constant) =>
+  variable ->
+  LinearExpr variable constant ->
+  (Coefficient, LinearExpr variable constant)
 rearrangeExprToSolveFor var expr = do
   let c = lookupCoefficient expr var
   if c == 0
@@ -148,11 +181,11 @@ rearrangeExprToSolveFor var expr = do
         )
 
 prettyLinearExpr ::
-  forall constant a.
-  (Constant constant) =>
-  (Lv -> Doc a) ->
+  forall variable constant a.
+  (ConstantLike constant) =>
+  (variable -> Doc a) ->
   (constant -> Doc a) ->
-  LinearExpr constant ->
+  LinearExpr variable constant ->
   Doc a
 prettyLinearExpr prettyVar prettyConst = linearExprToExpr prettyConstant prettyVarCoeff (<>)
   where
@@ -162,7 +195,7 @@ prettyLinearExpr prettyVar prettyConst = linearExprToExpr prettyConstant prettyV
       | isZero value = prettyConst value
       | otherwise = " + " <> prettyConst value
 
-    prettyVarCoeff :: Bool -> (Lv, Coefficient) -> Doc a
+    prettyVarCoeff :: Bool -> (variable, Coefficient) -> Doc a
     prettyVarCoeff isFirst (variable, coefficient) = do
       let sign
             | coefficient > 0 = if isFirst then "" else "+ "

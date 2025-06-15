@@ -6,6 +6,7 @@ module Vehicle.Backend.LossFunction.LossCompilation
   )
 where
 
+import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
@@ -18,13 +19,13 @@ import Vehicle.Compile.Normalise.NBE (eval, evalApp, traverseClosure)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyFriendlyEmptyCtx, prettyVerbose)
-import Vehicle.Data.Builtin.Core (BoolTensorBuiltin (..), Quantifier (..))
+import Vehicle.Data.Builtin.Core (Builtin (..))
+import Vehicle.Data.Builtin.Core qualified as S
 import Vehicle.Data.Builtin.Loss
-import Vehicle.Data.Builtin.Tensor (EqualityOp (..), OrderOp (..), TensorBuiltin (..))
-import Vehicle.Data.Builtin.Tensor qualified as T
-import Vehicle.Data.Code.Interface
+import Vehicle.Data.Code.Interface (TensorOp1Args (..), mkDims, pattern INatLiteral, pattern INatType)
+import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value (BoundEnv, Closure (..), Spine, VArg, VBinder, Value (..), boundContextToEnv, extendEnvWithBound, traverseSpine)
-import Vehicle.Data.Tensor (Tensor (..), foldMapTensor)
+import Vehicle.Data.Tensor (Tensor, foldMapTensor)
 
 --------------------------------------------------------------------------------
 -- Monad
@@ -59,7 +60,7 @@ getDeclProvenance = do
   (prov, _) <- ask
   return prov
 
-getLogicField :: (MonadLogic m) => TensorDifferentiableLogicField -> m (Value LossTensorBuiltin)
+getLogicField :: (MonadLogic m) => TensorDifferentiableLogicField -> m (Value LossBuiltin)
 getLogicField field = do
   logic <- getLogic
   lookupLogicField field logic
@@ -75,16 +76,16 @@ lookupLogicField field logic = do
 
 convertExpr ::
   (MonadLogic m) =>
-  BoundEnv TensorBuiltin ->
-  Expr TensorBuiltin ->
-  m (Value LossTensorBuiltin)
+  BoundEnv Builtin ->
+  Expr Builtin ->
+  m (Value LossBuiltin)
 convertExpr env expr = convertValue =<< eval mempty env expr
 
 convertValue ::
   forall m.
   (MonadLogic m) =>
-  Value TensorBuiltin ->
-  m (Value LossTensorBuiltin)
+  Value Builtin ->
+  m (Value LossBuiltin)
 convertValue e = do
   showEntry e
   result <- case e of
@@ -113,59 +114,128 @@ convertValue e = do
 convertBuiltinToLoss ::
   forall m.
   (MonadLogic m) =>
-  TensorBuiltin ->
-  Spine TensorBuiltin ->
-  m (Value LossTensorBuiltin)
+  Builtin ->
+  Spine Builtin ->
+  m (Value LossBuiltin)
 convertBuiltinToLoss b spine = case b of
-  T.TensorRat r -> unchangedBuiltin (LossTensorRat r)
-  T.TensorDimData s -> unchangedBuiltin (LossTensorDimData s)
-  T.TensorDimType s -> unchangedBuiltin (LossTensorDimType s)
-  T.TensorBool op -> case op of
+  S.TypeClassOp {} -> unexpectedExprError currentPass (pretty b)
+  S.TypeClass {} -> unexpectedExprError currentPass (pretty b)
+  S.NatInDomainConstraint -> unexpectedExprError currentPass (pretty b)
+  S.BuiltinConstructor c -> case c of
+    S.BoolTensorLiteral t -> translateConstant t
+    S.Nil -> unchangedConstructor Nil
+    S.Cons -> unchangedConstructor Nil
+    S.UnitLiteral -> unchangedConstructor UnitLiteral
+    S.IndexLiteral x -> unchangedConstructor $ IndexLiteral x
+    S.NatLiteral x -> unchangedConstructor $ NatLiteral x
+    S.NatTensorLiteral x -> unchangedConstructor $ NatTensorLiteral x
+    S.RatTensorLiteral x -> unchangedConstructor $ RatTensorLiteral x
+    S.VectorLiteral -> unsupportedBuiltin
+  S.BuiltinType t -> case t of
+    S.BoolType -> return $ VBuiltin (LossBuiltinType RatType) []
+    S.RatType -> unchangedType RatType
+    S.UnitType -> unchangedType UnitType
+    S.IndexType -> unchangedType IndexType
+    S.NatType -> unchangedType NatType
+    S.ListType -> unchangedType ListType
+    S.VectorType -> developerError "Vector not yet supported"
+    S.TensorType -> unchangedType TensorType
+  S.BuiltinFunction f -> case f of
     --------------
     -- Booleans --
     --------------
-    T.BoolType -> return $ VBuiltin (LossTensorRat RatType) []
-    T.BoolTensor t -> translateConstant t
-    T.BoolLiteral True -> changedBuiltin L.TruthityElement
-    T.BoolLiteral False -> changedBuiltin L.FalsityElement
-    T.NotBoolTensor -> changedBuiltin L.PointwiseNegation
-    T.AndBoolTensor -> changedBuiltin L.PointwiseConjunction
-    T.OrBoolTensor -> changedBuiltin L.PointwiseDisjunction
-    T.EqualsRatTensor Eq -> changedBuiltin L.PointwiseEq
-    T.EqualsRatTensor Neq -> changedBuiltin L.PointwiseNe
-    T.OrderRatTensor Lt -> changedBuiltin L.PointwiseLt
-    T.OrderRatTensor Le -> changedBuiltin L.PointwiseLe
-    T.OrderRatTensor Gt -> changedBuiltin L.PointwiseGt
-    T.OrderRatTensor Ge -> changedBuiltin L.PointwiseGe
-    T.QuantifyRatTensor q -> translateQuantifier q spine
-    T.ReduceAndTensor -> changedBuiltin L.ReduceConjunction
-    T.ReduceOrTensor -> changedBuiltin L.ReduceDisjunction
+    S.Not -> changedBuiltin L.PointwiseNegation
+    S.And -> changedBuiltin L.PointwiseConjunction
+    S.Or -> changedBuiltin L.PointwiseDisjunction
+    S.CompareRatTensorPointwise Eq -> changedBuiltin L.PointwiseEq
+    S.CompareRatTensorPointwise Ne -> changedBuiltin L.PointwiseNe
+    S.CompareRatTensorPointwise Lt -> changedBuiltin L.PointwiseLt
+    S.CompareRatTensorPointwise Le -> changedBuiltin L.PointwiseLe
+    S.CompareRatTensorPointwise Gt -> changedBuiltin L.PointwiseGt
+    S.CompareRatTensorPointwise Ge -> changedBuiltin L.PointwiseGe
+    S.ReduceAndTensor -> changedBuiltin L.ReduceConjunction
+    S.ReduceOrTensor -> changedBuiltin L.ReduceDisjunction
+    S.QuantifyRatTensor q -> translateQuantifier q spine
+    --------------
+    -- Unsupported --
+    --------------
+    S.Implies -> unexpectedExprError currentPass (pretty b)
+    S.If -> unsupportedBuiltin
+    -----------
+    -- Other --
+    -----------
+    S.Neg dom -> unchangedFunction (Neg dom)
+    S.Add dom -> unchangedFunction (Add dom)
+    S.Sub dom -> unchangedFunction (Sub dom)
+    S.Mul dom -> unchangedFunction (Mul dom)
+    S.Div dom -> unchangedFunction (Div dom)
+    S.Min dom -> unchangedFunction (Min dom)
+    S.Max dom -> unchangedFunction (Max dom)
+    S.PowRat -> unchangedFunction PowRat
+    S.ReduceAddRatTensor -> unchangedFunction ReduceAddRatTensor
+    S.ReduceMulRatTensor -> unchangedFunction ReduceMulRatTensor
+    S.ReduceMinRatTensor -> unchangedFunction ReduceMinRatTensor
+    S.ReduceMaxRatTensor -> unchangedFunction ReduceMaxRatTensor
+    S.AtTensor -> unchangedFunction At
+    S.StackTensor -> unchangedFunction StackTensor
+    S.ConstTensor -> unchangedFunction ConstTensor
+    S.ForeachVector -> developerError "Conversion of `foreach` not yet supported"
+    S.ForeachTensor -> developerError "Conversion of `foreach` not yet supported"
+    -----------------
+    -- Unsupported --
+    -----------------
+    S.CompareNat {} -> unsupportedBuiltin
+    S.CompareIndex {} -> unsupportedBuiltin
+    S.FoldList -> unsupportedBuiltin
+    S.MapList -> unsupportedBuiltin
+    S.Iterate -> unsupportedBuiltin
+    S.AtVector -> unsupportedBuiltin
+  S.BuiltinCast {} -> unsupportedBuiltin
+  S.DerivedFunction {} -> unsupportedBuiltin
+  ----------------------
+  -- Other operations --
+  ----------------------
   where
-    changedBuiltin :: TensorDifferentiableLogicField -> m (Value LossTensorBuiltin)
+    changedBuiltin :: TensorDifferentiableLogicField -> m (Value LossBuiltin)
     changedBuiltin field = substField field =<< traverseSpine convertValue spine
 
-    unchangedBuiltin :: LossTensorBuiltin -> m (Value LossTensorBuiltin)
+    unchangedBuiltin :: LossBuiltin -> m (Value LossBuiltin)
     unchangedBuiltin op = VBuiltin op <$> traverseSpine convertValue spine
 
-substField :: (MonadLogic m) => TensorDifferentiableLogicField -> Spine LossTensorBuiltin -> m (Value LossTensorBuiltin)
+    unchangedFunction :: LossBuiltinFunction -> m (Value LossBuiltin)
+    unchangedFunction op = unchangedBuiltin (LossBuiltinFunction op)
+
+    unchangedConstructor :: LossBuiltinConstructor -> m (Value LossBuiltin)
+    unchangedConstructor op = unchangedBuiltin (LossBuiltinConstructor op)
+
+    unchangedType :: LossBuiltinType -> m (Value LossBuiltin)
+    unchangedType op = unchangedBuiltin (LossBuiltinType op)
+
+    unsupportedBuiltin :: m a
+    unsupportedBuiltin = do
+      (declProv, _) <- ask
+      throwError $ UnsupportedLossOperation declProv mempty (pretty S.If)
+
+substField :: (MonadLogic m) => TensorDifferentiableLogicField -> Spine LossBuiltin -> m (Value LossBuiltin)
 substField field spine = do
   fn <- getLogicField field
   logDebug MaxDetail $ "subst-field" <+> pretty field <> ":" <+> prettyFriendlyEmptyCtx fn
   evalApp mempty fn spine
 
-translateConstant :: (MonadLogic m) => Tensor Bool -> m (Value LossTensorBuiltin)
+translateConstant :: (MonadLogic m) => Tensor Bool -> m (Value LossBuiltin)
 translateConstant tensor = do
   trueExpr <- getLogicField L.TruthityElement
   falseExpr <- getLogicField L.FalsityElement
+
   let convertBool b = if b then trueExpr else falseExpr
   let foldLayer shape elems = do
-        let tElem = implicit IRatElementType
-        let dims = implicitIrrelevant (foldr (\d ds -> IDimCons (explicit (IDim d)) (explicit ds)) IDimNil shape)
-        let args = tElem : dims : (explicit <$> elems)
-        IDimensionDataOp (StackTensor (length elems)) args
+        let dim = length elems
+        let dims = implicitIrrelevant (mkDims shape)
+        let args = implicit (INatLiteral dim) : dims : implicit INatType : fmap explicit elems
+        VBuiltin (LossBuiltinFunction StackTensor) args
   return $ foldMapTensor convertBool foldLayer tensor
 
-translateQuantifier :: (MonadLogic m) => Quantifier -> Spine TensorBuiltin -> m (Value LossTensorBuiltin)
+translateQuantifier :: (MonadLogic m) => Quantifier -> Spine Builtin -> m (Value LossBuiltin)
 translateQuantifier q = \case
   [dims, argExpr -> VLam binder (Closure env body)] -> do
     -- Normalise the body
@@ -179,26 +249,26 @@ translateQuantifier q = \case
     case q of
       Forall -> translateForall dims lossDims binder bodyValue
       Exists -> translateExists lossDims binder bodyValue
-  args -> unexpectedExprError currentPass (prettyVerbose $ IBoolTensorOp (QuantifyRatTensor q) args)
+  spine -> unexpectedExprError currentPass ("quantifier spine:" <> prettyVerbose spine)
 
 translateForall ::
   (MonadLogic m) =>
-  VArg TensorBuiltin ->
-  VArg LossTensorBuiltin ->
-  VBinder TensorBuiltin ->
-  Value TensorBuiltin ->
-  m (Value LossTensorBuiltin)
+  VArg Builtin ->
+  VArg LossBuiltin ->
+  VBinder Builtin ->
+  Value Builtin ->
+  m (Value LossBuiltin)
 translateForall dims lossDims binder body = do
-  let newBody = IBoolTensorOp NotBoolTensor [dims, explicit body]
+  let newBody = fromBoolValue $ VNot $ TensorOp1Args dims body
   result <- translateExists lossDims binder newBody
   substField L.PointwiseNegation [lossDims, explicit result]
 
 translateExists ::
   (MonadLogic m) =>
-  VArg LossTensorBuiltin ->
-  VBinder TensorBuiltin ->
-  Value TensorBuiltin ->
-  m (Value LossTensorBuiltin)
+  VArg LossBuiltin ->
+  VBinder Builtin ->
+  Value Builtin ->
+  m (Value LossBuiltin)
 translateExists lossDims binder bodyValue = logCompilerSection MaxDetail "convert-exists" $ do
   boundCtx <- getBinderContext
   let lv = boundCtxLv boundCtx
@@ -208,7 +278,7 @@ translateExists lossDims binder bodyValue = logCompilerSection MaxDetail "conver
 
   -- Generate the operation for doing the reduction
   genericReductionOp <- getLogicField ReduceDisjunction
-  reductionOp <- evalApp mempty genericReductionOp [implicit (dimSingleton 1)]
+  reductionOp <- evalApp mempty genericReductionOp [lossDims]
 
   -- Extract the domain for the search
   declProv <- getDeclProvenance
@@ -227,7 +297,7 @@ translateExists lossDims binder bodyValue = logCompilerSection MaxDetail "conver
 
   let newArgs = lossDims : (explicit <$> [reductionOp, lossLowerBounds, lossUpperBounds, lossPredicate])
 
-  return $ IRatTensorOp SearchRatTensor newArgs
+  return $ VBuiltin (LossBuiltinFunction SearchRatTensor) newArgs
 
 --------------------------------------------------------------------------------
 -- Utils
@@ -235,14 +305,14 @@ translateExists lossDims binder bodyValue = logCompilerSection MaxDetail "conver
 currentPass :: CompilerPass
 currentPass = "logic translation"
 
-showEntry :: (MonadLogger m, MonadNameContext m) => Value TensorBuiltin -> m ()
+showEntry :: (MonadLogger m, MonadNameContext m) => Value Builtin -> m ()
 showEntry e = do
   ctx <- getNameContext
   -- logDebug MaxDetail $ doc <+> ":" <+> prettyVerbose e
   logDebug MaxDetail $ "enter-loss" <+> ":" <+> prettyFriendly (WithContext e ctx)
   incrCallDepth
 
-showExit :: (MonadLogger m, MonadNameContext m) => Value LossTensorBuiltin -> m ()
+showExit :: (MonadLogger m, MonadNameContext m) => Value LossBuiltin -> m ()
 showExit e = do
   ctx <- getNameContext
   decrCallDepth

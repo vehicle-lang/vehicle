@@ -1,7 +1,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Vehicle.Data.DeBruijn
-  ( Ix (..),
+  ( Ix (Ix, InnerIx, unIx),
     Lv (..),
     Substitution,
     Substitutable (..),
@@ -24,10 +24,20 @@ import Vehicle.Prelude
 
 -- | A DeBruijn index pointing to the binder that the variable refers to,
 -- counting from the variable position upwards.
-newtype Ix = Ix
+newtype Ix = InnerIx
   { unIx :: Int
   }
   deriving (Eq, Ord, Num, Enum, Show, Generic)
+
+pattern Ix :: Int -> Ix
+pattern Ix i <- InnerIx i
+  where
+    Ix i = checkIx i
+
+checkIx :: Int -> Ix
+checkIx i
+  | i < 0 = developerError $ "malformed ix" <+> pretty i
+  | otherwise = InnerIx i
 
 instance NFData Ix
 

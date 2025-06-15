@@ -18,7 +18,7 @@ pi = 3.141592
 -- We first define a new name for the type of inputs of the network.
 -- In particular, it takes inputs of the form of a vector of 5 rational numbers.
 
-type InputVector = Vector Rat 5
+type InputVector = Tensor Rat [5]
 
 -- Next we add meaningful names for the indices.
 -- The fact that all vector types come annotated with their size means that it
@@ -38,13 +38,13 @@ intruderSpeed      = 4   -- measured in meters/second
 -- Outputs are also a vector of 5 rationals. Each one representing the score
 -- for the 5 available courses of action.
 
-type OutputVector = Vector Rat 5
+type OutputVector = Tensor Rat [5]
 
 -- Again we define meaningful names for the indices into output vectors.
 
 clearOfConflict = 0
 weakLeft        = 1
-weakRight       = 2
+-- weakRight       = 2
 strongLeft      = 3
 strongRight     = 4
 
@@ -71,7 +71,7 @@ acasXu : InputVector -> OutputVector
 
 -- For clarity, we therefore define a new type synonym
 -- for unnormalised input vectors which are in the problem space.
-type UnnormalisedInputVector = Vector Rat 5
+type UnnormalisedInputVector = Tensor Rat [5]
 
 -- Next we define the minimum and maximum values that each input can take.
 -- These correspond to the range of the inputs that the network is designed

@@ -98,6 +98,10 @@ argFromBinder (Binder p _ v r _) = Arg p v r
 explicit :: expr -> GenericArg expr
 explicit = Arg mempty Explicit Relevant
 
+-- | Constructs an explicit relevant argument
+explicitIrrelevant :: expr -> GenericArg expr
+explicitIrrelevant = Arg mempty Explicit Irrelevant
+
 -- | Constructs an implicit relevant argument marked as being inserted by
 -- the compiler.
 implicit :: expr -> GenericArg expr

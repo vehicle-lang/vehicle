@@ -4,10 +4,9 @@ module Vehicle.Compile.Context.Bound.Instance where
 
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Identity (Identity (..))
-import Control.Monad.Reader (MonadReader (..), ReaderT (..), asks, mapReaderT)
+import Control.Monad.Reader (MonadReader (..), ReaderT (..), mapReaderT)
 import Control.Monad.State (MonadState (..))
 import Control.Monad.Writer
-import Data.Bifunctor (Bifunctor (..))
 import Data.Data (Proxy)
 import Vehicle.Compile.Context.Bound.Class
 import Vehicle.Compile.Context.Bound.Core
@@ -17,7 +16,7 @@ import Vehicle.Compile.Prelude
 -- Context monad instantiation
 
 newtype BoundContextT expr m a = BoundContextT
-  { unBoundContextT :: ReaderT (BoundCtx expr, FreshNameState) m a
+  { unBoundContextT :: ReaderT (BoundCtx expr) m a
   }
   deriving (Functor, Applicative, Monad)
 
@@ -27,7 +26,7 @@ type BoundContext expr a = BoundContextT expr Identity a
 -- context. Note that you must still call `addDeclToCtx` and `addBinderToCtx`
 -- manually in the right places.
 runBoundContextT :: (Monad m) => BoundCtx expr -> BoundContextT expr m a -> m a
-runBoundContextT ctx (BoundContextT contextFn) = runReaderT contextFn (ctx, 0)
+runBoundContextT ctx (BoundContextT contextFn) = runReaderT contextFn ctx
 
 runBoundContext :: BoundCtx expr -> BoundContext expr a -> a
 runBoundContext ctx fn = runIdentity $ runBoundContextT ctx fn
@@ -76,6 +75,6 @@ instance (MonadReader s m) => MonadReader s (BoundContextT expr m) where
 
 instance (Monad m) => MonadBoundContext expr (BoundContextT expr m) where
   addBinderToContext binder cont = BoundContextT $ do
-    local (first (binder :)) (unBoundContextT cont)
+    local (binder :) (unBoundContextT cont)
 
-  getBoundCtx _ = BoundContextT $ asks fst
+  getBoundCtx _ = BoundContextT ask

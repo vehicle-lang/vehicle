@@ -1,6 +1,24 @@
 # Changelog for Vehicle
 
-## Version 0.17
+## Version 0.17.0
+
+* BREAKING: Removed `Vector A n` type in favour of `Tensor A [n]`
+
+* BREAKING: `forall _ in _` no longer works for `Tensor`/`Vector` types.
+
+* BREAKING: Upgraded dependency on Agda standard library from v2.0 to v2.2
+
+* Pointwise `min` and `max` now work over `Tensor`s.
+
+* Improved compilation of `min` and `max` so that in some cases they generate exponentially less queries.
+
+* Better error messages for typing errors
+
+* Fixed bug where `type` declarations with parameters were handled incorrectly.
+
+* Fixed rare bug where `let .. in ..` statements weren't typed checked correctly.
+
+* Fixed bug in Agda compilation where decidable `Bool`s were incorrectly translated to types.
 
 * A new command `list` with sub-commands `resources` and `properties`, to list resources and properties in a vehicle.
   specification.

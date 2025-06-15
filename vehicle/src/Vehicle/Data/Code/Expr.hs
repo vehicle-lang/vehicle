@@ -14,7 +14,7 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import GHC.Generics (Generic)
 import Vehicle.Data.Builtin.Interface
-import Vehicle.Data.Code.Interface
+import Vehicle.Data.Code.Interface (HasBuiltinConstructor (..))
 import Vehicle.Data.DeBruijn (Ix (..), Lv, Substitutable (..), Substitution, shiftDBIndex, unLv)
 import Vehicle.Data.Universe (UniverseLevel (..))
 import Vehicle.Prelude
@@ -164,10 +164,10 @@ pattern BuiltinExpr p b args <- App (Builtin p b) args
   where
     BuiltinExpr p b args = App (Builtin p b) args
 
-getBuiltinApp :: Expr builtin -> Maybe (Provenance, builtin, [Arg builtin])
+getBuiltinApp :: Expr builtin -> Maybe (builtin, [Arg builtin])
 getBuiltinApp = \case
-  Builtin p b -> Just (p, b, [])
-  App (Builtin p b) args -> Just (p, b, NonEmpty.toList args)
+  Builtin _ b -> Just (b, [])
+  App (Builtin _ b) args -> Just (b, NonEmpty.toList args)
   _ -> Nothing
 
 getFreeVarApp :: Expr builtin -> Maybe (Provenance, Identifier, [Arg builtin])
@@ -182,6 +182,9 @@ getFreeVarApp = \case
 -- | Function for updating a builtin application
 type BuiltinUpdate m builtin1 builtin2 =
   Provenance -> builtin1 -> [Arg builtin2] -> m (Expr builtin2)
+
+noOpBuiltinUpdate :: (Monad m) => BuiltinUpdate m builtin builtin
+noOpBuiltinUpdate p b args = return $ normAppList (Builtin p b) args
 
 -- | Traverses all the auxiliary type arguments in the provided element,
 -- applying the provided update function when it finds them (or a space
@@ -284,121 +287,23 @@ freeVarsIn =
 -----------------------------------------------------------------------------
 -- Instances
 
-instance (BuiltinHasStandardData builtin) => HasBinders (Expr builtin) where
+instance (BuiltinHasBinders builtin) => HasBinders (Expr builtin) where
   getBinder = \case
     Pi _ binder body -> Just (PiBinder, binder, body)
     Lam _ binder body -> Just (LamBinder, binder, body)
-    IInfiniteQuantifier q _ (Lam _ binder body) -> Just (QuantifierBinder q, binder, body)
+    BuiltinExpr _ (getBuiltinBinder -> Just b) (NonEmpty.last -> (argExpr -> Lam _ binder body)) -> Just (b, binder, body)
     _ -> Nothing
 
   getLetBinder = \case
     Let _ value binder body -> Just (value, binder, body)
     _ -> Nothing
 
-instance (BuiltinHasStandardTypes builtin) => HasStandardTypes (Expr builtin) where
-  mkType p b = normAppList (Builtin p (mkBuiltinType b))
-  getType e = case getBuiltinApp e of
-    Just (p, b, args) -> case getBuiltinType b of
-      Just t -> Just (p, t, args)
-      Nothing -> Nothing
-    _ -> Nothing
-
-instance (BuiltinHasStandardData builtin) => HasStandardData (Expr builtin) where
-  mkFunction p b = normAppList (Builtin p (mkBuiltinFunction b))
-  getFunction e = case getBuiltinApp e of
-    Just (p, b, args) -> case getBuiltinFunction b of
-      Just f -> Just (p, f, args)
-      Nothing -> Nothing
-    _ -> Nothing
-
-  mkConstructor p b = normAppList (Builtin p (mkBuiltinConstructor b))
-  getConstructor e = case getBuiltinApp e of
-    Just (p, b, args) -> case getBuiltinConstructor b of
-      Just f -> Just (p, f, args)
-      Nothing -> Nothing
-    _ -> Nothing
-
-  mkFreeVar p ident = normAppList (FreeVar p ident)
-  getFreeVar e = case getFreeVarApp e of
-    Just (p, ident, args) -> Just (p, ident, args)
-    _ -> Nothing
-
-instance (BuiltinHasBoolLiterals builtin) => HasBoolLits (Expr builtin) where
-  getBoolLit e = case e of
-    Builtin _ (getBoolBuiltinLit -> Just b) -> Just (mempty, b)
-    _ -> Nothing
-  mkBoolLit p x = Builtin p (mkBoolBuiltinLit x)
-
-instance (BuiltinHasIndexLiterals builtin) => HasIndexLits (Expr builtin) where
-  getIndexLit e = case e of
-    Builtin _ (getIndexBuiltinLit -> Just i) -> Just (mempty, i)
-    _ -> Nothing
-  mkIndexLit p i = Builtin p (mkIndexBuiltinLit i)
-
-instance (BuiltinHasNatLiterals builtin) => HasNatLits (Expr builtin) where
-  getNatLit e = case e of
-    Builtin _ (getNatBuiltinLit -> Just n) -> Just (mempty, n)
-    _ -> Nothing
-  mkNatLit p n = Builtin p (mkNatBuiltinLit n)
-
-instance (BuiltinHasRatLiterals builtin) => HasRatLits (Expr builtin) where
-  getRatLit e = case e of
-    Builtin _ (getRatBuiltinLit -> Just r) -> Just (mempty, r)
-    _ -> Nothing
-  mkRatLit p r = Builtin p (mkRatBuiltinLit r)
-
-instance (BuiltinHasVecLiterals builtin) => HasStandardVecLits (Expr builtin) where
-  getHomoVector = \case
-    BuiltinExpr _ (getVecBuiltinLit -> Just {}) (t :| xs) -> Just (t, xs)
-    _ -> Nothing
-  mkHomoVector t xs = BuiltinExpr mempty (mkVecBuiltinLit (length xs)) (t :| xs)
-
-instance (BuiltinHasListLiterals builtin) => HasStandardListLits (Expr builtin) where
-  getNil = \case
-    BuiltinExpr p (isBuiltinNil -> True) [t] -> Just (p, t)
-    _ -> Nothing
-  mkNil t = BuiltinExpr mempty mkBuiltinNil [t]
-
-  getCons = \case
-    BuiltinExpr p (isBuiltinCons -> True) [t, x, xs] -> Just (p, t, x, xs)
-    _ -> Nothing
-  mkCons t x xs = BuiltinExpr mempty mkBuiltinCons [t, x, xs]
-
-instance (BuiltinHasRatType builtin) => HasRatType (Expr builtin) where
-  getRatType e = case e of
-    Builtin p (isRatBuiltinType -> True) -> Just p
-    _ -> Nothing
-  mkRatType p = Builtin p mkRatBuiltinType
-
-instance (BuiltinHasVecType builtin) => HasVecType (Expr builtin) where
-  getVectorType e = case e of
-    BuiltinExpr p (isVecBuiltinType -> True) [t, n] -> Just (p, t, n)
-    _ -> Nothing
-  mkVectorType p t n = BuiltinExpr p mkVecBuiltinType [t, n]
-
-instance (BuiltinHasRatTensor builtin) => HasRatTensors (Expr builtin) where
-  getRatTensorOp e = case e of
-    BuiltinExpr _ (getRatTensorBuiltin -> Just op) args -> Just (op, NonEmpty.toList args)
-    _ -> Nothing
-  mkRatTensorOp op = normAppList (Builtin mempty $ mkRatTensorBuiltin op)
-
-instance (BuiltinHasBoolTensor builtin) => HasBoolTensors (Expr builtin) where
-  getBoolTensorOp e = case e of
-    BuiltinExpr _ (getBoolTensorBuiltin -> Just op) args -> Just (op, NonEmpty.toList args)
-    _ -> Nothing
-  mkBoolTensorOp op = normAppList (Builtin mempty $ mkBoolTensorBuiltin op)
-
-instance (BuiltinHasDimensionTypes builtin) => HasDimensionTypes (Expr builtin) where
-  getDimensionTypeOp e = case e of
-    BuiltinExpr _ (getDimensionTypeBuiltin -> Just op) args -> Just (op, NonEmpty.toList args)
-    _ -> Nothing
-  mkDimensionTypeOp op = normAppList (Builtin mempty $ mkDimensionTypeBuiltin op)
-
-instance (BuiltinHasDimensionData builtin) => HasDimensionData (Expr builtin) where
-  getDimensionDataOp e = case e of
-    BuiltinExpr _ (getDimensionDataBuiltin -> Just op) args -> Just (op, NonEmpty.toList args)
-    _ -> Nothing
-  mkDimensionDataOp op = normAppList (Builtin mempty $ mkDimensionDataBuiltin op)
+instance HasBuiltinConstructor Expr where
+  accessBuiltinC =
+    Access
+      { getExpr = getBuiltinApp,
+        mkExpr = \(b, args) -> normAppList (Builtin mempty b) args
+      }
 
 --------------------------------------------------------------------------------
 -- DeBruijin substitution

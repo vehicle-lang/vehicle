@@ -5,25 +5,24 @@ where
 
 import Data.Maybe (maybeToList)
 import Data.Proxy (Proxy (..))
-import Vehicle.Backend.LossFunction.Core (CompiledDifferentiableLogic, preservedStdLibOps)
+import Vehicle.Backend.LossFunction.Core (CompiledDifferentiableLogic)
 import Vehicle.Backend.LossFunction.LossCompilation (runMonadLogicT)
 import Vehicle.Backend.LossFunction.LossCompilation qualified as Loss (convertValue)
-import Vehicle.Backend.LossFunction.TensorCompilation (convertExpr, runMonadTensorT)
-import Vehicle.Backend.LossFunction.ZeroTensorLifting (liftZeroDimensionalTensors)
-import Vehicle.Compile.Context.Free (MonadFreeContext, addDeclEntryToContext, hideStdLibDecls, runFreshFreeContextT)
+import Vehicle.Compile.Context.Free (MonadFreeContext, addDeclEntryToContext, runFreshFreeContextT)
 import Vehicle.Compile.Context.Name (MonadNameContext, runFreshNameContextT)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE (normaliseInEnv)
 import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Core
-import Vehicle.Data.Builtin.Loss (LossTensorBuiltin)
+import Vehicle.Data.Builtin.Loss (LossBuiltin)
+import Vehicle.Data.Builtin.Standard.Normalise ()
 
 convertToLossTensors ::
   (MonadCompile m) =>
   CompiledDifferentiableLogic ->
   Prog Builtin ->
-  m (Prog LossTensorBuiltin)
+  m (Prog LossBuiltin)
 convertToLossTensors logic (Main ds) =
   logCompilerPass MinDetail currentPass $
     runFreshFreeContextT (Proxy @Builtin) $
@@ -34,30 +33,27 @@ convertDecls ::
   (MonadCompile m, MonadFreeContext Builtin m, MonadNameContext m) =>
   CompiledDifferentiableLogic ->
   [Decl Builtin] ->
-  m [Decl LossTensorBuiltin]
+  m [Decl LossBuiltin]
 convertDecls logic = \case
   [] -> return []
   decl : decls -> do
     (normDecl, maybeLossTensorDecl) <- do
       let ident = identifierOf decl
       logCompilerPass MinDetail ("declaration" <+> quotePretty ident) $ do
-        hideStdLibDecls (Proxy @Builtin) preservedStdLibOps $ do
-          normStandardDecl <- traverse (normaliseInEnv mempty) decl
-          maybeTensorDecl <-
-            if not (isPropertyDecl decl)
-              then return Nothing
-              else do
-                let declProv = (ident, provenanceOf decl)
-                tensorDecl <- runMonadTensorT declProv $ traverse (convertExpr mempty) decl
-                normLossTensorDecl <- runMonadLogicT logic declProv $ traverse Loss.convertValue tensorDecl
-                liftedTensorDecl <- liftZeroDimensionalTensors normLossTensorDecl
-                let lossTensorDecl = fmap (unnormalise 0) liftedTensorDecl
-                return $ Just lossTensorDecl
+        normStandardDecl <- traverse (normaliseInEnv mempty) decl
+        maybeTensorDecl <-
+          if not (isPropertyDecl decl)
+            then return Nothing
+            else do
+              let declProv = (ident, provenanceOf decl)
+              normLossTensorDecl <- runMonadLogicT logic declProv $ traverse Loss.convertValue normStandardDecl
+              let lossTensorDecl = fmap (unnormalise 0) normLossTensorDecl
+              return $ Just lossTensorDecl
 
-          return
-            ( normStandardDecl,
-              maybeTensorDecl
-            )
+        return
+          ( normStandardDecl,
+            maybeTensorDecl
+          )
 
     decls' <- addDeclEntryToContext (decl, normDecl) $ convertDecls logic decls
     return $ maybeToList maybeLossTensorDecl ++ decls'

@@ -11,6 +11,8 @@ module Vehicle.Prelude.Logging.Class
     logCompilerPass,
     logCompilerPassOutput,
     logCompilerSection,
+    logCompilerSection2,
+    logIndent,
   )
 where
 
@@ -20,6 +22,7 @@ import Control.Monad.Identity (IdentityT (..))
 import Control.Monad.Reader (ReaderT (..))
 import Control.Monad.State (StateT (..))
 import Control.Monad.Trans (MonadTrans (..))
+import Control.Monad.Trans.Maybe (MaybeT)
 import Control.Monad.Writer (WriterT (..))
 import Data.Text (Text)
 import Data.Text qualified as Text (unpack)
@@ -132,6 +135,15 @@ instance (MonadLogger m) => MonadLogger (IdentityT m) where
   logMessage = lift . logMessage
   logWarning = lift . logWarning
 
+instance (MonadLogger m) => MonadLogger (MaybeT m) where
+  setCallDepth = lift . setCallDepth
+  getCallDepth = lift getCallDepth
+  incrCallDepth = lift incrCallDepth
+  decrCallDepth = lift decrCallDepth
+  getDebugLevel = lift getDebugLevel
+  logMessage = lift . logMessage
+  logWarning = lift . logWarning
+
 logDebugM :: (MonadLogger m) => LoggingLevel -> m (Doc a) -> m ()
 logDebugM level getText = do
   -- traceShow text $ do
@@ -147,20 +159,28 @@ logDebug level text = logDebugM level (return text)
 
 logCompilerPass :: (MonadLogger m) => LoggingLevel -> Doc a -> m b -> m b
 logCompilerPass level passName performPass = do
-  logDebug level $ "Starting" <+> passName
-  incrCallDepth
-  result <- performPass
-  decrCallDepth
+  result <- logIndent level ("Starting" <+> passName) performPass
   logDebug level $ "Finished" <+> passName <> line
+  return result
+
+logCompilerSection2 :: (MonadLogger m) => LoggingLevel -> Doc a -> m b -> m b
+logCompilerSection2 level passName performPass = do
+  result <- logIndent level ("Starting" <+> passName) performPass
+  logDebug level $ "Finished" <+> passName
   return result
 
 logCompilerSection :: (MonadLogger m) => LoggingLevel -> Doc a -> m b -> m b
 logCompilerSection level sectionName performPass = do
+  result <- logIndent level sectionName performPass
+  logDebug level ""
+  return result
+
+logIndent :: (MonadLogger m) => LoggingLevel -> Doc a -> m b -> m b
+logIndent level sectionName performPass = do
   logDebug level sectionName
   incrCallDepth
   result <- performPass
   decrCallDepth
-  logDebug level ""
   return result
 
 logCompilerPassOutput :: (MonadLogger m) => Doc a -> m ()

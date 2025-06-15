@@ -26,11 +26,12 @@ position token TokLet       {"let"};
 position token TokType      {"Type"};
 position token TokUnit      {"Unit"};
 position token TokBool      {"Bool"};
+position token TokIndex     {"Index"};
 position token TokNat       {"Nat"};
 position token TokRat       {"Rat"};
-position token TokVector    {"Vector"};
 position token TokList      {"List"};
-position token TokIndex     {"Index"};
+position token TokVector    {"Vector"};
+position token TokTensor    {"Tensor"};
 
 position token TokForall    {"forall"};
 position token TokExists    {"exists"};
@@ -40,25 +41,38 @@ position token TokAnd       {"and"};
 position token TokOr        {"or"};
 position token TokNot       {"not"};
 position token TokEq        {"=="};
-position token TokNeq       {"!="};
+position token TokNe        {"!="};
 position token TokLe        {"<="};
 position token TokLt        {"<"};
 position token TokGe        {">="};
 position token TokGt        {">"};
+position token TokEqPoint   {"==."};
+position token TokNePoint   {"!=."};
+position token TokLePoint   {"<=."};
+position token TokLtPoint   {"<."};
+position token TokGePoint   {">=."};
+position token TokGtPoint   {">."};
 position token TokMul       {"*"};
 position token TokDiv       {"/"};
 position token TokAdd       {"+"};
 position token TokSub       {"-"};
+position token TokMin       {"min"};
+position token TokMax       {"max"};
 
 position token TokNil        {"nil"};
 position token TokCons       {"::"};
 position token TokSeqOpen    {"["};
 position token TokSeqClose   {"]"};
 position token TokAt         {"!"};
-position token TokZipWith    {"zipWith"};
 position token TokMap        {"map"};
 position token TokFold       {"fold"};
-position token TokIndices    {"indices"};
+
+position token TokReduceOr  {"reduceOr"};
+position token TokReduceAnd {"reduceAnd"};
+position token TokReduceAdd {"reduceAdd"};
+position token TokReduceMul {"reduceMul"};
+position token TokReduceMin {"reduceMin"};
+position token TokReduceMax {"reduceMax"};
 
 position token TokHasLeq    {"HasLeq"};
 position token TokHasEq     {"HasEq"};
@@ -68,6 +82,7 @@ position token TokHasSub    {"HasSub"};
 position token TokHasMul    {"HasMul"};
 position token TokHasFold   {"HasFold"};
 position token TokHasMap    {"HasMap"};
+position token TokIsTensorType {"IsTensorType"};
 
 position token TokAnnNameOpt  {"name"};
 position token TokAnnInferOpt {"infer"};
@@ -84,31 +99,36 @@ Irrelevant. Modality ::= "@0";
 
 separator Modality "";
 
--- * Binders
+-- * Basic binders
 
 ExplicitBinder. BasicBinder ::= "("  [Modality] Name TokElemOf Expr1 ")";
 ImplicitBinder. BasicBinder ::= "{"  [Modality] Name TokElemOf Expr1 "}";
 InstanceBinder. BasicBinder ::= "{{" [Modality] Name TokElemOf Expr1 "}}";
 
-ExplicitNameBinder. NameBinder ::= [Modality] Name;
+-- * Binders where the user must provide a name but can omit the type
+
+ExplicitNameBinder. NameBinder ::= Name;
+-- ExplicitNameBinderMods. NameBinder ::= "(" Modality [Modality] Name ")";  -- Causes shift-reduce conflict
 ImplicitNameBinder. NameBinder ::= "{" [Modality] Name "}";
 InstanceNameBinder. NameBinder ::= "{{" [Modality] Name "}}";
 BasicNameBinder.    NameBinder ::= BasicBinder;
 
 separator NameBinder "";
 
-ExplicitTypeBinder. TypeBinder ::= Expr13;
-ImplicitTypeBinder. TypeBinder ::= "{" Expr1 "}";
-InstanceTypeBinder. TypeBinder ::= "{{" Expr1 "}}";
-BasicTypeBinder.    TypeBinder ::= BasicBinder;
+-- * Binders where the user must provide a type but can omit the name
 
--- separator TypeBinder "";
+ExplicitTypeBinder. TypeBinder ::= Expr13;
+-- ExplicitTypeBinderMods. TypeBinder ::= "(" Modality [Modality] Expr15 ")"; -- Causes a shift/reduce conflict
+ImplicitTypeBinder. TypeBinder ::= "{" [Modality] Expr1 "}";
+InstanceTypeBinder. TypeBinder ::= "{{" [Modality] Expr1 "}}";
+BasicTypeBinder.    TypeBinder ::= BasicBinder;
 
 -- * Arguments
 
-ExplicitArg. Arg ::= Expr15;
-ImplicitArg. Arg ::= "{" Expr1 "}";
-InstanceArg. Arg ::= "{{" Expr1 "}}";
+ExplicitArg.     Arg ::= Expr15;
+ExplicitArgMods. Arg ::= "(" Modality [Modality] Expr15 ")";
+ImplicitArg.     Arg ::= "{" [Modality] Expr1 "}";
+InstanceArg.     Arg ::= "{{" [Modality] Expr1 "}}";
 
 -- * Individual let declarations
 
@@ -122,7 +142,6 @@ UnitLiteral.  Lit ::= "()";
 NatLiteral.   Lit ::= Natural;
 RatLiteral.   Lit ::= Rational;
 BoolLiteral.  Lit ::= Boolean;
-
 
 -- * Expressions
 
@@ -161,40 +180,55 @@ If.      Expr4  ::= TokIf Expr5 TokThen Expr5 TokElse Expr5;
 Impl.    Expr5  ::= Expr6 TokImpl Expr5;
 And.     Expr7  ::= Expr8 TokAnd Expr7;
 Or.      Expr7  ::= Expr8 TokOr  Expr7;
-Eq.      Expr8  ::= Expr9 TokEq  Expr9;
-Neq.     Expr8  ::= Expr9 TokNeq Expr9;
-Not.     Expr11 ::= TokNot Expr11;
+Not.     Expr14 ::= TokNot Expr14;
+Eq.      Expr8  ::= Expr8 TokEq Expr9;
+Ne.      Expr8  ::= Expr8 TokNe Expr9;
+Le.      Expr8  ::= Expr8 TokLe Expr9;
+Lt.      Expr8  ::= Expr8 TokLt Expr9;
+Ge.      Expr8  ::= Expr8 TokGe Expr9;
+Gt.      Expr8  ::= Expr8 TokGt Expr9;
+EqPoint. Expr8  ::= Expr8 TokEqPoint Expr9;
+NePoint. Expr8  ::= Expr8 TokNePoint Expr9;
+LePoint. Expr8  ::= Expr8 TokLePoint Expr9;
+LtPoint. Expr8  ::= Expr8 TokLtPoint Expr9;
+GePoint. Expr8  ::= Expr8 TokGePoint Expr9;
+GtPoint. Expr8  ::= Expr8 TokGtPoint Expr9;
 
 -- Numeric expressions.
-Le.      Expr8  ::= Expr8  TokLe  Expr9;
-Lt.      Expr8  ::= Expr8  TokLt  Expr9;
-Ge.      Expr8  ::= Expr8  TokGe  Expr9;
-Gt.      Expr8  ::= Expr8  TokGt  Expr9;
 Add.     Expr9  ::= Expr9  TokAdd Expr10;
 Sub.     Expr9  ::= Expr9  TokSub Expr10;
 Mul.     Expr10 ::= Expr10 TokMul Expr11;
 Div.     Expr10 ::= Expr10 TokDiv Expr11;
 Neg.     Expr11 ::= TokSub Expr11;
+Min.     Expr15 ::= TokMin;
+Max.     Expr15 ::= TokMax;
 
 -- Lists and vectors.
-Foreach.    Expr2  ::= TokForeach NameBinder TokDot Expr2;
+Foreach.    Expr2  ::= TokForeach [NameBinder] TokDot Expr2;
 VecLiteral. Expr15 ::= TokSeqOpen [Expr] TokSeqClose;
 Nil.        Expr15 ::= TokNil;
 Cons.       Expr4  ::= Expr5 TokCons Expr4;
 At.         Expr12 ::= Expr12 TokAt Expr13;
-ZipWith.    Expr15 ::= TokZipWith;
 Map.        Expr15 ::= TokMap;
 Fold.       Expr15 ::= TokFold;
-Indices.    Expr15 ::= TokIndices;
+
+-- Tensors
+ReduceOr.   Expr15 ::= TokReduceOr;
+ReduceAnd.  Expr15 ::= TokReduceAnd;
+ReduceAdd.  Expr15 ::= TokReduceAdd;
+ReduceMul.  Expr15 ::= TokReduceMul;
+ReduceMin.  Expr15 ::= TokReduceMin;
+ReduceMax.  Expr15 ::= TokReduceMax;
 
 -- Primitive types.
 Unit.    Expr15 ::= TokUnit;
 Bool.    Expr15 ::= TokBool;
-Rat.     Expr15 ::= TokRat;
+Index.   Expr14 ::= TokIndex;
 Nat.     Expr15 ::= TokNat;
+Rat.     Expr15 ::= TokRat;
 List.    Expr14 ::= TokList;
 Vector.  Expr14 ::= TokVector;
-Index.   Expr14 ::= TokIndex;
+Tensor.  Expr14 ::= TokTensor;
 
 -- Type classes.
 HasEq.    Expr15 ::= TokHasEq;
@@ -205,6 +239,8 @@ HasSub.   Expr15 ::= TokHasSub;
 HasMul.   Expr15 ::= TokHasMul;
 HasMap.   Expr15 ::= TokHasMap;
 HasFold.  Expr15 ::= TokHasFold;
+
+IsTensorType.  Expr15 ::= TokIsTensorType;
 
 coercions Expr 15;
 separator Expr ",";

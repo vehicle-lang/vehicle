@@ -27,8 +27,8 @@ newtype SupplyT s m a = SupplyT
   }
   deriving (Functor, Applicative, Monad, MonadTrans)
 
-runSupplyT :: (Monad m) => SupplyT s m a -> [s] -> m a
-runSupplyT (SupplyT m) = evalStateT m
+runSupplyT :: (Monad m) => [s] -> SupplyT s m a -> m a
+runSupplyT xs (SupplyT m) = evalStateT m xs
 
 mapSupplyT ::
   (m (a, [s]) -> n (b, [s])) ->
@@ -38,8 +38,8 @@ mapSupplyT f m = SupplyT (mapStateT f (unsupplyT m))
 
 type Supply s a = SupplyT s Identity a
 
-runSupply :: Supply s a -> [s] -> a
-runSupply m s = runIdentity $ runSupplyT m s
+runSupply :: [s] -> Supply s a -> a
+runSupply s m = runIdentity $ runSupplyT s m
 
 instance (Monad m) => MonadSupply s (SupplyT s m) where
   demand = SupplyT $ do

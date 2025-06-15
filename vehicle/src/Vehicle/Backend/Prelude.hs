@@ -34,17 +34,23 @@ instance Pretty ITP where
 --------------------------------------------------------------------------------
 -- Different type-checking modes
 
-data TypingSystem
-  = Standard
-  | Polarity
-  | Linearity
+data SecondaryTypeSystem
+  = PolarityTypes
+  | LinearityTypes
+  | DecidabilityTypes
   deriving (Eq, Show, Bounded, Enum)
 
-instance Read TypingSystem where
+instance Pretty SecondaryTypeSystem where
+  pretty = \case
+    PolarityTypes -> "Polarity"
+    LinearityTypes -> "Linearity"
+    DecidabilityTypes -> "Decidability"
+
+instance Read SecondaryTypeSystem where
   readsPrec _d x = case x of
-    "Standard" -> [(Standard, [])]
-    "Linearity" -> [(Linearity, [])]
-    "Polarity" -> [(Polarity, [])]
+    "Linearity" -> [(PolarityTypes, [])]
+    "Polarity" -> [(LinearityTypes, [])]
+    "Decidability" -> [(DecidabilityTypes, [])]
     _ -> []
 
 --------------------------------------------------------------------------------

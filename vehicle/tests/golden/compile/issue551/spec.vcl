@@ -1,5 +1,5 @@
 @network
-f : Vector Rat 2 -> Vector Rat 1
+f : Tensor Rat [2] -> Tensor Rat [1]
 
 @property
 p : Bool

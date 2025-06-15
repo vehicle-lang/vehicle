@@ -48,13 +48,30 @@ instance Printable Prog where
   printExternal' = External.printTree . External.delab
 
 -- BNFC printer treats the braces for implicit arguments as layout braces and
--- therefore adds a ton of newlines everywhere. This hack attempts to undo this.
+-- therefore adds a ton of tree structured new-lines everywhere. This hack attempts to undo this.
 bnfcPrintHack :: String -> Text
-bnfcPrintHack =
-  Text.replace "{{ " "{{"
-    . Text.replace "{  " "{"
-    . Text.replace "\n{" " {"
-    . Text.replace "{\n" "{"
-    . Text.replace "\n}" "}"
-    . Text.replace "}\n" "} "
-    . Text.pack
+bnfcPrintHack = go removeTrailingSpace . removeNewLines . go leftAlignBrackets . Text.pack
+  where
+    go :: (Text -> Text) -> Text -> Text
+    go f t = do
+      let t' = f t
+      if t == t'
+        then t'
+        else go f t'
+
+    leftAlignBrackets :: Text -> Text
+    leftAlignBrackets =
+      Text.replace "  {" "{"
+        . Text.replace "  }" "}"
+
+    removeNewLines :: Text -> Text
+    removeNewLines =
+      Text.replace "\n{" " {"
+        . Text.replace "{\n" "{"
+        . Text.replace "\n}" "}"
+        . Text.replace "}\n" "} "
+
+    removeTrailingSpace :: Text -> Text
+    removeTrailingSpace =
+      Text.replace "{  " "{"
+        . Text.replace "}  " "}"

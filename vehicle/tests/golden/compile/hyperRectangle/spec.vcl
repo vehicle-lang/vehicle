@@ -4,9 +4,11 @@ inputSize = 30
 type InputVector = Tensor Rat [inputSize]
 --------------------------------------------------------------------------------
 -- Outputs
-type OutputVector = Vector Rat 2
+type OutputVector = Tensor Rat [2]
 type Label = Index 2
+pos : Label
 pos = 0
+neg : Label
 neg = 1
 --------------------------------------------------------------------------------
 -- Network
@@ -22,11 +24,11 @@ n : Nat
 @dataset
 inputs : Tensor Rat [n, inputSize]
 
-minList : Vector Rat n -> Rat
-minList v = fold min 0 v
+minList : Tensor Rat [n] -> Rat
+minList v = reduceMin 1 v
 
-maxList : Vector Rat n -> Rat
-maxList v = fold max 1 v
+maxList : Tensor Rat [n] -> Rat
+maxList v = reduceMax 0 v
 
 inputTranspose : Tensor Rat [inputSize, n]
 inputTranspose = foreach i . foreach j . inputs ! j ! i
@@ -42,4 +44,4 @@ hyperRectangle x = forall i . vectorMin ! i  <= x ! i <= vectorMax ! i
 
 @property
 property : Bool
-property = forall x . hyperRectangle x =>  advises x pos
+property = forall x . hyperRectangle x => advises x pos

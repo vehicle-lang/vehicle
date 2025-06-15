@@ -1,16 +1,19 @@
 module Vehicle.Compile.Dependency
-  ( analyseDependenciesAndPrune,
+  ( DependencyGraph,
+    createDependencyGraph,
+    pruneUnusedDeclarations,
+    completelyUnusedDeclarations,
   )
 where
 
 import Control.Monad (forM)
-import Control.Monad.Except (MonadError (..))
-import Control.Monad.Writer (MonadWriter (..), execWriterT)
+import Control.Monad.Writer (MonadWriter (..), execWriter)
 import Data.Foldable (traverse_)
-import Data.Graph (Graph, Vertex, dfs, graphFromEdges)
+import Data.Graph (Graph, Vertex, dfs, graphFromEdges, indegree, vertices)
 import Data.Set (Set)
-import Data.Set qualified as Set (fromList, member)
+import Data.Set qualified as Set (difference, fromList, notMember)
 import Data.Tree qualified as Tree
+import GHC.Arr ((!))
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 
@@ -27,6 +30,33 @@ data DependencyGraph = DependencyGraph
     dependenciesFromVertex :: Vertex -> Dependencies,
     vertexFromIdent :: Identifier -> Maybe Vertex
   }
+
+--------------------------------------------------------------------------------
+-- Constructing the dependency graph
+
+createDependencyGraph :: Prog builtin -> DependencyGraph
+createDependencyGraph prog = fromEdges (goProg prog)
+  where
+    goProg :: Prog builtin -> DependencyList
+    goProg (Main ds) = fmap goDecl ds
+
+    goDecl :: Decl builtin -> (Identifier, Dependencies)
+    goDecl d = (identifierOf d, execWriter (traverse_ go d))
+
+    go :: (MonadWriter [Identifier] m) => Expr builtin -> m ()
+    go = \case
+      BoundVar {} -> return ()
+      Universe {} -> return ()
+      Meta {} -> return ()
+      Hole {} -> return ()
+      Builtin {} -> return ()
+      FreeVar _ v -> do
+        tell [v]
+        return ()
+      App fun args -> do go fun; traverse_ (traverse_ go) args
+      Pi _ binder res -> do traverse_ go binder; go res
+      Lam _ binder body -> do traverse_ go binder; go body
+      Let _ bound binder body -> do go bound; traverse_ go binder; go body
 
 fromEdges :: [(Identifier, [Identifier])] -> DependencyGraph
 fromEdges outEdges = do
@@ -45,65 +75,48 @@ fromEdges outEdges = do
     }
 
 --------------------------------------------------------------------------------
--- Constructing the dependency graph
+-- Completely unused declarations
 
-constructGraph ::
-  forall m builtin.
-  (MonadLogger m) =>
-  Prog builtin ->
-  m DependencyGraph
-constructGraph prog = do
-  depsList <- goProg prog
-  return $ fromEdges depsList
-  where
-    goProg :: (MonadLogger m) => Prog builtin -> m DependencyList
-    goProg (Main ds) = traverse goDecl ds
+completelyUnusedDeclarations :: DependencyGraph -> Set Identifier
+completelyUnusedDeclarations DependencyGraph {..} = do
+  let indegrees = indegree graph
+  let unusedVertices = filter (\v -> indegrees ! v == 0) (vertices graph)
+  Set.fromList $ fmap identFromVertex unusedVertices
 
-    goDecl :: (MonadLogger m) => Decl builtin -> m (Identifier, Dependencies)
-    goDecl d = do
-      deps <- execWriterT (traverse_ go d)
-      return (identifierOf d, deps)
+--------------------------------------------------------------------------------
+-- Pruning
 
-    go :: forall m1. (MonadLogger m1, MonadWriter [Identifier] m1) => Expr builtin -> m1 ()
-    go = \case
-      BoundVar {} -> return ()
-      Universe {} -> return ()
-      Meta {} -> return ()
-      Hole {} -> return ()
-      Builtin {} -> return ()
-      FreeVar _ v -> do
-        tell [v]
-        return ()
-      App fun args -> do go fun; traverse_ (traverse_ go) args
-      Pi _ binder res -> do traverse_ go binder; go res
-      Lam _ binder body -> do traverse_ go binder; go body
-      Let _ bound binder body -> do go bound; traverse_ go binder; go body
-
-analyseDependenciesAndPrune ::
+pruneUnusedDeclarations ::
   (MonadCompile m) =>
   Prog expr ->
+  DependencyGraph ->
   DeclarationNames ->
   m (Prog expr)
-analyseDependenciesAndPrune prog declarationsToCompile = do
-  if null declarationsToCompile
-    then return prog
-    else do
-      dependencyGraph <- constructGraph prog
-      startingVertices <- forM declarationsToCompile $ \name ->
-        case vertexFromIdent dependencyGraph (Identifier (ModulePath [User]) name) of
-          Just vertex -> return vertex
-          Nothing -> throwError $ MissingPrunedName name
+pruneUnusedDeclarations prog dependencyGraph declarationsToCompile
+  | null declarationsToCompile = return prog
+  | otherwise = do
+      logCompilerPass MinDetail "Pruning unused declarations" $ do
+        startingVertices <- forM declarationsToCompile $ \name ->
+          case vertexFromIdent dependencyGraph (Identifier (ModulePath [User]) name) of
+            Just vertex -> return vertex
+            Nothing ->
+              -- This should have been caught earlier when we first prune the declarations
+              compilerDeveloperError $ "Missing requested declaration" <+> quotePretty name
 
-      let declsToKeep = reachableFrom dependencyGraph startingVertices
-      return $ pruneProg prog declsToKeep
+        let declsToPrune = notReachableFrom dependencyGraph startingVertices
+        logDebug MaxDetail $ "Pruning:" <+> indent 2 (prettySet declsToPrune)
+
+        return $ pruneProg prog declsToPrune
 
 pruneProg :: GenericProg expr -> Set Identifier -> GenericProg expr
-pruneProg (Main ds) declsToKeep = Main $ filter keepDecl ds
+pruneProg (Main ds) declsToPrune = Main $ filter keepDecl ds
   where
     keepDecl :: GenericDecl expr -> Bool
-    keepDecl d = identifierOf d `Set.member` declsToKeep
+    keepDecl d = identifierOf d `Set.notMember` declsToPrune
 
-reachableFrom :: DependencyGraph -> [Vertex] -> Set Identifier
-reachableFrom DependencyGraph {..} origin = do
+notReachableFrom :: DependencyGraph -> [Vertex] -> Set Identifier
+notReachableFrom DependencyGraph {..} origin = do
   let forest = dfs graph origin
-  Set.fromList $ concatMap (fmap identFromVertex . Tree.flatten) forest
+  let reachableIdents = Set.fromList $ concatMap (fmap identFromVertex . Tree.flatten) forest
+  let allIdents = Set.fromList $ fmap identFromVertex (vertices graph)
+  Set.difference allIdents reachableIdents

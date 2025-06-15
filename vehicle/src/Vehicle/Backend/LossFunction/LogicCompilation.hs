@@ -19,20 +19,23 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE (eval)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyFriendlyEmptyCtx)
-import Vehicle.Data.Builtin.Core (BoolTensorBuiltin (..), Builtin, BuiltinFunction (..))
-import Vehicle.Data.Builtin.Loss
-import Vehicle.Data.Builtin.Tensor (TensorBuiltin (..))
+import Vehicle.Data.Builtin.Core (Builtin)
+import Vehicle.Data.Builtin.Loss (LossBuiltin)
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.Code.Interface
-import Vehicle.Data.Code.Value (Closure (..), Value (..), boundContextToEnv, pattern VBuiltinFunction)
+import Vehicle.Data.Code.Value (Closure (..), Value (..), boundContextToEnv)
 import Vehicle.Data.DSL
+import Vehicle.Data.Tensor (pattern ZeroDimTensor)
 import Vehicle.Syntax.Builtin
   ( AddDomain (..),
+    Builtin (..),
+    BuiltinConstructor (..),
+    BuiltinFunction (..),
     DivDomain (..),
-    EqualityDomain (..),
+    MaxDomain (..),
+    MinDomain (..),
     MulDomain (..),
     NegDomain (..),
-    OrderDomain (..),
     SubDomain (..),
   )
 
@@ -69,17 +72,17 @@ compileLogicField ::
   (MonadCompile m) =>
   DifferentiableLogicID ->
   DifferentialLogicDSL ->
-  Map TensorDifferentiableLogicField (Value LossTensorBuiltin) ->
+  Map TensorDifferentiableLogicField (Value LossBuiltin) ->
   TensorDifferentiableLogicField ->
-  m (Map TensorDifferentiableLogicField (Value LossTensorBuiltin))
+  m (Map TensorDifferentiableLogicField (Value LossBuiltin))
 compileLogicField logicID dsl impl field =
   logCompilerSection MaxDetail ("compiling tensor-field" <+> quotePretty field) $ do
     let tensorExprFn = case field of
-          TruthityElement -> compileBool Truthity
-          FalsityElement -> compileBool Falsity
+          TruthityElement -> compileBoolLiteral Truthity
+          FalsityElement -> compileBoolLiteral Falsity
+          PointwiseNegation -> liftOp1 Negation
           PointwiseConjunction -> liftOp2 Conjunction
           PointwiseDisjunction -> liftOp2 Disjunction
-          PointwiseNegation -> liftOp1 Negation
           PointwiseLe -> liftOp2 LessEqual
           PointwiseLt -> liftOp2 LessThan
           PointwiseGe -> liftOp2 GreaterEqual
@@ -106,23 +109,23 @@ type MonadCompileField m =
     MonadReader (DifferentiableLogicID, TensorDifferentiableLogicField) m
   )
 
-compileBool ::
+compileBoolLiteral ::
   (MonadCompileField m) =>
   BooleanDifferentiableLogicField ->
   DifferentialLogicDSL ->
-  m (Expr TensorBuiltin)
-compileBool field dsl = do
+  m (Expr Builtin)
+compileBoolLiteral field dsl = do
   let expr = lookupLogicField field dsl
   value <- eval mempty mempty expr
   case value :: Value Builtin of
-    IRatLiteral _ l -> return $ IRatTensorOp (RatLiteral l) []
-    _ -> developerError $ "Expecting arity 1 function for" <+> pretty field <> "but found" <+> prettyFriendlyEmptyCtx value
+    IRatLiteral l -> return $ Builtin mempty (BuiltinConstructor (RatTensorLiteral (ZeroDimTensor l)))
+    _ -> developerError "Boolean literals must currently be converted to Rat literals"
 
 liftOp1 ::
   (MonadCompileField m) =>
   BooleanDifferentiableLogicField ->
   DifferentialLogicDSL ->
-  m (Expr TensorBuiltin)
+  m (Expr Builtin)
 liftOp1 field dsl = do
   liftedOp1 <- extractOp1Body dsl field liftOp1Body
   return $
@@ -135,7 +138,7 @@ liftOp2 ::
   (MonadCompileField m) =>
   BooleanDifferentiableLogicField ->
   DifferentialLogicDSL ->
-  m (Expr TensorBuiltin)
+  m (Expr Builtin)
 liftOp2 field dsl = do
   liftedOp2 <- extractOp2Body dsl field liftOp2Body
   return $
@@ -149,7 +152,7 @@ reduceOp2 ::
   (MonadCompileField m) =>
   BooleanDifferentiableLogicField ->
   DifferentialLogicDSL ->
-  m (Expr TensorBuiltin)
+  m (Expr Builtin)
 reduceOp2 field dsl = do
   reducedOp <- extractOp2Body dsl field reduceOp2Body
   return $
@@ -191,11 +194,11 @@ runBodyExtraction ::
   m a
 runBodyExtraction originalFn process ctx body = do
   bodyValue <- eval mempty (boundContextToEnv ctx) body
-  resultOrError <- runExceptT $ runNameContextT ctx $ process bodyValue
+  let nameCtx = toNamedBoundCtx ctx
+  resultOrError <- runExceptT $ runNameContextT nameCtx $ process bodyValue
   case resultOrError of
     Right result -> return result
     Left blockedExpr -> do
-      let nameCtx = toNamedBoundCtx ctx
       (logicID, tensorField) <- ask
       throwError $ UnableToLiftLogicFieldToTensors logicID tensorField originalFn nameCtx blockedExpr
 
@@ -203,67 +206,79 @@ runBodyExtraction originalFn process ctx body = do
 -- Compilation of logic field bodies
 --------------------------------------------------------------------------------
 
-liftOp :: BuiltinFunction -> Maybe TensorBuiltin
-liftOp = \case
-  Not -> Just $ TensorBool NotBoolTensor
-  And -> Just $ TensorBool AndBoolTensor
-  Or -> Just $ TensorBool OrBoolTensor
-  Neg NegRat -> Just $ TensorRat NegRatTensor
-  Add AddRat -> Just $ TensorRat AddRatTensor
-  Sub SubRat -> Just $ TensorRat SubRatTensor
-  Mul MulRat -> Just $ TensorRat MulRatTensor
-  Div DivRat -> Just $ TensorRat DivRatTensor
-  MinRat -> Just $ TensorRat MinRatTensor
-  MaxRat -> Just $ TensorRat MaxRatTensor
-  Equals EqRat op -> Just $ TensorBool $ EqualsRatTensor op
-  Order OrderRat op -> Just $ TensorBool $ OrderRatTensor op
-  Implies -> Nothing
-  Quantifier {} -> Nothing
-  If -> Nothing
-  FromNat {} -> Nothing
-  FromRat {} -> Nothing
-  Add _ -> Nothing
-  Mul _ -> Nothing
-  PowRat -> Nothing
-  Equals _ _ -> Nothing
-  Order _ _ -> Nothing
-  At -> Nothing
-  FoldList -> Nothing
-  FoldVector -> Nothing
-  MapList -> Nothing
-  MapVector -> Nothing
-  ZipWithVector -> Nothing
-  Indices -> Nothing
+isLiftableOp :: BuiltinFunction -> Bool
+isLiftableOp = \case
+  Not -> True
+  And -> True
+  Or -> True
+  Neg NegRatTensor -> True
+  Add AddRatTensor -> True
+  Sub SubRatTensor -> True
+  Mul MulRatTensor -> True
+  Div DivRatTensor -> True
+  Min MinRatTensor -> True
+  Max MaxRatTensor -> True
+  CompareRatTensorPointwise _ -> True
+  Implies -> False
+  QuantifyRatTensor {} -> False
+  If -> False
+  Add {} -> False
+  Mul {} -> False
+  PowRat -> False
+  CompareNat {} -> False
+  CompareIndex {} -> False
+  AtTensor -> False
+  AtVector -> False
+  FoldList -> False
+  MapList -> False
+  ReduceAndTensor -> False
+  ReduceOrTensor -> False
+  ReduceAddRatTensor -> False
+  ReduceMulRatTensor -> False
+  ReduceMinRatTensor -> False
+  ReduceMaxRatTensor -> False
+  StackTensor {} -> False
+  ConstTensor -> False
+  ForeachTensor -> False
+  ForeachVector -> False
+  Iterate -> False
 
-reduceOp :: BuiltinFunction -> Maybe TensorBuiltin
+reduceOp :: BuiltinFunction -> Maybe BuiltinFunction
 reduceOp = \case
+  And -> Just ReduceAndTensor
+  Or -> Just ReduceOrTensor
+  Add AddRatTensor -> Just ReduceAddRatTensor
+  Mul MulRatTensor -> Just ReduceMulRatTensor
+  Min MinRatTensor -> Just ReduceMinRatTensor
+  Max MaxRatTensor -> Just ReduceMaxRatTensor
   Not -> Nothing
-  And -> Just $ TensorBool ReduceAndTensor
-  Or -> Just $ TensorBool ReduceOrTensor
-  Add AddRat -> Just $ TensorRat ReduceAddRatTensor
-  Mul MulRat -> Just $ TensorRat ReduceMulRatTensor
-  MinRat -> Just $ TensorRat ReduceMinRatTensor
-  MaxRat -> Just $ TensorRat ReduceMaxRatTensor
-  Equals {} -> Nothing
-  Order {} -> Nothing
-  Neg NegRat -> Nothing
-  Sub SubRat -> Nothing
-  Div DivRat -> Nothing
+  CompareRatTensorPointwise {} -> Nothing
+  CompareNat {} -> Nothing
+  CompareIndex {} -> Nothing
+  Neg NegRatTensor -> Nothing
+  Sub SubRatTensor -> Nothing
+  Div DivRatTensor -> Nothing
   Implies -> Nothing
-  Quantifier {} -> Nothing
+  QuantifyRatTensor {} -> Nothing
   If -> Nothing
-  FromNat {} -> Nothing
-  FromRat {} -> Nothing
   Add _ -> Nothing
   Mul _ -> Nothing
   PowRat -> Nothing
-  At -> Nothing
+  AtVector -> Nothing
+  AtTensor -> Nothing
   FoldList -> Nothing
-  FoldVector -> Nothing
   MapList -> Nothing
-  MapVector -> Nothing
-  ZipWithVector -> Nothing
-  Indices -> Nothing
+  ReduceAndTensor -> Nothing
+  ReduceOrTensor -> Nothing
+  ReduceAddRatTensor -> Nothing
+  ReduceMulRatTensor -> Nothing
+  ReduceMinRatTensor -> Nothing
+  ReduceMaxRatTensor -> Nothing
+  StackTensor {} -> Nothing
+  ConstTensor -> Nothing
+  ForeachTensor -> Nothing
+  ForeachVector -> Nothing
+  Iterate -> Nothing
 
 type MonadCompileBody m =
   ( MonadLogger m,
@@ -274,49 +289,49 @@ type MonadCompileBody m =
 liftOp1Body ::
   (MonadCompileBody m) =>
   Value Builtin ->
-  m (DSLExpr TensorBuiltin -> DSLExpr TensorBuiltin -> DSLExpr TensorBuiltin)
+  m (DSLExpr Builtin -> DSLExpr Builtin -> DSLExpr Builtin)
 liftOp1Body = convertHigherOrderFunction "liftOp1" $ \case
-  VBuiltinFunction (liftOp -> Just liftedOp) [argExpr -> e] -> do
+  VBuiltin (BuiltinFunction op) [_ds, argExpr -> e] | isLiftableOp op -> do
     e' <- liftOp1Body e
-    return $ \dims xs -> builtin liftedOp .@@@ [dims] @@ [e' dims xs]
-  VBuiltinFunction (liftOp -> Just liftedOp) [argExpr -> e1, argExpr -> e2] -> do
+    return $ \dims xs -> builtinFunction op .@@@ [dims] @@ [e' dims xs]
+  VBuiltin (BuiltinFunction op) [_ds, argExpr -> e1, argExpr -> e2] | isLiftableOp op -> do
     e1' <- liftOp1Body e1
     e2' <- liftOp1Body e2
-    return $ \dims xs -> builtin liftedOp .@@@ [dims] @@ [e1' dims xs, e2' dims xs]
+    return $ \dims xs -> builtinFunction op .@@@ [dims] @@ [e1' dims xs, e2' dims xs]
   VBoundVar v [] | v == 0 ->
     return $ \_dim xs -> xs
-  IRatLiteral _ r ->
-    return $ \dims _xs -> constTensor tRatElemType (ratTensorBuiltin (RatLiteral r)) dims
+  IRatLiteral r ->
+    return $ \dims _xs -> constTensor tRat (ratLit r) dims
   blockedExpr ->
     throwError blockedExpr
 
 liftOp2Body ::
   (MonadCompileBody m) =>
   Value Builtin ->
-  m (DSLExpr TensorBuiltin -> DSLExpr TensorBuiltin -> DSLExpr TensorBuiltin -> DSLExpr TensorBuiltin)
+  m (DSLExpr Builtin -> DSLExpr Builtin -> DSLExpr Builtin -> DSLExpr Builtin)
 liftOp2Body = convertHigherOrderFunction "liftOp2" $ \case
-  VBuiltinFunction (liftOp -> Just liftedOp) [argExpr -> e] -> do
+  VBuiltin (BuiltinFunction op) [_ds, argExpr -> e] | isLiftableOp op -> do
     e' <- liftOp2Body e
-    return $ \dims xs ys -> builtin liftedOp .@@@ [dims] @@ [e' dims xs ys]
-  VBuiltinFunction (liftOp -> Just liftedOp) [argExpr -> e1, argExpr -> e2] -> do
+    return $ \dims xs ys -> builtinFunction op .@@@ [dims] @@ [e' dims xs ys]
+  VBuiltin (BuiltinFunction op) [_ds, argExpr -> e1, argExpr -> e2] | isLiftableOp op -> do
     e1' <- liftOp2Body e1
     e2' <- liftOp2Body e2
-    return $ \dims xs ys -> builtin liftedOp .@@@ [dims] @@ [e1' dims xs ys, e2' dims xs ys]
+    return $ \dims xs ys -> builtinFunction op .@@@ [dims] @@ [e1' dims xs ys, e2' dims xs ys]
   VBoundVar lv []
     | lv == 0 -> return $ \_dims xs _ys -> xs
     | lv == 1 -> return $ \_dims _xs ys -> ys
-  IRatLiteral _ r ->
-    return $ \dims _xs _ys -> constTensor tRatElemType (ratTensorBuiltin (RatLiteral r)) dims
+  IRatLiteral r ->
+    return $ \dims _xs _ys -> constTensor tRat (ratLit r) dims
   blockedExpr ->
     throwError blockedExpr
 
 reduceOp2Body ::
   (MonadCompileBody m) =>
   Value Builtin ->
-  m (DSLExpr TensorBuiltin -> DSLExpr TensorBuiltin -> DSLExpr TensorBuiltin)
+  m (DSLExpr Builtin -> DSLExpr Builtin -> DSLExpr Builtin)
 reduceOp2Body = convertHigherOrderFunction "reduction" $ \case
-  VBuiltinFunction (reduceOp -> Just reducedOp) [argExpr -> VBoundVar 0 [], argExpr -> VBoundVar 1 []] ->
-    return $ \dims xs -> builtin reducedOp .@@@ [dims] @@ [xs]
+  VBuiltin (BuiltinFunction (reduceOp -> Just reducedOp)) [argExpr -> VBoundVar 0 [], argExpr -> VBoundVar 1 []] ->
+    return $ \dims xs -> builtinFunction reducedOp .@@@ [dims] @@ [xs]
   blockedExpr -> throwError blockedExpr
 
 convertHigherOrderFunction ::

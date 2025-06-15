@@ -41,12 +41,11 @@ import System.Process (readProcessWithExitCode)
 import System.ProgressBar
 import System.Random
 import Vehicle.Backend.Agda.Interact (writeResultToFile)
-import Vehicle.Backend.Queries.UserVariableElimination.Core (getQueryVariables)
 import Vehicle.Backend.Queries.UserVariableElimination.VariableReconstruction (reconstructUserVars)
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.QuantifiedVariable (UserVariableAssignment (..))
-import Vehicle.Data.Tensor (Tensor (..))
+import Vehicle.Data.Tensor as Tensor (HasShape (..), toVector)
 import Vehicle.Prelude.IO qualified as VIO (MonadStdIO (writeStdoutLn))
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat
@@ -442,7 +441,7 @@ verifyQuery ::
   (MonadVerifyProperty m) =>
   QueryMetaData ->
   m (QueryResult UserVariableAssignment)
-verifyQuery queryMetaData@(QueryMetaData queryAddress metaNetwork reconstruction) = do
+verifyQuery queryMetaData@(QueryMetaData queryAddress metaNetwork variables reconstruction) = do
   logCompilerSection MidDetail ("Verifying query" <+> quotePretty queryAddress) $ do
     (verifierSettings, verificationCache, progressBar) <- ask
     let queryFile = calculateQueryFileName verificationCache queryAddress
@@ -457,8 +456,8 @@ verifyQuery queryMetaData@(QueryMetaData queryAddress metaNetwork reconstruction
           return $ SAT Nothing
         SAT (Just witness) -> do
           logDebug MidDetail $ "Query is SAT (witness provided)" <> line
-          checkWitness (getQueryVariables reconstruction) witness
-          problemSpaceWitness <- reconstructUserVars reconstruction witness
+          checkWitness (getQueryVariables variables) witness
+          problemSpaceWitness <- reconstructUserVars variables reconstruction witness
           return $ SAT $ Just problemSpaceWitness
         UnSAT -> do
           logDebug MidDetail $ "Query is UnSAT" <> line
@@ -610,11 +609,11 @@ outputPropertyResult verifierSettings verificationCache address result = do
         -- Output assignments to file
         let witnessFolder = verificationCache </> layoutAsString (pretty address) <> "-assignments"
         liftIO $ createDirectoryIfMissing True witnessFolder
-        forM_ assignments $ \(var, Tensor varDims value) -> do
+        forM_ assignments $ \(var, tensor) -> do
           let file = witnessFolder </> show var
-          let dims = Vector.fromList varDims
+          let dims = Vector.fromList (shapeOf tensor)
           -- TODO got to be a better way to do this conversion...
-          let unboxedVector = Vector.fromList $ BoxedVector.toList (fmap realToFrac value)
+          let unboxedVector = Vector.fromList $ BoxedVector.toList (fmap realToFrac (Tensor.toVector tensor))
           let idxData = IDXDoubles IDXDouble dims unboxedVector
           liftIO $ encodeIDXFile idxData file
       _ -> return ()

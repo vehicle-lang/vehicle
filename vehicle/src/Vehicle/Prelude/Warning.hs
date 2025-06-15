@@ -11,11 +11,7 @@ import Data.Map (Map)
 import Data.Map qualified as Map (insertWith, singleton, toList, unionWith)
 import Data.Set (Set)
 import Data.Tuple (swap)
-import Vehicle.Compile.Context.Bound.Core
 import Vehicle.Data.Assertion
-import Vehicle.Data.Builtin.Core
-import Vehicle.Data.Builtin.Tensor
-import Vehicle.Data.Code.Value
 import Vehicle.Data.Tensor (TensorIndices)
 import Vehicle.Prelude (Name)
 import Vehicle.Resource (ExternalResource)
@@ -51,12 +47,11 @@ data CombiningState = CombiningState
     underSpecifiedProblemSpaceVars :: Map (PropertyID, PropertyName) (NonEmpty (Name, TensorIndices)),
     unsoundStrictnessConversions :: Map (QueryFormatID, PropertyID, PropertyName) Int,
     allConstantNetworkInputVars :: Map (QueryFormatID, PropertyID, PropertyName) (NonEmpty (QueryID, TensorIndices)),
-    unboundedNetworkInputs :: Map (QueryFormatID, PropertyID, PropertyName) (Map UnderConstrainedSignature (NonEmpty QueryID)),
-    inefficientTensorCode :: Map Name [(Builtin, NamedBoundCtx, Value TensorBuiltin)]
+    unboundedNetworkInputs :: Map (QueryFormatID, PropertyID, PropertyName) (Map UnderConstrainedSignature (NonEmpty QueryID))
   }
 
 emptyState :: CombiningState
-emptyState = CombiningState mempty mempty mempty mempty mempty mempty
+emptyState = CombiningState mempty mempty mempty mempty mempty
 
 addWarningToState :: CombiningState -> CompileWarning -> CombiningState
 addWarningToState CombiningState {..} = \case

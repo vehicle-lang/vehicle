@@ -13,6 +13,7 @@ import Vehicle.Compile.Print
 import Vehicle.Compile.Resource
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.Interface
+import Vehicle.Data.Code.TypedView (DimensionsValue (..), TypeValue (..), toDimensionsValue, toTypeValue)
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Tensor (TensorShape)
 import Vehicle.Verify.Core (NetworkContextInfo (..))
@@ -46,34 +47,29 @@ getNetworkType decl networkType = case normalised networkType of
   VPi binder closure
     | visibilityOf binder /= Explicit -> typingError
     | otherwise -> do
-        inputDetails <- getTensorType Input (typeOf binder)
+        inputDetails <- tensorType Input (typeOf binder)
         resultType <- normaliseClosure 0 binder closure
-        outputDetails <- getTensorType Output resultType
+        outputDetails <- tensorType Output resultType
         let networkDetails = NetworkType inputDetails outputDetails
         return networkDetails
   _ -> compilerDeveloperError "Should have caught the fact that the network type is not a function during type-checking"
   where
-    getTensorType :: InputOrOutput -> VType Builtin -> m NetworkTensorType
-    getTensorType io tensorType = do
-      (baseType, dims) <- go True tensorType
-      return $ NetworkTensorType baseType dims
-      where
-        go :: Bool -> VType Builtin -> m (NetworkBaseType, TensorShape)
-        go topLevel = \case
-          IVectorType _ tElem dim -> do
-            d <- getTensorDimension io dim
-            (baseType, ds) <- go False tElem
-            return (baseType, d : ds)
-          t ->
-            if topLevel
-              then typingError
-              else do
-                elemType <- getElementType t
-                return (elemType, [])
+    tensorType :: InputOrOutput -> VType Builtin -> m NetworkTensorType
+    tensorType io t = case toTypeValue t of
+      VRatTensorType dims -> do
+        shape <- tensorDimensions io dims
+        return $ NetworkTensorType NetworkRatType shape
+      _ -> typingError
 
-    getTensorDimension :: InputOrOutput -> VType Builtin -> m Int
-    getTensorDimension io dim = case dim of
-      INatLiteral _ n -> return n
+    tensorDimensions :: InputOrOutput -> VType Builtin -> m TensorShape
+    tensorDimensions io dims = case toDimensionsValue dims of
+      VDimsNil -> return []
+      VDimsCons d ds -> (:) <$> tensorDimension io d <*> tensorDimensions io ds
+      _ -> throwError $ NetworkTypeHasVariableSizeTensor decl networkType dims io
+
+    tensorDimension :: InputOrOutput -> VType Builtin -> m Int
+    tensorDimension io dim = case dim of
+      INatLiteral n -> return n
       VFreeVar varIdent _ -> do
         implicitParameters <- getInferableParameterContext
         case Map.lookup varIdent implicitParameters of
@@ -83,13 +79,8 @@ getNetworkType decl networkType = case normalised networkType of
             explicitParameters <- getExplicitParameterContext
             case Map.lookup varIdent explicitParameters of
               Nothing -> throwError $ NetworkTypeHasVariableSizeTensor decl networkType dim io
-              Just value -> getTensorDimension io value
+              Just value -> tensorDimension io value
       _ -> throwError $ NetworkTypeHasVariableSizeTensor decl networkType dim io
-
-    getElementType :: VType Builtin -> m NetworkBaseType
-    getElementType = \case
-      IRatType {} -> return NetworkRatType
-      _ -> typingError
 
     typingError :: m a
     typingError =

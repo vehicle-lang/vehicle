@@ -7,54 +7,49 @@
         "queries": {
           "unDisjunctAll": [
             {
-              "variableReconstruction": {
-                "variableStore": [
-                  [
-                    0,
-                    "f₀[input]",
-                    null
-                  ],
-                  [
-                    1,
-                    "f₀[input]!0",
-                    "x0"
-                  ],
-                  [
-                    2,
-                    "f₀[output]",
-                    null
-                  ],
-                  [
-                    3,
-                    "f₀[output]!0",
-                    "y0"
-                  ]
+              "variableStore": {
+                "vehicleVariableCtx": [
+                  "f₀[output]!0",
+                  "f₀[output]",
+                  "f₀[input]!0",
+                  "f₀[input]"
                 ],
+                "userVariables": [],
+                "queryVariableMapping": {
+                  "y0": 3,
+                  "x0": 1
+                }
+              },
+              "variableCompilationTrace": {
                 "reconstructionSteps": [
                   {
-                    "tag": "ReconstructTensor",
+                    "tag": "ReconstructTensorVariable",
                     "contents": [
-                      "OtherVariable",
-                      [
-                        1
-                      ],
                       0,
-                      [
-                        1
-                      ]
+                      {
+                        "tag": "ConstantTensor",
+                        "contents": [
+                          [
+                            1
+                          ],
+                          1
+                        ]
+                      }
                     ]
                   },
                   {
-                    "tag": "ReconstructTensor",
+                    "tag": "ReconstructTensorVariable",
                     "contents": [
-                      "OtherVariable",
-                      [
-                        1
-                      ],
                       2,
-                      [
-                        3
-                      ]
+                      {
+                        "tag": "ConstantTensor",
+                        "contents": [
+                          [
+                            1
+                          ],
+                          3
+                        ]
+                      }
                     ]
                   }
                 ]

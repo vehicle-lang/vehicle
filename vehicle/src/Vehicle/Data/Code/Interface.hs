@@ -1,14 +1,38 @@
 module Vehicle.Data.Code.Interface where
 
-import Vehicle.Data.Builtin.Core
+import Control.Monad.Except (MonadError (..))
+import Data.Hashable (Hashable)
+import GHC.Generics (Generic)
+import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Tensor
-import Vehicle.Libraries.StandardLibrary.Definitions
 import Vehicle.Prelude
-import Prelude hiding (pi)
+import Vehicle.Syntax.Builtin.BasicOperations
 
 --------------------------------------------------------------------------------
 -- Interface to standard builtins
 --------------------------------------------------------------------------------
+
+class HasBuiltinConstructor expr where
+  accessBuiltinC :: Accessor (expr builtin) (builtin, [GenericArg (expr builtin)])
+
+mkBuiltin ::
+  (HasBuiltinConstructor expr) =>
+  Accessor builtin a ->
+  a ->
+  [GenericArg (expr builtin)] ->
+  expr builtin
+mkBuiltin accessBuiltin v args = mkExpr accessBuiltinC (mkExpr accessBuiltin v, args)
+
+getBuiltin ::
+  (HasBuiltinConstructor expr) =>
+  Accessor builtin a ->
+  expr builtin ->
+  Maybe (a, [GenericArg (expr builtin)])
+getBuiltin accessBuiltin e = case getExpr accessBuiltinC e of
+  Just (b, args) -> case getExpr accessBuiltin b of
+    Just v -> Just (v, args)
+    _ -> Nothing
+  _ -> Nothing
 
 -- At various points in the compiler, we have different sets of builtins (e.g.
 -- first time we type-check we use the standard set of builtins + type +
@@ -19,626 +43,721 @@ import Prelude hiding (pi)
 -- of builtins being used, and therefore allows us to define operations
 -- (e.g. normalisation) once, rather than once for each builtin type.
 
+class IsArgs args where
+  accessSpine :: Accessor [GenericArg expr] (args expr)
+
+-- | Arguments for simple unary operations (fromRatToRat etc.)
+newtype Op1Args expr = Op1Args
+  { op1Arg :: expr
+  }
+
+instance IsArgs Op1Args where
+  accessSpine =
+    Access
+      { getExpr = \case
+          [x] -> Just $ Op1Args (argExpr x)
+          _ -> Nothing,
+        mkExpr = \(Op1Args x) -> explicit <$> [x]
+      }
+
+-- | Arguments for simple binary operations (==, <= etc.)
+data Op2Args expr = Op2Args
+  { op2Arg1 :: expr,
+    op2Arg2 :: expr
+  }
+
+instance IsArgs Op2Args where
+  accessSpine =
+    Access
+      { getExpr = \case
+          [x, y] -> Just $ Op2Args (argExpr x) (argExpr y)
+          _ -> Nothing,
+        mkExpr = \(Op2Args x y) -> explicit <$> [x, y]
+      }
+
+-- | Arguments for comparisons (==, <= etc.) over Index
+data IndexComparisonArgs expr = IndexCompArgs
+  { indexCompSize1 :: GenericArg expr,
+    indexCompSize2 :: GenericArg expr,
+    indexCompArg1 :: expr,
+    indexCompArg2 :: expr
+  }
+
+instance IsArgs IndexComparisonArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          [n1, n2, x, y] -> Just $ IndexCompArgs n1 n2 (argExpr x) (argExpr y)
+          _ -> Nothing,
+        mkExpr = \(IndexCompArgs n1 n2 x y) -> [n1, n2, explicit x, explicit y]
+      }
+
+-- | Arguments for vector op operations
+data VectorOp1Args expr = VectorOp1Args
+  { vectorOp1Dim :: GenericArg expr,
+    vectorOp1Arg :: expr
+  }
+
+instance IsArgs VectorOp1Args where
+  accessSpine =
+    Access
+      { getExpr = \case
+          [d, x] -> Just $ VectorOp1Args d (argExpr x)
+          _ -> Nothing,
+        mkExpr = \(VectorOp1Args d x) -> [d, explicit x]
+      }
+
+-- | Arguments for unary tensor operations (e.g. -, not)
+data TensorOp1Args expr = TensorOp1Args
+  { tensorOp1Dims :: GenericArg expr,
+    tensorOp1Arg :: expr
+  }
+
+instance IsArgs TensorOp1Args where
+  accessSpine =
+    Access
+      { getExpr = \case
+          [ds, x] -> Just $ TensorOp1Args ds (argExpr x)
+          _ -> Nothing,
+        mkExpr = \(TensorOp1Args ds x) -> [ds, explicit x]
+      }
+
+-- | Arguments for binary tensor operations (e.g. +, -)
+data TensorOp2Args expr = TensorOp2Args
+  { tensorOp2Dims :: GenericArg expr,
+    tensorOp2Arg1 :: expr,
+    tensorOp2Arg2 :: expr
+  }
+
+instance IsArgs TensorOp2Args where
+  accessSpine =
+    Access
+      { getExpr = \case
+          [ds, x, y] -> Just $ TensorOp2Args ds (argExpr x) (argExpr y)
+          _ -> Nothing,
+        mkExpr = \(TensorOp2Args ds x y) -> [ds, explicit x, explicit y]
+      }
+
+traverseTensorOp2Args :: (Applicative f) => (t -> f t) -> TensorOp2Args t -> f (TensorOp2Args t)
+traverseTensorOp2Args f (TensorOp2Args ds xs ys) = TensorOp2Args ds <$> f xs <*> f ys
+
+-- | Arguments for if
+data IfArgs expr = IfArgs
+  { ifType :: GenericArg expr,
+    ifCond :: expr,
+    ifArg1 :: expr,
+    ifArg2 :: expr
+  }
+
+instance IsArgs IfArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          [t, c, x, y] -> Just $ IfArgs t (argExpr c) (argExpr x) (argExpr y)
+          _ -> Nothing,
+        mkExpr = \(IfArgs t c x y) -> [t, explicit c, explicit x, explicit y]
+      }
+
+traverseIfArgBranches :: (Applicative f) => (t -> f t) -> IfArgs t -> f (IfArgs t)
+traverseIfArgBranches f (IfArgs t c x y) = IfArgs t c <$> f x <*> f y
+
+data VecLitArgs expr = VecLitArgs
+  { vecLitType :: GenericArg expr,
+    vecLitDim :: expr,
+    vecLitElements :: [expr]
+  }
+
+instance IsArgs VecLitArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          t : d : xs -> Just $ VecLitArgs t (argExpr d) (fmap argExpr xs)
+          _ -> Nothing,
+        mkExpr = \(VecLitArgs t d xs) -> t : implicitIrrelevant d : fmap explicit xs
+      }
+
+-- | Arguments for `!`
+data AtVectorArgs expr = AtVectorArgs
+  { atType :: GenericArg expr,
+    atDim :: GenericArg expr,
+    atVector :: expr,
+    atIndex :: expr
+  }
+
+instance IsArgs AtVectorArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          [t, d, xs, i] -> Just $ AtVectorArgs t d (argExpr xs) (argExpr i)
+          _ -> Nothing,
+        mkExpr = \(AtVectorArgs t d xs i) -> [t, d, explicit xs, explicit i]
+      }
+
+-- | Arguments for `!`
+data AtTensorArgs expr = AtTensorArgs
+  { atType :: GenericArg expr,
+    atFirstDim :: GenericArg expr,
+    atRemainingDims :: GenericArg expr,
+    atTensor :: expr,
+    atIndex :: expr
+  }
+
+instance IsArgs AtTensorArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          [t, d, ds, xs, i] -> Just $ AtTensorArgs t d ds (argExpr xs) (argExpr i)
+          _ -> Nothing,
+        mkExpr = \(AtTensorArgs t d ds xs i) -> [t, d, ds, explicit xs, explicit i]
+      }
+
+-- | Arguments for `ConstTensor`
+data ConstTensorArgs expr = ConstTensorArgs
+  { constType :: GenericArg expr,
+    constValue :: expr,
+    constDims :: expr
+  }
+
+instance IsArgs ConstTensorArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          [t, v, ds] -> Just $ ConstTensorArgs t (argExpr v) (argExpr ds)
+          _ -> Nothing,
+        mkExpr = \(ConstTensorArgs t v ds) -> [t, explicit v, explicit ds]
+      }
+
+mapConstTensorValue :: (expr -> expr) -> ConstTensorArgs expr -> ConstTensorArgs expr
+mapConstTensorValue f ConstTensorArgs {..} = ConstTensorArgs {constValue = f constValue, ..}
+
+traverseConstTensorValue :: (Monad m) => (expr -> m expr) -> ConstTensorArgs expr -> m (ConstTensorArgs expr)
+traverseConstTensorValue f ConstTensorArgs {..} = do
+  constValue' <- f constValue
+  return $ ConstTensorArgs {constValue = constValue', ..}
+
+-- | Arguments for `StackTensor`
+data StackTensorArgs expr = StackTensorArgs
+  { stackType :: GenericArg expr,
+    stackFirstDim :: expr,
+    stackRemainingDims :: GenericArg expr,
+    stackElements :: [expr]
+  }
+
+instance IsArgs StackTensorArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          t : d : ds : xs -> Just $ StackTensorArgs t (argExpr d) ds (fmap argExpr xs)
+          _ -> Nothing,
+        mkExpr = \(StackTensorArgs t d ds xs) -> t : implicit d : ds : fmap explicit xs
+      }
+
+mapStackTensorElements :: (expr -> expr) -> StackTensorArgs expr -> StackTensorArgs expr
+mapStackTensorElements f StackTensorArgs {..} = StackTensorArgs {stackElements = fmap f stackElements, ..}
+
+traverseStackTensorElements :: (Monad m) => (expr -> m expr) -> StackTensorArgs expr -> m (StackTensorArgs expr)
+traverseStackTensorElements f StackTensorArgs {..} = do
+  stackElements' <- traverse f stackElements
+  return $ StackTensorArgs {stackElements = stackElements', ..}
+
+-- | Arguments for `ForeachTensor`
+data ForeachTensorArgs expr = ForeachTensorArgs
+  { foreachTensorType :: GenericArg expr,
+    foreachTensorFirstDim :: expr,
+    foreachTensorRemainingDims :: GenericArg expr,
+    foreachTensorFn :: expr
+  }
+
+instance IsArgs ForeachTensorArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          [t, d, ds, fn] -> Just $ ForeachTensorArgs t (argExpr d) ds (argExpr fn)
+          _ -> Nothing,
+        mkExpr = \(ForeachTensorArgs t d ds fn) -> [t, implicit d, ds, explicit fn]
+      }
+
+-- | Arguments for `ForeachVector`
+data ForeachVectorArgs expr = ForeachVectorArgs
+  { foreachVectorType :: GenericArg expr,
+    foreachVectorDim :: expr,
+    foreachVectorFn :: expr
+  }
+
+instance IsArgs ForeachVectorArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          [t, d, fn] -> Just $ ForeachVectorArgs t (argExpr d) (argExpr fn)
+          _ -> Nothing,
+        mkExpr = \(ForeachVectorArgs t d fn) -> [t, implicit d, explicit fn]
+      }
+
+-- | Arguments for `FromNat`
+data FromNatToSimpleArgs expr = FromNatToSimpleArgs
+  { fromNatArg :: expr,
+    fromNatInDomain :: GenericArg expr
+  }
+
+instance IsArgs FromNatToSimpleArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          [x, d] -> Just $ FromNatToSimpleArgs (argExpr x) d
+          _ -> Nothing,
+        mkExpr = \(FromNatToSimpleArgs x d) -> [explicit x, d]
+      }
+
+-- | Arguments for `FromNatToIndex`
+data FromNatToIndexArgs expr = FromNatToIndexArgs
+  { indexSize :: GenericArg expr,
+    fromNatArg :: expr,
+    fromNatInDomain :: GenericArg expr
+  }
+
+instance IsArgs FromNatToIndexArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          [n, x, d] -> Just $ FromNatToIndexArgs n (argExpr x) d
+          _ -> Nothing,
+        mkExpr = \(FromNatToIndexArgs n x d) -> [n, explicit x, d]
+      }
+
+-- | Arguments for `MapList`
+data MapListArgs expr = MapListArgs
+  { mapListInputType :: GenericArg expr,
+    mapListOutputType :: GenericArg expr,
+    mapListFun :: expr,
+    mapListList :: expr
+  }
+
+instance IsArgs MapListArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          [t1, t2, fn, xs] -> Just $ MapListArgs t1 t2 (argExpr fn) (argExpr xs)
+          _ -> Nothing,
+        mkExpr = \(MapListArgs t1 t2 fn xs) -> [t1, t2, explicit fn, explicit xs]
+      }
+
+-- | Arguments for `MapList`
+data FoldListArgs expr = FoldListArgs
+  { foldListInputType :: GenericArg expr,
+    foldListOutputType :: GenericArg expr,
+    foldListFun :: expr,
+    foldListDefault :: expr,
+    foldListList :: expr
+  }
+
+instance IsArgs FoldListArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          [t1, t2, fn, e, xs] -> Just $ FoldListArgs t1 t2 (argExpr fn) (argExpr e) (argExpr xs)
+          _ -> Nothing,
+        mkExpr = \(FoldListArgs t1 t2 fn e xs) -> [t1, t2, explicit fn, explicit e, explicit xs]
+      }
+
+-- | Arguments for `VectorToList`
+data VectorToListArgs expr = VectorToListArgs
+  { vectorToListElementType :: GenericArg expr,
+    vectorToListSize :: GenericArg expr,
+    vectorToListArgs :: [expr]
+  }
+
+instance IsArgs VectorToListArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          t : n : xs -> Just $ VectorToListArgs t n (fmap argExpr xs)
+          _ -> Nothing,
+        mkExpr = \(VectorToListArgs t n xs) -> t : n : fmap explicit xs
+      }
+
+-- | Arguments for `Iterate`
+data IterateArgs expr = IterateArgs
+  { iterateElementType :: GenericArg expr,
+    iterateFn :: expr,
+    iterateTimes :: expr,
+    iterateStart :: expr
+  }
+
+instance IsArgs IterateArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          [t, fn, n, e] -> Just $ IterateArgs t (argExpr fn) (argExpr n) (argExpr e)
+          _ -> Nothing,
+        mkExpr = \(IterateArgs t fn n e) -> [t, explicit fn, explicit n, explicit e]
+      }
+
+-- | Arguments for binary tensor operations (e.g. +, -)
+newtype NetworkAppArgs expr = NetworkAppArgs
+  { networkAppArg :: expr
+  }
+  deriving (Generic, Show, Eq)
+
+instance (Hashable expr) => Hashable (NetworkAppArgs expr)
+
+instance IsArgs NetworkAppArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          [xs] -> Just $ NetworkAppArgs $ argExpr xs
+          _ -> Nothing,
+        mkExpr = \(NetworkAppArgs xs) -> [explicit xs]
+      }
+
+type TensorReductionArgs = TensorOp2Args
+
+type NatComparisonAccessor expr op = Accessor expr (op, Op2Args expr)
+
+type IndexComparisonAccessor expr op = Accessor expr (op, IndexComparisonArgs expr)
+
+type RatTensorComparisonAccessor expr op = Accessor expr (op, TensorOp2Args expr)
+
+type Op1Accessor expr = Accessor expr expr
+
+type Op2Accessor expr = Accessor expr (Op2Args expr)
+
+type TensorOp1Accessor expr = Accessor expr (TensorOp1Args expr)
+
+type TensorOp2Accessor expr = Accessor expr (TensorOp2Args expr)
+
+type TensorReductionAccessor expr = Accessor expr (TensorReductionArgs expr)
+
+accessNoArgs ::
+  (HasBuiltinConstructor expr) =>
+  Accessor builtin a ->
+  Accessor (expr builtin) a
+accessNoArgs access =
+  Access
+    { getExpr = \case
+        (getBuiltin access -> Just (b, [])) -> Just b
+        _ -> Nothing,
+      mkExpr = \b -> mkBuiltin access b []
+    }
+
+accessArgs ::
+  (HasBuiltinConstructor expr, IsArgs args) =>
+  Accessor builtin () ->
+  Accessor (expr builtin) (args (expr builtin))
+accessArgs accessOp =
+  Access
+    { getExpr = \case
+        (getBuiltin accessOp -> Just ((), getExpr accessSpine -> Just args)) -> Just args
+        _ -> Nothing,
+      mkExpr = \args -> mkBuiltin accessOp () (mkExpr accessSpine args)
+    }
+
+accessOpAndArgs ::
+  (HasBuiltinConstructor expr, IsArgs args) =>
+  Accessor builtin op ->
+  Accessor (expr builtin) (op, args (expr builtin))
+accessOpAndArgs accessOp =
+  Access
+    { getExpr = \case
+        (getBuiltin accessOp -> Just (op, getExpr accessSpine -> Just args)) -> Just (op, args)
+        _ -> Nothing,
+      mkExpr = \(op, args) -> mkBuiltin accessOp op (mkExpr accessSpine args)
+    }
+
 --------------------------------------------------------------------------------
--- Naturals
+-- Boolean operations
+--------------------------------------------------------------------------------
 
-class HasBoolLits expr where
-  mkBoolLit :: Provenance -> Bool -> expr
-  getBoolLit :: expr -> Maybe (Provenance, Bool)
+type HasBoolExpr expr builtin =
+  ( HasTensorExpr expr builtin,
+    BuiltinHasBoolLiterals builtin
+  )
 
-pattern IBoolLiteral :: (HasBoolLits expr) => Provenance -> Bool -> expr
-pattern IBoolLiteral p n <- (getBoolLit -> Just (p, n))
+accessBoolTensorLiteral :: (HasBoolExpr expr builtin) => Accessor (expr builtin) BoolTensor
+accessBoolTensorLiteral = accessNoArgs accessBoolTensorLitBuiltin
+
+accessNotTensor :: (HasBoolExpr expr builtin) => TensorOp1Accessor (expr builtin)
+accessNotTensor = accessArgs accessNotBuiltin
+
+accessAndTensor :: (HasBoolExpr expr builtin) => TensorOp2Accessor (expr builtin)
+accessAndTensor = accessArgs accessAndBuiltin
+
+accessOrTensor :: (HasBoolExpr expr builtin) => TensorOp2Accessor (expr builtin)
+accessOrTensor = accessArgs accessOrBuiltin
+
+accessImpliesTensor :: (HasBoolExpr expr builtin) => TensorOp2Accessor (expr builtin)
+accessImpliesTensor = accessArgs accessImpliesBuiltin
+
+accessReduceAnd :: (HasBoolExpr expr builtin) => TensorReductionAccessor (expr builtin)
+accessReduceAnd = accessArgs accessReduceAndBuiltin
+
+accessReduceOr :: (HasBoolExpr expr builtin) => TensorReductionAccessor (expr builtin)
+accessReduceOr = accessArgs accessReduceOrBuiltin
+
+accessIf :: (HasBoolExpr expr builtin) => Accessor (expr builtin) (IfArgs (expr builtin))
+accessIf = accessArgs accessIfBuiltin
+
+accessCompareIndex :: (HasBoolExpr expr builtin) => IndexComparisonAccessor (expr builtin) ComparisonOp
+accessCompareIndex = accessOpAndArgs accessCompareIndexBuiltin
+
+accessCompareNat :: (HasBoolExpr expr builtin) => NatComparisonAccessor (expr builtin) ComparisonOp
+accessCompareNat = accessOpAndArgs accessCompareNatBuiltin
+
+accessCompareRatTensorPointwise :: (HasBoolExpr expr builtin) => RatTensorComparisonAccessor (expr builtin) ComparisonOp
+accessCompareRatTensorPointwise = accessOpAndArgs accessCompareRatTensorPointwiseBuiltin
+
+accessCompareRatTensorReduced :: (HasBoolExpr expr builtin) => RatTensorComparisonAccessor (expr builtin) ComparisonOp
+accessCompareRatTensorReduced = accessOpAndArgs accessCompareRatTensorReducedBuiltin
+
+accessQuantifyRatTensor :: (HasBoolExpr expr builtin) => Accessor (expr builtin) (Quantifier, GenericArg (expr builtin), expr builtin)
+accessQuantifyRatTensor =
+  Access
+    { getExpr = \case
+        (getBuiltin accessQuantifyRatTensorBuiltin -> Just (q, [ds, fn])) -> Just (q, ds, argExpr fn)
+        _ -> Nothing,
+      mkExpr = \(q, ds, fn) -> mkBuiltin accessQuantifyRatTensorBuiltin q [ds, explicit fn]
+    }
+
+pattern IBoolTensorLiteral :: (HasBoolExpr expr builtin) => BoolTensor -> expr builtin
+pattern IBoolTensorLiteral n <- (getExpr accessBoolTensorLiteral -> Just n)
   where
-    IBoolLiteral p n = mkBoolLit p n
+    IBoolTensorLiteral n = mkExpr accessBoolTensorLiteral n
 
-pattern ITrueExpr :: (HasBoolLits expr) => Provenance -> expr
-pattern ITrueExpr p = IBoolLiteral p True
-
-pattern IFalseExpr :: (HasBoolLits expr) => Provenance -> expr
-pattern IFalseExpr p = IBoolLiteral p False
+pattern IBoolLiteral :: (HasBoolExpr expr builtin) => Bool -> expr builtin
+pattern IBoolLiteral n = IBoolTensorLiteral (ZeroDimTensor n)
 
 --------------------------------------------------------------------------------
 -- Indices
 
-class HasIndexLits expr where
-  mkIndexLit :: Provenance -> Int -> expr
-  getIndexLit :: expr -> Maybe (Provenance, Int)
+type HasIndexExpr expr builtin = (HasBuiltinConstructor expr, BuiltinHasIndexLiterals builtin)
 
-pattern IIndexLiteral :: (HasIndexLits expr) => Provenance -> Int -> expr
-pattern IIndexLiteral p n <- (getIndexLit -> Just (p, n))
+accessIndexLiteral :: (HasIndexExpr expr builtin) => Accessor (expr builtin) Int
+accessIndexLiteral = accessNoArgs accessIndexLitBuiltin
+
+pattern IIndexLiteral :: (HasIndexExpr expr builtin) => Int -> expr builtin
+pattern IIndexLiteral n <- (getExpr accessIndexLiteral -> Just n)
   where
-    IIndexLiteral p n = mkIndexLit p n
+    IIndexLiteral n = mkExpr accessIndexLiteral n
 
 --------------------------------------------------------------------------------
 -- Naturals
 
-class HasNatLits expr where
-  mkNatLit :: Provenance -> Int -> expr
-  getNatLit :: expr -> Maybe (Provenance, Int)
+accessNatType :: (HasBuiltinConstructor expr, BuiltinHasNatType builtin) => Accessor (expr builtin) ()
+accessNatType = accessNoArgs accessNatTypeBuiltin
 
-pattern INatLiteral :: (HasNatLits expr) => Provenance -> Int -> expr
-pattern INatLiteral p n <- (getNatLit -> Just (p, n))
+type HasNatExpr expr builtin = (HasBuiltinConstructor expr, BuiltinHasNatLiterals builtin)
+
+accessNatLiteral :: (HasNatExpr expr builtin) => Accessor (expr builtin) Int
+accessNatLiteral = accessNoArgs accessNatLitBuiltin
+
+accessNatTensorLiteral :: (HasNatExpr expr builtin) => Accessor (expr builtin) NatTensor
+accessNatTensorLiteral = accessNoArgs accessNatTensorLitBuiltin
+
+accessAddNat :: (HasNatExpr expr builtin) => Op2Accessor (expr builtin)
+accessAddNat = accessArgs accessAddNatBuiltin
+
+accessMulNat :: (HasNatExpr expr builtin) => Op2Accessor (expr builtin)
+accessMulNat = accessArgs accessMulNatBuiltin
+
+pattern INatType :: (HasBuiltinConstructor expr, BuiltinHasNatType builtin) => expr builtin
+pattern INatType <- (getExpr accessNatType -> Just ())
   where
-    INatLiteral p n = mkNatLit p n
+    INatType = mkExpr accessNatType ()
+
+pattern INatLiteral :: (HasNatExpr expr builtin) => Int -> expr builtin
+pattern INatLiteral n <- (getExpr accessNatLiteral -> Just n)
+  where
+    INatLiteral n = mkExpr accessNatLiteral n
+
+pattern INatTensor :: (HasNatExpr expr builtin) => Tensor Int -> expr builtin
+pattern INatTensor n <- (getExpr accessNatTensorLiteral -> Just n)
+  where
+    INatTensor n = mkExpr accessNatTensorLiteral n
 
 --------------------------------------------------------------------------------
 -- Rationals
 
-class HasRatLits expr where
-  mkRatLit :: Provenance -> Rational -> expr
-  getRatLit :: expr -> Maybe (Provenance, Rational)
+type HasRatExpr expr builtin =
+  ( HasTensorExpr expr builtin,
+    BuiltinHasRatLiterals builtin
+  )
 
-pattern IRatLiteral :: (HasRatLits expr) => Provenance -> Rational -> expr
-pattern IRatLiteral p n <- (getRatLit -> Just (p, n))
+accessRatTensorLiteral :: (HasRatExpr expr builtin) => Accessor (expr builtin) RatTensor
+accessRatTensorLiteral = accessNoArgs accessRatTensorLitBuiltin
+
+accessNegRatTensor :: (HasRatExpr expr builtin) => TensorOp1Accessor (expr builtin)
+accessNegRatTensor = accessArgs accessNegRatTensorBuiltin
+
+accessAddRatTensor :: (HasRatExpr expr builtin) => TensorOp2Accessor (expr builtin)
+accessAddRatTensor = accessArgs accessAddRatTensorBuiltin
+
+accessMulRatTensor :: (HasRatExpr expr builtin) => TensorOp2Accessor (expr builtin)
+accessMulRatTensor = accessArgs accessMulRatTensorBuiltin
+
+accessSubRatTensor :: (HasRatExpr expr builtin) => TensorOp2Accessor (expr builtin)
+accessSubRatTensor = accessArgs accessSubRatTensorBuiltin
+
+accessDivRatTensor :: (HasRatExpr expr builtin) => TensorOp2Accessor (expr builtin)
+accessDivRatTensor = accessArgs accessDivRatTensorBuiltin
+
+accessMinRatTensor :: (HasRatExpr expr builtin) => TensorOp2Accessor (expr builtin)
+accessMinRatTensor = accessArgs accessMinRatTensorBuiltin
+
+accessMaxRatTensor :: (HasRatExpr expr builtin) => TensorOp2Accessor (expr builtin)
+accessMaxRatTensor = accessArgs accessMaxRatTensorBuiltin
+
+accessPowRatTensor :: (HasRatExpr expr builtin) => TensorOp2Accessor (expr builtin)
+accessPowRatTensor = accessArgs accessPowRatTensorBuiltin
+
+accessReduceAddRat :: (HasRatExpr expr builtin) => TensorReductionAccessor (expr builtin)
+accessReduceAddRat = accessArgs accessReduceAddRatBuiltin
+
+accessReduceMulRat :: (HasRatExpr expr builtin) => TensorReductionAccessor (expr builtin)
+accessReduceMulRat = accessArgs accessReduceMulRatBuiltin
+
+accessReduceMinRat :: (HasRatExpr expr builtin) => TensorReductionAccessor (expr builtin)
+accessReduceMinRat = accessArgs accessReduceMinRatBuiltin
+
+accessReduceMaxRat :: (HasRatExpr expr builtin) => TensorReductionAccessor (expr builtin)
+accessReduceMaxRat = accessArgs accessReduceMaxRatBuiltin
+
+pattern IRatTensor :: (HasRatExpr expr builtin) => Tensor Rational -> expr builtin
+pattern IRatTensor n <- (getExpr accessRatTensorLiteral -> Just n)
   where
-    IRatLiteral p n = mkRatLit p n
+    IRatTensor n = mkExpr accessRatTensorLiteral n
 
-class (HasRatLits expr) => HasRatType expr where
-  mkRatType :: Provenance -> expr
-  getRatType :: expr -> Maybe Provenance
-
-pattern IRatType :: (HasRatType expr) => Provenance -> expr
-pattern IRatType p <- (getRatType -> Just p)
-  where
-    IRatType p = mkRatType p
+pattern IRatLiteral :: (HasRatExpr expr builtin) => Rational -> expr builtin
+pattern IRatLiteral n = IRatTensor (ZeroDimTensor n)
 
 --------------------------------------------------------------------------------
 -- Lists
 
-class HasStandardListLits expr where
-  getNil :: expr -> Maybe (Provenance, GenericArg expr)
-  mkNil :: GenericArg expr -> expr
-  getCons :: expr -> Maybe (Provenance, GenericArg expr, GenericArg expr, GenericArg expr)
-  mkCons :: GenericArg expr -> GenericArg expr -> GenericArg expr -> expr
+type HasListExpr expr builtin = (HasBuiltinConstructor expr, BuiltinHasListLiterals builtin)
 
-pattern INil :: (HasStandardListLits expr) => GenericArg expr -> expr
-pattern INil t <- (getNil -> Just (_, t))
+accessNil ::
+  (HasListExpr expr builtin) =>
+  Accessor (expr builtin) (GenericArg (expr builtin))
+accessNil = do
+  Access
+    { getExpr = \case
+        (getBuiltin accessNilBuiltin -> Just ((), [t])) -> Just t
+        _ -> Nothing,
+      mkExpr = \t -> mkBuiltin accessNilBuiltin () [t]
+    }
+
+accessCons ::
+  (HasListExpr expr builtin) =>
+  Accessor (expr builtin) (GenericArg (expr builtin), expr builtin, expr builtin)
+accessCons =
+  Access
+    { getExpr = \case
+        (getBuiltin accessConsBuiltin -> Just ((), [t, x, xs])) -> Just (t, argExpr x, argExpr xs)
+        _ -> Nothing,
+      mkExpr = \(t, x, xs) -> mkBuiltin accessConsBuiltin () [t, explicit x, explicit xs]
+    }
+
+accessMapList :: (HasListExpr expr builtin) => Accessor (expr builtin) (MapListArgs (expr builtin))
+accessMapList = accessArgs accessMapListBuiltin
+
+accessFoldList :: (HasListExpr expr builtin) => Accessor (expr builtin) (FoldListArgs (expr builtin))
+accessFoldList = accessArgs accessFoldListBuiltin
+
+pattern INil ::
+  (HasListExpr expr builtin) =>
+  GenericArg (expr builtin) ->
+  expr builtin
+pattern INil t <- (getExpr accessNil -> Just t)
   where
-    INil t = mkNil t
+    INil t = mkExpr accessNil t
 
-pattern ICons :: (HasStandardListLits expr) => GenericArg expr -> GenericArg expr -> GenericArg expr -> expr
-pattern ICons t x xs <- (getCons -> Just (_, t, x, xs))
+pattern ICons ::
+  (HasListExpr expr builtin) =>
+  GenericArg (expr builtin) ->
+  expr builtin ->
+  expr builtin ->
+  expr builtin
+pattern ICons t x xs <- (getExpr accessCons -> Just (t, x, xs))
   where
-    ICons t x xs = mkCons t x xs
+    ICons t x xs = mkExpr accessCons (t, x, xs)
 
---------------------------------------------------------------------------------
--- Vectors
-
--- | Class for expressions that have vectors where all elements have a single
--- type and therefore the type is at the start
-class HasStandardVecLits expr where
-  mkHomoVector :: GenericArg expr -> [GenericArg expr] -> expr
-  getHomoVector :: expr -> Maybe (GenericArg expr, [GenericArg expr])
-
-pattern IVecLiteral :: (HasStandardVecLits expr) => GenericArg expr -> [GenericArg expr] -> expr
-pattern IVecLiteral t xs <- (getHomoVector -> Just (t, xs))
+mkListExpr ::
+  (HasListExpr expr builtin) =>
+  expr builtin ->
+  [expr builtin] ->
+  expr builtin
+mkListExpr tElem = foldr cons nil
   where
-    IVecLiteral t xs = mkHomoVector t xs
-
-class (HasStandardVecLits expr) => HasVecType expr where
-  mkVectorType :: Provenance -> GenericArg expr -> GenericArg expr -> expr
-  getVectorType :: expr -> Maybe (Provenance, GenericArg expr, GenericArg expr)
-
-pattern IVectorType :: (HasVecType expr) => Provenance -> expr -> expr -> expr
-pattern IVectorType p tElem tDim <-
-  (getVectorType -> Just (p, RelevantExplicitArg _ tElem, IrrelevantExplicitArg _ tDim))
-  where
-    IVectorType p tElem tDim = mkVectorType p (Arg p Explicit Relevant tElem) (Arg p Explicit Irrelevant tDim)
-
---------------------------------------------------------------------------------
--- BuiltinHasStandardData
-
--- | Indicates that this set of builtins has the standard builtin constructors
--- and functions.
-class HasStandardData expr where
-  mkConstructor :: Provenance -> BuiltinConstructor -> [GenericArg expr] -> expr
-  getConstructor :: expr -> Maybe (Provenance, BuiltinConstructor, [GenericArg expr])
-
-  mkFunction :: Provenance -> BuiltinFunction -> [GenericArg expr] -> expr
-  getFunction :: expr -> Maybe (Provenance, BuiltinFunction, [GenericArg expr])
-
-  mkFreeVar :: Provenance -> Identifier -> [GenericArg expr] -> expr
-  getFreeVar :: expr -> Maybe (Provenance, Identifier, [GenericArg expr])
-
---------------------------------------------------------------------------------
--- BuiltinHasStandardTypes
-
--- | Indicates that this set of builtins has the standard set of types.
-class HasStandardTypes expr where
-  mkType :: Provenance -> BuiltinType -> [GenericArg expr] -> expr
-  getType :: expr -> Maybe (Provenance, BuiltinType, [GenericArg expr])
-
---------------------------------------------------------------------------------
--- Constructors
-
-pattern INullaryTypeExpr :: (HasStandardTypes expr) => Provenance -> BuiltinType -> expr
-pattern INullaryTypeExpr p b <- (getType -> Just (p, b, []))
-  where
-    INullaryTypeExpr p b = mkType p b []
-
-pattern IUnitType :: (HasStandardTypes expr) => Provenance -> expr
-pattern IUnitType p = INullaryTypeExpr p Unit
-
-pattern IBoolType :: (HasStandardTypes expr) => Provenance -> expr
-pattern IBoolType p = INullaryTypeExpr p Bool
-
-pattern IIndexType :: (HasStandardTypes expr) => Provenance -> expr -> expr
-pattern IIndexType p size <- (getType -> Just (p, Index, [IrrelevantExplicitArg _ size]))
-
-pattern INatType :: (HasStandardTypes expr) => Provenance -> expr
-pattern INatType p = INullaryTypeExpr p Nat
-
-pattern IListType :: (HasStandardTypes expr) => Provenance -> expr -> expr
-pattern IListType p tElem <- (getType -> Just (p, List, [RelevantExplicitArg _ tElem]))
-
-pattern IRawListType :: (HasStandardTypes expr) => Provenance -> expr
-pattern IRawListType p = INullaryTypeExpr p List
-
---------------------------------------------------------------------------------
--- Constructors
-
--- Can't use `[]` in a bidrectional pattern synonym until GHC 9.4.3??
-pattern INullaryConstructor :: (HasStandardData expr) => Provenance -> BuiltinConstructor -> expr
-pattern INullaryConstructor p t <- (getConstructor -> Just (p, t, []))
-  where
-    INullaryConstructor p t = mkConstructor p t []
-
-pattern IUnitLiteral :: (HasStandardData expr) => Provenance -> expr
-pattern IUnitLiteral p = INullaryConstructor p LUnit
-
-mkListExpr :: (HasStandardListLits expr) => expr -> [expr] -> expr
-mkListExpr typ = foldr cons nil
-  where
-    mkImpl = Arg mempty (Implicit True) Relevant
-    mkExpl = Arg mempty Explicit Relevant
-    tArg = mkImpl typ
-    nil = INil tArg
-    cons y ys = ICons tArg (mkExpl y) (mkExpl ys)
-
-mkVecExpr :: (HasStandardData expr) => [expr] -> expr
-mkVecExpr xs =
-  mkConstructor
-    mempty
-    (LVec (length xs))
-    (Arg mempty (Implicit True) Relevant (IUnitLiteral mempty) : (Arg mempty Explicit Relevant <$> xs))
-
-mkTensorLayer ::
-  (HasStandardVecLits expr, HasStandardListLits expr, HasStandardTypes expr, HasNatLits expr) =>
-  TensorShape ->
-  [expr] ->
-  expr
-mkTensorLayer dims xs = do
-  let dimsExpr = mkListExpr (INatType mempty) (fmap (INatLiteral mempty) dims)
-  let elementType = Arg mempty (Implicit True) Relevant dimsExpr
-  let elements = fmap (Arg mempty Explicit Relevant) xs
-  mkHomoVector elementType elements
-
-tensorLikeToExpr ::
-  (HasStandardVecLits expr, HasStandardListLits expr, HasStandardTypes expr, HasNatLits expr) =>
-  (a -> expr) ->
-  TensorShape ->
-  [a] ->
-  expr
-tensorLikeToExpr mkElem = foldMapTensorLike mkElem mkTensorLayer
-
-tensorToExpr ::
-  (HasStandardVecLits expr, HasStandardListLits expr, HasStandardTypes expr, HasNatLits expr) =>
-  (a -> expr) ->
-  Tensor a ->
-  expr
-tensorToExpr mkElem = foldMapTensor mkElem mkTensorLayer
-
---------------------------------------------------------------------------------
--- Functions
-
-pattern BuiltinFunc :: (HasStandardData expr) => BuiltinFunction -> [GenericArg expr] -> expr
-pattern BuiltinFunc f args <- (getFunction -> Just (_, f, args))
-  where
-    BuiltinFunc f args = mkFunction mempty f args
-
-pattern IOp1 :: (HasStandardData expr) => BuiltinFunction -> expr -> expr
-pattern IOp1 op x <- BuiltinFunc op [RelevantExplicitArg _ x]
-  where
-    IOp1 op x = BuiltinFunc op [Arg mempty Explicit Relevant x]
-
-pattern IOp2 :: (HasStandardData expr) => BuiltinFunction -> expr -> expr -> expr
-pattern IOp2 op x y <- BuiltinFunc op [RelevantExplicitArg _ x, RelevantExplicitArg _ y]
-  where
-    IOp2 op x y = BuiltinFunc op [Arg mempty Explicit Relevant x, Arg mempty Explicit Relevant y]
-
-pattern IAnd :: (HasStandardData expr) => expr -> expr -> expr
-pattern IAnd x y = IOp2 And x y
-
-pattern IOr :: (HasStandardData expr) => expr -> expr -> expr
-pattern IOr x y = IOp2 Or x y
-
-pattern INot :: (HasStandardData expr) => expr -> expr
-pattern INot x = IOp1 Not x
-
-pattern IIf :: (HasStandardData expr) => expr -> expr -> expr -> expr -> expr
-pattern IIf t c x y <- BuiltinFunc If [RelevantImplicitArg _ t, RelevantExplicitArg _ c, RelevantExplicitArg _ x, RelevantExplicitArg _ y]
-  where
-    IIf t c x y = BuiltinFunc If [Arg mempty (Implicit True) Relevant t, Arg mempty Explicit Relevant c, Arg mempty Explicit Relevant x, Arg mempty Explicit Relevant y]
-
-pattern IOrderOp :: (HasStandardData expr) => OrderDomain -> OrderOp -> expr -> expr -> [GenericArg expr] -> expr
-pattern IOrderOp dom op x y args <- BuiltinFunc (Order dom op) (reverse -> (argExpr -> y) : (argExpr -> x) : args)
-
-pattern IOrder :: (HasStandardData expr) => OrderDomain -> OrderOp -> expr -> expr -> expr
-pattern IOrder dom op x y <- IOrderOp dom op x y _
-
-pattern IOrderRat :: (HasStandardData expr) => OrderOp -> expr -> expr -> expr
-pattern IOrderRat op x y = IOp2 (Order OrderRat op) x y
-
-pattern IEqualOp :: (HasStandardData expr) => EqualityDomain -> EqualityOp -> expr -> expr -> [GenericArg expr] -> expr
-pattern IEqualOp dom op x y args <- BuiltinFunc (Equals dom op) (reverse -> (argExpr -> y) : (argExpr -> x) : args)
-
-pattern IEqual :: (HasStandardData expr) => EqualityDomain -> expr -> expr -> expr
-pattern IEqual dom x y <- IEqualOp dom Eq x y _
-
-pattern IEqualRatOp :: (HasStandardData expr) => EqualityOp -> expr -> expr -> expr
-pattern IEqualRatOp op x y = IOp2 (Equals EqRat op) x y
-
-pattern IEqualRat :: (HasStandardData expr) => expr -> expr -> expr
-pattern IEqualRat x y = IEqualRatOp Eq x y
-
-pattern INotEqual :: (HasStandardData expr) => EqualityDomain -> expr -> expr -> expr
-pattern INotEqual dom x y <- IEqualOp dom Neq x y _
-
-pattern INeg :: (HasStandardData expr) => NegDomain -> expr -> expr
-pattern INeg dom x = IOp1 (Neg dom) x
-
-pattern IAdd :: (HasStandardData expr) => AddDomain -> expr -> expr -> expr
-pattern IAdd dom x y = IOp2 (Add dom) x y
-
-pattern ISub :: (HasStandardData expr) => SubDomain -> expr -> expr -> expr
-pattern ISub dom x y = IOp2 (Sub dom) x y
-
-pattern IMul :: (HasStandardData expr) => MulDomain -> expr -> expr -> expr
-pattern IMul dom x y = IOp2 (Mul dom) x y
-
-pattern IDiv :: (HasStandardData expr) => DivDomain -> expr -> expr -> expr
-pattern IDiv dom x y = IOp2 (Div dom) x y
-
-pattern IMax :: (HasStandardData expr) => expr -> expr -> expr
-pattern IMax x y = IOp2 MaxRat x y
-
-pattern IMin :: (HasStandardData expr) => expr -> expr -> expr
-pattern IMin x y = IOp2 MinRat x y
-
-pattern VIndices ::
-  (HasStandardData expr) =>
-  expr ->
-  expr
-pattern VIndices n <- BuiltinFunc Indices [argExpr -> n]
-
-pattern IAt ::
-  (HasStandardData expr) =>
-  GenericArg expr ->
-  GenericArg expr ->
-  expr ->
-  expr ->
-  expr
-pattern IAt t n xs i <- BuiltinFunc At [t, n, argExpr -> xs, argExpr -> i]
-
-pattern IFoldVector ::
-  (HasStandardData expr) =>
-  GenericArg expr ->
-  GenericArg expr ->
-  GenericArg expr ->
-  expr ->
-  expr ->
-  expr ->
-  expr
-pattern IFoldVector n a b f e xs <- BuiltinFunc FoldVector [n, a, b, argExpr -> f, argExpr -> e, argExpr -> xs]
-  where
-    IFoldVector n a b f e xs = BuiltinFunc FoldVector [n, a, b, Arg mempty Explicit Relevant f, Arg mempty Explicit Relevant e, Arg mempty Explicit Relevant xs]
-
-pattern IMapVector ::
-  (HasStandardData expr) =>
-  GenericArg expr ->
-  GenericArg expr ->
-  GenericArg expr ->
-  expr ->
-  expr ->
-  expr
-pattern IMapVector n a b f xs <- BuiltinFunc MapVector [n, a, b, argExpr -> f, argExpr -> xs]
-  where
-    IMapVector n a b f xs = BuiltinFunc MapVector [n, a, b, explicit f, explicit xs]
-
-pattern IZipWithVector ::
-  (HasStandardData expr) =>
-  GenericArg expr ->
-  GenericArg expr ->
-  GenericArg expr ->
-  GenericArg expr ->
-  expr ->
-  expr ->
-  expr ->
-  expr
-pattern IZipWithVector a b c n f xs ys <- BuiltinFunc ZipWithVector [n, a, b, c, argExpr -> f, argExpr -> xs, argExpr -> ys]
-
-pattern IInfiniteQuantifier ::
-  (HasStandardData expr) =>
-  Quantifier ->
-  [GenericArg expr] ->
-  expr ->
-  expr
-pattern IInfiniteQuantifier q args lam <-
-  BuiltinFunc (Quantifier q) (reverse -> RelevantExplicitArg _ lam : args)
-  where
-    IInfiniteQuantifier q args lam =
-      BuiltinFunc (Quantifier q) (reverse (Arg mempty Explicit Relevant lam : args))
-
-pattern IForall ::
-  (HasStandardData expr) =>
-  [GenericArg expr] ->
-  expr ->
-  expr
-pattern IForall args lam = IInfiniteQuantifier Forall args lam
-
-pattern IExists ::
-  (HasStandardData expr) =>
-  [GenericArg expr] ->
-  expr ->
-  expr
-pattern IExists args lam = IInfiniteQuantifier Exists args lam
-
---------------------------------------------------------------------------------
--- Iector operation patterns
-
-pattern IFreeVar :: (HasStandardData expr) => Identifier -> [GenericArg expr] -> expr
-pattern IFreeVar fn spine <- (getFreeVar -> Just (_, fn, spine))
-  where
-    IFreeVar fn spine = mkFreeVar mempty fn spine
-
-pattern IStandardLib :: (HasStandardData expr) => StdLibFunction -> [GenericArg expr] -> expr
-pattern IStandardLib fn spine <- IFreeVar (findStdLibFunction -> Just fn) spine
-  where
-    IStandardLib fn spine = IFreeVar (identifierOf fn) spine
-
-pattern IVecEqSpine ::
-  (HasStandardData expr) =>
-  GenericArg expr ->
-  GenericArg expr ->
-  GenericArg expr ->
-  GenericArg expr ->
-  expr ->
-  expr ->
-  [GenericArg expr]
-pattern IVecEqSpine t1 t2 dim sol x y <- [t1, t2, dim, sol, argExpr -> x, argExpr -> y]
-  where
-    IVecEqSpine t1 t2 dim sol x y = [t1, t2, dim, sol, Arg mempty Explicit Relevant x, Arg mempty Explicit Relevant y]
-
-pattern IVecOp2Spine ::
-  (HasStandardData expr) =>
-  GenericArg expr ->
-  GenericArg expr ->
-  GenericArg expr ->
-  GenericArg expr ->
-  GenericArg expr ->
-  expr ->
-  expr ->
-  [GenericArg expr]
-pattern IVecOp2Spine t1 t2 t3 dim sol x y <- [t1, t2, t3, dim, sol, argExpr -> x, argExpr -> y]
-
-pattern IVecEqArgs ::
-  (HasStandardData expr) =>
-  expr ->
-  expr ->
-  [GenericArg expr]
-pattern IVecEqArgs x y <- IVecEqSpine _ _ _ _ x y
-
-pattern IVectorEqualFull :: (HasStandardData expr) => [GenericArg expr] -> expr
-pattern IVectorEqualFull spine = IStandardLib StdEqualsVector spine
-
-pattern IVectorNotEqualFull :: (HasStandardData expr) => [GenericArg expr] -> expr
-pattern IVectorNotEqualFull spine = IStandardLib StdNotEqualsVector spine
-
-pattern IVectorEqual :: (HasStandardData expr) => expr -> expr -> expr
-pattern IVectorEqual x y <- IVectorEqualFull (IVecEqArgs x y)
-
-pattern IVectorNotEqual :: (HasStandardData expr) => expr -> expr -> expr
-pattern IVectorNotEqual x y <- IVectorNotEqualFull (IVecEqArgs x y)
-
-pattern IVectorAdd ::
-  (HasStandardData expr) =>
-  GenericArg expr ->
-  GenericArg expr ->
-  GenericArg expr ->
-  GenericArg expr ->
-  GenericArg expr ->
-  expr ->
-  expr ->
-  expr
-pattern IVectorAdd a b c n f x y <- IStandardLib StdAddVector [a, b, c, n, f, argExpr -> x, argExpr -> y]
-
-pattern IVectorSub ::
-  (HasStandardData expr) =>
-  GenericArg expr ->
-  GenericArg expr ->
-  GenericArg expr ->
-  GenericArg expr ->
-  GenericArg expr ->
-  expr ->
-  expr ->
-  expr
-pattern IVectorSub a b c n f x y <- IStandardLib StdSubVector [a, b, c, n, f, argExpr -> x, argExpr -> y]
-
-pattern IForeachIndex ::
-  (HasStandardData expr) =>
-  GenericArg expr ->
-  expr ->
-  expr ->
-  expr
-pattern IForeachIndex t n fn <- IStandardLib StdForeachIndex [t, argExpr -> n, argExpr -> fn]
-  where
-    IForeachIndex t n fn = IStandardLib StdForeachIndex [t, Arg mempty Explicit Relevant n, Arg mempty Explicit Relevant fn]
-
---------------------------------------------------------------------------------
--- Rational tensors
-
-class HasRatTensors expr where
-  mkRatTensorOp :: RatTensorBuiltin -> [GenericArg expr] -> expr
-  getRatTensorOp :: expr -> Maybe (RatTensorBuiltin, [GenericArg expr])
-
-pattern IRatTensorOp :: (HasRatTensors expr) => RatTensorBuiltin -> [GenericArg expr] -> expr
-pattern IRatTensorOp b args <- (getRatTensorOp -> Just (b, args))
-  where
-    IRatTensorOp b args = mkRatTensorOp b args
-
--- Can't be bidirectional as Haskell 8.10.7 doesn't support the empty list literal being bidirectional.
-pattern INullaryRatTensorOp :: (HasRatTensors expr) => RatTensorBuiltin -> expr
-pattern INullaryRatTensorOp b <- IRatTensorOp b []
-  where
-    INullaryRatTensorOp b = IRatTensorOp b []
-
-pattern IRatElementType :: (HasRatTensors expr) => expr
-pattern IRatElementType = INullaryRatTensorOp RatType
-
-pattern IRatTensor :: (HasRatTensors expr) => Tensor Rational -> expr
-pattern IRatTensor t = INullaryRatTensorOp (RatTensor t)
-
-mkRatTensor :: (HasRatTensors expr) => Provenance -> Tensor Rational -> expr
-mkRatTensor _p = IRatTensor
-
-getRatTensor :: (HasRatTensors expr) => expr -> Maybe (Provenance, Tensor Rational)
-getRatTensor (IRatTensor t) = Just (mempty, t)
-getRatTensor _ = Nothing
-
-getRatConstTensor :: (HasDimensionData expr, HasRatTensors expr) => expr -> Maybe Rational
-getRatConstTensor (getDimensionDataOp -> Just (ConstTensor, [_, argExpr -> (getRatTensorOp -> (Just (RatLiteral b, _))), _])) = Just b
-getRatConstTensor _ = Nothing
-
-pattern IRatConstTensor :: (HasDimensionData expr, HasRatTensors expr) => Rational -> GenericArg expr -> expr
-pattern IRatConstTensor b dims <- IConstTensor _ (argExpr -> INullaryRatTensorOp (RatLiteral b)) dims
-  where
-    IRatConstTensor b dims = IConstTensor (implicit IRatElementType) (explicit (INullaryRatTensorOp (RatLiteral b))) dims
-
---------------------------------------------------------------------------------
--- Bool tensors
-
-class (HasRatTensors expr) => HasBoolTensors expr where
-  mkBoolTensorOp :: BoolTensorBuiltin -> [GenericArg expr] -> expr
-  getBoolTensorOp :: expr -> Maybe (BoolTensorBuiltin, [GenericArg expr])
-
-pattern IBoolTensorOp :: (HasBoolTensors expr) => BoolTensorBuiltin -> [GenericArg expr] -> expr
-pattern IBoolTensorOp b args <- (getBoolTensorOp -> Just (b, args))
-  where
-    IBoolTensorOp b args = mkBoolTensorOp b args
-
--- Can't be bidirectional as Haskell 8.10.7 doesn't support the empty list literal being bidirectional.
-pattern INullaryBoolTensorOp :: (HasBoolTensors expr) => BoolTensorBuiltin -> expr
-pattern INullaryBoolTensorOp b <- IBoolTensorOp b []
-  where
-    INullaryBoolTensorOp b = IBoolTensorOp b []
-
-pattern IBoolTensor :: (HasBoolTensors expr) => Tensor Bool -> expr
-pattern IBoolTensor t = INullaryBoolTensorOp (BoolTensor t)
-
-pattern IBoolElementType :: (HasBoolTensors expr) => expr
-pattern IBoolElementType = INullaryBoolTensorOp BoolType
-
-pattern IBoolConstTensor :: (HasDimensionData expr, HasBoolTensors expr) => Bool -> GenericArg expr -> expr
-pattern IBoolConstTensor b dims <- IConstTensor _ (argExpr -> INullaryBoolTensorOp (BoolLiteral b)) dims
-  where
-    IBoolConstTensor b dims = IConstTensor (implicit IBoolElementType) (explicit (INullaryBoolTensorOp (BoolLiteral b))) dims
-
-mkBoolTensor :: (HasBoolTensors expr) => Provenance -> Tensor Bool -> expr
-mkBoolTensor _p = IBoolTensor
-
-getBoolTensor :: (HasBoolTensors expr) => expr -> Maybe (Provenance, Tensor Bool)
-getBoolTensor (IBoolTensor t) = Just (mempty, t)
-getBoolTensor _ = Nothing
-
-getBoolConstTensor :: (HasDimensionData expr, HasBoolTensors expr) => expr -> Maybe Bool
-getBoolConstTensor (IBoolConstTensor b _) = Just b
-getBoolConstTensor _ = Nothing
-
---------------------------------------------------------------------------------
--- Tensor slices
-
-class HasDimensionTypes expr where
-  mkDimensionTypeOp :: DimensionTypeBuiltin -> [GenericArg expr] -> expr
-  getDimensionTypeOp :: expr -> Maybe (DimensionTypeBuiltin, [GenericArg expr])
-
-pattern IDimensionTypeOp :: (HasDimensionTypes expr) => DimensionTypeBuiltin -> [GenericArg expr] -> expr
-pattern IDimensionTypeOp b args <- (getDimensionTypeOp -> Just (b, args))
-  where
-    IDimensionTypeOp b args = mkDimensionTypeOp b args
-
-pattern ITensorType :: (HasDimensionTypes expr) => GenericArg expr -> GenericArg expr -> expr
-pattern ITensorType tElem dims <- IDimensionTypeOp TensorType [tElem, dims]
-  where
-    ITensorType tElem dims = IDimensionTypeOp TensorType [tElem, dims]
-
-pattern IDimType :: (HasDimensionTypes expr) => GenericArg expr -> expr
-pattern IDimType size <- IDimensionTypeOp DimensionType [size]
-  where
-    IDimType size = IDimensionTypeOp DimensionType [size]
-
-class HasDimensionData expr where
-  mkDimensionDataOp :: DimensionDataBuiltin -> [GenericArg expr] -> expr
-  getDimensionDataOp :: expr -> Maybe (DimensionDataBuiltin, [GenericArg expr])
-
-pattern IDimensionDataOp :: (HasDimensionData expr) => DimensionDataBuiltin -> [GenericArg expr] -> expr
-pattern IDimensionDataOp b args <- (getDimensionDataOp -> Just (b, args))
-  where
-    IDimensionDataOp b args = mkDimensionDataOp b args
-
--- Can't be bidirectional as Haskell 8.10.7 doesn't support the empty list literal being bidirectional.
-pattern INullaryDimensionDataOp :: (HasDimensionData expr) => DimensionDataBuiltin -> expr
-pattern INullaryDimensionDataOp b <- IDimensionDataOp b []
-  where
-    INullaryDimensionDataOp b = IDimensionDataOp b []
-
-pattern IDim :: (HasDimensionData expr) => Int -> expr
-pattern IDim t = INullaryDimensionDataOp (Dimension t)
-
-pattern IDimNil :: (HasDimensionData expr) => expr
-pattern IDimNil = INullaryDimensionDataOp DimensionNil
-
-pattern IDimCons :: (HasDimensionData expr) => GenericArg expr -> GenericArg expr -> expr
-pattern IDimCons x xs <- IDimensionDataOp DimensionCons [x, xs]
-  where
-    IDimCons x xs = IDimensionDataOp DimensionCons [x, xs]
-
-pattern IDimIndex :: (HasDimensionData expr) => GenericArg expr -> Int -> expr
-pattern IDimIndex dim t <- IDimensionDataOp (DimensionIndex t) [dim]
-  where
-    IDimIndex dim t = IDimensionDataOp (DimensionIndex t) [dim]
-
-pattern IDimIndexTensor :: (HasDimensionData expr) => GenericArg expr -> Tensor Int -> expr
-pattern IDimIndexTensor dim t <- IDimensionDataOp (DimensionIndexTensor t) [dim]
-  where
-    IDimIndexTensor dim t = IDimensionDataOp (DimensionIndexTensor t) [dim]
-
-pattern IConstTensor :: (HasDimensionData expr) => GenericArg expr -> GenericArg expr -> GenericArg expr -> expr
-pattern IConstTensor typ value dims <- IDimensionDataOp ConstTensor [typ, value, dims]
-  where
-    IConstTensor typ value dims = IDimensionDataOp ConstTensor [typ, value, dims]
-
-pattern IDimIndexConstTensor :: (HasDimensionTypes expr, HasDimensionData expr) => GenericArg expr -> Int -> GenericArg expr -> expr
-pattern IDimIndexConstTensor dim b dims <- IConstTensor _ (argExpr -> IDimIndex dim b) dims
-  where
-    IDimIndexConstTensor dim b dims = IConstTensor (implicit (IDimType dim)) (explicit (IDimIndex dim b)) dims
-
-dimSingleton :: (HasDimensionData expr) => Int -> expr
-dimSingleton n = IDimCons (explicit $ IDim n) (explicit IDimNil)
-
-getDimIndexTensor :: (HasDimensionData expr) => expr -> Maybe (Provenance, Tensor Int)
-getDimIndexTensor (IDimIndexTensor _ t) = Just (mempty, t)
-getDimIndexTensor _ = Nothing
-
-getDimension :: (HasDimensionData expr) => expr -> Maybe (Provenance, Int)
-getDimension (IDim t) = Just (mempty, t)
-getDimension _ = Nothing
-
-getDimIndexConstTensor :: (HasDimensionData expr) => expr -> Maybe Int
-getDimIndexConstTensor (getDimensionDataOp -> Just (ConstTensor, [_, argExpr -> (getDimensionDataOp -> (Just (DimensionIndex b, _))), _])) = Just b
-getDimIndexConstTensor _ = Nothing
-
-getDimensions :: (HasDimensionData expr) => expr -> Maybe TensorShape
-getDimensions = \case
-  IDimNil -> Just []
-  IDimCons (argExpr -> IDim n) (argExpr -> xs) -> (n :) <$> getDimensions xs
+    nil = INil (implicit tElem)
+    cons = ICons (implicit tElem)
+
+mkDims :: (HasNatExpr expr builtin, HasListExpr expr builtin, BuiltinHasNatType builtin) => [Int] -> expr builtin
+mkDims ds = mkListExpr INatType (fmap INatLiteral ds)
+
+getDim :: (HasNatExpr expr builtin) => expr builtin -> Maybe Int
+getDim = \case
+  INatLiteral n -> Just n
   _ -> Nothing
+
+getDimsExprs :: (HasNatExpr expr builtin, HasListExpr expr builtin) => expr builtin -> Either (expr builtin) [expr builtin]
+getDimsExprs = \case
+  INil _ -> return []
+  ICons _ d ds -> (d :) <$> getDimsExprs ds
+  e -> throwError e
+
+getDims :: (HasNatExpr expr builtin, HasListExpr expr builtin) => expr builtin -> Maybe TensorShape
+getDims v = case getDimsExprs v of
+  Left {} -> Nothing
+  Right xs -> traverse getDim xs
+
+--------------------------------------------------------------------------------
+-- Vector
+
+type HasVectorExpr expr builtin =
+  ( HasBuiltinConstructor expr,
+    BuiltinHasVectors builtin,
+    BuiltinHasNatLiterals builtin
+  )
+
+accessVecLit :: (HasVectorExpr expr builtin) => Accessor (expr builtin) (VecLitArgs (expr builtin))
+accessVecLit = accessArgs accessVecLitBuiltin
+
+accessAtVector :: (HasVectorExpr expr builtin) => Accessor (expr builtin) (AtVectorArgs (expr builtin))
+accessAtVector = accessArgs accessAtVectorBuiltin
+
+accessForeachVector ::
+  (HasBuiltinConstructor expr, BuiltinHasForeach builtin) =>
+  Accessor (expr builtin) (ForeachVectorArgs (expr builtin))
+accessForeachVector = accessArgs accessForeachVectorBuiltin
+
+pattern IVecLiteral :: (HasVectorExpr expr builtin) => GenericArg (expr builtin) -> expr builtin -> [expr builtin] -> expr builtin
+pattern IVecLiteral t d xs <- (getExpr accessVecLit -> Just (VecLitArgs t d xs))
+  where
+    IVecLiteral t d xs = mkExpr accessVecLit (VecLitArgs t d xs)
+
+--------------------------------------------------------------------------------
+-- Tensors
+
+type HasTensorExpr expr builtin =
+  ( HasBuiltinConstructor expr,
+    BuiltinHasTensors builtin,
+    BuiltinHasListLiterals builtin,
+    BuiltinHasNatLiterals builtin
+  )
+
+accessStackTensor :: (HasTensorExpr expr builtin) => Accessor (expr builtin) (StackTensorArgs (expr builtin))
+accessStackTensor = accessArgs accessStackTensorBuiltin
+
+accessConstTensor :: (HasTensorExpr expr builtin) => Accessor (expr builtin) (ConstTensorArgs (expr builtin))
+accessConstTensor = accessArgs accessConstTensorBuiltin
+
+accessAtTensor :: (HasTensorExpr expr builtin) => Accessor (expr builtin) (AtTensorArgs (expr builtin))
+accessAtTensor = accessArgs accessAtTensorBuiltin
+
+accessForeachTensor ::
+  (HasBuiltinConstructor expr, BuiltinHasForeach builtin) =>
+  Accessor (expr builtin) (ForeachTensorArgs (expr builtin))
+accessForeachTensor = accessArgs accessForeachTensorBuiltin
+
+accessIterate ::
+  (HasBuiltinConstructor expr, BuiltinHasIterate builtin) =>
+  Accessor (expr builtin) (IterateArgs (expr builtin))
+accessIterate = accessArgs accessIterateBuiltin

@@ -8,7 +8,9 @@ module Vehicle.Compile.Type.Meta.Set
     singleton,
     member,
     insert,
+    delete,
     difference,
+    intersection,
     null,
     disjoint,
     unions,
@@ -49,6 +51,9 @@ null = coerce . IntSet.null . coerce
 insert :: MetaID -> MetaSet -> MetaSet
 insert = coerce . IntSet.insert . coerce
 
+delete :: MetaID -> MetaSet -> MetaSet
+delete = coerce . IntSet.delete . coerce
+
 disjoint :: MetaSet -> MetaSet -> Bool
 disjoint = coerce . IntSet.disjoint . coerce
 
@@ -57,6 +62,9 @@ difference s t = coerce (IntSet.difference (coerce s) (coerce t))
 
 unions :: [MetaSet] -> MetaSet
 unions s = coerce (IntSet.unions (coerce <$> s))
+
+intersection :: MetaSet -> MetaSet -> MetaSet
+intersection a b = coerce (IntSet.intersection (coerce a) (coerce b))
 
 isSubsetOf :: MetaSet -> MetaSet -> Bool
 isSubsetOf t1 t2 = IntSet.isSubsetOf (coerce t1) (coerce t2)

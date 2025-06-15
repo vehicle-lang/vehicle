@@ -8,47 +8,48 @@ import Control.Monad.Except (MonadError (..))
 import Data.Either (partitionEithers)
 import Data.Hashable (Hashable)
 import Data.Proxy (Proxy (..))
-import Prettyprinter (list)
 import Vehicle.Compile.Context.Free (getFreeEnv)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE (normaliseInEnv)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (PrintableBuiltin, prettyExternal, prettyFriendly)
+import Vehicle.Compile.Print (prettyExternal)
 import Vehicle.Compile.Print.Error (MeaningfulError (..))
 import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Constraint.UnificationSolver (runUnificationSolver)
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
-import Vehicle.Compile.Type.Monad.Class (addInstanceConstraints)
+import Vehicle.Compile.Type.Monad.Class
+  ( addInstanceConstraints,
+  )
+import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Code.Value
 import Vehicle.Data.DeBruijn (dbLevelToIndex)
 
 --------------------------------------------------------------------------------
 -- Public interface
 
--- | Attempts to solve as many type-class constraints as possible. Takes in
--- the set of meta-variables solved since the solver was last run and outputs
--- the set of meta-variables solved during this run.
+-- | Attempts to solve as many instance constraints as possible.
 runInstanceSolver ::
   (MonadInstance builtin m) =>
   Proxy builtin ->
   InstanceSearchDepth ->
   m ()
 runInstanceSolver proxy depth = do
-  logCompilerPass MaxDetail ("instance solver run" <> line) $
+  logCompilerPass MaxDetail "instance solver run" $
     runConstraintSolver
-      proxy
       getActiveInstanceConstraints
       setInstanceConstraints
       (solveInstanceConstraint depth)
+      True
+      proxy
 
 --------------------------------------------------------------------------------
 -- Algorithm
 
 type MonadInstance builtin m =
-  MonadTypeChecker
-    builtin
-    m
+  ( MonadTypeChecker builtin m,
+    Hashable builtin
+  )
 
 -- The algorithm for this is taken from
 -- https://agda.readthedocs.io/en/v2.6.2.2/language/instance-arguments.html#instance-resolution
@@ -61,22 +62,22 @@ solveInstanceConstraint ::
   m ()
 solveInstanceConstraint depth constraint = do
   normConstraint <- substMetas constraint
-  logDebug MaxDetail $ "Forced:" <+> prettyFriendly normConstraint
+  logDebug MaxDetail $ "Forced:" <+> prettyExternal normConstraint
 
-  let goal = parseInstanceGoal normConstraint
+  let goal = instanceGoal $ objectIn normConstraint
   database <- getInstanceCandidates
   let candidates = lookupInstances database goal
-  solveInstanceGoal depth normConstraint candidates goal
+  solveInstanceGoal normConstraint candidates depth goal
 
 solveInstanceGoal ::
   forall builtin m.
   (MonadInstance builtin m) =>
-  InstanceSearchDepth ->
   WithContext (InstanceConstraint builtin) ->
   [InstanceCandidate builtin] ->
+  InstanceSearchDepth ->
   InstanceGoal builtin ->
   m ()
-solveInstanceGoal depth constraint rawBuiltinCandidates goal = do
+solveInstanceGoal constraint rawBuiltinCandidates depth goal = do
   let boundCtx = boundContext $ contextOf constraint
   candidatesInBoundCtx <- findCandidatesInBoundCtx goal boundCtx
   -- The previously declared candidates have access to the entire bound context
@@ -87,17 +88,18 @@ solveInstanceGoal depth constraint rawBuiltinCandidates goal = do
     line
       <> "Builtin candidates:"
       <> line
-      <> indent 2 (list (fmap prettyCandidate builtinCandidates))
+      <> indent 2 (prettyMultiLineList (fmap prettyCandidate builtinCandidates))
       <> line
       <> "Context candidates:"
       <> line
-      <> indent 2 (list (fmap prettyCandidate candidatesInBoundCtx))
+      <> indent 2 (prettyMultiLineList (fmap prettyCandidate candidatesInBoundCtx))
       <> line
       <> "Depth:" <+> pretty depth
+      <> line
 
   -- Try all candidates
   (unsuccessfulCandidates, successfulCandidates) <-
-    partitionEithers <$> traverse (checkCandidate depth constraint goal) allCandidates
+    partitionEithers <$> traverse (checkCandidate constraint goal depth) allCandidates
 
   case successfulCandidates of
     -- If there is a single valid candidate then we adopt the resulting state
@@ -115,6 +117,8 @@ solveInstanceGoal depth constraint rawBuiltinCandidates goal = do
     _ -> do
       logDebug MaxDetail "Multiple possible candidates found so deferring."
       -- TODO can we be more precise with the set of blocking metas?
+      -- Probably not as the set of blocking metas will depend on the depth at which we're searching
+
       blockedConstraint <- blockConstraintOn constraint <$> getUnsolvedMetas (Proxy @builtin)
       addInstanceConstraints [blockedConstraint]
 
@@ -150,12 +154,12 @@ findCandidatesInBoundCtx goal ctx = go ctx
 checkCandidate ::
   forall builtin m.
   (MonadInstance builtin m) =>
-  InstanceSearchDepth ->
   WithContext (InstanceConstraint builtin) ->
   InstanceGoal builtin ->
+  InstanceSearchDepth ->
   WithContext (InstanceCandidate builtin) ->
   m (Either (WithContext (InstanceCandidate builtin), UnAnnDoc) (WithContext (InstanceCandidate builtin), TypeCheckerState builtin))
-checkCandidate depth constraint goal candidate = do
+checkCandidate constraint goal depth candidate = do
   let candidateDoc = squotes (prettyCandidate candidate)
   logCompilerPass MaxDetail ("trying candidate instance" <+> candidateDoc) $ do
     result <- runTypeCheckerTHypothetically $ do
@@ -164,11 +168,10 @@ checkCandidate depth constraint goal candidate = do
 
       -- Run the solvers to check for conflicts
       let proxy = Proxy @builtin
-      runUnificationSolver proxy
+      runUnificationSolver proxy False
       if depth == 0
         then return mempty
         else runInstanceSolver proxy (depth - 1)
-
     case result of
       Left err -> do
         logDebug MaxDetail $ line <> "Rejecting" <+> candidateDoc <+> "as a possibility"
@@ -188,7 +191,8 @@ acceptCandidate (WithContext Resolve {..} constraintCtx) goal candidate = do
   -- Allow the candidate to access all the arguments in the goal telescope.
   let goalCtxExtension = goalTelescope goal
   let extendedGoalCtx = goalCtxExtension ++ boundContext constraintCtx
-  let extendedGoalInfo = (setConstraintBoundCtx constraintCtx extendedGoalCtx, instanceOrigin)
+  let newConstraintCtx = setConstraintBoundCtx constraintCtx extendedGoalCtx
+  let extendedGoalInfo = (newConstraintCtx, instanceOrigin)
 
   -- Instantiate the candidate telescope with metas and subst into body.
   (substCandidateExpr, substCandidateSolution, recInstanceConstraints) <-
@@ -196,18 +200,12 @@ acceptCandidate (WithContext Resolve {..} constraintCtx) goal candidate = do
   addInstanceConstraints recInstanceConstraints
 
   -- Unify the goal and candidate bodies
-  unificationConstraint <- createInstanceUnification extendedGoalInfo (goalExpr goal) substCandidateExpr
-  addUnificationConstraints [unificationConstraint]
+  goalConstraint <- createInstanceUnification extendedGoalInfo (goalExpr goal) substCandidateExpr
 
-  -- Replace the provenance of the final solution with the provenance of where the
-  -- constraint was generated. This is needed to get the information to propagate
-  -- properly for the polarity and linearity types, otherwise the provenance ends
-  -- up empty as the candidates are constructed independently.
-  let finalCandidateSolution = replaceProvenance (provenanceOf constraintCtx) substCandidateSolution
+  instantiateInstanceConstraintSolution (WithContext Resolve {..} newConstraintCtx) substCandidateSolution
 
-  -- Add the solution of the type-class as well (if we had first class records
-  -- then we wouldn't need to do this manually).
-  solveMeta instanceSolutionMeta finalCandidateSolution extendedGoalCtx
+  -- Add the constriants
+  addUnificationConstraints [goalConstraint]
 
 -- | Generate meta variables for each binder in the telescope of the candidate
 -- and then substitute them into the candidate expression.
@@ -240,12 +238,12 @@ instantiateCandidateTelescope goalCtxExtension (constraintCtx, constraintOrigin)
           Implicit {} -> do
             let p = provenanceOf constraintCtx
             expr <- freshMetaExpr p binderType boundCtx
-            return (unnormalised expr, [])
+            return (expr, [])
           Instance {} -> do
             let newInfo = (setConstraintBoundCtx constraintCtx boundCtx, constraintOrigin)
             -- WARNING massive hack should be traversing the normalised type here.
             normBinderType <- normaliseInEnv (boundContextToEnv boundCtx) binderType
-            (expr, constraint) <- createSubInstance newInfo (relevanceOf exprBinder) normBinderType
+            (expr, constraint) <- createDerivedInstanceConstraint newInfo (relevanceOf exprBinder) normBinderType
             return (expr, [constraint])
         let exprBodyResult = newArg `substDBInto` exprBody
         let solutionBodyResult = newArg `substDBInto` solutionBody
@@ -256,27 +254,6 @@ instantiateCandidateTelescope goalCtxExtension (constraintCtx, constraintOrigin)
 prettyCandidate :: (PrintableBuiltin builtin) => WithContext (InstanceCandidate builtin) -> Doc a
 prettyCandidate (WithContext candidate ctx) =
   prettyExternal (WithContext (candidateExpr candidate) (toNamedBoundCtx ctx))
-
-goalExpr :: InstanceGoal builtin -> Value builtin
-goalExpr InstanceGoal {..} = VBuiltin goalHead goalSpine
-
-replaceProvenance :: Provenance -> Expr builtin -> Expr builtin
-replaceProvenance p = go
-  where
-    go :: Expr builtin -> Expr builtin
-    go = \case
-      Meta _p m -> Meta p m
-      App fun args -> App (go fun) (fmap (fmap go) args)
-      Universe _ u -> Universe p u
-      Hole _ h -> Hole p h
-      Builtin _ b -> Builtin p b
-      FreeVar _ v -> FreeVar p v
-      BoundVar _ v -> BoundVar p v
-      -- NOTE: no need to lift the substitutions here as we're passing under the binders
-      -- because by construction every meta-variable solution is a closed term.
-      Pi _ binder res -> Pi p (fmap go binder) (go res)
-      Let _ e1 binder e2 -> Let p (go e1) (fmap go binder) (go e2)
-      Lam _ binder e -> Lam p (fmap go binder) (go e)
 
 extractCandidateError :: CompileError -> UnAnnDoc
 extractCandidateError err = case details err of

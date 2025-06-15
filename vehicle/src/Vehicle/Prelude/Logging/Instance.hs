@@ -5,6 +5,7 @@ module Vehicle.Prelude.Logging.Instance
     LoggingSettings (..),
     runLoggerT,
     runSilentLoggerT,
+    runSilentLogger,
     SilentLoggerT,
     showCompileWarnings,
   )
@@ -12,6 +13,7 @@ where
 
 import Control.Monad (unless)
 import Control.Monad.Except (MonadError (..))
+import Control.Monad.Identity (Identity (..))
 import Control.Monad.RWS (RWST (..))
 import Control.Monad.Reader (asks)
 import Control.Monad.State (MonadState (..), modify)
@@ -105,6 +107,9 @@ instance (MonadStdIO m) => MonadStdIO (SilentLoggerT m) where
 
 runSilentLoggerT :: SilentLoggerT m a -> m (a, [CompileWarning])
 runSilentLoggerT e = runWriterT (unSilentLoggerT e)
+
+runSilentLogger :: SilentLoggerT Identity a -> a
+runSilentLogger e = fst $ runIdentity $ runSilentLoggerT e
 
 --------------------------------------------------------------------------------
 

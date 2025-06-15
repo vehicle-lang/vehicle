@@ -19,7 +19,7 @@ validImage x = forall i j . 0 <= x ! i ! j <= 1
 -- Declare the network used to classify images. The output of the network is a
 -- score for each of the digits 0 to 9.
 @network
-classifier : Image -> Vector Rat 10
+classifier : Image -> Tensor Rat [10]
 
 -- The classifier advises that input image `x` has label `i` if the score
 -- for label `i` is greater than the score of any other label `j`.
@@ -83,7 +83,7 @@ trainingLabels : Vector Label n
 -- We then say that the network is robust if it is robust around every pair
 -- of input images and output labels. Note the use of the `foreach`
 -- keyword when quantifying over the index `i` in the dataset. Whereas `forall`
--- would return a single `Bool`, `foreach` constructs a `Vector` of booleans,
+-- would return a single `Bool`, `foreach` constructs a `Tensor` of booleans,
 -- ensuring that Vehicle will report on the verification status of each image in
 -- the dataset separately. If `forall` was omitted, Vehicle would only
 -- report if the network was robust around *every* image in the dataset, a

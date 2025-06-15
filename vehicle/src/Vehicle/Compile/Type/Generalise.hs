@@ -1,25 +1,159 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
+{-# HLINT ignore "Use list literal" #-}
 module Vehicle.Compile.Type.Generalise
-  ( generaliseOverUnsolvedConstraints,
-    generaliseOverUnsolvedMetaVariables,
+  ( generaliseOverUnsolvedMetasAndConstraints,
   )
 where
 
-import Control.Monad (foldM, forM)
-import Control.Monad.Except (MonadError (..))
+import Control.Monad (forM, forM_, void, when)
 import Data.Data (Proxy (..))
-import Data.List.NonEmpty (NonEmpty (..), (<|))
-import Data.Maybe (fromMaybe)
+import Data.Foldable (foldlM)
+import Data.Graph (graphFromEdges, topSort)
+import Data.List.NonEmpty (NonEmpty (..))
+import Data.Maybe (fromMaybe, isNothing)
+import Data.Text qualified as Text
 import Vehicle.Compile.Context.Bound
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.Quote (Quote (..))
+import Vehicle.Compile.Normalise.Quote qualified as Quote
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
+import Vehicle.Compile.Type.Constraint.UnificationSolver (UnificationResult (..), unify)
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta
+import Vehicle.Compile.Type.Meta.Map (MetaMap)
+import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad
-import Vehicle.Compile.Type.Monad.Class (getActiveAuxiliaryInstanceConstraints, setAuxiliaryInstanceConstraints)
-import Vehicle.Data.DeBruijn
+import Vehicle.Compile.Type.Monad.Class
+import Vehicle.Data.Builtin.Interface.Print (PrintableBuiltin)
+import Vehicle.Data.Code.Value
+
+--------------------------------------------------------------------------------
+-- Generalisation
+
+type MonadGeneralise builtin m =
+  ( MonadTypeChecker builtin m
+  )
+
+generaliseOverUnsolvedMetasAndConstraints ::
+  forall builtin m.
+  (MonadGeneralise builtin m) =>
+  Decl builtin ->
+  m (Decl builtin)
+generaliseOverUnsolvedMetasAndConstraints decl = do
+  let proxy = (Proxy @builtin)
+  logCompilerPass MaxDetail "generalisation over unsolved metas and constraints" $ do
+    -- Check unification constraints solved
+    checkAllConstraintsSolved proxy getActiveUnificationConstraints UnificationConstraint
+
+    -- Check application constraints solved
+    checkAllConstraintsSolved proxy getActiveApplicationConstraints ApplicationConstraint
+
+    -- Remaining constraints and metas to be generalised can have no dependendies on
+    -- the variables inside the term to remove them.
+    dependencyFreeDecl <- removeAllDependencies decl
+
+    -- Generalise over the
+    generalisedDecl <- generaliseOverUnsolvedMetas dependencyFreeDecl
+
+    logUnsolvedUnknowns proxy
+    return generalisedDecl
+
+--------------------------------------------------------------------------------
+-- Context removal
+
+removeAllDependencies ::
+  forall builtin m.
+  (MonadGeneralise builtin m) =>
+  Decl builtin ->
+  m (Decl builtin)
+removeAllDependencies decl = do
+  logCompilerPass MaxDetail "removing dependencies of unsolved metas" $ do
+    -- Remove meta dependencies
+    metaVariableCtx <- getMetaVariableCtx @builtin
+    forM_ (MetaMap.toList metaVariableCtx) $ \(meta, metaInfo) -> do
+      when (isNothing (metaSolution metaInfo) && not (null $ metaCtx metaInfo)) $
+        logCompilerPass MaxDetail ("removing dependences of" <+> pretty meta) $ do
+          void $ solveInTermsOfNewMetaWithDependencies meta metaInfo mempty
+
+  logCompilerPass MaxDetail "removing dependencies from and merging instance constraints" $ do
+    -- Remove instance constraint dependencies
+    instanceConstraints <- getActiveInstanceConstraints @builtin
+    auxiliaryInstanceConstraints <- getActiveAuxiliaryInstanceConstraints @builtin
+
+    newInstanceConstraints <- forM instanceConstraints removeInstanceDependencies
+    newAuxiliaryInstanceConstraints <- forM auxiliaryInstanceConstraints removeInstanceDependencies
+
+    mergedInstanceConstraints <- mergeInstanceConstraints newInstanceConstraints
+    mergedAuxiliaryInstanceConstraints <- mergeInstanceConstraints newAuxiliaryInstanceConstraints
+
+    setInstanceConstraints mergedInstanceConstraints
+    setAuxiliaryInstanceConstraints mergedAuxiliaryInstanceConstraints
+
+  -- Substitute through the new metas variables through the types of the meta variables
+  logCompilerPass MaxDetail "substituting metas through solution" $ do
+    metaVariableCtx <- getMetaVariableCtx @builtin
+    substMetaVariableCtx <- substMetas metaVariableCtx
+    modifyTypeCheckerState (\s -> s {metaVariableCtx = substMetaVariableCtx})
+
+  resultDecl <- substMetas decl
+  logUnsolvedUnknowns (Proxy @builtin)
+  return resultDecl
+
+removeInstanceDependencies ::
+  (MonadGeneralise builtin m) =>
+  WithContext (InstanceConstraint builtin) ->
+  m (WithContext (InstanceConstraint builtin))
+removeInstanceDependencies c@(WithContext constraint ctx) =
+  logCompilerSection MaxDetail "Removing dependencies:" $ do
+    logDebug MaxDetail $ "Input: " <+> prettyExternal c
+    let newCtx = updateConstraintBoundCtx ctx (const mempty)
+    substConstraint <- substMetasAt (boundCtxLv $ boundContextOf ctx) constraint
+    let result = WithContext substConstraint newCtx
+    logDebug MaxDetail $ "Output:" <+> prettyExternal result
+    return result
+
+mergeInstanceConstraints ::
+  forall builtin m.
+  (MonadGeneralise builtin m) =>
+  [WithContext (InstanceConstraint builtin)] ->
+  m [WithContext (InstanceConstraint builtin)]
+mergeInstanceConstraints constraints = do
+  substitutedConstraintsByMeta <- forM constraints $ \(WithContext constraint ctx) -> do
+    updatedConstraint <- updateSolutionMeta constraint
+    return (instanceSolution updatedConstraint, WithContext updatedConstraint ctx :| [])
+
+  let constraintsBySolutionMeta = MetaMap.toList $ MetaMap.fromListWith (<>) substitutedConstraintsByMeta
+  mergedConstraints <- forM constraintsBySolutionMeta $ \(_meta, masterConstraint :| otherConstraints) -> do
+    let getGoal = goalExpr . instanceGoal . objectIn
+    let mainGoal = getGoal masterConstraint
+    forM_ otherConstraints $ \otherConstraint -> do
+      let secDoc = "Merging" <+> prettyExternal otherConstraint <+> "into" <> line <> prettyExternal masterConstraint
+      logCompilerSection MaxDetail secDoc $ do
+        result <- unify mempty mainGoal (getGoal otherConstraint)
+        case result of
+          Success -> return ()
+          _ -> developerError "Unable to unify identical goal constraints"
+    return masterConstraint
+
+  let noMerging = all (\(_, cs) -> length cs == 1) constraintsBySolutionMeta
+  if noMerging
+    then return mergedConstraints
+    else mergeInstanceConstraints mergedConstraints
+
+updateSolutionMeta ::
+  forall builtin m.
+  (MonadGeneralise builtin m) =>
+  InstanceConstraint builtin ->
+  m (InstanceConstraint builtin)
+updateSolutionMeta constraint = do
+  let originalMeta = instanceSolution constraint
+  metaCtx <- metaVariableCtx <$> getTypeCheckerState @builtin
+  newMeta <- findUltimateUnsolvedMeta metaCtx originalMeta
+  -- This is a hack that should disappear when we get records?
+  updateMetaType newMeta (Quote.unnormalise @(Value builtin) @(Expr builtin) 0 $ goalExpr $ instanceGoal constraint)
+  return $ constraint {instanceSolution = newMeta}
 
 --------------------------------------------------------------------------------
 -- Type-class generalisation
@@ -27,214 +161,111 @@ import Vehicle.Data.DeBruijn
 -- Finds any unsolved type class constraints that are blocked on
 -- metas that occur in the type of the declaration. It then appends these
 -- constraints as instance arguments to the declaration.
-generaliseOverUnsolvedConstraints ::
+generaliseOverUnsolvedMetas ::
   forall builtin m.
-  (MonadTypeChecker builtin m) =>
+  (MonadGeneralise builtin m) =>
   Decl builtin ->
   m (Decl builtin)
-generaliseOverUnsolvedConstraints decl =
-  logCompilerPass MidDetail "generalisation over unsolved type-class constraints" $ do
-    unsolvedInstanceConstraints <- getActiveInstanceConstraints
-    unsolvedAuxiliaryConstraints <- getActiveAuxiliaryInstanceConstraints
+generaliseOverUnsolvedMetas decl = do
+  metaVariableCtx <- getMetaVariableCtx @builtin
+  let unsolvedMetas = MetaMap.filter (isNothing . metaSolution) metaVariableCtx
+  sortedUnsolvedMetas <- sortGeneralisableMetas unsolvedMetas
 
-    unsolvedConstraints <- traverse substMetas =<< getActiveConstraints
-    generalisableConstraints <- traverse substMetas (unsolvedInstanceConstraints <> unsolvedAuxiliaryConstraints)
+  unsolvedInstanceConstraints <- getActiveInstanceConstraints
+  unsolvedAuxInstanceConstraints <- getActiveAuxiliaryInstanceConstraints
+  setInstanceConstraints @builtin mempty
+  setAuxiliaryInstanceConstraints @builtin mempty
 
-    (generalisedDecl, rejectedGeneralisableConstraints) <-
-      foldM (generaliseOverConstraint unsolvedConstraints) (decl, []) generalisableConstraints
+  let unsolvedConstraints = unsolvedInstanceConstraints <> unsolvedAuxInstanceConstraints
+  let unsolvedConstraintMetas = MetaMap.fromList $ fmap ((\c -> (instanceSolution c, c)) . objectIn) unsolvedConstraints
 
-    case rejectedGeneralisableConstraints of
-      (c : cs) -> do
-        let ungeneralisableConstraints = fmap (mapObject InstanceConstraint) (c :| cs)
-        throwError $ TypingError $ UnsolvedConstraints ungeneralisableConstraints
-      [] -> do
-        setInstanceConstraints @builtin mempty
-        setAuxiliaryInstanceConstraints @builtin mempty
-        return generalisedDecl
+  let p = provenanceOf decl
+  binders <- traverse (createBinderForMeta unsolvedConstraintMetas p) (zip [1 ..] sortedUnsolvedMetas)
+  generalisedDecl <- logCompilerPass MaxDetail ("generalisation over" <+> pretty sortedUnsolvedMetas) $ do
+    foldlM prependBinderAndSolve decl binders
+  logUnsolvedUnknowns (Proxy @builtin)
+  return generalisedDecl
 
-generaliseOverConstraint ::
-  (MonadTypeChecker builtin m) =>
-  [WithContext (Constraint builtin)] ->
-  (Decl builtin, [WithContext (InstanceConstraint builtin)]) ->
-  WithContext (InstanceConstraint builtin) ->
-  m (Decl builtin, [WithContext (InstanceConstraint builtin)])
-generaliseOverConstraint allConstraints (decl, rejected) c@(WithContext tc ctx) = do
-  -- Find any unsolved meta variables that are transitively linked
-  -- by constraints of the same type.
-  linkedMetas <- getMetasLinkedToMetasIn allConstraints (typeOf decl)
-  -- Only prepend the constraint if all variables in the constraint
-  -- are so linked.
-  substTC <- substMetas tc
-  constraintMetas <- metasIn substTC
-  let prependable = constraintMetas `MetaSet.isSubsetOf` linkedMetas
+sortGeneralisableMetas ::
+  (MonadCompile m, PrintableBuiltin builtin) =>
+  MetaVariableContext builtin ->
+  m [MetaID]
+sortGeneralisableMetas unsolvedMetas = do
+  logCompilerPass MaxDetail "sorting generalisable constraints" $ do
+    let adjacencyMap = MetaMap.map (metasIn . metaType) unsolvedMetas
+    let adjacencyList = (\(x, ys) -> (x, x, MetaSet.toList ys)) <$> MetaMap.toList adjacencyMap
 
-  if not prependable
-    then do
-      logDebug MaxDetail $ "Found non-prependable type-class constraint" <+> prettyVerbose c
-      return (decl, c : rejected)
-    else do
-      generalisedDecl <- prependConstraint decl (WithContext substTC ctx)
-      return (generalisedDecl, rejected)
+    let (graph, nodeFromVertex, _) = graphFromEdges adjacencyList
+    let sortedVertices = topSort graph
+    let sortedConstraintIDs = fmap ((\(c, _, _) -> c) . nodeFromVertex) sortedVertices
+    logDebug MaxDetail $ "Adjacency matrix:" <+> pretty (fmap (\(m, _, cs) -> (m, cs)) adjacencyList)
+    logDebug MaxDetail $ "Sorted order:" <+> pretty sortedConstraintIDs
+    return sortedConstraintIDs
 
-prependConstraint ::
-  (MonadTypeChecker builtin m) =>
-  Decl builtin ->
-  WithContext (InstanceConstraint builtin) ->
-  m (Decl builtin)
-prependConstraint decl (WithContext (Resolve _origin meta relevance expr) ctx) = do
-  let p = originalProvenance ctx
-  let typeClass = quote p 0 expr
-
-  substTypeClass <- substMetas typeClass
-  logCompilerPass MaxDetail ("generalisation over" <+> prettyVerbose substTypeClass) $
-    prependBinderAndSolveMeta meta (BinderDisplayForm OnlyType True) (Instance True) relevance substTypeClass decl
-
---------------------------------------------------------------------------------
--- Unsolved meta generalisation
-
--- | Finds any unsolved metas that occur in the type of the declaration. For
--- each such meta, it then prepends a new quantified variable to the declaration
--- type and then solves the meta as that new variable.
-generaliseOverUnsolvedMetaVariables ::
+createBinderForMeta ::
   forall builtin m.
-  (MonadTypeChecker builtin m) =>
-  Decl builtin ->
-  m (Decl builtin)
-generaliseOverUnsolvedMetaVariables decl =
-  logCompilerPass MidDetail "generalisation of unsolved metas in declaration type" $ do
-    let declType = typeOf decl
+  (MonadGeneralise builtin m) =>
+  MetaMap (InstanceConstraint builtin) ->
+  Provenance ->
+  (Int, MetaID) ->
+  m (MetaID, Binder builtin)
+createBinderForMeta constraints p (index, meta) = do
+  metaType <- getSubstMetaType meta
+  let (visibility, relevance) = case MetaMap.lookup meta constraints of
+        Just constraint -> (Instance True, instanceRelevance constraint)
+        Nothing -> (Implicit True, Relevant)
 
-    unsolvedMetas <-
-      if not (isTypeSynonym declType)
-        then -- Quantify over the metas in the type of the declaration.
-          metasIn (typeOf decl)
-        else -- In a type synonym so quantify over metas in the body.
-        -- Needed for the sub-typing systems (e.g. see issue700 test)
-          maybe (return mempty) metasIn (bodyOf decl)
-
-    -- Quantify over any unsolved type-level meta variables
-    if MetaSet.null unsolvedMetas
-      then return decl
-      else do
-        result <- foldM quantifyOverMeta decl (MetaSet.toList unsolvedMetas)
-        substMetas result
-
-quantifyOverMeta ::
-  forall builtin m.
-  (MonadTypeChecker builtin m) =>
-  Decl builtin ->
-  MetaID ->
-  m (Decl builtin)
-quantifyOverMeta decl meta = do
-  metaCtx <- getMetaCtx (Proxy @builtin) meta
-  metaType <- substMetas =<< getMetaType meta
-  if isMeta metaType
-    then
-      compilerDeveloperError $
-        "Haven't thought about what to do when type of unsolved meta is also"
-          <+> "an unsolved meta."
-    else do
-      metaDoc <- prettyMeta (Proxy @builtin) meta
-      logCompilerPass MidDetail ("generalisation over" <+> metaDoc) $ do
-        -- Prepend the implicit binders for the new generalised variable.
-        binderName <- runBoundContextT metaCtx $ getBinderNameOrFreshName Nothing metaType
-        let binderDisplayForm = BinderDisplayForm (OnlyName binderName) True
-        prependBinderAndSolveMeta meta binderDisplayForm (Implicit True) Relevant metaType decl
-
-isMeta :: Expr builtin -> Bool
-isMeta Meta {} = True
-isMeta (App Meta {} _) = True
-isMeta _ = False
+  -- Prepend the implicit binders for the new generalised variable.
+  let binderName = "_t" <> Text.pack (show index)
+  let binderDisplayForm = BinderDisplayForm (NameAndType binderName) True
+  let binder = Binder p binderDisplayForm visibility relevance metaType
+  return (meta, binder)
 
 --------------------------------------------------------------------------------
 -- Utilities
 
-prependBinderAndSolveMeta ::
+prependBinderAndSolve ::
   forall builtin m.
+  (MonadGeneralise builtin m) =>
+  Decl builtin ->
+  (MetaID, Binder builtin) ->
+  m (Decl builtin)
+prependBinderAndSolve decl (meta, binder) =
+  logCompilerPass MaxDetail ("generalising" <+> pretty meta <+> ":" <+> prettyVerbose binder) $ do
+    let p = provenanceOf decl
+
+    -- Create a new meta with dependencies on the telescope and solve the previous one in terms of it.
+    metaInfo <- getMetaInfo meta
+    let solutionCtx = binder : metaCtx metaInfo
+    newMeta <- solveInTermsOfNewMetaWithDependencies meta metaInfo solutionCtx
+    let solution = BoundVar p 0
+    solveMeta newMeta solution solutionCtx
+
+    -- Substitute the solution through the declaration (have to do this before prepending binders)
+    substDecl <- substMetas decl
+
+    -- Compute the telescopes
+    let typeBinder = binder
+    let bodyBinder = mapBinderNamingForm (\t -> OnlyName (fromMaybe "_" (nameOf t))) binder
+
+    -- Then finally update the declaration
+    let alterType t = return $ Pi p typeBinder t
+    let alterBody e = return $ Lam p bodyBinder e
+    finalDecl <- traverseDeclTypeAndExpr alterType alterBody substDecl
+
+    -- Substitute the new meta solution through.
+    setCurrentDecl $ Just (finalDecl, False)
+
+    logCompilerPassOutput $ prettyExternal finalDecl
+    return finalDecl
+
+solveInTermsOfNewMetaWithDependencies ::
   (MonadTypeChecker builtin m) =>
   MetaID ->
-  BinderDisplayForm ->
-  Visibility ->
-  Relevance ->
-  Type builtin ->
-  Decl builtin ->
-  m (Decl builtin)
-prependBinderAndSolveMeta meta f v r binderType decl = do
-  -- All the metas contained within the type of the binder about to be
-  -- appended cannot have any dependencies on variables later on in the expression.
-  -- So the replace them with meta-variables with empty contexts.
-  (substBinderType, substDecl) <- removeContextsOfMetasIn binderType decl
-
-  -- Construct the new binder and prepend it to both the type and
-  -- (if applicable) the body of the declaration.
-  let typeBinder = Binder (provenanceOf decl) f v r substBinderType
-  let bodyBinderForm = BinderDisplayForm (OnlyName (fromMaybe "_" (nameOf f))) True
-  let bodyBinder = Binder (provenanceOf decl) bodyBinderForm v r substBinderType
-  prependedDecl <- case substDecl of
-    DefAbstract p rt ident t ->
-      return $ DefAbstract p rt ident (Pi p typeBinder t)
-    DefFunction p ident anns t e ->
-      return $ DefFunction p ident anns (Pi p typeBinder t) (Lam p bodyBinder e)
-
-  -- Then we add i) the new binder to the context of the meta-variable being
-  -- solved, and ii) a new argument to all uses of the meta-variable so
-  -- that meta-subsitution will work later.
-  extendBoundCtxOfMeta meta typeBinder
-  let updatedDecl = addNewArgumentToMetaUses meta prependedDecl
-
-  -- We now solve the meta as the newly bound variable
-  metaCtx <- getMetaCtx (Proxy @builtin) meta
-  let p = provenanceOf prependedDecl
-  let solution = BoundVar p (Ix $ length metaCtx - 1)
-  solveMeta meta solution metaCtx
-
-  logDebug MaxDetail $ "prepended-fresh-binder:" <+> prettyVerbose updatedDecl
-
-  -- Substitute the new meta solution through.
-  resultDecl <- substMetas updatedDecl
-
-  logCompilerPassOutput $ prettyVerbose resultDecl
-  return resultDecl
-
-removeContextsOfMetasIn ::
-  forall builtin m.
-  (MonadTypeChecker builtin m) =>
-  Type builtin ->
-  Decl builtin ->
-  m (Type builtin, Decl builtin)
-removeContextsOfMetasIn binderType decl =
-  logCompilerPass MaxDetail "removing dependencies from dependent metas" $ do
-    metasInBinder <- metasIn binderType
-    newMetas <- or <$> forM (MetaSet.toList metasInBinder) (removeMetaDependencies (Proxy @builtin))
-
-    if not newMetas
-      then return (binderType, decl)
-      else do
-        substDecl <- substMetas decl
-        substBinderType <- substMetas binderType
-        logCompilerPassOutput (prettyVerbose substDecl)
-        return (substBinderType, substDecl)
-
-addNewArgumentToMetaUses :: MetaID -> Decl builtin -> Decl builtin
-addNewArgumentToMetaUses meta = fmap (go (-1))
-  where
-    go :: Lv -> Expr builtin -> Expr builtin
-    go d expr = case expr of
-      Meta p m
-        | m == meta -> App (Meta p m) [newVar p]
-      App (Meta p m) args
-        | m == meta -> App (Meta p m) (newVar p <| goArgs args)
-      Universe {} -> expr
-      Hole {} -> expr
-      Meta {} -> expr
-      Builtin {} -> expr
-      FreeVar {} -> expr
-      BoundVar {} -> expr
-      App fun args -> App (go d fun) (goArgs args)
-      Pi p binder result -> Pi p (goBinder binder) (go (d + 1) result)
-      Let p bound binder body -> Let p (go d bound) (goBinder binder) (go (d + 1) body)
-      Lam p binder body -> Lam p (goBinder binder) (go (d + 1) body)
-      where
-        newVar p = Arg p Explicit Relevant (BoundVar p $ shiftDBIndex 0 d)
-        goBinder = fmap (go d)
-        goArgs = fmap (fmap (go d))
+  MetaInfo builtin ->
+  BoundCtx (Type builtin) ->
+  m MetaID
+solveInTermsOfNewMetaWithDependencies meta (MetaInfo p typ _ _) newCtx = do
+  (newMeta, newMetaExpr) <- freshMeta p typ newCtx
+  solveMeta meta newMetaExpr newCtx
+  return newMeta

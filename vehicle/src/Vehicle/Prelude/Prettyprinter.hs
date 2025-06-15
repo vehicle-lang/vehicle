@@ -74,7 +74,11 @@ prettyFlatList :: [Doc ann] -> Doc ann
 prettyFlatList xs = "[" <+> commaSep xs <+> "]"
 
 prettyMultiLineList :: [Doc ann] -> Doc ann
-prettyMultiLineList xs = "[" <+> vcat xs <> line <> "]"
+prettyMultiLineList xs =
+  "["
+    <+> group (concatWith (\x y -> x <> line <> "," <+> y) xs)
+    <> line
+    <> "]"
 
 prettyNonEmptyList :: NonEmpty (Doc ann) -> Doc ann
 prettyNonEmptyList xs = case NonEmpty.init xs of
@@ -125,7 +129,7 @@ prettySet xs = prettySetLike (pretty <$> Set.toList xs)
 prettySetLike :: [Doc a] -> Doc a
 prettySetLike xs =
   "{"
-    <+> group (concatWith (\x y -> x <> line <> ";" <+> y) xs)
+    <+> concatWith (\x y -> x <> line <> ";" <+> y) xs
     <> line
     <> "}"
 

@@ -3,6 +3,8 @@ module Vehicle.Compile.Print.Error
     VehicleError (..),
     MeaningfulError (..),
     logCompileError,
+    multipleNetworkErrorMessages,
+    errorInSubsystemMessage,
   )
 where
 
@@ -16,8 +18,9 @@ import Vehicle.Compile.Print.TypingError
 import Vehicle.Data.Assertion (prettyUnderConstrainedVariable)
 import Vehicle.Data.Builtin.Linearity
 import Vehicle.Data.Builtin.Polarity
-import Vehicle.Data.Builtin.Standard
-import Vehicle.Data.Code.Interface
+import Vehicle.Data.Builtin.Standard.Core
+import Vehicle.Data.Code.Interface (getDimsExprs)
+import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
 import Vehicle.Syntax.Parse (ParseError (..))
 import Prelude hiding (pi)
@@ -144,7 +147,7 @@ instance MeaningfulError CompileError where
               problem = "expected at least one variable name after" <+> quotePretty symbol,
               fix = Just $ "add one or more names after" <+> quotePretty symbol
             }
-      UnchainableOrders p prevOrder currentOrder ->
+      UnchainableComparisons p prevOrder currentOrder ->
         UError $
           UserError
             { provenance = p,
@@ -216,21 +219,18 @@ instance MeaningfulError CompileError where
     -------------
     -- Scoping --
     -------------
-    MissingPrunedName name ->
+    MissingRequestedDeclarations names ->
       UError $
         UserError
           { provenance = mempty,
             -- TODO can use Levenschtein distance to search contexts/builtins
             problem =
-              "Was asked to compile declaration"
-                <+> quotePretty name
-                <+> "but no declaration exists with that name in the specification.",
+              "Requested to compile the declaration"
+                <+> quotePretty (head names)
+                <+> "but no declarations exist with that name in the specification.",
             fix =
-              Just $
-                "check the spelling of"
-                  <+> quotePretty name
-                  <+> "or that the"
-                  <+> "right specification is being used."
+              Just
+                "check the spelling of the names and that the correct specification is being used."
           }
     UnboundName p name ->
       UError $
@@ -346,71 +346,6 @@ instance MeaningfulError CompileError where
         entity = if resourceType == Parameter then "value" else "file"
 
     -- Network errors
-    {-
-        NetworkTypeIsNotAFunction (ident, _p) networkType ->
-          UError $
-            UserError
-              { provenance = provenanceOf networkType,
-                problem =
-                  unsupportedAnnotationTypeDescription (pretty NetworkDef) ident networkType
-                    <+> "as it is not a function.",
-                fix =
-                  Just $
-                    supportedNetworkTypeDescription
-                      <+> "Provide both an input type and output type for your network."
-              }
-        NetworkTypeIsNotOverTensors (ident, _p) networkType nonTensorType io ->
-          UError $
-            UserError
-              { provenance = provenanceOf networkType,
-                problem =
-                  unsupportedAnnotationTypeDescription (pretty NetworkDef) ident networkType
-                    <+> "as the"
-                    <+> pretty io
-                    <+> squotes (prettyFriendlyEmptyCtx nonTensorType)
-                    <+> "is not one of"
-                    <+> list [pretty Vector, pretty (identifierName TensorIdent)]
-                    <> ".",
-                fix =
-                  Just $
-                    supportedNetworkTypeDescription
-                      <+> "Ensure the"
-                      <+> pretty io
-                      <+> "of the network is a Tensor"
-              }
-        NetworkTypeHasNonExplicitArguments (ident, _p) networkType binder ->
-          UError $
-            UserError
-              { provenance = provenanceOf binder,
-                problem =
-                  unsupportedAnnotationTypeDescription (pretty NetworkDef) ident networkType
-                    <+> "as it contains the non-explicit argument of type"
-                    <+> squotes (prettyFriendlyEmptyCtx (typeOf binder))
-                    <> ".",
-                fix =
-                  Just $
-                    supportedNetworkTypeDescription
-                      <+> "Remove the non-explicit argument."
-              }
-        NetworkTypeHasUnsupportedElementType (ident, _p) networkType elementType io ->
-          UError $
-            UserError
-              { provenance = provenanceOf networkType,
-                problem =
-                  unsupportedAnnotationTypeDescription (pretty NetworkDef) ident networkType
-                    <+> "as"
-                    <+> pretty io
-                    <> "s of type"
-                      <+> squotes (prettyFriendlyEmptyCtx elementType)
-                      <+> "are not currently supported.",
-                fix =
-                  Just $
-                    supportedNetworkTypeDescription
-                      <+> "Ensure that the network"
-                      <+> pretty io
-                      <+> "uses"
-                      <+> "supported types."
-              }-}
     NetworkTypeHasVariableSizeTensor (ident, _p) networkType tDim io ->
       UError $
         UserError
@@ -468,7 +403,7 @@ instance MeaningfulError CompileError where
                 <> "."
                 <> line
                 <> "According to the specification it should be"
-                  <+> pretty (dimensionsOf (normalised expectedType))
+                  <+> maybe "?" pretty (dimensionsOf (normalised expectedType))
                 <> "-dimensional"
                   <+> "but was actually found to be"
                   <+> pretty (length actualDims)
@@ -479,18 +414,24 @@ instance MeaningfulError CompileError where
             fix = Just $ datasetDimensionsFix "dimensions" ident file
           }
       where
-        dimensionsOf :: VType Builtin -> Int
-        dimensionsOf = \case
-          IListType _ t -> 1 + dimensionsOf t
-          IVectorType _ t _ -> 1 + dimensionsOf t
-          _ -> 0
-    DatasetDimensionSizeMismatch (ident, p) file expectedSize actualSize allDimensions visitedDimensions ->
+        dimensionsOf :: VType Builtin -> Maybe Int
+        dimensionsOf t = case toTypeValue t of
+          VRatTensorType dims -> dimLength dims
+          VBoolTensorType dims -> dimLength dims
+          VNatTensorType dims -> dimLength dims
+          VIndexTensorType _ dims -> dimLength dims
+          VListType tElem -> (+ 1) <$> dimensionsOf tElem
+          _ -> Nothing
+
+        dimLength :: Value Builtin -> Maybe Int
+        dimLength dims = either (const Nothing) (Just . length) (getDimsExprs dims)
+    DatasetDimensionSizeMismatch (ident, p) file expectedSize actualSize wrongDimensionIndex ->
       UError $
         UserError
           { provenance = p,
             problem =
               "Mismatch in the size of"
-                <+> dimension
+                <+> prettyOrdinal "dimension" (wrongDimensionIndex + 1) Nothing
                 <+> "of"
                 <+> prettyResource Dataset ident
                 <> "."
@@ -504,9 +445,6 @@ instance MeaningfulError CompileError where
                 <> ".",
             fix = Just $ datasetDimensionsFix "dimensions" ident file
           }
-      where
-        numberOfCorrectDimensions = length allDimensions - length visitedDimensions
-        dimension = prettyOrdinal "dimension" (numberOfCorrectDimensions + 1) Nothing
     DatasetInvalidNat (ident, p) file v ->
       UError $
         UserError
@@ -517,7 +455,7 @@ instance MeaningfulError CompileError where
                 <> "."
                 <> line
                 <> "Expected elements of type"
-                  <+> quotePretty Nat
+                  <+> quotePretty NatType
                   <+> "but found value"
                   <+> quotePretty v
                   <+> "when reading"
@@ -535,7 +473,8 @@ instance MeaningfulError CompileError where
                 <> "."
                 <> line
                 <> "Expected elements of type"
-                  <+> squotes (pretty Index <+> pretty n)
+                  <+> squotes (pretty IndexType <+> pretty n)
+                  <+> parens ("i.e. values between 0 and" <+> pretty (n - 1) <+> "inclusive")
                   <+> "but found value"
                   <+> quotePretty v
                   <+> "when reading"
@@ -580,15 +519,17 @@ instance MeaningfulError CompileError where
                   <+> prettyIdentName ident
                   <+> "in the specification or change the value provided."
           }
-    ParameterTypeVariableSizeIndex (ident, p) parameterType ->
+    ParameterTypeVariableSizeIndex (ident, p) parameterType size ->
       UError $
         UserError
           { provenance = p,
             problem =
               unsupportedAnnotationTypeDescription (pretty (ParameterDef NonInferable)) ident parameterType
-                <+> "as the size of the"
-                <+> pretty Index
-                <+> "type is not a known constant.",
+                <+> "as the size"
+                <+> squotes (prettyFriendlyEmptyCtx size)
+                <+> "for the"
+                <+> pretty IndexType
+                <+> "type is not a constant.",
             fix = Just "make sure the dimensions of the indices are all constants."
           }
     ParameterValueInvalidIndex (ident, p) value n ->
@@ -601,7 +542,7 @@ instance MeaningfulError CompileError where
                 <> "."
                 <> line
                 <> "Expected something of type"
-                  <+> squotes (pretty Index <+> pretty n)
+                  <+> squotes (pretty IndexType <+> pretty n)
                   <+> "but was provided the value"
                   <+> quotePretty value
                 <> ".",
@@ -622,7 +563,7 @@ instance MeaningfulError CompileError where
                 <> "."
                 <> line
                 <> "Expected something of type"
-                  <+> quotePretty Nat
+                  <+> quotePretty NatType
                   <+> "but was provided the value"
                   <+> quotePretty value
                 <> ".",
@@ -638,7 +579,7 @@ instance MeaningfulError CompileError where
           { provenance = p,
             problem =
               "The use of an inferable parameter for the size of an"
-                <+> pretty Index
+                <+> pretty IndexType
                 <+> "in the type of"
                 <+> prettyResource Parameter ident
                 <+> "is not currently supported.",
@@ -683,7 +624,25 @@ instance MeaningfulError CompileError where
     --------------------
     -- Backend errors --
     --------------------
-
+    VariableSizeTensorQuantification (ident, _p) ctx binder dims ->
+      UError $
+        UserError
+          { provenance = provenanceOf binder,
+            problem =
+              "whilst compiling property"
+                <+> quotePretty ident
+                <+> "found the quantified variable"
+                <+> quotePretty (nameOf binder)
+                <+> "with dimensions"
+                <+> prettyFriendly (WithContext dims ctx)
+                <> "."
+                  <+> "This is not supported during verification as the dimensions are not constant.",
+            fix =
+              Just $
+                "ensure that the dimensions of variable"
+                  <+> quotePretty (nameOf binder)
+                  <+> "are known at compile time."
+          }
     UnsupportedAlternatingQuantifiers queryFormat (ident, p) cause ->
       UError $
         UserError
@@ -706,7 +665,7 @@ instance MeaningfulError CompileError where
       where
         causeDoc :: Doc a
         causeDoc = case cause of
-          Left err -> errorInSubsystemMessage "locate the original source of the alternating quantifiers" err
+          Left err -> line <> errorInSubsystemMessage "locate the original source of the alternating quantifiers" err
           Right (q, pq, pp) ->
             "In particular:"
               <> line
@@ -730,7 +689,7 @@ instance MeaningfulError CompileError where
       where
         causeDoc :: Doc a
         causeDoc = case cause of
-          Left err -> errorInSubsystemMessage "locate the original source of the non-linearity" err
+          Left err -> line <> errorInSubsystemMessage "locate the original source of the non-linearity" err
           Right source -> case source of
             LinearTimesLinear opProv lhs rhs ->
               "In particular the multiplication in"
@@ -754,31 +713,6 @@ instance MeaningfulError CompileError where
                 <+> pretty opProv
                 <+> "involves"
                 <> prettyLinearityProvenance lhs "exponent of the power"
-    UnsupportedVariableType (ident, _) p name problemType baseType supportedTypes ->
-      UError $
-        UserError
-          { provenance = p,
-            problem =
-              "Property"
-                <+> prettyIdentName ident
-                <+> "contains a quantified variable"
-                <+> quotePretty name
-                <+> "of type"
-                <+> squotes (prettyFriendlyEmptyCtx baseType)
-                <+> "which is not currently supported"
-                <> "."
-                <> ( if baseType == problemType
-                       then ""
-                       else
-                         " In particular the element type"
-                           <+> squotes (prettyFriendlyEmptyCtx problemType)
-                           <+> "is not supported."
-                   ),
-            fix =
-              Just $
-                "try switching the variable to one of the following supported types:"
-                  <+> pretty supportedTypes
-          }
     UnsupportedInequality queryFormat (identifier, p) ->
       UError $
         UserError
@@ -811,7 +745,7 @@ instance MeaningfulError CompileError where
         UserError
           { provenance = mempty,
             problem = "No properties found in file.",
-            fix = Just $ "an expression is labelled as a property by giving it type" <+> squotes (pretty Bool) <+> "."
+            fix = Just $ "an expression is labelled as a property by giving it type" <+> squotes (pretty BoolType) <+> "."
           }
     UnsupportedLossOperation _declProv p op ->
       UError $
@@ -900,6 +834,25 @@ instance MeaningfulError CompileError where
                 <> indent 2 (prettyFriendly (WithContext problematicValue ctx)),
             fix = Nothing
           }
+    UnusedMonomorphisableDeclaration p ident ->
+      UError $
+        UserError
+          { provenance = p,
+            problem =
+              "Unable to compile declaration"
+                <+> quotePretty ident
+                <+> "as it is both not used in any properties and the type is not precisely defined"
+                <+> "and therefore unable to decide"
+                <+> "whether or not it should be lifted to the type-level.",
+            fix = Just "either remove the declaration, or add a type signature or use it in a property."
+          }
+    UnsupportedMultipleNetworkApplications queryFormat (_, p) apps ->
+      UError $
+        UserError
+          { provenance = p,
+            problem = multipleNetworkErrorMessages (pretty queryFormat) (fmap fst apps),
+            fix = Just "this is on our road map to fix, but please open an issue on the Issue tracker with your use-case."
+          }
 
 datasetDimensionsFix :: Doc a -> Identifier -> FilePath -> Doc a
 datasetDimensionsFix feature ident file =
@@ -914,9 +867,8 @@ datasetDimensionsFix feature ident file =
 
 errorInSubsystemMessage :: Doc a -> CompileError -> Doc a
 errorInSubsystemMessage task err =
-  line
-    <> "Unfortunately while trying to"
-      <+> task
+  "Unfortunately while trying to"
+    <+> task
     <> ","
       <+> "the following error was encountered:"
     <> line
@@ -948,7 +900,7 @@ prettyBuiltinType t = article <+> squotes (pretty t)
   where
     article :: Doc a
     article = case t of
-      Index -> "an"
+      IndexType -> "an"
       _ -> "a"
 
 prettyQuantifierArticle :: Quantifier -> Doc a
@@ -956,9 +908,9 @@ prettyQuantifierArticle q =
   (if q == Forall then "a" else "an") <+> squotes (pretty q)
 
 prettyPolarityProvenance :: Provenance -> Quantifier -> PolarityProvenance -> Doc a
-prettyPolarityProvenance topQuantifierProv topQuantifier bottomQuantifierProvenance =
+prettyPolarityProvenance topQuantifierProv topQuantifier bottomQuantifierProvenance = do
   let bottomQuantifier = neg topQuantifier
-   in numberedList $ reverse (finalLine : go bottomQuantifier bottomQuantifierProvenance)
+  numberedList $ reverse (finalLine : go bottomQuantifier bottomQuantifierProvenance)
   where
     go :: Quantifier -> PolarityProvenance -> [Doc a]
     go q = \case
@@ -968,8 +920,6 @@ prettyPolarityProvenance topQuantifierProv topQuantifier bottomQuantifierProvena
         transform p ("the" <+> quotePretty Not) : go (neg q) pp
       LHSImpliesProvenance p pp ->
         transform p ("being on the LHS of the" <+> quotePretty Implies) : go (neg q) pp
-      EqProvenance p pp eq ->
-        transform p ("being involved in the" <+> quotePretty (EqualsTC eq)) : go (neg q) pp
       PolFunctionProvenance p pp position ->
         surround p (prettyAuxiliaryFunctionProvenance position) : go q pp
       where
@@ -986,11 +936,11 @@ prettyPolarityProvenance topQuantifierProv topQuantifier bottomQuantifierProvena
         <+> "in"
         <+> pretty topQuantifierProv
 
-prettyLinearityProvenance :: forall a. LinearityProvenance -> Doc a -> Doc a
+prettyLinearityProvenance :: forall a. LinearityProof -> Doc a -> Doc a
 prettyLinearityProvenance lp location =
   line <> indent 2 (numberedList $ reverse (finalLine : go lp)) <> line
   where
-    go :: LinearityProvenance -> [Doc a]
+    go :: LinearityProof -> [Doc a]
     go = \case
       QuantifiedVariableProvenance p v ->
         ["the quantified variable" <+> quotePretty v <+> "introduced in" <+> pretty p]
@@ -1033,3 +983,19 @@ supportedNetworkTypeDescription =
     <> indent 2 "Tensor Rat [a_1, ..., a_n] -> Tensor Rat [b_1, ..., b_n]"
     <> line
     <> "where 'a_i' and 'b_i' are all constants at compile time."
+
+multipleNetworkErrorMessages :: Doc a -> [Name] -> Doc a
+multipleNetworkErrorMessages verifier networkNames = do
+  let duplicateNetworkNames = findDuplicates networkNames
+  "The"
+    <+> verifier
+    <+> "currently doesn't support properties that involve"
+    <+> if null duplicateNetworkNames
+      then
+        "multiple networks. This property involves:"
+          <> line
+          <> indent 2 (vsep $ fmap (\n -> "the network" <+> squotes (pretty n)) networkNames)
+      else
+        "multiple applications of the same network. This property applies:"
+          <> line
+          <> indent 2 (vsep $ fmap (\(n, v) -> "the network" <+> squotes (pretty n) <+> pretty v <+> "times") duplicateNetworkNames)

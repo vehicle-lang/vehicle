@@ -4,16 +4,15 @@ import Control.Monad.Except (ExceptT, mapExceptT)
 import Control.Monad.Identity (IdentityT, mapIdentityT)
 import Control.Monad.Reader (ReaderT (..), mapReaderT)
 import Control.Monad.State (StateT (..), mapStateT)
+import Control.Monad.Trans.Maybe (MaybeT, mapMaybeT)
 import Control.Monad.Writer
 import Data.Data (Proxy (..))
-import Data.Set (Set)
+import Data.Vector.Internal.Check (HasCallStack)
 import Vehicle.Compile.Context.Bound
 import Vehicle.Compile.Context.Free.Core
-import Vehicle.Compile.Error (MonadCompile, lookupInFreeCtx)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print.Builtin
+import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Code.Value
-import Vehicle.Libraries.StandardLibrary.Definitions
 
 --------------------------------------------------------------------------------
 -- Context monad class
@@ -24,88 +23,68 @@ class (PrintableBuiltin builtin, MonadLogger m) => MonadFreeContext builtin m wh
   -- | Adds a new decl to the free variable context.
   addDeclEntryToContext :: FreeCtxEntry builtin -> m a -> m a
 
-  -- | Returns the current free variable context (with masked definitions excluded)
+  -- | Returns the current free variable context
   getFreeCtx :: Proxy builtin -> m (FreeCtx builtin)
-
-  -- | Temporarily hides the given standard library function so that it is not returned as part of `getFreeCtx`.
-  -- Useful if you want to stop certain standard library functions from reducing.
-  hideStdLibDecls :: Proxy builtin -> Set StdLibFunction -> m a -> m a
-
-  -- | Returns the free context of all the currently hidden declarations.
-  getHiddenStdLibDecl :: Proxy builtin -> StdLibFunction -> m (FreeCtxEntry builtin)
 
 instance (Monoid w, MonadFreeContext builtin m) => MonadFreeContext builtin (WriterT w m) where
   addDeclEntryToContext = mapWriterT . addDeclEntryToContext
   getFreeCtx = lift . getFreeCtx
-  getHiddenStdLibDecl p = lift . getHiddenStdLibDecl p
-  hideStdLibDecls p = mapWriterT . hideStdLibDecls p
 
 instance (MonadFreeContext builtin m) => MonadFreeContext builtin (ReaderT w m) where
   addDeclEntryToContext = mapReaderT . addDeclEntryToContext
   getFreeCtx = lift . getFreeCtx
-  getHiddenStdLibDecl p = lift . getHiddenStdLibDecl p
-  hideStdLibDecls p = mapReaderT . hideStdLibDecls p
 
 instance (MonadFreeContext builtin m) => MonadFreeContext builtin (StateT w m) where
   addDeclEntryToContext = mapStateT . addDeclEntryToContext
   getFreeCtx = lift . getFreeCtx
-  getHiddenStdLibDecl p = lift . getHiddenStdLibDecl p
-  hideStdLibDecls p = mapStateT . hideStdLibDecls p
 
 instance (MonadFreeContext builtin m) => MonadFreeContext builtin (BoundContextT builtin2 m) where
   addDeclEntryToContext = mapBoundContextT . addDeclEntryToContext
   getFreeCtx = lift . getFreeCtx
-  getHiddenStdLibDecl p = lift . getHiddenStdLibDecl p
-  hideStdLibDecls p = mapBoundContextT . hideStdLibDecls p
 
 instance (MonadFreeContext builtin m) => MonadFreeContext builtin (IdentityT m) where
   addDeclEntryToContext = mapIdentityT . addDeclEntryToContext
   getFreeCtx = lift . getFreeCtx
-  getHiddenStdLibDecl p = lift . getHiddenStdLibDecl p
-  hideStdLibDecls p = mapIdentityT . hideStdLibDecls p
 
 instance (MonadFreeContext builtin m) => MonadFreeContext builtin (SupplyT s m) where
   addDeclEntryToContext = mapSupplyT . addDeclEntryToContext
   getFreeCtx = lift . getFreeCtx
-  getHiddenStdLibDecl p = lift . getHiddenStdLibDecl p
-  hideStdLibDecls p = mapSupplyT . hideStdLibDecls p
 
 instance (MonadFreeContext builtin m) => MonadFreeContext builtin (ExceptT s m) where
   addDeclEntryToContext = mapExceptT . addDeclEntryToContext
   getFreeCtx = lift . getFreeCtx
-  getHiddenStdLibDecl p = lift . getHiddenStdLibDecl p
-  hideStdLibDecls p = mapExceptT . hideStdLibDecls p
+
+instance (MonadFreeContext builtin m) => MonadFreeContext builtin (MaybeT m) where
+  addDeclEntryToContext = mapMaybeT . addDeclEntryToContext
+  getFreeCtx = lift . getFreeCtx
 
 --------------------------------------------------------------------------------
 -- Operations
 
 getDeclEntry ::
-  (MonadCompile m, MonadFreeContext builtin m) =>
+  (MonadLogger m, MonadFreeContext builtin m, HasCallStack) =>
   Proxy builtin ->
-  CompilerPass ->
   Identifier ->
   m (FreeCtxEntry builtin)
-getDeclEntry proxy compilerPass ident = do
+getDeclEntry proxy ident = do
   ctx <- getFreeCtx proxy
-  lookupInFreeCtx compilerPass ident ctx
+  return $ lookupInFreeCtx ident ctx
 
 getDeclType ::
-  (MonadCompile m, MonadFreeContext builtin m) =>
+  (MonadLogger m, MonadFreeContext builtin m, HasCallStack) =>
   Proxy builtin ->
-  CompilerPass ->
   Identifier ->
   m (Type builtin)
-getDeclType proxy compilerPass ident =
-  typeOf . fst <$> getDeclEntry proxy compilerPass ident
+getDeclType proxy ident =
+  typeOf . fst <$> getDeclEntry proxy ident
 
 getDecl ::
-  (MonadCompile m, MonadFreeContext builtin m) =>
+  (MonadLogger m, MonadFreeContext builtin m, HasCallStack) =>
   Proxy builtin ->
-  CompilerPass ->
   Identifier ->
   m (VDecl builtin)
-getDecl proxy compilerPass ident =
-  snd <$> getDeclEntry proxy compilerPass ident
+getDecl proxy ident =
+  snd <$> getDeclEntry proxy ident
 
 getFreeEnv ::
   forall builtin m.

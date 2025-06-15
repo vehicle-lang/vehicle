@@ -8,20 +8,20 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Bidirectional (solveArgInsertionProblem)
 import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Core
+import Vehicle.Compile.Type.Monad (solveMeta)
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Compile.Type.System
 
--- | Attempts to solve as many type-class constraints as possible. Takes in
--- the set of meta-variables solved since the solver was last run and outputs
--- the set of meta-variables solved during this run.
+-- | Attempts to solve as many type-class constraints as possible.
 runApplicationSolver :: (TCM builtin m) => Proxy builtin -> m ()
 runApplicationSolver proxy = do
-  logCompilerPass MaxDetail ("application solver run" <> line) $
+  logCompilerPass MaxDetail "application solver run" $
     runConstraintSolver
-      proxy
       getActiveApplicationConstraints
       setApplicationConstraints
       solveApplicationConstraint
+      True
+      proxy
 
 solveApplicationConstraint ::
   (TCM builtin m) =>
@@ -32,8 +32,8 @@ solveApplicationConstraint (WithContext InferArgs {..} ctx) = do
   result <- solveArgInsertionProblem boundCtx argInsertionProblem
   case result of
     Right (finalExpr, finalType) -> do
-      solveMeta typeSolutionMeta finalType boundCtx
-      solveMeta exprSolutionMeta finalExpr boundCtx
+      solveMeta exprSolution finalExpr boundCtx
+      solveMeta typeSolution finalType boundCtx
     Left (blockedProblem, blockingMetas) -> do
       let newConstraint = InferArgs {argInsertionProblem = blockedProblem, ..}
       let finalConstraint = WithContext newConstraint (blockCtxOn blockingMetas ctx)

@@ -1,3 +1,6 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
+{-# HLINT ignore "Use fewer imports" #-}
 module Vehicle.CommandLine
   ( Options (..),
     GlobalOptions (..),
@@ -42,12 +45,13 @@ import Options.Applicative
     switch,
     value,
   )
-import Vehicle.Backend.Prelude (DifferentiableLogicID, ITP, ListableEntities (..), Target (..), TypingSystem (..), findTarget)
+import Vehicle.Backend.Prelude (DifferentiableLogicID, ITP, ListableEntities (..), SecondaryTypeSystem (..), Target (..), findTarget)
 import Vehicle.Compile (CompileOptions (..))
 import Vehicle.Export (ExportOptions (..))
 import Vehicle.List (ListOptions (..))
 import Vehicle.Prelude
   ( Doc,
+    Pretty (..),
     enumerate,
     indent,
     layoutAsString,
@@ -55,6 +59,7 @@ import Vehicle.Prelude
     specificationFileExtension,
     supportedOptions,
     vsep,
+    (<+>),
   )
 import Vehicle.Prelude.Logging
 import Vehicle.TypeCheck (TypeCheckOptions (..))
@@ -323,10 +328,12 @@ allTargets :: [String]
 allTargets = allLossFunctionDLs <> allVerifiersFormats <> allITPs
 
 allTypeSystems :: [Doc a]
-allTypeSystems = flip map (enumerate @TypingSystem) $ \case
-  Standard -> "i) Standard - check whether the types written in the specification are consistent."
-  Polarity -> "ii) Polarity - check whether alternating quantifiers are used in the specification."
-  Linearity -> "iii) Linearity - check whether quantified variables are used linearly in the specification."
+allTypeSystems = flip map (zip [1 :: Int ..] (enumerate @SecondaryTypeSystem)) $ \(n, t) ->
+  pretty n
+    <> "." <+> pretty t <+> "-" <+> case t of
+      PolarityTypes -> "check whether alternating quantifiers are used in the specification."
+      LinearityTypes -> "check whether quantified variables are used linearly in the specification."
+      DecidabilityTypes -> "check which booleans are decidable and which are undecidable in the context of Vehicle"
 
 resourceOption :: Mod OptionFields (Text, String) -> Parser (Map Text String)
 resourceOption desc = Map.fromList <$> many (option (maybeReader readNL) desc)
@@ -382,13 +389,13 @@ verifySpecificationParser =
             <> "a previous call to `vehicle compile`."
         )
 
-typeSystemParser :: Parser TypingSystem
+typeSystemParser :: Parser (Maybe SecondaryTypeSystem)
 typeSystemParser =
   option auto $
     long "typeSystem"
       <> short 't'
       <> help
-        ( "Which typing system should be used. "
+        ( "Which typing system should be used."
             <> layoutAsString
               ( line
                   <> line
@@ -398,7 +405,7 @@ typeSystemParser =
                     )
               )
         )
-      <> value Standard
+      <> value Nothing
 
 listModeParser :: Parser ListableEntities
 listModeParser =

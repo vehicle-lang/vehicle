@@ -8,35 +8,29 @@ import Control.Monad (when)
 import Control.Monad.Except (MonadError (..))
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print.Builtin
-import Vehicle.Data.Builtin.Interface (BuiltinHasNatLiterals, BuiltinHasRatType (mkRatBuiltinType), BuiltinHasVecType)
-import Vehicle.Data.Code.Interface
+import Vehicle.Compile.Print (prettyVerbose)
+import Vehicle.Data.Builtin.Standard
+import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value (VBinder, Value)
-import Vehicle.Data.Tensor (TensorShape)
 import Prelude hiding (Applicative (..))
 
 --------------------------------------------------------------------------------
 -- Extraction
 
-type MonadCreateUserVar builtin m =
-  ( MonadCompile m,
-    BuiltinHasRatType builtin,
-    BuiltinHasVecType builtin,
-    BuiltinHasNatLiterals builtin,
-    PrintableBuiltin builtin,
-    Eq builtin
+type MonadCreateUserVar m =
+  ( MonadCompile m
   )
 
 createUserVar ::
-  (MonadCreateUserVar builtin m) =>
+  (MonadCreateUserVar m) =>
   DeclProvenance ->
   NamedBoundCtx ->
-  VBinder builtin ->
-  m (Name, TensorShape)
+  VBinder Builtin ->
+  m (Name, Value Builtin)
 createUserVar propertyProvenance namedCtx binder = do
   let varName = getBinderName binder
   checkUserVariableNameIsUnique propertyProvenance namedCtx varName
-  varDimensions <- checkUserVariableType propertyProvenance binder
+  varDimensions <- checkUserVariableType binder
   return (varName, varDimensions)
 
 checkUserVariableNameIsUnique ::
@@ -52,20 +46,11 @@ checkUserVariableNameIsUnique propertyProvenance namedCtx varName = do
       DuplicateQuantifierNames propertyProvenance varName
 
 checkUserVariableType ::
-  forall m builtin.
-  (MonadCreateUserVar builtin m) =>
-  DeclProvenance ->
-  VBinder builtin ->
-  m TensorShape
-checkUserVariableType propertyProvenance binder = go (typeOf binder)
-  where
-    go :: Value builtin -> m TensorShape
-    go = \case
-      IRatType {} -> return []
-      IVectorType _ tElem (INatLiteral _ d) -> do
-        ds <- go tElem
-        return $ d : ds
-      tElem -> do
-        let p = provenanceOf binder
-        let baseName = getBinderName binder
-        throwError $ UnsupportedVariableType propertyProvenance p baseName tElem (typeOf binder) [mkRatBuiltinType]
+  forall m.
+  (MonadCreateUserVar m) =>
+  VBinder Builtin ->
+  m (Value Builtin)
+checkUserVariableType binder =
+  case toTypeValue (typeOf binder) of
+    VRatTensorType dims -> return dims
+    _ -> developerError $ "Unexpected quantifier type:" <+> prettyVerbose (typeOf binder)

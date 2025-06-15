@@ -14,7 +14,7 @@ prop3 : Bool
 prop3 = exists x . if f [x] ! 0 > 0 then x >= 0 else x < 0
 
 -- @network
--- g : Vector Rat 1 -> Vector Rat 2
+-- g : Tensor Rat [1] -> Tensor Rat [2]
 
 -- @property
 -- prop4 : Bool

@@ -1,3 +1,5 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 module Vehicle.Data.Universe where
 
 import Control.DeepSeq (NFData)
@@ -10,7 +12,7 @@ import Vehicle.Prelude
 -- Universes
 
 newtype UniverseLevel = UniverseLevel Int
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Num, Ord, Show, Generic)
 
 instance NFData UniverseLevel
 

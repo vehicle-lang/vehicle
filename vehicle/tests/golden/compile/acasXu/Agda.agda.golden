@@ -8,22 +8,23 @@
 
 open import Vehicle
 open import Vehicle.Utils
+open import Vehicle.Data.Tensor
 open import Data.Product
 open import Data.Sum
 open import Data.Integer as ℤ using (ℤ)
 open import Data.Rational as ℚ using (ℚ)
 open import Data.Fin as Fin using (Fin; #_)
-open import Data.Vec.Functional renaming ([] to []ᵥ; _∷_ to _∷ᵥ_)
-open import Relation.Binary.PropositionalEquality
+open import Data.Vec.Functional.Relation.Unary.All as Fin
+open import Data.List.Base
 open import Relation.Nullary
 
 module Agda where
 
-pi : ℚ
-pi = ℤ.+ 392699 ℚ./ 125000
+pi : Tensor ℚ []
+pi = ℤ.+ 392699 / 125000
 
 InputVector : Set
-InputVector = Vector ℚ 5
+InputVector = Tensor ℚ (5 ∷ [])
 
 distanceToIntruder : Fin 5
 distanceToIntruder = # 0
@@ -41,7 +42,7 @@ intruderSpeed : Fin 5
 intruderSpeed = # 4
 
 OutputVector : Set
-OutputVector = Vector ℚ 5
+OutputVector = Tensor ℚ (5 ∷ [])
 
 clearOfConflict : Fin 5
 clearOfConflict = # 0
@@ -58,81 +59,81 @@ strongRight = # 4
 postulate acasXu : InputVector → OutputVector
 
 UnnormalisedInputVector : Set
-UnnormalisedInputVector = Vector ℚ 5
+UnnormalisedInputVector = Tensor ℚ (5 ∷ [])
 
 minimumInputValues : UnnormalisedInputVector
-minimumInputValues = ℤ.+ 0 ℚ./ 1 ∷ᵥ (ℚ.- pi ∷ᵥ (ℚ.- pi ∷ᵥ (ℤ.+ 100 ℚ./ 1 ∷ᵥ (ℤ.+ 0 ℚ./ 1 ∷ᵥ []ᵥ))))
+minimumInputValues = stack 0 (𝕋.- pi) (𝕋.- pi) 100 0
 
 maximumInputValues : UnnormalisedInputVector
-maximumInputValues = ℤ.+ 60261 ℚ./ 1 ∷ᵥ (pi ∷ᵥ (pi ∷ᵥ (ℤ.+ 1200 ℚ./ 1 ∷ᵥ (ℤ.+ 1200 ℚ./ 1 ∷ᵥ []ᵥ))))
+maximumInputValues = stack 60261 pi pi 1200 1200
 
 ValidInput : UnnormalisedInputVector → Set
-ValidInput x = ∀ i → minimumInputValues i ℚ.≤ x i × x i ℚ.≤ maximumInputValues i
+ValidInput x = Fin.All (λ i → (minimumInputValues ! i) ≤ (x ! i) × (x ! i) ≤ (maximumInputValues ! i))
 
 meanScalingValues : UnnormalisedInputVector
-meanScalingValues = ℤ.+ 19791091 ℚ./ 1000 ∷ᵥ (ℤ.+ 0 ℚ./ 1 ∷ᵥ (ℤ.+ 0 ℚ./ 1 ∷ᵥ (ℤ.+ 650 ℚ./ 1 ∷ᵥ (ℤ.+ 600 ℚ./ 1 ∷ᵥ []ᵥ))))
+meanScalingValues = stack (ℤ.+ 19791091 / 1000) 0 0 650 600
 
 normalise : UnnormalisedInputVector → InputVector
-normalise x = λ i → (x i ⊖ meanScalingValues i) ℚ.÷ (maximumInputValues i ⊖ minimumInputValues i)
+normalise x = foreach (λ i → ((x ! i) 𝕋.⊖ (meanScalingValues ! i)) 𝕋.÷ ((maximumInputValues ! i) 𝕋.⊖ (minimumInputValues ! i)))
 
 normAcasXu : UnnormalisedInputVector → OutputVector
 normAcasXu x = acasXu (normalise x)
 
-MinimalScore : Fin 5 → (UnnormalisedInputVector → Set)
-MinimalScore i x = ∀ j → i ≢ j → normAcasXu x i ℚ.< normAcasXu x j
+MinimalScore : Fin 5 → UnnormalisedInputVector → Set
+MinimalScore i x = Fin.All (λ j → i ≉ j → (normAcasXu x ! i) < (normAcasXu x ! j))
 
-MaximalScore : Fin 5 → (UnnormalisedInputVector → Set)
-MaximalScore i x = ∀ j → i ≢ j → normAcasXu x i ℚ.> normAcasXu x j
+MaximalScore : Fin 5 → UnnormalisedInputVector → Set
+MaximalScore i x = Fin.All (λ j → i ≉ j → (normAcasXu x ! i) > (normAcasXu x ! j))
 
-scaleCOCOutput : ℚ → ℚ
-scaleCOCOutput x = (x ⊖ ℤ.+ 1879721 ℚ./ 250000) ℚ.÷ (ℤ.+ 2337187 ℚ./ 6250)
+scaleCOCOutput : Tensor ℚ [] → Tensor ℚ []
+scaleCOCOutput x = (x 𝕋.⊖ ℤ.+ 1879721 / 250000) 𝕋.÷ (ℤ.+ 2337187 / 6250)
 
 IntruderDistantAndSlower : UnnormalisedInputVector → Set
-IntruderDistantAndSlower x = x distanceToIntruder ℚ.≥ ℤ.+ 55947691 ℚ./ 1000 × (x speed ℚ.≥ ℤ.+ 1145 ℚ./ 1 × x intruderSpeed ℚ.≤ ℤ.+ 60 ℚ./ 1)
+IntruderDistantAndSlower x = (x ! distanceToIntruder) ≥ ℤ.+ 55947691 / 1000 × ((x ! speed) ≥ 1145 × (x ! intruderSpeed) ≤ 60)
 
-postulate property1 : ∀ x → ValidInput x × IntruderDistantAndSlower x → normAcasXu x clearOfConflict ℚ.≤ scaleCOCOutput (ℤ.+ 1500 ℚ./ 1)
+postulate property1 : ∀ x → ValidInput x × IntruderDistantAndSlower x → (normAcasXu x ! clearOfConflict) ≤ scaleCOCOutput 1500
 
 postulate property2 : ∀ x → ValidInput x × IntruderDistantAndSlower x → ¬ MaximalScore clearOfConflict x
 
 DirectlyAhead : UnnormalisedInputVector → Set
-DirectlyAhead x = (ℤ.+ 1500 ℚ./ 1 ℚ.≤ x distanceToIntruder × x distanceToIntruder ℚ.≤ ℤ.+ 1800 ℚ./ 1) × (ℚ.- (ℤ.+ 3 ℚ./ 50) ℚ.≤ x angleToIntruder × x angleToIntruder ℚ.≤ ℤ.+ 3 ℚ./ 50)
+DirectlyAhead x = (1500 ≤ (x ! distanceToIntruder) × (x ! distanceToIntruder) ≤ 1800) × (𝕋.- (ℤ.+ 3 / 50) ≤ (x ! angleToIntruder) × (x ! angleToIntruder) ≤ ℤ.+ 3 / 50)
 
 MovingTowards : UnnormalisedInputVector → Set
-MovingTowards x = x intruderHeading ℚ.≥ ℤ.+ 31 ℚ./ 10 × (x speed ℚ.≥ ℤ.+ 980 ℚ./ 1 × x intruderSpeed ℚ.≥ ℤ.+ 960 ℚ./ 1)
+MovingTowards x = (x ! intruderHeading) ≥ ℤ.+ 31 / 10 × ((x ! speed) ≥ 980 × (x ! intruderSpeed) ≥ 960)
 
 postulate property3 : ∀ x → ValidInput x × (DirectlyAhead x × MovingTowards x) → ¬ MinimalScore clearOfConflict x
 
 MovingAway : UnnormalisedInputVector → Set
-MovingAway x = x intruderHeading ≡ ℤ.+ 0 ℚ./ 1 × (ℤ.+ 1000 ℚ./ 1 ℚ.≤ x speed × (ℤ.+ 700 ℚ./ 1 ℚ.≤ x intruderSpeed × x intruderSpeed ℚ.≤ ℤ.+ 800 ℚ./ 1))
+MovingAway x = (x ! intruderHeading) ≈ 0 × (1000 ≤ (x ! speed) × (700 ≤ (x ! intruderSpeed) × (x ! intruderSpeed) ≤ 800))
 
 postulate property4 : ∀ x → ValidInput x × (DirectlyAhead x × MovingAway x) → ¬ MinimalScore clearOfConflict x
 
 NearAndApproachingFromLeft : UnnormalisedInputVector → Set
-NearAndApproachingFromLeft x = (ℤ.+ 250 ℚ./ 1 ℚ.≤ x distanceToIntruder × x distanceToIntruder ℚ.≤ ℤ.+ 400 ℚ./ 1) × ((ℤ.+ 1 ℚ./ 5 ℚ.≤ x angleToIntruder × x angleToIntruder ℚ.≤ ℤ.+ 2 ℚ./ 5) × ((ℚ.- pi ℚ.≤ x intruderHeading × x intruderHeading ℚ.≤ ℚ.- pi ⊕ ℤ.+ 1 ℚ./ 200) × ((ℤ.+ 100 ℚ./ 1 ℚ.≤ x speed × x speed ℚ.≤ ℤ.+ 400 ℚ./ 1) × (ℤ.+ 0 ℚ./ 1 ℚ.≤ x intruderSpeed × x intruderSpeed ℚ.≤ ℤ.+ 400 ℚ./ 1))))
+NearAndApproachingFromLeft x = (250 ≤ (x ! distanceToIntruder) × (x ! distanceToIntruder) ≤ 400) × ((ℤ.+ 1 / 5 ≤ (x ! angleToIntruder) × (x ! angleToIntruder) ≤ ℤ.+ 2 / 5) × ((𝕋.- pi ≤ (x ! intruderHeading) × (x ! intruderHeading) ≤ 𝕋.- pi 𝕋.⊕ ℤ.+ 1 / 200) × ((100 ≤ (x ! speed) × (x ! speed) ≤ 400) × (0 ≤ (x ! intruderSpeed) × (x ! intruderSpeed) ≤ 400))))
 
 postulate property5 : ∀ x → ValidInput x × NearAndApproachingFromLeft x → MinimalScore strongRight x
 
 IntruderFarAway : UnnormalisedInputVector → Set
-IntruderFarAway x = (ℤ.+ 12000 ℚ./ 1 ℚ.≤ x distanceToIntruder × x distanceToIntruder ℚ.≤ ℤ.+ 62000 ℚ./ 1) × ((ℚ.- pi ℚ.≤ x angleToIntruder × x angleToIntruder ℚ.≤ ℚ.- (ℤ.+ 7 ℚ./ 10) ⊎ ℤ.+ 7 ℚ./ 10 ℚ.≤ x angleToIntruder × x angleToIntruder ℚ.≤ pi) × ((ℚ.- pi ℚ.≤ x intruderHeading × x intruderHeading ℚ.≤ ℚ.- pi ⊕ ℤ.+ 1 ℚ./ 200) × ((ℤ.+ 100 ℚ./ 1 ℚ.≤ x speed × x speed ℚ.≤ ℤ.+ 1200 ℚ./ 1) × (ℤ.+ 0 ℚ./ 1 ℚ.≤ x intruderSpeed × x intruderSpeed ℚ.≤ ℤ.+ 1200 ℚ./ 1))))
+IntruderFarAway x = (12000 ≤ (x ! distanceToIntruder) × (x ! distanceToIntruder) ≤ 62000) × ((𝕋.- pi ≤ (x ! angleToIntruder) × (x ! angleToIntruder) ≤ 𝕋.- (ℤ.+ 7 / 10) ⊎ ℤ.+ 7 / 10 ≤ (x ! angleToIntruder) × (x ! angleToIntruder) ≤ pi) × ((𝕋.- pi ≤ (x ! intruderHeading) × (x ! intruderHeading) ≤ 𝕋.- pi 𝕋.⊕ ℤ.+ 1 / 200) × ((100 ≤ (x ! speed) × (x ! speed) ≤ 1200) × (0 ≤ (x ! intruderSpeed) × (x ! intruderSpeed) ≤ 1200))))
 
 postulate property6 : ∀ x → ValidInput x × IntruderFarAway x → MinimalScore clearOfConflict x
 
 LargeVerticalSeparation : UnnormalisedInputVector → Set
-LargeVerticalSeparation x = (ℤ.+ 0 ℚ./ 1 ℚ.≤ x distanceToIntruder × x distanceToIntruder ℚ.≤ ℤ.+ 60760 ℚ./ 1) × ((ℚ.- pi ℚ.≤ x angleToIntruder × x angleToIntruder ℚ.≤ pi) × ((ℚ.- pi ℚ.≤ x intruderHeading × x intruderHeading ℚ.≤ pi) × ((ℤ.+ 100 ℚ./ 1 ℚ.≤ x speed × x speed ℚ.≤ ℤ.+ 1200 ℚ./ 1) × (ℤ.+ 0 ℚ./ 1 ℚ.≤ x intruderSpeed × x intruderSpeed ℚ.≤ ℤ.+ 1200 ℚ./ 1))))
+LargeVerticalSeparation x = (0 ≤ (x ! distanceToIntruder) × (x ! distanceToIntruder) ≤ 60760) × ((𝕋.- pi ≤ (x ! angleToIntruder) × (x ! angleToIntruder) ≤ pi) × ((𝕋.- pi ≤ (x ! intruderHeading) × (x ! intruderHeading) ≤ pi) × ((100 ≤ (x ! speed) × (x ! speed) ≤ 1200) × (0 ≤ (x ! intruderSpeed) × (x ! intruderSpeed) ≤ 1200))))
 
 postulate property7 : ∀ x → ValidInput x × LargeVerticalSeparation x → ¬ MinimalScore strongLeft x × ¬ MinimalScore strongRight x
 
 LargeVerticalSeparationAndPreviousWeakLeft : UnnormalisedInputVector → Set
-LargeVerticalSeparationAndPreviousWeakLeft x = (ℤ.+ 0 ℚ./ 1 ℚ.≤ x distanceToIntruder × x distanceToIntruder ℚ.≤ ℤ.+ 60760 ℚ./ 1) × ((ℚ.- pi ℚ.≤ x angleToIntruder × x angleToIntruder ℚ.≤ ℚ.- (ℤ.+ 3 ℚ./ 4) ℚ.* pi) × ((ℚ.- (ℤ.+ 1 ℚ./ 10) ℚ.≤ x intruderHeading × x intruderHeading ℚ.≤ ℤ.+ 1 ℚ./ 10) × ((ℤ.+ 600 ℚ./ 1 ℚ.≤ x speed × x speed ℚ.≤ ℤ.+ 1200 ℚ./ 1) × (ℤ.+ 600 ℚ./ 1 ℚ.≤ x intruderSpeed × x intruderSpeed ℚ.≤ ℤ.+ 1200 ℚ./ 1))))
+LargeVerticalSeparationAndPreviousWeakLeft x = (0 ≤ (x ! distanceToIntruder) × (x ! distanceToIntruder) ≤ 60760) × ((𝕋.- pi ≤ (x ! angleToIntruder) × (x ! angleToIntruder) ≤ 𝕋.- (ℤ.+ 3 / 4) 𝕋.* pi) × ((𝕋.- (ℤ.+ 1 / 10) ≤ (x ! intruderHeading) × (x ! intruderHeading) ≤ ℤ.+ 1 / 10) × ((600 ≤ (x ! speed) × (x ! speed) ≤ 1200) × (600 ≤ (x ! intruderSpeed) × (x ! intruderSpeed) ≤ 1200))))
 
 postulate property8 : ∀ x → ValidInput x × LargeVerticalSeparationAndPreviousWeakLeft x → MinimalScore clearOfConflict x ⊎ MinimalScore weakLeft x
 
 PreviousWeakRightAndNearbyIntruder : UnnormalisedInputVector → Set
-PreviousWeakRightAndNearbyIntruder x = (ℤ.+ 2000 ℚ./ 1 ℚ.≤ x distanceToIntruder × x distanceToIntruder ℚ.≤ ℤ.+ 7000 ℚ./ 1) × ((ℚ.- (ℤ.+ 2 ℚ./ 5) ℚ.≤ x angleToIntruder × x angleToIntruder ℚ.≤ ℚ.- (ℤ.+ 7 ℚ./ 50)) × ((ℚ.- pi ℚ.≤ x intruderHeading × x intruderHeading ℚ.≤ ℚ.- pi ⊕ ℤ.+ 1 ℚ./ 100) × ((ℤ.+ 100 ℚ./ 1 ℚ.≤ x speed × x speed ℚ.≤ ℤ.+ 150 ℚ./ 1) × (ℤ.+ 0 ℚ./ 1 ℚ.≤ x intruderSpeed × x intruderSpeed ℚ.≤ ℤ.+ 150 ℚ./ 1))))
+PreviousWeakRightAndNearbyIntruder x = (2000 ≤ (x ! distanceToIntruder) × (x ! distanceToIntruder) ≤ 7000) × ((𝕋.- (ℤ.+ 2 / 5) ≤ (x ! angleToIntruder) × (x ! angleToIntruder) ≤ 𝕋.- (ℤ.+ 7 / 50)) × ((𝕋.- pi ≤ (x ! intruderHeading) × (x ! intruderHeading) ≤ 𝕋.- pi 𝕋.⊕ ℤ.+ 1 / 100) × ((100 ≤ (x ! speed) × (x ! speed) ≤ 150) × (0 ≤ (x ! intruderSpeed) × (x ! intruderSpeed) ≤ 150))))
 
 postulate property9 : ∀ x → ValidInput x × PreviousWeakRightAndNearbyIntruder x → MinimalScore strongLeft x
 
 IntruderFarAway2 : UnnormalisedInputVector → Set
-IntruderFarAway2 x = (ℤ.+ 36000 ℚ./ 1 ℚ.≤ x distanceToIntruder × x distanceToIntruder ℚ.≤ ℤ.+ 60760 ℚ./ 1) × ((ℤ.+ 7 ℚ./ 10 ℚ.≤ x angleToIntruder × x angleToIntruder ℚ.≤ pi) × ((ℚ.- pi ℚ.≤ x intruderHeading × x intruderHeading ℚ.≤ ℚ.- pi ⊕ ℤ.+ 1 ℚ./ 100) × ((ℤ.+ 900 ℚ./ 1 ℚ.≤ x speed × x speed ℚ.≤ ℤ.+ 1200 ℚ./ 1) × (ℤ.+ 600 ℚ./ 1 ℚ.≤ x intruderSpeed × x intruderSpeed ℚ.≤ ℤ.+ 1200 ℚ./ 1))))
+IntruderFarAway2 x = (36000 ≤ (x ! distanceToIntruder) × (x ! distanceToIntruder) ≤ 60760) × ((ℤ.+ 7 / 10 ≤ (x ! angleToIntruder) × (x ! angleToIntruder) ≤ pi) × ((𝕋.- pi ≤ (x ! intruderHeading) × (x ! intruderHeading) ≤ 𝕋.- pi 𝕋.⊕ ℤ.+ 1 / 100) × ((900 ≤ (x ! speed) × (x ! speed) ≤ 1200) × (600 ≤ (x ! intruderSpeed) × (x ! intruderSpeed) ≤ 1200))))
 
 postulate property10 : ∀ x → ValidInput x × IntruderFarAway2 x → MinimalScore clearOfConflict x

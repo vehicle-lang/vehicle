@@ -7,7 +7,7 @@ import Data.Map qualified as Map (fromList)
 import Options.Applicative (ParserResult (..), defaultPrefs, execParserPure)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertEqual, assertFailure, testCase)
-import Vehicle.Backend.Prelude (ListableEntities (..), TypingSystem (..))
+import Vehicle.Backend.Prelude (ListableEntities (..))
 import Vehicle.CommandLine
   ( GlobalOptions (..),
     ModeOptions (..),
@@ -82,7 +82,7 @@ checkModeTests =
                 Check $
                   TypeCheckOptions
                     { specification = "test/spec.vcl",
-                      typingSystem = Standard
+                      secondaryTypeSystem = Nothing
                     }
           }
     ]

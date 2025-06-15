@@ -5,7 +5,7 @@ numberOfDogs = 6
 
 type Dog = Index numberOfDogs
 
-unknownDog     = 0
+-- unknownDog     = 0
 
 greatDane      = 1
 germanShepherd = 2
@@ -26,7 +26,7 @@ type Image = Tensor Rat [4, 4]
 type Score = Rat
 
 @network
-score : Image -> Vector Score numberOfDogs
+score : Image -> Tensor Score [numberOfDogs]
 
 validPixel : Rat -> Bool
 validPixel p = 0 <= p <= 1

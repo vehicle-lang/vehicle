@@ -14,9 +14,10 @@ import Data.Map qualified as Map (fromList, insert, lookup)
 import Data.Maybe (catMaybes)
 import Data.Set (Set)
 import Data.Set qualified as Set (fromList, member, singleton)
-import Vehicle.Compile.Error (MonadCompile, internalScopingError, lookupInFreeCtx)
+import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (PrintableBuiltin, prettyFriendly)
+import Vehicle.Compile.Print (prettyFriendly)
+import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.DeBruijn (dbLevelToIndex)
 
 --------------------------------------------------------------------------------
@@ -133,7 +134,7 @@ findResourceUses e = do
       let name = nameOf ident
       when (name `LinkedHashMap.member` resourceDeclarations) $ do
         tell (Set.singleton name)
-      resourceArgs <- lookupInFreeCtx currentPass ident resourceUsageFreeCtx
+      let resourceArgs = lookupInFreeCtx ident resourceUsageFreeCtx
       tell (Set.fromList resourceArgs)
       return $ normAppList (FreeVar p ident) args'
 
@@ -161,7 +162,7 @@ replaceResourceUses (mkBinder, binders, binderNames) initialExpr = do
       let mkResourceVar resourceName = do
             let maybeResourceLevel = Map.lookup resourceName resourceLevels
             case maybeResourceLevel of
-              Nothing -> internalScopingError currentPass ident
+              Nothing -> internalScopingError currentPass (pretty ident)
               Just resourceLv -> do
                 let resourceIx = dbLevelToIndex currentNewLv resourceLv
                 -- logDebug MaxDetail $ pretty name <+> pretty resourceName <+> pretty currentOldLv <+> pretty currentNewLv <+> pretty resourceLv <+> pretty resourceIx
@@ -172,7 +173,7 @@ replaceResourceUses (mkBinder, binders, binderNames) initialExpr = do
           then mkResourceVar name
           else return $ FreeVar p ident
 
-      extraResourceNames <- lookupInFreeCtx currentPass ident resourceUsageFreeCtx
+      let extraResourceNames = lookupInFreeCtx ident resourceUsageFreeCtx
       extraResourceVarArgs <- traverse mkResourceVar extraResourceNames
       let extraResourceArgs = fmap (Arg p Explicit Relevant) extraResourceVarArgs
       return $ normAppList newFun (extraResourceArgs <> args')

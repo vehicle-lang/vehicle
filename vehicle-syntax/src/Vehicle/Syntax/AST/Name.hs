@@ -84,11 +84,14 @@ instance Serialize Identifier
 class HasIdentifier a where
   identifierOf :: a -> Identifier
 
+instance HasIdentifier Identifier where
+  identifierOf = id
+
 stdlibIdentifier :: Name -> Identifier
 stdlibIdentifier = Identifier (ModulePath [StdLib])
 
-isUserIdent :: Identifier -> Bool
-isUserIdent ident = User `elem` modules (modulePath ident)
+isUserCode :: (HasIdentifier a) => a -> Bool
+isUserCode object = User `elem` modules (modulePath $ identifierOf object)
 
 changeName :: Identifier -> Name -> Identifier
 changeName Identifier {..} newName = Identifier {identifierName = newName, ..}

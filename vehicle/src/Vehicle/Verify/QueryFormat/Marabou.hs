@@ -9,9 +9,9 @@ import Control.Monad.Except (MonadError (..))
 import Data.List.NonEmpty (NonEmpty (..))
 import Vehicle.Compile.Error (CompileError (..))
 import Vehicle.Compile.Prelude
-import Vehicle.Data.Builtin.Core
 import Vehicle.Data.QuantifiedVariable (prettyRationalAsFloat)
 import Vehicle.Prelude.Warning
+import Vehicle.Syntax.Tensor (flattenIndices)
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
 import Vehicle.Verify.QueryFormat.Interface
@@ -25,6 +25,7 @@ marabouQueryFormat =
   QueryFormat
     { queryFormatID = MarabouQueries,
       supportsStrictInequalities = False,
+      supportsMultipleNetworks = False,
       queryOutputFormat = outputFormat,
       compileQuery = compileMarabouQuery,
       compileVariable = compileMarabouVar
@@ -41,9 +42,10 @@ outputFormat =
 
 -- | Compiles an individual variable
 compileMarabouVar :: CompileQueryVariable
-compileMarabouVar inputOrOutput ioIndex = do
+compileMarabouVar QueryVariableInfo {..} = do
   let name = if inputOrOutput == Input then "x" else "y"
-  layoutAsText $ name <> pretty ioIndex
+  let index = flattenIndices parentVariableShape parentVariableIndices
+  layoutAsText $ name <> pretty index
 
 -- | Compiles an expression representing a single Marabou query.
 compileMarabouQuery :: CompileQuery
@@ -74,15 +76,15 @@ compileAssertion address QueryAssertion {..} = do
 
 compileRel :: (MonadLogger m, MonadError CompileError m) => QueryAddress -> QueryRelation -> m (Doc a)
 compileRel address = \case
-  EqualRel -> return "="
-  OrderRel Le -> return "<="
-  OrderRel Ge -> return ">="
+  EqRel -> return "="
+  LeRel -> return "<="
+  GeRel -> return ">="
   -- Suboptimal. Marabou doesn't currently support strict inequalities.
   -- See https://github.com/vehicle-lang/vehicle/issues/74 for details.
-  OrderRel Lt -> do
+  LtRel -> do
     logWarning (UnsoundStrictOrderConversion MarabouQueries address)
     return "<="
-  OrderRel Gt -> do
+  GtRel -> do
     logWarning (UnsoundStrictOrderConversion MarabouQueries address)
     return ">="
 

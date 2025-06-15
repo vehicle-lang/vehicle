@@ -1,6 +1,6 @@
-type InputVector = Vector Rat 50
-type OutputVector = Vector Rat 1
-type NormalisedInputVector = Vector Rat 50
+type InputVector = Tensor Rat [50]
+type OutputVector = Tensor Rat [1]
+type NormalisedInputVector = Tensor Rat [50]
 
 type Label = Index 2
 
@@ -139,7 +139,7 @@ datasetSize : Nat
 datasetSize = 8
 
 @dataset
-inputDataset : Vector InputVector datasetSize
+inputDataset : Vector InputVector [datasetSize]
 
 @property
 isSane : Bool

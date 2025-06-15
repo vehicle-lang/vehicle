@@ -7,16 +7,16 @@
 {-# OPTIONS --allow-exec #-}
 
 open import Vehicle
+open import Vehicle.Utils
 open import Vehicle.Data.Tensor
 open import Data.Product
 open import Data.Nat as ℕ using (ℕ)
-open import Data.Integer as ℤ using (ℤ)
 open import Data.Rational as ℚ using (ℚ)
 open import Data.Fin as Fin using (Fin; #_)
+open import Data.Vec.Functional.Relation.Unary.All as Fin
+open import Data.Vec.Functional.Relation.Unary.Any as Fin
 open import Data.List.Base
 open import Data.List.Relation.Unary.All as List
-open import Data.Vec.Functional renaming ([] to []ᵥ; _∷_ to _∷ᵥ_)
-open import Relation.Binary.PropositionalEquality
 open import Relation.Nullary
 
 module Agda where
@@ -49,23 +49,23 @@ Image : Set
 Image = Tensor ℚ (4 ∷ (4 ∷ []))
 
 Score : Set
-Score = ℚ
+Score = Tensor ℚ []
 
-postulate score : Image → Vector Score numberOfDogs
+postulate score : Image → Tensor ℚ (6 ∷ [])
 
-ValidPixel : ℚ → Set
-ValidPixel p = ℤ.+ 0 ℚ./ 1 ℚ.≤ p × p ℚ.≤ ℤ.+ 1 ℚ./ 1
+ValidPixel : Tensor ℚ [] → Set
+ValidPixel p = 0 ≤ p × p ≤ 1
 
 ValidImage : Image → Set
-ValidImage x = ∀ i → ∀ j → ValidPixel (x i j)
+ValidImage x = Fin.All (λ i → Fin.All (λ j → ValidPixel ((x ! i) ! j)))
 
-IsFirstChoice : Image → (Dog → Set)
-IsFirstChoice x dog1 = let scores = score x in ∀ d → d ≢ dog1 → scores dog1 ℚ.> scores d
+IsFirstChoice : Image → Dog → Set
+IsFirstChoice x dog1 = let scores = score x in Fin.All (λ d → d ≉ dog1 → (scores ! dog1) > (scores ! d))
 
-IsSecondChoice : Image → (Dog → Set)
-IsSecondChoice x dog2 = let scores = score x in ∃ λ dog1 → IsFirstChoice x dog1 × ∀ d → d ≢ dog1 × d ≢ dog2 → scores dog2 ℚ.> scores d
+IsSecondChoice : Image → Dog → Set
+IsSecondChoice x dog2 = let scores = score x in Fin.Any (λ dog1 → IsFirstChoice x dog1 × Fin.All (λ d → d ≉ dog1 × d ≉ dog2 → (scores ! dog2) > (scores ! d)))
 
-NoConfusionWith : Image → (List Dog → (List Dog → Set))
+NoConfusionWith : Image → List Dog → List Dog → Set
 NoConfusionWith x dogs1 dogs2 = List.All (λ dog1 → List.All (λ dog2 → ¬ (IsFirstChoice x dog1 × IsSecondChoice x dog2)) dogs2) dogs1
 
 postulate doesNotConfuseBigAndSmall : ∀ x → ValidImage x → NoConfusionWith x bigDogs smallDogs

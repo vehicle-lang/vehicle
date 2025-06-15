@@ -4,7 +4,7 @@ add1 : Rat -> Rat
 add1 x = x + 1
 
 @network
-f : Vector Rat 1 -> Vector Rat 1
+f : Tensor Rat [1] -> Tensor Rat [1]
 
 @property
 p1 : Bool
@@ -12,7 +12,7 @@ p1 = forall x . f x ! 0 >= add1 0
 
 
 @network
-g : Vector Rat 2 -> Vector Rat 1
+g : Tensor Rat [2] -> Tensor Rat [1]
 
 @property
 p2 : Bool

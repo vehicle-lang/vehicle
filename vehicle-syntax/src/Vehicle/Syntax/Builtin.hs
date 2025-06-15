@@ -8,7 +8,6 @@ module Vehicle.Syntax.Builtin
 where
 
 import Control.DeepSeq (NFData (..))
-import Data.Aeson (ToJSON (..))
 import Data.Hashable (Hashable (..))
 import Data.Serialize (Serialize)
 import Data.Text (Text)
@@ -16,28 +15,9 @@ import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), defaultLayoutOptions, layoutPretty)
 import Prettyprinter.Render.Text (renderStrict)
 import Vehicle.Syntax.Builtin.BasicOperations as X
+import Vehicle.Syntax.Builtin.Derived as X
 import Vehicle.Syntax.Builtin.TypeClass as X
-
---------------------------------------------------------------------------------
--- Negation
-
-class Negatable a where
-  neg :: a -> a
-
-instance Negatable EqualityOp where
-  neg Eq = Neq
-  neg Neq = Eq
-
-instance Negatable OrderOp where
-  neg = \case
-    Le -> Gt
-    Lt -> Ge
-    Ge -> Lt
-    Gt -> Le
-
-instance Negatable Quantifier where
-  neg Forall = Exists
-  neg Exists = Forall
+import Vehicle.Syntax.Tensor
 
 --------------------------------------------------------------------------------
 -- Types
@@ -45,33 +25,32 @@ instance Negatable Quantifier where
 -- | Constructors for types in the language. The types and type-classes
 -- are viewed as constructors for `Type`.
 data BuiltinType
-  = -- Types
-    Unit
-  | Bool
-  | Index
-  | Nat
-  | Rat
-  | List
-  | Vector
+  = UnitType
+  | BoolType
+  | IndexType
+  | NatType
+  | RatType
+  | ListType
+  | VectorType
+  | TensorType
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData BuiltinType
 
 instance Hashable BuiltinType
 
-instance ToJSON BuiltinType
-
 instance Serialize BuiltinType
 
 instance Pretty BuiltinType where
   pretty = \case
-    Unit -> "Unit"
-    Bool -> "Bool"
-    Index -> "Index"
-    Nat -> "Nat"
-    Rat -> "Rat"
-    List -> "List"
-    Vector -> "Vector"
+    UnitType -> "Unit"
+    BoolType -> "Bool"
+    IndexType -> "Index"
+    NatType -> "Nat"
+    RatType -> "Rat"
+    ListType -> "List"
+    VectorType -> "Vector"
+    TensorType -> "Tensor"
 
 --------------------------------------------------------------------------------
 -- Constructors
@@ -81,19 +60,18 @@ instance Pretty BuiltinType where
 data BuiltinConstructor
   = Nil
   | Cons
-  | LUnit
-  | LBool Bool
-  | LIndex Int
-  | LNat Int
-  | LRat Rational
-  | LVec Int
+  | UnitLiteral
+  | IndexLiteral Int
+  | NatLiteral Int
+  | VectorLiteral
+  | BoolTensorLiteral (Tensor Bool)
+  | NatTensorLiteral (Tensor Int)
+  | RatTensorLiteral (Tensor Rational)
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData BuiltinConstructor
 
 instance Hashable BuiltinConstructor
-
-instance ToJSON BuiltinConstructor
 
 instance Serialize BuiltinConstructor
 
@@ -101,12 +79,13 @@ instance Pretty BuiltinConstructor where
   pretty = \case
     Nil -> "nil"
     Cons -> "::"
-    LUnit -> "()"
-    LBool x -> pretty x
-    LIndex x -> pretty x
-    LNat x -> pretty x
-    LRat x -> pretty x
-    LVec n -> "LVec[" <> pretty n <> "]"
+    UnitLiteral -> "()"
+    NatLiteral n -> pretty n
+    IndexLiteral n -> pretty n
+    VectorLiteral -> "vec"
+    BoolTensorLiteral x -> pretty x
+    NatTensorLiteral x -> pretty x
+    RatTensorLiteral x -> pretty x
 
 instance Pretty Rational where
   pretty p = pretty (fromRational p :: Double)
@@ -114,193 +93,44 @@ instance Pretty Rational where
 --------------------------------------------------------------------------------
 -- Builtin
 
-data OrderDomain
-  = OrderIndex
-  | OrderNat
-  | OrderRat
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData OrderDomain
-
-instance Hashable OrderDomain
-
-instance Serialize OrderDomain
-
-instance Pretty OrderDomain where
-  pretty = \case
-    OrderNat -> "Nat"
-    OrderIndex -> "Index"
-    OrderRat -> "Rat"
-
-data EqualityDomain
-  = EqIndex
-  | EqNat
-  | EqRat
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData EqualityDomain
-
-instance Hashable EqualityDomain
-
-instance Serialize EqualityDomain
-
-instance Pretty EqualityDomain where
-  pretty = \case
-    EqIndex -> "Index"
-    EqNat -> "Nat"
-    EqRat -> "Rat"
-
-data NegDomain
-  = NegRat
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData NegDomain
-
-instance Hashable NegDomain
-
-instance Serialize NegDomain
-
-instance Pretty NegDomain where
-  pretty = \case
-    NegRat -> "Rat"
-
-negToMulDomain :: NegDomain -> MulDomain
-negToMulDomain = \case
-  NegRat -> MulRat
-
-data AddDomain
-  = AddNat
-  | AddRat
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData AddDomain
-
-instance Hashable AddDomain
-
-instance Serialize AddDomain
-
-instance Pretty AddDomain where
-  pretty = \case
-    AddNat -> "Nat"
-    AddRat -> "Rat"
-
-data SubDomain
-  = SubRat
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData SubDomain
-
-instance Hashable SubDomain
-
-instance Serialize SubDomain
-
-instance Pretty SubDomain where
-  pretty = \case
-    SubRat -> "Rat"
-
-subToAddDomain :: SubDomain -> AddDomain
-subToAddDomain = \case
-  SubRat -> AddRat
-
-subToNegDomain :: SubDomain -> NegDomain
-subToNegDomain = \case
-  SubRat -> NegRat
-
-data MulDomain
-  = MulNat
-  | MulRat
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData MulDomain
-
-instance Hashable MulDomain
-
-instance Serialize MulDomain
-
-instance Pretty MulDomain where
-  pretty = \case
-    MulNat -> "Nat"
-    MulRat -> "Rat"
-
-data DivDomain
-  = DivRat
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData DivDomain
-
-instance Hashable DivDomain
-
-instance Serialize DivDomain
-
-instance Pretty DivDomain where
-  pretty = \case
-    DivRat -> "Rat"
-
-divToMulDomain :: DivDomain -> MulDomain
-divToMulDomain = \case
-  DivRat -> MulRat
-
-data FromNatDomain
-  = FromNatToIndex
-  | FromNatToNat
-  | FromNatToRat
-  deriving (Eq, Ord, Show, Generic)
-
-instance Pretty FromNatDomain where
-  pretty = \case
-    FromNatToIndex -> "Index"
-    FromNatToNat -> "Nat"
-    FromNatToRat -> "Rat"
-
-instance Serialize FromNatDomain
-
-instance NFData FromNatDomain
-
-instance Hashable FromNatDomain
-
-data FromRatDomain
-  = FromRatToRat
-  deriving (Eq, Ord, Show, Generic)
-
-instance Pretty FromRatDomain where
-  pretty = \case
-    FromRatToRat -> "Rat"
-
-instance NFData FromRatDomain
-
-instance Hashable FromRatDomain
-
-instance Serialize FromRatDomain
-
 data BuiltinFunction
-  = Not
+  = -- Boolean operations
+    Not
   | And
   | Or
   | Implies
-  | Quantifier Quantifier
+  | QuantifyRatTensor Quantifier
   | If
-  | -- Numeric conversion
-    FromNat FromNatDomain
-  | FromRat FromRatDomain
-  | -- Numeric operations
-    Neg NegDomain
-  | Add AddDomain
-  | Sub SubDomain
+  | CompareIndex ComparisonOp
+  | CompareNat ComparisonOp
+  | CompareRatTensorPointwise ComparisonOp
+  | ReduceAndTensor
+  | ReduceOrTensor
+  | -- Rat operations
+    Add AddDomain
   | Mul MulDomain
+  | Neg NegDomain
+  | Sub SubDomain
   | Div DivDomain
+  | Min MinDomain
+  | Max MaxDomain
   | PowRat
-  | MinRat
-  | MaxRat
-  | -- Comparison expressions
-    Equals EqualityDomain EqualityOp
-  | Order OrderDomain OrderOp
-  | At
-  | FoldList
-  | FoldVector
+  | ReduceAddRatTensor
+  | ReduceMulRatTensor
+  | ReduceMinRatTensor
+  | ReduceMaxRatTensor
+  | -- Tensor operations
+    AtTensor
+  | StackTensor
+  | ConstTensor
+  | Iterate
+  | ForeachTensor
+  | -- Vector operations
+    AtVector
+  | ForeachVector
+  | -- List operations
+    FoldList
   | MapList
-  | MapVector
-  | ZipWithVector
-  | Indices
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData BuiltinFunction
@@ -313,37 +143,65 @@ instance Serialize BuiltinFunction
 -- somehow.
 instance Pretty BuiltinFunction where
   pretty = \case
-    Not -> "not"
     And -> "and"
     Or -> "or"
+    Not -> "not"
     Implies -> "=>"
-    Quantifier q -> pretty q
+    QuantifyRatTensor q -> pretty q
     If -> "if"
+    ReduceAndTensor -> "reduceAndTensor"
+    ReduceOrTensor -> "reduceOrTensor"
     Neg dom -> "neg" <> pretty dom
     Add dom -> "add" <> pretty dom
     Sub dom -> "sub" <> pretty dom
     Mul dom -> "mul" <> pretty dom
     Div dom -> "div" <> pretty dom
+    Min dom -> "min" <> pretty dom
+    Max dom -> "max" <> pretty dom
     PowRat -> "**"
-    MinRat -> "min"
-    MaxRat -> "max"
+    ReduceAddRatTensor -> "reduceAddRatTensor"
+    ReduceMulRatTensor -> "reduceMulRatTensor"
+    ReduceMinRatTensor -> "reduceMinRatTensor"
+    ReduceMaxRatTensor -> "reduceMaxRatTensor"
+    CompareIndex op -> comparisonOpName op <> "Index"
+    CompareNat op -> comparisonOpName op <> "Nat"
+    CompareRatTensorPointwise op -> comparisonOpName op <> "RatTensorPointwise"
+    FoldList -> "foldList"
+    MapList -> "mapList"
+    ForeachTensor -> "foreachTensor"
+    ForeachVector -> "foreachVector"
+    Iterate -> "iterate"
+    AtTensor -> "!t"
+    AtVector -> "!v"
+    StackTensor {} -> "stack"
+    ConstTensor -> "const"
+
+data BuiltinCast
+  = -- Cast operations
+    FromNat FromNatDomain
+  | FromRat FromRatDomain
+  | FromVectorToList
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData BuiltinCast
+
+instance Hashable BuiltinCast
+
+instance Serialize BuiltinCast
+
+instance Pretty BuiltinCast where
+  pretty = \case
     FromNat dom -> "fromNatTo" <> pretty dom
     FromRat dom -> "fromRatTo" <> pretty dom
-    Equals dom op -> equalityOpName op <> pretty dom
-    Order dom op -> orderOpName op <> pretty dom
-    FoldList -> "foldList"
-    FoldVector -> "foldVector"
-    MapList -> "mapList"
-    MapVector -> "mapVector"
-    ZipWithVector -> "zipWith"
-    At -> "!"
-    Indices -> "indices"
+    FromVectorToList -> "fromVectorToList"
 
 -- | Builtins in the Vehicle language
 data Builtin
   = BuiltinConstructor BuiltinConstructor
   | BuiltinFunction BuiltinFunction
   | BuiltinType BuiltinType
+  | BuiltinCast BuiltinCast
+  | DerivedFunction DerivedFunction
   | TypeClass TypeClass
   | TypeClassOp TypeClassOp
   | NatInDomainConstraint
@@ -362,6 +220,8 @@ instance Pretty Builtin where
     BuiltinFunction f -> pretty f
     BuiltinType t -> pretty t
     BuiltinConstructor c -> pretty c
+    BuiltinCast c -> pretty c
+    DerivedFunction f -> pretty f
     TypeClass tc -> pretty tc
     TypeClassOp o -> pretty o
     NatInDomainConstraint {} -> "NatInDomainConstraint"
@@ -374,3 +234,22 @@ builtinFromSymbol symbol = lookup symbol builtinSymbols
 
 symbolFromBuiltin :: Builtin -> Text
 symbolFromBuiltin builtin = renderStrict . layoutPretty defaultLayoutOptions $ pretty builtin
+
+--------------------------------------------------------------------------------
+-- Negation
+
+class Negatable a where
+  neg :: a -> a
+
+instance Negatable ComparisonOp where
+  neg = \case
+    Eq -> Ne
+    Ne -> Eq
+    Le -> Gt
+    Lt -> Ge
+    Ge -> Lt
+    Gt -> Le
+
+instance Negatable Quantifier where
+  neg Forall = Exists
+  neg Exists = Forall

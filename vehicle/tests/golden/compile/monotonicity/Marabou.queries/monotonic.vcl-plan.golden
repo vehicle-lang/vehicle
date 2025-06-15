@@ -75,68 +75,81 @@
                     "tag": "ReconstructTensor",
                     "contents": [
                       "OtherVariable",
-                      [
-                        1
-                      ],
                       4,
-                      [
-                        5
-                      ]
+                      {
+                        "tensorValue": {
+                          "tag": "Constant",
+                          "contents": 5
+                        },
+                        "tensorShape": [
+                          1
+                        ]
+                      }
                     ]
                   },
                   {
                     "tag": "ReconstructTensor",
                     "contents": [
                       "OtherVariable",
-                      [
-                        1
-                      ],
                       6,
-                      [
-                        7
-                      ]
+                      {
+                        "tensorValue": {
+                          "tag": "Constant",
+                          "contents": 7
+                        },
+                        "tensorShape": [
+                          1
+                        ]
+                      }
                     ]
                   },
                   {
                     "tag": "ReconstructTensor",
                     "contents": [
                       "OtherVariable",
-                      [
-                        1
-                      ],
                       8,
-                      [
-                        9
-                      ]
+                      {
+                        "tensorValue": {
+                          "tag": "Constant",
+                          "contents": 9
+                        },
+                        "tensorShape": [
+                          1
+                        ]
+                      }
                     ]
                   },
                   {
                     "tag": "ReconstructTensor",
                     "contents": [
                       "OtherVariable",
-                      [
-                        1
-                      ],
                       10,
-                      [
-                        11
-                      ]
+                      {
+                        "tensorValue": {
+                          "tag": "Constant",
+                          "contents": 11
+                        },
+                        "tensorShape": [
+                          1
+                        ]
+                      }
                     ]
                   },
                   {
-                    "tag": "SolveRationalEquality",
+                    "tag": "SolveEquality",
                     "contents": [
-                      1,
+                      true,
+                      0,
                       {
                         "constantValue": {
-                          "value": [
-                            {
+                          "tensorValue": {
+                            "tag": "Constant",
+                            "contents": {
                               "numerator": 0,
                               "denominator": 1
                             }
-                          ],
-                          "tag": "Tensor",
-                          "shape": []
+                          },
+                          "tensorShape": []
                         },
                         "coefficients": {
                           "5": {
@@ -148,30 +161,20 @@
                     ]
                   },
                   {
-                    "tag": "ReconstructTensor",
+                    "tag": "SolveEquality",
                     "contents": [
-                      "UserVariable",
-                      [],
-                      0,
-                      [
-                        1
-                      ]
-                    ]
-                  },
-                  {
-                    "tag": "SolveRationalEquality",
-                    "contents": [
-                      3,
+                      true,
+                      2,
                       {
                         "constantValue": {
-                          "value": [
-                            {
+                          "tensorValue": {
+                            "tag": "Constant",
+                            "contents": {
                               "numerator": 0,
                               "denominator": 1
                             }
-                          ],
-                          "tag": "Tensor",
-                          "shape": []
+                          },
+                          "tensorShape": []
                         },
                         "coefficients": {
                           "9": {
@@ -180,17 +183,6 @@
                           }
                         }
                       }
-                    ]
-                  },
-                  {
-                    "tag": "ReconstructTensor",
-                    "contents": [
-                      "UserVariable",
-                      [],
-                      2,
-                      [
-                        3
-                      ]
                     ]
                   }
                 ]

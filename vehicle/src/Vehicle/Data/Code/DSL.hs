@@ -2,40 +2,55 @@ module Vehicle.Data.Code.DSL where
 
 import Data.List.NonEmpty (NonEmpty (..))
 import Vehicle.Data.Builtin.Interface
-import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.DSL
-import Vehicle.Data.Tensor (Tensor, tensorShape)
+import Vehicle.Data.Tensor as T (Tensor, shapeOf, pattern ZeroDimTensor)
 import Vehicle.Prelude
+import Vehicle.Syntax.Builtin
 import Prelude hiding (pi)
 
 --------------------------------------------------------------------------------
 -- Standard types DSL
 
 builtinType :: (BuiltinHasStandardTypes builtin) => BuiltinType -> DSLExpr builtin
-builtinType = builtin . mkBuiltinType
+builtinType = builtin . mkExpr accessBuiltinType
 
 tUnit :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin
-tUnit = builtinType Unit
+tUnit = builtinType UnitType
 
 tBool, tNat, tRat :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin
-tBool = builtinType Bool
-tNat = builtinType Nat
-tRat = builtinType Rat
+tNat = builtinType NatType
+tBool = builtinType BoolType
+tRat = builtinType RatType
+
+tTensorRaw :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin
+tTensorRaw = builtinType TensorType
+
+tTensor :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+tTensor tElem ds = tTensorRaw @@ [tElem] .@@ [ds]
 
 tVector :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
-tVector tElem dim = builtinType Vector @@ [tElem] .@@ [dim]
+tVector tElem d = builtinType VectorType @@ [tElem] .@@ [d]
 
-tVectorFunctor :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin -> DSLExpr builtin
-tVectorFunctor n = explLam "A" type0 (`tVector` n)
+tVectorRaw :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin
+tVectorRaw = builtinType VectorType
 
 tListRaw :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin
-tListRaw = builtinType List
+tListRaw = builtinType ListType
 
 tList :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin -> DSLExpr builtin
 tList tElem = tListRaw @@ [tElem]
 
 tIndex :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin -> DSLExpr builtin
-tIndex n = builtinType Index .@@ [n]
+tIndex n = builtinType IndexType .@@ [n]
+
+tBoolTensor :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin -> DSLExpr builtin
+tBoolTensor = tTensor tBool
+
+tNatTensor :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin -> DSLExpr builtin
+tNatTensor = tTensor tNat
+
+tRatTensor :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin -> DSLExpr builtin
+tRatTensor = tTensor tRat
 
 forAllNat :: (BuiltinHasStandardTypes builtin) => (DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
 forAllNat = forAll "n" tNat
@@ -46,14 +61,11 @@ forAllIrrelevantNat name = pi (Just name) (Implicit False) Irrelevant tNat
 irrelImplNatLam :: (BuiltinHasStandardTypes builtin) => Name -> (DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
 irrelImplNatLam n = lam n (Implicit False) Irrelevant tNat
 
-natInDomainConstraint :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
-natInDomainConstraint n t = builtin mkNatInDomainConstraint @@ [n, t]
-
 --------------------------------------------------------------------------------
 -- Constructors DSL
 
 builtinConstructor :: (BuiltinHasStandardData builtin) => BuiltinConstructor -> DSLExpr builtin
-builtinConstructor = builtin . mkBuiltinConstructor
+builtinConstructor = builtin . mkExpr accessBuiltinConstructor
 
 nil :: (BuiltinHasStandardData builtin) => DSLExpr builtin -> DSLExpr builtin
 nil tElem = builtinConstructor Nil @@@ [tElem]
@@ -62,22 +74,25 @@ cons :: (BuiltinHasStandardData builtin) => DSLExpr builtin -> DSLExpr builtin -
 cons tElem x xs = builtinConstructor Cons @@@ [tElem] @@ [x, xs]
 
 natLit :: (BuiltinHasStandardData builtin) => Int -> DSLExpr builtin
-natLit n = builtinConstructor (LNat n)
+natLit n = builtinConstructor (NatLiteral n)
 
 boolLit :: (BuiltinHasStandardData builtin) => Bool -> DSLExpr builtin
-boolLit n = builtinConstructor (LBool n)
+boolLit b = builtinConstructor (BoolTensorLiteral (ZeroDimTensor b))
 
 ratLit :: (BuiltinHasStandardData builtin) => Rational -> DSLExpr builtin
-ratLit r = builtinConstructor (LRat r)
+ratLit r = builtinConstructor (RatTensorLiteral (ZeroDimTensor r))
 
 unitLit :: (BuiltinHasStandardData builtin) => DSLExpr builtin
-unitLit = builtinConstructor LUnit
+unitLit = builtinConstructor UnitLiteral
+
+shapeOf :: (BuiltinHasStandardData builtin, BuiltinHasStandardTypes builtin) => Tensor a -> DSLExpr builtin
+shapeOf t = foldr (\x xs -> cons tNat (natLit x) xs) (nil tNat) (T.shapeOf t)
 
 --------------------------------------------------------------------------------
 -- Functions DSL
 
 builtinFunction :: (BuiltinHasStandardData builtin) => BuiltinFunction -> DSLExpr builtin
-builtinFunction = builtin . mkBuiltinFunction
+builtinFunction = builtin . mkExpr accessBuiltinFunction
 
 addNat :: (BuiltinHasStandardData builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 addNat x y = builtinFunction (Add AddNat) @@ [x, y]
@@ -100,11 +115,8 @@ builtinTypeClass = builtin . mkBuiltinTypeClass
 typeClass :: (BuiltinHasStandardTypeClasses builtin) => TypeClass -> NonEmpty (DSLExpr builtin) -> DSLExpr builtin
 typeClass tc args = builtinTypeClass tc @@ args
 
-hasEq :: (BuiltinHasStandardTypeClasses builtin) => EqualityOp -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
-hasEq eq t1 t2 = typeClass (HasEq eq) [t1, t2]
-
-hasOrd :: (BuiltinHasStandardTypeClasses builtin) => OrderOp -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
-hasOrd ord t1 t2 = typeClass (HasOrd ord) [t1, t2]
+hasCompare :: (BuiltinHasStandardTypeClasses builtin) => ComparisonOp -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+hasCompare eq t1 t2 t3 = typeClass (HasCompare eq) [t1, t2, t3]
 
 hasQuantifier :: (BuiltinHasStandardTypeClasses builtin) => Quantifier -> DSLExpr builtin -> DSLExpr builtin
 hasQuantifier q t = typeClass (HasQuantifier q) [t]
@@ -127,6 +139,12 @@ hasDiv = numOp2TypeClass HasDiv
 hasNeg :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 hasNeg t1 t2 = typeClass HasNeg [t1, t2]
 
+hasAt :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+hasAt tCont tInd tRes = typeClass HasAt [tCont, tInd, tRes]
+
+hasForeach :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+hasForeach tInd tElem tRes = typeClass HasForeach [tInd, tElem, tRes]
+
 hasMap :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
 hasMap tCont = typeClass HasMap [tCont]
 
@@ -142,8 +160,11 @@ hasNatLits t = typeClass HasNatLits [t]
 hasRatLits :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
 hasRatLits t = typeClass HasRatLits [t]
 
-hasVecLits :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
-hasVecLits n d = typeClass HasVecLits [n, d]
+hasVecLits :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+hasVecLits tCont tElem d = typeClass HasVecLits [tCont, tElem, d]
+
+validParameterType :: (BuiltinHasStandardTypeClasses builtin) => ParameterSort -> DSLExpr builtin -> DSLExpr builtin
+validParameterType s t = typeClass (ValidParameterType s) [t]
 
 validPropertyType :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
 validPropertyType t = typeClass ValidPropertyType [t]
@@ -154,86 +175,64 @@ validInferableParameterType t = typeClass (ValidParameterType Inferable) [t]
 validNonInferableParameterType :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
 validNonInferableParameterType t = typeClass (ValidParameterType NonInferable) [t]
 
-validNetworkTensorType :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
-validNetworkTensorType t = typeClass ValidNetworkTensorType [t]
-
 validNetworkType :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
 validNetworkType t = typeClass ValidNetworkType [t]
+
+validNetworkTensorType :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
+validNetworkTensorType t = typeClass ValidNetworkTensorType [t]
 
 validDatasetType :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
 validDatasetType t = typeClass ValidDatasetType [t]
 
-validDatasetElementType :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
-validDatasetElementType t = typeClass ValidDatasetElementType [t]
+validDatasetListElementType :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
+validDatasetListElementType t = typeClass ValidDatasetListElementType [t]
+
+validDatasetTensorElementType :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
+validDatasetTensorElementType t = typeClass ValidDatasetTensorElementType [t]
 
 --------------------------------------------------------------------------------
--- Tensor types DSL
+-- Dimension types DSL
 
-dimensionTypeBuiltin :: (BuiltinHasDimensionTypes builtin) => DimensionTypeBuiltin -> DSLExpr builtin
-dimensionTypeBuiltin = builtin . mkDimensionTypeBuiltin
+-- We keep these seperate even though they are implemented with basic `Nat` for
+-- now so it's easy to change it to their own type in future
 
-tDim :: (BuiltinHasDimensionTypes builtin) => DSLExpr builtin
-tDim = dimensionTypeBuiltin DimensionType
+tDim :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin
+tDim = tNat
 
-tDims :: (BuiltinHasDimensionTypes builtin) => DSLExpr builtin
-tDims = dimensionTypeBuiltin DimensionsType
+tDims :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin
+tDims = tList tNat
 
-tDimIndex :: (BuiltinHasDimensionTypes builtin) => DSLExpr builtin -> DSLExpr builtin
-tDimIndex dim = dimensionTypeBuiltin DimensionIndexType @@ [dim]
+dimNil :: (BuiltinHasStandardTypes builtin, BuiltinHasStandardData builtin) => DSLExpr builtin
+dimNil = nil tDim
 
-tTensor :: (BuiltinHasDimensionTypes builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
-tTensor tElem dims = dimensionTypeBuiltin TensorType @@ [tElem, dims]
+dim :: (BuiltinHasStandardData builtin) => Int -> DSLExpr builtin
+dim = natLit
 
-forAllDim :: (BuiltinHasDimensionTypes builtin) => (DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
-forAllDim = forAllIrrelevant "dim" tDim
+dimCons :: (BuiltinHasStandardTypes builtin, BuiltinHasStandardData builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+dimCons = cons tNat
 
-forAllDims :: (BuiltinHasDimensionTypes builtin) => (DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
-forAllDims = forAllIrrelevant "dims" tDims
+singletonDim :: (BuiltinHasStandardTypes builtin, BuiltinHasStandardData builtin) => Int -> DSLExpr builtin
+singletonDim d = dimCons (dim d) dimNil
 
---------------------------------------------------------------------------------
--- Tensor data
+forAllDim :: (BuiltinHasStandardTypes builtin) => Relevance -> (DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
+forAllDim r = pi (Just "d") (Implicit False) r tDim
 
-dimensionDataBuiltin :: (BuiltinHasDimensionData builtin) => DimensionDataBuiltin -> DSLExpr builtin
-dimensionDataBuiltin = builtin . mkDimensionDataBuiltin
+forAllDims :: (BuiltinHasStandardTypes builtin) => (DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
+forAllDims = forAllIrrelevant "ds" tDims
 
-tNil :: (BuiltinHasDimensionData builtin) => DSLExpr builtin
-tNil = dimensionDataBuiltin DimensionNil
+lamType :: (DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
+lamType = lam "t" Explicit Irrelevant type0
 
-tCons :: (BuiltinHasDimensionData builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
-tCons dim dims = dimensionDataBuiltin DimensionCons @@ [dim, dims]
+lamDim :: (BuiltinHasStandardTypes builtin) => (DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
+lamDim = lam "d" (Implicit False) Irrelevant tDim
 
-tSingletonDim :: (BuiltinHasDimensionTypes builtin, BuiltinHasDimensionData builtin) => Int -> DSLExpr builtin
-tSingletonDim dim = tCons (constDim dim) tNil
+lamDims :: (BuiltinHasStandardTypes builtin) => (DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
+lamDims = lam "ds" (Implicit False) Irrelevant tDims
 
-constDim :: (BuiltinHasDimensionData builtin) => Int -> DSLExpr builtin
-constDim n = dimensionDataBuiltin (Dimension n)
+constTensor :: (BuiltinHasStandardData builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+constTensor t x dims = builtinFunction ConstTensor @@@ [t] @@ [x, dims]
 
-shapeOf :: (BuiltinHasDimensionData builtin) => Tensor a -> DSLExpr builtin
-shapeOf t = foldr (tCons . constDim) tNil (tensorShape t)
-
-constTensor :: (BuiltinHasDimensionData builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
-constTensor t x dims = dimensionDataBuiltin ConstTensor @@@ [t] @@ [x, dims]
-
---------------------------------------------------------------------------------
--- Rational tensors data
-
-tRatTensor :: (BuiltinHasRatTensor builtin, BuiltinHasDimensionTypes builtin) => DSLExpr builtin -> DSLExpr builtin
-tRatTensor = tTensor tRatElemType
-
-ratTensorBuiltin :: (BuiltinHasRatTensor builtin) => RatTensorBuiltin -> DSLExpr builtin
-ratTensorBuiltin = builtin . mkRatTensorBuiltin
-
-tRatElemType :: (BuiltinHasRatTensor builtin) => DSLExpr builtin
-tRatElemType = ratTensorBuiltin RatType
-
---------------------------------------------------------------------------------
--- Rational tensors data
-
-tBoolTensor :: (BuiltinHasBoolTensor builtin, BuiltinHasDimensionTypes builtin) => DSLExpr builtin -> DSLExpr builtin
-tBoolTensor = tTensor tBoolElemType
-
-boolTensorBuiltin :: (BuiltinHasBoolTensor builtin) => BoolTensorBuiltin -> DSLExpr builtin
-boolTensorBuiltin = builtin . mkBoolTensorBuiltin
-
-tBoolElemType :: (BuiltinHasBoolTensor builtin) => DSLExpr builtin
-tBoolElemType = boolTensorBuiltin BoolType
+iterate :: (BuiltinHasStandardData builtin) => DSLExpr builtin -> (DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+iterate t f n e = do
+  let fn = explLam "f" (t ~> t) $ \iterFn -> explLam "e" t $ \resultSoFar -> f iterFn resultSoFar
+  builtinFunction Iterate @@@ [t] @@ [fn, n, e]

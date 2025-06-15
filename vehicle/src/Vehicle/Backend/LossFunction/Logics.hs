@@ -13,6 +13,7 @@ import Vehicle.Backend.LossFunction.Core as L
 import Vehicle.Backend.Prelude (DifferentiableLogicID (..))
 import Vehicle.Compile.Prelude (Expr, developerError)
 import Vehicle.Data.Builtin.Standard
+import Vehicle.Data.Code.DSL (dimNil, ratLit, tRatTensor)
 import Vehicle.Data.DSL
 
 --------------------------------------------------------------------------------
@@ -21,6 +22,9 @@ import Vehicle.Data.DSL
 
 -- | A partial expression which requires provenance to construct.
 type PLExpr = DSLExpr Builtin
+
+tRat :: PLExpr
+tRat = tRatTensor dimNil
 
 mkOp1 :: PLExpr -> (PLExpr -> PLExpr) -> PLExpr
 mkOp1 t f = explLam "x" t (\x -> f x)
@@ -32,48 +36,42 @@ builtinFunction :: BuiltinFunction -> PLExpr
 builtinFunction op = builtin (BuiltinFunction op)
 
 op1 :: BuiltinFunction -> PLExpr -> PLExpr
-op1 op x = builtinFunction op @@ [x]
+op1 op x = builtinFunction op .@@@ [dimNil] @@ [x]
 
 op2 :: BuiltinFunction -> PLExpr -> PLExpr -> PLExpr
-op2 op x y = builtinFunction op @@ [x, y]
-
--- | Addition
-(+:) :: PLExpr -> PLExpr -> PLExpr
-(+:) = op2 (Add AddRat)
-
--- | Multiplication
-(*:) :: PLExpr -> PLExpr -> PLExpr
-(*:) = op2 (Mul MulRat)
-
--- | Subtraction
-(-:) :: PLExpr -> PLExpr -> PLExpr
-(-:) = op2 (Sub SubRat)
-
--- | Division
-(/:) :: PLExpr -> PLExpr -> PLExpr
-(/:) = op2 (Div DivRat)
+op2 op x y = builtinFunction op .@@@ [dimNil] @@ [x, y]
 
 -- | Negation
 ne :: PLExpr -> PLExpr
-ne = op1 (Neg NegRat)
+ne = op1 $ Neg NegRatTensor
 
--- | Power
-(^:) :: PLExpr -> Rational -> PLExpr
-(^:) x y = op2 PowRat x (ratLit y)
+-- | Addition
+(+:) :: PLExpr -> PLExpr -> PLExpr
+(+:) = op2 $ Add AddRatTensor
+
+-- | Multiplication
+(*:) :: PLExpr -> PLExpr -> PLExpr
+(*:) = op2 $ Mul MulRatTensor
+
+-- | Subtraction
+(-:) :: PLExpr -> PLExpr -> PLExpr
+(-:) = op2 $ Sub SubRatTensor
+
+-- | Division
+(/:) :: PLExpr -> PLExpr -> PLExpr
+(/:) = op2 $ Div DivRatTensor
 
 -- | Maximum operator
 lmax :: PLExpr -> PLExpr -> PLExpr
-lmax = op2 MaxRat
+lmax = op2 $ Max MaxRatTensor
 
 -- | Minimum operator
 lmin :: PLExpr -> PLExpr -> PLExpr
-lmin = op2 MinRat
+lmin = op2 $ Min MinRatTensor
 
-ratLit :: Rational -> PLExpr
-ratLit r = builtin (BuiltinConstructor (LRat r))
-
-tRat :: PLExpr
-tRat = builtin (BuiltinType Rat)
+-- | Power
+(^:) :: PLExpr -> Rational -> PLExpr
+(^:) x y = builtinFunction PowRat @@ [x, ratLit y]
 
 --------------------------------------------------------------------------------
 -- Logics
@@ -112,7 +110,7 @@ vehicleTranslation =
       (L.Falsity, ratLit 100000),
       (L.Conjunction, mkOp2 tRat $ \x y -> lmax x y),
       (L.Disjunction, mkOp2 tRat $ \x y -> lmin x y),
-      (L.Negation, builtinFunction (Neg NegRat)),
+      (L.Negation, mkOp1 tRat $ \x -> ne x),
       (L.LessThan, mkOp2 tRat $ \x y -> x -: y),
       (L.LessEqual, mkOp2 tRat $ \x y -> x -: y),
       (L.GreaterThan, mkOp2 tRat $ \x y -> y -: x),

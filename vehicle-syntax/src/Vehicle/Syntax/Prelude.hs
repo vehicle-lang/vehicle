@@ -10,9 +10,9 @@ import Data.Serialize.Get (getListOf)
 import Data.Serialize.Put (putListOf)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import GHC.Stack (HasCallStack)
+import GHC.Stack (HasCallStack, callStack, prettyCallStack)
 import Numeric (readFloat)
-import Prettyprinter (Doc, defaultLayoutOptions, layoutPretty, line, (<+>))
+import Prettyprinter (Doc, Pretty (..), defaultLayoutOptions, indent, layoutPretty, line, list, squotes, (<+>))
 import Prettyprinter.Render.String (renderString)
 import Prettyprinter.Render.Text (renderStrict)
 
@@ -39,6 +39,67 @@ developerError message =
           <> line
           <> "Error:"
           <+> message
+          <> line
+          <> "Stack:"
+          <> line
+          <> pretty (prettyCallStack callStack)
+
+unexpectedExpr :: Doc a -> Doc a -> Doc a
+unexpectedExpr pass name =
+  "encountered unexpected expression:"
+    <> line
+    <> indent 2 name
+    <> line
+    <> "during"
+    <+> pass
+    <> "."
+
+unexpectedExprError :: (HasCallStack) => Doc a -> Doc a -> b
+unexpectedExprError pass name = developerError $ unexpectedExpr pass name
+
+normalisationError :: (HasCallStack) => Doc a -> Doc a -> b
+normalisationError pass name =
+  developerError $
+    unexpectedExpr pass name <+> "We should have normalised this out."
+
+unexpectedTypeInExprError :: (HasCallStack) => Doc a -> Doc a -> b
+unexpectedTypeInExprError pass name =
+  developerError $
+    unexpectedExpr pass name <+> "We should not be processing types."
+
+illTypedError :: (HasCallStack) => Doc a -> Doc a -> b
+illTypedError pass name =
+  developerError $
+    unexpectedExpr pass name <+> "This is ill-typed."
+
+visibilityError :: (HasCallStack) => Doc a -> Doc a -> Doc a -> b
+visibilityError pass fun args =
+  developerError $
+    unexpectedExpr pass args <+> "Does not match function's visibility:" <> line <> indent 2 fun
+
+-- | Throw this when you encounter a case that should have been resolved during
+-- type-checking, e.g. holes or metas.
+resolutionError :: (HasCallStack) => Doc a -> Doc a -> b
+resolutionError pass name =
+  developerError $
+    unexpectedExpr pass name <+> "We should have resolved this during type-checking."
+
+caseError :: (HasCallStack) => Doc a -> Doc a -> [Doc a] -> b
+caseError pass name cases =
+  developerError $
+    unexpectedExpr pass name
+      <+> "This should already have been caught by the"
+      <+> "following cases:"
+      <+> list cases
+
+internalScopingError :: (HasCallStack) => Doc a -> b
+internalScopingError ident =
+  developerError $
+    "Internal scoping error"
+      <> ":"
+      <+> "declaration"
+      <+> squotes ident
+      <+> "not found in scope..."
 
 --------------------------------------------------------------------------------
 -- Prettyprinting
@@ -69,8 +130,8 @@ instance (Serialize a) => Serialize (NonEmpty a) where
 
 getNonEmptyListOf :: Get a -> Get (NonEmpty a)
 getNonEmptyListOf m = do
-  list <- getListOf m
-  case NonEmpty.nonEmpty list of
+  xs <- getListOf m
+  case NonEmpty.nonEmpty xs of
     Nothing -> fail "getNonEmptyListOf: empty list"
     Just neList -> pure neList
 

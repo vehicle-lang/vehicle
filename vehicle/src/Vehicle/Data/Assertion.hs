@@ -1,179 +1,161 @@
 module Vehicle.Data.Assertion where
 
 import Control.DeepSeq (NFData)
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson (FromJSON, FromJSONKey, ToJSON, ToJSONKey)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
-import Data.Map qualified as Map
 import GHC.Generics
 import Vehicle.Data.Builtin.Core
-import Vehicle.Data.Code.BooleanExpr
+import Vehicle.Data.Code.BooleanExpr (MaybeTrivial (..))
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.Hashing ()
-import Vehicle.Data.QuantifiedVariable
-import Vehicle.Data.Tensor (RationalTensor, allTensor, zeroTensor)
+import Vehicle.Data.Tensor (HasShape, RatTensor, allTensor)
 import Vehicle.Prelude
+import Vehicle.Syntax.Tensor (HasShape (..))
 
 --------------------------------------------------------------------------------
--- Rational equalities
+-- Relations
 
-newtype Equality constant = Equality
-  { equalityExpr :: LinearExpr constant
+data Relation
+  = OEq
+  | OLe
+  | OLt
+  deriving (Eq, Ord)
+
+relationToComparisonOp :: Relation -> ComparisonOp
+relationToComparisonOp = \case
+  OEq -> Eq
+  OLe -> Le
+  OLt -> Lt
+
+instance Pretty Relation where
+  pretty = pretty . relationToComparisonOp
+
+checkTriviality :: Relation -> RatTensor -> Bool
+checkTriviality op tensor = case op of
+  OLe -> allTensor (<= 0.0) tensor
+  OLt -> allTensor (< 0.0) tensor
+  OEq -> isZero tensor
+
+--------------------------------------------------------------------------------
+-- Strictness
+
+data InequalityRelation
+  = Strict
+  | NonStrict
+  deriving (Show, Eq, Ord, Generic)
+
+instance NFData InequalityRelation
+
+instance ToJSON InequalityRelation
+
+instance FromJSON InequalityRelation
+
+inequalityToRelation :: InequalityRelation -> Relation
+inequalityToRelation = \case
+  Strict -> OLe
+  NonStrict -> OLt
+
+instance Pretty InequalityRelation where
+  pretty = pretty . inequalityToRelation
+
+--------------------------------------------------------------------------------
+-- Normalisation relations
+
+data NormalisedRelation rel variable constant = NormalisedRelation
+  { relation :: rel,
+    linearExpr :: LinearExpr variable constant
   }
   deriving (Show, Eq, Ord, Generic)
 
-instance (ToJSON constant) => ToJSON (Equality constant)
+instance
+  (NFData rel, NFData variable, NFData constant) =>
+  NFData (NormalisedRelation rel variable constant)
 
-instance (FromJSON constant) => FromJSON (Equality constant)
+instance
+  (ToJSON rel, ToJSONKey variable, ToJSON constant) =>
+  ToJSON (NormalisedRelation rel variable constant)
 
--- | Checks whether an equality is trivial or not. Returns `Nothing` if
--- non-trivial, and otherwise `Just b` where `b` is the value of the assertion
--- if it is trivial.
-checkEqualityTriviality :: Equality RationalTensor -> Maybe Bool
-checkEqualityTriviality (Equality e) = fmap isZero (isConstant e)
-
---------------------------------------------------------------------------------
--- Rational inequalities
-
-data Inequality constant = Inequality
-  { strictness :: Strictness,
-    inequalityExpr :: LinearExpr constant
-  }
-  deriving (Show, Eq, Ord, Generic)
-
-instance (NFData constant) => NFData (Inequality constant)
-
-instance (ToJSON constant) => ToJSON (Inequality constant)
-
-instance (FromJSON constant) => FromJSON (Inequality constant)
-
-mkInequality :: (Constant constant) => OrderOp -> LinearExpr constant -> LinearExpr constant -> Inequality constant
-mkInequality op e1 e2 =
-  case op of
-    Lt -> Inequality Strict (addExprs 1 (-1) e1 e2)
-    Le -> Inequality NonStrict (addExprs 1 (-1) e1 e2)
-    Gt -> Inequality Strict (addExprs (-1) 1 e1 e2)
-    Ge -> Inequality NonStrict (addExprs (-1) 1 e1 e2)
-
--- | Checks whether an assertion is trivial or not. Returns `Nothing` if
--- non-trivial, and otherwise `Just b` where `b` is the value of the assertion
--- if it is trivial.
-checkInequalityTriviality :: Inequality RationalTensor -> Maybe Bool
-checkInequalityTriviality (Inequality s e) = case isConstant e of
-  Nothing -> Nothing
-  Just tensor -> Just $ case s of
-    Strict -> allTensor (< 0.0) tensor
-    NonStrict -> allTensor (<= 0.0) tensor
+instance
+  (Ord variable, FromJSON rel, FromJSONKey variable, FromJSON constant) =>
+  FromJSON (NormalisedRelation rel variable constant)
 
 --------------------------------------------------------------------------------
 -- Assertions
 
-data Assertion
-  = RationalEq (Equality RationalTensor)
-  | RationalIneq (Inequality RationalTensor)
-  | TensorEq (Equality RationalTensor)
-  deriving (Show, Eq, Generic)
+type Inequality variable constant = NormalisedRelation InequalityRelation variable constant
 
-instance ToJSON Assertion
+type Equality variable constant = NormalisedRelation () variable constant
 
-instance FromJSON Assertion
+splitRelation ::
+  NormalisedRelation Relation variable constant ->
+  Either (Inequality variable constant) (Equality variable constant)
+splitRelation r = case relation r of
+  OEq -> Right $ r {relation = ()}
+  OLe -> Left $ r {relation = NonStrict}
+  OLt -> Left $ r {relation = Strict}
 
-checkTriviality :: Assertion -> MaybeTrivial Assertion
-checkTriviality ass = case ass of
-  RationalEq eq -> maybe (NonTrivial ass) Trivial (checkEqualityTriviality eq)
-  RationalIneq ineq -> maybe (NonTrivial ass) Trivial (checkInequalityTriviality ineq)
-  TensorEq eq -> maybe (NonTrivial ass) Trivial (checkEqualityTriviality eq)
+inequalityToNormRelation :: Inequality variable constant -> NormalisedRelation Relation variable constant
+inequalityToNormRelation r = case relation r of
+  Strict -> r {relation = OLt}
+  NonStrict -> r {relation = OLe}
 
-data Relation
-  = Equal
-  | LessThan
-  | LessThanOrEqual
-  deriving (Eq, Ord)
+type Assertion variable = NormalisedRelation Relation variable RatTensor
 
-assertionRel :: Assertion -> Relation
-assertionRel = \case
-  RationalEq {} -> Equal
-  TensorEq {} -> Equal
-  RationalIneq ineq
-    | strictness ineq == Strict -> LessThan
-    | otherwise -> LessThanOrEqual
+instance HasShape (Assertion variable) where
+  shapeOf assertion = shapeOf (constantValue $ linearExpr assertion)
 
-eqToAssertion :: LinearExpr RationalTensor -> LinearExpr RationalTensor -> Assertion
-eqToAssertion e1 e2 = do
-  let e = addExprs 1 (-1) e1 e2
-  RationalEq $ Equality e
+comparisonToAssertion ::
+  (VariableLike variable) =>
+  ComparisonOp ->
+  LinearExpr variable RatTensor ->
+  LinearExpr variable RatTensor ->
+  Assertion variable
+comparisonToAssertion op e1 e2 = case op of
+  Ne -> developerError "Cannot convert `Ne` to assertion"
+  Eq -> NormalisedRelation OEq $ addExprs 1 (-1) e1 e2
+  Lt -> NormalisedRelation OLt $ addExprs 1 (-1) e1 e2
+  Le -> NormalisedRelation OLe $ addExprs 1 (-1) e1 e2
+  Gt -> NormalisedRelation OLt $ addExprs (-1) 1 e1 e2
+  Ge -> NormalisedRelation OLe $ addExprs (-1) 1 e1 e2
 
-tensorEqToAssertion :: LinearExpr RationalTensor -> LinearExpr RationalTensor -> Assertion
-tensorEqToAssertion e1 e2 = do
-  let e = addExprs 1 (-1) e1 e2
-  TensorEq $ Equality e
-
-mapAssertionExprs ::
-  (LinearExpr RationalTensor -> LinearExpr RationalTensor) ->
-  (LinearExpr RationalTensor -> LinearExpr RationalTensor) ->
-  Assertion ->
-  MaybeTrivial Assertion
-mapAssertionExprs ft fr ass = checkTriviality $ case ass of
-  TensorEq Equality {..} -> TensorEq $ Equality $ ft equalityExpr
-  RationalEq Equality {..} -> RationalEq $ Equality $ fr equalityExpr
-  RationalIneq Inequality {..} -> RationalIneq $ Inequality strictness (fr inequalityExpr)
-
-substituteTensorEq ::
-  (TensorVariable, LinearExpr RationalTensor) ->
-  Map ElementVariable (LinearExpr RationalTensor) ->
-  Assertion ->
-  MaybeTrivial Assertion
-substituteTensorEq (var, solution) ratSolutions =
-  mapAssertionExprs
-    (eliminateVar var solution)
-    eliminateRatVars
-  where
-    -- Usually the expression being substituted into is much smaller than the number of tensor
-    -- variables so we traverse the expression instead of folding over the subsitutions
-    eliminateRatVars :: LinearExpr RationalTensor -> LinearExpr RationalTensor
-    eliminateRatVars expr = do
-      let varExprs = lookupVar <$> Map.toList (coefficients expr)
-      let constantExp = Sparse (mempty @(Map ElementVariable Coefficient)) (constantValue expr)
-      foldr (addExprs 1 1) constantExp varExprs
-
-    lookupVar :: (ElementVariable, Coefficient) -> LinearExpr RationalTensor
-    lookupVar (v, c) = do
-      let vc = Sparse (Map.singleton v c) (zeroTensor [])
-      case Map.lookup v ratSolutions of
-        Nothing -> vc
-        Just sol -> eliminateVar v sol vc
-
-substituteRationalEq :: UserElementVariable -> LinearExpr RationalTensor -> Assertion -> MaybeTrivial Assertion
-substituteRationalEq var solution = mapAssertionExprs id (eliminateVar var solution)
+eliminateVarsInAssertion ::
+  (VariableLike variable) =>
+  Map variable (LinearExpr variable RatTensor) ->
+  Assertion variable ->
+  MaybeTrivial (Assertion variable)
+eliminateVarsInAssertion f NormalisedRelation {..} = case eliminateVars f linearExpr of
+  Right newExpr -> NonTrivial $ NormalisedRelation {linearExpr = newExpr, ..}
+  Left tensor -> Trivial (checkTriviality relation tensor)
 
 --------------------------------------------------------------------------------
 -- Bounds
 
-type Bound constant = Inequality constant
+type Bound variable constant = Inequality variable constant
 
-pattern Bound :: Strictness -> LinearExpr constant -> Bound constant
-pattern Bound s e = Inequality s e
+pattern Bound :: InequalityRelation -> LinearExpr variable constant -> Bound variable constant
+pattern Bound s e = NormalisedRelation s e
 
 {-# COMPLETE Bound #-}
 
-type LowerBound constant = Bound constant
+type LowerBound variable constant = Bound variable constant
 
-type UpperBound constant = Bound constant
+type UpperBound variable constant = Bound variable constant
 
 -- | A FM solution for an normalised user variable is two lists of constraints.
 -- The variable value must be greater than the first set of assertions, and less than
 -- the second set of assertions.
-data Bounds constant = Bounds
-  { lowerBounds :: [LowerBound constant],
-    upperBounds :: [UpperBound constant]
+data Bounds variable constant = Bounds
+  { lowerBounds :: [LowerBound variable constant],
+    upperBounds :: [UpperBound variable constant]
   }
   deriving (Show, Eq, Ord, Generic)
 
-instance (NFData constant) => NFData (Bounds constant)
+instance (NFData variable, NFData constant) => NFData (Bounds variable constant)
 
-instance (ToJSON constant) => ToJSON (Bounds constant)
+instance (ToJSONKey variable, ToJSON constant) => ToJSON (Bounds variable constant)
 
-instance (FromJSON constant) => FromJSON (Bounds constant)
+instance (Ord variable, FromJSONKey variable, FromJSON constant) => FromJSON (Bounds variable constant)
 
 --------------------------------------------------------------------------------
 -- Variable status
@@ -202,8 +184,8 @@ prettyUnderConstrainedVariable (var, constraint) =
   pretty var <+> "-" <+> pretty constraint
 
 checkBoundsExist ::
-  (Variable, Bounds constant) ->
-  Either (Variable, UnderConstrainedVariableStatus) (NonEmpty (LowerBound constant), NonEmpty (UpperBound constant))
+  (variable, Bounds variable constant) ->
+  Either (variable, UnderConstrainedVariableStatus) (NonEmpty (LowerBound variable constant), NonEmpty (UpperBound variable constant))
 checkBoundsExist (var, Bounds {..}) = case (lowerBounds, upperBounds) of
   ([], []) -> Left (var, Unconstrained)
   ([], _) -> Left (var, BoundedAbove)

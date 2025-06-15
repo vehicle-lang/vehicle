@@ -3,8 +3,8 @@ module Vehicle.Verify.QueryFormat.VNNLib where
 import Control.Monad (forM)
 import Data.List.NonEmpty qualified as NonEmpty
 import Vehicle.Compile.Prelude
-import Vehicle.Data.Builtin.Core
 import Vehicle.Data.QuantifiedVariable (prettyRationalAsFloat)
+import Vehicle.Syntax.Tensor (flattenIndices)
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
 import Vehicle.Verify.QueryFormat.Interface
@@ -18,6 +18,7 @@ vnnlibQueryFormat =
   QueryFormat
     { queryFormatID = VNNLibQueries,
       supportsStrictInequalities = True,
+      supportsMultipleNetworks = True,
       compileVariable = compileVNNLibVar,
       compileQuery = compileVNNLibQuery,
       queryOutputFormat = outputFormat
@@ -34,9 +35,12 @@ outputFormat =
 
 -- | Compiles an individual variable
 compileVNNLibVar :: CompileQueryVariable
-compileVNNLibVar inputOrOutput ioIndex = do
-  let name = if inputOrOutput == Input then "X" else "Y"
-  layoutAsText $ name <> "_" <> pretty ioIndex
+compileVNNLibVar QueryVariableInfo {..} = do
+  let io = if inputOrOutput == Input then "X" else "Y"
+  let networkIndex = if numberOfNetworkApps > 1 then pretty (networkAppIndex + 1) else ""
+  let name = pretty networkName <> "@" <> networkIndex <> "@" <> io
+  let index = flattenIndices parentVariableShape parentVariableIndices
+  layoutAsText $ name <> "_" <> pretty index
 
 -- | Compiles an expression representing a single VNNLib query.
 compileVNNLibQuery :: CompileQuery
@@ -47,7 +51,7 @@ compileVNNLibQuery _address (QueryContents variables assertions) = do
   return $ layoutAsText assertionsDoc
 
 compileVariableDecl :: (MonadLogger m) => QueryVariable -> m (Doc a)
-compileVariableDecl var = return $ parens ("declare-fun" <+> pretty var <+> "() Real")
+compileVariableDecl var = return $ parens ("declare-fun" <+> pretty var <+> "Real")
 
 compileAssertion :: (MonadLogger m) => QueryAssertion QueryVariable -> m (Doc a)
 compileAssertion QueryAssertion {..} = do
@@ -55,15 +59,15 @@ compileAssertion QueryAssertion {..} = do
   let (headVar NonEmpty.:| tailVars) = lhs
   let compiledLHS = foldl compileCoefVar (compileCoefFirstVar headVar) tailVars
   let compiledRHS = prettyRationalAsFloat rhs
-  return $ parens ("assert" <+> parens (compiledRel <+> parens compiledLHS <+> compiledRHS))
+  return $ parens ("assert" <+> compiledRel <+> parens compiledLHS <+> compiledRHS)
 
 compileRel :: QueryRelation -> Doc a
 compileRel = \case
-  EqualRel -> "=="
-  OrderRel Le -> "<="
-  OrderRel Ge -> ">="
-  OrderRel Lt -> "<"
-  OrderRel Gt -> ">"
+  EqRel -> "=="
+  LeRel -> "<="
+  GeRel -> ">="
+  LtRel -> "<"
+  GtRel -> ">"
 
 compileCoefFirstVar :: (Coefficient, QueryVariable) -> Doc a
 compileCoefFirstVar (coef, var)

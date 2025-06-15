@@ -65,27 +65,30 @@ instance Delaborate V.Expr B.Expr where
     V.Lam _ b e -> B.Lam <$> delabM b <*> delabM e
     V.App fun args -> delabApp <$> delabM fun <*> traverse delabM (reverse (NonEmpty.toList args))
 
+delabRelevance :: (V.HasRelevance a) => a -> [B.Modality]
+delabRelevance x = case V.relevanceOf x of
+  V.Relevant -> []
+  V.Irrelevant -> [B.Irrelevant]
+
 instance Delaborate V.Arg B.Arg where
   delabM :: (MonadDelab m) => V.Arg -> m B.Arg
-  delabM (V.Arg _ v r e) = case (v, r) of
-    (V.Explicit {}, V.Relevant) -> B.RelevantExplicitArg <$> delabM e
-    (V.Implicit {}, V.Relevant) -> B.RelevantImplicitArg <$> delabM e
-    (V.Instance {}, V.Relevant) -> B.RelevantInstanceArg <$> delabM e
-    (V.Explicit {}, V.Irrelevant) -> B.IrrelevantExplicitArg <$> delabM e
-    (V.Implicit {}, V.Irrelevant) -> B.IrrelevantImplicitArg <$> delabM e
-    (V.Instance {}, V.Irrelevant) -> B.IrrelevantInstanceArg <$> delabM e
+  delabM arg = do
+    expr <- delabM $ V.argExpr arg
+    let modalities = delabRelevance arg
+    case V.visibilityOf arg of
+      V.Explicit {} -> return $ B.ExplicitArg modalities expr
+      V.Implicit {} -> return $ B.ImplicitArg modalities expr
+      V.Instance {} -> return $ B.InstanceArg modalities expr
 
 instance Delaborate V.Binder B.Binder where
   delabM binder = do
-    t' <- delabM $ V.binderValue binder
-    let n' = delabSymbol $ fromMaybe "_" (V.nameOf binder)
-    return $ case (V.visibilityOf binder, V.relevanceOf binder) of
-      (V.Explicit {}, V.Relevant) -> B.RelevantExplicitBinder n' t'
-      (V.Implicit {}, V.Relevant) -> B.RelevantImplicitBinder n' t'
-      (V.Instance {}, V.Relevant) -> B.RelevantInstanceBinder n' t'
-      (V.Explicit {}, V.Irrelevant) -> B.IrrelevantExplicitBinder n' t'
-      (V.Implicit {}, V.Irrelevant) -> B.IrrelevantImplicitBinder n' t'
-      (V.Instance {}, V.Irrelevant) -> B.IrrelevantInstanceBinder n' t'
+    typ <- delabM $ V.binderValue binder
+    let modalities = delabRelevance binder
+    let name = delabSymbol $ fromMaybe "_" (V.nameOf binder)
+    case V.visibilityOf binder of
+      V.Explicit {} -> return $ B.ExplicitBinder modalities name typ
+      V.Implicit {} -> return $ B.ImplicitBinder modalities name typ
+      V.Instance {} -> return $ B.InstanceBinder modalities name typ
 
 delabUniverse :: B.Expr
 delabUniverse = B.Type (mkToken B.TypeToken "Type")

@@ -10,6 +10,7 @@ import Vehicle.Backend.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
+import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Prelude.Logging.Instance
 import Vehicle.TypeCheck (TypeCheckOptions (..), runCompileMonad, typeCheckUserProg)
 
@@ -27,7 +28,7 @@ list loggingSettings ListOptions {..} = runCompileMonad loggingSettings $ do
     typeCheckUserProg $
       TypeCheckOptions
         { specification = specification,
-          typingSystem = Standard
+          secondaryTypeSystem = Nothing
         }
   let mergedProg = mergeImports imports typedProg
   printResources mergedProg listEntities outputAsJSON
