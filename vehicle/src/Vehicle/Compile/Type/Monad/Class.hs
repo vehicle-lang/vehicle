@@ -323,6 +323,9 @@ getMetasLinkedToMetasIn allConstraints typeOfInterest = do
           then (constraint : nonRelatedConstraints, typeMetas)
           else (nonRelatedConstraints, MetaSet.unions [constraintMetas, typeMetas])
 
+-- calculateMetaSolutions :: MetaVariableContext builtin -> MetaMap MetaSet
+-- calculateMetaSolutions ctx = MetaMap.filter _ $ _
+
 -- | Creates an expression that abstracts over all bound variables
 makeMetaExpr ::
   (MonadCompile m) =>

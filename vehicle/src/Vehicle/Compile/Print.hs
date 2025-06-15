@@ -35,8 +35,8 @@ import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Simplify
 import Vehicle.Compile.Type.Core
-import Vehicle.Compile.Type.Meta (MetaInfo (..))
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
+import Vehicle.Compile.Type.Meta.Variable (MetaInfo (..))
 import Vehicle.Data.Assertion (Bounds (..), Inequality, NormalisedRelation (..))
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Standard.Core

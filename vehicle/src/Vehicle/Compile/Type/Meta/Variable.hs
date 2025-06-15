@@ -120,7 +120,9 @@ instance (HasMetas a) => HasMetas (NonEmpty a) where
   findMetas = mapM_ findMetas
 
 instance HasMetas (InstanceConstraint builtin) where
-  findMetas (Resolve _ _ _ goal) = findMetas goal
+  findMetas (Resolve _ m _ goal) = do
+    tell (MetaSet.singleton m)
+    findMetas goal
 
 instance HasMetas (InstanceGoal builtin) where
   findMetas (InstanceGoal _ _ spine) = findMetas spine
