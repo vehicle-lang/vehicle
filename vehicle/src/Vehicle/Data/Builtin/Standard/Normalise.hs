@@ -71,7 +71,7 @@ instance NormalisableBuiltin Builtin where
       FoldList -> NonSimple evalFoldList
       MapList -> NonSimple evalMapList
       ForeachTensor -> NonSimple evalForeachTensor
-      ForeachVector -> NonSimple evalForeachTensor
+      ForeachVector -> NonSimple evalForeachVector
       Iterate -> NonSimple evalIterate
       QuantifyRatTensor {} -> None
     BuiltinCast c -> case c of

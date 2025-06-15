@@ -24,7 +24,7 @@ import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
-import Vehicle.Data.Tensor (TensorIndices, isZeroDimensional)
+import Vehicle.Data.Tensor (TensorIndices)
 import Vehicle.Prelude.Warning (CompileWarning (..))
 import Vehicle.Syntax.Tensor (unstack)
 import Vehicle.Verify.Core
@@ -156,10 +156,13 @@ compileMultiProperty multiPropertyMetaData = go []
       Just (VBoolStackTensor args) -> do
         let es' = zip [0 :: Int ..] $ stackElements args
         MultiProperty <$> traverse (\(i, e) -> go (i : indices) e) es'
-      Just (VBoolTensorLiteral bs) | not (isZeroDimensional bs) -> do
+      Just (VBoolTensorLiteral bs) -> do
         let es' = zip [0 :: Int ..] (fromBoolTensorValue . VBoolTensorLiteral <$> unstack bs)
         MultiProperty <$> traverse (\(i, e) -> go (i : indices) e) es'
-      _ -> do
+      Just (VBoolVecLiteral args) -> do
+        let es' = zip [0 :: Int ..] $ vecLitElements args
+        MultiProperty <$> traverse (\(i, e) -> go (i : indices) e) es'
+      Nothing -> do
         let propertyMetaData@PropertyMetaData {..} = updateMetaData multiPropertyMetaData indices
         flip runReaderT propertyMetaData $ do
           logCompilerPass MinDetail ("property" <+> quotePretty propertyAddress) $ do

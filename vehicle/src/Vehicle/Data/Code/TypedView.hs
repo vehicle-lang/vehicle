@@ -46,6 +46,7 @@ data TypeValue
   | VRatTensorType (Value Builtin)
   | VIndexTensorType (Value Builtin) (Value Builtin)
   | VListType (Value Builtin)
+  | VVectorType (Value Builtin) (Value Builtin)
   | VPiType (VBinder Builtin) (Closure Builtin)
   | VBoundTypeVar Lv (Spine Builtin)
 
@@ -64,6 +65,7 @@ toTypeValue t = case t of
     (TensorType, [toTypeValue . argExpr -> VRatType, ds]) -> VRatTensorType (argExpr ds)
     (TensorType, [toTypeValue . argExpr -> VNatType, ds]) -> VNatTensorType (argExpr ds)
     (TensorType, [toTypeValue . argExpr -> VIndexType n, ds]) -> VIndexTensorType n (argExpr ds)
+    (VectorType, [tElem, dim]) -> VVectorType (argExpr tElem) (argExpr dim)
     _ -> err
   _ -> err
   where
@@ -73,16 +75,19 @@ fromTypeValue :: (HasCallStack) => TypeValue -> Value Builtin
 fromTypeValue t = case t of
   VPiType binder value -> VPi binder value
   VBoundTypeVar lv spine -> VBoundVar lv spine
-  VUnitType -> VBuiltin (BuiltinType UnitType) []
-  VBoolType -> VBuiltin (BuiltinType BoolType) []
-  VRatType -> VBuiltin (BuiltinType RatType) []
-  VIndexType n -> VBuiltin (BuiltinType IndexType) [explicitIrrelevant n]
-  VNatType -> VBuiltin (BuiltinType NatType) []
-  VListType tElem -> VBuiltin (BuiltinType ListType) [explicit tElem]
-  VBoolTensorType ds -> VBuiltin (BuiltinType TensorType) [explicit (fromTypeValue VBoolType), explicitIrrelevant ds]
-  VRatTensorType ds -> VBuiltin (BuiltinType TensorType) [explicit (fromTypeValue VRatType), explicitIrrelevant ds]
-  VNatTensorType ds -> VBuiltin (BuiltinType TensorType) [explicit (fromTypeValue VNatType), explicitIrrelevant ds]
-  VIndexTensorType n ds -> VBuiltin (BuiltinType TensorType) [explicit (fromTypeValue (VIndexType n)), explicitIrrelevant ds]
+  VUnitType -> mkType UnitType []
+  VBoolType -> mkType BoolType []
+  VRatType -> mkType RatType []
+  VIndexType n -> mkType IndexType [explicitIrrelevant n]
+  VNatType -> mkType NatType []
+  VListType tElem -> mkType ListType [explicit tElem]
+  VBoolTensorType ds -> mkType TensorType [explicit (fromTypeValue VBoolType), explicitIrrelevant ds]
+  VRatTensorType ds -> mkType TensorType [explicit (fromTypeValue VRatType), explicitIrrelevant ds]
+  VNatTensorType ds -> mkType TensorType [explicit (fromTypeValue VNatType), explicitIrrelevant ds]
+  VIndexTensorType n ds -> mkType TensorType [explicit (fromTypeValue (VIndexType n)), explicitIrrelevant ds]
+  VVectorType tElem d -> mkType VectorType [explicit tElem, explicitIrrelevant d]
+  where
+    mkType builtin = VBuiltin (BuiltinType builtin)
 
 -------------------------------------------------------------------------------
 -- Index
@@ -98,7 +103,7 @@ toIndexValue e = case e of
   VBoundVar v spine -> VIndexBoundVar v spine
   (getExpr accessIndexLiteral -> Just i) -> VIndexLiteral i
   (getExpr accessIf -> Just args) -> VIndexIf args
-  _ -> developerError $ "ill-typed index expression" <+> prettyVerbose e
+  _ -> developerError $ "ill-typed index expression" <+> pretty (show e)
 
 -------------------------------------------------------------------------------
 -- Nat
@@ -188,17 +193,20 @@ fromBoolValue = \case
 data BoolTensorValue
   = VBoolTensorLiteral (Tensor Bool)
   | VBoolStackTensor (StackTensorArgs (Value Builtin))
+  | VBoolVecLiteral (VecLitArgs (Value Builtin))
 
 toBoolTensorValue :: (HasCallStack) => Value Builtin -> Maybe BoolTensorValue
 toBoolTensorValue expr = case expr of
   (getExpr accessBoolTensorLiteral -> Just t) -> Just $ VBoolTensorLiteral t
   (getExpr accessStackTensor -> Just args) -> Just $ VBoolStackTensor args
+  (getExpr accessVecLit -> Just args) -> Just $ VBoolVecLiteral args
   _ -> Nothing -- developerError $ "ill-typed BoolTensor expression:" <+> prettyVerbose expr
 
 fromBoolTensorValue :: BoolTensorValue -> Value Builtin
 fromBoolTensorValue = \case
   VBoolTensorLiteral y -> mkExpr accessBoolTensorLiteral y
   VBoolStackTensor args -> mkExpr accessStackTensor args
+  VBoolVecLiteral args -> mkExpr accessVecLit args
 
 {-
 -- | A view on all possible expressions that can have type `Tensor Bool`.
