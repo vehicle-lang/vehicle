@@ -53,7 +53,6 @@ class BuiltinHasBoolLiterals builtin where
 
 class BuiltinHasIndexLiterals builtin where
   accessIndexLitBuiltin :: Accessor builtin Int
-  accessIndexTensorLitBuiltin :: Accessor builtin (Tensor Int)
 
 class BuiltinHasNatLiterals builtin where
   accessNatLitBuiltin :: Accessor builtin Int

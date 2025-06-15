@@ -65,7 +65,6 @@ data BuiltinConstructor
   | NatLiteral Int
   | VectorLiteral
   | BoolTensorLiteral (Tensor Bool)
-  | IndexTensorLiteral (Tensor Int)
   | NatTensorLiteral (Tensor Int)
   | RatTensorLiteral (Tensor Rational)
   deriving (Eq, Ord, Show, Generic)
@@ -86,7 +85,6 @@ instance Pretty BuiltinConstructor where
     VectorLiteral -> "vec"
     BoolTensorLiteral x -> pretty x
     NatTensorLiteral x -> pretty x
-    IndexTensorLiteral x -> pretty x
     RatTensorLiteral x -> pretty x
 
 instance Pretty Rational where

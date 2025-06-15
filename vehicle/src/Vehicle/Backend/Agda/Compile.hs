@@ -483,7 +483,6 @@ compileBuiltinConstructor c args = case c of
   NatTensorLiteral t -> return $ compileTensorLiteral compileNatLiteral t
   BoolTensorLiteral t -> return $ compileTensorLiteral compileBoolLiteral t
   RatTensorLiteral t -> return $ compileTensorLiteral compileRatLiteral t
-  IndexTensorLiteral t -> return $ compileTensorLiteral compileIndexLiteral t
 
 compileBuiltinFunction ::
   (MonadAgdaCompile m) =>

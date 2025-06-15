@@ -211,7 +211,6 @@ convertBuiltin b spine = case b of
     L.Cons -> convertBinaryOp b DimensionCons spine
     L.UnitLiteral -> unsupported
     L.IndexLiteral i -> convertNullaryOp b (DimensionIndex i) spine
-    L.IndexTensorLiteral _ -> unsupported
     L.NatLiteral x -> convertNullaryOp b (Dimension x) spine
     L.NatTensorLiteral _ -> unsupported
     L.RatTensorLiteral t -> convertNullaryOp b (RatTensor $ mapTensor toRat t) spine

@@ -533,18 +533,10 @@ type HasIndexExpr expr builtin = (HasBuiltinConstructor expr, BuiltinHasIndexLit
 accessIndexLiteral :: (HasIndexExpr expr builtin) => Accessor (expr builtin) Int
 accessIndexLiteral = accessNoArgs accessIndexLitBuiltin
 
-accessIndexTensorLiteral :: (HasIndexExpr expr builtin) => Accessor (expr builtin) IndexTensor
-accessIndexTensorLiteral = accessNoArgs accessIndexTensorLitBuiltin
-
 pattern IIndexLiteral :: (HasIndexExpr expr builtin) => Int -> expr builtin
 pattern IIndexLiteral n <- (getExpr accessIndexLiteral -> Just n)
   where
     IIndexLiteral n = mkExpr accessIndexLiteral n
-
-pattern IIndexTensor :: (HasIndexExpr expr builtin) => Tensor Int -> expr builtin
-pattern IIndexTensor n <- (getExpr accessIndexTensorLiteral -> Just n)
-  where
-    IIndexTensor n = mkExpr accessIndexTensorLiteral n
 
 --------------------------------------------------------------------------------
 -- Naturals

@@ -17,8 +17,7 @@ instance HasPrimitives Builtin where
   tensorLiterals =
     [ Wrapper accessBoolTensorLiteral,
       Wrapper accessNatTensorLiteral,
-      Wrapper accessRatTensorLiteral,
-      Wrapper accessIndexTensorLiteral
+      Wrapper accessRatTensorLiteral
     ]
 
   tensorOp1s =

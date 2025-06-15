@@ -99,7 +99,6 @@ typeOfBuiltinConstructor = \case
   VectorLiteral {} -> typeOfVecLiteral
   NatTensorLiteral t -> tNatTensor (shapeOf t)
   BoolTensorLiteral t -> tBoolTensor (shapeOf t)
-  IndexTensorLiteral t -> forAllIrrelevantNat "n" $ \n -> tTensor (tIndex n) (shapeOf t)
   RatTensorLiteral t -> tRatTensor (shapeOf t)
 
 typeOfTCOp1 :: (DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin

@@ -226,13 +226,13 @@ intElemParser ::
   FilePath ->
   ElemParser m Int
 intElemParser decl datasetType file dims values expectedElementType = do
-  logDebug MaxDetail $ prettyVerbose expectedElementType
   case toTypeValue expectedElementType of
-    VIndexType (INatLiteral n) -> do
-      let invalid = Vector.filter (\value -> value < 0 || value >= n) values
-      if Vector.null invalid
-        then return $ IIndexTensor (toTensor dims values)
-        else throwError $ DatasetInvalidIndex decl file (Vector.head invalid) n
+    VIndexType (INatLiteral n) -> case (dims, Vector.toList values) of
+      ([], [value]) -> do
+        if 0 <= value && value < n
+          then return $ IIndexLiteral value
+          else throwError $ DatasetInvalidIndex decl file value n
+      _ -> developerError "Should not be parsing tensors of indices"
     VNatType {} -> do
       let invalid = Vector.filter (< 0) values
       if Vector.null invalid

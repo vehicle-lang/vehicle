@@ -281,7 +281,6 @@ delabConstructor fun args = case fun of
   V.IndexLiteral x -> return $ B.Literal $ B.NatLiteral $ delabNatLit x
   V.VectorLiteral -> delabVecLiteral args
   V.NatTensorLiteral t -> cheatDelabPretty t []
-  V.IndexTensorLiteral t -> cheatDelabPretty t []
   V.RatTensorLiteral t -> cheatDelabPretty t []
   V.BoolTensorLiteral t -> cheatDelabPretty t []
 
