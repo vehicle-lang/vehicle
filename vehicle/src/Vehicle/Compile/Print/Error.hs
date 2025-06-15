@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wx-no-partial -Wno-error=x-partial #-}
 module Vehicle.Compile.Print.Error
   ( UserError (..),
     VehicleError (..),
