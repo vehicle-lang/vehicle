@@ -16,7 +16,6 @@ import Vehicle.Compile.Type.Meta.Set (MetaSet)
 import Vehicle.Compile.Type.Meta.Variable
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Code.Value (GluedExpr (..))
-import Vehicle.Data.Meta
 
 findUltimateUnsolvedMeta ::
   (MonadLogger m, PrintableBuiltin builtin) =>

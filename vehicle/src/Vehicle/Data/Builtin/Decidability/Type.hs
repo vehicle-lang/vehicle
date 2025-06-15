@@ -73,7 +73,7 @@ typeDecidableTypeClass = \case
 typeDecidableTypeClassOp :: DecidabilityBuiltinTypeClassOp -> DSLExpr DecidabilityBuiltin
 typeDecidableTypeClassOp = \case
   TensorTypeTC -> isTensorType ~~~> absTensorType
-  VectorTypeTC -> isVectorType ~~~> absTensorType
+  VectorTypeTC -> isVectorType ~~~> absVectorType
   VectorTypeClassFieldTC field ->
     forAll "vector" absVectorType $ \vectorSol ->
       let vector e d = vectorSol @@ [e] .@@ [d]
