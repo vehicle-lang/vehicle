@@ -1,4 +1,7 @@
-module Vehicle.Test.Unit.Compile.DeBruijn (deBruijnTests) where
+module Vehicle.Test.Unit.Compile.DeBruijn
+  ( deBruijnTests,
+  )
+where
 
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertBool)
@@ -24,14 +27,14 @@ substitutionTests =
     [ SubstitutionTest
         { name = "UnderLambdaClosed",
           value = INatLiteral 2,
-          expr = Lam p (binding (INatType p)) (BoundVar p 0),
-          expected = Lam p (binding (INatType p)) (BoundVar p 0)
+          expr = Lam p (binding INatType) (BoundVar p 0),
+          expected = Lam p (binding INatType) (BoundVar p 0)
         },
       SubstitutionTest
         { name = "UnderLambdaOpenBody",
           value = INatLiteral 2,
-          expr = Lam p (binding (INatType p)) (BoundVar p 1),
-          expected = Lam p (binding (INatType p)) (INatLiteral 2)
+          expr = Lam p (binding INatType) (BoundVar p 1),
+          expected = Lam p (binding INatType) (INatLiteral 2)
         },
       SubstitutionTest
         { name = "UnderLambdaOpenType",
@@ -48,14 +51,14 @@ liftingTests =
     [ LiftingTest
         { name = "UnderLambdaClosed",
           amount = 1,
-          input = Lam p (binding (INatType p)) (BoundVar p 0),
-          expected = Lam p (binding (INatType p)) (BoundVar p 0)
+          input = Lam p (binding INatType) (BoundVar p 0),
+          expected = Lam p (binding INatType) (BoundVar p 0)
         },
       LiftingTest
         { name = "UnderLambdaOpenBody",
           amount = 1,
-          input = Lam p (binding (INatType p)) (BoundVar p 1),
-          expected = Lam p (binding (INatType p)) (BoundVar p 2)
+          input = Lam p (binding INatType) (BoundVar p 1),
+          expected = Lam p (binding INatType) (BoundVar p 2)
         },
       LiftingTest
         { name = "UnderLambdaOpenType",
