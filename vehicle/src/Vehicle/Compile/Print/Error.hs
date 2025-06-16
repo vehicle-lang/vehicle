@@ -9,6 +9,7 @@ module Vehicle.Compile.Print.Error
 where
 
 import Control.Monad.Except (ExceptT, runExceptT)
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Text (pack)
 import System.FilePath
 import Vehicle.Compile.Error
@@ -226,7 +227,7 @@ instance MeaningfulError CompileError where
             -- TODO can use Levenschtein distance to search contexts/builtins
             problem =
               "Requested to compile the declaration"
-                <+> quotePretty (head names)
+                <+> quotePretty (NonEmpty.head names)
                 <+> "but no declarations exist with that name in the specification.",
             fix =
               Just

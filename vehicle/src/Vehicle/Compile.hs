@@ -4,11 +4,11 @@ module Vehicle.Compile
   )
 where
 
-import Control.Monad (unless)
 import Control.Monad.Except (MonadError (..))
 import Data.Aeson (ToJSON (..))
 import Data.Aeson.Encode.Pretty (encodePretty')
 import Data.ByteString.Lazy.Char8 (unpack)
+import Data.List.NonEmpty
 import Data.Maybe (mapMaybe)
 import Data.Set qualified as Set
 import Vehicle.Backend.Agda
@@ -96,11 +96,12 @@ simplifyProgram prog declarationsToCompile = do
 checkDeclarationNamesPresent :: (MonadCompile m) => Prog Builtin -> DeclarationNames -> m ()
 checkDeclarationNamesPresent (Main decls) requestedDeclNames = do
   let actualDeclNames = Set.fromList $ fmap nameOf decls
-  let missingNames = Set.fromList requestedDeclNames `Set.difference` actualDeclNames
-  unless (Set.null missingNames) $
-    throwError $
-      MissingRequestedDeclarations $
-        Set.toList missingNames
+  let missingNames = Set.toList $ Set.fromList requestedDeclNames `Set.difference` actualDeclNames
+  case missingNames of
+    [] -> return ()
+    n : ns ->
+      throwError $
+        MissingRequestedDeclarations (n :| ns)
 
 --------------------------------------------------------------------------------
 -- Backend-specific compilation functions
