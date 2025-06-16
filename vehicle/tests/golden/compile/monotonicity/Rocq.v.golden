@@ -5,21 +5,17 @@
 (*  - Vehicle version: 0.17.0+dev *)
 
 Require Import mathcomp.ssreflect.ssrbool.
-Require Import mathcomp.algebra.ssralg.
 Require Import mathcomp.ssreflect.ssrnat.
 Require Import mathcomp.ssreflect.order.
-Require Import mathcomp.ssreflect.fintype.
 Require Import mathcomp.ssreflect.seq.
 Require Import mathcomp.ssreflect.tuple.
-Require Import mathcomp.algebra.zmodp.
 Require Import mathcomp.reals.reals.
 Require Import vehicle.tensor.
 Import DefaultTupleProdOrder.
-Open Scope ring_scope.
 Open Scope order_scope.
 
 Parameter R : realType.
 
 Parameter f : tensor R (1%N :: nil) -> tensor R (1%N :: nil).
 
-Axiom monotonic : forall x1, forall x2, x1 <= x2 -> tnth (f (stack [tuple x1])) 0 <= tnth (f (stack [tuple x2])) 0.
+Axiom monotonic : forall x1, forall x2, x1 <= x2 -> f (stack [tuple x1]) <= f (stack [tuple x2]).

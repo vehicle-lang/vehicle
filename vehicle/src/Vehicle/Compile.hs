@@ -155,8 +155,7 @@ compileToLossFunction ::
 compileToLossFunction logicID typedProg outputFile outputAsJSON = do
   hoistedProg <- hoistInferableParameters typedProg
   functionalisedProg <- functionaliseResources hoistedProg
-  let logic = dslFor logicID
-  compiledLogic <- compileLogic logicID logic
+  compiledLogic <- compileLogic logicID (dslFor logicID)
   lossTensorProg <- convertToLossTensors compiledLogic functionalisedProg
   jsonProg <- convertToJSONProg lossTensorProg
   let outputText

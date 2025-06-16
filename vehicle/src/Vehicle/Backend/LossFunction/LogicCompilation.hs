@@ -8,18 +8,21 @@ where
 import Control.Monad (foldM, void)
 import Control.Monad.Except (ExceptT, MonadError (..), runExceptT)
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
+import Data.Data (Proxy (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Vehicle.Backend.LossFunction.Core
 import Vehicle.Backend.LossFunction.Logics (DifferentialLogicDSL)
 import Vehicle.Backend.LossFunction.LossCompilation
 import Vehicle.Backend.Prelude (DifferentiableLogicID)
+import Vehicle.Compile.Context.Free (runFreshFreeContextT)
 import Vehicle.Compile.Context.Name
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE (eval)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyFriendly, prettyFriendlyEmptyCtx)
+import Vehicle.Compile.Print (prettyFriendly, prettyFriendlyEmptyCtx, prettyVerbose)
 import Vehicle.Data.Builtin.Core (Builtin)
+import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Loss (LossBuiltin)
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.Code.Interface
@@ -61,7 +64,7 @@ compileLogic ::
   DifferentialLogicDSL ->
   m CompiledDifferentiableLogic
 compileLogic logicID dsl = do
-  logCompilerPass MidDetail ("compiling logic" <+> quotePretty logicID) $ do
+  logCompilerPass MinDetail ("compiling logic" <+> quotePretty logicID) $ do
     -- Lift fields to the tensor level
     let tensorLogicFields = [minBound .. maxBound] :: [TensorDifferentiableLogicField]
     lossTensorImplementation <- foldM (compileLogicField logicID dsl) mempty tensorLogicFields
@@ -76,7 +79,7 @@ compileLogicField ::
   TensorDifferentiableLogicField ->
   m (Map TensorDifferentiableLogicField (Value LossBuiltin))
 compileLogicField logicID dsl impl field =
-  logCompilerSection MaxDetail ("compiling tensor-field" <+> quotePretty field) $ do
+  logCompilerPass MidDetail ("compiling tensor-field" <+> quotePretty field) $ do
     let tensorExprFn = case field of
           TruthityElement -> compileBoolLiteral Truthity
           FalsityElement -> compileBoolLiteral Falsity
@@ -96,7 +99,7 @@ compileLogicField logicID dsl impl field =
     logDebug MaxDetail $ "tensor-result:" <+> prettyFriendlyEmptyCtx tensorExpr <> line
 
     let fieldProv = (fieldIdentifier logicID field, mempty)
-    lossTensorExpr <- runFreshNameContextT $ runMonadLogicT (logicID, mempty) fieldProv $ convertExpr mempty tensorExpr
+    lossTensorExpr <- runFreshFreeContextT (Proxy @Builtin) $ runFreshNameContextT $ runMonadLogicT (logicID, mempty) fieldProv $ convertExpr mempty tensorExpr
     logDebug MaxDetail $ "loss-tensor-result:" <+> prettyFriendlyEmptyCtx tensorExpr
     return $ Map.insert field lossTensorExpr impl
 
@@ -158,8 +161,9 @@ reduceOp2 field dsl = do
   return $
     fromDSL mempty $
       implLam "dims" tDims $ \dims ->
-        explLam "xs" (tRatTensor dims) $ \xs ->
-          reducedOp dims xs
+        explLam "e" (tRatTensor dimNil) $ \e ->
+          explLam "xs" (tRatTensor dims) $ \xs ->
+            reducedOp dims e xs
 
 extractOp1Body ::
   (MonadCompileField m) =>
@@ -291,10 +295,10 @@ liftOp1Body ::
   Value Builtin ->
   m (DSLExpr Builtin -> DSLExpr Builtin -> DSLExpr Builtin)
 liftOp1Body = convertHigherOrderFunction "liftOp1" $ \case
-  VBuiltin (BuiltinFunction op) [_ds, argExpr -> e] | isLiftableOp op -> do
+  VBuiltin (BuiltinFunction op) (getExpr accessSpine -> Just (TensorOp1Args _ds e)) | isLiftableOp op -> do
     e' <- liftOp1Body e
     return $ \dims xs -> builtinFunction op .@@@ [dims] @@ [e' dims xs]
-  VBuiltin (BuiltinFunction op) [_ds, argExpr -> e1, argExpr -> e2] | isLiftableOp op -> do
+  VBuiltin (BuiltinFunction op) (getExpr accessSpine -> Just (TensorOp2Args _ds e1 e2)) | isLiftableOp op -> do
     e1' <- liftOp1Body e1
     e2' <- liftOp1Body e2
     return $ \dims xs -> builtinFunction op .@@@ [dims] @@ [e1' dims xs, e2' dims xs]
@@ -310,10 +314,10 @@ liftOp2Body ::
   Value Builtin ->
   m (DSLExpr Builtin -> DSLExpr Builtin -> DSLExpr Builtin -> DSLExpr Builtin)
 liftOp2Body = convertHigherOrderFunction "liftOp2" $ \case
-  VBuiltin (BuiltinFunction op) [_ds, argExpr -> e] | isLiftableOp op -> do
+  VBuiltin (BuiltinFunction op) (getExpr accessSpine -> Just (TensorOp1Args _ds e)) | isLiftableOp op -> do
     e' <- liftOp2Body e
     return $ \dims xs ys -> builtinFunction op .@@@ [dims] @@ [e' dims xs ys]
-  VBuiltin (BuiltinFunction op) [_ds, argExpr -> e1, argExpr -> e2] | isLiftableOp op -> do
+  VBuiltin (BuiltinFunction op) (getExpr accessSpine -> Just (TensorOp2Args _ds e1 e2)) | isLiftableOp op -> do
     e1' <- liftOp2Body e1
     e2' <- liftOp2Body e2
     return $ \dims xs ys -> builtinFunction op .@@@ [dims] @@ [e1' dims xs ys, e2' dims xs ys]
@@ -328,11 +332,13 @@ liftOp2Body = convertHigherOrderFunction "liftOp2" $ \case
 reduceOp2Body ::
   (MonadCompileBody m) =>
   Value Builtin ->
-  m (DSLExpr Builtin -> DSLExpr Builtin -> DSLExpr Builtin)
+  m (DSLExpr Builtin -> DSLExpr Builtin -> DSLExpr Builtin -> DSLExpr Builtin)
 reduceOp2Body = convertHigherOrderFunction "reduction" $ \case
-  VBuiltin (BuiltinFunction (reduceOp -> Just reducedOp)) [argExpr -> VBoundVar 0 [], argExpr -> VBoundVar 1 []] ->
-    return $ \dims xs -> builtinFunction reducedOp .@@@ [dims] @@ [xs]
-  blockedExpr -> throwError blockedExpr
+  VBuiltin (BuiltinFunction (reduceOp -> Just reducedOp)) (getExpr accessSpine -> Just (TensorOp2Args _ (VBoundVar 0 []) (VBoundVar 1 []))) ->
+    return $ \dims e xs -> builtinFunction reducedOp .@@@ [dims] @@ [e, xs]
+  blockedExpr -> do
+    logDebug MaxDetail $ prettyVerbose blockedExpr
+    throwError blockedExpr
 
 convertHigherOrderFunction ::
   (MonadLogger m, MonadNameContext m) =>

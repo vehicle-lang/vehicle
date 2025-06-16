@@ -13,9 +13,10 @@ import Data.Map qualified as Map
 import Vehicle.Backend.LossFunction.Core
 import Vehicle.Backend.LossFunction.Core qualified as L
 import Vehicle.Backend.LossFunction.Domain (Domain (..), extractSearchDomain)
+import Vehicle.Compile.Context.Free (MonadFreeContext, getFreeEnv)
 import Vehicle.Compile.Context.Name
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBE (eval, evalApp, traverseClosure)
+import Vehicle.Compile.Normalise.NBE (evalApp, normaliseInEnv)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyFriendlyEmptyCtx, prettyVerbose)
@@ -38,7 +39,8 @@ type MonadLossCtx =
 type MonadLogic m =
   ( MonadCompile m,
     MonadNameContext m,
-    MonadReader MonadLossCtx m
+    MonadReader MonadLossCtx m,
+    MonadFreeContext Builtin m
   )
 
 runMonadLogicT ::
@@ -79,7 +81,7 @@ convertExpr ::
   BoundEnv Builtin ->
   Expr Builtin ->
   m (Value LossBuiltin)
-convertExpr env expr = convertValue =<< eval mempty env expr
+convertExpr env expr = convertValue =<< normaliseInEnv env expr
 
 convertValue ::
   forall m.
@@ -106,11 +108,11 @@ convertValue e = do
       convertBuiltinToLoss b spine
     VPi binder closure -> do
       binder' <- traverse convertValue binder
-      closure' <- traverseClosure convertValue mempty binder closure
+      closure' <- traverseClosure binder closure
       return $ VPi binder' closure'
     VLam binder closure -> do
       binder' <- traverse convertValue binder
-      closure' <- traverseClosure convertValue mempty binder closure
+      closure' <- traverseClosure binder closure
       return $ VLam binder' closure'
   showExit result
   return result
@@ -128,7 +130,7 @@ convertBuiltinToLoss b spine = case b of
   S.BuiltinConstructor c -> case c of
     S.BoolTensorLiteral t -> translateConstant t
     S.Nil -> unchangedConstructor Nil
-    S.Cons -> unchangedConstructor Nil
+    S.Cons -> unchangedConstructor Cons
     S.UnitLiteral -> unchangedConstructor UnitLiteral
     S.IndexLiteral x -> unchangedConstructor $ IndexLiteral x
     S.NatLiteral x -> unchangedConstructor $ NatLiteral x
@@ -144,6 +146,11 @@ convertBuiltinToLoss b spine = case b of
     S.ListType -> unchangedType ListType
     S.VectorType -> developerError "Vector not yet supported"
     S.TensorType -> unchangedType TensorType
+  S.DerivedFunction f -> do
+    freeEnv <- getFreeEnv
+    let definition = lookupIdentValueInEnv freeEnv (identifierOf f)
+    value <- evalApp freeEnv definition spine
+    convertValue value
   S.BuiltinFunction f -> case f of
     --------------
     -- Booleans --
@@ -195,7 +202,6 @@ convertBuiltinToLoss b spine = case b of
     S.Iterate -> unsupportedBuiltin
     S.AtVector -> unsupportedBuiltin
   S.BuiltinCast {} -> unsupportedBuiltin
-  S.DerivedFunction {} -> unsupportedBuiltin
   ----------------------
   -- Other operations --
   ----------------------
@@ -218,7 +224,7 @@ convertBuiltinToLoss b spine = case b of
     unsupportedBuiltin :: m a
     unsupportedBuiltin = do
       (declProv, _) <- ask
-      throwError $ UnsupportedLossOperation declProv mempty (pretty S.If)
+      throwError $ UnsupportedLossOperation declProv mempty (pretty b)
 
 substField :: (MonadLogic m) => TensorDifferentiableLogicField -> Spine LossBuiltin -> m (Value LossBuiltin)
 substField field spine = do
@@ -245,7 +251,7 @@ translateQuantifier q = \case
     -- Normalise the body
     lv <- getBinderDepth
     let newEnv = extendEnvWithBound lv binder env
-    bodyValue <- eval mempty newEnv body
+    bodyValue <- normaliseInEnv newEnv body
 
     -- Translate the dimensions
     lossDims <- traverse convertValue dims
@@ -302,6 +308,20 @@ translateExists lossDims binder bodyValue = logCompilerSection MaxDetail "conver
   let newArgs = lossDims : (explicit <$> [reductionOp, lossLowerBounds, lossUpperBounds, lossPredicate])
 
   return $ VBuiltin (LossBuiltinFunction SearchRatTensor) newArgs
+
+traverseClosure ::
+  (MonadLogic m) =>
+  VBinder Builtin ->
+  Closure Builtin ->
+  m (Closure LossBuiltin)
+traverseClosure binder (Closure env body) = do
+  ctx <- getBinderContext
+  let lv = boundCtxLv ctx
+  let newEnv = extendEnvWithBound lv binder env
+  normBody <- addNameToContext binder $ convertValue =<< normaliseInEnv newEnv body
+  let finalEnv = boundContextToEnv ctx
+  let finalBody = quote mempty (lv + 1) normBody
+  return (Closure finalEnv finalBody)
 
 --------------------------------------------------------------------------------
 -- Utils

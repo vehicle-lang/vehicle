@@ -194,7 +194,6 @@ library
     Vehicle.Backend.LossFunction.Core
     Vehicle.Backend.LossFunction.Domain
     Vehicle.Backend.LossFunction.Logics
-    Vehicle.Backend.LossFunction.ZeroTensorLifting
     Vehicle.Backend.Queries
     Vehicle.Backend.Queries.ConstraintSearch
     Vehicle.Backend.Queries.MetaNetworkCalculation

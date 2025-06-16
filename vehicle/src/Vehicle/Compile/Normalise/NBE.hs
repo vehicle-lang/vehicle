@@ -11,8 +11,6 @@ module Vehicle.Compile.Normalise.NBE
     eval,
     evalApp,
     evalClosure,
-    traverseClosure,
-    traverseClosureGeneric,
     findInstanceArg,
   )
 where
@@ -22,8 +20,6 @@ import Data.List.NonEmpty as NonEmpty (toList)
 import Data.Map.Ordered.Strict qualified as OMap
 import Vehicle.Compile.Context.Bound.Class (MonadBoundContext (..))
 import Vehicle.Compile.Context.Free.Class (MonadFreeContext (..), getFreeEnv)
-import Vehicle.Compile.Context.Name (MonadNameContext, addNameToContext, getBinderContext)
-import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Data.Builtin.Interface (Accessor (..))
@@ -268,33 +264,3 @@ showAppExit result = do
   logDebug MaxDetail $ "nbe-app-exit:" <+> prettyVerbose result
   return ()
 -}
-
-traverseClosure ::
-  forall builtin1 builtin2 m.
-  (MonadLogger m, MonadNameContext m, NormalisableBuiltin builtin1, PrintableBuiltin builtin2) =>
-  (Value builtin1 -> m (Value builtin2)) ->
-  FreeEnv builtin1 ->
-  VBinder builtin1 ->
-  Closure builtin1 ->
-  m (Closure builtin2)
-traverseClosure traverseValue freeEnv binder closure =
-  fst <$> traverseClosureGeneric traverseValue (,()) freeEnv binder closure
-
-traverseClosureGeneric ::
-  forall builtin1 builtin2 m a b.
-  (MonadLogger m, MonadNameContext m, NormalisableBuiltin builtin1, PrintableBuiltin builtin2) =>
-  (Value builtin1 -> m a) ->
-  (a -> (Value builtin2, b)) ->
-  FreeEnv builtin1 ->
-  VBinder builtin1 ->
-  Closure builtin1 ->
-  m (Closure builtin2, b)
-traverseClosureGeneric traverseValue splitResult freeCtx binder (Closure env body) = do
-  ctx <- getBinderContext
-  let lv = boundCtxLv ctx
-  let newEnv = extendEnvWithBound lv binder env
-  recResult <- addNameToContext binder $ traverseValue =<< eval freeCtx newEnv body
-  let (normBody, remainder) = splitResult recResult
-  let finalEnv = boundContextToEnv ctx
-  let finalBody = quote mempty (lv + 1) normBody
-  return (Closure finalEnv finalBody, remainder)

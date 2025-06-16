@@ -41,6 +41,7 @@ readObjectFile specificationFile spec = do
           <+> "as the following IO error was thrown:"
           <> line
           <> indent 2 (pretty $ show err)
+          <> line
       return Nothing
     InexplicableDecodingError err -> do
       logDebug MinDetail $
@@ -48,6 +49,7 @@ readObjectFile specificationFile spec = do
           <+> "as it was unreadable for the unexpected reason:"
           <> line
           <> indent 2 (pretty err)
+          <> line
       return Nothing
     VersionMismatchError currentVersion writtenVersion err -> do
       logDebug MinDetail $
@@ -60,10 +62,11 @@ readObjectFile specificationFile spec = do
             <+> "In particular decoding threw the error:"
           <> line
           <> indent 2 (pretty err)
+          <> line
       return Nothing
     SuccessfulDecoding ObjectFileContents {..}
       | fileHash /= hash spec -> do
-          logDebug MinDetail $ "Outdated interface file found for" <+> quotePretty specificationFile
+          logDebug MinDetail $ "Outdated interface file found for" <+> quotePretty specificationFile <> line
           return Nothing
       | otherwise -> do
           logDebug MinDetail $ "Loaded interface file for" <+> quotePretty specificationFile

@@ -1,0 +1,23 @@
+@property;
+eqIndex : Tensor Real;
+eqIndex = 1.0
+
+@property;
+neqIndex : Tensor Real;
+neqIndex = 0.0
+
+@property;
+leqIndex : Tensor Real;
+leqIndex = 0.0
+
+@property;
+ltIndex : Tensor Real;
+ltIndex = 0.0
+
+@property;
+geqIndex : Tensor Real;
+geqIndex = 1.0
+
+@property;
+gtIndex : Tensor Real;
+gtIndex = 1.0
