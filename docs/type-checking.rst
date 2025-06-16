@@ -37,9 +37,12 @@ The table below contains the full list of possible arguments:
 
 .. option:: --typeSystem, -t
 
-    The type-system to use when checking the specification. 90\% of the time
-    you should not provide any value for this option as the default value ``Standard``
-    is what you want. However there are two further options ``Linearity`` and
-    ``Polarity`` which means are used by Vehicle to diagnose errors with how
-    quantified variables are used
+    Optional. The type-system to use when checking the specification. 99\% of the time
+    you should not provide a value for this option as the default value ``Standard``
+    is what you want. However there are further options which means are used by Vehicle
+    to work out the linearity, polarity and decidability of specifications
     (see this `paper <https://dl.acm.org/doi/10.1145/3573105.3575674>`_ for details).
+    - ``Standard``
+    - ``Linearity``
+    - ``Polarity``
+    - ``Decidability``
