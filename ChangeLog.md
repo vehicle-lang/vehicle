@@ -10,7 +10,7 @@ e.g. `Tensor Rat [1,2]` is no longer the same as `Vector (Vector Rat 2) 1`.
 
 Some breaking consequences of this are as follows:
 
-* `Tensor`s can only store certain primitive types of data: `Bool`, `Nat`, `Rat`, e.g.
+* `Tensor`s can only store the primitive types of data `Bool` and `Rat`, e.g.
 you can no longer write `Tensor (Nat -> Nat) [1]`.
 
 * All `@network` declarations must use `Tensor` types rather than `Vector` types (`@dataset` declarations

@@ -421,7 +421,8 @@ instance MeaningfulError CompileError where
           VNatTensorType dims -> dimLength dims
           VIndexTensorType _ dims -> dimLength dims
           VListType tElem -> (+ 1) <$> dimensionsOf tElem
-          _ -> Nothing
+          VVectorType tElem _dims -> (+ 1) <$> dimensionsOf tElem
+          _ -> Just 0
 
         dimLength :: Value Builtin -> Maybe Int
         dimLength dims = either (const Nothing) (Just . length) (getDimsExprs dims)

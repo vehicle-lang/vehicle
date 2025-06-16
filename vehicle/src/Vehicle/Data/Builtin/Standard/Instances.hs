@@ -122,6 +122,16 @@ allInstances =
             False
           ),
           ( forAllTypes $ \t ->
+              forAllDim Irrelevant $ \d ->
+                validDatasetListElementType t
+                  .~~~> validDatasetListElementType (tVector t d),
+            implLam "t" type0 $ \t ->
+              lam "d" (Implicit False) Irrelevant tDim $ \_d ->
+                instLam "r1" (validDatasetListElementType t) $ \_ ->
+                  tUnit,
+            False
+          ),
+          ( forAllTypes $ \t ->
               forAllDims $ \ds ->
                 validDatasetTensorElementType t
                   .~~~> validDatasetListElementType (tTensor t ds),
@@ -227,20 +237,6 @@ allInstances =
               isTensorType tBool ds,
             lamDims $ \ds ->
               tTensor tBool ds,
-            False
-          ),
-          ( forAllDim Irrelevant $ \n ->
-              forAllDims $ \ds ->
-                isTensorType (tIndex n) ds,
-            lamDim $ \n ->
-              lamDims $ \ds ->
-                tTensor (tIndex n) ds,
-            False
-          ),
-          ( forAllDims $ \ds ->
-              isTensorType tNat ds,
-            lamDims $ \ds ->
-              tTensor tNat ds,
             False
           ),
           ( forAllDims $ \ds ->
