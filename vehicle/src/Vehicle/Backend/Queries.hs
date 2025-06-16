@@ -24,7 +24,7 @@ import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
-import Vehicle.Data.Tensor (TensorIndices)
+import Vehicle.Data.Tensor (TensorIndices, isZeroDimensional)
 import Vehicle.Prelude.Warning (CompileWarning (..))
 import Vehicle.Syntax.Tensor (unstack)
 import Vehicle.Verify.Core
@@ -156,13 +156,15 @@ compileMultiProperty multiPropertyMetaData = go []
       Just (VBoolStackTensor args) -> do
         let es' = zip [0 :: Int ..] $ stackElements args
         MultiProperty <$> traverse (\(i, e) -> go (i : indices) e) es'
-      Just (VBoolTensorLiteral bs) -> do
+      Just (VBoolTensorLiteral bs) | not (isZeroDimensional bs) -> do
+        -- Important to test for non-zero dimensionality otherwise we don't display the correct
+        -- warnings for trivial tensors nor generate .vcl-plan file.
         let es' = zip [0 :: Int ..] (fromBoolTensorValue . VBoolTensorLiteral <$> unstack bs)
         MultiProperty <$> traverse (\(i, e) -> go (i : indices) e) es'
       Just (VBoolVecLiteral args) -> do
         let es' = zip [0 :: Int ..] $ vecLitElements args
         MultiProperty <$> traverse (\(i, e) -> go (i : indices) e) es'
-      Nothing -> do
+      _ -> do
         let propertyMetaData@PropertyMetaData {..} = updateMetaData multiPropertyMetaData indices
         flip runReaderT propertyMetaData $ do
           logCompilerPass MinDetail ("property" <+> quotePretty propertyAddress) $ do
