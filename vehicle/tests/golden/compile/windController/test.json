@@ -41,5 +41,11 @@
     "run": "vehicle verify -s spec.vcl -v Marabou --network controller:controller.onnx",
     "needs": ["spec.vcl", "controller.onnx"],
     "external": ["Marabou"]
+  },
+  {
+    "name": "TestVerify",
+    "run": "vehicle verify -s spec.vcl -v TestVerifier --network controller:controller.onnx --verifier-location=testVerifier --verifier-args='sat 'controller@@X_0=0.2,controller@@X_1=0.3,controller@@Y_0=3.0''",
+    "needs": ["spec.vcl", "controller.onnx", "../../../testVerifier"],
+    "external": ["TestVerifier"]
   }
 ]

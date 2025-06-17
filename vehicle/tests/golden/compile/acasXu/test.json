@@ -34,14 +34,5 @@
     "run": "vehicle compile -s spec.vcl -t Agda -o Agda.agda",
     "needs": ["spec.vcl"],
     "produces": ["Agda.agda"]
-  },
-  {
-    "name": "ValidateJSON",
-    "run": "vehicle verify -s spec.vcl -v TestVerifier --network acasXu:acasXu_1_7.onnx --property property3 --verifier-location=testVerifier --verifier-args='sat 'X_0=0.2,X_1=0.3,Y_0=3.0,X_2=0.2,X_3=0.2,X_4=0.2,Y_1=3.0,Y_2=3.0,Y_3=3.0,Y_4=3.0'' --cache verify-cache > /dev/null && vehicle validate --cache verify-cache --json",
-    "needs": ["spec.vcl", "acasXu_1_7.onnx", "../../../testVerifier"],
-    "external": ["TestVerifier"],
-    "ignore": {
-      "files": ["verify-cache/*","verify-cache/*/*"]
-    }
   }
 ]
