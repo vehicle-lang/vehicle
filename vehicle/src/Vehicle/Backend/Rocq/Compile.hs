@@ -275,6 +275,7 @@ compileDecl _opts = \case
         (_, cbody) <- compileBinders binders (compileExpr body)
         defType <- resolveReturnType binders' t
         return $ compileFunDef (compileIdentifier n) defType binders' cbody
+  DefRecord {} -> recordsNotYetSupported
 
 -- | Compile a 'network' declaration
 compilePostulate :: Code -> Code -> Code
@@ -306,6 +307,8 @@ compileExpr expr = do
     Lam _ binder body -> compileLam binder body
     Builtin _p b -> compileBuiltin b []
     App fun args -> compileApp fun args
+    Record {} -> recordsNotYetSupported
+    RecordAcc {} -> recordsNotYetSupported
   logExit result
   return result
 
@@ -313,7 +316,7 @@ compileType :: UniverseLevel -> Code
 compileType (UniverseLevel l)
   | l == 0 = "Type"
   | otherwise =
-      developerError $
+      developerError
         "compilation of higher-level universes to Rocq unsupported"
 
 compileLetBinder ::
@@ -557,7 +560,7 @@ compileNatLiteral :: Int -> Code
 compileNatLiteral i = annotate ([RequireImport MathcompSsreflectSsrnat], maxPrecedence) $ pretty i <> "%N"
 
 compileTensorLiteral :: (a -> Code) -> Tensor a -> Code
-compileTensorLiteral compileElement = foldMapTensor compileElement (\_shape -> toVec)
+compileTensorLiteral compileElement = foldMapTensor compileElement (const toVec)
 
 compileBoolLiteral :: Bool -> Code
 compileBoolLiteral = \case
@@ -610,7 +613,7 @@ compileComparison domain op = do
 compileStack :: (MonadRocqCompile m) => [Arg DecidabilityBuiltin] -> m Code
 compileStack args = do
   as <- compileArgs minPrecedence args
-  return $ annotate ([RequireImport VehicleTensor], 200) $ "stack" <+> (toVec as)
+  return $ annotate ([RequireImport VehicleTensor], 200) $ "stack" <+> toVec as
 
 compileVecLiteral :: (MonadRocqCompile m) => [Arg DecidabilityBuiltin] -> m Code
 compileVecLiteral xs = case getExpr accessSpine xs of
@@ -619,3 +622,6 @@ compileVecLiteral xs = case getExpr accessSpine xs of
 
 toVec :: [Code] -> Code
 toVec xs = annotate ([RequireImport MathcompSsreflectTuple], maxPrecedence) "[tuple" <+> concatWith (surround "; ") xs <> "]"
+
+recordsNotYetSupported :: a
+recordsNotYetSupported = developerError "Records are not yet supplied in the Rocq backend. Please open an issue if you need them."

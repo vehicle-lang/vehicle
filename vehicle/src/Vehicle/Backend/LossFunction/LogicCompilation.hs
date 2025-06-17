@@ -356,5 +356,5 @@ convertHigherOrderFunction field convert lamBody = do
 fieldIdentifier :: DifferentiableLogicID -> TensorDifferentiableLogicField -> Identifier
 fieldIdentifier logicID field = do
   let fieldName = layoutAsText $ pretty field
-  let recordModule = Record $ layoutAsText $ pretty logicID
+  let recordModule = RecordModule $ layoutAsText $ pretty logicID
   Identifier (ModulePath [StdLib, recordModule]) fieldName

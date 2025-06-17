@@ -44,6 +44,7 @@ instance Delaborate V.Decl B.Decl where
     V.DefAbstract _ n s t -> do
       constructor <- delabM s
       constructor (delabIdentifier n) <$> delabM t
+    V.DefRecord _ n _t fs -> B.DefRecord (delabIdentifier n) <$> traverse delabM fs
 
 instance Delaborate V.DefAbstractSort (B.NameToken -> B.Expr -> B.Decl) where
   delabM sort = return $ case sort of
@@ -64,6 +65,14 @@ instance Delaborate V.Expr B.Expr where
     V.Let _ v b e -> B.Let <$> delabM b <*> delabM v <*> delabM e
     V.Lam _ b e -> B.Lam <$> delabM b <*> delabM e
     V.App fun args -> delabApp <$> delabM fun <*> traverse delabM (reverse (NonEmpty.toList args))
+    V.Record _ fs -> B.Record <$> traverse delabM fs
+    V.RecordAcc _ r f -> B.RecordAcc <$> delabM r <*> delabM f
+
+instance Delaborate V.FieldName B.NameToken where
+  delabM (V.FieldName _ name) = return $ delabSymbol name
+
+instance Delaborate (V.RecordField V.Expr) B.RecordField where
+  delabM (field, expr) = B.Field <$> delabM field <*> delabM expr
 
 delabRelevance :: (V.HasRelevance a) => a -> [B.Modality]
 delabRelevance x = case V.relevanceOf x of

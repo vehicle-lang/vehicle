@@ -43,18 +43,15 @@ instance CapitaliseTypes [Decl DecidabilityBuiltin] where
   cap = \case
     [] -> return []
     d : ds -> do
-      d' <- case d of
-        DefAbstract p ident r t ->
-          DefAbstract p <$> capitaliseIdentifier ident <*> pure r <*> cap t
-        DefFunction p ident anns t e -> do
-          t' <- normaliseInEmptyEnv t
-          typeDef <- isTypeDef t'
-          when typeDef $
-            modify (insert ident)
-          DefFunction p <$> capitaliseIdentifier ident <*> pure anns <*> cap t <*> cap e
+      isType <- isTypeDef d
+      when isType $
+        modify (insert (identifierOf d))
 
-      ds' <- addDeclToContext d (cap ds)
-      return $ d' : ds'
+      d' <- traverseDeclTypeAndExpr cap cap d
+      let d'' = if isType then mapIdentifier capitaliseIdentifier d' else d'
+
+      ds' <- addDeclToContext d'' (cap ds)
+      return $ d'' : ds'
 
 instance CapitaliseTypes (Expr DecidabilityBuiltin) where
   cap = \case
@@ -67,7 +64,13 @@ instance CapitaliseTypes (Expr DecidabilityBuiltin) where
     Let p bound binder body -> Let p <$> cap bound <*> cap binder <*> cap body
     Lam p binder body -> Lam p <$> cap binder <*> cap body
     BoundVar p v -> return $ BoundVar p v
-    FreeVar p ident -> FreeVar p <$> capitaliseIdentifier ident
+    FreeVar p ident -> FreeVar p <$> capitaliseIdentifierIfType ident
+    Record p ident fields -> do
+      ident' <- capitaliseIdentifierIfType ident
+      Record p ident' <$> traverseRecordFields cap fields
+    RecordAcc p record (ident, field) -> do
+      ident' <- capitaliseIdentifierIfType ident
+      RecordAcc p <$> cap record <*> pure (ident', field)
 
 instance CapitaliseTypes (Arg DecidabilityBuiltin) where
   cap Arg {..} = do
@@ -79,21 +82,25 @@ instance CapitaliseTypes (Binder DecidabilityBuiltin) where
     binderValue' <- cap binderValue
     return $ Binder {binderValue = binderValue', ..}
 
-capitaliseIdentifier :: (MonadCapitalise m) => Identifier -> m Identifier
-capitaliseIdentifier ident@(Identifier m s) = do
+capitaliseIdentifier :: Identifier -> Identifier
+capitaliseIdentifier (Identifier m s) = Identifier m $ capitaliseFirstLetter s
+
+capitaliseIdentifierIfType :: (MonadCapitalise m) => Identifier -> m Identifier
+capitaliseIdentifierIfType ident = do
   typeIdentifiers <- get
   return $
-    Identifier m $
-      if member ident typeIdentifiers
-        then capitaliseFirstLetter s
-        else s
+    if member ident typeIdentifiers
+      then capitaliseIdentifier ident
+      else ident
 
-isTypeDef :: forall m. (MonadCapitalise m) => Value DecidabilityBuiltin -> m Bool
-isTypeDef t = case t of
-  -- We don't capitalise things of type `Bool` because they will be lifted
-  -- to the type level, only things of type `X -> Bool`.
-  VPi {} -> go 0 t
-  _ -> return False
+isTypeDef :: forall m. (MonadCapitalise m) => Decl DecidabilityBuiltin -> m Bool
+isTypeDef decl = do
+  normType <- normaliseInEmptyEnv (typeOf decl)
+  case normType of
+    -- We don't capitalise things of type `Bool` because they will be lifted
+    -- to the type level, only things of type `X -> Bool`.
+    VPi {} -> go 0 normType
+    _ -> return False
   where
     go :: Lv -> Value DecidabilityBuiltin -> m Bool
     go _ (VBuiltin (DecidabilityBuiltinFunction PropType) []) = return True

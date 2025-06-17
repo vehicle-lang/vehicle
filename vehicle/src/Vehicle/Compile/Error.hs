@@ -32,6 +32,17 @@ type MonadCompile m =
   )
 
 --------------------------------------------------------------------------------
+-- Scoping errors
+
+data RecordMatch = RecordMatch
+  { sharedFields :: [FieldName],
+    mispellings :: [(FieldName, FieldName)],
+    missingFields :: [FieldName],
+    extraFields :: [FieldName]
+  }
+  deriving (Show)
+
+--------------------------------------------------------------------------------
 -- Typing errors
 
 data MissingExplicitArgError builtin = MissingExplicitArgError
@@ -90,10 +101,12 @@ data CompileError
   | -- Parse errors
     ParseError ParseLocation ParseError
   | -- Errors thrown by scope checking.
-    UnboundName Provenance Name
-  | DeclarationDeclarationShadowing Provenance Name Identifier
+    UnboundName Provenance Name [Name]
+  | UnboundRecordAccessor Provenance Name [Name]
+  | DeclarationDeclarationShadowing Provenance (Either FieldName Name) Identifier
   | DeclarationBoundShadowing Provenance Name
   | MissingRequestedDeclarations (NonEmpty Name)
+  | UnmatchedRecord Provenance [FieldName] (Maybe (Identifier, RecordMatch))
   | -- Type checking errors
     forall builtin.
     (Eq builtin, PrintableBuiltin builtin, NormalisableBuiltin builtin, Show builtin) =>

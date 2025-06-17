@@ -141,15 +141,18 @@ handleUsedDecl applications decl = do
       <> line
       <> indent 2 (prettyMultiLineList (fmap prettyVerbose monomorphisations))
 
+  let noMonomorphisation = do
+        logDebug MaxDetail "Not monomorphising as an abstract declaration"
+        return [decl]
+
   case decl of
-    DefAbstract {} -> do
-      logDebug MaxDetail "Not monomorphising as an abstract declaration"
-      return [decl]
     DefFunction p ident anns typ body -> do
       let numberOfApplications = length monomorphisations
       let allFreeVarsInArgs = Set.unions (freeVarsIn . argExpr <$> concat monomorphisations)
       let createNewName = numberOfApplications > 1 || ident `Set.member` allFreeVarsInArgs
       traverse (performMonomorphisation (p, ident, anns, typ, body) createNewName) monomorphisations
+    DefAbstract {} -> noMonomorphisation
+    DefRecord {} -> noMonomorphisation
 
 handleUnusedDecl ::
   (MonadCollect builtin m) =>

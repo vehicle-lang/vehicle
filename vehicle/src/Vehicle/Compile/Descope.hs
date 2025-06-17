@@ -10,6 +10,7 @@ module Vehicle.Compile.Descope
   )
 where
 
+import Data.Map.Ordered qualified as OMap
 import Vehicle.Compile.Context.Name
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Interface.Print
@@ -87,6 +88,12 @@ genericDescopeExpr f e = showDescopeExit $ case showDescopeEntry e of
     binder' <- traverse (genericDescopeExpr f) binder
     body' <- addNameToContext binder $ genericDescopeExpr f body
     return $ S.Pi p binder' body'
+  Record p _ fields -> do
+    fields' <- traverseRecordFields (genericDescopeExpr f) fields
+    return $ S.Record p fields'
+  RecordAcc p record (_, field) -> do
+    record' <- genericDescopeExpr f record
+    return $ S.RecordAcc p record' field
 
 --------------------------------------------------------------------------------
 -- Value
@@ -133,6 +140,12 @@ genericDescopeValue f e = case e of
     binder' <- traverse (genericDescopeValue f) binder
     body' <- addNameToContext binder $ descopeClosure f binder closure
     return $ S.Lam p binder' body'
+  VRecord _ident fields -> do
+    fields' <- traverseRecordFields (genericDescopeValue f) $ OMap.assocs fields
+    return $ S.Record p fields'
+  VRecordAcc record (_ident, field) -> do
+    record' <- genericDescopeValue f record
+    return $ S.RecordAcc p record' field
   where
     p = mempty
 

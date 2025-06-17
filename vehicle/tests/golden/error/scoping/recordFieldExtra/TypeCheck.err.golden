@@ -1,0 +1,3 @@
+Error in file 'spec.vcl' at Line 6, Columns 13-23: Unable to find a record declaration with matching fields.
+Fix: it seems likely that the intension is to construct a 'Test' record. If so, then remove the unneeded fields:
+  f2

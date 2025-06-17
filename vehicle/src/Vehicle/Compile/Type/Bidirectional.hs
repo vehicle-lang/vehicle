@@ -234,6 +234,17 @@ inferExpr e = do
     Builtin p op -> do
       typ <- typeBuiltin p op
       return (Builtin p op, typ)
+    Record p recordIdent fields -> do
+      declaredFields <- getDeclaredRecordFields (Proxy @builtin) recordIdent
+      checkedFields <- traverse (checkRecordField declaredFields) fields
+      let checkedType = FreeVar p recordIdent
+      return (Record p recordIdent checkedFields, checkedType)
+    RecordAcc p record (recordIdent, field) -> do
+      let recordType = FreeVar (provenanceOf field) recordIdent
+      checkedRecord <- checkExpr recordType record
+      declaredFields <- getDeclaredRecordFields (Proxy @builtin) recordIdent
+      let fieldType = lookupRecordField declaredFields field
+      return (RecordAcc p checkedRecord (recordIdent, field), fieldType)
 
   showInferExit res
   return res
@@ -306,6 +317,16 @@ checkBinderTypesEqual p binderName expectedType actualType = do
               checkedExprActualType = actualType
             }
   createFreshUnificationConstraint p ctx origin expectedType actualType
+
+checkRecordField ::
+  (MonadBidirectional builtin m) =>
+  RecordFields (Type builtin) ->
+  RecordField (Expr builtin) ->
+  m (RecordField (Expr builtin))
+checkRecordField declaredFields (field, value) = do
+  let fieldType = lookupRecordField declaredFields field
+  checkedValue <- checkExpr fieldType value
+  return (field, checkedValue)
 
 -- | Adds an entirely new unification constraint (as opposed to one
 -- derived from another constraint).

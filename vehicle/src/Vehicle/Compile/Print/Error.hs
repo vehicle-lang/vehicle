@@ -100,14 +100,12 @@ instance MeaningfulError CompileError where
                 Just "remove one of annotations."
             }
       AbstractDefWithNonAbstractAnnotation p name ann ->
-        case ann of
-          AnnProperty ->
-            UError $
-              UserError
-                { provenance = p,
-                  problem = "missing definition for property" <+> quotePretty name <> ".",
-                  fix = Just $ "add a definition for" <+> quotePretty name <+> "."
-                }
+        UError $
+          UserError
+            { provenance = p,
+              problem = "missing definition for" <+> pretty ann <+> quotePretty name <> ".",
+              fix = Just $ "add a definition for" <+> quotePretty name <+> "."
+            }
       NonAbstractDefWithAbstractAnnotation p name resource ->
         UError $
           UserError
@@ -233,21 +231,35 @@ instance MeaningfulError CompileError where
               Just
                 "check the spelling of the names and that the correct specification is being used."
           }
-    UnboundName p name ->
+    UnboundName p name suggestions ->
       UError $
         UserError
           { provenance = p,
-            -- TODO can use Levenschtein distance to search contexts/builtins
             problem = "The name" <+> quotePretty name <+> "is not in scope",
-            fix = Nothing
+            fix =
+              if null suggestions
+                then Nothing
+                else Just $ "Did you mean to use one of the following:" <> line <> indent 2 (vsep (fmap pretty suggestions))
+          }
+    UnboundRecordAccessor p name suggestions ->
+      UError $
+        UserError
+          { provenance = p,
+            problem = "No record with field" <+> quotePretty name <+> "in scope",
+            fix =
+              if null suggestions
+                then Nothing
+                else Just $ "Did you mean to use one of the following:" <> line <> indent 2 (vsep (fmap pretty suggestions))
           }
     DeclarationDeclarationShadowing p name _matching ->
       UError $
         UserError
           { provenance = p,
-            problem = "multiple declarations found with the name" <+> quotePretty name,
+            problem = "multiple" <+> typDoc <+> "with the name" <+> quotePretty name,
             fix = Just "remove or rename the duplicate definitions"
           }
+      where
+        typDoc = either (const "record fields declared") (const "declarations") name
     DeclarationBoundShadowing p name ->
       UError $
         UserError
@@ -258,6 +270,32 @@ instance MeaningfulError CompileError where
                 <+> "as a local variable because there is already a declaration with that name.",
             fix = Just "rename either the original declaration or this variable"
           }
+    UnmatchedRecord p fields maybeBestMatch -> UError $ case maybeBestMatch of
+      Nothing ->
+        UserError
+          { provenance = p,
+            problem =
+              "Unable to find a record declaration with matching fields.",
+            fix = Just $ "declare a record with the fields:" <> lineIndent (vsep $ fmap pretty fields)
+          }
+      Just (ident, RecordMatch {..}) -> do
+        UserError
+          { provenance = p,
+            problem = "Unable to find a record declaration with matching fields.",
+            fix =
+              Just $
+                "it seems likely that the intension is to construct a"
+                  <+> quotePretty (nameOf ident)
+                  <+> "record."
+                  <+> "If so, then "
+                  <> suggestionDoc
+          }
+        where
+          mispellingDoc = (["fix the mispellings:" <> lineIndent (vsep (fmap (\(actual, expected) -> pretty actual <+> "->" <+> pretty expected) mispellings)) | not (null mispellings)])
+          missingDoc = (["add the missing fields:" <> lineIndent (vsep $ fmap pretty missingFields) | not (null missingFields)])
+          extraDoc = (["remove the unneeded fields:" <> lineIndent (vsep $ fmap pretty extraFields) | not (null extraFields)])
+          suggestionDocs = mispellingDoc <> missingDoc <> extraDoc
+          suggestionDoc = concatWith (\a b -> a <> line <> "and" <+> b) suggestionDocs
     ------------
     -- Typing --
     ------------

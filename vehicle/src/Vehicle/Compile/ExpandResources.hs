@@ -69,9 +69,6 @@ readResourcesInDecls = \case
   [] -> return []
   decl : decls -> do
     (newDecl, newDeclEntry) <- case decl of
-      DefFunction {} -> do
-        entry <- mkDeclCtxEntry decl
-        return (Just decl, entry)
       DefAbstract p ident defType declType -> do
         normDeclType <- normaliseInEmptyEnv declType
         let gluedType = Glued declType normDeclType
@@ -104,6 +101,9 @@ readResourcesInDecls = \case
             tell (Map.singleton ident newDeclEntry)
             entry <- mkDeclCtxEntry decl
             return (Nothing, entry)
+      _ -> do
+        entry <- mkDeclCtxEntry decl
+        return (Just decl, entry)
 
     decls' <-
       addDeclEntryToContext newDeclEntry $

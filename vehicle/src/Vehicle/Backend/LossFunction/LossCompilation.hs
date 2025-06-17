@@ -91,6 +91,10 @@ convertValue e = do
   result <- case e of
     VMeta {} ->
       unexpectedExprError currentPass "VMeta"
+    VRecord {} ->
+      unexpectedExprError currentPass "VRecord"
+    VRecordAcc {} ->
+      unexpectedExprError currentPass "VRecordAcc"
     VUniverse l ->
       return $ VUniverse l
     VFreeVar v spine -> do

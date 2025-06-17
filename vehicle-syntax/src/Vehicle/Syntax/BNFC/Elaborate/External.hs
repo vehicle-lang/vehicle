@@ -23,6 +23,7 @@ import Data.Maybe (mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set (fromList, notMember, toList)
 import Data.Text (Text, unpack)
+import Data.Text qualified as Text
 import Data.These (These (..))
 import Prettyprinter
 import Vehicle.Syntax.AST qualified as V
@@ -116,6 +117,14 @@ elabDeclGroup anns = \case
     (annTk, _) : _ -> do
       p <- mkProvenance annTk
       throwError $ AnnotationWithNoDef p (tkSymbol annTk)
+
+  -- Record declaration
+  B.DefRecord tk fields :| ds -> do
+    p <- mkProvenance tk
+    n <- elabName tk
+    fields' <- traverse elabRecordFieldDef fields
+    let d' = V.DefRecord p n (UnparsedExpr (tokType 0)) fields'
+    return (d', ds)
 
   -- Annotation declaration.
   B.DefAnn ann annOpts :| (d : ds) -> do
@@ -308,6 +317,7 @@ elaborateDecl ::
 elaborateDecl file decl = flip runReaderT file $ case decl of
   V.DefAbstract p n r t -> V.DefAbstract p n r <$> elabDeclType t
   V.DefFunction p n b t e -> V.DefFunction p n b <$> elabDeclType t <*> elabDeclBody e
+  V.DefRecord p n t fs -> V.DefRecord p n <$> elabDeclType t <*> traverse elabRecordDefEntry fs
 
 elabDeclType ::
   (MonadElab m) =>
@@ -326,6 +336,12 @@ elabDeclBody (UnparsedExpr expr) = case expr of
     p <- mkProvenance tk
     return $ foldr (V.Lam p) body' binders'
   _ -> developerError "Invalid declaration body - no lambdas found"
+
+elabRecordDefEntry ::
+  (MonadElab m) =>
+  V.RecordField UnparsedExpr ->
+  m (V.RecordField V.Expr)
+elabRecordDefEntry = V.traverseRecordField (\(UnparsedExpr typ) -> elabExpr typ)
 
 elaborateExpr ::
   (MonadError ParseError m) =>
@@ -346,6 +362,8 @@ elabExpr expr = case expr of
   B.Let tk1 ds e -> elabLet tk1 ds e
   B.ForallT tk1 ns _tk2 t -> elabForallT tk1 ns t
   B.Lam tk1 ns _tk2 e -> elabLam tk1 ns e
+  B.Record xs -> elabRecord xs
+  B.RecordAcc e n -> elabRecordAcc e n
   B.Forall tk1 ns _tk2 e -> elabQuantifier tk1 V.Forall ns e
   B.Exists tk1 ns _tk2 e -> elabQuantifier tk1 V.Exists ns e
   B.ForallIn tk1 ns e1 _tk2 e2 -> elabQuantifierIn tk1 V.Forall ns e1 e2
@@ -417,6 +435,38 @@ elabName :: (MonadElab m) => B.Name -> m V.Identifier
 elabName n = do
   modl <- getModule
   return $ V.Identifier modl $ tkSymbol n
+
+elabRecordFieldName :: (MonadElab m) => B.Name -> m V.FieldName
+elabRecordFieldName tk = do
+  p <- mkProvenance tk
+  return $ V.FieldName p (tkSymbol tk)
+
+elabRecordFieldDef :: (MonadElab m) => B.RecordFieldDef -> m (V.RecordField UnparsedExpr)
+elabRecordFieldDef (B.FieldDef name _tk expr) = (,) <$> elabRecordFieldName name <*> pure (UnparsedExpr expr)
+
+elabRecordFieldAssign :: (MonadElab m) => B.RecordFieldAssign -> m (V.RecordField V.Expr)
+elabRecordFieldAssign (B.FieldAssign name expr) = (,) <$> elabRecordFieldName name <*> elabExpr expr
+
+elabRecord :: (MonadElab m) => [B.RecordFieldAssign] -> m V.Expr
+elabRecord xs = do
+  fields <- traverse elabRecordFieldAssign xs
+  -- I'm struggling to make the left/right braces into tokens as the tokenizer doesn't
+  -- seem to recognise them correcty. Hence this very ugly hack.
+  -- pL <- mkProvenance tkL
+  -- pR <- mkProvenance tkR
+  -- let p = V.fillInProvenance (pL :| [pR])
+  let p = case fields of
+        [] -> mempty
+        f : fs -> V.fillInProvenance $ fmap V.provenanceOf (f :| fs)
+  return $ V.Record p fields
+
+elabRecordAcc :: (MonadElab m) => B.Expr -> B.TokRecordAccess -> m V.Expr
+elabRecordAcc e (B.TokRecordAccess ((l1, l2), txt)) = do
+  -- Adjust the field name to strip off the extra "."
+  let field = B.Name ((l1 + 1, l2), Text.drop 1 txt)
+  fieldName <- elabRecordFieldName field
+  r <- elabExpr e
+  return $ V.RecordAcc (V.provenanceOf fieldName) r fieldName
 
 elabBasicBinder :: (MonadElab m) => Bool -> B.BasicBinder -> m V.Binder
 elabBasicBinder folded = \case

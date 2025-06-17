@@ -94,7 +94,8 @@ typeCheckDecl uncheckedDecl isUnused =
 
     decl <- case convertedDecl of
       DefAbstract p n r t -> typeCheckAbstractDef p n r t isUnused
-      DefFunction p n b t e -> typeCheckFunction p n b t e isUnused
+      DefFunction p n b t e -> typeCheckFunctionDef p n b t e isUnused
+      DefRecord p n t fs -> typeCheckRecordDef p n t fs isUnused
 
     checkAllUnknownsSolved (Proxy @builtin)
     finalDecl <- substMetas decl
@@ -125,7 +126,7 @@ typeCheckAbstractDef p ident defSort uncheckedType isUnused = do
   finalDecl <- generaliseOverUnsolvedMetasAndConstraints substDecl
   return finalDecl
 
-typeCheckFunction ::
+typeCheckFunctionDef ::
   forall builtin m.
   (TCM builtin m) =>
   Provenance ->
@@ -135,7 +136,7 @@ typeCheckFunction ::
   Expr builtin ->
   DeclIsUnused ->
   m (Decl builtin)
-typeCheckFunction p ident anns typ body isUnused = do
+typeCheckFunctionDef p ident anns typ body isUnused = do
   checkedType <- checkDeclType ident typ
   finalCheckedType <-
     if isProperty anns
@@ -170,9 +171,44 @@ typeCheckFunction p ident anns typ body isUnused = do
 
       generaliseOverUnsolvedMetasAndConstraints checkedDecl1
 
-checkDeclType :: forall builtin m. (TCM builtin m) => Identifier -> Expr builtin -> m (Type builtin)
+typeCheckRecordDef ::
+  forall builtin m.
+  (TCM builtin m) =>
+  Provenance ->
+  Identifier ->
+  Type builtin ->
+  RecordFields (Type builtin) ->
+  DeclIsUnused ->
+  m (Decl builtin)
+typeCheckRecordDef p ident uncheckedType uncheckedFields isUnused = do
+  checkedType <- checkDeclType ident uncheckedType
+
+  -- Type check the body.
+  let pass = bidirectionalPassDoc <+> "fields of" <+> quotePretty ident
+  checkedFields <-
+    logCompilerPass MidDetail pass $
+      traverse (checkRecordFieldDef ident) uncheckedFields
+
+  -- Reconstruct the function.
+  let checkedDecl = DefRecord p ident checkedType checkedFields
+
+  -- Solve constraints and substitute through.
+  setCurrentDecl $ Just (checkedDecl, isUnused)
+  solveConstraints (Proxy @builtin)
+  substMetas checkedDecl
+
+checkRecordFieldDef ::
+  (TCM builtin m) =>
+  Identifier ->
+  RecordField (Type builtin) ->
+  m (RecordField (Type builtin))
+checkRecordFieldDef _recordIdent (field, fieldType) = do
+  checkedFieldType <- checkDeclType field fieldType
+  return (field, checkedFieldType)
+
+checkDeclType :: (TCM builtin m, HasName name Name) => name -> Type builtin -> m (Type builtin)
 checkDeclType ident declType = do
-  let pass = bidirectionalPassDoc <+> "type of" <+> quotePretty ident
+  let pass = bidirectionalPassDoc <+> "type of" <+> quotePretty (nameOf ident)
   logCompilerPass MidDetail pass $ do
     checkExprType mempty Relevant (TypeUniverse mempty 0) declType
 

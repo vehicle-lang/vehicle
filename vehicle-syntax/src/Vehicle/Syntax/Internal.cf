@@ -39,6 +39,11 @@ ExplicitArg. Arg ::= [Modality] Expr1;
 ImplicitArg. Arg ::= "{" [Modality] Expr "}";
 InstanceArg. Arg ::= "{{" [Modality] Expr "}}";
 
+-- * Records
+
+Field. RecordField ::= "(" NameToken "," Expr ")";
+separator RecordField ",";
+
 -- * Literals
 
 UnitLiteral. Lit ::= "()";
@@ -59,6 +64,8 @@ Var.           Expr1 ::= NameToken;
 Literal.       Expr1 ::= Lit;
 LVec.          Expr1 ::= "[" [Expr1] "]";
 Hole.          Expr1 ::= HoleToken;
+Record.        Expr1 ::= "{" [RecordField] "}";
+RecordAcc.     Expr1 ::= Expr1 "." NameToken;
 
 coercions Expr 1;
 separator Expr1 ",";
@@ -71,6 +78,7 @@ DeclParam.     Decl ::= "(" "declare-parameter"      NameToken Expr1 ")";
 DeclImplParam. Decl ::= "(" "declare-impl-parameter" NameToken Expr1 ")";
 DeclPost.      Decl ::= "(" "declare-postulate"      NameToken Expr1 ")";
 DefFun.        Decl ::= "(" "define-fun"             NameToken Expr1 Expr1 ")";
+DefRecord.     Decl ::= "(" "define-record"          NameToken [RecordField] ")";
 
 separator Decl "";
 

@@ -12,6 +12,7 @@ where
 
 import Control.Monad.Writer (MonadWriter (..), execWriter)
 import Data.List.NonEmpty (NonEmpty)
+import Data.Map.Ordered qualified as OMap
 import Data.Maybe (fromMaybe)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
@@ -91,6 +92,8 @@ instance HasMetas (Expr builtin) where
     Let _ bound binder body -> do findMetas bound; findMetas binder; findMetas body
     Lam _ binder body -> do findMetas binder; findMetas body
     App fun args -> do findMetas fun; findMetas args
+    Record _ _ fields -> findMetas $ fmap snd fields
+    RecordAcc _ record _ -> findMetas record
 
 instance HasMetas (Value builtin) where
   findMetas expr = case expr of
@@ -103,6 +106,8 @@ instance HasMetas (Value builtin) where
     VBoundVar _ spine -> findMetas spine
     VPi binder closure -> do findMetas binder; findMetas closure
     VLam binder closure -> do findMetas binder; findMetas closure
+    VRecord _ fields -> findMetas (snd <$> OMap.assocs fields)
+    VRecordAcc record _ -> findMetas record
 
 instance HasMetas (Closure builtin) where
   findMetas (Closure env expr) = do findMetas (fmap snd env); findMetas expr

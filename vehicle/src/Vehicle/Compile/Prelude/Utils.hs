@@ -28,6 +28,8 @@ freeNamesIn = \case
   Pi _ binder result -> freeNamesIn (typeOf binder) <> freeNamesIn result
   Let _ bound binder body -> freeNamesIn bound <> freeNamesIn (typeOf binder) <> freeNamesIn body
   Lam _ binder body -> freeNamesIn (typeOf binder) <> freeNamesIn body
+  Record _ _ fields -> concatMap (freeNamesIn . snd) fields
+  RecordAcc _ r _ -> freeNamesIn r
 
 --------------------------------------------------------------------------------
 -- Destruction functions

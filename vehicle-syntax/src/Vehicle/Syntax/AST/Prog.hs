@@ -1,6 +1,7 @@
 module Vehicle.Syntax.AST.Prog where
 
 import Control.DeepSeq (NFData)
+import Data.Foldable (traverse_)
 import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
 import Vehicle.Syntax.AST.Decl (GenericDecl)
@@ -12,7 +13,7 @@ import Vehicle.Syntax.AST.Decl (GenericDecl)
 newtype GenericProg expr
   = -- | List of declarations.
     Main [GenericDecl expr]
-  deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
+  deriving (Show, Functor, Foldable, Traversable, Generic)
 
 instance (NFData expr) => NFData (GenericProg expr)
 
@@ -24,6 +25,13 @@ traverseDecls ::
   GenericProg expr1 ->
   m (GenericProg expr2)
 traverseDecls f (Main ds) = Main <$> traverse f ds
+
+traverseDecls_ ::
+  (Monad m) =>
+  (GenericDecl expr1 -> m b) ->
+  GenericProg expr1 ->
+  m ()
+traverseDecls_ f (Main ds) = traverse_ f ds
 
 filterDecls ::
   (GenericDecl expr -> Bool) ->

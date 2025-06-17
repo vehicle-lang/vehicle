@@ -15,7 +15,9 @@ module Vehicle.Syntax.AST.Expr
         Var,
         Hole,
         Let,
-        Lam
+        Lam,
+        Record,
+        RecordAcc
       ),
     Type,
 
@@ -35,6 +37,7 @@ import Vehicle.Syntax.AST.Decl (GenericDecl)
 import Vehicle.Syntax.AST.Name (Name)
 import Vehicle.Syntax.AST.Prog (GenericProg)
 import Vehicle.Syntax.AST.Provenance (HasProvenance (..), Provenance, fillInProvenance)
+import Vehicle.Syntax.AST.Record (FieldName, RecordField)
 import Vehicle.Syntax.Builtin (Builtin)
 
 --------------------------------------------------------------------------------
@@ -88,7 +91,19 @@ data Expr
       Provenance
       Binder -- Bound expression name.
       Expr -- Expression body.
-  deriving (Eq, Show, Generic)
+  | -- | Records
+    Record
+      Provenance
+      [RecordField Expr]
+  | -- | Record accessors.
+    --
+    -- NOTE: we could replace `RecordAcc` with `App Identifier Record`
+    -- but difficult to elaborate back afterwards
+    RecordAcc
+      Provenance
+      Expr -- The record
+      FieldName -- The field to access
+  deriving (Show, Generic)
 
 --------------------------------------------------------------------------------
 -- The AST datatypes specialised to the Expr type
@@ -122,7 +137,7 @@ pattern App f xs <- UnsafeApp f xs
   where
     App f xs = normApp f xs
 
-{-# COMPLETE Universe, App, Pi, Builtin, Var, Hole, Let, Lam #-}
+{-# COMPLETE Universe, App, Pi, Builtin, Var, Hole, Let, Lam, Record, RecordAcc #-}
 
 --------------------------------------------------------------------------------
 -- Instances
@@ -137,6 +152,8 @@ instance HasProvenance Expr where
     Var p _ -> p
     Let p _ _ _ -> p
     Lam p _ _ -> p
+    Record p _ -> p
+    RecordAcc p _ _ -> p
 
 --------------------------------------------------------------------------------
 -- Utilities

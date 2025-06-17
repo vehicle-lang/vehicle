@@ -107,6 +107,8 @@ removeImplicitArgs prog =
       Pi p binder res -> Pi p <$> traverse go binder <*> go res
       Lam p binder body -> Lam p <$> traverse go binder <*> go body
       Let p bound binder body -> Let p <$> go bound <*> traverse go binder <*> go body
+      Record p ident fields -> Record p ident <$> traverseRecordFields go fields
+      RecordAcc p record field -> RecordAcc p <$> go record <*> pure field
 
 findDeclType :: (MonadCompile m) => Identifier -> Prog builtin -> m (Expr builtin)
 findDeclType ident (Main decls) = do

@@ -19,6 +19,7 @@ where
 
 import Data.Data (Proxy (..))
 import Data.List.NonEmpty as NonEmpty (toList)
+import Data.Map.Ordered.Strict qualified as OMap
 import Vehicle.Compile.Context.Bound.Class (MonadBoundContext (..))
 import Vehicle.Compile.Context.Free.Class (MonadFreeContext (..), getFreeEnv)
 import Vehicle.Compile.Context.Name (MonadNameContext, addNameToContext, getBinderContext)
@@ -126,6 +127,7 @@ eval ::
   m (Value builtin)
 eval freeEnv boundEnv expr = do
   showEntry boundEnv expr
+  let recEval = eval freeEnv boundEnv
   result <- case expr of
     Hole {} -> resolutionError currentPass "Hole"
     Meta _ m -> return $ VMeta m []
@@ -134,20 +136,28 @@ eval freeEnv boundEnv expr = do
     FreeVar _ v -> return $ lookupIdentValueInEnv freeEnv v
     Builtin _ b -> return $ VBuiltin b []
     Lam _ binder body -> do
-      binder' <- traverse (eval freeEnv boundEnv) binder
+      binder' <- traverse recEval binder
       return $ VLam binder' (Closure boundEnv body)
     Pi _ binder body -> do
-      binder' <- traverse (eval freeEnv boundEnv) binder
+      binder' <- traverse recEval binder
       return $ VPi binder' (Closure boundEnv body)
     Let _ bound binder body -> do
-      binder' <- traverse (eval freeEnv boundEnv) binder
-      boundNormExpr <- eval freeEnv boundEnv bound
+      binder' <- traverse recEval binder
+      boundNormExpr <- recEval bound
       let newBoundEnv = extendEnvWithDefined boundNormExpr binder' boundEnv
       eval freeEnv newBoundEnv body
     App fun args -> do
-      fun' <- eval freeEnv boundEnv fun
-      args' <- traverse (traverse (eval freeEnv boundEnv)) (NonEmpty.toList args)
+      fun' <- recEval fun
+      args' <- traverse (traverse recEval) (NonEmpty.toList args)
       evalApp freeEnv fun' args'
+    Record _p ident fields -> do
+      fields' <- traverseRecordFields recEval fields
+      return $ VRecord ident $ OMap.fromList fields'
+    RecordAcc _p record fieldRef@(_i, field) -> do
+      record' <- recEval record
+      case record' of
+        VRecord _ fields -> return $ lookupRecordFieldS fields field
+        _ -> return $ VRecordAcc record' fieldRef
 
   showExit boundEnv result
   return result
@@ -172,11 +182,14 @@ evalApp freeEnv fun args@(a : as) = do
       | otherwise -> do
           body' <- evalClosure freeEnv closure (binder, argExpr a)
           evalApp freeEnv body' as
-    VUniverse {} -> unexpectedExprError currentPass ("VUniverse" <+> prettyVerbose args)
-    VPi {} -> unexpectedExprError currentPass ("VPi" <+> prettyVerbose args)
-
+    VUniverse {} -> unexpected "VUniverse"
+    VPi {} -> unexpected "VUniverse"
+    VRecord {} -> unexpected "VUniverse"
+    VRecordAcc {} -> unexpected "VUniverse"
   showAppExit result
   return result
+  where
+    unexpected name = unexpectedExprError currentPass (name <+> prettyVerbose args)
 
 evalBuiltin ::
   (MonadNorm builtin m) =>

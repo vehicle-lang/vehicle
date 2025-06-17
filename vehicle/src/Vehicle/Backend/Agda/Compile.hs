@@ -325,6 +325,18 @@ compileDecl opts = \case
         let binders' = mapMaybe compileTopLevelBinder binders
         (_, cbody) <- compileBinders binders (compileExpr body)
         compileFunDef (compileIdentifier n) <$> compileExpr t <*> pure binders' <*> pure cbody
+  DefRecord _ n t fs -> do
+    t' <- compileExpr t
+    fs' <- traverseRecordFields compileExpr fs
+    return $
+      "record"
+        <+> compileIdentifier n
+        <+> ":"
+        <+> t'
+        <+> "where"
+        <> line
+        <> indent 2 "field"
+        <> indent 4 (vsep $ fmap (\(field, fieldType) -> pretty field <+> ":" <+> fieldType) fs')
 
 compileExpr :: (MonadAgdaCompile m) => Expr DecidabilityBuiltin -> m Code
 compileExpr expr = do
@@ -352,7 +364,17 @@ compileExpr expr = do
     Lam _ binder body -> compileLam binder body
     Builtin _ b -> compileBuiltin b []
     App fun args -> compileApp fun args
-
+    Record _p _i fs -> do
+      fs' <- traverse compileRecordField fs
+      return $
+        "record"
+          <> line
+          <> indent 2 "{"
+          <> concatWith (\x y -> x <> line <> ";" <+> y) fs'
+          <> line
+          <> "}"
+    RecordAcc _p r (_i, field) ->
+      annotateApp [] Nothing (pretty field) [explicit r]
   logExit result
   return result
 
@@ -413,6 +435,11 @@ compileBinder binder = do
       return (annName, False)
 
   return $ binderBrackets noExplicitBrackets (visibilityOf binder) binderDoc
+
+compileRecordField :: (MonadAgdaCompile m) => RecordField (Expr DecidabilityBuiltin) -> m Code
+compileRecordField (field, fieldValue) = do
+  fieldValue' <- compileExpr fieldValue
+  return $ pretty field <+> "=" <+> fieldValue'
 
 compileApp :: (MonadAgdaCompile m) => Expr DecidabilityBuiltin -> NonEmpty (Arg DecidabilityBuiltin) -> m Code
 compileApp fun args = do

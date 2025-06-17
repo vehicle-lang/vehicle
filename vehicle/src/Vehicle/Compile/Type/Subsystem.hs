@@ -126,3 +126,5 @@ resolveInstanceArgumentsAndCasts prog =
           Pi _ binder res -> Pi p (fmap go binder) (go res)
           Let _ e1 binder e2 -> Let p (go e1) (fmap go binder) (go e2)
           Lam _ binder e -> Lam p (fmap go binder) (go e)
+          Record _ ident fields -> Record p ident (mapRecordFields go fields)
+          RecordAcc _ record (ident, FieldName _ name) -> RecordAcc p (go record) (ident, FieldName p name)

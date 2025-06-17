@@ -595,6 +595,8 @@ isValueBlocked v = do
         VBoundVar {} -> True
         VLam {} -> False
         VPi {} -> False
+        VRecord {} -> False
+        VRecordAcc {} -> True
         VBuiltin b spine -> case blockingStatus b spine of
           InsufficientArgs -> True
           DoesNotReduce -> False

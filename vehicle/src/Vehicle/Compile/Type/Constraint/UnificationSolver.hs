@@ -16,6 +16,7 @@ import Data.IntSet qualified as IntSet
 import Data.List (intersect)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty (toList)
+import Data.Map.Ordered.Strict qualified as OMap
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Proxy (Proxy (..))
 import Prettyprinter (sep)
@@ -186,6 +187,10 @@ unification info = \case
     | visibilityMatches binder1 binder2 -> solveClosure info (binder1, closure1) (binder2, closure2)
   VLam binder1 closure1 :~: VLam binder2 closure2 ->
     solveClosure info (binder1, closure1) (binder2, closure2)
+  VRecord ident1 fields1 :~: VRecord ident2 fields2
+    | ident1 == ident2 -> solveRecords info fields1 fields2
+  VRecordAcc record1 field1 :~: VRecordAcc record2 field2
+    | field1 == field2 -> subUnify info record1 record2
   ---------------------
   -- Flex-flex cases --
   ---------------------
@@ -230,6 +235,19 @@ solveSpine ::
 solveSpine info args1 args2
   | length args1 /= length args2 = hardFail info
   | otherwise = mconcat <$> traverse (solveArg info) (zip args1 args2)
+
+solveRecords ::
+  (MonadUnify builtin m) =>
+  ConstraintInfo builtin ->
+  SearchableRecordFields (Value builtin) ->
+  SearchableRecordFields (Value builtin) ->
+  m (UnificationResult builtin)
+solveRecords info fields1 fields2 = do
+  -- Note we don't need to check that the fields align as scope checking should have
+  -- already done this for us.
+  let sharedFields = OMap.assocs $ OMap.intersectionWith (const (,)) fields1 fields2
+  let solveField (_name, (v1, v2)) = subUnify info v1 v2
+  mconcat <$> traverse solveField sharedFields
 
 solveClosure ::
   (MonadUnify builtin m) =>
@@ -361,6 +379,8 @@ pruneMetaDependencies ctx (solvingMetaID, solvingMetaSpine) attemptedSolution = 
       VBuiltin b spine -> VBuiltin b <$> traverse (traverse go) spine
       VBoundVar v spine -> VBoundVar v <$> traverse (traverse go) spine
       VFreeVar v spine -> VFreeVar v <$> traverse (traverse go) spine
+      VRecord ident fields -> VRecord ident <$> traverse go fields
+      VRecordAcc record field -> VRecordAcc <$> go record <*> pure field
       -- Definitely going to have come back and fix this one later.
       -- Can't inspect the metas in the environment, as not every variable
       -- in the environment will be used? But maybe we can?

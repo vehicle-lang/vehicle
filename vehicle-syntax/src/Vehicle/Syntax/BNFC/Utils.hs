@@ -43,7 +43,13 @@ propertyAnn = mkToken B.TokAnnotation "@property"
 
 tokPostulate = mkToken B.TokPostulate "@postulate"
 
+differentiableLogicAnn = mkToken B.TokAnnotation "@differentiableLogic"
+
 tokArrow = mkToken B.TokArrow "->"
+
+tokLeftBrace = mkToken B.TokLeftBrace "->"
+
+tokRightBrace = mkToken B.TokRightBrace "->"
 
 tokForallT = mkToken B.TokForallT "forallT"
 

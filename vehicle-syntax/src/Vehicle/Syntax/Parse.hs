@@ -26,8 +26,7 @@ import Vehicle.Syntax.Parse.Error (ParseError (..))
 -- Interface
 
 readAndParseProg :: (MonadError ParseError m) => ParseLocation -> Text -> m PartiallyParsedProg
-readAndParseProg modul txt =
-  castBNFCError (partiallyElabProg modul) (parseExternalProg txt)
+readAndParseProg modul txt = castBNFCError (partiallyElabProg modul) (parseExternalProg txt)
 
 parseDecl :: (MonadError ParseError m) => ParseLocation -> PartiallyParsedDecl -> m Decl
 parseDecl = elaborateDecl

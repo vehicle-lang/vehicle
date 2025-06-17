@@ -1,5 +1,6 @@
 module Vehicle.Compile.Normalise.Quote where
 
+import Data.Map.Ordered qualified as OMap
 import Vehicle.Compile.Context.Bound.Core
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Code.Expr
@@ -58,6 +59,12 @@ instance (ConvertableBuiltin builtin1 builtin2) => Quote (Value builtin1) (Expr 
       let quotedBinder = quote p level binder
       let quotedBody = quoteClosure p level (binder, closure)
       Lam mempty quotedBinder quotedBody
+    VRecord ident fields -> do
+      let quotedFields = mapRecordFields (quote p level) $ OMap.assocs fields
+      Record p ident quotedFields
+    VRecordAcc r field -> do
+      let quotedRecord = quote p level r
+      RecordAcc p quotedRecord field
 
 instance (Quote expr1 expr2) => Quote (GenericBinder expr1) (GenericBinder expr2) where
   quote p level = fmap (quote p level)

@@ -1,0 +1,2 @@
+Error in file 'spec.vcl' at Line 7, Columns 5-7: multiple record fields declared with the name 'f1'
+Fix: remove or rename the duplicate definitions

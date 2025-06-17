@@ -1,0 +1,7 @@
+Error in file 'spec.vcl' at Line 7, Columns 13-22: Unable to find a record declaration with matching fields.
+Fix: it seems likely that the intension is to construct a 'Test' record. If so, then fix the mispellings:
+  g2 -> f2
+and add the missing fields:
+  f1
+and remove the unneeded fields:
+  f

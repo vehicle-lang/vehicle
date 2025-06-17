@@ -80,6 +80,16 @@ data Expr builtin
       Provenance
       (Binder builtin) -- Bound expression name.
       (Expr builtin) -- Expression body.
+  | -- | Records
+    Record
+      Provenance
+      Identifier
+      (RecordFields (Expr builtin))
+  | -- | Records accessors
+    RecordAcc
+      Provenance
+      (Expr builtin)
+      (Identifier, FieldName)
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
 --------------------------------------------------------------------------------
@@ -116,7 +126,7 @@ pattern App f xs <- UnsafeApp f xs
   where
     App f xs = normApp f xs
 
-{-# COMPLETE Universe, App, Pi, Builtin, BoundVar, FreeVar, Hole, Meta, Let, Lam #-}
+{-# COMPLETE Universe, App, Pi, Builtin, BoundVar, FreeVar, Hole, Meta, Let, Lam, Record, RecordAcc #-}
 
 --------------------------------------------------------------------------------
 -- Instances
@@ -137,6 +147,8 @@ instance HasProvenance (Expr builtin) where
     FreeVar p _ -> p
     Let p _ _ _ -> p
     Lam p _ _ -> p
+    Record p _ _ -> p
+    RecordAcc p _ _ -> p
 
 --------------------------------------------------------------------------------
 -- Utilities
@@ -203,6 +215,8 @@ traverseBuiltinsM f expr = case expr of
   Pi p binder res -> Pi p <$> traverseBuiltinsBinder f binder <*> traverseBuiltinsM f res
   Let p bound binder body -> Let p <$> traverseBuiltinsM f bound <*> traverseBuiltinsBinder f binder <*> traverseBuiltinsM f body
   Lam p binder body -> Lam p <$> traverseBuiltinsBinder f binder <*> traverseBuiltinsM f body
+  Record p i fs -> Record p i <$> traverseRecordFields (traverseBuiltinsM f) fs
+  RecordAcc p r field -> RecordAcc p <$> traverseBuiltinsM f r <*> pure field
   Universe p u -> return $ Universe p u
   FreeVar p v -> return $ FreeVar p v
   BoundVar p v -> return $ BoundVar p v
@@ -272,6 +286,8 @@ traverseFreeVarsM underBinder processFreeVar = go
         binder' <- traverse go binder
         body' <- underBinder binder' (go body)
         return $ Let p bound' binder' body'
+      Record p i fs -> Record p i <$> traverseRecordFields go fs
+      RecordAcc p r field -> RecordAcc p <$> go r <*> pure field
 
 freeVarsIn :: Expr builtin -> Set Identifier
 freeVarsIn =
@@ -327,6 +343,8 @@ instance Substitutable (Expr builtin) (Expr builtin) where
     Pi p binder res -> Pi p <$> traverse subst binder <*> underDBBinder (subst res)
     Let p e1 binder e2 -> Let p <$> subst e1 <*> traverse subst binder <*> underDBBinder (subst e2)
     Lam p binder e -> Lam p <$> traverse subst binder <*> underDBBinder (subst e)
+    Record p i fs -> Record p i <$> traverseRecordFields subst fs
+    RecordAcc p r field -> RecordAcc p <$> subst r <*> pure field
 
 -- Temporarily go under a binder, increasing the binding depth by one
 -- and shifting the current state.

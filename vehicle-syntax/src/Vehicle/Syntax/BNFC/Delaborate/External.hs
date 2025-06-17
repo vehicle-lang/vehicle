@@ -7,6 +7,7 @@ module Vehicle.Syntax.BNFC.Delaborate.External
 where
 
 import Control.Monad.Identity (Identity (runIdentity))
+import Data.Bitraversable (Bitraversable (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text, pack)
@@ -64,6 +65,10 @@ instance Delaborate V.Decl [B.Decl] where
       annDecls <- traverse delabM anns
       funDecls <- delabFun n t e
       return $ annDecls <> funDecls
+    V.DefRecord _ n _ fs -> do
+      let n' = delabIdentifier n
+      fs' <- traverse delabM fs
+      return [B.DefRecord n' fs']
 
 instance Delaborate V.Expr B.Expr where
   delabM expr = case expr of
@@ -78,6 +83,8 @@ instance Delaborate V.Expr B.Expr where
       fun' <- delabM fun
       delabApp fun' (NonEmpty.toList args)
     V.Builtin _ op -> delabBuiltin op []
+    V.Record _ fields -> delabRecord fields
+    V.RecordAcc _ record field -> delabRecordAccess record field
 
 instance Delaborate V.Arg B.Arg where
   delabM arg = do
@@ -99,6 +106,15 @@ instance Delaborate V.Binder B.BasicBinder where
       V.Implicit {} -> B.ImplicitBinder m' n' tokElemOf t'
       V.Instance {} -> B.InstanceBinder m' n' tokElemOf t'
 
+instance Delaborate V.FieldName B.Name where
+  delabM (V.FieldName _ name) = return $ mkToken B.Name name
+
+instance Delaborate (V.RecordField V.Expr) B.RecordFieldDef where
+  delabM (name, typ) = do
+    name' <- delabM name
+    typ' <- delabM typ
+    return $ B.FieldDef name' tokElemOf typ'
+
 instance Delaborate V.Annotation B.Decl where
   delabM = \case
     V.AnnProperty -> return $ delabAnn propertyAnn []
@@ -114,6 +130,11 @@ delabRelevance :: (V.HasRelevance a) => a -> [B.Modality]
 delabRelevance x = case V.relevanceOf x of
   V.Relevant -> []
   V.Irrelevant -> [B.Irrelevant]
+
+delabRecordAccess :: (MonadDelab m) => V.Expr -> V.FieldName -> m B.Expr
+delabRecordAccess expr fieldName = do
+  let tok = mkToken B.TokRecordAccess ("." <> V.nameOf fieldName)
+  B.RecordAcc <$> delabM expr <*> pure tok
 
 delabNameBinder :: (MonadDelab m) => V.Binder -> m B.NameBinder
 delabNameBinder b = case V.binderNamingForm b of
@@ -404,6 +425,11 @@ delabForeach args = case reverse args of
     body' <- delabM foldedBody
     return $ B.Foreach tokForeach binders' tokDot body'
   _ -> cheatDelabPretty V.ForeachTC args
+
+delabRecord :: (MonadDelab m) => [V.RecordField V.Expr] -> m B.Expr
+delabRecord fields = do
+  fields' <- traverse (bitraverse delabM delabM) fields
+  return $ B.Record (fmap (uncurry B.FieldAssign) fields')
 
 delabAnn :: B.TokAnnotation -> [B.DeclAnnOption] -> B.Decl
 delabAnn name [] = B.DefAnn name B.DeclAnnWithoutOpts

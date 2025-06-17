@@ -2,6 +2,7 @@ module Vehicle.Data.Code.Value where
 
 import Control.Monad (void)
 import Data.Map (Map)
+import Data.Map.Ordered (OMap)
 import Data.Maybe (fromMaybe)
 import GHC.Generics
 import Vehicle.Compile.Context.Bound.Core
@@ -32,6 +33,8 @@ data Value builtin
   | VBuiltin !builtin !(Spine builtin)
   | VLam !(VBinder builtin) !(Closure builtin)
   | VPi !(VBinder builtin) !(Closure builtin)
+  | VRecord Identifier !(OMap FieldName (Value builtin))
+  | VRecordAcc !(Value builtin) !(Identifier, FieldName)
   deriving (Show, Generic)
 
 type VType builtin = Value builtin

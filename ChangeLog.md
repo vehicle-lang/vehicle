@@ -2,6 +2,32 @@
 
 ## Version 0.18.0
 
+### Vehicle language
+
+* Added records to the Vehicle language. To declare a new record type:
+  ```
+  record Values where
+    { speed : Real
+    , angle : Real
+    }
+  ```
+  and to create a new object:
+  ```
+  initial : Values
+  initial =
+    { speed = 0.5
+    , angle = 180
+    }
+  ```
+  and to access fields from that object:
+  ```
+  startingSpeed : Real
+  startingSpeed = initial.speed
+  ```
+  NOTE: currently records _cannot_ currently be used as tensors. This is on our roadmap.
+
+* When mispelling variables, the out-of-scope error message now provides a list of suggestions.
+
 ### Verifier backend
 
 * Backend now unifies syntactically distinct but semantically identical network applications,

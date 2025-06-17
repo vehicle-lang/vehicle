@@ -78,13 +78,16 @@ getDeclType ::
 getDeclType proxy ident =
   typeOf . fst <$> getDeclEntry proxy ident
 
-getDecl ::
+getDeclaredRecordFields ::
   (MonadLogger m, MonadFreeContext builtin m, HasCallStack) =>
   Proxy builtin ->
   Identifier ->
-  m (VDecl builtin)
-getDecl proxy ident =
-  snd <$> getDeclEntry proxy ident
+  m (RecordFields (Type builtin))
+getDeclaredRecordFields proxy ident = do
+  decl <- fst <$> getDeclEntry proxy ident
+  case decl of
+    DefRecord _ _ _ fields -> return fields
+    _ -> developerError $ quotePretty ident <+> "is unexpectedly not a record"
 
 getFreeEnv ::
   forall builtin m.

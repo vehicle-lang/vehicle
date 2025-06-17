@@ -67,6 +67,8 @@ instance MetaSubstitutable m builtin (Expr builtin) where
       Builtin {} -> return expr
       FreeVar {} -> return expr
       BoundVar {} -> return expr
+      Record p ident fields -> Record p ident <$> traverseRecordFields (substAt lv s) fields
+      RecordAcc p record field -> RecordAcc p <$> substAt lv s record <*> pure field
       -- NOTE: no need to lift the substitutions here as we're passing under the binders
       -- because by construction every meta-variable solution is a closed term.
       Pi p binder res -> Pi p <$> substAt lv s binder <*> substAt (lv + 1) s res
@@ -107,6 +109,8 @@ instance MetaSubstitutable m builtin (Value builtin) where
     VUniverse {} -> return expr
     VFreeVar v spine -> VFreeVar v <$> traverse (substAt lv s) spine
     VBoundVar v spine -> VBoundVar v <$> traverse (substAt lv s) spine
+    VRecord ident fields -> VRecord ident <$> traverse (substAt lv s) fields
+    VRecordAcc record field -> VRecordAcc <$> substAt lv s record <*> pure field
     VBuiltin b spine -> do
       spine' <- traverse (substAt lv s) spine
       normaliseBuiltin b spine'

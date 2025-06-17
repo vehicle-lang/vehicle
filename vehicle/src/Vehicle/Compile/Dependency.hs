@@ -57,6 +57,8 @@ createDependencyGraph prog = fromEdges (goProg prog)
       Pi _ binder res -> do traverse_ go binder; go res
       Lam _ binder body -> do traverse_ go binder; go body
       Let _ bound binder body -> do go bound; traverse_ go binder; go body
+      Record _ _ fields -> traverse_ (go . snd) fields
+      RecordAcc _ record _ -> go record
 
 fromEdges :: [(Identifier, [Identifier])] -> DependencyGraph
 fromEdges outEdges = do

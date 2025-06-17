@@ -91,6 +91,9 @@ instance NoThunks Provenance
 -- Vehicle.Syntax.AST.Relevance
 instance NoThunks Relevance
 
+-- Vehicle.Syntax.AST.Record
+instance NoThunks FieldName
+
 -- Vehicle.Syntax.AST.Visibility
 instance NoThunks Visibility
 #endif

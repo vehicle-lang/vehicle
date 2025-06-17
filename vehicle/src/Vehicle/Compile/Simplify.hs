@@ -9,6 +9,7 @@ import Data.Text qualified as Text
 import Vehicle.Data.Builtin.Core
 import Vehicle.Syntax.AST.Arg
 import Vehicle.Syntax.AST.Expr
+import Vehicle.Syntax.AST.Record (mapRecordFields)
 import Vehicle.Syntax.AST.Relevance (Relevance (..), setRelevance)
 import Vehicle.Syntax.AST.Visibility (Visibility (..), visibilityOf)
 
@@ -79,6 +80,8 @@ mapApp f expr = case expr of
   Let p bound binder body -> Let p (mapApp f bound) (fmap (mapApp f) binder) (mapApp f body)
   Lam p binder body -> Lam p (fmap (mapApp f) binder) (mapApp f body)
   App fun args -> f fun args
+  Record p fs -> Record p (mapRecordFields (mapApp f) fs)
+  RecordAcc p e field -> RecordAcc p (mapApp f e) field
 
 removeInsertedCasts :: Expr -> NonEmpty Arg -> Expr
 removeInsertedCasts fun args

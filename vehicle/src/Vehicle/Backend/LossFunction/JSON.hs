@@ -153,6 +153,7 @@ convertProg (S.Main decls) = Main <$> traverse convertDecl decls
 convertDecl :: (MonadJSON m) => S.Decl LossBuiltin -> m JDecl
 convertDecl = \case
   S.DefAbstract {} -> compilerDeveloperError "Found abstract definition when converting to JSON"
+  S.DefRecord {} -> compilerDeveloperError "Found record when converting to JSON"
   S.DefFunction p ident _ typ body -> do
     typ' <- convertExpr mempty typ
     expr' <- convertExpr mempty body
@@ -168,6 +169,8 @@ convertValue expr = do
     VMeta {} -> resolutionError currentPass "VMeta"
     VFreeVar {} -> resolutionError currentPass "VFreeVar"
     VUniverse {} -> resolutionError currentPass "Universe"
+    VRecord {} -> resolutionError currentPass "VRecord"
+    VRecordAcc {} -> resolutionError currentPass "VRecordAcc"
     VLam binder closure -> do
       binder' <- convertBinder binder
       closure' <- convertClosure binder closure

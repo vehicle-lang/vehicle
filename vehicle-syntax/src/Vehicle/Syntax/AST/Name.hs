@@ -20,7 +20,7 @@ type Name = Text
 data Module
   = User
   | StdLib
-  | Record Name
+  | RecordModule Name
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData Module
@@ -37,7 +37,7 @@ instance Pretty Module where
   pretty = \case
     User -> "User"
     StdLib -> "StdLib"
-    Record name -> pretty name
+    RecordModule name -> pretty name
 
 newtype ModulePath = ModulePath
   { modules :: [Module]
