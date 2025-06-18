@@ -4,11 +4,11 @@ module Vehicle.Compile
   )
 where
 
-import Control.Monad (unless)
 import Control.Monad.Except (MonadError (..))
 import Data.Aeson (ToJSON (..))
 import Data.Aeson.Encode.Pretty (encodePretty')
 import Data.ByteString.Lazy.Char8 (unpack)
+import Data.List.NonEmpty
 import Data.Maybe (mapMaybe)
 import Data.Set qualified as Set
 import Vehicle.Backend.Agda
@@ -19,7 +19,7 @@ import Vehicle.Backend.LossFunction.LogicCompilation (compileLogic)
 import Vehicle.Backend.LossFunction.Logics (dslFor)
 import Vehicle.Backend.Prelude
 import Vehicle.Backend.Queries
-import Vehicle.Compile.Dependency (analyseDependenciesAndPrune)
+import Vehicle.Compile.Dependency
 import Vehicle.Compile.Error
 import Vehicle.Compile.FunctionaliseResources (functionaliseResources)
 import Vehicle.Compile.Monomorphisation (MonomorphisationSettings (..), hoistInferableParameters, monomorphise)
@@ -97,11 +97,12 @@ simplifyProgram prog declarationsToCompile = do
 checkDeclarationNamesPresent :: (MonadCompile m) => Prog Builtin -> DeclarationNames -> m ()
 checkDeclarationNamesPresent (Main decls) requestedDeclNames = do
   let actualDeclNames = Set.fromList $ fmap nameOf decls
-  let missingNames = Set.fromList requestedDeclNames `Set.difference` actualDeclNames
-  unless (Set.null missingNames) $
-    throwError $
-      MissingRequestedDeclarations $
-        Set.toList missingNames
+  let missingNames = Set.toList $ Set.fromList requestedDeclNames `Set.difference` actualDeclNames
+  case missingNames of
+    [] -> return ()
+    n : ns ->
+      throwError $
+        MissingRequestedDeclarations (n :| ns)
 
 --------------------------------------------------------------------------------
 -- Backend-specific compilation functions
@@ -126,7 +127,8 @@ compileToITP ::
 compileToITP itp CompileOptions {..} typedProg@(Main ds) = do
   -- Prune all standard-library declarations that aren't used.
   let declsToCompile = mapMaybe (\d -> if isUserCode d then Just (nameOf d) else Nothing) ds
-  prunedProg <- analyseDependenciesAndPrune typedProg declsToCompile
+  let dependencyGraph = createDependencyGraph typedProg
+  prunedProg <- pruneUnusedDeclarations typedProg dependencyGraph declsToCompile
 
   -- Analyse the program to find out which `Bool`s are decidable and which aren't.
   decProg <- decidabilityTypeCheck prunedProg

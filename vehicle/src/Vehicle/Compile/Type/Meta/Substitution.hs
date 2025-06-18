@@ -12,6 +12,7 @@ import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
+import Vehicle.Compile.Type.Meta (findUltimateUnsolvedMeta)
 import Vehicle.Compile.Type.Meta.Variable (MetaVariableContext, findMetaInfo, metaCtx, metaSolution, metaType)
 import Vehicle.Data.Code.Value
 
@@ -123,7 +124,7 @@ instance MetaSubstitutable m builtin (GluedExpr builtin) where
 
 instance MetaSubstitutable m builtin (InstanceConstraint builtin) where
   substAt lv s (Resolve origin m r g) = do
-    Resolve <$> substAt lv s origin <*> pure m <*> pure r <*> substAt lv s g
+    Resolve <$> substAt lv s origin <*> findUltimateUnsolvedMeta s m <*> pure r <*> substAt lv s g
 
 instance MetaSubstitutable m builtin (InstanceGoal builtin) where
   substAt lv s (InstanceGoal t h spine) =

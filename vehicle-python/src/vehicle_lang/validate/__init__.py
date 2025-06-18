@@ -11,7 +11,7 @@ def validate(cache: Union[str, Path]) -> str:
 
     :param cache: The path to the proof cache used by Vehicle.
     """
-    args = ["validate", "--cache", str(cache)]
+    args = ["validate", "--cache", str(cache), "--json"]
 
     # Call Vehicle
     exc, out, err, _ = session.check_output(args)

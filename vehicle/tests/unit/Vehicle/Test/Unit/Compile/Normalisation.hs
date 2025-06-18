@@ -24,19 +24,19 @@ normalisationTests =
       [ NBETest
           { name = "Lambda",
             dbLevel = 0,
-            input = Lam p (binding (INatType p)) (BoundVar p 0),
-            expected = Lam p (binding (INatType p)) (BoundVar p 0)
+            input = Lam p (binding INatType) (BoundVar p 0),
+            expected = Lam p (binding INatType) (BoundVar p 0)
           },
         NBETest
           { name = "AppLambdaClosedBody",
             dbLevel = 0,
-            input = App (Lam p (binding (INatType p)) (BoundVar p 0)) [Arg p Explicit Relevant $ INatLiteral 1],
+            input = App (Lam p (binding INatType) (BoundVar p 0)) [Arg p Explicit Relevant $ INatLiteral 1],
             expected = INatLiteral 1
           },
         NBETest
           { name = "AppLambdaOpenBody",
             dbLevel = 1,
-            input = App (Lam p (binding (INatType p)) (BoundVar p 1)) [Arg p Explicit Relevant $ INatLiteral 1],
+            input = App (Lam p (binding INatType) (BoundVar p 1)) [Arg p Explicit Relevant $ INatLiteral 1],
             expected = BoundVar p 0
           },
         NBETest

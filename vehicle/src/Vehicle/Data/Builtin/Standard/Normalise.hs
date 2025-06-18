@@ -17,8 +17,7 @@ instance HasPrimitives Builtin where
   tensorLiterals =
     [ Wrapper accessBoolTensorLiteral,
       Wrapper accessNatTensorLiteral,
-      Wrapper accessRatTensorLiteral,
-      Wrapper accessIndexTensorLiteral
+      Wrapper accessRatTensorLiteral
     ]
 
   tensorOp1s =
@@ -71,7 +70,7 @@ instance NormalisableBuiltin Builtin where
       FoldList -> NonSimple evalFoldList
       MapList -> NonSimple evalMapList
       ForeachTensor -> NonSimple evalForeachTensor
-      ForeachVector -> NonSimple evalForeachTensor
+      ForeachVector -> NonSimple evalForeachVector
       Iterate -> NonSimple evalIterate
       QuantifyRatTensor {} -> None
     BuiltinCast c -> case c of

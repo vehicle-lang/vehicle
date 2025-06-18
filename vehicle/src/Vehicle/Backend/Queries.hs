@@ -157,7 +157,12 @@ compileMultiProperty multiPropertyMetaData = go []
         let es' = zip [0 :: Int ..] $ stackElements args
         MultiProperty <$> traverse (\(i, e) -> go (i : indices) e) es'
       Just (VBoolTensorLiteral bs) | not (isZeroDimensional bs) -> do
+        -- Important to test for non-zero dimensionality otherwise we don't display the correct
+        -- warnings for trivial tensors nor generate .vcl-plan file.
         let es' = zip [0 :: Int ..] (fromBoolTensorValue . VBoolTensorLiteral <$> unstack bs)
+        MultiProperty <$> traverse (\(i, e) -> go (i : indices) e) es'
+      Just (VBoolVecLiteral args) -> do
+        let es' = zip [0 :: Int ..] $ vecLitElements args
         MultiProperty <$> traverse (\(i, e) -> go (i : indices) e) es'
       _ -> do
         let propertyMetaData@PropertyMetaData {..} = updateMetaData multiPropertyMetaData indices

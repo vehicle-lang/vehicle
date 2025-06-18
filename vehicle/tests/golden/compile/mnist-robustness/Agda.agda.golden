@@ -11,12 +11,12 @@ open import Vehicle.Utils
 open import Vehicle.Data.Tensor
 open import Data.Product
 open import Data.Nat as ℕ using (ℕ)
-open import Data.Integer as ℤ using (ℤ)
 open import Data.Rational as ℚ using (ℚ)
 open import Data.Fin as Fin using (Fin; #_)
+open import Data.Vec.Functional.Relation.Unary.All as Fin
 open import Data.List.Base
 open import Data.Vec.Functional renaming ([] to []ᵥ; _∷_ to _∷ᵥ_)
-open import Relation.Binary.PropositionalEquality
+open import Function.Base
 
 module Agda where
 
@@ -27,20 +27,20 @@ Label : Set
 Label = Fin 10
 
 ValidImage : Image → Set
-ValidImage x = ∀ i → ∀ j → ℤ.+ 0 ℚ./ 1 ℚ.≤ x i j × x i j ℚ.≤ ℤ.+ 1 ℚ./ 1
+ValidImage x = Fin.All (λ i → Fin.All (λ j → 0 ≤ ((x ! i) ! j) × ((x ! i) ! j) ≤ 1))
 
-postulate classifier : Image → Vector ℚ 10
+postulate classifier : Image → Tensor ℚ (10 ∷ [])
 
-Advises : Image → (Label → Set)
-Advises x i = ∀ j → j ≢ i → classifier x i ℚ.> classifier x j
+Advises : Image → Label → Set
+Advises x i = Fin.All (λ j → j ≉ i → (classifier x ! i) > (classifier x ! j))
 
-postulate epsilon : ℚ
+postulate epsilon : Tensor ℚ []
 
 BoundedByEpsilon : Image → Set
-BoundedByEpsilon x = ∀ i → ∀ j → ℚ.- epsilon ℚ.≤ x i j × x i j ℚ.≤ epsilon
+BoundedByEpsilon x = Fin.All (λ i → Fin.All (λ j → 𝕋.- epsilon ≤ ((x ! i) ! j) × ((x ! i) ! j) ≤ epsilon))
 
-RobustAround : Image → (Label → Set)
-RobustAround image label = ∀ perturbation → let perturbedImage = image ⊖ perturbation in BoundedByEpsilon perturbation × ValidImage perturbedImage → Advises perturbedImage label
+RobustAround : Image → Label → Set
+RobustAround image label = ∀ perturbation → let perturbedImage = image 𝕋.⊖ perturbation in BoundedByEpsilon perturbation × ValidImage perturbedImage → Advises perturbedImage label
 
 postulate n : ℕ
 
@@ -48,4 +48,4 @@ postulate trainingImages : Vector Image n
 
 postulate trainingLabels : Vector Label n
 
-postulate robust : λ i → RobustAround (trainingImages i) (trainingLabels i)
+postulate robust : foreachNary (λ i → RobustAround (trainingImages $ i) (trainingLabels $ i))

@@ -99,7 +99,6 @@ typeOfConstructor = \case
   VectorLiteral {} -> typeOfVectorLiteral
   NatTensorLiteral {} -> constant
   BoolTensorLiteral {} -> constant
-  IndexTensorLiteral {} -> constant
   RatTensorLiteral {} -> constant
 
 typeOfLinearityRelation :: LinearityRelation -> LinearityDSLExpr

@@ -6,6 +6,10 @@ where
 
 import Control.Monad (forM)
 import Control.Monad.Trans (MonadIO (liftIO))
+import Data.Aeson (ToJSON (..))
+import Data.Aeson.Encode.Pretty (encodePretty')
+import Data.ByteString.Lazy.Char8 (unpack)
+import GHC.Generics (Generic)
 import Vehicle.Prelude
 import Vehicle.Prelude.Logging
 import Vehicle.Resource
@@ -15,8 +19,9 @@ import Vehicle.Verify.Specification.IO (readPropertyResult, readSpecificationCac
 --------------------------------------------------------------------------------
 -- Proof validation
 
-newtype ValidateOptions = ValidateOptions
-  { verificationCache :: FilePath
+data ValidateOptions = ValidateOptions
+  { verificationCache :: FilePath,
+    outputAsJSON :: Bool
   }
   deriving (Eq, Show)
 
@@ -25,7 +30,12 @@ validate loggingSettings checkOptions = runLoggerT loggingSettings $ do
   -- If the user has specified no logging target for check mode then
   -- default to command-line.
   status <- checkSpecificationStatus checkOptions
-  programOutput $ pretty status
+  let outputDocs =
+        if outputAsJSON checkOptions
+          then pretty $ unpack $ encodePretty' prettyJSONConfig $ toJSON status
+          else pretty status
+
+  programOutput outputDocs
 
 checkSpecificationStatus ::
   (MonadIO m, MonadLogger m) =>
@@ -48,8 +58,11 @@ data ValidateResult
   = Verified
   | Unverified
   | IntegrityError ResourceIntegrityError
+  deriving (Generic)
 
 instance Pretty ValidateResult where
   pretty Verified = "Status: verified"
   pretty Unverified = "Status: unverified"
   pretty (IntegrityError err) = "Status: unknown" <> line <> line <> pretty err
+
+instance ToJSON ValidateResult

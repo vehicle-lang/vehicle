@@ -149,36 +149,11 @@ updateSolutionMeta ::
   m (InstanceConstraint builtin)
 updateSolutionMeta constraint = do
   let originalMeta = instanceSolution constraint
-  newMeta <- findUnsolvedMeta originalMeta
+  metaCtx <- metaVariableCtx <$> getTypeCheckerState @builtin
+  newMeta <- findUltimateUnsolvedMeta metaCtx originalMeta
   -- This is a hack that should disappear when we get records?
   updateMetaType newMeta (Quote.unnormalise @(Value builtin) @(Expr builtin) 0 $ goalExpr $ instanceGoal constraint)
   return $ constraint {instanceSolution = newMeta}
-  where
-    findUnsolvedMeta :: MetaID -> m MetaID
-    findUnsolvedMeta meta = do
-      metaInfo <- getMetaInfo meta
-      logDebug MaxDetail $ pretty meta <+> ":" <+> prettyVerbose (metaType metaInfo)
-      maybeNextMeta <- case metaSolution metaInfo of
-        Just solution -> findMetaInSolution $ unnormalised solution
-        Nothing -> return Nothing
-
-      case maybeNextMeta of
-        Just nextMeta -> findUnsolvedMeta nextMeta
-        _ -> return meta
-
-    findMetaInSolution :: Expr builtin -> m (Maybe MetaID)
-    findMetaInSolution = \case
-      Lam _ _ body -> findMetaInSolution body
-      Meta _ m -> return $ Just m
-      App (Meta _ m) args -> do
-        metaInfo <- getMetaInfo @builtin m
-        return $
-          if length (metaCtx metaInfo) == length args
-            then return m
-            else Nothing
-      e ->
-        developerError $
-          "Instance constraint meta solved in terms of a non-meta" <+> prettyVerbose e <+> "This should mean the constraint was either failed or solvable"
 
 --------------------------------------------------------------------------------
 -- Type-class generalisation
@@ -279,7 +254,7 @@ prependBinderAndSolve decl (meta, binder) =
     finalDecl <- traverseDeclTypeAndExpr alterType alterBody substDecl
 
     -- Substitute the new meta solution through.
-    setCurrentDecl $ Just finalDecl
+    setCurrentDecl $ Just (finalDecl, False)
 
     logCompilerPassOutput $ prettyExternal finalDecl
     return finalDecl

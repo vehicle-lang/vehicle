@@ -1,5 +1,5 @@
-The Vehicle specification language
-==================================
+Specification language
+======================
 
 Vehicle specifications are written in the *Vehicle Specification Language*,
 which is designed for clearly and concisely expressing mathematical properties
@@ -20,7 +20,5 @@ of neural networks.
   parameters
   properties
   type-synonyms
-  let-expressions
-  annotations-holes
   tips-and-tricks
   advanced

@@ -12,7 +12,7 @@ open import Data.Char.Properties as Char using (_≟_)
 open import Data.String using (String; _++_; lines; toList)
 open import Data.Integer.Base as ℤ using (ℤ; +_; -[1+_])
 open import Data.Nat.Base as ℕ using (ℕ; suc)
-open import Data.Fin using (Fin)
+open import Data.Fin using (Fin; zero; suc)
 open import Data.Vec.Base using (Vec; []; _∷_)
 open import Data.Vec.Functional as Vector using (Vector)
 open import Data.Vec.Recursive using (_^_; toVec)
@@ -93,3 +93,32 @@ instance
 
 foreachVector : ∀ {n} {A : Set} → (Fin n → A) → Vector A n
 foreachVector v = v
+
+
+open import Function.Nary.NonDependent
+open import Data.Product.Nary.NonDependent
+open import Data.Unit.Polymorphic using (tt)
+open import Function using (const; _∘′_; _∘_)
+
+uniformLevels : ∀ n (l : Level) → Levels n
+uniformLevels n l = ltabulate n (const l)
+
+uniformSets : ∀ n {a} → Set a → Sets n (uniformLevels n a)
+uniformSets ℕ.zero A = tt
+uniformSets (suc n) A = A , uniformSets n A
+
+stabulate : ∀ n → (f : Fin n → Level) → (g : (i : Fin n) → Set (f i)) → Sets n (ltabulate n f)
+stabulate ℕ.zero f g = _
+stabulate (suc n) f g = g zero , stabulate n (f ∘′ suc) (λ u → g (suc u))
+
+open import Relation.Binary.PropositionalEquality
+
+substLevel : ∀ {a b} → a ≡ b → Set a → Set b
+substLevel refl t = t
+
+tabulate[0ℓ]≡0ℓ : ∀ n → ⨆ n (ltabulate n (const 0ℓ)) ≡ 0ℓ
+tabulate[0ℓ]≡0ℓ ℕ.zero = refl
+tabulate[0ℓ]≡0ℓ (suc n) = tabulate[0ℓ]≡0ℓ n
+
+foreachNary : ∀ {n} → (Fin n → Set) → Set (⨆ n (ltabulate n (const 0ℓ)))
+foreachNary {n} f = Product n (stabulate n (const 0ℓ) f)

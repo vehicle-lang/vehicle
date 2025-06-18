@@ -124,6 +124,7 @@ data Dependency
   | DataListAny
   | DataVector
   | DataVectorInstances
+  | DataProductNary
   | FunctionBase
   | PropEquality
   | RelNullary
@@ -161,6 +162,7 @@ instance Pretty Dependency where
     DataListAny -> "Data.List.Relation.Unary.Any as" <+> listQualifier
     DataVector -> "Data.Vec.Functional" <+> "renaming" <+> parens "[] to []ᵥ; _∷_ to _∷ᵥ_"
     DataVectorInstances -> "Data.Vec.Functional.Instances"
+    DataProductNary -> "Data.Product.Nary.NonDependent"
     FunctionBase -> "Function.Base"
     PropEquality -> "Relation.Binary.PropositionalEquality"
     RelNullary -> "Relation.Nullary"
@@ -481,7 +483,6 @@ compileBuiltinConstructor c args = case c of
   NatTensorLiteral t -> return $ compileTensorLiteral compileNatLiteral t
   BoolTensorLiteral t -> return $ compileTensorLiteral compileBoolLiteral t
   RatTensorLiteral t -> return $ compileTensorLiteral compileRatLiteral t
-  IndexTensorLiteral t -> return $ compileTensorLiteral compileIndexLiteral t
 
 compileBuiltinFunction ::
   (MonadAgdaCompile m) =>
@@ -564,6 +565,9 @@ compileDecidabilityBuiltinFunction f args = case f of
   PropQuantifyInList q -> case q of
     Forall -> annotateApp [DataListAll] (Just listQualifier) "All" args
     Exists -> annotateApp [DataListAny] (Just listQualifier) "Any" args
+  PropNaryProduct -> annotateApp [DataProductNary] Nothing "Product" args
+  PropNaryProductAt -> annotateApp [DataProductNary] Nothing "projₙ" args
+  PropNaryProductForeach -> annotateApp [VehicleUtils] Nothing "foreachNary" args
 
 compileTypeLevelQuantifier ::
   (MonadAgdaCompile m) =>

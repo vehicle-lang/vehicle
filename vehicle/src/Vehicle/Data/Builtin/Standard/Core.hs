@@ -126,14 +126,6 @@ instance BuiltinHasIndexLiterals Builtin where
         mkExpr = BuiltinConstructor . IndexLiteral
       }
 
-  accessIndexTensorLitBuiltin =
-    Access
-      { getExpr = \case
-          BuiltinConstructor (IndexTensorLiteral b) -> Just b
-          _ -> Nothing,
-        mkExpr = BuiltinConstructor . IndexTensorLiteral
-      }
-
 instance BuiltinHasNatType Builtin where
   accessNatTypeBuiltin = typeAccessor NatType
 

@@ -98,7 +98,6 @@ typeOfConstructor = \case
   VectorLiteral {} -> typeOfVectorLiteral
   NatTensorLiteral {} -> unquantified
   BoolTensorLiteral {} -> unquantified
-  IndexTensorLiteral {} -> unquantified
   RatTensorLiteral {} -> unquantified
 
 typeOfPolarityRelation :: PolarityRelation -> PolarityDSLExpr

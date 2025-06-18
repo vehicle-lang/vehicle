@@ -1,3 +1,3 @@
--- Test passes dataset of type Tensor Nat [4]
+-- Test passes dataset of type Vector Nat 4
 @dataset
-trainingDataset : Tensor Nat [4,4]
+trainingDataset : Vector (Vector Nat 4) 4

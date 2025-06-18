@@ -13,6 +13,7 @@ import Vehicle.Compile.Monomorphisation (MonomorphisationSettings (..), monomorp
 import Vehicle.Compile.Normalise.NBE (NormalisableBuiltin, findInstanceArg)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyExternal)
+import Vehicle.Compile.Print.Error (errorInSubsystemMessage)
 import Vehicle.Compile.Type (typeCheckProg)
 import Vehicle.Compile.Type.Core (InstanceDatabase, emptyInstanceDatabase)
 import Vehicle.Compile.Type.System
@@ -46,7 +47,7 @@ decidabilityTypeCheck ::
 decidabilityTypeCheck prog = do
   errorOrDecProg <- typeCheckWithSubsystem DecidabilityTypes decidabilityBuiltinInstances prog
   decProg <- case errorOrDecProg of
-    Left err -> throwError err
+    Left err -> throwError $ DevError $ errorInSubsystemMessage "determine the decidability of the program for export to ITP" err
     Right decProg -> return decProg
 
   monoDecProg <-
@@ -73,7 +74,7 @@ typeCheckWithSubsystem ::
 typeCheckWithSubsystem typingSystem instanceCandidates prog = do
   callDepth <- getCallDepth
   logCompilerPass MinDetail ("typing using" <+> quotePretty typingSystem <+> "type subsystem") $ do
-    result <- runExceptT $ typeCheckProg instanceCandidates mempty prog
+    result <- runExceptT $ typeCheckProg User instanceCandidates mempty prog
     -- Need to reset the call depth explicitly as type-checking may have errored.
     setCallDepth (callDepth + 1)
     return result

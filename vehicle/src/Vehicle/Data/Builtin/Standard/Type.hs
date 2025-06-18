@@ -49,14 +49,13 @@ isStandardConstructor = \case
 typeStandardBuiltin :: (MonadFreeContext Builtin m) => Provenance -> Builtin -> m (Type Builtin)
 typeStandardBuiltin p = \case
   DerivedFunction f -> getDeclType (Proxy @Builtin) (identifierOf f)
-  b -> return $ fromDSL p $ case b of
-    BuiltinType s -> typeOfBuiltinType s
-    BuiltinConstructor c -> typeOfBuiltinConstructor c
-    BuiltinFunction f -> typeOfBuiltinFunction f
-    BuiltinCast c -> typeOfBuiltinCast c
-    TypeClassOp tcOp -> typeOfTypeClassOp tcOp
-    TypeClass tc -> typeOfTypeClass tc
-    NatInDomainConstraint {} -> typeOfNatInDomainConstraint
+  BuiltinType s -> return $ fromDSL p $ typeOfBuiltinType s
+  BuiltinConstructor c -> return $ fromDSL p $ typeOfBuiltinConstructor c
+  BuiltinFunction f -> return $ fromDSL p $ typeOfBuiltinFunction f
+  BuiltinCast c -> return $ fromDSL p $ typeOfBuiltinCast c
+  TypeClassOp tcOp -> return $ fromDSL p $ typeOfTypeClassOp tcOp
+  TypeClass tc -> return $ fromDSL p $ typeOfTypeClass tc
+  NatInDomainConstraint {} -> return $ fromDSL p typeOfNatInDomainConstraint
 
 typeOfTypeClass :: TypeClass -> DSLExpr Builtin
 typeOfTypeClass tc = case tc of

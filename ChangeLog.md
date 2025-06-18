@@ -2,26 +2,51 @@
 
 ## Version 0.17.0
 
-* BREAKING: Removed `Vector A n` type in favour of `Tensor A [n]`
+### The Vehicle language
 
-* BREAKING: `forall _ in _` no longer works for `Tensor`/`Vector` types.
+To better match with the semantics of machine learning frameworks,
+the `Tensor` type is no longer simply a synonym for nested `Vector`s,
+e.g. `Tensor Rat [1,2]` is no longer the same as `Vector (Vector Rat 2) 1`.
 
-* BREAKING: Upgraded dependency on Agda standard library from v2.0 to v2.2
+Some breaking consequences of this are as follows:
+
+* `Tensor`s can only store the primitive types of data `Bool` and `Rat`, e.g.
+you can no longer write `Tensor (Nat -> Nat) [1]`.
+
+* All `@network` declarations must use `Tensor` types rather than `Vector` types (`@dataset` declarations
+can still use a mixture of either).
+
+* `forall _ in _` no longer works for `Tensor`/`Vector` types.
+
+Some positive changes from this:
+
+* Comparison operators `<`, `>`, `<=`, `>=`, `==` and `!=` can now be used over tensors, and have type
+`Tensor Rat ds -> Tensor Rat ds -> Bool`.
+
+* Added new pointwise comparison operators `.<`, `.>`, `.<=`, `.>=`, `.==` and `.!=` which have type
+`Tensor Rat ds -> Tensor Rat ds -> Tensor Bool ds`.
+
+* Added new reduction operators over tensors:
+  ```
+  reduceAnd : Tensor Bool ds -> Bool -> Bool
+  reduceOr : Tensor Bool ds -> Bool -> Bool
+  reduceSum : Tensor Rat ds -> Rat -> Rat
+  reduceMul : Tensor Rat ds -> Rat -> Rat
+  reduceMin : Tensor Rat ds -> Rat -> Rat
+  reduceMax : Tensor Rat ds -> Rat -> Rat
+  ```
 
 * Pointwise `min` and `max` now work over `Tensor`s.
 
 * Improved compilation of `min` and `max` so that in some cases they generate exponentially less queries.
 
-* Better error messages for typing errors
+### Command-line interface
 
-* Fixed bug where `type` declarations with parameters were handled incorrectly.
+* A new command `list` with sub-commands `resources` and `properties`, to list resources and properties in a vehicle specification.
 
-* Fixed rare bug where `let .. in ..` statements weren't typed checked correctly.
+* Added a new option `--json` to the `vehicle validate` command that causes Vehicle to output the result of the check as machine-readable JSON.
 
-* Fixed bug in Agda compilation where decidable `Bool`s were incorrectly translated to types.
-
-* A new command `list` with sub-commands `resources` and `properties`, to list resources and properties in a vehicle.
-  specification.
+### Python interface
 
 * Exposed the other modes' functionality in Python in the `vehicle_lang` module as:
   - `check`
@@ -29,6 +54,20 @@
   - `validate`
   - `export_to_solver`
   - `list_resources` and `list_properties` which output as JSON
+
+### Agda interface
+
+* BREAKING: Upgraded dependency on Agda standard library from v2.0 to v2.2
+
+### Other
+
+* Fixed bug where `type` declarations with parameters were handled incorrectly.
+
+* Fixed bug where `let .. in ..` statements weren't typed checked correctly.
+
+* Fixed bug in Agda compilation where decidable `Bool`s were incorrectly translated to types.
+
+* Better error messages for typing errors
 
 ## Version 0.16.1
 

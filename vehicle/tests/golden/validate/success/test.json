@@ -1,0 +1,11 @@
+[
+  {
+  "name": "success",
+  "run": "vehicle verify -s spec.vcl -v TestVerifier --network f:fake.onnx --property trivial --verifier-location=testVerifier --verifier-args='sat 'f@@X_0=0.2,f@@X_1=0.3,f@@Y_0=3.0'' --cache verify-cache > /dev/null ; vehicle validate -c verify-cache -j",
+  "needs": ["fake.onnx", "spec.vcl", "../../../testVerifier"],
+  "external": ["TestVerifier"],
+  "ignore": {
+    "files": ["verify-cache/*", "verify-cache/*/*"]
+  }
+}
+]

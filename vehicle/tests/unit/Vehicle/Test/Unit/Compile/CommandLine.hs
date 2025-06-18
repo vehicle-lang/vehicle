@@ -136,7 +136,8 @@ validateModeTests =
               Just $
                 Validate $
                   ValidateOptions
-                    { verificationCache = "local/outputFolder"
+                    { verificationCache = "local/outputFolder",
+                      outputAsJSON = False
                     }
           }
     ]

@@ -88,6 +88,9 @@ instance ToJSON ResourcesIntegrityInfo
 data ResourceIntegrityError
   = MissingResources (NonEmpty ResourceIntegrityInfo)
   | AlteredResources (NonEmpty ResourceIntegrityInfo)
+  deriving (Generic)
+
+instance ToJSON ResourceIntegrityError
 
 instance Pretty ResourceIntegrityError where
   pretty = \case

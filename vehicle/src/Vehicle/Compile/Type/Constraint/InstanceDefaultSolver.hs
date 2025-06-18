@@ -55,12 +55,14 @@ getDefaultableConstraints ::
   [Contextualised constraint ctx] ->
   m [Contextualised constraint ctx]
 getDefaultableConstraints proxy possibleConstraints = do
-  maybeDecl <- getCurrentDecl @builtin
+  maybeDecl <- getCurrentDeclAndUnused @builtin
   result <- case maybeDecl of
-    Just decl | not (isAbstractDecl decl) -> do
+    Just (decl, declIsUnused) | not (isAbstractDecl decl || declIsUnused) -> do
+      logDebug MaxDetail $ pretty declIsUnused
       -- We only want to generate default solutions for constraints
       -- that *don't* appear in the type of the declaration, as those will be
-      -- quantified over later.
+      -- quantified over later. However, if the declaration is unused then
+      -- we don't care and we should use any defaults we can find.
       constraints <- getActiveConstraints
       typeMetas <- getMetasLinkedToMetasIn constraints (typeOf decl)
 

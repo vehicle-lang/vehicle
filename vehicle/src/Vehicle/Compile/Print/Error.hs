@@ -4,10 +4,12 @@ module Vehicle.Compile.Print.Error
     MeaningfulError (..),
     logCompileError,
     multipleNetworkErrorMessages,
+    errorInSubsystemMessage,
   )
 where
 
 import Control.Monad.Except (ExceptT, runExceptT)
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Text (pack)
 import System.FilePath
 import Vehicle.Compile.Error
@@ -225,7 +227,7 @@ instance MeaningfulError CompileError where
             -- TODO can use Levenschtein distance to search contexts/builtins
             problem =
               "Requested to compile the declaration"
-                <+> quotePretty (head names)
+                <+> quotePretty (NonEmpty.head names)
                 <+> "but no declarations exist with that name in the specification.",
             fix =
               Just
@@ -420,7 +422,8 @@ instance MeaningfulError CompileError where
           VNatTensorType dims -> dimLength dims
           VIndexTensorType _ dims -> dimLength dims
           VListType tElem -> (+ 1) <$> dimensionsOf tElem
-          _ -> Nothing
+          VVectorType tElem _dims -> (+ 1) <$> dimensionsOf tElem
+          _ -> Just 0
 
         dimLength :: Value Builtin -> Maybe Int
         dimLength dims = either (const Nothing) (Just . length) (getDimsExprs dims)
@@ -664,7 +667,7 @@ instance MeaningfulError CompileError where
       where
         causeDoc :: Doc a
         causeDoc = case cause of
-          Left err -> errorInSubsystemMessage "locate the original source of the alternating quantifiers" err
+          Left err -> line <> errorInSubsystemMessage "locate the original source of the alternating quantifiers" err
           Right (q, pq, pp) ->
             "In particular:"
               <> line
@@ -688,7 +691,7 @@ instance MeaningfulError CompileError where
       where
         causeDoc :: Doc a
         causeDoc = case cause of
-          Left err -> errorInSubsystemMessage "locate the original source of the non-linearity" err
+          Left err -> line <> errorInSubsystemMessage "locate the original source of the non-linearity" err
           Right source -> case source of
             LinearTimesLinear opProv lhs rhs ->
               "In particular the multiplication in"
@@ -866,9 +869,8 @@ datasetDimensionsFix feature ident file =
 
 errorInSubsystemMessage :: Doc a -> CompileError -> Doc a
 errorInSubsystemMessage task err =
-  line
-    <> "Unfortunately while trying to"
-      <+> task
+  "Unfortunately while trying to"
+    <+> task
     <> ","
       <+> "the following error was encountered:"
     <> line

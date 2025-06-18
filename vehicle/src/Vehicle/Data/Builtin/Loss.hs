@@ -48,7 +48,6 @@ data LossBuiltinConstructor
   | Cons
   | UnitLiteral
   | IndexLiteral Int
-  | IndexTensorLiteral (Tensor Int)
   | NatLiteral Int
   | NatTensorLiteral (Tensor Int)
   | RatTensorLiteral (Tensor Rational)
@@ -60,7 +59,6 @@ instance Pretty LossBuiltinConstructor where
     Cons -> "::"
     UnitLiteral -> "()"
     IndexLiteral x -> pretty x
-    IndexTensorLiteral x -> pretty x
     NatLiteral x -> pretty x
     NatTensorLiteral x -> pretty x
     RatTensorLiteral x -> pretty x
@@ -156,14 +154,6 @@ instance BuiltinHasIndexLiterals LossBuiltin where
         mkExpr = LossBuiltinConstructor . IndexLiteral
       }
 
-  accessIndexTensorLitBuiltin =
-    Access
-      { getExpr = \case
-          LossBuiltinConstructor (IndexTensorLiteral b) -> Just b
-          _ -> Nothing,
-        mkExpr = LossBuiltinConstructor . IndexTensorLiteral
-      }
-
 instance BuiltinHasNatType LossBuiltin where
   accessNatTypeBuiltin = typeAccessor NatType
 
@@ -240,8 +230,7 @@ instance BuiltinHasRatLiterals LossBuiltin where
 instance HasPrimitives LossBuiltin where
   tensorLiterals =
     [ Wrapper accessNatTensorLiteral,
-      Wrapper accessRatTensorLiteral,
-      Wrapper accessIndexTensorLiteral
+      Wrapper accessRatTensorLiteral
     ]
 
   tensorOp1s =
@@ -308,7 +297,6 @@ instance ConvertableBuiltin LossBuiltinConstructor Builtin where
       Cons -> S.Cons
       UnitLiteral -> S.UnitLiteral
       IndexLiteral x -> S.IndexLiteral x
-      IndexTensorLiteral x -> S.IndexTensorLiteral x
       NatLiteral x -> S.NatLiteral x
       NatTensorLiteral x -> S.NatTensorLiteral x
       RatTensorLiteral x -> S.RatTensorLiteral x

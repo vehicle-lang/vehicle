@@ -1,0 +1,5 @@
+Something went wrong internally. Please report the error shown below to `https://github.com/vehicle-lang/vehicle/issues`.
+Error: Missing query variable f@@X_1
+Stack:
+CallStack (from HasCallStack):
+  developerError, called at src/Vehicle/Backend/Queries/UserVariableElimination/VariableReconstruction.hs:56:29 in vehicle-0.16.1-inplace:Vehicle.Backend.Queries.UserVariableElimination.VariableReconstruction

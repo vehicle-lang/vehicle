@@ -130,7 +130,6 @@ convertBuiltinToLoss b spine = case b of
     S.NatLiteral x -> unchangedConstructor $ NatLiteral x
     S.NatTensorLiteral x -> unchangedConstructor $ NatTensorLiteral x
     S.RatTensorLiteral x -> unchangedConstructor $ RatTensorLiteral x
-    S.IndexTensorLiteral x -> unchangedConstructor $ IndexTensorLiteral x
     S.VectorLiteral -> unsupportedBuiltin
   S.BuiltinType t -> case t of
     S.BoolType -> return $ VBuiltin (LossBuiltinType RatType) []

@@ -483,6 +483,7 @@ showCheckExit :: forall builtin m. (MonadBidirectional builtin m) => Expr builti
 showCheckExit e = do
   decrCallDepth
   ctx <- getNamedBoundCtx (Proxy @(Type builtin))
+  logDebug MaxDetail $ "check-exit " <+> prettyVerbose e -- (WithContext e ctx)
   logDebug MaxDetail $ "check-exit " <+> prettyExternal (WithContext e ctx)
 
 showInferEntry :: forall builtin m. (MonadBidirectional builtin m) => Expr builtin -> m ()

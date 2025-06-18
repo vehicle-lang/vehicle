@@ -23,8 +23,9 @@ grammar:
 
 .. code-block:: agda
 
-   t ::= List t | Vector t n | Tensor t ns | s
+   t ::= List r | Vector r n | Tensor s ns
    s ::= Index n | Nat | Int | Rat
+   r ::= t | s
 
 where :code:`n` is a known constant and :code:`ns` is a list of known constants.
 

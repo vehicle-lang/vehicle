@@ -1,5 +1,5 @@
-Advanced topics (TODO)
-======================
+Advanced topics
+===============
 
 .. contents::
    :depth: 1
@@ -19,5 +19,8 @@ For example ``(n : Nat) -> Tensor Rat [n]`` is the type of a function that
 takes in a natural number ``n`` and returns a vector of rationals of length
 ``n``.
 
-Type-classes
-------------
+Type-classes (TODO)
+-------------------
+
+Elision of `Tensor X []` and `X` (TODO)
+---------------------------------------
