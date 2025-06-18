@@ -2,7 +2,7 @@
 (* and should not be modified manually! *)
 (* Metadata: *)
 (*  - Rocq version: 0.0.0 *)
-(*  - Vehicle version: 0.16.0+dev *)
+(*  - Vehicle version: 0.16.1+dev *)
 
 Require Import mathcomp.ssreflect.ssrbool.
 Require Import mathcomp.algebra.ssralg.
@@ -25,7 +25,5 @@ Definition unused : Prop := forall (x : tensor R nil), True.
 Parameter f : tensor R (1%N :: nil) -> tensor R (1%N :: nil).
 
 Axiom expandedExpr : forall x, tnth x 0 >= tnth (f x) 0.
-
-Axiom sequential : forall x, forall y, tnth (f x) 0 >= tnth (f y) 0.
 
 Axiom parallel : forall x, tnth (f x) 0 >= (0 : R) /\ exists x, tnth (f x) 0 >= (5 : R).

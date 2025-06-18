@@ -12,7 +12,6 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Data.Vector qualified as Vector
 import GHC.Real (denominator, numerator)
 import Prettyprinter hiding (hcat, hsep, vcat, vsep)
 import Vehicle.Compile.Context.Bound (getNamedBoundCtx)
@@ -21,7 +20,10 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude hiding (Module)
 import Vehicle.Compile.Print
 import Vehicle.Data.Builtin.Decidability
+import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Standard hiding (TensorType)
+import Vehicle.Data.Code.Expr ()
+import Vehicle.Data.Code.Interface (IsArgs (..), VecLitArgs (..))
 import Vehicle.Data.Universe (UniverseLevel (..))
 import Vehicle.Syntax.Builtin
 import Vehicle.Syntax.Sugar
@@ -32,8 +34,6 @@ import Vehicle.Syntax.Sugar
   )
 import Vehicle.Syntax.Tensor
   ( Tensor (..),
-    TensorShape,
-    TensorValue (..),
     foldMapTensor,
   )
 
@@ -316,7 +316,8 @@ compileExpr expr = do
 compileType :: UniverseLevel -> Code
 compileType (UniverseLevel l)
   | l == 0 = "Type"
-  | otherwise = undefined -- annotateConstant [] ("Prop" <> pretty l)
+  | otherwise = developerError $
+      "compilation of higher-level universes to Rocq unsupported"
 
 compileLetBinder ::
   (MonadRocqCompile m) =>
@@ -386,6 +387,7 @@ compileFunDef name t bindings e =
     <+> e
     <> "."
 
+-- Default precedence for standard operations can be found at https://coq.inria.fr/doc/V8.18.0/refman/language/coq-library.html#notations
 compileBuiltin :: (MonadRocqCompile m) => DecidabilityBuiltin -> [Arg DecidabilityBuiltin] -> m Code
 compileBuiltin b args = case b of
   StandardBuiltinType t -> case t of
@@ -397,6 +399,7 @@ compileBuiltin b args = case b of
     ListType -> annotateApp [] "list" args
     TensorType -> annotateApp [RequireImport VehicleTensor] "tensor" args
     IndexType -> annotateApp [RequireImport MathcompSsreflectFintype] "ordinal" args
+    VectorType -> annotateInfixApp [RequireImport MathcompSsreflectTuple] 2 "_.tuple _" Nothing (reverse args)
   StandardBuiltinConstructor c -> case c of
     Nil -> return "nil"
     Cons -> annotateInfixApp [RequireImport MathcompSsreflectSeq] 60 "_ :: _" (Just "cons") args
@@ -406,9 +409,9 @@ compileBuiltin b args = case b of
     NatTensorLiteral t -> return $ compileTensorLiteral compileNatLiteral t
     BoolTensorLiteral t -> return $ compileTensorLiteral compileBoolLiteral t
     RatTensorLiteral t -> return $ compileTensorLiteral compileRatLiteral t
-    IndexTensorLiteral t -> return $ compileTensorLiteral compileIndexLiteral t
+    VectorLiteral -> compileVecLiteral args
   StandardBuiltinFunction f -> case f of
-    And -> annotateInfixApp [] 40 "_ && _" (Just "andb") args -- https://coq.inria.fr/doc/V8.18.0/refman/language/coq-library.html#notations
+    And -> annotateInfixApp [] 40 "_ && _" (Just "andb") args
     Or -> annotateInfixApp [] 50 "_ || _" (Just "orb") args
     Not -> annotateInfixApp [RequireImport MathcompSsreflectSsrbool] 35 "~~ _" (Just "negb") args
     Implies -> annotateInfixApp [RequireImport MathcompSsreflectSsrbool] 55 "_ ==> _" (Just "implb") args
@@ -436,12 +439,14 @@ compileBuiltin b args = case b of
     QuantifyRatTensor q -> case reverse args of
       (ExplicitArg _ _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier q [binder] body
       _ -> unsupportedArgsError
-    At -> annotateApp [RequireImport MathcompSsreflectTuple] "tnth" args
+    AtTensor -> annotateApp [RequireImport MathcompSsreflectTuple] "tnth" args
     If -> annotateInfixApp [RequireImport MathcompSsreflectSsrbool] minPrecedence "if _ then _ else _" (Just "if_expr") args
-    Foreach -> annotateApp [RequireImport VehicleTensor] "foreach" args
+    ForeachTensor -> annotateApp [RequireImport VehicleTensor] "foreach" args
     StackTensor -> compileStack args
     Iterate -> unsupportedError
     PowRat -> unsupportedError
+    AtVector -> return "<atvector>"
+    ForeachVector -> return "<foreachvector>"
   DecidabilityBuiltinFunction f -> case f of
     PropType -> return "Prop"
     PropTrue -> return "True"
@@ -460,6 +465,10 @@ compileBuiltin b args = case b of
     PropQuantifyInList q -> case q of
       Forall -> annotateApp [RequireImport VehicleStd] "forallInList" args
       Exists -> annotateApp [RequireImport VehicleStd] "existsInList" args
+    PropNaryProduct -> unsupportedError
+    PropNaryProductForeach -> unsupportedError
+    PropNaryProductAt -> unsupportedError
+    BoolVectorToProp -> return "<boolvectortoprop>"
   DecidabilityBuiltinTypeClass {} -> monoError
   DecidabilityBuiltinTypeClassOp {} -> monoError
   StandardBuiltinDerivedFunction f -> compileDerivedFunction f args
@@ -499,7 +508,6 @@ compileDerivedFunction fn args = case fn of
   QuantifyIndex q -> case q of
     Exists -> annotateApp [RequireImport VehicleStd] "existsIndex" args
     Forall -> annotateApp [RequireImport VehicleStd] "forallIndex" args
-  AppendList -> annotateInfixApp [RequireImport MathcompSsreflectSeq] 5 "_++_" (Just "cat") args
   QuantifyInList {} -> unsupported
   TypeAnn -> annotateInfixApp [] minPrecedence "_ : _" Nothing (reverse args)
   CompareRatTensorReduced op ->
@@ -552,11 +560,7 @@ compileNatLiteral :: Int -> Code
 compileNatLiteral i = annotate ([RequireImport MathcompSsreflectSsrnat], maxPrecedence) $ pretty i <> "%N"
 
 compileTensorLiteral :: (a -> Code) -> Tensor a -> Code
-compileTensorLiteral compileElement =
-  foldMapTensor compileElement compileTensorLayer
-  where
-    compileTensorLayer :: TensorShape -> [Code] -> Code
-    compileTensorLayer _shape xs = annotate ([RequireImport MathcompSsreflectTuple], maxPrecedence) "[tuple" <+> concatWith (surround "; ") xs <> "]"
+compileTensorLiteral compileElement = foldMapTensor compileElement (\_shape -> toVec)
 
 compileBoolLiteral :: Bool -> Code
 compileBoolLiteral = \case
@@ -609,6 +613,12 @@ compileComparison domain op = do
 compileStack :: (MonadRocqCompile m) => [Arg DecidabilityBuiltin] -> m Code
 compileStack args = do
   as <- compileArgs minPrecedence args
-  let tensor = Tensor [length as] (Values $ Vector.fromList as)
-  let argtuple = compileTensorLiteral id tensor
-  return $ annotate ([RequireImport VehicleTensor], 200) $ "stack" <+> argtuple
+  return $ annotate ([RequireImport VehicleTensor], 200) $ "stack" <+> (toVec as)
+
+compileVecLiteral :: (MonadRocqCompile m) => [Arg DecidabilityBuiltin] -> m Code
+compileVecLiteral xs = case getExpr accessSpine xs of
+  Just (VecLitArgs _t _d ds) -> toVec <$> traverse compileExpr ds
+  Nothing -> developerError "Malformed type-checked vector literal"
+
+toVec :: [Code] -> Code
+toVec xs = annotate ([RequireImport MathcompSsreflectTuple], maxPrecedence) "[tuple" <+> concatWith (surround "; ") xs <> "]"
