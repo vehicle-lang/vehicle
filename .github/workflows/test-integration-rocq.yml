@@ -50,7 +50,7 @@ jobs:
           ocaml-compiler: ${{ matrix.ocaml.version }}
 
       - name: Install Rocq
-        run: opam install coq.${{ matrix.rocq.version }}
+        run: opam install rocq-prover.${{ matrix.rocq.version }}
 
       - name: Install libraries
         run: |
@@ -66,5 +66,5 @@ jobs:
             --test-show-details=always               \
             --test-option=--color=always             \
             --test-option=--num-threads=1            \
-            --test-option=--allowlist-externals=coqc
+            --test-option=--allowlist-externals=rocq
 

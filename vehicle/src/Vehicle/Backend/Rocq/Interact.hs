@@ -19,7 +19,7 @@ rocqOutputFormat :: ExternalOutputFormat
 rocqOutputFormat =
   ExternalOutputFormat
   { formatName = "Rocq",
-      formatVersion = Just $ makeVersion [0, 0, 0],
+      formatVersion = Just $ makeVersion [9, 0, 0],
       commentStyle = Block "(*" "*)",
       emptyLines = True 
     }
