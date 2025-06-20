@@ -1,58 +1,47 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Test.Tasty.Golden.Executable.TestSpec.SizeOnly
-  ( SizeOnlyExtension (..),
-    SizeOnlyExtensions (..),
+  ( SizeOnlyExtensions (..),
     toSizeOnlyExtensionsSet,
   )
 where
 
-import Data.Aeson.Types (FromJSON (..), Parser, ToJSON (..), Value, typeMismatch)
-import Data.Aeson.Types qualified as Value (Value (..))
+import Control.Applicative ((<|>))
+import Data.Aeson.Types (FromJSON (..), Parser, ToJSON (..), Value)
 import Data.Data (Typeable)
 import Data.Set (Set)
 import Data.Set qualified as Set (fromList)
-import Data.String (IsString (..))
 import Data.Tagged (Tagged)
 import Data.Text qualified as Text
 import Test.Tasty.Options (IsOption (..), safeRead)
 
--- | Extension for which only diffs should show the size.
-newtype SizeOnlyExtension = SizeOnlyExtension {extension :: FilePath}
-  deriving (Eq, Ord, Typeable)
+-- SizeOnlyExtensions
 
-instance Show SizeOnlyExtension where
-  show :: SizeOnlyExtension -> String
-  show (SizeOnlyExtension programName) = programName
+newtype SizeOnlyExtensions = SizeOnlyExtensions
+  { fileExtensions :: [FilePath]
+  }
+  deriving (Eq, Show, Typeable, Semigroup, Monoid)
 
-instance Read SizeOnlyExtension where
-  readsPrec :: Int -> ReadS SizeOnlyExtension
-  readsPrec _prec programName = [(SizeOnlyExtension programName, "")]
+instance FromJSON SizeOnlyExtensions where
+  parseJSON :: Value -> Parser SizeOnlyExtensions
+  parseJSON v = parse1 v <|> parseN v
+    where
+      parse1 = fmap (SizeOnlyExtensions . (: [])) . parseJSON
+      parseN = fmap SizeOnlyExtensions . parseJSON
 
-instance IsString SizeOnlyExtension where
-  fromString :: String -> SizeOnlyExtension
-  fromString = SizeOnlyExtension
-
-instance FromJSON SizeOnlyExtension where
-  parseJSON :: Value -> Parser SizeOnlyExtension
-  parseJSON (Value.String name) = return $ SizeOnlyExtension (Text.unpack name)
-  parseJSON value = typeMismatch "String" value
-
-instance ToJSON SizeOnlyExtension where
-  toJSON :: SizeOnlyExtension -> Value
-  toJSON = toJSON . extension
-
-newtype SizeOnlyExtensions = SizeOnlyExtensions [SizeOnlyExtension]
-  deriving (Eq, Ord, Show, Typeable, Semigroup, Monoid)
+instance ToJSON SizeOnlyExtensions where
+  toJSON :: SizeOnlyExtensions -> Value
+  toJSON (SizeOnlyExtensions [ignoreFile]) = toJSON ignoreFile
+  toJSON (SizeOnlyExtensions ignoreFiles) = toJSON ignoreFiles
 
 instance IsOption SizeOnlyExtensions where
   defaultValue :: SizeOnlyExtensions
   defaultValue = mempty
 
   parseValue :: String -> Maybe SizeOnlyExtensions
-  parseValue input = SizeOnlyExtensions <$> traverse safeRead names
+  parseValue input = SizeOnlyExtensions <$> traverse safeRead filePatternStrings
     where
-      names = Text.unpack . Text.strip <$> Text.splitOn "," (Text.pack input)
+      filePatternStrings = Text.unpack . Text.strip <$> Text.splitOn "," (Text.pack input)
 
   optionName :: Tagged SizeOnlyExtensions String
   optionName = return "sizeOnly"
@@ -61,4 +50,4 @@ instance IsOption SizeOnlyExtensions where
   optionHelp = return "A list of file extensions for which diffs should only display the sizes of the old and new files."
 
 toSizeOnlyExtensionsSet :: SizeOnlyExtensions -> Set String
-toSizeOnlyExtensionsSet (SizeOnlyExtensions exts) = Set.fromList (fmap extension exts)
+toSizeOnlyExtensionsSet (SizeOnlyExtensions exts) = Set.fromList exts

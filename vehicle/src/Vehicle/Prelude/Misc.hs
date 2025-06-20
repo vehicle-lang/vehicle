@@ -18,7 +18,8 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Set (Set)
+import Data.Set (Set, intersection)
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as Text
 import GHC.Generics (Generic)
@@ -170,6 +171,9 @@ listOrd leq (x : xs) (y : ys) = le || (eq && listOrd leq xs ys)
     le = leq x y && not (leq y x)
     eq = leq x y && leq y x
 
+listIntersection :: (Ord a) => [a] -> [a] -> [a]
+listIntersection xs ys = Set.toList $ Set.difference (Set.fromList xs) (Set.fromList ys)
+
 findAndDeleteElem :: (a -> Bool) -> [a] -> Maybe (a, [a])
 findAndDeleteElem p = go id
   where
@@ -249,6 +253,20 @@ getModify f = do
   x <- get
   modify f
   return x
+
+-- Taken from containers-0.8. Currently blocked from upgrading by
+-- https://github.com/haskell-unordered-containers/hashable/issues/319
+intersections :: (Ord a) => NonEmpty (Set a) -> Set a
+intersections (s0 :| ss)
+  | null s0 = mempty
+  | otherwise = List.foldr go id ss s0
+  where
+    go s r acc
+      | null acc' = mempty
+      | otherwise = r acc'
+      where
+        acc' = intersection acc s
+{-# INLINEABLE intersections #-}
 
 --------------------------------------------------------------------------------
 -- Constants

@@ -8,5 +8,6 @@
   "produces": [
     "Marabou.queries/isMalicious-query1.txt",
     "Marabou.queries/isMalicious.vcl-plan"
-  ]
+  ],
+  "sizeOnly": ".vcl-plan"
 }

@@ -9,6 +9,40 @@
             {
               "variableStore": {
                 "vehicleVariableCtx": [
+                  "classifier₁[output]!1",
+                  "classifier₁[output]!0",
+                  "classifier₁[output]",
+                  "classifier₁[input]!29",
+                  "classifier₁[input]!28",
+                  "classifier₁[input]!27",
+                  "classifier₁[input]!26",
+                  "classifier₁[input]!25",
+                  "classifier₁[input]!24",
+                  "classifier₁[input]!23",
+                  "classifier₁[input]!22",
+                  "classifier₁[input]!21",
+                  "classifier₁[input]!20",
+                  "classifier₁[input]!19",
+                  "classifier₁[input]!18",
+                  "classifier₁[input]!17",
+                  "classifier₁[input]!16",
+                  "classifier₁[input]!15",
+                  "classifier₁[input]!14",
+                  "classifier₁[input]!13",
+                  "classifier₁[input]!12",
+                  "classifier₁[input]!11",
+                  "classifier₁[input]!10",
+                  "classifier₁[input]!9",
+                  "classifier₁[input]!8",
+                  "classifier₁[input]!7",
+                  "classifier₁[input]!6",
+                  "classifier₁[input]!5",
+                  "classifier₁[input]!4",
+                  "classifier₁[input]!3",
+                  "classifier₁[input]!2",
+                  "classifier₁[input]!1",
+                  "classifier₁[input]!0",
+                  "classifier₁[input]",
                   "classifier₀[output]!1",
                   "classifier₀[output]!0",
                   "classifier₀[output]",
@@ -116,64 +150,120 @@
               "variableCompilationTrace": {
                 "reconstructionSteps": [
                   {
-                    "tag": "ReconstructTensorVariable",
+                    "tag": "InternalReconstructTensorVariable",
                     "contents": [
                       31,
+                      [
+                        [
+                          30
+                        ],
+                        32,
+                        61
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "InternalReconstructTensorVariable",
+                    "contents": [
+                      62,
+                      [
+                        [
+                          2
+                        ],
+                        63,
+                        64
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      96,
+                      [
+                        97,
+                        98
+                      ],
                       {
-                        "tag": "DenseTensor",
-                        "contents": [
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [
+                              2
+                            ],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
                           [
-                            30
-                          ],
-                          [
-                            32,
-                            33,
-                            34,
-                            35,
-                            36,
-                            37,
-                            38,
-                            39,
-                            40,
-                            41,
-                            42,
-                            43,
-                            44,
-                            45,
-                            46,
-                            47,
-                            48,
-                            49,
-                            50,
-                            51,
-                            52,
-                            53,
-                            54,
-                            55,
-                            56,
-                            57,
-                            58,
-                            59,
-                            60,
-                            61
+                            62,
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
                           ]
                         ]
                       }
                     ]
                   },
                   {
-                    "tag": "ReconstructTensorVariable",
+                    "tag": "SolveEquality",
                     "contents": [
-                      62,
+                      65,
+                      [
+                        66,
+                        67,
+                        68,
+                        69,
+                        70,
+                        71,
+                        72,
+                        73,
+                        74,
+                        75,
+                        76,
+                        77,
+                        78,
+                        79,
+                        80,
+                        81,
+                        82,
+                        83,
+                        84,
+                        85,
+                        86,
+                        87,
+                        88,
+                        89,
+                        90,
+                        91,
+                        92,
+                        93,
+                        94,
+                        95
+                      ],
                       {
-                        "tag": "DenseTensor",
-                        "contents": [
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [
+                              30
+                            ],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
                           [
-                            2
-                          ],
-                          [
-                            63,
-                            64
+                            31,
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
                           ]
                         ]
                       }
@@ -183,6 +273,38 @@
                     "tag": "SolveEquality",
                     "contents": [
                       0,
+                      [
+                        1,
+                        2,
+                        3,
+                        4,
+                        5,
+                        6,
+                        7,
+                        8,
+                        9,
+                        10,
+                        11,
+                        12,
+                        13,
+                        14,
+                        15,
+                        16,
+                        17,
+                        18,
+                        19,
+                        20,
+                        21,
+                        22,
+                        23,
+                        24,
+                        25,
+                        26,
+                        27,
+                        28,
+                        29,
+                        30
+                      ],
                       {
                         "constantValue": {
                           "tag": "ConstantTensor",

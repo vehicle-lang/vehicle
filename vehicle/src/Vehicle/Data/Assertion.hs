@@ -80,6 +80,10 @@ instance
   (Ord variable, FromJSON rel, FromJSONKey variable, FromJSON constant) =>
   FromJSON (NormalisedRelation rel variable constant)
 
+instance (Ord variable) => HasVariables (NormalisedRelation rel variable constant) variable where
+  variablesOf = variablesOf . linearExpr
+  containsVariable r v = linearExpr r `containsVariable` v
+
 --------------------------------------------------------------------------------
 -- Assertions
 
@@ -119,14 +123,21 @@ comparisonToAssertion op e1 e2 = case op of
   Gt -> NormalisedRelation OLt $ addExprs (-1) 1 e1 e2
   Ge -> NormalisedRelation OLe $ addExprs (-1) 1 e1 e2
 
+type LinearSubstitution variable = Map variable (LinearExpr variable RatTensor)
+
 eliminateVarsInAssertion ::
   (VariableLike variable) =>
-  Map variable (LinearExpr variable RatTensor) ->
+  LinearSubstitution variable ->
   Assertion variable ->
   MaybeTrivial (Assertion variable)
 eliminateVarsInAssertion f NormalisedRelation {..} = case eliminateVars f linearExpr of
   Right newExpr -> NonTrivial $ NormalisedRelation {linearExpr = newExpr, ..}
   Left tensor -> Trivial (checkTriviality relation tensor)
+
+getEquality :: Assertion variable -> Maybe (LinearExpr variable RatTensor)
+getEquality (NormalisedRelation rel expr) = case rel of
+  OEq -> Just expr
+  _ -> Nothing
 
 --------------------------------------------------------------------------------
 -- Bounds

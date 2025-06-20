@@ -445,7 +445,7 @@ setAuxiliaryInstanceConstraints newConstraints = modifyTypeCheckerState $ \TypeC
 addUnificationConstraints :: (MonadTypeChecker builtin m) => [WithContext (UnificationConstraint builtin)] -> m ()
 addUnificationConstraints constraints = do
   unless (null constraints) $ do
-    logDebug MaxDetail ("add-constraints:" <> line <> indent 2 (vcat (fmap prettyExternal constraints)))
+    logDebug MaxDetail ("add-constraints:" <> lineIndent (vcat (fmap prettyExternal constraints)))
 
   modifyTypeCheckerState $ \TypeCheckerState {..} ->
     TypeCheckerState {unificationConstraints = unificationConstraints ++ constraints, ..}
@@ -453,21 +453,21 @@ addUnificationConstraints constraints = do
 addInstanceConstraints :: (MonadTypeChecker builtin m) => [WithContext (InstanceConstraint builtin)] -> m ()
 addInstanceConstraints constraints = do
   unless (null constraints) $ do
-    logDebug MaxDetail ("add-constraints:" <> line <> indent 2 (vcat (fmap prettyExternal constraints)))
+    logDebug MaxDetail ("add-constraints:" <> lineIndent (vcat (fmap prettyExternal constraints)))
 
   modifyTypeCheckerState $ \TypeCheckerState {..} ->
     TypeCheckerState {instanceConstraints = instanceConstraints ++ constraints, ..}
 
 addApplicationConstraint :: (MonadTypeChecker builtin m) => WithContext (ApplicationConstraint builtin) -> m ()
 addApplicationConstraint constraint = do
-  logDebug MaxDetail ("add-constraints:" <> line <> indent 2 (prettyExternal constraint))
+  logDebug MaxDetail ("add-constraints:" <> lineIndent (prettyExternal constraint))
 
   modifyTypeCheckerState $ \TypeCheckerState {..} ->
     TypeCheckerState {applicationConstraints = applicationConstraints ++ [constraint], ..}
 
 addAuxiliaryInstanceConstraints :: (MonadTypeChecker builtin m) => [WithContext (InstanceConstraint builtin)] -> m ()
 addAuxiliaryInstanceConstraints constraints = do
-  logDebug MaxDetail ("add-constraints:" <> line <> indent 2 (vcat (fmap prettyExternal constraints)))
+  logDebug MaxDetail ("add-constraints:" <> lineIndent (vcat (fmap prettyExternal constraints)))
 
   modifyTypeCheckerState $ \TypeCheckerState {..} ->
     TypeCheckerState {auxiliaryInstanceConstraints = auxiliaryInstanceConstraints ++ constraints, ..}

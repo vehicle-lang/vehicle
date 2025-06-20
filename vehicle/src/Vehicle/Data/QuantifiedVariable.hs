@@ -1,3 +1,5 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 module Vehicle.Data.QuantifiedVariable
   ( TensorVariable (..),
     TensorVariableInfo (..),
@@ -14,6 +16,7 @@ where
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, FromJSONKey, ToJSON, ToJSONKey)
 import Data.Coerce (coerce)
+import Data.Hashable (Hashable)
 import GHC.Generics (Generic)
 import Numeric (showFFloat)
 import Vehicle.Data.Builtin.Core
@@ -80,7 +83,7 @@ instance FromJSON NetworkIOVariable
 -- a `UserVariable`, or variables that represent sub-tensors
 -- within those variables.
 newtype TensorVariable = TensorVariable Lv
-  deriving (Show, Eq, Ord, Generic)
+  deriving (Show, Eq, Ord, Enum, Generic)
 
 instance VariableLike TensorVariable where
   toLv = coerce
@@ -95,6 +98,8 @@ instance ToJSONKey TensorVariable
 instance FromJSON TensorVariable
 
 instance FromJSONKey TensorVariable
+
+instance Hashable TensorVariable
 
 class (VariableLike variable) => TensorVariableLike variable where
   toTensorVar :: variable -> TensorVariable

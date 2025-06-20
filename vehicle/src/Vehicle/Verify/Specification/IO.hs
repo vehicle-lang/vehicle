@@ -487,11 +487,11 @@ invokeVerifier VerifierSettings {..} metaNetworkEntries queryFile = do
   let command = unwords (verifierExecutable : args)
 
   -- Run the verification command
-  logDebug MidDetail $ "Running verification command: " <> line <> indent 2 (pretty command) <> line
+  logDebug MidDetail $ "Running verification command: " <> lineIndent (pretty command) <> line
   (exitCode, out, err) <- liftIO $ readProcessWithExitCode verifierExecutable args ""
   logDebug MinDetail $ "Command status:" <+> pretty (show exitCode) <> line
-  logDebug MinDetail $ "Command stdout:" <> line <> indent 2 (pretty out) <> line
-  logDebug MinDetail $ "Command stderr:" <> line <> indent 2 (pretty err) <> line
+  logDebug MinDetail $ "Command stdout:" <> lineIndent (pretty out) <> line
+  logDebug MinDetail $ "Command stderr:" <> lineIndent (pretty err) <> line
 
   -- Check for errors
   case exitCode of

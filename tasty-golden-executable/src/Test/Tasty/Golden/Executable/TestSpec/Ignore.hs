@@ -66,6 +66,8 @@ instance ToJSON Ignore where
           boolToMaybe (ignoreLines /= mempty) ("lines" .= ignoreLines)
         ]
 
+-- IgnoreFiles
+
 newtype IgnoreFiles = IgnoreFiles [FilePattern]
   deriving (Eq, Show, Typeable, Semigroup, Monoid)
 
@@ -98,6 +100,8 @@ instance IsOption IgnoreFiles where
 
   optionHelp :: Tagged IgnoreFiles String
   optionHelp = return "A list of files to ignore."
+
+-- IgnoreLines
 
 newtype IgnoreLines = IgnoreLines [TextPattern]
   deriving (Eq, Show, Typeable, Semigroup, Monoid)

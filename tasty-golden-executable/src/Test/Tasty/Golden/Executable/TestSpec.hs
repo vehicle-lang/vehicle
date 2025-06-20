@@ -24,6 +24,7 @@ import Test.Tasty (TestName)
 import Test.Tasty.Golden.Executable.TestSpec.External (External)
 import Test.Tasty.Golden.Executable.TestSpec.FilePattern (FilePattern)
 import Test.Tasty.Golden.Executable.TestSpec.Ignore (Ignore (..))
+import Test.Tasty.Golden.Executable.TestSpec.SizeOnly
 import Test.Tasty.Golden.Executable.TestSpec.Timeout (Timeout, toSomeOption)
 
 data TestSpec = TestSpec
@@ -50,7 +51,9 @@ data TestSpec = TestSpec
     -- | Timeout for the test.
     testSpecTimeout :: Timeout,
     -- | Options that configure what differences to ignore.
-    testSpecIgnore :: Ignore
+    testSpecIgnore :: Ignore,
+    -- | Options that configure what files not to perform a full diff.
+    testSpecSizeOnly :: SizeOnlyExtensions
   }
   deriving (Eq, Show)
 
@@ -76,6 +79,7 @@ instance FromJSON TestSpec where
       <*> o .:? "external" .!= mempty
       <*> o .:? "timeout" .!= mempty
       <*> o .:? "ignore" .!= mempty
+      <*> o .:? "sizeOnly" .!= mempty
 
 instance ToJSON TestSpec where
   toJSON :: TestSpec -> Value
@@ -94,5 +98,7 @@ instance ToJSON TestSpec where
           -- Include "timeout" only if it is non-empty:
           boolToMaybe (testSpecTimeout /= mempty) ("timeout" .= testSpecTimeout),
           -- Include "ignore" only if it is non-empty:
-          boolToMaybe (testSpecIgnore /= mempty) ("ignore" .= testSpecIgnore)
+          boolToMaybe (testSpecIgnore /= mempty) ("ignore" .= testSpecIgnore),
+          -- Include "sizeOnly" only if it is non-empty:
+          boolToMaybe (testSpecSizeOnly /= mempty) ("sizeOnly" .= testSpecSizeOnly)
         ]

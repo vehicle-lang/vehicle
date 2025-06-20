@@ -10,7 +10,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Semigroup (Semigroup (..))
 import GHC.Generics (Generic)
-import Vehicle.Prelude (Pretty (..), cartesianProduct, indent, line, prependList)
+import Vehicle.Prelude (Pretty (..), cartesianProduct, lineIndent, prependList)
 
 --------------------------------------------------------------------------------
 -- Triviality
@@ -140,7 +140,7 @@ instance (ToJSON a) => ToJSON (DisjunctAll a)
 instance (FromJSON a) => FromJSON (DisjunctAll a)
 
 instance (Pretty a) => Pretty (DisjunctAll a) where
-  pretty x = "Or" <> line <> indent 2 (pretty (unDisjunctAll x))
+  pretty x = "Or" <> lineIndent (pretty (unDisjunctAll x))
 
 eliminateTrivialDisjunctions :: DisjunctAll (MaybeTrivial a) -> MaybeTrivial (DisjunctAll a)
 eliminateTrivialDisjunctions disjunction = do
@@ -180,7 +180,7 @@ newtype ConjunctAll a = ConjunctAll
 instance (NFData a) => NFData (ConjunctAll a)
 
 instance (Pretty a) => Pretty (ConjunctAll a) where
-  pretty x = "And" <> line <> indent 2 (pretty (unConjunctAll x))
+  pretty x = "And" <> lineIndent (pretty (unConjunctAll x))
 
 instance (ToJSON a) => ToJSON (ConjunctAll a)
 

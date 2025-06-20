@@ -11,6 +11,7 @@
     "produces": ["Marabou.queries/*.txt", "Marabou.queries/p.vcl-plan"],
     "ignore": {
       "lines": ".*\"fileHash\".*"
-    }
+    },
+    "sizeOnly": ".vcl-plan"
   }
 ]

@@ -31,33 +31,29 @@
               "variableCompilationTrace": {
                 "reconstructionSteps": [
                   {
-                    "tag": "ReconstructTensorVariable",
+                    "tag": "InternalReconstructTensorVariable",
                     "contents": [
                       6,
-                      {
-                        "tag": "ConstantTensor",
-                        "contents": [
-                          [
-                            1
-                          ],
-                          7
-                        ]
-                      }
+                      [
+                        [
+                          1
+                        ],
+                        7,
+                        7
+                      ]
                     ]
                   },
                   {
-                    "tag": "ReconstructTensorVariable",
+                    "tag": "InternalReconstructTensorVariable",
                     "contents": [
                       8,
-                      {
-                        "tag": "ConstantTensor",
-                        "contents": [
-                          [
-                            1
-                          ],
-                          9
-                        ]
-                      }
+                      [
+                        [
+                          1
+                        ],
+                        9,
+                        9
+                      ]
                     ]
                   },
                   {
@@ -171,6 +167,7 @@
                     "tag": "SolveEquality",
                     "contents": [
                       1,
+                      [],
                       {
                         "constantValue": {
                           "tag": "ConstantTensor",
@@ -202,24 +199,16 @@
                     ]
                   },
                   {
-                    "tag": "ReconstructTensorVariable",
+                    "tag": "InternalReconstructTensorVariable",
                     "contents": [
                       0,
-                      {
-                        "tag": "DenseTensor",
-                        "contents": [
-                          [
-                            5
-                          ],
-                          [
-                            1,
-                            2,
-                            3,
-                            4,
-                            5
-                          ]
-                        ]
-                      }
+                      [
+                        [
+                          5
+                        ],
+                        1,
+                        5
+                      ]
                     ]
                   }
                 ]

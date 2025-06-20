@@ -30,42 +30,36 @@
               "variableCompilationTrace": {
                 "reconstructionSteps": [
                   {
-                    "tag": "ReconstructTensorVariable",
+                    "tag": "InternalReconstructTensorVariable",
                     "contents": [
                       2,
-                      {
-                        "tag": "DenseTensor",
-                        "contents": [
-                          [
-                            2
-                          ],
-                          [
-                            3,
-                            4
-                          ]
-                        ]
-                      }
+                      [
+                        [
+                          2
+                        ],
+                        3,
+                        4
+                      ]
                     ]
                   },
                   {
-                    "tag": "ReconstructTensorVariable",
+                    "tag": "InternalReconstructTensorVariable",
                     "contents": [
                       5,
-                      {
-                        "tag": "ConstantTensor",
-                        "contents": [
-                          [
-                            1
-                          ],
-                          6
-                        ]
-                      }
+                      [
+                        [
+                          1
+                        ],
+                        6,
+                        6
+                      ]
                     ]
                   },
                   {
                     "tag": "SolveEquality",
                     "contents": [
                       0,
+                      [],
                       {
                         "constantValue": {
                           "tag": "ConstantTensor",
@@ -100,6 +94,7 @@
                     "tag": "SolveEquality",
                     "contents": [
                       1,
+                      [],
                       {
                         "constantValue": {
                           "tag": "ConstantTensor",

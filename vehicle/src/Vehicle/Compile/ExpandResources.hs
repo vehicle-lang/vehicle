@@ -37,6 +37,8 @@ expandResources ::
   m (Prog Builtin, NetworkContext, FreeCtx Builtin, ResourcesIntegrityInfo)
 expandResources resources prog =
   logCompilerPass MinDetail "expansion of external resources" $ do
+    logDebug MidDetail $ "Resources:" <> lineIndent (pretty resources)
+
     ((progWithoutResources, (networkCtx, inferableParameterCtx, _explicitParameterCtx)), partialFreeCtx) <-
       runFreeContextT @m @Builtin mempty (runWriterT (runStateT (runReaderT (readResourcesInProg prog) resources) (mempty, mempty, mempty)))
 

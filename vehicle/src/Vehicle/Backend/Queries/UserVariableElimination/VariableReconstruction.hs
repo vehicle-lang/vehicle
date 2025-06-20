@@ -13,7 +13,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Data.Code.LinearExpr (VariableLike (..), evaluateExpr)
 import Vehicle.Data.QuantifiedVariable
-import Vehicle.Data.Tensor (RatTensor, Tensor (..), traverseTensor, pattern ZeroDimTensor)
+import Vehicle.Data.Tensor (RatTensor, Tensor (..), toList, traverseTensor, pattern ZeroDimTensor)
 import Vehicle.Verify.QueryFormat.Core
 import Vehicle.Verify.Specification
 import Vehicle.Verify.Verifier.Core
@@ -35,7 +35,7 @@ reconstructUserVars variables (Reconstruction steps) networkVariableAssignment =
     let assignment = createInitialAssignment queryVariableMap networkVariableAssignment
     alteredAssignment <- foldlM (applyReconstructionStep vehicleVariableCtx) assignment steps
     finalAssignment <- createFinalAssignment vehicleVariableCtx userVariables alteredAssignment
-    logDebug MidDetail $ "User variables:" <+> pretty finalAssignment
+    logDebug MidDetail $ "User variables:" <> lineIndent (pretty finalAssignment)
     return finalAssignment
 
 --------------------------------------------------------------------------------
@@ -62,23 +62,26 @@ applyReconstructionStep ::
   (MonadLogger m) =>
   CompleteNamedBoundCtx ->
   MixedVariableAssignment ->
-  UserVariableCompilationStep ->
+  CompilationStep ->
   m MixedVariableAssignment
 applyReconstructionStep ctx assignment step = do
-  logDebug MidDetail $ "Variable assignment:" <> line <> indent 2 (prettyAssignment ctx assignment)
+  logDebug MidDetail $ "Variable assignment:" <> lineIndent (prettyAssignment ctx assignment)
   logDebug MidDetail $ prettyFriendly (WithContext step ctx)
 
-  let (newVar, valueOrErrorFn) = case step of
-        SolveEquality var eq -> (toTensorVar var, evaluateExpr eq)
-        SolveInequalities var solution -> (toTensorVar var, reconstructFourierMotzkinVariableValue solution)
-        ReconstructTensorVariable var elements -> (toTensorVar var, constructTensorVariableFromElements elements)
+  let (newVar, valueOrErrorFn, derivedValuesFn) = case step of
+        SolveEquality var childVars eq -> (toTensorVar var, evaluateExpr eq, constructElementsFromTensor childVars)
+        SolveInequalities var solution -> (toTensorVar var, reconstructFourierMotzkinVariableValue solution, const [])
+        ReconstructTensorVariable var elements -> (toTensorVar var, constructTensorVariableFromElements elements, const [])
   let value = handleMissingError ctx newVar (valueOrErrorFn assignment)
 
   logDebugM MidDetail $ do
     let varDoc = prettyFriendly (WithContext newVar ctx)
     return $ "Result:" <+> varDoc <+> "=" <+> pretty value
 
-  return $ Map.insert newVar value assignment
+  let derivedValues = derivedValuesFn value
+  let newValues = Map.fromList $ (newVar, value) : derivedValues
+
+  return $ Map.union newValues assignment
 
 -- | Unreduces a previously reduced variable, removing the normalised
 -- values from the assignment and adding the unreduced value back to the
@@ -102,6 +105,14 @@ constructTensorVariableFromElements elementVariables assignment =
       Nothing -> Left v
       Just (ZeroDimTensor value) -> Right value
       Just _ -> developerError "Element variables should have an empty tensor shape"
+
+constructElementsFromTensor ::
+  [TensorVariable] ->
+  RatTensor ->
+  [(TensorVariable, RatTensor)]
+constructElementsFromTensor elementVars value = do
+  let elements = ZeroDimTensor <$> toList value
+  zip elementVars elements
 
 createFinalAssignment ::
   (MonadLogger m) =>

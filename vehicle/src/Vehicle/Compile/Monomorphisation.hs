@@ -170,7 +170,7 @@ handleUnusedDecl decl = do
         then do
           -- All unused declarations shouldn't have any implicit type-parameters as they
           -- should have been resolved by generalisation at type-checking time (special case).
-          developerError $ "Unexpected non-monomorphisable decl:" <> line <> indent 2 (prettyExternal decl)
+          developerError $ "Unexpected non-monomorphisable decl:" <> lineIndent (prettyExternal decl)
         else do
           logDebug MaxDetail "Keeping declaration"
           return [decl]
@@ -204,7 +204,7 @@ performMonomorphisation (p, ident, anns, typ, body) createNewName args = do
   (newType, newBody) <- substituteArgsThrough (typ, body, args)
   tell (Map.singleton ident (typ, HashMap.singleton args newIdent))
   let newDecl = DefFunction p newIdent anns newType newBody
-  logDebug MaxDetail $ "Result:" <> line <> indent 2 (prettyFriendly newDecl)
+  logDebug MaxDetail $ "Result:" <> lineIndent (prettyFriendly newDecl)
   return newDecl
 
 substituteArgsThrough ::

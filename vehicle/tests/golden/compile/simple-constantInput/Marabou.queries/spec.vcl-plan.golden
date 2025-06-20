@@ -28,42 +28,36 @@
               "variableCompilationTrace": {
                 "reconstructionSteps": [
                   {
-                    "tag": "ReconstructTensorVariable",
+                    "tag": "InternalReconstructTensorVariable",
                     "contents": [
                       1,
-                      {
-                        "tag": "DenseTensor",
-                        "contents": [
-                          [
-                            2
-                          ],
-                          [
-                            2,
-                            3
-                          ]
-                        ]
-                      }
+                      [
+                        [
+                          2
+                        ],
+                        2,
+                        3
+                      ]
                     ]
                   },
                   {
-                    "tag": "ReconstructTensorVariable",
+                    "tag": "InternalReconstructTensorVariable",
                     "contents": [
                       4,
-                      {
-                        "tag": "ConstantTensor",
-                        "contents": [
-                          [
-                            1
-                          ],
-                          5
-                        ]
-                      }
+                      [
+                        [
+                          1
+                        ],
+                        5,
+                        5
+                      ]
                     ]
                   },
                   {
                     "tag": "SolveEquality",
                     "contents": [
                       0,
+                      [],
                       {
                         "constantValue": {
                           "tag": "ConstantTensor",

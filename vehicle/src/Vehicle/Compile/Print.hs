@@ -47,7 +47,7 @@ import Vehicle.Data.QuantifiedVariable (NetworkIOElementVariable, NetworkIOVaria
 import Vehicle.Data.Tensor (RatTensor, Tensor, prettyTensor)
 import Vehicle.Syntax.AST.Expr qualified as S
 import Vehicle.Syntax.Print
-import Vehicle.Verify.Specification (UserVariableCompilationStep (..))
+import Vehicle.Verify.Specification (CompilationStep (..))
 
 --------------------------------------------------------------------------------
 -- Public methods
@@ -231,7 +231,7 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
     'Branch
       (StrategyFor tags (variable `In` NamedBoundCtx))
       (StrategyFor tags (constant `In` NamedBoundCtx))
-  StrategyFor tags (UserVariableCompilationStep `In` ctx) =
+  StrategyFor tags (CompilationStep `In` ctx) =
     'Branch
       (StrategyFor tags (TensorVariable `In` ctx))
       (StrategyFor tags (LinearExpr TensorVariable RatTensor `In` ctx))
@@ -433,11 +433,12 @@ instance
   ( PrettyUsing restVar (TensorVariable `In` ctx),
     PrettyUsing restLinExp (LinearExpr TensorVariable RatTensor `In` ctx)
   ) =>
-  PrettyUsing ('Branch restVar restLinExp) (UserVariableCompilationStep `In` ctx)
+  PrettyUsing ('Branch restVar restLinExp) (CompilationStep `In` ctx)
   where
   prettyUsing (step, ctx) = case step of
-    SolveEquality var expr ->
+    SolveEquality var _childVars expr ->
       prettyUsing @restVar (toTensorVar var, ctx)
+        <+> "=="
         <+> prettyUsing @restLinExp (expr, ctx)
     SolveInequalities var bounds ->
       prettyUsing @restVar (toTensorVar var, ctx)
@@ -758,7 +759,7 @@ instance
   (PrettyUsing rest (a `In` ctx)) =>
   PrettyUsing ('Functor rest) (ConjunctAll a `In` ctx)
   where
-  prettyUsing (ConjunctAll cs, ctx) = "and" <> line <> indent 2 (vsep docs)
+  prettyUsing (ConjunctAll cs, ctx) = "and" <> lineIndent (vsep docs)
     where
       docs = NonEmpty.toList (fmap (prettyUsing @rest . (,ctx)) cs)
 
@@ -766,7 +767,7 @@ instance
   (PrettyUsing rest (a `In` ctx)) =>
   PrettyUsing ('Functor rest) (DisjunctAll a `In` ctx)
   where
-  prettyUsing (DisjunctAll cs, ctx) = "or" <> line <> indent 2 (vsep docs)
+  prettyUsing (DisjunctAll cs, ctx) = "or" <> lineIndent (vsep docs)
     where
       docs = NonEmpty.toList (fmap (prettyUsing @rest . (,ctx)) cs)
 

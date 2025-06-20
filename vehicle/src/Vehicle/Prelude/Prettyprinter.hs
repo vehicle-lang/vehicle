@@ -70,6 +70,9 @@ commaSep = concatWith (surround ", ")
 numberedList :: [Doc ann] -> Doc ann
 numberedList elems = vsep (zipWith (\i e -> pretty i <> "." <+> e) [(1 :: Int) ..] elems)
 
+lineIndent :: Doc ann -> Doc ann
+lineIndent x = line <> indent 2 x
+
 prettyFlatList :: [Doc ann] -> Doc ann
 prettyFlatList xs = "[" <+> commaSep xs <+> "]"
 

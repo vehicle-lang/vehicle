@@ -14,6 +14,7 @@
     ],
     "ignore": {
       "lines": ".*\"fileHash\".*"
-    }
+    },
+    "sizeOnly": ".vcl-plan"
   }
 ]

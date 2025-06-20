@@ -59,7 +59,7 @@ import Text.Printf (printf)
 
 instance IsTest TestSpec where
   run :: OptionSet -> TestSpec -> (Progress -> IO ()) -> IO Result
-  run options testSpec@(TestSpec {testSpecIgnore = Ignore {..}, ..}) _progress =
+  run options testSpec@(TestSpec {..}) _progress =
     if not $ isEnabled testSpec
       then return $ testSkip "disabled"
       else do
@@ -69,8 +69,8 @@ instance IsTest TestSpec where
           else do
             -- Create loose equality based on the ignore options
             let maybeLooseEq
-                  | ignoreLines == mempty = Nothing
-                  | otherwise = Just $ makeLooseEq (ignoreLines <> lookupOption options)
+                  | ignoreLines testSpecIgnore == mempty = Nothing
+                  | otherwise = Just $ makeLooseEq (ignoreLines testSpecIgnore <> lookupOption options)
             -- Create test environment
             runTestIO testSpecDirectory testSpecName $ do
               -- Copy needs to test environment
@@ -85,7 +85,7 @@ instance IsTest TestSpec where
                   -- Update .golden file for stdout
                   acceptStdout stdout
                   -- Update produced .golden files
-                  acceptTestProduced testSpecProduces (ignoreFiles <> lookupOption options)
+                  acceptTestProduced testSpecProduces (ignoreFiles testSpecIgnore <> lookupOption options)
                 else do
                   maybeError <- execWriterT $ do
                     -- Diff stderr
@@ -93,7 +93,7 @@ instance IsTest TestSpec where
                     -- Diff stdout
                     diffStdout maybeLooseEq stdout
                     -- Diff produced files
-                    diffTestProduced maybeLooseEq testSpecProduces (ignoreFiles <> lookupOption options) (lookupOption options)
+                    diffTestProduced maybeLooseEq testSpecProduces (ignoreFiles testSpecIgnore <> lookupOption options) (testSpecSizeOnly <> lookupOption options)
 
                   maybe (return ()) throw maybeError
 
@@ -210,7 +210,7 @@ runTestRun cmd = TestT $ do
 diffStdout :: Maybe (Text -> Text -> Bool) -> Lazy.Text -> DiffTestIO ()
 diffStdout maybeLooseEq actual = do
   golden <- lift readGoldenStdout
-  catch (lift $ lift $ diffText (shortCircuitWithEq maybeLooseEq) Nothing golden actual) $ \diff ->
+  catch (lift $ lift $ diffText (shortCircuitWithEq maybeLooseEq) golden actual) $ \diff ->
     tell $ Just $ stdoutDiffer diff
 
 -- | Update the standard output golden file.
@@ -244,7 +244,7 @@ writeGoldenStdout contents = TestT $ do
 diffStderr :: Maybe (Text -> Text -> Bool) -> Lazy.Text -> DiffTestIO ()
 diffStderr maybeLooseEq actual = do
   golden <- lift readGoldenStderr
-  catch (lift $ lift $ diffText (shortCircuitWithEq maybeLooseEq) Nothing golden actual) $ \diff ->
+  catch (lift $ lift $ diffText (shortCircuitWithEq maybeLooseEq) golden actual) $ \diff ->
     tell $ Just $ stderrDiffer diff
 
 -- | Update the standard error golden file.
@@ -289,15 +289,19 @@ diffTestProduced maybeLooseEq testProduces (IgnoreFiles testIgnores) sizeOnlyExt
     unless ("golden" `isExtensionOf` goldenFile) $
       fail $
         printf "found golden file without .golden extension: %s" goldenFile
+
   -- Compute sets of files:
   let goldenFileSet = Set.fromList (mapMaybe (stripExtension "golden") goldenFiles)
   let actualFileSet = Set.fromList actualFiles
+
   -- Test for files which were expected but not produced:
   let expectedFilesNotProduced = Set.toAscList $ Set.difference goldenFileSet actualFileSet
   for_ expectedFilesNotProduced $ tell . Just . expectedFileNotProduced
+
   -- Test for files which were produced but not expected:
   let producedFilesNotExpected = Set.toAscList $ Set.difference actualFileSet goldenFileSet
   for_ producedFilesNotExpected $ tell . Just . producedFileNotExpected
+
   -- Diff the files which were produced and expected:
   for_ (Set.toAscList $ Set.intersection goldenFileSet actualFileSet) $ \file -> do
     let goldenFile = testDirectory </> file <.> "golden"
@@ -509,21 +513,24 @@ diffFile eq sizeOnlyExtensions golden actual = do
     goldenContents <- LazyIO.hGetContents goldenHandle
     withFile actual ReadMode $ \actualHandle -> do
       actualSize <- hFileSize actualHandle
-      let sizeDiff = makeSizeOnlyDiff goldenSize actualSize
+
       let sizeOnly = Set.member (takeExtension actual) sizeOnlyExtensions
-      let maybeSizeDiff = if sizeOnly then Just sizeDiff else Nothing
-      actualContents <- LazyIO.hGetContents actualHandle
-      if max goldenSize actualSize < fileSizeCutOffBytes
-        then diffText eq maybeSizeDiff goldenContents actualContents
-        else
-          when (goldenContents /= actualContents) $
-            throw (NoDiff ("file too big to diff but contents not equal. " <> sizeDiff))
+      if sizeOnly
+        then unless (goldenSize == actualSize) $ do
+          throw $ Diff $ makeSizeOnlyDiff goldenSize actualSize
+        else do
+          actualContents <- LazyIO.hGetContents actualHandle
+          if max goldenSize actualSize <= fileSizeCutOffBytes
+            then diffText eq goldenContents actualContents
+            else
+              when (goldenContents /= actualContents) $
+                throw (NoDiff ("file too big to diff but contents not equal. \n" <> makeSizeOnlyDiff goldenSize actualSize))
 
 -- | Compare two texts.
 --
 -- NOTE: The loose equality must extend equality.
-diffText :: (Text -> Text -> Bool) -> Maybe String -> Lazy.Text -> Lazy.Text -> IO ()
-diffText eq maybeSizeDiff golden actual = do
+diffText :: (Text -> Text -> Bool) -> Lazy.Text -> Lazy.Text -> IO ()
+diffText eq golden actual = do
   -- Lazily split the golden and actual texts into lines
   let goldenLines = Lazy.toStrict <$> Lazy.lines golden
   let actualLines = Lazy.toStrict <$> Lazy.lines actual
@@ -532,9 +539,9 @@ diffText eq maybeSizeDiff golden actual = do
   -- If both files are the same, the diff should be just "Both":
   unless (all isBoth groupedDiff) $
     throw $
-      Diff $ case maybeSizeDiff of
-        Nothing -> ppDiff $ mapDiff (Text.unpack <$>) <$> groupedDiff
-        Just sizeDiff -> sizeDiff
+      Diff $
+        ppDiff $
+          mapDiff (Text.unpack <$>) <$> groupedDiff
   return ()
 
 -- | Make a loose equality which ignores text matching the provided text patterns.

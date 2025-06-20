@@ -17,7 +17,7 @@ import Vehicle.Prelude
 
 -- | Closures for weak-head normal-form.
 data Closure builtin = Closure (BoundEnv builtin) (Expr builtin)
-  deriving (Eq, Show, Generic)
+  deriving (Show, Generic)
 
 -----------------------------------------------------------------------------
 -- Normalised expressions
@@ -32,7 +32,7 @@ data Value builtin
   | VBuiltin !builtin !(Spine builtin)
   | VLam !(VBinder builtin) !(Closure builtin)
   | VPi !(VBinder builtin) !(Closure builtin)
-  deriving (Eq, Show, Generic)
+  deriving (Show, Generic)
 
 type VType builtin = Value builtin
 

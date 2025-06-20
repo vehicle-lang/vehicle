@@ -7,7 +7,6 @@ module Vehicle.Backend.Queries.Unblock
 where
 
 import Control.Monad (when)
-import Vehicle.Backend.Queries.UserVariableElimination.Core
 import Vehicle.Compile.Context.Free (MonadFreeContext, getFreeEnv)
 import Vehicle.Compile.Context.Name (MonadNameContext, getNameContext)
 import Vehicle.Compile.Error
@@ -31,7 +30,7 @@ type MonadPurify m = MonadUnblock m
 
 data UnblockingActions m = UnblockingActions
   { unblockRatTensorBoundVar :: Lv -> m (Value Builtin),
-    unblockNetworkApp :: NetworkApplication -> m (Value Builtin)
+    unblockNetworkApp :: Name -> NetworkAppArgs (Value Builtin) -> m (Value Builtin)
   }
 
 -- | Lifts all `if`s in the provided expression `e` to the top-level, while
@@ -172,7 +171,7 @@ unblockRatTensorValue actions@UnblockingActions {..} lv expr = do
     VRatTensorVar v
       | lv == VarLevel -> return expr
       | otherwise -> unblockRatTensorBoundVar v
-    VNetworkApp n args -> unblock lv =<< unblockNetworkApp (nameOf n, args)
+    VNetworkApp n args -> unblock lv =<< unblockNetworkApp (nameOf n) args
     VRatConstTensor args -> unblockConstTensor args
     VRatStackTensor args -> unblockStackTensor (unblock NonVarLevel) args
     VRatAt args -> unblockAtTensor (unblock NonVarLevel) args

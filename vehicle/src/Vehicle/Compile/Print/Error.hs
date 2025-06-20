@@ -848,12 +848,12 @@ instance MeaningfulError CompileError where
                 <+> "whether or not it should be lifted to the type-level.",
             fix = Just "either remove the declaration, or add a type signature or use it in a property."
           }
-    UnsupportedMultipleNetworkApplications queryFormat (_, p) apps ->
+    UnsupportedMultipleNetworkApplications queryFormat (_, p) ctx apps ->
       UError $
         UserError
           { provenance = p,
-            problem = multipleNetworkErrorMessages (pretty queryFormat) (fmap fst apps),
-            fix = Just "this is on our road map to fix, but please open an issue on the Issue tracker with your use-case."
+            problem = multipleNetworkErrorMessages (pretty queryFormat) ctx apps,
+            fix = Just "this is on our road map to fix with VNNLib 2.0, but please open an issue on the Issue tracker with your use-case."
           }
 
 datasetDimensionsFix :: Doc a -> Identifier -> FilePath -> Doc a
@@ -940,7 +940,7 @@ prettyPolarityProvenance topQuantifierProv topQuantifier bottomQuantifierProvena
 
 prettyLinearityProvenance :: forall a. LinearityProof -> Doc a -> Doc a
 prettyLinearityProvenance lp location =
-  line <> indent 2 (numberedList $ reverse (finalLine : go lp)) <> line
+  lineIndent (numberedList $ reverse (finalLine : go lp)) <> line
   where
     go :: LinearityProof -> [Doc a]
     go = \case
@@ -986,18 +986,14 @@ supportedNetworkTypeDescription =
     <> line
     <> "where 'a_i' and 'b_i' are all constants at compile time."
 
-multipleNetworkErrorMessages :: Doc a -> [Name] -> Doc a
-multipleNetworkErrorMessages verifier networkNames = do
-  let duplicateNetworkNames = findDuplicates networkNames
+multipleNetworkErrorMessages :: Doc a -> CompleteNamedBoundCtx -> [(Name, Value Builtin)] -> Doc a
+multipleNetworkErrorMessages verifier ctx networkNames = do
+  let prettyApp (n, v) = pretty n <+> prettyFriendly (WithContext v ctx)
   "The"
     <+> verifier
     <+> "currently doesn't support properties that involve"
-    <+> if null duplicateNetworkNames
-      then
-        "multiple networks. This property involves:"
-          <> line
-          <> indent 2 (vsep $ fmap (\n -> "the network" <+> squotes (pretty n)) networkNames)
-      else
-        "multiple applications of the same network. This property applies:"
-          <> line
-          <> indent 2 (vsep $ fmap (\(n, v) -> "the network" <+> squotes (pretty n) <+> pretty v <+> "times") duplicateNetworkNames)
+    <+> "multiple network applications."
+    <> line
+    <> "This property involves the following network applications:"
+    <> line
+    <> indent 2 (vsep $ fmap prettyApp networkNames)

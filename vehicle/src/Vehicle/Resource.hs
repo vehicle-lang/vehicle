@@ -55,6 +55,17 @@ data Resources = Resources
     parameters :: ParameterValues
   }
 
+instance Pretty Resources where
+  pretty Resources {..} =
+    vsep
+      ( [ "specification:" <+> pretty specification,
+          "networks" <> lineIndent (prettyMap networks),
+          "datasets" <> lineIndent (prettyMap datasets),
+          "parameters" <> lineIndent (prettyMap datasets)
+        ] ::
+          [Doc ann]
+      )
+
 --------------------------------------------------------------------------------
 -- Resource summaries
 

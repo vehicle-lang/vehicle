@@ -3,9 +3,11 @@ module Vehicle.Data.Code.LinearExpr where
 import Control.DeepSeq (NFData)
 import Control.Monad (foldM)
 import Data.Aeson (FromJSON, FromJSONKey, ToJSON, ToJSONKey)
+import Data.Hashable (Hashable)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
+import Data.Set (Set)
 import GHC.Generics (Generic)
 import Vehicle.Data.DeBruijn (Lv)
 import Vehicle.Data.Tensor (HasShape, RatTensor, allTensor, mapTensor, zipWithTensor, pattern ZeroDimTensor)
@@ -60,6 +62,8 @@ instance (NFData variable, NFData constant) => NFData (LinearExpr variable const
 instance (ToJSONKey variable, ToJSON constant) => ToJSON (LinearExpr variable constant)
 
 instance (Ord variable, FromJSONKey variable, FromJSON constant) => FromJSON (LinearExpr variable constant)
+
+instance (Hashable variable, Hashable constant) => Hashable (LinearExpr variable constant)
 
 instance (HasShape constant) => HasShape (LinearExpr variable constant) where
   shapeOf = shapeOf . constantValue
@@ -120,9 +124,6 @@ scaleExpr c (Sparse coefficients constant) =
 lookupCoefficient :: (VariableLike variable) => LinearExpr variable constant -> variable -> Coefficient
 lookupCoefficient (Sparse coefficients _) v = fromMaybe 0 $ Map.lookup v coefficients
 
-referencesVariable :: (VariableLike variable) => LinearExpr variable constant -> variable -> Bool
-referencesVariable (Sparse coefficients _) v = v `Map.member` coefficients
-
 isConstant :: LinearExpr variable constant -> Maybe constant
 isConstant (Sparse coeff constant)
   | Map.null coeff = Just constant
@@ -180,6 +181,9 @@ rearrangeExprToSolveFor var expr = do
           }
         )
 
+linearExprVariables :: (VariableLike variable) => LinearExpr variable constant -> Set variable
+linearExprVariables linearExpr = Map.keysSet $ coefficients linearExpr
+
 prettyLinearExpr ::
   forall variable constant a.
   (ConstantLike constant) =>
@@ -198,8 +202,8 @@ prettyLinearExpr prettyVar prettyConst = linearExprToExpr prettyConstant prettyV
     prettyVarCoeff :: Bool -> (variable, Coefficient) -> Doc a
     prettyVarCoeff isFirst (variable, coefficient) = do
       let sign
-            | coefficient > 0 = if isFirst then "" else "+ "
-            | otherwise = if isFirst then "-" else "- "
+            | coefficient > 0 = if isFirst then "" else " + "
+            | otherwise = if isFirst then "-" else " - "
 
       let value
             | coefficient == 1 = prettyVar variable
@@ -208,3 +212,14 @@ prettyLinearExpr prettyVar prettyConst = linearExprToExpr prettyConstant prettyV
             | otherwise = pretty (-coefficient) <> prettyVar variable
 
       sign <> value
+
+-------------------------------------------------------------------------------
+-- Has variables
+
+class HasVariables expr var | expr -> var where
+  variablesOf :: expr -> Set var
+  containsVariable :: expr -> var -> Bool
+
+instance (Ord var) => HasVariables (LinearExpr var constant) var where
+  variablesOf (Sparse coefficients _) = Map.keysSet coefficients
+  containsVariable (Sparse coefficients _) v = v `Map.member` coefficients

@@ -14,7 +14,7 @@ module Vehicle.Verify.Specification
     specificationPropertyNames,
     SpecificationCacheIndex (..),
     PropertyVerificationPlan (..),
-    UserVariableCompilationStep (..),
+    CompilationStep (SolveEquality, SolveInequalities, ReconstructTensorVariable),
     VariableCompilationTrace (..),
     VariableStore (..),
     getQueryVariables,
@@ -29,6 +29,7 @@ import Data.Aeson (FromJSON, ToJSON)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Set (Set)
+import Data.Vector qualified as Vector
 import GHC.Generics (Generic)
 import Vehicle.Compile.Prelude (CompleteNamedBoundCtx, Name)
 import Vehicle.Data.Assertion
@@ -45,17 +46,40 @@ import Vehicle.Verify.QueryFormat.Core
 
 -- | One step in the process for transforming unreduced user variables into
 -- reduced network input and output variables.
-data UserVariableCompilationStep
-  = SolveEquality UserVariable (LinearExpr TensorVariable RatTensor)
+data CompilationStep
+  = SolveEquality TensorVariable [TensorVariable] (LinearExpr TensorVariable RatTensor)
   | SolveInequalities UserVariable (Bounds TensorVariable RatTensor)
-  | ReconstructTensorVariable TensorVariable (Tensor TensorVariable)
+  | InternalReconstructTensorVariable TensorVariable TensorVariableElements
   deriving (Eq, Ord, Show, Generic)
 
-instance NFData UserVariableCompilationStep
+instance NFData CompilationStep
 
-instance ToJSON UserVariableCompilationStep
+instance ToJSON CompilationStep
 
-instance FromJSON UserVariableCompilationStep
+instance FromJSON CompilationStep
+
+-- | Variables for tensor elements are guaranteed to be consecutative so we
+-- merely store the first and last variable (inclusive). This is hidden from
+-- outside the module by a pattern.
+type TensorVariableElements = Maybe (TensorShape, TensorVariable, TensorVariable)
+
+toTensorVariableElements :: Tensor TensorVariable -> TensorVariableElements
+toTensorVariableElements variables = do
+  let shape = shapeOf variables
+  let vec = toVector variables
+  if null vec then Nothing else Just (shape, Vector.head vec, Vector.last vec)
+
+fromTensorVariableElements :: TensorVariableElements -> Tensor TensorVariable
+fromTensorVariableElements = \case
+  Nothing -> fromVector [] mempty
+  Just (shape, firstVar, lastVar) -> fromVector shape [firstVar .. lastVar]
+
+pattern ReconstructTensorVariable :: TensorVariable -> Tensor TensorVariable -> CompilationStep
+pattern ReconstructTensorVariable var elems <- InternalReconstructTensorVariable var (fromTensorVariableElements -> elems)
+  where
+    ReconstructTensorVariable var elems = InternalReconstructTensorVariable var (toTensorVariableElements elems)
+
+{-# COMPLETE SolveEquality, SolveInequalities, ReconstructTensorVariable #-}
 
 -- | The steps for transforming unreduced user variables into reduced network
 -- input and output varibles.
@@ -64,7 +88,7 @@ instance FromJSON UserVariableCompilationStep
 -- verifier.
 -- The steps are stored in the same order they occured during compilation.
 newtype VariableCompilationTrace = Reconstruction
-  { reconstructionSteps :: [UserVariableCompilationStep]
+  { reconstructionSteps :: [CompilationStep]
   }
   deriving (Generic)
 

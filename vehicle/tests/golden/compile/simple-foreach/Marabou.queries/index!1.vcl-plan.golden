@@ -27,39 +27,29 @@
               "variableCompilationTrace": {
                 "reconstructionSteps": [
                   {
-                    "tag": "ReconstructTensorVariable",
+                    "tag": "InternalReconstructTensorVariable",
                     "contents": [
                       0,
-                      {
-                        "tag": "DenseTensor",
-                        "contents": [
-                          [
-                            2
-                          ],
-                          [
-                            1,
-                            2
-                          ]
-                        ]
-                      }
+                      [
+                        [
+                          2
+                        ],
+                        1,
+                        2
+                      ]
                     ]
                   },
                   {
-                    "tag": "ReconstructTensorVariable",
+                    "tag": "InternalReconstructTensorVariable",
                     "contents": [
                       3,
-                      {
-                        "tag": "DenseTensor",
-                        "contents": [
-                          [
-                            2
-                          ],
-                          [
-                            4,
-                            5
-                          ]
-                        ]
-                      }
+                      [
+                        [
+                          2
+                        ],
+                        4,
+                        5
+                      ]
                     ]
                   }
                 ]

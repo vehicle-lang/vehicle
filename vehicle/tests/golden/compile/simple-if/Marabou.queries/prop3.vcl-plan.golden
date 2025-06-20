@@ -9,6 +9,10 @@
             {
               "variableStore": {
                 "vehicleVariableCtx": [
+                  "f₁[output]!0",
+                  "f₁[output]",
+                  "f₁[input]!0",
+                  "f₁[input]",
                   "f₀[output]!0",
                   "f₀[output]",
                   "f₀[input]!0",
@@ -26,31 +30,91 @@
               "variableCompilationTrace": {
                 "reconstructionSteps": [
                   {
-                    "tag": "ReconstructTensorVariable",
+                    "tag": "InternalReconstructTensorVariable",
                     "contents": [
                       1,
+                      [
+                        [
+                          1
+                        ],
+                        2,
+                        2
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "InternalReconstructTensorVariable",
+                    "contents": [
+                      3,
+                      [
+                        [
+                          1
+                        ],
+                        4,
+                        4
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      7,
+                      [
+                        8
+                      ],
                       {
-                        "tag": "ConstantTensor",
-                        "contents": [
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [
+                              1
+                            ],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
                           [
-                            1
-                          ],
-                          2
+                            3,
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
                         ]
                       }
                     ]
                   },
                   {
-                    "tag": "ReconstructTensorVariable",
+                    "tag": "SolveEquality",
                     "contents": [
-                      3,
+                      5,
+                      [
+                        6
+                      ],
                       {
-                        "tag": "ConstantTensor",
-                        "contents": [
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [
+                              1
+                            ],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
                           [
-                            1
-                          ],
-                          4
+                            1,
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
                         ]
                       }
                     ]
@@ -59,6 +123,7 @@
                     "tag": "SolveEquality",
                     "contents": [
                       0,
+                      [],
                       {
                         "constantValue": {
                           "tag": "ConstantTensor",
@@ -118,6 +183,10 @@
             {
               "variableStore": {
                 "vehicleVariableCtx": [
+                  "f₁[output]!0",
+                  "f₁[output]",
+                  "f₁[input]!0",
+                  "f₁[input]",
                   "f₀[output]!0",
                   "f₀[output]",
                   "f₀[input]!0",
@@ -135,31 +204,91 @@
               "variableCompilationTrace": {
                 "reconstructionSteps": [
                   {
-                    "tag": "ReconstructTensorVariable",
+                    "tag": "InternalReconstructTensorVariable",
                     "contents": [
                       1,
+                      [
+                        [
+                          1
+                        ],
+                        2,
+                        2
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "InternalReconstructTensorVariable",
+                    "contents": [
+                      3,
+                      [
+                        [
+                          1
+                        ],
+                        4,
+                        4
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      7,
+                      [
+                        8
+                      ],
                       {
-                        "tag": "ConstantTensor",
-                        "contents": [
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [
+                              1
+                            ],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
                           [
-                            1
-                          ],
-                          2
+                            3,
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
                         ]
                       }
                     ]
                   },
                   {
-                    "tag": "ReconstructTensorVariable",
+                    "tag": "SolveEquality",
                     "contents": [
-                      3,
+                      5,
+                      [
+                        6
+                      ],
                       {
-                        "tag": "ConstantTensor",
-                        "contents": [
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [
+                              1
+                            ],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
                           [
-                            1
-                          ],
-                          4
+                            1,
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
                         ]
                       }
                     ]
@@ -168,6 +297,7 @@
                     "tag": "SolveEquality",
                     "contents": [
                       0,
+                      [],
                       {
                         "constantValue": {
                           "tag": "ConstantTensor",

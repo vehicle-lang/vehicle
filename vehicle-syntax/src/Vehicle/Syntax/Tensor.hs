@@ -25,6 +25,7 @@ module Vehicle.Syntax.Tensor
     toList,
     toVector,
     fromVector,
+    isTensorOfAll,
   )
 where
 
@@ -192,6 +193,11 @@ prettyTensor :: (a -> Doc b) -> Tensor a -> Doc b
 prettyTensor prettyElement = do
   let prettyRow _dims bs = "[" <+> concatWith (surround ", ") bs <+> "]"
   foldMapTensor prettyElement prettyRow
+
+isTensorOfAll :: (Eq a) => Tensor a -> a -> Bool
+isTensorOfAll t x = case t of
+  DenseTensor {} -> False
+  ConstantTensor _ v -> v == x
 
 instance (Pretty a) => Pretty (Tensor a) where
   pretty = prettyTensor pretty

@@ -1,7 +1,7 @@
 module Vehicle.Backend.Queries.UserVariableElimination
   ( eliminateUserVariables,
     VariableCompilationTrace,
-    UserVariableCompilationStep (..),
+    CompilationStep (..),
   )
 where
 
@@ -12,7 +12,6 @@ import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), asks)
 import Control.Monad.State (MonadState (..), StateT (..), gets)
 import Control.Monad.Writer (MonadWriter (..), WriterT (..))
-import Data.LinkedHashMap qualified as LinkedHashMap
 import Data.Map qualified as Map
 import Vehicle.Backend.Queries.PostProcessing (compilePartitionsToQueries)
 import Vehicle.Backend.Queries.Unblock (UnblockingActions (..))
@@ -130,8 +129,10 @@ compileQuerySetPartitions globalCtx isPropertyNegated maybePartitions = case may
   Trivial b -> return $ Trivial (b `xor` isPropertyNegated)
   NonTrivial partitions -> do
     propertyMetaData <- ask
-    queries <- compilePartitionsToQueries globalCtx propertyMetaData partitions
-    return $ NonTrivial $ Query $ QuerySet isPropertyNegated queries
+    maybeQueries <- compilePartitionsToQueries globalCtx propertyMetaData partitions
+    case maybeQueries of
+      Trivial b -> return $ Trivial b
+      NonTrivial queries -> return $ NonTrivial $ Query $ QuerySet isPropertyNegated queries
 
 -- | Attempts to compile an arbitrary expression of type `Bool` down to a tree
 -- of assertions implicitly existentially quantified by a set of network
@@ -252,39 +253,36 @@ unblockQuantifiedBoundVar ::
   Lv ->
   m (Value Builtin)
 unblockQuantifiedBoundVar lv = do
-  maybeChildExpr <- gets $ lookupChildVariablesExpr (TensorVariable lv)
+  maybeChildExpr <- gets $ flip lookupChildVariablesExpr (TensorVariable lv)
   case maybeChildExpr of
     Just expr -> return expr
     Nothing -> return $ VBoundVar lv []
 
 unblockNetworkApplication ::
   (MonadQuantifierBody m) =>
-  NetworkApplication ->
+  Name ->
+  NetworkAppArgs (Value Builtin) ->
   m (Value Builtin)
-unblockNetworkApplication networkApp@(networkName, NetworkAppArgs arg) = do
+unblockNetworkApplication name (NetworkAppArgs arg) = do
   nameCtx <- getNameContext
-  let doc = "unblock-network-app" <+> pretty networkName <+> prettyFriendly (WithContext arg nameCtx)
+  let doc = "unblock-network-app" <+> pretty name <+> prettyFriendly (WithContext arg nameCtx)
   logCompilerSection MaxDetail doc $ do
     globalCtx <- get
-    case LinkedHashMap.lookup networkApp (networkApplications globalCtx) of
-      Just existingAppInfo ->
-        return $ variableValue (outputVariable existingAppInfo)
-      Nothing -> do
-        networkContext <- asks networkCtx
-        networkInfo <- case Map.lookup networkName networkContext of
-          Nothing -> compilerDeveloperError $ "Expecting" <+> quotePretty networkName <+> "to be a @network"
-          Just info -> return info
+    networkContext <- asks networkCtx
+    networkInfo <- case Map.lookup name networkContext of
+      Nothing -> compilerDeveloperError $ "Expecting" <+> quotePretty name <+> "to be a @network"
+      Just info -> return info
 
-        (inputVarExpr, outputVarExpr, newGlobalCtx) <- addNetworkApplicationToGlobalCtx networkApp networkInfo globalCtx
-        let inputDims = dimensions (inputTensor (networkType networkInfo))
-        let inputDimsExpr = implicitIrrelevant $ mkDims inputDims
-        let inputEquality = fromBoolValue $ VCompareRatTensorReduced (Eq, TensorOp2Args inputDimsExpr inputVarExpr arg)
-        put newGlobalCtx
-        newNameCtx <- getNameContext
-        logDebug MaxDetail $ "note-input-equality" <+> prettyFriendly (WithContext inputEquality newNameCtx)
-        tell [inputEquality]
-        logDebug MaxDetail $ "new-expr" <+> prettyFriendly (WithContext outputVarExpr newNameCtx)
-        return outputVarExpr
+    (inputVarExpr, outputVarExpr, newGlobalCtx) <- addNetworkApplicationToGlobalCtx name networkInfo globalCtx arg
+    let inputDims = dimensions (inputTensor (networkType networkInfo))
+    let inputDimsExpr = implicitIrrelevant $ mkDims inputDims
+    let inputEquality = fromBoolValue $ VCompareRatTensorReduced (Eq, TensorOp2Args inputDimsExpr inputVarExpr arg)
+    put newGlobalCtx
+    newNameCtx <- getNameContext
+    logDebug MaxDetail $ "note-input-equality" <+> prettyFriendly (WithContext inputEquality newNameCtx)
+    tell [inputEquality]
+    logDebug MaxDetail $ "new-expr" <+> prettyFriendly (WithContext outputVarExpr newNameCtx)
+    return outputVarExpr
 
 --------------------------------------------------------------------------------
 -- Elimination operations
@@ -368,7 +366,7 @@ networkEqualitiesToPartition ::
 networkEqualitiesToPartition networkEqualities = do
   logDebugM MaxDetail $ do
     networkEqDocs <- traverse prettyFriendlyInCtx networkEqualities
-    return $ line <> "Network equalities generated:" <> line <> indent 2 (vsep networkEqDocs) <> line
+    return $ line <> "Network equalities generated:" <> lineIndent (vsep networkEqDocs) <> line
 
   results <- forM networkEqualities $ \equality -> do
     (partitions, newNetworkEqualities) <- runWriterT (compileBoolExpr equality)

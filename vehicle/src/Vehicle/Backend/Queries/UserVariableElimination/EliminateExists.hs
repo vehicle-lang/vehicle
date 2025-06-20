@@ -7,8 +7,6 @@ import Control.Monad.Reader (MonadReader (..))
 import Control.Monad.State (MonadState (..), gets)
 import Data.Coerce (coerce)
 import Data.Foldable (foldlM)
-import Data.Map (Map)
-import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
 import Vehicle.Backend.Queries.ConstraintSearch
 import Vehicle.Backend.Queries.UserVariableElimination.Core
@@ -18,7 +16,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Data.Assertion
 import Vehicle.Data.Code.BooleanExpr
-import Vehicle.Data.Code.LinearExpr (LinearExpr, VariableLike (..), rearrangeExprToSolveFor, referencesVariable)
+import Vehicle.Data.Code.LinearExpr (HasVariables (containsVariable), VariableLike (..))
 import Vehicle.Data.QuantifiedVariable
 import Vehicle.Data.Tensor as Tensor (RatTensor, toList)
 import Vehicle.Prelude.Warning (CompileWarning (..))
@@ -59,14 +57,14 @@ solvePartition userVar partition@(_, tree) = do
     let userVarName = lookupLvInBoundCtx (toLv userVar) ctx
     let treeDoc = prettyFriendly (WithContext tree ctx)
     return $
-      "Solving for" <+> quotePretty userVarName <+> "in:" <> line <> indent 2 treeDoc <> line
+      "Solving for" <+> quotePretty userVarName <+> "in:" <> lineIndent treeDoc <> line
 
   constraints <- findConstraints (constraintReferencesVariable userVar) tree
   traverse (solveVariableViaConstraints partition userVar) constraints
 
 constraintReferencesVariable :: UserVariable -> ConstraintSearchCriteria
 constraintReferencesVariable var assertion@NormalisedRelation {..}
-  | linearExpr `referencesVariable` toTensorVar var = case splitRelation assertion of
+  | linearExpr `containsVariable` toTensorVar var = case splitRelation assertion of
       Right equality -> (SingleEquality equality, Trivial True)
       Left inequality -> (Inequalities [inequality], Trivial True)
   | otherwise = (Inequalities [], NonTrivial $ Query assertion)
@@ -78,38 +76,34 @@ solveVariableViaConstraints ::
   ConstrainedAssertionTree ->
   m (MaybeTrivial (Partitions TensorVariable))
 solveVariableViaConstraints (compilationTrace, originalTree) userVar (varConstraints, remainingTree) = do
-  maybeChildVariables <- gets (lookupChildVariables userVar)
   case varConstraints of
     SingleEquality equality ->
-      solveVariableViaEquality compilationTrace userVar maybeChildVariables equality remainingTree
-    Inequalities ineqs -> case maybeChildVariables of
-      Just childVariables -> solveVariableByReducing compilationTrace userVar (coerce childVariables) originalTree
-      Nothing -> solveVariableViaInequalities compilationTrace userVar ineqs remainingTree
+      solveVariableViaEquality compilationTrace userVar equality remainingTree
+    Inequalities ineqs -> do
+      maybeChildVariables <- gets (`lookupChildVariables` userVar)
+      case maybeChildVariables of
+        Just childVariables -> solveVariableByReducing compilationTrace userVar (coerce childVariables) originalTree
+        Nothing -> solveVariableViaInequalities compilationTrace userVar ineqs remainingTree
 
 solveVariableViaEquality ::
   (MonadSolveExists m) =>
-  [UserVariableCompilationStep] ->
+  [CompilationStep] ->
   UserVariable ->
-  Maybe (Tensor TensorVariable) ->
   Equality TensorVariable RatTensor ->
   MaybeTrivial (AssertionTree TensorVariable) ->
   m (MaybeTrivial (Partitions TensorVariable))
-solveVariableViaEquality compilationTrace userVar maybeChildVars equality remainingTree = do
-  let (_, rearrangedExpr) = rearrangeExprToSolveFor (toTensorVar userVar) (linearExpr equality)
-  let varEquality = (toTensorVar userVar, rearrangedExpr)
-  let childVars = maybe [] Tensor.toList maybeChildVars
+solveVariableViaEquality compilationTrace userVar equality remainingTree = do
   globalCtx <- get
-  let childEqualities = zip childVars $ reduceTensorExpr globalCtx rearrangedExpr
-  let solutionMap = Map.fromList $ varEquality : childEqualities
+  (solutionMap, compilationStep) <- createSubstitutionForVariable globalCtx (coerce userVar) equality
   let updatedTree = solutionMap `substituteThrough` remainingTree
-  let newCompilationTrace = SolveEquality userVar rearrangedExpr : compilationTrace
+  let newCompilationTrace = compilationStep : compilationTrace
   -- Update tree
-  logEqualitySolved userVar rearrangedExpr updatedTree
+  logEqualitySolved userVar compilationStep updatedTree
   return $ mkSingletonPartitions (newCompilationTrace, updatedTree)
 
 solveVariableByReducing ::
   (MonadSolveExists m) =>
-  [UserVariableCompilationStep] ->
+  [CompilationStep] ->
   UserVariable ->
   Tensor UserVariable ->
   AssertionTree TensorVariable ->
@@ -125,7 +119,7 @@ solveVariableByReducing compilationTrace userVar userElementVars originalTree = 
 
 solveVariableViaInequalities ::
   (MonadSolveExists m) =>
-  [UserVariableCompilationStep] ->
+  [CompilationStep] ->
   UserVariable ->
   [Inequality TensorVariable RatTensor] ->
   MaybeTrivial (AssertionTree TensorVariable) ->
@@ -140,7 +134,7 @@ solveVariableViaInequalities compilationTrace userVar ineqs remainingTree = do
   return $ mkSingletonPartitions (newCompilationTrace, updatedTree)
 
 substituteThrough ::
-  Map TensorVariable (LinearExpr TensorVariable RatTensor) ->
+  LinearSubstitution TensorVariable ->
   MaybeTrivial (AssertionTree TensorVariable) ->
   MaybeTrivial (AssertionTree TensorVariable)
 substituteThrough f =
@@ -152,17 +146,17 @@ substituteThrough f =
 logEqualitySolved ::
   (MonadSolveExists m) =>
   UserVariable ->
-  LinearExpr TensorVariable RatTensor ->
+  CompilationStep ->
   MaybeTrivial (AssertionTree TensorVariable) ->
   m ()
-logEqualitySolved var rearrangedEq updatedTree =
+logEqualitySolved var compilationStep updatedTree =
   logDebugM MaxDetail $ do
     ctx <- getNameContext
     let varName = lookupLvInBoundCtx (toLv var) ctx
     return $
       "Eliminating" <+> quotePretty varName <+> "using"
         <> line
-        <> indent 2 (pretty varName <+> "=" <+> prettyFriendly (WithContext rearrangedEq ctx))
+        <> indent 2 (prettyFriendly (WithContext compilationStep ctx))
         <> line
         <> "to get:"
         <> line
@@ -171,7 +165,7 @@ logEqualitySolved var rearrangedEq updatedTree =
 logInequalitiesSolved ::
   (MonadSolveExists m) =>
   UserVariable ->
-  UserVariableCompilationStep ->
+  CompilationStep ->
   MaybeTrivial (AssertionTree TensorVariable) ->
   m ()
 logInequalitiesSolved var step remainingTree = do

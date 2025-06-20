@@ -5,5 +5,6 @@
     "spec.vcl",
     "fake.onnx"
   ],
-  "produces": ["Marabou.queries/*.txt", "Marabou.queries/p.vcl-plan"]
+  "produces": ["Marabou.queries/*.txt", "Marabou.queries/p.vcl-plan"],
+  "sizeOnly": ".vcl-plan"
 }

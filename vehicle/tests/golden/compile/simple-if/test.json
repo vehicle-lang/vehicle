@@ -16,7 +16,8 @@
     ],
     "ignore": {
       "lines": ".*\"fileHash\".*"
-    }
+    },
+    "sizeOnly": ".vcl-plan"
   },
   {
     "name": "Agda",

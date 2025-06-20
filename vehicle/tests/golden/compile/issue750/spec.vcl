@@ -2,5 +2,16 @@
 f : Tensor Real [1] -> Tensor Real [1]
 
 @property
-p : Bool
-p = exists x y . f x ! 0 <= f y ! 0 and x == y and 0 <= x ! 0 <= 1 and 0 <= y ! 0 <= 1
+trivial : Bool
+trivial = exists x . f x <= f x
+
+@property
+trivialSemantic1 : Bool
+trivialSemantic1 = exists x y . f x <= f y and x == y
+
+@network
+g : Real -> Real
+
+@property
+trivialSemantic2 : Bool
+trivialSemantic2 = exists x . g (x + 2) >= g (2 + x)

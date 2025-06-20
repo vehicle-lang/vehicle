@@ -26,39 +26,36 @@
               "variableCompilationTrace": {
                 "reconstructionSteps": [
                   {
-                    "tag": "ReconstructTensorVariable",
+                    "tag": "InternalReconstructTensorVariable",
                     "contents": [
                       1,
-                      {
-                        "tag": "ConstantTensor",
-                        "contents": [
-                          [
-                            1
-                          ],
-                          2
-                        ]
-                      }
+                      [
+                        [
+                          1
+                        ],
+                        2,
+                        2
+                      ]
                     ]
                   },
                   {
-                    "tag": "ReconstructTensorVariable",
+                    "tag": "InternalReconstructTensorVariable",
                     "contents": [
                       3,
-                      {
-                        "tag": "ConstantTensor",
-                        "contents": [
-                          [
-                            1
-                          ],
-                          4
-                        ]
-                      }
+                      [
+                        [
+                          1
+                        ],
+                        4,
+                        4
+                      ]
                     ]
                   },
                   {
                     "tag": "SolveEquality",
                     "contents": [
                       0,
+                      [],
                       {
                         "constantValue": {
                           "tag": "ConstantTensor",
@@ -135,33 +132,29 @@
               "variableCompilationTrace": {
                 "reconstructionSteps": [
                   {
-                    "tag": "ReconstructTensorVariable",
+                    "tag": "InternalReconstructTensorVariable",
                     "contents": [
                       1,
-                      {
-                        "tag": "ConstantTensor",
-                        "contents": [
-                          [
-                            1
-                          ],
-                          2
-                        ]
-                      }
+                      [
+                        [
+                          1
+                        ],
+                        2,
+                        2
+                      ]
                     ]
                   },
                   {
-                    "tag": "ReconstructTensorVariable",
+                    "tag": "InternalReconstructTensorVariable",
                     "contents": [
                       3,
-                      {
-                        "tag": "ConstantTensor",
-                        "contents": [
-                          [
-                            1
-                          ],
-                          4
-                        ]
-                      }
+                      [
+                        [
+                          1
+                        ],
+                        4,
+                        4
+                      ]
                     ]
                   },
                   {

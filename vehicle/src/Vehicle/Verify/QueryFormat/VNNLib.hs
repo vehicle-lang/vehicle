@@ -86,7 +86,7 @@ compileNetworks metaNetwork =
 
 -- | Compiles an expression representing a single VNNLib query.
 compileVNNLibQuery :: CompileQuery
-compileVNNLibQuery _address (QueryContents _variables assertions) metaNetwork = do
+compileVNNLibQuery _address metaNetwork _variables assertions = do
   networkDocs <- compileNetworks metaNetwork
   assertionDocs <- forM assertions compileAssertion
   let assertionsDoc = networkDocs <> line <> vsep assertionDocs

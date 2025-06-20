@@ -11,7 +11,8 @@
     "produces": ["Marabou.queries/*.txt", "Marabou.queries/*.vcl-plan"],
     "ignore": {
       "lines": ".*\"fileHash\".*"
-    }
+    },
+    "sizeOnly": ".vcl-plan"
   },
   {
     "name": "DL2Loss",

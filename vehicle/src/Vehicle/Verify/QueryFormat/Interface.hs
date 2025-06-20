@@ -43,19 +43,14 @@ data QueryAssertion variable = QueryAssertion
 instance (Pretty variable) => Pretty (QueryAssertion variable) where
   pretty (QueryAssertion lhs rel rhs) = pretty lhs <> pretty rel <> pretty rhs
 
--- | The contents of a single query for a verifier.
-data QueryContents = QueryContents
-  { queryVariables :: [QueryVariable],
-    queryAssertions :: ConjunctAll (QueryAssertion QueryVariable)
-  }
-
 -- | The command to format an individual query
 type CompileQuery =
   forall m.
   (MonadLogger m, MonadError CompileError m) =>
   QueryAddress ->
-  QueryContents ->
   MetaNetwork ->
+  [QueryVariable] ->
+  ConjunctAll (QueryAssertion QueryVariable) ->
   m Text
 
 -- | A format for an output query that verifiers can parse.
