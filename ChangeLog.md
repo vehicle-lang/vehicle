@@ -59,6 +59,20 @@ Some positive changes from this:
 
 * BREAKING: Upgraded dependency on Agda standard library from v2.0 to v2.2
 
+### Rocq interface
+
+New Rocq backend for Vehicle, allowing specifications to be compiled to Rocq proof scripts.
+
+* Added Rocq as an export target, e.g. `vehicle export --target Rocq`
+
+* Updated test suite to mirror existing Agda tests in Rocq
+
+* Added `vehicle-rocq` library to contain supporting definitions for compiled scripts 
+
+* Added `autoencoderError` example and updated `windController` example to demonstrate Rocq backend
+
+* Added `test-integration-rocq.yml` workflow
+
 ### Other
 
 * Fixed bug where `type` declarations with parameters were handled incorrectly.
