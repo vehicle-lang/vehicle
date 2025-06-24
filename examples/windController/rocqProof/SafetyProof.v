@@ -52,7 +52,7 @@ Record Observation :=
 (* ----------------------------------------------*)
 (* Model Transitions *)
 
-Definition initialState : State := 
+Definition initialState : State :=
     {| windSpeed := 0
     ; position := 0
     ; velocity := 0
@@ -62,7 +62,7 @@ Definition initialState : State :=
 Definition controller (x : R) (y : R) : R :=
     tnth (WindControllerSpec.controller (WindControllerSpec.normalise (toTensor x y))) 0.
 
-Definition nextState (o : Observation) (s : State) : State := 
+Definition nextState (o : Observation) (s : State) : State :=
     let newWindSpeed := s.(windSpeed) + o.(windShift) in
     let newPosition := s.(position) + s.(velocity) + newWindSpeed in
     let newSensor := newPosition + o.(sensorError) in
@@ -73,7 +73,7 @@ Definition nextState (o : Observation) (s : State) : State :=
     ; sensor := newSensor
     |}.
 
-Definition finalState (xs : seq Observation) : State := 
+Definition finalState (xs : seq Observation) : State :=
     foldr nextState initialState xs.
 
 (* ----------------------------------------------*)
@@ -95,7 +95,7 @@ Definition sensorReadingNotOffRoad (s : State) : Prop :=
     `| s.(sensor) | <= roadWidth + maxSensorError.
 
 Definition safeState (s : State) : Prop :=
-    safeDistanceFromEdge s 
+    safeDistanceFromEdge s
     /\ accurateSensorReading s
     /\ sensorReadingNotOffRoad s.
 
@@ -111,7 +111,7 @@ Proof. by rewrite /onRoad normr0. Qed.
 
 Theorem initialState_safe : safeState initialState.
 Proof.
-    repeat apply conj. 
+    repeat apply conj.
     rewrite /safeDistanceFromEdge /nextPosition_windShift/= !addr0 normr0 /roadWidth /maxWindShift. by lra.
     rewrite /accurateSensorReading /nextPosition_windShift/= subr0 normr0 /maxSensorError. by lra.
     rewrite /sensorReadingNotOffRoad normr0 /roadWidth /maxSensorError. by lra.
@@ -124,8 +124,8 @@ Proof. rewrite /safeInput_R /forallIndex.
     apply /andP. rewrite /oppt. by apply Hs.
 Qed.
 
-Definition safeOutput_R (x : WindControllerSpec.InputVector) := 
-    let y := tnth (WindControllerSpec.controller (WindControllerSpec.normalise x)) WindControllerSpec.velocity in 
+Definition safeOutput_R (x : WindControllerSpec.InputVector) :=
+    let y := tnth (WindControllerSpec.controller (WindControllerSpec.normalise x)) WindControllerSpec.velocity in
     (-(5 / 4) < (y + 2 * tnth x WindControllerSpec.currentSensor - tnth x WindControllerSpec.previousSensor)) && ((y + 2 * tnth x WindControllerSpec.currentSensor - tnth x WindControllerSpec.previousSensor) < (5 / 4)).
 Lemma safeOutput_Req x : WindControllerSpec.safeOutput x -> safeOutput_R x.
 Proof. move=> [Hsl Hsr]. rewrite /safeOutput_R. apply /andP; split. by apply Hsl. by apply Hsr. Qed.
@@ -136,7 +136,7 @@ Proof.
 Qed.
 
 Lemma controller_lem :
-    forall x y, 
+    forall x y,
         `| x | <= roadWidth + maxSensorError ->
         `| y | <= roadWidth + maxSensorError ->
         `| controller x y + 2 * x - y | < roadWidth - maxWindShift - 3 * maxSensorError.
@@ -159,7 +159,7 @@ Proof.
     by [].
 Qed.
 
-Lemma valid_imp_nextState_accurateSensor : 
+Lemma valid_imp_nextState_accurateSensor :
     forall o, validObservation o ->
     forall s, accurateSensorReading (nextState o s).
 Proof.
@@ -178,7 +178,7 @@ Proof.
     rewrite /onRoad/= addrA.
     apply /le_trans; first by apply ler_normD.
     rewrite -lerBrDr.
-    rewrite /safeDistanceFromEdge in Hsafedist. 
+    rewrite /safeDistanceFromEdge in Hsafedist.
     apply /le_trans; first apply ltW; first by apply: Hsafedist.
     by apply lerB.
 Qed.

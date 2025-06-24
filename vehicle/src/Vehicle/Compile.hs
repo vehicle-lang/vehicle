@@ -12,13 +12,13 @@ import Data.List.NonEmpty
 import Data.Maybe (mapMaybe)
 import Data.Set qualified as Set
 import Vehicle.Backend.Agda
-import Vehicle.Backend.Rocq
 import Vehicle.Backend.LossFunction (convertToLossTensors)
 import Vehicle.Backend.LossFunction.JSON
 import Vehicle.Backend.LossFunction.LogicCompilation (compileLogic)
 import Vehicle.Backend.LossFunction.Logics (dslFor)
 import Vehicle.Backend.Prelude
 import Vehicle.Backend.Queries
+import Vehicle.Backend.Rocq
 import Vehicle.Compile.Dependency
 import Vehicle.Compile.Error
 import Vehicle.Compile.FunctionaliseResources (functionaliseResources)

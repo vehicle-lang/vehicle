@@ -22,7 +22,7 @@ Lemma closure : forall i x, let
 Proof.
     move=> i x y /andP [mx Mx]. have [Im IM] := identity i x. apply /andP; split; rewrite /y.
     - apply /le_trans; last by apply Im.
-      apply lerB. by apply mx. by []. 
+      apply lerB. by apply mx. by [].
     - apply /le_trans; first by apply IM.
       apply lerD. by apply Mx. by [].
 Qed.

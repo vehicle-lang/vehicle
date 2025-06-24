@@ -67,4 +67,3 @@ jobs:
             --test-option=--color=always             \
             --test-option=--num-threads=1            \
             --test-option=--allowlist-externals=rocq
-

@@ -153,13 +153,10 @@ importStatements :: Set Dependency -> Code
 importStatements deps = vsep $ map pretty (Set.toList deps)
 
 preamble :: Set Dependency -> Code
-preamble deps = if
-    Set.member (RequireImport MathcompRealsReals) deps
-  then
-    compilePostulate "R" "realType"
-  else
-    ""
-  
+preamble deps =
+  if Set.member (RequireImport MathcompRealsReals) deps
+    then compilePostulate "R" "realType"
+    else ""
 
 --------------------------------------------------------------------------------
 -- Intermediate results of compilation
@@ -316,8 +313,9 @@ compileExpr expr = do
 compileType :: UniverseLevel -> Code
 compileType (UniverseLevel l)
   | l == 0 = "Type"
-  | otherwise = developerError $
-      "compilation of higher-level universes to Rocq unsupported"
+  | otherwise =
+      developerError $
+        "compilation of higher-level universes to Rocq unsupported"
 
 compileLetBinder ::
   (MonadRocqCompile m) =>

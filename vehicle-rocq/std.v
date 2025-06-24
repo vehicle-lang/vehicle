@@ -24,5 +24,3 @@ Definition geRatTensorReduced (xs ys : tensor R ds) := reduceAnd (zipWith Order.
 Definition gtRatTensorReduced (xs ys : tensor R ds) := reduceAnd (zipWith Order.gt xs ys).
 
 End Tensor.
-
-    

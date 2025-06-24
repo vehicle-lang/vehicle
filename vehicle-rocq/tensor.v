@@ -5,7 +5,7 @@ Open Scope form_scope.
 Declare Scope tensor_scope.
 Delimit Scope tensor_scope with t.
 
-Definition tensor (A : Type) : seq nat -> Type := 
+Definition tensor (A : Type) : seq nat -> Type :=
     foldr tuple_of A.
 
 Definition tensor_of {A} : A -> tensor A [::] := id.
@@ -14,7 +14,7 @@ Definition stack {A d} : d.-tuple (tensor A nil) -> tensor A (d :: nil) := id.
 
 Definition unstack {A d} : tensor A (d :: nil) -> d.-tuple (tensor A nil) := id.
 
-Definition foreach {A d} (f : 'I_d -> tensor A [::]) : tensor A ([:: d]) := 
+Definition foreach {A d} (f : 'I_d -> tensor A [::]) : tensor A ([:: d]) :=
     [tuple f i | i < d].
 
 Fixpoint const {A} (v : A) (ds : list nat) : tensor A ds :=
@@ -76,9 +76,8 @@ Definition reduceMul {ds} : tensor R ds -> R := reduce GRing.mul 1.
 End TensorRealOperations.
 
 Notation "x +%t y" := (addt x y) (at level 50) : tensor_scope.
-Notation "x *%t y" := (mult x y) (at level 40) : tensor_scope. 
+Notation "x *%t y" := (mult x y) (at level 40) : tensor_scope.
 Notation "-%t x" := (oppt x) (at level 35): tensor_scope.
 Notation "x -%t y" := (addt x (oppt y)) (at level 50) : tensor_scope.
 Notation "x ^-1%t" := (invt x) : tensor_scope.
 Notation "x /%t y" := (mult x (invt y)) (at level 40) : tensor_scope.
-
