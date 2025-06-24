@@ -67,7 +67,7 @@ New Rocq backend for Vehicle, allowing specifications to be compiled to Rocq pro
 
 * Updated test suite to mirror existing Agda tests in Rocq
 
-* Added `vehicle-rocq` library to contain supporting definitions for compiled scripts 
+* Added `vehicle-rocq` library to contain supporting definitions for compiled scripts
 
 * Added `autoencoderError` example and updated `windController` example to demonstrate Rocq backend
 
