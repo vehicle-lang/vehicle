@@ -1,0 +1,4351 @@
+{
+  "queryMetaData": {
+    "tag": "NonTrivial",
+    "contents": {
+      "tag": "Query",
+      "contents": {
+        "queries": {
+          "unDisjunctAll": [
+            {
+              "variableStore": {
+                "vehicleVariableCtx": [
+                  "acasXu₀[output]!4",
+                  "acasXu₀[output]!3",
+                  "acasXu₀[output]!2",
+                  "acasXu₀[output]!1",
+                  "acasXu₀[output]!0",
+                  "acasXu₀[output]",
+                  "acasXu₀[input]!4",
+                  "acasXu₀[input]!3",
+                  "acasXu₀[input]!2",
+                  "acasXu₀[input]!1",
+                  "acasXu₀[input]!0",
+                  "acasXu₀[input]",
+                  "x!4",
+                  "x!3",
+                  "x!2",
+                  "x!1",
+                  "x!0",
+                  "x"
+                ],
+                "userVariables": [
+                  0
+                ],
+                "queryVariableMapping": {
+                  "acasXu_Y[4]": 17,
+                  "acasXu_Y[3]": 16,
+                  "acasXu_Y[2]": 15,
+                  "acasXu_Y[1]": 14,
+                  "acasXu_Y[0]": 13,
+                  "acasXu_X[4]": 11,
+                  "acasXu_X[3]": 10,
+                  "acasXu_X[2]": 9,
+                  "acasXu_X[1]": 8,
+                  "acasXu_X[0]": 7
+                }
+              },
+              "variableCompilationTrace": {
+                "reconstructionSteps": [
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      6,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            7,
+                            8,
+                            9,
+                            10,
+                            11
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      12,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            13,
+                            14,
+                            15,
+                            16,
+                            17
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      5,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 600,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            11,
+                            {
+                              "numerator": 1200,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      4,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 650,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            10,
+                            {
+                              "numerator": 1100,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      3,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            9,
+                            {
+                              "numerator": 392699,
+                              "denominator": 62500
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      2,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            8,
+                            {
+                              "numerator": 392699,
+                              "denominator": 62500
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      1,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 19791091,
+                              "denominator": 1000
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            7,
+                            {
+                              "numerator": 60261,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      0,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            1,
+                            2,
+                            3,
+                            4,
+                            5
+                          ]
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "queryAddress": [
+                {
+                  "propertyName": "property8",
+                  "propertyIndices": [],
+                  "propertyID": 7
+                },
+                1
+              ],
+              "metaNetwork": [
+                {
+                  "metaNetworkEntryName": "acasXu",
+                  "metaNetworkEntryInfo": {
+                    "networkType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "networkFilepath": "fake.onnx"
+                  }
+                }
+              ]
+            },
+            {
+              "variableStore": {
+                "vehicleVariableCtx": [
+                  "acasXu₀[output]!4",
+                  "acasXu₀[output]!3",
+                  "acasXu₀[output]!2",
+                  "acasXu₀[output]!1",
+                  "acasXu₀[output]!0",
+                  "acasXu₀[output]",
+                  "acasXu₀[input]!4",
+                  "acasXu₀[input]!3",
+                  "acasXu₀[input]!2",
+                  "acasXu₀[input]!1",
+                  "acasXu₀[input]!0",
+                  "acasXu₀[input]",
+                  "x!4",
+                  "x!3",
+                  "x!2",
+                  "x!1",
+                  "x!0",
+                  "x"
+                ],
+                "userVariables": [
+                  0
+                ],
+                "queryVariableMapping": {
+                  "acasXu_Y[4]": 17,
+                  "acasXu_Y[3]": 16,
+                  "acasXu_Y[2]": 15,
+                  "acasXu_Y[1]": 14,
+                  "acasXu_Y[0]": 13,
+                  "acasXu_X[4]": 11,
+                  "acasXu_X[3]": 10,
+                  "acasXu_X[2]": 9,
+                  "acasXu_X[1]": 8,
+                  "acasXu_X[0]": 7
+                }
+              },
+              "variableCompilationTrace": {
+                "reconstructionSteps": [
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      6,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            7,
+                            8,
+                            9,
+                            10,
+                            11
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      12,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            13,
+                            14,
+                            15,
+                            16,
+                            17
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      5,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 600,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            11,
+                            {
+                              "numerator": 1200,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      4,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 650,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            10,
+                            {
+                              "numerator": 1100,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      3,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            9,
+                            {
+                              "numerator": 392699,
+                              "denominator": 62500
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      2,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            8,
+                            {
+                              "numerator": 392699,
+                              "denominator": 62500
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      1,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 19791091,
+                              "denominator": 1000
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            7,
+                            {
+                              "numerator": 60261,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      0,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            1,
+                            2,
+                            3,
+                            4,
+                            5
+                          ]
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "queryAddress": [
+                {
+                  "propertyName": "property8",
+                  "propertyIndices": [],
+                  "propertyID": 7
+                },
+                2
+              ],
+              "metaNetwork": [
+                {
+                  "metaNetworkEntryName": "acasXu",
+                  "metaNetworkEntryInfo": {
+                    "networkType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "networkFilepath": "fake.onnx"
+                  }
+                }
+              ]
+            },
+            {
+              "variableStore": {
+                "vehicleVariableCtx": [
+                  "acasXu₀[output]!4",
+                  "acasXu₀[output]!3",
+                  "acasXu₀[output]!2",
+                  "acasXu₀[output]!1",
+                  "acasXu₀[output]!0",
+                  "acasXu₀[output]",
+                  "acasXu₀[input]!4",
+                  "acasXu₀[input]!3",
+                  "acasXu₀[input]!2",
+                  "acasXu₀[input]!1",
+                  "acasXu₀[input]!0",
+                  "acasXu₀[input]",
+                  "x!4",
+                  "x!3",
+                  "x!2",
+                  "x!1",
+                  "x!0",
+                  "x"
+                ],
+                "userVariables": [
+                  0
+                ],
+                "queryVariableMapping": {
+                  "acasXu_Y[4]": 17,
+                  "acasXu_Y[3]": 16,
+                  "acasXu_Y[2]": 15,
+                  "acasXu_Y[1]": 14,
+                  "acasXu_Y[0]": 13,
+                  "acasXu_X[4]": 11,
+                  "acasXu_X[3]": 10,
+                  "acasXu_X[2]": 9,
+                  "acasXu_X[1]": 8,
+                  "acasXu_X[0]": 7
+                }
+              },
+              "variableCompilationTrace": {
+                "reconstructionSteps": [
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      6,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            7,
+                            8,
+                            9,
+                            10,
+                            11
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      12,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            13,
+                            14,
+                            15,
+                            16,
+                            17
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      5,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 600,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            11,
+                            {
+                              "numerator": 1200,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      4,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 650,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            10,
+                            {
+                              "numerator": 1100,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      3,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            9,
+                            {
+                              "numerator": 392699,
+                              "denominator": 62500
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      2,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            8,
+                            {
+                              "numerator": 392699,
+                              "denominator": 62500
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      1,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 19791091,
+                              "denominator": 1000
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            7,
+                            {
+                              "numerator": 60261,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      0,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            1,
+                            2,
+                            3,
+                            4,
+                            5
+                          ]
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "queryAddress": [
+                {
+                  "propertyName": "property8",
+                  "propertyIndices": [],
+                  "propertyID": 7
+                },
+                3
+              ],
+              "metaNetwork": [
+                {
+                  "metaNetworkEntryName": "acasXu",
+                  "metaNetworkEntryInfo": {
+                    "networkType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "networkFilepath": "fake.onnx"
+                  }
+                }
+              ]
+            },
+            {
+              "variableStore": {
+                "vehicleVariableCtx": [
+                  "acasXu₀[output]!4",
+                  "acasXu₀[output]!3",
+                  "acasXu₀[output]!2",
+                  "acasXu₀[output]!1",
+                  "acasXu₀[output]!0",
+                  "acasXu₀[output]",
+                  "acasXu₀[input]!4",
+                  "acasXu₀[input]!3",
+                  "acasXu₀[input]!2",
+                  "acasXu₀[input]!1",
+                  "acasXu₀[input]!0",
+                  "acasXu₀[input]",
+                  "x!4",
+                  "x!3",
+                  "x!2",
+                  "x!1",
+                  "x!0",
+                  "x"
+                ],
+                "userVariables": [
+                  0
+                ],
+                "queryVariableMapping": {
+                  "acasXu_Y[4]": 17,
+                  "acasXu_Y[3]": 16,
+                  "acasXu_Y[2]": 15,
+                  "acasXu_Y[1]": 14,
+                  "acasXu_Y[0]": 13,
+                  "acasXu_X[4]": 11,
+                  "acasXu_X[3]": 10,
+                  "acasXu_X[2]": 9,
+                  "acasXu_X[1]": 8,
+                  "acasXu_X[0]": 7
+                }
+              },
+              "variableCompilationTrace": {
+                "reconstructionSteps": [
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      6,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            7,
+                            8,
+                            9,
+                            10,
+                            11
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      12,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            13,
+                            14,
+                            15,
+                            16,
+                            17
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      5,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 600,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            11,
+                            {
+                              "numerator": 1200,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      4,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 650,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            10,
+                            {
+                              "numerator": 1100,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      3,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            9,
+                            {
+                              "numerator": 392699,
+                              "denominator": 62500
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      2,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            8,
+                            {
+                              "numerator": 392699,
+                              "denominator": 62500
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      1,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 19791091,
+                              "denominator": 1000
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            7,
+                            {
+                              "numerator": 60261,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      0,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            1,
+                            2,
+                            3,
+                            4,
+                            5
+                          ]
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "queryAddress": [
+                {
+                  "propertyName": "property8",
+                  "propertyIndices": [],
+                  "propertyID": 7
+                },
+                4
+              ],
+              "metaNetwork": [
+                {
+                  "metaNetworkEntryName": "acasXu",
+                  "metaNetworkEntryInfo": {
+                    "networkType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "networkFilepath": "fake.onnx"
+                  }
+                }
+              ]
+            },
+            {
+              "variableStore": {
+                "vehicleVariableCtx": [
+                  "acasXu₀[output]!4",
+                  "acasXu₀[output]!3",
+                  "acasXu₀[output]!2",
+                  "acasXu₀[output]!1",
+                  "acasXu₀[output]!0",
+                  "acasXu₀[output]",
+                  "acasXu₀[input]!4",
+                  "acasXu₀[input]!3",
+                  "acasXu₀[input]!2",
+                  "acasXu₀[input]!1",
+                  "acasXu₀[input]!0",
+                  "acasXu₀[input]",
+                  "x!4",
+                  "x!3",
+                  "x!2",
+                  "x!1",
+                  "x!0",
+                  "x"
+                ],
+                "userVariables": [
+                  0
+                ],
+                "queryVariableMapping": {
+                  "acasXu_Y[4]": 17,
+                  "acasXu_Y[3]": 16,
+                  "acasXu_Y[2]": 15,
+                  "acasXu_Y[1]": 14,
+                  "acasXu_Y[0]": 13,
+                  "acasXu_X[4]": 11,
+                  "acasXu_X[3]": 10,
+                  "acasXu_X[2]": 9,
+                  "acasXu_X[1]": 8,
+                  "acasXu_X[0]": 7
+                }
+              },
+              "variableCompilationTrace": {
+                "reconstructionSteps": [
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      6,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            7,
+                            8,
+                            9,
+                            10,
+                            11
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      12,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            13,
+                            14,
+                            15,
+                            16,
+                            17
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      5,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 600,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            11,
+                            {
+                              "numerator": 1200,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      4,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 650,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            10,
+                            {
+                              "numerator": 1100,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      3,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            9,
+                            {
+                              "numerator": 392699,
+                              "denominator": 62500
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      2,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            8,
+                            {
+                              "numerator": 392699,
+                              "denominator": 62500
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      1,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 19791091,
+                              "denominator": 1000
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            7,
+                            {
+                              "numerator": 60261,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      0,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            1,
+                            2,
+                            3,
+                            4,
+                            5
+                          ]
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "queryAddress": [
+                {
+                  "propertyName": "property8",
+                  "propertyIndices": [],
+                  "propertyID": 7
+                },
+                5
+              ],
+              "metaNetwork": [
+                {
+                  "metaNetworkEntryName": "acasXu",
+                  "metaNetworkEntryInfo": {
+                    "networkType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "networkFilepath": "fake.onnx"
+                  }
+                }
+              ]
+            },
+            {
+              "variableStore": {
+                "vehicleVariableCtx": [
+                  "acasXu₀[output]!4",
+                  "acasXu₀[output]!3",
+                  "acasXu₀[output]!2",
+                  "acasXu₀[output]!1",
+                  "acasXu₀[output]!0",
+                  "acasXu₀[output]",
+                  "acasXu₀[input]!4",
+                  "acasXu₀[input]!3",
+                  "acasXu₀[input]!2",
+                  "acasXu₀[input]!1",
+                  "acasXu₀[input]!0",
+                  "acasXu₀[input]",
+                  "x!4",
+                  "x!3",
+                  "x!2",
+                  "x!1",
+                  "x!0",
+                  "x"
+                ],
+                "userVariables": [
+                  0
+                ],
+                "queryVariableMapping": {
+                  "acasXu_Y[4]": 17,
+                  "acasXu_Y[3]": 16,
+                  "acasXu_Y[2]": 15,
+                  "acasXu_Y[1]": 14,
+                  "acasXu_Y[0]": 13,
+                  "acasXu_X[4]": 11,
+                  "acasXu_X[3]": 10,
+                  "acasXu_X[2]": 9,
+                  "acasXu_X[1]": 8,
+                  "acasXu_X[0]": 7
+                }
+              },
+              "variableCompilationTrace": {
+                "reconstructionSteps": [
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      6,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            7,
+                            8,
+                            9,
+                            10,
+                            11
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      12,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            13,
+                            14,
+                            15,
+                            16,
+                            17
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      5,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 600,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            11,
+                            {
+                              "numerator": 1200,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      4,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 650,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            10,
+                            {
+                              "numerator": 1100,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      3,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            9,
+                            {
+                              "numerator": 392699,
+                              "denominator": 62500
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      2,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            8,
+                            {
+                              "numerator": 392699,
+                              "denominator": 62500
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      1,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 19791091,
+                              "denominator": 1000
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            7,
+                            {
+                              "numerator": 60261,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      0,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            1,
+                            2,
+                            3,
+                            4,
+                            5
+                          ]
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "queryAddress": [
+                {
+                  "propertyName": "property8",
+                  "propertyIndices": [],
+                  "propertyID": 7
+                },
+                6
+              ],
+              "metaNetwork": [
+                {
+                  "metaNetworkEntryName": "acasXu",
+                  "metaNetworkEntryInfo": {
+                    "networkType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "networkFilepath": "fake.onnx"
+                  }
+                }
+              ]
+            },
+            {
+              "variableStore": {
+                "vehicleVariableCtx": [
+                  "acasXu₀[output]!4",
+                  "acasXu₀[output]!3",
+                  "acasXu₀[output]!2",
+                  "acasXu₀[output]!1",
+                  "acasXu₀[output]!0",
+                  "acasXu₀[output]",
+                  "acasXu₀[input]!4",
+                  "acasXu₀[input]!3",
+                  "acasXu₀[input]!2",
+                  "acasXu₀[input]!1",
+                  "acasXu₀[input]!0",
+                  "acasXu₀[input]",
+                  "x!4",
+                  "x!3",
+                  "x!2",
+                  "x!1",
+                  "x!0",
+                  "x"
+                ],
+                "userVariables": [
+                  0
+                ],
+                "queryVariableMapping": {
+                  "acasXu_Y[4]": 17,
+                  "acasXu_Y[3]": 16,
+                  "acasXu_Y[2]": 15,
+                  "acasXu_Y[1]": 14,
+                  "acasXu_Y[0]": 13,
+                  "acasXu_X[4]": 11,
+                  "acasXu_X[3]": 10,
+                  "acasXu_X[2]": 9,
+                  "acasXu_X[1]": 8,
+                  "acasXu_X[0]": 7
+                }
+              },
+              "variableCompilationTrace": {
+                "reconstructionSteps": [
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      6,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            7,
+                            8,
+                            9,
+                            10,
+                            11
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      12,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            13,
+                            14,
+                            15,
+                            16,
+                            17
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      5,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 600,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            11,
+                            {
+                              "numerator": 1200,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      4,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 650,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            10,
+                            {
+                              "numerator": 1100,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      3,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            9,
+                            {
+                              "numerator": 392699,
+                              "denominator": 62500
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      2,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            8,
+                            {
+                              "numerator": 392699,
+                              "denominator": 62500
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      1,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 19791091,
+                              "denominator": 1000
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            7,
+                            {
+                              "numerator": 60261,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      0,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            1,
+                            2,
+                            3,
+                            4,
+                            5
+                          ]
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "queryAddress": [
+                {
+                  "propertyName": "property8",
+                  "propertyIndices": [],
+                  "propertyID": 7
+                },
+                7
+              ],
+              "metaNetwork": [
+                {
+                  "metaNetworkEntryName": "acasXu",
+                  "metaNetworkEntryInfo": {
+                    "networkType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "networkFilepath": "fake.onnx"
+                  }
+                }
+              ]
+            },
+            {
+              "variableStore": {
+                "vehicleVariableCtx": [
+                  "acasXu₀[output]!4",
+                  "acasXu₀[output]!3",
+                  "acasXu₀[output]!2",
+                  "acasXu₀[output]!1",
+                  "acasXu₀[output]!0",
+                  "acasXu₀[output]",
+                  "acasXu₀[input]!4",
+                  "acasXu₀[input]!3",
+                  "acasXu₀[input]!2",
+                  "acasXu₀[input]!1",
+                  "acasXu₀[input]!0",
+                  "acasXu₀[input]",
+                  "x!4",
+                  "x!3",
+                  "x!2",
+                  "x!1",
+                  "x!0",
+                  "x"
+                ],
+                "userVariables": [
+                  0
+                ],
+                "queryVariableMapping": {
+                  "acasXu_Y[4]": 17,
+                  "acasXu_Y[3]": 16,
+                  "acasXu_Y[2]": 15,
+                  "acasXu_Y[1]": 14,
+                  "acasXu_Y[0]": 13,
+                  "acasXu_X[4]": 11,
+                  "acasXu_X[3]": 10,
+                  "acasXu_X[2]": 9,
+                  "acasXu_X[1]": 8,
+                  "acasXu_X[0]": 7
+                }
+              },
+              "variableCompilationTrace": {
+                "reconstructionSteps": [
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      6,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            7,
+                            8,
+                            9,
+                            10,
+                            11
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      12,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            13,
+                            14,
+                            15,
+                            16,
+                            17
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      5,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 600,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            11,
+                            {
+                              "numerator": 1200,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      4,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 650,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            10,
+                            {
+                              "numerator": 1100,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      3,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            9,
+                            {
+                              "numerator": 392699,
+                              "denominator": 62500
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      2,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            8,
+                            {
+                              "numerator": 392699,
+                              "denominator": 62500
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      1,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 19791091,
+                              "denominator": 1000
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            7,
+                            {
+                              "numerator": 60261,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      0,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            1,
+                            2,
+                            3,
+                            4,
+                            5
+                          ]
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "queryAddress": [
+                {
+                  "propertyName": "property8",
+                  "propertyIndices": [],
+                  "propertyID": 7
+                },
+                8
+              ],
+              "metaNetwork": [
+                {
+                  "metaNetworkEntryName": "acasXu",
+                  "metaNetworkEntryInfo": {
+                    "networkType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "networkFilepath": "fake.onnx"
+                  }
+                }
+              ]
+            },
+            {
+              "variableStore": {
+                "vehicleVariableCtx": [
+                  "acasXu₀[output]!4",
+                  "acasXu₀[output]!3",
+                  "acasXu₀[output]!2",
+                  "acasXu₀[output]!1",
+                  "acasXu₀[output]!0",
+                  "acasXu₀[output]",
+                  "acasXu₀[input]!4",
+                  "acasXu₀[input]!3",
+                  "acasXu₀[input]!2",
+                  "acasXu₀[input]!1",
+                  "acasXu₀[input]!0",
+                  "acasXu₀[input]",
+                  "x!4",
+                  "x!3",
+                  "x!2",
+                  "x!1",
+                  "x!0",
+                  "x"
+                ],
+                "userVariables": [
+                  0
+                ],
+                "queryVariableMapping": {
+                  "acasXu_Y[4]": 17,
+                  "acasXu_Y[3]": 16,
+                  "acasXu_Y[2]": 15,
+                  "acasXu_Y[1]": 14,
+                  "acasXu_Y[0]": 13,
+                  "acasXu_X[4]": 11,
+                  "acasXu_X[3]": 10,
+                  "acasXu_X[2]": 9,
+                  "acasXu_X[1]": 8,
+                  "acasXu_X[0]": 7
+                }
+              },
+              "variableCompilationTrace": {
+                "reconstructionSteps": [
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      6,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            7,
+                            8,
+                            9,
+                            10,
+                            11
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      12,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            13,
+                            14,
+                            15,
+                            16,
+                            17
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      5,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 600,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            11,
+                            {
+                              "numerator": 1200,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      4,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 650,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            10,
+                            {
+                              "numerator": 1100,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      3,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            9,
+                            {
+                              "numerator": 392699,
+                              "denominator": 62500
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      2,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            8,
+                            {
+                              "numerator": 392699,
+                              "denominator": 62500
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      1,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 19791091,
+                              "denominator": 1000
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            7,
+                            {
+                              "numerator": 60261,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      0,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            1,
+                            2,
+                            3,
+                            4,
+                            5
+                          ]
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "queryAddress": [
+                {
+                  "propertyName": "property8",
+                  "propertyIndices": [],
+                  "propertyID": 7
+                },
+                9
+              ],
+              "metaNetwork": [
+                {
+                  "metaNetworkEntryName": "acasXu",
+                  "metaNetworkEntryInfo": {
+                    "networkType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "networkFilepath": "fake.onnx"
+                  }
+                }
+              ]
+            },
+            {
+              "variableStore": {
+                "vehicleVariableCtx": [
+                  "acasXu₀[output]!4",
+                  "acasXu₀[output]!3",
+                  "acasXu₀[output]!2",
+                  "acasXu₀[output]!1",
+                  "acasXu₀[output]!0",
+                  "acasXu₀[output]",
+                  "acasXu₀[input]!4",
+                  "acasXu₀[input]!3",
+                  "acasXu₀[input]!2",
+                  "acasXu₀[input]!1",
+                  "acasXu₀[input]!0",
+                  "acasXu₀[input]",
+                  "x!4",
+                  "x!3",
+                  "x!2",
+                  "x!1",
+                  "x!0",
+                  "x"
+                ],
+                "userVariables": [
+                  0
+                ],
+                "queryVariableMapping": {
+                  "acasXu_Y[4]": 17,
+                  "acasXu_Y[3]": 16,
+                  "acasXu_Y[2]": 15,
+                  "acasXu_Y[1]": 14,
+                  "acasXu_Y[0]": 13,
+                  "acasXu_X[4]": 11,
+                  "acasXu_X[3]": 10,
+                  "acasXu_X[2]": 9,
+                  "acasXu_X[1]": 8,
+                  "acasXu_X[0]": 7
+                }
+              },
+              "variableCompilationTrace": {
+                "reconstructionSteps": [
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      6,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            7,
+                            8,
+                            9,
+                            10,
+                            11
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      12,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            13,
+                            14,
+                            15,
+                            16,
+                            17
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      5,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 600,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            11,
+                            {
+                              "numerator": 1200,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      4,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 650,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            10,
+                            {
+                              "numerator": 1100,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      3,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            9,
+                            {
+                              "numerator": 392699,
+                              "denominator": 62500
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      2,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            8,
+                            {
+                              "numerator": 392699,
+                              "denominator": 62500
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      1,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 19791091,
+                              "denominator": 1000
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            7,
+                            {
+                              "numerator": 60261,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      0,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            1,
+                            2,
+                            3,
+                            4,
+                            5
+                          ]
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "queryAddress": [
+                {
+                  "propertyName": "property8",
+                  "propertyIndices": [],
+                  "propertyID": 7
+                },
+                10
+              ],
+              "metaNetwork": [
+                {
+                  "metaNetworkEntryName": "acasXu",
+                  "metaNetworkEntryInfo": {
+                    "networkType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "networkFilepath": "fake.onnx"
+                  }
+                }
+              ]
+            },
+            {
+              "variableStore": {
+                "vehicleVariableCtx": [
+                  "acasXu₀[output]!4",
+                  "acasXu₀[output]!3",
+                  "acasXu₀[output]!2",
+                  "acasXu₀[output]!1",
+                  "acasXu₀[output]!0",
+                  "acasXu₀[output]",
+                  "acasXu₀[input]!4",
+                  "acasXu₀[input]!3",
+                  "acasXu₀[input]!2",
+                  "acasXu₀[input]!1",
+                  "acasXu₀[input]!0",
+                  "acasXu₀[input]",
+                  "x!4",
+                  "x!3",
+                  "x!2",
+                  "x!1",
+                  "x!0",
+                  "x"
+                ],
+                "userVariables": [
+                  0
+                ],
+                "queryVariableMapping": {
+                  "acasXu_Y[4]": 17,
+                  "acasXu_Y[3]": 16,
+                  "acasXu_Y[2]": 15,
+                  "acasXu_Y[1]": 14,
+                  "acasXu_Y[0]": 13,
+                  "acasXu_X[4]": 11,
+                  "acasXu_X[3]": 10,
+                  "acasXu_X[2]": 9,
+                  "acasXu_X[1]": 8,
+                  "acasXu_X[0]": 7
+                }
+              },
+              "variableCompilationTrace": {
+                "reconstructionSteps": [
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      6,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            7,
+                            8,
+                            9,
+                            10,
+                            11
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      12,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            13,
+                            14,
+                            15,
+                            16,
+                            17
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      5,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 600,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            11,
+                            {
+                              "numerator": 1200,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      4,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 650,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            10,
+                            {
+                              "numerator": 1100,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      3,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            9,
+                            {
+                              "numerator": 392699,
+                              "denominator": 62500
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      2,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            8,
+                            {
+                              "numerator": 392699,
+                              "denominator": 62500
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      1,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 19791091,
+                              "denominator": 1000
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            7,
+                            {
+                              "numerator": 60261,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      0,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            1,
+                            2,
+                            3,
+                            4,
+                            5
+                          ]
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "queryAddress": [
+                {
+                  "propertyName": "property8",
+                  "propertyIndices": [],
+                  "propertyID": 7
+                },
+                11
+              ],
+              "metaNetwork": [
+                {
+                  "metaNetworkEntryName": "acasXu",
+                  "metaNetworkEntryInfo": {
+                    "networkType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "networkFilepath": "fake.onnx"
+                  }
+                }
+              ]
+            },
+            {
+              "variableStore": {
+                "vehicleVariableCtx": [
+                  "acasXu₀[output]!4",
+                  "acasXu₀[output]!3",
+                  "acasXu₀[output]!2",
+                  "acasXu₀[output]!1",
+                  "acasXu₀[output]!0",
+                  "acasXu₀[output]",
+                  "acasXu₀[input]!4",
+                  "acasXu₀[input]!3",
+                  "acasXu₀[input]!2",
+                  "acasXu₀[input]!1",
+                  "acasXu₀[input]!0",
+                  "acasXu₀[input]",
+                  "x!4",
+                  "x!3",
+                  "x!2",
+                  "x!1",
+                  "x!0",
+                  "x"
+                ],
+                "userVariables": [
+                  0
+                ],
+                "queryVariableMapping": {
+                  "acasXu_Y[4]": 17,
+                  "acasXu_Y[3]": 16,
+                  "acasXu_Y[2]": 15,
+                  "acasXu_Y[1]": 14,
+                  "acasXu_Y[0]": 13,
+                  "acasXu_X[4]": 11,
+                  "acasXu_X[3]": 10,
+                  "acasXu_X[2]": 9,
+                  "acasXu_X[1]": 8,
+                  "acasXu_X[0]": 7
+                }
+              },
+              "variableCompilationTrace": {
+                "reconstructionSteps": [
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      6,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            7,
+                            8,
+                            9,
+                            10,
+                            11
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      12,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            13,
+                            14,
+                            15,
+                            16,
+                            17
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      5,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 600,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            11,
+                            {
+                              "numerator": 1200,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      4,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 650,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            10,
+                            {
+                              "numerator": 1100,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      3,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            9,
+                            {
+                              "numerator": 392699,
+                              "denominator": 62500
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      2,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            8,
+                            {
+                              "numerator": 392699,
+                              "denominator": 62500
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      1,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 19791091,
+                              "denominator": 1000
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            7,
+                            {
+                              "numerator": 60261,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      0,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            1,
+                            2,
+                            3,
+                            4,
+                            5
+                          ]
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "queryAddress": [
+                {
+                  "propertyName": "property8",
+                  "propertyIndices": [],
+                  "propertyID": 7
+                },
+                12
+              ],
+              "metaNetwork": [
+                {
+                  "metaNetworkEntryName": "acasXu",
+                  "metaNetworkEntryInfo": {
+                    "networkType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "networkFilepath": "fake.onnx"
+                  }
+                }
+              ]
+            },
+            {
+              "variableStore": {
+                "vehicleVariableCtx": [
+                  "acasXu₀[output]!4",
+                  "acasXu₀[output]!3",
+                  "acasXu₀[output]!2",
+                  "acasXu₀[output]!1",
+                  "acasXu₀[output]!0",
+                  "acasXu₀[output]",
+                  "acasXu₀[input]!4",
+                  "acasXu₀[input]!3",
+                  "acasXu₀[input]!2",
+                  "acasXu₀[input]!1",
+                  "acasXu₀[input]!0",
+                  "acasXu₀[input]",
+                  "x!4",
+                  "x!3",
+                  "x!2",
+                  "x!1",
+                  "x!0",
+                  "x"
+                ],
+                "userVariables": [
+                  0
+                ],
+                "queryVariableMapping": {
+                  "acasXu_Y[4]": 17,
+                  "acasXu_Y[3]": 16,
+                  "acasXu_Y[2]": 15,
+                  "acasXu_Y[1]": 14,
+                  "acasXu_Y[0]": 13,
+                  "acasXu_X[4]": 11,
+                  "acasXu_X[3]": 10,
+                  "acasXu_X[2]": 9,
+                  "acasXu_X[1]": 8,
+                  "acasXu_X[0]": 7
+                }
+              },
+              "variableCompilationTrace": {
+                "reconstructionSteps": [
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      6,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            7,
+                            8,
+                            9,
+                            10,
+                            11
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      12,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            13,
+                            14,
+                            15,
+                            16,
+                            17
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      5,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 600,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            11,
+                            {
+                              "numerator": 1200,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      4,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 650,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            10,
+                            {
+                              "numerator": 1100,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      3,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            9,
+                            {
+                              "numerator": 392699,
+                              "denominator": 62500
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      2,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            8,
+                            {
+                              "numerator": 392699,
+                              "denominator": 62500
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      1,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 19791091,
+                              "denominator": 1000
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            7,
+                            {
+                              "numerator": 60261,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      0,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            1,
+                            2,
+                            3,
+                            4,
+                            5
+                          ]
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "queryAddress": [
+                {
+                  "propertyName": "property8",
+                  "propertyIndices": [],
+                  "propertyID": 7
+                },
+                13
+              ],
+              "metaNetwork": [
+                {
+                  "metaNetworkEntryName": "acasXu",
+                  "metaNetworkEntryInfo": {
+                    "networkType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "networkFilepath": "fake.onnx"
+                  }
+                }
+              ]
+            },
+            {
+              "variableStore": {
+                "vehicleVariableCtx": [
+                  "acasXu₀[output]!4",
+                  "acasXu₀[output]!3",
+                  "acasXu₀[output]!2",
+                  "acasXu₀[output]!1",
+                  "acasXu₀[output]!0",
+                  "acasXu₀[output]",
+                  "acasXu₀[input]!4",
+                  "acasXu₀[input]!3",
+                  "acasXu₀[input]!2",
+                  "acasXu₀[input]!1",
+                  "acasXu₀[input]!0",
+                  "acasXu₀[input]",
+                  "x!4",
+                  "x!3",
+                  "x!2",
+                  "x!1",
+                  "x!0",
+                  "x"
+                ],
+                "userVariables": [
+                  0
+                ],
+                "queryVariableMapping": {
+                  "acasXu_Y[4]": 17,
+                  "acasXu_Y[3]": 16,
+                  "acasXu_Y[2]": 15,
+                  "acasXu_Y[1]": 14,
+                  "acasXu_Y[0]": 13,
+                  "acasXu_X[4]": 11,
+                  "acasXu_X[3]": 10,
+                  "acasXu_X[2]": 9,
+                  "acasXu_X[1]": 8,
+                  "acasXu_X[0]": 7
+                }
+              },
+              "variableCompilationTrace": {
+                "reconstructionSteps": [
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      6,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            7,
+                            8,
+                            9,
+                            10,
+                            11
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      12,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            13,
+                            14,
+                            15,
+                            16,
+                            17
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      5,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 600,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            11,
+                            {
+                              "numerator": 1200,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      4,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 650,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            10,
+                            {
+                              "numerator": 1100,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      3,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            9,
+                            {
+                              "numerator": 392699,
+                              "denominator": 62500
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      2,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            8,
+                            {
+                              "numerator": 392699,
+                              "denominator": 62500
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      1,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 19791091,
+                              "denominator": 1000
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            7,
+                            {
+                              "numerator": 60261,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      0,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            1,
+                            2,
+                            3,
+                            4,
+                            5
+                          ]
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "queryAddress": [
+                {
+                  "propertyName": "property8",
+                  "propertyIndices": [],
+                  "propertyID": 7
+                },
+                14
+              ],
+              "metaNetwork": [
+                {
+                  "metaNetworkEntryName": "acasXu",
+                  "metaNetworkEntryInfo": {
+                    "networkType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "networkFilepath": "fake.onnx"
+                  }
+                }
+              ]
+            },
+            {
+              "variableStore": {
+                "vehicleVariableCtx": [
+                  "acasXu₀[output]!4",
+                  "acasXu₀[output]!3",
+                  "acasXu₀[output]!2",
+                  "acasXu₀[output]!1",
+                  "acasXu₀[output]!0",
+                  "acasXu₀[output]",
+                  "acasXu₀[input]!4",
+                  "acasXu₀[input]!3",
+                  "acasXu₀[input]!2",
+                  "acasXu₀[input]!1",
+                  "acasXu₀[input]!0",
+                  "acasXu₀[input]",
+                  "x!4",
+                  "x!3",
+                  "x!2",
+                  "x!1",
+                  "x!0",
+                  "x"
+                ],
+                "userVariables": [
+                  0
+                ],
+                "queryVariableMapping": {
+                  "acasXu_Y[4]": 17,
+                  "acasXu_Y[3]": 16,
+                  "acasXu_Y[2]": 15,
+                  "acasXu_Y[1]": 14,
+                  "acasXu_Y[0]": 13,
+                  "acasXu_X[4]": 11,
+                  "acasXu_X[3]": 10,
+                  "acasXu_X[2]": 9,
+                  "acasXu_X[1]": 8,
+                  "acasXu_X[0]": 7
+                }
+              },
+              "variableCompilationTrace": {
+                "reconstructionSteps": [
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      6,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            7,
+                            8,
+                            9,
+                            10,
+                            11
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      12,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            13,
+                            14,
+                            15,
+                            16,
+                            17
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      5,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 600,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            11,
+                            {
+                              "numerator": 1200,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      4,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 650,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            10,
+                            {
+                              "numerator": 1100,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      3,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            9,
+                            {
+                              "numerator": 392699,
+                              "denominator": 62500
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      2,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            8,
+                            {
+                              "numerator": 392699,
+                              "denominator": 62500
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      1,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 19791091,
+                              "denominator": 1000
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            7,
+                            {
+                              "numerator": 60261,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      0,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            1,
+                            2,
+                            3,
+                            4,
+                            5
+                          ]
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "queryAddress": [
+                {
+                  "propertyName": "property8",
+                  "propertyIndices": [],
+                  "propertyID": 7
+                },
+                15
+              ],
+              "metaNetwork": [
+                {
+                  "metaNetworkEntryName": "acasXu",
+                  "metaNetworkEntryInfo": {
+                    "networkType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "networkFilepath": "fake.onnx"
+                  }
+                }
+              ]
+            },
+            {
+              "variableStore": {
+                "vehicleVariableCtx": [
+                  "acasXu₀[output]!4",
+                  "acasXu₀[output]!3",
+                  "acasXu₀[output]!2",
+                  "acasXu₀[output]!1",
+                  "acasXu₀[output]!0",
+                  "acasXu₀[output]",
+                  "acasXu₀[input]!4",
+                  "acasXu₀[input]!3",
+                  "acasXu₀[input]!2",
+                  "acasXu₀[input]!1",
+                  "acasXu₀[input]!0",
+                  "acasXu₀[input]",
+                  "x!4",
+                  "x!3",
+                  "x!2",
+                  "x!1",
+                  "x!0",
+                  "x"
+                ],
+                "userVariables": [
+                  0
+                ],
+                "queryVariableMapping": {
+                  "acasXu_Y[4]": 17,
+                  "acasXu_Y[3]": 16,
+                  "acasXu_Y[2]": 15,
+                  "acasXu_Y[1]": 14,
+                  "acasXu_Y[0]": 13,
+                  "acasXu_X[4]": 11,
+                  "acasXu_X[3]": 10,
+                  "acasXu_X[2]": 9,
+                  "acasXu_X[1]": 8,
+                  "acasXu_X[0]": 7
+                }
+              },
+              "variableCompilationTrace": {
+                "reconstructionSteps": [
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      6,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            7,
+                            8,
+                            9,
+                            10,
+                            11
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      12,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            13,
+                            14,
+                            15,
+                            16,
+                            17
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      5,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 600,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            11,
+                            {
+                              "numerator": 1200,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      4,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 650,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            10,
+                            {
+                              "numerator": 1100,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      3,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            9,
+                            {
+                              "numerator": 392699,
+                              "denominator": 62500
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      2,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            8,
+                            {
+                              "numerator": 392699,
+                              "denominator": 62500
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      1,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 19791091,
+                              "denominator": 1000
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            7,
+                            {
+                              "numerator": 60261,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      0,
+                      {
+                        "tag": "DenseTensor",
+                        "contents": [
+                          [
+                            5
+                          ],
+                          [
+                            1,
+                            2,
+                            3,
+                            4,
+                            5
+                          ]
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "queryAddress": [
+                {
+                  "propertyName": "property8",
+                  "propertyIndices": [],
+                  "propertyID": 7
+                },
+                16
+              ],
+              "metaNetwork": [
+                {
+                  "metaNetworkEntryName": "acasXu",
+                  "metaNetworkEntryInfo": {
+                    "networkType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          5
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "networkFilepath": "fake.onnx"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "negated": true
+      }
+    }
+  }
+}

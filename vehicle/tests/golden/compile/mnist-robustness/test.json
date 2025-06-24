@@ -15,6 +15,15 @@
     "needs": ["spec.vcl"]
   },
   {
+    "name": "VNNLib",
+    "run": "vehicle compile -s spec.vcl -t VNNLibQueries -o VNNLib.queries/ --network classifier:fake.onnx --parameter epsilon:0.1 --dataset trainingImages:images.idx --dataset trainingLabels:labels.idx",
+    "needs": ["spec.vcl", "fake.onnx", "images.idx", "labels.idx"],
+    "produces": ["VNNLib.queries/*.txt", "VNNLib.queries/robust*.vcl-plan"],
+    "ignore": {
+      "lines": ".*\"fileHash\".*"
+    }
+  },
+  {
     "name": "Marabou",
     "run": "vehicle compile -s spec.vcl -t MarabouQueries -o Marabou.queries/ --network classifier:fake.onnx --parameter epsilon:0.1 --dataset trainingImages:images.idx --dataset trainingLabels:labels.idx",
     "needs": ["spec.vcl", "fake.onnx", "images.idx", "labels.idx"],

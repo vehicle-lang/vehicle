@@ -49,7 +49,7 @@ compileMarabouVar QueryVariableInfo {..} = do
 
 -- | Compiles an expression representing a single Marabou query.
 compileMarabouQuery :: CompileQuery
-compileMarabouQuery address (QueryContents _variables assertions) = do
+compileMarabouQuery address (QueryContents _variables assertions) _metaNetwork = do
   assertionDocs <- forM assertions (compileAssertion address)
   let assertionsDoc = vsep assertionDocs
   return $ layoutAsText assertionsDoc

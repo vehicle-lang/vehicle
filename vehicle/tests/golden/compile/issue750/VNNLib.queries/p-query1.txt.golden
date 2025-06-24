@@ -4,13 +4,15 @@
 ;  - VNNLib query format version: unknown
 ;  - Vehicle version: 0.16.1+dev
 
-(assert == (- (+ f@2@X_0) f@1@X_0) 0.0)
-(assert <= (- (+ f@2@Y_0) f@1@Y_0) 0.0)
-(assert <= (+ f@1@X_0) 1.0)
-(assert <= (+ f@1@X_0) 1.0)
-(assert >= (+ f@1@X_0) 0.0)
-(assert >= (+ f@1@X_0) 0.0)
-(declare-fun f@1@X_0 Real)
-(declare-fun f@1@Y_0 Real)
-(declare-fun f@2@X_0 Real)
-(declare-fun f@2@Y_0 Real)
+(declare-network f_0
+  (declare-input f_0_X Real [1])
+  (declare-output f_0_Y Real [1]))
+(declare-network f_1
+  (declare-input f_1_X Real [1])
+  (declare-output f_1_Y Real [1]))
+(assert (== (- (+ f_1_X[0]) f_0_X[0]) 0.0))
+(assert (<= (- (+ f_1_Y[0]) f_0_Y[0]) 0.0))
+(assert (<= (+ f_0_X[0]) 1.0))
+(assert (<= (+ f_0_X[0]) 1.0))
+(assert (>= (+ f_0_X[0]) 0.0))
+(assert (>= (+ f_0_X[0]) 0.0))
