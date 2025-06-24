@@ -3,8 +3,9 @@ From mathcomp.algebra_tactics Require Import ring.
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
-Import Num.Theory GRing.
+Import Num.Theory GRing Order.POrderTheory.
 Require Import vehicle.tensor.
+Require Import vehicle.std.
 
 Open Scope ring_scope.
 
@@ -116,6 +117,24 @@ Proof.
     rewrite /sensorReadingNotOffRoad normr0 /roadWidth /maxSensorError. by lra.
 Qed.
 
+Definition safeInput_R (x : WindControllerSpec.InputVector) := forallIndex (fun i => (-(13 / 4 : R) <= tnth x i) && (tnth x i <= (13 / 4 : R))).
+Lemma safeInput_Req x : safeInput_R x -> WindControllerSpec.safeInput x.
+Proof. rewrite /safeInput_R /forallIndex.
+    move=> Hs. rewrite /WindControllerSpec.safeInput /forallIndex => i.
+    apply /andP. rewrite /oppt. by apply Hs.
+Qed.
+
+Definition safeOutput_R (x : WindControllerSpec.InputVector) := 
+    let y := tnth (WindControllerSpec.controller (WindControllerSpec.normalise x)) WindControllerSpec.velocity in 
+    (-(5 / 4) < (y + 2 * tnth x WindControllerSpec.currentSensor - tnth x WindControllerSpec.previousSensor)) && ((y + 2 * tnth x WindControllerSpec.currentSensor - tnth x WindControllerSpec.previousSensor) < (5 / 4)).
+Lemma safeOutput_Req x : WindControllerSpec.safeOutput x -> safeOutput_R x.
+Proof. move=> [Hsl Hsr]. rewrite /safeOutput_R. apply /andP; split. by apply Hsl. by apply Hsr. Qed.
+
+Lemma safe_R x : safeInput_R x -> safeOutput_R x.
+Proof.
+    move=> Hi. apply safeOutput_Req. apply WindControllerSpec.safe. apply safeInput_Req. apply Hi.
+Qed.
+
 Lemma controller_lem :
     forall x y, 
         `| x | <= roadWidth + maxSensorError ->
@@ -124,20 +143,20 @@ Lemma controller_lem :
 Proof.
     move=> x y Hx Hy.
     rewrite /controller.
-    replace (roadWidth - maxWindShift - 3 * maxSensorError) with (125 / 100 : R); 
+    rewrite (_ : roadWidth - maxWindShift - 3 * maxSensorError = (5/4))%R;
         last by rewrite /roadWidth /maxWindShift /maxSensorError; lra.
     rewrite real_lter_norml//=.
-    replace (2 * x) with (2 * tnth (toTensor x y) WindControllerSpec.currentSensor); 
+    rewrite (_ : 2 * x = 2 * tnth (toTensor x y) WindControllerSpec.currentSensor);
         last by rewrite /WindControllerSpec.currentSensor.
-    replace (- y) with (- tnth (toTensor x y) WindControllerSpec.previousSensor);
+    rewrite (_ : - y = - tnth (toTensor x y) WindControllerSpec.previousSensor);
         last by rewrite /WindControllerSpec.previousSensor.
-    replace 0 with WindControllerSpec.velocity; last by [].
-    apply (WindControllerSpec.safe (toTensor x y)).
-    rewrite /toTensor /WindControllerSpec.safeInput. 
-    replace (325 / 100) with (roadWidth + maxSensorError); last by rewrite /roadWidth /maxSensorError; lra.
+    rewrite -/WindControllerSpec.velocity.
+    apply (@safe_R (toTensor x y)).
+    rewrite /toTensor /safeInput_R /forallIndex.
+    rewrite (_ : 13/4 = roadWidth + maxSensorError); last by rewrite /roadWidth /maxSensorError; lra.
     elim; case. by move: Hx; rewrite real_lter_norml; last by apply num_real.
     case. move=> i. by move: Hy; rewrite real_lter_norml; last by apply num_real.
-    by auto.
+    by [].
 Qed.
 
 Lemma valid_imp_nextState_accurateSensor : 
@@ -157,10 +176,10 @@ Lemma valid_and_safe_imp_nextState_onRoad :
 Proof.
     rewrite /validObservation /safeState. move=> o [Hsensor Hws] s [Hsafedist [Haccsensor Hsenonroad]].
     rewrite /onRoad/= addrA.
-    apply /Order.le_trans; first by apply ler_normD.
+    apply /le_trans; first by apply ler_normD.
     rewrite -lerBrDr.
     rewrite /safeDistanceFromEdge in Hsafedist. 
-    apply /Order.le_trans; first apply Order.POrderTheory.ltW; first by apply: Hsafedist.
+    apply /le_trans; first apply ltW; first by apply: Hsafedist.
     by apply lerB.
 Qed.
 
@@ -192,13 +211,13 @@ Proof.
     controller x (sensor s) + windSpeed s + windShift o) with (
         (controller x (sensor s) + 2 * x - sensor s) + (sensor s - position s - sensorError o - sensorError o)
     ); last by lra.
-    apply /Order.POrderTheory.le_lt_trans; first by apply ler_normD.
-    apply (@Order.POrderTheory.le_lt_trans _ _ (`|controller x (sensor s) + 2 * x - sensor s| + 3 * maxSensorError)).
+    apply /le_lt_trans; first by apply ler_normD.
+    apply (@le_lt_trans _ _ (`|controller x (sensor s) + 2 * x - sensor s| + 3 * maxSensorError)).
     apply lerD; first by [].
-    apply /Order.POrderTheory.le_trans; first apply ler_normD.
+    apply /le_trans; first apply ler_normD.
     replace (3 * maxSensorError) with (2 * maxSensorError + maxSensorError); last by lra.
     apply lerD; last by rewrite normrN.
-    apply /Order.POrderTheory.le_trans; first apply ler_normD.
+    apply /le_trans; first apply ler_normD.
     replace (2 * maxSensorError) with (maxSensorError + maxSensorError); last by lra.
     apply lerD; last by rewrite normrN.
     rewrite -normrN opprD/= opprK addrC. move: Hs => [_ [HaccSensor _]]. move: HaccSensor; apply.
@@ -218,7 +237,7 @@ Proof.
 Qed.
 
 Lemma finalState_safe :
-    forall xs, (forall x, Coq.Lists.List.In x xs -> validObservation x) ->
+    forall xs, (forall x, List.In x xs -> validObservation x) ->
     safeState (finalState xs).
 Proof.
     move=> xs H. induction xs.
@@ -227,8 +246,8 @@ Proof.
     right. by apply HI. apply (H a). by left.
 Qed.
 
-Lemma finalState_onRoad :
-    forall xs, (forall x, Coq.Lists.List.In x xs -> validObservation x) ->
+Theorem finalState_onRoad :
+    forall xs, (forall x, List.In x xs -> validObservation x) ->
     onRoad(finalState xs).
 Proof.
     move=> xs H. induction xs.
