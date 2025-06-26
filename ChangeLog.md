@@ -4,36 +4,38 @@
 
 ### The Vehicle language
 
+* (BREAKING) The `Rat` type has been changed to `Real` to better match the upcoming v2.0 of the VNNLib specification.
+
 To better match with the semantics of machine learning frameworks,
 the `Tensor` type is no longer simply a synonym for nested `Vector`s,
-e.g. `Tensor Rat [1,2]` is no longer the same as `Vector (Vector Rat 2) 1`.
+e.g. `Tensor Real [1,2]` is no longer the same as `Vector (Vector Real 2) 1`.
 
 Some breaking consequences of this are as follows:
 
-* `Tensor`s can only store the primitive types of data `Bool` and `Rat`, e.g.
+* (BREAKING) `Tensor`s can only store the primitive types of data `Bool` and `Real`, e.g.
 you can no longer write `Tensor (Nat -> Nat) [1]`.
 
-* All `@network` declarations must use `Tensor` types rather than `Vector` types (`@dataset` declarations
+* (BREAKING) All `@network` declarations must use `Tensor` types rather than `Vector` types (`@dataset` declarations
 can still use a mixture of either).
 
-* `forall _ in _` no longer works for `Tensor`/`Vector` types.
+* (BREAKING) `forall _ in _` no longer works for `Tensor`/`Vector` types.
 
 Some positive changes from this:
 
 * Comparison operators `<`, `>`, `<=`, `>=`, `==` and `!=` can now be used over tensors, and have type
-`Tensor Rat ds -> Tensor Rat ds -> Bool`.
+`Tensor Real ds -> Tensor Real ds -> Bool`.
 
 * Added new pointwise comparison operators `.<`, `.>`, `.<=`, `.>=`, `.==` and `.!=` which have type
-`Tensor Rat ds -> Tensor Rat ds -> Tensor Bool ds`.
+`Tensor Real ds -> Tensor Real ds -> Tensor Bool ds`.
 
 * Added new reduction operators over tensors:
   ```
   reduceAnd : Tensor Bool ds -> Bool -> Bool
   reduceOr : Tensor Bool ds -> Bool -> Bool
-  reduceSum : Tensor Rat ds -> Rat -> Rat
-  reduceMul : Tensor Rat ds -> Rat -> Rat
-  reduceMin : Tensor Rat ds -> Rat -> Rat
-  reduceMax : Tensor Rat ds -> Rat -> Rat
+  reduceSum : Tensor Real ds -> Real -> Real
+  reduceMul : Tensor Real ds -> Real -> Real
+  reduceMin : Tensor Real ds -> Real -> Real
+  reduceMax : Tensor Real ds -> Real -> Real
   ```
 
 * Pointwise `min` and `max` now work over `Tensor`s.
@@ -57,7 +59,7 @@ Some positive changes from this:
 
 ### Agda interface
 
-* BREAKING: Upgraded dependency on Agda standard library from v2.0 to v2.2
+* (BREAKING) Upgraded dependency on Agda standard library from v2.0 to v2.2
 
 ### Other
 

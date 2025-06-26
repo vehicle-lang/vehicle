@@ -1,4 +1,4 @@
-rat : Rat
+rat : Real
 rat = 6 + 2
 
 @property

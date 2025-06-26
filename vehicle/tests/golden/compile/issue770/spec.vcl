@@ -2,7 +2,7 @@
 n : Nat
 
 @network
-f : Tensor Rat [1] -> Tensor Rat [n + 1]
+f : Tensor Real [1] -> Tensor Real [n + 1]
 
 @property
 p : Bool

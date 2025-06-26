@@ -1,9 +1,9 @@
 @network
-f : Tensor Rat [1] -> Tensor Rat [1]
+f : Tensor Real [1] -> Tensor Real [1]
 
-square : Rat -> Rat
+square : Real -> Real
 square y = y * y
 
 @property
 p : Bool
-p = forall (x : Rat) . square (f [x] ! 0) > 0
+p = forall (x : Real) . square (f [x] ! 0) > 0

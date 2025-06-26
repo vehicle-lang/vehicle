@@ -1,6 +1,6 @@
 @network
-f : Tensor Rat [1] -> Tensor Rat [1]
+f : Tensor Real [1] -> Tensor Real [1]
 
 @property
 property : Bool
-property = forall (x : Rat) . x >= 0 and (forall x . f x >= 0)
+property = forall (x : Real) . x >= 0 and (forall x . f x >= 0)

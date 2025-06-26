@@ -19,10 +19,10 @@ Parameters can be declared using the ``@parameter`` annotation as follows:
 .. code-block:: agda
 
    @parameter
-   epsilon : Rat
+   epsilon : Real
 
 Parameters can be of the following types: :code:`Bool`, :code:`Index n`,
-:code:`Nat`, :code:`Int`, :code:`Rat`.
+:code:`Nat`, :code:`Int`, :code:`Real`.
 
 Similar to networks and datasets, parameters are passed in at compile time via
 the :code:`--parameter` command line option. For example setting :code:`epsilon` to
@@ -48,10 +48,10 @@ The solution in this case is to set the ``infer`` option on the parameter as fol
    n : Nat
 
    @dataset
-   trainingInputs : Tensor Rat [n, 10]
+   trainingInputs : Tensor Real [n, 10]
 
    @dataset
-   trainingOutputs : Tensor Rat [n, 3]
+   trainingOutputs : Tensor Real [n, 3]
 
 Unlike normal parameters, inferable parameters cannot be passed in at the
 command line using the ``--parameter`` option.

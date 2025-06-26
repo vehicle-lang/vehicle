@@ -1,10 +1,10 @@
 -- Only property `p2` is compiled
 
-add1 : Rat -> Rat
+add1 : Real -> Real
 add1 x = x + 1
 
 @network
-f : Tensor Rat [1] -> Tensor Rat [1]
+f : Tensor Real [1] -> Tensor Real [1]
 
 @property
 p1 : Bool
@@ -12,7 +12,7 @@ p1 = forall x . f x ! 0 >= add1 0
 
 
 @network
-g : Tensor Rat [2] -> Tensor Rat [1]
+g : Tensor Real [2] -> Tensor Real [1]
 
 @property
 p2 : Bool

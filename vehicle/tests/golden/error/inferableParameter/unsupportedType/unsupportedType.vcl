@@ -1,2 +1,2 @@
 @parameter(infer=True)
-n : Rat
+n : Real

@@ -11,12 +11,12 @@ Basics
 Networks are declared by adding a ``@network`` annotation to a function
 declaration.
 For example, the following declares a network ``myNetwork`` which takes
-a 2-dimension tensor of size 28 x 28 and returns a vector of 10 rationals:
+a 2-dimension tensor of size 28 x 28 and returns a vector of 10 reals:
 
 .. code-block:: agda
 
    @network
-   myNetwork : Tensor Rat [28, 28] -> Vector Rat 10
+   myNetwork : Tensor Real [28, 28] -> Tensor Real [10]
 
 Note that although no implementation for the network is provided directly in the
 specification, ``myNetwork`` can still be used in the specification as any other
@@ -50,7 +50,7 @@ Multiple input/outputs
 
 At the moment Vehicle supports networks with a single input and output node.
 Therefore all declarations annoated with ``@network`` must have a type of the
-form ``Tensor Rat dims1 -> Tensor Rat dims2`` where ``dims1`` and ``dims2``
+form ``Tensor Real dims1 -> Tensor Real dims2`` where ``dims1`` and ``dims2``
 are a non-empty list of constants.
 
 Although we are aware that common network representations such as ONNX,
@@ -71,4 +71,4 @@ The following are not currently allowed:
    -- Reason: boolean inputs are not current allowed
    -- Justification: lack of support for verifiers or training methods
    @network
-   myNetwork : Tensor Bool [4] -> Tensor Rat [1]
+   myNetwork : Tensor Bool [4] -> Tensor Real [1]

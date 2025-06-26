@@ -16,7 +16,7 @@ Datasets are declared as follows using the ``@dataset`` annotation:
 .. code-block:: agda
 
    @dataset
-   myDataset : Tensor Rat [28, 28]
+   myDataset : Tensor Real [28, 28]
 
 Datasets can be any type :code:`t` that can be constructed from the following
 grammar:
@@ -24,7 +24,7 @@ grammar:
 .. code-block:: agda
 
    t ::= List r | Vector r n | Tensor s ns
-   s ::= Index n | Nat | Int | Rat
+   s ::= Index n | Nat | Int | Real
    r ::= t | s
 
 where :code:`n` is a known constant and :code:`ns` is a list of known constants.

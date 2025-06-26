@@ -1,8 +1,8 @@
 unused : Bool
-unused = forall (x : Rat) . True
+unused = forall (x : Real) . True
 
 @network
-f : Tensor Rat [1] -> Tensor Rat [1]
+f : Tensor Real [1] -> Tensor Real [1]
 
 @property
 expandedExpr : Bool

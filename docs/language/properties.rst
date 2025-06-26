@@ -30,7 +30,7 @@ predicate holds over every element of a dataset, e.g.
 .. code-block:: agda
 
    @dataset
-   trainingDataset : List (Tensor Rat [28, 28])
+   trainingDataset : List (Tensor Real [28, 28])
 
    ...
 
@@ -49,7 +49,7 @@ on the verification status of each individual element.
 .. code-block:: agda
 
    @dataset
-   trainingDataset : List (Tensor Rat [28, 28])
+   trainingDataset : List (Tensor Real [28, 28])
 
    ...
 

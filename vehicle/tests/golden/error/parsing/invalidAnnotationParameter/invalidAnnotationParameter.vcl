@@ -1,2 +1,2 @@
 @parameter(valid=False)
-epsilon : Rat
+epsilon : Real

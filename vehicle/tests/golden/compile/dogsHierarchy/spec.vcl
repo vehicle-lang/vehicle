@@ -22,13 +22,13 @@ bigDogs = [greatDane, germanShepherd]
 --------------------------------------------------------------------------------
 -- Network
 
-type Image = Tensor Rat [4, 4]
-type Score = Rat
+type Image = Tensor Real [4, 4]
+type Score = Real
 
 @network
 score : Image -> Tensor Score [numberOfDogs]
 
-validPixel : Rat -> Bool
+validPixel : Real -> Bool
 validPixel p = 0 <= p <= 1
 
 validImage : Image -> Bool

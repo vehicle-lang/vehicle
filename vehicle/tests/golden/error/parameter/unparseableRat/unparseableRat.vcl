@@ -1,2 +1,2 @@
 @parameter
-r : Rat
+r : Real

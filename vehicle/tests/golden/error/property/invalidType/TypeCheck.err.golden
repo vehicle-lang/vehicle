@@ -1,5 +1,5 @@
-Error in file 'invalidType.vcl' at Line 2, Columns 5-8: The type of @property 'p':
-  Rat
+Error in file 'invalidType.vcl' at Line 2, Columns 5-9: The type of @property 'p':
+  Real
 is not supported. The possible valid types for '@property' annotated declarations are:
   1. Bool
   2. Vector Bool n

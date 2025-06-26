@@ -1,7 +1,7 @@
 genId : a -> a
 genId x = x
 
-natId : Rat -> Rat
+natId : Real -> Real
 natId = genId
 
 -- fst : a -> b -> a

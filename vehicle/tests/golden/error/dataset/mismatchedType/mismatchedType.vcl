@@ -1,3 +1,3 @@
--- Test passes dataset of type List Rat
+-- Test passes dataset of type List Real
 @dataset
 trainingDataset : List Nat

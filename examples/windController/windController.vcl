@@ -1,12 +1,12 @@
 --------------------------------------------------------------------------------
 -- Inputs and outputs
 
-type InputVector = Tensor Rat [2]
+type InputVector = Tensor Real [2]
 
 currentSensor  = 0
 previousSensor = 1
 
-type OutputVector = Tensor Rat [1]
+type OutputVector = Tensor Real [1]
 
 velocity = 0
 

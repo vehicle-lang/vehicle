@@ -1,4 +1,4 @@
-negation : Rat
+negation : Real
 negation = -5
 
 @property

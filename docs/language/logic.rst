@@ -68,7 +68,7 @@ using the :code:`==` and :code:`!=` operators respectively.
 The type of these operators are :code:`A -> A -> Bool` where :code:`A` can be any
 of the following types:
 
-- :code:`Bool`, :code:`Nat`, :code:`Int`, :code:`Rat`.
+- :code:`Bool`, :code:`Nat`, :code:`Int`, :code:`Real`.
 - :code:`Index d` for any value of :code:`d`.
 - :code:`List A` if type :code:`A` also supports the operators.
 - :code:`Vector A n` if type :code:`A` also supports the operators.

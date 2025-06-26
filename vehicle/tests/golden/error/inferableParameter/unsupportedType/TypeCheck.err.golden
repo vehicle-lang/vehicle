@@ -1,5 +1,5 @@
-Error in file 'unsupportedType.vcl' at Line 2, Columns 5-8: The type of @parameter 'n':
-  Rat
+Error in file 'unsupportedType.vcl' at Line 2, Columns 5-9: The type of @parameter 'n':
+  Real
 is not supported. The possible valid types for '@parameter' annotated declarations are:
   1. Nat
 Fix: change the type of 'n' to a supported type

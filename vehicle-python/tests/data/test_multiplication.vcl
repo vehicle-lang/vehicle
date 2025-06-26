@@ -1,4 +1,4 @@
-multiplication : Rat
+multiplication : Real
 multiplication = 6 * 2
 
 @property

@@ -17,11 +17,11 @@ letLam = let y = \x -> x in y
 
 @property
 forallLet : Bool
-forallLet = forall (x : Rat) . let y = x in y == 1
+forallLet = forall (x : Real) . let y = x in y == 1
 
 @property
 letForall : Bool
-letForall = let y = 1 in forall (x : Rat) . y == x
+letForall = let y = 1 in forall (x : Real) . y == x
 
 @property
 forallInLet : Bool
@@ -31,7 +31,7 @@ forallInLet = forall x in [1] . let y = x in y == 1
 letForallIn : Bool
 letForallIn = let y = 1 in forall x in [1] . y == x
 
-falsey : Rat -> Bool
+falsey : Real -> Bool
 falsey x = x <= 0.5
 
 @property

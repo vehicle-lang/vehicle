@@ -1,22 +1,22 @@
 @network
-f : Tensor Rat [2,2] -> Tensor Rat [2,2]
+f : Tensor Real [2,2] -> Tensor Real [2,2]
 
-zeroD : Tensor Rat []
+zeroD : Tensor Real []
 zeroD = 2.5
 
-oneD : Tensor Rat [2]
+oneD : Tensor Real [2]
 oneD = [zeroD, 1]
 
-twoD : Tensor Rat [2, 2]
+twoD : Tensor Real [2, 2]
 twoD = [oneD, [2, 3]]
 
-lookup2D : Rat
+lookup2D : Real
 lookup2D = twoD ! 0 ! 1
 
-addition : Tensor Rat [2, 2]
+addition : Tensor Real [2, 2]
 addition = twoD + twoD
 
-subtraction : Tensor Rat [2, 2]
+subtraction : Tensor Real [2, 2]
 subtraction = twoD - twoD
 
 @property

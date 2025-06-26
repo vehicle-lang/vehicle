@@ -1,10 +1,10 @@
 untyped = [0]
 
-empty : Tensor Rat [0]
+empty : Tensor Real [0]
 empty = []
 
 @network
-f : Tensor Rat [1] -> Tensor Rat [1]
+f : Tensor Real [1] -> Tensor Real [1]
 
 @property
 p : Bool

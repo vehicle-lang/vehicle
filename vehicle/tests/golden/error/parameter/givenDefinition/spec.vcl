@@ -1,3 +1,3 @@
 @parameter
-epsilon : Rat
+epsilon : Real
 epsilon = 0.1

@@ -1,2 +1,2 @@
 @network
-f : Rat
+f : Real

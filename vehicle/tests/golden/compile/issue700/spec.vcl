@@ -1,7 +1,7 @@
-type Image = Tensor Rat [1]
+type Image = Tensor Real [1]
 
 @network
-classifier : Image -> Tensor Rat [1]
+classifier : Image -> Tensor Real [1]
 
 @property
 robustAround : Bool

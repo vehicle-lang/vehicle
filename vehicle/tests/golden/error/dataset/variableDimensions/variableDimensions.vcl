@@ -1,5 +1,5 @@
 @network
-f : Tensor Rat [1] -> Tensor Rat [1]
+f : Tensor Real [1] -> Tensor Real [1]
 
 @dataset
-trainingDataset : Tensor Rat [if f [0] ! 0 > 0 then 2 else 3]
+trainingDataset : Tensor Real [if f [0] ! 0 > 0 then 2 else 3]

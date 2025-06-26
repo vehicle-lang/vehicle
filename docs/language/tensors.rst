@@ -14,11 +14,11 @@ array, then the ``Tensor`` type can be thought of as a multi-dimensional array.
 
 Tensor types are written as ``Tensor A ds`` where ``A`` is the type
 of data stored within the tensor and ``ds`` is a list of natural numbers
-that represent its dimensions. For example ``Tensor Rat [24, 24]`` would be
-a 24-by-24 matrix of rational numbers.
+that represent its dimensions. For example ``Tensor Real [24, 24]`` would be
+a 24-by-24 matrix of real numbers.
 
 Note that a 0-dimensional tensor is equivalent to the raw value in Vehicle,
-e.g. the type ``Tensor Rat []`` can be used interchangably as `Rat`.
+e.g. the type ``Tensor Real []`` can be used interchangably as `Real`.
 
 Creation
 --------
@@ -31,7 +31,7 @@ created by the same three mechanisms:
 
    .. code-block:: agda
 
-     identity : Tensor Rat [2, 2]
+     identity : Tensor Real [2, 2]
      identity = [ [1, 0], [0, 1] ]
 
    As with the ``Vector`` type, the type-checker will ensure that all tensors are of the correct size.
@@ -39,7 +39,7 @@ created by the same three mechanisms:
 
    .. code-block:: agda
 
-     identity : Tensor Rat [2, 2]
+     identity : Tensor Real [2, 2]
      identity = [ [1, 0, 1] , [0, 1, 1] ]
 
    as the second dimension is ``2`` but three elements have been provided.
@@ -48,7 +48,7 @@ created by the same three mechanisms:
 
    .. code-block:: agda
 
-     identity : Tensor Rat [1000,1000]
+     identity : Tensor Real [1000,1000]
      identity = foreach i j . if i == j then 1 else 0
 
 #. The final way tensors can be created is to load them as a ``dataset``, e.g.
@@ -56,7 +56,7 @@ created by the same three mechanisms:
    .. code-block:: agda
 
      @dataset
-     myLargeTensor : Tensor Rat [10000, 10000]
+     myLargeTensor : Tensor Real [10000, 10000]
 
    See the section on datasets for more details.
 
@@ -123,7 +123,7 @@ list of constants (e.g. ``[1, 2, 3]``), in practice they can be any
 valid expression of type ``List Nat``.
 For example:
 
-  -  ``Tensor Rat [2 + d]`` is the type of vectors of length ``2 + d``.
+  -  ``Tensor Real [2 + d]`` is the type of vectors of length ``2 + d``.
 
-  -  ``Tensor Rat (10 :: ds)`` is the type of tensors whose first dimension
+  -  ``Tensor Real (10 :: ds)`` is the type of tensors whose first dimension
      is of size 10 and then has remaining dimensions ``ds``.

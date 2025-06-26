@@ -8,15 +8,15 @@ used repeatedly.
 
 For example, when defining a robustness specification for the MNIST dataset
 which contains 24x24 greyscale images, in order to avoid having to repeatedly
-write :code:`Tensor Rat [24, 24]`, one could declare :code:`Image` as a
+write :code:`Tensor Real [24, 24]`, one could declare :code:`Image` as a
 synonym for it and use it as follows:
 
 .. code-block:: agda
 
-  type Image = Tensor Rat [24, 24]
+  type Image = Tensor Real [24, 24]
 
   @network
-  classify : Image -> Tensor Rat [10]
+  classify : Image -> Tensor Real [10]
 
   @dataset
   trainingDataset : List Image

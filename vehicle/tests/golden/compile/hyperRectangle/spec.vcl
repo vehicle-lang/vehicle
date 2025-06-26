@@ -1,10 +1,10 @@
 --------------------------------------------------------------------------------
 -- Inputs
 inputSize = 30
-type InputVector = Tensor Rat [inputSize]
+type InputVector = Tensor Real [inputSize]
 --------------------------------------------------------------------------------
 -- Outputs
-type OutputVector = Tensor Rat [2]
+type OutputVector = Tensor Real [2]
 type Label = Index 2
 pos : Label
 pos = 0
@@ -22,15 +22,15 @@ advises x i = forall j . j != i => classifier x ! i > classifier x ! j
 n : Nat
 
 @dataset
-inputs : Tensor Rat [n, inputSize]
+inputs : Tensor Real [n, inputSize]
 
-minList : Tensor Rat [n] -> Rat
+minList : Tensor Real [n] -> Real
 minList v = reduceMin 1 v
 
-maxList : Tensor Rat [n] -> Rat
+maxList : Tensor Real [n] -> Real
 maxList v = reduceMax 0 v
 
-inputTranspose : Tensor Rat [inputSize, n]
+inputTranspose : Tensor Real [inputSize, n]
 inputTranspose = foreach i . foreach j . inputs ! j ! i
 
 vectorMin : InputVector
