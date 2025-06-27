@@ -43,6 +43,8 @@ Definition clearOfConflict : ordinal 5%N := 0.
 
 Definition weakLeft : ordinal 5%N := 1.
 
+Definition weakRight : nat := 2%N.
+
 Definition strongLeft : ordinal 5%N := 3.
 
 Definition strongRight : ordinal 5%N := 4.
