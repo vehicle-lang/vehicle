@@ -3,8 +3,9 @@ module Vehicle.Verify.QueryFormat.VNNLib where
 import Control.Monad (forM)
 import Data.List.NonEmpty qualified as NonEmpty
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Resource (NetworkTensorType (dimensions), NetworkType (inputTensor, outputTensor))
 import Vehicle.Data.QuantifiedVariable (prettyRationalAsFloat)
-import Vehicle.Syntax.Tensor (flattenIndices)
+import Vehicle.Data.Tensor (TensorShape)
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
 import Vehicle.Verify.QueryFormat.Interface
@@ -33,25 +34,63 @@ outputFormat =
       emptyLines = True
     }
 
+-- | Compile network variable name
+compileNetworkVariableName :: Name -> Maybe Int -> InputOrOutput -> Doc a
+compileNetworkVariableName networkName networkIndex inputOrOutput =
+  compileNetworkName networkName networkIndex <> "_" <> if inputOrOutput == Input then "X" else "Y"
+
+-- | Compile network name using _ and application index
+compileNetworkName :: Name -> Maybe Int -> Doc a
+compileNetworkName networkName Nothing = pretty networkName
+compileNetworkName networkName (Just networkIndex) = pretty networkName <> "_" <> pretty networkIndex
+
 -- | Compiles an individual variable
 compileVNNLibVar :: CompileQueryVariable
 compileVNNLibVar QueryVariableInfo {..} = do
-  let io = if inputOrOutput == Input then "X" else "Y"
-  let networkIndex = if numberOfNetworkApps > 1 then pretty (networkAppIndex + 1) else ""
-  let name = pretty networkName <> "@" <> networkIndex <> "@" <> io
-  let index = flattenIndices parentVariableShape parentVariableIndices
-  layoutAsText $ name <> "_" <> pretty index
+  let networkVariableName = case numberOfNetworkApps of
+        1 -> compileNetworkVariableName networkName Nothing inputOrOutput
+        _ -> compileNetworkVariableName networkName (Just networkAppIndex) inputOrOutput
+  layoutAsText $ networkVariableName <> pretty parentVariableIndices
+
+-- | Compiles a network input
+compileNetworkInput :: Name -> TensorShape -> Doc a
+compileNetworkInput name shape = parens ("declare-input" <+> pretty name <+> "Real" <+> pretty shape)
+
+-- | Compile a network output
+compileNetworkOutput :: Name -> TensorShape -> Doc a
+compileNetworkOutput name shape = parens ("declare-output" <+> pretty name <+> "Real" <+> pretty shape)
+
+-- | Generates the variable name and fetches the shape of the the input or output network tensor
+networkTensor :: MetaNetworkEntry -> InputOrOutput -> Maybe Int -> (Name, TensorShape)
+networkTensor MetaNetworkEntry {..} inputOrOutput metaNetworkIndex = do
+  let networkTensors = networkType metaNetworkEntryInfo
+  case inputOrOutput of
+    Input -> (layoutAsText $ compileNetworkVariableName metaNetworkEntryName metaNetworkIndex inputOrOutput, dimensions $ inputTensor networkTensors)
+    Output -> (layoutAsText $ compileNetworkVariableName metaNetworkEntryName metaNetworkIndex inputOrOutput, dimensions $ outputTensor networkTensors)
+
+-- | Compiles the declarations for a network query
+compileNetworkEntry :: MetaNetworkEntry -> Maybe Int -> Doc a
+compileNetworkEntry metaNetworkEntry@MetaNetworkEntry {..} metaNetworkIndex = do
+  let networkInputDocs = indent 2 $ uncurry compileNetworkInput $ networkTensor metaNetworkEntry Input metaNetworkIndex
+  let networkOutputDocs = indent 2 $ uncurry compileNetworkOutput $ networkTensor metaNetworkEntry Output metaNetworkIndex
+  parens ("declare-network" <+> compileNetworkName metaNetworkEntryName metaNetworkIndex <> line <> networkInputDocs <> line <> networkOutputDocs)
+
+-- | Compiles "all" (network) entries in the MetaNetwork
+compileNetworks :: (MonadLogger m) => MetaNetwork -> m (Doc a)
+compileNetworks metaNetwork =
+  return $
+    vsep
+      ( zipWith compileNetworkEntry metaNetwork $
+          if length metaNetwork == 1 then [Nothing] else map Just [0 ..]
+      )
 
 -- | Compiles an expression representing a single VNNLib query.
 compileVNNLibQuery :: CompileQuery
-compileVNNLibQuery _address (QueryContents variables assertions) = do
-  variableDocs <- forM variables compileVariableDecl
+compileVNNLibQuery _address (QueryContents _variables assertions) metaNetwork = do
+  networkDocs <- compileNetworks metaNetwork
   assertionDocs <- forM assertions compileAssertion
-  let assertionsDoc = vsep assertionDocs <> line <> vsep variableDocs
+  let assertionsDoc = networkDocs <> line <> vsep assertionDocs
   return $ layoutAsText assertionsDoc
-
-compileVariableDecl :: (MonadLogger m) => QueryVariable -> m (Doc a)
-compileVariableDecl var = return $ parens ("declare-fun" <+> pretty var <+> "Real")
 
 compileAssertion :: (MonadLogger m) => QueryAssertion QueryVariable -> m (Doc a)
 compileAssertion QueryAssertion {..} = do
@@ -59,7 +98,7 @@ compileAssertion QueryAssertion {..} = do
   let (headVar NonEmpty.:| tailVars) = lhs
   let compiledLHS = foldl compileCoefVar (compileCoefFirstVar headVar) tailVars
   let compiledRHS = prettyRationalAsFloat rhs
-  return $ parens ("assert" <+> compiledRel <+> parens compiledLHS <+> compiledRHS)
+  return $ parens ("assert" <+> parens (compiledRel <+> parens compiledLHS <+> compiledRHS))
 
 compileRel :: QueryRelation -> Doc a
 compileRel = \case

@@ -1,7 +1,7 @@
 [
   {
   "name": "missingNetwork",
-  "run": "vehicle verify -s spec.vcl -v TestVerifier --network f:fake.onnx --property trivial --verifier-location=testVerifier --verifier-args='sat 'f@@X_0=0.2,f@@X_1=0.3,f@@Y_0=3.0'' --cache verify-cache > /dev/null ; mv fake.onnx fake-changed.onnx && vehicle validate -c verify-cache -j && mv fake-changed.onnx fake.onnx",
+  "run": "vehicle verify -s spec.vcl -v TestVerifier --network f:fake.onnx --property trivial --verifier-location=testVerifier --verifier-args='sat 'f_X[0]=0.2,f_X[1]=0.3,f_Y[0]=3.0'' --cache verify-cache > /dev/null ; mv fake.onnx fake-changed.onnx && vehicle validate -c verify-cache -j && mv fake-changed.onnx fake.onnx",
   "needs": ["fake.onnx", "spec.vcl", "../../../testVerifier"],
   "external": ["TestVerifier"],
   "ignore": {
@@ -14,7 +14,7 @@
 },
 {
   "name": "alteredNetwork",
-  "run": "vehicle verify -s spec.vcl -v TestVerifier --network f:fake.onnx --property trivial --verifier-location=testVerifier --verifier-args='sat 'f@@X_0=0.2,f@@X_1=0.3,f@@Y_0=3.0'' --cache verify-cache > /dev/null ; echo \"FAKE CHANGED ONNX NETWORK\" > fake.onnx && vehicle validate -c verify-cache -j && echo \"FAKE ONNX NETWORK\n\" > fake.onnx",
+  "run": "vehicle verify -s spec.vcl -v TestVerifier --network f:fake.onnx --property trivial --verifier-location=testVerifier --verifier-args='sat 'f_X[0]=0.2,f_X[1]=0.3,f_Y[0]=3.0'' --cache verify-cache > /dev/null ; echo \"FAKE CHANGED ONNX NETWORK\" > fake.onnx && vehicle validate -c verify-cache -j && echo \"FAKE ONNX NETWORK\n\" > fake.onnx",
   "needs": ["fake.onnx", "spec.vcl", "../../../testVerifier"],
   "external": ["TestVerifier"],
   "ignore": {

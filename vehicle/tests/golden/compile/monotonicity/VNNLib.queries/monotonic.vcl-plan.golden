@@ -1,0 +1,209 @@
+{
+  "queryMetaData": {
+    "tag": "NonTrivial",
+    "contents": {
+      "tag": "Query",
+      "contents": {
+        "queries": {
+          "unDisjunctAll": [
+            {
+              "variableStore": {
+                "vehicleVariableCtx": [
+                  "f₁[output]!0",
+                  "f₁[output]",
+                  "f₁[input]!0",
+                  "f₁[input]",
+                  "f₀[output]!0",
+                  "f₀[output]",
+                  "f₀[input]!0",
+                  "f₀[input]",
+                  "x2",
+                  "x1"
+                ],
+                "userVariables": [
+                  0,
+                  1
+                ],
+                "queryVariableMapping": {
+                  "f_1_Y[0]": 5,
+                  "f_1_X[0]": 3,
+                  "f_0_Y[0]": 9,
+                  "f_0_X[0]": 7
+                }
+              },
+              "variableCompilationTrace": {
+                "reconstructionSteps": [
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      2,
+                      {
+                        "tag": "ConstantTensor",
+                        "contents": [
+                          [
+                            1
+                          ],
+                          3
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      4,
+                      {
+                        "tag": "ConstantTensor",
+                        "contents": [
+                          [
+                            1
+                          ],
+                          5
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      6,
+                      {
+                        "tag": "ConstantTensor",
+                        "contents": [
+                          [
+                            1
+                          ],
+                          7
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      8,
+                      {
+                        "tag": "ConstantTensor",
+                        "contents": [
+                          [
+                            1
+                          ],
+                          9
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      0,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            3,
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      1,
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            7,
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "queryAddress": [
+                {
+                  "propertyName": "monotonic",
+                  "propertyIndices": [],
+                  "propertyID": 0
+                },
+                1
+              ],
+              "metaNetwork": [
+                {
+                  "metaNetworkEntryName": "f",
+                  "metaNetworkEntryInfo": {
+                    "networkType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          1
+                        ],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          1
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "networkFilepath": "fake.onnx"
+                  }
+                },
+                {
+                  "metaNetworkEntryName": "f",
+                  "metaNetworkEntryInfo": {
+                    "networkType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          1
+                        ],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          1
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "networkFilepath": "fake.onnx"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "negated": true
+      }
+    }
+  }
+}

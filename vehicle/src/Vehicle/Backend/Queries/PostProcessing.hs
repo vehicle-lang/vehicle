@@ -90,7 +90,7 @@ compilePartitionToQuery globalCtx PropertyMetaData {..} compilationSteps asserti
     let queryContents = QueryContents (getQueryVariables variableStore) queryAssertions
 
     -- Actually compile to the query to the format
-    queryText <- compileQuery queryFormat queryAddress queryContents
+    queryText <- compileQuery queryFormat queryAddress queryContents metaNetwork
 
     -- Write out the query to disk
     case outputLocation of

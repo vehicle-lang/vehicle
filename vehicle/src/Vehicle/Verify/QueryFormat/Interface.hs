@@ -19,11 +19,17 @@ type CompileQueryVariable =
   QueryVariable
 
 data QueryVariableInfo = QueryVariableInfo
-  { inputOrOutput :: InputOrOutput,
+  { -- | Name of the network this query variable belongs to
     networkName :: Name,
+    -- | Total number of applications of the network
     numberOfNetworkApps :: Int,
+    -- | The index of the the network application this variable belongs to
     networkAppIndex :: Int,
+    -- | Does the variable represent an input or output tensor
+    inputOrOutput :: InputOrOutput,
+    -- | The shape of the tensor
     parentVariableShape :: TensorShape,
+    -- | The indices into the tensor to get the element of the tensor.
     parentVariableIndices :: TensorIndices
   }
 
@@ -49,6 +55,7 @@ type CompileQuery =
   (MonadLogger m, MonadError CompileError m) =>
   QueryAddress ->
   QueryContents ->
+  MetaNetwork ->
   m Text
 
 -- | A format for an output query that verifiers can parse.
