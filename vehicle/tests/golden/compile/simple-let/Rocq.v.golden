@@ -12,7 +12,7 @@ Require Import mathcomp.ssreflect.order.
 Require Import mathcomp.ssreflect.seq.
 Require Import mathcomp.reals.reals.
 Require Import vehicle.tensor.
-Require Import vehicle.std.
+Require Import vehicle.utils.
 Import DefaultTupleProdOrder.
 Open Scope ring_scope.
 Open Scope order_scope.

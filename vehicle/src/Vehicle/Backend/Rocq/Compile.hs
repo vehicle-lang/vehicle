@@ -110,13 +110,13 @@ data Library
   | MathcompAlgebraZmodp
   | MathcompRealsReals
   | VehicleTensor
-  | VehicleStd
+  | VehicleUtils
   deriving (Eq, Ord)
 
 instance Pretty Library where
   pretty = \case
     VehicleTensor -> "vehicle.tensor"
-    VehicleStd -> "vehicle.std"
+    VehicleUtils -> "vehicle.utils"
     MathcompAlgebraSsralg -> "mathcomp.algebra.ssralg"
     MathcompSsreflectOrder -> "mathcomp.ssreflect.order"
     MathcompSsreflectFintype -> "mathcomp.ssreflect.fintype"
@@ -457,11 +457,11 @@ compileBuiltin b args = case b of
     PropCompareRatTensorPointwise op -> compileComparison CRatTensor op args
     BoolTensorToProp -> monoError
     PropQuantifyIndex q -> case q of
-      Forall -> annotateApp [RequireImport VehicleStd] "forallIndex" args
-      Exists -> annotateApp [RequireImport VehicleStd] "existsIndex" args
+      Forall -> annotateApp [RequireImport VehicleUtils] "forallIndex" args
+      Exists -> annotateApp [RequireImport VehicleUtils] "existsIndex" args
     PropQuantifyInList q -> case q of
-      Forall -> annotateApp [RequireImport VehicleStd] "forallInList" args
-      Exists -> annotateApp [RequireImport VehicleStd] "existsInList" args
+      Forall -> annotateApp [RequireImport VehicleUtils] "forallInList" args
+      Exists -> annotateApp [RequireImport VehicleUtils] "existsInList" args
     PropNaryProduct -> unsupportedError
     PropNaryProductForeach -> unsupportedError
     PropNaryProductAt -> unsupportedError
@@ -503,13 +503,13 @@ compileApp fun args = do
 compileDerivedFunction :: (MonadRocqCompile m) => DerivedFunction -> [Arg DecidabilityBuiltin] -> m Code
 compileDerivedFunction fn args = case fn of
   QuantifyIndex q -> case q of
-    Exists -> annotateApp [RequireImport VehicleStd] "existsIndex" args
-    Forall -> annotateApp [RequireImport VehicleStd] "forallIndex" args
+    Exists -> annotateApp [RequireImport VehicleUtils] "existsIndex" args
+    Forall -> annotateApp [RequireImport VehicleUtils] "forallIndex" args
   QuantifyInList {} -> unsupported
   TypeAnn -> annotateInfixApp [] minPrecedence "_ : _" Nothing (reverse args)
   CompareRatTensorReduced op ->
     annotateApp
-      [RequireImport VehicleStd]
+      [RequireImport VehicleUtils]
       ( case op of
           Le -> "leRatTensorReduced"
           Lt -> "ltRatTensorReduced"

@@ -12,7 +12,7 @@ Require Import mathcomp.ssreflect.seq.
 Require Import mathcomp.ssreflect.tuple.
 Require Import mathcomp.reals.reals.
 Require Import vehicle.tensor.
-Require Import vehicle.std.
+Require Import vehicle.utils.
 Open Scope ring_scope.
 
 Parameter R : realType.

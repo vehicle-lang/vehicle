@@ -65,7 +65,11 @@ Some positive changes from this:
 
 New Rocq backend for Vehicle, allowing specifications to be compiled to Rocq proof scripts.
 
+* Added Rocq as an export target, e.g. `vehicle export --target Rocq`
+
 * Added `vehicle-rocq` library to contain supporting definitions for compiled scripts
+
+* Added `autoencoderError` example and updated `windController` example to demonstrate Rocq backend
 
 ### Other
 

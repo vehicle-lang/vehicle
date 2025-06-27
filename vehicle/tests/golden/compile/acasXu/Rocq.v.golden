@@ -15,7 +15,7 @@ Require Import mathcomp.ssreflect.tuple.
 Require Import mathcomp.algebra.zmodp.
 Require Import mathcomp.reals.reals.
 Require Import vehicle.tensor.
-Require Import vehicle.std.
+Require Import vehicle.utils.
 Import DefaultTupleProdOrder.
 Open Scope ring_scope.
 Open Scope tensor_scope.
