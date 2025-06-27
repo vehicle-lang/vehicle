@@ -46,7 +46,7 @@ quantifying over them, e.g.
 
 .. code-block:: agda
 
-   myList : List Rat
+   myList : List Real
    myList = [1, 1, 2, 3, 5, 8]
 
    positive : Bool

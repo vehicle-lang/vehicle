@@ -12,8 +12,8 @@ Function types
 
 The function type is written ``A -> B`` where ``A`` is the input
 type and ``B`` is the output type.
-For example ``Rat -> Bool`` is the type of functions from
-a rational number to a boolean value.
+For example ``Real -> Bool`` is the type of functions from
+a real number to a boolean value.
 
 As is standard in functional languages, the function arrow associates to
 the right so ``A -> B -> C`` is therefore equivalent to ``A -> (B -> C)``.
@@ -27,8 +27,8 @@ Function application
 
 As in most functional languages, function application is written
 by juxtaposition of the function with its arguments. For example, given
-a function ``f`` of type ``Rat -> Bool -> Rat`` and arguments ``x`` of
-type ``Rat`` and ``y`` of type ``Bool``, the application of ``f`` to ``x``
+a function ``f`` of type ``Real -> Bool -> Real`` and arguments ``x`` of
+type ``Real`` and ``y`` of type ``Bool``, the application of ``f`` to ``x``
 and ``y`` is written ``f x y`` and this expression has type ``Bool``.
 
 This is unlike imperative languages such as Python, C or Java where

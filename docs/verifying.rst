@@ -292,7 +292,7 @@ For example, neither of the following is allowed:
 .. code-block:: agda
 
   @network
-  f : Vector Rat 2 -> Vector Rat 2
+  f : Tensor Real [2] -> Tensor Real [2]
 
   @property
   p1 : Bool
@@ -321,7 +321,7 @@ other type of quantifier. Here are some examples.
 .. code-block:: agda
 
   @network
-  f : Vector Rat 2 -> Vector Rat 1
+  f : Tensor Real [2] -> Tensor Real [1]
 
   @property
   good1 : Bool

@@ -23,22 +23,22 @@ existsInList f xs = fold (\x y -> x or y) False (map f xs)
 -- Tensor
 --------------------------------------------------------------------------------
 
-eqRatTensorReduced : Tensor Rat dims -> Tensor Rat dims -> Bool
+eqRatTensorReduced : Tensor Real dims -> Tensor Real dims -> Bool
 eqRatTensorReduced xs ys = reduceAnd True (xs ==. ys)
 
-neRatTensorReduced : Tensor Rat dims -> Tensor Rat dims -> Bool
+neRatTensorReduced : Tensor Real dims -> Tensor Real dims -> Bool
 neRatTensorReduced xs ys = not (eqRatTensorReduced xs ys)
 
-leRatTensorReduced : Tensor Rat dims -> Tensor Rat dims -> Bool
+leRatTensorReduced : Tensor Real dims -> Tensor Real dims -> Bool
 leRatTensorReduced xs ys = reduceAnd True (xs <=. ys)
 
-ltRatTensorReduced : Tensor Rat dims -> Tensor Rat dims -> Bool
+ltRatTensorReduced : Tensor Real dims -> Tensor Real dims -> Bool
 ltRatTensorReduced xs ys = reduceAnd True (xs <. ys)
 
-geRatTensorReduced : Tensor Rat dims -> Tensor Rat dims -> Bool
+geRatTensorReduced : Tensor Real dims -> Tensor Real dims -> Bool
 geRatTensorReduced xs ys = reduceAnd True (xs >=. ys)
 
-gtRatTensorReduced : Tensor Rat dims -> Tensor Rat dims -> Bool
+gtRatTensorReduced : Tensor Real dims -> Tensor Real dims -> Bool
 gtRatTensorReduced xs ys = reduceAnd True (xs >. ys)
 
 --------------------------------------------------------------------------------

@@ -1,3 +1,3 @@
 @property
 prop : Bool
-prop = forall (x : Rat) . x >= 0
+prop = forall (x : Real) . x >= 0

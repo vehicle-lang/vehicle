@@ -1,6 +1,6 @@
 Error in file 'quantifiedNat.vcl' at Line 3, Columns 5-11: unable to work out a valid type for the overloaded expression 'forall'.
 The possible options explored were:
-  1. (Tensor Rat ds -> Bool) -> Bool
-    - rejected: unable to find a consistent type for the overloaded expression 'forall'. In particular 'Nat' is not equal to 'Tensor Rat ?12'.
+  1. (Tensor Real ds -> Bool) -> Bool
+    - rejected: unable to find a consistent type for the overloaded expression 'forall'. In particular 'Nat' is not equal to 'Tensor Real ?12'.
   2. (Index n -> Bool) -> Bool
     - rejected: unable to find a consistent type for the overloaded expression 'forall'. In particular 'Nat' is not equal to 'Index ?12'.

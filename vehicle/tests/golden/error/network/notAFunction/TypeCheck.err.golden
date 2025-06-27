@@ -1,5 +1,5 @@
-Error in file 'notAFunction.vcl' at Line 2, Columns 5-8: The type of @network 'f':
-  Rat
+Error in file 'notAFunction.vcl' at Line 2, Columns 5-9: The type of @network 'f':
+  Real
 is not supported. The possible valid types for '@network' annotated declarations are:
   1. Tensor Rat [a_1, ..., a_n] -> Tensor Rat [b_1, ..., b_n]  (where 'a_i' and 'b_i' are all constants at compile time)
 Fix: change the type of 'f' to a supported type

@@ -1,3 +1,3 @@
 @property
 prop : Bool
-prop = exists (x : Rat) . x >= 0
+prop = exists (x : Real) . x >= 0

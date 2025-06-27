@@ -1,8 +1,8 @@
-f : (Rat -> Rat) -> Rat -> Rat
+f : (Real -> Real) -> Real -> Real
 f h x = h x
 
-g : Rat -> Rat
+g : Real -> Real
 g x = x + 1
 
-x : Rat
+x : Real
 x = f g 0

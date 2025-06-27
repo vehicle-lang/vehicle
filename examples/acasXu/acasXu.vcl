@@ -16,9 +16,9 @@ pi = 3.141592
 -- Inputs
 
 -- We first define a new name for the type of inputs of the network.
--- In particular, it takes inputs of the form of a vector of 5 rational numbers.
+-- In particular, it takes inputs of the form of a vector of 5 numbers.
 
-type InputVector = Tensor Rat [5]
+type InputVector = Tensor Real [5]
 
 -- Next we add meaningful names for the indices.
 -- The fact that all vector types come annotated with their size means that it
@@ -35,16 +35,16 @@ intruderSpeed      = 4   -- measured in meters/second
 --------------------------------------------------------------------------------
 -- Outputs
 
--- Outputs are also a vector of 5 rationals. Each one representing the score
+-- Outputs are also a vector of 5 realach one representing the score
 -- for the 5 available courses of action.
 
-type OutputVector = Tensor Rat [5]
+type OutputVector = Tensor Real [5]
 
 -- Again we define meaningful names for the indices into output vectors.
 
 clearOfConflict = 0
 weakLeft        = 1
--- weakRight       = 2
+weakRight       = 2
 strongLeft      = 3
 strongRight     = 4
 
@@ -71,7 +71,7 @@ acasXu : InputVector -> OutputVector
 
 -- For clarity, we therefore define a new type synonym
 -- for unnormalised input vectors which are in the problem space.
-type UnnormalisedInputVector = Tensor Rat [5]
+type UnnormalisedInputVector = Tensor Real [5]
 
 -- Next we define the minimum and maximum values that each input can take.
 -- These correspond to the range of the inputs that the network is designed
@@ -121,7 +121,7 @@ maximalScore i x = forall j . i != j => normAcasXu x ! i > normAcasXu x ! j
 
 -- Tested on: all 45 networks.
 
-scaleCOCOutput : Rat -> Rat
+scaleCOCOutput : Real -> Real
 scaleCOCOutput x = (x - 7.518884) / 373.94992
 
 intruderDistantAndSlower : UnnormalisedInputVector -> Bool

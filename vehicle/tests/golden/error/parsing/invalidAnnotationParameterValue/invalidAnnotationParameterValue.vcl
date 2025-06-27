@@ -1,2 +1,2 @@
 @parameter(infer = xsd)
-epsilon : Rat
+epsilon : Real

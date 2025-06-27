@@ -17,7 +17,7 @@ Suppose you have the following network which produces two outputs:
 .. code-block:: agda
 
    @network
-   f : Tensor Rat [10, 10] -> Vector Rat 2
+   f : Tensor Real [10, 10] -> Tensor Real [2]
 
 and would like to specify that *for any input the network's first
 output is always positive*.
@@ -27,7 +27,7 @@ This can be achieved by using the ``forall`` quantifier as follows:
 
    forall x . f x ! 0 > 0
 
-which brings a new variable ``x`` of type ``Tensor Rat [10, 10]`` into
+which brings a new variable ``x`` of type ``Tensor Real [10, 10]`` into
 scope. The variable ``x`` has no assigned value and therefore represents
 an arbitrary input.
 
@@ -44,7 +44,7 @@ their types:
 
 .. code-block:: agda
 
-   exists (x : Tensor Rat [10, 10]) . f x ! 0 > 0
+   exists (x : Tensor Real [10, 10]) . f x ! 0 > 0
 
 and multiple variables can be quantified over at once:
 
@@ -81,14 +81,14 @@ type. For example:
 
 .. code-block:: agda
 
-   pointwiseLess : Vector Rat 3 -> Vector Rat 3 -> Bool
+   pointwiseLess : Vector Real 3 -> Vector Real 3 -> Bool
    pointwiseLess x y = forall (i : Index 3) . x ! i < y ! i
 
 will get automatically expanded to:
 
 .. code-block:: agda
 
-   pointwiseLess : Vector Rat 3 -> Vector Rat 3 -> Bool
+   pointwiseLess : Vector Real 3 -> Vector Real 3 -> Bool
    pointwiseLess x y = x ! 0 < y ! 0 and x ! 1 < y ! 1 and x ! 2 < y ! 2
 
 The type annotation ``Index 3`` on the quantified variable ``i`` is
@@ -103,7 +103,7 @@ quantify over all the values contained within a ``List``, ``Vector`` or ``Tensor
 
 .. code-block:: agda
 
-   myList : List Rat
+   myList : List Real
    myList = [0.4, 1.1, 0.2]
 
    myListInRange : Bool

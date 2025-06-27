@@ -1,10 +1,10 @@
 @network
-encode : Tensor Rat [5] -> Tensor Rat [2]
+encode : Tensor Real [5] -> Tensor Real [2]
 
 @network
-decode : Tensor Rat [2] -> Tensor Rat [5]
+decode : Tensor Real [2] -> Tensor Real [5]
 
-epsilon : Tensor Rat [5]
+epsilon : Tensor Real [5]
 epsilon = foreach i . 0.1
 
 @property

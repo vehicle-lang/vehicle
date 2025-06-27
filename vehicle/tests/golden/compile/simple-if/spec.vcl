@@ -1,5 +1,5 @@
 @network
-f : Tensor Rat [1] -> Tensor Rat [1]
+f : Tensor Real [1] -> Tensor Real [1]
 
 @property
 prop1 : Bool
@@ -14,7 +14,7 @@ prop3 : Bool
 prop3 = exists x . if f [x] ! 0 > 0 then x >= 0 else x < 0
 
 -- @network
--- g : Tensor Rat [1] -> Tensor Rat [2]
+-- g : Tensor Real [1] -> Tensor Real [2]
 
 -- @property
 -- prop4 : Bool

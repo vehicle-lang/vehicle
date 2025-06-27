@@ -249,7 +249,7 @@ delabBuiltinType :: (MonadDelab m) => V.BuiltinType -> [V.Arg] -> m B.Expr
 delabBuiltinType fun args = case fun of
   V.UnitType -> delabApp (B.Unit tokUnit) args
   V.BoolType -> delabApp (B.Bool tokBool) args
-  V.RatType -> delabApp (B.Rat tokRat) args
+  V.RatType -> delabApp (B.Real tokReal) args
   V.IndexType -> delabApp (B.Index tokIndex) args
   V.NatType -> delabApp (B.Nat tokNat) args
   V.ListType -> delabApp (B.List tokList) args

@@ -1,2 +1,2 @@
-tensor : Tensor Rat [2]
+tensor : Tensor Real [2]
 tensor = [1]

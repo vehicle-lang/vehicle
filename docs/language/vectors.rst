@@ -17,8 +17,8 @@ out-of-bounds errors at compile time rather than run time.
 
 The full type is therefore written as ``Vector A n``, which
 represents the type of vectors with ``n`` elements of type ``A``.
-For example, ``Vector Rat 10`` is a vector of length 10 that contains
-rational numbers,  and ``Vector (List Nat) 2`` is a vector of length 2
+For example, ``Vector Real 10`` is a vector of length 10 that contains
+real numbers,  and ``Vector (List Nat) 2`` is a vector of length 2
 that contains lists of natural numbers.
 
 Creation
@@ -31,7 +31,7 @@ There are three ways to create an instance of a vector:
 
    .. code-block:: agda
 
-     myVector1 : Vector Rat 3
+     myVector1 : Vector Real 3
      myVector1 = [ 0.1, 0.3, -0.1 ]
 
    The type-checker will ensure that all vectors written in this way are of
@@ -39,7 +39,7 @@ There are three ways to create an instance of a vector:
 
    .. code-block:: agda
 
-     myBadVector : Vector Rat 3
+     myBadVector : Vector Real 3
      myBadVector = [ 0.1, 0.3 ]
 
    as the size of the vector is ``3`` but only 2 elements have been provided.
@@ -53,17 +53,17 @@ There are three ways to create an instance of a vector:
 
    .. code-block:: agda
 
-     myVector2 : Vector Rat 100
+     myVector2 : Vector Real 100
      myVector2 = foreach i . 0
 
-   constructs a vector of 100 rationals all of which are ``0``, and
+   constructs a vector of 100 reals all of which are ``0``, and
 
    .. code-block:: agda
 
-     myVector3 : Vector Rat 100
+     myVector3 : Vector Real 100
      myVector3 = foreach i . if i < 20 then 1 else 0
 
-   constructs a vector of 100 rationals where the first 20 elements are ``1``
+   constructs a vector of 100 reals where the first 20 elements are ``1``
    and the remaining are ``0``.
 
    When using the ``foreach`` to construct a vector of size ``n``` the type
@@ -74,7 +74,7 @@ There are three ways to create an instance of a vector:
    .. code-block:: agda
 
      @dataset
-     myVector4 : Vector Rat 10000
+     myVector4 : Vector Real 10000
 
    which allows the loading of large vectors with no regular structure.
    See the section on datasets for more details.
@@ -143,16 +143,16 @@ For example:
 .. code-block:: agda
 
    @dataset
-   myVector : Vector Rat [10]
+   myVector : Vector Real [10]
 
-   firstElement : Rat
+   firstElement : Real
    firstElement = myVector ! 0
 
 is valid but the following is not as ``10`` is out of bounds:
 
 .. code-block:: agda
 
-   invalidElement : Rat
+   invalidElement : Real
    invalidElement = myVector ! 10
 
 Most arithmetic operations over ``Index`` type are not closed with
@@ -200,9 +200,9 @@ Although the size of a vector is usually a constant (e.g. ``10``),
 Vehicle allows them to be any valid expression of type ``Nat``.
 For example if ``d`` is some other variable then:
 
-  - ``Vector Rat (1 + d)`` is the type of vectors of length ``1 + d``.
+  - ``Vector Real (1 + d)`` is the type of vectors of length ``1 + d``.
 
-  - ``Vector Rat (2 * d)`` is the type of vectors of length ``2 * d``.
+  - ``Vector Real (2 * d)`` is the type of vectors of length ``2 * d``.
 
 Similarly, the size of the ``Index`` type can be any valid expression of
 type ``Nat``, e.g. ``Index (1 + d)``.

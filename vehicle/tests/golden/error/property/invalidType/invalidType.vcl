@@ -1,3 +1,3 @@
 @property
-p : Rat
+p : Real
 p = 0.1

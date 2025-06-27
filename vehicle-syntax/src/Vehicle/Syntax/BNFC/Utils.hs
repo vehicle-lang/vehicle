@@ -71,7 +71,7 @@ tokBool = mkToken B.TokBool "Bool"
 
 tokList = mkToken B.TokList "List"
 
-tokRat = mkToken B.TokRat "Rat"
+tokReal = mkToken B.TokReal "Real"
 
 tokNat = mkToken B.TokNat "Nat"
 

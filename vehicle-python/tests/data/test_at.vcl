@@ -1,4 +1,4 @@
-tensor : Tensor Rat [3]
+tensor : Tensor Real [3]
 tensor = [2, 3, 5]
 
 @property

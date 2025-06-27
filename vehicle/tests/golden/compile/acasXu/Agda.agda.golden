@@ -11,6 +11,7 @@ open import Vehicle.Utils
 open import Vehicle.Data.Tensor
 open import Data.Product
 open import Data.Sum
+open import Data.Nat as ℕ using (ℕ)
 open import Data.Integer as ℤ using (ℤ)
 open import Data.Rational as ℚ using (ℚ)
 open import Data.Fin as Fin using (Fin; #_)
@@ -49,6 +50,9 @@ clearOfConflict = # 0
 
 weakLeft : Fin 5
 weakLeft = # 1
+
+weakRight : ℕ
+weakRight = 2
 
 strongLeft : Fin 5
 strongLeft = # 3

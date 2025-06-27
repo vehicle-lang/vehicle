@@ -21,7 +21,7 @@ each possible action.
 .. code-block:: agda
 
    @network
-   action : Tensor Rat [12] -> Tensor 5 [Rat]
+   action : Tensor Real [12] -> Tensor Real [5]
 
 Suppose the first and second outputs are the scores for staying still
 and moving up respectively, and that we would like to encode the constraint
@@ -63,7 +63,7 @@ a score between :code:`0` and :code:`1`
 
 .. code-block:: agda
 
-   network classify : Tensor Rat [24, 24] -> Tensor Rat [10]
+   network classify : Tensor Real [24, 24] -> Tensor Real [10]
 
 and wanted to encode that it did not answer confidently
 for some out-of-distribution input :code:`x`.
@@ -72,10 +72,10 @@ calculate the maximum score and then require it to be less than 0.2:
 
 .. code-block:: agda
 
-   largestScore : Tensor Rat [10] -> Rat
+   largestScore : Tensor Real [10] -> Real
    largestScore xs = fold max 0 xs
 
-   isUncertainAbout : Tensor Rat [24, 24] -> Bool
+   isUncertainAbout : Tensor Real [24, 24] -> Bool
    isUncertainAbout x = largestScore (classify x) <= 0.2
 
 However, this definition would experience an exponential blow-up when
@@ -89,7 +89,7 @@ than 0.2:
 
 .. code-block:: agda
 
-   isUncertainAbout : Tensor Rat [24, 24] -> Bool
+   isUncertainAbout : Tensor Real [24, 24] -> Bool
    isUncertainAbout x = forall i . x ! i <= 0.2
 
 In summary, prefer to use relations to express your constraints and
@@ -107,7 +107,7 @@ writing specifications.
 
 .. code-block:: agda
 
-   isArgmin : Index n -> Tensor Rat [n] -> Bool
+   isArgmin : Index n -> Tensor Real [n] -> Bool
    isArgmin i x = forall j . i != j => x ! i < x ! j
 
 :code:`argmin`
@@ -115,7 +115,7 @@ writing specifications.
 
 .. code-block:: agda
 
-   isArgmax : Index n -> Tensor Rat [n] -> Bool
+   isArgmax : Index n -> Tensor Real [n] -> Bool
    isArgmax i x = forall j . i != j => x ! i > x ! j
 
 :code:`advises`
@@ -130,7 +130,7 @@ when applied to input `x`:
 .. code-block:: agda
 
    @network
-   classify : Tensor Rat [24, 24] -> Tensor Rat [10]
+   classify : Tensor Real [24, 24] -> Tensor Real [10]
 
-   advises : Index 10 -> Tensor Rat [24, 24] -> Bool
+   advises : Index 10 -> Tensor Real [24, 24] -> Bool
    advises i x = forall j . i != j => classify x ! i < classify x ! j

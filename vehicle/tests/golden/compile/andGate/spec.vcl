@@ -1,18 +1,18 @@
 -- Correctness conditions for the Boolean AND gate
 
 @network
-andGate : Tensor Rat [2] -> Tensor Rat [1]
+andGate : Tensor Real [2] -> Tensor Real [1]
 
-truthy : Rat -> Bool
+truthy : Real -> Bool
 truthy x = x >= 0.5
 
-falsey : Rat -> Bool
+falsey : Real -> Bool
 falsey x = x <= 0.5
 
-validInput : Rat -> Bool
+validInput : Real -> Bool
 validInput x = 0 <= x <= 1
 
-correctOutput : Rat -> Rat -> Bool
+correctOutput : Real -> Real -> Bool
 correctOutput x1 x2 =
   let y = andGate [x1, x2] ! 0 in
     (truthy x1 and truthy x2 => truthy y) and

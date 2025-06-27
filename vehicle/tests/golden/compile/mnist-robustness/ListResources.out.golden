@@ -1,11 +1,11 @@
 [
   {
-    "entityType": "Image -> Tensor Rat [10]",
+    "entityType": "Image -> Tensor Real [10]",
     "entitySort": "@network",
     "entityName": "classifier"
   },
   {
-    "entityType": "Rat",
+    "entityType": "Real",
     "entitySort": "@parameter",
     "entityName": "epsilon"
   },

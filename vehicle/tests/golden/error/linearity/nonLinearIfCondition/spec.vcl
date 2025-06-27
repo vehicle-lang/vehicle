@@ -1,6 +1,6 @@
 @network
-f : Tensor Rat [1] -> Tensor Rat [1]
+f : Tensor Real [1] -> Tensor Real [1]
 
 @property
 p : Bool
-p = forall (x : Rat) . (if x * x > 0 then True else False)
+p = forall (x : Real) . (if x * x > 0 then True else False)

@@ -354,7 +354,7 @@ elabExpr expr = case expr of
   B.Unit tk -> builtinType V.UnitType tk []
   B.Index tk -> builtinType V.IndexType tk []
   B.Bool tk -> castToTensorType V.BoolType tk
-  B.Rat tk -> castToTensorType V.RatType tk
+  B.Real tk -> castToTensorType V.RatType tk
   B.Nat tk -> builtinType V.NatType tk []
   B.List tk -> builtinType V.ListType tk []
   B.Vector tk -> builtinType V.VectorType tk []

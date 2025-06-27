@@ -2,11 +2,11 @@
 -- underconstrained user variables.
 
 @network
-f : Tensor Rat [1] -> Tensor Rat [1]
+f : Tensor Real [1] -> Tensor Real [1]
 
 @property
 unusedVar : Bool
-unusedVar = exists x (y : Rat) . f [ x ] ! 0 >= 0
+unusedVar = exists x (y : Real) . f [ x ] ! 0 >= 0
 
 @property
 underConstrainedVar1 : Bool
@@ -18,7 +18,7 @@ underConstrainedVar2 = exists x y . x >= 1 and 2 * y >= 2 and f [ 2 * x + y ] ! 
 
 @property
 underConstrainedVars : Bool
-underConstrainedVars = exists (x : Tensor Rat [5]) .
+underConstrainedVars = exists (x : Tensor Real [5]) .
   x ! 3 >= 2 and
   x ! 2 + x ! 3 >= 1 and
   x ! 1 - 2 * (x ! 3) >= 2.5 and

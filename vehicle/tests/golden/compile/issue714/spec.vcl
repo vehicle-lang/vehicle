@@ -1,6 +1,6 @@
-type InputVector = Tensor Rat [50]
-type OutputVector = Tensor Rat [1]
-type NormalisedInputVector = Tensor Rat [50]
+type InputVector = Tensor Real [50]
+type OutputVector = Tensor Real [1]
+type NormalisedInputVector = Tensor Real [50]
 
 type Label = Index 2
 

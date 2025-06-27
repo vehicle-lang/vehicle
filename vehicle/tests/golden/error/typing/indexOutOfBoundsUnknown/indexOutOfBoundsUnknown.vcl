@@ -1,2 +1,2 @@
-outOfBounds : Tensor Rat [n] -> Rat
+outOfBounds : Tensor Real [n] -> Real
 outOfBounds x = x ! 1
