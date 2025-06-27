@@ -56,7 +56,7 @@ for the :code:`export` command.
 Supported backends
 ------------------
 
-Currently the Agda and Rocq interactive theorem provers is supported, but adding
+Currently the Agda and Rocq interactive theorem provers are supported, but adding
 support for new ones should be relatively simple, assuming that they have
 the ability to call out to external solvers. Please get in touch if you are
 interested in adding support for a new ITP.
@@ -136,5 +136,5 @@ Poor tensor integration with Mathcomp
 Currently, tensors are implemented using nested mathcomp tuple types and does not
 directly interface with mathcomp's structure hierarchy. This can lead to issues
 when considering properties with tensor arithmetic. Users are encouraged to, when
-possible, express tensor properties using universal quantification over indicies.
+possible, express tensor properties using universal quantification over indices.
 This generally leads to neater proofs.

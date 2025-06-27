@@ -15,7 +15,7 @@ The specification can be compiled to Rocq by running the following command:
 ```bash
 vehicle export \
     --target Rocq \
-    --spcification examples/autoencoderError/spec.vcl \
+    --specification examples/autoencoderError/spec.vcl \
     --ouput examples/autoencoderError/rocqProof/autoencoderErrorSpec.v
 ```
 

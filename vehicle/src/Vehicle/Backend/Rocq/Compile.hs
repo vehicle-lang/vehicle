@@ -52,7 +52,6 @@ compileProgToRocq :: (MonadCompile m) => Prog DecidabilityBuiltin -> RocqOptions
 compileProgToRocq prog options =
   logCompilerPass MinDetail currentPhase $ do
     logDebug MaxDetail $ prettyExternal prog
-    -- prog2 <- capitaliseTypeNames prog
     programDoc <- runFreshNameContextT $ compileProg options prog
     let programStream = layoutPretty defaultLayoutOptions programDoc
     -- Collects dependencies by first discarding precedence info and then
