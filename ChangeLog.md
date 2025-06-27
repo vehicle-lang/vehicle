@@ -63,7 +63,7 @@ Some positive changes from this:
 
 New Rocq backend for Vehicle, allowing specifications to be compiled to Rocq proof scripts.
 
-* Added `vehicle-rocq` library to contain supporting definitions for compiled scripts 
+* Added `vehicle-rocq` library to contain supporting definitions for compiled scripts
 
 ### Other
 
