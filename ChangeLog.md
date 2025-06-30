@@ -69,7 +69,7 @@ New Rocq backend for Vehicle, allowing specifications to be compiled to Rocq pro
 
 * Added `vehicle-rocq` library to contain supporting definitions for compiled scripts
 
-* Added `autoencoderError` example and updated `windController` example to demonstrate Rocq backend
+* Updated `windController` example to demonstrate Rocq backend
 
 ### Other
 
