@@ -56,7 +56,6 @@ jobs:
         run: |
           opam repo add coq-released https://coq.inria.fr/opam/released
           opam install ./vehicle-rocq
-          opam install coq-mathcomp-ssreflect coq-mathcomp-algebra coq-mathcomp-reals
 
       - name: Test Vehicle-Rocq interaction
         run: |
