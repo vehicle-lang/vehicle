@@ -4,9 +4,13 @@
 
 ### Verifier backend
 
-* Replaced syntactic detection of duplicate network applications with semantic detection. For example `f (x + 2)` and `f (2 + x)` are now mapped to the same network application. This makes a larger selection of Vehicle properties verifiable.
+* Backend now unifies syntactically distinct but semantically identical network applications,
+  e.g. previously `exists x . 0.2 <= f [x + 2] and f [2 + x] >= 0.3` was compiled to a query with two network
+  applications, but is now compiled to a query with a single network application.
 
 * Improved error messages when detecting unsupported multiple network applications so that the actual values the network being applied to are printed.
+
+* Fixed a bug with compilation of networks which have a zero dimension.
 
 ## Version 0.17.0
 
@@ -50,25 +54,11 @@ Some positive changes from this:
 
 * Improved compilation of `min` and `max` so that in some cases they generate exponentially less queries.
 
-* Fixed bug where `type` declarations with parameters were handled incorrectly.
-
-* Fixed bug where `let .. in ..` statements weren't typed checked correctly.
-
-* Better error messages for typing errors
-
 ### Command-line interface
 
 * A new command `list` with sub-commands `resources` and `properties`, to list resources and properties in a vehicle specification.
 
 * Added a new option `--json` to the `vehicle validate` command that causes Vehicle to output the result of the check as machine-readable JSON.
-
-### Verification interface
-
-* Verification backend now unifies syntactically distinct but semantically identical network applications,
-  e.g. previously `exists x . 0.2 <= f [x + 2] and f [2 + x] >= 0.3` was compiled to a query with two network
-  applications, but is now compiled to a query with a single network application.
-
-* Fixed a bug with compilation of networks which have a zero dimension.
 
 ### Python interface
 
@@ -93,7 +83,15 @@ New Rocq backend for Vehicle, allowing specifications to be compiled to Rocq pro
 
 * Updated `windController` example to demonstrate Rocq backend
 
+### Other
+
+* Fixed bug where `type` declarations with parameters were handled incorrectly.
+
+* Fixed bug where `let .. in ..` statements weren't typed checked correctly.
+
 * Fixed bug in Agda compilation where decidable `Bool`s were incorrectly translated to types.
+
+* Better error messages for typing errors
 
 ## Version 0.16.1
 
