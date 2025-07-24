@@ -10,10 +10,6 @@ import Vehicle.Prelude
 -- but this proved to be unnecessary. It's still in the repo's history if
 -- need be though.
 
--- instance (Hashable builtin, Generic builtin) => Hashable (Closure builtin)
-
--- instance (Hashable builtin, Generic builtin) => Hashable (Value builtin)
-
 instance (Hashable expr) => Hashable (GenericArg expr)
 
 instance (Hashable expr) => Hashable (GenericBinder expr)

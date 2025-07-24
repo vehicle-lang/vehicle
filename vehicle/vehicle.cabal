@@ -289,7 +289,7 @@ library
     , base                   >=4.13     && <5
     , bytestring             >=0.10.12  && <0.12
     , cereal                 >=0.5      && <1
-    , containers             >=0.7      && <1
+    , containers             >=0.5      && <1
     , data-default           >=0.7      && <1
     , data-default-class     >=0.1.2    && <0.2
     , data-fix               >=0.2      && <1
