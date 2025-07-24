@@ -292,6 +292,6 @@ separator Decl ";";
 
 -- * Program
 
--- layout toplevel;
+layout toplevel;
 
 Main. Prog ::= [Decl]
