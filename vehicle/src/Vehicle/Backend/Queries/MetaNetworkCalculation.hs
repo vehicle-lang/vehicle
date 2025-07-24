@@ -262,7 +262,7 @@ reduceInputVariableEquality ctx (eqInputVar, inputVar) = do
 sccToEquivalenceClass :: SCC (Either NetworkIOVariable RatTensor) -> Maybe EquivalenceClass
 sccToEquivalenceClass = \case
   AcyclicSCC {} -> Nothing
-  NECyclicSCC eqClass -> case lefts $ NonEmpty.toList eqClass of
+  CyclicSCC eqClass -> case lefts eqClass of
     v1 : v2 : vs -> Just (v1 :| v2 : vs)
     _ -> Nothing
 
