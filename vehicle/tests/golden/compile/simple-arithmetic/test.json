@@ -18,7 +18,8 @@
     "produces": ["Marabou.queries/*.txt", "Marabou.queries/property.vcl-plan"],
     "ignore": {
       "lines": ".*\"fileHash\".*"
-    }
+    },
+    "sizeOnly": ".vcl-plan"
   },
   {
     "name": "Agda",

@@ -39,7 +39,7 @@ import General.Extra.File (createDirectoryRecursive, listFilesRecursive, writeFi
 import General.Extra.NonEmpty qualified as NonEmpty (appendList, prependList, singleton)
 import System.Directory (copyFile, createDirectoryIfMissing, doesFileExist, removeFile)
 import System.FilePath (isAbsolute, isExtensionOf, makeRelative, stripExtension, takeDirectory, takeExtension, (<.>), (</>))
-import System.IO (IOMode (..), hFileSize, withFile)
+import System.IO (IOMode (..), withFile)
 import System.IO.Temp (withSystemTempDirectory)
 import System.Process (CreateProcess (..), readCreateProcessWithExitCode, shell)
 import Test.Tasty (TestName)
@@ -509,17 +509,20 @@ fileSizeCutOffBytes = 100000
 diffFile :: (Text -> Text -> Bool) -> Set String -> FilePath -> FilePath -> IO ()
 diffFile eq sizeOnlyExtensions golden actual = do
   withFile golden ReadMode $ \goldenHandle -> do
-    goldenSize <- hFileSize goldenHandle
     goldenContents <- LazyIO.hGetContents goldenHandle
     withFile actual ReadMode $ \actualHandle -> do
-      actualSize <- hFileSize actualHandle
+      actualContents <- LazyIO.hGetContents actualHandle
 
+      -- Can't use `hFileSize` here as new line characters are different
+      -- sizes on Windows vs Linux.
+      let goldenSize = toInteger $ Lazy.length goldenContents
+      let actualSize = toInteger $ Lazy.length actualContents
       let sizeOnly = Set.member (takeExtension actual) sizeOnlyExtensions
+
       if sizeOnly
         then unless (goldenSize == actualSize) $ do
           throw $ Diff $ makeSizeOnlyDiff goldenSize actualSize
         else do
-          actualContents <- LazyIO.hGetContents actualHandle
           if max goldenSize actualSize <= fileSizeCutOffBytes
             then diffText eq goldenContents actualContents
             else
