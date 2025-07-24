@@ -268,7 +268,9 @@ sccToEquivalenceClass = \case
 
 equivalenceClassesToEliminations :: [EquivalenceClass] -> Eliminations
 equivalenceClassesToEliminations eqClasses = do
-  let classToElim (inputVar :| equalInputVars) = fmap (,inputVar) equalInputVars
+  let classToElim eqClass = do
+        let inputVar = minimum eqClass
+        fmap (,inputVar) (NonEmpty.filter (/= inputVar) eqClass)
   concatMap classToElim eqClasses
 
 --------------------------------------------------------------------------------
