@@ -23,7 +23,7 @@ jobs:
               version: "9.6.5"
             cabal:
               version: "3.14.2.0"
-              project-file: "cabal.project.ghc-9.6.5"
+              project-file: "cabal.project"
               extra-args: ""
               extra-args-test-golden: ""
         include:
@@ -36,7 +36,7 @@ jobs:
           #       version: "9.12.2"
           #     cabal:
           #       version: "3.14.2.0"
-          #       project-file: "cabal.project.ghc-9.12.2"
+          #       project-file: "cabal.project"
           #       extra-args: ""
           #       # TODO: Migrate testVerifier to a Haskell executable for portability.
           #       extra-args-test-golden: "--test-option='--allowlist-externals=TestVerifier'"
@@ -49,7 +49,7 @@ jobs:
           #       version: "9.10.2"
           #     cabal:
           #       version: "3.14.2.0"
-          #       project-file: "cabal.project.ghc-9.10.2"
+          #       project-file: "cabal.project"
           #       extra-args: ""
           #       # TODO: Migrate testVerifier to a Haskell executable for portability.
           #       extra-args-test-golden: "--test-option='--allowlist-externals=TestVerifier'"
@@ -62,7 +62,7 @@ jobs:
                 version: "9.8.4"
               cabal:
                 version: "3.14.2.0"
-                project-file: "cabal.project.ghc-9.8.4"
+                project-file: "cabal.project"
                 extra-args: ""
                 # TODO: Migrate testVerifier to a Haskell executable for portability.
                 extra-args-test-golden: "--test-option='--allowlist-externals=TestVerifier'"
@@ -75,7 +75,7 @@ jobs:
                 version: "9.4.8"
               cabal:
                 version: "3.14.2.0"
-                project-file: "cabal.project.ghc-9.4.8"
+                project-file: "cabal.project"
                 extra-args: ""
                 extra-args-test-golden: ""
           # Build with GHC 9.2.8
@@ -87,7 +87,7 @@ jobs:
                 version: "9.2.8"
               cabal:
                 version: "3.8.1.0"
-                project-file: "cabal.project.ghc-9.2.8"
+                project-file: "cabal.project"
                 extra-args: ""
                 extra-args-test-golden: ""
           # Build with GHC 9.0.2
@@ -99,7 +99,7 @@ jobs:
                 version: "9.0.2"
               cabal:
                 version: "3.8.1.0"
-                project-file: "cabal.project.ghc-9.0.2"
+                project-file: "cabal.project"
                 extra-args: ""
                 extra-args-test-golden: ""
           # Build with GHC 8.10.7
@@ -111,7 +111,7 @@ jobs:
                 version: "8.10.7"
               cabal:
                 version: "3.8.1.0"
-                project-file: "cabal.project.ghc-8.10.7"
+                project-file: "cabal.project"
                 extra-args: ""
                 extra-args-test-golden: ""
           # Build with -fnothunks:
@@ -123,7 +123,7 @@ jobs:
                 version: "9.6.5"
               cabal:
                 version: "3.14.2.0"
-                project-file: "cabal.project.nothunks.ghc-9.6.5"
+                project-file: "cabal.project.nothunks"
                 extra-args: "-fnothunks"
                 extra-args-test-golden: ""
           # 20-12-2022:
@@ -137,7 +137,7 @@ jobs:
           #       version: "9.6.5"
           #     cabal:
           #       version: "3.14.2.0"
-          #       project-file: "cabal.project.ghc-debug.ghc-9.6.5"
+          #       project-file: "cabal.project.ghc-debug"
           #       extra-args: "-fghc-debug"
           # 20-12-2022:
           # This test is disabled because -fghc-debug requires two threads, which triggers #342.
@@ -150,27 +150,54 @@ jobs:
           #       version: "9.6.5"
           #     cabal:
           #       version: "3.14.2.0"
-          #       project-file: "cabal.project.ghc-debug.nothunks.ghc-9.6.5"
+          #       project-file: "cabal.project.ghc-debug.nothunks"
           #       extra-args: "-fghc-debug -fnothunks"
 
     name: vehicle / ${{ matrix.os.name }} - GHC ${{ matrix.haskell.ghc.version }} ${{ matrix.haskell.cabal.extra-args }}
     runs-on: ${{ matrix.os.type }}
 
     steps:
-      - name: Checkout
+      - name: 📥 Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Haskell
-        uses: ./.github/actions/setup-haskell
+      - name: 🛠️ Install Haskell
+        uses: haskell-actions/setup@v2
+        id: setup-haskell
         with:
           ghc-version: ${{ matrix.haskell.ghc.version }}
           cabal-version: ${{ matrix.haskell.cabal.version }}
-          cabal-project-file: ${{ matrix.haskell.cabal.project-file }}
-          cabal-project-freeze-file: ${{ matrix.haskell.cabal.project-file }}.freeze
 
-      - name: Run Vehicle unit tests
+      - name: 🛠️ Configure
+        run: |
+          cabal configure --project-file=${{ matrix.haskell.cabal.project-file }}
+          cabal build all --project-file=${{ matrix.haskell.cabal.project-file }} --dry-run
+
+      - name: 💾 Restore Cabal dependencies
+        uses: actions/cache/restore@v4
+        if: ${{ !env.ACT }}
+        id: cache-haskell
+        env:
+          key: ${{ matrix.os.name }}-ghc-${{ steps.setup-haskell.outputs.ghc-version }}-cabal-${{ steps.setup-haskell.outputs.cabal-version }}
+        with:
+          path: ${{ steps.setup-haskell.outputs.cabal-store }}
+          key: ${{ env.key }}-plan-${{ hashFiles('dist-newstyle/cache/plan.json') }}
+          restore-keys: ${{ env.key }}-
+
+      - name: 🛠️ Install Cabal dependencies
+        if: ${{ env.ACT || steps.cache-haskell.outputs.cache-hit != 'true' }}
+        run: cabal build all --only-dependencies
+
+      - name: 💾 Save Cabal dependencies
+        uses: actions/cache/save@v4
+        if: ${{ !env.ACT && steps.cache-haskell.outputs.cache-hit != 'true' }}
+        with:
+          path: ${{ steps.setup-haskell.outputs.cabal-store }}
+          key: ${{ steps.cache-haskell.outputs.cache-primary-key }}
+
+      - name: 🧪 Test Vehicle
         run: |
           cabal test                                                \
+            vehicle:test:golden-tests                               \
             vehicle:test:unit-tests                                 \
             --test-show-details=always                              \
             --test-option=--color=always                            \
@@ -179,19 +206,7 @@ jobs:
             ${{ matrix.haskell.cabal.extra-args }}
         shell: sh
 
-      - name: Run Vehicle golden tests
-        run: |
-          cabal test                                                \
-            vehicle:test:golden-tests                               \
-            --test-show-details=always                              \
-            --test-option=--color=always                            \
-            --test-option=--num-threads=1                           \
-            ${{ matrix.haskell.cabal.extra-args-test-golden }}      \
-            --project-file=${{ matrix.haskell.cabal.project-file }} \
-            ${{ matrix.haskell.cabal.extra-args }}                  \
-        shell: sh
-
-      - name: Build Vehicle
+      - name: 🏗️ Install Vehicle
         run: |
           mkdir -p bin
           cabal install                                             \
