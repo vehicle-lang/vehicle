@@ -51,7 +51,7 @@ jobs:
 
       - name: Setup GHC ${{ env.DEFAULT_GHC_VERSION }}
         if: matrix.os.name == 'macOS' || matrix.os.name == 'Windows'
-        uses: haskell/actions/setup@v2
+        uses: haskell-actions/setup@v2
         with:
           ghc-version: ${{ env.DEFAULT_GHC_VERSION }}
           cabal-version: ${{ env.DEFAULT_CABAL_VERSION }}
