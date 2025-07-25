@@ -71,7 +71,7 @@ jobs:
           CIBW_BUILD: "*${{ matrix.os.plat }}*"
           CIBW_ARCHS: "${{ matrix.os.arch }}"
           CIBW_TEST_EXTRAS: "${{ matrix.os.test }}"
-          MACOSX_DEPLOYMENT_TARGET: "10.10"
+          MACOSX_DEPLOYMENT_TARGET: "${{ matrix.os.arch == 'x86_64' && '10.10' || '11.0' }}"
 
       - name: Upload wheels
         uses: actions/upload-artifact@v4
