@@ -17,11 +17,11 @@ import Control.Monad.State
   )
 import Control.Monad.Writer (MonadWriter (..), runWriterT)
 import Data.Bifunctor (Bifunctor (..))
-import Data.Foldable (traverse_)
+import Data.Foldable (Foldable (..), traverse_)
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HashMap
 import Data.Hashable (Hashable)
-import Data.LinkedHashSet qualified as HashSet (fromList, toList)
+import Data.List (nub)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
@@ -190,8 +190,10 @@ calculateMonomorphisations declType allApplications = do
   MonoSettings {..} <- ask
   let calculateMonomorphisation = obtainArgsToMonomorphise isMonomorphisableBinder declType
   let monomorphisations = fmap (fst . calculateMonomorphisation) allApplications
-  let uniqueMonomorphisations = HashSet.fromList $ NonEmpty.toList monomorphisations
-  return $ HashSet.toList uniqueMonomorphisations
+  -- This is inefficient and not strictly semantically correct.
+  -- Semantic equality is difficult however.
+  let uniqueMonomorphisations = nub $ NonEmpty.toList monomorphisations
+  return $ toList uniqueMonomorphisations
 
 performMonomorphisation ::
   (MonadCollect builtin m) =>

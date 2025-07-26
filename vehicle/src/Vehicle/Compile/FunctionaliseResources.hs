@@ -7,10 +7,10 @@ import Control.Monad (when)
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Control.Monad.Writer (MonadWriter (..), execWriterT)
 import Data.Bifunctor (Bifunctor (..))
-import Data.LinkedHashMap (LinkedHashMap)
-import Data.LinkedHashMap qualified as LinkedHashMap (empty, filterWithKey, insert, member, toList)
 import Data.Map (Map)
 import Data.Map qualified as Map (fromList, insert, lookup)
+import Data.Map.Ordered (OMap)
+import Data.Map.Ordered qualified as OMap (assocs, empty, filter, member, (>|))
 import Data.Maybe (catMaybes)
 import Data.Set (Set)
 import Data.Set qualified as Set (fromList, member, singleton)
@@ -48,7 +48,7 @@ functionaliseResources ::
   m (Prog builtin)
 functionaliseResources prog =
   logCompilerPass MidDetail currentPass $ do
-    runReaderT (functionaliseProg prog) (FuncState LinkedHashMap.empty mempty)
+    runReaderT (functionaliseProg prog) (FuncState OMap.empty mempty)
 
 --------------------------------------------------------------------------------
 -- Utilities
@@ -57,14 +57,14 @@ currentPass :: CompilerPass
 currentPass = "resource functionalisation"
 
 data FuncState builtin = FuncState
-  { resourceDeclarations :: LinkedHashMap Name (Type builtin),
+  { resourceDeclarations :: OMap Name (Type builtin),
     resourceUsageFreeCtx :: GenericFreeCtx [Name]
   }
 
 addResourceDeclaration :: Identifier -> Type builtin -> FuncState builtin -> FuncState builtin
 addResourceDeclaration resource typ FuncState {..} =
   FuncState
-    { resourceDeclarations = LinkedHashMap.insert (nameOf resource) typ resourceDeclarations,
+    { resourceDeclarations = resourceDeclarations OMap.>| (nameOf resource, typ),
       ..
     }
 
@@ -134,7 +134,7 @@ findResourceUses e = do
       args' <- traverse (traverse recGo) args
       FuncState {..} <- ask
       let name = nameOf ident
-      when (name `LinkedHashMap.member` resourceDeclarations) $ do
+      when (name `OMap.member` resourceDeclarations) $ do
         tell (Set.singleton name)
       let resourceArgs = lookupInFreeCtx ident resourceUsageFreeCtx
       tell (Set.fromList resourceArgs)
@@ -171,7 +171,7 @@ replaceResourceUses (mkBinder, binders, binderNames) initialExpr = do
                 return $ BoundVar p resourceIx
 
       newFun <-
-        if name `LinkedHashMap.member` resourceDeclarations
+        if name `OMap.member` resourceDeclarations
           then mkResourceVar name
           else return $ FreeVar p ident
 
@@ -188,8 +188,8 @@ createBinders ::
   m (Binder builtin -> Expr builtin -> Expr builtin, [Binder builtin], [Name])
 createBinders isType p idents = do
   FuncState {..} <- ask
-  let identsAndTypes = LinkedHashMap.filterWithKey (\i _ -> Set.member i idents) resourceDeclarations
-  let identsAndTypesList = LinkedHashMap.toList identsAndTypes
+  let identsAndTypes = OMap.filter (\i _ -> Set.member i idents) resourceDeclarations
+  let identsAndTypesList = OMap.assocs identsAndTypes
   let mkBindingForm ident
         | isType = BinderDisplayForm OnlyType True
         | otherwise = BinderDisplayForm (OnlyName (nameOf ident)) True
