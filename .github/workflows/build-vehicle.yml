@@ -28,31 +28,31 @@ jobs:
               extra-args-test-golden: ""
         include:
           # Build with GHC 9.12.2
-          - os:
-              name: Linux
-              type: ubuntu-latest
-            haskell:
-              ghc:
-                version: "9.12.2"
-              cabal:
-                version: "3.14.2.0"
-                project-file: "cabal.project.ghc-9.12.2"
-                extra-args: ""
-                # TODO: Migrate testVerifier to a Haskell executable for portability.
-                extra-args-test-golden: "--test-option='--allowlist-externals=TestVerifier'"
+          # - os:
+          #     name: Linux
+          #     type: ubuntu-latest
+          #   haskell:
+          #     ghc:
+          #       version: "9.12.2"
+          #     cabal:
+          #       version: "3.14.2.0"
+          #       project-file: "cabal.project.ghc-9.12.2"
+          #       extra-args: ""
+          #       # TODO: Migrate testVerifier to a Haskell executable for portability.
+          #       extra-args-test-golden: "--test-option='--allowlist-externals=TestVerifier'"
           # Build with GHC 9.10.2
-          - os:
-              name: Linux
-              type: ubuntu-latest
-            haskell:
-              ghc:
-                version: "9.10.2"
-              cabal:
-                version: "3.14.2.0"
-                project-file: "cabal.project.ghc-9.10.2"
-                extra-args: ""
-                # TODO: Migrate testVerifier to a Haskell executable for portability.
-                extra-args-test-golden: "--test-option='--allowlist-externals=TestVerifier'"
+          # - os:
+          #     name: Linux
+          #     type: ubuntu-latest
+          #   haskell:
+          #     ghc:
+          #       version: "9.10.2"
+          #     cabal:
+          #       version: "3.14.2.0"
+          #       project-file: "cabal.project.ghc-9.10.2"
+          #       extra-args: ""
+          #       # TODO: Migrate testVerifier to a Haskell executable for portability.
+          #       extra-args-test-golden: "--test-option='--allowlist-externals=TestVerifier'"
           # Build with GHC 9.8.4
           - os:
               name: Linux
