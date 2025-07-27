@@ -28,6 +28,8 @@
 
 * When mispelling variables, the out-of-scope error message now provides a list of suggestions.
 
+* Fixed a bug where ill-typed terms were not correctly type-checked.
+
 ### Verifier backend
 
 * Backend now unifies syntactically distinct but semantically identical network applications,

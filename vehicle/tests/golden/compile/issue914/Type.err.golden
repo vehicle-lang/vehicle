@@ -1,0 +1,6 @@
+Error in file 'spec.vcl' at Line 6, Columns 13-20: unable to work out a valid type for the overloaded expression 'foreach'.
+The possible options explored were:
+  1. (Index ds -> Tensor ds B) -> Tensor t (d :: ds)
+    - rejected: unable to find a consistent type for the overloaded expression 'foreach'. In particular 'Tensor Real ?21 -> Real' is not equal to 'Tensor ?26 ?28'.
+  2. (Index A -> A) -> Vector t d
+    - rejected: unable to find a consistent type for the overloaded expression 'foreach'. In particular 'Tensor Real [1]' is not equal to 'Vector ?26 ?27'.
