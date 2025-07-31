@@ -50,7 +50,6 @@ functionaliseResources prog =
   logCompilerPass MinDetail currentPass $ do
     runReaderT (functionaliseProg prog) (FuncState OMap.empty mempty)
 
-
 --------------------------------------------------------------------------------
 -- Utilities
 
