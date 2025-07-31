@@ -329,10 +329,9 @@ solveFlexRigidWithRenaming ::
   Value builtin ->
   m (UnificationResult builtin)
 solveFlexRigidWithRenaming ctx meta@(metaID, _) renaming solution = do
-  metaCtx <- getMetaCtx (Proxy @builtin) metaID
   prunedSolution <-
     if useDependentMetas (Proxy @builtin)
-      then pruneMetaDependencies metaCtx meta solution
+      then pruneMetaDependencies ctx meta solution
       else return solution
 
   let unnormSolution = quote mempty (boundCtxLv ctx) prunedSolution
