@@ -5,14 +5,7 @@
 
 import: cabal.project
 
+-- Enable profiling
 profiling: True
-
-package vehicle-syntax
-  ghc-options:
-    -- Give all bindings automatic SCC annotations.
-    -fprof-auto
-
-package vehicle
-  ghc-options:
-    -- Give all bindings automatic SCC annotations.
-    -fprof-auto
+package *
+    profiling-detail: late-toplevel

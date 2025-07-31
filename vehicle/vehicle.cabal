@@ -12,10 +12,19 @@ copyright:          © Matthew Daggitt and Wen Kokke
 license:            BSD-3-Clause
 license-file:       LICENSE
 build-type:         Simple
-tested-with:
-  GHC ==8.10.7 || ==9.0.2 || ==9.2.8 || ==9.4.8 || ==9.6.4
+tested-with:        GHC ==8.10.7 || ==9.0.2 || ==9.2.8 || ==9.4.8 || ==9.6.5 || ==9.8.4
 
-extra-source-files: lib/std.vcl
+extra-source-files:
+  -- Standard library
+  lib/std.vcl
+
+  -- Test files
+  tests/datasets/*.idx
+  tests/golden/**/*.golden
+  tests/golden/**/*.idx
+  tests/golden/**/*.json
+  tests/golden/**/*.onnx
+  tests/golden/**/*.vcl
 
 source-repository head
   type:     git
