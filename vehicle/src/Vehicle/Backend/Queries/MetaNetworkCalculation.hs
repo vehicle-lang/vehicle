@@ -1,6 +1,5 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
-{-# HLINT ignore "Avoid NonEmpty.unzip" #-}
 module Vehicle.Backend.Queries.MetaNetworkCalculation
   ( calculateMetaNetworkApplications,
   )

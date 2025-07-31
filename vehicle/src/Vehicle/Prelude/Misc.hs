@@ -1,6 +1,3 @@
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-
-{-# HLINT ignore "Avoid NonEmpty.unzip" #-}
 module Vehicle.Prelude.Misc where
 
 import Control.DeepSeq (NFData)
@@ -27,6 +24,7 @@ import Numeric (readFloat, readSigned)
 import System.Console.ANSI
 import Vehicle.Prelude.Prettyprinter (Pretty (pretty))
 import Vehicle.Syntax.AST.Name (Name)
+import Vehicle.Syntax.Prelude (unzipF)
 
 data VehicleLang = External | Internal
   deriving (Show)
@@ -61,7 +59,7 @@ repeatN _ 0 = id
 repeatN f n = f . repeatN f (n - 1)
 
 unzipWith :: (a -> (b, c)) -> [a] -> ([b], [c])
-unzipWith f = unzip . map f
+unzipWith f = unzipF . map f
 
 traverseListLocal :: (MonadReader v m) => (a -> m (v -> v, b)) -> [a] -> m [b]
 traverseListLocal f = \case

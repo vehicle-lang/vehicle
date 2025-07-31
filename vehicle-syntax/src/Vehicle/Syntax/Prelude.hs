@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Vehicle.Syntax.Prelude where
@@ -16,6 +17,9 @@ import Prettyprinter (Doc, Pretty (..), defaultLayoutOptions, indent, layoutPret
 import Prettyprinter.Render.String (renderString)
 import Prettyprinter.Render.Text (renderStrict)
 
+#if MIN_VERSION_base(4,19,0)
+import qualified Data.Functor as F
+#endif
 --------------------------------------------------------------------------------
 -- Developer errors
 
@@ -137,3 +141,11 @@ getNonEmptyListOf m = do
 
 putNonEmptyListOf :: Putter a -> Putter (NonEmpty a)
 putNonEmptyListOf pa = putListOf pa . NonEmpty.toList
+
+#if MIN_VERSION_base(4,19,0)
+unzipF :: Functor f => f (a, b) -> (f a, f b)
+unzipF = F.unzip
+#else
+unzipF :: NonEmpty.NonEmpty (a, b) -> (NonEmpty.NonEmpty a, NonEmpty.NonEmpty b)
+unzipF = NonEmpty.unzip
+#endif

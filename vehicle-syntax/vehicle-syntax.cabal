@@ -12,7 +12,8 @@ copyright:          © Wen Kokke
 license:            BSD-3-Clause
 license-file:       LICENSE
 build-type:         Custom
-tested-with:        GHC ==8.10.7 || ==9.0.2 || ==9.2.8 || ==9.4.8 || ==9.6.5 || ==9.8.4
+tested-with:
+  GHC ==8.10.7 || ==9.0.2 || ==9.2.8 || ==9.4.8 || ==9.6.5 || ==9.8.4
 
 extra-source-files:
   src/Vehicle/Syntax/External.cf
@@ -96,8 +97,10 @@ common common-library
   ghc-options:
     -Werror -Wall -fno-warn-orphans
     -fno-warn-missing-pattern-synonym-signatures
-    -fno-warn-missing-signatures
+    -fno-warn-missing-signatures -Wno-deriving-typeable
 
+-- See https://github.com/BNFC/bnfc/issues/503 for why this is necessary.
+-- If BNFC is fixed upstream we can remove this.
 -- These warnings are triggered by the auto-generated BNFC files so ignore.
 library
   import:             common-library

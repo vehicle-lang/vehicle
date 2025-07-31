@@ -21,6 +21,7 @@ import GHC.Generics (Generic (..))
 import Prettyprinter (Pretty (..), squotes, (<+>))
 import System.FilePath (takeFileName)
 import Vehicle.Syntax.Parse.Token
+import Vehicle.Syntax.Prelude (unzipF)
 
 --------------------------------------------------------------------------------
 -- Position
@@ -136,7 +137,7 @@ tkProvenance tk = Provenance (Range start end)
 
 fillInProvenance :: NonEmpty Provenance -> Provenance
 fillInProvenance provenances = do
-  let (starts, ends) = NonEmpty.unzip (fmap getPositions provenances)
+  let (starts, ends) = unzipF (fmap getPositions provenances)
   let start = minimum starts
   let end = maximum ends
   Provenance (Range start end) (file $ NonEmpty.head provenances)

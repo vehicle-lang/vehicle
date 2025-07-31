@@ -1,8 +1,6 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
-{-# HLINT ignore "Avoid NonEmpty.unzip" #-}
-
 module Vehicle.Backend.LossFunction.Domain
   ( extractSearchDomain,
     Domain (..),
