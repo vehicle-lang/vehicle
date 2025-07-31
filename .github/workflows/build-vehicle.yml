@@ -86,7 +86,7 @@ jobs:
               ghc:
                 version: "9.2.8"
               cabal:
-                version: "3.8.1.0"
+                version: "3.14.2.0"
                 project-file: "cabal.project"
                 extra-args: ""
                 extra-args-test-golden: ""
@@ -98,7 +98,7 @@ jobs:
               ghc:
                 version: "9.0.2"
               cabal:
-                version: "3.8.1.0"
+                version: "3.14.2.0"
                 project-file: "cabal.project"
                 extra-args: ""
                 extra-args-test-golden: ""
@@ -110,7 +110,7 @@ jobs:
               ghc:
                 version: "8.10.7"
               cabal:
-                version: "3.8.1.0"
+                version: "3.14.2.0"
                 project-file: "cabal.project"
                 extra-args: ""
                 extra-args-test-golden: ""
