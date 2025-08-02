@@ -303,24 +303,24 @@ instance ConvertableBuiltin LossBuiltinConstructor Builtin where
 
 instance ConvertableBuiltin LossBuiltinFunction Builtin where
   convertBuiltin p b = case b of
-    Neg dom -> convertBuiltin p (Neg dom)
-    Sub dom -> convertBuiltin p (Sub dom)
-    Div dom -> convertBuiltin p (Div dom)
-    Min dom -> convertBuiltin p (Min dom)
-    Max dom -> convertBuiltin p (Max dom)
-    Add dom -> convertBuiltin p (Add dom)
-    Mul dom -> convertBuiltin p (Mul dom)
-    PowRat -> convertBuiltin p PowRat
-    ReduceAddRatTensor -> convertBuiltin p ReduceAddRatTensor
-    ReduceMulRatTensor -> convertBuiltin p ReduceMulRatTensor
-    ReduceMinRatTensor -> convertBuiltin p ReduceMinRatTensor
-    ReduceMaxRatTensor -> convertBuiltin p ReduceMaxRatTensor
-    At -> convertBuiltin p At
-    StackTensor -> convertBuiltin p StackTensor
-    ConstTensor -> convertBuiltin p ConstTensor
+    Neg dom -> convertBuiltin p (S.Neg dom)
+    Sub dom -> convertBuiltin p (S.Sub dom)
+    Div dom -> convertBuiltin p (S.Div dom)
+    Min dom -> convertBuiltin p (S.Min dom)
+    Max dom -> convertBuiltin p (S.Max dom)
+    Add dom -> convertBuiltin p (S.Add dom)
+    Mul dom -> convertBuiltin p (S.Mul dom)
+    PowRat -> convertBuiltin p S.PowRat
+    ReduceAddRatTensor -> convertBuiltin p S.ReduceAddRatTensor
+    ReduceMulRatTensor -> convertBuiltin p S.ReduceMulRatTensor
+    ReduceMinRatTensor -> convertBuiltin p S.ReduceMinRatTensor
+    ReduceMaxRatTensor -> convertBuiltin p S.ReduceMaxRatTensor
+    At -> convertBuiltin p S.AtTensor
+    StackTensor -> convertBuiltin p S.StackTensor
+    ConstTensor -> convertBuiltin p S.ConstTensor
+    MapList -> convertBuiltin p S.MapList
+    FoldList -> convertBuiltin p S.FoldList
     SearchRatTensor -> cheatConvertBuiltin p $ pretty b
-    MapList -> convertBuiltin p MapList
-    FoldList -> convertBuiltin p FoldList
 
 instance ConvertableBuiltin LossBuiltin Builtin where
   convertBuiltin p b = case b of

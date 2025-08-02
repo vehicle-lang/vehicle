@@ -1,7 +1,7 @@
 @property;
-test1 : (Tensor Rat -> Tensor Rat) -> Tensor Rat;
-test1 f = search (\ xs -> reduceMul xs) 0.0 0.0 (\ a -> max (const 0.0 (1 :: nil)) (const 0.0 (1 :: nil) - a) + reduceAdd (- (max (const 0.0 (1 :: nil)) (f (stack Rat nil (a + const 2.0 (1 :: nil))) - const 0.0 (1 :: nil)) + max (const 0.0 (1 :: nil)) (const 0.0 (1 :: nil) - f (stack Rat nil (a + const 2.0 (1 :: nil)))))))
+test1 : (Tensor Real -> Tensor Real) -> Tensor Real;
+test1 f = search (\ e -> \ xs -> reduceMul e xs) 0.0 0.0 (\ a -> - (max 0.0 a + max 0.0 (0.0 - a)) + reduceAdd 0.0 (- (max [ 0.0 ] (f [a + 2.0]) + max [ 0.0 ] ([ 0.0 ] - f [a + 2.0]))))
 
 @property;
-test2 : (Tensor Rat -> Tensor Rat) -> Tensor Rat;
-test2 g = search (\ xs -> reduceMul xs) 0.0 0.0 (\ a -> search (\ xs -> reduceMul xs) 0.0 0.0 (\ b -> max (const 0.0 (1 :: nil)) (const 1.0 (1 :: nil) - a) + (max (const 0.0 (1 :: nil)) (a - b) + reduceAdd (- (max (const 0.0 (1 :: nil)) (g (stack Rat nil (a + b) (a + const 2.0 (1 :: nil) * b)) - const 0.0 (1 :: nil)) + max (const 0.0 (1 :: nil)) (const 0.0 (1 :: nil) - g (stack Rat nil (a + b) (a + const 2.0 (1 :: nil) * b))))))))
+test2 : (Tensor Real -> Tensor Real) -> Tensor Real;
+test2 g = search (\ e -> \ xs -> reduceMul e xs) 0.0 0.0 (\ a -> search (\ e -> \ xs -> reduceMul e xs) 0.0 0.0 (\ b -> - (max 0.0 (a - 1.0) + max 0.0 (1.0 - a)) + (- (max 0.0 (b - a) + max 0.0 (a - b)) + reduceAdd 0.0 (- (max [ 0.0 ] (g [a + b, a + 2.0 * b]) + max [ 0.0 ] ([ 0.0 ] - g [a + b, a + 2.0 * b]))))))

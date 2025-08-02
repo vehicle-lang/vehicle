@@ -47,7 +47,7 @@ functionaliseResources ::
   Prog builtin ->
   m (Prog builtin)
 functionaliseResources prog =
-  logCompilerPass MidDetail currentPass $ do
+  logCompilerPass MinDetail currentPass $ do
     runReaderT (functionaliseProg prog) (FuncState OMap.empty mempty)
 
 --------------------------------------------------------------------------------

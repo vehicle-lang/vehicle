@@ -10,11 +10,10 @@ open import Vehicle
 open import Vehicle.Utils
 open import Vehicle.Data.Tensor
 open import Data.Rational as ℚ using (ℚ)
-open import Data.Fin as Fin using (Fin; #_)
 open import Data.List.Base
 
 module Agda where
 
 postulate f : Tensor ℚ (1 ∷ []) → Tensor ℚ (1 ∷ [])
 
-postulate monotonic : ∀ x1 → ∀ x2 → x1 ≤ x2 → (f (stack x1) ! # 0) ≤ (f (stack x2) ! # 0)
+postulate monotonic : ∀ x1 → ∀ x2 → x1 ≤ x2 → f (stack x1) ≤ f (stack x2)

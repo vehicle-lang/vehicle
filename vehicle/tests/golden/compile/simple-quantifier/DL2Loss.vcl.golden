@@ -1,11 +1,7 @@
 @property;
-expandedExpr : (Tensor Rat -> Tensor Rat) -> Tensor Rat;
-expandedExpr f = const 1.0 (1 :: nil) / search (\ xs -> reduceMul xs) 0.0 0.0 (\ x -> const 1.0 (1 :: nil) / max (const 0.0 (1 :: nil)) (f x ! 0 - x ! 0))
+expandedExpr : (Tensor Real -> Tensor Real) -> Tensor Real;
+expandedExpr f = [ 1.0 ] / search (\ e -> \ xs -> reduceMul e xs) 0.0 0.0 (\ x -> [ 1.0 ] / - (max 0.0 (x ! 0 - f x ! 0) + max 0.0 (f x ! 0 - x ! 0)))
 
 @property;
-sequential : (Tensor Rat -> Tensor Rat) -> Tensor Rat;
-sequential f = const 1.0 (1 :: nil) / search (\ xs -> reduceMul xs) 0.0 0.0 (\ x -> const 1.0 (1 :: nil) / (const 1.0 (1 :: nil) / search (\ xs -> reduceMul xs) 0.0 0.0 (\ y -> const 1.0 (1 :: nil) / max (const 0.0 (1 :: nil)) (f y ! 0 - f x ! 0))))
-
-@property;
-parallel : (Tensor Rat -> Tensor Rat) -> Tensor Rat;
-parallel f = const 1.0 (1 :: nil) / search (\ xs -> reduceMul xs) 0.0 0.0 (\ x -> const 1.0 (1 :: nil) / max (const 0.0 (1 :: nil)) (const 0.0 (1 :: nil) - f x ! 0)) + search (\ xs -> reduceMul xs) 0.0 0.0 (\ x -> max (const 0.0 (1 :: nil)) (const 5.0 (1 :: nil) - f x ! 0))
+parallel : (Tensor Real -> Tensor Real) -> Tensor Real;
+parallel f = [ 1.0 ] / search (\ e -> \ xs -> reduceMul e xs) 0.0 0.0 (\ x -> [ 1.0 ] / - (max 0.0 (f x ! 0) + max 0.0 (0.0 - f x ! 0))) + search (\ e -> \ xs -> reduceMul e xs) 0.0 0.0 (\ x -> - (max 0.0 (f x ! 0 - 5.0) + max 0.0 (5.0 - f x ! 0)))

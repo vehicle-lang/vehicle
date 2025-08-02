@@ -383,9 +383,11 @@ pruneMetaDependencies ctx (solvingMetaID, solvingMetaSpine) attemptedSolution = 
       VRecordAcc record field -> VRecordAcc <$> go record <*> pure field
       -- Definitely going to have come back and fix this one later.
       -- Can't inspect the metas in the environment, as not every variable
-      -- in the environment will be used? But maybe we can?
-      VPi {} -> return expr -- VPi <$> traverse go binder <*> go result
-      VLam {} -> return expr
+      -- in the environment will be used?
+      -- The elaboration zoo has pruning and renaming actually return an `Expr`
+      -- rather than a `Val`?
+      VPi binder body -> VPi <$> traverse go binder <*> pure body
+      VLam binder body -> VLam <$> traverse go binder <*> pure body
 
     getNormMetaDependencies :: MetaID -> Spine builtin -> m ([Lv], Spine builtin)
     getNormMetaDependencies meta spine = do
