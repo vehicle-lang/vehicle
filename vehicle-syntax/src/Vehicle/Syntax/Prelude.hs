@@ -142,10 +142,9 @@ getNonEmptyListOf m = do
 putNonEmptyListOf :: Putter a -> Putter (NonEmpty a)
 putNonEmptyListOf pa = putListOf pa . NonEmpty.toList
 
+unzipF :: (Functor f) => f (a, b) -> (f a, f b)
 #if MIN_VERSION_base(4,19,0)
-unzipF :: Functor f => f (a, b) -> (f a, f b)
 unzipF = F.unzip
 #else
-unzipF :: NonEmpty.NonEmpty (a, b) -> (NonEmpty.NonEmpty a, NonEmpty.NonEmpty b)
 unzipF = NonEmpty.unzip
 #endif

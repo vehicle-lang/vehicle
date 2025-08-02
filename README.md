@@ -68,6 +68,6 @@ to discuss it with us.
 
 ## Related papers
 
-- [Vehicle tool paper](https://arxiv.org/abs/2401.06379)
+- [Vehicle tool paper (in FCSD'25)](https://drops.dagstuhl.de/entities/volume/LIPIcs-volume-337)
 - [Vehicle's type checker (in CPP'23)](https://laiv.uk/wp-content/uploads/2022/12/vehicle.pdf)
 - [Vehicle's compilation to verifier queries](https://arxiv.org/abs/2402.01353)
