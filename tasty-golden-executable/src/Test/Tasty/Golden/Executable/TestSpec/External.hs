@@ -8,7 +8,6 @@ where
 
 import Data.Aeson.Types (FromJSON (..), Parser, ToJSON (..), Value, typeMismatch)
 import Data.Aeson.Types qualified as Value (Value (..))
-import Data.Data (Typeable)
 import Data.String (IsString (..))
 import Data.Tagged (Tagged)
 import Data.Text qualified as Text
@@ -16,7 +15,7 @@ import Test.Tasty.Options (IsOption (..), safeRead)
 
 -- | The name of an external program.
 newtype External = External {programName :: FilePath}
-  deriving (Eq, Ord, Typeable)
+  deriving (Eq, Ord)
 
 instance Show External where
   show :: External -> String
@@ -40,7 +39,7 @@ instance ToJSON External where
   toJSON = toJSON . programName
 
 newtype AllowlistExternals = AllowlistExternals [External]
-  deriving (Eq, Ord, Show, Typeable, Semigroup, Monoid)
+  deriving (Eq, Ord, Show, Semigroup, Monoid)
 
 instance IsOption AllowlistExternals where
   defaultValue :: AllowlistExternals

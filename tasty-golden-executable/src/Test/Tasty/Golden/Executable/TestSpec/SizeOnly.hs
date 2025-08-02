@@ -8,7 +8,6 @@ where
 
 import Control.Applicative ((<|>))
 import Data.Aeson.Types (FromJSON (..), Parser, ToJSON (..), Value)
-import Data.Data (Typeable)
 import Data.Set (Set)
 import Data.Set qualified as Set (fromList)
 import Data.Tagged (Tagged)
@@ -20,7 +19,7 @@ import Test.Tasty.Options (IsOption (..), safeRead)
 newtype SizeOnlyExtensions = SizeOnlyExtensions
   { fileExtensions :: [FilePath]
   }
-  deriving (Eq, Show, Typeable, Semigroup, Monoid)
+  deriving (Eq, Show, Semigroup, Monoid)
 
 instance FromJSON SizeOnlyExtensions where
   parseJSON :: Value -> Parser SizeOnlyExtensions

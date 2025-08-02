@@ -8,7 +8,6 @@ import Data.Aeson (Value)
 import Data.Aeson.Types (FromJSON, Parser, ToJSON (..), typeMismatch)
 import Data.Aeson.Types qualified as Value
 import Data.Array qualified as Array ((!))
-import Data.Data (Typeable)
 import Data.Function (on)
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -24,7 +23,6 @@ data TextPattern = TextPattern
   { patternString :: Text,
     pattern :: Regex
   }
-  deriving (Typeable)
 
 readEither :: String -> Either String TextPattern
 readEither = readTextEither . Text.pack

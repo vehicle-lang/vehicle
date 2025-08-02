@@ -4,7 +4,6 @@ module Test.Tasty.Golden.Executable.TestSpec.Accept
   )
 where
 
-import Data.Data (Typeable)
 import Data.Proxy (Proxy (..))
 import Data.Tagged (Tagged (..))
 import Options.Applicative.Types qualified as Options
@@ -19,7 +18,7 @@ acceptOptionIngredient =
     ]
 
 newtype Accept = Accept {unAccept :: Bool}
-  deriving (Eq, Ord, Show, Typeable)
+  deriving (Eq, Ord, Show)
 
 instance IsOption Accept where
   defaultValue :: Accept

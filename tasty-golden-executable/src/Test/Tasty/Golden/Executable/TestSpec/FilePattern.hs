@@ -11,7 +11,6 @@ import Control.Arrow (Arrow ((&&&)))
 import Data.Aeson (Value)
 import Data.Aeson.Types (FromJSON, Parser, ToJSON (..), typeMismatch)
 import Data.Aeson.Types qualified as Value
-import Data.Data (Typeable)
 import Data.Function (on)
 import Data.Sequence (Seq, (|>))
 import Data.Sequence qualified as Seq
@@ -31,7 +30,6 @@ data FilePattern = FilePattern
     patternExtensions :: Seq String,
     pattern :: Glob.Pattern
   }
-  deriving (Typeable)
 
 -- | Find matches for a list of file patterns in the given directory.
 glob :: [FilePattern] -> FilePath -> IO [FilePath]

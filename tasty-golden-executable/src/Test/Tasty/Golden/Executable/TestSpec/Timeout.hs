@@ -7,7 +7,6 @@ where
 
 import Data.Aeson.Types (FromJSON (..), Parser, ToJSON (..), Value, typeMismatch)
 import Data.Aeson.Types qualified as Value (Value (..))
-import Data.Data (Typeable)
 import Data.Function (on)
 import Data.Maybe (isJust)
 import Data.Ord (Down (Down))
@@ -17,7 +16,7 @@ import Test.Tasty qualified as Tasty (Timeout (NoTimeout, Timeout))
 import Test.Tasty.Options (IsOption (..))
 
 newtype Timeout = Timeout {toTastyTimeout :: Tasty.Timeout}
-  deriving (Show, Typeable)
+  deriving (Show)
 
 instance Semigroup Timeout where
   (<>) :: Timeout -> Timeout -> Timeout

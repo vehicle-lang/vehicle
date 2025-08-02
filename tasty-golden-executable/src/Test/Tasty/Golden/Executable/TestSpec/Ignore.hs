@@ -21,7 +21,6 @@ import Data.Aeson.Types
     (.!=),
     (.:?),
   )
-import Data.Data (Typeable)
 import Data.Maybe (catMaybes)
 import Data.Tagged (Tagged)
 import Data.Text qualified as Text (pack, splitOn, strip, unpack)
@@ -36,7 +35,7 @@ data Ignore = Ignore
     -- | Lines produced by the test command that should be ignored.
     ignoreLines :: IgnoreLines
   }
-  deriving (Eq, Show, Typeable)
+  deriving (Eq, Show)
 
 instance Semigroup Ignore where
   (<>) :: Ignore -> Ignore -> Ignore
@@ -69,7 +68,7 @@ instance ToJSON Ignore where
 -- IgnoreFiles
 
 newtype IgnoreFiles = IgnoreFiles [FilePattern]
-  deriving (Eq, Show, Typeable, Semigroup, Monoid)
+  deriving (Eq, Show, Semigroup, Monoid)
 
 ignoreFilesToIgnore :: IgnoreFiles -> Ignore
 ignoreFilesToIgnore ignoreFiles = Ignore ignoreFiles mempty
@@ -104,7 +103,7 @@ instance IsOption IgnoreFiles where
 -- IgnoreLines
 
 newtype IgnoreLines = IgnoreLines [TextPattern]
-  deriving (Eq, Show, Typeable, Semigroup, Monoid)
+  deriving (Eq, Show, Semigroup, Monoid)
 
 ignoreLinesToIgnore :: IgnoreLines -> Ignore
 ignoreLinesToIgnore = Ignore mempty
