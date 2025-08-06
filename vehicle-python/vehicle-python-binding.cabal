@@ -20,10 +20,10 @@ source-repository head
 
 custom-setup
   setup-depends:
-    , base      >=4
-    , Cabal     >=2.0.0.2 && <3.14
-    , directory >=1
-    , filepath  >=1
+    , base       >=4
+    , Cabal      >=2.0.0.2 && <3.14
+    , directory  >=1
+    , filepath   >=1
 
 common warnings
   ghc-options: -Wall
