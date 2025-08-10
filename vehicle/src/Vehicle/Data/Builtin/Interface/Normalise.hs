@@ -10,7 +10,6 @@ import Control.Monad.Writer.Class
 import Data.Maybe (fromMaybe, isJust)
 import Data.Semigroup (Any (..))
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Interface.Blocked
