@@ -29,8 +29,9 @@ import Vehicle.Compile.Rational.LinearExpr (LinearityError (..), compileLinearRe
 import Vehicle.Compile.Resource (NetworkTensorType (..), NetworkType (..))
 import Vehicle.Compile.Variable (createUserVar)
 import Vehicle.Data.Assertion
-import Vehicle.Data.Builtin.Interface.Normalise (evalAtTensor, evalCompareRatTensor, evalReduceAndTensor, evalStackTensor)
+import Vehicle.Data.Builtin.Interface.Normalise (evalAtTensor, evalReduceAndTensor, evalStackTensor)
 import Vehicle.Data.Builtin.Standard
+import Vehicle.Data.Builtin.Standard.Normalise (evalCompareRatTensorReduced)
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
@@ -315,7 +316,7 @@ eliminateTensorAssertion op (TensorOp2Args dims xs ys) =
       let mkStackElement i = do
             xsi <- mkAt xs i
             ysi <- mkAt ys i
-            evalCompareRatTensor op (TensorOp2Args (implicitIrrelevant ds) xsi ysi)
+            evalCompareRatTensorReduced op (TensorOp2Args (implicitIrrelevant ds) xsi ysi)
       stackElements <- traverse mkStackElement [0 .. (n - 1)] :: m [Value Builtin]
       stackExpr <- evalStackTensor (StackTensorArgs tElem d dsArg stackElements)
       evalReduceAndTensor (TensorOp2Args dims (IBoolLiteral True) stackExpr)

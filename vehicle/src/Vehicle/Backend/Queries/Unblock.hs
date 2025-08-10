@@ -16,6 +16,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Standard
+import Vehicle.Data.Builtin.Standard.Normalise (evalCompareRatTensorReduced)
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
@@ -70,7 +71,7 @@ tryPurifyAssertion actions op (TensorOp2Args ds xs ys) = do
     unblockedExpr <-
       liftIf xs' $ \xs'' ->
         liftIf ys' $ \ys'' ->
-          evalCompareRatTensor op $ TensorOp2Args ds xs'' ys''
+          evalCompareRatTensorReduced op $ TensorOp2Args ds xs'' ys''
 
     logDebugM MaxDetail $ do
       ctx <- getNameContext
@@ -92,7 +93,7 @@ data Impurity
 findImpurity :: Value Builtin -> Either Impurity (TensorOp2Args (Value Builtin))
 findImpurity expr = case toBoolValue expr of
   VBoolIf args -> Left $ LiftedIf args
-  VCompareRatTensorPointwise (op, args) -> maybe (Right args) Left $ findMinMaxImpurity op args
+  VCompareRatTensorReduced (op, args) -> maybe (Right args) Left $ findMinMaxImpurity op args
   _ -> unexpectedExprError "purification" (prettyVerbose expr)
   where
     findMinMaxImpurity :: ComparisonOp -> TensorOp2Args (Value Builtin) -> Maybe Impurity

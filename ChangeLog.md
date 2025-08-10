@@ -1,5 +1,11 @@
 # Changelog for Vehicle
 
+## Version 0.18.1
+
+### Verifier backend
+
+* Fixed bug that sometimes occured when compiling tensors with dimension > 2.
+
 ## Version 0.18.0
 
 ### Vehicle language

@@ -1,13 +1,19 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-module Vehicle.Data.Builtin.Standard.Normalise () where
+module Vehicle.Data.Builtin.Standard.Normalise
+  ( evalCompareRatTensorReduced,
+  )
+where
 
+import Vehicle.Compile.Context.Free (MonadFreeContext)
+import Vehicle.Compile.Normalise.NBE (normaliseBuiltin)
 import Vehicle.Data.Builtin.Core as Syntax
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Interface.Blocked
 import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.Interface
+import Vehicle.Data.Code.Value (Value)
 import Vehicle.Prelude (GenericArg (..), HasIdentifier (identifierOf))
 
 ---------------------------------------------------------------------------------
@@ -122,3 +128,6 @@ evalVectorToList args@(VectorToListArgs t d xs) =
   return $ case argExpr d of
     INatLiteral n | n == length xs -> mkListExpr (argExpr t) xs
     _ -> mkExpr accessFromVectorToList args
+
+evalCompareRatTensorReduced :: (MonadNormBuiltin m, MonadFreeContext Builtin m) => ComparisonOp -> TensorOp2Args (Value Builtin) -> m (Value Builtin)
+evalCompareRatTensorReduced op args = normaliseBuiltin (DerivedFunction (CompareRatTensorReduced op)) (mkExpr accessSpine args)
