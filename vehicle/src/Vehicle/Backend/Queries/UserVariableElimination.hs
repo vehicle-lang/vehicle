@@ -29,7 +29,7 @@ import Vehicle.Compile.Rational.LinearExpr (LinearityError (..), compileLinearRe
 import Vehicle.Compile.Resource (NetworkTensorType (..), NetworkType (..))
 import Vehicle.Compile.Variable (createUserVar)
 import Vehicle.Data.Assertion
-import Vehicle.Data.Builtin.Interface.Normalise (evalAtTensor, evalReduceAndTensor, evalStackTensor)
+import Vehicle.Data.Builtin.Interface.Normalise (evalAtTensor, evalReduceAndTensor)
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Builtin.Standard.Normalise (evalCompareRatTensorReduced)
 import Vehicle.Data.Code.BooleanExpr
@@ -92,7 +92,7 @@ eliminateUserVariables expr = do
     VCompareRatTensorReduced {} -> compileUnquantifiedQuerySet expr
     VCompareRatTensorPointwise {} -> developerError "Compile pointwise comparison not supported"
   where
-    unblock e = runFreshNameContextT (Unblocking.unblockBoolExpr e)
+    unblock e = runFreshNameContextT (Unblocking.unblockBoolExpr topLevelUnblockingActions e)
 
 compileQuantifiedQuerySet ::
   (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m) =>
@@ -157,7 +157,7 @@ compileBoolExpr expr = do
     ---------------------
     VNot arg -> do
       lv <- boundCtxLv <$> getNameContext
-      compileBoolExpr =<< lowerNot lv Unblocking.unblockBoolExpr arg
+      compileBoolExpr =<< lowerNot lv unblock arg
     VBoolIf args -> compileBoolExpr =<< unfoldIf args
     VAnd (TensorOp2Args _dims x y) -> andTrivial andPartitions <$> compileBoolExpr x <*> compileBoolExpr y
     VOr (TensorOp2Args _dims x y) -> orTrivial orPartitions <$> compileBoolExpr x <*> compileBoolExpr y
@@ -168,11 +168,8 @@ compileBoolExpr expr = do
     VReduceOrTensor {} -> unblockAndRec expr
     VBoolAt {} -> unblockAndRec expr
   where
-    -- VBoolForeach {} -> unblockAndRec expr
-    -- VBoolStackTensor {} -> unblockAndRec expr
-    -- _ -> compileBoolExpr =<< Unblocking.unblockBoolExpr expr
-
-    unblockAndRec e = compileBoolExpr =<< Unblocking.unblockBoolExpr e
+    unblock = Unblocking.unblockBoolExpr unblockingActions
+    unblockAndRec e = compileBoolExpr =<< unblock e
 
 purifyAndCompileAssertion ::
   (MonadQuantifierBody m) =>
@@ -246,6 +243,12 @@ type MonadQuantifierBody m =
     MonadWriter [Value Builtin] m
   )
 
+topLevelUnblockingActions :: (MonadCompile m) => UnblockingActions m
+topLevelUnblockingActions =
+  UnblockingActions
+    (developerError "Should not be unblocking variables at top-level")
+    (developerError "Unblocking of constant network functions at top-level not yet supported")
+
 unblockingActions :: (MonadQuantifierBody m) => UnblockingActions m
 unblockingActions = UnblockingActions unblockQuantifiedBoundVar unblockNetworkApplication
 
@@ -311,15 +314,15 @@ eliminateTensorAssertion op (TensorOp2Args dims xs ys) =
   case argExpr dims of
     ICons _ d@(INatLiteral n) ds -> do
       let tElem = implicit $ fromTypeValue VRatType
-      let dsArg = implicitIrrelevant ds
-      let mkAt vs i = evalAtTensor (AtTensorArgs tElem (implicitIrrelevant d) dsArg vs (IIndexLiteral i))
+      let d0Arg = implicitIrrelevant (mkDims [])
+      let mkAt vs i = evalAtTensor (AtTensorArgs tElem (implicitIrrelevant d) (implicitIrrelevant ds) vs (IIndexLiteral i))
       let mkStackElement i = do
             xsi <- mkAt xs i
             ysi <- mkAt ys i
             evalCompareRatTensorReduced op (TensorOp2Args (implicitIrrelevant ds) xsi ysi)
       stackElements <- traverse mkStackElement [0 .. (n - 1)] :: m [Value Builtin]
-      stackExpr <- evalStackTensor (StackTensorArgs tElem d dsArg stackElements)
-      evalReduceAndTensor (TensorOp2Args dims (IBoolLiteral True) stackExpr)
+      let stackExpr = fromBoolTensorValue $ VBoolStackTensor (StackTensorArgs tElem d d0Arg stackElements)
+      evalReduceAndTensor (TensorOp2Args (implicitIrrelevant (mkDims [n])) (IBoolLiteral True) stackExpr)
     _ -> do
       compilerDeveloperError ("unexpected dimensions" <+> prettyVerbose dims)
 

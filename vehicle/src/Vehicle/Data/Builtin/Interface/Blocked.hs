@@ -37,7 +37,9 @@ fixedStatus indices spine
 stackBlockingStatus :: (BuiltinHasNatLiterals builtin) => Spine builtin -> BlockingStatus builtin
 stackBlockingStatus = \case
   [] -> InsufficientArgs
-  (argExpr -> INatLiteral d) : xs
+  [_] -> InsufficientArgs
+  [_, _] -> InsufficientArgs
+  _ : (argExpr -> INatLiteral d) : _ : xs
     | d == length xs -> AlwaysReduces
     | otherwise -> InsufficientArgs
   spine -> fixedStatus [0] spine
