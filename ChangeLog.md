@@ -4,9 +4,7 @@
 
 ### Verifier backend
 
-* Fixed bug that sometimes occured when compiling tensors with dimensions > 2.
-
-* Fixed bug that sometimes occured when compiling `reduceAnd`, `reduceSum` etc. with dimensions > 1.
+* Fixed various bugs that sometimes occured when compiling tensors with dimensions >= 2.
 
 ## Version 0.18.0
 

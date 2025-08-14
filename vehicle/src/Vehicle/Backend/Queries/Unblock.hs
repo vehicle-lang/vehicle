@@ -88,13 +88,16 @@ tryPurifyAssertion actions op args = do
 data Impurity
   = LiftedIf (IfArgs (Value Builtin))
   | LiftedMinMax (Bool, TensorOp2Args (Value Builtin)) ComparisonOp (Value Builtin)
+  | ReducedComparison (Value Builtin)
 
 findImpurity :: Value Builtin -> Either Impurity (TensorOp2Args (Value Builtin))
 findImpurity expr = case toBoolValue expr of
   VBoolIf args -> Left $ LiftedIf args
   VCompareRatTensorReduced (op, args) -> maybe (Right args) Left $ findMinMaxImpurity op args
   VCompareRatTensorPointwise (op, args) -> maybe (Right args) Left $ findMinMaxImpurity op args
-  _ -> unexpectedExprError "purification" (prettyVerbose expr)
+  -- The purification may have caused the comparison itself to reduce to comparisons
+  -- over its elements and/or tensor literals.
+  _ -> Left $ ReducedComparison expr
   where
     findMinMaxImpurity :: ComparisonOp -> TensorOp2Args (Value Builtin) -> Maybe Impurity
     findMinMaxImpurity op (TensorOp2Args _ e1 e2) = case (toRatTensorValue e1, toRatTensorValue e2) of
@@ -118,6 +121,7 @@ eliminateImpurities impurity = do
           if op == Ge || op == Gt
             then (if isMin then evalAnd else evalOr) logicalArgs
             else developerError $ "Support for min/max with" <+> pretty op <+> "not yet implemented"
+    ReducedComparison expr -> return expr
 
 --------------------------------------------------------------------------------
 -- Main unblocking functions
