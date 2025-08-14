@@ -31,19 +31,32 @@ handleNeededFilesError NeededFilesError {..} = do
   return $ testFailed message
 
 -- | Raised when the golden file for a test is not found.
-newtype GoldenFilesNotFoundError = GoldenFilesNotFoundError {goldenFilesNotFound :: [FilePattern]}
+newtype GoldenFilesNotFoundError = GoldenFilesNotFoundError {goldenFilesNotFound :: [FilePath]}
   deriving (Show, Semigroup)
-
-goldenFileNotFound :: FilePattern -> GoldenFilesNotFoundError
-goldenFileNotFound filePattern = GoldenFilesNotFoundError [filePattern]
 
 instance Exception GoldenFilesNotFoundError
 
 handleGoldenFilesNotFoundError :: GoldenFilesNotFoundError -> IO Result
 handleGoldenFilesNotFoundError GoldenFilesNotFoundError {..} = do
   let message =
-        printf "Could not run test as could not find golden files: %s" $
-          List.intercalate ", " (show <$> goldenFilesNotFound)
+        printf "Could not run test as could not find the required golden files:\n  %s" $
+          List.intercalate "\n  " goldenFilesNotFound
+  return $ testFailed message
+
+-- | Raised when no golden files provided.
+newtype GoldenFilesNotProvidedError = GoldenFilesNotProvidedError {goldenFilesNotProvided :: [FilePattern]}
+  deriving (Show, Semigroup)
+
+instance Exception GoldenFilesNotProvidedError
+
+handleGoldenFilesNotProvidedError :: GoldenFilesNotProvidedError -> IO Result
+handleGoldenFilesNotProvidedError GoldenFilesNotProvidedError {..} = do
+  let cause = case goldenFilesNotProvided of
+        [] -> "no golden files were specified via the 'produces' field"
+        _ : _ -> do
+          let patternString = List.intercalate "\n  " (show <$> goldenFilesNotProvided)
+          printf "no golden files were matched via the patterns:\n  %s" patternString
+  let message = "Could not run test as " <> cause
   return $ testFailed message
 
 -- | Raised when the test run does not produce an expected file or does not

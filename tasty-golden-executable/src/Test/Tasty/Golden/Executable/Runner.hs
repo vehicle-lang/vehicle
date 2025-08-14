@@ -9,7 +9,7 @@
 module Test.Tasty.Golden.Executable.Runner where
 
 import Control.Exception (throw)
-import Control.Monad (unless, when)
+import Control.Monad (filterM, unless, when)
 import Control.Monad.Catch (MonadCatch (..), MonadMask, MonadThrow, handle)
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.State.Class (modify)
@@ -157,13 +157,14 @@ runTestIO :: FilePath -> TestName -> TestIO () -> IO Result
 runTestIO testDirectory testName (TestT testIO) = do
   handle handleNeededFilesError $
     handle handleGoldenFilesNotFoundError $
-      handle handleProducedFilesError $
-        handle handleExitFailure $
-          handle handleAmbiguousGoldenFile $
-            withSystemTempDirectory testName $ \tempDirectory -> do
-              createDirectoryRecursive tempDirectory
-              evalStateT testIO TestEnvironment {testNeeds = [], ..}
-              return $ testPassed mempty
+      handle handleGoldenFilesNotProvidedError $
+        handle handleProducedFilesError $
+          handle handleExitFailure $
+            handle handleAmbiguousGoldenFile $
+              withSystemTempDirectory testName $ \tempDirectory -> do
+                createDirectoryRecursive tempDirectory
+                evalStateT testIO TestEnvironment {testNeeds = [], ..}
+                return $ testPassed mempty
 
 -- | Copy the needed files over to the temporary directory.
 copyTestNeeds :: [FilePath] -> TestIO ()
@@ -282,7 +283,7 @@ diffTestProduced maybeLooseEq testProduces (IgnoreFiles testIgnores) sizeOnlyExt
   let shortCircuitLooseEq = shortCircuitWithEq maybeLooseEq
   let sizeOnlyExtensionsSet = toSizeOnlyExtensionsSet sizeOnlyExtensions
   -- Find the golden and actual files:
-  goldenFiles <- lift $ findTestProducesGolden testProduces
+  goldenFiles <- lift $ findTestProducesGolden testProduces False
   actualFiles <- lift $ findTestProducesActual testIgnores
 
   -- Assert that all golden files end with .golden:
@@ -290,6 +291,12 @@ diffTestProduced maybeLooseEq testProduces (IgnoreFiles testIgnores) sizeOnlyExt
     unless ("golden" `isExtensionOf` goldenFile) $
       fail $
         printf "found golden file without .golden extension: %s" goldenFile
+
+  -- Check that all golden files actually exist.
+  missingGoldenFiles <- lift $ lift $ filterM (\file -> not <$> doesFileExist (testDirectory </> file)) goldenFiles
+  unless (null missingGoldenFiles) $
+    throw $
+      GoldenFilesNotFoundError missingGoldenFiles
 
   -- Compute sets of files:
   let goldenFileSet = Set.fromList (fmap stripGoldenExtension goldenFiles)
@@ -368,7 +375,7 @@ acceptTestProduced testProduces (IgnoreFiles testIgnores) = do
   let otherTestSpecs = otherTestSpecsBefore <> otherTestSpecsAfter
   -- Find the golden and actual files:
   actualFiles <- findTestProducesActual testIgnores
-  (goldenFiles, _maybeGoldenFilesNotFoundError) <- runWriterT $ findTestProducesGolden_ testProduces
+  goldenFiles <- findTestProducesGolden testProduces True
   -- Run a state monad with an accept state, to make iterative updates to the test
   -- specification and schedule copy and delete operations:
   AcceptState {..} <- flip execStateT (initialAcceptState thisTestSpec) $ do
@@ -468,34 +475,27 @@ findTestProducesActual testIgnoreFiles = do
         ]
   return tempFilesProducedAndNotIgnored
 
--- | Find the golden files for the files produced by the test command.
-findTestProducesGolden :: [FilePattern] -> TestIO [FilePath]
-findTestProducesGolden testProduces = do
-  (filesByPattern, maybeError) <- runWriterT $ findTestProducesGolden_ testProduces
-  -- If any errors occurred, throw them.
-  maybe (return filesByPattern) throw maybeError
-
 -- | Variant of 'findTestProducesGolden' that gathers the errors in a 'WriterT' monad.
-findTestProducesGolden_ :: [FilePattern] -> WriterT (Maybe GoldenFilesNotFoundError) (TestT IO) [FilePath]
-findTestProducesGolden_ testProduces = do
-  TestEnvironment {..} <- lift getTestEnvironment
+findTestProducesGolden :: [FilePattern] -> Bool -> TestIO [FilePath]
+findTestProducesGolden testProduces isAcceptingTests = do
+  TestEnvironment {..} <- getTestEnvironment
   filesByPattern <-
     for testProduces $ \testProduce ->
       case asLiteral testProduce of
         -- If the pattern is a literal path, return that path.
         Just fileForPattern -> return [fileForPattern <.> ".golden"]
-        -- Otherwise, file the golden files associated with the pattern.
+        -- Otherwise, find the golden files associated with the pattern.
         Nothing -> do
           filesForPattern <-
             lift $
-              lift $
-                glob [addExtension testProduce ".golden"] testDirectory
-                  <&> map (makeRelative testDirectory)
-          -- If the pattern does not result in any matches, don't throw any error.
-          when (null filesForPattern) $
-            tell $
-              Just $
-                goldenFileNotFound testProduce
+              glob [addExtension testProduce ".golden"] testDirectory
+                <&> map (makeRelative testDirectory)
+
+          -- If the pattern does not result in any matches, throw an error.
+          when (null filesForPattern && not isAcceptingTests) $
+            throw $
+              GoldenFilesNotProvidedError [testProduce]
+
           -- Assert that the file paths are relative.
           for_ filesForPattern $ \file ->
             when (isAbsolute file) $
