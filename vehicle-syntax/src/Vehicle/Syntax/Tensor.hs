@@ -32,6 +32,7 @@ where
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Hashable (Hashable)
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.List.Split (chunksOf)
 import Data.Serialize (Serialize)
 import Data.Vector (Vector)
@@ -55,7 +56,7 @@ showTensorIndices xs = concatMap (\v -> "!" <> show v) (reverse xs)
 
 flattenIndices :: TensorShape -> TensorIndices -> Int
 flattenIndices shape indices =
-  sum $ zipWith (*) indices (tail (scanr (*) 1 shape))
+  sum $ zipWith (*) indices (NonEmpty.tail (NonEmpty.scanr (*) 1 shape))
 
 class HasShape a where
   shapeOf :: a -> TensorShape
