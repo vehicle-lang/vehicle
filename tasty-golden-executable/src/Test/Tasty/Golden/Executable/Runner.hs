@@ -22,7 +22,7 @@ import Data.Algorithm.DiffOutput (ppDiff)
 import Data.Foldable (Foldable (..), for_)
 import Data.Functor ((<&>))
 import Data.List qualified as List (findIndices, splitAt, uncons)
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Maybe (fromMaybe)
 import Data.Proxy (Proxy (..))
 import Data.Set (Set)
 import Data.Set qualified as Set
@@ -159,10 +159,11 @@ runTestIO testDirectory testName (TestT testIO) = do
     handle handleGoldenFilesNotFoundError $
       handle handleProducedFilesError $
         handle handleExitFailure $
-          withSystemTempDirectory testName $ \tempDirectory -> do
-            createDirectoryRecursive tempDirectory
-            evalStateT testIO TestEnvironment {testNeeds = [], ..}
-            return $ testPassed mempty
+          handle handleAmbiguousGoldenFile $
+            withSystemTempDirectory testName $ \tempDirectory -> do
+              createDirectoryRecursive tempDirectory
+              evalStateT testIO TestEnvironment {testNeeds = [], ..}
+              return $ testPassed mempty
 
 -- | Copy the needed files over to the temporary directory.
 copyTestNeeds :: [FilePath] -> TestIO ()
@@ -291,7 +292,7 @@ diffTestProduced maybeLooseEq testProduces (IgnoreFiles testIgnores) sizeOnlyExt
         printf "found golden file without .golden extension: %s" goldenFile
 
   -- Compute sets of files:
-  let goldenFileSet = Set.fromList (mapMaybe (stripExtension "golden") goldenFiles)
+  let goldenFileSet = Set.fromList (fmap stripGoldenExtension goldenFiles)
   let actualFileSet = Set.fromList actualFiles
 
   -- Test for files which were expected but not produced:
@@ -311,7 +312,7 @@ diffTestProduced maybeLooseEq testProduces (IgnoreFiles testIgnores) sizeOnlyExt
 
 -- | Assert a golden file is not captured by another test's produces patterns.
 assertFileNotCapturedByOtherTest ::
-  (Monad m) => TestName -> FilePath -> TestSpec -> WriterT (Maybe AmbiguousGoldenFilesError) m ()
+  (MonadIO m) => TestName -> FilePath -> TestSpec -> WriterT (Maybe AmbiguousGoldenFilesError) m ()
 assertFileNotCapturedByOtherTest thisTestName thisTestGoldenFile otherTestSpec = do
   for_ (testSpecProduces otherTestSpec) $ \otherTestProducesPattern ->
     when (otherTestProducesPattern `match` thisTestGoldenFile) $ do
@@ -374,33 +375,29 @@ acceptTestProduced testProduces (IgnoreFiles testIgnores) = do
     -- Collect errors in a writer monad:
     maybeError <- execWriterT $
       do
-        -- For each actualFile:
-        for_ actualFiles $ \actualFile -> do
+        let allFiles = Set.fromList (actualFiles <> fmap stripGoldenExtension goldenFiles)
+        -- For each file:
+        for_ allFiles $ \file -> do
           -- If the actualFile is matched by any of the "produces" patterns
           -- of any of the other tests, we throw an error:
           for_ otherTestSpecs $ \otherTestSpec ->
-            assertFileNotCapturedByOtherTest testName actualFile otherTestSpec
+            assertFileNotCapturedByOtherTest testName file otherTestSpec
+
+        -- For each actualFile:
+        for_ actualFiles $ \actualFile -> do
           -- If the actualFile is NOT matched by any of the "produces" patterns
           -- of this test, we add it to the "produces" patterns of this test:
           lift $ acceptTestProducesPattern actualFile
           -- Copy the actualFile:
           lift $ modify $ \acceptState ->
             acceptState {actualFilesToCopy = actualFile : actualFilesToCopy acceptState}
+
         -- For each goldenFile:
         for_ goldenFiles $ \goldenFile -> do
-          -- Assert that the goldenFile ends with .golden:
-          case stripExtension ".golden" goldenFile of
-            Just goldenFileBase ->
-              -- If the goldenFile is matched by any of the "produces" patterns
-              -- of any of the other tests, we throw an error:
-              for_ otherTestSpecs $ \otherTestSpec ->
-                assertFileNotCapturedByOtherTest testName goldenFileBase otherTestSpec
-            Nothing ->
-              fail $
-                printf "found golden file without .golden extension: %s" goldenFile
           -- If the goldenFile is NOT in the set of actualFiles, remove it:
           lift $ modify $ \acceptState ->
             acceptState {goldenFilesToRemove = goldenFile : goldenFilesToRemove acceptState}
+
         -- For each "produces" pattern:
         -- If the "produces" pattern does NOT match any of the new golden files, remove it:
         oldTestSpecProduces <- testSpecProduces . acceptTestSpec <$> get
@@ -441,6 +438,13 @@ acceptTestProduced testProduces (IgnoreFiles testIgnores) = do
           createDirectoryIfMissing True (takeDirectory (testDirectory </> actualFile))
           copyFile (tempDirectory </> actualFile) (testDirectory </> actualFile <.> ".golden")
   return ()
+
+-- | Strips the golden file extension from a file.
+stripGoldenExtension :: FilePath -> FilePath
+stripGoldenExtension goldenFile = do
+  case stripExtension ".golden" goldenFile of
+    Just goldenFileBase -> goldenFileBase
+    Nothing -> fail $ printf "found golden file without .golden extension: %s" goldenFile
 
 -- | Find the actual files produced by the test command.
 findTestProducesActual :: [FilePattern] -> TestIO [FilePath]

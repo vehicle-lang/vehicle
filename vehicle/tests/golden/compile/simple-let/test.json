@@ -20,8 +20,7 @@
     "name": "RocqVerify",
     "run": "vehicle compile -s spec.vcl -t Rocq -o Rocq.v && rocq compile -w none -vok Rocq.v",
     "needs": ["spec.vcl"],
-    "produces": ["Rocq.v"],
     "external": ["rocq"],
-    "ignore": {"files": [".Rocq.aux", "Rocq.glob", "Rocq.vok"]}
+    "ignore": {"files": ["Rocq.v", ".Rocq.aux", "Rocq.glob", "Rocq.vok"]}
   }
 ]

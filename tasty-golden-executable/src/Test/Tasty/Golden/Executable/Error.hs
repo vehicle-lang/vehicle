@@ -144,5 +144,15 @@ newtype AmbiguousGoldenFilesError = AmbiguousGoldenFilesError [AmbiguousGoldenFi
 
 instance Exception AmbiguousGoldenFilesError
 
+ambiguousGoldenFileToString :: AmbiguousGoldenFile -> String
+ambiguousGoldenFileToString AmbiguousGoldenFile {..} =
+  printf "The golden file '%s' in this test is also produced by test '%s' via pattern '%s'" thisTestGoldenFile otherTestName (show otherTestProducesPattern)
+
 goldenFileIsAmbiguous :: AmbiguousGoldenFile -> AmbiguousGoldenFilesError
 goldenFileIsAmbiguous ambiguousGoldenFile = AmbiguousGoldenFilesError [ambiguousGoldenFile]
+
+handleAmbiguousGoldenFile :: AmbiguousGoldenFilesError -> IO Result
+handleAmbiguousGoldenFile (AmbiguousGoldenFilesError files) = do
+  let fileMessages = List.intercalate "\n  " (ambiguousGoldenFileToString <$> files)
+  let message = "Cannot run tests as golden files overlap:\n  " <> fileMessages
+  return $ testFailed message
