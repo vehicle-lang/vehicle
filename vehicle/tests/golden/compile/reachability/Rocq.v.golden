@@ -4,18 +4,19 @@
 (*  - Rocq version: 9.0.0 *)
 (*  - Vehicle version: 0.19.0+dev *)
 
-Require Import mathcomp.ssreflect.ssrbool.
+Require Import mathcomp.boot.ssrbool.
 Require Import mathcomp.algebra.ssralg.
-Require Import mathcomp.ssreflect.ssrnat.
-Require Import mathcomp.ssreflect.eqtype.
-Require Import mathcomp.ssreflect.seq.
-Require Import mathcomp.ssreflect.tuple.
+Require Import mathcomp.boot.ssrnat.
+Require Import mathcomp.boot.eqtype.
+Require Import mathcomp.boot.seq.
+Require Import mathcomp.boot.tuple.
 Require Import mathcomp.reals.reals.
 Require Import vehicle.tensor.
 Open Scope ring_scope.
+Open Scope form_scope.
 
 Parameter R : realType.
 
-Parameter f : tensor R (2%N :: nil) -> tensor R (1%N :: nil).
+Parameter f : 'nT[R]_(2%N :: nil) -> 'nT[R]_(1%N :: nil).
 
-Axiom reachable : exists x, f x == stack [tuple (0 : R)].
+Axiom reachable : exists x, f x == nstack_tuple [tuple const_t (0 : R)].
