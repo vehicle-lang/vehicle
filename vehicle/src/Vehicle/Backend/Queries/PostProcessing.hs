@@ -398,8 +398,8 @@ substAssertionVariables nameCtx subst QueryAssertion {..} = do
         developerError $
           "Malformed network variable substitution. Missing"
             <+> prettyFriendly (WithContext var nameCtx)
-            <+> "in"
-            <+> prettyFriendly (WithContext (Map.keys subst) nameCtx)
+            <+> "in:"
+            <> lineIndent (prettyFriendly (WithContext (Map.keys subst) nameCtx))
 
 --------------------------------------------------------------------------------
 -- Step 5: prettyify assertions

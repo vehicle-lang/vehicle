@@ -9,12 +9,19 @@
             {
               "variableStore": {
                 "vehicleVariableCtx": [
-                  "classifier₀[output]!0",
                   "classifier₀[output]",
+                  "classifier₀[input]!2!1",
+                  "classifier₀[input]!1!1",
                   "classifier₀[input]!0!1",
+                  "classifier₀[input]!2!0",
+                  "classifier₀[input]!1!0",
                   "classifier₀[input]!0!0",
                   "classifier₀[input]",
+                  "x!2!1",
+                  "x!1!1",
                   "x!0!1",
+                  "x!2!0",
+                  "x!1!0",
                   "x!0!0",
                   "x"
                 ],
@@ -22,9 +29,13 @@
                   0
                 ],
                 "queryVariableMapping": {
-                  "y0": 7,
-                  "x1": 5,
-                  "x0": 4
+                  "y0": 14,
+                  "x5": 13,
+                  "x4": 12,
+                  "x3": 11,
+                  "x2": 10,
+                  "x1": 9,
+                  "x0": 8
                 }
               },
               "variableCompilationTrace": {
@@ -32,98 +43,64 @@
                   {
                     "tag": "InternalReconstructTensorVariable",
                     "contents": [
-                      3,
+                      7,
                       [
                         [
                           2,
-                          1
+                          3
                         ],
-                        4,
-                        5
+                        8,
+                        13
                       ]
                     ]
                   },
                   {
                     "tag": "InternalReconstructTensorVariable",
                     "contents": [
-                      6,
+                      14,
                       [
-                        [
-                          1
-                        ],
-                        7,
-                        7
+                        [],
+                        14,
+                        14
                       ]
                     ]
                   },
                   {
                     "tag": "SolveEquality",
-                    "contents": [
-                      2,
-                      [],
-                      {
-                        "constantValue": {
-                          "tag": "ConstantTensor",
-                          "contents": [
-                            [],
-                            {
-                              "numerator": 0,
-                              "denominator": 1
-                            }
-                          ]
-                        },
-                        "coefficients": [
-                          [
-                            5,
-                            {
-                              "numerator": 1,
-                              "denominator": 1
-                            }
-                          ]
-                        ]
-                      }
-                    ]
-                  },
-                  {
-                    "tag": "SolveEquality",
-                    "contents": [
-                      1,
-                      [],
-                      {
-                        "constantValue": {
-                          "tag": "ConstantTensor",
-                          "contents": [
-                            [],
-                            {
-                              "numerator": 0,
-                              "denominator": 1
-                            }
-                          ]
-                        },
-                        "coefficients": [
-                          [
-                            4,
-                            {
-                              "numerator": 1,
-                              "denominator": 1
-                            }
-                          ]
-                        ]
-                      }
-                    ]
-                  },
-                  {
-                    "tag": "InternalReconstructTensorVariable",
                     "contents": [
                       0,
                       [
-                        [
-                          2,
-                          1
-                        ],
                         1,
-                        2
-                      ]
+                        2,
+                        3,
+                        4,
+                        5,
+                        6
+                      ],
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [
+                              2,
+                              3
+                            ],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            7,
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
                     ]
                   }
                 ]
@@ -142,15 +119,13 @@
                   "metaNetworkEntryInfo": {
                     "networkType": {
                       "outputTensor": {
-                        "dimensions": [
-                          1
-                        ],
+                        "dimensions": [],
                         "baseType": []
                       },
                       "inputTensor": {
                         "dimensions": [
                           2,
-                          1
+                          3
                         ],
                         "baseType": []
                       }

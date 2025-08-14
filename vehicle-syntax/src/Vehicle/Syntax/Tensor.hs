@@ -55,7 +55,7 @@ showTensorIndices xs = concatMap (\v -> "!" <> show v) (reverse xs)
 
 flattenIndices :: TensorShape -> TensorIndices -> Int
 flattenIndices shape indices =
-  sum $ zipWith (*) indices (scanr (*) 1 (init shape))
+  sum $ zipWith (*) indices (tail (scanr (*) 1 shape))
 
 class HasShape a where
   shapeOf :: a -> TensorShape

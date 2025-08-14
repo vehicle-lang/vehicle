@@ -1,0 +1,14 @@
+[93m
+Warning: the following parameters were provided but not used by the specification: { epsilon
+}
+
+
+Warning: In property 'robust', the following network input variables do not always have both a lower and a upper bound. This is not currently supported by the Marabou query format.
+  In query 1:
+    classifier₀[input]!0!0 - no upper bound
+    classifier₀[input]!1!0 - no upper bound
+    classifier₀[input]!2!0 - no upper bound
+    classifier₀[input]!0!1 - no upper bound
+    ... 1 more ...
+    classifier₀[input]!2!1 - no upper bound
+[m
