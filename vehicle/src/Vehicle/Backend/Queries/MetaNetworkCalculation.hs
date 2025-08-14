@@ -65,7 +65,7 @@ eliminateRedundantApplications ::
   ConjunctAll (Assertion TensorVariable) ->
   m (MaybeTrivial (ConjunctAll (Assertion TensorVariable)))
 eliminateRedundantApplications ctx assertions =
-  logCompilerPass MaxDetail "checking for redundant network applications" $ do
+  logCompilerSection2 MaxDetail "checking for redundant network applications" $ do
     let nameCtx = completeNamedCtx ctx
     let applicationsByNetwork = Map.toList $ networkApplications ctx
 
@@ -73,7 +73,7 @@ eliminateRedundantApplications ctx assertions =
     logEqualitiesFound nameCtx equalities
 
     eliminationsByNetwork <- forM applicationsByNetwork $ \(networkName, applications) ->
-      logCompilerPass MaxDetail ("checking applications of network" <+> quotePretty networkName) $ do
+      logCompilerSection2 MaxDetail ("checking applications of network" <+> quotePretty networkName) $ do
         logDebug MaxDetail $ pretty (length applications) <+> "application found" <> line
         if length applications == 1
           then return mempty
@@ -97,7 +97,7 @@ eliminateRedundantApplications ctx assertions =
     let resultingAssertions =
           if Map.null subst
             then NonTrivial assertions
-            else eliminateTrivialConjunctions $ fmap (eliminateVarsInAssertion subst) assertions
+            else eliminateTrivialConjunctions $ fmap (eliminateVarsInComparison subst) assertions
 
     logDebug MaxDetail $ "Result:" <> lineIndent (prettyFriendly (WithContext resultingAssertions nameCtx))
     return resultingAssertions
@@ -122,7 +122,7 @@ calculateNetworkTensorInputEliminations ::
   [SimpleEquality] ->
   m Eliminations
 calculateNetworkTensorInputEliminations nameCtx tensorInputVariables equalities = do
-  logCompilerPass MaxDetail "search for tensor input equalities" $ do
+  logCompilerSection2 MaxDetail "search for tensor input equalities" $ do
     let tensorInputVariablesSet = Set.fromList tensorInputVariables
     let lookupTensorInputVariable v = if coerce v `Set.member` tensorInputVariablesSet then Just (coerce v) else Nothing
     let adjacencyList = computeEqualityAdjancencyList lookupTensorInputVariable equalities
@@ -138,7 +138,7 @@ calculateTensorElementEliminations ::
   [SimpleEquality] ->
   m Eliminations
 calculateTensorElementEliminations nameCtx tensorVars eliminations elementVars equalities = do
-  logCompilerPass MaxDetail "search for tensor element input equalities" $ do
+  logCompilerSection2 MaxDetail "search for tensor element input equalities" $ do
     let remainingInputVariables = listIntersection tensorVars (fmap fst eliminations)
     let allEdges = cartesianProduct (,) remainingInputVariables remainingInputVariables
     sharedAdjacencyList <- calculateSharedEdges (zip elementVars [0 ..]) allEdges
@@ -249,11 +249,6 @@ reduceInputVariableEquality ctx (eqInputVar, inputVar) = do
   (outputSubst, outputCompilationStep) <- createSubstitutionForVariable ctx (coerce eqOutputVar) outputEq
 
   tell [outputCompilationStep, inputCompilationStep]
-
-  logDebug MaxDetail $ do
-    let printVar v = prettyFriendly (WithContext (toTensorVar v) $ completeNamedCtx ctx)
-    let printEq (u, v) = printVar u <+> "->" <+> printVar v
-    printEq (eqInputVar, inputVar) <> line <> printEq (eqOutputVar, outputVar)
 
   -- Return the result
   return (inputSubst <> outputSubst)

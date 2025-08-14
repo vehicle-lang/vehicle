@@ -104,6 +104,8 @@ instance (MonadLogger m) => MonadLogger (TypeCheckerT builtin m) where
   getDebugLevel = lift getDebugLevel
   logMessage = lift . logMessage
   logWarning = lift . logWarning
+  enterCompilerPass = lift . enterCompilerPass
+  exitCompilerPass = lift exitCompilerPass
 
 instance (MonadReader r m) => MonadReader r (TypeCheckerT builtin m) where
   ask = lift ask

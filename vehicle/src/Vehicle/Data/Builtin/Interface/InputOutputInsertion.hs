@@ -28,7 +28,7 @@ addFunctionAuxiliaryInputOutputConstraints ::
 addFunctionAuxiliaryInputOutputConstraints mkConstraint = \case
   DefFunction p ident anns t e
     | not (isTypeSynonym t) -> do
-        logCompilerPass MaxDetail "insertion of input/output constraints" $ do
+        logCompilerSection2 MaxDetail "insertion of input/output constraints" $ do
           t' <- evalStateT (decomposePiType mkConstraint (ident, p) 0 t) mempty
           return $ DefFunction p ident anns t' e
   d -> return d

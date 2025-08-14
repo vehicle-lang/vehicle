@@ -50,7 +50,7 @@ currentPhase = "compilation to Rocq"
 
 compileProgToRocq :: (MonadCompile m) => Prog DecidabilityBuiltin -> RocqOptions -> m (Doc a)
 compileProgToRocq prog options =
-  logCompilerPass MinDetail currentPhase $ do
+  logCompilerSection2 MinDetail currentPhase $ do
     logDebug MaxDetail $ prettyExternal prog
     programDoc <- runFreshNameContextT $ compileProg options prog
     let programStream = layoutPretty defaultLayoutOptions programDoc

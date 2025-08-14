@@ -4,7 +4,7 @@ import Control.Monad.Except (MonadError)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Text (Text)
 import Vehicle.Compile.Error (CompileError)
-import Vehicle.Compile.Prelude (Coefficient, ExternalOutputFormat, InputOrOutput, MonadLogger, Name, Pretty (..))
+import Vehicle.Compile.Prelude (Coefficient, ExternalOutputFormat, InputOrOutput, MonadLogger, Name)
 import Vehicle.Data.Code.BooleanExpr (ConjunctAll)
 import Vehicle.Data.Tensor (TensorIndices, TensorShape)
 import Vehicle.Verify.Core
@@ -39,9 +39,6 @@ data QueryAssertion variable = QueryAssertion
     rel :: !QueryRelation,
     rhs :: !Rational
   }
-
-instance (Pretty variable) => Pretty (QueryAssertion variable) where
-  pretty (QueryAssertion lhs rel rhs) = pretty lhs <> pretty rel <> pretty rhs
 
 -- | The command to format an individual query
 type CompileQuery =

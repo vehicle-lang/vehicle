@@ -73,7 +73,7 @@ typeCheckWithSubsystem ::
   m (Either CompileError (Prog builtin))
 typeCheckWithSubsystem typingSystem instanceCandidates prog = do
   callDepth <- getCallDepth
-  logCompilerPass MinDetail ("typing using" <+> quotePretty typingSystem <+> "type subsystem") $ do
+  logCompilerSection2 MinDetail ("typing using" <+> quotePretty typingSystem <+> "type subsystem") $ do
     result <- runExceptT $ typeCheckProg User instanceCandidates mempty prog
     -- Need to reset the call depth explicitly as type-checking may have errored.
     setCallDepth (callDepth + 1)
@@ -85,7 +85,7 @@ resolveInstanceArgumentsAndCasts ::
   Prog builtin ->
   m (Prog builtin)
 resolveInstanceArgumentsAndCasts prog =
-  logCompilerPass MaxDetail "resolution of instance arguments and casts" $ do
+  logCompilerSection2 MaxDetail "resolution of instance arguments and casts" $ do
     prog' <- flip traverseDecls prog $ \decl -> do
       decl1 <- traverse (traverseBuiltinsM removeBuiltinInstances) decl
       decl2 <- traverse (traverseBuiltinsM removeCasts) decl1

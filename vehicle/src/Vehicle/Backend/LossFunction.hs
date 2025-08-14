@@ -24,7 +24,7 @@ convertToLossTensors ::
   Prog Builtin ->
   m (Prog LossBuiltin)
 convertToLossTensors logic (Main ds) =
-  logCompilerPass MinDetail currentPass $
+  logCompilerSection2 MinDetail currentPass $
     runFreshFreeContextT (Proxy @Builtin) $
       runFreshNameContextT $
         Main <$> convertDecls logic ds
@@ -39,7 +39,7 @@ convertDecls logic = \case
   decl : decls -> do
     (normDecl, maybeLossTensorDecl) <- do
       let ident = identifierOf decl
-      logCompilerPass MinDetail ("declaration" <+> quotePretty ident) $ do
+      logCompilerSection2 MinDetail ("declaration" <+> quotePretty ident) $ do
         normStandardDecl <- traverse (normaliseInEnv mempty) decl
         maybeTensorDecl <-
           if not (isPropertyDecl decl)

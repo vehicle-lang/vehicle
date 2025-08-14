@@ -45,7 +45,7 @@ import Vehicle.Data.DeBruijn
 -- | Attempts to solve as many unification constraints as possible.
 runUnificationSolver :: (MonadTypeChecker builtin m) => Proxy builtin -> Bool -> m ()
 runUnificationSolver proxy topLevel =
-  logCompilerPass MaxDetail "unification solver run" $
+  logCompilerSection2 MaxDetail "unification solver run" $
     runConstraintSolver
       getActiveUnificationConstraints
       setUnificationConstraints

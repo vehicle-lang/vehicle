@@ -72,10 +72,10 @@
                   {
                     "tag": "SolveEquality",
                     "contents": [
-                      9,
+                      19,
                       [
-                        10,
-                        11
+                        20,
+                        21
                       ],
                       {
                         "constantValue": {
@@ -105,9 +105,9 @@
                   {
                     "tag": "SolveEquality",
                     "contents": [
-                      7,
+                      17,
                       [
-                        8
+                        18
                       ],
                       {
                         "constantValue": {
@@ -202,10 +202,10 @@
                   {
                     "tag": "SolveEquality",
                     "contents": [
-                      19,
+                      9,
                       [
-                        20,
-                        21
+                        10,
+                        11
                       ],
                       {
                         "constantValue": {
@@ -235,9 +235,9 @@
                   {
                     "tag": "SolveEquality",
                     "contents": [
-                      17,
+                      7,
                       [
-                        18
+                        8
                       ],
                       {
                         "constantValue": {
@@ -395,10 +395,10 @@
                   {
                     "tag": "SolveEquality",
                     "contents": [
-                      9,
+                      19,
                       [
-                        10,
-                        11
+                        20,
+                        21
                       ],
                       {
                         "constantValue": {
@@ -428,9 +428,9 @@
                   {
                     "tag": "SolveEquality",
                     "contents": [
-                      7,
+                      17,
                       [
-                        8
+                        18
                       ],
                       {
                         "constantValue": {
@@ -525,10 +525,10 @@
                   {
                     "tag": "SolveEquality",
                     "contents": [
-                      19,
+                      9,
                       [
-                        20,
-                        21
+                        10,
+                        11
                       ],
                       {
                         "constantValue": {
@@ -558,9 +558,9 @@
                   {
                     "tag": "SolveEquality",
                     "contents": [
-                      17,
+                      7,
                       [
-                        18
+                        8
                       ],
                       {
                         "constantValue": {
@@ -718,10 +718,10 @@
                   {
                     "tag": "SolveEquality",
                     "contents": [
-                      9,
+                      19,
                       [
-                        10,
-                        11
+                        20,
+                        21
                       ],
                       {
                         "constantValue": {
@@ -751,9 +751,9 @@
                   {
                     "tag": "SolveEquality",
                     "contents": [
-                      7,
+                      17,
                       [
-                        8
+                        18
                       ],
                       {
                         "constantValue": {
@@ -848,10 +848,10 @@
                   {
                     "tag": "SolveEquality",
                     "contents": [
-                      19,
+                      9,
                       [
-                        20,
-                        21
+                        10,
+                        11
                       ],
                       {
                         "constantValue": {
@@ -881,9 +881,9 @@
                   {
                     "tag": "SolveEquality",
                     "contents": [
-                      17,
+                      7,
                       [
-                        18
+                        8
                       ],
                       {
                         "constantValue": {
@@ -1041,10 +1041,10 @@
                   {
                     "tag": "SolveEquality",
                     "contents": [
-                      9,
+                      19,
                       [
-                        10,
-                        11
+                        20,
+                        21
                       ],
                       {
                         "constantValue": {
@@ -1074,9 +1074,9 @@
                   {
                     "tag": "SolveEquality",
                     "contents": [
-                      7,
+                      17,
                       [
-                        8
+                        18
                       ],
                       {
                         "constantValue": {
@@ -1171,10 +1171,10 @@
                   {
                     "tag": "SolveEquality",
                     "contents": [
-                      19,
+                      9,
                       [
-                        20,
-                        21
+                        10,
+                        11
                       ],
                       {
                         "constantValue": {
@@ -1204,9 +1204,9 @@
                   {
                     "tag": "SolveEquality",
                     "contents": [
-                      17,
+                      7,
                       [
-                        18
+                        8
                       ],
                       {
                         "constantValue": {

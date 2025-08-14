@@ -2,9 +2,16 @@
 
 ## Version 0.18.1
 
+### Command-line interface
+
+* Added extra option `--loggingPass` which allows you to control which compiler pass
+  logging is enabled for. See `vehicle --help` for more information.
+
 ### Verifier backend
 
 * Fixed various bugs that sometimes occured when compiling tensors with dimensions >= 2.
+
+* Fixed bug where comparisons between tensors sometimes caused an error.
 
 ## Version 0.18.0
 

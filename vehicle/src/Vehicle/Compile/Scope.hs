@@ -31,7 +31,7 @@ import Vehicle.Data.Universe (UniverseLevel (..))
 import Vehicle.Syntax.AST.Expr qualified as S
 
 scopeCheck :: (MonadCompile m) => Imports -> S.Prog -> m (Prog Builtin)
-scopeCheck imports prog = logCompilerPass MinDetail "scope checking" $
+scopeCheck imports prog = logCompilerPass Scoping $
   runMonadScopeT $ do
     scopeImports imports
     scopeProg prog
@@ -211,7 +211,7 @@ scopeProg = traverseDecls scopeDecl
 
 scopeDecl :: (MonadScope m) => S.Decl -> m (Decl Builtin)
 scopeDecl decl =
-  logCompilerPass MidDetail ("scoping" <+> quotePretty (identifierOf decl)) $ do
+  logCompilerSection2 MidDetail ("scoping" <+> quotePretty (identifierOf decl)) $ do
     scopedDecl <- case decl of
       DefAbstract p ident r t -> do
         t' <- scopeTopLevelExpr False t

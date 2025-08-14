@@ -15,7 +15,7 @@ import Vehicle.Compile.Type.System
 -- | Attempts to solve as many type-class constraints as possible.
 runApplicationSolver :: (TCM builtin m) => Proxy builtin -> m ()
 runApplicationSolver proxy = do
-  logCompilerPass MaxDetail "application solver run" $
+  logCompilerSection2 MaxDetail "application solver run" $
     runConstraintSolver
       getActiveApplicationConstraints
       setApplicationConstraints

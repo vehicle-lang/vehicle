@@ -60,7 +60,7 @@ class (Eq builtin, Hashable builtin, NormalisableBuiltin builtin, TypableBuiltin
 -- | Attempts to solve as many type-class constraints as possible.
 runAuxiliarySolver :: forall builtin m. (TCM builtin m) => Proxy builtin -> m ()
 runAuxiliarySolver proxy = do
-  logCompilerPass MaxDetail "auxiliary solver run" $
+  logCompilerSection2 MaxDetail "auxiliary solver run" $
     runConstraintSolver @builtin
       getActiveAuxiliaryInstanceConstraints
       setAuxiliaryInstanceConstraints

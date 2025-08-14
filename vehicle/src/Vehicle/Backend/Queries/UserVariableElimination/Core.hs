@@ -1,10 +1,7 @@
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-
 module Vehicle.Backend.Queries.UserVariableElimination.Core where
 
 import Control.Monad.Reader (MonadReader (..))
 import Control.Monad.State (MonadState (..), StateT, gets)
-import Data.Bifunctor (Bifunctor (..))
 import Data.Coerce (coerce)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
@@ -14,6 +11,7 @@ import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text qualified as Text
+import Data.Vector.Internal.Check (HasCallStack)
 import Vehicle.Compile.Context.Bound.Class (MonadBoundContext (..))
 import Vehicle.Compile.Context.Free.Class (MonadFreeContext)
 import Vehicle.Compile.Context.Name (MonadNameContext, getNameContext)
@@ -124,6 +122,15 @@ lookupChildVariables ::
 lookupChildVariables ctx var = do
   let userInfo = lookupTensorVariableInfo ctx var
   fst <$> childrenVariables userInfo
+
+lookupChildVariablesCertain ::
+  (TensorVariableLike variable, HasCallStack) =>
+  GlobalCtx ->
+  variable ->
+  Tensor TensorVariable
+lookupChildVariablesCertain globalCtx var = do
+  let malformedVariableError = developerError "Expecting a non-zero tensor variable"
+  fromMaybe malformedVariableError $ lookupChildVariables globalCtx var
 
 lookupZeroDimVariables ::
   (TensorVariableLike variable) =>
@@ -305,28 +312,36 @@ type Partition variable = ([CompilationStep], AssertionTree variable)
 --     1. x0 = u     && y0 >= 2
 --    OR
 --     2. x0 = u + 2 && y0 >= 2
-newtype Partitions variable
-  = Partitions (Map [CompilationStep] (AssertionTree variable))
+newtype Partitions variable = Partitions (DisjunctAll (Partition variable))
+
+partitionsSize :: MaybeTrivial (Partitions variable) -> Int
+partitionsSize = trivial (const 0) (length . partitionsToDisjuncts)
+
+singletonPartition :: Partition variable -> Partitions variable
+singletonPartition p = Partitions $ DisjunctAll [p]
 
 partitionsToDisjuncts :: Partitions variable -> DisjunctAll (Partition variable)
-partitionsToDisjuncts (Partitions ps) = DisjunctAll $ NonEmpty.fromList $ Map.toList ps
+partitionsToDisjuncts (Partitions ps) = ps
 
 andPartitions :: Partitions variable -> Partitions variable -> Partitions variable
 andPartitions (Partitions xs) (Partitions ys) = do
-  let xs' = Map.toList xs
-  let ys' = Map.toList ys
   let combine (s1, t1) (s2, t2) = (s1 <> s2, andBoolExpr t1 t2)
-  Partitions $ Map.fromList $ cartesianProduct combine xs' ys'
+  Partitions $ conjunctDisjuncts combine xs ys
 
 orPartitions :: Partitions variable -> Partitions variable -> Partitions variable
-orPartitions (Partitions p1) (Partitions p2) =
-  Partitions $ Map.unionWith orBoolExpr p1 p2
+orPartitions (Partitions p1) (Partitions p2) = Partitions $ p1 <> p2
+
+disjunctPartitions :: DisjunctAll (Partitions variable) -> Partitions variable
+disjunctPartitions (DisjunctAll ps) = foldr1 orPartitions ps
+
+disjunctMaybeTrivialPartitions :: DisjunctAll (MaybeTrivial (Partitions variable)) -> MaybeTrivial (Partitions variable)
+disjunctMaybeTrivialPartitions = fmap disjunctPartitions . eliminateTrivialDisjunctions
 
 mkSingletonPartitions ::
   ([CompilationStep], MaybeTrivial (AssertionTree variable)) ->
   MaybeTrivial (Partitions variable)
-mkSingletonPartitions (solutions, maybeAssertion) =
-  fmap (Partitions . Map.singleton solutions) maybeAssertion
+mkSingletonPartitions (steps, maybeAssertion) =
+  fmap (\x -> singletonPartition (steps, x)) maybeAssertion
 
 mkTrivialPartition :: Assertion variable -> MaybeTrivial (Partitions variable)
 mkTrivialPartition assertion =
@@ -362,27 +377,6 @@ lookupNetworkElementVariables globalCtx var =
     Just childVariables -> coerce childVariables
     Nothing -> coerce $ ZeroDimTensor var
 
-reduceTensorExpr ::
-  GlobalCtx ->
-  LinearExpr TensorVariable RatTensor ->
-  [LinearExpr TensorVariable RatTensor]
-reduceTensorExpr globalCtx (Sparse coeff constant) = do
-  let equationIDs = [0 .. product (shapeOf constant) - 1]
-  let constValues = Tensor.toList constant
-  let malformedVariableError = developerError "Expecting a non-zero tensor variable"
-  let findChildVariables var = fromMaybe malformedVariableError $ lookupChildVariables globalCtx var
-  let findChildVariablesAndCoefficient = first (Tensor.toList . findChildVariables)
-  let coeffList = fmap findChildVariablesAndCoefficient (Map.toList coeff)
-  fmap (mkZeroDimEquality coeffList constValues) equationIDs
-  where
-    mkZeroDimEquality ::
-      [([TensorVariable], Coefficient)] ->
-      [Rational] ->
-      Int ->
-      LinearExpr TensorVariable RatTensor
-    mkZeroDimEquality coeffs consts i =
-      Sparse (Map.fromList (fmap (first (!! i)) coeffs)) (ZeroDimTensor (consts !! i))
-
 createSubstitutionForVariable ::
   (MonadCompile m) =>
   GlobalCtx ->
@@ -393,7 +387,7 @@ createSubstitutionForVariable ctx var (NormalisedRelation () linearExpr) = do
   let (_, rearrangedExpr) = rearrangeExprToSolveFor var linearExpr
   let varEquality = (var, rearrangedExpr)
   let childVars = maybe [] Tensor.toList (lookupChildVariables ctx var)
-  let childEqualities = zip childVars $ reduceTensorExpr ctx rearrangedExpr
+  let childEqualities = zip childVars $ reduceTensorExpr (lookupChildVariablesCertain ctx) rearrangedExpr
   let substitution = Map.fromList $ varEquality : childEqualities
   return (substitution, SolveEquality var childVars rearrangedExpr)
 

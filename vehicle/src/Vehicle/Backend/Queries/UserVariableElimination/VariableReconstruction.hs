@@ -28,7 +28,7 @@ reconstructUserVars ::
   QueryVariableAssignment ->
   m UserVariableAssignment
 reconstructUserVars variables (Reconstruction steps) networkVariableAssignment =
-  logCompilerPass MidDetail "calculation of problem space witness" $ do
+  logCompilerSection2 MidDetail "calculation of problem space witness" $ do
     let queryVariableMap = getQueryVariableMap variables
     let vehicleVariableCtx = getVehicleVariableCtx variables
     let userVariables = getUserVariables variables

@@ -44,7 +44,7 @@ data AgdaOptions = AgdaOptions
 
 compileProgToAgda :: (MonadCompile m) => Prog DecidabilityBuiltin -> AgdaOptions -> m (Doc a)
 compileProgToAgda prog options =
-  logCompilerPass MinDetail currentPhase $ do
+  logCompilerSection2 MinDetail currentPhase $ do
     logDebug MaxDetail $ prettyExternal prog
     prog2 <- capitaliseTypeNames prog
     programDoc <- runFreshNameContextT $ compileProg options prog2

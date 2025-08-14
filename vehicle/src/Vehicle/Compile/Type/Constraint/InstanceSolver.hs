@@ -35,7 +35,7 @@ runInstanceSolver ::
   InstanceSearchDepth ->
   m ()
 runInstanceSolver proxy depth = do
-  logCompilerPass MaxDetail "instance solver run" $
+  logCompilerSection2 MaxDetail "instance solver run" $
     runConstraintSolver
       getActiveInstanceConstraints
       setInstanceConstraints
@@ -161,7 +161,7 @@ checkCandidate ::
   m (Either (WithContext (InstanceCandidate builtin), UnAnnDoc) (WithContext (InstanceCandidate builtin), TypeCheckerState builtin))
 checkCandidate constraint goal depth candidate = do
   let candidateDoc = squotes (prettyCandidate candidate)
-  logCompilerPass MaxDetail ("trying candidate instance" <+> candidateDoc) $ do
+  logCompilerSection2 MaxDetail ("trying candidate instance" <+> candidateDoc) $ do
     result <- runTypeCheckerTHypothetically $ do
       logCompilerSection MaxDetail "hypothetically accepting candidate" $
         acceptCandidate constraint goal candidate

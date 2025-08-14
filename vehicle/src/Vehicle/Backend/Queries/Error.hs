@@ -86,7 +86,7 @@ removeImplicitArgs ::
   Prog builtin ->
   m (Prog builtin)
 removeImplicitArgs prog =
-  logCompilerPass MaxDetail "removal of implicit arguments" $ do
+  logCompilerSection2 MaxDetail "removal of implicit arguments" $ do
     result <- traverse go prog
     logCompilerPassOutput $ prettyExternal result
     return result

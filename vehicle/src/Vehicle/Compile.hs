@@ -115,8 +115,9 @@ compileToQueryFormat ::
   Maybe FilePath ->
   m ()
 compileToQueryFormat typedProg resources queryFormatID output = do
-  let verifier = queryFormats queryFormatID
-  compileToQueries verifier typedProg resources output
+  logCompilerPass QueryBackend $ do
+    let verifier = queryFormats queryFormatID
+    compileToQueries verifier typedProg resources output
 
 compileToITP ::
   (MonadCompile m, MonadStdIO m) =>
@@ -124,25 +125,26 @@ compileToITP ::
   CompileOptions ->
   Prog Builtin ->
   m ()
-compileToITP itp CompileOptions {..} typedProg@(Main ds) = do
-  -- Prune all standard-library declarations that aren't used.
-  let declsToCompile = mapMaybe (\d -> if isUserCode d then Just (nameOf d) else Nothing) ds
-  let dependencyGraph = createDependencyGraph typedProg
-  prunedProg <- pruneUnusedDeclarations typedProg dependencyGraph declsToCompile
+compileToITP itp CompileOptions {..} typedProg@(Main ds) =
+  logCompilerPass ITPBackend $ do
+    -- Prune all standard-library declarations that aren't used.
+    let declsToCompile = mapMaybe (\d -> if isUserCode d then Just (nameOf d) else Nothing) ds
+    let dependencyGraph = createDependencyGraph typedProg
+    prunedProg <- pruneUnusedDeclarations typedProg dependencyGraph declsToCompile
 
-  -- Analyse the program to find out which `Bool`s are decidable and which aren't.
-  decProg <- decidabilityTypeCheck prunedProg
+    -- Analyse the program to find out which `Bool`s are decidable and which aren't.
+    decProg <- decidabilityTypeCheck prunedProg
 
-  -- Compile depending on the ITP
-  case itp of
-    Agda -> do
-      let agdaOptions = AgdaOptions verificationCache output moduleName
-      agdaCode <- compileProgToAgda decProg agdaOptions
-      writeAgdaFile output agdaCode
-    Rocq -> do
-      let rocqOptions = RocqOptions output moduleName
-      rocqCode <- compileProgToRocq decProg rocqOptions
-      writeRocqFile output rocqCode
+    -- Compile depending on the ITP
+    case itp of
+      Agda -> do
+        let agdaOptions = AgdaOptions verificationCache output moduleName
+        agdaCode <- compileProgToAgda decProg agdaOptions
+        writeAgdaFile output agdaCode
+      Rocq -> do
+        let rocqOptions = RocqOptions output moduleName
+        rocqCode <- compileProgToRocq decProg rocqOptions
+        writeRocqFile output rocqCode
 
 compileToLossFunction ::
   forall m.
@@ -152,13 +154,14 @@ compileToLossFunction ::
   Maybe FilePath ->
   Bool ->
   m ()
-compileToLossFunction logicID typedProg outputFile outputAsJSON = do
-  hoistedProg <- hoistInferableParameters typedProg
-  functionalisedProg <- functionaliseResources hoistedProg
-  compiledLogic <- compileLogic logicID (dslFor logicID)
-  lossTensorProg <- convertToLossTensors compiledLogic functionalisedProg
-  jsonProg <- convertToJSONProg lossTensorProg
-  let outputText
-        | outputAsJSON = pretty $ unpack $ encodePretty' prettyJSONConfig $ toJSON jsonProg
-        | otherwise = prettyFriendly (convertFromJSONProg jsonProg)
-  writeResultToFile Nothing outputFile outputText
+compileToLossFunction logicID typedProg outputFile outputAsJSON =
+  logCompilerPass LossBackend $ do
+    hoistedProg <- hoistInferableParameters typedProg
+    functionalisedProg <- functionaliseResources hoistedProg
+    compiledLogic <- compileLogic logicID (dslFor logicID)
+    lossTensorProg <- convertToLossTensors compiledLogic functionalisedProg
+    jsonProg <- convertToJSONProg lossTensorProg
+    let outputText
+          | outputAsJSON = pretty $ unpack $ encodePretty' prettyJSONConfig $ toJSON jsonProg
+          | otherwise = prettyFriendly (convertFromJSONProg jsonProg)
+    writeResultToFile Nothing outputFile outputText

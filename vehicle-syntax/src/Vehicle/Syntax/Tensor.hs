@@ -26,6 +26,7 @@ module Vehicle.Syntax.Tensor
     toVector,
     fromVector,
     isTensorOfAll,
+    compareTensor,
   )
 where
 
@@ -189,6 +190,9 @@ foldMapTensorLike mkValue mkVec (_ : ds) xs = do
   let inputVarIndicesChunks = chunksOf (product ds) xs
   let elems = fmap (foldMapTensorLike mkValue mkVec ds) inputVarIndicesChunks
   mkVec ds elems
+
+compareTensor :: (a -> b -> Bool) -> Tensor a -> Tensor b -> Bool
+compareTensor f t1 t2 = allTensor id $ zipWithTensor f t1 t2
 
 prettyTensor :: (a -> Doc b) -> Tensor a -> Doc b
 prettyTensor prettyElement = do

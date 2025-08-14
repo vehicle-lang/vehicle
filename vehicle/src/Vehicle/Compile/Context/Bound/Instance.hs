@@ -60,6 +60,8 @@ instance (MonadLogger m) => MonadLogger (BoundContextT expr m) where
   getDebugLevel = BoundContextT getDebugLevel
   logMessage = BoundContextT . logMessage
   logWarning = BoundContextT . logWarning
+  enterCompilerPass = BoundContextT . enterCompilerPass
+  exitCompilerPass = BoundContextT exitCompilerPass
 
 instance (MonadError e m) => MonadError e (BoundContextT expr m) where
   throwError = lift . throwError

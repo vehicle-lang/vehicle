@@ -65,7 +65,7 @@ monomorphise ::
   MonomorphisationSettings builtin ->
   m (Prog builtin)
 monomorphise prog settings =
-  logCompilerPass MinDetail "monomorphisation" $ do
+  logCompilerSection2 MinDetail "monomorphisation" $ do
     (prog2, substitutions) <- runReaderT (evalStateT (runWriterT (monomorphiseProg prog)) mempty) settings
     result <- runReaderT (replacePreviousApplications (isMonomorphisableBinder settings) prog2) substitutions
     logCompilerPassOutput $ prettyExternal result
@@ -94,7 +94,7 @@ monomorphiseProg ::
   Prog builtin ->
   m (Prog builtin)
 monomorphiseProg (Main decls) = do
-  logCompilerPass MaxDetail "collecting monomorphisation sites" $ do
+  logCompilerSection2 MaxDetail "collecting monomorphisation sites" $ do
     monoedDecls <- traverse monomorphiseDecls (reverse decls)
     return $ Main $ reverse $ concat monoedDecls
 
@@ -104,7 +104,7 @@ monomorphiseDecls ::
   m [Decl builtin]
 monomorphiseDecls decl = do
   let ident = identifierOf decl
-  logCompilerPass MaxDetail (quotePretty ident) $ do
+  logCompilerSection2 MaxDetail (quotePretty ident) $ do
     logDebug MaxDetail $ prettyExternal decl <> line
     newDecls <- monomorphiseDecl decl
     forM_ newDecls collectReferences
@@ -115,7 +115,7 @@ monomorphiseDecl ::
   Decl builtin ->
   m [Decl builtin]
 monomorphiseDecl decl =
-  logCompilerPass MaxDetail "monomorphising based on previous applications" $ do
+  logCompilerSection2 MaxDetail "monomorphising based on previous applications" $ do
     let ident = identifierOf decl
     maybeApplications <- gets (Map.lookup ident)
     let handle = maybe handleUnusedDecl handleUsedDecl maybeApplications
@@ -235,7 +235,7 @@ substituteArgsThrough = \case
 
 collectReferences :: forall builtin m. (MonadCollect builtin m) => Decl builtin -> m ()
 collectReferences decl =
-  logCompilerPass MaxDetail ("collecting internal applications for" <+> quotePretty (identifierOf decl)) $ do
+  logCompilerSection2 MaxDetail ("collecting internal applications for" <+> quotePretty (identifierOf decl)) $ do
     -- TODO do this in a single traversal
     traverse_ (traverseFreeVarsM (const id) collectReference) decl
     traverse_ (traverseBuiltinsM collectDerivedReference) decl
@@ -283,7 +283,7 @@ replacePreviousApplications ::
   Prog builtin ->
   m (Prog builtin)
 replacePreviousApplications shouldMonomorphiseBinder prog =
-  logCompilerPass MaxDetail "applying monomorphisation sites" $ do
+  logCompilerSection2 MaxDetail "applying monomorphisation sites" $ do
     traverse (traverseFreeVarsM (const id) replaceCandidateApplication) prog
   where
     replaceCandidateApplication ::

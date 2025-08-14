@@ -143,7 +143,7 @@
                         },
                         "coefficients": [
                           [
-                            10,
+                            5,
                             {
                               "numerator": 8,
                               "denominator": 1
@@ -364,7 +364,7 @@
                         },
                         "coefficients": [
                           [
-                            10,
+                            5,
                             {
                               "numerator": 8,
                               "denominator": 1

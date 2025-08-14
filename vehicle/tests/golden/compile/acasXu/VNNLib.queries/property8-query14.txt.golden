@@ -7,8 +7,8 @@
 (declare-network acasXu
   (declare-input acasXu_X Real [5])
   (declare-output acasXu_Y Real [5]))
-(assert (<= (+ (- acasXu_Y[0]) acasXu_Y[2]) 0.0))
-(assert (<= (+ (- acasXu_Y[1]) acasXu_Y[4]) 0.0))
+(assert (<= (+ (- acasXu_Y[0]) acasXu_Y[4]) 0.0))
+(assert (<= (+ (- acasXu_Y[1]) acasXu_Y[2]) 0.0))
 (assert (<= (* 60261.0 acasXu_X[0]) 40469.909))
 (assert (<= (* 60261.0 acasXu_X[0]) 40968.909))
 (assert (>= (* 60261.0 acasXu_X[0]) -19791.091))

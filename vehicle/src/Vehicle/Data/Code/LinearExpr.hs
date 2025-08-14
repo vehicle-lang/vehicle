@@ -87,15 +87,15 @@ constantExpr = Sparse mempty
 singletonVarExpr :: constant -> variable -> LinearExpr variable constant
 singletonVarExpr zero var = Sparse (Map.singleton var 1) zero
 
-linearExprToExpr ::
+linearExprLikeToExpr ::
   (Bool -> constant -> expr) ->
   (Bool -> (variable, Coefficient) -> expr) ->
   (expr -> expr -> expr) ->
-  LinearExpr variable constant ->
+  [(variable, Coefficient)] ->
+  constant ->
   expr
-linearExprToExpr constantToExpr variableToExpr combineExprs (Sparse coefficients constant) = do
-  let coeffVars = Map.toList coefficients
-  case coeffVars of
+linearExprLikeToExpr constantToExpr variableToExpr combineExprs coefficients constant = do
+  case coefficients of
     [] -> constantToExpr True constant
     (x : xs) -> do
       let varDocs = variableToExpr True x : fmap (variableToExpr False) xs
@@ -139,6 +139,26 @@ evaluateExpr expr assignment = do
       Nothing -> Left var
       Just value -> Right $ addConstants 1 coeff total value
 
+-- | Takes an assertion `c_0*x_0 + ... + c_i*x_i + ... c_n * x_n` and
+-- returns (c_i, -(c_0/c_i)*x_0 ... - (c_n/c_i) * x_n), i.e.
+-- the expression is the expression equal to `x_i`.
+rearrangeExprToSolveFor ::
+  (VariableLike variable, ConstantLike constant) =>
+  variable ->
+  LinearExpr variable constant ->
+  (Coefficient, LinearExpr variable constant)
+rearrangeExprToSolveFor var expr = do
+  let c = lookupCoefficient expr var
+  if c == 0
+    then (0, expr)
+    else do
+      let scaledExpr = scaleExpr (-(1 / c)) expr
+      ( c,
+        scaledExpr
+          { coefficients = Map.delete var $ coefficients scaledExpr
+          }
+        )
+
 eliminateVars ::
   forall variable constant.
   (VariableLike variable, ConstantLike constant) =>
@@ -161,26 +181,6 @@ eliminateVars solutions expr@(Sparse coeffs _) = do
             { coefficients = Map.delete var $ coefficients resultExpr
             }
 
--- | Takes an assertion `c_0*x_0 + ... + c_i*x_i + ... c_n * x_n` and
--- returns (c_i, -(c_0/c_i)*x_0 ... - (c_n/c_i) * x_n), i.e.
--- the expression is the expression equal to `x_i`.
-rearrangeExprToSolveFor ::
-  (VariableLike variable, ConstantLike constant) =>
-  variable ->
-  LinearExpr variable constant ->
-  (Coefficient, LinearExpr variable constant)
-rearrangeExprToSolveFor var expr = do
-  let c = lookupCoefficient expr var
-  if c == 0
-    then (0, expr)
-    else do
-      let scaledExpr = scaleExpr (-(1 / c)) expr
-      ( c,
-        scaledExpr
-          { coefficients = Map.delete var $ coefficients scaledExpr
-          }
-        )
-
 linearExprVariables :: (VariableLike variable) => LinearExpr variable constant -> Set variable
 linearExprVariables linearExpr = Map.keysSet $ coefficients linearExpr
 
@@ -191,7 +191,19 @@ prettyLinearExpr ::
   (constant -> Doc a) ->
   LinearExpr variable constant ->
   Doc a
-prettyLinearExpr prettyVar prettyConst = linearExprToExpr prettyConstant prettyVarCoeff (<>)
+prettyLinearExpr prettyVar prettyConst (Sparse coefficients constant) =
+  prettyLinearExprLike prettyVar prettyConst (Map.toList coefficients) constant
+
+prettyLinearExprLike ::
+  forall variable constant a.
+  (ConstantLike constant) =>
+  (variable -> Doc a) ->
+  (constant -> Doc a) ->
+  [(variable, Coefficient)] ->
+  constant ->
+  Doc a
+prettyLinearExprLike prettyVar prettyConst =
+  linearExprLikeToExpr prettyConstant prettyVarCoeff (<>)
   where
     prettyConstant :: Bool -> constant -> Doc a
     prettyConstant isFirst value

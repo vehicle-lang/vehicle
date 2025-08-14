@@ -1,13 +1,15 @@
 module Vehicle.Prelude.Logging.Class
-  ( CompilerPass,
+  ( CompilerPass (..),
+    allCompilerPasses,
+    loggingPassHelp,
     LoggingLevel (..),
-    DebugMessage,
-    MonadLogger (..),
     defaultLoggingLevel,
-    logDebug,
-    logDebugM,
     allLoggingLevels,
     loggingLevelHelp,
+    DebugMessage,
+    MonadLogger (..),
+    logDebug,
+    logDebugM,
     logCompilerPass,
     logCompilerPassOutput,
     logCompilerSection,
@@ -36,7 +38,29 @@ import Vehicle.Syntax.Prelude (layoutAsText)
 --------------------------------------------------------------------------------
 -- Settings
 
-type CompilerPass = Doc ()
+data CompilerPass
+  = Scoping
+  | TypeChecking
+  | QueryBackend
+  | ITPBackend
+  | LossBackend
+  deriving (Eq, Show, Read, Bounded, Enum)
+
+instance Pretty CompilerPass where
+  pretty = \case
+    Scoping -> "scope checking"
+    TypeChecking -> "typing checking"
+    QueryBackend -> "query compilation"
+    ITPBackend -> "ITP compilation"
+    LossBackend -> "loss compilation"
+
+allCompilerPasses :: [String]
+allCompilerPasses = map show (enumerate @CompilerPass)
+
+loggingPassHelp :: String
+loggingPassHelp =
+  "Sets the which compiler pass logging is enabled for. "
+    <> supportedOptions allCompilerPasses
 
 --------------------------------------------------------------------------------
 -- Logging levels
@@ -73,6 +97,8 @@ type CallDepth = Int
 -- Logging monad
 
 class (Monad m) => MonadLogger m where
+  enterCompilerPass :: CompilerPass -> m ()
+  exitCompilerPass :: m ()
   setCallDepth :: CallDepth -> m ()
   getCallDepth :: m CallDepth
   incrCallDepth :: m ()
@@ -82,6 +108,8 @@ class (Monad m) => MonadLogger m where
   logWarning :: CompileWarning -> m ()
 
 instance (MonadLogger m) => MonadLogger (StateT s m) where
+  enterCompilerPass = lift . enterCompilerPass
+  exitCompilerPass = lift exitCompilerPass
   setCallDepth = lift . setCallDepth
   getCallDepth = lift getCallDepth
   incrCallDepth = lift incrCallDepth
@@ -91,6 +119,8 @@ instance (MonadLogger m) => MonadLogger (StateT s m) where
   logWarning = lift . logWarning
 
 instance (MonadLogger m) => MonadLogger (ReaderT s m) where
+  enterCompilerPass = lift . enterCompilerPass
+  exitCompilerPass = lift exitCompilerPass
   setCallDepth = lift . setCallDepth
   getCallDepth = lift getCallDepth
   incrCallDepth = lift incrCallDepth
@@ -100,6 +130,8 @@ instance (MonadLogger m) => MonadLogger (ReaderT s m) where
   logWarning = lift . logWarning
 
 instance (Monoid w, MonadLogger m) => MonadLogger (WriterT w m) where
+  enterCompilerPass = lift . enterCompilerPass
+  exitCompilerPass = lift exitCompilerPass
   setCallDepth = lift . setCallDepth
   getCallDepth = lift getCallDepth
   incrCallDepth = lift incrCallDepth
@@ -109,6 +141,8 @@ instance (Monoid w, MonadLogger m) => MonadLogger (WriterT w m) where
   logWarning = lift . logWarning
 
 instance (MonadLogger m) => MonadLogger (ExceptT e m) where
+  enterCompilerPass = lift . enterCompilerPass
+  exitCompilerPass = lift exitCompilerPass
   setCallDepth = lift . setCallDepth
   getCallDepth = lift getCallDepth
   incrCallDepth = lift incrCallDepth
@@ -118,6 +152,8 @@ instance (MonadLogger m) => MonadLogger (ExceptT e m) where
   logWarning = lift . logWarning
 
 instance (MonadLogger m) => MonadLogger (SupplyT s m) where
+  enterCompilerPass = lift . enterCompilerPass
+  exitCompilerPass = lift exitCompilerPass
   setCallDepth = lift . setCallDepth
   getCallDepth = lift getCallDepth
   incrCallDepth = lift incrCallDepth
@@ -127,6 +163,8 @@ instance (MonadLogger m) => MonadLogger (SupplyT s m) where
   logWarning = lift . logWarning
 
 instance (MonadLogger m) => MonadLogger (IdentityT m) where
+  enterCompilerPass = lift . enterCompilerPass
+  exitCompilerPass = lift exitCompilerPass
   setCallDepth = lift . setCallDepth
   getCallDepth = lift getCallDepth
   incrCallDepth = lift incrCallDepth
@@ -136,6 +174,8 @@ instance (MonadLogger m) => MonadLogger (IdentityT m) where
   logWarning = lift . logWarning
 
 instance (MonadLogger m) => MonadLogger (MaybeT m) where
+  enterCompilerPass = lift . enterCompilerPass
+  exitCompilerPass = lift exitCompilerPass
   setCallDepth = lift . setCallDepth
   getCallDepth = lift getCallDepth
   incrCallDepth = lift incrCallDepth
@@ -157,10 +197,13 @@ logDebugM level getText = do
 logDebug :: (MonadLogger m) => LoggingLevel -> Doc a -> m ()
 logDebug level text = logDebugM level (return text)
 
-logCompilerPass :: (MonadLogger m) => LoggingLevel -> Doc a -> m b -> m b
-logCompilerPass level passName performPass = do
-  result <- logIndent level ("Starting" <+> passName) performPass
-  logDebug level $ "Finished" <+> passName <> line
+logCompilerPass :: (MonadLogger m) => CompilerPass -> m b -> m b
+logCompilerPass pass performPass = do
+  enterCompilerPass pass
+  let passName = pretty pass
+  result <- logIndent MinDetail ("Starting" <+> passName) performPass
+  logDebug MinDetail $ "Finished" <+> passName <> line
+  exitCompilerPass
   return result
 
 logCompilerSection2 :: (MonadLogger m) => LoggingLevel -> Doc a -> m b -> m b

@@ -81,6 +81,7 @@ data GlobalOptions = GlobalOptions
   { version :: Bool,
     logFile :: Maybe FilePath,
     loggingLevel :: LoggingLevel,
+    loggingPass :: Maybe CompilerPass,
     noWarnings :: Bool
   }
   deriving (Eq, Show)
@@ -91,6 +92,7 @@ defaultGlobalOptions =
     { version = False,
       logFile = Nothing,
       loggingLevel = defaultLoggingLevel,
+      loggingPass = Nothing,
       noWarnings = False
     }
 
@@ -160,6 +162,7 @@ globalOptionsParser =
     <$> showVersionParser
     <*> redirectLogsParser
     <*> loggingLevelParser
+    <*> loggingPassParser
     <*> noWarningsParser
 
 --------------------------------------------------------------------------------
@@ -369,6 +372,13 @@ loggingLevelParser =
       <> value defaultLoggingLevel
       <> showDefault
       <> help loggingLevelHelp
+
+loggingPassParser :: Parser (Maybe CompilerPass)
+loggingPassParser =
+  optional $
+    option auto $
+      long "loggingPass"
+        <> help loggingPassHelp
 
 noWarningsParser :: Parser Bool
 noWarningsParser = do

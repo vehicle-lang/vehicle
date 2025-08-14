@@ -22,7 +22,7 @@ import Vehicle.Backend.Queries.UserVariableElimination.Core
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core (NetworkContext)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
+import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Data.Assertion
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.LinearExpr
@@ -47,10 +47,10 @@ compilePartitionsToQueries ::
   m (MaybeTrivial (DisjunctAll QueryMetaData))
 compilePartitionsToQueries ctx metaData partitions = do
   allQueries <- forM (partitionsToDisjuncts partitions) $ \(trace, assertions) -> do
-    logCompilerPass MaxDetail "compiling partition" $ do
+    logCompilerSection2 MaxDetail "compiling partition" $ do
       let dnfTree = exprToDNF assertions
       forM dnfTree $ \dnfAssertions -> do
-        logCompilerPass MaxDetail "compiling potential query" $ do
+        logCompilerSection2 MaxDetail "compiling potential query" $ do
           eliminationResult <- calculateMetaNetworkApplications ctx dnfAssertions
           case eliminationResult of
             Trivial b -> return $ Trivial b
@@ -62,9 +62,6 @@ compilePartitionsToQueries ctx metaData partitions = do
                 Trivial b -> return $ Trivial b
                 NonTrivial (reducedAssertions, reductionSteps) -> do
                   let finalCompilationSteps = reductionSteps <> eliminationSteps <> trace
-                  logDebug MaxDetail $ prettyVerbose reductionSteps
-                  logDebug MaxDetail $ prettyVerbose eliminationSteps
-                  logDebug MaxDetail $ prettyVerbose trace
                   NonTrivial <$> compilePartitionToQuery metaData ctx metaNetwork finalCompilationSteps reducedAssertions
   return $ eliminateTrivialDisjunctions $ disjunctDisjuncts allQueries
 
@@ -81,7 +78,7 @@ compilePartitionToQuery PropertyMetaData {..} ctx metaNetworkApps compilationSte
   queryID <- demand
   let queryAddress = (propertyAddress, queryID)
 
-  logCompilerPass MaxDetail ("compiling query" <+> pretty queryID) $ do
+  logCompilerSection2 MaxDetail ("compiling query" <+> pretty queryID) $ do
     linearisedAssertions <- traverse lineariseAssertions assertions
 
     -- Check if all variables have lower and upper bounds
@@ -118,7 +115,7 @@ reduceAllRemainingNetworkTensorVariables ::
   ConjunctAll (Assertion TensorVariable) ->
   m (MaybeTrivial (ConjunctAll (Assertion NetworkIOElementVariable), [CompilationStep]))
 reduceAllRemainingNetworkTensorVariables ctx metaNetwork assertions = do
-  logCompilerPass MaxDetail "eliminating remaining tensor assertions" $ do
+  logCompilerSection2 MaxDetail "eliminating remaining tensor assertions" $ do
     -- Create the assertions
     let convertedAssertions = fmap (convert ctx) assertions
     let maybeNewAssertions = concatConjuncts <$> eliminateTrivialConjunctions convertedAssertions
@@ -144,7 +141,7 @@ convert ctx (NormalisedRelation relation linearExpr)
       let castExpr = mapVariables coerce linearExpr
       NonTrivial $ ConjunctAll (NormalisedRelation relation castExpr :| [])
   | otherwise = do
-      let rationalEqualities = reduceTensorExpr ctx linearExpr
+      let rationalEqualities = reduceTensorExpr (lookupChildVariablesCertain ctx) linearExpr
       let reducedAssertions = fmap (NormalisedRelation relation) rationalEqualities
       let finalAssertions = fmap (convert ctx) reducedAssertions
       case finalAssertions of
@@ -211,7 +208,7 @@ checkIfNetworkInputsBounded ::
   ConjunctAll (QueryAssertion NetworkIOElementVariable) ->
   m ()
 checkIfNetworkInputsBounded globalCtx queryFormat queryAddress metaNetworkApps constraints = do
-  logCompilerPass MaxDetail "network variable bounds checks" $ do
+  logCompilerSection2 MaxDetail "network variable bounds checks" $ do
     let listOfApps = toListOfApplications metaNetworkApps
 
     let appInputElementVariables (_name, app) = Tensor.toList $ coerce $ lookupNetworkElementVariables globalCtx (inputVariable app)
@@ -314,6 +311,7 @@ compileQueryVariables globalCtx@GlobalCtx {..} compileVariable metaNetworkApps a
   -- Substitute them through the assertions
   let queryVariableMapping = Map.fromList (networkInputVariables indexingState <> networkOutputVariables indexingState)
   let substitution = Map.fromList (swap <$> Map.toList queryVariableMapping)
+
   let newAssertions = fmap (substAssertionVariables nameCtx substitution) prettifiedAssertions
 
   let variableStore =

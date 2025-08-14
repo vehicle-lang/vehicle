@@ -50,7 +50,6 @@ unblockBoolExpr actions expr = do
 
   unblockedExpr <- unblockBoolTensorValue actions expr
   let unblockedExprDoc = prettyFriendly (WithContext unblockedExpr ctx)
-  logDebug MaxDetail $ "result:" <+> squotes unblockedExprDoc
 
   when (layoutAsString exprDoc == layoutAsString unblockedExprDoc) $
     developerError $
@@ -69,21 +68,20 @@ tryPurifyAssertion ::
   TensorOp2Args (Value Builtin) ->
   m (Either (Value Builtin) (TensorOp2Args (Value Builtin)))
 tryPurifyAssertion actions op args = do
-  logCompilerPass MaxDetail "purification" $ do
-    unblockedExpr <- unblockTensorOp2 (unblockRatTensorValue actions VarLevel) (evalCompareRatTensorReduced op) args
+  unblockedExpr <- unblockTensorOp2 (unblockRatTensorValue actions VarLevel) (evalCompareRatTensorReduced op) args
 
-    logDebugM MaxDetail $ do
-      ctx <- getNameContext
-      let unblockedAssertionDoc = prettyFriendly (WithContext unblockedExpr ctx)
-      return ("result:" <+> unblockedAssertionDoc)
+  logDebugM MaxDetail $ do
+    ctx <- getNameContext
+    let unblockedAssertionDoc = prettyFriendly (WithContext unblockedExpr ctx)
+    return ("result:" <+> unblockedAssertionDoc)
 
-    case findImpurity unblockedExpr of
-      Right newArgs -> do
-        logDebug MaxDetail "status: pure"
-        return $ Right newArgs
-      Left impurity -> do
-        logDebug MaxDetail "status: impure"
-        Left <$> eliminateImpurities impurity
+  case findImpurity unblockedExpr of
+    Right newArgs -> do
+      logDebug MaxDetail "status: pure"
+      return $ Right newArgs
+    Left impurity -> do
+      logDebug MaxDetail "status: impure"
+      Left <$> eliminateImpurities impurity
 
 data Impurity
   = LiftedIf (IfArgs (Value Builtin))
@@ -317,7 +315,7 @@ unblockForeachTensor (ForeachTensorArgs tElem d ds fn) = do
 --------------------------------------------------------------------------------
 -- Unblocking operations
 
-currentPass :: CompilerPass
+currentPass :: Doc a
 currentPass = "unblocking"
 
 showEntry :: forall m. (MonadUnblock m) => Value Builtin -> m ()

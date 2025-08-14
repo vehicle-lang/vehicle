@@ -326,7 +326,7 @@ traverseClosure binder (Closure env body) = do
 --------------------------------------------------------------------------------
 -- Utils
 
-currentPass :: CompilerPass
+currentPass :: Doc a
 currentPass = "logic translation"
 
 showEntry :: (MonadLogger m, MonadNameContext m) => Value Builtin -> m ()

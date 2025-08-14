@@ -97,7 +97,7 @@ pruneUnusedDeclarations ::
 pruneUnusedDeclarations prog dependencyGraph declarationsToCompile
   | null declarationsToCompile = return prog
   | otherwise = do
-      logCompilerPass MinDetail "Pruning unused declarations" $ do
+      logCompilerSection2 MinDetail "Pruning unused declarations" $ do
         startingVertices <- forM declarationsToCompile $ \name ->
           case vertexFromIdent dependencyGraph (Identifier (ModulePath [User]) name) of
             Just vertex -> return vertex

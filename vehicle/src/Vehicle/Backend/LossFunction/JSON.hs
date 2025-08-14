@@ -34,7 +34,7 @@ import Vehicle.Syntax.Prelude (developerError)
 
 convertToJSONProg :: (MonadCompile m) => S.Prog LossBuiltin -> m JProg
 convertToJSONProg prog =
-  logCompilerPass MinDetail currentPass $ do
+  logCompilerSection2 MinDetail currentPass $ do
     relevantProg <- removeIrrelevantCodeFromProg prog
     runFreshNameContextT $ convertProg relevantProg
 

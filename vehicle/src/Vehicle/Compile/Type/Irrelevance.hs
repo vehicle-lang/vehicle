@@ -18,7 +18,7 @@ removeIrrelevantCodeFromProg ::
   Prog builtin ->
   m (Prog builtin)
 removeIrrelevantCodeFromProg x = do
-  logCompilerPass MinDetail "removal of irrelevant code" $ do
+  logCompilerSection2 MinDetail "removal of irrelevant code" $ do
     result <- remove x
     logDebug MaxDetail $ prettyExternal result
     return result

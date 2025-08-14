@@ -2,16 +2,29 @@ module Vehicle.Data.Assertion where
 
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, FromJSONKey, ToJSON, ToJSONKey)
+import Data.Bifunctor (Bifunctor (..))
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
+import Data.Map qualified as Map (fromList, toList)
 import GHC.Generics
 import Vehicle.Data.Builtin.Core
-import Vehicle.Data.Code.BooleanExpr (MaybeTrivial (..))
+import Vehicle.Data.Code.BooleanExpr (ConjunctAll (..), MaybeTrivial (..))
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.Hashing ()
-import Vehicle.Data.Tensor (HasShape, RatTensor, allTensor)
+import Vehicle.Data.Tensor (HasShape, RatTensor, Tensor, pattern ZeroDimTensor)
+import Vehicle.Data.Tensor qualified as Tensor (toList)
 import Vehicle.Prelude
-import Vehicle.Syntax.Tensor (HasShape (..))
+import Vehicle.Syntax.Tensor
+  ( HasShape (..),
+    Tensor (..),
+    compareTensor,
+  )
+
+class IsRelation relation where
+  isRelated :: relation -> Tensor Rational -> Tensor Rational -> Bool
+
+checkTriviality :: (IsRelation relation) => relation -> RatTensor -> Bool
+checkTriviality rel tensor = isRelated rel tensor (ConstantTensor (shapeOf tensor) 0)
 
 --------------------------------------------------------------------------------
 -- Relations
@@ -31,11 +44,11 @@ relationToComparisonOp = \case
 instance Pretty Relation where
   pretty = pretty . relationToComparisonOp
 
-checkTriviality :: Relation -> RatTensor -> Bool
-checkTriviality op tensor = case op of
-  OLe -> allTensor (<= 0.0) tensor
-  OLt -> allTensor (< 0.0) tensor
-  OEq -> isZero tensor
+instance IsRelation Relation where
+  isRelated = \case
+    OLe -> compareTensor (<=)
+    OLt -> compareTensor (<)
+    OEq -> compareTensor (==)
 
 --------------------------------------------------------------------------------
 -- Strictness
@@ -60,8 +73,17 @@ instance Pretty InequalityRelation where
   pretty = pretty . inequalityToRelation
 
 --------------------------------------------------------------------------------
+-- Equality relation
+
+data EqualityRelation = EqualityRelation
+
+instance IsRelation EqualityRelation where
+  isRelated _ = compareTensor (==)
+
+--------------------------------------------------------------------------------
 -- Normalisation relations
 
+-- TODO rename to `Comparison`?
 data NormalisedRelation rel variable constant = NormalisedRelation
   { relation :: rel,
     linearExpr :: LinearExpr variable constant
@@ -83,6 +105,48 @@ instance
 instance (Ord variable) => HasVariables (NormalisedRelation rel variable constant) variable where
   variablesOf = variablesOf . linearExpr
   containsVariable r v = linearExpr r `containsVariable` v
+
+eliminateVarsInComparison ::
+  (VariableLike variable, IsRelation relation) =>
+  LinearSubstitution variable ->
+  NormalisedRelation relation variable RatTensor ->
+  MaybeTrivial (NormalisedRelation relation variable RatTensor)
+eliminateVarsInComparison f NormalisedRelation {..} = case eliminateVars f linearExpr of
+  Right newExpr -> NonTrivial $ NormalisedRelation {linearExpr = newExpr, ..}
+  Left tensor -> Trivial (checkTriviality relation tensor)
+
+reduceComparison ::
+  (Ord variable) =>
+  (variable -> Tensor variable) ->
+  NormalisedRelation rel variable RatTensor ->
+  Maybe (ConjunctAll (NormalisedRelation rel variable RatTensor))
+reduceComparison lookupElementVariables (NormalisedRelation relation linearExpr) = do
+  let rationalEqualities = reduceTensorExpr lookupElementVariables linearExpr
+  let reducedComparison = fmap (NormalisedRelation relation) rationalEqualities
+  case reducedComparison of
+    [] -> Nothing
+    (v : vs) -> Just $ ConjunctAll (v :| vs)
+
+reduceTensorExpr ::
+  forall variable.
+  (Ord variable) =>
+  (variable -> Tensor variable) ->
+  LinearExpr variable RatTensor ->
+  [LinearExpr variable RatTensor]
+reduceTensorExpr lookupElementVariables (Sparse coeff constant) = do
+  let equationIDs = [0 .. product (shapeOf constant) - 1]
+  let constValues = Tensor.toList constant
+  let findChildVariablesAndCoefficient = first (Tensor.toList . lookupElementVariables)
+  let coeffList = fmap findChildVariablesAndCoefficient (Map.toList coeff)
+  fmap (mkZeroDimEquality coeffList constValues) equationIDs
+  where
+    mkZeroDimEquality ::
+      [([variable], Coefficient)] ->
+      [Rational] ->
+      Int ->
+      LinearExpr variable RatTensor
+    mkZeroDimEquality coeffs consts i =
+      Sparse (Map.fromList (fmap (first (!! i)) coeffs)) (ZeroDimTensor (consts !! i))
 
 --------------------------------------------------------------------------------
 -- Assertions
@@ -125,18 +189,18 @@ comparisonToAssertion op e1 e2 = case op of
 
 type LinearSubstitution variable = Map variable (LinearExpr variable RatTensor)
 
-eliminateVarsInAssertion ::
-  (VariableLike variable) =>
-  LinearSubstitution variable ->
-  Assertion variable ->
-  MaybeTrivial (Assertion variable)
-eliminateVarsInAssertion f NormalisedRelation {..} = case eliminateVars f linearExpr of
-  Right newExpr -> NonTrivial $ NormalisedRelation {linearExpr = newExpr, ..}
-  Left tensor -> Trivial (checkTriviality relation tensor)
+equalityToAssertion :: Equality variable RatTensor -> Assertion variable
+equalityToAssertion (NormalisedRelation () e) = NormalisedRelation OEq e
 
-getEquality :: Assertion variable -> Maybe (LinearExpr variable RatTensor)
+getEquality :: Assertion variable -> Maybe (Equality variable RatTensor)
 getEquality (NormalisedRelation rel expr) = case rel of
-  OEq -> Just expr
+  OEq -> Just (NormalisedRelation () expr)
+  _ -> Nothing
+
+getInequality :: Assertion variable -> Maybe (Inequality variable RatTensor)
+getInequality (NormalisedRelation rel expr) = case rel of
+  OLe -> Just (NormalisedRelation NonStrict expr)
+  OLt -> Just (NormalisedRelation Strict expr)
   _ -> Nothing
 
 --------------------------------------------------------------------------------

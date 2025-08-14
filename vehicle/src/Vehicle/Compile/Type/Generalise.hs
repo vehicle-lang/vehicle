@@ -43,7 +43,7 @@ generaliseOverUnsolvedMetasAndConstraints ::
   m (Decl builtin)
 generaliseOverUnsolvedMetasAndConstraints decl = do
   let proxy = (Proxy @builtin)
-  logCompilerPass MaxDetail "generalisation over unsolved metas and constraints" $ do
+  logCompilerSection2 MaxDetail "generalisation over unsolved metas and constraints" $ do
     -- Check unification constraints solved
     checkAllConstraintsSolved proxy getActiveUnificationConstraints UnificationConstraint
 
@@ -69,15 +69,15 @@ removeAllDependencies ::
   Decl builtin ->
   m (Decl builtin)
 removeAllDependencies decl = do
-  logCompilerPass MaxDetail "removing dependencies of unsolved metas" $ do
+  logCompilerSection2 MaxDetail "removing dependencies of unsolved metas" $ do
     -- Remove meta dependencies
     metaVariableCtx <- getMetaVariableCtx @builtin
     forM_ (MetaMap.toList metaVariableCtx) $ \(meta, metaInfo) -> do
       when (isNothing (metaSolution metaInfo) && not (null $ metaCtx metaInfo)) $
-        logCompilerPass MaxDetail ("removing dependences of" <+> pretty meta) $ do
+        logCompilerSection2 MaxDetail ("removing dependences of" <+> pretty meta) $ do
           void $ solveInTermsOfNewMetaWithDependencies meta metaInfo mempty
 
-  logCompilerPass MaxDetail "removing dependencies from and merging instance constraints" $ do
+  logCompilerSection2 MaxDetail "removing dependencies from and merging instance constraints" $ do
     -- Remove instance constraint dependencies
     instanceConstraints <- getActiveInstanceConstraints @builtin
     auxiliaryInstanceConstraints <- getActiveAuxiliaryInstanceConstraints @builtin
@@ -92,7 +92,7 @@ removeAllDependencies decl = do
     setAuxiliaryInstanceConstraints mergedAuxiliaryInstanceConstraints
 
   -- Substitute through the new metas variables through the types of the meta variables
-  logCompilerPass MaxDetail "substituting metas through solution" $ do
+  logCompilerSection2 MaxDetail "substituting metas through solution" $ do
     metaVariableCtx <- getMetaVariableCtx @builtin
     substMetaVariableCtx <- substMetas metaVariableCtx
     modifyTypeCheckerState (\s -> s {metaVariableCtx = substMetaVariableCtx})
@@ -181,7 +181,7 @@ generaliseOverUnsolvedMetas decl = do
 
   let p = provenanceOf decl
   binders <- traverse (createBinderForMeta unsolvedConstraintMetas p) (zip [1 ..] sortedUnsolvedMetas)
-  generalisedDecl <- logCompilerPass MaxDetail ("generalisation over" <+> pretty sortedUnsolvedMetas) $ do
+  generalisedDecl <- logCompilerSection2 MaxDetail ("generalisation over" <+> pretty sortedUnsolvedMetas) $ do
     foldlM prependBinderAndSolve decl binders
   logUnsolvedUnknowns (Proxy @builtin)
   return generalisedDecl
@@ -191,7 +191,7 @@ sortGeneralisableMetas ::
   MetaVariableContext builtin ->
   m [MetaID]
 sortGeneralisableMetas unsolvedMetas = do
-  logCompilerPass MaxDetail "sorting generalisable constraints" $ do
+  logCompilerSection2 MaxDetail "sorting generalisable constraints" $ do
     let adjacencyMap = MetaMap.map (metasIn . metaType) unsolvedMetas
     let adjacencyList = (\(x, ys) -> (x, x, MetaSet.toList ys)) <$> MetaMap.toList adjacencyMap
 
@@ -231,7 +231,7 @@ prependBinderAndSolve ::
   (MetaID, Binder builtin) ->
   m (Decl builtin)
 prependBinderAndSolve decl (meta, binder) =
-  logCompilerPass MaxDetail ("generalising" <+> pretty meta <+> ":" <+> prettyVerbose binder) $ do
+  logCompilerSection2 MaxDetail ("generalising" <+> pretty meta <+> ":" <+> prettyVerbose binder) $ do
     let p = provenanceOf decl
 
     -- Create a new meta with dependencies on the telescope and solve the previous one in terms of it.

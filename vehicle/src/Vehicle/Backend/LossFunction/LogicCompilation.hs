@@ -64,7 +64,7 @@ compileLogic ::
   DifferentialLogicDSL ->
   m CompiledDifferentiableLogic
 compileLogic logicID dsl = do
-  logCompilerPass MinDetail ("compiling logic" <+> quotePretty logicID) $ do
+  logCompilerSection2 MinDetail ("compiling logic" <+> quotePretty logicID) $ do
     -- Lift fields to the tensor level
     let tensorLogicFields = [minBound .. maxBound] :: [TensorDifferentiableLogicField]
     lossTensorImplementation <- foldM (compileLogicField logicID dsl) mempty tensorLogicFields
@@ -79,7 +79,7 @@ compileLogicField ::
   TensorDifferentiableLogicField ->
   m (Map TensorDifferentiableLogicField (Value LossBuiltin))
 compileLogicField logicID dsl impl field =
-  logCompilerPass MidDetail ("compiling tensor-field" <+> quotePretty field) $ do
+  logCompilerSection2 MidDetail ("compiling tensor-field" <+> quotePretty field) $ do
     let tensorExprFn = case field of
           TruthityElement -> compileBoolLiteral Truthity
           FalsityElement -> compileBoolLiteral Falsity

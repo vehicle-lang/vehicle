@@ -75,8 +75,8 @@ runVehicle Options {..} = do
             List options -> list logSettings options
 
 withLogger :: (MonadStdIO IO) => GlobalOptions -> (LoggingSettings -> IO a) -> IO a
-withLogger GlobalOptions {logFile, loggingLevel, noWarnings} action = do
-  let runAction logLn = action LoggingSettings {putLogLn = logLn, loggingLevel, noWarnings}
+withLogger GlobalOptions {logFile, loggingPass, loggingLevel, noWarnings} action = do
+  let runAction logLn = action LoggingSettings {putLogLn = logLn, loggingPass, loggingLevel, noWarnings}
   case logFile of
     Nothing -> runAction VIO.writeStderrLn
     Just fp -> do

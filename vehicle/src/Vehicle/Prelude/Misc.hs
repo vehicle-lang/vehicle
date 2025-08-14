@@ -7,11 +7,12 @@ import Control.Monad.Reader (MonadReader (..))
 import Control.Monad.State (MonadState (..), modify)
 import Data.Aeson (FromJSON, Options (..), ToJSON, defaultOptions)
 import Data.Aeson.Encode.Pretty (Config (..), Indent (..), NumberFormat (..))
+import Data.Bifunctor (Bifunctor (..))
 import Data.Graph (Edge, Vertex, buildG, topSort)
 import Data.Hashable (Hashable)
 import Data.IntMap (IntMap, updateLookupWithKey)
 import Data.List qualified as List
-import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty (NonEmpty (..), singleton)
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Map (Map)
 import Data.Map qualified as Map
@@ -19,12 +20,13 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Data.These (These (..), these)
 import GHC.Generics (Generic)
 import Numeric (readFloat, readSigned)
 import System.Console.ANSI
 import Vehicle.Prelude.Prettyprinter (Pretty (pretty))
 import Vehicle.Syntax.AST.Name (Name)
-import Vehicle.Syntax.Prelude (unzipF)
+import Vehicle.Syntax.Prelude (developerError, unzipF)
 
 data VehicleLang = External | Internal
   deriving (Show)
@@ -180,6 +182,9 @@ findAndDeleteElem p = go id
       | p x = Just (x, prefix xs)
       | otherwise = go (prefix . (x :)) xs
 
+traverseAndPair :: (Applicative m, Traversable f) => (a -> m b) -> f a -> m (f (a, b))
+traverseAndPair f = traverse (\x -> (x,) <$> f x)
+
 -- | Used to distinguish between inputs and outputs of neural networks.
 data InputOrOutput
   = Input
@@ -240,7 +245,11 @@ setTextColour c s =
     [setSGRCode [SetColor Foreground Vivid c], s, setSGRCode []]
 
 cartesianProduct :: (a -> b -> c) -> [a] -> [b] -> [c]
-cartesianProduct f xs ys = [f x y | x <- xs, y <- ys]
+cartesianProduct g xs ys = [g x y | x <- xs, y <- ys]
+
+nonEmptyCartesianProduct :: (a -> b -> c) -> NonEmpty a -> NonEmpty b -> NonEmpty c
+nonEmptyCartesianProduct f (x :| xs) (y :| ys) =
+  f x y :| (fmap (f x) ys <> cartesianProduct f xs (y : ys))
 
 thenCmp :: Ordering -> Ordering -> Ordering
 thenCmp EQ o2 = o2
@@ -251,6 +260,33 @@ getModify f = do
   x <- get
   modify f
   return x
+
+mergeTheses :: (a -> a -> a) -> (b -> b -> b) -> These a b -> These a b -> These a b
+mergeTheses f g = \case
+  This x -> first (f x)
+  That y -> second (g y)
+  These x y -> bimap (f x) (g y)
+
+mergeNonEmptyKeyValues :: (Ord a) => (NonEmpty b -> b) -> NonEmpty (a, b) -> NonEmpty (a, b)
+mergeNonEmptyKeyValues f xs = do
+  let results = Map.toList $ Map.fromListWith (<>) $ NonEmpty.toList $ fmap (second singleton) xs
+  case results of
+    [] -> developerError "impossible"
+    u : us -> fmap (second f) (u :| us)
+
+mergeThesesByThis :: forall a b. (Ord a) => (NonEmpty b -> b) -> NonEmpty (These a b) -> NonEmpty (These a b)
+mergeThesesByThis f xs = do
+  let pairs = fmap (these (\a -> (Just a, [])) (\b -> (Nothing, [b])) (\a b -> (Just a, [b]))) xs
+  let thatByThis = Map.toList $ Map.fromListWith (<>) $ NonEmpty.toList pairs
+  case thatByThis of
+    [] -> developerError "impossible"
+    u : us -> fmap convert (u :| us)
+  where
+    convert :: (Maybe a, [b]) -> These a b
+    convert (Nothing, []) = developerError "impossible"
+    convert (Just a, []) = This a
+    convert (Nothing, b : bs) = That (f (b :| bs))
+    convert (Just a, b : bs) = These a (f (b :| bs))
 
 --------------------------------------------------------------------------------
 -- Constants

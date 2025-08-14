@@ -47,14 +47,11 @@ functionaliseResources ::
   Prog builtin ->
   m (Prog builtin)
 functionaliseResources prog =
-  logCompilerPass MinDetail currentPass $ do
+  logCompilerSection2 MinDetail "resource functionalisation" $ do
     runReaderT (functionaliseProg prog) (FuncState OMap.empty mempty)
 
 --------------------------------------------------------------------------------
 -- Utilities
-
-currentPass :: CompilerPass
-currentPass = "resource functionalisation"
 
 data FuncState builtin = FuncState
   { resourceDeclarations :: OMap Name (Type builtin),
@@ -96,7 +93,7 @@ functionaliseDecl ::
   Decl builtin ->
   m (FuncState builtin -> FuncState builtin, Maybe (Decl builtin))
 functionaliseDecl d =
-  logCompilerPass MaxDetail ("functionalising" <+> quotePretty (nameOf d)) $ case d of
+  logCompilerSection2 MaxDetail ("functionalising" <+> quotePretty (nameOf d)) $ case d of
     DefAbstract p i s initialType -> do
       typeResourceUsage <- findResourceUses initialType
       (mkBinder, binders, binderNames) <- createBinders True p typeResourceUsage
@@ -164,7 +161,7 @@ replaceResourceUses (mkBinder, binders, binderNames) initialExpr = do
       let mkResourceVar resourceName = do
             let maybeResourceLevel = Map.lookup resourceName resourceLevels
             case maybeResourceLevel of
-              Nothing -> internalScopingError currentPass (pretty ident)
+              Nothing -> internalScopingError (pretty ident)
               Just resourceLv -> do
                 let resourceIx = dbLevelToIndex currentNewLv resourceLv
                 -- logDebug MaxDetail $ pretty name <+> pretty resourceName <+> pretty currentOldLv <+> pretty currentNewLv <+> pretty resourceLv <+> pretty resourceIx

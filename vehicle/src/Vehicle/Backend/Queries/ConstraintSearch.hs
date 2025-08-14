@@ -1,128 +1,213 @@
 module Vehicle.Backend.Queries.ConstraintSearch
-  ( findConstraints,
-    ConstraintSearchCriteria,
-    ConstrainedAssertionTree,
-    VariableConstraints (..),
+  ( findEqualityConstraint,
+    findInequalityConstraints,
   )
 where
 
-import Control.Monad (foldM)
-import Data.Either (partitionEithers)
+import Data.Bifunctor (Bifunctor (..))
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
-import Data.Map qualified as Map
+import Data.Maybe (catMaybes)
+import Data.These (These (..))
+import Data.These.Combinators (catHere, catThere)
 import Vehicle.Backend.Queries.UserVariableElimination.Core
 import Vehicle.Compile.Error
-import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyVerbose)
+import Vehicle.Compile.Prelude (mergeNonEmptyKeyValues, unionMaybeWith)
 import Vehicle.Data.Assertion
 import Vehicle.Data.Code.BooleanExpr
+import Vehicle.Data.Code.LinearExpr (HasVariables (..))
 import Vehicle.Data.QuantifiedVariable
 import Vehicle.Data.Tensor (RatTensor)
 
 --------------------------------------------------------------------------------
--- Data
+-- Public interface
 
--- | The strongest set of available constraints for a given variable. Equalities
--- are stronger than inequalities.
-data VariableConstraints
-  = SingleEquality !(Equality TensorVariable RatTensor)
-  | Inequalities ![Inequality TensorVariable RatTensor]
-  deriving (Eq, Ord)
+-- | Tries to find an equality constraint in the tree of assertions for
+-- the variable while trying to generate the minimum of disjuncts possible.
+findEqualityConstraint ::
+  (MonadCompile m) =>
+  TensorVariable ->
+  AssertionTree TensorVariable ->
+  m SingleSearchResults
+findEqualityConstraint = findSingleConstraint
 
-instance Pretty VariableConstraints where
-  pretty = \case
-    SingleEquality eq -> "SingleEquality[" <+> prettyVerbose eq <> "]"
-    Inequalities [] -> "NoConstraints"
-    Inequalities ineqs -> "Inequalities[" <+> prettyVerbose ineqs <> "]"
-
-type ConstrainedAssertionTree = (VariableConstraints, MaybeTrivial (AssertionTree TensorVariable))
-
--- | A scheme for pulling out constraints from assertions. Used to control
--- which assertions are considered valid constraints.
-type ConstraintSearchCriteria =
-  Assertion TensorVariable -> ConstrainedAssertionTree
+findInequalityConstraints ::
+  (MonadCompile m) =>
+  TensorVariable ->
+  AssertionTree TensorVariable ->
+  m (DisjunctAll ([Inequality TensorVariable RatTensor], Maybe (AssertionTree TensorVariable)))
+findInequalityConstraints = findAllConstraints getInequality
 
 --------------------------------------------------------------------------------
--- Algorithm
+-- Single constraints
 
--- Takes in a tree of assertions and partitions it only as much as strictly
--- necessary to find the strongest set of constraints over the variable.
-findConstraints ::
+-- | Implicitly conjuncted
+type ConstrainedTree = (Equality TensorVariable RatTensor, Maybe (AssertionTree TensorVariable))
+
+-- | Implicitly disjuncted
+type SingleSearchResults = These (DisjunctAll ConstrainedTree) (AssertionTree TensorVariable)
+
+findSingleConstraint ::
   forall m.
   (MonadCompile m) =>
-  ConstraintSearchCriteria ->
+  TensorVariable ->
   AssertionTree TensorVariable ->
-  m (DisjunctAll ConstrainedAssertionTree)
-findConstraints criteria = go
+  m SingleSearchResults
+findSingleConstraint var = go
   where
-    go :: AssertionTree TensorVariable -> m (DisjunctAll ConstrainedAssertionTree)
+    go :: AssertionTree TensorVariable -> m SingleSearchResults
     go = \case
-      Query assertion -> return $ DisjunctAll [criteria assertion]
-      Disjunct xs -> findConstraintsDisjunctAll criteria xs
-      Conjunct xs -> findConstraintsConjunctAll criteria xs
+      Disjunct xs -> disjunctSingleResults xs =<< traverse go xs
+      Conjunct xs -> conjunctSingleConstraints go xs
+      Query assertion -> case getEquality assertion of
+        Nothing -> return $ That $ Query assertion
+        Just constraint
+          | assertion `containsVariable` var -> return $ This (DisjunctAll [(constraint, Nothing)])
+          | otherwise -> return $ That $ Query assertion
 
-findConstraintsDisjunctAll ::
+disjunctSingleResults ::
   forall m.
   (MonadCompile m) =>
-  ConstraintSearchCriteria ->
   DisjunctAll (AssertionTree TensorVariable) ->
-  m (DisjunctAll ConstrainedAssertionTree)
-findConstraintsDisjunctAll criteria tree = do
-  disjuncts <- disjunctDisjuncts <$> traverse (findConstraints criteria) tree
-  -- Collapse disjunctions that have the same constraint, e.g.
-  --    (x and a) or (x and b) or (x and c) or (y and d)...
-  --      ->
-  --    (x and (a or b or c)) or (y and d)
-  let treeByConstraints = Map.fromListWith (orTrivial orBoolExpr) $ disjunctsToList disjuncts
-  return $ DisjunctAll $ NonEmpty.fromList $ Map.toList treeByConstraints
+  DisjunctAll SingleSearchResults ->
+  m SingleSearchResults
+disjunctSingleResults xs (DisjunctAll results) = do
+  let allConstrainedTrees = catHere $ NonEmpty.toList results
+  let allUnconstrainedTrees = catThere $ NonEmpty.toList results
+  return $ case (allConstrainedTrees, allUnconstrainedTrees) of
+    ([], _) -> That $ Disjunct xs
+    (c : cs, []) -> This (mergeConstrainedTrees (DisjunctAll $ c :| cs))
+    (c : cs, u : us) -> These (mergeConstrainedTrees $ DisjunctAll $ c :| cs) (mergeUnconstrainedTrees $ DisjunctAll $ u :| us)
+  where
+    mergeConstrainedTrees ::
+      DisjunctAll (DisjunctAll ConstrainedTree) ->
+      DisjunctAll ConstrainedTree
+    mergeConstrainedTrees nestedDisjuncts = do
+      let disjuncts = disjunctDisjuncts nestedDisjuncts
+      -- \| Optimisation: Collapse disjunctions that have the same constraint, e.g.
+      --    (x and a) ||or|| (x and b) ||or|| (x and c) ||or|| (y and d)...
+      --      ->
+      --    (x and (a or b or c)) ||or|| (y and d)
+      -- let treeByConstraints = Map.fromListWith (orTrivial orBoolExpr) $ disjunctsToList disjuncts
+      let collapse u = fmap (Disjunct . DisjunctAll) $ NonEmpty.nonEmpty $ catMaybes $ NonEmpty.toList u
+      DisjunctAll $ mergeNonEmptyKeyValues collapse $ unDisjunctAll disjuncts
 
-findConstraintsConjunctAll ::
+    mergeUnconstrainedTrees :: DisjunctAll (AssertionTree TensorVariable) -> AssertionTree TensorVariable
+    mergeUnconstrainedTrees = Disjunct
+
+conjunctSingleConstraints ::
   forall m.
   (MonadCompile m) =>
-  ConstraintSearchCriteria ->
+  (AssertionTree TensorVariable -> m SingleSearchResults) ->
   ConjunctAll (AssertionTree TensorVariable) ->
-  m (DisjunctAll ConstrainedAssertionTree)
-findConstraintsConjunctAll criteria (ConjunctAll (t :| ts)) = do
-  -- Finds the first constraint that has an equality and other combines all inequalities
-  r1 <- findConstraints criteria t
-  rs' <- foldM andDisjuncts (t, r1) ts
-  return $ snd rs'
+  m SingleSearchResults
+conjunctSingleConstraints search conjuncts = searchConjuncts $ unConjunctAll conjuncts
   where
-    andDisjuncts ::
-      (AssertionTree TensorVariable, DisjunctAll ConstrainedAssertionTree) ->
-      AssertionTree TensorVariable ->
-      m (AssertionTree TensorVariable, DisjunctAll ConstrainedAssertionTree)
-    andDisjuncts (x, r1) y = do
-      let (shortCircuitedLHS, remainingLHS) = partitionEithers $ fmap (shortCircuitConstraints y) (disjunctsToList r1)
-      result <-
-        if null remainingLHS
-          then return shortCircuitedLHS
-          else do
-            r2 <- findConstraints criteria y
-            let (shortCircuitedRHS, remainingRHS) = partitionEithers $ fmap (shortCircuitConstraints x) (disjunctsToList r2)
-            if null remainingRHS
-              then return shortCircuitedRHS
-              else do
-                let remainingDisjuncts = cartesianProduct mergeConstraints remainingLHS remainingRHS
-                return $ shortCircuitedLHS <> shortCircuitedRHS <> remainingDisjuncts
+    searchConjuncts :: NonEmpty (AssertionTree TensorVariable) -> m SingleSearchResults
+    searchConjuncts (x :| xs) = do
+      results <- search x
+      case xs of
+        [] -> return results
+        y : ys -> case results of
+          -- If there are no constraints in the current conjunct then search the current conjuncts
+          -- and conjunct the current conjunct to the result.
+          That {} -> andResults [x] <$> searchConjuncts (y :| ys)
+          -- If there are some partial constraints in `the current conjunct
+          -- then search the remaining conjuncts
+          These constrained unconstrained -> do
+            recResults <- searchConjuncts (y :| ys)
+            case recResults of
+              That {} -> return $ andResults (y :| ys) results
+              This {} -> return $ andResults [x] recResults
+              These recConstrained recUnconstrained -> do
+                -- (A v B) and (C v D) = (A and C) or (A and D) or (B and C) or (B and D)
+                let newUnconstrained = andBoolExpr unconstrained recUnconstrained
+                let newConstrained1 = andConstraints [collapseTrees recConstrained] constrained
+                let newConstrained2 = andConstraints [unconstrained] recConstrained
+                let newConstrained3 = andConstraints [recUnconstrained] constrained
+                let newConstrained = disjunctDisjuncts (DisjunctAll [newConstrained1, newConstrained2, newConstrained3])
+                return $ These newConstrained newUnconstrained
+          This totalConstraints
+            | length totalConstraints == 1 ->
+                -- Then we've found a single equality constraint that doesn't require us
+                -- to perform any disjunctions and we can't do better than this so halt
+                -- the search and return
+                return $ andResults (y :| ys) results
+            | otherwise -> do
+                -- Otherwise there may be still be an equality elsewhere that requires
+                -- less disjunctions to extract so recursively search the remainder of
+                -- the conjunctions.
+                recResults <- searchConjuncts (y :| ys)
+                case recResults of
+                  This bestTotalConstraints
+                    | length totalConstraints >= length bestTotalConstraints -> return $ andResults [x] recResults
+                  _ -> return $ andResults (y :| ys) results
 
-      case result of
-        r : rs -> return (andBoolExpr x y, DisjunctAll (r :| rs))
-        [] -> compilerDeveloperError "The conjunctions of non-empty disjunctions should be non-empty."
+    collapseTrees :: DisjunctAll ConstrainedTree -> AssertionTree TensorVariable
+    collapseTrees t2 = do
+      let eqToAssertion = Query . equalityToAssertion
+      Disjunct $ fmap (\(a, b) -> maybe (eqToAssertion a) (andBoolExpr (eqToAssertion a)) b) t2
 
-    shortCircuitConstraints ::
-      AssertionTree TensorVariable ->
-      ConstrainedAssertionTree ->
-      Either ConstrainedAssertionTree ConstrainedAssertionTree
-    shortCircuitConstraints disjunctedTree constraint = case constraint of
-      (SingleEquality eq, remaining) -> Left (SingleEquality eq, andTrivial andBoolExpr remaining (NonTrivial disjunctedTree))
-      _ -> Right constraint
+    andConstraints :: NonEmpty (AssertionTree TensorVariable) -> DisjunctAll ConstrainedTree -> DisjunctAll ConstrainedTree
+    andConstraints xs = do
+      let t = Conjunct $ ConjunctAll xs
+      fmap (second (Just . maybe t (andBoolExpr t)))
 
-    mergeConstraints ::
-      ConstrainedAssertionTree ->
-      ConstrainedAssertionTree ->
-      ConstrainedAssertionTree
-    mergeConstraints c1 c2 = case (c1, c2) of
-      ((Inequalities ineqs1, t1), (Inequalities ineqs2, t2)) -> (Inequalities (ineqs1 <> ineqs2), andTrivial andBoolExpr t1 t2)
-      _ -> developerError "Impossible - should be no equality constraints after short-circuiting"
+    andResults :: NonEmpty (AssertionTree TensorVariable) -> SingleSearchResults -> SingleSearchResults
+    andResults xs = bimap (andConstraints xs) (andBoolExpr (Conjunct $ ConjunctAll xs))
+
+-- (u == x or y >=1 ) and (u == x + 1 or y <= 1)
+
+--------------------------------------------------------------------------------
+-- Core algorithm
+
+-- Implicitly conjuncted
+type AllConstrainedTree constraint = ([constraint], Maybe (AssertionTree TensorVariable))
+
+type AllSearchResults constraint = DisjunctAll (AllConstrainedTree constraint)
+
+noResults :: AssertionTree TensorVariable -> AllSearchResults constraint
+noResults tree = DisjunctAll [(mempty, Just tree)]
+
+oneResult :: constraint -> AllSearchResults constraint
+oneResult constraint = DisjunctAll [([constraint], Nothing)]
+
+findAllConstraints ::
+  forall m constraint.
+  (MonadCompile m, Ord constraint) =>
+  (Assertion TensorVariable -> Maybe constraint) ->
+  TensorVariable ->
+  AssertionTree TensorVariable ->
+  m (AllSearchResults constraint)
+findAllConstraints assertionToConstraint var = go
+  where
+    go :: AssertionTree TensorVariable -> m (AllSearchResults constraint)
+    go = \case
+      Disjunct xs -> findAllConstraintsDisjunct =<< traverse go xs
+      Conjunct xs -> findAllConstraintsConjunct =<< traverse go xs
+      Query assertion -> case assertionToConstraint assertion of
+        Nothing -> return $ noResults (Query assertion)
+        Just constraint
+          | assertion `containsVariable` var -> return $ oneResult constraint
+          | otherwise -> return $ noResults (Query assertion)
+
+findAllConstraintsDisjunct ::
+  forall m constraint.
+  (MonadCompile m, Ord constraint) =>
+  DisjunctAll (AllSearchResults constraint) ->
+  m (AllSearchResults constraint)
+findAllConstraintsDisjunct disjuncts = return $ optimiseDisjuncts $ disjunctDisjuncts disjuncts
+  where
+    optimiseDisjuncts :: AllSearchResults constraint -> AllSearchResults constraint
+    optimiseDisjuncts allDisjuncts = do
+      DisjunctAll $ mergeNonEmptyKeyValues (fmap (Conjunct . ConjunctAll) . sequence) (unDisjunctAll allDisjuncts)
+
+findAllConstraintsConjunct ::
+  forall m constraint.
+  (MonadCompile m) =>
+  ConjunctAll (AllSearchResults constraint) ->
+  m (AllSearchResults constraint)
+findAllConstraintsConjunct conjuncts = return $ combineConjuncts conjuncts
+  where
+    combineConjuncts :: ConjunctAll (AllSearchResults constraint) -> AllSearchResults constraint
+    combineConjuncts = foldr1 $ conjunctDisjuncts (\(a, b) (c, d) -> (a <> c, unionMaybeWith andBoolExpr b d))

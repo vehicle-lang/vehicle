@@ -706,7 +706,7 @@
                         },
                         "coefficients": [
                           [
-                            94,
+                            10,
                             {
                               "numerator": 1100,
                               "denominator": 1
@@ -754,7 +754,7 @@
                         },
                         "coefficients": [
                           [
-                            92,
+                            8,
                             {
                               "numerator": 392699,
                               "denominator": 62500

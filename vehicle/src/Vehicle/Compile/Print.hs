@@ -27,6 +27,7 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Text (Text)
+import Data.Tuple (swap)
 import GHC.Exts qualified as GHC (Constraint)
 import GHC.TypeLits
 import Prettyprinter (fill)
@@ -44,9 +45,10 @@ import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.Code.Value
 import Vehicle.Data.QuantifiedVariable (NetworkIOElementVariable, NetworkIOVariable, TensorVariable, TensorVariableLike (..), UserVariable, variableValue)
-import Vehicle.Data.Tensor (RatTensor, Tensor, prettyTensor)
+import Vehicle.Data.Tensor (RatTensor, Tensor, prettyTensor, pattern ZeroDimTensor)
 import Vehicle.Syntax.AST.Expr qualified as S
 import Vehicle.Syntax.Print
+import Vehicle.Verify.QueryFormat.Interface (QueryAssertion (..))
 import Vehicle.Verify.Specification (CompilationStep (..))
 
 --------------------------------------------------------------------------------
@@ -235,6 +237,8 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
     'Branch
       (StrategyFor tags (TensorVariable `In` ctx))
       (StrategyFor tags (LinearExpr TensorVariable RatTensor `In` ctx))
+  StrategyFor tags (QueryAssertion variable `In` ctx) =
+    StrategyFor tags (variable `In` ctx)
   ------------
   -- Pretty --
   ------------
@@ -447,6 +451,16 @@ instance
       prettyUsing @restVar (var, ctx)
         <+> "->"
         <+> prettyUsing @('Functor restVar) (childVars, ctx)
+
+instance
+  ( PrettyUsing restVar (variable `In` ctx)
+  ) =>
+  PrettyUsing restVar (QueryAssertion variable `In` ctx)
+  where
+  prettyUsing (QueryAssertion {..}, ctx) = do
+    let prettyVar u = prettyUsing @restVar (u, ctx)
+    let varCoeffs = NonEmpty.toList (fmap swap lhs)
+    prettyLinearExprLike prettyVar pretty varCoeffs (ZeroDimTensor rhs) <> pretty rel <+> "0"
 
 --------------------------------------------------------------------------------
 -- 'DescopeWithNames

@@ -283,7 +283,7 @@
                         },
                         "coefficients": [
                           [
-                            18,
+                            3,
                             {
                               "numerator": 1,
                               "denominator": 1
@@ -631,7 +631,7 @@
                         },
                         "coefficients": [
                           [
-                            18,
+                            3,
                             {
                               "numerator": 1,
                               "denominator": 1
@@ -979,7 +979,7 @@
                         },
                         "coefficients": [
                           [
-                            18,
+                            3,
                             {
                               "numerator": 1,
                               "denominator": 1
@@ -1327,7 +1327,7 @@
                         },
                         "coefficients": [
                           [
-                            18,
+                            3,
                             {
                               "numerator": 1,
                               "denominator": 1
