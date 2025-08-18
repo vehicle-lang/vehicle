@@ -560,7 +560,7 @@ compileNatLiteral :: Int -> Code
 compileNatLiteral i = annotate ([RequireImport MathcompBootSsrnat], maxPrecedence) $ pretty i <> "%N"
 
 compileTensorLiteral :: (a -> Code) -> Tensor a -> Code
-compileTensorLiteral compileElement t = annotate ([RequireImport VehicleTensor], maxPrecedence) $ case (shapeOf t, toList t) of
+compileTensorLiteral compileElement t = annotate ([RequireImport VehicleTensor], 200) $ case (shapeOf t, toList t) of
   ([], [x]) -> "const_t" <+> compileElement x
   _ -> foldMapTensor compileElement toTensor t
   where

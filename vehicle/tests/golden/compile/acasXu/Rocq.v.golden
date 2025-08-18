@@ -72,7 +72,7 @@ Definition scaleCOCOutput (x : 'nT[R]_(nil)) : 'nT[R]_(nil) := x - const_t (1879
 
 Definition intruderDistantAndSlower (x : UnnormalisedInputVector) : Prop := (x^^distanceToIntruder >= const_t (55947691 / 1000 : R)) /\ ((x^^speed >= const_t (1145 : R)) /\ (x^^intruderSpeed <= const_t (60 : R))).
 
-Axiom property1 : forall x, validInput x /\ intruderDistantAndSlower x -> (normAcasXu x)^^clearOfConflict <= scaleCOCOutput const_t (1500 : R).
+Axiom property1 : forall x, validInput x /\ intruderDistantAndSlower x -> (normAcasXu x)^^clearOfConflict <= scaleCOCOutput (const_t (1500 : R)).
 
 Axiom property2 : forall x, validInput x /\ intruderDistantAndSlower x -> ~ maximalScore clearOfConflict x.
 
