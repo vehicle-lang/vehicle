@@ -1,6 +1,7 @@
-From mathcomp Require Import seq fintype eqtype reals ssrbool order.
+From mathcomp Require Import ssreflect seq fintype eqtype reals ssrbool order bigop ssrfun matrix.
 From vehicle Require Import tensor.
 Open Scope ring_scope.
+Open Scope big_scope.
 (* Vehicle standard library definitions *)
 
 Definition forallInList {A} (f : A -> Prop) (s : seq A):= foldr and True (map f s).
@@ -11,16 +12,25 @@ Definition existsIndex {n} (f : 'I_n -> Prop) := exists x, f x.
 
 Definition forallIndex {n} (f : 'I_n -> Prop) := forall x, f x.
 
-(* Section Tensor.
+Definition map2_tensor {X Y Z us ds} (f : X -> Y -> Z) (t : 'T[X]_(us, ds)) (v : 'T[Y]_(us, ds)) :=
+    @Tensor us ds Z (map2_mx f (\val t) (\val v)).
 
-Context {R : realType}.
-Context {ds : seq nat}.
+Definition reduceAnd {us ds} (t : 'T[bool]_(us, ds)) : bool :=
+    [forall ij, \val t ij.1 ij.2].
 
-Definition eqRatTensorReduced (xs ys : 'T[R]_(ds, [::])) := reduceAnd (zipWith eq_op xs ys).
-Definition neRatTensorReduced (xs ys : tensor R ds) :=  ~~ (eqRatTensorReduced xs ys).
-Definition leRatTensorReduced (xs ys : tensor R ds) := reduceAnd (zipWith Order.le xs ys).
-Definition ltRatTensorReduced (xs ys : tensor R ds) := reduceAnd (zipWith Order.lt xs ys).
-Definition geRatTensorReduced (xs ys : tensor R ds) := reduceAnd (zipWith Order.ge xs ys).
-Definition gtRatTensorReduced (xs ys : tensor R ds) := reduceAnd (zipWith Order.gt xs ys).
+Section Tensor.
 
-End Tensor. *)
+Open Scope order_scope.
+
+Context {R : realType} {us ds : seq.+1}.
+
+Notation reduceAndMap r := [rel xs ys | reduceAnd (@map2_tensor R R bool us ds r xs ys)].
+
+Definition eqRatTensorReduced := reduceAndMap [rel x y | x == y].
+Definition neRatTensorReduced := reduceAndMap [rel x y | x != y].
+Definition leRatTensorReduced := reduceAndMap [rel x y | x <= y].
+Definition ltRatTensorReduced := reduceAndMap [rel x y | x < y].
+Definition geRatTensorReduced := reduceAndMap [rel x y | x >= y].
+Definition gtRatTensorReduced := reduceAndMap [rel x y | x > y].
+
+End Tensor.

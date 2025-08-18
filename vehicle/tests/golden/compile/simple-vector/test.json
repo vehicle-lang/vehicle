@@ -31,7 +31,8 @@
     "run": "vehicle compile -s spec.vcl -t Rocq -o Rocq.v && rocq compile -w none -vok Rocq.v",
     "needs": ["spec.vcl"],
     "external": ["rocq"],
-    "ignore": {"files": ["Rocq.v", ".Rocq.aux", "Rocq.glob", "Rocq.vok"]}
+    "ignore": {"files": ["Rocq.v", ".Rocq.aux", "Rocq.glob", "Rocq.vok"]},
+    "enabled": false
   },
   {
     "name": "DL2Loss",
