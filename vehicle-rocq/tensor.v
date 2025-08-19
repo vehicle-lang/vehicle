@@ -76,9 +76,9 @@ Reserved Notation "[ 'tensor' `_= x ; .. ; xn ]"
 Reserved Notation "t .[::]".
 
 
-Structure pseq_of : Type := PSeq {pval :> seq nat; _ : all (leq 1) pval}.
+Structure pseq_of : Type := PSeq {psval :> seq nat; _ : all (leq 1) psval}.
 
-HB.instance Definition _ := [isSub for pval].
+HB.instance Definition _ := [isSub for psval].
 
 Notation "seq.+1" := pseq_of.
 
@@ -124,7 +124,7 @@ HB.instance Definition _ (R : finType) := [Finite of 'T[R] by <:].
 
 Lemma nmod_closed {m n} (R : nmodType) : @nmod_closed 'M[R]_(n, m) predT.
 Proof. by []. Qed.
-HB.instance Definition _ (R : nmodType) := SubChoice_isSubNmodule.Build
+HB.instance Definition _ (R : nmodType) := SubChoice_isSubNmodule.Build 
   _ _ 'T[R] (nmod_closed R).
 
 Lemma zmod_closed {m n} (R : zmodType) : @zmod_closed 'M[R]_(n, m) predT.
@@ -233,7 +233,7 @@ HB.instance Definition _ {R : pzRingType} := GRing.Zmodule_isPzRing.Build
 HB.instance Definition _ {R : comPzRingType} := 
   GRing.PzRing_hasCommutativeMul.Build 'T[R] multC.
 
-Lemma prod_gt_0 (xs : seq.+1) : 0 < \prod_(e <- xs) e.
+Lemma prodn_gt_0 (xs : seq.+1) : 0 < \prod_(e <- xs) e.
 Proof.
 case: xs; elim=> [?|x xs' IH /=/andP [x_gt0 xs'_gt0]]; first by rewrite big_nil.
 rewrite big_cons muln_gt0; apply/andP; split=>//.
@@ -244,8 +244,8 @@ Lemma onet_neq0 {R : nzSemiRingType} : (1%R : 'T[R]) != 0%R.
 Proof.
 rewrite /GRing.one/GRing.zero /= /GRing.zero.
 apply/eqP. case. apply/matrixP. rewrite /const_mx/eqrel.
-case: (\prod_(u <- _)  u) (prod_gt_0 us)=> [//|n0 _] /(_ ord0).
-case: (\prod_(d <- _)  d) (prod_gt_0 ds)=> [//|n1 _] /(_ ord0).
+case: (\prod_(u <- _)  u) (prodn_gt_0 us)=> [//|n0 _] /(_ ord0).
+case: (\prod_(d <- _)  d) (prodn_gt_0 ds)=> [//|n1 _] /(_ ord0).
 by rewrite unlock /fun_of_matrix 2!ffunE; apply/eqP/oner_neq0.
 Qed.
 
@@ -319,7 +319,7 @@ Definition const_tK : cancel const_t tensor_nil.
 Proof. 
 move=> t; rewrite /tensor_nil/const_t/const_mx. 
 by rewrite matrix_of_fun.unlock /fun_of_matrix ffunE.
-Qed.
+Qed
 
 Definition tensor_nilK : cancel tensor_nil const_t.
 Proof.
@@ -342,12 +342,7 @@ Qed.
 
 Lemma tensor_nil_neqP {R : eqType} t u
   : t.[::] != u.[::] :> R <-> t != u.
-Proof.
-split=> [/eqP t_neq_u|].
-  by apply/eqP=> t_eq_u; move: t_neq_u; rewrite t_eq_u.
-rewrite {1}/eq_op/==> /eqP/matrixP t_neq_u_mx.
-by apply/eqP=> ?; apply: t_neq_u_mx=> i j; rewrite !ord_prod_nil. 
-Qed.
+Proof. by split; apply/contra_neq; move/tensor_nil_eqP. Qed.
 
 Open Scope order_scope.
 Import Order.POrderTheory.
