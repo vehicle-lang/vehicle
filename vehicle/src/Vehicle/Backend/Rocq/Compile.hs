@@ -221,13 +221,14 @@ insertNotationArgs rawOp as = concatWith (<>) <$> go rawOp
   where
     go :: Text -> Maybe [Code]
     go opText = case Text.break (== '$') opText of
-      (_, Text.Empty) -> Just [pretty opText]
-      (prefix, _ Text.:< nText Text.:< maybeSuffix) -> do
+      (_, t) | Text.null t -> Just [pretty opText]
+      (prefix, t) -> do
+        (_, t') <- Text.uncons t
+        (nText, maybeSuffix) <- Text.uncons t'
         let n = Text.Read.digitToInt nText
         arg <- atMaybe as n
         suffix <- go maybeSuffix
         return $ pretty prefix : arg : suffix
-      _ -> Nothing
 
     atMaybe :: [a] -> Int -> Maybe a
     atMaybe [] _ = Nothing
