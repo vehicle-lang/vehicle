@@ -19,19 +19,16 @@ import Vehicle.Verify.Specification.IO (readPropertyResult, readSpecificationCac
 --------------------------------------------------------------------------------
 -- Proof validation
 
-data ValidateOptions = ValidateOptions
-  { verificationCache :: FilePath,
-    outputAsJSON :: Bool
-  }
+newtype ValidateOptions = ValidateOptions {verificationCache :: FilePath}
   deriving (Eq, Show)
 
-validate :: (MonadStdIO IO) => LoggingSettings -> ValidateOptions -> IO ()
-validate loggingSettings checkOptions = runLoggerT loggingSettings $ do
+validate :: (MonadStdIO IO) => LoggingSettings -> OutputAsJSON -> ValidateOptions -> IO ()
+validate loggingSettings outputAsJSON checkOptions = runLoggerT loggingSettings $ do
   -- If the user has specified no logging target for check mode then
   -- default to command-line.
   status <- checkSpecificationStatus checkOptions
   let outputDocs =
-        if outputAsJSON checkOptions
+        if outputAsJSON
           then pretty $ unpack $ encodePretty' prettyJSONConfig $ toJSON status
           else pretty status
 

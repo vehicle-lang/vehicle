@@ -16,13 +16,12 @@ import Vehicle.TypeCheck (TypeCheckOptions (..), runCompileMonad, typeCheckUserP
 
 data ListOptions = ListOptions
   { listEntities :: ListableEntities,
-    specification :: FilePath,
-    outputAsJSON :: Bool
+    specification :: FilePath
   }
   deriving (Eq, Show)
 
-list :: (MonadStdIO IO) => LoggingSettings -> ListOptions -> IO ()
-list loggingSettings ListOptions {..} = runCompileMonad loggingSettings $ do
+list :: (MonadStdIO IO) => LoggingSettings -> OutputAsJSON -> ListOptions -> IO ()
+list loggingSettings outputAsJSON ListOptions {..} = runCompileMonad loggingSettings outputAsJSON $ do
   -- always typecheck first
   (imports, typedProg) <-
     typeCheckUserProg $

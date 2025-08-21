@@ -67,12 +67,14 @@ runVehicle Options {..} = do
             fatalError
               "No mode provided. Please use one of 'check', 'compile','verify', 'check', 'export', 'list'"
           Just mode -> case mode of
-            Check options -> typeCheck logSettings options
-            Compile options -> compile logSettings options
-            Verify options -> verify logSettings options
-            Validate options -> validate logSettings options
-            Export options -> export logSettings options
-            List options -> list logSettings options
+            Check options -> typeCheck logSettings outputAsJson options
+            Compile options -> compile logSettings outputAsJson options
+            Verify options -> verify logSettings outputAsJson options
+            Validate options -> validate logSettings outputAsJson options
+            Export options -> export logSettings outputAsJson options
+            List options -> list logSettings outputAsJson options
+            where
+              outputAsJson = outputAsJSON globalOptions
 
 withLogger :: (MonadStdIO IO) => GlobalOptions -> (LoggingSettings -> IO a) -> IO a
 withLogger GlobalOptions {logFile, loggingPass, loggingLevel, noWarnings} action = do

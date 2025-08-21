@@ -43,8 +43,8 @@ data TypeCheckOptions = TypeCheckOptions
   }
   deriving (Eq, Show)
 
-typeCheck :: (MonadStdIO IO) => LoggingSettings -> TypeCheckOptions -> IO ()
-typeCheck loggingSettings options@TypeCheckOptions {..} = runCompileMonad loggingSettings $ do
+typeCheck :: (MonadStdIO IO) => LoggingSettings -> OutputAsJSON -> TypeCheckOptions -> IO ()
+typeCheck loggingSettings outputAsJSON options@TypeCheckOptions {..} = runCompileMonad loggingSettings outputAsJSON $ do
   (imports, typedProg) <- typeCheckUserProg options
   let mergedProg = mergeImports imports typedProg
   case secondaryTypeSystem of
@@ -148,12 +148,16 @@ runCompileMonad ::
   forall m a.
   (MonadStdIO m) =>
   LoggingSettings ->
+  OutputAsJSON ->
   (forall n. (MonadStdIO n, MonadLogger n) => ExceptT CompileError n a) ->
   m a
-runCompileMonad loggingSettings x = do
+runCompileMonad loggingSettings _outputAsJSON x = do
   errorOrResult <- runLoggerT loggingSettings (logCompileError x)
   case errorOrResult of
-    Left err -> fatalError $ pretty $ details err
+    Left err -> do
+      let vehicleError = details err
+      -- let outputError = if outputAsJSON then pretty $ unpack $ encodePretty' prettyJSONConfig $ toJSON vehicleError else pretty vehicleError
+      fatalError $ pretty vehicleError
     Right val -> return val
 
 convertBackToStandardBuiltin ::

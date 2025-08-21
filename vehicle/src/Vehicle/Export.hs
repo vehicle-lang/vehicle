@@ -17,14 +17,14 @@ data ExportOptions = ExportOptions
   }
   deriving (Eq, Show)
 
-export :: (MonadStdIO IO) => LoggingSettings -> ExportOptions -> IO ()
-export loggingSettings ExportOptions {..} = do
+export :: (MonadStdIO IO) => LoggingSettings -> OutputAsJSON -> ExportOptions -> IO ()
+export loggingSettings outputAsJSON ExportOptions {..} = do
   let cacheIndexFile = specificationCacheIndexFileName verificationCache
   SpecificationCacheIndex {..} <- liftIO $ readSpecificationCacheIndex cacheIndexFile
   let spec = filePath $ specificationSummary resourcesIntegrityInfo
   let resources = reparseResources resourcesIntegrityInfo
 
-  compile loggingSettings $
+  compile loggingSettings outputAsJSON $
     CompileOptions
       { target = ITP target,
         specification = spec,
@@ -34,6 +34,5 @@ export loggingSettings ExportOptions {..} = do
         parameterValues = parameters resources,
         output = output,
         moduleName = moduleName,
-        verificationCache = Just verificationCache,
-        outputAsJSON = False
+        verificationCache = Just verificationCache
       }

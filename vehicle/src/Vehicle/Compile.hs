@@ -44,14 +44,13 @@ data CompileOptions = CompileOptions
     parameterValues :: ParameterValues,
     output :: Maybe FilePath,
     moduleName :: Maybe String,
-    verificationCache :: Maybe FilePath,
-    outputAsJSON :: Bool
+    verificationCache :: Maybe FilePath
   }
   deriving (Eq, Show)
 
-compile :: (MonadStdIO IO) => LoggingSettings -> CompileOptions -> IO ()
-compile loggingSettings options@CompileOptions {..} =
-  runCompileMonad loggingSettings $ do
+compile :: (MonadStdIO IO) => LoggingSettings -> OutputAsJSON -> CompileOptions -> IO ()
+compile loggingSettings outputAsJSON options@CompileOptions {..} =
+  runCompileMonad loggingSettings outputAsJSON $ do
     (imports, prog) <-
       typeCheckUserProg $
         TypeCheckOptions

@@ -34,20 +34,20 @@ data VerifyOptions = VerifyOptions
   }
   deriving (Eq, Show)
 
-verify :: (MonadStdIO IO) => LoggingSettings -> VerifyOptions -> IO ()
-verify loggingSettings options@VerifyOptions {..} = do
+verify :: (MonadStdIO IO) => LoggingSettings -> OutputAsJSON -> VerifyOptions -> IO ()
+verify loggingSettings outputAsJSON options@VerifyOptions {..} = do
   validQueryFolder <- isValidQueryFolder specification
   if validQueryFolder
     then verifyQueries loggingSettings specification verifierID verifierLocation verifierExtraArgs noSatPrint
     else
       if takeExtension specification /= specificationFileExtension
         then fatalError (invalidTargetError specification)
-        else compileAndVerifyQueries loggingSettings options $ \folder ->
+        else compileAndVerifyQueries loggingSettings outputAsJSON options $ \folder ->
           verifyQueries loggingSettings folder verifierID verifierLocation verifierExtraArgs noSatPrint
 
 -- | Compiles the specification to a temporary directory and then tries to verify it.
-compileAndVerifyQueries :: (MonadStdIO IO) => LoggingSettings -> VerifyOptions -> (FilePath -> IO ()) -> IO ()
-compileAndVerifyQueries loggingSettings VerifyOptions {..} verifyCommand = do
+compileAndVerifyQueries :: (MonadStdIO IO) => LoggingSettings -> OutputAsJSON -> VerifyOptions -> (FilePath -> IO ()) -> IO ()
+compileAndVerifyQueries loggingSettings outputAsJSON VerifyOptions {..} verifyCommand = do
   let queryFormat = VerifierQueries $ verifierQueryFormatID $ verifiers verifierID
 
   let inFolder = case verificationCache of
@@ -55,7 +55,7 @@ compileAndVerifyQueries loggingSettings VerifyOptions {..} verifyCommand = do
         Just folder -> \f -> f folder
 
   inFolder $ \tempDir -> do
-    compile loggingSettings $
+    compile loggingSettings outputAsJSON $
       CompileOptions
         { target = queryFormat,
           specification = specification,
@@ -63,7 +63,6 @@ compileAndVerifyQueries loggingSettings VerifyOptions {..} verifyCommand = do
           output = Just tempDir,
           moduleName = Nothing,
           verificationCache = verificationCache,
-          outputAsJSON = False,
           ..
         }
 

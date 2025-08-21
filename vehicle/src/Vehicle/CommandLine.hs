@@ -82,7 +82,8 @@ data GlobalOptions = GlobalOptions
     logFile :: Maybe FilePath,
     loggingLevel :: LoggingLevel,
     loggingPass :: Maybe CompilerPass,
-    noWarnings :: Bool
+    noWarnings :: Bool,
+    outputAsJSON :: OutputAsJSON
   }
   deriving (Eq, Show)
 
@@ -93,7 +94,8 @@ defaultGlobalOptions =
       logFile = Nothing,
       loggingLevel = defaultLoggingLevel,
       loggingPass = Nothing,
-      noWarnings = False
+      noWarnings = False,
+      outputAsJSON = False
     }
 
 data ModeOptions
@@ -164,6 +166,7 @@ globalOptionsParser =
     <*> loggingLevelParser
     <*> loggingPassParser
     <*> noWarningsParser
+    <*> outputAsJSONParser
 
 --------------------------------------------------------------------------------
 -- Modes
@@ -215,7 +218,6 @@ listParser =
   ListOptions
     <$> listModeParser
     <*> specificationParser
-    <*> outputAsJSONParser
 
 listParserInfo :: ParserInfo ModeOptions
 listParserInfo = info (List <$> listParser) listDescription
@@ -240,7 +242,6 @@ compileParser =
     <*> outputParser
     <*> modulePrefixOption
     <*> compileCacheParser
-    <*> outputAsJSONParser
 
 compileParserInfo :: ParserInfo ModeOptions
 compileParserInfo = info (Compile <$> compileParser) compileDescription
@@ -284,7 +285,6 @@ validateParser :: Parser ValidateOptions
 validateParser =
   ValidateOptions
     <$> validateCacheParser
-    <*> outputAsJSONParser
 
 validateParserInfo :: ParserInfo ModeOptions
 validateParserInfo = info (Validate <$> validateParser) validateDescription
@@ -504,7 +504,7 @@ outputParser =
         <> metavar "FILE"
         <> help "Output location for compiled file(s). Defaults to stdout if not provided."
 
-outputAsJSONParser :: Parser Bool
+outputAsJSONParser :: Parser OutputAsJSON
 outputAsJSONParser =
   switch $
     long "json"

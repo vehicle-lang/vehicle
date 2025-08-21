@@ -102,8 +102,7 @@ listModeTests =
                 List $
                   ListOptions
                     { listEntities = ExternalResources,
-                      specification = "test/spec.vcl",
-                      outputAsJSON = False
+                      specification = "test/spec.vcl"
                     }
           },
       parserTest
@@ -117,8 +116,7 @@ listModeTests =
                 List $
                   ListOptions
                     { listEntities = Properties,
-                      specification = "test/spec.vcl",
-                      outputAsJSON = False
+                      specification = "test/spec.vcl"
                     }
           }
     ]
@@ -136,8 +134,7 @@ validateModeTests =
               Just $
                 Validate $
                   ValidateOptions
-                    { verificationCache = "local/outputFolder",
-                      outputAsJSON = False
+                    { verificationCache = "local/outputFolder"
                     }
           }
     ]
