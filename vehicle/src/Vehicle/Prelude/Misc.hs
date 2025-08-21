@@ -12,7 +12,7 @@ import Data.Graph (Edge, Vertex, buildG, topSort)
 import Data.Hashable (Hashable)
 import Data.IntMap (IntMap, updateLookupWithKey)
 import Data.List qualified as List
-import Data.List.NonEmpty (NonEmpty (..), singleton)
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Map (Map)
 import Data.Map qualified as Map
@@ -269,7 +269,7 @@ mergeTheses f g = \case
 
 mergeNonEmptyKeyValues :: (Ord a) => (NonEmpty b -> b) -> NonEmpty (a, b) -> NonEmpty (a, b)
 mergeNonEmptyKeyValues f xs = do
-  let results = Map.toList $ Map.fromListWith (<>) $ NonEmpty.toList $ fmap (second singleton) xs
+  let results = Map.toList $ Map.fromListWith (<>) $ NonEmpty.toList $ fmap (second (:| [])) xs
   case results of
     [] -> developerError "impossible"
     u : us -> fmap (second f) (u :| us)
