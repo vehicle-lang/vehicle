@@ -11,10 +11,12 @@ import Vehicle.Compile.Context.Free (MonadFreeContext, getFreeEnv)
 import Vehicle.Compile.Context.Name (MonadNameContext, getNameContext)
 import Vehicle.Compile.Error
 import Vehicle.Compile.LiftIf
-import Vehicle.Compile.Normalise.NBE (evalApp)
+import Vehicle.Compile.Normalise.NBE (eval, evalApp)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
+import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Interface.Normalise
+import Vehicle.Data.Builtin.Interface.TensorFusion (fuseReduceAndTensor)
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
@@ -44,12 +46,13 @@ unblockBoolExpr ::
 unblockBoolExpr actions expr = do
   ctx <- getNameContext
   let exprDoc = prettyFriendly (WithContext expr ctx)
-  logDebug MaxDetail $ line <> "unblocking" <+> squotes exprDoc
+  logDebug MaxDetail $ line <> "unblocking" <+> exprDoc
   incrCallDepth
 
   unblockedExpr <- unblockBoolValue actions expr
-  let unblockedExprDoc = prettyFriendly (WithContext unblockedExpr ctx)
 
+  newCtx <- getNameContext
+  let unblockedExprDoc = prettyFriendly (WithContext unblockedExpr newCtx)
   when (layoutAsString exprDoc == layoutAsString unblockedExprDoc) $
     developerError $
       "Failed to unblock expression:" <+> exprDoc
@@ -67,11 +70,12 @@ tryPurifyAssertion ::
   TensorOp2Args (Value Builtin) ->
   m (Either (Value Builtin) (TensorOp2Args (Value Builtin)))
 tryPurifyAssertion actions op args = do
-  unblockedExpr <- unblockTensorOp2 (unblockRatTensorValue actions DesiredDimensions) (evalCompareRatTensor op) args
+  let mkCompare newArgs = return $ fromBoolValue $ VCompareRatTensor (op, newArgs)
+  unblockedExpr <- unblockTensorOp2 (unblockRatTensorValue actions DesiredDimensions) mkCompare args
 
   logDebugM MaxDetail $ do
     ctx <- getNameContext
-    let unblockedAssertionDoc = prettyVerbose (WithContext unblockedExpr ctx)
+    let unblockedAssertionDoc = prettyFriendly (WithContext unblockedExpr ctx)
     return ("result:" <+> unblockedAssertionDoc)
 
   case findImpurity unblockedExpr of
@@ -91,8 +95,6 @@ findImpurity :: Value Builtin -> Either Impurity (TensorOp2Args (Value Builtin))
 findImpurity expr = case toBoolValue expr of
   VBoolIf args -> Left $ LiftedIf args
   VCompareRatTensor (op, args) -> maybe (Right args) Left $ findMinMaxImpurity op args
-  -- The purification may have caused the comparison itself to reduce to comparisons
-  -- over its elements and/or tensor literals.
   _ -> Left $ ReducedComparison expr
   where
     findMinMaxImpurity :: ComparisonOp -> TensorOp2Args (Value Builtin) -> Maybe Impurity
@@ -138,12 +140,12 @@ unblockBoolValue actions expr = do
     VNot {} -> return expr
     VBoolIf {} -> return expr
     VQuantifyRatTensor {} -> return expr
+    VCompareRatTensor {} -> return expr
     -- Recursively unblock
-    VReduceAndTensor args -> unblockReduceTensor unblockTensor evalReduceAndTensor args
+    VReduceAndTensor args -> unblockReduceAndTensor unblockTensor args
     VReduceOrTensor args -> unblockReduceTensor unblockTensor evalReduceOrTensor args
     VCompareIndex (op, args) -> unblockIndexOp2 (evalCompareIndex op) args
     VCompareNat (op, args) -> unblockOp2 return (evalCompareNat op) args
-    VCompareRatTensor (op, args) -> unblockTensorOp2 (unblockRatTensorValue actions DesiredDimensions) (evalCompareRatTensor op) args
     VBoolAt args -> unblockAtTensor unblockTensor args
   where
     unblockTensor = unblockBoolMultiDimTensorValue actions
@@ -280,6 +282,22 @@ unblockReduceTensor unblock evalFn (TensorOp2Args ds e xs) = do
   liftIf xs' $ \xs'' ->
     evalFn $ TensorOp2Args ds e xs''
 
+unblockReduceAndTensor ::
+  (MonadUnblock m) =>
+  UnblockingFunction m ->
+  TensorReductionArgs (Value Builtin) ->
+  m (Value Builtin)
+unblockReduceAndTensor unblock args = do
+  fusionResult <- fuseReduceAndTensor args
+  case getExpr accessReduceAnd fusionResult of
+    Nothing -> return fusionResult
+    Just newArgs@(TensorOp2Args _ _ tensor) ->
+      case getExpr accessCompareRatTensorPointwise tensor of
+        Just (op, TensorOp2Args (argExpr -> ICons _ d ds) xs ys) -> do
+          let compareArgs = TensorReduceComparisonArgs (implicitIrrelevant d) (implicitIrrelevant ds) xs ys
+          return $ mkExpr accessCompareRatTensorReduced (op, compareArgs)
+        _ -> unblockReduceTensor unblock evalReduceAndTensor newArgs
+
 unblockConstTensor ::
   (MonadUnblock m) =>
   ConstTensorArgs (Value Builtin) ->
@@ -311,7 +329,9 @@ unblockAtTensor unblock (AtTensorArgs tElem d ds xs i) = do
   i' <- unblockIndexValue i
   liftIf xs' $ \xs'' ->
     liftIf i' $ \i'' -> do
-      evalAtTensor $ AtTensorArgs tElem d ds xs'' i''
+      freeEnv <- getFreeEnv
+      nameCtx <- getNameContext
+      evalAtTensor nameCtx (evalApp freeEnv) (eval freeEnv) $ AtTensorArgs tElem d ds xs'' i''
 
 unblockForeachTensor ::
   (MonadUnblock m) =>
@@ -321,7 +341,8 @@ unblockForeachTensor (ForeachTensorArgs tElem d ds fn) = do
   d' <- unblockNatValue d
   liftIf d' $ \d'' -> do
     freeEnv <- getFreeEnv
-    evalForeachTensor (evalApp freeEnv) $ ForeachTensorArgs tElem d'' ds fn
+    nameCtx <- getNameContext
+    unoptimisedEvalForeachTensor nameCtx (evalApp freeEnv) $ ForeachTensorArgs tElem d'' ds fn
 
 --------------------------------------------------------------------------------
 -- Unblocking operations

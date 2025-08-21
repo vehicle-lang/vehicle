@@ -26,7 +26,7 @@ import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Loss (LossBuiltin)
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.Code.Interface
-import Vehicle.Data.Code.Value (Closure (..), Value (..), boundContextToEnv)
+import Vehicle.Data.Code.Value (Closure (..), Value (..), boundContextToEnv, emptyBoundEnv)
 import Vehicle.Data.DSL
 import Vehicle.Data.Tensor (pattern ZeroDimTensor)
 import Vehicle.Syntax.Builtin
@@ -99,7 +99,7 @@ compileLogicField logicID dsl impl field =
     logDebug MaxDetail $ "tensor-result:" <+> prettyFriendlyEmptyCtx tensorExpr <> line
 
     let fieldProv = (fieldIdentifier logicID field, mempty)
-    lossTensorExpr <- runFreshFreeContextT (Proxy @Builtin) $ runFreshNameContextT $ runMonadLogicT (logicID, mempty) fieldProv $ convertExpr mempty tensorExpr
+    lossTensorExpr <- runFreshFreeContextT (Proxy @Builtin) $ runFreshNameContextT $ runMonadLogicT (logicID, mempty) fieldProv $ convertExpr emptyBoundEnv tensorExpr
     logDebug MaxDetail $ "loss-tensor-result:" <+> prettyFriendlyEmptyCtx tensorExpr
     return $ Map.insert field lossTensorExpr impl
 
@@ -119,7 +119,7 @@ compileBoolLiteral ::
   m (Expr Builtin)
 compileBoolLiteral field dsl = do
   let expr = lookupLogicField field dsl
-  value <- eval mempty mempty expr
+  value <- eval mempty mempty emptyBoundEnv expr
   case value :: Value Builtin of
     IRatLiteral l -> return $ Builtin mempty (BuiltinConstructor (RatTensorLiteral (ZeroDimTensor l)))
     _ -> developerError "Boolean literals must currently be converted to Rat literals"
@@ -172,9 +172,9 @@ extractOp1Body ::
   (Value Builtin -> NameContextT (ExceptT (Value Builtin) m) a) ->
   m a
 extractOp1Body dsl field process = do
-  op1 <- eval mempty mempty (lookupLogicField field dsl)
+  op1 <- eval mempty mempty emptyBoundEnv (lookupLogicField field dsl)
   case op1 of
-    VLam binder (Closure [] body) -> runBodyExtraction (field, op1) process [void binder] body
+    VLam binder (Closure _env body) -> runBodyExtraction (field, op1) process [void binder] body
     fn -> developerError $ "Expecting arity 1 function for" <+> pretty field <> "but found" <+> prettyFriendlyEmptyCtx fn
 
 extractOp2Body ::
@@ -184,9 +184,9 @@ extractOp2Body ::
   (Value Builtin -> NameContextT (ExceptT (Value Builtin) m) a) ->
   m a
 extractOp2Body dsl field process = do
-  op2 <- eval mempty mempty (lookupLogicField field dsl)
+  op2 <- eval mempty mempty emptyBoundEnv (lookupLogicField field dsl)
   case op2 of
-    VLam2 binder1 [] binder2 body -> runBodyExtraction (field, op2) process [void binder2, void binder1] body
+    VLam2 binder1 _env binder2 body -> runBodyExtraction (field, op2) process [void binder2, void binder1] body
     fn -> developerError $ "Expecting arity 2 function for" <+> pretty field <> "but found" <+> prettyFriendlyEmptyCtx fn
 
 runBodyExtraction ::
@@ -197,7 +197,7 @@ runBodyExtraction ::
   Expr Builtin ->
   m a
 runBodyExtraction originalFn process ctx body = do
-  bodyValue <- eval mempty (boundContextToEnv ctx) body
+  bodyValue <- eval mempty (toNamedBoundCtx ctx) (boundContextToEnv ctx) body
   let nameCtx = toNamedBoundCtx ctx
   resultOrError <- runExceptT $ runNameContextT nameCtx $ process bodyValue
   case resultOrError of

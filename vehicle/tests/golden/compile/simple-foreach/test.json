@@ -2,16 +2,20 @@
   {
     "name": "TypeCheck",
     "run": "vehicle check -s spec.vcl",
-    "needs": ["spec.vcl"]
+    "needs": [
+      "spec.vcl"
+    ]
   },
   {
     "name": "Marabou",
     "run": "vehicle compile -s spec.vcl -t MarabouQueries -o Marabou.queries/ --network f:fake.onnx",
-    "needs": ["spec.vcl", "fake.onnx"],
+    "needs": [
+      "spec.vcl",
+      "fake.onnx"
+    ],
     "produces": [
+      "Marabou.queries/index.vcl-plan",
       "Marabou.queries/*.txt",
-      "Marabou.queries/index!0.vcl-plan",
-      "Marabou.queries/index!1.vcl-plan",
       "Marabou.queries/safe.vcl-plan"
     ],
     "ignore": {
@@ -22,7 +26,11 @@
   {
     "name": "DL2Loss",
     "run": "vehicle compile -s spec.vcl -t DL2Loss -o DL2Loss.vcl",
-    "needs": ["spec.vcl"],
-    "produces": ["DL2Loss.vcl"]
+    "needs": [
+      "spec.vcl"
+    ],
+    "produces": [
+      "DL2Loss.vcl"
+    ]
   }
 ]

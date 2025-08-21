@@ -99,12 +99,12 @@ isTypeDef decl = do
   case normType of
     -- We don't capitalise things of type `Bool` because they will be lifted
     -- to the type level, only things of type `X -> Bool`.
-    VPi {} -> go 0 normType
+    VPi {} -> go mempty normType
     _ -> return False
   where
-    go :: Lv -> Value DecidabilityBuiltin -> m Bool
+    go :: NamedBoundCtx -> Value DecidabilityBuiltin -> m Bool
     go _ (VBuiltin (DecidabilityBuiltinFunction PropType) []) = return True
-    go lv (VPi binder closure) = do
-      result <- normaliseClosure lv binder closure
-      go (lv + 1) result
+    go ctx (VPi binder closure) = do
+      result <- normaliseClosure ctx binder closure
+      go (nameOf binder : ctx) result
     go _ _ = return False

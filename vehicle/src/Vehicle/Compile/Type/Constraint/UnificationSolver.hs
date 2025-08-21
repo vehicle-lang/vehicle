@@ -261,8 +261,8 @@ solveClosure info (binder1, Closure env1 body1) (binder2, Closure env2 body2) = 
 
   -- Evaluate the normalised bodies of the lambdas
   let lv = boundCtxLv $ infoBoundCtx info
-  nbody1 <- normaliseInEnv (extendEnvWithBound lv binder1 env1) body1
-  nbody2 <- normaliseInEnv (extendEnvWithBound lv binder2 env2) body2
+  nbody1 <- normaliseInEnv (toNamedBoundCtx $ infoBoundCtx info) (extendEnvWithBound lv binder1 env1) body1
+  nbody2 <- normaliseInEnv (toNamedBoundCtx $ infoBoundCtx info) (extendEnvWithBound lv binder2 env2) body2
 
   -- Update the context.
   let updatedInfo = updateInfoUnderBinder info (binder1, binder2)
@@ -367,7 +367,7 @@ pruneMetaDependencies ctx (solvingMetaID, solvingMetaSpine) attemptedSolution = 
             metaInfo <- getMetaInfo m
             case metaSolution metaInfo of
               Just solution -> do
-                go =<< normaliseApp (normalised solution) spine
+                go =<< normaliseApp (toNamedBoundCtx ctx) (normalised solution) spine
               Nothing -> do
                 (deps, _) <- getNormMetaDependencies solvingMetaID solvingMetaSpine
                 (jDeps, remainingSpine) <- getNormMetaDependencies m spine
@@ -425,8 +425,8 @@ createMetaWithRestrictedDependencies ctx meta newDependencies spine = do
     let substMetaExpr = substDBAll 0 (\v -> unIx v `IntMap.lookup` substitution) newMetaExpr
     solveMeta meta substMetaExpr ctx
 
-    normMetaExpr <- normaliseInEnv (boundContextToEnv restrictedContext) newMetaExpr
-    normaliseApp normMetaExpr spine
+    normMetaExpr <- normaliseInEnv (toNamedBoundCtx ctx) (boundContextToEnv restrictedContext) newMetaExpr
+    normaliseApp (toNamedBoundCtx ctx) normMetaExpr spine
 
 updateInfoUnderBinder ::
   ConstraintInfo builtin ->

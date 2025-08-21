@@ -22,7 +22,7 @@ solvePolarityConstraint ::
   WithContext (InstanceConstraint PolarityBuiltin) ->
   m ()
 solvePolarityConstraint constraintWithCtx = do
-  normConstraintWithCtx@(WithContext normConstraint@(Resolve origin _ _ goal) ctx) <- substMetas constraintWithCtx
+  normConstraintWithCtx@(WithContext normConstraint@(Resolve origin _ _ goal) ctx) <- substMetaVariables constraintWithCtx
   logDebugM MaxDetail $ do
     let forcedExpr = goalExpr $ instanceGoal $ objectIn normConstraintWithCtx
     let boundCtx = namedBoundCtxOf $ contextOf normConstraintWithCtx
@@ -80,8 +80,7 @@ solveQuantifierPolarity p q info@(ctx, _) [lam, res] = case lam of
   (VPi binder resPol) -> Just $ do
     binderEq <- createInstanceUnification info (typeOf binder) (VPolarityExpr Unquantified)
     let tc = PolarityRelation $ AddPolarity p q
-    let lv = contextDBLevel ctx
-    resultPolarity <- normaliseClosure lv binder resPol
+    resultPolarity <- normaliseClosure (toNamedBoundCtx $ boundContext ctx) binder resPol
     (_, addConstraint) <- createDerivedInstanceConstraint info Irrelevant (VBuiltin tc (explicit <$> [resultPolarity, res]))
     return $ Progress [binderEq] [addConstraint]
   _ -> Nothing
@@ -138,9 +137,9 @@ solveFunctionPolarity functionPosition info@(ctx, _) [arg, res] = case (arg, res
   (VPi binder1 closure1, VPi binder2 closure2) -> Just $ do
     let tc = PolarityRelation $ FunctionPolarity functionPosition
     (_, binderConstraint) <- createDerivedInstanceConstraint info Irrelevant (VBuiltin tc (explicit <$> [typeOf binder1, typeOf binder2]))
-    let lv = contextDBLevel ctx
-    body1 <- normaliseClosure lv binder1 closure1
-    body2 <- normaliseClosure lv binder2 closure2
+    let namedCtx = toNamedBoundCtx $ boundContext ctx
+    body1 <- normaliseClosure namedCtx binder1 closure1
+    body2 <- normaliseClosure namedCtx binder2 closure2
     (_, bodyConstraint) <- createDerivedInstanceConstraint info Irrelevant (VBuiltin tc (explicit <$> [body1, body2]))
     return $ Progress [] [binderConstraint, bodyConstraint]
   _ -> Nothing

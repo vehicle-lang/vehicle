@@ -8,5 +8,6 @@
   "produces": [
     "Marabou.queries/oppositeFaces.vcl-plan",
     "Marabou.queries/oppositeFaces-query1.txt"
-  ]
+  ],
+  "sizeOnly": ".vcl-plan"
 }

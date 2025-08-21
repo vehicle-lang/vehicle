@@ -94,10 +94,10 @@ removeAllDependencies decl = do
   -- Substitute through the new metas variables through the types of the meta variables
   logCompilerSection2 MaxDetail "substituting metas through solution" $ do
     metaVariableCtx <- getMetaVariableCtx @builtin
-    substMetaVariableCtx <- substMetas metaVariableCtx
+    substMetaVariableCtx <- substMetaVariables metaVariableCtx
     modifyTypeCheckerState (\s -> s {metaVariableCtx = substMetaVariableCtx})
 
-  resultDecl <- substMetas decl
+  resultDecl <- substMetaVariables decl
   logUnsolvedUnknowns (Proxy @builtin)
   return resultDecl
 
@@ -109,7 +109,7 @@ removeInstanceDependencies c@(WithContext constraint ctx) =
   logCompilerSection MaxDetail "Removing dependencies:" $ do
     logDebug MaxDetail $ "Input: " <+> prettyExternal c
     let newCtx = updateConstraintBoundCtx ctx (const mempty)
-    substConstraint <- substMetasAt (boundCtxLv $ boundContextOf ctx) constraint
+    substConstraint <- substMetaVariablesAt (namedBoundCtxOf ctx) constraint
     let result = WithContext substConstraint newCtx
     logDebug MaxDetail $ "Output:" <+> prettyExternal result
     return result
@@ -242,7 +242,7 @@ prependBinderAndSolve decl (meta, binder) =
     solveMeta newMeta solution solutionCtx
 
     -- Substitute the solution through the declaration (have to do this before prepending binders)
-    substDecl <- substMetas decl
+    substDecl <- substMetaVariables decl
 
     -- Compute the telescopes
     let typeBinder = binder

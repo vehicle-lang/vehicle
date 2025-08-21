@@ -66,13 +66,18 @@
                   {
                     "tag": "SolveEquality",
                     "contents": [
-                      1,
-                      [],
+                      0,
+                      [
+                        1
+                      ],
                       {
                         "constantValue": {
                           "tag": "ConstantTensor",
                           "contents": [
-                            [],
+                            [
+                              1,
+                              1
+                            ],
                             {
                               "numerator": 0,
                               "denominator": 1
@@ -81,7 +86,7 @@
                         },
                         "coefficients": [
                           [
-                            3,
+                            2,
                             {
                               "numerator": 1,
                               "denominator": 1
@@ -89,20 +94,6 @@
                           ]
                         ]
                       }
-                    ]
-                  },
-                  {
-                    "tag": "InternalReconstructTensorVariable",
-                    "contents": [
-                      0,
-                      [
-                        [
-                          1,
-                          1
-                        ],
-                        1,
-                        1
-                      ]
                     ]
                   }
                 ]

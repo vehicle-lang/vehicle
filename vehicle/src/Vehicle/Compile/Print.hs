@@ -177,6 +177,7 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   -- To print a `Value` we need to quote it first. Note that we convert it to a `Builtin` representation immediately
   StrategyFor ('Named tags) (Value builtin `In` NamedBoundCtx) = 'QuoteValue (StrategyFor ('Named tags) (Expr Builtin `In` NamedBoundCtx))
   StrategyFor ('Unnamed tags) (Value builtin `In` ctx) = 'DescopeNaively (StrategyFor tags S.Expr)
+  StrategyFor tags (BoundEnv builtin `In` ctx) = StrategyFor tags (Value builtin `In` ctx)
   -------------------
   -- Context setup --
   -------------------
@@ -390,6 +391,29 @@ instance
   PrettyUsing ('DescopeNaively rest) (VProg builtin `In` ctx)
   where
   prettyUsing (e, _ctx) = prettyUsing @rest $ fmap descopeValueNaively e
+
+instance
+  ( PrettyUsing rest (Value builtin `In` ctx),
+    PrintableBuiltin builtin
+  ) =>
+  PrettyUsing rest (BoundEnv builtin `In` ctx)
+  where
+  prettyUsing (env, ctx) = prettyEnv @rest ctx env
+
+prettyEnv :: forall rest builtin ctx a. (PrettyUsing rest (Value builtin `In` ctx)) => ctx -> BoundEnv builtin -> Doc a
+prettyEnv ctx (BoundEnv env) = prettyFlatList $ go env
+  where
+    go :: GenericBoundCtx (GenericBinder (), EnvEntry builtin) -> [Doc a]
+    go = \case
+      [] -> []
+      (binder, value) : rs -> do
+        let valueDoc = goEntry value
+        (pretty (nameOf binder) <+> "=" <+> valueDoc) : go rs
+
+    goEntry :: EnvEntry builtin -> Doc a
+    goEntry = \case
+      Bound v -> "bound" <+> prettyUsing @rest (v, ctx)
+      Unbound lv -> "unbound" <+> pretty lv
 
 -- Linear expression
 

@@ -57,9 +57,7 @@
               "queryAddress": [
                 {
                   "propertyName": "index",
-                  "propertyIndices": [
-                    1
-                  ],
+                  "propertyIndices": [],
                   "propertyID": 0
                 },
                 1

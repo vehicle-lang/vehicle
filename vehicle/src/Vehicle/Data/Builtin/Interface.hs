@@ -34,6 +34,7 @@ data Accessor expr v = Access
   }
 
 class BuiltinHasBoolLiterals builtin where
+  accessBoolTypeBuiltin :: Accessor builtin ()
   accessBoolTensorLitBuiltin :: Accessor builtin (Tensor Bool)
 
   accessNotBuiltin :: Accessor builtin ()
@@ -85,6 +86,7 @@ class BuiltinHasForeach builtin where
   accessForeachVectorBuiltin :: Accessor builtin ()
 
 class (BuiltinHasTensors builtin) => BuiltinHasRatLiterals builtin where
+  accessRatTypeBuiltin :: Accessor builtin ()
   accessRatTensorLitBuiltin :: Accessor builtin (Tensor Rational)
 
   accessNegRatTensorBuiltin :: Accessor builtin ()

@@ -2,7 +2,13 @@
 // and should not be modified manually!
 // Metadata:
 //  - Marabou query format version: unknown
+<<<<<<< HEAD
 //  - Vehicle version: 0.19.0+dev
 x0 = -3.25
 x0 = 3.25
+=======
+//  - Vehicle version: 0.18.0+dev
+x0 <= 3.25
+x0 >= -3.25
+>>>>>>> 7aa32f62 (Perform foreach lifting)
 y0 <= 0.0

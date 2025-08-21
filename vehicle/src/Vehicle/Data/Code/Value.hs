@@ -1,6 +1,37 @@
-module Vehicle.Data.Code.Value where
+module Vehicle.Data.Code.Value
+  ( Closure (..),
+    Value (..),
+    VType,
+    VArg,
+    VBinder,
+    VDecl,
+    VProg,
+    Spine,
+    traverseSpine,
+    getNMeta,
+    BoundEnv (..),
+    EnvEntry (..),
+    lookupIxInEnv,
+    extendEnvWithBound,
+    extendEnvWithDefined,
+    boundContextToEnv,
+    namedBoundContextToEnv,
+    cheatEnvToValues,
+    boundEnvToCtx,
+    traverseEnv,
+    traverseEnv_,
+    finalCtxSize,
+    FreeEnv,
+    emptyBoundEnv,
+    GluedExpr (..),
+    GluedType,
+    envEntryToValue,
+  )
+where
 
 import Control.Monad (void)
+import Data.Bifunctor (Bifunctor (..))
+import Data.Foldable (traverse_)
 import Data.Map (Map)
 import Data.Map.Ordered (OMap)
 import Data.Maybe (fromMaybe)
@@ -59,12 +90,41 @@ traverseSpine f = traverse (traverse f)
 -- | The information stored for each variable in the environment. We choose
 -- to store the binder as it's a convenient mechanism for passing through
 -- name, relevance for pretty printing and debugging.
-type EnvEntry builtin = (GenericBinder (), Value builtin)
+data EnvEntry builtin
+  = Bound (Value builtin)
+  | Unbound Lv
+  deriving (Show)
 
-type BoundEnv builtin = GenericBoundCtx (EnvEntry builtin)
+envEntryToValue :: EnvEntry builtin -> Value builtin
+envEntryToValue = \case
+  Bound value -> value
+  Unbound lv -> VBoundVar lv []
+
+traverseEnvEntry_ :: (Monad m) => (Value builtin -> m ()) -> EnvEntry builtin -> m ()
+traverseEnvEntry_ f = \case
+  Bound v -> f v
+  Unbound {} -> return ()
+
+traverseEnvEntry :: (Monad m) => (Value builtin -> m (Value builtin)) -> EnvEntry builtin -> m (EnvEntry builtin)
+traverseEnvEntry f = \case
+  Bound v -> Bound <$> f v
+  Unbound lv -> return $ Unbound lv
+
+isUnbound :: EnvEntry builtin -> Bool
+isUnbound = \case
+  Unbound {} -> True
+  _ -> False
+
+newtype BoundEnv builtin = BoundEnv
+  { unBoundEnv :: GenericBoundCtx (GenericBinder (), EnvEntry builtin)
+  }
+  deriving (Show)
 
 emptyBoundEnv :: BoundEnv builtin
-emptyBoundEnv = mempty
+emptyBoundEnv = BoundEnv mempty
+
+lookupIxInEnv :: BoundEnv builtin -> Ix -> Value builtin
+lookupIxInEnv (BoundEnv env) i = envEntryToValue $ snd $ lookupIxInBoundCtx i env
 
 -- | Note that the `ctxSize` must come from the current context and not a
 -- bound environment as the environment that the term was originally normalised
@@ -74,49 +134,53 @@ extendEnvWithBound ::
   GenericBinder expr ->
   BoundEnv builtin ->
   BoundEnv builtin
-extendEnvWithBound ctxSize = extendEnvWithDefined (VBoundVar ctxSize [])
+extendEnvWithBound ctxSize binder (BoundEnv env) =
+  BoundEnv $ (void binder, Unbound ctxSize) : env
 
 extendEnvWithDefined ::
   Value builtin ->
   GenericBinder expr ->
   BoundEnv builtin ->
   BoundEnv builtin
-extendEnvWithDefined value binder env = (void binder, value) : env
+extendEnvWithDefined value binder (BoundEnv env) =
+  BoundEnv $ (void binder, Bound value) : env
 
 boundContextToEnv :: BoundCtx expr -> BoundEnv builtin
-boundContextToEnv ctx = do
+boundContextToEnv ctx = BoundEnv $ do
   let numberedCtx = zip ctx (reverse [0 .. Lv (length ctx - 1)])
-  fmap (\(binder, lv) -> (void binder, VBoundVar lv [])) numberedCtx
+  fmap (bimap void Unbound) numberedCtx
+
+namedBoundContextToEnv :: NamedBoundCtx -> BoundEnv builtin
+namedBoundContextToEnv ctx = BoundEnv $ do
+  let numberedCtx = zip ctx (reverse [0 .. Lv (length ctx - 1)])
+  fmap (bimap (mkExplicitBinder ()) Unbound) numberedCtx
 
 boundEnvToCtx :: BoundEnv builtin -> NamedBoundCtx
-boundEnvToCtx env = toNamedBoundCtx (fmap fst env)
+boundEnvToCtx (BoundEnv env) = toNamedBoundCtx (fmap fst env)
+
+finalCtxSize :: BoundEnv builtin -> Lv
+finalCtxSize (BoundEnv env) = Lv $ length $ filter (\(_, v) -> isUnbound v) env
 
 -- | Converts an environment to set of values suitable for printing
 cheatEnvToValues :: BoundEnv builtin -> GenericBoundCtx (Value builtin)
-cheatEnvToValues = fmap envEntryToValue
+cheatEnvToValues (BoundEnv env) = fmap entryToValue env
   where
-    envEntryToValue :: EnvEntry builtin -> Value builtin
-    envEntryToValue (binder, value) = do
+    entryToValue :: (GenericBinder (), EnvEntry builtin) -> Value builtin
+    entryToValue (binder, value) = do
       let ident = stdlibIdentifier (fromMaybe "_" (nameOf binder) <> " =")
-      VFreeVar ident [explicit value]
+      let arg = explicit $ envEntryToValue value
+      VFreeVar ident [arg]
 
 type FreeEnv builtin = Map Identifier (VDecl builtin)
 
+traverseEnv_ :: (Monad m) => (Value builtin -> m ()) -> BoundEnv builtin -> m ()
+traverseEnv_ f (BoundEnv env) = traverse_ (\(_, v) -> traverseEnvEntry_ f v) env
+
+traverseEnv :: (Monad m) => (Value builtin -> m (Value builtin)) -> BoundEnv builtin -> m (BoundEnv builtin)
+traverseEnv f (BoundEnv env) = BoundEnv <$> traverse (\(u, v) -> (u,) <$> traverseEnvEntry f v) env
+
 -----------------------------------------------------------------------------
 -- Patterns
-
-isNTypeUniverse :: Value builtin -> Bool
-isNTypeUniverse VUniverse {} = True
-isNTypeUniverse _ = False
-
-isNMeta :: Value builtin -> Bool
-isNMeta VMeta {} = True
-isNMeta _ = False
-
-isVBoundVar :: Value builtin -> Bool
-isVBoundVar = \case
-  VBoundVar {} -> True
-  _ -> False
 
 getNMeta :: Value builtin -> Maybe MetaID
 getNMeta (VMeta m _) = Just m
@@ -135,27 +199,7 @@ data GluedExpr builtin = Glued
 instance HasProvenance (GluedExpr builtin) where
   provenanceOf = provenanceOf . unnormalised
 
-type GluedArg builtin = GenericArg (GluedExpr builtin)
-
 type GluedType builtin = GluedExpr builtin
-
-type GluedProg builtin = GenericProg (GluedExpr builtin)
-
-type GluedDecl builtin = GenericDecl (GluedExpr builtin)
-
-traverseNormalised ::
-  (Monad m) =>
-  (Value builtin -> m (Value builtin)) ->
-  GluedExpr builtin ->
-  m (GluedExpr builtin)
-traverseNormalised f (Glued u n) = Glued u <$> f n
-
-traverseUnnormalised ::
-  (Monad m) =>
-  (Expr builtin -> m (Expr builtin)) ->
-  GluedExpr builtin ->
-  m (GluedExpr builtin)
-traverseUnnormalised f (Glued u n) = Glued <$> f u <*> pure n
 
 -----------------------------------------------------------------------------
 -- Instances

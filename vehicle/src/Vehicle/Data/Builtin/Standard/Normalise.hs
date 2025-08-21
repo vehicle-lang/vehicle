@@ -16,28 +16,37 @@ import Vehicle.Prelude (GenericArg (..), HasIdentifier (identifierOf))
 ---------------------------------------------------------------------------------
 --- Normalisation
 
-instance HasPrimitives Builtin where
+instance HasTensorLiterals Builtin where
   tensorLiterals =
     [ Wrapper accessBoolTensorLiteral,
       Wrapper accessNatTensorLiteral,
       Wrapper accessRatTensorLiteral
     ]
 
-  tensorOp1s =
-    [ (accessNegRatTensor, evalNegRatTensor),
-      (accessNotTensor, evalNot)
+instance HasLiftableTensorOperations Builtin where
+  liftableTensorOp1s =
+    [ (getExpr accessNegRatTensor, evalNegRatTensor, IRatType),
+      (getExpr accessNotTensor, evalNot, IBoolType)
     ]
 
-  tensorOp2s =
-    [ (accessAddRatTensor, evalAddRatTensor),
-      (accessMulRatTensor, evalMulRatTensor),
-      (accessSubRatTensor, evalSubRatTensor),
-      (accessDivRatTensor, evalDivRatTensor),
-      (accessMinRatTensor, evalMinRatTensor),
-      (accessMaxRatTensor, evalMaxRatTensor),
-      (accessAndTensor, evalAnd),
-      (accessOrTensor, evalOr)
+  liftableTensorOp2s =
+    [ (getExpr accessAddRatTensor, evalAddRatTensor, IRatType),
+      (getExpr accessMulRatTensor, evalMulRatTensor, IRatType),
+      (getExpr accessSubRatTensor, evalSubRatTensor, IRatType),
+      (getExpr accessDivRatTensor, evalDivRatTensor, IRatType),
+      (getExpr accessMinRatTensor, evalMinRatTensor, IRatType),
+      (getExpr accessMaxRatTensor, evalMaxRatTensor, IRatType),
+      (getExpr accessAndTensor, evalAnd, IBoolType),
+      (getExpr accessOrTensor, evalOr, IBoolType),
+      compPointwise Eq,
+      compPointwise Ne,
+      compPointwise Le,
+      compPointwise Lt,
+      compPointwise Ge,
+      compPointwise Gt
     ]
+    where
+      compPointwise op = (getExpr (accessArgsForOp accessCompareRatTensorPointwise op), evalCompareRatTensorPointwise op, IBoolType)
 
 instance NormalisableBuiltin Builtin where
   evalScheme = \case
@@ -67,7 +76,7 @@ instance NormalisableBuiltin Builtin where
       If -> Simple evalIf
       Implies -> Simple evalImplies
       AtVector -> Simple evalAtVector
-      AtTensor -> Simple evalAtTensor
+      AtTensor -> NonSimple evalAtTensor
       StackTensor -> Simple evalStackTensor
       ConstTensor -> Simple evalConstTensor
       FoldList -> NonSimple evalFoldList

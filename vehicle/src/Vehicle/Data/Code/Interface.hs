@@ -228,6 +228,9 @@ instance IsArgs AtTensorArgs where
         mkExpr = \(AtTensorArgs t d ds xs i) -> [t, d, ds, explicit xs, explicit i]
       }
 
+traverseAtTensorArg :: (Applicative f) => (t -> f t) -> AtTensorArgs t -> f (AtTensorArgs t)
+traverseAtTensorArg f (AtTensorArgs t d ds tensor i) = AtTensorArgs t d ds <$> f tensor <*> pure i
+
 -- | Arguments for `ConstTensor`
 data ConstTensorArgs expr = ConstTensorArgs
   { constType :: GenericArg expr,
@@ -482,6 +485,19 @@ accessOpAndArgs accessOp =
       mkExpr = \(op, args) -> mkBuiltin accessOp op (mkExpr accessSpine args)
     }
 
+accessArgsForOp ::
+  (HasBuiltinConstructor expr, IsArgs args, Eq op) =>
+  Accessor (expr builtin) (op, args (expr builtin)) ->
+  op ->
+  Accessor (expr builtin) (args (expr builtin))
+accessArgsForOp accessor op =
+  Access
+    { getExpr = \case
+        (getExpr accessor -> Just (op2, args)) | op == op2 -> Just args
+        _ -> Nothing,
+      mkExpr = \args -> mkExpr accessor (op, args)
+    }
+
 --------------------------------------------------------------------------------
 -- Boolean operations
 --------------------------------------------------------------------------------
@@ -490,6 +506,9 @@ type HasBoolExpr expr builtin =
   ( HasTensorExpr expr builtin,
     BuiltinHasBoolLiterals builtin
   )
+
+accessBoolType :: (HasBuiltinConstructor expr, BuiltinHasBoolLiterals builtin) => Accessor (expr builtin) ()
+accessBoolType = accessNoArgs accessBoolTypeBuiltin
 
 accessBoolTensorLiteral :: (HasBoolExpr expr builtin) => Accessor (expr builtin) BoolTensor
 accessBoolTensorLiteral = accessNoArgs accessBoolTensorLitBuiltin
@@ -535,6 +554,11 @@ accessQuantifyRatTensor =
         _ -> Nothing,
       mkExpr = \(q, ds, fn) -> mkBuiltin accessQuantifyRatTensorBuiltin q [ds, explicit fn]
     }
+
+pattern IBoolType :: (HasBuiltinConstructor expr, BuiltinHasBoolLiterals builtin) => expr builtin
+pattern IBoolType <- (getExpr accessBoolType -> Just ())
+  where
+    IBoolType = mkExpr accessBoolType ()
 
 pattern IBoolTensorLiteral :: (HasBoolExpr expr builtin) => BoolTensor -> expr builtin
 pattern IBoolTensorLiteral n <- (getExpr accessBoolTensorLiteral -> Just n)
@@ -600,6 +624,9 @@ type HasRatExpr expr builtin =
     BuiltinHasRatLiterals builtin
   )
 
+accessRatType :: (HasBuiltinConstructor expr, BuiltinHasRatLiterals builtin) => Accessor (expr builtin) ()
+accessRatType = accessNoArgs accessRatTypeBuiltin
+
 accessRatTensorLiteral :: (HasRatExpr expr builtin) => Accessor (expr builtin) RatTensor
 accessRatTensorLiteral = accessNoArgs accessRatTensorLitBuiltin
 
@@ -646,6 +673,11 @@ pattern IRatTensor n <- (getExpr accessRatTensorLiteral -> Just n)
 
 pattern IRatLiteral :: (HasRatExpr expr builtin) => Rational -> expr builtin
 pattern IRatLiteral n = IRatTensor (ZeroDimTensor n)
+
+pattern IRatType :: (HasBuiltinConstructor expr, BuiltinHasRatLiterals builtin) => expr builtin
+pattern IRatType <- (getExpr accessRatType -> Just ())
+  where
+    IRatType = mkExpr accessRatType ()
 
 --------------------------------------------------------------------------------
 -- Lists

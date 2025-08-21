@@ -61,7 +61,7 @@ duplicateTestNames = duplicates Set.empty . map testSpecName . NonEmpty.toList .
 -- | Write 'TestSpecs' to a file.
 writeTestSpecsFile :: FilePath -> TestSpecs -> IO ()
 writeTestSpecsFile testSpecFile testSpecs = do
-  Text.writeFile testSpecFile (encodeTestSpecsPretty testSpecs)
+  Text.writeFile testSpecFile $ encodeTestSpecsPretty testSpecs
 
 instance Semigroup TestSpecs where
   (<>) :: TestSpecs -> TestSpecs -> TestSpecs
@@ -95,12 +95,15 @@ instance ToJSON TestSpecs where
 
 -- | Encode a TestSpec as JSON using aeson-pretty.
 encodeTestSpecsPretty :: TestSpecs -> Text
-encodeTestSpecsPretty =
-  Lazy.toStrict
-    . Builder.toLazyText
-    . encodePrettyToTextBuilder'
-      defConfig
-        { confIndent = Indent.Spaces 2,
-          confCompare = keyOrder ["name", "run", "enabled", "needs", "produces", "timeout", "ignore"],
-          confTrailingNewline = True
-        }
+encodeTestSpecsPretty (TestSpecs specs) =
+  -- Note seems to sometimes hang if we don't unwrap the TestSpecs constructor.
+  -- Can't work out why.
+  Lazy.toStrict $
+    Builder.toLazyText $
+      encodePrettyToTextBuilder'
+        defConfig
+          { confIndent = Indent.Spaces 2,
+            confCompare = keyOrder ["name", "run", "enabled", "needs", "produces", "timeout", "ignore", "sizeOnly"],
+            confTrailingNewline = True
+          }
+        specs

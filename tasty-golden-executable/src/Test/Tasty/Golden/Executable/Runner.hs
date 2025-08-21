@@ -376,6 +376,7 @@ acceptTestProduced testProduces (IgnoreFiles testIgnores) = do
   -- Find the golden and actual files:
   actualFiles <- findTestProducesActual testIgnores
   goldenFiles <- findTestProducesGolden testProduces True
+
   -- Run a state monad with an accept state, to make iterative updates to the test
   -- specification and schedule copy and delete operations:
   AcceptState {..} <- flip execStateT (initialAcceptState thisTestSpec) $ do
@@ -426,6 +427,7 @@ acceptTestProduced testProduces (IgnoreFiles testIgnores) = do
             $ NonEmpty.appendList (NonEmpty.singleton acceptTestSpec) otherTestSpecsAfter
     let acceptTestSpecs = TestSpecs acceptTestSpecsList
     lift $ writeTestSpecsFile (testDirectory </> testSpecsFileName) acceptTestSpecs
+
   -- Remove the outdated .golden files:
   lift $
     for_ goldenFilesToRemove $ \goldenFile -> do

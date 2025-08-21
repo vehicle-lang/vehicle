@@ -160,15 +160,15 @@ convertDecl = \case
   S.DefAbstract {} -> compilerDeveloperError "Found abstract definition when converting to JSON"
   S.DefRecord {} -> compilerDeveloperError "Found record when converting to JSON"
   S.DefFunction p ident _ typ body -> do
-    typ' <- convertType mempty typ
-    expr' <- convertExpr mempty body
+    typ' <- convertType emptyBoundEnv typ
+    expr' <- convertExpr emptyBoundEnv body
     return $ DefFunction p (nameOf ident) typ' expr'
 
 --------------------------------------------------------------------------------
 -- Types
 
 convertType :: (MonadJSON m) => BoundEnv LossBuiltin -> S.Expr LossBuiltin -> m JType
-convertType env body = convertTypeValue =<< eval mempty env body
+convertType env body = convertTypeValue =<< eval mempty mempty env body
 
 convertTypeValue :: (MonadJSON m) => VType LossBuiltin -> m JType
 convertTypeValue expr = do
@@ -208,7 +208,7 @@ convertBuiltinType b spine = case b of
 -- Expressions
 
 convertExpr :: (MonadJSON m) => BoundEnv LossBuiltin -> S.Expr LossBuiltin -> m JExpr
-convertExpr env body = convertValue =<< eval mempty env body
+convertExpr env body = convertValue =<< eval mempty mempty env body
 
 convertValue :: (MonadJSON m) => Value LossBuiltin -> m JExpr
 convertValue expr = do

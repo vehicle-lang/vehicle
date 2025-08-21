@@ -11,7 +11,7 @@ import Vehicle.Backend.LossFunction.LossCompilation qualified as Loss (convertVa
 import Vehicle.Compile.Context.Free (MonadFreeContext, addDeclEntryToContext, runFreshFreeContextT)
 import Vehicle.Compile.Context.Name (MonadNameContext, runFreshNameContextT)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBE (normaliseInEnv)
+import Vehicle.Compile.Normalise.NBE (normaliseInEmptyEnv)
 import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Core
@@ -40,7 +40,7 @@ convertDecls logic = \case
     (normDecl, maybeLossTensorDecl) <- do
       let ident = identifierOf decl
       logCompilerSection2 MinDetail ("declaration" <+> quotePretty ident) $ do
-        normStandardDecl <- traverse (normaliseInEnv mempty) decl
+        normStandardDecl <- traverse normaliseInEmptyEnv decl
         maybeTensorDecl <-
           if not (isPropertyDecl decl)
             then return Nothing

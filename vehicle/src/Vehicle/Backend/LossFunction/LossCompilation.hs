@@ -81,7 +81,9 @@ convertExpr ::
   BoundEnv Builtin ->
   Expr Builtin ->
   m (Value LossBuiltin)
-convertExpr env expr = convertValue =<< normaliseInEnv env expr
+convertExpr env expr = do
+  nameCtx <- getNameContext
+  convertValue =<< normaliseInEnv nameCtx env expr
 
 convertValue ::
   forall m.
@@ -148,8 +150,9 @@ convertBuiltinToLoss b spine = case b of
     S.TensorType -> unchangedType TensorType
   S.DerivedFunction f -> do
     freeEnv <- getFreeEnv
+    nameCtx <- getNameContext
     let definition = lookupIdentValueInEnv freeEnv (identifierOf f)
-    value <- evalApp freeEnv definition spine
+    value <- evalApp freeEnv nameCtx definition spine
     convertValue value
   S.BuiltinFunction f -> case f of
     --------------
@@ -167,9 +170,9 @@ convertBuiltinToLoss b spine = case b of
     S.ReduceAndTensor -> changedBuiltin L.ReduceConjunction
     S.ReduceOrTensor -> changedBuiltin L.ReduceDisjunction
     S.QuantifyRatTensor q -> translateQuantifier q spine
-    --------------
+    -----------------
     -- Unsupported --
-    --------------
+    -----------------
     S.Implies -> unexpectedExprError currentPass (pretty b)
     S.If -> unsupportedBuiltin
     -----------
@@ -230,7 +233,7 @@ substField :: (MonadLogic m) => TensorDifferentiableLogicField -> Spine LossBuil
 substField field spine = do
   fn <- getLogicField field
   logDebug MaxDetail $ "subst-field" <+> pretty field <> ":" <+> prettyFriendlyEmptyCtx fn
-  evalApp mempty fn spine
+  evalApp mempty mempty fn spine
 
 translateConstant :: (MonadLogic m) => Tensor Bool -> m (Value LossBuiltin)
 translateConstant tensor = do
@@ -250,8 +253,9 @@ translateQuantifier q = \case
   [dims, argExpr -> VLam binder (Closure env body)] -> do
     -- Normalise the body
     lv <- getBinderDepth
+    nameCtx <- getNameContext
     let newEnv = extendEnvWithBound lv binder env
-    bodyValue <- normaliseInEnv newEnv body
+    bodyValue <- normaliseInEnv nameCtx newEnv body
 
     -- Translate the dimensions
     lossDims <- traverse convertValue dims
@@ -282,13 +286,14 @@ translateExists ::
 translateExists lossDims binder bodyValue = logCompilerSection MaxDetail "convert-exists" $ do
   boundCtx <- getBinderContext
   let lv = boundCtxLv boundCtx
+  nameCtx <- getNameContext
 
   -- Convert the binder and the dimensions.
   lossBinder <- traverse convertValue binder
 
   -- Generate the operation for doing the reduction
   genericReductionOp <- getLogicField ReduceDisjunction
-  reductionOp <- evalApp mempty genericReductionOp [lossDims]
+  reductionOp <- evalApp mempty nameCtx genericReductionOp [lossDims]
 
   -- Extract the domain for the search
   declProv <- getDeclProvenance
@@ -318,7 +323,9 @@ traverseClosure binder (Closure env body) = do
   ctx <- getBinderContext
   let lv = boundCtxLv ctx
   let newEnv = extendEnvWithBound lv binder env
-  normBody <- addNameToContext binder $ convertValue =<< normaliseInEnv newEnv body
+  normBody <- addNameToContext binder $ do
+    nameCtx <- getNameContext
+    convertValue =<< normaliseInEnv nameCtx newEnv body
   let finalEnv = boundContextToEnv ctx
   let finalBody = quote mempty (lv + 1) normBody
   return (Closure finalEnv finalBody)

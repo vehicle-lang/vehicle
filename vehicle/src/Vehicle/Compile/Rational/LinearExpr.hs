@@ -11,10 +11,11 @@ import Control.Monad.Trans (MonadTrans (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.Interface
-import Vehicle.Data.Code.LinearExpr (LinearExpr, VariableLike, addExprs, constantExpr, isConstant, scaleExpr, singletonVarExpr)
+import Vehicle.Data.Code.LinearExpr (LinearExpr, addExprs, constantExpr, isConstant, scaleExpr, singletonVarExpr)
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
-import Vehicle.Data.Tensor (RatTensor, TensorShape, pattern ConstantTensor, pattern ZeroDimTensor)
+import Vehicle.Data.QuantifiedVariable (TensorVariable)
+import Vehicle.Data.Tensor (RatTensor, TensorShape, pattern ConstantTensor)
 import Prelude hiding (Applicative (..))
 
 type MonadCompileLinearExpr m =
@@ -31,12 +32,12 @@ data LinearityError
 -- Tensor expression
 
 compileLinearRelation ::
-  (MonadLogger m, VariableLike variable) =>
-  (Lv -> m variable) ->
+  (MonadLogger m) =>
+  (Lv -> m TensorVariable) ->
   TensorShape ->
   Value Builtin ->
   Value Builtin ->
-  m (Either LinearityError (LinearExpr variable RatTensor, LinearExpr variable RatTensor))
+  m (Either LinearityError (LinearExpr TensorVariable RatTensor, LinearExpr TensorVariable RatTensor))
 compileLinearRelation toVar shape x y = do
   runExceptT $ do
     x' <- compile (lift . toVar) shape x
@@ -44,15 +45,15 @@ compileLinearRelation toVar shape x y = do
     return (x', y')
 
 compile ::
-  forall m variable.
-  (MonadCompileLinearExpr m, VariableLike variable) =>
-  (Lv -> m variable) ->
+  forall m.
+  (MonadCompileLinearExpr m) =>
+  (Lv -> m TensorVariable) ->
   TensorShape ->
   Value Builtin ->
-  m (LinearExpr variable RatTensor)
+  m (LinearExpr TensorVariable RatTensor)
 compile toVar shape = go
   where
-    go :: Value Builtin -> m (LinearExpr variable RatTensor)
+    go :: Value Builtin -> m (LinearExpr TensorVariable RatTensor)
     go expr = case toRatTensorValue expr of
       ----------------
       -- Base cases --
@@ -71,14 +72,17 @@ compile toVar shape = go
         e1' <- compile toVar shape e1
         e2' <- compile toVar shape e2
         case (isConstant e1', isConstant e2') of
-          (Just (ZeroDimTensor c1), _) -> return $ scaleExpr c1 e2'
-          (_, Just (ZeroDimTensor c2)) -> return $ scaleExpr c2 e1'
+          (Just (ConstantTensor _ c1), _) -> return $ scaleExpr c1 e2'
+          (_, Just (ConstantTensor _ c2)) -> return $ scaleExpr c2 e1'
+          (Just _, _) -> unreduced
+          (_, Just _) -> unreduced
           _ -> throwError NonLinearity
       VDivRatTensor (TensorOp2Args _ e1 e2) -> do
         e1' <- compile toVar shape e1
         e2' <- compile toVar shape e2
         case isConstant e2' of
-          (Just (ZeroDimTensor c2)) -> return $ scaleExpr (1 / c2) e1'
+          Just (ConstantTensor _ c2) -> return $ scaleExpr (1 / c2) e1'
+          Just _ -> unreduced
           _ -> throwError NonLinearity
       ---------------------
       -- Unreduced cases --

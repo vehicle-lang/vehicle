@@ -254,6 +254,7 @@ library
     Vehicle.Data.Builtin.Interface.InputOutputInsertion
     Vehicle.Data.Builtin.Interface.Normalise
     Vehicle.Data.Builtin.Interface.Print
+    Vehicle.Data.Builtin.Interface.TensorFusion
     Vehicle.Data.Builtin.Interface.Type
     Vehicle.Data.Builtin.Linearity
     Vehicle.Data.Builtin.Linearity.Solver

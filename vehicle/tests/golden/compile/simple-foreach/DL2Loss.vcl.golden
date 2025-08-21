@@ -1,7 +1,7 @@
 @property;
 index : (Tensor Real -> Tensor Real) -> Tensor Real;
-index f = [max 0.0 (0.0 - f [ 0.0, 0.0 ] ! 0), max 0.0 (0.0 - f [ 0.0, 0.0 ] ! 1)]
+index f = max [ 0.0, 0.0 ] ([ 0.0, 0.0 ] - f [ 0.0, 0.0 ])
 
 @property;
 safe : (Tensor Real -> Tensor Real) -> Tensor Real;
-safe f = [ 1.0, 1.0 ] / search (\ e -> \ xs -> reduceMul e xs) 0.0 0.0 (\ x -> [ 1.0, 1.0 ] / max 0.0 (0.0 - f [x ! 0 + 4.0, x ! 1 + 4.0] ! 0))
+safe f = [ 1.0, 1.0 ] / search (\ e -> \ xs -> reduceMul e xs) 0.0 0.0 (\ x -> [ 1.0, 1.0 ] / max 0.0 (0.0 - f (x + [ 4.0, 4.0 ]) ! 0))

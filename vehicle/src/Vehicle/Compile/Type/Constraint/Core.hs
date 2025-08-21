@@ -105,6 +105,6 @@ instantiateInstanceConstraintSolution (WithContext (Resolve origin meta _ _) ctx
       logDebug MaxDetail ("solved" <+> pretty meta <+> "as" <+> prettyVerbose solution)
       logDebug MaxDetail (indent 2 ("however" <+> pretty meta <+> "=" <+> prettyVerbose (unnormalised existingSolution) <+> "already so unifying"))
       let abstractedSolution = abstractOverCtx (metaCtx metaInfo) solution
-      normSolution <- normaliseInEnv (boundContextToEnv boundCtx) abstractedSolution
+      normSolution <- normaliseInEnv (toNamedBoundCtx boundCtx) (boundContextToEnv boundCtx) abstractedSolution
       newConstraint <- createInstanceUnification (ctx, origin) normSolution (normalised existingSolution)
       addUnificationConstraints [newConstraint]
