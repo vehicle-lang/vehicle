@@ -65,7 +65,7 @@ instance Delaborate V.Decl [B.Decl] where
       annDecls <- traverse delabM anns
       funDecls <- delabFun n t e
       return $ annDecls <> funDecls
-    V.DefRecord _ n _ fs -> do
+    V.DefRecord _ n _ _ fs -> do
       let n' = delabIdentifier n
       fs' <- traverse delabM fs
       return [B.DefRecord n' fs']
@@ -118,6 +118,7 @@ instance Delaborate (V.RecordField V.Expr) B.RecordFieldDef where
 instance Delaborate V.Annotation B.Decl where
   delabM = \case
     V.AnnProperty -> return $ delabAnn propertyAnn []
+    V.AnnTensor -> return $ delabAnn tensorAnn []
 
 -- | Used for things not in the user-syntax.
 cheatDelab :: Text -> B.Expr

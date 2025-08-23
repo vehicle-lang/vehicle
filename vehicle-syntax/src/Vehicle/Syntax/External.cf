@@ -10,7 +10,7 @@ position token Boolean  ({"True"} | {"False"});
 position token Natural  (digit+);
 position token Rational (digit+ '.' digit+);
 
-position token TokAnnotation ({"@"} ({"network"} | {"dataset"} | {"parameter"} | {"property"}));
+position token TokAnnotation ({"@"} ({"network"} | {"dataset"} | {"parameter"} | {"property"} | {"tensor"}));
 position token TokPostulate {"@postulate"};
 
 position token TokLeftBrace  {"{"};

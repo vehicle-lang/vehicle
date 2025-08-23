@@ -32,6 +32,7 @@ data GenericDecl expr
     DefRecord
       Provenance -- Location in source file.
       Identifier -- Name of definition.
+      [Annotation] -- List of annotations.
       expr -- Type of the record
       (RecordFields expr) -- Fields in the record definition.
   deriving (Show, Functor, Foldable, Traversable, Generic)
@@ -44,13 +45,13 @@ instance HasProvenance (GenericDecl expr) where
   provenanceOf = \case
     DefAbstract p _ _ _ -> p
     DefFunction p _ _ _ _ -> p
-    DefRecord p _ _ _ -> p
+    DefRecord p _ _ _ _ -> p
 
 instance HasIdentifier (GenericDecl expr) where
   identifierOf = \case
     DefAbstract _ i _ _ -> i
     DefFunction _ i _ _ _ -> i
-    DefRecord _ i _ _ -> i
+    DefRecord _ i _ _ _ -> i
 
 instance HasName (GenericDecl expr) Name where
   nameOf = nameOf . identifierOf
@@ -59,7 +60,7 @@ instance HasType (GenericDecl expr) expr where
   typeOf = \case
     DefAbstract _ _ _ t -> t
     DefFunction _ _ _ t _ -> t
-    DefRecord _ _ t _ -> t
+    DefRecord _ _ _ t _ -> t
 
 bodyOf :: GenericDecl expr -> Maybe expr
 bodyOf = \case
@@ -71,7 +72,7 @@ annotationsOf :: GenericDecl expr -> [Annotation]
 annotationsOf = \case
   DefFunction _ _ anns _ _ -> anns
   DefAbstract {} -> []
-  DefRecord {} -> []
+  DefRecord _ _ anns _ _ -> anns
 
 abstractSortOf :: GenericDecl expr -> Maybe DefAbstractSort
 abstractSortOf decl = case decl of
@@ -91,7 +92,7 @@ traverseDeclTypeAndExpr ::
 traverseDeclTypeAndExpr f1 f2 = \case
   DefAbstract p n r t -> DefAbstract p n r <$> f1 t
   DefFunction p n b t e -> DefFunction p n b <$> f1 t <*> f2 e
-  DefRecord p n t fs -> DefRecord p n <$> f1 t <*> traverseRecordFields f2 fs
+  DefRecord p n b t fs -> DefRecord p n b <$> f1 t <*> traverseRecordFields f2 fs
 
 mapIdentifier ::
   (Identifier -> Identifier) ->
@@ -100,7 +101,7 @@ mapIdentifier ::
 mapIdentifier f = \case
   DefAbstract p n r t -> DefAbstract p (f n) r t
   DefFunction p n b t e -> DefFunction p (f n) b t e
-  DefRecord p n t fs -> DefRecord p (f n) t fs
+  DefRecord p n b t fs -> DefRecord p (f n) b t fs
 
 -- | Traverses the type of the declaration.
 traverseDeclType ::
@@ -176,6 +177,7 @@ convertToPostulate d =
 
 data Annotation
   = AnnProperty
+  | AnnTensor
   deriving (Eq, Show, Generic)
 
 instance NFData Annotation
@@ -185,6 +187,7 @@ instance Serialize Annotation
 instance Pretty Annotation where
   pretty = \case
     AnnProperty -> "@property"
+    AnnTensor -> "@tensor"
 
 isProperty :: [Annotation] -> Bool
 isProperty anns = AnnProperty `elem` anns

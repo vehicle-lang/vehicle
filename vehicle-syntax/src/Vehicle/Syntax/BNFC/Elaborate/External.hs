@@ -123,7 +123,7 @@ elabDeclGroup anns = \case
     p <- mkProvenance tk
     n <- elabName tk
     fields' <- traverse elabRecordFieldDef fields
-    let d' = V.DefRecord p n (UnparsedExpr (tokType 0)) fields'
+    let d' = V.DefRecord p n [] (UnparsedExpr (tokType 0)) fields' -- change this to properly get records, just passing empty for now
     return (d', ds)
 
   -- Annotation declaration.
@@ -231,6 +231,9 @@ parseAnnotation (tkName, opts) = do
     "@property" -> do
       validateEmptyOpts tkName opts
       return $ Right V.AnnProperty
+    "@tensor" -> do
+      validateEmptyOpts tkName opts
+      return $ Right V.AnnTensor
     name -> developerError $ "Unknown annotation found" <+> squotes (pretty name)
 
 validateOpts :: forall m token. (MonadElab m, IsToken token) => token -> Set Text -> B.DeclAnnOpts -> m [B.DeclAnnOption]
@@ -317,7 +320,7 @@ elaborateDecl ::
 elaborateDecl file decl = flip runReaderT file $ case decl of
   V.DefAbstract p n r t -> V.DefAbstract p n r <$> elabDeclType t
   V.DefFunction p n b t e -> V.DefFunction p n b <$> elabDeclType t <*> elabDeclBody e
-  V.DefRecord p n t fs -> V.DefRecord p n <$> elabDeclType t <*> traverse elabRecordDefEntry fs
+  V.DefRecord p n b t fs -> V.DefRecord p n b <$> elabDeclType t <*> traverse elabRecordDefEntry fs
 
 elabDeclType ::
   (MonadElab m) =>

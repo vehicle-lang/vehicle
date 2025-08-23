@@ -325,7 +325,7 @@ compileDecl opts = \case
         let binders' = mapMaybe compileTopLevelBinder binders
         (_, cbody) <- compileBinders binders (compileExpr body)
         compileFunDef (compileIdentifier n) <$> compileExpr t <*> pure binders' <*> pure cbody
-  DefRecord _ n t fs -> do
+  DefRecord _ n _ t fs -> do
     t' <- compileExpr t
     fs' <- traverseRecordFields compileExpr fs
     return $

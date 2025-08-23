@@ -86,7 +86,7 @@ getDeclaredRecordFields ::
 getDeclaredRecordFields proxy ident = do
   decl <- fst <$> getDeclEntry proxy ident
   case decl of
-    DefRecord _ _ _ fields -> return fields
+    DefRecord _ _ _ _ fields -> return fields
     _ -> developerError $ quotePretty ident <+> "is unexpectedly not a record"
 
 getFreeEnv ::

@@ -44,7 +44,7 @@ instance Delaborate V.Decl B.Decl where
     V.DefAbstract _ n s t -> do
       constructor <- delabM s
       constructor (delabIdentifier n) <$> delabM t
-    V.DefRecord _ n _t fs -> B.DefRecord (delabIdentifier n) <$> traverse delabM fs
+    V.DefRecord _ n _ _t fs -> B.DefRecord (delabIdentifier n) <$> traverse delabM fs
 
 instance Delaborate V.DefAbstractSort (B.NameToken -> B.Expr -> B.Decl) where
   delabM sort = return $ case sort of
