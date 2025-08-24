@@ -394,11 +394,11 @@ evalReduceMinRatTensor = evalReduceTensor accessReduceMinRatBuiltin accessRatTen
 evalReduceMaxRatTensor :: (MonadNormBuiltin m, HasRatExpr Value builtin, PrintableBuiltin builtin) => EvalSimple TensorReductionArgs Value builtin m
 evalReduceMaxRatTensor = evalReduceTensor accessReduceMaxRatBuiltin accessRatTensorLiteral evalMaxRatTensor max
 
-evalCompareRatTensor ::
+evalCompareRatTensorPointwise ::
   (MonadNormBuiltin m, HasBoolExpr Value builtin, HasRatExpr Value builtin, PrintableBuiltin builtin) =>
   ComparisonOp ->
   EvalSimple TensorOp2Args Value builtin m
-evalCompareRatTensor op =
+evalCompareRatTensorPointwise op =
   evalHeteroTensorOp2
     (mkExpr accessCompareRatTensorPointwiseBuiltin op)
     accessRatTensorLiteral

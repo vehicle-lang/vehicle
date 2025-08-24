@@ -1,7 +1,7 @@
 @property;
 test1 : (Tensor Real -> Tensor Real) -> Tensor Real;
-test1 f = search (\ e -> \ xs -> reduceMul e xs) 0.0 0.0 (\ a -> - (max 0.0 a + max 0.0 (0.0 - a)) + reduceAdd 0.0 (- (max [ 0.0 ] (f [a + 2.0]) + max [ 0.0 ] ([ 0.0 ] - f [a + 2.0]))))
+test1 f = search (\ e -> \ xs -> reduceMul e xs) 0.0 0.0 (\ a -> max 0.0 (0.0 - a) + reduceAdd 0.0 (- (max [ 0.0 ] (f [a + 2.0]) + max [ 0.0 ] ([ 0.0 ] - f [a + 2.0]))))
 
 @property;
 test2 : (Tensor Real -> Tensor Real) -> Tensor Real;
-test2 g = search (\ e -> \ xs -> reduceMul e xs) 0.0 0.0 (\ a -> search (\ e -> \ xs -> reduceMul e xs) 0.0 0.0 (\ b -> - (max 0.0 (a - 1.0) + max 0.0 (1.0 - a)) + (- (max 0.0 (b - a) + max 0.0 (a - b)) + reduceAdd 0.0 (- (max [ 0.0 ] (g [a + b, a + 2.0 * b]) + max [ 0.0 ] ([ 0.0 ] - g [a + b, a + 2.0 * b]))))))
+test2 g = search (\ e -> \ xs -> reduceMul e xs) 0.0 0.0 (\ a -> search (\ e -> \ xs -> reduceMul e xs) 0.0 0.0 (\ b -> max 0.0 (1.0 - a) + (max 0.0 (a - b) + reduceAdd 0.0 (- (max [ 0.0 ] (g [a + b, a + 2.0 * b]) + max [ 0.0 ] ([ 0.0 ] - g [a + b, a + 2.0 * b]))))))

@@ -141,6 +141,23 @@ instance IsArgs TensorOp2Args where
 traverseTensorOp2Args :: (Applicative f) => (t -> f t) -> TensorOp2Args t -> f (TensorOp2Args t)
 traverseTensorOp2Args f (TensorOp2Args ds xs ys) = TensorOp2Args ds <$> f xs <*> f ys
 
+-- | Arguments for binary tensor operations (e.g. +, -)
+data TensorReduceComparisonArgs expr = TensorReduceComparisonArgs
+  { tensorReduceOp2Dim :: GenericArg expr,
+    tensorReduceOp2Dims :: GenericArg expr,
+    tensorReduceOp2Arg1 :: expr,
+    tensorReduceOp2Arg2 :: expr
+  }
+
+instance IsArgs TensorReduceComparisonArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          [d, ds, x, y] -> Just $ TensorReduceComparisonArgs d ds (argExpr x) (argExpr y)
+          _ -> Nothing,
+        mkExpr = \(TensorReduceComparisonArgs d ds x y) -> [d, ds, explicit x, explicit y]
+      }
+
 -- | Arguments for if
 data IfArgs expr = IfArgs
   { ifType :: GenericArg expr,
@@ -415,7 +432,9 @@ type NatComparisonAccessor expr op = Accessor expr (op, Op2Args expr)
 
 type IndexComparisonAccessor expr op = Accessor expr (op, IndexComparisonArgs expr)
 
-type RatTensorComparisonAccessor expr op = Accessor expr (op, TensorOp2Args expr)
+type RatTensorPointwiseComparisonAccessor expr op = Accessor expr (op, TensorOp2Args expr)
+
+type RatTensorReducedComparisonAccessor expr op = Accessor expr (op, TensorReduceComparisonArgs expr)
 
 type Op1Accessor expr = Accessor expr expr
 
@@ -502,10 +521,10 @@ accessCompareIndex = accessOpAndArgs accessCompareIndexBuiltin
 accessCompareNat :: (HasBoolExpr expr builtin) => NatComparisonAccessor (expr builtin) ComparisonOp
 accessCompareNat = accessOpAndArgs accessCompareNatBuiltin
 
-accessCompareRatTensorPointwise :: (HasBoolExpr expr builtin) => RatTensorComparisonAccessor (expr builtin) ComparisonOp
+accessCompareRatTensorPointwise :: (HasBoolExpr expr builtin) => RatTensorPointwiseComparisonAccessor (expr builtin) ComparisonOp
 accessCompareRatTensorPointwise = accessOpAndArgs accessCompareRatTensorPointwiseBuiltin
 
-accessCompareRatTensorReduced :: (HasBoolExpr expr builtin) => RatTensorComparisonAccessor (expr builtin) ComparisonOp
+accessCompareRatTensorReduced :: (HasBoolExpr expr builtin) => RatTensorReducedComparisonAccessor (expr builtin) ComparisonOp
 accessCompareRatTensorReduced = accessOpAndArgs accessCompareRatTensorReducedBuiltin
 
 accessQuantifyRatTensor :: (HasBoolExpr expr builtin) => Accessor (expr builtin) (Quantifier, GenericArg (expr builtin), expr builtin)

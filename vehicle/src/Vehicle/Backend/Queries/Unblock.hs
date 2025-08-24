@@ -16,7 +16,6 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Standard
-import Vehicle.Data.Builtin.Standard.Normalise (evalCompareRatTensorReduced)
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
@@ -68,11 +67,11 @@ tryPurifyAssertion ::
   TensorOp2Args (Value Builtin) ->
   m (Either (Value Builtin) (TensorOp2Args (Value Builtin)))
 tryPurifyAssertion actions op args = do
-  unblockedExpr <- unblockTensorOp2 (unblockRatTensorValue actions VarLevel) (evalCompareRatTensorReduced op) args
+  unblockedExpr <- unblockTensorOp2 (unblockRatTensorValue actions VarLevel) (evalCompareRatTensor op) args
 
   logDebugM MaxDetail $ do
     ctx <- getNameContext
-    let unblockedAssertionDoc = prettyFriendly (WithContext unblockedExpr ctx)
+    let unblockedAssertionDoc = prettyVerbose (WithContext unblockedExpr ctx)
     return ("result:" <+> unblockedAssertionDoc)
 
   case findImpurity unblockedExpr of
@@ -91,8 +90,7 @@ data Impurity
 findImpurity :: Value Builtin -> Either Impurity (TensorOp2Args (Value Builtin))
 findImpurity expr = case toBoolValue expr of
   VBoolIf args -> Left $ LiftedIf args
-  VCompareRatTensorReduced (op, args) -> maybe (Right args) Left $ findMinMaxImpurity op args
-  VCompareRatTensorPointwise (op, args) -> maybe (Right args) Left $ findMinMaxImpurity op args
+  VCompareRatTensor (op, args) -> maybe (Right args) Left $ findMinMaxImpurity op args
   -- The purification may have caused the comparison itself to reduce to comparisons
   -- over its elements and/or tensor literals.
   _ -> Left $ ReducedComparison expr
@@ -110,8 +108,8 @@ eliminateImpurities impurity = do
   case impurity of
     LiftedIf args -> unfoldIf args
     LiftedMinMax (isMin, TensorOp2Args dims e1 e2) op value -> do
-      let comparison1 = fromBoolValue $ VCompareRatTensorPointwise (op, TensorOp2Args dims e1 value)
-      let comparison2 = fromBoolValue $ VCompareRatTensorPointwise (op, TensorOp2Args dims e2 value)
+      let comparison1 = fromBoolValue $ VCompareRatTensor (op, TensorOp2Args dims e1 value)
+      let comparison2 = fromBoolValue $ VCompareRatTensor (op, TensorOp2Args dims e2 value)
       let logicalArgs = TensorOp2Args dims comparison1 comparison2
       if op == Le || op == Lt
         then (if isMin then evalOr else evalAnd) logicalArgs
@@ -142,11 +140,7 @@ unblockBoolTensorValue actions expr = do
     VReduceOrTensor args -> unblockReduceTensor unblock evalReduceOrTensor args
     VCompareIndex (op, args) -> unblockIndexOp2 (evalCompareIndex op) args
     VCompareNat (op, args) -> unblockOp2 return (evalCompareNat op) args
-    VCompareRatTensorReduced (op, args) -> unblockTensorOp2 (unblockRatTensorValue actions VarLevel) (evalCompareRatTensorReduced op) args
-    VCompareRatTensorPointwise (op, args) -> unblockTensorOp2 (unblockRatTensorValue actions VarLevel) (evalCompareRatTensor op) args
-    -- VConstBoolTensor args -> unblockConstTensor args
-    -- VBoolStackTensor args -> unblockStackTensor unblock args
-    -- VBoolForeach args -> unblockForeachTensor args
+    VCompareRatTensor (op, args) -> unblockTensorOp2 (unblockRatTensorValue actions VarLevel) (evalCompareRatTensor op) args
     VBoolAt args -> unblockAtTensor unblock args
   where
     unblock = unblockBoolTensorValue actions

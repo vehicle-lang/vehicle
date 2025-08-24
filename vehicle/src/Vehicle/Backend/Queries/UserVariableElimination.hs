@@ -29,7 +29,6 @@ import Vehicle.Compile.Variable (createUserVar)
 import Vehicle.Data.Assertion
 import Vehicle.Data.Builtin.Interface.Normalise (evalAtTensor, evalReduceAndTensor)
 import Vehicle.Data.Builtin.Standard
-import Vehicle.Data.Builtin.Standard.Normalise (evalCompareRatTensorReduced)
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
@@ -87,8 +86,7 @@ eliminateUserVariables expr = do
     --
     -- When we have the ability to evaluate networks then this case can be turned to a
     -- call to purify.
-    VCompareRatTensorReduced {} -> compileUnquantifiedQuerySet expr
-    VCompareRatTensorPointwise {} -> developerError "Compile pointwise comparison not supported"
+    VCompareRatTensor {} -> compileUnquantifiedQuerySet expr
   where
     unblock e = runFreshNameContextT (Unblocking.unblockBoolExpr topLevelUnblockingActions e)
 
@@ -147,8 +145,7 @@ compileBoolExpr expr = do
     -- Base cases --
     ----------------
     VBoolLiteral b -> return $ Trivial b
-    VCompareRatTensorReduced (op, args) -> purifyAndCompileAssertion op args
-    VCompareRatTensorPointwise (op, args) -> purifyAndCompileAssertion op args
+    VCompareRatTensor (op, args) -> purifyAndCompileAssertion op args
     VQuantifyRatTensor Forall _ _ _ -> throwError catchableUnsupportedAlternatingQuantifiersError
     ---------------------
     -- Recursive cases --
@@ -262,7 +259,7 @@ unblockNetworkApplication name (NetworkAppArgs arg) = do
   (inputVarExpr, outputVarExpr, newGlobalCtx) <- addNetworkApplicationToGlobalCtx name networkInfo globalCtx arg
   let inputDims = dimensions (inputTensor (networkType networkInfo))
   let inputDimsExpr = implicitIrrelevant $ mkDims inputDims
-  let inputEquality = fromBoolValue $ VCompareRatTensorReduced (Eq, TensorOp2Args inputDimsExpr inputVarExpr arg)
+  let inputEquality = fromBoolValue $ VCompareRatTensor (Eq, TensorOp2Args inputDimsExpr inputVarExpr arg)
   put newGlobalCtx
   newNameCtx <- getNameContext
   logDebug MaxDetail $ "note-input-equality" <+> prettyFriendly (WithContext inputEquality newNameCtx)
@@ -282,8 +279,8 @@ eliminateNotEqualRatTensor args@(TensorOp2Args dims _ _) = do
   if supportsStrictInequalities queryFormat
     then throwError $ UnsupportedInequality (queryFormatID queryFormat) propertyProvenance
     else do
-      let leq = fromBoolValue $ VCompareRatTensorReduced (Le, args)
-      let geq = fromBoolValue $ VCompareRatTensorReduced (Ge, args)
+      let leq = fromBoolValue $ VCompareRatTensor (Le, args)
+      let geq = fromBoolValue $ VCompareRatTensor (Ge, args)
       return $ fromBoolValue $ VOr (TensorOp2Args dims leq geq)
 
 eliminateTensorAssertion ::
@@ -301,7 +298,7 @@ eliminateTensorAssertion op (TensorOp2Args dims xs ys) =
       let mkStackElement i = do
             xsi <- mkAt xs i
             ysi <- mkAt ys i
-            evalCompareRatTensorReduced op (TensorOp2Args (implicitIrrelevant ds) xsi ysi)
+            evalCompareRatTensor op (TensorOp2Args (implicitIrrelevant ds) xsi ysi)
       stackElements <- traverse mkStackElement [0 .. (n - 1)] :: m [Value Builtin]
       let stackExpr = fromBoolTensorValue $ VBoolStackTensor (StackTensorArgs tElem d d0Arg stackElements)
       evalReduceAndTensor (TensorOp2Args (implicitIrrelevant (mkDims [n])) (IBoolLiteral True) stackExpr)

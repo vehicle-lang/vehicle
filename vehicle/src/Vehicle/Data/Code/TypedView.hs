@@ -18,13 +18,19 @@ module Vehicle.Data.Code.TypedView
     fromRatTensorValue,
     DimensionsValue (..),
     toDimensionsValue,
+    fromDimensionsValue,
+    evalCompareRatTensor,
   )
 where
 
 import GHC.Stack (HasCallStack)
+import Vehicle.Compile.Context.Free (MonadFreeContext)
+import Vehicle.Compile.Normalise.NBE (normaliseBuiltin)
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Data.Builtin.Interface (Accessor (..))
+import Vehicle.Data.Builtin.Interface.Normalise (EvalSimple, MonadNormBuiltin, evalCompareRatTensorPointwise)
 import Vehicle.Data.Builtin.Standard.Core
+import Vehicle.Data.Builtin.Standard.Normalise ()
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
 import Vehicle.Data.DeBruijn
@@ -147,8 +153,7 @@ data BoolValue
   | VOr (TensorOp2Args (Value Builtin))
   | VCompareIndex (ComparisonOp, IndexComparisonArgs (Value Builtin))
   | VCompareNat (ComparisonOp, Op2Args (Value Builtin))
-  | VCompareRatTensorPointwise (ComparisonOp, TensorOp2Args (Value Builtin))
-  | VCompareRatTensorReduced (ComparisonOp, TensorOp2Args (Value Builtin))
+  | VCompareRatTensor (ComparisonOp, TensorOp2Args (Value Builtin))
   | VReduceAndTensor (TensorOp2Args (Value Builtin))
   | VReduceOrTensor (TensorOp2Args (Value Builtin))
   | VQuantifyRatTensor Quantifier (VArg Builtin) (VBinder Builtin) (Closure Builtin)
@@ -161,8 +166,8 @@ toBoolValue expr = case expr of
   (getExpr accessAndTensor -> Just args) -> VAnd args
   (getExpr accessOrTensor -> Just args) -> VOr args
   (getExpr accessNotTensor -> Just args) -> VNot args
-  (getExpr accessCompareRatTensorPointwise -> Just args) -> VCompareRatTensorPointwise args
-  (getExpr accessCompareRatTensorReduced -> Just args) -> VCompareRatTensorReduced args
+  (getExpr accessCompareRatTensorPointwise -> Just args) -> fromComparison $ Left args
+  (getExpr accessCompareRatTensorReduced -> Just args) -> fromComparison $ Right args
   (getExpr accessCompareNat -> Just args) -> VCompareNat args
   (getExpr accessCompareIndex -> Just args) -> VCompareIndex args
   (getExpr accessQuantifyRatTensor -> Just (op, dims, VLam binder closure)) -> VQuantifyRatTensor op dims binder closure
@@ -180,16 +185,41 @@ fromBoolValue = \case
   VNot args -> mkExpr accessNotTensor args
   VCompareNat args -> mkExpr accessCompareNat args
   VCompareIndex args -> mkExpr accessCompareIndex args
-  VCompareRatTensorPointwise args -> mkExpr accessCompareRatTensorPointwise args
-  VCompareRatTensorReduced args -> mkExpr accessCompareRatTensorReduced args
+  VCompareRatTensor args -> toComparison args
   VQuantifyRatTensor q dims binder closure -> mkExpr accessQuantifyRatTensor (q, dims, VLam binder closure)
   VReduceAndTensor args -> mkExpr accessReduceAnd args
   VReduceOrTensor args -> mkExpr accessReduceOr args
   VBoolIf args -> mkExpr accessIf args
   VBoolAt args -> mkExpr accessAtTensor args
 
+fromComparison ::
+  Either
+    (ComparisonOp, TensorOp2Args (Value Builtin))
+    (ComparisonOp, TensorReduceComparisonArgs (Value Builtin)) ->
+  BoolValue
+fromComparison = \case
+  Left (op, args) -> VCompareRatTensor (op, args)
+  Right (op, TensorReduceComparisonArgs d ds e1 e2) -> do
+    let dims = implicitIrrelevant $ fromDimensionsValue $ VDimsCons (argExpr d) (argExpr ds)
+    VCompareRatTensor (op, TensorOp2Args dims e1 e2)
+
+toComparison :: (ComparisonOp, TensorOp2Args (Value Builtin)) -> Value Builtin
+toComparison (op, TensorOp2Args dims e1 e2) = case toDimensionsValue $ argExpr dims of
+  VDimsNil -> mkExpr accessCompareRatTensorPointwise (op, TensorOp2Args dims e1 e2)
+  VDimsCons d ds -> mkExpr accessCompareRatTensorReduced (op, TensorReduceComparisonArgs (implicitIrrelevant d) (implicitIrrelevant ds) e1 e2)
+  _ -> developerError "Unexpected tensorOp2Args for comparison"
+
+evalCompareRatTensor :: (MonadNormBuiltin m, MonadFreeContext Builtin m) => ComparisonOp -> EvalSimple TensorOp2Args Value Builtin m
+evalCompareRatTensor op args@(TensorOp2Args dims e1 e2) = case toDimensionsValue $ argExpr dims of
+  VDimsNil -> evalCompareRatTensorPointwise op args
+  VDimsCons d ds -> do
+    let reduceArgs = TensorReduceComparisonArgs (implicitIrrelevant d) (implicitIrrelevant ds) e1 e2
+    normaliseBuiltin (DerivedFunction (CompareRatTensorReduced op)) (mkExpr accessSpine reduceArgs)
+  _ -> developerError "Unexpected tensorOp2Args for comparison"
+
 -------------------------------------------------------------------------------
 -- Bool
+
 data BoolTensorValue
   = VBoolTensorLiteral (Tensor Bool)
   | VBoolStackTensor (StackTensorArgs (Value Builtin))
@@ -355,3 +385,10 @@ toDimensionsValue e = case e of
   (getExpr accessCons -> Just (argExpr -> INatType, x, xs)) -> VDimsCons x xs
   (getExpr accessIf -> Just args) -> VDimsIf args
   _ -> developerError $ "ill-typed Dimensions expression" <+> prettyVerbose e
+
+fromDimensionsValue :: (HasCallStack) => DimensionsValue -> Value Builtin
+fromDimensionsValue e = case e of
+  VDimsBoundVar lv spine -> VBoundVar lv spine
+  VDimsNil -> mkExpr accessNil (implicit INatType)
+  VDimsCons x xs -> mkExpr accessCons (implicit INatType, x, xs)
+  VDimsIf args -> mkExpr accessIf args

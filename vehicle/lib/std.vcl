@@ -22,23 +22,26 @@ existsInList f xs = fold (\x y -> x or y) False (map f xs)
 --------------------------------------------------------------------------------
 -- Tensor
 --------------------------------------------------------------------------------
+-- These operations have non-zero dimensions so that we have a unique
+-- representation of relationships between zero-dimensional tensors
+-- (i.e. pointwise comparison).
 
-eqRatTensorReduced : Tensor Real dims -> Tensor Real dims -> Bool
+eqRatTensorReduced : Tensor Real (dim :: dims) -> Tensor Real (dim :: dims) -> Bool
 eqRatTensorReduced xs ys = reduceAnd True (xs ==. ys)
 
-neRatTensorReduced : Tensor Real dims -> Tensor Real dims -> Bool
+neRatTensorReduced : Tensor Real (dim :: dims) -> Tensor Real (dim :: dims) -> Bool
 neRatTensorReduced xs ys = not (eqRatTensorReduced xs ys)
 
-leRatTensorReduced : Tensor Real dims -> Tensor Real dims -> Bool
+leRatTensorReduced : Tensor Real (dim :: dims) -> Tensor Real (dim :: dims) -> Bool
 leRatTensorReduced xs ys = reduceAnd True (xs <=. ys)
 
-ltRatTensorReduced : Tensor Real dims -> Tensor Real dims -> Bool
+ltRatTensorReduced : Tensor Real (dim :: dims) -> Tensor Real (dim :: dims) -> Bool
 ltRatTensorReduced xs ys = reduceAnd True (xs <. ys)
 
-geRatTensorReduced : Tensor Real dims -> Tensor Real dims -> Bool
+geRatTensorReduced : Tensor Real (dim :: dims) -> Tensor Real (dim :: dims) -> Bool
 geRatTensorReduced xs ys = reduceAnd True (xs >=. ys)
 
-gtRatTensorReduced : Tensor Real dims -> Tensor Real dims -> Bool
+gtRatTensorReduced : Tensor Real (dim :: dims) -> Tensor Real (dim :: dims) -> Bool
 gtRatTensorReduced xs ys = reduceAnd True (xs >. ys)
 
 --------------------------------------------------------------------------------
