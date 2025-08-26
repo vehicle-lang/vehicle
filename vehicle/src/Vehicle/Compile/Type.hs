@@ -95,7 +95,7 @@ typeCheckDecl uncheckedDecl isUnused =
     decl <- case convertedDecl of
       DefAbstract p n r t -> typeCheckAbstractDef p n r t isUnused
       DefFunction p n b t e -> typeCheckFunctionDef p n b t e isUnused
-      DefRecord p n b t fs -> typeCheckRecordDef p n b t fs isUnused -- TODO: fix once records feed through properly
+      DefRecord p n b t fs -> typeCheckRecordDef p n b t fs isUnused
     checkAllUnknownsSolved (Proxy @builtin)
     finalDecl <- substMetas decl
     logCompilerPassOutput $ prettyExternal finalDecl
@@ -180,7 +180,7 @@ typeCheckRecordDef ::
   RecordFields (Type builtin) ->
   DeclIsUnused ->
   m (Decl builtin)
-typeCheckRecordDef p ident b uncheckedType uncheckedFields isUnused = do
+typeCheckRecordDef p ident _anns uncheckedType uncheckedFields isUnused = do
   checkedType <- checkDeclType ident uncheckedType
 
   -- Type check the body.
@@ -190,7 +190,7 @@ typeCheckRecordDef p ident b uncheckedType uncheckedFields isUnused = do
       traverse (checkRecordFieldDef ident) uncheckedFields
 
   -- Reconstruct the function.
-  let checkedDecl = DefRecord p ident b checkedType checkedFields
+  let checkedDecl = DefRecord p ident _anns checkedType checkedFields
 
   -- Solve constraints and substitute through.
   setCurrentDecl $ Just (checkedDecl, isUnused)
