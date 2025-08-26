@@ -224,7 +224,7 @@ scopeDecl decl =
         t' <- scopeTopLevelExpr False t
         fs' <- traverse (scopeDefRecordField ident) fs
         addNewRecordDef ident (fmap fst fs')
-        return (DefRecord p ident b t' fs') -- need to put the actual annotations in here later
+        return (DefRecord p ident b t' fs')
     addNewDecl scopedDecl
 
     logCompilerPassOutput (prettyFriendly scopedDecl)

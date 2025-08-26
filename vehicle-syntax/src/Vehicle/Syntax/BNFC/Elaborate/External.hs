@@ -124,8 +124,7 @@ elabDeclGroup anns = \case
     n <- elabName tk
     fields' <- traverse elabRecordFieldDef fields
     (_, annotations) <- partitionEithers <$> traverse parseAnnotation anns
-    -- _ <- developerError $ "sadfads" <+> pretty (length anns) <+> pretty annotations
-    let d' = V.DefRecord p n annotations (UnparsedExpr (tokType 0)) fields' -- change this to properly get records, just passing empty for now
+    let d' = V.DefRecord p n annotations (UnparsedExpr (tokType 0)) fields'
     return (d', ds)
 
   -- Annotation declaration.
