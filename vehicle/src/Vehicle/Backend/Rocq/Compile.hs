@@ -276,7 +276,18 @@ compileDecl _opts = \case
         (_, cbody) <- compileBinders binders (compileExpr body)
         defType <- resolveReturnType binders' t
         return $ compileFunDef (compileIdentifier n) defType binders' cbody
-  DefRecord {} -> recordsNotYetSupported
+  DefRecord _ n t fs -> do
+    t' <- compileExpr t
+    fs' <- traverseRecordFields compileExpr fs
+    return $
+      "Record"
+        <+> compileIdentifier n
+        <+> ":"
+        <+> t'
+        <+> ":="
+        <> line
+        <> indent 2 (encloseSep (lbrace <> space) (line <> rbrace) (semi <> space) $ fmap (\(field, fieldType) -> pretty field <+> ":" <+> fieldType) fs')
+        <> "."
 
 -- | Compile a 'network' declaration
 compilePostulate :: Code -> Code -> Code
@@ -308,8 +319,10 @@ compileExpr expr = do
     Lam _ binder body -> compileLam binder body
     Builtin _p b -> compileBuiltin b []
     App fun args -> compileApp fun args
-    Record {} -> recordsNotYetSupported
-    RecordAcc {} -> recordsNotYetSupported
+    Record _p _i fs -> do
+      fs' <- traverse compileRecordField fs
+      return $ encloseSep (lbrace <> "|" <> space) (space <> "|" <> rbrace) (semi <> space) fs'
+    RecordAcc _p r (_i, field) -> annotateNotation [] 200 ("$0.(" <> nameOf field <> ")") (Just $ nameOf field) [explicit r]
   logExit result
   return result
 
@@ -376,6 +389,11 @@ compileBinder binder = do
 resolveReturnType :: (MonadRocqCompile m) => [Code] -> Expr DecidabilityBuiltin -> m Code
 resolveReturnType (_ : bs) (Pi _ binder r) = addNameToContext binder $ resolveReturnType bs r
 resolveReturnType _ e = compileExpr e
+
+compileRecordField :: (MonadRocqCompile m) => RecordField (Expr DecidabilityBuiltin) -> m Code
+compileRecordField (field, fieldValue) = do
+  fieldValue' <- compileExpr fieldValue
+  return $ pretty field <+> ":=" <+> fieldValue'
 
 compileFunDef :: Code -> Code -> [Code] -> Code -> Code
 compileFunDef name t bindings e =
