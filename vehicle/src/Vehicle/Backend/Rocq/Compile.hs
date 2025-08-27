@@ -98,14 +98,14 @@ instance Pretty Dependency where
     Open s -> "Open Scope" <+> pretty s <> "."
 
 data Library
-  = MathcompBootSsrbool
+  = MathcompSsreflectSsrbool
   | MathcompAlgebraSsralg
-  | MathcompBootSsrnat
-  | MathcompBootEqtype
-  | MathcompOrderOrder
-  | MathcompBootFintype
-  | MathcompBootSeq
-  | MathcompBootTuple
+  | MathcompSsreflectSsrnat
+  | MathcompSsreflectEqtype
+  | MathcompSsreflectOrder
+  | MathcompSsreflectFintype
+  | MathcompSsreflectSeq
+  | MathcompSsreflectTuple
   | MathcompAlgebraZmodp
   | MathcompRealsReals
   | VehicleTensor
@@ -117,15 +117,15 @@ instance Pretty Library where
     VehicleTensor -> "vehicle.tensor"
     VehicleUtils -> "vehicle.utils"
     MathcompAlgebraSsralg -> "mathcomp.algebra.ssralg"
-    MathcompOrderOrder -> "mathcomp.order.order"
-    MathcompBootFintype -> "mathcomp.boot.fintype"
-    MathcompBootSsrbool -> "mathcomp.boot.ssrbool"
-    MathcompBootSeq -> "mathcomp.boot.seq"
-    MathcompBootTuple -> "mathcomp.boot.tuple"
+    MathcompSsreflectOrder -> "mathcomp.ssreflect.order"
+    MathcompSsreflectFintype -> "mathcomp.ssreflect.fintype"
+    MathcompSsreflectSsrbool -> "mathcomp.ssreflect.ssrbool"
+    MathcompSsreflectSeq -> "mathcomp.ssreflect.seq"
+    MathcompSsreflectTuple -> "mathcomp.ssreflect.tuple"
     MathcompAlgebraZmodp -> "mathcomp.algebra.zmodp"
     MathcompRealsReals -> "mathcomp.reals.reals"
-    MathcompBootSsrnat -> "mathcomp.boot.ssrnat"
-    MathcompBootEqtype -> "mathcomp.boot.eqtype"
+    MathcompSsreflectSsrnat -> "mathcomp.ssreflect.ssrnat"
+    MathcompSsreflectEqtype -> "mathcomp.ssreflect.eqtype"
 
 data Module
   = OrderDef
@@ -397,13 +397,13 @@ compileBuiltin b args = case b of
     RatType -> return $ annotateConstant [RequireImport MathcompRealsReals] "R"
     UnitType -> return "unit"
     NatType -> return "nat"
-    ListType -> annotateApp [RequireImport MathcompBootSeq] "seq" args
+    ListType -> annotateApp [RequireImport MathcompSsreflectSeq] "seq" args
     TensorType -> annotateNotation [RequireImport VehicleTensor] 0 "'nT[$0]_($1)" Nothing args
-    IndexType -> annotateNotation [RequireImport MathcompBootFintype] 0 "'I_$0" (Just "ordinal") args
-    VectorType -> annotateNotation [RequireImport MathcompBootTuple] 2 "$0.-tuple $1" Nothing args
+    IndexType -> annotateNotation [RequireImport MathcompSsreflectFintype] 0 "'I_$0" (Just "ordinal") args
+    VectorType -> annotateNotation [RequireImport MathcompSsreflectTuple] 2 "$0.-tuple $1" Nothing args
   StandardBuiltinConstructor c -> case c of
     Nil -> return "nil"
-    Cons -> annotateNotation [RequireImport MathcompBootSeq] 60 "$0 :: $1" (Just "cons") args
+    Cons -> annotateNotation [RequireImport MathcompSsreflectSeq] 60 "$0 :: $1" (Just "cons") args
     UnitLiteral -> return "tt"
     IndexLiteral n -> return $ compileIndexLiteral n
     NatLiteral n -> return $ compileNatLiteral n
@@ -414,8 +414,8 @@ compileBuiltin b args = case b of
   StandardBuiltinFunction f -> case f of
     And -> annotateNotation [] 40 "$0 && $1" (Just "andb") args
     Or -> annotateNotation [] 50 "$0 || $1" (Just "orb") args
-    Not -> annotateNotation [RequireImport MathcompBootSsrbool] 35 "~~ $0" (Just "negb") args
-    Implies -> annotateNotation [RequireImport MathcompBootSsrbool] 55 "$0 ==> $1" (Just "implb") args
+    Not -> annotateNotation [RequireImport MathcompSsreflectSsrbool] 35 "~~ $0" (Just "negb") args
+    Implies -> annotateNotation [RequireImport MathcompSsreflectSsrbool] 55 "$0 ==> $1" (Just "implb") args
     Add AddNat -> annotateNotation [RequireImport MathcompAlgebraSsralg, Open RingScope] 50 "$0 + $1" (Just "+%R") args
     Mul MulNat -> annotateNotation [RequireImport MathcompAlgebraSsralg, Open RingScope] 40 "$0 * $1" (Just "*%R") args
     Add AddRatTensor -> annotateNotation [RequireImport VehicleTensor] 50 "$0 + $1" (Just "+%R") args
@@ -428,8 +428,8 @@ compileBuiltin b args = case b of
     CompareIndex op -> compileComparison CIndex op args
     CompareNat op -> compileComparison CNat op args
     CompareRatTensorPointwise op -> compileComparison CRatTensor op args
-    FoldList -> annotateApp [RequireImport MathcompBootSeq] "foldr" args
-    MapList -> annotateApp [RequireImport MathcompBootSeq] "map" args
+    FoldList -> annotateApp [RequireImport MathcompSsreflectSeq] "foldr" args
+    MapList -> annotateApp [RequireImport MathcompSsreflectSeq] "map" args
     ReduceAndTensor -> annotateApp [RequireImport VehicleTensor] "reduceAnd" args -- TODO ################################
     ReduceOrTensor -> annotateApp [RequireImport VehicleTensor] "reduceOr" args -- TODO ##################################
     ReduceAddRatTensor -> annotateApp [] "reduceAdd" args
@@ -441,7 +441,7 @@ compileBuiltin b args = case b of
       (ExplicitArg _ _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier q [binder] body
       _ -> unsupportedArgsError
     AtTensor -> annotateNotation [RequireImport VehicleTensor] 201 "$0^^$1" (Just "nindex") args -- TODO : Check precedence
-    If -> annotateNotation [RequireImport MathcompBootSsrbool] minPrecedence "if $0 then $1 else $2" Nothing args
+    If -> annotateNotation [RequireImport MathcompSsreflectSsrbool] minPrecedence "if $0 then $1 else $2" Nothing args
     ForeachTensor -> annotateApp [RequireImport VehicleTensor] "nstack" args
     StackTensor -> compileStack args
     Iterate -> unsupportedError
@@ -455,7 +455,7 @@ compileBuiltin b args = case b of
     PropNot -> annotateNotation [] 75 "~ $0" (Just "not") args
     PropAnd -> annotateNotation [] 80 "$0 /\\ $1" (Just "and") args
     PropOr -> annotateNotation [] 85 "$0 \\/ $1" (Just "or") args
-    PropImplies -> annotateNotation [RequireImport MathcompBootSsrbool] minPrecedence "$0 -> $1" (Just "implies") args
+    PropImplies -> annotateNotation [RequireImport MathcompSsreflectSsrbool] minPrecedence "$0 -> $1" (Just "implies") args
     PropCompareIndex op -> compileComparison CIndex op args
     PropCompareNat op -> compileComparison CNat op args
     PropCompareRatTensorPointwise op -> compileComparison CRatTensor op args
@@ -551,14 +551,14 @@ compileIndexLiteral :: Int -> Code
 compileIndexLiteral i =
   annotateConstant
     [ RequireImport MathcompAlgebraSsralg,
-      RequireImport MathcompBootFintype,
+      RequireImport MathcompSsreflectFintype,
       RequireImport MathcompAlgebraZmodp,
       Open RingScope
     ]
     (pretty i)
 
 compileNatLiteral :: Int -> Code
-compileNatLiteral i = annotate ([RequireImport MathcompBootSsrnat], maxPrecedence) $ pretty i <> "%N"
+compileNatLiteral i = annotate ([RequireImport MathcompSsreflectSsrnat], maxPrecedence) $ pretty i <> "%N"
 
 compileTensorLiteral :: (a -> Code) -> Tensor a -> Code
 compileTensorLiteral compileElement t = annotate ([RequireImport VehicleTensor], 200) $ case (shapeOf t, toList t) of
@@ -604,19 +604,19 @@ compileComparison domain op = do
         Eq -> ("==", eqDeps)
         Ne -> ("!=", eqDeps)
   let typeDeps = case (domain, op) of
-        (CIndex, _) -> [RequireImport MathcompBootSsrnat]
-        (CNat, _) -> [RequireImport MathcompBootSsrnat]
+        (CIndex, _) -> [RequireImport MathcompSsreflectSsrnat]
+        (CNat, _) -> [RequireImport MathcompSsreflectSsrnat]
         (CRatTensor, Eq) -> [RequireImport VehicleTensor]
         (CRatTensor, Ne) -> [RequireImport VehicleTensor]
         (CRatTensor, _) -> [RequireImport VehicleTensor]
   let (opDoc', dependencies') =
         if domain == CIndex
-          then ("$0 " <> opDoc <> " $1 :> nat", dependencies ++ [RequireImport MathcompBootSsrnat])
+          then ("$0 " <> opDoc <> " $1 :> nat", dependencies ++ [RequireImport MathcompSsreflectSsrnat])
           else ("$0 " <> opDoc <> " $1", dependencies)
   annotateNotation (dependencies' <> typeDeps) 70 opDoc' Nothing
   where
-    orderDeps = [RequireImport MathcompBootSsrbool, RequireImport MathcompOrderOrder, Open OrderScope]
-    eqDeps = [RequireImport MathcompBootSsrbool, RequireImport MathcompBootEqtype]
+    orderDeps = [RequireImport MathcompSsreflectSsrbool, RequireImport MathcompSsreflectOrder, Open OrderScope]
+    eqDeps = [RequireImport MathcompSsreflectSsrbool, RequireImport MathcompSsreflectEqtype]
 
 compileStack :: (MonadRocqCompile m) => [Arg DecidabilityBuiltin] -> m Code
 compileStack args = do
@@ -629,7 +629,5 @@ compileVecLiteral xs = case getExpr accessSpine xs of
   Nothing -> developerError "Malformed type-checked vector literal"
 
 toVec :: [Code] -> Code
-toVec xs = annotate ([RequireImport MathcompBootTuple, Open FormScope], maxPrecedence) "[tuple" <+> concatWith (surround "; ") xs <> "]"
+toVec xs = annotate ([RequireImport MathcompSsreflectTuple, Open FormScope], maxPrecedence) "[tuple" <+> concatWith (surround "; ") xs <> "]"
 
-recordsNotYetSupported :: a
-recordsNotYetSupported = developerError "Records are not yet supplied in the Rocq backend. Please open an issue if you need them."
