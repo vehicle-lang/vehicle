@@ -5,10 +5,7 @@ module Vehicle.Data.Builtin.Interface.Normalise where
 
 import Control.Applicative ((<|>))
 import Control.Monad (foldM, zipWithM)
-import Control.Monad.Writer (execWriterT)
-import Control.Monad.Writer.Class
 import Data.Maybe (fromMaybe, isJust)
-import Data.Semigroup (Any (..))
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
@@ -797,43 +794,6 @@ evalIterate ctx evalApp _eval args@(IterateArgs t f n e) = case n of
     let recFn = VBuiltin (mkExpr accessIterateBuiltin ()) [t, explicit f, explicit (INatLiteral (v - 1))]
     evalApp ctx f [explicit recFn, explicit e]
   _ -> return $ mkExpr accessIterate args
-
-isValueBlocked ::
-  (NormalisableBuiltin builtin) =>
-  (MonadLogger m, MonadWriter Any m) =>
-  Value builtin ->
-  m (Value builtin)
-isValueBlocked v = do
-  blocked <- case v of
-    VUniverse {} -> return False
-    VMeta {} -> return True
-    VFreeVar {} -> return True
-    VBoundVar {} -> return True
-    VLam {} -> return False
-    VPi {} -> return False
-    VRecord {} -> return False
-    VRecordAcc {} -> return True
-    VBuiltin b spine -> case blockingStatus b spine of
-      InsufficientArgs -> return True
-      DoesNotReduce -> return False
-      AlwaysReduces -> return False
-      Blocked {} -> return True
-  tell (Any blocked)
-  return v
-
-isBlocked ::
-  forall m builtin.
-  (MonadLogger m, NormalisableBuiltin builtin) =>
-  builtin ->
-  Spine builtin ->
-  m Bool
-isBlocked b spine = case blockingStatus b spine of
-  InsufficientArgs -> return True
-  DoesNotReduce -> return False
-  AlwaysReduces -> return False
-  Blocked traverseBlockedArgs -> do
-    u <- execWriterT @m $ traverseBlockedArgs isValueBlocked
-    return $ getAny u
 
 -----------------------------------------------------------------------------
 -- Logging

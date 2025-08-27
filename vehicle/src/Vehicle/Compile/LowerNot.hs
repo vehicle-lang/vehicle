@@ -32,7 +32,6 @@ lowerNot ::
   TensorOp1Args (Value Builtin) ->
   m (Value Builtin)
 lowerNot ctx onBlocked (TensorOp1Args _ arg) = do
-  logDebug MaxDetail "Hit"
   result <- go arg
   logDebug MaxDetail $ "push-not" <+> prettyFriendly (WithContext result ctx)
   return result

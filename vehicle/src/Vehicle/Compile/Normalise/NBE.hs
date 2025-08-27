@@ -25,7 +25,6 @@ import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Interface.Normalise
   ( EvalScheme (..),
     NormalisableBuiltin (..),
-    isBlocked,
   )
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Code.Interface (IsArgs (..))
@@ -191,11 +190,7 @@ evalBuiltin freeEnv ctx b spine
   | not (isTypeClassOp b) = case evalScheme b of
       Simple evalFn -> maybe (return $ VBuiltin b spine) evalFn (getExpr accessSpine spine)
       NonSimple evalFn -> maybe (return $ VBuiltin b spine) (evalFn ctx (evalApp freeEnv) (eval freeEnv)) (getExpr accessSpine spine)
-      Derived ident -> do
-        blocked <- isBlocked b spine
-        if blocked
-          then return $ VBuiltin b spine
-          else evalApp freeEnv ctx (lookupIdentValueInEnv freeEnv ident) spine
+      Derived ident -> evalApp freeEnv ctx (lookupIdentValueInEnv freeEnv ident) spine
       None -> return $ VBuiltin b spine
   | otherwise = do
       (inst, remainingArgs) <- findInstanceArg b spine
