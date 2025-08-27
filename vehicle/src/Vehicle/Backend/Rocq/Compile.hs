@@ -448,8 +448,8 @@ compileBuiltin b args = case b of
     CompareRatTensorPointwise op -> compileComparison CRatTensor op args
     FoldList -> annotateApp [RequireImport MathcompSsreflectSeq] "foldr" args
     MapList -> annotateApp [RequireImport MathcompSsreflectSeq] "map" args
-    ReduceAndTensor -> annotateApp [RequireImport VehicleTensor] "reduceAnd" args -- TODO ################################
-    ReduceOrTensor -> annotateApp [RequireImport VehicleTensor] "reduceOr" args -- TODO ##################################
+    ReduceAndTensor -> annotateApp [RequireImport VehicleUtils] "reduceAnd" args
+    ReduceOrTensor -> annotateApp [RequireImport VehicleUtils] "reduceOr" args
     ReduceAddRatTensor -> annotateApp [] "reduceAdd" args
     ReduceMinRatTensor -> unsupportedError
     ReduceMaxRatTensor -> unsupportedError
@@ -458,14 +458,14 @@ compileBuiltin b args = case b of
     QuantifyRatTensor q -> case reverse args of
       (ExplicitArg _ _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier q [binder] body
       _ -> unsupportedArgsError
-    AtTensor -> annotateNotation [RequireImport VehicleTensor] 201 "$0^^$1" (Just "nindex") args -- TODO : Check precedence
+    AtTensor -> annotateNotation [RequireImport VehicleTensor] 201 "$0^^$1" (Just "nindex") args
     If -> annotateNotation [RequireImport MathcompSsreflectSsrbool] minPrecedence "if $0 then $1 else $2" Nothing args
     ForeachTensor -> annotateApp [RequireImport VehicleTensor] "nstack" args
     StackTensor -> compileStack args
     Iterate -> unsupportedError
     PowRat -> unsupportedError
-    AtVector -> return "<atvector>" -- TODO
-    ForeachVector -> return "<foreachvector>"
+    AtVector -> annotateApp [RequireImport MathcompSsreflectTuple] "tnth" args
+    ForeachVector -> annotateApp [RequireImport VehicleUtils] "foreachTuple" args
   DecidabilityBuiltinFunction f -> case f of
     PropType -> return "Prop"
     PropTrue -> return "True"
@@ -478,6 +478,7 @@ compileBuiltin b args = case b of
     PropCompareNat op -> compileComparison CNat op args
     PropCompareRatTensorPointwise op -> compileComparison CRatTensor op args
     BoolTensorToProp -> monoError
+    BoolVectorToProp -> monoError
     PropQuantifyIndex q -> case q of
       Forall -> annotateApp [RequireImport VehicleUtils] "forallIndex" args
       Exists -> annotateApp [RequireImport VehicleUtils] "existsIndex" args
@@ -487,7 +488,6 @@ compileBuiltin b args = case b of
     PropNaryProduct -> unsupportedError
     PropNaryProductForeach -> unsupportedError
     PropNaryProductAt -> unsupportedError
-    BoolVectorToProp -> return "<boolvectortoprop>" -- TODO
   DecidabilityBuiltinTypeClass {} -> monoError
   DecidabilityBuiltinTypeClassOp {} -> monoError
   StandardBuiltinDerivedFunction f -> compileDerivedFunction f args
