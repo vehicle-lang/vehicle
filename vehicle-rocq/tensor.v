@@ -41,6 +41,16 @@ From mathcomp Require Import fintype ssralg ssrnat ssrfun order finfun tuple.
 (*                         tensors.                                           *)
 (* [tensor^^= x_0; ...; x_n], [tensor`_= x_0; ...; x_n] ==                    *)
 (*                         construction of a tensor from a sequence of values.*)
+(* nunstack_tuple, ounstack_tuple ==                                          *)
+(*                         conversion from tensors of types 'T_(n :: us, ds)  *)
+(*                         and 'T_(us, n :: ds) respectively, to              *)
+(*                         n.-tuple 'T_(us, ds).                              *)
+(* tuple_of_ntensor, tuple_of_otensor ==                                      *)
+(*                         conversion between tensors of types 'nT_([:: n])   *)
+(*                         and 'oT_([:: n]) respectively to n tuples.         *)
+(* tensor_of_matrix, matrix_of_tensor ==                                      *)
+(*                         bijection between n by m matricies and tensors of  *)
+(*                         type 'T_([:: n], [:: m]).                          *)
 (* Tensors are instances of subType of matrix, and inherit all combinatorial  *)
 (* structures (including finType), as well as nmodType, zmodType,             *)
 (* lSemiModType, lModType.                                                    *)
@@ -104,22 +114,24 @@ Reserved Notation "[ 'tensor' `_= x ; .. ; xn ]"
 Reserved Notation "t .[::]".
 
 
-Structure pseq : Type := PSeq {psval :> seq nat; _ : all (leq 1) psval}.
+Structure pseq : Type := PSeq 
+  { psval :> seq nat
+  ; _ : all [pred x | x != 0] psval
+  }.
 
 HB.instance Definition _ := [isSub for psval].
 
-Canonical nil_pseq := PSeq (isT : all (leq 1) [::]).
+Canonical nil_pseq := PSeq (isT : all [pred x | x != 0] [::]).
 Canonical cons_pseq p (ps : pseq) :=
-  PSeq (valP ps : all (leq 1) (p.+1 :: ps)).
-
+  PSeq (valP ps : all [pred x | x != 0] (p.+1 :: ps)).
 
 
 Section TensorDef.
 
-Context (us ds : pseq) (K : Type).
+Context (R : Type) (us ds : pseq).
 
 Variant tensor_of : Type := 
-  Tensor of 'M[K]_(\prod_(u <- us) u, \prod_(d <- ds) d).
+  Tensor of 'M[R]_(\prod_(u <- us) u, \prod_(d <- ds) d).
 
 Definition tval t := let: Tensor g := t in g.
 
@@ -128,7 +140,15 @@ HB.instance Definition _ := [isNew for tval].
 End TensorDef.
 
 
-Notation "''T[' R ]_ ( us , ds )" := (tensor_of us ds R) (only parsing).
+Fact tensor_key : unit. Proof. by []. Qed.
+
+HB.lock
+Definition tensor_of_mx R (us ds : pseq) (k : unit) M :=
+  @Tensor R us ds M.
+Canonical tensor_unlockable := Unlockable tensor_of_mx.unlock.
+
+
+Notation "''T[' R ]_ ( us , ds )" := (tensor_of R us ds) (only parsing).
 Notation "''T_' ( us , ds )" := 'T[_]_(us, ds).
 Notation "''nT[' R ]_ ( us )" := 'T[R]_(us, [::]) (only parsing).
 Notation "''oT[' R ]_ ( ds )" := 'T[R]_([::], ds) (only parsing).
@@ -138,8 +158,6 @@ Notation "''nT_' ( us )" := 'nT[_]_(us).
 
 Section SubtypeInstances.
 
-Import Algebra.
-
 Context (us ds : pseq).
 Local Notation "''T[' R ]" := 'T[R]_(us, ds).
 
@@ -148,14 +166,15 @@ HB.instance Definition _ (R : choiceType) := [Choice of 'T[R] by <:].
 HB.instance Definition _ (R : countType) := [Countable of 'T[R] by <:].
 HB.instance Definition _ (R : finType) := [Finite of 'T[R] by <:].
 
-Lemma nmod_closed {m n} (R : nmodType) : @nmod_closed 'M[R]_(n, m) predT.
+Lemma nmod_closed {m n} (R : nmodType) : @addr_closed 'M[R]_(n, m) predT.
 Proof. by []. Qed.
-HB.instance Definition _ (R : nmodType) := SubChoice_isSubNmodule.Build
+HB.instance Definition _ (R : nmodType) := GRing.SubChoice_isSubNmodule.Build
   _ _ 'T[R] (nmod_closed R).
 
-Lemma zmod_closed {m n} (R : zmodType) : @zmod_closed 'M[R]_(n, m) predT.
+(* REPLACE IN NEXT MATHCOMP RELEASE *)
+(* Lemma zmod_closed {m n} (R : zmodType) : @zmod_closed 'M[R]_(n, m) predT.
 Proof. by []. Qed.
-HB.instance Definition _ (R : zmodType) := SubChoice_isSubZmodule.Build
+HB.instance Definition _ (R : zmodType) := GRing.SubChoice_isSubZmodule.Build
   _ _ 'T[R] (zmod_closed R).
 
 Lemma subsemimod_closed {m n} (R : pzSemiRingType)
@@ -167,7 +186,7 @@ HB.instance Definition _ (R : pzSemiRingType) :=
 Lemma submod_closed {m n} (R : pzRingType) : @submod_closed R 'M[R]_(n, m) predT.
 Proof. by []. Qed.
 HB.instance Definition _ (R : pzRingType) := 
-  GRing.SubZmodule_isSubLmodule.Build _ _ _ 'T[R] (submod_closed R).
+  GRing.SubZmodule_isSubLmodule.Build _ _ _ 'T[R] (submod_closed R). *)
 
 End SubtypeInstances.
 
@@ -209,8 +228,59 @@ HB.instance Definition _ := Order.isPOrder.Build
 End TensorPOrder.
 
 
-Definition const_t {R us ds} (v : R) : 'T[R]_(us, ds) :=
-  Tensor (const_mx v).
+Definition const_t {R us ds} v : 'T[R]_(us, ds) :=
+  tensor_of_mx tensor_key (const_mx v).
+
+
+Section MapTensor.
+
+Variables (aT rT : Type) (f : aT -> rT).
+
+Definition map_t us ds (t : 'T[aT]_(us, ds)) := 
+  tensor_of_mx tensor_key (map_mx f (\val t)).
+
+End MapTensor.
+
+Section Map2Tensor.
+
+Context {R S T : Type} (f : R -> S -> T).
+
+Definition map2_t us ds (t : 'T[R]_(us, ds)) (v : 'T[S]_(us, ds)) := 
+  tensor_of_mx tensor_key (map2_mx f (\val t) (\val v)).
+
+End Map2Tensor.
+
+
+Section TensorLaws.
+
+Context {T : Type} {us ds : pseq} {idm : T}.
+
+Lemma map2_tA {opm : Monoid.law idm}
+  : associative (@map2_t _ _ _ opm us ds).
+Proof. by rewrite/map2_t unlock=> t u v; apply/congr1/map2_mxA. Qed.
+
+Lemma map2_1t {opm : Monoid.law idm} :
+  left_id (const_t idm) (@map2_t _ _ _ opm us ds).
+Proof. by rewrite /map2_t/const_t unlock=> [[M]]; apply/congr1/map2_1mx. Qed.
+
+Lemma map2_t1 {opm : Monoid.law idm} :
+  right_id (const_t idm) (@map2_t _ _ _ opm us ds).
+Proof. by rewrite /map2_t/const_t unlock=> [[M]]; apply/congr1/map2_mx1. Qed.
+
+HB.instance Definition _ {opm : Monoid.law idm} :=
+  Monoid.isLaw.Build 'T_(us, ds) (const_t idm) (@map2_t _ _ _ opm _ _)
+    map2_tA map2_1t map2_t1.
+
+Lemma map2_tC {opm : Monoid.com_law idm} :
+  commutative (@map2_t _ _ _ opm us ds).
+Proof. by rewrite /map2_t unlock=> t u; apply/congr1/map2_mxC. Qed.
+
+HB.instance Definition _ {opm : Monoid.com_law idm} :=
+  SemiGroup.isCommutativeLaw.Build 
+  'T_(us, ds) (@map2_t _ _ _ opm _ _) map2_tC.
+
+End TensorLaws.
+
 
 
 Section TensorRing.
@@ -221,57 +291,59 @@ Import GRing.Theory.
 Context {us ds : pseq}.
 Local Notation "''T[' R ]" := 'T[R]_(us, ds).
 
+(* REPLACE IN NEXT MATHCOMP RELEASE *)
+Section TensorZmodule.
+
+Context {R : zmodType}.
+
+Definition oppt (t : 'T[R]) := tensor_of_mx tensor_key (- \val t).
+
+Lemma addNt : left_inverse 0 oppt +%R.
+Proof. 
+rewrite /oppt unlock=> t; apply/val_inj/matrixP=> i j.
+by rewrite /GRing.opp/=/GRing.add/= addNmx.
+Qed.
+
+HB.instance Definition _ := GRing.Nmodule_isZmodule.Build 'T[R] addNt.
+
+End TensorZmodule.
+
 Section TensorSemiRing.
 
 Context {R : pzSemiRingType}.
 
 Definition tensor1 := @const_t _ us ds (GRing.one R).
 
-Definition mult (t u : 'T[R]_(us, ds)) :=
-  @Tensor us ds R (map2_mx *%R (\val t) (\val u)).
+Definition mult := @map2_t R R R *%R us ds.
 
-Lemma multA : associative mult.
-Proof. by move=> x y z; rewrite /mult map2_mxA. Qed.
-Lemma mul1t : left_id tensor1 mult.
-Proof. by move=> [x]; rewrite /mult map2_1mx. Qed.
-Lemma mult1 : right_id tensor1 mult.
-Proof. by move=> [x]; rewrite /mult map2_mx1. Qed.
-Lemma multDl : left_distributive mult +%R.
-Proof. by move=> x y z; rewrite /mult map2_mxDl. Qed.
+Definition multDl : left_distributive mult +%R.
+Proof. by rewrite /mult/map2_t unlock=> t u v; apply/congr1/map2_mxDl. Qed.
 Lemma multDr : right_distributive mult +%R.
-Proof. by move=> x y z; rewrite /mult map2_mxDr. Qed.
-Lemma mul0t : left_zero 0%R mult.
-Proof. by move=> x; rewrite /mult map2_0mx. Qed.
+Proof. by rewrite /mult/map2_t unlock=> t u v; apply/congr1/map2_mxDr. Qed.
+Definition mul0t : left_zero 0%R mult.
+Proof. by rewrite /mult/map2_t unlock=> t; apply/congr1/map2_0mx. Qed.
 Lemma mult0 : right_zero 0%R mult.
-Proof. by move=> x; rewrite /mult map2_mx0. Qed.
+Proof. by rewrite /mult/map2_t unlock=> t; apply/congr1/map2_mx0. Qed.
 
 HB.instance Definition _ := GRing.Nmodule_isPzSemiRing.Build
-  'T[R] multA mul1t mult1 multDl multDr mul0t mult0.
+  'T[R] map2_tA map2_1t map2_t1 multDl multDr mul0t mult0.
 
 End TensorSemiRing.
 
-Lemma multC {R : comPzSemiRingType} : @commutative 'T[R] _ mult.
-Proof. by move=> x y; rewrite /mult map2_mxC. Qed.
-
 HB.instance Definition _ {R : pzRingType} := GRing.Zmodule_isPzRing.Build
-  'T[R] multA mul1t mult1 multDl multDr.
+  'T[R] map2_tA map2_1t map2_t1 multDl multDr.
 
 HB.instance Definition _ {R : comPzRingType} := 
-  GRing.PzRing_hasCommutativeMul.Build 'T[R] multC.
+  GRing.PzRing_hasCommutativeMul.Build 'T[R] map2_tC.
 
-Lemma prodn_gt0 (xs : pseq) : 0 < \prod_(e <- xs) e.
+Lemma onet_neq0 {R : nzSemiRingType} : 1%R != 0%R :> 'T[R].
 Proof.
-case: xs; elim=> [?|x xs' IH /=/andP [x_gt0 xs'_gt0]]; first by rewrite big_nil.
-rewrite big_cons muln_gt0; apply/andP; split=>//.
-exact: (IH xs'_gt0).
-Qed.
-
-Lemma onet_neq0 {R : nzSemiRingType} : (1%R : 'T[R]) != 0%R.
-Proof.
-rewrite /GRing.one/GRing.zero /= /GRing.zero.
-apply/eqP. case. apply/matrixP. rewrite /const_mx/eqrel.
-case: (\prod_(u <- _)  u) (prodn_gt0 us)=> [//|n0 _] /(_ ord0).
-case: (\prod_(d <- _)  d) (prodn_gt0 ds)=> [//|n1 _] /(_ ord0).
+rewrite /GRing.one/GRing.zero/=/const_t unlock.
+apply/eqP; case; apply/matrixP.
+have prod_pseq_neq0: forall xs : pseq, \prod_(e <- xs) e != 0=> [xs|].
+  by rewrite prod_nat_seq_neq0; case xs.
+case: (\prod_(u <- _) u) (prod_pseq_neq0 us)=> [//|n0 _] /(_ ord0).
+case: (\prod_(d <- _) d) (prod_pseq_neq0 ds)=> [//|n1 _] /(_ ord0).
 by rewrite !mxE; apply/eqP/oner_neq0.
 Qed.
 
@@ -280,10 +352,10 @@ HB.instance Definition _ {R : nzSemiRingType} :=
   'T[R] onet_neq0.
 
 HB.instance Definition _ {R : nzRingType} := GRing.Zmodule_isNzRing.Build
-  'T[R] multA mul1t mult1 multDl multDr onet_neq0.
+  'T[R] map2_tA map2_1t map2_t1 multDl multDr onet_neq0.
 
 HB.instance Definition _ {R : comNzRingType} := GRing.Zmodule_isComNzRing.Build
-  'T[R] multA multC mul1t multDl onet_neq0.
+  'T[R] map2_tA map2_tC map2_1t multDl onet_neq0.
 
 Definition unitt {R : unitRingType} (t : 'T[R]) :=
   [forall ij, (\val t ij.1 ij.2) \is a GRing.unit].
@@ -293,15 +365,17 @@ Definition invt {R : unitRingType} (t : 'T[R]) :=
 
 Definition mulVt {R : unitRingType} : {in @unitt R, left_inverse 1%R invt *%R}.
 Proof.
-move=> t t_unit; apply/val_inj/matrixP=> i j/=.
-rewrite /invt t_unit !mxE mulVr//=.
+move=> t t_unit; apply/val_inj/matrixP=> i j.
+rewrite /invt t_unit/GRing.mul/GRing.one/=/map2_t/const_t.
+rewrite tensor_of_mx.unlock !mxE mulVr//.
 by move: t_unit; rewrite /unitt=> /forallP /(_ (i, j)).
 Qed.
 
 Definition divtt {R : unitRingType} : {in @unitt R, right_inverse 1%R invt *%R}.
 Proof.
 move=> t t_unit; apply/val_inj/matrixP=> i j/=.
-rewrite /invt t_unit !mxE divrr//.
+rewrite /invt t_unit /GRing.mul/GRing.one/=/map2_t/const_t.
+rewrite tensor_of_mx.unlock !mxE divrr//.
 by move: t_unit; rewrite /unitt=> /forallP /(_ (i, j)).
 Qed.
 
@@ -311,7 +385,8 @@ Proof.
 move=> x y [/eqP + /eqP]; rewrite /eq_op/==> /eqP/matrixP yx1 /eqP/matrixP xy1.
 apply/forallP=> ij; apply/unitrP; exists (\val y ij.1 ij.2).
 move: (conj (yx1 ij.1 ij.2) (xy1 ij.1 ij.2)).
-by rewrite !mxE.
+rewrite {1 2}/GRing.mul{1 2}/GRing.one/=/map2_t/const_t.
+by rewrite tensor_of_mx.unlock !mxE.
 Qed.
 
 Definition invt_out {R : unitRingType} : {in [predC @unitt R], invt =1 id}.
@@ -340,11 +415,12 @@ Definition tensor_nil (t : 'T[R]_([::], [::])) : R :=
   \val t (cast_ord prod_nil ord0) (cast_ord prod_nil ord0).
 
 Definition const_tK : cancel const_t tensor_nil.
-Proof. by move=> t; rewrite /tensor_nil mxE. Qed.
+Proof. by rewrite /const_t unlock /tensor_nil=> t; rewrite mxE. Qed.
 
 Definition tensor_nilK : cancel tensor_nil const_t.
 Proof.
-by move=> t; apply/val_inj/matrixP=> i j/=; rewrite mxE !ord_prod_nil.
+rewrite /const_t unlock=> t; apply/val_inj/matrixP=> i j.
+by rewrite mxE !ord_prod_nil.
 Qed.
 
 End NilTensor.
@@ -390,11 +466,11 @@ Proof. by rewrite /tensor_nil mxE. Qed.
 
 Lemma tensor_nilN {R : zmodType} t
   : (- t).[::] = - t.[::] :> R.
-Proof. by rewrite /tensor_nil mxE. Qed.
+Proof. by rewrite {1}/GRing.opp/=/oppt unlock /tensor_nil mxE. Qed.
 
 Lemma tensor_nilM {R : pzSemiRingType} t u
   : (t * u).[::] = t.[::] * u.[::] :> R.
-Proof. by rewrite /tensor_nil mxE. Qed.
+Proof. by rewrite {1}/GRing.mul/=/map2_t unlock /tensor_nil mxE. Qed.
 
 Definition tensor_nilr_spec {R : pzRingType} := 
   (@tensor_nilM R, @tensor_nilN R, @tensor_nilD R).
@@ -402,12 +478,10 @@ Definition tensor_nilr_spec {R : pzRingType} :=
 Lemma tensor_nilV {R : unitRingType} t
   : (t^-1).[::] = t.[::]^-1 :> R.
 Proof.
-rewrite /tensor_nil {1}/GRing.inv/=/invt.
-case (t \in @unitt [::] [::] R) eqn:t_unit; rewrite t_unit.
-  by rewrite mxE.
-apply/esym/invr_out; move: t_unit=> /negbT /forallP not_all_unit.
-apply/negP=> ?; apply: not_all_unit=> ij.
-by rewrite !ord_prod_nil.
+rewrite {1}/GRing.inv/=/invt.
+case t_unit: (t \in _); first by rewrite /tensor_nil mxE.
+apply/esym/invr_out/negP=> ?; move: t_unit=> /negbT /forallP.
+by apply=>>; rewrite !ord_prod_nil.
 Qed.
 
 End NilTensorTheory.
@@ -422,15 +496,23 @@ Import GRing.Theory.
 
 Lemma const_tD {R : nmodType} x y
   : @const_t R us ds (x + y) = const_t x + const_t y.
-Proof. by apply/val_inj/matrixP=> i j; rewrite !mxE. Qed.
+Proof.
+by rewrite /const_t unlock; apply/val_inj/matrixP=> i j; rewrite !mxE.
+Qed.
 
 Lemma const_tN {R : zmodType} x
   : @const_t R us ds (- x) = - const_t x.
-Proof. by apply/val_inj/matrixP=> i j; rewrite !mxE. Qed.
+Proof.
+rewrite {2}/GRing.opp/=/oppt/const_t unlock.
+by apply/val_inj/matrixP=> i j; rewrite !mxE.
+Qed.
 
 Lemma const_tM {R : pzSemiRingType} x y
   : @const_t R us ds (x * y) = const_t x * const_t y.
-Proof. by apply/val_inj/matrixP=> i j; rewrite !mxE. Qed.
+Proof.
+rewrite {2}/GRing.mul/=/mult/const_t/map2_t unlock.
+by apply/val_inj/matrixP=> i j; rewrite !mxE.
+Qed.
 
 Definition const_tr_spec {R : pzRingType} := 
   (@const_tM R, @const_tN R, @const_tD R).
@@ -438,13 +520,12 @@ Definition const_tr_spec {R : pzRingType} :=
 Lemma const_tV {R : unitRingType} x
   : @const_t R us ds x^-1 = (const_t x)^-1.
 Proof.
+rewrite /const_t unlock.
 apply/val_inj/matrixP=> i j.
 rewrite {2}/GRing.inv/=/invt.
-case (const_t x \in @unitt us ds R) eqn:t_unit; rewrite !mxE=>//.
-apply invr_out; move: t_unit=> /negbT /forallP not_all_unit.
-apply/negP=> ?.
-apply: not_all_unit=> ?.
-by rewrite mxE.
+case t_unit: (Tensor _ \in _); rewrite !mxE=>//.
+apply/invr_out/negP=> ?; move: t_unit=> /negbT /forallP.
+by apply=>>; rewrite mxE.
 Qed.
 
 End ConstTensorTheory.
@@ -481,17 +562,17 @@ Context (R : Type) (u d : nat) (us ds : pseq).
 Open Scope ring_scope.
 
 Definition nindex (t : 'T[R]_(u.+1 :: us, ds)) (i : 'I_u.+1) : 'T[R]_(us, ds) :=
-  Tensor (\matrix_(i', j) (\val t) (tensormx_index (i, i')) j).  
+  tensor_of_mx tensor_key (\matrix_(i', j) (\val t) (tensormx_index (i, i')) j).  
 
 Definition oindex (t : 'T[R]_(us, d.+1 :: ds)) (j : 'I_d.+1) : 'T[R]_(us, ds) :=
-  Tensor (\matrix_(i, j') (\val t) i (tensormx_index (j, j'))).
+  tensor_of_mx tensor_key (\matrix_(i, j') (\val t) i (tensormx_index (j, j'))).
 
 Definition nstack (f : 'I_u.+1 -> 'T[R]_(us, ds)) : 'T[R]_(u.+1 :: us, ds) := 
-  Tensor (
+  tensor_of_mx tensor_key (
     \matrix_(i, j) \val (f (tensormx_unindex i).1) (tensormx_unindex i).2 j).
 
 Definition ostack (f : 'I_d.+1 -> 'T[R]_(us, ds)) : 'T[R]_(us, d.+1 :: ds) :=
-  Tensor (
+  tensor_of_mx tensor_key (
     \matrix_(i, j) \val (f (tensormx_unindex j).1) i (tensormx_unindex j).2).
 
 End IndexTensor.
@@ -523,6 +604,7 @@ Context (R : Type).
 Lemma ntensorP {u} {us ds : pseq} (t v : 'T[R]_(u.+1 :: us, ds)) 
   : t = v <-> forall i, t^^i = v^^i.
 Proof.
+rewrite /nindex unlock.
 split=> [->//|eq_i]; apply/val_inj/matrixP=> i j.
 move: (eq_i (tensormx_unindex i).1)=> [/matrixP] /(_ (tensormx_unindex i).2 j).
 by rewrite !mxE -surjective_pairing tensormx_unindexK.
@@ -531,6 +613,7 @@ Qed.
 Lemma otensorP {d} {us ds : pseq} (t v : 'T[R]_(us, d.+1 :: ds))
   : t = v <-> forall i, t`_i = v`_i.
 Proof.
+rewrite /oindex unlock.
 split=> [->//|eq_i]; apply/val_inj/matrixP=> i j.
 move: (eq_i (tensormx_unindex j).1)=> [/matrixP] /(_ i (tensormx_unindex j).2).
 by rewrite !mxE -surjective_pairing tensormx_unindexK.
@@ -551,10 +634,16 @@ by move: (eq_i i)=> /tensor_nil_eqP.
 Qed.
 
 Lemma nstackE {u us ds} (f : 'I_u.+1 -> 'T[R]_(us, ds)) i : (nstack f)^^i = f i.
-Proof. by apply/val_inj/matrixP => x y; rewrite !mxE tensormx_indexK. Qed.
+Proof.
+rewrite /nstack/nindex unlock.
+by apply/val_inj/matrixP => x y; rewrite !mxE tensormx_indexK.
+Qed.
 
 Lemma ostackE {us d ds} (f : 'I_d.+1 -> 'T[R]_(us, ds)) i : (ostack f)`_i = f i.
-Proof. by apply/val_inj/matrixP => x y; rewrite !mxE tensormx_indexK. Qed.
+Proof.
+rewrite /ostack/oindex unlock.
+by apply/val_inj/matrixP => x y; rewrite !mxE tensormx_indexK.
+Qed.
 
 Lemma nstack_eqE {u} (f : 'I_u.+1 -> R) i : (\tensor^^i0 => f i0)^^=i = f i.
 Proof. by rewrite nstackE const_tK. Qed.
@@ -575,11 +664,37 @@ Definition ntensor_of_tuple (t : x.+1.-tuple R) : 'nT[R]_([:: x.+1]) :=
 Definition otensor_of_tuple (t : x.+1.-tuple R) : 'oT[R]_([:: x.+1]) :=
   \tensor`_i => (tnth t i).
 
+Definition tuple_of_ntensor (t : 'nT[R]_([:: x.+1])) :=
+  [tuple t^^=i | i < x.+1].
+
+Definition tuple_of_otensor (t : 'oT[R]_([:: x.+1])) :=
+  [tuple t`_=i | i < x.+1].
+
 Lemma ntensor_of_tupleE t i : (ntensor_of_tuple t)^^=i = tnth t i.
 Proof. exact: nstack_eqE. Qed.
 
 Lemma otensor_of_tupleE t i : (otensor_of_tuple t)`_=i = tnth t i.
 Proof. exact: ostack_eqE. Qed.
+
+Lemma ntensor_of_tupleK : cancel ntensor_of_tuple tuple_of_ntensor.
+Proof.
+by move=> t; apply/eq_from_tnth=> i; rewrite tnth_mktuple nstack_eqE.
+Qed.
+
+Lemma tuple_of_ntensorK : cancel tuple_of_ntensor ntensor_of_tuple.
+Proof.
+by move=> t; apply/ntensor_eqP=> i; rewrite nstackE const_tK tnth_mktuple.
+Qed.
+
+Lemma otensor_of_tupleK : cancel otensor_of_tuple tuple_of_otensor.
+Proof.
+by move=> t; apply/eq_from_tnth=> i; rewrite tnth_mktuple ostack_eqE.
+Qed.
+
+Lemma tuple_of_otensorK : cancel tuple_of_otensor otensor_of_tuple.
+Proof.
+by move=> t; apply/otensor_eqP=> i; rewrite ostackE const_tK tnth_mktuple.
+Qed.
 
 Definition nstack_tuple (t : x.+1.-tuple 'T[R]_(us, ds)) :=
   \tensor^^i tnth t i.
@@ -587,11 +702,29 @@ Definition nstack_tuple (t : x.+1.-tuple 'T[R]_(us, ds)) :=
 Definition ostack_tuple (t : x.+1.-tuple 'T[R]_(us, ds)) :=
   \tensor`_i tnth t i.
 
+Definition nunstack_tuple (t : 'T[R]_(x.+1 :: us, ds)) :=
+  [tuple t^^i | i < x.+1].
+
+Definition ounstack_tuple (t : 'T[R]_(us, x.+1 :: ds)) :=
+  [tuple t`_i | i < x.+1].
+
 Lemma nstack_tupleE t i : (nstack_tuple t)^^i = tnth t i.
 Proof. exact: nstackE. Qed.
 
 Lemma ostack_tupleE t i : (ostack_tuple t)`_i = tnth t i.
 Proof. exact: ostackE. Qed.
+
+Lemma nstack_tupleK : cancel nstack_tuple nunstack_tuple.
+Proof. by move=> t; apply/eq_from_tnth=> i; rewrite tnth_mktuple nstackE. Qed.
+
+Lemma nunstack_tupleK : cancel nunstack_tuple nstack_tuple.
+Proof. by move=> t; apply/ntensorP=> i; rewrite nstackE tnth_mktuple. Qed.
+
+Lemma ostack_tupleK : cancel ostack_tuple ounstack_tuple.
+Proof. by move=> t; apply/eq_from_tnth=> i; rewrite tnth_mktuple ostackE. Qed.
+
+Lemma ounstack_tupleK : cancel ounstack_tuple ostack_tuple.
+Proof. by move=> t; apply/otensorP=> i; rewrite ostackE tnth_mktuple. Qed.
 
 End TensorTuple.
 
