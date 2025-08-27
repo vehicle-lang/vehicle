@@ -244,27 +244,42 @@ evalReduceTensor accessReductionOp accessLit evalOp2 op2 args =
 -----------------------------------------------------------------------------
 -- Individual builtin evaluation
 -----------------------------------------------------------------------------
--- Bool
+-- Not
 
 evalNot :: (MonadNormBuiltin m, HasBoolExpr Value builtin) => EvalSimple TensorOp1Args Value builtin m
 evalNot = evalTensorOp1 accessNotBuiltin accessBoolTensorLiteral not
 
+-----------------------------------------------------------------------------
+-- And
+
 evalAnd :: (MonadNormBuiltin m, HasBoolExpr Value builtin) => EvalSimple TensorOp2Args Value builtin m
 evalAnd = evalTensorOp2 accessAndBuiltin accessBoolTensorLiteral (&&) (Just True) (Just True) (Just False) (Just False)
 
+-----------------------------------------------------------------------------
+-- Or
+
 evalOr :: (MonadNormBuiltin m, HasBoolExpr Value builtin) => EvalSimple TensorOp2Args Value builtin m
 evalOr args = evalTensorOp2 accessOrBuiltin accessBoolTensorLiteral (||) (Just False) (Just False) (Just True) (Just True) args
+
+-----------------------------------------------------------------------------
+-- Implies
 
 evalImplies :: (MonadNormBuiltin m, HasBoolExpr Value builtin) => EvalSimple TensorOp2Args Value builtin m
 evalImplies (TensorOp2Args ds xs ys) = do
   notXs <- evalNot (TensorOp1Args ds xs)
   evalOr (TensorOp2Args ds notXs ys)
 
+-----------------------------------------------------------------------------
+-- ReduceAnd
+
 evalReduceAndTensor ::
   forall m builtin.
-  (MonadNormBuiltin m, HasBoolExpr Value builtin, PrintableBuiltin builtin) =>
+  (MonadNormBuiltin m, PrintableBuiltin builtin, NormalisableBuiltin builtin, BuiltinHasNatType builtin, BuiltinHasIndexLiterals builtin, BuiltinHasForeach builtin, BuiltinHasTensors builtin, BuiltinHasListLiterals builtin, BuiltinHasNatLiterals builtin, BuiltinHasBoolLiterals builtin, HasTensorLiterals builtin, HasLiftableTensorOperations builtin) =>
+  NamedBoundCtx ->
+  EvalApp builtin m ->
+  Eval builtin m ->
   EvalSimple TensorReductionArgs Value builtin m
-evalReduceAndTensor args@(TensorOp2Args dims e tensor) = case e of
+evalReduceAndTensor ctx evalApp eval args@(TensorOp2Args dims e tensor) = case e of
   IBoolLiteral True -> go tensor
   _ -> unoptimisedEvalReduceAndTensor args
   where
@@ -274,13 +289,55 @@ evalReduceAndTensor args@(TensorOp2Args dims e tensor) = case e of
         xs' <- go xs
         ys' <- go ys
         evalAnd (TensorOp2Args ds xs' ys')
-      vs -> unoptimisedEvalReduceAndTensor (TensorOp2Args dims e vs)
+      vs -> do
+        result <- fuseReduceAndForeachTensor ctx evalApp eval tensor
+        case result of
+          Nothing -> unoptimisedEvalReduceAndTensor (TensorOp2Args dims e vs)
+          Just (newDims, fusedTensor) -> return $ mkExpr accessReduceAnd (TensorOp2Args newDims e fusedTensor)
 
-unoptimisedEvalReduceAndTensor :: (MonadNormBuiltin m, HasBoolExpr Value builtin, PrintableBuiltin builtin) => EvalSimple TensorReductionArgs Value builtin m
-unoptimisedEvalReduceAndTensor = evalReduceTensor accessReduceAndBuiltin accessBoolTensorLiteral evalAnd (&&)
+-- | An optimised evaluation procedure for `Foreach` that attempts to minimise the
+-- amount of work needed by lifting operations to higher-tensor levels.
+-- For example `foreach i . xs ! i + ys ! i` becomes `xs + ys`.
+fuseReduceAndForeachTensor ::
+  (MonadLogger m, PrintableBuiltin builtin, NormalisableBuiltin builtin, BuiltinHasNatType builtin, BuiltinHasIndexLiterals builtin, BuiltinHasForeach builtin, BuiltinHasTensors builtin, BuiltinHasListLiterals builtin, BuiltinHasNatLiterals builtin, BuiltinHasBoolLiterals builtin, HasTensorLiterals builtin, HasLiftableTensorOperations builtin) =>
+  NamedBoundCtx ->
+  EvalApp builtin m ->
+  Eval builtin m ->
+  Value builtin ->
+  m (Maybe (VArg builtin, Value builtin))
+fuseReduceAndForeachTensor ctx evalApp eval value = do
+  fusionEnter ctx value
+  fusionExit ctx =<< case getExpr accessForeachTensor value of
+    Just (ForeachTensorArgs typ d _ (VLam binder (Closure env body))) -> do
+      let lv = boundCtxLv ctx
+      let newEnv = extendEnvWithBound lv binder env
+      let newCtx = nameOf binder : ctx
+      body' <- eval newCtx newEnv body
+      case getExpr accessReduceAnd body' of
+        Just (TensorOp2Args tensorDims (IBoolLiteral True) tensor) -> do
+          (newDims, newTensor) <- fromMaybe (tensorDims, tensor) <$> fuseReduceAndForeachTensor newCtx evalApp eval tensor
+          let newTensor' = quote mempty (lv + 1) newTensor
+          let newLam = VLam binder (Closure (namedBoundContextToEnv ctx) newTensor')
+          let newForeachArgs = ForeachTensorArgs typ d newDims newLam
+          newBody' <- evalForeachTensor newCtx evalApp eval newForeachArgs
+          return $ Just (implicit (ICons (implicit INatType) d (argExpr newDims)), newBody')
+        _ -> return Nothing
+    _ -> return Nothing
+
+unoptimisedEvalReduceAndTensor ::
+  (MonadNormBuiltin m, HasBoolExpr Value builtin, PrintableBuiltin builtin) =>
+  EvalSimple TensorReductionArgs Value builtin m
+unoptimisedEvalReduceAndTensor =
+  evalReduceTensor accessReduceAndBuiltin accessBoolTensorLiteral evalAnd (&&)
+
+-----------------------------------------------------------------------------
+-- ReduceOr
 
 evalReduceOrTensor :: (MonadNormBuiltin m, HasBoolExpr Value builtin, PrintableBuiltin builtin) => EvalSimple TensorReductionArgs Value builtin m
 evalReduceOrTensor = evalReduceTensor accessReduceOrBuiltin accessBoolTensorLiteral evalOr (||)
+
+-----------------------------------------------------------------------------
+-- If
 
 evalIf :: (MonadNormBuiltin m, HasBoolExpr Value builtin) => EvalSimple IfArgs Value builtin m
 evalIf args@(IfArgs _t c e1 e2) = return $ case c of
@@ -803,3 +860,24 @@ showFusionExit ctx result = do
   logDebug MidDetail $ "fusion-exit" <+> prettyFriendly (WithContext result ctx)
   return result
 -}
+
+fusionEnter :: (MonadLogger m, PrintableBuiltin builtin) => NamedBoundCtx -> Value builtin -> m ()
+fusionEnter _ctx _value = return ()
+
+fusionExit :: (MonadLogger m, PrintableBuiltin builtin) => NamedBoundCtx -> Maybe (VArg builtin, Value builtin) -> m (Maybe (VArg builtin, Value builtin))
+fusionExit _ctx result = return result
+
+{-
+fusionEnter :: (MonadLogger m, PrintableBuiltin builtin) => NamedBoundCtx -> Value builtin -> m ()
+fusionEnter ctx value = do
+  logDebug MaxDetail $ "fusion-enter" <+> prettyFriendly (WithContext value ctx)
+  incrCallDepth
+
+fusionExit :: (MonadLogger m, PrintableBuiltin builtin) => NamedBoundCtx -> Maybe (VArg builtin, Value builtin) -> m (Maybe (VArg builtin, Value builtin))
+fusionExit ctx result = do
+  decrCallDepth
+  logDebug MaxDetail $
+    "fusion-exit" <+> case result of
+      Nothing -> ""
+      Just (dims, value) -> prettyFriendly (WithContext value ctx) <+> parens (prettyFriendly (WithContext (argExpr dims) ctx))
+  return result-}

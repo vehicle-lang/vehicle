@@ -16,7 +16,6 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Interface.Normalise
-import Vehicle.Data.Builtin.Interface.TensorFusion (fuseReduceAndTensor)
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
@@ -287,16 +286,12 @@ unblockReduceAndTensor ::
   UnblockingFunction m ->
   TensorReductionArgs (Value Builtin) ->
   m (Value Builtin)
-unblockReduceAndTensor unblock args = do
-  fusionResult <- fuseReduceAndTensor args
-  case getExpr accessReduceAnd fusionResult of
-    Nothing -> return fusionResult
-    Just newArgs@(TensorOp2Args _ _ tensor) ->
-      case getExpr accessCompareRatTensorPointwise tensor of
-        Just (op, TensorOp2Args (argExpr -> ICons _ d ds) xs ys) -> do
-          let compareArgs = TensorReduceComparisonArgs (implicitIrrelevant d) (implicitIrrelevant ds) xs ys
-          return $ mkExpr accessCompareRatTensorReduced (op, compareArgs)
-        _ -> unblockReduceTensor unblock evalReduceAndTensor newArgs
+unblockReduceAndTensor unblock args@(TensorOp2Args _ _ tensor) = do
+  case getExpr accessCompareRatTensorPointwise tensor of
+    Just (op, TensorOp2Args (argExpr -> ICons _ d ds) xs ys) -> do
+      let compareArgs = TensorReduceComparisonArgs (implicitIrrelevant d) (implicitIrrelevant ds) xs ys
+      return $ mkExpr accessCompareRatTensorReduced (op, compareArgs)
+    _ -> unblockReduceTensor unblock unoptimisedEvalReduceAndTensor args
 
 unblockConstTensor ::
   (MonadUnblock m) =>

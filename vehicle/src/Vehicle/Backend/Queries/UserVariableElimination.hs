@@ -28,7 +28,7 @@ import Vehicle.Compile.Rational.LinearExpr (LinearityError (..), compileLinearRe
 import Vehicle.Compile.Resource (NetworkTensorType (..), NetworkType (..))
 import Vehicle.Compile.Variable (createUserVar)
 import Vehicle.Data.Assertion
-import Vehicle.Data.Builtin.Interface.Normalise (evalAtTensor, evalReduceAndTensor)
+import Vehicle.Data.Builtin.Interface.Normalise (evalAtTensor, unoptimisedEvalReduceAndTensor)
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.Interface
@@ -305,7 +305,7 @@ eliminateTensorAssertion op (TensorOp2Args dims xs ys) =
             evalCompareRatTensor op (TensorOp2Args (implicitIrrelevant ds) xsi ysi)
       stackElements <- traverse mkStackElement [0 .. (n - 1)] :: m [Value Builtin]
       let stackExpr = fromBoolTensorValue $ VBoolStackTensor (StackTensorArgs tElem d d0Arg stackElements)
-      evalReduceAndTensor (TensorOp2Args (implicitIrrelevant (mkDims [n])) (IBoolLiteral True) stackExpr)
+      unoptimisedEvalReduceAndTensor (TensorOp2Args (implicitIrrelevant (mkDims [n])) (IBoolLiteral True) stackExpr)
     _ -> do
       compilerDeveloperError ("unexpected dimensions" <+> prettyVerbose dims)
 

@@ -71,7 +71,7 @@ instance NormalisableBuiltin Builtin where
       ReduceMulRatTensor -> Simple evalReduceMulRatTensor
       ReduceMinRatTensor -> Simple evalReduceMinRatTensor
       ReduceMaxRatTensor -> Simple evalReduceMaxRatTensor
-      ReduceAndTensor -> Simple evalReduceAndTensor
+      ReduceAndTensor -> NonSimple evalReduceAndTensor
       ReduceOrTensor -> Simple evalReduceOrTensor
       If -> Simple evalIf
       Implies -> Simple evalImplies
