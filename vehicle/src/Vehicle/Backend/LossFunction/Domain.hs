@@ -30,7 +30,7 @@ import Vehicle.Data.Builtin.Standard
 
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
-import Vehicle.Data.QuantifiedVariable (reduceTensorVariable, Variable, TensorVariable)
+import Vehicle.Data.QuantifiedVariable (reduceTensorVariable, Variable, SliceVariable)
 import Vehicle.Data.Tensor (mapTensor, TensorShape)
 import Vehicle.Data.Assertion (UnderConstrainedVariableStatus, checkBoundsExist, Bounds(..), Bound, pattern Bound, mkInequality, Inequality(..), LowerBound, UpperBound)
 import Data.Set qualified as Set (unions, insert, disjoint)
@@ -267,7 +267,7 @@ convertBoundsToExpr op bounds = foldr1 op (fmap convertBound bounds)
       -- Ignore strictness for the moment.
       linearExprToExpr convertConstant convertVariable (IAdd AddRat) value
 
-splitConstraints :: TensorVariable -> VariableConstraints -> ([TensorInequality], [TensorInequality])
+splitConstraints :: SliceVariable -> VariableConstraints -> ([TensorInequality], [TensorInequality])
 splitConstraints var = partition (\ineq -> inequalityExpr ineq `referencesVariable` var)
 
 --------------------------------------------------------------------------------

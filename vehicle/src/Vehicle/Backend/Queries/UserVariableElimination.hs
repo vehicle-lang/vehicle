@@ -17,7 +17,7 @@ import Vehicle.Backend.Queries.Unblock qualified as Unblocking
 import Vehicle.Backend.Queries.UserVariableElimination.Core
 import Vehicle.Backend.Queries.UserVariableElimination.EliminateExists (eliminateQuantifiedVariable)
 import Vehicle.Compile.Context.Free (getFreeEnv)
-import Vehicle.Compile.Context.Name (getNameContext, runFreshNameContextT)
+import Vehicle.Compile.Context.Name (getNameContext, prettyFriendlyInCtx, runFreshNameContextT)
 import Vehicle.Compile.Error
 import Vehicle.Compile.LiftIf (unfoldIf)
 import Vehicle.Compile.LowerNot (lowerNot, notClosure)
@@ -99,10 +99,9 @@ compileQuantifiedQuerySet ::
   VBinder Builtin ->
   Closure Builtin ->
   m (Property QueryMetaData)
-compileQuantifiedQuerySet isPropertyNegated _dims binder closure = do
-  logCompilerSection2 MaxDetail "compilation of query set" $ do
-    (maybePartitions, globalCtx) <- runStateT (eliminateExists binder closure) emptyGlobalCtx
-    compileQuerySetPartitions globalCtx isPropertyNegated maybePartitions
+compileQuantifiedQuerySet isPropertyNegated _dims binder closure = logCompilerSection2 MaxDetail "compilation of query set" $ do
+  (maybePartitions, globalCtx) <- runStateT (eliminateExists binder closure) emptyGlobalCtx
+  compileQuerySetPartitions globalCtx isPropertyNegated maybePartitions
 
 -- | We only need this because we can't evaluate networks in the compiler.
 compileUnquantifiedQuerySet ::
@@ -122,7 +121,7 @@ compileQuerySetPartitions ::
   (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m) =>
   GlobalCtx ->
   QuerySetNegationStatus ->
-  MaybeTrivial (Partitions TensorVariable) ->
+  MaybeTrivial Partitions ->
   m (Property QueryMetaData)
 compileQuerySetPartitions globalCtx isPropertyNegated maybePartitions = case maybePartitions of
   Trivial b -> return $ Trivial (b `xor` isPropertyNegated)
@@ -139,7 +138,7 @@ compileQuerySetPartitions globalCtx isPropertyNegated maybePartitions = case may
 compileBoolExpr ::
   (MonadQueryStructure m, MonadWriter [Value Builtin] m) =>
   Value Builtin ->
-  m (MaybeTrivial (Partitions TensorVariable))
+  m (MaybeTrivial Partitions)
 compileBoolExpr expr = do
   showEntry expr
   showExit =<< case toBoolValue expr of
@@ -172,7 +171,7 @@ purifyAndCompileAssertion ::
   (MonadQuantifierBody m) =>
   ComparisonOp ->
   TensorOp2Args (Value Builtin) ->
-  m (MaybeTrivial (Partitions TensorVariable))
+  m (MaybeTrivial Partitions)
 purifyAndCompileAssertion op args
   | op == Ne =
       -- We can't handle negative equalities so just eliminate it
@@ -192,7 +191,7 @@ compilePurifiedAssertion ::
   (MonadQuantifierBody m) =>
   ComparisonOp ->
   TensorOp2Args (Value Builtin) ->
-  m (Either (Value Builtin) (Assertion TensorVariable))
+  m (Either (Value Builtin) (Assertion SliceVariable))
 compilePurifiedAssertion op args@(TensorOp2Args dims xs ys) = do
   let shape = case getDims (argExpr dims) of
         Nothing -> developerError $ "Non-concrete dimensions found" <+> prettyVerbose dims
@@ -200,8 +199,7 @@ compilePurifiedAssertion op args@(TensorOp2Args dims xs ys) = do
 
   maybeLinearRel <- compileLinearRelation findVariableFromLevel shape xs ys
   case maybeLinearRel of
-    Right (e1, e2) -> do
-      return $ Right $ comparisonToAssertion op e1 e2
+    Right (e1, e2) -> return $ Right $ comparisonToAssertion op e1 e2
     Left NonLinearity ->
       throwError catchableUnsupportedNonLinearConstraint
     Left (UnexpectedExpr e) ->
@@ -216,8 +214,8 @@ compilePurifiedAssertion op args@(TensorOp2Args dims xs ys) = do
         return $ "converting-to-element-assertions:" <+> newValueDoc
       return $ Left elementComparisonValue
 
-findVariableFromLevel :: (MonadQueryStructure m) => Lv -> m TensorVariable
-findVariableFromLevel = return . TensorVariable
+findVariableFromLevel :: (MonadQueryStructure m) => Lv -> m SliceVariable
+findVariableFromLevel = return . SliceVariable
 
 --------------------------------------------------------------------------------
 -- Unblocking
@@ -241,9 +239,9 @@ unblockQuantifiedBoundVar ::
   Lv ->
   m (Value Builtin)
 unblockQuantifiedBoundVar lv = do
-  maybeChildExpr <- gets $ flip lookupChildVariablesExpr (TensorVariable lv)
-  case maybeChildExpr of
-    Just expr -> return expr
+  maybeChildVariablesExpr <- gets $ flip lookupChildVariablesExpr (SliceVariable lv)
+  case maybeChildVariablesExpr of
+    Just childVariablesExpr -> return childVariablesExpr
     Nothing -> return $ VBoundVar lv []
 
 unblockNetworkApplication ::
@@ -306,14 +304,13 @@ eliminateTensorAssertion op (TensorOp2Args dims xs ys) =
       stackElements <- traverse mkStackElement [0 .. (n - 1)] :: m [Value Builtin]
       let stackExpr = fromBoolTensorValue $ VBoolStackTensor (StackTensorArgs tElem d d0Arg stackElements)
       unoptimisedEvalReduceAndTensor (TensorOp2Args (implicitIrrelevant (mkDims [n])) (IBoolLiteral True) stackExpr)
-    _ -> do
-      compilerDeveloperError ("unexpected dimensions" <+> prettyVerbose dims)
+    _ -> compilerDeveloperError ("unexpected dimensions" <+> prettyVerbose dims)
 
 eliminateExists ::
   (MonadQueryStructure m) =>
   VBinder Builtin ->
   Closure Builtin ->
-  m (MaybeTrivial (Partitions TensorVariable))
+  m (MaybeTrivial Partitions)
 eliminateExists binder (Closure env body) = do
   let varName = getBinderName binder
   let subpassDoc = "elimination of existential quantifier over" <+> quotePretty varName
@@ -337,14 +334,12 @@ eliminateExists binder (Closure env body) = do
 
     -- Recursively compile the expression.
     (partitions, networkInputEqualities) <-
-      logCompilerSection2 MidDetail "reduction of body to assertion tree" $ do
-        runWriterT (compileBoolExpr normExpr)
+      logCompilerSection2 MidDetail "reduction of body to assertion tree" $ runWriterT (compileBoolExpr normExpr)
 
     -- Prepend network equalities to the tree (prepending is important for
     -- performance as the search for constraints will find them first.)
     networkEqPartitions <-
-      logCompilerSection2 MidDetail "reduction of network equalities to assertion tree" $ do
-        networkEqualitiesToPartition networkInputEqualities
+      logCompilerSection2 MidDetail "reduction of network equalities to assertion tree" $ networkEqualitiesToPartition networkInputEqualities
 
     let finalPartitions = andTrivial andPartitions partitions networkEqPartitions
 
@@ -354,7 +349,7 @@ eliminateExists binder (Closure env body) = do
 networkEqualitiesToPartition ::
   (MonadQueryStructure m) =>
   [Value Builtin] ->
-  m (MaybeTrivial (Partitions TensorVariable))
+  m (MaybeTrivial Partitions)
 networkEqualitiesToPartition networkEqualities = do
   logDebugM MaxDetail $ do
     networkEqDocs <- traverse prettyFriendlyInCtx networkEqualities
@@ -411,8 +406,8 @@ showEntry v = do
 
 showExit ::
   (MonadQueryStructure m) =>
-  MaybeTrivial (Partitions TensorVariable) ->
-  m (MaybeTrivial (Partitions TensorVariable))
+  MaybeTrivial Partitions ->
+  m (MaybeTrivial Partitions)
 showExit v = do
   decrCallDepth
   logDebugM MaxDetail $ do

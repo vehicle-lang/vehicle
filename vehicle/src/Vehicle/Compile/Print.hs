@@ -44,7 +44,7 @@ import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.Code.Value
-import Vehicle.Data.QuantifiedVariable (NetworkIOElementVariable, NetworkIOVariable, TensorVariable, TensorVariableLike (..), UserVariable, variableValue)
+import Vehicle.Data.QuantifiedVariable
 import Vehicle.Data.Tensor (RatTensor, Tensor, prettyTensor, pattern ZeroDimTensor)
 import Vehicle.Syntax.AST.Expr qualified as S
 import Vehicle.Syntax.Print
@@ -125,7 +125,7 @@ data Strategy
 {-
 -- Testing code, do not delete!
 -- Fill in `TestType` and inspect the hole to see what it reduces to.
-type TestType = LinearExpr TensorVariable RatTensor `In` NamedBoundCtx
+type TestType = LinearExpr SliceVariable RatTensor `In` NamedBoundCtx
 
 data MyProxy (a :: Strategy) = MyProxy
 test :: MyProxy (StrategyFor FriendlyTags TestType)
@@ -224,7 +224,13 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
     StrategyFor tags (Value Builtin `In` ctx)
   StrategyFor tags (NetworkIOElementVariable `In` ctx) =
     StrategyFor tags (Value Builtin `In` ctx)
-  StrategyFor tags (TensorVariable `In` ctx) =
+  StrategyFor tags (SliceVariable `In` ctx) =
+    StrategyFor tags (Value Builtin `In` ctx)
+  StrategyFor tags (UserTensorVariable `In` ctx) =
+    StrategyFor tags (Value Builtin `In` ctx)
+  StrategyFor tags (NetworkInputTensorVariable `In` ctx) =
+    StrategyFor tags (Value Builtin `In` ctx)
+  StrategyFor tags (NetworkOutputTensorVariable `In` ctx) =
     StrategyFor tags (Value Builtin `In` ctx)
   StrategyFor tags (NormalisedRelation rel variable constant `In` ctx) =
     StrategyFor tags (LinearExpr variable constant `In` ctx)
@@ -236,8 +242,8 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
       (StrategyFor tags (constant `In` NamedBoundCtx))
   StrategyFor tags (CompilationStep `In` ctx) =
     'Branch
-      (StrategyFor tags (TensorVariable `In` ctx))
-      (StrategyFor tags (LinearExpr TensorVariable RatTensor `In` ctx))
+      (StrategyFor tags (SliceVariable `In` ctx))
+      (StrategyFor tags (LinearExpr SliceVariable RatTensor `In` ctx))
   StrategyFor tags (QueryAssertion variable `In` ctx) =
     StrategyFor tags (variable `In` ctx)
   ------------
@@ -435,9 +441,9 @@ instance
 
 instance
   (PrettyUsing rest (Value Builtin `In` ctx)) =>
-  PrettyUsing rest (TensorVariable `In` ctx)
+  PrettyUsing rest (SliceVariable `In` ctx)
   where
-  prettyUsing (var, ctx) = prettyUsing @rest (variableValue @TensorVariable @Builtin var, ctx)
+  prettyUsing (var, ctx) = prettyUsing @rest (variableValue @SliceVariable @Builtin var, ctx)
 
 instance
   (PrettyUsing rest (Value Builtin `In` ctx)) =>
@@ -458,23 +464,41 @@ instance
   prettyUsing (var, ctx) = prettyUsing @rest (variableValue @NetworkIOElementVariable @Builtin var, ctx)
 
 instance
-  ( PrettyUsing restVar (TensorVariable `In` ctx),
-    PrettyUsing restLinExp (LinearExpr TensorVariable RatTensor `In` ctx)
+  (PrettyUsing rest (Value Builtin `In` ctx)) =>
+  PrettyUsing rest (UserTensorVariable `In` ctx)
+  where
+  prettyUsing (var, ctx) = prettyUsing @rest (variableValue @UserTensorVariable @Builtin var, ctx)
+
+instance
+  (PrettyUsing rest (Value Builtin `In` ctx)) =>
+  PrettyUsing rest (NetworkInputTensorVariable `In` ctx)
+  where
+  prettyUsing (var, ctx) = prettyUsing @rest (variableValue @NetworkInputTensorVariable @Builtin var, ctx)
+
+instance
+  (PrettyUsing rest (Value Builtin `In` ctx)) =>
+  PrettyUsing rest (NetworkOutputTensorVariable `In` ctx)
+  where
+  prettyUsing (var, ctx) = prettyUsing @rest (variableValue @NetworkOutputTensorVariable @Builtin var, ctx)
+
+instance
+  ( PrettyUsing restVar (SliceVariable `In` ctx),
+    PrettyUsing restLinExp (LinearExpr SliceVariable RatTensor `In` ctx)
   ) =>
   PrettyUsing ('Branch restVar restLinExp) (CompilationStep `In` ctx)
   where
   prettyUsing (step, ctx) = case step of
-    SolveEquality var _childVars expr ->
-      prettyUsing @restVar (toTensorVar var, ctx)
+    SolveEquality var expr ->
+      prettyUsing @restVar (toSliceVar var, ctx)
         <+> "=="
         <+> prettyUsing @restLinExp (expr, ctx)
     SolveInequalities var bounds ->
-      prettyUsing @restVar (toTensorVar var, ctx)
+      prettyUsing @restVar (toSliceVar var, ctx)
         <+> prettyUsing @restLinExp (bounds, ctx)
-    ReconstructTensorVariable var childVars ->
-      prettyUsing @restVar (var, ctx)
+    ReconstructTensorVariable var d ->
+      prettyUsing @restVar (toSliceVar var, ctx)
         <+> "->"
-        <+> prettyUsing @('Functor restVar) (childVars, ctx)
+        <+> pretty d
 
 instance
   ( PrettyUsing restVar (variable `In` ctx)
@@ -834,3 +858,14 @@ instance
     let prettyKey v = prettyUsing @restKey (v, ctx)
     let prettyValue v = prettyUsing @restValue (v, ctx)
     prettyMapEntries $ fmap (bimap prettyKey prettyValue) (Map.toList x)
+
+instance
+  ( PrettyUsing restKey (a `In` ctx),
+    PrettyUsing restValue (b `In` ctx)
+  ) =>
+  PrettyUsing ('Branch restKey restValue) ((a, b) `In` ctx)
+  where
+  prettyUsing ((x, y), ctx) = do
+    let x' = prettyUsing @restKey (x, ctx)
+    let y' = prettyUsing @restValue (y, ctx)
+    parens (x' <> "," <> y')

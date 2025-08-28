@@ -30,36 +30,36 @@
               "variableCompilationTrace": {
                 "reconstructionSteps": [
                   {
-                    "tag": "InternalReconstructTensorVariable",
+                    "tag": "ReconstructTensorVariable",
                     "contents": [
-                      2,
-                      [
-                        [
+                      {
+                        "nestedTensorShape": [
                           2
                         ],
-                        3,
-                        4
-                      ]
+                        "nestedStartingVariable": 2
+                      },
+                      "AllDimensions"
                     ]
                   },
                   {
-                    "tag": "InternalReconstructTensorVariable",
+                    "tag": "ReconstructTensorVariable",
                     "contents": [
-                      5,
-                      [
-                        [
+                      {
+                        "nestedTensorShape": [
                           1
                         ],
-                        6,
-                        6
-                      ]
+                        "nestedStartingVariable": 5
+                      },
+                      "AllDimensions"
                     ]
                   },
                   {
                     "tag": "SolveEquality",
                     "contents": [
-                      0,
-                      [],
+                      {
+                        "nestedTensorShape": [],
+                        "nestedStartingVariable": 0
+                      },
                       {
                         "constantValue": {
                           "tag": "ConstantTensor",
@@ -93,8 +93,10 @@
                   {
                     "tag": "SolveEquality",
                     "contents": [
-                      1,
-                      [],
+                      {
+                        "nestedTensorShape": [],
+                        "nestedStartingVariable": 1
+                      },
                       {
                         "constantValue": {
                           "tag": "ConstantTensor",

@@ -20,7 +20,6 @@ import Vehicle.Syntax.Tensor (HasShape (..))
 -- | A variable.
 class (Eq variable, Ord variable) => VariableLike variable where
   toLv :: variable -> Lv
-  fromLv :: Lv -> variable
 
 -------------------------------------------------------------------------------
 -- Constants

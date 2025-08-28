@@ -14,7 +14,7 @@ import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.LinearExpr (LinearExpr, addExprs, constantExpr, isConstant, scaleExpr, singletonVarExpr)
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
-import Vehicle.Data.QuantifiedVariable (TensorVariable)
+import Vehicle.Data.QuantifiedVariable (SliceVariable)
 import Vehicle.Data.Tensor (RatTensor, TensorShape, pattern ConstantTensor)
 import Prelude hiding (Applicative (..))
 
@@ -33,11 +33,11 @@ data LinearityError
 
 compileLinearRelation ::
   (MonadLogger m) =>
-  (Lv -> m TensorVariable) ->
+  (Lv -> m SliceVariable) ->
   TensorShape ->
   Value Builtin ->
   Value Builtin ->
-  m (Either LinearityError (LinearExpr TensorVariable RatTensor, LinearExpr TensorVariable RatTensor))
+  m (Either LinearityError (LinearExpr SliceVariable RatTensor, LinearExpr SliceVariable RatTensor))
 compileLinearRelation toVar shape x y = do
   runExceptT $ do
     x' <- compile (lift . toVar) shape x
@@ -47,13 +47,13 @@ compileLinearRelation toVar shape x y = do
 compile ::
   forall m.
   (MonadCompileLinearExpr m) =>
-  (Lv -> m TensorVariable) ->
+  (Lv -> m SliceVariable) ->
   TensorShape ->
   Value Builtin ->
-  m (LinearExpr TensorVariable RatTensor)
+  m (LinearExpr SliceVariable RatTensor)
 compile toVar shape = go
   where
-    go :: Value Builtin -> m (LinearExpr TensorVariable RatTensor)
+    go :: Value Builtin -> m (LinearExpr SliceVariable RatTensor)
     go expr = case toRatTensorValue expr of
       ----------------
       -- Base cases --

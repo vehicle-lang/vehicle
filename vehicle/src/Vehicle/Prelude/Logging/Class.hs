@@ -45,6 +45,7 @@ data CompilerPass
   | ITPBackend
   | LossBackend
   | QueryError
+  | WitnessReconstruction
   deriving (Eq, Show, Read, Bounded, Enum)
 
 instance Pretty CompilerPass where
@@ -55,6 +56,7 @@ instance Pretty CompilerPass where
     ITPBackend -> "ITP compilation"
     LossBackend -> "loss compilation"
     QueryError -> "query error"
+    WitnessReconstruction -> "witness reconstruction"
 
 allCompilerPasses :: [String]
 allCompilerPasses = map show (enumerate @CompilerPass)

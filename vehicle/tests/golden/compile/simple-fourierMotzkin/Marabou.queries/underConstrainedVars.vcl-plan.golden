@@ -31,29 +31,27 @@
               "variableCompilationTrace": {
                 "reconstructionSteps": [
                   {
-                    "tag": "InternalReconstructTensorVariable",
+                    "tag": "ReconstructTensorVariable",
                     "contents": [
-                      6,
-                      [
-                        [
+                      {
+                        "nestedTensorShape": [
                           1
                         ],
-                        7,
-                        7
-                      ]
+                        "nestedStartingVariable": 6
+                      },
+                      "AllDimensions"
                     ]
                   },
                   {
-                    "tag": "InternalReconstructTensorVariable",
+                    "tag": "ReconstructTensorVariable",
                     "contents": [
-                      8,
-                      [
-                        [
+                      {
+                        "nestedTensorShape": [
                           1
                         ],
-                        9,
-                        9
-                      ]
+                        "nestedStartingVariable": 8
+                      },
+                      "AllDimensions"
                     ]
                   },
                   {
@@ -166,8 +164,10 @@
                   {
                     "tag": "SolveEquality",
                     "contents": [
-                      1,
-                      [],
+                      {
+                        "nestedTensorShape": [],
+                        "nestedStartingVariable": 1
+                      },
                       {
                         "constantValue": {
                           "tag": "ConstantTensor",
@@ -199,16 +199,15 @@
                     ]
                   },
                   {
-                    "tag": "InternalReconstructTensorVariable",
+                    "tag": "ReconstructTensorVariable",
                     "contents": [
-                      0,
-                      [
-                        [
+                      {
+                        "nestedTensorShape": [
                           5
                         ],
-                        1,
-                        5
-                      ]
+                        "nestedStartingVariable": 0
+                      },
+                      "OneDimension"
                     ]
                   }
                 ]

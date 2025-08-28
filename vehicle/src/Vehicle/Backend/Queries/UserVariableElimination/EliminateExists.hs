@@ -5,13 +5,13 @@ where
 
 import Control.Monad (foldM)
 import Control.Monad.Reader (MonadReader (..))
-import Control.Monad.State (MonadState (..), gets)
+import Control.Monad.State (MonadState (..))
 import Data.Coerce (coerce)
 import Data.Maybe (fromMaybe)
 import Data.These (These (..))
 import Vehicle.Backend.Queries.ConstraintSearch
 import Vehicle.Backend.Queries.UserVariableElimination.Core
-import Vehicle.Compile.Context.Name (getNameContext)
+import Vehicle.Compile.Context.Name (getNameContext, prettyFriendlyInCtx)
 import Vehicle.Compile.FourierMotzkinElimination (fourierMotzkinElimination)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
@@ -19,9 +19,9 @@ import Vehicle.Data.Assertion
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.LinearExpr (HasVariables (containsVariable), VariableLike (..))
 import Vehicle.Data.QuantifiedVariable
-import Vehicle.Data.Tensor as Tensor (RatTensor, toList)
+import Vehicle.Data.Tensor as Tensor (RatTensor)
 import Vehicle.Prelude.Warning (CompileWarning (..))
-import Vehicle.Verify.Specification (CompilationStep (..))
+import Vehicle.Verify.Specification (CompilationStep (..), ReconstructionDepth (OneDimension))
 
 --------------------------------------------------------------------------------
 -- Main function
@@ -33,19 +33,19 @@ type MonadSolveExists m = MonadQueryStructure m
 -- returns a set of disjuncted updated assertion trees and variable solutions.
 eliminateQuantifiedVariable ::
   (MonadSolveExists m) =>
-  MaybeTrivial (Partitions TensorVariable) ->
-  UserVariable ->
-  m (MaybeTrivial (Partitions TensorVariable))
+  MaybeTrivial Partitions ->
+  UserTensorVariable ->
+  m (MaybeTrivial Partitions)
 eliminateQuantifiedVariable maybePartitions userVar = do
   userVarName <- prettyFriendlyInCtx userVar
-  logCompilerSection2 MaxDetail ("elimination of" <+> squotes userVarName <+> "in" <+> pretty (partitionsSize maybePartitions) <+> "partitions") $ do
-    case maybePartitions of
-      Trivial b -> return $ Trivial b
-      NonTrivial partitions -> do
-        let var = toTensorVar userVar
-        let disjunctedPartitions = partitionsToDisjuncts partitions
-        newPartitions <- traverse (eliminateVariableViaEquality var var) disjunctedPartitions
-        return $ disjunctMaybeTrivialPartitions newPartitions
+  logCompilerSection2 MaxDetail ("elimination of" <+> squotes userVarName <+> "in" <+> pretty (partitionsSize maybePartitions) <+> "partitions") $ case maybePartitions of
+    Trivial b -> return $ Trivial b
+    NonTrivial partitions -> do
+      ctx <- get
+      let nestedVar = lookupTensorVariable (globalBoundVarCtx ctx) userVar
+      let disjunctedPartitions = partitionsToDisjuncts partitions
+      newPartitions <- traverse (eliminateVariableViaEquality nestedVar) disjunctedPartitions
+      return $ disjunctMaybeTrivialPartitions newPartitions
 
 --------------------------------------------------------------------------------
 -- Attempt 1
@@ -54,35 +54,33 @@ eliminateQuantifiedVariable maybePartitions userVar = do
 
 eliminateVariableViaEquality ::
   (MonadSolveExists m) =>
-  TensorVariable ->
-  TensorVariable ->
-  Partition TensorVariable ->
-  m (MaybeTrivial (Partitions TensorVariable))
-eliminateVariableViaEquality topLevelVar var (steps, tree) = do
-  userVarName <- prettyFriendlyInCtx var
+  NestedSliceVariable ->
+  Partition ->
+  m (MaybeTrivial Partitions)
+eliminateVariableViaEquality var (steps, tree) = do
+  let tensorVar = toSliceVar var
+  userVarName <- prettyFriendlyInCtx tensorVar
   logCompilerSection2 MaxDetail ("attempt to eliminate" <+> squotes userVarName <+> "via equalities") $ do
     ctx <- getNameContext
     logDebugM MaxDetail $
       return $
         prettyFriendly (WithContext tree ctx) <> line
 
-    equalitySearchResults <- findEqualityConstraint var tree
+    equalitySearchResults <- findEqualityConstraint tensorVar tree
     case equalitySearchResults of
-      This constrainedTrees -> logSearchResults constrainedTrees False $ do
-        solvePartitions (solveVariableViaEquality steps var) constrainedTrees
-      That remainingTree -> logSearchResults ([] :: [Int]) True $ do
-        eliminateVariableViaChildEqualities topLevelVar var (steps, remainingTree)
+      This constrainedTrees -> logSearchResults constrainedTrees False $ solvePartitions (solveVariableViaEquality steps tensorVar) constrainedTrees
+      That remainingTree -> logSearchResults ([] :: [Int]) True $ eliminateVariableViaChildEqualities var (steps, remainingTree)
       These constrainedTrees remainingTree -> logSearchResults constrainedTrees True $ do
-        xs <- solvePartitions (solveVariableViaEquality steps var) constrainedTrees
-        ys <- eliminateVariableViaChildEqualities topLevelVar var (steps, remainingTree)
+        xs <- solvePartitions (solveVariableViaEquality steps tensorVar) constrainedTrees
+        ys <- eliminateVariableViaChildEqualities var (steps, remainingTree)
         return $ orTrivial orPartitions xs ys
 
 solveVariableViaEquality ::
   (MonadSolveExists m) =>
   [CompilationStep] ->
-  TensorVariable ->
-  (Equality TensorVariable RatTensor, Maybe (AssertionTree TensorVariable)) ->
-  m (MaybeTrivial (Partition TensorVariable))
+  SliceVariable ->
+  (Equality SliceVariable RatTensor, Maybe LinearAssertionTree) ->
+  m (MaybeTrivial Partition)
 solveVariableViaEquality compilationTrace userVar (equality, remainingTree) = do
   globalCtx <- get
   (solutionMap, compilationStep) <- createSubstitutionForVariable globalCtx userVar equality
@@ -93,9 +91,9 @@ solveVariableViaEquality compilationTrace userVar (equality, remainingTree) = do
   return $ fmap (newCompilationTrace,) updatedTree
 
 substituteThrough ::
-  LinearSubstitution TensorVariable ->
-  Maybe (AssertionTree TensorVariable) ->
-  MaybeTrivial (AssertionTree TensorVariable)
+  LinearSubstitution SliceVariable ->
+  Maybe LinearAssertionTree ->
+  MaybeTrivial LinearAssertionTree
 substituteThrough f =
   maybe (Trivial True) (eliminateTrivialAtoms . fmap (eliminateVarsInComparison f))
 
@@ -108,60 +106,53 @@ substituteThrough f =
 eliminateVariableViaChildEqualities ::
   forall m.
   (MonadSolveExists m) =>
-  TensorVariable ->
-  TensorVariable ->
-  Partition TensorVariable ->
-  m (MaybeTrivial (Partitions TensorVariable))
-eliminateVariableViaChildEqualities topLevelVar var partition@(steps, tree) =
-  logCompilerSection2 MaxDetail "solving for individual elements" $ do
-    -- We need to reduce all unsolved inequalities here to ensure that
-    -- we don't have any of the top-level variables left in the tree.
-    maybeReducedTree <-
-      if var == topLevelVar
-        then reduceInequalitiesInvolving topLevelVar tree
-        else return (NonTrivial tree)
-
-    case maybeReducedTree of
-      Trivial b -> return $ Trivial b
-      NonTrivial reducedTree -> do
-        maybeChildVariables <- gets (`lookupChildVariables` var)
-        case maybeChildVariables of
-          Nothing -> eliminateVariableWithInequalities var partition
-          Just childVariables -> do
-            let step = ReconstructTensorVariable var childVariables
-            let newPartition = (step : steps, reducedTree)
-            foldM eliminateChildVar (NonTrivial $ singletonPartition newPartition) $ Tensor.toList childVariables
-            where
-              eliminateChildVar ::
-                MaybeTrivial (Partitions TensorVariable) ->
-                TensorVariable ->
-                m (MaybeTrivial (Partitions TensorVariable))
-              eliminateChildVar partitions childVar = do
-                let us = fmap partitionsToDisjuncts partitions
-                xs <- traverse (traverse (eliminateVariableViaEquality topLevelVar childVar)) us
-                let ys = flattenTrivial $ fmap eliminateTrivialDisjunctions xs
-                return $ fmap disjunctPartitions ys
+  NestedSliceVariable ->
+  Partition ->
+  m (MaybeTrivial Partitions)
+eliminateVariableViaChildEqualities var partition@(steps, tree) =
+  logCompilerSection2 MaxDetail "solving for tensor rows" $ case childVariablesOf var of
+    Nothing -> eliminateVariableWithInequalities (toSliceVar var) partition
+    Just childVariables -> do
+      -- We need to reduce all unsolved inequalities here to ensure that
+      -- we don't have any of the top-level variables left in the tree.
+      maybeReducedTree <- reduceInequalitiesInvolving (length childVariables) (toSliceVar var) tree
+      case maybeReducedTree of
+        Trivial b -> return $ Trivial b
+        NonTrivial reducedTree -> do
+          let step = ReconstructTensorVariable var OneDimension
+          let newPartition = (step : steps, reducedTree)
+          foldM eliminateChildVar (NonTrivial $ singletonPartition newPartition) childVariables
+          where
+            eliminateChildVar ::
+              MaybeTrivial Partitions ->
+              NestedSliceVariable ->
+              m (MaybeTrivial Partitions)
+            eliminateChildVar partitions childVar = do
+              let us = fmap partitionsToDisjuncts partitions
+              xs <- traverse (traverse (eliminateVariableViaEquality childVar)) us
+              let ys = flattenTrivial $ fmap eliminateTrivialDisjunctions xs
+              return $ fmap disjunctPartitions ys
 
 reduceInequalitiesInvolving ::
   forall m.
   (MonadSolveExists m) =>
-  TensorVariable ->
-  AssertionTree TensorVariable ->
-  m (MaybeTrivial (AssertionTree TensorVariable))
-reduceInequalitiesInvolving variable tree = do
+  Int ->
+  SliceVariable ->
+  LinearAssertionTree ->
+  m (MaybeTrivial LinearAssertionTree)
+reduceInequalitiesInvolving dim variable tree = do
   varName <- prettyFriendlyInCtx variable
-  logCompilerSection2 MaxDetail ("Reducing remaining instances of" <+> squotes varName) $ do
+  logCompilerSection2 MaxDetail ("reducing remaining instances of" <+> squotes varName) $ do
     ctx <- get
     us <- traverse (reduceAssertion ctx) tree
     let result = flattenBoolExpr <$> eliminateTrivialAtoms us
-    logDebugM MaxDetail $ prettyFriendlyInCtx result
     return result
   where
-    reduceAssertion :: GlobalCtx -> Assertion TensorVariable -> m (MaybeTrivial (AssertionTree TensorVariable))
+    reduceAssertion :: GlobalCtx -> Assertion SliceVariable -> m (MaybeTrivial LinearAssertionTree)
     reduceAssertion ctx ass@(NormalisedRelation rel linearExpr)
       | rel == OEq || not (linearExpr `containsVariable` variable) = return $ NonTrivial $ Query ass
       | otherwise = do
-          let conjunctedAssertions = fmap Query <$> reduceComparison (lookupChildVariablesCertain ctx) ass
+          let conjunctedAssertions = fmap Query <$> reduceComparison dim (lookupChildVariablesCertain ctx) ass
           return $ maybe (Trivial True) (NonTrivial . Conjunct) conjunctedAssertions
 
 --------------------------------------------------------------------------------
@@ -172,9 +163,9 @@ reduceInequalitiesInvolving variable tree = do
 
 eliminateVariableWithInequalities ::
   (MonadSolveExists m) =>
-  TensorVariable ->
-  Partition TensorVariable ->
-  m (MaybeTrivial (Partitions TensorVariable))
+  SliceVariable ->
+  Partition ->
+  m (MaybeTrivial Partitions)
 eliminateVariableWithInequalities var (steps, tree) = do
   userVarName <- prettyFriendlyInCtx var
   logCompilerSection2 MaxDetail ("attempt to eliminate" <+> squotes userVarName <+> "via inequalities") $ do
@@ -185,13 +176,13 @@ solveVariableViaInequalities ::
   (MonadSolveExists m) =>
   UserVariable ->
   [CompilationStep] ->
-  ([Inequality TensorVariable RatTensor], Maybe (AssertionTree TensorVariable)) ->
-  m (MaybeTrivial (Partition TensorVariable))
+  ([Inequality SliceVariable RatTensor], Maybe LinearAssertionTree) ->
+  m (MaybeTrivial Partition)
 solveVariableViaInequalities var steps (inequalities, remainingTree) = do
   (bounds, newInequalities) <- fourierMotzkinElimination (coerce var) inequalities
   let addIneq ineq = andTrivial andBoolExpr (NonTrivial $ Query $ inequalityToNormRelation ineq)
   let updatedTree = foldr addIneq (maybe (Trivial True) NonTrivial remainingTree) newInequalities
-  let step = SolveInequalities var bounds
+  let step = SolveInequalities (toSliceVar var) bounds
   let newCompilationTrace = step : steps
   logInequalitiesSolved var step remainingTree
   return $ fmap (newCompilationTrace,) updatedTree
@@ -201,18 +192,18 @@ solveVariableViaInequalities var steps (inequalities, remainingTree) = do
 
 solvePartitions ::
   (MonadSolveExists m) =>
-  (a -> m (MaybeTrivial (Partition TensorVariable))) ->
+  (a -> m (MaybeTrivial Partition)) ->
   DisjunctAll a ->
-  m (MaybeTrivial (Partitions TensorVariable))
+  m (MaybeTrivial Partitions)
 solvePartitions solve constrainedTrees = do
   us <- traverse solve constrainedTrees
-  return (Partitions <$> eliminateTrivialDisjunctions us)
+  return $ disjunctMaybeTrivialPartitions (fmap (fmap singletonPartition) us)
 
 logEqualitySolved ::
   (MonadSolveExists m) =>
   UserVariable ->
   CompilationStep ->
-  MaybeTrivial (AssertionTree TensorVariable) ->
+  MaybeTrivial LinearAssertionTree ->
   m ()
 logEqualitySolved _var compilationStep updatedTree =
   logDebugM MaxDetail $ do
@@ -230,7 +221,7 @@ logInequalitiesSolved ::
   (MonadSolveExists m) =>
   UserVariable ->
   CompilationStep ->
-  Maybe (AssertionTree TensorVariable) ->
+  Maybe LinearAssertionTree ->
   m ()
 logInequalitiesSolved var step remainingTree = do
   PropertyMetaData {..} <- ask
@@ -240,7 +231,7 @@ logInequalitiesSolved var step remainingTree = do
   let treeDoc = maybe "true" (\x -> prettyFriendly (WithContext x ctx)) remainingTree
 
   logWarning $ UnderSpecifiedProblemSpaceVar propertyAddress varName
-  logDebugM MaxDetail $ do
+  logDebugM MaxDetail $
     return $
       "Solving"
         <> line

@@ -28,29 +28,27 @@
               "variableCompilationTrace": {
                 "reconstructionSteps": [
                   {
-                    "tag": "InternalReconstructTensorVariable",
+                    "tag": "ReconstructTensorVariable",
                     "contents": [
-                      2,
-                      [
-                        [
+                      {
+                        "nestedTensorShape": [
                           1
                         ],
-                        3,
-                        3
-                      ]
+                        "nestedStartingVariable": 2
+                      },
+                      "AllDimensions"
                     ]
                   },
                   {
-                    "tag": "InternalReconstructTensorVariable",
+                    "tag": "ReconstructTensorVariable",
                     "contents": [
-                      4,
-                      [
-                        [
+                      {
+                        "nestedTensorShape": [
                           1
                         ],
-                        5,
-                        5
-                      ]
+                        "nestedStartingVariable": 4
+                      },
+                      "AllDimensions"
                     ]
                   },
                   {
@@ -108,8 +106,10 @@
                   {
                     "tag": "SolveEquality",
                     "contents": [
-                      1,
-                      [],
+                      {
+                        "nestedTensorShape": [],
+                        "nestedStartingVariable": 1
+                      },
                       {
                         "constantValue": {
                           "tag": "ConstantTensor",

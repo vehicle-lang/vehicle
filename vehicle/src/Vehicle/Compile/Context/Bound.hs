@@ -1,6 +1,5 @@
 module Vehicle.Compile.Context.Bound
   ( module X,
-    prettyFriendlyInCtx,
     getBoundVarByIx,
     getBoundVarByLv,
     unnormalise,
@@ -15,17 +14,7 @@ import Vehicle.Compile.Context.Bound.Core as X
 import Vehicle.Compile.Context.Bound.Instance as X
 import Vehicle.Compile.Normalise.Quote qualified as Quote (unnormalise)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (PrettyFriendly, prettyFriendly)
 import Vehicle.Data.Code.Value (Value)
-
-prettyFriendlyInCtx ::
-  (MonadBoundContext expr m, MonadLogger m, PrettyFriendly (Contextualised a NamedBoundCtx)) =>
-  Proxy expr ->
-  a ->
-  m (Doc b)
-prettyFriendlyInCtx p value = do
-  ctx <- getNamedBoundCtx p
-  return $ prettyFriendly (WithContext value ctx)
 
 getBoundVarByIx ::
   forall expr m.

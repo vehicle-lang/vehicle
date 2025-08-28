@@ -2,17 +2,15 @@ module Vehicle.Data.Assertion where
 
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, FromJSONKey, ToJSON, ToJSONKey)
-import Data.Bifunctor (Bifunctor (..))
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
-import Data.Map qualified as Map (fromList, toList)
+import Data.Map qualified as Map (mapKeys)
 import GHC.Generics
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Code.BooleanExpr (ConjunctAll (..), MaybeTrivial (..))
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.Hashing ()
-import Vehicle.Data.Tensor (HasShape, RatTensor, Tensor, pattern ZeroDimTensor)
-import Vehicle.Data.Tensor qualified as Tensor (toList)
+import Vehicle.Data.Tensor (HasShape, RatTensor, Tensor, at)
 import Vehicle.Prelude
 import Vehicle.Syntax.Tensor
   ( HasShape (..),
@@ -117,11 +115,12 @@ eliminateVarsInComparison f NormalisedRelation {..} = case eliminateVars f linea
 
 reduceComparison ::
   (Ord variable) =>
-  (variable -> Tensor variable) ->
+  Int ->
+  (variable -> [variable]) ->
   NormalisedRelation rel variable RatTensor ->
   Maybe (ConjunctAll (NormalisedRelation rel variable RatTensor))
-reduceComparison lookupElementVariables (NormalisedRelation relation linearExpr) = do
-  let rationalEqualities = reduceTensorExpr lookupElementVariables linearExpr
+reduceComparison lookupElementVariables dim (NormalisedRelation relation linearExpr) = do
+  let rationalEqualities = reduceTensorExpr lookupElementVariables dim linearExpr
   let reducedComparison = fmap (NormalisedRelation relation) rationalEqualities
   case reducedComparison of
     [] -> Nothing
@@ -130,23 +129,24 @@ reduceComparison lookupElementVariables (NormalisedRelation relation linearExpr)
 reduceTensorExpr ::
   forall variable.
   (Ord variable) =>
-  (variable -> Tensor variable) ->
+  Int ->
+  (variable -> [variable]) ->
   LinearExpr variable RatTensor ->
   [LinearExpr variable RatTensor]
-reduceTensorExpr lookupElementVariables (Sparse coeff constant) = do
-  let equationIDs = [0 .. product (shapeOf constant) - 1]
-  let constValues = Tensor.toList constant
-  let findChildVariablesAndCoefficient = first (Tensor.toList . lookupElementVariables)
-  let coeffList = fmap findChildVariablesAndCoefficient (Map.toList coeff)
-  fmap (mkZeroDimEquality coeffList constValues) equationIDs
-  where
-    mkZeroDimEquality ::
-      [([variable], Coefficient)] ->
-      [Rational] ->
-      Int ->
-      LinearExpr variable RatTensor
-    mkZeroDimEquality coeffs consts i =
-      Sparse (Map.fromList (fmap (first (!! i)) coeffs)) (ZeroDimTensor (consts !! i))
+reduceTensorExpr dim lookupElementVariables expr = do
+  fmap (reduceLinearExprAt lookupElementVariables expr) [0 .. dim - 1]
+
+reduceLinearExprAt ::
+  (Ord variable) =>
+  (variable -> [variable]) ->
+  LinearExpr variable RatTensor ->
+  Int ->
+  LinearExpr variable RatTensor
+reduceLinearExprAt lookupElementVariables (Sparse coeff constant) i =
+  Sparse
+    { coefficients = Map.mapKeys (\v -> lookupElementVariables v !! i) coeff,
+      constantValue = constant `at` i
+    }
 
 --------------------------------------------------------------------------------
 -- Assertions

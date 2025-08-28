@@ -212,6 +212,7 @@ library
     Vehicle.Compile.Context.Free.Class
     Vehicle.Compile.Context.Free.Core
     Vehicle.Compile.Context.Free.Instance
+    Vehicle.Compile.Context.Name.Core
     Vehicle.Compile.Dependency
     Vehicle.Compile.EtaConversion
     Vehicle.Compile.ExpandResources.Dataset.IDX
@@ -303,6 +304,7 @@ library
     , data-fix               >=0.2      && <1
     , deepseq                >=1.4      && <2
     , directory              >=1.3.6    && <1.4
+    , disjoint-containers    >=0.3.0    && <1
     , edit-distance          >=0.2.2    && <1
     , file-embed             >=0.0.15.0 && <0.1
     , filepath               >=1.4      && <2
