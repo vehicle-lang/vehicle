@@ -5,9 +5,7 @@ module Vehicle.Verify.QueryFormat.Marabou
 where
 
 import Control.Monad (forM)
-import Control.Monad.Except (MonadError (..))
 import Data.List.NonEmpty (NonEmpty (..))
-import Vehicle.Compile.Error (CompileError (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Data.QuantifiedVariable (prettyRationalAsFloat)
 import Vehicle.Prelude.Warning
@@ -55,7 +53,7 @@ compileMarabouQuery address _metaNetwork _variables assertions = do
   return $ layoutAsText assertionsDoc
 
 compileAssertion ::
-  (MonadLogger m, MonadError CompileError m) =>
+  (MonadLogger m) =>
   QueryAddress ->
   QueryAssertion QueryVariable ->
   m (Doc a)
@@ -74,7 +72,7 @@ compileAssertion address QueryAssertion {..} = do
   let compiledRHS = prettyRationalAsFloat constant'
   return $ compiledLHS <+> compiledRel <+> compiledRHS
 
-compileRel :: (MonadLogger m, MonadError CompileError m) => QueryAddress -> QueryRelation -> m (Doc a)
+compileRel :: (MonadLogger m) => QueryAddress -> QueryRelation -> m (Doc a)
 compileRel address = \case
   EqRel -> return "="
   LeRel -> return "<="

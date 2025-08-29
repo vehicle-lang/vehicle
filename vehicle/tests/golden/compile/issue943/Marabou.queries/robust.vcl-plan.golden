@@ -1,0 +1,235 @@
+{
+  "queryMetaData": {
+    "tag": "NonTrivial",
+    "contents": {
+      "tag": "Query",
+      "contents": {
+        "queries": {
+          "unDisjunctAll": [
+            {
+              "variableStore": {
+                "vehicleVariableCtx": [
+                  "classifier₀[output]",
+                  "classifier₀[input]!1",
+                  "classifier₀[input]!0",
+                  "classifier₀[input]",
+                  "x!1",
+                  "x!0",
+                  "x"
+                ],
+                "userVariables": [
+                  0
+                ],
+                "queryVariableMapping": {
+                  "y0": 6,
+                  "x1": 5,
+                  "x0": 4
+                }
+              },
+              "variableCompilationTrace": {
+                "reconstructionSteps": [
+                  {
+                    "tag": "InternalReconstructTensorVariable",
+                    "contents": [
+                      3,
+                      [
+                        [
+                          2
+                        ],
+                        4,
+                        5
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "InternalReconstructTensorVariable",
+                    "contents": [
+                      6,
+                      [
+                        [],
+                        6,
+                        6
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      0,
+                      [
+                        1,
+                        2
+                      ],
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [
+                              2
+                            ],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            3,
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "queryAddress": [
+                {
+                  "propertyName": "robust",
+                  "propertyIndices": [],
+                  "propertyID": 0
+                },
+                1
+              ],
+              "metaNetwork": [
+                {
+                  "metaNetworkEntryName": "classifier",
+                  "metaNetworkEntryInfo": {
+                    "networkType": {
+                      "outputTensor": {
+                        "dimensions": [],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          2
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "networkFilepath": "baseline.onnx"
+                  }
+                }
+              ]
+            },
+            {
+              "variableStore": {
+                "vehicleVariableCtx": [
+                  "classifier₀[output]",
+                  "classifier₀[input]!1",
+                  "classifier₀[input]!0",
+                  "classifier₀[input]",
+                  "x!1",
+                  "x!0",
+                  "x"
+                ],
+                "userVariables": [
+                  0
+                ],
+                "queryVariableMapping": {
+                  "y0": 6,
+                  "x1": 5,
+                  "x0": 4
+                }
+              },
+              "variableCompilationTrace": {
+                "reconstructionSteps": [
+                  {
+                    "tag": "InternalReconstructTensorVariable",
+                    "contents": [
+                      3,
+                      [
+                        [
+                          2
+                        ],
+                        4,
+                        5
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "InternalReconstructTensorVariable",
+                    "contents": [
+                      6,
+                      [
+                        [],
+                        6,
+                        6
+                      ]
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      0,
+                      [
+                        1,
+                        2
+                      ],
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [
+                              2
+                            ],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            3,
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "queryAddress": [
+                {
+                  "propertyName": "robust",
+                  "propertyIndices": [],
+                  "propertyID": 0
+                },
+                2
+              ],
+              "metaNetwork": [
+                {
+                  "metaNetworkEntryName": "classifier",
+                  "metaNetworkEntryInfo": {
+                    "networkType": {
+                      "outputTensor": {
+                        "dimensions": [],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          2
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "networkFilepath": "baseline.onnx"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "negated": true
+      }
+    }
+  }
+}

@@ -110,7 +110,7 @@ instance HasMetas (Value builtin) where
     VRecordAcc record _ -> findMetas record
 
 instance HasMetas (Closure builtin) where
-  findMetas (Closure env expr) = do findMetas (fmap snd env); findMetas expr
+  findMetas (Closure env expr) = do traverseEnv_ findMetas env; findMetas expr
 
 instance (HasMetas expr) => HasMetas (GenericArg expr) where
   findMetas = mapM_ findMetas

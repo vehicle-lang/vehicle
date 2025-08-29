@@ -1,9 +1,7 @@
 module Vehicle.Verify.QueryFormat.Interface where
 
-import Control.Monad.Except (MonadError)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Text (Text)
-import Vehicle.Compile.Error (CompileError)
 import Vehicle.Compile.Prelude (Coefficient, ExternalOutputFormat, InputOrOutput, MonadLogger, Name)
 import Vehicle.Data.Code.BooleanExpr (ConjunctAll)
 import Vehicle.Data.Tensor (TensorIndices, TensorShape)
@@ -43,7 +41,7 @@ data QueryAssertion variable = QueryAssertion
 -- | The command to format an individual query
 type CompileQuery =
   forall m.
-  (MonadLogger m, MonadError CompileError m) =>
+  (MonadLogger m) =>
   QueryAddress ->
   MetaNetwork ->
   [QueryVariable] ->

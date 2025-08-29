@@ -11,7 +11,7 @@ Available options:
                            (default: NoDetail)
   --loggingPass ARG        Sets the which compiler pass logging is enabled for.
                            Supported options: Scoping, TypeChecking,
-                           QueryBackend, ITPBackend, LossBackend
+                           QueryBackend, ITPBackend, LossBackend, QueryError
   --no-warnings            Suppress the printing of warnings.
   -h,--help                Show this help text
 

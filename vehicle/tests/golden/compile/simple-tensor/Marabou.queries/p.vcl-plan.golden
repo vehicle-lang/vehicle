@@ -2,414 +2,104 @@
   "queryMetaData": {
     "tag": "NonTrivial",
     "contents": {
-      "tag": "Conjunct",
+      "tag": "Query",
       "contents": {
-        "unConjunctAll": [
-          {
-            "tag": "Query",
-            "contents": {
-              "queries": {
-                "unDisjunctAll": [
+        "queries": {
+          "unDisjunctAll": [
+            {
+              "variableStore": {
+                "vehicleVariableCtx": [
+                  "f₀[output]!1!1",
+                  "f₀[output]!0!1",
+                  "f₀[output]!1!0",
+                  "f₀[output]!0!0",
+                  "f₀[output]",
+                  "f₀[input]!1!1",
+                  "f₀[input]!0!1",
+                  "f₀[input]!1!0",
+                  "f₀[input]!0!0",
+                  "f₀[input]"
+                ],
+                "userVariables": [],
+                "queryVariableMapping": {
+                  "y3": 9,
+                  "y2": 8,
+                  "y1": 7,
+                  "y0": 6,
+                  "x3": 4,
+                  "x2": 3,
+                  "x1": 2,
+                  "x0": 1
+                }
+              },
+              "variableCompilationTrace": {
+                "reconstructionSteps": [
                   {
-                    "variableStore": {
-                      "vehicleVariableCtx": [
-                        "f₀[output]!1!1",
-                        "f₀[output]!0!1",
-                        "f₀[output]!1!0",
-                        "f₀[output]!0!0",
-                        "f₀[output]",
-                        "f₀[input]!1!1",
-                        "f₀[input]!0!1",
-                        "f₀[input]!1!0",
-                        "f₀[input]!0!0",
-                        "f₀[input]"
-                      ],
-                      "userVariables": [],
-                      "queryVariableMapping": {
-                        "y3": 9,
-                        "y2": 8,
-                        "y1": 7,
-                        "y0": 6,
-                        "x3": 4,
-                        "x2": 3,
-                        "x1": 2,
-                        "x0": 1
-                      }
-                    },
-                    "variableCompilationTrace": {
-                      "reconstructionSteps": [
-                        {
-                          "tag": "InternalReconstructTensorVariable",
-                          "contents": [
-                            0,
-                            [
-                              [
-                                2,
-                                2
-                              ],
-                              1,
-                              4
-                            ]
-                          ]
-                        },
-                        {
-                          "tag": "InternalReconstructTensorVariable",
-                          "contents": [
-                            5,
-                            [
-                              [
-                                2,
-                                2
-                              ],
-                              6,
-                              9
-                            ]
-                          ]
-                        }
+                    "tag": "InternalReconstructTensorVariable",
+                    "contents": [
+                      0,
+                      [
+                        [
+                          2,
+                          2
+                        ],
+                        1,
+                        4
                       ]
-                    },
-                    "queryAddress": [
-                      {
-                        "propertyName": "p",
-                        "propertyIndices": [],
-                        "propertyID": 0
-                      },
-                      1
-                    ],
-                    "metaNetwork": [
-                      {
-                        "metaNetworkEntryName": "f",
-                        "metaNetworkEntryInfo": {
-                          "networkType": {
-                            "outputTensor": {
-                              "dimensions": [
-                                2,
-                                2
-                              ],
-                              "baseType": []
-                            },
-                            "inputTensor": {
-                              "dimensions": [
-                                2,
-                                2
-                              ],
-                              "baseType": []
-                            }
-                          },
-                          "networkFilepath": "fake.onnx"
-                        }
-                      }
+                    ]
+                  },
+                  {
+                    "tag": "InternalReconstructTensorVariable",
+                    "contents": [
+                      5,
+                      [
+                        [
+                          2,
+                          2
+                        ],
+                        6,
+                        9
+                      ]
                     ]
                   }
                 ]
               },
-              "negated": false
-            }
-          },
-          {
-            "tag": "Query",
-            "contents": {
-              "queries": {
-                "unDisjunctAll": [
-                  {
-                    "variableStore": {
-                      "vehicleVariableCtx": [
-                        "f₀[output]!1!1",
-                        "f₀[output]!0!1",
-                        "f₀[output]!1!0",
-                        "f₀[output]!0!0",
-                        "f₀[output]",
-                        "f₀[input]!1!1",
-                        "f₀[input]!0!1",
-                        "f₀[input]!1!0",
-                        "f₀[input]!0!0",
-                        "f₀[input]"
-                      ],
-                      "userVariables": [],
-                      "queryVariableMapping": {
-                        "y3": 9,
-                        "y2": 8,
-                        "y1": 7,
-                        "y0": 6,
-                        "x3": 4,
-                        "x2": 3,
-                        "x1": 2,
-                        "x0": 1
-                      }
-                    },
-                    "variableCompilationTrace": {
-                      "reconstructionSteps": [
-                        {
-                          "tag": "InternalReconstructTensorVariable",
-                          "contents": [
-                            0,
-                            [
-                              [
-                                2,
-                                2
-                              ],
-                              1,
-                              4
-                            ]
-                          ]
-                        },
-                        {
-                          "tag": "InternalReconstructTensorVariable",
-                          "contents": [
-                            5,
-                            [
-                              [
-                                2,
-                                2
-                              ],
-                              6,
-                              9
-                            ]
-                          ]
-                        }
-                      ]
-                    },
-                    "queryAddress": [
-                      {
-                        "propertyName": "p",
-                        "propertyIndices": [],
-                        "propertyID": 0
+              "queryAddress": [
+                {
+                  "propertyName": "p",
+                  "propertyIndices": [],
+                  "propertyID": 0
+                },
+                1
+              ],
+              "metaNetwork": [
+                {
+                  "metaNetworkEntryName": "f",
+                  "metaNetworkEntryInfo": {
+                    "networkType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          2,
+                          2
+                        ],
+                        "baseType": []
                       },
-                      2
-                    ],
-                    "metaNetwork": [
-                      {
-                        "metaNetworkEntryName": "f",
-                        "metaNetworkEntryInfo": {
-                          "networkType": {
-                            "outputTensor": {
-                              "dimensions": [
-                                2,
-                                2
-                              ],
-                              "baseType": []
-                            },
-                            "inputTensor": {
-                              "dimensions": [
-                                2,
-                                2
-                              ],
-                              "baseType": []
-                            }
-                          },
-                          "networkFilepath": "fake.onnx"
-                        }
+                      "inputTensor": {
+                        "dimensions": [
+                          2,
+                          2
+                        ],
+                        "baseType": []
                       }
-                    ]
+                    },
+                    "networkFilepath": "fake.onnx"
                   }
-                ]
-              },
-              "negated": false
+                }
+              ]
             }
-          },
-          {
-            "tag": "Query",
-            "contents": {
-              "queries": {
-                "unDisjunctAll": [
-                  {
-                    "variableStore": {
-                      "vehicleVariableCtx": [
-                        "f₀[output]!1!1",
-                        "f₀[output]!0!1",
-                        "f₀[output]!1!0",
-                        "f₀[output]!0!0",
-                        "f₀[output]",
-                        "f₀[input]!1!1",
-                        "f₀[input]!0!1",
-                        "f₀[input]!1!0",
-                        "f₀[input]!0!0",
-                        "f₀[input]"
-                      ],
-                      "userVariables": [],
-                      "queryVariableMapping": {
-                        "y3": 9,
-                        "y2": 8,
-                        "y1": 7,
-                        "y0": 6,
-                        "x3": 4,
-                        "x2": 3,
-                        "x1": 2,
-                        "x0": 1
-                      }
-                    },
-                    "variableCompilationTrace": {
-                      "reconstructionSteps": [
-                        {
-                          "tag": "InternalReconstructTensorVariable",
-                          "contents": [
-                            0,
-                            [
-                              [
-                                2,
-                                2
-                              ],
-                              1,
-                              4
-                            ]
-                          ]
-                        },
-                        {
-                          "tag": "InternalReconstructTensorVariable",
-                          "contents": [
-                            5,
-                            [
-                              [
-                                2,
-                                2
-                              ],
-                              6,
-                              9
-                            ]
-                          ]
-                        }
-                      ]
-                    },
-                    "queryAddress": [
-                      {
-                        "propertyName": "p",
-                        "propertyIndices": [],
-                        "propertyID": 0
-                      },
-                      3
-                    ],
-                    "metaNetwork": [
-                      {
-                        "metaNetworkEntryName": "f",
-                        "metaNetworkEntryInfo": {
-                          "networkType": {
-                            "outputTensor": {
-                              "dimensions": [
-                                2,
-                                2
-                              ],
-                              "baseType": []
-                            },
-                            "inputTensor": {
-                              "dimensions": [
-                                2,
-                                2
-                              ],
-                              "baseType": []
-                            }
-                          },
-                          "networkFilepath": "fake.onnx"
-                        }
-                      }
-                    ]
-                  }
-                ]
-              },
-              "negated": false
-            }
-          },
-          {
-            "tag": "Query",
-            "contents": {
-              "queries": {
-                "unDisjunctAll": [
-                  {
-                    "variableStore": {
-                      "vehicleVariableCtx": [
-                        "f₀[output]!1!1",
-                        "f₀[output]!0!1",
-                        "f₀[output]!1!0",
-                        "f₀[output]!0!0",
-                        "f₀[output]",
-                        "f₀[input]!1!1",
-                        "f₀[input]!0!1",
-                        "f₀[input]!1!0",
-                        "f₀[input]!0!0",
-                        "f₀[input]"
-                      ],
-                      "userVariables": [],
-                      "queryVariableMapping": {
-                        "y3": 9,
-                        "y2": 8,
-                        "y1": 7,
-                        "y0": 6,
-                        "x3": 4,
-                        "x2": 3,
-                        "x1": 2,
-                        "x0": 1
-                      }
-                    },
-                    "variableCompilationTrace": {
-                      "reconstructionSteps": [
-                        {
-                          "tag": "InternalReconstructTensorVariable",
-                          "contents": [
-                            0,
-                            [
-                              [
-                                2,
-                                2
-                              ],
-                              1,
-                              4
-                            ]
-                          ]
-                        },
-                        {
-                          "tag": "InternalReconstructTensorVariable",
-                          "contents": [
-                            5,
-                            [
-                              [
-                                2,
-                                2
-                              ],
-                              6,
-                              9
-                            ]
-                          ]
-                        }
-                      ]
-                    },
-                    "queryAddress": [
-                      {
-                        "propertyName": "p",
-                        "propertyIndices": [],
-                        "propertyID": 0
-                      },
-                      4
-                    ],
-                    "metaNetwork": [
-                      {
-                        "metaNetworkEntryName": "f",
-                        "metaNetworkEntryInfo": {
-                          "networkType": {
-                            "outputTensor": {
-                              "dimensions": [
-                                2,
-                                2
-                              ],
-                              "baseType": []
-                            },
-                            "inputTensor": {
-                              "dimensions": [
-                                2,
-                                2
-                              ],
-                              "baseType": []
-                            }
-                          },
-                          "networkFilepath": "fake.onnx"
-                        }
-                      }
-                    ]
-                  }
-                ]
-              },
-              "negated": false
-            }
-          }
-        ]
+          ]
+        },
+        "negated": false
       }
     }
   }

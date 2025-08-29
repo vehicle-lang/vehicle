@@ -48,7 +48,7 @@ getNetworkType decl networkType = case normalised networkType of
     | visibilityOf binder /= Explicit -> typingError
     | otherwise -> do
         inputDetails <- tensorType Input (typeOf binder)
-        resultType <- normaliseClosure 0 binder closure
+        resultType <- normaliseClosure mempty binder closure
         outputDetails <- tensorType Output resultType
         let networkDetails = NetworkType inputDetails outputDetails
         return networkDetails

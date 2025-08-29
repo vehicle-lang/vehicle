@@ -15,7 +15,6 @@ import Prettyprinter (fill)
 import Vehicle.Compile.Context.Bound.Instance
 import Vehicle.Compile.Context.Free.Class (MonadFreeContext)
 import Vehicle.Compile.Error (MonadCompile)
-import Vehicle.Compile.Normalise.NBE (normaliseInEnv)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyExternal, prettyFriendly, prettyVerbose)
 import Vehicle.Compile.Type.Core
@@ -32,7 +31,6 @@ import Vehicle.Compile.Type.Meta.Substitution as MetaSubstitution (MetaSubstitut
 import Vehicle.Data.Builtin.Interface.Normalise (NormalisableBuiltin)
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Interface.Type
-import Vehicle.Data.Code.Value
 
 --------------------------------------------------------------------------------
 -- Solved meta-state
@@ -195,24 +193,24 @@ getIsUnblockedFn = do
   let isUnblocked = not . constraintIsBlocked metasSolved
   return isUnblocked
 
-substMetas ::
+substMetaVariables ::
   forall builtin m a.
   (MonadTypeChecker builtin m, RawMetaSubstitutable m builtin a) =>
   a ->
   m a
-substMetas x = do
+substMetaVariables x = do
   s <- getMetaVariableCtx
-  MetaSubstitution.subst s x
+  MetaSubstitution.substMetas s x
 
-substMetasAt ::
+substMetaVariablesAt ::
   forall builtin m a.
   (MonadTypeChecker builtin m, MetaSubstitutable m builtin a) =>
-  Lv ->
+  NamedBoundCtx ->
   a ->
   m a
-substMetasAt lv x = do
+substMetaVariablesAt ctx x = do
   s <- getMetaVariableCtx
-  MetaSubstitution.substAt lv s x
+  MetaSubstitution.substMetasAt ctx s x
 
 getSolvedMetas :: forall builtin m. (MonadTypeChecker builtin m) => Proxy builtin -> m MetaSet
 getSolvedMetas _proxy = do
@@ -371,7 +369,7 @@ clearMetaCtx _ = do
 getSubstMetaType :: forall builtin m. (MonadTypeChecker builtin m) => MetaID -> m (Type builtin)
 getSubstMetaType m = do
   MetaInfo {..} <- getMetaInfo m
-  substMetasAt (boundCtxLv metaCtx) metaType
+  substMetaVariablesAt (toNamedBoundCtx metaCtx) metaType
 
 updateMetaType :: forall builtin m. (MonadTypeChecker builtin m) => MetaID -> Type builtin -> m ()
 updateMetaType m typ = do
@@ -520,17 +518,10 @@ getCurrentDeclAndUnused = do
   case maybeDecl of
     Nothing -> return Nothing
     Just (decl, isUnused) -> do
-      substDecl <- substMetas decl
+      substDecl <- substMetaVariables decl
       let result = Just (substDecl, isUnused)
       setCurrentDecl result
       return result
 
 getCurrentDecl :: forall builtin m. (MonadTypeChecker builtin m) => m (Maybe (Decl builtin))
 getCurrentDecl = (fst <$>) <$> getCurrentDeclAndUnused @builtin
-
-glueNBE ::
-  (MonadFreeContext builtin m, NormalisableBuiltin builtin) =>
-  BoundEnv builtin ->
-  Expr builtin ->
-  m (GluedExpr builtin)
-glueNBE env e = Glued e <$> normaliseInEnv env e

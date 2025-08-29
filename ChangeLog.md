@@ -1,13 +1,13 @@
 # Changelog for Vehicle
 
-## Version 0.18.1
+## Version 0.19.0
 
 ### Command-line interface
 
-* Added extra option `--loggingPass` which allows you to control which compiler pass
+* Added extra option `--loggingPass` which allows you to restrict which compiler pass
   logging is enabled for. See `vehicle --help` for more information.
 
-* Update the `--json` option flag to be globally applicable for Vehicle to output the result of implementing commands as machine-readable JSON. It is currently implemented in the commands: `list`, `validate`, and `compile` with the `--json` or `-j` flag.
+* Updated the `--json` option flag to be a global command line object. When passed it will cause Vehicle to produce output as machine-readable JSON. It is currently implemented in the commands: `check`, `list`, `validate`, and `compile`.
 
 ### Verifier backend
 

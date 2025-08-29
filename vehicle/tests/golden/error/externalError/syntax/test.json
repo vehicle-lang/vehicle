@@ -1,0 +1,5 @@
+{
+  "name": "TypeCheck",
+  "run": "vehicle check -s syntaxError.vcl -j",
+  "needs": ["syntaxError.vcl"]
+}

@@ -2,7 +2,7 @@
 -- and should not be modified manually!
 -- Metadata:
 --  - Agda version: 2.6.2
---  - Vehicle version: 0.18.0+dev
+--  - Vehicle version: 0.19.0+dev
 
 {-# OPTIONS --allow-exec #-}
 
@@ -20,8 +20,8 @@ module Agda where
 
 postulate f : Tensor ℚ (1 ∷ []) → Tensor ℚ (1 ∷ [])
 
-postulate prop1 : ∀ x → if x >ᵇ 0 then (f (stack x) ! # 0) > 0 else (f (stack x) ! # 0) ≤ 0
+postulate prop1 : ∀ x → if x >ᵇ∙ 0 then (f (stack x) ! # 0) > 0 else (f (stack x) ! # 0) ≤ 0
 
-postulate prop2 : ∃ λ x → (f (stack (if x >ᵇ 0 then x else ℤ.+ 1 / 5)) ! # 0) ≥ 0
+postulate prop2 : ∃ λ x → (f (stack (if x >ᵇ∙ 0 then x else ℤ.+ 1 / 5)) ! # 0) ≥ 0
 
-postulate prop3 : ∃ λ x → if (f (stack x) ! # 0) >ᵇ 0 then x ≥ 0 else x < 0
+postulate prop3 : ∃ λ x → if (f (stack x) ! # 0) >ᵇ∙ 0 then x ≥ 0 else x < 0

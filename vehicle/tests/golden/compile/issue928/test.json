@@ -8,5 +8,6 @@
   "produces": [
     "Marabou.queries/robust.vcl-plan",
     "Marabou.queries/robust-query1.txt"
-  ]
+  ],
+  "sizeOnly": ".vcl-plan"
 }

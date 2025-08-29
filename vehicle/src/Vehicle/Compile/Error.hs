@@ -4,10 +4,14 @@ module Vehicle.Compile.Error where
 
 import Control.Exception (IOException)
 import Control.Monad.Except (MonadError, throwError)
+import Data.Aeson (ToJSON, object, toJSON, (.=))
 import Data.List.NonEmpty (NonEmpty)
 import Data.Text (Text)
 import Data.Typeable (Proxy)
 import Data.Void (Void)
+import GHC.Generics (Generic)
+import Prettyprinter (defaultLayoutOptions, layoutPretty)
+import Prettyprinter.Render.String (renderString)
 import Vehicle.Backend.LossFunction.Core (BooleanDifferentiableLogicField, TensorDifferentiableLogicField)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Prelude
@@ -171,6 +175,9 @@ compilerDeveloperError message = throwError $ DevError message
 --  These may be either user or developer errors but in general we
 --  can't distinguish between the two.
 newtype ExternalError = ExternalError Text
+  deriving (Generic)
+
+instance ToJSON ExternalError
 
 -- | Errors that are the user's responsibility to fix.
 data UserError = UserError
@@ -179,10 +186,21 @@ data UserError = UserError
     fix :: Maybe UnAnnDoc
   }
 
+-- | Concrete instance for JSON serialization of UserError as
+-- UnAnnDoc cannot be serialized directly.
+instance ToJSON UserError where
+  toJSON (UserError p prob probFix) =
+    object
+      [ "provenance" .= toJSON p,
+        "problem" .= renderString (layoutPretty defaultLayoutOptions prob),
+        "fix" .= maybe "" (renderString . layoutPretty defaultLayoutOptions) probFix
+      ]
+
 data VehicleError
   = UError UserError
   | EError ExternalError
   | DError (Doc ())
+  deriving (Generic)
 
 instance Pretty VehicleError where
   pretty (UError (UserError p prob probFix)) =
@@ -194,6 +212,12 @@ instance Pretty VehicleError where
         <> maybe "" (\fix -> line <> fixText fix) probFix
   pretty (EError (ExternalError text)) = pretty text
   pretty (DError text) = unAnnotate text
+
+instance ToJSON VehicleError where
+  toJSON vehicleError = case vehicleError of
+    DError doc -> toJSON $ renderString $ layoutPretty defaultLayoutOptions doc
+    EError eError -> toJSON eError
+    UError uError -> toJSON uError
 
 fixText :: Doc ann -> Doc ann
 fixText t = "Fix:" <+> t

@@ -1,15 +1,15 @@
 @property;
 unusedVar : (Tensor Real -> Tensor Real) -> Tensor Real;
-unusedVar f = search (\ e -> \ xs -> reduceMul e xs) 0.0 0.0 (\ x -> search (\ e -> \ xs -> reduceMul e xs) 0.0 0.0 (\ y -> - (max 0.0 (f [x] ! 0) + max 0.0 (0.0 - f [x] ! 0))))
+unusedVar f = search (\ e -> \ xs -> reduceMul e xs) 0.0 0.0 (\ x -> search (\ e -> \ xs -> reduceMul e xs) 0.0 0.0 (\ y -> max 0.0 (0.0 - f [x] ! 0)))
 
 @property;
 underConstrainedVar1 : (Tensor Real -> Tensor Real) -> Tensor Real;
-underConstrainedVar1 f = search (\ e -> \ xs -> reduceMul e xs) 0.0 0.0 (\ x -> search (\ e -> \ xs -> reduceMul e xs) 0.0 0.0 (\ y -> - (max 0.0 (x - 1.0) + max 0.0 (1.0 - x)) + (- (max 0.0 (y - 2.0) + max 0.0 (2.0 - y)) + - (max 0.0 (f [x + y] ! 0) + max 0.0 (0.0 - f [x + y] ! 0)))))
+underConstrainedVar1 f = search (\ e -> \ xs -> reduceMul e xs) 0.0 0.0 (\ x -> search (\ e -> \ xs -> reduceMul e xs) 0.0 0.0 (\ y -> max 0.0 (1.0 - x) + (max 0.0 (2.0 - y) + max 0.0 (0.0 - f [x + y] ! 0))))
 
 @property;
 underConstrainedVar2 : (Tensor Real -> Tensor Real) -> Tensor Real;
-underConstrainedVar2 f = search (\ e -> \ xs -> reduceMul e xs) 0.0 0.0 (\ x -> search (\ e -> \ xs -> reduceMul e xs) 0.0 0.0 (\ y -> - (max 0.0 (x - 1.0) + max 0.0 (1.0 - x)) + (- (max 0.0 (2.0 * y - 2.0) + max 0.0 (2.0 - 2.0 * y)) + - (max 0.0 (f [2.0 * x + y] ! 0) + max 0.0 (0.0 - f [2.0 * x + y] ! 0)))))
+underConstrainedVar2 f = search (\ e -> \ xs -> reduceMul e xs) 0.0 0.0 (\ x -> search (\ e -> \ xs -> reduceMul e xs) 0.0 0.0 (\ y -> max 0.0 (1.0 - x) + (max 0.0 (2.0 - 2.0 * y) + max 0.0 (0.0 - f [2.0 * x + y] ! 0))))
 
 @property;
 underConstrainedVars : (Tensor Real -> Tensor Real) -> Tensor Real;
-underConstrainedVars f = search (\ e -> \ xs -> reduceMul e xs) 0.0 0.0 (\ x -> - (max 0.0 (x ! 3 - 2.0) + max 0.0 (2.0 - x ! 3)) + (- (max 0.0 (x ! 2 + x ! 3 - 1.0) + max 0.0 (1.0 - (x ! 2 + x ! 3))) + (- (max 0.0 (x ! 1 - 2.0 * x ! 3 - 2.5) + max 0.0 (2.5 - (x ! 1 - 2.0 * x ! 3))) + - (max 0.0 (f [x ! 0 + x ! 1] ! 0 - 2.0) + max 0.0 (2.0 - f [x ! 0 + x ! 1] ! 0)))))
+underConstrainedVars f = search (\ e -> \ xs -> reduceMul e xs) 0.0 0.0 (\ x -> max 0.0 (2.0 - x ! 3) + (max 0.0 (1.0 - (x ! 2 + x ! 3)) + (max 0.0 (2.5 - (x ! 1 - 2.0 * x ! 3)) + max 0.0 (2.0 - f [x ! 0 + x ! 1] ! 0))))

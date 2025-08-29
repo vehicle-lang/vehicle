@@ -65,7 +65,7 @@ typeCheckSolitaryExpr instanceCandidates freeCtx expr1 = do
     expr2 <- convertFromStandardBuiltins expr1
     (expr3, _exprType) <- inferExprType mempty Relevant expr2
     solveConstraints (Proxy @builtin)
-    expr4 <- substMetasAt 0 expr3
+    expr4 <- substMetaVariablesAt mempty expr3
     checkAllUnknownsSolved (Proxy @builtin)
     return expr4
 
@@ -97,7 +97,7 @@ typeCheckDecl uncheckedDecl isUnused =
       DefFunction p n b t e -> typeCheckFunctionDef p n b t e isUnused
       DefRecord p n b t fs -> typeCheckRecordDef p n b t fs isUnused
     checkAllUnknownsSolved (Proxy @builtin)
-    finalDecl <- substMetas decl
+    finalDecl <- substMetaVariables decl
     logCompilerPassOutput $ prettyExternal finalDecl
     setCurrentDecl @builtin Nothing
 
@@ -155,7 +155,7 @@ typeCheckFunctionDef p ident anns typ body isUnused = do
   -- Solve constraints and substitute through.
   setCurrentDecl $ Just (checkedDecl, isUnused)
   solveConstraints (Proxy @builtin)
-  substDecl <- substMetas checkedDecl
+  substDecl <- substMetaVariables checkedDecl
 
   if isProperty anns
     then return substDecl
@@ -195,7 +195,7 @@ typeCheckRecordDef p ident _anns uncheckedType uncheckedFields isUnused = do
   -- Solve constraints and substitute through.
   setCurrentDecl $ Just (checkedDecl, isUnused)
   solveConstraints (Proxy @builtin)
-  substMetas checkedDecl
+  substMetaVariables checkedDecl
 
 checkRecordFieldDef ::
   (TCM builtin m) =>

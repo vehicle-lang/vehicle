@@ -88,6 +88,7 @@ compareRatTensorReducedAccessor =
     }
 
 instance BuiltinHasBoolLiterals Builtin where
+  accessBoolTypeBuiltin = typeAccessor BoolType
   accessBoolTensorLitBuiltin =
     Access
       { getExpr = \case
@@ -150,6 +151,7 @@ instance BuiltinHasNatLiterals Builtin where
   accessMulNatBuiltin = functionAccessor (Mul MulNat)
 
 instance BuiltinHasRatLiterals Builtin where
+  accessRatTypeBuiltin = typeAccessor RatType
   accessRatTensorLitBuiltin =
     Access
       { getExpr = \case

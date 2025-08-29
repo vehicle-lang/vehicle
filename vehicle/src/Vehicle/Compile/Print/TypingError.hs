@@ -11,7 +11,7 @@ import Data.List.NonEmpty qualified as NonEmpty
 import Data.Monoid (Endo (..))
 import Data.Text (Text, pack)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBE (eval, evalClosure)
+import Vehicle.Compile.Normalise.NBE (eval)
 import Vehicle.Compile.Normalise.Quote (Quote (..), unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
@@ -181,19 +181,20 @@ failedUnificationConstraintsError (FailedUnificationConstraintsError freeEnv (er
   where
     failedConstraintMessage :: WithContext (UnificationConstraint builtin) -> UserError
     failedConstraintMessage (WithContext (Unify origin e1 e2) ctx) = do
-      let boundCtx = namedBoundCtxOf ctx
+      let boundCtx = boundContextOf ctx
+      let namedBoundCtx = toNamedBoundCtx boundCtx
       let originMessage = case origin of
             CheckingExprType CheckingExpr {..} -> do
-              let normActualType = runNorm $ eval freeEnv (boundContextToEnv $ boundContextOf ctx) checkedExprActualType
+              let normActualType = runNorm $ eval freeEnv namedBoundCtx (boundContextToEnv boundCtx) checkedExprActualType
               "expected"
                 <+> ( case checkedExpr of
                         Left binder -> "variable" <+> quotePretty binder
                         Right expr -> squotes (prettyUnificationConstraintOriginExpr ctx expr)
                     )
                 <+> "to be of type"
-                <+> squotes (prettyFriendly (WithContext checkedExprExpectedType boundCtx))
+                <+> squotes (prettyFriendly (WithContext checkedExprExpectedType namedBoundCtx))
                 <+> "but was found to be of type"
-                <+> squotes (prettyFriendly (WithContext normActualType boundCtx))
+                <+> squotes (prettyFriendly (WithContext normActualType namedBoundCtx))
             CheckingInstanceType (InstanceArgOrigin ArgOrigin {..}) ->
               "unable to find a consistent type for the overloaded expression"
                 <+> squotes (prettyTypeClassConstraintOriginExpr ctx checkedInstanceOp checkedInstanceOpArgs)
@@ -205,9 +206,9 @@ failedUnificationConstraintsError (FailedUnificationConstraintsError freeEnv (er
             originMessage
               <> "."
                 <+> "In particular"
-                <+> squotes (prettyFriendly (WithContext e1 boundCtx))
+                <+> squotes (prettyFriendly (WithContext e1 namedBoundCtx))
                 <+> "is not equal to"
-                <+> squotes (prettyFriendly (WithContext e2 boundCtx))
+                <+> squotes (prettyFriendly (WithContext e2 namedBoundCtx))
               <> ".",
           fix = Just "check your types"
         }
@@ -222,16 +223,17 @@ failedInstanceConstraintError ::
   UserError
 failedInstanceConstraintError (FailedInstanceConstraintError freeEnv (WithContext constraint ctx) candidates) =
   case instanceOrigin constraint of
-    InstanceTypeRestrictionOrigin t -> typeRestrictionError t candidates
+    InstanceTypeRestrictionOrigin t -> typeRestrictionError ctx t candidates
     InstanceArgOrigin t -> instanceArgOriginError freeEnv ctx t candidates
 
 typeRestrictionError ::
   (Eq builtin, NormalisableBuiltin builtin) =>
+  ConstraintContext builtin ->
   InstanceTypeRestrictionOrigin builtin ->
   [(WithContext (InstanceCandidate builtin), UnAnnDoc)] ->
   UserError
-typeRestrictionError (TypeRestrictionOrigin freeEnv (ident, p) sort typ) _candidates = do
-  let gluedType = Glued typ (runNorm $ eval freeEnv mempty typ)
+typeRestrictionError ctx (TypeRestrictionOrigin freeEnv (ident, p) sort typ) _candidates = do
+  let gluedType = Glued typ (runNorm $ eval freeEnv (namedBoundCtxOf ctx) emptyBoundEnv typ)
   UserError
     { provenance = p,
       problem =
@@ -327,7 +329,7 @@ calculateInstanceDisplayType ::
   [Arg builtin] ->
   Doc a
 calculateInstanceDisplayType freeEnv boundCtx fullType actualArgs typingArgs = do
-  let normFullType = runNorm $ eval freeEnv (boundContextToEnv boundCtx) fullType
+  let normFullType = runNorm $ eval freeEnv (toNamedBoundCtx boundCtx) (boundContextToEnv boundCtx) fullType
   let opArgs = mergeArgs actualArgs typingArgs
   instantiateTelescope boundCtx normFullType opArgs
   where
@@ -353,23 +355,23 @@ calculateInstanceDisplayType freeEnv boundCtx fullType actualArgs typingArgs = d
       (VPi binder _, [])
         | isExplicit binder ->
             prettyFriendly (WithContext typ (toNamedBoundCtx ctx))
-      (VPi binder closure, args) -> do
-        let (typeArg, remainingArgs) = findRemainingArgs ctx binder args
-        let recType = runNorm $ evalClosure freeEnv closure (binder, typeArg)
+      (VPi binder (Closure env body), args) -> do
+        let (alterEnv, remainingArgs) = findRemainingArgs ctx binder args
+        let recType = runNorm $ eval freeEnv (toNamedBoundCtx ctx) (alterEnv env) body
         let unnormBinder = quote mempty (boundCtxLv ctx) binder
         instantiateTelescope (unnormBinder : ctx) recType remainingArgs
       (_, []) -> prettyFriendly (WithContext typ (toNamedBoundCtx ctx))
       _ -> "Malformed type-class operation type" <+> prettyVerbose typ <+> "and args" <+> prettyVerbose (fmap fst arguments)
 
-    findRemainingArgs :: BoundCtx (Type builtin) -> VBinder binder -> [(Arg builtin, Bool)] -> (Value builtin, [(Arg builtin, Bool)])
+    findRemainingArgs :: BoundCtx (Type builtin) -> VBinder binder -> [(Arg builtin, Bool)] -> (BoundEnv builtin -> BoundEnv builtin, [(Arg builtin, Bool)])
     findRemainingArgs ctx binder args = case args of
-      [] -> (VBoundVar (boundCtxLv ctx) [], [])
+      [] -> (extendEnvWithBound (boundCtxLv ctx) binder, [])
       ((arg, fromCandidate) : remainingArgs)
         | visibilityOf arg == visibilityOf binder || fromCandidate -> do
-            let normArg = runNorm $ eval freeEnv (boundContextToEnv ctx) (argExpr arg)
-            (normArg, remainingArgs)
+            let normArg = runNorm $ eval freeEnv (toNamedBoundCtx ctx) (boundContextToEnv ctx) (argExpr arg)
+            (extendEnvWithDefined normArg binder, remainingArgs)
         | isExplicit binder -> developerError "Missing explicit argument when printing"
-        | otherwise -> (VBoundVar (boundCtxLv ctx) [], args)
+        | otherwise -> (extendEnvWithBound (boundCtxLv ctx) binder, args)
 
 --------------------------------------------------------------------------------
 -- Utilities

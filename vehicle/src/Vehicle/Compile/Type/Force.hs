@@ -35,7 +35,7 @@ forceHead ::
   Value builtin ->
   m (Value builtin, MetaSet)
 forceHead ctx expr = do
-  (maybeForcedExpr, blockingMetas) <- forceExpr expr
+  (maybeForcedExpr, blockingMetas) <- forceExpr ctx expr
   forcedExpr <- case maybeForcedExpr of
     Nothing -> return expr
     Just forcedExpr -> do
@@ -51,44 +51,48 @@ forceHead ctx expr = do
 -- evaluation.
 forceExpr ::
   (MonadForce builtin m) =>
+  NamedBoundCtx ->
   Value builtin ->
   m (Maybe (Value builtin), MetaSet)
-forceExpr = \case
-  VMeta m spine -> forceMeta m spine
-  VBuiltin b spine -> forceBuiltin b spine
+forceExpr ctx = \case
+  VMeta m spine -> forceMeta ctx m spine
+  VBuiltin b spine -> forceBuiltin ctx b spine
   _ -> return (Nothing, mempty)
 
 forceMeta ::
   forall builtin m.
   (MonadForce builtin m) =>
+  NamedBoundCtx ->
   MetaID ->
   Spine builtin ->
   m (Maybe (Value builtin), MetaSet)
-forceMeta m spine = do
+forceMeta ctx m spine = do
   metaInfo <- getMetaInfo m
   case metaSolution metaInfo of
     Just solution -> do
-      normMetaExpr <- normaliseApp (normalised solution) spine
-      (maybeForcedExpr, blockingMetas) <- forceExpr normMetaExpr
+      normMetaExpr <- normaliseApp ctx (normalised solution) spine
+      (maybeForcedExpr, blockingMetas) <- forceExpr ctx normMetaExpr
       let forcedExpr = maybe (Just normMetaExpr) Just maybeForcedExpr
       return (forcedExpr, blockingMetas)
     Nothing -> return (Nothing, MetaSet.singleton m)
 
 forceBuiltin ::
   (MonadForce builtin m) =>
+  NamedBoundCtx ->
   builtin ->
   Spine builtin ->
   m (Maybe (Value builtin), MetaSet)
-forceBuiltin b spine = case blockingStatus b spine of
+forceBuiltin ctx b spine = case blockingStatus b spine of
   Blocked traverseBlocking -> do
     (maybeUnblockedSpine, blockingMetas) <-
-      runWriterT $ runMaybeT $ traverseBlocking forceBlockingArg
-    finalValue <- traverse (normaliseBuiltin b) maybeUnblockedSpine
+      runWriterT $ runMaybeT $ traverseBlocking $ forceBlockingArg ctx
+    finalValue <- traverse (normaliseBuiltin ctx b) maybeUnblockedSpine
     return (finalValue, blockingMetas)
   _ -> return (Just (VBuiltin b spine), mempty)
 
 forceBlockingArg ::
   (MonadForce builtin m) =>
+  NamedBoundCtx ->
   Value builtin ->
   MaybeT (WriterT MetaSet m) (Value builtin)
-forceBlockingArg value = MaybeT $ WriterT $ forceExpr value
+forceBlockingArg ctx value = MaybeT $ WriterT $ forceExpr ctx value

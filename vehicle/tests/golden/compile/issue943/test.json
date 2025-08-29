@@ -1,0 +1,14 @@
+{
+  "name": "Marabou",
+  "run": "vehicle compile -t MarabouQueries -s spec.vcl -n classifier:baseline.onnx -o Marabou.queries/",
+  "needs": [
+    "spec.vcl",
+    "baseline.onnx"
+  ],
+  "produces": [
+    "Marabou.queries/robust-query2.txt",
+    "Marabou.queries/robust.vcl-plan",
+    "Marabou.queries/robust-query1.txt"
+  ],
+  "sizeOnly": ".vcl-plan"
+}

@@ -28,7 +28,7 @@ solveIndexConstraint ::
   WithContext (InstanceConstraint Builtin) ->
   m ()
 solveIndexConstraint constraint = do
-  normConstraint <- substMetas constraint
+  normConstraint <- substMetaVariables constraint
   logDebug MaxDetail $ "Forced:" <+> prettyFriendly normConstraint
 
   let args = mapMaybe getExplicitArg $ goalSpine $ instanceGoal $ objectIn normConstraint

@@ -16,7 +16,7 @@ module Vehicle.Compile.Type.Monad
     getMetasLinkedToMetasIn,
     trackSolvedMetas,
     prettyMeta,
-    substMetas,
+    substMetaVariables,
     -- Constraints
     runConstraintSolver,
     copyContext,
@@ -31,7 +31,6 @@ module Vehicle.Compile.Type.Monad
     addUnificationConstraints,
     -- Other
     clearMetaCtx,
-    glueNBE,
     logUnsolvedUnknowns,
     findFirstConstraint,
     checkAllConstraintsSolved,
@@ -156,7 +155,7 @@ createFreshInstanceConstraint auxiliaryConstraint boundCtx p origin relevance tc
   (metaID, metaExpr) <- freshSolutionMeta p tcExpr boundCtx
 
   context <- createFreshConstraintCtx p boundCtx
-  nTCExpr <- normaliseInEnv env tcExpr
+  nTCExpr <- normaliseInEnv (toNamedBoundCtx boundCtx) env tcExpr
   let goal = parseInstanceGoal nTCExpr
   let constraint = WithContext (Resolve origin metaID relevance goal) context
 
@@ -223,7 +222,7 @@ solveMeta meta solution solutionCtx = do
     Nothing -> do
       let abstractedSolution = abstractOverCtx (metaCtx metaInfo) solution
       let env = boundContextToEnv solutionCtx
-      gluedSolution <- glueNBE env abstractedSolution
+      gluedSolution <- Glued abstractedSolution <$> normaliseInEnv (toNamedBoundCtx solutionCtx) env abstractedSolution
 
       logDebug MaxDetail $
         "solved"
@@ -282,7 +281,7 @@ logUnsolvedUnknowns _proxy = do
   logDebugM MaxDetail $ do
     maybeDecl <- getCurrentDecl @builtin
     metaVarCtx <- getMetaVariableCtx @builtin
-    updatedMetaVarCtx <- substMetas metaVarCtx
+    updatedMetaVarCtx <- substMetaVariables metaVarCtx
 
     unsolvedConstraints <- getActiveConstraints @builtin
 

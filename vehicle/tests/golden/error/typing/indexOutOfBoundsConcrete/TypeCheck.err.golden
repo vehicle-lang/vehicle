@@ -1,1 +1,13 @@
-Error in file 'indexOutOfBoundsConcrete.vcl' at Line 2, Columns 21-22: the value '1' is too big to be used as an index of size '1'.
+{
+  "provenance": {
+    "tag": "Provenance",
+    "contents": [
+      2,
+      21,
+      2,
+      22
+    ]
+  },
+  "problem": "the value '1' is too big to be used as an index of size '1'.",
+  "fix": ""
+}

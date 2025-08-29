@@ -16,6 +16,7 @@ import Control.Monad.Reader (MonadReader (..))
 import Data.Aeson (FromJSON, FromJSONKey, ToJSON, ToJSONKey)
 import Data.Hashable (Hashable (..))
 import Data.Serialize (Serialize)
+import Data.Vector.Internal.Check (HasCallStack)
 import GHC.Generics (Generic)
 import Vehicle.Prelude
 
@@ -34,7 +35,7 @@ pattern Ix i <- InnerIx i
   where
     Ix i = checkIx i
 
-checkIx :: Int -> Ix
+checkIx :: (HasCallStack) => Int -> Ix
 checkIx i
   | i < 0 = developerError $ "malformed ix" <+> pretty i
   | otherwise = InnerIx i

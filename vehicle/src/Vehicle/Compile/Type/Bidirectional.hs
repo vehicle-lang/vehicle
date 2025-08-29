@@ -341,8 +341,8 @@ createFreshUnificationConstraint ::
   m ()
 createFreshUnificationConstraint p ctx origin expectedType actualType = do
   let env = boundContextToEnv ctx
-  normExpectedType <- normaliseInEnv env expectedType
-  normActualType <- normaliseInEnv env actualType
+  normExpectedType <- normaliseInEnv (toNamedBoundCtx ctx) env expectedType
+  normActualType <- normaliseInEnv (toNamedBoundCtx ctx) env actualType
   context <- createFreshConstraintCtx p ctx
   let unification = Unify origin normExpectedType normActualType
   solveUnificationConstraint (WithContext unification context)
@@ -396,7 +396,7 @@ forceApplicationHeadType ::
   Type builtin ->
   m (Type builtin, MetaSet)
 forceApplicationHeadType ctx typ = do
-  normType <- normaliseInEnv (boundContextToEnv ctx) typ
+  normType <- normaliseInEnv (toNamedBoundCtx ctx) (boundContextToEnv ctx) typ
   (forcedType, blockingMetas) <- forceHead (toNamedBoundCtx ctx) normType
   return (quote (provenanceOf typ) (boundCtxLv ctx) forcedType, blockingMetas)
 

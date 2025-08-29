@@ -27,6 +27,7 @@ module Vehicle.Syntax.Tensor
     fromVector,
     isTensorOfAll,
     compareTensor,
+    extendTensor,
   )
 where
 
@@ -178,6 +179,11 @@ unstack xs = case shapeOf xs of
     DenseTensor _ values -> do
       let stride = product ds
       fmap (fromVectorSlice stride ds values) [0 .. d - 1]
+
+extendTensor :: Int -> Tensor a -> Tensor a
+extendTensor dim = \case
+  ConstantTensor shape value -> ConstantTensor (dim : shape) value
+  DenseTensor shape values -> DenseTensor (dim : shape) (Vector.concat (replicate dim values))
 
 foldMapTensor :: forall a b. (a -> b) -> (TensorShape -> [b] -> b) -> Tensor a -> b
 foldMapTensor mkValue mkVec t =

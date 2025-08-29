@@ -13,6 +13,7 @@ module Vehicle.Syntax.AST.Provenance
 where
 
 import Control.DeepSeq (NFData (..))
+import Data.Aeson (KeyValue ((.=)), Options (..), ToJSON (..), defaultOptions, genericToJSON, object)
 import Data.Hashable (Hashable (..))
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
@@ -36,6 +37,13 @@ data Position = Position
     posColumn :: Int
   }
   deriving (Eq, Ord, Generic)
+
+instance ToJSON Position where
+  toJSON =
+    genericToJSON $
+      defaultOptions
+        { tagSingleConstructors = True
+        }
 
 instance Show Position where
   show (Position l c) = show (l, c)
@@ -100,6 +108,13 @@ data Provenance = Provenance
     file :: FilePath
   }
   deriving (Generic)
+
+instance ToJSON Provenance where
+  toJSON (Provenance (Range start end) _) =
+    object
+      [ "tag" .= toJSON @String "Provenance",
+        "contents" .= toJSON @[Int] [posLine start, posColumn start, posLine end, posColumn end]
+      ]
 
 noProvenance :: Provenance
 noProvenance = Provenance mempty "unknown"

@@ -13,18 +13,28 @@ module Vehicle.Data.Code.TypedView
     BoolTensorValue (..),
     toBoolTensorValue,
     fromBoolTensorValue,
+    MultiDimBoolTensorValue (..),
+    toMultiDimBoolTensorValue,
+    fromMultiDimBoolTensorValue,
     RatTensorValue (..),
     toRatTensorValue,
     fromRatTensorValue,
     DimensionsValue (..),
     toDimensionsValue,
+    fromDimensionsValue,
+    evalCompareRatTensor,
   )
 where
 
 import GHC.Stack (HasCallStack)
+import Vehicle.Compile.Context.Free (MonadFreeContext)
+import Vehicle.Compile.Context.Name
+import Vehicle.Compile.Normalise.NBE (normaliseBuiltin)
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Data.Builtin.Interface (Accessor (..))
+import Vehicle.Data.Builtin.Interface.Normalise (EvalSimple, MonadNormBuiltin, evalCompareRatTensorPointwise)
 import Vehicle.Data.Builtin.Standard.Core
+import Vehicle.Data.Builtin.Standard.Normalise ()
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
 import Vehicle.Data.DeBruijn
@@ -147,8 +157,7 @@ data BoolValue
   | VOr (TensorOp2Args (Value Builtin))
   | VCompareIndex (ComparisonOp, IndexComparisonArgs (Value Builtin))
   | VCompareNat (ComparisonOp, Op2Args (Value Builtin))
-  | VCompareRatTensorPointwise (ComparisonOp, TensorOp2Args (Value Builtin))
-  | VCompareRatTensorReduced (ComparisonOp, TensorOp2Args (Value Builtin))
+  | VCompareRatTensor (ComparisonOp, TensorOp2Args (Value Builtin))
   | VReduceAndTensor (TensorOp2Args (Value Builtin))
   | VReduceOrTensor (TensorOp2Args (Value Builtin))
   | VQuantifyRatTensor Quantifier (VArg Builtin) (VBinder Builtin) (Closure Builtin)
@@ -161,8 +170,8 @@ toBoolValue expr = case expr of
   (getExpr accessAndTensor -> Just args) -> VAnd args
   (getExpr accessOrTensor -> Just args) -> VOr args
   (getExpr accessNotTensor -> Just args) -> VNot args
-  (getExpr accessCompareRatTensorPointwise -> Just args) -> VCompareRatTensorPointwise args
-  (getExpr accessCompareRatTensorReduced -> Just args) -> VCompareRatTensorReduced args
+  (getExpr accessCompareRatTensorPointwise -> Just args) -> fromComparison $ Left args
+  (getExpr accessCompareRatTensorReduced -> Just args) -> fromComparison $ Right args
   (getExpr accessCompareNat -> Just args) -> VCompareNat args
   (getExpr accessCompareIndex -> Just args) -> VCompareIndex args
   (getExpr accessQuantifyRatTensor -> Just (op, dims, VLam binder closure)) -> VQuantifyRatTensor op dims binder closure
@@ -180,16 +189,42 @@ fromBoolValue = \case
   VNot args -> mkExpr accessNotTensor args
   VCompareNat args -> mkExpr accessCompareNat args
   VCompareIndex args -> mkExpr accessCompareIndex args
-  VCompareRatTensorPointwise args -> mkExpr accessCompareRatTensorPointwise args
-  VCompareRatTensorReduced args -> mkExpr accessCompareRatTensorReduced args
+  VCompareRatTensor args -> toComparison args
   VQuantifyRatTensor q dims binder closure -> mkExpr accessQuantifyRatTensor (q, dims, VLam binder closure)
   VReduceAndTensor args -> mkExpr accessReduceAnd args
   VReduceOrTensor args -> mkExpr accessReduceOr args
   VBoolIf args -> mkExpr accessIf args
   VBoolAt args -> mkExpr accessAtTensor args
 
+fromComparison ::
+  Either
+    (ComparisonOp, TensorOp2Args (Value Builtin))
+    (ComparisonOp, TensorReduceComparisonArgs (Value Builtin)) ->
+  BoolValue
+fromComparison = \case
+  Left (op, args) -> VCompareRatTensor (op, args)
+  Right (op, TensorReduceComparisonArgs d ds e1 e2) -> do
+    let dims = implicitIrrelevant $ fromDimensionsValue $ VDimsCons (argExpr d) (argExpr ds)
+    VCompareRatTensor (op, TensorOp2Args dims e1 e2)
+
+toComparison :: (ComparisonOp, TensorOp2Args (Value Builtin)) -> Value Builtin
+toComparison (op, TensorOp2Args dims e1 e2) = case toDimensionsValue $ argExpr dims of
+  VDimsNil -> mkExpr accessCompareRatTensorPointwise (op, TensorOp2Args dims e1 e2)
+  VDimsCons d ds -> mkExpr accessCompareRatTensorReduced (op, TensorReduceComparisonArgs (implicitIrrelevant d) (implicitIrrelevant ds) e1 e2)
+  _ -> developerError "Unexpected tensorOp2Args for comparison"
+
+evalCompareRatTensor :: (MonadNormBuiltin m, MonadFreeContext Builtin m, MonadNameContext m) => ComparisonOp -> EvalSimple TensorOp2Args Value Builtin m
+evalCompareRatTensor op args@(TensorOp2Args dims e1 e2) = case toDimensionsValue $ argExpr dims of
+  VDimsNil -> evalCompareRatTensorPointwise op args
+  VDimsCons d ds -> do
+    let reduceArgs = TensorReduceComparisonArgs (implicitIrrelevant d) (implicitIrrelevant ds) e1 e2
+    namedCtx <- getNameContext
+    normaliseBuiltin namedCtx (DerivedFunction (CompareRatTensorReduced op)) (mkExpr accessSpine reduceArgs)
+  _ -> developerError "Unexpected tensorOp2Args for comparison"
+
 -------------------------------------------------------------------------------
 -- Bool
+{-
 data BoolTensorValue
   = VBoolTensorLiteral (Tensor Bool)
   | VBoolStackTensor (StackTensorArgs (Value Builtin))
@@ -207,65 +242,109 @@ fromBoolTensorValue = \case
   VBoolTensorLiteral y -> mkExpr accessBoolTensorLiteral y
   VBoolStackTensor args -> mkExpr accessStackTensor args
   VBoolVecLiteral args -> mkExpr accessVecLit args
+-}
 
-{-
--- | A view on all possible expressions that can have type `Tensor Bool`.
+-- | A view on all possible expressions that can have type `Tensor Bool ds`.
 data BoolTensorValue
   = VBoolTensorLiteral (Tensor Bool)
-  | VNot (TensorOp1Args (Value Builtin))
-  | VAnd (TensorOp2Args (Value Builtin))
-  | VOr (TensorOp2Args (Value Builtin))
-  | VCompareIndex (ComparisonOp, IndexComparisonArgs (Value Builtin))
-  | VCompareNat (ComparisonOp, Op2Args (Value Builtin))
-  | VCompareRatTensorPointwise (ComparisonOp, TensorOp2Args (Value Builtin))
-  | VCompareRatTensorReduced (ComparisonOp, TensorOp2Args (Value Builtin))
-  | VReduceAndTensor (TensorOp2Args (Value Builtin))
-  | VReduceOrTensor (TensorOp2Args (Value Builtin))
-  | VQuantifyRatTensor Quantifier (VArg Builtin) (VBinder Builtin) (Closure Builtin)
-  | VBoolIf (IfArgs (Value Builtin))
-  | VConstBoolTensor (ConstTensorArgs (Value Builtin))
-  | VBoolAt (AtTensorArgs (Value Builtin))
-  | VBoolForeach (ForeachArgs (Value Builtin))
+  | VBoolConstTensor (ConstTensorArgs (Value Builtin))
+  | VBoolStackTensor (StackTensorArgs (Value Builtin))
+  | VBoolTensorNot (TensorOp1Args (Value Builtin))
+  | VBoolTensorAnd (TensorOp2Args (Value Builtin))
+  | VBoolTensorOr (TensorOp2Args (Value Builtin))
+  | VBoolTensorCompareIndex (ComparisonOp, IndexComparisonArgs (Value Builtin))
+  | VBoolTensorCompareNat (ComparisonOp, Op2Args (Value Builtin))
+  | VBoolTensorCompareRatPointwise (ComparisonOp, TensorOp2Args (Value Builtin))
+  | VBoolTensorCompareRatReduced (ComparisonOp, TensorReduceComparisonArgs (Value Builtin))
+  | VBoolTensorReduceAnd (TensorOp2Args (Value Builtin))
+  | VBoolTensorReduceOr (TensorOp2Args (Value Builtin))
+  | VBoolTensorQuantifyRat Quantifier (VArg Builtin) (VBinder Builtin) (Closure Builtin)
+  | VBoolTensorBoolIf (IfArgs (Value Builtin))
+  | VBoolTensorAt (AtTensorArgs (Value Builtin))
+  | VBoolTensorForeach (ForeachTensorArgs (Value Builtin))
 
 toBoolTensorValue :: (HasCallStack) => Value Builtin -> BoolTensorValue
 toBoolTensorValue expr = case expr of
   (getExpr accessBoolTensorLiteral -> Just t) -> VBoolTensorLiteral t
-  (getExpr accessAndTensor -> Just args) -> VAnd args
-  (getExpr accessOrTensor -> Just args) -> VOr args
-  (getExpr accessNotTensor -> Just args) -> VNot args
-  (getExpr accessCompareRatTensorPointwise -> Just args) -> VCompareRatTensorPointwise args
-  (getExpr accessCompareRatTensorReduced -> Just args) -> VCompareRatTensorReduced args
-  (getExpr accessCompareNat -> Just args) -> VCompareNat args
-  (getExpr accessCompareIndex -> Just args) -> VCompareIndex args
-  (getExpr accessQuantifyRatTensor -> Just (op, dims, VLam binder closure)) -> VQuantifyRatTensor op dims binder closure
-  (getExpr accessReduceAnd -> Just args) -> VReduceAndTensor args
-  (getExpr accessReduceOr -> Just args) -> VReduceOrTensor args
-  (getExpr accessConstTensor -> Just args) -> VConstBoolTensor args
+  (getExpr accessConstTensor -> Just args) -> VBoolConstTensor args
   (getExpr accessStackTensor -> Just args) -> VBoolStackTensor args
-  (getExpr accessAtTensor -> Just args) -> VBoolAt args
-  (getExpr accessForeachTensor -> Just args) -> VBoolForeach args
-  (getExpr accessIf -> Just args) -> VBoolIf args
+  (getExpr accessAndTensor -> Just args) -> VBoolTensorAnd args
+  (getExpr accessOrTensor -> Just args) -> VBoolTensorOr args
+  (getExpr accessNotTensor -> Just args) -> VBoolTensorNot args
+  (getExpr accessCompareRatTensorPointwise -> Just args) -> VBoolTensorCompareRatPointwise args
+  (getExpr accessCompareRatTensorReduced -> Just args) -> VBoolTensorCompareRatReduced args
+  (getExpr accessCompareNat -> Just args) -> VBoolTensorCompareNat args
+  (getExpr accessCompareIndex -> Just args) -> VBoolTensorCompareIndex args
+  (getExpr accessQuantifyRatTensor -> Just (op, dims, VLam binder closure)) -> VBoolTensorQuantifyRat op dims binder closure
+  (getExpr accessReduceAnd -> Just args) -> VBoolTensorReduceAnd args
+  (getExpr accessReduceOr -> Just args) -> VBoolTensorReduceOr args
+  (getExpr accessAtTensor -> Just args) -> VBoolTensorAt args
+  (getExpr accessForeachTensor -> Just args) -> VBoolTensorForeach args
+  (getExpr accessIf -> Just args) -> VBoolTensorBoolIf args
   _ -> developerError $ "ill-typed RatTensor expression:" <+> prettyVerbose expr
 
 fromBoolTensorValue :: BoolTensorValue -> Value Builtin
 fromBoolTensorValue = \case
   VBoolTensorLiteral y -> mkExpr accessBoolTensorLiteral y
-  VAnd args -> mkExpr accessAndTensor args
-  VOr args -> mkExpr accessOrTensor args
-  VNot args -> mkExpr accessNotTensor args
-  VCompareNat args -> mkExpr accessCompareNat args
-  VCompareIndex args -> mkExpr accessCompareIndex args
-  VCompareRatTensorPointwise args -> mkExpr accessCompareRatTensorPointwise args
-  VCompareRatTensorReduced args -> mkExpr accessCompareRatTensorReduced args
-  VQuantifyRatTensor q dims binder closure -> mkExpr accessQuantifyRatTensor (q, dims, VLam binder closure)
-  VReduceAndTensor args -> mkExpr accessReduceAnd args
-  VReduceOrTensor args -> mkExpr accessReduceOr args
-  VBoolIf args -> mkExpr accessIf args
-  VConstBoolTensor args -> mkExpr accessConstTensor args
+  VBoolConstTensor args -> mkExpr accessConstTensor args
   VBoolStackTensor args -> mkExpr accessStackTensor args
-  VBoolAt args -> mkExpr accessAtTensor args
+  VBoolTensorAnd args -> mkExpr accessAndTensor args
+  VBoolTensorOr args -> mkExpr accessOrTensor args
+  VBoolTensorNot args -> mkExpr accessNotTensor args
+  VBoolTensorCompareNat args -> mkExpr accessCompareNat args
+  VBoolTensorCompareIndex args -> mkExpr accessCompareIndex args
+  VBoolTensorCompareRatPointwise args -> mkExpr accessCompareRatTensorPointwise args
+  VBoolTensorCompareRatReduced args -> mkExpr accessCompareRatTensorReduced args
+  VBoolTensorQuantifyRat q dims binder closure -> mkExpr accessQuantifyRatTensor (q, dims, VLam binder closure)
+  VBoolTensorReduceAnd args -> mkExpr accessReduceAnd args
+  VBoolTensorReduceOr args -> mkExpr accessReduceOr args
+  VBoolTensorBoolIf args -> mkExpr accessIf args
+  VBoolTensorAt args -> mkExpr accessAtTensor args
+  VBoolTensorForeach args -> mkExpr accessForeachTensor args
+
+-------------------------------------------------------------------------------
+-- Multi-dimensional bool tensor
+
+-- | A view on all possible expressions that can have type `Tensor Bool (d :: ds)`.
+data MultiDimBoolTensorValue
+  = VMultiDimBoolTensorLiteral (Tensor Bool)
+  | VMultiDimBoolConstTensor (ConstTensorArgs (Value Builtin))
+  | VMultiDimBoolStackTensor (StackTensorArgs (Value Builtin))
+  | VPointwiseNot (TensorOp1Args (Value Builtin))
+  | VPointwiseAnd (TensorOp2Args (Value Builtin))
+  | VPointwiseOr (TensorOp2Args (Value Builtin))
+  | VCompareRatTensorPointwise (ComparisonOp, TensorOp2Args (Value Builtin))
+  | VMultiDimBoolIf (IfArgs (Value Builtin))
+  | VMultiDimBoolAt (AtTensorArgs (Value Builtin))
+  | VBoolForeach (ForeachTensorArgs (Value Builtin))
+
+toMultiDimBoolTensorValue :: (HasCallStack) => Value Builtin -> MultiDimBoolTensorValue
+toMultiDimBoolTensorValue expr = case expr of
+  (getExpr accessBoolTensorLiteral -> Just t) -> VMultiDimBoolTensorLiteral t
+  (getExpr accessConstTensor -> Just args) -> VMultiDimBoolConstTensor args
+  (getExpr accessStackTensor -> Just args) -> VMultiDimBoolStackTensor args
+  (getExpr accessNotTensor -> Just args) -> VPointwiseNot args
+  (getExpr accessAndTensor -> Just args) -> VPointwiseAnd args
+  (getExpr accessOrTensor -> Just args) -> VPointwiseOr args
+  (getExpr accessCompareRatTensorPointwise -> Just args) -> VCompareRatTensorPointwise args
+  (getExpr accessIf -> Just args) -> VMultiDimBoolIf args
+  (getExpr accessAtTensor -> Just args) -> VMultiDimBoolAt args
+  (getExpr accessForeachTensor -> Just args) -> VBoolForeach args
+  _ -> developerError $ "ill-typed RatTensor expression:" <+> prettyVerbose expr
+
+fromMultiDimBoolTensorValue :: MultiDimBoolTensorValue -> Value Builtin
+fromMultiDimBoolTensorValue = \case
+  VMultiDimBoolTensorLiteral y -> mkExpr accessBoolTensorLiteral y
+  VMultiDimBoolConstTensor args -> mkExpr accessConstTensor args
+  VMultiDimBoolStackTensor args -> mkExpr accessStackTensor args
+  VPointwiseNot args -> mkExpr accessNotTensor args
+  VPointwiseAnd args -> mkExpr accessAndTensor args
+  VPointwiseOr args -> mkExpr accessOrTensor args
+  VCompareRatTensorPointwise args -> mkExpr accessCompareRatTensorPointwise args
+  VMultiDimBoolIf args -> mkExpr accessIf args
+  VMultiDimBoolAt args -> mkExpr accessAtTensor args
   VBoolForeach args -> mkExpr accessForeachTensor args
--}
+
 -------------------------------------------------------------------------------
 -- Tensor Rat
 
@@ -355,3 +434,10 @@ toDimensionsValue e = case e of
   (getExpr accessCons -> Just (argExpr -> INatType, x, xs)) -> VDimsCons x xs
   (getExpr accessIf -> Just args) -> VDimsIf args
   _ -> developerError $ "ill-typed Dimensions expression" <+> prettyVerbose e
+
+fromDimensionsValue :: (HasCallStack) => DimensionsValue -> Value Builtin
+fromDimensionsValue e = case e of
+  VDimsBoundVar lv spine -> VBoundVar lv spine
+  VDimsNil -> mkExpr accessNil (implicit INatType)
+  VDimsCons x xs -> mkExpr accessCons (implicit INatType, x, xs)
+  VDimsIf args -> mkExpr accessIf args

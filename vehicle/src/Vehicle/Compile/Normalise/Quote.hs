@@ -1,7 +1,6 @@
 module Vehicle.Compile.Normalise.Quote where
 
 import Data.Map.Ordered qualified as OMap
-import Vehicle.Compile.Context.Bound.Core
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Code.Expr
 import Vehicle.Data.Code.Value
@@ -30,9 +29,7 @@ quoteClosure p lv (binder, Closure env body) = do
   substituteDB 0 subst (convertExprBuiltins body)
 
 quoteCtx :: (ConvertableBuiltin builtin1 builtin2) => Provenance -> Lv -> BoundEnv builtin1 -> Substitution (Expr builtin2)
-quoteCtx p level env i = case lookupIx env i of
-  Nothing -> developerError $ "Mis-sized environment" <+> pretty (length env) <+> "when quoting variable" <+> pretty i
-  Just (_binder, value) -> Right (quote p level value)
+quoteCtx p level env i = Right (quote p level (lookupIxInEnv env i))
 
 -----------------------------------------------------------------------------
 -- Quoting expressions

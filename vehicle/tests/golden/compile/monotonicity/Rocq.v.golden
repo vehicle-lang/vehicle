@@ -2,7 +2,7 @@
 (* and should not be modified manually! *)
 (* Metadata: *)
 (*  - Rocq version: 9.0.0 *)
-(*  - Vehicle version: 0.18.0+dev *)
+(*  - Vehicle version: 0.19.0+dev *)
 
 Require Import mathcomp.ssreflect.ssrbool.
 Require Import mathcomp.ssreflect.ssrnat.

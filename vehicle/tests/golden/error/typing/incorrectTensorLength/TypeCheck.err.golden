@@ -1,8 +1,13 @@
-Error in file 'incorrectTensorLength.vcl' at Line 2, Columns 10-11: unable to work out a valid type for the overloaded expression '[1]'.
-The possible options explored were:
-  1. List t
-    - rejected: unable to find a consistent type for the overloaded expression '[1]'. In particular 'Tensor Real [2]' is not equal to 'List ?22'.
-  2. Vector t d
-    - rejected: unable to find a consistent type for the overloaded expression '[1]'. In particular 'Tensor Real [2]' is not equal to 'Vector ?22 ?23'.
-  3. Tensor t (d :: ds)
-    - rejected: unable to find a consistent type for the overloaded expression '[1]'. In particular '1' is not equal to '2'.
+{
+  "provenance": {
+    "tag": "Provenance",
+    "contents": [
+      2,
+      10,
+      2,
+      11
+    ]
+  },
+  "problem": "unable to work out a valid type for the overloaded expression '[1]'.\nThe possible options explored were:\n  1. List t\n    - rejected: unable to find a consistent type for the overloaded expression '[1]'. In particular 'Tensor Real [2]' is not equal to 'List ?22'.\n  2. Vector t d\n    - rejected: unable to find a consistent type for the overloaded expression '[1]'. In particular 'Tensor Real [2]' is not equal to 'Vector ?22 ?23'.\n  3. Tensor t (d :: ds)\n    - rejected: unable to find a consistent type for the overloaded expression '[1]'. In particular '1' is not equal to '2'.",
+  "fix": ""
+}

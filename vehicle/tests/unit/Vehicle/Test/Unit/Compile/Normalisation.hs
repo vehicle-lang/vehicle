@@ -67,8 +67,10 @@ normalisationTest :: NBETest -> TestTree
 normalisationTest NBETest {..} =
   unitTestCase ("normalise" <> name) $ do
     normInput <-
-      runFreshFreeContextT (Proxy @Builtin) $
-        normaliseInEnv (mkNoOpEnv dbLevel) input
+      runFreshFreeContextT (Proxy @Builtin) $ do
+        let ctx = mkCtx dbLevel
+        let env = boundContextToEnv ctx
+        normaliseInEnv (toNamedBoundCtx ctx) env input
     let actual = quote mempty dbLevel normInput
 
     let errorMessage =
@@ -93,10 +95,10 @@ p = mempty
 binding :: Type Builtin -> Binder Builtin
 binding = Binder p (BinderDisplayForm (OnlyName "x") False) Explicit Relevant
 
-mkNoOpEnv :: Lv -> BoundEnv builtin
-mkNoOpEnv boundCtxSize = reverse [mkDefaultEnvEntry "_" (VBoundVar i []) | i <- [0 .. boundCtxSize - 1]]
+mkCtx :: Lv -> BoundCtx ()
+mkCtx boundCtxSize = reverse [mkDefaultBinder "_" | _i <- [0 .. boundCtxSize - 1]]
   where
-    mkDefaultEnvEntry :: Name -> Value builtin -> EnvEntry builtin
-    mkDefaultEnvEntry name value = (Binder mempty displayForm Explicit Relevant (), value)
+    mkDefaultBinder :: Name -> GenericBinder ()
+    mkDefaultBinder name = Binder mempty displayForm Explicit Relevant ()
       where
         displayForm = BinderDisplayForm (OnlyName name) True

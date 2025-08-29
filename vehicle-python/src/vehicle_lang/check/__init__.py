@@ -21,6 +21,7 @@ def check(
         str(specification),
         "--typeSystem",
         typeSystem._vehicle_option_name,
+        "--json",
     ]
 
     # Call Vehicle

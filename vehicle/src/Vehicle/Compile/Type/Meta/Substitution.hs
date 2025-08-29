@@ -28,52 +28,47 @@ class MetaSubstitutable m builtin a | a -> builtin where
   -- | Substitutes meta-variables through the provided object, returning the
   -- updated object and the set of meta-variables within the object for which
   -- no subsitution was provided.
-  substAt ::
+  substMetasAt ::
     (MonadLogger m, MonadFreeContext builtin m, NormalisableBuiltin builtin) =>
-    Lv ->
+    NamedBoundCtx ->
     MetaSubstitution builtin ->
     a ->
     m a
 
 instance (MetaSubstitutable m builtin a) => MetaSubstitutable m builtin (Maybe a) where
-  substAt lv s = traverse (substAt lv s)
-
-instance (MetaSubstitutable m builtin b) => MetaSubstitutable m builtin (a, b) where
-  substAt lv s (x, y) = do
-    y' <- substAt lv s y
-    return (x, y')
+  substMetasAt ctx s = traverse (substMetasAt ctx s)
 
 instance (MetaSubstitutable m builtin a) => MetaSubstitutable m builtin [a] where
-  substAt lv s = traverse (substAt lv s)
+  substMetasAt ctx s = traverse (substMetasAt ctx s)
 
 instance (MetaSubstitutable m builtin a) => MetaSubstitutable m builtin (NonEmpty a) where
-  substAt lv s = traverse (substAt lv s)
+  substMetasAt ctx s = traverse (substMetasAt ctx s)
 
 instance (MetaSubstitutable m builtin a) => MetaSubstitutable m builtin (GenericArg a) where
-  substAt lv s = traverse (substAt lv s)
+  substMetasAt ctx s = traverse (substMetasAt ctx s)
 
 instance (MetaSubstitutable m builtin a) => MetaSubstitutable m builtin (GenericBinder a) where
-  substAt lv s = traverse (substAt lv s)
+  substMetasAt ctx s = traverse (substMetasAt ctx s)
 
 instance MetaSubstitutable m builtin (Expr builtin) where
-  substAt lv s expr =
+  substMetasAt ctx s expr =
     -- logCompilerPass MaxDetail (prettyVerbose ex) $
     case expr of
-      Meta p m -> substMeta lv s (p, m, [])
-      App (Meta p m) args -> substMeta lv s (p, m, NonEmpty.toList args)
-      App fun args -> App <$> substAt lv s fun <*> substAt lv s args
+      Meta p m -> substMeta ctx s (p, m, [])
+      App (Meta p m) args -> substMeta ctx s (p, m, NonEmpty.toList args)
+      App fun args -> App <$> substMetasAt ctx s fun <*> substMetasAt ctx s args
       Universe {} -> return expr
       Hole {} -> return expr
       Builtin {} -> return expr
       FreeVar {} -> return expr
       BoundVar {} -> return expr
-      Record p ident fields -> Record p ident <$> traverseRecordFields (substAt lv s) fields
-      RecordAcc p record field -> RecordAcc p <$> substAt lv s record <*> pure field
+      Record p ident fields -> Record p ident <$> traverseRecordFields (substMetasAt ctx s) fields
+      RecordAcc p record field -> RecordAcc p <$> substMetasAt ctx s record <*> pure field
       -- NOTE: no need to lift the substitutions here as we're passing under the binders
       -- because by construction every meta-variable solution is a closed term.
-      Pi p binder res -> Pi p <$> substAt lv s binder <*> substAt (lv + 1) s res
-      Let p e1 binder e2 -> Let p <$> substAt lv s e1 <*> substAt lv s binder <*> substAt (lv + 1) s e2
-      Lam p binder e -> Lam p <$> substAt lv s binder <*> substAt (lv + 1) s e
+      Pi p binder res -> Pi p <$> substMetasAt ctx s binder <*> substMetasAt (nameOf binder : ctx) s res
+      Let p e1 binder e2 -> Let p <$> substMetasAt ctx s e1 <*> substMetasAt ctx s binder <*> substMetasAt (nameOf binder : ctx) s e2
+      Lam p binder e -> Lam p <$> substMetasAt ctx s binder <*> substMetasAt (nameOf binder : ctx) s e
 
 -- | We really don't want un-normalised lambda applications from solved meta-variables
 -- clogging up our program so this function detects meta applications and normalises
@@ -81,71 +76,71 @@ instance MetaSubstitutable m builtin (Expr builtin) where
 substMeta ::
   forall builtin m.
   (MonadFreeContext builtin m, NormalisableBuiltin builtin) =>
-  Lv ->
+  NamedBoundCtx ->
   MetaSubstitution builtin ->
   (Provenance, MetaID, [Arg builtin]) ->
   m (Expr builtin)
-substMeta lv s (p, m, mArgs) = do
+substMeta ctx s (p, m, mArgs) = do
   let metaInfo = findMetaInfo s m
   case metaSolution metaInfo of
-    Nothing -> normAppList (Meta p m) <$> substAt lv s mArgs
+    Nothing -> normAppList (Meta p m) <$> substMetasAt ctx s mArgs
     Just value -> do
-      let shiftLv = lv - boundCtxLv (metaCtx metaInfo)
+      let shiftLv = boundCtxLv ctx - boundCtxLv (metaCtx metaInfo)
       let liftedValue = liftDBIndices shiftLv (unnormalised value)
-      substAt lv s $ substArgs liftedValue mArgs
+      substMetasAt ctx s $ substArgs liftedValue mArgs
 
 instance MetaSubstitutable m builtin (Value builtin) where
-  substAt lv s expr = case expr of
+  substMetasAt ctx s expr = case expr of
     VMeta m args -> do
       let metaInfo = findMetaInfo s m
       case metaSolution metaInfo of
         -- TODO do we need to substitute through the args here?
-        Nothing -> VMeta m <$> substAt lv s args
+        Nothing -> VMeta m <$> substMetasAt ctx s args
         Just value -> do
-          substValue <- substAt lv s $ normalised value
+          substValue <- substMetasAt ctx s $ normalised value
           case args of
             [] -> return substValue
-            (a : as) -> normaliseApp substValue (a : as)
+            (a : as) -> normaliseApp ctx substValue (a : as)
     VUniverse {} -> return expr
-    VFreeVar v spine -> VFreeVar v <$> traverse (substAt lv s) spine
-    VBoundVar v spine -> VBoundVar v <$> traverse (substAt lv s) spine
-    VRecord ident fields -> VRecord ident <$> traverse (substAt lv s) fields
-    VRecordAcc record field -> VRecordAcc <$> substAt lv s record <*> pure field
+    VFreeVar v spine -> VFreeVar v <$> traverse (substMetasAt ctx s) spine
+    VBoundVar v spine -> VBoundVar v <$> traverse (substMetasAt ctx s) spine
+    VRecord ident fields -> VRecord ident <$> traverse (substMetasAt ctx s) fields
+    VRecordAcc record field -> VRecordAcc <$> substMetasAt ctx s record <*> pure field
     VBuiltin b spine -> do
-      spine' <- traverse (substAt lv s) spine
-      normaliseBuiltin b spine'
+      spine' <- traverse (substMetasAt ctx s) spine
+      normaliseBuiltin ctx b spine'
 
     -- NOTE: no need to lift the substitutions here as we're passing under the binders
     -- because by construction every meta-variable solution is a closed term.
-    VLam binder body -> VLam <$> substAt lv s binder <*> substAt (lv + 1) s body
-    VPi binder body -> VPi <$> substAt lv s binder <*> substAt (lv + 1) s body
+    VLam binder body -> VLam <$> substMetasAt ctx s binder <*> substMetasAt (nameOf binder : ctx) s body
+    VPi binder body -> VPi <$> substMetasAt ctx s binder <*> substMetasAt (nameOf binder : ctx) s body
 
 instance MetaSubstitutable m builtin (Closure builtin) where
-  substAt lv s (Closure env body) = Closure <$> substAt lv s env <*> substAt lv s body
+  substMetasAt ctx s (Closure env body) = Closure <$> traverseEnv (substMetasAt ctx s) env <*> substMetasAt ctx s body
 
 instance MetaSubstitutable m builtin (GluedExpr builtin) where
-  substAt lv s (Glued a b) = Glued <$> substAt lv s a <*> substAt lv s b
+  substMetasAt ctx s (Glued a b) = Glued <$> substMetasAt ctx s a <*> substMetasAt ctx s b
 
 instance MetaSubstitutable m builtin (InstanceConstraint builtin) where
-  substAt lv s (Resolve origin m r g) = do
-    Resolve <$> substAt lv s origin <*> findUltimateUnsolvedMeta s m <*> pure r <*> substAt lv s g
+  substMetasAt ctx s (Resolve origin m r g) = do
+    Resolve <$> substMetasAt ctx s origin <*> findUltimateUnsolvedMeta s m <*> pure r <*> substMetasAt ctx s g
 
 instance MetaSubstitutable m builtin (InstanceGoal builtin) where
-  substAt lv s (InstanceGoal t h spine) =
-    InstanceGoal t h <$> substAt lv s spine
+  substMetasAt ctx s (InstanceGoal t h spine) =
+    InstanceGoal t h <$> substMetasAt ctx s spine
 
 instance MetaSubstitutable m builtin (InstanceArgOrigin builtin) where
-  substAt lv s (ArgOrigin tcOp tcOpArgs tcOpType tc) =
-    ArgOrigin <$> substAt lv s tcOp <*> substAt lv s tcOpArgs <*> substAt lv s tcOpType <*> substAt lv s tc
+  substMetasAt ctx s (ArgOrigin tcOp tcOpArgs tcOpType tc) =
+    ArgOrigin <$> substMetasAt ctx s tcOp <*> substMetasAt ctx s tcOpArgs <*> substMetasAt ctx s tcOpType <*> substMetasAt ctx s tc
 
 instance MetaSubstitutable m builtin (InstanceTypeRestrictionOrigin builtin) where
-  substAt lv s (TypeRestrictionOrigin env n sort t) =
-    TypeRestrictionOrigin env n sort <$> substAt lv s t
+  substMetasAt ctx s (TypeRestrictionOrigin env n sort t) =
+    TypeRestrictionOrigin env n sort <$> substMetasAt ctx s t
 
 instance MetaSubstitutable m builtin (InstanceConstraintOrigin builtin) where
-  substAt lv s = \case
-    InstanceTypeRestrictionOrigin t -> InstanceTypeRestrictionOrigin <$> substAt lv s t
-    InstanceArgOrigin t -> InstanceArgOrigin <$> substAt lv s t
+  substMetasAt ctx s = \case
+    InstanceTypeRestrictionOrigin t -> InstanceTypeRestrictionOrigin <$> substMetasAt ctx s t
+    InstanceArgOrigin t -> InstanceArgOrigin <$> substMetasAt ctx s t
 
 --------------------------------------------------------------------------------
 -- Substitution operation
@@ -154,29 +149,29 @@ class RawMetaSubstitutable m builtin a | a -> builtin where
   -- | Substitutes meta-variables through the provided object, returning the
   -- updated object and the set of meta-variables within the object for which
   -- no subsitution was provided.
-  subst ::
+  substMetas ::
     (MonadLogger m, MonadFreeContext builtin m, NormalisableBuiltin builtin) =>
     MetaSubstitution builtin ->
     a ->
     m a
 
 instance (MetaSubstitutable m builtin expr) => RawMetaSubstitutable m builtin (GenericDecl expr) where
-  subst s = traverse (substAt 0 s)
+  substMetas s = traverse (substMetasAt mempty s)
 
 instance (MetaSubstitutable m builtin expr) => RawMetaSubstitutable m builtin (GenericProg expr) where
-  subst s (Main ds) = Main <$> traverse (subst s) ds
+  substMetas s (Main ds) = Main <$> traverse (substMetas s) ds
 
 instance (MetaSubstitutable m builtin constraint) => RawMetaSubstitutable m builtin (Contextualised constraint (ConstraintContext builtin)) where
-  subst s (WithContext constraint ctx) = WithContext <$> substAt (boundCtxLv $ boundContextOf ctx) s constraint <*> pure ctx
+  substMetas s (WithContext constraint ctx) = WithContext <$> substMetasAt (namedBoundCtxOf ctx) s constraint <*> pure ctx
 
 instance (RawMetaSubstitutable m builtin a) => RawMetaSubstitutable m builtin [a] where
-  subst s = traverse (subst s)
+  substMetas s = traverse (substMetas s)
 
 instance RawMetaSubstitutable m builtin (MetaVariableContext builtin) where
-  subst s ctx = for ctx $ \entry -> do
-    let lv = boundCtxLv (metaCtx entry)
-    newType <- substAt lv s (metaType entry)
-    newSolution <- substAt lv s (metaSolution entry)
+  substMetas s ctx = for ctx $ \entry -> do
+    let namedCtx = toNamedBoundCtx $ metaCtx entry
+    newType <- substMetasAt namedCtx s (metaType entry)
+    newSolution <- substMetasAt namedCtx s (metaSolution entry)
     return $
       entry
         { metaSolution = newSolution,

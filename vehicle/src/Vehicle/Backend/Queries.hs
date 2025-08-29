@@ -19,6 +19,7 @@ import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print.Warning ()
+import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.Interface
@@ -148,16 +149,16 @@ compileMultiProperty ::
 compileMultiProperty multiPropertyMetaData = go []
   where
     go :: TensorIndices -> Value Builtin -> m (MultiProperty ())
-    go indices expr = case toBoolTensorValue expr of
-      Just (VBoolStackTensor args) -> do
+    go indices expr = case expr of
+      (getExpr accessStackTensor -> Just args) -> do
         let es' = zip [0 :: Int ..] $ stackElements args
         MultiProperty <$> traverse (\(i, e) -> go (i : indices) e) es'
-      Just (VBoolTensorLiteral bs) | not (isZeroDimensional bs) -> do
+      (getExpr accessBoolTensorLiteral -> Just bs) | not (isZeroDimensional bs) -> do
         -- Important to test for non-zero dimensionality otherwise we don't display the correct
         -- warnings for trivial tensors nor generate .vcl-plan file.
         let es' = zip [0 :: Int ..] (fromBoolTensorValue . VBoolTensorLiteral <$> unstack bs)
         MultiProperty <$> traverse (\(i, e) -> go (i : indices) e) es'
-      Just (VBoolVecLiteral args) -> do
+      (getExpr accessVecLit -> Just args) -> do
         let es' = zip [0 :: Int ..] $ vecLitElements args
         MultiProperty <$> traverse (\(i, e) -> go (i : indices) e) es'
       _ -> do

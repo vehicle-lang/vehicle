@@ -6,13 +6,14 @@ where
 
 import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
-import Vehicle.Compile.Prelude (Expr (..), LoggingLevel (..), Lv, explicit, implicitIrrelevant, logDebug, normApp)
+import Vehicle.Compile.Prelude
+import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Standard ()
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
-import Vehicle.Prelude (GenericArg (..))
+import Vehicle.Syntax.Tensor (mapTensor)
 
 --------------------------------------------------------------------------------
 -- Not elimination
@@ -26,46 +27,47 @@ type MonadDropNot m =
 lowerNot ::
   forall m.
   (MonadDropNot m) =>
-  Lv ->
+  NamedBoundCtx ->
   (Value Builtin -> m (Value Builtin)) ->
   TensorOp1Args (Value Builtin) ->
   m (Value Builtin)
-lowerNot lv onBlocked (TensorOp1Args _ arg) = do
-  logDebug MaxDetail "push-not"
-  go arg
+lowerNot ctx onBlocked (TensorOp1Args _ arg) = do
+  result <- go arg
+  logDebug MaxDetail $ "push-not" <+> prettyFriendly (WithContext result ctx)
+  return result
   where
     go :: Value Builtin -> m (Value Builtin)
-    go e = case toBoolValue e of
-      ----------------
-      -- Base cases --
-      ----------------
-      VNot (TensorOp1Args _dims x) -> return x
-      VBoolLiteral b -> return $ fromBoolValue $ VBoolLiteral (not b)
-      VCompareIndex (op, args) -> return $ fromBoolValue $ VCompareIndex (neg op, args)
-      VCompareNat (op, args) -> return $ fromBoolValue $ VCompareNat (neg op, args)
-      VCompareRatTensorReduced (op, args) ->
-        return $ fromBoolValue $ VCompareRatTensorReduced (neg op, args)
-      VCompareRatTensorPointwise (op, args) ->
-        return $ fromBoolValue $ VCompareRatTensorPointwise (neg op, args)
-      -- We can't actually lower the `not` through the body of the quantifier as
-      -- it is not yet unnormalised. However, it's fine to stop here as we'll
-      -- simply continue to normalise it once we re-encounter it again after
-      -- normalising the quantifier.
-      VQuantifyRatTensor q dims binder closure -> do
-        let negatedClosure = notClosure lv dims closure
-        return $ fromBoolValue $ VQuantifyRatTensor (neg q) dims binder negatedClosure
-      ---------------------
-      -- Inductive cases --
-      ---------------------
-      VOr args -> fromBoolValue . VAnd <$> traverseTensorOp2Args go args
-      VAnd args -> fromBoolValue . VOr <$> traverseTensorOp2Args go args
-      VBoolIf args -> fromBoolValue . VBoolIf <$> traverseIfArgBranches go args
-      VReduceOrTensor args -> fromBoolValue . VReduceAndTensor <$> traverseTensorOp2Args go args
-      VReduceAndTensor args -> fromBoolValue . VReduceOrTensor <$> traverseTensorOp2Args go args
-      -------------------
-      -- Blocked cases --
-      -------------------
-      VBoolAt {} -> onBlocked e
+    go e = do
+      logDebug MaxDetail $ prettyFriendly (WithContext e ctx)
+      case toBoolTensorValue e of
+        ----------------
+        -- Base cases --
+        ----------------
+        VBoolTensorLiteral b -> return $ fromBoolTensorValue $ VBoolTensorLiteral (mapTensor not b)
+        VBoolTensorNot args -> return $ tensorOp1Arg args
+        VBoolTensorCompareIndex (op, args) -> return $ fromBoolTensorValue $ VBoolTensorCompareIndex (neg op, args)
+        VBoolTensorCompareNat (op, args) -> return $ fromBoolTensorValue $ VBoolTensorCompareNat (neg op, args)
+        VBoolTensorCompareRatPointwise (op, args) -> return $ fromBoolTensorValue $ VBoolTensorCompareRatPointwise (neg op, args)
+        VBoolTensorCompareRatReduced (op, args) -> return $ fromBoolTensorValue $ VBoolTensorCompareRatReduced (neg op, args)
+        -- We can't actually lower the `not` through the body of the quantifier as
+        -- it is not yet unnormalised. However, it's fine to stop here as we'll
+        -- simply continue to normalise it once we re-encounter it again after
+        -- normalising the quantifier.
+        VBoolTensorQuantifyRat q dims binder closure -> do
+          let negatedClosure = notClosure (boundCtxLv ctx) dims closure
+          return $ fromBoolValue $ VQuantifyRatTensor (neg q) dims binder negatedClosure
+        ---------------------
+        -- Inductive cases --
+        ---------------------
+        VBoolConstTensor args -> fromBoolTensorValue . VBoolConstTensor <$> traverseConstTensorValue go args
+        VBoolStackTensor args -> fromBoolTensorValue . VBoolStackTensor <$> traverseStackTensorElements go args
+        VBoolTensorOr args -> fromBoolTensorValue . VBoolTensorAnd <$> traverseTensorOp2Args go args
+        VBoolTensorAnd args -> fromBoolTensorValue . VBoolTensorOr <$> traverseTensorOp2Args go args
+        VBoolTensorBoolIf args -> fromBoolTensorValue . VBoolTensorBoolIf <$> traverseIfArgBranches go args
+        VBoolTensorReduceOr args -> fromBoolTensorValue . VBoolTensorReduceAnd <$> traverseTensorOp2Args go args
+        VBoolTensorReduceAnd args -> fromBoolTensorValue . VBoolTensorReduceOr <$> traverseTensorOp2Args go args
+        VBoolTensorAt args -> fromBoolTensorValue . VBoolTensorAt <$> traverseAtTensorArg go args
+        VBoolTensorForeach {} -> onBlocked e
 
 notClosure :: Lv -> VArg Builtin -> Closure Builtin -> Closure Builtin
 notClosure lv dims (Closure env body) = do

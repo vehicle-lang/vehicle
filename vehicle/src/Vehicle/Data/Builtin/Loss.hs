@@ -202,7 +202,12 @@ instance BuiltinHasTensors LossBuiltin where
   accessStackTensorBuiltin = functionAccessor StackTensor
   accessAtTensorBuiltin = functionAccessor At
 
+instance BuiltinHasForeach LossBuiltin where
+  accessForeachTensorBuiltin = functionAccessor (developerError "loss foreach not yet supported")
+  accessForeachVectorBuiltin = functionAccessor (developerError "loss foreach not yet supported")
+
 instance BuiltinHasRatLiterals LossBuiltin where
+  accessRatTypeBuiltin = typeAccessor RatType
   accessRatTensorLitBuiltin =
     Access
       { getExpr = \case
@@ -227,23 +232,24 @@ instance BuiltinHasRatLiterals LossBuiltin where
 --------------------------------------------------------------------------------
 -- Normalisation
 
-instance HasPrimitives LossBuiltin where
+instance HasTensorLiterals LossBuiltin where
   tensorLiterals =
     [ Wrapper accessNatTensorLiteral,
       Wrapper accessRatTensorLiteral
     ]
 
-  tensorOp1s =
-    [ (accessNegRatTensor, evalNegRatTensor)
+instance HasLiftableTensorOperations LossBuiltin where
+  liftableTensorOp1s =
+    [ (getExpr accessNegRatTensor, evalNegRatTensor, IRatType)
     ]
 
-  tensorOp2s =
-    [ (accessAddRatTensor, evalAddRatTensor),
-      (accessMulRatTensor, evalMulRatTensor),
-      (accessSubRatTensor, evalSubRatTensor),
-      (accessDivRatTensor, evalDivRatTensor),
-      (accessMinRatTensor, evalMinRatTensor),
-      (accessMaxRatTensor, evalMaxRatTensor)
+  liftableTensorOp2s =
+    [ (getExpr accessAddRatTensor, evalAddRatTensor, IRatType),
+      (getExpr accessMulRatTensor, evalMulRatTensor, IRatType),
+      (getExpr accessSubRatTensor, evalSubRatTensor, IRatType),
+      (getExpr accessDivRatTensor, evalDivRatTensor, IRatType),
+      (getExpr accessMinRatTensor, evalMinRatTensor, IRatType),
+      (getExpr accessMaxRatTensor, evalMaxRatTensor, IRatType)
     ]
 
 instance NormalisableBuiltin LossBuiltin where
@@ -263,7 +269,7 @@ instance NormalisableBuiltin LossBuiltin where
       ReduceMulRatTensor -> Simple evalReduceMulRatTensor
       ReduceMinRatTensor -> Simple evalReduceMinRatTensor
       ReduceMaxRatTensor -> Simple evalReduceMaxRatTensor
-      At -> Simple evalAtTensor
+      At -> NonSimple evalAtTensor
       StackTensor -> Simple evalStackTensor
       ConstTensor -> Simple evalConstTensor
       FoldList -> NonSimple evalFoldList

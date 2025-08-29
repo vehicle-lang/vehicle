@@ -128,70 +128,34 @@
                   {
                     "tag": "SolveEquality",
                     "contents": [
-                      2,
-                      [],
-                      {
-                        "constantValue": {
-                          "tag": "ConstantTensor",
-                          "contents": [
-                            [],
-                            {
-                              "numerator": -4,
-                              "denominator": 1
-                            }
-                          ]
-                        },
-                        "coefficients": [
-                          [
-                            5,
-                            {
-                              "numerator": 8,
-                              "denominator": 1
-                            }
-                          ]
-                        ]
-                      }
-                    ]
-                  },
-                  {
-                    "tag": "SolveEquality",
-                    "contents": [
-                      1,
-                      [],
-                      {
-                        "constantValue": {
-                          "tag": "ConstantTensor",
-                          "contents": [
-                            [],
-                            {
-                              "numerator": -4,
-                              "denominator": 1
-                            }
-                          ]
-                        },
-                        "coefficients": [
-                          [
-                            4,
-                            {
-                              "numerator": 8,
-                              "denominator": 1
-                            }
-                          ]
-                        ]
-                      }
-                    ]
-                  },
-                  {
-                    "tag": "InternalReconstructTensorVariable",
-                    "contents": [
                       0,
                       [
-                        [
-                          2
-                        ],
                         1,
                         2
-                      ]
+                      ],
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [
+                              2
+                            ],
+                            {
+                              "numerator": -4,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            3,
+                            {
+                              "numerator": 8,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
                     ]
                   }
                 ]
@@ -349,70 +313,34 @@
                   {
                     "tag": "SolveEquality",
                     "contents": [
-                      2,
-                      [],
-                      {
-                        "constantValue": {
-                          "tag": "ConstantTensor",
-                          "contents": [
-                            [],
-                            {
-                              "numerator": -4,
-                              "denominator": 1
-                            }
-                          ]
-                        },
-                        "coefficients": [
-                          [
-                            5,
-                            {
-                              "numerator": 8,
-                              "denominator": 1
-                            }
-                          ]
-                        ]
-                      }
-                    ]
-                  },
-                  {
-                    "tag": "SolveEquality",
-                    "contents": [
-                      1,
-                      [],
-                      {
-                        "constantValue": {
-                          "tag": "ConstantTensor",
-                          "contents": [
-                            [],
-                            {
-                              "numerator": -4,
-                              "denominator": 1
-                            }
-                          ]
-                        },
-                        "coefficients": [
-                          [
-                            4,
-                            {
-                              "numerator": 8,
-                              "denominator": 1
-                            }
-                          ]
-                        ]
-                      }
-                    ]
-                  },
-                  {
-                    "tag": "InternalReconstructTensorVariable",
-                    "contents": [
                       0,
                       [
-                        [
-                          2
-                        ],
                         1,
                         2
-                      ]
+                      ],
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [
+                              2
+                            ],
+                            {
+                              "numerator": -4,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            3,
+                            {
+                              "numerator": 8,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
                     ]
                   }
                 ]

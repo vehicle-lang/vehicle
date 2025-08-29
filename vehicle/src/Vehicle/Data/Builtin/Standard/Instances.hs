@@ -376,10 +376,19 @@ allInstances =
           builtinFunction (CompareNat op),
           True
         ),
-        ( forAllDims $ \dims ->
-            hasCompare op (tRatTensor dims) (tRatTensor dims) (tBoolTensor dimNil),
-          lamDims $ \dims ->
-            builtinDerivedFunction (CompareRatTensorReduced op) .@@@ [dims],
+        -- We separate out the zero-dimensional tensor case so that we have a unique
+        -- representation of comparisons over zero tensors. Otherwise, we end up
+        -- having both pointwise and reduced comparisons.
+        ( hasCompare op (tRatTensor dimNil) (tRatTensor dimNil) (tBoolTensor dimNil),
+          builtinFunction (CompareRatTensorPointwise op) .@@@ [dimNil],
+          False
+        ),
+        ( forAllDim Irrelevant $ \d ->
+            forAllDims $ \dims ->
+              hasCompare op (tRatTensor (dimCons d dims)) (tRatTensor (dimCons d dims)) (tBoolTensor dimNil),
+          lamDim $ \d ->
+            lamDims $ \dims ->
+              builtinDerivedFunction (CompareRatTensorReduced op) .@@@ [d, dims],
           False
         )
       ]

@@ -10,7 +10,6 @@ module Vehicle.Compile.Normalise.NBE
     normaliseClosure,
     eval,
     evalApp,
-    evalClosure,
     findInstanceArg,
   )
 where
@@ -26,7 +25,6 @@ import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Interface.Normalise
   ( EvalScheme (..),
     NormalisableBuiltin (..),
-    isBlocked,
   )
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Code.Interface (IsArgs (..))
@@ -48,63 +46,54 @@ normalise ::
 normalise e = do
   boundCtx <- getBoundCtx (Proxy @(Type builtin))
   let boundEnv = boundContextToEnv boundCtx
-  normaliseInEnv boundEnv e
+  normaliseInEnv (toNamedBoundCtx boundCtx) boundEnv e
 
 normaliseInEnv ::
   (MonadNorm builtin m, MonadFreeContext builtin m) =>
+  NamedBoundCtx ->
   BoundEnv builtin ->
   Expr builtin ->
   m (Value builtin)
-normaliseInEnv boundEnv expr = do
+normaliseInEnv ctx boundEnv expr = do
   freeEnv <- getFreeEnv
-  eval freeEnv boundEnv expr
+  eval freeEnv ctx boundEnv expr
 
 normaliseInEmptyEnv ::
   (MonadNorm builtin m, MonadFreeContext builtin m) =>
   Expr builtin ->
   m (Value builtin)
-normaliseInEmptyEnv = normaliseInEnv mempty
+normaliseInEmptyEnv = normaliseInEnv mempty emptyBoundEnv
 
 normaliseApp ::
   (MonadNorm builtin m, MonadFreeContext builtin m) =>
+  NamedBoundCtx ->
   Value builtin ->
   Spine builtin ->
   m (Value builtin)
-normaliseApp fn spine = do
+normaliseApp ctx fn spine = do
   freeEnv <- getFreeEnv
-  evalApp freeEnv fn spine
+  evalApp freeEnv ctx fn spine
 
 normaliseBuiltin ::
   (MonadNorm builtin m, MonadFreeContext builtin m) =>
+  NamedBoundCtx ->
   builtin ->
   Spine builtin ->
   m (Value builtin)
-normaliseBuiltin b spine = do
+normaliseBuiltin ctx b spine = do
   freeEnv <- getFreeEnv
-  evalBuiltin freeEnv b spine
+  evalBuiltin freeEnv ctx b spine
 
 normaliseClosure ::
   (MonadNorm builtin m, MonadFreeContext builtin m) =>
-  Lv ->
+  NamedBoundCtx ->
   VBinder builtin ->
   Closure builtin ->
   m (Value builtin)
-normaliseClosure lv binder closure = do
+normaliseClosure ctx binder (Closure env body) = do
   freeEnv <- getFreeEnv
-  evalClosure freeEnv closure (binder, VBoundVar lv [])
-
------------------------------------------------------------------------------
--- Evaluation of closures
-
-evalClosure ::
-  (MonadNorm builtin m) =>
-  FreeEnv builtin ->
-  Closure builtin ->
-  (VBinder builtin, Value builtin) ->
-  m (Value builtin)
-evalClosure freeEnv (Closure env body) (binder, arg) = do
-  let newEnv = extendEnvWithDefined arg binder env
-  eval freeEnv newEnv body
+  let newEnv = extendEnvWithBound (boundCtxLv ctx) binder env
+  eval freeEnv ctx newEnv body
 
 -----------------------------------------------------------------------------
 -- Evaluation
@@ -118,17 +107,18 @@ type MonadNorm builtin m =
 eval ::
   (MonadNorm builtin m) =>
   FreeEnv builtin ->
+  NamedBoundCtx ->
   BoundEnv builtin ->
   Expr builtin ->
   m (Value builtin)
-eval freeEnv boundEnv expr = do
-  showEntry boundEnv expr
-  let recEval = eval freeEnv boundEnv
+eval freeEnv ctx boundEnv expr = do
+  showEntry ctx boundEnv expr
+  let recEval = eval freeEnv ctx boundEnv
   result <- case expr of
     Hole {} -> resolutionError currentPass "Hole"
     Meta _ m -> return $ VMeta m []
     Universe _ u -> return $ VUniverse u
-    BoundVar _ v -> return $ lookupIxValueInEnv boundEnv v
+    BoundVar _ v -> return $ lookupIxInEnv boundEnv v
     FreeVar _ v -> return $ lookupIdentValueInEnv freeEnv v
     Builtin _ b -> return $ VBuiltin b []
     Lam _ binder body -> do
@@ -141,11 +131,11 @@ eval freeEnv boundEnv expr = do
       binder' <- traverse recEval binder
       boundNormExpr <- recEval bound
       let newBoundEnv = extendEnvWithDefined boundNormExpr binder' boundEnv
-      eval freeEnv newBoundEnv body
+      eval freeEnv ctx newBoundEnv body
     App fun args -> do
       fun' <- recEval fun
       args' <- traverse (traverse recEval) (NonEmpty.toList args)
-      evalApp freeEnv fun' args'
+      evalApp freeEnv ctx fun' args'
     Record _p ident fields -> do
       fields' <- traverseRecordFields recEval fields
       return $ VRecord ident $ OMap.fromList fields'
@@ -155,34 +145,36 @@ eval freeEnv boundEnv expr = do
         VRecord _ fields -> return $ lookupRecordFieldS fields field
         _ -> return $ VRecordAcc record' fieldRef
 
-  showExit boundEnv result
+  showExit ctx result
   return result
 
 evalApp ::
   (MonadNorm builtin m) =>
   FreeEnv builtin ->
+  NamedBoundCtx ->
   Value builtin ->
   Spine builtin ->
   m (Value builtin)
-evalApp _freeEnv fun [] = return fun
-evalApp freeEnv fun args@(a : as) = do
-  showApp fun args
+evalApp _freeEnv _ctx fun [] = return fun
+evalApp freeEnv ctx fun args@(a : as) = do
+  showApp ctx fun args
   result <- case fun of
     VMeta v spine -> return $ VMeta v (spine <> args)
     VBoundVar v spine -> return $ VBoundVar v (spine <> args)
     VFreeVar v spine -> return $ VFreeVar v (spine <> args)
-    VBuiltin b spine -> evalBuiltin freeEnv b (spine <> args)
-    VLam binder closure
+    VBuiltin b spine -> evalBuiltin freeEnv ctx b (spine <> args)
+    VLam binder (Closure env body)
       | not (visibilityMatches binder a) ->
           visibilityError currentPass (prettyVerbose fun) (prettyVerbose args)
       | otherwise -> do
-          body' <- evalClosure freeEnv closure (binder, argExpr a)
-          evalApp freeEnv body' as
+          let newEnv = extendEnvWithDefined (argExpr a) binder env
+          body' <- eval freeEnv ctx newEnv body
+          evalApp freeEnv ctx body' as
     VUniverse {} -> unexpected "VUniverse"
     VPi {} -> unexpected "VUniverse"
     VRecord {} -> unexpected "VUniverse"
     VRecordAcc {} -> unexpected "VUniverse"
-  showAppExit result
+  showAppExit ctx result
   return result
   where
     unexpected name = unexpectedExprError currentPass (name <+> prettyVerbose args)
@@ -190,22 +182,19 @@ evalApp freeEnv fun args@(a : as) = do
 evalBuiltin ::
   (MonadNorm builtin m) =>
   FreeEnv builtin ->
+  NamedBoundCtx ->
   builtin ->
   Spine builtin ->
   m (Value builtin)
-evalBuiltin freeEnv b spine
+evalBuiltin freeEnv ctx b spine
   | not (isTypeClassOp b) = case evalScheme b of
       Simple evalFn -> maybe (return $ VBuiltin b spine) evalFn (getExpr accessSpine spine)
-      NonSimple evalFn -> maybe (return $ VBuiltin b spine) (evalFn (evalApp freeEnv)) (getExpr accessSpine spine)
-      Derived ident -> do
-        blocked <- isBlocked b spine
-        if blocked
-          then return $ VBuiltin b spine
-          else evalApp freeEnv (lookupIdentValueInEnv freeEnv ident) spine
+      NonSimple evalFn -> maybe (return $ VBuiltin b spine) (evalFn ctx (evalApp freeEnv) (eval freeEnv)) (getExpr accessSpine spine)
+      Derived ident -> evalApp freeEnv ctx (lookupIdentValueInEnv freeEnv ident) spine
       None -> return $ VBuiltin b spine
   | otherwise = do
       (inst, remainingArgs) <- findInstanceArg b spine
-      evalApp freeEnv inst remainingArgs
+      evalApp freeEnv ctx inst remainingArgs
 
 findInstanceArg :: (MonadLogger m, Show op) => op -> [GenericArg a] -> m (a, [GenericArg a])
 findInstanceArg op = \case
@@ -213,53 +202,49 @@ findInstanceArg op = \case
   (_ : xs) -> findInstanceArg op xs
   [] -> developerError $ "Malformed type class operation:" <+> pretty (show op)
 
-lookupIxValueInEnv :: BoundEnv builtin -> Ix -> Value builtin
-lookupIxValueInEnv boundEnv ix = do
-  snd $ lookupIxInBoundCtx ix boundEnv
-
 -----------------------------------------------------------------------------
 -- Other
 
 currentPass :: Doc ()
 currentPass = "normalisation by evaluation"
 
-showEntry :: (MonadNorm builtin m) => BoundEnv builtin -> Expr builtin -> m ()
-showEntry _ _ = return ()
+showEntry :: (MonadNorm builtin m) => NamedBoundCtx -> BoundEnv builtin -> Expr builtin -> m ()
+showEntry _ _ _ = return ()
 
-showExit :: (MonadNorm builtin m) => BoundEnv builtin -> Value builtin -> m ()
+showExit :: (MonadNorm builtin m) => NamedBoundCtx -> Value builtin -> m ()
 showExit _ _ = return ()
 
 {-
-showEntry :: (MonadNorm builtin m) => BoundEnv builtin -> Expr builtin -> m ()
-showEntry boundEnv expr = do
-  logDebug MidDetail $ "nbe-entry" <+> prettyFriendly (WithContext expr (boundEnvToCtx boundEnv))
+showEntry :: (MonadNorm builtin m) => NamedBoundCtx -> BoundEnv builtin -> Expr builtin -> m ()
+showEntry ctx boundEnv expr = do
+  logDebug MidDetail $ "nbe-entry" <+> prettyFriendly (WithContext expr (boundEnvToCtx boundEnv)) <+> "   (ctx =" <+> pretty ctx <> "," <+> "boundEnv =" <+> prettyFriendly (WithContext boundEnv ctx) <+> ")"
+  -- logDebug MidDetail $ "nbe-entry" <+> prettyFriendly (WithContext expr (boundEnvToCtx boundEnv)) <+> "   { boundEnv =" <+> prettyFriendly boundEnv <+> "}"
   -- logDebug MidDetail $ "nbe-entry" <+> prettyVerbose expr -- <+> "   { boundEnv=" <+> prettyVerbose boundEnv <+> "}"
   incrCallDepth
   return ()
 
-showExit :: (MonadNorm builtin m) => BoundEnv builtin -> Value builtin -> m ()
-showExit boundEnv result = do
+showExit :: (MonadNorm builtin m) => NamedBoundCtx -> Value builtin -> m ()
+showExit ctx result = do
   decrCallDepth
   -- logDebug MidDetail $ "nbe-exit" <+> prettyVerbose result
-  logDebug MidDetail $ "nbe-exit" <+> prettyFriendly (WithContext result (boundEnvToCtx boundEnv))
+  logDebug MidDetail $ "nbe-exit" <+> prettyFriendly (WithContext result ctx)
   return ()
 -}
+showApp :: (MonadNorm builtin m) => NamedBoundCtx -> Value builtin -> Spine builtin -> m ()
+showApp _ _ _ = return ()
 
-showApp :: (MonadNorm builtin m) => Value builtin -> Spine builtin -> m ()
-showApp _ _ = return ()
-
-showAppExit :: (MonadNorm builtin m) => Value builtin -> m ()
-showAppExit _ = return ()
+showAppExit :: (MonadNorm builtin m) => NamedBoundCtx -> Value builtin -> m ()
+showAppExit _ _ = return ()
 
 {-
-showApp :: (MonadNorm builtin m) => Value builtin -> Spine builtin -> m ()
-showApp fun spine = do
+showApp :: (MonadNorm builtin m) => NamedBoundCtx -> Value builtin -> Spine builtin -> m ()
+showApp ctx fun spine = do
   logDebug MaxDetail $ "nbe-app:" <+> prettyVerbose fun <+> "@" <+> prettyVerbose spine
   incrCallDepth
   return ()
 
-showAppExit :: (MonadNorm builtin m) => Value builtin -> m ()
-showAppExit result = do
+showAppExit :: (MonadNorm builtin m) => NamedBoundCtx -> Value builtin -> m ()
+showAppExit ctx result = do
   decrCallDepth
   logDebug MaxDetail $ "nbe-app-exit:" <+> prettyVerbose result
   return ()

@@ -11,7 +11,7 @@ import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad (MonadTypeChecker)
-import Vehicle.Compile.Type.Monad.Class (substMetas)
+import Vehicle.Compile.Type.Monad.Class (substMetaVariables)
 import Vehicle.Compile.Type.System
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Linearity
@@ -22,7 +22,7 @@ solveLinearityConstraint ::
   WithContext (InstanceConstraint LinearityBuiltin) ->
   m ()
 solveLinearityConstraint constraintWithCtx = do
-  substConstraintWithCtx@(WithContext normConstraint@(Resolve origin _ _ goal) ctx) <- substMetas @LinearityBuiltin constraintWithCtx
+  substConstraintWithCtx@(WithContext normConstraint@(Resolve origin _ _ goal) ctx) <- substMetaVariables @LinearityBuiltin constraintWithCtx
   logDebug MaxDetail $ "Forced:" <+> prettyFriendly substConstraintWithCtx
 
   (tc, spine) <- getTypeClass goal
@@ -68,7 +68,7 @@ solveQuantifierLinearity _ info@(ctx, _) [VPi binder closure, res] = Just $ do
   let varName = getBinderName binder
   let domainLin = VLinearityExpr (Linear (QuantifiedVariableProvenance (provenanceOf binder) varName))
   domEq <- createInstanceUnification info (typeOf binder) domainLin
-  resultType <- normaliseClosure (contextDBLevel ctx) binder closure
+  resultType <- normaliseClosure (toNamedBoundCtx $ boundContext ctx) binder closure
   resEq <- createInstanceUnification info res resultType
   return $ Progress [domEq, resEq] []
 solveQuantifierLinearity _ _ _ = Nothing

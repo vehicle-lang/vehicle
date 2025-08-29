@@ -59,7 +59,10 @@ typeOfDerivedFunction = \case
   TypeAnn -> forAllExpl "t" type0 $ \t -> t ~> t
   QuantifyIndex {} -> forAllDim Relevant $ \d -> (tIndex d ~> tBool) ~> tBool
   QuantifyInList {} -> forAllTypes $ \t -> (t ~> tBool) ~> tList t ~> tBool
-  CompareRatTensorReduced {} -> forAllDims $ \dims -> tRatTensor dims ~> tRatTensor dims ~> tBoolTensor dimNil
+  CompareRatTensorReduced {} ->
+    forAllDim Irrelevant $ \d ->
+      forAllDims $ \ds ->
+        tRatTensor (dimCons d ds) ~> tRatTensor (dimCons d ds) ~> tBoolTensor dimNil
 
 typeDecidableTypeClass :: DecidabilityBuiltinTypeClass -> DSLExpr DecidabilityBuiltin
 typeDecidableTypeClass = \case
@@ -105,12 +108,12 @@ typeDecidableTypeClassOp = \case
               FieldImplies -> forAllDims $ \ds -> typeOp2 (tensor tBool ds)
               FieldReduceAnd -> forAllDims $ \ds -> tensor tBool dimNil ~> tensor tBool ds ~> tensor tBool dimNil
               FieldReduceOr -> forAllDims $ \ds -> tensor tBool dimNil ~> tensor tBool ds ~> tensor tBool dimNil
-              FieldForeachTensor -> forAllTypes $ \tElem -> forAllDim Relevant $ \d -> forAllDims $ \ds -> (tIndex d ~> tensor tElem ds) ~> tensor tElem (cons tDim d ds)
-              FieldAtTensor -> forAllTypes $ \tElem -> forAllDim Relevant $ \d -> forAllDims $ \ds -> tensor tElem (cons tDim d ds) ~> (tIndex d ~> tensor tElem ds)
+              FieldForeachTensor -> forAllTypes $ \tElem -> forAllDim Relevant $ \d -> forAllDims $ \ds -> (tIndex d ~> tensor tElem ds) ~> tensor tElem (dimCons d ds)
+              FieldAtTensor -> forAllTypes $ \tElem -> forAllDim Relevant $ \d -> forAllDims $ \ds -> tensor tElem (dimCons d ds) ~> (tIndex d ~> tensor tElem ds)
               FieldCompareIndex {} -> typeOfCompareIndex (tensor tBool dimNil)
               FieldCompareNat {} -> typeOfCompareNat (tensor tBool dimNil)
               FieldCompareRatTensorPointwise {} -> forAllDims $ \ds -> tTensor tRat ds ~> tTensor tRat ds ~> tensor tBool ds
-              FieldCompareRatTensorReduced {} -> forAllDims $ \ds -> tTensor tRat ds ~> tTensor tRat ds ~> tensor tBool dimNil
+              FieldCompareRatTensorReduced {} -> forAllDim Irrelevant $ \d -> forAllDims $ \ds -> tTensor tRat (dimCons d ds) ~> tTensor tRat (dimCons d ds) ~> tensor tBool dimNil
               FieldQuantifyInList {} -> typeOfQuantifyInList tensorSol
               FieldQuantifyIndex {} -> typeOfQuantifyIndex tensorSol
 

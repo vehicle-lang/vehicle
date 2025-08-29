@@ -16,6 +16,7 @@ import Vehicle.Backend.Queries.Unblock (UnblockingActions (..))
 import Vehicle.Backend.Queries.Unblock qualified as Unblocking
 import Vehicle.Backend.Queries.UserVariableElimination.Core
 import Vehicle.Backend.Queries.UserVariableElimination.EliminateExists (eliminateQuantifiedVariable)
+import Vehicle.Compile.Context.Free (getFreeEnv)
 import Vehicle.Compile.Context.Name (getNameContext, runFreshNameContextT)
 import Vehicle.Compile.Error
 import Vehicle.Compile.LiftIf (unfoldIf)
@@ -27,11 +28,11 @@ import Vehicle.Compile.Rational.LinearExpr (LinearityError (..), compileLinearRe
 import Vehicle.Compile.Resource (NetworkTensorType (..), NetworkType (..))
 import Vehicle.Compile.Variable (createUserVar)
 import Vehicle.Data.Assertion
-import Vehicle.Data.Builtin.Interface.Normalise (evalAtTensor, evalReduceAndTensor)
+import Vehicle.Data.Builtin.Interface.Normalise (evalAtTensor, unoptimisedEvalReduceAndTensor)
 import Vehicle.Data.Builtin.Standard
-import Vehicle.Data.Builtin.Standard.Normalise (evalCompareRatTensorReduced)
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.Interface
+import Vehicle.Data.Code.LinearExpr (VariableLike (..))
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
 import Vehicle.Data.QuantifiedVariable
@@ -76,7 +77,7 @@ eliminateUserVariables expr = do
     VBoolAt {} -> eliminateUserVariables =<< unblock expr
     VCompareIndex {} -> eliminateUserVariables =<< unblock expr
     VCompareNat {} -> eliminateUserVariables =<< unblock expr
-    VNot args -> eliminateUserVariables =<< lowerNot 0 unblock args
+    VNot args -> eliminateUserVariables =<< lowerNot mempty unblock args
     -----------------
     -- Mixed cases --
     -----------------
@@ -87,8 +88,7 @@ eliminateUserVariables expr = do
     --
     -- When we have the ability to evaluate networks then this case can be turned to a
     -- call to purify.
-    VCompareRatTensorReduced {} -> compileUnquantifiedQuerySet expr
-    VCompareRatTensorPointwise {} -> developerError "Compile pointwise comparison not supported"
+    VCompareRatTensor {} -> compileUnquantifiedQuerySet expr
   where
     unblock e = runFreshNameContextT (Unblocking.unblockBoolExpr topLevelUnblockingActions e)
 
@@ -147,15 +147,14 @@ compileBoolExpr expr = do
     -- Base cases --
     ----------------
     VBoolLiteral b -> return $ Trivial b
-    VCompareRatTensorReduced (op, args) -> purifyAndCompileAssertion op args
-    VCompareRatTensorPointwise (op, args) -> purifyAndCompileAssertion op args
+    VCompareRatTensor (op, args) -> purifyAndCompileAssertion op args
     VQuantifyRatTensor Forall _ _ _ -> throwError catchableUnsupportedAlternatingQuantifiersError
     ---------------------
     -- Recursive cases --
     ---------------------
     VNot arg -> do
-      lv <- boundCtxLv <$> getNameContext
-      compileBoolExpr =<< lowerNot lv unblock arg
+      ctx <- getNameContext
+      compileBoolExpr =<< lowerNot ctx unblock arg
     VBoolIf args -> compileBoolExpr =<< unfoldIf args
     VAnd (TensorOp2Args _dims x y) -> andTrivial andPartitions <$> compileBoolExpr x <*> compileBoolExpr y
     VOr (TensorOp2Args _dims x y) -> orTrivial orPartitions <$> compileBoolExpr x <*> compileBoolExpr y
@@ -262,7 +261,7 @@ unblockNetworkApplication name (NetworkAppArgs arg) = do
   (inputVarExpr, outputVarExpr, newGlobalCtx) <- addNetworkApplicationToGlobalCtx name networkInfo globalCtx arg
   let inputDims = dimensions (inputTensor (networkType networkInfo))
   let inputDimsExpr = implicitIrrelevant $ mkDims inputDims
-  let inputEquality = fromBoolValue $ VCompareRatTensorReduced (Eq, TensorOp2Args inputDimsExpr inputVarExpr arg)
+  let inputEquality = fromBoolValue $ VCompareRatTensor (Eq, TensorOp2Args inputDimsExpr inputVarExpr arg)
   put newGlobalCtx
   newNameCtx <- getNameContext
   logDebug MaxDetail $ "note-input-equality" <+> prettyFriendly (WithContext inputEquality newNameCtx)
@@ -282,8 +281,8 @@ eliminateNotEqualRatTensor args@(TensorOp2Args dims _ _) = do
   if supportsStrictInequalities queryFormat
     then throwError $ UnsupportedInequality (queryFormatID queryFormat) propertyProvenance
     else do
-      let leq = fromBoolValue $ VCompareRatTensorReduced (Le, args)
-      let geq = fromBoolValue $ VCompareRatTensorReduced (Ge, args)
+      let leq = fromBoolValue $ VCompareRatTensor (Le, args)
+      let geq = fromBoolValue $ VCompareRatTensor (Ge, args)
       return $ fromBoolValue $ VOr (TensorOp2Args dims leq geq)
 
 eliminateTensorAssertion ::
@@ -295,16 +294,18 @@ eliminateTensorAssertion ::
 eliminateTensorAssertion op (TensorOp2Args dims xs ys) =
   case argExpr dims of
     ICons _ d@(INatLiteral n) ds -> do
+      freeEnv <- getFreeEnv
+      nameCtx <- getNameContext
       let tElem = implicit $ fromTypeValue VRatType
       let d0Arg = implicitIrrelevant (mkDims [])
-      let mkAt vs i = evalAtTensor (AtTensorArgs tElem (implicitIrrelevant d) (implicitIrrelevant ds) vs (IIndexLiteral i))
+      let mkAt vs i = evalAtTensor nameCtx (evalApp freeEnv) (eval freeEnv) (AtTensorArgs tElem (implicitIrrelevant d) (implicitIrrelevant ds) vs (IIndexLiteral i))
       let mkStackElement i = do
             xsi <- mkAt xs i
             ysi <- mkAt ys i
-            evalCompareRatTensorReduced op (TensorOp2Args (implicitIrrelevant ds) xsi ysi)
+            evalCompareRatTensor op (TensorOp2Args (implicitIrrelevant ds) xsi ysi)
       stackElements <- traverse mkStackElement [0 .. (n - 1)] :: m [Value Builtin]
       let stackExpr = fromBoolTensorValue $ VBoolStackTensor (StackTensorArgs tElem d d0Arg stackElements)
-      evalReduceAndTensor (TensorOp2Args (implicitIrrelevant (mkDims [n])) (IBoolLiteral True) stackExpr)
+      unoptimisedEvalReduceAndTensor (TensorOp2Args (implicitIrrelevant (mkDims [n])) (IBoolLiteral True) stackExpr)
     _ -> do
       compilerDeveloperError ("unexpected dimensions" <+> prettyVerbose dims)
 
@@ -331,8 +332,8 @@ eliminateExists binder (Closure env body) = do
     put newGlobalCtx
 
     -- Normalise the expression
-    let newEnv = extendEnvWithDefined (variableValue userVar) binder env
-    normExpr <- normaliseInEnv newEnv body
+    let newEnv = extendEnvWithBound (toLv userVar) binder env
+    normExpr <- normaliseInEnv (Just userVarName : namedCtx) newEnv body
 
     -- Recursively compile the expression.
     (partitions, networkInputEqualities) <-

@@ -1,5 +1,5 @@
 {
   "name": "TypeCheck",
-  "run": "vehicle check -s incorrectTensorLength.vcl",
+  "run": "vehicle check -s incorrectTensorLength.vcl -j",
   "needs": ["incorrectTensorLength.vcl"]
 }
