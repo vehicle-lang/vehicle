@@ -180,7 +180,17 @@ allInstances =
           -------------------------
           -- ValidTensorLikeType --
           -------------------------
-          ( validTensorLikeType (tRatTensor dimNil),
+          ( forAllTypes $ \t ->
+              forAllDims $ \ds ->
+                validTensorLikeElementType t
+                  .~~~> validTensorLikeType (tTensor t ds),
+            implLam "t" type0 $ \t ->
+              lamDims $ \_ds ->
+                instLam "r1" (validTensorLikeElementType t) $ \_ ->
+                  tUnit,
+            False
+          ),
+          ( validTensorLikeElementType tRat,
             tUnit,
             False
           ),
