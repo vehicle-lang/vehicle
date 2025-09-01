@@ -177,6 +177,13 @@ allInstances =
                 tUnit,
             False
           ),
+          -------------------------
+          -- ValidTensorLikeType --
+          -------------------------
+          ( validTensorLikeType (tRatTensor dimNil),
+            tUnit,
+            False
+          ),
           ----------------
           -- HasRatLits --
           ----------------

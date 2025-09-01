@@ -5,6 +5,7 @@ module Vehicle.Data.Builtin.Standard.Type () where
 import Data.Proxy (Proxy (..))
 import Vehicle.Compile.Context.Free (MonadFreeContext, getDeclType, getFreeEnv)
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Type.Bidirectional (createFreshUnificationConstraint)
 import Vehicle.Compile.Type.Constraint.InstanceDefaultSolver
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
@@ -203,10 +204,14 @@ restrictStandardRecordType ::
   m (Type Builtin)
 restrictStandardRecordType (ident, p) fields = do
   env <- getFreeEnv
-  let (_, fieldType) = head fields -- start with the first field
+  let (_, fieldType) = head fields -- start with the first field. TODO: safe!
   let expr = BuiltinExpr p (TypeClass ValidTensorLikeType) [explicit fieldType]
   let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin env (ident, provenanceOf fieldType) RestrictedTensorLike fieldType
   _ <- createFreshInstanceConstraint False mempty p origin Irrelevant expr
+
+  -- Add unification constraints to make sure fields are all of the same type.
+  let fieldTypes = map snd fields
+  _ <- traverse (createFreshUnificationConstraint p mempty (CheckingInstanceType origin) fieldType) fieldTypes
   return fieldType
 
 -- | Tries to add new unification constraints using default values.

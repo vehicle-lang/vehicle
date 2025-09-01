@@ -190,6 +190,9 @@ validDatasetListElementType t = typeClass ValidDatasetListElementType [t]
 validDatasetTensorElementType :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
 validDatasetTensorElementType t = typeClass ValidDatasetTensorElementType [t]
 
+validTensorLikeType :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
+validTensorLikeType t = typeClass ValidTensorLikeType [t]
+
 --------------------------------------------------------------------------------
 -- Dimension types DSL
 
