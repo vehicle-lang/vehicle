@@ -648,4 +648,3 @@ compileVecLiteral xs = case getExpr accessSpine xs of
 
 toVec :: [Code] -> Code
 toVec xs = annotate ([RequireImport MathcompSsreflectTuple, Open FormScope], maxPrecedence) "[tuple" <+> concatWith (surround "; ") xs <> "]"
-

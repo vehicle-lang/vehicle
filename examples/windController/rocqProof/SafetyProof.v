@@ -61,15 +61,15 @@ Definition finalState xs := foldr nextState initialState xs.
 (* ----------------------------------------------*)
 (* Definition of Correctness *)
 
-Definition nextPosition_windShift s : R := 
+Definition nextPosition_windShift s : R :=
   s.(position) + s.(velocity) + s.(windSpeed).
 
 Definition onRoad s := `| s.(position) | <= roadWidth.
 
-Definition safeDistanceFromEdge s := 
+Definition safeDistanceFromEdge s :=
   `| nextPosition_windShift s | < roadWidth - maxWindShift.
 
-Definition accurateSensorReading s := 
+Definition accurateSensorReading s :=
   `| s.(position) - s.(sensor) | <= maxSensorError.
 
 Definition sensorReadingNotOffRoad s :=
@@ -77,7 +77,7 @@ Definition sensorReadingNotOffRoad s :=
 
 Definition safeState s :=
   [&& safeDistanceFromEdge s
-  , accurateSensorReading s 
+  , accurateSensorReading s
   & sensorReadingNotOffRoad s
   ].
 
@@ -166,22 +166,22 @@ Lemma valid_and_safe_imp_nextState_safeDistanceFromEdge :
   safeDistanceFromEdge (nextState o s).
 Proof.
 move=> o valid s safe.
-move: valid safe 
+move: valid safe
   (valid_and_safe_imp_nextState_sensorReading_not_off_road s safe o valid)
   => /andP[? _] /and3P[_ ? ?] next_onRoad.
 rewrite /safeDistanceFromEdge /nextPosition_windShift/=.
 remember (position s + velocity s + (windSpeed s + windShift o) + sensorError o)
   as x.
 rewrite !addrA.
-rewrite (_ : 
-  position s + velocity s + windSpeed s + windShift o + velocity s 
-    + controller x (sensor s) + windSpeed s + windShift o 
-  = (controller x (sensor s) + 2 * x - sensor s) 
+rewrite (_ :
+  position s + velocity s + windSpeed s + windShift o + velocity s
+    + controller x (sensor s) + windSpeed s + windShift o
+  = (controller x (sensor s) + 2 * x - sensor s)
     + (sensor s - position s - sensorError o - sensorError o));
   last by lra.
 apply: le_lt_trans; first by apply ler_normD.
 apply: (@le_lt_trans _ _ (
-  `|controller x (sensor s) + 2 * x - sensor s| 
+  `|controller x (sensor s) + 2 * x - sensor s|
   + (maxSensorError + maxSensorError + maxSensorError)
   )).
   apply: lerD=>//.
@@ -190,7 +190,7 @@ apply: (@le_lt_trans _ _ (
   apply: le_trans; first by apply ler_normD.
   apply: lerD; last by rewrite normrN.
   by rewrite -normrN opprD opprK addrC.
-rewrite -ltrBrDr 
+rewrite -ltrBrDr
   (_ : maxSensorError + maxSensorError + maxSensorError = 3 * maxSensorError);
     last by lra.
 apply controller_lem=>//.
