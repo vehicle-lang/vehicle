@@ -12,6 +12,7 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Data.Text.Internal.Read qualified as Text.Read
 import GHC.Real (denominator, numerator)
 import Prettyprinter hiding (hcat, hsep, vcat, vsep)
 import Vehicle.Compile.Context.Bound (getNamedBoundCtx)
@@ -33,8 +34,12 @@ import Vehicle.Syntax.Sugar
     foldDeclBinders,
   )
 import Vehicle.Syntax.Tensor
-    ( Tensor(..), foldMapTensor, toList, TensorShape, shapeOf )
-import qualified Data.Text.Internal.Read as Text.Read
+  ( Tensor (..),
+    TensorShape,
+    foldMapTensor,
+    shapeOf,
+    toList,
+  )
 
 --------------------------------------------------------------------------------
 -- Rocq-specific options
@@ -212,7 +217,6 @@ annotateNotation dependencies precedence op mFn args
             <+> pretty (length args)
             <+> "arguments"
 
-
 -- | Inserts arguments to Rocq-style notation
 -- e.g. insertNotationArgs "'T[$2]_($1)'" [nil, R] = Just "'T[R]_(nil)'"
 -- supports placeholders $0 .. $9, 10 arguments
@@ -232,8 +236,8 @@ insertNotationArgs rawOp as = concatWith (<>) <$> go rawOp
 
     atMaybe :: [a] -> Int -> Maybe a
     atMaybe [] _ = Nothing
-    atMaybe (x:_) 0 = Just x
-    atMaybe (_:xs) n = atMaybe xs (n-1)
+    atMaybe (x : _) 0 = Just x
+    atMaybe (_ : xs) n = atMaybe xs (n - 1)
 
 argBrackets :: Precedence -> Visibility -> Code -> Code
 argBrackets parentPrecedence v e = case v of
