@@ -39,6 +39,7 @@ data TypeClass
   | ValidDatasetType
   | ValidDatasetListElementType
   | ValidDatasetTensorElementType
+  | ValidTensorLikeType
   deriving (Eq, Ord, Generic, Show)
 
 instance NFData TypeClass
@@ -74,6 +75,7 @@ instance Pretty TypeClass where
     ValidDatasetType -> "ValidDatasetType"
     ValidDatasetListElementType -> "ValidDatasetListElementType"
     ValidDatasetTensorElementType -> "ValidDatasetTensorElementType"
+    ValidTensorLikeType -> "ValidTensorLikeType"
 
 -- Builtin operations for type-classes
 data TypeClassOp

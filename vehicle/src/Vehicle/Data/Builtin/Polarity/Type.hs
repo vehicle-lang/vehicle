@@ -197,6 +197,7 @@ typeOfStack = typeOfVectorLiteral
 instance HasTypeSystem PolarityBuiltin where
   convertFromStandardBuiltins = traverseBuiltinsM convertToPolarityTypes
   restrictDeclType = restrictDeclPolarityType
+  restrictRecordType = undefined -- TODO: implement later
   isAuxiliaryConstraint _ = True
   solveAuxiliaryInstanceConstraint = solvePolarityConstraint
   addAuxiliaryInputOutputConstraints = addFunctionAuxiliaryInputOutputConstraints (PolarityRelation . FunctionPolarity)
@@ -250,6 +251,7 @@ restrictDeclPolarityType rDecl declProv declType = do
     RestrictedDataset -> assertUnquantifiedPolarity origin declProv declType
     RestrictedParameter {} -> assertUnquantifiedPolarity origin declProv declType
     RestrictedProperty -> return declType
+    RestrictedTensorLike -> return declType
 
 restrictPolarityNetworkType ::
   forall m.

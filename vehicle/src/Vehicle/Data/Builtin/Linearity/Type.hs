@@ -181,6 +181,7 @@ typeOfStack = typeOfVectorLiteral
 instance HasTypeSystem LinearityBuiltin where
   convertFromStandardBuiltins = traverseBuiltinsM convertToLinearityTypes
   restrictDeclType = restrictLinearityDeclType
+  restrictRecordType = undefined -- TODO: implement later
   isAuxiliaryConstraint _ = True
   solveAuxiliaryInstanceConstraint = solveLinearityConstraint
   addAuxiliaryInputOutputConstraints = addFunctionAuxiliaryInputOutputConstraints (LinearityRelation . FunctionLinearity)
@@ -234,6 +235,7 @@ restrictLinearityDeclType rDecl declProv declType = do
     RestrictedDataset -> assertConstantLinearity origin declProv declType
     RestrictedParameter {} -> assertConstantLinearity origin declProv declType
     RestrictedProperty {} -> return declType
+    RestrictedTensorLike -> return declType
 
 restrictLinearityNetworkType ::
   forall m.

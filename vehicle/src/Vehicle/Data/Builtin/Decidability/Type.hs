@@ -177,6 +177,7 @@ typeOp2 t = t ~> t ~> t
 instance HasTypeSystem DecidabilityBuiltin where
   convertFromStandardBuiltins x = traverseFreeVarsM (const id) convertToDecidabilityFreeVars =<< traverseBuiltinsM convertToDecidabilityBuiltins x
   restrictDeclType = restrictDecidabilityDeclType
+  restrictRecordType = undefined -- TODO: implement later
   isAuxiliaryConstraint _ = False
 
   solveAuxiliaryInstanceConstraint _ = return ()

@@ -82,6 +82,7 @@ typeOfTypeClass tc = case tc of
   ValidDatasetListElementType -> type0 ~> type0
   ValidDatasetTensorElementType -> type0 ~> type0
   IsTensorType {} -> typeOfBuiltinType TensorType
+  ValidTensorLikeType -> type0 ~> type0
 
 typeOfTypeClassOp :: TypeClassOp -> DSLExpr Builtin
 typeOfTypeClassOp b = case b of
@@ -164,6 +165,7 @@ typeOfVectorLiteral =
 instance HasTypeSystem Builtin where
   convertFromStandardBuiltins = return
   restrictDeclType = restrictStandardDeclType
+  restrictRecordType = restrictStandardRecordType
   isAuxiliaryConstraint e = case e of
     App (Builtin _ NatInDomainConstraint) _ -> True
     _ -> False
@@ -186,11 +188,26 @@ restrictStandardDeclType declSort (ident, p) typ = do
         RestrictedParameter s -> ValidParameterType s
         RestrictedDataset -> ValidDatasetType
         RestrictedNetwork -> ValidNetworkType
+        RestrictedTensorLike -> ValidTensorLikeType
 
   let expr = BuiltinExpr p (TypeClass tc) [explicit typ]
   let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin env (ident, provenanceOf typ) declSort typ
   _ <- createFreshInstanceConstraint False mempty p origin Irrelevant expr
   return typ
+
+restrictStandardRecordType ::
+  forall m.
+  (MonadTypeChecker Builtin m) =>
+  DeclProvenance ->
+  [RecordField (Type Builtin)] ->
+  m (Type Builtin)
+restrictStandardRecordType (ident, p) fields = do
+  env <- getFreeEnv
+  let (_, fieldType) = head fields -- start with the first field
+  let expr = BuiltinExpr p (TypeClass ValidTensorLikeType) [explicit fieldType]
+  let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin env (ident, provenanceOf fieldType) RestrictedTensorLike fieldType
+  _ <- createFreshInstanceConstraint False mempty p origin Irrelevant expr
+  return fieldType
 
 -- | Tries to add new unification constraints using default values.
 addNewStandardAuxiliaryConstraintUsingDefaults ::

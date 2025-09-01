@@ -180,7 +180,7 @@ typeCheckRecordDef ::
   RecordFields (Type builtin) ->
   DeclIsUnused ->
   m (Decl builtin)
-typeCheckRecordDef p ident _anns uncheckedType uncheckedFields isUnused = do
+typeCheckRecordDef p ident anns uncheckedType uncheckedFields isUnused = do
   checkedType <- checkDeclType ident uncheckedType
 
   -- Type check the body.
@@ -189,8 +189,14 @@ typeCheckRecordDef p ident _anns uncheckedType uncheckedFields isUnused = do
     logCompilerSection2 MidDetail pass $
       traverse (checkRecordFieldDef ident) uncheckedFields
 
+  finalCheckedType <-
+    if isTensor anns
+      then logCompilerSection2 MidDetail "checking suitability of type as @tensor" $ do
+        restrictRecordType (ident, p) checkedFields
+      else return checkedType
+
   -- Reconstruct the function.
-  let checkedDecl = DefRecord p ident _anns checkedType checkedFields
+  let checkedDecl = DefRecord p ident anns finalCheckedType checkedFields
 
   -- Solve constraints and substitute through.
   setCurrentDecl $ Just (checkedDecl, isUnused)

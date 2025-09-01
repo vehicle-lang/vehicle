@@ -274,6 +274,7 @@ data RestrictedDecl
   | RestrictedProperty
   | RestrictedNetwork
   | RestrictedDataset
+  | RestrictedTensorLike
   deriving (Show)
 
 instance Pretty RestrictedDecl where
@@ -282,3 +283,4 @@ instance Pretty RestrictedDecl where
     RestrictedProperty {} -> "@property"
     RestrictedNetwork {} -> pretty NetworkDef
     RestrictedDataset {} -> pretty DatasetDef
+    RestrictedTensorLike {} -> "@tensor"
