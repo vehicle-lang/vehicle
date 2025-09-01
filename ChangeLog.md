@@ -1,5 +1,15 @@
 # Changelog for Vehicle
 
+## Next release
+
+### Rocq Interface
+
+* Changes to syntax of compiled Rocq scripts to match standard formatting
+
+* (BREAKING) Changes to tensor definition in the `vehicle-rocq` library
+
+* `windController` example updated to use new tensor definition
+
 ## Version 0.19.0
 
 ### Command-line interface
