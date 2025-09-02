@@ -280,7 +280,7 @@ compileDecl _opts = \case
         (_, cbody) <- compileBinders binders (compileExpr body)
         defType <- resolveReturnType binders' t
         return $ compileFunDef (compileIdentifier n) defType binders' cbody
-  DefRecord _ n t fs -> do
+  DefRecord _ n _ t fs -> do
     t' <- compileExpr t
     fs' <- traverseRecordFields compileExpr fs
     return $
