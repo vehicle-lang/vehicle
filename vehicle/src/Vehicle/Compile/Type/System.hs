@@ -42,6 +42,7 @@ class (Eq builtin, Hashable builtin, NormalisableBuiltin builtin, TypableBuiltin
   restrictRecordType ::
     (MonadTypeChecker builtin m) =>
     DeclProvenance ->
+    Type builtin ->
     [RecordField (Type builtin)] ->
     m (Type builtin)
 

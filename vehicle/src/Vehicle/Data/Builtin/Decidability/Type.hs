@@ -177,7 +177,7 @@ typeOp2 t = t ~> t ~> t
 instance HasTypeSystem DecidabilityBuiltin where
   convertFromStandardBuiltins x = traverseFreeVarsM (const id) convertToDecidabilityFreeVars =<< traverseBuiltinsM convertToDecidabilityBuiltins x
   restrictDeclType = restrictDecidabilityDeclType
-  restrictRecordType = undefined -- TODO: implement later
+  restrictRecordType = restrictDecidabilityRecordType
   isAuxiliaryConstraint _ = False
 
   solveAuxiliaryInstanceConstraint _ = return ()
@@ -292,8 +292,18 @@ restrictDecidabilityDeclType declSort (ident, p) declType = do
     Just tc -> do
       freeEnv <- getFreeEnv
       let expr = BuiltinExpr p (DecidabilityBuiltinTypeClass tc) [explicit declType]
-      let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin freeEnv (ident, provenanceOf declType) declSort declType
+      let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin freeEnv (ident, provenanceOf declType) (Left declSort) declType
       _ <- createFreshInstanceConstraint False mempty p origin Irrelevant expr
       return ()
 
   return declType
+
+restrictDecidabilityRecordType ::
+  forall m.
+  (MonadTypeChecker DecidabilityBuiltin m) =>
+  DeclProvenance ->
+  Type DecidabilityBuiltin ->
+  [RecordField (Type DecidabilityBuiltin)] ->
+  m (Type DecidabilityBuiltin)
+restrictDecidabilityRecordType (_ident, _p) typ _fields =
+  return typ

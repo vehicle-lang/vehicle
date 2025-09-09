@@ -190,10 +190,9 @@ restrictStandardDeclType declSort (ident, p) typ = do
         RestrictedParameter s -> ValidParameterType s
         RestrictedDataset -> ValidDatasetType
         RestrictedNetwork -> ValidNetworkType
-        RestrictedTensorLike -> ValidTensorLikeType
 
   let expr = BuiltinExpr p (TypeClass tc) [explicit typ]
-  let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin env (ident, provenanceOf typ) declSort typ
+  let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin env (ident, provenanceOf typ) (Left declSort) typ
   _ <- createFreshInstanceConstraint False mempty p origin Irrelevant expr
   return typ
 
@@ -201,19 +200,20 @@ restrictStandardRecordType ::
   forall m.
   (MonadTypeChecker Builtin m) =>
   DeclProvenance ->
+  Type Builtin ->
   [RecordField (Type Builtin)] ->
   m (Type Builtin)
-restrictStandardRecordType (ident, p) fields = do
+restrictStandardRecordType (ident, p) typ fields = do
   env <- getFreeEnv
   let (_, fieldType) = head fields -- start with the first field. TODO: safe!
   let expr = BuiltinExpr p (TypeClass ValidTensorLikeType) [explicit fieldType]
-  let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin env (ident, provenanceOf fieldType) RestrictedTensorLike fieldType
+  let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin env (ident, provenanceOf fieldType) (Right RestrictedRecord) fieldType
   _ <- createFreshInstanceConstraint False mempty p origin Irrelevant expr
 
   -- Add unification constraints to make sure fields are all of the same type.
   let fieldTypes = map snd fields
   _ <- traverse (createFreshUnificationConstraint p mempty (CheckingInstanceType origin) fieldType) fieldTypes
-  return fieldType
+  return typ
 
 -- | Tries to add new unification constraints using default values.
 addNewStandardAuxiliaryConstraintUsingDefaults ::

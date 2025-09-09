@@ -181,7 +181,7 @@ typeOfStack = typeOfVectorLiteral
 instance HasTypeSystem LinearityBuiltin where
   convertFromStandardBuiltins = traverseBuiltinsM convertToLinearityTypes
   restrictDeclType = restrictLinearityDeclType
-  restrictRecordType = undefined -- TODO: implement later
+  restrictRecordType = restrictLinearityRecordType
   isAuxiliaryConstraint _ = True
   solveAuxiliaryInstanceConstraint = solveLinearityConstraint
   addAuxiliaryInputOutputConstraints = addFunctionAuxiliaryInputOutputConstraints (LinearityRelation . FunctionLinearity)
@@ -229,13 +229,12 @@ restrictLinearityDeclType ::
   m (Type LinearityBuiltin)
 restrictLinearityDeclType rDecl declProv declType = do
   freeEnv <- getFreeEnv
-  let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin freeEnv declProv rDecl declType
+  let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin freeEnv declProv (Left rDecl) declType
   case rDecl of
     RestrictedNetwork -> restrictLinearityNetworkType origin declProv declType
     RestrictedDataset -> assertConstantLinearity origin declProv declType
     RestrictedParameter {} -> assertConstantLinearity origin declProv declType
     RestrictedProperty {} -> return declType
-    RestrictedTensorLike -> return declType
 
 restrictLinearityNetworkType ::
   forall m.
@@ -272,3 +271,13 @@ assertConstantLinearity ::
 assertConstantLinearity origin (_, p) t = do
   createFreshUnificationConstraint p mempty (CheckingInstanceType origin) (LinearityExpr p Constant) t
   return t
+
+restrictLinearityRecordType ::
+  forall m.
+  (MonadTypeChecker LinearityBuiltin m) =>
+  DeclProvenance ->
+  Type LinearityBuiltin ->
+  [RecordField (Type LinearityBuiltin)] ->
+  m (Type LinearityBuiltin)
+restrictLinearityRecordType (_ident, _p) typ _fields =
+  return typ

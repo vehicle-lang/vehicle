@@ -192,7 +192,7 @@ typeCheckRecordDef p ident anns uncheckedType uncheckedFields isUnused = do
   finalCheckedType <-
     if isTensor anns
       then logCompilerSection2 MidDetail "checking suitability of type as @tensor" $ do
-        restrictRecordType (ident, p) checkedFields
+        restrictRecordType (ident, p) checkedType checkedFields
       else return checkedType
 
   -- Reconstruct the function.
