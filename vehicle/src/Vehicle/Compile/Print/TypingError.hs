@@ -239,9 +239,7 @@ typeRestrictionError ctx (TypeRestrictionOrigin freeEnv (ident, p) sort typ) _ca
       problem =
         unsupportedAnnotationTypeDescription (pretty sort) ident gluedType
           <> "."
-            <+> "The possible valid types for"
-            <+> quotePretty sort
-            <+> "annotated declarations are:"
+            <+> supportedTypesDescription
           <> line
           <> indent 2 (prettyAllowedTypes supportedTypes),
       fix =
@@ -251,14 +249,19 @@ typeRestrictionError ctx (TypeRestrictionOrigin freeEnv (ident, p) sort typ) _ca
             <+> "to a supported type"
     }
   where
+    supportedTypesDescription = case sort of
+      Left _ -> "The possible valid types for" <+> quotePretty sort <+> "annotated declarations are:"
+      Right _ -> "The possible valid types for fields of records annotated with" <+> quotePretty sort <+> "are:"
+
     supportedTypes = case sort of
       Left RestrictedProperty -> ["Bool", "Vector Bool n", "Tensor Bool ns"]
       Left (RestrictedParameter Inferable) -> [pretty NatType]
       Left (RestrictedParameter NonInferable) -> map pretty [BoolType, IndexType, NatType, RatType]
       Left RestrictedDataset -> ["List A    " <+> datasetElementTypes, "Vector A n" <+> datasetElementTypes]
       Left RestrictedNetwork -> ["Tensor Rat [a_1, ..., a_n] -> Tensor Rat [b_1, ..., b_n]  (where 'a_i' and 'b_i' are all constants at compile time)"]
-      Right _ -> ["Real", "Nat"]
+      Right _ -> ["Tensor A ns" <+> tensorLikeElementTypes, "Nat", "Rat", "Bool", "Index"]
 
+    tensorLikeElementTypes = "(where A is either `Index n`, Nat`, `Rat`, `Bool`, `Tensor A ns`)"
     datasetElementTypes = "(where A is either `Index n`, `Nat`, `Rat`, `List A`, `Vector A n`)"
 
     prettyAllowedTypes :: [Doc a] -> Doc a

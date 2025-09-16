@@ -84,7 +84,6 @@ typeOfTypeClass tc = case tc of
   ValidDatasetTensorElementType -> type0 ~> type0
   IsTensorType {} -> typeOfBuiltinType TensorType
   ValidTensorLikeType -> type0 ~> type0
-  ValidTensorLikeElementType -> type0 ~> type0
 
 typeOfTypeClassOp :: TypeClassOp -> DSLExpr Builtin
 typeOfTypeClassOp b = case b of

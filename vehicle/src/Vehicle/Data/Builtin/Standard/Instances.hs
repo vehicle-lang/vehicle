@@ -180,21 +180,18 @@ allInstances =
           -------------------------
           -- ValidTensorLikeType --
           -------------------------
+
           ( forAllTypes $ \t ->
               forAllDims $ \ds ->
-                validTensorLikeElementType t
+                isTensorType t ds
                   .~~~> validTensorLikeType (tTensor t ds),
-            implLam "t" type0 $ \t ->
-              lamDims $ \_ds ->
-                instLam "r1" (validTensorLikeElementType t) $ \_ ->
+            lamType $ \t ->
+              lamDim $ \ds ->
+                instLam "r1" (isTensorType t ds) $ \_ ->
                   tUnit,
             False
           ),
-          ( validTensorLikeElementType tRat,
-            tUnit,
-            False
-          ),
-          ----------------
+          -- ----------------
           -- HasRatLits --
           ----------------
           ( hasRatLits (tRatTensor dimNil),
