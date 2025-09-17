@@ -1,0 +1,2 @@
+Error in file 'spec.vcl' at Line 4, Columns 8-13: . In particular 'Real' is not equal to 'Nat'.
+Fix: check your types

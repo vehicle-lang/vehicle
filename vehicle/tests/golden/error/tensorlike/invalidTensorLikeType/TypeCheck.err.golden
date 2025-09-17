@@ -1,0 +1,9 @@
+Error in file 'spec.vcl' at Line 11, Columns 5-7: The type of @tensor 'f3':
+  Incorrect
+is not supported. The possible valid types for fields of records annotated with '@tensor' are:
+  1. Tensor A ns (where A is either `Index n`, Nat`, `Rat`, `Bool`, `Tensor A ns`)
+  2. Nat
+  3. Rat
+  4. Bool
+  5. Index
+Fix: change the type of 'f3' to a supported type
