@@ -16,7 +16,7 @@
 
 ### Python interface
 
-* Renamed `vehicle_lang.compile_to_query` to `vehicle_lang.compile`.
+* Renamed `vehicle_lang.compile_to_query` to `vehicle_lang.compile` and made the `output_file` argument non-optional.
 
 * Added new function `vehicle_lang.compile_to_queries`.
 

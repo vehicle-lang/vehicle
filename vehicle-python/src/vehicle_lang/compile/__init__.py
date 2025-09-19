@@ -54,9 +54,8 @@ def compile(
     for parameter_name, parameter_value in parameters.items():
         args.extend(["--parameter", f"{parameter_name}:{parameter_value}"])
 
-    # Add output file if specified
-    if output_file is not None:
-        args.extend(["--output", str(output_file)])
+    # Add output file
+    args.extend(["--output", str(output_file)])
 
     # Add module name if specified
     if module_name is not None:
