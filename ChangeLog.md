@@ -2,7 +2,7 @@
 
 ## Next release
 
-### Rocq Interface
+### Rocq backend
 
 * Changes to syntax of compiled Rocq scripts to match standard formatting
 
@@ -13,6 +13,12 @@
 ### Command-line interface
 
 * Fixed the `list resources` such that inferable parameters are not listed.
+
+### Python interface
+
+* Renamed `vehicle_lang.compile_to_query` to `vehicle_lang.compile`.
+
+* Added new function `vehicle_lang.compile_to_queries`.
 
 ## Version 0.19.0
 

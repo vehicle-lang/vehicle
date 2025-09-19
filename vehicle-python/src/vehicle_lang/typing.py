@@ -95,15 +95,26 @@ class QueryFormat(Enum):
 
     VNNLib = 1
     Marabou = 2
-    Agda = 3
 
     @property
     def _vehicle_option_name(self) -> str:
         return {
             QueryFormat.VNNLib: "VNNLibQueries",
             QueryFormat.Marabou: "MarabouQueries",
-            QueryFormat.Agda: "Agda",
         }[self]
+
+
+class ITP(Enum):
+    """
+    The ITPs supported by Vehicle.
+    """
+
+    Agda = 1
+    Rocq = 2
+
+    @property
+    def _vehicle_option_name(self) -> str:
+        return {ITP.Agda: "Agda", ITP.Rocq: "Rocq"}[self]
 
 
 class Verifier(Enum):

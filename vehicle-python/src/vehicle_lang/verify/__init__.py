@@ -19,7 +19,7 @@ def verify(
     """
     Check whether properties in a Vehicle specification hold.
 
-    :param specification: The path to the Vehicle specification file to verify.
+    :param specification: The path to the Vehicle specification file or Vehicle  to verify.
     :param properties: The names of the properties in the specification to verify, defaults to all declarations.
     :param networks: A map from the network names in the specification to files containing the networks.
     :param datasets: A map from the dataset names in the specification to files containing the datasets.
