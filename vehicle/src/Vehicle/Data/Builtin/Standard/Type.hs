@@ -202,9 +202,10 @@ restrictStandardRecordType ::
   Type Builtin ->
   [RecordField (Type Builtin)] ->
   m (Type Builtin)
+restrictStandardRecordType (_ident, _p) typ [] = return typ
 restrictStandardRecordType (ident, p) typ fields = do
   env <- getFreeEnv
-  let (fieldName, fieldType) = head fields -- start with the first field. TODO: safe!
+  let (fieldName, fieldType) = head fields
   let expr = BuiltinExpr p (TypeClass ValidTensorLikeType) [explicit fieldType]
   let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin env ((Identifier (modulePath ident) (nameOf fieldName)), provenanceOf fieldName) (Right RestrictedRecord) fieldType
   _ <- createFreshInstanceConstraint False mempty p origin Irrelevant expr
