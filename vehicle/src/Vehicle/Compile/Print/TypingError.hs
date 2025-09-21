@@ -251,7 +251,7 @@ typeRestrictionError ctx (TypeRestrictionOrigin freeEnv (ident, p) sort typ) _ca
   where
     supportedTypesDescription = case sort of
       Left _ -> "The possible valid types for" <+> quotePretty sort <+> "annotated declarations are:"
-      Right _ -> "All fields of a record annotated with" <+> quotePretty sort <+> "must have the same type and must be either:"
+      Right RestrictedRecord -> "All fields of a record annotated with" <+> quotePretty sort <+> "must have the same type and must be either:"
 
     supportedTypes = case sort of
       Left RestrictedProperty -> ["Bool", "Vector Bool n", "Tensor Bool ns"]
@@ -259,7 +259,7 @@ typeRestrictionError ctx (TypeRestrictionOrigin freeEnv (ident, p) sort typ) _ca
       Left (RestrictedParameter NonInferable) -> map pretty [BoolType, IndexType, NatType, RatType]
       Left RestrictedDataset -> ["List A    " <+> datasetElementTypes, "Vector A n" <+> datasetElementTypes]
       Left RestrictedNetwork -> ["Tensor Rat [a_1, ..., a_n] -> Tensor Rat [b_1, ..., b_n]  (where 'a_i' and 'b_i' are all constants at compile time)"]
-      Right _ -> ["The element of a tensor (e.g. Real), or", "A tensor (e.g. Tensor Real [...])"]
+      Right RestrictedRecord -> ["The element of a tensor (e.g. Real), or", "A tensor (e.g. Tensor Real [...])"]
 
     datasetElementTypes = "(where A is either `Index n`, `Nat`, `Rat`, `List A`, `Vector A n`)"
 
