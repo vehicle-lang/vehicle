@@ -273,7 +273,7 @@ compileDecl _opts = \case
     compilePostulate (compileIdentifier n) <$> compileExpr t
   DefFunction _ n anns t e -> do
     let (binders, body) = foldDeclBinders e
-    if isProperty anns
+    if isAnnotatedAsProperty anns
       then compileProperty (compileIdentifier n) <$> compileExpr e
       else do
         binders' <- compileTopLevelBinders binders

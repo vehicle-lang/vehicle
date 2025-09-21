@@ -87,7 +87,7 @@ compileDecls _ _ _ _ [] _ = return []
 compileDecls prog queryFormat networkCtx propertyID (d : ds) outputLocation = do
   property <- case d of
     DefFunction p ident anns _ body
-      | isProperty anns -> do
+      | isAnnotatedAsProperty anns -> do
           let propertyData = (queryFormat, networkCtx, (ident, p), propertyID, outputLocation)
           Just <$> compilePropertyDecl prog propertyData body
     _ -> return Nothing
