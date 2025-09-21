@@ -181,7 +181,7 @@ typeOfStack = typeOfVectorLiteral
 instance HasTypeSystem LinearityBuiltin where
   convertFromStandardBuiltins = traverseBuiltinsM convertToLinearityTypes
   restrictDeclType = restrictLinearityDeclType
-  restrictRecordAnnotatedAsTensor = restrictLinearityRecordType
+  restrictRecordAnnotatedAsTensor = restrictLinearityRecordAnnotatedAsTensor
   isAuxiliaryConstraint _ = True
   solveAuxiliaryInstanceConstraint = solveLinearityConstraint
   addAuxiliaryInputOutputConstraints = addFunctionAuxiliaryInputOutputConstraints (LinearityRelation . FunctionLinearity)
@@ -272,12 +272,11 @@ assertConstantLinearity origin (_, p) t = do
   createFreshUnificationConstraint p mempty (CheckingInstanceType origin) (LinearityExpr p Constant) t
   return t
 
-restrictLinearityRecordType ::
+restrictLinearityRecordAnnotatedAsTensor ::
   forall m.
   (MonadTypeChecker LinearityBuiltin m) =>
   DeclProvenance ->
-  Type LinearityBuiltin ->
   [RecordField (Type LinearityBuiltin)] ->
-  m (Type LinearityBuiltin)
-restrictLinearityRecordType (_ident, _p) typ _fields =
-  return typ
+  m ()
+restrictLinearityRecordAnnotatedAsTensor (_ident, _p) _fields =
+  return ()

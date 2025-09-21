@@ -166,7 +166,7 @@ typeOfVectorLiteral =
 instance HasTypeSystem Builtin where
   convertFromStandardBuiltins = return
   restrictDeclType = restrictStandardDeclType
-  restrictRecordAnnotatedAsTensor = restrictStandardRecordType
+  restrictRecordAnnotatedAsTensor = restrictStandardRecordAnnotatedAsTensorType
   isAuxiliaryConstraint e = case e of
     App (Builtin _ NatInDomainConstraint) _ -> True
     _ -> False
@@ -195,15 +195,14 @@ restrictStandardDeclType declSort (ident, p) typ = do
   _ <- createFreshInstanceConstraint False mempty p origin Irrelevant expr
   return typ
 
-restrictStandardRecordType ::
+restrictStandardRecordAnnotatedAsTensorType ::
   forall m.
   (MonadTypeChecker Builtin m) =>
   DeclProvenance ->
-  Type Builtin ->
   [RecordField (Type Builtin)] ->
-  m (Type Builtin)
-restrictStandardRecordType (_ident, _p) typ [] = return typ
-restrictStandardRecordType (ident, p) typ ((firstFieldName, firstFieldType) : restFields) = do
+  m ()
+restrictStandardRecordAnnotatedAsTensorType (_ident, _p) [] = return ()
+restrictStandardRecordAnnotatedAsTensorType (ident, p) ((firstFieldName, firstFieldType) : restFields) = do
   env <- getFreeEnv
   let expr = BuiltinExpr p (TypeClass ValidTensorLikeType) [explicit firstFieldType]
   let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin env ((Identifier (modulePath ident) (nameOf firstFieldName)), provenanceOf firstFieldName) (Right RestrictedRecord) firstFieldType
@@ -212,7 +211,7 @@ restrictStandardRecordType (ident, p) typ ((firstFieldName, firstFieldType) : re
   -- Add unification constraints to make sure fields are all of the same type.
   let fieldTypes = map snd restFields
   _ <- traverse (createFreshUnificationConstraint p mempty (CheckingInstanceType origin) firstFieldType) fieldTypes
-  return typ
+  return ()
 
 -- | Tries to add new unification constraints using default values.
 addNewStandardAuxiliaryConstraintUsingDefaults ::

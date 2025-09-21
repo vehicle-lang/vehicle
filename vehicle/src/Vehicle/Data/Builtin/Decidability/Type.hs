@@ -177,7 +177,7 @@ typeOp2 t = t ~> t ~> t
 instance HasTypeSystem DecidabilityBuiltin where
   convertFromStandardBuiltins x = traverseFreeVarsM (const id) convertToDecidabilityFreeVars =<< traverseBuiltinsM convertToDecidabilityBuiltins x
   restrictDeclType = restrictDecidabilityDeclType
-  restrictRecordAnnotatedAsTensor = restrictDecidabilityRecordType
+  restrictRecordAnnotatedAsTensor = restrictDecidabilityRecordAnnotatedAsTensor
   isAuxiliaryConstraint _ = False
 
   solveAuxiliaryInstanceConstraint _ = return ()
@@ -298,12 +298,11 @@ restrictDecidabilityDeclType declSort (ident, p) declType = do
 
   return declType
 
-restrictDecidabilityRecordType ::
+restrictDecidabilityRecordAnnotatedAsTensor ::
   forall m.
   (MonadTypeChecker DecidabilityBuiltin m) =>
   DeclProvenance ->
-  Type DecidabilityBuiltin ->
   [RecordField (Type DecidabilityBuiltin)] ->
-  m (Type DecidabilityBuiltin)
-restrictDecidabilityRecordType (_ident, _p) typ _fields =
-  return typ
+  m ()
+restrictDecidabilityRecordAnnotatedAsTensor (_ident, _p) _fields =
+  return ()

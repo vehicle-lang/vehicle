@@ -189,14 +189,14 @@ typeCheckRecordDef p ident anns uncheckedType uncheckedFields isUnused = do
     logCompilerSection2 MidDetail pass $
       traverse (checkRecordFieldDef ident) uncheckedFields
 
-  finalCheckedType <-
+  _ <-
     if isAnnotatedAsTensor anns
       then logCompilerSection2 MidDetail "checking suitability of type as @tensor" $ do
-        restrictRecordAnnotatedAsTensor (ident, p) checkedType checkedFields
-      else return checkedType
+        restrictRecordAnnotatedAsTensor (ident, p) checkedFields
+      else return ()
 
   -- Reconstruct the function.
-  let checkedDecl = DefRecord p ident anns finalCheckedType checkedFields
+  let checkedDecl = DefRecord p ident anns checkedType checkedFields
 
   -- Solve constraints and substitute through.
   setCurrentDecl $ Just (checkedDecl, isUnused)

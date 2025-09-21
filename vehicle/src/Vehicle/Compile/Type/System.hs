@@ -42,9 +42,8 @@ class (Eq builtin, Hashable builtin, NormalisableBuiltin builtin, TypableBuiltin
   restrictRecordAnnotatedAsTensor ::
     (MonadTypeChecker builtin m) =>
     DeclProvenance ->
-    Type builtin ->
     [RecordField (Type builtin)] ->
-    m (Type builtin)
+    m ()
 
   addAuxiliaryInputOutputConstraints ::
     (MonadTypeChecker builtin m) => Decl builtin -> m (Decl builtin)
