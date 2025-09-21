@@ -198,6 +198,8 @@ failedUnificationConstraintsError (FailedUnificationConstraintsError freeEnv (er
             CheckingInstanceType (InstanceArgOrigin ArgOrigin {..}) ->
               "unable to find a consistent type for the overloaded expression"
                 <+> squotes (prettyTypeClassConstraintOriginExpr ctx checkedInstanceOp checkedInstanceOpArgs)
+            CheckingInstanceType (InstanceTypeRestrictionOrigin (TypeRestrictionOrigin _ _ (Right sort) _)) ->
+              "All fields of Records annotated with" <+> quotePretty sort <+> "must have the same type"
             CheckingInstanceType (InstanceTypeRestrictionOrigin {}) ->
               ""
       UserError
