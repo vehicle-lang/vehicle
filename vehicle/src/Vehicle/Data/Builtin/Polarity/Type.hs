@@ -197,7 +197,7 @@ typeOfStack = typeOfVectorLiteral
 instance HasTypeSystem PolarityBuiltin where
   convertFromStandardBuiltins = traverseBuiltinsM convertToPolarityTypes
   restrictDeclType = restrictDeclPolarityType
-  restrictRecordType = restrictPolarityRecordType
+  restrictRecordAnnotatedAsTensor = restrictPolarityRecordType
   isAuxiliaryConstraint _ = True
   solveAuxiliaryInstanceConstraint = solvePolarityConstraint
   addAuxiliaryInputOutputConstraints = addFunctionAuxiliaryInputOutputConstraints (PolarityRelation . FunctionPolarity)

@@ -181,7 +181,7 @@ typeOfStack = typeOfVectorLiteral
 instance HasTypeSystem LinearityBuiltin where
   convertFromStandardBuiltins = traverseBuiltinsM convertToLinearityTypes
   restrictDeclType = restrictLinearityDeclType
-  restrictRecordType = restrictLinearityRecordType
+  restrictRecordAnnotatedAsTensor = restrictLinearityRecordType
   isAuxiliaryConstraint _ = True
   solveAuxiliaryInstanceConstraint = solveLinearityConstraint
   addAuxiliaryInputOutputConstraints = addFunctionAuxiliaryInputOutputConstraints (LinearityRelation . FunctionLinearity)

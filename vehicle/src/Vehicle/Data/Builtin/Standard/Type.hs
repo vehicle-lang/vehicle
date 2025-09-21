@@ -166,7 +166,7 @@ typeOfVectorLiteral =
 instance HasTypeSystem Builtin where
   convertFromStandardBuiltins = return
   restrictDeclType = restrictStandardDeclType
-  restrictRecordType = restrictStandardRecordType
+  restrictRecordAnnotatedAsTensor = restrictStandardRecordType
   isAuxiliaryConstraint e = case e of
     App (Builtin _ NatInDomainConstraint) _ -> True
     _ -> False

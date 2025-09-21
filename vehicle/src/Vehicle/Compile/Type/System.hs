@@ -39,7 +39,7 @@ class (Eq builtin, Hashable builtin, NormalisableBuiltin builtin, TypableBuiltin
     Type builtin ->
     m (Type builtin)
 
-  restrictRecordType ::
+  restrictRecordAnnotatedAsTensor ::
     (MonadTypeChecker builtin m) =>
     DeclProvenance ->
     Type builtin ->
