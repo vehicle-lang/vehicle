@@ -180,7 +180,6 @@ allInstances =
           -------------------------
           -- ValidTensorLikeType --
           -------------------------
-
           ( forAllTypes $ \t ->
               forAllDims $ \ds ->
                 isTensorType t ds
