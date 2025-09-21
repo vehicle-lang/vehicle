@@ -165,8 +165,11 @@ isExternalResourceSort :: DefAbstractSort -> Bool
 isExternalResourceSort = \case
   NetworkDef -> True
   DatasetDef -> True
-  ParameterDef {} -> True
+  ParameterDef parameterType -> parameterType == NonInferable
   PostulateDef {} -> False
+
+isExternalResourceDecl :: GenericDecl expr -> Bool
+isExternalResourceDecl decl = maybe False isExternalResourceSort (abstractSortOf decl)
 
 convertToPostulate :: GenericDecl expr -> GenericDecl expr
 convertToPostulate d =

@@ -10,20 +10,18 @@ Require Import mathcomp.ssreflect.ssrnat.
 Require Import mathcomp.ssreflect.order.
 Require Import mathcomp.ssreflect.fintype.
 Require Import mathcomp.ssreflect.seq.
-Require Import mathcomp.ssreflect.tuple.
 Require Import mathcomp.algebra.zmodp.
 Require Import mathcomp.reals.reals.
 Require Import vehicle.tensor.
-Import DefaultTupleProdOrder.
 Open Scope ring_scope.
 Open Scope order_scope.
 
 Parameter R : realType.
 
-Definition unused : Prop := forall (x : tensor R nil), True.
+Definition unused : Prop := forall (x : 'nT[R]_(nil)), True.
 
-Parameter f : tensor R (1%N :: nil) -> tensor R (1%N :: nil).
+Parameter f : 'nT[R]_(1%N :: nil) -> 'nT[R]_(1%N :: nil).
 
-Axiom expandedExpr : forall x, tnth x 0 >= tnth (f x) 0.
+Axiom expandedExpr : forall x, x^^0 >= (f x)^^0.
 
-Axiom parallel : forall x, tnth (f x) 0 >= (0 : R) /\ exists x, tnth (f x) 0 >= (5 : R).
+Axiom parallel : forall x, (f x)^^0 >= const_t (0 : R) /\ exists x, (f x)^^0 >= const_t (5 : R).

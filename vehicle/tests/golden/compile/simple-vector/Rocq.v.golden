@@ -14,16 +14,16 @@ Require Import mathcomp.ssreflect.tuple.
 Require Import mathcomp.algebra.zmodp.
 Require Import mathcomp.reals.reals.
 Require Import vehicle.tensor.
-Import DefaultTupleProdOrder.
 Open Scope ring_scope.
 Open Scope order_scope.
+Open Scope form_scope.
 
 Parameter R : realType.
 
-Definition untyped : tensor R (1%N :: nil) := stack [tuple (0 : R)].
+Definition untyped : 'nT[R]_(1%N :: nil) := nstack_tuple [tuple const_t (0 : R)].
 
-Definition empty : tensor R (0%N :: nil) := stack [tuple ].
+Definition empty : 'nT[R]_(0%N :: nil) := nstack_tuple [tuple ].
 
-Parameter f : tensor R (1%N :: nil) -> tensor R (1%N :: nil).
+Parameter f : 'nT[R]_(1%N :: nil) -> 'nT[R]_(1%N :: nil).
 
-Axiom p : tnth (f untyped) 0 >= (0 : R).
+Axiom p : (f untyped)^^0 >= const_t (0 : R).

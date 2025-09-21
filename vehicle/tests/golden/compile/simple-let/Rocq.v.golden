@@ -13,7 +13,6 @@ Require Import mathcomp.ssreflect.seq.
 Require Import mathcomp.reals.reals.
 Require Import vehicle.tensor.
 Require Import vehicle.utils.
-Import DefaultTupleProdOrder.
 Open Scope ring_scope.
 Open Scope order_scope.
 
@@ -29,14 +28,14 @@ Definition lamLet : nat -> nat := fun (x : nat) => let y := x in y.
 
 Definition letLam : nat -> nat := let y := fun x => x in y.
 
-Axiom forallLet : forall (x : tensor R nil), let y := x in y == (1 : R).
+Axiom forallLet : forall (x : 'nT[R]_(nil)), let y := x in y == const_t (1 : R).
 
-Axiom letForall : let y := 1 : R in forall (x : tensor R nil), y == x.
+Axiom letForall : let y := const_t (1 : R) in forall (x : 'nT[R]_(nil)), y == x.
 
 Axiom forallInLet : forallInList (fun x => let y := x in y == 1%N) (1%N :: nil).
 
 Axiom letForallIn : let y := 1%N in forallInList (fun x => y == x) (1%N :: nil).
 
-Definition falsey (x : tensor R nil) : Prop := x <= (1 / 2 : R).
+Definition falsey (x : 'nT[R]_(nil)) : Prop := x <= const_t (1 / 2 : R).
 
-Axiom correctOutput : let y := 0 : R in falsey y.
+Axiom correctOutput : let y := const_t (0 : R) in falsey y.

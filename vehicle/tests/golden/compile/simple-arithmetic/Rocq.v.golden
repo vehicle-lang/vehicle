@@ -14,17 +14,16 @@ Require Import mathcomp.ssreflect.tuple.
 Require Import mathcomp.algebra.zmodp.
 Require Import mathcomp.reals.reals.
 Require Import vehicle.tensor.
-Import DefaultTupleProdOrder.
 Open Scope ring_scope.
-Open Scope tensor_scope.
 Open Scope order_scope.
+Open Scope form_scope.
 
 Parameter R : realType.
 
-Definition precedence (x : tensor R nil) (y : tensor R nil) (z : tensor R nil) : tensor R nil := (x +%t ((2 : R) *%t y)) -%t (z /%t y).
+Definition precedence (x : 'nT[R]_(nil)) (y : 'nT[R]_(nil)) (z : 'nT[R]_(nil)) : 'nT[R]_(nil) := (x + (const_t (2 : R) * y)) - (z / y).
 
-Definition natLitNatLitDiv : tensor R nil := (1 : R) /%t (2 : R).
+Definition natLitNatLitDiv : 'nT[R]_(nil) := const_t (1 : R) / const_t (2 : R).
 
-Parameter f : tensor R (1%N :: nil) -> tensor R (1%N :: nil).
+Parameter f : 'nT[R]_(1%N :: nil) -> 'nT[R]_(1%N :: nil).
 
-Axiom property : tnth (f (stack [tuple natLitNatLitDiv])) 0 >= (0 : R).
+Axiom property : (f (nstack_tuple [tuple natLitNatLitDiv]))^^0 >= const_t (0 : R).

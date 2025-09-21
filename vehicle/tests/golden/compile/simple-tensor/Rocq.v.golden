@@ -15,25 +15,24 @@ Require Import mathcomp.algebra.zmodp.
 Require Import mathcomp.reals.reals.
 Require Import vehicle.tensor.
 Require Import vehicle.utils.
-Import DefaultTupleProdOrder.
 Open Scope ring_scope.
-Open Scope tensor_scope.
 Open Scope order_scope.
+Open Scope form_scope.
 
 Parameter R : realType.
 
-Parameter f : tensor R (2%N :: (2%N :: nil)) -> tensor R (2%N :: (2%N :: nil)).
+Parameter f : 'nT[R]_(2%N :: (2%N :: nil)) -> 'nT[R]_(2%N :: (2%N :: nil)).
 
-Definition zeroD : tensor R nil := 5 / 2 : R.
+Definition zeroD : 'nT[R]_(nil) := const_t (5 / 2 : R).
 
-Definition oneD : tensor R (2%N :: nil) := stack [tuple zeroD; (1 : R)].
+Definition oneD : 'nT[R]_(2%N :: nil) := nstack_tuple [tuple zeroD; const_t (1 : R)].
 
-Definition twoD : tensor R (2%N :: (2%N :: nil)) := stack [tuple oneD; stack [tuple (2 : R); (3 : R)]].
+Definition twoD : 'nT[R]_(2%N :: (2%N :: nil)) := nstack_tuple [tuple oneD; nstack_tuple [tuple const_t (2 : R); const_t (3 : R)]].
 
-Definition lookup2D : tensor R nil := tnth (tnth twoD 0) 1.
+Definition lookup2D : 'nT[R]_(nil) := (twoD^^0)^^1.
 
-Definition addition : tensor R (2%N :: (2%N :: nil)) := twoD +%t twoD.
+Definition addition : 'nT[R]_(2%N :: (2%N :: nil)) := twoD + twoD.
 
-Definition subtraction : tensor R (2%N :: (2%N :: nil)) := twoD -%t twoD.
+Definition subtraction : 'nT[R]_(2%N :: (2%N :: nil)) := twoD - twoD.
 
-Axiom p : forallIndex (fun i => forallIndex (fun j => tnth (tnth (f subtraction +%t addition) i) j >= (0 : R))).
+Axiom p : forallIndex (fun i => forallIndex (fun j => ((f subtraction + addition)^^i)^^j >= const_t (0 : R))).

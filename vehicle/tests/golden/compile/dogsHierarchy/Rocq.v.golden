@@ -11,12 +11,10 @@ Require Import mathcomp.ssreflect.eqtype.
 Require Import mathcomp.ssreflect.order.
 Require Import mathcomp.ssreflect.fintype.
 Require Import mathcomp.ssreflect.seq.
-Require Import mathcomp.ssreflect.tuple.
 Require Import mathcomp.algebra.zmodp.
 Require Import mathcomp.reals.reals.
 Require Import vehicle.tensor.
 Require Import vehicle.utils.
-Import DefaultTupleProdOrder.
 Open Scope ring_scope.
 Open Scope order_scope.
 
@@ -24,34 +22,34 @@ Parameter R : realType.
 
 Definition numberOfDogs : nat := 6%N.
 
-Definition Dog : Type := ordinal numberOfDogs.
+Definition Dog : Type := 'I_numberOfDogs.
 
-Definition greatDane : ordinal 6%N := 1.
+Definition greatDane : 'I_6%N := 1.
 
-Definition germanShepherd : ordinal 6%N := 2.
+Definition germanShepherd : 'I_6%N := 2.
 
-Definition chihuahua : ordinal 6%N := 4.
+Definition chihuahua : 'I_6%N := 4.
 
-Definition pekinese : ordinal 6%N := 5.
+Definition pekinese : 'I_6%N := 5.
 
-Definition smallDogs : list Dog := chihuahua :: (pekinese :: nil).
+Definition smallDogs : seq Dog := chihuahua :: (pekinese :: nil).
 
-Definition bigDogs : list Dog := greatDane :: (germanShepherd :: nil).
+Definition bigDogs : seq Dog := greatDane :: (germanShepherd :: nil).
 
-Definition Image : Type := tensor R (4%N :: (4%N :: nil)).
+Definition Image : Type := 'nT[R]_(4%N :: (4%N :: nil)).
 
-Definition Score : Type := tensor R nil.
+Definition Score : Type := 'nT[R]_(nil).
 
-Parameter score : Image -> tensor R (6%N :: nil).
+Parameter score : Image -> 'nT[R]_(6%N :: nil).
 
-Definition validPixel (p : tensor R nil) : Prop := ((0 : R) <= p) /\ (p <= (1 : R)).
+Definition validPixel (p : 'nT[R]_(nil)) : Prop := (const_t (0 : R) <= p) /\ (p <= const_t (1 : R)).
 
-Definition validImage (x : Image) : Prop := forallIndex (fun i => forallIndex (fun j => validPixel (tnth (tnth x i) j))).
+Definition validImage (x : Image) : Prop := forallIndex (fun i => forallIndex (fun j => validPixel (x^^i)^^j)).
 
-Definition isFirstChoice (x : Image) (dog1 : Dog) : Prop := let scores := score x in forallIndex (fun d => d != dog1 :> nat -> tnth scores dog1 > tnth scores d).
+Definition isFirstChoice (x : Image) (dog1 : Dog) : Prop := let scores := score x in forallIndex (fun d => d != dog1 :> nat -> scores^^dog1 > scores^^d).
 
-Definition isSecondChoice (x : Image) (dog2 : Dog) : Prop := let scores := score x in existsIndex (fun dog1 => isFirstChoice x dog1 /\ forallIndex (fun d => (d != dog1 :> nat) /\ (d != dog2 :> nat) -> tnth scores dog2 > tnth scores d)).
+Definition isSecondChoice (x : Image) (dog2 : Dog) : Prop := let scores := score x in existsIndex (fun dog1 => isFirstChoice x dog1 /\ forallIndex (fun d => (d != dog1 :> nat) /\ (d != dog2 :> nat) -> scores^^dog2 > scores^^d)).
 
-Definition noConfusionWith (x : Image) (dogs1 : list Dog) (dogs2 : list Dog) : Prop := forallInList (fun dog1 => forallInList (fun dog2 => ~ isFirstChoice x dog1 /\ isSecondChoice x dog2) dogs2) dogs1.
+Definition noConfusionWith (x : Image) (dogs1 : seq Dog) (dogs2 : seq Dog) : Prop := forallInList (fun dog1 => forallInList (fun dog2 => ~ isFirstChoice x dog1 /\ isSecondChoice x dog2) dogs2) dogs1.
 
 Axiom doesNotConfuseBigAndSmall : forall x, validImage x -> noConfusionWith x bigDogs smallDogs.

@@ -10,34 +10,31 @@ Require Import mathcomp.ssreflect.ssrnat.
 Require Import mathcomp.ssreflect.order.
 Require Import mathcomp.ssreflect.fintype.
 Require Import mathcomp.ssreflect.seq.
-Require Import mathcomp.ssreflect.tuple.
 Require Import mathcomp.algebra.zmodp.
 Require Import mathcomp.reals.reals.
 Require Import vehicle.tensor.
 Require Import vehicle.utils.
-Import DefaultTupleProdOrder.
 Open Scope ring_scope.
-Open Scope tensor_scope.
 Open Scope order_scope.
 
 Parameter R : realType.
 
-Definition InputVector : Type := tensor R (2%N :: nil).
+Definition InputVector : Type := 'nT[R]_(2%N :: nil).
 
-Definition currentSensor : ordinal 2%N := 0.
+Definition currentSensor : 'I_2%N := 0.
 
-Definition previousSensor : ordinal 2%N := 1.
+Definition previousSensor : 'I_2%N := 1.
 
-Definition OutputVector : Type := tensor R (1%N :: nil).
+Definition OutputVector : Type := 'nT[R]_(1%N :: nil).
 
-Definition velocity : ordinal 1%N := 0.
+Definition velocity : 'I_1%N := 0.
 
 Parameter controller : InputVector -> OutputVector.
 
-Definition normalise (x : InputVector) : InputVector := foreach (fun i => tnth x i +%t (4 : R) /%t (8 : R)).
+Definition normalise (x : InputVector) : InputVector := nstack (fun i => x^^i + const_t (4 : R) / const_t (8 : R)).
 
-Definition safeInput (x : InputVector) : Prop := forallIndex (fun i => (oppt (13 / 4 : R) <= tnth x i) /\ (tnth x i <= (13 / 4 : R))).
+Definition safeInput (x : InputVector) : Prop := forallIndex (fun i => (- const_t (13 / 4 : R) <= x^^i) /\ (x^^i <= const_t (13 / 4 : R))).
 
-Definition safeOutput (x : InputVector) : Prop := let y := tnth (controller (normalise x)) velocity in (oppt (5 / 4 : R) < ((y +%t ((2 : R) *%t tnth x currentSensor)) -%t tnth x previousSensor)) /\ (((y +%t ((2 : R) *%t tnth x currentSensor)) -%t tnth x previousSensor) < (5 / 4 : R)).
+Definition safeOutput (x : InputVector) : Prop := let y := (controller (normalise x))^^velocity in (- const_t (5 / 4 : R) < ((y + (const_t (2 : R) * x^^currentSensor)) - x^^previousSensor)) /\ (((y + (const_t (2 : R) * x^^currentSensor)) - x^^previousSensor) < const_t (5 / 4 : R)).
 
 Axiom safe : forall x, safeInput x -> safeOutput x.

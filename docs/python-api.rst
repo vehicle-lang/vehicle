@@ -1,6 +1,14 @@
 Python API
 ==========
 
+Compilation
+-----------
+
+.. autoclass:: QueryFormat
+  :members:
+
+.. autofunction:: compile_to_queries
+
 Loss functions
 --------------
 
@@ -14,10 +22,10 @@ Loss functions
 Verification
 ------------
 
-.. autofunction:: verify
-
 .. autoclass:: Verifier
   :members:
+
+.. autofunction:: verify
 
 Exceptions
 ----------

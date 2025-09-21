@@ -1,5 +1,25 @@
 # Changelog for Vehicle
 
+## Next release
+
+### Rocq backend
+
+* Changes to syntax of compiled Rocq scripts to match standard formatting
+
+* (BREAKING) Changes to tensor definition in the `vehicle-rocq` library
+
+* `windController` example updated to use new tensor definition
+
+### Command-line interface
+
+* Fixed the `list resources` such that inferable parameters are not listed.
+
+### Python interface
+
+* Renamed `vehicle_lang.compile_to_query` to `vehicle_lang.compile` and made the `output_file` argument non-optional.
+
+* Added new function `vehicle_lang.compile_to_queries`.
+
 ## Version 0.19.0
 
 ### Command-line interface

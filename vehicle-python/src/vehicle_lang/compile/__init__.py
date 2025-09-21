@@ -3,30 +3,30 @@ from typing import Any, Dict, Iterable, Optional, Union
 
 from .. import session
 from ..error import VehicleError as VehicleError
-from ..typing import DeclarationName, DifferentiableLogic, QueryFormat
+from ..typing import ITP, DeclarationName, DifferentiableLogic, QueryFormat
 
 
-def compile_to_query(
+def compile(
     path: Union[str, Path],
-    target: Union[DifferentiableLogic, QueryFormat],
+    target: Union[DifferentiableLogic, QueryFormat, ITP],
+    output_file: Union[str, Path],
     declarations: Optional[Iterable[DeclarationName]] = None,
     networks: Dict[DeclarationName, Union[str, Path]] = {},
     datasets: Dict[DeclarationName, Union[str, Path]] = {},
     parameters: Dict[DeclarationName, Any] = {},
-    output_file: Optional[Union[str, Path]] = None,
     module_name: Optional[str] = None,
     cache: Optional[Union[str, Path]] = None,
 ) -> str:
     """
-    Compile a Vehicle specification to a query language (e.g., Marabou, VNNLIB etc.)
+    Compile a Vehicle specification to a target language
 
     :param specification: The path to the Vehicle specification file to compile.
-    :param target: The target language to compile to (e.g., QueryFormat.Marabou).
+    :param target: The target language to compile to (e.g. QueryFormat.Marabou).
+    :param output_file: Output location for the compiled file(s).
     :param declarations: The names of the declarations to compile, defaults to all declarations.
     :param networks: A map from the network names in the specification to files containing the networks.
     :param datasets: A map from the dataset names in the specification to files containing the datasets.
     :param parameters: A map from the parameter names in the specification to the values to be used in compilation.
-    :param output_file: Output location for the compiled file(s). Defaults to stdout if not provided.
     :param module_name: Override the name of the exported module (for ITP targets).
     :param cache: The location of the verification cache for ITP compilation.
     """
@@ -54,9 +54,8 @@ def compile_to_query(
     for parameter_name, parameter_value in parameters.items():
         args.extend(["--parameter", f"{parameter_name}:{parameter_value}"])
 
-    # Add output file if specified
-    if output_file is not None:
-        args.extend(["--output", str(output_file)])
+    # Add output file
+    args.extend(["--output", str(output_file)])
 
     # Add module name if specified
     if module_name is not None:
@@ -75,3 +74,35 @@ def compile_to_query(
         raise VehicleError(f"Vehicle produced no output")
 
     return out
+
+
+def compile_to_queries(
+    path: Union[str, Path],
+    target: QueryFormat,
+    output_folder: Union[str, Path],
+    declarations: Optional[Iterable[DeclarationName]] = None,
+    networks: Dict[DeclarationName, Union[str, Path]] = {},
+    datasets: Dict[DeclarationName, Union[str, Path]] = {},
+    parameters: Dict[DeclarationName, Any] = {},
+) -> str:
+    """
+    Compile a Vehicle specification to queries for a verifier. This is useful if you want to generate
+    the queries but not run the verifier immediately.
+
+    :param specification: The path to the Vehicle specification file to compile.
+    :param target: The target language to compile to (e.g. QueryFormat.Marabou).
+    :param output_folder: Output folder for the compiled file(s).
+    :param declarations: The names of the declarations to compile, defaults to all declarations.
+    :param networks: A map from the network names in the specification to files containing the networks.
+    :param datasets: A map from the dataset names in the specification to files containing the datasets.
+    :param parameters: A map from the parameter names in the specification to the values to be used in compilation.
+    """
+    return compile(
+        path=path,
+        target=target,
+        declarations=declarations,
+        networks=networks,
+        datasets=datasets,
+        parameters=parameters,
+        output_file=output_folder,
+    )

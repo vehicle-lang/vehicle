@@ -16,14 +16,14 @@ Open Scope order_scope.
 
 
 
-Axiom eqIndex : (0 : ordinal 1%N) == (1 : ordinal 2%N) :> nat.
+Axiom eqIndex : (0 : 'I_1%N) == (1 : 'I_2%N) :> nat.
 
-Axiom neqIndex : (0 : ordinal 1%N) != (1 : ordinal 2%N) :> nat.
+Axiom neqIndex : (0 : 'I_1%N) != (1 : 'I_2%N) :> nat.
 
-Axiom leqIndex : (0 : ordinal 1%N) <= (1 : ordinal 2%N) :> nat.
+Axiom leqIndex : (0 : 'I_1%N) <= (1 : 'I_2%N) :> nat.
 
-Axiom ltIndex : (0 : ordinal 1%N) < (1 : ordinal 2%N) :> nat.
+Axiom ltIndex : (0 : 'I_1%N) < (1 : 'I_2%N) :> nat.
 
-Axiom geqIndex : (0 : ordinal 1%N) >= (1 : ordinal 2%N) :> nat.
+Axiom geqIndex : (0 : 'I_1%N) >= (1 : 'I_2%N) :> nat.
 
-Axiom gtIndex : (0 : ordinal 1%N) > (1 : ordinal 2%N) :> nat.
+Axiom gtIndex : (0 : 'I_1%N) > (1 : 'I_2%N) :> nat.

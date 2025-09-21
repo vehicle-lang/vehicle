@@ -14,20 +14,20 @@ Require Import mathcomp.ssreflect.tuple.
 Require Import mathcomp.algebra.zmodp.
 Require Import mathcomp.reals.reals.
 Require Import vehicle.tensor.
-Import DefaultTupleProdOrder.
 Open Scope ring_scope.
 Open Scope order_scope.
+Open Scope form_scope.
 
 Parameter R : realType.
 
-Parameter andGate : tensor R (2%N :: nil) -> tensor R (1%N :: nil).
+Parameter andGate : 'nT[R]_(2%N :: nil) -> 'nT[R]_(1%N :: nil).
 
-Definition truthy (x : tensor R nil) : Prop := x >= (1 / 2 : R).
+Definition truthy (x : 'nT[R]_(nil)) : Prop := x >= const_t (1 / 2 : R).
 
-Definition falsey (x : tensor R nil) : Prop := x <= (1 / 2 : R).
+Definition falsey (x : 'nT[R]_(nil)) : Prop := x <= const_t (1 / 2 : R).
 
-Definition validInput (x : tensor R nil) : Prop := ((0 : R) <= x) /\ (x <= (1 : R)).
+Definition validInput (x : 'nT[R]_(nil)) : Prop := (const_t (0 : R) <= x) /\ (x <= const_t (1 : R)).
 
-Definition correctOutput (x1 : tensor R nil) (x2 : tensor R nil) : Prop := let y := tnth (andGate (stack [tuple x1; x2])) 0 in (truthy x1 /\ truthy x2 -> truthy y) /\ ((truthy x1 /\ falsey x2 -> falsey y) /\ ((falsey x1 /\ truthy x2 -> falsey y) /\ (falsey x1 /\ falsey x2 -> falsey y))).
+Definition correctOutput (x1 : 'nT[R]_(nil)) (x2 : 'nT[R]_(nil)) : Prop := let y := (andGate (nstack_tuple [tuple x1; x2]))^^0 in (truthy x1 /\ truthy x2 -> truthy y) /\ ((truthy x1 /\ falsey x2 -> falsey y) /\ ((falsey x1 /\ truthy x2 -> falsey y) /\ (falsey x1 /\ falsey x2 -> falsey y))).
 
 Axiom andGateCorrect : forall x1, forall x2, validInput x1 /\ validInput x2 -> correctOutput x1 x2.

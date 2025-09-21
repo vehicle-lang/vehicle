@@ -14,16 +14,16 @@ Require Import mathcomp.ssreflect.tuple.
 Require Import mathcomp.algebra.zmodp.
 Require Import mathcomp.reals.reals.
 Require Import vehicle.tensor.
-Import DefaultTupleProdOrder.
 Open Scope ring_scope.
 Open Scope order_scope.
+Open Scope form_scope.
 
 Parameter R : realType.
 
-Parameter f : tensor R (1%N :: nil) -> tensor R (1%N :: nil).
+Parameter f : 'nT[R]_(1%N :: nil) -> 'nT[R]_(1%N :: nil).
 
-Axiom prop1 : forall x, if x > (0 : R) then tnth (f (stack [tuple x])) 0 > (0 : R) else tnth (f (stack [tuple x])) 0 <= (0 : R).
+Axiom prop1 : forall x, if x > const_t (0 : R) then (f (nstack_tuple [tuple x]))^^0 > const_t (0 : R) else (f (nstack_tuple [tuple x]))^^0 <= const_t (0 : R).
 
-Axiom prop2 : exists x, tnth (f (stack [tuple (if x > (0 : R) then x else (1 / 5 : R))])) 0 >= (0 : R).
+Axiom prop2 : exists x, (f (nstack_tuple [tuple (if x > const_t (0 : R) then x else const_t (1 / 5 : R))]))^^0 >= const_t (0 : R).
 
-Axiom prop3 : exists x, if tnth (f (stack [tuple x])) 0 > (0 : R) then x >= (0 : R) else x < (0 : R).
+Axiom prop3 : exists x, if (f (nstack_tuple [tuple x]))^^0 > const_t (0 : R) then x >= const_t (0 : R) else x < const_t (0 : R).

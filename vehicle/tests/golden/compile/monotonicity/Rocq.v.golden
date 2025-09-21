@@ -11,11 +11,11 @@ Require Import mathcomp.ssreflect.seq.
 Require Import mathcomp.ssreflect.tuple.
 Require Import mathcomp.reals.reals.
 Require Import vehicle.tensor.
-Import DefaultTupleProdOrder.
 Open Scope order_scope.
+Open Scope form_scope.
 
 Parameter R : realType.
 
-Parameter f : tensor R (1%N :: nil) -> tensor R (1%N :: nil).
+Parameter f : 'nT[R]_(1%N :: nil) -> 'nT[R]_(1%N :: nil).
 
-Axiom monotonic : forall x1, forall x2, x1 <= x2 -> f (stack [tuple x1]) <= f (stack [tuple x2]).
+Axiom monotonic : forall x1, forall x2, x1 <= x2 -> f (nstack_tuple [tuple x1]) <= f (nstack_tuple [tuple x2]).

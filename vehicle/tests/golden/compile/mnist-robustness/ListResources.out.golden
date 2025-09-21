@@ -10,11 +10,6 @@
     "entityName": "epsilon"
   },
   {
-    "entityType": "Nat",
-    "entitySort": "@parameter",
-    "entityName": "n"
-  },
-  {
     "entityType": "Vector Image n",
     "entitySort": "@dataset",
     "entityName": "trainingImages"

@@ -8,7 +8,7 @@ import Data.Maybe (fromMaybe)
 import Data.Traversable (for)
 import Distribution.PackageDescription (ComponentName (..), ForeignLib (..), PackageDescription (..))
 import Distribution.Simple (UserHooks (..), defaultMainWithHooks, simpleUserHooks)
-import Distribution.Simple.LocalBuildInfo (LocalBuildInfo (..), componentBuildDir)
+import Distribution.Simple.LocalBuildInfo (LocalBuildInfo (..), cabalFilePath, componentBuildDir)
 import Distribution.Simple.Program (Program, ProgramDb, runDbProgram, simpleProgram)
 import Distribution.Simple.Setup (BuildFlags (..), ConfigFlags (..), fromFlagOrDefault)
 import Distribution.Simple.Utils (die', info)
@@ -100,8 +100,7 @@ getForeignLibFileName foreignLibName
 
 getPackageDir :: LocalBuildInfo -> IO FilePath
 getPackageDir localBuildInfo = do
-  let LocalBuildInfo {cabalFilePath, pkgDescrFile} = localBuildInfo
-  maybe getCurrentDirectory (return . takeDirectory) (cabalFilePath <|> pkgDescrFile)
+  maybe getCurrentDirectory (return . takeDirectory) (cabalFilePath localBuildInfo <|> pkgDescrFile localBuildInfo)
 
 getInstallDir :: Verbosity -> IO (Maybe FilePath)
 getInstallDir verbosity =

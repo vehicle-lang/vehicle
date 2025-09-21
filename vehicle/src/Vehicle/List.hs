@@ -40,7 +40,7 @@ printResources ::
   m ()
 printResources (Main decls) listEntities outputAsJSON = do
   let filterFn = case listEntities of
-        ExternalResources -> isAbstractDecl
+        ExternalResources -> isExternalResourceDecl
         Properties -> isPropertyDecl
   let filteredDecls = filter filterFn decls
   let listDecls =

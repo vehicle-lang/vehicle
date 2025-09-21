@@ -11,17 +11,15 @@ Require Import mathcomp.ssreflect.order.
 Require Import mathcomp.ssreflect.seq.
 Require Import mathcomp.reals.reals.
 Require Import vehicle.tensor.
-Import DefaultTupleProdOrder.
 Open Scope ring_scope.
-Open Scope tensor_scope.
 Open Scope order_scope.
 
 Parameter R : realType.
 
-Parameter encode : tensor R (5%N :: nil) -> tensor R (2%N :: nil).
+Parameter encode : 'nT[R]_(5%N :: nil) -> 'nT[R]_(2%N :: nil).
 
-Parameter decode : tensor R (2%N :: nil) -> tensor R (5%N :: nil).
+Parameter decode : 'nT[R]_(2%N :: nil) -> 'nT[R]_(5%N :: nil).
 
-Definition epsilon : tensor R (5%N :: nil) := foreach (fun i => 1 / 10 : R).
+Definition epsilon : 'nT[R]_(5%N :: nil) := nstack (fun i => const_t (1 / 10 : R)).
 
-Axiom identity : forall x, ((x -%t epsilon) <= decode (encode x)) /\ (decode (encode x) <= (x +%t epsilon)).
+Axiom identity : forall x, ((x - epsilon) <= decode (encode x)) /\ (decode (encode x) <= (x + epsilon)).

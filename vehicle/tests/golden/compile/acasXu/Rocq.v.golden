@@ -16,97 +16,96 @@ Require Import mathcomp.algebra.zmodp.
 Require Import mathcomp.reals.reals.
 Require Import vehicle.tensor.
 Require Import vehicle.utils.
-Import DefaultTupleProdOrder.
 Open Scope ring_scope.
-Open Scope tensor_scope.
 Open Scope order_scope.
+Open Scope form_scope.
 
 Parameter R : realType.
 
-Definition pi : tensor R nil := 392699 / 125000 : R.
+Definition pi : 'nT[R]_(nil) := const_t (392699 / 125000 : R).
 
-Definition InputVector : Type := tensor R (5%N :: nil).
+Definition InputVector : Type := 'nT[R]_(5%N :: nil).
 
-Definition distanceToIntruder : ordinal 5%N := 0.
+Definition distanceToIntruder : 'I_5%N := 0.
 
-Definition angleToIntruder : ordinal 5%N := 1.
+Definition angleToIntruder : 'I_5%N := 1.
 
-Definition intruderHeading : ordinal 5%N := 2.
+Definition intruderHeading : 'I_5%N := 2.
 
-Definition speed : ordinal 5%N := 3.
+Definition speed : 'I_5%N := 3.
 
-Definition intruderSpeed : ordinal 5%N := 4.
+Definition intruderSpeed : 'I_5%N := 4.
 
-Definition OutputVector : Type := tensor R (5%N :: nil).
+Definition OutputVector : Type := 'nT[R]_(5%N :: nil).
 
-Definition clearOfConflict : ordinal 5%N := 0.
+Definition clearOfConflict : 'I_5%N := 0.
 
-Definition weakLeft : ordinal 5%N := 1.
+Definition weakLeft : 'I_5%N := 1.
 
 Definition weakRight : nat := 2%N.
 
-Definition strongLeft : ordinal 5%N := 3.
+Definition strongLeft : 'I_5%N := 3.
 
-Definition strongRight : ordinal 5%N := 4.
+Definition strongRight : 'I_5%N := 4.
 
 Parameter acasXu : InputVector -> OutputVector.
 
-Definition UnnormalisedInputVector : Type := tensor R (5%N :: nil).
+Definition UnnormalisedInputVector : Type := 'nT[R]_(5%N :: nil).
 
-Definition minimumInputValues : UnnormalisedInputVector := stack [tuple (0 : R); oppt pi; oppt pi; (100 : R); (0 : R)].
+Definition minimumInputValues : UnnormalisedInputVector := nstack_tuple [tuple const_t (0 : R); - pi; - pi; const_t (100 : R); const_t (0 : R)].
 
-Definition maximumInputValues : UnnormalisedInputVector := stack [tuple (60261 : R); pi; pi; (1200 : R); (1200 : R)].
+Definition maximumInputValues : UnnormalisedInputVector := nstack_tuple [tuple const_t (60261 : R); pi; pi; const_t (1200 : R); const_t (1200 : R)].
 
-Definition validInput (x : UnnormalisedInputVector) : Prop := forallIndex (fun i => (tnth minimumInputValues i <= tnth x i) /\ (tnth x i <= tnth maximumInputValues i)).
+Definition validInput (x : UnnormalisedInputVector) : Prop := forallIndex (fun i => (minimumInputValues^^i <= x^^i) /\ (x^^i <= maximumInputValues^^i)).
 
-Definition meanScalingValues : UnnormalisedInputVector := stack [tuple (19791091 / 1000 : R); (0 : R); (0 : R); (650 : R); (600 : R)].
+Definition meanScalingValues : UnnormalisedInputVector := nstack_tuple [tuple const_t (19791091 / 1000 : R); const_t (0 : R); const_t (0 : R); const_t (650 : R); const_t (600 : R)].
 
-Definition normalise (x : UnnormalisedInputVector) : InputVector := foreach (fun i => tnth x i -%t tnth meanScalingValues i /%t tnth maximumInputValues i -%t tnth minimumInputValues i).
+Definition normalise (x : UnnormalisedInputVector) : InputVector := nstack (fun i => x^^i - meanScalingValues^^i / maximumInputValues^^i - minimumInputValues^^i).
 
 Definition normAcasXu (x : UnnormalisedInputVector) : OutputVector := acasXu (normalise x).
 
-Definition minimalScore (i : ordinal 5%N) (x : UnnormalisedInputVector) : Prop := forallIndex (fun j => i != j :> nat -> tnth (normAcasXu x) i < tnth (normAcasXu x) j).
+Definition minimalScore (i : 'I_5%N) (x : UnnormalisedInputVector) : Prop := forallIndex (fun j => i != j :> nat -> (normAcasXu x)^^i < (normAcasXu x)^^j).
 
-Definition maximalScore (i : ordinal 5%N) (x : UnnormalisedInputVector) : Prop := forallIndex (fun j => i != j :> nat -> tnth (normAcasXu x) i > tnth (normAcasXu x) j).
+Definition maximalScore (i : 'I_5%N) (x : UnnormalisedInputVector) : Prop := forallIndex (fun j => i != j :> nat -> (normAcasXu x)^^i > (normAcasXu x)^^j).
 
-Definition scaleCOCOutput (x : tensor R nil) : tensor R nil := x -%t (1879721 / 250000 : R) /%t (2337187 / 6250 : R).
+Definition scaleCOCOutput (x : 'nT[R]_(nil)) : 'nT[R]_(nil) := x - const_t (1879721 / 250000 : R) / const_t (2337187 / 6250 : R).
 
-Definition intruderDistantAndSlower (x : UnnormalisedInputVector) : Prop := (tnth x distanceToIntruder >= (55947691 / 1000 : R)) /\ ((tnth x speed >= (1145 : R)) /\ (tnth x intruderSpeed <= (60 : R))).
+Definition intruderDistantAndSlower (x : UnnormalisedInputVector) : Prop := (x^^distanceToIntruder >= const_t (55947691 / 1000 : R)) /\ ((x^^speed >= const_t (1145 : R)) /\ (x^^intruderSpeed <= const_t (60 : R))).
 
-Axiom property1 : forall x, validInput x /\ intruderDistantAndSlower x -> tnth (normAcasXu x) clearOfConflict <= scaleCOCOutput (1500 : R).
+Axiom property1 : forall x, validInput x /\ intruderDistantAndSlower x -> (normAcasXu x)^^clearOfConflict <= scaleCOCOutput (const_t (1500 : R)).
 
 Axiom property2 : forall x, validInput x /\ intruderDistantAndSlower x -> ~ maximalScore clearOfConflict x.
 
-Definition directlyAhead (x : UnnormalisedInputVector) : Prop := (((1500 : R) <= tnth x distanceToIntruder) /\ (tnth x distanceToIntruder <= (1800 : R))) /\ ((oppt (3 / 50 : R) <= tnth x angleToIntruder) /\ (tnth x angleToIntruder <= (3 / 50 : R))).
+Definition directlyAhead (x : UnnormalisedInputVector) : Prop := ((const_t (1500 : R) <= x^^distanceToIntruder) /\ (x^^distanceToIntruder <= const_t (1800 : R))) /\ ((- const_t (3 / 50 : R) <= x^^angleToIntruder) /\ (x^^angleToIntruder <= const_t (3 / 50 : R))).
 
-Definition movingTowards (x : UnnormalisedInputVector) : Prop := (tnth x intruderHeading >= (31 / 10 : R)) /\ ((tnth x speed >= (980 : R)) /\ (tnth x intruderSpeed >= (960 : R))).
+Definition movingTowards (x : UnnormalisedInputVector) : Prop := (x^^intruderHeading >= const_t (31 / 10 : R)) /\ ((x^^speed >= const_t (980 : R)) /\ (x^^intruderSpeed >= const_t (960 : R))).
 
 Axiom property3 : forall x, validInput x /\ (directlyAhead x /\ movingTowards x) -> ~ minimalScore clearOfConflict x.
 
-Definition movingAway (x : UnnormalisedInputVector) : Prop := (tnth x intruderHeading == (0 : R)) /\ (((1000 : R) <= tnth x speed) /\ (((700 : R) <= tnth x intruderSpeed) /\ (tnth x intruderSpeed <= (800 : R)))).
+Definition movingAway (x : UnnormalisedInputVector) : Prop := (x^^intruderHeading == const_t (0 : R)) /\ ((const_t (1000 : R) <= x^^speed) /\ ((const_t (700 : R) <= x^^intruderSpeed) /\ (x^^intruderSpeed <= const_t (800 : R)))).
 
 Axiom property4 : forall x, validInput x /\ (directlyAhead x /\ movingAway x) -> ~ minimalScore clearOfConflict x.
 
-Definition nearAndApproachingFromLeft (x : UnnormalisedInputVector) : Prop := (((250 : R) <= tnth x distanceToIntruder) /\ (tnth x distanceToIntruder <= (400 : R))) /\ ((((1 / 5 : R) <= tnth x angleToIntruder) /\ (tnth x angleToIntruder <= (2 / 5 : R))) /\ (((oppt pi <= tnth x intruderHeading) /\ (tnth x intruderHeading <= (oppt pi +%t (1 / 200 : R)))) /\ ((((100 : R) <= tnth x speed) /\ (tnth x speed <= (400 : R))) /\ (((0 : R) <= tnth x intruderSpeed) /\ (tnth x intruderSpeed <= (400 : R)))))).
+Definition nearAndApproachingFromLeft (x : UnnormalisedInputVector) : Prop := ((const_t (250 : R) <= x^^distanceToIntruder) /\ (x^^distanceToIntruder <= const_t (400 : R))) /\ (((const_t (1 / 5 : R) <= x^^angleToIntruder) /\ (x^^angleToIntruder <= const_t (2 / 5 : R))) /\ (((- pi <= x^^intruderHeading) /\ (x^^intruderHeading <= (- pi + const_t (1 / 200 : R)))) /\ (((const_t (100 : R) <= x^^speed) /\ (x^^speed <= const_t (400 : R))) /\ ((const_t (0 : R) <= x^^intruderSpeed) /\ (x^^intruderSpeed <= const_t (400 : R)))))).
 
 Axiom property5 : forall x, validInput x /\ nearAndApproachingFromLeft x -> minimalScore strongRight x.
 
-Definition intruderFarAway (x : UnnormalisedInputVector) : Prop := (((12000 : R) <= tnth x distanceToIntruder) /\ (tnth x distanceToIntruder <= (62000 : R))) /\ (((oppt pi <= tnth x angleToIntruder) /\ (tnth x angleToIntruder <= oppt (7 / 10 : R))) \/ (((7 / 10 : R) <= tnth x angleToIntruder) /\ (tnth x angleToIntruder <= pi)) /\ (((oppt pi <= tnth x intruderHeading) /\ (tnth x intruderHeading <= (oppt pi +%t (1 / 200 : R)))) /\ ((((100 : R) <= tnth x speed) /\ (tnth x speed <= (1200 : R))) /\ (((0 : R) <= tnth x intruderSpeed) /\ (tnth x intruderSpeed <= (1200 : R)))))).
+Definition intruderFarAway (x : UnnormalisedInputVector) : Prop := ((const_t (12000 : R) <= x^^distanceToIntruder) /\ (x^^distanceToIntruder <= const_t (62000 : R))) /\ (((- pi <= x^^angleToIntruder) /\ (x^^angleToIntruder <= - const_t (7 / 10 : R))) \/ ((const_t (7 / 10 : R) <= x^^angleToIntruder) /\ (x^^angleToIntruder <= pi)) /\ (((- pi <= x^^intruderHeading) /\ (x^^intruderHeading <= (- pi + const_t (1 / 200 : R)))) /\ (((const_t (100 : R) <= x^^speed) /\ (x^^speed <= const_t (1200 : R))) /\ ((const_t (0 : R) <= x^^intruderSpeed) /\ (x^^intruderSpeed <= const_t (1200 : R)))))).
 
 Axiom property6 : forall x, validInput x /\ intruderFarAway x -> minimalScore clearOfConflict x.
 
-Definition largeVerticalSeparation (x : UnnormalisedInputVector) : Prop := (((0 : R) <= tnth x distanceToIntruder) /\ (tnth x distanceToIntruder <= (60760 : R))) /\ (((oppt pi <= tnth x angleToIntruder) /\ (tnth x angleToIntruder <= pi)) /\ (((oppt pi <= tnth x intruderHeading) /\ (tnth x intruderHeading <= pi)) /\ ((((100 : R) <= tnth x speed) /\ (tnth x speed <= (1200 : R))) /\ (((0 : R) <= tnth x intruderSpeed) /\ (tnth x intruderSpeed <= (1200 : R)))))).
+Definition largeVerticalSeparation (x : UnnormalisedInputVector) : Prop := ((const_t (0 : R) <= x^^distanceToIntruder) /\ (x^^distanceToIntruder <= const_t (60760 : R))) /\ (((- pi <= x^^angleToIntruder) /\ (x^^angleToIntruder <= pi)) /\ (((- pi <= x^^intruderHeading) /\ (x^^intruderHeading <= pi)) /\ (((const_t (100 : R) <= x^^speed) /\ (x^^speed <= const_t (1200 : R))) /\ ((const_t (0 : R) <= x^^intruderSpeed) /\ (x^^intruderSpeed <= const_t (1200 : R)))))).
 
 Axiom property7 : forall x, validInput x /\ largeVerticalSeparation x -> (~ minimalScore strongLeft x) /\ (~ minimalScore strongRight x).
 
-Definition largeVerticalSeparationAndPreviousWeakLeft (x : UnnormalisedInputVector) : Prop := (((0 : R) <= tnth x distanceToIntruder) /\ (tnth x distanceToIntruder <= (60760 : R))) /\ (((oppt pi <= tnth x angleToIntruder) /\ (tnth x angleToIntruder <= (oppt (3 / 4 : R) *%t pi))) /\ (((oppt (1 / 10 : R) <= tnth x intruderHeading) /\ (tnth x intruderHeading <= (1 / 10 : R))) /\ ((((600 : R) <= tnth x speed) /\ (tnth x speed <= (1200 : R))) /\ (((600 : R) <= tnth x intruderSpeed) /\ (tnth x intruderSpeed <= (1200 : R)))))).
+Definition largeVerticalSeparationAndPreviousWeakLeft (x : UnnormalisedInputVector) : Prop := ((const_t (0 : R) <= x^^distanceToIntruder) /\ (x^^distanceToIntruder <= const_t (60760 : R))) /\ (((- pi <= x^^angleToIntruder) /\ (x^^angleToIntruder <= (- const_t (3 / 4 : R) * pi))) /\ (((- const_t (1 / 10 : R) <= x^^intruderHeading) /\ (x^^intruderHeading <= const_t (1 / 10 : R))) /\ (((const_t (600 : R) <= x^^speed) /\ (x^^speed <= const_t (1200 : R))) /\ ((const_t (600 : R) <= x^^intruderSpeed) /\ (x^^intruderSpeed <= const_t (1200 : R)))))).
 
 Axiom property8 : forall x, validInput x /\ largeVerticalSeparationAndPreviousWeakLeft x -> minimalScore clearOfConflict x \/ minimalScore weakLeft x.
 
-Definition previousWeakRightAndNearbyIntruder (x : UnnormalisedInputVector) : Prop := (((2000 : R) <= tnth x distanceToIntruder) /\ (tnth x distanceToIntruder <= (7000 : R))) /\ (((oppt (2 / 5 : R) <= tnth x angleToIntruder) /\ (tnth x angleToIntruder <= oppt (7 / 50 : R))) /\ (((oppt pi <= tnth x intruderHeading) /\ (tnth x intruderHeading <= (oppt pi +%t (1 / 100 : R)))) /\ ((((100 : R) <= tnth x speed) /\ (tnth x speed <= (150 : R))) /\ (((0 : R) <= tnth x intruderSpeed) /\ (tnth x intruderSpeed <= (150 : R)))))).
+Definition previousWeakRightAndNearbyIntruder (x : UnnormalisedInputVector) : Prop := ((const_t (2000 : R) <= x^^distanceToIntruder) /\ (x^^distanceToIntruder <= const_t (7000 : R))) /\ (((- const_t (2 / 5 : R) <= x^^angleToIntruder) /\ (x^^angleToIntruder <= - const_t (7 / 50 : R))) /\ (((- pi <= x^^intruderHeading) /\ (x^^intruderHeading <= (- pi + const_t (1 / 100 : R)))) /\ (((const_t (100 : R) <= x^^speed) /\ (x^^speed <= const_t (150 : R))) /\ ((const_t (0 : R) <= x^^intruderSpeed) /\ (x^^intruderSpeed <= const_t (150 : R)))))).
 
 Axiom property9 : forall x, validInput x /\ previousWeakRightAndNearbyIntruder x -> minimalScore strongLeft x.
 
-Definition intruderFarAway2 (x : UnnormalisedInputVector) : Prop := (((36000 : R) <= tnth x distanceToIntruder) /\ (tnth x distanceToIntruder <= (60760 : R))) /\ ((((7 / 10 : R) <= tnth x angleToIntruder) /\ (tnth x angleToIntruder <= pi)) /\ (((oppt pi <= tnth x intruderHeading) /\ (tnth x intruderHeading <= (oppt pi +%t (1 / 100 : R)))) /\ ((((900 : R) <= tnth x speed) /\ (tnth x speed <= (1200 : R))) /\ (((600 : R) <= tnth x intruderSpeed) /\ (tnth x intruderSpeed <= (1200 : R)))))).
+Definition intruderFarAway2 (x : UnnormalisedInputVector) : Prop := ((const_t (36000 : R) <= x^^distanceToIntruder) /\ (x^^distanceToIntruder <= const_t (60760 : R))) /\ (((const_t (7 / 10 : R) <= x^^angleToIntruder) /\ (x^^angleToIntruder <= pi)) /\ (((- pi <= x^^intruderHeading) /\ (x^^intruderHeading <= (- pi + const_t (1 / 100 : R)))) /\ (((const_t (900 : R) <= x^^speed) /\ (x^^speed <= const_t (1200 : R))) /\ ((const_t (600 : R) <= x^^intruderSpeed) /\ (x^^intruderSpeed <= const_t (1200 : R)))))).
 
 Axiom property10 : forall x, validInput x /\ intruderFarAway2 x -> minimalScore clearOfConflict x.

@@ -2,7 +2,7 @@ from typing import List
 
 from ._version import VERSION as VERSION
 from .check import check as check
-from .compile import compile_to_query as compile_to_query
+from .compile import compile_to_queries as compile_to_queries
 from .compile.error import VehicleBuiltinUnsupported as VehicleBuiltinUnsupported
 from .compile.error import VehiclePropertyNotFound as VehiclePropertyNotFound
 
@@ -33,7 +33,7 @@ __all__: List[str] = [
     "check",
     # Compile
     "load_loss_function",
-    "compile_to_query",
+    "compile_to_queries",
     # Verify
     "verify",
     # Validate,

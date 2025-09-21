@@ -27,5 +27,19 @@
     "needs": ["spec.vcl"],
     "produces": ["DL2Loss.vcl"],
     "enabled": false
+  },
+  {
+    "name": "Rocq",
+    "run": "vehicle compile -s spec.vcl -t Rocq -o Rocq.v -c Marabou.queries",
+    "needs": ["spec.vcl"],
+    "produces": ["Rocq.v"]
+  },
+  {
+    "name": "RocqVerify",
+    "run": "vehicle compile -s spec.vcl -t Rocq -o Rocq.v -c Marabou.queries && rocq compile -w none -vok Rocq.v",
+    "needs": ["spec.vcl"],
+    "external": ["rocq"],
+    "ignore": {"files": ["Rocq.v", ".Rocq.aux", "Rocq.glob", "Rocq.vok"]},
+    "enabled": false
   }
 ]
