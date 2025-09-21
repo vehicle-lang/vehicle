@@ -203,7 +203,7 @@ restrictStandardRecordAnnotatedAsTensorType ::
   m ()
 restrictStandardRecordAnnotatedAsTensorType (ident, p) fields = case fields of
   [] -> return ()
-  ((firstFieldName, firstFieldType) : restFields) -> do
+  (firstFieldName, firstFieldType) : restFields -> do
     env <- getFreeEnv
     let expr = BuiltinExpr p (TypeClass ValidTensorLikeType) [explicit firstFieldType]
     let firstFieldIdentifier = ((Identifier (modulePath ident) (nameOf firstFieldName)), provenanceOf firstFieldName)
