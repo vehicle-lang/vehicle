@@ -199,19 +199,42 @@ failedUnificationConstraintsError (FailedUnificationConstraintsError freeEnv (er
               "unable to find a consistent type for the overloaded expression"
                 <+> squotes (prettyTypeClassConstraintOriginExpr ctx checkedInstanceOp checkedInstanceOpArgs)
             CheckingInstanceType (InstanceTypeRestrictionOrigin (TypeRestrictionOrigin _ _ (Right sort) _)) ->
-              "All fields of Records annotated with" <+> quotePretty sort <+> "must have the same type"
+              "All fields of record declarations annotated with" <+> quotePretty sort <+> "must have the same type"
             CheckingInstanceType (InstanceTypeRestrictionOrigin {}) ->
               ""
-      UserError
-        { provenance = provenanceOf ctx,
-          problem =
-            originMessage
-              <> "."
+
+      let problemDescription = case origin of
+            CheckingInstanceType (InstanceTypeRestrictionOrigin (TypeRestrictionOrigin _ (ident, _) (Right (FieldTypesMatch f1 f2)) _)) ->
+              "."
+                <> line
+                <> "In the declaration of"
+                <> quotePretty (nameOf ident)
+                <> ":"
+                <> line
+                <> "Field"
+                  <+> quotePretty (nameOf f1)
+                  <+> "with type:"
+                <> line
+                <> indent 2 (squotes (prettyFriendly (WithContext e1 namedBoundCtx)))
+                <> line
+                <> "Does not match field"
+                  <+> quotePretty (nameOf f2)
+                  <+> "with type:"
+                <> line
+                <> indent 2 (squotes (prettyFriendly (WithContext e2 namedBoundCtx)))
+            _ ->
+              "."
                 <+> "In particular"
                 <+> squotes (prettyFriendly (WithContext e1 namedBoundCtx))
                 <+> "is not equal to"
                 <+> squotes (prettyFriendly (WithContext e2 namedBoundCtx))
-              <> ".",
+                <> "."
+
+      UserError
+        { provenance = provenanceOf ctx,
+          problem =
+            originMessage
+              <> problemDescription,
           fix = Just "check your types"
         }
 
@@ -235,25 +258,46 @@ typeRestrictionError ::
   [(WithContext (InstanceCandidate builtin), UnAnnDoc)] ->
   UserError
 typeRestrictionError ctx (TypeRestrictionOrigin freeEnv (ident, p) sort typ) _candidates = do
-  let gluedType = Glued typ (runNorm $ eval freeEnv (namedBoundCtxOf ctx) emptyBoundEnv typ)
   UserError
     { provenance = p,
-      problem =
-        unsupportedAnnotationTypeDescription (pretty sort) ident gluedType
-          <> "."
-            <+> supportedTypesDescription
-          <> line
-          <> indent 2 (prettyAllowedTypes supportedTypes),
+      problem = problemDescription,
       fix =
         Just $
           "change the type of"
-            <+> prettyIdentName ident
+            <+> fixIdent
             <+> "to a supported type"
     }
   where
-    supportedTypesDescription = case sort of
-      Left _ -> "The possible valid types for" <+> quotePretty sort <+> "annotated declarations are:"
-      Right RestrictedRecord -> "All fields of a record annotated with" <+> quotePretty sort <+> "must have the same type and must be either:"
+    gluedType = Glued typ (runNorm $ eval freeEnv (namedBoundCtxOf ctx) emptyBoundEnv typ)
+
+    fixIdent = case sort of
+      Right (FieldTypeIsAllowed f) -> quotePretty (nameOf f)
+      _ -> prettyIdentName ident
+
+    problemDescription = case sort of
+      Right (FieldTypeIsAllowed f) ->
+        "The type of"
+          <+> quotePretty (nameOf f)
+          <+> "in record declaration"
+          <+> quotePretty (nameOf ident :: Text)
+          <> ":"
+          <> line
+          <> indent 2 (prettyFriendlyEmptyCtx $ unnormalised $ gluedType)
+          <> line
+          <> "is not supported."
+            <+> "All fields of a record declaration annotated with"
+            <+> quotePretty sort
+            <+> "must have the same type and must be either:"
+          <> line
+          <> indent 2 (prettyAllowedTypes supportedTypes)
+      _ ->
+        unsupportedAnnotationTypeDescription (pretty sort) ident gluedType
+          <> "."
+            <+> "The possible valid types for"
+            <+> quotePretty sort
+            <+> "annotated declarations are:"
+          <> line
+          <> indent 2 (prettyAllowedTypes supportedTypes)
 
     supportedTypes = case sort of
       Left RestrictedProperty -> ["Bool", "Vector Bool n", "Tensor Bool ns"]
@@ -261,7 +305,7 @@ typeRestrictionError ctx (TypeRestrictionOrigin freeEnv (ident, p) sort typ) _ca
       Left (RestrictedParameter NonInferable) -> map pretty [BoolType, IndexType, NatType, RatType]
       Left RestrictedDataset -> ["List A    " <+> datasetElementTypes, "Vector A n" <+> datasetElementTypes]
       Left RestrictedNetwork -> ["Tensor Rat [a_1, ..., a_n] -> Tensor Rat [b_1, ..., b_n]  (where 'a_i' and 'b_i' are all constants at compile time)"]
-      Right RestrictedRecord -> ["The element of a tensor (e.g. Real), or", "A tensor (e.g. Tensor Real [...])"]
+      Right _ -> ["The element of a tensor (e.g. Real), or", "A tensor (e.g. Tensor Real [...])"]
 
     datasetElementTypes = "(where A is either `Index n`, `Nat`, `Rat`, `List A`, `Vector A n`)"
 

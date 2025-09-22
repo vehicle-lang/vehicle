@@ -206,14 +206,26 @@ restrictStandardRecordAnnotatedAsTensorType (ident, p) fields = case fields of
   (firstFieldName, firstFieldType) : restFields -> do
     env <- getFreeEnv
     let expr = BuiltinExpr p (TypeClass ValidTensorLikeType) [explicit firstFieldType]
-    let firstFieldIdentifier = ((Identifier (modulePath ident) (nameOf firstFieldName)), provenanceOf firstFieldName)
-    let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin env firstFieldIdentifier (Right RestrictedRecord) firstFieldType
+    let restrictionDetails = Right (FieldTypeIsAllowed firstFieldName)
+    let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin env (ident, p) restrictionDetails firstFieldType
     _ <- createFreshInstanceConstraint False mempty p origin Irrelevant expr
 
-    -- Add unification constraints to make sure fields are all of the same type.
-    let fieldTypes = map snd restFields
-    _ <- traverse (createFreshUnificationConstraint p mempty (CheckingInstanceType origin) firstFieldType) fieldTypes
+    _ <- traverse (checkRecordFieldTypesMatch (ident, p) (firstFieldName, firstFieldType)) restFields
     return ()
+
+checkRecordFieldTypesMatch ::
+  forall m.
+  (MonadTypeChecker Builtin m) =>
+  DeclProvenance ->
+  RecordField (Type Builtin) ->
+  RecordField (Type Builtin) ->
+  m ()
+checkRecordFieldTypesMatch (ident, p) (firstFieldName, firstFieldType) (currFieldName, currFieldType) = do
+  env <- getFreeEnv
+  let restrictionDetails = Right (FieldTypesMatch firstFieldName currFieldName)
+  let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin env (ident, p) restrictionDetails firstFieldType
+  _ <- createFreshUnificationConstraint p mempty (CheckingInstanceType origin) firstFieldType currFieldType
+  return ()
 
 -- | Tries to add new unification constraints using default values.
 addNewStandardAuxiliaryConstraintUsingDefaults ::
