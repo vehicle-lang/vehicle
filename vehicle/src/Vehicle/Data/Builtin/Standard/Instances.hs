@@ -182,12 +182,10 @@ allInstances =
           -------------------------
           ( forAllTypes $ \t ->
               forAllDims $ \ds ->
-                isTensorType t ds
-                  .~~~> validTensorLikeType (tTensor t ds),
-            lamType $ \t ->
-              lamDim $ \ds ->
-                instLam "r1" (isTensorType t ds) $ \_ ->
-                  tUnit,
+                validTensorLikeType (tTensor t ds),
+            lamType $ \_t ->
+              lamDim $ \_ds ->
+                tUnit,
             False
           ),
           -- ----------------
