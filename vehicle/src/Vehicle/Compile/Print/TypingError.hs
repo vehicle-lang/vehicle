@@ -208,18 +208,15 @@ failedUnificationConstraintsError (FailedUnificationConstraintsError freeEnv (er
               "."
                 <> line
                 <> "In the declaration of"
-                <> quotePretty (nameOf ident)
-                <> ":"
-                <> line
-                <> "Field"
+                  <+> quotePretty (nameOf ident)
+                  <+> "field"
                   <+> quotePretty (nameOf f1)
-                  <+> "with type:"
+                  <+> "has type:"
                 <> line
                 <> indent 2 (squotes (prettyFriendly (WithContext e1 namedBoundCtx)))
                 <> line
-                <> "Does not match field"
+                <> "which is not the same as the type of field"
                   <+> quotePretty (nameOf f2)
-                  <+> "with type:"
                 <> line
                 <> indent 2 (squotes (prettyFriendly (WithContext e2 namedBoundCtx)))
             _ ->
@@ -230,12 +227,22 @@ failedUnificationConstraintsError (FailedUnificationConstraintsError freeEnv (er
                 <+> squotes (prettyFriendly (WithContext e2 namedBoundCtx))
                 <> "."
 
+      let fixDescription = case origin of
+            CheckingInstanceType (InstanceTypeRestrictionOrigin (TypeRestrictionOrigin _ _ (Right (FieldTypesMatch f1 f2)) _)) ->
+              "either remove the @tensor annotation or ensure"
+                <+> quotePretty (nameOf f1)
+                <+> "and"
+                <+> quotePretty (nameOf f2)
+                <+> "have the same type"
+            _ ->
+              "check your types"
+
       UserError
         { provenance = provenanceOf ctx,
           problem =
             originMessage
               <> problemDescription,
-          fix = Just "check your types"
+          fix = Just fixDescription
         }
 
 --------------------------------------------------------------------------------
