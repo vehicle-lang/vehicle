@@ -2,6 +2,11 @@
 
 ## Next release
 
+### Verifier backend
+
+* Reduced compilation time from O(n^2) to O(1) where n is the size of the input tensor in certain
+  cases where different sub-tensors are normalised in different ways (e.g. multi-channel images).
+
 ### Rocq backend
 
 * Changes to syntax of compiled Rocq scripts to match standard formatting
