@@ -1,0 +1,6 @@
+Error in file 'spec.vcl' at Line 9, Columns 8-13: The type of 'f3' in record declaration 'Test2':
+  R1
+is not supported. All fields of a record declaration annotated with '@tensor' must have the same type and must be either:
+  1. The element of a tensor (e.g. Real), or
+  2. A tensor (e.g. Tensor Real [...])
+Fix: change the type of 'f3' to a supported type

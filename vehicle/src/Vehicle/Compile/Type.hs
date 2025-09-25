@@ -138,7 +138,7 @@ typeCheckFunctionDef ::
 typeCheckFunctionDef p ident anns typ body isUnused = do
   checkedType <- checkDeclType ident typ
   finalCheckedType <-
-    if isProperty anns
+    if isAnnotatedAsProperty anns
       then logCompilerSection2 MidDetail "checking suitability of type as @property" $ do
         restrictDeclType RestrictedProperty (ident, p) checkedType
       else return checkedType
@@ -157,7 +157,7 @@ typeCheckFunctionDef p ident anns typ body isUnused = do
   solveConstraints (Proxy @builtin)
   substDecl <- substMetaVariables checkedDecl
 
-  if isProperty anns
+  if isAnnotatedAsProperty anns
     then return substDecl
     else do
       -- Otherwise if not a property then generalise over unsolved meta-variables.
@@ -180,7 +180,7 @@ typeCheckRecordDef ::
   RecordFields (Type builtin) ->
   DeclIsUnused ->
   m (Decl builtin)
-typeCheckRecordDef p ident _anns uncheckedType uncheckedFields isUnused = do
+typeCheckRecordDef p ident anns uncheckedType uncheckedFields isUnused = do
   checkedType <- checkDeclType ident uncheckedType
 
   -- Type check the body.
@@ -189,8 +189,12 @@ typeCheckRecordDef p ident _anns uncheckedType uncheckedFields isUnused = do
     logCompilerSection2 MidDetail pass $
       traverse (checkRecordFieldDef ident) uncheckedFields
 
+  when (isAnnotatedAsTensor anns) $
+    logCompilerSection2 MidDetail "checking suitability of type as @tensor" $ do
+      restrictRecordAnnotatedAsTensor (ident, p) checkedFields
+
   -- Reconstruct the function.
-  let checkedDecl = DefRecord p ident _anns checkedType checkedFields
+  let checkedDecl = DefRecord p ident anns checkedType checkedFields
 
   -- Solve constraints and substitute through.
   setCurrentDecl $ Just (checkedDecl, isUnused)

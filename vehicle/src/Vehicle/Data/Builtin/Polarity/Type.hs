@@ -197,6 +197,7 @@ typeOfStack = typeOfVectorLiteral
 instance HasTypeSystem PolarityBuiltin where
   convertFromStandardBuiltins = traverseBuiltinsM convertToPolarityTypes
   restrictDeclType = restrictDeclPolarityType
+  restrictRecordAnnotatedAsTensor = restrictPolarityRecordAnnotatedAsTensor
   isAuxiliaryConstraint _ = True
   solveAuxiliaryInstanceConstraint = solvePolarityConstraint
   addAuxiliaryInputOutputConstraints = addFunctionAuxiliaryInputOutputConstraints (PolarityRelation . FunctionPolarity)
@@ -243,7 +244,7 @@ restrictDeclPolarityType ::
   m (Type PolarityBuiltin)
 restrictDeclPolarityType rDecl declProv declType = do
   freeEnv <- getFreeEnv
-  let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin freeEnv declProv rDecl declType
+  let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin freeEnv declProv (Left rDecl) declType
 
   case rDecl of
     RestrictedNetwork -> restrictPolarityNetworkType origin declProv declType
@@ -276,3 +277,12 @@ assertUnquantifiedPolarity ::
 assertUnquantifiedPolarity origin (_, p) t = do
   createFreshUnificationConstraint p mempty (CheckingInstanceType origin) (PolarityExpr p Unquantified) t
   return t
+
+restrictPolarityRecordAnnotatedAsTensor ::
+  forall m.
+  (MonadTypeChecker PolarityBuiltin m) =>
+  DeclProvenance ->
+  [RecordField (Type PolarityBuiltin)] ->
+  m ()
+restrictPolarityRecordAnnotatedAsTensor (_ident, _p) _fields =
+  return ()

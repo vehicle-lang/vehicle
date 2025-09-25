@@ -5,6 +5,7 @@ module Vehicle.Data.Builtin.Standard.Type () where
 import Data.Proxy (Proxy (..))
 import Vehicle.Compile.Context.Free (MonadFreeContext, getDeclType, getFreeEnv)
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Type.Bidirectional (createFreshUnificationConstraint)
 import Vehicle.Compile.Type.Constraint.InstanceDefaultSolver
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
@@ -82,6 +83,7 @@ typeOfTypeClass tc = case tc of
   ValidDatasetListElementType -> type0 ~> type0
   ValidDatasetTensorElementType -> type0 ~> type0
   IsTensorType {} -> typeOfBuiltinType TensorType
+  ValidTensorLikeType -> type0 ~> type0
 
 typeOfTypeClassOp :: TypeClassOp -> DSLExpr Builtin
 typeOfTypeClassOp b = case b of
@@ -164,6 +166,7 @@ typeOfVectorLiteral =
 instance HasTypeSystem Builtin where
   convertFromStandardBuiltins = return
   restrictDeclType = restrictStandardDeclType
+  restrictRecordAnnotatedAsTensor = restrictStandardRecordAnnotatedAsTensorType
   isAuxiliaryConstraint e = case e of
     App (Builtin _ NatInDomainConstraint) _ -> True
     _ -> False
@@ -188,9 +191,41 @@ restrictStandardDeclType declSort (ident, p) typ = do
         RestrictedNetwork -> ValidNetworkType
 
   let expr = BuiltinExpr p (TypeClass tc) [explicit typ]
-  let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin env (ident, provenanceOf typ) declSort typ
+  let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin env (ident, provenanceOf typ) (Left declSort) typ
   _ <- createFreshInstanceConstraint False mempty p origin Irrelevant expr
   return typ
+
+restrictStandardRecordAnnotatedAsTensorType ::
+  forall m.
+  (MonadTypeChecker Builtin m) =>
+  DeclProvenance ->
+  [RecordField (Type Builtin)] ->
+  m ()
+restrictStandardRecordAnnotatedAsTensorType (ident, p) fields = case fields of
+  [] -> return ()
+  (firstFieldName, firstFieldType) : restFields -> do
+    env <- getFreeEnv
+    let expr = BuiltinExpr p (TypeClass ValidTensorLikeType) [explicit firstFieldType]
+    let restrictionDetails = Right (FieldTypeIsAllowed firstFieldName)
+    let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin env (ident, p) restrictionDetails firstFieldType
+    _ <- createFreshInstanceConstraint False mempty p origin Irrelevant expr
+
+    _ <- traverse (checkRecordFieldTypesMatch (ident, p) (firstFieldName, firstFieldType)) restFields
+    return ()
+
+checkRecordFieldTypesMatch ::
+  forall m.
+  (MonadTypeChecker Builtin m) =>
+  DeclProvenance ->
+  RecordField (Type Builtin) ->
+  RecordField (Type Builtin) ->
+  m ()
+checkRecordFieldTypesMatch (ident, p) (firstFieldName, firstFieldType) (currFieldName, currFieldType) = do
+  env <- getFreeEnv
+  let restrictionDetails = Right (FieldTypesMatch firstFieldName currFieldName)
+  let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin env (ident, p) restrictionDetails firstFieldType
+  _ <- createFreshUnificationConstraint p mempty (CheckingInstanceType origin) firstFieldType currFieldType
+  return ()
 
 -- | Tries to add new unification constraints using default values.
 addNewStandardAuxiliaryConstraintUsingDefaults ::

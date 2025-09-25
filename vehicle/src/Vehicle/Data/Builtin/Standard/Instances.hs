@@ -177,7 +177,18 @@ allInstances =
                 tUnit,
             False
           ),
-          ----------------
+          -------------------------
+          -- ValidTensorLikeType --
+          -------------------------
+          ( forAllTypes $ \t ->
+              forAllDims $ \ds ->
+                validTensorLikeType (tTensor t ds),
+            lamType $ \_t ->
+              lamDim $ \_ds ->
+                tUnit,
+            False
+          ),
+          -- ----------------
           -- HasRatLits --
           ----------------
           ( hasRatLits (tRatTensor dimNil),

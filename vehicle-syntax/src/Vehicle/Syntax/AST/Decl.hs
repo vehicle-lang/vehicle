@@ -192,5 +192,8 @@ instance Pretty Annotation where
     AnnProperty -> "@property"
     AnnTensor -> "@tensor"
 
-isProperty :: [Annotation] -> Bool
-isProperty anns = AnnProperty `elem` anns
+isAnnotatedAsProperty :: [Annotation] -> Bool
+isAnnotatedAsProperty anns = AnnProperty `elem` anns
+
+isAnnotatedAsTensor :: [Annotation] -> Bool
+isAnnotatedAsTensor anns = AnnTensor `elem` anns

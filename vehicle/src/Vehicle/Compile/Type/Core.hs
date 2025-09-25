@@ -138,7 +138,7 @@ data InstanceArgOrigin builtin = ArgOrigin
 data InstanceTypeRestrictionOrigin builtin = TypeRestrictionOrigin
   { freeEnv :: FreeEnv builtin,
     restrictedDeclProv :: DeclProvenance,
-    restrictedDeclSort :: RestrictedDecl,
+    restrictedDeclSort :: Either RestrictedDecl RestrictedRecordField,
     restrictedDeclType :: Type builtin
   }
   deriving (Show)
@@ -275,6 +275,15 @@ data RestrictedDecl
   | RestrictedNetwork
   | RestrictedDataset
   deriving (Show)
+
+data RestrictedRecordField
+  = FieldTypeIsAllowed FieldName
+  | FieldTypesMatch FieldName FieldName
+  deriving (Show)
+
+instance Pretty RestrictedRecordField where
+  pretty = \case
+    _ -> "@tensor"
 
 instance Pretty RestrictedDecl where
   pretty = \case
