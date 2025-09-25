@@ -963,9 +963,9 @@
                 1
               ],
               "metaNetwork": [
-                {
-                  "metaNetworkEntryName": "acasXu",
-                  "metaNetworkEntryInfo": {
+                [
+                  "acasXu",
+                  {
                     "networkType": {
                       "outputTensor": {
                         "dimensions": [
@@ -981,8 +981,9 @@
                       }
                     },
                     "networkFilepath": "fake.onnx"
-                  }
-                }
+                  },
+                  1
+                ]
               ]
             },
             {
@@ -1942,9 +1943,9 @@
                 2
               ],
               "metaNetwork": [
-                {
-                  "metaNetworkEntryName": "acasXu",
-                  "metaNetworkEntryInfo": {
+                [
+                  "acasXu",
+                  {
                     "networkType": {
                       "outputTensor": {
                         "dimensions": [
@@ -1960,8 +1961,9 @@
                       }
                     },
                     "networkFilepath": "fake.onnx"
-                  }
-                }
+                  },
+                  1
+                ]
               ]
             },
             {
@@ -2921,9 +2923,9 @@
                 3
               ],
               "metaNetwork": [
-                {
-                  "metaNetworkEntryName": "acasXu",
-                  "metaNetworkEntryInfo": {
+                [
+                  "acasXu",
+                  {
                     "networkType": {
                       "outputTensor": {
                         "dimensions": [
@@ -2939,8 +2941,9 @@
                       }
                     },
                     "networkFilepath": "fake.onnx"
-                  }
-                }
+                  },
+                  1
+                ]
               ]
             },
             {
@@ -3900,9 +3903,9 @@
                 4
               ],
               "metaNetwork": [
-                {
-                  "metaNetworkEntryName": "acasXu",
-                  "metaNetworkEntryInfo": {
+                [
+                  "acasXu",
+                  {
                     "networkType": {
                       "outputTensor": {
                         "dimensions": [
@@ -3918,8 +3921,9 @@
                       }
                     },
                     "networkFilepath": "fake.onnx"
-                  }
-                }
+                  },
+                  1
+                ]
               ]
             },
             {
@@ -4879,9 +4883,9 @@
                 5
               ],
               "metaNetwork": [
-                {
-                  "metaNetworkEntryName": "acasXu",
-                  "metaNetworkEntryInfo": {
+                [
+                  "acasXu",
+                  {
                     "networkType": {
                       "outputTensor": {
                         "dimensions": [
@@ -4897,8 +4901,9 @@
                       }
                     },
                     "networkFilepath": "fake.onnx"
-                  }
-                }
+                  },
+                  1
+                ]
               ]
             },
             {
@@ -5858,9 +5863,9 @@
                 6
               ],
               "metaNetwork": [
-                {
-                  "metaNetworkEntryName": "acasXu",
-                  "metaNetworkEntryInfo": {
+                [
+                  "acasXu",
+                  {
                     "networkType": {
                       "outputTensor": {
                         "dimensions": [
@@ -5876,8 +5881,9 @@
                       }
                     },
                     "networkFilepath": "fake.onnx"
-                  }
-                }
+                  },
+                  1
+                ]
               ]
             },
             {
@@ -6837,9 +6843,9 @@
                 7
               ],
               "metaNetwork": [
-                {
-                  "metaNetworkEntryName": "acasXu",
-                  "metaNetworkEntryInfo": {
+                [
+                  "acasXu",
+                  {
                     "networkType": {
                       "outputTensor": {
                         "dimensions": [
@@ -6855,8 +6861,9 @@
                       }
                     },
                     "networkFilepath": "fake.onnx"
-                  }
-                }
+                  },
+                  1
+                ]
               ]
             },
             {
@@ -7816,9 +7823,9 @@
                 8
               ],
               "metaNetwork": [
-                {
-                  "metaNetworkEntryName": "acasXu",
-                  "metaNetworkEntryInfo": {
+                [
+                  "acasXu",
+                  {
                     "networkType": {
                       "outputTensor": {
                         "dimensions": [
@@ -7834,8 +7841,9 @@
                       }
                     },
                     "networkFilepath": "fake.onnx"
-                  }
-                }
+                  },
+                  1
+                ]
               ]
             },
             {
@@ -8795,9 +8803,9 @@
                 9
               ],
               "metaNetwork": [
-                {
-                  "metaNetworkEntryName": "acasXu",
-                  "metaNetworkEntryInfo": {
+                [
+                  "acasXu",
+                  {
                     "networkType": {
                       "outputTensor": {
                         "dimensions": [
@@ -8813,8 +8821,9 @@
                       }
                     },
                     "networkFilepath": "fake.onnx"
-                  }
-                }
+                  },
+                  1
+                ]
               ]
             },
             {
@@ -9774,9 +9783,9 @@
                 10
               ],
               "metaNetwork": [
-                {
-                  "metaNetworkEntryName": "acasXu",
-                  "metaNetworkEntryInfo": {
+                [
+                  "acasXu",
+                  {
                     "networkType": {
                       "outputTensor": {
                         "dimensions": [
@@ -9792,8 +9801,9 @@
                       }
                     },
                     "networkFilepath": "fake.onnx"
-                  }
-                }
+                  },
+                  1
+                ]
               ]
             },
             {
@@ -10753,9 +10763,9 @@
                 11
               ],
               "metaNetwork": [
-                {
-                  "metaNetworkEntryName": "acasXu",
-                  "metaNetworkEntryInfo": {
+                [
+                  "acasXu",
+                  {
                     "networkType": {
                       "outputTensor": {
                         "dimensions": [
@@ -10771,8 +10781,9 @@
                       }
                     },
                     "networkFilepath": "fake.onnx"
-                  }
-                }
+                  },
+                  1
+                ]
               ]
             },
             {
@@ -11732,9 +11743,9 @@
                 12
               ],
               "metaNetwork": [
-                {
-                  "metaNetworkEntryName": "acasXu",
-                  "metaNetworkEntryInfo": {
+                [
+                  "acasXu",
+                  {
                     "networkType": {
                       "outputTensor": {
                         "dimensions": [
@@ -11750,8 +11761,9 @@
                       }
                     },
                     "networkFilepath": "fake.onnx"
-                  }
-                }
+                  },
+                  1
+                ]
               ]
             },
             {
@@ -12711,9 +12723,9 @@
                 13
               ],
               "metaNetwork": [
-                {
-                  "metaNetworkEntryName": "acasXu",
-                  "metaNetworkEntryInfo": {
+                [
+                  "acasXu",
+                  {
                     "networkType": {
                       "outputTensor": {
                         "dimensions": [
@@ -12729,8 +12741,9 @@
                       }
                     },
                     "networkFilepath": "fake.onnx"
-                  }
-                }
+                  },
+                  1
+                ]
               ]
             },
             {
@@ -13690,9 +13703,9 @@
                 14
               ],
               "metaNetwork": [
-                {
-                  "metaNetworkEntryName": "acasXu",
-                  "metaNetworkEntryInfo": {
+                [
+                  "acasXu",
+                  {
                     "networkType": {
                       "outputTensor": {
                         "dimensions": [
@@ -13708,8 +13721,9 @@
                       }
                     },
                     "networkFilepath": "fake.onnx"
-                  }
-                }
+                  },
+                  1
+                ]
               ]
             },
             {
@@ -14669,9 +14683,9 @@
                 15
               ],
               "metaNetwork": [
-                {
-                  "metaNetworkEntryName": "acasXu",
-                  "metaNetworkEntryInfo": {
+                [
+                  "acasXu",
+                  {
                     "networkType": {
                       "outputTensor": {
                         "dimensions": [
@@ -14687,8 +14701,9 @@
                       }
                     },
                     "networkFilepath": "fake.onnx"
-                  }
-                }
+                  },
+                  1
+                ]
               ]
             },
             {
@@ -15648,9 +15663,9 @@
                 16
               ],
               "metaNetwork": [
-                {
-                  "metaNetworkEntryName": "acasXu",
-                  "metaNetworkEntryInfo": {
+                [
+                  "acasXu",
+                  {
                     "networkType": {
                       "outputTensor": {
                         "dimensions": [
@@ -15666,8 +15681,9 @@
                       }
                     },
                     "networkFilepath": "fake.onnx"
-                  }
-                }
+                  },
+                  1
+                ]
               ]
             }
           ]

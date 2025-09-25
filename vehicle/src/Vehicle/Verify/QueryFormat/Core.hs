@@ -13,7 +13,7 @@ data QueryFormatID
 instance Pretty QueryFormatID where
   pretty = \case
     MarabouQueries -> "Marabou query format"
-    VNNLibQueries -> "VNNLib query format"
+    VNNLibQueries -> "VNNLIB"
 
 -- | A variable used in a query.
 -- In a one-to-one correspondence with `NetworkIOElementVariable`

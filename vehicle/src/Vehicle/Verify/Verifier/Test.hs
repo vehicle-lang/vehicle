@@ -29,7 +29,7 @@ testVerifier =
 
 prepareTestVerifierArgs :: PrepareVerifierArgs
 prepareTestVerifierArgs metaNetwork queryFile = case metaNetwork of
-  [MetaNetworkEntry {..}] -> [networkFilepath metaNetworkEntryInfo, queryFile]
+  [(_name, info, 1)] -> [networkFilepath info, queryFile]
   _ -> developerError "Should have caught unsupported multiple network applications earlier"
 
 parseTestVerifierOutput :: ParseVerifierOutput

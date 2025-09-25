@@ -98,9 +98,9 @@
                 1
               ],
               "metaNetwork": [
-                {
-                  "metaNetworkEntryName": "g",
-                  "metaNetworkEntryInfo": {
+                [
+                  "g",
+                  {
                     "networkType": {
                       "outputTensor": {
                         "dimensions": [
@@ -116,8 +116,9 @@
                       }
                     },
                     "networkFilepath": "fake.onnx"
-                  }
-                }
+                  },
+                  1
+                ]
               ]
             }
           ]

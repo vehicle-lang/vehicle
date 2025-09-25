@@ -25,10 +25,10 @@
                   1
                 ],
                 "queryVariableMapping": {
-                  "f_1_Y[0]": 5,
-                  "f_1_X[0]": 3,
-                  "f_0_Y[0]": 9,
-                  "f_0_X[0]": 7
+                  "f_Y[0]": 9,
+                  "f_X[0]": 7,
+                  "f_2_Y[0]": 5,
+                  "f_2_X[0]": 3
                 }
               },
               "variableCompilationTrace": {
@@ -152,9 +152,9 @@
                 1
               ],
               "metaNetwork": [
-                {
-                  "metaNetworkEntryName": "f",
-                  "metaNetworkEntryInfo": {
+                [
+                  "f",
+                  {
                     "networkType": {
                       "outputTensor": {
                         "dimensions": [
@@ -170,28 +170,9 @@
                       }
                     },
                     "networkFilepath": "fake.onnx"
-                  }
-                },
-                {
-                  "metaNetworkEntryName": "f",
-                  "metaNetworkEntryInfo": {
-                    "networkType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          1
-                        ],
-                        "baseType": []
-                      },
-                      "inputTensor": {
-                        "dimensions": [
-                          1
-                        ],
-                        "baseType": []
-                      }
-                    },
-                    "networkFilepath": "fake.onnx"
-                  }
-                }
+                  },
+                  2
+                ]
               ]
             }
           ]

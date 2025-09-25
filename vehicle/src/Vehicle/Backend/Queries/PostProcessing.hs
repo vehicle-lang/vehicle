@@ -174,9 +174,10 @@ lineariseAssertions (NormalisedRelation relation (Sparse coefficients constant))
 
 makeMetaNetwork :: NetworkContext -> NetworkApplications -> MetaNetwork
 makeMetaNetwork networkCtx metaNetworkApps = do
-  let networkNames = fst <$> toListOfApplications metaNetworkApps
+  let networkNames = Map.toList metaNetworkApps
   let missing name = developerError $ "missing network" <+> quotePretty name <+> "in context."
-  let toEntry name = MetaNetworkEntry name (fromMaybe (missing name) $ Map.lookup name networkCtx)
+  let lookupInfo name = fromMaybe (missing name) $ Map.lookup name networkCtx
+  let toEntry (name, apps) = (name, lookupInfo name, length apps)
   fmap toEntry networkNames
 
 --------------------------------------------------------------------------------
@@ -330,7 +331,7 @@ compileQueryVariables globalCtx@GlobalCtx {..} compileVariable metaNetworkApps a
       m IndexingState
     compileNetworkApplicationsVariables state (networkName, applications) = do
       let compileApp = compileNetworkApplicationVariables networkName (length applications)
-      foldlM compileApp state (zip [0 ..] $ NonEmpty.toList applications)
+      foldlM compileApp state (zip [1 ..] $ NonEmpty.toList applications)
 
     compileNetworkApplicationVariables ::
       Name ->

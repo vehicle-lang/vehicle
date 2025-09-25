@@ -95,9 +95,9 @@
                 1
               ],
               "metaNetwork": [
-                {
-                  "metaNetworkEntryName": "classifier",
-                  "metaNetworkEntryInfo": {
+                [
+                  "classifier",
+                  {
                     "networkType": {
                       "outputTensor": {
                         "dimensions": [],
@@ -111,8 +111,9 @@
                       }
                     },
                     "networkFilepath": "baseline.onnx"
-                  }
-                }
+                  },
+                  1
+                ]
               ]
             },
             {
@@ -204,9 +205,9 @@
                 2
               ],
               "metaNetwork": [
-                {
-                  "metaNetworkEntryName": "classifier",
-                  "metaNetworkEntryInfo": {
+                [
+                  "classifier",
+                  {
                     "networkType": {
                       "outputTensor": {
                         "dimensions": [],
@@ -220,8 +221,9 @@
                       }
                     },
                     "networkFilepath": "baseline.onnx"
-                  }
-                }
+                  },
+                  1
+                ]
               ]
             }
           ]

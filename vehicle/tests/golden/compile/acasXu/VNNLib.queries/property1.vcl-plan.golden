@@ -243,9 +243,9 @@
                 1
               ],
               "metaNetwork": [
-                {
-                  "metaNetworkEntryName": "acasXu",
-                  "metaNetworkEntryInfo": {
+                [
+                  "acasXu",
+                  {
                     "networkType": {
                       "outputTensor": {
                         "dimensions": [
@@ -261,8 +261,9 @@
                       }
                     },
                     "networkFilepath": "fake.onnx"
-                  }
-                }
+                  },
+                  1
+                ]
               ]
             }
           ]

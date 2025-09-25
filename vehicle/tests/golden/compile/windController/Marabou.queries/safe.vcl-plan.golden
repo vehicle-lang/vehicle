@@ -171,9 +171,9 @@
                 1
               ],
               "metaNetwork": [
-                {
-                  "metaNetworkEntryName": "controller",
-                  "metaNetworkEntryInfo": {
+                [
+                  "controller",
+                  {
                     "networkType": {
                       "outputTensor": {
                         "dimensions": [
@@ -189,8 +189,9 @@
                       }
                     },
                     "networkFilepath": "controller.onnx"
-                  }
-                }
+                  },
+                  1
+                ]
               ]
             },
             {
@@ -358,9 +359,9 @@
                 2
               ],
               "metaNetwork": [
-                {
-                  "metaNetworkEntryName": "controller",
-                  "metaNetworkEntryInfo": {
+                [
+                  "controller",
+                  {
                     "networkType": {
                       "outputTensor": {
                         "dimensions": [
@@ -376,8 +377,9 @@
                       }
                     },
                     "networkFilepath": "controller.onnx"
-                  }
-                }
+                  },
+                  1
+                ]
               ]
             }
           ]

@@ -343,9 +343,9 @@
                 1
               ],
               "metaNetwork": [
-                {
-                  "metaNetworkEntryName": "andGate",
-                  "metaNetworkEntryInfo": {
+                [
+                  "andGate",
+                  {
                     "networkType": {
                       "outputTensor": {
                         "dimensions": [
@@ -361,8 +361,9 @@
                       }
                     },
                     "networkFilepath": "fake.onnx"
-                  }
-                }
+                  },
+                  1
+                ]
               ]
             },
             {
@@ -702,9 +703,9 @@
                 2
               ],
               "metaNetwork": [
-                {
-                  "metaNetworkEntryName": "andGate",
-                  "metaNetworkEntryInfo": {
+                [
+                  "andGate",
+                  {
                     "networkType": {
                       "outputTensor": {
                         "dimensions": [
@@ -720,8 +721,9 @@
                       }
                     },
                     "networkFilepath": "fake.onnx"
-                  }
-                }
+                  },
+                  1
+                ]
               ]
             },
             {
@@ -1061,9 +1063,9 @@
                 3
               ],
               "metaNetwork": [
-                {
-                  "metaNetworkEntryName": "andGate",
-                  "metaNetworkEntryInfo": {
+                [
+                  "andGate",
+                  {
                     "networkType": {
                       "outputTensor": {
                         "dimensions": [
@@ -1079,8 +1081,9 @@
                       }
                     },
                     "networkFilepath": "fake.onnx"
-                  }
-                }
+                  },
+                  1
+                ]
               ]
             },
             {
@@ -1420,9 +1423,9 @@
                 4
               ],
               "metaNetwork": [
-                {
-                  "metaNetworkEntryName": "andGate",
-                  "metaNetworkEntryInfo": {
+                [
+                  "andGate",
+                  {
                     "networkType": {
                       "outputTensor": {
                         "dimensions": [
@@ -1438,8 +1441,9 @@
                       }
                     },
                     "networkFilepath": "fake.onnx"
-                  }
-                }
+                  },
+                  1
+                ]
               ]
             }
           ]

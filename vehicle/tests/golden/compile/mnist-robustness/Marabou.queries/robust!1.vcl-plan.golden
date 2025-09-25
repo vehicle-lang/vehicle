@@ -13703,9 +13703,9 @@
                 1
               ],
               "metaNetwork": [
-                {
-                  "metaNetworkEntryName": "classifier",
-                  "metaNetworkEntryInfo": {
+                [
+                  "classifier",
+                  {
                     "networkType": {
                       "outputTensor": {
                         "dimensions": [
@@ -13722,8 +13722,9 @@
                       }
                     },
                     "networkFilepath": "fake.onnx"
-                  }
-                }
+                  },
+                  1
+                ]
               ]
             },
             {
@@ -27423,9 +27424,9 @@
                 2
               ],
               "metaNetwork": [
-                {
-                  "metaNetworkEntryName": "classifier",
-                  "metaNetworkEntryInfo": {
+                [
+                  "classifier",
+                  {
                     "networkType": {
                       "outputTensor": {
                         "dimensions": [
@@ -27442,8 +27443,9 @@
                       }
                     },
                     "networkFilepath": "fake.onnx"
-                  }
-                }
+                  },
+                  1
+                ]
               ]
             },
             {
@@ -41143,9 +41145,9 @@
                 3
               ],
               "metaNetwork": [
-                {
-                  "metaNetworkEntryName": "classifier",
-                  "metaNetworkEntryInfo": {
+                [
+                  "classifier",
+                  {
                     "networkType": {
                       "outputTensor": {
                         "dimensions": [
@@ -41162,8 +41164,9 @@
                       }
                     },
                     "networkFilepath": "fake.onnx"
-                  }
-                }
+                  },
+                  1
+                ]
               ]
             },
             {
@@ -54863,9 +54866,9 @@
                 4
               ],
               "metaNetwork": [
-                {
-                  "metaNetworkEntryName": "classifier",
-                  "metaNetworkEntryInfo": {
+                [
+                  "classifier",
+                  {
                     "networkType": {
                       "outputTensor": {
                         "dimensions": [
@@ -54882,8 +54885,9 @@
                       }
                     },
                     "networkFilepath": "fake.onnx"
-                  }
-                }
+                  },
+                  1
+                ]
               ]
             },
             {
@@ -68583,9 +68587,9 @@
                 5
               ],
               "metaNetwork": [
-                {
-                  "metaNetworkEntryName": "classifier",
-                  "metaNetworkEntryInfo": {
+                [
+                  "classifier",
+                  {
                     "networkType": {
                       "outputTensor": {
                         "dimensions": [
@@ -68602,8 +68606,9 @@
                       }
                     },
                     "networkFilepath": "fake.onnx"
-                  }
-                }
+                  },
+                  1
+                ]
               ]
             },
             {
@@ -82303,9 +82308,9 @@
                 6
               ],
               "metaNetwork": [
-                {
-                  "metaNetworkEntryName": "classifier",
-                  "metaNetworkEntryInfo": {
+                [
+                  "classifier",
+                  {
                     "networkType": {
                       "outputTensor": {
                         "dimensions": [
@@ -82322,8 +82327,9 @@
                       }
                     },
                     "networkFilepath": "fake.onnx"
-                  }
-                }
+                  },
+                  1
+                ]
               ]
             },
             {
@@ -96023,9 +96029,9 @@
                 7
               ],
               "metaNetwork": [
-                {
-                  "metaNetworkEntryName": "classifier",
-                  "metaNetworkEntryInfo": {
+                [
+                  "classifier",
+                  {
                     "networkType": {
                       "outputTensor": {
                         "dimensions": [
@@ -96042,8 +96048,9 @@
                       }
                     },
                     "networkFilepath": "fake.onnx"
-                  }
-                }
+                  },
+                  1
+                ]
               ]
             },
             {
@@ -109743,9 +109750,9 @@
                 8
               ],
               "metaNetwork": [
-                {
-                  "metaNetworkEntryName": "classifier",
-                  "metaNetworkEntryInfo": {
+                [
+                  "classifier",
+                  {
                     "networkType": {
                       "outputTensor": {
                         "dimensions": [
@@ -109762,8 +109769,9 @@
                       }
                     },
                     "networkFilepath": "fake.onnx"
-                  }
-                }
+                  },
+                  1
+                ]
               ]
             },
             {
@@ -123463,9 +123471,9 @@
                 9
               ],
               "metaNetwork": [
-                {
-                  "metaNetworkEntryName": "classifier",
-                  "metaNetworkEntryInfo": {
+                [
+                  "classifier",
+                  {
                     "networkType": {
                       "outputTensor": {
                         "dimensions": [
@@ -123482,8 +123490,9 @@
                       }
                     },
                     "networkFilepath": "fake.onnx"
-                  }
-                }
+                  },
+                  1
+                ]
               ]
             }
           ]
