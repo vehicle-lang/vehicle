@@ -402,21 +402,22 @@ verifySpecificationParser =
 
 typeSystemParser :: Parser (Maybe SecondaryTypeSystem)
 typeSystemParser =
-  option auto $
-    long "typeSystem"
-      <> short 't'
-      <> help
-        ( "Which typing system should be used."
-            <> layoutAsString
-              ( line
-                  <> line
-                  <> indent
-                    2
-                    ( vsep allTypeSystems
-                    )
-              )
-        )
-      <> value Nothing
+  optional $
+    option auto $
+      long "typeSystem"
+        <> short 't'
+        <> metavar "TYPE_SYSTEM"
+        <> help
+          ( "A secondary type system to be used."
+              <> layoutAsString
+                ( line
+                    <> line
+                    <> indent
+                      2
+                      ( vsep allTypeSystems
+                      )
+                )
+          )
 
 listModeParser :: Parser ListableEntities
 listModeParser =

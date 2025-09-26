@@ -19,6 +19,8 @@
 
 * Fixed the `list resources` such that inferable parameters are not listed.
 
+* Fixed parsing of the `--typeSystem` option to the `check` command.
+
 ### Python interface
 
 * Renamed `vehicle_lang.compile_to_query` to `vehicle_lang.compile` and made the `output_file` argument non-optional.

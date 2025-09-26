@@ -55,8 +55,8 @@ instance Pretty SecondaryTypeSystem where
 
 instance Read SecondaryTypeSystem where
   readsPrec _d x = case x of
-    "Linearity" -> [(PolarityTypes, [])]
-    "Polarity" -> [(LinearityTypes, [])]
+    "Linearity" -> [(LinearityTypes, [])]
+    "Polarity" -> [(PolarityTypes, [])]
     "Decidability" -> [(DecidabilityTypes, [])]
     _ -> []
 
