@@ -5,13 +5,14 @@ import Data.Aeson (FromJSON, ToJSON)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
 import Data.Map qualified as Map (mapKeys)
+import Data.Vector.Internal.Check (HasCallStack)
 import GHC.Generics
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Code.BooleanExpr (ConjunctAll (..), MaybeTrivial (..))
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.Hashing ()
-import Vehicle.Data.QuantifiedVariable
 import Vehicle.Data.Tensor (HasShape, RatTensor, Tensor, at)
+import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Prelude
 import Vehicle.Syntax.Tensor
   ( HasShape (..),
@@ -70,6 +71,12 @@ inequalityToRelation = \case
 
 instance Pretty InequalityRelation where
   pretty = pretty . inequalityToRelation
+
+combineInequalityRelations :: InequalityRelation -> InequalityRelation -> InequalityRelation
+combineInequalityRelations r1 r2 = case (r1, r2) of
+  (Strict, _) -> Strict
+  (_, Strict) -> Strict
+  (NonStrict, NonStrict) -> NonStrict
 
 --------------------------------------------------------------------------------
 -- Equality relation
@@ -139,7 +146,7 @@ reduceTensorExpr dim lookupElementVariables expr = do
   fmap (reduceLinearExprAt lookupElementVariables expr) [0 .. dim - 1]
 
 reduceLinearExprAt ::
-  (Ord variable) =>
+  (HasCallStack, Ord variable) =>
   (variable -> [variable]) ->
   LinearExpr variable RatTensor ->
   Int ->
@@ -176,18 +183,19 @@ instance (HasShape expr) => HasShape (Assertion expr) where
   shapeOf assertion = shapeOf (expression assertion)
 
 comparisonToAssertion ::
-  (VariableLike variable) =>
+  (Monad m) =>
   ComparisonOp ->
-  LinearExpr variable RatTensor ->
-  LinearExpr variable RatTensor ->
-  Assertion (LinearExpr variable RatTensor)
-comparisonToAssertion op e1 e2 = case op of
+  (expr -> expr -> m expr) ->
+  expr ->
+  expr ->
+  m (Assertion expr)
+comparisonToAssertion op sub e1 e2 = case op of
   Ne -> developerError "Cannot convert `Ne` to assertion"
-  Eq -> NormalisedRelation OEq $ addExprs 1 (-1) e1 e2
-  Lt -> NormalisedRelation OLt $ addExprs 1 (-1) e1 e2
-  Le -> NormalisedRelation OLe $ addExprs 1 (-1) e1 e2
-  Gt -> NormalisedRelation OLt $ addExprs (-1) 1 e1 e2
-  Ge -> NormalisedRelation OLe $ addExprs (-1) 1 e1 e2
+  Eq -> NormalisedRelation OEq <$> sub e1 e2
+  Lt -> NormalisedRelation OLt <$> sub e1 e2
+  Le -> NormalisedRelation OLe <$> sub e1 e2
+  Gt -> NormalisedRelation OLt <$> sub e2 e1
+  Ge -> NormalisedRelation OLe <$> sub e2 e1
 
 type LinearSubstitution variable = Map variable (LinearExpr variable RatTensor)
 
@@ -207,6 +215,15 @@ getInequality (NormalisedRelation rel expr) = case rel of
 
 --------------------------------------------------------------------------------
 -- Bounds
+
+data BoundType
+  = Upper
+  | Lower
+
+instance Pretty BoundType where
+  pretty = \case
+    Lower -> "lower"
+    Upper -> "upper"
 
 type Bound expr = Inequality expr
 
@@ -233,6 +250,10 @@ instance (NFData expr) => NFData (Bounds expr)
 instance (ToJSON expr) => ToJSON (Bounds expr)
 
 instance (FromJSON expr) => FromJSON (Bounds expr)
+
+andBounds :: Bounds expr -> Bounds expr -> Bounds expr
+andBounds (Bounds lower1 upper1) (Bounds lower2 upper2) =
+  Bounds (lower1 <> lower2) (upper1 <> upper2)
 
 --------------------------------------------------------------------------------
 -- Variable status

@@ -1,6 +1,33 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-module Vehicle.Data.Code.Expr where
+module Vehicle.Data.Code.Expr
+  ( Expr (Universe, Pi, Builtin, BoundVar, FreeVar, Hole, Meta, Let, Lam, Record, RecordAcc, App),
+    Type,
+    Binder,
+    Arg,
+    Telescope,
+    Decl,
+    Prog,
+    normAppList,
+    normApp,
+    isTypeSynonym,
+    mkHole,
+    pattern TypeUniverse,
+    pattern BuiltinExpr,
+    BuiltinUpdate,
+    traverseBuiltinsM,
+    mapBuiltins,
+    FreeVarUpdate,
+    traverseFreeVarsM,
+    freeVarsIn,
+    substDBAll,
+    substDBInto,
+    substArgs,
+    liftDBIndices,
+    Substitution,
+    substituteDB,
+  )
+where
 
 import Control.DeepSeq (NFData)
 import Control.Monad.Identity (Identity (..))
@@ -15,8 +42,9 @@ import Data.Set qualified as Set
 import GHC.Generics (Generic)
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Code.Interface (HasBuiltinConstructor (..))
-import Vehicle.Data.DeBruijn (Ix (..), Lv, Substitutable (..), Substitution, shiftDBIndex, unLv)
 import Vehicle.Data.Universe (UniverseLevel (..))
+import Vehicle.Data.Variable.Bound.Index (Ix (..))
+import Vehicle.Data.Variable.Bound.Level (Lv, unLv)
 import Vehicle.Prelude
 import Vehicle.Syntax.Sugar (BinderType (..), HasBinders (..))
 
@@ -93,27 +121,7 @@ data Expr builtin
   deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
 
 --------------------------------------------------------------------------------
--- The AST datatypes specialised to the Expr type
-
-type Type builtin = Expr builtin
-
-type Binder builtin = GenericBinder (Expr builtin)
-
-type Arg builtin = GenericArg (Expr builtin)
-
-type Telescope builtin = [Binder builtin]
-
-type Decl builtin = GenericDecl (Expr builtin)
-
-type Prog builtin = GenericProg (Expr builtin)
-
---------------------------------------------------------------------------------
 -- Safe applications
-
--- | Smart constructor for applications with possibly no arguments.
-normAppList :: Expr builtin -> [Arg builtin] -> Expr builtin
-normAppList f [] = f
-normAppList f (x : xs) = App f (x :| xs)
 
 -- | Smart constructor for applications.
 normApp :: Expr builtin -> NonEmpty (Arg builtin) -> Expr builtin
@@ -127,6 +135,26 @@ pattern App f xs <- UnsafeApp f xs
     App f xs = normApp f xs
 
 {-# COMPLETE Universe, App, Pi, Builtin, BoundVar, FreeVar, Hole, Meta, Let, Lam, Record, RecordAcc #-}
+
+-- | Smart constructor for applications with possibly no arguments.
+normAppList :: Expr builtin -> [Arg builtin] -> Expr builtin
+normAppList f [] = f
+normAppList f (x : xs) = App f (x :| xs)
+
+--------------------------------------------------------------------------------
+-- The AST datatypes specialised to the Expr type
+
+type Type builtin = Expr builtin
+
+type Binder builtin = GenericBinder (Expr builtin)
+
+type Arg builtin = GenericArg (Expr builtin)
+
+type Telescope builtin = [Binder builtin]
+
+type Decl builtin = GenericDecl (Expr builtin)
+
+type Prog builtin = GenericProg (Expr builtin)
 
 --------------------------------------------------------------------------------
 -- Instances
@@ -182,21 +210,12 @@ getBuiltinApp = \case
   App (Builtin _ b) args -> Just (b, NonEmpty.toList args)
   _ -> Nothing
 
-getFreeVarApp :: Expr builtin -> Maybe (Provenance, Identifier, [Arg builtin])
-getFreeVarApp = \case
-  FreeVar p b -> Just (p, b, [])
-  App (FreeVar p b) args -> Just (p, b, NonEmpty.toList args)
-  _ -> Nothing
-
 -----------------------------------------------------------------------------
 -- Traversing builtins
 
 -- | Function for updating a builtin application
 type BuiltinUpdate m builtin1 builtin2 =
   Provenance -> builtin1 -> [Arg builtin2] -> m (Expr builtin2)
-
-noOpBuiltinUpdate :: (Monad m) => BuiltinUpdate m builtin builtin
-noOpBuiltinUpdate p b args = return $ normAppList (Builtin p b) args
 
 -- | Traverses all the auxiliary type arguments in the provided element,
 -- applying the provided update function when it finds them (or a space
@@ -324,6 +343,17 @@ instance HasBuiltinConstructor Expr where
 --------------------------------------------------------------------------------
 -- DeBruijin substitution
 
+type Substitution value = Ix -> Either Ix value
+
+class Substitutable value target | target -> value where
+  subst :: (MonadReader (Lv, Substitution value) m) => target -> m target
+
+instance (Substitutable expr expr) => Substitutable expr (GenericArg expr) where
+  subst = traverse subst
+
+instance (Substitutable expr expr) => Substitutable expr (GenericBinder expr) where
+  subst = traverse subst
+
 instance Substitutable (Expr builtin) (Expr builtin) where
   subst expr = case expr of
     BoundVar p i -> do
@@ -345,6 +375,9 @@ instance Substitutable (Expr builtin) (Expr builtin) where
     Lam p binder e -> Lam p <$> traverse subst binder <*> underDBBinder (subst e)
     Record p i fs -> Record p i <$> traverseRecordFields subst fs
     RecordAcc p r field -> RecordAcc p <$> subst r <*> pure field
+
+shiftDBIndex :: Ix -> Lv -> Ix
+shiftDBIndex i l = Ix (unIx i + unLv l)
 
 -- Temporarily go under a binder, increasing the binding depth by one
 -- and shifting the current state.

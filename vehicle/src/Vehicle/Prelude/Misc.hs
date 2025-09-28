@@ -20,7 +20,7 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Data.These (These (..), these)
+import Data.These (These (..))
 import GHC.Generics (Generic)
 import Numeric (readFloat, readSigned)
 import System.Console.ANSI
@@ -84,6 +84,11 @@ unionMaybeWith :: (a -> a -> a) -> Maybe a -> Maybe a -> Maybe a
 unionMaybeWith _ Nothing mb = mb
 unionMaybeWith _ ma Nothing = ma
 unionMaybeWith f (Just a) (Just b) = Just $ f a b
+
+unionMaybeWithM :: (Monad m) => (a -> a -> m a) -> Maybe a -> Maybe a -> m (Maybe a)
+unionMaybeWithM _ Nothing mb = return mb
+unionMaybeWithM _ ma Nothing = return ma
+unionMaybeWithM f (Just a) (Just b) = Just <$> f a b
 
 partitionMaybe :: (a -> Maybe b) -> [a] -> ([b], [a])
 partitionMaybe f xs = runIdentity (partitionMaybeM (return . f) xs)
@@ -261,12 +266,6 @@ getModify f = do
   modify f
   return x
 
-mergeTheses :: (a -> a -> a) -> (b -> b -> b) -> These a b -> These a b -> These a b
-mergeTheses f g = \case
-  This x -> first (f x)
-  That y -> second (g y)
-  These x y -> bimap (f x) (g y)
-
 mergeNonEmptyKeyValues :: (Ord a) => (NonEmpty b -> b) -> NonEmpty (a, b) -> NonEmpty (a, b)
 mergeNonEmptyKeyValues f xs = do
   let results = Map.toList $ Map.fromListWith (<>) $ NonEmpty.toList $ fmap (second (:| [])) xs
@@ -274,19 +273,12 @@ mergeNonEmptyKeyValues f xs = do
     [] -> developerError "impossible"
     u : us -> fmap (second f) (u :| us)
 
-mergeThesesByThis :: forall a b. (Ord a) => (NonEmpty b -> b) -> NonEmpty (These a b) -> NonEmpty (These a b)
-mergeThesesByThis f xs = do
-  let pairs = fmap (these (\a -> (Just a, [])) (\b -> (Nothing, [b])) (\a b -> (Just a, [b]))) xs
-  let thatByThis = Map.toList $ Map.fromListWith (<>) $ NonEmpty.toList pairs
-  case thatByThis of
-    [] -> developerError "impossible"
-    u : us -> fmap convert (u :| us)
-  where
-    convert :: (Maybe a, [b]) -> These a b
-    convert (Nothing, []) = developerError "impossible"
-    convert (Just a, []) = This a
-    convert (Nothing, b : bs) = That (f (b :| bs))
-    convert (Just a, b : bs) = These a (f (b :| bs))
+theseErrors :: (r1 -> r2 -> r3) -> Either e1 r1 -> Either e2 r2 -> Either (These e1 e2) r3
+theseErrors f v1 v2 = case (v1, v2) of
+  (Left e1, Left e2) -> Left $ These e1 e2
+  (Left e1, Right {}) -> Left $ This e1
+  (Right {}, Left e2) -> Left $ That e2
+  (Right r1, Right r2) -> Right $ f r1 r2
 
 --------------------------------------------------------------------------------
 -- Constants

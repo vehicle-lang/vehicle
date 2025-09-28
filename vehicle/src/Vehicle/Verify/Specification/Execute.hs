@@ -22,10 +22,9 @@ import System.Exit (ExitCode (..))
 import System.FilePath (takeFileName, (</>))
 import System.Process (readProcessWithExitCode)
 import System.Random
-import Vehicle.Backend.Queries.UserVariableElimination.VariableReconstruction (reconstructUserVars)
+import Vehicle.Backend.Solver.UserVariableElimination.VariableReconstruction (reconstructUserVars)
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Code.BooleanExpr
-import Vehicle.Data.QuantifiedVariable (UserVariableAssignment (..))
 import Vehicle.Data.Tensor as Tensor (HasShape (..), toVector)
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core

@@ -18,7 +18,7 @@ import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Data.Builtin.Interface.Print
-import Vehicle.Data.DeBruijn (dbLevelToIndex)
+import Vehicle.Data.Variable.Bound.Level (dbLevelToIndex)
 
 --------------------------------------------------------------------------------
 -- Public interface

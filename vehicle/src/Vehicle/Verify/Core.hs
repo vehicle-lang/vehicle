@@ -13,7 +13,7 @@ import System.FilePath ((<.>), (</>))
 import Vehicle.Compile.Resource
 import Vehicle.Data.Assertion (Relation (..))
 import Vehicle.Data.Builtin.Core
-import Vehicle.Data.Tensor (TensorIndices, showTensorIndices)
+import Vehicle.Data.Tensor (RatTensor, TensorIndices, showTensorIndices)
 import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
@@ -164,3 +164,19 @@ createNetworkVarName networkName application inputOrOutput =
   pretty networkName
     <> pretty (fmap subscript (show application))
     <> brackets (pretty inputOrOutput)
+
+--------------------------------------------------------------------------------
+-- User variable assignments
+
+-- | A (satisfying) assignment to a set of user-level variables.
+newtype UserVariableAssignment
+  = UserVariableAssignment [(Name, RatTensor)]
+  deriving (Generic)
+
+instance ToJSON UserVariableAssignment
+
+instance FromJSON UserVariableAssignment
+
+instance Pretty UserVariableAssignment where
+  pretty (UserVariableAssignment assignment) =
+    vsep (fmap pretty assignment)

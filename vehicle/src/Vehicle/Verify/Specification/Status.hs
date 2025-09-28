@@ -3,7 +3,6 @@ module Vehicle.Verify.Specification.Status where
 import Data.Set (Set)
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Code.BooleanExpr (MaybeTrivial (..))
-import Vehicle.Data.QuantifiedVariable
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core (QueryVariable)
 import Vehicle.Verify.Specification (QueryMetaData (..))

@@ -12,7 +12,6 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.Proxy (Proxy (..))
 import Data.Set (Set)
 import Data.Set qualified as Set
-import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Dependency (completelyUnusedDeclarations, createDependencyGraph)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
@@ -31,6 +30,7 @@ import Vehicle.Compile.Type.System (HasTypeSystem (..), TCM, runAuxiliarySolver)
 import Vehicle.Data.Builtin.Interface.Normalise (NormalisableBuiltin)
 import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin (..))
 import Vehicle.Data.Builtin.Standard
+import Vehicle.Data.Variable.Free.Context
 
 -------------------------------------------------------------------------------
 -- Algorithm

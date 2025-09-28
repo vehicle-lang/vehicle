@@ -17,8 +17,6 @@ where
 import Data.Data (Proxy (..))
 import Data.List.NonEmpty as NonEmpty (toList)
 import Data.Map.Ordered.Strict qualified as OMap
-import Vehicle.Compile.Context.Bound.Class (MonadBoundContext (..))
-import Vehicle.Compile.Context.Free.Class (MonadFreeContext (..), getFreeEnv)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Data.Builtin.Interface (Accessor (..))
@@ -29,6 +27,8 @@ import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Code.Interface (IsArgs (..))
 import Vehicle.Data.Code.Value
+import Vehicle.Data.Variable.Bound.Context.Class (MonadBoundContext (..))
+import Vehicle.Data.Variable.Free.Context.Class (MonadFreeContext (..), getFreeEnv)
 
 -- NOTE: there is no evaluatation to NF in this file. To do it
 -- efficiently you should just evaluate to WHNF and then recursively

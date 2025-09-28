@@ -8,7 +8,6 @@ import Control.Monad.Except (MonadError (..))
 import Data.Either (partitionEithers)
 import Data.Hashable (Hashable)
 import Data.Proxy (Proxy (..))
-import Vehicle.Compile.Context.Free (getFreeEnv)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE (normaliseInEnv)
 import Vehicle.Compile.Prelude
@@ -23,7 +22,8 @@ import Vehicle.Compile.Type.Monad.Class
   )
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Code.Value
-import Vehicle.Data.DeBruijn (dbLevelToIndex)
+import Vehicle.Data.Variable.Bound.Level (dbLevelToIndex)
+import Vehicle.Data.Variable.Free.Context (getFreeEnv)
 
 --------------------------------------------------------------------------------
 -- Public interface

@@ -1,0 +1,81 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
+module Vehicle.Data.Variable.Bound.Context.Instance where
+
+import Control.Monad.Except (MonadError (..))
+import Control.Monad.Identity (Identity (..))
+import Control.Monad.Reader (MonadReader (..), ReaderT (..), mapReaderT)
+import Control.Monad.State (MonadState (..))
+import Control.Monad.Writer
+import Data.Data (Proxy)
+import Vehicle.Compile.Prelude
+import Vehicle.Data.Variable.Bound.Context.Class
+
+--------------------------------------------------------------------------------
+-- Context monad instantiation
+
+newtype BoundContextT expr m a = BoundContextT
+  { unBoundContextT :: ReaderT (BoundCtx expr) m a
+  }
+  deriving (Functor, Applicative, Monad)
+
+type BoundContext expr a = BoundContextT expr Identity a
+
+-- | Runs a computation in the context monad allowing you to keep track of the
+-- context. Note that you must still call `addDeclToCtx` and `addBinderToCtx`
+-- manually in the right places.
+runBoundContextT :: (Monad m) => BoundCtx expr -> BoundContextT expr m a -> m a
+runBoundContextT ctx (BoundContextT contextFn) = runReaderT contextFn ctx
+
+runBoundContext :: BoundCtx expr -> BoundContext expr a -> a
+runBoundContext ctx fn = runIdentity $ runBoundContextT ctx fn
+
+-- | Runs a computation in the context monad allowing you to keep track of the
+-- context. Note that you must still call `addDeclToCtx` and `addBinderToCtx`
+-- manually in the right places.
+runFreshBoundContextT :: (Monad m) => Proxy expr -> BoundContextT expr m a -> m a
+runFreshBoundContextT _ = runBoundContextT mempty
+
+runFreshBoundContext :: Proxy expr -> BoundContext expr a -> a
+runFreshBoundContext p fn = runIdentity $ runFreshBoundContextT p fn
+
+instance MonadTrans (BoundContextT expr) where
+  lift = BoundContextT . lift
+
+mapBoundContextT ::
+  (m a -> n b) ->
+  BoundContextT expr m a ->
+  BoundContextT expr n b
+mapBoundContextT f m = BoundContextT (mapReaderT f (unBoundContextT m))
+
+--------------------------------------------------------------------------------
+-- Other monad preservation
+
+instance (MonadLogger m) => MonadLogger (BoundContextT expr m) where
+  setCallDepth = BoundContextT . setCallDepth
+  getCallDepth = BoundContextT getCallDepth
+  incrCallDepth = BoundContextT incrCallDepth
+  decrCallDepth = BoundContextT decrCallDepth
+  getDebugLevel = BoundContextT getDebugLevel
+  logMessage = BoundContextT . logMessage
+  logWarning = BoundContextT . logWarning
+  enterCompilerPass = BoundContextT . enterCompilerPass
+  exitCompilerPass = BoundContextT exitCompilerPass
+
+instance (MonadError e m) => MonadError e (BoundContextT expr m) where
+  throwError = lift . throwError
+  catchError m f = BoundContextT (catchError (unBoundContextT m) (unBoundContextT . f))
+
+instance (MonadState s m) => MonadState s (BoundContextT expr m) where
+  get = lift get
+  put = lift . put
+
+instance (MonadReader s m) => MonadReader s (BoundContextT expr m) where
+  ask = lift ask
+  local = mapBoundContextT . local
+
+instance (Monad m) => MonadBoundContext expr (BoundContextT expr m) where
+  addBinderToContext binder cont = BoundContextT $ do
+    local (binder :) (unBoundContextT cont)
+
+  getBoundCtx _ = BoundContextT ask

@@ -35,7 +35,8 @@ import Vehicle.Compile.Prelude (CompleteNamedBoundCtx, Name, Pretty (..))
 import Vehicle.Data.Assertion
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.LinearExpr
-import Vehicle.Data.QuantifiedVariable
+import Vehicle.Data.Variable.Bound.Level
+import Vehicle.Data.Variable.Bound.Tensor
 import Vehicle.Resource (ResourcesIntegrityInfo)
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
@@ -98,7 +99,7 @@ instance FromJSON VariableCompilationTrace
 data VariableStore = VariableStore
   { queryVariableMapping :: Map QueryVariable NetworkIOElementVariable,
     vehicleVariableCtx :: CompleteNamedBoundCtx,
-    userVariables :: Set UserVariable
+    userVariables :: Set UserSliceVariable
   }
   deriving (Generic)
 
@@ -108,14 +109,10 @@ instance ToJSON VariableStore
 
 instance FromJSON VariableStore
 
-{-
-getQueryVariableCtx :: VariableCompilationTrace -> GenericBoundCtx (Maybe QueryVariable)
-getQueryVariableCtx d = fmap (\(_, _, c) -> c) (variableStore d)
--}
 getVehicleVariableCtx :: VariableStore -> CompleteNamedBoundCtx
 getVehicleVariableCtx VariableStore {..} = vehicleVariableCtx
 
-getUserVariables :: VariableStore -> Set UserVariable
+getUserVariables :: VariableStore -> Set UserSliceVariable
 getUserVariables VariableStore {..} = userVariables
 
 getQueryVariables :: VariableStore -> [QueryVariable]

@@ -44,7 +44,6 @@ import Data.List (partition, sortOn)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (isJust)
 import Data.Proxy (Proxy (..))
-import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Error (CompileError (..), TypingError (..), compilerDeveloperError)
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Normalise.Quote (Quote (..))
@@ -59,6 +58,7 @@ import Vehicle.Compile.Type.Monad.Instance
 import Vehicle.Data.Builtin.Interface.Print (PrintableBuiltin)
 import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin (..))
 import Vehicle.Data.Code.Value
+import Vehicle.Data.Variable.Free.Context
 
 runTypeCheckerTInitially ::
   (Monad m) =>

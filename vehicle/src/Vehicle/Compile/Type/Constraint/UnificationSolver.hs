@@ -20,7 +20,6 @@ import Data.Map.Ordered.Strict qualified as OMap
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Proxy (Proxy (..))
 import Prettyprinter (sep)
-import Vehicle.Compile.Context.Free (getFreeEnv)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Normalise.Quote (Quote (..), unnormalise)
@@ -34,7 +33,8 @@ import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin (..))
 import Vehicle.Data.Code.Value
-import Vehicle.Data.DeBruijn
+import Vehicle.Data.Variable.Bound.Level
+import Vehicle.Data.Variable.Free.Context (getFreeEnv)
 
 --------------------------------------------------------------------------------
 -- Unification solver

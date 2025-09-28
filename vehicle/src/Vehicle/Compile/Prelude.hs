@@ -6,12 +6,13 @@ module Vehicle.Compile.Prelude
   )
 where
 
-import Vehicle.Compile.Context.Bound.Core as X
-import Vehicle.Compile.Context.Free.Core as X
 import Vehicle.Compile.Prelude.Utils as X
 import Vehicle.Data.Builtin.Core (Builtin)
 import Vehicle.Data.Code.Expr as X
-import Vehicle.Data.DeBruijn (Ix (..), Lv (..))
+import Vehicle.Data.Variable.Bound.Context.Core as X
+import Vehicle.Data.Variable.Bound.Index (Ix (..))
+import Vehicle.Data.Variable.Bound.Level (Lv (..))
+import Vehicle.Data.Variable.Free.Context.Core as X
 import Vehicle.Prelude as X
 import Vehicle.Prelude.Logging.Class as X
 import Vehicle.Resource as X

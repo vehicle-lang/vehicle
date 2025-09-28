@@ -8,13 +8,13 @@ where
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Traversable (for)
-import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta (findUltimateUnsolvedMeta)
 import Vehicle.Compile.Type.Meta.Variable (MetaVariableContext, findMetaInfo, metaCtx, metaSolution, metaType)
 import Vehicle.Data.Code.Value
+import Vehicle.Data.Variable.Free.Context
 
 --------------------------------------------------------------------------------
 -- Substitution type

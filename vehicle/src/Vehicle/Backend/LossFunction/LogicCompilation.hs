@@ -15,8 +15,6 @@ import Vehicle.Backend.LossFunction.Core
 import Vehicle.Backend.LossFunction.Logics (DifferentialLogicDSL)
 import Vehicle.Backend.LossFunction.LossCompilation
 import Vehicle.Backend.Prelude (DifferentiableLogicID)
-import Vehicle.Compile.Context.Free (runFreshFreeContextT)
-import Vehicle.Compile.Context.Name
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE (eval)
 import Vehicle.Compile.Prelude
@@ -29,6 +27,8 @@ import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value (Closure (..), Value (..), boundContextToEnv, emptyBoundEnv)
 import Vehicle.Data.DSL
 import Vehicle.Data.Tensor (pattern ZeroDimTensor)
+import Vehicle.Data.Variable.Bound.Context.Name
+import Vehicle.Data.Variable.Free.Context (runFreshFreeContextT)
 import Vehicle.Syntax.Builtin
   ( AddDomain (..),
     Builtin (..),

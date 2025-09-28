@@ -21,6 +21,7 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Version (Version, showVersion)
 import Data.Void (Void)
+import Numeric (showFFloat)
 import Prettyprinter (group, line', surround, unAnnotate)
 import Prettyprinter as CommonPrettyprinter
   ( Doc,
@@ -135,6 +136,11 @@ prettySetLike xs =
     <+> concatWith (\x y -> x <> line <> ";" <+> y) xs
     <> line
     <> "}"
+
+prettyRationalAsFloat :: Rational -> Doc a
+prettyRationalAsFloat p = do
+  let f = realToFrac p :: Double
+  pretty $ showFFloat Nothing f ""
 
 instance Pretty IntSet where
   pretty m = pretty (IntSet.toAscList m)

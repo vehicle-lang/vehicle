@@ -5,14 +5,14 @@ module Vehicle.Compile.LiftIf
   )
 where
 
-import Vehicle.Compile.Context.Free (MonadFreeContext)
-import Vehicle.Compile.Context.Name (MonadNameContext, getNameContext)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
+import Vehicle.Data.Variable.Bound.Context.Name (MonadNameContext, getNameContext)
+import Vehicle.Data.Variable.Free.Context (MonadFreeContext)
 
 --------------------------------------------------------------------------------
 -- If lifting

@@ -17,8 +17,8 @@ import Vehicle.Backend.LossFunction.JSON
 import Vehicle.Backend.LossFunction.LogicCompilation (compileLogic)
 import Vehicle.Backend.LossFunction.Logics (dslFor)
 import Vehicle.Backend.Prelude
-import Vehicle.Backend.Queries
 import Vehicle.Backend.Rocq
+import Vehicle.Backend.Solver
 import Vehicle.Compile.Dependency
 import Vehicle.Compile.Error
 import Vehicle.Compile.FunctionaliseResources (functionaliseResources)

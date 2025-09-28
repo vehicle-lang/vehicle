@@ -9,14 +9,16 @@ module Vehicle.Compile.Print.Error
 where
 
 import Control.Monad.Except (ExceptT, runExceptT)
+import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Text (pack)
+import Data.These (mergeTheseWith)
 import System.FilePath
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Print.TypingError
-import Vehicle.Data.Assertion (prettyUnderConstrainedVariable)
+import Vehicle.Data.Assertion (BoundType (..))
 import Vehicle.Data.Builtin.Linearity
 import Vehicle.Data.Builtin.Polarity
 import Vehicle.Data.Builtin.Standard.Core
@@ -24,6 +26,7 @@ import Vehicle.Data.Code.Interface (getDimsExprs)
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
 import Vehicle.Syntax.Parse (ParseError (..))
+import Vehicle.Syntax.Tensor (TensorIndices)
 import Prelude hiding (pi)
 
 --------------------------------------------------------------------------------
@@ -91,7 +94,7 @@ instance MeaningfulError CompileError where
               problem =
                 "abstract declaration"
                   <+> quotePretty name
-                  <+> "cannot simulataneously be annotated with both"
+                  <+> "cannot simultaneously be annotated with both"
                   <+> quotePretty ann1
                   <+> "and"
                   <+> quotePretty ann2
@@ -833,14 +836,16 @@ instance MeaningfulError CompileError where
                 <+> quotePretty ident
                 <+> "cannot be compiled to tensor code as the variable"
                 <+> quotePretty (nameOf binder)
-                <+> case maybeUnboundedVariables of
-                  Nothing -> "has no bounds at all on it's value."
-                  Just unboundedVariables ->
-                    "is missing the following bounds:"
-                      <> line
-                      <> indent 2 (vsep $ dotDotList 5 $ fmap prettyUnderConstrainedVariable unboundedVariables),
+                <+> "is not properly bounded. In particular,"
+                <+> mergeTheseWith (missingBounds Lower) (missingBounds Upper) (\u v -> u <+> "and" <+> v) maybeUnboundedVariables,
             fix = Just "Add inequalities that restrict the value of the variable both below and above."
           }
+      where
+        missingBounds :: BoundType -> NonEmpty TensorIndices -> Doc a
+        missingBounds boundType missingIndices =
+          "missing" <+> pretty boundType <+> "bounds" <> case missingIndices of
+            [[]] -> ""
+            _ -> " for indices" <+> vsep (fmap pretty missingIndices)
     UnsupportedHigherOrderTensorCode (ident, p) originalCtx originalExpr blockedCtx blockedExpr ->
       UError $
         UserError

@@ -12,7 +12,6 @@ import Data.Ratio (Ratio, denominator, numerator, (%))
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), (<+>))
 import Vehicle.Compile.Arity
-import Vehicle.Compile.Context.Name
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE (eval)
 import Vehicle.Compile.Prelude (Doc, HasProvenance (..), Ix (..), ModulePath (..), Name, Provenance (..), filterOutNonExplicitArgs, getBinderName, mkExplicitBinder, normAppList)
@@ -23,6 +22,7 @@ import Vehicle.Data.Builtin.Loss (LossBuiltin (..), LossBuiltinConstructor, Loss
 import Vehicle.Data.Builtin.Loss qualified as L
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Tensor (Tensor, mapTensor)
+import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Prelude (Annotation (..), GenericArg (..), HasName (..), HasType (..), Identifier (..), explicit, indent, jsonOptions, line, resolutionError, squotes)
 import Vehicle.Prelude.Logging.Class
 import Vehicle.Syntax.Prelude (developerError)

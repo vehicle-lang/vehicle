@@ -11,12 +11,12 @@ module Vehicle.Compile.Descope
 where
 
 import Data.Map.Ordered qualified as OMap
-import Vehicle.Compile.Context.Name.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Standard.Core (Builtin)
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Universe (UniverseLevel)
+import Vehicle.Data.Variable.Bound.Context.Name.Core
 import Vehicle.Syntax.AST.Expr qualified as S
 
 --------------------------------------------------------------------------------

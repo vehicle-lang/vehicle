@@ -12,7 +12,6 @@ import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (maybeToList)
 import Data.Set qualified as Set
-import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.ExpandResources.Dataset
@@ -25,6 +24,7 @@ import Vehicle.Compile.Print.Warning ()
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
+import Vehicle.Data.Variable.Free.Context
 import Vehicle.Prelude.Warning (CompileWarning (..))
 
 -- | Calculates the context for external resources, reading them from disk and

@@ -7,6 +7,7 @@ import Control.Monad.Except (MonadError, throwError)
 import Data.Aeson (ToJSON, object, toJSON, (.=))
 import Data.List.NonEmpty (NonEmpty)
 import Data.Text (Text)
+import Data.These (These)
 import Data.Typeable (Proxy)
 import Data.Void (Void)
 import GHC.Generics (Generic)
@@ -16,14 +17,13 @@ import Vehicle.Backend.LossFunction.Core (BooleanDifferentiableLogicField, Tenso
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
-import Vehicle.Data.Assertion (UnderConstrainedVariableStatus)
 import Vehicle.Data.Builtin.Interface.Normalise (NormalisableBuiltin)
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Linearity
 import Vehicle.Data.Builtin.Polarity
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.Value
-import Vehicle.Data.Tensor (TensorShape)
+import Vehicle.Data.Tensor (TensorIndices, TensorShape)
 import Vehicle.Syntax.Parse (ParseError, ParseLocation)
 import Vehicle.Verify.QueryFormat.Core
 
@@ -150,7 +150,7 @@ data CompileError
     UnsupportedLossOperation DeclProvenance Provenance (Doc Void)
   | UnsupportedHigherOrderTensorCode DeclProvenance NamedBoundCtx (Value Builtin) NamedBoundCtx (Value Builtin)
   | UnableToLiftLogicFieldToTensors DifferentiableLogicID TensorDifferentiableLogicField (BooleanDifferentiableLogicField, Value Builtin) NamedBoundCtx (Value Builtin)
-  | NoQuantifierDomainFound DeclProvenance (GenericBinder ()) (Maybe [(Name, UnderConstrainedVariableStatus)])
+  | NoQuantifierDomainFound DeclProvenance (VBinder Builtin) (These (NonEmpty TensorIndices) (NonEmpty TensorIndices))
   | -- ITP backend errors
     UnsupportedPolymorphicEquality ITP Provenance Name
   | UnusedMonomorphisableDeclaration Provenance Identifier

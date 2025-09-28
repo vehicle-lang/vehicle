@@ -44,8 +44,8 @@ import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.Code.Value
-import Vehicle.Data.QuantifiedVariable
 import Vehicle.Data.Tensor (Tensor, prettyTensor, pattern ZeroDimTensor)
+import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Syntax.AST.Expr qualified as S
 import Vehicle.Syntax.Print
 import Vehicle.Verify.QueryFormat.Interface (QueryAssertion (..))
@@ -220,7 +220,7 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   ---------------------
   -- Query variables --
   ---------------------
-  StrategyFor tags (UserVariable `In` ctx) =
+  StrategyFor tags (UserSliceVariable `In` ctx) =
     StrategyFor tags (Value Builtin `In` ctx)
   StrategyFor tags (NetworkIOElementVariable `In` ctx) =
     StrategyFor tags (Value Builtin `In` ctx)
@@ -424,9 +424,7 @@ prettyEnv ctx (BoundEnv env) = prettyFlatList $ go env
 -- Linear expression
 
 instance
-  ( VariableLike variable,
-    ConstantLike constant,
-    PrettyUsing restVariable (variable `In` ctx),
+  ( PrettyUsing restVariable (variable `In` ctx),
     PrettyUsing restConstant (constant `In` ctx)
   ) =>
   PrettyUsing ('Branch restVariable restConstant) (LinearExpr variable constant `In` ctx)
@@ -439,47 +437,50 @@ instance
 --------------------------------------------------------------------------------
 -- Query variables
 
+variableValue :: (VariableLike variable) => variable -> Value Builtin
+variableValue var = VBoundVar (toLv var) []
+
 instance
   (PrettyUsing rest (Value Builtin `In` ctx)) =>
   PrettyUsing rest (SliceVariable `In` ctx)
   where
-  prettyUsing (var, ctx) = prettyUsing @rest (variableValue @SliceVariable @Builtin var, ctx)
+  prettyUsing (var, ctx) = prettyUsing @rest (variableValue var, ctx)
 
 instance
   (PrettyUsing rest (Value Builtin `In` ctx)) =>
-  PrettyUsing rest (UserVariable `In` ctx)
+  PrettyUsing rest (UserSliceVariable `In` ctx)
   where
-  prettyUsing (var, ctx) = prettyUsing @rest (variableValue @UserVariable @Builtin var, ctx)
+  prettyUsing (var, ctx) = prettyUsing @rest (variableValue var, ctx)
 
 instance
   (PrettyUsing rest (Value Builtin `In` ctx)) =>
   PrettyUsing rest (NetworkIOVariable `In` ctx)
   where
-  prettyUsing (var, ctx) = prettyUsing @rest (variableValue @NetworkIOVariable @Builtin var, ctx)
+  prettyUsing (var, ctx) = prettyUsing @rest (variableValue var, ctx)
 
 instance
   (PrettyUsing rest (Value Builtin `In` ctx)) =>
   PrettyUsing rest (NetworkIOElementVariable `In` ctx)
   where
-  prettyUsing (var, ctx) = prettyUsing @rest (variableValue @NetworkIOElementVariable @Builtin var, ctx)
+  prettyUsing (var, ctx) = prettyUsing @rest (variableValue var, ctx)
 
 instance
   (PrettyUsing rest (Value Builtin `In` ctx)) =>
   PrettyUsing rest (UserTensorVariable `In` ctx)
   where
-  prettyUsing (var, ctx) = prettyUsing @rest (variableValue @UserTensorVariable @Builtin var, ctx)
+  prettyUsing (var, ctx) = prettyUsing @rest (variableValue var, ctx)
 
 instance
   (PrettyUsing rest (Value Builtin `In` ctx)) =>
   PrettyUsing rest (NetworkInputTensorVariable `In` ctx)
   where
-  prettyUsing (var, ctx) = prettyUsing @rest (variableValue @NetworkInputTensorVariable @Builtin var, ctx)
+  prettyUsing (var, ctx) = prettyUsing @rest (variableValue var, ctx)
 
 instance
   (PrettyUsing rest (Value Builtin `In` ctx)) =>
   PrettyUsing rest (NetworkOutputTensorVariable `In` ctx)
   where
-  prettyUsing (var, ctx) = prettyUsing @rest (variableValue @NetworkOutputTensorVariable @Builtin var, ctx)
+  prettyUsing (var, ctx) = prettyUsing @rest (variableValue var, ctx)
 
 instance
   ( PrettyUsing restVar (SliceVariable `In` ctx),

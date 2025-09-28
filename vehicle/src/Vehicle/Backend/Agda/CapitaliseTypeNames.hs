@@ -7,12 +7,12 @@ import Control.Monad (when)
 import Control.Monad.State (MonadState (..), evalStateT, modify)
 import Data.Data (Proxy (..))
 import Data.Set (Set, insert, member)
-import Vehicle.Compile.Context.Free (MonadFreeContext, addDeclToContext, runFreshFreeContextT)
 import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Normalise.NBE (normaliseClosure, normaliseInEmptyEnv)
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Decidability (DecidabilityBuiltin (..), DecidabilityBuiltinFunction (..))
 import Vehicle.Data.Code.Value (Value (..))
+import Vehicle.Data.Variable.Free.Context (MonadFreeContext, addDeclToContext, runFreshFreeContextT)
 
 --------------------------------------------------------------------------------
 -- Capitalise type names

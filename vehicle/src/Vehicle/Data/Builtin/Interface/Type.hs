@@ -1,13 +1,13 @@
 module Vehicle.Data.Builtin.Interface.Type where
 
 import Data.Proxy (Proxy)
-import Vehicle.Compile.Context.Free (MonadFreeContext)
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.Code.Expr (Type)
 import Vehicle.Data.DSL
+import Vehicle.Data.Variable.Free.Context (MonadFreeContext)
 import Vehicle.Prelude (Provenance, Relevance (..))
 import Prelude hiding (iterate)
 

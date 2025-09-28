@@ -2,9 +2,9 @@ module Vehicle.Compile.Normalise.Quote where
 
 import Data.Map.Ordered qualified as OMap
 import Vehicle.Data.Builtin.Interface.Print
-import Vehicle.Data.Code.Expr
+import Vehicle.Data.Code.Expr (Expr (..), Substitution, normAppList, substituteDB)
 import Vehicle.Data.Code.Value
-import Vehicle.Data.DeBruijn (Lv, Substitution, dbLevelToIndex)
+import Vehicle.Data.Variable.Bound.Level (Lv, dbLevelToIndex)
 import Vehicle.Prelude
 
 -- | Converts from a normalised representation to an unnormalised representation.

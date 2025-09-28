@@ -13,8 +13,6 @@ import Data.Map qualified as Map
 import Vehicle.Backend.LossFunction.Core
 import Vehicle.Backend.LossFunction.Core qualified as L
 import Vehicle.Backend.LossFunction.Domain (Domain (..), extractSearchDomain)
-import Vehicle.Compile.Context.Free (MonadFreeContext, getFreeEnv)
-import Vehicle.Compile.Context.Name
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE (evalApp, normaliseInEnv)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
@@ -27,6 +25,8 @@ import Vehicle.Data.Code.Interface (TensorOp1Args (..), mkDims, pattern INatLite
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value (BoundEnv, Closure (..), Spine, VArg, VBinder, Value (..), boundContextToEnv, extendEnvWithBound, traverseSpine)
 import Vehicle.Data.Tensor (Tensor, foldMapTensor)
+import Vehicle.Data.Variable.Bound.Context.Name
+import Vehicle.Data.Variable.Free.Context (MonadFreeContext, getFreeEnv)
 
 --------------------------------------------------------------------------------
 -- Monad

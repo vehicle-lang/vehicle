@@ -5,11 +5,11 @@ import Control.Monad.State
 import Control.Monad.Writer (MonadWriter)
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Vehicle.Compile.Context.Free (MonadFreeContext)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Core (Builtin)
 import Vehicle.Data.Code.Value
+import Vehicle.Data.Variable.Free.Context (MonadFreeContext)
 import Vehicle.Verify.Core
 
 --------------------------------------------------------------------------------

@@ -130,14 +130,10 @@ library
     Vehicle.Backend.LossFunction.LogicCompilation
     Vehicle.Backend.LossFunction.LossCompilation
     Vehicle.Backend.Prelude
-    Vehicle.Backend.Queries.Error
     Vehicle.Backend.Rocq
+    Vehicle.Backend.Solver.UserVariableElimination.Error
     Vehicle.CommandLine
     Vehicle.Compile
-    Vehicle.Compile.Context.Bound
-    Vehicle.Compile.Context.Free
-    Vehicle.Compile.Context.Name
-    Vehicle.Compile.Context.Var
     Vehicle.Compile.Descope
     Vehicle.Compile.Error
     Vehicle.Compile.ExpandResources
@@ -165,11 +161,15 @@ library
     Vehicle.Data.Code.Interface
     Vehicle.Data.Code.LinearExpr
     Vehicle.Data.Code.Value
-    Vehicle.Data.DeBruijn
     Vehicle.Data.DSL
     Vehicle.Data.Hashing
     Vehicle.Data.Meta
     Vehicle.Data.Tensor
+    Vehicle.Data.Variable.Bound.Context
+    Vehicle.Data.Variable.Bound.Context.Name
+    Vehicle.Data.Variable.Bound.Index
+    Vehicle.Data.Variable.Bound.Level
+    Vehicle.Data.Variable.Free.Context
     Vehicle.Export
     Vehicle.Libraries
     Vehicle.Libraries.Core
@@ -194,37 +194,28 @@ library
     Vehicle.Backend.LossFunction.Core
     Vehicle.Backend.LossFunction.Domain
     Vehicle.Backend.LossFunction.Logics
-    Vehicle.Backend.Queries
-    Vehicle.Backend.Queries.ConstraintSearch
-    Vehicle.Backend.Queries.MetaNetworkCalculation
-    Vehicle.Backend.Queries.PostProcessing
-    Vehicle.Backend.Queries.Unblock
-    Vehicle.Backend.Queries.UserVariableElimination
-    Vehicle.Backend.Queries.UserVariableElimination.Core
-    Vehicle.Backend.Queries.UserVariableElimination.EliminateExists
-    Vehicle.Backend.Queries.UserVariableElimination.VariableReconstruction
     Vehicle.Backend.Rocq.Compile
     Vehicle.Backend.Rocq.Interact
+    Vehicle.Backend.Solver
+    Vehicle.Backend.Solver.QueryCompilation
+    Vehicle.Backend.Solver.QueryCompilation.MetaNetworkCalculation
+    Vehicle.Backend.Solver.UserVariableElimination
+    Vehicle.Backend.Solver.UserVariableElimination.ConstraintSearch
+    Vehicle.Backend.Solver.UserVariableElimination.Core
+    Vehicle.Backend.Solver.UserVariableElimination.EliminateExists
+    Vehicle.Backend.Solver.UserVariableElimination.VariableReconstruction
     Vehicle.Compile.Arity
-    Vehicle.Compile.Context.Bound.Class
-    Vehicle.Compile.Context.Bound.Core
-    Vehicle.Compile.Context.Bound.Instance
-    Vehicle.Compile.Context.Free.Class
-    Vehicle.Compile.Context.Free.Core
-    Vehicle.Compile.Context.Free.Instance
-    Vehicle.Compile.Context.Name.Core
     Vehicle.Compile.Dependency
-    Vehicle.Compile.EtaConversion
     Vehicle.Compile.ExpandResources.Dataset.IDX
     Vehicle.Compile.FourierMotzkinElimination
     Vehicle.Compile.FunctionaliseResources
     Vehicle.Compile.LiftIf
     Vehicle.Compile.LiftMinMax
     Vehicle.Compile.LowerNot
-    Vehicle.Compile.ObjectFile
     Vehicle.Compile.Prelude.Utils
     Vehicle.Compile.Print.Warning
     Vehicle.Compile.Rational.LinearExpr
+    Vehicle.Compile.Serialise
     Vehicle.Compile.Type.Bidirectional
     Vehicle.Compile.Type.Constraint.ApplicationSolver
     Vehicle.Compile.Type.Constraint.Core
@@ -245,6 +236,7 @@ library
     Vehicle.Compile.Type.Monad.Instance
     Vehicle.Compile.Type.Subsystem
     Vehicle.Compile.Type.System
+    Vehicle.Compile.Unblock
     Vehicle.Compile.Variable
     Vehicle.Data.Assertion
     Vehicle.Data.Builtin.Core
@@ -268,8 +260,15 @@ library
     Vehicle.Data.Builtin.Standard.Normalise
     Vehicle.Data.Builtin.Standard.Type
     Vehicle.Data.Code.TypedView
-    Vehicle.Data.QuantifiedVariable
     Vehicle.Data.Universe
+    Vehicle.Data.Variable.Bound.Context.Class
+    Vehicle.Data.Variable.Bound.Context.Core
+    Vehicle.Data.Variable.Bound.Context.Instance
+    Vehicle.Data.Variable.Bound.Context.Name.Core
+    Vehicle.Data.Variable.Bound.Tensor
+    Vehicle.Data.Variable.Free.Context.Class
+    Vehicle.Data.Variable.Free.Context.Core
+    Vehicle.Data.Variable.Free.Context.Instance
     Vehicle.Debug
     Vehicle.Prelude.IO
     Vehicle.Prelude.Logging.Class

@@ -14,8 +14,8 @@ import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.LinearExpr (LinearExpression, addExprs, constantExpr, isConstant, scaleExpr, singletonVarExpr)
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
-import Vehicle.Data.QuantifiedVariable (SliceVariable)
 import Vehicle.Data.Tensor (TensorShape, pattern ConstantTensor)
+import Vehicle.Data.Variable.Bound.Level
 import Prelude hiding (Applicative (..))
 
 type MonadCompileLinearExpr m =

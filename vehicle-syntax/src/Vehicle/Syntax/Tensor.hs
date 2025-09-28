@@ -1,6 +1,8 @@
 module Vehicle.Syntax.Tensor
   ( TensorShape,
+    TensorIndex,
     TensorIndices,
+    allIndicesForShape,
     showTensorIndices,
     flattenIndices,
     HasShape (..),
@@ -63,6 +65,16 @@ showTensorIndices xs = concatMap (\v -> "!" <> show v) (reverse xs)
 flattenIndices :: TensorShape -> TensorIndices -> Int
 flattenIndices shape indices =
   sum $ zipWith (*) indices (NonEmpty.tail (NonEmpty.scanr (*) 1 shape))
+
+-- | This includes indices for the slices
+allIndicesForShape :: TensorShape -> [TensorIndices]
+allIndicesForShape shape = go shape mempty
+  where
+    go :: TensorShape -> TensorIndices -> [TensorIndices]
+    go dims is =
+      is : case dims of
+        [] -> []
+        d : ds -> concatMap (\i -> go ds (i : is)) ([0 .. d - 1] :: [Int])
 
 class HasShape a where
   shapeOf :: a -> TensorShape
