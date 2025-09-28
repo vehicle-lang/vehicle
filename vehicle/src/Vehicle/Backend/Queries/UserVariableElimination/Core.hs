@@ -33,6 +33,10 @@ import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Interface (QueryFormat)
 import Vehicle.Verify.Specification
 
+-- | An `AssertionTree` represents a boolean expression with assertions at
+-- each terminal leaf.
+type LinearAssertionTree = BooleanExpr LinearAssertion
+
 --------------------------------------------------------------------------------
 -- Reader state
 
@@ -49,9 +53,6 @@ class (MonadNameContext m) => MonadTensorVariableContext m where
 
 --------------------------------------------------------------------------------
 -- Global state
-
--- | A single application of a neural network to a set of arguments.
-type NetworkApplication = (Name, NetworkAppArgs (LinearExpr SliceVariable RatTensor))
 
 -- | Bookkeeping information associated with an application that describes
 -- the variables and corresponding expressions that replace a given
@@ -203,12 +204,6 @@ addNetworkApplicationToGlobalCtx name networkInfo GlobalCtx {..} arg = do
 --------------------------------------------------------------------------------
 -- Partitions
 
-type LinearAssertion = Assertion SliceVariable
-
--- | An `AssertionTree` represents a boolean expression with assertions at
--- each terminal leaf.
-type LinearAssertionTree = BooleanExpr LinearAssertion
-
 -- | A partition is an `AssertionTree` in which all variables belong to a
 -- consistent mapping of user variables to tensor variables.
 type Partition = ([CompilationStep], LinearAssertionTree)
@@ -297,7 +292,7 @@ createSubstitutionForVariable ::
   (MonadCompile m, SliceVariableLike variable) =>
   GlobalCtx ->
   variable ->
-  Equality SliceVariable RatTensor ->
+  LinearEquality ->
   m (LinearSubstitution SliceVariable, CompilationStep)
 createSubstitutionForVariable ctx varToSolveFor (NormalisedRelation () linearExpr) = do
   let nestedVar = findCorrespondingSliceVariable (globalBoundVarCtx ctx) varToSolveFor
@@ -308,8 +303,8 @@ createSubstitutionForVariable ctx varToSolveFor (NormalisedRelation () linearExp
   where
     go ::
       NestedSliceVariable ->
-      LinearExpr SliceVariable RatTensor ->
-      m [(SliceVariable, LinearExpr SliceVariable RatTensor)]
+      LinearExpression ->
+      m [(SliceVariable, LinearExpression)]
     go var rearrangedExpr = do
       childSubsts <- case childVariablesOf var of
         Nothing -> return mempty

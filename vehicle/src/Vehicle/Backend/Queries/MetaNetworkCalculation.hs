@@ -34,8 +34,8 @@ import Vehicle.Verify.Specification (CompilationStep (..))
 calculateMetaNetworkApplications ::
   (MonadCompile m) =>
   GlobalCtx ->
-  ConjunctAll (Assertion SliceVariable) ->
-  m (MaybeTrivial (NetworkApplications, ConjunctAll (Assertion SliceVariable), [CompilationStep]))
+  ConjunctAll LinearAssertion ->
+  m (MaybeTrivial (NetworkApplications, ConjunctAll LinearAssertion, [CompilationStep]))
 calculateMetaNetworkApplications ctx assertions = do
   (eliminationResult, compilationSteps) <- runWriterT $ eliminateRedundantApplications ctx assertions
   case eliminationResult of
@@ -68,15 +68,15 @@ prettyEquivalenceClasses :: CompleteNamedBoundCtx -> EquivalenceClasses -> Doc a
 prettyEquivalenceClasses ctx classes = do
   let u = DisjointSet.toLists classes
   let prettyEntry = either (\v -> prettyFriendly (WithContext v ctx)) pretty
-  prettyMultiLineList (fmap (\x -> prettyFlatList (fmap prettyEntry x)) u)
+  prettyMultiLineList (fmap (prettyFlatList . fmap prettyEntry) u)
 
 type SimpleEquality = (SliceVariable, Either SliceVariable RatTensor)
 
 eliminateRedundantApplications ::
   (MonadCompile m, MonadWriter [CompilationStep] m) =>
   GlobalCtx ->
-  ConjunctAll (Assertion SliceVariable) ->
-  m (MaybeTrivial (ConjunctAll (Assertion SliceVariable)))
+  ConjunctAll LinearAssertion ->
+  m (MaybeTrivial (ConjunctAll LinearAssertion))
 eliminateRedundantApplications ctx assertions =
   logCompilerSection2 MaxDetail "checking for redundant network applications" $ do
     let nameCtx = completeNamedCtx ctx
@@ -110,9 +110,7 @@ eliminateRedundantApplications ctx assertions =
     return resultingAssertions
 
 -- | Finds equality assertions of the form `a - b == 0` (i.e. `a == b`)
-isSimpleVariableEquality ::
-  Assertion SliceVariable ->
-  Maybe SimpleEquality
+isSimpleVariableEquality :: LinearAssertion -> Maybe SimpleEquality
 isSimpleVariableEquality = \case
   NormalisedRelation OEq (Sparse coefficients constant) -> do
     case Map.toList coefficients of
@@ -137,22 +135,21 @@ calculateNetworkTensorInputEquivalenceClasses ctx networkName equalities applica
   go mempty initialEquivalenceClasses initialTensorVariableMapping
   where
     go :: TensorIndices -> EquivalenceClasses -> TensorVariableMapping -> m EquivalenceClasses
-    go tensorIndices equivalenceClasses tensorVariableMapping = do
-      logCompilerSection2 MaxDetail ("search for tensor element input equalities for variable" <+> squotes (pretty networkName <> pretty (showTensorIndices (reverse tensorIndices)))) $ do
-        -- Calculate the equivalence classes from the equalities you can find at this level
-        expandedEquivalenceClasses <- expandEquivalenceClasses equalities tensorVariableMapping equivalenceClasses
-        logDebug MaxDetail $ "equivalenceClasses:" <> lineIndent (prettyEquivalenceClasses (completeNamedCtx ctx) expandedEquivalenceClasses)
+    go tensorIndices equivalenceClasses tensorVariableMapping = logCompilerSection2 MaxDetail ("search for tensor element input equalities for variable" <+> squotes (pretty networkName <> pretty (showTensorIndices (reverse tensorIndices)))) $ do
+      -- Calculate the equivalence classes from the equalities you can find at this level
+      expandedEquivalenceClasses <- expandEquivalenceClasses equalities tensorVariableMapping equivalenceClasses
+      logDebug MaxDetail $ "equivalenceClasses:" <> lineIndent (prettyEquivalenceClasses (completeNamedCtx ctx) expandedEquivalenceClasses)
 
-        if DisjointSet.sets expandedEquivalenceClasses == 1
-          then do
-            logDebug MaxDetail "all applications found to be equal"
-            return expandedEquivalenceClasses
-          else do
-            -- Recursively calculate the equivalence classes you can find at the next level down.
-            let maybeChildren = childTensorVariableMappings tensorVariableMapping
-            case maybeChildren of
-              Nothing -> return expandedEquivalenceClasses
-              Just childMappings -> intersectEquivalenceClasses <$> forM (zip childMappings [0 ..]) (\(m, i) -> go (i : tensorIndices) expandedEquivalenceClasses m)
+      if DisjointSet.sets expandedEquivalenceClasses == 1
+        then do
+          logDebug MaxDetail "all applications found to be equal"
+          return expandedEquivalenceClasses
+        else do
+          -- Recursively calculate the equivalence classes you can find at the next level down.
+          let maybeChildren = childTensorVariableMappings tensorVariableMapping
+          case maybeChildren of
+            Nothing -> return expandedEquivalenceClasses
+            Just childMappings -> intersectEquivalenceClasses <$> forM (zip childMappings [0 ..]) (\(m, i) -> go (i : tensorIndices) expandedEquivalenceClasses m)
 
 expandEquivalenceClasses ::
   (MonadLogger m) =>
@@ -160,8 +157,7 @@ expandEquivalenceClasses ::
   Map NestedSliceVariable NetworkInputTensorVariable ->
   EquivalenceClasses ->
   m EquivalenceClasses
-expandEquivalenceClasses equalities variables equivalenceClasses = do
-  return $ foldr processEquality equivalenceClasses equalities
+expandEquivalenceClasses equalities variables equivalenceClasses = return $ foldr processEquality equivalenceClasses equalities
   where
     tensorVariableMap :: Map SliceVariable NetworkInputTensorVariable
     tensorVariableMap = Map.mapKeys toSliceVar variables
@@ -230,7 +226,7 @@ reduceInputVariableEquality ctx (eqInputVar, inputVar) = do
     createEq ::
       (TensorVariableLike variable) =>
       (variable, variable) ->
-      NormalisedRelation () SliceVariable (Tensor Rational)
+      LinearEquality
     createEq (v1, v2) = do
       let tensorShape = shapeOf $ lookupTensorVariable (globalBoundVarCtx ctx) v1
       let constant = ConstantTensor tensorShape 0
@@ -243,7 +239,7 @@ reduceInputVariableEquality ctx (eqInputVar, inputVar) = do
 calculateMetaNetworkApps ::
   (Traversable f) =>
   GlobalCtx ->
-  f (Assertion SliceVariable) ->
+  f LinearAssertion ->
   Map Name (NonEmpty NetworkApplicationInfo)
 calculateMetaNetworkApps globalCtx assertions = do
   -- First calculate the set of network applications actually used in the query
@@ -264,10 +260,11 @@ logEqualitiesFound ::
   CompleteNamedBoundCtx ->
   [(var, Either var RatTensor)] ->
   m ()
-logEqualitiesFound ctx equalities = logDebug MaxDetail $ do
-  if null equalities
-    then "No suitable equalities found"
-    else "Possible equalities:" <> lineIndent (vsep (fmap (prettyEquality ctx) equalities)) <> line
+logEqualitiesFound ctx equalities =
+  logDebug MaxDetail $
+    if null equalities
+      then "No suitable equalities found"
+      else "Possible equalities:" <> lineIndent (vsep (fmap (prettyEquality ctx) equalities)) <> line
 
 prettyEquality ::
   (Coercible var Lv) =>

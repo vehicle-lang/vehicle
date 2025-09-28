@@ -17,8 +17,8 @@ import Data.Set qualified as Set
 import Vehicle.Compile.FourierMotzkinElimination
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
-import Vehicle.Data.Assertion (Bounds)
-import Vehicle.Data.Code.LinearExpr (LinearExpr, VariableLike (..), evaluateExpr)
+import Vehicle.Data.Assertion (LinearBounds)
+import Vehicle.Data.Code.LinearExpr (LinearExpression, evaluateExpr)
 import Vehicle.Data.QuantifiedVariable
 import Vehicle.Data.Tensor (RatTensor, at, shapeOf, stack, pattern ZeroDimTensor)
 import Vehicle.Verify.QueryFormat.Core
@@ -135,7 +135,7 @@ reconstructTensorFromConstituents _ctx variable reconstructionDepth assignment =
 reconstructTensorViaEquality ::
   (MonadReconstruct m) =>
   NestedSliceVariable ->
-  LinearExpr SliceVariable RatTensor ->
+  LinearExpression ->
   MixedVariableAssignment ->
   m (NonEmpty (SliceVariable, RatTensor))
 reconstructTensorViaEquality variable equality assignment = do
@@ -157,7 +157,7 @@ reconstructTensorViaEquality variable equality assignment = do
 reconstructRationalViaFourierMotzkin ::
   (MonadReconstruct m) =>
   SliceVariable ->
-  Bounds SliceVariable RatTensor ->
+  LinearBounds ->
   MixedVariableAssignment ->
   m (NonEmpty (SliceVariable, RatTensor))
 reconstructRationalViaFourierMotzkin var bounds assignment = do

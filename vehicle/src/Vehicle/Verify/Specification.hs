@@ -1,6 +1,3 @@
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-
-{-# HLINT ignore "Use newtype instead of data" #-}
 module Vehicle.Verify.Specification
   ( QueryMetaData (..),
     QueryText,
@@ -40,7 +37,6 @@ import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.QuantifiedVariable
 import Vehicle.Resource (ResourcesIntegrityInfo)
-import Vehicle.Syntax.Tensor
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
 
@@ -66,8 +62,8 @@ instance Pretty ReconstructionDepth where
 -- | One step in the process for transforming unreduced user variables into
 -- reduced network input and output variables.
 data CompilationStep
-  = SolveEquality NestedSliceVariable (LinearExpr SliceVariable RatTensor)
-  | SolveInequalities SliceVariable (Bounds SliceVariable RatTensor)
+  = SolveEquality NestedSliceVariable LinearExpression
+  | SolveInequalities SliceVariable LinearBounds
   | ReconstructTensorVariable NestedSliceVariable ReconstructionDepth
   deriving (Show, Eq, Ord, Generic)
 

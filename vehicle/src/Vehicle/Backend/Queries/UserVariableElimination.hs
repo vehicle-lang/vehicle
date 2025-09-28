@@ -32,7 +32,6 @@ import Vehicle.Data.Builtin.Interface.Normalise (evalAtTensor, unoptimisedEvalRe
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.Interface
-import Vehicle.Data.Code.LinearExpr (VariableLike (..))
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
 import Vehicle.Data.QuantifiedVariable
@@ -191,7 +190,7 @@ compilePurifiedAssertion ::
   (MonadQuantifierBody m) =>
   ComparisonOp ->
   TensorOp2Args (Value Builtin) ->
-  m (Either (Value Builtin) (Assertion SliceVariable))
+  m (Either (Value Builtin) LinearAssertion)
 compilePurifiedAssertion op args@(TensorOp2Args dims xs ys) = do
   let shape = case getDims (argExpr dims) of
         Nothing -> developerError $ "Non-concrete dimensions found" <+> prettyVerbose dims

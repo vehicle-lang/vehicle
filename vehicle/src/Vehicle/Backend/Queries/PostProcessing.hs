@@ -72,7 +72,7 @@ compilePartitionToQuery ::
   GlobalCtx ->
   NetworkApplications ->
   [CompilationStep] ->
-  ConjunctAll (Assertion NetworkIOElementVariable) ->
+  ConjunctAll (Assertion (LinearExpr NetworkIOElementVariable RatTensor)) ->
   m QueryMetaData
 compilePartitionToQuery PropertyMetaData {..} ctx metaNetworkApps compilationSteps assertions = do
   -- Calculate query address
@@ -113,8 +113,8 @@ reduceAllRemainingNetworkTensorVariables ::
   (MonadCompile m) =>
   GlobalCtx ->
   NetworkApplications ->
-  ConjunctAll (Assertion SliceVariable) ->
-  m (MaybeTrivial (ConjunctAll (Assertion NetworkIOElementVariable), [CompilationStep]))
+  ConjunctAll LinearAssertion ->
+  m (MaybeTrivial (ConjunctAll (Assertion (LinearExpr NetworkIOElementVariable RatTensor)), [CompilationStep]))
 reduceAllRemainingNetworkTensorVariables ctx metaNetwork assertions = do
   logCompilerSection2 MaxDetail "eliminating remaining tensor assertions" $ do
     -- Create the assertions
@@ -134,8 +134,8 @@ reduceAllRemainingNetworkTensorVariables ctx metaNetwork assertions = do
 
 convertToNetworkElementVariables ::
   GlobalCtx ->
-  Assertion SliceVariable ->
-  MaybeTrivial (ConjunctAll (Assertion NetworkIOElementVariable))
+  LinearAssertion ->
+  MaybeTrivial (ConjunctAll (Assertion (LinearExpr NetworkIOElementVariable RatTensor)))
 convertToNetworkElementVariables ctx (NormalisedRelation relation linearExpr) =
   case shapeOf linearExpr of
     [] -> do
@@ -155,7 +155,7 @@ convertToNetworkElementVariables ctx (NormalisedRelation relation linearExpr) =
 
 lineariseAssertions ::
   (MonadCompile m) =>
-  Assertion NetworkIOElementVariable ->
+  Assertion (LinearExpr NetworkIOElementVariable RatTensor) ->
   m (QueryAssertion NetworkIOElementVariable)
 lineariseAssertions (NormalisedRelation relation (Sparse coefficients constant)) = do
   let finalRelation = relationToQueryRelation relation

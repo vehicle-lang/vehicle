@@ -45,7 +45,7 @@ import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.Code.Value
 import Vehicle.Data.QuantifiedVariable
-import Vehicle.Data.Tensor (RatTensor, Tensor, prettyTensor, pattern ZeroDimTensor)
+import Vehicle.Data.Tensor (Tensor, prettyTensor, pattern ZeroDimTensor)
 import Vehicle.Syntax.AST.Expr qualified as S
 import Vehicle.Syntax.Print
 import Vehicle.Verify.QueryFormat.Interface (QueryAssertion (..))
@@ -125,7 +125,7 @@ data Strategy
 {-
 -- Testing code, do not delete!
 -- Fill in `TestType` and inspect the hole to see what it reduces to.
-type TestType = LinearExpr SliceVariable RatTensor `In` NamedBoundCtx
+type TestType = LinearExpression `In` NamedBoundCtx
 
 data MyProxy (a :: Strategy) = MyProxy
 test :: MyProxy (StrategyFor FriendlyTags TestType)
@@ -232,10 +232,10 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
     StrategyFor tags (Value Builtin `In` ctx)
   StrategyFor tags (NetworkOutputTensorVariable `In` ctx) =
     StrategyFor tags (Value Builtin `In` ctx)
-  StrategyFor tags (NormalisedRelation rel variable constant `In` ctx) =
-    StrategyFor tags (LinearExpr variable constant `In` ctx)
-  StrategyFor tags (Bounds variable constant `In` ctx) =
-    StrategyFor tags (Inequality variable constant `In` ctx)
+  StrategyFor tags (NormalisedRelation rel expr `In` ctx) =
+    StrategyFor tags (expr `In` ctx)
+  StrategyFor tags (Bounds expr `In` ctx) =
+    StrategyFor tags (Inequality expr `In` ctx)
   StrategyFor tags (LinearExpr variable constant `In` ctx) =
     'Branch
       (StrategyFor tags (variable `In` NamedBoundCtx))
@@ -243,7 +243,7 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor tags (CompilationStep `In` ctx) =
     'Branch
       (StrategyFor tags (SliceVariable `In` ctx))
-      (StrategyFor tags (LinearExpr SliceVariable RatTensor `In` ctx))
+      (StrategyFor tags (LinearExpression `In` ctx))
   StrategyFor tags (QueryAssertion variable `In` ctx) =
     StrategyFor tags (variable `In` ctx)
   ------------
@@ -483,18 +483,18 @@ instance
 
 instance
   ( PrettyUsing restVar (SliceVariable `In` ctx),
-    PrettyUsing restLinExp (LinearExpr SliceVariable RatTensor `In` ctx)
+    PrettyUsing restExp (LinearExpression `In` ctx)
   ) =>
-  PrettyUsing ('Branch restVar restLinExp) (CompilationStep `In` ctx)
+  PrettyUsing ('Branch restVar restExp) (CompilationStep `In` ctx)
   where
   prettyUsing (step, ctx) = case step of
     SolveEquality var expr ->
       prettyUsing @restVar (toSliceVar var, ctx)
         <+> "=="
-        <+> prettyUsing @restLinExp (expr, ctx)
+        <+> prettyUsing @restExp (expr, ctx)
     SolveInequalities var bounds ->
       prettyUsing @restVar (toSliceVar var, ctx)
-        <+> prettyUsing @restLinExp (bounds, ctx)
+        <+> prettyUsing @restExp (bounds, ctx)
     ReconstructTensorVariable var d ->
       prettyUsing @restVar (toSliceVar var, ctx)
         <+> "->"
@@ -769,14 +769,14 @@ instance
 -- Assertions
 
 instance
-  (ConstantLike constant, Pretty rel, PrettyUsing rest (LinearExpr variable constant `In` ctx)) =>
-  PrettyUsing rest (NormalisedRelation rel variable constant `In` ctx)
+  (Pretty rel, PrettyUsing rest (expr `In` ctx)) =>
+  PrettyUsing rest (NormalisedRelation rel expr `In` ctx)
   where
-  prettyUsing (e, ctx) = prettyUsing @rest (linearExpr e, ctx) <+> pretty (relation e) <+> "0"
+  prettyUsing (e, ctx) = prettyUsing @rest (expression e, ctx) <+> pretty (relation e) <+> "0"
 
 instance
-  (ConstantLike constant, PrettyUsing rest (Inequality variable constant `In` ctx)) =>
-  PrettyUsing rest (Bounds variable constant `In` ctx)
+  (PrettyUsing rest (Inequality expr `In` ctx)) =>
+  PrettyUsing rest (Bounds expr `In` ctx)
   where
   prettyUsing (Bounds {..}, ctx) =
     "below by max"

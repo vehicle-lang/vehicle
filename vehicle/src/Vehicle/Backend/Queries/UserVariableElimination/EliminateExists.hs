@@ -17,9 +17,8 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Data.Assertion
 import Vehicle.Data.Code.BooleanExpr
-import Vehicle.Data.Code.LinearExpr (HasVariables (containsVariable), VariableLike (..))
+import Vehicle.Data.Code.LinearExpr (HasVariables (containsVariable))
 import Vehicle.Data.QuantifiedVariable
-import Vehicle.Data.Tensor as Tensor (RatTensor)
 import Vehicle.Prelude.Warning (CompileWarning (..))
 import Vehicle.Verify.Specification (CompilationStep (..), ReconstructionDepth (OneDimension))
 
@@ -79,7 +78,7 @@ solveVariableViaEquality ::
   (MonadSolveExists m) =>
   [CompilationStep] ->
   SliceVariable ->
-  (Equality SliceVariable RatTensor, Maybe LinearAssertionTree) ->
+  (LinearEquality, Maybe LinearAssertionTree) ->
   m (MaybeTrivial Partition)
 solveVariableViaEquality compilationTrace userVar (equality, remainingTree) = do
   globalCtx <- get
@@ -148,7 +147,7 @@ reduceInequalitiesInvolving dim variable tree = do
     let result = flattenBoolExpr <$> eliminateTrivialAtoms us
     return result
   where
-    reduceAssertion :: GlobalCtx -> Assertion SliceVariable -> m (MaybeTrivial LinearAssertionTree)
+    reduceAssertion :: GlobalCtx -> LinearAssertion -> m (MaybeTrivial LinearAssertionTree)
     reduceAssertion ctx ass@(NormalisedRelation rel linearExpr)
       | rel == OEq || not (linearExpr `containsVariable` variable) = return $ NonTrivial $ Query ass
       | otherwise = do
@@ -176,7 +175,7 @@ solveVariableViaInequalities ::
   (MonadSolveExists m) =>
   UserVariable ->
   [CompilationStep] ->
-  ([Inequality SliceVariable RatTensor], Maybe LinearAssertionTree) ->
+  ([LinearInequality], Maybe LinearAssertionTree) ->
   m (MaybeTrivial Partition)
 solveVariableViaInequalities var steps (inequalities, remainingTree) = do
   (bounds, newInequalities) <- fourierMotzkinElimination (coerce var) inequalities

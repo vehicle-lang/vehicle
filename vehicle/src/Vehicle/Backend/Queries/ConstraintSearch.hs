@@ -17,7 +17,6 @@ import Vehicle.Data.Assertion
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.LinearExpr (HasVariables (..))
 import Vehicle.Data.QuantifiedVariable
-import Vehicle.Data.Tensor (RatTensor)
 
 --------------------------------------------------------------------------------
 -- Public interface
@@ -35,14 +34,14 @@ findInequalityConstraints ::
   (MonadCompile m) =>
   SliceVariable ->
   LinearAssertionTree ->
-  m (DisjunctAll ([Inequality SliceVariable RatTensor], Maybe LinearAssertionTree))
+  m (DisjunctAll ([LinearInequality], Maybe LinearAssertionTree))
 findInequalityConstraints = findAllConstraints getInequality
 
 --------------------------------------------------------------------------------
 -- Single constraints
 
 -- | Implicitly conjuncted
-type ConstrainedTree = (Equality SliceVariable RatTensor, Maybe LinearAssertionTree)
+type ConstrainedTree = (LinearEquality, Maybe LinearAssertionTree)
 
 -- | Implicitly disjuncted
 type SingleSearchResults = These (DisjunctAll ConstrainedTree) LinearAssertionTree
@@ -175,7 +174,7 @@ oneResult constraint = DisjunctAll [([constraint], Nothing)]
 findAllConstraints ::
   forall m constraint.
   (MonadCompile m, Ord constraint) =>
-  (Assertion SliceVariable -> Maybe constraint) ->
+  (LinearAssertion -> Maybe constraint) ->
   SliceVariable ->
   LinearAssertionTree ->
   m (AllSearchResults constraint)

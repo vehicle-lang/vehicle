@@ -1,7 +1,8 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Vehicle.Data.QuantifiedVariable
-  ( TensorVariableLike (..),
+  ( VariableLike (..),
+    TensorVariableLike (..),
     TensorVariable (..),
     UserTensorVariable (..),
     NetworkInputTensorVariable (..),
@@ -43,11 +44,14 @@ import Data.Vector.Internal.Check (HasCallStack)
 import GHC.Generics (Generic)
 import Numeric (showFFloat)
 import Vehicle.Compile.Context.Bound.Core (CompleteNamedBoundCtx, GenericBoundCtx)
-import Vehicle.Data.Code.LinearExpr (VariableLike (..))
 import Vehicle.Data.Code.Value
 import Vehicle.Data.DeBruijn
 import Vehicle.Data.Tensor
 import Vehicle.Prelude
+
+-- | A variable.
+class (Eq variable, Ord variable) => VariableLike variable where
+  toLv :: variable -> Lv
 
 --------------------------------------------------------------------------------
 -- Tensor variables
