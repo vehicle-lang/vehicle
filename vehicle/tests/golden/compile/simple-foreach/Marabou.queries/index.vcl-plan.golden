@@ -27,29 +27,27 @@
               "variableCompilationTrace": {
                 "reconstructionSteps": [
                   {
-                    "tag": "InternalReconstructTensorVariable",
+                    "tag": "ReconstructTensorVariable",
                     "contents": [
-                      0,
-                      [
-                        [
+                      {
+                        "nestedTensorShape": [
                           2
                         ],
-                        1,
-                        2
-                      ]
+                        "nestedStartingVariable": 0
+                      },
+                      "AllDimensions"
                     ]
                   },
                   {
-                    "tag": "InternalReconstructTensorVariable",
+                    "tag": "ReconstructTensorVariable",
                     "contents": [
-                      3,
-                      [
-                        [
+                      {
+                        "nestedTensorShape": [
                           2
                         ],
-                        4,
-                        5
-                      ]
+                        "nestedStartingVariable": 3
+                      },
+                      "AllDimensions"
                     ]
                   }
                 ]
@@ -63,9 +61,9 @@
                 1
               ],
               "metaNetwork": [
-                {
-                  "metaNetworkEntryName": "f",
-                  "metaNetworkEntryInfo": {
+                [
+                  "f",
+                  {
                     "networkType": {
                       "outputTensor": {
                         "dimensions": [
@@ -81,8 +79,9 @@
                       }
                     },
                     "networkFilepath": "fake.onnx"
-                  }
-                }
+                  },
+                  1
+                ]
               ]
             }
           ]

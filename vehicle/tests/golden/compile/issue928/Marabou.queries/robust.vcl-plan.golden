@@ -11,59 +11,63 @@
                 "vehicleVariableCtx": [
                   "classifier₀[output]!0",
                   "classifier₀[output]",
-                  "classifier₀[input]!0!1",
+                  "classifier₀[input]!1!0",
+                  "classifier₀[input]!1",
                   "classifier₀[input]!0!0",
+                  "classifier₀[input]!0",
                   "classifier₀[input]",
-                  "x!0!1",
+                  "x!1!0",
+                  "x!1",
                   "x!0!0",
+                  "x!0",
                   "x"
                 ],
                 "userVariables": [
                   0
                 ],
                 "queryVariableMapping": {
-                  "y0": 7,
-                  "x1": 5,
-                  "x0": 4
+                  "y0": 11,
+                  "x1": 9,
+                  "x0": 7
                 }
               },
               "variableCompilationTrace": {
                 "reconstructionSteps": [
                   {
-                    "tag": "InternalReconstructTensorVariable",
+                    "tag": "ReconstructTensorVariable",
                     "contents": [
-                      3,
-                      [
-                        [
+                      {
+                        "nestedTensorShape": [
                           2,
                           1
                         ],
-                        4,
-                        5
-                      ]
+                        "nestedStartingVariable": 5
+                      },
+                      "AllDimensions"
                     ]
                   },
                   {
-                    "tag": "InternalReconstructTensorVariable",
+                    "tag": "ReconstructTensorVariable",
                     "contents": [
-                      6,
-                      [
-                        [
+                      {
+                        "nestedTensorShape": [
                           1
                         ],
-                        7,
-                        7
-                      ]
+                        "nestedStartingVariable": 10
+                      },
+                      "AllDimensions"
                     ]
                   },
                   {
                     "tag": "SolveEquality",
                     "contents": [
-                      0,
-                      [
-                        1,
-                        2
-                      ],
+                      {
+                        "nestedTensorShape": [
+                          2,
+                          1
+                        ],
+                        "nestedStartingVariable": 0
+                      },
                       {
                         "constantValue": {
                           "tag": "ConstantTensor",
@@ -80,7 +84,7 @@
                         },
                         "coefficients": [
                           [
-                            3,
+                            5,
                             {
                               "numerator": 1,
                               "denominator": 1
@@ -101,9 +105,9 @@
                 1
               ],
               "metaNetwork": [
-                {
-                  "metaNetworkEntryName": "classifier",
-                  "metaNetworkEntryInfo": {
+                [
+                  "classifier",
+                  {
                     "networkType": {
                       "outputTensor": {
                         "dimensions": [
@@ -120,8 +124,9 @@
                       }
                     },
                     "networkFilepath": "baseline.onnx"
-                  }
-                }
+                  },
+                  1
+                ]
               ]
             }
           ]

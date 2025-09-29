@@ -31,27 +31,8 @@ instance ToJSON NetworkContextInfo
 
 instance FromJSON NetworkContextInfo
 
-data MetaNetworkEntry = MetaNetworkEntry
-  { metaNetworkEntryName :: Name,
-    metaNetworkEntryInfo :: NetworkContextInfo
-  }
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData MetaNetworkEntry
-
-instance ToJSON MetaNetworkEntry
-
-instance FromJSON MetaNetworkEntry
-
-instance Pretty MetaNetworkEntry where
-  pretty MetaNetworkEntry {..} =
-    pretty metaNetworkEntryName
-      <> ":"
-      <> softline
-      <> pretty (networkType metaNetworkEntryInfo)
-
 -- | A list of neural networks used in a given query.
-type MetaNetwork = [MetaNetworkEntry]
+type MetaNetwork = [(Name, NetworkContextInfo, Int)]
 
 --------------------------------------------------------------------------------
 -- Queries misc

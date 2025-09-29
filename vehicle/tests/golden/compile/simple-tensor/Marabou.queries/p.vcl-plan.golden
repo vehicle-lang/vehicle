@@ -10,56 +10,58 @@
               "variableStore": {
                 "vehicleVariableCtx": [
                   "f₀[output]!1!1",
-                  "f₀[output]!0!1",
                   "f₀[output]!1!0",
+                  "f₀[output]!1",
+                  "f₀[output]!0!1",
                   "f₀[output]!0!0",
+                  "f₀[output]!0",
                   "f₀[output]",
                   "f₀[input]!1!1",
-                  "f₀[input]!0!1",
                   "f₀[input]!1!0",
+                  "f₀[input]!1",
+                  "f₀[input]!0!1",
                   "f₀[input]!0!0",
+                  "f₀[input]!0",
                   "f₀[input]"
                 ],
                 "userVariables": [],
                 "queryVariableMapping": {
-                  "y3": 9,
-                  "y2": 8,
-                  "y1": 7,
-                  "y0": 6,
-                  "x3": 4,
-                  "x2": 3,
-                  "x1": 2,
-                  "x0": 1
+                  "y3": 13,
+                  "y2": 12,
+                  "y1": 10,
+                  "y0": 9,
+                  "x3": 6,
+                  "x2": 5,
+                  "x1": 3,
+                  "x0": 2
                 }
               },
               "variableCompilationTrace": {
                 "reconstructionSteps": [
                   {
-                    "tag": "InternalReconstructTensorVariable",
+                    "tag": "ReconstructTensorVariable",
                     "contents": [
-                      0,
-                      [
-                        [
+                      {
+                        "nestedTensorShape": [
                           2,
                           2
                         ],
-                        1,
-                        4
-                      ]
+                        "nestedStartingVariable": 0
+                      },
+                      "AllDimensions"
                     ]
                   },
                   {
-                    "tag": "InternalReconstructTensorVariable",
+                    "tag": "ReconstructTensorVariable",
                     "contents": [
-                      5,
-                      [
-                        [
+                      {
+                        "nestedTensorShape": [
                           2,
                           2
                         ],
-                        6,
-                        9
-                      ]
+                        "nestedStartingVariable": 7
+                      },
+                      "AllDimensions"
                     ]
                   }
                 ]
@@ -73,9 +75,9 @@
                 1
               ],
               "metaNetwork": [
-                {
-                  "metaNetworkEntryName": "f",
-                  "metaNetworkEntryInfo": {
+                [
+                  "f",
+                  {
                     "networkType": {
                       "outputTensor": {
                         "dimensions": [
@@ -93,8 +95,9 @@
                       }
                     },
                     "networkFilepath": "fake.onnx"
-                  }
-                }
+                  },
+                  1
+                ]
               ]
             }
           ]

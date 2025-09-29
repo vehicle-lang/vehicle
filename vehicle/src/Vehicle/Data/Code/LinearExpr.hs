@@ -9,18 +9,10 @@ import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import GHC.Generics (Generic)
-import Vehicle.Data.DeBruijn (Lv)
+import Vehicle.Data.QuantifiedVariable
 import Vehicle.Data.Tensor (HasShape, RatTensor, allTensor, mapTensor, zipWithTensor, pattern ZeroDimTensor)
 import Vehicle.Prelude
 import Vehicle.Syntax.Tensor (HasShape (..))
-
--------------------------------------------------------------------------------
--- Variables
-
--- | A variable.
-class (Eq variable, Ord variable) => VariableLike variable where
-  toLv :: variable -> Lv
-  fromLv :: Lv -> variable
 
 -------------------------------------------------------------------------------
 -- Constants
@@ -235,3 +227,8 @@ class HasVariables expr var | expr -> var where
 instance (Ord var) => HasVariables (LinearExpr var constant) var where
   variablesOf (Sparse coefficients _) = Map.keysSet coefficients
   containsVariable (Sparse coefficients _) v = v `Map.member` coefficients
+
+-------------------------------------------------------------------------------
+-- Specialisations
+
+type LinearExpression = LinearExpr SliceVariable RatTensor

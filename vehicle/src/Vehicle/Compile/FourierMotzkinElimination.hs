@@ -11,6 +11,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Assertion
 import Vehicle.Data.Code.LinearExpr
+import Vehicle.Data.QuantifiedVariable
 import Vehicle.Data.Tensor (RatTensor, pattern ZeroDimTensor)
 
 -- | TODO If performance proves unnacceptably poor look into
@@ -22,8 +23,8 @@ import Vehicle.Data.Tensor (RatTensor, pattern ZeroDimTensor)
 fourierMotzkinElimination ::
   (MonadCompile m, VariableLike variable, ConstantLike constant) =>
   variable ->
-  [Inequality variable constant] ->
-  m (Bounds variable constant, [Inequality variable constant])
+  [Inequality (LinearExpr variable constant)] ->
+  m (Bounds (LinearExpr variable constant), [Inequality (LinearExpr variable constant)])
 fourierMotzkinElimination var inequalities = do
   let (solution@(Bounds lower upper), unusedInequalities) = partition var inequalities
   let newInequalities = fmap combineInequalities [(x, y) | x <- lower, y <- upper]
@@ -31,11 +32,11 @@ fourierMotzkinElimination var inequalities = do
 
 combineInequalities ::
   (VariableLike variable, ConstantLike constant) =>
-  (LowerBound variable constant, UpperBound variable constant) ->
-  Inequality variable constant
+  (LowerBound (LinearExpr variable constant), UpperBound (LinearExpr variable constant)) ->
+  Inequality (LinearExpr variable constant)
 combineInequalities (NormalisedRelation rel1 lowerBound, NormalisedRelation rel2 upperBound) =
   NormalisedRelation
-    { linearExpr = addExprs 1 (-1) lowerBound upperBound,
+    { expression = addExprs 1 (-1) lowerBound upperBound,
       relation = case (rel1, rel2) of
         (Strict, _) -> Strict
         (_, Strict) -> Strict
@@ -50,15 +51,15 @@ partition ::
   forall variable constant.
   (VariableLike variable, ConstantLike constant) =>
   variable ->
-  [Inequality variable constant] ->
-  (Bounds variable constant, [Inequality variable constant])
+  [Inequality (LinearExpr variable constant)] ->
+  (Bounds (LinearExpr variable constant), [Inequality (LinearExpr variable constant)])
 partition var = foldr categorise (Bounds [] [], [])
   where
     categorise ::
       (ConstantLike constant) =>
-      Inequality variable constant ->
-      (Bounds variable constant, [Inequality variable constant]) ->
-      (Bounds variable constant, [Inequality variable constant])
+      Inequality (LinearExpr variable constant) ->
+      (Bounds (LinearExpr variable constant), [Inequality (LinearExpr variable constant)]) ->
+      (Bounds (LinearExpr variable constant), [Inequality (LinearExpr variable constant)])
     categorise ineq@(NormalisedRelation rel expr) (bounds@Bounds {..}, unused) = do
       let (coeff, valueExpr) = rearrangeExprToSolveFor var expr
       let bound = Bound rel valueExpr
@@ -79,7 +80,7 @@ partition var = foldr categorise (Bounds [] [], [])
 reconstructFourierMotzkinVariableValue ::
   forall variable.
   (VariableLike variable) =>
-  Bounds variable RatTensor ->
+  Bounds (LinearExpr variable RatTensor) ->
   Map variable RatTensor ->
   Either variable RatTensor
 reconstructFourierMotzkinVariableValue solution assignment = do
@@ -104,7 +105,7 @@ reconstructFourierMotzkinVariableValue solution assignment = do
   where
     evaluateMinValue ::
       (Rational, InequalityRelation) ->
-      LowerBound variable RatTensor ->
+      LowerBound (LinearExpr variable RatTensor) ->
       Either variable (Rational, InequalityRelation)
     evaluateMinValue current@(currentMin, _) (Bound rel expr) = do
       value <- extractRationalConstant <$> evaluateExpr expr assignment
@@ -115,7 +116,7 @@ reconstructFourierMotzkinVariableValue solution assignment = do
 
     evaluateMaxValue ::
       (Rational, InequalityRelation) ->
-      UpperBound variable RatTensor ->
+      UpperBound (LinearExpr variable RatTensor) ->
       Either variable (Rational, InequalityRelation)
     evaluateMaxValue current@(currentMax, _) (Bound rel expr) = do
       value <- extractRationalConstant <$> evaluateExpr expr assignment

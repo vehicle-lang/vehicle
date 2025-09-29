@@ -8,16 +8,16 @@ where
 import Control.Monad (forM)
 import Control.Monad.Trans.Writer (WriterT (..))
 import Control.Monad.Writer (MonadWriter (..))
-import Data.Bifunctor (Bifunctor (..))
 import Data.Coerce (Coercible, coerce)
+import Data.DisjointSet (DisjointSet)
+import Data.DisjointSet qualified as DisjointSet
 import Data.Either (lefts)
-import Data.Graph (SCC (..), stronglyConnComp)
-import Data.List (transpose)
+import Data.List (sort, transpose)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Maybe (mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Vehicle.Backend.Queries.UserVariableElimination.Core
@@ -34,8 +34,8 @@ import Vehicle.Verify.Specification (CompilationStep (..))
 calculateMetaNetworkApplications ::
   (MonadCompile m) =>
   GlobalCtx ->
-  ConjunctAll (Assertion TensorVariable) ->
-  m (MaybeTrivial (NetworkApplicationReplacements, ConjunctAll (Assertion TensorVariable), [CompilationStep]))
+  ConjunctAll LinearAssertion ->
+  m (MaybeTrivial (NetworkApplications, ConjunctAll LinearAssertion, [CompilationStep]))
 calculateMetaNetworkApplications ctx assertions = do
   (eliminationResult, compilationSteps) <- runWriterT $ eliminateRedundantApplications ctx assertions
   case eliminationResult of
@@ -47,23 +47,36 @@ calculateMetaNetworkApplications ctx assertions = do
 --------------------------------------------------------------------------------
 -- Redundant network applications
 
-type NetworkInputTensorVariable = NetworkIOVariable
+-- | A mapping from the current variable at some position in the tensor back
+-- to the original variable that represents the whole tensor
+--   e.g. { (x_00 -> x), (y_00 -> y), (z_00 -> z) }
+type TensorVariableMapping = Map NestedSliceVariable NetworkInputTensorVariable
 
-type NetworkInputElementVariable = NetworkIOVariable
+childTensorVariableMappings :: TensorVariableMapping -> Maybe [TensorVariableMapping]
+childTensorVariableMappings mapping = do
+  let us = Map.toList mapping
+  let vs = mapM (\(u, v) -> fmap (,v) (childVariablesOf u)) us
+  case vs of
+    Nothing -> Nothing
+    Just zs -> Just $ do
+      let xs = transpose $ fmap (\(u, v) -> fmap (,v) u) zs
+      fmap Map.fromList xs
 
-type EquivalenceClass = NonEmpty NetworkInputTensorVariable
+type EquivalenceClasses = DisjointSet (Either NetworkInputTensorVariable RatTensor)
 
-type Eliminations = [(NetworkInputTensorVariable, NetworkInputTensorVariable)]
+prettyEquivalenceClasses :: CompleteNamedBoundCtx -> EquivalenceClasses -> Doc a
+prettyEquivalenceClasses ctx classes = do
+  let u = DisjointSet.toLists classes
+  let prettyEntry = either (\v -> prettyFriendly (WithContext v ctx)) pretty
+  prettyMultiLineList (fmap (prettyFlatList . fmap prettyEntry) u)
 
-type SimpleEquality = (TensorVariable, Either TensorVariable RatTensor)
-
-type EqualityAdjancencyList = [(NetworkIOVariable, Either NetworkIOVariable RatTensor)]
+type SimpleEquality = (SliceVariable, Either SliceVariable RatTensor)
 
 eliminateRedundantApplications ::
   (MonadCompile m, MonadWriter [CompilationStep] m) =>
   GlobalCtx ->
-  ConjunctAll (Assertion TensorVariable) ->
-  m (MaybeTrivial (ConjunctAll (Assertion TensorVariable)))
+  ConjunctAll LinearAssertion ->
+  m (MaybeTrivial (ConjunctAll LinearAssertion))
 eliminateRedundantApplications ctx assertions =
   logCompilerSection2 MaxDetail "checking for redundant network applications" $ do
     let nameCtx = completeNamedCtx ctx
@@ -72,26 +85,20 @@ eliminateRedundantApplications ctx assertions =
     let equalities = mapMaybe isSimpleVariableEquality $ conjunctsToList assertions
     logEqualitiesFound nameCtx equalities
 
-    eliminationsByNetwork <- forM applicationsByNetwork $ \(networkName, applications) ->
+    equivalenceClasses <- forM applicationsByNetwork $ \(networkName, applications) ->
       logCompilerSection2 MaxDetail ("checking applications of network" <+> quotePretty networkName) $ do
         logDebug MaxDetail $ pretty (length applications) <+> "application found" <> line
         if length applications == 1
           then return mempty
-          else do
-            let tensorInputVariables = inputVariable <$> NonEmpty.toList applications
-            let lookupInputElements var = coerce $ Tensor.toList $ lookupZeroDimVariables ctx var
-            let inputElementVariables = transpose $ fmap lookupInputElements tensorInputVariables
+          else calculateNetworkTensorInputEquivalenceClasses ctx networkName equalities applications
 
-            tensorEliminations <- calculateNetworkTensorInputEliminations nameCtx tensorInputVariables equalities
-            tensorElementEliminations <- calculateTensorElementEliminations nameCtx tensorInputVariables tensorEliminations inputElementVariables equalities
-
-            return $ tensorEliminations <> tensorElementEliminations
+    logDebug MaxDetail $ "equivalenceClasses:" <> lineIndent (prettyMultiLineList (fmap (prettyEquivalenceClasses (completeNamedCtx ctx)) equivalenceClasses))
 
     -- Calculate the substitution to perform
     subst <- logCompilerSection MaxDetail "Calculating substitution:" $ do
-      let allEliminations = concat eliminationsByNetwork
-      substs <- traverse (reduceInputVariableEquality ctx) allEliminations
-      return $ Map.unions substs
+      subst <- createSubstitutionFromEquivalenceClasses ctx equivalenceClasses
+      logDebug MaxDetail $ prettyFriendly (WithContext subst nameCtx)
+      return subst
 
     -- Perform the substitution
     let resultingAssertions =
@@ -103,9 +110,7 @@ eliminateRedundantApplications ctx assertions =
     return resultingAssertions
 
 -- | Finds equality assertions of the form `a - b == 0` (i.e. `a == b`)
-isSimpleVariableEquality ::
-  Assertion TensorVariable ->
-  Maybe SimpleEquality
+isSimpleVariableEquality :: LinearAssertion -> Maybe SimpleEquality
 isSimpleVariableEquality = \case
   NormalisedRelation OEq (Sparse coefficients constant) -> do
     case Map.toList coefficients of
@@ -114,158 +119,119 @@ isSimpleVariableEquality = \case
       _ -> Nothing
   _ -> Nothing
 
--- | Eliminate redundancies found via the tensor-level variable equalities
-calculateNetworkTensorInputEliminations ::
+calculateNetworkTensorInputEquivalenceClasses ::
+  forall m.
   (MonadLogger m) =>
-  CompleteNamedBoundCtx ->
-  [NetworkInputTensorVariable] ->
+  GlobalCtx ->
+  Name ->
   [SimpleEquality] ->
-  m Eliminations
-calculateNetworkTensorInputEliminations nameCtx tensorInputVariables equalities = do
-  logCompilerSection2 MaxDetail "search for tensor input equalities" $ do
-    let tensorInputVariablesSet = Set.fromList tensorInputVariables
-    let lookupTensorInputVariable v = if coerce v `Set.member` tensorInputVariablesSet then Just (coerce v) else Nothing
-    let adjacencyList = computeEqualityAdjancencyList lookupTensorInputVariable equalities
-    eqClasses <- calculateEquivalenceClasses nameCtx adjacencyList
-    return $ equivalenceClassesToEliminations eqClasses
-
-calculateTensorElementEliminations ::
-  (MonadLogger m) =>
-  CompleteNamedBoundCtx ->
-  [NetworkInputTensorVariable] ->
-  Eliminations ->
-  [[NetworkInputElementVariable]] ->
-  [SimpleEquality] ->
-  m Eliminations
-calculateTensorElementEliminations nameCtx tensorVars eliminations elementVars equalities = do
-  logCompilerSection2 MaxDetail "search for tensor element input equalities" $ do
-    let remainingInputVariables = listIntersection tensorVars (fmap fst eliminations)
-    let allEdges = cartesianProduct (,) remainingInputVariables remainingInputVariables
-    sharedAdjacencyList <- calculateSharedEdges (zip elementVars [0 ..]) allEdges
-    sharedEquivalenceClasses <- calculateEquivalenceClasses nameCtx (fmap (second Left) sharedAdjacencyList)
-    return $ equivalenceClassesToEliminations sharedEquivalenceClasses
+  NonEmpty NetworkApplicationInfo ->
+  m EquivalenceClasses
+calculateNetworkTensorInputEquivalenceClasses ctx networkName equalities applications = do
+  let inputVariables = inputVariable <$> NonEmpty.toList applications
+  let initialEquivalenceClasses = DisjointSet.fromLists (fmap (\v -> [Left v]) inputVariables)
+  let toEntry v = (lookupTensorVariable (globalBoundVarCtx ctx) v, v)
+  let initialTensorVariableMapping = Map.fromList $ fmap toEntry inputVariables
+  go mempty initialEquivalenceClasses initialTensorVariableMapping
   where
-    calculateSharedEdges ::
-      (MonadLogger m) =>
-      [([NetworkIOVariable], Int)] ->
-      [(NetworkInputTensorVariable, NetworkInputTensorVariable)] ->
-      m [(NetworkInputTensorVariable, NetworkInputTensorVariable)]
-    calculateSharedEdges vars sharedEdges
-      | null sharedEdges = return []
-      | otherwise = case vars of
-          [] -> return sharedEdges
-          (elementVarsAtIndex, index) : remainingElementVars -> do
-            let elementTensorMap = zip elementVarsAtIndex tensorVars
-            newSharedEdges <- logCompilerSection MaxDetail ("Calculating equalities at index" <+> pretty index) $ do
-              localEqClasses <- calculateTensorElementEquivalenceClasses nameCtx eliminations elementTensorMap equalities
-              return $ filter (isEquivalent localEqClasses) sharedEdges
-            calculateSharedEdges remainingElementVars newSharedEdges
+    go :: TensorIndices -> EquivalenceClasses -> TensorVariableMapping -> m EquivalenceClasses
+    go tensorIndices equivalenceClasses tensorVariableMapping = logCompilerSection2 MaxDetail ("search for tensor element input equalities for variable" <+> squotes (pretty networkName <> pretty (showTensorIndices (reverse tensorIndices)))) $ do
+      -- Calculate the equivalence classes from the equalities you can find at this level
+      expandedEquivalenceClasses <- expandEquivalenceClasses equalities tensorVariableMapping equivalenceClasses
+      logDebug MaxDetail $ "equivalenceClasses:" <> lineIndent (prettyEquivalenceClasses (completeNamedCtx ctx) expandedEquivalenceClasses)
 
--- | Eliminate redundancies found via the element-level variable equalities
-calculateTensorElementEquivalenceClasses ::
+      if DisjointSet.sets expandedEquivalenceClasses == 1
+        then do
+          logDebug MaxDetail "all applications found to be equal"
+          return expandedEquivalenceClasses
+        else do
+          -- Recursively calculate the equivalence classes you can find at the next level down.
+          let maybeChildren = childTensorVariableMappings tensorVariableMapping
+          case maybeChildren of
+            Nothing -> return expandedEquivalenceClasses
+            Just childMappings -> intersectEquivalenceClasses <$> forM (zip childMappings [0 ..]) (\(m, i) -> go (i : tensorIndices) expandedEquivalenceClasses m)
+
+expandEquivalenceClasses ::
   (MonadLogger m) =>
-  CompleteNamedBoundCtx ->
-  Eliminations ->
-  [(NetworkIOVariable, NetworkIOVariable)] ->
   [SimpleEquality] ->
-  m [EquivalenceClass]
-calculateTensorElementEquivalenceClasses ctx tensorEliminations childVariables equalities = do
-  let childVarMap = Map.fromList childVariables
-  let eliminationMap = Map.fromList tensorEliminations
-  let lookupInputVariable v = case Map.lookup (coerce v) childVarMap of
-        Nothing -> Nothing
-        Just tensorVar -> Just $ fromMaybe tensorVar (Map.lookup tensorVar eliminationMap)
-  let adjacencyList = computeEqualityAdjancencyList lookupInputVariable equalities
-  calculateEquivalenceClasses ctx adjacencyList
+  Map NestedSliceVariable NetworkInputTensorVariable ->
+  EquivalenceClasses ->
+  m EquivalenceClasses
+expandEquivalenceClasses equalities variables equivalenceClasses = return $ foldr processEquality equivalenceClasses equalities
+  where
+    tensorVariableMap :: Map SliceVariable NetworkInputTensorVariable
+    tensorVariableMap = Map.mapKeys toSliceVar variables
 
-computeEqualityAdjancencyList ::
-  (TensorVariable -> Maybe NetworkIOVariable) ->
-  [SimpleEquality] ->
-  EqualityAdjancencyList
-computeEqualityAdjancencyList lookupInputVar equalities = do
-  let equalityToListEntry (v1, value) = case (lookupInputVar v1, value) of
-        (Nothing, _) -> Nothing
-        (Just iv1, Right v) -> Just (iv1, Right v)
-        (Just iv1, Left v2) -> case lookupInputVar v2 of
-          (Just iv2) -> Just (iv1, Left iv2)
-          Nothing -> Nothing
-  mapMaybe equalityToListEntry equalities
+    processEquality ::
+      SimpleEquality ->
+      EquivalenceClasses ->
+      EquivalenceClasses
+    processEquality (v1, value) classes = case (Map.lookup v1 tensorVariableMap, value) of
+      (Nothing, _) -> classes
+      (Just iv1, Right v) -> DisjointSet.union (Left iv1) (Right v) classes
+      (Just iv1, Left v2) -> case Map.lookup v2 tensorVariableMap of
+        (Just iv2) -> DisjointSet.union (Left iv1) (Left iv2) classes
+        Nothing -> classes
 
-calculateEquivalenceClasses ::
-  (MonadLogger m) =>
-  CompleteNamedBoundCtx ->
-  EqualityAdjancencyList ->
-  m [EquivalenceClass]
-calculateEquivalenceClasses nameCtx equalities = do
-  let arcs = concatMap (\(u, v) -> [(Left u, [v]), (v, [Left u])]) equalities
-  let adjacencyList = Map.toList $ Map.fromListWith (<>) arcs
-  let inputEqualityAdjacencyList = (\(v, vs) -> (v, v, vs)) <$> adjacencyList
-  let equalityPartitions = stronglyConnComp inputEqualityAdjacencyList
+-- | Takes a list of intersection equivalence classes and returns the
+-- intersection of the equivalence classes.
+intersectEquivalenceClasses :: [EquivalenceClasses] -> EquivalenceClasses
+intersectEquivalenceClasses [] = developerError "Cannot have empty equivalence classes"
+intersectEquivalenceClasses (c : cs) = foldr intersect c cs
+  where
+    intersect :: EquivalenceClasses -> EquivalenceClasses -> EquivalenceClasses
+    intersect xs ys = do
+      let u = cartesianProduct Set.intersection (DisjointSet.toSets xs) (DisjointSet.toSets ys)
+      case DisjointSet.fromSets u of
+        Nothing -> developerError "Non-disjoint sets accidentally created"
+        Just result -> result
 
-  -- For each strong connected component calculate the equivalence classes
-  let equivalanceClasses = mapMaybe sccToEquivalenceClass equalityPartitions
-
-  logDebug MaxDetail $ do
-    let prettyVar var = pretty $ lookupLvInBoundCtx (toLv var) nameCtx
-    let prettyClass c = prettyFlatList (prettyVar <$> NonEmpty.toList c)
-    if null equivalanceClasses
-      then "No suitable equalities found"
-      else "Equal network input variables found:" <> lineIndent (vsep (fmap prettyClass equivalanceClasses))
-
-  return equivalanceClasses
-
-isEquivalent ::
-  [EquivalenceClass] ->
-  (NetworkInputTensorVariable, NetworkInputTensorVariable) ->
-  Bool
-isEquivalent classes = do
-  let createGroup (groupID, vars) = Map.fromList ((,groupID) <$> NonEmpty.toList vars)
-  let varByGroupNumber = Map.unions $ fmap createGroup (zip [0 :: Int ..] classes)
-  let lookupGroupNumber v = Map.lookup v varByGroupNumber
-  \(v1, v2) -> case (lookupGroupNumber v1, lookupGroupNumber v2) of
-    (Just g1, Just g2) -> g1 == g2
-    _ -> False
+createSubstitutionFromEquivalenceClasses ::
+  (MonadCompile m, MonadWriter [CompilationStep] m) =>
+  GlobalCtx ->
+  [EquivalenceClasses] ->
+  m (LinearSubstitution SliceVariable)
+createSubstitutionFromEquivalenceClasses globalCtx equivalenceClasses = do
+  let allClasses = concatMap DisjointSet.toSets equivalenceClasses
+  let tensorLevelEqualities = concatMap go allClasses
+  vs <- traverse (reduceInputVariableEquality globalCtx) tensorLevelEqualities
+  return $ Map.unions vs
+  where
+    go :: Set (Either NetworkInputTensorVariable RatTensor) -> [(NetworkInputTensorVariable, NetworkInputTensorVariable)]
+    go xs = case sort (lefts $ Set.toList xs) of
+      v : vs -> fmap (,v) vs
+      [] -> developerError "Disjoint sets should not contain empty equivalence classes"
 
 reduceInputVariableEquality ::
   (MonadCompile m, MonadWriter [CompilationStep] m) =>
   GlobalCtx ->
   (NetworkInputTensorVariable, NetworkInputTensorVariable) ->
-  m (LinearSubstitution TensorVariable)
+  m (LinearSubstitution SliceVariable)
 reduceInputVariableEquality ctx (eqInputVar, inputVar) = do
-  let createEq (v1, v2) = do
-        let tensorShape = lookupTensorVariableShape ctx v1
-        let constant = ConstantTensor tensorShape 0
-        let coefficients = Map.fromList [(coerce v1, -1), (coerce v2, 1)]
-        NormalisedRelation () $ Sparse coefficients constant
-
   -- Construct the input variable substitution
   let inputEq = createEq (inputVar, eqInputVar)
-  (inputSubst, inputCompilationStep) <- createSubstitutionForVariable ctx (coerce eqInputVar) inputEq
+  (inputSubst, inputCompilationStep) <- createSubstitutionForVariable ctx eqInputVar inputEq
 
   -- Construct the output variable substitution
   let outputVar = lookupCorrespondingOutputVar ctx inputVar
   let eqOutputVar = lookupCorrespondingOutputVar ctx eqInputVar
   let outputEq = createEq (outputVar, eqOutputVar)
-  (outputSubst, outputCompilationStep) <- createSubstitutionForVariable ctx (coerce eqOutputVar) outputEq
+  (outputSubst, outputCompilationStep) <- createSubstitutionForVariable ctx eqOutputVar outputEq
 
+  -- Note the compilation steps
   tell [outputCompilationStep, inputCompilationStep]
 
-  -- Return the result
   return (inputSubst <> outputSubst)
-
-sccToEquivalenceClass :: SCC (Either NetworkIOVariable RatTensor) -> Maybe EquivalenceClass
-sccToEquivalenceClass = \case
-  AcyclicSCC {} -> Nothing
-  CyclicSCC eqClass -> case lefts eqClass of
-    v1 : v2 : vs -> Just (v1 :| v2 : vs)
-    _ -> Nothing
-
-equivalenceClassesToEliminations :: [EquivalenceClass] -> Eliminations
-equivalenceClassesToEliminations eqClasses = do
-  let classToElim eqClass = do
-        let inputVar = minimum eqClass
-        fmap (,inputVar) (NonEmpty.filter (/= inputVar) eqClass)
-  concatMap classToElim eqClasses
+  where
+    createEq ::
+      (TensorVariableLike variable) =>
+      (variable, variable) ->
+      LinearEquality
+    createEq (v1, v2) = do
+      let tensorShape = shapeOf $ lookupTensorVariable (globalBoundVarCtx ctx) v1
+      let constant = ConstantTensor tensorShape 0
+      let coefficients = Map.fromList [(toSliceVar v1, -1), (toSliceVar v2, 1)]
+      NormalisedRelation () $ Sparse coefficients constant
 
 --------------------------------------------------------------------------------
 -- Calculate the meta-network
@@ -273,40 +239,32 @@ equivalenceClassesToEliminations eqClasses = do
 calculateMetaNetworkApps ::
   (Traversable f) =>
   GlobalCtx ->
-  f (Assertion TensorVariable) ->
+  f LinearAssertion ->
   Map Name (NonEmpty NetworkApplicationInfo)
-calculateMetaNetworkApps globalCtx@GlobalCtx {..} assertions = do
+calculateMetaNetworkApps globalCtx assertions = do
   -- First calculate the set of network applications actually used in the query
-  let referencedVars = foldMap variablesOf assertions
-  Map.mapMaybe (isMetaNetworkUsed referencedVars) networkApplications
+  let usedSliceVariables = foldMap variablesOf assertions
+  let usedTensorVariables = findCorrespondingTensorVariables (globalBoundVarCtx globalCtx) usedSliceVariables
+  -- Then filter the network applications
+  Map.mapMaybe (filterApplications usedTensorVariables) (networkApplications globalCtx)
   where
-    isMetaNetworkUsed ::
-      Set TensorVariable ->
-      NonEmpty NetworkApplicationInfo ->
-      Maybe (NonEmpty NetworkApplicationInfo)
-    isMetaNetworkUsed referencedVars apps =
-      case NonEmpty.filter (isApplicationUsed referencedVars) apps of
-        [] -> Nothing
-        a : as -> Just (a :| as)
+    filterApplication :: Set TensorVariable -> NetworkApplicationInfo -> Bool
+    filterApplication usedVars NetworkApplicationInfo {..} =
+      Set.member (toTensorVar inputVariable) usedVars || Set.member (toTensorVar outputVariable) usedVars
 
-    isApplicationUsed ::
-      Set TensorVariable ->
-      NetworkApplicationInfo ->
-      Bool
-    isApplicationUsed referencedVars NetworkApplicationInfo {..} = do
-      let lookupVar = Tensor.toList . lookupNetworkElementVariables globalCtx
-      let appVars = Set.fromList (coerce inputVariable : coerce outputVariable : (lookupVar inputVariable <> lookupVar outputVariable))
-      not $ Set.disjoint referencedVars appVars
+    filterApplications :: Set TensorVariable -> NonEmpty NetworkApplicationInfo -> Maybe (NonEmpty NetworkApplicationInfo)
+    filterApplications usedVars apps = NonEmpty.nonEmpty (NonEmpty.filter (filterApplication usedVars) apps)
 
 logEqualitiesFound ::
   (MonadLogger m, Coercible var Lv) =>
   CompleteNamedBoundCtx ->
   [(var, Either var RatTensor)] ->
   m ()
-logEqualitiesFound ctx equalities = logDebug MaxDetail $ do
-  if null equalities
-    then "No suitable equalities found"
-    else "Possible equalities:" <> lineIndent (vsep (fmap (prettyEquality ctx) equalities)) <> line
+logEqualitiesFound ctx equalities =
+  logDebug MaxDetail $
+    if null equalities
+      then "No suitable equalities found"
+      else "Possible equalities:" <> lineIndent (vsep (fmap (prettyEquality ctx) equalities)) <> line
 
 prettyEquality ::
   (Coercible var Lv) =>

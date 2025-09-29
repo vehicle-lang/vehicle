@@ -17,7 +17,6 @@ import Vehicle.Data.Assertion
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.LinearExpr (HasVariables (..))
 import Vehicle.Data.QuantifiedVariable
-import Vehicle.Data.Tensor (RatTensor)
 
 --------------------------------------------------------------------------------
 -- Public interface
@@ -26,36 +25,36 @@ import Vehicle.Data.Tensor (RatTensor)
 -- the variable while trying to generate the minimum of disjuncts possible.
 findEqualityConstraint ::
   (MonadCompile m) =>
-  TensorVariable ->
-  AssertionTree TensorVariable ->
+  SliceVariable ->
+  LinearAssertionTree ->
   m SingleSearchResults
 findEqualityConstraint = findSingleConstraint
 
 findInequalityConstraints ::
   (MonadCompile m) =>
-  TensorVariable ->
-  AssertionTree TensorVariable ->
-  m (DisjunctAll ([Inequality TensorVariable RatTensor], Maybe (AssertionTree TensorVariable)))
+  SliceVariable ->
+  LinearAssertionTree ->
+  m (DisjunctAll ([LinearInequality], Maybe LinearAssertionTree))
 findInequalityConstraints = findAllConstraints getInequality
 
 --------------------------------------------------------------------------------
 -- Single constraints
 
 -- | Implicitly conjuncted
-type ConstrainedTree = (Equality TensorVariable RatTensor, Maybe (AssertionTree TensorVariable))
+type ConstrainedTree = (LinearEquality, Maybe LinearAssertionTree)
 
 -- | Implicitly disjuncted
-type SingleSearchResults = These (DisjunctAll ConstrainedTree) (AssertionTree TensorVariable)
+type SingleSearchResults = These (DisjunctAll ConstrainedTree) LinearAssertionTree
 
 findSingleConstraint ::
   forall m.
   (MonadCompile m) =>
-  TensorVariable ->
-  AssertionTree TensorVariable ->
+  SliceVariable ->
+  LinearAssertionTree ->
   m SingleSearchResults
 findSingleConstraint var = go
   where
-    go :: AssertionTree TensorVariable -> m SingleSearchResults
+    go :: LinearAssertionTree -> m SingleSearchResults
     go = \case
       Disjunct xs -> disjunctSingleResults xs =<< traverse go xs
       Conjunct xs -> conjunctSingleConstraints go xs
@@ -68,7 +67,7 @@ findSingleConstraint var = go
 disjunctSingleResults ::
   forall m.
   (MonadCompile m) =>
-  DisjunctAll (AssertionTree TensorVariable) ->
+  DisjunctAll LinearAssertionTree ->
   DisjunctAll SingleSearchResults ->
   m SingleSearchResults
 disjunctSingleResults xs (DisjunctAll results) = do
@@ -92,18 +91,18 @@ disjunctSingleResults xs (DisjunctAll results) = do
       let collapse u = fmap (Disjunct . DisjunctAll) $ NonEmpty.nonEmpty $ catMaybes $ NonEmpty.toList u
       DisjunctAll $ mergeNonEmptyKeyValues collapse $ unDisjunctAll disjuncts
 
-    mergeUnconstrainedTrees :: DisjunctAll (AssertionTree TensorVariable) -> AssertionTree TensorVariable
+    mergeUnconstrainedTrees :: DisjunctAll LinearAssertionTree -> LinearAssertionTree
     mergeUnconstrainedTrees = Disjunct
 
 conjunctSingleConstraints ::
   forall m.
   (MonadCompile m) =>
-  (AssertionTree TensorVariable -> m SingleSearchResults) ->
-  ConjunctAll (AssertionTree TensorVariable) ->
+  (LinearAssertionTree -> m SingleSearchResults) ->
+  ConjunctAll LinearAssertionTree ->
   m SingleSearchResults
 conjunctSingleConstraints search conjuncts = searchConjuncts $ unConjunctAll conjuncts
   where
-    searchConjuncts :: NonEmpty (AssertionTree TensorVariable) -> m SingleSearchResults
+    searchConjuncts :: NonEmpty LinearAssertionTree -> m SingleSearchResults
     searchConjuncts (x :| xs) = do
       results <- search x
       case xs of
@@ -143,17 +142,17 @@ conjunctSingleConstraints search conjuncts = searchConjuncts $ unConjunctAll con
                     | length totalConstraints >= length bestTotalConstraints -> return $ andResults [x] recResults
                   _ -> return $ andResults (y :| ys) results
 
-    collapseTrees :: DisjunctAll ConstrainedTree -> AssertionTree TensorVariable
+    collapseTrees :: DisjunctAll ConstrainedTree -> LinearAssertionTree
     collapseTrees t2 = do
       let eqToAssertion = Query . equalityToAssertion
       Disjunct $ fmap (\(a, b) -> maybe (eqToAssertion a) (andBoolExpr (eqToAssertion a)) b) t2
 
-    andConstraints :: NonEmpty (AssertionTree TensorVariable) -> DisjunctAll ConstrainedTree -> DisjunctAll ConstrainedTree
+    andConstraints :: NonEmpty LinearAssertionTree -> DisjunctAll ConstrainedTree -> DisjunctAll ConstrainedTree
     andConstraints xs = do
       let t = Conjunct $ ConjunctAll xs
       fmap (second (Just . maybe t (andBoolExpr t)))
 
-    andResults :: NonEmpty (AssertionTree TensorVariable) -> SingleSearchResults -> SingleSearchResults
+    andResults :: NonEmpty LinearAssertionTree -> SingleSearchResults -> SingleSearchResults
     andResults xs = bimap (andConstraints xs) (andBoolExpr (Conjunct $ ConjunctAll xs))
 
 -- (u == x or y >=1 ) and (u == x + 1 or y <= 1)
@@ -162,11 +161,11 @@ conjunctSingleConstraints search conjuncts = searchConjuncts $ unConjunctAll con
 -- Core algorithm
 
 -- Implicitly conjuncted
-type AllConstrainedTree constraint = ([constraint], Maybe (AssertionTree TensorVariable))
+type AllConstrainedTree constraint = ([constraint], Maybe LinearAssertionTree)
 
 type AllSearchResults constraint = DisjunctAll (AllConstrainedTree constraint)
 
-noResults :: AssertionTree TensorVariable -> AllSearchResults constraint
+noResults :: LinearAssertionTree -> AllSearchResults constraint
 noResults tree = DisjunctAll [(mempty, Just tree)]
 
 oneResult :: constraint -> AllSearchResults constraint
@@ -175,13 +174,13 @@ oneResult constraint = DisjunctAll [([constraint], Nothing)]
 findAllConstraints ::
   forall m constraint.
   (MonadCompile m, Ord constraint) =>
-  (Assertion TensorVariable -> Maybe constraint) ->
-  TensorVariable ->
-  AssertionTree TensorVariable ->
+  (LinearAssertion -> Maybe constraint) ->
+  SliceVariable ->
+  LinearAssertionTree ->
   m (AllSearchResults constraint)
 findAllConstraints assertionToConstraint var = go
   where
-    go :: AssertionTree TensorVariable -> m (AllSearchResults constraint)
+    go :: LinearAssertionTree -> m (AllSearchResults constraint)
     go = \case
       Disjunct xs -> findAllConstraintsDisjunct =<< traverse go xs
       Conjunct xs -> findAllConstraintsConjunct =<< traverse go xs
@@ -199,8 +198,7 @@ findAllConstraintsDisjunct ::
 findAllConstraintsDisjunct disjuncts = return $ optimiseDisjuncts $ disjunctDisjuncts disjuncts
   where
     optimiseDisjuncts :: AllSearchResults constraint -> AllSearchResults constraint
-    optimiseDisjuncts allDisjuncts = do
-      DisjunctAll $ mergeNonEmptyKeyValues (fmap (Conjunct . ConjunctAll) . sequence) (unDisjunctAll allDisjuncts)
+    optimiseDisjuncts allDisjuncts = DisjunctAll $ mergeNonEmptyKeyValues (fmap (Conjunct . ConjunctAll) . sequence) (unDisjunctAll allDisjuncts)
 
 findAllConstraintsConjunct ::
   forall m constraint.

@@ -31,38 +31,38 @@
                     "variableCompilationTrace": {
                       "reconstructionSteps": [
                         {
-                          "tag": "InternalReconstructTensorVariable",
+                          "tag": "ReconstructTensorVariable",
                           "contents": [
-                            2,
-                            [
-                              [
+                            {
+                              "nestedTensorShape": [
                                 1
                               ],
-                              3,
-                              3
-                            ]
+                              "nestedStartingVariable": 2
+                            },
+                            "AllDimensions"
                           ]
                         },
                         {
-                          "tag": "InternalReconstructTensorVariable",
+                          "tag": "ReconstructTensorVariable",
                           "contents": [
-                            4,
-                            [
-                              [
+                            {
+                              "nestedTensorShape": [
                                 1
                               ],
-                              5,
-                              5
-                            ]
+                              "nestedStartingVariable": 4
+                            },
+                            "AllDimensions"
                           ]
                         },
                         {
                           "tag": "SolveEquality",
                           "contents": [
-                            0,
-                            [
-                              1
-                            ],
+                            {
+                              "nestedTensorShape": [
+                                1
+                              ],
+                              "nestedStartingVariable": 0
+                            },
                             {
                               "constantValue": {
                                 "tag": "ConstantTensor",
@@ -99,9 +99,9 @@
                       1
                     ],
                     "metaNetwork": [
-                      {
-                        "metaNetworkEntryName": "f",
-                        "metaNetworkEntryInfo": {
+                      [
+                        "f",
+                        {
                           "networkType": {
                             "outputTensor": {
                               "dimensions": [
@@ -117,8 +117,9 @@
                             }
                           },
                           "networkFilepath": "fake.onnx"
-                        }
-                      }
+                        },
+                        1
+                      ]
                     ]
                   }
                 ]
@@ -152,38 +153,38 @@
                     "variableCompilationTrace": {
                       "reconstructionSteps": [
                         {
-                          "tag": "InternalReconstructTensorVariable",
+                          "tag": "ReconstructTensorVariable",
                           "contents": [
-                            2,
-                            [
-                              [
+                            {
+                              "nestedTensorShape": [
                                 1
                               ],
-                              3,
-                              3
-                            ]
+                              "nestedStartingVariable": 2
+                            },
+                            "AllDimensions"
                           ]
                         },
                         {
-                          "tag": "InternalReconstructTensorVariable",
+                          "tag": "ReconstructTensorVariable",
                           "contents": [
-                            4,
-                            [
-                              [
+                            {
+                              "nestedTensorShape": [
                                 1
                               ],
-                              5,
-                              5
-                            ]
+                              "nestedStartingVariable": 4
+                            },
+                            "AllDimensions"
                           ]
                         },
                         {
                           "tag": "SolveEquality",
                           "contents": [
-                            0,
-                            [
-                              1
-                            ],
+                            {
+                              "nestedTensorShape": [
+                                1
+                              ],
+                              "nestedStartingVariable": 0
+                            },
                             {
                               "constantValue": {
                                 "tag": "ConstantTensor",
@@ -220,9 +221,9 @@
                       2
                     ],
                     "metaNetwork": [
-                      {
-                        "metaNetworkEntryName": "f",
-                        "metaNetworkEntryInfo": {
+                      [
+                        "f",
+                        {
                           "networkType": {
                             "outputTensor": {
                               "dimensions": [
@@ -238,8 +239,9 @@
                             }
                           },
                           "networkFilepath": "fake.onnx"
-                        }
-                      }
+                        },
+                        1
+                      ]
                     ]
                   }
                 ]

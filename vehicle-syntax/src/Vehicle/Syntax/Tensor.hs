@@ -49,9 +49,13 @@ import Vehicle.Syntax.Prelude (developerError)
 --------------------------------------------------------------------------------
 -- Indices
 
-type TensorShape = [Int]
+type TensorDimension = Int
 
-type TensorIndices = [Int]
+type TensorShape = [TensorDimension]
+
+type TensorIndex = Int
+
+type TensorIndices = [TensorIndex]
 
 showTensorIndices :: TensorIndices -> String
 showTensorIndices xs = concatMap (\v -> "!" <> show v) (reverse xs)

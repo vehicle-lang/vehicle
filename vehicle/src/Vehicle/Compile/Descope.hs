@@ -11,7 +11,7 @@ module Vehicle.Compile.Descope
 where
 
 import Data.Map.Ordered qualified as OMap
-import Vehicle.Compile.Context.Name
+import Vehicle.Compile.Context.Name.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Standard.Core (Builtin)

@@ -543,9 +543,9 @@ createReproducer verifier verifierExecutable verificationCache metaNetwork query
 
   -- Copy the network files over
   copiedMetaNetwork <- liftIO $ do
-    forM metaNetwork $ \MetaNetworkEntry {metaNetworkEntryInfo = NetworkContextInfo {..}, ..} -> do
+    forM metaNetwork $ \(name, NetworkContextInfo {..}, apps) -> do
       newNetworkFilePath <- copyOverFile networkFilepath
-      return $ MetaNetworkEntry {metaNetworkEntryInfo = NetworkContextInfo {networkFilepath = newNetworkFilePath, ..}, ..}
+      return (name, NetworkContextInfo {networkFilepath = newNetworkFilePath, ..}, apps)
 
   let command = unwords (verifierExecutable : prepareArgs verifier copiedMetaNetwork copiedQueryFile)
 

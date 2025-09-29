@@ -14,7 +14,8 @@ module Vehicle.Verify.Specification
     specificationPropertyNames,
     SpecificationCacheIndex (..),
     PropertyVerificationPlan (..),
-    CompilationStep (SolveEquality, SolveInequalities, ReconstructTensorVariable),
+    CompilationStep (..),
+    ReconstructionDepth (..),
     VariableCompilationTrace (..),
     VariableStore (..),
     getQueryVariables,
@@ -29,57 +30,48 @@ import Data.Aeson (FromJSON, ToJSON)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Set (Set)
-import Data.Vector qualified as Vector
 import GHC.Generics (Generic)
-import Vehicle.Compile.Prelude (CompleteNamedBoundCtx, Name)
+import Vehicle.Compile.Prelude (CompleteNamedBoundCtx, Name, Pretty (..))
 import Vehicle.Data.Assertion
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.QuantifiedVariable
 import Vehicle.Resource (ResourcesIntegrityInfo)
-import Vehicle.Syntax.Tensor
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
 
 --------------------------------------------------------------------------------
 -- User variable
 
+data ReconstructionDepth
+  = AllDimensions
+  | OneDimension
+  deriving (Show, Eq, Ord, Generic)
+
+instance NFData ReconstructionDepth
+
+instance ToJSON ReconstructionDepth
+
+instance FromJSON ReconstructionDepth
+
+instance Pretty ReconstructionDepth where
+  pretty = \case
+    AllDimensions -> "all"
+    OneDimension -> "1D"
+
 -- | One step in the process for transforming unreduced user variables into
 -- reduced network input and output variables.
 data CompilationStep
-  = SolveEquality TensorVariable [TensorVariable] (LinearExpr TensorVariable RatTensor)
-  | SolveInequalities UserVariable (Bounds TensorVariable RatTensor)
-  | InternalReconstructTensorVariable TensorVariable TensorVariableElements
-  deriving (Eq, Ord, Show, Generic)
+  = SolveEquality NestedSliceVariable LinearExpression
+  | SolveInequalities SliceVariable LinearBounds
+  | ReconstructTensorVariable NestedSliceVariable ReconstructionDepth
+  deriving (Show, Eq, Ord, Generic)
 
 instance NFData CompilationStep
 
 instance ToJSON CompilationStep
 
 instance FromJSON CompilationStep
-
--- | Variables for tensor elements are guaranteed to be consecutative so we
--- merely store the first and last variable (inclusive). This is hidden from
--- outside the module by a pattern.
-type TensorVariableElements = Maybe (TensorShape, TensorVariable, TensorVariable)
-
-toTensorVariableElements :: Tensor TensorVariable -> TensorVariableElements
-toTensorVariableElements variables = do
-  let shape = shapeOf variables
-  let vec = toVector variables
-  if null vec then Nothing else Just (shape, Vector.head vec, Vector.last vec)
-
-fromTensorVariableElements :: TensorVariableElements -> Tensor TensorVariable
-fromTensorVariableElements = \case
-  Nothing -> fromVector [] mempty
-  Just (shape, firstVar, lastVar) -> fromVector shape [firstVar .. lastVar]
-
-pattern ReconstructTensorVariable :: TensorVariable -> Tensor TensorVariable -> CompilationStep
-pattern ReconstructTensorVariable var elems <- InternalReconstructTensorVariable var (fromTensorVariableElements -> elems)
-  where
-    ReconstructTensorVariable var elems = InternalReconstructTensorVariable var (toTensorVariableElements elems)
-
-{-# COMPLETE SolveEquality, SolveInequalities, ReconstructTensorVariable #-}
 
 -- | The steps for transforming unreduced user variables into reduced network
 -- input and output varibles.

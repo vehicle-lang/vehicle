@@ -1,0 +1,20 @@
+[
+  {
+    "name": "VNNLib",
+    "run": "vehicle compile -t VNNLibQueries -s spec.vcl -o VNNLibQueries.queries/ -p epsilon:8/255 -d images:dice-images-1.idx -n classifier:baseline.onnx",
+    "needs": [
+      "spec.vcl",
+      "baseline.onnx",
+      "dice-images-1.idx"
+    ],
+    "produces": [
+      "VNNLibQueries.queries/robust!0.vcl-plan",
+      "VNNLibQueries.queries/robust!0-query4.txt",
+      "VNNLibQueries.queries/robust!0-query3.txt",
+      "VNNLibQueries.queries/robust!0-query1.txt",
+      "VNNLibQueries.queries/robust!0-query6.txt",
+      "VNNLibQueries.queries/robust!0-query5.txt",
+      "VNNLibQueries.queries/robust!0-query2.txt"
+    ]
+  }
+]

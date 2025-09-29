@@ -78,7 +78,7 @@ convertVerificationError Verifier {..} (propertyAddress, queryID) = \case
     VerificationErrorAction
       { reproducerIsUseful = False,
         verificationErrorMessage = do
-          let networkNames = fmap metaNetworkEntryName metaNetworkEntries
+          let networkNames = fmap (\(n, _, _) -> n) metaNetworkEntries
           let duplicateNetworkNames = findDuplicates networkNames
           "The"
             <+> verifierDoc
