@@ -16,7 +16,6 @@ classifier : Image -> Tensor Real [2]
 advises : Image -> Label -> Bool
 advises image label = forall j . j != label => classifier image ! label > classifier image ! j
 
-
 --The radius of the epsilon ball that we are checking robustness within
 epsilon : Real
 epsilon = 0.05

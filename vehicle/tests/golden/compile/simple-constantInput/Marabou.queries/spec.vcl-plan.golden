@@ -9,7 +9,6 @@
             {
               "variableStore": {
                 "vehicleVariableCtx": [
-                  "f₀[output]!0",
                   "f₀[output]",
                   "f₀[input]!1",
                   "f₀[input]!0",
@@ -20,7 +19,7 @@
                   0
                 ],
                 "queryVariableMapping": {
-                  "y0": 5,
+                  "y0": 4,
                   "x1": 3,
                   "x0": 2
                 }
@@ -43,9 +42,7 @@
                     "tag": "ReconstructTensorVariable",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          1
-                        ],
+                        "nestedTensorShape": [],
                         "nestedStartingVariable": 4
                       },
                       "AllDimensions"
@@ -97,9 +94,7 @@
                   {
                     "networkType": {
                       "outputTensor": {
-                        "dimensions": [
-                          1
-                        ],
+                        "dimensions": [],
                         "baseType": []
                       },
                       "inputTensor": {

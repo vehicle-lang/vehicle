@@ -61,7 +61,7 @@ instance Pretty Resources where
       ( [ "specification:" <+> pretty specification,
           "networks" <> lineIndent (prettyMap networks),
           "datasets" <> lineIndent (prettyMap datasets),
-          "parameters" <> lineIndent (prettyMap datasets)
+          "parameters" <> lineIndent (prettyMap parameters)
         ] ::
           [Doc ann]
       )

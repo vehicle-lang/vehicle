@@ -87,9 +87,13 @@ eliminateTrivialConjunctions conjunction = do
       [] -> Trivial True
       x : xs -> NonTrivial $ ConjunctAll (x :| xs)
 
+collapseTrivialConjunctions :: ConjunctAll (MaybeTrivial (ConjunctAll a)) -> MaybeTrivial (ConjunctAll a)
+collapseTrivialConjunctions = fmap concatConjuncts . eliminateTrivialConjunctions
+
 --------------------------------------------------------------------------------
 -- BooleanExpr
 
+-- TODO make this use `conjunctExprs` and `disjunctExprs` as smart constructors.
 data BooleanExpr a
   = Conjunct !(ConjunctAll (BooleanExpr a))
   | Disjunct !(DisjunctAll (BooleanExpr a))
@@ -108,6 +112,16 @@ instance (Pretty a) => Pretty (BooleanExpr a) where
     Disjunct xs -> pretty xs
     Conjunct xs -> pretty xs
 
+conjunctExprs :: ConjunctAll (BooleanExpr a) -> BooleanExpr a
+conjunctExprs = \case
+  ConjunctAll (e :| []) -> e
+  es -> Conjunct es
+
+disjunctExprs :: DisjunctAll (BooleanExpr a) -> BooleanExpr a
+disjunctExprs = \case
+  DisjunctAll (e :| []) -> e
+  es -> Disjunct es
+
 evaluate :: (a -> Bool) -> BooleanExpr a -> Bool
 evaluate f = \case
   Query v -> f v
@@ -118,8 +132,8 @@ eliminateTrivialAtoms :: BooleanExpr (MaybeTrivial a) -> MaybeTrivial (BooleanEx
 eliminateTrivialAtoms = \case
   Query (NonTrivial a) -> NonTrivial (Query a)
   Query (Trivial b) -> Trivial b
-  Conjunct xs -> Conjunct <$> eliminateTrivialConjunctions (fmap eliminateTrivialAtoms xs)
-  Disjunct xs -> Disjunct <$> eliminateTrivialDisjunctions (fmap eliminateTrivialAtoms xs)
+  Conjunct xs -> conjunctExprs <$> eliminateTrivialConjunctions (fmap eliminateTrivialAtoms xs)
+  Disjunct xs -> disjunctExprs <$> eliminateTrivialDisjunctions (fmap eliminateTrivialAtoms xs)
 
 filterTrivialAtoms :: MaybeTrivial (BooleanExpr (MaybeTrivial a)) -> MaybeTrivial (BooleanExpr a)
 filterTrivialAtoms = flattenTrivial . fmap eliminateTrivialAtoms

@@ -1,7 +1,7 @@
 module Vehicle.Prelude.Misc where
 
 import Control.DeepSeq (NFData)
-import Control.Monad (join, when)
+import Control.Monad (join, liftM2, when)
 import Control.Monad.Identity (Identity (..))
 import Control.Monad.Reader (MonadReader (..))
 import Control.Monad.State (MonadState (..), modify)
@@ -140,6 +140,9 @@ oneHot i l x
 deleteAndGet :: (Ord a) => a -> Map a b -> (Maybe b, Map a b)
 deleteAndGet = Map.updateLookupWithKey (\_ _ -> Nothing)
 
+unionWithM :: (Monad m, Ord key) => (val -> val -> m val) -> Map key val -> Map key val -> m (Map key val)
+unionWithM f m1 m2 = sequence $ Map.unionWith (\xm ym -> join $ liftM2 f xm ym) (Map.map return m1) (Map.map return m2)
+
 -- Base 4.16 once we upgrade
 prependList :: [a] -> NonEmpty a -> NonEmpty a
 prependList ls ne = case ls of
@@ -276,7 +279,7 @@ mergeNonEmptyKeyValues f xs = do
     [] -> developerError "impossible"
     u : us -> fmap (second f) (u :| us)
 
-theseErrors :: (r1 -> r2 -> r3) -> Either e1 r1 -> Either e2 r2 -> Either (These e1 e2) r3
+theseErrors :: (a -> b -> c) -> Either e1 a -> Either e2 b -> Either (These e1 e2) c
 theseErrors f v1 v2 = case (v1, v2) of
   (Left e1, Left e2) -> Left $ These e1 e2
   (Left e1, Right {}) -> Left $ This e1

@@ -1,6 +1,7 @@
 module Vehicle.Syntax.AST.Record where
 
 import Control.DeepSeq (NFData)
+import Data.Foldable (traverse_)
 import Data.Hashable (Hashable)
 import Data.Map.Ordered (OMap)
 import Data.Map.Ordered qualified as OMap
@@ -56,6 +57,9 @@ traverseRecordField ::
   m (RecordField expr2)
 traverseRecordField f (name, typ) = (name,) <$> f typ
 
+traverseRecordField_ :: (Monad m) => (expr1 -> m ()) -> RecordField expr1 -> m ()
+traverseRecordField_ f (_, typ) = f typ
+
 type RecordFields expr = [RecordField expr]
 
 mapRecordFields ::
@@ -70,6 +74,9 @@ traverseRecordFields ::
   RecordFields expr1 ->
   m (RecordFields expr2)
 traverseRecordFields f = traverse (traverseRecordField f)
+
+traverseRecordFields_ :: (Monad m) => (expr1 -> m ()) -> RecordFields expr1 -> m ()
+traverseRecordFields_ f = traverse_ (traverseRecordField_ f)
 
 lookupRecordField ::
   RecordFields expr ->

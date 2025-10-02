@@ -9,9 +9,7 @@
             {
               "variableStore": {
                 "vehicleVariableCtx": [
-                  "f₀[output]!0",
                   "f₀[output]",
-                  "f₀[input]!0",
                   "f₀[input]",
                   "x"
                 ],
@@ -19,8 +17,8 @@
                   0
                 ],
                 "queryVariableMapping": {
-                  "y0": 4,
-                  "x0": 2
+                  "y0": 2,
+                  "x0": 1
                 }
               },
               "variableCompilationTrace": {
@@ -29,9 +27,7 @@
                     "tag": "ReconstructTensorVariable",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          1
-                        ],
+                        "nestedTensorShape": [],
                         "nestedStartingVariable": 1
                       },
                       "AllDimensions"
@@ -41,10 +37,8 @@
                     "tag": "ReconstructTensorVariable",
                     "contents": [
                       {
-                        "nestedTensorShape": [
-                          1
-                        ],
-                        "nestedStartingVariable": 3
+                        "nestedTensorShape": [],
+                        "nestedStartingVariable": 2
                       },
                       "AllDimensions"
                     ]
@@ -69,7 +63,7 @@
                         },
                         "coefficients": [
                           [
-                            2,
+                            1,
                             {
                               "numerator": 1,
                               "denominator": 1
@@ -95,15 +89,11 @@
                   {
                     "networkType": {
                       "outputTensor": {
-                        "dimensions": [
-                          1
-                        ],
+                        "dimensions": [],
                         "baseType": []
                       },
                       "inputTensor": {
-                        "dimensions": [
-                          1
-                        ],
+                        "dimensions": [],
                         "baseType": []
                       }
                     },

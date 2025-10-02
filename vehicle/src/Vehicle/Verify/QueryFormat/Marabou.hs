@@ -7,6 +7,7 @@ where
 import Control.Monad (forM)
 import Data.List.NonEmpty (NonEmpty (..))
 import Vehicle.Compile.Prelude
+import Vehicle.Data.Code.BooleanExpr (conjunctsToList)
 import Vehicle.Prelude.Warning
 import Vehicle.Syntax.Tensor (flattenIndices)
 import Vehicle.Verify.Core
@@ -33,7 +34,7 @@ outputFormat =
   ExternalOutputFormat
     { formatName = pretty MarabouQueries,
       formatVersion = Nothing,
-      commentStyle = Line "//",
+      commentStyle = Line lineComment,
       emptyLines = False
     }
 
@@ -46,10 +47,30 @@ compileMarabouVar QueryVariableInfo {..} = do
 
 -- | Compiles an expression representing a single Marabou query.
 compileMarabouQuery :: CompileQuery
-compileMarabouQuery address _metaNetwork _variables assertions = do
-  assertionDocs <- forM assertions (compileAssertion address)
-  let assertionsDoc = vsep assertionDocs
-  return $ layoutAsText assertionsDoc
+compileMarabouQuery address _metaNetwork _variables bounds assertions = do
+  assertionDocs <- forM (conjunctsToList assertions) (compileAssertion address)
+  let boundsDoc = concatMap compileBounds bounds
+
+  return $
+    layoutAsText $
+      line
+        <> lineComment <+> "Assertions"
+        <> line
+        <> vsep assertionDocs
+        <> line
+        <> line
+        <> lineComment <+> "Input bounds"
+        <> line
+        <> vsep boundsDoc
+
+compileBounds :: (QueryVariable, (Rational, Rational)) -> [Doc a]
+compileBounds (var, (lowerBound, upperBound))
+  | lowerBound == upperBound =
+      [pretty var <+> "=" <+> prettyRationalAsFloat lowerBound]
+  | otherwise =
+      [ pretty var <+> ">=" <+> prettyRationalAsFloat lowerBound,
+        pretty var <+> "<=" <+> prettyRationalAsFloat upperBound
+      ]
 
 compileAssertion ::
   (MonadLogger m) =>
@@ -90,3 +111,6 @@ compileCoefVar False (1, var) = pretty var
 compileCoefVar True (1, var) = "+" <> pretty var
 compileCoefVar _ (-1, var) = "-" <> pretty var
 compileCoefVar _ (coefficient, var) = prettyRationalAsFloat coefficient <> pretty var
+
+lineComment :: Doc a
+lineComment = "//"

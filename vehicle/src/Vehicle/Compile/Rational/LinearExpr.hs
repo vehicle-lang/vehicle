@@ -1,6 +1,6 @@
 module Vehicle.Compile.Rational.LinearExpr
   ( LinearityError (..),
-    compileLinearRelation,
+    compileLinearAssertion,
   )
 where
 
@@ -9,9 +9,10 @@ import Control.Applicative (Applicative (..))
 import Control.Monad.Except (MonadError (..), runExceptT)
 import Control.Monad.Trans (MonadTrans (..))
 import Vehicle.Compile.Prelude
+import Vehicle.Data.Assertion (LinearAssertion, comparisonToAssertion)
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.Interface
-import Vehicle.Data.Code.LinearExpr (LinearExpression, addExprs, constantExpr, isConstant, scaleExpr, singletonVarExpr)
+import Vehicle.Data.Code.LinearExpr (LinearExpression, addExprs, addExprsUnsafe, constantExpr, isConstant, scaleExpr, singletonVarExpr)
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Tensor (TensorShape, pattern ConstantTensor)
@@ -27,22 +28,27 @@ data LinearityError
   = NonLinearity
   | UnexpectedExpr (Value Builtin)
   | UnreducedExpr (Value Builtin)
+  | TrivialExpr Bool
 
 --------------------------------------------------------------------------------
 -- Tensor expression
 
-compileLinearRelation ::
+compileLinearAssertion ::
   (MonadLogger m) =>
   (Lv -> m SliceVariable) ->
+  ComparisonOp ->
   TensorShape ->
   Value Builtin ->
   Value Builtin ->
-  m (Either LinearityError (LinearExpression, LinearExpression))
-compileLinearRelation toVar shape x y = do
+  m (Either LinearityError LinearAssertion)
+compileLinearAssertion toVar op shape x y = do
   runExceptT $ do
-    x' <- compile (lift . toVar) shape x
-    y' <- compile (lift . toVar) shape y
-    return (x', y')
+    linX <- compile (lift . toVar) shape x
+    linY <- compile (lift . toVar) shape y
+
+    let subtractExprs u v = return $ addExprs 1 (-1) u v
+    boolOrAssertion <- comparisonToAssertion op subtractExprs linX linY
+    either (throwError . TrivialExpr) return boolOrAssertion
 
 compile ::
   forall m.
@@ -66,8 +72,8 @@ compile toVar shape = go
       -- Inductive cases --
       ---------------------
       VNegRatTensor (TensorOp1Args _ e) -> scaleExpr (-1) <$> go e
-      VAddRatTensor (TensorOp2Args _ e1 e2) -> addExprs 1 1 <$> go e1 <*> go e2
-      VSubRatTensor (TensorOp2Args _ e1 e2) -> addExprs 1 (-1) <$> go e1 <*> go e2
+      VAddRatTensor (TensorOp2Args _ e1 e2) -> addExprsUnsafe 1 1 <$> go e1 <*> go e2
+      VSubRatTensor (TensorOp2Args _ e1 e2) -> addExprsUnsafe 1 (-1) <$> go e1 <*> go e2
       VMulRatTensor (TensorOp2Args _ e1 e2) -> do
         e1' <- compile toVar shape e1
         e2' <- compile toVar shape e2

@@ -57,9 +57,25 @@
                       0,
                       {
                         "upperBounds": [
-                          {
-                            "relation": "NonStrict",
-                            "expression": {
+                          [
+                            "Strict",
+                            {
+                              "constantValue": {
+                                "tag": "ConstantTensor",
+                                "contents": [
+                                  [],
+                                  {
+                                    "numerator": 2,
+                                    "denominator": 1
+                                  }
+                                ]
+                              },
+                              "coefficients": []
+                            }
+                          ],
+                          [
+                            "NonStrict",
+                            {
                               "constantValue": {
                                 "tag": "ConstantTensor",
                                 "contents": [
@@ -80,12 +96,36 @@
                                 ]
                               ]
                             }
-                          }
+                          ]
                         ],
                         "lowerBounds": [
-                          {
-                            "relation": "NonStrict",
-                            "expression": {
+                          [
+                            "Strict",
+                            {
+                              "constantValue": {
+                                "tag": "ConstantTensor",
+                                "contents": [
+                                  [],
+                                  {
+                                    "numerator": -3,
+                                    "denominator": 1
+                                  }
+                                ]
+                              },
+                              "coefficients": [
+                                [
+                                  3,
+                                  {
+                                    "numerator": 1,
+                                    "denominator": 1
+                                  }
+                                ]
+                              ]
+                            }
+                          ],
+                          [
+                            "NonStrict",
+                            {
                               "constantValue": {
                                 "tag": "ConstantTensor",
                                 "contents": [
@@ -98,7 +138,7 @@
                               },
                               "coefficients": []
                             }
-                          }
+                          ]
                         ]
                       }
                     ]

@@ -6,7 +6,8 @@ module Vehicle.Data.Variable.Bound.Tensor
     nestedChildVariables,
     nestedVariablesSize,
     isSliceOf,
-    findIndicesAndShape,
+    findIndices,
+    findShape,
     variableNamesForAllSlices,
     NestedTensorVariableCtx,
     lookupTensorVariable,
@@ -53,8 +54,8 @@ data NestedSliceVariable = NestedSliceVariable
   }
   deriving (Show, Eq, Ord, Generic)
 
-mkNestedSliceVariable :: TensorShape -> SliceVariable -> NestedSliceVariable
-mkNestedSliceVariable = NestedSliceVariable
+mkNestedSliceVariable :: (SliceVariableLike variable) => TensorShape -> variable -> NestedSliceVariable
+mkNestedSliceVariable shape var = NestedSliceVariable shape (toSliceVar var)
 
 instance NFData NestedSliceVariable
 
@@ -131,31 +132,6 @@ lookupTensorVariable ::
 lookupTensorVariable ctx var =
   fst $ lookupTensorVariableAndName ctx (toTensorVar var)
 
-findCorrespondingSliceVariable ::
-  (HasCallStack, SliceVariableLike variable) =>
-  NestedTensorVariableCtx ->
-  variable ->
-  NestedSliceVariable
-findCorrespondingSliceVariable ctx var = do
-  let parentVar = findCorrespondingTensorVariable ctx var
-  let (_, shape) = findIndicesAndShape parentVar (toSliceVar var)
-  NestedSliceVariable shape (toSliceVar var)
-
-findIndicesAndShape :: NestedSliceVariable -> SliceVariable -> (TensorIndices, TensorShape)
-findIndicesAndShape (NestedSliceVariable shape lv) var = go mempty shape (unLv $ toLv var - toLv lv)
-  where
-    go :: TensorIndices -> TensorShape -> Int -> (TensorIndices, TensorShape)
-    go indices ds 0 = (reverse indices, ds)
-    go _indices [] _flatIndex = developerError "Malformed shape and index"
-    go indices (_d : ds) flatIndex = do
-      let newIndex = (flatIndex - 1) `div` nestedVariablesSize ds
-      let newFlatIndex = (flatIndex - 1) `rem` nestedVariablesSize ds
-      go (newIndex : indices) ds newFlatIndex
-
-isSliceOf :: Lv -> NestedSliceVariable -> Bool
-isSliceOf lv (NestedSliceVariable shape startLv) =
-  toLv startLv <= lv && lv < toLv startLv + Lv (nestedVariablesSize shape)
-
 findCorrespondingTensorVariable ::
   (SliceVariableLike variable) =>
   NestedTensorVariableCtx ->
@@ -166,6 +142,44 @@ findCorrespondingTensorVariable ctx var =
   case findCorrespondingTensorSliceVariables ctx (Set.singleton (toSliceVar var)) of
     [v] -> v
     _ -> developerError "Missing variable"
+
+findCorrespondingSliceVariable ::
+  (HasCallStack, SliceVariableLike variable) =>
+  NestedTensorVariableCtx ->
+  variable ->
+  NestedSliceVariable
+findCorrespondingSliceVariable ctx var = do
+  let parentVar = findCorrespondingTensorVariable ctx var
+  let shape = findShape parentVar (toSliceVar var)
+  NestedSliceVariable shape (toSliceVar var)
+
+-- | Returns the shape of the provided slice variable
+findShape :: NestedSliceVariable -> SliceVariable -> TensorShape
+findShape (NestedSliceVariable shape lv) var = go shape (unLv $ toLv var - toLv lv)
+  where
+    go :: TensorShape -> Int -> TensorShape
+    go ds 0 = ds
+    go [] _flatIndex = developerError "Malformed shape and index"
+    go (_d : ds) flatIndex = do
+      let newFlatIndex = (flatIndex - 1) `rem` nestedVariablesSize ds
+      go ds newFlatIndex
+
+-- | Returns the indices into the provided parent variable of the provided slice variable
+findIndices :: NestedSliceVariable -> SliceVariable -> TensorIndices
+findIndices (NestedSliceVariable shape lv) var = go mempty shape (unLv $ toLv var - toLv lv)
+  where
+    go :: TensorIndices -> TensorShape -> Int -> TensorIndices
+    go indices _ 0 = reverse indices
+    go _indices [] _flatIndex = developerError "Malformed shape and index"
+    go indices (_d : ds) flatIndex = do
+      let newIndex = (flatIndex - 1) `div` nestedVariablesSize ds
+      let newFlatIndex = (flatIndex - 1) `rem` nestedVariablesSize ds
+      go (newIndex : indices) ds newFlatIndex
+
+isSliceOf :: Lv -> NestedSliceVariable -> Maybe SliceVariable
+isSliceOf lv (NestedSliceVariable shape startLv)
+  | toLv startLv <= lv && lv < toLv startLv + Lv (nestedVariablesSize shape) = Just $ coerce lv
+  | otherwise = Nothing
 
 -- | Given a set of variables representing the slices of a given set of tensors
 -- returns the set of tensor variables that those slices are taken from.

@@ -113,7 +113,7 @@ instance FromJSONKey SliceVariable
 
 -- | Variables that represent a whole tensor, rather than an individual slice.
 newtype TensorVariable = TensorVariable SliceVariable
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Show)
 
 instance VariableLike TensorVariable where
   toLv = coerce
@@ -168,7 +168,7 @@ instance TensorVariableLike UserTensorVariable where
 -- | Variables introduced by the compiler that represent a tensor which is used
 -- to represent the input to a neural network.
 newtype NetworkInputTensorVariable = NetworkInputTensorVariable TensorVariable
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Show)
 
 instance VariableLike NetworkInputTensorVariable where
   toLv = coerce

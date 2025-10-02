@@ -4,7 +4,7 @@ type UnnormalisedImage = Tensor Real [2, 3]
 classifier : UnnormalisedImage -> Real
 
 boundedByEpsilon : UnnormalisedImage -> Bool
-boundedByEpsilon x = forall c h . 0 <= x ! c ! h
+boundedByEpsilon x = forall c h . 0 <= x ! c ! h <= 1
 
 @property
 robust : Bool

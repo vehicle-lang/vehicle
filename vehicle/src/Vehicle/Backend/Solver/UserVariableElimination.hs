@@ -11,16 +11,16 @@ import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), asks)
 import Control.Monad.State (MonadState (..), gets)
 import Control.Monad.Writer (MonadWriter (..), WriterT (..))
-import Data.Map qualified as Map
 import Vehicle.Backend.Solver.UserVariableElimination.Core
 import Vehicle.Backend.Solver.UserVariableElimination.EliminateExists (eliminateQuantifiedVariable)
 import Vehicle.Compile.Error
+import Vehicle.Compile.ExpandResources.Core (lookupNetworkInfo)
 import Vehicle.Compile.LiftIf (unfoldIf)
 import Vehicle.Compile.LowerNot (lowerNot)
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
-import Vehicle.Compile.Rational.LinearExpr (LinearityError (..), compileLinearRelation)
+import Vehicle.Compile.Rational.LinearExpr (LinearityError (..), compileLinearAssertion)
 import Vehicle.Compile.Resource (NetworkTensorType (..), NetworkType (..))
 import Vehicle.Compile.Unblock (UnblockingActions (..))
 import Vehicle.Compile.Unblock qualified as Unblocking
@@ -29,7 +29,6 @@ import Vehicle.Data.Assertion
 import Vehicle.Data.Builtin.Interface.Normalise (evalAtTensor, unoptimisedEvalReduceAndTensor)
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.Interface
-import Vehicle.Data.Code.LinearExpr (addExprs)
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
 import Vehicle.Data.MaybeTrivial
@@ -154,15 +153,16 @@ compilePurifiedAssertion op args@(TensorOp2Args dims xs ys) = do
         Nothing -> developerError $ "Non-concrete dimensions found" <+> prettyVerbose dims
         Just concreteShape -> concreteShape
 
-  maybeLinearRel <- compileLinearRelation findVariableFromLevel shape xs ys
-  case maybeLinearRel of
-    Right (e1, e2) -> do
-      let subExprs u v = return $ addExprs 1 (-1) u v
-      Right <$> comparisonToAssertion op subExprs e1 e2
+  maybeLinearAssertion <- compileLinearAssertion findVariableFromLevel op shape xs ys
+  case maybeLinearAssertion of
+    Right assertion -> do
+      return $ Right assertion
     Left NonLinearity ->
       throwError catchableUnsupportedNonLinearConstraint
     Left (UnexpectedExpr e) ->
       developerError ("unexpected expression" <+> prettyVerbose e)
+    Left (TrivialExpr b) ->
+      return $ Left $ IBoolLiteral b
     Left (UnreducedExpr e) -> do
       logDebugM MaxDetail $ do
         exprDoc <- prettyFriendlyInCtx e
@@ -205,10 +205,7 @@ unblockNetworkApplication ::
 unblockNetworkApplication ident (NetworkAppArgs arg) = do
   globalCtx <- get
   let name = nameOf ident
-  networkContext <- asks networkCtx
-  networkInfo <- case Map.lookup name networkContext of
-    Nothing -> compilerDeveloperError $ "Expecting" <+> quotePretty name <+> "to be a @network"
-    Just info -> return info
+  networkInfo <- asks (lookupNetworkInfo name . networkCtx)
 
   (inputVarExpr, outputVarExpr, newGlobalCtx) <- addNetworkApplicationToGlobalCtx name networkInfo globalCtx arg
   let inputDims = dimensions (inputTensor (networkType networkInfo))

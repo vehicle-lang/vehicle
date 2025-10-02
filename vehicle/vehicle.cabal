@@ -167,6 +167,7 @@ library
     Vehicle.Data.MaybeTrivial
     Vehicle.Data.Meta
     Vehicle.Data.Tensor
+    Vehicle.Data.Tensor.Traversal
     Vehicle.Data.Variable.Bound.Context
     Vehicle.Data.Variable.Bound.Context.Name
     Vehicle.Data.Variable.Bound.Index
@@ -200,6 +201,7 @@ library
     Vehicle.Backend.Rocq.Interact
     Vehicle.Backend.Solver
     Vehicle.Backend.Solver.QueryCompilation
+    Vehicle.Backend.Solver.QueryCompilation.InputBoundsCheck
     Vehicle.Backend.Solver.QueryCompilation.MetaNetworkCalculation
     Vehicle.Backend.Solver.UserVariableElimination
     Vehicle.Backend.Solver.UserVariableElimination.ConstraintSearch
@@ -242,6 +244,8 @@ library
     Vehicle.Compile.Unblock
     Vehicle.Compile.Variable
     Vehicle.Data.Assertion
+    Vehicle.Data.Bound
+    Vehicle.Data.Bound.Operations
     Vehicle.Data.Builtin.Core
     Vehicle.Data.Builtin.Decidability
     Vehicle.Data.Builtin.Decidability.Instances

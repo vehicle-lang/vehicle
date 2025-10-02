@@ -32,7 +32,7 @@ import Data.Map qualified as Map
 import Data.Set (Set)
 import GHC.Generics (Generic)
 import Vehicle.Compile.Prelude (CompleteNamedBoundCtx, Name, Pretty (..))
-import Vehicle.Data.Assertion
+import Vehicle.Data.Bound
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.MaybeTrivial

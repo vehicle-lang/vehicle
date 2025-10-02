@@ -2,12 +2,12 @@ unused : Bool
 unused = forall (x : Real) . True
 
 @network
-f : Tensor Real [1] -> Tensor Real [1]
+f : Real -> Real
 
 @property
 expandedExpr : Bool
-expandedExpr = forall x . x ! 0 >= f x ! 0
+expandedExpr = forall x . 0 < x < 1 => x >= f x
 
 @property
 parallel : Bool
-parallel = (forall x . f x ! 0 >= 0) and (exists x . f x ! 0 >= 5)
+parallel = (forall x . 0 < x < 1 => f x >= 0) and (exists x . 0 < x < 1 and f x >= 5)

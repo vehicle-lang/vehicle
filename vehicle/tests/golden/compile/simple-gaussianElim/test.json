@@ -10,8 +10,7 @@
     "needs": ["spec.vcl", "fake.onnx"],
     "produces": [
       "Marabou.queries/*.txt",
-      "Marabou.queries/test1.vcl-plan",
-      "Marabou.queries/test2.vcl-plan"
+      "Marabou.queries/test1.vcl-plan"
     ],
     "ignore": {
       "lines": ".*\"fileHash\".*"

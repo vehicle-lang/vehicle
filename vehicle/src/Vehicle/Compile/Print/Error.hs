@@ -17,7 +17,6 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Print.Error.Property (propertyTraversalErrorDetails)
 import Vehicle.Compile.Print.Error.Typing
-import Vehicle.Data.Assertion (BoundType (..))
 import Vehicle.Data.Builtin.Linearity
 import Vehicle.Data.Builtin.Polarity
 import Vehicle.Data.Builtin.Standard.Core
@@ -798,15 +797,11 @@ formatCompileError = \case
             <+> "cannot be compiled to tensor code as the variable"
             <+> quotePretty (nameOf binder)
             <+> "is not properly bounded. In particular,"
-            <+> mergeTheseWith (missingBounds Lower) (missingBounds Upper) (\u v -> u <+> "and" <+> v) maybeUnboundedVariables,
+            <+> missingBounds maybeUnboundedVariables,
         fix = Just "Add inequalities that restrict the value of the variable both below and above."
       }
     where
-      missingBounds :: BoundType -> NonEmpty TensorIndices -> Doc a
-      missingBounds boundType missingIndices =
-        "missing" <+> pretty boundType <+> "bounds" <> case missingIndices of
-          [[]] -> ""
-          _ -> " for indices" <+> vsep (fmap pretty missingIndices)
+
   UnsupportedHigherOrderTensorCode (ident, p) originalCtx originalExpr blockedCtx blockedExpr ->
     VehicleError
       { provenance = Just p,
@@ -854,6 +849,25 @@ formatCompileError = \case
       { provenance = Just p,
         problem = multipleNetworkErrorMessages (pretty queryFormat) ctx apps,
         fix = Just "this is on our road map to fix with VNNLib 2.0, but please open an issue on the Issue tracker with your use-case."
+      }
+  UnboundedNetworkInputVariables (ident, p) ctx ((networkName, inputValue, userVariables, unboundedInputs) :| _) ->
+    VehicleError
+      { provenance = Just p,
+        problem =
+          "The property"
+            <+> quotePretty ident
+            <+> "cannot be compiled as cannot deduce lower and upper bounds for the input of"
+            <+> lineIndent (prettyFriendly (WithContext (VFreeVar (Identifier (ModulePath [User]) networkName) [explicit inputValue]) ctx))
+            <> line
+            <> "In particular,"
+              <+> missingBounds unboundedInputs
+              <+> "for"
+              <+> squotes (prettyFriendly (WithContext inputValue ctx)),
+        fix =
+          Just $
+            "Add additional inequalities that restrict the value of" <+> case userVariables of
+              [v] -> "the quantified variable" <+> quotePretty v
+              _ -> "the following quantified variables:" <+> hsep (fmap pretty userVariables)
       }
 
 datasetDimensionsFix :: Doc a -> Identifier -> FilePath -> Doc a
@@ -997,3 +1011,12 @@ multipleNetworkErrorMessages verifier ctx networkNames = do
     <> "This property involves the following network applications:"
     <> line
     <> indent 2 (vsep $ fmap prettyApp networkNames)
+
+missingBounds :: UnboundedIndices -> Doc a
+missingBounds = mergeTheseWith (missingOneSidedBounds True) (missingOneSidedBounds False) (\u v -> u <+> "and" <+> v)
+
+missingOneSidedBounds :: Bool -> NonEmpty TensorIndices -> Doc a
+missingOneSidedBounds isLowerBound missingIndices =
+  "missing" <+> (if isLowerBound then "lower" else "upper") <+> "bounds" <> case missingIndices of
+    [[]] -> ""
+    _ -> " for indices" <+> vsep (fmap pretty missingIndices)

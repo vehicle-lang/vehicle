@@ -29,7 +29,7 @@ outputFormat :: ExternalOutputFormat
 outputFormat =
   ExternalOutputFormat
     { formatName = pretty VNNLibQueries,
-      formatVersion = Just vnnlibVersion,
+      formatVersion = Nothing,
       commentStyle = Line lineComment,
       emptyLines = True
     }
@@ -42,19 +42,29 @@ lineComment = ";"
 
 -- | Compiles an expression representing a single VNNLib query.
 compileVNNLibQuery :: CompileQuery
-compileVNNLibQuery _address metaNetwork _variables assertions = do
+compileVNNLibQuery _address metaNetwork _variables bounds assertions = do
   networkDocs <- compileNetworks metaNetwork
-  assertionDocs <- forM assertions compileAssertion
+  assertionDocs <- forM assertions compileQueryAssertion
+  let boundsDoc = fmap compileBound bounds
   let assertionsDoc =
         "(vnnlib-version <"
           <> pretty vnnlibVersion
           <> ">)"
           <> line
           <> line
+          <> lineComment <+> "Networks"
+          <> line
           <> networkDocs
           <> line
           <> line
+          <> lineComment <+> "Assertions"
+          <> line
           <> vsep assertionDocs
+          <> line
+          <> line
+          <> lineComment <+> "Input bounds"
+          <> line
+          <> vsep boundsDoc
   return $ layoutAsText assertionsDoc
 
 -- | Compiles all network entries in the MetaNetwork
@@ -120,15 +130,35 @@ compileVNNLibVar QueryVariableInfo {..} = do
   let networkVariableName = compileNetworkVariableName networkName networkAppIndex inputOrOutput
   layoutAsText $ networkVariableName <> pretty parentVariableIndices
 
-compileAssertion :: (MonadLogger m) => QueryAssertion QueryVariable -> m (Doc a)
-compileAssertion QueryAssertion {..} = do
+compileBound :: (QueryVariable, (Rational, Rational)) -> Doc a
+compileBound (var, (lowerBound, upperBound)) =
+  compileAssertion $
+    if lowerBound == upperBound
+      then compileComparison (pretty var) "==" (prettyRationalAsFloat lowerBound)
+      else
+        compileAnd
+          [ compileComparison (prettyRationalAsFloat lowerBound) "<=" (pretty var),
+            compileComparison (pretty var) "<=" (prettyRationalAsFloat upperBound)
+          ]
+
+compileQueryAssertion :: (MonadLogger m) => QueryAssertion QueryVariable -> m (Doc a)
+compileQueryAssertion QueryAssertion {..} = do
   let compiledRel = compileRel rel
   let (headVar NonEmpty.:| tailVars) = lhs
   let compiledLHS = case tailVars of
         [] -> compileCoefVar headVar
         _ -> parens ("+" <+> hsep (fmap compileCoefVar lhs))
   let compiledRHS = prettyRationalAsFloat rhs
-  return $ parens ("assert" <+> parens (compiledRel <+> compiledLHS <+> compiledRHS))
+  return $ compileAssertion $ compileComparison compiledLHS compiledRel compiledRHS
+
+compileAnd :: [Doc a] -> Doc a
+compileAnd xs = parens $ hsep $ "and" : xs
+
+compileComparison :: Doc a -> Doc a -> Doc a -> Doc a
+compileComparison lhs rel rhs = parens $ rel <+> lhs <+> rhs
+
+compileAssertion :: Doc a -> Doc a
+compileAssertion ass = parens ("assert" <+> ass)
 
 compileRel :: QueryRelation -> Doc a
 compileRel = \case
