@@ -1,5 +1,13 @@
 # Changelog for Vehicle
 
+## Next release
+
+### Command-line interface
+
+* The `vehicle-check` command no longer errors when you request a typing subsystem.
+
+* The `vehicle check` command now accepts the `--declaration` argument to only type-check certain declarations.
+
 ## Version 0.21.0
 
 ### Command-line interface

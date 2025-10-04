@@ -37,13 +37,13 @@ list :: (MonadStdIO IO) => LoggingSettings -> OutputAsJSON -> ListOptions -> IO 
 list loggingSettings outputAsJSON ListOptions {..} =
   runCompileMonad loggingSettings outputAsJSON $ do
     -- Type check the program
-    (imports, typedProg) <-
+    Main decls <-
       typeCheckUserProg $
         TypeCheckOptions
           { specification = specification,
-            secondaryTypeSystem = Nothing
+            secondaryTypeSystem = Nothing,
+            declarationsToCompile = mempty
           }
-    let Main decls = mergeImports imports typedProg
 
     -- Search for entities
     entities <- runFreshFreeContextT (Proxy @Builtin) $ execWriterT $ searchDecls decls

@@ -4,13 +4,10 @@ module Vehicle.Compile
   )
 where
 
-import Control.Monad.Except (MonadError (..))
+import Control.Monad.Writer (MonadWriter (..), WriterT (..))
 import Data.Aeson (ToJSON (..))
 import Data.Aeson.Encode.Pretty (encodePretty')
 import Data.ByteString.Lazy.Char8 (unpack)
-import Data.List.NonEmpty
-import Data.Maybe (mapMaybe)
-import Data.Set qualified as Set
 import Vehicle.Backend.Agda
 import Vehicle.Backend.LossFunction (convertToLossTensors)
 import Vehicle.Backend.LossFunction.JSON
@@ -19,10 +16,8 @@ import Vehicle.Backend.LossFunction.Logics (dslFor)
 import Vehicle.Backend.Prelude
 import Vehicle.Backend.Rocq
 import Vehicle.Backend.Solver
-import Vehicle.Compile.Dependency
 import Vehicle.Compile.Error
 import Vehicle.Compile.FunctionaliseResources (functionaliseResources)
-import Vehicle.Compile.Monomorphisation (MonomorphisationSettings (..), hoistInferableParameters, monomorphise)
 import Vehicle.Compile.Prelude as CompilePrelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Type.Subsystem
@@ -51,71 +46,32 @@ data CompileOptions = CompileOptions
 compile :: (MonadStdIO IO) => LoggingSettings -> OutputAsJSON -> CompileOptions -> IO ()
 compile loggingSettings outputAsJSON options@CompileOptions {..} =
   runCompileMonad loggingSettings outputAsJSON $ do
-    (imports, prog) <-
+    prog <-
       typeCheckUserProg $
         TypeCheckOptions
           { specification = specification,
-            secondaryTypeSystem = Nothing
+            secondaryTypeSystem = Nothing,
+            declarationsToCompile = declarationsToCompile
           }
 
-    checkDeclarationNamesPresent prog declarationsToCompile
-    simplifiedProg <- simplifyProgram prog declarationsToCompile
-
     case target of
-      VerifierQueries queryFormatID -> do
-        let resources = Resources specification networkLocations datasetLocations parameterValues
-        let mergedProg = mergeImports imports simplifiedProg
-        compileToQueryFormat mergedProg resources queryFormatID output
-      LossFunction differentiableLogic -> do
-        let mergedProg = mergeImports imports simplifiedProg
-        compileToLossFunction differentiableLogic mergedProg output outputAsJSON
-      ITP itp ->
-        compileToITP itp options simplifiedProg
-
-simplifyProgram ::
-  (MonadCompile m) =>
-  Prog Builtin ->
-  DeclarationNames ->
-  m (Prog Builtin)
-simplifyProgram prog declarationsToCompile = do
-  let keepUnusedDeclaration =
-        if null declarationsToCompile
-          then const True
-          else do
-            let declsToCompile = Set.fromList declarationsToCompile
-            \ident -> Set.member (nameOf ident) declsToCompile
-  monomorphisedProg <-
-    monomorphise prog $
-      MonoSettings
-        { isMonomorphisableBinder = not . isExplicit,
-          keepUnusedDeclaration = keepUnusedDeclaration
-        }
-  castFreeProgram <- resolveInstanceArgumentsAndCasts monomorphisedProg
-  return castFreeProgram
-
-checkDeclarationNamesPresent :: (MonadCompile m) => Prog Builtin -> DeclarationNames -> m ()
-checkDeclarationNamesPresent (Main decls) requestedDeclNames = do
-  let actualDeclNames = Set.fromList $ fmap nameOf decls
-  let missingNames = Set.toList $ Set.fromList requestedDeclNames `Set.difference` actualDeclNames
-  case missingNames of
-    [] -> return ()
-    n : ns ->
-      throwError $
-        MissingRequestedDeclarations (n :| ns)
+      VerifierQueries queryFormat -> compileToQueryFormat options queryFormat prog
+      LossFunction logic -> compileToLossFunction logic prog output outputAsJSON
+      ITP itp -> compileToITP itp options prog
 
 --------------------------------------------------------------------------------
 -- Backend-specific compilation functions
 
 compileToQueryFormat ::
   (MonadCompile m, MonadStdIO m) =>
-  Prog Builtin ->
-  Resources ->
+  CompileOptions ->
   QueryFormatID ->
-  Maybe FilePath ->
+  Prog Builtin ->
   m ()
-compileToQueryFormat typedProg resources queryFormatID output = do
+compileToQueryFormat CompileOptions {..} queryFormatID typedProg = do
   logCompilerPass QueryBackend $ do
     let verifier = queryFormats queryFormatID
+    let resources = Resources specification networkLocations datasetLocations parameterValues
     compileToQueries verifier typedProg resources output
 
 compileToITP ::
@@ -124,15 +80,10 @@ compileToITP ::
   CompileOptions ->
   Prog Builtin ->
   m ()
-compileToITP itp CompileOptions {..} typedProg@(Main ds) =
+compileToITP itp CompileOptions {..} typedProg =
   logCompilerPass ITPBackend $ do
-    -- Prune all standard-library declarations that aren't used.
-    let declsToCompile = mapMaybe (\d -> if isUserCode d then Just (nameOf d) else Nothing) ds
-    let dependencyGraph = createDependencyGraph typedProg
-    prunedProg <- pruneUnusedDeclarations typedProg dependencyGraph declsToCompile
-
     -- Analyse the program to find out which `Bool`s are decidable and which aren't.
-    decProg <- decidabilityTypeCheck prunedProg
+    decProg <- decidabilityTypeCheck typedProg
 
     -- Compile depending on the ITP
     case itp of
@@ -164,3 +115,18 @@ compileToLossFunction logicID typedProg outputFile outputAsJSON =
           | outputAsJSON = pretty $ unpack $ encodePretty' prettyJSONConfig $ toJSON jsonProg
           | otherwise = prettyFriendly (convertFromJSONProg jsonProg)
     writeResultToFile Nothing outputFile outputText
+
+hoistInferableParameters :: (MonadCompile m) => Prog builtin -> m (Prog builtin)
+hoistInferableParameters (Main ds) = do
+  (otherDecls, inferableParameters) <- runWriterT (goDecls ds)
+  return $ Main (inferableParameters <> otherDecls)
+  where
+    goDecls :: (MonadWriter [Decl builtin] m) => [Decl builtin] -> m [Decl builtin]
+    goDecls [] = return []
+    goDecls (decl : decls) = do
+      decls' <- goDecls decls
+      case decl of
+        DefAbstract _ _ (ParameterDef Inferable) _ -> do
+          tell [decl]
+          return decls'
+        _ -> return $ decl : decls'

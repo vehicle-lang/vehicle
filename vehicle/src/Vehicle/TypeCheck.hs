@@ -15,9 +15,12 @@ import Data.Aeson (ToJSON (toJSON))
 import Data.Aeson.Encode.Pretty (encodePretty')
 import Data.ByteString.Lazy.Char8 (unpack)
 import Data.Data (Proxy (..))
+import Data.List.NonEmpty (NonEmpty (..))
+import Data.Set qualified as Set
 import Data.Text as T (Text)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Error
+import Vehicle.Compile.Monomorphisation (monomorphise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Print.Error
@@ -42,19 +45,21 @@ import Vehicle.Verify.Specification.IO
 
 data TypeCheckOptions = TypeCheckOptions
   { specification :: FilePath,
-    secondaryTypeSystem :: Maybe SecondaryTypeSystem
+    secondaryTypeSystem :: Maybe SecondaryTypeSystem,
+    declarationsToCompile :: DeclarationNames
   }
   deriving (Eq, Show)
 
 typeCheck :: (MonadStdIO IO) => LoggingSettings -> OutputAsJSON -> TypeCheckOptions -> IO ()
-typeCheck loggingSettings outputAsJSON options@TypeCheckOptions {..} = runCompileMonad loggingSettings outputAsJSON $ do
-  (imports, typedProg) <- typeCheckUserProg options
-  let mergedProg = mergeImports imports typedProg
-  case secondaryTypeSystem of
-    Nothing -> return ()
-    Just LinearityTypes -> printPropertyTypes =<< linearityTypeCheck mergedProg
-    Just PolarityTypes -> printPropertyTypes =<< polarityTypeCheck mergedProg
-    Just DecidabilityTypes -> printPropertyTypes . Right =<< decidabilityTypeCheck mergedProg
+typeCheck loggingSettings outputAsJSON options@TypeCheckOptions {..} =
+  runCompileMonad loggingSettings outputAsJSON $ do
+    prog <- typeCheckUserProg options
+    case secondaryTypeSystem of
+      Nothing -> return ()
+      Just typeSystem -> case typeSystem of
+        LinearityTypes -> printPropertyTypes =<< linearityTypeCheck prog mempty
+        PolarityTypes -> printPropertyTypes =<< polarityTypeCheck prog mempty
+        DecidabilityTypes -> printPropertyTypes . Right =<< decidabilityTypeCheck prog
 
 --------------------------------------------------------------------------------
 -- Useful functions that apply to multiple compiler passes
@@ -78,11 +83,33 @@ parseExprText (file, txt) = do
 typeCheckUserProg ::
   (MonadIO m, MonadCompile m) =>
   TypeCheckOptions ->
-  m (Imports, Prog Builtin)
+  m (Prog Builtin)
 typeCheckUserProg TypeCheckOptions {..} = do
   imports <- (: []) <$> loadLibrary standardLibrary
   typedProg <- typeCheckOrLoadProg User imports specification
-  return (imports, typedProg)
+
+  keepUnusedDeclarationFn <- checkDeclarationNamesPresent typedProg declarationsToCompile
+  monomorphisedProg <- monomorphise typedProg keepUnusedDeclarationFn
+  castFreeProgram <- resolveInstanceArgumentsAndCasts monomorphisedProg
+  let mergedProg = mergeImports imports castFreeProgram
+  return mergedProg
+
+checkDeclarationNamesPresent :: (MonadCompile m) => Prog Builtin -> DeclarationNames -> m (Identifier -> Bool)
+checkDeclarationNamesPresent (Main decls) requestedDeclNames = do
+  let actualDeclNames = Set.fromList $ fmap nameOf decls
+  let missingNames = Set.toList $ Set.fromList requestedDeclNames `Set.difference` actualDeclNames
+  case missingNames of
+    [] -> return ()
+    n : ns ->
+      throwError $
+        MissingRequestedDeclarations (n :| ns)
+
+  return $
+    if null requestedDeclNames
+      then isUserCode
+      else do
+        let declsToCompile = Set.fromList requestedDeclNames
+        \ident -> Set.member (nameOf ident) declsToCompile
 
 -- | Parses and type-checks the program but does
 -- not load networks and datasets from disk.
@@ -132,7 +159,10 @@ loadLibrary library = do
     libraryFile <- findLibraryContentFile library
     typeCheckOrLoadProg StdLib mempty libraryFile
 
-printPropertyTypes :: (MonadStdIO m, MonadCompile m, PrintableBuiltin builtin) => Either CompileError (Prog builtin) -> m ()
+printPropertyTypes ::
+  (MonadStdIO m, MonadCompile m, PrintableBuiltin builtin) =>
+  Either CompileError (Prog builtin) ->
+  m ()
 printPropertyTypes = \case
   Left err -> throwError err
   Right (Main decls) -> do
