@@ -27,6 +27,8 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Data.Builtin.Standard
+import Vehicle.Data.Code.DSL
+import Vehicle.Data.DSL
 import Vehicle.Data.Universe (UniverseLevel (..))
 import Vehicle.Syntax.AST.Expr qualified as S
 
@@ -227,9 +229,18 @@ scopeDecl decl =
         t' <- scopeTopLevelExpr False t
         fs' <- traverse (scopeDefRecordField ident) fs
         addNewRecordDef ident (fmap fst fs')
+
         let fnBody = Builtin p (BuiltinFunction ConstTensor)
         let newIdent = Identifier (modulePath ident) ((nameOf ident) <> Text.pack "bxcxcvcx")
-        let convFn = DefFunction p newIdent mempty t' fnBody
+
+        -- let tensorType = case fs' of [] -> return
+        --   (_name, typ) : _rest -> return builtin
+
+        let (_, tensorType) = head fs'
+        let dslType = toDSL tensorType
+
+        let newType = fromDSL mempty (tTensor dslType (natLit (length fs')))
+        let convFn = DefFunction p newIdent mempty newType fnBody
 
         if isAnnotatedAsTensor b
           then return [(DefRecord p ident b t' fs'), convFn]
@@ -238,6 +249,9 @@ scopeDecl decl =
 
     _ <- traverse (logCompilerPassOutput . prettyFriendly) scopedDecl
     return scopedDecl
+
+-- pi binder from the first to the second??
+--  B.Fun t1 tk t2 -> op2 V.Pi tk (elabTypeBinder False t1) (elabExpr t2)
 
 scopeDefRecordField ::
   (MonadScope m) =>
