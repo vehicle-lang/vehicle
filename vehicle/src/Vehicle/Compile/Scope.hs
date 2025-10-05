@@ -207,27 +207,36 @@ scopeImports = traverse_ scopeModule
       addNewDecl decl
 
 scopeProg :: (MonadScope m) => S.Prog -> m (Prog Builtin)
-scopeProg = traverseDecls scopeDecl
+-- scopeProg = traverseDecls scopeDecl
+scopeProg (Main ds) = do
+  scopedDecls <- traverse scopeDecl ds
+  return (Main (concat scopedDecls))
 
-scopeDecl :: (MonadScope m) => S.Decl -> m (Decl Builtin)
+scopeDecl :: (MonadScope m) => S.Decl -> m ([Decl Builtin])
 scopeDecl decl =
   logCompilerSection2 MidDetail ("scoping" <+> quotePretty (identifierOf decl)) $ do
     scopedDecl <- case decl of
       DefAbstract p ident r t -> do
         t' <- scopeTopLevelExpr False t
-        return (DefAbstract p ident r t')
+        return [(DefAbstract p ident r t')]
       DefFunction p ident anns t e -> do
         t' <- scopeTopLevelExpr True t
         e' <- scopeTopLevelExpr False e
-        return (DefFunction p ident anns t' e')
+        return [(DefFunction p ident anns t' e')]
       DefRecord p ident b t fs -> do
         t' <- scopeTopLevelExpr False t
         fs' <- traverse (scopeDefRecordField ident) fs
         addNewRecordDef ident (fmap fst fs')
-        return (DefRecord p ident b t' fs')
-    addNewDecl scopedDecl
+        let fnBody = Builtin p (BuiltinFunction ConstTensor)
+        let newIdent = Identifier (modulePath ident) ((nameOf ident) <> Text.pack "bxcxcvcx")
+        let convFn = DefFunction p newIdent mempty t' fnBody
 
-    logCompilerPassOutput (prettyFriendly scopedDecl)
+        if isAnnotatedAsTensor b
+          then return [(DefRecord p ident b t' fs'), convFn]
+          else return [(DefRecord p ident b t' fs')]
+    _ <- traverse addNewDecl scopedDecl
+
+    _ <- traverse (logCompilerPassOutput . prettyFriendly) scopedDecl
     return scopedDecl
 
 scopeDefRecordField ::
