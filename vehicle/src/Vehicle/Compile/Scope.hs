@@ -233,14 +233,14 @@ scopeDecl decl =
         let fnBody = Builtin p (BuiltinFunction ConstTensor)
         let newIdent = Identifier (modulePath ident) ((nameOf ident) <> Text.pack "bxcxcvcx")
 
-        -- let tensorType = case fs' of [] -> return
-        --   (_name, typ) : _rest -> return builtin
-
         let (_, tensorType) = head fs'
-        let dslType = toDSL tensorType
+        let tensorTypeDSL = toDSL tensorType
+        let recordTypeDSL = toDSL t'
 
-        let newType = fromDSL mempty (tTensor dslType (natLit (length fs')))
-        let convFn = DefFunction p newIdent mempty newType fnBody
+        -- let newType = (tTensor tensorTypeDSL (natLit (length fs')))
+        let newType = (tTensor tensorTypeDSL (singletonDim (length fs')))
+        let newTypeBound = fromDSL mempty (recordTypeDSL ~> newType)
+        let convFn = DefFunction p newIdent mempty newTypeBound fnBody
 
         if isAnnotatedAsTensor b
           then return [(DefRecord p ident b t' fs'), convFn]
