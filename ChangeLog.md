@@ -1,5 +1,9 @@
 # Changelog for Vehicle
 
+## Next release
+
+* Fixed bug where obsolete `.vclo` object files were incorrectly read in causing unexpected behaviour.
+
 ## Version 0.21.0
 
 ### Command-line interface

@@ -51,7 +51,7 @@ readObjectFile specificationFile spec = do
           <> indent 2 (pretty err)
           <> line
       return Nothing
-    VersionMismatchError currentVersion writtenVersion err -> do
+    VersionMismatchError currentVersion writtenVersion -> do
       logDebug MinDetail $
         errString
           <+> "as it was written with Vehicle version"
@@ -59,10 +59,6 @@ readObjectFile specificationFile spec = do
           <+> "which is apparently unreadable with the current Vehicle version"
           <+> pretty currentVersion
           <> "."
-            <+> "In particular decoding threw the error:"
-          <> line
-          <> indent 2 (pretty err)
-          <> line
       return Nothing
     SuccessfulDecoding ObjectFileContents {..}
       | fileHash /= hash spec -> do
