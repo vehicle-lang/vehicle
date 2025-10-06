@@ -10,9 +10,10 @@ import Vehicle.Syntax.AST.Decl (GenericDecl)
 -- Programs
 
 -- | Type of Vehicle internal programs.
-newtype GenericProg expr
-  = -- | List of declarations.
-    Main [GenericDecl expr]
+newtype GenericProg expr = Main
+  { -- | List of declarations.
+    declarations :: [GenericDecl expr]
+  }
   deriving (Show, Functor, Foldable, Traversable, Generic)
 
 instance (NFData expr) => NFData (GenericProg expr)

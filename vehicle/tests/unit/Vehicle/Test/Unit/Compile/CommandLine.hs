@@ -81,7 +81,8 @@ checkModeTests =
                 Check $
                   TypeCheckOptions
                     { specification = "test/spec.vcl",
-                      secondaryTypeSystem = Nothing
+                      secondaryTypeSystem = Nothing,
+                      declarationsToCompile = mempty
                     }
           }
     ]

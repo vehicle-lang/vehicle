@@ -7,21 +7,28 @@ module Vehicle.Compile.Type.Subsystem
 where
 
 import Control.Monad.Except (MonadError (..), runExceptT)
+import Data.List.NonEmpty qualified as NonEmpty
+import Data.Maybe (mapMaybe)
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Vehicle.Backend.Prelude
+import Vehicle.Compile.Dependency (createDependencyGraph, pruneUnusedDeclarations)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Monomorphisation (MonomorphisationSettings (..), monomorphise)
+import Vehicle.Compile.Monomorphisation (monomorphise)
 import Vehicle.Compile.Normalise.NBE (NormalisableBuiltin, findInstanceArg)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyExternal)
 import Vehicle.Compile.Print.Error (errorInSubsystemMessage)
 import Vehicle.Compile.Type (typeCheckProg)
 import Vehicle.Compile.Type.Core (InstanceDatabase, emptyInstanceDatabase)
+import Vehicle.Compile.Type.Irrelevance
 import Vehicle.Compile.Type.System
 import Vehicle.Data.Builtin.Decidability (DecidabilityBuiltin (..))
 import Vehicle.Data.Builtin.Decidability.Instances (decidabilityBuiltinInstances)
 import Vehicle.Data.Builtin.Decidability.Type ()
 import Vehicle.Data.Builtin.Interface (BuiltinHasListLiterals)
 import Vehicle.Data.Builtin.Interface.Normalise (NormalisableBuiltin (..))
+import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Linearity (LinearityBuiltin)
 import Vehicle.Data.Builtin.Linearity.Type ()
 import Vehicle.Data.Builtin.Polarity (PolarityBuiltin)
@@ -31,38 +38,46 @@ import Vehicle.Data.Builtin.Standard
 polarityTypeCheck ::
   (MonadCompile m) =>
   Prog Builtin ->
+  Set Identifier ->
   m (Either CompileError (Prog PolarityBuiltin))
-polarityTypeCheck = typeCheckWithSubsystem PolarityTypes emptyInstanceDatabase
+polarityTypeCheck prog declarationsToCompile = do
+  let keepUnused = if Set.null declarationsToCompile then isUserCode else (`Set.member` declarationsToCompile)
+  monomorphisedProg <- monomorphise prog keepUnused
+  irrelevantFreeProg <- removeIrrelevantCodeFromProg monomorphisedProg
+  implicitFreeProg <- removeImplicitArgs irrelevantFreeProg
+  instanceFreeProg <- resolveInstanceArgumentsAndCasts implicitFreeProg
+  typeCheckWithSubsystem PolarityTypes emptyInstanceDatabase instanceFreeProg
 
 linearityTypeCheck ::
   (MonadCompile m) =>
   Prog Builtin ->
+  Set Identifier ->
   m (Either CompileError (Prog LinearityBuiltin))
-linearityTypeCheck = typeCheckWithSubsystem LinearityTypes emptyInstanceDatabase
+linearityTypeCheck prog declarationsToCompile = do
+  let keepUnused = if Set.null declarationsToCompile then isUserCode else (`Set.member` declarationsToCompile)
+  monomorphisedProg <- monomorphise prog keepUnused
+  irrelevantFreeProg <- removeIrrelevantCodeFromProg monomorphisedProg
+  implicitFreeProg <- removeImplicitArgs irrelevantFreeProg
+  instanceFreeProg <- resolveInstanceArgumentsAndCasts implicitFreeProg
+  typeCheckWithSubsystem LinearityTypes emptyInstanceDatabase instanceFreeProg
 
 decidabilityTypeCheck ::
   (MonadCompile m) =>
   Prog Builtin ->
   m (Prog DecidabilityBuiltin)
 decidabilityTypeCheck prog = do
-  errorOrDecProg <- typeCheckWithSubsystem DecidabilityTypes decidabilityBuiltinInstances prog
+  -- Prune all standard-library declarations that aren't used.
+  let declsToCompile = mapMaybe (\d -> if isUserCode d then Just (nameOf d) else Nothing) (declarations prog)
+  let dependencyGraph = createDependencyGraph prog
+  prunedProg <- pruneUnusedDeclarations prog dependencyGraph declsToCompile
+
+  errorOrDecProg <- typeCheckWithSubsystem DecidabilityTypes decidabilityBuiltinInstances prunedProg
   decProg <- case errorOrDecProg of
     Left err -> throwError $ DevError $ errorInSubsystemMessage "determine the decidability of the program for export to ITP" err
     Right decProg -> return decProg
 
-  monoDecProg <-
-    monomorphise decProg $
-      MonoSettings
-        { isMonomorphisableBinder = \binder -> not (isExplicit binder) || isDeclTypeClassBinder binder,
-          keepUnusedDeclaration = isUserCode
-        }
-  instanceFreeDecProg <- resolveInstanceArgumentsAndCasts monoDecProg
-  return instanceFreeDecProg
-  where
-    isDeclTypeClassBinder :: Binder DecidabilityBuiltin -> Bool
-    isDeclTypeClassBinder binder = case typeOf binder of
-      App (Builtin _ (DecidabilityBuiltinTypeClass {})) _ -> True
-      _ -> False
+  monoDecProg <- monomorphise decProg isUserCode
+  resolveInstanceArgumentsAndCasts monoDecProg
 
 typeCheckWithSubsystem ::
   forall builtin m.
@@ -128,3 +143,33 @@ resolveInstanceArgumentsAndCasts prog =
           Lam _ binder e -> Lam p (fmap go binder) (go e)
           Record _ ident fields -> Record p ident (mapRecordFields go fields)
           RecordAcc _ record (ident, FieldName _ name) -> RecordAcc p (go record) (ident, FieldName p name)
+
+removeImplicitArgs ::
+  forall m builtin.
+  (MonadCompile m, PrintableBuiltin builtin) =>
+  Prog builtin ->
+  m (Prog builtin)
+removeImplicitArgs prog =
+  logCompilerSection2 MaxDetail "removal of implicit arguments" $ do
+    result <- traverse go prog
+    logCompilerPassOutput $ prettyExternal result
+    return result
+  where
+    go :: Expr builtin -> m (Expr builtin)
+    go expr = case expr of
+      App fun args -> do
+        fun' <- go fun
+        let nonImplicitArgs = NonEmpty.filter (not . isImplicit) args
+        nonImplicitArgs' <- traverse (traverse go) nonImplicitArgs
+        return $ normAppList fun' nonImplicitArgs'
+      BoundVar {} -> return expr
+      FreeVar {} -> return expr
+      Universe {} -> return expr
+      Meta {} -> return expr
+      Hole {} -> return expr
+      Builtin {} -> return expr
+      Pi p binder res -> Pi p <$> traverse go binder <*> go res
+      Lam p binder body -> Lam p <$> traverse go binder <*> go body
+      Let p bound binder body -> Let p <$> go bound <*> traverse go binder <*> go body
+      Record p ident fields -> Record p ident <$> traverseRecordFields go fields
+      RecordAcc p record field -> RecordAcc p <$> go record <*> pure field

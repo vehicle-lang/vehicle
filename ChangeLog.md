@@ -2,7 +2,19 @@
 
 ## Next release
 
-* Fixed bug where obsolete `.vclo` object files were incorrectly read in causing unexpected behaviour.
+### Command-line interface
+
+* The `vehicle-check` command no longer errors when you request a typing subsystem.
+
+* The `vehicle check` command now accepts the `--declaration` argument to only type-check certain declarations.
+
+### Python interface
+
+* Fixes the `--json` flag parsing error when using the `verify` command.
+
+### Other
+
+* Fixed bug introduced in v0.21 where obsolete `.vclo` object files were incorrectly read in causing unexpected behaviour.
 
 ## Version 0.21.0
 

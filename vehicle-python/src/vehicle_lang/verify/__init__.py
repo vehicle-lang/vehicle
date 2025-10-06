@@ -28,7 +28,7 @@ def verify(
     :param verifier_location: The path to the verifier executable, defaults to searching the system path.
     :param cache: The path to the proof cache used by Vehicle, defaults to not writing a proof cache.
     """
-    args = ["verify", "--specification", str(specification), "--json"]
+    args = ["verify", "--specification", str(specification)]
 
     if properties is not None:
         for property_name in set(properties):
@@ -50,6 +50,8 @@ def verify(
 
     if cache is not None:
         args.extend(["--cache", str(cache)])
+
+    args.extend(["--json"])
 
     # Call Vehicle
     exc, out, err, log = session.check_output(args)

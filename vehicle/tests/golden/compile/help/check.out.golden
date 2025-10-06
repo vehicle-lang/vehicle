@@ -1,4 +1,5 @@
-Usage: vehicle check (-s|--specification FILE) [-t|--typeSystem TYPE_SYSTEM]
+Usage: vehicle check (-s|--specification FILE) [-t|--typeSystem TYPE_SYSTEM] 
+                     [-e|--declaration NAME]
 
   Type-check a .vcl specification file.
 
@@ -12,4 +13,8 @@ Available options:
                            specification. 3. Decidability - check which booleans
                            are decidable and which are undecidable in the
                            context of Vehicle
+  -e,--declaration NAME    Declarations in the specification to include during
+                           compilation. Can be provided multiple times. If not
+                           provided then all declarations in the specification
+                           will be compiled.
   -h,--help                Show this help text
