@@ -1,6 +1,12 @@
 # Changelog for Vehicle
 
-## Version 0.21.1
+## Next release
+
+### Command-line interface
+
+* The `vehicle-check` command no longer errors when you request a typing subsystem.
+
+* The `vehicle check` command now accepts the `--declaration` argument to only type-check certain declarations.
 
 ### Python interface
 
