@@ -8,6 +8,10 @@
 
 * The `vehicle check` command now accepts the `--declaration` argument to only type-check certain declarations.
 
+### Python interface
+
+* Fixes the `--json` flag parsing error when using the `verify` command.
+
 ## Version 0.21.0
 
 ### Command-line interface
