@@ -94,6 +94,7 @@
   {
     "tag": "Property",
     "contents": {
+      "subcomponents": null,
       "sharedData": {
         "typeText": "Vector Bool n",
         "provenance": {
@@ -106,25 +107,7 @@
           ]
         },
         "name": "robust"
-      },
-      "quantifiedVariables": [
-        {
-          "sharedData": {
-            "typeText": "Tensor Real [28, 28]",
-            "provenance": {
-              "tag": "Provenance",
-              "contents": [
-                49,
-                35,
-                49,
-                47
-              ]
-            },
-            "name": "perturbation"
-          },
-          "quantifier": "Forall"
-        }
-      ]
+      }
     }
   }
 ]

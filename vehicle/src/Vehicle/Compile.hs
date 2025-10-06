@@ -5,9 +5,6 @@ module Vehicle.Compile
 where
 
 import Control.Monad.Writer (MonadWriter (..), WriterT (..))
-import Data.Aeson (ToJSON (..))
-import Data.Aeson.Encode.Pretty (encodePretty')
-import Data.ByteString.Lazy.Char8 (unpack)
 import Vehicle.Backend.Agda
 import Vehicle.Backend.LossFunction (convertToLossTensors)
 import Vehicle.Backend.LossFunction.JSON
@@ -112,7 +109,7 @@ compileToLossFunction logicID typedProg outputFile outputAsJSON =
     lossTensorProg <- convertToLossTensors compiledLogic functionalisedProg
     jsonProg <- convertToJSONProg lossTensorProg
     let outputText
-          | outputAsJSON = pretty $ unpack $ encodePretty' prettyJSONConfig $ toJSON jsonProg
+          | outputAsJSON = prettyAsJSON jsonProg
           | otherwise = prettyFriendly (convertFromJSONProg jsonProg)
     writeResultToFile Nothing outputFile outputText
 

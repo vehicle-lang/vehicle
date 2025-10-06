@@ -218,6 +218,9 @@ listParser :: Parser ListOptions
 listParser =
   ListOptions
     <$> specificationParser
+    <*> networkParser
+    <*> datasetParser
+    <*> parameterParser
 
 listParserInfo :: ParserInfo ModeOptions
 listParserInfo = info (List <$> listParser) listDescription

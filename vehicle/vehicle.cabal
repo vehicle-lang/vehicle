@@ -147,7 +147,8 @@ library
     Vehicle.Compile.Prelude
     Vehicle.Compile.Print
     Vehicle.Compile.Print.Error
-    Vehicle.Compile.Print.TypingError
+    Vehicle.Compile.Print.Error.Property
+    Vehicle.Compile.Print.Error.Typing
     Vehicle.Compile.Resource
     Vehicle.Compile.Scope
     Vehicle.Compile.Simplify
@@ -214,6 +215,7 @@ library
     Vehicle.Compile.LowerNot
     Vehicle.Compile.Prelude.Utils
     Vehicle.Compile.Print.Warning
+    Vehicle.Compile.Property
     Vehicle.Compile.Rational.LinearExpr
     Vehicle.Compile.Serialise
     Vehicle.Compile.Type.Bidirectional

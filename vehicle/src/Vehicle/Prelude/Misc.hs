@@ -5,12 +5,12 @@ import Control.Monad (join, when)
 import Control.Monad.Identity (Identity (..))
 import Control.Monad.Reader (MonadReader (..))
 import Control.Monad.State (MonadState (..), modify)
-import Data.Aeson (FromJSON, Options (..), ToJSON, defaultOptions)
-import Data.Aeson.Encode.Pretty (Config (..), Indent (..), NumberFormat (..))
+import Data.Aeson (FromJSON, Options (..), ToJSON (..), defaultOptions)
+import Data.Aeson.Encode.Pretty (Config (..), Indent (..), NumberFormat (..), encodePretty')
 import Data.Bifunctor (Bifunctor (..))
+import Data.ByteString.Lazy.Char8 (unpack)
 import Data.Graph (Edge, Vertex, buildG, topSort)
 import Data.Hashable (Hashable)
-import Data.IntMap (IntMap, updateLookupWithKey)
 import Data.List qualified as List
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
@@ -24,7 +24,7 @@ import Data.These (These (..))
 import GHC.Generics (Generic)
 import Numeric (readFloat, readSigned)
 import System.Console.ANSI
-import Vehicle.Prelude.Prettyprinter (Pretty (pretty))
+import Vehicle.Prelude.Prettyprinter (Doc, Pretty (pretty))
 import Vehicle.Syntax.AST.Name (Name)
 import Vehicle.Syntax.Prelude (developerError, unzipF)
 
@@ -137,8 +137,8 @@ oneHot i l x
   | i == 0 = Just x : replicate l Nothing
   | otherwise = Nothing : oneHot (i - 1) (l - 1) x
 
-deleteAndGet :: Int -> IntMap a -> (Maybe a, IntMap a)
-deleteAndGet = updateLookupWithKey (\_ _ -> Nothing)
+deleteAndGet :: (Ord a) => a -> Map a b -> (Maybe b, Map a b)
+deleteAndGet = Map.updateLookupWithKey (\_ _ -> Nothing)
 
 -- Base 4.16 once we upgrade
 prependList :: [a] -> NonEmpty a -> NonEmpty a
@@ -231,6 +231,9 @@ prettyJSONConfig =
       confNumFormat = Generic,
       confTrailingNewline = False
     }
+
+prettyAsJSON :: (ToJSON a) => a -> Doc b
+prettyAsJSON x = pretty $ unpack $ encodePretty' prettyJSONConfig $ toJSON x
 
 jsonOptions :: Options
 jsonOptions =

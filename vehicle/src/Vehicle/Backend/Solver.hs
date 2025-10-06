@@ -8,7 +8,9 @@ import Control.Monad.Except (MonadError (..))
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Control.Monad.State (StateT (..))
-import Data.Maybe (isNothing, maybeToList)
+import Data.List.NonEmpty (NonEmpty (..))
+import Data.Maybe (maybeToList)
+import Data.Proxy (Proxy (..))
 import System.Directory (createDirectoryIfMissing)
 import Vehicle.Backend.Solver.QueryCompilation (compilePartitionsToQueries)
 import Vehicle.Backend.Solver.UserVariableElimination (eliminateExistless, eliminateExists)
@@ -19,22 +21,19 @@ import Vehicle.Compile.ExpandResources (expandResources)
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.LiftIf (unfoldIf)
 import Vehicle.Compile.LowerNot (lowerNot, notClosure)
-import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyFriendlyEmptyCtx)
 import Vehicle.Compile.Print.Warning ()
+import Vehicle.Compile.Property (traverseMultiProperty)
 import Vehicle.Compile.Unblock (UnblockingActions (..), unblockBoolExpr)
-import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
-import Vehicle.Data.Tensor (TensorIndices, isZeroDimensional)
 import Vehicle.Data.Variable.Bound.Context.Name (runFreshNameContextT)
 import Vehicle.Data.Variable.Free.Context
 import Vehicle.Prelude.Warning (CompileWarning (..))
-import Vehicle.Syntax.Tensor (unstack)
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat
 import Vehicle.Verify.Specification
@@ -60,18 +59,29 @@ compileToQueries queryFormat typedProg resources maybeVerificationFolder = do
     Just folder -> liftIO $ createDirectoryIfMissing True folder
 
   -- Expand out the external resources in the specification (datasets, networks etc.)
-  (Main resourceFreeDecls, networkCtx, freeCtx, integrityInfo) <-
-    expandResources resources typedProg
+  (resourceFreeProg, networkCtx, integrityInfo, missingResources, uninferableParameters) <- expandResources resources typedProg
+  case (missingResources, uninferableParameters) of
+    (r : rs, _) -> throwError $ ResourcesNotProvided (r :| rs)
+    (_, r : rs) -> throwError $ InferableParametersUninferrable (r :| rs)
+    ([], []) -> return ()
 
-  -- Perform the actual compilation to queries
-  properties <-
-    runFreeContextT freeCtx $
-      compileDecls typedProg queryFormat networkCtx 0 resourceFreeDecls maybeVerificationFolder
+  -- Create the global settings object
+  let settings =
+        CompilationSettings
+          { originalProg = typedProg,
+            queryFormat = queryFormat,
+            networkCtx = networkCtx,
+            outputLocation = maybeVerificationFolder
+          }
+
+  -- Perform the actual compilation
+  properties <- compileProg settings resourceFreeProg
 
   -- Check that there were actually properties in the specification.
   when (null properties) $ do
     throwError NoPropertiesFound
 
+  -- Write out the folder
   case maybeVerificationFolder of
     Nothing -> return ()
     Just folder -> do
@@ -81,118 +91,93 @@ compileToQueries queryFormat typedProg resources maybeVerificationFolder = do
 --------------------------------------------------------------------------------
 -- Getting properties
 
-compileDecls ::
-  (MonadStdIO m, MonadCompile m, MonadFreeContext Builtin m) =>
+data CompilationSettings = CompilationSettings
+  { originalProg :: Prog Builtin,
+    queryFormat :: QueryFormat,
+    networkCtx :: NetworkContext,
+    outputLocation :: Maybe FilePath
+  }
+
+compileProg ::
+  (MonadStdIO m, MonadCompile m) =>
+  CompilationSettings ->
   Prog Builtin ->
-  QueryFormat ->
-  NetworkContext ->
-  PropertyID ->
+  m [(Name, MultiProperty PropertyAddress)]
+compileProg settings (Main decls) =
+  runFreshFreeContextT (Proxy @Builtin) $
+    runSupplyT [(0 :: PropertyID) ..] $
+      compileDecls settings decls
+
+compileDecls ::
+  (MonadStdIO m, MonadCompile m, MonadFreeContext Builtin m, MonadSupply PropertyID m) =>
+  CompilationSettings ->
   [Decl Builtin] ->
-  Maybe FilePath ->
-  m [(Name, MultiProperty ())]
-compileDecls _ _ _ _ [] _ = return []
-compileDecls prog queryFormat networkCtx propertyID (d : ds) outputLocation = do
-  property <- case d of
-    DefFunction p ident anns _ body
-      | isAnnotatedAsProperty anns -> do
-          let propertyData = (queryFormat, networkCtx, (ident, p), propertyID, outputLocation)
-          Just <$> compilePropertyDecl prog propertyData body
-    _ -> return Nothing
+  m [(Name, MultiProperty PropertyAddress)]
+compileDecls settings = \case
+  [] -> return []
+  (d : ds) -> do
+    declCtxEntry@(_, normDecl) <- mkDeclCtxEntry d
+    property <- case normDecl of
+      DefFunction p ident anns typ body
+        | isAnnotatedAsProperty anns ->
+            Just <$> do
+              let name = nameOf ident
+              let prov = (ident, p)
+              logCompilerSection2 MinDetail ("property" <+> quotePretty name) $ do
+                multiProperty <- compilePropertyDecl settings prov typ body `catchError` handlePropertyCompileError settings prov
+                return (name, multiProperty)
+      _ -> return Nothing
 
-  addDeclToContext d $ do
-    let newPropertyID = if isNothing property then propertyID else propertyID + 1
-    properties <- compileDecls prog queryFormat networkCtx newPropertyID ds outputLocation
-    return $ maybeToList property ++ properties
-
-type MultiPropertyMetaData =
-  ( QueryFormat,
-    NetworkContext,
-    DeclProvenance,
-    Int,
-    Maybe FilePath
-  )
-
-updateMetaData :: MultiPropertyMetaData -> TensorIndices -> PropertyMetaData
-updateMetaData (queryFormat, networkCtx, declProvenance, propertyID, outputLocation) indices =
-  PropertyMetaData
-    { networkCtx = networkCtx,
-      queryFormat = queryFormat,
-      propertyProvenance = declProvenance,
-      propertyAddress = PropertyAddress propertyID (nameOf $ fst declProvenance) indices,
-      outputLocation = outputLocation
-    }
+    addDeclEntryToContext declCtxEntry $ do
+      properties <- compileDecls settings ds
+      return $ maybeToList property ++ properties
 
 compilePropertyDecl ::
-  (MonadStdIO m, MonadCompile m, MonadFreeContext Builtin m) =>
-  Prog Builtin ->
-  MultiPropertyMetaData ->
-  Expr Builtin ->
-  m (Name, MultiProperty ())
-compilePropertyDecl prog propertyData@(_, _, declProv@(ident, _), _, _) expr = do
-  logCompilerSection2 MinDetail ("property" <+> quotePretty ident) $ do
-    normalisedExpr <- normaliseInEmptyEnv expr
-    multiProperty <-
-      compileMultiProperty propertyData normalisedExpr
-        `catchError` handlePropertyCompileError prog propertyData
-    return (nameOf (fst declProv), multiProperty)
-
-handlePropertyCompileError :: (MonadCompile m) => Prog Builtin -> MultiPropertyMetaData -> CompileError -> m a
-handlePropertyCompileError prog (queryFormat, _, declProv, _, _) e = do
-  let formatID = queryFormatID queryFormat
-  case e of
-    UnsupportedNonLinearConstraint {} -> throwError =<< diagnoseNonLinearity formatID prog declProv
-    UnsupportedAlternatingQuantifiers {} -> throwError =<< diagnoseAlternatingQuantifiers formatID prog declProv
-    _ -> throwError e
-
--- | Compiles a property of type `Tensor Bool dims` for some variable `dims`,
--- by recursing through the levels of vectors until it reaches something of
--- type `Bool`.
-compileMultiProperty ::
-  forall m.
-  (MonadStdIO m, MonadFreeContext Builtin m, MonadCompile m) =>
-  MultiPropertyMetaData ->
+  (MonadStdIO m, MonadCompile m, MonadFreeContext Builtin m, MonadSupply PropertyID m) =>
+  CompilationSettings ->
+  DeclProvenance ->
+  VType Builtin ->
   Value Builtin ->
-  m (MultiProperty ())
-compileMultiProperty multiPropertyMetaData = go []
-  where
-    go :: TensorIndices -> Value Builtin -> m (MultiProperty ())
-    go indices expr = case expr of
-      (getExpr accessStackTensor -> Just args) -> do
-        let es' = zip [0 :: Int ..] $ stackElements args
-        MultiProperty <$> traverse (\(i, e) -> go (i : indices) e) es'
-      (getExpr accessBoolTensorLiteral -> Just bs) | not (isZeroDimensional bs) -> do
-        -- Important to test for non-zero dimensionality otherwise we don't display the correct
-        -- warnings for trivial tensors nor generate .vcl-plan file.
-        let es' = zip [0 :: Int ..] (fromBoolTensorValue . VBoolTensorLiteral <$> unstack bs)
-        MultiProperty <$> traverse (\(i, e) -> go (i : indices) e) es'
-      (getExpr accessVecLit -> Just args) -> do
-        let es' = zip [0 :: Int ..] $ vecLitElements args
-        MultiProperty <$> traverse (\(i, e) -> go (i : indices) e) es'
-      _ -> do
-        let propertyMetaData@PropertyMetaData {..} = updateMetaData multiPropertyMetaData indices
-        flip runReaderT propertyMetaData $ do
-          logCompilerSection2 MinDetail ("property" <+> quotePretty propertyAddress) $ do
-            compileSingleProperty expr
-            return $ SingleProperty propertyAddress ()
+  m (MultiProperty PropertyAddress)
+compilePropertyDecl settings prov typ body = do
+  propertyID <- demand
+  let compilePropertyFn = compileSingleProperty settings prov
+  logDebug MaxDetail $ prettyFriendlyEmptyCtx typ
+  logDebug MaxDetail $ prettyFriendlyEmptyCtx body
+  errorOrResult <- traverseMultiProperty compilePropertyFn propertyID (nameOf prov) typ body
+  case errorOrResult of
+    Left err -> throwError $ MultiPropertyTraveralError prov err
+    Right result -> return result
 
--- Compiles an individual property
+-- Compiles an individual property of type `Bool`
 compileSingleProperty ::
-  (MonadPropertyStructure m, MonadStdIO m) =>
+  (MonadStdIO m, MonadCompile m, MonadFreeContext Builtin m) =>
+  CompilationSettings ->
+  DeclProvenance ->
+  PropertyAddress ->
   Value Builtin ->
-  m ()
-compileSingleProperty expr = do
-  queries <- runSupplyT [1 :: QueryID ..] $ eliminateUserVariables expr
+  m PropertyAddress
+compileSingleProperty CompilationSettings {..} prov propertyAddress expr =
+  logCompilerSection2 MinDetail ("property" <+> quotePretty propertyAddress) $ do
+    let propertyMetaData =
+          PropertyMetaData
+            { propertyProvenance = prov,
+              propertyAddress = propertyAddress,
+              ..
+            }
 
-  PropertyMetaData {..} <- ask
+    queries <- runReaderT (runSupplyT [1 :: QueryID ..] $ eliminateUserVariables expr) propertyMetaData
 
-  -- Warn if trivial.
-  case queries of
-    Trivial status -> logWarning (TrivialProperty propertyAddress status)
-    _ -> return ()
+    -- Warn if trivial.
+    case queries of
+      Trivial status -> logWarning (TrivialProperty propertyAddress status)
+      _ -> return ()
 
-  case outputLocation of
-    Nothing -> return ()
-    Just folder -> writePropertyVerificationPlan folder propertyAddress (PropertyVerificationPlan queries)
+    case outputLocation of
+      Nothing -> return ()
+      Just folder -> writePropertyVerificationPlan folder propertyAddress (PropertyVerificationPlan queries)
+
+    return propertyAddress
 
 -- | Compiles the top-level structure of a property until it hits the first quantifier.
 -- Assumptions - expression is well-typed in the empty context and of type Bool.
@@ -284,6 +269,19 @@ topLevelUnblockingActions =
   UnblockingActions
     (developerError "Should not be unblocking variables at top-level")
     (developerError "Unblocking of constant network functions at top-level not yet supported")
+
+handlePropertyCompileError ::
+  (MonadCompile m) =>
+  CompilationSettings ->
+  DeclProvenance ->
+  CompileError ->
+  m a
+handlePropertyCompileError CompilationSettings {..} declProv err = do
+  let formatID = queryFormatID queryFormat
+  throwError =<< case err of
+    UnsupportedNonLinearConstraint {} -> diagnoseNonLinearity formatID originalProg declProv
+    UnsupportedAlternatingQuantifiers {} -> diagnoseAlternatingQuantifiers formatID originalProg declProv
+    _ -> return err
 
 showTopLevelEntry :: (MonadCompile m) => Value Builtin -> m ()
 showTopLevelEntry v = do

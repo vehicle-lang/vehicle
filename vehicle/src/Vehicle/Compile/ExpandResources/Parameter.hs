@@ -22,11 +22,11 @@ import Vehicle.Data.Code.Value
 
 parseParameterValue ::
   (MonadExpandResources m) =>
-  ParameterValues ->
   DeclProvenance ->
   GluedType Builtin ->
+  String ->
   m (Value Builtin)
-parseParameterValue parameterValues decl@(ident, _) parameterType = do
+parseParameterValue decl parameterType providedValue = do
   implicitParams <- getInferableParameterContext
 
   parser <- case toTypeValue $ normalised parameterType of
@@ -47,9 +47,7 @@ parseParameterValue parameterValues decl@(ident, _) parameterType = do
           <+> squotes (prettyVerbose (normalised parameterType))
           <+> "should have been caught during type-checking"
 
-  case Map.lookup (nameOf ident) parameterValues of
-    Nothing -> throwError $ ResourceNotProvided decl Parameter
-    Just value -> parser decl value
+  parser decl providedValue
 
 parseBool :: (MonadCompile m) => DeclProvenance -> String -> m (Value Builtin)
 parseBool decl value = case readMaybe value of

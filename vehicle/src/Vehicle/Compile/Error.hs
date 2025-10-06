@@ -1,18 +1,33 @@
 {-# LANGUAGE StandaloneDeriving #-}
 
-module Vehicle.Compile.Error where
+module Vehicle.Compile.Error
+  ( VehicleError (..),
+    CompileError (..),
+    TypingError (..),
+    MultiPropertyTraveralError (..),
+    RecordMatch (..),
+    MissingExplicitArgError (..),
+    RelevantUseOfIrrelevantVariableError (..),
+    FunctionTypeMismatchError (..),
+    FailedInstanceConstraintError (..),
+    FailedUnificationConstraintsError (..),
+    MissingResource,
+    UninferableParameter,
+    MonadCompile,
+    compilerDeveloperError,
+  )
+where
 
 import Control.Exception (IOException)
 import Control.Monad.Except (MonadError, throwError)
-import Data.Aeson (ToJSON, object, toJSON, (.=))
+import Data.Aeson (ToJSON)
+import Data.Aeson.Types (ToJSON (..))
 import Data.List.NonEmpty (NonEmpty)
 import Data.Text (Text)
 import Data.These (These)
 import Data.Typeable (Proxy)
 import Data.Void (Void)
 import GHC.Generics (Generic)
-import Prettyprinter (defaultLayoutOptions, layoutPretty)
-import Prettyprinter.Render.String (renderString)
 import Vehicle.Backend.LossFunction.Core (BooleanDifferentiableLogicField, TensorDifferentiableLogicField)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Prelude
@@ -98,13 +113,28 @@ data TypingError builtin
   deriving (Show)
 
 --------------------------------------------------------------------------------
+-- MultiPropertyTraveralError
+
+data MultiPropertyTraveralError
+  = UnsupportedVectorDimension (Value Builtin)
+  | UnsupportedVectorValue (Value Builtin)
+  | UnsupportedTensorDimensions (Value Builtin)
+  | UnreducableTensorValue (Value Builtin)
+  | UnreducableType (VType Builtin)
+  deriving (Show)
+
+type MissingResource = (ExternalResource, DeclProvenance)
+
+type UninferableParameter = DeclProvenance
+
+--------------------------------------------------------------------------------
 -- Compilation errors
 
 data CompileError
-  = DevError (Doc ())
+  = DevError UnAnnDoc
   | -- Parse errors
     ParseError ParseLocation ParseError
-  | -- Errors thrown by scope checking.
+  | -- Scoping errors.
     UnboundName Provenance Name [Name]
   | UnboundRecordAccessor Provenance Name [Name]
   | DeclarationDeclarationShadowing Provenance (Either FieldName Name) Identifier
@@ -116,7 +146,7 @@ data CompileError
     (Eq builtin, PrintableBuiltin builtin, NormalisableBuiltin builtin, Show builtin) =>
     TypingError (TypingError builtin)
   | -- Resource loading errors
-    ResourceNotProvided DeclProvenance ExternalResource
+    ResourcesNotProvided (NonEmpty MissingResource)
   | ResourceIOError DeclProvenance ExternalResource IOException
   | UnsupportedResourceFormat DeclProvenance ExternalResource String
   | UnableToParseResource DeclProvenance ExternalResource String
@@ -137,7 +167,7 @@ data CompileError
   | ParameterValueInvalidIndex DeclProvenance Int Int
   | ParameterValueInvalidNat DeclProvenance Int
   | InferableParameterContradictory Identifier (DeclProvenance, ExternalResource, Int) (DeclProvenance, ExternalResource, Int)
-  | InferableParameterUninferrable DeclProvenance
+  | InferableParametersUninferrable (NonEmpty UninferableParameter)
   | -- Unsupported properties
     NoPropertiesFound
   | HigherOrderVectors DeclProvenance NamedBoundCtx (VType Builtin) (VType Builtin)
@@ -146,6 +176,7 @@ data CompileError
   | UnsupportedNonLinearConstraint QueryFormatID DeclProvenance (Either CompileError NonLinearityProof)
   | UnsupportedMultipleNetworkApplications QueryFormatID DeclProvenance CompleteNamedBoundCtx [(Name, Value Builtin)]
   | VariableSizeTensorQuantification DeclProvenance NamedBoundCtx (VBinder Builtin) (VType Builtin)
+  | MultiPropertyTraveralError DeclProvenance MultiPropertyTraveralError
   | -- Loss backend errors
     UnsupportedLossOperation DeclProvenance Provenance (Doc Void)
   | UnsupportedHigherOrderTensorCode DeclProvenance NamedBoundCtx (Value Builtin) NamedBoundCtx (Value Builtin)
@@ -165,59 +196,44 @@ deriving instance Show CompileError
 
 -- | Should be used in preference to `developerError` whenever in the error
 -- monad, as unlike the latter this method does not prevent logging.
-compilerDeveloperError :: (MonadError CompileError m) => Doc () -> m b
+compilerDeveloperError :: (MonadError CompileError m) => UnAnnDoc -> m b
 compilerDeveloperError message = throwError $ DevError message
 
 --------------------------------------------------------------------------------
 -- The final error type
 
--- | Errors from external code that we have no control over.
---  These may be either user or developer errors but in general we
---  can't distinguish between the two.
-newtype ExternalError = ExternalError Text
-  deriving (Generic)
-
-instance ToJSON ExternalError
-
 -- | Errors that are the user's responsibility to fix.
-data UserError = UserError
-  { provenance :: Provenance,
+data VehicleError = VehicleError
+  { provenance :: Maybe Provenance,
     problem :: UnAnnDoc,
     fix :: Maybe UnAnnDoc
   }
 
--- | Concrete instance for JSON serialization of UserError as
--- UnAnnDoc cannot be serialized directly.
-instance ToJSON UserError where
-  toJSON (UserError p prob probFix) =
-    object
-      [ "provenance" .= toJSON p,
-        "problem" .= renderString (layoutPretty defaultLayoutOptions prob),
-        "fix" .= maybe "" (renderString . layoutPretty defaultLayoutOptions) probFix
-      ]
-
-data VehicleError
-  = UError UserError
-  | EError ExternalError
-  | DError (Doc ())
-  deriving (Generic)
-
 instance Pretty VehicleError where
-  pretty (UError (UserError p prob probFix)) =
+  pretty VehicleError {..} =
     unAnnotate $
-      "Error in"
-        <+> pretty p
+      "Error"
+        <> maybe "" (\p -> " in" <+> pretty p) provenance
         <> ":"
-          <+> prob
-        <> maybe "" (\fix -> line <> fixText fix) probFix
-  pretty (EError (ExternalError text)) = pretty text
-  pretty (DError text) = unAnnotate text
+          <+> problem
+        <> maybe "" (\f -> line <> "Fix:" <+> f) fix
 
 instance ToJSON VehicleError where
-  toJSON vehicleError = case vehicleError of
-    DError doc -> toJSON $ renderString $ layoutPretty defaultLayoutOptions doc
-    EError eError -> toJSON eError
-    UError uError -> toJSON uError
+  toJSON = toJSON . toJSONError
 
-fixText :: Doc ann -> Doc ann
-fixText t = "Fix:" <+> t
+toJSONError :: VehicleError -> JSONError
+toJSONError VehicleError {..} =
+  JSONError
+    { provenance = provenance,
+      problem = layoutAsText problem,
+      fix = fmap layoutAsText fix
+    }
+
+data JSONError = JSONError
+  { provenance :: Maybe Provenance,
+    problem :: Text,
+    fix :: Maybe Text
+  }
+  deriving (Generic)
+
+instance ToJSON JSONError

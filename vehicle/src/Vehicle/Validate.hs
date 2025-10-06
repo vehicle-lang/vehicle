@@ -7,8 +7,6 @@ where
 import Control.Monad (forM)
 import Control.Monad.Trans (MonadIO (liftIO))
 import Data.Aeson (ToJSON (..))
-import Data.Aeson.Encode.Pretty (encodePretty')
-import Data.ByteString.Lazy.Char8 (unpack)
 import GHC.Generics (Generic)
 import Vehicle.Prelude
 import Vehicle.Prelude.Logging
@@ -29,7 +27,7 @@ validate loggingSettings outputAsJSON checkOptions = runLoggerT loggingSettings 
   status <- checkSpecificationStatus checkOptions
   let outputDocs =
         if outputAsJSON
-          then pretty $ unpack $ encodePretty' prettyJSONConfig $ toJSON status
+          then prettyAsJSON status
           else pretty status
 
   programOutput outputDocs

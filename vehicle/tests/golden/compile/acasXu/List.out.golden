@@ -20,6 +20,27 @@
   {
     "tag": "Property",
     "contents": {
+      "subcomponents": {
+        "tag": "SingleProperty",
+        "contents": [
+          {
+            "sharedData": {
+              "typeText": "Tensor Real [5]",
+              "provenance": {
+                "tag": "Provenance",
+                "contents": [
+                  135,
+                  20,
+                  135,
+                  21
+                ]
+              },
+              "name": "x"
+            },
+            "quantifier": "Forall"
+          }
+        ]
+      },
       "sharedData": {
         "typeText": "Bool",
         "provenance": {
@@ -32,30 +53,33 @@
           ]
         },
         "name": "property1"
-      },
-      "quantifiedVariables": [
-        {
-          "sharedData": {
-            "typeText": "Tensor Real [5]",
-            "provenance": {
-              "tag": "Provenance",
-              "contents": [
-                135,
-                20,
-                135,
-                21
-              ]
-            },
-            "name": "x"
-          },
-          "quantifier": "Forall"
-        }
-      ]
+      }
     }
   },
   {
     "tag": "Property",
     "contents": {
+      "subcomponents": {
+        "tag": "SingleProperty",
+        "contents": [
+          {
+            "sharedData": {
+              "typeText": "Tensor Real [5]",
+              "provenance": {
+                "tag": "Provenance",
+                "contents": [
+                  148,
+                  20,
+                  148,
+                  21
+                ]
+              },
+              "name": "x"
+            },
+            "quantifier": "Forall"
+          }
+        ]
+      },
       "sharedData": {
         "typeText": "Bool",
         "provenance": {
@@ -68,30 +92,33 @@
           ]
         },
         "name": "property2"
-      },
-      "quantifiedVariables": [
-        {
-          "sharedData": {
-            "typeText": "Tensor Real [5]",
-            "provenance": {
-              "tag": "Provenance",
-              "contents": [
-                148,
-                20,
-                148,
-                21
-              ]
-            },
-            "name": "x"
-          },
-          "quantifier": "Forall"
-        }
-      ]
+      }
     }
   },
   {
     "tag": "Property",
     "contents": {
+      "subcomponents": {
+        "tag": "SingleProperty",
+        "contents": [
+          {
+            "sharedData": {
+              "typeText": "Tensor Real [5]",
+              "provenance": {
+                "tag": "Provenance",
+                "contents": [
+                  173,
+                  20,
+                  173,
+                  21
+                ]
+              },
+              "name": "x"
+            },
+            "quantifier": "Forall"
+          }
+        ]
+      },
       "sharedData": {
         "typeText": "Bool",
         "provenance": {
@@ -104,30 +131,33 @@
           ]
         },
         "name": "property3"
-      },
-      "quantifiedVariables": [
-        {
-          "sharedData": {
-            "typeText": "Tensor Real [5]",
-            "provenance": {
-              "tag": "Provenance",
-              "contents": [
-                173,
-                20,
-                173,
-                21
-              ]
-            },
-            "name": "x"
-          },
-          "quantifier": "Forall"
-        }
-      ]
+      }
     }
   },
   {
     "tag": "Property",
     "contents": {
+      "subcomponents": {
+        "tag": "SingleProperty",
+        "contents": [
+          {
+            "sharedData": {
+              "typeText": "Tensor Real [5]",
+              "provenance": {
+                "tag": "Provenance",
+                "contents": [
+                  194,
+                  20,
+                  194,
+                  21
+                ]
+              },
+              "name": "x"
+            },
+            "quantifier": "Forall"
+          }
+        ]
+      },
       "sharedData": {
         "typeText": "Bool",
         "provenance": {
@@ -140,30 +170,33 @@
           ]
         },
         "name": "property4"
-      },
-      "quantifiedVariables": [
-        {
-          "sharedData": {
-            "typeText": "Tensor Real [5]",
-            "provenance": {
-              "tag": "Provenance",
-              "contents": [
-                194,
-                20,
-                194,
-                21
-              ]
-            },
-            "name": "x"
-          },
-          "quantifier": "Forall"
-        }
-      ]
+      }
     }
   },
   {
     "tag": "Property",
     "contents": {
+      "subcomponents": {
+        "tag": "SingleProperty",
+        "contents": [
+          {
+            "sharedData": {
+              "typeText": "Tensor Real [5]",
+              "provenance": {
+                "tag": "Provenance",
+                "contents": [
+                  216,
+                  20,
+                  216,
+                  21
+                ]
+              },
+              "name": "x"
+            },
+            "quantifier": "Forall"
+          }
+        ]
+      },
       "sharedData": {
         "typeText": "Bool",
         "provenance": {
@@ -176,30 +209,33 @@
           ]
         },
         "name": "property5"
-      },
-      "quantifiedVariables": [
-        {
-          "sharedData": {
-            "typeText": "Tensor Real [5]",
-            "provenance": {
-              "tag": "Provenance",
-              "contents": [
-                216,
-                20,
-                216,
-                21
-              ]
-            },
-            "name": "x"
-          },
-          "quantifier": "Forall"
-        }
-      ]
+      }
     }
   },
   {
     "tag": "Property",
     "contents": {
+      "subcomponents": {
+        "tag": "SingleProperty",
+        "contents": [
+          {
+            "sharedData": {
+              "typeText": "Tensor Real [5]",
+              "provenance": {
+                "tag": "Provenance",
+                "contents": [
+                  237,
+                  20,
+                  237,
+                  21
+                ]
+              },
+              "name": "x"
+            },
+            "quantifier": "Forall"
+          }
+        ]
+      },
       "sharedData": {
         "typeText": "Bool",
         "provenance": {
@@ -212,30 +248,33 @@
           ]
         },
         "name": "property6"
-      },
-      "quantifiedVariables": [
-        {
-          "sharedData": {
-            "typeText": "Tensor Real [5]",
-            "provenance": {
-              "tag": "Provenance",
-              "contents": [
-                237,
-                20,
-                237,
-                21
-              ]
-            },
-            "name": "x"
-          },
-          "quantifier": "Forall"
-        }
-      ]
+      }
     }
   },
   {
     "tag": "Property",
     "contents": {
+      "subcomponents": {
+        "tag": "SingleProperty",
+        "contents": [
+          {
+            "sharedData": {
+              "typeText": "Tensor Real [5]",
+              "provenance": {
+                "tag": "Provenance",
+                "contents": [
+                  258,
+                  20,
+                  258,
+                  21
+                ]
+              },
+              "name": "x"
+            },
+            "quantifier": "Forall"
+          }
+        ]
+      },
       "sharedData": {
         "typeText": "Bool",
         "provenance": {
@@ -248,30 +287,33 @@
           ]
         },
         "name": "property7"
-      },
-      "quantifiedVariables": [
-        {
-          "sharedData": {
-            "typeText": "Tensor Real [5]",
-            "provenance": {
-              "tag": "Provenance",
-              "contents": [
-                258,
-                20,
-                258,
-                21
-              ]
-            },
-            "name": "x"
-          },
-          "quantifier": "Forall"
-        }
-      ]
+      }
     }
   },
   {
     "tag": "Property",
     "contents": {
+      "subcomponents": {
+        "tag": "SingleProperty",
+        "contents": [
+          {
+            "sharedData": {
+              "typeText": "Tensor Real [5]",
+              "provenance": {
+                "tag": "Provenance",
+                "contents": [
+                  280,
+                  20,
+                  280,
+                  21
+                ]
+              },
+              "name": "x"
+            },
+            "quantifier": "Forall"
+          }
+        ]
+      },
       "sharedData": {
         "typeText": "Bool",
         "provenance": {
@@ -284,30 +326,33 @@
           ]
         },
         "name": "property8"
-      },
-      "quantifiedVariables": [
-        {
-          "sharedData": {
-            "typeText": "Tensor Real [5]",
-            "provenance": {
-              "tag": "Provenance",
-              "contents": [
-                280,
-                20,
-                280,
-                21
-              ]
-            },
-            "name": "x"
-          },
-          "quantifier": "Forall"
-        }
-      ]
+      }
     }
   },
   {
     "tag": "Property",
     "contents": {
+      "subcomponents": {
+        "tag": "SingleProperty",
+        "contents": [
+          {
+            "sharedData": {
+              "typeText": "Tensor Real [5]",
+              "provenance": {
+                "tag": "Provenance",
+                "contents": [
+                  302,
+                  20,
+                  302,
+                  21
+                ]
+              },
+              "name": "x"
+            },
+            "quantifier": "Forall"
+          }
+        ]
+      },
       "sharedData": {
         "typeText": "Bool",
         "provenance": {
@@ -320,30 +365,33 @@
           ]
         },
         "name": "property9"
-      },
-      "quantifiedVariables": [
-        {
-          "sharedData": {
-            "typeText": "Tensor Real [5]",
-            "provenance": {
-              "tag": "Provenance",
-              "contents": [
-                302,
-                20,
-                302,
-                21
-              ]
-            },
-            "name": "x"
-          },
-          "quantifier": "Forall"
-        }
-      ]
+      }
     }
   },
   {
     "tag": "Property",
     "contents": {
+      "subcomponents": {
+        "tag": "SingleProperty",
+        "contents": [
+          {
+            "sharedData": {
+              "typeText": "Tensor Real [5]",
+              "provenance": {
+                "tag": "Provenance",
+                "contents": [
+                  323,
+                  21,
+                  323,
+                  22
+                ]
+              },
+              "name": "x"
+            },
+            "quantifier": "Forall"
+          }
+        ]
+      },
       "sharedData": {
         "typeText": "Bool",
         "provenance": {
@@ -356,25 +404,7 @@
           ]
         },
         "name": "property10"
-      },
-      "quantifiedVariables": [
-        {
-          "sharedData": {
-            "typeText": "Tensor Real [5]",
-            "provenance": {
-              "tag": "Provenance",
-              "contents": [
-                323,
-                21,
-                323,
-                22
-              ]
-            },
-            "name": "x"
-          },
-          "quantifier": "Forall"
-        }
-      ]
+      }
     }
   }
 ]

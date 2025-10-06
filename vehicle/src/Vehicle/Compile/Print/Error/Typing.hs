@@ -1,4 +1,4 @@
-module Vehicle.Compile.Print.TypingError
+module Vehicle.Compile.Print.Error.Typing
   ( typingErrorDetails,
     prettyIdentName,
     unsupportedAnnotationTypeDescription,
@@ -28,7 +28,7 @@ typingErrorDetails ::
   forall builtin.
   (Eq builtin, PrintableBuiltin builtin, NormalisableBuiltin builtin) =>
   TypingError builtin ->
-  UserError
+  VehicleError
 typingErrorDetails = \case
   MissingExplicitArg err -> missingExplicitArgError err
   FunctionTypeMismatch err -> functionTypeMismatchError err
@@ -36,8 +36,8 @@ typingErrorDetails = \case
   FailedInstanceConstraint err -> failedInstanceConstraintError err
   RelevantUseOfIrrelevantVariable err -> relevantUseOfIrrelevantVariableError err
   FailedIndexConstraintTooBig ctx v n ->
-    UserError
-      { provenance = provenanceOf ctx,
+    VehicleError
+      { provenance = Just $ provenanceOf ctx,
         problem =
           "the value"
             <+> squotes (pretty v)
@@ -48,8 +48,8 @@ typingErrorDetails = \case
         fix = Nothing
       }
   FailedIndexConstraintUnknown ctx v t ->
-    UserError
-      { provenance = provenanceOf ctx,
+    VehicleError
+      { provenance = Just $ provenanceOf ctx,
         problem =
           "unable to determine if"
             <+> squotes (prettyFriendly (WithContext v (namedBoundCtxOf ctx)))
@@ -59,8 +59,8 @@ typingErrorDetails = \case
         fix = Nothing
       }
   UnsolvedConstraints cs ->
-    UserError
-      { provenance = provenanceOf ctx,
+    VehicleError
+      { provenance = Just $ provenanceOf ctx,
         problem = constraintOriginMessage,
         fix = Just "try adding more type annotations"
       }
@@ -92,8 +92,8 @@ typingErrorDetails = \case
             <+> squotes (prettyTypeClassConstraintOriginExpr ctx checkedInstanceOp checkedInstanceOpArgs)
         InstanceTypeRestrictionOrigin {} -> developerError "Unexpected type-restriction error"
   UnsolvedMetas _ ms ->
-    UserError
-      { provenance = p,
+    VehicleError
+      { provenance = Just p,
         problem = "Unable to infer type of bound variable",
         fix = Just "add more type annotations"
       }
@@ -108,12 +108,12 @@ typingErrorDetails = \case
 missingExplicitArgError ::
   (PrintableBuiltin builtin) =>
   MissingExplicitArgError builtin ->
-  UserError
+  VehicleError
 missingExplicitArgError (MissingExplicitArgError ctx explicitBinder nonExplicitArg) = do
   let argTypeDoc = prettyFriendly $ WithContext (typeOf explicitBinder) ctx
   let argDoc = prettyFriendly $ WithContext (argExpr nonExplicitArg) ctx
-  UserError
-    { provenance = provenanceOf nonExplicitArg,
+  VehicleError
+    { provenance = Just $ provenanceOf nonExplicitArg,
       problem =
         "expected an"
           <+> pretty Explicit
@@ -133,10 +133,10 @@ functionTypeMismatchError ::
   forall builtin.
   (PrintableBuiltin builtin) =>
   FunctionTypeMismatchError builtin ->
-  UserError
+  VehicleError
 functionTypeMismatchError (FunctionTypeMismatchError ctx fun nonPiType args) = do
-  UserError
-    { provenance = provenanceOf fun,
+  VehicleError
+    { provenance = Just $ provenanceOf fun,
       problem =
         "expected"
           <+> squotes (prettyFriendly $ WithContext fun ctx)
@@ -161,10 +161,10 @@ functionTypeMismatchError (FunctionTypeMismatchError ctx fun nonPiType args) = d
 
 relevantUseOfIrrelevantVariableError ::
   RelevantUseOfIrrelevantVariableError builtin ->
-  UserError
+  VehicleError
 relevantUseOfIrrelevantVariableError (RelevantUseOfIrrelevantVariableError _ p name) =
-  UserError
-    { provenance = p,
+  VehicleError
+    { provenance = Just p,
       problem = "cannot use irrelevant variable" <+> quotePretty name <+> "in an relevant context",
       fix = Nothing
     }
@@ -176,10 +176,10 @@ failedUnificationConstraintsError ::
   forall builtin.
   (PrintableBuiltin builtin, NormalisableBuiltin builtin) =>
   FailedUnificationConstraintsError builtin ->
-  UserError
+  VehicleError
 failedUnificationConstraintsError (FailedUnificationConstraintsError freeEnv (err :| _)) = failedConstraintMessage err
   where
-    failedConstraintMessage :: WithContext (UnificationConstraint builtin) -> UserError
+    failedConstraintMessage :: WithContext (UnificationConstraint builtin) -> VehicleError
     failedConstraintMessage (WithContext (Unify origin e1 e2) ctx) = do
       let boundCtx = boundContextOf ctx
       let namedBoundCtx = toNamedBoundCtx boundCtx
@@ -237,8 +237,8 @@ failedUnificationConstraintsError (FailedUnificationConstraintsError freeEnv (er
             _ ->
               "check your types"
 
-      UserError
-        { provenance = provenanceOf ctx,
+      VehicleError
+        { provenance = Just $ provenanceOf ctx,
           problem =
             originMessage
               <> problemDescription,
@@ -252,7 +252,7 @@ failedInstanceConstraintError ::
   forall builtin.
   (Eq builtin, NormalisableBuiltin builtin, PrintableBuiltin builtin) =>
   FailedInstanceConstraintError builtin ->
-  UserError
+  VehicleError
 failedInstanceConstraintError (FailedInstanceConstraintError freeEnv (WithContext constraint ctx) candidates) =
   case instanceOrigin constraint of
     InstanceTypeRestrictionOrigin t -> typeRestrictionError ctx t candidates
@@ -263,10 +263,10 @@ typeRestrictionError ::
   ConstraintContext builtin ->
   InstanceTypeRestrictionOrigin builtin ->
   [(WithContext (InstanceCandidate builtin), UnAnnDoc)] ->
-  UserError
+  VehicleError
 typeRestrictionError ctx (TypeRestrictionOrigin freeEnv (ident, p) sort typ) _candidates = do
-  UserError
-    { provenance = p,
+  VehicleError
+    { provenance = Just p,
       problem = problemDescription,
       fix =
         Just $
@@ -289,7 +289,7 @@ typeRestrictionError ctx (TypeRestrictionOrigin freeEnv (ident, p) sort typ) _ca
           <+> quotePretty (nameOf ident :: Text)
           <> ":"
           <> line
-          <> indent 2 (prettyFriendlyEmptyCtx $ unnormalised $ gluedType)
+          <> indent 2 (prettyFriendlyEmptyCtx $ unnormalised gluedType)
           <> line
           <> "is not supported."
             <+> "All fields of a record declaration annotated with"
@@ -326,10 +326,10 @@ instanceArgOriginError ::
   ConstraintContext builtin ->
   InstanceArgOrigin builtin ->
   [(WithContext (InstanceCandidate builtin), UnAnnDoc)] ->
-  UserError
+  VehicleError
 instanceArgOriginError freeEnv ctx (ArgOrigin tcOp tcOpArgs tcOpType _tc) candidates =
-  UserError
-    { provenance = provenanceOf ctx,
+  VehicleError
+    { provenance = Just $ provenanceOf ctx,
       problem =
         "unable to work out a valid type for the overloaded expression"
           <+> originExpr
