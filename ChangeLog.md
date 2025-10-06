@@ -1,5 +1,11 @@
 # Changelog for Vehicle
 
+## Version 0.21.1
+
+### Python interface
+
+* Fixes the `--json` flag parsing error when using the `verify` command.
+
 ## Version 0.21.0
 
 ### Command-line interface
