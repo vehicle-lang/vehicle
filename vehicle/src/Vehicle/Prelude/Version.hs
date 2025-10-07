@@ -20,7 +20,6 @@ import Data.Version (showVersion)
 import Development.GitRev
 import GHC.Generics (Generic)
 import Paths_vehicle qualified as Cabal (version)
-import System.Timeout (timeout)
 
 --------------------------------------------------------------------------------
 -- Current versions
@@ -93,19 +92,10 @@ readAndDecodeVersioned filepath = do
       Left err -> return $ InexplicableDecodingError err
       Right Versioned {..} -> do
         -- The version is always potentially out of sync if the Github repo is
-        -- in a dirty state
+        -- in a dirty state.
         let isOutOfSync = $(gitDirtyTracked) || version /= preciseVehicleVersion
         if isOutOfSync
-          then do
-            -- If we are out of sync then we still try to restore the payload but
-            -- we need to attach a timeout to it as unfortunately the deserializer
-            -- can potentially loop reading malformed data.
-            maybeResult <- liftIO $ timeout 1000000 $ return (decode payload)
-            let mkMismatchError = VersionMismatchError preciseVehicleVersion version
-            case maybeResult of
-              Nothing -> return $ mkMismatchError "Decoding timed out"
-              Just (Left err) -> return $ mkMismatchError err
-              Just (Right v) -> return $ SuccessfulDecoding v
+          then return $ VersionMismatchError preciseVehicleVersion version
           else case decode payload of
             Left err -> return $ InexplicableDecodingError err
             Right v -> return $ SuccessfulDecoding v
@@ -113,7 +103,7 @@ readAndDecodeVersioned filepath = do
 data DecodeResult a
   = IOError IOException
   | InexplicableDecodingError String
-  | VersionMismatchError VersionString VersionString String
+  | VersionMismatchError VersionString VersionString
   | SuccessfulDecoding a
 
 data Versioned a = Versioned

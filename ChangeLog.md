@@ -12,6 +12,10 @@
 
 * Fixes the `--json` flag parsing error when using the `verify` command.
 
+### Other
+
+* Fixed bug introduced in v0.21 where obsolete `.vclo` object files were incorrectly read in causing unexpected behaviour.
+
 ## Version 0.21.0
 
 ### Command-line interface
