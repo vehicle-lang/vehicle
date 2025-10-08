@@ -16,6 +16,9 @@
 
 * The `vehicle check` command now accepts the `--declaration` argument to only type-check certain declarations.
 
+* The `vehicle list` command now accepts `network`, `dataset` and `parameter` arguments, similar to `vehicle compile` and `vehicle verify`.
+They are not compulsory to pass in, but a more accurate description of the set of properties will be returned if they are.
+
 ### Other
 
 * Fixed bug introduced in v0.21 where obsolete `.vclo` object files were incorrectly read in causing unexpected behaviour.

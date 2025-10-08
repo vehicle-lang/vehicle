@@ -4,7 +4,7 @@ module Vehicle.Compile.ExpandResources
 where
 
 import Control.Monad
-import Control.Monad.Except
+import Control.Monad.IO.Class
 import Control.Monad.Writer (MonadWriter (..), WriterT (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
