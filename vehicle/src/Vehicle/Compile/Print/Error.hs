@@ -1,7 +1,6 @@
 module Vehicle.Compile.Print.Error
-  ( UserError (..),
-    VehicleError (..),
-    MeaningfulError (..),
+  ( formatCompileError,
+    prettyCompileError,
     logCompileError,
     multipleNetworkErrorMessages,
     errorInSubsystemMessage,
@@ -9,15 +8,15 @@ module Vehicle.Compile.Print.Error
 where
 
 import Control.Monad.Except (ExceptT, runExceptT)
-import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
-import Data.Text (pack)
 import Data.These (mergeTheseWith)
 import System.FilePath
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
-import Vehicle.Compile.Print.TypingError
+import Vehicle.Compile.Print.Error.Property (propertyTraversalErrorDetails)
+import Vehicle.Compile.Print.Error.Typing
 import Vehicle.Data.Assertion (BoundType (..))
 import Vehicle.Data.Builtin.Linearity
 import Vehicle.Data.Builtin.Polarity
@@ -39,865 +38,823 @@ logCompileError ::
 logCompileError x = do
   e' <- runExceptT x
   case e' of
-    Left err -> logDebug MinDetail (pretty (details err))
+    Left err -> logDebug MinDetail (pretty (formatCompileError err))
     Right _ -> return ()
   return e'
+
+prettyCompileError :: Bool -> CompileError -> Doc a
+prettyCompileError outputAsJSON err = do
+  let vehicleError = formatCompileError err
+  if outputAsJSON
+    then prettyAsJSON vehicleError
+    else pretty vehicleError
 
 --------------------------------------------------------------------------------
 -- Meaningful error classes
 
-class MeaningfulError e where
-  details :: e -> VehicleError
+formatCompileError :: CompileError -> VehicleError
+formatCompileError = \case
+  ----------------------
+  -- Developer errors --
+  ----------------------
 
-instance MeaningfulError CompileError where
-  details = \case
-    ----------------------
-    -- Developer errors --
-    ----------------------
+  DevError text ->
+    VehicleError
+      { provenance = Nothing,
+        problem = text,
+        fix = Nothing
+      }
+  -------------
+  -- Parsing --
+  -------------
 
-    DevError text -> DError text
-    -------------
-    -- Parsing --
-    -------------
-
-    ParseError _module parseError -> case parseError of
-      RawParseError text ->
-        EError $
-          ExternalError
-            -- TODO need to revamp this error, BNFC must provide some more
-            -- information than a simple string surely?
-            (pack text)
-      UnannotatedAbstractDef p name ->
-        UError $
-          UserError
-            { provenance = p,
-              problem =
-                "no definition provided for the declaration"
-                  <+> quotePretty name
-                  <> ".",
-              fix =
-                Just $
-                  "either provide a definition for"
-                    <+> quotePretty name
-                    <+> "or mark it as an external resource by adding an appropriate annotation, i.e."
-                    <+> pretty NetworkDef
-                    <> ","
-                      <+> pretty DatasetDef
-                      <+> "or"
-                      <+> pretty (ParameterDef NonInferable)
-                    <> "."
-            }
-      MultiplyAnnotatedAbstractDef p name ann1 ann2 ->
-        UError $
-          UserError
-            { provenance = p,
-              problem =
-                "abstract declaration"
-                  <+> quotePretty name
-                  <+> "cannot simultaneously be annotated with both"
-                  <+> quotePretty ann1
-                  <+> "and"
-                  <+> quotePretty ann2
-                  <> ".",
-              fix =
-                Just "remove one of annotations."
-            }
-      AbstractDefWithNonAbstractAnnotation p name ann ->
-        UError $
-          UserError
-            { provenance = p,
-              problem = "missing definition for" <+> pretty ann <+> quotePretty name <> ".",
-              fix = Just $ "add a definition for" <+> quotePretty name <+> "."
-            }
-      NonAbstractDefWithAbstractAnnotation p name resource ->
-        UError $
-          UserError
-            { provenance = p,
-              problem =
-                "The declaration"
-                  <+> quotePretty name
-                  <+> "should not have a definition"
-                  <+> "as it has been marked with a"
-                  <+> quotePretty resource
-                  <+> "annotation.",
-              fix =
-                Just $
-                  "either remove the definition for"
-                    <+> quotePretty name
-                    <+> "or remove the"
-                    <+> quotePretty resource
-                    <+> "annotation."
-            }
-      AnnotationWithNoDef p name ->
-        UError $
-          UserError
-            { provenance = p,
-              problem = "unattached annotation" <+> quotePretty name,
-              fix = Just "either attach the annotation to a declaration or remove it entirely"
-            }
-      FunctionWithMismatchedNames p name1 name2 ->
-        UError $
-          UserError
-            { provenance = p,
-              problem = "mismatch in function declaration names:" <+> quotePretty name1 <+> "and" <+> quotePretty name2 <> ".",
-              fix = Just "ensure the function definition has the same name as the declaration it follows."
-            }
-      MissingVariables p symbol ->
-        UError $
-          UserError
-            { provenance = p,
-              problem = "expected at least one variable name after" <+> quotePretty symbol,
-              fix = Just $ "add one or more names after" <+> quotePretty symbol
-            }
-      UnchainableComparisons p prevOrder currentOrder ->
-        UError $
-          UserError
-            { provenance = p,
-              problem =
-                "cannot chain"
-                  <+> quotePretty prevOrder
-                  <+> "and"
-                  <+> quotePretty currentOrder,
-              fix = Just "split chained orders into a conjunction"
-            }
-      InvalidAnnotationOption p annotationName parameterName suggestions ->
-        UError $
-          UserError
-            { provenance = p,
-              problem =
-                "unknown option"
-                  <+> quotePretty parameterName
-                  <+> "for"
-                  <+> quotePretty annotationName
-                  <+> "annotation.",
-              fix =
-                case suggestions of
-                  [] -> Nothing
-                  (s : _) -> Just $ "did you mean" <+> quotePretty s <> "?"
-            }
-      InvalidAnnotationOptionValue parameterName parameterValue ->
-        UError $
-          UserError
-            { provenance = provenanceOf parameterValue,
-              problem =
-                "unable to parse the value"
-                  <+> squotes (prettyFriendly parameterValue)
-                  <+> "for option"
-                  <+> quotePretty parameterName,
-              fix = Nothing
-            }
-      DuplicateAnnotationOption p annotation name ->
-        UError $
-          UserError
-            { provenance = p,
-              problem =
-                "the annotation"
-                  <+> quotePretty annotation
-                  <+> "has multiple copies of the option"
-                  <+> quotePretty name,
-              fix = Just $ "remove all but one of the instances of" <+> quotePretty name
-            }
-      MissingAnnotationOption p annotation name ->
-        UError $
-          UserError
-            { provenance = p,
-              problem =
-                "the annotation"
-                  <+> quotePretty annotation
-                  <+> "is missing the option"
-                  <+> quotePretty name,
-              fix = Just $ "add a value for the option" <+> quotePretty name
-            }
-      UnknownBuiltin p symbol ->
-        UError $
-          UserError
-            { provenance = p,
-              problem = "Unknown symbol" <+> quotePretty symbol,
-              fix =
-                Just $
-                  "Please consult the documentation for a description"
-                    <+> "of Vehicle syntax"
-            }
-    -------------
-    -- Scoping --
-    -------------
-    MissingRequestedDeclarations names ->
-      UError $
-        UserError
-          { provenance = mempty,
-            -- TODO can use Levenschtein distance to search contexts/builtins
-            problem =
-              "Requested to compile the declaration"
-                <+> quotePretty (NonEmpty.head names)
-                <+> "but no declarations exist with that name in the specification.",
-            fix =
-              Just
-                "check the spelling of the names and that the correct specification is being used."
-          }
-    UnboundName p name suggestions ->
-      UError $
-        UserError
-          { provenance = p,
-            problem = "The name" <+> quotePretty name <+> "is not in scope",
-            fix =
-              if null suggestions
-                then Nothing
-                else Just $ "Did you mean to use one of the following:" <> line <> indent 2 (vsep (fmap pretty suggestions))
-          }
-    UnboundRecordAccessor p name suggestions ->
-      UError $
-        UserError
-          { provenance = p,
-            problem = "No record with field" <+> quotePretty name <+> "in scope",
-            fix =
-              if null suggestions
-                then Nothing
-                else Just $ "Did you mean to use one of the following:" <> line <> indent 2 (vsep (fmap pretty suggestions))
-          }
-    DeclarationDeclarationShadowing p name _matching ->
-      UError $
-        UserError
-          { provenance = p,
-            problem = "multiple" <+> typDoc <+> "with the name" <+> quotePretty name,
-            fix = Just "remove or rename the duplicate definitions"
-          }
-      where
-        typDoc = either (const "record fields declared") (const "declarations") name
-    DeclarationBoundShadowing p name ->
-      UError $
-        UserError
-          { provenance = p,
-            problem =
-              "cannot re-use the name"
+  ParseError _module parseError -> case parseError of
+    RawParseError text ->
+      VehicleError
+        { provenance = Nothing,
+          problem = pretty text,
+          fix = Nothing
+        }
+    UnannotatedAbstractDef p name ->
+      VehicleError
+        { provenance = Just p,
+          problem =
+            "no definition provided for the declaration"
+              <+> quotePretty name
+              <> ".",
+          fix =
+            Just $
+              "either provide a definition for"
                 <+> quotePretty name
-                <+> "as a local variable because there is already a declaration with that name.",
-            fix = Just "rename either the original declaration or this variable"
-          }
-    UnmatchedRecord p fields maybeBestMatch -> UError $ case maybeBestMatch of
-      Nothing ->
-        UserError
-          { provenance = p,
-            problem =
-              "Unable to find a record declaration with matching fields.",
-            fix = Just $ "declare a record with the fields:" <> lineIndent (vsep $ fmap pretty fields)
-          }
-      Just (ident, RecordMatch {..}) -> do
-        UserError
-          { provenance = p,
-            problem = "Unable to find a record declaration with matching fields.",
-            fix =
-              Just $
-                "it seems likely that the intension is to construct a"
-                  <+> quotePretty (nameOf ident)
-                  <+> "record."
-                  <+> "If so, then "
-                  <> suggestionDoc
-          }
-        where
-          mispellingDoc = (["fix the mispellings:" <> lineIndent (vsep (fmap (\(actual, expected) -> pretty actual <+> "->" <+> pretty expected) mispellings)) | not (null mispellings)])
-          missingDoc = (["add the missing fields:" <> lineIndent (vsep $ fmap pretty missingFields) | not (null missingFields)])
-          extraDoc = (["remove the unneeded fields:" <> lineIndent (vsep $ fmap pretty extraFields) | not (null extraFields)])
-          suggestionDocs = mispellingDoc <> missingDoc <> extraDoc
-          suggestionDoc = concatWith (\a b -> a <> line <> "and" <+> b) suggestionDocs
-    ------------
-    -- Typing --
-    ------------
-
-    TypingError t -> UError $ typingErrorDetails t
-    QuantifiedIfCondition ctx ->
-      UError $
-        UserError
-          { provenance = provenanceOf ctx,
-            problem = "cannot currently use quantifiers in `if` conditions.",
-            fix = Just $ implementationLimitation Nothing
-          }
-    ---------------
-    -- Resources --
-    ---------------
-
-    ResourceNotProvided (ident, p) resourceType ->
-      UError $
-        UserError
-          { provenance = p,
-            problem =
-              "No"
-                <+> entity
-                <+> "was provided for the"
-                <+> prettyResource resourceType ident
-                <> ".",
-            fix =
-              Just $
-                "provide it via the command line using"
-                  <+> squotes
-                    ( "--"
-                        <> pretty resourceType
-                          <+> pretty (nameOf ident :: Name)
-                        <> ":"
-                        <> var
-                    )
-          }
-      where
-        (entity, var) = case resourceType of
-          Parameter -> ("value", "VALUE")
-          _ -> ("file", "FILEPATH")
-    UnsupportedResourceFormat (ident, p) resourceType fileExtension ->
-      UError $
-        UserError
-          { provenance = p,
-            problem =
-              "The"
-                <+> quotePretty fileExtension
-                <+> "format of the file provided"
-                <+> "for the"
-                <+> prettyResource resourceType ident
-                <+> "is not currently supported by Vehicle.",
-            fix =
-              Just $
-                "use one of the supported formats"
-                  <+> pretty (supportedFileFormats resourceType)
-                  <+> ", or open an issue on Github ("
-                  <> githubIssues
-                  <> ") to discuss adding support."
-          }
-    ResourceIOError (ident, p) resourceType ioException ->
-      UError $
-        UserError
-          { provenance = p,
-            problem =
-              "The following exception occured when trying to read the file"
-                <+> "provided for"
-                <+> prettyResource resourceType ident
-                <> ":"
-                <> line
-                <> indent 2 (pretty (show ioException)),
-            fix = Nothing
-          }
-    UnableToParseResource (ident, p) resourceType value ->
-      UError $
-        UserError
-          { provenance = p,
-            problem =
-              "Unable to parse the"
-                <+> entity
-                <+> squotes (pretty value)
-                <+> "provided for the"
-                <+> prettyResource resourceType ident,
-            fix = Nothing
-          }
-      where
-        entity = if resourceType == Parameter then "value" else "file"
-
-    -- Network errors
-    NetworkTypeHasVariableSizeTensor (ident, _p) networkType tDim io ->
-      UError $
-        UserError
-          { provenance = provenanceOf networkType,
-            problem =
-              unsupportedAnnotationTypeDescription (pretty NetworkDef) ident networkType
-                <+> "as the size of the"
-                <+> pretty io
-                <+> "tensor"
-                <+> squotes (prettyFriendlyEmptyCtx tDim)
-                <+> "is not a constant at compile time.",
-            fix =
-              Just $
-                supportedNetworkTypeDescription
-                  <+> "ensure that the size of the"
-                  <+> pretty io
-                  <+> "tensor is constant."
-          }
-    NetworkTypeHasImplicitSizeTensor (ident, p) networkType implIdent _io ->
-      UError $
-        UserError
-          { provenance = p,
-            problem =
-              unsupportedAnnotationTypeDescription (pretty NetworkDef) ident networkType
-                <+> "as the use of the inferable parameter"
-                <+> quotePretty implIdent
-                <+> "in the type of network declarations is not currently supported.",
-            fix =
-              Just $
-                "instanstiate inferable parameter"
-                  <+> quotePretty implIdent
-                  <+> "to an explicit value"
-          }
-    -- Dataset errors
-    DatasetVariableSizeTensor (ident, p) datasetType variableDim ->
-      UError $
-        UserError
-          { provenance = p,
-            problem =
-              unsupportedAnnotationTypeDescription (pretty (ParameterDef NonInferable)) ident datasetType
-                <+> "as the dimension size"
-                <> line
-                <> indent 2 (prettyFriendlyEmptyCtx variableDim)
-                <> line
-                <> "is not a constant.",
-            fix = Just "make sure the dimensions of the dataset are all constants."
-          }
-    DatasetDimensionsMismatch (ident, p) file expectedType actualDims ->
-      UError $
-        UserError
-          { provenance = p,
-            problem =
-              "Mismatch in the dimensions of"
-                <+> prettyResource Dataset ident
+                <+> "or mark it as an external resource by adding an appropriate annotation, i.e."
+                <+> pretty NetworkDef
+                <> ","
+                  <+> pretty DatasetDef
+                  <+> "or"
+                  <+> pretty (ParameterDef NonInferable)
                 <> "."
-                <> line
-                <> "According to the specification it should be"
-                  <+> maybe "?" pretty (dimensionsOf (normalised expectedType))
-                <> "-dimensional"
-                  <+> "but was actually found to be"
-                  <+> pretty (length actualDims)
-                <> "-dimensional"
-                  <+> "when reading"
-                  <+> quotePretty file
-                <> ".",
-            fix = Just $ datasetDimensionsFix "dimensions" ident file
-          }
-      where
-        dimensionsOf :: VType Builtin -> Maybe Int
-        dimensionsOf t = case toTypeValue t of
-          VRatTensorType dims -> dimLength dims
-          VBoolTensorType dims -> dimLength dims
-          VNatTensorType dims -> dimLength dims
-          VIndexTensorType _ dims -> dimLength dims
-          VListType tElem -> (+ 1) <$> dimensionsOf tElem
-          VVectorType tElem _dims -> (+ 1) <$> dimensionsOf tElem
-          _ -> Just 0
-
-        dimLength :: Value Builtin -> Maybe Int
-        dimLength dims = either (const Nothing) (Just . length) (getDimsExprs dims)
-    DatasetDimensionSizeMismatch (ident, p) file expectedSize actualSize wrongDimensionIndex ->
-      UError $
-        UserError
-          { provenance = p,
-            problem =
-              "Mismatch in the size of"
-                <+> prettyOrdinal "dimension" (wrongDimensionIndex + 1) Nothing
-                <+> "of"
-                <+> prettyResource Dataset ident
-                <> "."
-                <> line
-                <> "According to the specification it should be"
-                  <+> quotePretty expectedSize
-                  <+> "but was actually found to be"
-                  <+> quotePretty actualSize
-                  <+> "when reading"
-                  <+> quotePretty file
-                <> ".",
-            fix = Just $ datasetDimensionsFix "dimensions" ident file
-          }
-    DatasetInvalidNat (ident, p) file v ->
-      UError $
-        UserError
-          { provenance = p,
-            problem =
-              "Mismatch in the type of elements of"
-                <+> prettyResource Dataset ident
-                <> "."
-                <> line
-                <> "Expected elements of type"
-                  <+> quotePretty NatType
-                  <+> "but found value"
-                  <+> quotePretty v
-                  <+> "when reading"
-                  <+> quotePretty file
-                <> ".",
-            fix = Just $ datasetDimensionsFix "type" ident file
-          }
-    DatasetInvalidIndex (ident, p) file v n ->
-      UError $
-        UserError
-          { provenance = p,
-            problem =
-              "Mismatch in the type of elements of"
-                <+> prettyResource Dataset ident
-                <> "."
-                <> line
-                <> "Expected elements of type"
-                  <+> squotes (pretty IndexType <+> pretty n)
-                  <+> parens ("i.e. values between 0 and" <+> pretty (n - 1) <+> "inclusive")
-                  <+> "but found value"
-                  <+> quotePretty v
-                  <+> "when reading"
-                  <+> quotePretty file
-                <> ".",
-            fix = Just $ datasetDimensionsFix "type" ident file
-          }
-    DatasetTypeMismatch (ident, p) file _datasetType expectedType actualType ->
-      UError $
-        UserError
-          { provenance = p,
-            problem =
-              "Mismatch in the type of elements of"
-                <+> prettyResource Dataset ident
-                <> "."
-                <> line
-                <> "Expected elements of type"
-                  <+> squotes (prettyFriendlyEmptyCtx expectedType)
-                  <+> "but found elements of type"
-                  <+> squotes actualType
-                  <+> "when reading"
-                  <+> quotePretty file
-                <> ".",
-            fix = Just $ datasetDimensionsFix "type" ident file
-          }
-    -- Parameter errors
-    ParameterValueUnparsable (ident, p) value expectedType ->
-      UError $
-        UserError
-          { provenance = p,
-            problem =
-              "The value"
-                <+> squotes (pretty value)
-                <+> "provided for"
-                <+> prettyResource Parameter ident
-                <+> "could not be parsed as"
-                <+> prettyBuiltinType expectedType
-                <> ".",
-            fix =
-              Just $
-                "either change the type of"
-                  <+> prettyIdentName ident
-                  <+> "in the specification or change the value provided."
-          }
-    ParameterTypeVariableSizeIndex (ident, p) parameterType size ->
-      UError $
-        UserError
-          { provenance = p,
-            problem =
-              unsupportedAnnotationTypeDescription (pretty (ParameterDef NonInferable)) ident parameterType
-                <+> "as the size"
-                <+> squotes (prettyFriendlyEmptyCtx size)
-                <+> "for the"
-                <+> pretty IndexType
-                <+> "type is not a constant.",
-            fix = Just "make sure the dimensions of the indices are all constants."
-          }
-    ParameterValueInvalidIndex (ident, p) value n ->
-      UError $
-        UserError
-          { provenance = p,
-            problem =
-              "Mismatch in the type of"
-                <+> prettyResource Parameter ident
-                <> "."
-                <> line
-                <> "Expected something of type"
-                  <+> squotes (pretty IndexType <+> pretty n)
-                  <+> "but was provided the value"
-                  <+> quotePretty value
-                <> ".",
-            fix =
-              Just $
-                "either change the size of the index or ensure the value"
-                  <+> "provided is in the range"
-                  <+> squotes ("0..." <> pretty (n - 1))
-                  <+> "(inclusive)."
-          }
-    ParameterValueInvalidNat (ident, p) value ->
-      UError $
-        UserError
-          { provenance = p,
-            problem =
-              "Mismatch in the type of"
-                <+> prettyResource Parameter ident
-                <> "."
-                <> line
-                <> "Expected something of type"
-                  <+> quotePretty NatType
-                  <+> "but was provided the value"
-                  <+> quotePretty value
-                <> ".",
-            fix =
-              Just $
-                "either change the type of"
-                  <+> prettyIdentName ident
-                  <+> "or ensure the value provided is non-negative."
-          }
-    ParameterTypeInferableParameterIndex (ident, p) _varIndent ->
-      UError $
-        UserError
-          { provenance = p,
-            problem =
-              "The use of an inferable parameter for the size of an"
-                <+> pretty IndexType
-                <+> "in the type of"
-                <+> prettyResource Parameter ident
-                <+> "is not currently supported.",
-            fix =
-              Just $
-                "either replace the inferable parameter with a concrete value or"
-                  <+> "open an issue on the Github tracker to request support."
-          }
-    InferableParameterContradictory ident ((ident1, _p1), r1, v1) ((ident2, p2), r2, v2) ->
-      UError $
-        UserError
-          { provenance = p2,
-            problem =
-              "Found contradictory values for inferable parameter"
-                <+> quotePretty ident
-                <> "."
-                <> "Inferred the value"
-                  <+> squotes (pretty v1)
-                  <+> "from"
-                  <+> prettyResource r1 ident1
-                <> "but inferred the value"
-                  <+> squotes (pretty v2)
-                  <+> "from"
-                  <+> prettyResource r2 ident2
-                <> ".",
-            fix = Just "make sure the provided resources are consistent with each other."
-          }
-    InferableParameterUninferrable (ident, p) ->
-      UError $
-        UserError
-          { provenance = p,
-            problem =
-              "Unable to infer the value of"
-                <+> prettyResource Parameter ident
-                <> ".",
-            fix =
-              Just $
-                "For a parameter's value to be inferable, it must"
-                  <+> "be used as the dimension of a dataset"
-                  <+> "(networks will be supported later)."
-          }
-    --------------------
-    -- Backend errors --
-    --------------------
-    VariableSizeTensorQuantification (ident, _p) ctx binder dims ->
-      UError $
-        UserError
-          { provenance = provenanceOf binder,
-            problem =
-              "whilst compiling property"
-                <+> quotePretty ident
-                <+> "found the quantified variable"
-                <+> quotePretty (nameOf binder)
-                <+> "with dimensions"
-                <+> prettyFriendly (WithContext dims ctx)
-                <> "."
-                  <+> "This is not supported during verification as the dimensions are not constant.",
-            fix =
-              Just $
-                "ensure that the dimensions of variable"
-                  <+> quotePretty (nameOf binder)
-                  <+> "are known at compile time."
-          }
-    UnsupportedAlternatingQuantifiers queryFormat (ident, p) cause ->
-      UError $
-        UserError
-          { provenance = p,
-            problem =
-              "The property"
-                <+> prettyIdentName ident
-                <+> "contains"
-                <+> "alternating"
-                <+> quotePretty Forall
-                <+> "and"
-                <+> quotePretty Exists
-                <+> "quantifiers which is not supported by the"
-                <+> pretty queryFormat
-                <> "."
-                <> line
-                <> causeDoc,
-            fix = Just "try simplifying the specification to avoid the alternating quantifiers."
-          }
-      where
-        causeDoc :: Doc a
-        causeDoc = case cause of
-          Left err -> line <> errorInSubsystemMessage "locate the original source of the alternating quantifiers" err
-          Right (q, pq, pp) ->
-            "In particular:"
-              <> line
-              <> indent 2 (prettyPolarityProvenance pq q pp)
-    UnsupportedNonLinearConstraint queryFormat (ident, p) cause ->
-      UError $
-        UserError
-          { provenance = p,
-            problem =
-              "The property"
-                <+> prettyIdentName ident
-                <+> "contains"
-                <+> "a non-linear constraint which is not supported by the"
-                <+> pretty queryFormat
-                <> "."
-                <> line
-                <> causeDoc,
-            fix =
-              Just "try rewriting the specification to avoid the non-linearity."
-          }
-      where
-        causeDoc :: Doc a
-        causeDoc = case cause of
-          Left err -> line <> errorInSubsystemMessage "locate the original source of the non-linearity" err
-          Right source -> case source of
-            LinearTimesLinear opProv lhs rhs ->
-              "In particular the multiplication in"
-                <+> pretty opProv
-                <+> "involves"
-                <> prettyLinearityProvenance lhs "left hand side of the multiplication"
-                <> "and"
-                <> prettyLinearityProvenance rhs "right hand side of the multiplication"
-            DivideByLinear opProv rhs ->
-              "In particular the division in"
-                <+> pretty opProv
-                <+> "involves"
-                <> prettyLinearityProvenance rhs "denominator of the division"
-            PowLinearBase opProv lhs ->
-              "In particular the power in"
-                <+> pretty opProv
-                <+> "involves"
-                <> prettyLinearityProvenance lhs "base of the power"
-            PowLinearExponent opProv lhs ->
-              "In particular the power in"
-                <+> pretty opProv
-                <+> "involves"
-                <> prettyLinearityProvenance lhs "exponent of the power"
-    UnsupportedInequality queryFormat (identifier, p) ->
-      UError $
-        UserError
-          { provenance = p,
-            problem =
-              "After compilation, property"
-                <+> prettyIdentName identifier
-                <+> "contains a `!=` which is not current supported by the"
-                <+> pretty queryFormat
-                <> ". ",
-            fix = Just (implementationLimitation (Just 74))
-          }
-    UnsupportedPolymorphicEquality target p typeName ->
-      UError $
-        UserError
-          { provenance = p,
-            problem =
-              "The use of equality over the unknown type"
-                <+> quotePretty typeName
-                <+> "is not currently supported"
-                <+> "when compiling to"
-                <+> pretty target,
-            fix =
-              Just $
-                "try avoiding it, otherwise open an issue on the"
-                  <+> "Vehicle issue tracker describing the use case."
-          }
-    NoPropertiesFound ->
-      UError $
-        UserError
-          { provenance = mempty,
-            problem = "No properties found in file.",
-            fix = Just $ "an expression is labelled as a property by giving it type" <+> squotes (pretty BoolType) <+> "."
-          }
-    UnsupportedLossOperation _declProv p op ->
-      UError $
-        UserError
-          { provenance = p,
-            problem =
-              "Loss functions do not yet support compilation of"
-                <+> squotes op
-                <+> ".",
-            fix = Nothing
-          }
-    DuplicateQuantifierNames (identifier, p) name ->
-      UError $
-        UserError
-          { provenance = p,
-            problem =
-              "The property"
-                <+> quotePretty identifier
-                <+> "contains multiple quantified variables with the name"
+        }
+    MultiplyAnnotatedAbstractDef p name ann1 ann2 ->
+      VehicleError
+        { provenance = Just p,
+          problem =
+            "abstract declaration"
+              <+> quotePretty name
+              <+> "cannot simultaneously be annotated with both"
+              <+> quotePretty ann1
+              <+> "and"
+              <+> quotePretty ann2
+              <> ".",
+          fix =
+            Just "remove one of annotations."
+        }
+    AbstractDefWithNonAbstractAnnotation p name ann ->
+      VehicleError
+        { provenance = Just p,
+          problem = "missing definition for" <+> pretty ann <+> quotePretty name <> ".",
+          fix = Just $ "add a definition for" <+> quotePretty name <+> "."
+        }
+    NonAbstractDefWithAbstractAnnotation p name resource ->
+      VehicleError
+        { provenance = Just p,
+          problem =
+            "The declaration"
+              <+> quotePretty name
+              <+> "should not have a definition"
+              <+> "as it has been marked with a"
+              <+> quotePretty resource
+              <+> "annotation.",
+          fix =
+            Just $
+              "either remove the definition for"
                 <+> quotePretty name
-                <> ".",
-            fix = Just "change the specification so that all quantified variables have unique names"
-          }
-    HigherOrderVectors (ident, p) ctx vecTyp elemTyp ->
-      UError $
-        UserError
-          { provenance = p,
-            problem =
-              "The property"
+                <+> "or remove the"
+                <+> quotePretty resource
+                <+> "annotation."
+        }
+    AnnotationWithNoDef p name ->
+      VehicleError
+        { provenance = Just p,
+          problem = "unattached annotation" <+> quotePretty name,
+          fix = Just "either attach the annotation to a declaration or remove it entirely"
+        }
+    FunctionWithMismatchedNames p name1 name2 ->
+      VehicleError
+        { provenance = Just p,
+          problem = "mismatch in function declaration names:" <+> quotePretty name1 <+> "and" <+> quotePretty name2 <> ".",
+          fix = Just "ensure the function definition has the same name as the declaration it follows."
+        }
+    MissingVariables p symbol ->
+      VehicleError
+        { provenance = Just p,
+          problem = "expected at least one variable name after" <+> quotePretty symbol,
+          fix = Just $ "add one or more names after" <+> quotePretty symbol
+        }
+    UnchainableComparisons p prevOrder currentOrder ->
+      VehicleError
+        { provenance = Just p,
+          problem =
+            "cannot chain"
+              <+> quotePretty prevOrder
+              <+> "and"
+              <+> quotePretty currentOrder,
+          fix = Just "split chained orders into a conjunction"
+        }
+    InvalidAnnotationOption p annotationName parameterName suggestions ->
+      VehicleError
+        { provenance = Just p,
+          problem =
+            "unknown option"
+              <+> quotePretty parameterName
+              <+> "for"
+              <+> quotePretty annotationName
+              <+> "annotation.",
+          fix =
+            case suggestions of
+              [] -> Nothing
+              (s : _) -> Just $ "did you mean" <+> quotePretty s <> "?"
+        }
+    InvalidAnnotationOptionValue parameterName parameterValue ->
+      VehicleError
+        { provenance = Just $ provenanceOf parameterValue,
+          problem =
+            "unable to parse the value"
+              <+> squotes (prettyFriendly parameterValue)
+              <+> "for option"
+              <+> quotePretty parameterName,
+          fix = Nothing
+        }
+    DuplicateAnnotationOption p annotation name ->
+      VehicleError
+        { provenance = Just p,
+          problem =
+            "the annotation"
+              <+> quotePretty annotation
+              <+> "has multiple copies of the option"
+              <+> quotePretty name,
+          fix = Just $ "remove all but one of the instances of" <+> quotePretty name
+        }
+    MissingAnnotationOption p annotation name ->
+      VehicleError
+        { provenance = Just p,
+          problem =
+            "the annotation"
+              <+> quotePretty annotation
+              <+> "is missing the option"
+              <+> quotePretty name,
+          fix = Just $ "add a value for the option" <+> quotePretty name
+        }
+    UnknownBuiltin p symbol ->
+      VehicleError
+        { provenance = Just p,
+          problem = "Unknown symbol" <+> quotePretty symbol,
+          fix =
+            Just $
+              "Please consult the documentation for a description"
+                <+> "of Vehicle syntax"
+        }
+  -------------
+  -- Scoping --
+  -------------
+  MissingRequestedDeclarations names ->
+    VehicleError
+      { provenance = Nothing,
+        -- TODO can use Levenschtein distance to search contexts/builtins
+        problem =
+          "Requested to compile the declaration"
+            <+> quotePretty (NonEmpty.head names)
+            <+> "but no declarations exist with that name in the specification.",
+        fix =
+          Just
+            "check the spelling of the names and that the correct specification is being used."
+      }
+  UnboundName p name suggestions ->
+    VehicleError
+      { provenance = Just p,
+        problem = "The name" <+> quotePretty name <+> "is not in scope",
+        fix =
+          if null suggestions
+            then Nothing
+            else Just $ "Did you mean to use one of the following:" <> line <> indent 2 (vsep (fmap pretty suggestions))
+      }
+  UnboundRecordAccessor p name suggestions ->
+    VehicleError
+      { provenance = Just p,
+        problem = "No record with field" <+> quotePretty name <+> "in scope",
+        fix =
+          if null suggestions
+            then Nothing
+            else Just $ "Did you mean to use one of the following:" <> line <> indent 2 (vsep (fmap pretty suggestions))
+      }
+  DeclarationDeclarationShadowing p name _matching ->
+    VehicleError
+      { provenance = Just p,
+        problem = "multiple" <+> typDoc <+> "with the name" <+> quotePretty name,
+        fix = Just "remove or rename the duplicate definitions"
+      }
+    where
+      typDoc = either (const "record fields declared") (const "declarations") name
+  DeclarationBoundShadowing p name ->
+    VehicleError
+      { provenance = Just p,
+        problem =
+          "cannot re-use the name"
+            <+> quotePretty name
+            <+> "as a local variable because there is already a declaration with that name.",
+        fix = Just "rename either the original declaration or this variable"
+      }
+  UnmatchedRecord p fields maybeBestMatch -> case maybeBestMatch of
+    Nothing ->
+      VehicleError
+        { provenance = Just p,
+          problem =
+            "Unable to find a record declaration with matching fields.",
+          fix = Just $ "declare a record with the fields:" <> lineIndent (vsep $ fmap pretty fields)
+        }
+    Just (ident, RecordMatch {..}) -> do
+      VehicleError
+        { provenance = Just p,
+          problem = "Unable to find a record declaration with matching fields.",
+          fix =
+            Just $
+              "it seems likely that the intension is to construct a"
                 <+> quotePretty (nameOf ident)
-                <+> "cannot be compiled to tensor code as it contains"
-                <+> "the vector type:"
-                <> line
-                  <+> indent 2 (prettyFriendly (WithContext vecTyp ctx))
-                <> line
-                <> "Vectors with elements of type" <+> squotes (prettyFriendly (WithContext elemTyp ctx)) <+> "cannot currently be compiled to loss functions",
-            fix = Nothing
-          }
-    NoQuantifierDomainFound (ident, _p) binder maybeUnboundedVariables ->
-      UError $
-        UserError
-          { provenance = provenanceOf binder,
-            problem =
-              "The property"
-                <+> quotePretty ident
-                <+> "cannot be compiled to tensor code as the variable"
-                <+> quotePretty (nameOf binder)
-                <+> "is not properly bounded. In particular,"
-                <+> mergeTheseWith (missingBounds Lower) (missingBounds Upper) (\u v -> u <+> "and" <+> v) maybeUnboundedVariables,
-            fix = Just "Add inequalities that restrict the value of the variable both below and above."
-          }
+                <+> "record."
+                <+> "If so, then "
+                <> suggestionDoc
+        }
       where
-        missingBounds :: BoundType -> NonEmpty TensorIndices -> Doc a
-        missingBounds boundType missingIndices =
-          "missing" <+> pretty boundType <+> "bounds" <> case missingIndices of
-            [[]] -> ""
-            _ -> " for indices" <+> vsep (fmap pretty missingIndices)
-    UnsupportedHigherOrderTensorCode (ident, p) originalCtx originalExpr blockedCtx blockedExpr ->
-      UError $
-        UserError
-          { provenance = p,
-            problem =
-              "While compiling property"
-                <+> quotePretty ident
-                <+> "found the following expression cannot be efficiently compiled to tensors:"
-                <> line
-                <> indent 2 (prettyFriendly (WithContext originalExpr originalCtx))
-                <> line
-                <> "In particular the operation that Vehicle doesn't know how to lift to tensors is:"
-                <> line
-                <> indent 2 (prettyFriendly (WithContext blockedExpr blockedCtx)),
-            fix = Nothing
-          }
-    UnableToLiftLogicFieldToTensors logicID _tensorField (boolField, value) ctx problematicValue ->
-      UError $
-        UserError
-          { provenance = mempty,
-            problem =
-              "While compiling the logic"
-                <+> quotePretty logicID
-                <+> "unable to lift differentiable logic field"
-                <> line
-                <> indent 2 (quotePretty boolField <> ":" <+> prettyFriendlyEmptyCtx value)
-                <> line
-                <> "to a corresponding tensor operation."
-                  <+> "In particular, unable to lift"
-                <> line
-                <> indent 2 (prettyFriendly (WithContext problematicValue ctx)),
-            fix = Nothing
-          }
-    UnusedMonomorphisableDeclaration p ident ->
-      UError $
-        UserError
-          { provenance = p,
-            problem =
-              "Unable to compile declaration"
-                <+> quotePretty ident
-                <+> "as it is both not used in any properties and the type is not precisely defined"
-                <+> "and therefore unable to decide"
-                <+> "whether or not it should be lifted to the type-level.",
-            fix = Just "either remove the declaration, or add a type signature or use it in a property."
-          }
-    UnsupportedMultipleNetworkApplications queryFormat (_, p) ctx apps ->
-      UError $
-        UserError
-          { provenance = p,
-            problem = multipleNetworkErrorMessages (pretty queryFormat) ctx apps,
-            fix = Just "this is on our road map to fix with VNNLib 2.0, but please open an issue on the Issue tracker with your use-case."
-          }
+        mispellingDoc = (["fix the mispellings:" <> lineIndent (vsep (fmap (\(actual, expected) -> pretty actual <+> "->" <+> pretty expected) mispellings)) | not (null mispellings)])
+        missingDoc = (["add the missing fields:" <> lineIndent (vsep $ fmap pretty missingFields) | not (null missingFields)])
+        extraDoc = (["remove the unneeded fields:" <> lineIndent (vsep $ fmap pretty extraFields) | not (null extraFields)])
+        suggestionDocs = mispellingDoc <> missingDoc <> extraDoc
+        suggestionDoc = concatWith (\a b -> a <> line <> "and" <+> b) suggestionDocs
+  ------------
+  -- Typing --
+  ------------
+
+  TypingError t -> typingErrorDetails t
+  QuantifiedIfCondition ctx ->
+    VehicleError
+      { provenance = Just $ provenanceOf ctx,
+        problem = "cannot currently use quantifiers in `if` conditions.",
+        fix = Just $ implementationLimitation Nothing
+      }
+  ---------------
+  -- Resources --
+  ---------------
+
+  ResourcesNotProvided ((resourceType, (ident, p)) :| _) ->
+    VehicleError
+      { provenance = Just p,
+        problem =
+          "No"
+            <+> entity
+            <+> "was provided for the"
+            <+> prettyResource resourceType ident
+            <> ".",
+        fix =
+          Just $
+            "provide it via the command line using"
+              <+> squotes
+                ( "--"
+                    <> pretty resourceType
+                      <+> pretty (nameOf ident :: Name)
+                    <> ":"
+                    <> var
+                )
+      }
+    where
+      (entity, var) = case resourceType of
+        Parameter -> ("value", "VALUE")
+        _ -> ("file", "FILEPATH")
+  UnsupportedResourceFormat (ident, p) resourceType fileExtension ->
+    VehicleError
+      { provenance = Just p,
+        problem =
+          "The"
+            <+> quotePretty fileExtension
+            <+> "format of the file provided"
+            <+> "for the"
+            <+> prettyResource resourceType ident
+            <+> "is not currently supported by Vehicle.",
+        fix =
+          Just $
+            "use one of the supported formats"
+              <+> pretty (supportedFileFormats resourceType)
+              <+> ", or open an issue on Github ("
+              <> githubIssues
+              <> ") to discuss adding support."
+      }
+  ResourceIOError (ident, p) resourceType ioException ->
+    VehicleError
+      { provenance = Just p,
+        problem =
+          "The following exception occured when trying to read the file"
+            <+> "provided for"
+            <+> prettyResource resourceType ident
+            <> ":"
+            <> line
+            <> indent 2 (pretty (show ioException)),
+        fix = Nothing
+      }
+  UnableToParseResource (ident, p) resourceType value ->
+    VehicleError
+      { provenance = Just p,
+        problem =
+          "Unable to parse the"
+            <+> entity
+            <+> squotes (pretty value)
+            <+> "provided for the"
+            <+> prettyResource resourceType ident,
+        fix = Nothing
+      }
+    where
+      entity = if resourceType == Parameter then "value" else "file"
+
+  -- Network errors
+  NetworkTypeHasVariableSizeTensor (ident, _p) networkType tDim io ->
+    VehicleError
+      { provenance = Just $ provenanceOf networkType,
+        problem =
+          unsupportedAnnotationTypeDescription (pretty NetworkDef) ident networkType
+            <+> "as the size of the"
+            <+> pretty io
+            <+> "tensor"
+            <+> squotes (prettyFriendlyEmptyCtx tDim)
+            <+> "is not a constant at compile time.",
+        fix =
+          Just $
+            supportedNetworkTypeDescription
+              <+> "ensure that the size of the"
+              <+> pretty io
+              <+> "tensor is constant."
+      }
+  NetworkTypeHasImplicitSizeTensor (ident, p) networkType implIdent _io ->
+    VehicleError
+      { provenance = Just p,
+        problem =
+          unsupportedAnnotationTypeDescription (pretty NetworkDef) ident networkType
+            <+> "as the use of the inferable parameter"
+            <+> quotePretty implIdent
+            <+> "in the type of network declarations is not currently supported.",
+        fix =
+          Just $
+            "instanstiate inferable parameter"
+              <+> quotePretty implIdent
+              <+> "to an explicit value"
+      }
+  -- Dataset errors
+  DatasetVariableSizeTensor (ident, p) datasetType variableDim ->
+    VehicleError
+      { provenance = Just p,
+        problem =
+          unsupportedAnnotationTypeDescription (pretty (ParameterDef NonInferable)) ident datasetType
+            <+> "as the dimension size"
+            <> line
+            <> indent 2 (prettyFriendlyEmptyCtx variableDim)
+            <> line
+            <> "is not a constant.",
+        fix = Just "make sure the dimensions of the dataset are all constants."
+      }
+  DatasetDimensionsMismatch (ident, p) file expectedType actualDims ->
+    VehicleError
+      { provenance = Just p,
+        problem =
+          "Mismatch in the dimensions of"
+            <+> prettyResource Dataset ident
+            <> "."
+            <> line
+            <> "According to the specification it should be"
+              <+> maybe "?" pretty (dimensionsOf (normalised expectedType))
+            <> "-dimensional"
+              <+> "but was actually found to be"
+              <+> pretty (length actualDims)
+            <> "-dimensional"
+              <+> "when reading"
+              <+> quotePretty file
+            <> ".",
+        fix = Just $ datasetDimensionsFix "dimensions" ident file
+      }
+    where
+      dimensionsOf :: VType Builtin -> Maybe Int
+      dimensionsOf t = case toTypeValue t of
+        VRatTensorType dims -> dimLength dims
+        VBoolTensorType dims -> dimLength dims
+        VNatTensorType dims -> dimLength dims
+        VIndexTensorType _ dims -> dimLength dims
+        VListType tElem -> (+ 1) <$> dimensionsOf tElem
+        VVectorType tElem _dims -> (+ 1) <$> dimensionsOf tElem
+        _ -> Just 0
+
+      dimLength :: Value Builtin -> Maybe Int
+      dimLength dims = either (const Nothing) (Just . length) (getDimsExprs dims)
+  DatasetDimensionSizeMismatch (ident, p) file expectedSize actualSize wrongDimensionIndex ->
+    VehicleError
+      { provenance = Just p,
+        problem =
+          "Mismatch in the size of"
+            <+> prettyOrdinal "dimension" (wrongDimensionIndex + 1) Nothing
+            <+> "of"
+            <+> prettyResource Dataset ident
+            <> "."
+            <> line
+            <> "According to the specification it should be"
+              <+> quotePretty expectedSize
+              <+> "but was actually found to be"
+              <+> quotePretty actualSize
+              <+> "when reading"
+              <+> quotePretty file
+            <> ".",
+        fix = Just $ datasetDimensionsFix "dimensions" ident file
+      }
+  DatasetInvalidNat (ident, p) file v ->
+    VehicleError
+      { provenance = Just p,
+        problem =
+          "Mismatch in the type of elements of"
+            <+> prettyResource Dataset ident
+            <> "."
+            <> line
+            <> "Expected elements of type"
+              <+> quotePretty NatType
+              <+> "but found value"
+              <+> quotePretty v
+              <+> "when reading"
+              <+> quotePretty file
+            <> ".",
+        fix = Just $ datasetDimensionsFix "type" ident file
+      }
+  DatasetInvalidIndex (ident, p) file v n ->
+    VehicleError
+      { provenance = Just p,
+        problem =
+          "Mismatch in the type of elements of"
+            <+> prettyResource Dataset ident
+            <> "."
+            <> line
+            <> "Expected elements of type"
+              <+> squotes (pretty IndexType <+> pretty n)
+              <+> parens ("i.e. values between 0 and" <+> pretty (n - 1) <+> "inclusive")
+              <+> "but found value"
+              <+> quotePretty v
+              <+> "when reading"
+              <+> quotePretty file
+            <> ".",
+        fix = Just $ datasetDimensionsFix "type" ident file
+      }
+  DatasetTypeMismatch (ident, p) file _datasetType expectedType actualType ->
+    VehicleError
+      { provenance = Just p,
+        problem =
+          "Mismatch in the type of elements of"
+            <+> prettyResource Dataset ident
+            <> "."
+            <> line
+            <> "Expected elements of type"
+              <+> squotes (prettyFriendlyEmptyCtx expectedType)
+              <+> "but found elements of type"
+              <+> squotes actualType
+              <+> "when reading"
+              <+> quotePretty file
+            <> ".",
+        fix = Just $ datasetDimensionsFix "type" ident file
+      }
+  -- Parameter errors
+  ParameterValueUnparsable (ident, p) value expectedType ->
+    VehicleError
+      { provenance = Just p,
+        problem =
+          "The value"
+            <+> squotes (pretty value)
+            <+> "provided for"
+            <+> prettyResource Parameter ident
+            <+> "could not be parsed as"
+            <+> prettyBuiltinType expectedType
+            <> ".",
+        fix =
+          Just $
+            "either change the type of"
+              <+> prettyIdentName ident
+              <+> "in the specification or change the value provided."
+      }
+  ParameterTypeVariableSizeIndex (ident, p) parameterType size ->
+    VehicleError
+      { provenance = Just p,
+        problem =
+          unsupportedAnnotationTypeDescription (pretty (ParameterDef NonInferable)) ident parameterType
+            <+> "as the size"
+            <+> squotes (prettyFriendlyEmptyCtx size)
+            <+> "for the"
+            <+> pretty IndexType
+            <+> "type is not a constant.",
+        fix = Just "make sure the dimensions of the indices are all constants."
+      }
+  ParameterValueInvalidIndex (ident, p) value n ->
+    VehicleError
+      { provenance = Just p,
+        problem =
+          "Mismatch in the type of"
+            <+> prettyResource Parameter ident
+            <> "."
+            <> line
+            <> "Expected something of type"
+              <+> squotes (pretty IndexType <+> pretty n)
+              <+> "but was provided the value"
+              <+> quotePretty value
+            <> ".",
+        fix =
+          Just $
+            "either change the size of the index or ensure the value"
+              <+> "provided is in the range"
+              <+> squotes ("0..." <> pretty (n - 1))
+              <+> "(inclusive)."
+      }
+  ParameterValueInvalidNat (ident, p) value ->
+    VehicleError
+      { provenance = Just p,
+        problem =
+          "Mismatch in the type of"
+            <+> prettyResource Parameter ident
+            <> "."
+            <> line
+            <> "Expected something of type"
+              <+> quotePretty NatType
+              <+> "but was provided the value"
+              <+> quotePretty value
+            <> ".",
+        fix =
+          Just $
+            "either change the type of"
+              <+> prettyIdentName ident
+              <+> "or ensure the value provided is non-negative."
+      }
+  ParameterTypeInferableParameterIndex (ident, p) _varIndent ->
+    VehicleError
+      { provenance = Just p,
+        problem =
+          "The use of an inferable parameter for the size of an"
+            <+> pretty IndexType
+            <+> "in the type of"
+            <+> prettyResource Parameter ident
+            <+> "is not currently supported.",
+        fix =
+          Just $
+            "either replace the inferable parameter with a concrete value or"
+              <+> "open an issue on the Github tracker to request support."
+      }
+  InferableParameterContradictory ident ((ident1, _p1), r1, v1) ((ident2, p2), r2, v2) ->
+    VehicleError
+      { provenance = Just p2,
+        problem =
+          "Found contradictory values for inferable parameter"
+            <+> quotePretty ident
+            <> "."
+            <> "Inferred the value"
+              <+> squotes (pretty v1)
+              <+> "from"
+              <+> prettyResource r1 ident1
+            <> "but inferred the value"
+              <+> squotes (pretty v2)
+              <+> "from"
+              <+> prettyResource r2 ident2
+            <> ".",
+        fix = Just "make sure the provided resources are consistent with each other."
+      }
+  InferableParametersUninferrable ((ident, p) :| _) ->
+    VehicleError
+      { provenance = Just p,
+        problem =
+          "Unable to infer the value of"
+            <+> prettyResource Parameter ident
+            <> ".",
+        fix =
+          Just $
+            "For a parameter's value to be inferable, it must"
+              <+> "be used as the dimension of a dataset"
+              <+> "(networks will be supported later)."
+      }
+  --------------------
+  -- Backend errors --
+  --------------------
+  MultiPropertyTraveralError prov err -> propertyTraversalErrorDetails prov err
+  VariableSizeTensorQuantification (ident, _p) ctx binder dims ->
+    VehicleError
+      { provenance = Just $ provenanceOf binder,
+        problem =
+          "whilst compiling property"
+            <+> quotePretty ident
+            <+> "found the quantified variable"
+            <+> quotePretty (nameOf binder)
+            <+> "with dimensions"
+            <+> prettyFriendly (WithContext dims ctx)
+            <> "."
+              <+> "This is not supported during verification as the dimensions are not constant.",
+        fix =
+          Just $
+            "ensure that the dimensions of variable"
+              <+> quotePretty (nameOf binder)
+              <+> "are known at compile time."
+      }
+  UnsupportedAlternatingQuantifiers queryFormat (ident, p) cause ->
+    VehicleError
+      { provenance = Just p,
+        problem =
+          "The property"
+            <+> prettyIdentName ident
+            <+> "contains"
+            <+> "alternating"
+            <+> quotePretty Forall
+            <+> "and"
+            <+> quotePretty Exists
+            <+> "quantifiers which is not supported by the"
+            <+> pretty queryFormat
+            <> "."
+            <> line
+            <> causeDoc,
+        fix = Just "try simplifying the specification to avoid the alternating quantifiers."
+      }
+    where
+      causeDoc :: Doc a
+      causeDoc = case cause of
+        Left err -> line <> errorInSubsystemMessage "locate the original source of the alternating quantifiers" err
+        Right (q, pq, pp) ->
+          "In particular:"
+            <> line
+            <> indent 2 (prettyPolarityProvenance pq q pp)
+  UnsupportedNonLinearConstraint queryFormat (ident, p) cause ->
+    VehicleError
+      { provenance = Just p,
+        problem =
+          "The property"
+            <+> prettyIdentName ident
+            <+> "contains"
+            <+> "a non-linear constraint which is not supported by the"
+            <+> pretty queryFormat
+            <> "."
+            <> line
+            <> causeDoc,
+        fix =
+          Just "try rewriting the specification to avoid the non-linearity."
+      }
+    where
+      causeDoc :: Doc a
+      causeDoc = case cause of
+        Left err -> line <> errorInSubsystemMessage "locate the original source of the non-linearity" err
+        Right source -> case source of
+          LinearTimesLinear opProv lhs rhs ->
+            "In particular the multiplication in"
+              <+> pretty opProv
+              <+> "involves"
+              <> prettyLinearityProvenance lhs "left hand side of the multiplication"
+              <> "and"
+              <> prettyLinearityProvenance rhs "right hand side of the multiplication"
+          DivideByLinear opProv rhs ->
+            "In particular the division in"
+              <+> pretty opProv
+              <+> "involves"
+              <> prettyLinearityProvenance rhs "denominator of the division"
+          PowLinearBase opProv lhs ->
+            "In particular the power in"
+              <+> pretty opProv
+              <+> "involves"
+              <> prettyLinearityProvenance lhs "base of the power"
+          PowLinearExponent opProv lhs ->
+            "In particular the power in"
+              <+> pretty opProv
+              <+> "involves"
+              <> prettyLinearityProvenance lhs "exponent of the power"
+  UnsupportedInequality queryFormat (identifier, p) ->
+    VehicleError
+      { provenance = Just p,
+        problem =
+          "After compilation, property"
+            <+> prettyIdentName identifier
+            <+> "contains a `!=` which is not current supported by the"
+            <+> pretty queryFormat
+            <> ". ",
+        fix = Just (implementationLimitation (Just 74))
+      }
+  UnsupportedPolymorphicEquality target p typeName ->
+    VehicleError
+      { provenance = Just p,
+        problem =
+          "The use of equality over the unknown type"
+            <+> quotePretty typeName
+            <+> "is not currently supported"
+            <+> "when compiling to"
+            <+> pretty target,
+        fix =
+          Just $
+            "try avoiding it, otherwise open an issue on the"
+              <+> "Vehicle issue tracker describing the use case."
+      }
+  NoPropertiesFound ->
+    VehicleError
+      { provenance = Nothing,
+        problem = "No properties found in file.",
+        fix = Just $ "an expression is labelled as a property by giving it type" <+> squotes (pretty BoolType) <+> "."
+      }
+  UnsupportedLossOperation _declProv p op ->
+    VehicleError
+      { provenance = Just p,
+        problem =
+          "Loss functions do not yet support compilation of"
+            <+> squotes op
+            <+> ".",
+        fix = Nothing
+      }
+  DuplicateQuantifierNames (identifier, p) name ->
+    VehicleError
+      { provenance = Just p,
+        problem =
+          "The property"
+            <+> quotePretty identifier
+            <+> "contains multiple quantified variables with the name"
+            <+> quotePretty name
+            <> ".",
+        fix = Just "change the specification so that all quantified variables have unique names"
+      }
+  HigherOrderVectors (ident, p) ctx vecTyp elemTyp ->
+    VehicleError
+      { provenance = Just p,
+        problem =
+          "The property"
+            <+> quotePretty (nameOf ident)
+            <+> "cannot be compiled to tensor code as it contains"
+            <+> "the vector type:"
+            <> line
+              <+> indent 2 (prettyFriendly (WithContext vecTyp ctx))
+            <> line
+            <> "Vectors with elements of type" <+> squotes (prettyFriendly (WithContext elemTyp ctx)) <+> "cannot currently be compiled to loss functions",
+        fix = Nothing
+      }
+  NoQuantifierDomainFound (ident, _p) binder maybeUnboundedVariables ->
+    VehicleError
+      { provenance = Just $ provenanceOf binder,
+        problem =
+          "The property"
+            <+> quotePretty ident
+            <+> "cannot be compiled to tensor code as the variable"
+            <+> quotePretty (nameOf binder)
+            <+> "is not properly bounded. In particular,"
+            <+> mergeTheseWith (missingBounds Lower) (missingBounds Upper) (\u v -> u <+> "and" <+> v) maybeUnboundedVariables,
+        fix = Just "Add inequalities that restrict the value of the variable both below and above."
+      }
+    where
+      missingBounds :: BoundType -> NonEmpty TensorIndices -> Doc a
+      missingBounds boundType missingIndices =
+        "missing" <+> pretty boundType <+> "bounds" <> case missingIndices of
+          [[]] -> ""
+          _ -> " for indices" <+> vsep (fmap pretty missingIndices)
+  UnsupportedHigherOrderTensorCode (ident, p) originalCtx originalExpr blockedCtx blockedExpr ->
+    VehicleError
+      { provenance = Just p,
+        problem =
+          "While compiling property"
+            <+> quotePretty ident
+            <+> "found the following expression cannot be efficiently compiled to tensors:"
+            <> line
+            <> indent 2 (prettyFriendly (WithContext originalExpr originalCtx))
+            <> line
+            <> "In particular the operation that Vehicle doesn't know how to lift to tensors is:"
+            <> line
+            <> indent 2 (prettyFriendly (WithContext blockedExpr blockedCtx)),
+        fix = Nothing
+      }
+  UnableToLiftLogicFieldToTensors logicID _tensorField (boolField, value) ctx problematicValue ->
+    VehicleError
+      { provenance = Nothing,
+        problem =
+          "While compiling the logic"
+            <+> quotePretty logicID
+            <+> "unable to lift differentiable logic field"
+            <> line
+            <> indent 2 (quotePretty boolField <> ":" <+> prettyFriendlyEmptyCtx value)
+            <> line
+            <> "to a corresponding tensor operation."
+              <+> "In particular, unable to lift"
+            <> line
+            <> indent 2 (prettyFriendly (WithContext problematicValue ctx)),
+        fix = Nothing
+      }
+  UnusedMonomorphisableDeclaration p ident ->
+    VehicleError
+      { provenance = Just p,
+        problem =
+          "Unable to compile declaration"
+            <+> quotePretty ident
+            <+> "as it is both not used in any properties and the type is not precisely defined"
+            <+> "and therefore unable to decide"
+            <+> "whether or not it should be lifted to the type-level.",
+        fix = Just "either remove the declaration, or add a type signature or use it in a property."
+      }
+  UnsupportedMultipleNetworkApplications queryFormat (_, p) ctx apps ->
+    VehicleError
+      { provenance = Just p,
+        problem = multipleNetworkErrorMessages (pretty queryFormat) ctx apps,
+        fix = Just "this is on our road map to fix with VNNLib 2.0, but please open an issue on the Issue tracker with your use-case."
+      }
 
 datasetDimensionsFix :: Doc a -> Identifier -> FilePath -> Doc a
 datasetDimensionsFix feature ident file =
@@ -917,7 +874,7 @@ errorInSubsystemMessage task err =
     <> ","
       <+> "the following error was encountered:"
     <> line
-    <> indent 2 (pretty (details err))
+    <> indent 2 (pretty (formatCompileError err))
     <> line
     <> "Please report this as an issue on Github"
       <+> parens githubIssues

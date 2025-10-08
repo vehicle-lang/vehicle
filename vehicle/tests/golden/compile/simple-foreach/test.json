@@ -14,7 +14,6 @@
       "fake.onnx"
     ],
     "produces": [
-      "Marabou.queries/index.vcl-plan",
       "Marabou.queries/*.txt",
       "Marabou.queries/safe.vcl-plan"
     ],

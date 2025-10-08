@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
+
 module Vehicle.Compile.Prelude
   ( module X,
     module Vehicle.Compile.Prelude,
@@ -21,6 +23,9 @@ import Vehicle.Resource as X
 -- Type synonyms
 
 type DeclProvenance = (Identifier, Provenance)
+
+instance HasName DeclProvenance Name where
+  nameOf = nameOf . fst
 
 --------------------------------------------------------------------------------
 -- Other

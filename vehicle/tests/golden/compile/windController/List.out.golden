@@ -20,6 +20,27 @@
   {
     "tag": "Property",
     "contents": {
+      "subcomponents": {
+        "tag": "SingleProperty",
+        "contents": [
+          {
+            "sharedData": {
+              "typeText": "Tensor Real [2]",
+              "provenance": {
+                "tag": "Provenance",
+                "contents": [
+                  35,
+                  15,
+                  35,
+                  16
+                ]
+              },
+              "name": "x"
+            },
+            "quantifier": "Forall"
+          }
+        ]
+      },
       "sharedData": {
         "typeText": "Bool",
         "provenance": {
@@ -32,25 +53,7 @@
           ]
         },
         "name": "safe"
-      },
-      "quantifiedVariables": [
-        {
-          "sharedData": {
-            "typeText": "Tensor Real [2]",
-            "provenance": {
-              "tag": "Provenance",
-              "contents": [
-                35,
-                15,
-                35,
-                16
-              ]
-            },
-            "name": "x"
-          },
-          "quantifier": "Forall"
-        }
-      ]
+      }
     }
   }
 ]

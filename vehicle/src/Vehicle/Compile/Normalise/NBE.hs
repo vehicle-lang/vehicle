@@ -1,7 +1,6 @@
 module Vehicle.Compile.Normalise.NBE
   ( MonadNorm,
     FreeEnv,
-    NormalisableBuiltin,
     normalise,
     normaliseInEnv,
     normaliseInEmptyEnv,

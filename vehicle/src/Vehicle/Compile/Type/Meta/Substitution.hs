@@ -13,6 +13,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta (findUltimateUnsolvedMeta)
 import Vehicle.Compile.Type.Meta.Variable (MetaVariableContext, findMetaInfo, metaCtx, metaSolution, metaType)
+import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Variable.Free.Context
 

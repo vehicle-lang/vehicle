@@ -7,6 +7,7 @@ where
 
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
+import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Variable.Free.Context.Class as X
 import Vehicle.Data.Variable.Free.Context.Core as X
 import Vehicle.Data.Variable.Free.Context.Instance as X

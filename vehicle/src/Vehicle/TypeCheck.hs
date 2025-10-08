@@ -11,9 +11,6 @@ where
 
 import Control.Monad.Except (ExceptT, MonadError (..), runExcept)
 import Control.Monad.IO.Class (MonadIO (..))
-import Data.Aeson (ToJSON (toJSON))
-import Data.Aeson.Encode.Pretty (encodePretty')
-import Data.ByteString.Lazy.Char8 (unpack)
 import Data.Data (Proxy (..))
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Set qualified as Set
@@ -187,10 +184,7 @@ runCompileMonad ::
 runCompileMonad loggingSettings outputAsJSON x = do
   errorOrResult <- runLoggerT loggingSettings (logCompileError x)
   case errorOrResult of
-    Left err -> do
-      let vehicleError = details err
-      let outputError = if outputAsJSON then pretty $ unpack $ encodePretty' prettyJSONConfig $ toJSON vehicleError else pretty vehicleError
-      fatalError outputError
+    Left err -> fatalError $ prettyCompileError outputAsJSON err
     Right val -> return val
 
 convertBackToStandardBuiltin ::

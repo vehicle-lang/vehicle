@@ -7,7 +7,6 @@ import Control.Monad.Reader (MonadReader (..), ReaderT (..), mapReaderT)
 import Control.Monad.State
 import Data.Data (Proxy (..))
 import Data.Map qualified as Map
-import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Variable.Free.Context.Class
@@ -81,7 +80,7 @@ instance (MonadStdIO m) => MonadStdIO (FreeContextT builtin m) where
 -- Context monad preservation
 
 instance
-  (PrintableBuiltin builtin, MonadCompile m) =>
+  (PrintableBuiltin builtin, MonadLogger m) =>
   MonadFreeContext builtin (FreeContextT builtin m)
   where
   addDeclEntryToContext entry@(decl, _) cont = FreeContextT $ do

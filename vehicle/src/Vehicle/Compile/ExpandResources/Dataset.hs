@@ -5,7 +5,6 @@ where
 
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.IO.Class (MonadIO)
-import Data.Map qualified as Map
 import System.FilePath (takeExtension)
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
@@ -19,16 +18,13 @@ import Vehicle.Data.Code.Value
 
 parseDataset ::
   (MonadIO m, MonadExpandResources m) =>
-  DatasetLocations ->
   DeclProvenance ->
   GluedType Builtin ->
+  FilePath ->
   m (Value Builtin)
-parseDataset datasetLocations decl@(ident, _) expectedType =
-  case Map.lookup (nameOf ident) datasetLocations of
-    Just file -> do
-      logDebug MinDetail $ "Reading" <+> squotes (pretty ident)
-      value <- case takeExtension file of
-        ".idx" -> readIDX file decl expectedType
-        ext -> throwError $ UnsupportedResourceFormat decl Dataset ext
-      return value
-    _ -> throwError $ ResourceNotProvided decl Dataset
+parseDataset decl@(ident, _) expectedType filePath = do
+  logDebug MinDetail $ "Reading" <+> squotes (pretty ident)
+  value <- case takeExtension filePath of
+    ".idx" -> readIDX filePath decl expectedType
+    ext -> throwError $ UnsupportedResourceFormat decl Dataset ext
+  return value

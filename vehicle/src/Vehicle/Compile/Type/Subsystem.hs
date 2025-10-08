@@ -6,7 +6,7 @@ module Vehicle.Compile.Type.Subsystem
   )
 where
 
-import Control.Monad.Except (MonadError (..), runExceptT)
+import Control.Monad.Except (runExceptT)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Maybe (mapMaybe)
 import Data.Set (Set)
@@ -15,7 +15,7 @@ import Vehicle.Backend.Prelude
 import Vehicle.Compile.Dependency (createDependencyGraph, pruneUnusedDeclarations)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Monomorphisation (monomorphise)
-import Vehicle.Compile.Normalise.NBE (NormalisableBuiltin, findInstanceArg)
+import Vehicle.Compile.Normalise.NBE (findInstanceArg)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyExternal)
 import Vehicle.Compile.Print.Error (errorInSubsystemMessage)
@@ -73,7 +73,7 @@ decidabilityTypeCheck prog = do
 
   errorOrDecProg <- typeCheckWithSubsystem DecidabilityTypes decidabilityBuiltinInstances prunedProg
   decProg <- case errorOrDecProg of
-    Left err -> throwError $ DevError $ errorInSubsystemMessage "determine the decidability of the program for export to ITP" err
+    Left err -> developerError $ errorInSubsystemMessage "determine the decidability of the program for export to ITP" err
     Right decProg -> return decProg
 
   monoDecProg <- monomorphise decProg isUserCode

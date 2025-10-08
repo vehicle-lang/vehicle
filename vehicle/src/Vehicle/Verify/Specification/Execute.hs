@@ -71,11 +71,11 @@ verifySpecificationActual = do
 
 verifyMultiproperty ::
   (MonadVerify m) =>
-  MultiProperty () ->
+  MultiProperty PropertyAddress ->
   m ()
 verifyMultiproperty = \case
   MultiProperty properties -> forM_ properties verifyMultiproperty
-  SingleProperty address () -> verifyProperty address
+  SingleProperty address -> verifyProperty address
 
 verifyProperty ::
   (MonadVerify m) =>
