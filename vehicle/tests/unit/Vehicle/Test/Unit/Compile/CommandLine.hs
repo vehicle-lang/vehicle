@@ -101,7 +101,10 @@ listModeTests =
               Just $
                 List $
                   ListOptions
-                    { specification = "test/spec.vcl"
+                    { specification = "test/spec.vcl",
+                      networkLocations = mempty,
+                      datasetLocations = mempty,
+                      parameterValues = mempty
                     }
           }
     ]
