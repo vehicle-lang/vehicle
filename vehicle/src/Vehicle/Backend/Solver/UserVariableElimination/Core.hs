@@ -23,6 +23,7 @@ import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.Code.TypedView (RatTensorValue (VRatStackTensor), TypeValue (..), fromRatTensorValue, fromTypeValue)
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Hashing ()
+import Vehicle.Data.MaybeTrivial
 import Vehicle.Data.Tensor as Tensor
 import Vehicle.Data.Variable.Bound.Context (MonadBoundContext (..))
 import Vehicle.Data.Variable.Bound.Context.Name (MonadNameContext)
@@ -224,7 +225,7 @@ type Partition = ([CompilationStep], LinearAssertionTree)
 newtype Partitions = Partitions (Map [CompilationStep] LinearAssertionTree)
 
 partitionsSize :: MaybeTrivial Partitions -> Int
-partitionsSize = trivial (const 0) (length . partitionsToDisjuncts)
+partitionsSize = trivialElim (const 0) (length . partitionsToDisjuncts)
 
 singletonPartition :: Partition -> Partitions
 singletonPartition (steps, tree) = Partitions $ Map.singleton steps tree

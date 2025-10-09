@@ -29,6 +29,7 @@ import Control.Monad.Writer (WriterT (..))
 import Data.Text (Text)
 import Data.Text qualified as Text (unpack)
 import System.Console.ANSI (Color (..))
+import Vehicle.Data.MaybeTrivial (MaybeTrivialT)
 import Vehicle.Prelude.Misc (enumerate, setTextColour, supportedOptions)
 import Vehicle.Prelude.Prettyprinter
 import Vehicle.Prelude.Supply (SupplyT)
@@ -178,6 +179,17 @@ instance (MonadLogger m) => MonadLogger (IdentityT m) where
   logWarning = lift . logWarning
 
 instance (MonadLogger m) => MonadLogger (MaybeT m) where
+  enterCompilerPass = lift . enterCompilerPass
+  exitCompilerPass = lift exitCompilerPass
+  setCallDepth = lift . setCallDepth
+  getCallDepth = lift getCallDepth
+  incrCallDepth = lift incrCallDepth
+  decrCallDepth = lift decrCallDepth
+  getDebugLevel = lift getDebugLevel
+  logMessage = lift . logMessage
+  logWarning = lift . logWarning
+
+instance (MonadLogger m) => MonadLogger (MaybeTrivialT m) where
   enterCompilerPass = lift . enterCompilerPass
   exitCompilerPass = lift exitCompilerPass
   setCallDepth = lift . setCallDepth

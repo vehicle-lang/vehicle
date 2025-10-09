@@ -44,6 +44,7 @@ import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.Code.Value
+import Vehicle.Data.MaybeTrivial
 import Vehicle.Data.Tensor (Tensor, prettyTensor, pattern ZeroDimTensor)
 import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Syntax.AST.Expr qualified as S

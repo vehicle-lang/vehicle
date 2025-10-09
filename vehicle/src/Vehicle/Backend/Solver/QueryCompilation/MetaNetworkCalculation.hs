@@ -27,23 +27,24 @@ import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Data.Assertion
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.LinearExpr
+import Vehicle.Data.MaybeTrivial
 import Vehicle.Data.Tensor as Tensor
 import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Data.Variable.Bound.Tensor
 import Vehicle.Verify.Specification (CompilationStep (..))
 
 calculateMetaNetworkApplications ::
-  (MonadCompile m) =>
+  (MonadCompile m, MonadMaybeTrivial m) =>
   GlobalCtx ->
   ConjunctAll LinearAssertion ->
-  m (MaybeTrivial (NetworkApplications, ConjunctAll LinearAssertion, [CompilationStep]))
+  m (NetworkApplications, ConjunctAll LinearAssertion, [CompilationStep])
 calculateMetaNetworkApplications ctx assertions = do
   (eliminationResult, compilationSteps) <- runWriterT $ eliminateRedundantApplications ctx assertions
   case eliminationResult of
-    Trivial b -> return $ Trivial b
-    NonTrivial newAssertions -> do
+    Trivial b -> trivial b
+    NonTrivial newAssertions -> nonTrivial $ do
       let metaNetworkApps = calculateMetaNetworkApps ctx newAssertions
-      return $ NonTrivial (metaNetworkApps, newAssertions, compilationSteps)
+      (metaNetworkApps, newAssertions, compilationSteps)
 
 --------------------------------------------------------------------------------
 -- Redundant network applications

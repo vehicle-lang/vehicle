@@ -17,6 +17,7 @@ import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Data.Assertion
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.LinearExpr (HasVariables (containsVariable))
+import Vehicle.Data.MaybeTrivial
 import Vehicle.Data.Variable.Bound.Context.Name (getNameContext, prettyFriendlyInCtx)
 import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Data.Variable.Bound.Tensor

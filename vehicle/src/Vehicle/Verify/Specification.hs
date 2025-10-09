@@ -35,6 +35,7 @@ import Vehicle.Compile.Prelude (CompleteNamedBoundCtx, Name, Pretty (..))
 import Vehicle.Data.Assertion
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.LinearExpr
+import Vehicle.Data.MaybeTrivial
 import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Data.Variable.Bound.Tensor
 import Vehicle.Resource (ResourcesIntegrityInfo)

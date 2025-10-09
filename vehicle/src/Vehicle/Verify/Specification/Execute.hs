@@ -25,6 +25,7 @@ import System.Random
 import Vehicle.Backend.Solver.UserVariableElimination.VariableReconstruction (reconstructUserVars)
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Code.BooleanExpr
+import Vehicle.Data.MaybeTrivial (MaybeTrivial (..))
 import Vehicle.Data.Tensor as Tensor (HasShape (..), toVector)
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
