@@ -26,6 +26,7 @@ import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Data.Assertion
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.LinearExpr
+import Vehicle.Data.MaybeTrivial
 import Vehicle.Data.Tensor as Tensor
 import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Data.Variable.Bound.Tensor
@@ -52,19 +53,16 @@ compilePartitionsToQueries ctx metaData partitions = do
       let dnfTree = exprToDNF assertions
       logDebug MaxDetail $ "Conversion to DNF resulted in" <+> pretty (length dnfTree) <+> "potential queries"
       forM dnfTree $ \dnfAssertions -> do
-        logCompilerSection2 MaxDetail "compiling potential query" $ do
-          eliminationResult <- calculateMetaNetworkApplications ctx dnfAssertions
-          case eliminationResult of
-            Trivial b -> return $ Trivial b
-            NonTrivial (metaNetwork, eliminatedAssertions, eliminationSteps) -> do
-              -- Calculate the meta network for the network
-              checkIfMetaNetworkSupported metaData (completeNamedCtx ctx) metaNetwork
-              reductionResult <- reduceAllRemainingNetworkTensorVariables ctx metaNetwork eliminatedAssertions
-              case reductionResult of
-                Trivial b -> return $ Trivial b
-                NonTrivial (reducedAssertions, reductionSteps) -> do
-                  let finalCompilationSteps = reductionSteps <> eliminationSteps <> trace
-                  NonTrivial <$> compilePartitionToQuery metaData ctx metaNetwork finalCompilationSteps reducedAssertions
+        logCompilerSection2 MaxDetail "compiling potential query" $
+          runMaybeTrivialT $ do
+            (metaNetwork, eliminatedAssertions, eliminationSteps) <- calculateMetaNetworkApplications ctx dnfAssertions
+            -- Calculate the meta network for the network
+            checkIfMetaNetworkSupported metaData (completeNamedCtx ctx) metaNetwork
+            (reducedAssertions, reductionSteps) <- reduceAllRemainingNetworkTensorVariables ctx metaNetwork eliminatedAssertions
+            let finalCompilationSteps = reductionSteps <> eliminationSteps <> trace
+            result <- compilePartitionToQuery metaData ctx metaNetwork finalCompilationSteps reducedAssertions
+            nonTrivial result
+
   return $ eliminateTrivialDisjunctions $ disjunctDisjuncts allQueries
 
 compilePartitionToQuery ::
@@ -111,27 +109,26 @@ compilePartitionToQuery PropertyMetaData {..} ctx metaNetworkApps compilationSte
 
 reduceAllRemainingNetworkTensorVariables ::
   forall m.
-  (MonadCompile m) =>
+  (MonadCompile m, MonadMaybeTrivial m) =>
   GlobalCtx ->
   NetworkApplications ->
   ConjunctAll LinearAssertion ->
-  m (MaybeTrivial (ConjunctAll (Assertion (LinearExpr NetworkIOElementVariable RatTensor)), [CompilationStep]))
+  m (ConjunctAll (Assertion (LinearExpr NetworkIOElementVariable RatTensor)), [CompilationStep])
 reduceAllRemainingNetworkTensorVariables ctx metaNetwork assertions = do
   logCompilerSection2 MaxDetail "eliminating remaining tensor assertions" $ do
     -- Create the assertions
     let convertedAssertions = fmap (convertToNetworkElementVariables ctx) assertions
     let maybeNewAssertions = concatConjuncts <$> eliminateTrivialConjunctions convertedAssertions
     case maybeNewAssertions of
-      Trivial b -> return $ Trivial b
-      NonTrivial newAssertions -> do
+      Trivial b -> trivial b
+      NonTrivial newAssertions -> nonTrivial $ do
         -- Update the compilation trace
         -- (Note that we could be more precise about which IO variables we actually use here.)
         let ioVariables = concatMap (\(_, app) -> [toTensorVar $ inputVariable app, toTensorVar $ outputVariable app]) $ toListOfApplications metaNetwork
         let nestedVar = lookupTensorVariable (globalBoundVarCtx ctx)
         let mkStep var = ReconstructTensorVariable (nestedVar var) AllDimensions
         let newSteps = mkStep <$> ioVariables
-
-        return $ NonTrivial (newAssertions, newSteps)
+        (newAssertions, newSteps)
 
 convertToNetworkElementVariables ::
   GlobalCtx ->

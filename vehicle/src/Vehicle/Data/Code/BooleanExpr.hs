@@ -10,72 +10,8 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Semigroup (Semigroup (..))
 import GHC.Generics (Generic)
+import Vehicle.Data.MaybeTrivial
 import Vehicle.Prelude (Pretty (..), lineIndent, nonEmptyCartesianProduct, prependList)
-
---------------------------------------------------------------------------------
--- Triviality
-
--- | A single individual query for a verifier. Is either a trivial query or
--- holds arbitrary data.
-data MaybeTrivial a
-  = Trivial !Bool
-  | NonTrivial !a
-  deriving (Show, Generic, Foldable, Traversable)
-
-instance (NFData a) => NFData (MaybeTrivial a)
-
-instance (ToJSON a) => ToJSON (MaybeTrivial a)
-
-instance (FromJSON a) => FromJSON (MaybeTrivial a)
-
-instance Functor MaybeTrivial where
-  fmap f = \case
-    Trivial s -> Trivial s
-    NonTrivial s -> NonTrivial (f s)
-
-instance (Pretty a) => Pretty (MaybeTrivial a) where
-  pretty = \case
-    Trivial True -> "TriviallyTrue"
-    Trivial False -> "TriviallyFalse"
-    NonTrivial a -> pretty a
-
-trivial :: (Bool -> b) -> (a -> b) -> MaybeTrivial a -> b
-trivial f g = \case
-  Trivial b -> f b
-  NonTrivial x -> g x
-
-bindMaybeTrivial :: MaybeTrivial a -> (a -> MaybeTrivial b) -> MaybeTrivial b
-bindMaybeTrivial (NonTrivial x) f = f x
-bindMaybeTrivial (Trivial b) _ = Trivial b
-
-flattenTrivial :: MaybeTrivial (MaybeTrivial a) -> MaybeTrivial a
-flattenTrivial x = bindMaybeTrivial x id
-
-maybeTrivialToEither :: MaybeTrivial a -> Either Bool a
-maybeTrivialToEither = \case
-  Trivial b -> Left b
-  NonTrivial l -> Right l
-
-isNonTrivial :: MaybeTrivial a -> Bool
-isNonTrivial = \case
-  Trivial {} -> False
-  NonTrivial {} -> True
-
-orTrivial :: (a -> a -> a) -> MaybeTrivial a -> MaybeTrivial a -> MaybeTrivial a
-orTrivial f x y = case (x, y) of
-  (Trivial False, _) -> y
-  (_, Trivial False) -> x
-  (Trivial True, _) -> Trivial True
-  (_, Trivial True) -> Trivial True
-  (NonTrivial a, NonTrivial b) -> NonTrivial $ f a b
-
-andTrivial :: (a -> a -> a) -> MaybeTrivial a -> MaybeTrivial a -> MaybeTrivial a
-andTrivial f x y = case (x, y) of
-  (Trivial False, _) -> Trivial False
-  (_, Trivial False) -> Trivial False
-  (Trivial True, _) -> y
-  (_, Trivial True) -> x
-  (NonTrivial a, NonTrivial b) -> NonTrivial $ f a b
 
 --------------------------------------------------------------------------------
 -- Disjunctions
@@ -97,11 +33,11 @@ instance (Pretty a) => Pretty (DisjunctAll a) where
 eliminateTrivialDisjunctions :: DisjunctAll (MaybeTrivial a) -> MaybeTrivial (DisjunctAll a)
 eliminateTrivialDisjunctions disjunction = do
   let disjuncts = NonEmpty.toList (unDisjunctAll disjunction)
-  let (bools, nonTrivial) = partitionEithers (fmap maybeTrivialToEither disjuncts)
+  let (bools, nonTrivialValues) = partitionEithers (fmap maybeTrivialToEither disjuncts)
   let triviallyTrue = or bools
   if triviallyTrue
     then Trivial True
-    else case nonTrivial of
+    else case nonTrivialValues of
       [] -> Trivial False
       x : xs -> NonTrivial $ DisjunctAll (x :| xs)
 
@@ -143,11 +79,11 @@ prependConjunctions xs ys = ConjunctAll $ prependList xs $ unConjunctAll ys
 eliminateTrivialConjunctions :: ConjunctAll (MaybeTrivial a) -> MaybeTrivial (ConjunctAll a)
 eliminateTrivialConjunctions conjunction = do
   let conjuncts = NonEmpty.toList (unConjunctAll conjunction)
-  let (bools, nonTrivial) = partitionEithers (fmap maybeTrivialToEither conjuncts)
+  let (bools, nonTrivialValues) = partitionEithers (fmap maybeTrivialToEither conjuncts)
   let triviallyFalse = not (and bools)
   if triviallyFalse
     then Trivial False
-    else case nonTrivial of
+    else case nonTrivialValues of
       [] -> Trivial True
       x : xs -> NonTrivial $ ConjunctAll (x :| xs)
 

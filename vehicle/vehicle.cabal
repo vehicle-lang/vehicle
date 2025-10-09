@@ -164,6 +164,7 @@ library
     Vehicle.Data.Code.Value
     Vehicle.Data.DSL
     Vehicle.Data.Hashing
+    Vehicle.Data.MaybeTrivial
     Vehicle.Data.Meta
     Vehicle.Data.Tensor
     Vehicle.Data.Variable.Bound.Context

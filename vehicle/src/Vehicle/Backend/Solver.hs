@@ -31,6 +31,7 @@ import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
+import Vehicle.Data.MaybeTrivial (MaybeTrivial (..), andTrivial, orTrivial)
 import Vehicle.Data.Variable.Bound.Context.Name (runFreshNameContextT)
 import Vehicle.Data.Variable.Free.Context
 import Vehicle.Prelude.Warning (CompileWarning (..))

@@ -27,7 +27,7 @@ import System.Console.ANSI (Color (..))
 import System.IO (stdout)
 import System.ProgressBar
 import Vehicle.Compile.Prelude
-import Vehicle.Data.Code.BooleanExpr (MaybeTrivial (..))
+import Vehicle.Data.MaybeTrivial (MaybeTrivial (..))
 import Vehicle.Data.Tensor (TensorIndices)
 import Vehicle.Verify.Core
 import Vehicle.Verify.Specification (QueryMetaData (..))
