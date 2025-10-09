@@ -65,7 +65,7 @@ compileProgToIsabelle (Main ds) options =
     (localeNets, localeAssms, programDoc) <- runFreshNameContextT $ do
       localeNets <- fmap concat (traverse (gatherLocaleNetworks options) ds)
       localeAssms <- fmap concat (traverse (gatherLocaleStatements options localeNets) ds)
-      programDoc <- compileProg options localeNets (Main ds)
+      programDoc <- compileProg options (localeNets ++ localeAssms) (Main ds)
       return (localeNets, localeAssms, programDoc)
     let programStream = layoutPretty defaultLayoutOptions programDoc
     -- Collects dependencies by first discarding precedence info and then
@@ -112,7 +112,7 @@ data Dependency
 data LocaleDef
   = NetworkDefStatement Code Code
   | PropertyDefStatement Code
-  | TypeDefStmt Code
+  | TypeDefStmt Identifier Code
 
 instance Pretty LocaleDef where
   pretty = \case
@@ -121,7 +121,7 @@ instance Pretty LocaleDef where
         name = unAnnotate n
         tun = unAnnotate t
     PropertyDefStatement l -> unAnnotate l
-    TypeDefStmt l -> unAnnotate l
+    TypeDefStmt n l -> unAnnotate (compileFunDefPre n l)
 
 instance Pretty Dependency where
   pretty = \case
@@ -154,7 +154,7 @@ onlyPropertyDef (PropertyDefStatement _) = True
 onlyPropertyDef _ = False
 
 onlyTypeDef :: LocaleDef -> Bool
-onlyTypeDef (TypeDefStmt _) = True
+onlyTypeDef (TypeDefStmt _ _) = True
 onlyTypeDef _ = False
 
 preamble :: Text -> Set Dependency -> [LocaleDef] -> Code
@@ -300,8 +300,8 @@ gatherLocaleStatements _opts localeNets = \case
   DefFunction _ n _ (Universe _ _) e -> do
     let (binders, body) = foldDeclBinders e
     (_, cbody) <- compileBinders [] binders (compileExpr [] body)
-    typedefcode <- (compileFunDefPre [] (compileIdentifier n) [] [] cbody)
-    pure [(TypeDefStmt typedefcode)]
+    -- typedefcode <- (compileFunDefPre [] (compileIdentifier n) [] [] cbody)
+    pure [(TypeDefStmt n cbody)]
   DefFunction _ n anns _ e -> do
     if isAnnotatedAsProperty anns
       then do -- [compileProperty (compileIdentifier n) <$> compileExpr e]
@@ -417,14 +417,14 @@ compileLocaleBindersT =  (mapMaybe compileLocaleBindersTMapper)
   where
     compileLocaleBindersTMapper (NetworkDefStatement _ t) = Just (parens t)
     compileLocaleBindersTMapper (PropertyDefStatement _) = Nothing
-    compileLocaleBindersTMapper (TypeDefStmt _) = Nothing
+    compileLocaleBindersTMapper (TypeDefStmt _ _) = Nothing
 
 compileLocaleBindersV :: [LocaleDef] -> [Code]
 compileLocaleBindersV = mapMaybe compileLocaleBindersVMapper
   where
     compileLocaleBindersVMapper (NetworkDefStatement n _) = Just n
     compileLocaleBindersVMapper (PropertyDefStatement _) = Nothing
-    compileLocaleBindersVMapper (TypeDefStmt _) = Nothing
+    compileLocaleBindersVMapper (TypeDefStmt _ _) = Nothing
 
 compileTopLevelBinders :: (MonadIsabelleCompile m) =>
   ([LocaleDef] -> Binder DecidabilityBuiltin -> m (Maybe Code)) ->
@@ -480,9 +480,8 @@ compileRecordField localeAssms (field, fieldValue) = do
   fieldValue' <- compileExpr localeAssms fieldValue
   return $ pretty field <+> ":=" <+> fieldValue'
 
-compileFunDefPre :: (MonadIsabelleCompile m) => [LocaleDef] -> Code -> [Code] -> [Code] -> Code -> m Code
-compileFunDefPre _ name _ _ e = do
-  return $ ("typedef" <+> name <+> " = " <+> e)
+compileFunDefPre :: Identifier -> Code -> Code
+compileFunDefPre n e = ("typedef" <+> (compileIdentifier n) <+> " = " <+> e)
 
 compileFunDef :: (MonadIsabelleCompile m) => [LocaleDef] -> Code -> Expr DecidabilityBuiltin -> [Code] -> [Code] -> Code -> m Code
 compileFunDef _ _ (Universe _ _) _ _ _ = do
