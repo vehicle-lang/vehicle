@@ -303,12 +303,20 @@ gatherLocaleNetworks _opts = \case
 gatherLocaleStatements :: (MonadIsabelleCompile m) => IsabelleOptions -> [LocaleDef] -> Decl DecidabilityBuiltin -> m [LocaleDef]
 gatherLocaleStatements _opts localeNets = \case
   DefFunction _ n _ (Universe _ _) e -> do
-    let (binders, body) = foldDeclBinders e
-    (_, cbody) <- compileBinders [] binders (compileExpr [] body)
+    let (_, body) = foldDeclBinders e
+    -- (_, cbody) <- compileBinders [] binders (compileExpr [] body)
     -- typedefcode <- (compileFunDefPre [] (compileIdentifier n) [] [] cbody)
-    shape <- case body of
-      App (Builtin _p (StandardBuiltinType TensorType)) [_, maxIdx] -> (compileExpr localeNets (argExpr maxIdx))
-      _ -> developerError $ "Only tensor types are currently supported for type definitions. Instead got term: " <> cbody
+    (cbody) <- case body of
+      App (Builtin _p (StandardBuiltinType TensorType)) [tensT, maxIdx] -> (annotateNotation [] [RequireImport VehicleTensor] 0 (
+            "\"{ a :: $0 tensor. (dims a) = ($1) }\"\n" <>
+            "  using dims_tensor_from_lookup by blast\n"
+            ) Nothing [tensT, maxIdx])
+      _ -> developerError $ "Only tensor types are currently supported for type definitions."
+    (shape) <- case body of
+      App (Builtin _p (StandardBuiltinType TensorType)) [_, maxIdx] -> 
+        (compileExpr localeNets (argExpr maxIdx))
+      _ -> developerError $ "Only tensor types are currently supported for type definitions."
+
     pure [(TypeDefStmt n shape cbody)]
   DefFunction _ n anns _ e -> do
     if isAnnotatedAsProperty anns
@@ -538,10 +546,8 @@ compileBuiltin localeAssms b args = case b of
     NatType -> return "nat"
     ListType -> annotateApp localeAssms [] "seq" args
     --TensorType -> annotateNotation localeAssms [RequireImport VehicleTensor] 0 "'nT[$0]_($1)" Nothing args
-    TensorType -> annotateNotation localeAssms [RequireImport VehicleTensor] 0 (
-      "\"{ a :: $0 tensor. (dims a) = ($1) }\"\n" <>
-      "  using dims_tensor_from_lookup by blast\n"
-      ) Nothing args
+    TensorType -> annotateNotation localeAssms [RequireImport VehicleTensor, RequireImport VehicleUtils] 0 (
+      "$0 FlexTensor") Nothing args
     IndexType -> annotateNotation localeAssms [] 0 "nat" (Just "ordinal") args
     VectorType -> annotateNotation localeAssms [] 2 "$0.-tuple $1" Nothing args
   StandardBuiltinConstructor c -> case c of
@@ -562,10 +568,10 @@ compileBuiltin localeAssms b args = case b of
     Add AddNat -> annotateNotation localeAssms [] 50 "($0 + $1)" (Just "+%R") args
     Mul MulNat -> annotateNotation localeAssms [] 40 "($0 * $1)" (Just "*%R") args
     Add AddRatTensor -> annotateNotation localeAssms [RequireImport VehicleTensor, RequireImport VehicleUtils] 50 "(tensor_plus $0 $1)" (Just "+%R") args
-    Sub SubRatTensor -> annotateNotation localeAssms [RequireImport VehicleTensor, RequireImport VehicleUtils, RequireImport VehicleTensorScalarMult] 50 "(tensor_plus $0 ((-1 :: R) \\<cdot> $1))" Nothing args
+    Sub SubRatTensor -> annotateNotation localeAssms [RequireImport VehicleTensor, RequireImport VehicleUtils, RequireImport VehicleTensorScalarMult] 50 "(tensor_plus $0 (tensor_cdot (-1 :: R) $1))" Nothing args
     Mul MulRatTensor -> annotateNotation localeAssms [RequireImport VehicleTensor, RequireImport VehicleUtils] 40 "(hadamard_prod $0 $1)" (Just "*%R") args
     Div DivRatTensor -> annotateNotation localeAssms [RequireImport VehicleTensor, RequireImport VehicleUtils] 40 "(pointwise_div $0 $1)" Nothing args
-    Neg NegRatTensor -> annotateNotation localeAssms [RequireImport VehicleTensor, RequireImport VehicleTensorScalarMult] 80 "((-1 :: R) \\<cdot> $0)" (Just "-%R") args
+    Neg NegRatTensor -> annotateNotation localeAssms [RequireImport VehicleTensor, RequireImport VehicleTensorScalarMult] 80 "(tensor_cdot (-1 :: R) $0)" (Just "-%R") args
     Min MinRatTensor -> annotateApp localeAssms [RequireImport VehicleTensor, RequireImport VehicleUtils] "pointwiseMin" args
     Max MaxRatTensor -> annotateApp localeAssms [RequireImport VehicleTensor, RequireImport VehicleUtils] "pointwiseMax" args
     CompareIndex op -> compileComparison localeAssms CIndex op args
@@ -581,7 +587,7 @@ compileBuiltin localeAssms b args = case b of
     ReduceMulRatTensor -> annotateApp localeAssms [] "reduceMul" args
     ConstTensor -> do
       bracketedArgs <- compileArgs localeAssms 1 args
-      return $ annotate ([RequireImport VehicleTensor],1) (parens ("tensor_from_vec ["<> (pretty (length args)) <>"] [" <> concatWith (\x y -> x <> ", " <> y) bracketedArgs) <> "]")
+      return $ annotate ([RequireImport VehicleTensor],1) (parens ("flextensor_from_vec ["<> (pretty (length args)) <>"] [" <> concatWith (\x y -> x <> ", " <> y) bracketedArgs) <> "]")
     QuantifyRatTensor q -> case reverse args of
       (ExplicitArg _ _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier localeAssms q [binder] body
       _ -> unsupportedArgsError
@@ -713,7 +719,7 @@ compileNatLiteral i = annotate ([], maxPrecedence) $ "(" <> pretty i <> " :: nat
 
 compileTensorLiteral :: (a -> Code) -> Tensor a -> Code
 compileTensorLiteral compileElement t = annotate ([RequireImport VehicleTensor], 200) $ case (shapeOf t, toList t) of
-  ([], [x]) -> parens $ "tensor_from_vec [1] [" <+> compileElement x <+> "]"
+  ([], [x]) -> parens $ "flextensor_from_vec [1] [" <+> compileElement x <+> "]"
   _ -> foldMapTensor compileElement toTensor t
   where
     toTensor :: TensorShape -> [Code] -> Code

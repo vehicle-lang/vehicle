@@ -4,6 +4,7 @@ theory Vehicle
     "Deep_Learning.Tensor"
     "Deep_Learning.Tensor_Subtensor"
     "Deep_Learning.Tensor_Plus"
+    "Deep_Learning.Tensor_Scalar_Mult"
 begin
 
 typedef 'a FlexTensor = "(UNIV :: 'a tensor set)" by auto
@@ -12,10 +13,16 @@ declare [[coercion Rep_FlexTensor]]
 
 declare Abs_FlexTensor_inverse[simp]
 
+definition flextensor_from_vec :: " nat list \<Rightarrow> 'a list \<Rightarrow> 'a FlexTensor"
+  where "flextensor_from_vec a b = Abs_FlexTensor ( tensor_from_vec a b)"
+
 definition [simp]: "vec_times a b = map (\<lambda>(x,y). times x y) (zip a b)"
 
 definition tensor_plus :: "('a::semigroup_add) tensor \<Rightarrow> 'a tensor \<Rightarrow> 'a FlexTensor"
   where[simp]: "tensor_plus A B = Abs_FlexTensor (A + B)"
+
+definition tensor_cdot :: "('a::ring) \<Rightarrow> 'a tensor \<Rightarrow> 'a FlexTensor"
+  where[simp]: "tensor_cdot a B = Abs_FlexTensor (a \<cdot> B)"
 
 definition times_base::"'a::semigroup_mult tensor \<Rightarrow> 'a tensor \<Rightarrow> 'a FlexTensor"
   where[simp]: "times_base A B = Abs_FlexTensor (tensor_from_vec (dims A) (vec_times (vec A) (vec B)))"
