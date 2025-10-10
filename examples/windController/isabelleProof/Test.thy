@@ -2,7 +2,7 @@ theory Test
   imports
     Complex_Main
     "Deep_Learning.Tensor"
-    "Vehicle"
+    "Vehicle.Vehicle"
     "WindControllerSpec"
 begin
 

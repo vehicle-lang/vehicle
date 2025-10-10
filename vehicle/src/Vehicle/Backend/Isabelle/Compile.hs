@@ -144,7 +144,7 @@ instance Pretty Library where
     VehicleTensor -> "\"Deep_Learning.Tensor\""
     VehicleTensorSubtensor -> "\"Deep_Learning.Tensor_Subtensor\""
     VehicleTensorScalarMult -> "\"Deep_Learning.Tensor_Scalar_Mult\""
-    VehicleUtils -> "\"Vehicle\""
+    VehicleUtils -> "\"Vehicle.Vehicle\""
 
 onlyImport :: Dependency -> Bool
 onlyImport (RequireImport _) = True
