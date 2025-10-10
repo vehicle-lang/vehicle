@@ -395,7 +395,7 @@ compileLetBinder ::
 compileLetBinder localeAssms (binder, expr) = do
   let binderName = pretty (getBinderName binder)
   cExpr <- compileExpr localeAssms expr
-  return $ binderName <+> ":=" <+> cExpr
+  return $ binderName <+> "=" <+> cExpr
 
 compileIdentifier :: Identifier -> Code
 compileIdentifier ident = pretty (nameOf ident :: Name)
@@ -417,7 +417,9 @@ compileTopLevelBindersOuter :: (MonadIsabelleCompile m) =>
 compileTopLevelBindersOuter compileLocaleBinders compileTopLevelBinder localeAssms binders = do
   let localeResults = compileLocaleBinders localeAssms
   funBinders <- compileTopLevelBinders compileTopLevelBinder localeAssms binders
-  return $ localeResults ++ funBinders
+  if (length funBinders == 0)
+    then return []
+    else return $ localeResults ++ funBinders
 
 compileLocaleBindersT :: [LocaleDef] -> [Code]
 compileLocaleBindersT =  (mapMaybe compileLocaleBindersTMapper)
@@ -488,16 +490,7 @@ compileRecordField localeAssms (field, fieldValue) = do
   return $ pretty field <+> ":=" <+> fieldValue'
 
 compileFunDefPre :: Identifier -> Code -> Code
-compileFunDefPre n e = ("typedef" <+> (compileIdentifier n) <+> " = " <+> e)
-
-isCustomType :: [LocaleDef] -> Code -> Bool
-isCustomType [] _ = False
-isCustomType (TypeDefStmt n _ : ds) typename =
-  let renderDoc d = renderStrict (layoutPretty defaultLayoutOptions (unAnnotate d))
-      typeNameText = renderDoc typename
-      identText = renderDoc (compileIdentifier n)
-  in if identText == typeNameText then True else isCustomType ds typename
-isCustomType (_ : ds) typename = isCustomType ds typename
+compileFunDefPre n e = ("type_synonym" <+> (compileIdentifier n) <+> " = " <+> e)
 
 compileFunDef :: (MonadIsabelleCompile m) => [LocaleDef] -> Code -> Expr DecidabilityBuiltin -> [Code] -> [Code] -> Code -> m Code
 compileFunDef _ _ (Universe _ _) _ _ _ = do
@@ -514,10 +507,19 @@ compileFunDef localeAssms name t bindingsT bindingsV e = do
       <+> name
       <+> (if null bindingsV then mempty else " ") <+> hsep bindingsV
       <+> "="
-      <+> (if (isCustomType localeAssms defType) then ("Abs_" <> defType) else mempty)
       <+> "("
       <+> e
       <+> ") \"")
+
+idxBasedOp :: (MonadIsabelleCompile m) => [LocaleDef] -> Code -> [Arg DecidabilityBuiltin] -> m Code
+idxBasedOp localeAssms op args = case args of
+        [(ExplicitArg _ _ (Lam _ binder _body))] -> case (typeOf binder) of
+          -- (App (Builtin _ IndexType) [maxIdx]) -> 
+          (App (Builtin _p (StandardBuiltinType IndexType)) [maxIdx]) -> do
+            idxArg <- (compileExpr localeAssms (argExpr maxIdx))
+            annotateApp localeAssms [RequireImport VehicleTensor] (op<+>idxArg<>" ") args
+          _ -> developerError $ "foreach/forall/exists tensor operations are currently only supports explicit lambda arguments with indexing type"
+        _ -> developerError $ "foreach/forall/exists tensor operations are currently only supports a single lambda argument"
 
 -- Default precedence for standard operations can be found at https://coq.inria.fr/doc/V8.18.0/refman/language/coq-library.html#notations
 compileBuiltin :: (MonadIsabelleCompile m) => [LocaleDef] -> DecidabilityBuiltin -> [Arg DecidabilityBuiltin] -> m Code
@@ -530,10 +532,7 @@ compileBuiltin localeAssms b args = case b of
     NatType -> return "nat"
     ListType -> annotateApp localeAssms [] "seq" args
     --TensorType -> annotateNotation localeAssms [RequireImport VehicleTensor] 0 "'nT[$0]_($1)" Nothing args
-    TensorType -> annotateNotation localeAssms [RequireImport VehicleTensor] 0 (
-      "\"{ a :: $0 tensor. (dims a) = ($1) }\"\n" <>
-      "  using dims_tensor_from_lookup by blast"
-      ) Nothing args
+    TensorType -> annotateNotation localeAssms [RequireImport VehicleTensor] 0 ("\"R tensor\"") Nothing args
     IndexType -> annotateNotation localeAssms [] 0 "nat" (Just "ordinal") args
     VectorType -> annotateNotation localeAssms [] 2 "$0.-tuple $1" Nothing args
   StandardBuiltinConstructor c -> case c of
@@ -562,7 +561,7 @@ compileBuiltin localeAssms b args = case b of
     Max MaxRatTensor -> annotateApp localeAssms [RequireImport VehicleTensor, RequireImport VehicleUtils] "pointwiseMax" args
     CompareIndex op -> compileComparison localeAssms CIndex op args
     CompareNat op -> compileComparison localeAssms CNat op args
-    CompareRatTensorPointwise op -> compileComparison localeAssms CRatTensor op args
+    CompareRatTensorPointwise op -> compileTensorComparison localeAssms CRatTensor op args
     FoldList -> annotateApp localeAssms [] "foldr" args
     MapList -> annotateApp localeAssms [] "map" args
     ReduceAndTensor -> annotateApp localeAssms [RequireImport VehicleUtils] "reduceAnd" args
@@ -581,14 +580,7 @@ compileBuiltin localeAssms b args = case b of
       _ -> unsupportedArgsError
     AtTensor -> annotateNotation localeAssms [RequireImport VehicleTensor, RequireImport VehicleTensorSubtensor] 201 "(subtensor $0 $1)" (Just "nindex") args
     If -> annotateNotation localeAssms [] minPrecedence "if $0 then $1 else $2" Nothing args
-    ForeachTensor -> case args of
-      [(ExplicitArg _ _ (Lam _ binder _body))] -> case (typeOf binder) of
-        -- (App (Builtin _ IndexType) [maxIdx]) -> 
-        (App (Builtin _p (StandardBuiltinType IndexType)) [maxIdx]) -> do
-          idxArg <- (compileExpr localeAssms (argExpr maxIdx))
-          annotateApp localeAssms [RequireImport VehicleTensor] ("foreach "<>idxArg<>" ") args
-        _ -> developerError $ "foreach-tensor currently only supports explicit lambda arguments with indexing type"
-      _ -> developerError $ "foreach-tensor currently only supports a single lambda argument"
+    ForeachTensor -> idxBasedOp localeAssms "foreach" args
     StackTensor -> compileStack localeAssms args
     Iterate -> unsupportedError
     PowRat -> unsupportedError
@@ -604,11 +596,12 @@ compileBuiltin localeAssms b args = case b of
     PropImplies -> annotateNotation localeAssms [] minPrecedence "$0 \\<longrightarrow> $1" (Just "implies") args
     PropCompareIndex op -> compileComparison localeAssms CIndex op args
     PropCompareNat op -> compileComparison localeAssms CNat op args
-    PropCompareRatTensorPointwise op -> compileComparison localeAssms CRatTensor op args
+    PropCompareRatTensorPointwise op -> compileTensorComparison localeAssms CRatTensor op args
     BoolTensorToProp -> monoError
     BoolVectorToProp -> monoError
     PropQuantifyIndex q -> case q of
-      Forall -> annotateApp localeAssms [RequireImport VehicleUtils] "forallIndex" args
+      Forall -> idxBasedOp localeAssms "forallIndex" args
+      -- annotateApp localeAssms [RequireImport VehicleUtils] "forallIndex" args
       Exists -> annotateApp localeAssms [RequireImport VehicleUtils] "existsIndex" args
     PropQuantifyInList q -> case q of
       Forall -> annotateApp localeAssms [RequireImport VehicleUtils] "forallInList" args
@@ -648,7 +641,15 @@ compileApp localeAssms fun args = do
       compileBuiltin localeAssms b userArgs
     _ -> do
       cFun <- compileExpr localeAssms fun
-      annotateApp localeAssms [] cFun userArgs
+      let localeResults = compileLocaleBindersV localeAssms
+      -- Compare via rendered text as Code (Doc ...) has no Eq instance
+      let cFunText = renderStrict (layoutCompact cFun)
+      let localeResultsText = map (renderStrict . layoutCompact) localeResults
+      if not (null localeResults) && (cFunText `elem` localeResultsText)
+        then
+          annotateApp localeAssms [] cFun userArgs
+        else
+          annotateApp localeAssms [] (cFun <+> (hsep localeResults)) userArgs
 
 compileDerivedFunction :: (MonadIsabelleCompile m) => [LocaleDef] -> DerivedFunction -> [Arg DecidabilityBuiltin] -> m Code
 compileDerivedFunction localeAssms fn args = case fn of
@@ -742,18 +743,13 @@ data ComparisonDomain
 compileComparison :: (MonadIsabelleCompile m) => [LocaleDef] -> ComparisonDomain -> ComparisonOp -> [Arg DecidabilityBuiltin] -> m Code
 compileComparison localeAssms domain op = do
   let (opDoc, dependencies) = case op of
-        Le -> ("<=", orderDeps)
+        Le -> ("\\<le>", orderDeps)
         Lt -> ("<", orderDeps)
-        Ge -> (">=", orderDeps)
+        Ge -> ("\\<ge>", orderDeps)
         Gt -> (">", orderDeps)
         Eq -> ("==", eqDeps)
-        Ne -> ("!=", eqDeps)
-  let typeDeps = case (domain, op) of
-        (CIndex, _) -> []
-        (CNat, _) -> []
-        (CRatTensor, Eq) -> [RequireImport VehicleTensor]
-        (CRatTensor, Ne) -> [RequireImport VehicleTensor]
-        (CRatTensor, _) -> [RequireImport VehicleTensor]
+        Ne -> ("\\<noteq>", eqDeps)
+  let typeDeps = []
   let (opDoc', dependencies') =
         if domain == CIndex
           then ("$0 " <> opDoc <> " $1 :> nat", dependencies ++ [])
@@ -762,6 +758,19 @@ compileComparison localeAssms domain op = do
   where
     orderDeps = []
     eqDeps = []
+
+compileTensorComparison :: (MonadIsabelleCompile m) => [LocaleDef] -> ComparisonDomain -> ComparisonOp -> [Arg DecidabilityBuiltin] -> m Code
+compileTensorComparison localeAssms _ op = do
+  let (opDoc) = case op of
+        Le -> ("leqTensorReduced")
+        Lt -> ("ltTensorReduced")
+        Ge -> ("geqTensorReduced")
+        Gt -> ("gtTensorReduced")
+        Eq -> ("eqTensorReduced")
+        Ne -> ("neTensorReduced")
+  let typeDeps = [RequireImport VehicleTensor, RequireImport VehicleUtils]
+  let opDesc = (opDoc<>" $0 $1")
+  annotateNotation localeAssms (typeDeps) 70 opDesc Nothing
 
 compileStack :: (MonadIsabelleCompile m) => [LocaleDef] -> [Arg DecidabilityBuiltin] -> m Code
 compileStack localeAssms args = do
