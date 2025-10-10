@@ -490,7 +490,8 @@ compileRecordField localeAssms (field, fieldValue) = do
   return $ pretty field <+> ":=" <+> fieldValue'
 
 compileFunDefPre :: Identifier -> Code -> Code
-compileFunDefPre n e = ("type_synonym" <+> (compileIdentifier n) <+> " = " <+> e)
+compileFunDefPre n e = ("typedef" <+> (compileIdentifier n) <+> " = " <+> e<>
+      "declare [[coercion Rep_"<>(compileIdentifier n)<>"]]\n")
 
 compileFunDef :: (MonadIsabelleCompile m) => [LocaleDef] -> Code -> Expr DecidabilityBuiltin -> [Code] -> [Code] -> Code -> m Code
 compileFunDef _ _ (Universe _ _) _ _ _ = do
@@ -532,7 +533,10 @@ compileBuiltin localeAssms b args = case b of
     NatType -> return "nat"
     ListType -> annotateApp localeAssms [] "seq" args
     --TensorType -> annotateNotation localeAssms [RequireImport VehicleTensor] 0 "'nT[$0]_($1)" Nothing args
-    TensorType -> annotateNotation localeAssms [RequireImport VehicleTensor] 0 ("\"R tensor\"") Nothing args
+    TensorType -> annotateNotation localeAssms [RequireImport VehicleTensor] 0 (
+      "\"{ a :: $0 tensor. (dims a) = ($1) }\"\n" <>
+      "  using dims_tensor_from_lookup by blast\n"
+      ) Nothing args
     IndexType -> annotateNotation localeAssms [] 0 "nat" (Just "ordinal") args
     VectorType -> annotateNotation localeAssms [] 2 "$0.-tuple $1" Nothing args
   StandardBuiltinConstructor c -> case c of
@@ -572,13 +576,11 @@ compileBuiltin localeAssms b args = case b of
     ReduceMulRatTensor -> annotateApp localeAssms [] "reduceMul" args
     ConstTensor -> do
       bracketedArgs <- compileArgs localeAssms 1 args
-      if (length bracketedArgs == 1)
-        then return $ annotate ([RequireImport VehicleTensor],1) (parens ("tensor_from_vec [] [" <> bracketedArgs !! 1 <> "]"))
-        else return $ annotate ([RequireImport VehicleTensor],1) (parens ("tensor_from_vec ["<> (pretty (length args)) <>"] [" <> concatWith (\x y -> x <> ", " <> y) bracketedArgs) <> "]")
+      return $ annotate ([RequireImport VehicleTensor],1) (parens ("tensor_from_vec ["<> (pretty (length args)) <>"] [" <> concatWith (\x y -> x <> ", " <> y) bracketedArgs) <> "]")
     QuantifyRatTensor q -> case reverse args of
       (ExplicitArg _ _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier localeAssms q [binder] body
       _ -> unsupportedArgsError
-    AtTensor -> annotateNotation localeAssms [RequireImport VehicleTensor, RequireImport VehicleTensorSubtensor] 201 "(subtensor $0 $1)" (Just "nindex") args
+    AtTensor -> annotateNotation localeAssms [RequireImport VehicleTensor, RequireImport VehicleTensorSubtensor, RequireImport VehicleUtils] 201 "(subtensor_lookup $0 $1)" (Just "nindex") args
     If -> annotateNotation localeAssms [] minPrecedence "if $0 then $1 else $2" Nothing args
     ForeachTensor -> idxBasedOp localeAssms "foreach" args
     StackTensor -> compileStack localeAssms args
@@ -706,7 +708,7 @@ compileNatLiteral i = annotate ([], maxPrecedence) $ "(" <> pretty i <> " :: nat
 
 compileTensorLiteral :: (a -> Code) -> Tensor a -> Code
 compileTensorLiteral compileElement t = annotate ([RequireImport VehicleTensor], 200) $ case (shapeOf t, toList t) of
-  ([], [x]) -> parens $ "tensor_from_vec [] [" <+> compileElement x <+> "]"
+  ([], [x]) -> parens $ "tensor_from_vec [1] [" <+> compileElement x <+> "]"
   _ -> foldMapTensor compileElement toTensor t
   where
     toTensor :: TensorShape -> [Code] -> Code
