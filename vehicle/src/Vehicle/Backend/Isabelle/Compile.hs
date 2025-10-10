@@ -113,7 +113,7 @@ data Dependency
 data LocaleDef
   = NetworkDefStatement Code Code
   | PropertyDefStatement Code
-  | TypeDefStmt Identifier Code
+  | TypeDefStmt Identifier Code Code
 
 instance Pretty LocaleDef where
   pretty = \case
@@ -122,7 +122,7 @@ instance Pretty LocaleDef where
         name = unAnnotate n
         tun = unAnnotate t
     PropertyDefStatement l -> unAnnotate l
-    TypeDefStmt n l -> unAnnotate (compileFunDefPre n l)
+    TypeDefStmt n shape l -> unAnnotate (compileFunDefPre n shape l)
 
 instance Pretty Dependency where
   pretty = \case
@@ -135,7 +135,6 @@ data TypeName = IsabelleReals
 data Library
   = VehicleTensor
   | VehicleTensorSubtensor
-  | VehicleTensorPlus
   | VehicleTensorScalarMult
   | VehicleUtils
   deriving (Eq, Ord)
@@ -144,7 +143,6 @@ instance Pretty Library where
   pretty = \case
     VehicleTensor -> "\"Deep_Learning.Tensor\""
     VehicleTensorSubtensor -> "\"Deep_Learning.Tensor_Subtensor\""
-    VehicleTensorPlus -> "\"Deep_Learning.Tensor_Plus\""
     VehicleTensorScalarMult -> "\"Deep_Learning.Tensor_Scalar_Mult\""
     VehicleUtils -> "\"Vehicle\""
 
@@ -161,7 +159,7 @@ onlyPropertyDef (PropertyDefStatement _) = True
 onlyPropertyDef _ = False
 
 onlyTypeDef :: LocaleDef -> Bool
-onlyTypeDef (TypeDefStmt _ _) = True
+onlyTypeDef (TypeDefStmt _ _ _) = True
 onlyTypeDef _ = False
 
 preamble :: Text -> Set Dependency -> [LocaleDef] -> Code
@@ -308,7 +306,10 @@ gatherLocaleStatements _opts localeNets = \case
     let (binders, body) = foldDeclBinders e
     (_, cbody) <- compileBinders [] binders (compileExpr [] body)
     -- typedefcode <- (compileFunDefPre [] (compileIdentifier n) [] [] cbody)
-    pure [(TypeDefStmt n cbody)]
+    shape <- case body of
+      App (Builtin _p (StandardBuiltinType TensorType)) [_, maxIdx] -> (compileExpr localeNets (argExpr maxIdx))
+      _ -> developerError $ "Only tensor types are currently supported for type definitions. Instead got term: " <> cbody
+    pure [(TypeDefStmt n shape cbody)]
   DefFunction _ n anns _ e -> do
     if isAnnotatedAsProperty anns
       then do -- [compileProperty (compileIdentifier n) <$> compileExpr e]
@@ -426,14 +427,14 @@ compileLocaleBindersT =  (mapMaybe compileLocaleBindersTMapper)
   where
     compileLocaleBindersTMapper (NetworkDefStatement _ t) = Just (parens t)
     compileLocaleBindersTMapper (PropertyDefStatement _) = Nothing
-    compileLocaleBindersTMapper (TypeDefStmt _ _) = Nothing
+    compileLocaleBindersTMapper (TypeDefStmt _ _ _) = Nothing
 
 compileLocaleBindersV :: [LocaleDef] -> [Code]
 compileLocaleBindersV = mapMaybe compileLocaleBindersVMapper
   where
     compileLocaleBindersVMapper (NetworkDefStatement n _) = Just n
     compileLocaleBindersVMapper (PropertyDefStatement _) = Nothing
-    compileLocaleBindersVMapper (TypeDefStmt _ _) = Nothing
+    compileLocaleBindersVMapper (TypeDefStmt _ _ _) = Nothing
 
 compileTopLevelBinders :: (MonadIsabelleCompile m) =>
   ([LocaleDef] -> Binder DecidabilityBuiltin -> m (Maybe Code)) ->
@@ -489,10 +490,14 @@ compileRecordField localeAssms (field, fieldValue) = do
   fieldValue' <- compileExpr localeAssms fieldValue
   return $ pretty field <+> ":=" <+> fieldValue'
 
-compileFunDefPre :: Identifier -> Code -> Code
-compileFunDefPre n e = ("typedef" <+> (compileIdentifier n) <+> " = " <+> e<>
-      "declare [[coercion Rep_"<>(compileIdentifier n)<>"]]\n")
-
+compileFunDefPre :: Identifier -> Code -> Code -> Code
+compileFunDefPre n shape e = ("typedef" <+> (compileIdentifier n) <+> " = " <+> e<>
+      "declare [[coercion Rep_"<>(compileIdentifier n)<>"]]\n"<>
+      "definition to_"<>(compileIdentifier n)<>" :: \"R FlexTensor ⇒ " <> compileIdentifier n <> "\"\n" <>
+      "  where[simp]: \"to_" <> compileIdentifier n <> " a =\n" <>
+      "    (let t = Rep_FlexTensor a\n" <>
+      "     in if dims t = (" <> shape <> ") then Abs_" <> compileIdentifier n <> " t else undefined)\"\n" <>
+      "declare [[coercion to_" <> compileIdentifier n <> "]]")
 compileFunDef :: (MonadIsabelleCompile m) => [LocaleDef] -> Code -> Expr DecidabilityBuiltin -> [Code] -> [Code] -> Code -> m Code
 compileFunDef _ _ (Universe _ _) _ _ _ = do
   return $ ""
@@ -556,8 +561,8 @@ compileBuiltin localeAssms b args = case b of
     Implies -> annotateNotation localeAssms [] 55 "($0 \\<longrightarrow> $1)" (Just "implb") args
     Add AddNat -> annotateNotation localeAssms [] 50 "($0 + $1)" (Just "+%R") args
     Mul MulNat -> annotateNotation localeAssms [] 40 "($0 * $1)" (Just "*%R") args
-    Add AddRatTensor -> annotateNotation localeAssms [RequireImport VehicleTensor, RequireImport VehicleTensorPlus] 50 "($0 + $1)" (Just "+%R") args
-    Sub SubRatTensor -> annotateNotation localeAssms [RequireImport VehicleTensor, RequireImport VehicleTensorPlus, RequireImport VehicleTensorScalarMult] 50 "($0 + ((-1 :: R) \\<cdot> $1))" Nothing args
+    Add AddRatTensor -> annotateNotation localeAssms [RequireImport VehicleTensor, RequireImport VehicleUtils] 50 "(tensor_plus $0 $1)" (Just "+%R") args
+    Sub SubRatTensor -> annotateNotation localeAssms [RequireImport VehicleTensor, RequireImport VehicleUtils, RequireImport VehicleTensorScalarMult] 50 "(tensor_plus $0 ((-1 :: R) \\<cdot> $1))" Nothing args
     Mul MulRatTensor -> annotateNotation localeAssms [RequireImport VehicleTensor, RequireImport VehicleUtils] 40 "(hadamard_prod $0 $1)" (Just "*%R") args
     Div DivRatTensor -> annotateNotation localeAssms [RequireImport VehicleTensor, RequireImport VehicleUtils] 40 "(pointwise_div $0 $1)" Nothing args
     Neg NegRatTensor -> annotateNotation localeAssms [RequireImport VehicleTensor, RequireImport VehicleTensorScalarMult] 80 "((-1 :: R) \\<cdot> $0)" (Just "-%R") args

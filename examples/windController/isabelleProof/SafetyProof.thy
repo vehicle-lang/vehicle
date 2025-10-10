@@ -57,8 +57,7 @@ context WindControllerSpec
 begin
 
 definition controllerFun :: "real \<Rightarrow> real \<Rightarrow> real"
-  where "controllerFun p1 p2 = (lookup (Rep_OutputVector (controller (Abs_InputVector (tensor_from_vec [2] [p1, p2])))) [0])"
-
+  where "controllerFun p1 p2 = (lookup (Rep_OutputVector (controller (normalise controller (Abs_InputVector (tensor_from_vec [2] [p1, p2]))))) [WindControllerSpec.velocity])"
 
 definition nextState :: "observation \<Rightarrow> state \<Rightarrow> state"
   where "nextState obs s = (
@@ -107,155 +106,51 @@ lemma controller_lem:
     shows "(abs ((controllerFun x y) + 2*x - y)) <
               roadWidth - maxWindShift - 3*maxSensorError"
 proof -
-  have "forallIndex [2]
-     (\<lambda>i. - 13 / 4
-           \<le> lookup
-               (Rep_InputVector
-                 (Abs_InputVector (tensor_from_vec [2] [x, y])))
-               i \<and>
-           - 13 / 4
-           \<le> lookup
-               (Rep_InputVector
-                 (Abs_InputVector (tensor_from_vec [2] [x, y])))
-               i)"
+  define X where "X = Abs_InputVector (tensor_from_vec [2] [x,y])"
+  have "forallIndex 2
+       (\<lambda>i. leqTensorReduced (- 1 \<cdot> tensor_from_vec [1] [13 / 4]) (subtensor_lookup (Rep_InputVector X) i) \<and>
+             leqTensorReduced (subtensor_lookup (Rep_InputVector X) i) (tensor_from_vec [1] [13 / 4]))"
     using assms
-    unfolding roadWidth_def maxSensorError_def tensor_from_vec_def
+    unfolding forallIndex_def foreach_def upt_def X_def
     apply simp
-  proof -
-    have "(dims (Abs_tensor ([2], [x, y]))) = [2]"
-      unfolding dims_def
-      by (simp add: Abs_tensor_inverse)
-
-    then show "\<bar>x\<bar> * 4 \<le> 13 \<Longrightarrow>
-    \<bar>y\<bar> * 4 \<le> 13 \<Longrightarrow>
-    forallIndex [2]
-     (\<lambda>i. - (13 / 4)
-           \<le> lookup
-               (Rep_InputVector
-                 (Abs_InputVector (Abs_tensor ([2], [x, y]))))
-               i)"
-      apply (simp add: Abs_InputVector_inverse)
-      unfolding lookup_def dims_def vec_def
-      apply (simp add: Abs_tensor_inverse)
-      unfolding forallIndex_def list_all_def vec_def foreach_def tensor_from_lookup_def tensor_from_vec_def tensor_vec_from_lookup.simps fixed_length_sublist_def lookup_base.simps
-      apply (simp add: Abs_tensor_inverse)
-    proof (rule ballI)
-      fix xa
-      show " \<bar>x\<bar> * 4 \<le> 13 \<Longrightarrow>
-          \<bar>y\<bar> * 4 \<le> 13 \<Longrightarrow>
-          xa \<in> {0..<2} \<Longrightarrow> - (13 / 4) \<le> hd (drop xa [x, y])"
-        apply (cases "xa = 0")
-         apply simp
-        apply (cases "xa = 1")
-         apply simp
-        by simp
-    qed
-  qed
-  thus ?thesis
-    unfolding controllerFun_def
+    unfolding tensor_from_lookup_def tensor_vec_from_lookup.simps
+    apply (simp add: lookup_def lookup_base.simps fixed_length_sublist_def Abs_InputVector_inverse)
+    by linarith
+  then have outputSafe: "safeOutput controller X"
     using safe
-    unfolding safe_def safeInput_def safeOutput_def Let_def
-    apply (erule_tac x="(Abs_InputVector (tensor_from_vec [2] [x, y]))" in allE)
-  proof simp
-    define out where "out = lookup
-       (Rep_OutputVector
-         (controller
-           (Abs_InputVector (tensor_from_vec [2] [x, y])))) [0]"
+    unfolding safeInput_def
+    apply (erule_tac x="X" in allE)
+    by simp
 
-    define prev where "prev = lookup
-     (Rep_InputVector
-       (Abs_InputVector (tensor_from_vec [2] [x, y])))
-     previousSensor"
+  have dimFact: "order (Rep_OutputVector (controller (normalise controller (Abs_InputVector (tensor_from_vec [2] [x, y]))))) = 1"
+    using Rep_OutputVector by force
 
-    define cur where "cur = lookup
-           (Rep_InputVector
-             (Abs_InputVector (tensor_from_vec [2] [x, y])))
-           currentSensor"
+  have fact1: "(controllerFun x y + 2 * x - y) < roadWidth - maxWindShift - 3 * maxSensorError"  
+    using outputSafe
+    unfolding safeOutput_def Let_def
+    unfolding controllerFun_def X_def
+    unfolding roadWidth_def maxWindShift_def maxSensorError_def
+    unfolding subtensor_lookup_def
+    using dimFact
+    unfolding WindControllerSpec.velocity_def currentSensor_def previousSensor_def
+    apply (simp add: lookup_def lookup_base.simps fixed_length_sublist_def Abs_InputVector_inverse)
+    by (simp add: tensor_from_lookup_def tensor_vec_from_lookup.simps fixed_length_sublist_def vec_plus_def)
 
-    have "
-    - (5 / 4) < out + 2 * cur - prev \<and>
-    out * 4 + 8 * cur - prev * 4 < 5 \<Longrightarrow> \<bar>out + 2 * x - y\<bar> * 4
-      < 5"
-    proof -
-      assume assm1: "- (5 / 4) < out + 2 * cur - prev \<and>
-    out * 4 + 8 * cur - prev * 4 < 5"
-      have fact0: "(dims (Abs_tensor ([2], [x, y]))) = [2]"
-        unfolding dims_def
-        by (simp add: Abs_tensor_inverse)
-      have fact1: "cur = x"
-        using fact0
-        unfolding cur_def tensor_from_vec_def currentSensor_def
-        apply (simp add: Abs_InputVector_inverse)
-        unfolding lookup_def dims_def vec_def
-        apply (simp add: Abs_tensor_inverse)
-        unfolding fixed_length_sublist_def
-        by auto
-      have fact2: "prev = y"
-        using fact0
-        unfolding prev_def tensor_from_vec_def previousSensor_def
-        apply (simp add: Abs_InputVector_inverse)
-        unfolding lookup_def dims_def vec_def
-        apply (simp add: Abs_tensor_inverse)
-        unfolding fixed_length_sublist_def
-        by auto
-      show ?thesis
-        using assm1
-        using fact1 fact2
-        by argo
-    qed
-      
+  then have fact2: "(controllerFun x y + 2 * x - y) > -(roadWidth - maxWindShift - 3 * maxSensorError)"
+    using outputSafe
+    unfolding safeOutput_def Let_def
+    unfolding controllerFun_def X_def
+    unfolding roadWidth_def maxWindShift_def maxSensorError_def
+    unfolding subtensor_lookup_def
+    using dimFact
+    unfolding WindControllerSpec.velocity_def currentSensor_def previousSensor_def
+    apply (simp add: lookup_def lookup_base.simps fixed_length_sublist_def Abs_InputVector_inverse)
+    by (simp add: tensor_from_lookup_def tensor_vec_from_lookup.simps fixed_length_sublist_def vec_plus_def)
 
-    then show "forallIndex [2]
-     (\<lambda>i. - (13 / 4)
-           \<le> lookup
-               (Rep_InputVector
-                 (Abs_InputVector (tensor_from_vec [2] [x, y])))
-               i) \<Longrightarrow>
-    - (5 / 4)
-    < lookup
-       (Rep_OutputVector
-         (controller
-           (Abs_InputVector (tensor_from_vec [2] [x, y]))))
-       WindControllerSpec.velocity +
-      2 *
-      lookup
-       (Rep_InputVector
-         (Abs_InputVector (tensor_from_vec [2] [x, y])))
-       currentSensor -
-      lookup
-       (Rep_InputVector
-         (Abs_InputVector (tensor_from_vec [2] [x, y])))
-       previousSensor \<and>
-    lookup
-     (Rep_OutputVector
-       (controller
-         (Abs_InputVector (tensor_from_vec [2] [x, y]))))
-     WindControllerSpec.velocity *
-    4 +
-    8 *
-    lookup
-     (Rep_InputVector
-       (Abs_InputVector (tensor_from_vec [2] [x, y])))
-     currentSensor -
-    lookup
-     (Rep_InputVector
-       (Abs_InputVector (tensor_from_vec [2] [x, y])))
-     previousSensor *
-    4
-    < 5 \<Longrightarrow>
-    \<bar>lookup
-      (Rep_OutputVector
-        (controller
-          (Abs_InputVector (tensor_from_vec [2] [x, y]))))
-      [0] +
-     2 * x -
-     y\<bar> *
-    4
-    < 5"
-      unfolding out_def WindControllerSpec.velocity_def prev_def cur_def
-      by simp
-      
-  qed
+  then show ?thesis
+    using fact1 fact2
+    by argo
+    
 qed
 
 
