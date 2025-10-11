@@ -32,6 +32,8 @@ import Vehicle.Data.DSL
 import Vehicle.Data.Universe (UniverseLevel (..))
 import Vehicle.Syntax.AST.Expr qualified as S
 
+-- import Data.Text (Text)
+
 scopeCheck :: (MonadCompile m) => Imports -> S.Prog -> m (Prog Builtin)
 scopeCheck imports prog = logCompilerPass Scoping $
   runMonadScopeT $ do
@@ -214,44 +216,45 @@ scopeProg (Main ds) = do
   scopedDecls <- traverse scopeDecl ds
   return (Main (concat scopedDecls))
 
-scopeDecl :: (MonadScope m) => S.Decl -> m ([Decl Builtin])
+scopeDecl :: (MonadScope m) => S.Decl -> m [Decl Builtin]
 scopeDecl decl =
   logCompilerSection2 MidDetail ("scoping" <+> quotePretty (identifierOf decl)) $ do
     scopedDecl <- case decl of
       DefAbstract p ident r t -> do
         t' <- scopeTopLevelExpr False t
-        return [(DefAbstract p ident r t')]
+        return [DefAbstract p ident r t']
       DefFunction p ident anns t e -> do
         t' <- scopeTopLevelExpr True t
         e' <- scopeTopLevelExpr False e
-        return [(DefFunction p ident anns t' e')]
+        return [DefFunction p ident anns t' e']
       DefRecord p ident b t fs -> do
         t' <- scopeTopLevelExpr False t
         fs' <- traverse (scopeDefRecordField ident) fs
         addNewRecordDef ident (fmap fst fs')
 
-        let fnBody = Builtin p (BuiltinFunction ConstTensor)
-        let newIdent = Identifier (modulePath ident) ((nameOf ident) <> Text.pack "bxcxcvcx")
+        let newIdent = Identifier (modulePath ident) (Text.pack "_" <> nameOf ident)
 
-        let (_, tensorType) = head fs'
+        let (firstFieldName, tensorType) = head fs' -- TODO: safe with pattern matching!
         let tensorTypeDSL = toDSL tensorType
-        let recordTypeDSL = toDSL t'
 
-        -- let newType = (tTensor tensorTypeDSL (natLit (length fs')))
-        let newType = (tTensor tensorTypeDSL (singletonDim (length fs')))
-        let newTypeBound = fromDSL mempty (recordTypeDSL ~> newType)
-        let convFn = DefFunction p newIdent mempty newTypeBound fnBody
+        let recordType = freeVar ident
+        let tensorDims = singletonDim (length fs')
+        let newType = tTensor tensorTypeDSL tensorDims
+        let newTypeBinder = (recordType) ~> newType
+
+        let newBody =
+              explLam "x" recordType $ \x ->
+                constTensor tensorTypeDSL (recordAcc x ident firstFieldName) tensorDims
+
+        let convFn = DefFunction p newIdent mempty (fromDSL mempty newTypeBinder) (fromDSL mempty newBody)
 
         if isAnnotatedAsTensor b
-          then return [(DefRecord p ident b t' fs'), convFn]
-          else return [(DefRecord p ident b t' fs')]
-    _ <- traverse addNewDecl scopedDecl
+          then return [DefRecord p ident b t' fs', convFn]
+          else return [DefRecord p ident b t' fs']
 
-    _ <- traverse (logCompilerPassOutput . prettyFriendly) scopedDecl
+    traverse_ addNewDecl scopedDecl
+    traverse_ (logCompilerPassOutput . prettyFriendly) scopedDecl
     return scopedDecl
-
--- pi binder from the first to the second??
---  B.Fun t1 tk t2 -> op2 V.Pi tk (elabTypeBinder False t1) (elabExpr t2)
 
 scopeDefRecordField ::
   (MonadScope m) =>
@@ -307,8 +310,7 @@ findGeneralisableVariablesBinder binder update = do
 registerVar :: (MonadScopeExpr m, MonadWriter [GeneralisableVariable] m) => Provenance -> Name -> m ()
 registerVar p symbol = do
   maybeVar <- lookupVariable symbol
-  when (isNothing maybeVar) $ do
-    tell [(p, symbol)]
+  when (isNothing maybeVar) $ tell [(p, symbol)]
 
 generaliseOverVariables ::
   (MonadCompile m) =>
@@ -341,7 +343,7 @@ scopeExpr ::
   S.Expr ->
   m (Expr Builtin)
 scopeExpr e = do
-  result <- case e of
+  case e of
     S.Var p v -> scopeVar p v
     S.Universe p -> return $ Universe p (UniverseLevel 0)
     S.Hole p n -> return $ Hole p n
@@ -365,8 +367,6 @@ scopeExpr e = do
       record' <- scopeExpr record
       recordDefinitionIdent <- lookupRecordDefinitionByField field
       return $ RecordAcc p record' (recordDefinitionIdent, field)
-
-  return result
 
 scopeBinder ::
   (MonadScopeExpr m) =>
@@ -423,22 +423,21 @@ calculateMatch recordFields actualFields = do
   foldr matchMispellings match extraNames
   where
     matchMispellings :: FieldName -> RecordMatch -> RecordMatch
-    matchMispellings field RecordMatch {..} = do
-      case mispellingsSortedByLikelihood field missingFields of
-        [] ->
-          RecordMatch
-            { missingFields = missingFields,
-              mispellings = mispellings,
-              extraFields = field : extraFields,
-              ..
-            }
-        matchedField : _ ->
-          RecordMatch
-            { missingFields = List.delete matchedField missingFields,
-              mispellings = (field, matchedField) : mispellings,
-              extraFields = extraFields,
-              ..
-            }
+    matchMispellings field RecordMatch {..} = case mispellingsSortedByLikelihood field missingFields of
+      [] ->
+        RecordMatch
+          { missingFields = missingFields,
+            mispellings = mispellings,
+            extraFields = field : extraFields,
+            ..
+          }
+      matchedField : _ ->
+        RecordMatch
+          { missingFields = List.delete matchedField missingFields,
+            mispellings = (field, matchedField) : mispellings,
+            extraFields = extraFields,
+            ..
+          }
 
 mispellingsSortedByLikelihood :: (HasName object Name) => object -> [object] -> [object]
 mispellingsSortedByLikelihood symbol possibilities = do

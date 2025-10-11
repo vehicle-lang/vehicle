@@ -33,6 +33,9 @@ module Vehicle.Data.DSL
     implTypeDoubleLam,
     builtin,
     tHole,
+    boundVar,
+    freeVar,
+    recordAcc,
   )
 where
 
@@ -71,6 +74,12 @@ toDSL e = DSL $ \_p l ->
 
 boundVar :: Lv -> DSLExpr builtin
 boundVar i = DSL $ \p j -> BoundVar p (dbLevelToIndex j i)
+
+freeVar :: Identifier -> DSLExpr builtin
+freeVar i = DSL $ \p _j -> FreeVar p i
+
+recordAcc :: DSLExpr builtin -> Identifier -> FieldName -> DSLExpr builtin
+recordAcc r i f = DSL $ \p j -> RecordAcc p (unDSL r p j) (i, f)
 
 approxPiForm :: Maybe Name -> Visibility -> BinderDisplayForm
 approxPiForm name = \case
