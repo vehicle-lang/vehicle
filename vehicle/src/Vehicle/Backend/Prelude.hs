@@ -61,14 +61,6 @@ instance Read SecondaryTypeSystem where
     _ -> []
 
 --------------------------------------------------------------------------------
--- Different Listable Entities
-
-data ListableEntities
-  = ExternalResources
-  | Properties
-  deriving (Eq, Show, Bounded, Enum)
-
---------------------------------------------------------------------------------
 -- Action
 
 data Target

@@ -35,6 +35,7 @@ import System.FilePath ((</>))
 import System.IO (hPrint, stderr)
 import System.IO.Error (isDoesNotExistError)
 import System.Info (os)
+import Vehicle.Syntax.Prelude (layoutAsText)
 
 --------------------------------------------------------------------------------
 -- Streams
@@ -126,8 +127,8 @@ fatalError message = liftIO $ do
   hPrint stderr message
   exitFailure
 
-programOutput :: (MonadIO m) => Doc a -> m ()
-programOutput message = liftIO $ print message
+programOutput :: (MonadStdIO m) => Doc a -> m ()
+programOutput message = writeStdoutLn $ layoutAsText message
 
 --------------------------------------------------------------------------------
 -- Library utilities

@@ -2,7 +2,6 @@ module Vehicle.Compile.Type.System where
 
 import Data.Hashable (Hashable)
 import Data.Proxy (Proxy)
-import Vehicle.Compile.Context.Free (MonadFreeContext)
 import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
@@ -18,6 +17,7 @@ import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin)
 import Vehicle.Data.Builtin.Standard.Core (Builtin (..))
 import Vehicle.Data.Code.Value (Value)
+import Vehicle.Data.Variable.Free.Context (MonadFreeContext)
 
 -- | The type-checking monad.
 type TCM builtin m =

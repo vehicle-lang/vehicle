@@ -6,7 +6,6 @@ module Vehicle.Data.Builtin.Decidability.Type
 where
 
 import Data.Proxy (Proxy (..))
-import Vehicle.Compile.Context.Free (getDeclType, getFreeEnv)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
@@ -16,6 +15,7 @@ import Vehicle.Data.Builtin.Interface.Type
 import Vehicle.Data.Builtin.Standard (BuiltinConstructor (..), BuiltinFunction (..), BuiltinType (..), DerivedFunction (..))
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.DSL
+import Vehicle.Data.Variable.Free.Context (getDeclType, getFreeEnv)
 import Vehicle.Syntax.Builtin (Builtin (..))
 import Prelude hiding (iterate, pi)
 

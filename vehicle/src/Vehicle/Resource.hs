@@ -74,7 +74,7 @@ data ResourceIntegrityInfo = ResourceIntegrityInfo
     filePath :: FilePath,
     fileHash :: Int
   }
-  deriving (Generic)
+  deriving (Show, Generic)
 
 instance FromJSON ResourceIntegrityInfo
 
@@ -90,7 +90,7 @@ data ResourcesIntegrityInfo = ResourcesIntegrityInfo
     datasetSummaries :: [ResourceIntegrityInfo],
     parameterSummaries :: ParameterValues
   }
-  deriving (Generic)
+  deriving (Show, Generic)
 
 instance FromJSON ResourcesIntegrityInfo
 
@@ -99,7 +99,7 @@ instance ToJSON ResourcesIntegrityInfo
 data ResourceIntegrityError
   = MissingResources (NonEmpty ResourceIntegrityInfo)
   | AlteredResources (NonEmpty ResourceIntegrityInfo)
-  deriving (Generic)
+  deriving (Show, Generic)
 
 instance ToJSON ResourceIntegrityError
 

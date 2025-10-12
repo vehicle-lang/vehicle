@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Vehicle.Data.Builtin.Standard.Normalise
-  (
+  ( foldReduceAndComparison,
   )
 where
 
@@ -11,7 +11,8 @@ import Vehicle.Data.Builtin.Interface.Blocked
 import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.Interface
-import Vehicle.Prelude (GenericArg (..), HasIdentifier (identifierOf))
+import Vehicle.Data.Code.Value
+import Vehicle.Prelude (GenericArg (..), HasIdentifier (identifierOf), implicitIrrelevant)
 
 ---------------------------------------------------------------------------------
 --- Normalisation
@@ -134,3 +135,13 @@ evalVectorToList args@(VectorToListArgs t d xs) =
   return $ case argExpr d of
     INatLiteral n | n == length xs -> mkListExpr (argExpr t) xs
     _ -> mkExpr accessFromVectorToList args
+
+foldReduceAndComparison ::
+  TensorReductionArgs (Value Builtin) ->
+  Maybe (Value Builtin)
+foldReduceAndComparison (TensorOp2Args _ _ tensor) =
+  case getExpr accessCompareRatTensorPointwise tensor of
+    Just (op, TensorOp2Args (argExpr -> ICons _ d ds) xs ys) -> do
+      let compareArgs = TensorReduceComparisonArgs (implicitIrrelevant d) (implicitIrrelevant ds) xs ys
+      Just $ mkExpr accessCompareRatTensorReduced (op, compareArgs)
+    _ -> Nothing

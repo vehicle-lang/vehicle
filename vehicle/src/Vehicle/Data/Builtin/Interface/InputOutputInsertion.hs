@@ -4,7 +4,6 @@ module Vehicle.Data.Builtin.Interface.InputOutputInsertion
 where
 
 import Control.Monad.State (MonadState (..), evalStateT, modify)
-import Vehicle.Compile.Context.Free (getFreeEnv)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core (InstanceConstraintOrigin (..), InstanceTypeRestrictionOrigin (..))
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
@@ -12,6 +11,7 @@ import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Monad
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Interface (BuiltinHasStandardData)
+import Vehicle.Data.Variable.Free.Context (getFreeEnv)
 
 -------------------------------------------------------------------------------
 -- Inserting polarity and linearity constraints to capture function application

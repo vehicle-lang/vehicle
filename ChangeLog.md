@@ -4,6 +4,41 @@
 
 ### Verifier backend
 
+* Improved error messages when trying to verify very dependently-typed properties.
+
+### Python backend
+
+* Fixes the `--json` flag parsing error when using the `verify` command.
+
+### Command-line interface
+
+* The `vehicle-check` command no longer errors when you request a typing subsystem.
+
+* The `vehicle check` command now accepts the `--declaration` argument to only type-check certain declarations.
+
+* The `vehicle list` command now accepts `network`, `dataset` and `parameter` arguments, similar to `vehicle compile` and `vehicle verify`.
+They are not compulsory to pass in, but a more accurate description of the set of properties will be returned if they are.
+
+### Other
+
+* Fixed bug introduced in v0.21 where obsolete `.vclo` object files were incorrectly read in causing unexpected behaviour.
+
+## Version 0.21.0
+
+### Command-line interface
+
+* (BREAKING) The subcommands `properties` and `resources` for `vehicle list` have been removed. The `vehicle list` command now outputs all resources as well as quantified variables as JSON.
+
+### Python backend
+
+* (BREAKING) Removed `vehicle_lang.list_resources` and `vehicle_lang.list_properties`, in favour of the `vehicle_lang.list` function.
+
+* The `verify` command now produces output as JSON.
+
+## Version 0.20.0
+
+### Verifier backend
+
 * Reduced compilation time from O(n^2) to O(1) where n is the size of the input tensor in certain
   cases where different sub-tensors are normalised in different ways (e.g. multi-channel images).
 

@@ -1,0 +1,62 @@
+{
+  "tag": "VerificationStart"
+}
+{
+  "tag": "MultiPropertyStart",
+  "contents": {
+    "propertyName": "safe"
+  }
+}
+{
+  "tag": "PropertyStart",
+  "contents": {
+    "propertyName": "safe",
+    "propertyIndices": [],
+    "numberOfQueries": 2
+  }
+}
+{
+  "tag": "QueryStart",
+  "contents": {
+    "queryID": 1,
+    "propertyName": "safe",
+    "propertyIndices": []
+  }
+}
+{
+  "tag": "QueryFinish",
+  "contents": [
+    {
+      "queryID": 1,
+      "propertyName": "safe",
+      "propertyIndices": []
+    },
+    {
+      "satisfied": true
+    }
+  ]
+}
+{
+  "tag": "PropertyFinish",
+  "contents": [
+    {
+      "propertyName": "safe",
+      "propertyIndices": [],
+      "numberOfQueries": 2
+    },
+    {
+      "verified": false,
+      "erroredQueryID": null,
+      "errorMessage": null
+    }
+  ]
+}
+{
+  "tag": "MultiPropertyFinish",
+  "contents": {
+    "propertyName": "safe"
+  }
+}
+{
+  "tag": "VerificationFinish"
+}

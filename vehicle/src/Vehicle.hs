@@ -87,7 +87,7 @@ withLogger GlobalOptions {logFile, loggingPass, loggingLevel, noWarnings} action
         hSetBuffering logHandle NoBuffering
         runAction (TextIO.hPutStrLn logHandle)
 
-execParserWithArgs :: ParserInfo a -> [String] -> IO a
+execParserWithArgs :: (MonadStdIO m) => ParserInfo a -> [String] -> m a
 execParserWithArgs parserInfo args =
   handleParseResult (execParserPure defaultPrefs parserInfo args)
 
@@ -99,17 +99,17 @@ handleExitCode = return . fromExitCode
     fromExitCode (ExitFailure exitCode) = exitCode
 
 -- Inlining Options.Applicative handleParserResult to enable stdout and stderr to be piped
-handleParseResult :: ParserResult a -> IO a
+handleParseResult :: (MonadStdIO m) => ParserResult a -> m a
 handleParseResult (Success a) = return a
 handleParseResult (Failure failure) = do
-  progn <- getProgName
+  progn <- liftIO getProgName
   let (msg, exit) = renderFailure failure progn
   case exit of
     ExitSuccess -> VIO.programOutput (pretty msg)
     _ -> VIO.fatalError (pretty msg)
-  exitWith exit
+  liftIO $ exitWith exit
 handleParseResult (CompletionInvoked compl) = do
-  progn <- getProgName
-  msg <- execCompletion compl progn
+  progn <- liftIO getProgName
+  msg <- liftIO $ execCompletion compl progn
   VIO.programOutput (pretty msg)
-  exitSuccess
+  liftIO exitSuccess

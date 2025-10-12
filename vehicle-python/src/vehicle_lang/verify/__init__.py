@@ -51,6 +51,8 @@ def verify(
     if cache is not None:
         args.extend(["--cache", str(cache)])
 
+    args.extend(["--json"])
+
     # Call Vehicle
     exc, out, err, log = session.check_output(args)
 

@@ -6,7 +6,6 @@ where
 import Data.Data (Proxy (..))
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertBool)
-import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Normalise.NBE (normaliseInEnv)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
@@ -14,6 +13,7 @@ import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
+import Vehicle.Data.Variable.Free.Context
 import Vehicle.Test.Unit.Common (unitTestCase)
 
 normalisationTests :: TestTree

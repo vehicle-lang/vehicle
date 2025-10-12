@@ -5,7 +5,7 @@ module Vehicle.Verify
   )
 where
 
-import Control.Monad.Trans (MonadIO, liftIO)
+import Control.Monad.IO.Class (MonadIO (..), liftIO)
 import System.Directory (doesFileExist, findExecutable, makeAbsolute)
 import System.FilePath (takeExtension)
 import System.IO.Temp (withSystemTempDirectory)
@@ -15,6 +15,8 @@ import Vehicle.Compile.Prelude (DatasetLocations, NetworkLocations, ParameterVal
 import Vehicle.Prelude
 import Vehicle.Prelude.Logging
 import Vehicle.Verify.Core
+import Vehicle.Verify.Specification.Execute (verifySpecification)
+import Vehicle.Verify.Specification.Execute.Reporting
 import Vehicle.Verify.Specification.IO
 import Vehicle.Verify.Verifier
 
@@ -38,12 +40,12 @@ verify :: (MonadStdIO IO) => LoggingSettings -> OutputAsJSON -> VerifyOptions ->
 verify loggingSettings outputAsJSON options@VerifyOptions {..} = do
   validQueryFolder <- isValidQueryFolder specification
   if validQueryFolder
-    then verifyQueries loggingSettings specification verifierID verifierLocation verifierExtraArgs noSatPrint
+    then verifyQueries loggingSettings outputAsJSON specification verifierID verifierLocation verifierExtraArgs noSatPrint
     else
       if takeExtension specification /= specificationFileExtension
         then fatalError (invalidTargetError specification)
         else compileAndVerifyQueries loggingSettings outputAsJSON options $ \folder ->
-          verifyQueries loggingSettings folder verifierID verifierLocation verifierExtraArgs noSatPrint
+          verifyQueries loggingSettings outputAsJSON folder verifierID verifierLocation verifierExtraArgs noSatPrint
 
 -- | Compiles the specification to a temporary directory and then tries to verify it.
 compileAndVerifyQueries :: (MonadStdIO IO) => LoggingSettings -> OutputAsJSON -> VerifyOptions -> (FilePath -> IO ()) -> IO ()
@@ -68,19 +70,24 @@ compileAndVerifyQueries loggingSettings outputAsJSON VerifyOptions {..} verifyCo
 
     verifyCommand tempDir
 
-verifyQueries :: (MonadStdIO IO) => LoggingSettings -> FilePath -> VerifierID -> Maybe VerifierExecutable -> Maybe String -> Bool -> IO ()
-verifyQueries loggingSettings queryFolder verifierID verifierLocation maybeVerifierExtraArgs noSatOutputs = do
-  -- Create the verification settings
+-- | Verifies queries in either human-readable or JSON streaming mode
+verifyQueries ::
+  (MonadStdIO IO) =>
+  LoggingSettings ->
+  OutputAsJSON ->
+  FilePath ->
+  VerifierID ->
+  Maybe VerifierExecutable ->
+  Maybe String ->
+  Bool ->
+  IO ()
+verifyQueries loggingSettings outputAsJSON queryFolder verifierID verifierLocation maybeVerifierExtraArgs noSatOutputs = do
   let verifier = verifiers verifierID
   verifierExecutable <- locateVerifierExecutable verifier verifierLocation
   let verifierExtraArgs = maybe [] words maybeVerifierExtraArgs
-  let verifierSettings = VerifierSettings verifier verifierExecutable verifierExtraArgs noSatOutputs
-  -- Run verification
-  runLoggerT loggingSettings $ verifySpecification verifierSettings queryFolder
+  let verifierSettings = VerificationSettings verifier verifierExecutable verifierExtraArgs queryFolder noSatOutputs
+  runLoggerT loggingSettings $ verifySpecification outputAsJSON verifierSettings
 
--- | Tries to locate the executable for the verifier at the provided
--- location and falls back to the PATH variable if none provided. If not
--- found then the program will error.
 locateVerifierExecutable ::
   (MonadIO m) =>
   Verifier ->

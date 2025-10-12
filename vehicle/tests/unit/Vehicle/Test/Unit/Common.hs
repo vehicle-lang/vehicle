@@ -13,7 +13,7 @@ import Test.Tasty.Options (IsOption (..), OptionDescription (Option))
 import Text.Read (readMaybe)
 import Vehicle.Compile.Error (CompileError)
 import Vehicle.Compile.Print.Error
-  ( MeaningfulError (details),
+  ( formatCompileError,
     logCompileError,
   )
 import Vehicle.Prelude
@@ -56,5 +56,5 @@ unitTestCase testName errorOrAssertionWithLogs =
               then v
               else trace (showCompileWarnings $ groupWarnings warnings) v
       case result of
-        Left x -> developerError $ pretty $ details x
+        Left x -> developerError $ pretty $ formatCompileError x
         Right y -> y

@@ -7,7 +7,6 @@ where
 import Control.Monad (forM)
 import Data.List.NonEmpty (NonEmpty (..))
 import Vehicle.Compile.Prelude
-import Vehicle.Data.QuantifiedVariable (prettyRationalAsFloat)
 import Vehicle.Prelude.Warning
 import Vehicle.Syntax.Tensor (flattenIndices)
 import Vehicle.Verify.Core

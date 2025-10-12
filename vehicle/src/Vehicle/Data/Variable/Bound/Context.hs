@@ -1,0 +1,56 @@
+module Vehicle.Data.Variable.Bound.Context
+  ( module X,
+    getBoundVarByIx,
+    getBoundVarByLv,
+    unnormalise,
+    piBinderToLamBinder,
+  )
+where
+
+import Data.Proxy (Proxy (..))
+import GHC.Stack (HasCallStack)
+import Vehicle.Compile.Normalise.Quote qualified as Quote (unnormalise)
+import Vehicle.Compile.Prelude
+import Vehicle.Data.Code.Value (Value)
+import Vehicle.Data.Variable.Bound.Context.Class as X
+import Vehicle.Data.Variable.Bound.Context.Core as X
+import Vehicle.Data.Variable.Bound.Context.Instance as X
+
+getBoundVarByIx ::
+  forall expr m.
+  (MonadBoundContext expr m, HasCallStack) =>
+  Proxy expr ->
+  Ix ->
+  m (GenericBinder expr)
+getBoundVarByIx _ ix =
+  lookupIxInBoundCtx ix <$> getBoundCtx (Proxy @expr)
+
+getBoundVarByLv ::
+  forall expr m.
+  (MonadBoundContext expr m, HasCallStack) =>
+  Proxy expr ->
+  Lv ->
+  m (GenericBinder expr)
+getBoundVarByLv _ lv =
+  lookupLvInBoundCtx lv <$> getBoundCtx (Proxy @expr)
+
+unnormalise ::
+  forall expr m.
+  (MonadBoundContext expr m, Show expr) =>
+  Value expr ->
+  m (Expr expr)
+unnormalise e = do
+  lv <- getCurrentLv (Proxy @expr)
+  return $ Quote.unnormalise lv e
+
+piBinderToLamBinder ::
+  (MonadBoundContext (Expr builtin) m) =>
+  Binder builtin ->
+  m (Binder builtin)
+piBinderToLamBinder binder@(Binder p _ v r t) = do
+  binderName <- case nameOf binder of
+    Just name -> return name
+    Nothing -> getFreshName (typeOf binder)
+
+  let displayForm = BinderDisplayForm (OnlyName binderName) True
+  return $ Binder p displayForm v r t

@@ -73,7 +73,7 @@
                         "lowerBounds": [
                           {
                             "relation": "NonStrict",
-                            "linearExpr": {
+                            "expression": {
                               "constantValue": {
                                 "tag": "ConstantTensor",
                                 "contents": [
@@ -100,7 +100,7 @@
                         "lowerBounds": [
                           {
                             "relation": "NonStrict",
-                            "linearExpr": {
+                            "expression": {
                               "constantValue": {
                                 "tag": "ConstantTensor",
                                 "contents": [
@@ -135,7 +135,7 @@
                         "lowerBounds": [
                           {
                             "relation": "NonStrict",
-                            "linearExpr": {
+                            "expression": {
                               "constantValue": {
                                 "tag": "ConstantTensor",
                                 "contents": [

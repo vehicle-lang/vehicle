@@ -50,7 +50,7 @@ parseMarabouOutput output = do
           return $ SAT $ Just ioVarAssignment
 
 parseSATAssignment ::
-  (MonadError VerificationError m) =>
+  (MonadError VerifierError m) =>
   [Text] ->
   m QueryVariableAssignment
 parseSATAssignment output = do
@@ -66,7 +66,7 @@ parseSATAssignment output = do
     _ -> throwError $ VerifierOutputMalformed "Could not find strings 'Input assignment:' and 'Output:'"
 
 parseSATAssignmentLine ::
-  (MonadError VerificationError m) =>
+  (MonadError VerifierError m) =>
   Text ->
   m (QueryVariable, Rational)
 parseSATAssignmentLine txt = do

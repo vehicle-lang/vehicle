@@ -12,8 +12,6 @@ import Data.IntSet qualified as IntSet
 import Data.Maybe (fromMaybe, isJust, isNothing)
 import Data.Proxy (Proxy (..))
 import Prettyprinter (fill)
-import Vehicle.Compile.Context.Bound.Instance
-import Vehicle.Compile.Context.Free.Class (MonadFreeContext)
 import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyExternal, prettyFriendly, prettyVerbose)
@@ -31,6 +29,8 @@ import Vehicle.Compile.Type.Meta.Substitution as MetaSubstitution (MetaSubstitut
 import Vehicle.Data.Builtin.Interface.Normalise (NormalisableBuiltin)
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Interface.Type
+import Vehicle.Data.Variable.Bound.Context.Instance
+import Vehicle.Data.Variable.Free.Context.Class (MonadFreeContext)
 
 --------------------------------------------------------------------------------
 -- Solved meta-state

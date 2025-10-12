@@ -9,17 +9,21 @@ import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import GHC.Generics (Generic)
-import Vehicle.Data.QuantifiedVariable
 import Vehicle.Data.Tensor (HasShape, RatTensor, allTensor, mapTensor, zipWithTensor, pattern ZeroDimTensor)
+import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Prelude
 import Vehicle.Syntax.Tensor (HasShape (..))
 
 -------------------------------------------------------------------------------
 -- Constants
 
+type ScaleConstant constant = Coefficient -> constant -> constant
+
+type AddConstants constant = Coefficient -> Coefficient -> constant -> constant -> constant
+
 class ConstantLike constant where
-  addConstants :: Coefficient -> Coefficient -> constant -> constant -> constant
-  scaleConstant :: Coefficient -> constant -> constant
+  addConstants :: AddConstants constant
+  scaleConstant :: ScaleConstant constant
 
   -- The zero value must be an annihilator for scaling by a coefficient, and the
   -- identity when added.
@@ -94,6 +98,22 @@ linearExprLikeToExpr constantToExpr variableToExpr combineExprs coefficients con
       let constDoc = constantToExpr False constant
       foldr1 combineExprs (varDocs <> [constDoc])
 
+addExprsBase ::
+  (VariableLike variable) =>
+  AddConstants constant ->
+  Coefficient ->
+  Coefficient ->
+  LinearExpr variable constant ->
+  LinearExpr variable constant ->
+  LinearExpr variable constant
+addExprsBase add c1 c2 (Sparse coeff1 const1) (Sparse coeff2 const2) = do
+  -- We should really be able to do this in one operation, but the API isn't flexible enough.
+  let coeff1' = if c1 == 1 then coeff1 else Map.map (c1 *) coeff1
+  let coeff2' = if c2 == 1 then coeff2 else Map.map (c2 *) coeff2
+  let rcoeff = Map.filter (/= 0) (Map.unionWith (+) coeff1' coeff2')
+  let rconst = add c1 c2 const1 const2
+  Sparse rcoeff rconst
+
 addExprs ::
   (VariableLike variable, ConstantLike constant) =>
   Coefficient ->
@@ -101,17 +121,18 @@ addExprs ::
   LinearExpr variable constant ->
   LinearExpr variable constant ->
   LinearExpr variable constant
-addExprs c1 c2 (Sparse coeff1 const1) (Sparse coeff2 const2) = do
-  -- We should really be able to do this in one operation, but the API isn't flexible enough.
-  let coeff1' = if c1 == 1 then coeff1 else Map.map (c1 *) coeff1
-  let coeff2' = if c2 == 1 then coeff2 else Map.map (c2 *) coeff2
-  let rcoeff = Map.filter (/= 0) (Map.unionWith (+) coeff1' coeff2')
-  let rconst = addConstants c1 c2 const1 const2
-  Sparse rcoeff rconst
+addExprs = addExprsBase addConstants
+
+scaleExprBase ::
+  ScaleConstant constant ->
+  Coefficient ->
+  LinearExpr variable constant ->
+  LinearExpr variable constant
+scaleExprBase scale c (Sparse coefficients constant) =
+  Sparse (Map.map (c *) coefficients) (scale c constant)
 
 scaleExpr :: (ConstantLike constant) => Coefficient -> LinearExpr variable constant -> LinearExpr variable constant
-scaleExpr c (Sparse coefficients constant) =
-  Sparse (Map.map (c *) coefficients) (scaleConstant c constant)
+scaleExpr = scaleExprBase scaleConstant
 
 lookupCoefficient :: (VariableLike variable) => LinearExpr variable constant -> variable -> Coefficient
 lookupCoefficient (Sparse coefficients _) v = fromMaybe 0 $ Map.lookup v coefficients
@@ -134,22 +155,30 @@ evaluateExpr expr assignment = do
 -- | Takes an assertion `c_0*x_0 + ... + c_i*x_i + ... c_n * x_n` and
 -- returns (c_i, -(c_0/c_i)*x_0 ... - (c_n/c_i) * x_n), i.e.
 -- the expression is the expression equal to `x_i`.
-rearrangeExprToSolveFor ::
-  (VariableLike variable, ConstantLike constant) =>
+rearrangeExprToSolveForBase ::
+  (VariableLike variable) =>
+  ScaleConstant constant ->
   variable ->
   LinearExpr variable constant ->
   (Coefficient, LinearExpr variable constant)
-rearrangeExprToSolveFor var expr = do
+rearrangeExprToSolveForBase scale var expr = do
   let c = lookupCoefficient expr var
   if c == 0
     then (0, expr)
     else do
-      let scaledExpr = scaleExpr (-(1 / c)) expr
+      let scaledExpr = scaleExprBase scale (-(1 / c)) expr
       ( c,
         scaledExpr
           { coefficients = Map.delete var $ coefficients scaledExpr
           }
         )
+
+rearrangeExprToSolveFor ::
+  (VariableLike variable, ConstantLike constant) =>
+  variable ->
+  LinearExpr variable constant ->
+  (Coefficient, LinearExpr variable constant)
+rearrangeExprToSolveFor = rearrangeExprToSolveForBase scaleConstant
 
 eliminateVars ::
   forall variable constant.
@@ -178,7 +207,6 @@ linearExprVariables linearExpr = Map.keysSet $ coefficients linearExpr
 
 prettyLinearExpr ::
   forall variable constant a.
-  (ConstantLike constant) =>
   (variable -> Doc a) ->
   (constant -> Doc a) ->
   LinearExpr variable constant ->
@@ -188,7 +216,6 @@ prettyLinearExpr prettyVar prettyConst (Sparse coefficients constant) =
 
 prettyLinearExprLike ::
   forall variable constant a.
-  (ConstantLike constant) =>
   (variable -> Doc a) ->
   (constant -> Doc a) ->
   [(variable, Coefficient)] ->
@@ -199,8 +226,7 @@ prettyLinearExprLike prettyVar prettyConst =
   where
     prettyConstant :: Bool -> constant -> Doc a
     prettyConstant isFirst value
-      | isZero value && not isFirst = ""
-      | isZero value = prettyConst value
+      | isFirst = prettyConst value
       | otherwise = " + " <> prettyConst value
 
     prettyVarCoeff :: Bool -> (variable, Coefficient) -> Doc a

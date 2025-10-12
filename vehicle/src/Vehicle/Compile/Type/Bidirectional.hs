@@ -11,8 +11,6 @@ import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Data.Data (Proxy (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Maybe (fromMaybe)
-import Vehicle.Compile.Context.Bound
-import Vehicle.Compile.Context.Free.Class
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE (normaliseInEnv)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
@@ -29,6 +27,8 @@ import Vehicle.Compile.Type.System (HasTypeSystem (..), TCM)
 import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin (..))
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Universe (UniverseLevel (..))
+import Vehicle.Data.Variable.Bound.Context
+import Vehicle.Data.Variable.Free.Context.Class
 import Prelude hiding (pi)
 
 --------------------------------------------------------------------------------

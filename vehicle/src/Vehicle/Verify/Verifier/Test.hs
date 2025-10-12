@@ -43,7 +43,7 @@ parseTestVerifierOutput output = do
       | otherwise -> SAT . Just <$> parseSATAssignment ls
 
 parseSATAssignment ::
-  (MonadError VerificationError m, MonadLogger m) =>
+  (MonadError VerifierError m, MonadLogger m) =>
   [Text] ->
   m QueryVariableAssignment
 parseSATAssignment ls = do
@@ -51,7 +51,7 @@ parseSATAssignment ls = do
   return $ QueryVariableAssignment $ Map.fromList values
 
 parseSATAssignmentLine ::
-  (MonadError VerificationError m) =>
+  (MonadError VerifierError m) =>
   Text ->
   m (QueryVariable, Rational)
 parseSATAssignmentLine txt = do

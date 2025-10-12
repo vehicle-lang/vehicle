@@ -1,7 +1,7 @@
 module Vehicle.Verify.Verifier
   ( VerifierID (..),
     Verifier (..),
-    VerificationError (..),
+    VerifierError (..),
     VerificationErrorAction (..),
     verifiers,
     marabouVerifier,

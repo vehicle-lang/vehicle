@@ -142,6 +142,11 @@ instance Pretty ParameterSort where
     Inferable -> "(infer=True)"
     NonInferable -> ""
 
+isInferable :: ParameterSort -> Bool
+isInferable = \case
+  Inferable -> True
+  NonInferable -> False
+
 data DefAbstractSort
   = NetworkDef
   | DatasetDef

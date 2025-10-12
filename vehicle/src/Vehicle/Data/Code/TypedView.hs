@@ -23,22 +23,24 @@ module Vehicle.Data.Code.TypedView
     toDimensionsValue,
     fromDimensionsValue,
     evalCompareRatTensor,
+    etaReduceTensor,
   )
 where
 
 import GHC.Stack (HasCallStack)
-import Vehicle.Compile.Context.Free (MonadFreeContext)
-import Vehicle.Compile.Context.Name
-import Vehicle.Compile.Normalise.NBE (normaliseBuiltin)
+import Vehicle.Compile.Normalise.NBE (normaliseApp, normaliseBuiltin, normaliseInEnv)
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Data.Builtin.Interface (Accessor (..))
-import Vehicle.Data.Builtin.Interface.Normalise (EvalSimple, MonadNormBuiltin, evalCompareRatTensorPointwise)
+import Vehicle.Data.Builtin.Interface.Normalise (EvalSimple, MonadNormBuiltin, evalAtTensor, evalCompareRatTensorPointwise)
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Builtin.Standard.Normalise ()
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
-import Vehicle.Data.DeBruijn
 import Vehicle.Data.Tensor (Tensor, pattern ZeroDimTensor)
+import Vehicle.Data.Variable.Bound.Context (NamedBoundCtx)
+import Vehicle.Data.Variable.Bound.Context.Name
+import Vehicle.Data.Variable.Bound.Level
+import Vehicle.Data.Variable.Free.Context (MonadFreeContext)
 import Vehicle.Prelude
 
 -------------------------------------------------------------------------------
@@ -174,7 +176,7 @@ toBoolValue expr = case expr of
   (getExpr accessCompareRatTensorReduced -> Just args) -> fromComparison $ Right args
   (getExpr accessCompareNat -> Just args) -> VCompareNat args
   (getExpr accessCompareIndex -> Just args) -> VCompareIndex args
-  (getExpr accessQuantifyRatTensor -> Just (op, dims, VLam binder closure)) -> VQuantifyRatTensor op dims binder closure
+  (getExpr accessQuantifyRatTensor -> Just (q, QuantifyRatTensorArgs dims (VLam binder closure))) -> VQuantifyRatTensor q dims binder closure
   (getExpr accessReduceAnd -> Just args) -> VReduceAndTensor args
   (getExpr accessReduceOr -> Just args) -> VReduceOrTensor args
   (getExpr accessAtTensor -> Just args) -> VBoolAt args
@@ -190,7 +192,7 @@ fromBoolValue = \case
   VCompareNat args -> mkExpr accessCompareNat args
   VCompareIndex args -> mkExpr accessCompareIndex args
   VCompareRatTensor args -> toComparison args
-  VQuantifyRatTensor q dims binder closure -> mkExpr accessQuantifyRatTensor (q, dims, VLam binder closure)
+  VQuantifyRatTensor q dims binder closure -> mkExpr accessQuantifyRatTensor (q, QuantifyRatTensorArgs dims (VLam binder closure))
   VReduceAndTensor args -> mkExpr accessReduceAnd args
   VReduceOrTensor args -> mkExpr accessReduceOr args
   VBoolIf args -> mkExpr accessIf args
@@ -275,7 +277,7 @@ toBoolTensorValue expr = case expr of
   (getExpr accessCompareRatTensorReduced -> Just args) -> VBoolTensorCompareRatReduced args
   (getExpr accessCompareNat -> Just args) -> VBoolTensorCompareNat args
   (getExpr accessCompareIndex -> Just args) -> VBoolTensorCompareIndex args
-  (getExpr accessQuantifyRatTensor -> Just (op, dims, VLam binder closure)) -> VBoolTensorQuantifyRat op dims binder closure
+  (getExpr accessQuantifyRatTensor -> Just (q, QuantifyRatTensorArgs dims (VLam binder closure))) -> VBoolTensorQuantifyRat q dims binder closure
   (getExpr accessReduceAnd -> Just args) -> VBoolTensorReduceAnd args
   (getExpr accessReduceOr -> Just args) -> VBoolTensorReduceOr args
   (getExpr accessAtTensor -> Just args) -> VBoolTensorAt args
@@ -295,7 +297,7 @@ fromBoolTensorValue = \case
   VBoolTensorCompareIndex args -> mkExpr accessCompareIndex args
   VBoolTensorCompareRatPointwise args -> mkExpr accessCompareRatTensorPointwise args
   VBoolTensorCompareRatReduced args -> mkExpr accessCompareRatTensorReduced args
-  VBoolTensorQuantifyRat q dims binder closure -> mkExpr accessQuantifyRatTensor (q, dims, VLam binder closure)
+  VBoolTensorQuantifyRat q dims binder closure -> mkExpr accessQuantifyRatTensor (q, QuantifyRatTensorArgs dims (VLam binder closure))
   VBoolTensorReduceAnd args -> mkExpr accessReduceAnd args
   VBoolTensorReduceOr args -> mkExpr accessReduceOr args
   VBoolTensorBoolIf args -> mkExpr accessIf args
@@ -441,3 +443,27 @@ fromDimensionsValue e = case e of
   VDimsNil -> mkExpr accessNil (implicit INatType)
   VDimsCons x xs -> mkExpr accessCons (implicit INatType, x, xs)
   VDimsIf args -> mkExpr accessIf args
+
+-------------------------------------------------------------------------------
+-- Utilities
+
+-- | Reduces a tensor value `x` to `[x!0, x!1, ..., x!n]`
+etaReduceTensor ::
+  (MonadNormBuiltin m, MonadFreeContext Builtin m) =>
+  NamedBoundCtx ->
+  VType Builtin ->
+  Int ->
+  Value Builtin ->
+  Value Builtin ->
+  m [Value Builtin]
+etaReduceTensor ctx typ dim dims tensor = do
+  let mkAtArgs i =
+        AtTensorArgs
+          { atType = implicit typ,
+            atFirstDim = implicitIrrelevant $ INatLiteral dim,
+            atRemainingDims = implicitIrrelevant dims,
+            atTensor = tensor,
+            atIndex = IIndexLiteral i
+          }
+  let mkAt i = evalAtTensor ctx normaliseApp normaliseInEnv (mkAtArgs i)
+  traverse mkAt [0 .. (dim - 1)]

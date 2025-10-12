@@ -8,12 +8,11 @@ import Control.Monad.Except (MonadError (..))
 import Data.Either (partitionEithers)
 import Data.Hashable (Hashable)
 import Data.Proxy (Proxy (..))
-import Vehicle.Compile.Context.Free (getFreeEnv)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE (normaliseInEnv)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyExternal)
-import Vehicle.Compile.Print.Error (MeaningfulError (..))
+import Vehicle.Compile.Print.Error (formatCompileError)
 import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Constraint.UnificationSolver (runUnificationSolver)
 import Vehicle.Compile.Type.Core
@@ -23,7 +22,8 @@ import Vehicle.Compile.Type.Monad.Class
   )
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Code.Value
-import Vehicle.Data.DeBruijn (dbLevelToIndex)
+import Vehicle.Data.Variable.Bound.Level (dbLevelToIndex)
+import Vehicle.Data.Variable.Free.Context (getFreeEnv)
 
 --------------------------------------------------------------------------------
 -- Public interface
@@ -174,9 +174,10 @@ checkCandidate constraint goal depth candidate = do
         else runInstanceSolver proxy (depth - 1)
     case result of
       Left err -> do
+        let vehicleError = formatCompileError err
         logDebug MaxDetail $ line <> "Rejecting" <+> candidateDoc <+> "as a possibility"
-        logDebug MaxDetail $ indent 2 (pretty (details err)) <> line
-        return $ Left (candidate, extractCandidateError err)
+        logDebug MaxDetail $ indent 2 (pretty vehicleError) <> line
+        return $ Left (candidate, problem vehicleError)
       Right (_, state) -> do
         logDebug MaxDetail $ "Keeping" <+> candidateDoc <+> "as a possibility" <> line
         return $ Right (candidate, state)
@@ -254,8 +255,3 @@ instantiateCandidateTelescope goalCtxExtension (constraintCtx, constraintOrigin)
 prettyCandidate :: (PrintableBuiltin builtin) => WithContext (InstanceCandidate builtin) -> Doc a
 prettyCandidate (WithContext candidate ctx) =
   prettyExternal (WithContext (candidateExpr candidate) (toNamedBoundCtx ctx))
-
-extractCandidateError :: CompileError -> UnAnnDoc
-extractCandidateError err = case details err of
-  UError e -> problem e
-  _ -> developerError "Unexpected error type when extracting error for instances"

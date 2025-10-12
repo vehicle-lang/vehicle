@@ -1,0 +1,85 @@
+[
+  {
+    "tag": "Network",
+    "contents": {
+      "sharedData": {
+        "typeText": "Tensor Real [28, 28] -> Tensor Real [10]",
+        "provenance": {
+          "tag": "Provenance",
+          "contents": [
+            22,
+            1,
+            22,
+            11
+          ]
+        },
+        "name": "classifier"
+      }
+    }
+  },
+  {
+    "tag": "Property",
+    "contents": {
+      "subcomponents": {
+        "tag": "MultiProperty",
+        "contents": [
+          {
+            "tag": "SingleProperty",
+            "contents": [
+              {
+                "sharedData": {
+                  "typeText": "Tensor Real [28, 28]",
+                  "provenance": {
+                    "tag": "Provenance",
+                    "contents": [
+                      49,
+                      35,
+                      49,
+                      47
+                    ]
+                  },
+                  "name": "perturbation"
+                },
+                "quantifier": "Forall"
+              }
+            ]
+          },
+          {
+            "tag": "SingleProperty",
+            "contents": [
+              {
+                "sharedData": {
+                  "typeText": "Tensor Real [28, 28]",
+                  "provenance": {
+                    "tag": "Provenance",
+                    "contents": [
+                      49,
+                      35,
+                      49,
+                      47
+                    ]
+                  },
+                  "name": "perturbation"
+                },
+                "quantifier": "Forall"
+              }
+            ]
+          }
+        ]
+      },
+      "sharedData": {
+        "typeText": "Vector Bool 2",
+        "provenance": {
+          "tag": "Provenance",
+          "contents": [
+            92,
+            1,
+            92,
+            7
+          ]
+        },
+        "name": "robust"
+      }
+    }
+  }
+]

@@ -3,7 +3,6 @@
 module Vehicle.Data.Builtin.Standard.Type () where
 
 import Data.Proxy (Proxy (..))
-import Vehicle.Compile.Context.Free (MonadFreeContext, getDeclType, getFreeEnv)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Bidirectional (createFreshUnificationConstraint)
 import Vehicle.Compile.Type.Constraint.InstanceDefaultSolver
@@ -18,6 +17,7 @@ import Vehicle.Data.Builtin.Standard.IndexSolver
 import Vehicle.Data.Builtin.Standard.Normalise ()
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.DSL
+import Vehicle.Data.Variable.Free.Context (MonadFreeContext, getDeclType, getFreeEnv)
 import Prelude hiding (iterate, pi)
 
 --------------------------------------------------------------------------------

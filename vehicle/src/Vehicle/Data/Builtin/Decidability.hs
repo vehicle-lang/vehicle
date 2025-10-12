@@ -6,11 +6,10 @@ where
 
 import Data.Hashable (Hashable)
 import GHC.Generics (Generic)
-import Vehicle.Compile.Normalise.NBE (NormalisableBuiltin)
 import Vehicle.Compile.Prelude (Expr (..), normAppList)
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Interface.Blocked
-import Vehicle.Data.Builtin.Interface.Normalise (EvalScheme (..), MonadNormBuiltin, NormalisableBuiltin (..), evalFoldList, evalIterate, forceEvalSimpleBuiltin)
+import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Standard (Builtin, BuiltinConstructor (..), BuiltinFunction (..), BuiltinType (..), DerivedFunction)
 import Vehicle.Data.Code.DSL (tDim, tDims)

@@ -44,7 +44,7 @@ newtype QueryVariableAssignment
 -- | The type of methods that parse the output of the verifier.
 type ParseVerifierOutput =
   forall m.
-  (MonadError VerificationError m, MonadLogger m) =>
+  (MonadError VerifierError m, MonadLogger m) =>
   String ->
   m (QueryResult QueryVariableAssignment)
 
@@ -72,27 +72,8 @@ data VerificationErrorAction = VerificationErrorAction
     verificationErrorMessage :: Doc ()
   }
 
-convertVerificationError :: Verifier -> QueryAddress -> VerificationError -> VerificationErrorAction
+convertVerificationError :: Verifier -> QueryAddress -> VerifierError -> VerificationErrorAction
 convertVerificationError Verifier {..} (propertyAddress, queryID) = \case
-  UnsupportedMultipleNetworks metaNetworkEntries ->
-    VerificationErrorAction
-      { reproducerIsUseful = False,
-        verificationErrorMessage = do
-          let networkNames = fmap (\(n, _, _) -> n) metaNetworkEntries
-          let duplicateNetworkNames = findDuplicates networkNames
-          "The"
-            <+> verifierDoc
-            <+> "currently doesn't support properties that involve"
-            <+> if null duplicateNetworkNames
-              then
-                "multiple networks. This property involves:"
-                  <> line
-                  <> indent 2 (vsep $ fmap (\n -> "the network" <+> squotes (pretty n)) networkNames)
-              else
-                "multiple applications of the same network. This property applies:"
-                  <> line
-                  <> indent 2 (vsep $ fmap (\(n, v) -> "the network" <+> squotes (pretty n) <+> pretty v <+> "times") duplicateNetworkNames)
-      }
   VerifierError errorMessage ->
     VerificationErrorAction
       { reproducerIsUseful = True,

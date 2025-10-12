@@ -36,12 +36,13 @@ import Data.Map (Map)
 import Data.Map.Ordered (OMap)
 import Data.Maybe (fromMaybe)
 import GHC.Generics
-import Vehicle.Compile.Context.Bound.Core
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Code.Expr (Expr)
 import Vehicle.Data.Code.Interface
-import Vehicle.Data.DeBruijn
 import Vehicle.Data.Universe (UniverseLevel)
+import Vehicle.Data.Variable.Bound.Context.Core
+import Vehicle.Data.Variable.Bound.Index (Ix)
+import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Prelude
 
 -----------------------------------------------------------------------------

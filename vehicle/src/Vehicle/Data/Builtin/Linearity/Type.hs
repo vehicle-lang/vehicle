@@ -6,7 +6,6 @@ module Vehicle.Data.Builtin.Linearity.Type
   )
 where
 
-import Vehicle.Compile.Context.Free (getFreeEnv)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Bidirectional (createFreshUnificationConstraint)
 import Vehicle.Compile.Type.Core
@@ -20,6 +19,7 @@ import Vehicle.Data.Builtin.Linearity.Solver
 import Vehicle.Data.Builtin.Standard (Builtin (..))
 import Vehicle.Data.Code.DSL (iterate)
 import Vehicle.Data.DSL
+import Vehicle.Data.Variable.Free.Context (getFreeEnv)
 import Prelude hiding (iterate)
 
 --------------------------------------------------------------------------------

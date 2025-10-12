@@ -5,13 +5,8 @@
     "needs": ["spec.vcl"]
   },
   {
-    "name": "ListResources",
-    "run": "vehicle list resources -s spec.vcl -j",
-    "needs": ["spec.vcl"]
-  },
-  {
-    "name": "ListProperties",
-    "run": "vehicle list properties -s spec.vcl -j",
+    "name": "List",
+    "run": "vehicle list -s spec.vcl -j",
     "needs": ["spec.vcl"]
   },
   {

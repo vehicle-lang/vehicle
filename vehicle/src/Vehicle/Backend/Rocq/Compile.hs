@@ -15,8 +15,6 @@ import Data.Text qualified as Text
 import Data.Text.Internal.Read qualified as Text.Read
 import GHC.Real (denominator, numerator)
 import Prettyprinter hiding (hcat, hsep, vcat, vsep)
-import Vehicle.Compile.Context.Bound (getNamedBoundCtx)
-import Vehicle.Compile.Context.Name (MonadNameContext, addNameToContext, ixToProperName, runFreshNameContextT)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude hiding (Module)
 import Vehicle.Compile.Print
@@ -26,6 +24,8 @@ import Vehicle.Data.Builtin.Standard hiding (TensorType)
 import Vehicle.Data.Code.Expr ()
 import Vehicle.Data.Code.Interface (IsArgs (..), VecLitArgs (..))
 import Vehicle.Data.Universe (UniverseLevel (..))
+import Vehicle.Data.Variable.Bound.Context (getNamedBoundCtx)
+import Vehicle.Data.Variable.Bound.Context.Name (MonadNameContext, addNameToContext, ixToProperName, runFreshNameContextT)
 import Vehicle.Syntax.Builtin
 import Vehicle.Syntax.Sugar
   ( BinderType (..),

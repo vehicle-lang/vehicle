@@ -429,6 +429,21 @@ instance IsArgs NetworkAppArgs where
         mkExpr = \(NetworkAppArgs xs) -> [explicit xs]
       }
 
+-- | Arguments for `QuantifyRatTenosr`
+data QuantifyRatTensorArgs expr = QuantifyRatTensorArgs
+  { quantifyDimensions :: GenericArg expr,
+    quantifyFn :: expr
+  }
+
+instance IsArgs QuantifyRatTensorArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          [ds, fn] -> Just (QuantifyRatTensorArgs ds (argExpr fn))
+          _ -> Nothing,
+        mkExpr = \(QuantifyRatTensorArgs ds fn) -> [ds, explicit fn]
+      }
+
 type TensorReductionArgs = TensorOp2Args
 
 type NatComparisonAccessor expr op = Accessor expr (op, Op2Args expr)
@@ -546,13 +561,13 @@ accessCompareRatTensorPointwise = accessOpAndArgs accessCompareRatTensorPointwis
 accessCompareRatTensorReduced :: (HasBoolExpr expr builtin) => RatTensorReducedComparisonAccessor (expr builtin) ComparisonOp
 accessCompareRatTensorReduced = accessOpAndArgs accessCompareRatTensorReducedBuiltin
 
-accessQuantifyRatTensor :: (HasBoolExpr expr builtin) => Accessor (expr builtin) (Quantifier, GenericArg (expr builtin), expr builtin)
+accessQuantifyRatTensor :: (HasBoolExpr expr builtin) => Accessor (expr builtin) (Quantifier, QuantifyRatTensorArgs (expr builtin))
 accessQuantifyRatTensor =
   Access
     { getExpr = \case
-        (getBuiltin accessQuantifyRatTensorBuiltin -> Just (q, [ds, fn])) -> Just (q, ds, argExpr fn)
+        (getBuiltin accessQuantifyRatTensorBuiltin -> Just (q, [ds, fn])) -> Just (q, QuantifyRatTensorArgs ds (argExpr fn))
         _ -> Nothing,
-      mkExpr = \(q, ds, fn) -> mkBuiltin accessQuantifyRatTensorBuiltin q [ds, explicit fn]
+      mkExpr = \(q, QuantifyRatTensorArgs ds fn) -> mkBuiltin accessQuantifyRatTensorBuiltin q [ds, explicit fn]
     }
 
 pattern IBoolType :: (HasBuiltinConstructor expr, BuiltinHasBoolLiterals builtin) => expr builtin

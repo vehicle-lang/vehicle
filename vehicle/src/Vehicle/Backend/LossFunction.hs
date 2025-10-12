@@ -8,8 +8,6 @@ import Data.Proxy (Proxy (..))
 import Vehicle.Backend.LossFunction.Core (CompiledDifferentiableLogic)
 import Vehicle.Backend.LossFunction.LossCompilation (runMonadLogicT)
 import Vehicle.Backend.LossFunction.LossCompilation qualified as Loss (convertValue)
-import Vehicle.Compile.Context.Free (MonadFreeContext, addDeclEntryToContext, runFreshFreeContextT)
-import Vehicle.Compile.Context.Name (MonadNameContext, runFreshNameContextT)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE (normaliseInEmptyEnv)
 import Vehicle.Compile.Normalise.Quote (unnormalise)
@@ -17,6 +15,8 @@ import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Loss (LossBuiltin)
 import Vehicle.Data.Builtin.Standard.Normalise ()
+import Vehicle.Data.Variable.Bound.Context.Name (MonadNameContext, runFreshNameContextT)
+import Vehicle.Data.Variable.Free.Context (MonadFreeContext, addDeclEntryToContext, runFreshFreeContextT)
 
 convertToLossTensors ::
   (MonadCompile m) =>

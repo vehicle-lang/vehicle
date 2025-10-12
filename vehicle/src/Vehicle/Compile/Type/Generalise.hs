@@ -13,7 +13,6 @@ import Data.Graph (graphFromEdges, topSort)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (fromMaybe, isNothing)
 import Data.Text qualified as Text
-import Vehicle.Compile.Context.Bound
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.Quote qualified as Quote
 import Vehicle.Compile.Prelude
