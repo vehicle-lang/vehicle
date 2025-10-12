@@ -98,6 +98,57 @@ lemma initialState_safe:
   unfolding sensorReadingNotOffRoad_def
   by simp
 
+lemma InputVector_tensor_rewrite1[simp]: "(Rep_tensor (Rep_InputVector (Abs_InputVector (Abs_tensor ([2],[x1,x2]))))) =  ([2],[x1,x2])"
+proof -
+  have "Rep_InputVector (Abs_InputVector (Abs_tensor ([2], [x1, x2])))
+          = Abs_tensor ([2], [x1, x2])"
+    using Abs_InputVector_inverse[of "Abs_tensor ([2], [x1, x2])"]
+    unfolding dims_def
+    by (simp add: Abs_tensor_inverse)
+  moreover have "Rep_tensor (Abs_tensor ([2], [x1, x2])) = ([2], [x1, x2])"
+    by (simp add: Abs_tensor_inverse)
+  ultimately show ?thesis by simp
+qed
+
+lemma OutputVector_tensor_rewrite1[simp]:
+  "(Rep_tensor (Rep_OutputVector (Abs_OutputVector (Abs_tensor ([1],[x1]))))) =  ([1],[x1])"
+proof -
+  (*assume "dims (Rep_OutputVector (Abs_OutputVector (Abs_tensor ([1], [x1])))) =
+    [1]"*)
+  have "Rep_OutputVector (Abs_OutputVector (Abs_tensor ([1], [x1])))
+          = Abs_tensor ([1], [x1])"
+    using Abs_OutputVector_inverse[of "Abs_tensor ([1], [x1])"]
+    unfolding dims_def
+    by (simp add: Abs_tensor_inverse)
+  moreover have "Rep_tensor (Abs_tensor ([1], [x1])) = ([1], [x1])"
+    by (simp add: Abs_tensor_inverse)
+  ultimately show "(Rep_tensor (Rep_OutputVector (Abs_OutputVector (Abs_tensor ([1],[x1]))))) =  ([1],[x1])"
+    by simp
+qed
+
+lemma InputVector_tensor_rewrite2[simp]: "(Rep_tensor (Rep_InputVector (Abs_InputVector (Abs_tensor ([Suc (Suc 0)],[x1,x2]))))) =  ([Suc (Suc 0)],[x1,x2])"
+  using InputVector_tensor_rewrite1 numeral_2_eq_2
+  by auto
+
+lemma OutputVector_tensor_rewrite2[simp]:
+  "(Rep_tensor (Rep_OutputVector (Abs_OutputVector (Abs_tensor ([Suc 0],[x1]))))) =  ([Suc 0],[x1])"
+  using OutputVector_tensor_rewrite1 One_nat_def by presburger
+
+
+lemma tensor_plus_dim:
+  assumes "dims x = dims y"
+  shows "dims (tensor_plus x y) = dims x"
+  unfolding tensor_plus_def
+  unfolding dims_def
+  unfolding plus_def
+  using assms
+  apply simp
+  unfolding plus_base_def
+  unfolding tensor_from_vec_def
+  using Rep_tensor[of x] Rep_tensor[of y]
+  unfolding vec_plus_def vec_def
+  using Abs_tensor_inverse[of "(dims x, map2 (+) (snd (Rep_tensor x)) (snd (Rep_tensor y)))"]
+  by (simp add: dims_def)
 
 
 lemma controller_lem:
@@ -108,13 +159,21 @@ lemma controller_lem:
 proof -
   define X where "X = Abs_InputVector (tensor_from_vec [2] [x,y])"
   have "forallIndex 2
-       (\<lambda>i. leqTensorReduced (- 1 \<cdot> tensor_from_vec [1] [13 / 4]) (subtensor_lookup (Rep_InputVector X) i) \<and>
-             leqTensorReduced (subtensor_lookup (Rep_InputVector X) i) (tensor_from_vec [1] [13 / 4]))"
+         (\<lambda>i. leqTensorReduced
+                (Rep_FlexTensor
+                  (tensor_cdot (- 1)
+                    (Rep_FlexTensor (flextensor_from_vec [] [13 / 4]))))
+                (subtensor (Rep_InputVector X) i) \<and>
+               leqTensorReduced (subtensor (Rep_InputVector X) i)
+                (Rep_FlexTensor (flextensor_from_vec [] [13 / 4])))"
     using assms
     unfolding forallIndex_def foreach_def upt_def X_def
     apply simp
     unfolding tensor_from_lookup_def tensor_vec_from_lookup.simps
-    apply (simp add: lookup_def lookup_base.simps fixed_length_sublist_def Abs_InputVector_inverse)
+    apply (simp add: tensor_ops tensor_0dim_arithmetic)
+    apply (simp add: tensor_from_lookup_def tensor_vec_from_lookup.simps upt_def tensor_ops)
+    apply (simp add: tensor_arithmetic tensor_ops lookup_def lookup_base.simps)
+    apply (simp add: subtensor_combine_def tensor_ops)
     by linarith
   then have outputSafe: "safeOutput controller X"
     using safe
@@ -125,27 +184,61 @@ proof -
   have dimFact: "order (Rep_OutputVector (controller (normalise controller (Abs_InputVector (tensor_from_vec [2] [x, y]))))) = 1"
     using Rep_OutputVector by force
 
+  have dimFact2: "\<And> x. (fst (Rep_tensor (Rep_InputVector x))) = [2]"
+    using Rep_InputVector
+    unfolding dims_def
+    by force
+
+  have dimsFact3: "\<And> x . (dims (subtensor (Rep_InputVector x) currentSensor)) = []"
+    unfolding dims_def subtensor_def tensor_from_vec_def
+    unfolding fixed_length_sublist_def vec_def currentSensor_def prod_list_def
+    apply (simp add: dimFact2)
+    using Abs_tensor_inverse dimFact2
+    by (smt (verit, ccfv_threshold) One_nat_def Rep_tensor Suc_1 Zero_neq_Suc length_Cons list.size(3) mem_Collect_eq mult.right_neutral prod_list.Cons prod_list.Nil prod_list_def split_pairs take0 take_Suc)
+
+  have dimsFact4: "\<And> x . (dims (subtensor (Rep_InputVector x) previousSensor)) = []"
+    unfolding dims_def subtensor_def tensor_from_vec_def
+    unfolding fixed_length_sublist_def vec_def previousSensor_def prod_list_def
+    apply (simp add: dimFact2)
+    using Abs_tensor_inverse dimFact2
+    by (smt (verit, ccfv_SIG) One_nat_def Rep_tensor Suc_1 diff_Suc_Suc diff_zero length_Cons length_drop length_take list.size(3) mem_Collect_eq numeral_1_eq_Suc_0 numeral_Bit0_eq_double prod_list.Cons prod_list.Nil prod_list_def split_pairs take_Suc_Cons take_eq_Nil)
+
+  have dimsFact5: "\<And> x .(fst (Rep_tensor (Rep_OutputVector x))) = [1]"
+    using Rep_OutputVector
+    unfolding dims_def
+    by blast
+
+  obtain vel where vel_def: "
+      (controller
+      (normalise controller (Abs_InputVector (Abs_tensor ([2], [x, y]))))) =
+      (Abs_OutputVector (Abs_tensor ([1], [vel])))"
+    using Rep_OutputVector[of "(controller
+      (normalise controller (Abs_InputVector (Abs_tensor ([2], [x, y])))))"]
+    using Rep_tensor[of "Rep_OutputVector (controller
+      (normalise controller (Abs_InputVector (Abs_tensor ([2], [x, y])))))"]
+    apply simp
+    by (smt (verit, best) One_nat_def Rep_OutputVector_inverse Rep_tensor_inverse dimsFact5 length_0_conv length_Suc_conv mult.right_neutral prod.collapse prod_list.Cons prod_list.Nil)
+
   have fact1: "(controllerFun x y + 2 * x - y) < roadWidth - maxWindShift - 3 * maxSensorError"  
     using outputSafe
-    unfolding safeOutput_def Let_def
-    unfolding controllerFun_def X_def
-    unfolding roadWidth_def maxWindShift_def maxSensorError_def
-    unfolding subtensor_lookup_def
-    using dimFact
-    unfolding WindControllerSpec.velocity_def currentSensor_def previousSensor_def
-    apply (simp add: lookup_def lookup_base.simps fixed_length_sublist_def Abs_InputVector_inverse)
-    by (simp add: tensor_from_lookup_def tensor_vec_from_lookup.simps fixed_length_sublist_def vec_plus_def)
+    unfolding safeOutput_def Let_def X_def
+    unfolding controllerFun_def
+    apply (simp add: Let_def tensor_ops vel_def)
+    unfolding currentSensor_def previousSensor_def
+    unfolding WindControllerSpec.velocity_def
+    apply (simp add: dimFact dimFact2 dimsFact3 dimsFact4 dimsFact5 tensor_ops tensor_0dim_arithmetic)
+    by (simp add: tensor_from_lookup_def tensor_vec_from_lookup.simps tensor_ops lookup_def lookup_base.simps)
+    
 
   then have fact2: "(controllerFun x y + 2 * x - y) > -(roadWidth - maxWindShift - 3 * maxSensorError)"
     using outputSafe
-    unfolding safeOutput_def Let_def
-    unfolding controllerFun_def X_def
-    unfolding roadWidth_def maxWindShift_def maxSensorError_def
-    unfolding subtensor_lookup_def
-    using dimFact
-    unfolding WindControllerSpec.velocity_def currentSensor_def previousSensor_def
-    apply (simp add: lookup_def lookup_base.simps fixed_length_sublist_def Abs_InputVector_inverse)
-    by (simp add: tensor_from_lookup_def tensor_vec_from_lookup.simps fixed_length_sublist_def vec_plus_def)
+    unfolding safeOutput_def Let_def X_def
+    unfolding controllerFun_def
+    apply (simp add: Let_def tensor_ops vel_def)
+    unfolding currentSensor_def previousSensor_def
+    unfolding WindControllerSpec.velocity_def
+    apply (simp add: dimFact dimFact2 dimsFact3 dimsFact4 dimsFact5 tensor_ops tensor_0dim_arithmetic)
+    by (simp add: tensor_from_lookup_def tensor_vec_from_lookup.simps tensor_ops lookup_def lookup_base.simps)
 
   then show ?thesis
     using fact1 fact2

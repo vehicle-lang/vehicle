@@ -52,13 +52,13 @@ begin
 
 
   definition normalise  :: " (InputVector \<Rightarrow> OutputVector) \<Rightarrow> (InputVector) \<Rightarrow>  InputVector "
-    where " normalise   controller x = ( (foreach (2 :: nat)  (\<lambda>  i . ((pointwise_div (tensor_plus (subtensor_lookup x i) (tensor_from_vec [1] [ (((4 :: R) )) ])) (tensor_from_vec [1] [ (((8 :: R) )) ]))))) ) "
+    where " normalise   controller x = ( (foreach (2 :: nat)  (\<lambda>  i . ((pointwise_div (tensor_plus (subtensor x i) (flextensor_from_vec [] [ (((4 :: R) )) ])) (flextensor_from_vec [] [ (((8 :: R) )) ]))))) ) "
 
   definition safeInput  :: " (InputVector \<Rightarrow> OutputVector) \<Rightarrow> (InputVector) \<Rightarrow>  bool "
-    where " safeInput   controller x = ( (forallIndex (2 :: nat)  (\<lambda>  i . ((leqTensorReduced ((-1 :: R) \<cdot> (tensor_from_vec [1] [ (((13 :: R) / 4)) ])) (subtensor_lookup x i)) \<and> (leqTensorReduced (subtensor_lookup x i) (tensor_from_vec [1] [ (((13 :: R) / 4)) ]))))) ) "
+    where " safeInput   controller x = ( (forallIndex (2 :: nat)  (\<lambda>  i . ((leqTensorReduced (tensor_cdot (-1 :: R) (flextensor_from_vec [] [ (((13 :: R) / 4)) ])) (subtensor x i)) \<and> (leqTensorReduced (subtensor x i) (flextensor_from_vec [] [ (((13 :: R) / 4)) ]))))) ) "
 
   definition safeOutput  :: " (InputVector \<Rightarrow> OutputVector) \<Rightarrow> (InputVector) \<Rightarrow>  bool "
-    where " safeOutput   controller x = ( let y = (subtensor_lookup ((controller ((normalise controller x)))) velocity) in (ltTensorReduced ((-1 :: R) \<cdot> (tensor_from_vec [1] [ (((5 :: R) / 4)) ])) ((tensor_plus ((tensor_plus y ((hadamard_prod (tensor_from_vec [1] [ (((2 :: R) )) ]) (subtensor_lookup x currentSensor))))) ((-1 :: R) \<cdot> (subtensor_lookup x previousSensor))))) \<and> (ltTensorReduced ((tensor_plus ((tensor_plus y ((hadamard_prod (tensor_from_vec [1] [ (((2 :: R) )) ]) (subtensor_lookup x currentSensor))))) ((-1 :: R) \<cdot> (subtensor_lookup x previousSensor)))) (tensor_from_vec [1] [ (((5 :: R) / 4)) ])) ) "
+    where " safeOutput   controller x = ( let y = (subtensor ((controller ((normalise controller x)))) velocity) in (ltTensorReduced (tensor_cdot (-1 :: R) (flextensor_from_vec [] [ (((5 :: R) / 4)) ])) ((tensor_plus ((tensor_plus y ((hadamard_prod (flextensor_from_vec [] [ (((2 :: R) )) ]) (subtensor x currentSensor))))) (tensor_cdot (-1 :: R) (subtensor x previousSensor))))) \<and> (ltTensorReduced ((tensor_plus ((tensor_plus y ((hadamard_prod (flextensor_from_vec [] [ (((2 :: R) )) ]) (subtensor x currentSensor))))) (tensor_cdot (-1 :: R) (subtensor x previousSensor)))) (flextensor_from_vec [] [ (((5 :: R) / 4)) ])) ) "
 
 
 
