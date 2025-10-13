@@ -121,7 +121,7 @@ instance Pretty LocaleDef where
         name = unAnnotate n
         tun = unAnnotate t
     PropertyDefStatement l -> unAnnotate l
-    TypeDefStmt n shape l -> unAnnotate (compileFunDefPre n shape l)
+    TypeDefStmt n shape l -> unAnnotate (compileTypeDefPre n shape l)
 
 instance Pretty Dependency where
   pretty = \case
@@ -294,7 +294,6 @@ gatherLocaleStatements _opts localeNets = \case
   DefFunction _ n _ (Universe _ _) e -> do
     let (_, body) = foldDeclBinders e
     -- (_, cbody) <- compileBinders [] binders (compileExpr False [] body)
-    -- typedefcode <- (compileFunDefPre [] (compileIdentifier n) [] [] cbody)
     (cbody) <- case body of
       App (Builtin _p (StandardBuiltinType TensorType)) [tensT, maxIdx] -> (annotateNotation [] [RequireImport VehicleTensor] 0 (
             "\"{ a :: $0 tensor. (dims a) = ($1) }\"\n" <>
@@ -487,14 +486,46 @@ compileRecordField localeAssms (field, fieldValue) = do
   fieldValue' <- compileExpr False localeAssms fieldValue
   return $ pretty field <+> ":=" <+> fieldValue'
 
-compileFunDefPre :: Identifier -> Code -> Code -> Code
-compileFunDefPre n shape e = ("typedef" <+> (compileIdentifier n) <+> " = " <+> e<>
-      "declare [[coercion Rep_"<>(compileIdentifier n)<>"]]\n"<>
-      "definition to_"<>(compileIdentifier n)<>" :: \"R FlexTensor ⇒ " <> compileIdentifier n <> "\"\n" <>
-      "  where[simp]: \"to_" <> compileIdentifier n <> " a =\n" <>
-      "    (let t = Rep_FlexTensor a\n" <>
-      "     in if dims t = (" <> shape <> ") then Abs_" <> compileIdentifier n <> " t else undefined)\"\n" <>
-      "declare [[coercion to_" <> compileIdentifier n <> "]]")
+compileTypeDefPre :: Identifier -> Code -> Code -> Code
+compileTypeDefPre n shape e = ((vsep :: [Code] -> Code) [
+      ("typedef" <+> (compileIdentifier n) <+> " = " <+> e),
+      (compileTypeDefCoercions n shape),
+      (compileTypeDefRewrites n shape)
+    ])
+
+compileTypeDefCoercions :: Identifier -> Code -> Code
+compileTypeDefCoercions n shape = ((vsep :: [Code] -> Code) [
+      ("(* Type Coercions *)"),
+      ("declare [[coercion Rep_"<>(compileIdentifier n)<>"]]"),
+      ("definition to_"<>(compileIdentifier n)<>" :: \"R FlexTensor ⇒ " <> compileIdentifier n <> "\""),
+      (indent 2 $ "where[simp]: \"to_" <> compileIdentifier n <> " a = ("),
+      (indent 4 $ "let t = Rep_FlexTensor a"),
+      (indent 4 $ "in (if dims t = (" <> shape <> ") then Abs_" <> compileIdentifier n <> " t else undefined))\""),
+      ("declare [[coercion to_" <> compileIdentifier n <> "]]")
+    ])
+
+compileTypeDefRewrites :: Identifier -> Code -> Code
+compileTypeDefRewrites n shape = ((vsep :: [Code] -> Code) [
+      ("(* Type Rewrite Rules *)"),
+      ("lemma " <> compileIdentifier n <> "_tensor_rewrite0[simp]:"),
+      (indent 2 $ "assumes \"prod_list shape = length elems\""),
+      (indent 2 $ "    and \"shape = " <> shape <> "\""),
+      (indent 2 $ "shows \"(Rep_tensor (Rep_" <> compileIdentifier n <> " (Abs_" <> compileIdentifier n <> " (Abs_tensor (shape,elems))))) =  (shape,elems)\""),
+      ("proof -"),
+      (indent 2 $ "have \"Rep_" <> compileIdentifier n <> " (Abs_" <> compileIdentifier n <> " (Abs_tensor (shape,elems)))"),
+      (indent 4 $ "= Abs_tensor (shape,elems)\""),
+      (indent 4 $ "  using Abs_" <> compileIdentifier n <> "_inverse[of \"Abs_tensor (shape,elems)\"]"),
+      (indent 4 $ "  using Abs_tensor_inverse[of \"(shape, elems)\"]"),
+      (indent 4 $ "  unfolding dims_def"),
+      (indent 4 $ "  using assms"),
+      (indent 4 $ "  by (simp)"),
+      (indent 2 $ "moreover have \"Rep_tensor (Abs_tensor (shape,elems)) = (shape,elems)\""),
+      (indent 4 $ "  using assms"),
+      (indent 4 $ "  by (simp add: Abs_tensor_inverse)"),
+      (indent 2 $ "ultimately show ?thesis by simp"),
+      ("qed")
+    ])
+
 compileFunDef :: (MonadIsabelleCompile m) => [LocaleDef] -> Code -> Expr DecidabilityBuiltin -> [Code] -> [Code] -> Code -> m Code
 compileFunDef _ _ (Universe _ _) _ _ _ = do
   return $ ""

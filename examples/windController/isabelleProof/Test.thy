@@ -68,40 +68,18 @@ lemma take_len[simp]:
   by (metis One_nat_def Suc_leI Suc_le_D assms length_take min_0R min_Suc_Suc)
 
 lemma InputVector_tensor_rewrite1[simp]: "(Rep_tensor (Rep_InputVector (Abs_InputVector (Abs_tensor ([2],[x1,x2]))))) =  ([2],[x1,x2])"
-proof -
-  have "Rep_InputVector (Abs_InputVector (Abs_tensor ([2], [x1, x2])))
-          = Abs_tensor ([2], [x1, x2])"
-    using Abs_InputVector_inverse[of "Abs_tensor ([2], [x1, x2])"]
-    unfolding dims_def
-    by (simp add: Abs_tensor_inverse)
-  moreover have "Rep_tensor (Abs_tensor ([2], [x1, x2])) = ([2], [x1, x2])"
-    by (simp add: Abs_tensor_inverse)
-  ultimately show ?thesis by simp
-qed
+  by simp
 
 lemma OutputVector_tensor_rewrite1[simp]:
   "(Rep_tensor (Rep_OutputVector (Abs_OutputVector (Abs_tensor ([1],[x1]))))) =  ([1],[x1])"
-proof -
-  (*assume "dims (Rep_OutputVector (Abs_OutputVector (Abs_tensor ([1], [x1])))) =
-    [1]"*)
-  have "Rep_OutputVector (Abs_OutputVector (Abs_tensor ([1], [x1])))
-          = Abs_tensor ([1], [x1])"
-    using Abs_OutputVector_inverse[of "Abs_tensor ([1], [x1])"]
-    unfolding dims_def
-    by (simp add: Abs_tensor_inverse)
-  moreover have "Rep_tensor (Abs_tensor ([1], [x1])) = ([1], [x1])"
-    by (simp add: Abs_tensor_inverse)
-  ultimately show "(Rep_tensor (Rep_OutputVector (Abs_OutputVector (Abs_tensor ([1],[x1]))))) =  ([1],[x1])"
-    by simp
-qed
+  by simp
 
 lemma InputVector_tensor_rewrite2[simp]: "(Rep_tensor (Rep_InputVector (Abs_InputVector (Abs_tensor ([Suc (Suc 0)],[x1,x2]))))) =  ([Suc (Suc 0)],[x1,x2])"
-  using InputVector_tensor_rewrite1 numeral_2_eq_2
-  by auto
+  by simp
 
 lemma OutputVector_tensor_rewrite2[simp]:
   "(Rep_tensor (Rep_OutputVector (Abs_OutputVector (Abs_tensor ([Suc 0],[x1]))))) =  ([Suc 0],[x1])"
-  using OutputVector_tensor_rewrite1 One_nat_def by presburger
+  by simp
 
 
 interpretation windInstance:
