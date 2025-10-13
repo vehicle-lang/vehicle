@@ -236,6 +236,11 @@ constTensor :: (BuiltinHasStandardData builtin) => DSLExpr builtin -> DSLExpr bu
 constTensor t x dims = builtinFunction ConstTensor @@@ [t] @@ [x, dims]
 
 -- stacktensor
+-- stackTensor :: (BuiltinHasStandardData builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+-- stackTensor t d ds xs = builtinFunction StackTensor @@@ [t, ds] @@ [d, xs]
+
+stackTensor :: (BuiltinHasStandardData builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> NonEmpty (DSLExpr builtin) -> DSLExpr builtin
+stackTensor t d ds xs = builtinFunction StackTensor @@@ [t, d, ds] @@ xs
 
 iterate :: (BuiltinHasStandardData builtin) => DSLExpr builtin -> (DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 iterate t f n e = do

@@ -176,6 +176,7 @@ typeOfVecLiteral =
     forAllDim Relevant $ \d ->
       typeOfVecLiteralCast (tVector t d) t d
 
+-- typeOfStackTensor HERE!!!
 typeOfStackTensor :: (HasStandardBuiltins builtin) => DSLExpr builtin
 typeOfStackTensor =
   forAllTypes $ \t ->

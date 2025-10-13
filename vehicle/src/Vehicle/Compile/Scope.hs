@@ -16,6 +16,7 @@ import Data.Bifunctor (Bifunctor (..))
 import Data.Foldable (maximumBy, traverse_)
 import Data.List (elemIndex, sortOn)
 import Data.List qualified as List
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (catMaybes, isNothing, mapMaybe)
@@ -28,6 +29,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.DSL
+import Vehicle.Data.Code.DSL ()
 import Vehicle.Data.DSL
 import Vehicle.Data.Universe (UniverseLevel (..))
 import Vehicle.Syntax.AST.Expr qualified as S
@@ -241,10 +243,17 @@ scopeDecl decl =
         let tensorDims = singletonDim (length fs')
         let newType = tTensor tensorTypeDSL tensorDims
         let newTypeBinder = (recordType) ~> newType
+        let fieldNames = map fst (tail fs')
 
         let newBody =
               explLam "x" recordType $ \x ->
-                constTensor tensorTypeDSL (recordAcc x ident firstFieldName) tensorDims
+                -- constTensor tensorTypeDSL (recordAcc x ident firstFieldName) tensorDims
+                let tensorExprs = (constTensor tensorTypeDSL (recordAcc x ident firstFieldName) dimNil) :| [constTensor tensorTypeDSL (recordAcc x ident f) dimNil | f <- fieldNames]
+                 in stackTensor
+                      tensorTypeDSL
+                      (natLit 2) -- single dimension d
+                      (singletonDim 2) -- set of dims ds
+                      tensorExprs
 
         let convFn = DefFunction p newIdent mempty (fromDSL mempty newTypeBinder) (fromDSL mempty newBody)
 
