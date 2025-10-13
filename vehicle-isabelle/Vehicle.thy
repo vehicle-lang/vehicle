@@ -77,6 +77,9 @@ definition pointwise_max ::"'a::ord tensor \<Rightarrow> 'a tensor \<Rightarrow>
                                 then max_base A B
                                 else undefined)"
 
+definition combine_subtensors :: "'a tensor list \<Rightarrow> 'a FlexTensor"
+  where[tensor_ops]: "combine_subtensors As = Abs_FlexTensor (subtensor_combine (dims (hd As)) As)"
+
 definition foreach :: "nat \<Rightarrow> (nat \<Rightarrow> 'a tensor) \<Rightarrow> 'a FlexTensor"
   where[tensor_ops]: "foreach n f = Abs_FlexTensor (let tensor_results = (map f [0..<n]) in
           subtensor_combine (dims (hd tensor_results)) tensor_results)"
@@ -100,6 +103,10 @@ definition existsIndex :: "nat \<Rightarrow> (nat \<Rightarrow> bool) \<Rightarr
   where[tensor_ops]: "existsIndex I f = (list_ex id (vec (foreach I (\<lambda> x . (tensor_from_vec [] [f x])))))"
 
 (* TODO: foreachTuple ? ? ? *)
+fun foreachTuple :: "nat \<Rightarrow> (nat \<Rightarrow> 'a) \<Rightarrow> 'a list" where[simp]:
+    "foreachTuple 0 f = []"
+  | "foreachTuple n f = (f n) # (foreachTuple (n-1) f)"
+
 
 definition reduceAnd :: "bool tensor \<Rightarrow> bool \<Rightarrow> bool"
   where[tensor_ops]: "reduceAnd A i = fold (\<and>) (vec A) i"

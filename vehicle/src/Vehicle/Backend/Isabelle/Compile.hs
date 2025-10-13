@@ -479,7 +479,7 @@ compileBinder localeAssms binder = do
 
 resolveReturnType :: (MonadIsabelleCompile m) => [LocaleDef] -> [Code] -> Expr DecidabilityBuiltin -> m Code
 resolveReturnType localeAssms (_ : bs) (Pi _ binder r) = addNameToContext binder $ resolveReturnType localeAssms bs r
-resolveReturnType localeAssms _ e = compileExpr False localeAssms e
+resolveReturnType localeAssms _ e = compileExpr True localeAssms e
 
 compileRecordField :: (MonadIsabelleCompile m) => [LocaleDef] -> RecordField (Expr DecidabilityBuiltin) -> m Code
 compileRecordField localeAssms (field, fieldValue) = do
@@ -569,7 +569,7 @@ compileBuiltin isOutType localeAssms b args = case b of
     TensorType -> annotateNotation localeAssms [RequireImport VehicleTensor, RequireImport VehicleUtils] 0 (
       "$0 " <> (if isOutType then "FlexTensor" else "tensor")) Nothing args
     IndexType -> annotateNotation localeAssms [] 0 "nat" (Just "ordinal") args
-    VectorType -> annotateNotation localeAssms [] 2 "$0.-tuple $1" Nothing args
+    VectorType -> annotateNotation localeAssms [] 2 "$0 list" Nothing args
   StandardBuiltinConstructor c -> case c of
     Nil -> return "[]"
     Cons -> annotateNotation localeAssms [] 60 "$0 # $1" (Just "cons") args
@@ -618,7 +618,8 @@ compileBuiltin isOutType localeAssms b args = case b of
     Iterate -> unsupportedError
     PowRat -> unsupportedError
     AtVector -> annotateApp localeAssms [] "tnth" args
-    ForeachVector -> annotateApp localeAssms [RequireImport VehicleUtils] "foreachTuple" args
+    ForeachVector -> idxBasedOp localeAssms "foreachTuple" args
+      -- annotateApp localeAssms [RequireImport VehicleUtils] "foreachTuple" args
   DecidabilityBuiltinFunction f -> case f of
     PropType -> return "bool"
     PropTrue -> return "True"
@@ -808,7 +809,7 @@ compileTensorComparison localeAssms _ op = do
 compileStack :: (MonadIsabelleCompile m) => [LocaleDef] -> [Arg DecidabilityBuiltin] -> m Code
 compileStack localeAssms args = do
   as <- compileArgs localeAssms minPrecedence args
-  return $ annotate ([RequireImport VehicleTensor], 200) $ "nstack_tuple" <+> toVec as
+  return $ annotate ([RequireImport VehicleTensor], 200) $ "combine_subtensors" <+> toVec as
 
 compileVecLiteral :: (MonadIsabelleCompile m) => [LocaleDef] -> [Arg DecidabilityBuiltin] -> m Code
 compileVecLiteral localeAssms xs = case getExpr accessSpine xs of
@@ -816,4 +817,4 @@ compileVecLiteral localeAssms xs = case getExpr accessSpine xs of
   Nothing -> developerError "Malformed type-checked vector literal"
 
 toVec :: [Code] -> Code
-toVec xs = annotate ([], maxPrecedence) "[tuple" <+> concatWith (surround "; ") xs <> "]"
+toVec xs = annotate ([], maxPrecedence) "[" <+> concatWith (surround ",") xs <> "]"
