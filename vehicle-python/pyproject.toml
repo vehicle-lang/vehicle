@@ -64,7 +64,7 @@ skip = [
 # Use custom manylinux and musllinux images with GHC 9.6.5 preinstalled.
 manylinux-aarch64-image = "wenkokke/manylinux_2_28_ghc965_aarch64"
 manylinux-i686-image = "wenkokke/manylinux2014_ghc965_i686"
-manylinux-x86_64-image = "wenkokke/manylinux2014_ghc965_x86_64"
+manylinux-x86_64-image = "wenkokke/manylinux_2_28_ghc965_x86_64"
 musllinux-x86_64-image = "wenkokke/musllinux_1_1_ghc965_x86_64"
 
 [tool.mypy]
