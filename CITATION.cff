@@ -14,11 +14,11 @@ authors:
     given-names: "Marco"
   - family-names: "Komendantskaya"
     given-names: "Ekaterina"
-version: "0.21.0"
-date-released: "2025-10-03"
+version: "0.22.0"
+date-released: "2025-10-21"
 license: "BSD-3-Clause"
 type: "software"
-repository-artifact: "https://github.com/vehicle-lang/vehicle/releases/tag/v0.21.0"
+repository-artifact: "https://github.com/vehicle-lang/vehicle/releases/tag/v0.22.0"
 repository-code: "https://github.com/vehicle-lang/vehicle"
 references:
   - authors:
