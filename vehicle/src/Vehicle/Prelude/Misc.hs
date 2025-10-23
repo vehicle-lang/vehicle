@@ -258,6 +258,9 @@ setTextColour c s =
 cartesianProduct :: (a -> b -> c) -> [a] -> [b] -> [c]
 cartesianProduct g xs ys = [g x y | x <- xs, y <- ys]
 
+concatNonEmpty :: NonEmpty (NonEmpty a) -> NonEmpty a
+concatNonEmpty ((x :| xs) :| xss) = x :| (xs <> concatMap NonEmpty.toList xss)
+
 nonEmptyCartesianProduct :: (a -> b -> c) -> NonEmpty a -> NonEmpty b -> NonEmpty c
 nonEmptyCartesianProduct f (x :| xs) (y :| ys) =
   f x y :| (fmap (f x) ys <> cartesianProduct f xs (y : ys))

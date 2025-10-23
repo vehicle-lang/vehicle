@@ -4,7 +4,6 @@ import Control.Monad (foldM, zipWithM)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Either (partitionEithers)
 import Data.List.NonEmpty (NonEmpty (..))
-import Data.List.NonEmpty qualified as NonEmpty (appendList, toList)
 import Data.Map qualified as Map
 import Data.These (These (..), fromThese)
 import Vehicle.Compile.Error (UnboundedIndices)
@@ -262,7 +261,7 @@ flattenSliceBounds = go
         let (missingChildIndices, childBounds) = partitionEithers childErrorOrBounds
         case maybeBound of
           Nothing -> case missingChildIndices of
-            i : is -> return $ Left (NonEmpty.appendList i (concatMap NonEmpty.toList is))
+            i : is -> return $ Left $ concatNonEmpty $ i :| is
             [] -> Right <$> stackBounds childDims childBounds
           Just bound -> do
             dims <- currentDimensions
