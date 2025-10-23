@@ -11,6 +11,7 @@ import Data.Maybe (fromMaybe)
 import Data.These (These (..))
 import Vehicle.Backend.Solver.UserVariableElimination.ConstraintSearch
 import Vehicle.Backend.Solver.UserVariableElimination.Core
+import Vehicle.Compile.Constants.Rational
 import Vehicle.Compile.FourierMotzkinElimination (fourierMotzkinElimination)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)

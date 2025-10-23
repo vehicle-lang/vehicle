@@ -34,6 +34,7 @@ import Vehicle.Backend.Prelude
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Resource (NetworkName)
 import Vehicle.Compile.Type.Core
+import Vehicle.Data.Bound (UnboundedIndices)
 import Vehicle.Data.Builtin.Interface.Normalise (NormalisableBuiltin)
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Linearity
@@ -128,8 +129,6 @@ data MultiPropertyTraveralError
 type MissingResource = (ExternalResource, DeclProvenance)
 
 type UninferableParameter = DeclProvenance
-
-type UnboundedIndices = These (NonEmpty TensorIndices) (NonEmpty TensorIndices)
 
 --------------------------------------------------------------------------------
 -- Compilation errors

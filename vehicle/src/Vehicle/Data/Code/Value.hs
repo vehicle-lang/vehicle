@@ -28,6 +28,7 @@ module Vehicle.Data.Code.Value
     GluedType,
     envEntryToValue,
     boundVariablesIn,
+    DimensionedTensorValue (..),
   )
 where
 
@@ -242,6 +243,18 @@ instance HasProvenance (GluedExpr builtin) where
   provenanceOf = provenanceOf . unnormalised
 
 type GluedType builtin = GluedExpr builtin
+
+-----------------------------------------------------------------------------
+-- Dimensioned values
+
+-- | Because there are no dependent types in Haskell, we cannot create
+-- type-classes over tensor values with a given dimension. Hence we need
+-- to wrap them in this ugly type-class that stores the dimensions internally.
+data DimensionedTensorValue builtin = TensorValue
+  { tensorValueDims :: VDims builtin,
+    tensorValue :: Value builtin
+  }
+  deriving (Show)
 
 -----------------------------------------------------------------------------
 -- Instances

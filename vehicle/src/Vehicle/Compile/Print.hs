@@ -30,6 +30,7 @@ import Data.Tuple (swap)
 import GHC.Exts qualified as GHC (Constraint)
 import GHC.TypeLits
 import Prettyprinter (fill)
+import Vehicle.Compile.Constants.Rational
 import Vehicle.Compile.Descope
 import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
@@ -163,24 +164,28 @@ type family Debug (strat :: Strategy) (msg :: Symbol) :: GHC.Constraint where
 -- | This type family computes the correct printing strategy given the tags
 -- and the type of the expression.
 type family StrategyFor (tags :: Tags) a :: Strategy where
-  ----------
-  -- Expr --
-  ----------
+  -------------------
+  -- Unscoped expr --
+  -------------------
   -- To convert any named representation to the target language, simply convert it.
   StrategyFor ('As lang) S.Expr = 'PrintAs lang
   StrategyFor ('Named tags) S.Expr = StrategyFor tags S.Expr
   StrategyFor ('Unnamed tags) S.Expr = StrategyFor tags S.Expr
-  -------------------------
-  -- Variable conversion --
-  -------------------------
+  -----------------
+  -- Scoped expr --
+  -----------------
   -- Converting an `Expr` with DeBruijn indices to a named representation requires a named bound context to descope.
   -- Otherwise converting it to an unnamed representation we descope naively by just converting the variables directly
   StrategyFor ('Named tags) (Expr builtin `In` NamedBoundCtx) = 'DescopeWithNames (StrategyFor tags S.Expr)
   StrategyFor ('Unnamed tags) (Expr builtin `In` ctx) = 'DescopeNaively (StrategyFor tags S.Expr)
+  ------------
+  -- Values --
+  ------------
   -- To print a `Value` we need to quote it first. Note that we convert it to a `Builtin` representation immediately
   StrategyFor ('Named tags) (Value builtin `In` NamedBoundCtx) = 'QuoteValue (StrategyFor ('Named tags) (Expr Builtin `In` NamedBoundCtx))
   StrategyFor ('Unnamed tags) (Value builtin `In` ctx) = 'DescopeNaively (StrategyFor tags S.Expr)
   StrategyFor tags (BoundEnv builtin `In` ctx) = StrategyFor tags (Value builtin `In` ctx)
+  StrategyFor tags (DimensionedTensorValue builtin `In` ctx) = StrategyFor tags (Value builtin `In` ctx)
   -------------------
   -- Context setup --
   -------------------
@@ -233,7 +238,7 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
     'Branch
       (StrategyFor tags (value `In` ctx))
       (StrategyFor tags (expr `In` ctx))
-  StrategyFor tags (BoundedValue value (Bounds expr) `In` ctx) =
+  StrategyFor tags (BoundedValue value (SliceBounds expr) `In` ctx) =
     'Branch
       (StrategyFor tags (BoundedValue value (LowerBound expr) `In` ctx))
       (StrategyFor tags (BoundedValue value (UpperBound expr) `In` ctx))
@@ -289,8 +294,8 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
     TypeError (BoundsErrorFunction tags (LowerBound expr))
   StrategyFor tags (UpperBound expr `In` ctx) =
     TypeError (BoundsErrorFunction tags (UpperBound expr))
-  StrategyFor tags (Bounds expr `In` ctx) =
-    TypeError (BoundsErrorFunction tags (Bounds expr))
+  StrategyFor tags (SliceBounds expr `In` ctx) =
+    TypeError (BoundsErrorFunction tags (SliceBounds expr))
   StrategyFor tags a =
     TypeError
       ( 'Text "Cannot print value of type \""
@@ -435,28 +440,36 @@ instance
   where
   prettyUsing (e, _ctx) = prettyUsing @rest $ fmap descopeValueNaively e
 
+--------------------------------------------------------------------------------
+-- Value
+
 instance
   ( PrettyUsing rest (Value builtin `In` ctx),
     PrintableBuiltin builtin
   ) =>
   PrettyUsing rest (BoundEnv builtin `In` ctx)
   where
-  prettyUsing (env, ctx) = prettyEnv @rest ctx env
+  prettyUsing (BoundEnv env, ctx) = prettyFlatList $ go env
+    where
+      go :: GenericBoundCtx (GenericBinder (), EnvEntry builtin) -> [Doc a]
+      go = \case
+        [] -> []
+        (binder, value) : rs -> do
+          let valueDoc = goEntry value
+          (pretty (nameOf binder) <+> "=" <+> valueDoc) : go rs
 
-prettyEnv :: forall rest builtin ctx a. (PrettyUsing rest (Value builtin `In` ctx)) => ctx -> BoundEnv builtin -> Doc a
-prettyEnv ctx (BoundEnv env) = prettyFlatList $ go env
+      goEntry :: EnvEntry builtin -> Doc a
+      goEntry = \case
+        Bound v -> "bound" <+> prettyUsing @rest (v, ctx)
+        Unbound lv -> "unbound" <+> pretty lv
+
+instance
+  ( PrettyUsing rest (Value builtin `In` ctx),
+    PrintableBuiltin builtin
+  ) =>
+  PrettyUsing rest (DimensionedTensorValue builtin `In` ctx)
   where
-    go :: GenericBoundCtx (GenericBinder (), EnvEntry builtin) -> [Doc a]
-    go = \case
-      [] -> []
-      (binder, value) : rs -> do
-        let valueDoc = goEntry value
-        (pretty (nameOf binder) <+> "=" <+> valueDoc) : go rs
-
-    goEntry :: EnvEntry builtin -> Doc a
-    goEntry = \case
-      Bound v -> "bound" <+> prettyUsing @rest (v, ctx)
-      Unbound lv -> "unbound" <+> pretty lv
+  prettyUsing (TensorValue _dims value, ctx) = prettyUsing @rest (value, ctx)
 
 -- Linear expression
 
@@ -843,9 +856,9 @@ instance
   ( PrettyUsing rest1 (BoundedValue value (LowerBound expr) `In` ctx),
     PrettyUsing rest2 (BoundedValue value (UpperBound expr) `In` ctx)
   ) =>
-  PrettyUsing ('Branch rest1 rest2) (BoundedValue value (Bounds expr) `In` ctx)
+  PrettyUsing ('Branch rest1 rest2) (BoundedValue value (SliceBounds expr) `In` ctx)
   where
-  prettyUsing (BoundedValue value Bounds {..}, ctx) =
+  prettyUsing (BoundedValue value SliceBounds {..}, ctx) =
     "lower bounds:"
       <> boundsDoc (prettyUsing @rest1) lowerBounds
       <> line
@@ -867,8 +880,8 @@ instance
     runTraverseTensor partialShape $ do
       let printLowerBound bound = prettyUsing @rest1 (BoundedValue value bound, ctx)
       let printUpperBound bound = prettyUsing @rest2 (BoundedValue value bound, ctx)
-      lowerDocs <- prettySliceBounds printLowerBound tensorLowerBounds
-      upperDocs <- prettySliceBounds printUpperBound tensorUpperBounds
+      lowerDocs <- prettyNestedSliceBounds printLowerBound tensorLowerBounds
+      upperDocs <- prettyNestedSliceBounds printUpperBound tensorUpperBounds
       return $ case (lowerDocs, upperDocs) of
         ([], []) -> "unbounded"
         (l : ls, []) -> prettyDocs True (l :| ls)

@@ -10,7 +10,7 @@ import Data.List.NonEmpty qualified as NonEmpty
 import Data.Maybe (catMaybes)
 import Data.These (These (..))
 import Data.These.Combinators (catHere, catThere)
-import Vehicle.Backend.Solver.UserVariableElimination.Core
+import Vehicle.Compile.Constants.Rational
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude (mergeNonEmptyKeyValues, unionMaybeWith)
 import Vehicle.Data.Assertion

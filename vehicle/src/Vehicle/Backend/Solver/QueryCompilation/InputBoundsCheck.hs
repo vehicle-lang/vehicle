@@ -16,18 +16,18 @@ import Data.Proxy (Proxy (..))
 import Data.Set qualified as Set
 import Data.These (These (..))
 import Vehicle.Backend.Solver.UserVariableElimination.Core
+import Vehicle.Compile.Constants.Rational
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Resource (NetworkName)
-import Vehicle.Data.Assertion
-import Vehicle.Data.Bound (BoundedValue (..), TensorBounds)
-import Vehicle.Data.Bound.Operations
+import Vehicle.Data.Bound
 import Vehicle.Data.Builtin.Standard.Core (Builtin)
 import Vehicle.Data.Code.BooleanExpr
-import Vehicle.Data.Code.Value (Value, boundVariablesIn)
+import Vehicle.Data.Code.Value (boundVariablesIn)
 import Vehicle.Data.MaybeTrivial (MonadMaybeTrivial (..))
-import Vehicle.Data.Tensor (HasShape (..), RatTensor, TensorIndices, TensorShape, allTensor, anyTensor, zipWithTensor)
+import Vehicle.Data.Tensor (HasShape (..), RatTensor, allTensor, anyTensor, zipWithTensor)
+import Vehicle.Data.Tensor.Traversal (toPartialShape)
 import Vehicle.Data.Variable.Bound.Context.Name (runNameContextT)
 import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Data.Variable.Bound.Tensor (findCorrespondingTensorVariable, findIndices, nestedCtxToNameCtx)
@@ -146,24 +146,22 @@ findBoundsInAssertion ::
   m PartiallyBoundedAssertions
 findBoundsInAssertion assertion = do
   state@(_, _, _) <- ask
-  case tryToConvertToTensorBounds (lookupCorrespondingInputVar state) assertion of
-    Nothing -> do
-      return $
-        Partial
-          { variableBounds = mempty,
-            remainingAssertions = [assertion]
-          }
-    Just (var, bounds) -> do
-      return $
-        Partial
-          { variableBounds = Map.singleton var bounds,
-            remainingAssertions = mempty
-          }
+  return $ case tryToConvertToTensorBounds (lookupCorrespondingInputVar state) assertion of
+    Nothing ->
+      Partial
+        { variableBounds = mempty,
+          remainingAssertions = [assertion]
+        }
+    Just (var, bounds) ->
+      Partial
+        { variableBounds = Map.singleton (coerce var) bounds,
+          remainingAssertions = mempty
+        }
 
 lookupCorrespondingInputVar ::
   BoundsState ->
   SliceVariable ->
-  Maybe (NetworkInputTensorVariable, TensorShape, Maybe (Value Builtin), TensorIndices)
+  Maybe VariableInfo
 lookupCorrespondingInputVar state@(_, ctx, _) var = do
   let nestedSliceVar = findCorrespondingTensorVariable (globalBoundVarCtx ctx) var
   let maybeInputVar = isNetworkTensorInputVar state (toSliceVar nestedSliceVar)
@@ -171,7 +169,12 @@ lookupCorrespondingInputVar state@(_, ctx, _) var = do
     Nothing -> Nothing
     Just inputVar -> do
       let indices = findIndices nestedSliceVar var
-      Just (inputVar, shapeOf nestedSliceVar, Nothing, indices)
+      Just $
+        VariableInfo
+          { parentVariable = toTensorVar inputVar,
+            parentShape = toPartialShape (shapeOf nestedSliceVar) Nothing,
+            indices = indices
+          }
 
 --------------------------------------------------------------------------------
 -- Bound checking

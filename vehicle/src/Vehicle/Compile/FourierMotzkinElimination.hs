@@ -11,9 +11,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Data.Assertion
 import Vehicle.Data.Bound
-import Vehicle.Data.Bound.Operations (andBoundList)
 import Vehicle.Data.Code.BooleanExpr (ConjunctAll (..), eliminateTrivialConjunctions)
-import Vehicle.Data.Code.Interface (mkDims)
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.MaybeTrivial (MaybeTrivial (..))
 import Vehicle.Data.Tensor (RatTensor, mapTensor, zipWithTensor, pattern ZeroDimTensor)
@@ -31,9 +29,9 @@ fourierMotzkinElimination ::
   (MonadCompile m, MonadNameContext m, ConstantLike constant, PrettyFriendly (constant `In` NamedBoundCtx)) =>
   SliceVariable ->
   [Inequality (LinearExpr SliceVariable constant)] ->
-  m (Bounds (LinearExpr SliceVariable constant), MaybeTrivial (ConjunctAll (Inequality (LinearExpr SliceVariable constant))))
+  m (SliceBounds (LinearExpr SliceVariable constant), MaybeTrivial (ConjunctAll (Inequality (LinearExpr SliceVariable constant))))
 fourierMotzkinElimination var inequalities = do
-  let (solution@(Bounds lower upper), unusedInequalities) = partition var inequalities
+  let (solution@(SliceBounds lower upper), unusedInequalities) = partition var inequalities
 
   let newMaybeTrivialInequalities = cartesianProduct combineInequalities lower upper
   let allMaybeTrivialInequalities = newMaybeTrivialInequalities <> fmap NonTrivial unusedInequalities
@@ -64,21 +62,21 @@ partition ::
   (VariableLike variable, ConstantLike constant) =>
   variable ->
   [Inequality (LinearExpr variable constant)] ->
-  (Bounds (LinearExpr variable constant), [Inequality (LinearExpr variable constant)])
-partition var = foldr categorise (Bounds [] [], [])
+  (SliceBounds (LinearExpr variable constant), [Inequality (LinearExpr variable constant)])
+partition var = foldr categorise (SliceBounds [] [], [])
   where
     categorise ::
       (ConstantLike constant) =>
       Inequality (LinearExpr variable constant) ->
-      (Bounds (LinearExpr variable constant), [Inequality (LinearExpr variable constant)]) ->
-      (Bounds (LinearExpr variable constant), [Inequality (LinearExpr variable constant)])
-    categorise ineq@(NormalisedRelation rel expr) (bounds@Bounds {..}, unused) = do
+      (SliceBounds (LinearExpr variable constant), [Inequality (LinearExpr variable constant)]) ->
+      (SliceBounds (LinearExpr variable constant), [Inequality (LinearExpr variable constant)])
+    categorise ineq@(NormalisedRelation rel expr) (bounds@SliceBounds {..}, unused) = do
       let (coeff, valueExpr) = rearrangeExprToSolveFor var expr
       if coeff < 0
-        then (Bounds {lowerBounds = LowerBound rel valueExpr : lowerBounds, ..}, unused)
+        then (SliceBounds {lowerBounds = LowerBound rel valueExpr : lowerBounds, ..}, unused)
         else
           if coeff > 0
-            then (Bounds {upperBounds = UpperBound rel valueExpr : upperBounds, ..}, unused)
+            then (SliceBounds {upperBounds = UpperBound rel valueExpr : upperBounds, ..}, unused)
             else (bounds, ineq : unused)
 
 --------------------------------------------------------------------------------
@@ -91,15 +89,15 @@ partition var = foldr categorise (Bounds [] [], [])
 reconstructFourierMotzkinVariableValue ::
   forall variable.
   (VariableLike variable) =>
-  Bounds (LinearExpr variable RatTensor) ->
+  SliceBounds (LinearExpr variable RatTensor) ->
   Map variable RatTensor ->
   Either variable RatTensor
 reconstructFourierMotzkinVariableValue solution assignment = do
   lowerBoundValues <- traverse (traverse (evaluateExpr assignment)) (lowerBounds solution)
   upperBoundValues <- traverse (traverse (evaluateExpr assignment)) (upperBounds solution)
 
-  let maybeLowerBound = runSilentLogger $ andBoundList (mkDims []) lowerBoundValues
-  let maybeUpperBound = runSilentLogger $ andBoundList (mkDims []) upperBoundValues
+  let maybeLowerBound = runSilentLogger $ andBoundList lowerBoundValues
+  let maybeUpperBound = runSilentLogger $ andBoundList upperBoundValues
 
   return $ case (maybeLowerBound, maybeUpperBound) of
     (Nothing, Nothing) -> ZeroDimTensor 0

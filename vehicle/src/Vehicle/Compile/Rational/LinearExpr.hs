@@ -8,11 +8,12 @@ where
 import Control.Applicative (Applicative (..))
 import Control.Monad.Except (MonadError (..), runExceptT)
 import Control.Monad.Trans (MonadTrans (..))
+import Vehicle.Compile.Constants.Rational
 import Vehicle.Compile.Prelude
-import Vehicle.Data.Assertion (LinearAssertion, comparisonToAssertion)
+import Vehicle.Data.Assertion (comparisonToAssertion)
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.Interface
-import Vehicle.Data.Code.LinearExpr (LinearExpression, addExprs, addExprsUnsafe, constantExpr, isConstant, scaleExpr, singletonVarExpr)
+import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Tensor (TensorShape, pattern ConstantTensor)
@@ -45,9 +46,7 @@ compileLinearAssertion toVar op shape x y = do
   runExceptT $ do
     linX <- compile (lift . toVar) shape x
     linY <- compile (lift . toVar) shape y
-
-    let subtractExprs u v = return $ addExprs 1 (-1) u v
-    boolOrAssertion <- comparisonToAssertion op subtractExprs linX linY
+    boolOrAssertion <- comparisonToAssertion op linX linY
     either (throwError . TrivialExpr) return boolOrAssertion
 
 compile ::

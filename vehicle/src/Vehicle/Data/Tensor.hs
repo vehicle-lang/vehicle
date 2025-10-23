@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
+
 module Vehicle.Data.Tensor
   ( module T,
   )

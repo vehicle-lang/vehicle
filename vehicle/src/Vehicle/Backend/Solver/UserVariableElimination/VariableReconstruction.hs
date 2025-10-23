@@ -14,11 +14,11 @@ import Data.Map qualified as Map
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
+import Vehicle.Compile.Constants.Rational
 import Vehicle.Compile.FourierMotzkinElimination
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
-import Vehicle.Data.Bound (LinearBounds)
-import Vehicle.Data.Code.LinearExpr (LinearExpression, evaluateExpr)
+import Vehicle.Data.Code.LinearExpr (evaluateExpr)
 import Vehicle.Data.Tensor (RatTensor, at, shapeOf, stack, pattern ZeroDimTensor)
 import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Data.Variable.Bound.Tensor
@@ -126,9 +126,9 @@ reconstructTensorFromConstituents _ctx variable reconstructionDepth assignment =
             Just result -> return (result, [(sliceVar, result)])
       | otherwise =
           case (shapeOf var, childVariablesOf var) of
-            (_ : ds, Just childVars) -> do
+            (_ : _, Just childVars) -> do
               (elements, assignments) <- unzipF <$> traverse (go (depth - 1)) childVars
-              let result = stack ds elements
+              let result = stack elements
               return (result, (sliceVar, result) :| concatMap NonEmpty.toList assignments)
             _ -> throwError (toSliceVar variable, MismatchedDimensions depthToReconstruct (length (shapeOf variable)))
       where

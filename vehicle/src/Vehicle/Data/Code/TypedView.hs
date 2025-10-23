@@ -30,17 +30,16 @@ module Vehicle.Data.Code.TypedView
 where
 
 import GHC.Stack (HasCallStack)
-import Vehicle.Compile.Normalise.NBE (normaliseApp, normaliseBuiltin, normaliseInEnv)
+import Vehicle.Compile.Normalise.NBE (normaliseBuiltin)
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Data.Builtin.Interface (Accessor (..))
-import Vehicle.Data.Builtin.Interface.Normalise (EvalSimple, MonadNormBuiltin, evalAddRatTensor, evalAtTensor, evalCompareRatTensorPointwise, evalConstTensor, evalMulRatTensor)
+import Vehicle.Data.Builtin.Interface.Normalise (EvalSimple, MonadNormBuiltin, evalAddRatTensor, evalCompareRatTensorPointwise, evalConstTensor, evalMulRatTensor, unoptimisedEvalAtTensor)
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Builtin.Standard.Normalise ()
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Tensor (Tensor, pattern ZeroDimTensor)
-import Vehicle.Data.Variable.Bound.Context (NamedBoundCtx)
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext)
@@ -453,14 +452,13 @@ fromDimensionsValue e = case e of
 
 -- | Reduces a tensor value `x` to `[x!0, x!1, ..., x!n]`
 etaReduceTensor ::
-  (MonadNormBuiltin m, MonadFreeContext Builtin m) =>
-  NamedBoundCtx ->
+  (MonadNormBuiltin m) =>
   VType Builtin ->
   Int ->
   Value Builtin ->
   Value Builtin ->
   m [Value Builtin]
-etaReduceTensor ctx typ dim dims tensor = do
+etaReduceTensor typ dim dims tensor = do
   let mkAtArgs i =
         AtTensorArgs
           { atType = implicit typ,
@@ -469,7 +467,7 @@ etaReduceTensor ctx typ dim dims tensor = do
             atTensor = tensor,
             atIndex = IIndexLiteral i
           }
-  let mkAt i = evalAtTensor ctx normaliseApp normaliseInEnv (mkAtArgs i)
+  let mkAt i = unoptimisedEvalAtTensor (mkAtArgs i)
   traverse mkAt [0 .. (dim - 1)]
 
 scaleValue :: Value Builtin -> ScaleConstant (Value Builtin)

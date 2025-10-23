@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
+
 module Vehicle.Backend.LossFunction.Domain
   ( extractSearchDomain,
     Domain (..),
@@ -16,25 +18,26 @@ import Vehicle.Data.Variable.Free.Context.Class
 import Control.Monad.Except (MonadError (..), runExceptT)
 import Control.Monad.Reader (MonadReader (..), ReaderT (..), asks)
 import Data.Coerce (coerce)
-import Data.Map qualified as Map
+import Vehicle.Compile.Constants.Value
 import Vehicle.Compile.Error
 import Vehicle.Compile.LiftIf (unfoldIf)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Unblock (UnblockingActions (..), unblockBoolExpr)
-import Vehicle.Data.Assertion (NormalisedRelation (..), comparisonToAssertion)
-import Vehicle.Data.Builtin.Interface.Normalise (evalAnd, evalConstTensor, evalSubRatTensor)
+import Vehicle.Data.Assertion (Assertion, comparisonToAssertion)
+import Vehicle.Data.Bound
+import Vehicle.Data.Builtin.Interface.Normalise (evalAnd)
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.LinearExpr
-import Vehicle.Data.Code.TypedView (BoolValue (..), RatTensorValue (..), TypeValue (..), addValues, fromBoolValue, fromRatTensorValue, scaleValue, toBoolValue, toRatTensorValue, toTypeValue)
+import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
-import Vehicle.Data.Tensor (TensorIndices)
+import Vehicle.Data.Tensor.Traversal
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Data.Variable.Bound.Tensor
-import Vehicle.Data.Bound.Operations
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext)
+
 -}
 
 data Domain = Domain
@@ -80,7 +83,7 @@ extractSearchDomain _propertyProv _binder _lv value = do
       ConstrainedValue tensorBounds remainder <- runReaderT (findConstraints value) searchCtx
       logDebugM MidDetail $ do
         nameCtx <- getNameContext
-        let boundsDoc = prettyTensorBounds nameCtx targetVar partialShape tensorBounds
+        let boundsDoc = prettyFriendly (WithContext (BoundedValue targetVar tensorBounds) nameCtx)
         let remainderDoc = prettyFriendly (WithContext remainder nameCtx)
         return $
           "Found bounds:"
@@ -91,10 +94,16 @@ extractSearchDomain _propertyProv _binder _lv value = do
             <> line
 
       -- Extract the domain
-      errorOrBounds <- flattenTensorBounds partialShape tensorBounds
+      errorOrBounds <- flattenTensorBounds tensorBounds
       case errorOrBounds of
-        Right (lowerBound, upperBound) -> return (Domain lowerBound upperBound, remainder)
         Left err -> throwError $ NoQuantifierDomainFound propertyProv binder err
+        Right (lowerBound, upperBound) -> do
+          let domain =
+                Domain
+                  { lowerBound = tensorValue lowerBound,
+                    upperBound = tensorValue upperBound
+                  }
+          return (domain, remainder)
 
 --------------------------------------------------------------------------------
 -- Constraint search
@@ -118,17 +127,22 @@ nestedTargetVariable :: SearchContext -> NestedSliceVariable
 nestedTargetVariable SearchContext {..} = mkNestedSliceVariable (knownPrefix targetVariableShape) targetVariable
 
 data ConstrainedValue = ConstrainedValue
-  { tensorBounds :: PartialTensorVariableBounds,
+  { tensorBounds :: TensorBounds TensorValue,
     remainingValue :: Value Builtin
   }
 
 andConstrainedValue :: (MonadDomain m) => ConstrainedValue -> ConstrainedValue -> m ConstrainedValue
 andConstrainedValue (ConstrainedValue bounds1 v1) (ConstrainedValue bounds2 v2) = do
   let emptyDims = implicitIrrelevant (INil (implicit INatType))
-  targetShape <- asks targetVariableShape
-  newBounds <- andTensorBounds targetShape bounds1 bounds2
+  newBounds <- andTensorBounds bounds1 bounds2
   newRemainder <- evalAnd (TensorOp2Args emptyDims v1 v2)
   return $ ConstrainedValue newBounds newRemainder
+
+unconstrainedValue :: (MonadDomain m) => Value Builtin -> m ConstrainedValue
+unconstrainedValue value = do
+  SearchContext {..} <- ask
+  let bounds = emptyTensorBounds targetVariable targetVariableShape
+  return $ ConstrainedValue bounds value
 
 --------------------------------------------------------------------------------
 -- Global variables during search
@@ -142,11 +156,6 @@ classifyVariable lv ctx = do
   let maybeSliceVar = lv `isSliceOf` nestedTargetVariable ctx
   maybe UnrelatedVariable TargetVariable maybeSliceVar
 
-lookupVarIndices :: (MonadDomain m) => SliceVariable -> m TensorIndices
-lookupVarIndices var = do
-  targetVar <- asks nestedTargetVariable
-  return $ fst $ findIndicesAndShape targetVar var
-
 --------------------------------------------------------------------------------
 -- Search algorithm
 
@@ -159,9 +168,9 @@ findConstraints expr = logEntryAndExit expr $ case toBoolValue expr of
   -------------------------
   -- Unuseful base cases --
   -------------------------
-  VBoolLiteral {} -> unconstrained
-  VCompareNat {} -> unconstrained
-  VCompareIndex {} -> unconstrained
+  VBoolLiteral {} -> unconstrainedValue expr
+  VCompareNat {} -> unconstrainedValue expr
+  VCompareIndex {} -> unconstrainedValue expr
   ---------------------
   -- Recursive cases --
   ---------------------
@@ -180,18 +189,17 @@ findConstraints expr = logEntryAndExit expr $ case toBoolValue expr of
   -- TODO cases --
   ----------------
   -- These two cases need to be altered if we are to handle disjoint domains?
-  VOr {} -> unconstrained
-  VReduceOrTensor {} -> unconstrained
-  VQuantifyRatTensor {} -> unconstrained
+  VOr {} -> unconstrainedValue expr
+  VReduceOrTensor {} -> unconstrainedValue expr
+  VQuantifyRatTensor {} -> unconstrainedValue expr
   -- Maybe we can do something with these?
-  VNot {} -> unconstrained
+  VNot {} -> unconstrainedValue expr
   where
-    unconstrained = return $ ConstrainedValue noTensorBounds expr
     tryAndUnblock = do
       unblockedValue <- unblockBoolExpr unblockingActions expr
       result <- findConstraints unblockedValue
-      if isEmpty (tensorBounds result)
-        then unconstrained
+      if isEmptyTensorBounds (tensorBounds result)
+        then unconstrainedValue expr
         else return result
 
 unblockingActions :: (MonadDomain m) => UnblockingActions m
@@ -205,39 +213,58 @@ handleComparison ::
   (MonadDomain m) =>
   (ComparisonOp, TensorOp2Args (Value Builtin)) ->
   m ConstrainedValue
-handleComparison (op, args@(TensorOp2Args dims e1 e2))
-  | op == Ne = unconstrained
+handleComparison (op, args)
+  | op == Ne = unconstrainedValue originalValue
   | otherwise = do
-      let evalSub x y = evalSubRatTensor (TensorOp2Args dims x y)
-      value@(NormalisedRelation rel combinedValue) <- comparisonToAssertion op evalSub e1 e2
-      logDebugM MaxDetail $ prettyFriendlyInCtx value
-      errorOrResult <- runExceptT $ compileLinearExpr (argExpr dims) combinedValue
-      case errorOrResult of
-        Left {} -> unconstrained
-        Right linearExpr -> do
-          logDebugM MaxDetail $ prettyFriendlyInCtx linearExpr
-          case Map.toList (coefficients linearExpr) of
-            [(var, _)] -> do
-              targetShape <- asks targetVariableShape
-              indices <- lookupVarIndices var
-              let bounds = convertToTensorBounds targetShape (var, indices) rel linearExpr
-              return $ ConstrainedValue bounds (IBoolLiteral True)
-            _ -> unconstrained
+      valueOrAssertion <- compileAssertion (op, args)
+      case valueOrAssertion of
+        Left {} -> unconstrainedValue originalValue
+        Right (Left trivial) -> unconstrainedValue $ IBoolLiteral trivial
+        Right (Right assertion) -> do
+          lookupFn <- lookupVariableDetails
+          let maybeBounds = tryToConvertToTensorBounds lookupFn assertion
+          case maybeBounds of
+            Nothing -> unconstrainedValue originalValue
+            Just (_var, bounds) -> return $ ConstrainedValue bounds (IBoolLiteral True)
   where
-    unconstrained = return $ ConstrainedValue noTensorBounds (fromBoolValue $ VCompareRatTensor (op, args))
+    originalValue = fromBoolValue $ VCompareRatTensor (op, args)
+
+lookupVariableDetails ::
+  (MonadDomain m) =>
+  m (SliceVariable -> Maybe VariableInfo)
+lookupVariableDetails = do
+  ctx@SearchContext {..} <- ask
+  let targetVar = nestedTargetVariable ctx
+  return $ \var -> Just $ do
+    VariableInfo
+      { parentVariable = toTensorVar targetVariable,
+        parentShape = targetVariableShape,
+        indices = findIndices targetVar var
+      }
+
+compileAssertion ::
+  forall m.
+  (MonadDomain m) =>
+  (ComparisonOp, TensorOp2Args (Value Builtin)) ->
+  m (Either (Value Builtin) (Either Bool (Assertion (LinearExpr SliceVariable TensorValue))))
+compileAssertion (op, TensorOp2Args dims e1 e2) = do
+  runExceptT $ do
+    linX <- compileLinearExpr (argExpr dims) e1
+    linY <- compileLinearExpr (argExpr dims) e2
+    comparisonToAssertion op linX linY
 
 compileLinearExpr ::
   forall m.
   (MonadDomain m, MonadError (Value Builtin) m) =>
+  VDims Builtin ->
   Value Builtin ->
-  Value Builtin ->
-  m (LinearExpr SliceVariable (Value Builtin))
+  m (LinearExpr SliceVariable TensorValue)
 compileLinearExpr dims expr = case toRatTensorValue expr of
   ----------------
   -- Base cases --
   ----------------
-  VRatTensorLiteral {} -> return $ constantExpr expr
-  VRatConstTensor {} -> return $ constantExpr expr
+  VRatTensorLiteral {} -> return $ constantExpr $ TensorValue dims expr
+  VRatConstTensor {} -> return $ constantExpr $ TensorValue dims expr
   VRatTensorVar var -> do
     maybeExpr <- compileRatTensorVar dims var
     maybe unlinearisable return maybeExpr
@@ -246,15 +273,15 @@ compileLinearExpr dims expr = case toRatTensorValue expr of
   ---------------------
   VNegRatTensor (TensorOp1Args _ e) -> do
     e' <- compileLinearExpr dims e
-    return $ scaleExprBase (scaleValue dims) (-1) e'
+    return $ scaleExpr (-1) e'
   VAddRatTensor (TensorOp2Args _ e1 e2) -> do
     e1' <- compileLinearExpr dims e1
     e2' <- compileLinearExpr dims e2
-    return $ addExprsBase (addValues dims) 1 1 e1' e2'
+    return $ addExprsUnsafe 1 1 e1' e2'
   VSubRatTensor (TensorOp2Args _ e1 e2) -> do
     e1' <- compileLinearExpr dims e1
     e2' <- compileLinearExpr dims e2
-    return $ addExprsBase (addValues dims) 1 (-1) e1' e2'
+    return $ addExprsUnsafe 1 (-1) e1' e2'
   ---------------------
   -- Unreduced cases --
   ---------------------
@@ -277,25 +304,19 @@ compileLinearExpr dims expr = case toRatTensorValue expr of
   VMulRatTensor (TensorOp2Args _ _e1 _e2) -> unlinearisable
   VDivRatTensor (TensorOp2Args _ _e1 _e2) -> unlinearisable
   where
-    unlinearisable :: m (LinearExpr SliceVariable (Value Builtin))
+    unlinearisable :: m (LinearExpr SliceVariable TensorValue)
     unlinearisable = throwError expr
 
 compileRatTensorVar ::
   (MonadDomain m) =>
   Value Builtin ->
   Lv ->
-  m (Maybe (LinearExpr SliceVariable (Value Builtin)))
+  m (Maybe (LinearExpr SliceVariable TensorValue))
 compileRatTensorVar dims var = do
   classification <- asks (classifyVariable var)
   case classification of
     TargetVariable sliceVar -> do
-      zeroValue <-
-        evalConstTensor $
-          ConstTensorArgs
-            { constType = implicit IRatType,
-              constValue = IRatLiteral 0,
-              constDims = dims
-            }
+      let zeroValue = constantDimensionedValue dims 0
       return $ Just $ singletonVarExpr zeroValue sliceVar
     _ -> return Nothing
 

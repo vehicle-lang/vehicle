@@ -11,6 +11,7 @@ import Data.Map qualified as Map
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Vector.Internal.Check (HasCallStack)
+import Vehicle.Compile.Constants.Rational
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.Prelude
@@ -33,10 +34,6 @@ import Vehicle.Data.Variable.Free.Context.Class (MonadFreeContext)
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Interface (QueryFormat)
 import Vehicle.Verify.Specification
-
--- | An `AssertionTree` represents a boolean expression with assertions at
--- each terminal leaf.
-type LinearAssertionTree = BooleanExpr LinearAssertion
 
 --------------------------------------------------------------------------------
 -- Reader state
