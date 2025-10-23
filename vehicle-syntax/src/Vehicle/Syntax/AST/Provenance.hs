@@ -128,6 +128,9 @@ instance NFData Provenance where
 instance Eq Provenance where
   _x == _y = True
 
+instance Ord Provenance where
+  _x <= _y = True
+
 instance Hashable Provenance where
   hashWithSalt s _p = s
 

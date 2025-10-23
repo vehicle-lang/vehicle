@@ -7,6 +7,7 @@ where
 import Control.Monad (forM)
 import Data.List.NonEmpty (NonEmpty (..))
 import Vehicle.Compile.Prelude
+import Vehicle.Data.Bound (BoundedValue (..), Domain (..), LowerBound (..), UpperBound (..))
 import Vehicle.Data.Code.BooleanExpr (conjunctsToList)
 import Vehicle.Prelude.Warning
 import Vehicle.Syntax.Tensor (flattenIndices)
@@ -49,7 +50,7 @@ compileMarabouVar QueryVariableInfo {..} = do
 compileMarabouQuery :: CompileQuery
 compileMarabouQuery address _metaNetwork _variables bounds assertions = do
   assertionDocs <- forM (conjunctsToList assertions) (compileAssertion address)
-  let boundsDoc = concatMap compileBounds bounds
+  boundsDoc <- concat <$> traverse (compileBounds address) bounds
 
   return $
     layoutAsText $
@@ -63,14 +64,17 @@ compileMarabouQuery address _metaNetwork _variables bounds assertions = do
         <> line
         <> vsep boundsDoc
 
-compileBounds :: (QueryVariable, (Rational, Rational)) -> [Doc a]
-compileBounds (var, (lowerBound, upperBound))
-  | lowerBound == upperBound =
-      [pretty var <+> "=" <+> prettyRationalAsFloat lowerBound]
-  | otherwise =
-      [ pretty var <+> ">=" <+> prettyRationalAsFloat lowerBound,
-        pretty var <+> "<=" <+> prettyRationalAsFloat upperBound
-      ]
+compileBounds :: (MonadLogger m) => QueryAddress -> BoundedValue QueryVariable (Domain Rational) -> m [Doc a]
+compileBounds address (BoundedValue var (Domain LowerBound {..} UpperBound {..}))
+  | lowerBoundValue == upperBoundValue =
+      return [pretty var <+> "=" <+> prettyRationalAsFloat lowerBoundValue]
+  | otherwise = do
+      lowerRel <- compileRel address $ flipQueryRel $ inequalityToQueryRelation lowerBoundRel
+      upperRel <- compileRel address $ inequalityToQueryRelation upperBoundRel
+      return
+        [ pretty var <+> lowerRel <+> prettyRationalAsFloat lowerBoundValue,
+          pretty var <+> upperRel <+> prettyRationalAsFloat upperBoundValue
+        ]
 
 compileAssertion ::
   (MonadLogger m) =>

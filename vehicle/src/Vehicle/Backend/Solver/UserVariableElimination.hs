@@ -9,7 +9,7 @@ import Control.Applicative (Applicative (..))
 import Control.Monad (forM)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), asks)
-import Control.Monad.State (MonadState (..), gets)
+import Control.Monad.State (MonadState (..))
 import Control.Monad.Writer (MonadWriter (..), WriterT (..))
 import Vehicle.Backend.Solver.UserVariableElimination.Core
 import Vehicle.Backend.Solver.UserVariableElimination.EliminateExists (eliminateQuantifiedVariable)
@@ -20,9 +20,8 @@ import Vehicle.Compile.LiftIf (unfoldIf)
 import Vehicle.Compile.LowerNot (lowerNot)
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
+import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Rational.LinearExpr (LinearityError (..), compileLinearAssertion)
-import Vehicle.Compile.Resource (NetworkTensorType (..), NetworkType (..))
 import Vehicle.Compile.Unblock (UnblockingActions (..))
 import Vehicle.Compile.Unblock qualified as Unblocking
 import Vehicle.Compile.Variable (createUserVar)
@@ -32,19 +31,20 @@ import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
 import Vehicle.Data.MaybeTrivial
+import Vehicle.Data.Tensor (HasShape (..))
 import Vehicle.Data.Variable.Bound.Context.Name (getNameContext, prettyFriendlyInCtx)
+import Vehicle.Data.Variable.Bound.Context.Tensor.Class
 import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Data.Variable.Free.Context (getFreeEnv)
-import Vehicle.Verify.Core (NetworkContextInfo (..))
+import Vehicle.Verify.Core (inputShape)
 import Vehicle.Verify.QueryFormat (QueryFormat (..), supportsStrictInequalities)
 import Prelude hiding (Applicative (..))
 
 eliminateExists ::
   (MonadQueryStructure m) =>
-  VBinder Builtin ->
-  Closure Builtin ->
+  QuantifyRatTensorArgs (Value Builtin) (Closure Builtin) ->
   m (MaybeTrivial Partitions)
-eliminateExists binder (Closure env body) = do
+eliminateExists (QuantifyRatTensorArgs _ binder (Closure env body)) = do
   let varName = getBinderName binder
   let subpassDoc = "elimination of existential quantifier over" <+> quotePretty varName
   logCompilerSection2 MidDetail subpassDoc $ do
@@ -103,17 +103,15 @@ compileBoolExpr expr = do
     ----------------
     VBoolLiteral b -> return $ Trivial b
     VCompareRatTensor (op, args) -> purifyAndCompileAssertion op args
-    VQuantifyRatTensor Forall _ _ _ -> throwError catchableUnsupportedAlternatingQuantifiersError
+    VQuantifyRatTensor (Forall, _) -> throwError catchableUnsupportedAlternatingQuantifiersError
     ---------------------
     -- Recursive cases --
     ---------------------
-    VNot arg -> do
-      ctx <- getNameContext
-      compileBoolExpr =<< lowerNot ctx unblock arg
+    VNot arg -> compileBoolExpr =<< lowerNot unblock arg
     VBoolIf args -> compileBoolExpr =<< unfoldIf args
     VAnd (TensorOp2Args _dims x y) -> andTrivial andPartitions <$> compileBoolExpr x <*> compileBoolExpr y
     VOr (TensorOp2Args _dims x y) -> orTrivial orPartitions <$> compileBoolExpr x <*> compileBoolExpr y
-    VQuantifyRatTensor Exists _ binder closure -> eliminateExists binder closure
+    VQuantifyRatTensor (Exists, args) -> eliminateExists args
     VCompareNat {} -> unblockAndRec expr
     VCompareIndex {} -> unblockAndRec expr
     VReduceAndTensor {} -> unblockAndRec expr
@@ -149,7 +147,7 @@ compilePurifiedAssertion ::
   TensorOp2Args (Value Builtin) ->
   m (Either (Value Builtin) LinearAssertion)
 compilePurifiedAssertion op args@(TensorOp2Args dims xs ys) = do
-  let shape = case getDims (argExpr dims) of
+  let shape = case getDims dims of
         Nothing -> developerError $ "Non-concrete dimensions found" <+> prettyVerbose dims
         Just concreteShape -> concreteShape
 
@@ -192,10 +190,20 @@ unblockQuantifiedBoundVar ::
   Lv ->
   m (Value Builtin)
 unblockQuantifiedBoundVar lv = do
-  maybeChildVariablesExpr <- gets $ flip lookupChildVariablesExpr (SliceVariable lv)
-  case maybeChildVariablesExpr of
-    Just childVariablesExpr -> return childVariablesExpr
-    Nothing -> return $ VBoundVar lv []
+  nestedVar <- lookupNestedSliceVariable (SliceVariable lv)
+  case (childVariablesOf nestedVar, shapeOf nestedVar) of
+    (Nothing, []) -> return $ VBoundVar lv []
+    (Just childVars, d : ds) ->
+      return $
+        fromRatTensorValue $
+          VRatStackTensor $
+            StackTensorArgs
+              { stackType = IRatType,
+                stackFirstDim = INatLiteral d,
+                stackRemainingDims = mkDims ds,
+                stackElements = flip map childVars $ \v -> VBoundVar (toLv v) []
+              }
+    _ -> developerError "mismatched children and shape"
 
 unblockNetworkApplication ::
   (MonadQuantifierBody m) =>
@@ -203,19 +211,30 @@ unblockNetworkApplication ::
   NetworkAppArgs (Value Builtin) ->
   m (Value Builtin)
 unblockNetworkApplication ident (NetworkAppArgs arg) = do
-  globalCtx <- get
   let name = nameOf ident
   networkInfo <- asks (lookupNetworkInfo name . networkCtx)
 
-  (inputVarExpr, outputVarExpr, newGlobalCtx) <- addNetworkApplicationToGlobalCtx name networkInfo globalCtx arg
-  let inputDims = dimensions (inputTensor (networkType networkInfo))
-  let inputDimsExpr = implicitIrrelevant $ mkDims inputDims
-  let inputEquality = fromBoolValue $ VCompareRatTensor (Eq, TensorOp2Args inputDimsExpr inputVarExpr arg)
-  put newGlobalCtx
-  newNameCtx <- getNameContext
-  logDebug MaxDetail $ "note-input-equality" <+> prettyFriendly (WithContext inputEquality newNameCtx)
+  (inputVarExpr, outputVarExpr) <- addNetworkApplicationToGlobalCtx name networkInfo arg
+  let inputEquality =
+        fromBoolValue $
+          VCompareRatTensor
+            ( Eq,
+              TensorOp2Args
+                { tensorOp2Dims = mkDims (inputShape networkInfo),
+                  tensorOp2Arg1 = inputVarExpr,
+                  tensorOp2Arg2 = arg
+                }
+            )
   tell [inputEquality]
-  logDebug MaxDetail $ "replace-expr" <+> prettyFriendly (WithContext outputVarExpr newNameCtx)
+
+  logDebugM MaxDetail $ do
+    inputEqualityDoc <- prettyFriendlyInCtx inputEquality
+    replacementExprDoc <- prettyFriendlyInCtx outputVarExpr
+    return $
+      "note-input-equality" <+> inputEqualityDoc
+        <> line
+        <> "replace-expr" <+> replacementExprDoc
+
   return outputVarExpr
 
 --------------------------------------------------------------------------------
@@ -241,21 +260,22 @@ eliminateTensorAssertion ::
   TensorOp2Args (Value Builtin) ->
   m (Value Builtin)
 eliminateTensorAssertion op (TensorOp2Args dims xs ys) =
-  case argExpr dims of
-    ICons _ d@(INatLiteral n) ds -> do
+  case dims of
+    IDimCons d@(INatLiteral n) ds -> do
       freeEnv <- getFreeEnv
       -- TODO switch to use `etaReduceTensor`?
       nameCtx <- getNameContext
-      let tElem = implicit $ fromTypeValue VRatType
-      let d0Arg = implicitIrrelevant (mkDims [])
-      let mkAt vs i = evalAtTensor nameCtx (evalApp freeEnv) (eval freeEnv) (AtTensorArgs tElem (implicitIrrelevant d) (implicitIrrelevant ds) vs (IIndexLiteral i))
+      let tElem = fromTypeValue VRatType
+      let d0Arg = mkDims []
+      let mkAt vs i = evalAtTensor nameCtx (evalApp freeEnv) (eval freeEnv) (AtTensorArgs tElem d ds vs (IIndexLiteral i))
       let mkStackElement i = do
             xsi <- mkAt xs i
             ysi <- mkAt ys i
-            evalCompareRatTensor op (TensorOp2Args (implicitIrrelevant ds) xsi ysi)
+            evalCompareRatTensor op (TensorOp2Args ds xsi ysi)
       stackElements <- traverse mkStackElement [0 .. (n - 1)] :: m [Value Builtin]
       let stackExpr = fromBoolTensorValue $ VBoolStackTensor (StackTensorArgs tElem d d0Arg stackElements)
-      unoptimisedEvalReduceAndTensor (TensorOp2Args (implicitIrrelevant (mkDims [n])) (IBoolLiteral True) stackExpr)
+      result <- unoptimisedEvalReduceAndTensor (TensorReductionArgs (mkDims [n]) (IBoolLiteral True) stackExpr)
+      return result
     _ -> compilerDeveloperError ("unexpected dimensions" <+> prettyVerbose dims)
 
 networkEqualitiesToPartition ::

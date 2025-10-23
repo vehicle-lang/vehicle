@@ -5,6 +5,7 @@ import Data.List.NonEmpty qualified as NonEmpty
 import Data.Version (Version (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Resource (NetworkTensorType (dimensions), NetworkType (inputTensor, outputTensor))
+import Vehicle.Data.Bound (BoundedValue (..), Domain (..), LowerBound (..), UpperBound (..))
 import Vehicle.Data.Tensor (TensorShape)
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
@@ -128,17 +129,20 @@ compileNetworkOutput name shape = parens ("declare-output" <+> pretty name <+> "
 compileVNNLibVar :: CompileQueryVariable
 compileVNNLibVar QueryVariableInfo {..} = do
   let networkVariableName = compileNetworkVariableName networkName networkAppIndex inputOrOutput
-  layoutAsText $ networkVariableName <> pretty parentVariableIndices
+  let indicesDoc = if null parentVariableIndices then "" else pretty parentVariableIndices
+  layoutAsText $ networkVariableName <> indicesDoc
 
-compileBound :: (QueryVariable, (Rational, Rational)) -> Doc a
-compileBound (var, (lowerBound, upperBound)) =
+compileBound :: BoundedValue QueryVariable (Domain Rational) -> Doc a
+compileBound (BoundedValue var (Domain LowerBound {..} UpperBound {..})) =
   compileAssertion $
-    if lowerBound == upperBound
-      then compileComparison (pretty var) "==" (prettyRationalAsFloat lowerBound)
-      else
+    if lowerBoundValue == upperBoundValue
+      then compileComparison (pretty var) "==" (prettyRationalAsFloat lowerBoundValue)
+      else do
+        let lowerRel = compileRel $ inequalityToQueryRelation lowerBoundRel
+        let upperRel = compileRel $ inequalityToQueryRelation upperBoundRel
         compileAnd
-          [ compileComparison (prettyRationalAsFloat lowerBound) "<=" (pretty var),
-            compileComparison (pretty var) "<=" (prettyRationalAsFloat upperBound)
+          [ compileComparison (prettyRationalAsFloat lowerBoundValue) lowerRel (pretty var),
+            compileComparison (pretty var) upperRel (prettyRationalAsFloat upperBoundValue)
           ]
 
 compileQueryAssertion :: (MonadLogger m) => QueryAssertion QueryVariable -> m (Doc a)

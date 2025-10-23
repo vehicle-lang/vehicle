@@ -23,7 +23,7 @@ data GenericArg expr = Arg
     -- | The argument expression
     argExpr :: expr
   }
-  deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
+  deriving (Eq, Ord, Show, Functor, Foldable, Traversable, Generic)
 
 instance (NFData expr) => NFData (GenericArg expr)
 
@@ -94,23 +94,28 @@ traverseExplicitArgExpr f arg
 argFromBinder :: GenericBinder expr -> expr -> GenericArg expr
 argFromBinder (Binder p _ v r _) = Arg p v r
 
--- | Constructs an explicit relevant argument
+-- | Constructs a relevant explicit argument
 explicit :: expr -> GenericArg expr
 explicit = Arg mempty Explicit Relevant
 
--- | Constructs an explicit relevant argument
+-- | Constructs an irrelevant explicit argument
 explicitIrrelevant :: expr -> GenericArg expr
 explicitIrrelevant = Arg mempty Explicit Irrelevant
 
--- | Constructs an implicit relevant argument marked as being inserted by
+-- | Constructs a relevant implicit argument marked as being inserted by
 -- the compiler.
 implicit :: expr -> GenericArg expr
 implicit = Arg mempty (Implicit True) Relevant
 
--- | Constructs an implicit relevant argument marked as being inserted by
+-- | Constructs an irrelevant implicit argument marked as being inserted by
 -- the compiler.
 implicitIrrelevant :: expr -> GenericArg expr
 implicitIrrelevant = Arg mempty (Implicit True) Irrelevant
+
+-- | Constructs an irrelevant instance argument marked as being inserted by
+-- the compiler.
+instanceIrrelevant :: expr -> GenericArg expr
+instanceIrrelevant = Arg mempty (Instance True) Irrelevant
 
 --------------------------------------------------------------------------------
 -- Args

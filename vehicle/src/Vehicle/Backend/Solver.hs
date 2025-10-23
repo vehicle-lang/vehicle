@@ -20,7 +20,7 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources (expandResources)
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.LiftIf (unfoldIf)
-import Vehicle.Compile.LowerNot (lowerNot, notClosure)
+import Vehicle.Compile.LowerNot (lowerNot, negateQuantifierBody)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyFriendlyEmptyCtx)
 import Vehicle.Compile.Print.Warning ()
@@ -32,7 +32,8 @@ import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
 import Vehicle.Data.MaybeTrivial (MaybeTrivial (..), andTrivial, orTrivial)
-import Vehicle.Data.Variable.Bound.Context.Name (runFreshNameContextT)
+import Vehicle.Data.Variable.Bound.Context.Name
+import Vehicle.Data.Variable.Bound.Context.Tensor
 import Vehicle.Data.Variable.Free.Context
 import Vehicle.Prelude.Warning (CompileWarning (..))
 import Vehicle.Verify.Core
@@ -167,7 +168,11 @@ compileSingleProperty CompilationSettings {..} prov propertyAddress expr =
               ..
             }
 
-    queries <- runReaderT (runSupplyT [1 :: QueryID ..] $ eliminateUserVariables expr) propertyMetaData
+    queries <-
+      flip runReaderT propertyMetaData $
+        runFreshTensorBoundContextT $
+          runSupplyT [1 :: QueryID ..] $
+            compileQueries expr
 
     -- Warn if trivial.
     case queries of
@@ -182,38 +187,38 @@ compileSingleProperty CompilationSettings {..} prov propertyAddress expr =
 
 -- | Compiles the top-level structure of a property until it hits the first quantifier.
 -- Assumptions - expression is well-typed in the empty context and of type Bool.
-eliminateUserVariables ::
+compileQueries ::
   forall m.
   (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m) =>
   Value Builtin ->
   m (Property QueryMetaData)
-eliminateUserVariables expr = do
+compileQueries expr = do
   showTopLevelEntry expr
   showTopLevelExit =<< case toBoolValue expr of
     ----------------
     -- Base cases --
     ----------------
     VBoolLiteral b -> return $ Trivial b
-    VQuantifyRatTensor Exists dims binder closure -> compileQuantifiedQuerySet False dims binder closure
-    VQuantifyRatTensor Forall dims binder closure -> do
+    VQuantifyRatTensor (Exists, args) -> compileQuantifiedQuerySet False args
+    VQuantifyRatTensor (Forall, args) -> do
       logDebug MaxDetail $ "negate" <+> pretty Forall
-      let negatedClosure = notClosure 0 dims closure
-      compileQuantifiedQuerySet True dims binder negatedClosure
+      negatedArgs <- negateQuantifierBody args
+      compileQuantifiedQuerySet True negatedArgs
     ---------------------
     -- Recursive cases --
     ---------------------
-    VAnd (TensorOp2Args _dims e1 e2) -> andTrivial andBoolExpr <$> eliminateUserVariables e1 <*> eliminateUserVariables e2
-    VOr (TensorOp2Args _dims e1 e2) -> orTrivial orBoolExpr <$> eliminateUserVariables e1 <*> eliminateUserVariables e2
-    VBoolIf args -> eliminateUserVariables =<< runFreshNameContextT (unfoldIf args)
+    VAnd (TensorOp2Args _dims e1 e2) -> andTrivial andBoolExpr <$> compileQueries e1 <*> compileQueries e2
+    VOr (TensorOp2Args _dims e1 e2) -> orTrivial orBoolExpr <$> compileQueries e1 <*> compileQueries e2
+    VBoolIf args -> compileQueries =<< unfoldIf args
     -------------------------
     -- Blocked expressions --
     -------------------------
-    VReduceAndTensor {} -> eliminateUserVariables =<< unblock expr
-    VReduceOrTensor {} -> eliminateUserVariables =<< unblock expr
-    VBoolAt {} -> eliminateUserVariables =<< unblock expr
-    VCompareIndex {} -> eliminateUserVariables =<< unblock expr
-    VCompareNat {} -> eliminateUserVariables =<< unblock expr
-    VNot args -> eliminateUserVariables =<< lowerNot mempty unblock args
+    VReduceAndTensor {} -> compileQueries =<< unblock expr
+    VReduceOrTensor {} -> compileQueries =<< unblock expr
+    VBoolAt {} -> compileQueries =<< unblock expr
+    VCompareIndex {} -> compileQueries =<< unblock expr
+    VCompareNat {} -> compileQueries =<< unblock expr
+    VNot args -> compileQueries =<< lowerNot unblock args
     -----------------
     -- Mixed cases --
     -----------------
@@ -226,18 +231,17 @@ eliminateUserVariables expr = do
     -- call to purify.
     VCompareRatTensor {} -> compileUnquantifiedQuerySet expr
   where
-    unblock e = runFreshNameContextT (unblockBoolExpr topLevelUnblockingActions e)
+    unblock = unblockBoolExpr topLevelUnblockingActions
 
 compileQuantifiedQuerySet ::
   (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m) =>
   Bool ->
-  VArg Builtin ->
-  VBinder Builtin ->
-  Closure Builtin ->
+  QuantifyRatTensorArgs (Value Builtin) (Closure Builtin) ->
   m (Property QueryMetaData)
-compileQuantifiedQuerySet isPropertyNegated _dims binder closure = logCompilerSection2 MaxDetail "compilation of query set" $ do
-  (maybePartitions, globalCtx) <- runStateT (eliminateExists binder closure) emptyGlobalCtx
-  compileQuerySetPartitions globalCtx isPropertyNegated maybePartitions
+compileQuantifiedQuerySet isPropertyNegated args =
+  logCompilerSection2 MaxDetail "compilation of query set" $ do
+    (maybePartitions, globalCtx) <- runStateT (eliminateExists args) emptyGlobalCtx
+    compileQuerySetPartitions globalCtx isPropertyNegated maybePartitions
 
 -- | We only need this because we can't evaluate networks in the compiler.
 compileUnquantifiedQuerySet ::
@@ -260,7 +264,7 @@ compileQuerySetPartitions globalCtx isPropertyNegated maybePartitions = case may
   Trivial b -> return $ Trivial (b `xor` isPropertyNegated)
   NonTrivial partitions -> do
     propertyMetaData <- ask
-    maybeQueries <- compilePartitionsToQueries propertyMetaData globalCtx partitions
+    maybeQueries <- runReaderT (compilePartitionsToQueries partitions) (propertyMetaData, globalCtx)
     case maybeQueries of
       Trivial b -> return $ Trivial b
       NonTrivial queries -> return $ NonTrivial $ Query $ QuerySet isPropertyNegated queries

@@ -23,6 +23,7 @@ import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.Interface (getDimsExprs)
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
+import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Syntax.Parse (ParseError (..))
 import Vehicle.Syntax.Tensor (TensorIndices)
 import Prelude hiding (pi)
@@ -754,7 +755,7 @@ formatCompileError = \case
         problem = "No properties found in file.",
         fix = Just $ "an expression is labelled as a property by giving it type" <+> squotes (pretty BoolType) <+> "."
       }
-  UnsupportedLossOperation _declProv p op ->
+  UnsupportedLossOperation (_, p) op ->
     VehicleError
       { provenance = Just p,
         problem =

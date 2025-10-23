@@ -15,6 +15,8 @@ import Vehicle.Compile.Type.Meta (findUltimateUnsolvedMeta)
 import Vehicle.Compile.Type.Meta.Variable (MetaVariableContext, findMetaInfo, metaCtx, metaSolution, metaType)
 import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Code.Value
+import Vehicle.Data.Variable.Bound.Context.Generic
+import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Free.Context
 
 --------------------------------------------------------------------------------

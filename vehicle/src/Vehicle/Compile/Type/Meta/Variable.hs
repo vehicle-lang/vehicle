@@ -21,6 +21,7 @@ import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Meta.Set (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Data.Code.Value
+import Vehicle.Data.Variable.Bound.Context.Generic.Core
 
 -- Eventually when metas make into the builtins, this should module
 -- should also contain the definition of meta-variables themselves.

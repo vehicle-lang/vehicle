@@ -29,7 +29,7 @@ import Data.These (These)
 import Data.Typeable (Proxy)
 import Data.Void (Void)
 import GHC.Generics (Generic)
-import Vehicle.Backend.LossFunction.Core (BooleanDifferentiableLogicField, TensorDifferentiableLogicField)
+import Vehicle.Backend.Loss.Logics (BooleanDifferentiableLogicField, TensorDifferentiableLogicField)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Resource (NetworkName)
@@ -42,6 +42,7 @@ import Vehicle.Data.Builtin.Polarity
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Tensor (TensorIndices, TensorShape)
+import Vehicle.Data.Variable.Bound.Context.Name.Core
 import Vehicle.Syntax.Parse (ParseError, ParseLocation)
 import Vehicle.Verify.QueryFormat.Core
 
@@ -180,9 +181,9 @@ data CompileError
   | UnsupportedMultipleNetworkApplications QueryFormatID DeclProvenance CompleteNamedBoundCtx [(NetworkName, Value Builtin)]
   | VariableSizeTensorQuantification DeclProvenance NamedBoundCtx (VBinder Builtin) (VType Builtin)
   | MultiPropertyTraveralError DeclProvenance MultiPropertyTraveralError
-  | UnboundedNetworkInputVariables DeclProvenance CompleteNamedBoundCtx (NonEmpty (NetworkName, Value Builtin, [Name], UnboundedIndices))
+  | UnboundedNetworkInputVariables DeclProvenance CompleteNamedBoundCtx (NonEmpty (NetworkName, Value Builtin, [Lv], UnboundedIndices))
   | -- Loss backend errors
-    UnsupportedLossOperation DeclProvenance Provenance (Doc Void)
+    UnsupportedLossOperation DeclProvenance (Doc Void)
   | UnsupportedHigherOrderTensorCode DeclProvenance NamedBoundCtx (Value Builtin) NamedBoundCtx (Value Builtin)
   | UnableToLiftLogicFieldToTensors DifferentiableLogicID TensorDifferentiableLogicField (BooleanDifferentiableLogicField, Value Builtin) NamedBoundCtx (Value Builtin)
   | NoQuantifierDomainFound DeclProvenance (VBinder Builtin) (These (NonEmpty TensorIndices) (NonEmpty TensorIndices))

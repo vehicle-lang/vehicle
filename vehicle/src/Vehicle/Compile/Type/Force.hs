@@ -17,6 +17,7 @@ import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Data.Builtin.Interface.Blocked (BlockingStatus (..))
 import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Code.Value
+import Vehicle.Data.Variable.Bound.Context.Name.Core
 
 -----------------------------------------------------------------------------
 -- Meta-variable forcing

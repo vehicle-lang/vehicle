@@ -27,6 +27,7 @@ import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Data.Builtin.Interface.Print (PrintableBuiltin)
 import Vehicle.Data.Code.Value
+import Vehicle.Data.Variable.Bound.Context.Generic
 
 --------------------------------------------------------------------------------
 -- Generalisation

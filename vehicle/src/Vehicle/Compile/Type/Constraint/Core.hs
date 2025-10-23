@@ -24,6 +24,7 @@ import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Code.Value
 import Vehicle.Data.DSL
+import Vehicle.Data.Variable.Bound.Context.Generic
 
 malformedConstraintError ::
   (PrintableBuiltin builtin, MonadCompile m) =>

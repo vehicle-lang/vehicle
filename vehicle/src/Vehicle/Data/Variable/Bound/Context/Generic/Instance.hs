@@ -1,15 +1,17 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Vehicle.Data.Variable.Bound.Context.Instance where
+module Vehicle.Data.Variable.Bound.Context.Generic.Instance where
 
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Identity (Identity (..))
-import Control.Monad.Reader (MonadReader (..), ReaderT (..), mapReaderT)
+import Control.Monad.Reader (MonadReader (..), ReaderT (..), asks, mapReaderT)
 import Control.Monad.State (MonadState (..))
 import Control.Monad.Writer
 import Data.Data (Proxy)
 import Vehicle.Compile.Prelude
-import Vehicle.Data.Variable.Bound.Context.Class
+import Vehicle.Data.Variable.Bound.Context.Generic.Class
+import Vehicle.Data.Variable.Bound.Context.Generic.Core
+import Vehicle.Data.Variable.Bound.Context.Name (MonadReadableNameContext (..))
 
 --------------------------------------------------------------------------------
 -- Context monad instantiation
@@ -73,6 +75,9 @@ instance (MonadState s m) => MonadState s (BoundContextT expr m) where
 instance (MonadReader s m) => MonadReader s (BoundContextT expr m) where
   ask = lift ask
   local = mapBoundContextT . local
+
+instance (Monad m) => MonadReadableNameContext (BoundContextT expr m) where
+  getNameContext = BoundContextT $ asks toNamedBoundCtx
 
 instance (Monad m) => MonadBoundContext expr (BoundContextT expr m) where
   addBinderToContext binder cont = BoundContextT $ do

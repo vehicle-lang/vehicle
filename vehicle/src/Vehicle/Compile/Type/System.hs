@@ -17,6 +17,7 @@ import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin)
 import Vehicle.Data.Builtin.Standard.Core (Builtin (..))
 import Vehicle.Data.Code.Value (Value)
+import Vehicle.Data.Variable.Bound.Context.Generic (HasBoundCtx (..))
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext)
 
 -- | The type-checking monad.

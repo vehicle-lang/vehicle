@@ -29,7 +29,8 @@ import Vehicle.Compile.Type.Meta.Substitution as MetaSubstitution (MetaSubstitut
 import Vehicle.Data.Builtin.Interface.Normalise (NormalisableBuiltin)
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Interface.Type
-import Vehicle.Data.Variable.Bound.Context.Instance
+import Vehicle.Data.Variable.Bound.Context.Generic
+import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Free.Context.Class (MonadFreeContext)
 
 --------------------------------------------------------------------------------

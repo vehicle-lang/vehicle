@@ -12,7 +12,7 @@ import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
-import Vehicle.Prelude (GenericArg (..), HasIdentifier (identifierOf), implicitIrrelevant)
+import Vehicle.Prelude (GenericArg (..), HasIdentifier (identifierOf))
 
 ---------------------------------------------------------------------------------
 --- Normalisation
@@ -139,9 +139,9 @@ evalVectorToList args@(VectorToListArgs t d xs) =
 foldReduceAndComparison ::
   TensorReductionArgs (Value Builtin) ->
   Maybe (Value Builtin)
-foldReduceAndComparison (TensorOp2Args _ _ tensor) =
+foldReduceAndComparison (TensorReductionArgs _ _ tensor) =
   case getExpr accessCompareRatTensorPointwise tensor of
-    Just (op, TensorOp2Args (argExpr -> ICons _ d ds) xs ys) -> do
-      let compareArgs = TensorReduceComparisonArgs (implicitIrrelevant d) (implicitIrrelevant ds) xs ys
+    Just (op, TensorOp2Args (IDimCons d ds) xs ys) -> do
+      let compareArgs = TensorReduceComparisonArgs d ds xs ys
       Just $ mkExpr accessCompareRatTensorReduced (op, compareArgs)
     _ -> Nothing

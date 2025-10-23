@@ -76,11 +76,6 @@ illTypedError pass name =
   developerError $
     unexpectedExpr pass name <+> "This is ill-typed."
 
-visibilityError :: (HasCallStack) => Doc a -> Doc a -> Doc a -> b
-visibilityError pass fun args =
-  developerError $
-    unexpectedExpr pass args <+> "Does not match function's visibility:" <> line <> indent 2 fun
-
 -- | Throw this when you encounter a case that should have been resolved during
 -- type-checking, e.g. holes or metas.
 resolutionError :: (HasCallStack) => Doc a -> Doc a -> b

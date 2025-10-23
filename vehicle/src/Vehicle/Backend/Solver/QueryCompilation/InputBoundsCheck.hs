@@ -12,27 +12,26 @@ import Data.Foldable (foldlM)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Proxy (Proxy (..))
 import Data.Set qualified as Set
-import Data.These (These (..))
+import Vehicle.Backend.Solver.QueryCompilation.Core (MonadQueryCompilation)
 import Vehicle.Backend.Solver.UserVariableElimination.Core
 import Vehicle.Compile.Constants.Rational
 import Vehicle.Compile.Error
+import Vehicle.Compile.ExpandResources.Core (lookupNetworkInfo)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Resource (NetworkName)
 import Vehicle.Data.Bound
-import Vehicle.Data.Builtin.Standard.Core (Builtin)
+import Vehicle.Data.Bound.FourierMotzkinElimination (fourierMotzkinTensorBoundsElimination)
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.Value (boundVariablesIn)
 import Vehicle.Data.MaybeTrivial (MonadMaybeTrivial (..))
-import Vehicle.Data.Tensor (HasShape (..), RatTensor, allTensor, anyTensor, zipWithTensor)
+import Vehicle.Data.Tensor (HasShape (..), RatTensor, TensorShape)
 import Vehicle.Data.Tensor.Traversal (toPartialShape)
-import Vehicle.Data.Variable.Bound.Context.Name (runNameContextT)
+import Vehicle.Data.Variable.Bound.Context.Name
+import Vehicle.Data.Variable.Bound.Context.Tensor.Class (MonadReadableTensorBoundContext, getCompleteNamedCtx, lookupParentTensorVariable)
 import Vehicle.Data.Variable.Bound.Level
-import Vehicle.Data.Variable.Bound.Tensor (findCorrespondingTensorVariable, findIndices, nestedCtxToNameCtx)
-import Vehicle.Data.Variable.Free.Context (runFreshFreeContextT)
 import Vehicle.Prelude.Warning (CompileWarning (..))
+import Vehicle.Verify.Core (inputShape)
 import Vehicle.Verify.QueryFormat.Core (QueryFormatID (..))
 import Vehicle.Verify.QueryFormat.Interface (QueryFormat (..))
 
@@ -41,21 +40,21 @@ import Vehicle.Verify.QueryFormat.Interface (QueryFormat (..))
 
 -- | Checks for presence of under-constrained input variables.
 findInputVariableBounds ::
-  (MonadCompile m, MonadMaybeTrivial m) =>
-  PropertyMetaData ->
-  GlobalCtx ->
+  (MonadQueryCompilation m, MonadMaybeTrivial m) =>
   NetworkApplications ->
   ConjunctAll LinearAssertion ->
   m (BoundedAssertions NetworkInputTensorVariable SliceVariable RatTensor)
-findInputVariableBounds metaData ctx metaNetworkApps constraints = do
+findInputVariableBounds metaNetworkApps constraints = do
   logCompilerSection2 MaxDetail "network variable bounds checks" $
-    runMonadBoundsT metaData ctx metaNetworkApps $ do
+    runMonadBoundsT metaNetworkApps $ do
       -- Search through the list of constraints for bounds
       boundedAssertions <- findBoundsInConjuncts constraints
 
       logDebugM MaxDetail $ do
-        let (assertionDoc, boundsDoc) = prettyBoundedAssertions boundedAssertions (completeNamedCtx ctx)
-        return $ "Found bounds:" <> lineIndent boundsDoc <> line <> "remaining assertions:" <> lineIndent assertionDoc
+        let Partial bounds assertions = boundedAssertions
+        assertionsDoc <- prettyFriendlyInCtx assertions
+        boundsDoc <- prettyBounds bounds
+        return $ "Found bounds:" <> lineIndent boundsDoc <> line <> "remaining assertions:" <> lineIndent assertionsDoc
 
       -- Check that all bounds present
       checkAllBoundsPresent boundedAssertions
@@ -63,7 +62,11 @@ findInputVariableBounds metaData ctx metaNetworkApps constraints = do
 --------------------------------------------------------------------------------
 -- MonadSearch
 
-type BoundsState = (PropertyMetaData, GlobalCtx, Map NetworkInputTensorVariable (NetworkName, NetworkApplicationInfo))
+type BoundsState =
+  ( PropertyMetaData,
+    GlobalCtx,
+    Map NetworkInputTensorVariable (NetworkName, NetworkApplicationInfo, TensorShape)
+  )
 
 isNetworkTensorInputVar :: BoundsState -> SliceVariable -> Maybe NetworkInputTensorVariable
 isNetworkTensorInputVar (_, _, networkNames) var = do
@@ -74,19 +77,20 @@ isNetworkTensorInputVar (_, _, networkNames) var = do
 
 type MonadBounds m =
   ( MonadCompile m,
-    MonadReader BoundsState m
+    MonadReader BoundsState m,
+    MonadReadableTensorBoundContext m
   )
 
 runMonadBoundsT ::
-  (MonadLogger m) =>
-  PropertyMetaData ->
-  GlobalCtx ->
+  (MonadLogger m, MonadQueryCompilation m) =>
   NetworkApplications ->
   ReaderT BoundsState m a ->
   m a
-runMonadBoundsT propertyMetaData globalCtx networkApps action = do
+runMonadBoundsT networkApps action = do
+  (propertyMetaData, globalCtx) <- ask
   -- Make the mapping from input variables to names
-  let mkInputVarEntry (name, app) = (inputVariable app, (name, app))
+  let lookupInputShape name = inputShape $ lookupNetworkInfo name (networkCtx propertyMetaData)
+  let mkInputVarEntry (name, app) = (inputVariable app, (name, app, lookupInputShape name))
   let inputVariableMapping = Map.fromList $ mkInputVarEntry <$> toListOfApplications networkApps
   -- Run the monad
   runReaderT action (propertyMetaData, globalCtx, inputVariableMapping)
@@ -104,30 +108,23 @@ andPartiallyBoundedAssertions ::
   PartiallyBoundedAssertions ->
   PartiallyBoundedAssertions ->
   m PartiallyBoundedAssertions
-andPartiallyBoundedAssertions a@(Partial bounds1 assertions1) b@(Partial bounds2 assertions2) = do
-  newVariableBounds <- unionWithM andTensorBounds bounds1 bounds2
+andPartiallyBoundedAssertions (Partial bounds1 assertions1) (Partial bounds2 assertions2) = do
+  let newVariableBounds = Map.unionWith andBounds bounds1 bounds2
   let newAssertions = assertions1 <> assertions2
-  let c = Partial newVariableBounds newAssertions
-  (_, ctx, _) <- ask
-  logDebug MaxDetail "and"
-  incrCallDepth
-  logDebug MaxDetail $ snd $ prettyBoundedAssertions a (completeNamedCtx ctx)
-  logDebug MaxDetail $ snd $ prettyBoundedAssertions b (completeNamedCtx ctx)
-  logDebug MaxDetail $ snd $ prettyBoundedAssertions c (completeNamedCtx ctx)
-  decrCallDepth
-  return c
+  return $ Partial newVariableBounds newAssertions
 
-prettyBoundedAssertions :: PartiallyBoundedAssertions -> CompleteNamedBoundCtx -> (Doc a, Doc a)
-prettyBoundedAssertions (Partial bounds assertions) ctx = do
-  let assertionsDoc = prettyFriendly (WithContext assertions ctx)
-  let boundsDoc = vsep $ fmap boundToDoc (Map.toList bounds)
-  (assertionsDoc, boundsDoc)
+prettyBounds ::
+  forall m a.
+  (MonadReadableNameContext m) =>
+  Map NetworkInputTensorVariable (TensorBounds RatTensor) ->
+  m (Doc a)
+prettyBounds bounds = vsep <$> traverse boundToDoc (Map.toList bounds)
   where
-    boundToDoc :: (NetworkInputTensorVariable, TensorBounds RatTensor) -> Doc a
+    boundToDoc :: (NetworkInputTensorVariable, TensorBounds RatTensor) -> m (Doc a)
     boundToDoc (var, partialBounds) = do
-      let varDoc = prettyFriendly (WithContext var ctx)
-      let boundDoc = prettyFriendly (WithContext (BoundedValue var partialBounds) ctx)
-      varDoc <> ":" <> lineIndent boundDoc
+      varDoc <- prettyFriendlyInCtx var
+      boundDoc <- prettyFriendlyInCtx (BoundedValue var partialBounds)
+      return $ varDoc <> ":" <> lineIndent boundDoc
 
 --------------------------------------------------------------------------------
 -- Bound search
@@ -145,8 +142,8 @@ findBoundsInAssertion ::
   LinearAssertion ->
   m PartiallyBoundedAssertions
 findBoundsInAssertion assertion = do
-  state@(_, _, _) <- ask
-  return $ case tryToConvertToTensorBounds (lookupCorrespondingInputVar state) assertion of
+  maybeTensorBounds <- tryToConvertToTensorBounds lookupCorrespondingInputVar assertion
+  return $ case maybeTensorBounds of
     Nothing ->
       Partial
         { variableBounds = mempty,
@@ -159,16 +156,17 @@ findBoundsInAssertion assertion = do
         }
 
 lookupCorrespondingInputVar ::
-  BoundsState ->
+  (MonadBounds m) =>
   SliceVariable ->
-  Maybe VariableInfo
-lookupCorrespondingInputVar state@(_, ctx, _) var = do
-  let nestedSliceVar = findCorrespondingTensorVariable (globalBoundVarCtx ctx) var
+  m (Maybe VariableInfo)
+lookupCorrespondingInputVar var = do
+  state <- ask
+  nestedSliceVar <- lookupParentTensorVariable var
   let maybeInputVar = isNetworkTensorInputVar state (toSliceVar nestedSliceVar)
-  case maybeInputVar of
+  return $ case maybeInputVar of
     Nothing -> Nothing
     Just inputVar -> do
-      let indices = findIndices nestedSliceVar var
+      let indices = findSliceIndices nestedSliceVar var
       Just $
         VariableInfo
           { parentVariable = toTensorVar inputVar,
@@ -184,37 +182,35 @@ checkAllBoundsPresent ::
   PartiallyBoundedAssertions ->
   m (BoundedAssertions NetworkInputTensorVariable SliceVariable RatTensor)
 checkAllBoundsPresent (Partial allPartialbounds assertions) = do
-  (PropertyMetaData {..}, ctx@GlobalCtx {..}, inputVariableMapping) <- ask
+  (PropertyMetaData {..}, _, inputVariableMapping) <- ask
 
-  let nameCtx = Just <$> nestedCtxToNameCtx globalBoundVarCtx
-  errorsAndFinalBounds <- forM (Map.toList inputVariableMapping) $ \(var, (networkName, appInfo)) -> do
-    let errorCase indices = Left (networkName, inputValue appInfo, findUnboundedVariables ctx appInfo, indices)
+  errorsAndFinalBounds <- forM (Map.toList inputVariableMapping) $ \(var, (networkName, appInfo, varShape)) -> do
+    let errorCase indices = return $ Left (networkName, inputValue appInfo, findUnboundedVariables appInfo, indices)
     case Map.lookup var allPartialbounds of
-      Nothing -> return $ errorCase $ These [[]] [[]]
+      Nothing -> errorCase wholeTensorUnbounded
       Just partialBounds -> do
-        missingIndicesOrFlattenedBounds <-
-          runFreshFreeContextT (Proxy @Builtin) $
-            runNameContextT nameCtx $
-              flattenTensorBounds partialBounds
-
+        let partialShape = toPartialShape varShape Nothing
+        missingIndicesOrFlattenedBounds <- fourierMotzkinTensorBoundsElimination partialShape partialBounds
         case missingIndicesOrFlattenedBounds of
-          Right bounds -> return $ Right (var, bounds)
-          Left missingIndices -> do
-            return $ errorCase missingIndices
+          Right bounds -> return $ Right (BoundedValue var bounds)
+          Left missingIndices -> errorCase missingIndices
 
-  let (missingBounds, completeBounds) = partitionEithers errorsAndFinalBounds
+  let (missingBounds, boundedVariables) = partitionEithers errorsAndFinalBounds
   case missingBounds of
     [] -> return ()
-    i : is -> throwError $ UnboundedNetworkInputVariables propertyProvenance (completeNamedCtx ctx) (i :| is)
+    i : is -> do
+      nameCtx <- getCompleteNamedCtx
+      throwError $ UnboundedNetworkInputVariables propertyProvenance nameCtx (i :| is)
 
   -- If Marabou, then warn if all inputs are constant.
   -- See https://github.com/NeuralNetworkVerification/Marabou/issues/670
+  let domains = fmap valueBounds boundedVariables
   let formatID = queryFormatID queryFormat
-  when (queryFormatID queryFormat == MarabouQueries && all isEquality completeBounds) $
+  when (queryFormatID queryFormat == MarabouQueries && all isEquality domains) $
     logWarning $
       AllConstantNetworkInputVars formatID propertyAddress
 
-  let boundsUnsatisfiable = any isUnsatisfiable completeBounds
+  let boundsUnsatisfiable = not (all isSatisfiable domains)
   if boundsUnsatisfiable
     then trivial False
     else case assertions of
@@ -222,19 +218,12 @@ checkAllBoundsPresent (Partial allPartialbounds assertions) = do
       a : as ->
         return $
           BoundedAssertions
-            { variableBounds = Map.fromList completeBounds,
+            { variableBounds = boundedVariables,
               assertions = ConjunctAll (a :| as)
             }
 
-isUnsatisfiable :: (NetworkInputTensorVariable, (RatTensor, RatTensor)) -> Bool
-isUnsatisfiable (_name, (lower, upper)) = anyTensor id $ zipWithTensor (>) lower upper
-
-isEquality :: (NetworkInputTensorVariable, (RatTensor, RatTensor)) -> Bool
-isEquality (_name, (lower, upper)) = allTensor id $ zipWithTensor (==) lower upper
-
-findUnboundedVariables :: GlobalCtx -> NetworkApplicationInfo -> [Name]
-findUnboundedVariables globalCtx appInfo = do
+findUnboundedVariables :: NetworkApplicationInfo -> [Lv]
+findUnboundedVariables appInfo =
   -- TODO we actually need to do this recursively on any network variables that
   -- live in this set.
-  let boundVars = Set.toList $ boundVariablesIn $ inputValue appInfo
-  fmap (\lv -> lookupLvInBoundCtx lv (completeNamedCtx globalCtx)) boundVars
+  Set.toList $ boundVariablesIn $ inputValue appInfo

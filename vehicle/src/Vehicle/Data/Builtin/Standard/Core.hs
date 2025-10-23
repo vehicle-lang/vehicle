@@ -22,7 +22,7 @@ import Vehicle.Prelude (GenericArg (..), HasIdentifier (identifierOf))
 import Vehicle.Syntax.Sugar (BinderType (..))
 
 -----------------------------------------------------------------------------
--- Classes
+-- Accessors
 
 typeAccessor :: BuiltinType -> Accessor Builtin ()
 typeAccessor b =
@@ -87,8 +87,13 @@ compareRatTensorReducedAccessor =
       mkExpr = \op -> DerivedFunction (CompareRatTensorReduced op)
     }
 
-instance BuiltinHasBoolLiterals Builtin where
+--------------------------------------------------------------------------------
+-- Bool
+
+instance BuiltinHasBoolType Builtin where
   accessBoolTypeBuiltin = typeAccessor BoolType
+
+instance BuiltinHasBoolLiterals Builtin where
   accessBoolTensorLitBuiltin =
     Access
       { getExpr = \case
@@ -118,6 +123,12 @@ instance BuiltinHasBoolLiterals Builtin where
         mkExpr = BuiltinFunction . QuantifyRatTensor
       }
 
+--------------------------------------------------------------------------------
+-- Index
+
+instance BuiltinHasIndexType Builtin where
+  accessIndexTypeBuiltin = typeAccessor IndexType
+
 instance BuiltinHasIndexLiterals Builtin where
   accessIndexLitBuiltin =
     Access
@@ -126,6 +137,9 @@ instance BuiltinHasIndexLiterals Builtin where
           _ -> Nothing,
         mkExpr = BuiltinConstructor . IndexLiteral
       }
+
+--------------------------------------------------------------------------------
+-- Nat
 
 instance BuiltinHasNatType Builtin where
   accessNatTypeBuiltin = typeAccessor NatType
@@ -150,8 +164,13 @@ instance BuiltinHasNatLiterals Builtin where
   accessAddNatBuiltin = functionAccessor (Add AddNat)
   accessMulNatBuiltin = functionAccessor (Mul MulNat)
 
-instance BuiltinHasRatLiterals Builtin where
+--------------------------------------------------------------------------------
+-- Rat
+
+instance BuiltinHasRatType Builtin where
   accessRatTypeBuiltin = typeAccessor RatType
+
+instance BuiltinHasRatLiterals Builtin where
   accessRatTensorLitBuiltin =
     Access
       { getExpr = \case
@@ -173,6 +192,12 @@ instance BuiltinHasRatLiterals Builtin where
   accessReduceMinRatBuiltin = functionAccessor ReduceMinRatTensor
   accessReduceMaxRatBuiltin = functionAccessor ReduceMaxRatTensor
 
+--------------------------------------------------------------------------------
+-- List
+
+instance BuiltinHasListType Builtin where
+  accessListTypeBuiltin = typeAccessor ListType
+
 instance BuiltinHasListLiterals Builtin where
   accessNilBuiltin =
     Access
@@ -193,6 +218,12 @@ instance BuiltinHasListLiterals Builtin where
   accessMapListBuiltin = functionAccessor MapList
   accessFoldListBuiltin = functionAccessor FoldList
 
+--------------------------------------------------------------------------------
+-- Vector
+
+instance BuiltinHasVectorType Builtin where
+  accessVectorTypeBuiltin = typeAccessor VectorType
+
 instance BuiltinHasVectors Builtin where
   accessVecLitBuiltin =
     Access
@@ -204,10 +235,19 @@ instance BuiltinHasVectors Builtin where
 
   accessAtVectorBuiltin = functionAccessor AtVector
 
+--------------------------------------------------------------------------------
+-- Tensor
+
+instance BuiltinHasTensorType Builtin where
+  accessTensorTypeBuiltin = typeAccessor TensorType
+
 instance BuiltinHasTensors Builtin where
   accessConstTensorBuiltin = functionAccessor ConstTensor
   accessStackTensorBuiltin = functionAccessor StackTensor
   accessAtTensorBuiltin = functionAccessor AtTensor
+
+--------------------------------------------------------------------------------
+-- Others
 
 instance BuiltinHasForeach Builtin where
   accessForeachTensorBuiltin = functionAccessor ForeachTensor

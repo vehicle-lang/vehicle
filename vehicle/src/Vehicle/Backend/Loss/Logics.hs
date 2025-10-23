@@ -1,20 +1,93 @@
-module Vehicle.Backend.LossFunction.Logics
+module Vehicle.Backend.Loss.Logics
   ( DifferentialLogicDSL,
+    CompiledDifferentiableLogic,
+    DifferentiableLogicImplementation,
+    BooleanDifferentiableLogicField (..),
+    TensorDifferentiableLogicField (..),
     PLExpr,
     dslFor,
+    pattern VLam2,
+    comparisonOpToField,
   )
 where
 
 import Data.Bifunctor (Bifunctor (..))
+import Data.Hashable (Hashable)
 import Data.Map (Map)
 import Data.Map qualified as Map (fromList)
+import GHC.Generics (Generic)
 import Prettyprinter
-import Vehicle.Backend.LossFunction.Core as L
 import Vehicle.Backend.Prelude (DifferentiableLogicID (..))
-import Vehicle.Compile.Prelude (Expr, developerError)
-import Vehicle.Data.Builtin.Standard
+import Vehicle.Compile.Prelude (Binder, Expr (..), developerError)
+import Vehicle.Data.Builtin.Loss (LossBuiltin)
+import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.DSL (dimNil, ratLit, tRatTensor)
+import Vehicle.Data.Code.Value
 import Vehicle.Data.DSL
+
+--------------------------------------------------------------------------------
+-- Boolean implementation
+
+data BooleanDifferentiableLogicField
+  = Truthity
+  | Falsity
+  | Conjunction
+  | Disjunction
+  | Negation
+  | LessThan
+  | LessEqual
+  | GreaterThan
+  | GreaterEqual
+  | Equal
+  | NotEqual
+  deriving (Eq, Ord, Show, Generic)
+
+instance Pretty BooleanDifferentiableLogicField where
+  pretty = pretty . show
+
+instance Hashable BooleanDifferentiableLogicField
+
+--------------------------------------------------------------------------------
+-- Tensor implementation
+
+data TensorDifferentiableLogicField
+  = TruthityElement
+  | FalsityElement
+  | PointwiseConjunction
+  | PointwiseDisjunction
+  | PointwiseNegation
+  | PointwiseLe
+  | PointwiseLt
+  | PointwiseGe
+  | PointwiseGt
+  | PointwiseEq
+  | PointwiseNe
+  | ReduceConjunction
+  | ReduceDisjunction
+  deriving (Eq, Ord, Show, Generic, Enum, Bounded)
+
+instance Pretty TensorDifferentiableLogicField where
+  pretty = pretty . show
+
+type DifferentiableLogicImplementation =
+  Map TensorDifferentiableLogicField (Value LossBuiltin)
+
+type CompiledDifferentiableLogic = (DifferentiableLogicID, DifferentiableLogicImplementation)
+
+comparisonOpToField :: ComparisonOp -> TensorDifferentiableLogicField
+comparisonOpToField = \case
+  Le -> PointwiseLe
+  Lt -> PointwiseLt
+  Ge -> PointwiseGe
+  Gt -> PointwiseGt
+  Eq -> PointwiseEq
+  Ne -> PointwiseNe
+
+--------------------------------------------------------------------------------
+-- Other
+
+pattern VLam2 :: VBinder builtin -> BoundEnv builtin -> Binder builtin -> Expr builtin -> Value builtin
+pattern VLam2 binder1 env binder2 body <- VLam binder1 (Closure env (Lam _ binder2 body))
 
 --------------------------------------------------------------------------------
 -- Patterns for building logics
@@ -106,17 +179,17 @@ dslFor = \case
 vehicleTranslation :: DifferentialLogicDSL
 vehicleTranslation =
   mkDSL
-    [ (L.Truthity, ratLit (-100000)),
-      (L.Falsity, ratLit 100000),
-      (L.Conjunction, mkOp2 tRat $ \x y -> lmax x y),
-      (L.Disjunction, mkOp2 tRat $ \x y -> lmin x y),
-      (L.Negation, mkOp1 tRat $ \x -> ne x),
-      (L.LessThan, mkOp2 tRat $ \x y -> x -: y),
-      (L.LessEqual, mkOp2 tRat $ \x y -> x -: y),
-      (L.GreaterThan, mkOp2 tRat $ \x y -> y -: x),
-      (L.GreaterEqual, mkOp2 tRat $ \x y -> y -: x),
-      (L.Equal, mkOp2 tRat $ \x y -> ne (lmax (x -: y) (y -: x))),
-      (L.NotEqual, mkOp2 tRat $ \x y -> lmax (x -: y) (y -: x))
+    [ (Truthity, ratLit (-100000)),
+      (Falsity, ratLit 100000),
+      (Conjunction, mkOp2 tRat $ \x y -> lmax x y),
+      (Disjunction, mkOp2 tRat $ \x y -> lmin x y),
+      (Negation, mkOp1 tRat $ \x -> ne x),
+      (LessThan, mkOp2 tRat $ \x y -> x -: y),
+      (LessEqual, mkOp2 tRat $ \x y -> x -: y),
+      (GreaterThan, mkOp2 tRat $ \x y -> y -: x),
+      (GreaterEqual, mkOp2 tRat $ \x y -> y -: x),
+      (Equal, mkOp2 tRat $ \x y -> ne (lmax (x -: y) (y -: x))),
+      (NotEqual, mkOp2 tRat $ \x y -> lmax (x -: y) (y -: x))
     ]
 
 --------------------------------------------------------------------------------
@@ -127,17 +200,17 @@ vehicleTranslation =
 dl2Translation :: DifferentialLogicDSL
 dl2Translation =
   mkDSL
-    [ (L.Truthity, ratLit 0),
-      (L.Falsity, ratLit 1), -- TODO this should be infinity??)
-      (L.Conjunction, mkOp2 tRat $ \x y -> x +: y),
-      (L.Disjunction, mkOp2 tRat $ \x y -> x *: y),
-      (L.Negation, mkOp1 tRat $ \x -> ratLit 1 /: x),
-      (L.LessThan, mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y)),
-      (L.LessEqual, mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y)),
-      (L.GreaterThan, mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x)),
-      (L.GreaterEqual, mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x)),
-      (L.Equal, mkOp2 tRat $ \x y -> ne (lmax (ratLit 0) (x -: y) +: lmax (ratLit 0) (y -: x))),
-      (L.NotEqual, mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y) +: lmax (ratLit 0) (y -: x))
+    [ (Truthity, ratLit 0),
+      (Falsity, ratLit 1), -- TODO this should be infinity??)
+      (Conjunction, mkOp2 tRat $ \x y -> x +: y),
+      (Disjunction, mkOp2 tRat $ \x y -> x *: y),
+      (Negation, mkOp1 tRat $ \x -> ratLit 1 /: x),
+      (LessThan, mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y)),
+      (LessEqual, mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y)),
+      (GreaterThan, mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x)),
+      (GreaterEqual, mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x)),
+      (Equal, mkOp2 tRat $ \x y -> ne (lmax (ratLit 0) (x -: y) +: lmax (ratLit 0) (y -: x))),
+      (NotEqual, mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y) +: lmax (ratLit 0) (y -: x))
     ]
 
 --------------------------------------------------------------------------------
@@ -148,17 +221,17 @@ dl2Translation =
 godelTranslation :: DifferentialLogicDSL
 godelTranslation =
   mkDSL
-    [ (L.Truthity, ratLit 0),
-      (L.Falsity, ratLit 1),
-      (L.Conjunction, mkOp2 tRat $ \x y -> ratLit 1 -: lmin x y),
-      (L.Disjunction, mkOp2 tRat $ \x y -> ratLit 1 -: lmax x y),
-      (L.Negation, mkOp1 tRat $ \x -> ratLit 1 -: x),
-      (L.LessThan, mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y)),
-      (L.LessEqual, mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y)),
-      (L.GreaterThan, mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x)),
-      (L.GreaterEqual, mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x)),
-      (L.Equal, unsupported "==" "Godel"),
-      (L.NotEqual, unsupported "!=" "Godel")
+    [ (Truthity, ratLit 0),
+      (Falsity, ratLit 1),
+      (Conjunction, mkOp2 tRat $ \x y -> ratLit 1 -: lmin x y),
+      (Disjunction, mkOp2 tRat $ \x y -> ratLit 1 -: lmax x y),
+      (Negation, mkOp1 tRat $ \x -> ratLit 1 -: x),
+      (LessThan, mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y)),
+      (LessEqual, mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y)),
+      (GreaterThan, mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x)),
+      (GreaterEqual, mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x)),
+      (Equal, unsupported "==" "Godel"),
+      (NotEqual, unsupported "!=" "Godel")
     ]
 
 --------------------------------------------------------------------------------
@@ -169,17 +242,17 @@ godelTranslation =
 lukasiewiczTranslation :: DifferentialLogicDSL
 lukasiewiczTranslation =
   mkDSL
-    [ (L.Truthity, ratLit 0),
-      (L.Falsity, ratLit 1),
-      (L.Conjunction, mkOp2 tRat $ \x y -> ratLit 1 -: lmax (ratLit 0) ((x +: y) -: ratLit 1)),
-      (L.Disjunction, mkOp2 tRat $ \x y -> ratLit 1 -: lmin (x +: y) (ratLit 1)),
-      (L.Negation, mkOp1 tRat $ \arg -> ratLit 1 -: arg),
-      (L.LessThan, mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y)),
-      (L.LessEqual, mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y)),
-      (L.GreaterThan, mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x)),
-      (L.GreaterEqual, mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x)),
-      (L.Equal, unsupported "==" "Lukasiewicz"),
-      (L.NotEqual, unsupported "!=" "Lukasiewicz")
+    [ (Truthity, ratLit 0),
+      (Falsity, ratLit 1),
+      (Conjunction, mkOp2 tRat $ \x y -> ratLit 1 -: lmax (ratLit 0) ((x +: y) -: ratLit 1)),
+      (Disjunction, mkOp2 tRat $ \x y -> ratLit 1 -: lmin (x +: y) (ratLit 1)),
+      (Negation, mkOp1 tRat $ \arg -> ratLit 1 -: arg),
+      (LessThan, mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y)),
+      (LessEqual, mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y)),
+      (GreaterThan, mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x)),
+      (GreaterEqual, mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x)),
+      (Equal, unsupported "==" "Lukasiewicz"),
+      (NotEqual, unsupported "!=" "Lukasiewicz")
     ]
 
 --------------------------------------------------------------------------------
@@ -190,17 +263,17 @@ lukasiewiczTranslation =
 productTranslation :: DifferentialLogicDSL
 productTranslation =
   mkDSL
-    [ (L.Truthity, ratLit 0),
-      (L.Falsity, ratLit 1),
-      (L.Conjunction, mkOp2 tRat $ \x y -> ratLit 1 -: (x *: y)),
-      (L.Disjunction, mkOp2 tRat $ \x y -> (ratLit 1 -: x) *: (ratLit 1 -: y)),
-      (L.Negation, mkOp1 tRat $ \x -> ratLit 1 -: x),
-      (L.LessThan, mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y)),
-      (L.LessEqual, mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y)),
-      (L.GreaterThan, mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x)),
-      (L.GreaterEqual, mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x)),
-      (L.Equal, unsupported "==" "Product"),
-      (L.NotEqual, unsupported "!=" "Product")
+    [ (Truthity, ratLit 0),
+      (Falsity, ratLit 1),
+      (Conjunction, mkOp2 tRat $ \x y -> ratLit 1 -: (x *: y)),
+      (Disjunction, mkOp2 tRat $ \x y -> (ratLit 1 -: x) *: (ratLit 1 -: y)),
+      (Negation, mkOp1 tRat $ \x -> ratLit 1 -: x),
+      (LessThan, mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y)),
+      (LessEqual, mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y)),
+      (GreaterThan, mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x)),
+      (GreaterEqual, mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x)),
+      (Equal, unsupported "==" "Product"),
+      (NotEqual, unsupported "!=" "Product")
     ]
 
 --------------------------------------------------------------------------------
@@ -215,17 +288,17 @@ yagerTranslation = parameterisedYagerTranslation 1 -- change lconstant here
 parameterisedYagerTranslation :: Rational -> DifferentialLogicDSL
 parameterisedYagerTranslation p =
   mkDSL
-    [ (L.Truthity, ratLit 0),
-      (L.Falsity, ratLit 1),
-      (L.Conjunction, andOp),
-      (L.Disjunction, orOp),
-      (L.Negation, mkOp1 tRat (ratLit 1 -:)),
-      (L.LessThan, mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y)),
-      (L.LessEqual, mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y)),
-      (L.GreaterThan, mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x)),
-      (L.GreaterEqual, mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x)),
-      (L.Equal, unsupported "==" "Yager"),
-      (L.NotEqual, unsupported "!=" "Yager")
+    [ (Truthity, ratLit 0),
+      (Falsity, ratLit 1),
+      (Conjunction, andOp),
+      (Disjunction, orOp),
+      (Negation, mkOp1 tRat (ratLit 1 -:)),
+      (LessThan, mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y)),
+      (LessEqual, mkOp2 tRat $ \x y -> lmax (ratLit 0) (x -: y)),
+      (GreaterThan, mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x)),
+      (GreaterEqual, mkOp2 tRat $ \x y -> lmax (ratLit 0) (y -: x)),
+      (Equal, unsupported "==" "Yager"),
+      (NotEqual, unsupported "!=" "Yager")
     ]
   where
     andOp = mkOp2 tRat $ \x y ->

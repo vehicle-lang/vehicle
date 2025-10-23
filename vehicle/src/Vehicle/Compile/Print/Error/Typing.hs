@@ -20,6 +20,7 @@ import Vehicle.Data.Builtin.Interface.Normalise (NormalisableBuiltin)
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Code.Value
 import Vehicle.Data.DSL
+import Vehicle.Data.Variable.Bound.Context.Generic
 import Vehicle.Prelude.Logging (SilentLoggerT, runSilentLoggerT)
 import Vehicle.Syntax.Builtin (BuiltinType (..))
 import Prelude hiding (pi)

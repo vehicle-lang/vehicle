@@ -15,13 +15,14 @@ import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Vehicle.Compile.Constants.Rational
-import Vehicle.Compile.FourierMotzkinElimination
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
-import Vehicle.Data.Code.LinearExpr (evaluateExpr)
-import Vehicle.Data.Tensor (RatTensor, at, shapeOf, stack, pattern ZeroDimTensor)
+import Vehicle.Data.Assertion (InequalityRelation (..))
+import Vehicle.Data.Bound
+import Vehicle.Data.Code.LinearExpr (LinearExpr, evaluateExpr)
+import Vehicle.Data.Tensor (RatTensor, at, mapTensor, shapeOf, stack, zipWithTensor, pattern ZeroDimTensor)
+import Vehicle.Data.Variable.Bound.Context.Name.Core
 import Vehicle.Data.Variable.Bound.Level
-import Vehicle.Data.Variable.Bound.Tensor
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
 import Vehicle.Verify.Specification
@@ -167,6 +168,37 @@ reconstructRationalViaFourierMotzkin var bounds assignment = do
   case result of
     Left missingVar -> throwError (var, MissingVariable missingVar)
     Right value -> return [(var, value)]
+
+-- | Tries to reconstruct the value of the variable that is
+-- consistent with the current assignment of variables. Returns either a
+-- required variable that is missing from the assignment or the reconstructed
+-- value.
+reconstructFourierMotzkinVariableValue ::
+  forall variable.
+  (VariableLike variable) =>
+  SliceBounds (LinearExpr variable RatTensor) ->
+  Map variable RatTensor ->
+  Either variable RatTensor
+reconstructFourierMotzkinVariableValue solution assignment = do
+  lowerBoundValues <- traverse (traverse (evaluateExpr assignment)) (lowerBounds solution)
+  upperBoundValues <- traverse (traverse (evaluateExpr assignment)) (upperBounds solution)
+
+  let maybeLowerBound = andBoundList lowerBoundValues
+  let maybeUpperBound = andBoundList upperBoundValues
+
+  return $ case (maybeLowerBound, maybeUpperBound) of
+    (Nothing, Nothing) -> ZeroDimTensor 0
+    (Just (LowerBound _ value), Nothing) -> mapTensor (+ 1) value
+    (Nothing, Just (UpperBound _ value)) -> mapTensor (\x -> x - 1) value
+    (Just (LowerBound rel1 value1), Just (UpperBound rel2 value2))
+      -- UNSOUND over FP?
+      | value1 < value2 || value1 == value2 && rel1 == NonStrict && rel2 == NonStrict ->
+          zipWithTensor (\u v -> 0.5 * (u + v)) value1 value2
+      | otherwise -> do
+          -- Only 99% sure about this. Can't find a good reference to the reconstruction phase of the
+          -- algorithm. Closest to referencing this impossibility is:
+          -- https://people.math.carleton.ca/~kcheung/math/notes/MATH5801/02/2_1_fourier_motzkin.html
+          developerError "Fourier-Motzkin reconstruction failed. This isn't supposed to be possible..."
 
 createFinalAssignment ::
   (MonadLogger m) =>

@@ -16,6 +16,7 @@ import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Meta.Variable
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Data.Builtin.Interface.Print
+import Vehicle.Data.Variable.Bound.Context.Generic (HasBoundCtx (..))
 
 type MonadInstanceDefault builtin m =
   ( MonadTypeChecker builtin m,

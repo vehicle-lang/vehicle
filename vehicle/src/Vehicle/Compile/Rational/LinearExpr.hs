@@ -65,7 +65,7 @@ compile toVar shape = go
       ----------------
       VRatTensorLiteral t -> do
         return $ constantExpr t
-      VRatTensorVar lv -> do
+      VRatTensorBoundVar lv -> do
         singletonVarExpr (ConstantTensor shape 0) <$> toVar lv
       ---------------------
       -- Inductive cases --
@@ -96,7 +96,7 @@ compile toVar shape = go
       VRatConstTensor {} -> unreduced
       VRatStackTensor {} -> unreduced
       VRatAt {} -> unreduced
-      VNetworkApp {} -> unreduced
+      VRatTensorFreeVar {} -> unreduced
       VRatForeach {} -> unreduced
       VIfRatTensor {} -> unreduced
       -----------------------

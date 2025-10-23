@@ -1,25 +1,27 @@
 module Vehicle.Compile.LowerNot
   ( lowerNot,
-    notClosure,
+    negateQuantifierBody,
   )
 where
 
-import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Data.Builtin.Core
+import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Standard ()
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
+import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Syntax.Tensor (mapTensor)
 
 --------------------------------------------------------------------------------
 -- Not elimination
 
 type MonadDropNot m =
-  ( MonadCompile m
+  ( MonadLogger m,
+    MonadReadableNameContext m
   )
 
 -- | Tries to push in a `Not` as far as possible into a boolean expression.
@@ -27,12 +29,12 @@ type MonadDropNot m =
 lowerNot ::
   forall m.
   (MonadDropNot m) =>
-  NamedBoundCtx ->
   (Value Builtin -> m (Value Builtin)) ->
   TensorOp1Args (Value Builtin) ->
   m (Value Builtin)
-lowerNot ctx onBlocked (TensorOp1Args _ arg) = do
+lowerNot onBlocked (TensorOp1Args _ arg) = do
   result <- go arg
+  ctx <- getNameContext
   logDebug MaxDetail $ "push-not" <+> prettyFriendly (WithContext result ctx)
   return result
   where
@@ -51,9 +53,7 @@ lowerNot ctx onBlocked (TensorOp1Args _ arg) = do
       -- it is not yet unnormalised. However, it's fine to stop here as we'll
       -- simply continue to normalise it once we re-encounter it again after
       -- normalising the quantifier.
-      VBoolTensorQuantifyRat q dims binder closure -> do
-        let negatedClosure = notClosure (boundCtxLv ctx) dims closure
-        return $ fromBoolValue $ VQuantifyRatTensor (neg q) dims binder negatedClosure
+      VBoolTensorQuantifyRat (q, args) -> fromBoolValue . VQuantifyRatTensor . (neg q,) <$> negateQuantifierBody args
       ---------------------
       -- Inductive cases --
       ---------------------
@@ -62,13 +62,17 @@ lowerNot ctx onBlocked (TensorOp1Args _ arg) = do
       VBoolTensorOr args -> fromBoolTensorValue . VBoolTensorAnd <$> traverseTensorOp2Args go args
       VBoolTensorAnd args -> fromBoolTensorValue . VBoolTensorOr <$> traverseTensorOp2Args go args
       VBoolTensorBoolIf args -> fromBoolTensorValue . VBoolTensorBoolIf <$> traverseIfArgBranches go args
-      VBoolTensorReduceOr args -> fromBoolTensorValue . VBoolTensorReduceAnd <$> traverseTensorOp2Args go args
-      VBoolTensorReduceAnd args -> fromBoolTensorValue . VBoolTensorReduceOr <$> traverseTensorOp2Args go args
+      VBoolTensorReduceOr args -> fromBoolTensorValue . VBoolTensorReduceAnd <$> traverseReductionArgs go args
+      VBoolTensorReduceAnd args -> fromBoolTensorValue . VBoolTensorReduceOr <$> traverseReductionArgs go args
       VBoolTensorAt args -> fromBoolTensorValue . VBoolTensorAt <$> traverseAtTensorArg go args
       VBoolTensorForeach {} -> onBlocked e
 
-notClosure :: Lv -> VArg Builtin -> Closure Builtin -> Closure Builtin
-notClosure lv dims (Closure env body) = do
-  let dims' = implicitIrrelevant $ quote mempty lv $ argExpr dims
-  let newBody = normApp (Builtin mempty (BuiltinFunction Not)) [dims', explicit body]
-  Closure env newBody
+negateQuantifierBody ::
+  (MonadReadableNameContext m) =>
+  QuantifyRatTensorArgs (Value Builtin) (Closure Builtin) ->
+  m (QuantifyRatTensorArgs (Value Builtin) (Closure Builtin))
+negateQuantifierBody (QuantifyRatTensorArgs dims binder (Closure env body)) = do
+  lv <- getBinderDepth
+  let dims' = quote mempty lv dims
+  let newBody = mkExpr accessNotTensor $ TensorOp1Args dims' body
+  return $ QuantifyRatTensorArgs dims binder (Closure env newBody)

@@ -17,9 +17,9 @@
 )
 
 ; Assertions
-(assert (<= (+ f_2_X[] (- f_X[])) 0.0))
-(assert (< (+ (- f_2_Y[]) f_Y[]) 0.0))
+(assert (<= (+ f_2_X (- f_X)) 0.0))
+(assert (< (+ (- f_2_Y) f_Y) 0.0))
 
 ; Input bounds
-(assert (and (<= 0.0 f_2_X[]) (<= f_2_X[] 1.0)))
-(assert (and (<= 0.0 f_X[]) (<= f_X[] 1.0)))
+(assert (and (< 0.0 f_2_X) (< f_2_X 1.0)))
+(assert (and (< 0.0 f_X) (< f_X 1.0)))

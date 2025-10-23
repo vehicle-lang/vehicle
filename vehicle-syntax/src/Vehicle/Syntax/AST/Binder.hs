@@ -24,7 +24,7 @@ data BinderNamingForm
     OnlyName Name
   | -- | Only type appears (e.g. {{HasEq A}})
     OnlyType
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Ord, Show, Generic)
 
 instance NFData BinderNamingForm
 
@@ -61,7 +61,7 @@ data BinderDisplayForm = BinderDisplayForm
   { namingForm :: BinderNamingForm,
     foldingForm :: BinderFoldingForm
   }
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Ord, Show, Generic)
 
 instance NFData BinderDisplayForm
 
@@ -94,7 +94,7 @@ data GenericBinder value = Binder
     -- Usually (but not always) its type.
     binderValue :: value
   }
-  deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
+  deriving (Eq, Ord, Show, Functor, Foldable, Traversable, Generic)
 
 instance (NFData expr) => NFData (GenericBinder expr)
 
