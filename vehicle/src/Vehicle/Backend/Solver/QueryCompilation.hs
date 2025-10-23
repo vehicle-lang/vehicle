@@ -18,6 +18,7 @@ import Data.Tuple (swap)
 import Vehicle.Backend.Solver.QueryCompilation.InputBoundsCheck
 import Vehicle.Backend.Solver.QueryCompilation.MetaNetworkCalculation (calculateMetaNetworkApplications)
 import Vehicle.Backend.Solver.UserVariableElimination.Core
+import Vehicle.Compile.Constants.Rational
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core (NetworkContext)
 import Vehicle.Compile.Prelude
@@ -160,6 +161,11 @@ reduceBound ctx (inputTensorVar, bounds) = go (toSliceVar inputTensorVar, bounds
           let lowerBounds = unstack lowerBound
           let upperBounds = unstack upperBound
           concat $ zipWith3 (\v l u -> go (v, (l, u))) childVars lowerBounds upperBounds
+
+extractRationalConstant :: RatTensor -> Rational
+extractRationalConstant = \case
+  ZeroDimTensor v -> v
+  t -> developerError $ "Cannot extract constant from multi-dim tensor" <+> pretty t
 
 reduceAssertion ::
   GlobalCtx ->

@@ -739,7 +739,7 @@ evalStackTensorWithPrimitives tensorLits args@(StackTensorArgs _t d ds xs) =
     go :: [Int] -> [Value builtin] -> [TensorLiteralAccessor builtin] -> Maybe (Value builtin)
     go elemDims elements = \case
       Wrapper Access {..} : prims -> case traverse getExpr elements of
-        Just xss -> Just $ mkExpr $ stack elemDims xss
+        Just xss -> Just $ mkExpr $ stack xss
         Nothing -> go elemDims elements prims
       [] -> Nothing
 

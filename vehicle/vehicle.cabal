@@ -134,6 +134,8 @@ library
     Vehicle.Backend.Solver.UserVariableElimination.Error
     Vehicle.CommandLine
     Vehicle.Compile
+    Vehicle.Compile.Constants.Rational
+    Vehicle.Compile.Constants.Value
     Vehicle.Compile.Descope
     Vehicle.Compile.Error
     Vehicle.Compile.ExpandResources
@@ -245,7 +247,6 @@ library
     Vehicle.Compile.Variable
     Vehicle.Data.Assertion
     Vehicle.Data.Bound
-    Vehicle.Data.Bound.Operations
     Vehicle.Data.Builtin.Core
     Vehicle.Data.Builtin.Decidability
     Vehicle.Data.Builtin.Decidability.Instances

@@ -126,10 +126,10 @@ instance (HasVariables expr variable) => HasVariables (NormalisedRelation rel ex
   containsVariable r v = expression r `containsVariable` v
 
 eliminateVarsInComparison ::
-  (VariableLike variable, IsRelation relation) =>
-  LinearSubstitution variable ->
-  NormalisedRelation relation (LinearExpr variable RatTensor) ->
-  MaybeTrivial (NormalisedRelation relation (LinearExpr variable RatTensor))
+  (VariableLike variable, ConstantLike constant, IsRelation relation) =>
+  Map variable (LinearExpr variable constant) ->
+  NormalisedRelation relation (LinearExpr variable constant) ->
+  MaybeTrivial (NormalisedRelation relation (LinearExpr variable constant))
 eliminateVarsInComparison f NormalisedRelation {..} =
   case eliminateVars f expression of
     Right newExpr -> NonTrivial $ NormalisedRelation {expression = newExpr, ..}
@@ -196,21 +196,21 @@ instance (HasShape expr) => HasShape (Assertion expr) where
   shapeOf assertion = shapeOf (expression assertion)
 
 comparisonToAssertion ::
-  (Monad m, ConstantLike constant) =>
+  (Monad m, VariableLike variable, ConstantLike constant) =>
   ComparisonOp ->
-  (expr -> expr -> m (Either constant expr)) ->
-  expr ->
-  expr ->
-  m (Either Bool (Assertion expr))
-comparisonToAssertion op sub e1 e2 = do
-  (rel, constantOrExpr) <- case op of
+  LinearExpr variable constant ->
+  LinearExpr variable constant ->
+  m (Either Bool (Assertion (LinearExpr variable constant)))
+comparisonToAssertion op e1 e2 = do
+  (rel, x, y) <- case op of
     Ne -> developerError "Cannot convert `Ne` to assertion"
-    Eq -> (OEq,) <$> sub e1 e2
-    Lt -> (OLt,) <$> sub e1 e2
-    Le -> (OLe,) <$> sub e1 e2
-    Gt -> (OLt,) <$> sub e2 e1
-    Ge -> (OLe,) <$> sub e2 e1
+    Eq -> return (OEq, e1, e2)
+    Lt -> return (OLt, e1, e2)
+    Le -> return (OLe, e1, e2)
+    Gt -> return (OLt, e2, e1)
+    Ge -> return (OLe, e2, e1)
 
+  let constantOrExpr = addExprs 1 (-1) x y
   return $ bimap (evalTrivialRelation rel) (NormalisedRelation rel) constantOrExpr
 
 type LinearSubstitution variable = Map variable (LinearExpr variable RatTensor)
@@ -228,12 +228,3 @@ getInequality (NormalisedRelation rel expr) = case rel of
   OLe -> Just (NormalisedRelation NonStrict expr)
   OLt -> Just (NormalisedRelation Strict expr)
   _ -> Nothing
-
---------------------------------------------------------------------------------
--- Specialisation to real tensors
-
-type LinearInequality = NormalisedRelation InequalityRelation LinearExpression
-
-type LinearEquality = NormalisedRelation () LinearExpression
-
-type LinearAssertion = Assertion LinearExpression
