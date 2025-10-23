@@ -74,7 +74,7 @@ disjunctSingleResults xs (DisjunctAll results) = do
   let allConstrainedTrees = catHere $ NonEmpty.toList results
   let allUnconstrainedTrees = catThere $ NonEmpty.toList results
   return $ case (allConstrainedTrees, allUnconstrainedTrees) of
-    ([], _) -> That $ Disjunct xs
+    ([], _) -> That $ disjunctExprs xs
     (c : cs, []) -> This (mergeConstrainedTrees (DisjunctAll $ c :| cs))
     (c : cs, u : us) -> These (mergeConstrainedTrees $ DisjunctAll $ c :| cs) (mergeUnconstrainedTrees $ DisjunctAll $ u :| us)
   where
@@ -88,11 +88,11 @@ disjunctSingleResults xs (DisjunctAll results) = do
       --      ->
       --    (x and (a or b or c)) ||or|| (y and d)
       -- let treeByConstraints = Map.fromListWith (orTrivial orBoolExpr) $ disjunctsToList disjuncts
-      let collapse u = fmap (Disjunct . DisjunctAll) $ NonEmpty.nonEmpty $ catMaybes $ NonEmpty.toList u
+      let collapse u = fmap (disjunctExprs . DisjunctAll) $ NonEmpty.nonEmpty $ catMaybes $ NonEmpty.toList u
       DisjunctAll $ mergeNonEmptyKeyValues collapse $ unDisjunctAll disjuncts
 
     mergeUnconstrainedTrees :: DisjunctAll LinearAssertionTree -> LinearAssertionTree
-    mergeUnconstrainedTrees = Disjunct
+    mergeUnconstrainedTrees = disjunctExprs
 
 conjunctSingleConstraints ::
   forall m.
@@ -145,15 +145,15 @@ conjunctSingleConstraints search conjuncts = searchConjuncts $ unConjunctAll con
     collapseTrees :: DisjunctAll ConstrainedTree -> LinearAssertionTree
     collapseTrees t2 = do
       let eqToAssertion = Query . equalityToAssertion
-      Disjunct $ fmap (\(a, b) -> maybe (eqToAssertion a) (andBoolExpr (eqToAssertion a)) b) t2
+      disjunctExprs $ fmap (\(a, b) -> maybe (eqToAssertion a) (andBoolExpr (eqToAssertion a)) b) t2
 
     andConstraints :: NonEmpty LinearAssertionTree -> DisjunctAll ConstrainedTree -> DisjunctAll ConstrainedTree
     andConstraints xs = do
-      let t = Conjunct $ ConjunctAll xs
+      let t = conjunctExprs $ ConjunctAll xs
       fmap (second (Just . maybe t (andBoolExpr t)))
 
     andResults :: NonEmpty LinearAssertionTree -> SingleSearchResults -> SingleSearchResults
-    andResults xs = bimap (andConstraints xs) (andBoolExpr (Conjunct $ ConjunctAll xs))
+    andResults xs = bimap (andConstraints xs) (andBoolExpr (conjunctExprs $ ConjunctAll xs))
 
 -- (u == x or y >=1 ) and (u == x + 1 or y <= 1)
 
@@ -198,7 +198,9 @@ findAllConstraintsDisjunct ::
 findAllConstraintsDisjunct disjuncts = return $ optimiseDisjuncts $ disjunctDisjuncts disjuncts
   where
     optimiseDisjuncts :: AllSearchResults constraint -> AllSearchResults constraint
-    optimiseDisjuncts allDisjuncts = DisjunctAll $ mergeNonEmptyKeyValues (fmap (Conjunct . ConjunctAll) . sequence) (unDisjunctAll allDisjuncts)
+    optimiseDisjuncts allDisjuncts = do
+      let mergeDisjuncts = fmap (conjunctExprs . ConjunctAll) . sequence
+      DisjunctAll $ mergeNonEmptyKeyValues mergeDisjuncts (unDisjunctAll allDisjuncts)
 
 findAllConstraintsConjunct ::
   forall m constraint.

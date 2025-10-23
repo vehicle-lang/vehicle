@@ -1,7 +1,7 @@
 @network
-f : Tensor Real [1] -> Tensor Real [1]
+f : Real -> Real
 
 @property
 p : Bool
-p = forall (x : Tensor Real [1]) .
-  (if f x ! 0 > 0.5 then 1 else 0) == 0
+p = forall (x : Real) . 0 < x < 1 =>
+  (if f x > 0.5 then 1 else 0) == 0

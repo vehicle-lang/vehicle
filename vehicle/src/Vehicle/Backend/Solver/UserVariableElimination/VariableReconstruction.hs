@@ -17,7 +17,7 @@ import Data.Set qualified as Set
 import Vehicle.Compile.FourierMotzkinElimination
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
-import Vehicle.Data.Assertion (LinearBounds)
+import Vehicle.Data.Bound (LinearBounds)
 import Vehicle.Data.Code.LinearExpr (LinearExpression, evaluateExpr)
 import Vehicle.Data.Tensor (RatTensor, at, shapeOf, stack, pattern ZeroDimTensor)
 import Vehicle.Data.Variable.Bound.Level
@@ -141,7 +141,7 @@ reconstructTensorViaEquality ::
   MixedVariableAssignment ->
   m (NonEmpty (SliceVariable, RatTensor))
 reconstructTensorViaEquality variable equality assignment = do
-  let errorOrValue = evaluateExpr equality assignment
+  let errorOrValue = evaluateExpr assignment equality
   case errorOrValue of
     Left missingVar -> throwError (toSliceVar variable, MissingVariable missingVar)
     Right value -> return $ go value variable

@@ -8,7 +8,7 @@
 
 module Test.Tasty.Golden.Executable.Runner where
 
-import Control.Exception (throw)
+import Control.Exception (throw, throwIO)
 import Control.Monad (filterM, unless, when)
 import Control.Monad.Catch (MonadCatch (..), MonadMask, MonadThrow, handle)
 import Control.Monad.IO.Class (MonadIO (..))
@@ -40,6 +40,7 @@ import General.Extra.NonEmpty qualified as NonEmpty (appendList, prependList, si
 import System.Directory (copyFile, createDirectoryIfMissing, doesFileExist, removeFile)
 import System.FilePath (isAbsolute, isExtensionOf, makeRelative, stripExtension, takeDirectory, takeExtension, (<.>), (</>))
 import System.IO (IOMode (..), withFile)
+import System.IO.Error (isDoesNotExistError)
 import System.IO.Temp (withSystemTempDirectory)
 import System.Process (CreateProcess (..), readCreateProcessWithExitCode, shell)
 import Test.Tasty (TestName)
@@ -218,15 +219,19 @@ diffStdout maybeLooseEq actual = do
 -- | Update the standard output golden file.
 acceptStdout :: Lazy.Text -> TestIO ()
 acceptStdout contents
-  | Lazy.null contents = return ()
+  | Lazy.null contents = deleteGoldenStdout
   | otherwise = writeGoldenStdout contents
+
+getGoldenStdoutFile :: TestIO FilePath
+getGoldenStdoutFile = TestT $ do
+  TestEnvironment {..} <- get
+  return $ testDirectory </> testName <.> "out.golden"
 
 -- | Read the golden file for the standard output.
 readGoldenStdout :: TestIO Lazy.Text
-readGoldenStdout = TestT $ do
-  TestEnvironment {..} <- get
+readGoldenStdout = do
+  stdoutGoldenFile <- getGoldenStdoutFile
   lift $ do
-    let stdoutGoldenFile = testDirectory </> testName <.> "out.golden"
     stdoutGoldenFileExists <- doesFileExist stdoutGoldenFile
     if stdoutGoldenFileExists
       then LazyIO.readFile stdoutGoldenFile
@@ -234,11 +239,15 @@ readGoldenStdout = TestT $ do
 
 -- | Write the golden file for the standard output.
 writeGoldenStdout :: Lazy.Text -> TestIO ()
-writeGoldenStdout contents = TestT $ do
-  TestEnvironment {..} <- get
-  lift $ do
-    let stdoutGoldenFile = testDirectory </> testName <.> "out.golden"
-    LazyIO.writeFile stdoutGoldenFile contents
+writeGoldenStdout contents = do
+  stdoutGoldenFile <- getGoldenStdoutFile
+  lift $ LazyIO.writeFile stdoutGoldenFile contents
+
+-- | Delete the golden file for the standard output.
+deleteGoldenStdout :: TestIO ()
+deleteGoldenStdout = do
+  stdoutGoldenFile <- getGoldenStdoutFile
+  lift $ removeFileIfExists stdoutGoldenFile
 
 -- | Compare the standard output to the golden file.
 --
@@ -249,18 +258,22 @@ diffStderr maybeLooseEq actual = do
   catch (lift $ lift $ diffText (shortCircuitWithEq maybeLooseEq) golden actual) $ \diff ->
     tell $ Just $ stderrDiffer diff
 
+getGoldenStderrFile :: TestIO FilePath
+getGoldenStderrFile = TestT $ do
+  TestEnvironment {..} <- get
+  return $ testDirectory </> testName <.> "err.golden"
+
 -- | Update the standard error golden file.
 acceptStderr :: Lazy.Text -> TestIO ()
 acceptStderr contents
-  | Lazy.null contents = return ()
+  | Lazy.null contents = deleteGoldenStderr
   | otherwise = writeGoldenStderr contents
 
 -- | Read the golden file for the standard error.
 readGoldenStderr :: TestIO Lazy.Text
-readGoldenStderr = TestT $ do
-  TestEnvironment {..} <- get
+readGoldenStderr = do
+  stderrGoldenFile <- getGoldenStderrFile
   lift $ do
-    let stderrGoldenFile = testDirectory </> testName <.> "err.golden"
     stderrGoldenFileExists <- doesFileExist stderrGoldenFile
     if stderrGoldenFileExists
       then LazyIO.readFile stderrGoldenFile
@@ -268,11 +281,15 @@ readGoldenStderr = TestT $ do
 
 -- | Write the golden file for the standard error.
 writeGoldenStderr :: Lazy.Text -> TestIO ()
-writeGoldenStderr contents = TestT $ do
-  TestEnvironment {..} <- get
-  lift $ do
-    let stderrGoldenFile = testDirectory </> testName <.> "err.golden"
-    LazyIO.writeFile stderrGoldenFile contents
+writeGoldenStderr contents = do
+  stderrGoldenFile <- getGoldenStderrFile
+  lift $ LazyIO.writeFile stderrGoldenFile contents
+
+-- | Delete the golden file for the standard error.
+deleteGoldenStderr :: TestIO ()
+deleteGoldenStderr = do
+  stderrGoldenFile <- getGoldenStderrFile
+  lift $ removeFileIfExists stderrGoldenFile
 
 -- | Compare the files produced by the test.
 --
@@ -576,3 +593,10 @@ removeParent :: FilePath -> FilePath
 removeParent path = case path of
   '.' : '.' : '/' : remainder -> removeParent remainder
   _ -> path
+
+removeFileIfExists :: FilePath -> IO ()
+removeFileIfExists fileName = removeFile fileName `catch` handleExists
+  where
+    handleExists e
+      | isDoesNotExistError e = return ()
+      | otherwise = throwIO e

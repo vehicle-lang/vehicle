@@ -3,6 +3,7 @@ module Vehicle.Data.MaybeTrivial where
 import Control.DeepSeq (NFData)
 import Control.Monad (ap)
 import Control.Monad.Except (MonadError (..))
+import Control.Monad.Reader (ReaderT)
 import Control.Monad.Trans (MonadIO (..), MonadTrans (..))
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
@@ -83,6 +84,13 @@ andTrivial f x y = case (x, y) of
 class (Monad m) => MonadMaybeTrivial m where
   trivial :: Bool -> m a
   nonTrivial :: a -> m a
+
+instance (MonadMaybeTrivial m) => MonadMaybeTrivial (ReaderT a m) where
+  trivial = lift . trivial
+  nonTrivial = lift . nonTrivial
+
+liftTrivial :: (MonadMaybeTrivial m) => MaybeTrivial a -> m a
+liftTrivial = trivialElim trivial nonTrivial
 
 --------------------------------------------------------------------------------
 -- Triviality monad

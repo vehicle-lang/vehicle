@@ -14,7 +14,7 @@ import Data.Vector.Internal.Check (HasCallStack)
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Resource (NetworkType (..), dimensions)
+import Vehicle.Compile.Resource (NetworkName, NetworkType (..), dimensions)
 import Vehicle.Data.Assertion
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Code.BooleanExpr
@@ -64,9 +64,9 @@ data NetworkApplicationInfo = NetworkApplicationInfo
     inputValue :: Value Builtin
   }
 
-type NetworkApplications = Map Name (NonEmpty NetworkApplicationInfo)
+type NetworkApplications = Map NetworkName (NonEmpty NetworkApplicationInfo)
 
-toListOfApplications :: NetworkApplications -> [(Name, NetworkApplicationInfo)]
+toListOfApplications :: NetworkApplications -> [(NetworkName, NetworkApplicationInfo)]
 toListOfApplications metaNetworkApps = do
   let flattenNetworkApps (name, apps) = fmap (name,) (NonEmpty.toList apps)
   concatMap flattenNetworkApps $ Map.toList metaNetworkApps
@@ -311,3 +311,8 @@ createSubstitutionForVariable ctx varToSolveFor (NormalisedRelation () linearExp
           return (concat childSolutions)
 
       return $ (toSliceVar var, rearrangedExpr) : childSubsts
+
+data BoundedAssertions inputVariable variable constant = BoundedAssertions
+  { variableBounds :: Map inputVariable (constant, constant),
+    assertions :: ConjunctAll (Assertion (LinearExpr variable constant))
+  }

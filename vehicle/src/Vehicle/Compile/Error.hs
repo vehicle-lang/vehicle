@@ -13,6 +13,7 @@ module Vehicle.Compile.Error
     FailedUnificationConstraintsError (..),
     MissingResource,
     UninferableParameter,
+    UnboundedIndices,
     MonadCompile,
     compilerDeveloperError,
   )
@@ -31,6 +32,7 @@ import GHC.Generics (Generic)
 import Vehicle.Backend.LossFunction.Core (BooleanDifferentiableLogicField, TensorDifferentiableLogicField)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Resource (NetworkName)
 import Vehicle.Compile.Type.Core
 import Vehicle.Data.Builtin.Interface.Normalise (NormalisableBuiltin)
 import Vehicle.Data.Builtin.Interface.Print
@@ -127,6 +129,8 @@ type MissingResource = (ExternalResource, DeclProvenance)
 
 type UninferableParameter = DeclProvenance
 
+type UnboundedIndices = These (NonEmpty TensorIndices) (NonEmpty TensorIndices)
+
 --------------------------------------------------------------------------------
 -- Compilation errors
 
@@ -168,15 +172,16 @@ data CompileError
   | ParameterValueInvalidNat DeclProvenance Int
   | InferableParameterContradictory Identifier (DeclProvenance, ExternalResource, Int) (DeclProvenance, ExternalResource, Int)
   | InferableParametersUninferrable (NonEmpty UninferableParameter)
-  | -- Unsupported properties
+  | -- Query backend
     NoPropertiesFound
   | HigherOrderVectors DeclProvenance NamedBoundCtx (VType Builtin) (VType Builtin)
   | UnsupportedAlternatingQuantifiers QueryFormatID DeclProvenance (Either CompileError (Quantifier, Provenance, PolarityProvenance))
   | DuplicateQuantifierNames DeclProvenance Name
   | UnsupportedNonLinearConstraint QueryFormatID DeclProvenance (Either CompileError NonLinearityProof)
-  | UnsupportedMultipleNetworkApplications QueryFormatID DeclProvenance CompleteNamedBoundCtx [(Name, Value Builtin)]
+  | UnsupportedMultipleNetworkApplications QueryFormatID DeclProvenance CompleteNamedBoundCtx [(NetworkName, Value Builtin)]
   | VariableSizeTensorQuantification DeclProvenance NamedBoundCtx (VBinder Builtin) (VType Builtin)
   | MultiPropertyTraveralError DeclProvenance MultiPropertyTraveralError
+  | UnboundedNetworkInputVariables DeclProvenance CompleteNamedBoundCtx (NonEmpty (NetworkName, Value Builtin, [Name], UnboundedIndices))
   | -- Loss backend errors
     UnsupportedLossOperation DeclProvenance Provenance (Doc Void)
   | UnsupportedHigherOrderTensorCode DeclProvenance NamedBoundCtx (Value Builtin) NamedBoundCtx (Value Builtin)

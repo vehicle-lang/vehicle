@@ -2,6 +2,7 @@ module Vehicle.Data.Assertion where
 
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON)
+import Data.Bifunctor (Bifunctor (..))
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
 import Data.Map qualified as Map (mapKeys)
@@ -24,8 +25,12 @@ import Vehicle.Syntax.Tensor
 class IsRelation relation where
   isRelated :: relation -> Tensor Rational -> Tensor Rational -> Bool
 
-checkTriviality :: (IsRelation relation) => relation -> RatTensor -> Bool
-checkTriviality rel tensor = isRelated rel tensor (ConstantTensor (shapeOf tensor) 0)
+evalTrivialRelation :: (IsRelation relation, ConstantLike constant) => relation -> constant -> Bool
+evalTrivialRelation rel constant = case toRatTensor constant of
+  Just tensor -> isRelated rel tensor (ConstantTensor (shapeOf tensor) 0)
+  -- Unsure if this is the right thing to do. We might need to split this up by
+  -- implementation of `constant`.
+  Nothing -> False
 
 --------------------------------------------------------------------------------
 -- Relations
@@ -65,13 +70,20 @@ instance ToJSON InequalityRelation
 
 instance FromJSON InequalityRelation
 
-inequalityToRelation :: InequalityRelation -> Relation
-inequalityToRelation = \case
-  Strict -> OLe
-  NonStrict -> OLt
-
 instance Pretty InequalityRelation where
-  pretty = pretty . inequalityToRelation
+  pretty = \case
+    Strict -> "<"
+    NonStrict -> "<="
+
+instance IsRelation InequalityRelation where
+  isRelated = \case
+    NonStrict -> compareTensor (<=)
+    Strict -> compareTensor (<)
+
+prettyFlip :: InequalityRelation -> Doc a
+prettyFlip = \case
+  Strict -> ">"
+  NonStrict -> ">="
 
 combineInequalityRelations :: InequalityRelation -> InequalityRelation -> InequalityRelation
 combineInequalityRelations r1 r2 = case (r1, r2) of
@@ -121,7 +133,7 @@ eliminateVarsInComparison ::
 eliminateVarsInComparison f NormalisedRelation {..} =
   case eliminateVars f expression of
     Right newExpr -> NonTrivial $ NormalisedRelation {expression = newExpr, ..}
-    Left tensor -> Trivial (checkTriviality relation tensor)
+    Left tensor -> Trivial (evalTrivialRelation relation tensor)
 
 reduceComparison ::
   (Ord variable) =>
@@ -184,19 +196,22 @@ instance (HasShape expr) => HasShape (Assertion expr) where
   shapeOf assertion = shapeOf (expression assertion)
 
 comparisonToAssertion ::
-  (Monad m) =>
+  (Monad m, ConstantLike constant) =>
   ComparisonOp ->
-  (expr -> expr -> m expr) ->
+  (expr -> expr -> m (Either constant expr)) ->
   expr ->
   expr ->
-  m (Assertion expr)
-comparisonToAssertion op sub e1 e2 = case op of
-  Ne -> developerError "Cannot convert `Ne` to assertion"
-  Eq -> NormalisedRelation OEq <$> sub e1 e2
-  Lt -> NormalisedRelation OLt <$> sub e1 e2
-  Le -> NormalisedRelation OLe <$> sub e1 e2
-  Gt -> NormalisedRelation OLt <$> sub e2 e1
-  Ge -> NormalisedRelation OLe <$> sub e2 e1
+  m (Either Bool (Assertion expr))
+comparisonToAssertion op sub e1 e2 = do
+  (rel, constantOrExpr) <- case op of
+    Ne -> developerError "Cannot convert `Ne` to assertion"
+    Eq -> (OEq,) <$> sub e1 e2
+    Lt -> (OLt,) <$> sub e1 e2
+    Le -> (OLe,) <$> sub e1 e2
+    Gt -> (OLt,) <$> sub e2 e1
+    Ge -> (OLe,) <$> sub e2 e1
+
+  return $ bimap (evalTrivialRelation rel) (NormalisedRelation rel) constantOrExpr
 
 type LinearSubstitution variable = Map variable (LinearExpr variable RatTensor)
 
@@ -215,89 +230,10 @@ getInequality (NormalisedRelation rel expr) = case rel of
   _ -> Nothing
 
 --------------------------------------------------------------------------------
--- Bounds
-
-data BoundType
-  = Upper
-  | Lower
-
-instance Pretty BoundType where
-  pretty = \case
-    Lower -> "lower"
-    Upper -> "upper"
-
-type Bound expr = Inequality expr
-
-pattern Bound :: InequalityRelation -> expr -> Bound expr
-pattern Bound s e = NormalisedRelation s e
-
-{-# COMPLETE Bound #-}
-
-type LowerBound expr = Bound expr
-
-type UpperBound expr = Bound expr
-
--- | A FM solution for an normalised user variable is two lists of constraints.
--- The variable value must be greater than the first set of assertions, and less than
--- the second set of assertions.
-data Bounds expr = Bounds
-  { lowerBounds :: [LowerBound expr],
-    upperBounds :: [UpperBound expr]
-  }
-  deriving (Show, Eq, Ord, Generic)
-
-instance (NFData expr) => NFData (Bounds expr)
-
-instance (ToJSON expr) => ToJSON (Bounds expr)
-
-instance (FromJSON expr) => FromJSON (Bounds expr)
-
-andBounds :: Bounds expr -> Bounds expr -> Bounds expr
-andBounds (Bounds lower1 upper1) (Bounds lower2 upper2) =
-  Bounds (lower1 <> lower2) (upper1 <> upper2)
-
---------------------------------------------------------------------------------
--- Variable status
-
-data UnderConstrainedVariableStatus
-  = Unconstrained
-  | BoundedAbove
-  | BoundedBelow
-  deriving (Show, Eq, Ord)
-
-instance Pretty UnderConstrainedVariableStatus where
-  pretty = \case
-    Unconstrained -> "no lower or upper bound"
-    BoundedAbove -> "no lower bound"
-    BoundedBelow -> "no upper bound"
-
-instance Semigroup UnderConstrainedVariableStatus where
-  Unconstrained <> r = r
-  r <> Unconstrained = r
-  BoundedAbove <> r = r
-  r <> BoundedAbove = r
-  BoundedBelow <> BoundedBelow = BoundedBelow
-
-prettyUnderConstrainedVariable :: (Pretty var) => (var, UnderConstrainedVariableStatus) -> Doc a
-prettyUnderConstrainedVariable (var, constraint) =
-  pretty var <+> "-" <+> pretty constraint
-
-checkBoundsExist ::
-  (variable, Bounds expr) ->
-  Either (variable, UnderConstrainedVariableStatus) (NonEmpty (LowerBound expr), NonEmpty (UpperBound expr))
-checkBoundsExist (var, Bounds {..}) = case (lowerBounds, upperBounds) of
-  ([], []) -> Left (var, Unconstrained)
-  ([], _) -> Left (var, BoundedAbove)
-  (_, []) -> Left (var, BoundedBelow)
-  (l : ls, u : us) -> Right (l :| ls, u :| us)
-
---------------------------------------------------------------------------------
 -- Specialisation to real tensors
 
 type LinearInequality = NormalisedRelation InequalityRelation LinearExpression
 
 type LinearEquality = NormalisedRelation () LinearExpression
-
-type LinearBounds = Bounds LinearExpression
 
 type LinearAssertion = Assertion LinearExpression

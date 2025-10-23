@@ -180,9 +180,14 @@ solveVariableViaInequalities ::
   ([LinearInequality], Maybe LinearAssertionTree) ->
   m (MaybeTrivial Partition)
 solveVariableViaInequalities var steps (inequalities, remainingTree) = do
-  (bounds, newInequalities) <- fourierMotzkinElimination (coerce var) inequalities
-  let addIneq ineq = andTrivial andBoolExpr (NonTrivial $ Query $ inequalityToNormRelation ineq)
-  let updatedTree = foldr addIneq (maybe (Trivial True) NonTrivial remainingTree) newInequalities
+  (bounds, maybeTrivialNewInequalities) <- fourierMotzkinElimination (coerce var) inequalities
+  let updatedTree = case maybeTrivialNewInequalities of
+        Trivial False -> Trivial False
+        Trivial True -> maybe (Trivial True) NonTrivial remainingTree
+        NonTrivial ineqs -> do
+          let newIneqTree = Conjunct $ fmap (Query . inequalityToNormRelation) ineqs
+          NonTrivial $ maybe newIneqTree (andBoolExpr newIneqTree) remainingTree
+
   let step = SolveInequalities (toSliceVar var) bounds
   let newCompilationTrace = step : steps
   logInequalitiesSolved var step remainingTree

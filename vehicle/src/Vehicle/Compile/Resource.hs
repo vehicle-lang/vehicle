@@ -11,6 +11,8 @@ import Vehicle.Syntax.Builtin (BuiltinType (..))
 --------------------------------------------------------------------------------
 -- Networks
 
+type NetworkName = Name
+
 data NetworkType = NetworkType
   { inputTensor :: NetworkTensorType,
     outputTensor :: NetworkTensorType

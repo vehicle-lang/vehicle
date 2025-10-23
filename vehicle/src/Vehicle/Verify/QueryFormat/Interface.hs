@@ -38,6 +38,9 @@ data QueryAssertion variable = QueryAssertion
     rhs :: !Rational
   }
 
+-- Bounds on query variables, grouped by the network they belong to.
+type QueryVariableBounds = [(QueryVariable, (Rational, Rational))]
+
 -- | The command to format an individual query
 type CompileQuery =
   forall m.
@@ -45,6 +48,7 @@ type CompileQuery =
   QueryAddress ->
   MetaNetwork ->
   [QueryVariable] ->
+  QueryVariableBounds ->
   ConjunctAll (QueryAssertion QueryVariable) ->
   m Text
 

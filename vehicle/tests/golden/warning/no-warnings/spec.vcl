@@ -1,6 +1,6 @@
 @network
-f : Tensor Real [1] -> Tensor Real [1]
+f : Real -> Real
 
 @property
-p : Bool
-p = forall x . f x ! 0 <= 0
+p : Tensor Bool [2]
+p = [forall x . 0 < x < 1 => f x <= 0, True]

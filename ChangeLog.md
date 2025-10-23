@@ -4,6 +4,21 @@
 
 ### Verifier backend
 
+* Missing bounds on network inputs is now a hard error rather than a warning.
+  This shouldn't break anything as Marabou throws an error if there are missing bounds.
+
+* Improved error messages when missing bounds on network inputs.
+
+* Improved layout of the generated Marabou and VNNLIB query files so input bounds are all located in one place.
+
+* Decreased the size of the generated Marabou and VNNLIB query files (usually by ~50%) by eliminating some redundant inequalities.
+
+* Fixed bug where unable to compile trivial inequalities (e.g. `3 < 4`, `x < x`)
+
+## v0.22
+
+### Verifier backend
+
 * Improved error messages when trying to verify very dependently-typed properties.
 
 ### Python backend

@@ -260,7 +260,7 @@ compileQuerySetPartitions globalCtx isPropertyNegated maybePartitions = case may
   Trivial b -> return $ Trivial (b `xor` isPropertyNegated)
   NonTrivial partitions -> do
     propertyMetaData <- ask
-    maybeQueries <- compilePartitionsToQueries globalCtx propertyMetaData partitions
+    maybeQueries <- compilePartitionsToQueries propertyMetaData globalCtx partitions
     case maybeQueries of
       Trivial b -> return $ Trivial b
       NonTrivial queries -> return $ NonTrivial $ Query $ QuerySet isPropertyNegated queries

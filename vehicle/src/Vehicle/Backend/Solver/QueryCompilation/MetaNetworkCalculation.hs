@@ -6,8 +6,10 @@ module Vehicle.Backend.Solver.QueryCompilation.MetaNetworkCalculation
 where
 
 import Control.Monad (forM)
+import Control.Monad.Except (MonadError (..))
 import Control.Monad.Trans.Writer (WriterT (..))
 import Control.Monad.Writer (MonadWriter (..))
+import Data.Bifunctor (Bifunctor (..))
 import Data.Coerce (Coercible, coerce)
 import Data.DisjointSet (DisjointSet)
 import Data.DisjointSet qualified as DisjointSet
@@ -31,20 +33,23 @@ import Vehicle.Data.MaybeTrivial
 import Vehicle.Data.Tensor as Tensor
 import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Data.Variable.Bound.Tensor
+import Vehicle.Verify.QueryFormat (QueryFormat (..))
 import Vehicle.Verify.Specification (CompilationStep (..))
 
 calculateMetaNetworkApplications ::
   (MonadCompile m, MonadMaybeTrivial m) =>
+  PropertyMetaData ->
   GlobalCtx ->
   ConjunctAll LinearAssertion ->
   m (NetworkApplications, ConjunctAll LinearAssertion, [CompilationStep])
-calculateMetaNetworkApplications ctx assertions = do
+calculateMetaNetworkApplications metaData ctx assertions = do
   (eliminationResult, compilationSteps) <- runWriterT $ eliminateRedundantApplications ctx assertions
   case eliminationResult of
     Trivial b -> trivial b
-    NonTrivial newAssertions -> nonTrivial $ do
-      let metaNetworkApps = calculateMetaNetworkApps ctx newAssertions
-      (metaNetworkApps, newAssertions, compilationSteps)
+    NonTrivial newAssertions -> do
+      let networkApps = calculateMetaNetworkApps ctx newAssertions
+      checkIfMetaNetworkSupported metaData ctx networkApps
+      nonTrivial (networkApps, newAssertions, compilationSteps)
 
 --------------------------------------------------------------------------------
 -- Redundant network applications
@@ -276,3 +281,24 @@ prettyEquality ::
 prettyEquality ctx (a, b) = do
   let prettyVar v = pretty $ lookupLvInBoundCtx (coerce v) ctx
   prettyVar a <+> "==" <+> either prettyVar pretty b
+
+--------------------------------------------------------------------------------
+-- Compatability
+
+-- | Check if the query format supports the current meta-network configuration
+checkIfMetaNetworkSupported ::
+  (MonadCompile m) =>
+  PropertyMetaData ->
+  GlobalCtx ->
+  NetworkApplications ->
+  m ()
+checkIfMetaNetworkSupported PropertyMetaData {..} ctx metaNetworkApps
+  | supportsMultipleNetworks queryFormat = return ()
+  | otherwise = do
+      case toListOfApplications metaNetworkApps of
+        [] -> developerError "Empty"
+        [_app] -> return ()
+        apps -> do
+          let formatID = queryFormatID queryFormat
+          let appsWithValues = fmap (second inputValue) apps
+          throwError $ UnsupportedMultipleNetworkApplications formatID propertyProvenance (completeNamedCtx ctx) appsWithValues

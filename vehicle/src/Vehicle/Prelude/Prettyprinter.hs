@@ -155,3 +155,11 @@ instance (Pretty a, Pretty b) => Pretty (Either a b) where
   pretty = \case
     Left x -> pretty x
     Right x -> pretty x
+
+pluraliseNonStandard :: (Foldable f) => f b -> Doc a -> Doc a -> Doc a
+pluraliseNonStandard objects singular pluralSuffix
+  | length objects == 1 = "1" <+> singular
+  | otherwise = pretty (length objects) <+> singular <> pluralSuffix
+
+pluralise :: (Foldable f) => f b -> Doc a -> Doc a
+pluralise objects singular = pluraliseNonStandard objects singular "s"

@@ -24,6 +24,8 @@ module Vehicle.Data.Code.TypedView
     fromDimensionsValue,
     evalCompareRatTensor,
     etaReduceTensor,
+    scaleValue,
+    addValues,
   )
 where
 
@@ -31,10 +33,11 @@ import GHC.Stack (HasCallStack)
 import Vehicle.Compile.Normalise.NBE (normaliseApp, normaliseBuiltin, normaliseInEnv)
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Data.Builtin.Interface (Accessor (..))
-import Vehicle.Data.Builtin.Interface.Normalise (EvalSimple, MonadNormBuiltin, evalAtTensor, evalCompareRatTensorPointwise)
+import Vehicle.Data.Builtin.Interface.Normalise (EvalSimple, MonadNormBuiltin, evalAddRatTensor, evalAtTensor, evalCompareRatTensorPointwise, evalConstTensor, evalMulRatTensor)
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Builtin.Standard.Normalise ()
 import Vehicle.Data.Code.Interface
+import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Tensor (Tensor, pattern ZeroDimTensor)
 import Vehicle.Data.Variable.Bound.Context (NamedBoundCtx)
@@ -42,6 +45,7 @@ import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext)
 import Vehicle.Prelude
+import Vehicle.Prelude.Logging (runSilentLogger)
 
 -------------------------------------------------------------------------------
 -- Types
@@ -467,3 +471,14 @@ etaReduceTensor ctx typ dim dims tensor = do
           }
   let mkAt i = evalAtTensor ctx normaliseApp normaliseInEnv (mkAtArgs i)
   traverse mkAt [0 .. (dim - 1)]
+
+scaleValue :: Value Builtin -> ScaleConstant (Value Builtin)
+scaleValue dims c value = runSilentLogger $ do
+  constantTensor <- evalConstTensor $ ConstTensorArgs (implicit IRatType) (IRatLiteral c) dims
+  evalMulRatTensor $ TensorOp2Args (implicitIrrelevant dims) constantTensor value
+
+addValues :: Value Builtin -> AddConstants (Value Builtin)
+addValues dims c1 c2 v1 v2 = runSilentLogger $ do
+  let cv1 = scaleValue dims c1 v1
+  let cv2 = scaleValue dims c2 v2
+  evalAddRatTensor $ TensorOp2Args (implicitIrrelevant dims) cv1 cv2

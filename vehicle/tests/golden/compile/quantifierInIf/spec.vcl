@@ -1,6 +1,6 @@
 @network
-f : Tensor Real [1] -> Tensor Real [1]
+f : Real -> Real
 
 @property
 p : Bool
-p = if (forall x . f x ! 0 > 0) then True else False
+p = if (forall x . 0 < x < 1 => f x > 0) then True else False
