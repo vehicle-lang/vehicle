@@ -19,7 +19,7 @@ import Data.List qualified as List
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Maybe (catMaybes, isNothing, mapMaybe)
+import Data.Maybe (catMaybes, fromMaybe, isNothing, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text qualified as Text
@@ -30,6 +30,7 @@ import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.Code.DSL ()
+import Vehicle.Data.Code.Interface
 import Vehicle.Data.DSL
 import Vehicle.Data.Universe (UniverseLevel (..))
 import Vehicle.Syntax.AST.Expr qualified as S
@@ -234,28 +235,7 @@ scopeDecl decl =
         fs' <- traverse (scopeDefRecordField ident) fs
         addNewRecordDef ident (fmap fst fs')
 
-        let newIdent = Identifier (modulePath ident) (Text.pack "_" <> nameOf ident)
-
-        let (firstFieldName, tensorType) = head fs' -- TODO: safe with pattern matching!
-        let tensorTypeDSL = toDSL tensorType
-
-        let recordType = freeVar ident
-        let tensorDims = singletonDim (length fs')
-        let newType = tTensor tensorTypeDSL tensorDims
-        let newTypeBinder = (recordType) ~> newType
-        let fieldNames = map fst (tail fs')
-
-        let newBody =
-              explLam "x" recordType $ \x ->
-                -- constTensor tensorTypeDSL (recordAcc x ident firstFieldName) tensorDims
-                let tensorExprs = (constTensor tensorTypeDSL (recordAcc x ident firstFieldName) dimNil) :| [constTensor tensorTypeDSL (recordAcc x ident f) dimNil | f <- fieldNames]
-                 in stackTensor
-                      tensorTypeDSL
-                      (natLit 2) -- single dimension d
-                      (singletonDim 2) -- set of dims ds
-                      tensorExprs
-
-        let convFn = DefFunction p newIdent mempty (fromDSL mempty newTypeBinder) (fromDSL mempty newBody)
+        convFn <- addTensorConversionFunction p ident fs'
 
         if isAnnotatedAsTensor b
           then return [DefRecord p ident b t' fs', convFn]
@@ -264,6 +244,35 @@ scopeDecl decl =
     traverse_ addNewDecl scopedDecl
     traverse_ (logCompilerPassOutput . prettyFriendly) scopedDecl
     return scopedDecl
+
+addTensorConversionFunction ::
+  (MonadScope m) =>
+  Provenance ->
+  Identifier ->
+  [RecordField (Type Builtin)] ->
+  m (Decl Builtin)
+addTensorConversionFunction p ident fs = do
+  let newIdent = Identifier (modulePath ident) (Text.pack "_" <> nameOf ident)
+  let recordType = freeVar ident
+  convFn <- case fs of
+    [] -> do
+      let fnType = recordType ~> tTensor tUnit dimNil
+      let fnBody = constTensor tUnit tUnit dimNil
+      return $ DefFunction p newIdent mempty (fromDSL mempty fnType) (fromDSL mempty fnBody)
+    (firstFieldName, firstFieldType) : restFields -> do
+      let elemDims = fromMaybe [] (getDims firstFieldType)
+          tensorDims = toDSL (mkDims (length fs : elemDims))
+          elemType = toDSL firstFieldType
+          fnType = recordType ~> tTensor elemType tensorDims
+          fnBody = explLam "x" recordType $ \x ->
+            let tensorExprs =
+                  constTensor elemType (recordAcc x ident firstFieldName) (toDSL (mkDims elemDims))
+                    :| [constTensor elemType (recordAcc x ident f) (toDSL (mkDims elemDims)) | f <- map fst restFields]
+             in stackTensor elemType (natLit (length fs)) (toDSL (mkDims elemDims)) tensorExprs
+
+      return $ DefFunction p newIdent mempty (fromDSL mempty fnType) (fromDSL mempty fnBody)
+
+  return convFn
 
 scopeDefRecordField ::
   (MonadScope m) =>
