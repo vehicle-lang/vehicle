@@ -1,0 +1,76 @@
+{
+  "tag": "Main",
+  "contents": [
+    {
+      "tag": "DefFunction",
+      "contents": [
+        {
+          "tag": "Provenance",
+          "contents": [
+            10,
+            1,
+            10,
+            17
+          ]
+        },
+        "pi_equals_itself",
+        {
+          "tag": "Pi",
+          "contents": [
+            {
+              "tag": "TensorType",
+              "contents": {
+                "tag": "RatType"
+              }
+            },
+            {
+              "tag": "TensorType",
+              "contents": {
+                "tag": "RatType"
+              }
+            }
+          ]
+        },
+        {
+          "tag": "Lam",
+          "contents": [
+            {
+              "tag": "Binder",
+              "contents": [
+                {
+                  "tag": "Provenance",
+                  "contents": [
+                    10,
+                    1,
+                    10,
+                    17
+                  ]
+                },
+                "user_pi",
+                {
+                  "tag": "TensorType",
+                  "contents": {
+                    "tag": "RatType"
+                  }
+                }
+              ]
+            },
+            {
+              "tag": "RatTensor",
+              "contents": {
+                "tag": "ConstantTensor",
+                "contents": [
+                  [],
+                  {
+                    "numerator": 0,
+                    "denominator": 1
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

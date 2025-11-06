@@ -446,7 +446,7 @@ class JsonDecoder:
                 )
             elif callable(self.dataclass_decoder):
                 return cast(_T, self.dataclass_decoder(value))
-            assert_never()
+            assert_never(self.dataclass_decoder)
         else:
             decoder = self.decoders.get(cls_origin)
             if decoder is None:
@@ -455,7 +455,7 @@ class JsonDecoder:
                 return cast(_T, decoder.decode(self, cls_origin, cls_args, value))
             elif callable(decoder):
                 return cast(_T, decoder(value))
-            assert_never()
+            assert_never(decoder)
 
 
 _DEFAULT_DECODER: JsonDecoder = JsonDecoder(dataclass_decoder=TaggedObjectDecoder())
