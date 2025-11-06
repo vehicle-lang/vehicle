@@ -300,6 +300,12 @@ formatCompileError = \case
         problem = "cannot currently use quantifiers in `if` conditions.",
         fix = Just $ implementationLimitation Nothing
       }
+  UnsupportedTensorAnnotation p ->
+    VehicleError
+      { provenance = Just p,
+        problem = "cannot use an empty record as a tensor.",
+        fix = Just $ "remove the annotation or add fields to the record."
+      }
   ---------------
   -- Resources --
   ---------------

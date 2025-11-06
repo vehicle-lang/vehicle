@@ -235,7 +235,7 @@ scopeDecl decl =
         fs' <- traverse (scopeDefRecordField ident) fs
         addNewRecordDef ident (fmap fst fs')
 
-        convFn <- addTensorConversionFunction p ident fs'
+        convFn <- addTensorConversionFunction t' p ident fs'
 
         if isAnnotatedAsTensor b
           then return [DefRecord p ident b t' fs', convFn]
@@ -247,28 +247,30 @@ scopeDecl decl =
 
 addTensorConversionFunction ::
   (MonadScope m) =>
+  Type Builtin ->
   Provenance ->
   Identifier ->
   [RecordField (Type Builtin)] ->
   m (Decl Builtin)
-addTensorConversionFunction p ident fs = do
+addTensorConversionFunction _t p ident fs = do
   let newIdent = Identifier (modulePath ident) (Text.pack "_" <> nameOf ident)
   let recordType = freeVar ident
   convFn <- case fs of
     [] -> do
-      let fnType = recordType ~> tTensor tUnit dimNil
-      let fnBody = constTensor tUnit tUnit dimNil
-      return $ DefFunction p newIdent mempty (fromDSL mempty fnType) (fromDSL mempty fnBody)
+      throwError $ UnsupportedTensorAnnotation p
     (firstFieldName, firstFieldType) : restFields -> do
-      let elemDims = fromMaybe [] (getDims firstFieldType)
-          tensorDims = toDSL (mkDims (length fs : elemDims))
-          elemType = toDSL firstFieldType
-          fnType = recordType ~> tTensor elemType tensorDims
-          fnBody = explLam "x" recordType $ \x ->
+      let fieldDims = fromMaybe [] (getDims firstFieldType)
+      let tensorDims = toDSL (mkDims (length fs : fieldDims))
+      -- let elemType = toDSL firstFieldType
+      -- let fieldType = toDSL (Builtin p (TypeClassOp TensorTypeTC)) @@ [elemType] .@@ [toDSL (mkDims [])]
+      let fieldType = freeVar firstFieldName
+      let fieldType = tRat
+      let fnType = recordType ~> tTensor fieldType tensorDims
+      let fnBody = explLam "x" recordType $ \x ->
             let tensorExprs =
-                  constTensor elemType (recordAcc x ident firstFieldName) (toDSL (mkDims elemDims))
-                    :| [constTensor elemType (recordAcc x ident f) (toDSL (mkDims elemDims)) | f <- map fst restFields]
-             in stackTensor elemType (natLit (length fs)) (toDSL (mkDims elemDims)) tensorExprs
+                  recordAcc x ident firstFieldName
+                    :| [recordAcc x ident f | f <- map fst restFields]
+             in stackTensor fieldType (natLit (length fs)) (toDSL (mkDims fieldDims)) tensorExprs
 
       return $ DefFunction p newIdent mempty (fromDSL mempty fnType) (fromDSL mempty fnBody)
 
