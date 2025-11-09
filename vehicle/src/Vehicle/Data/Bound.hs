@@ -28,6 +28,9 @@ data BoundedValue value bounds = BoundedValue
   }
   deriving (Show)
 
+instance Functor (BoundedValue value) where
+  fmap f (BoundedValue var bounds) = BoundedValue var (f bounds)
+
 instance Bifunctor BoundedValue where
   bimap f g (BoundedValue var bounds) = BoundedValue (f var) (g bounds)
 

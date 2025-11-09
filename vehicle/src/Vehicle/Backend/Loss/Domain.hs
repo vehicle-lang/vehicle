@@ -39,6 +39,7 @@ import Vehicle.Data.Code.Value
 import Vehicle.Data.MaybeTrivial
 import Vehicle.Data.Tensor (pattern ZeroDimTensor)
 import Vehicle.Data.Tensor.Traversal
+import Vehicle.Data.Variable.Bound.Context.Generic (BoundCtx)
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Bound.Context.Tensor
 import Vehicle.Data.Variable.Bound.Level
@@ -97,6 +98,7 @@ compileExists (QuantifyRatTensorArgs dims binder closure) =
     -- Extract the domain for the search
     lv <- getBinderDepth
     body <- normaliseClosure binder closure
+    finalCtx <- getShrunkenContext
 
     result <- addTensorBinderToContext dims binder $ do
       maybePartitions <- compileBool body
@@ -107,18 +109,19 @@ compileExists (QuantifyRatTensorArgs dims binder closure) =
         NonTrivial partitions -> do
           logDebug MaxDetail $ "number-of-partitions:" <+> pretty (numberOfPartitions partitions)
           userTensorVar <- lookupNestedTensorVariable $ UserTensorVariable $ TensorVariable $ SliceVariable lv
-          xs <- traverse (compileConstraints dims binder userTensorVar) (partitionsToDisjuncts partitions)
+          xs <- traverse (compileConstraints finalCtx dims binder userTensorVar) (partitionsToDisjuncts partitions)
           disjunctMaybeTrivialPartitions xs
     return result
 
 compileConstraints ::
   (MonadLogic m) =>
+  BoundCtx () ->
   VDims Builtin ->
   VBinder Builtin ->
   NestedSliceVariable ->
   Partition ->
   m (MaybeTrivial Partitions)
-compileConstraints dims binder var (maybeConstraints, maybeRemainder) = do
+compileConstraints finalCtx dims binder var (maybeConstraints, maybeRemainder) = do
   varName <- prettyFriendlyInCtx var
   logCompilerSection2 MidDetail ("extracting bounds for" <+> squotes varName <+> "from partition") $ do
     -- Extract the constraints we can use to bound the variable
@@ -142,12 +145,10 @@ compileConstraints dims binder var (maybeConstraints, maybeRemainder) = do
             "remaining-expression:"
               <> lineIndent remainderDoc
 
-        -- Note this use of `tail` is a complete hack, this whole function should really be done
-        -- on the outside of the tensor binding
-        shrunkenNameCtx <- getShrunkenContext
-        let lossBody = quote mempty (boundCtxLv shrunkenNameCtx) remainder
-        let finalEnv = boundContextToEnv (tail shrunkenNameCtx)
-
+        -- Reform the closure around the body. Note that this needs to be done
+        -- in the final context (i.e. without any reference to slice variables!)
+        let lossBody = quote mempty (1 + boundCtxLv finalCtx) remainder
+        let finalEnv = boundContextToEnv finalCtx
         return $ Closure finalEnv lossBody
 
     -- Find the bounds on the quantified variable from the constraints
