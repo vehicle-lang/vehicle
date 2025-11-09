@@ -3,14 +3,9 @@
 module Vehicle.Test.Unit.Common where
 
 import Control.Monad.Except (ExceptT)
-import Data.Data (Proxy (..))
-import Data.Tagged (Tagged (Tagged))
 import Debug.Trace (trace)
-import Test.Tasty (TestTree, includingOptions)
+import Test.Tasty (TestTree)
 import Test.Tasty.HUnit (Assertion, testCase)
-import Test.Tasty.Ingredients (Ingredient)
-import Test.Tasty.Options (IsOption (..), OptionDescription (Option))
-import Text.Read (readMaybe)
 import Vehicle.Compile.Error (CompileError)
 import Vehicle.Compile.Print.Error
   ( formatCompileError,
@@ -22,23 +17,6 @@ import Vehicle.Prelude
   )
 import Vehicle.Prelude.Logging
 import Vehicle.Prelude.Warning (groupWarnings)
-
-vehicleLoggingIngredient :: Ingredient
-vehicleLoggingIngredient =
-  includingOptions [Option (Proxy :: Proxy LoggingLevel)]
-
-instance IsOption LoggingLevel where
-  defaultValue :: LoggingLevel
-  defaultValue = defaultLoggingLevel
-
-  parseValue :: String -> Maybe LoggingLevel
-  parseValue = readMaybe
-
-  optionName :: Tagged LoggingLevel String
-  optionName = Tagged "vehicle-logging"
-
-  optionHelp :: Tagged LoggingLevel String
-  optionHelp = Tagged loggingLevelHelp
 
 --------------------------------------------------------------------------------
 -- Test settings monad

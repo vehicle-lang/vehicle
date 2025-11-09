@@ -7,7 +7,7 @@
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile -s spec.vcl -t MarabouQueries -o Marabou.queries/",
+    "run": "vehicle compile queries -s spec.vcl -f MarabouQueries -o Marabou.queries/",
     "needs": ["spec.vcl"],
     "produces": ["Marabou.queries/*.txt", "Marabou.queries/positive.vcl-plan"],
     "ignore":

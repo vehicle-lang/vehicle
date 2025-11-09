@@ -188,7 +188,7 @@ data CompileError
   | UnableToLiftLogicFieldToTensors DifferentiableLogicID TensorDifferentiableLogicField (BooleanDifferentiableLogicField, Value Builtin) NamedBoundCtx (Value Builtin)
   | NoQuantifierDomainFound DeclProvenance (VBinder Builtin) (These (NonEmpty TensorIndices) (NonEmpty TensorIndices))
   | -- ITP backend errors
-    UnsupportedPolymorphicEquality ITP Provenance Name
+    UnsupportedPolymorphicEquality InteractiveTheoremProverID Provenance Name
   | UnusedMonomorphisableDeclaration Provenance Identifier
   | -- Other
     UnsupportedInequality QueryFormatID DeclProvenance

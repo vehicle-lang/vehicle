@@ -1,0 +1,12 @@
+Usage: vehicle compile COMMAND
+
+  Compile a .vcl specification file.
+
+Available options:
+  -h,--help                Show this help text
+
+Available commands:
+  loss                     Compile a specification to a loss function.
+  queries                  Compile a specification to verifier queries.
+  itp                      Compile a specification to interactive theorem prover
+                           code.

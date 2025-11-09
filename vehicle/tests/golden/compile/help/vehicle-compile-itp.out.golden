@@ -1,16 +1,15 @@
-Usage: vehicle compile (-t|--target TARGET) (-s|--specification FILE) 
-                       [-e|--declaration NAME] [-n|--network NAME:FILE] 
-                       [-d|--dataset NAME:FILE] [-p|--parameter NAME:VALUE] 
-                       [-o|--output FILE] [-m|--module-name MODULENAME] 
-                       [-c|--cache FILE]
+Usage: vehicle compile itp (-t|--target TARGET) (-s|--specification FILE) 
+                           [-e|--declaration NAME] [-n|--network NAME:FILE] 
+                           [-d|--dataset NAME:FILE] [-p|--parameter NAME:VALUE] 
+                           [-o|--output FILE] [-m|--module-name MODULENAME] 
+                           [-c|--cache FILE]
 
-  Compile a .vcl specification file.
+  Compile a specification to interactive theorem prover code.
 
 Available options:
-  -t,--target TARGET       The target that the specification should be compiled
-                           to. Supported options: VehicleLoss, DL2Loss,
-                           GodelLoss, LukasiewiczLoss, ProductLoss, YagerLoss,
-                           STLLoss, MarabouQueries, VNNLibQueries, Agda, Rocq.
+  -t,--target TARGET       The target to export to. Supported options: 
+                             * Agda
+                             * Rocq
   -s,--specification FILE  The .vcl file containing the specification.
   -e,--declaration NAME    Declarations in the specification to include during
                            compilation. Can be provided multiple times. If not
@@ -32,7 +31,7 @@ Available options:
                            the specification and its value. Can be provided
                            multiple times.
   -o,--output FILE         Output location for compiled file(s). Defaults to
-                           stdout if not provided.
+                           `stdout` if not provided.
   -m,--module-name MODULENAME
                            Override the name of the exported ITP module. For
                            example, compiling with 'Foo.Bar' will result in the

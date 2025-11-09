@@ -5,14 +5,20 @@ Usage: vehicle [-v|--version] [--logging ARG] [--loggingPass ARG]
 
 Available options:
   -v,--version             Show version information.
-  --logging ARG            Sets the level of detail in the logs if the --log
-                           argument has been passed. Supported options:
-                           NoDetail, MinDetail, MidDetail, MaxDetail
-                           (default: NoDetail)
-  --loggingPass ARG        Sets the which compiler pass logging is enabled for.
-                           Supported options: Scoping, TypeChecking,
-                           QueryBackend, ITPBackend, LossBackend, QueryError,
-                           WitnessReconstruction
+  --logging ARG            Sets the level of detail in the logs if the --log argument has been passed. Supported options: 
+                             * NoDetail
+                             * MinDetail
+                             * MidDetail
+                             * MaxDetail
+                            (default: NoDetail)
+  --loggingPass ARG        Sets which compiler pass logging is enabled for. Supported options: 
+                             * Scoping
+                             * TypeChecking
+                             * QueryBackend
+                             * ITPBackend
+                             * LossBackend
+                             * QueryError
+                             * WitnessReconstruction
   --no-warnings            Suppress the printing of warnings.
   -h,--help                Show this help text
 

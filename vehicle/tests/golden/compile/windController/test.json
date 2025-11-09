@@ -11,7 +11,7 @@
   },
   {
     "name": "VNNLib",
-    "run": "vehicle compile -s spec.vcl -t VNNLibQueries -o VNNLib.queries/ --network controller:controller.onnx",
+    "run": "vehicle compile queries -s spec.vcl -f VNNLibQueries -o VNNLib.queries/ --network controller:controller.onnx",
     "needs": ["spec.vcl", "controller.onnx"],
     "produces": ["VNNLib.queries/*.txt", "VNNLib.queries/*.vcl-plan"],
     "ignore": {
@@ -21,7 +21,7 @@
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile -s spec.vcl -t MarabouQueries -o Marabou.queries/ --network controller:controller.onnx",
+    "run": "vehicle compile queries -s spec.vcl -f MarabouQueries -o Marabou.queries/ --network controller:controller.onnx",
     "needs": ["spec.vcl", "controller.onnx"],
     "produces": ["Marabou.queries/*.txt", "Marabou.queries/*.vcl-plan"],
     "ignore": {
@@ -31,26 +31,26 @@
   },
   {
     "name": "Agda",
-    "run": "vehicle compile -s spec.vcl -t Agda -o Agda.agda",
+    "run": "vehicle compile itp -s spec.vcl -t Agda -o Agda.agda",
     "needs": ["spec.vcl"],
     "produces": ["Agda.agda"]
   },
   {
     "name": "Rocq",
-    "run": "vehicle compile -s spec.vcl -t Rocq -o Rocq.v",
+    "run": "vehicle compile itp -s spec.vcl -t Rocq -o Rocq.v",
     "needs": ["spec.vcl"],
     "produces": ["Rocq.v"]
   },
   {
     "name": "RocqVerify",
-    "run": "vehicle compile -s spec.vcl -t Rocq -o Rocq.v && rocq compile -w none -vok Rocq.v",
+    "run": "vehicle compile itp -s spec.vcl -t Rocq -o Rocq.v && rocq compile -w none -vok Rocq.v",
     "needs": ["spec.vcl"],
     "external": ["rocq"],
     "ignore": {"files": ["Rocq.v", ".Rocq.aux", "Rocq.glob", "Rocq.vok"]}
   },
   {
     "name": "DL2Loss",
-    "run": "vehicle compile -s spec.vcl -t DL2Loss -o DL2Loss.vcl --network controller:controller.onnx ",
+    "run": "vehicle compile loss -s spec.vcl -l DL2Loss -o DL2Loss.vcl",
     "needs": ["spec.vcl"],
     "produces": ["DL2Loss.vcl"]
   },

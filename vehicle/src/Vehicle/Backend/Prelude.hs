@@ -1,14 +1,12 @@
 module Vehicle.Backend.Prelude where
 
 import Control.Monad.IO.Class (MonadIO (..))
-import Data.Maybe (catMaybes)
 import Data.Text.IO qualified as TIO
 import System.Directory (createDirectoryIfMissing)
 import System.FilePath (takeDirectory)
 import Vehicle.Prelude
 import Vehicle.Prelude.IO qualified as VIO (MonadStdIO (writeStdoutLn))
 import Vehicle.Prelude.Logging
-import Vehicle.Verify.QueryFormat.Core
 
 --------------------------------------------------------------------------------
 -- Differentiable logics
@@ -30,12 +28,12 @@ instance Pretty DifferentiableLogicID where
 --------------------------------------------------------------------------------
 -- Interactive theorem provers
 
-data ITP
+data InteractiveTheoremProverID
   = Agda
   | Rocq
   deriving (Eq, Show, Read, Bounded, Enum)
 
-instance Pretty ITP where
+instance Pretty InteractiveTheoremProverID where
   pretty = pretty . show
 
 --------------------------------------------------------------------------------
@@ -62,31 +60,6 @@ instance Read SecondaryTypeSystem where
 
 --------------------------------------------------------------------------------
 -- Action
-
-data Target
-  = ITP ITP
-  | VerifierQueries QueryFormatID
-  | LossFunction DifferentiableLogicID
-  deriving (Eq)
-
-findTarget :: String -> Maybe Target
-findTarget s = do
-  let itp = lookup s (fmap (\t -> (show t, ITP t)) (enumerate @ITP))
-  let queries = lookup s (fmap (\t -> (show t, VerifierQueries t)) (enumerate @QueryFormatID))
-  let dl = lookup s (fmap (\t -> (show t, LossFunction t)) (enumerate @DifferentiableLogicID))
-  catMaybes [itp, queries, dl] !!? 0
-
-instance Show Target where
-  show = \case
-    ITP x -> show x
-    VerifierQueries x -> show x
-    LossFunction x -> show x
-
-instance Pretty Target where
-  pretty = \case
-    ITP x -> pretty x
-    VerifierQueries x -> pretty x
-    LossFunction x -> pretty x
 
 -- | Generate the file header given the token used to start comments in the
 --  target language
