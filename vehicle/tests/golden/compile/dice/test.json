@@ -1,7 +1,7 @@
 [
   {
     "name": "VNNLib",
-    "run": "vehicle compile -t VNNLibQueries -s spec.vcl -o VNNLib.queries/ -p epsilon:8/255 -d images:dice-images-1.idx -n classifier:baseline.onnx",
+    "run": "vehicle compile queries -f VNNLibQueries -s spec.vcl -o VNNLib.queries/ -p epsilon:8/255 -d images:dice-images-1.idx -n classifier:baseline.onnx",
     "needs": [
       "spec.vcl",
       "baseline.onnx",

@@ -1,0 +1,39 @@
+Usage: vehicle compile queries (-f|--format FORMAT) (-s|--specification FILE) 
+                               [-e|--declaration NAME] [-n|--network NAME:FILE] 
+                               [-d|--dataset NAME:FILE] 
+                               [-p|--parameter NAME:VALUE] [-o|--output FILE] 
+                               [-c|--cache FILE]
+
+  Compile a specification to verifier queries.
+
+Available options:
+  -f,--format FORMAT       The query format to export to. Supported options: 
+                             * MarabouQueries
+                             * VNNLibQueries
+  -s,--specification FILE  The .vcl file containing the specification.
+  -e,--declaration NAME    Declarations in the specification to include during
+                           compilation. Can be provided multiple times. If not
+                           provided then all declarations in the specification
+                           will be compiled.
+  -n,--network NAME:FILE   Provide the implementation of a network declared in
+                           the specification. Its value should consist of a
+                           colon-separated pair of the name of the network in
+                           the specification and a file path. Can be provided
+                           multiple times.
+  -d,--dataset NAME:FILE   Provide a dataset declared in the specification. Its
+                           value should consist of a colon-separated pair of the
+                           name of the dataset in the specification and a file
+                           path. Can be provided multiple times.
+  -p,--parameter NAME:VALUE
+                           Provide a value for a parameter referenced in the
+                           specification. Its value should consist of a
+                           colon-separated pair of the name of the parameter in
+                           the specification and its value. Can be provided
+                           multiple times.
+  -o,--output FILE         Output location for compiled file(s). Defaults to
+                           `stdout` if not provided.
+  -c,--cache FILE          The location of the verification cache that can be
+                           used to check the verification status of the
+                           specification. Should be passed when compiling to an
+                           ITP.
+  -h,--help                Show this help text

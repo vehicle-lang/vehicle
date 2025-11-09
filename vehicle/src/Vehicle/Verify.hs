@@ -9,8 +9,7 @@ import Control.Monad.IO.Class (MonadIO (..), liftIO)
 import System.Directory (doesFileExist, findExecutable, makeAbsolute)
 import System.FilePath (takeExtension)
 import System.IO.Temp (withSystemTempDirectory)
-import Vehicle.Backend.Prelude (Target (..))
-import Vehicle.Compile (CompileOptions (..), compile)
+import Vehicle.Compile (CompileOptions (..), QueryOptions (..), compile)
 import Vehicle.Compile.Prelude (DatasetLocations, NetworkLocations, ParameterValues)
 import Vehicle.Prelude
 import Vehicle.Prelude.Logging
@@ -50,7 +49,7 @@ verify loggingSettings outputAsJSON options@VerifyOptions {..} = do
 -- | Compiles the specification to a temporary directory and then tries to verify it.
 compileAndVerifyQueries :: (MonadStdIO IO) => LoggingSettings -> OutputAsJSON -> VerifyOptions -> (FilePath -> IO ()) -> IO ()
 compileAndVerifyQueries loggingSettings outputAsJSON VerifyOptions {..} verifyCommand = do
-  let queryFormat = VerifierQueries $ verifierQueryFormatID $ verifiers verifierID
+  let queryFormatID = verifierQueryFormatID $ verifiers verifierID
 
   let inFolder = case verificationCache of
         Nothing -> withSystemTempDirectory "specification"
@@ -58,15 +57,15 @@ compileAndVerifyQueries loggingSettings outputAsJSON VerifyOptions {..} verifyCo
 
   inFolder $ \tempDir -> do
     compile loggingSettings outputAsJSON $
-      CompileOptions
-        { target = queryFormat,
-          specification = specification,
-          declarationsToCompile = properties,
-          output = Just tempDir,
-          moduleName = Nothing,
-          verificationCache = verificationCache,
-          ..
-        }
+      QueryTarget $
+        QueryOptions
+          { queryFormatID = queryFormatID,
+            specification = specification,
+            declarationsToCompile = properties,
+            outputFolder = Just tempDir,
+            verificationCache = verificationCache,
+            ..
+          }
 
     verifyCommand tempDir
 
@@ -137,5 +136,5 @@ invalidTargetError target =
           <> line
           <> "ii) a folder containing a"
             <+> pretty specificationCacheIndexFileExtension
-            <+> "file generated via a `vehicle compile` command."
+            <+> "file generated via a `vehicle compile queries` command."
       )

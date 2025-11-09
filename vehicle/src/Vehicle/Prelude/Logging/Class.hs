@@ -1,11 +1,9 @@
 module Vehicle.Prelude.Logging.Class
   ( CompilerPass (..),
     allCompilerPasses,
-    loggingPassHelp,
     LoggingLevel (..),
     defaultLoggingLevel,
     allLoggingLevels,
-    loggingLevelHelp,
     DebugMessage,
     MonadLogger (..),
     logDebug,
@@ -30,7 +28,7 @@ import Data.Text (Text)
 import Data.Text qualified as Text (unpack)
 import System.Console.ANSI (Color (..))
 import Vehicle.Data.MaybeTrivial (MaybeTrivialT)
-import Vehicle.Prelude.Misc (enumerate, setTextColour, supportedOptions)
+import Vehicle.Prelude.Misc (enumerate, setTextColour)
 import Vehicle.Prelude.Prettyprinter
 import Vehicle.Prelude.Supply (SupplyT)
 import Vehicle.Prelude.Warning
@@ -62,11 +60,6 @@ instance Pretty CompilerPass where
 allCompilerPasses :: [String]
 allCompilerPasses = map show (enumerate @CompilerPass)
 
-loggingPassHelp :: String
-loggingPassHelp =
-  "Sets the which compiler pass logging is enabled for. "
-    <> supportedOptions allCompilerPasses
-
 --------------------------------------------------------------------------------
 -- Logging levels
 
@@ -82,11 +75,6 @@ allLoggingLevels = map show (enumerate @LoggingLevel)
 
 defaultLoggingLevel :: LoggingLevel
 defaultLoggingLevel = NoDetail
-
-loggingLevelHelp :: String
-loggingLevelHelp =
-  "Sets the level of detail in the logs if the --log argument has been passed. "
-    <> supportedOptions allLoggingLevels
 
 --------------------------------------------------------------------------------
 -- Messages

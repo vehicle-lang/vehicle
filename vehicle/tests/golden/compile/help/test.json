@@ -1,26 +1,38 @@
 [
   {
-    "name": "basic",
+    "name": "vehicle",
     "run": "vehicle --help"
   },
   {
-    "name": "check",
+    "name": "vehicle-check",
     "run": "vehicle check --help"
   },
   {
-    "name": "compile",
+    "name": "vehicle-compile",
     "run": "vehicle compile --help"
   },
   {
-    "name": "verify",
+    "name": "vehicle-compile-loss",
+    "run": "vehicle compile loss --help"
+  },
+  {
+    "name": "vehicle-compile-queries",
+    "run": "vehicle compile queries --help"
+  },
+  {
+    "name": "vehicle-compile-itp",
+    "run": "vehicle compile itp --help"
+  },
+  {
+    "name": "vehicle-verify",
     "run": "vehicle verify --help"
   },
   {
-    "name": "export",
+    "name": "vehicle-export",
     "run": "vehicle export --help"
   },
   {
-    "name": "list",
+    "name": "vehicle-list",
     "run": "vehicle list --help"
   }
 ]

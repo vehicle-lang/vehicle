@@ -282,7 +282,7 @@ These tests are specified in `test.json` files in [tests/golden](./vehicle/tests
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile -s spec.vcl -t MarabouQueries -o Marabou.queries/ --network controller:controller.onnx",
+    "run": "vehicle compile queries -s spec.vcl -f MarabouQueries -o Marabou.queries/ --network controller:controller.onnx",
     "needs": ["spec.vcl", "controller.onnx"],
     "produces": ["Marabou.queries/*.txt", "Marabou.queries/.vcl-cache-index"],
     "ignore": {
@@ -291,19 +291,19 @@ These tests are specified in `test.json` files in [tests/golden](./vehicle/tests
   },
   {
     "name": "Agda",
-    "run": "vehicle compile -s spec.vcl -t Agda -o Agda.agda",
+    "run": "vehicle compile itp -s spec.vcl -t Agda -o Agda.agda",
     "needs": ["spec.vcl"],
     "produces": ["Agda.agda"]
   },
   {
     "name": "Rocq",
-    "run": "vehicle compile -s spec.vcl -t Rocq -o Rocq.v",
+    "run": "vehicle compile itp -s spec.vcl -t Rocq -o Rocq.v",
     "needs": ["spec.vcl"],
     "produces": ["Rocq.v"]
   },
   {
     "name": "RocqVerify",
-    "run": "vehicle compile -s spec.vcl -t Rocq -o Rocq.v && coqc -vok Rocq.v -w none",
+    "run": "vehicle compile itp -s spec.vcl -t Rocq -o Rocq.v && coqc -vok Rocq.v -w none",
     "needs": ["spec.vcl"],
     "produces": ["Rocq.v"],
     "external": ["coqc"],
@@ -311,7 +311,7 @@ These tests are specified in `test.json` files in [tests/golden](./vehicle/tests
   },
   {
     "name": "DL2Loss",
-    "run": "vehicle compile -s spec.vcl -t DL2Loss -o DL2Loss.vcl --network controller:controller.onnx",
+    "run": "vehicle compile loss -s spec.vcl -l DL2Loss -o DL2Loss.vcl --network controller:controller.onnx",
     "needs": ["spec.vcl"],
     "produces": ["DL2Loss.json"]
   },
@@ -353,7 +353,7 @@ To create a new golden test, you can use the `new-golden-test` command.
 1. Compose the Vehicle command you'd like to test, _e.g._,
 
    ```sh
-   vehicle compile -s spec.vcl -t MarabouQueries -o Marabou.queries -n controller:controller.onnx
+   vehicle compile queries -s spec.vcl -f MarabouQueries -o Marabou.queries -n controller:controller.onnx
    ```
 
    Use `cabal run vehicle --` rather than `vehicle` to ensure that you are building and running the current version, rather than an old installation.
@@ -369,7 +369,7 @@ To create a new golden test, you can use the `new-golden-test` command.
    For instance:
 
    ```sh
-   cabal run new-golden-test -- vehicle compile -s spec.vcl -t MarabouQueries -o Marabou.queries -n controller:controller.onnx
+   cabal run new-golden-test -- vehicle compile queries -s spec.vcl -f MarabouQueries -o Marabou.queries -n controller:controller.onnx
    ```
 
    This creates or updates the `test.json` file to add the test.

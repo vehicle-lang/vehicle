@@ -1,5 +1,8 @@
 module Vehicle.Compile
   ( CompileOptions (..),
+    LossOptions (..),
+    QueryOptions (..),
+    ITPOptions (..),
     compile,
   )
 where
@@ -28,57 +31,93 @@ import Vehicle.Verify.QueryFormat
 --------------------------------------------------------------------------------
 -- Interface
 
-data CompileOptions = CompileOptions
-  { target :: Target,
+data CompileOptions
+  = ITPTarget ITPOptions
+  | QueryTarget QueryOptions
+  | LossTarget LossOptions
+  deriving (Show, Eq)
+
+data LossOptions = LossOptions
+  { differentiableLogicID :: DifferentiableLogicID,
+    specification :: FilePath,
+    declarationsToCompile :: DeclarationNames,
+    outputFile :: Maybe FilePath
+  }
+  deriving (Show, Eq)
+
+data QueryOptions = QueryOptions
+  { queryFormatID :: QueryFormatID,
     specification :: FilePath,
     declarationsToCompile :: DeclarationNames,
     networkLocations :: NetworkLocations,
     datasetLocations :: DatasetLocations,
     parameterValues :: ParameterValues,
-    output :: Maybe FilePath,
+    outputFolder :: Maybe FilePath,
+    verificationCache :: Maybe FilePath
+  }
+  deriving (Show, Eq)
+
+data ITPOptions = ITPOptions
+  { itp :: InteractiveTheoremProverID,
+    specification :: FilePath,
+    declarationsToCompile :: DeclarationNames,
+    networkLocations :: NetworkLocations,
+    datasetLocations :: DatasetLocations,
+    parameterValues :: ParameterValues,
+    outputFile :: Maybe FilePath,
     moduleName :: Maybe String,
     verificationCache :: Maybe FilePath
   }
-  deriving (Eq, Show)
+  deriving (Show, Eq)
+
+specificationOf :: CompileOptions -> FilePath
+specificationOf = \case
+  LossTarget LossOptions {..} -> specification
+  QueryTarget QueryOptions {..} -> specification
+  ITPTarget ITPOptions {..} -> specification
+
+declarationsOf :: CompileOptions -> DeclarationNames
+declarationsOf = \case
+  LossTarget LossOptions {..} -> declarationsToCompile
+  QueryTarget QueryOptions {..} -> declarationsToCompile
+  ITPTarget ITPOptions {..} -> declarationsToCompile
 
 compile :: (MonadStdIO IO) => LoggingSettings -> OutputAsJSON -> CompileOptions -> IO ()
-compile loggingSettings outputAsJSON options@CompileOptions {..} =
+compile loggingSettings outputAsJSON options =
   runCompileMonad loggingSettings outputAsJSON $ do
     prog <-
       typeCheckUserProg $
         TypeCheckOptions
-          { specification = specification,
+          { specification = specificationOf options,
             secondaryTypeSystem = Nothing,
-            declarationsToCompile = declarationsToCompile
+            declarationsToCompile = declarationsOf options
           }
 
-    case target of
-      VerifierQueries queryFormat -> compileToQueryFormat options queryFormat prog
-      LossFunction logic -> compileToLossFunction logic prog output outputAsJSON
-      ITP itp -> compileToITP itp options prog
+    case options of
+      LossTarget lossOptions -> compileToLossFunction lossOptions prog outputAsJSON
+      QueryTarget queryOptions -> compileToQueryFormat queryOptions prog
+      ITPTarget itpOptions -> compileToITP itpOptions prog
 
 --------------------------------------------------------------------------------
 -- Backend-specific compilation functions
 
 compileToQueryFormat ::
   (MonadCompile m, MonadStdIO m) =>
-  CompileOptions ->
-  QueryFormatID ->
+  QueryOptions ->
   Prog Builtin ->
   m ()
-compileToQueryFormat CompileOptions {..} queryFormatID typedProg = do
+compileToQueryFormat QueryOptions {..} typedProg = do
   logCompilerPass QueryBackend $ do
     let verifier = queryFormats queryFormatID
     let resources = Resources specification networkLocations datasetLocations parameterValues
-    compileToQueries verifier typedProg resources output
+    compileToQueries verifier typedProg resources outputFolder
 
 compileToITP ::
   (MonadCompile m, MonadStdIO m) =>
-  ITP ->
-  CompileOptions ->
+  ITPOptions ->
   Prog Builtin ->
   m ()
-compileToITP itp CompileOptions {..} typedProg =
+compileToITP ITPOptions {..} typedProg =
   logCompilerPass ITPBackend $ do
     -- Analyse the program to find out which `Bool`s are decidable and which aren't.
     decProg <- decidabilityTypeCheck typedProg
@@ -86,25 +125,24 @@ compileToITP itp CompileOptions {..} typedProg =
     -- Compile depending on the ITP
     case itp of
       Agda -> do
-        let agdaOptions = AgdaOptions verificationCache output moduleName
+        let agdaOptions = AgdaOptions verificationCache outputFile moduleName
         agdaCode <- compileProgToAgda decProg agdaOptions
-        writeAgdaFile output agdaCode
+        writeAgdaFile outputFile agdaCode
       Rocq -> do
-        let rocqOptions = RocqOptions output moduleName
+        let rocqOptions = RocqOptions outputFile moduleName
         rocqCode <- compileProgToRocq decProg rocqOptions
-        writeRocqFile output rocqCode
+        writeRocqFile outputFile rocqCode
 
 compileToLossFunction ::
   forall m.
   (MonadCompile m, MonadStdIO m) =>
-  DifferentiableLogicID ->
+  LossOptions ->
   Prog Builtin ->
-  Maybe FilePath ->
-  Bool ->
+  OutputAsJSON ->
   m ()
-compileToLossFunction logicID typedProg outputFile outputAsJSON =
+compileToLossFunction LossOptions {..} typedProg outputAsJSON =
   logCompilerPass LossBackend $ do
-    compiledLogic <- compileLogic logicID (dslFor logicID)
+    compiledLogic <- compileLogic differentiableLogicID (dslFor differentiableLogicID)
     lossTensorProg <- convertToLossTensors compiledLogic typedProg
     hoistedProg <- hoistInferableParameters lossTensorProg
     functionalisedProg <- functionaliseResources hoistedProg

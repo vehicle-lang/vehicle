@@ -4,14 +4,15 @@ Usage: vehicle export (-t|--target TARGET) (-c|--cache FILE) [-o|--output FILE]
   Export a.vcl specification file to an interactive theorem prover.
 
 Available options:
-  -t,--target TARGET       The target to export to. Supported options: Agda,
-                           Rocq
+  -t,--target TARGET       The target to export to. Supported options: 
+                             * Agda
+                             * Rocq
   -c,--cache FILE          The location of the verification cache that can be
                            used to check the verification status of the
                            specification. Should be passed when compiling to an
                            ITP.
   -o,--output FILE         Output location for compiled file(s). Defaults to
-                           stdout if not provided.
+                           `stdout` if not provided.
   -m,--module-name MODULENAME
                            Override the name of the exported ITP module. For
                            example, compiling with 'Foo.Bar' will result in the

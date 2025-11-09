@@ -405,5 +405,7 @@ test-suite golden-tests
     , tagged
     , tasty
     , tasty-golden-executable
+    , vehicle
+    , vehicle-syntax
 
   build-tool-depends: vehicle:vehicle

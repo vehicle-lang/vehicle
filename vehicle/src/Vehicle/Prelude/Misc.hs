@@ -12,7 +12,6 @@ import Data.Bitraversable
 import Data.ByteString.Lazy.Char8 (unpack)
 import Data.Graph (Edge, Vertex, buildG, topSort)
 import Data.Hashable (Hashable)
-import Data.List qualified as List
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Map (Map)
@@ -221,9 +220,6 @@ xor p q = p /= q
 
 enumerate :: (Bounded a, Enum a) => [a]
 enumerate = [minBound .. maxBound]
-
-supportedOptions :: [String] -> String
-supportedOptions opts = "Supported options: " <> List.intercalate ", " opts
 
 whenM :: (Monad m) => m Bool -> m () -> m ()
 whenM cond action = do
