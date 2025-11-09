@@ -16,7 +16,7 @@ import Data.Map qualified as Map (fromList)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Options.Applicative
-import Vehicle.Backend.Prelude (DifferentiableLogicID, InteractiveTheoremProverID, SecondaryTypeSystem (..))
+import Vehicle.Backend.Prelude (BuiltinDifferentiableLogicID, DifferentiableLogicID, InteractiveTheoremProverID, SecondaryTypeSystem (..))
 import Vehicle.Compile (CompileOptions (..), ITPOptions (..), LossOptions (..), QueryOptions (..))
 import Vehicle.Export (ExportOptions (..))
 import Vehicle.List (ListOptions (..))
@@ -239,7 +239,7 @@ lossLogicParser =
     long "logic"
       <> short 'l'
       <> metavar "LOGIC"
-      <> helpDoc (Just ("The differentiable logic to export to." <+> supportedOptions allLossFunctionDLs))
+      <> helpDoc (Just ("The differentiable logic to export to." <+> supportedOptions allBuiltinDifferentiableLogics))
 
 --------------------------------------------------------------------------------
 -- Compile query mode
@@ -375,8 +375,8 @@ allVerifiers = map show (delete TestVerifier (enumerate @VerifierID))
 allVerifiersFormats :: [String]
 allVerifiersFormats = map show (enumerate @QueryFormatID)
 
-allLossFunctionDLs :: [String]
-allLossFunctionDLs = map show (enumerate @DifferentiableLogicID)
+allBuiltinDifferentiableLogics :: [String]
+allBuiltinDifferentiableLogics = map show (enumerate @BuiltinDifferentiableLogicID)
 
 allTypeSystems :: [Doc a]
 allTypeSystems = flip map (zip [1 :: Int ..] (enumerate @SecondaryTypeSystem)) $ \(n, t) ->

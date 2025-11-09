@@ -93,7 +93,8 @@ readAndDecodeVersioned filepath = do
       Right Versioned {..} -> do
         -- The version is always potentially out of sync if the Github repo is
         -- in a dirty state.
-        let isOutOfSync = $(gitDirtyTracked) || version /= preciseVehicleVersion
+        let isOutOfSync = version /= preciseVehicleVersion
+        -- \||  $(gitDirtyTracked)
         if isOutOfSync
           then return $ VersionMismatchError preciseVehicleVersion version
           else case decode payload of

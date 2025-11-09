@@ -53,3 +53,73 @@ existsIndex f = reduceOr False (foreach i . f i)
 
 forallIndex : forallT {n} . (Index n -> Bool) -> Bool
 forallIndex f = reduceAnd True (foreach i . f i)
+
+--------------------------------------------------------------------------------
+-- Loss logics
+--------------------------------------------------------------------------------
+
+{-
+record DifferentiableElementLogic where
+  { true             : Real
+  , false            : Real
+  , negation         : Real -> Real
+  , conjunction      : Real -> Real -> Real
+  , disjunction      : Real -> Real -> Real
+  , lessThan         : Real -> Real -> Real
+  , lessEqualThan    : Real -> Real -> Real
+  , greaterThan      : Real -> Real -> Real
+  , greaterEqualThan : Real -> Real -> Real
+  , equal            : Real -> Real -> Real
+  , notEqual         : Real -> Real -> Real
+  }
+-}
+
+record DifferentiableTensorLogic where
+  { trueElement               : Real
+  , falseElement              : Real
+  , pointwiseNegation         : Tensor Real dims -> Tensor Real dims
+  , pointwiseConjunction      : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
+  , pointwiseDisjunction      : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
+  , pointwiseLessThan         : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
+  , pointwiseLessEqualThan    : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
+  , pointwiseGreaterThan      : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
+  , pointwiseGreaterEqualThan : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
+  , pointwiseEqual            : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
+  , pointwiseNotEqual         : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
+  , reduceConjunction         : Real -> Tensor Real dims -> Real
+  , reduceDisjunction         : Real -> Tensor Real dims -> Real
+  }
+
+VehicleLoss : DifferentiableTensorLogic
+VehicleLoss =
+  { trueElement                = -1000000
+  , falseElement               = 1000000
+  , pointwiseNegation          = \x -> -x
+  , pointwiseConjunction       = \x y -> max x y
+  , pointwiseDisjunction       = \x y -> min x y
+  , pointwiseLessThan          = \x y -> x - y
+  , pointwiseLessEqualThan     = \x y -> x - y
+  , pointwiseGreaterThan       = \x y -> y - x
+  , pointwiseGreaterEqualThan  = \x y -> y - x
+  , pointwiseEqual             = \x y -> min (x - y) (y - x)
+  , pointwiseNotEqual          = \x y -> max (x - y) (y - x)
+  , reduceConjunction          = \e xs -> reduceMax e xs
+  , reduceDisjunction          = \e xs -> reduceMin e xs
+  }
+
+DL2Loss : DifferentiableTensorLogic
+DL2Loss =
+  { trueElement                = 0
+  , falseElement               = 1000000 -- TODO should be infinity
+  , pointwiseNegation          = \{dims} x -> (const 1 dims) / x
+  , pointwiseConjunction       = \x y -> x + y
+  , pointwiseDisjunction       = \x y -> x * y
+  , pointwiseLessThan          = \{dims} x y -> max (const 0 dims) (x - y)
+  , pointwiseLessEqualThan     = \{dims} x y -> max (const 0 dims) (x - y)
+  , pointwiseGreaterThan       = \{dims} x y -> max (const 0 dims) (y - x)
+  , pointwiseGreaterEqualThan  = \{dims} x y -> max (const 0 dims) (y - x)
+  , pointwiseEqual             = \{dims} x y -> - (max (const 0 dims) (x - y) + max (const 0 dims) (y - x))
+  , pointwiseNotEqual          = \{dims} x y -> (max (const 0 dims) (x - y) + max (const 0 dims) (y - x))
+  , reduceConjunction          = \e xs -> reduceAdd e xs
+  , reduceDisjunction          = \e xs -> reduceMul e xs
+  }

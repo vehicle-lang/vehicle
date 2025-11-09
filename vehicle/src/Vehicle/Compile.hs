@@ -11,8 +11,6 @@ import Control.Monad.Writer (MonadWriter (..), WriterT (..))
 import Vehicle.Backend.Agda
 import Vehicle.Backend.Loss (convertToLossTensors)
 import Vehicle.Backend.Loss.JSON
-import Vehicle.Backend.Loss.LogicCompilation (compileLogic)
-import Vehicle.Backend.Loss.Logics (dslFor)
 import Vehicle.Backend.Prelude
 import Vehicle.Backend.Rocq
 import Vehicle.Backend.Solver
@@ -142,8 +140,7 @@ compileToLossFunction ::
   m ()
 compileToLossFunction LossOptions {..} typedProg outputAsJSON =
   logCompilerPass LossBackend $ do
-    compiledLogic <- compileLogic differentiableLogicID (dslFor differentiableLogicID)
-    lossTensorProg <- convertToLossTensors compiledLogic typedProg
+    lossTensorProg <- convertToLossTensors differentiableLogicID typedProg
     hoistedProg <- hoistInferableParameters lossTensorProg
     functionalisedProg <- functionaliseResources hoistedProg
     jsonProg <- convertToJSONProg functionalisedProg

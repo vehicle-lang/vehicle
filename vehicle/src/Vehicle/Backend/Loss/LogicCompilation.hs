@@ -1,87 +1,183 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Vehicle.Backend.Loss.LogicCompilation
-  ( compileLogic,
+  ( findAndCompileLogic,
   )
 where
 
-import Control.Monad (foldM, void)
-import Control.Monad.Except (ExceptT, MonadError (..), runExceptT)
-import Control.Monad.Reader (MonadReader (..), ReaderT (..))
+import Control.Monad (foldM)
+import Control.Monad.Except (MonadError (..))
+import Control.Monad.State
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Map.Ordered (OMap)
+import Data.Map.Ordered qualified as OMap
 import Data.Proxy (Proxy (..))
 import Vehicle.Backend.Loss.Core hiding (lookupLogicField)
-import Vehicle.Backend.Loss.Logics
 import Vehicle.Backend.Loss.LossCompilation (convertFunction, convertRatTensor)
 import Vehicle.Backend.Prelude (DifferentiableLogicID)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBE (eval, normaliseInEmptyEnv)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyFriendly, prettyFriendlyEmptyCtx, prettyVerbose)
+import Vehicle.Compile.Print (prettyFriendlyEmptyCtx)
 import Vehicle.Data.Builtin.Core (Builtin)
-import Vehicle.Data.Builtin.Interface (Accessor (..))
-import Vehicle.Data.Builtin.Loss (LossBuiltin)
+import Vehicle.Data.Builtin.Interface.Normalise (evalCompareRatTensorPointwise)
+import Vehicle.Data.Builtin.Loss (ComparisonOp (..), LogicDirection, LossBuiltin)
 import Vehicle.Data.Builtin.Standard ()
-import Vehicle.Data.Code.DSL
 import Vehicle.Data.Code.Interface
-import Vehicle.Data.Code.Value (Closure (..), Value (..), boundContextToEnv, emptyBoundEnv)
-import Vehicle.Data.DSL
-import Vehicle.Data.Tensor (pattern ZeroDimTensor)
-import Vehicle.Data.Variable.Bound.Context.Generic
-import Vehicle.Data.Variable.Bound.Context.Name
-import Vehicle.Data.Variable.Free.Context (runFreshFreeContextT)
-import Vehicle.Syntax.Builtin
-  ( AddDomain (..),
-    Builtin (..),
-    BuiltinConstructor (..),
-    BuiltinFunction (..),
-    DivDomain (..),
-    MaxDomain (..),
-    MinDomain (..),
-    MulDomain (..),
-    NegDomain (..),
-    SubDomain (..),
-  )
+import Vehicle.Data.Code.Value
+import Vehicle.Data.DifferentiableLogic
+import Vehicle.Data.Variable.Free.Context
+
+--------------------------------------------------------------------------------
+-- Interface
+
+findAndCompileLogic ::
+  (MonadCompile m) =>
+  DifferentiableLogicID ->
+  Prog Builtin ->
+  m DifferentiableLogicImplementation
+findAndCompileLogic logicID prog = do
+  MonadLossState {..} <-
+    runMonadLossT $ traverseNormalisedDecls_ (convertLogicDecl logicID) prog
+  case maybeImplementation of
+    Just definition -> return definition
+    Nothing -> do
+      let names = fmap nameOf foundLogics
+      missingLogicError names logicID
 
 --------------------------------------------------------------------------------
 -- Monad
 
-lookupLogicField :: (Ord field, Pretty field) => field -> Map field value -> value
-lookupLogicField field logic = do
-  case Map.lookup field logic of
-    Nothing -> developerError $ "Non-compiled logic field" <+> quotePretty field <+> "found"
-    Just value -> value
+data MonadLossState = MonadLossState
+  { maybeImplementation :: Maybe DifferentiableLogicImplementation,
+    foundLogics :: [Identifier]
+  }
+
+type MonadLoss m =
+  ( MonadCompile m,
+    MonadFreeContext Builtin m,
+    MonadState MonadLossState m
+  )
+
+runMonadLossT ::
+  (MonadCompile m) =>
+  FreeContextT Builtin (StateT MonadLossState m) a ->
+  m MonadLossState
+runMonadLossT action = do
+  let freshState = MonadLossState Nothing mempty
+  flip execStateT freshState $
+    runFreshFreeContextT
+      (Proxy @Builtin)
+      action
+
+registerUnmatchedLogic ::
+  (MonadLoss m) =>
+  Identifier ->
+  m ()
+registerUnmatchedLogic ident = modify $
+  \MonadLossState {..} -> do
+    MonadLossState
+      { foundLogics = ident : foundLogics,
+        ..
+      }
+
+registerMatchedLogic ::
+  (MonadLoss m) =>
+  DifferentiableLogicImplementation ->
+  m ()
+registerMatchedLogic implementation = modify $
+  \MonadLossState {..} -> do
+    MonadLossState
+      { maybeImplementation = Just implementation,
+        ..
+      }
 
 --------------------------------------------------------------------------------
--- Logic compilation
+-- Monad
+
+convertLogicDecl ::
+  (MonadLoss m) =>
+  DifferentiableLogicID ->
+  VDecl Builtin ->
+  m ()
+convertLogicDecl logicID decl = case decl of
+  DefFunction p ident _ann _typ body
+    | isLogicDecl decl -> do
+        if nameOf logicID /= nameOf ident
+          then registerUnmatchedLogic ident
+          else case body of
+            VRecord _ fields -> do
+              logic <- compileLogic logicID decl fields
+              registerMatchedLogic logic
+            _ -> throwError $ UnreducableDifferentiableLogic (ident, p)
+  _ -> return ()
 
 -- | Compiles a differentiable logic from the DSL over booleans to normalised
 -- values over tensors that are suitable for substitution.
 -- Eventually the DSL should be replaced by the something in the language.
 compileLogic ::
   forall m.
-  (MonadCompile m) =>
+  (MonadLoss m) =>
   DifferentiableLogicID ->
-  DifferentialLogicDSL ->
-  m CompiledDifferentiableLogic
-compileLogic logicID dsl = do
+  VDecl Builtin ->
+  OMap FieldName (Value Builtin) ->
+  m DifferentiableLogicImplementation
+compileLogic logicID decl fields = do
   logCompilerSection2 MinDetail ("compiling logic" <+> quotePretty logicID) $ do
     -- Lift fields to the tensor level
     let tensorLogicFields = [minBound .. maxBound] :: [TensorDifferentiableLogicField]
-    lossTensorImplementation <- foldM (compileLogicField logicID dsl) mempty tensorLogicFields
+    lossTensorImplementation <- foldM (compileLogicField logicID decl fields) mempty tensorLogicFields
+    minimise <- calculateLogicDirection decl fields
     -- Convert fields to loss tensors
-    return (logicID, lossTensorImplementation)
+    return (lossTensorImplementation, minimise)
+
+calculateLogicDirection ::
+  (MonadLoss m) =>
+  VDecl Builtin ->
+  OMap FieldName (Value Builtin) ->
+  m LogicDirection
+calculateLogicDirection decl fields = do
+  let trueValue = lookupLogicField TruthityElement fields
+  let falseValue = lookupLogicField FalsityElement fields
+  result <- evalCompareRatTensorPointwise Le $ TensorOp2Args IDimNil trueValue falseValue
+  case result of
+    IBoolLiteral b -> return b
+    _ -> do
+      let prov = (identifierOf decl, provenanceOf decl)
+      throwError $ UnorderableDifferentiableLogic prov result
 
 compileLogicField ::
-  (MonadCompile m) =>
+  (MonadLoss m) =>
   DifferentiableLogicID ->
-  DifferentialLogicDSL ->
+  VDecl Builtin ->
+  OMap FieldName (Value Builtin) ->
   Map TensorDifferentiableLogicField (Value LossBuiltin) ->
   TensorDifferentiableLogicField ->
   m (Map TensorDifferentiableLogicField (Value LossBuiltin))
-compileLogicField logicID dsl impl field =
+compileLogicField logicID decl fields impl field =
   logCompilerSection2 MidDetail ("compiling tensor-field" <+> quotePretty field) $ do
+    let tensorValue = lookupLogicField field fields
+    logDebug MaxDetail $ "tensor-result:" <+> prettyFriendlyEmptyCtx tensorValue <> line
+
+    lossTensorExpr <-
+      runMonadLogicT logicID (mempty, True) decl $ do
+        convertFunction convertRatTensor tensorValue
+    logDebug MaxDetail $ "loss-tensor-result:" <+> prettyFriendlyEmptyCtx lossTensorExpr
+    return $ Map.insert field lossTensorExpr impl
+
+lookupLogicField :: TensorDifferentiableLogicField -> OMap FieldName value -> value
+lookupLogicField field logicFields = do
+  case OMap.lookup (FieldName mempty (nameOf field)) logicFields of
+    Nothing -> developerError $ "Non-compiled logic field" <+> quotePretty field <+> "found"
+    Just value -> value
+
+{-
+fieldIdentifier :: DifferentiableLogicID -> TensorDifferentiableLogicField -> Identifier
+fieldIdentifier logicID field = do
+  let fieldName = layoutAsText $ pretty field
+  let recordModule = RecordModule $ layoutAsText $ pretty logicID
+  Identifier (ModulePath [StdLib, recordModule]) fieldName
+
     let tensorExprFn = case field of
           TruthityElement -> compileBoolLiteral Truthity
           FalsityElement -> compileBoolLiteral Falsity
@@ -98,16 +194,6 @@ compileLogicField logicID dsl impl field =
           ReduceDisjunction -> reduceOp2 Disjunction
 
     tensorExpr <- flip runReaderT (logicID, field) $ tensorExprFn dsl
-    logDebug MaxDetail $ "tensor-result:" <+> prettyFriendlyEmptyCtx tensorExpr <> line
-
-    let fieldProv = (fieldIdentifier logicID field, mempty)
-    lossTensorExpr <-
-      runFreshFreeContextT (Proxy @Builtin) $
-        runMonadLogicT (logicID, mempty) fieldProv $ do
-          tensorValue <- normaliseInEmptyEnv tensorExpr
-          convertFunction convertRatTensor tensorValue
-    logDebug MaxDetail $ "loss-tensor-result:" <+> prettyFriendlyEmptyCtx lossTensorExpr
-    return $ Map.insert field lossTensorExpr impl
 
 --------------------------------------------------------------------------------
 -- Compilation of logic fields
@@ -194,6 +280,9 @@ extractOp2Body dsl field process = do
   case op2 of
     VLam2 binder1 _env binder2 body -> runBodyExtraction (field, op2) process [void binder2, void binder1] body
     fn -> developerError $ "Expecting arity 2 function for" <+> pretty field <> "but found" <+> prettyFriendlyEmptyCtx fn
+
+pattern VLam2 :: VBinder builtin -> BoundEnv builtin -> Binder builtin -> Expr builtin -> Value builtin
+pattern VLam2 binder1 env binder2 body <- VLam binder1 (Closure env (Lam _ binder2 body))
 
 runBodyExtraction ::
   (MonadCompileField m) =>
@@ -364,9 +453,4 @@ convertHigherOrderFunction field convert lamBody = do
 --------------------------------------------------------------------------------
 -- Helper functions
 --------------------------------------------------------------------------------
-
-fieldIdentifier :: DifferentiableLogicID -> TensorDifferentiableLogicField -> Identifier
-fieldIdentifier logicID field = do
-  let fieldName = layoutAsText $ pretty field
-  let recordModule = RecordModule $ layoutAsText $ pretty logicID
-  Identifier (ModulePath [StdLib, recordModule]) fieldName
+-}

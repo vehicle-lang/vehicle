@@ -28,11 +28,7 @@ module Vehicle.Backend.Loss.LossCompilation
   )
 where
 
-import Control.Monad.Except (MonadError (..))
-import Control.Monad.Reader (MonadReader (..))
 import Vehicle.Backend.Loss.Core hiding (currentPass)
-import Vehicle.Backend.Loss.Logics
-import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE (evalApp, normaliseClosure)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
@@ -43,6 +39,7 @@ import Vehicle.Data.Builtin.Loss
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
+import Vehicle.Data.DifferentiableLogic
 import Vehicle.Data.Tensor (Tensor, foldMapTensor, shapeOf)
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Bound.Context.Tensor
@@ -405,14 +402,6 @@ convertForeachTensor convertValue (ForeachTensorArgs t dim dims fn) = do
 
 --------------------------------------------------------------------------------
 -- Utils
-
-unsupportedOperation :: (MonadLogic m) => UnAnnDoc -> m b
-unsupportedOperation op = do
-  (prov, _) <- ask
-  throwError $ UnsupportedLossOperation prov op
-
-unexpectedOperation :: (MonadLogic m) => UnAnnDoc -> m b
-unexpectedOperation = unexpectedExprError currentPass
 
 currentPass :: Doc a
 currentPass = "logic translation"
