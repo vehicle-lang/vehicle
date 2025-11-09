@@ -16,6 +16,13 @@ module Vehicle.Data.Variable.Bound.Level
     NetworkIOVariable (..),
     NetworkIOElementVariable (..),
     SliceVariableLike (..),
+    -- Nested variables
+    NestedSliceVariable (..),
+    childVariablesOf,
+    elementVariablesOf,
+    numberOfSliceVariablesIn,
+    findSliceShape,
+    findSliceIndices,
   )
 where
 
@@ -23,8 +30,10 @@ import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, FromJSONKey, ToJSON, ToJSONKey)
 import Data.Coerce (coerce)
 import Data.Hashable (Hashable (..))
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
+import Vehicle.Data.Tensor
 import Vehicle.Data.Variable.Bound.Index
 import Vehicle.Prelude
 
@@ -128,7 +137,7 @@ instance TensorVariableLike TensorVariable where
   toTensorVar = id
 
 --------------------------------------------------------------------------------
--- UserSliceVariable
+-- User Variables
 
 -- | SliceVariables introduced by the user via a quantifier.
 newtype UserSliceVariable = UserSliceVariable Lv
@@ -241,3 +250,80 @@ instance VariableLike NetworkIOElementVariable where
 
 instance SliceVariableLike NetworkIOElementVariable where
   toSliceVar = coerce
+
+--------------------------------------------------------------------------------
+-- NestedSliceVariable
+
+-- | This represents a pyramid, e.g. for a tensor shape of [2,2,3] the pyramid
+-- will represent 19 variables:
+--  - 1 variable x representing the tensor
+--  - 2 variables x!0 and x!1 representing the first dimensions
+--  - 4 variables x!0!0, x!0!1, x!1!0, x!1!1 represnting the second dimensions
+--  - 12 variables ... representing the element dimensions
+--
+-- We store it like this in order to maximise space efficiency.
+data NestedSliceVariable = NestedSliceVariable
+  { nestedTensorShape :: TensorShape,
+    nestedStartingVariable :: SliceVariable
+  }
+  deriving (Show, Eq, Ord, Generic)
+
+instance NFData NestedSliceVariable
+
+instance ToJSON NestedSliceVariable
+
+instance FromJSON NestedSliceVariable
+
+instance Pretty NestedSliceVariable where
+  pretty (NestedSliceVariable shape l) = pretty (toLv l) <> ":" <+> pretty shape
+
+instance HasShape NestedSliceVariable where
+  shapeOf = nestedTensorShape
+
+instance VariableLike NestedSliceVariable where
+  toLv = toLv . nestedStartingVariable
+
+instance SliceVariableLike NestedSliceVariable where
+  toSliceVar = nestedStartingVariable
+
+numberOfSliceVariablesIn :: TensorShape -> Int
+numberOfSliceVariablesIn shape = sum $ NonEmpty.scanl (*) 1 shape
+
+childVariablesOf :: NestedSliceVariable -> Maybe [NestedSliceVariable]
+childVariablesOf (NestedSliceVariable shape startingVar) = case shape of
+  [] -> Nothing
+  d : ds -> Just $ do
+    let subSize = numberOfSliceVariablesIn ds
+    let calculateChildStartingVar i = SliceVariable $ toLv startingVar + Lv (1 + subSize * i)
+    fmap (NestedSliceVariable ds . calculateChildStartingVar) [0 .. d - 1]
+
+elementVariablesOf :: NestedSliceVariable -> [(NetworkIOElementVariable, TensorIndices)]
+elementVariablesOf = go mempty
+  where
+    go :: TensorIndices -> NestedSliceVariable -> [(NetworkIOElementVariable, TensorIndices)]
+    go indices var = case childVariablesOf var of
+      Nothing -> [(coerce (nestedStartingVariable var), reverse indices)]
+      Just childVars -> concatMap (\(v, index) -> go (index : indices) v) $ zip childVars [0 ..]
+
+-- | Returns the shape of the provided slice variable
+findSliceShape :: NestedSliceVariable -> SliceVariable -> TensorShape
+findSliceShape (NestedSliceVariable shape lv) var = go shape (unLv $ toLv var - toLv lv)
+  where
+    go :: TensorShape -> Int -> TensorShape
+    go ds 0 = ds
+    go [] _flatIndex = developerError "Malformed shape and index"
+    go (_d : ds) flatIndex = do
+      let newFlatIndex = (flatIndex - 1) `rem` numberOfSliceVariablesIn ds
+      go ds newFlatIndex
+
+-- | Returns the indices into the provided parent variable of the provided slice variable
+findSliceIndices :: (SliceVariableLike variable) => NestedSliceVariable -> variable -> TensorIndices
+findSliceIndices (NestedSliceVariable shape lv) var = go mempty shape (unLv $ toLv var - toLv lv)
+  where
+    go :: TensorIndices -> TensorShape -> Int -> TensorIndices
+    go indices _ 0 = reverse indices
+    go _indices [] _flatIndex = developerError "Malformed shape and index"
+    go indices (_d : ds) flatIndex = do
+      let newIndex = (flatIndex - 1) `div` numberOfSliceVariablesIn ds
+      let newFlatIndex = (flatIndex - 1) `rem` numberOfSliceVariablesIn ds
+      go (newIndex : indices) ds newFlatIndex

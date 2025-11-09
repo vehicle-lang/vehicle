@@ -1,20 +1,17 @@
-module Vehicle.Data.Variable.Bound.Context
-  ( module X,
+module Vehicle.Data.Variable.Bound.Context.Generic
+  ( module Export,
     getBoundVarByIx,
     getBoundVarByLv,
-    unnormalise,
     piBinderToLamBinder,
   )
 where
 
 import Data.Proxy (Proxy (..))
 import GHC.Stack (HasCallStack)
-import Vehicle.Compile.Normalise.Quote qualified as Quote (unnormalise)
 import Vehicle.Compile.Prelude
-import Vehicle.Data.Code.Value (Value)
-import Vehicle.Data.Variable.Bound.Context.Class as X
-import Vehicle.Data.Variable.Bound.Context.Core as X
-import Vehicle.Data.Variable.Bound.Context.Instance as X
+import Vehicle.Data.Variable.Bound.Context.Generic.Class as Export
+import Vehicle.Data.Variable.Bound.Context.Generic.Core as Export
+import Vehicle.Data.Variable.Bound.Context.Generic.Instance as Export
 
 getBoundVarByIx ::
   forall expr m.
@@ -34,15 +31,6 @@ getBoundVarByLv ::
 getBoundVarByLv _ lv =
   lookupLvInBoundCtx lv <$> getBoundCtx (Proxy @expr)
 
-unnormalise ::
-  forall expr m.
-  (MonadBoundContext expr m, Show expr) =>
-  Value expr ->
-  m (Expr expr)
-unnormalise e = do
-  lv <- getCurrentLv (Proxy @expr)
-  return $ Quote.unnormalise lv e
-
 piBinderToLamBinder ::
   (MonadBoundContext (Expr builtin) m) =>
   Binder builtin ->
@@ -50,7 +38,7 @@ piBinderToLamBinder ::
 piBinderToLamBinder binder@(Binder p _ v r t) = do
   binderName <- case nameOf binder of
     Just name -> return name
-    Nothing -> getFreshName (typeOf binder)
+    Nothing -> getFreshNameForBound (typeOf binder)
 
   let displayForm = BinderDisplayForm (OnlyName binderName) True
   return $ Binder p displayForm v r t

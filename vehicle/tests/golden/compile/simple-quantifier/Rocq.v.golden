@@ -20,4 +20,4 @@ Parameter f : 'nT[R]_(nil) -> 'nT[R]_(nil).
 
 Axiom expandedExpr : forall x, (const_t (0 : R) < x) /\ (x < const_t (1 : R)) -> x >= f x.
 
-Axiom parallel : forall x, (const_t (0 : R) < x) /\ (x < const_t (1 : R)) -> f x >= const_t (0 : R) /\ exists x, ((const_t (0 : R) < x) /\ (x < const_t (1 : R))) /\ (f x >= const_t (5 : R)).
+Axiom parallel : forall x, (const_t (0 : R) < x) /\ (x < const_t (1 : R)) -> f x >= const_t (0 : R) /\ exists y, ((const_t (0 : R) < y) /\ (y < const_t (1 : R))) /\ (f y >= const_t (5 : R)).

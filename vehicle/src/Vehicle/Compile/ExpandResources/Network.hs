@@ -7,7 +7,7 @@ import Control.Monad.Except (MonadError (..))
 import Data.Map qualified as Map
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
-import Vehicle.Compile.Normalise.NBE (normaliseClosure)
+import Vehicle.Compile.Normalise.NBE (normaliseClosureInCtx)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Resource
@@ -45,7 +45,7 @@ getNetworkType decl networkType = case normalised networkType of
     | visibilityOf binder /= Explicit -> typingError
     | otherwise -> do
         inputDetails <- tensorType Input (typeOf binder)
-        resultType <- normaliseClosure mempty binder closure
+        resultType <- normaliseClosureInCtx mempty binder closure
         outputDetails <- tensorType Output resultType
         let networkDetails = NetworkType inputDetails outputDetails
         return networkDetails

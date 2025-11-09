@@ -4,6 +4,7 @@ import Data.Map.Ordered qualified as OMap
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Code.Expr (Expr (..), Substitution, normAppList, substituteDB)
 import Vehicle.Data.Code.Value
+import Vehicle.Data.Variable.Bound.Context.Name.Class (MonadReadableNameContext, getBinderDepth)
 import Vehicle.Data.Variable.Bound.Level (Lv, dbLevelToIndex)
 import Vehicle.Prelude
 
@@ -12,6 +13,15 @@ import Vehicle.Prelude
 -- lambdas.
 unnormalise :: forall a b. (Quote a b) => Lv -> a -> b
 unnormalise = quote mempty
+
+unnormaliseInCtx ::
+  forall expr m.
+  (MonadReadableNameContext m, Show expr) =>
+  Value expr ->
+  m (Expr expr)
+unnormaliseInCtx e = do
+  lv <- getBinderDepth
+  return $ unnormalise lv e
 
 -----------------------------------------------------------------------------
 -- Quoting closures

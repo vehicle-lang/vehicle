@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-module Vehicle.Backend.LossFunction.LogicCompilation
+module Vehicle.Backend.Loss.LogicCompilation
   ( compileLogic,
   )
 where
@@ -8,25 +8,27 @@ where
 import Control.Monad (foldM, void)
 import Control.Monad.Except (ExceptT, MonadError (..), runExceptT)
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
-import Data.Data (Proxy (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Vehicle.Backend.LossFunction.Core
-import Vehicle.Backend.LossFunction.Logics (DifferentialLogicDSL)
-import Vehicle.Backend.LossFunction.LossCompilation
+import Data.Proxy (Proxy (..))
+import Vehicle.Backend.Loss.Core hiding (lookupLogicField)
+import Vehicle.Backend.Loss.Logics
+import Vehicle.Backend.Loss.LossCompilation (convertFunction, convertRatTensor)
 import Vehicle.Backend.Prelude (DifferentiableLogicID)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBE (eval)
+import Vehicle.Compile.Normalise.NBE (eval, normaliseInEmptyEnv)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyFriendlyEmptyCtx, prettyVerbose)
 import Vehicle.Data.Builtin.Core (Builtin)
 import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Loss (LossBuiltin)
+import Vehicle.Data.Builtin.Standard ()
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value (Closure (..), Value (..), boundContextToEnv, emptyBoundEnv)
 import Vehicle.Data.DSL
 import Vehicle.Data.Tensor (pattern ZeroDimTensor)
+import Vehicle.Data.Variable.Bound.Context.Generic
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Free.Context (runFreshFreeContextT)
 import Vehicle.Syntax.Builtin
@@ -99,8 +101,12 @@ compileLogicField logicID dsl impl field =
     logDebug MaxDetail $ "tensor-result:" <+> prettyFriendlyEmptyCtx tensorExpr <> line
 
     let fieldProv = (fieldIdentifier logicID field, mempty)
-    lossTensorExpr <- runFreshFreeContextT (Proxy @Builtin) $ runFreshNameContextT $ runMonadLogicT (logicID, mempty) fieldProv $ convertExpr emptyBoundEnv tensorExpr
-    logDebug MaxDetail $ "loss-tensor-result:" <+> prettyFriendlyEmptyCtx tensorExpr
+    lossTensorExpr <-
+      runFreshFreeContextT (Proxy @Builtin) $
+        runMonadLogicT (logicID, mempty) fieldProv $ do
+          tensorValue <- normaliseInEmptyEnv tensorExpr
+          convertFunction convertRatTensor tensorValue
+    logDebug MaxDetail $ "loss-tensor-result:" <+> prettyFriendlyEmptyCtx lossTensorExpr
     return $ Map.insert field lossTensorExpr impl
 
 --------------------------------------------------------------------------------
@@ -169,7 +175,7 @@ extractOp1Body ::
   (MonadCompileField m) =>
   DifferentialLogicDSL ->
   BooleanDifferentiableLogicField ->
-  (Value Builtin -> NameContextT (ExceptT (Value Builtin) m) a) ->
+  (Value Builtin -> NameBoundContextT (ExceptT (Value Builtin) m) a) ->
   m a
 extractOp1Body dsl field process = do
   op1 <- eval mempty mempty emptyBoundEnv (lookupLogicField field dsl)
@@ -181,7 +187,7 @@ extractOp2Body ::
   (MonadCompileField m) =>
   DifferentialLogicDSL ->
   BooleanDifferentiableLogicField ->
-  (Value Builtin -> NameContextT (ExceptT (Value Builtin) m) a) ->
+  (Value Builtin -> NameBoundContextT (ExceptT (Value Builtin) m) a) ->
   m a
 extractOp2Body dsl field process = do
   op2 <- eval mempty mempty emptyBoundEnv (lookupLogicField field dsl)
@@ -192,14 +198,14 @@ extractOp2Body dsl field process = do
 runBodyExtraction ::
   (MonadCompileField m) =>
   (BooleanDifferentiableLogicField, Value Builtin) ->
-  (Value Builtin -> NameContextT (ExceptT (Value Builtin) m) a) ->
+  (Value Builtin -> NameBoundContextT (ExceptT (Value Builtin) m) a) ->
   BoundCtx () ->
   Expr Builtin ->
   m a
 runBodyExtraction originalFn process ctx body = do
   bodyValue <- eval mempty (toNamedBoundCtx ctx) (boundContextToEnv ctx) body
   let nameCtx = toNamedBoundCtx ctx
-  resultOrError <- runExceptT $ runNameContextT nameCtx $ process bodyValue
+  resultOrError <- runExceptT $ runNameBoundContextT nameCtx $ process bodyValue
   case resultOrError of
     Right result -> return result
     Left blockedExpr -> do

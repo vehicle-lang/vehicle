@@ -20,35 +20,6 @@ type GenericBoundCtx a = [a]
 boundCtxLv :: GenericBoundCtx b -> Lv
 boundCtxLv = Lv . length
 
--- | The binders of the variables that are in currently in scope, indexed into
--- via De Bruijn expressions.
--- Therefore the variables at the start of the list are the most
--- recent variables introduced to the scope.
-type BoundCtx expr = GenericBoundCtx (GenericBinder expr)
-
-emptyBoundCtx :: BoundCtx expr
-emptyBoundCtx = mempty
-
-toNamedBoundCtx :: BoundCtx expr -> NamedBoundCtx
-toNamedBoundCtx = fmap nameOf
-
-class HasBoundCtx a expr | a -> expr where
-  boundContextOf :: a -> BoundCtx expr
-
-namedBoundCtxOf :: (HasBoundCtx a builtin) => a -> NamedBoundCtx
-namedBoundCtxOf = toNamedBoundCtx . boundContextOf
-
-type NamedBoundCtx = GenericBoundCtx (Maybe Name)
-
-emptyNamedCtx :: NamedBoundCtx
-emptyNamedCtx = mempty
-
-prettyNamedBoundCtx :: NamedBoundCtx -> Doc a
-prettyNamedBoundCtx = prettyFlatList . fmap (maybe "_" pretty)
-
--- | A context where every bound variable is guaranteed to be assigned a name.
-type CompleteNamedBoundCtx = GenericBoundCtx Name
-
 --------------------------------------------------------------------------------
 -- Lookup functions
 

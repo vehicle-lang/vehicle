@@ -122,14 +122,17 @@
                       "vehicleVariableCtx": [
                         "f₀[output]",
                         "f₀[input]",
+                        "y",
+                        "f₀[output]",
+                        "f₀[input]",
                         "x"
                       ],
                       "userVariables": [
-                        0
+                        3
                       ],
                       "queryVariableMapping": {
-                        "y0": 2,
-                        "x0": 1
+                        "y0": 5,
+                        "x0": 4
                       }
                     },
                     "variableCompilationTrace": {
@@ -139,7 +142,7 @@
                           "contents": [
                             {
                               "nestedTensorShape": [],
-                              "nestedStartingVariable": 1
+                              "nestedStartingVariable": 4
                             },
                             "AllDimensions"
                           ]
@@ -149,7 +152,7 @@
                           "contents": [
                             {
                               "nestedTensorShape": [],
-                              "nestedStartingVariable": 2
+                              "nestedStartingVariable": 5
                             },
                             "AllDimensions"
                           ]
@@ -159,7 +162,7 @@
                           "contents": [
                             {
                               "nestedTensorShape": [],
-                              "nestedStartingVariable": 0
+                              "nestedStartingVariable": 3
                             },
                             {
                               "constantValue": {
@@ -174,7 +177,7 @@
                               },
                               "coefficients": [
                                 [
-                                  1,
+                                  4,
                                   {
                                     "numerator": 1,
                                     "denominator": 1

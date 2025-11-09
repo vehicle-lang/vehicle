@@ -8,10 +8,11 @@ import Control.Monad.State (MonadState (..), evalStateT, modify)
 import Data.Data (Proxy (..))
 import Data.Set (Set, insert, member)
 import Vehicle.Compile.Error (MonadCompile)
-import Vehicle.Compile.Normalise.NBE (normaliseClosure, normaliseInEmptyEnv)
+import Vehicle.Compile.Normalise.NBE (normaliseClosureInCtx, normaliseInEmptyEnv)
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Decidability (DecidabilityBuiltin (..), DecidabilityBuiltinFunction (..))
 import Vehicle.Data.Code.Value (Value (..))
+import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext, addDeclToContext, runFreshFreeContextT)
 
 --------------------------------------------------------------------------------
@@ -105,6 +106,6 @@ isTypeDef decl = do
     go :: NamedBoundCtx -> Value DecidabilityBuiltin -> m Bool
     go _ (VBuiltin (DecidabilityBuiltinFunction PropType) []) = return True
     go ctx (VPi binder closure) = do
-      result <- normaliseClosure ctx binder closure
+      result <- normaliseClosureInCtx ctx binder closure
       go (nameOf binder : ctx) result
     go _ _ = return False

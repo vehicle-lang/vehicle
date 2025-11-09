@@ -3,6 +3,7 @@
 module Vehicle.Data.Code.BooleanExpr where
 
 import Control.DeepSeq (NFData)
+import Control.Monad.Identity (Identity (..))
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Coerce (coerce)
 import Data.Either (partitionEithers)
@@ -11,7 +12,7 @@ import Data.List.NonEmpty qualified as NonEmpty
 import Data.Semigroup (Semigroup (..))
 import GHC.Generics (Generic)
 import Vehicle.Data.MaybeTrivial
-import Vehicle.Prelude (Pretty (..), lineIndent, nonEmptyCartesianProduct, prependList)
+import Vehicle.Prelude (Pretty (..), lineIndent, nonEmptyCartesianProductM, prependList)
 
 --------------------------------------------------------------------------------
 -- Disjunctions
@@ -19,7 +20,7 @@ import Vehicle.Prelude (Pretty (..), lineIndent, nonEmptyCartesianProduct, prepe
 newtype DisjunctAll a = DisjunctAll
   { unDisjunctAll :: NonEmpty a
   }
-  deriving (Show, Generic, Semigroup, Functor, Applicative, Monad, Foldable, Traversable)
+  deriving (Show, Eq, Ord, Generic, Semigroup, Functor, Applicative, Monad, Foldable, Traversable)
 
 instance (NFData a) => NFData (DisjunctAll a)
 
@@ -47,8 +48,11 @@ disjunctDisjuncts xs = DisjunctAll $ sconcat (coerce xs)
 disjunctsToList :: DisjunctAll a -> [a]
 disjunctsToList = NonEmpty.toList . unDisjunctAll
 
+conjunctDisjunctsM :: (Monad m) => (a -> b -> m c) -> DisjunctAll a -> DisjunctAll b -> m (DisjunctAll c)
+conjunctDisjunctsM f xs ys = DisjunctAll <$> nonEmptyCartesianProductM f (unDisjunctAll xs) (unDisjunctAll ys)
+
 conjunctDisjuncts :: (a -> b -> c) -> DisjunctAll a -> DisjunctAll b -> DisjunctAll c
-conjunctDisjuncts f xs ys = DisjunctAll $ nonEmptyCartesianProduct f (unDisjunctAll xs) (unDisjunctAll ys)
+conjunctDisjuncts f xs ys = runIdentity $ conjunctDisjunctsM (\u v -> return $ f u v) xs ys
 
 --------------------------------------------------------------------------------
 -- Conjunctions
@@ -98,7 +102,7 @@ data BooleanExpr a
   = Conjunct !(ConjunctAll (BooleanExpr a))
   | Disjunct !(DisjunctAll (BooleanExpr a))
   | Query !a
-  deriving (Show, Functor, Foldable, Traversable, Generic)
+  deriving (Show, Eq, Ord, Functor, Foldable, Traversable, Generic)
 
 instance (NFData a) => NFData (BooleanExpr a)
 
@@ -141,8 +145,8 @@ filterTrivialAtoms = flattenTrivial . fmap eliminateTrivialAtoms
 flattenBoolExpr :: BooleanExpr (BooleanExpr a) -> BooleanExpr a
 flattenBoolExpr = \case
   Query x -> x
-  Conjunct xs -> Conjunct $ fmap flattenBoolExpr xs
-  Disjunct xs -> Disjunct $ fmap flattenBoolExpr xs
+  Conjunct xs -> conjunctExprs $ fmap flattenBoolExpr xs
+  Disjunct xs -> disjunctExprs $ fmap flattenBoolExpr xs
 
 conjunct :: [a] -> MaybeTrivial (BooleanExpr a)
 conjunct [] = Trivial True

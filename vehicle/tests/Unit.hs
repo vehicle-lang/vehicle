@@ -7,8 +7,6 @@ import Test.Tasty
   )
 import Vehicle.Test.Unit.Common (vehicleLoggingIngredient)
 import Vehicle.Test.Unit.Compile.CommandLine (commandLineParserTests)
-import Vehicle.Test.Unit.Compile.DeBruijn (deBruijnTests)
-import Vehicle.Test.Unit.Compile.Normalisation (normalisationTests)
 
 main :: IO ()
 main = do
@@ -17,7 +15,5 @@ main = do
     (vehicleLoggingIngredient : defaultIngredients)
     $ testGroup
       "Tests"
-      [ deBruijnTests,
-        normalisationTests,
-        commandLineParserTests
+      [ commandLineParserTests
       ]

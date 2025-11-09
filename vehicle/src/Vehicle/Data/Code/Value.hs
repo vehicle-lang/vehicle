@@ -47,6 +47,8 @@ import Vehicle.Data.Code.Expr (Expr)
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Universe (UniverseLevel)
 import Vehicle.Data.Variable.Bound.Context.Core
+import Vehicle.Data.Variable.Bound.Context.Generic.Core
+import Vehicle.Data.Variable.Bound.Context.Name.Core
 import Vehicle.Data.Variable.Bound.Index (Ix)
 import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Prelude
@@ -56,7 +58,7 @@ import Vehicle.Prelude
 
 -- | Closures for weak-head normal-form.
 data Closure builtin = Closure (BoundEnv builtin) (Expr builtin)
-  deriving (Show, Generic)
+  deriving (Show, Generic, Eq, Ord)
 
 -----------------------------------------------------------------------------
 -- Normalised expressions
@@ -73,7 +75,7 @@ data Value builtin
   | VPi !(VBinder builtin) !(Closure builtin)
   | VRecord Identifier !(OMap FieldName (Value builtin))
   | VRecordAcc !(Value builtin) !(Identifier, FieldName)
-  deriving (Show, Generic)
+  deriving (Show, Generic, Eq, Ord)
 
 type VType builtin = Value builtin
 
@@ -136,7 +138,7 @@ boundVariablesIn value = execWriter (go value)
 data EnvEntry builtin
   = Bound (Value builtin)
   | Unbound Lv
-  deriving (Show)
+  deriving (Show, Eq, Ord)
 
 envEntryToValue :: EnvEntry builtin -> Value builtin
 envEntryToValue = \case
@@ -161,7 +163,7 @@ isUnbound = \case
 newtype BoundEnv builtin = BoundEnv
   { unBoundEnv :: GenericBoundCtx (GenericBinder (), EnvEntry builtin)
   }
-  deriving (Show)
+  deriving (Show, Eq, Ord)
 
 emptyBoundEnv :: BoundEnv builtin
 emptyBoundEnv = BoundEnv mempty
@@ -214,6 +216,9 @@ cheatEnvToValues (BoundEnv env) = fmap entryToValue env
       let arg = explicit $ envEntryToValue value
       VFreeVar ident [arg]
 
+----------------------------------------------------------------------------
+-- Free environments
+
 type FreeEnv builtin = Map Identifier (VDecl builtin)
 
 traverseEnv_ :: (Monad m) => (Value builtin -> m ()) -> BoundEnv builtin -> m ()
@@ -254,7 +259,7 @@ data DimensionedTensorValue builtin = TensorValue
   { tensorValueDims :: VDims builtin,
     tensorValue :: Value builtin
   }
-  deriving (Show)
+  deriving (Show, Eq, Ord)
 
 -----------------------------------------------------------------------------
 -- Instances
@@ -266,4 +271,13 @@ instance (HasBuiltinConstructor Value) where
           VBuiltin b spine -> Just (b, spine)
           _ -> Nothing,
         mkExpr = uncurry VBuiltin
+      }
+
+instance HasLambdaConstructor Value Closure where
+  accessLamC =
+    Access
+      { getExpr = \case
+          VLam binder closure -> Just (binder, closure)
+          _ -> Nothing,
+        mkExpr = uncurry VLam
       }

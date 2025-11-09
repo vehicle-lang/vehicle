@@ -9,7 +9,6 @@ import Data.List (sort)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Maybe (mapMaybe)
-import Data.Proxy (Proxy (..))
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -28,8 +27,7 @@ import Vehicle.Data.Builtin.Standard hiding (TensorType)
 import Vehicle.Data.Code.Expr ()
 import Vehicle.Data.Code.Interface (IsArgs (..), VecLitArgs (..))
 import Vehicle.Data.Universe (UniverseLevel (..))
-import Vehicle.Data.Variable.Bound.Context (getNamedBoundCtx)
-import Vehicle.Data.Variable.Bound.Context.Name (MonadNameContext, addNameToContext, ixToProperName, runFreshNameContextT)
+import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Syntax.Sugar
 import Vehicle.Syntax.Tensor (Tensor, TensorShape, foldMapTensor)
 
@@ -47,7 +45,7 @@ compileProgToAgda prog options =
   logCompilerSection2 MinDetail currentPhase $ do
     logDebug MaxDetail $ prettyExternal prog
     prog2 <- capitaliseTypeNames prog
-    programDoc <- runFreshNameContextT $ compileProg options prog2
+    programDoc <- runFreshNameBoundContextT $ compileProg options prog2
     let programStream = layoutPretty defaultLayoutOptions programDoc
     -- Collects dependencies by first discarding precedence info and then
     -- folding using Set Monoid
@@ -80,7 +78,7 @@ type MonadAgdaCompile m =
 logEntry :: (MonadAgdaCompile m) => Expr DecidabilityBuiltin -> m ()
 logEntry e = do
   incrCallDepth
-  ctx <- getNamedBoundCtx (Proxy @())
+  ctx <- getNameContext
   logDebug MaxDetail $ "compile-entry" <+> prettyExternal (WithContext e ctx)
 
 logExit :: (MonadAgdaCompile m) => Code -> m ()

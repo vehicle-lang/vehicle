@@ -1,5 +1,6 @@
 module Vehicle.Syntax.Tensor
   ( TensorShape,
+    TensorDimension,
     TensorIndex,
     TensorIndices,
     allIndicesForShape,

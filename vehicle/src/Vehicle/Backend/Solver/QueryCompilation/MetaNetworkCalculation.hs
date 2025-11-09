@@ -5,8 +5,9 @@ module Vehicle.Backend.Solver.QueryCompilation.MetaNetworkCalculation
   )
 where
 
-import Control.Monad (forM)
+import Control.Monad (forM, unless)
 import Control.Monad.Except (MonadError (..))
+import Control.Monad.Reader (MonadReader (..))
 import Control.Monad.Trans.Writer (WriterT (..))
 import Control.Monad.Writer (MonadWriter (..))
 import Data.Bifunctor (Bifunctor (..))
@@ -22,34 +23,33 @@ import Data.Map qualified as Map
 import Data.Maybe (mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
+import Vehicle.Backend.Solver.QueryCompilation.Core (MonadQueryCompilation, getNetworkApplications, lookupCorrespondingOutputVar)
 import Vehicle.Backend.Solver.UserVariableElimination.Core
 import Vehicle.Compile.Constants.Rational
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Data.Assertion
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.MaybeTrivial
 import Vehicle.Data.Tensor as Tensor
+import Vehicle.Data.Variable.Bound.Context.Name
+import Vehicle.Data.Variable.Bound.Context.Tensor.Class
 import Vehicle.Data.Variable.Bound.Level
-import Vehicle.Data.Variable.Bound.Tensor
 import Vehicle.Verify.QueryFormat (QueryFormat (..))
 import Vehicle.Verify.Specification (CompilationStep (..))
 
 calculateMetaNetworkApplications ::
-  (MonadCompile m, MonadMaybeTrivial m) =>
-  PropertyMetaData ->
-  GlobalCtx ->
+  (MonadQueryCompilation m, MonadMaybeTrivial m) =>
   ConjunctAll LinearAssertion ->
   m (NetworkApplications, ConjunctAll LinearAssertion, [CompilationStep])
-calculateMetaNetworkApplications metaData ctx assertions = do
-  (eliminationResult, compilationSteps) <- runWriterT $ eliminateRedundantApplications ctx assertions
+calculateMetaNetworkApplications assertions = do
+  (eliminationResult, compilationSteps) <- runWriterT $ eliminateRedundantApplications assertions
   case eliminationResult of
     Trivial b -> trivial b
     NonTrivial newAssertions -> do
-      let networkApps = calculateMetaNetworkApps ctx newAssertions
-      checkIfMetaNetworkSupported metaData ctx networkApps
+      networkApps <- calculateMetaNetworkApps newAssertions
+      checkIfMetaNetworkSupported networkApps
       nonTrivial (networkApps, newAssertions, compilationSteps)
 
 --------------------------------------------------------------------------------
@@ -72,40 +72,40 @@ childTensorVariableMappings mapping = do
 
 type EquivalenceClasses = DisjointSet (Either NetworkInputTensorVariable RatTensor)
 
-prettyEquivalenceClasses :: CompleteNamedBoundCtx -> EquivalenceClasses -> Doc a
-prettyEquivalenceClasses ctx classes = do
-  let u = DisjointSet.toLists classes
-  let prettyEntry = either (\v -> prettyFriendly (WithContext v ctx)) pretty
-  prettyMultiLineList (fmap (prettyFlatList . fmap prettyEntry) u)
+prettyEquivalenceClasses :: (MonadQueryCompilation m) => EquivalenceClasses -> m (Doc a)
+prettyEquivalenceClasses classes = do
+  let classLists = DisjointSet.toLists classes
+  let prettyEntry = eitherM prettyFriendlyInCtx (return . pretty)
+  classDocs <- traverse (fmap prettyFlatList . traverse prettyEntry) classLists
+  return $ prettyMultiLineList classDocs
 
 type SimpleEquality = (SliceVariable, Either SliceVariable RatTensor)
 
 eliminateRedundantApplications ::
-  (MonadCompile m, MonadWriter [CompilationStep] m) =>
-  GlobalCtx ->
+  (MonadQueryCompilation m, MonadWriter [CompilationStep] m) =>
   ConjunctAll LinearAssertion ->
   m (MaybeTrivial (ConjunctAll LinearAssertion))
-eliminateRedundantApplications ctx assertions =
+eliminateRedundantApplications assertions =
   logCompilerSection2 MaxDetail "checking for redundant network applications" $ do
-    let nameCtx = completeNamedCtx ctx
-    let applicationsByNetwork = Map.toList $ networkApplications ctx
-
     let equalities = mapMaybe isSimpleVariableEquality $ conjunctsToList assertions
-    logEqualitiesFound nameCtx equalities
+    logEqualitiesFound equalities
 
+    applicationsByNetwork <- Map.toList <$> getNetworkApplications
     equivalenceClasses <- forM applicationsByNetwork $ \(networkName, applications) ->
       logCompilerSection2 MaxDetail ("checking applications of network" <+> quotePretty networkName) $ do
         logDebug MaxDetail $ pretty (length applications) <+> "application found" <> line
         if length applications == 1
           then return mempty
-          else calculateNetworkTensorInputEquivalenceClasses ctx networkName equalities applications
+          else calculateNetworkTensorInputEquivalenceClasses networkName equalities applications
 
-    logDebug MaxDetail $ "equivalenceClasses:" <> lineIndent (prettyMultiLineList (fmap (prettyEquivalenceClasses (completeNamedCtx ctx)) equivalenceClasses))
+    logDebugM MaxDetail $ do
+      classesDoc <- traverse prettyEquivalenceClasses equivalenceClasses
+      return $ "equivalenceClasses:" <> lineIndent (prettyMultiLineList classesDoc)
 
     -- Calculate the substitution to perform
     subst <- logCompilerSection MaxDetail "Calculating substitution:" $ do
-      subst <- createSubstitutionFromEquivalenceClasses ctx equivalenceClasses
-      logDebug MaxDetail $ prettyFriendly (WithContext subst nameCtx)
+      subst <- createSubstitutionFromEquivalenceClasses equivalenceClasses
+      logDebugM MaxDetail $ prettyFriendlyInCtx subst
       return subst
 
     -- Perform the substitution
@@ -114,7 +114,9 @@ eliminateRedundantApplications ctx assertions =
             then NonTrivial assertions
             else eliminateTrivialConjunctions $ fmap (eliminateVarsInComparison subst) assertions
 
-    logDebug MaxDetail $ "Result:" <> lineIndent (prettyFriendly (WithContext resultingAssertions nameCtx))
+    logDebugM MaxDetail $ do
+      assertionsDoc <- prettyFriendlyInCtx resultingAssertions
+      return $ "Result:" <> lineIndent assertionsDoc
     return resultingAssertions
 
 -- | Finds equality assertions of the form `a - b == 0` (i.e. `a == b`)
@@ -129,24 +131,27 @@ isSimpleVariableEquality = \case
 
 calculateNetworkTensorInputEquivalenceClasses ::
   forall m.
-  (MonadLogger m) =>
-  GlobalCtx ->
+  (MonadQueryCompilation m) =>
   Name ->
   [SimpleEquality] ->
   NonEmpty NetworkApplicationInfo ->
   m EquivalenceClasses
-calculateNetworkTensorInputEquivalenceClasses ctx networkName equalities applications = do
+calculateNetworkTensorInputEquivalenceClasses networkName equalities applications = do
   let inputVariables = inputVariable <$> NonEmpty.toList applications
   let initialEquivalenceClasses = DisjointSet.fromLists (fmap (\v -> [Left v]) inputVariables)
-  let toEntry v = (lookupTensorVariable (globalBoundVarCtx ctx) v, v)
-  let initialTensorVariableMapping = Map.fromList $ fmap toEntry inputVariables
-  go mempty initialEquivalenceClasses initialTensorVariableMapping
+  initialTensorVariableMapping <- forM inputVariables $ \inputVar -> do
+    parentVar <- lookupNestedTensorVariable inputVar
+    return (parentVar, inputVar)
+  go mempty initialEquivalenceClasses (Map.fromList initialTensorVariableMapping)
   where
     go :: TensorIndices -> EquivalenceClasses -> TensorVariableMapping -> m EquivalenceClasses
     go tensorIndices equivalenceClasses tensorVariableMapping = logCompilerSection2 MaxDetail ("search for tensor element input equalities for variable" <+> squotes (pretty networkName <> pretty (showTensorIndices (reverse tensorIndices)))) $ do
       -- Calculate the equivalence classes from the equalities you can find at this level
       expandedEquivalenceClasses <- expandEquivalenceClasses equalities tensorVariableMapping equivalenceClasses
-      logDebug MaxDetail $ "equivalenceClasses:" <> lineIndent (prettyEquivalenceClasses (completeNamedCtx ctx) expandedEquivalenceClasses)
+
+      logDebugM MaxDetail $ do
+        classesDoc <- prettyEquivalenceClasses expandedEquivalenceClasses
+        return $ "equivalenceClasses:" <> lineIndent classesDoc
 
       if DisjointSet.sets expandedEquivalenceClasses == 1
         then do
@@ -195,14 +200,13 @@ intersectEquivalenceClasses (c : cs) = foldr intersect c cs
         Just result -> result
 
 createSubstitutionFromEquivalenceClasses ::
-  (MonadCompile m, MonadWriter [CompilationStep] m) =>
-  GlobalCtx ->
+  (MonadQueryCompilation m, MonadWriter [CompilationStep] m) =>
   [EquivalenceClasses] ->
   m (LinearSubstitution SliceVariable)
-createSubstitutionFromEquivalenceClasses globalCtx equivalenceClasses = do
+createSubstitutionFromEquivalenceClasses equivalenceClasses = do
   let allClasses = concatMap DisjointSet.toSets equivalenceClasses
   let tensorLevelEqualities = concatMap go allClasses
-  substitutions <- traverse (reduceInputVariableEquality globalCtx) tensorLevelEqualities
+  substitutions <- traverse reduceInputVariableEquality tensorLevelEqualities
   return $ Map.unions substitutions
   where
     go :: Set (Either NetworkInputTensorVariable RatTensor) -> [(NetworkInputTensorVariable, NetworkInputTensorVariable)]
@@ -211,20 +215,19 @@ createSubstitutionFromEquivalenceClasses globalCtx equivalenceClasses = do
       [] -> developerError "Disjoint sets should not contain empty equivalence classes"
 
 reduceInputVariableEquality ::
-  (MonadCompile m, MonadWriter [CompilationStep] m) =>
-  GlobalCtx ->
+  (MonadQueryCompilation m, MonadWriter [CompilationStep] m) =>
   (NetworkInputTensorVariable, NetworkInputTensorVariable) ->
   m (LinearSubstitution SliceVariable)
-reduceInputVariableEquality ctx (eqInputVar, inputVar) = do
+reduceInputVariableEquality (eqInputVar, inputVar) = do
   -- Construct the input variable substitution
-  let inputEq = createEq (inputVar, eqInputVar)
-  (inputSubst, inputCompilationStep) <- createSubstitutionForVariable ctx eqInputVar inputEq
+  inputEq <- createEq inputVar eqInputVar
+  (inputSubst, inputCompilationStep) <- createSubstitutionForVariable eqInputVar inputEq
 
   -- Construct the output variable substitution
-  let outputVar = lookupCorrespondingOutputVar ctx inputVar
-  let eqOutputVar = lookupCorrespondingOutputVar ctx eqInputVar
-  let outputEq = createEq (outputVar, eqOutputVar)
-  (outputSubst, outputCompilationStep) <- createSubstitutionForVariable ctx eqOutputVar outputEq
+  outputVar <- lookupCorrespondingOutputVar inputVar
+  eqOutputVar <- lookupCorrespondingOutputVar eqInputVar
+  outputEq <- createEq outputVar eqOutputVar
+  (outputSubst, outputCompilationStep) <- createSubstitutionForVariable eqOutputVar outputEq
 
   -- Note the compilation steps
   tell [outputCompilationStep, inputCompilationStep]
@@ -232,29 +235,30 @@ reduceInputVariableEquality ctx (eqInputVar, inputVar) = do
   return (inputSubst <> outputSubst)
   where
     createEq ::
+      (MonadQueryCompilation m) =>
       (TensorVariableLike variable) =>
-      (variable, variable) ->
-      LinearEquality
-    createEq (v1, v2) = do
-      let tensorShape = shapeOf $ lookupTensorVariable (globalBoundVarCtx ctx) v1
+      variable ->
+      variable ->
+      m LinearEquality
+    createEq v1 v2 = do
+      tensorShape <- shapeOf <$> lookupNestedTensorVariable v1
       let constant = ConstantTensor tensorShape 0
       let coefficients = Map.fromList [(toSliceVar v1, -1), (toSliceVar v2, 1)]
-      NormalisedRelation () $ Sparse coefficients constant
+      return $ NormalisedRelation () $ Sparse coefficients constant
 
 --------------------------------------------------------------------------------
 -- Calculate the meta-network
 
 calculateMetaNetworkApps ::
-  (Traversable f) =>
-  GlobalCtx ->
+  (MonadQueryCompilation m, Traversable f) =>
   f LinearAssertion ->
-  Map Name (NonEmpty NetworkApplicationInfo)
-calculateMetaNetworkApps globalCtx assertions = do
+  m (Map Name (NonEmpty NetworkApplicationInfo))
+calculateMetaNetworkApps assertions = do
   -- First calculate the set of network applications actually used in the query
   let usedSliceVariables = foldMap variablesOf assertions
-  let usedTensorVariables = findCorrespondingTensorVariables (globalBoundVarCtx globalCtx) usedSliceVariables
+  usedTensorVariables <- lookupParentTensorVariables usedSliceVariables
   -- Then filter the network applications
-  Map.mapMaybe (filterApplications usedTensorVariables) (networkApplications globalCtx)
+  Map.mapMaybe (filterApplications usedTensorVariables) <$> getNetworkApplications
   where
     filterApplication :: Set TensorVariable -> NetworkApplicationInfo -> Bool
     filterApplication usedVars NetworkApplicationInfo {..} =
@@ -264,15 +268,16 @@ calculateMetaNetworkApps globalCtx assertions = do
     filterApplications usedVars apps = NonEmpty.nonEmpty (NonEmpty.filter (filterApplication usedVars) apps)
 
 logEqualitiesFound ::
-  (MonadLogger m, Coercible var Lv) =>
-  CompleteNamedBoundCtx ->
+  (MonadLogger m, MonadQueryCompilation m, Coercible var Lv) =>
   [(var, Either var RatTensor)] ->
   m ()
-logEqualitiesFound ctx equalities =
-  logDebug MaxDetail $
-    if null equalities
-      then "No suitable equalities found"
-      else "Possible equalities:" <> lineIndent (vsep (fmap (prettyEquality ctx) equalities)) <> line
+logEqualitiesFound equalities = do
+  logDebugM MaxDetail $ do
+    nameCtx <- getCompleteNamedCtx
+    return $
+      if null equalities
+        then "No suitable equalities found"
+        else "Possible equalities:" <> lineIndent (vsep (fmap (prettyEquality nameCtx) equalities)) <> line
 
 prettyEquality ::
   (Coercible var Lv) =>
@@ -288,18 +293,17 @@ prettyEquality ctx (a, b) = do
 
 -- | Check if the query format supports the current meta-network configuration
 checkIfMetaNetworkSupported ::
-  (MonadCompile m) =>
-  PropertyMetaData ->
-  GlobalCtx ->
+  (MonadQueryCompilation m) =>
   NetworkApplications ->
   m ()
-checkIfMetaNetworkSupported PropertyMetaData {..} ctx metaNetworkApps
-  | supportsMultipleNetworks queryFormat = return ()
-  | otherwise = do
-      case toListOfApplications metaNetworkApps of
-        [] -> developerError "Empty"
-        [_app] -> return ()
-        apps -> do
-          let formatID = queryFormatID queryFormat
-          let appsWithValues = fmap (second inputValue) apps
-          throwError $ UnsupportedMultipleNetworkApplications formatID propertyProvenance (completeNamedCtx ctx) appsWithValues
+checkIfMetaNetworkSupported metaNetworkApps = do
+  (PropertyMetaData {..}, _) <- ask
+  unless (supportsMultipleNetworks queryFormat) $ do
+    case toListOfApplications metaNetworkApps of
+      [] -> developerError "was not expecting an empty list of meta-network applications"
+      [_app] -> return ()
+      apps -> do
+        let formatID = queryFormatID queryFormat
+        let appsWithValues = fmap (second inputValue) apps
+        nameCtx <- getCompleteNamedCtx
+        throwError $ UnsupportedMultipleNetworkApplications formatID propertyProvenance nameCtx appsWithValues

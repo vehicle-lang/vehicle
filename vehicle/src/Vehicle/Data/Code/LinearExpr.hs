@@ -80,6 +80,15 @@ checkExprTriviality expr = case isConstant expr of
 singletonVarExpr :: constant -> variable -> LinearExpr variable constant
 singletonVarExpr zero var = Sparse (Map.singleton var 1) zero
 
+linearExprToExpr ::
+  (constant -> expr) ->
+  ((variable, Coefficient) -> expr) ->
+  (expr -> expr -> expr) ->
+  LinearExpr variable constant ->
+  expr
+linearExprToExpr mkConst mkTerm add (Sparse coeff constant) =
+  linearExprLikeToExpr (const mkConst) (const mkTerm) add (Map.toList coeff) constant
+
 linearExprLikeToExpr ::
   (Bool -> constant -> expr) ->
   (Bool -> (variable, Coefficient) -> expr) ->

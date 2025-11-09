@@ -5,7 +5,7 @@ where
 
 import Data.Maybe (mapMaybe)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBE (normaliseClosure)
+import Vehicle.Compile.Normalise.NBE (normaliseClosureInCtx)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Type.Constraint.Core
@@ -16,6 +16,7 @@ import Vehicle.Compile.Type.System
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Linearity
 import Vehicle.Data.Code.Value
+import Vehicle.Data.Variable.Bound.Context.Generic
 
 solveLinearityConstraint ::
   (MonadLinearitySolver m) =>
@@ -68,7 +69,7 @@ solveQuantifierLinearity _ info@(ctx, _) [VPi binder closure, res] = Just $ do
   let varName = getBinderName binder
   let domainLin = VLinearityExpr (Linear (QuantifiedVariableProvenance (provenanceOf binder) varName))
   domEq <- createInstanceUnification info (typeOf binder) domainLin
-  resultType <- normaliseClosure (toNamedBoundCtx $ boundContext ctx) binder closure
+  resultType <- normaliseClosureInCtx (toNamedBoundCtx $ boundContext ctx) binder closure
   resEq <- createInstanceUnification info res resultType
   return $ Progress [domEq, resEq] []
 solveQuantifierLinearity _ _ _ = Nothing

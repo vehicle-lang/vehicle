@@ -21,10 +21,10 @@
                   1
                 ],
                 "queryVariableMapping": {
-                  "f_Y[]": 5,
-                  "f_X[]": 4,
-                  "f_2_Y[]": 3,
-                  "f_2_X[]": 2
+                  "f_Y": 5,
+                  "f_X": 4,
+                  "f_2_Y": 3,
+                  "f_2_X": 2
                 }
               },
               "variableCompilationTrace": {

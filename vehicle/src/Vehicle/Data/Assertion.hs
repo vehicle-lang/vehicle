@@ -5,7 +5,6 @@ import Data.Aeson (FromJSON, ToJSON)
 import Data.Bifunctor (Bifunctor (..))
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
-import Data.Map qualified as Map (mapKeys)
 import Data.Vector.Internal.Check (HasCallStack)
 import GHC.Generics
 import Vehicle.Data.Builtin.Core
@@ -91,6 +90,11 @@ combineInequalityRelations r1 r2 = case (r1, r2) of
   (_, Strict) -> Strict
   (NonStrict, NonStrict) -> NonStrict
 
+inequalityRelationToOp :: (Ord a) => InequalityRelation -> (a -> a -> Bool)
+inequalityRelationToOp = \case
+  Strict -> (<)
+  NonStrict -> (<=)
+
 --------------------------------------------------------------------------------
 -- Equality relation
 
@@ -125,6 +129,12 @@ instance (HasVariables expr variable) => HasVariables (NormalisedRelation rel ex
   variablesOf = variablesOf . expression
   containsVariable r v = expression r `containsVariable` v
 
+instance (HasShape expr) => HasShape (NormalisedRelation rel expr) where
+  shapeOf assertion = shapeOf (expression assertion)
+
+instance (Negatable rel) => Negatable (NormalisedRelation rel expr) where
+  neg (NormalisedRelation rel expr) = NormalisedRelation (neg rel) expr
+
 eliminateVarsInComparison ::
   (VariableLike variable, ConstantLike constant, IsRelation relation) =>
   Map variable (LinearExpr variable constant) ->
@@ -136,39 +146,40 @@ eliminateVarsInComparison f NormalisedRelation {..} =
     Left tensor -> Trivial (evalTrivialRelation relation tensor)
 
 reduceComparison ::
-  (Ord variable) =>
+  (Monad m, Ord variable) =>
   Int ->
-  (variable -> [variable]) ->
+  (variable -> m [variable]) ->
   NormalisedRelation rel (LinearExpr variable RatTensor) ->
-  Maybe (ConjunctAll (NormalisedRelation rel (LinearExpr variable RatTensor)))
+  m (Maybe (ConjunctAll (NormalisedRelation rel (LinearExpr variable RatTensor))))
 reduceComparison lookupElementVariables dim (NormalisedRelation relation linearExpr) = do
-  let rationalEqualities = reduceTensorExpr lookupElementVariables dim linearExpr
+  rationalEqualities <- reduceTensorExpr lookupElementVariables dim linearExpr
   let reducedComparison = fmap (NormalisedRelation relation) rationalEqualities
-  case reducedComparison of
+  return $ case reducedComparison of
     [] -> Nothing
     (v : vs) -> Just $ ConjunctAll (v :| vs)
 
 reduceTensorExpr ::
-  forall variable.
-  (Ord variable) =>
+  (Monad m, Ord variable) =>
   Int ->
-  (variable -> [variable]) ->
+  (variable -> m [variable]) ->
   LinearExpr variable RatTensor ->
-  [LinearExpr variable RatTensor]
+  m [LinearExpr variable RatTensor]
 reduceTensorExpr dim lookupElementVariables expr = do
-  fmap (reduceLinearExprAt lookupElementVariables expr) [0 .. dim - 1]
+  traverse (reduceLinearExprAt lookupElementVariables expr) [0 .. dim - 1]
 
 reduceLinearExprAt ::
-  (HasCallStack, Ord variable) =>
-  (variable -> [variable]) ->
+  (HasCallStack, Ord variable, Monad m) =>
+  (variable -> m [variable]) ->
   LinearExpr variable RatTensor ->
   Int ->
-  LinearExpr variable RatTensor
-reduceLinearExprAt lookupElementVariables (Sparse coeff constant) i =
-  Sparse
-    { coefficients = Map.mapKeys (\v -> lookupElementVariables v !! i) coeff,
-      constantValue = constant `at` i
-    }
+  m (LinearExpr variable RatTensor)
+reduceLinearExprAt lookupElementVariables (Sparse coeff constant) i = do
+  newCoeffs <- mapKeysM (fmap (!! i) . lookupElementVariables) coeff
+  return $
+    Sparse
+      { coefficients = newCoeffs,
+        constantValue = constant `at` i
+      }
 
 --------------------------------------------------------------------------------
 -- Assertions
@@ -191,9 +202,6 @@ inequalityToNormRelation r = case relation r of
   NonStrict -> r {relation = OLe}
 
 type Assertion expr = NormalisedRelation Relation expr
-
-instance (HasShape expr) => HasShape (Assertion expr) where
-  shapeOf assertion = shapeOf (expression assertion)
 
 comparisonToAssertion ::
   (Monad m, VariableLike variable, ConstantLike constant) =>

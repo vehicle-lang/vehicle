@@ -3,7 +3,6 @@ module Vehicle.Data.Tensor.Traversal where
 import Control.Monad.Reader (MonadReader (..), Reader, ReaderT (..), asks, runReader)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Maybe (fromMaybe)
-import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
@@ -24,7 +23,7 @@ toPartialShape :: TensorShape -> Maybe (Value Builtin) -> PartiallyKnownTensorSh
 toPartialShape knownDims maybeUnknownDims =
   PartiallyKnownTensorShape
     { knownPrefix = knownDims,
-      unknownSuffix = fromMaybe (INil (implicit INatType)) maybeUnknownDims
+      unknownSuffix = fromMaybe IDimNil maybeUnknownDims
     }
 
 emptyPartialShape :: PartiallyKnownTensorShape
@@ -35,13 +34,13 @@ extractPartialShape v = uncurry PartiallyKnownTensorShape $ go v
   where
     go :: Value Builtin -> (TensorShape, Value Builtin)
     go = \case
-      ICons _ (INatLiteral d) ds -> first (d :) $ go ds
+      IDimCons (INatLiteral d) ds -> first (d :) $ go ds
       value -> ([], value)
 
 calculateCurrentDimensions :: PartiallyKnownTensorShape -> TensorIndices -> Value Builtin
 calculateCurrentDimensions PartiallyKnownTensorShape {..} reverseIndices = do
   let remainingShapePrefix = drop (length reverseIndices) knownPrefix
-  foldr (\i -> ICons (implicit INatType) (INatLiteral i)) unknownSuffix remainingShapePrefix
+  foldr (\i -> IDimCons (INatLiteral i)) unknownSuffix remainingShapePrefix
 
 --------------------------------------------------------------------------------
 -- Tensor traversal

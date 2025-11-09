@@ -6,10 +6,10 @@ where
 
 import Control.Monad.Writer (MonadWriter (..), WriterT (..))
 import Vehicle.Backend.Agda
-import Vehicle.Backend.LossFunction (convertToLossTensors)
-import Vehicle.Backend.LossFunction.JSON
-import Vehicle.Backend.LossFunction.LogicCompilation (compileLogic)
-import Vehicle.Backend.LossFunction.Logics (dslFor)
+import Vehicle.Backend.Loss (convertToLossTensors)
+import Vehicle.Backend.Loss.JSON
+import Vehicle.Backend.Loss.LogicCompilation (compileLogic)
+import Vehicle.Backend.Loss.Logics (dslFor)
 import Vehicle.Backend.Prelude
 import Vehicle.Backend.Rocq
 import Vehicle.Backend.Solver
@@ -19,6 +19,7 @@ import Vehicle.Compile.Prelude as CompilePrelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Type.Subsystem
 import Vehicle.Data.Builtin.Decidability.Type ()
+import Vehicle.Data.Builtin.Interface.Print (PrintableBuiltin)
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Prelude.Logging
 import Vehicle.TypeCheck (TypeCheckOptions (..), runCompileMonad, typeCheckUserProg)
@@ -103,17 +104,20 @@ compileToLossFunction ::
   m ()
 compileToLossFunction logicID typedProg outputFile outputAsJSON =
   logCompilerPass LossBackend $ do
-    hoistedProg <- hoistInferableParameters typedProg
-    functionalisedProg <- functionaliseResources hoistedProg
     compiledLogic <- compileLogic logicID (dslFor logicID)
-    lossTensorProg <- convertToLossTensors compiledLogic functionalisedProg
-    jsonProg <- convertToJSONProg lossTensorProg
+    lossTensorProg <- convertToLossTensors compiledLogic typedProg
+    hoistedProg <- hoistInferableParameters lossTensorProg
+    functionalisedProg <- functionaliseResources hoistedProg
+    jsonProg <- convertToJSONProg functionalisedProg
     let outputText
           | outputAsJSON = prettyAsJSON jsonProg
           | otherwise = prettyFriendly (convertFromJSONProg jsonProg)
     writeResultToFile Nothing outputFile outputText
 
-hoistInferableParameters :: (MonadCompile m) => Prog builtin -> m (Prog builtin)
+hoistInferableParameters ::
+  (MonadCompile m, PrintableBuiltin builtin) =>
+  Prog builtin ->
+  m (Prog builtin)
 hoistInferableParameters (Main ds) = do
   (otherDecls, inferableParameters) <- runWriterT (goDecls ds)
   return $ Main (inferableParameters <> otherDecls)
