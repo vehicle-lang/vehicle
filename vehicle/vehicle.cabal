@@ -380,8 +380,6 @@ library unit-tests-common
   exposed-modules:
     Vehicle.Test.Unit.Common
     Vehicle.Test.Unit.Compile.CommandLine
-    Vehicle.Test.Unit.Compile.DeBruijn
-    Vehicle.Test.Unit.Compile.Normalisation
 
   build-depends:
     , base
