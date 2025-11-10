@@ -3,9 +3,11 @@ from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
 from fractions import Fraction
 from pathlib import Path
-from typing import Any, Generic, Iterable, Optional, Sequence, Tuple, Union
+from typing import Iterable, Optional, Sequence
 
-from typing_extensions import Self, TypeAlias, TypeVar, override
+from typing_extensions import Self, TypeAlias
+from typing_extensions import TypeVar as TypingTypeVar
+from typing_extensions import override
 
 from .. import session
 from ..error import VehicleError
@@ -29,6 +31,11 @@ class AST(metaclass=ABCMeta):
     def from_json(cls, value: str) -> Self:
         return cls.from_dict(json.loads(value))
 
+    @classmethod
+    def from_file(cls, path: str | Path) -> Self:
+        with open(path, "r", encoding="utf-8") as file:
+            return cls.from_json(file.read())
+
 
 ################################################################################
 # Provenance
@@ -50,278 +57,33 @@ MISSING: Provenance = Provenance(0, 0)
 ################################################################################
 
 
-DType = TypeVar("DType", bool, float, int, Fraction)
+DType = TypingTypeVar("DType", bool, float, int, Fraction)
+
+
+################################################################################
+# Tensors
+################################################################################
 
 
 @dataclass(frozen=True)
-class Tensor(Generic[DType]):
-    shape: Tuple[int, ...]
-    value: Tuple[DType, ...]
+class Tensor(AST):
+    shape: Sequence[int]
+    value: Sequence[Fraction] | Fraction
 
-
-################################################################################
-# Builtin Constants
-################################################################################
-
-
-@dataclass(frozen=True, init=False)
-class BuiltinConstant(AST):
     def __init__(self) -> None:
-        raise TypeError("Cannot instantiate abstract class BuiltinConstant")
+        raise TypeError("Cannot instantiate abstract class Tensor")
 
 
 @dataclass(frozen=True)
-class Unit(BuiltinConstant):
-    pass
+class DenseTensor(Tensor):
+    shape: Sequence[int]
+    value: Sequence[Fraction]
 
 
 @dataclass(frozen=True)
-class NilList(BuiltinConstant):
-    pass
-
-
-################################################################################
-# Builtin Functions
-################################################################################
-
-
-@dataclass(frozen=True, init=False)
-class BuiltinFunction(AST):
-    def __init__(self) -> None:
-        raise TypeError("Cannot instantiate abstract class BuiltinFunction")
-
-
-@dataclass(frozen=True)
-class ConsList(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class NotBoolTensor(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class AndBoolTensor(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class OrBoolTensor(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class NegRatTensor(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class AddRatTensor(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class SubRatTensor(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class MulRatTensor(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class DivRatTensor(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class EqRatTensor(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class NeRatTensor(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class LeRatTensor(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class LtRatTensor(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class GeRatTensor(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class GtRatTensor(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class PowRatTensor(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class MinRatTensor(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class MaxRatTensor(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class ReduceAndBoolTensor(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class ReduceOrBoolTensor(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class ReduceSumRatTensor(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class ReduceRatTensor(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class EqIndex(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class NeIndex(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class LeIndex(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class LtIndex(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class GeIndex(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class GtIndex(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class LookupRatTensor(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class StackRatTensor(BuiltinFunction):
-    value: int
-
-
-@dataclass(frozen=True)
-class ConstRatTensor(BuiltinFunction):
+class ConstantTensor(Tensor):
+    shape: Sequence[int]
     value: Fraction
-
-
-@dataclass(frozen=True)
-class FoldList(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class MapList(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class MapRatTensor(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class ZipWithRatTensor(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class IndicesIndexTensor(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class MinimiseRatTensor(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class MaximiseRatTensor(BuiltinFunction):
-    pass
-
-
-@dataclass(frozen=True)
-class If(BuiltinFunction):
-    pass
-
-
-################################################################################
-# Builtin Literals
-################################################################################
-
-
-@dataclass(frozen=True, init=False)
-class BuiltinLiteral(AST):
-    value: Any
-
-    def __init__(self) -> None:
-        raise TypeError("Cannot instantiate abstract class BuiltinLiteral")
-
-
-@dataclass(frozen=True)
-class Index(BuiltinLiteral):
-    value: int
-
-
-@dataclass(frozen=True)
-class BoolTensor(BuiltinLiteral):
-    value: Tensor[bool]
-
-
-@dataclass(frozen=True)
-class NatTensor(BuiltinLiteral):
-    value: Tensor[int]
-
-
-@dataclass(frozen=True)
-class IntTensor(BuiltinLiteral):
-    value: Tensor[int]
-
-
-@dataclass(frozen=True)
-class RatTensor(BuiltinLiteral):
-    value: Tensor[Fraction]
 
 
 ################################################################################
@@ -336,48 +98,60 @@ class BuiltinType(AST):
 
 
 @dataclass(frozen=True)
-class IndexType(BuiltinType):
-    pass
+class Pi(BuiltinType):
+    """Pi type: Pi input_type output_type"""
+
+    input_type: BuiltinType
+    output_type: BuiltinType
 
 
 @dataclass(frozen=True)
-class IndexTensorType(BuiltinType):
-    pass
+class RatType(BuiltinType):
+    """Rational number type: RatType"""
+
+    # RatType has no contents in JSON - it's just a tag
 
 
 @dataclass(frozen=True)
-class BoolTensorType(BuiltinType):
-    pass
+class TensorType(BuiltinType):
+    """Tensor type: TensorType base_type"""
+
+    base_type: BuiltinType
 
 
 @dataclass(frozen=True)
-class NatTensorType(BuiltinType):
-    pass
+class DimensionType(BuiltinType):
+    """Dimension type: DimensionType"""
 
 
 @dataclass(frozen=True)
-class IntTensorType(BuiltinType):
-    pass
+class DimensionsType(BuiltinType):
+    """Dimensions type: DimensionsType"""
 
 
 @dataclass(frozen=True)
-class RatTensorType(BuiltinType):
-    pass
+class DimensionIndexType(BuiltinType):
+    """DimensionIndex type: DimensionIndexType"""
 
 
 @dataclass(frozen=True)
-class ListType(BuiltinType):
-    pass
+class TypeVar(BuiltinType):
+    """Type variable: TypeVar name arguments"""
 
-
-@dataclass(frozen=True)
-class UnitType(BuiltinType):
-    pass
+    name: str
+    spine: Sequence[BuiltinType]
 
 
 ################################################################################
 # Expressions
 ################################################################################
+
+
+@dataclass(frozen=True)
+class Binder(AST):
+    provenance: Provenance = field(repr=False)
+    name: Optional[Name]
+    type: BuiltinType
 
 
 @dataclass(frozen=True, init=False)
@@ -387,22 +161,7 @@ class Expression(AST):
 
 
 @dataclass(frozen=True)
-class Binder(AST):
-    provenance: Provenance = field(repr=False)
-    name: Optional[Name]
-    type: Expression
-
-
-@dataclass(frozen=True)
-class Pi(Expression):
-    provenance: Provenance = field(repr=False)
-    binder: Binder
-    body: Expression
-
-
-@dataclass(frozen=True)
 class Lam(Expression):
-    provenance: Provenance = field(repr=False)
     binder: Binder
     body: Expression
 
@@ -424,14 +183,159 @@ class PartialApp(Expression):
 
 @dataclass(frozen=True)
 class Var(Expression):
-    provenance: Provenance = field(repr=False)
-    name: Name
+    name: str
+    arguments: Sequence[Expression]
 
 
 @dataclass(frozen=True)
-class Builtin(Expression):
-    provenance: Provenance = field(repr=False)
-    builtin: Union[BuiltinConstant, BuiltinFunction, BuiltinLiteral, BuiltinType]
+class RatTensor(Expression):
+    """RatTensor (Tensor Rat) from JSON"""
+
+    contents: Tensor
+
+
+@dataclass(frozen=True)
+class NegRatTensor(Expression):
+    """Unary negation: NegRatTensor expr"""
+
+    x: Expression
+
+
+# Binary operations - JSON Loss Function format providing App interface
+@dataclass(frozen=True)
+class AddRatTensor(Expression):
+    """Binary addition: AddRatTensor left right - provides App interface for translation"""
+
+    x: Expression
+    y: Expression
+
+
+@dataclass(frozen=True)
+class SubRatTensor(Expression):
+    """Binary subtraction: SubRatTensor left right - behaves like App for translation"""
+
+    x: Expression
+    y: Expression
+
+
+@dataclass(frozen=True)
+class MulRatTensor(Expression):
+    """Binary multiplication: MulRatTensor left right"""
+
+    x: Expression
+    y: Expression
+
+
+@dataclass(frozen=True)
+class DivRatTensor(Expression):
+    """Binary division: DivRatTensor left right"""
+
+    x: Expression
+    y: Expression
+
+
+@dataclass(frozen=True)
+class MinRatTensor(Expression):
+    """Binary minimum: MinRatTensor left right"""
+
+    x: Expression
+    y: Expression
+
+
+@dataclass(frozen=True)
+class MaxRatTensor(Expression):
+    """Binary maximum: MaxRatTensor left right"""
+
+    x: Expression
+    y: Expression
+
+
+@dataclass(frozen=True)
+class ReduceAddRatTensor(Expression):
+    """Reduce addition: ReduceAddRatTensor expr dims"""
+
+    f: Expression
+    x: Expression
+
+
+@dataclass(frozen=True)
+class ReduceMulRatTensor(Expression):
+    """Reduce multiplication: ReduceMulRatTensor expr dims"""
+
+    f: Expression
+    x: Expression
+
+
+@dataclass(frozen=True)
+class ReduceMinRatTensor(Expression):
+    """Reduce minimum: ReduceMinRatTensor expr dims"""
+
+    f: Expression
+    x: Expression
+
+
+@dataclass(frozen=True)
+class ReduceMaxRatTensor(Expression):
+    """Reduce maximum: ReduceMaxRatTensor expr dims"""
+
+    f: Expression
+    x: Expression
+
+
+@dataclass(frozen=True)
+class SearchRatTensor(Expression):
+    """Search tensor: SearchRatTensor reductionOp lowerBound upperBound searchLambda"""
+
+    f: Expression
+    lower_bound: Expression
+    upper_bound: Expression
+    search_lambda: Expression
+
+
+@dataclass(frozen=True)
+class Dimension(Expression):
+    """Dimension Int - for JSON parsing"""
+
+    value: int
+
+
+@dataclass(frozen=True)
+class DimensionNil(Expression):
+    """DimensionNil - for JSON parsing"""
+
+
+@dataclass(frozen=True)
+class DimensionLookup(Expression):
+    """Dimension lookup: DimensionLookup tensor index"""
+
+    xs: Expression
+    i: Expression
+
+
+@dataclass(frozen=True)
+class DimensionCons(Expression):
+    e1: Expression
+    e2: Expression
+
+
+@dataclass(frozen=True)
+class DimensionIndex(Expression):
+    i: int
+
+
+@dataclass(frozen=True)
+class ConstTensor(Expression):
+    """ConstTensor shape value - for JSON parsing"""
+
+    c: Fraction
+    ds: Sequence[int]
+
+
+@dataclass(frozen=True)
+class StackTensor(Expression):
+    """StackTensor along dimension: StackTensor dimension tensor_list"""
+
+    xs: Sequence[Expression]
 
 
 ################################################################################
@@ -452,18 +356,7 @@ class Declaration(AST, metaclass=ABCMeta):
 class DefFunction(Declaration):
     provenance: Provenance = field(repr=False)
     name: Name
-    type: Expression
-    body: Expression
-
-    @override
-    def get_name(self) -> Name:
-        return self.name
-
-
-@dataclass(frozen=True)
-class DefPostulate(Declaration):
-    provenance: Provenance = field(repr=False)
-    name: Name
+    type: BuiltinType
     body: Expression
 
     @override
@@ -493,7 +386,7 @@ class Main(Program):
 
 
 def load(
-    path: Union[str, Path],
+    path: str | Path,
     *,
     declarations: Iterable[DeclarationName] = (),
     target: Target = DifferentiableLogic.Vehicle,
@@ -502,8 +395,7 @@ def load(
         [
             "--json",
             "compile",
-            "loss",
-            "--logic",
+            "--target",
             target._vehicle_option_name,
             f"--specification={path}",
             *[f"--declaration={declaration_name}" for declaration_name in declarations],

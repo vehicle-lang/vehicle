@@ -3,11 +3,20 @@ from dataclasses import asdict, dataclass, field
 from fractions import Fraction
 from functools import reduce
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Sequence, Tuple, Union
+from typing import Any, Dict, Iterator, List, Sequence
 
 from ... import ast as vcl
 from ..abc import ABCTranslation, AnyBuiltins
-from ..error import VehicleOptimiseTypeError
+
+
+# Helper to convert Vehicle provenance to Python AST kwargs
+def py_provenance(provenance: vcl.Provenance) -> Dict[str, Any]:
+    """Convert Vehicle provenance to Python AST keyword arguments"""
+    return {
+        "lineno": provenance.lineno or 0,
+        "col_offset": provenance.col_offset or 0,
+    }
+
 
 ################################################################################
 ### Translation from Vehicle AST to Python AST
@@ -28,7 +37,7 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
     def compile(
         self,
         program: vcl.Program,
-        path: Union[str, Path],
+        path: str | Path,
         declaration_context: Dict[str, Any] = {},
     ) -> Dict[str, Any]:
         py_ast = self.translate_program(program)
@@ -41,7 +50,7 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             py_ast_str: str
             try:
                 py_ast_str = py.unparse(py_ast)
-            except:
+            except Exception:
                 py_ast_str = py.dump(py_ast)
             raise TypeError(f"{e}\n{py_ast_str}")
 
@@ -51,23 +60,30 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                 # NOTE: 'vehicle_lang.ast' is imported for 'Tensor'
                 #       which is used to translate vcl.Tensor
                 py.Import(
-                    names=[py.alias(name="vehicle_lang.ast", **asdict(vcl.MISSING))],
-                    level=0,
-                    **asdict(vcl.MISSING),
+                    names=[
+                        py.alias(
+                            name="vehicle_lang.ast", asname=None, lineno=0, col_offset=0
+                        )
+                    ],
+                    lineno=0,
+                    col_offset=0,
                 ),
                 # NOTE: 'fractions' is imported for 'Fraction'
                 #       which is used to translate vcl.Rat
                 py.Import(
-                    names=[py.alias(name="fractions", **asdict(vcl.MISSING))],
-                    level=0,
-                    **asdict(vcl.MISSING),
+                    names=[
+                        py.alias(name="fractions", asname=None, lineno=0, col_offset=0)
+                    ],
+                    lineno=0,
+                    col_offset=0,
                 ),
                 # NOTE: 'functools' is imported for 'partial'
                 #       which is used to translate vcl.PartialApp
                 py.Import(
-                    names=[py.alias(name="functools", **asdict(vcl.MISSING))],
-                    level=0,
-                    **asdict(vcl.MISSING),
+                    names=[
+                        py.alias(name="functools", asname=None, lineno=0, col_offset=0)
+                    ],
+                    **py_provenance(vcl.MISSING),
                 ),
                 *self.module_header,
                 *self.translate_declarations(iter(program.declarations)),
@@ -126,100 +142,7 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                 **asdict(declaration.provenance),
             )
 
-    def translate_DefPostulate(self, declaration: vcl.DefPostulate) -> py.stmt:
-        # NOTE: Postulates are compiled in one of two ways:
-        #       (1) If the builtins object has a method of the same name, the
-        #           postulate is compiled to the result of calling that method.
-        if hasattr(self.builtins, declaration.name) and callable(
-            getattr(self.builtins, declaration.name)
-        ):
-            return py.Assign(
-                targets=[
-                    py.Name(
-                        id=declaration.name,
-                        ctx=py.Store(),
-                        **asdict(declaration.provenance),
-                    )
-                ],
-                value=py_builtin(
-                    builtin=declaration.name,
-                    provenance=declaration.provenance,
-                ),
-                **asdict(declaration.provenance),
-            )
-        #       (2) Otherwise, the postulate is compiled to an assertion that
-        #           checks that a function with that name is in the globals.
-        else:
-            return py.Assert(
-                test=py.Compare(
-                    left=py.Constant(
-                        value=declaration.name,
-                        **asdict(declaration.provenance),
-                    ),
-                    ops=[py.In()],
-                    comparators=[
-                        py.Call(
-                            func=py_name("vars", provenance=declaration.provenance),
-                            args=[],
-                            keywords=[],
-                            **asdict(declaration.provenance),
-                        )
-                    ],
-                    **asdict(declaration.provenance),
-                ),
-                msg=py.Constant(
-                    value=f"The postulate {declaration.name} is undefined",
-                    **asdict(declaration.provenance),
-                ),
-                **asdict(declaration.provenance),
-            )
-
     def translate_App(self, expression: vcl.App) -> py.expr:
-        # NOTE: We handle Minimise/Maximise as a special case, as we must
-        #       extract the name of the bound variable from the lambda binding.
-        if isinstance(expression.function, vcl.Builtin) and isinstance(
-            expression.function.builtin, (vcl.MinimiseRatTensor, vcl.MaximiseRatTensor)
-        ):
-            if len(expression.arguments) != 2:
-                raise VehicleOptimiseTypeError(expression)
-            meetOrJoin, loss = expression.arguments
-            if not isinstance(loss, vcl.Lam):
-                raise VehicleOptimiseTypeError(expression)
-            # NOTE: We extract the name of the bound variable from the lambda,
-            #       which should be the _second_ argument.
-            name = loss.binder.name
-            return py_app(
-                py_builtin(
-                    builtin=expression.function.builtin.__class__.__name__,
-                    provenance=expression.provenance,
-                ),
-                # name:
-                py.Constant(
-                    value=name,
-                    **asdict(expression.provenance),
-                ),
-                # context:
-                py.Dict(
-                    keys=[
-                        # py.Constant(
-                        #     value=name,
-                        #     **asdict(expression.provenance),
-                        # )
-                        # for name in expression.function.builtin.context
-                    ],
-                    values=[
-                        # py_name(name, provenance=expression.provenance)
-                        # for name in expression.function.builtin.context
-                    ],
-                    **asdict(expression.provenance),
-                ),
-                # meetOrJoin:
-                self.translate_expression(meetOrJoin),
-                # loss:
-                self.translate_expression(loss),
-                # provenance:
-                provenance=expression.provenance,
-            )
         return py_app(
             self.translate_expression(expression.function),
             *map(self.translate_expression, expression.arguments),
@@ -227,78 +150,25 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         )
 
     def translate_Var(self, expression: vcl.Var) -> py.expr:
-        return py_name(expression.name, provenance=expression.provenance)
-
-    def translate_Builtin(self, expression: vcl.Builtin) -> py.expr:
-        # MINIMISE/MAXIMISE
-        #   All Minimise and Maximise nodes should be fully applied,
-        #   and hence be captured by the translation for applications.
-        if isinstance(
-            expression.builtin, (vcl.MinimiseRatTensor, vcl.MaximiseRatTensor)
-        ):
-            raise VehicleOptimiseTypeError(expression)
-        # TYPES
-        #   When we encounter a type, we raise `EraseType`,
-        #   which is handled by `translation_declarations`.
-        elif isinstance(expression.builtin, vcl.BuiltinType):
-            raise EraseType
-        # CONSTANTS
-        #   When we encounter a constant, we translate it to an application
-        #   of the builtin function to the constant value, e.g., we translate
-        #   `Index(value=3)` to `__vehicle__.Index(3)`.
-        elif isinstance(
-            expression.builtin,
-            (vcl.BuiltinConstant, vcl.BuiltinLiteral),
-        ):
-            arguments: List[py.expr] = []
-            if isinstance(expression.builtin, vcl.BuiltinLiteral):
-                if isinstance(expression.builtin.value, Fraction):
-                    arguments.append(
-                        py_fraction(
-                            expression.builtin.value,
-                            provenance=expression.provenance,
-                        )
-                    )
-                elif isinstance(expression.builtin.value, vcl.Tensor):
-                    arguments.append(
-                        py_tensor(
-                            expression.builtin.value,
-                            provenance=expression.provenance,
-                        )
-                    )
-                else:
-                    arguments.append(
-                        py.Constant(
-                            value=expression.builtin.value,
-                            **asdict(expression.provenance),
-                        )
-                    )
+        if expression.arguments:
+            # Var with arguments: translate to function call
             return py_app(
-                py_builtin(
-                    expression.builtin.__class__.__name__,
-                    provenance=expression.provenance,
-                ),
-                *arguments,
-                provenance=expression.provenance,
+                py_name(expression.name, provenance=vcl.MISSING),
+                *map(self.translate_expression, expression.arguments),
+                provenance=vcl.MISSING,
             )
-        # FUNCTIONS
-        #   When we encounter a function, we translate it to the unapplied
-        #   function name, e.g., we translate `AddInt` as `__vehicle__.AddInt`.
         else:
-            assert isinstance(expression.builtin, vcl.BuiltinFunction)
-            return py_builtin(
-                builtin=expression.builtin.__class__.__name__,
-                provenance=expression.provenance,
-            )
+            # Var without arguments: translate to simple variable reference
+            return py_name(expression.name, provenance=vcl.MISSING)
 
     def translate_Lam(self, expression: vcl.Lam) -> py.expr:
         return py.Lambda(
             args=py_binder(self.translate_binder(expression.binder)),
             body=self.translate_expression(expression.body),
-            **asdict(expression.provenance),
+            **asdict(vcl.MISSING),
         )
 
-    def translate_Pi(self, _expression: vcl.Pi) -> py.expr:
+    def translate_Pi(self, expression: vcl.Pi) -> py.expr:
         raise EraseType()
 
     def translate_PartialApp(self, expression: vcl.PartialApp) -> py.expr:
@@ -306,6 +176,183 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             self.translate_expression(expression.function),
             *map(self.translate_expression, expression.arguments),
             provenance=expression.provenance,
+        )
+
+    def translate_RatTensor(self, expression: vcl.RatTensor) -> py.expr:
+        """Translate RatTensor to tensor creation."""
+        return py_tensor(expression.contents, provenance=vcl.MISSING)
+
+    def translate_AddRatTensor(self, expression: vcl.AddRatTensor) -> py.expr:
+        """Translate AddRatTensor to builtin call."""
+        return py_app(
+            py_builtin("AddRatTensor", provenance=vcl.MISSING),
+            self.translate_expression(expression.x),
+            self.translate_expression(expression.y),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_SubRatTensor(self, expression: vcl.SubRatTensor) -> py.expr:
+        """Translate SubRatTensor to builtin call."""
+        return py_app(
+            py_builtin("SubRatTensor", provenance=vcl.MISSING),
+            self.translate_expression(expression.x),
+            self.translate_expression(expression.y),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_MulRatTensor(self, expression: vcl.MulRatTensor) -> py.expr:
+        """Translate MulRatTensor to builtin call."""
+        return py_app(
+            py_builtin("MulRatTensor", provenance=vcl.MISSING),
+            self.translate_expression(expression.x),
+            self.translate_expression(expression.y),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_DivRatTensor(self, expression: vcl.DivRatTensor) -> py.expr:
+        """Translate DivRatTensor to builtin call."""
+        return py_app(
+            py_builtin("DivRatTensor", provenance=vcl.MISSING),
+            self.translate_expression(expression.x),
+            self.translate_expression(expression.y),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_MinRatTensor(self, expression: vcl.MinRatTensor) -> py.expr:
+        """Translate MinRatTensor to builtin call."""
+        return py_app(
+            py_builtin("MinRatTensor", provenance=vcl.MISSING),
+            self.translate_expression(expression.x),
+            self.translate_expression(expression.y),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_MaxRatTensor(self, expression: vcl.MaxRatTensor) -> py.expr:
+        """Translate MaxRatTensor to builtin call."""
+        return py_app(
+            py_builtin("MaxRatTensor", provenance=vcl.MISSING),
+            self.translate_expression(expression.x),
+            self.translate_expression(expression.y),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_NegRatTensor(self, expression: vcl.NegRatTensor) -> py.expr:
+        """Translate NegRatTensor to builtin call."""
+        return py_app(
+            py_builtin("NegRatTensor", provenance=vcl.MISSING),
+            self.translate_expression(expression.x),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_ReduceAddRatTensor(
+        self, expression: vcl.ReduceAddRatTensor
+    ) -> py.expr:
+        """Translate ReduceAddRatTensor to builtin call."""
+        return py_app(
+            py_builtin("ReduceAddRatTensor", provenance=vcl.MISSING),
+            self.translate_expression(expression.f),  # Note: using current field names
+            self.translate_expression(expression.x),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_ReduceMulRatTensor(
+        self, expression: vcl.ReduceMulRatTensor
+    ) -> py.expr:
+        """Translate ReduceMulRatTensor to builtin call."""
+        return py_app(
+            py_builtin("ReduceMulRatTensor", provenance=vcl.MISSING),
+            self.translate_expression(expression.f),
+            self.translate_expression(expression.x),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_ReduceMinRatTensor(
+        self, expression: vcl.ReduceMinRatTensor
+    ) -> py.expr:
+        """Translate ReduceMinRatTensor to builtin call."""
+        return py_app(
+            py_builtin("ReduceMinRatTensor", provenance=vcl.MISSING),
+            self.translate_expression(expression.f),
+            self.translate_expression(expression.x),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_ReduceMaxRatTensor(
+        self, expression: vcl.ReduceMaxRatTensor
+    ) -> py.expr:
+        """Translate ReduceMaxRatTensor to builtin call."""
+        return py_app(
+            py_builtin("ReduceMaxRatTensor", provenance=vcl.MISSING),
+            self.translate_expression(expression.f),
+            self.translate_expression(expression.x),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_SearchRatTensor(self, expression: vcl.SearchRatTensor) -> py.expr:
+        """Translate SearchRatTensor to builtin call."""
+        return py_app(
+            py_builtin("SearchRatTensor", provenance=vcl.MISSING),
+            self.translate_expression(expression.f),
+            self.translate_expression(expression.lower_bound),
+            self.translate_expression(expression.upper_bound),
+            self.translate_expression(expression.search_lambda),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_Dimension(self, expression: vcl.Dimension) -> py.expr:
+        """Translate Dimension to constant."""
+        return py.Constant(value=expression.value, **asdict(vcl.MISSING))
+
+    def translate_DimensionLookup(self, expression: vcl.DimensionLookup) -> py.expr:
+        """Translate DimensionLookup to builtin call."""
+        return py_app(
+            py_builtin("DimensionLookup", provenance=vcl.MISSING),
+            self.translate_expression(expression.xs),
+            self.translate_expression(expression.i),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_DimensionCons(self, expression: vcl.DimensionCons) -> py.expr:
+        """Translate DimensionCons to builtin call."""
+        return py_app(
+            py_builtin("DimensionCons", provenance=vcl.MISSING),
+            self.translate_expression(expression.e1),
+            self.translate_expression(expression.e2),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_DimensionIndex(self, expression: vcl.DimensionIndex) -> py.expr:
+        """Translate DimensionIndex to constant."""
+        return py.Constant(value=expression.i, **asdict(vcl.MISSING))
+
+    def translate_DimensionNil(self, expression: vcl.DimensionNil) -> py.expr:
+        """Translate DimensionNil - erase type-level construct like Pi."""
+        raise EraseType()
+
+    def translate_ConstTensor(self, expression: vcl.ConstTensor) -> py.expr:
+        """Translate ConstTensor to builtin call."""
+        return py_app(
+            py_builtin("ConstTensor", provenance=vcl.MISSING),
+            py_scalar(expression.c, provenance=vcl.MISSING),
+            py_tuple(
+                [
+                    py.Constant(value=dim, **asdict(vcl.MISSING))
+                    for dim in expression.ds
+                ],
+                provenance=vcl.MISSING,
+            ),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_StackTensor(self, expression: vcl.StackTensor) -> py.expr:
+        """Translate StackTensor to builtin call."""
+        return py_app(
+            py_builtin("StackTensor", provenance=vcl.MISSING),
+            py_tuple(
+                [self.translate_expression(x) for x in expression.xs],
+                provenance=vcl.MISSING,
+            ),
+            provenance=vcl.MISSING,
         )
 
 
@@ -389,13 +436,14 @@ def py_fraction(value: Fraction, provenance: vcl.Provenance) -> py.expr:
 
 def py_scalar(value: vcl.DType, provenance: vcl.Provenance) -> py.expr:
     """Make a scalar."""
-    if isinstance(value, Fraction):
-        return py_fraction(value, provenance=provenance)
-    else:
-        return py.Constant(
-            value=value,
-            **asdict(provenance),
-        )
+    match value:
+        case Fraction():
+            return py_fraction(value, provenance=provenance)
+        case _:
+            return py.Constant(
+                value=value,
+                **asdict(provenance),
+            )
 
 
 def py_tuple(elements: List[py.expr], provenance: vcl.Provenance) -> py.expr:
@@ -407,28 +455,39 @@ def py_tuple(elements: List[py.expr], provenance: vcl.Provenance) -> py.expr:
     )
 
 
-def py_tensor(tensor: vcl.Tensor[vcl.DType], provenance: vcl.Provenance) -> py.expr:
-    """Make a tensor."""
-    return py.Call(
-        func=py_qualified_name("vehicle_lang", "ast", "Tensor", provenance=provenance),
-        args=[],
-        keywords=[
-            py.keyword(
-                arg="value",
-                value=py_tuple(
-                    [py_scalar(elt, provenance=provenance) for elt in tensor.value],
+def py_tensor(tensor: vcl.Tensor, provenance: vcl.Provenance) -> py.expr:
+    """Make a tensor by calling appropriate builtin."""
+    match tensor:
+        case vcl.DenseTensor():
+            # DenseTensor: call __vehicle__.DenseTensor(values, shape)
+            return py_app(
+                py_builtin("DenseTensor", provenance=provenance),
+                py_tuple(
+                    [py_scalar(val, provenance=provenance) for val in tensor.value],
                     provenance=provenance,
                 ),
-                **asdict(provenance),
-            ),
-            py.keyword(
-                arg="shape",
-                value=py_tuple(
-                    [py_scalar(dim, provenance=provenance) for dim in tensor.shape],
+                py_tuple(
+                    [
+                        py.Constant(value=dim, **asdict(provenance))
+                        for dim in tensor.shape
+                    ],
                     provenance=provenance,
                 ),
-                **asdict(provenance),
-            ),
-        ],
-        **asdict(provenance),
-    )
+                provenance=provenance,
+            )
+        case vcl.ConstantTensor():
+            # ConstantTensor: call __vehicle__.ConstTensor(value, shape)
+            return py_app(
+                py_builtin("ConstTensor", provenance=provenance),
+                py_scalar(tensor.value, provenance=provenance),
+                py_tuple(
+                    [
+                        py.Constant(value=dim, **asdict(provenance))
+                        for dim in tensor.shape
+                    ],
+                    provenance=provenance,
+                ),
+                provenance=provenance,
+            )
+        case _:
+            raise ValueError(f"Unknown tensor type: {type(tensor)}")

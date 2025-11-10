@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, Callable, Dict, Iterator
+from typing import Any, Callable, Dict
 
 from typing_extensions import Protocol, TypeAlias, TypeVar
 

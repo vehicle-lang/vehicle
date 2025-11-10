@@ -1,11 +1,10 @@
 from pathlib import Path
-from typing import Union
 
 from .. import session
 from ..error import VehicleError
 
 
-def list(specification: Union[str, Path]) -> str:
+def list(specification: str | Path) -> str:
     """
     List all networks, datasets, parameters, and properties in the specification.
 

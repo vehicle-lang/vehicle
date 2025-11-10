@@ -1,15 +1,17 @@
 from functools import reduce
 from pathlib import Path
-from typing import Any, Callable, Dict, Union
+from typing import Any, Callable, Dict
 
 import pytest
+
 import vehicle_lang as vcl
-import vehicle_lang.ast as vcl2ast
 import vehicle_lang.compile.tensorflow as vcl2tf
 
 
 def network_validate_output(output: Dict[str, Any]) -> None:
-    network = lambda xs: (sum(xs),)
+    def network(xs: Any) -> Any:
+        return (sum(xs),)
+
     assert "prop" in output
     assert output["prop"](network) == 0.0
 
@@ -85,16 +87,16 @@ def quantifier_any_optimiser(
             {},
             network_validate_output,
         ),
-        (
-            "test_quantifier_all.vcl",
-            {"x": quantifier_all_optimiser},
-            {"prop": 11.0},
-        ),
-        (
-            "test_quantifier_any.vcl",
-            {"x": quantifier_any_optimiser},
-            {"prop": 0.0},
-        ),
+        # (
+        #     "test_quantifier_all.vcl",
+        #     {"x": quantifier_all_optimiser},
+        #     {"prop": 11.0},
+        # ),
+        # (
+        #     "test_quantifier_any.vcl",
+        #     {"x": quantifier_any_optimiser},
+        #     {"prop": 0.0},
+        # ),
         (
             "test_subtraction.vcl",
             {},
@@ -115,7 +117,7 @@ def quantifier_any_optimiser(
 def test_loss_function_exec(
     specification_filename: str,
     optimisers: Dict[str, Any],
-    validate_output: Union[Dict[str, Any], Callable[[Dict[str, Any]], None]],
+    validate_output: Dict[str, Any] | Callable[[Dict[str, Any]], None],
 ) -> None:
     # 2024-04-16: Disable tests with optimisers
     if not optimisers:

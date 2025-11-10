@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, Iterable, Optional, Union
+from typing import Any, Dict, Iterable, Optional
 
 from .. import session
 from ..error import VehicleError
@@ -7,14 +7,14 @@ from ..typing import DeclarationName, Verifier
 
 
 def verify(
-    specification: Union[str, Path],
+    specification: str | Path,
     properties: Optional[Iterable[DeclarationName]] = None,
-    networks: Dict[DeclarationName, Union[str, Path]] = {},
-    datasets: Dict[DeclarationName, Union[str, Path]] = {},
+    networks: Dict[DeclarationName, str | Path] = {},
+    datasets: Dict[DeclarationName, str | Path] = {},
     parameters: Dict[DeclarationName, Any] = {},
     verifier: Verifier = Verifier.Marabou,
-    verifier_location: Optional[Union[str, Path]] = None,
-    cache: Optional[Union[str, Path]] = None,
+    verifier_location: Optional[str | Path] = None,
+    cache: Optional[str | Path] = None,
 ) -> str:
     """
     Check whether properties in a Vehicle specification hold.

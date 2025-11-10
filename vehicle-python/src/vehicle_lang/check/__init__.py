@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Union
 
 from .. import session
 from ..error import VehicleError
@@ -7,7 +6,7 @@ from ..typing import TypeSystem
 
 
 def check(
-    specification: Union[str, Path], typeSystem: TypeSystem = TypeSystem.Standard
+    specification: str | Path, typeSystem: TypeSystem = TypeSystem.Standard
 ) -> str:
     """
     Type-check a .vcl specification file.

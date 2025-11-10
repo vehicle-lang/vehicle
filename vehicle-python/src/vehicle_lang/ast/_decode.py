@@ -14,7 +14,6 @@ from typing import (
     Sequence,
     Tuple,
     Type,
-    Union,
     cast,
 )
 
@@ -22,6 +21,7 @@ from typing_extensions import (
     Literal,
     TypeAlias,
     TypeVar,
+    Union,
     assert_never,
     get_args,
     get_origin,
@@ -32,9 +32,16 @@ _S = TypeVar("_S")
 _T = TypeVar("_T")
 
 
-JsonValue: TypeAlias = Union[
-    None, str, bool, int, float, complex, List["JsonValue"], Dict[str, "JsonValue"]
-]
+JsonValue: TypeAlias = (
+    None
+    | str
+    | bool
+    | int
+    | float
+    | complex
+    | List["JsonValue"]
+    | Dict[str, "JsonValue"]
+)
 
 
 @dataclass
@@ -77,7 +84,9 @@ class TaggedObjectDecoder(Decoder[_T]):
     CONTENTS: str = "contents"
 
     @staticmethod
-    def _find_class(cls: Type[_T], cls_name: str) -> Optional[Type[_T]]:
+    def _find_class(
+        cls: Type[_T], cls_name: str
+    ) -> Optional[Type[_T]]:  # pyright: ignore[reportSelfClsParameterName]
         """
         Find a subclass by name.
         """
@@ -87,7 +96,9 @@ class TaggedObjectDecoder(Decoder[_T]):
         return None
 
     @staticmethod
-    def _class_and_subclasses(cls: Type[_T]) -> Iterator[Type[_T]]:
+    def _class_and_subclasses(
+        cls: Type[_T],
+    ) -> Iterator[Type[_T]]:  # pyright: ignore[reportSelfClsParameterName]
         """
         Iterate over a class and its subclasses.
         """
@@ -116,7 +127,7 @@ class TaggedObjectDecoder(Decoder[_T]):
         # If the field type is a type variable, resolve it to the corresponding type argument:
         try:
             fld_type_index = cls_origin.__parameters__.index(fld_type)
-        except ValueError as e:
+        except ValueError:
             return fld_type
         if fld_type_index < len(cls_args):
             return cast(Type[_S], cls_args[fld_type_index])
@@ -150,13 +161,15 @@ class TaggedObjectDecoder(Decoder[_T]):
         if subcls_origin is None:
             raise DecodeError(value, cls_origin, f"could not find class {subcls_name}")
         if not is_dataclass(subcls_origin):
-            raise DecodeError(value, subcls_origin, f"not a dataclass")
+            raise DecodeError(value, subcls_origin, "not a dataclass")
 
         # Check if subcls requires any arguments:
         init_fields: List[Tuple[str, Type[Any], bool]] = [
             (
                 fld.name,
-                TaggedObjectDecoder._resolve_field_type(cls_origin, cls_args, fld.type),
+                TaggedObjectDecoder._resolve_field_type(
+                    cls_origin, cls_args, cast(type, fld.type)
+                ),
                 fld.default is MISSING and fld.default_factory is MISSING,
             )
             for fld in fields(subcls_origin)
@@ -185,7 +198,7 @@ class TaggedObjectDecoder(Decoder[_T]):
                     fld_type = required_init_fld_types[0]
                     arg: Any = decoder.decode(fld_type, value_args)
                     return cast(_T, subcls_origin(*[arg]))
-                except DecodeError as e:
+                except DecodeError:
                     value_args = [value_args]
 
             # Decode arguments by position:
@@ -305,7 +318,7 @@ class TupleDecoder(Decoder[Any]):
             raise DecodeError(value, cls_origin, "mismatched length")
 
         return tuple(
-            *(decoder.decode(cls_item, item) for cls_item, item in zip(cls_args, value))
+            decoder.decode(cls_item, item) for cls_item, item in zip(cls_args, value)
         )
 
 
@@ -322,7 +335,7 @@ class ListDecoder(Decoder[List[_T]]):
             raise DecodeError(value, cls_origin, "expected list")
 
         if len(cls_args) <= 0:
-            raise DecodeError(value, cls_origin, f"list type requires an argument")
+            raise DecodeError(value, cls_origin, "list type requires an argument")
 
         if len(cls_args) >= 2:
             raise DecodeError(
@@ -346,7 +359,7 @@ class DictDecoder(Decoder[Dict[_S, _T]]):
             raise DecodeError(value, cls_origin, "expected dict")
 
         if len(cls_args) <= 1:
-            raise DecodeError(value, cls_origin, f"dict type requires arguments")
+            raise DecodeError(value, cls_origin, "dict type requires arguments")
 
         if len(cls_args) >= 3:
             raise DecodeError(
@@ -416,7 +429,7 @@ class FractionDecoder(Decoder[fractions.Fraction]):
         return fractions.Fraction(numerator, denominator)
 
 
-AnyDecoder: TypeAlias = Union[Decoder[Any], Callable[[JsonValue], Any]]
+AnyDecoder: TypeAlias = Decoder[Any] | Callable[[JsonValue], Any]
 
 
 @dataclass(frozen=True)
@@ -426,7 +439,7 @@ class JsonDecoder:
 
     def register(
         self,
-        cls: Union[Type[_T], Any],
+        cls: Type[_T] | Any,
         decoder: AnyDecoder,
     ) -> None:
         cls_origin = get_origin(cls) or cls
@@ -434,7 +447,7 @@ class JsonDecoder:
 
     def decode(
         self,
-        cls: Union[Type[_T], Any],
+        cls: Type[_T] | Any,
         value: JsonValue,
     ) -> _T:
         cls_origin = get_origin(cls) or cls
@@ -477,7 +490,7 @@ _DEFAULT_DECODER.register(Literal, LiteralDecoder())
 _DEFAULT_DECODER.register(Union, UnionDecoder())
 
 
-def decode(cls: Union[Type[_T], Any], value: JsonValue) -> _T:
+def decode(cls: Type[_T] | Any, value: JsonValue) -> _T:
     return _DEFAULT_DECODER.decode(cls, value)
 
 

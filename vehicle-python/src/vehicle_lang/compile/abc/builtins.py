@@ -1,12 +1,11 @@
 import functools
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
-from fractions import Fraction
-from typing import Any, Callable, Generic, Iterable, Tuple, Type, cast
+from typing import Any, Callable, Generic, Tuple, cast
 
-from typing_extensions import TypeAlias, TypeVar, final, override
+from typing_extensions import TypeAlias, TypeVar, override
 
-from ...ast import DType, Tensor
+from ...ast import Tensor
 from . import types as vcl
 
 _S = TypeVar("_S")
@@ -21,11 +20,7 @@ class Builtins(
         vcl.Nat,
         vcl.Int,
         vcl.Rat,
-        vcl.IndexTensor,
-        vcl.BoolTensor,
-        vcl.NatTensor,
-        vcl.IntTensor,
-        vcl.RatTensor,
+        vcl.Tensor,
     ],
     metaclass=ABCMeta,
 ):
@@ -36,89 +31,89 @@ class Builtins(
     def Index(self, value: int) -> int: ...
 
     @abstractmethod
-    def BoolTensor(self, value: Tensor[bool]) -> vcl.BoolTensor: ...
+    def BoolTensor(self, value: Tensor) -> vcl.Tensor: ...
 
     @abstractmethod
-    def NatTensor(self, value: Tensor[int]) -> vcl.NatTensor: ...
+    def NatTensor(self, value: Tensor) -> vcl.Tensor: ...
 
     @abstractmethod
-    def IntTensor(self, value: Tensor[int]) -> vcl.IntTensor: ...
+    def IntTensor(self, value: Tensor) -> vcl.Tensor: ...
 
     @abstractmethod
-    def RatTensor(self, value: Tensor[Fraction]) -> vcl.RatTensor: ...
+    def RatTensor(self, value: Tensor) -> vcl.Tensor: ...
 
     @abstractmethod
-    def NilList(self) -> Tuple[_T, ...]: ...
+    def NilList(self) -> Tuple[object, ...]: ...
 
     @abstractmethod
     def ConsList(self, x: _T, xs: Tuple[_T, ...]) -> Tuple[_T, ...]: ...
 
     @abstractmethod
-    def NotBoolTensor(self, x: vcl.BoolTensor) -> vcl.BoolTensor: ...
+    def NotBoolTensor(self, x: vcl.Tensor) -> vcl.Tensor: ...
 
     @abstractmethod
-    def AndBoolTensor(self, x: vcl.BoolTensor, y: vcl.BoolTensor) -> vcl.BoolTensor: ...
+    def AndBoolTensor(self, x: vcl.Tensor, y: vcl.Tensor) -> vcl.Tensor: ...
 
     @abstractmethod
-    def OrBoolTensor(self, x: vcl.BoolTensor, y: vcl.BoolTensor) -> vcl.BoolTensor: ...
+    def OrBoolTensor(self, x: vcl.Tensor, y: vcl.Tensor) -> vcl.Tensor: ...
 
     @abstractmethod
-    def NegRatTensor(self, x: vcl.RatTensor) -> vcl.RatTensor: ...
+    def NegRatTensor(self, x: vcl.Tensor) -> vcl.Tensor: ...
 
     @abstractmethod
-    def AddRatTensor(self, x: vcl.RatTensor, y: vcl.RatTensor) -> vcl.RatTensor: ...
+    def AddRatTensor(self, x: vcl.Tensor, y: vcl.Tensor) -> vcl.Tensor: ...
 
     @abstractmethod
-    def SubRatTensor(self, x: vcl.RatTensor, y: vcl.RatTensor) -> vcl.RatTensor: ...
+    def SubRatTensor(self, x: vcl.Tensor, y: vcl.Tensor) -> vcl.Tensor: ...
 
     @abstractmethod
-    def MulRatTensor(self, x: vcl.RatTensor, y: vcl.RatTensor) -> vcl.RatTensor: ...
+    def MulRatTensor(self, x: vcl.Tensor, y: vcl.Tensor) -> vcl.Tensor: ...
 
     @abstractmethod
-    def DivRatTensor(self, x: vcl.RatTensor, y: vcl.RatTensor) -> vcl.RatTensor: ...
+    def DivRatTensor(self, x: vcl.Tensor, y: vcl.Tensor) -> vcl.Tensor: ...
 
     @abstractmethod
-    def EqRatTensor(self, x: vcl.RatTensor, y: vcl.RatTensor) -> vcl.BoolTensor: ...
+    def EqRatTensor(self, x: vcl.Tensor, y: vcl.Tensor) -> vcl.Tensor: ...
 
     @abstractmethod
-    def NeRatTensor(self, x: vcl.RatTensor, y: vcl.RatTensor) -> vcl.BoolTensor: ...
+    def NeRatTensor(self, x: vcl.Tensor, y: vcl.Tensor) -> vcl.Tensor: ...
 
     @abstractmethod
-    def LeRatTensor(self, x: vcl.RatTensor, y: vcl.RatTensor) -> vcl.BoolTensor: ...
+    def LeRatTensor(self, x: vcl.Tensor, y: vcl.Tensor) -> vcl.Tensor: ...
 
     @abstractmethod
-    def LtRatTensor(self, x: vcl.RatTensor, y: vcl.RatTensor) -> vcl.BoolTensor: ...
+    def LtRatTensor(self, x: vcl.Tensor, y: vcl.Tensor) -> vcl.Tensor: ...
 
     @abstractmethod
-    def GeRatTensor(self, x: vcl.RatTensor, y: vcl.RatTensor) -> vcl.BoolTensor: ...
+    def GeRatTensor(self, x: vcl.Tensor, y: vcl.Tensor) -> vcl.Tensor: ...
 
     @abstractmethod
-    def GtRatTensor(self, x: vcl.RatTensor, y: vcl.RatTensor) -> vcl.BoolTensor: ...
+    def GtRatTensor(self, x: vcl.Tensor, y: vcl.Tensor) -> vcl.Tensor: ...
 
     @abstractmethod
-    def PowRatTensor(self, x: vcl.RatTensor, y: vcl.RatTensor) -> vcl.RatTensor: ...
+    def PowRatTensor(self, x: vcl.Tensor, y: vcl.Tensor) -> vcl.Tensor: ...
 
     @abstractmethod
-    def MinRatTensor(self, x: vcl.RatTensor, y: vcl.RatTensor) -> vcl.RatTensor: ...
+    def MinRatTensor(self, x: vcl.Tensor, y: vcl.Tensor) -> vcl.Tensor: ...
 
     @abstractmethod
-    def MaxRatTensor(self, x: vcl.RatTensor, y: vcl.RatTensor) -> vcl.RatTensor: ...
+    def MaxRatTensor(self, x: vcl.Tensor, y: vcl.Tensor) -> vcl.Tensor: ...
 
     @abstractmethod
-    def ReduceAndBoolTensor(self, x: vcl.BoolTensor) -> vcl.BoolTensor: ...
+    def ReduceAndBoolTensor(self, x: vcl.Tensor) -> vcl.Tensor: ...
 
     @abstractmethod
-    def ReduceOrBoolTensor(self, x: vcl.BoolTensor) -> vcl.BoolTensor: ...
+    def ReduceOrBoolTensor(self, x: vcl.Tensor) -> vcl.Tensor: ...
 
     @abstractmethod
-    def ReduceSumRatTensor(self, x: vcl.RatTensor) -> vcl.RatTensor: ...
+    def ReduceSumRatTensor(self, x: vcl.Tensor) -> vcl.Tensor: ...
 
     @abstractmethod
     def ReduceRatTensor(
         self,
-        f: Callable[[vcl.RatTensor, vcl.RatTensor], vcl.RatTensor],
-        x: vcl.RatTensor,
-    ) -> vcl.RatTensor: ...
+        f: Callable[[vcl.Tensor, vcl.Tensor], vcl.Tensor],
+        x: vcl.Tensor,
+    ) -> vcl.Tensor: ...
 
     @abstractmethod
     def EqIndex(self, x: vcl.Index, y: vcl.Index) -> vcl.Bool: ...
@@ -139,13 +134,13 @@ class Builtins(
     def GtIndex(self, x: vcl.Index, y: vcl.Index) -> vcl.Bool: ...
 
     @abstractmethod
-    def LookupRatTensor(self, x: vcl.RatTensor, i: vcl.IndexTensor) -> vcl.Rat: ...
+    def LookupRatTensor(self, x: vcl.Tensor, i: vcl.Tensor) -> vcl.Rat: ...
 
     @abstractmethod
-    def StackRatTensor(self, n: int, *xs: vcl.RatTensor) -> vcl.RatTensor: ...
+    def StackRatTensor(self, n: int, *xs: vcl.Tensor) -> vcl.Tensor: ...
 
     @abstractmethod
-    def ConstRatTensor(self, value: vcl.Rat) -> vcl.RatTensor: ...
+    def ConstRatTensor(self, value: vcl.Rat) -> vcl.Tensor: ...
 
     @abstractmethod
     def FoldList(
@@ -160,36 +155,55 @@ class Builtins(
 
     @abstractmethod
     def MapRatTensor(
-        self, f: Callable[[vcl.Rat], vcl.Rat], x: vcl.RatTensor
-    ) -> vcl.RatTensor: ...
+        self, f: Callable[[vcl.Rat], vcl.Rat], x: vcl.Tensor
+    ) -> vcl.Tensor: ...
 
     @abstractmethod
     def ZipWithRatTensor(
         self,
         f: Callable[[vcl.Rat, vcl.Rat], vcl.Rat],
-        x: vcl.RatTensor,
-        y: vcl.RatTensor,
-    ) -> vcl.RatTensor: ...
+        x: vcl.Tensor,
+        y: vcl.Tensor,
+    ) -> vcl.Tensor: ...
 
     @abstractmethod
-    def IndicesIndexTensor(self, x: vcl.NatTensor) -> vcl.IndexTensor: ...
+    def IndicesIndexTensor(self, x: vcl.Tensor) -> vcl.Tensor: ...
 
     @abstractmethod
     def MinimiseRatTensor(
         self,
-        join: Callable[[vcl.RatTensor, vcl.RatTensor], vcl.RatTensor],
-        predicate: Callable[..., vcl.RatTensor],
-    ) -> vcl.RatTensor: ...
+        join: Callable[[vcl.Tensor, vcl.Tensor], vcl.Tensor],
+        predicate: Callable[..., vcl.Tensor],
+    ) -> vcl.Tensor: ...
 
     @abstractmethod
     def MaximiseRatTensor(
         self,
-        meet: Callable[[vcl.RatTensor, vcl.RatTensor], vcl.RatTensor],
-        predicate: Callable[..., vcl.RatTensor],
-    ) -> vcl.RatTensor: ...
+        meet: Callable[[vcl.Tensor, vcl.Tensor], vcl.Tensor],
+        predicate: Callable[..., vcl.Tensor],
+    ) -> vcl.Tensor: ...
 
     @abstractmethod
     def If(self, cond: vcl.Bool, ifTrue: _T, ifFalse: _T) -> _T: ...
+
+    @abstractmethod
+    def DimensionLookup(self, xs: vcl.Tensor, i: vcl.Index) -> vcl.Nat: ...
+
+    @abstractmethod
+    def DimensionCons(
+        self, head: vcl.Nat, tail: Tuple[vcl.Nat, ...]
+    ) -> Tuple[vcl.Nat, ...]: ...
+
+    @abstractmethod
+    def DimensionNil(self) -> Tuple[vcl.Nat, ...]: ...
+
+    @abstractmethod
+    def ConstTensor(self, value: vcl.Rat, shape: Tuple[vcl.Nat, ...]) -> vcl.Tensor: ...
+
+    @abstractmethod
+    def DenseTensor(
+        self, values: Tuple[vcl.Rat, ...], shape: Tuple[vcl.Nat, ...]
+    ) -> vcl.Tensor: ...
 
 
 @dataclass(frozen=True, init=False)
@@ -200,11 +214,7 @@ class ABCBuiltins(
         vcl.Nat,
         vcl.Int,
         vcl.Rat,
-        vcl.IndexTensor,
-        vcl.BoolTensor,
-        vcl.NatTensor,
-        vcl.IntTensor,
-        vcl.RatTensor,
+        vcl.Tensor,
     ],
 ):
     @override
@@ -216,7 +226,7 @@ class ABCBuiltins(
         return value
 
     @override
-    def NilList(self) -> Tuple[_T, ...]:
+    def NilList(self) -> Tuple[object, ...]:
         return ()
 
     @override
@@ -239,5 +249,31 @@ class ABCBuiltins(
     def MapList(self, f: Callable[[_T], _T], xs: Tuple[_T, ...]) -> Tuple[_T, ...]:
         return tuple(map(f, xs))
 
+    @override
+    def DimensionLookup(self, xs: vcl.Tensor, i: vcl.Index) -> vcl.Nat:
+        raise NotImplementedError(
+            "DimensionLookup requires concrete tensor implementation"
+        )
 
-AnyBuiltins: TypeAlias = ABCBuiltins[Any, Any, Any, Any, Any, Any, Any, Any, Any, Any]
+    @override
+    def DimensionCons(
+        self, head: vcl.Nat, tail: Tuple[vcl.Nat, ...]
+    ) -> Tuple[vcl.Nat, ...]:
+        return (head, *tail)
+
+    @override
+    def DimensionNil(self) -> Tuple[vcl.Nat, ...]:
+        return ()
+
+    @override
+    def ConstTensor(self, value: vcl.Rat, shape: Tuple[vcl.Nat, ...]) -> vcl.Tensor:
+        raise NotImplementedError("ConstTensor requires concrete tensor implementation")
+
+    @override
+    def DenseTensor(
+        self, values: Tuple[vcl.Rat, ...], shape: Tuple[vcl.Nat, ...]
+    ) -> vcl.Tensor:
+        raise NotImplementedError("DenseTensor requires concrete tensor implementation")
+
+
+AnyBuiltins: TypeAlias = ABCBuiltins[Any, Any, Any, Any, Any, Any]
