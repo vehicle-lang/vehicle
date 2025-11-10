@@ -1,3 +1,0 @@
-@property;
-main_property : Tensor Real -> Tensor Real -> Tensor Real;
-main_property threshold weight = threshold - ((threshold + threshold + weight * threshold) * weight + weight * weight)
