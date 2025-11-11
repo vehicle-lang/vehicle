@@ -35,7 +35,6 @@ module Vehicle.Data.DSL
     tHole,
     boundVar,
     freeVar,
-    recordAcc,
   )
 where
 
@@ -58,6 +57,7 @@ class DSL expr where
   app :: expr -> NonEmpty (Visibility, Relevance, expr) -> expr
   pi :: Maybe Name -> Visibility -> Relevance -> expr -> (expr -> expr) -> expr
   lam :: Name -> Visibility -> Relevance -> expr -> (expr -> expr) -> expr
+  recordAcc :: expr -> (Identifier, FieldName) -> expr
 
 newtype DSLExpr builtin = DSL
   { unDSL :: Provenance -> Lv -> Expr builtin
@@ -77,9 +77,6 @@ boundVar i = DSL $ \p j -> BoundVar p (dbLevelToIndex j i)
 
 freeVar :: Identifier -> DSLExpr builtin
 freeVar i = DSL $ \p _j -> FreeVar p i
-
-recordAcc :: DSLExpr builtin -> Identifier -> FieldName -> DSLExpr builtin
-recordAcc r i f = DSL $ \p j -> RecordAcc p (unDSL r p j) (i, f)
 
 approxPiForm :: Maybe Name -> Visibility -> BinderDisplayForm
 approxPiForm name = \case
@@ -110,6 +107,10 @@ instance DSL (DSLExpr builtin) where
     let fun' = unDSL fun p i
         args' = fmap (\(v, r, e) -> Arg p v r (unDSL e p i)) args
      in App fun' args'
+
+  recordAcc record field = DSL $ \p i -> do
+    let record' = unDSL record p i
+    RecordAcc p record' field
 
 --------------------------------------------------------------------------------
 -- AST

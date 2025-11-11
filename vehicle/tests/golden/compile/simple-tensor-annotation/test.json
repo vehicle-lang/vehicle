@@ -1,7 +1,7 @@
 [
   {
     "name": "TypeCheck",
-    "run": "vehicle check -s spec.vcl",
+    "run": "vehicle check -s spec.vcl --logging MidDetail",
     "needs": ["spec.vcl"]
   }
 ]

@@ -220,6 +220,9 @@ library
     Vehicle.Compile.Print.Warning
     Vehicle.Compile.Property
     Vehicle.Compile.Rational.LinearExpr
+    Vehicle.Compile.Scope.Core
+    Vehicle.Compile.Scope.Generalise
+    Vehicle.Compile.Scope.RecordInstances
     Vehicle.Compile.Serialise
     Vehicle.Compile.Type.Bidirectional
     Vehicle.Compile.Type.Constraint.ApplicationSolver
