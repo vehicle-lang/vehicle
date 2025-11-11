@@ -1,7 +1,7 @@
 [
   {
     "name": "Marabou",
-    "run": "vehicle compile -s spec.vcl -t MarabouQueries -o Marabou.queries/ --network f:fake.onnx",
+    "run": "vehicle compile queries -s spec.vcl -f MarabouQueries -o Marabou.queries/ --network f:fake.onnx",
     "needs": ["spec.vcl", "fake.onnx"],
     "produces": [
       "Marabou.queries/*.txt",

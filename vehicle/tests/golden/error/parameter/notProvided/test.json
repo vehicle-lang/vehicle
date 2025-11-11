@@ -1,5 +1,5 @@
 {
   "name": "Marabou",
-  "run": "vehicle compile -s notProvided.vcl -t MarabouQueries",
+  "run": "vehicle compile queries -s notProvided.vcl -f MarabouQueries",
   "needs": ["notProvided.vcl"]
 }

@@ -2,6 +2,16 @@
 
 ## Next release
 
+### Command-line interface
+
+* The `vehicle compile` command has been split into three separate modes:
+  - `vehicle compile loss`
+  - `vehicle compile queries`
+  - `vehicle compile itp`
+  The three new modes have the same options as before with the sole exception that the
+  `vehicle compile queries` mode has a `--format` option to replace the old `--target option`.
+  This command is only used internally and therefore this is not considered a breaking change.
+
 ### Verifier backend
 
 * Missing bounds on network inputs is now a hard error rather than a warning.

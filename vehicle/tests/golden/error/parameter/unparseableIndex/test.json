@@ -1,5 +1,5 @@
 {
   "name": "Marabou",
-  "run": "vehicle compile -s unparseableIndex.vcl -t MarabouQueries -p n:~",
+  "run": "vehicle compile queries -s unparseableIndex.vcl -f MarabouQueries -p n:~",
   "needs": ["unparseableIndex.vcl"]
 }

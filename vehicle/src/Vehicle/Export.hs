@@ -10,7 +10,7 @@ import Vehicle.Verify.Specification (SpecificationCacheIndex (..))
 import Vehicle.Verify.Specification.IO
 
 data ExportOptions = ExportOptions
-  { target :: ITP,
+  { target :: InteractiveTheoremProverID,
     verificationCache :: FilePath,
     output :: Maybe FilePath,
     moduleName :: Maybe String
@@ -25,14 +25,15 @@ export loggingSettings outputAsJSON ExportOptions {..} = do
   let resources = reparseResources resourcesIntegrityInfo
 
   compile loggingSettings outputAsJSON $
-    CompileOptions
-      { target = ITP target,
-        specification = spec,
-        declarationsToCompile = fmap fst properties,
-        networkLocations = networks resources,
-        datasetLocations = datasets resources,
-        parameterValues = parameters resources,
-        output = output,
-        moduleName = moduleName,
-        verificationCache = Just verificationCache
-      }
+    ITPTarget $
+      ITPOptions
+        { itp = target,
+          specification = spec,
+          declarationsToCompile = fmap fst properties,
+          networkLocations = networks resources,
+          datasetLocations = datasets resources,
+          parameterValues = parameters resources,
+          outputFile = output,
+          moduleName = moduleName,
+          verificationCache = Just verificationCache
+        }
