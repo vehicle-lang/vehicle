@@ -501,7 +501,8 @@ def load(
     exc, out, err, log = session.check_output(
         [
             "compile",
-            "--target",
+            "loss",
+            "--logic",
             target._vehicle_option_name,
             "--json",
             f"--specification={path}",
