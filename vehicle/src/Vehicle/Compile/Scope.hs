@@ -29,13 +29,10 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.DSL
-import Vehicle.Data.Code.DSL ()
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.DSL
 import Vehicle.Data.Universe (UniverseLevel (..))
 import Vehicle.Syntax.AST.Expr qualified as S
-
--- import Data.Text (Text)
 
 scopeCheck :: (MonadCompile m) => Imports -> S.Prog -> m (Prog Builtin)
 scopeCheck imports prog = logCompilerPass Scoping $
@@ -214,7 +211,6 @@ scopeImports = traverse_ scopeModule
       addNewDecl decl
 
 scopeProg :: (MonadScope m) => S.Prog -> m (Prog Builtin)
--- scopeProg = traverseDecls scopeDecl
 scopeProg (Main ds) = do
   scopedDecls <- traverse scopeDecl ds
   return (Main (concat scopedDecls))
@@ -261,9 +257,6 @@ addTensorConversionFunction _t p ident fs = do
     (firstFieldName, firstFieldType) : restFields -> do
       let fieldDims = fromMaybe [] (getDims firstFieldType)
       let tensorDims = toDSL (mkDims (length fs : fieldDims))
-      -- let elemType = toDSL firstFieldType
-      -- let fieldType = toDSL (Builtin p (TypeClassOp TensorTypeTC)) @@ [elemType] .@@ [toDSL (mkDims [])]
-      let fieldType = freeVar firstFieldName
       let fieldType = tRat
       let fnType = recordType ~> tTensor fieldType tensorDims
       let fnBody = explLam "x" recordType $ \x ->
@@ -363,7 +356,7 @@ scopeExpr ::
   S.Expr ->
   m (Expr Builtin)
 scopeExpr e = do
-  case e of
+  result <- case e of
     S.Var p v -> scopeVar p v
     S.Universe p -> return $ Universe p (UniverseLevel 0)
     S.Hole p n -> return $ Hole p n
@@ -387,6 +380,8 @@ scopeExpr e = do
       record' <- scopeExpr record
       recordDefinitionIdent <- lookupRecordDefinitionByField field
       return $ RecordAcc p record' (recordDefinitionIdent, field)
+
+  return result
 
 scopeBinder ::
   (MonadScopeExpr m) =>
