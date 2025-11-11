@@ -61,7 +61,7 @@ createRecordToTensor p recordIdent fieldElementType fieldDimensions fields = do
   let functionIdent = Identifier (modulePath recordIdent) functionName
 
   -- Create the type
-  let firstDimension = singletonDim (length fields)
+  let firstDimension = dim (length fields)
   let allDimensions = dimCons firstDimension fieldDimensions
   let recordType = freeVar recordIdent
   let functionType = fromDSL mempty $ recordType ~> tTensor fieldElementType allDimensions
