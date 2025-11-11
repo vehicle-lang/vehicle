@@ -12,7 +12,8 @@ name = 'vehicle_lang'
 authors = [{ name = 'Wen Kokke', email = 'wenkokke@users.noreply.github.com' }]
 description = 'A high-level functional language for writing mathematically-precise specifications for neural networks.'
 readme = 'README.md'
-license = { file = 'LICENSE' }
+license = 'MIT'
+license-files = [ "LICENSE" ]
 dynamic = ["version"]
 requires-python = ">=3.9,<3.14"
 dependencies = ["typing_extensions >=4.6,<5", "jaxtyping>=0.2, <0.3"]
@@ -96,9 +97,9 @@ version = { attr = "vehicle_lang._version.VERSION" }
 legacy_tox_ini = """
 [tox]
 min_version = 4
-env_list = py{39,310,311,312,313}-{lin,mac,win}
+env_list = py{310,311,312,313}-{lin,mac,win}
 
-[testenv:py{39,310,311,312,313}-{lin,mac,win}]
+[testenv:py{310,311,312,313}-{lin,mac,win}]
 package = external
 package_env = build-{env_name}
 platform =
@@ -110,7 +111,7 @@ allowlist_externals =
 extras =
   test
   pygments
-  py39,py310,py311,py312: tensorflow
+  py310,py311,py312: tensorflow
 commands =
   {env_python} -m pytest {posargs}
 
@@ -120,17 +121,14 @@ deps =
   auditwheel; sys_platform == 'linux'
   delocate; sys_platform == 'darwin'
 package_glob =
-  py39-lin: {package_root}{/}dist{/}*cp39*manylinux*.whl
   py310-lin: {package_root}{/}dist{/}*cp310*manylinux*.whl
   py311-lin: {package_root}{/}dist{/}*cp311*manylinux*.whl
   py312-lin: {package_root}{/}dist{/}*cp312*manylinux*.whl
   py313-lin: {package_root}{/}dist{/}*cp313*manylinux*.whl
-  py39-mac: {package_root}{/}dist{/}*cp39*macosx*.whl
   py310-mac: {package_root}{/}dist{/}*cp310*macosx*.whl
   py311-mac: {package_root}{/}dist{/}*cp311*macosx*.whl
   py312-mac: {package_root}{/}dist{/}*cp312*macosx*.whl
   py313-mac: {package_root}{/}dist{/}*cp313*macosx*.whl
-  py39-win: {package_root}{/}dist{/}*cp39*win*.whl
   py310-win: {package_root}{/}dist{/}*cp310*win*.whl
   py311-win: {package_root}{/}dist{/}*cp311*win*.whl
   py312-win: {package_root}{/}dist{/}*cp312*win*.whl

@@ -7,7 +7,6 @@ global-include *.vcl
 
 include cabal.project
 include cabal.project.config
-include cabal.project.freeze
 
 graft tests/data
 graft vendor/vehicle
