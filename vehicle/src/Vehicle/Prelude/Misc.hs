@@ -1,17 +1,17 @@
 module Vehicle.Prelude.Misc where
 
 import Control.DeepSeq (NFData)
-import Control.Monad (join, when)
+import Control.Monad (join, liftM2, when)
 import Control.Monad.Identity (Identity (..))
 import Control.Monad.Reader (MonadReader (..))
-import Control.Monad.State (MonadState (..), modify)
+import Control.Monad.State.Class (MonadState (..), modify)
 import Data.Aeson (FromJSON, Options (..), ToJSON (..), defaultOptions)
 import Data.Aeson.Encode.Pretty (Config (..), Indent (..), NumberFormat (..), encodePretty')
 import Data.Bifunctor (Bifunctor (..))
+import Data.Bitraversable
 import Data.ByteString.Lazy.Char8 (unpack)
 import Data.Graph (Edge, Vertex, buildG, topSort)
 import Data.Hashable (Hashable)
-import Data.List qualified as List
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Map (Map)
@@ -140,6 +140,12 @@ oneHot i l x
 deleteAndGet :: (Ord a) => a -> Map a b -> (Maybe b, Map a b)
 deleteAndGet = Map.updateLookupWithKey (\_ _ -> Nothing)
 
+unionWithM :: (Monad m, Ord key) => (val -> val -> m val) -> Map key val -> Map key val -> m (Map key val)
+unionWithM f m1 m2 = sequence $ Map.unionWith (\xm ym -> join $ liftM2 f xm ym) (Map.map return m1) (Map.map return m2)
+
+mapKeysM :: (Monad m, Ord key) => (key -> m key) -> Map key val -> m (Map key val)
+mapKeysM f xs = Map.fromList <$> traverse (bitraverse f pure) (Map.toList xs)
+
 -- Base 4.16 once we upgrade
 prependList :: [a] -> NonEmpty a -> NonEmpty a
 prependList ls ne = case ls of
@@ -215,9 +221,6 @@ xor p q = p /= q
 enumerate :: (Bounded a, Enum a) => [a]
 enumerate = [minBound .. maxBound]
 
-supportedOptions :: [String] -> String
-supportedOptions opts = "Supported options: " <> List.intercalate ", " opts
-
 whenM :: (Monad m) => m Bool -> m () -> m ()
 whenM cond action = do
   c <- cond
@@ -255,19 +258,22 @@ setTextColour c s =
 cartesianProduct :: (a -> b -> c) -> [a] -> [b] -> [c]
 cartesianProduct g xs ys = [g x y | x <- xs, y <- ys]
 
-nonEmptyCartesianProduct :: (a -> b -> c) -> NonEmpty a -> NonEmpty b -> NonEmpty c
-nonEmptyCartesianProduct f (x :| xs) (y :| ys) =
-  f x y :| (fmap (f x) ys <> cartesianProduct f xs (y : ys))
+cartesianProductM :: (Monad m) => (a -> b -> m c) -> [a] -> [b] -> m [c]
+cartesianProductM g xs ys = sequence [g x y | x <- xs, y <- ys]
+
+concatNonEmpty :: NonEmpty (NonEmpty a) -> NonEmpty a
+concatNonEmpty ((x :| xs) :| xss) = x :| (xs <> concatMap NonEmpty.toList xss)
+
+nonEmptyCartesianProductM :: (Monad m) => (a -> b -> m c) -> NonEmpty a -> NonEmpty b -> m (NonEmpty c)
+nonEmptyCartesianProductM f (x :| xs) (y :| ys) = do
+  z <- f x y
+  zs <- traverse (f x) ys
+  zss <- cartesianProductM f xs (y : ys)
+  return $ z :| (zs <> zss)
 
 thenCmp :: Ordering -> Ordering -> Ordering
 thenCmp EQ o2 = o2
 thenCmp o1 _ = o1
-
-getModify :: (MonadState s m) => (s -> s) -> m s
-getModify f = do
-  x <- get
-  modify f
-  return x
 
 mergeNonEmptyKeyValues :: (Ord a) => (NonEmpty b -> b) -> NonEmpty (a, b) -> NonEmpty (a, b)
 mergeNonEmptyKeyValues f xs = do
@@ -276,12 +282,25 @@ mergeNonEmptyKeyValues f xs = do
     [] -> developerError "impossible"
     u : us -> fmap (second f) (u :| us)
 
-theseErrors :: (r1 -> r2 -> r3) -> Either e1 r1 -> Either e2 r2 -> Either (These e1 e2) r3
+eitherM :: (a -> m c) -> (b -> m c) -> Either a b -> m c
+eitherM f g = \case
+  Left x -> f x
+  Right y -> g y
+
+theseErrors :: (a -> b -> c) -> Either e1 a -> Either e2 b -> Either (These e1 e2) c
 theseErrors f v1 v2 = case (v1, v2) of
   (Left e1, Left e2) -> Left $ These e1 e2
   (Left e1, Right {}) -> Left $ This e1
   (Right {}, Left e2) -> Left $ That e2
   (Right r1, Right r2) -> Right $ f r1 r2
+
+localState :: (MonadState s m) => (s -> s) -> m a -> m a
+localState f action = do
+  originalState <- get
+  modify f
+  result <- action
+  put originalState
+  return result
 
 --------------------------------------------------------------------------------
 -- Constants

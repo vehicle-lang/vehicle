@@ -85,7 +85,7 @@ functionaliseProg ::
   (MonadResource m builtin) =>
   Prog builtin ->
   m (Prog builtin)
-functionaliseProg (Main ds) =
+functionaliseProg (Main ds) = do
   Main . catMaybes <$> traverseListLocal functionaliseDecl ds
 
 functionaliseDecl ::

@@ -8,7 +8,7 @@ import Vehicle.Prelude
 data QueryFormatID
   = MarabouQueries
   | VNNLibQueries
-  deriving (Show, Eq, Ord, Bounded, Enum)
+  deriving (Show, Eq, Ord, Bounded, Enum, Read)
 
 instance Pretty QueryFormatID where
   pretty = \case

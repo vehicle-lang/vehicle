@@ -31,13 +31,12 @@ import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Set (Set)
 import GHC.Generics (Generic)
-import Vehicle.Compile.Prelude (CompleteNamedBoundCtx, Name, Pretty (..))
-import Vehicle.Data.Assertion
+import Vehicle.Compile.Constants.Rational
+import Vehicle.Compile.Prelude (Name, Pretty (..))
 import Vehicle.Data.Code.BooleanExpr
-import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.MaybeTrivial
+import Vehicle.Data.Variable.Bound.Context.Name.Core
 import Vehicle.Data.Variable.Bound.Level
-import Vehicle.Data.Variable.Bound.Tensor
 import Vehicle.Resource (ResourcesIntegrityInfo)
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core

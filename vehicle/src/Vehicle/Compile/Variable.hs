@@ -12,6 +12,7 @@ import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value (VBinder, Value)
+import Vehicle.Data.Variable.Bound.Context.Name
 import Prelude hiding (Applicative (..))
 
 --------------------------------------------------------------------------------

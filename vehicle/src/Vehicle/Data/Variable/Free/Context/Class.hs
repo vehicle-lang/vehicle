@@ -11,7 +11,9 @@ import Data.Vector.Internal.Check (HasCallStack)
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Code.Value
-import Vehicle.Data.Variable.Bound.Context
+import Vehicle.Data.Variable.Bound.Context.Generic
+import Vehicle.Data.Variable.Bound.Context.Name.Instance
+import Vehicle.Data.Variable.Bound.Context.Tensor.Instance
 
 --------------------------------------------------------------------------------
 -- Context monad class
@@ -39,6 +41,14 @@ instance (MonadFreeContext builtin m) => MonadFreeContext builtin (StateT w m) w
 
 instance (MonadFreeContext builtin m) => MonadFreeContext builtin (BoundContextT builtin2 m) where
   addDeclEntryToContext = mapBoundContextT . addDeclEntryToContext
+  getFreeCtx = lift . getFreeCtx
+
+instance (MonadFreeContext builtin m) => MonadFreeContext builtin (TensorBoundContextT m) where
+  addDeclEntryToContext = mapTensorBoundContextT . addDeclEntryToContext
+  getFreeCtx = lift . getFreeCtx
+
+instance (MonadFreeContext builtin m) => MonadFreeContext builtin (NameBoundContextT m) where
+  addDeclEntryToContext = mapNameBoundContextT . addDeclEntryToContext
   getFreeCtx = lift . getFreeCtx
 
 instance (MonadFreeContext builtin m) => MonadFreeContext builtin (IdentityT m) where

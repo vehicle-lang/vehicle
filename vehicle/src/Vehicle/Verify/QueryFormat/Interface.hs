@@ -3,6 +3,7 @@ module Vehicle.Verify.QueryFormat.Interface where
 import Data.List.NonEmpty (NonEmpty)
 import Data.Text (Text)
 import Vehicle.Compile.Prelude (Coefficient, ExternalOutputFormat, InputOrOutput, MonadLogger, Name)
+import Vehicle.Data.Bound (BoundedValue, Domain)
 import Vehicle.Data.Code.BooleanExpr (ConjunctAll)
 import Vehicle.Data.Tensor (TensorIndices, TensorShape)
 import Vehicle.Verify.Core
@@ -38,6 +39,9 @@ data QueryAssertion variable = QueryAssertion
     rhs :: !Rational
   }
 
+-- Bounds on query variables, grouped by the network they belong to.
+type QueryVariableBounds = [BoundedValue QueryVariable (Domain Rational)]
+
 -- | The command to format an individual query
 type CompileQuery =
   forall m.
@@ -45,6 +49,7 @@ type CompileQuery =
   QueryAddress ->
   MetaNetwork ->
   [QueryVariable] ->
+  QueryVariableBounds ->
   ConjunctAll (QueryAssertion QueryVariable) ->
   m Text
 

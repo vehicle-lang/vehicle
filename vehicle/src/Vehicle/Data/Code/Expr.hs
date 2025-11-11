@@ -118,7 +118,7 @@ data Expr builtin
       Provenance
       (Expr builtin)
       (Identifier, FieldName)
-  deriving (Eq, Show, Functor, Foldable, Traversable, Generic)
+  deriving (Eq, Ord, Show, Functor, Foldable, Traversable, Generic)
 
 --------------------------------------------------------------------------------
 -- Safe applications

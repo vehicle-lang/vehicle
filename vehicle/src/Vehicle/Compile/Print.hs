@@ -11,7 +11,6 @@ module Vehicle.Compile.Print
     PrettyExternal,
     Tags (..),
     In,
-    NoCtx,
     prettyVerbose,
     prettyFriendly,
     prettyExternal,
@@ -23,7 +22,7 @@ import Data.Bifunctor (Bifunctor (..))
 import Data.Foldable qualified as NonEmpty
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap (assocs)
-import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Text (Text)
@@ -31,6 +30,7 @@ import Data.Tuple (swap)
 import GHC.Exts qualified as GHC (Constraint)
 import GHC.TypeLits
 import Prettyprinter (fill)
+import Vehicle.Compile.Constants.Rational
 import Vehicle.Compile.Descope
 import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
@@ -38,7 +38,8 @@ import Vehicle.Compile.Simplify
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta (MetaInfo (..))
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
-import Vehicle.Data.Assertion (Bounds (..), Inequality, NormalisedRelation (..))
+import Vehicle.Data.Assertion (NormalisedRelation (..), prettyFlip)
+import Vehicle.Data.Bound
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.BooleanExpr
@@ -46,6 +47,8 @@ import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.Code.Value
 import Vehicle.Data.MaybeTrivial
 import Vehicle.Data.Tensor (Tensor, prettyTensor, pattern ZeroDimTensor)
+import Vehicle.Data.Variable.Bound.Context.Generic.Core
+import Vehicle.Data.Variable.Bound.Context.Name.Core
 import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Syntax.AST.Expr qualified as S
 import Vehicle.Syntax.Print
@@ -57,7 +60,7 @@ import Vehicle.Verify.Specification (CompilationStep (..))
 --------------------------------------------------------------------------------
 
 -- | Prints to the internal language in all it's gory detail. Useful for debugging.
-prettyVerbose :: (PrettyVerbose (a `In` NoCtx)) => a -> Doc b
+prettyVerbose :: (PrettyVerbose a) => a -> Doc b
 prettyVerbose x = prettyWith @VerboseTags (x, ())
 
 -- | Prints to the internal language in all it's gory detail. Useful for debugging.
@@ -121,6 +124,7 @@ data Strategy
   | Clean Strategy
   | ShortenVectors Strategy
   | Branch Strategy Strategy
+  | Branch3 Strategy Strategy Strategy
   | Pretty
 
 {-
@@ -161,24 +165,37 @@ type family Debug (strat :: Strategy) (msg :: Symbol) :: GHC.Constraint where
 -- | This type family computes the correct printing strategy given the tags
 -- and the type of the expression.
 type family StrategyFor (tags :: Tags) a :: Strategy where
-  ----------
-  -- Expr --
-  ----------
+  ------------
+  -- Pretty --
+  ------------
+  -- Things that we just pretty print.
+  StrategyFor tags (Int `In` ctx) = 'Pretty
+  StrategyFor tags (Text `In` ctx) = 'Pretty
+  StrategyFor tags (Bool `In` ctx) = 'Pretty
+  StrategyFor tags (Rational `In` ctx) = 'Pretty
+  StrategyFor tags (String `In` ctx) = 'Pretty
+  -------------------
+  -- Unscoped expr --
+  -------------------
   -- To convert any named representation to the target language, simply convert it.
   StrategyFor ('As lang) S.Expr = 'PrintAs lang
   StrategyFor ('Named tags) S.Expr = StrategyFor tags S.Expr
   StrategyFor ('Unnamed tags) S.Expr = StrategyFor tags S.Expr
-  -------------------------
-  -- Variable conversion --
-  -------------------------
+  -----------------
+  -- Scoped expr --
+  -----------------
   -- Converting an `Expr` with DeBruijn indices to a named representation requires a named bound context to descope.
   -- Otherwise converting it to an unnamed representation we descope naively by just converting the variables directly
   StrategyFor ('Named tags) (Expr builtin `In` NamedBoundCtx) = 'DescopeWithNames (StrategyFor tags S.Expr)
   StrategyFor ('Unnamed tags) (Expr builtin `In` ctx) = 'DescopeNaively (StrategyFor tags S.Expr)
+  ------------
+  -- Values --
+  ------------
   -- To print a `Value` we need to quote it first. Note that we convert it to a `Builtin` representation immediately
   StrategyFor ('Named tags) (Value builtin `In` NamedBoundCtx) = 'QuoteValue (StrategyFor ('Named tags) (Expr Builtin `In` NamedBoundCtx))
   StrategyFor ('Unnamed tags) (Value builtin `In` ctx) = 'DescopeNaively (StrategyFor tags S.Expr)
   StrategyFor tags (BoundEnv builtin `In` ctx) = StrategyFor tags (Value builtin `In` ctx)
+  StrategyFor tags (DimensionedTensorValue builtin `In` ctx) = StrategyFor tags (Value builtin `In` ctx)
   -------------------
   -- Context setup --
   -------------------
@@ -209,51 +226,68 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor tags (Tensor a `In` ctx) = 'Functor (StrategyFor tags (a `In` ctx))
   StrategyFor tags ((a, b) `In` ctx) = 'Branch (StrategyFor tags (a `In` ctx)) (StrategyFor tags (b `In` ctx))
   StrategyFor tags (Map a b `In` ctx) = 'Branch (StrategyFor tags (a `In` ctx)) (StrategyFor tags (b `In` ctx))
-  -----------------
-  -- Constraints --
-  -----------------
+  -------------------------------
+  -- Type-checking constraints --
+  -------------------------------
   StrategyFor tags (ArgInsertionProblem builtin `In` NamedBoundCtx) = StrategyFor tags (Expr builtin `In` NamedBoundCtx)
   StrategyFor tags (InstanceConstraint builtin `In` ConstraintContext builtin) = StrategyFor tags (Value builtin `In` NamedBoundCtx)
   StrategyFor tags (UnificationConstraint builtin `In` ConstraintContext builtin) = StrategyFor tags (Value builtin `In` NamedBoundCtx)
   StrategyFor tags (ApplicationConstraint builtin `In` ConstraintContext builtin) = StrategyFor tags (Value builtin `In` NamedBoundCtx)
   StrategyFor tags (Constraint builtin `In` ConstraintContext builtin) = StrategyFor tags (Value builtin `In` NamedBoundCtx)
   StrategyFor tags (MetaInfo builtin `In` NoCtx) = StrategyFor tags (Value builtin `In` NamedBoundCtx)
-  ---------------------
-  -- Query variables --
-  ---------------------
-  StrategyFor tags (UserSliceVariable `In` ctx) =
-    StrategyFor tags (Value Builtin `In` ctx)
-  StrategyFor tags (NetworkIOElementVariable `In` ctx) =
-    StrategyFor tags (Value Builtin `In` ctx)
-  StrategyFor tags (SliceVariable `In` ctx) =
-    StrategyFor tags (Value Builtin `In` ctx)
-  StrategyFor tags (UserTensorVariable `In` ctx) =
-    StrategyFor tags (Value Builtin `In` ctx)
-  StrategyFor tags (NetworkInputTensorVariable `In` ctx) =
-    StrategyFor tags (Value Builtin `In` ctx)
-  StrategyFor tags (NetworkOutputTensorVariable `In` ctx) =
-    StrategyFor tags (Value Builtin `In` ctx)
-  StrategyFor tags (NormalisedRelation rel expr `In` ctx) =
-    StrategyFor tags (expr `In` ctx)
-  StrategyFor tags (Bounds expr `In` ctx) =
-    StrategyFor tags (Inequality expr `In` ctx)
+  --------------------------
+  -- Variable constraints --
+  --------------------------
+  StrategyFor tags (QueryAssertion variable `In` ctx) = StrategyFor tags (variable `In` ctx)
+  StrategyFor tags (NormalisedRelation rel expr `In` ctx) = StrategyFor tags (expr `In` ctx)
+  StrategyFor tags (BoundedValue value (LowerBound expr) `In` ctx) =
+    'Branch
+      (StrategyFor tags (value `In` ctx))
+      (StrategyFor tags (expr `In` ctx))
+  StrategyFor tags (BoundedValue value (UpperBound expr) `In` ctx) =
+    'Branch
+      (StrategyFor tags (value `In` ctx))
+      (StrategyFor tags (expr `In` ctx))
+  StrategyFor tags (BoundedValue value (SliceBounds expr) `In` ctx) =
+    'Branch
+      (StrategyFor tags (BoundedValue value (LowerBound expr) `In` ctx))
+      (StrategyFor tags (BoundedValue value (UpperBound expr) `In` ctx))
+  StrategyFor tags (BoundedValue value (TensorBounds expr) `In` ctx) =
+    'Branch
+      (StrategyFor tags (BoundedValue value (LowerBound expr) `In` ctx))
+      (StrategyFor tags (BoundedValue value (UpperBound expr) `In` ctx))
+  StrategyFor tags (BoundedValue value (Domain expr) `In` ctx) =
+    'Branch
+      (StrategyFor tags (value `In` ctx))
+      (StrategyFor tags (expr `In` ctx))
   StrategyFor tags (LinearExpr variable constant `In` ctx) =
     'Branch
       (StrategyFor tags (variable `In` NamedBoundCtx))
       (StrategyFor tags (constant `In` NamedBoundCtx))
   StrategyFor tags (CompilationStep `In` ctx) =
-    'Branch
+    'Branch3
       (StrategyFor tags (SliceVariable `In` ctx))
       (StrategyFor tags (LinearExpression `In` ctx))
-  StrategyFor tags (QueryAssertion variable `In` ctx) =
-    StrategyFor tags (variable `In` ctx)
-  ------------
-  -- Pretty --
-  ------------
-  -- Things that we just pretty print.
-  StrategyFor tags (Int `In` ctx) = 'Pretty
-  StrategyFor tags (Text `In` ctx) = 'Pretty
-  StrategyFor tags (Rational `In` ctx) = 'Pretty
+      (StrategyFor tags (BoundedValue SliceVariable LinearBounds `In` ctx))
+  ---------------------
+  -- Query variables --
+  ---------------------
+  StrategyFor tags (SliceVariable `In` ctx) =
+    StrategyFor tags (Value Builtin `In` ctx)
+  StrategyFor tags (NestedSliceVariable `In` ctx) =
+    StrategyFor tags (SliceVariable `In` ctx)
+  StrategyFor tags (UserSliceVariable `In` ctx) =
+    StrategyFor tags (SliceVariable `In` ctx)
+  StrategyFor tags (NetworkIOElementVariable `In` ctx) =
+    StrategyFor tags (SliceVariable `In` ctx)
+  StrategyFor tags (TensorVariable `In` ctx) =
+    StrategyFor tags (SliceVariable `In` ctx)
+  StrategyFor tags (UserTensorVariable `In` ctx) =
+    StrategyFor tags (SliceVariable `In` ctx)
+  StrategyFor tags (NetworkInputTensorVariable `In` ctx) =
+    StrategyFor tags (SliceVariable `In` ctx)
+  StrategyFor tags (NetworkOutputTensorVariable `In` ctx) =
+    StrategyFor tags (SliceVariable `In` ctx)
   --------------------
   -- Simplification --
   --------------------
@@ -265,6 +299,17 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   ----------------
   -- Otherwise if we cannot compute an error then throw an informative error
   -- at type-checking time.
+
+  StrategyFor tags (LowerBound expr `In` ctx) =
+    TypeError (BoundsErrorFunction tags (LowerBound expr))
+  StrategyFor tags (UpperBound expr `In` ctx) =
+    TypeError (BoundsErrorFunction tags (UpperBound expr))
+  StrategyFor tags (SliceBounds expr `In` ctx) =
+    TypeError (BoundsErrorFunction tags (SliceBounds expr))
+  StrategyFor tags (Domain expr `In` ctx) =
+    TypeError (BoundsErrorFunction tags (SliceBounds expr))
+  StrategyFor tags (TensorBounds expr `In` ctx) =
+    TypeError (BoundsErrorFunction tags (SliceBounds expr))
   StrategyFor tags a =
     TypeError
       ( 'Text "Cannot print value of type \""
@@ -274,6 +319,16 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
           ':<>: 'Text "\"."
           ':$$: 'Text "Perhaps you could add support to Vehicle.Compile.Print.StrategyFor?"
       )
+
+type family BoundsErrorFunction tags (a :: k) :: ErrorMessage where
+  BoundsErrorFunction tags a =
+    ( 'Text "Deliberately cannot print value of type \""
+        ':<>: 'ShowType a
+        ':<>: 'Text "\" with tags \""
+        ':<>: 'ShowType tags
+        ':<>: 'Text "\"."
+    )
+      ':$$: 'Text "Use the `BoundedValue` type to wrap the bounds objects."
 
 --------------------------------------------------------------------------------
 -- Executing printing strategies
@@ -289,7 +344,7 @@ type ExternalTags = 'Named ('ShortVectors ('As 'External))
 
 type FriendlyTags = 'Named ('Cleaned ('As 'External))
 
-type PrettyVerbose a = PrettyWith VerboseTags a
+type PrettyVerbose a = PrettyWith VerboseTags (a `In` NoCtx)
 
 type PrettyExternal a = PrettyWith ExternalTags a
 
@@ -399,28 +454,36 @@ instance
   where
   prettyUsing (e, _ctx) = prettyUsing @rest $ fmap descopeValueNaively e
 
+--------------------------------------------------------------------------------
+-- Value
+
 instance
   ( PrettyUsing rest (Value builtin `In` ctx),
     PrintableBuiltin builtin
   ) =>
   PrettyUsing rest (BoundEnv builtin `In` ctx)
   where
-  prettyUsing (env, ctx) = prettyEnv @rest ctx env
+  prettyUsing (BoundEnv env, ctx) = prettyFlatList $ go env
+    where
+      go :: GenericBoundCtx (GenericBinder (), EnvEntry builtin) -> [Doc a]
+      go = \case
+        [] -> []
+        (binder, value) : rs -> do
+          let valueDoc = goEntry value
+          (pretty (nameOf binder) <+> "=" <+> valueDoc) : go rs
 
-prettyEnv :: forall rest builtin ctx a. (PrettyUsing rest (Value builtin `In` ctx)) => ctx -> BoundEnv builtin -> Doc a
-prettyEnv ctx (BoundEnv env) = prettyFlatList $ go env
+      goEntry :: EnvEntry builtin -> Doc a
+      goEntry = \case
+        Bound v -> "bound" <+> prettyUsing @rest (v, ctx)
+        Unbound lv -> "unbound" <+> pretty lv
+
+instance
+  ( PrettyUsing rest (Value builtin `In` ctx),
+    PrintableBuiltin builtin
+  ) =>
+  PrettyUsing rest (DimensionedTensorValue builtin `In` ctx)
   where
-    go :: GenericBoundCtx (GenericBinder (), EnvEntry builtin) -> [Doc a]
-    go = \case
-      [] -> []
-      (binder, value) : rs -> do
-        let valueDoc = goEntry value
-        (pretty (nameOf binder) <+> "=" <+> valueDoc) : go rs
-
-    goEntry :: EnvEntry builtin -> Doc a
-    goEntry = \case
-      Bound v -> "bound" <+> prettyUsing @rest (v, ctx)
-      Unbound lv -> "unbound" <+> pretty lv
+  prettyUsing (TensorValue _dims value, ctx) = prettyUsing @rest (value, ctx)
 
 -- Linear expression
 
@@ -449,6 +512,12 @@ instance
 
 instance
   (PrettyUsing rest (Value Builtin `In` ctx)) =>
+  PrettyUsing rest (NestedSliceVariable `In` ctx)
+  where
+  prettyUsing (var, ctx) = prettyUsing @rest (variableValue var, ctx)
+
+instance
+  (PrettyUsing rest (Value Builtin `In` ctx)) =>
   PrettyUsing rest (UserSliceVariable `In` ctx)
   where
   prettyUsing (var, ctx) = prettyUsing @rest (variableValue var, ctx)
@@ -462,6 +531,12 @@ instance
 instance
   (PrettyUsing rest (Value Builtin `In` ctx)) =>
   PrettyUsing rest (NetworkIOElementVariable `In` ctx)
+  where
+  prettyUsing (var, ctx) = prettyUsing @rest (variableValue var, ctx)
+
+instance
+  (PrettyUsing rest (Value Builtin `In` ctx)) =>
+  PrettyUsing rest (TensorVariable `In` ctx)
   where
   prettyUsing (var, ctx) = prettyUsing @rest (variableValue var, ctx)
 
@@ -485,9 +560,10 @@ instance
 
 instance
   ( PrettyUsing restVar (SliceVariable `In` ctx),
-    PrettyUsing restExp (LinearExpression `In` ctx)
+    PrettyUsing restExp (LinearExpression `In` ctx),
+    PrettyUsing restBound (BoundedValue SliceVariable LinearBounds `In` ctx)
   ) =>
-  PrettyUsing ('Branch restVar restExp) (CompilationStep `In` ctx)
+  PrettyUsing ('Branch3 restVar restExp restBound) (CompilationStep `In` ctx)
   where
   prettyUsing (step, ctx) = case step of
     SolveEquality var expr ->
@@ -495,8 +571,7 @@ instance
         <+> "=="
         <+> prettyUsing @restExp (expr, ctx)
     SolveInequalities var bounds ->
-      prettyUsing @restVar (toSliceVar var, ctx)
-        <+> prettyUsing @restExp (bounds, ctx)
+      prettyUsing @restBound (BoundedValue var bounds, ctx)
     ReconstructTensorVariable var d ->
       prettyUsing @restVar (toSliceVar var, ctx)
         <+> "->"
@@ -776,16 +851,93 @@ instance
   where
   prettyUsing (e, ctx) = prettyUsing @rest (expression e, ctx) <+> pretty (relation e) <+> "0"
 
+--------------------------------------------------------------------------------
+-- Bounds
+
 instance
-  (PrettyUsing rest (Inequality expr `In` ctx)) =>
-  PrettyUsing rest (Bounds expr `In` ctx)
+  ( PrettyUsing rest1 (value `In` ctx),
+    PrettyUsing rest2 (expr `In` ctx)
+  ) =>
+  PrettyUsing ('Branch rest1 rest2) (BoundedValue value (LowerBound expr) `In` ctx)
   where
-  prettyUsing (Bounds {..}, ctx) =
-    "below by max"
-      <+> vsep (fmap (prettyUsing @rest . (,ctx)) lowerBounds)
-      <+> "and"
-      <+> "above by min"
-      <+> vsep (fmap (prettyUsing @rest . (,ctx)) upperBounds)
+  prettyUsing (BoundedValue value (LowerBound rel bound), ctx) =
+    prettyUsing @rest1 (value, ctx) <+> prettyFlip rel <+> prettyUsing @rest2 (bound, ctx)
+
+instance
+  ( PrettyUsing rest1 (value `In` ctx),
+    PrettyUsing rest2 (expr `In` ctx)
+  ) =>
+  PrettyUsing ('Branch rest1 rest2) (BoundedValue value (UpperBound expr) `In` ctx)
+  where
+  prettyUsing (BoundedValue value (UpperBound rel bound), ctx) =
+    prettyUsing @rest1 (value, ctx) <+> pretty rel <+> prettyUsing @rest2 (bound, ctx)
+
+instance
+  ( PrettyUsing rest1 (BoundedValue value (LowerBound expr) `In` ctx),
+    PrettyUsing rest2 (BoundedValue value (UpperBound expr) `In` ctx)
+  ) =>
+  PrettyUsing ('Branch rest1 rest2) (BoundedValue value (SliceBounds expr) `In` ctx)
+  where
+  prettyUsing (BoundedValue value SliceBounds {..}, ctx) =
+    "lower bounds:"
+      <> boundsDoc (prettyUsing @rest1) lowerBounds
+      <> line
+      <> "upper bounds:"
+      <> boundsDoc (prettyUsing @rest2) upperBounds
+    where
+      boundsDoc :: (BoundedValue value bound `In` ctx -> Doc a) -> [bound] -> Doc a
+      boundsDoc prettyBound bounds = lineIndent $ case bounds of
+        [] -> "none"
+        _ -> vsep (fmap (\b -> prettyBound (BoundedValue value b, ctx)) bounds)
+
+prettyNestedSliceBounds ::
+  forall bound expr a.
+  (SliceBounds expr -> [bound expr]) ->
+  (bound expr -> Doc a) ->
+  NestedSliceBounds expr ->
+  [Doc a]
+prettyNestedSliceBounds toBounds prettyBound = go
+  where
+    go :: NestedSliceBounds expr -> [Doc a]
+    go (NestedSliceBounds sliceBounds maybeChildBounds) = do
+      let boundDoc = prettyBound <$> toBounds sliceBounds
+      let childBoundDocs = maybe [] (fmap go) maybeChildBounds
+      boundDoc <> concat childBoundDocs
+
+instance
+  ( PrettyUsing rest1 (BoundedValue value (LowerBound expr) `In` ctx),
+    PrettyUsing rest2 (BoundedValue value (UpperBound expr) `In` ctx)
+  ) =>
+  PrettyUsing ('Branch rest1 rest2) (BoundedValue value (TensorBounds expr) `In` ctx)
+  where
+  prettyUsing (BoundedValue value TensorBounds {..}, ctx) = do
+    let printLowerBound bound = prettyUsing @rest1 (BoundedValue value bound, ctx)
+    let printUpperBound bound = prettyUsing @rest2 (BoundedValue value bound, ctx)
+    let lowerDocs = prettyNestedSliceBounds lowerBounds printLowerBound tensorSliceBounds
+    let upperDocs = prettyNestedSliceBounds upperBounds printUpperBound tensorSliceBounds
+    case (lowerDocs, upperDocs) of
+      ([], []) -> "unbounded"
+      (l : ls, []) -> prettyDocs True (l :| ls)
+      ([], u : us) -> prettyDocs False (u :| us)
+      (l : ls, u : us) -> prettyDocs True (l :| ls) <> line <> prettyDocs False (u :| us)
+    where
+      prettyDocs :: Bool -> NonEmpty (Doc b) -> Doc b
+      prettyDocs isLowerBound (b :| bs) =
+        (if isLowerBound then "lower" else "upper") <> ":" <> case bs of
+          [] -> " " <> b
+          _ -> indent 2 (vsep (b :| bs))
+
+instance
+  ( PrettyUsing rest1 (value `In` ctx),
+    PrettyUsing rest2 (expr `In` ctx)
+  ) =>
+  PrettyUsing ('Branch rest1 rest2) (BoundedValue value (Domain expr) `In` ctx)
+  where
+  prettyUsing (BoundedValue value (Domain LowerBound {..} UpperBound {..}), ctx) = do
+    let valueDoc = prettyUsing @rest1 (value, ctx)
+    let lowerDoc = prettyUsing @rest2 (lowerBoundValue, ctx)
+    let upperDoc = prettyUsing @rest2 (upperBoundValue, ctx)
+    lowerDoc <+> pretty lowerBoundRel <+> valueDoc <+> pretty upperBoundRel <+> upperDoc
 
 --------------------------------------------------------------------------------
 -- Instances for functors types

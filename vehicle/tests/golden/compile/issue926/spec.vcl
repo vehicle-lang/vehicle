@@ -8,4 +8,5 @@ classifier : NormalisedImage -> Tensor Real [6]
 
 @property
 oppositeFaces : Bool
-oppositeFaces = forall perturbation . classifier (normalise perturbation) ! 0 > 0
+oppositeFaces = forall perturbation .
+    [[0]] <= perturbation <= [[1]] => classifier (normalise perturbation) ! 0 > 0

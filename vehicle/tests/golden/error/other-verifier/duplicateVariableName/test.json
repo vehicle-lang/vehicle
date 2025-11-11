@@ -1,6 +1,6 @@
 {
   "name": "Marabou",
-  "run": "vehicle compile -s duplicateVariableName.vcl -t MarabouQueries --logging MaxDetail",
+  "run": "vehicle compile -s duplicateVariableName.vcl -f MarabouQueries --logging MaxDetail",
   "needs": ["duplicateVariableName.vcl"],
   "enabled": false
 }

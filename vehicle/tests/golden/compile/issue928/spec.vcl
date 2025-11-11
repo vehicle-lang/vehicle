@@ -8,4 +8,4 @@ classifier : Image -> Tensor Real [1]
 
 @property
 robust : Bool
-robust = forall x . classifier (normalise x) ! 0 > 0
+robust = forall x . [[0], [0]] < x <= [[1], [1]] => classifier (normalise x) ! 0 > 0

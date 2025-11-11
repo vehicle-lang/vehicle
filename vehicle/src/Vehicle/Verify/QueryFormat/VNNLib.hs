@@ -5,6 +5,7 @@ import Data.List.NonEmpty qualified as NonEmpty
 import Data.Version (Version (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Resource (NetworkTensorType (dimensions), NetworkType (inputTensor, outputTensor))
+import Vehicle.Data.Bound (BoundedValue (..), Domain (..), LowerBound (..), UpperBound (..))
 import Vehicle.Data.Tensor (TensorShape)
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
@@ -29,7 +30,7 @@ outputFormat :: ExternalOutputFormat
 outputFormat =
   ExternalOutputFormat
     { formatName = pretty VNNLibQueries,
-      formatVersion = Just vnnlibVersion,
+      formatVersion = Nothing,
       commentStyle = Line lineComment,
       emptyLines = True
     }
@@ -42,19 +43,29 @@ lineComment = ";"
 
 -- | Compiles an expression representing a single VNNLib query.
 compileVNNLibQuery :: CompileQuery
-compileVNNLibQuery _address metaNetwork _variables assertions = do
+compileVNNLibQuery _address metaNetwork _variables bounds assertions = do
   networkDocs <- compileNetworks metaNetwork
-  assertionDocs <- forM assertions compileAssertion
+  assertionDocs <- forM assertions compileQueryAssertion
+  let boundsDoc = fmap compileBound bounds
   let assertionsDoc =
         "(vnnlib-version <"
           <> pretty vnnlibVersion
           <> ">)"
           <> line
           <> line
+          <> lineComment <+> "Networks"
+          <> line
           <> networkDocs
           <> line
           <> line
+          <> lineComment <+> "Assertions"
+          <> line
           <> vsep assertionDocs
+          <> line
+          <> line
+          <> lineComment <+> "Input bounds"
+          <> line
+          <> vsep boundsDoc
   return $ layoutAsText assertionsDoc
 
 -- | Compiles all network entries in the MetaNetwork
@@ -118,17 +129,40 @@ compileNetworkOutput name shape = parens ("declare-output" <+> pretty name <+> "
 compileVNNLibVar :: CompileQueryVariable
 compileVNNLibVar QueryVariableInfo {..} = do
   let networkVariableName = compileNetworkVariableName networkName networkAppIndex inputOrOutput
-  layoutAsText $ networkVariableName <> pretty parentVariableIndices
+  let indicesDoc = if null parentVariableIndices then "" else pretty parentVariableIndices
+  layoutAsText $ networkVariableName <> indicesDoc
 
-compileAssertion :: (MonadLogger m) => QueryAssertion QueryVariable -> m (Doc a)
-compileAssertion QueryAssertion {..} = do
+compileBound :: BoundedValue QueryVariable (Domain Rational) -> Doc a
+compileBound (BoundedValue var (Domain LowerBound {..} UpperBound {..})) =
+  compileAssertion $
+    if lowerBoundValue == upperBoundValue
+      then compileComparison (pretty var) "==" (prettyRationalAsFloat lowerBoundValue)
+      else do
+        let lowerRel = compileRel $ inequalityToQueryRelation lowerBoundRel
+        let upperRel = compileRel $ inequalityToQueryRelation upperBoundRel
+        compileAnd
+          [ compileComparison (prettyRationalAsFloat lowerBoundValue) lowerRel (pretty var),
+            compileComparison (pretty var) upperRel (prettyRationalAsFloat upperBoundValue)
+          ]
+
+compileQueryAssertion :: (MonadLogger m) => QueryAssertion QueryVariable -> m (Doc a)
+compileQueryAssertion QueryAssertion {..} = do
   let compiledRel = compileRel rel
   let (headVar NonEmpty.:| tailVars) = lhs
   let compiledLHS = case tailVars of
         [] -> compileCoefVar headVar
         _ -> parens ("+" <+> hsep (fmap compileCoefVar lhs))
   let compiledRHS = prettyRationalAsFloat rhs
-  return $ parens ("assert" <+> parens (compiledRel <+> compiledLHS <+> compiledRHS))
+  return $ compileAssertion $ compileComparison compiledLHS compiledRel compiledRHS
+
+compileAnd :: [Doc a] -> Doc a
+compileAnd xs = parens $ hsep $ "and" : xs
+
+compileComparison :: Doc a -> Doc a -> Doc a -> Doc a
+compileComparison lhs rel rhs = parens $ rel <+> lhs <+> rhs
+
+compileAssertion :: Doc a -> Doc a
+compileAssertion ass = parens ("assert" <+> ass)
 
 compileRel :: QueryRelation -> Doc a
 compileRel = \case

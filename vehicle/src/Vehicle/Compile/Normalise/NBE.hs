@@ -7,6 +7,7 @@ module Vehicle.Compile.Normalise.NBE
     normaliseApp,
     normaliseBuiltin,
     normaliseClosure,
+    normaliseClosureInCtx,
     eval,
     evalApp,
     findInstanceArg,
@@ -16,6 +17,7 @@ where
 import Data.Data (Proxy (..))
 import Data.List.NonEmpty as NonEmpty (toList)
 import Data.Map.Ordered.Strict qualified as OMap
+import GHC.Stack (HasCallStack)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Data.Builtin.Interface (Accessor (..))
@@ -26,7 +28,9 @@ import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Code.Interface (IsArgs (..))
 import Vehicle.Data.Code.Value
-import Vehicle.Data.Variable.Bound.Context.Class (MonadBoundContext (..))
+import Vehicle.Data.Variable.Bound.Context.Generic
+import Vehicle.Data.Variable.Bound.Context.Name.Class (MonadReadableNameContext (getNameContext))
+import Vehicle.Data.Variable.Bound.Context.Name.Core
 import Vehicle.Data.Variable.Free.Context.Class (MonadFreeContext (..), getFreeEnv)
 
 -- NOTE: there is no evaluatation to NF in this file. To do it
@@ -83,16 +87,25 @@ normaliseBuiltin ctx b spine = do
   freeEnv <- getFreeEnv
   evalBuiltin freeEnv ctx b spine
 
-normaliseClosure ::
+normaliseClosureInCtx ::
   (MonadNorm builtin m, MonadFreeContext builtin m) =>
   NamedBoundCtx ->
   VBinder builtin ->
   Closure builtin ->
   m (Value builtin)
-normaliseClosure ctx binder (Closure env body) = do
+normaliseClosureInCtx ctx binder (Closure env body) = do
   freeEnv <- getFreeEnv
   let newEnv = extendEnvWithBound (boundCtxLv ctx) binder env
   eval freeEnv ctx newEnv body
+
+normaliseClosure ::
+  (MonadNorm builtin m, MonadFreeContext builtin m, MonadReadableNameContext m) =>
+  VBinder builtin ->
+  Closure builtin ->
+  m (Value builtin)
+normaliseClosure binder closure = do
+  ctx <- getNameContext
+  normaliseClosureInCtx ctx binder closure
 
 -----------------------------------------------------------------------------
 -- Evaluation
@@ -164,7 +177,7 @@ evalApp freeEnv ctx fun args@(a : as) = do
     VBuiltin b spine -> evalBuiltin freeEnv ctx b (spine <> args)
     VLam binder (Closure env body)
       | not (visibilityMatches binder a) ->
-          visibilityError currentPass (prettyVerbose fun) (prettyVerbose args)
+          visibilityError ctx fun a
       | otherwise -> do
           let newEnv = extendEnvWithDefined (argExpr a) binder env
           body' <- eval freeEnv ctx newEnv body
@@ -215,8 +228,8 @@ showExit _ _ = return ()
 
 {-
 showEntry :: (MonadNorm builtin m) => NamedBoundCtx -> BoundEnv builtin -> Expr builtin -> m ()
-showEntry ctx boundEnv expr = do
-  logDebug MidDetail $ "nbe-entry" <+> prettyFriendly (WithContext expr (boundEnvToCtx boundEnv)) <+> "   (ctx =" <+> pretty ctx <> "," <+> "boundEnv =" <+> prettyFriendly (WithContext boundEnv ctx) <+> ")"
+showEntry _ctx boundEnv expr = do
+  logDebug MaxDetail $ "nbe-entry" <+> prettyFriendly (WithContext expr (boundEnvToCtx boundEnv)) -- <+> "   (ctx =" <+> pretty ctx <> "," <+> "boundEnv =" <+> prettyFriendly (WithContext boundEnv ctx) <+> ")"
   -- logDebug MidDetail $ "nbe-entry" <+> prettyFriendly (WithContext expr (boundEnvToCtx boundEnv)) <+> "   { boundEnv =" <+> prettyFriendly boundEnv <+> "}"
   -- logDebug MidDetail $ "nbe-entry" <+> prettyVerbose expr -- <+> "   { boundEnv=" <+> prettyVerbose boundEnv <+> "}"
   incrCallDepth
@@ -226,7 +239,7 @@ showExit :: (MonadNorm builtin m) => NamedBoundCtx -> Value builtin -> m ()
 showExit ctx result = do
   decrCallDepth
   -- logDebug MidDetail $ "nbe-exit" <+> prettyVerbose result
-  logDebug MidDetail $ "nbe-exit" <+> prettyFriendly (WithContext result ctx)
+  logDebug MaxDetail $ "nbe-exit" <+> prettyFriendly (WithContext result ctx)
   return ()
 -}
 showApp :: (MonadNorm builtin m) => NamedBoundCtx -> Value builtin -> Spine builtin -> m ()
@@ -248,3 +261,16 @@ showAppExit ctx result = do
   logDebug MaxDetail $ "nbe-app-exit:" <+> prettyVerbose result
   return ()
 -}
+
+visibilityError ::
+  (HasCallStack, MonadNorm builtin m) =>
+  NamedBoundCtx ->
+  Value builtin ->
+  VArg builtin ->
+  m b
+visibilityError ctx fun arg = do
+  let funDoc = prettyFriendly (WithContext fun ctx)
+  let argsDoc = prettyFriendly (WithContext (argExpr arg) ctx)
+  let visDoc = pretty (visibilityOf arg)
+  developerError $
+    unexpectedExpr currentPass (visDoc <+> "arg" <+> squotes argsDoc) <+> "Does not match function's visibility:" <> line <> indent 2 funDoc

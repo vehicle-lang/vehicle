@@ -13,6 +13,7 @@ module Vehicle.Compile.Error
     FailedUnificationConstraintsError (..),
     MissingResource,
     UninferableParameter,
+    UnboundedIndices,
     MonadCompile,
     compilerDeveloperError,
   )
@@ -28,10 +29,12 @@ import Data.These (These)
 import Data.Typeable (Proxy)
 import Data.Void (Void)
 import GHC.Generics (Generic)
-import Vehicle.Backend.LossFunction.Core (BooleanDifferentiableLogicField, TensorDifferentiableLogicField)
+import Vehicle.Backend.Loss.Logics (BooleanDifferentiableLogicField, TensorDifferentiableLogicField)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Resource (NetworkName)
 import Vehicle.Compile.Type.Core
+import Vehicle.Data.Bound (UnboundedIndices)
 import Vehicle.Data.Builtin.Interface.Normalise (NormalisableBuiltin)
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Linearity
@@ -39,6 +42,7 @@ import Vehicle.Data.Builtin.Polarity
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Tensor (TensorIndices, TensorShape)
+import Vehicle.Data.Variable.Bound.Context.Name.Core
 import Vehicle.Syntax.Parse (ParseError, ParseLocation)
 import Vehicle.Verify.QueryFormat.Core
 
@@ -168,22 +172,23 @@ data CompileError
   | ParameterValueInvalidNat DeclProvenance Int
   | InferableParameterContradictory Identifier (DeclProvenance, ExternalResource, Int) (DeclProvenance, ExternalResource, Int)
   | InferableParametersUninferrable (NonEmpty UninferableParameter)
-  | -- Unsupported properties
+  | -- Query backend
     NoPropertiesFound
   | HigherOrderVectors DeclProvenance NamedBoundCtx (VType Builtin) (VType Builtin)
   | UnsupportedAlternatingQuantifiers QueryFormatID DeclProvenance (Either CompileError (Quantifier, Provenance, PolarityProvenance))
   | DuplicateQuantifierNames DeclProvenance Name
   | UnsupportedNonLinearConstraint QueryFormatID DeclProvenance (Either CompileError NonLinearityProof)
-  | UnsupportedMultipleNetworkApplications QueryFormatID DeclProvenance CompleteNamedBoundCtx [(Name, Value Builtin)]
+  | UnsupportedMultipleNetworkApplications QueryFormatID DeclProvenance CompleteNamedBoundCtx [(NetworkName, Value Builtin)]
   | VariableSizeTensorQuantification DeclProvenance NamedBoundCtx (VBinder Builtin) (VType Builtin)
   | MultiPropertyTraveralError DeclProvenance MultiPropertyTraveralError
+  | UnboundedNetworkInputVariables DeclProvenance CompleteNamedBoundCtx (NonEmpty (NetworkName, Value Builtin, [Lv], UnboundedIndices))
   | -- Loss backend errors
-    UnsupportedLossOperation DeclProvenance Provenance (Doc Void)
+    UnsupportedLossOperation DeclProvenance (Doc Void)
   | UnsupportedHigherOrderTensorCode DeclProvenance NamedBoundCtx (Value Builtin) NamedBoundCtx (Value Builtin)
   | UnableToLiftLogicFieldToTensors DifferentiableLogicID TensorDifferentiableLogicField (BooleanDifferentiableLogicField, Value Builtin) NamedBoundCtx (Value Builtin)
   | NoQuantifierDomainFound DeclProvenance (VBinder Builtin) (These (NonEmpty TensorIndices) (NonEmpty TensorIndices))
   | -- ITP backend errors
-    UnsupportedPolymorphicEquality ITP Provenance Name
+    UnsupportedPolymorphicEquality InteractiveTheoremProverID Provenance Name
   | UnusedMonomorphisableDeclaration Provenance Identifier
   | -- Other
     UnsupportedInequality QueryFormatID DeclProvenance

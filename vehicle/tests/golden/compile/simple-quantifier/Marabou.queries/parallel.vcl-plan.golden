@@ -13,19 +13,16 @@
                   {
                     "variableStore": {
                       "vehicleVariableCtx": [
-                        "f₀[output]!0",
                         "f₀[output]",
-                        "f₀[input]!0",
                         "f₀[input]",
-                        "x!0",
                         "x"
                       ],
                       "userVariables": [
                         0
                       ],
                       "queryVariableMapping": {
-                        "y0": 5,
-                        "x0": 3
+                        "y0": 2,
+                        "x0": 1
                       }
                     },
                     "variableCompilationTrace": {
@@ -34,10 +31,8 @@
                           "tag": "ReconstructTensorVariable",
                           "contents": [
                             {
-                              "nestedTensorShape": [
-                                1
-                              ],
-                              "nestedStartingVariable": 2
+                              "nestedTensorShape": [],
+                              "nestedStartingVariable": 1
                             },
                             "AllDimensions"
                           ]
@@ -46,10 +41,8 @@
                           "tag": "ReconstructTensorVariable",
                           "contents": [
                             {
-                              "nestedTensorShape": [
-                                1
-                              ],
-                              "nestedStartingVariable": 4
+                              "nestedTensorShape": [],
+                              "nestedStartingVariable": 2
                             },
                             "AllDimensions"
                           ]
@@ -58,18 +51,14 @@
                           "tag": "SolveEquality",
                           "contents": [
                             {
-                              "nestedTensorShape": [
-                                1
-                              ],
+                              "nestedTensorShape": [],
                               "nestedStartingVariable": 0
                             },
                             {
                               "constantValue": {
                                 "tag": "ConstantTensor",
                                 "contents": [
-                                  [
-                                    1
-                                  ],
+                                  [],
                                   {
                                     "numerator": 0,
                                     "denominator": 1
@@ -78,7 +67,7 @@
                               },
                               "coefficients": [
                                 [
-                                  2,
+                                  1,
                                   {
                                     "numerator": 1,
                                     "denominator": 1
@@ -104,15 +93,11 @@
                         {
                           "networkType": {
                             "outputTensor": {
-                              "dimensions": [
-                                1
-                              ],
+                              "dimensions": [],
                               "baseType": []
                             },
                             "inputTensor": {
-                              "dimensions": [
-                                1
-                              ],
+                              "dimensions": [],
                               "baseType": []
                             }
                           },
@@ -135,19 +120,19 @@
                   {
                     "variableStore": {
                       "vehicleVariableCtx": [
-                        "f₀[output]!0",
                         "f₀[output]",
-                        "f₀[input]!0",
                         "f₀[input]",
-                        "x!0",
+                        "y",
+                        "f₀[output]",
+                        "f₀[input]",
                         "x"
                       ],
                       "userVariables": [
-                        0
+                        3
                       ],
                       "queryVariableMapping": {
                         "y0": 5,
-                        "x0": 3
+                        "x0": 4
                       }
                     },
                     "variableCompilationTrace": {
@@ -156,10 +141,8 @@
                           "tag": "ReconstructTensorVariable",
                           "contents": [
                             {
-                              "nestedTensorShape": [
-                                1
-                              ],
-                              "nestedStartingVariable": 2
+                              "nestedTensorShape": [],
+                              "nestedStartingVariable": 4
                             },
                             "AllDimensions"
                           ]
@@ -168,10 +151,8 @@
                           "tag": "ReconstructTensorVariable",
                           "contents": [
                             {
-                              "nestedTensorShape": [
-                                1
-                              ],
-                              "nestedStartingVariable": 4
+                              "nestedTensorShape": [],
+                              "nestedStartingVariable": 5
                             },
                             "AllDimensions"
                           ]
@@ -180,18 +161,14 @@
                           "tag": "SolveEquality",
                           "contents": [
                             {
-                              "nestedTensorShape": [
-                                1
-                              ],
-                              "nestedStartingVariable": 0
+                              "nestedTensorShape": [],
+                              "nestedStartingVariable": 3
                             },
                             {
                               "constantValue": {
                                 "tag": "ConstantTensor",
                                 "contents": [
-                                  [
-                                    1
-                                  ],
+                                  [],
                                   {
                                     "numerator": 0,
                                     "denominator": 1
@@ -200,7 +177,7 @@
                               },
                               "coefficients": [
                                 [
-                                  2,
+                                  4,
                                   {
                                     "numerator": 1,
                                     "denominator": 1
@@ -226,15 +203,11 @@
                         {
                           "networkType": {
                             "outputTensor": {
-                              "dimensions": [
-                                1
-                              ],
+                              "dimensions": [],
                               "baseType": []
                             },
                             "inputTensor": {
-                              "dimensions": [
-                                1
-                              ],
+                              "dimensions": [],
                               "baseType": []
                             }
                           },

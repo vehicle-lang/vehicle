@@ -5,8 +5,6 @@ module Vehicle.Compile.Descope
     descopeValueNaively,
     genericDescopeExpr,
     ixToName,
-    ixToProperName,
-    lvToProperName,
   )
 where
 
@@ -16,7 +14,9 @@ import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Standard.Core (Builtin)
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Universe (UniverseLevel)
+import Vehicle.Data.Variable.Bound.Context.Name.Class
 import Vehicle.Data.Variable.Bound.Context.Name.Core
+import Vehicle.Data.Variable.Bound.Context.Name.Instance
 import Vehicle.Syntax.AST.Expr qualified as S
 
 --------------------------------------------------------------------------------
@@ -24,7 +24,7 @@ import Vehicle.Syntax.AST.Expr qualified as S
 
 descopeExpr :: (PrintableBuiltin builtin) => Expr builtin -> NamedBoundCtx -> S.Expr
 descopeExpr e ctx =
-  runNameContext ctx $
+  runNameBoundContext ctx $
     genericDescopeExpr (ixToName Named) (convertExprBuiltins e)
 
 descopeExprInEmptyCtx :: (PrintableBuiltin builtin) => Expr builtin -> S.Expr
@@ -33,7 +33,7 @@ descopeExprInEmptyCtx e = descopeExpr e mempty
 descopeExprNaively :: (PrintableBuiltin builtin) => Expr builtin -> S.Expr
 descopeExprNaively e = do
   let se = convertExprBuiltins e
-  runFreshNameContext (genericDescopeExpr (ixToName Naive) se)
+  runFreshNameBoundContext (genericDescopeExpr (ixToName Naive) se)
 
 -- | Note that you cannot descope `Value` non-naively as you can't descope
 -- closures properly. You have to quote the `Value` first.
@@ -41,7 +41,7 @@ descopeValueNaively ::
   (PrintableBuiltin builtin) =>
   Value builtin ->
   S.Expr
-descopeValueNaively e = runFreshNameContext (genericDescopeValue Naive e)
+descopeValueNaively e = runFreshNameBoundContext (genericDescopeValue Naive e)
 
 --------------------------------------------------------------------------------
 -- Variable conversion methods

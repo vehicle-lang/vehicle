@@ -27,7 +27,8 @@ import Vehicle.Compile.Type.System (HasTypeSystem (..), TCM)
 import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin (..))
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Universe (UniverseLevel (..))
-import Vehicle.Data.Variable.Bound.Context
+import Vehicle.Data.Variable.Bound.Context.Generic
+import Vehicle.Data.Variable.Bound.Context.Name (MonadReadableNameContext (..))
 import Vehicle.Data.Variable.Free.Context.Class
 import Prelude hiding (pi)
 
@@ -496,26 +497,26 @@ instantiateArgForNonExplicitBinder boundCtx p (fun, funArgs, funType) binder = d
 
 showCheckEntry :: forall builtin m. (MonadBidirectional builtin m) => Type builtin -> Expr builtin -> m ()
 showCheckEntry t e = do
-  ctx <- getNamedBoundCtx (Proxy @(Type builtin))
+  ctx <- getNameContext
   logDebug MaxDetail $ "check-entry" <+> prettyExternal (WithContext e ctx) <+> ":" <+> prettyExternal (WithContext t ctx) -- <+> "::::" <+> pretty (length ctx)
   incrCallDepth
 
 showCheckExit :: forall builtin m. (MonadBidirectional builtin m) => Expr builtin -> m ()
 showCheckExit e = do
   decrCallDepth
-  ctx <- getNamedBoundCtx (Proxy @(Type builtin))
+  ctx <- getNameContext
   logDebug MaxDetail $ "check-exit " <+> prettyVerbose e -- (WithContext e ctx)
   logDebug MaxDetail $ "check-exit " <+> prettyExternal (WithContext e ctx)
 
 showInferEntry :: forall builtin m. (MonadBidirectional builtin m) => Expr builtin -> m ()
 showInferEntry e = do
-  ctx <- getNamedBoundCtx (Proxy @(Type builtin))
+  ctx <- getNameContext
   logDebug MaxDetail $ "infer-entry" <+> prettyExternal (WithContext e ctx)
   incrCallDepth
 
 showInferExit :: forall builtin m. (MonadBidirectional builtin m) => (Expr builtin, Type builtin) -> m ()
 showInferExit (e, t) = do
   decrCallDepth
-  ctx <- getNamedBoundCtx (Proxy @(Type builtin))
+  ctx <- getNameContext
   -- logDebug MaxDetail $ "infer-exit " <+> prettyVerbose e <+> ":" <+> prettyVerbose t <+> pretty (length ctx)
   logDebug MaxDetail $ "infer-exit " <+> prettyExternal (WithContext e ctx) <+> ":" <+> prettyExternal (WithContext t ctx)

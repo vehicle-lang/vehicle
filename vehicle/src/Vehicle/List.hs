@@ -17,11 +17,11 @@ import Vehicle.Compile.Prelude hiding (Dataset, Network, Parameter, name)
 import Vehicle.Compile.Print
 import Vehicle.Compile.Print.Error (prettyCompileError)
 import Vehicle.Compile.Property (traverseMultiProperty)
-import Vehicle.Data.Builtin.Core (BuiltinFunction (..), Quantifier)
+import Vehicle.Data.Builtin.Core (Quantifier)
 import Vehicle.Data.Builtin.Interface (Accessor (..))
-import Vehicle.Data.Code.Interface (IsArgs (..), QuantifyRatTensorArgs (QuantifyRatTensorArgs))
-import Vehicle.Data.Code.Value (Spine, VDecl, VType, Value (..))
-import Vehicle.Data.Variable.Bound.Context.Name (MonadNameContext, getNameContext, runFreshNameContextT)
+import Vehicle.Data.Code.Interface (QuantifyRatTensorArgs (..), accessQuantifyRatTensor)
+import Vehicle.Data.Code.Value (Closure, Spine, VDecl, VType, Value (..))
+import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext, addDeclEntryToContext, runFreshFreeContextT)
 import Vehicle.Prelude.Logging.Instance
 import Vehicle.Syntax.Builtin (Builtin (..))
@@ -125,7 +125,7 @@ searchPropertyDecl prov sharedData declType declBody = do
         UnreducableType {} -> mkActualError
 
 searchProperty :: (MonadList m) => PropertyAddress -> Value Builtin -> m [QuantifiedVariableSummary]
-searchProperty _address value = runFreshNameContextT $ execWriterT (searchValue value)
+searchProperty _address value = runFreshNameBoundContextT $ execWriterT (searchValue value)
 
 type MonadListProperty m =
   ( MonadNameContext m,
@@ -135,19 +135,15 @@ type MonadListProperty m =
 
 -- | Traverse a value to find all quantified variables
 searchValue :: (MonadListProperty m) => Value Builtin -> m ()
-searchValue = \case
+searchValue value = case value of
   VBoundVar _ spine -> searchSpine spine
   VFreeVar _ spine -> searchSpine spine
-  VBuiltin b spine -> do
-    case (b, getExpr accessSpine spine) of
-      (BuiltinFunction (QuantifyRatTensor q), Just (QuantifyRatTensorArgs _dims (VLam binder _))) -> do
-        tell [QuantifiedVariableSummary (mkSharedData getBinderName binder) q]
-      _ -> return ()
+  VBuiltin _ spine -> do
+    searchBuiltinForQuantifier value
     searchSpine spine
   VLam binder closure -> do
-    nameCtx <- getNameContext
-    value <- normaliseClosure nameCtx binder closure
-    searchValue value
+    body <- normaliseClosure binder closure
+    searchValue body
   VRecord _ fields -> traverse_ searchValue fields
   VRecordAcc record _ -> searchValue record
   -- Never traverse into types so the following cases shouldn't happen!
@@ -159,6 +155,13 @@ searchValue = \case
 
 searchSpine :: (MonadListProperty m) => Spine Builtin -> m ()
 searchSpine = traverse_ (traverse_ searchValue)
+
+searchBuiltinForQuantifier :: (MonadListProperty m) => Value Builtin -> m ()
+searchBuiltinForQuantifier value = case getExpr (accessQuantifyRatTensor @Value @Builtin @Closure) value of
+  Just (q, args) -> do
+    let sharedData = mkSharedData getBinderName (quantifyBinder args)
+    tell [QuantifiedVariableSummary sharedData q]
+  _ -> return ()
 
 --------------------------------------------------------------------------------
 -- JSON output format

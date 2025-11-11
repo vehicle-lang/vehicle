@@ -58,6 +58,7 @@ import Vehicle.Compile.Type.Monad.Instance
 import Vehicle.Data.Builtin.Interface.Print (PrintableBuiltin)
 import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin (..))
 import Vehicle.Data.Code.Value
+import Vehicle.Data.Variable.Bound.Context.Generic
 import Vehicle.Data.Variable.Free.Context
 
 runTypeCheckerTInitially ::

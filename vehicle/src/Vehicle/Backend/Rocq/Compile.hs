@@ -4,7 +4,6 @@ module Vehicle.Backend.Rocq.Compile
   )
 where
 
-import Data.Data (Proxy (..))
 import Data.Foldable (fold)
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NonEmpty
@@ -24,8 +23,7 @@ import Vehicle.Data.Builtin.Standard hiding (TensorType)
 import Vehicle.Data.Code.Expr ()
 import Vehicle.Data.Code.Interface (IsArgs (..), VecLitArgs (..))
 import Vehicle.Data.Universe (UniverseLevel (..))
-import Vehicle.Data.Variable.Bound.Context (getNamedBoundCtx)
-import Vehicle.Data.Variable.Bound.Context.Name (MonadNameContext, addNameToContext, ixToProperName, runFreshNameContextT)
+import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Syntax.Builtin
 import Vehicle.Syntax.Sugar
   ( BinderType (..),
@@ -56,7 +54,7 @@ compileProgToRocq :: (MonadCompile m) => Prog DecidabilityBuiltin -> RocqOptions
 compileProgToRocq prog options =
   logCompilerSection2 MinDetail currentPhase $ do
     logDebug MaxDetail $ prettyExternal prog
-    programDoc <- runFreshNameContextT $ compileProg options prog
+    programDoc <- runFreshNameBoundContextT $ compileProg options prog
     let programStream = layoutPretty defaultLayoutOptions programDoc
     -- Collects dependencies by first discarding precedence info and then
     -- folding using Set Monoid
@@ -79,7 +77,7 @@ compileProgToRocq prog options =
 logEntry :: (MonadRocqCompile m) => Expr DecidabilityBuiltin -> m ()
 logEntry e = do
   incrCallDepth
-  ctx <- getNamedBoundCtx (Proxy @())
+  ctx <- getNameContext
   logDebug MaxDetail $ "compile-entry" <+> prettyExternal (WithContext e ctx)
 
 logExit :: (MonadRocqCompile m) => Code -> m ()

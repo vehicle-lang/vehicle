@@ -10,6 +10,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Meta.Set (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Data.Code.Value
+import Vehicle.Data.Variable.Bound.Context.Generic.Core
 
 --------------------------------------------------------------------------------
 -- Constraints

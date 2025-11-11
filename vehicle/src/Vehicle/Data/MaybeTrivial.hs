@@ -3,6 +3,8 @@ module Vehicle.Data.MaybeTrivial where
 import Control.DeepSeq (NFData)
 import Control.Monad (ap)
 import Control.Monad.Except (MonadError (..))
+import Control.Monad.Identity (Identity (..))
+import Control.Monad.Reader (MonadReader (..), ReaderT)
 import Control.Monad.Trans (MonadIO (..), MonadTrans (..))
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
@@ -58,21 +60,27 @@ isNonTrivial = \case
   Trivial {} -> False
   NonTrivial {} -> True
 
+orTrivialM :: (Monad m) => (a -> a -> m a) -> MaybeTrivial a -> MaybeTrivial a -> m (MaybeTrivial a)
+orTrivialM f x y = case (x, y) of
+  (Trivial False, _) -> return y
+  (_, Trivial False) -> return x
+  (Trivial True, _) -> return $ Trivial True
+  (_, Trivial True) -> return $ Trivial True
+  (NonTrivial a, NonTrivial b) -> NonTrivial <$> f a b
+
 orTrivial :: (a -> a -> a) -> MaybeTrivial a -> MaybeTrivial a -> MaybeTrivial a
-orTrivial f x y = case (x, y) of
-  (Trivial False, _) -> y
-  (_, Trivial False) -> x
-  (Trivial True, _) -> Trivial True
-  (_, Trivial True) -> Trivial True
-  (NonTrivial a, NonTrivial b) -> NonTrivial $ f a b
+orTrivial f x y = runIdentity (orTrivialM (\u v -> return $ f u v) x y)
+
+andTrivialM :: (Monad m) => (a -> a -> m a) -> MaybeTrivial a -> MaybeTrivial a -> m (MaybeTrivial a)
+andTrivialM f x y = case (x, y) of
+  (Trivial False, _) -> return $ Trivial False
+  (_, Trivial False) -> return $ Trivial False
+  (Trivial True, _) -> return y
+  (_, Trivial True) -> return x
+  (NonTrivial a, NonTrivial b) -> NonTrivial <$> f a b
 
 andTrivial :: (a -> a -> a) -> MaybeTrivial a -> MaybeTrivial a -> MaybeTrivial a
-andTrivial f x y = case (x, y) of
-  (Trivial False, _) -> Trivial False
-  (_, Trivial False) -> Trivial False
-  (Trivial True, _) -> y
-  (_, Trivial True) -> x
-  (NonTrivial a, NonTrivial b) -> NonTrivial $ f a b
+andTrivial f x y = runIdentity (andTrivialM (\u v -> return $ f u v) x y)
 
 --------------------------------------------------------------------------------
 -- Triviality typeclass
@@ -84,6 +92,13 @@ class (Monad m) => MonadMaybeTrivial m where
   trivial :: Bool -> m a
   nonTrivial :: a -> m a
 
+instance (MonadMaybeTrivial m) => MonadMaybeTrivial (ReaderT a m) where
+  trivial = lift . trivial
+  nonTrivial = lift . nonTrivial
+
+liftTrivial :: (MonadMaybeTrivial m) => MaybeTrivial a -> m a
+liftTrivial = trivialElim trivial nonTrivial
+
 --------------------------------------------------------------------------------
 -- Triviality monad
 
@@ -94,6 +109,12 @@ newtype MaybeTrivialT m a = MaybeTrivialT
     runMaybeTrivialT :: m (MaybeTrivial a)
   }
   deriving (Functor)
+
+mapMaybeTrivialT ::
+  (m (MaybeTrivial a) -> n (MaybeTrivial b)) ->
+  MaybeTrivialT m a ->
+  MaybeTrivialT n b
+mapMaybeTrivialT f = MaybeTrivialT . f . runMaybeTrivialT
 
 instance (Monad m) => Applicative (MaybeTrivialT m) where
   pure = MaybeTrivialT . return . NonTrivial
@@ -128,3 +149,7 @@ instance (MonadStdIO m) => MonadStdIO (MaybeTrivialT m) where
 
 instance (MonadSupply t m) => MonadSupply t (MaybeTrivialT m) where
   demand = lift demand
+
+instance (MonadReader e m) => MonadReader e (MaybeTrivialT m) where
+  ask = lift ask
+  local = mapMaybeTrivialT . local

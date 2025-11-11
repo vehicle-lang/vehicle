@@ -122,10 +122,13 @@ data LossBuiltin
   = LossBuiltinFunction LossBuiltinFunction
   | LossBuiltinType LossBuiltinType
   | LossBuiltinConstructor LossBuiltinConstructor
-  deriving (Show, Eq, Generic)
+  deriving (Show, Eq, Ord, Generic)
 
 instance Pretty LossBuiltin where
   pretty = pretty . show
+
+--------------------------------------------------------------------------------
+-- Accessors
 
 typeAccessor :: LossBuiltinType -> Accessor LossBuiltin ()
 typeAccessor b =
@@ -145,6 +148,14 @@ functionAccessor b =
       mkExpr = \() -> LossBuiltinFunction b
     }
 
+--------------------------------------------------------------------------------
+-- Classes
+--------------------------------------------------------------------------------
+-- Index
+
+instance BuiltinHasIndexType LossBuiltin where
+  accessIndexTypeBuiltin = typeAccessor IndexType
+
 instance BuiltinHasIndexLiterals LossBuiltin where
   accessIndexLitBuiltin =
     Access
@@ -153,6 +164,9 @@ instance BuiltinHasIndexLiterals LossBuiltin where
           _ -> Nothing,
         mkExpr = LossBuiltinConstructor . IndexLiteral
       }
+
+--------------------------------------------------------------------------------
+-- Nat
 
 instance BuiltinHasNatType LossBuiltin where
   accessNatTypeBuiltin = typeAccessor NatType
@@ -177,37 +191,13 @@ instance BuiltinHasNatLiterals LossBuiltin where
   accessAddNatBuiltin = functionAccessor (Add AddNat)
   accessMulNatBuiltin = functionAccessor (Mul MulNat)
 
-instance BuiltinHasListLiterals LossBuiltin where
-  accessNilBuiltin =
-    Access
-      { getExpr = \case
-          LossBuiltinConstructor Nil -> Just ()
-          _ -> Nothing,
-        mkExpr = \() -> LossBuiltinConstructor Nil
-      }
+--------------------------------------------------------------------------------
+-- Rat
 
-  accessConsBuiltin =
-    Access
-      { getExpr = \case
-          LossBuiltinConstructor Cons -> Just ()
-          _ -> Nothing,
-        mkExpr = \() -> LossBuiltinConstructor Cons
-      }
-
-  accessMapListBuiltin = functionAccessor MapList
-  accessFoldListBuiltin = functionAccessor FoldList
-
-instance BuiltinHasTensors LossBuiltin where
-  accessConstTensorBuiltin = functionAccessor ConstTensor
-  accessStackTensorBuiltin = functionAccessor StackTensor
-  accessAtTensorBuiltin = functionAccessor At
-
-instance BuiltinHasForeach LossBuiltin where
-  accessForeachTensorBuiltin = functionAccessor (developerError "loss foreach not yet supported")
-  accessForeachVectorBuiltin = functionAccessor (developerError "loss foreach not yet supported")
+instance BuiltinHasRatType LossBuiltin where
+  accessRatTypeBuiltin = typeAccessor RatType
 
 instance BuiltinHasRatLiterals LossBuiltin where
-  accessRatTypeBuiltin = typeAccessor RatType
   accessRatTensorLitBuiltin =
     Access
       { getExpr = \case
@@ -228,6 +218,47 @@ instance BuiltinHasRatLiterals LossBuiltin where
   accessReduceMulRatBuiltin = functionAccessor ReduceMulRatTensor
   accessReduceMinRatBuiltin = functionAccessor ReduceMinRatTensor
   accessReduceMaxRatBuiltin = functionAccessor ReduceMaxRatTensor
+
+--------------------------------------------------------------------------------
+-- List
+
+instance BuiltinHasListType LossBuiltin where
+  accessListTypeBuiltin = typeAccessor ListType
+
+instance BuiltinHasListLiterals LossBuiltin where
+  accessNilBuiltin =
+    Access
+      { getExpr = \case
+          LossBuiltinConstructor Nil -> Just ()
+          _ -> Nothing,
+        mkExpr = \() -> LossBuiltinConstructor Nil
+      }
+
+  accessConsBuiltin =
+    Access
+      { getExpr = \case
+          LossBuiltinConstructor Cons -> Just ()
+          _ -> Nothing,
+        mkExpr = \() -> LossBuiltinConstructor Cons
+      }
+
+  accessMapListBuiltin = functionAccessor MapList
+  accessFoldListBuiltin = functionAccessor FoldList
+
+--------------------------------------------------------------------------------
+-- Tensor
+
+instance BuiltinHasTensorType LossBuiltin where
+  accessTensorTypeBuiltin = typeAccessor TensorType
+
+instance BuiltinHasTensors LossBuiltin where
+  accessConstTensorBuiltin = functionAccessor ConstTensor
+  accessStackTensorBuiltin = functionAccessor StackTensor
+  accessAtTensorBuiltin = functionAccessor At
+
+instance BuiltinHasForeach LossBuiltin where
+  accessForeachTensorBuiltin = functionAccessor (developerError "loss foreach not yet supported")
+  accessForeachVectorBuiltin = functionAccessor (developerError "loss foreach not yet supported")
 
 --------------------------------------------------------------------------------
 -- Normalisation

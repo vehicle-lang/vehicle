@@ -30,9 +30,9 @@ parseParameterValue decl parameterType providedValue = do
   implicitParams <- getInferableParameterContext
 
   parser <- case toTypeValue $ normalised parameterType of
-    VBoolTensorType INil {} -> return parseBool
+    VBoolTensorType IDimNil -> return parseBool
     VNatType {} -> return parseNat
-    VRatTensorType INil {} -> return parseRat
+    VRatTensorType IDimNil -> return parseRat
     -- TODO check that Index dimension is constant, or at least will be after
     -- implicit parameters are filled in (the tricky bit).
     VIndexType size -> case toNatValue size of

@@ -1,6 +1,7 @@
 module Vehicle.Backend.Solver.UserVariableElimination.ConstraintSearch
   ( findEqualityConstraint,
     findInequalityConstraints,
+    findAllBounds,
   )
 where
 
@@ -10,12 +11,14 @@ import Data.List.NonEmpty qualified as NonEmpty
 import Data.Maybe (catMaybes)
 import Data.These (These (..))
 import Data.These.Combinators (catHere, catThere)
-import Vehicle.Backend.Solver.UserVariableElimination.Core
+import Vehicle.Compile.Constants.Rational
 import Vehicle.Compile.Error
-import Vehicle.Compile.Prelude (mergeNonEmptyKeyValues, unionMaybeWith)
+import Vehicle.Compile.Prelude (MonadLogger, mergeNonEmptyKeyValues, unionMaybeWith)
 import Vehicle.Data.Assertion
+import Vehicle.Data.Bound
 import Vehicle.Data.Code.BooleanExpr
-import Vehicle.Data.Code.LinearExpr (HasVariables (..))
+import Vehicle.Data.Code.LinearExpr (ConstantLike, HasVariables (..), LinearExpr)
+import Vehicle.Data.Variable.Bound.Context.Name (MonadReadableNameContext)
 import Vehicle.Data.Variable.Bound.Level
 
 --------------------------------------------------------------------------------
@@ -31,11 +34,11 @@ findEqualityConstraint ::
 findEqualityConstraint = findSingleConstraint
 
 findInequalityConstraints ::
-  (MonadCompile m) =>
+  (MonadCompile m, MonadReadableNameContext m) =>
   SliceVariable ->
   LinearAssertionTree ->
-  m (DisjunctAll ([LinearInequality], Maybe LinearAssertionTree))
-findInequalityConstraints = findAllConstraints getInequality
+  m (DisjunctAll (SliceBounds LinearExpression, Maybe LinearAssertionTree))
+findInequalityConstraints var = findAllBounds (tryConvertAssertionToSliceBounds var)
 
 --------------------------------------------------------------------------------
 -- Single constraints
@@ -74,7 +77,7 @@ disjunctSingleResults xs (DisjunctAll results) = do
   let allConstrainedTrees = catHere $ NonEmpty.toList results
   let allUnconstrainedTrees = catThere $ NonEmpty.toList results
   return $ case (allConstrainedTrees, allUnconstrainedTrees) of
-    ([], _) -> That $ Disjunct xs
+    ([], _) -> That $ disjunctExprs xs
     (c : cs, []) -> This (mergeConstrainedTrees (DisjunctAll $ c :| cs))
     (c : cs, u : us) -> These (mergeConstrainedTrees $ DisjunctAll $ c :| cs) (mergeUnconstrainedTrees $ DisjunctAll $ u :| us)
   where
@@ -88,11 +91,11 @@ disjunctSingleResults xs (DisjunctAll results) = do
       --      ->
       --    (x and (a or b or c)) ||or|| (y and d)
       -- let treeByConstraints = Map.fromListWith (orTrivial orBoolExpr) $ disjunctsToList disjuncts
-      let collapse u = fmap (Disjunct . DisjunctAll) $ NonEmpty.nonEmpty $ catMaybes $ NonEmpty.toList u
+      let collapse u = fmap (disjunctExprs . DisjunctAll) $ NonEmpty.nonEmpty $ catMaybes $ NonEmpty.toList u
       DisjunctAll $ mergeNonEmptyKeyValues collapse $ unDisjunctAll disjuncts
 
     mergeUnconstrainedTrees :: DisjunctAll LinearAssertionTree -> LinearAssertionTree
-    mergeUnconstrainedTrees = Disjunct
+    mergeUnconstrainedTrees = disjunctExprs
 
 conjunctSingleConstraints ::
   forall m.
@@ -145,67 +148,76 @@ conjunctSingleConstraints search conjuncts = searchConjuncts $ unConjunctAll con
     collapseTrees :: DisjunctAll ConstrainedTree -> LinearAssertionTree
     collapseTrees t2 = do
       let eqToAssertion = Query . equalityToAssertion
-      Disjunct $ fmap (\(a, b) -> maybe (eqToAssertion a) (andBoolExpr (eqToAssertion a)) b) t2
+      disjunctExprs $ fmap (\(a, b) -> maybe (eqToAssertion a) (andBoolExpr (eqToAssertion a)) b) t2
 
     andConstraints :: NonEmpty LinearAssertionTree -> DisjunctAll ConstrainedTree -> DisjunctAll ConstrainedTree
     andConstraints xs = do
-      let t = Conjunct $ ConjunctAll xs
+      let t = conjunctExprs $ ConjunctAll xs
       fmap (second (Just . maybe t (andBoolExpr t)))
 
     andResults :: NonEmpty LinearAssertionTree -> SingleSearchResults -> SingleSearchResults
-    andResults xs = bimap (andConstraints xs) (andBoolExpr (Conjunct $ ConjunctAll xs))
-
--- (u == x or y >=1 ) and (u == x + 1 or y <= 1)
+    andResults xs = bimap (andConstraints xs) (andBoolExpr (conjunctExprs $ ConjunctAll xs))
 
 --------------------------------------------------------------------------------
--- Core algorithm
+-- Multiple constraints
+
+type ConstraintTree constant = BooleanExpr (Assertion (LinearExpr SliceVariable constant))
 
 -- Implicitly conjuncted
-type AllConstrainedTree constraint = ([constraint], Maybe LinearAssertionTree)
+type BoundedTree bounds constant expr = (bounds expr, Maybe (ConstraintTree constant))
 
-type AllSearchResults constraint = DisjunctAll (AllConstrainedTree constraint)
+type BoundedTrees bounds constant expr = DisjunctAll (BoundedTree bounds constant expr)
 
-noResults :: LinearAssertionTree -> AllSearchResults constraint
-noResults tree = DisjunctAll [(mempty, Just tree)]
+noResults :: (IsBounds bounds expr) => ConstraintTree constant -> BoundedTrees bounds constant expr
+noResults tree = DisjunctAll [(emptyBounds, Just tree)]
 
-oneResult :: constraint -> AllSearchResults constraint
-oneResult constraint = DisjunctAll [([constraint], Nothing)]
+oneResult :: bounds expr -> BoundedTrees bounds constant expr
+oneResult bounds = DisjunctAll [(bounds, Nothing)]
 
-findAllConstraints ::
-  forall m constraint.
-  (MonadCompile m, Ord constraint) =>
-  (LinearAssertion -> Maybe constraint) ->
-  SliceVariable ->
-  LinearAssertionTree ->
-  m (AllSearchResults constraint)
-findAllConstraints assertionToConstraint var = go
+findAllBounds ::
+  forall m bounds constant expr.
+  (MonadCompile m, IsBounds bounds expr, Ord (bounds expr)) =>
+  (Assertion (LinearExpr SliceVariable constant) -> m (Maybe (bounds expr))) ->
+  BooleanExpr (Assertion (LinearExpr SliceVariable constant)) ->
+  m (BoundedTrees bounds constant expr)
+findAllBounds assertionToConstraint = go
   where
-    go :: LinearAssertionTree -> m (AllSearchResults constraint)
+    go :: ConstraintTree constant -> m (BoundedTrees bounds constant expr)
     go = \case
-      Disjunct xs -> findAllConstraintsDisjunct =<< traverse go xs
-      Conjunct xs -> findAllConstraintsConjunct =<< traverse go xs
-      Query assertion -> case assertionToConstraint assertion of
-        Nothing -> return $ noResults (Query assertion)
-        Just constraint
-          | assertion `containsVariable` var -> return $ oneResult constraint
-          | otherwise -> return $ noResults (Query assertion)
+      Disjunct xs -> findAllBoundsDisjunct =<< traverse go xs
+      Conjunct xs -> findAllBoundsConjunct =<< traverse go xs
+      Query assertion -> do
+        maybeConstraint <- assertionToConstraint assertion
+        case maybeConstraint of
+          Nothing -> return $ noResults (Query assertion)
+          Just constraint -> return $ oneResult constraint
 
-findAllConstraintsDisjunct ::
-  forall m constraint.
-  (MonadCompile m, Ord constraint) =>
-  DisjunctAll (AllSearchResults constraint) ->
-  m (AllSearchResults constraint)
-findAllConstraintsDisjunct disjuncts = return $ optimiseDisjuncts $ disjunctDisjuncts disjuncts
+findAllBoundsDisjunct ::
+  forall m bounds constant expr.
+  (MonadCompile m, Ord (bounds expr)) =>
+  DisjunctAll (BoundedTrees bounds constant expr) ->
+  m (BoundedTrees bounds constant expr)
+findAllBoundsDisjunct disjuncts = return $ optimiseDisjuncts $ disjunctDisjuncts disjuncts
   where
-    optimiseDisjuncts :: AllSearchResults constraint -> AllSearchResults constraint
-    optimiseDisjuncts allDisjuncts = DisjunctAll $ mergeNonEmptyKeyValues (fmap (Conjunct . ConjunctAll) . sequence) (unDisjunctAll allDisjuncts)
+    optimiseDisjuncts :: BoundedTrees bounds constant expr -> BoundedTrees bounds constant expr
+    optimiseDisjuncts allDisjuncts = do
+      let mergeDisjuncts = fmap (conjunctExprs . ConjunctAll) . sequence
+      DisjunctAll $ mergeNonEmptyKeyValues mergeDisjuncts (unDisjunctAll allDisjuncts)
 
-findAllConstraintsConjunct ::
-  forall m constraint.
-  (MonadCompile m) =>
-  ConjunctAll (AllSearchResults constraint) ->
-  m (AllSearchResults constraint)
-findAllConstraintsConjunct conjuncts = return $ combineConjuncts conjuncts
+findAllBoundsConjunct ::
+  forall m bounds constant expr.
+  (MonadCompile m, IsBounds bounds expr) =>
+  ConjunctAll (BoundedTrees bounds constant expr) ->
+  m (BoundedTrees bounds constant expr)
+findAllBoundsConjunct conjuncts = return $ combineConjuncts conjuncts
   where
-    combineConjuncts :: ConjunctAll (AllSearchResults constraint) -> AllSearchResults constraint
-    combineConjuncts = foldr1 $ conjunctDisjuncts (\(a, b) (c, d) -> (a <> c, unionMaybeWith andBoolExpr b d))
+    combineConjuncts :: ConjunctAll (BoundedTrees bounds constant expr) -> BoundedTrees bounds constant expr
+    combineConjuncts = foldr1 $ conjunctDisjuncts (\(a, b) (c, d) -> (andBounds a c, unionMaybeWith andBoolExpr b d))
+
+tryConvertAssertionToSliceBounds ::
+  (MonadLogger m, MonadReadableNameContext m, ConstantLike constant) =>
+  SliceVariable ->
+  Assertion (LinearExpr SliceVariable constant) ->
+  m (Maybe (SliceBounds (LinearExpr SliceVariable constant)))
+tryConvertAssertionToSliceBounds var assertion = do
+  return (maybeBoundsToSliceBounds <$> tryConvertAssertionToBound var assertion)

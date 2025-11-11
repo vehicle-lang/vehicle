@@ -2,6 +2,7 @@ module Vehicle.Compile.Unblock
   ( unblockBoolExpr,
     tryPurifyAssertion,
     UnblockingActions (..),
+    MonadPurify,
     unblockRatTensorValue,
   )
 where
@@ -11,20 +12,25 @@ import Vehicle.Compile.LiftIf
 import Vehicle.Compile.Normalise.NBE (eval, evalApp)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
+import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Builtin.Standard.Normalise
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
-import Vehicle.Data.Variable.Bound.Context.Name (MonadNameContext, getNameContext)
+import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext, getFreeEnv)
 
 --------------------------------------------------------------------------------
 -- Unblocking
 --------------------------------------------------------------------------------
 
-type MonadUnblock m = (MonadLogger m, MonadFreeContext Builtin m, MonadNameContext m)
+type MonadUnblock m =
+  ( MonadLogger m,
+    MonadFreeContext Builtin m,
+    MonadReadableNameContext m
+  )
 
 type MonadPurify m = MonadUnblock m
 
@@ -184,10 +190,12 @@ unblockRatTensorValue actions@UnblockingActions {..} status expr = do
     VReduceMulRatTensor args -> unblockReduceTensor (unblock DifferentDimensions) evalReduceMulRatTensor args
     VReduceMinRatTensor args -> unblockReduceTensor (unblock DifferentDimensions) evalReduceMinRatTensor args
     VReduceMaxRatTensor args -> unblockReduceTensor (unblock DifferentDimensions) evalReduceMaxRatTensor args
-    VRatTensorVar v
+    VRatTensorBoundVar v
       | status == DesiredDimensions -> return expr
       | otherwise -> unblockRatTensorBoundVar v
-    VNetworkApp n args -> unblock status =<< unblockNetworkApp n args
+    VRatTensorFreeVar n spine -> case getExpr accessSpine spine of
+      Just args -> unblock status =<< unblockNetworkApp n args
+      _ -> unexpectedExprError currentPass "non-network free var"
     VRatConstTensor args -> unblockConstTensor args
     VRatStackTensor args -> unblockStackTensor (unblock DifferentDimensions) args
     VRatAt args -> unblockAtTensor (unblock DifferentDimensions) args
@@ -275,10 +283,10 @@ unblockReduceTensor ::
   EvalSimple TensorReductionArgs Value Builtin m ->
   TensorReductionArgs (Value Builtin) ->
   m (Value Builtin)
-unblockReduceTensor unblock evalFn (TensorOp2Args ds e xs) = do
+unblockReduceTensor unblock evalFn (TensorReductionArgs ds e xs) = do
   xs' <- unblock xs
   liftIf xs' $ \xs'' ->
-    evalFn $ TensorOp2Args ds e xs''
+    evalFn $ TensorReductionArgs ds e xs''
 
 unblockReduceAndTensor ::
   (MonadUnblock m) =>

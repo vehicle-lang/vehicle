@@ -163,8 +163,41 @@
                       {
                         "upperBounds": [
                           {
-                            "relation": "NonStrict",
-                            "expression": {
+                            "upperBoundValue": {
+                              "constantValue": {
+                                "tag": "ConstantTensor",
+                                "contents": [
+                                  [],
+                                  {
+                                    "numerator": 1,
+                                    "denominator": 1
+                                  }
+                                ]
+                              },
+                              "coefficients": []
+                            },
+                            "upperBoundRel": "Strict"
+                          },
+                          {
+                            "upperBoundValue": {
+                              "constantValue": {
+                                "tag": "ConstantTensor",
+                                "contents": [
+                                  [],
+                                  {
+                                    "numerator": 1,
+                                    "denominator": 2
+                                  }
+                                ]
+                              },
+                              "coefficients": []
+                            },
+                            "upperBoundRel": "NonStrict"
+                          }
+                        ],
+                        "lowerBounds": [
+                          {
+                            "lowerBoundValue": {
                               "constantValue": {
                                 "tag": "ConstantTensor",
                                 "contents": [
@@ -176,10 +209,10 @@
                                 ]
                               },
                               "coefficients": []
-                            }
+                            },
+                            "lowerBoundRel": "Strict"
                           }
-                        ],
-                        "lowerBounds": []
+                        ]
                       }
                     ]
                   }

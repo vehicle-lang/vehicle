@@ -6,6 +6,7 @@ import Data.Map qualified as Map
 import Data.Proxy (Proxy (..))
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Resource (NetworkName)
 import Vehicle.Data.Builtin.Core (Builtin)
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Variable.Free.Context (FreeContextT, MonadFreeContext, runFreshFreeContextT)
@@ -14,7 +15,13 @@ import Vehicle.Verify.Core
 --------------------------------------------------------------------------------
 -- Context
 
-type NetworkContext = Map Name NetworkContextInfo
+type NetworkContext = Map NetworkName NetworkContextInfo
+
+lookupNetworkInfo :: NetworkName -> NetworkContext -> NetworkContextInfo
+lookupNetworkInfo name ctx = do
+  case Map.lookup name ctx of
+    Nothing -> developerError $ "Expecting" <+> quotePretty name <+> "to be a @network"
+    Just info -> info
 
 --------------------------------------------------------------------------------
 -- Resource contexts

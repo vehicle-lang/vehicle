@@ -282,7 +282,7 @@ These tests are specified in `test.json` files in [tests/golden](./vehicle/tests
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile -s spec.vcl -t MarabouQueries -o Marabou.queries/ --network controller:controller.onnx",
+    "run": "vehicle compile queries -s spec.vcl -f MarabouQueries -o Marabou.queries/ --network controller:controller.onnx",
     "needs": ["spec.vcl", "controller.onnx"],
     "produces": ["Marabou.queries/*.txt", "Marabou.queries/.vcl-cache-index"],
     "ignore": {
@@ -291,19 +291,19 @@ These tests are specified in `test.json` files in [tests/golden](./vehicle/tests
   },
   {
     "name": "Agda",
-    "run": "vehicle compile -s spec.vcl -t Agda -o Agda.agda",
+    "run": "vehicle compile itp -s spec.vcl -t Agda -o Agda.agda",
     "needs": ["spec.vcl"],
     "produces": ["Agda.agda"]
   },
   {
     "name": "Rocq",
-    "run": "vehicle compile -s spec.vcl -t Rocq -o Rocq.v",
+    "run": "vehicle compile itp -s spec.vcl -t Rocq -o Rocq.v",
     "needs": ["spec.vcl"],
     "produces": ["Rocq.v"]
   },
   {
     "name": "RocqVerify",
-    "run": "vehicle compile -s spec.vcl -t Rocq -o Rocq.v && coqc -vok Rocq.v -w none",
+    "run": "vehicle compile itp -s spec.vcl -t Rocq -o Rocq.v && coqc -vok Rocq.v -w none",
     "needs": ["spec.vcl"],
     "produces": ["Rocq.v"],
     "external": ["coqc"],
@@ -311,7 +311,7 @@ These tests are specified in `test.json` files in [tests/golden](./vehicle/tests
   },
   {
     "name": "DL2Loss",
-    "run": "vehicle compile -s spec.vcl -t DL2Loss -o DL2Loss.vcl --network controller:controller.onnx",
+    "run": "vehicle compile loss -s spec.vcl -l DL2Loss -o DL2Loss.vcl --network controller:controller.onnx",
     "needs": ["spec.vcl"],
     "produces": ["DL2Loss.json"]
   },
@@ -353,7 +353,7 @@ To create a new golden test, you can use the `new-golden-test` command.
 1. Compose the Vehicle command you'd like to test, _e.g._,
 
    ```sh
-   vehicle compile -s spec.vcl -t MarabouQueries -o Marabou.queries -n controller:controller.onnx
+   vehicle compile queries -s spec.vcl -f MarabouQueries -o Marabou.queries -n controller:controller.onnx
    ```
 
    Use `cabal run vehicle --` rather than `vehicle` to ensure that you are building and running the current version, rather than an old installation.
@@ -369,7 +369,7 @@ To create a new golden test, you can use the `new-golden-test` command.
    For instance:
 
    ```sh
-   cabal run new-golden-test -- vehicle compile -s spec.vcl -t MarabouQueries -o Marabou.queries -n controller:controller.onnx
+   cabal run new-golden-test -- vehicle compile queries -s spec.vcl -f MarabouQueries -o Marabou.queries -n controller:controller.onnx
    ```
 
    This creates or updates the `test.json` file to add the test.
@@ -464,7 +464,7 @@ Ensure that [you have the source code](#getting-the-source) and that you have in
    vehicle --version
    ```
 
-   This should print `0.21.0`.
+   This should print `0.22.0`.
 
 ### Building the Vehicle Python bindings
 
@@ -587,14 +587,14 @@ Ensure that [you have the source code](#getting-the-source) and that you have in
    pipx run tox
    ```
 
-This creates the directory `dist` which contains "wheels", which are the binary distribution format for Python packages. These wheels will have file names such as `vehicle_lang-0.21.0-cp311-cp311-macosx_13_0_arm64`:
+This creates the directory `dist` which contains "wheels", which are the binary distribution format for Python packages. These wheels will have file names such as `vehicle_lang-0.22.0-cp311-cp311-macosx_13_0_arm64`:
 
 ```sh
 #   Supported
 #   Python   _____
 #   versions      \
 #                  vvvvvvvvvvv
-vehicle_lang-0.21.0-cp311-cp311-macosx_13_0_arm64
+vehicle_lang-0.22.0-cp311-cp311-macosx_13_0_arm64
 #                              ^^^^^^^^^^^^^^^^^
 #   Supported                /
 #   Operating System  ______/
@@ -739,7 +739,7 @@ Ensure that [you have the source code](#getting-the-source) and that you have in
    vehicle --version
    ```
 
-   This should print `0.21.0`.
+   This should print `0.22.0`.
 
 1. Check if your installation of the `vehicle_lang` package was successful.
 
@@ -949,11 +949,11 @@ The procedure to create a new release is:
    This creates the directory `dist` which contains "wheels", which are the binary distribution format for Python packages. If you're on macOS with an M1/M2 chipset, these look like:
 
    ```
-   vehicle_lang-0.21.0-cp310-cp310-macosx_13_0_arm64.whl
-   vehicle_lang-0.21.0-cp37-cp37m-macosx_13_0_arm64.whl
-   vehicle_lang-0.21.0-cp39-cp39-macosx_13_0_arm64.whl
-   vehicle_lang-0.21.0-cp311-cp311-macosx_13_0_arm64.whl
-   vehicle_lang-0.21.0-cp38-cp38-macosx_13_0_arm64.whl
+   vehicle_lang-0.22.0-cp310-cp310-macosx_13_0_arm64.whl
+   vehicle_lang-0.22.0-cp37-cp37m-macosx_13_0_arm64.whl
+   vehicle_lang-0.22.0-cp39-cp39-macosx_13_0_arm64.whl
+   vehicle_lang-0.22.0-cp311-cp311-macosx_13_0_arm64.whl
+   vehicle_lang-0.22.0-cp38-cp38-macosx_13_0_arm64.whl
    ```
 
    Run the following command to check each wheel's metadata:
@@ -974,7 +974,7 @@ The procedure to create a new release is:
 
    The release will be at a URL like:
 
-   <https://github.com/vehicle-lang/vehicle/releases/tag/v0.21.0>
+   <https://github.com/vehicle-lang/vehicle/releases/tag/v0.22.0>
 
 [vehicle-lang/vehicle]: https://github.com/vehicle-lang/vehicle
 [GHC]: https://www.haskell.org/ghc/

@@ -22,6 +22,7 @@ import Vehicle.Compile.Type.Monad.Class
   )
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Code.Value
+import Vehicle.Data.Variable.Bound.Context.Generic
 import Vehicle.Data.Variable.Bound.Level (dbLevelToIndex)
 import Vehicle.Data.Variable.Free.Context (getFreeEnv)
 

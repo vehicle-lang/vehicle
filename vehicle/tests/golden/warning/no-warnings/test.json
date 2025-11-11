@@ -1,16 +1,19 @@
-{
-  "name": "Marabou",
-  "run": "vehicle compile -s spec.vcl -t MarabouQueries -o Marabou.queries/ --network f:fake.onnx --no-warnings",
-  "needs": [
-    "spec.vcl",
-    "fake.onnx"
-  ],
-  "produces": [
-    "Marabou.queries/p.vcl-plan",
-    "Marabou.queries/p-query1.txt"
-  ],
-  "ignore": {
-    "lines": ".*\"fileHash\".*"
-  },
-  "sizeOnly": ".vcl-plan"
-}
+[
+  {
+    "name": "Marabou",
+    "run": "vehicle compile queries -s spec.vcl -f MarabouQueries -o Marabou.queries/ --network f:fake.onnx --no-warnings",
+    "needs": [
+      "spec.vcl",
+      "fake.onnx"
+    ],
+    "produces": [
+      "Marabou.queries/p!0-query1.txt",
+      "Marabou.queries/p!1.vcl-plan",
+      "Marabou.queries/p!0.vcl-plan"
+    ],
+    "ignore": {
+      "lines": ".*\"fileHash\".*"
+    },
+    "sizeOnly": ".vcl-plan"
+  }
+]

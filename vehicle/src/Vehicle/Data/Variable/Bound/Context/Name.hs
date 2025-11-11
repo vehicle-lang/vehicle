@@ -1,31 +1,31 @@
 module Vehicle.Data.Variable.Bound.Context.Name
-  ( module Core,
+  ( module Export,
     prettyExternalInCtx,
     prettyFriendlyInCtx,
+    debugFriendly,
   )
 where
 
 -- Simple module that specialises MonadBoundContext for the common occurence
 -- where you only need to know the bound variable's names.
 
-import Data.Proxy (Proxy (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
-import Vehicle.Data.Variable.Bound.Context.Class
-import Vehicle.Data.Variable.Bound.Context.Name.Core as Core
+import Vehicle.Data.Variable.Bound.Context.Name.Class as Export
+import Vehicle.Data.Variable.Bound.Context.Name.Core as Export
+import Vehicle.Data.Variable.Bound.Context.Name.Instance as Export
 
 prettyFriendlyInCtx ::
-  (MonadNameContext m, PrettyFriendly (Contextualised a NamedBoundCtx)) =>
+  (MonadReadableNameContext m, PrettyFriendly (Contextualised a NamedBoundCtx)) =>
   a ->
   m (Doc b)
-prettyFriendlyInCtx value = do
-  ctx <- getNamedBoundCtx (Proxy @())
-  return $ prettyFriendly (WithContext value ctx)
+prettyFriendlyInCtx value = prettyFriendly . WithContext value <$> getNameContext
 
 prettyExternalInCtx ::
-  (MonadNameContext m, PrettyExternal (Contextualised a NamedBoundCtx)) =>
+  (MonadReadableNameContext m, PrettyExternal (Contextualised a NamedBoundCtx)) =>
   a ->
   m (Doc b)
-prettyExternalInCtx e = do
-  ctx <- getNamedBoundCtx (Proxy @())
-  return $ prettyExternal $ WithContext e ctx
+prettyExternalInCtx e = prettyExternal . WithContext e <$> getNameContext
+
+debugFriendly :: (MonadReadableNameContext m, PrettyFriendly (Contextualised a NamedBoundCtx), MonadLogger m) => a -> m ()
+debugFriendly value = logDebugM MaxDetail $ prettyFriendlyInCtx value

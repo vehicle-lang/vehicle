@@ -5,22 +5,23 @@ where
 
 import Control.Monad (foldM)
 import Control.Monad.Reader (MonadReader (..))
-import Control.Monad.State (MonadState (..))
 import Data.Coerce (coerce)
 import Data.Maybe (fromMaybe)
 import Data.These (These (..))
 import Vehicle.Backend.Solver.UserVariableElimination.ConstraintSearch
 import Vehicle.Backend.Solver.UserVariableElimination.Core
-import Vehicle.Compile.FourierMotzkinElimination (fourierMotzkinElimination)
+import Vehicle.Compile.Constants.Rational
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Data.Assertion
+import Vehicle.Data.Bound (SliceBounds)
+import Vehicle.Data.Bound.FourierMotzkinElimination (fourierMotzkinSliceBoundsElimination)
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.LinearExpr (HasVariables (containsVariable))
 import Vehicle.Data.MaybeTrivial
 import Vehicle.Data.Variable.Bound.Context.Name (getNameContext, prettyFriendlyInCtx)
+import Vehicle.Data.Variable.Bound.Context.Tensor.Class
 import Vehicle.Data.Variable.Bound.Level
-import Vehicle.Data.Variable.Bound.Tensor
 import Vehicle.Prelude.Warning (CompileWarning (..))
 import Vehicle.Verify.Specification (CompilationStep (..), ReconstructionDepth (OneDimension))
 
@@ -39,11 +40,10 @@ eliminateQuantifiedVariable ::
   m (MaybeTrivial Partitions)
 eliminateQuantifiedVariable maybePartitions userVar = do
   userVarName <- prettyFriendlyInCtx userVar
-  logCompilerSection2 MaxDetail ("elimination of" <+> squotes userVarName <+> "in" <+> pretty (partitionsSize maybePartitions) <+> "partitions") $ case maybePartitions of
+  logCompilerSection2 MidDetail ("elimination of" <+> squotes userVarName <+> "in" <+> pretty (partitionsSize maybePartitions) <+> "partitions") $ case maybePartitions of
     Trivial b -> return $ Trivial b
     NonTrivial partitions -> do
-      ctx <- get
-      let nestedVar = lookupTensorVariable (globalBoundVarCtx ctx) userVar
+      nestedVar <- lookupNestedTensorVariable userVar
       let disjunctedPartitions = partitionsToDisjuncts partitions
       newPartitions <- traverse (eliminateVariableViaEquality nestedVar) disjunctedPartitions
       return $ disjunctMaybeTrivialPartitions newPartitions
@@ -61,7 +61,7 @@ eliminateVariableViaEquality ::
 eliminateVariableViaEquality var (steps, tree) = do
   let tensorVar = toSliceVar var
   userVarName <- prettyFriendlyInCtx tensorVar
-  logCompilerSection2 MaxDetail ("attempt to eliminate" <+> squotes userVarName <+> "via equalities") $ do
+  logCompilerSection2 MidDetail ("attempt to eliminate" <+> squotes userVarName <+> "via equalities") $ do
     ctx <- getNameContext
     logDebugM MaxDetail $
       return $
@@ -83,8 +83,7 @@ solveVariableViaEquality ::
   (LinearEquality, Maybe LinearAssertionTree) ->
   m (MaybeTrivial Partition)
 solveVariableViaEquality compilationTrace userVar (equality, remainingTree) = do
-  globalCtx <- get
-  (solutionMap, compilationStep) <- createSubstitutionForVariable globalCtx userVar equality
+  (solutionMap, compilationStep) <- createSubstitutionForVariable userVar equality
   let updatedTree = solutionMap `substituteThrough` remainingTree
   let newCompilationTrace = compilationStep : compilationTrace
   -- Update tree
@@ -111,7 +110,7 @@ eliminateVariableViaChildEqualities ::
   Partition ->
   m (MaybeTrivial Partitions)
 eliminateVariableViaChildEqualities var partition@(steps, tree) =
-  logCompilerSection2 MaxDetail "solving for tensor rows" $ case childVariablesOf var of
+  logCompilerSection2 MidDetail "solving for tensor rows" $ case childVariablesOf var of
     Nothing -> eliminateVariableWithInequalities (toSliceVar var) partition
     Just childVariables -> do
       -- We need to reduce all unsolved inequalities here to ensure that
@@ -144,17 +143,15 @@ reduceInequalitiesInvolving ::
 reduceInequalitiesInvolving dim variable tree = do
   varName <- prettyFriendlyInCtx variable
   logCompilerSection2 MaxDetail ("reducing remaining instances of" <+> squotes varName) $ do
-    ctx <- get
-    us <- traverse (reduceAssertion ctx) tree
-    let result = flattenBoolExpr <$> eliminateTrivialAtoms us
-    return result
+    trees <- eliminateTrivialAtoms <$> traverse reduceAssertion tree
+    return $ flattenBoolExpr <$> trees
   where
-    reduceAssertion :: GlobalCtx -> LinearAssertion -> m (MaybeTrivial LinearAssertionTree)
-    reduceAssertion ctx ass@(NormalisedRelation rel linearExpr)
+    reduceAssertion :: LinearAssertion -> m (MaybeTrivial LinearAssertionTree)
+    reduceAssertion ass@(NormalisedRelation rel linearExpr)
       | rel == OEq || not (linearExpr `containsVariable` variable) = return $ NonTrivial $ Query ass
       | otherwise = do
-          let conjunctedAssertions = fmap Query <$> reduceComparison dim (lookupChildVariablesCertain ctx) ass
-          return $ maybe (Trivial True) (NonTrivial . Conjunct) conjunctedAssertions
+          conjunctedAssertions <- reduceComparison dim lookupChildVariablesCertain ass
+          return $ maybe (Trivial True) ((NonTrivial . Conjunct) . fmap Query) conjunctedAssertions
 
 --------------------------------------------------------------------------------
 -- Attempt 3
@@ -177,12 +174,17 @@ solveVariableViaInequalities ::
   (MonadSolveExists m) =>
   UserSliceVariable ->
   [CompilationStep] ->
-  ([LinearInequality], Maybe LinearAssertionTree) ->
+  (SliceBounds LinearExpression, Maybe LinearAssertionTree) ->
   m (MaybeTrivial Partition)
-solveVariableViaInequalities var steps (inequalities, remainingTree) = do
-  (bounds, newInequalities) <- fourierMotzkinElimination (coerce var) inequalities
-  let addIneq ineq = andTrivial andBoolExpr (NonTrivial $ Query $ inequalityToNormRelation ineq)
-  let updatedTree = foldr addIneq (maybe (Trivial True) NonTrivial remainingTree) newInequalities
+solveVariableViaInequalities var steps (bounds, remainingTree) = do
+  maybeTrivialNewInequalities <- fourierMotzkinSliceBoundsElimination bounds
+  let updatedTree = case maybeTrivialNewInequalities of
+        Trivial False -> Trivial False
+        Trivial True -> maybe (Trivial True) NonTrivial remainingTree
+        NonTrivial ineqs -> do
+          let newIneqTree = Conjunct $ fmap (Query . inequalityToNormRelation) ineqs
+          NonTrivial $ maybe newIneqTree (andBoolExpr newIneqTree) remainingTree
+
   let step = SolveInequalities (toSliceVar var) bounds
   let newCompilationTrace = step : steps
   logInequalitiesSolved var step remainingTree

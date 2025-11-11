@@ -6,6 +6,7 @@ module Vehicle.Data.Code.Value
     VBinder,
     VDecl,
     VProg,
+    VDims,
     Spine,
     traverseSpine,
     getNMeta,
@@ -26,21 +27,28 @@ module Vehicle.Data.Code.Value
     GluedExpr (..),
     GluedType,
     envEntryToValue,
+    boundVariablesIn,
+    DimensionedTensorValue (..),
   )
 where
 
 import Control.Monad (void)
+import Control.Monad.Writer (MonadWriter (..), execWriter)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Foldable (traverse_)
 import Data.Map (Map)
 import Data.Map.Ordered (OMap)
 import Data.Maybe (fromMaybe)
+import Data.Set (Set)
+import Data.Set qualified as Set
 import GHC.Generics
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Code.Expr (Expr)
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Universe (UniverseLevel)
 import Vehicle.Data.Variable.Bound.Context.Core
+import Vehicle.Data.Variable.Bound.Context.Generic.Core
+import Vehicle.Data.Variable.Bound.Context.Name.Core
 import Vehicle.Data.Variable.Bound.Index (Ix)
 import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Prelude
@@ -50,7 +58,7 @@ import Vehicle.Prelude
 
 -- | Closures for weak-head normal-form.
 data Closure builtin = Closure (BoundEnv builtin) (Expr builtin)
-  deriving (Show, Generic)
+  deriving (Show, Generic, Eq, Ord)
 
 -----------------------------------------------------------------------------
 -- Normalised expressions
@@ -67,7 +75,7 @@ data Value builtin
   | VPi !(VBinder builtin) !(Closure builtin)
   | VRecord Identifier !(OMap FieldName (Value builtin))
   | VRecordAcc !(Value builtin) !(Identifier, FieldName)
-  deriving (Show, Generic)
+  deriving (Show, Generic, Eq, Ord)
 
 type VType builtin = Value builtin
 
@@ -79,13 +87,49 @@ type VDecl builtin = GenericDecl (Value builtin)
 
 type VProg builtin = GenericProg (Value builtin)
 
+type VDims builtin = Value builtin
+
 -- | A list of arguments for an application that cannot be normalised.
 type Spine builtin = [VArg builtin]
 
 traverseSpine :: (Monad m) => (Value builtin1 -> m (Value builtin2)) -> Spine builtin1 -> m (Spine builtin2)
 traverseSpine f = traverse (traverse f)
 
------------------------------------------------------------------------------
+traverseSpine_ :: (Monad m) => (Value builtin1 -> m ()) -> Spine builtin1 -> m ()
+traverseSpine_ f = traverse_ (traverse_ f)
+
+boundVariablesIn :: Value builtin -> Set Lv
+boundVariablesIn value = execWriter (go value)
+  where
+    go :: (MonadWriter (Set Lv) m) => Value builtin -> m ()
+    go = \case
+      VUniverse {} -> return ()
+      VMeta _ spine -> traverseSpine_ go spine
+      VFreeVar _ spine -> traverseSpine_ go spine
+      VBuiltin _ spine -> traverseSpine_ go spine
+      VBoundVar v spine -> do
+        tell (Set.singleton v)
+        traverseSpine_ go spine
+      VPi binder closure -> do
+        traverse_ go binder
+        goClosure closure
+      VLam binder closure -> do
+        traverse_ go binder
+        goClosure closure
+      VRecord _ident fields ->
+        traverse_ go fields
+      VRecordAcc record (_ident, _field) -> go record
+
+    goClosure :: (MonadWriter (Set Lv) m) => Closure builtin -> m ()
+    goClosure (Closure (BoundEnv env) _) =
+      traverse_ (\(_, entry) -> goEnvEntry entry) env
+
+    goEnvEntry :: (MonadWriter (Set Lv) m) => EnvEntry builtin -> m ()
+    goEnvEntry = \case
+      Bound v -> go v
+      Unbound lv -> tell (Set.singleton lv)
+
+----------------------------------------------------------------------------
 -- Bound environments
 
 -- | The information stored for each variable in the environment. We choose
@@ -94,7 +138,7 @@ traverseSpine f = traverse (traverse f)
 data EnvEntry builtin
   = Bound (Value builtin)
   | Unbound Lv
-  deriving (Show)
+  deriving (Show, Eq, Ord)
 
 envEntryToValue :: EnvEntry builtin -> Value builtin
 envEntryToValue = \case
@@ -119,7 +163,7 @@ isUnbound = \case
 newtype BoundEnv builtin = BoundEnv
   { unBoundEnv :: GenericBoundCtx (GenericBinder (), EnvEntry builtin)
   }
-  deriving (Show)
+  deriving (Show, Eq, Ord)
 
 emptyBoundEnv :: BoundEnv builtin
 emptyBoundEnv = BoundEnv mempty
@@ -172,6 +216,9 @@ cheatEnvToValues (BoundEnv env) = fmap entryToValue env
       let arg = explicit $ envEntryToValue value
       VFreeVar ident [arg]
 
+----------------------------------------------------------------------------
+-- Free environments
+
 type FreeEnv builtin = Map Identifier (VDecl builtin)
 
 traverseEnv_ :: (Monad m) => (Value builtin -> m ()) -> BoundEnv builtin -> m ()
@@ -203,6 +250,18 @@ instance HasProvenance (GluedExpr builtin) where
 type GluedType builtin = GluedExpr builtin
 
 -----------------------------------------------------------------------------
+-- Dimensioned values
+
+-- | Because there are no dependent types in Haskell, we cannot create
+-- type-classes over tensor values with a given dimension. Hence we need
+-- to wrap them in this ugly type-class that stores the dimensions internally.
+data DimensionedTensorValue builtin = TensorValue
+  { tensorValueDims :: VDims builtin,
+    tensorValue :: Value builtin
+  }
+  deriving (Show, Eq, Ord)
+
+-----------------------------------------------------------------------------
 -- Instances
 
 instance (HasBuiltinConstructor Value) where
@@ -212,4 +271,13 @@ instance (HasBuiltinConstructor Value) where
           VBuiltin b spine -> Just (b, spine)
           _ -> Nothing,
         mkExpr = uncurry VBuiltin
+      }
+
+instance HasLambdaConstructor Value Closure where
+  accessLamC =
+    Access
+      { getExpr = \case
+          VLam binder closure -> Just (binder, closure)
+          _ -> Nothing,
+        mkExpr = uncurry VLam
       }

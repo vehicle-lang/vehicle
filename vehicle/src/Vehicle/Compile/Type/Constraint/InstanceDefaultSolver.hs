@@ -9,13 +9,14 @@ import Data.Hashable (Hashable)
 import Data.Maybe (mapMaybe)
 import Data.Proxy (Proxy (..))
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (In, NoCtx, PrettyVerbose, prettyVerbose)
+import Vehicle.Compile.Print (PrettyVerbose, prettyVerbose)
 import Vehicle.Compile.Type.Constraint.InstanceSolver (acceptCandidate)
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Meta.Variable
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Data.Builtin.Interface.Print
+import Vehicle.Data.Variable.Bound.Context.Generic (HasBoundCtx (..))
 
 type MonadInstanceDefault builtin m =
   ( MonadTypeChecker builtin m,
@@ -50,7 +51,7 @@ addNewInstanceConstraintUsingDefaults proxy = do
 
 getDefaultableConstraints ::
   forall constraint ctx builtin m.
-  (MonadInstanceDefault builtin m, HasMetas constraint, PrettyVerbose (Contextualised constraint ctx `In` NoCtx)) =>
+  (MonadInstanceDefault builtin m, HasMetas constraint, PrettyVerbose (Contextualised constraint ctx)) =>
   Proxy builtin ->
   [Contextualised constraint ctx] ->
   m [Contextualised constraint ctx]

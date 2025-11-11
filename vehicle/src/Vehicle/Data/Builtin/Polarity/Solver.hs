@@ -6,7 +6,7 @@ where
 import Control.Monad.Except (MonadError (..))
 import Data.Maybe (mapMaybe)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBE (normaliseClosure)
+import Vehicle.Compile.Normalise.NBE (normaliseClosureInCtx)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Type.Constraint.Core
@@ -16,6 +16,7 @@ import Vehicle.Compile.Type.System
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Polarity
 import Vehicle.Data.Code.Value
+import Vehicle.Data.Variable.Bound.Context.Generic
 
 solvePolarityConstraint ::
   (MonadPolaritySolver m) =>
@@ -80,7 +81,7 @@ solveQuantifierPolarity p q info@(ctx, _) [lam, res] = case lam of
   (VPi binder resPol) -> Just $ do
     binderEq <- createInstanceUnification info (typeOf binder) (VPolarityExpr Unquantified)
     let tc = PolarityRelation $ AddPolarity p q
-    resultPolarity <- normaliseClosure (toNamedBoundCtx $ boundContext ctx) binder resPol
+    resultPolarity <- normaliseClosureInCtx (toNamedBoundCtx $ boundContext ctx) binder resPol
     (_, addConstraint) <- createDerivedInstanceConstraint info Irrelevant (VBuiltin tc (explicit <$> [resultPolarity, res]))
     return $ Progress [binderEq] [addConstraint]
   _ -> Nothing
@@ -138,8 +139,8 @@ solveFunctionPolarity functionPosition info@(ctx, _) [arg, res] = case (arg, res
     let tc = PolarityRelation $ FunctionPolarity functionPosition
     (_, binderConstraint) <- createDerivedInstanceConstraint info Irrelevant (VBuiltin tc (explicit <$> [typeOf binder1, typeOf binder2]))
     let namedCtx = toNamedBoundCtx $ boundContext ctx
-    body1 <- normaliseClosure namedCtx binder1 closure1
-    body2 <- normaliseClosure namedCtx binder2 closure2
+    body1 <- normaliseClosureInCtx namedCtx binder1 closure1
+    body2 <- normaliseClosureInCtx namedCtx binder2 closure2
     (_, bodyConstraint) <- createDerivedInstanceConstraint info Irrelevant (VBuiltin tc (explicit <$> [body1, body2]))
     return $ Progress [] [binderConstraint, bodyConstraint]
   _ -> Nothing

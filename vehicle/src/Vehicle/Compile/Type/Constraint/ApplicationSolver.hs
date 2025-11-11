@@ -11,6 +11,7 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad (solveMeta)
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Compile.Type.System
+import Vehicle.Data.Variable.Bound.Context.Generic (HasBoundCtx (..))
 
 -- | Attempts to solve as many type-class constraints as possible.
 runApplicationSolver :: (TCM builtin m) => Proxy builtin -> m ()

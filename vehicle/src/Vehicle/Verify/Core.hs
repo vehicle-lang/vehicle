@@ -1,19 +1,16 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
-{-# HLINT ignore "Use newtype instead of data" #-}
 module Vehicle.Verify.Core where
 
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON)
-import Data.Char.SScript (subscript)
 import Data.Text (Text, unpack)
 import GHC.Generics (Generic)
-import Prettyprinter (brackets)
 import System.FilePath ((<.>), (</>))
 import Vehicle.Compile.Resource
-import Vehicle.Data.Assertion (Relation (..))
+import Vehicle.Data.Assertion (InequalityRelation (..), Relation (..))
 import Vehicle.Data.Builtin.Core
-import Vehicle.Data.Tensor (RatTensor, TensorIndices, showTensorIndices)
+import Vehicle.Data.Tensor (RatTensor, TensorIndices, TensorShape, showTensorIndices)
 import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
@@ -33,6 +30,12 @@ instance FromJSON NetworkContextInfo
 
 -- | A list of neural networks used in a given query.
 type MetaNetwork = [(Name, NetworkContextInfo, Int)]
+
+inputShape :: NetworkContextInfo -> TensorShape
+inputShape = dimensions . inputTensor . networkType
+
+outputShape :: NetworkContextInfo -> TensorShape
+outputShape = dimensions . outputTensor . networkType
 
 --------------------------------------------------------------------------------
 -- Queries misc
@@ -151,6 +154,11 @@ relationToQueryRelation = \case
   OLt -> LtRel
   OLe -> LeRel
 
+inequalityToQueryRelation :: InequalityRelation -> QueryRelation
+inequalityToQueryRelation = \case
+  Strict -> LtRel
+  NonStrict -> LeRel
+
 flipQueryRel :: QueryRelation -> QueryRelation
 flipQueryRel = \case
   EqRel -> EqRel
@@ -158,12 +166,6 @@ flipQueryRel = \case
   LtRel -> GtRel
   GeRel -> LeRel
   GtRel -> GtRel
-
-createNetworkVarName :: Name -> Int -> InputOrOutput -> Doc a
-createNetworkVarName networkName application inputOrOutput =
-  pretty networkName
-    <> pretty (fmap subscript (show application))
-    <> brackets (pretty inputOrOutput)
 
 --------------------------------------------------------------------------------
 -- User variable assignments

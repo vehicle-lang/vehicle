@@ -1,0 +1,22 @@
+Usage: vehicle compile loss (-l|--logic LOGIC) (-s|--specification FILE) 
+                            [-e|--declaration NAME] [-o|--output FILE]
+
+  Compile a specification to a loss function.
+
+Available options:
+  -l,--logic LOGIC         The differentiable logic to export to. Supported options: 
+                             * VehicleLoss
+                             * DL2Loss
+                             * GodelLoss
+                             * LukasiewiczLoss
+                             * ProductLoss
+                             * YagerLoss
+                             * STLLoss
+  -s,--specification FILE  The .vcl file containing the specification.
+  -e,--declaration NAME    Declarations in the specification to include during
+                           compilation. Can be provided multiple times. If not
+                           provided then all declarations in the specification
+                           will be compiled.
+  -o,--output FILE         Output location for compiled file(s). Defaults to
+                           `stdout` if not provided.
+  -h,--help                Show this help text
