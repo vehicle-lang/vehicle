@@ -5,11 +5,11 @@ from fractions import Fraction
 from pathlib import Path
 from typing import Any, Generic, Iterable, Optional, Sequence, Tuple, Union
 
-from typing_extensions import Literal, Self, TypeAlias, TypeVar, override
+from typing_extensions import Self, TypeAlias, TypeVar, override
 
 from .. import session
 from ..error import VehicleError
-from ..typing import DeclarationName, Explicit, Target
+from ..typing import DeclarationName, DifferentiableLogic, Target
 from ._decode import JsonValue, decode
 
 Name: TypeAlias = str
@@ -496,15 +496,15 @@ def load(
     path: Union[str, Path],
     *,
     declarations: Iterable[DeclarationName] = (),
-    target: Target = Explicit.Explicit,
+    target: Target = DifferentiableLogic.Vehicle,
 ) -> Program:
     exc, out, err, log = session.check_output(
         [
+            "--json",
             "compile",
             "loss",
             "--logic",
             target._vehicle_option_name,
-            "--json",
             f"--specification={path}",
             *[f"--declaration={declaration_name}" for declaration_name in declarations],
         ]

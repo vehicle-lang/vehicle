@@ -4,9 +4,8 @@
 module VehiclePythonBinding where
 
 import Data.ByteString (useAsCString)
-import Data.Text (Text)
 import Data.Text.Encoding (encodeUtf8)
-import Foreign.C.String (CString, peekCString, withCString)
+import Foreign.C.String (CString, peekCString)
 import Foreign.C.Types (CInt (..))
 import Foreign.Marshal.Array (peekArray)
 import Foreign.Ptr (Ptr)

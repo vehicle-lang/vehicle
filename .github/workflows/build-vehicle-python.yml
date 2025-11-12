@@ -32,7 +32,7 @@ jobs:
             plat: "musllinux"
             test: "test"
           - name: "macOS"
-            type: "macOS-13"
+            type: "macos-15-intel"
             arch: "x86_64"
             plat: "macosx"
             test: "test,tensorflow"
