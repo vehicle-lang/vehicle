@@ -193,6 +193,7 @@ data CompileError
   | -- Other
     UnsupportedInequality QueryFormatID DeclProvenance
   | QuantifiedIfCondition (ConstraintContext PolarityBuiltin)
+  | UnsupportedTensorAnnotation Provenance
 
 deriving instance Show CompileError
 
