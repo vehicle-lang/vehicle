@@ -430,7 +430,7 @@ compileBuiltin b args = case b of
     NatTensorLiteral t -> return $ compileTensorLiteral compileNatLiteral t
     BoolTensorLiteral t -> return $ compileTensorLiteral compileBoolLiteral t
     RatTensorLiteral t -> return $ compileTensorLiteral compileRatLiteral t
-    VectorLiteral -> compileVecLiteral args
+    VectorLiteral n -> compileVecLiteral n args
   StandardBuiltinFunction f -> case f of
     And -> annotateNotation [] 40 "$0 && $1" (Just "andb") args
     Or -> annotateNotation [] 50 "$0 || $1" (Just "orb") args
@@ -643,9 +643,9 @@ compileStack args = do
   as <- compileArgs minPrecedence args
   return $ annotate ([RequireImport VehicleTensor], 200) $ "nstack_tuple" <+> toVec as
 
-compileVecLiteral :: (MonadRocqCompile m) => [Arg DecidabilityBuiltin] -> m Code
-compileVecLiteral xs = case getExpr accessSpine xs of
-  Just (VecLitArgs _t _d ds) -> toVec <$> traverse compileExpr ds
+compileVecLiteral :: (MonadRocqCompile m) => Int -> [Arg DecidabilityBuiltin] -> m Code
+compileVecLiteral _size xs = case getExpr accessSpine xs of
+  Just (VecLitArgs _d ds) -> toVec <$> traverse compileExpr ds
   Nothing -> developerError "Malformed type-checked vector literal"
 
 toVec :: [Code] -> Code

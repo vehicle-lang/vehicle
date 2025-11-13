@@ -15,7 +15,6 @@ import Vehicle.Compile.Print
 import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Standard
-import Vehicle.Data.Builtin.Standard.Normalise
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
@@ -361,3 +360,13 @@ showExit e = do
   -- logDebug MaxDetail $ "unblock-exit " <+> prettyVerbose e
   logDebug MaxDetail $ "unblock-exit:" <+> prettyFriendly (WithContext e ctx)
   return e
+
+foldReduceAndComparison ::
+  TensorReductionArgs (Value Builtin) ->
+  Maybe (Value Builtin)
+foldReduceAndComparison (TensorReductionArgs _ _ tensor) =
+  case getExpr accessCompareRatTensorPointwise tensor of
+    Just (op, TensorOp2Args (IDimCons d ds) xs ys) -> do
+      let compareArgs = TensorReduceComparisonArgs d ds xs ys
+      Just $ mkExpr accessCompareRatTensorReduced (op, compareArgs)
+    _ -> Nothing

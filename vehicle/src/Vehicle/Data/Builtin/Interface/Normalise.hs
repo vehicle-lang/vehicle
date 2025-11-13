@@ -15,7 +15,7 @@ import Vehicle.Data.Builtin.Interface.Blocked
 import Vehicle.Data.Builtin.Interface.Print (PrintableBuiltin)
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
-import Vehicle.Data.Tensor (Tensor, at, extendTensor, foldTensor, mapTensor, stack, unstack, zipWithTensor, pattern ConstantTensor, pattern ZeroDimTensor)
+import Vehicle.Data.Tensor (Tensor, TensorShape, at, extendTensor, foldTensor, mapTensor, stack, unstack, zipWithTensor, pattern ConstantTensor, pattern ZeroDimTensor)
 import Vehicle.Data.Variable.Bound.Context.Name
 
 -- Okay so the important thing to remember about this module is that we have
@@ -272,7 +272,7 @@ evalImplies (TensorOp2Args ds xs ys) = do
 
 evalReduceAndTensor ::
   forall m builtin.
-  (MonadNormBuiltin m, PrintableBuiltin builtin, NormalisableBuiltin builtin, BuiltinHasNatType builtin, BuiltinHasIndexLiterals builtin, BuiltinHasForeach builtin, BuiltinHasTensors builtin, BuiltinHasListLiterals builtin, BuiltinHasNatLiterals builtin, BuiltinHasBoolLiterals builtin, HasTensorLiterals builtin, HasLiftableTensorOperations builtin) =>
+  (MonadNormBuiltin m, PrintableBuiltin builtin, NormalisableBuiltin builtin, BuiltinHasNatType builtin, BuiltinHasIndexLiterals builtin, BuiltinHasForeach builtin, BuiltinHasTensors builtin, BuiltinHasListLiterals builtin, BuiltinHasNatLiterals builtin, BuiltinHasBoolLiterals builtin, HasTensorLiterals Value builtin, HasLiftableTensorOperations builtin) =>
   NamedBoundCtx ->
   EvalApp builtin m ->
   Eval builtin m ->
@@ -297,7 +297,7 @@ evalReduceAndTensor ctx evalApp eval args@(TensorReductionArgs dims e tensor) = 
 -- amount of work needed by lifting operations to higher-tensor levels.
 -- For example `foreach i . xs ! i + ys ! i` becomes `xs + ys`.
 fuseReduceAndForeachTensor ::
-  (MonadLogger m, PrintableBuiltin builtin, NormalisableBuiltin builtin, BuiltinHasNatType builtin, BuiltinHasIndexLiterals builtin, BuiltinHasForeach builtin, BuiltinHasTensors builtin, BuiltinHasListLiterals builtin, BuiltinHasNatLiterals builtin, BuiltinHasBoolLiterals builtin, HasTensorLiterals builtin, HasLiftableTensorOperations builtin) =>
+  (MonadLogger m, PrintableBuiltin builtin, NormalisableBuiltin builtin, BuiltinHasNatType builtin, BuiltinHasIndexLiterals builtin, BuiltinHasForeach builtin, BuiltinHasTensors builtin, BuiltinHasListLiterals builtin, BuiltinHasNatLiterals builtin, BuiltinHasBoolLiterals builtin, HasTensorLiterals Value builtin, HasLiftableTensorOperations builtin) =>
   NamedBoundCtx ->
   EvalApp builtin m ->
   Eval builtin m ->
@@ -493,7 +493,7 @@ evalAtVector ::
 evalAtVector args@(AtVectorArgs _t _d vector index) = do
   fromMaybe (return $ mkExpr accessAtVector args) $
     case (vector, index) of
-      (IVecLiteral _t _d xs, IIndexLiteral i) -> Just $ return $ xs !! i
+      (IVecLiteral _t xs, IIndexLiteral i) -> Just $ return $ xs !! i
       _ -> Nothing
 
 -----------------------------------------------------------------------------
@@ -510,11 +510,11 @@ class HasLiftableTensorOperations builtin where
   liftableTensorOp1s :: (MonadNormBuiltin m) => [TensorOpEvalData TensorOp1Args builtin m]
   liftableTensorOp2s :: (MonadNormBuiltin m) => [TensorOpEvalData TensorOp2Args builtin m]
 
-data TensorLiteralAccessor builtin
-  = forall a. (Eq a) => Wrapper (Accessor (Value builtin) (Tensor a))
+data TensorLiteralAccessor expr builtin
+  = forall a. (Eq a) => Wrapper (Accessor (expr builtin) (Tensor a))
 
-class HasTensorLiterals builtin where
-  tensorLiterals :: [TensorLiteralAccessor builtin]
+class HasTensorLiterals expr builtin where
+  tensorLiterals :: [TensorLiteralAccessor expr builtin]
 
 -----------------------------------------------------------------------------
 -- At
@@ -524,7 +524,7 @@ class HasTensorLiterals builtin where
 -- For example `(xs + ys) ! i` becomes `xs ! i + ys ! i`.
 evalAtTensor ::
   forall builtin m.
-  (MonadNormBuiltin m, HasTensorLiterals builtin, HasLiftableTensorOperations builtin, BuiltinHasListLiterals builtin, BuiltinHasIndexLiterals builtin, HasTensorExpr Value builtin, BuiltinHasForeach builtin) =>
+  (MonadNormBuiltin m, HasTensorLiterals Value builtin, HasLiftableTensorOperations builtin, BuiltinHasListLiterals builtin, BuiltinHasIndexLiterals builtin, HasTensorExpr Value builtin, BuiltinHasForeach builtin) =>
   NamedBoundCtx ->
   EvalApp builtin m ->
   Eval builtin m ->
@@ -565,7 +565,7 @@ evalAtTensor ctx evalApp eval args@(AtTensorArgs t d ds tensor index) =
 
 unoptimisedEvalAtTensor ::
   forall builtin m.
-  (MonadNormBuiltin m, HasTensorLiterals builtin, BuiltinHasListLiterals builtin, BuiltinHasIndexLiterals builtin, HasTensorExpr Value builtin) =>
+  (MonadNormBuiltin m, HasTensorLiterals Value builtin, BuiltinHasListLiterals builtin, BuiltinHasIndexLiterals builtin, HasTensorExpr Value builtin) =>
   EvalSimple AtTensorArgs Value builtin m
 unoptimisedEvalAtTensor args@(AtTensorArgs _t _d ds tensor index) = do
   fromMaybe (return $ mkExpr accessAtTensor args) $
@@ -578,7 +578,7 @@ unoptimisedEvalAtTensor args@(AtTensorArgs _t _d ds tensor index) = do
             _ -> Nothing
       _ -> Nothing
   where
-    goLiterals :: Int -> [TensorLiteralAccessor builtin] -> Maybe (m (Value builtin))
+    goLiterals :: Int -> [TensorLiteralAccessor Value builtin] -> Maybe (m (Value builtin))
     goLiterals i literals = case literals of
       Wrapper Access {..} : remainingLiterals -> case getExpr tensor of
         Just xs -> Just $ return $ mkExpr (xs `at` i)
@@ -589,7 +589,7 @@ unoptimisedEvalAtTensor args@(AtTensorArgs _t _d ds tensor index) = do
 -- Foreach
 
 type HasOptimisedAtBuiltins builtin =
-  ( HasTensorLiterals builtin,
+  ( HasTensorLiterals Value builtin,
     HasLiftableTensorOperations builtin,
     NormalisableBuiltin builtin,
     BuiltinHasListLiterals builtin,
@@ -683,7 +683,7 @@ liftForeach ctx evalForeach lv d = go
       Just (AtTensorArgs _ _ _ xs (VBoundVar lv1 [])) | lv1 == lv -> Just $ return xs
       _ -> Nothing
 
-    goLiterals :: Value builtin -> [TensorLiteralAccessor builtin] -> Maybe (m (Value builtin))
+    goLiterals :: Value builtin -> [TensorLiteralAccessor Value builtin] -> Maybe (m (Value builtin))
     goLiterals value literals = case literals of
       Wrapper Access {..} : remainingLiterals -> case (getExpr value, d) of
         (Just xs, INatLiteral dim) -> Just $ return $ mkExpr $ extendTensor dim xs
@@ -699,7 +699,7 @@ liftForeach ctx evalForeach lv d = go
       _ -> Nothing
 
 unoptimisedEvalForeachTensor ::
-  (MonadLogger m, HasTensorLiterals builtin, HasTensorExpr Value builtin, BuiltinHasNatLiterals builtin, BuiltinHasIndexLiterals builtin, BuiltinHasForeach builtin) =>
+  (MonadLogger m, HasTensorLiterals Value builtin, HasTensorExpr Value builtin, BuiltinHasNatLiterals builtin, BuiltinHasIndexLiterals builtin, BuiltinHasForeach builtin) =>
   NamedBoundCtx ->
   EvalApp builtin m ->
   ForeachTensorArgs (Value builtin) ->
@@ -714,14 +714,14 @@ unoptimisedEvalForeachTensor ctx evalApp args@(ForeachTensorArgs t d ds f) = cas
 -- Stack
 
 evalStackTensor ::
-  (MonadNormBuiltin m, HasTensorLiterals builtin, BuiltinHasNatLiterals builtin, HasTensorExpr Value builtin) =>
-  EvalSimple StackTensorArgs Value builtin m
+  (MonadNormBuiltin m, HasTensorLiterals expr builtin, BuiltinHasNatLiterals builtin, HasTensorExpr expr builtin) =>
+  EvalSimple StackTensorArgs expr builtin m
 evalStackTensor = evalStackTensorWithPrimitives tensorLiterals
 
 evalStackTensorWithPrimitives ::
-  (MonadNormBuiltin m, BuiltinHasNatLiterals builtin, HasTensorExpr Value builtin) =>
-  [TensorLiteralAccessor builtin] ->
-  EvalSimple StackTensorArgs Value builtin m
+  (MonadNormBuiltin m, BuiltinHasNatLiterals builtin, HasTensorExpr expr builtin) =>
+  [TensorLiteralAccessor expr builtin] ->
+  EvalSimple StackTensorArgs expr builtin m
 evalStackTensorWithPrimitives tensorLits args@(StackTensorArgs _t d ds xs) = do
   return $
     fromMaybe (mkExpr accessStackTensor args) $
@@ -731,11 +731,11 @@ evalStackTensorWithPrimitives tensorLits args@(StackTensorArgs _t d ds xs) = do
         (INatLiteral n, Just ns) | length xs == n -> go ns xs tensorLits
         _ -> Nothing
   where
-    go :: [Int] -> [Value builtin] -> [TensorLiteralAccessor builtin] -> Maybe (Value builtin)
-    go elemDims elements = \case
+    go :: TensorShape -> [expr builtin] -> [TensorLiteralAccessor expr builtin] -> Maybe (expr builtin)
+    go elementsShape elements = \case
       Wrapper Access {..} : prims -> case traverse getExpr elements of
-        Just xss -> Just $ mkExpr $ stack xss
-        Nothing -> go elemDims elements prims
+        Just xss -> Just $ mkExpr $ stack elementsShape xss
+        Nothing -> go elementsShape elements prims
       [] -> Nothing
 
 -----------------------------------------------------------------------------
@@ -743,7 +743,7 @@ evalStackTensorWithPrimitives tensorLits args@(StackTensorArgs _t d ds xs) = do
 
 evalConstTensor ::
   forall builtin m.
-  (MonadNormBuiltin m, HasTensorLiterals builtin, BuiltinHasNatLiterals builtin, HasTensorExpr Value builtin) =>
+  (MonadNormBuiltin m, HasTensorLiterals Value builtin, BuiltinHasNatLiterals builtin, HasTensorExpr Value builtin) =>
   EvalSimple ConstTensorArgs Value builtin m
 evalConstTensor args@(ConstTensorArgs _t xs ds) =
   -- Pattern matching on ds here is technically a bug as blocking will not
@@ -754,7 +754,7 @@ evalConstTensor args@(ConstTensorArgs _t xs ds) =
     Just result -> return result
     _ -> return $ mkExpr accessConstTensor args
   where
-    go :: [Int] -> [TensorLiteralAccessor builtin] -> Maybe (Value builtin)
+    go :: [Int] -> [TensorLiteralAccessor Value builtin] -> Maybe (Value builtin)
     go dims = \case
       [] -> Nothing
       Wrapper Access {..} : prims -> case getExpr xs of
@@ -764,7 +764,7 @@ evalConstTensor args@(ConstTensorArgs _t xs ds) =
         Nothing -> go dims prims
 
 evalForeachVector ::
-  (MonadLogger m, HasTensorLiterals builtin, HasVectorExpr Value builtin, BuiltinHasNatLiterals builtin, BuiltinHasIndexLiterals builtin, BuiltinHasForeach builtin) =>
+  (MonadLogger m, HasTensorLiterals Value builtin, HasVectorExpr Value builtin, BuiltinHasNatLiterals builtin, BuiltinHasIndexLiterals builtin, BuiltinHasForeach builtin) =>
   NamedBoundCtx ->
   EvalApp builtin m ->
   Eval builtin m ->
@@ -773,7 +773,7 @@ evalForeachVector ::
 evalForeachVector ctx evalApp _eval args@(ForeachVectorArgs t d f) = case d of
   INatLiteral n -> do
     xs <- traverse (\i -> evalApp ctx f [explicit (IIndexLiteral i)]) [0 .. (n - 1 :: Int)]
-    return $ IVecLiteral t d xs
+    return $ IVecLiteral t xs
   _ -> return $ mkExpr accessForeachVector args
 
 evalIterate ::

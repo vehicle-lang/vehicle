@@ -26,7 +26,7 @@ oneD : Tensor ℚ (2 ∷ [])
 oneD = stack zeroD 1
 
 twoD : Tensor ℚ (2 ∷ (2 ∷ []))
-twoD = stack oneD (stack 2 3)
+twoD = stack oneD (2 ∷ (3 ∷ []))
 
 lookup2D : Tensor ℚ []
 lookup2D = (twoD ! # 0) ! # 1

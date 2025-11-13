@@ -81,7 +81,7 @@ addFunctionConstraint constraint declProv@(_, declP) position existingExpr = do
   let constraintArgs = case position of
         FunctionInput {} -> [newExpr, existingExpr]
         FunctionOutput {} -> [existingExpr, newExpr]
-  let tcExpr = BuiltinExpr declP constraint (explicit <$> constraintArgs)
+  let tcExpr = App (Builtin declP constraint) (explicit <$> constraintArgs)
 
   freeEnv <- getFreeCtx (Proxy @builtin)
   let declSort = developerError "function IO constraints should never fail"

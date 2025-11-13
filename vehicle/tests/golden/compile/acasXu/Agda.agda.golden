@@ -75,7 +75,7 @@ ValidInput : UnnormalisedInputVector → Set
 ValidInput x = Fin.All (λ i → (minimumInputValues ! i) ≤ (x ! i) × (x ! i) ≤ (maximumInputValues ! i))
 
 meanScalingValues : UnnormalisedInputVector
-meanScalingValues = stack (ℤ.+ 19791091 / 1000) 0 0 650 600
+meanScalingValues = ℤ.+ 19791091 / 1000 ∷ (0 ∷ (0 ∷ (650 ∷ (600 ∷ []))))
 
 normalise : UnnormalisedInputVector → InputVector
 normalise x = foreach (λ i → ((x ! i) 𝕋.⊖ (meanScalingValues ! i)) 𝕋.÷ ((maximumInputValues ! i) 𝕋.⊖ (minimumInputValues ! i)))

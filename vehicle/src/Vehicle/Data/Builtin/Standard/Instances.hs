@@ -215,30 +215,24 @@ allInstances =
           ----------------
           -- HasVecLits --
           ----------------
-          ( forAllTypes $ \t ->
-              forAllDim Irrelevant $ \d ->
-                forAllDims $ \ds ->
-                  hasVecLits (tTensor t (dimCons d ds)) (tTensor t ds) d,
-            implLam "t" type0 $ \t ->
-              lamDim $ \d ->
-                lamDims $ \ds ->
-                  builtinFunction StackTensor @@@ [t, d] .@@@ [ds],
+          ( forAllTypes $ \tElem ->
+              hasVecLits (lamExplDim $ \_d -> tList tElem) tElem,
+            implLam "tElem" type0 $ \tElem ->
+              builtinCast (FromVec FromVecToList) @@@ [tElem],
             False
           ),
           ( forAllTypes $ \t ->
-              forAllDim Irrelevant $ \d ->
-                hasVecLits (tVector t d) t d,
-            implLam "t" type0 $ \t ->
-              lamDim $ \d ->
-                builtinConstructor VectorLiteral @@@ [t, d],
+              hasVecLits (lamExplDim $ \d -> tVector t d) t,
+            implLam "tElem" type0 $ \tElem ->
+              builtinCast (FromVec FromVecToTensor) @@@ [tElem],
             False
           ),
-          ( forAllTypes $ \t ->
-              forAllDim Irrelevant $ \d ->
-                hasVecLits (tList t) t d,
-            implLam "t" type0 $ \t ->
-              lamDim $ \d ->
-                builtinCast FromVectorToList @@@ [t, d],
+          ( forAllTypes $ \tElem ->
+              forAllDims $ \ds ->
+                hasVecLits (lamExplDim $ \d -> tTensor tElem (dimCons d ds)) (tTensor tElem ds),
+            implLam "tElem" type0 $ \tElem ->
+              lamDims $ \ds ->
+                builtinCast (FromVec FromVecToTensor) @@@ [tElem] .@@@ [ds],
             False
           ),
           ------------------

@@ -207,7 +207,7 @@ delabCast :: (MonadDelab m) => V.BuiltinCast -> [V.Arg] -> m B.Expr
 delabCast fun args = case fun of
   V.FromNat {} -> rawDelab
   V.FromRat {} -> rawDelab
-  V.FromVectorToList {} -> rawDelab
+  V.FromVec {} -> rawDelab
   where
     rawDelab = cheatDelabPretty fun args
 
@@ -296,7 +296,7 @@ delabConstructor fun args = case fun of
   V.UnitLiteral -> return $ B.Literal B.UnitLiteral
   V.NatLiteral x -> return $ B.Literal $ B.NatLiteral $ delabNatLit x
   V.IndexLiteral x -> return $ B.Literal $ B.NatLiteral $ delabNatLit x
-  V.VectorLiteral -> delabVecLiteral args
+  V.VectorLiteral n -> delabVecLiteral n args
   V.NatTensorLiteral t -> cheatDelabPretty t []
   V.RatTensorLiteral t -> cheatDelabPretty t []
   V.BoolTensorLiteral t -> cheatDelabPretty t []
@@ -305,7 +305,7 @@ delabTypeClassOp :: (MonadDelab m) => V.TypeClassOp -> [V.Arg] -> m B.Expr
 delabTypeClassOp op args = case op of
   V.FromNatTC {} -> cheatDelabPretty op args
   V.FromRatTC {} -> cheatDelabPretty op args
-  V.VecLiteralTC {} -> delabVecLiteral args
+  V.FromVecTC {} -> cheatDelabPretty op args
   V.NegTC -> delabOp1 B.Neg tokSub args
   V.AddTC -> delabInfixOp2 B.Add tokAdd args
   V.SubTC -> delabInfixOp2 B.Sub tokSub args
@@ -431,8 +431,8 @@ delabAnn :: B.TokAnnotation -> [B.DeclAnnOption] -> B.Decl
 delabAnn name [] = B.DefAnn name B.DeclAnnWithoutOpts
 delabAnn name ops = B.DefAnn name $ B.DeclAnnWithOpts ops
 
-delabVecLiteral :: (MonadDelab m) => [V.Arg] -> m B.Expr
-delabVecLiteral args = do
+delabVecLiteral :: (MonadDelab m) => Int -> [V.Arg] -> m B.Expr
+delabVecLiteral _n args = do
   let explArgs = filter V.isExplicit args
   B.VecLiteral tokSeqOpen <$> traverse (delabM . argExpr) explArgs <*> pure tokSeqClose
 

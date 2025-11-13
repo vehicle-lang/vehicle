@@ -94,11 +94,13 @@ derivedFunctionBlockingStatus f spine = case f of
 
 castBlockingStatus :: BuiltinCast -> Spine builtin -> BlockingStatus builtin
 castBlockingStatus f spine = case f of
-  FromVectorToList -> fixedStatus [1] spine
   FromNat FromNatToIndex -> fixedStatus [1] spine
   FromNat FromNatToNat -> AlwaysReduces
   FromNat FromNatToRat -> fixedStatus [0] spine
   FromRat FromRatToRat -> AlwaysReduces
+  FromVec FromVecToVec -> AlwaysReduces
+  FromVec FromVecToList -> fixedStatus [2] spine
+  FromVec FromVecToTensor -> AlwaysReduces
 
 traverseArgsAtIndices ::
   (Monad m) =>

@@ -13,7 +13,6 @@ module Vehicle.Data.Code.Expr
     isTypeSynonym,
     mkHole,
     pattern TypeUniverse,
-    pattern BuiltinExpr,
     BuiltinUpdate,
     traverseBuiltinsM,
     mapBuiltins,
@@ -26,6 +25,7 @@ module Vehicle.Data.Code.Expr
     liftDBIndices,
     Substitution,
     substituteDB,
+    getBuiltinApp,
   )
 where
 
@@ -195,15 +195,6 @@ isTypeSynonym = \case
 pattern TypeUniverse :: Provenance -> Int -> Expr builtin
 pattern TypeUniverse p l = Universe p (UniverseLevel l)
 
-pattern BuiltinExpr ::
-  Provenance ->
-  builtin ->
-  NonEmpty (Arg builtin) ->
-  Expr builtin
-pattern BuiltinExpr p b args <- App (Builtin p b) args
-  where
-    BuiltinExpr p b args = App (Builtin p b) args
-
 getBuiltinApp :: Expr builtin -> Maybe (builtin, [Arg builtin])
 getBuiltinApp = \case
   Builtin _ b -> Just (b, [])
@@ -326,7 +317,10 @@ instance (BuiltinHasBinders builtin) => HasBinders (Expr builtin) where
   getBinder = \case
     Pi _ binder body -> Just (PiBinder, binder, body)
     Lam _ binder body -> Just (LamBinder, binder, body)
-    BuiltinExpr _ (getBuiltinBinder -> Just b) (NonEmpty.last -> (argExpr -> Lam _ binder body)) -> Just (b, binder, body)
+    (getBuiltinApp -> Just (builtin, a : as)) ->
+      case (getBuiltinBinderType builtin, argExpr $ NonEmpty.last (a :| as)) of
+        (Just binderType, Lam _ binder body) -> Just (binderType, binder, body)
+        _ -> Nothing
     _ -> Nothing
 
   getLetBinder = \case

@@ -301,11 +301,11 @@ convertVecLiteralArgs ::
   (VType Builtin, VDims Builtin) ->
   VecLitArgs (Value Builtin) ->
   m (Value LossBuiltin)
-convertVecLiteralArgs convertValue (elemType, dims) (VecLitArgs _typ dim xs) = do
+convertVecLiteralArgs convertValue (elemType, dims) (VecLitArgs _typ xs) = do
   convertStackTensor convertValue $
     StackTensorArgs
       { stackType = elemType,
-        stackFirstDim = dim,
+        stackFirstDim = INatLiteral (length xs),
         stackRemainingDims = dims,
         stackElements = xs
       }

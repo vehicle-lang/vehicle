@@ -322,8 +322,14 @@ type HasVectorExpr expr builtin =
 accessVectorType :: (HasVectorType expr builtin) => Accessor (expr builtin) (VectorTypeArgs (expr builtin))
 accessVectorType = accessArgs accessVectorTypeBuiltin
 
-accessVecLit :: (HasVectorExpr expr builtin) => Accessor (expr builtin) (VecLitArgs (expr builtin))
-accessVecLit = accessArgs accessVecLitBuiltin
+accessVecLit :: (HasVectorExpr expr builtin) => Accessor (expr builtin) (Int, VecLitArgs (expr builtin))
+accessVecLit =
+  Access
+    { getExpr = \case
+        (getBuiltin accessVecLitBuiltin -> Just (size, getExpr accessSpine -> Just args)) -> Just (size, args)
+        _ -> Nothing,
+      mkExpr = \(size, args) -> mkBuiltin accessVecLitBuiltin size (mkExpr accessSpine args)
+    }
 
 accessAtVector :: (HasVectorExpr expr builtin) => Accessor (expr builtin) (AtVectorArgs (expr builtin))
 accessAtVector = accessArgs accessAtVectorBuiltin

@@ -10,6 +10,7 @@ module Vehicle.Data.DSL
     (~>),
     (.~>),
     (~~>),
+    (.~~>),
     (~~~>),
     (.~~~>),
     (@@),
@@ -133,6 +134,12 @@ infixr 4 ~~>
 
 (~~>) :: DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 x ~~> y = pi Nothing (Implicit False) Relevant x (const y)
+
+-- | Irrelevant implicit function type
+infixr 4 .~~>
+
+(.~~>) :: DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+x .~~> y = pi Nothing (Implicit True) Irrelevant x (const y)
 
 -- | Instance function type
 infixr 4 ~~~>

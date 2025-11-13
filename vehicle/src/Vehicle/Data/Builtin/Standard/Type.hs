@@ -2,6 +2,7 @@
 
 module Vehicle.Data.Builtin.Standard.Type () where
 
+import Data.Foldable (traverse_)
 import Data.Proxy (Proxy (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Bidirectional (createFreshUnificationConstraint)
@@ -72,9 +73,9 @@ typeOfTypeClass tc = case tc of
   HasMap -> (type0 ~> type0) ~> type0
   HasFold -> (type0 ~> type0) ~> type0
   HasQuantifierIn {} -> type0 ~> type0 ~> type0
-  HasNatLits {} -> type0 ~> type0
+  HasNatLits -> type0 ~> type0
   HasRatLits -> type0 ~> type0
-  HasVecLits {} -> tNat ~> (type0 ~> type0) ~> type0
+  HasVecLits -> (tDim .~~> type0) ~> type0 ~> type0
   ValidPropertyType -> type0 ~> type0
   ValidParameterType {} -> type0 ~> type0
   ValidNetworkType -> type0 ~> type0
@@ -93,7 +94,10 @@ typeOfTypeClassOp b = case b of
         isTensorType t ds ~~~> type0
   FromNatTC -> forAllTypes $ \t -> hasNatLits t ~~~> typeOfFromNat t
   FromRatTC -> forAllTypes $ \t -> hasRatLits t ~~~> typeOfFromRat t
-  VecLiteralTC -> typeOfVectorLiteral
+  FromVecTC ->
+    forAll "tCont" (tDim .~> type0) $ \tCont ->
+      forAllTypes $ \tElem ->
+        hasVecLits tCont tElem ~~~> typeOfFromVec tCont tElem
   NegTC -> typeOfTCOp1 hasNeg
   AddTC -> typeOfTCOp2 hasAdd
   SubTC -> typeOfTCOp2 hasSub
@@ -112,16 +116,6 @@ typeOfTypeClassOp b = case b of
     forAll "A" (type0 ~> type0) $ \t ->
       hasQuantifier q t ~~~> typeOfQuantifier t
 
-typeOfBuiltinCast :: BuiltinCast -> DSLExpr Builtin
-typeOfBuiltinCast = \case
-  FromNat dom -> case dom of
-    FromNatToNat -> typeOfFromNat tNat
-    FromNatToIndex -> forAllIrrelevantNat "n" $ \s -> typeOfFromNat (tIndex s)
-    FromNatToRat -> typeOfFromNat (tRatTensor dimNil)
-  FromRat dom -> case dom of
-    FromRatToRat -> typeOfFromRat (tRatTensor dimNil)
-  FromVectorToList -> typeOfFromVectorToList
-
 typeOfTCComparisonOp ::
   (BuiltinHasStandardTypes builtin) =>
   (DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin) ->
@@ -133,11 +127,37 @@ typeOfTCComparisonOp constraint =
       ~> t2
       ~> t3
 
-typeOfFromVectorToList :: (HasStandardBuiltins builtin) => DSLExpr builtin
+--------------------------------------------------------------------------------
+-- Casts
+
+typeOfBuiltinCast :: BuiltinCast -> DSLExpr Builtin
+typeOfBuiltinCast = \case
+  FromNat dom -> case dom of
+    FromNatToNat -> typeOfFromNat tNat
+    FromNatToIndex -> forAllIrrelevantNat "n" $ \s -> typeOfFromNat (tIndex s)
+    FromNatToRat -> typeOfFromNat (tRatTensor dimNil)
+  FromRat dom -> case dom of
+    FromRatToRat -> typeOfFromRat (tRatTensor dimNil)
+  FromVec dom -> case dom of
+    FromVecToVec -> typeOfFromVectorToVector
+    FromVecToList -> typeOfFromVectorToList
+    FromVecToTensor -> typeOfFromVectorToTensor
+
+typeOfFromVectorToList :: DSLExpr Builtin
 typeOfFromVectorToList =
-  forAllTypes $ \t ->
-    forAllDim Relevant $ \d ->
-      typeOfVecLiteralCast (tList t) t d
+  forAllTypes $ \tElem ->
+    typeOfFromVec (lamDim $ \_d -> tList tElem) tElem
+
+typeOfFromVectorToVector :: DSLExpr Builtin
+typeOfFromVectorToVector =
+  forAllTypes $ \tElem ->
+    typeOfFromVec (lamDim $ \d -> tVector tElem d) tElem
+
+typeOfFromVectorToTensor :: DSLExpr Builtin
+typeOfFromVectorToTensor =
+  forAllTypes $ \tElem ->
+    forAllDims $ \ds ->
+      typeOfFromVec (lamDim $ \d -> tTensor tElem (dimCons d ds)) (tTensor tElem ds)
 
 typeOfNatInDomainConstraint :: (HasStandardBuiltins builtin) => DSLExpr builtin
 typeOfNatInDomainConstraint = forAll "A" type0 $ \t -> tNat ~> t ~> type0
@@ -151,13 +171,10 @@ typeOfFromNat t = forAllExpl "n" tNat $ \n -> natInDomainConstraint n t .~~~> t
 typeOfFromRat :: DSLExpr Builtin -> DSLExpr Builtin
 typeOfFromRat t = tRatTensor dimNil ~> t
 
-typeOfVectorLiteral :: DSLExpr Builtin
-typeOfVectorLiteral =
-  forAll "tCont" type0 $ \tCont ->
-    forAll "tElem" type0 $ \tElem ->
-      forAllDim Relevant $ \d ->
-        hasVecLits tCont tElem d
-          ~~~> typeOfVecLiteralCast tCont tElem d
+typeOfFromVec :: DSLExpr Builtin -> DSLExpr Builtin -> DSLExpr Builtin
+typeOfFromVec tCont tElem =
+  forAllDim Irrelevant $ \d ->
+    tVector tElem d ~> tCont .@@ [d]
 
 --------------------------------------------------------------------------------
 -- Type system
@@ -190,7 +207,7 @@ restrictStandardDeclType declSort (ident, p) typ = do
         RestrictedDataset -> ValidDatasetType
         RestrictedNetwork -> ValidNetworkType
 
-  let expr = BuiltinExpr p (TypeClass tc) [explicit typ]
+  let expr = App (Builtin p $ TypeClass tc) [explicit typ]
   let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin env (ident, provenanceOf typ) (Left declSort) typ
   _ <- createFreshInstanceConstraint False mempty p origin Irrelevant expr
   return typ
@@ -205,12 +222,12 @@ restrictStandardRecordAnnotatedAsTensorType (ident, p) fields = case fields of
   [] -> return ()
   (firstFieldName, firstFieldType) : restFields -> do
     env <- getFreeCtx (Proxy @Builtin)
-    let expr = BuiltinExpr p (TypeClass ValidTensorLikeType) [explicit firstFieldType]
+    let expr = App (Builtin p $ TypeClass ValidTensorLikeType) [explicit firstFieldType]
     let restrictionDetails = Right (FieldTypeIsAllowed firstFieldName)
     let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin env (ident, p) restrictionDetails firstFieldType
     _ <- createFreshInstanceConstraint False mempty p origin Irrelevant expr
 
-    _ <- traverse (checkRecordFieldTypesMatch (ident, p) (firstFieldName, firstFieldType)) restFields
+    traverse_ (checkRecordFieldTypesMatch (ident, p) (firstFieldName, firstFieldType)) restFields
     return ()
 
 checkRecordFieldTypesMatch ::

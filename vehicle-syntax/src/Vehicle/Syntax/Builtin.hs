@@ -63,7 +63,7 @@ data BuiltinConstructor
   | UnitLiteral
   | IndexLiteral Int
   | NatLiteral Int
-  | VectorLiteral
+  | VectorLiteral Int
   | BoolTensorLiteral (Tensor Bool)
   | NatTensorLiteral (Tensor Int)
   | RatTensorLiteral (Tensor Rational)
@@ -82,7 +82,7 @@ instance Pretty BuiltinConstructor where
     UnitLiteral -> "()"
     NatLiteral n -> pretty n
     IndexLiteral n -> pretty n
-    VectorLiteral -> "vec"
+    VectorLiteral _size -> "vecLit"
     BoolTensorLiteral x -> pretty x
     NatTensorLiteral x -> pretty x
     RatTensorLiteral x -> pretty x
@@ -180,7 +180,7 @@ data BuiltinCast
   = -- Cast operations
     FromNat FromNatDomain
   | FromRat FromRatDomain
-  | FromVectorToList
+  | FromVec FromVecDomain
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData BuiltinCast
@@ -193,7 +193,7 @@ instance Pretty BuiltinCast where
   pretty = \case
     FromNat dom -> "fromNatTo" <> pretty dom
     FromRat dom -> "fromRatTo" <> pretty dom
-    FromVectorToList -> "fromVectorToList"
+    FromVec dom -> "fromVecTo" <> pretty dom
 
 -- | Builtins in the Vehicle language
 data Builtin

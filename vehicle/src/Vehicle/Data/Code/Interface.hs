@@ -11,6 +11,7 @@ module Vehicle.Data.Code.Interface
     module Operations,
     module Patterns,
     mkListExpr,
+    getListExpr,
     mkDims,
     getDim,
     getDims,
@@ -32,6 +33,15 @@ mkListExpr ::
   [expr builtin] ->
   expr builtin
 mkListExpr tElem = foldr (ICons tElem) (INil tElem)
+
+getListExpr ::
+  (HasListExpr expr builtin) =>
+  expr builtin ->
+  Maybe [expr builtin]
+getListExpr e = case e of
+  INil _ -> Just []
+  ICons _ x xs -> (x :) <$> getListExpr xs
+  _ -> Nothing
 
 mkDims :: (HasNatExpr expr builtin, HasListExpr expr builtin, BuiltinHasNatType builtin) => [Int] -> expr builtin
 mkDims ds = mkListExpr INatType (fmap INatLiteral ds)

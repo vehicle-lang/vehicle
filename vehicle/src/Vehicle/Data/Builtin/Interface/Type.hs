@@ -96,7 +96,7 @@ typeOfBuiltinConstructor = \case
   UnitLiteral -> tUnit
   IndexLiteral {} -> forAllIrrelevantNat "n" $ \n -> tIndex n
   NatLiteral {} -> tNat
-  VectorLiteral {} -> typeOfVecLiteral
+  VectorLiteral n -> typeOfVecLiteral n
   NatTensorLiteral t -> tNatTensor (shapeOf t)
   BoolTensorLiteral t -> tBoolTensor (shapeOf t)
   RatTensorLiteral t -> tRatTensor (shapeOf t)
@@ -166,22 +166,17 @@ typeOfAtTensor =
       forAllDims $ \ds ->
         tTensor tElem (dimCons d ds) ~> tIndex d ~> tTensor tElem ds
 
-typeOfVecLiteralCast :: (HasStandardBuiltins builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
-typeOfVecLiteralCast tCont tElem d =
-  iterate type0 (\fn t -> tElem ~> fn @@ [t]) d tCont
-
-typeOfVecLiteral :: (HasStandardBuiltins builtin) => DSLExpr builtin
-typeOfVecLiteral =
-  forAllTypes $ \t ->
-    forAllDim Relevant $ \d ->
-      typeOfVecLiteralCast (tVector t d) t d
+typeOfVecLiteral :: (HasStandardBuiltins builtin) => Int -> DSLExpr builtin
+typeOfVecLiteral n =
+  forAllTypes $ \tElem ->
+    iterate type0 (\fn t -> tElem ~> fn @@ [t]) (natLit n) (tVector tElem (natLit n))
 
 typeOfStackTensor :: (HasStandardBuiltins builtin) => DSLExpr builtin
 typeOfStackTensor =
-  forAllTypes $ \t ->
+  forAllTypes $ \tElem ->
     forAllDim Relevant $ \d ->
       forAllDims $ \ds ->
-        typeOfVecLiteralCast (tTensor t (dimCons d ds)) (tTensor t ds) d
+        iterate type0 (\fn t -> tTensor tElem ds ~> fn @@ [t]) d (tTensor tElem (dimCons d ds))
 
 typeOfForeach :: DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 typeOfForeach tCont tInd tElem =

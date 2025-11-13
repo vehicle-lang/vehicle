@@ -184,7 +184,7 @@ parseVector ctx currentDim expectedElemType expectedDim actualDims actualElems =
       checkDimension ctx currentDim expectedDim d
       let splitElems = partitionData d ds actualElems
       exprs <- traverse (\es -> parseContainer ctx (currentDim + 1) ds es expectedElemType) splitElems
-      return $ IVecLiteral expectedElemType expectedDim exprs
+      return $ IVecLiteral expectedElemType exprs
 
 parseElements ::
   (MonadExpandResources m, Vector.Unbox a) =>

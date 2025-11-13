@@ -136,7 +136,6 @@ library
     Vehicle.Compile
     Vehicle.Compile.Constants.Rational
     Vehicle.Compile.Constants.Value
-    Vehicle.Compile.Descope
     Vehicle.Compile.Error
     Vehicle.Compile.ExpandResources
     Vehicle.Compile.ExpandResources.Core
@@ -153,7 +152,8 @@ library
     Vehicle.Compile.Print.Error.Typing
     Vehicle.Compile.Resource
     Vehicle.Compile.Scope
-    Vehicle.Compile.Simplify
+    Vehicle.Compile.Scope.Coercions
+    Vehicle.Compile.Scope.Undo
     Vehicle.Compile.Type
     Vehicle.Data.Builtin.Interface
     Vehicle.Data.Builtin.Loss

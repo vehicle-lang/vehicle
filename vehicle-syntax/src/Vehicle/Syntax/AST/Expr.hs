@@ -25,7 +25,6 @@ module Vehicle.Syntax.AST.Expr
     isTypeSynonym,
     mkHole,
     normAppList,
-    pattern BuiltinExpr,
   )
 where
 
@@ -168,12 +167,3 @@ isTypeSynonym = \case
   Universe {} -> True
   Pi _ _ res -> isTypeSynonym res
   _ -> False
-
-pattern BuiltinExpr ::
-  Provenance ->
-  Builtin ->
-  NonEmpty Arg ->
-  Expr
-pattern BuiltinExpr p b args <- App (Builtin p b) args
-  where
-    BuiltinExpr p b args = App (Builtin p b) args

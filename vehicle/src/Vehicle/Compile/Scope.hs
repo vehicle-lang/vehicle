@@ -9,9 +9,11 @@ where
 
 import Control.Monad.Except (MonadError (..))
 import Data.Foldable (traverse_)
+import Data.List.NonEmpty qualified as NonEmpty
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
+import Vehicle.Compile.Scope.Coercions (insertCoercions)
 import Vehicle.Compile.Scope.Core
 import Vehicle.Compile.Scope.Generalise
 import Vehicle.Compile.Scope.RecordInstances (createTensorRecordConversionFunctions)
@@ -107,33 +109,44 @@ scopeExpr ::
   (MonadScopeExpr m) =>
   S.Expr ->
   m (Expr Builtin)
-scopeExpr e = do
-  result <- case e of
-    S.Var p v -> scopeVar p v
-    S.Universe p -> return $ Universe p (UniverseLevel 0)
-    S.Hole p n -> return $ Hole p n
-    S.Builtin p op -> return $ Builtin p op
-    S.App fun args -> App <$> scopeExpr fun <*> traverse (traverse scopeExpr) args
-    S.Pi p binder res ->
-      scopeBinder binder $ \binder' ->
-        Pi p binder' <$> scopeExpr res
-    S.Lam p binder body -> do
-      scopeBinder binder $ \binder' ->
-        Lam p binder' <$> scopeExpr body
-    S.Let p bound binder body -> do
-      bound' <- scopeExpr bound
-      scopeBinder binder $ \binder' ->
-        Let p bound' binder' <$> scopeExpr body
-    S.Record p fields -> do
-      fields' <- traverseRecordFields scopeExpr fields
-      recordDefinitionIdent <- lookupRecordDefinitionByFields p (fmap fst fields')
-      return $ Record p recordDefinitionIdent fields'
-    S.RecordAcc p record field -> do
-      record' <- scopeExpr record
-      recordDefinitionIdent <- lookupRecordDefinitionByField field
-      return $ RecordAcc p record' (recordDefinitionIdent, field)
+scopeExpr e = case e of
+  S.Var p v -> scopeVar p v
+  S.Universe p -> return $ Universe p (UniverseLevel 0)
+  S.Hole p n -> return $ Hole p n
+  S.Builtin p op -> scopeBuiltin p op mempty
+  S.App fun args -> case fun of
+    S.Builtin p op -> scopeBuiltin p op $ NonEmpty.toList args
+    _ -> App <$> scopeExpr fun <*> traverse (traverse scopeExpr) args
+  S.Pi p binder res ->
+    scopeBinder binder $ \binder' ->
+      Pi p binder' <$> scopeExpr res
+  S.Lam p binder body -> do
+    scopeBinder binder $ \binder' ->
+      Lam p binder' <$> scopeExpr body
+  S.Let p bound binder body -> do
+    bound' <- scopeExpr bound
+    scopeBinder binder $ \binder' ->
+      Let p bound' binder' <$> scopeExpr body
+  S.Record p fields -> do
+    fields' <- traverseRecordFields scopeExpr fields
+    recordDefinitionIdent <- lookupRecordDefinitionByFields p (fmap fst fields')
+    return $ Record p recordDefinitionIdent fields'
+  S.RecordAcc p record field -> do
+    record' <- scopeExpr record
+    recordDefinitionIdent <- lookupRecordDefinitionByField field
+    return $ RecordAcc p record' (recordDefinitionIdent, field)
 
-  return result
+scopeBuiltin ::
+  (MonadScopeExpr m) =>
+  Provenance ->
+  Builtin ->
+  [S.Arg] ->
+  m (Expr Builtin)
+scopeBuiltin p builtin args = do
+  args' <- traverse (traverse scopeExpr) args
+  case insertCoercions p builtin args' of
+    Nothing -> return $ normAppList (Builtin p builtin) args'
+    Just coercedResult -> return coercedResult
 
 scopeBinder ::
   (MonadScopeExpr m) =>

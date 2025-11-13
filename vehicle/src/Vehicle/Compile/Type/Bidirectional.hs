@@ -433,7 +433,7 @@ checkArgsAgainstPiType ctx problem@ArgInsertionProblem {..} binder resultType
       let p = provenanceOf originalFun
       checkedArg <- case matchedUncheckedArg of
         Just arg -> do
-          logDebug MaxDetail $ "matching-arg-found" <+> prettyVerbose arg
+          logDebug MaxDetail $ "matching-arg-found" <+> prettyExternal (WithContext arg nameCtx)
           let relevance = relevanceOf binder
           let ctxRelevance = if contextRelevance == Irrelevant then Irrelevant else relevance
           checkedArgExpr <- checkExprType ctx ctxRelevance (typeOf binder) (argExpr arg)

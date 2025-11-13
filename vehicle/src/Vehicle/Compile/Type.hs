@@ -49,7 +49,6 @@ typeCheckProg modul instanceCandidates freeCtx prog@(Main uncheckedProg) =
       let unusedDecls
             | modul == userModule = completelyUnusedDeclarations (createDependencyGraph prog)
             | otherwise = mempty
-      logDebug MaxDetail $ "Good" <+> prettySet unusedDecls
       xs <- typeCheckDecls unusedDecls uncheckedProg
       return $ Main xs
 
@@ -189,16 +188,22 @@ typeCheckRecordDef p ident anns uncheckedType uncheckedFields isUnused = do
     logCompilerSection2 MidDetail pass $
       traverse (checkRecordFieldDef ident) uncheckedFields
 
-  when (isAnnotatedAsTensor anns) $
-    logCompilerSection2 MidDetail "checking suitability of type as @tensor" $ do
-      restrictRecordAnnotatedAsTensor (ident, p) checkedFields
-
   -- Reconstruct the function.
   let checkedDecl = DefRecord p ident anns checkedType checkedFields
 
   -- Solve constraints and substitute through.
   setCurrentDecl $ Just (checkedDecl, isUnused)
   solveConstraints (Proxy @builtin)
+
+  -- Check if the record is annotated as a tensor and check the restrictions.
+  -- Needs to be done after the main solving pass so that we are guaranteed to
+  -- get the most informative error message.
+  when (isAnnotatedAsTensor anns) $
+    logCompilerSection2 MidDetail "checking suitability of type as @tensor" $ do
+      checkedFields' <- traverseRecordFields (substMetaVariablesAt mempty) checkedFields
+      restrictRecordAnnotatedAsTensor (ident, p) checkedFields'
+      solveConstraints (Proxy @builtin)
+
   substMetaVariables checkedDecl
 
 checkRecordFieldDef ::

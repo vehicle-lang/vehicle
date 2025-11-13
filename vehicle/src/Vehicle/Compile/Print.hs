@@ -31,10 +31,9 @@ import GHC.Exts qualified as GHC (Constraint)
 import GHC.TypeLits
 import Prettyprinter (fill)
 import Vehicle.Compile.Constants.Rational
-import Vehicle.Compile.Descope
 import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Simplify
+import Vehicle.Compile.Scope.Undo
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta (MetaInfo (..))
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
@@ -104,8 +103,12 @@ data Tags
     Unnamed Tags
   | -- | The `Cleaned` tag ensures that automatically inserted annotations, binders and modalities are removed.
     Cleaned Tags
-  | -- | The `ShortVectors` tag ensures that long vectors are printed out concisely.
-    ShortVectors Tags
+
+type VerboseTags = 'Unnamed ('As 'Internal)
+
+type ExternalTags = 'Named ('As 'External)
+
+type FriendlyTags = 'Named ('Cleaned ('As 'External))
 
 --------------------------------------------------------------------------------
 -- Strategies
@@ -118,11 +121,10 @@ data Strategy
   | AlterContext Strategy
   | DescopeNaively Strategy
   | DescopeWithNames Strategy
+  | DescopeCleanlyWithNames Strategy
   | Functor Strategy
   | PrintAs VehicleLang
   | QuoteValue Strategy
-  | Clean Strategy
-  | ShortenVectors Strategy
   | Branch Strategy Strategy
   | Branch3 Strategy Strategy Strategy
   | Pretty
@@ -146,8 +148,6 @@ type family ShowStrategy (s :: Strategy) :: Symbol where
   ShowStrategy ('Functor s) = AppendSymbol "Functor → " (ShowStrategy s)
   ShowStrategy ('PrintAs lang) = "PrintAs"
   ShowStrategy ('QuoteValue s) = AppendSymbol "QuoteValue → " (ShowStrategy s)
-  ShowStrategy ('Clean s) = AppendSymbol "Clean → " (ShowStrategy s)
-  ShowStrategy ('ShortenVectors s) = AppendSymbol "ShortenVectors → " (ShowStrategy s)
   ShowStrategy ('Branch s1 s2) =
     AppendSymbol
       "Branch("
@@ -179,6 +179,7 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   -------------------
   -- To convert any named representation to the target language, simply convert it.
   StrategyFor ('As lang) S.Expr = 'PrintAs lang
+  StrategyFor ('Cleaned tags) S.Expr = StrategyFor tags S.Expr
   StrategyFor ('Named tags) S.Expr = StrategyFor tags S.Expr
   StrategyFor ('Unnamed tags) S.Expr = StrategyFor tags S.Expr
   -----------------
@@ -186,6 +187,7 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   -----------------
   -- Converting an `Expr` with DeBruijn indices to a named representation requires a named bound context to descope.
   -- Otherwise converting it to an unnamed representation we descope naively by just converting the variables directly
+  StrategyFor ('Named ('Cleaned tags)) (Expr builtin `In` NamedBoundCtx) = 'DescopeCleanlyWithNames (StrategyFor tags S.Expr)
   StrategyFor ('Named tags) (Expr builtin `In` NamedBoundCtx) = 'DescopeWithNames (StrategyFor tags S.Expr)
   StrategyFor ('Unnamed tags) (Expr builtin `In` ctx) = 'DescopeNaively (StrategyFor tags S.Expr)
   ------------
@@ -288,11 +290,6 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
     StrategyFor tags (SliceVariable `In` ctx)
   StrategyFor tags (NetworkOutputTensorVariable `In` ctx) =
     StrategyFor tags (SliceVariable `In` ctx)
-  --------------------
-  -- Simplification --
-  --------------------
-  StrategyFor ('Cleaned tags) a = 'Clean (StrategyFor tags a)
-  StrategyFor ('ShortVectors tags) a = 'ShortenVectors (StrategyFor tags a)
   -- StrategyFor tags (Contextualised object (ConstraintContext builtin)) = 'SetupContext (StrategyFor tags (object `In` NamedBoundCtx))
   ----------------
   -- Error case --
@@ -337,12 +334,6 @@ type family BoundsErrorFunction tags (a :: k) :: ErrorMessage where
 -- | A type synonym that takes the tags and the type and computes the strategy
 -- for the combination to guide type-class resolution.
 type PrettyWith tags a = PrettyUsing (StrategyFor tags a) a
-
-type VerboseTags = 'Unnamed ('ShortVectors ('As 'Internal))
-
-type ExternalTags = 'Named ('ShortVectors ('As 'External))
-
-type FriendlyTags = 'Named ('Cleaned ('As 'External))
 
 type PrettyVerbose a = PrettyWith VerboseTags (a `In` NoCtx)
 
@@ -588,6 +579,60 @@ instance
     prettyLinearExprLike prettyVar pretty varCoeffs (ZeroDimTensor rhs) <> pretty rel <+> "0"
 
 --------------------------------------------------------------------------------
+-- 'DescopeCleanlyWithNames
+
+-- Convert open terms from DeBruijn representation to named representation
+-- (It would be nice if we could `Functor` instances going, but I can't get it to work
+-- with the type-classes without getting ambiguties)
+
+-- Expr
+
+instance
+  (PrettyUsing rest S.Expr, PrintableBuiltin builtin) =>
+  PrettyUsing ('DescopeCleanlyWithNames rest) (Expr builtin `In` NamedBoundCtx)
+  where
+  prettyUsing (e, ctx) = prettyUsing @rest $ descopeExpr ctx True e
+
+instance
+  (PrettyUsing rest S.Arg, PrintableBuiltin builtin) =>
+  PrettyUsing ('DescopeCleanlyWithNames rest) (Arg builtin `In` NamedBoundCtx)
+  where
+  prettyUsing (e, ctx) = prettyUsing @rest $ fmap (descopeExpr ctx True) e
+
+instance
+  (PrettyUsing rest S.Binder, PrintableBuiltin builtin) =>
+  PrettyUsing ('DescopeCleanlyWithNames rest) (Binder builtin `In` NamedBoundCtx)
+  where
+  prettyUsing (e, ctx) = prettyUsing @rest $ fmap (descopeExpr ctx True) e
+
+instance
+  (PrettyUsing rest S.Decl, PrintableBuiltin builtin) =>
+  PrettyUsing ('DescopeCleanlyWithNames rest) (Decl builtin `In` NamedBoundCtx)
+  where
+  prettyUsing (e, ctx) = prettyUsing @rest $ fmap (descopeExpr ctx True) e
+
+instance
+  (PrettyUsing rest S.Prog, PrintableBuiltin builtin) =>
+  PrettyUsing ('DescopeCleanlyWithNames rest) (Prog builtin `In` NamedBoundCtx)
+  where
+  prettyUsing (e, ctx) = prettyUsing @rest $ fmap (descopeExpr ctx True) e
+
+-- LinearExpr
+
+instance
+  (VariableLike variable, ConstantLike constant, PrettyUsing rest (constant `In` NamedBoundCtx)) =>
+  PrettyUsing ('DescopeCleanlyWithNames rest) (LinearExpr variable constant `In` NamedBoundCtx)
+  where
+  prettyUsing (lexp, ctx) = prettyLinearExpr prettyVar prettyConst lexp
+    where
+      prettyConst c = prettyUsing @rest (c, ctx)
+      prettyVar var = do
+        let lv = toLv var
+        case lookupLvInBoundCtx lv ctx of
+          Nothing -> developerError $ "Missing name for variable" <+> pretty lv
+          Just n -> pretty n
+
+--------------------------------------------------------------------------------
 -- 'DescopeWithNames
 
 -- Convert open terms from DeBruijn representation to named representation
@@ -600,33 +645,31 @@ instance
   (PrettyUsing rest S.Expr, PrintableBuiltin builtin) =>
   PrettyUsing ('DescopeWithNames rest) (Expr builtin `In` NamedBoundCtx)
   where
-  prettyUsing (e, ctx) = prettyUsing @rest $ descopeExpr e ctx
+  prettyUsing (e, ctx) = prettyUsing @rest $ descopeExpr ctx False e
 
 instance
   (PrettyUsing rest S.Arg, PrintableBuiltin builtin) =>
   PrettyUsing ('DescopeWithNames rest) (Arg builtin `In` NamedBoundCtx)
   where
-  prettyUsing (e, ctx) = prettyUsing @rest $ fmap (`descopeExpr` ctx) e
+  prettyUsing (e, ctx) = prettyUsing @rest $ fmap (descopeExpr ctx False) e
 
 instance
   (PrettyUsing rest S.Binder, PrintableBuiltin builtin) =>
   PrettyUsing ('DescopeWithNames rest) (Binder builtin `In` NamedBoundCtx)
   where
-  prettyUsing (e, ctx) = prettyUsing @rest $ fmap (`descopeExpr` ctx) e
+  prettyUsing (e, ctx) = prettyUsing @rest $ fmap (descopeExpr ctx False) e
 
 instance
   (PrettyUsing rest S.Decl, PrintableBuiltin builtin) =>
   PrettyUsing ('DescopeWithNames rest) (Decl builtin `In` NamedBoundCtx)
   where
-  prettyUsing (e, ctx) = prettyUsing @rest $ fmap (`descopeExpr` ctx) e
+  prettyUsing (e, ctx) = prettyUsing @rest $ fmap (descopeExpr ctx False) e
 
 instance
   (PrettyUsing rest S.Prog, PrintableBuiltin builtin) =>
   PrettyUsing ('DescopeWithNames rest) (Prog builtin `In` NamedBoundCtx)
   where
-  prettyUsing (e, ctx) = prettyUsing @rest $ fmap (`descopeExpr` ctx) e
-
--- Value
+  prettyUsing (e, ctx) = prettyUsing @rest $ fmap (descopeExpr ctx False) e
 
 -- LinearExpr
 
@@ -686,18 +729,6 @@ instance PrettyUsing ('PrintAs 'External) S.Binder where
 
 --------------------------------------------------------------------------------
 -- Simplification
-
-instance
-  (Simplify a, PrettyUsing rest a) =>
-  PrettyUsing ('Clean rest) a
-  where
-  prettyUsing e = prettyUsing @rest (clean e)
-
-instance
-  (Simplify a, PrettyUsing rest a) =>
-  PrettyUsing ('ShortenVectors rest) a
-  where
-  prettyUsing e = prettyUsing @rest (shortenVec e)
 
 instance (Pretty a) => PrettyUsing 'Pretty (a `In` ctx) where
   prettyUsing (x, _) = pretty x

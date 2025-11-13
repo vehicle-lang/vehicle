@@ -44,7 +44,9 @@ instance ConstantLike RatTensor where
   maxConstants = zipWithTensor max
 
   stackConstants :: [RatTensor] -> RatTensor
-  stackConstants = stack
+  stackConstants = \case
+    [] -> developerError "cannot stack zero dimensional constants"
+    t : ts -> stack (shapeOf t) (t : ts)
 
   unstackConstants :: RatTensor -> [RatTensor]
   unstackConstants = unstack

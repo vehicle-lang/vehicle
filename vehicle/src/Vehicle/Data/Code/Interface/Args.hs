@@ -199,7 +199,6 @@ traverseIfArgBranches f (IfArgs t c x y) = IfArgs t c <$> f x <*> f y
 
 data VecLitArgs expr = VecLitArgs
   { vecLitType :: expr,
-    vecLitDim :: expr,
     vecLitElements :: [expr]
   }
 
@@ -207,9 +206,9 @@ instance IsArgs VecLitArgs where
   accessSpine =
     Access
       { getExpr = \case
-          (fmap argExpr -> t : d : xs) -> Just $ VecLitArgs t d xs
+          (fmap argExpr -> t : xs) -> Just $ VecLitArgs t xs
           _ -> Nothing,
-        mkExpr = \(VecLitArgs t d xs) -> implicit t : implicitIrrelevant d : fmap explicit xs
+        mkExpr = \(VecLitArgs t xs) -> implicit t : fmap explicit xs
       }
 
 -- | Arguments for `!`
@@ -370,7 +369,7 @@ instance IsArgs FromNatToIndexArgs where
 
 -- | Arguments for `Nil`
 newtype NilArgs expr = NilArgs
-  { consType :: expr
+  { nilType :: expr
   }
 
 instance IsArgs NilArgs where
@@ -447,19 +446,61 @@ instance IsArgs FoldListArgs where
 
 -- | Arguments for `VectorToList`
 data VectorToListArgs expr = VectorToListArgs
-  { vectorToListElementType :: GenericArg expr,
-    vectorToListSize :: GenericArg expr,
-    vectorToListArgs :: [expr]
+  { vectorToListElementType :: expr,
+    vectorToListSize :: expr,
+    vectorToListVector :: expr
   }
 
 instance IsArgs VectorToListArgs where
   accessSpine =
     Access
       { getExpr = \case
-          t : n : xs -> Just $ VectorToListArgs t n (fmap argExpr xs)
+          (fmap argExpr -> [t, n, xs]) -> Just $ VectorToListArgs t n xs
           _ -> Nothing,
-        mkExpr = \(VectorToListArgs t n xs) -> t : n : fmap explicit xs
+        mkExpr = \(VectorToListArgs t n xs) -> [implicit t, implicitIrrelevant n, explicit xs]
       }
+
+--------------------------------------------------------------------------------
+-- VectorToVector
+
+-- | Arguments for `VectorToList`
+data VectorToVectorArgs expr = VectorToVectorArgs
+  { vectorToVectorElementType :: expr,
+    vectorToVectorSize :: expr,
+    vectorToVectorVector :: expr
+  }
+
+instance IsArgs VectorToVectorArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          (fmap argExpr -> [t, n, xs]) -> Just $ VectorToVectorArgs t n xs
+          _ -> Nothing,
+        mkExpr = \(VectorToVectorArgs t n xs) -> [implicit t, implicitIrrelevant n, explicit xs]
+      }
+
+--------------------------------------------------------------------------------
+-- VectorToTensor
+
+-- | Arguments for `VectorToList`
+data VectorToTensorArgs expr = VectorToTensorArgs
+  { vectorToTensorElementType :: expr,
+    vectorToTensorDims :: expr,
+    vectorToTensorSize :: expr,
+    vectorToTensorVector :: expr
+  }
+
+instance IsArgs VectorToTensorArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          (fmap argExpr -> [t, ds, n, xs]) -> Just $ VectorToTensorArgs t ds n xs
+          _ -> Nothing,
+        mkExpr = \(VectorToTensorArgs t ds n xs) -> [implicit t, implicitIrrelevant ds, implicitIrrelevant n, explicit xs]
+      }
+
+--------------------------------------------------------------------------------
+-- IterateArgs
 
 -- | Arguments for `Iterate`
 data IterateArgs expr = IterateArgs

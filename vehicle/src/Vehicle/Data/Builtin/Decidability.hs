@@ -129,6 +129,51 @@ functionAccessor b =
       mkExpr = \() -> StandardBuiltinFunction b
     }
 
+typeAccessor :: BuiltinType -> Accessor DecidabilityBuiltin ()
+typeAccessor b =
+  Access
+    { getExpr = \case
+        StandardBuiltinType b1 | b == b1 -> Just ()
+        _ -> Nothing,
+      mkExpr = \() -> StandardBuiltinType b
+    }
+
+compareIndexAccessor :: Accessor DecidabilityBuiltin ComparisonOp
+compareIndexAccessor =
+  Access
+    { getExpr = \case
+        StandardBuiltinFunction (CompareIndex op) -> Just op
+        _ -> Nothing,
+      mkExpr = \op -> StandardBuiltinFunction (CompareIndex op)
+    }
+
+compareNatAccessor :: Accessor DecidabilityBuiltin ComparisonOp
+compareNatAccessor =
+  Access
+    { getExpr = \case
+        StandardBuiltinFunction (CompareNat op) -> Just op
+        _ -> Nothing,
+      mkExpr = \op -> StandardBuiltinFunction (CompareNat op)
+    }
+
+compareRatTensorPointwiseAccessor :: Accessor DecidabilityBuiltin ComparisonOp
+compareRatTensorPointwiseAccessor =
+  Access
+    { getExpr = \case
+        StandardBuiltinFunction (CompareRatTensorPointwise op) -> Just op
+        _ -> Nothing,
+      mkExpr = \op -> StandardBuiltinFunction (CompareRatTensorPointwise op)
+    }
+
+compareRatTensorReducedAccessor :: Accessor DecidabilityBuiltin ComparisonOp
+compareRatTensorReducedAccessor =
+  Access
+    { getExpr = \case
+        StandardBuiltinDerivedFunction (CompareRatTensorReduced op) -> Just op
+        _ -> Nothing,
+      mkExpr = \op -> StandardBuiltinDerivedFunction (CompareRatTensorReduced op)
+    }
+
 instance BuiltinHasStandardTypes DecidabilityBuiltin where
   accessBuiltinType =
     Access
@@ -142,9 +187,9 @@ instance BuiltinHasVectors DecidabilityBuiltin where
   accessVecLitBuiltin =
     Access
       { getExpr = \case
-          StandardBuiltinConstructor VectorLiteral -> Just ()
+          StandardBuiltinConstructor (VectorLiteral n) -> Just n
           _ -> Nothing,
-        mkExpr = \() -> StandardBuiltinConstructor VectorLiteral
+        mkExpr = \n -> StandardBuiltinConstructor (VectorLiteral n)
       }
 
   accessAtVectorBuiltin = functionAccessor AtVector
@@ -166,6 +211,17 @@ instance BuiltinHasStandardData DecidabilityBuiltin where
           _ -> Nothing
       }
 
+instance BuiltinHasTensorType DecidabilityBuiltin where
+  accessTensorTypeBuiltin = typeAccessor TensorType
+
+instance BuiltinHasTensors DecidabilityBuiltin where
+  accessConstTensorBuiltin = functionAccessor ConstTensor
+  accessStackTensorBuiltin = functionAccessor StackTensor
+  accessAtTensorBuiltin = functionAccessor AtTensor
+
+instance BuiltinHasNatType DecidabilityBuiltin where
+  accessNatTypeBuiltin = typeAccessor NatType
+
 instance BuiltinHasNatLiterals DecidabilityBuiltin where
   accessNatLitBuiltin =
     Access
@@ -185,6 +241,76 @@ instance BuiltinHasNatLiterals DecidabilityBuiltin where
 
   accessAddNatBuiltin = functionAccessor (Add AddNat)
   accessMulNatBuiltin = functionAccessor (Mul MulNat)
+
+instance BuiltinHasBoolType DecidabilityBuiltin where
+  accessBoolTypeBuiltin = typeAccessor BoolType
+
+instance BuiltinHasBoolLiterals DecidabilityBuiltin where
+  accessBoolTensorLitBuiltin =
+    Access
+      { getExpr = \case
+          StandardBuiltinConstructor (BoolTensorLiteral b) -> Just b
+          _ -> Nothing,
+        mkExpr = StandardBuiltinConstructor . BoolTensorLiteral
+      }
+
+  accessNotBuiltin = functionAccessor Not
+  accessAndBuiltin = functionAccessor And
+  accessOrBuiltin = functionAccessor Or
+  accessImpliesBuiltin = functionAccessor Implies
+  accessReduceAndBuiltin = functionAccessor ReduceAndTensor
+  accessReduceOrBuiltin = functionAccessor ReduceOrTensor
+  accessIfBuiltin = functionAccessor If
+
+  accessCompareIndexBuiltin = compareIndexAccessor
+  accessCompareNatBuiltin = compareNatAccessor
+  accessCompareRatTensorPointwiseBuiltin = compareRatTensorPointwiseAccessor
+  accessCompareRatTensorReducedBuiltin = compareRatTensorReducedAccessor
+
+  accessQuantifyRatTensorBuiltin =
+    Access
+      { getExpr = \case
+          StandardBuiltinFunction (QuantifyRatTensor q) -> Just q
+          _ -> Nothing,
+        mkExpr = StandardBuiltinFunction . QuantifyRatTensor
+      }
+
+instance BuiltinHasIndexType DecidabilityBuiltin where
+  accessIndexTypeBuiltin = typeAccessor IndexType
+
+instance BuiltinHasIndexLiterals DecidabilityBuiltin where
+  accessIndexLitBuiltin =
+    Access
+      { getExpr = \case
+          StandardBuiltinConstructor (IndexLiteral n) -> Just n
+          _ -> Nothing,
+        mkExpr = StandardBuiltinConstructor . IndexLiteral
+      }
+
+instance BuiltinHasRatType DecidabilityBuiltin where
+  accessRatTypeBuiltin = typeAccessor RatType
+
+instance BuiltinHasRatLiterals DecidabilityBuiltin where
+  accessRatTensorLitBuiltin =
+    Access
+      { getExpr = \case
+          StandardBuiltinConstructor (RatTensorLiteral b) -> Just b
+          _ -> Nothing,
+        mkExpr = StandardBuiltinConstructor . RatTensorLiteral
+      }
+
+  accessNegRatTensorBuiltin = functionAccessor $ Neg NegRatTensor
+  accessAddRatTensorBuiltin = functionAccessor $ Add AddRatTensor
+  accessMulRatTensorBuiltin = functionAccessor $ Mul MulRatTensor
+  accessSubRatTensorBuiltin = functionAccessor $ Sub SubRatTensor
+  accessDivRatTensorBuiltin = functionAccessor $ Div DivRatTensor
+  accessMinRatTensorBuiltin = functionAccessor $ Min MinRatTensor
+  accessMaxRatTensorBuiltin = functionAccessor $ Max MaxRatTensor
+  accessPowRatTensorBuiltin = functionAccessor PowRat
+  accessReduceAddRatBuiltin = functionAccessor ReduceAddRatTensor
+  accessReduceMulRatBuiltin = functionAccessor ReduceMulRatTensor
+  accessReduceMinRatBuiltin = functionAccessor ReduceMinRatTensor
+  accessReduceMaxRatBuiltin = functionAccessor ReduceMaxRatTensor
 
 instance BuiltinHasListLiterals DecidabilityBuiltin where
   accessNilBuiltin =
@@ -207,7 +333,7 @@ instance BuiltinHasListLiterals DecidabilityBuiltin where
   accessFoldListBuiltin = functionAccessor FoldList
 
 instance BuiltinHasBinders DecidabilityBuiltin where
-  getBuiltinBinder = \case
+  getBuiltinBinderType = \case
     StandardBuiltinFunction ForeachTensor -> Just ForeachBinder
     StandardBuiltinFunction ForeachVector -> Just ForeachBinder
     StandardBuiltinFunction (QuantifyRatTensor q) -> Just $ QuantifierBinder q
@@ -322,7 +448,7 @@ evalBoolVectorToProp ::
   VectorOp1Args (Expr DecidabilityBuiltin) ->
   m (Expr DecidabilityBuiltin)
 evalBoolVectorToProp args = return $ case args of
-  VectorOp1Args _ (IVecLiteral _ _ xs) -> case xs of
+  VectorOp1Args _ (IVecLiteral _ xs) -> case xs of
     [] -> mkExpr accessBuiltinC (DecidabilityBuiltinFunction PropTrue, [])
     (v : vs) -> do
       let andFn a b = normAppList (Builtin mempty (DecidabilityBuiltinFunction PropAnd)) (explicit <$> [a, b])

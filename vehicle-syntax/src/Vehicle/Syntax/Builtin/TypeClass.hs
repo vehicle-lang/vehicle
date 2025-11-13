@@ -77,16 +77,16 @@ instance Pretty TypeClass where
     ValidDatasetTensorElementType -> "ValidDatasetTensorElementType"
     ValidTensorLikeType -> "ValidTensorLikeType"
 
--- Builtin operations for type-classes
+-- | Builtin operations for type-classes
+--
+-- Note we need to have `FromNat` and `FromRat` as actual functions as the
+-- `fromNat` requires us to inspect the actual value being cast in the type-checker
+-- when casting to `Index`. No such restriction applies to vector literals so we can
+-- have it as a literal in the type-class.
 data TypeClassOp
-  = -- | Needed to overload `Bool`/`Rat` as both `BoolElementType` in `Tensor Bool dims` and as `Tensor Bool []` in `Bool`
-    FromNatTC
+  = FromNatTC
   | FromRatTC
-  | -- Note we need to have `FromNat` and `FromRat` as actual functions as the
-    -- `fromNat` requires us to inspect the actual value being cast in the type-checker
-    -- when casting to `Index`. No such restriction applies to vector literals so we can
-    -- have it as a literal in the type-class.
-    VecLiteralTC
+  | FromVecTC
   | NegTC
   | AddTC
   | SubTC
@@ -116,7 +116,7 @@ instance Pretty TypeClassOp where
     DivTC -> "/"
     FromNatTC -> "fromNat"
     FromRatTC -> "fromRat"
-    VecLiteralTC {} -> "vec"
+    FromVecTC {} -> "fromVec"
     CompareTC op -> pretty op
     AtTC -> "!"
     MapTC -> "map"

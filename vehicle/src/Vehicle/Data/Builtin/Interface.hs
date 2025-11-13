@@ -121,7 +121,7 @@ class BuiltinHasVectorType builtin where
   accessVectorTypeBuiltin :: Accessor builtin ()
 
 class BuiltinHasVectors builtin where
-  accessVecLitBuiltin :: Accessor builtin ()
+  accessVecLitBuiltin :: Accessor builtin Int
   accessAtVectorBuiltin :: Accessor builtin ()
 
 --------------------------------------------------------------------------------
@@ -165,4 +165,4 @@ type HasStandardBuiltins builtin =
   )
 
 class BuiltinHasBinders builtin where
-  getBuiltinBinder :: builtin -> Maybe BinderType
+  getBuiltinBinderType :: builtin -> Maybe BinderType

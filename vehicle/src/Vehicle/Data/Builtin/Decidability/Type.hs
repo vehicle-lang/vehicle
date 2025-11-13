@@ -291,7 +291,7 @@ restrictDecidabilityDeclType declSort (ident, p) declType = do
     Nothing -> return ()
     Just tc -> do
       freeEnv <- getFreeCtx (Proxy @DecidabilityBuiltin)
-      let expr = BuiltinExpr p (DecidabilityBuiltinTypeClass tc) [explicit declType]
+      let expr = App (Builtin p (DecidabilityBuiltinTypeClass tc)) [explicit declType]
       let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin freeEnv (ident, provenanceOf declType) (Left declSort) declType
       _ <- createFreshInstanceConstraint False mempty p origin Irrelevant expr
       return ()

@@ -336,7 +336,7 @@ elabExpr expr = case expr of
   B.Nat tk -> builtinType V.NatType tk []
   B.List tk -> builtinType V.ListType tk []
   B.Vector tk -> builtinType V.VectorType tk []
-  B.Tensor tk -> builtinTypeClassOp V.TensorTypeTC tk []
+  B.Tensor tk -> builtinType V.TensorType tk []
   B.Nil tk -> constructor V.Nil tk []
   B.Cons e1 tk e2 -> constructor V.Cons tk [e1, e2]
   B.Not tk e -> builtinFunction V.Not tk [e]
@@ -497,13 +497,11 @@ elabLiteral = \case
   B.NatLiteral t -> do
     p <- mkProvenance t
     let n = readNat (tkSymbol t)
-    let fromNat = V.Builtin p (V.TypeClassOp V.FromNatTC)
-    return $ app fromNat [V.Builtin p $ V.BuiltinConstructor $ V.NatLiteral n]
+    return $ V.Builtin p $ V.BuiltinConstructor $ V.NatLiteral n
   B.RatLiteral t -> do
     p <- mkProvenance t
     let r = readRat (tkSymbol t)
-    let fromRat = V.Builtin p (V.TypeClassOp V.FromRatTC)
-    return $ app fromRat [V.Builtin p $ V.BuiltinConstructor $ V.RatTensorLiteral $ ZeroDimTensor r]
+    return $ V.Builtin p $ V.BuiltinConstructor $ V.RatTensorLiteral $ ZeroDimTensor r
 
 elabBoolLiteral :: B.Boolean -> Bool
 elabBoolLiteral t = read (unpack $ tkSymbol t)
@@ -561,11 +559,8 @@ app fun argExprs = V.normAppList fun args
 elabVecLiteral :: (MonadElab m, IsToken token) => token -> [B.Expr] -> m V.Expr
 elabVecLiteral tk xs = do
   p <- mkProvenance tk
-  let tCont = V.Arg p (V.Implicit True) V.Relevant (V.mkHole p "tCont")
-  let tElem = V.Arg p (V.Implicit True) V.Relevant (V.mkHole p "tElem")
-  let n = V.Arg p (V.Implicit True) V.Relevant (V.Builtin p (V.BuiltinConstructor $ V.NatLiteral (length xs)))
   xs' <- fmap (mkArg mempty V.Explicit) <$> traverse elabExpr xs
-  return $ V.normAppList (V.Builtin p (V.TypeClassOp V.VecLiteralTC)) (tCont : tElem : n : xs')
+  return $ V.normAppList (V.Builtin p (V.BuiltinConstructor (V.VectorLiteral (length xs)))) xs'
 
 elabApp :: (MonadElab m) => B.Expr -> B.Arg -> m V.Expr
 elabApp fun arg = do

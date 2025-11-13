@@ -20,7 +20,7 @@ module Agda where
 postulate f : Tensor ℚ (2 ∷ []) → Tensor ℚ (1 ∷ [])
 
 dataset : List (Tensor ℚ (2 ∷ []))
-dataset = stack (ℤ.+ 1 / 2) 1 ∷ []
+dataset = (ℤ.+ 1 / 2 ∷ (1 ∷ [])) ∷ []
 
 postulate empty : List.All (λ x → ⊤) dataset
 

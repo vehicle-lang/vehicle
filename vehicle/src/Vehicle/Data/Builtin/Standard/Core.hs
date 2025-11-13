@@ -6,6 +6,7 @@ module Vehicle.Data.Builtin.Standard.Core
     accessFromNatToIndex,
     accessFromNatToRat,
     accessFromVectorToList,
+    accessFromVectorToTensor,
     isTensorType,
     builtinDerivedFunction,
   )
@@ -15,7 +16,6 @@ import Vehicle.Data.Builtin.Core as Syntax
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Code.DSL
-import Vehicle.Data.Code.Expr
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.DSL
 import Vehicle.Prelude (GenericArg (..), HasIdentifier (identifierOf))
@@ -228,9 +228,9 @@ instance BuiltinHasVectors Builtin where
   accessVecLitBuiltin =
     Access
       { getExpr = \case
-          BuiltinConstructor VectorLiteral -> Just ()
+          BuiltinConstructor (VectorLiteral n) -> Just n
           _ -> Nothing,
-        mkExpr = \() -> BuiltinConstructor VectorLiteral
+        mkExpr = \n -> BuiltinConstructor (VectorLiteral n)
       }
 
   accessAtVectorBuiltin = functionAccessor AtVector
@@ -286,7 +286,7 @@ instance BuiltinHasIterate Builtin where
   accessIterateBuiltin = functionAccessor Iterate
 
 instance BuiltinHasBinders Builtin where
-  getBuiltinBinder = \case
+  getBuiltinBinderType = \case
     BuiltinFunction ForeachVector -> Just ForeachBinder
     BuiltinFunction ForeachTensor -> Just ForeachBinder
     BuiltinFunction (QuantifyRatTensor q) -> Just $ QuantifierBinder q
@@ -301,7 +301,7 @@ instance PrintableBuiltin Builtin where
     BuiltinCast FromRat {} -> Just $ \args -> argExpr $ last args
     TypeClassOp FromNatTC {} -> Just $ \args -> argExpr $ last args
     TypeClassOp FromRatTC {} -> Just $ \args -> argExpr $ last args
-    TypeClassOp VecLiteralTC {} -> Just $ \args -> normAppList (Builtin mempty b) args
+    TypeClassOp FromVecTC {} -> Just $ \args -> argExpr $ last args
     _ -> Nothing
 
   isDerivedBuiltin b = case b of
@@ -327,7 +327,12 @@ accessFromNatToRat = accessArgs (castAccessor (FromNat FromNatToIndex))
 accessFromVectorToList ::
   (HasBuiltinConstructor expr) =>
   Accessor (expr Builtin) (VectorToListArgs (expr Builtin))
-accessFromVectorToList = accessArgs (castAccessor FromVectorToList)
+accessFromVectorToList = accessArgs (castAccessor (FromVec FromVecToList))
+
+accessFromVectorToTensor ::
+  (HasBuiltinConstructor expr) =>
+  Accessor (expr Builtin) (VectorToTensorArgs (expr Builtin))
+accessFromVectorToTensor = accessArgs (castAccessor (FromVec FromVecToTensor))
 
 isTensorType :: DSLExpr Builtin -> DSLExpr Builtin -> DSLExpr Builtin
 isTensorType tElem ds = builtinTypeClass IsTensorType @@ [tElem] .@@ [ds]

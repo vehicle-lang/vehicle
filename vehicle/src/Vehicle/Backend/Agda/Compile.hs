@@ -25,11 +25,12 @@ import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Standard (BuiltinType (..))
 import Vehicle.Data.Builtin.Standard hiding (TensorType)
 import Vehicle.Data.Code.Expr ()
-import Vehicle.Data.Code.Interface (IsArgs (..), VecLitArgs (..))
+import Vehicle.Data.Code.Interface (IsArgs (..), VecLitArgs (..), mkDims)
+import Vehicle.Data.Code.Interface.Patterns
 import Vehicle.Data.Universe (UniverseLevel (..))
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Syntax.Sugar
-import Vehicle.Syntax.Tensor (Tensor, TensorShape, foldMapTensor)
+import Vehicle.Syntax.Tensor (Tensor, TensorShape, foldMapTensor, pattern ZeroDimTensor)
 
 --------------------------------------------------------------------------------
 -- Agda-specific options
@@ -504,10 +505,10 @@ compileBuiltinConstructor c args = case c of
   UnitLiteral -> return $ annotateConstant [DataUnit] "tt"
   IndexLiteral n -> return $ compileIndexLiteral n
   NatLiteral n -> return $ compileNatLiteral n
-  VectorLiteral -> compileVecLiteral args
-  NatTensorLiteral t -> return $ compileTensorLiteral compileNatLiteral t
-  BoolTensorLiteral t -> return $ compileTensorLiteral compileBoolLiteral t
-  RatTensorLiteral t -> return $ compileTensorLiteral compileRatLiteral t
+  VectorLiteral n -> compileVecLiteral n args
+  NatTensorLiteral t -> compileTensorLiteral INatType INatLiteral compileNatLiteral t
+  BoolTensorLiteral t -> compileTensorLiteral IBoolType IBoolLiteral compileBoolLiteral t
+  RatTensorLiteral t -> compileTensorLiteral IRatType IRatLiteral compileRatLiteral t
 
 compileBuiltinFunction ::
   (MonadAgdaCompile m) =>
@@ -627,20 +628,30 @@ compileRatLiteral r
     denom = compileNatLiteral (fromInteger $ denominator r)
 
 -- | Compiling vector literals. No literals in Agda so have to go via cons.
-toVec :: [Code] -> Code
-toVec = foldr (\v vs -> annotate ([], 5) (v <> "∷ᵥ" <> vs)) "[]ᵥ"
+toVec :: Type DecidabilityBuiltin -> [Expr DecidabilityBuiltin] -> Expr DecidabilityBuiltin
+toVec t = foldr (\v vs -> ICons t v vs) (INil t)
 
-compileVecLiteral :: (MonadAgdaCompile m) => [Arg DecidabilityBuiltin] -> m Code
-compileVecLiteral xs = case getExpr accessSpine xs of
-  Just (VecLitArgs _t _d ds) -> toVec <$> traverse compileExpr ds
+compileVecLiteral :: (MonadAgdaCompile m) => Int -> [Arg DecidabilityBuiltin] -> m Code
+compileVecLiteral _size xs = case getExpr accessSpine xs of
+  Just (VecLitArgs t ds) -> compileExpr $ toVec t ds
   Nothing -> developerError "Malformed type-checked vector literal"
 
-compileTensorLiteral :: (a -> Code) -> Tensor a -> Code
-compileTensorLiteral compileElement =
-  foldMapTensor compileElement compileTensorLayer
-  where
-    compileTensorLayer :: TensorShape -> [Code] -> Code
-    compileTensorLayer _shape = toVec
+compileTensorLiteral ::
+  forall m a.
+  (MonadAgdaCompile m) =>
+  Type DecidabilityBuiltin ->
+  (a -> Expr DecidabilityBuiltin) ->
+  (a -> Code) ->
+  Tensor a ->
+  m Code
+compileTensorLiteral elementType elementToExpr elementToCode = \case
+  ZeroDimTensor v -> return $ elementToCode v
+  tensor -> do
+    let vectorExpr = foldMapTensor elementToExpr compileTensorLayer tensor
+    compileExpr vectorExpr
+    where
+      compileTensorLayer :: TensorShape -> [Expr DecidabilityBuiltin] -> Expr DecidabilityBuiltin
+      compileTensorLayer shape = toVec (ITensorType elementType $ mkDims shape)
 
 compileBoolLiteral :: Bool -> Code
 compileBoolLiteral = \case

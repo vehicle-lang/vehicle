@@ -42,7 +42,7 @@ traverseMultiProperty compileProp propertyID propertyName declType declBody = ru
     goVector :: VType Builtin -> Int -> TensorIndices -> Value Builtin -> ExceptT MultiPropertyTraveralError m (MultiProperty a)
     goVector typ _dim indices value = case value of
       -- TODO refactor in terms of a VectorValue class to `TypedValue` module
-      (getExpr accessVecLit -> Just args) -> do
+      (getExpr accessVecLit -> Just (_, args)) -> do
         let es' = zip [0 :: Int ..] $ vecLitElements args
         MultiProperty <$> traverse (\(i, e) -> go typ (i : indices) e) es'
       _ -> throwError $ UnsupportedVectorValue value

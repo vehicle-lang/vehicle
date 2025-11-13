@@ -230,19 +230,8 @@ instance Pretty MaxDomain where
   pretty = \case
     MaxRatTensor -> "RatTensor"
 
-data FromRatDomain
-  = FromRatToRat
-  deriving (Eq, Ord, Show, Generic)
-
-instance Pretty FromRatDomain where
-  pretty = \case
-    FromRatToRat -> "Rat"
-
-instance NFData FromRatDomain
-
-instance Hashable FromRatDomain
-
-instance Serialize FromRatDomain
+--------------------------------------------------------------------------------
+-- FromNatDomain
 
 data FromNatDomain
   = -- This is actually needed as it takes an empty type-class parameter (see typing module)
@@ -263,27 +252,40 @@ instance NFData FromNatDomain
 
 instance Hashable FromNatDomain
 
-{-
 --------------------------------------------------------------------------------
--- Tensor element types
+-- FromRatDomain
 
-data TensorElementType
-  = BoolElementType
-  | IndexElementType
-  | NatElementType
-  | RatElementType
-  deriving (Eq, Ord, Generic, Show)
+data FromRatDomain
+  = FromRatToRat
+  deriving (Eq, Ord, Show, Generic)
 
-instance NFData TensorElementType
-
-instance Hashable TensorElementType
-
-instance Serialize TensorElementType
-
-instance Pretty TensorElementType where
+instance Pretty FromRatDomain where
   pretty = \case
-    BoolElementType -> "Bool"
-    NatElementType -> "Bool"
-    IndexElementType -> "Bool"
-    RatElementType -> "Rat"
--}
+    FromRatToRat -> "Rat"
+
+instance NFData FromRatDomain
+
+instance Hashable FromRatDomain
+
+instance Serialize FromRatDomain
+
+--------------------------------------------------------------------------------
+-- FromVecDomain
+
+data FromVecDomain
+  = FromVecToVec
+  | FromVecToList
+  | FromVecToTensor
+  deriving (Eq, Ord, Show, Generic)
+
+instance Pretty FromVecDomain where
+  pretty = \case
+    FromVecToVec -> "Vector"
+    FromVecToList -> "List"
+    FromVecToTensor -> "Tensor"
+
+instance NFData FromVecDomain
+
+instance Hashable FromVecDomain
+
+instance Serialize FromVecDomain

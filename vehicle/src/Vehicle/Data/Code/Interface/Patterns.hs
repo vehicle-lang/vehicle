@@ -119,7 +119,7 @@ pattern IDimCons x xs <- ICons INatType x xs
 --------------------------------------------------------------------------------
 -- Vector
 
-pattern IVecLiteral :: (HasVectorExpr expr builtin) => expr builtin -> expr builtin -> [expr builtin] -> expr builtin
-pattern IVecLiteral t d xs <- (getExpr accessVecLit -> Just (VecLitArgs t d xs))
+pattern IVecLiteral :: (HasVectorExpr expr builtin) => expr builtin -> [expr builtin] -> expr builtin
+pattern IVecLiteral t xs <- (getExpr accessVecLit -> Just (_, VecLitArgs t xs))
   where
-    IVecLiteral t d xs = mkExpr accessVecLit (VecLitArgs t d xs)
+    IVecLiteral t xs = mkExpr accessVecLit (length xs, VecLitArgs t xs)

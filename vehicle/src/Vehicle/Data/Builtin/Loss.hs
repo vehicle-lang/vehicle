@@ -267,7 +267,7 @@ instance BuiltinHasForeach LossBuiltin where
 --------------------------------------------------------------------------------
 -- Normalisation
 
-instance HasTensorLiterals LossBuiltin where
+instance (HasBuiltinConstructor expr) => HasTensorLiterals expr LossBuiltin where
   tensorLiterals =
     [ Wrapper accessNatTensorLiteral,
       Wrapper accessRatTensorLiteral

@@ -27,7 +27,7 @@ Definition zeroD : 'nT[R]_(nil) := const_t (5 / 2 : R).
 
 Definition oneD : 'nT[R]_(2%N :: nil) := nstack_tuple [tuple zeroD; const_t (1 : R)].
 
-Definition twoD : 'nT[R]_(2%N :: (2%N :: nil)) := nstack_tuple [tuple oneD; nstack_tuple [tuple const_t (2 : R); const_t (3 : R)]].
+Definition twoD : 'nT[R]_(2%N :: (2%N :: nil)) := nstack_tuple [tuple oneD; [tensor^^= (2 : R); (3 : R)]].
 
 Definition lookup2D : 'nT[R]_(nil) := (twoD^^0)^^1.
 

@@ -160,8 +160,8 @@ hasNatLits t = typeClass HasNatLits [t]
 hasRatLits :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
 hasRatLits t = typeClass HasRatLits [t]
 
-hasVecLits :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
-hasVecLits tCont tElem d = typeClass HasVecLits [tCont, tElem, d]
+hasVecLits :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+hasVecLits tCont tElem = typeClass HasVecLits [tCont, tElem]
 
 validParameterType :: (BuiltinHasStandardTypeClasses builtin) => ParameterSort -> DSLExpr builtin -> DSLExpr builtin
 validParameterType s t = typeClass (ValidParameterType s) [t]
@@ -228,6 +228,9 @@ lamType = lam "t" Explicit Irrelevant type0
 
 lamDim :: (BuiltinHasStandardTypes builtin) => (DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
 lamDim = lam "d" (Implicit False) Irrelevant tDim
+
+lamExplDim :: (BuiltinHasStandardTypes builtin) => (DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
+lamExplDim = lam "d" Explicit Irrelevant tDim
 
 lamDims :: (BuiltinHasStandardTypes builtin) => (DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
 lamDims = lam "ds" (Implicit False) Irrelevant tDims
