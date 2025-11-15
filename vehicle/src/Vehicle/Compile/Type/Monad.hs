@@ -40,6 +40,7 @@ where
 import Control.Monad (when)
 import Control.Monad.Except (MonadError (..), runExceptT)
 import Control.Monad.Trans.Except (ExceptT)
+import Data.Hashable (Hashable)
 import Data.List (partition, sortOn)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (isJust)
@@ -62,13 +63,14 @@ import Vehicle.Data.Variable.Bound.Context.Generic
 import Vehicle.Data.Variable.Free.Context
 
 runTypeCheckerTInitially ::
-  (Monad m) =>
+  (Monad m, Hashable builtin) =>
   FreeCtx builtin ->
   InstanceDatabase builtin ->
   TypeCheckerT builtin m a ->
   m a
-runTypeCheckerTInitially freeCtx instanceCandidates e =
-  fst <$> runTypeCheckerT freeCtx instanceCandidates emptyTypeCheckerState e
+runTypeCheckerTInitially freeCtx instanceDatabase e = do
+  let state = (\s -> s {instanceCandidates = instanceDatabase}) emptyTypeCheckerState
+  fst <$> runTypeCheckerT freeCtx state e
 
 -- | Runs a hypothetical computation in the type-checker,
 -- returning the resulting state of the type-checker.
@@ -80,9 +82,8 @@ runTypeCheckerTHypothetically ::
 runTypeCheckerTHypothetically e = do
   callDepth <- getCallDepth
   freeCtx <- getFreeCtx (Proxy @builtin)
-  instanceCandidates <- getInstanceCandidates
   state <- getTypeCheckerState
-  result <- runExceptT $ runTypeCheckerT freeCtx instanceCandidates state e
+  result <- runExceptT $ runTypeCheckerT freeCtx state e
   case result of
     Right value -> return $ Right value
     Left err -> case err of

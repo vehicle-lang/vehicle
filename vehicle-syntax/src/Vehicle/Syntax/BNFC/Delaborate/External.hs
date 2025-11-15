@@ -119,6 +119,7 @@ instance Delaborate V.Annotation B.Decl where
   delabM = \case
     V.AnnProperty -> return $ delabAnn propertyAnn []
     V.AnnTensor -> return $ delabAnn tensorAnn []
+    V.AnnInstance -> return $ delabAnn instanceAnn []
 
 -- | Used for things not in the user-syntax.
 cheatDelab :: Text -> B.Expr

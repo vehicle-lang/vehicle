@@ -18,8 +18,6 @@ import Vehicle.Compile.Type.Constraint.UnificationSolver (runUnificationSolver)
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Monad.Class
-  ( addInstanceConstraints,
-  )
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Variable.Bound.Context.Generic
@@ -66,7 +64,7 @@ solveInstanceConstraint depth constraint = do
   logDebug MaxDetail $ "Forced:" <+> prettyExternal normConstraint
 
   let goal = instanceGoal $ objectIn normConstraint
-  database <- getInstanceCandidates
+  database <- instanceCandidates <$> getTypeCheckerState @builtin
   let candidates = lookupInstances database goal
   solveInstanceGoal normConstraint candidates depth goal
 

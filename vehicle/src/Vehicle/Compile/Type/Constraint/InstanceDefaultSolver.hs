@@ -90,7 +90,7 @@ chooseDefaultConstraint ::
   [WithContext (InstanceConstraint builtin)] ->
   m (Maybe (DefaultCandidate builtin))
 chooseDefaultConstraint constraints = do
-  instanceDatabase <- getInstanceCandidates
+  instanceDatabase <- instanceCandidates <$> getTypeCheckerState @builtin
   let defaults = mapMaybe (findDefault instanceDatabase) constraints
   case defaults of
     [] -> do

@@ -186,6 +186,7 @@ convertToPostulate d =
 data Annotation
   = AnnProperty
   | AnnTensor
+  | AnnInstance
   deriving (Eq, Show, Generic)
 
 instance NFData Annotation
@@ -196,9 +197,13 @@ instance Pretty Annotation where
   pretty = \case
     AnnProperty -> "@property"
     AnnTensor -> "@tensor"
+    AnnInstance -> "@instance"
 
 isAnnotatedAsProperty :: [Annotation] -> Bool
 isAnnotatedAsProperty anns = AnnProperty `elem` anns
 
 isAnnotatedAsTensor :: [Annotation] -> Bool
 isAnnotatedAsTensor anns = AnnTensor `elem` anns
+
+isAnnotatedAsInstance :: [Annotation] -> Bool
+isAnnotatedAsInstance anns = AnnInstance `elem` anns
