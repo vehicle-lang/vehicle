@@ -3,13 +3,12 @@ from .builtins import AnyBuiltins as AnyBuiltins
 from .builtins import Builtins as Builtins
 from .translation import ABCTranslation as ABCTranslation
 from .translation import Translation as Translation
-from .types import Bool as Bool
 from .types import Declaration as Declaration
+from .types import Dimension as Dimension
+from .types import DimensionIndex as DimensionIndex
+from .types import Dimensions as Dimensions
 from .types import Expression as Expression
 from .types import Index as Index
-from .types import Int as Int
-from .types import Nat as Nat
 from .types import Program as Program
 from .types import Rat as Rat
 from .types import Tensor as Tensor
-from .types import Unit as Unit

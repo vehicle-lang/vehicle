@@ -286,10 +286,13 @@ class ReduceMaxRatTensor(Expression):
 class SearchRatTensor(Expression):
     """Search tensor: SearchRatTensor reductionOp lowerBound upperBound searchLambda"""
 
-    f: Expression
+    name: str
+    reduction_op: Expression
+    dims: Expression
     lower_bound: Expression
     upper_bound: Expression
     search_lambda: Expression
+    # minimise: bool
 
 
 @dataclass(frozen=True)
@@ -333,7 +336,7 @@ class ConstTensor(Expression):
 
 @dataclass(frozen=True)
 class StackTensor(Expression):
-    """StackTensor along dimension: StackTensor dimension tensor_list"""
+    """StackTensor : StackTensor tensor_list"""
 
     xs: Sequence[Expression]
 

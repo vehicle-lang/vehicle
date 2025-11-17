@@ -4,7 +4,7 @@ from fractions import Fraction
 from pathlib import Path
 from typing import Any, Callable, Iterable, Optional, Sequence, cast
 
-import tensorflow as tf  # type: ignore[import-untyped,unused-ignore]
+import torch
 from typing_extensions import TypeVar, override
 
 from ...ast import Tensor
@@ -27,105 +27,99 @@ from . import types as vcl
 PY_MISSING = {"lineno": 0, "col_offset": 0}
 
 ################################################################################
-### Type-safe TensorFlow wrappers
+### Type-safe PyTorch wrappers
 ################################################################################
 
 
-def _tf_constant(*args: Any, **kwargs: Any) -> tf.Tensor:
-    """Type-safe wrapper for tf.constant that casts complex return type to tf.Tensor."""
-    return cast(tf.Tensor, tf.constant(*args, **kwargs))
-
-
-def _tf_map_fn(*args: Any, **kwargs: Any) -> tf.Tensor:
-    """Type-safe wrapper for tf.map_fn that casts complex return type to tf.Tensor."""
-    return cast(tf.Tensor, tf.map_fn(*args, **kwargs))
+def _torch_tensor(*args: Any, **kwargs: Any) -> torch.Tensor:
+    """Type-safe wrapper for torch.tensor that casts complex return type to torch.Tensor."""
+    return cast(torch.Tensor, torch.tensor(*args, **kwargs))
 
 
 ################################################################################
-### Interpretations of Vehicle builtins in Tensorflow
+### Interpretations of Vehicle builtins in PyTorch
 ################################################################################
 
 _T = TypeVar("_T")
+_S = TypeVar("_S")
 
 
 @dataclass(frozen=True)
-class TensorFlowBuiltins(
+class PyTorchBuiltins(
     ABCBuiltins[
         vcl.Index,
         vcl.Rat,
-        tf.Tensor,
+        torch.Tensor,
     ]
 ):
-    dtype_index: tf.DType = tf.uint32
-    dtype_rat: tf.DType = tf.float32
+    dtype_index: torch.dtype = torch.int32
+    dtype_rat: torch.dtype = torch.float32
 
     @override
-    def RatTensor(self, value: Tensor) -> tf.Tensor:
+    def Index(self, value: int) -> int:
+        return value
+
+    @override
+    def RatTensor(self, value: Tensor) -> torch.Tensor:
         match value.value:
             case Fraction():
                 # Single value - expand to tensor shape
                 float_value = float(value.value)
-                return _tf_constant(
-                    value=float_value, dtype=self.dtype_rat, shape=value.shape
-                )
+                return _torch_tensor(data=float_value, dtype=self.dtype_rat)
             case _:
                 # Sequence of values
-                return _tf_constant(
-                    value=tuple(float(val) for val in value.value),
+                return _torch_tensor(
+                    data=tuple(float(val) for val in value.value),
                     dtype=self.dtype_rat,
-                    shape=value.shape,
                 )
 
     @override
-    def NegRatTensor(self, x: tf.Tensor) -> tf.Tensor:
-        return tf.negative(x)
+    def NegRatTensor(self, x: torch.Tensor) -> torch.Tensor:
+        return torch.neg(x)
 
     @override
-    def AddRatTensor(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
-        return tf.add(x, y)
+    def AddRatTensor(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        return torch.add(x, y)
 
     @override
-    def SubRatTensor(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
-        return tf.subtract(x, y)
+    def SubRatTensor(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        return torch.sub(x, y)
 
     @override
-    def MulRatTensor(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
-        return tf.multiply(x, y)
+    def MulRatTensor(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        return torch.mul(x, y)
 
     @override
-    def DivRatTensor(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
-        return tf.divide(x, y)
+    def DivRatTensor(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        return torch.div(x, y)
 
     @override
-    def MinRatTensor(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
-        return tf.minimum(x, y)
+    def MinRatTensor(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        return torch.minimum(x, y)
 
     @override
-    def MaxRatTensor(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
-        return tf.maximum(x, y)
+    def MaxRatTensor(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        return torch.maximum(x, y)
 
     @override
-    def ReduceAddRatTensor(self, e: float, xs: tf.Tensor) -> tf.Tensor:
-        return tf.reduce_sum(xs)
+    def ReduceAddRatTensor(self, e: float, xs: torch.Tensor) -> torch.Tensor:
+        return torch.sum(xs)
 
     @override
-    def ReduceMulRatTensor(self, e: float, x: tf.Tensor) -> tf.Tensor:
-        return tf.reduce_prod(x)
+    def ReduceMulRatTensor(self, e: float, x: torch.Tensor) -> torch.Tensor:
+        return torch.prod(x)
 
     @override
-    def ReduceMinRatTensor(self, e: float, x: tf.Tensor) -> tf.Tensor:
-        return tf.reduce_min(x)
+    def ReduceMinRatTensor(self, e: float, x: torch.Tensor) -> torch.Tensor:
+        return torch.min(x)
 
     @override
-    def ReduceMaxRatTensor(self, e: float, x: tf.Tensor) -> tf.Tensor:
-        return tf.reduce_max(x)
+    def ReduceMaxRatTensor(self, e: float, x: torch.Tensor) -> torch.Tensor:
+        return torch.max(x)
 
     @override
-    def DimensionLookup(self, xs: tf.Tensor, i: vcl.Index) -> vcl.Index:
-        # Get the shape dimension and convert to float for arithmetic compatibility
-        shape_tensor = tf.shape(xs)
-        dim_value = tf.gather(shape_tensor, i)
-        return cast(vcl.Index, tf.cast(dim_value, self.dtype_rat))
+    def DimensionLookup(self, xs: torch.Tensor, i: vcl.Index) -> vcl.Index:
+        return int(xs.shape[i])
 
     @override
     def DimensionCons(
@@ -138,32 +132,35 @@ class TensorFlowBuiltins(
         return ()
 
     @override
-    def ConstTensor(self, value: vcl.Rat, shape: Sequence[vcl.Index]) -> tf.Tensor:
-        return _tf_constant(value=float(value), shape=shape, dtype=self.dtype_rat)
+    def ConstTensor(self, value: vcl.Rat, shape: Sequence[vcl.Index]) -> torch.Tensor:
+        return torch.full(size=shape, fill_value=value, dtype=self.dtype_rat)
 
     @override
     def DenseTensor(
         self, values: Sequence[vcl.Rat], shape: Sequence[vcl.Index]
-    ) -> tf.Tensor:
-        # Convert Fraction values to floats and reshape to the specified shape
-        float_values = [float(val) for val in values]
-        return _tf_constant(value=float_values, shape=shape, dtype=self.dtype_rat)
+    ) -> torch.Tensor:
+        return _torch_tensor(data=list(values), dtype=self.dtype_rat).reshape(shape)
 
     @override
-    def StackTensor(self, tensors: Sequence[tf.Tensor]) -> tf.Tensor:
-        return tf.stack(tensors)
+    def StackTensor(self, tensors: Sequence[torch.Tensor]) -> torch.Tensor:
+        return torch.stack(cast(tuple[torch.Tensor], tensors))
+
+
+################################################################################
+### PyTorch Translation
+################################################################################
 
 
 @dataclass(frozen=True, init=False)
-class TensorFlowTranslation(PythonTranslation):
+class PyTorchTranslation(PythonTranslation):
     def __init__(self) -> None:
         super().__init__(
-            builtins=TensorFlowBuiltins(),
+            builtins=PyTorchBuiltins(),
             module_header=[
                 py.Import(
                     names=[
                         py.alias(
-                            name="tensorflow",
+                            name="torch",
                             asname=None,
                             lineno=0,
                             col_offset=0,
@@ -176,16 +173,21 @@ class TensorFlowTranslation(PythonTranslation):
         )
 
 
+################################################################################
+### Compilation utilities
+################################################################################
+
+
 def load(
     path: str | Path,
     *,
     declarations: Iterable[DeclarationName] = (),
     target: Target = Explicit.Explicit,
     samplers: dict[str, vcl.ABCSampler],
-    translation: Optional[TensorFlowTranslation] = None,
+    translation: Optional[PyTorchTranslation] = None,
 ) -> dict[str, Any]:
     if translation is None:
-        translation = TensorFlowTranslation()
+        translation = PyTorchTranslation()
     return translation.compile(
         ast_load(path, declarations=declarations, target=target),
         path=path,
@@ -200,7 +202,7 @@ def load_loss_function(
     *,
     target: DifferentiableLogic = DifferentiableLogic.Vehicle,
     samplers: dict[str, vcl.ABCSampler] = {},
-) -> Callable[..., tf.Tensor]:
+) -> Callable[..., torch.Tensor]:
     """
     Load a loss function from a property in a Vehicle specification.
 
@@ -210,15 +212,13 @@ def load_loss_function(
     :param samplers: A map from quantified variable names to samplers for their values. See `ABCSampler` for more details.
     :return: A function that takes the required external resources in the specification as keyword arguments and returns the loss corresponding to the property.
     """
-    if not samplers:
-        samplers = {}  # TODO: provide default samplers
     declarations = load(
         path, declarations=(property_name,), samplers=samplers, target=target
     )
     if property_name in declarations:
         property_func = declarations[property_name]
         if callable(property_func):
-            return cast(Callable[..., tf.Tensor], property_func)
+            return cast(Callable[..., torch.Tensor], property_func)
         else:
             raise VehiclePropertyNotCallable(property_name)
     else:

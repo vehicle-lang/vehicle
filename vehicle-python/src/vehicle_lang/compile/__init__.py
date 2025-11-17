@@ -11,9 +11,9 @@ def compile(
     target: DifferentiableLogic | QueryFormat | ITP,
     output_file: str | Path,
     declarations: Optional[Iterable[DeclarationName]] = None,
-    networks: Dict[DeclarationName, str | Path] = {},
-    datasets: Dict[DeclarationName, str | Path] = {},
-    parameters: Dict[DeclarationName, Any] = {},
+    networks: dict[DeclarationName, str | Path] = {},
+    datasets: dict[DeclarationName, str | Path] = {},
+    parameters: dict[DeclarationName, Any] = {},
     module_name: Optional[str] = None,
     cache: Optional[str | Path] = None,
 ) -> str:
@@ -81,9 +81,9 @@ def compile_to_queries(
     target: QueryFormat,
     output_folder: str | Path,
     declarations: Optional[Iterable[DeclarationName]] = None,
-    networks: Dict[DeclarationName, str | Path] = {},
-    datasets: Dict[DeclarationName, str | Path] = {},
-    parameters: Dict[DeclarationName, Any] = {},
+    networks: dict[DeclarationName, str | Path] = {},
+    datasets: dict[DeclarationName, str | Path] = {},
+    parameters: dict[DeclarationName, Any] = {},
 ) -> str:
     """
     Compile a Vehicle specification to queries for a verifier. This is useful if you want to generate

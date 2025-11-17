@@ -79,7 +79,7 @@ class Session(SessionContextManager):
     def check_output(
         self,
         args: Sequence[str],
-    ) -> Tuple[int, Optional[str], Optional[str], Optional[str]]:
+    ) -> tuple[int, Optional[str], Optional[str], Optional[str]]:
         with redirect_stdout(io.StringIO()) as out:
             with redirect_stderr(io.StringIO()) as err:
                 with temporary_files("log", prefix="vehicle") as (log,):
@@ -98,7 +98,7 @@ class Session(SessionContextManager):
 
     def check_output_pty(
         self, args: Sequence[str]
-    ) -> Tuple[int, Optional[str], Optional[str], Optional[str]]:
+    ) -> tuple[int, Optional[str], Optional[str], Optional[str]]:
         stdout_fd = sys.stdout.fileno()
         stderr_fd = sys.stderr.fileno()
 
@@ -177,7 +177,7 @@ def check_call(args: Sequence[str]) -> int:
 
 def check_output(
     args: Sequence[str],
-) -> Tuple[int, Optional[str], Optional[str], Optional[str]]:
+) -> tuple[int, Optional[str], Optional[str], Optional[str]]:
     return Session().__enter__().check_output_pty(args)
 
 

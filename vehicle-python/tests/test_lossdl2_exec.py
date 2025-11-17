@@ -1,14 +1,13 @@
-from functools import reduce
 from pathlib import Path
-from typing import Any, Callable, Dict
+from typing import Any, Callable, cast
 
 import pytest
-
+import tensorflow as tf
 import vehicle_lang as vcl
 import vehicle_lang.compile.tensorflow as vcl2tf
 
 
-def network_validate_output(output: Dict[str, Any]) -> None:
+def network_validate_output(output: dict[str, Any]) -> None:
     def network(xs: Any) -> Any:
         return (sum(xs),)
 
@@ -16,25 +15,34 @@ def network_validate_output(output: Dict[str, Any]) -> None:
     assert output["prop"](network) == 0.0
 
 
-def quantifier_all_optimiser(
-    _minimise: bool,
-    _context: Dict[str, Any],
-    joiner: Callable[[float, float], float],
-    predicate: Callable[[Any], float],
-) -> float:
-    return reduce(joiner, [predicate(v) for v in [-10.0, -1.0, 1.0, 10.0]])
+class DummySampler(vcl2tf.vcl.ABCSampler):
+    def get_loss(
+        self,
+        lower_bound: tf.Tensor,
+        upper_bound: tf.Tensor,
+        search_lambda: Callable[[tf.Tensor], tf.Tensor],
+        minimise: bool,
+    ) -> tf.Tensor:
+        """Sample at a few test points in the bounded range."""
+        # Sample at some test points
+        test_points = [
+            tf.constant(-10.0),
+            tf.constant(-1.0),
+            tf.constant(1.0),
+            tf.constant(10.0),
+        ]
+        # Evaluate the search lambda at each test point
+        results = []
+        for point in test_points:
+            result = search_lambda(cast(tf.Tensor, point))
+            results.append(tf.convert_to_tensor(result))
+        return tf.stack(results)
 
 
-def quantifier_any_optimiser(
-    _minimise: bool,
-    _context: Dict[str, Any],
-    joiner: Callable[[float, float], float],
-    predicate: Callable[[Any], float],
-) -> float:
-    return reduce(joiner, [predicate(v) for v in [-10.0, -1.0, 1.0, 10.0]])
+dummy_sampler = DummySampler()
 
 
-@pytest.mark.parametrize(
+@pytest.mark.parametrize(  # type: ignore[misc]
     "specification_filename,optimisers,validate_output",
     [
         (
@@ -87,16 +95,16 @@ def quantifier_any_optimiser(
             {},
             network_validate_output,
         ),
-        # (
-        #     "test_quantifier_all.vcl",
-        #     {"x": quantifier_all_optimiser},
-        #     {"prop": 11.0},
-        # ),
-        # (
-        #     "test_quantifier_any.vcl",
-        #     {"x": quantifier_any_optimiser},
-        #     {"prop": 0.0},
-        # ),
+        (
+            "test_quantifier_all.vcl",
+            {"x": dummy_sampler.get_loss},
+            {"prop": 11.0},
+        ),
+        (
+            "test_quantifier_any.vcl",
+            {"x": dummy_sampler.get_loss},
+            {"prop": 0.0},
+        ),
         (
             "test_subtraction.vcl",
             {},
@@ -113,24 +121,24 @@ def quantifier_any_optimiser(
             {"prop": 0.0},
         ),
     ],
-)  # type: ignore[misc]
+)
 def test_loss_function_exec(
     specification_filename: str,
-    optimisers: Dict[str, Any],
-    validate_output: Dict[str, Any] | Callable[[Dict[str, Any]], None],
+    samplers: dict[str, Any] = {},
+    validate_output: dict[str, Any] | Callable[[dict[str, Any]], None] = {},
 ) -> None:
-    # 2024-04-16: Disable tests with optimisers
-    if not optimisers:
-        print(f"Exec {specification_filename}")
-        specification_path = Path(__file__).parent / "data" / specification_filename
-        actual_declarations = vcl2tf.load(
-            specification_path, target=vcl.DifferentiableLogic.DL2
-        )
-        if isinstance(validate_output, dict):
-            for key in validate_output.keys():
-                if validate_output[key] is not ...:
-                    assert validate_output[key] == actual_declarations.get(key, None)
-                else:
-                    assert key in actual_declarations
-        elif callable(validate_output):
-            validate_output(actual_declarations)
+    print(f"Exec {specification_filename}")
+    specification_path = Path(__file__).parent / "data" / specification_filename
+    actual_declarations = vcl2tf.load(
+        specification_path,
+        target=vcl.DifferentiableLogic.DL2,
+        samplers=samplers,
+    )
+    if isinstance(validate_output, dict):
+        for key in validate_output.keys():
+            if validate_output[key] is not ...:
+                assert validate_output[key] == actual_declarations.get(key, None)
+            else:
+                assert key in actual_declarations
+    elif callable(validate_output):
+        validate_output(actual_declarations)

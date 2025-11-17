@@ -1,4 +1,4 @@
-from typing_extensions import TypeAlias, TypeVar
+from typing_extensions import TypeVar
 
 ################################################################################
 # Runtime Interface Types (Matching Vehicle Type System)
@@ -6,13 +6,11 @@ from typing_extensions import TypeAlias, TypeVar
 #
 # This file defines the abstract runtime interface that matches the Vehicle type system.
 # The Vehicle type system has:
-#   - Scalar types: Bool, Nat, Int, Rat, Index
+#   - Scalar types: Rat, Index
 #   - Tensor type: Tensor a (generic over element type)
-#   - No separate BoolTensor, RatTensor, etc. - just Tensor[Bool], Tensor[Rat]
 #
 # Backends provide concrete implementations:
-#   - Python: Tensor → list/np.ndarray, Bool → bool, Rat → float
-#   - TensorFlow: Tensor → tf.Tensor, Bool → tf.Tensor, Rat → tf.Tensor
+#   - TensorFlow: Tensor → tf.Tensor
 #
 ################################################################################
 
@@ -25,16 +23,10 @@ Expression = TypeVar("Expression")  # e.g., py.expr
 
 # Scalar types (Vehicle's base types)
 Index = TypeVar("Index")  # Vehicle Index → backend scalar
-Bool = TypeVar("Bool")  # Vehicle Bool → backend scalar
-Nat = TypeVar("Nat")  # Vehicle Nat → backend scalar
-Int = TypeVar("Int")  # Vehicle Int → backend scalar
 Rat = TypeVar("Rat")  # Vehicle Rat → backend scalar
 
 # Generic tensor type (Vehicle's Tensor a - polymorphic over element type)
 Tensor = TypeVar("Tensor")  # Vehicle Tensor a → backend tensor
-
-# Unit type
-Unit: TypeAlias = tuple[()]
 
 # Utility type variables
 Dimension = TypeVar("Dimension")  # Individual dimension value
@@ -64,8 +56,3 @@ DimensionIndex = TypeVar("DimensionIndex")  # Index into dimensions
 # Python Runtime (TensorFlowBuiltins):
 #   def RatTensor(self, tensor: Tensor) -> tf.Tensor: ...
 #   def AddRatTensor(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor: ...
-#
-# Key insight: We don't need separate TIndex, TBool, TNat, TInt, TRat types!
-# At runtime, they're all the same underlying type (tf.Tensor) with different dtypes.
-# The TypeVars here represent the interface that Builtins classes must implement.
-#

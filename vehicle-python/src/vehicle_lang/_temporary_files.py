@@ -2,7 +2,7 @@ import contextlib
 import sys
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Sequence, Tuple
+from typing import TYPE_CHECKING, Iterator, List, Optional, Sequence
 
 from typing_extensions import TypeAlias
 
@@ -49,7 +49,7 @@ def temporary_files(
 ) -> Iterator[Sequence[TemporaryFile]]:
     try:
         dir = TemporaryDirectory(prefix=prefix, suffix=suffix)
-        files: Dict[str, TemporaryFile] = {}
+        files: dict[str, TemporaryFile] = {}
         for name in names:
             files[name] = TemporaryFile(dir, name)
         yield tuple(files.values())

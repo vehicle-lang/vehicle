@@ -3,14 +3,14 @@ from dataclasses import asdict, dataclass, field
 from fractions import Fraction
 from functools import reduce
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Sequence
+from typing import Any, Iterator, Sequence
 
 from ... import ast as vcl
 from ..abc import ABCTranslation, AnyBuiltins
 
 
 # Helper to convert Vehicle provenance to Python AST kwargs
-def py_provenance(provenance: vcl.Provenance) -> Dict[str, Any]:
+def py_provenance(provenance: vcl.Provenance) -> dict[str, Any]:
     """Convert Vehicle provenance to Python AST keyword arguments"""
     return {
         "lineno": provenance.lineno or 0,
@@ -32,17 +32,19 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
     builtins: AnyBuiltins
     module_header: Sequence[py.stmt] = field(default_factory=tuple)
     module_footer: Sequence[py.stmt] = field(default_factory=tuple)
-    ignored_types: List[str] = field(init=False, default_factory=list)
+    ignored_types: list[str] = field(init=False, default_factory=list)
 
     def compile(
         self,
         program: vcl.Program,
         path: str | Path,
-        declaration_context: Dict[str, Any] = {},
-    ) -> Dict[str, Any]:
+        declaration_context: dict[str, Any],
+        samplers: dict[str, Any],
+    ) -> dict[str, Any]:
         py_ast = self.translate_program(program)
         try:
             declaration_context["__vehicle__"] = self.builtins
+            declaration_context["__vehicle_user_samplers__"] = samplers
             py_bytecode = compile(py_ast, filename=str(path), mode="exec")
             exec(py_bytecode, declaration_context)
             return declaration_context
@@ -94,7 +96,7 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
 
     def translate_binder(self, binder: vcl.Binder) -> py.arg:
         return py.arg(
-            arg=binder.name or "_",
+            arg=binder.name or "_",  # TODO: check why name can be None
             annotation=None,
             **asdict(binder.provenance),
         )
@@ -291,11 +293,22 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
     def translate_SearchRatTensor(self, expression: vcl.SearchRatTensor) -> py.expr:
         """Translate SearchRatTensor to builtin call."""
         return py_app(
-            py_builtin("SearchRatTensor", provenance=vcl.MISSING),
-            self.translate_expression(expression.f),
-            self.translate_expression(expression.lower_bound),
-            self.translate_expression(expression.upper_bound),
-            self.translate_expression(expression.search_lambda),
+            self.translate_expression(expression.reduction_op),
+            py_app(
+                py_subscript(
+                    py_qualified_name(
+                        "__vehicle_user_samplers__", provenance=vcl.MISSING
+                    ),
+                    py_name(expression.name, provenance=vcl.MISSING),
+                    provenance=vcl.MISSING,
+                ),
+                self.translate_expression(expression.dims),
+                self.translate_expression(expression.lower_bound),
+                self.translate_expression(expression.upper_bound),
+                self.translate_expression(expression.search_lambda),
+                py.Constant(value=True, **asdict(vcl.MISSING)),
+                provenance=vcl.MISSING,
+            ),
             provenance=vcl.MISSING,
         )
 
@@ -395,6 +408,13 @@ def py_builtin(builtin: str, *, provenance: vcl.Provenance) -> py.expr:
     return py_qualified_name("__vehicle__", builtin, provenance=provenance)
 
 
+def py_subscript(
+    value: py.expr, slice: py.expr, *, provenance: vcl.Provenance
+) -> py.expr:
+    """Make a subscript expression."""
+    return py.Subscript(value=value, slice=slice, ctx=py.Load(), **asdict(provenance))
+
+
 def py_app(
     function: py.expr, *arguments: py.expr, provenance: vcl.Provenance
 ) -> py.expr:
@@ -446,7 +466,7 @@ def py_scalar(value: vcl.DType, provenance: vcl.Provenance) -> py.expr:
             )
 
 
-def py_tuple(elements: List[py.expr], provenance: vcl.Provenance) -> py.expr:
+def py_tuple(elements: list[py.expr], provenance: vcl.Provenance) -> py.expr:
     """Make a tuple."""
     return py.Tuple(
         elts=list(elements),

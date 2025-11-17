@@ -9,9 +9,9 @@ from ..typing import DeclarationName, Verifier
 def verify(
     specification: str | Path,
     properties: Optional[Iterable[DeclarationName]] = None,
-    networks: Dict[DeclarationName, str | Path] = {},
-    datasets: Dict[DeclarationName, str | Path] = {},
-    parameters: Dict[DeclarationName, Any] = {},
+    networks: dict[DeclarationName, str | Path] = {},
+    datasets: dict[DeclarationName, str | Path] = {},
+    parameters: dict[DeclarationName, Any] = {},
     verifier: Verifier = Verifier.Marabou,
     verifier_location: Optional[str | Path] = None,
     cache: Optional[str | Path] = None,

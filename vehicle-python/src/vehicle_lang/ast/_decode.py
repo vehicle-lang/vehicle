@@ -40,7 +40,7 @@ JsonValue: TypeAlias = (
     | float
     | complex
     | List["JsonValue"]
-    | Dict[str, "JsonValue"]
+    | dict[str, "JsonValue"]
 )
 
 
@@ -49,7 +49,7 @@ class DecodeError(Exception):
     value: JsonValue
     cls: Any
     reason: Optional[str] = None
-    telescope: Sequence[Tuple[Type[Any], str]] = ()
+    telescope: Sequence[tuple[Type[Any], str]] = ()
 
     def __str__(self) -> str:
         expected_type_str = _type_name(self.cls)
@@ -74,7 +74,7 @@ class Decoder(Generic[_T], metaclass=ABCMeta):
         self,
         decoder: "JsonDecoder",
         cls_origin: Any,
-        cls_args: Tuple[Any, ...],
+        cls_args: tuple[Any, ...],
         value: JsonValue,
     ) -> _T: ...
 
@@ -85,8 +85,8 @@ class TaggedObjectDecoder(Decoder[_T]):
 
     @staticmethod
     def _find_class(
-        cls: Type[_T], cls_name: str
-    ) -> Optional[Type[_T]]:  # pyright: ignore[reportSelfClsParameterName]
+        cls: Type[_T], cls_name: str  # pyright: ignore[reportSelfClsParameterName]
+    ) -> Optional[Type[_T]]:
         """
         Find a subclass by name.
         """
@@ -97,8 +97,8 @@ class TaggedObjectDecoder(Decoder[_T]):
 
     @staticmethod
     def _class_and_subclasses(
-        cls: Type[_T],
-    ) -> Iterator[Type[_T]]:  # pyright: ignore[reportSelfClsParameterName]
+        cls: Type[_T],  # pyright: ignore[reportSelfClsParameterName]
+    ) -> Iterator[Type[_T]]:
         """
         Iterate over a class and its subclasses.
         """
@@ -108,7 +108,7 @@ class TaggedObjectDecoder(Decoder[_T]):
     @staticmethod
     def _resolve_field_type(
         cls_origin: Type[Any],
-        cls_args: Tuple[Any, ...],
+        cls_args: tuple[Any, ...],
         fld_type: Type[_S],
     ) -> Type[_S]:
         # If the class type does not have  __parameters__, there are no type parameters to resolve:
@@ -141,7 +141,7 @@ class TaggedObjectDecoder(Decoder[_T]):
         self,
         decoder: "JsonDecoder",
         cls_origin: Type[_T],
-        cls_args: Tuple[Any, ...],
+        cls_args: tuple[Any, ...],
         value: JsonValue,
     ) -> _T:
         if not is_dataclass(cls_origin):
@@ -164,7 +164,7 @@ class TaggedObjectDecoder(Decoder[_T]):
             raise DecodeError(value, subcls_origin, "not a dataclass")
 
         # Check if subcls requires any arguments:
-        init_fields: List[Tuple[str, Type[Any], bool]] = [
+        init_fields: List[tuple[str, Type[Any], bool]] = [
             (
                 fld.name,
                 TaggedObjectDecoder._resolve_field_type(
@@ -230,7 +230,7 @@ class TaggedObjectDecoder(Decoder[_T]):
         # If CONTENTS field is absent, decode arguments by name:
         else:
 
-            kwargs: Dict[str, Any] = {}
+            kwargs: dict[str, Any] = {}
 
             for fld_name, fld_type, fld_required in init_fields:
                 value_kwarg = value.get(fld_name, MISSING)
@@ -293,7 +293,7 @@ class TupleDecoder(Decoder[Any]):
         self,
         decoder: "JsonDecoder",
         cls_origin: Any,
-        cls_args: Tuple[Any, ...],
+        cls_args: tuple[Any, ...],
         value: JsonValue,
     ) -> Any:
         if cls_origin is not tuple:
@@ -328,7 +328,7 @@ class ListDecoder(Decoder[List[_T]]):
         self,
         decoder: "JsonDecoder",
         cls_origin: Type[List[_T]],
-        cls_args: Tuple[Any, ...],
+        cls_args: tuple[Any, ...],
         value: JsonValue,
     ) -> List[_T]:
         if not isinstance(value, List):
@@ -346,15 +346,15 @@ class ListDecoder(Decoder[List[_T]]):
         return [decoder.decode(cls_item, item) for item in value]
 
 
-class DictDecoder(Decoder[Dict[_S, _T]]):
+class DictDecoder(Decoder[dict[_S, _T]]):
     @override
     def decode(
         self,
         decoder: "JsonDecoder",
-        cls_origin: Type[Dict[_S, _T]],
-        cls_args: Tuple[Any, ...],
+        cls_origin: Type[dict[_S, _T]],
+        cls_args: tuple[Any, ...],
         value: JsonValue,
-    ) -> Dict[_S, _T]:
+    ) -> dict[_S, _T]:
         if not isinstance(value, Dict):
             raise DecodeError(value, cls_origin, "expected dict")
 
@@ -381,7 +381,7 @@ class LiteralDecoder(Decoder[Any]):
         self,
         decoder: "JsonDecoder",
         cls_origin: Any,
-        cls_args: Tuple[Any, ...],
+        cls_args: tuple[Any, ...],
         value: JsonValue,
     ) -> Any:
         if value in cls_args:
@@ -397,7 +397,7 @@ class UnionDecoder(Decoder[Any]):
         self,
         decoder: "JsonDecoder",
         cls_origin: Any,
-        cls_args: Tuple[Any, ...],
+        cls_args: tuple[Any, ...],
         value: JsonValue,
     ) -> Any:
         for cls_arg in cls_args:
@@ -415,7 +415,7 @@ class FractionDecoder(Decoder[fractions.Fraction]):
         self,
         decoder: "JsonDecoder",
         cls_origin: Type[fractions.Fraction],
-        cls_args: Tuple[Any, ...],
+        cls_args: tuple[Any, ...],
         value: JsonValue,
     ) -> fractions.Fraction:
         if not isinstance(value, Dict):
@@ -435,7 +435,7 @@ AnyDecoder: TypeAlias = Decoder[Any] | Callable[[JsonValue], Any]
 @dataclass(frozen=True)
 class JsonDecoder:
     dataclass_decoder: AnyDecoder
-    decoders: Dict[Any, AnyDecoder] = field(init=False, default_factory=dict)
+    decoders: dict[Any, AnyDecoder] = field(init=False, default_factory=dict)
 
     def register(
         self,

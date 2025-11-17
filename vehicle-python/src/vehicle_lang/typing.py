@@ -17,29 +17,6 @@ QuantifiedVariableName: TypeAlias = str
 A name of a quantified variable in a Vehicle specification file.
 """
 
-Optimiser: TypeAlias = Callable[
-    [
-        bool,
-        Dict[QuantifiedVariableName, _T],
-        Callable[[_R, _R], _R],
-        Callable[[_T], _R],
-    ],
-    _R,
-]
-"""
-TODO: add description
-"""
-
-AnyOptimiser: TypeAlias = Optimiser[Any, Any]
-"""
-An optimiser that promises to work for any type.
-"""
-
-AnyOptimisers: TypeAlias = Dict[str, AnyOptimiser]
-"""
-A mapping from quantified variable names to optimisers.
-"""
-
 
 class Target(Protocol):
     """
