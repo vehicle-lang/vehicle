@@ -1,7 +1,7 @@
 @property;
 expandedExpr : (Tensor Real -> Tensor Real) -> Tensor Real;
-expandedExpr f = 1.0 / search (\ e -> \ xs -> reduceMul e xs) 0.0 1.0 (\ x -> max 0.0 (x - f x))
+expandedExpr f = 1.0 / search[x] (\ e -> \ xs -> reduceMul e xs) nil 0.0 1.0 (\ x -> max 0.0 (x - f x))
 
 @property;
 parallel : (Tensor Real -> Tensor Real) -> Tensor Real;
-parallel f = 1.0 / search (\ e -> \ xs -> reduceMul e xs) 0.0 1.0 (\ x -> max 0.0 (f x)) + search (\ e -> \ xs -> reduceMul e xs) 0.0 1.0 (\ y -> max 0.0 (5.0 - f y))
+parallel f = 1.0 / search[x] (\ e -> \ xs -> reduceMul e xs) nil 0.0 1.0 (\ x -> max 0.0 (f x)) + search[y] (\ e -> \ xs -> reduceMul e xs) nil 0.0 1.0 (\ y -> max 0.0 (5.0 - f y))

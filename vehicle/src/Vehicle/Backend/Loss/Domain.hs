@@ -122,8 +122,8 @@ compileConstraints ::
   Partition ->
   m (MaybeTrivial Partitions)
 compileConstraints finalCtx dims binder var (maybeConstraints, maybeRemainder) = do
-  varName <- prettyFriendlyInCtx var
-  logCompilerSection2 MidDetail ("extracting bounds for" <+> squotes varName <+> "from partition") $ do
+  let varName = getBinderName binder
+  logCompilerSection2 MidDetail ("extracting bounds for" <+> quotePretty varName <+> "from partition") $ do
     -- Extract the constraints we can use to bound the variable
     constraints <- case maybeConstraints of
       Nothing -> noQuantifierDomainError binder wholeTensorUnbounded
@@ -176,18 +176,19 @@ compileConstraints finalCtx dims binder var (maybeConstraints, maybeRemainder) =
           remDoc <- maybe (return "") (fmap lineIndent . prettyFriendlyInCtx) remainingTree
           return $ "remaining-constraints:" <> remDoc
 
-        finalValue <- compileSearch dims binder remainder domain
+        finalValue <- compileSearch varName dims binder remainder domain
         return $ singletonPartition (remainingTree, Just finalValue)
     NonTrivial <$> disjunctPartitions newPartitions
 
 compileSearch ::
   (MonadLogic m) =>
+  Name ->
   VDims Builtin ->
   VBinder Builtin ->
   Closure LossBuiltin ->
   Domain TensorValue ->
   m (Value LossBuiltin)
-compileSearch dims binder closure (Domain lowerBound upperBound) = do
+compileSearch varName dims binder closure (Domain lowerBound upperBound) = do
   -- Convert the binder and the dimensions.
   lossBinder <- traverse convertType binder
   lossDims <- convertDims dims
@@ -213,7 +214,7 @@ compileSearch dims binder closure (Domain lowerBound upperBound) = do
               searchUpperBound = tensorValue $ upperBoundValue upperBound,
               searchPredicate = lossPredicate
             }
-  return $ VBuiltin (LossBuiltinFunction SearchRatTensor) spine
+  return $ VBuiltin (LossBuiltinFunction $ SearchRatTensor varName) spine
 
 findTensorBounds ::
   forall m.
