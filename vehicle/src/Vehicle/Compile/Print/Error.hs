@@ -884,36 +884,45 @@ formatCompileError = \case
             <+> quotePretty name,
         fix =
           Just $
-            "use one of the following available logics:" <> lineIndent (prettyMultiLineList (fmap pretty possibleNames))
+            "use one of the following available logics:"
+              <> lineIndent (starredList (fmap pretty possibleNames))
+              <> line
+              <> "or declare your own logic called" <+> quotePretty name
+              <> "."
       }
   UnreducableDifferentiableLogic (ident, p) ->
     VehicleError
       { provenance = Just p,
         problem =
           "Unable to compile differentiable logic"
-            <+> quotePretty ident
-            <+> "as it cannot be reduced to a concrete record",
+            <+> quotePretty (nameOf ident)
+            <> "."
+            <> line
+            <> "Its definition does not compute to a record literal.",
         fix =
           Just
-            "declare the logic directly as a concrete record."
+            "declare the logic directly as a record literal."
       }
   UnorderableDifferentiableLogic (ident, p) value ->
     VehicleError
       { provenance = Just p,
         problem =
           "Unable to compile differentiable logic"
-            <+> quotePretty ident
-            <+> "as cannot not compute a concrete boolean value for the expression"
-            <+> comp
+            <+> quotePretty (nameOf ident)
             <> "."
-              <+> "Instead it evaluated to"
-              <+> squotes (prettyFriendlyEmptyCtx value),
+            <> line
+            <> "Internally Vehicle computes the result of:" <+> lineIndent comp
+            <> line
+            <> "in order to work out whether the loss should be maximised or minimised."
+            <> line
+            <> "However, Vehicle was unable to establish the truth value of the result:"
+              <+> lineIndent (prettyFriendlyEmptyCtx value),
         fix =
           Just $
-            "ensure that" <> comp <> "evaluates to either `true` or `false`"
+            "ensure that the expression" <+> squotes comp <+> "evaluates to either `true` or `false`."
       }
     where
-      comp = squotes (pretty TruthityElement) <+> "<=" <+> squotes (pretty TruthityElement)
+      comp = pretty TruthityElement <+> "<=" <+> pretty FalsityElement
 
 datasetDimensionsFix :: Doc a -> Identifier -> FilePath -> Doc a
 datasetDimensionsFix feature ident file =

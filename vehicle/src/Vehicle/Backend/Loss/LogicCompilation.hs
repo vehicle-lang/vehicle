@@ -7,7 +7,7 @@ where
 
 import Control.Monad (foldM)
 import Control.Monad.Except (MonadError (..))
-import Control.Monad.State
+import Control.Monad.State (MonadState, StateT, execStateT, modify)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Map.Ordered (OMap)
