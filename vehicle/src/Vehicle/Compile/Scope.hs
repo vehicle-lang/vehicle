@@ -91,7 +91,7 @@ scopeDefRecordField ::
   RecordField S.Expr ->
   m (RecordField (Expr Builtin))
 scopeDefRecordField ident (field, fieldType) = do
-  fieldType' <- scopeTopLevelExpr False fieldType
+  fieldType' <- scopeTopLevelExpr True fieldType
   addNewRecordDefField ident field
   return (field, fieldType')
 

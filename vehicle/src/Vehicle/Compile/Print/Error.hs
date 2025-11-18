@@ -23,6 +23,7 @@ import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.Interface (getDimsExprs)
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
+import Vehicle.Data.DifferentiableLogic (TensorDifferentiableLogicField (..))
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Syntax.Parse (ParseError (..))
 import Vehicle.Syntax.Tensor (TensorIndices)
@@ -267,8 +268,7 @@ formatCompileError = \case
     Nothing ->
       VehicleError
         { provenance = Just p,
-          problem =
-            "Unable to find a record declaration with matching fields.",
+          problem = "Unable to find a record declaration with matching fields.",
           fix = Just $ "declare a record with the fields:" <> lineIndent (vsep $ fmap pretty fields)
         }
     Just (ident, RecordMatch {..}) -> do
@@ -304,7 +304,7 @@ formatCompileError = \case
     VehicleError
       { provenance = Just p,
         problem = "cannot use an empty record as a tensor.",
-        fix = Just $ "remove the annotation or add fields to the record."
+        fix = Just "remove the annotation or add fields to the record."
       }
   ---------------
   -- Resources --
@@ -872,10 +872,57 @@ formatCompileError = \case
               <+> squotes (prettyFriendly (WithContext inputValue ctx)),
         fix =
           Just $
-            "Add additional inequalities that restrict the value of" <+> case userVariables of
+            "add additional inequalities that restrict the value of" <+> case userVariables of
               [v] -> "the quantified variable" <+> quotePretty v
               _ -> "the following quantified variables:" <+> hsep (fmap pretty userVariables)
       }
+  UnknownDifferentiableLogic name possibleNames ->
+    VehicleError
+      { provenance = Nothing,
+        problem =
+          "Unable to find a differentiable logic named"
+            <+> quotePretty name,
+        fix =
+          Just $
+            "use one of the following available logics:"
+              <> lineIndent (starredList (fmap pretty possibleNames))
+              <> line
+              <> "or declare your own logic called" <+> quotePretty name
+              <> "."
+      }
+  UnreducableDifferentiableLogic (ident, p) ->
+    VehicleError
+      { provenance = Just p,
+        problem =
+          "Unable to compile differentiable logic"
+            <+> quotePretty (nameOf ident)
+            <> "."
+            <> line
+            <> "Its definition does not compute to a record literal.",
+        fix =
+          Just
+            "declare the logic directly as a record literal."
+      }
+  UnorderableDifferentiableLogic (ident, p) value ->
+    VehicleError
+      { provenance = Just p,
+        problem =
+          "Unable to compile differentiable logic"
+            <+> quotePretty (nameOf ident)
+            <> "."
+            <> line
+            <> "Internally Vehicle computes the result of:" <+> lineIndent comp
+            <> line
+            <> "in order to work out whether the loss should be maximised or minimised."
+            <> line
+            <> "However, Vehicle was unable to establish the truth value of the result:"
+              <+> lineIndent (prettyFriendlyEmptyCtx value),
+        fix =
+          Just $
+            "ensure that the expression" <+> squotes comp <+> "evaluates to either `true` or `false`."
+      }
+    where
+      comp = pretty TruthityElement <+> "<=" <+> pretty FalsityElement
 
 datasetDimensionsFix :: Doc a -> Identifier -> FilePath -> Doc a
 datasetDimensionsFix feature ident file =

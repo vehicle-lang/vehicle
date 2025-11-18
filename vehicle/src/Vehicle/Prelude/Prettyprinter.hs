@@ -71,6 +71,9 @@ commaSep = concatWith (surround ", ")
 numberedList :: [Doc ann] -> Doc ann
 numberedList elems = vsep (zipWith (\i e -> pretty i <> "." <+> e) [(1 :: Int) ..] elems)
 
+starredList :: [Doc ann] -> Doc ann
+starredList elems = vsep (fmap ("*" <+>) elems)
+
 lineIndent :: Doc ann -> Doc ann
 lineIndent x = line <> indent 2 x
 

@@ -66,6 +66,10 @@ instance Pretty LossBuiltinConstructor where
 --------------------------------------------------------------------------------
 -- Functions
 
+-- | Is [[true]] < [[false]] in the logic, i.e. does the
+-- loss value need to be minimised?
+type LogicDirection = Bool
+
 data LossBuiltinFunction
   = -- Rat operations
     Add AddDomain
@@ -85,7 +89,7 @@ data LossBuiltinFunction
     At
   | StackTensor
   | ConstTensor
-  | SearchRatTensor Name
+  | SearchRatTensor Name LogicDirection
   | MapList
   | FoldList
   deriving (Eq, Ord, Show, Generic)
@@ -109,7 +113,7 @@ instance Pretty LossBuiltinFunction where
     At -> "!"
     StackTensor {} -> "stack"
     ConstTensor -> "const"
-    SearchRatTensor name -> "search[" <> pretty name <> "]"
+    SearchRatTensor name _minimise -> "search[" <> pretty name <> "]"
     MapList -> "mapList"
     FoldList -> "foldList"
 

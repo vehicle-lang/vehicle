@@ -29,7 +29,6 @@ import Data.These (These)
 import Data.Typeable (Proxy)
 import Data.Void (Void)
 import GHC.Generics (Generic)
-import Vehicle.Backend.Loss.Logics (BooleanDifferentiableLogicField, TensorDifferentiableLogicField)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Resource (NetworkName)
@@ -41,6 +40,7 @@ import Vehicle.Data.Builtin.Linearity
 import Vehicle.Data.Builtin.Polarity
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.Value
+import Vehicle.Data.DifferentiableLogic
 import Vehicle.Data.Tensor (TensorIndices, TensorShape)
 import Vehicle.Data.Variable.Bound.Context.Name.Core
 import Vehicle.Syntax.Parse (ParseError, ParseLocation)
@@ -64,6 +64,9 @@ data RecordMatch = RecordMatch
     extraFields :: [FieldName]
   }
   deriving (Show)
+
+instance Pretty RecordMatch where
+  pretty = pretty . show
 
 --------------------------------------------------------------------------------
 -- Typing errors
@@ -183,10 +186,13 @@ data CompileError
   | MultiPropertyTraveralError DeclProvenance MultiPropertyTraveralError
   | UnboundedNetworkInputVariables DeclProvenance CompleteNamedBoundCtx (NonEmpty (NetworkName, Value Builtin, [Lv], UnboundedIndices))
   | -- Loss backend errors
-    UnsupportedLossOperation DeclProvenance (Doc Void)
+    UnknownDifferentiableLogic Name [Name]
+  | UnreducableDifferentiableLogic DeclProvenance
+  | UnsupportedLossOperation DeclProvenance (Doc Void)
   | UnsupportedHigherOrderTensorCode DeclProvenance NamedBoundCtx (Value Builtin) NamedBoundCtx (Value Builtin)
   | UnableToLiftLogicFieldToTensors DifferentiableLogicID TensorDifferentiableLogicField (BooleanDifferentiableLogicField, Value Builtin) NamedBoundCtx (Value Builtin)
   | NoQuantifierDomainFound DeclProvenance (VBinder Builtin) (These (NonEmpty TensorIndices) (NonEmpty TensorIndices))
+  | UnorderableDifferentiableLogic DeclProvenance (Value Builtin)
   | -- ITP backend errors
     UnsupportedPolymorphicEquality InteractiveTheoremProverID Provenance Name
   | UnusedMonomorphisableDeclaration Provenance Identifier

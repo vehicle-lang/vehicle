@@ -196,7 +196,6 @@ library
     Vehicle.Backend.Loss
     Vehicle.Backend.Loss.Core
     Vehicle.Backend.Loss.Domain
-    Vehicle.Backend.Loss.Logics
     Vehicle.Backend.Rocq.Compile
     Vehicle.Backend.Rocq.Interact
     Vehicle.Backend.Solver
@@ -273,6 +272,7 @@ library
     Vehicle.Data.Code.Interface.Operations
     Vehicle.Data.Code.Interface.Patterns
     Vehicle.Data.Code.TypedView
+    Vehicle.Data.DifferentiableLogic
     Vehicle.Data.Universe
     Vehicle.Data.Variable.Bound.Context.Core
     Vehicle.Data.Variable.Bound.Context.Generic

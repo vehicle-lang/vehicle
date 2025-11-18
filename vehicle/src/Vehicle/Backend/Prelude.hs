@@ -1,6 +1,8 @@
 module Vehicle.Backend.Prelude where
 
 import Control.Monad.IO.Class (MonadIO (..))
+import Data.List (find)
+import Data.Text qualified as Text
 import Data.Text.IO qualified as TIO
 import System.Directory (createDirectoryIfMissing)
 import System.FilePath (takeDirectory)
@@ -9,21 +11,39 @@ import Vehicle.Prelude.IO qualified as VIO (MonadStdIO (writeStdoutLn))
 import Vehicle.Prelude.Logging
 
 --------------------------------------------------------------------------------
+-- Builtin Differentiable Logics
+
+data BuiltinDifferentiableLogicID
+  = VehicleLoss
+  | DL2Loss
+  deriving (Eq, Show, Read, Enum, Bounded)
+
+instance Pretty BuiltinDifferentiableLogicID where
+  pretty = pretty . show
+
+--------------------------------------------------------------------------------
 -- Differentiable logics
 
 -- | Different ways of translating from the logical constraints to loss functions.
 data DifferentiableLogicID
-  = VehicleLoss
-  | DL2Loss
-  | GodelLoss
-  | LukasiewiczLoss
-  | ProductLoss
-  | YagerLoss
-  | STLLoss
-  deriving (Eq, Show, Read, Bounded, Enum)
+  = BuiltinLogic BuiltinDifferentiableLogicID
+  | CustomLogic Name
+  deriving (Eq, Show)
+
+instance Read DifferentiableLogicID where
+  readsPrec _prec value = do
+    let logics = enumerate @BuiltinDifferentiableLogicID
+    let maybeLogicID = find (\logicID -> show logicID == value) logics
+    let logicID = maybe (CustomLogic $ Text.pack value) BuiltinLogic maybeLogicID
+    [(logicID, "")]
 
 instance Pretty DifferentiableLogicID where
-  pretty = pretty . show
+  pretty = \case
+    BuiltinLogic logic -> pretty logic
+    CustomLogic name -> pretty name
+
+instance HasName DifferentiableLogicID Name where
+  nameOf logicID = layoutAsText $ pretty logicID
 
 --------------------------------------------------------------------------------
 -- Interactive theorem provers

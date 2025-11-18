@@ -145,6 +145,8 @@ tokCons = mkToken B.TokCons "::"
 
 tokAt = mkToken B.TokAt "!"
 
+tokConst = mkToken B.TokConst "const"
+
 tokMap = mkToken B.TokMap "map"
 
 tokFold = mkToken B.TokFold "fold"

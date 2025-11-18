@@ -5,7 +5,6 @@ where
 
 import Control.Monad (foldM, forM)
 import Control.Monad.Except (MonadError (..), runExceptT)
-import Control.Monad.Reader (MonadReader (..))
 import Control.Monad.State (MonadState (..), evalStateT)
 import Data.Coerce (coerce)
 import Data.Foldable (foldrM)
@@ -13,7 +12,6 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Vehicle.Backend.Loss.Core
-import Vehicle.Backend.Loss.Logics (TensorDifferentiableLogicField (..))
 import Vehicle.Backend.Loss.LossCompilation
 import Vehicle.Backend.Solver.UserVariableElimination.ConstraintSearch (findAllBounds)
 import Vehicle.Compile.Constants.Value
@@ -36,6 +34,7 @@ import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
+import Vehicle.Data.DifferentiableLogic (TensorDifferentiableLogicField (..))
 import Vehicle.Data.MaybeTrivial
 import Vehicle.Data.Tensor (pattern ZeroDimTensor)
 import Vehicle.Data.Tensor.Traversal
@@ -214,7 +213,8 @@ compileSearch varName dims binder closure (Domain lowerBound upperBound) = do
               searchUpperBound = tensorValue $ upperBoundValue upperBound,
               searchPredicate = lossPredicate
             }
-  return $ VBuiltin (LossBuiltinFunction $ SearchRatTensor varName) spine
+  minimise <- getLogicDirection
+  return $ VBuiltin (LossBuiltinFunction $ SearchRatTensor varName minimise) spine
 
 findTensorBounds ::
   forall m.
@@ -389,13 +389,6 @@ compileBool value = logEntryAndExit value $ case toBoolValue value of
   VReduceAndTensor {} -> unblockBoolValue value
   VReduceOrTensor {} -> unblockBoolValue value
   VBoolAt {} -> unblockBoolValue value
-  ----------------
-  -- TODO cases --
-  ----------------
-  where
-    unsupportedOperation op = do
-      (prov, _) <- ask
-      throwError $ UnsupportedLossOperation prov op
 
 compileAnd ::
   (MonadDomain m) =>

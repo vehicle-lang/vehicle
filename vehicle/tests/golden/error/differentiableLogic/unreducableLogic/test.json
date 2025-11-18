@@ -1,0 +1,6 @@
+  {
+    "name": "Loss",
+    "run": "vehicle compile loss -s spec.vcl -l CustomLoss -o loss.vcl",
+    "needs": ["spec.vcl"],
+    "produces": []
+  }
