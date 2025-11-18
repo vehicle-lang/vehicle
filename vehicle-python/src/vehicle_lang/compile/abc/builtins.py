@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Callable, Generic, Sequence
+from typing import Any, Generic, Sequence
 
 from typing_extensions import TypeAlias, TypeVar, override
 

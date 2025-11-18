@@ -3,6 +3,7 @@ from typing import Any, Callable, cast
 
 import pytest
 import tensorflow as tf
+
 import vehicle_lang as vcl
 import vehicle_lang.compile.tensorflow as vcl2tf
 
@@ -43,7 +44,7 @@ dummy_sampler = DummySampler()
 
 
 @pytest.mark.parametrize(  # type: ignore[misc]
-    "specification_filename,optimisers,validate_output",
+    "specification_filename,samplers,validate_output",
     [
         (
             "test_addition.vcl",
@@ -124,8 +125,8 @@ dummy_sampler = DummySampler()
 )
 def test_loss_function_exec(
     specification_filename: str,
-    samplers: dict[str, Any] = {},
-    validate_output: dict[str, Any] | Callable[[dict[str, Any]], None] = {},
+    samplers: dict[str, Any],
+    validate_output: dict[str, Any] | Callable[[dict[str, Any]], None],
 ) -> None:
     print(f"Exec {specification_filename}")
     specification_path = Path(__file__).parent / "data" / specification_filename

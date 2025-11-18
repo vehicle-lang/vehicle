@@ -398,7 +398,8 @@ def load(
         [
             "--json",
             "compile",
-            "--target",
+            "loss",
+            "--logic",
             target._vehicle_option_name,
             f"--specification={path}",
             *[f"--declaration={declaration_name}" for declaration_name in declarations],

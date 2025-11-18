@@ -5,6 +5,7 @@ import subprocess
 from pathlib import Path
 
 import pytest
+
 import vehicle_lang as vcl
 import vehicle_lang.ast as vcl_ast
 
@@ -24,27 +25,34 @@ def test_golden_spec_json_compilation(spec_path: Path) -> None:
     """Test that Vehicle can compile golden specs to valid JSON."""
     print(f"Compiling {spec_path.name}")
 
-    # Use session.check_output to compile to JSON
-    exc, out, err, log = vcl.session.check_output(
+    result = subprocess.run(
         [
+            "uv",
+            "run",
+            "vehicle",
             "--json",
             "compile",
-            "--target",
-            vcl.DifferentiableLogic.DL2._vehicle_option_name,
+            "loss",
+            "--logic",
+            "DL2Loss",
             f"--specification={spec_path}",
-        ]
+        ],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        cwd="/home/gus/University/vehicle/vehicle-python",
     )
-
     # Check compilation succeeded
     assert (
-        exc == 0
-    ), f"Vehicle compilation failed with exit code {exc}. Error: {err or log}"
-    assert out is not None, "No JSON output produced"
+        result.returncode == 0
+    ), f"Vehicle compilation failed with exit code {result.returncode}. Error: {result.stderr or result.stdout}"
+    assert result.stdout is not None, "No JSON output produced"
 
     # Check JSON is valid
     try:
-        json_data = json.loads(out)
+        json_data = json.loads(result.stdout)
     except json.JSONDecodeError as e:
+        print(f"Output was:\n{result.stdout}")
         pytest.fail(f"Invalid JSON produced: {e}")
 
     # Basic structure check
@@ -70,7 +78,8 @@ def test_golden_spec_ast_parsing_from_precompiled_json(spec_path: Path) -> None:
                 "vehicle",
                 "--json",
                 "compile",
-                "--target",
+                "loss",
+                "--logic",
                 "DL2Loss",
                 f"--specification={spec_path}",
             ],
@@ -139,7 +148,8 @@ def test_golden_spec_tensorflow_compilation_from_precompiled_json(
                 "vehicle",
                 "--json",
                 "compile",
-                "--target",
+                "loss",
+                "--logic",
                 "DL2Loss",
                 f"--specification={spec_path}",
             ],
@@ -223,7 +233,8 @@ def test_golden_specs_end_to_end_with_precompiled_json() -> None:
                     "vehicle",
                     "--json",
                     "compile",
-                    "--target",
+                    "loss",
+                    "--logic",
                     "DL2Loss",
                     f"--specification={spec_path}",
                 ],
@@ -318,7 +329,8 @@ def test_all_golden_specs_summary() -> None:
                     "vehicle",
                     "--json",
                     "compile",
-                    "--target",
+                    "loss",
+                    "--logic",
                     "DL2Loss",
                     f"--specification={spec_path}",
                 ],
