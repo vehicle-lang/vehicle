@@ -6,6 +6,7 @@ where
 
 import Control.Monad (forM, when)
 import Control.Monad.Except (MonadError (..))
+import Data.HashMap.Strict qualified as HM
 import Data.IntSet qualified as IntSet
 import Data.List (sortOn)
 import Data.List.NonEmpty (NonEmpty (..))
@@ -18,6 +19,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Bidirectional
 import Vehicle.Compile.Type.Constraint.ApplicationSolver (runApplicationSolver)
+import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Constraint.InstanceDefaultSolver (addNewInstanceConstraintUsingDefaults)
 import Vehicle.Compile.Type.Constraint.InstanceSolver (runInstanceSolver)
 import Vehicle.Compile.Type.Constraint.UnificationSolver
@@ -157,18 +159,42 @@ typeCheckFunctionDef p ident anns typ body isUnused = do
   solveConstraints (Proxy @builtin)
   substDecl <- substMetaVariables checkedDecl
 
-  if isAnnotatedAsProperty anns
-    then return substDecl
+  if isAnnotatedAsInstance anns
+    then do
+      instanceCandidates <- instanceCandidates <$> getTypeCheckerState @builtin
+      let newInstance =
+            InstanceCandidate
+              { candidateExpr = checkedType,
+                candidateSolution = checkedBody,
+                defaultInstance = False
+              }
+      case findInstanceGoalHead finalCheckedType of
+        Right candidateHead -> do
+          let newInstanceDatabase = HM.insertWith (++) candidateHead [newInstance] (instances instanceCandidates)
+          modifyTypeCheckerState @builtin (\s -> s {instanceCandidates = instanceCandidates {instances = newInstanceDatabase}})
+          return substDecl
+        Left subexpr -> do
+          let candidateDoc = prettyVerbose subexpr
+          let problemDoc = prettyVerbose subexpr
+          developerError $
+            "Invalid builtin instance candidate:"
+              <+> candidateDoc
+              <> line
+              <> "Problematic subexpr:"
+                <+> problemDoc
     else do
-      -- Otherwise if not a property then generalise over unsolved meta-variables.
-      checkedDecl1 <-
-        if isUserCode ident
-          then addAuxiliaryInputOutputConstraints substDecl
-          else return substDecl
+      if isAnnotatedAsProperty anns
+        then return substDecl
+        else do
+          -- Otherwise if not a property then generalise over unsolved meta-variables.
+          checkedDecl1 <-
+            if isUserCode ident
+              then addAuxiliaryInputOutputConstraints substDecl
+              else return substDecl
 
-      logUnsolvedUnknowns (Proxy @builtin)
+          logUnsolvedUnknowns (Proxy @builtin)
 
-      generaliseOverUnsolvedMetasAndConstraints checkedDecl1
+          generaliseOverUnsolvedMetasAndConstraints checkedDecl1
 
 typeCheckRecordDef ::
   forall builtin m.

@@ -477,6 +477,7 @@ instantiateArgForNonExplicitBinder ::
   m (Arg builtin)
 instantiateArgForNonExplicitBinder boundCtx p (fun, funArgs, funType) binder = do
   let binderType = typeOf binder
+  logDebug MaxDetail $ "INSTANTIATE ARG FOR NON EXPL BINDER"
   checkedExpr <- case visibilityOf binder of
     Explicit {} -> compilerDeveloperError "Should not be instantiating Arg for explicit Binder"
     Implicit {} -> freshMetaExpr p binderType boundCtx
