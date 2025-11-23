@@ -176,14 +176,14 @@ typeCheckFunctionDef p ident anns typ body isUnused = do
           logDebug MidDetail ("ADDED INSTANCE CANDIDATE" <+> candidateDoc)
           return substDecl
         Left subexpr -> do
-          -- slightly alter function to be able to get rid of this - its basically duplicated
+          -- slightly alter findInstanceGoalHead to get rid of this - its basically duplicated
           let candidateDoc = prettyVerbose subexpr
           let problemDoc = prettyVerbose subexpr
           developerError $
             "Invalid builtin instance candidate:"
               <+> candidateDoc
               <> line
-              <> "Problematic subexpr: yayayay this"
+              <> "Problematic subexpr:"
                 <+> problemDoc
     else do
       if isAnnotatedAsProperty anns
