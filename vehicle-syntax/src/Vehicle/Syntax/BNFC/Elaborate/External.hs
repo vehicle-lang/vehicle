@@ -235,6 +235,9 @@ parseAnnotation (tkName, opts) = do
     "@tensor" -> do
       validateEmptyOpts tkName opts
       return $ Right V.AnnTensor
+    "@instance" -> do
+      validateEmptyOpts tkName opts
+      return $ Right V.AnnInstance
     name -> developerError $ "Unknown annotation found" <+> squotes (pretty name)
 
 validateOpts :: forall m token. (MonadElab m, IsToken token) => token -> Set Text -> B.DeclAnnOpts -> m [B.DeclAnnOption]

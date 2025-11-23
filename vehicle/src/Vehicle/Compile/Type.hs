@@ -21,7 +21,7 @@ import Vehicle.Compile.Type.Bidirectional
 import Vehicle.Compile.Type.Constraint.ApplicationSolver (runApplicationSolver)
 import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Constraint.InstanceDefaultSolver (addNewInstanceConstraintUsingDefaults)
-import Vehicle.Compile.Type.Constraint.InstanceSolver (runInstanceSolver)
+import Vehicle.Compile.Type.Constraint.InstanceSolver
 import Vehicle.Compile.Type.Constraint.UnificationSolver
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Generalise
@@ -161,26 +161,29 @@ typeCheckFunctionDef p ident anns typ body isUnused = do
 
   if isAnnotatedAsInstance anns
     then do
-      instanceCandidates <- instanceCandidates <$> getTypeCheckerState @builtin
-      let newInstance =
-            InstanceCandidate
-              { candidateExpr = checkedType,
-                candidateSolution = checkedBody,
-                defaultInstance = False
-              }
       case findInstanceGoalHead finalCheckedType of
-        Right candidateHead -> do
-          let newInstanceDatabase = HM.insertWith (++) candidateHead [newInstance] (instances instanceCandidates)
+        Right goalHead -> do
+          instanceCandidates <- instanceCandidates <$> getTypeCheckerState @builtin
+          let newInstance =
+                InstanceCandidate
+                  { candidateExpr = checkedType,
+                    candidateSolution = checkedBody,
+                    defaultInstance = False
+                  }
+          let newInstanceDatabase = HM.insertWith (++) goalHead [newInstance] (instances instanceCandidates)
           modifyTypeCheckerState @builtin (\s -> s {instanceCandidates = instanceCandidates {instances = newInstanceDatabase}})
+          let candidateDoc = squotes (prettyCandidate (WithContext newInstance mempty))
+          logDebug MidDetail ("ADDED INSTANCE CANDIDATE" <+> candidateDoc)
           return substDecl
         Left subexpr -> do
+          -- slightly alter function to be able to get rid of this - its basically duplicated
           let candidateDoc = prettyVerbose subexpr
           let problemDoc = prettyVerbose subexpr
           developerError $
             "Invalid builtin instance candidate:"
               <+> candidateDoc
               <> line
-              <> "Problematic subexpr:"
+              <> "Problematic subexpr: yayayay this"
                 <+> problemDoc
     else do
       if isAnnotatedAsProperty anns

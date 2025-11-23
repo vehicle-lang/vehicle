@@ -71,4 +71,4 @@ createRecordToTensor p recordIdent fieldElementType fieldDimensions fields = do
         let tensorElements = fmap (\(fieldName, _) -> recordAcc record (recordIdent, fieldName)) fields
         stackTensor fieldElementType firstDimension fieldDimensions tensorElements
 
-  DefFunction p functionIdent mempty functionType functionBody
+  DefFunction p functionIdent [AnnInstance] functionType functionBody

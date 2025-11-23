@@ -1,6 +1,7 @@
 module Vehicle.Compile.Type.Constraint.InstanceSolver
   ( runInstanceSolver,
     acceptCandidate,
+    prettyCandidate,
   )
 where
 
