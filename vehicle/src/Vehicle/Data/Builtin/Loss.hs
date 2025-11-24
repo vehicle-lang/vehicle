@@ -12,7 +12,7 @@ import Vehicle.Data.Builtin.Standard.Core (Builtin)
 import Vehicle.Data.Builtin.Standard.Core qualified as S
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Tensor (Tensor)
-import Vehicle.Prelude (Pretty (..), developerError)
+import Vehicle.Prelude (Name, Pretty (..), developerError)
 import Vehicle.Syntax.Builtin.BasicOperations
 
 --------------------------------------------------------------------------------
@@ -66,6 +66,10 @@ instance Pretty LossBuiltinConstructor where
 --------------------------------------------------------------------------------
 -- Functions
 
+-- | Is [[true]] < [[false]] in the logic, i.e. does the
+-- loss value need to be minimised?
+type LogicDirection = Bool
+
 data LossBuiltinFunction
   = -- Rat operations
     Add AddDomain
@@ -85,7 +89,7 @@ data LossBuiltinFunction
     At
   | StackTensor
   | ConstTensor
-  | SearchRatTensor
+  | SearchRatTensor Name LogicDirection
   | MapList
   | FoldList
   deriving (Eq, Ord, Show, Generic)
@@ -109,7 +113,7 @@ instance Pretty LossBuiltinFunction where
     At -> "!"
     StackTensor {} -> "stack"
     ConstTensor -> "const"
-    SearchRatTensor -> "search"
+    SearchRatTensor name _minimise -> "search[" <> pretty name <> "]"
     MapList -> "mapList"
     FoldList -> "foldList"
 
@@ -357,7 +361,7 @@ instance ConvertableBuiltin LossBuiltinFunction Builtin where
     ConstTensor -> convertBuiltin p S.ConstTensor
     MapList -> convertBuiltin p S.MapList
     FoldList -> convertBuiltin p S.FoldList
-    SearchRatTensor -> cheatConvertBuiltin p $ pretty b
+    SearchRatTensor {} -> cheatConvertBuiltin p $ pretty b
 
 instance ConvertableBuiltin LossBuiltin Builtin where
   convertBuiltin p b = case b of

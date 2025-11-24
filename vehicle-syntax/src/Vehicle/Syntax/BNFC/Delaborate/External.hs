@@ -263,7 +263,7 @@ delabBuiltinFunction fun args = case fun of
   V.ReduceMaxRatTensor -> delabApp (B.ReduceMax tokReduceMax) args
   V.ReduceMinRatTensor -> delabApp (B.ReduceMin tokReduceMin) args
   V.StackTensor {} -> rawDelab
-  V.ConstTensor -> rawDelab
+  V.ConstTensor -> delabApp (B.Const tokConst) args
   V.Iterate -> rawDelab
   where
     rawDelab = cheatDelabPretty fun args

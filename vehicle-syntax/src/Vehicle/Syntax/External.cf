@@ -69,6 +69,7 @@ position token TokSeqClose   {"]"};
 position token TokAt         {"!"};
 position token TokMap        {"map"};
 position token TokFold       {"fold"};
+position token TokConst      {"const"};
 
 position token TokReduceOr  {"reduceOr"};
 position token TokReduceAnd {"reduceAnd"};
@@ -227,6 +228,7 @@ VecLiteral. Expr15 ::= TokSeqOpen [Expr] TokSeqClose;
 Nil.        Expr15 ::= TokNil;
 Cons.       Expr4  ::= Expr5 TokCons Expr4;
 At.         Expr12 ::= Expr12 TokAt Expr13;
+Const.      Expr15 ::= TokConst;
 Map.        Expr15 ::= TokMap;
 Fold.       Expr15 ::= TokFold;
 

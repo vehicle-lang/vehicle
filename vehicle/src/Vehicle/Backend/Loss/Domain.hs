@@ -5,7 +5,6 @@ where
 
 import Control.Monad (foldM, forM)
 import Control.Monad.Except (MonadError (..), runExceptT)
-import Control.Monad.Reader (MonadReader (..))
 import Control.Monad.State (MonadState (..), evalStateT)
 import Data.Coerce (coerce)
 import Data.Foldable (foldrM)
@@ -13,7 +12,6 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Vehicle.Backend.Loss.Core
-import Vehicle.Backend.Loss.Logics (TensorDifferentiableLogicField (..))
 import Vehicle.Backend.Loss.LossCompilation
 import Vehicle.Backend.Solver.UserVariableElimination.ConstraintSearch (findAllBounds)
 import Vehicle.Compile.Constants.Value
@@ -36,6 +34,7 @@ import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
+import Vehicle.Data.DifferentiableLogic (TensorDifferentiableLogicField (..))
 import Vehicle.Data.MaybeTrivial
 import Vehicle.Data.Tensor (pattern ZeroDimTensor)
 import Vehicle.Data.Tensor.Traversal
@@ -122,8 +121,8 @@ compileConstraints ::
   Partition ->
   m (MaybeTrivial Partitions)
 compileConstraints finalCtx dims binder var (maybeConstraints, maybeRemainder) = do
-  varName <- prettyFriendlyInCtx var
-  logCompilerSection2 MidDetail ("extracting bounds for" <+> squotes varName <+> "from partition") $ do
+  let varName = getBinderName binder
+  logCompilerSection2 MidDetail ("extracting bounds for" <+> quotePretty varName <+> "from partition") $ do
     -- Extract the constraints we can use to bound the variable
     constraints <- case maybeConstraints of
       Nothing -> noQuantifierDomainError binder wholeTensorUnbounded
@@ -176,18 +175,19 @@ compileConstraints finalCtx dims binder var (maybeConstraints, maybeRemainder) =
           remDoc <- maybe (return "") (fmap lineIndent . prettyFriendlyInCtx) remainingTree
           return $ "remaining-constraints:" <> remDoc
 
-        finalValue <- compileSearch dims binder remainder domain
+        finalValue <- compileSearch varName dims binder remainder domain
         return $ singletonPartition (remainingTree, Just finalValue)
     NonTrivial <$> disjunctPartitions newPartitions
 
 compileSearch ::
   (MonadLogic m) =>
+  Name ->
   VDims Builtin ->
   VBinder Builtin ->
   Closure LossBuiltin ->
   Domain TensorValue ->
   m (Value LossBuiltin)
-compileSearch dims binder closure (Domain lowerBound upperBound) = do
+compileSearch varName dims binder closure (Domain lowerBound upperBound) = do
   -- Convert the binder and the dimensions.
   lossBinder <- traverse convertType binder
   lossDims <- convertDims dims
@@ -213,7 +213,8 @@ compileSearch dims binder closure (Domain lowerBound upperBound) = do
               searchUpperBound = tensorValue $ upperBoundValue upperBound,
               searchPredicate = lossPredicate
             }
-  return $ VBuiltin (LossBuiltinFunction SearchRatTensor) spine
+  minimise <- getLogicDirection
+  return $ VBuiltin (LossBuiltinFunction $ SearchRatTensor varName minimise) spine
 
 findTensorBounds ::
   forall m.
@@ -388,13 +389,6 @@ compileBool value = logEntryAndExit value $ case toBoolValue value of
   VReduceAndTensor {} -> unblockBoolValue value
   VReduceOrTensor {} -> unblockBoolValue value
   VBoolAt {} -> unblockBoolValue value
-  ----------------
-  -- TODO cases --
-  ----------------
-  where
-    unsupportedOperation op = do
-      (prov, _) <- ask
-      throwError $ UnsupportedLossOperation prov op
 
 compileAnd ::
   (MonadDomain m) =>

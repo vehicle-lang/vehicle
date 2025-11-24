@@ -7,11 +7,6 @@ Available options:
   -l,--logic LOGIC         The differentiable logic to export to. Supported options: 
                              * VehicleLoss
                              * DL2Loss
-                             * GodelLoss
-                             * LukasiewiczLoss
-                             * ProductLoss
-                             * YagerLoss
-                             * STLLoss
   -s,--specification FILE  The .vcl file containing the specification.
   -e,--declaration NAME    Declarations in the specification to include during
                            compilation. Can be provided multiple times. If not

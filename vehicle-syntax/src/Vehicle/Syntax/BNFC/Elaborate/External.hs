@@ -413,6 +413,7 @@ elabExpr expr = case expr of
   B.At e1 tk e2 -> builtinTypeClassOp V.AtTC tk [e1, e2]
   B.Map tk -> builtinTypeClassOp V.MapTC tk []
   B.Fold tk -> builtinTypeClassOp V.FoldTC tk []
+  B.Const tk -> builtinFunction V.ConstTensor tk []
   B.ReduceOr tk -> builtinFunction V.ReduceOrTensor tk []
   B.ReduceAnd tk -> builtinFunction V.ReduceAndTensor tk []
   B.ReduceAdd tk -> builtinFunction V.ReduceAddRatTensor tk []

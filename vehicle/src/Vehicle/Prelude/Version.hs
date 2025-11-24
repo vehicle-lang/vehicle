@@ -17,7 +17,10 @@ import Control.Monad.Trans (MonadIO (..))
 import Data.ByteString qualified as BIO
 import Data.Serialize (Serialize, decode, encode)
 import Data.Version (showVersion)
+#ifdef releaseBuild
+#else
 import Development.GitRev
+#endif
 import GHC.Generics (Generic)
 import Paths_vehicle qualified as Cabal (version)
 
@@ -93,7 +96,8 @@ readAndDecodeVersioned filepath = do
       Right Versioned {..} -> do
         -- The version is always potentially out of sync if the Github repo is
         -- in a dirty state.
-        let isOutOfSync = $(gitDirtyTracked) || version /= preciseVehicleVersion
+        let isOutOfSync = version /= preciseVehicleVersion
+        -- \||  $(gitDirtyTracked)
         if isOutOfSync
           then return $ VersionMismatchError preciseVehicleVersion version
           else case decode payload of

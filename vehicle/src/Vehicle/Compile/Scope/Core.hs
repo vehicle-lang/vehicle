@@ -10,6 +10,7 @@ import Data.List qualified as List
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (catMaybes, mapMaybe)
+import Data.Ord (comparing)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text qualified as Text
@@ -167,23 +168,31 @@ getAllNamesInScope = do
 --------------------------------------------------------------------------------
 -- Utility functions
 
-findBestRecordMatch :: [FieldName] -> [(Identifier, Set FieldName)] -> Maybe (Identifier, RecordMatch)
+findBestRecordMatch ::
+  [FieldName] ->
+  [(Identifier, Set FieldName)] ->
+  Maybe (Identifier, RecordMatch)
 findBestRecordMatch givenFields possibleFields
   | null possibleFields = Nothing
   | otherwise = do
       let givenFieldsSet = Set.fromList givenFields
       let matches = fmap (second (calculateMatch givenFieldsSet)) possibleFields
-      let (ident, bestMatch) = maximumBy (\(_, m1) (_, m2) -> compare (matchScore m1) (matchScore m2)) matches
+      let (ident, bestMatch) = maximumBy (\(_, m1) (_, m2) -> compareMatches m1 m2) matches
       if not (null (sharedFields bestMatch) && null (mispellings bestMatch))
         then Just (ident, bestMatch)
         else Nothing
 
-matchScore :: RecordMatch -> (Int, Int, Int)
-matchScore RecordMatch {..} =
-  ( length sharedFields,
-    -length mispellings,
-    -(length missingFields + length extraFields)
-  )
+-- Orders by best match (i.e. GT == better ordering)
+compareMatches :: RecordMatch -> RecordMatch -> Ordering
+compareMatches m1 m2 =
+  -- Prioritise matches with the highest number of shared fields
+  comparing (length . sharedFields) m1 m2
+    <>
+    -- Otherwise prioritise matches with the highest number of potential misspellings
+    comparing (length . mispellings) m1 m2
+    <>
+    -- Otherwise prioritise matches with the lowest number of total and missing fields
+    comparing (\m -> -length (missingFields m) - length (extraFields m)) m1 m2
 
 calculateMatch :: Set FieldName -> Set FieldName -> RecordMatch
 calculateMatch recordFields actualFields = do

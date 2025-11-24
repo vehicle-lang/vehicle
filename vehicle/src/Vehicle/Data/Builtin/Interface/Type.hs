@@ -123,7 +123,7 @@ typeOfTensorOp2 tElem = forAllDims $ \dims -> tTensor tElem dims ~> tTensor tEle
 typeOfConstTensor :: (HasStandardBuiltins builtin) => DSLExpr builtin
 typeOfConstTensor =
   forAll "A" type0 $ \tElem ->
-    tElem ~> tDims ~> tTensor tElem tDims
+    tTensor tElem dimNil ~> forAllExpl "dims" tDims (\dims -> tTensor tElem dims)
 
 typeOfTensorReduceOp ::
   (BuiltinHasStandardTypes builtin, BuiltinHasStandardData builtin) =>

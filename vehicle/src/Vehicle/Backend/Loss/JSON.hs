@@ -84,7 +84,7 @@ data JExpr
   | ReduceMulRatTensor JExpr JExpr
   | ReduceMinRatTensor JExpr JExpr
   | ReduceMaxRatTensor JExpr JExpr
-  | SearchRatTensor JExpr JExpr JExpr JExpr -- (ReductionOp, LowerBound, UpperBound, SearchLambda)
+  | SearchRatTensor Name JExpr JExpr JExpr JExpr JExpr L.LogicDirection -- (Dims, ReductionOp, LowerBound, UpperBound, SearchLambda, Minimise)
   -- Dimensions
   | Dimension Int
   | DimensionNil
@@ -264,7 +264,7 @@ convertBuiltin :: (MonadJSON m) => LossBuiltin -> Spine LossBuiltin -> m JExpr
 convertBuiltin b spine = case b of
   LossBuiltinType op -> resolutionError currentPass (pretty op)
   LossBuiltinConstructor op -> case op of
-    L.Nil -> convertNullaryOp b DimensionNil spine
+    L.Nil -> convertNil spine
     L.Cons -> convertCons spine
     L.UnitLiteral -> unsupportedError b
     L.IndexLiteral i -> convertNullaryOp b (DimensionIndex i) spine
@@ -287,12 +287,17 @@ convertBuiltin b spine = case b of
     L.At -> convertAtTensor convertValue spine
     L.StackTensor -> convertStackTensor spine
     L.ConstTensor -> convertConstTensor spine
-    L.SearchRatTensor -> convertSearch spine
+    L.SearchRatTensor name minimise -> convertSearch name minimise spine
     -- Dimension operations, not yet converted
     L.Add L.AddNat -> unsupportedError b
     L.Mul L.MulNat -> unsupportedError b
     L.MapList -> unsupportedError b
     L.FoldList -> unsupportedError b
+
+convertNil :: (MonadJSON m) => Spine LossBuiltin -> m JExpr
+convertNil spine = case getExpr accessSpine spine of
+  Just (NilArgs _t) -> return DimensionNil
+  Nothing -> arityError L.Nil 1 spine
 
 convertCons :: (MonadJSON m) => Spine LossBuiltin -> m JExpr
 convertCons spine = case getExpr accessSpine spine of
@@ -356,11 +361,11 @@ convertConstTensor spine = case getExpr accessSpine spine of
   Just (ConstTensorArgs _t v ds) -> ConstTensor <$> convertValue v <*> convertValue ds
   Nothing -> arityError L.ConstTensor 4 spine
 
-convertSearch :: (MonadJSON m) => Spine LossBuiltin -> m JExpr
-convertSearch spine = case getExpr accessSpine spine of
-  Just (SearchRatTensorArgs _dims unaryOp lowerBound upperBound fn) ->
-    SearchRatTensor <$> convertValue unaryOp <*> convertValue lowerBound <*> convertValue upperBound <*> convertValue fn
-  Nothing -> arityError (show L.SearchRatTensor) 5 spine
+convertSearch :: (MonadJSON m) => Name -> Bool -> Spine LossBuiltin -> m JExpr
+convertSearch name minimise spine = case getExpr accessSpine spine of
+  Just (SearchRatTensorArgs dims unaryOp lowerBound upperBound fn) ->
+    SearchRatTensor name <$> convertValue unaryOp <*> convertValue dims <*> convertValue lowerBound <*> convertValue upperBound <*> convertValue fn <*> pure minimise
+  Nothing -> arityError (show (L.SearchRatTensor name minimise)) 5 spine
 
 arityError :: (MonadCompile m, Pretty fn) => fn -> Arity -> Spine LossBuiltin -> m a
 arityError fun arity explicitArgs =
@@ -452,7 +457,7 @@ fromJExpr = \case
   ReduceMulRatTensor e xs -> toFunction L.ReduceMulRatTensor [e, xs]
   ReduceMinRatTensor e xs -> toFunction L.ReduceMinRatTensor [e, xs]
   ReduceMaxRatTensor e xs -> toFunction L.ReduceMaxRatTensor [e, xs]
-  SearchRatTensor e1 e2 e3 e4 -> toFunction L.SearchRatTensor [e1, e2, e3, e4]
+  SearchRatTensor name dims e1 e2 e3 e4 minimise -> toFunction (L.SearchRatTensor name minimise) [dims, e1, e2, e3, e4]
   Dimension d -> toConstructor (L.NatLiteral d) []
   DimensionNil -> toConstructor L.Nil []
   DimensionCons e1 e2 -> toConstructor L.Cons [e1, e2]
