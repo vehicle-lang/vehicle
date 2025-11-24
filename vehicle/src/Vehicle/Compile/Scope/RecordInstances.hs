@@ -25,7 +25,7 @@ createTensorRecordConversionFunctions ::
   m [Decl Builtin]
 createTensorRecordConversionFunctions _t p ident fields = do
   nonEmptyFields <- case fields of
-    [] -> throwError $ ZeroFieldTensorLike (ident, p)
+    [] -> throwError $ ZeroFieldTensorLike p
     f : fs -> return $ f :| fs
 
   -- We can't actually know the element and the field types at scope checking

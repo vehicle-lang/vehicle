@@ -1,2 +1,2 @@
-Error in file 'spec.vcl' at Line 3, Columns 8-12: cannot use zero field record 'User.Test' as a tensor.
+Error in file 'spec.vcl' at Line 3, Columns 8-12: annotating a record with zero fields with @tensor is not currrently supported.
 Fix: remove the @tensor annotation or add fields to the record.

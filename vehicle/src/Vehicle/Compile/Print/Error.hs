@@ -635,13 +635,10 @@ formatCompileError = \case
               <+> "(networks will be supported later)."
       }
   -- TensorLike errors
-  ZeroFieldTensorLike (ident, p) ->
+  ZeroFieldTensorLike p ->
     VehicleError
       { provenance = Just p,
-        problem =
-          "cannot use zero field record"
-            <+> quotePretty ident
-            <+> "as a tensor.",
+        problem = "annotating a record with zero fields with @tensor is not currrently supported.",
         fix = Just "remove the @tensor annotation or add fields to the record."
       }
   --------------------

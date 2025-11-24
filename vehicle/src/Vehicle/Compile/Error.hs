@@ -176,7 +176,7 @@ data CompileError
   | InferableParameterContradictory Identifier (DeclProvenance, ExternalResource, Int) (DeclProvenance, ExternalResource, Int)
   | InferableParametersUninferrable (NonEmpty UninferableParameter)
   | -- Unsupported tensor record
-    ZeroFieldTensorLike DeclProvenance
+    ZeroFieldTensorLike Provenance
   | -- Query backend
     NoPropertiesFound
   | HigherOrderVectors DeclProvenance NamedBoundCtx (VType Builtin) (VType Builtin)
