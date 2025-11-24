@@ -300,12 +300,6 @@ formatCompileError = \case
         problem = "cannot currently use quantifiers in `if` conditions.",
         fix = Just $ implementationLimitation Nothing
       }
-  UnsupportedTensorAnnotation p ->
-    VehicleError
-      { provenance = Just p,
-        problem = "cannot use an empty record as a tensor.",
-        fix = Just "remove the annotation or add fields to the record."
-      }
   ---------------
   -- Resources --
   ---------------
@@ -639,6 +633,16 @@ formatCompileError = \case
             "For a parameter's value to be inferable, it must"
               <+> "be used as the dimension of a dataset"
               <+> "(networks will be supported later)."
+      }
+  -- TensorLike errors
+  ZeroFieldTensorLike (ident, p) ->
+    VehicleError
+      { provenance = Just p,
+        problem =
+          "cannot use zero field record"
+            <+> quotePretty ident
+            <+> "as a tensor.",
+        fix = Just "remove the @tensor annotation or add fields to the record."
       }
   --------------------
   -- Backend errors --
