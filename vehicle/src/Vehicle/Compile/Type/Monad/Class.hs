@@ -360,19 +360,8 @@ prettyMetaInternal m t = pretty m <+> ":" <+> prettyVerbose t
 clearMetaCtx :: forall builtin m. (MonadTypeChecker builtin m) => Proxy builtin -> m ()
 clearMetaCtx _ = do
   logDebug MaxDetail "Clearing meta-variable context"
-  -- modifyTypeCheckerState @builtin $ const emptyTypeCheckerState
-  modifyTypeCheckerState @builtin $ \state ->
-    state
-      { currentDecl = Nothing,
-        metaVariableCtx = mempty,
-        applicationConstraints = mempty,
-        unificationConstraints = mempty,
-        instanceConstraints = mempty,
-        auxiliaryInstanceConstraints = mempty,
-        freshNameState = 0,
-        solvedMetaState = SolvedMetaState mempty,
-        nextConstraintID = 0
-      }
+  instanceDatabase <- instanceCandidates <$> getTypeCheckerState @builtin
+  modifyTypeCheckerState @builtin $ const emptyTypeCheckerState {instanceCandidates = instanceDatabase}
 
 getSubstMetaType :: forall builtin m. (MonadTypeChecker builtin m) => MetaID -> m (Type builtin)
 getSubstMetaType m = do
