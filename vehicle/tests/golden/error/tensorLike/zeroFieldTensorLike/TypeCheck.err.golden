@@ -1,2 +1,2 @@
-Error in file 'spec.vcl' at Line 3, Columns 8-12: annotating a record with zero fields with @tensor is not currrently supported.
+Error in file 'spec.vcl' at Line 3, Columns 8-12: annotating the record 'User.Test' with @tensor is not currently supported as it has no fields.
 Fix: remove the @tensor annotation or add fields to the record.
