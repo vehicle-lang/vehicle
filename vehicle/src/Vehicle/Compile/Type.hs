@@ -19,7 +19,7 @@ import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Bidirectional
 import Vehicle.Compile.Type.Constraint.ApplicationSolver (runApplicationSolver)
 import Vehicle.Compile.Type.Constraint.InstanceDefaultSolver (addNewInstanceConstraintUsingDefaults)
-import Vehicle.Compile.Type.Constraint.InstanceSolver
+import Vehicle.Compile.Type.Constraint.InstanceSolver (runInstanceSolver)
 import Vehicle.Compile.Type.Constraint.UnificationSolver
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Generalise

@@ -63,7 +63,8 @@ extractHeadFromInstanceCandidate candidate@InstanceCandidate {..} = do
 
 findInstanceGoalHead :: Expr builtin -> Either (Expr builtin) builtin
 findInstanceGoalHead = \case
-  Pi _ _binder body -> findInstanceGoalHead body
+  Pi _ binder body
+    | not (isExplicit binder) -> findInstanceGoalHead body
   App (Builtin _ b) _ -> Right b
   Builtin _ b -> Right b
   expr -> Left expr
