@@ -69,7 +69,7 @@ runTypeCheckerTInitially ::
   TypeCheckerT builtin m a ->
   m a
 runTypeCheckerTInitially freeCtx instanceDatabase e = do
-  let state = (\s -> s {instanceCandidates = instanceDatabase}) emptyTypeCheckerState
+  let state = emptyTypeCheckerState {instanceCandidates = instanceDatabase}
   fst <$> runTypeCheckerT freeCtx state e
 
 -- | Runs a hypothetical computation in the type-checker,
