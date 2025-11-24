@@ -160,6 +160,9 @@ getMetaVariableCtx = getsTypeCheckerState metaVariableCtx
 getNumberOfMetasCreated :: forall builtin m. (MonadTypeChecker builtin m) => Proxy builtin -> m Int
 getNumberOfMetasCreated _ = getsTypeCheckerState @builtin (length . metaVariableCtx)
 
+getInstanceCandidates :: (MonadTypeChecker builtin m) => m (InstanceDatabase builtin)
+getInstanceCandidates = getsTypeCheckerState instanceCandidates
+
 -- | Track the metas solved while performing the provided computation.
 -- Multiple calls can be nested arbitrarily deepily.
 trackSolvedMetas :: forall builtin m. (MonadTypeChecker builtin m) => Proxy builtin -> m () -> m MetaSet
@@ -360,8 +363,7 @@ prettyMetaInternal m t = pretty m <+> ":" <+> prettyVerbose t
 clearMetaCtx :: forall builtin m. (MonadTypeChecker builtin m) => Proxy builtin -> m ()
 clearMetaCtx _ = do
   logDebug MaxDetail "Clearing meta-variable context"
-  instanceDatabase <- instanceCandidates <$> getTypeCheckerState @builtin
-  modifyTypeCheckerState @builtin $ const emptyTypeCheckerState {instanceCandidates = instanceDatabase}
+  modifyTypeCheckerState @builtin $ \state -> emptyTypeCheckerState {instanceCandidates = instanceCandidates state}
 
 getSubstMetaType :: forall builtin m. (MonadTypeChecker builtin m) => MetaID -> m (Type builtin)
 getSubstMetaType m = do

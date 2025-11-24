@@ -64,7 +64,7 @@ solveInstanceConstraint depth constraint = do
   logDebug MaxDetail $ "Forced:" <+> prettyExternal normConstraint
 
   let goal = instanceGoal $ objectIn normConstraint
-  database <- instanceCandidates <$> getTypeCheckerState @builtin
+  database <- getInstanceCandidates
   let candidates = lookupInstances database goal
   solveInstanceGoal normConstraint candidates depth goal
 
