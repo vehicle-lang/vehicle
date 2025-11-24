@@ -175,6 +175,8 @@ data CompileError
   | ParameterValueInvalidNat DeclProvenance Int
   | InferableParameterContradictory Identifier (DeclProvenance, ExternalResource, Int) (DeclProvenance, ExternalResource, Int)
   | InferableParametersUninferrable (NonEmpty UninferableParameter)
+  | -- Unsupported tensor record
+    ZeroFieldTensorLike DeclProvenance
   | -- Query backend
     NoPropertiesFound
   | HigherOrderVectors DeclProvenance NamedBoundCtx (VType Builtin) (VType Builtin)
@@ -199,7 +201,6 @@ data CompileError
   | -- Other
     UnsupportedInequality QueryFormatID DeclProvenance
   | QuantifiedIfCondition (ConstraintContext PolarityBuiltin)
-  | UnsupportedTensorAnnotation Provenance
 
 deriving instance Show CompileError
 
