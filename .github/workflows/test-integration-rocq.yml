@@ -34,7 +34,7 @@ jobs:
     runs-on: ${{ matrix.os.type }}
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Setup Haskell
         uses: ./.github/actions/setup-haskell
