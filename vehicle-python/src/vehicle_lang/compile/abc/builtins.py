@@ -4,7 +4,7 @@ from typing import Any, Generic, Sequence
 
 from typing_extensions import TypeAlias, TypeVar, override
 
-from ...ast import Tensor
+from ..ast.nodes import Tensor
 from . import types as vcl
 
 _S = TypeVar("_S")
@@ -60,7 +60,7 @@ class Builtins(
     def ReduceMaxRatTensor(self, e: vcl.Rat, x: vcl.Tensor) -> vcl.Tensor: ...
 
     @abstractmethod
-    def DimensionLookup(self, xs: vcl.Tensor, i: vcl.Index) -> vcl.Index: ...
+    def DimensionLookup(self, xs: vcl.Tensor, i: vcl.Index) -> vcl.Tensor: ...
 
     @abstractmethod
     def DimensionCons(
@@ -96,7 +96,7 @@ class ABCBuiltins(
         return value
 
     @override
-    def DimensionLookup(self, xs: vcl.Tensor, i: vcl.Index) -> vcl.Index:
+    def DimensionLookup(self, xs: vcl.Tensor, i: vcl.Index) -> vcl.Tensor:
         raise NotImplementedError(
             "DimensionLookup requires concrete tensor implementation"
         )

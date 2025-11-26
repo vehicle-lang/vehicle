@@ -1,11 +1,6 @@
 from enum import Enum
-from typing import Any, Callable, Dict
 
-from typing_extensions import Protocol, TypeAlias, TypeVar
-
-_T = TypeVar("_T")
-_R = TypeVar("_R")
-
+from typing_extensions import Protocol, TypeAlias
 
 DeclarationName: TypeAlias = str
 """
@@ -48,20 +43,37 @@ class DifferentiableLogic(Enum):
 
     Vehicle = 1
     DL2 = 2
-    Godel = 3
-    Lukasiewicz = 4
-    Product = 5
-    Yager = 6
+    # Godel = 3
+    # Lukasiewicz = 4
+    # Product = 5
+    # Yager = 6
 
     @property
     def _vehicle_option_name(self) -> str:
         return {
             DifferentiableLogic.Vehicle: "VehicleLoss",
             DifferentiableLogic.DL2: "DL2Loss",
-            DifferentiableLogic.Godel: "GodelLoss",
-            DifferentiableLogic.Lukasiewicz: "LukasiewiczLoss",
-            DifferentiableLogic.Product: "ProductLoss",
-            DifferentiableLogic.Yager: "YagerLoss",
+            # Currently unsupported options
+            # DifferentiableLogic.Godel: "GodelLoss",
+            # DifferentiableLogic.Lukasiewicz: "LukasiewiczLoss",
+            # DifferentiableLogic.Product: "ProductLoss",
+            # DifferentiableLogic.Yager: "YagerLoss",
+        }[self]
+
+
+class LossBackend(Enum):
+    """
+    The backends supported for loss function computation.
+    """
+
+    TensorFlow = 1
+    PyTorch = 2
+
+    @property
+    def _vehicle_option_name(self) -> str:
+        return {
+            LossBackend.TensorFlow: "TensorFlow",
+            LossBackend.PyTorch: "PyTorch",
         }[self]
 
 
@@ -137,7 +149,8 @@ class ExportTarget(Enum):
     """
 
     Agda = 1
+    Rocq = 2
 
     @property
     def _vehicle_option_name(self) -> str:
-        return {ExportTarget.Agda: "Agda"}[self]
+        return {ExportTarget.Agda: "Agda", ExportTarget.Rocq: "Rocq"}[self]

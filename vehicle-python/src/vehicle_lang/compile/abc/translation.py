@@ -2,10 +2,10 @@ from abc import ABCMeta, abstractmethod
 from typing import Generic
 
 from typing_extensions import override
+from vehicle_lang.compile.abc import types as vcl_var
 
 # from ... import ast as vcl_ast
-from vehicle_lang import ast as vcl_ast
-from vehicle_lang.compile.abc import types as vcl_var
+from vehicle_lang.compile.ast import nodes as vcl_ast
 
 ################################################################################
 ### Translation from Vehicle AST to Python AST

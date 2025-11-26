@@ -1,9 +1,17 @@
+from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, Iterable, Optional
+from typing import Any, Iterable, Mapping, Optional
 
-from .. import session
+from .. import session as session
 from ..error import VehicleError as VehicleError
-from ..typing import ITP, DeclarationName, DifferentiableLogic, QueryFormat
+from ..typing import ITP, DeclarationName, DifferentiableLogic, LossBackend, QueryFormat
+from . import (
+    abc,
+    ast,
+    error,
+    pytorch,
+    tensorflow,
+)
 
 
 def compile(
@@ -33,10 +41,9 @@ def compile(
 
     args = [
         "compile",
+        target._vehicle_option_name,
         "--specification",
         str(path),
-        "--target",
-        target._vehicle_option_name,
     ]
 
     # Add declarations if specified
@@ -71,61 +78,73 @@ def compile(
     if exec != 0:
         raise VehicleError(f"{err}")
     elif not out:
-        raise VehicleError(f"Vehicle produced no output")
+        raise VehicleError("Vehicle produced no output")
 
     return out
 
 
-def compile_to_queries(
+def load_specification(
     path: str | Path,
-    target: QueryFormat,
-    output_folder: str | Path,
-    declarations: Optional[Iterable[DeclarationName]] = None,
-    networks: dict[DeclarationName, str | Path] = {},
-    datasets: dict[DeclarationName, str | Path] = {},
-    parameters: dict[DeclarationName, Any] = {},
-) -> str:
+    *,
+    backend: LossBackend,
+    logic: DifferentiableLogic = DifferentiableLogic.DL2,
+    samplers: Mapping[str, Any] | None = None,
+    declarations: Iterable[DeclarationName] = (),
+    declaration_context: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """
-    Compile a Vehicle specification to queries for a verifier. This is useful if you want to generate
-    the queries but not run the verifier immediately.
+    Load a loss function from a Vehicle specification.
 
-    :param specification: The path to the Vehicle specification file to compile.
-    :param target: The target language to compile to (e.g. QueryFormat.Marabou).
-    :param output_folder: Output folder for the compiled file(s).
-    :param declarations: The names of the declarations to compile, defaults to all declarations.
-    :param networks: A map from the network names in the specification to files containing the networks.
-    :param datasets: A map from the dataset names in the specification to files containing the datasets.
-    :param parameters: A map from the parameter names in the specification to the values to be used in compilation.
+    If samplers is not provided, a default sampler will be used for each
+    quantified variable encountered in the specification.
     """
-    args = [
-        "compile",
-        "queries",
-        "--specification",
-        str(path),
-        "--format",
-        target._vehicle_option_name,
-    ]
+    if declaration_context is None:
+        declaration_context = {}
 
-    # Add declarations if specified
-    if declarations is not None:
-        for declaration_name in set(declarations):
-            args.extend(["--declaration", declaration_name])
+    # Create a defaultdict with the appropriate default sampler based on backend
+    if samplers is None:
+        match backend:
+            case LossBackend.TensorFlow:
+                from .tensorflow.samplers import DefaultTensorFlowSampler
 
-    # Add networks, datasets, and parameters
-    for network_name, network_path in networks.items():
-        args.extend(["--network", f"{network_name}:{network_path}"])
+                default_sampler_tf = DefaultTensorFlowSampler()
+                samplers = defaultdict(lambda: default_sampler_tf.get_loss)
+            case LossBackend.PyTorch:
+                from .pytorch.samplers import DefaultPyTorchSampler
 
-    for dataset_name, dataset_path in datasets.items():
-        args.extend(["--dataset", f"{dataset_name}:{dataset_path}"])
+                default_sampler_pt = DefaultPyTorchSampler()
+                samplers = defaultdict(lambda: default_sampler_pt.get_loss)
+            case _:
+                raise NotImplementedError(f"Backend {backend} not supported.")
 
-    for parameter_name, parameter_value in parameters.items():
-        args.extend(["--parameter", f"{parameter_name}:{parameter_value}"])
+    program = ast.load(
+        path,
+        target=logic,
+        declarations=declarations,
+    )
 
-    # Add output file
-    args.extend(["--output", str(output_folder)])
+    match backend:
+        case LossBackend.TensorFlow:
+            from .tensorflow.translation import TensorFlowTranslation
 
-    # Call Vehicle
-    return call_vehicle(args)
+            result = TensorFlowTranslation().compile(
+                program=program,
+                path=path,
+                declaration_context=declaration_context,
+                samplers=samplers,
+            )
+        case LossBackend.PyTorch:
+            from .pytorch.translation import PyTorchTranslation
+
+            result = PyTorchTranslation().compile(
+                program=program,
+                path=path,
+                declaration_context=declaration_context,
+                samplers=samplers,
+            )
+        case _:
+            raise NotImplementedError(f"Backend {backend} not supported.")
+    return result
 
 
 def call_vehicle(args: list[str]) -> str:
@@ -135,6 +154,18 @@ def call_vehicle(args: list[str]) -> str:
     if exec != 0:
         raise VehicleError(f"{err}")
     elif not out:
-        raise VehicleError(f"Vehicle produced no output")
+        raise VehicleError("Vehicle produced no output")
 
     return out
+
+
+__all__ = [
+    "compile",
+    "load_specification",
+    "call_vehicle",
+    "ast",
+    "abc",
+    "tensorflow",
+    "pytorch",
+    "error",
+]
