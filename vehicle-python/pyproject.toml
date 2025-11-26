@@ -23,7 +23,6 @@ dependencies = [
     "pytest>=8.4.2",
     "pre-commit>=4.3.0",
     "torch>=2.9.0",
-    "tqdm>=4.67.1",
 ]
 
 [project.optional-dependencies]
