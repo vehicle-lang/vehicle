@@ -3,15 +3,13 @@ from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
 from fractions import Fraction
 from pathlib import Path
-from typing import Iterable, Optional, Sequence
+from typing import Optional, Sequence
 
 from typing_extensions import Self, TypeAlias
 from typing_extensions import TypeVar as TypingTypeVar
 from typing_extensions import override
 
-from .. import session
-from ..error import VehicleError
-from ..typing import DeclarationName, DifferentiableLogic, Target
+
 from ._decode import JsonValue, decode
 
 Name: TypeAlias = str
@@ -292,7 +290,7 @@ class SearchRatTensor(Expression):
     lower_bound: Expression
     upper_bound: Expression
     search_lambda: Expression
-    # minimise: bool
+    minimise: bool
 
 
 @dataclass(frozen=True)
@@ -386,28 +384,3 @@ class Program(AST):
 @dataclass(frozen=True)
 class Main(Program):
     declarations: Sequence[Declaration]
-
-
-def load(
-    path: str | Path,
-    *,
-    declarations: Iterable[DeclarationName] = (),
-    target: Target = DifferentiableLogic.Vehicle,
-) -> Program:
-    exc, out, err, log = session.check_output(
-        [
-            "--json",
-            "compile",
-            "loss",
-            "--logic",
-            target._vehicle_option_name,
-            f"--specification={path}",
-            *[f"--declaration={declaration_name}" for declaration_name in declarations],
-        ]
-    )
-    if exc != 0:
-        msg: str = err or out or log or "unknown error"
-        raise VehicleError(msg)
-    if out is None:
-        raise VehicleError("no output")
-    return Program.from_json(out)

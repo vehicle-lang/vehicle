@@ -1,0 +1,147 @@
+from dataclasses import dataclass
+from fractions import Fraction
+from typing import Any, Callable, Sequence, cast
+from typing_extensions import override
+
+import tensorflow as tf
+from ..ast import nodes
+from ..abc import ABCBuiltins
+
+################################################################################
+### Type-safe TensorFlow wrappers
+################################################################################
+
+
+def _tf_constant(*args: Any, **kwargs: Any) -> tf.Tensor:
+    """Type-safe wrapper for tf.constant that casts complex return type to tf.Tensor."""
+    return cast(tf.Tensor, tf.constant(*args, **kwargs))
+
+################################################################################
+### Interpretations of Vehicle builtins in Tensorflow
+################################################################################
+
+@dataclass(frozen=True)
+class TensorFlowBuiltins(
+    ABCBuiltins[
+        int,
+        float,
+        tf.Tensor,
+    ]
+):
+    dtype_index: tf.DType = tf.uint32
+    dtype_rat: tf.DType = tf.float32
+
+    @override
+    def RatTensor(self, value: nodes.Tensor) -> tf.Tensor:
+        match value.value:
+            case Fraction():
+                # Single value - expand to tensor shape
+                float_value = float(value.value)
+                return _tf_constant(
+                    value=float_value, dtype=self.dtype_rat, shape=value.shape
+                )
+            case _:
+                # Sequence of values
+                return _tf_constant(
+                    value=tuple(float(val) for val in value.value),
+                    dtype=self.dtype_rat,
+                    shape=value.shape,
+                )
+
+    @override
+    def NegRatTensor(self, x: tf.Tensor) -> tf.Tensor:
+        return tf.negative(x)
+
+    @override
+    def AddRatTensor(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
+        return tf.add(x, y)
+
+    @override
+    def SubRatTensor(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
+        return tf.subtract(x, y)
+
+    @override
+    def MulRatTensor(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
+        return tf.multiply(x, y)
+
+    @override
+    def DivRatTensor(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
+        return tf.divide(x, y)
+
+    @override
+    def MinRatTensor(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
+        return tf.minimum(x, y)
+
+    @override
+    def MaxRatTensor(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
+        return tf.maximum(x, y)
+
+    @override
+    def ReduceAddRatTensor(self, e: float, xs: tf.Tensor | Sequence[tf.Tensor]) -> tf.Tensor:
+        # e is the identity element (0 for addition), xs is the samples to reduce
+        if isinstance(xs, (list, tuple)):
+            xs = tf.stack(xs)
+        return tf.reduce_sum(xs)
+
+    @override
+    def ReduceMulRatTensor(self, e: float, x: tf.Tensor | Sequence[tf.Tensor]) -> tf.Tensor:
+        # e is the identity element (1 for multiplication), x is the samples to reduce
+        if isinstance(x, (list, tuple)):
+            x = tf.stack(x)
+        return tf.reduce_prod(x)
+
+    @override
+    def ReduceMinRatTensor(self, e: float, x: tf.Tensor | Sequence[tf.Tensor]) -> tf.Tensor:
+        # e is the identity element, x is the samples to reduce
+        if isinstance(x, (list, tuple)):
+            x = tf.stack(x)
+        return tf.reduce_min(x)
+
+    @override
+    def ReduceMaxRatTensor(self, e: float, x: tf.Tensor | Sequence[tf.Tensor]) -> tf.Tensor:
+        # e is the identity element, x is the samples to reduce
+        if isinstance(x, (list, tuple)):
+            x = tf.stack(x)
+        return tf.reduce_max(x)
+
+    @override
+    def DimensionLookup(self, xs: tf.Tensor, i: int) -> tf.Tensor:
+        # Despite the name, this implements element indexing (At operator in Haskell)
+        # The JSON AST uses 'DimensionLookup' but semantics are element access
+        
+        # Handle tuple/sequence case (from StackTensor or similar)
+        if isinstance(xs, (tuple, list)):
+            return xs[i]
+        
+        # Handle scalar tensor case - can't be indexed
+        if xs.shape.ndims == 0:
+            return xs
+            
+        # Use direct indexing which works for all tensor ranks >= 1
+        return xs[i]
+
+    @override
+    def DimensionCons(
+        self, head: int, tail: Sequence[int]
+    ) -> tuple[int, ...]:
+        return (head, *tail)
+
+    @override
+    def DimensionNil(self) -> tuple[int, ...]:
+        return ()
+
+    @override
+    def ConstTensor(self, value: float, shape: Sequence[int]) -> tf.Tensor:
+        return _tf_constant(value=float(value), shape=shape, dtype=self.dtype_rat)
+
+    @override
+    def DenseTensor(
+        self, values: Sequence[float], shape: Sequence[int]
+    ) -> tf.Tensor:
+        # Convert Fraction values to floats and reshape to the specified shape
+        float_values = [float(val) for val in values]
+        return _tf_constant(value=float_values, shape=shape, dtype=self.dtype_rat)
+
+    @override
+    def StackTensor(self, tensors: Sequence[tf.Tensor]) -> tf.Tensor:
+        return tf.stack(tensors)
