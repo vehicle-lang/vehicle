@@ -83,10 +83,11 @@ data TypeCheckerState builtin = TypeCheckerState
     auxiliaryInstanceConstraints :: [WithContext (InstanceConstraint builtin)],
     freshNameState :: FreshNameState,
     solvedMetaState :: SolvedMetaState,
-    nextConstraintID :: ConstraintID
+    nextConstraintID :: ConstraintID,
+    instanceCandidates :: InstanceDatabase builtin
   }
 
-emptyTypeCheckerState :: TypeCheckerState builtin
+emptyTypeCheckerState :: (Hashable builtin) => TypeCheckerState builtin
 emptyTypeCheckerState =
   TypeCheckerState
     { currentDecl = Nothing,
@@ -97,7 +98,8 @@ emptyTypeCheckerState =
       auxiliaryInstanceConstraints = mempty,
       freshNameState = 0,
       solvedMetaState = SolvedMetaState mempty,
-      nextConstraintID = 0
+      nextConstraintID = 0,
+      instanceCandidates = emptyInstanceDatabase
     }
 
 --------------------------------------------------------------------------------
@@ -109,49 +111,42 @@ class (MonadCompile m, MonadFreeContext builtin m, NormalisableBuiltin builtin, 
   modifyTypeCheckerState :: (TypeCheckerState builtin -> TypeCheckerState builtin) -> m ()
   getFreshName :: Type builtin -> m Name
   clearFreshNames :: Proxy builtin -> m ()
-  getInstanceCandidates :: m (InstanceDatabase builtin)
 
 instance (Monoid w, MonadTypeChecker builtin m) => MonadTypeChecker builtin (WriterT w m) where
   getTypeCheckerState = lift getTypeCheckerState
   modifyTypeCheckerState = lift . modifyTypeCheckerState
   getFreshName = lift . getFreshName
   clearFreshNames = lift . clearFreshNames
-  getInstanceCandidates = lift getInstanceCandidates
 
 instance (Monoid w, MonadTypeChecker builtin m) => MonadTypeChecker builtin (ReaderT w m) where
   getTypeCheckerState = lift getTypeCheckerState
   modifyTypeCheckerState = lift . modifyTypeCheckerState
   getFreshName = lift . getFreshName
   clearFreshNames = lift . clearFreshNames
-  getInstanceCandidates = lift getInstanceCandidates
 
 instance (MonadTypeChecker builtin m) => MonadTypeChecker builtin (StateT s m) where
   getTypeCheckerState = lift getTypeCheckerState
   modifyTypeCheckerState = lift . modifyTypeCheckerState
   getFreshName = lift . getFreshName
   clearFreshNames = lift . clearFreshNames
-  getInstanceCandidates = lift getInstanceCandidates
 
 instance (MonadTypeChecker builtin m) => MonadTypeChecker builtin (BoundContextT (Type builtin) m) where
   getTypeCheckerState = lift getTypeCheckerState
   modifyTypeCheckerState = lift . modifyTypeCheckerState
   getFreshName = lift . getFreshName
   clearFreshNames = lift . clearFreshNames
-  getInstanceCandidates = lift getInstanceCandidates
 
 instance (MonadTypeChecker builtin m) => MonadTypeChecker builtin (SupplyT a m) where
   getTypeCheckerState = lift getTypeCheckerState
   modifyTypeCheckerState = lift . modifyTypeCheckerState
   getFreshName = lift . getFreshName
   clearFreshNames = lift . clearFreshNames
-  getInstanceCandidates = lift getInstanceCandidates
 
 instance (MonadTypeChecker builtin m) => MonadTypeChecker builtin (MaybeT m) where
   getTypeCheckerState = lift getTypeCheckerState
   modifyTypeCheckerState = lift . modifyTypeCheckerState
   getFreshName = lift . getFreshName
   clearFreshNames = lift . clearFreshNames
-  getInstanceCandidates = lift getInstanceCandidates
 
 --------------------------------------------------------------------------------
 -- Operations
@@ -164,6 +159,9 @@ getMetaVariableCtx = getsTypeCheckerState metaVariableCtx
 
 getNumberOfMetasCreated :: forall builtin m. (MonadTypeChecker builtin m) => Proxy builtin -> m Int
 getNumberOfMetasCreated _ = getsTypeCheckerState @builtin (length . metaVariableCtx)
+
+getInstanceCandidates :: (MonadTypeChecker builtin m) => m (InstanceDatabase builtin)
+getInstanceCandidates = getsTypeCheckerState instanceCandidates
 
 -- | Track the metas solved while performing the provided computation.
 -- Multiple calls can be nested arbitrarily deepily.
@@ -365,7 +363,7 @@ prettyMetaInternal m t = pretty m <+> ":" <+> prettyVerbose t
 clearMetaCtx :: forall builtin m. (MonadTypeChecker builtin m) => Proxy builtin -> m ()
 clearMetaCtx _ = do
   logDebug MaxDetail "Clearing meta-variable context"
-  modifyTypeCheckerState @builtin $ const emptyTypeCheckerState
+  modifyTypeCheckerState @builtin $ \state -> emptyTypeCheckerState {instanceCandidates = instanceCandidates state}
 
 getSubstMetaType :: forall builtin m. (MonadTypeChecker builtin m) => MetaID -> m (Type builtin)
 getSubstMetaType m = do

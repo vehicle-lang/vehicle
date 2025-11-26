@@ -47,6 +47,8 @@ differentiableLogicAnn = mkToken B.TokAnnotation "@differentiableLogic"
 
 tensorAnn = mkToken B.TokAnnotation "@tensor"
 
+instanceAnn = mkToken B.TokAnnotation "@instance"
+
 tokArrow = mkToken B.TokArrow "->"
 
 tokLeftBrace = mkToken B.TokLeftBrace "->"
