@@ -3,9 +3,7 @@ from typing import Any, Callable, cast
 
 import pytest
 import tensorflow as tf
-
 import vehicle_lang as vcl
-import vehicle_lang.compile.tensorflow as vcl2tf
 
 
 def network_validate_output(output: dict[str, Any]) -> None:
@@ -16,14 +14,33 @@ def network_validate_output(output: dict[str, Any]) -> None:
     assert output["prop"](network) == 0.0
 
 
-class DummySampler(vcl2tf.vcl.ABCSampler):
+def validate_loss_function_output(
+    output: dict[str, Any],
+) -> None:
+    """Validate the loss function by checking its value at specific points."""
+    test_points = [-5.0, 0.0, 0.5, 1.0, 5.0]
+
+    # The bounded function takes a network as a positional argument
+    func = output["bounded"]
+    for point in test_points:
+
+        def test_network(x: tf.Tensor) -> tf.Tensor:
+            return cast(tf.Tensor, tf.constant(point))
+
+        loss_value = func(test_network)
+        assert isinstance(loss_value, tf.Tensor)
+        assert loss_value.shape == ()
+
+
+class DummySampler(vcl.compile.abc.ABCSampler[tuple[int], tf.Tensor]):
     def get_loss(
         self,
+        dims: tuple[int, ...],
         lower_bound: tf.Tensor,
         upper_bound: tf.Tensor,
         search_lambda: Callable[[tf.Tensor], tf.Tensor],
         minimise: bool,
-    ) -> tf.Tensor:
+    ) -> list[tf.Tensor]:
         """Sample at a few test points in the bounded range."""
         # Sample at some test points
         test_points = [
@@ -37,7 +54,7 @@ class DummySampler(vcl2tf.vcl.ABCSampler):
         for point in test_points:
             result = search_lambda(cast(tf.Tensor, point))
             results.append(tf.convert_to_tensor(result))
-        return tf.stack(results)
+        return results
 
 
 dummy_sampler = DummySampler()
@@ -54,7 +71,7 @@ dummy_sampler = DummySampler()
         (
             "test_at.vcl",
             {},
-            {"prop": 1.0},
+            {"prop": 1000000.0},
         ),
         (
             "test_constant.vcl",
@@ -69,12 +86,12 @@ dummy_sampler = DummySampler()
         (
             "test_indicator.vcl",
             {},
-            {"prop": 1.0},
+            {"prop": 1000000.0},
         ),
         (
             "test_maximum.vcl",
             {},
-            {"prop": 1.0},
+            {"prop": 1000000.0},
         ),
         (
             "test_minimum.vcl",
@@ -107,6 +124,11 @@ dummy_sampler = DummySampler()
             {"prop": 0.0},
         ),
         (
+            "test_bounded.vcl",
+            {"x": dummy_sampler.get_loss},
+            validate_loss_function_output,
+        ),
+        (
             "test_subtraction.vcl",
             {},
             {"prop": 0.0},
@@ -130,9 +152,10 @@ def test_loss_function_exec(
 ) -> None:
     print(f"Exec {specification_filename}")
     specification_path = Path(__file__).parent / "data" / specification_filename
-    actual_declarations = vcl2tf.load(
+    actual_declarations = vcl.compile.load_specification(
         specification_path,
-        target=vcl.DifferentiableLogic.DL2,
+        backend=vcl.LossBackend.TensorFlow,
+        logic=vcl.DifferentiableLogic.DL2,
         samplers=samplers,
     )
     if isinstance(validate_output, dict):

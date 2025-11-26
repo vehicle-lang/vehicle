@@ -47,13 +47,19 @@ def temporary_files(
     prefix: Optional[str] = None,
     suffix: Optional[str] = None,
 ) -> Iterator[Sequence[TemporaryFile]]:
+    dir = TemporaryDirectory(prefix=prefix, suffix=suffix)
+    files: dict[str, TemporaryFile] = {}
     try:
-        dir = TemporaryDirectory(prefix=prefix, suffix=suffix)
-        files: dict[str, TemporaryFile] = {}
         for name in names:
             files[name] = TemporaryFile(dir, name)
         yield tuple(files.values())
     finally:
         for name, file in files.items():
-            file.cleanup()
-        dir.cleanup()
+            try:
+                file.cleanup()
+            except Exception:
+                pass  # Ignore cleanup errors
+        try:
+            dir.cleanup()
+        except Exception:
+            pass  # Ignore cleanup errors

@@ -1,8 +1,7 @@
 from pathlib import Path
 
 import pytest
-
-import vehicle_lang.ast as vcl_ast
+import vehicle_lang.compile.ast as vcl_ast
 import vehicle_lang.typing as vcl_typing
 
 GOLDEN_PATH = Path(__file__).parent / "data"

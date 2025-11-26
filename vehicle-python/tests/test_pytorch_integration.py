@@ -3,10 +3,9 @@
 import json
 import subprocess
 from pathlib import Path
-from typing import Any, cast
 
 import pytest
-from vehicle_lang.ast import Program
+from vehicle_lang.compile.ast.nodes import Program
 from vehicle_lang.compile.pytorch import PyTorchTranslation
 
 
@@ -19,7 +18,8 @@ def compile_vehicle_spec(spec_path: Path) -> str:
             "vehicle",
             "--json",
             "compile",
-            "--target",
+            "loss",
+            "--logic",
             "DL2Loss",
             f"--specification={spec_path}",
         ],
@@ -106,9 +106,11 @@ def test_pytorch_vs_tensorflow_equivalence() -> None:
         tensorflow_functions
     ), f"Function count mismatch: PyTorch={len(pytorch_functions)}, TensorFlow={len(tensorflow_functions)}"
 
-    # Should have same function names
-    assert set(pytorch_functions.keys()) == set(
-        tensorflow_functions.keys()
+    # Should have same function names (excluding backend-specific imports)
+    pytorch_keys = set(pytorch_functions.keys()) - {"torch"}
+    tensorflow_keys = set(tensorflow_functions.keys()) - {"tensorflow"}
+    assert (
+        pytorch_keys == tensorflow_keys
     ), "Function names should match between backends"
 
     print(
@@ -147,81 +149,12 @@ def test_pytorch_compile_specs(spec_name: str) -> None:
         pytest.fail(f"PyTorch compilation failed for {spec_name}: {e}")
 
 
-@pytest.mark.skip(  # type: ignore[misc]
-    "Complex JSON structure - integration tests with real Vehicle specs are more valuable"
-)
-def test_pytorch_tensor_operations_integration() -> None:
-    """Test that PyTorch backend can handle basic tensor operations."""
-    # Simple Vehicle specification as JSON (mimicking vehicle compiler output)
-    simple_program_json = {
-        "tag": "Main",
-        "declarations": [
-            {
-                "tag": "DefFunction",
-                "provenance": {
-                    "lineno": 1,
-                    "col_offset": 0,
-                    "end_lineno": 1,
-                    "end_col_offset": 10,
-                },
-                "name": "test",
-                "type": {"tag": "TensorType", "contents": {"tag": "RatType"}},
-                "body": {
-                    "tag": "AddRatTensor",
-                    "contents": [
-                        {
-                            "tag": "RatTensor",
-                            "contents": {
-                                "tag": "ConstantTensor",
-                                "contents": [[], {"numerator": 1, "denominator": 1}],
-                            },
-                        },
-                        {
-                            "tag": "RatTensor",
-                            "contents": {
-                                "tag": "ConstantTensor",
-                                "contents": [[], {"numerator": 2, "denominator": 1}],
-                            },
-                        },
-                    ],
-                },
-            }
-        ],
-    }
-
-    # Parse and compile
-    program = Program.from_dict(cast(dict[str, Any], simple_program_json))
-    pytorch_translation = PyTorchTranslation()
-
-    try:
-        pytorch_functions = pytorch_translation.compile(
-            program,
-            path=Path("in-memory-spec.vcl"),
-            declaration_context={},
-            samplers={},
-        )
-
-        # Should generate functions
-        assert len(pytorch_functions) > 0, "Should generate at least one function"
-
-        # Main function should be callable
-        main_func = pytorch_functions.get("__vehicle__")
-        if main_func is not None:
-            assert callable(main_func), "Main function should be callable"
-
-        print("✅ PyTorch tensor operations integration test passed")
-
-    except Exception as e:
-        pytest.fail(f"Integration test failed: {e}")
-
-
 if __name__ == "__main__":
     # Run tests manually
     try:
         test_pytorch_simple_spec()
         test_pytorch_vs_tensorflow_equivalence()
         test_pytorch_compile_specs("simple.vcl")
-        test_pytorch_tensor_operations_integration()
         print("🎉 All PyTorch integration tests passed!")
     except Exception as e:
         print(f"❌ Test failed: {e}")
