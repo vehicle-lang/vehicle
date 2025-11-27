@@ -9,7 +9,6 @@ from typing_extensions import Self, TypeAlias
 from typing_extensions import TypeVar as TypingTypeVar
 from typing_extensions import override
 
-
 from ._decode import JsonValue, decode
 
 Name: TypeAlias = str

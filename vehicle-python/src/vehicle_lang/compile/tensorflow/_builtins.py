@@ -1,11 +1,12 @@
 from dataclasses import dataclass
 from fractions import Fraction
 from typing import Any, Sequence, cast
-from typing_extensions import override
 
 import tensorflow as tf
-from .._ast import _nodes
+from typing_extensions import override
+
 from .._abc import ABCBuiltins
+from .._ast import _nodes
 
 ################################################################################
 ### Type-safe TensorFlow wrappers
@@ -16,9 +17,11 @@ def _tf_constant(*args: Any, **kwargs: Any) -> tf.Tensor:
     """Type-safe wrapper for tf.constant that casts complex return type to tf.Tensor."""
     return cast(tf.Tensor, tf.constant(*args, **kwargs))
 
+
 ################################################################################
 ### Interpretations of Vehicle builtins in Tensorflow
 ################################################################################
+
 
 @dataclass(frozen=True)
 class TensorFlowBuiltins(
@@ -77,25 +80,33 @@ class TensorFlowBuiltins(
         return tf.maximum(x, y)
 
     @override
-    def ReduceAddRatTensor(self, e: float, xs: tf.Tensor | Sequence[tf.Tensor]) -> tf.Tensor:
+    def ReduceAddRatTensor(
+        self, e: float, xs: tf.Tensor | Sequence[tf.Tensor]
+    ) -> tf.Tensor:
         # e is the identity element (0 for addition), xs is the samples to reduce
         xs = tf.stack(xs)
         return tf.reduce_sum(xs)
 
     @override
-    def ReduceMulRatTensor(self, e: float, x: tf.Tensor | Sequence[tf.Tensor]) -> tf.Tensor:
+    def ReduceMulRatTensor(
+        self, e: float, x: tf.Tensor | Sequence[tf.Tensor]
+    ) -> tf.Tensor:
         # e is the identity element (1 for multiplication), x is the samples to reduce
         x = tf.stack(x)
         return tf.reduce_prod(x)
 
     @override
-    def ReduceMinRatTensor(self, e: float, x: tf.Tensor | Sequence[tf.Tensor]) -> tf.Tensor:
+    def ReduceMinRatTensor(
+        self, e: float, x: tf.Tensor | Sequence[tf.Tensor]
+    ) -> tf.Tensor:
         # e is the identity element, x is the samples to reduce
         x = tf.stack(x)
         return tf.reduce_min(x)
 
     @override
-    def ReduceMaxRatTensor(self, e: float, x: tf.Tensor | Sequence[tf.Tensor]) -> tf.Tensor:
+    def ReduceMaxRatTensor(
+        self, e: float, x: tf.Tensor | Sequence[tf.Tensor]
+    ) -> tf.Tensor:
         # e is the identity element, x is the samples to reduce
         x = tf.stack(x)
         return tf.reduce_max(x)
@@ -119,9 +130,7 @@ class TensorFlowBuiltins(
         return tf.gather(xs, i)
 
     @override
-    def DimensionCons(
-        self, head: int, tail: Sequence[int]
-    ) -> tuple[int, ...]:
+    def DimensionCons(self, head: int, tail: Sequence[int]) -> tuple[int, ...]:
         return (head, *tail)
 
     @override
@@ -133,9 +142,7 @@ class TensorFlowBuiltins(
         return _tf_constant(value=float(value), shape=shape, dtype=self.dtype_rat)
 
     @override
-    def DenseTensor(
-        self, values: Sequence[float], shape: Sequence[int]
-    ) -> tf.Tensor:
+    def DenseTensor(self, values: Sequence[float], shape: Sequence[int]) -> tf.Tensor:
         # Convert Fraction values to floats and reshape to the specified shape
         float_values = [float(val) for val in values]
         return _tf_constant(value=float_values, shape=shape, dtype=self.dtype_rat)

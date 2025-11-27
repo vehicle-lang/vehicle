@@ -1,9 +1,11 @@
-from . import _nodes
 from pathlib import Path
 from typing import Iterable
+
+from ...typing import DeclarationName, DifferentiableLogic, Target
 from .. import session as session
 from ..error import VehicleError as VehicleError
-from ...typing import DeclarationName, DifferentiableLogic, Target
+from . import _nodes
+
 
 def load(
     path: str | Path,
@@ -28,6 +30,7 @@ def load(
     if out is None:
         raise VehicleError("no output")
     return _nodes.Program.from_json(out)
+
 
 __all__ = [
     "_nodes",

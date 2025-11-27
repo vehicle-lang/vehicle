@@ -1,8 +1,10 @@
-from fractions import Fraction
 from dataclasses import dataclass
-from typing import Sequence, Any, cast
-from typing_extensions import override
+from fractions import Fraction
+from typing import Any, Sequence, cast
+
 import torch
+from typing_extensions import override
+
 from .._abc import ABCBuiltins
 from .._ast import _nodes
 
@@ -15,9 +17,11 @@ def _torch_tensor(*args: Any, **kwargs: Any) -> torch.Tensor:
     """Type-safe wrapper for torch.tensor that casts complex return type to torch.Tensor."""
     return cast(torch.Tensor, torch.tensor(*args, **kwargs))
 
+
 ################################################################################
 ### Interpretations of Vehicle builtins in PyTorch
 ################################################################################
+
 
 @dataclass(frozen=True)
 class PyTorchBuiltins(
@@ -77,25 +81,33 @@ class PyTorchBuiltins(
         return torch.maximum(torch.as_tensor(x), torch.as_tensor(y))
 
     @override
-    def ReduceAddRatTensor(self, e: float, xs: torch.Tensor | Sequence[torch.Tensor]) -> torch.Tensor:
+    def ReduceAddRatTensor(
+        self, e: float, xs: torch.Tensor | Sequence[torch.Tensor]
+    ) -> torch.Tensor:
         # e is the identity element (0 for addition), xs is the samples to reduce
         xs = torch.stack(list(xs))
         return torch.sum(xs)
 
     @override
-    def ReduceMulRatTensor(self, e: float, x: torch.Tensor | Sequence[torch.Tensor]) -> torch.Tensor:
+    def ReduceMulRatTensor(
+        self, e: float, x: torch.Tensor | Sequence[torch.Tensor]
+    ) -> torch.Tensor:
         # e is the identity element (1 for multiplication), x is the samples to reduce
         x = torch.stack(list(x))
         return torch.prod(x)
 
     @override
-    def ReduceMinRatTensor(self, e: float, x: torch.Tensor | Sequence[torch.Tensor]) -> torch.Tensor:
+    def ReduceMinRatTensor(
+        self, e: float, x: torch.Tensor | Sequence[torch.Tensor]
+    ) -> torch.Tensor:
         # e is the identity element, x is the samples to reduce
         x = torch.stack(list(x))
         return torch.min(x)
 
     @override
-    def ReduceMaxRatTensor(self, e: float, x: torch.Tensor | Sequence[torch.Tensor]) -> torch.Tensor:
+    def ReduceMaxRatTensor(
+        self, e: float, x: torch.Tensor | Sequence[torch.Tensor]
+    ) -> torch.Tensor:
         # e is the identity element, x is the samples to reduce
         x = torch.stack(list(x))
         return torch.max(x)
@@ -119,9 +131,7 @@ class PyTorchBuiltins(
         return xs[i]
 
     @override
-    def DimensionCons(
-        self, head: int, tail: Sequence[int]
-    ) -> tuple[int, ...]:
+    def DimensionCons(self, head: int, tail: Sequence[int]) -> tuple[int, ...]:
         return (head, *tail)
 
     @override

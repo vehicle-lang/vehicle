@@ -5,8 +5,8 @@ from functools import reduce
 from pathlib import Path
 from typing import Any, Iterator, Mapping, Sequence
 
+from .._abc import ABCSampler, ABCTranslation, AnyBuiltins, Index, Tensor
 from .._ast import _nodes as vcl
-from .._abc import ABCTranslation, AnyBuiltins, ABCSampler, Index, Tensor
 
 
 # Helper to convert Vehicle provenance to Python AST kwargs
@@ -64,7 +64,10 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                 py.Import(
                     names=[
                         py.alias(
-                            name="vehicle_lang.compile._ast._nodes", asname=None, lineno=0, col_offset=0
+                            name="vehicle_lang.compile._ast._nodes",
+                            asname=None,
+                            lineno=0,
+                            col_offset=0,
                         )
                     ],
                     lineno=0,
@@ -292,20 +295,18 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
 
     def translate_SearchRatTensor(self, expression: vcl.SearchRatTensor) -> py.expr:
         """Translate SearchRatTensor to builtin call.
-        
+
         The reduction_op is a curried function (λe. λxs. reduce e xs) where:
         - e is the identity element (a 0-dimensional tensor)
         - xs is the sequence of samples to reduce
-        
+
         Since the Python Reduce* functions don't actually use the identity parameter,
         we pass a dummy 0-dimensional tensor with value 0.
         """
         # Call sampler once to get samples
         sampler_call = py_app(
             py_subscript(
-                py_qualified_name(
-                    "__vehicle_user_samplers__", provenance=vcl.MISSING
-                ),
+                py_qualified_name("__vehicle_user_samplers__", provenance=vcl.MISSING),
                 py.Constant(value=expression.name, **asdict(vcl.MISSING)),
                 provenance=vcl.MISSING,
             ),
@@ -316,7 +317,7 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             py.Constant(value=expression.minimise, **asdict(vcl.MISSING)),
             provenance=vcl.MISSING,
         )
-        
+
         # Create a dummy identity element (0-dimensional tensor with value 0)
         # The Python Reduce* implementations don't actually use this parameter
         identity = py_app(
@@ -328,14 +329,14 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             ),
             provenance=vcl.MISSING,
         )
-        
+
         # Apply as: reduction_op(identity)(samples)
         partial_reduction = py_app(
             self.translate_expression(expression.reduction_op),
             identity,
             provenance=vcl.MISSING,
         )
-        
+
         return py_app(
             partial_reduction,
             sampler_call,
