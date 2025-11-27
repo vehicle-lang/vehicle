@@ -11,14 +11,61 @@ where
 import Data.List.NonEmpty (NonEmpty)
 import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Core (InstanceCandidate (..), InstanceDatabase (..))
-import Vehicle.Data.AST.Decl (InstancePriority)
-import Vehicle.Data.Builtin.Core (BuiltinFunction (..), DerivedFunction (..))
+import Vehicle.Data.AST.Decl (InstancePriority, DefRecordSort (..))
+import Vehicle.Data.Builtin.Core (BuiltinFunction (..), BuiltinType (..), DerivedFunction (..))
 import Vehicle.Data.Builtin.Decidability
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.DSL
+import Vehicle.Compile.Prelude (Decl, GenericDecl (..), stdlibIdentifier)
+import Vehicle.Data.AST.Record (FieldName(..))
 
-decidabilityBuiltinInstances :: InstanceDatabase DecidabilityBuiltin
-decidabilityBuiltinInstances = makeInstanceDatabase allInstances
+decidabilityBuiltinInstances :: [Decl DecidabilityBuiltin]
+decidabilityBuiltinInstances = 
+  [ decidabilityTypeClass
+  , _
+  , _
+  ]
+
+
+decidabilityTypeClass :: Decl DecidabilityBuiltin
+decidabilityTypeClass = DefRecord mempty (stdlibIdentifier "BooleanImplementation") (Just AnnTypeClass) [] 
+  [ (FieldName mempty "BooleanTypeTC", _)
+  , (FieldName mempty "FromBoolTensorLiteralTC", _)
+  , (FieldName mempty "FieldNot", _)
+  , (FieldName mempty "FieldAnd", _)
+  , (FieldName mempty "FieldOr", _)
+  , (FieldName mempty "FieldImplies", _)
+  , (FieldName mempty "FieldReduceAnd", _)
+  , (FieldName mempty "FieldReduceOr", _)
+  , (FieldName mempty "FieldCompareNatEq", _)
+  , (FieldName mempty "FieldCompareNatNe", _)
+  , (FieldName mempty "FieldCompareNatLe", _)
+  , (FieldName mempty "FieldCompareNatLt", _)
+  , (FieldName mempty "FieldCompareNatGe", _)
+  , (FieldName mempty "FieldCompareNatGt", _)
+  , (FieldName mempty "FieldCompareIndexEq", _)
+  , (FieldName mempty "FieldCompareIndexNe", _)
+  , (FieldName mempty "FieldCompareIndexLe", _)
+  , (FieldName mempty "FieldCompareIndexLt", _)
+  , (FieldName mempty "FieldCompareIndexGe", _)
+  , (FieldName mempty "FieldCompareIndexGt", _)
+  , (FieldName mempty "FieldCompareRatTensorPointwiseEq", _)
+  , (FieldName mempty "FieldCompareRatTensorPointwiseNe", _)
+  , (FieldName mempty "FieldCompareRatTensorPointwiseLe", _)
+  , (FieldName mempty "FieldCompareRatTensorPointwiseLt", _)
+  , (FieldName mempty "FieldCompareRatTensorPointwiseGe", _)
+  , (FieldName mempty "FieldCompareRatTensorPointwiseGt", _)
+  , (FieldName mempty "FieldCompareRatTensorReducedEq", _)
+  , (FieldName mempty "FieldCompareRatTensorReducedNe", _)
+  , (FieldName mempty "FieldCompareRatTensorReducedLe", _)
+  , (FieldName mempty "FieldCompareRatTensorReducedLt", _)
+  , (FieldName mempty "FieldCompareRatTensorReducedGe", _)
+  , (FieldName mempty "FieldCompareRatTensorReducedGt", _)
+  , (FieldName mempty "FieldExistsIndex", _)
+  , (FieldName mempty "FieldForallIndex", _)
+  , (FieldName mempty "FieldForallInList", _)
+  , (FieldName mempty "FieldExistsInList", _)
+  ]
 
 -- Manually declared here as we have no way of declaring them in the language
 -- itself.
@@ -53,15 +100,7 @@ allInstances =
       -------------
       -- Tensors --
       -------------
-      <> [ ( isTensorType,
-             tTensorRaw,
-             Just 0
-           ),
-           ( isTensorType,
-             propTensor,
-             Nothing
-           )
-         ]
+      <> tensorTypeClassCandidate FieldBooleanType (builtinType BoolType) PropType
       <> tensorTypeClassCandidate FieldNot (builtinFunction Not) PropNot
       <> tensorTypeClassCandidate FieldAnd (builtinFunction And) PropAnd
       <> tensorTypeClassCandidate FieldOr (builtinFunction Or) PropOr
@@ -69,8 +108,6 @@ allInstances =
       <> tensorTypeClassCandidate FieldReduceAnd (builtinFunction ReduceAndTensor) PropAnd
       <> tensorTypeClassCandidate FieldReduceOr (builtinFunction ReduceOrTensor) PropOr
       <> tensorTypeClassCandidate FieldFromBoolTensorLiteral boolTensorToBoolTensor BoolTensorToProp
-      <> tensorTypeClassCandidate FieldAtTensor (builtinFunction AtTensor) PropNaryProductAt
-      <> tensorTypeClassCandidate FieldForeachTensor (builtinFunction ForeachTensor) PropNaryProductForeach
       <> comparisonCandidates Le
       <> comparisonCandidates Lt
       <> comparisonCandidates Ge
@@ -79,21 +116,6 @@ allInstances =
       <> comparisonCandidates Ne
       <> quantifierCandidates Forall
       <> quantifierCandidates Exists
-      -------------
-      -- Vectors --
-      -------------
-      <> [ ( isVectorType,
-             tVectorRaw,
-             Just 0
-           ),
-           ( isVectorType,
-             propVector,
-             Nothing
-           )
-         ]
-      <> vectorTypeClassCandidate FieldFromVectorLiteral vectorToVector BoolVectorToProp
-      <> vectorTypeClassCandidate FieldAtVector (builtinFunction AtVector) PropNaryProductAt
-      <> vectorTypeClassCandidate FieldForeachVector (builtinFunction ForeachVector) PropNaryProductForeach
 
 type TempCandidate =
   ( DSLExpr DecidabilityBuiltin,
@@ -109,39 +131,17 @@ boolTensorToBoolTensor =
   lamDims $ \ds ->
     explLam "bs" (tBoolTensor ds) $ \bs -> bs
 
-vectorToVector :: DSLExpr DecidabilityBuiltin
-vectorToVector =
-  lamType $ \tElem ->
-    lamDim $ \d ->
-      explLam "bs" (tVector tElem d) $ \bs -> bs
-
-vectorTypeClassCandidate ::
-  VectorTypeClassField ->
-  DSLExpr DecidabilityBuiltin ->
-  DecidabilityBuiltinFunction ->
-  [TempCandidate]
-vectorTypeClassCandidate field standardOp typeOp =
-  [ ( decTypeClass (HasVectorTypeClassField field) [tVectorRaw],
-      standardOp,
-      Nothing
-    ),
-    ( decTypeClass (HasVectorTypeClassField field) [propVector],
-      decFunction typeOp,
-      Nothing
-    )
-  ]
-
 tensorTypeClassCandidate ::
-  TensorTypeClassField ->
+  BooleanTypeClassField ->
   DSLExpr DecidabilityBuiltin ->
   DecidabilityBuiltinFunction ->
   [TempCandidate]
 tensorTypeClassCandidate field standardOp typeOp =
-  [ ( decTypeClass (HasTensorTypeClassField field) [tTensorRaw],
+  [ ( decTypeClass (HasBooleanTypeClassField field) [tBool],
       standardOp,
       Nothing
     ),
-    ( decTypeClass (HasTensorTypeClassField field) [propTensor],
+    ( decTypeClass (HasBooleanTypeClassField field) [tProp],
       decFunction typeOp,
       Nothing
     )

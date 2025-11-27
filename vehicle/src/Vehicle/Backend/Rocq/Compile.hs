@@ -520,16 +520,12 @@ compileBuiltin b args = case b of
     PropCompareNat op -> compileComparison CNat op args
     PropCompareRatTensorPointwise op -> compileComparison CRatTensor op args
     BoolTensorToProp -> monoError
-    BoolVectorToProp -> monoError
     PropQuantifyIndex q -> case q of
       Forall -> annotateApp [RequireImport VehicleUtils] "forallIndex" args
       Exists -> annotateApp [RequireImport VehicleUtils] "existsIndex" args
     PropQuantifyInList q -> case q of
       Forall -> annotateApp [RequireImport VehicleUtils] "forallInList" args
       Exists -> annotateApp [RequireImport VehicleUtils] "existsInList" args
-    PropNaryProduct -> unsupportedError
-    PropNaryProductForeach -> unsupportedError
-    PropNaryProductAt -> unsupportedError
   DecidabilityBuiltinTypeClass {} -> monoError
   DecidabilityBuiltinTypeClassOp {} -> monoError
   StandardBuiltinDerivedFunction f -> compileDerivedFunction f args

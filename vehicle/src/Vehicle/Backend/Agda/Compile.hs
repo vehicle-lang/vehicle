@@ -602,7 +602,6 @@ compileDecidabilityBuiltinFunction ::
 compileDecidabilityBuiltinFunction f args = case f of
   PropType -> return $ compileType 0
   BoolTensorToProp -> monoError f
-  BoolVectorToProp -> monoError f
   PropTrue -> return $ annotateConstant [DataUnit] "⊤"
   PropFalse -> return $ annotateConstant [DataEmpty] "⊥"
   PropNot -> annotateInfixApp [RelNullary] 3 Nothing "¬_" args
@@ -618,9 +617,6 @@ compileDecidabilityBuiltinFunction f args = case f of
   PropQuantifyInList q -> case q of
     Forall -> annotateApp [DataListAll] (Just listQualifier) "All" args
     Exists -> annotateApp [DataListAny] (Just listQualifier) "Any" args
-  PropNaryProduct -> annotateApp [DataProductNary] Nothing "Product" args
-  PropNaryProductAt -> annotateApp [DataProductNary] Nothing "projₙ" args
-  PropNaryProductForeach -> annotateApp [VehicleUtils] Nothing "foreachNary" args
 
 compileTypeLevelQuantifier ::
   (MonadAgdaCompile m) =>

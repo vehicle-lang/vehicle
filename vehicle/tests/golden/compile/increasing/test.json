@@ -19,7 +19,7 @@
   },
   {
     "name": "Agda",
-    "run": "vehicle compile itp -s spec.vcl -t Agda -o Agda.agda",
+    "run": "vehicle compile itp -s spec.vcl -t Agda -o Agda.agda --logging MaxDetail",
     "needs": ["spec.vcl"],
     "produces": ["Agda.agda"]
   },

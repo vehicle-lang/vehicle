@@ -1,0 +1,10 @@
+{
+  "name": "Agda",
+  "run": "vehicle compile itp -t Agda -s spec.vcl -o Agda.agda --logging MaxDetail",
+  "needs": [
+    "spec.vcl"
+  ],
+  "produces": [
+    "Agda.agda"
+  ]
+}

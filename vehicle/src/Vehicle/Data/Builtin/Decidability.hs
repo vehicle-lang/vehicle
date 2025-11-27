@@ -23,8 +23,9 @@ import Vehicle.Prelude (Pretty (..), Relevance (..), Visibility (..), developerE
 --------------------------------------------------------------------------------
 -- Data
 
-data TensorTypeClassField
-  = FieldFromBoolTensorLiteral
+data BooleanTypeClassField
+  = FieldBooleanType
+  | FieldFromBoolTensorLiteral
   | FieldNot
   | FieldAnd
   | FieldOr
@@ -37,36 +38,20 @@ data TensorTypeClassField
   | FieldCompareRatTensorReduced ComparisonOp
   | FieldQuantifyIndex Quantifier
   | FieldQuantifyInList Quantifier
-  | FieldForeachTensor
-  | FieldAtTensor
   deriving (Eq, Ord, Show, Generic)
 
-instance Hashable TensorTypeClassField
-
-data VectorTypeClassField
-  = FieldFromVectorLiteral
-  | FieldForeachVector
-  | FieldAtVector
-  deriving (Eq, Ord, Show, Generic)
-
-instance Hashable VectorTypeClassField
+instance Hashable BooleanTypeClassField
 
 data DecidabilityBuiltinTypeClass
-  = IsTensorType
-  | IsVectorType
-  | HasTensorTypeClassField TensorTypeClassField
-  | HasVectorTypeClassField VectorTypeClassField
+  = HasBooleanTypeClassField BooleanTypeClassField
   | ValidPropertyType
   | ValidNetworkType
   deriving (Eq, Ord, Show, Generic)
 
 instance Hashable DecidabilityBuiltinTypeClass
 
-data DecidabilityBuiltinTypeClassOp
-  = TensorTypeTC
-  | VectorTypeTC
-  | TensorTypeClassFieldTC TensorTypeClassField
-  | VectorTypeClassFieldTC VectorTypeClassField
+newtype DecidabilityBuiltinTypeClassOp
+  = BooleanTypeClassFieldTC BooleanTypeClassField
   deriving (Eq, Ord, Show, Generic)
 
 instance Hashable DecidabilityBuiltinTypeClassOp
@@ -76,7 +61,6 @@ instance Hashable DecidabilityBuiltinTypeClassOp
 data DecidabilityBuiltinFunction
   = PropType
   | BoolTensorToProp
-  | BoolVectorToProp
   | PropTrue
   | PropFalse
   | PropNot
@@ -86,9 +70,6 @@ data DecidabilityBuiltinFunction
   | PropCompareNat ComparisonOp
   | PropCompareIndex ComparisonOp
   | PropCompareRatTensorPointwise ComparisonOp
-  | PropNaryProduct
-  | PropNaryProductAt
-  | PropNaryProductForeach
   | -- Taken from DerivedFunctions
     PropQuantifyIndex Quantifier
   | PropQuantifyInList Quantifier
@@ -213,10 +194,10 @@ instance BuiltinHasIterate DecidabilityBuiltin where
 
 instance Pretty DecidabilityBuiltinTypeClass where
   pretty t = case t of
-    HasTensorTypeClassField {} -> pretty $ show t
-    HasVectorTypeClassField {} -> pretty $ show t
-    IsTensorType -> pretty $ show t
-    IsVectorType -> pretty $ show t
+    HasBooleanTypeClassField {} -> pretty $ show t
+    -- HasVectorTypeClassField {} -> pretty $ show t
+    -- IsTensorType -> pretty $ show t
+    -- IsVectorType -> pretty $ show t
     ValidPropertyType -> pretty $ show t
     ValidNetworkType -> pretty $ show t
 
@@ -224,7 +205,6 @@ instance Pretty DecidabilityBuiltinFunction where
   pretty = \case
     PropType -> "Prop"
     BoolTensorToProp -> "boolTensorToProp"
-    BoolVectorToProp -> "boolVectorToProp"
     PropTrue -> "true" <> symbol
     PropFalse -> "false" <> symbol
     PropNot -> pretty Not <> symbol
@@ -236,9 +216,6 @@ instance Pretty DecidabilityBuiltinFunction where
     PropCompareRatTensorPointwise op -> pretty (CompareRatTensorPointwise op) <> symbol
     PropQuantifyIndex q -> pretty (QuantifyIndex q) <> symbol
     PropQuantifyInList q -> pretty (QuantifyInList q) <> symbol
-    PropNaryProduct -> pretty VectorType <> symbol
-    PropNaryProductForeach -> pretty ForeachVector <> symbol
-    PropNaryProductAt -> pretty AtVector <> symbol
     where
       symbol = "ᵖ"
 
@@ -248,10 +225,11 @@ instance Pretty DecidabilityBuiltinConstructor where
 
 instance Pretty DecidabilityBuiltinTypeClassOp where
   pretty t = case t of
-    TensorTypeTC -> pretty $ show t
-    VectorTypeTC -> pretty $ show t
-    TensorTypeClassFieldTC {} -> pretty $ show t
-    VectorTypeClassFieldTC {} -> pretty $ show t
+    -- TensorTypeTC -> pretty $ show t
+    -- TectorTypeTC -> pretty $ show t
+    BooleanTypeClassFieldTC {} -> pretty $ show t
+
+-- VectorTypeClassFieldTC {} -> pretty $ show t
 
 instance Pretty DecidabilityBuiltin where
   pretty = \case
@@ -296,7 +274,6 @@ instance NormalisableBuiltin DecidabilityBuiltin where
 
   isCast p e = case e of
     DecidabilityBuiltinFunction BoolTensorToProp -> Just $ forceEvalSimpleBuiltin p e evalBoolTensorToProp
-    DecidabilityBuiltinFunction BoolVectorToProp -> Just $ forceEvalSimpleBuiltin p e evalBoolVectorToProp
     _ -> Nothing
 
 evalBoolTensorToProp ::
@@ -325,13 +302,13 @@ evalBoolVectorToProp args = return $ case args of
 
 --------------------------------------------------------------------------------
 -- DSL
-
+{-
 isTensorType :: DSLExpr DecidabilityBuiltin
 isTensorType = builtin (DecidabilityBuiltinTypeClass IsTensorType)
 
 isVectorType :: DSLExpr DecidabilityBuiltin
 isVectorType = builtin (DecidabilityBuiltinTypeClass IsVectorType)
-
+-}
 decFunction :: DecidabilityBuiltinFunction -> DSLExpr DecidabilityBuiltin
 decFunction f = builtin (DecidabilityBuiltinFunction f)
 

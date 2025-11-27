@@ -66,6 +66,8 @@ linearityTypeCheck prog declarationsToCompile = do
   irrelevantFreeProg <- removeIrrelevantCodeFromProg monomorphisedProg
   implicitFreeProg <- removeImplicitArgs irrelevantFreeProg
   instanceFreeProg <- resolveInstanceArgumentsAndCasts implicitFreeProg
+
+  -- extraInstancesProg <- insertDecidabilityInstances instanceFreeProg
   typeCheckWithSubsystem LinearityTypes emptyInstanceDatabase instanceFreeProg
 
 decidabilityTypeCheck ::

@@ -2,7 +2,7 @@
 module Vehicle.Data.Tensor where
 
 open import Level using (Level; 0ℓ)
-open import Data.Bool using (Bool; true; false; _∧_; _∨_)
+open import Data.Bool.Base using (Bool; true; false; _∧_; _∨_)
 open import Data.Empty.Polymorphic using (⊥)
 open import Data.Nat.Base using (ℕ; zero; suc)
 open import Data.List.Base using (List; []; _∷_; tabulate; concat; foldr)
@@ -12,8 +12,8 @@ import Data.Vec.Functional as Vec
 import Data.Vec.Functional.Relation.Binary.Pointwise as Vec
 import Data.Vec.Functional.Relation.Binary.Pointwise.Properties as Vec
 open import Data.Fin using (Fin)
-import Data.Rational as ℚ
-open import Data.Rational using (ℚ)
+import Data.Rational.Base as ℚ
+open import Data.Rational.Base using (ℚ)
 open import Function.Base using (flip)
 open import Vehicle.Utils
 open import Relation.Binary
@@ -190,3 +190,16 @@ instance
 
   decEqTensor : ∀ {_≈_ : Rel A ℓ} {{_ : IsDecEquivalence _≈_}} → IsDecEquivalence (Pointwise {ds = ds} _≈_)
   decEqTensor {{isEq}} = isDecEquivalence isEq
+
+
+
+open import Data.Unit using (⊤)
+open import Data.Rational.Base using (1ℚ)
+
+neg : Tensor Set (2 ∷ []) -> Set
+neg x = ⊤
+
+calc : Tensor ℚ (2 ∷ []) -> ℚ
+calc x = 1ℚ
+
+postulate safe : neg (stack {A = Set} ((∀ x → calc x ≤ 1ℚ) Vec.∷ ⊤ Vec.∷ Vec.[])) -- [ ∀ x . calc x <= 0 , True ]
