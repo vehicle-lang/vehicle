@@ -5,8 +5,8 @@ import subprocess
 from pathlib import Path
 
 import pytest
-from vehicle_lang.compile.ast.nodes import Program
-from vehicle_lang.compile.pytorch import PyTorchTranslation
+from vehicle_lang.compile._ast._nodes import Program
+from vehicle_lang.compile.pytorch._translation import PyTorchTranslation
 
 
 def compile_vehicle_spec(spec_path: Path) -> str:
@@ -64,7 +64,7 @@ def test_pytorch_simple_spec() -> None:
     builtins_obj = pytorch_functions["__vehicle__"]
 
     # Verify it's our PyTorch builtins
-    from vehicle_lang.compile.pytorch import PyTorchBuiltins
+    from vehicle_lang.compile.pytorch._builtins import PyTorchBuiltins
 
     assert isinstance(
         builtins_obj, PyTorchBuiltins
@@ -79,7 +79,7 @@ def test_pytorch_simple_spec() -> None:
 
 def test_pytorch_vs_tensorflow_equivalence() -> None:
     """Test that PyTorch and TensorFlow backends produce equivalent results on simple spec."""
-    from vehicle_lang.compile.tensorflow import TensorFlowTranslation
+    from vehicle_lang.compile.tensorflow._translation import TensorFlowTranslation
 
     spec_path = Path("/home/gus/University/vehicle/examples/simple.vcl")
     if not spec_path.exists():
@@ -119,7 +119,7 @@ def test_pytorch_vs_tensorflow_equivalence() -> None:
 
 
 @pytest.mark.parametrize("spec_name", ["simple.vcl"])  # type: ignore[misc]
-def test_pytorch_compile_specs(spec_name: str) -> None:
+def test_pytorch_compile_specifications(spec_name: str) -> None:
     """Test PyTorch compilation on various Vehicle specifications."""
     spec_path = Path(f"/home/gus/University/vehicle/examples/{spec_name}")
     if not spec_path.exists():
@@ -154,7 +154,7 @@ if __name__ == "__main__":
     try:
         test_pytorch_simple_spec()
         test_pytorch_vs_tensorflow_equivalence()
-        test_pytorch_compile_specs("simple.vcl")
+        test_pytorch_compile_specifications("simple.vcl")
         print("🎉 All PyTorch integration tests passed!")
     except Exception as e:
         print(f"❌ Test failed: {e}")

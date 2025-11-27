@@ -1,4 +1,4 @@
-from .translation import PythonTranslation
+from ._translation import PythonTranslation
 
 __all__ = [
     "PythonTranslation",

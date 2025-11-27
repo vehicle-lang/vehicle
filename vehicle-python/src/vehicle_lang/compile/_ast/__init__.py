@@ -1,4 +1,4 @@
-from . import nodes
+from . import _nodes
 from pathlib import Path
 from typing import Iterable
 from .. import session as session
@@ -10,7 +10,7 @@ def load(
     *,
     declarations: Iterable[DeclarationName] = (),
     target: Target = DifferentiableLogic.Vehicle,
-) -> nodes.Program:
+) -> _nodes.Program:
     exc, out, err, log = session.check_output(
         [
             "--json",
@@ -27,9 +27,9 @@ def load(
         raise VehicleError(msg)
     if out is None:
         raise VehicleError("no output")
-    return nodes.Program.from_json(out)
+    return _nodes.Program.from_json(out)
 
 __all__ = [
-    "nodes",
+    "_nodes",
     "load",
 ]

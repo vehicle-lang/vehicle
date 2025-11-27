@@ -19,13 +19,13 @@ GOLDEN_SPEC_FILES = [
 @pytest.mark.parametrize("spec_path", GOLDEN_SPEC_FILES)  # type: ignore[misc]
 def test_golden_spec_load(spec_path: Path) -> None:
     """Test that golden specs can be loaded into AST."""
-    vcl.compile.ast.load(spec_path, target=vcl.DifferentiableLogic.DL2)
+    vcl.compile._ast.load(spec_path, target=vcl.DifferentiableLogic.DL2)
 
 
 @pytest.mark.parametrize("spec_path", GOLDEN_SPEC_FILES)  # type: ignore[misc]
 def test_golden_spec_tensorflow_compile(spec_path: Path) -> None:
     """Test that golden specs compile to TensorFlow."""
-    output = vcl.compile.load_specification(
+    output = vcl.load_specification(
         spec_path,
         backend=vcl.LossBackend.TensorFlow,
         logic=vcl.DifferentiableLogic.DL2,
@@ -41,7 +41,7 @@ def test_golden_spec_tensorflow_compile(spec_path: Path) -> None:
 @pytest.mark.parametrize("spec_path", GOLDEN_SPEC_FILES)  # type: ignore[misc]
 def test_golden_spec_pytorch_compile(spec_path: Path) -> None:
     """Test that golden specs compile to PyTorch."""
-    output = vcl.compile.load_specification(
+    output = vcl.load_specification(
         spec_path,
         backend=vcl.LossBackend.PyTorch,
         logic=vcl.DifferentiableLogic.DL2,

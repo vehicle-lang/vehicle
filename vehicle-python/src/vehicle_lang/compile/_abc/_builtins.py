@@ -4,8 +4,8 @@ from typing import Any, Generic, Sequence
 
 from typing_extensions import TypeAlias, TypeVar, override
 
-from ..ast.nodes import Tensor
-from . import types as vcl
+from .._ast._nodes import Tensor
+from . import _types as vcl
 
 _S = TypeVar("_S")
 _T = TypeVar("_T")

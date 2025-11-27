@@ -5,8 +5,8 @@ from functools import reduce
 from pathlib import Path
 from typing import Any, Iterator, Mapping, Sequence
 
-from ..ast import nodes as vcl
-from ..abc import ABCTranslation, AnyBuiltins, ABCSampler, Index, Tensor
+from .._ast import _nodes as vcl
+from .._abc import ABCTranslation, AnyBuiltins, ABCSampler, Index, Tensor
 
 
 # Helper to convert Vehicle provenance to Python AST kwargs
@@ -64,7 +64,7 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                 py.Import(
                     names=[
                         py.alias(
-                            name="vehicle_lang.compile.ast.nodes", asname=None, lineno=0, col_offset=0
+                            name="vehicle_lang.compile._ast._nodes", asname=None, lineno=0, col_offset=0
                         )
                     ],
                     lineno=0,

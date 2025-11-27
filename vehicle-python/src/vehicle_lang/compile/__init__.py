@@ -5,16 +5,12 @@ from typing import Any, Iterable, Mapping, Optional
 from .. import session as session
 from ..error import VehicleError as VehicleError
 from ..typing import ITP, DeclarationName, DifferentiableLogic, LossBackend, QueryFormat
-from . import (
-    abc,
-    ast,
-    error,
-    pytorch,
-    tensorflow,
-)
+from . import _ast, error
+from .pytorch import DefaultPyTorchSampler, PyTorchSampler
+from .tensorflow import DefaultTensorFlowSampler, TensorFlowSampler
 
 
-def compile(
+def compile_specification(
     path: str | Path,
     target: DifferentiableLogic | QueryFormat | ITP,
     output_file: str | Path,
@@ -117,7 +113,7 @@ def load_specification(
             case _:
                 raise NotImplementedError(f"Backend {backend} not supported.")
 
-    program = ast.load(
+    program = _ast.load(
         path,
         target=logic,
         declarations=declarations,
@@ -125,7 +121,7 @@ def load_specification(
 
     match backend:
         case LossBackend.TensorFlow:
-            from .tensorflow.translation import TensorFlowTranslation
+            from .tensorflow._translation import TensorFlowTranslation
 
             result = TensorFlowTranslation().compile(
                 program=program,
@@ -134,7 +130,7 @@ def load_specification(
                 samplers=samplers,
             )
         case LossBackend.PyTorch:
-            from .pytorch.translation import PyTorchTranslation
+            from .pytorch._translation import PyTorchTranslation
 
             result = PyTorchTranslation().compile(
                 program=program,
@@ -160,12 +156,12 @@ def call_vehicle(args: list[str]) -> str:
 
 
 __all__ = [
-    "compile",
+    "compile_specification",
     "load_specification",
     "call_vehicle",
-    "ast",
-    "abc",
-    "tensorflow",
-    "pytorch",
+    "PyTorchSampler",
+    "DefaultPyTorchSampler",
+    "TensorFlowSampler",
+    "DefaultTensorFlowSampler",
     "error",
 ]

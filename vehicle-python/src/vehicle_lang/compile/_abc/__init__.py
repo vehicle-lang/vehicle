@@ -1,7 +1,7 @@
-from .builtins import ABCBuiltins, AnyBuiltins, Builtins
-from .samplers import ABCSampler
-from .translation import ABCTranslation, Translation
-from .types import (
+from ._builtins import ABCBuiltins, AnyBuiltins, Builtins
+from ._samplers import ABCSampler
+from ._translation import ABCTranslation, Translation
+from ._types import (
     Declaration,
     Dimension,
     DimensionIndex,

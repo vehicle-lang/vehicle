@@ -3,7 +3,15 @@ from typing import List
 from . import compile, session
 from ._version import VERSION
 from .check import check
-from .compile import pytorch, tensorflow
+from .compile import (
+    DefaultPyTorchSampler,
+    DefaultTensorFlowSampler,
+    PyTorchSampler,
+    TensorFlowSampler,
+    call_vehicle,
+    compile_specification,
+    load_specification,
+)
 from .compile.error import VehicleBuiltinUnsupported, VehiclePropertyNotFound
 from .error import VehicleError, VehicleInternalError
 from .export import export_to_solver
@@ -27,9 +35,15 @@ __all__: List[str] = [
     # Check
     "check",
     # Compile
-    "compile",
-    "tensorflow",
-    "pytorch",
+    "compile_specification",
+    "load_specification",
+    # Samplers
+    "PyTorchSampler",
+    "DefaultPyTorchSampler",
+    "TensorFlowSampler",
+    "DefaultTensorFlowSampler",
+    # Call Vehicle
+    "call_vehicle",
     # Verify
     "verify",
     # Validate,

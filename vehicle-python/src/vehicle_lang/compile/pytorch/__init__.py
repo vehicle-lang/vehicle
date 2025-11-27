@@ -1,7 +1,6 @@
-from .builtins import PyTorchBuiltins
-from .translation import PyTorchTranslation
+from .samplers import DefaultPyTorchSampler, PyTorchSampler
 
 __all__ = [
-    "PyTorchBuiltins",
-    "PyTorchTranslation",
+    "PyTorchSampler",
+    "DefaultPyTorchSampler",
 ]

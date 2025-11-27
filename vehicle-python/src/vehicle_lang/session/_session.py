@@ -88,8 +88,8 @@ class Session(SessionContextManager):
     def check_output_pty(
         self, args: Sequence[str]
     ) -> tuple[int, Optional[str], Optional[str], Optional[str]]:
-        import threading
         import select
+        import threading
 
         stdout_fd = sys.stdout.fileno()
         stderr_fd = sys.stderr.fileno()
@@ -111,6 +111,7 @@ class Session(SessionContextManager):
             try:
                 # Set provider_fd to non-blocking mode
                 import fcntl
+
                 flags = fcntl.fcntl(provider_fd, fcntl.F_GETFL)
                 fcntl.fcntl(provider_fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
 
@@ -160,7 +161,7 @@ class Session(SessionContextManager):
         finally:
             # Signal reader thread to finish
             reader_thread._stop_reading = True  # type: ignore
-            
+
             # Restore stdout and stderr
             os.dup2(saved_stdout_fd, stdout_fd)
             os.dup2(saved_stderr_fd, stderr_fd)

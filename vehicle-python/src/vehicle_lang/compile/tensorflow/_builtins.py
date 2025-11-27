@@ -1,11 +1,11 @@
 from dataclasses import dataclass
 from fractions import Fraction
-from typing import Any, Callable, Sequence, cast
+from typing import Any, Sequence, cast
 from typing_extensions import override
 
 import tensorflow as tf
-from ..ast import nodes
-from ..abc import ABCBuiltins
+from .._ast import _nodes
+from .._abc import ABCBuiltins
 
 ################################################################################
 ### Type-safe TensorFlow wrappers
@@ -32,7 +32,7 @@ class TensorFlowBuiltins(
     dtype_rat: tf.DType = tf.float32
 
     @override
-    def RatTensor(self, value: nodes.Tensor) -> tf.Tensor:
+    def RatTensor(self, value: _nodes.Tensor) -> tf.Tensor:
         match value.value:
             case Fraction():
                 # Single value - expand to tensor shape
@@ -79,46 +79,44 @@ class TensorFlowBuiltins(
     @override
     def ReduceAddRatTensor(self, e: float, xs: tf.Tensor | Sequence[tf.Tensor]) -> tf.Tensor:
         # e is the identity element (0 for addition), xs is the samples to reduce
-        if isinstance(xs, (list, tuple)):
-            xs = tf.stack(xs)
+        xs = tf.stack(xs)
         return tf.reduce_sum(xs)
 
     @override
     def ReduceMulRatTensor(self, e: float, x: tf.Tensor | Sequence[tf.Tensor]) -> tf.Tensor:
         # e is the identity element (1 for multiplication), x is the samples to reduce
-        if isinstance(x, (list, tuple)):
-            x = tf.stack(x)
+        x = tf.stack(x)
         return tf.reduce_prod(x)
 
     @override
     def ReduceMinRatTensor(self, e: float, x: tf.Tensor | Sequence[tf.Tensor]) -> tf.Tensor:
         # e is the identity element, x is the samples to reduce
-        if isinstance(x, (list, tuple)):
-            x = tf.stack(x)
+        x = tf.stack(x)
         return tf.reduce_min(x)
 
     @override
     def ReduceMaxRatTensor(self, e: float, x: tf.Tensor | Sequence[tf.Tensor]) -> tf.Tensor:
         # e is the identity element, x is the samples to reduce
-        if isinstance(x, (list, tuple)):
-            x = tf.stack(x)
+        x = tf.stack(x)
         return tf.reduce_max(x)
 
     @override
-    def DimensionLookup(self, xs: tf.Tensor, i: int) -> tf.Tensor:
+    def DimensionLookup(
+        self, xs: tf.Tensor | tuple[tf.Tensor, ...] | list[tf.Tensor], i: int
+    ) -> tf.Tensor:
         # Despite the name, this implements element indexing (At operator in Haskell)
         # The JSON AST uses 'DimensionLookup' but semantics are element access
-        
+
         # Handle tuple/sequence case (from StackTensor or similar)
         if isinstance(xs, (tuple, list)):
             return xs[i]
-        
+
         # Handle scalar tensor case - can't be indexed
         if xs.shape.ndims == 0:
             return xs
-            
-        # Use direct indexing which works for all tensor ranks >= 1
-        return xs[i]
+
+        # Use tf.gather for proper type checking and TensorFlow best practices
+        return tf.gather(xs, i)
 
     @override
     def DimensionCons(

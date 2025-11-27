@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Callable, Generic, Sequence
 
-from . import types as vcl
+from . import _types as vcl
 
 
 class ABCSampler(

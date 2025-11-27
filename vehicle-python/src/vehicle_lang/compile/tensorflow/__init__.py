@@ -1,5 +1,6 @@
-from .translation import TensorFlowTranslation
+from .samplers import DefaultTensorFlowSampler, TensorFlowSampler
 
 __all__ = [
-    "TensorFlowTranslation",
+    "TensorFlowSampler",
+    "DefaultTensorFlowSampler",
 ]

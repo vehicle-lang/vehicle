@@ -4,7 +4,6 @@ from pathlib import Path
 
 import tensorflow as tf
 import torch
-
 import vehicle_lang as vcl
 
 
@@ -21,20 +20,23 @@ def test_constraint_only_training_tensorflow() -> None:
 
     # Create a network that VIOLATES the constraint initially
     # Initialize with large weights so outputs are >> 5
-    model = tf.keras.Sequential([
-        tf.keras.layers.Input(shape=(1,)),
-        tf.keras.layers.Dense(8, activation='relu'),
-        tf.keras.layers.Dense(1)
-    ])
-    
-    model.layers[0].set_weights([
-        tf.random.uniform((1, 8), 5.0, 10.0).numpy(),
-        tf.zeros(8).numpy()
-    ])
-    model.layers[1].set_weights([
-        tf.random.uniform((8, 1), 1.0, 2.0).numpy(), 
-        tf.constant([10.0]).numpy()  # Large bias ensures output >> 5
-    ])
+    model = tf.keras.Sequential(
+        [
+            tf.keras.layers.Input(shape=(1,)),
+            tf.keras.layers.Dense(8, activation="relu"),
+            tf.keras.layers.Dense(1),
+        ]
+    )
+
+    model.layers[0].set_weights(
+        [tf.random.uniform((1, 8), 5.0, 10.0).numpy(), tf.zeros(8).numpy()]
+    )
+    model.layers[1].set_weights(
+        [
+            tf.random.uniform((8, 1), 1.0, 2.0).numpy(),
+            tf.constant([10.0]).numpy(),  # Large bias ensures output >> 5
+        ]
+    )
 
     def network(x: tf.Tensor) -> tf.Tensor:
         return tf.reshape(model(tf.reshape(x, [1, 1])), [1])
@@ -42,12 +44,16 @@ def test_constraint_only_training_tensorflow() -> None:
     # Verify initial constraint violation
     initial_constraint_loss = constraint_loss_fn(network)
     print(f"\nInitial constraint loss: {initial_constraint_loss.numpy()}")
-    
+
     # Sample some outputs to verify they violate constraint
     test_inputs = [0.0, 0.5, 1.0]
-    initial_outputs = [network(tf.constant(x, dtype=tf.float32))[0].numpy() for x in test_inputs]
+    initial_outputs = [
+        network(tf.constant(x, dtype=tf.float32))[0].numpy() for x in test_inputs
+    ]
     print(f"Initial outputs at {test_inputs}: {initial_outputs}")
-    assert all(out > 5.0 for out in initial_outputs), "Network should initially violate constraint"
+    assert all(
+        out > 5.0 for out in initial_outputs
+    ), "Network should initially violate constraint"
 
     optimizer = tf.keras.optimizers.Adam(learning_rate=0.05)
 
@@ -55,21 +61,25 @@ def test_constraint_only_training_tensorflow() -> None:
     for step in range(50):
         with tf.GradientTape() as tape:
             loss = constraint_loss_fn(network)
-        
+
         grads = tape.gradient(loss, model.trainable_variables)
         optimizer.apply_gradients(zip(grads, model.trainable_variables))
-        
+
         if step % 10 == 0:
             print(f"Step {step}, constraint loss: {loss.numpy()}")
 
     # After training, check if constraint is satisfied
     final_constraint_loss = constraint_loss_fn(network)
-    final_outputs = [network(tf.constant(x, dtype=tf.float32))[0].numpy() for x in test_inputs]
+    final_outputs = [
+        network(tf.constant(x, dtype=tf.float32))[0].numpy() for x in test_inputs
+    ]
     print(f"Final constraint loss: {final_constraint_loss.numpy()}")
     print(f"Final outputs at {test_inputs}: {final_outputs}")
-    
+
     # Verify constraint is now satisfied (or at least much better)
-    assert final_constraint_loss < initial_constraint_loss, "Constraint loss should decrease"
+    assert (
+        final_constraint_loss < initial_constraint_loss
+    ), "Constraint loss should decrease"
     # Most outputs should now be <= 5 (or at least closer to 5)
     assert max(final_outputs) < max(initial_outputs), "Max output should decrease"
 
@@ -87,11 +97,9 @@ def test_constraint_only_training_pytorch() -> None:
 
     # Create a network that VIOLATES the constraint initially
     model = torch.nn.Sequential(
-        torch.nn.Linear(1, 8),
-        torch.nn.ReLU(),
-        torch.nn.Linear(8, 1)
+        torch.nn.Linear(1, 8), torch.nn.ReLU(), torch.nn.Linear(8, 1)
     )
-    
+
     # Initialize with large weights
     with torch.no_grad():
         assert isinstance(model[0], torch.nn.Linear)
@@ -107,12 +115,16 @@ def test_constraint_only_training_pytorch() -> None:
     # Verify initial constraint violation
     initial_constraint_loss = constraint_loss_fn(network)
     print(f"\nInitial constraint loss: {initial_constraint_loss.item()}")
-    
+
     test_inputs = [0.0, 0.5, 1.0]
     with torch.no_grad():
-        initial_outputs = [network(torch.tensor(x, dtype=torch.float32))[0].item() for x in test_inputs]
+        initial_outputs = [
+            network(torch.tensor(x, dtype=torch.float32))[0].item() for x in test_inputs
+        ]
     print(f"Initial outputs at {test_inputs}: {initial_outputs}")
-    assert all(out > 5.0 for out in initial_outputs), "Network should initially violate constraint"
+    assert all(
+        out > 5.0 for out in initial_outputs
+    ), "Network should initially violate constraint"
 
     optimizer = torch.optim.Adam(model.parameters(), lr=0.05)
 
@@ -122,19 +134,23 @@ def test_constraint_only_training_pytorch() -> None:
         loss = constraint_loss_fn(network)
         loss.backward()
         optimizer.step()
-        
+
         if step % 10 == 0:
             print(f"Step {step}, constraint loss: {loss.item()}")
 
     # After training, check if constraint is satisfied
     final_constraint_loss = constraint_loss_fn(network)
     with torch.no_grad():
-        final_outputs = [network(torch.tensor(x, dtype=torch.float32))[0].item() for x in test_inputs]
+        final_outputs = [
+            network(torch.tensor(x, dtype=torch.float32))[0].item() for x in test_inputs
+        ]
     print(f"Final constraint loss: {final_constraint_loss.item()}")
     print(f"Final outputs at {test_inputs}: {final_outputs}")
-    
+
     # Verify constraint is now satisfied (or at least much better)
-    assert final_constraint_loss.item() < initial_constraint_loss.item(), "Constraint loss should decrease"
+    assert (
+        final_constraint_loss.item() < initial_constraint_loss.item()
+    ), "Constraint loss should decrease"
     assert max(final_outputs) < max(initial_outputs), "Max output should decrease"
 
 
@@ -150,23 +166,26 @@ def test_tensorflow_combined_loss() -> None:
     constraint_loss_fn = declarations["output_bounded"]
 
     # Create a simple neural network that initially violates the constraint
-    model = tf.keras.Sequential([
-        tf.keras.layers.Input(shape=(1,)),
-        tf.keras.layers.Dense(8, activation='relu'),
-        tf.keras.layers.Dense(1)
-    ])
-    
+    model = tf.keras.Sequential(
+        [
+            tf.keras.layers.Input(shape=(1,)),
+            tf.keras.layers.Dense(8, activation="relu"),
+            tf.keras.layers.Dense(1),
+        ]
+    )
+
     # Initialize with moderate weights so not all outputs exceed 5
     # This avoids the case where all FGSM samples find perfect violations (value=0)
     # which would cause inf loss due to 1/0 in the DL2 formula
-    model.layers[0].set_weights([
-        tf.random.uniform((1, 8), 1.0, 3.0).numpy(),
-        tf.zeros(8).numpy()
-    ])
-    model.layers[1].set_weights([
-        tf.random.uniform((8, 1), 0.5, 1.5).numpy(), 
-        tf.random.uniform((1,), 3.0, 4.0).numpy()  # Bias to ensure some violations
-    ])
+    model.layers[0].set_weights(
+        [tf.random.uniform((1, 8), 1.0, 3.0).numpy(), tf.zeros(8).numpy()]
+    )
+    model.layers[1].set_weights(
+        [
+            tf.random.uniform((8, 1), 0.5, 1.5).numpy(),
+            tf.random.uniform((1,), 3.0, 4.0).numpy(),  # Bias to ensure some violations
+        ]
+    )
 
     def network(x: tf.Tensor) -> tf.Tensor:
         return tf.reshape(model(tf.reshape(x, [1, 1])), [1])
@@ -186,7 +205,7 @@ def test_tensorflow_combined_loss() -> None:
             pred = network(x_input)[0]
             task_loss_sum = task_loss_sum + (pred - y_val) ** 2
         task_loss = task_loss_sum / len(train_x_values)
-        
+
         constraint_loss = constraint_loss_fn(network)
         combined_loss = alpha * task_loss + (1.0 - alpha) * constraint_loss
 
@@ -213,7 +232,9 @@ def test_tensorflow_combined_loss() -> None:
         task_loss_sum_after = task_loss_sum_after + (pred - y_val) ** 2
     task_loss_after = task_loss_sum_after / len(train_x_values)
     constraint_loss_after = constraint_loss_fn(network)
-    combined_loss_after = alpha * task_loss_after + (1.0 - alpha) * constraint_loss_after
+    combined_loss_after = (
+        alpha * task_loss_after + (1.0 - alpha) * constraint_loss_after
+    )
 
     # Verify training reduced the combined loss
     assert combined_loss_after < initial_combined
@@ -232,11 +253,9 @@ def test_pytorch_combined_loss() -> None:
 
     # Create a simple neural network that initially violates the constraint
     model = torch.nn.Sequential(
-        torch.nn.Linear(1, 8),
-        torch.nn.ReLU(),
-        torch.nn.Linear(8, 1)
+        torch.nn.Linear(1, 8), torch.nn.ReLU(), torch.nn.Linear(8, 1)
     )
-    
+
     # Initialize with large weights to ensure initial violation
     with torch.no_grad():
         assert isinstance(model[0], torch.nn.Linear)
@@ -257,7 +276,7 @@ def test_pytorch_combined_loss() -> None:
     alpha = 0.5  # Balance between task and constraint
 
     optimizer.zero_grad()
-    
+
     # Compute initial losses
     task_loss_sum = torch.tensor(0.0)
     for x_val, y_val in zip(train_x_values, train_y_values):
@@ -265,7 +284,7 @@ def test_pytorch_combined_loss() -> None:
         pred = network(x_input)[0]
         task_loss_sum = task_loss_sum + (pred - y_val) ** 2
     task_loss = task_loss_sum / len(train_x_values)
-    
+
     constraint_loss = constraint_loss_fn(network)
     combined_loss = alpha * task_loss + (1.0 - alpha) * constraint_loss
 
@@ -297,7 +316,9 @@ def test_pytorch_combined_loss() -> None:
         task_loss_sum_after = task_loss_sum_after + (pred - y_val) ** 2
     task_loss_after = task_loss_sum_after / len(train_x_values)
     constraint_loss_after = constraint_loss_fn(network)
-    combined_loss_after = alpha * task_loss_after + (1.0 - alpha) * constraint_loss_after
+    combined_loss_after = (
+        alpha * task_loss_after + (1.0 - alpha) * constraint_loss_after
+    )
 
     # Verify training reduced the combined loss
     assert combined_loss_after.detach() < initial_combined
@@ -316,11 +337,9 @@ def test_pytorch_multi_step_training() -> None:
 
     # Create a simple neural network
     model = torch.nn.Sequential(
-        torch.nn.Linear(1, 8),
-        torch.nn.ReLU(),
-        torch.nn.Linear(8, 1)
+        torch.nn.Linear(1, 8), torch.nn.ReLU(), torch.nn.Linear(8, 1)
     )
-    
+
     # Initialize with large weights to ensure initial violation
     assert isinstance(model[0], torch.nn.Linear)
     assert isinstance(model[2], torch.nn.Linear)
@@ -349,7 +368,9 @@ def test_pytorch_multi_step_training() -> None:
         task_loss_sum = task_loss_sum + (pred - y_val) ** 2
     initial_task_loss = task_loss_sum / len(train_x_values)
     initial_constraint_loss = constraint_loss_fn(network)
-    initial_combined_loss = (alpha * initial_task_loss + (1.0 - alpha) * initial_constraint_loss).detach()
+    initial_combined_loss = (
+        alpha * initial_task_loss + (1.0 - alpha) * initial_constraint_loss
+    ).detach()
 
     # Train for multiple steps
     num_steps = 20
@@ -377,9 +398,10 @@ def test_pytorch_multi_step_training() -> None:
         task_loss_sum = task_loss_sum + (pred - y_val) ** 2
     final_task_loss = task_loss_sum / len(train_x_values)
     final_constraint_loss = constraint_loss_fn(network)
-    final_combined_loss = (alpha * final_task_loss + (1.0 - alpha) * final_constraint_loss).detach()
+    final_combined_loss = (
+        alpha * final_task_loss + (1.0 - alpha) * final_constraint_loss
+    ).detach()
 
     # Verify training improved the losses
     assert final_combined_loss < initial_combined_loss
     assert final_task_loss < initial_task_loss
-

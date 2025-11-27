@@ -6,7 +6,7 @@ import torch
 
 def test_pytorch_builtins_basic_operations() -> None:
     """Test that PyTorchBuiltins implements basic tensor operations correctly."""
-    from vehicle_lang.compile.pytorch import PyTorchBuiltins
+    from vehicle_lang.compile.pytorch._builtins import PyTorchBuiltins
 
     builtins = PyTorchBuiltins()
 
@@ -24,7 +24,7 @@ def test_pytorch_builtins_basic_operations() -> None:
 
 def test_pytorch_builtins_advanced_operations() -> None:
     """Test advanced PyTorch builtin operations."""
-    from vehicle_lang.compile.pytorch import PyTorchBuiltins
+    from vehicle_lang.compile.pytorch._builtins import PyTorchBuiltins
 
     builtins = PyTorchBuiltins()
 
@@ -47,7 +47,7 @@ def test_pytorch_builtins_advanced_operations() -> None:
 
 def test_pytorch_translation_basic() -> None:
     """Test that PyTorchTranslation can be instantiated."""
-    from vehicle_lang.compile.pytorch import PyTorchTranslation
+    from vehicle_lang.compile.pytorch._translation import PyTorchTranslation
 
     translation = PyTorchTranslation()
     assert translation is not None
@@ -58,7 +58,7 @@ def test_pytorch_translation_basic() -> None:
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")  # type: ignore[misc]
 def test_pytorch_cuda_compatibility() -> None:
     """Test that PyTorch backend works with CUDA if available."""
-    from vehicle_lang.compile.pytorch import PyTorchBuiltins
+    from vehicle_lang.compile.pytorch._builtins import PyTorchBuiltins
 
     builtins = PyTorchBuiltins()
 
