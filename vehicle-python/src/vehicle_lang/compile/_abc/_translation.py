@@ -2,7 +2,6 @@ from abc import ABCMeta, abstractmethod
 from typing import Generic
 
 from typing_extensions import override
-
 from vehicle_lang.compile._abc import _types as vcl_var
 
 # from ... import ast as vcl_ast
