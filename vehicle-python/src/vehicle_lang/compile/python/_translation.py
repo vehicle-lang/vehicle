@@ -176,13 +176,6 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
     def translate_Pi(self, expression: vcl.Pi) -> py.expr:
         raise EraseType()
 
-    def translate_PartialApp(self, expression: vcl.PartialApp) -> py.expr:
-        return py_partial_app(
-            self.translate_expression(expression.function),
-            *map(self.translate_expression, expression.arguments),
-            provenance=expression.provenance,
-        )
-
     def translate_RatTensor(self, expression: vcl.RatTensor) -> py.expr:
         """Translate RatTensor to tensor creation."""
         return py_tensor(expression.contents, provenance=vcl.MISSING)
@@ -455,18 +448,6 @@ def py_app(
         args=list(arguments),
         keywords=[],
         **asdict(provenance),
-    )
-
-
-def py_partial_app(
-    function: py.expr, *arguments: py.expr, provenance: vcl.Provenance
-) -> py.expr:
-    """Make a partial function call."""
-    return py_app(
-        py_qualified_name("functools", "partial", provenance=provenance),
-        function,
-        *arguments,
-        provenance=provenance,
     )
 
 

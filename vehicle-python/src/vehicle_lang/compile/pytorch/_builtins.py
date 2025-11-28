@@ -106,7 +106,6 @@ class PyTorchBuiltins(
     def ReduceMaxRatTensor(
         self, e: float, x: torch.Tensor | Sequence[torch.Tensor]
     ) -> torch.Tensor:
-        # e is the identity element, x is the samples to reduce
         x = torch.stack([torch.Tensor(e)] + list(x))
         return torch.max(x)
 
@@ -121,7 +120,6 @@ class PyTorchBuiltins(
         if isinstance(xs, (tuple, list)):
             return xs[i]
 
-        # Handle scalar tensor case - can't be indexed
         if xs.ndim == 0:
             raise VehicleInternalError(
                 "Cannot index into a scalar tensor in DimensionLookup, make an issue in GitHub."

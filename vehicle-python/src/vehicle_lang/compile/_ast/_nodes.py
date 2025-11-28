@@ -169,14 +169,6 @@ class App(Expression):
 
 
 @dataclass(frozen=True)
-class PartialApp(Expression):
-    provenance: Provenance = field(repr=False)
-    arity: int
-    function: Expression
-    arguments: Sequence[Expression]
-
-
-@dataclass(frozen=True)
 class Var(Expression):
     name: str
     arguments: Sequence[Expression]

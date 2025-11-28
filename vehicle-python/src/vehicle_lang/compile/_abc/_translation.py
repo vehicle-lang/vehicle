@@ -2,6 +2,7 @@ from abc import ABCMeta, abstractmethod
 from typing import Generic
 
 from typing_extensions import override
+
 from vehicle_lang.compile._abc import _types as vcl_var
 
 # from ... import ast as vcl_ast
@@ -69,8 +70,6 @@ class ABCTranslation(
                 return self.translate_Var(expression)
             case vcl_ast.Lam():
                 return self.translate_Lam(expression)
-            case vcl_ast.PartialApp():
-                return self.translate_PartialApp(expression)
             case vcl_ast.Pi():
                 return self.translate_Pi(expression)
             case vcl_ast.RatTensor():
@@ -124,11 +123,6 @@ class ABCTranslation(
 
     @abstractmethod
     def translate_Lam(self, expression: vcl_ast.Lam) -> vcl_var.Expression: ...
-
-    @abstractmethod
-    def translate_PartialApp(
-        self, expression: vcl_ast.PartialApp
-    ) -> vcl_var.Expression: ...
 
     @abstractmethod
     def translate_Pi(self, expression: vcl_ast.Pi) -> vcl_var.Expression: ...

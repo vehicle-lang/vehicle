@@ -84,7 +84,6 @@ class TensorFlowBuiltins(
     def ReduceAddRatTensor(
         self, e: float, xs: tf.Tensor | Sequence[tf.Tensor]
     ) -> tf.Tensor:
-        # e is the identity element (0 for addition), xs is the samples to reduce
         xs = tf.stack(xs)
         return tf.add(tf.reduce_sum(xs), e)
 
@@ -99,7 +98,6 @@ class TensorFlowBuiltins(
     def ReduceMinRatTensor(
         self, e: float, x: tf.Tensor | Sequence[tf.Tensor]
     ) -> tf.Tensor:
-        # e is the identity element, x is the samples to reduce
         x = tf.stack([tf.constant(e, dtype=self.dtype_rat)] + list(x))
         return tf.reduce_min(x)
 
@@ -107,7 +105,6 @@ class TensorFlowBuiltins(
     def ReduceMaxRatTensor(
         self, e: float, x: tf.Tensor | Sequence[tf.Tensor]
     ) -> tf.Tensor:
-        # e is the identity element, x is the samples to reduce
         x = tf.stack([tf.constant(e, dtype=self.dtype_rat)] + list(x))
         return tf.reduce_max(x)
 
@@ -122,7 +119,6 @@ class TensorFlowBuiltins(
         if isinstance(xs, (tuple, list)):
             return xs[i]
 
-        # Handle scalar tensor case - can't be indexed
         if xs.shape.ndims == 0:
             raise error.VehicleInternalError(  # type: ignore[attr-defined]
                 "Cannot index into a scalar tensor in DimensionLookup, make an issue in GitHub."
