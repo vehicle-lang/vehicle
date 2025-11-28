@@ -5,7 +5,6 @@ import subprocess
 from pathlib import Path
 
 import pytest
-
 from vehicle_lang.compile._ast._nodes import Program
 from vehicle_lang.compile.pytorch._translation import PyTorchTranslation
 

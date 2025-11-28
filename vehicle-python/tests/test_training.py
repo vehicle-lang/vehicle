@@ -4,7 +4,6 @@ from pathlib import Path
 
 import tensorflow as tf
 import torch
-
 import vehicle_lang as vcl
 
 
