@@ -36,11 +36,11 @@ def compile_vehicle_spec(spec_path: Path) -> str:
 
 
 def test_pytorch_simple_spec() -> None:
-    """Test PyTorch backend with simple.vcl specification."""
-    repo_root = Path(__file__).parent.parent.parent.resolve()
-    spec_path = repo_root / "examples" / "simple.vcl"
+    """Test PyTorch backend with test_addition.vcl specification."""
+    tests_dir = Path(__file__).parent.resolve()
+    spec_path = tests_dir / "data" / "test_addition.vcl"
     if not spec_path.exists():
-        pytest.skip("simple.vcl not found")
+        pytest.skip("test_addition.vcl not found")
 
     json_output = compile_vehicle_spec(spec_path)
     json_data = json.loads(json_output)
@@ -63,14 +63,14 @@ def test_pytorch_simple_spec() -> None:
 
 
 def test_pytorch_vs_tensorflow_equivalence() -> None:
-    """Test that PyTorch and TensorFlow backends produce equivalent results on simple spec."""
+    """Test that PyTorch and TensorFlow backends produce equivalent results on test_addition spec."""
     from vehicle_lang.compile.tensorflow._translation import TensorFlowTranslation
 
-    repo_root = Path(__file__).parent.parent.parent.resolve()
-    spec_path = repo_root / "examples" / "simple.vcl"
+    tests_dir = Path(__file__).parent.resolve()
+    spec_path = tests_dir / "data" / "test_addition.vcl"
 
     if not spec_path.exists():
-        pytest.skip("simple.vcl not found")
+        pytest.skip("test_addition.vcl not found")
 
     json_output = compile_vehicle_spec(spec_path)
     json_data = json.loads(json_output)
@@ -95,11 +95,11 @@ def test_pytorch_vs_tensorflow_equivalence() -> None:
     ), "Function names should match between backends"
 
 
-@pytest.mark.parametrize("spec_name", ["simple.vcl"])  # type: ignore[misc]
+@pytest.mark.parametrize("spec_name", ["test_addition.vcl"])  # type: ignore[misc]
 def test_pytorch_compile_specifications(spec_name: str) -> None:
     """Test PyTorch compilation on various Vehicle specifications."""
-    repo_root = Path(__file__).parent.parent.parent.resolve()
-    spec_path = repo_root / "examples" / spec_name
+    tests_dir = Path(__file__).parent.resolve()
+    spec_path = tests_dir / "data" / spec_name
     if not spec_path.exists():
         pytest.skip(f"{spec_name} not found")
 
@@ -124,6 +124,6 @@ if __name__ == "__main__":
     try:
         test_pytorch_simple_spec()
         test_pytorch_vs_tensorflow_equivalence()
-        test_pytorch_compile_specifications("simple.vcl")
-    except Exception as e:
+        test_pytorch_compile_specifications("test_addition.vcl")
+    except Exception:
         pass

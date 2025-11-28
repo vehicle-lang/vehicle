@@ -5,6 +5,7 @@ from typing import Any, Sequence, cast
 import tensorflow as tf
 from typing_extensions import override
 
+from .. import error
 from .._abc import ABCBuiltins
 from .._ast import _nodes
 
@@ -85,22 +86,21 @@ class TensorFlowBuiltins(
     ) -> tf.Tensor:
         # e is the identity element (0 for addition), xs is the samples to reduce
         xs = tf.stack(xs)
-        return tf.reduce_sum(xs)
+        return tf.add(tf.reduce_sum(xs), e)
 
     @override
     def ReduceMulRatTensor(
         self, e: float, x: tf.Tensor | Sequence[tf.Tensor]
     ) -> tf.Tensor:
-        # e is the identity element (1 for multiplication), x is the samples to reduce
         x = tf.stack(x)
-        return tf.reduce_prod(x)
+        return tf.multiply(tf.reduce_prod(x), e)
 
     @override
     def ReduceMinRatTensor(
         self, e: float, x: tf.Tensor | Sequence[tf.Tensor]
     ) -> tf.Tensor:
         # e is the identity element, x is the samples to reduce
-        x = tf.stack(x)
+        x = tf.stack([tf.constant(e, dtype=self.dtype_rat)] + list(x))
         return tf.reduce_min(x)
 
     @override
@@ -108,7 +108,7 @@ class TensorFlowBuiltins(
         self, e: float, x: tf.Tensor | Sequence[tf.Tensor]
     ) -> tf.Tensor:
         # e is the identity element, x is the samples to reduce
-        x = tf.stack(x)
+        x = tf.stack([tf.constant(e, dtype=self.dtype_rat)] + list(x))
         return tf.reduce_max(x)
 
     @override
@@ -124,7 +124,9 @@ class TensorFlowBuiltins(
 
         # Handle scalar tensor case - can't be indexed
         if xs.shape.ndims == 0:
-            return xs
+            raise error.VehicleInternalError(  # type: ignore[attr-defined]
+                "Cannot index into a scalar tensor in DimensionLookup, make an issue in GitHub."
+            )
 
         # Use tf.gather for proper type checking and TensorFlow best practices
         return tf.gather(xs, i)

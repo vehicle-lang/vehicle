@@ -7,6 +7,7 @@ from typing_extensions import override
 
 from .._abc import ABCBuiltins
 from .._ast import _nodes
+from ..error import VehicleInternalError  # type: ignore[attr-defined]
 
 ################################################################################
 ### Type-safe PyTorch wrappers
@@ -84,24 +85,21 @@ class PyTorchBuiltins(
     def ReduceAddRatTensor(
         self, e: float, xs: torch.Tensor | Sequence[torch.Tensor]
     ) -> torch.Tensor:
-        # e is the identity element (0 for addition), xs is the samples to reduce
         xs = torch.stack(list(xs))
-        return torch.sum(xs)
+        return torch.add(torch.sum(xs), e)
 
     @override
     def ReduceMulRatTensor(
         self, e: float, x: torch.Tensor | Sequence[torch.Tensor]
     ) -> torch.Tensor:
-        # e is the identity element (1 for multiplication), x is the samples to reduce
         x = torch.stack(list(x))
-        return torch.prod(x)
+        return torch.mul(torch.prod(x), e)
 
     @override
     def ReduceMinRatTensor(
         self, e: float, x: torch.Tensor | Sequence[torch.Tensor]
     ) -> torch.Tensor:
-        # e is the identity element, x is the samples to reduce
-        x = torch.stack(list(x))
+        x = torch.stack([torch.Tensor(e)] + list(x))
         return torch.min(x)
 
     @override
@@ -109,7 +107,7 @@ class PyTorchBuiltins(
         self, e: float, x: torch.Tensor | Sequence[torch.Tensor]
     ) -> torch.Tensor:
         # e is the identity element, x is the samples to reduce
-        x = torch.stack(list(x))
+        x = torch.stack([torch.Tensor(e)] + list(x))
         return torch.max(x)
 
     @override
@@ -125,7 +123,9 @@ class PyTorchBuiltins(
 
         # Handle scalar tensor case - can't be indexed
         if xs.ndim == 0:
-            return xs
+            raise VehicleInternalError(
+                "Cannot index into a scalar tensor in DimensionLookup, make an issue in GitHub."
+            )
 
         # Use direct indexing which works for all tensor ranks >= 1
         return xs[i]

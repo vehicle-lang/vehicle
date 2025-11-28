@@ -2,6 +2,7 @@ from abc import abstractmethod
 from typing import Callable, Sequence
 
 import torch
+from jaxtyping import Float
 
 from .._abc import ABCSampler
 
@@ -15,7 +16,7 @@ class PyTorchSampler(ABCSampler[Sequence[int], torch.Tensor]):
         upper_bound: torch.Tensor,
         search_lambda: Callable[[torch.Tensor], torch.Tensor],
         minimise: bool,
-    ) -> Sequence[torch.Tensor]: ...
+    ) -> Float[torch.Tensor, "1 losses"]: ...
 
 
 class DefaultPyTorchSampler(PyTorchSampler):
@@ -49,7 +50,7 @@ class DefaultPyTorchSampler(PyTorchSampler):
         upper_bound: torch.Tensor,
         search_lambda: Callable[[torch.Tensor], torch.Tensor],
         minimise: bool,
-    ) -> Sequence[torch.Tensor]:
+    ) -> Float[torch.Tensor, "1 losses"]:
         """
         Use FGSM to generate adversarial samples and evaluate the search lambda.
 
@@ -142,4 +143,4 @@ class DefaultPyTorchSampler(PyTorchSampler):
             result = search_lambda(current_point.detach())
             results.append(torch.as_tensor(result))
 
-        return results
+        return torch.stack(results)

@@ -2,6 +2,7 @@ from abc import abstractmethod
 from typing import Callable, Sequence
 
 import tensorflow as tf
+from jaxtyping import Float
 
 from .._abc import ABCSampler
 
@@ -15,7 +16,7 @@ class TensorFlowSampler(ABCSampler[Sequence[int], tf.Tensor]):
         upper_bound: tf.Tensor,
         search_lambda: Callable[[tf.Tensor], tf.Tensor],
         minimise: bool,
-    ) -> Sequence[tf.Tensor]: ...
+    ) -> Float[tf.Tensor, "1 losses"]: ...
 
 
 class DefaultTensorFlowSampler(TensorFlowSampler):
@@ -49,7 +50,7 @@ class DefaultTensorFlowSampler(TensorFlowSampler):
         upper_bound: tf.Tensor,
         search_lambda: Callable[[tf.Tensor], tf.Tensor],
         minimise: bool,
-    ) -> Sequence[tf.Tensor]:
+    ) -> Float[tf.Tensor, "1 losses"]:
         """
         Use FGSM to generate adversarial samples and evaluate the search lambda.
 
@@ -128,4 +129,4 @@ class DefaultTensorFlowSampler(TensorFlowSampler):
             result = search_lambda(tf.convert_to_tensor(current_point))
             results.append(tf.convert_to_tensor(result))
 
-        return results
+        return tf.stack(results)

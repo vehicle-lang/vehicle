@@ -1,6 +1,6 @@
 @network
-network : Tensor Real [1] -> Tensor Real [1]
+network : Real -> Real
 
 @property
 bounded : Bool
-bounded = forall (x : Real) . 0 < x < 1  => 0 < network [x] ! 0 < 1
+bounded = forall (x : Real) . 0 < x < 1  => 0 < network x  < 1
