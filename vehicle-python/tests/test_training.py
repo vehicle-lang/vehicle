@@ -4,6 +4,7 @@ from pathlib import Path
 
 import tensorflow as tf
 import torch
+
 import vehicle_lang as vcl
 
 
@@ -104,10 +105,10 @@ def test_constraint_only_training_pytorch() -> None:
     with torch.no_grad():
         assert isinstance(model[0], torch.nn.Linear)
         assert isinstance(model[2], torch.nn.Linear)
-        model[0].weight.data.uniform_(5.0, 10.0)  # type: ignore[misc]
-        model[0].bias.data.zero_()  # type: ignore[misc]
-        model[2].weight.data.uniform_(1.0, 2.0)  # type: ignore[misc]
-        model[2].bias.data.fill_(10.0)  # type: ignore[misc]  # Large bias ensures output >> 5
+        model[0].weight.data.uniform_(5.0, 10.0)
+        model[0].bias.data.zero_()
+        model[2].weight.data.uniform_(1.0, 2.0)
+        model[2].bias.data.fill_(10.0)
 
     def network(x: torch.Tensor) -> torch.Tensor:
         return model(x.reshape(1, 1)).reshape(1)
@@ -260,10 +261,10 @@ def test_pytorch_combined_loss() -> None:
     with torch.no_grad():
         assert isinstance(model[0], torch.nn.Linear)
         assert isinstance(model[2], torch.nn.Linear)
-        model[0].weight.data.uniform_(5.0, 10.0)  # type: ignore[misc]
-        model[0].bias.data.zero_()  # type: ignore[misc]
-        model[2].weight.data.uniform_(0.5, 1.5)  # type: ignore[misc]
-        model[2].bias.data.zero_()  # type: ignore[misc]
+        model[0].weight.data.uniform_(5.0, 10.0)
+        model[0].bias.data.zero_()
+        model[2].weight.data.uniform_(0.5, 1.5)
+        model[2].bias.data.zero_()
 
     def network(x: torch.Tensor) -> torch.Tensor:
         return model(x.reshape(1, 1)).reshape(1)
@@ -345,10 +346,10 @@ def test_pytorch_multi_step_training() -> None:
     assert isinstance(model[2], torch.nn.Linear)
     linear0 = model[0]
     linear2 = model[2]
-    torch.nn.init.uniform_(linear0.weight, 5.0, 10.0)  # type: ignore[arg-type]
-    torch.nn.init.zeros_(linear0.bias)  # type: ignore[arg-type]
-    torch.nn.init.uniform_(linear2.weight, 0.5, 1.5)  # type: ignore[arg-type]
-    torch.nn.init.zeros_(linear2.bias)  # type: ignore[arg-type]
+    torch.nn.init.uniform_(linear0.weight, 5.0, 10.0)
+    torch.nn.init.zeros_(linear0.bias)
+    torch.nn.init.uniform_(linear2.weight, 0.5, 1.5)
+    torch.nn.init.zeros_(linear2.bias)
 
     def network(x: torch.Tensor) -> torch.Tensor:
         return model(x.reshape(1, 1)).reshape(1)

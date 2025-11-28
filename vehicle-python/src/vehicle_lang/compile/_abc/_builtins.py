@@ -7,12 +7,9 @@ from typing_extensions import TypeAlias, TypeVar, override
 from .._ast._nodes import Tensor
 from . import _types as vcl
 
-_S = TypeVar("_S")
-_T = TypeVar("_T")
-
 
 @dataclass(frozen=True, init=False)
-class Builtins(
+class ABCBuiltins(
     Generic[
         vcl.Index,
         vcl.Rat,
@@ -20,8 +17,8 @@ class Builtins(
     ],
     metaclass=ABCMeta,
 ):
-    @abstractmethod
-    def Index(self, value: int) -> int: ...
+    def Index(self, value: int) -> int:
+        return value
 
     @abstractmethod
     def RatTensor(self, value: Tensor) -> vcl.Tensor: ...
@@ -65,45 +62,6 @@ class Builtins(
     @abstractmethod
     def DimensionCons(
         self, head: vcl.Index, tail: Sequence[vcl.Index]
-    ) -> Sequence[vcl.Index]: ...
-
-    @abstractmethod
-    def DimensionNil(self) -> Sequence[vcl.Index]: ...
-
-    @abstractmethod
-    def StackTensor(self, tensors: Sequence[vcl.Tensor]) -> vcl.Tensor: ...
-
-    @abstractmethod
-    def ConstTensor(self, value: vcl.Rat, shape: Sequence[vcl.Index]) -> vcl.Tensor: ...
-
-    @abstractmethod
-    def DenseTensor(
-        self, values: Sequence[vcl.Rat], shape: Sequence[vcl.Index]
-    ) -> vcl.Tensor: ...
-
-
-@dataclass(frozen=True, init=False)
-class ABCBuiltins(
-    Builtins[
-        vcl.Index,
-        vcl.Rat,
-        vcl.Tensor,
-    ],
-):
-
-    @override
-    def Index(self, value: int) -> int:
-        return value
-
-    @override
-    def DimensionLookup(self, xs: vcl.Tensor, i: vcl.Index) -> vcl.Tensor:
-        raise NotImplementedError(
-            "DimensionLookup requires concrete tensor implementation"
-        )
-
-    @override
-    def DimensionCons(
-        self, head: vcl.Index, tail: Sequence[vcl.Index]
     ) -> Sequence[vcl.Index]:
         # Preserve the sequence type of the tail by reconstructing with the same type
         tail_type = type(tail)
@@ -120,21 +78,22 @@ class ABCBuiltins(
                 # Last resort: return as tuple (most compatible immutable sequence)
                 return (head, *tail)
 
-    @override
+    @abstractmethod
     def DimensionNil(self) -> Sequence[vcl.Index]:
         # Use tuple as the default empty sequence type
         # Concrete implementations can override this if needed
         return ()
 
-    @override
-    def ConstTensor(self, value: vcl.Rat, shape: Sequence[vcl.Index]) -> vcl.Tensor:
-        raise NotImplementedError("ConstTensor requires concrete tensor implementation")
+    @abstractmethod
+    def StackTensor(self, tensors: Sequence[vcl.Tensor]) -> vcl.Tensor: ...
 
-    @override
+    @abstractmethod
+    def ConstTensor(self, value: vcl.Rat, shape: Sequence[vcl.Index]) -> vcl.Tensor: ...
+
+    @abstractmethod
     def DenseTensor(
         self, values: Sequence[vcl.Rat], shape: Sequence[vcl.Index]
-    ) -> vcl.Tensor:
-        raise NotImplementedError("DenseTensor requires concrete tensor implementation")
+    ) -> vcl.Tensor: ...
 
 
 AnyBuiltins: TypeAlias = ABCBuiltins[Any, Any, Any]

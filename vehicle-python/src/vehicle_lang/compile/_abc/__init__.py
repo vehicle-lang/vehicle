@@ -1,4 +1,4 @@
-from ._builtins import ABCBuiltins, AnyBuiltins, Builtins
+from ._builtins import ABCBuiltins, AnyBuiltins
 from ._samplers import ABCSampler
 from ._translation import ABCTranslation, Translation
 from ._types import (
@@ -16,7 +16,6 @@ from ._types import (
 __all__ = [
     "ABCBuiltins",
     "AnyBuiltins",
-    "Builtins",
     "ABCSampler",
     "ABCTranslation",
     "Translation",

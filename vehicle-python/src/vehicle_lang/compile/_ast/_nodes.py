@@ -106,8 +106,6 @@ class Pi(BuiltinType):
 class RatType(BuiltinType):
     """Rational number type: RatType"""
 
-    # RatType has no contents in JSON - it's just a tag
-
 
 @dataclass(frozen=True)
 class TensorType(BuiltinType):
@@ -198,7 +196,6 @@ class NegRatTensor(Expression):
     x: Expression
 
 
-# Binary operations - JSON Loss Function format providing App interface
 @dataclass(frozen=True)
 class AddRatTensor(Expression):
     """Binary addition: AddRatTensor left right - provides App interface for translation"""
