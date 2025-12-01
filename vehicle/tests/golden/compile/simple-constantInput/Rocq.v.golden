@@ -16,4 +16,4 @@ Parameter R : realType.
 
 Parameter f : 'nT[R]_(2%N :: nil) -> 'nT[R]_(nil).
 
-Axiom spec : forall x, (const_t (0 : R) < x) /\ (x < const_t (1 : R)) -> f (nstack_tuple [tuple x; const_t (0 : R)]) >= const_t (0 : R).
+Axiom spec : forall x, const_t (0 : R) < x /\ x < const_t (1 : R) -> f (nstack_tuple [tuple x; const_t (0 : R)]) >= const_t (0 : R).
