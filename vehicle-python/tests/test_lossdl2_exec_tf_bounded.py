@@ -26,7 +26,7 @@ if False:
 
             def optimiser_for_x(
                 _minimise: bool,
-                _context: Dict[str, Any],
+                _context: dict[str, Any],
                 _joiner: Callable[[tf.Tensor, tf.Tensor], tf.Tensor],
                 _predicate: Callable[[Any], tf.Tensor],
             ) -> tf.Tensor:

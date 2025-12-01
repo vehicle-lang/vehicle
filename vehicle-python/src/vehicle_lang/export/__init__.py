@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional
 
 from .. import session
 from ..error import VehicleError as VehicleError
@@ -8,9 +8,9 @@ from ..typing import ExportTarget
 
 def export_to_solver(
     target: ExportTarget,
-    output_file: Optional[Union[str, Path]] = None,
+    output_file: Optional[str | Path] = None,
     module_name: Optional[str] = None,
-    cache: Optional[Union[str, Path]] = None,
+    cache: Optional[str | Path] = None,
 ) -> str:
     """
     Export a.vcl specification file to an interactive theorem prover.

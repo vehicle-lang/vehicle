@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
-from ..ast import AST
-from ..error import VehicleError, VehicleInternalError
+from ..error import VehicleError as VehicleError
+from ..error import VehicleInternalError
 
 
 @dataclass(frozen=True)
@@ -17,8 +17,3 @@ class VehiclePropertyNotFound(VehicleInternalError):
 @dataclass(frozen=True)
 class VehiclePropertyNotCallable(VehicleInternalError):
     property_name: str
-
-
-@dataclass(frozen=True)
-class VehicleOptimiseTypeError(VehicleInternalError):
-    ast: AST

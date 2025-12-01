@@ -12,9 +12,7 @@ from typing import (
     List,
     Optional,
     Sequence,
-    Tuple,
     Type,
-    Union,
     cast,
 )
 
@@ -22,6 +20,7 @@ from typing_extensions import (
     Literal,
     TypeAlias,
     TypeVar,
+    Union,
     assert_never,
     get_args,
     get_origin,
@@ -32,9 +31,16 @@ _S = TypeVar("_S")
 _T = TypeVar("_T")
 
 
-JsonValue: TypeAlias = Union[
-    None, str, bool, int, float, complex, List["JsonValue"], Dict[str, "JsonValue"]
-]
+JsonValue: TypeAlias = (
+    None
+    | str
+    | bool
+    | int
+    | float
+    | complex
+    | List["JsonValue"]
+    | dict[str, "JsonValue"]
+)
 
 
 @dataclass
@@ -42,7 +48,7 @@ class DecodeError(Exception):
     value: JsonValue
     cls: Any
     reason: Optional[str] = None
-    telescope: Sequence[Tuple[Type[Any], str]] = ()
+    telescope: Sequence[tuple[Type[Any], str]] = ()
 
     def __str__(self) -> str:
         expected_type_str = _type_name(self.cls)
@@ -67,7 +73,7 @@ class Decoder(Generic[_T], metaclass=ABCMeta):
         self,
         decoder: "JsonDecoder",
         cls_origin: Any,
-        cls_args: Tuple[Any, ...],
+        cls_args: tuple[Any, ...],
         value: JsonValue,
     ) -> _T: ...
 
@@ -77,7 +83,9 @@ class TaggedObjectDecoder(Decoder[_T]):
     CONTENTS: str = "contents"
 
     @staticmethod
-    def _find_class(cls: Type[_T], cls_name: str) -> Optional[Type[_T]]:
+    def _find_class(
+        cls: Type[_T], cls_name: str  # pyright: ignore[reportSelfClsParameterName]
+    ) -> Optional[Type[_T]]:
         """
         Find a subclass by name.
         """
@@ -87,7 +95,9 @@ class TaggedObjectDecoder(Decoder[_T]):
         return None
 
     @staticmethod
-    def _class_and_subclasses(cls: Type[_T]) -> Iterator[Type[_T]]:
+    def _class_and_subclasses(
+        cls: Type[_T],  # pyright: ignore[reportSelfClsParameterName]
+    ) -> Iterator[Type[_T]]:
         """
         Iterate over a class and its subclasses.
         """
@@ -97,7 +107,7 @@ class TaggedObjectDecoder(Decoder[_T]):
     @staticmethod
     def _resolve_field_type(
         cls_origin: Type[Any],
-        cls_args: Tuple[Any, ...],
+        cls_args: tuple[Any, ...],
         fld_type: Type[_S],
     ) -> Type[_S]:
         # If the class type does not have  __parameters__, there are no type parameters to resolve:
@@ -116,7 +126,7 @@ class TaggedObjectDecoder(Decoder[_T]):
         # If the field type is a type variable, resolve it to the corresponding type argument:
         try:
             fld_type_index = cls_origin.__parameters__.index(fld_type)
-        except ValueError as e:
+        except ValueError:
             return fld_type
         if fld_type_index < len(cls_args):
             return cast(Type[_S], cls_args[fld_type_index])
@@ -130,7 +140,7 @@ class TaggedObjectDecoder(Decoder[_T]):
         self,
         decoder: "JsonDecoder",
         cls_origin: Type[_T],
-        cls_args: Tuple[Any, ...],
+        cls_args: tuple[Any, ...],
         value: JsonValue,
     ) -> _T:
         if not is_dataclass(cls_origin):
@@ -150,13 +160,15 @@ class TaggedObjectDecoder(Decoder[_T]):
         if subcls_origin is None:
             raise DecodeError(value, cls_origin, f"could not find class {subcls_name}")
         if not is_dataclass(subcls_origin):
-            raise DecodeError(value, subcls_origin, f"not a dataclass")
+            raise DecodeError(value, subcls_origin, "not a dataclass")
 
         # Check if subcls requires any arguments:
-        init_fields: List[Tuple[str, Type[Any], bool]] = [
+        init_fields: List[tuple[str, Type[Any], bool]] = [
             (
                 fld.name,
-                TaggedObjectDecoder._resolve_field_type(cls_origin, cls_args, fld.type),
+                TaggedObjectDecoder._resolve_field_type(
+                    cls_origin, cls_args, cast(type, fld.type)
+                ),
                 fld.default is MISSING and fld.default_factory is MISSING,
             )
             for fld in fields(subcls_origin)
@@ -185,7 +197,7 @@ class TaggedObjectDecoder(Decoder[_T]):
                     fld_type = required_init_fld_types[0]
                     arg: Any = decoder.decode(fld_type, value_args)
                     return cast(_T, subcls_origin(*[arg]))
-                except DecodeError as e:
+                except DecodeError:
                     value_args = [value_args]
 
             # Decode arguments by position:
@@ -217,7 +229,7 @@ class TaggedObjectDecoder(Decoder[_T]):
         # If CONTENTS field is absent, decode arguments by name:
         else:
 
-            kwargs: Dict[str, Any] = {}
+            kwargs: dict[str, Any] = {}
 
             for fld_name, fld_type, fld_required in init_fields:
                 value_kwarg = value.get(fld_name, MISSING)
@@ -280,7 +292,7 @@ class TupleDecoder(Decoder[Any]):
         self,
         decoder: "JsonDecoder",
         cls_origin: Any,
-        cls_args: Tuple[Any, ...],
+        cls_args: tuple[Any, ...],
         value: JsonValue,
     ) -> Any:
         if cls_origin is not tuple:
@@ -305,7 +317,7 @@ class TupleDecoder(Decoder[Any]):
             raise DecodeError(value, cls_origin, "mismatched length")
 
         return tuple(
-            *(decoder.decode(cls_item, item) for cls_item, item in zip(cls_args, value))
+            decoder.decode(cls_item, item) for cls_item, item in zip(cls_args, value)
         )
 
 
@@ -315,14 +327,14 @@ class ListDecoder(Decoder[List[_T]]):
         self,
         decoder: "JsonDecoder",
         cls_origin: Type[List[_T]],
-        cls_args: Tuple[Any, ...],
+        cls_args: tuple[Any, ...],
         value: JsonValue,
     ) -> List[_T]:
         if not isinstance(value, List):
             raise DecodeError(value, cls_origin, "expected list")
 
         if len(cls_args) <= 0:
-            raise DecodeError(value, cls_origin, f"list type requires an argument")
+            raise DecodeError(value, cls_origin, "list type requires an argument")
 
         if len(cls_args) >= 2:
             raise DecodeError(
@@ -333,20 +345,20 @@ class ListDecoder(Decoder[List[_T]]):
         return [decoder.decode(cls_item, item) for item in value]
 
 
-class DictDecoder(Decoder[Dict[_S, _T]]):
+class DictDecoder(Decoder[dict[_S, _T]]):
     @override
     def decode(
         self,
         decoder: "JsonDecoder",
-        cls_origin: Type[Dict[_S, _T]],
-        cls_args: Tuple[Any, ...],
+        cls_origin: Type[dict[_S, _T]],
+        cls_args: tuple[Any, ...],
         value: JsonValue,
-    ) -> Dict[_S, _T]:
+    ) -> dict[_S, _T]:
         if not isinstance(value, Dict):
             raise DecodeError(value, cls_origin, "expected dict")
 
         if len(cls_args) <= 1:
-            raise DecodeError(value, cls_origin, f"dict type requires arguments")
+            raise DecodeError(value, cls_origin, "dict type requires arguments")
 
         if len(cls_args) >= 3:
             raise DecodeError(
@@ -368,7 +380,7 @@ class LiteralDecoder(Decoder[Any]):
         self,
         decoder: "JsonDecoder",
         cls_origin: Any,
-        cls_args: Tuple[Any, ...],
+        cls_args: tuple[Any, ...],
         value: JsonValue,
     ) -> Any:
         if value in cls_args:
@@ -384,7 +396,7 @@ class UnionDecoder(Decoder[Any]):
         self,
         decoder: "JsonDecoder",
         cls_origin: Any,
-        cls_args: Tuple[Any, ...],
+        cls_args: tuple[Any, ...],
         value: JsonValue,
     ) -> Any:
         for cls_arg in cls_args:
@@ -402,7 +414,7 @@ class FractionDecoder(Decoder[fractions.Fraction]):
         self,
         decoder: "JsonDecoder",
         cls_origin: Type[fractions.Fraction],
-        cls_args: Tuple[Any, ...],
+        cls_args: tuple[Any, ...],
         value: JsonValue,
     ) -> fractions.Fraction:
         if not isinstance(value, Dict):
@@ -416,17 +428,17 @@ class FractionDecoder(Decoder[fractions.Fraction]):
         return fractions.Fraction(numerator, denominator)
 
 
-AnyDecoder: TypeAlias = Union[Decoder[Any], Callable[[JsonValue], Any]]
+AnyDecoder: TypeAlias = Decoder[Any] | Callable[[JsonValue], Any]
 
 
 @dataclass(frozen=True)
 class JsonDecoder:
     dataclass_decoder: AnyDecoder
-    decoders: Dict[Any, AnyDecoder] = field(init=False, default_factory=dict)
+    decoders: dict[Any, AnyDecoder] = field(init=False, default_factory=dict)
 
     def register(
         self,
-        cls: Union[Type[_T], Any],
+        cls: Type[_T] | Any,
         decoder: AnyDecoder,
     ) -> None:
         cls_origin = get_origin(cls) or cls
@@ -434,7 +446,7 @@ class JsonDecoder:
 
     def decode(
         self,
-        cls: Union[Type[_T], Any],
+        cls: Type[_T] | Any,
         value: JsonValue,
     ) -> _T:
         cls_origin = get_origin(cls) or cls
@@ -446,7 +458,7 @@ class JsonDecoder:
                 )
             elif callable(self.dataclass_decoder):
                 return cast(_T, self.dataclass_decoder(value))
-            assert_never()
+            assert_never(self.dataclass_decoder)
         else:
             decoder = self.decoders.get(cls_origin)
             if decoder is None:
@@ -455,7 +467,7 @@ class JsonDecoder:
                 return cast(_T, decoder.decode(self, cls_origin, cls_args, value))
             elif callable(decoder):
                 return cast(_T, decoder(value))
-            assert_never()
+            assert_never(decoder)
 
 
 _DEFAULT_DECODER: JsonDecoder = JsonDecoder(dataclass_decoder=TaggedObjectDecoder())
@@ -477,7 +489,7 @@ _DEFAULT_DECODER.register(Literal, LiteralDecoder())
 _DEFAULT_DECODER.register(Union, UnionDecoder())
 
 
-def decode(cls: Union[Type[_T], Any], value: JsonValue) -> _T:
+def decode(cls: Type[_T] | Any, value: JsonValue) -> _T:
     return _DEFAULT_DECODER.decode(cls, value)
 
 

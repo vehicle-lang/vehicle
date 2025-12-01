@@ -15,8 +15,13 @@ readme = 'README.md'
 license = 'MIT'
 license-files = [ "LICENSE" ]
 dynamic = ["version"]
-requires-python = ">=3.9,<3.14"
-dependencies = ["typing_extensions >=4.6,<5", "jaxtyping>=0.2, <0.3"]
+requires-python = ">=3.10,<3.14"
+dependencies = [
+    "typing-extensions>=4.6,<5",
+    "jaxtyping>=0.2, <0.3",
+    "pytest>=8.4.2",
+    "pre-commit>=4.3.0",
+]
 
 [project.optional-dependencies]
 test = ["pytest >=7.1,<9", "packaging >=23", "pygments >=2.14, <3"]
@@ -25,7 +30,10 @@ pygments = ["pygments >=2.14,<3"]
 numpy = ["numpy >=1.21,<3"]
 jax = ["jax >=0.4.26"]
 tensorflow = [
-  "tensorflow >=2,<3; (python_version>='3.9' and python_version<'3.13') and ((sys_platform=='linux' and (platform_machine=='x86_64' or platform_machine=='aarch64')) or (sys_platform=='darwin' and platform_machine=='x86_64') or (sys_platform=='win32' and platform_machine=='AMD64'))"
+  "tensorflow >=2,<3; (python_version>='3.10' and python_version<'3.13') and ((sys_platform=='linux' and (platform_machine=='x86_64' or platform_machine=='aarch64')) or (sys_platform=='darwin' and platform_machine=='x86_64') or (sys_platform=='win32' and platform_machine=='AMD64'))"
+]
+pytorch = [
+  "torch >=2.0,<3.0; python_version>='3.10' and python_version<'3.13'"
 ]
 
 [project.scripts]
@@ -70,7 +78,7 @@ musllinux-x86_64-image = "wenkokke/musllinux_1_1_ghc965_x86_64"
 
 [tool.mypy]
 mypy_path = "src"
-python_version = "3.9"
+python_version = "3.10"
 strict = true
 implicit_reexport = false
 ignore_missing_imports = true
@@ -78,12 +86,12 @@ exclude = ['^src/vehicle_lang/binding\.py$']
 
 [[tool.mypy.overrides]]
 module = "vehicle_lang.pygments"
-allow_subclassing_any = true
+disallow_subclassing_any = false
 
 [[tool.mypy.overrides]]
 module = "vehicle_lang.pygments._external"
-allow_subclassing_any = true
-allow_untyped_defs = true
+disallow_subclassing_any = false
+disallow_untyped_defs = false
 disable_error_code = ['name-defined']
 
 [tool.pytest.ini_options]
@@ -115,7 +123,7 @@ extras =
 commands =
   {env_python} -m pytest {posargs}
 
-[testenv:build-py{39,310,311,312,313}-{lin,mac,win}]
+[testenv:build-py{310,311,312,313}-{lin,mac,win}]
 deps =
   build
   auditwheel; sys_platform == 'linux'
