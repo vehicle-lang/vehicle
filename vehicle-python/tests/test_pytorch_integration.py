@@ -69,14 +69,13 @@ def test_pytorch_simple_spec() -> None:
 
     assert len(pytorch_functions) > 0, "Should generate at least one PyTorch function"
 
-    assert "__vehicle__" in pytorch_functions, "Should have __vehicle__ builtins object"
-    builtins_obj = pytorch_functions["__vehicle__"]
+    user_symbols = {
+        name: value
+        for name, value in pytorch_functions.items()
+        if name not in {"torch"} and not name.startswith("__")
+    }
 
-    from vehicle_lang.loss._pytorch._builtins import PyTorchBuiltins
-
-    assert isinstance(
-        builtins_obj, PyTorchBuiltins
-    ), f"Expected PyTorchBuiltins, got {type(builtins_obj)}"
+    assert user_symbols, "Should expose at least one user-defined declaration"
 
 
 def test_pytorch_vs_tensorflow_equivalence() -> None:
@@ -128,9 +127,12 @@ def test_pytorch_compile_specifications(spec_name: str) -> None:
             program, path=spec_path, declaration_context={}, samplers={}
         )
         assert len(pytorch_functions) > 0, f"Should generate functions for {spec_name}"
-        assert (
-            "__vehicle__" in pytorch_functions
-        ), f"Should have main function for {spec_name}"
+        user_symbols = {
+            name
+            for name in pytorch_functions
+            if name not in {"torch"} and not name.startswith("__")
+        }
+        assert user_symbols, f"Should expose user declarations for {spec_name}"
 
     except Exception as e:
         pytest.fail(f"PyTorch compilation failed for {spec_name}: {e}")
