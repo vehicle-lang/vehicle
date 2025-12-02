@@ -11,12 +11,20 @@ named_theorems tensor_0dim_arithmetic "rules for simplifying arithmetic tensor o
 named_theorems tensor_arithmetic "rules for simplifying arithmetic tensor operations"
 named_theorems tensor_ops "rules for simplifying arithmetic tensor operations"
 
+named_theorems index_ops "rules for simplifying arithmetic index operations"
+
 typedef 'a FlexTensor = "(UNIV :: 'a tensor set)" by auto
 
 declare [[coercion Rep_FlexTensor]]
 
 declare Abs_FlexTensor_inverse[simp]
 declare Abs_tensor_inverse[tensor_ops]
+
+typedef FlexIndex = "(UNIV :: nat set)" by auto
+
+declare [[coercion Rep_FlexIndex]]
+
+declare Abs_FlexIndex_inverse[simp]
 
 declare subtensor_def[tensor_ops]
 declare fixed_length_sublist_def[tensor_ops]
@@ -28,6 +36,9 @@ definition [tensor_arithmetic]: "vec_times a b = map (\<lambda>(x,y). times x y)
 
 definition tensor_plus :: "('a::semigroup_add) tensor \<Rightarrow> 'a tensor \<Rightarrow> 'a FlexTensor"
   where[tensor_arithmetic]: "tensor_plus A B = Abs_FlexTensor (A + B)"
+
+definition flex_subtensor::"'a tensor \<Rightarrow> nat \<Rightarrow> 'a FlexTensor"
+  where "flex_subtensor n t = Abs_FlexTensor (subtensor n t)"
 
 declare plus_def[tensor_arithmetic]
 declare plus_base_def[tensor_arithmetic]
@@ -87,20 +98,20 @@ definition foreach :: "nat \<Rightarrow> (nat \<Rightarrow> 'a tensor) \<Rightar
 declare upt_def[tensor_ops]
 
 
-definition forallInList :: "'a list \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> bool"
-  where[tensor_ops]: "forallInList l f = list_all f l"
+definition forallInList :: "('a \<Rightarrow> bool) \<Rightarrow> 'a list \<Rightarrow> bool"
+  where[tensor_ops]: "forallInList f l = list_all f l"
 
-definition existsInList :: "'a list \<Rightarrow> ('a \<Rightarrow> bool) \<Rightarrow> bool"
-  where[tensor_ops]: "existsInList l f = list_ex f l"
+definition existsInList :: "('a \<Rightarrow> bool) \<Rightarrow> 'a list \<Rightarrow> bool"
+  where[tensor_ops]: "existsInList f l = list_ex f l"
 
 declare list_all_def[tensor_ops]
 declare list_ex_iff[tensor_ops]
 
-definition forallIndex :: "nat \<Rightarrow> (nat \<Rightarrow> bool) \<Rightarrow> bool"
-  where[tensor_ops]: "forallIndex I f = (list_all id (vec (foreach I (\<lambda> x . (tensor_from_vec [] [f x])))))"
+definition forallIndex :: "nat \<Rightarrow> (FlexIndex \<Rightarrow> bool) \<Rightarrow> bool"
+  where[tensor_ops]: "forallIndex I f = (list_all id (vec (foreach I (\<lambda> x . (tensor_from_vec [] [f (Abs_FlexIndex x)])))))"
 
-definition existsIndex :: "nat \<Rightarrow> (nat \<Rightarrow> bool) \<Rightarrow> bool"
-  where[tensor_ops]: "existsIndex I f = (list_ex id (vec (foreach I (\<lambda> x . (tensor_from_vec [] [f x])))))"
+definition existsIndex :: "nat \<Rightarrow> (FlexIndex \<Rightarrow> bool) \<Rightarrow> bool"
+  where[tensor_ops]: "existsIndex I f = (list_ex id (vec (foreach I (\<lambda> x . (tensor_from_vec [] [f (Abs_FlexIndex x)])))))"
 
 (* TODO: foreachTuple ? ? ? *)
 fun foreachTuple :: "nat \<Rightarrow> (nat \<Rightarrow> 'a) \<Rightarrow> 'a list" where[simp]:
