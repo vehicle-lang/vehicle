@@ -176,6 +176,8 @@ copyTestNeeds neededFiles = do
     for neededFiles $ \neededFile -> do
       let neededFileTarget = removeParent neededFile
       let neededFileTargetAbsolute = tempDirectory </> removeParent neededFile
+      -- Ensure the destination directory exists before copying the file
+      createDirectoryRecursive (takeDirectory neededFileTargetAbsolute)
       -- Try to find the needed file in the test directory
       let neededFileSource = testDirectory </> neededFile
       neededFileExists <- doesFileExist (testDirectory </> neededFile)
