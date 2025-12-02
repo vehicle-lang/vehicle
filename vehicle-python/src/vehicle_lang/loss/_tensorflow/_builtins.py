@@ -1,9 +1,19 @@
 from dataclasses import dataclass
 from fractions import Fraction
-from typing import Any, Sequence, cast
+from typing import TYPE_CHECKING, Any, Sequence, cast
 
-import tensorflow as tf
 from typing_extensions import override
+
+from ..._deps import require_optional_dependency
+
+if TYPE_CHECKING:
+    import tensorflow as tf
+else:  # pragma: no cover - exercised implicitly
+    tf = require_optional_dependency(
+        "tensorflow",
+        extra="tensorflow",
+        feature="The TensorFlow loss backend",
+    )
 
 from .. import error
 from .._abc import ABCBuiltins

@@ -43,6 +43,31 @@ Each of the following examples comes with an explanatory README file:
 In addition to the above, further examples of specifications can be found in the [test suite](https://github.com/vehicle-lang/vehicle/tree/dev/test/specs)
 and the corresponding output of the Vehicle compiler can be found [here](https://github.com/vehicle-lang/vehicle/tree/dev/test/Test/Compile/Golden).
 
+## Loss backends
+
+The Python package does not install TensorFlow or PyTorch by default so you can
+choose the backend you need:
+
+- `pip install "vehicle_lang[tensorflow]"`
+- `pip install "vehicle_lang[pytorch]"`
+
+When using [uv](https://docs.astral.sh/uv/), the equivalent commands are:
+
+```
+uv sync --group tensorflow
+uv sync --group pytorch
+```
+
+Then import the relevant backend module to compile loss functions:
+
+```python
+from vehicle_lang.loss import tensorflow as loss_tf
+
+losses = loss_tf.load_specification("spec.vcl")
+```
+
+The PyTorch backend works analogously via `vehicle_lang.loss.pytorch`.
+
 ## Support
 
 If you are interested in adding support for a particular format/verifier/ITP

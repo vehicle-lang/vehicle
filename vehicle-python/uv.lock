@@ -1550,12 +1550,13 @@ name = "vehicle-lang"
 source = { editable = "." }
 dependencies = [
     { name = "jaxtyping" },
-    { name = "pre-commit" },
-    { name = "pytest" },
     { name = "typing-extensions" },
 ]
 
 [package.optional-dependencies]
+dev = [
+    { name = "pre-commit" },
+]
 jax = [
     { name = "jax", version = "0.6.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "jax", version = "0.8.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
@@ -1578,6 +1579,41 @@ tensorflow = [
     { name = "tensorflow", marker = "(python_full_version < '3.13' and platform_machine == 'x86_64' and sys_platform == 'darwin') or (python_full_version < '3.13' and platform_machine == 'aarch64' and sys_platform == 'linux') or (python_full_version < '3.13' and platform_machine == 'x86_64' and sys_platform == 'linux') or (python_full_version < '3.13' and platform_machine == 'AMD64' and sys_platform == 'win32')" },
 ]
 test = [
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "numpy", version = "2.3.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "packaging" },
+    { name = "pygments" },
+    { name = "pytest" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pre-commit" },
+]
+jax = [
+    { name = "jax", version = "0.6.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "jax", version = "0.8.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+]
+mypy = [
+    { name = "types-pygments" },
+    { name = "types-setuptools" },
+]
+numpy = [
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "numpy", version = "2.3.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+]
+pygments = [
+    { name = "pygments" },
+]
+pytorch = [
+    { name = "torch", marker = "python_full_version < '3.13'" },
+]
+tensorflow = [
+    { name = "tensorflow", marker = "(python_full_version < '3.13' and platform_machine == 'x86_64' and sys_platform == 'darwin') or (python_full_version < '3.13' and platform_machine == 'aarch64' and sys_platform == 'linux') or (python_full_version < '3.13' and platform_machine == 'x86_64' and sys_platform == 'linux') or (python_full_version < '3.13' and platform_machine == 'AMD64' and sys_platform == 'win32')" },
+]
+test = [
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "numpy", version = "2.3.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "packaging" },
     { name = "pygments" },
     { name = "pytest" },
@@ -1588,19 +1624,37 @@ requires-dist = [
     { name = "jax", marker = "extra == 'jax'", specifier = ">=0.4.26" },
     { name = "jaxtyping", specifier = ">=0.2,<0.3" },
     { name = "numpy", marker = "extra == 'numpy'", specifier = ">=1.21,<3" },
+    { name = "numpy", marker = "extra == 'test'", specifier = ">=1.21,<3" },
     { name = "packaging", marker = "extra == 'test'", specifier = ">=23" },
-    { name = "pre-commit", specifier = ">=4.3.0" },
+    { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=4.3.0" },
     { name = "pygments", marker = "extra == 'pygments'", specifier = ">=2.14,<3" },
     { name = "pygments", marker = "extra == 'test'", specifier = ">=2.14,<3" },
-    { name = "pytest", specifier = ">=8.4.2" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=7.1,<9" },
     { name = "tensorflow", marker = "(python_full_version >= '3.10' and python_full_version < '3.13' and platform_machine == 'x86_64' and sys_platform == 'darwin' and extra == 'tensorflow') or (python_full_version >= '3.10' and python_full_version < '3.13' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'tensorflow') or (python_full_version >= '3.10' and python_full_version < '3.13' and platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'tensorflow') or (python_full_version >= '3.10' and python_full_version < '3.13' and platform_machine == 'AMD64' and sys_platform == 'win32' and extra == 'tensorflow')", specifier = ">=2,<3" },
-    { name = "torch", marker = "python_full_version >= '3.10' and python_full_version < '3.13' and extra == 'pytorch'", specifier = ">=2.0,<3.0" },
+    { name = "torch", marker = "python_full_version >= '3.10' and python_full_version < '3.13' and extra == 'pytorch'", specifier = ">=2,<3" },
     { name = "types-pygments", marker = "extra == 'mypy'", specifier = ">=2.14,<3" },
     { name = "types-setuptools", marker = "extra == 'mypy'", specifier = ">=45" },
     { name = "typing-extensions", specifier = ">=4.6,<5" },
 ]
-provides-extras = ["test", "mypy", "pygments", "numpy", "jax", "tensorflow", "pytorch"]
+provides-extras = ["test", "mypy", "pygments", "numpy", "jax", "dev", "tensorflow", "pytorch"]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pre-commit", specifier = ">=4.3.0" }]
+jax = [{ name = "jax", specifier = ">=0.4.26" }]
+mypy = [
+    { name = "types-pygments", specifier = ">=2.14,<3" },
+    { name = "types-setuptools", specifier = ">=45" },
+]
+numpy = [{ name = "numpy", specifier = ">=1.21,<3" }]
+pygments = [{ name = "pygments", specifier = ">=2.14,<3" }]
+pytorch = [{ name = "torch", marker = "python_full_version >= '3.10' and python_full_version < '3.13'", specifier = ">=2,<3" }]
+tensorflow = [{ name = "tensorflow", marker = "(python_full_version >= '3.10' and python_full_version < '3.13' and platform_machine == 'x86_64' and sys_platform == 'darwin') or (python_full_version >= '3.10' and python_full_version < '3.13' and platform_machine == 'aarch64' and sys_platform == 'linux') or (python_full_version >= '3.10' and python_full_version < '3.13' and platform_machine == 'x86_64' and sys_platform == 'linux') or (python_full_version >= '3.10' and python_full_version < '3.13' and platform_machine == 'AMD64' and sys_platform == 'win32')", specifier = ">=2,<3" }]
+test = [
+    { name = "numpy", specifier = ">=1.21,<3" },
+    { name = "packaging", specifier = ">=23" },
+    { name = "pygments", specifier = ">=2.14,<3" },
+    { name = "pytest", specifier = ">=7.1,<9" },
+]
 
 [[package]]
 name = "virtualenv"

@@ -1,12 +1,13 @@
 # 2024-04-16: Disable end-to-end tests
 if False:
     from pathlib import Path
-    from typing import Any, Callable, Dict
+    from typing import Any, Callable
 
     def test_lossdl2_exec_tf_bounded() -> None:
         try:
             import numpy as np
             import tensorflow as tf
+
             import vehicle_lang as vcl
 
             # Prepare a simple network

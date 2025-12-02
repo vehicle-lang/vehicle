@@ -1,8 +1,8 @@
 from pathlib import Path
 from typing import Iterable
 
+from ... import session as session
 from ...typing import DeclarationName, DifferentiableLogic, Target
-from .. import session as session
 from ..error import VehicleError as VehicleError
 from . import _nodes
 

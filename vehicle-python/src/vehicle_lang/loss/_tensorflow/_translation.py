@@ -1,27 +1,27 @@
 import ast as py
 from dataclasses import dataclass
 
-from ..python import PythonTranslation
-from ._builtins import PyTorchBuiltins
+from .._python import PythonTranslation
+from ._builtins import TensorFlowBuiltins
 
 # Create proper Python AST provenance (different from Vehicle provenance)
 PY_MISSING = {"lineno": 0, "col_offset": 0}
 
 ################################################################################
-### PyTorch Translation
+### TensorFlow Translation
 ################################################################################
 
 
 @dataclass(frozen=True, init=False)
-class PyTorchTranslation(PythonTranslation):
+class TensorFlowTranslation(PythonTranslation):
     def __init__(self) -> None:
         super().__init__(
-            builtins=PyTorchBuiltins(),
+            builtins=TensorFlowBuiltins(),
             module_header=[
                 py.Import(
                     names=[
                         py.alias(
-                            name="torch",
+                            name="tensorflow",
                             asname=None,
                             lineno=0,
                             col_offset=0,

@@ -1,38 +1,26 @@
 from abc import ABCMeta, abstractmethod
 from typing import Generic
 
-from typing_extensions import override
-from vehicle_lang.compile._abc import _types as vcl_var
-
 # from ... import ast as vcl_ast
-from vehicle_lang.compile._ast import _nodes as vcl_ast
+from .._ast import _nodes as vcl_ast
+from . import _types as vcl_var
 
 ################################################################################
-### Translation from Vehicle AST to Python AST
+### Translation from vehicle_lang AST to Python AST
 ################################################################################
-
-
-class Translation(
-    Generic[vcl_var.Program, vcl_var.Declaration, vcl_var.Expression], metaclass=ABCMeta
-):
-    @abstractmethod
-    def translate_program(self, program: vcl_ast.Program) -> vcl_var.Program: ...
-
-    @abstractmethod
-    def translate_declaration(
-        self, declaration: vcl_ast.Declaration
-    ) -> vcl_var.Declaration: ...
-
-    @abstractmethod
-    def translate_expression(
-        self, expression: vcl_ast.Expression
-    ) -> vcl_var.Expression: ...
 
 
 class ABCTranslation(
-    Translation[vcl_var.Program, vcl_var.Declaration, vcl_var.Expression]
+    Generic[vcl_var.Program, vcl_var.Declaration, vcl_var.Expression], metaclass=ABCMeta
 ):
-    @override
+    @abstractmethod
+    def translate_Main(self, program: vcl_ast.Main) -> vcl_var.Program: ...
+
+    @abstractmethod
+    def translate_DefFunction(
+        self, declaration: vcl_ast.DefFunction
+    ) -> vcl_var.Declaration: ...
+
     def translate_program(self, program: vcl_ast.Program) -> vcl_var.Program:
         match program:
             case vcl_ast.Main():
@@ -40,10 +28,6 @@ class ABCTranslation(
             case _:
                 raise NotImplementedError(type(program).__name__)
 
-    @abstractmethod
-    def translate_Main(self, program: vcl_ast.Main) -> vcl_var.Program: ...
-
-    @override
     def translate_declaration(
         self, declaration: vcl_ast.Declaration
     ) -> vcl_var.Declaration:
@@ -53,12 +37,6 @@ class ABCTranslation(
             case _:
                 raise NotImplementedError(type(declaration).__name__)
 
-    @abstractmethod
-    def translate_DefFunction(
-        self, declaration: vcl_ast.DefFunction
-    ) -> vcl_var.Declaration: ...
-
-    @override
     def translate_expression(
         self, expression: vcl_ast.Expression
     ) -> vcl_var.Expression:

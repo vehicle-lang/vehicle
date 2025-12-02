@@ -1,6 +1,6 @@
 from ._builtins import ABCBuiltins, AnyBuiltins
 from ._samplers import ABCSampler
-from ._translation import ABCTranslation, Translation
+from ._translation import ABCTranslation
 from ._types import (
     Declaration,
     Dimension,
@@ -18,7 +18,6 @@ __all__ = [
     "AnyBuiltins",
     "ABCSampler",
     "ABCTranslation",
-    "Translation",
     "Declaration",
     "Dimension",
     "DimensionIndex",

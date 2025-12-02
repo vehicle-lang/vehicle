@@ -3,10 +3,27 @@
 import json
 import subprocess
 from pathlib import Path
+from typing import Any, Type
 
 import pytest
-from vehicle_lang.compile._ast._nodes import Program
-from vehicle_lang.compile.pytorch._translation import PyTorchTranslation
+
+from vehicle_lang.loss._ast._nodes import Program
+
+torch = pytest.importorskip(
+    "torch", reason="PyTorch extra is required for PyTorch integration tests"
+)
+
+from vehicle_lang.loss._pytorch._translation import PyTorchTranslation
+
+
+def require_tensorflow_translation() -> Type[Any]:
+    pytest.importorskip(
+        "tensorflow",
+        reason="TensorFlow extra is required for PyTorch/TensorFlow equivalence tests",
+    )
+    from vehicle_lang.loss._tensorflow._translation import TensorFlowTranslation
+
+    return TensorFlowTranslation
 
 
 def compile_vehicle_spec(spec_path: Path) -> str:
@@ -55,7 +72,7 @@ def test_pytorch_simple_spec() -> None:
     assert "__vehicle__" in pytorch_functions, "Should have __vehicle__ builtins object"
     builtins_obj = pytorch_functions["__vehicle__"]
 
-    from vehicle_lang.compile.pytorch._builtins import PyTorchBuiltins
+    from vehicle_lang.loss._pytorch._builtins import PyTorchBuiltins
 
     assert isinstance(
         builtins_obj, PyTorchBuiltins
@@ -64,8 +81,7 @@ def test_pytorch_simple_spec() -> None:
 
 def test_pytorch_vs_tensorflow_equivalence() -> None:
     """Test that PyTorch and TensorFlow backends produce equivalent results on test_addition spec."""
-    from vehicle_lang.compile.tensorflow._translation import TensorFlowTranslation
-
+    TensorFlowTranslation = require_tensorflow_translation()
     tests_dir = Path(__file__).parent.resolve()
     spec_path = tests_dir / "data" / "test_addition.vcl"
 

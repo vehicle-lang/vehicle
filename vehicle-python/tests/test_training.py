@@ -1,18 +1,43 @@
 """Test that loss functions from load_specification are trainable with autodiff."""
 
 from pathlib import Path
+from typing import Any, Tuple
 
-import tensorflow as tf
-import torch
+import pytest
+
 import vehicle_lang as vcl
+
+
+def require_tensorflow() -> Tuple[Any, Any]:
+    tf_module = pytest.importorskip(
+        "tensorflow",
+        reason="TensorFlow extra is required for TensorFlow training tests",
+    )
+    loss_module = pytest.importorskip(
+        "vehicle_lang.loss.tensorflow",
+        reason="vehicle_lang[tensorflow] extra is not installed",
+    )
+    return tf_module, loss_module
+
+
+def require_pytorch() -> Tuple[Any, Any]:
+    torch_module = pytest.importorskip(
+        "torch",
+        reason="PyTorch extra is required for PyTorch training tests",
+    )
+    loss_module = pytest.importorskip(
+        "vehicle_lang.loss.pytorch",
+        reason="vehicle_lang[pytorch] extra is not installed",
+    )
+    return torch_module, loss_module
 
 
 def test_constraint_only_training_tensorflow() -> None:
     """Test that training with ONLY constraint loss (no task loss) actually enforces the constraint."""
+    tf, loss_tf = require_tensorflow()
     spec_path = Path(__file__).parent / "data" / "test_trainable.vcl"
-    declarations = vcl.compile.load_specification(
+    declarations = loss_tf.load_specification(
         spec_path,
-        backend=vcl.LossBackend.TensorFlow,
         logic=vcl.DifferentiableLogic.Vehicle,
     )
 
@@ -38,7 +63,7 @@ def test_constraint_only_training_tensorflow() -> None:
         ]
     )
 
-    def network(x: tf.Tensor) -> tf.Tensor:
+    def network(x: Any) -> Any:
         return tf.reshape(model(tf.reshape(x, [1, 1])), [1])
 
     # Verify initial constraint violation
@@ -86,10 +111,10 @@ def test_constraint_only_training_tensorflow() -> None:
 
 def test_constraint_only_training_pytorch() -> None:
     """Test that training with ONLY constraint loss (no task loss) actually enforces the constraint."""
+    torch, loss_pt = require_pytorch()
     spec_path = Path(__file__).parent / "data" / "test_trainable.vcl"
-    declarations = vcl.compile.load_specification(
+    declarations = loss_pt.load_specification(
         spec_path,
-        backend=vcl.LossBackend.PyTorch,
         logic=vcl.DifferentiableLogic.Vehicle,
     )
 
@@ -109,7 +134,7 @@ def test_constraint_only_training_pytorch() -> None:
         model[2].weight.data.uniform_(1.0, 2.0)
         model[2].bias.data.fill_(10.0)
 
-    def network(x: torch.Tensor) -> torch.Tensor:
+    def network(x: Any) -> Any:
         return model(x.reshape(1, 1)).reshape(1)
 
     # Verify initial constraint violation
@@ -156,10 +181,10 @@ def test_constraint_only_training_pytorch() -> None:
 
 def test_tensorflow_combined_loss() -> None:
     """Test that TensorFlow can train with combined task + constraint loss."""
+    tf, loss_tf = require_tensorflow()
     spec_path = Path(__file__).parent / "data" / "test_trainable.vcl"
-    declarations = vcl.compile.load_specification(
+    declarations = loss_tf.load_specification(
         spec_path,
-        backend=vcl.LossBackend.TensorFlow,
         logic=vcl.DifferentiableLogic.Vehicle,
     )
 
@@ -187,7 +212,7 @@ def test_tensorflow_combined_loss() -> None:
         ]
     )
 
-    def network(x: tf.Tensor) -> tf.Tensor:
+    def network(x: Any) -> Any:
         return tf.reshape(model(tf.reshape(x, [1, 1])), [1])
 
     # Training data: learn to approximate y = 2*x
@@ -242,10 +267,10 @@ def test_tensorflow_combined_loss() -> None:
 
 def test_pytorch_combined_loss() -> None:
     """Test that PyTorch can train with combined task + constraint loss."""
+    torch, loss_pt = require_pytorch()
     spec_path = Path(__file__).parent / "data" / "test_trainable.vcl"
-    declarations = vcl.compile.load_specification(
+    declarations = loss_pt.load_specification(
         spec_path,
-        backend=vcl.LossBackend.PyTorch,
         logic=vcl.DifferentiableLogic.Vehicle,
     )
 
@@ -265,7 +290,7 @@ def test_pytorch_combined_loss() -> None:
         model[2].weight.data.uniform_(0.5, 1.5)
         model[2].bias.data.zero_()
 
-    def network(x: torch.Tensor) -> torch.Tensor:
+    def network(x: Any) -> Any:
         return model(x.reshape(1, 1)).reshape(1)
 
     # Training data: learn to approximate y = 2*x
@@ -326,10 +351,10 @@ def test_pytorch_combined_loss() -> None:
 
 def test_pytorch_multi_step_training() -> None:
     """Test multi-step training converges with combined loss."""
+    torch, loss_pt = require_pytorch()
     spec_path = Path(__file__).parent / "data" / "test_trainable.vcl"
-    declarations = vcl.compile.load_specification(
+    declarations = loss_pt.load_specification(
         spec_path,
-        backend=vcl.LossBackend.PyTorch,
         logic=vcl.DifferentiableLogic.Vehicle,
     )
 
@@ -350,7 +375,7 @@ def test_pytorch_multi_step_training() -> None:
     torch.nn.init.uniform_(linear2.weight, 0.5, 1.5)
     torch.nn.init.zeros_(linear2.bias)
 
-    def network(x: torch.Tensor) -> torch.Tensor:
+    def network(x: Any) -> Any:
         return model(x.reshape(1, 1)).reshape(1)
 
     # Training data: learn to approximate y = 2*x

@@ -3,7 +3,9 @@
 from pathlib import Path
 
 import pytest
+
 import vehicle_lang as vcl
+from vehicle_lang.loss import _ast as loss_ast
 
 GOLDEN_SPECS_BASE = (
     Path(__file__).parent.parent.parent / "vehicle" / "tests" / "golden" / "compile"
@@ -19,15 +21,18 @@ GOLDEN_SPEC_FILES = [
 @pytest.mark.parametrize("spec_path", GOLDEN_SPEC_FILES)  # type: ignore[misc]
 def test_golden_spec_load(spec_path: Path) -> None:
     """Test that golden specs can be loaded into AST."""
-    vcl.compile._ast.load(spec_path, target=vcl.DifferentiableLogic.DL2)
+    loss_ast.load(spec_path, target=vcl.DifferentiableLogic.DL2)
 
 
 @pytest.mark.parametrize("spec_path", GOLDEN_SPEC_FILES)  # type: ignore[misc]
 def test_golden_spec_tensorflow_compile(spec_path: Path) -> None:
     """Test that golden specs compile to TensorFlow."""
-    output = vcl.load_specification(
+    loss_tf = pytest.importorskip(
+        "vehicle_lang.loss.tensorflow",
+        reason="vehicle_lang[tensorflow] extra is not installed",
+    )
+    output = loss_tf.load_specification(
         spec_path,
-        backend=vcl.LossBackend.TensorFlow,
         logic=vcl.DifferentiableLogic.DL2,
         samplers={},
     )
@@ -41,9 +46,12 @@ def test_golden_spec_tensorflow_compile(spec_path: Path) -> None:
 @pytest.mark.parametrize("spec_path", GOLDEN_SPEC_FILES)  # type: ignore[misc]
 def test_golden_spec_pytorch_compile(spec_path: Path) -> None:
     """Test that golden specs compile to PyTorch."""
-    output = vcl.load_specification(
+    loss_pt = pytest.importorskip(
+        "vehicle_lang.loss.pytorch",
+        reason="vehicle_lang[pytorch] extra is not installed",
+    )
+    output = loss_pt.load_specification(
         spec_path,
-        backend=vcl.LossBackend.PyTorch,
         logic=vcl.DifferentiableLogic.DL2,
         samplers={},
     )
