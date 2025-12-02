@@ -99,7 +99,7 @@ searchDecl decl = do
       NetworkDef -> tell [Network $ NetworkSummary sharedData]
       DatasetDef -> tell [Dataset $ DatasetSummary sharedData]
       ParameterDef s -> tell [Parameter $ ParameterSummary sharedData (isInferable s)]
-      PostulateDef -> return ()
+      BuiltinDef -> return ()
     DefFunction _ _ anns typ body
       | AnnProperty `notElem` anns -> return ()
       | otherwise -> do

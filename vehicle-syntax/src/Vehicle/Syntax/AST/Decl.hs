@@ -151,7 +151,7 @@ data DefAbstractSort
   = NetworkDef
   | DatasetDef
   | ParameterDef ParameterSort
-  | PostulateDef
+  | BuiltinDef
   deriving (Eq, Show, Generic)
 
 instance NFData DefAbstractSort
@@ -164,21 +164,21 @@ instance Pretty DefAbstractSort where
       NetworkDef -> "network"
       DatasetDef -> "dataset"
       ParameterDef {} -> "parameter"
-      PostulateDef {} -> "postulate"
+      BuiltinDef {} -> "postulate"
 
 isExternalResourceSort :: DefAbstractSort -> Bool
 isExternalResourceSort = \case
   NetworkDef -> True
   DatasetDef -> True
   ParameterDef parameterType -> parameterType == NonInferable
-  PostulateDef {} -> False
+  BuiltinDef {} -> False
 
 isExternalResourceDecl :: GenericDecl expr -> Bool
 isExternalResourceDecl decl = maybe False isExternalResourceSort (abstractSortOf decl)
 
 convertToPostulate :: GenericDecl expr -> GenericDecl expr
 convertToPostulate d =
-  DefAbstract (provenanceOf d) (identifierOf d) PostulateDef (typeOf d)
+  DefAbstract (provenanceOf d) (identifierOf d) BuiltinDef (typeOf d)
 
 --------------------------------------------------------------------------------
 -- Annotations options
