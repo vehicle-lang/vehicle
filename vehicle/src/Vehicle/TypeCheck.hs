@@ -4,7 +4,7 @@ module Vehicle.TypeCheck
     typeCheckSolitaryExpr,
     parseAndTypeCheckExpr,
     typeCheckUserProg,
-    loadLibrary,
+    loadModule,
     runCompileMonad,
   )
 where
@@ -33,7 +33,7 @@ import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Builtin.Standard.Instances
 import Vehicle.Data.Builtin.Standard.Type ()
 import Vehicle.Data.Variable.Free.Context
-import Vehicle.Libraries (Library (..), LibraryInfo (..), findLibraryContentFile)
+import Vehicle.Libraries (Library (..), LibraryInfo (..), findModuleFile)
 import Vehicle.Libraries.StandardLibrary (standardLibrary)
 import Vehicle.Prelude.Logging.Instance
 import Vehicle.Syntax.AST.Expr qualified as S
@@ -63,7 +63,7 @@ typeCheck loggingSettings outputAsJSON options@TypeCheckOptions {..} =
 
 parseAndTypeCheckExpr :: (MonadIO m, MonadCompile m) => (FilePath, Text) -> m (Expr Builtin)
 parseAndTypeCheckExpr expr = do
-  standardLibraryProg <- loadLibrary standardLibrary
+  standardLibraryProg <- loadModule standardLibrary (Module ["Definitions"])
   freeCtx <- createFreeCtx [standardLibraryProg]
   vehicleExpr <- parseExprText expr
   scopedExpr <- scopeCheckClosedExpr vehicleExpr
@@ -72,7 +72,7 @@ parseAndTypeCheckExpr expr = do
 
 parseExprText :: (MonadCompile m) => (FilePath, Text) -> m S.Expr
 parseExprText (file, txt) = do
-  let location = (ModulePath [User], file)
+  let location = (userModule, file)
   case runExcept (parseExpr location =<< readExpr txt) of
     Left err -> throwError $ ParseError location err
     Right expr -> return expr
@@ -82,8 +82,8 @@ typeCheckUserProg ::
   TypeCheckOptions ->
   m (Prog Builtin)
 typeCheckUserProg TypeCheckOptions {..} = do
-  imports <- (: []) <$> loadLibrary standardLibrary
-  typedProg <- typeCheckOrLoadProg User imports specification
+  imports <- (: []) <$> loadModule standardLibrary (Module ["Definitions"])
+  typedProg <- typeCheckOrLoadProg userModule imports specification
 
   keepUnusedDeclarationFn <- checkDeclarationNamesPresent typedProg declarationsToCompile
   monomorphisedProg <- monomorphise typedProg keepUnusedDeclarationFn
@@ -130,14 +130,14 @@ typeCheckOrLoadProg ::
   Imports ->
   FilePath ->
   m (Prog Builtin)
-typeCheckOrLoadProg modl imports specificationFile = do
+typeCheckOrLoadProg modul imports specificationFile = do
   spec <- readSpecification specificationFile
   interfaceFileResult <- readObjectFile specificationFile spec
   case interfaceFileResult of
     Just result -> return result
     Nothing -> do
-      vehicleProg <- parseProgText (ModulePath [modl], specificationFile) spec
-      result <- typeCheckProgram modl imports vehicleProg
+      vehicleProg <- parseProgText (modul, specificationFile) spec
+      result <- typeCheckProgram modul imports vehicleProg
       writeObjectFile specificationFile spec result
       return result
 
@@ -149,12 +149,12 @@ parseProgText location txt = do
       Left err -> throwError $ ParseError location err
       Right prog' -> return prog'
 
-loadLibrary :: (MonadIO m, MonadCompile m) => Library -> m (Prog Builtin)
-loadLibrary library = do
+loadModule :: (MonadIO m, MonadCompile m) => Library -> Module -> m (Prog Builtin)
+loadModule library modul = do
   let libname = libraryName $ libraryInfo library
   logCompilerSection MinDetail ("Loading library" <+> quotePretty libname) $ do
-    libraryFile <- findLibraryContentFile library
-    typeCheckOrLoadProg StdLib mempty libraryFile
+    libraryFile <- findModuleFile library modul
+    typeCheckOrLoadProg modul mempty libraryFile
 
 printPropertyTypes ::
   (MonadStdIO m, MonadCompile m, PrintableBuiltin builtin) =>

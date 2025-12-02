@@ -9,6 +9,7 @@ module Vehicle.Prelude.Version
     DecodeResult (..),
     encodeAndWriteVersioned,
     readAndDecodeVersioned,
+    isDirtyRepo,
   )
 where
 
@@ -26,6 +27,9 @@ import Paths_vehicle qualified as Cabal (version)
 
 --------------------------------------------------------------------------------
 -- Current versions
+
+isDirtyRepo :: Bool
+isDirtyRepo = $(gitDirtyTracked)
 
 -- | The imprecise current version of Vehicle. This can be used whenever the
 -- precise version doesn't really matters. This is used when writing out the
@@ -64,7 +68,7 @@ preciseVehicleVersion = showVersion Cabal.version
       hash = $(gitHash)
 
       -- Check if any tracked files have uncommitted changes
-      dirty | $(gitDirtyTracked) = ".dirty"
+      dirty | isDirtyRepo = ".dirty"
             | otherwise          = ""
 
       -- Abbreviate a commit hash while keeping it unambiguous
