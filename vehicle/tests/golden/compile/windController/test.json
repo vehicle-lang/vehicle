@@ -1,19 +1,29 @@
 [
   {
     "name": "TypeCheck",
-    "run": "vehicle typecheck -s spec.vcl",
-    "needs": ["spec.vcl"]
+    "run": "vehicle check -s spec.vcl",
+    "needs": [
+      "spec.vcl"
+    ]
   },
   {
     "name": "List",
     "run": "vehicle list -s spec.vcl -j",
-    "needs": ["spec.vcl"]
+    "needs": [
+      "spec.vcl"
+    ]
   },
   {
     "name": "VNNLib",
-    "run": "vehicle compile queries -s spec.vcl -f VNNLibQueries -o VNNLib.queries/ --network controller:controller.onnx",
-    "needs": ["spec.vcl", "controller.onnx"],
-    "produces": ["VNNLib.queries/*.txt", "VNNLib.queries/*.vcl-plan"],
+    "run": "vehicle compile -s spec.vcl -t VNNLibQueries -o VNNLib.queries/ --network controller:controller.onnx",
+    "needs": [
+      "spec.vcl",
+      "controller.onnx"
+    ],
+    "produces": [
+      "VNNLib.queries/*.txt",
+      "VNNLib.queries/*.vcl-plan"
+    ],
     "ignore": {
       "lines": ".*\"fileHash\".*"
     },
@@ -21,9 +31,15 @@
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile queries -s spec.vcl -f MarabouQueries -o Marabou.queries/ --network controller:controller.onnx",
-    "needs": ["spec.vcl", "controller.onnx"],
-    "produces": ["Marabou.queries/*.txt", "Marabou.queries/*.vcl-plan"],
+    "run": "vehicle compile -s spec.vcl -t MarabouQueries -o Marabou.queries/ --network controller:controller.onnx",
+    "needs": [
+      "spec.vcl",
+      "controller.onnx"
+    ],
+    "produces": [
+      "Marabou.queries/*.txt",
+      "Marabou.queries/*.vcl-plan"
+    ],
     "ignore": {
       "lines": ".*\"fileHash\".*"
     },
@@ -49,6 +65,32 @@
     "ignore": {"files": ["Rocq.v", ".Rocq.aux", "Rocq.glob", "Rocq.vok"]}
   },
   {
+    "name": "Isabelle",
+    "run": "vehicle compile -s spec.vcl -t Isabelle -o isabelle/Isabelle.thy",
+    "needs": [
+      "spec.vcl"
+    ],
+    "produces": [
+      "isabelle/Isabelle.thy"
+    ]
+  },
+  {
+    "name": "IsabelleVerify",
+    "run": "vehicle compile -s spec.vcl -t Isabelle -o isabelle/Isabelle.thy && isabelle build -d vehicle-isabelle/ -d isabelle/ IsabelleTest > /dev/null 2>&1 && echo $? || echo 1",
+    "enabled": false,
+    "needs": [
+      "spec.vcl",
+      "isabelle/ROOT",
+      "../../../../../vehicle-isabelle/ROOT",
+      "../../../../../vehicle-isabelle/Vehicle.thy"
+    ],
+    "ignore": {
+      "files": [
+        "isabelle/Isabelle.thy"
+      ]
+    }
+  },
+  {
     "name": "DL2Loss",
     "run": "vehicle compile loss -s spec.vcl -l DL2Loss -o DL2Loss.vcl",
     "needs": ["spec.vcl"],
@@ -57,19 +99,41 @@
   {
     "name": "MarabouVerify",
     "run": "vehicle verify -s spec.vcl -v Marabou --network controller:controller.onnx",
-    "needs": ["spec.vcl", "controller.onnx"],
-    "external": ["Marabou"]
+    "needs": [
+      "spec.vcl",
+      "controller.onnx"
+    ],
+    "external": [
+      "spec.vcl",
+      "controller.onnx"
+    ]
   },
   {
     "name": "TestVerify",
     "run": "vehicle verify -s spec.vcl -v TestVerifier --network controller:controller.onnx --verifier-location=testVerifier --verifier-args='sat 'controller_X[0]=0.2,controller_X[1]=0.3,controller_Y[0]=3.0''",
-    "needs": ["spec.vcl", "controller.onnx", "../../../testVerifier"],
-    "external": ["TestVerifier"]
+    "needs": [
+      "spec.vcl",
+      "controller.onnx",
+      "../../../testVerifier"
+    ],
+    "external": [
+      "spec.vcl",
+      "controller.onnx",
+      "../../../testVerifier"
+    ]
   },
   {
     "name": "TestVerifyJSON",
     "run": "vehicle --json verify -s spec.vcl -v TestVerifier --network controller:controller.onnx --verifier-location=testVerifier --verifier-args='sat 'controller_X[0]=0.2,controller_X[1]=0.3,controller_Y[0]=3.0''",
-    "needs": ["spec.vcl", "controller.onnx", "../../../testVerifier"],
-    "external": ["TestVerifier"]
+    "needs": [
+      "spec.vcl",
+      "controller.onnx",
+      "../../../testVerifier"
+    ],
+    "external": [
+      "spec.vcl",
+      "controller.onnx",
+      "../../../testVerifier"
+    ]
   }
 ]

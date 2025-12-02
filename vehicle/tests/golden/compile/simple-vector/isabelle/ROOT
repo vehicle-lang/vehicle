@@ -1,0 +1,7 @@
+session IsabelleTest = HOL +
+  options [timeout = 120]
+  sessions
+    Deep_Learning
+    Vehicle
+  theories 
+    "Isabelle"

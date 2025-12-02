@@ -32,5 +32,31 @@
     "needs": ["spec.vcl"],
     "external": ["rocq"],
     "ignore": {"files": ["Rocq.v", ".Rocq.aux", "Rocq.glob", "Rocq.vok"]}
+  },
+  {
+    "name": "Isabelle",
+    "run": "vehicle compile -s spec.vcl -t Isabelle -o isabelle/Isabelle.thy",
+    "needs": [
+      "spec.vcl"
+    ],
+    "produces": [
+      "isabelle/Isabelle.thy"
+    ]
+  },
+  {
+    "name": "IsabelleVerify",
+    "run": "vehicle compile -s spec.vcl -t Isabelle -o isabelle/Isabelle.thy && isabelle build -d vehicle-isabelle/ -d isabelle/ IsabelleTest > /dev/null 2>&1 && echo $? || echo 1",
+    "enabled": false,
+    "needs": [
+      "spec.vcl",
+      "isabelle/ROOT",
+      "../../../../../vehicle-isabelle/ROOT",
+      "../../../../../vehicle-isabelle/Vehicle.thy"
+    ],
+    "ignore": {
+      "files": [
+        "isabelle/Isabelle.thy"
+      ]
+    }
   }
 ]
