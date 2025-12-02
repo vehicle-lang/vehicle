@@ -10,8 +10,7 @@ position token Boolean  ({"True"} | {"False"});
 position token Natural  (digit+);
 position token Rational (digit+ '.' digit+);
 
-position token TokAnnotation ({"@"} ({"network"} | {"dataset"} | {"parameter"} | {"property"} | {"tensor"} | {"instance"}));
-position token TokPostulate {"@postulate"};
+position token TokAnnotation ({"@"} ({"network"} | {"dataset"} | {"parameter"} | {"property"} | {"tensor"} | {"instance"} | {"builtin"}));
 
 position token TokLeftBrace  {"{"};
 position token TokRightBrace {"}"};
@@ -287,7 +286,6 @@ DefAnn.       Decl ::= TokAnnotation DeclAnnOpts;
 DefType.      Decl ::= "type" Name [NameBinder] "=" Expr;
 DefFunType.   Decl ::= Name TokElemOf Expr;
 DefFunExpr.   Decl ::= Name [NameBinder] "=" Expr;
-DefPostulate. Decl ::= TokPostulate DeclAnnOpts;
 DefRecord.    Decl ::= "record" Name "where" "{" [RecordFieldDef] "}";
 
 separator Decl ";";

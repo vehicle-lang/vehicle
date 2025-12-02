@@ -72,7 +72,7 @@ readResourceInDecl decl = case decl of
     normDeclType <- normaliseInEmptyEnv declType
     let gluedType = Glued declType normDeclType
     maybeNewDecl <- case defType of
-      PostulateDef {} -> return Nothing
+      BuiltinDef {} -> return Nothing
       ParameterDef sort -> readParameter p ident gluedType sort
       DatasetDef -> readDataset p ident gluedType
       NetworkDef -> readNetwork p ident gluedType

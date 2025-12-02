@@ -47,13 +47,7 @@ instance Delaborate V.Decl [B.Decl] where
       defFun <- B.DefFunType (delabIdentifier n) tokElemOf <$> delabM t
 
       defAnn <- case a of
-        V.PostulateDef -> do
-          let nameOption = mkNameAnnOption "name" (V.nameOf n)
-          typeOption <- mkTypeAnnOption ("standard", t)
-          -- linearOpt <- traverse (mkTypeAnnOption . ("linearity",)) linearityType
-          -- polarityOpt <- traverse (mkTypeAnnOption . ("polarity",)) polarityType
-          let declOptions = [nameOption, typeOption] ++ fromMaybe [] (sequence [Nothing, Nothing])
-          return $ B.DefPostulate tokPostulate (B.DeclAnnWithOpts declOptions)
+        V.BuiltinDef -> return $ delabAnn builtinAnn []
         V.NetworkDef -> return $ delabAnn networkAnn []
         V.DatasetDef -> return $ delabAnn datasetAnn []
         V.ParameterDef sort -> return $ case sort of
@@ -444,9 +438,3 @@ delabVecLiteral args = do
 
 mkBoolAnnOption :: Text -> Bool -> B.DeclAnnOption
 mkBoolAnnOption name value = B.InferAnnOption (mkToken B.TokAnnInferOpt name) (B.Literal (B.BoolLiteral (delabBoolLit value)))
-
-mkNameAnnOption :: Text -> Text -> B.DeclAnnOption
-mkNameAnnOption name value = B.NameAnnOption (mkToken B.TokAnnNameOpt name) (mkToken B.Name value)
-
-mkTypeAnnOption :: (MonadDelab m) => (Text, V.Expr) -> m B.DeclAnnOption
-mkTypeAnnOption (name, value) = B.TypeAnnOption (mkToken B.Name name) <$> delabM value

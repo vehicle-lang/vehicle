@@ -33,6 +33,8 @@ mkProvenance tk = tkProvenance tk <$> getFile
 tokType :: Int -> B.Expr
 tokType l = B.Type (mkToken B.TokType ("Type" <> pack (show l)))
 
+builtinAnn = mkToken B.TokAnnotation "@builtin"
+
 networkAnn = mkToken B.TokAnnotation "@network"
 
 datasetAnn = mkToken B.TokAnnotation "@dataset"
@@ -40,8 +42,6 @@ datasetAnn = mkToken B.TokAnnotation "@dataset"
 parameterAnn = mkToken B.TokAnnotation "@parameter"
 
 propertyAnn = mkToken B.TokAnnotation "@property"
-
-tokPostulate = mkToken B.TokPostulate "@postulate"
 
 differentiableLogicAnn = mkToken B.TokAnnotation "@differentiableLogic"
 

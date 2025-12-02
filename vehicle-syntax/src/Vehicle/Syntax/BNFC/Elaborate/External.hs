@@ -15,7 +15,6 @@ import Control.Monad.Except (MonadError (..), throwError)
 import Control.Monad.Reader (runReaderT)
 import Data.Bitraversable (bitraverse)
 import Data.Either (partitionEithers)
-import Data.List (find)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
 import Data.Map qualified as Map (insert, lookup)
@@ -109,15 +108,6 @@ elabDeclGroup anns = \case
     d' <- elabDefAbstract n t abstractType
     return (d', ds)
 
-  -- Standalone postulate annotation
-  B.DefPostulate tk annOpts :| ds -> case anns of
-    [] -> do
-      d' <- elabPostulate tk annOpts
-      return (d', ds)
-    (annTk, _) : _ -> do
-      p <- mkProvenance annTk
-      throwError $ AnnotationWithNoDef p (tkSymbol annTk)
-
   -- Record declaration
   B.DefRecord tk fields :| ds -> do
     p <- mkProvenance tk
@@ -155,17 +145,6 @@ elabDefAbstractSort defName anns = do
       ann1 : ann2 : _ -> do
         p <- mkProvenance defName
         throwError $ MultiplyAnnotatedAbstractDef p (tkSymbol defName) ann1 ann2
-
-elabPostulate ::
-  (MonadElab m) =>
-  B.TokPostulate ->
-  B.DeclAnnOpts ->
-  m (V.GenericDecl UnparsedExpr)
-elabPostulate tok opts = do
-  let allowedOptions = Set.fromList ["name", "standard", "polarity", "linearity"]
-  optsMap <- validateOpts tok allowedOptions opts
-  (name, standardType, _linearityType, _polarityType) <- elabPostulateOptions tok optsMap
-  elabDefAbstract name standardType V.PostulateDef
 
 elabDefAbstract ::
   (MonadElab m) =>
@@ -219,6 +198,9 @@ elabDefFunctionAnnotations defName anns = do
 parseAnnotation :: (MonadElab m) => Annotation -> m (Either V.DefAbstractSort V.Annotation)
 parseAnnotation (tkName, opts) = do
   case tkSymbol tkName of
+    "@builtin" -> do
+      validateEmptyOpts tkName opts
+      return $ Left V.BuiltinDef
     "@network" -> do
       validateEmptyOpts tkName opts
       return $ Left V.NetworkDef
@@ -279,38 +261,9 @@ elabParameterOptions opts =
         _ -> do
           throwError $ InvalidAnnotationOptionValue InferableOption expr'
 
-elabPostulateOptions :: (MonadElab m) => B.TokPostulate -> [B.DeclAnnOption] -> m (B.Name, B.Expr, Maybe B.Expr, Maybe B.Expr)
-elabPostulateOptions tokPostulate opts = do
-  name <- case mapMaybe getNameOption opts of
-    [] -> do
-      p <- mkProvenance tokPostulate
-      throwError $ MissingAnnotationOption p (tkSymbol tokPostulate) "name"
-    (_, nameValue) : _ -> return nameValue
-
-  let typeOpts = mapMaybe getTypeOption opts
-  standardType <- case find (\(a, _b) -> tkSymbol a == "standard") typeOpts of
-    Nothing -> do
-      p <- mkProvenance tokPostulate
-      throwError $ MissingAnnotationOption p (tkSymbol tokPostulate) "standard type"
-    Just (_, standardType) -> return standardType
-
-  let linearityType = snd <$> find (\(n, _) -> tkSymbol n == "linearity") typeOpts
-  let polarityType = snd <$> find (\(n, _) -> tkSymbol n == "polarity") typeOpts
-  return (name, standardType, linearityType, polarityType)
-
-getNameOption :: B.DeclAnnOption -> Maybe (B.TokAnnNameOpt, B.Name)
-getNameOption = \case
-  B.NameAnnOption optTk name -> Just (optTk, name)
-  _ -> Nothing
-
 getInferOption :: B.DeclAnnOption -> Maybe (B.TokAnnInferOpt, B.Expr)
 getInferOption = \case
   B.InferAnnOption optTk name -> Just (optTk, name)
-  _ -> Nothing
-
-getTypeOption :: B.DeclAnnOption -> Maybe (B.Name, B.Expr)
-getTypeOption = \case
-  B.TypeAnnOption optTk altType -> Just (optTk, altType)
   _ -> Nothing
 
 --------------------------------------------------------------------------------
