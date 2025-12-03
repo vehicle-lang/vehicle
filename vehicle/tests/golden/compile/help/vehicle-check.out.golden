@@ -1,5 +1,5 @@
-Usage: vehicle check (-s|--specification FILE) [-t|--typeSystem TYPE_SYSTEM] 
-                     [-e|--declaration NAME]
+Usage: vehicle typecheck (-s|--specification FILE) [-t|--typeSystem TYPE_SYSTEM] 
+                         [-e|--declaration NAME]
 
   Type-check a .vcl specification file.
 

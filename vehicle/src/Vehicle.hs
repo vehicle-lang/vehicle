@@ -65,9 +65,9 @@ runVehicle Options {..} = do
         else case modeOptions of
           Nothing ->
             fatalError
-              "No mode provided. Please use one of 'check', 'compile','verify', 'check', 'export', 'list'"
+              "No mode provided. See `vehicle --help` for list of available modes."
           Just mode -> case mode of
-            Check options -> typeCheck logSettings outputAsJson options
+            TypeCheck options -> typeCheck logSettings outputAsJson options
             Compile options -> compile logSettings outputAsJson options
             Verify options -> verify logSettings outputAsJson options
             Validate options -> validate logSettings outputAsJson options

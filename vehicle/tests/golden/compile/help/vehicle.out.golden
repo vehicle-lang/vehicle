@@ -23,7 +23,7 @@ Available options:
   -h,--help                Show this help text
 
 Available commands:
-  check                    Type-check a .vcl specification file.
+  typecheck                Type-check a .vcl specification file.
   compile                  Compile a .vcl specification file.
   verify                   Verify whether properties in a .vcl specification
                            file are true or false.

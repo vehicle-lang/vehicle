@@ -12,6 +12,8 @@
   `vehicle compile queries` mode has a `--format` option to replace the old `--target option`.
   This command is only used internally and therefore this is not considered a breaking change.
 
+* The `vehicle check` command has been renamed `vehicle typecheck`.
+
 ### Verifier backend
 
 * Missing bounds on network inputs is now a hard error rather than a warning.
@@ -24,6 +26,11 @@
 * Decreased the size of the generated Marabou and VNNLIB query files (usually by ~50%) by eliminating some redundant inequalities.
 
 * Fixed bug where unable to compile trivial inequalities (e.g. `3 < 4`, `x < x`)
+
+### Python backend
+
+* The module `vehicle_lang.check` has been renamed `vehicle_lang.typecheck` and the
+  function it contains has been renamed from `check` to `typecheck`.
 
 ## v0.22
 

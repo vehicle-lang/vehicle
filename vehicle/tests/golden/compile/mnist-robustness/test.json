@@ -1,22 +1,22 @@
 [
   {
     "name": "TypeCheck",
-    "run": "vehicle check -s spec.vcl",
+    "run": "vehicle typecheck -s spec.vcl",
     "needs": ["spec.vcl"]
   },
   {
     "name": "CheckLinearity",
-    "run": "vehicle check -s spec.vcl -t Linearity",
+    "run": "vehicle typecheck -s spec.vcl -t Linearity",
     "needs": ["spec.vcl"]
   },
   {
     "name": "CheckPolarity",
-    "run": "vehicle check -s spec.vcl -t Polarity",
+    "run": "vehicle typecheck -s spec.vcl -t Polarity",
     "needs": ["spec.vcl"]
   },
   {
     "name": "CheckDecidability",
-    "run": "vehicle check -s spec.vcl -t Decidability",
+    "run": "vehicle typecheck -s spec.vcl -t Decidability",
     "needs": ["spec.vcl"]
   },
   {

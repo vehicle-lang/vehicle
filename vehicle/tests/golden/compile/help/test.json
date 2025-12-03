@@ -4,8 +4,8 @@
     "run": "vehicle --help"
   },
   {
-    "name": "vehicle-check",
-    "run": "vehicle check --help"
+    "name": "vehicle-typecheck",
+    "run": "vehicle typecheck --help"
   },
   {
     "name": "vehicle-compile",

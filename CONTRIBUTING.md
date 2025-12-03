@@ -277,7 +277,7 @@ These tests are specified in `test.json` files in [tests/golden](./vehicle/tests
 [
   {
     "name": "TypeCheck",
-    "run": "vehicle check -s spec.vcl",
+    "run": "vehicle typecheck -s spec.vcl",
     "needs": ["spec.vcl"]
   },
   {
