@@ -17,10 +17,9 @@ type Name = Text
 --------------------------------------------------------------------------------
 -- Module system
 
-data Module
-  = User
-  | StdLib
-  | RecordModule Name
+newtype Module = Module
+  { modules :: [String]
+  }
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData Module
@@ -34,34 +33,13 @@ instance FromJSON Module
 instance Serialize Module
 
 instance Pretty Module where
-  pretty = \case
-    User -> "User"
-    StdLib -> "StdLib"
-    RecordModule name -> pretty name
-
-newtype ModulePath = ModulePath
-  { modules :: [Module]
-  }
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData ModulePath
-
-instance Hashable ModulePath
-
-instance ToJSON ModulePath
-
-instance FromJSON ModulePath
-
-instance Serialize ModulePath
-
-instance Pretty ModulePath where
-  pretty (ModulePath m) = concatWith (surround dot) (fmap pretty m)
+  pretty (Module names) = concatWith (surround dot) (fmap pretty names)
 
 --------------------------------------------------------------------------------
 -- Identifiers
 
 data Identifier = Identifier
-  { modulePath :: ModulePath,
+  { modulePath :: Module,
     identifierName :: Name
   }
   deriving (Eq, Ord, Show, Generic)
@@ -87,11 +65,14 @@ class HasIdentifier a where
 instance HasIdentifier Identifier where
   identifierOf = id
 
+userModule :: Module
+userModule = Module ["User"]
+
 stdlibIdentifier :: Name -> Identifier
-stdlibIdentifier = Identifier (ModulePath [StdLib])
+stdlibIdentifier = Identifier (Module ["Definitions"])
 
 isUserCode :: (HasIdentifier a) => a -> Bool
-isUserCode object = User `elem` modules (modulePath $ identifierOf object)
+isUserCode object = modulePath (identifierOf object) == userModule
 
 changeName :: Identifier -> Name -> Identifier
 changeName Identifier {..} newName = Identifier {identifierName = newName, ..}

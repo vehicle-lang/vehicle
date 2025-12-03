@@ -5,14 +5,21 @@ module Vehicle.Libraries.StandardLibrary
   )
 where
 
-import Data.ByteString (ByteString)
+import Data.Bifunctor (Bifunctor (..))
 import Data.FileEmbed (embedFile, makeRelativeToProject)
+import Data.Map (Map, fromList)
+import Data.Text (Text)
 import Data.Text.Encoding (decodeUtf8)
 import Vehicle.Libraries
 import Vehicle.Prelude
 
-standardLibraryContentBS :: ByteString
-standardLibraryContentBS = $(makeRelativeToProject "lib/std.vcl" >>= embedFile)
+standardLibraryContentBS :: Map Module Text
+standardLibraryContentBS =
+  fromList $
+    fmap
+      (bimap Module decodeUtf8)
+      [ (["Definitions"], $(makeRelativeToProject "lib/Definitions.vcl" >>= embedFile))
+      ]
 
 standardLibrary :: Library
 standardLibrary =
@@ -22,5 +29,5 @@ standardLibrary =
           { libraryName = "std",
             libraryVersion = preciseVehicleVersion
           },
-      libraryContent = decodeUtf8 standardLibraryContentBS
+      libraryContent = standardLibraryContentBS
     }

@@ -1,4 +1,4 @@
 {
   "name": "TypeCheck",
-  "run": "vehicle check -s missingInputFile.vcl"
+  "run": "vehicle typecheck -s missingInputFile.vcl"
 }

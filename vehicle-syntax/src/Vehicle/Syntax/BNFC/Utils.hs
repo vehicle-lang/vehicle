@@ -5,7 +5,7 @@ module Vehicle.Syntax.BNFC.Utils where
 import Control.Monad.Except (MonadError)
 import Control.Monad.Reader (MonadReader (..), asks)
 import Data.Text (Text, pack)
-import Vehicle.Syntax.AST.Name (ModulePath)
+import Vehicle.Syntax.AST.Name (Module)
 import Vehicle.Syntax.AST.Provenance
 import Vehicle.Syntax.External.Abs qualified as B
 import Vehicle.Syntax.Parse.Error (ParseError (..))
@@ -19,9 +19,9 @@ type MonadElab m =
 pattern InferableOption :: Text
 pattern InferableOption = "infer"
 
-type ParseLocation = (ModulePath, FilePath)
+type ParseLocation = (Module, FilePath)
 
-getModule :: (MonadElab m) => m ModulePath
+getModule :: (MonadElab m) => m Module
 getModule = asks fst
 
 getFile :: (MonadElab m) => m FilePath

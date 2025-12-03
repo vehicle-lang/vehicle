@@ -14,7 +14,7 @@ import Prettyprinter (Pretty (..), (<+>))
 import Vehicle.Compile.Arity
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE (eval)
-import Vehicle.Compile.Prelude (Doc, HasProvenance (..), Ix (..), ModulePath (..), Name, Provenance (..), getBinderName, mkExplicitBinder, normAppList)
+import Vehicle.Compile.Prelude (Doc, HasProvenance (..), Ix (..), Name, Provenance (..), getBinderName, mkExplicitBinder, normAppList)
 import Vehicle.Compile.Prelude qualified as S (Binder, Decl, Expr (..), GenericDecl (..), GenericProg (..), Prog)
 import Vehicle.Compile.Print
 import Vehicle.Data.Builtin.Interface (Accessor (..))
@@ -24,7 +24,7 @@ import Vehicle.Data.Code.Interface.Args
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Tensor (Tensor, mapTensor)
 import Vehicle.Data.Variable.Bound.Context.Name
-import Vehicle.Prelude (Annotation (..), GenericArg (..), HasName (..), HasType (..), Identifier (..), explicit, indent, jsonOptions, line, resolutionError, squotes)
+import Vehicle.Prelude (Annotation (..), GenericArg (..), HasName (..), HasType (..), Identifier (..), explicit, indent, jsonOptions, line, resolutionError, squotes, userModule)
 import Vehicle.Prelude.Logging.Class
 import Vehicle.Syntax.Prelude (developerError)
 
@@ -411,7 +411,7 @@ fromJDecl = \case
     runFreshNameBoundContext $ do
       typ' <- fromJType typ
       body' <- fromJExpr body
-      let ident = Identifier (ModulePath []) name
+      let ident = Identifier userModule name
       return $ S.DefFunction p ident [AnnProperty] typ' body'
 
 fromJType :: (MonadNameContext m) => JType -> m (S.Expr LossBuiltin)

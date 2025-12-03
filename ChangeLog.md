@@ -12,6 +12,8 @@
   `vehicle compile queries` mode has a `--format` option to replace the old `--target option`.
   This command is only used internally and therefore this is not considered a breaking change.
 
+* The `vehicle check` command has been renamed `vehicle typecheck`.
+
 ### Verifier backend
 
 * Missing bounds on network inputs is now a hard error rather than a warning.
@@ -27,7 +29,12 @@
 
 ### Python version support
 
-* We have dropped python 3.9 support since it has reached End-of-Life.
+* Dropped Python 3.9 support now that it has reached end-of-life upstream.
+
+### Python backend
+
+* The module `vehicle_lang.check` has been renamed `vehicle_lang.typecheck` and the
+  function it contains has been renamed from `check` to `typecheck`.
 
 ## v0.22
 

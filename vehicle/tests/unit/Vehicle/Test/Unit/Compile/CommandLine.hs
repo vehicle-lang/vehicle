@@ -72,13 +72,13 @@ checkModeTests =
     "checkMode"
     [ parserTest
         "basic"
-        "vehicle check \
+        "vehicle typecheck \
         \--specification test/spec.vcl"
         $ Options
           { globalOptions = defaultGlobalOptions,
             modeOptions =
               Just $
-                Check $
+                TypeCheck $
                   TypeCheckOptions
                     { specification = "test/spec.vcl",
                       secondaryTypeSystem = Nothing,

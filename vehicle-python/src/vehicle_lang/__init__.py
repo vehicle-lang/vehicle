@@ -1,14 +1,14 @@
 from typing import List
 
-from . import loss, session
+from . import compile, loss, session
 from ._version import VERSION
-from .check import check
 from .compile import call_vehicle, compile_specification
 from .error import VehicleError, VehicleInternalError
 from .export import export_to_solver
 from .list import list
 from .loss.error import VehicleBuiltinUnsupported, VehiclePropertyNotFound
 from .session.error import VehicleSessionClosed, VehicleSessionUsed
+from .typecheck import TypeSystem, typecheck
 from .typing import (
     DeclarationName,
     DifferentiableLogic,
@@ -16,7 +16,6 @@ from .typing import (
     LossBackend,
     QuantifiedVariableName,
     QueryFormat,
-    TypeSystem,
     Verifier,
 )
 from .validate import validate
@@ -24,8 +23,9 @@ from .verify import verify
 
 __all__: List[str] = [
     "VERSION",
-    # Check
-    "check",
+    # Typecheck
+    "TypeSystem",
+    "typecheck",
     # Compile
     "compile_specification",
     # Loss helpers
@@ -56,6 +56,5 @@ __all__: List[str] = [
     "LossBackend",
     "QueryFormat",
     "Verifier",
-    "TypeSystem",
     "ExportTarget",
 ]
