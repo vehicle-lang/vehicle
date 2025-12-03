@@ -70,7 +70,7 @@ defaultGlobalOptions =
     }
 
 data ModeOptions
-  = Check TypeCheckOptions
+  = TypeCheck TypeCheckOptions
   | Compile CompileOptions
   | Verify VerifyOptions
   | Validate ValidateOptions
@@ -146,7 +146,7 @@ modeOptionsParser :: Parser (Maybe ModeOptions)
 modeOptionsParser =
   optional $
     hsubparser $
-      command "check" typeCheckParserInfo
+      command "typecheck" typeCheckParserInfo
         <> command "compile" compileParserInfo
         <> command "verify" verifyParserInfo
         <> command "validate" validateParserInfo
@@ -172,7 +172,7 @@ typeCheckParser =
     <*> declarationParser
 
 typeCheckParserInfo :: ParserInfo ModeOptions
-typeCheckParserInfo = info (Check <$> typeCheckParser) typeCheckDescription
+typeCheckParserInfo = info (TypeCheck <$> typeCheckParser) typeCheckDescription
 
 --------------------------------------------------------------------------------
 -- List mode

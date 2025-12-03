@@ -2,7 +2,6 @@ from typing import List
 
 from . import compile, session
 from ._version import VERSION
-from .check import check
 from .compile import (
     DefaultPyTorchSampler,
     DefaultTensorFlowSampler,
@@ -17,6 +16,7 @@ from .error import VehicleError, VehicleInternalError
 from .export import export_to_solver
 from .list import list
 from .session.error import VehicleSessionClosed, VehicleSessionUsed
+from .typecheck import TypeSystem, typecheck
 from .typing import (
     DeclarationName,
     DifferentiableLogic,
@@ -24,7 +24,6 @@ from .typing import (
     LossBackend,
     QuantifiedVariableName,
     QueryFormat,
-    TypeSystem,
     Verifier,
 )
 from .validate import validate
@@ -32,8 +31,8 @@ from .verify import verify
 
 __all__: List[str] = [
     "VERSION",
-    # Check
-    "check",
+    # Typecheck
+    "TypeSystem" "typecheck",
     # Compile
     "compile_specification",
     "load_specification",
@@ -68,6 +67,5 @@ __all__: List[str] = [
     "LossBackend",
     "QueryFormat",
     "Verifier",
-    "TypeSystem",
     "ExportTarget",
 ]
