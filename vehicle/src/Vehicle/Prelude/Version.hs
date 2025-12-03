@@ -28,8 +28,13 @@ import Paths_vehicle qualified as Cabal (version)
 --------------------------------------------------------------------------------
 -- Current versions
 
+#ifdef releaseBuild
+isDirtyRepo :: Bool
+isDirtyRepo = False
+#else
 isDirtyRepo :: Bool
 isDirtyRepo = $(gitDirtyTracked)
+#endif
 
 -- | The imprecise current version of Vehicle. This can be used whenever the
 -- precise version doesn't really matters. This is used when writing out the
