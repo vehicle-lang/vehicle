@@ -78,7 +78,7 @@ checkModeTests =
           { globalOptions = defaultGlobalOptions,
             modeOptions =
               Just $
-                Check $
+                TypeCheck $
                   TypeCheckOptions
                     { specification = "test/spec.vcl",
                       secondaryTypeSystem = Nothing,
