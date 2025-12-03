@@ -139,7 +139,7 @@ Therefore, simply calling ``verify`` every time you want to check the status
 of a specification may not be desirable.
 
 Vehicle allows you to avoid unnecessary re-verification using the notion of
-a __verification cache__.
+a *verification cache*.
 
 Structure of a verification cache
 +++++++++++++++++++++++++++++++++

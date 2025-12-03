@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from fractions import Fraction
 from typing import TYPE_CHECKING, Any, Sequence, cast
