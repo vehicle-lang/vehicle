@@ -868,7 +868,7 @@ formatCompileError = \case
           "The property"
             <+> quotePretty ident
             <+> "cannot be compiled as cannot deduce lower and upper bounds for the input of"
-            <+> lineIndent (prettyFriendly (WithContext (VFreeVar (Identifier (ModulePath [User]) networkName) [explicit inputValue]) ctx))
+            <+> lineIndent (prettyFriendly (WithContext (VFreeVar (Identifier userModule networkName) [explicit inputValue]) ctx))
             <> line
             <> "In particular,"
               <+> missingBounds unboundedInputs

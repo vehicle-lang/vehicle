@@ -46,9 +46,9 @@ typeCheckProg ::
 typeCheckProg modul instanceCandidates freeCtx prog@(Main uncheckedProg) =
   logCompilerPass TypeChecking $
     runTypeCheckerTInitially freeCtx instanceCandidates $ do
-      let unusedDecls = case modul of
-            User -> completelyUnusedDeclarations (createDependencyGraph prog)
-            _ -> mempty
+      let unusedDecls
+            | modul == userModule = completelyUnusedDeclarations (createDependencyGraph prog)
+            | otherwise = mempty
       logDebug MaxDetail $ "Good" <+> prettySet unusedDecls
       xs <- typeCheckDecls unusedDecls uncheckedProg
       return $ Main xs

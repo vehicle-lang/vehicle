@@ -99,7 +99,7 @@ pruneUnusedDeclarations prog dependencyGraph declarationsToCompile
   | otherwise = do
       logCompilerSection2 MinDetail "pruning unused declarations" $ do
         startingVertices <- forM declarationsToCompile $ \name ->
-          case vertexFromIdent dependencyGraph (Identifier (ModulePath [User]) name) of
+          case vertexFromIdent dependencyGraph (Identifier userModule name) of
             Just vertex -> return vertex
             Nothing ->
               -- This should have been caught earlier when we first prune the declarations
