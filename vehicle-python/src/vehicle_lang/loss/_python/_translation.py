@@ -73,7 +73,7 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
     def translate_Main(self, program: vcl.Main) -> py.Module:
         return py.Module(
             body=[
-                # NOTE: 'vehicle.ast' is imported for 'Tensor'
+                # NOTE: 'vehicle_lang.loss._ast._nodes' is imported for 'Tensor'
                 #       which is used to translate vcl.Tensor
                 py.Import(
                     names=[

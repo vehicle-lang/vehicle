@@ -25,6 +25,10 @@
 
 * Fixed bug where unable to compile trivial inequalities (e.g. `3 < 4`, `x < x`)
 
+### Python version support
+
+* We have dropped python 3.9 support since it has reached End-of-Life.
+
 ## v0.22
 
 ### Verifier backend

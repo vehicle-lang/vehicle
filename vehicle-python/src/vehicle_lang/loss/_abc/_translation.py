@@ -1,12 +1,11 @@
 from abc import ABCMeta, abstractmethod
 from typing import Generic
 
-# from ... import ast as vcl_ast
 from .._ast import _nodes as vcl_ast
 from . import _types as vcl_var
 
 ################################################################################
-### Translation from vehicle_lang AST to Python AST
+### Translation from Vehicle AST to Python AST
 ################################################################################
 
 
