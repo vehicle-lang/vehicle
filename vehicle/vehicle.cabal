@@ -18,7 +18,7 @@ tested-with:
 -- Standard library
 -- Test files
 extra-source-files:
-  lib/std.vcl
+  lib/**/*.vcl
   tests/datasets/*.idx
   tests/golden/**/*.golden
   tests/golden/**/*.idx
