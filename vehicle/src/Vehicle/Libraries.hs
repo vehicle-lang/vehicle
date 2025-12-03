@@ -9,7 +9,7 @@ module Vehicle.Libraries
   )
 where
 
-import Control.Exception (IOException, catch, handle)
+import Control.Exception
 import Control.Monad (forM_, unless)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.Aeson (decode)
