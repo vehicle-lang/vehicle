@@ -137,7 +137,7 @@ data InstanceArgOrigin builtin = ArgOrigin
   deriving (Show)
 
 data InstanceTypeRestrictionOrigin builtin = TypeRestrictionOrigin
-  { freeEnv :: FreeEnv builtin,
+  { freeEnv :: FreeCtx builtin,
     restrictedDeclProv :: DeclProvenance,
     restrictedDeclSort :: Either RestrictedDecl RestrictedRecordField,
     restrictedDeclType :: Type builtin

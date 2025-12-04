@@ -24,60 +24,64 @@ class (PrintableBuiltin builtin, MonadLogger m) => MonadFreeContext builtin m wh
   -- | Adds a new decl to the free variable context.
   addDeclEntryToContext :: FreeCtxEntry builtin -> m a -> m a
 
-  -- | Returns the current free variable context
+  -- | Returns the current free variable context (may be expensive, so should use `getDeclEntry` in preference)
   getFreeCtx :: Proxy builtin -> m (FreeCtx builtin)
+
+  -- | Lookup the decl for a particular identifier entry
+  getDeclEntry :: Proxy builtin -> Identifier -> m (FreeCtxEntry builtin)
 
 instance (Monoid w, MonadFreeContext builtin m) => MonadFreeContext builtin (WriterT w m) where
   addDeclEntryToContext = mapWriterT . addDeclEntryToContext
   getFreeCtx = lift . getFreeCtx
+  getDeclEntry proxy = lift . getDeclEntry proxy
 
 instance (MonadFreeContext builtin m) => MonadFreeContext builtin (ReaderT w m) where
   addDeclEntryToContext = mapReaderT . addDeclEntryToContext
   getFreeCtx = lift . getFreeCtx
+  getDeclEntry proxy = lift . getDeclEntry proxy
 
 instance (MonadFreeContext builtin m) => MonadFreeContext builtin (StateT w m) where
   addDeclEntryToContext = mapStateT . addDeclEntryToContext
   getFreeCtx = lift . getFreeCtx
+  getDeclEntry proxy = lift . getDeclEntry proxy
 
 instance (MonadFreeContext builtin m) => MonadFreeContext builtin (BoundContextT builtin2 m) where
   addDeclEntryToContext = mapBoundContextT . addDeclEntryToContext
   getFreeCtx = lift . getFreeCtx
+  getDeclEntry proxy = lift . getDeclEntry proxy
 
 instance (MonadFreeContext builtin m) => MonadFreeContext builtin (TensorBoundContextT m) where
   addDeclEntryToContext = mapTensorBoundContextT . addDeclEntryToContext
   getFreeCtx = lift . getFreeCtx
+  getDeclEntry proxy = lift . getDeclEntry proxy
 
 instance (MonadFreeContext builtin m) => MonadFreeContext builtin (NameBoundContextT m) where
   addDeclEntryToContext = mapNameBoundContextT . addDeclEntryToContext
   getFreeCtx = lift . getFreeCtx
+  getDeclEntry proxy = lift . getDeclEntry proxy
 
 instance (MonadFreeContext builtin m) => MonadFreeContext builtin (IdentityT m) where
   addDeclEntryToContext = mapIdentityT . addDeclEntryToContext
   getFreeCtx = lift . getFreeCtx
+  getDeclEntry proxy = lift . getDeclEntry proxy
 
 instance (MonadFreeContext builtin m) => MonadFreeContext builtin (SupplyT s m) where
   addDeclEntryToContext = mapSupplyT . addDeclEntryToContext
   getFreeCtx = lift . getFreeCtx
+  getDeclEntry proxy = lift . getDeclEntry proxy
 
 instance (MonadFreeContext builtin m) => MonadFreeContext builtin (ExceptT s m) where
   addDeclEntryToContext = mapExceptT . addDeclEntryToContext
   getFreeCtx = lift . getFreeCtx
+  getDeclEntry proxy = lift . getDeclEntry proxy
 
 instance (MonadFreeContext builtin m) => MonadFreeContext builtin (MaybeT m) where
   addDeclEntryToContext = mapMaybeT . addDeclEntryToContext
   getFreeCtx = lift . getFreeCtx
+  getDeclEntry proxy = lift . getDeclEntry proxy
 
 --------------------------------------------------------------------------------
 -- Operations
-
-getDeclEntry ::
-  (MonadLogger m, MonadFreeContext builtin m, HasCallStack) =>
-  Proxy builtin ->
-  Identifier ->
-  m (FreeCtxEntry builtin)
-getDeclEntry proxy ident = do
-  ctx <- getFreeCtx proxy
-  return $ lookupInFreeCtx ident ctx
 
 getDeclType ::
   (MonadLogger m, MonadFreeContext builtin m, HasCallStack) =>
@@ -105,3 +109,8 @@ getFreeEnv ::
 getFreeEnv = do
   ctx <- getFreeCtx (Proxy @builtin)
   return $ fmap snd ctx
+
+lookupIdentValue :: (MonadFreeContext builtin m) => Identifier -> m (Value builtin)
+lookupIdentValue ident = do
+  env <- getFreeEnv
+  return $ lookupIdentValueInEnv env ident

@@ -20,7 +20,7 @@ import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Variable.Bound.Context.Name
-import Vehicle.Data.Variable.Free.Context (MonadFreeContext, getFreeEnv)
+import Vehicle.Data.Variable.Free.Context (MonadFreeContext)
 
 --------------------------------------------------------------------------------
 -- Unblocking
@@ -328,9 +328,8 @@ unblockAtTensor unblock (AtTensorArgs tElem d ds xs i) = do
   i' <- unblockIndexValue i
   liftIf xs' $ \xs'' ->
     liftIf i' $ \i'' -> do
-      freeEnv <- getFreeEnv
       nameCtx <- getNameContext
-      evalAtTensor nameCtx (evalApp freeEnv) (eval freeEnv) $ AtTensorArgs tElem d ds xs'' i''
+      evalAtTensor nameCtx evalApp eval $ AtTensorArgs tElem d ds xs'' i''
 
 unblockForeachTensor ::
   (MonadUnblock m) =>
@@ -339,9 +338,8 @@ unblockForeachTensor ::
 unblockForeachTensor (ForeachTensorArgs tElem d ds fn) = do
   d' <- unblockNatValue d
   liftIf d' $ \d'' -> do
-    freeEnv <- getFreeEnv
     nameCtx <- getNameContext
-    unoptimisedEvalForeachTensor nameCtx (evalApp freeEnv) $ ForeachTensorArgs tElem d'' ds fn
+    unoptimisedEvalForeachTensor nameCtx evalApp $ ForeachTensorArgs tElem d'' ds fn
 
 --------------------------------------------------------------------------------
 -- Unblocking operations

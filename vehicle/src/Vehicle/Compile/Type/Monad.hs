@@ -157,7 +157,7 @@ createFreshInstanceConstraint auxiliaryConstraint boundCtx p origin relevance tc
   (metaID, metaExpr) <- freshSolutionMeta p tcExpr boundCtx
 
   context <- createFreshConstraintCtx p boundCtx
-  nTCExpr <- normaliseInEnv (toNamedBoundCtx boundCtx) env tcExpr
+  nTCExpr <- eval (toNamedBoundCtx boundCtx) env tcExpr
   let goal = parseInstanceGoal nTCExpr
   let constraint = WithContext (Resolve origin metaID relevance goal) context
 
@@ -224,7 +224,7 @@ solveMeta meta solution solutionCtx = do
     Nothing -> do
       let abstractedSolution = abstractOverCtx (metaCtx metaInfo) solution
       let env = boundContextToEnv solutionCtx
-      gluedSolution <- Glued abstractedSolution <$> normaliseInEnv (toNamedBoundCtx solutionCtx) env abstractedSolution
+      gluedSolution <- Glued abstractedSolution <$> eval (toNamedBoundCtx solutionCtx) env abstractedSolution
 
       logDebug MaxDetail $
         "solved"

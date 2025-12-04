@@ -15,7 +15,7 @@ import Vehicle.Data.Builtin.Interface.Type
 import Vehicle.Data.Builtin.Standard (BuiltinConstructor (..), BuiltinFunction (..), BuiltinType (..), DerivedFunction (..))
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.DSL
-import Vehicle.Data.Variable.Free.Context (getDeclType, getFreeEnv)
+import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..), getDeclType)
 import Vehicle.Syntax.Builtin (Builtin (..))
 import Prelude hiding (iterate, pi)
 
@@ -290,7 +290,7 @@ restrictDecidabilityDeclType declSort (ident, p) declType = do
   case maybeTypeClass of
     Nothing -> return ()
     Just tc -> do
-      freeEnv <- getFreeEnv
+      freeEnv <- getFreeCtx (Proxy @DecidabilityBuiltin)
       let expr = BuiltinExpr p (DecidabilityBuiltinTypeClass tc) [explicit declType]
       let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin freeEnv (ident, provenanceOf declType) (Left declSort) declType
       _ <- createFreshInstanceConstraint False mempty p origin Irrelevant expr

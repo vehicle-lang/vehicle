@@ -9,7 +9,7 @@ import Data.Either (partitionEithers)
 import Data.Hashable (Hashable)
 import Data.Proxy (Proxy (..))
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBE (normaliseInEnv)
+import Vehicle.Compile.Normalise.NBE (eval)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyExternal)
 import Vehicle.Compile.Print.Error (formatCompileError)
@@ -22,7 +22,7 @@ import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Variable.Bound.Context.Generic
 import Vehicle.Data.Variable.Bound.Level (dbLevelToIndex)
-import Vehicle.Data.Variable.Free.Context (getFreeEnv)
+import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..))
 
 --------------------------------------------------------------------------------
 -- Public interface
@@ -108,9 +108,9 @@ solveInstanceGoal constraint rawBuiltinCandidates depth goal = do
 
     -- If there are no valid candidates then we fail.
     [] -> do
-      freeEnv <- getFreeEnv
+      freeCtx <- getFreeCtx (Proxy @builtin)
       finalConstraint <- substMetaVariables constraint
-      throwError $ TypingError $ FailedInstanceConstraint $ FailedInstanceConstraintError freeEnv finalConstraint unsuccessfulCandidates
+      throwError $ TypingError $ FailedInstanceConstraint $ FailedInstanceConstraintError freeCtx finalConstraint unsuccessfulCandidates
 
     -- Otherwise there are still multiple valid candidates so we're forced to block.
     _ -> do
@@ -222,7 +222,7 @@ instantiateCandidateTelescope goalCtxExtension (constraintCtx, constraintOrigin)
     let initialCtx = goalCtxExtension ++ candidateCtx
     (candidateBody, candidateSol, newInstanceConstraints, finalCtx) <-
       go (candidateExpr, candidateSolution, [], initialCtx)
-    normCandidateBody <- normaliseInEnv (toNamedBoundCtx finalCtx) (boundContextToEnv finalCtx) candidateBody
+    normCandidateBody <- eval (toNamedBoundCtx finalCtx) (boundContextToEnv finalCtx) candidateBody
     return (normCandidateBody, candidateSol, newInstanceConstraints)
   where
     go ::
@@ -242,7 +242,7 @@ instantiateCandidateTelescope goalCtxExtension (constraintCtx, constraintOrigin)
           Instance {} -> do
             let newInfo = (setConstraintBoundCtx constraintCtx boundCtx, constraintOrigin)
             -- WARNING massive hack should be traversing the normalised type here.
-            normBinderType <- normaliseInEnv (toNamedBoundCtx boundCtx) (boundContextToEnv boundCtx) binderType
+            normBinderType <- eval (toNamedBoundCtx boundCtx) (boundContextToEnv boundCtx) binderType
             (expr, constraint) <- createDerivedInstanceConstraint newInfo (relevanceOf exprBinder) normBinderType
             return (expr, [constraint])
         let exprBodyResult = newArg `substDBInto` exprBody

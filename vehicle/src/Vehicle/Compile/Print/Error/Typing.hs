@@ -11,7 +11,7 @@ import Data.List.NonEmpty qualified as NonEmpty
 import Data.Monoid (Endo (..))
 import Data.Text (Text, pack)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBE (eval)
+import Vehicle.Compile.Normalise.NBE (normaliseInFreeCtx)
 import Vehicle.Compile.Normalise.Quote (Quote (..), unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
@@ -186,7 +186,7 @@ failedUnificationConstraintsError (FailedUnificationConstraintsError freeEnv (er
       let namedBoundCtx = toNamedBoundCtx boundCtx
       let originMessage = case origin of
             CheckingExprType CheckingExpr {..} -> do
-              let normActualType = runNorm $ eval freeEnv namedBoundCtx (boundContextToEnv boundCtx) checkedExprActualType
+              let normActualType = runNorm $ normaliseInFreeCtx freeEnv namedBoundCtx (boundContextToEnv boundCtx) checkedExprActualType
               "expected"
                 <+> ( case checkedExpr of
                         Left binder -> "variable" <+> quotePretty binder
@@ -276,7 +276,7 @@ typeRestrictionError ctx (TypeRestrictionOrigin freeEnv (ident, p) sort typ) _ca
             <+> "to a supported type"
     }
   where
-    gluedType = Glued typ (runNorm $ eval freeEnv (namedBoundCtxOf ctx) emptyBoundEnv typ)
+    gluedType = Glued typ (runNorm $ normaliseInFreeCtx freeEnv (namedBoundCtxOf ctx) emptyBoundEnv typ)
 
     fixIdent = case sort of
       Right (FieldTypeIsAllowed f) -> quotePretty (nameOf f)
@@ -323,12 +323,12 @@ typeRestrictionError ctx (TypeRestrictionOrigin freeEnv (ident, p) sort typ) _ca
 instanceArgOriginError ::
   forall builtin.
   (PrintableBuiltin builtin, NormalisableBuiltin builtin) =>
-  FreeEnv builtin ->
+  FreeCtx builtin ->
   ConstraintContext builtin ->
   InstanceArgOrigin builtin ->
   [(WithContext (InstanceCandidate builtin), UnAnnDoc)] ->
   VehicleError
-instanceArgOriginError freeEnv ctx (ArgOrigin tcOp tcOpArgs tcOpType _tc) candidates =
+instanceArgOriginError freeCtx ctx (ArgOrigin tcOp tcOpArgs tcOpType _tc) candidates =
   VehicleError
     { provenance = Just $ provenanceOf ctx,
       problem =
@@ -353,7 +353,7 @@ instanceArgOriginError freeEnv ctx (ArgOrigin tcOp tcOpArgs tcOpType _tc) candid
     candidateOpType :: (Int, (WithContext (InstanceCandidate builtin), UnAnnDoc)) -> UnAnnDoc
     candidateOpType (no, (candidate, err)) = do
       let (candidateTypeArgs, solutionCtx) = calculateInstanceCandidateTypeArgs candidate
-      let finalTypeDoc = calculateInstanceDisplayType freeEnv solutionCtx tcOpType candidateTypeArgs actualArgs
+      let finalTypeDoc = calculateInstanceDisplayType freeCtx solutionCtx tcOpType candidateTypeArgs actualArgs
       pretty no
         <> "." <+> finalTypeDoc
         <> line
@@ -379,14 +379,14 @@ calculateInstanceCandidateTypeArgs (WithContext candidate typingCtx) =
 calculateInstanceDisplayType ::
   forall builtin a.
   (NormalisableBuiltin builtin, PrintableBuiltin builtin) =>
-  FreeEnv builtin ->
+  FreeCtx builtin ->
   BoundCtx (Type builtin) ->
   Type builtin ->
   [Arg builtin] ->
   [Arg builtin] ->
   Doc a
 calculateInstanceDisplayType freeEnv boundCtx fullType actualArgs typingArgs = do
-  let normFullType = runNorm $ eval freeEnv (toNamedBoundCtx boundCtx) (boundContextToEnv boundCtx) fullType
+  let normFullType = runNorm $ normaliseInFreeCtx freeEnv (toNamedBoundCtx boundCtx) (boundContextToEnv boundCtx) fullType
   let opArgs = mergeArgs actualArgs typingArgs
   instantiateTelescope boundCtx normFullType opArgs
   where
@@ -414,7 +414,7 @@ calculateInstanceDisplayType freeEnv boundCtx fullType actualArgs typingArgs = d
             prettyFriendly (WithContext typ (toNamedBoundCtx ctx))
       (VPi binder (Closure env body), args) -> do
         let (alterEnv, remainingArgs) = findRemainingArgs ctx binder args
-        let recType = runNorm $ eval freeEnv (toNamedBoundCtx ctx) (alterEnv env) body
+        let recType = runNorm $ normaliseInFreeCtx freeEnv (toNamedBoundCtx ctx) (alterEnv env) body
         let unnormBinder = quote mempty (boundCtxLv ctx) binder
         instantiateTelescope (unnormBinder : ctx) recType remainingArgs
       (_, []) -> prettyFriendly (WithContext typ (toNamedBoundCtx ctx))
@@ -425,7 +425,7 @@ calculateInstanceDisplayType freeEnv boundCtx fullType actualArgs typingArgs = d
       [] -> (extendEnvWithBound (boundCtxLv ctx) binder, [])
       ((arg, fromCandidate) : remainingArgs)
         | visibilityOf arg == visibilityOf binder || fromCandidate -> do
-            let normArg = runNorm $ eval freeEnv (toNamedBoundCtx ctx) (boundContextToEnv ctx) (argExpr arg)
+            let normArg = runNorm $ normaliseInFreeCtx freeEnv (toNamedBoundCtx ctx) (boundContextToEnv ctx) (argExpr arg)
             (extendEnvWithDefined normArg binder, remainingArgs)
         | isExplicit binder -> developerError "Missing explicit argument when printing"
         | otherwise -> (extendEnvWithBound (boundCtxLv ctx) binder, args)

@@ -13,7 +13,7 @@ import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), (<+>))
 import Vehicle.Compile.Arity
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBE (eval)
+import Vehicle.Compile.Normalise.NBE (normaliseInEmptyFreeEnv)
 import Vehicle.Compile.Prelude (Doc, HasProvenance (..), Ix (..), Name, Provenance (..), getBinderName, mkExplicitBinder, normAppList)
 import Vehicle.Compile.Prelude qualified as S (Binder, Decl, Expr (..), GenericDecl (..), GenericProg (..), Prog)
 import Vehicle.Compile.Print
@@ -169,7 +169,7 @@ convertDecl = \case
 -- Types
 
 convertType :: (MonadJSON m) => BoundEnv LossBuiltin -> S.Expr LossBuiltin -> m JType
-convertType env body = convertTypeValue =<< eval mempty mempty env body
+convertType env body = convertTypeValue =<< normaliseInEmptyFreeEnv mempty env body
 
 convertTypeValue :: (MonadJSON m) => VType LossBuiltin -> m JType
 convertTypeValue expr = do
@@ -214,7 +214,7 @@ convertTensorType spine = case spine of
 
 convertExpr :: (MonadJSON m) => BoundEnv LossBuiltin -> S.Expr LossBuiltin -> m JExpr
 convertExpr env body = do
-  normBody <- eval mempty mempty env body
+  normBody <- normaliseInEmptyFreeEnv mempty env body
   debugFriendly normBody
   convertValue normBody
 
