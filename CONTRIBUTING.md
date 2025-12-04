@@ -475,6 +475,23 @@ Ensure that you have the source code and that you have installed GHC and Cabal.
 
 ### Building the Vehicle Python bindings
 
+#### Installing from PyPI
+
+If you only need the published Python package (for example to compile queries for verifiers), install it directly from PyPI:
+
+```sh
+pip install vehicle_lang
+```
+
+Loss backends are optional extras so that you only install the deep-learning frameworks you actually need. Add the extras when syncing an environment or installing on CI:
+
+```sh
+pip install "vehicle_lang[pytorch]"
+pip install "vehicle_lang[tensorflow]"
+```
+
+It is safe to mix extras—`pip install "vehicle_lang[test,pytorch]"` installs the pytest stack plus the PyTorch backend in one go.
+
 #### Dependencies
 
 Building the Vehicle Python bindings requires

@@ -26,6 +26,18 @@ This can be done using the :code:`vehicle export` command:
     --cache examples/windController/windController.vcl-cache \
     --output examples/windController/agdaProof/WindControllerSpec.agda
 
+Programmatic compilation
+------------------------
+
+Use the Python helpers when your workflow already lives in ``vehicle_lang``. ``vehicle_lang.compile_specification`` mirrors ``vehicle compile`` and accepts the same keyword arguments, while ``vehicle_lang.call_vehicle`` gives you direct access to lower-level commands when you need to run ``vehicle list`` or ``vehicle validate`` as part of a script.
+
+.. autoclass:: vehicle_lang.QueryFormat
+     :members:
+
+.. autofunction:: vehicle_lang.compile_specification
+
+.. autofunction:: vehicle_lang.call_vehicle
+
 Command-line options
 --------------------
 

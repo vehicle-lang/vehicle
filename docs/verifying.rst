@@ -121,6 +121,28 @@ for the ``verify`` command when ``specification`` is a ``.vcl`` file.
     and Vehicle will not detect changes to the networks that occur
     while the command is running.
 
+Verifying from Python
+---------------------
+
+The ``vehicle_lang.verify`` helper exposes the same functionality programmatically. Provide the ``specification`` path plus the same ``networks``, ``datasets`` and ``parameters`` dictionaries you would use on the CLI:
+
+.. code-block:: python
+
+  import vehicle_lang as vcl
+
+  result = vcl.verify(
+     specification="spec.vcl",
+     networks={"controller": "controller.onnx"},
+     verifier=vcl.Verifier.Marabou,
+  )
+
+All keyword arguments map directly to the CLI flags documented above, and the helper raises ``VehicleError`` if the underlying executable reports a failure. This makes it easy to embed verification in integration tests without invoking subprocesses manually.
+
+.. autoclass:: vehicle_lang.Verifier
+  :members:
+
+.. autofunction:: vehicle_lang.verify
+
 Advanced verification
 ---------------------
 

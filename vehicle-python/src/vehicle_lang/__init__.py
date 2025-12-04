@@ -1,6 +1,6 @@
 from typing import List
 
-from . import compile, loss, session
+from . import loss, session
 from ._version import VERSION
 from .compile import call_vehicle, compile_specification
 from .error import VehicleError, VehicleInternalError
