@@ -9,17 +9,42 @@ module Vehicle.Data.Builtin.Standard.Core
     accessFromVectorToTensor,
     isTensorType,
     builtinDerivedFunction,
+    builtinFromSymbol,
+    builtinInstance,
   )
 where
 
+import Data.Map (Map)
+import Data.Map qualified as Map
+import Vehicle.Backend.Prelude (SecondaryTypeSystem)
 import Vehicle.Data.Builtin.Core as Syntax
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.DSL
-import Vehicle.Prelude (GenericArg (..), HasIdentifier (identifierOf))
+import Vehicle.Libraries.StandardLibrary (standardLibraryBuiltinModulePath)
+import Vehicle.Prelude (GenericArg (..), HasIdentifier (identifierOf), Identifier (..), enumerate, layoutAsText, pretty)
+import Vehicle.Syntax.AST.Name (Name)
 import Vehicle.Syntax.Sugar (BinderType (..))
+
+-- | A mapping from builtin names to the underlying builtin.
+-- Does not contain literals.
+builtinSymbols :: Map Name Builtin
+builtinSymbols =
+  Map.fromList $
+    map (\b -> (layoutAsText (pretty b), b)) $
+      fmap BuiltinFunction enumerateBuiltinFunctions
+        <> fmap BuiltinConstructor partiallyEnumerateBuiltinConstructors
+        <> fmap BuiltinType enumerate -- BuiltinFunction BuiltinFunction
+        <> fmap BuiltinCast enumerate
+        <> fmap DerivedFunction enumerateDerivedFunctions
+        <> fmap TypeClass enumerate
+        <> fmap TypeClassOp enumerate
+        <> [NatInDomainConstraint]
+
+builtinFromSymbol :: Name -> Maybe Builtin
+builtinFromSymbol symbol = Map.lookup symbol builtinSymbols
 
 -----------------------------------------------------------------------------
 -- Accessors
@@ -57,7 +82,7 @@ compareIndexAccessor =
     { getExpr = \case
         BuiltinFunction (CompareIndex op) -> Just op
         _ -> Nothing,
-      mkExpr = \op -> BuiltinFunction (CompareIndex op)
+      mkExpr = BuiltinFunction . CompareIndex
     }
 
 compareNatAccessor :: Accessor Builtin ComparisonOp
@@ -66,7 +91,7 @@ compareNatAccessor =
     { getExpr = \case
         BuiltinFunction (CompareNat op) -> Just op
         _ -> Nothing,
-      mkExpr = \op -> BuiltinFunction (CompareNat op)
+      mkExpr = BuiltinFunction . CompareNat
     }
 
 compareRatTensorPointwiseAccessor :: Accessor Builtin ComparisonOp
@@ -75,7 +100,7 @@ compareRatTensorPointwiseAccessor =
     { getExpr = \case
         BuiltinFunction (CompareRatTensorPointwise op) -> Just op
         _ -> Nothing,
-      mkExpr = \op -> BuiltinFunction (CompareRatTensorPointwise op)
+      mkExpr = BuiltinFunction . CompareRatTensorPointwise
     }
 
 compareRatTensorReducedAccessor :: Accessor Builtin ComparisonOp
@@ -84,7 +109,7 @@ compareRatTensorReducedAccessor =
     { getExpr = \case
         DerivedFunction (CompareRatTensorReduced op) -> Just op
         _ -> Nothing,
-      mkExpr = \op -> DerivedFunction (CompareRatTensorReduced op)
+      mkExpr = DerivedFunction . CompareRatTensorReduced
     }
 
 --------------------------------------------------------------------------------
@@ -115,13 +140,8 @@ instance BuiltinHasBoolLiterals Builtin where
   accessCompareRatTensorPointwiseBuiltin = compareRatTensorPointwiseAccessor
   accessCompareRatTensorReducedBuiltin = compareRatTensorReducedAccessor
 
-  accessQuantifyRatTensorBuiltin =
-    Access
-      { getExpr = \case
-          BuiltinFunction (QuantifyRatTensor q) -> Just q
-          _ -> Nothing,
-        mkExpr = BuiltinFunction . QuantifyRatTensor
-      }
+  accessForallRatTensorBuiltin = functionAccessor ForallRatTensor
+  accessExistsRatTensorBuiltin = functionAccessor ExistsRatTensor
 
 --------------------------------------------------------------------------------
 -- Index
@@ -161,8 +181,8 @@ instance BuiltinHasNatLiterals Builtin where
         mkExpr = BuiltinConstructor . NatTensorLiteral
       }
 
-  accessAddNatBuiltin = functionAccessor (Add AddNat)
-  accessMulNatBuiltin = functionAccessor (Mul MulNat)
+  accessAddNatBuiltin = functionAccessor AddNat
+  accessMulNatBuiltin = functionAccessor MulNat
 
 --------------------------------------------------------------------------------
 -- Rat
@@ -179,13 +199,13 @@ instance BuiltinHasRatLiterals Builtin where
         mkExpr = BuiltinConstructor . RatTensorLiteral
       }
 
-  accessNegRatTensorBuiltin = functionAccessor $ Neg NegRatTensor
-  accessAddRatTensorBuiltin = functionAccessor $ Add AddRatTensor
-  accessMulRatTensorBuiltin = functionAccessor $ Mul MulRatTensor
-  accessSubRatTensorBuiltin = functionAccessor $ Sub SubRatTensor
-  accessDivRatTensorBuiltin = functionAccessor $ Div DivRatTensor
-  accessMinRatTensorBuiltin = functionAccessor $ Min MinRatTensor
-  accessMaxRatTensorBuiltin = functionAccessor $ Max MaxRatTensor
+  accessAddRatTensorBuiltin = functionAccessor AddRatTensor
+  accessMulRatTensorBuiltin = functionAccessor MulRatTensor
+  accessSubRatTensorBuiltin = functionAccessor SubRatTensor
+  accessDivRatTensorBuiltin = functionAccessor DivRatTensor
+  accessMinRatTensorBuiltin = functionAccessor MinRatTensor
+  accessMaxRatTensorBuiltin = functionAccessor MaxRatTensor
+  accessNegRatTensorBuiltin = functionAccessor NegRatTensor
   accessPowRatTensorBuiltin = functionAccessor PowRat
   accessReduceAddRatBuiltin = functionAccessor ReduceAddRatTensor
   accessReduceMulRatBuiltin = functionAccessor ReduceMulRatTensor
@@ -230,7 +250,7 @@ instance BuiltinHasVectors Builtin where
       { getExpr = \case
           BuiltinConstructor (VectorLiteral n) -> Just n
           _ -> Nothing,
-        mkExpr = \n -> BuiltinConstructor (VectorLiteral n)
+        mkExpr = BuiltinConstructor . VectorLiteral
       }
 
   accessAtVectorBuiltin = functionAccessor AtVector
@@ -289,7 +309,8 @@ instance BuiltinHasBinders Builtin where
   getBuiltinBinderType = \case
     BuiltinFunction ForeachVector -> Just ForeachBinder
     BuiltinFunction ForeachTensor -> Just ForeachBinder
-    BuiltinFunction (QuantifyRatTensor q) -> Just $ QuantifierBinder q
+    BuiltinFunction ForallRatTensor -> Just $ QuantifierBinder Forall
+    BuiltinFunction ExistsRatTensor -> Just $ QuantifierBinder Exists
     _ -> Nothing
 
 ---------------------------------------------------------------------------------
@@ -297,12 +318,16 @@ instance BuiltinHasBinders Builtin where
 
 instance PrintableBuiltin Builtin where
   coercionArgs b = case b of
-    BuiltinCast FromNat {} -> Just $ \args -> argExpr $ last args
-    BuiltinCast FromRat {} -> Just $ \args -> argExpr $ last args
-    TypeClassOp FromNatTC {} -> Just $ \args -> argExpr $ last args
-    TypeClassOp FromRatTC {} -> Just $ \args -> argExpr $ last args
-    TypeClassOp FromVecTC {} -> Just $ \args -> argExpr $ last args
+    BuiltinCast FromNatToNat -> lastArg
+    BuiltinCast FromNatToIndex -> lastArg
+    BuiltinCast FromNatToRat -> lastArg
+    BuiltinCast FromRatToRat -> lastArg
+    TypeClassOp FromNatTC {} -> lastArg
+    TypeClassOp FromRatTC {} -> lastArg
+    TypeClassOp FromVecTC {} -> lastArg
     _ -> Nothing
+    where
+      lastArg = Just $ \args -> argExpr $ last args
 
   isDerivedBuiltin b = case b of
     DerivedFunction f -> Just $ identifierOf f
@@ -317,25 +342,28 @@ builtinCast = builtin . BuiltinCast
 accessFromNatToIndex ::
   (HasBuiltinConstructor expr) =>
   Accessor (expr Builtin) (FromNatToIndexArgs (expr Builtin))
-accessFromNatToIndex = accessArgs (castAccessor (FromNat FromNatToRat))
+accessFromNatToIndex = accessArgs (castAccessor FromNatToRat)
 
 accessFromNatToRat ::
   (HasBuiltinConstructor expr) =>
   Accessor (expr Builtin) (FromNatToSimpleArgs (expr Builtin))
-accessFromNatToRat = accessArgs (castAccessor (FromNat FromNatToIndex))
+accessFromNatToRat = accessArgs (castAccessor FromNatToIndex)
 
 accessFromVectorToList ::
   (HasBuiltinConstructor expr) =>
   Accessor (expr Builtin) (VectorToListArgs (expr Builtin))
-accessFromVectorToList = accessArgs (castAccessor (FromVec FromVecToList))
+accessFromVectorToList = accessArgs (castAccessor FromVecToList)
 
 accessFromVectorToTensor ::
   (HasBuiltinConstructor expr) =>
   Accessor (expr Builtin) (VectorToTensorArgs (expr Builtin))
-accessFromVectorToTensor = accessArgs (castAccessor (FromVec FromVecToTensor))
+accessFromVectorToTensor = accessArgs (castAccessor FromVecToTensor)
 
 isTensorType :: DSLExpr Builtin -> DSLExpr Builtin -> DSLExpr Builtin
 isTensorType tElem ds = builtinTypeClass IsTensorType @@ [tElem] .@@ [ds]
 
 builtinDerivedFunction :: DerivedFunction -> DSLExpr Builtin
 builtinDerivedFunction = builtin . DerivedFunction
+
+builtinInstance :: Maybe SecondaryTypeSystem -> Name -> DSLExpr Builtin
+builtinInstance typeSystem name = freeVar (Identifier (standardLibraryBuiltinModulePath typeSystem) name)

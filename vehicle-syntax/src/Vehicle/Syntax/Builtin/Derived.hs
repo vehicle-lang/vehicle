@@ -7,14 +7,21 @@ import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..))
 import Vehicle.Syntax.AST.Name
 import Vehicle.Syntax.Builtin.BasicOperations
-import Vehicle.Syntax.Prelude (layoutAsText)
+import Vehicle.Syntax.Prelude (enumerate, layoutAsText)
 
 data DerivedFunction
   = TypeAnn
   | QuantifyIndex Quantifier
   | QuantifyInList Quantifier
   | CompareRatTensorReduced ComparisonOp
-  deriving (Eq, Show, Ord, Generic)
+  deriving (Show, Eq, Ord, Generic)
+
+enumerateDerivedFunctions :: [DerivedFunction]
+enumerateDerivedFunctions =
+  [TypeAnn]
+    <> fmap QuantifyIndex enumerate
+    <> fmap QuantifyInList enumerate
+    <> fmap CompareRatTensorReduced enumerate
 
 instance Pretty DerivedFunction where
   pretty = \case

@@ -5,7 +5,7 @@ module Vehicle.Syntax.BNFC.Utils where
 import Control.Monad.Except (MonadError)
 import Control.Monad.Reader (MonadReader (..), asks)
 import Data.Text (Text, pack)
-import Vehicle.Syntax.AST.Name (Module)
+import Vehicle.Syntax.AST.Name (ModulePath)
 import Vehicle.Syntax.AST.Provenance
 import Vehicle.Syntax.External.Abs qualified as B
 import Vehicle.Syntax.Parse.Error (ParseError (..))
@@ -19,9 +19,9 @@ type MonadElab m =
 pattern InferableOption :: Text
 pattern InferableOption = "infer"
 
-type ParseLocation = (Module, FilePath)
+type ParseLocation = (ModulePath, FilePath)
 
-getModule :: (MonadElab m) => m Module
+getModule :: (MonadElab m) => m ModulePath
 getModule = asks fst
 
 getFile :: (MonadElab m) => m FilePath
@@ -171,11 +171,7 @@ tokHasSub = mkToken B.TokHasSub "HasSub"
 
 tokHasMul = mkToken B.TokHasMul "HasMul"
 
-tokHasEq = mkToken B.TokHasEq "HasEq"
-
-tokHasNotEq = mkToken B.TokHasNotEq "HasNotEq"
-
-tokHasLeq = mkToken B.TokHasLeq "HasLeq"
+tokHasCompare = mkToken B.TokHasCompare "HasCompare"
 
 tokHasMap = mkToken B.TokHasMap "HasMap"
 

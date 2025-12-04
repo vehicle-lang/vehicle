@@ -5,8 +5,7 @@ module Vehicle.Compile.Type.Constraint.InstanceDefaultSolver
 where
 
 import Control.Monad (filterM)
-import Data.Hashable (Hashable)
-import Data.Maybe (mapMaybe)
+import Data.Maybe (catMaybes)
 import Data.Proxy (Proxy (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (PrettyVerbose, prettyVerbose)
@@ -16,11 +15,12 @@ import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Meta.Variable
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Data.Builtin.Interface.Print
+import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin)
 import Vehicle.Data.Variable.Bound.Context.Generic (HasBoundCtx (..))
 
 type MonadInstanceDefault builtin m =
   ( MonadTypeChecker builtin m,
-    Hashable builtin
+    TypableBuiltin builtin
   )
 
 newtype DefaultCandidate builtin
@@ -36,7 +36,7 @@ instance (PrintableBuiltin builtin) => Pretty (DefaultCandidate builtin) where
 
 addNewInstanceConstraintUsingDefaults ::
   forall builtin m.
-  (MonadTypeChecker builtin m, Hashable builtin) =>
+  (MonadInstanceDefault builtin m) =>
   Proxy builtin ->
   m Bool
 addNewInstanceConstraintUsingDefaults proxy = do
@@ -86,12 +86,11 @@ getDefaultableConstraints proxy possibleConstraints = do
 
 chooseDefaultConstraint ::
   forall builtin m.
-  (MonadTypeChecker builtin m) =>
+  (MonadInstanceDefault builtin m) =>
   [WithContext (InstanceConstraint builtin)] ->
   m (Maybe (DefaultCandidate builtin))
 chooseDefaultConstraint constraints = do
-  instanceDatabase <- getInstanceCandidates
-  let defaults = mapMaybe (findDefault instanceDatabase) constraints
+  defaults <- catMaybes <$> traverse findDefault constraints
   case defaults of
     [] -> do
       logDebug MaxDetail "No default solution found"
@@ -100,13 +99,13 @@ chooseDefaultConstraint constraints = do
       return $ Just candidate
 
 findDefault ::
-  (PrintableBuiltin builtin, Hashable builtin) =>
-  InstanceDatabase builtin ->
+  (MonadInstanceDefault builtin m) =>
   WithContext (InstanceConstraint builtin) ->
-  Maybe (DefaultCandidate builtin)
-findDefault database constraint = do
+  m (Maybe (DefaultCandidate builtin))
+findDefault constraint = do
   let goal = instanceGoal $ objectIn constraint
-  case lookupDefaultInstance database goal of
+  maybeDefaultCandidate <- getDefaultInstanceCandidate goal
+  return $ case maybeDefaultCandidate of
     Just candidate -> Just $ DefaultCandidate (constraint, goal, candidate)
     Nothing -> Nothing
 

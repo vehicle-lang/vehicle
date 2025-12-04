@@ -2,8 +2,7 @@
 
 {-# HLINT ignore "Use tuple-section" #-}
 module Vehicle.Compile.Scope
-  ( scopeCheck,
-    scopeCheckClosedExpr,
+  ( scopeModuleDecls,
   )
 where
 
@@ -18,51 +17,28 @@ import Vehicle.Compile.Scope.Core
 import Vehicle.Compile.Scope.Generalise
 import Vehicle.Compile.Scope.RecordInstances (createTensorRecordConversionFunctions)
 import Vehicle.Data.Builtin.Standard
+import Vehicle.Data.Code.ModuleInterface
 import Vehicle.Data.Universe (UniverseLevel (..))
 import Vehicle.Syntax.AST.Expr qualified as S
 
 --------------------------------------------------------------------------------
--- Public interface
+-- Decl scoping
 
-scopeCheck :: (MonadCompile m) => Imports -> S.Prog -> m (Prog Builtin)
-scopeCheck imports prog = logCompilerPass Scoping $
-  runMonadScopeT $ do
-    scopeImports imports
-    scopeProg prog
-
-scopeCheckClosedExpr :: (MonadCompile m) => S.Expr -> m (Expr Builtin)
-scopeCheckClosedExpr e = runMonadScopeT $ do
-  runMonadScopeExprT (scopeExpr e)
-
---------------------------------------------------------------------------------
--- Algorithm
-
-scopeImports :: (MonadScope m) => Imports -> m ()
-scopeImports = traverse_ scopeModule
-  where
-    scopeModule :: (MonadScope m) => Prog Builtin -> m ()
-    scopeModule = traverseDecls_ scopeImportDecl
-
-    scopeImportDecl :: (MonadScope m) => Decl Builtin -> m ()
-    scopeImportDecl decl = do
-      case decl of
-        DefAbstract {} -> return ()
-        DefFunction {} -> return ()
-        DefRecord _ ident _ _ fs -> do
-          traverse_ (\(f, _) -> addNewRecordDefField ident f) fs
-          addNewRecordDef ident (fmap fst fs)
-          return ()
-      addNewDecl decl
-
-scopeProg :: (MonadScope m) => S.Prog -> m (Prog Builtin)
-scopeProg (Main ds) = do
-  scopedDecls <- traverse scopeDecl ds
-  return (Main (concat scopedDecls))
+scopeModuleDecls ::
+  (MonadCompile m) =>
+  ModulePath ->
+  ImportedModuleContext Builtin ->
+  [S.Decl] ->
+  m ([Decl Builtin], ModuleScopingInterface)
+scopeModuleDecls modulePath initialState decls = do
+  logCompilerPass Scoping $ do
+    runMonadScopeT modulePath initialState $ do
+      concat <$> traverse scopeDecl decls
 
 scopeDecl :: (MonadScope m) => S.Decl -> m [Decl Builtin]
 scopeDecl decl =
   logCompilerSection2 MidDetail ("scoping" <+> quotePretty (identifierOf decl)) $ do
-    scopedDecl <- case decl of
+    scopedDecls <- case decl of
       DefAbstract p ident r t -> do
         t' <- scopeTopLevelExpr False t
         return [DefAbstract p ident r t']
@@ -70,30 +46,33 @@ scopeDecl decl =
         t' <- scopeTopLevelExpr True t
         e' <- scopeTopLevelExpr False e
         return [DefFunction p ident anns t' e']
-      DefRecord p ident b t fs -> do
-        t' <- scopeTopLevelExpr False t
-        fs' <- traverse (scopeDefRecordField ident) fs
-        addNewRecordDef ident (fmap fst fs')
+      DefRecord p ident b telescope fields -> do
+        (telescope', fields') <-
+          scopeRecordTelescope ident telescope fields
+        addNewRecordDef ident (fmap fst fields')
 
         conversionFunctions <-
           if isAnnotatedAsTensor b
-            then createTensorRecordConversionFunctions t' p ident fs'
+            then
+              if null telescope
+                then createTensorRecordConversionFunctions p ident fields'
+                else throwError $ UnimplementedFeature p "Parameterised records with @tensor annotations"
             else return []
 
-        let defRecord = DefRecord p ident b t' fs'
+        let defRecord = DefRecord p ident b telescope' fields'
         return (defRecord : conversionFunctions)
 
-    traverse_ addNewDecl scopedDecl
-    traverse_ (logCompilerPassOutput . prettyFriendly) scopedDecl
-    return scopedDecl
+    traverse_ addNewDecl scopedDecls
+    traverse_ (logCompilerPassOutput . prettyFriendly) scopedDecls
+    return scopedDecls
 
 scopeDefRecordField ::
-  (MonadScope m) =>
+  (MonadScopeExpr m) =>
   Identifier ->
   RecordField S.Expr ->
   m (RecordField (Expr Builtin))
 scopeDefRecordField ident (field, fieldType) = do
-  fieldType' <- scopeTopLevelExpr True fieldType
+  fieldType' <- scopeExpr fieldType
   addNewRecordDefField ident field
   return (field, fieldType')
 
@@ -144,15 +123,42 @@ scopeBuiltin ::
   m (Expr Builtin)
 scopeBuiltin p builtin args = do
   args' <- traverse (traverse scopeExpr) args
-  case insertCoercions p builtin args' of
-    Nothing -> return $ normAppList (Builtin p builtin) args'
-    Just coercedResult -> return coercedResult
+  let defaultResult = normAppList (Builtin p builtin) args'
+
+  -- If we are not scoping a builtin module then insert coercions.
+  builtinModule <- isScopingBuiltinModule
+  if builtinModule
+    then return defaultResult
+    else case insertCoercions p builtin args' of
+      Nothing -> return defaultResult
+      Just coercedResult -> return coercedResult
+
+scopeRecordTelescope ::
+  (MonadScope m) =>
+  Identifier ->
+  [S.Binder] ->
+  RecordFields S.Expr ->
+  m (Telescope Builtin, RecordFields (Expr Builtin))
+scopeRecordTelescope ident telescope fields =
+  runMonadScopeExprT $ go telescope
+  where
+    go ::
+      (MonadScopeExpr m) =>
+      [S.Binder] ->
+      m (Telescope Builtin, RecordFields (Expr Builtin))
+    go binders = case binders of
+      [] -> do
+        fields' <- traverse (scopeDefRecordField ident) fields
+        return ([], fields')
+      b : bs -> scopeBinder b $ \binder' -> do
+        (telescope', fields') <- go bs
+        return (binder' : telescope', fields')
 
 scopeBinder ::
   (MonadScopeExpr m) =>
   S.Binder ->
-  (Binder Builtin -> m (Expr Builtin)) ->
-  m (Expr Builtin)
+  (Binder Builtin -> m a) ->
+  m a
 scopeBinder binder update = do
   binder' <- traverse scopeExpr binder
   addBinder binder (update binder')
@@ -160,14 +166,10 @@ scopeBinder binder update = do
 -- | Find the index for a given name of a given sort.
 scopeVar :: (MonadScopeExpr m) => Provenance -> Name -> m (Expr builtin)
 scopeVar p symbol = do
-  maybeVariable <- lookupVariable symbol
+  maybeVariable <- lookupVariable p symbol
   case maybeVariable of
-    Just (Left ident) -> return $ FreeVar p ident
-    Just (Right ix) -> return $ BoundVar p ix
-    Nothing -> do
-      namesInScope <- getAllNamesInScope
-      let closestMatches = mispellingsSortedByLikelihood symbol namesInScope
-      throwError $ UnboundName p symbol closestMatches
+    Left ident -> return $ FreeVar p ident
+    Right ix -> return $ BoundVar p ix
 
 {-
 logScopeEntry :: MonadTraverse m => S.Expr -> m ()

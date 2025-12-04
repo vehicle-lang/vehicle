@@ -300,12 +300,6 @@ formatCompileError = \case
         problem = "cannot currently use quantifiers in `if` conditions.",
         fix = Just $ implementationLimitation Nothing
       }
-  UnsupportedTensorAnnotation p ->
-    VehicleError
-      { provenance = Just p,
-        problem = "cannot use an empty record as a tensor.",
-        fix = Just "remove the annotation or add fields to the record."
-      }
   ---------------
   -- Resources --
   ---------------
@@ -751,19 +745,16 @@ formatCompileError = \case
             <> ". ",
         fix = Just (implementationLimitation (Just 74))
       }
-  UnsupportedPolymorphicEquality target p typeName ->
+  UnimplementedFeature p feature ->
     VehicleError
       { provenance = Just p,
         problem =
-          "The use of equality over the unknown type"
-            <+> quotePretty typeName
-            <+> "is not currently supported"
-            <+> "when compiling to"
-            <+> pretty target,
+          feature
+            <+> "is not currently implemented",
         fix =
           Just $
-            "try avoiding it, otherwise open an issue on the"
-              <+> "Vehicle issue tracker describing the use case."
+            "please open an issue on the"
+              <+> "Vehicle issue tracker to discuss adding support."
       }
   NoPropertiesFound ->
     VehicleError
@@ -874,7 +865,7 @@ formatCompileError = \case
           "The property"
             <+> quotePretty ident
             <+> "cannot be compiled as cannot deduce lower and upper bounds for the input of"
-            <+> lineIndent (prettyFriendly (WithContext (VFreeVar (Identifier userModule networkName) [explicit inputValue]) ctx))
+            <+> lineIndent (prettyFriendly (WithContext (VFreeVar (Identifier userModulePath networkName) [explicit inputValue]) ctx))
             <> line
             <> "In particular,"
               <+> missingBounds unboundedInputs

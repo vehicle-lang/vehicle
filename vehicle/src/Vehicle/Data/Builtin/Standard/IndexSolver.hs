@@ -94,7 +94,7 @@ findLowerBound ctx value indexSize = go indexSize
         return (mempty, n)
       VFreeVar {} ->
         return (mempty, 0)
-      VBuiltin (BuiltinFunction (Add AddNat)) [argExpr -> e1, argExpr -> e2] -> do
+      VBuiltin (BuiltinFunction AddNat) [argExpr -> e1, argExpr -> e2] -> do
         (m1, b1) <- go e1
         (m2, b2) <- go e2
         return (m1 <> m2, b1 + b2)

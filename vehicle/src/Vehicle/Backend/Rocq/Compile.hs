@@ -15,7 +15,7 @@ import Data.Text.Internal.Read qualified as Text.Read
 import GHC.Real (denominator, numerator)
 import Prettyprinter hiding (hcat, hsep, vcat, vsep)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Prelude hiding (Module)
+import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Data.Builtin.Decidability
 import Vehicle.Data.Builtin.Interface (Accessor (..))
@@ -90,7 +90,7 @@ logExit e = do
 
 data Dependency
   = RequireImport Library
-  | Import Module
+  | Import RocqModule
   | Open Scope
   deriving (Eq, Ord)
 
@@ -130,11 +130,11 @@ instance Pretty Library where
     MathcompSsreflectSsrnat -> "mathcomp.ssreflect.ssrnat"
     MathcompSsreflectEqtype -> "mathcomp.ssreflect.eqtype"
 
-data Module
+data RocqModule
   = OrderDef
   deriving (Eq, Ord)
 
-instance Pretty Module where
+instance Pretty RocqModule where
   pretty = \case
     OrderDef -> "Order.Def"
 
@@ -278,8 +278,10 @@ compileDecl _opts = \case
         (_, cbody) <- compileBinders binders (compileExpr body)
         defType <- resolveReturnType binders' t
         return $ compileFunDef (compileIdentifier n) defType binders' cbody
-  DefRecord _ n _ t fs -> do
-    t' <- compileExpr t
+  DefRecord _ n _ telescope fs -> do
+    let t'
+          | null telescope = compileType 0
+          | otherwise = developerError "Compiling record telescopes not yet supported"
     fs' <- traverseRecordFields compileExpr fs
     return $
       "Record"
@@ -436,15 +438,15 @@ compileBuiltin b args = case b of
     Or -> annotateNotation [] 50 "$0 || $1" (Just "orb") args
     Not -> annotateNotation [RequireImport MathcompSsreflectSsrbool] 35 "~~ $0" (Just "negb") args
     Implies -> annotateNotation [RequireImport MathcompSsreflectSsrbool] 55 "$0 ==> $1" (Just "implb") args
-    Add AddNat -> annotateNotation [RequireImport MathcompAlgebraSsralg, Open RingScope] 50 "$0 + $1" (Just "+%R") args
-    Mul MulNat -> annotateNotation [RequireImport MathcompAlgebraSsralg, Open RingScope] 40 "$0 * $1" (Just "*%R") args
-    Add AddRatTensor -> annotateNotation [RequireImport VehicleTensor] 50 "$0 + $1" (Just "+%R") args
-    Sub SubRatTensor -> annotateNotation [RequireImport VehicleTensor] 50 "$0 - $1" Nothing args
-    Mul MulRatTensor -> annotateNotation [RequireImport VehicleTensor] 40 "$0 * $1" (Just "*%R") args
-    Div DivRatTensor -> annotateNotation [RequireImport VehicleTensor] 40 "$0 / $1" Nothing args
-    Neg NegRatTensor -> annotateNotation [RequireImport VehicleTensor] 80 "- $0" (Just "-%R") args
-    Min MinRatTensor -> annotateApp [RequireImport VehicleTensor, Import OrderDef] "min" args
-    Max MaxRatTensor -> annotateApp [RequireImport VehicleTensor, Import OrderDef] "max" args
+    AddNat -> annotateNotation [RequireImport MathcompAlgebraSsralg, Open RingScope] 50 "$0 + $1" (Just "+%R") args
+    MulNat -> annotateNotation [RequireImport MathcompAlgebraSsralg, Open RingScope] 40 "$0 * $1" (Just "*%R") args
+    AddRatTensor -> annotateNotation [RequireImport VehicleTensor] 50 "$0 + $1" (Just "+%R") args
+    SubRatTensor -> annotateNotation [RequireImport VehicleTensor] 50 "$0 - $1" Nothing args
+    MulRatTensor -> annotateNotation [RequireImport VehicleTensor] 40 "$0 * $1" (Just "*%R") args
+    DivRatTensor -> annotateNotation [RequireImport VehicleTensor] 40 "$0 / $1" Nothing args
+    NegRatTensor -> annotateNotation [RequireImport VehicleTensor] 80 "- $0" (Just "-%R") args
+    MinRatTensor -> annotateApp [RequireImport VehicleTensor, Import OrderDef] "min" args
+    MaxRatTensor -> annotateApp [RequireImport VehicleTensor, Import OrderDef] "max" args
     CompareIndex op -> compileComparison CIndex op args
     CompareNat op -> compileComparison CNat op args
     CompareRatTensorPointwise op -> compileComparison CRatTensor op args
@@ -457,9 +459,8 @@ compileBuiltin b args = case b of
     ReduceMaxRatTensor -> unsupportedError
     ReduceMulRatTensor -> annotateApp [] "reduceMul" args
     ConstTensor -> annotateApp [RequireImport VehicleTensor] "const_t" args
-    QuantifyRatTensor q -> case reverse args of
-      (ExplicitArg _ _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier q [binder] body
-      _ -> unsupportedArgsError
+    ForallRatTensor -> compileForallExistsTypeLevel Forall args
+    ExistsRatTensor -> compileForallExistsTypeLevel Exists args
     AtTensor -> annotateNotation [RequireImport VehicleTensor] 201 "$0^^$1" (Just "nindex") args
     If -> annotateNotation [RequireImport MathcompSsreflectSsrbool] minPrecedence "if $0 then $1 else $2" Nothing args
     ForeachTensor -> annotateApp [RequireImport VehicleTensor] "nstack" args
@@ -499,15 +500,6 @@ compileBuiltin b args = case b of
       developerError $
         "compilation of builtin" <+> quotePretty b <+> "to Rocq unsupported"
 
-    unsupportedArgsError :: (MonadRocqCompile m) => m a
-    unsupportedArgsError = do
-      compilerDeveloperError $
-        "compilation of"
-          <+> quotePretty b
-          <+> "with args"
-          <+> prettyVerbose args
-          <+> "to Rocq unsupported"
-
     monoError :: a
     monoError =
       developerError $
@@ -545,6 +537,24 @@ compileDerivedFunction fn args = case fn of
       args
   where
     unsupported = developerError $ "Compilation of stdlib function" <+> quotePretty fn <+> "not implemented"
+
+compileForallExistsTypeLevel ::
+  (MonadRocqCompile m) =>
+  Quantifier ->
+  [Arg DecidabilityBuiltin] ->
+  m Code
+compileForallExistsTypeLevel q args = case reverse args of
+  (ExplicitArg _ _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier q [binder] body
+  _ -> unsupportedArgsError
+  where
+    unsupportedArgsError :: (MonadRocqCompile m) => m a
+    unsupportedArgsError = do
+      compilerDeveloperError $
+        "compilation of"
+          <+> quotePretty q
+          <+> "with args"
+          <+> prettyVerbose args
+          <+> "to Rocq unsupported"
 
 compileTypeLevelQuantifier ::
   (MonadRocqCompile m) =>

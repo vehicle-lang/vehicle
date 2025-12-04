@@ -172,9 +172,9 @@ generateResourcesIntegrityInfo Resources {..} = do
       }
 
 data ResourceIntegrityStatus
-  = Unchanged
-  | Altered
-  | Missing
+  = ResourceUnchanged
+  | ResourceAltered
+  | ResourceMissing
 
 checkResourceIntegrity :: (MonadIO m) => ResourceIntegrityInfo -> m ResourceIntegrityStatus
 checkResourceIntegrity ResourceIntegrityInfo {..} = do
@@ -185,10 +185,10 @@ checkResourceIntegrity ResourceIntegrityInfo {..} = do
         (const $ return Nothing)
 
   return $ case maybeNewHash of
-    Nothing -> Missing
+    Nothing -> ResourceMissing
     Just newFileHash
-      | fileHash /= newFileHash -> Altered
-      | otherwise -> Unchanged
+      | fileHash /= newFileHash -> ResourceAltered
+      | otherwise -> ResourceUnchanged
 
 checkResourcesIntegrity ::
   (MonadIO m) =>
@@ -200,9 +200,9 @@ checkResourcesIntegrity = \case
     (missing, altered) <- checkResourcesIntegrity rs
     resourceStatus <- liftIO (checkResourceIntegrity r)
     return $ case resourceStatus of
-      Unchanged -> (missing, altered)
-      Altered -> (missing, r : altered)
-      Missing -> (r : missing, altered)
+      ResourceUnchanged -> (missing, altered)
+      ResourceAltered -> (missing, r : altered)
+      ResourceMissing -> (r : missing, altered)
 
 checkIntegrityOfResources ::
   (MonadIO m) =>

@@ -18,7 +18,7 @@ import Vehicle.Data.Builtin.Standard.IndexSolver
 import Vehicle.Data.Builtin.Standard.Normalise ()
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.DSL
-import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..), getDeclType)
+import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..))
 import Prelude hiding (iterate, pi)
 
 --------------------------------------------------------------------------------
@@ -48,10 +48,10 @@ isStandardConstructor = \case
   DerivedFunction {} -> False
 
 -- | Return the type of the provided builtin.
-typeStandardBuiltin :: (MonadFreeContext Builtin m) => Provenance -> Builtin -> m (Type Builtin)
+typeStandardBuiltin :: (MonadTypeChecker Builtin m) => Provenance -> Builtin -> m (Type Builtin)
 typeStandardBuiltin p = \case
   DerivedFunction f -> getDeclType (Proxy @Builtin) (identifierOf f)
-  BuiltinType s -> return $ fromDSL p $ typeOfBuiltinType s
+  BuiltinType s -> getBuiltinTypeFromDatabase (BuiltinType s)
   BuiltinConstructor c -> return $ fromDSL p $ typeOfBuiltinConstructor c
   BuiltinFunction f -> return $ fromDSL p $ typeOfBuiltinFunction f
   BuiltinCast c -> return $ fromDSL p $ typeOfBuiltinCast c
@@ -61,8 +61,9 @@ typeStandardBuiltin p = \case
 
 typeOfTypeClass :: TypeClass -> DSLExpr Builtin
 typeOfTypeClass tc = case tc of
-  HasCompare {} -> type0 ~> type0 ~> type0
-  HasQuantifier {} -> type0 ~> type0 ~> type0
+  HasComparisons {} -> type0 ~> type0 ~> type0
+  HasForall {} -> type0 ~> type0 ~> type0
+  HasExists {} -> type0 ~> type0 ~> type0
   HasAdd -> type0 ~> type0 ~> type0 ~> type0
   HasSub -> type0 ~> type0 ~> type0 ~> type0
   HasMul -> type0 ~> type0 ~> type0 ~> type0
@@ -72,12 +73,14 @@ typeOfTypeClass tc = case tc of
   HasForeach -> type0 ~> type0 ~> type0 ~> type0
   HasMap -> (type0 ~> type0) ~> type0
   HasFold -> (type0 ~> type0) ~> type0
-  HasQuantifierIn {} -> type0 ~> type0 ~> type0
+  HasForallIn {} -> type0 ~> type0 ~> type0
+  HasExistsIn {} -> type0 ~> type0 ~> type0
   HasNatLits -> type0 ~> type0
   HasRatLits -> type0 ~> type0
   HasVecLits -> (tDim .~~> type0) ~> type0 ~> type0
   ValidPropertyType -> type0 ~> type0
-  ValidParameterType {} -> type0 ~> type0
+  ValidInferableParameterType {} -> type0 ~> type0
+  ValidNonInferableParameterType {} -> type0 ~> type0
   ValidNetworkType -> type0 ~> type0
   ValidNetworkTensorType -> type0 ~> type0
   ValidDatasetType -> type0 ~> type0
@@ -103,7 +106,12 @@ typeOfTypeClassOp b = case b of
   SubTC -> typeOfTCOp2 hasSub
   MulTC -> typeOfTCOp2 hasMul
   DivTC -> typeOfTCOp2 hasDiv
-  CompareTC op -> typeOfTCComparisonOp $ hasCompare op
+  EqTC -> typeOfTCComparisonOp hasCompare
+  NeTC -> typeOfTCComparisonOp hasCompare
+  LeTC -> typeOfTCComparisonOp hasCompare
+  LtTC -> typeOfTCComparisonOp hasCompare
+  GeTC -> typeOfTCComparisonOp hasCompare
+  GtTC -> typeOfTCComparisonOp hasCompare
   AtTC -> typeOfTCOp2 hasAt
   ForeachTC ->
     forAll "A" type0 $ \t1 ->
@@ -112,9 +120,12 @@ typeOfTypeClassOp b = case b of
           hasForeach t1 t2 t3 ~~~> typeOfForeach t1 t2 t3
   MapTC -> forAll "f" (type0 ~> type0) $ \f -> hasMap f ~~~> typeOfMap f
   FoldTC -> forAll "f" (type0 ~> type0) $ \f -> hasFold f ~~~> typeOfFold f
-  QuantifierTC q ->
+  ForallTC ->
     forAll "A" (type0 ~> type0) $ \t ->
-      hasQuantifier q t ~~~> typeOfQuantifier t
+      hasQuantifier Forall t ~~~> typeOfQuantifier t
+  ExistsTC ->
+    forAll "A" (type0 ~> type0) $ \t ->
+      hasQuantifier Exists t ~~~> typeOfQuantifier t
 
 typeOfTCComparisonOp ::
   (BuiltinHasStandardTypes builtin) =>
@@ -132,16 +143,13 @@ typeOfTCComparisonOp constraint =
 
 typeOfBuiltinCast :: BuiltinCast -> DSLExpr Builtin
 typeOfBuiltinCast = \case
-  FromNat dom -> case dom of
-    FromNatToNat -> typeOfFromNat tNat
-    FromNatToIndex -> forAllIrrelevantNat "n" $ \s -> typeOfFromNat (tIndex s)
-    FromNatToRat -> typeOfFromNat (tRatTensor dimNil)
-  FromRat dom -> case dom of
-    FromRatToRat -> typeOfFromRat (tRatTensor dimNil)
-  FromVec dom -> case dom of
-    FromVecToVec -> typeOfFromVectorToVector
-    FromVecToList -> typeOfFromVectorToList
-    FromVecToTensor -> typeOfFromVectorToTensor
+  FromNatToNat -> typeOfFromNat tNat
+  FromNatToIndex -> forAllIrrelevantNat "n" $ \s -> typeOfFromNat (tIndex s)
+  FromNatToRat -> typeOfFromNat (tRatTensor dimNil)
+  FromRatToRat -> typeOfFromRat (tRatTensor dimNil)
+  FromVecToVec -> typeOfFromVectorToVector
+  FromVecToList -> typeOfFromVectorToList
+  FromVecToTensor -> typeOfFromVectorToTensor
 
 typeOfFromVectorToList :: DSLExpr Builtin
 typeOfFromVectorToList =
@@ -191,6 +199,7 @@ instance HasTypeSystem Builtin where
   solveAuxiliaryInstanceConstraint = solveIndexConstraint
   addAuxiliaryInputOutputConstraints = return
   generateDefaultAuxiliaryConstraint = addNewStandardAuxiliaryConstraintUsingDefaults
+  fromBuiltinName = builtinFromSymbol
 
 restrictStandardDeclType ::
   forall m.
@@ -203,7 +212,8 @@ restrictStandardDeclType declSort (ident, p) typ = do
   env <- getFreeCtx (Proxy @Builtin)
   let tc = case declSort of
         RestrictedProperty -> ValidPropertyType
-        RestrictedParameter s -> ValidParameterType s
+        RestrictedParameter Inferable -> ValidInferableParameterType
+        RestrictedParameter NonInferable -> ValidNonInferableParameterType
         RestrictedDataset -> ValidDatasetType
         RestrictedNetwork -> ValidNetworkType
 

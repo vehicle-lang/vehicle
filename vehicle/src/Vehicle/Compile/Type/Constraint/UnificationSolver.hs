@@ -44,7 +44,7 @@ import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..))
 -- for an excellent tutorial on the algorithm.
 
 -- | Attempts to solve as many unification constraints as possible.
-runUnificationSolver :: (MonadTypeChecker builtin m) => Proxy builtin -> Bool -> m ()
+runUnificationSolver :: (MonadUnify builtin m) => Proxy builtin -> Bool -> m ()
 runUnificationSolver proxy topLevel =
   logCompilerSection2 MaxDetail "unification solver run" $
     runConstraintSolver
@@ -57,7 +57,10 @@ runUnificationSolver proxy topLevel =
 --------------------------------------------------------------------------------
 -- Unification algorithm
 
-type MonadUnify builtin m = MonadTypeChecker builtin m
+type MonadUnify builtin m =
+  ( MonadTypeChecker builtin m,
+    TypableBuiltin builtin
+  )
 
 type UnificationProblem builtin =
   ( BoundCtx (Type builtin),
@@ -145,7 +148,7 @@ instance Monoid (UnificationResult builtin) where
 
 -- | Create a new unification constraint, copying the context as appropriate.
 subUnify ::
-  (MonadTypeChecker builtin m) =>
+  (MonadUnify builtin m) =>
   ConstraintInfo builtin ->
   Value builtin ->
   Value builtin ->

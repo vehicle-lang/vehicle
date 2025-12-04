@@ -55,18 +55,21 @@ typeOfBuiltinFunction p = \case
   Implies -> typeOfOp2 maxLinearity
   And {} -> typeOfOp2 maxLinearity
   Or {} -> typeOfOp2 maxLinearity
-  QuantifyRatTensor q -> typeOfQuantifier q
+  ForallRatTensor -> typeOfQuantifier Forall
+  ExistsRatTensor -> typeOfQuantifier Exists
   If -> typeOfIf
   ReduceAndTensor -> typeOfOp2 maxLinearity
   ReduceOrTensor -> typeOfOp2 maxLinearity
   -- Arithmetic operations
-  Add {} -> typeOfOp2 maxLinearity
-  Mul {} -> typeOfOp2 (mulLinearity p)
-  Neg {} -> typeOfOp1
-  Sub {} -> typeOfOp2 maxLinearity
-  Div {} -> typeOfOp2 (divLinearity p)
-  Min {} -> typeOfOp2 maxLinearity
-  Max {} -> typeOfOp2 maxLinearity
+  AddNat -> typeOfOp2 maxLinearity
+  AddRatTensor -> typeOfOp2 maxLinearity
+  MulNat -> typeOfOp2 (mulLinearity p)
+  MulRatTensor -> typeOfOp2 (mulLinearity p)
+  NegRatTensor -> typeOfOp1
+  SubRatTensor -> typeOfOp2 maxLinearity
+  DivRatTensor -> typeOfOp2 (divLinearity p)
+  MinRatTensor -> typeOfOp2 maxLinearity
+  MaxRatTensor -> typeOfOp2 maxLinearity
   PowRat {} -> typeOfOp2 (powLinearity p)
   ReduceAddRatTensor -> typeOfOp2 maxLinearity
   ReduceMulRatTensor ->
@@ -187,6 +190,7 @@ instance HasTypeSystem LinearityBuiltin where
   solveAuxiliaryInstanceConstraint = solveLinearityConstraint
   addAuxiliaryInputOutputConstraints = addFunctionAuxiliaryInputOutputConstraints (LinearityRelation . FunctionLinearity)
   generateDefaultAuxiliaryConstraint _ = return False
+  fromBuiltinName = const Nothing
 
 pattern LinearityExpr :: Provenance -> Linearity -> Expr LinearityBuiltin
 pattern LinearityExpr p lin = Builtin p (Linearity lin)

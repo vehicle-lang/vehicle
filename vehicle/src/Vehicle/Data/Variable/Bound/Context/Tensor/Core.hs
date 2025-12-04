@@ -6,7 +6,6 @@ import Data.Ord (Down (..), comparing)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text qualified as Text
-import Vehicle.Compile.Prelude (getBinderName)
 import Vehicle.Data.Tensor
 import Vehicle.Data.Variable.Bound.Context.Core (GenericBoundCtx, boundCtxLv)
 import Vehicle.Data.Variable.Bound.Context.Name.Core

@@ -50,20 +50,21 @@ functionBlockingStatus ::
   Spine builtin ->
   BlockingStatus builtin
 functionBlockingStatus b spine = case b of
-  QuantifyRatTensor {} -> DoesNotReduce
+  ForallRatTensor {} -> DoesNotReduce
+  ExistsRatTensor {} -> DoesNotReduce
   Implies -> AlwaysReduces
   Not -> fixedStatus [1] spine
   And -> fixedStatus [1, 2] spine
   Or -> fixedStatus [1, 2] spine
-  Add AddNat -> fixedStatus [0, 1] spine
-  Mul MulNat -> fixedStatus [0, 1] spine
-  Neg NegRatTensor -> fixedStatus [1] spine
-  Add AddRatTensor -> fixedStatus [1, 2] spine
-  Mul MulRatTensor -> fixedStatus [1, 2] spine
-  Sub SubRatTensor -> fixedStatus [1, 2] spine
-  Div DivRatTensor -> fixedStatus [1, 2] spine
-  Min MinRatTensor -> fixedStatus [1, 2] spine
-  Max MaxRatTensor -> fixedStatus [1, 2] spine
+  AddNat -> fixedStatus [0, 1] spine
+  MulNat -> fixedStatus [0, 1] spine
+  NegRatTensor -> fixedStatus [1] spine
+  AddRatTensor -> fixedStatus [1, 2] spine
+  MulRatTensor -> fixedStatus [1, 2] spine
+  SubRatTensor -> fixedStatus [1, 2] spine
+  DivRatTensor -> fixedStatus [1, 2] spine
+  MinRatTensor -> fixedStatus [1, 2] spine
+  MaxRatTensor -> fixedStatus [1, 2] spine
   PowRat -> fixedStatus [0, 1] spine
   CompareIndex _op -> fixedStatus [2, 3] spine
   CompareNat _op -> fixedStatus [0, 1] spine
@@ -94,13 +95,13 @@ derivedFunctionBlockingStatus f spine = case f of
 
 castBlockingStatus :: BuiltinCast -> Spine builtin -> BlockingStatus builtin
 castBlockingStatus f spine = case f of
-  FromNat FromNatToIndex -> fixedStatus [1] spine
-  FromNat FromNatToNat -> AlwaysReduces
-  FromNat FromNatToRat -> fixedStatus [0] spine
-  FromRat FromRatToRat -> AlwaysReduces
-  FromVec FromVecToVec -> AlwaysReduces
-  FromVec FromVecToList -> fixedStatus [2] spine
-  FromVec FromVecToTensor -> AlwaysReduces
+  FromNatToIndex -> fixedStatus [1] spine
+  FromNatToNat -> AlwaysReduces
+  FromNatToRat -> fixedStatus [0] spine
+  FromRatToRat -> AlwaysReduces
+  FromVecToVec -> AlwaysReduces
+  FromVecToList -> fixedStatus [2] spine
+  FromVecToTensor -> AlwaysReduces
 
 traverseArgsAtIndices ::
   (Monad m) =>

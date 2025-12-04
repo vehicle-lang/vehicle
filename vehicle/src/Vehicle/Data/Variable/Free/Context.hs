@@ -19,9 +19,7 @@ mkDeclCtxEntry ::
   (MonadLogger m, MonadFreeContext builtin m, NormalisableBuiltin builtin) =>
   Decl builtin ->
   m (FreeCtxEntry builtin)
-mkDeclCtxEntry decl = do
-  normDecl <- traverse normaliseInEmptyEnv decl
-  return (decl, normDecl)
+mkDeclCtxEntry = traverse normaliseInEmptyEnv
 
 addDeclToContext ::
   (MonadLogger m, MonadFreeContext builtin m, NormalisableBuiltin builtin) =>
@@ -46,7 +44,7 @@ traverseNormalisedDecls_ f (Main ds) =
     go = \case
       [] -> return ()
       decl : decls -> do
-        normDecl <- traverse normaliseInEmptyEnv decl
+        normDecl <- mkDeclCtxEntry decl
         _ <- f normDecl
-        decls' <- addDeclEntryToContext (decl, normDecl) $ go decls
+        decls' <- addDeclEntryToContext normDecl $ go decls
         return decls'

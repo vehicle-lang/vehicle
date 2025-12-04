@@ -5,10 +5,12 @@ import Data.Hashable (Hashable)
 import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..))
+import Vehicle.Syntax.AST.Binder (GenericTelescope)
 import Vehicle.Syntax.AST.Name
 import Vehicle.Syntax.AST.Provenance
-import Vehicle.Syntax.AST.Record
+import Vehicle.Syntax.AST.Record (RecordFields, traverseRecordFields)
 import Vehicle.Syntax.AST.Type
+import Vehicle.Syntax.Prelude (developerError)
 
 --------------------------------------------------------------------------------
 -- Declarations
@@ -33,8 +35,8 @@ data GenericDecl expr
       Provenance -- Location in source file.
       Identifier -- Name of definition.
       [Annotation] -- List of annotations.
-      expr -- Type of the record
-      (RecordFields expr) -- Fields in the record definition.
+      (GenericTelescope expr) -- Type parameters of the record
+      (RecordFields expr) -- Definition of record.
   deriving (Show, Functor, Foldable, Traversable, Generic)
 
 instance (NFData expr) => NFData (GenericDecl expr)
@@ -60,7 +62,7 @@ instance HasType (GenericDecl expr) expr where
   typeOf = \case
     DefAbstract _ _ _ t -> t
     DefFunction _ _ _ t _ -> t
-    DefRecord _ _ _ t _ -> t
+    DefRecord _ _ _ _t _ -> developerError "cannot compute record type"
 
 bodyOf :: GenericDecl expr -> Maybe expr
 bodyOf = \case
@@ -92,7 +94,7 @@ traverseDeclTypeAndExpr ::
 traverseDeclTypeAndExpr f1 f2 = \case
   DefAbstract p n r t -> DefAbstract p n r <$> f1 t
   DefFunction p n b t e -> DefFunction p n b <$> f1 t <*> f2 e
-  DefRecord p n b t fs -> DefRecord p n b <$> f1 t <*> traverseRecordFields f2 fs
+  DefRecord p n b t fs -> DefRecord p n b <$> traverse (traverse f1) t <*> traverseRecordFields f2 fs
 
 mapIdentifier ::
   (Identifier -> Identifier) ->
@@ -164,7 +166,7 @@ instance Pretty DefAbstractSort where
       NetworkDef -> "network"
       DatasetDef -> "dataset"
       ParameterDef {} -> "parameter"
-      BuiltinDef {} -> "postulate"
+      BuiltinDef {} -> "builtin"
 
 isExternalResourceSort :: DefAbstractSort -> Bool
 isExternalResourceSort = \case
@@ -175,10 +177,6 @@ isExternalResourceSort = \case
 
 isExternalResourceDecl :: GenericDecl expr -> Bool
 isExternalResourceDecl decl = maybe False isExternalResourceSort (abstractSortOf decl)
-
-convertToPostulate :: GenericDecl expr -> GenericDecl expr
-convertToPostulate d =
-  DefAbstract (provenanceOf d) (identifierOf d) BuiltinDef (typeOf d)
 
 --------------------------------------------------------------------------------
 -- Annotations options

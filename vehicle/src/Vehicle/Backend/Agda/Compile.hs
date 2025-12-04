@@ -324,8 +324,10 @@ compileDecl opts = \case
         let binders' = mapMaybe compileTopLevelBinder binders
         (_, cbody) <- compileBinders binders (compileExpr body)
         compileFunDef (compileIdentifier n) <$> compileExpr t <*> pure binders' <*> pure cbody
-  DefRecord _ n _ t fs -> do
-    t' <- compileExpr t
+  DefRecord _ n _ telescope fs -> do
+    let t'
+          | null telescope = compileType 0
+          | otherwise = developerError "Compiling record telescopes not yet supported"
     fs' <- traverseRecordFields compileExpr fs
     return $
       "record"
@@ -520,15 +522,15 @@ compileBuiltinFunction f args = case f of
   Or -> annotateInfixApp [DataBool] 5 Nothing "_∨_" args
   Not -> annotateApp [DataBool] Nothing "not" args
   Implies -> annotateInfixApp [VehicleUtils] 4 Nothing "_⇒_" args
-  Add AddNat -> annotateInfixApp [DataNat] 6 (Just natQualifier) "_⊕_" args
-  Mul MulNat -> annotateInfixApp [DataNat] 7 (Just natQualifier) "_*_" args
-  Add AddRatTensor -> annotateInfixApp [DataTensor] 6 (Just tensorQualifier) "_⊕_" args
-  Sub SubRatTensor -> annotateInfixApp [DataTensor] 6 (Just tensorQualifier) "_⊖_" args
-  Mul MulRatTensor -> annotateInfixApp [DataTensor] 7 (Just tensorQualifier) "_*_" args
-  Div DivRatTensor -> annotateInfixApp [DataTensor] 7 (Just tensorQualifier) "_÷_" args
-  Neg NegRatTensor -> annotateInfixApp [DataTensor] 8 (Just tensorQualifier) "-_" args
-  Min MinRatTensor -> annotateInfixApp [DataTensor] 6 (Just tensorQualifier) "_⊓_" args
-  Max MaxRatTensor -> annotateInfixApp [DataTensor] 7 (Just tensorQualifier) "_⊔_" args
+  AddNat -> annotateInfixApp [DataNat] 6 (Just natQualifier) "_⊕_" args
+  MulNat -> annotateInfixApp [DataNat] 7 (Just natQualifier) "_*_" args
+  AddRatTensor -> annotateInfixApp [DataTensor] 6 (Just tensorQualifier) "_⊕_" args
+  SubRatTensor -> annotateInfixApp [DataTensor] 6 (Just tensorQualifier) "_⊖_" args
+  MulRatTensor -> annotateInfixApp [DataTensor] 7 (Just tensorQualifier) "_*_" args
+  DivRatTensor -> annotateInfixApp [DataTensor] 7 (Just tensorQualifier) "_÷_" args
+  NegRatTensor -> annotateInfixApp [DataTensor] 8 (Just tensorQualifier) "-_" args
+  MinRatTensor -> annotateInfixApp [DataTensor] 6 (Just tensorQualifier) "_⊓_" args
+  MaxRatTensor -> annotateInfixApp [DataTensor] 7 (Just tensorQualifier) "_⊔_" args
   CompareIndex op -> annotateInfixApp [VehicleUtils, DataFin] 4 Nothing (comparisonOperator True op) args
   CompareNat op -> annotateInfixApp [VehicleUtils, DataNat] 4 Nothing (comparisonOperator True op) args
   CompareRatTensorPointwise op -> annotateInfixApp [VehicleUtils, DataTensor] 4 Nothing ("_" <> comparisonOperatorBase True op <> "∙_") args
@@ -541,9 +543,8 @@ compileBuiltinFunction f args = case f of
   ReduceMaxRatTensor -> annotateApp [DataTensor] Nothing "reduceMax" args
   ReduceMulRatTensor -> annotateApp [DataTensor] Nothing "reduceMul" args
   ConstTensor -> annotateApp [DataTensor] Nothing "constTensor" args
-  QuantifyRatTensor q -> case reverse args of
-    (ExplicitArg _ _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier q [binder] body
-    _ -> unsupportedArgsError
+  ForallRatTensor -> compileForallExistsTypeLevel Forall args
+  ExistsRatTensor -> compileForallExistsTypeLevel Forall args
   AtTensor -> annotateInfixApp [DataTensor] (-1) Nothing "_!_" args
   AtVector -> annotateInfixApp [FunctionBase] (-1) Nothing "_$_" args
   If -> annotateInfixApp [DataBool] 0 Nothing "if_then_else_" args
@@ -557,15 +558,6 @@ compileBuiltinFunction f args = case f of
     unsupportedError =
       developerError $
         "compilation of builtin" <+> quotePretty f <+> "to Agda unsupported"
-
-    unsupportedArgsError :: a
-    unsupportedArgsError = do
-      developerError $
-        "compilation of"
-          <+> quotePretty f
-          <+> "with args"
-          <+> prettyVerbose args
-          <+> "to Agda unsupported"
 
 compileDecidabilityBuiltinFunction ::
   (MonadAgdaCompile m) =>
@@ -594,6 +586,24 @@ compileDecidabilityBuiltinFunction f args = case f of
   PropNaryProduct -> annotateApp [DataProductNary] Nothing "Product" args
   PropNaryProductAt -> annotateApp [DataProductNary] Nothing "projₙ" args
   PropNaryProductForeach -> annotateApp [VehicleUtils] Nothing "foreachNary" args
+
+compileForallExistsTypeLevel ::
+  (MonadAgdaCompile m) =>
+  Quantifier ->
+  [Arg DecidabilityBuiltin] ->
+  m Code
+compileForallExistsTypeLevel q args = case reverse args of
+  (ExplicitArg _ _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier q [binder] body
+  _ -> unsupportedArgsError
+  where
+    unsupportedArgsError :: a
+    unsupportedArgsError = do
+      developerError $
+        "compilation of"
+          <+> quotePretty q
+          <+> "with args"
+          <+> prettyVerbose args
+          <+> "to Agda unsupported"
 
 compileTypeLevelQuantifier ::
   (MonadAgdaCompile m) =>

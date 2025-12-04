@@ -12,6 +12,7 @@ import Vehicle.Syntax.AST.Provenance (HasProvenance (..), Provenance)
 import Vehicle.Syntax.AST.Relevance (HasRelevance (..), Relevance (..))
 import Vehicle.Syntax.AST.Type
 import Vehicle.Syntax.AST.Visibility (HasVisibility (..), Visibility (..))
+import Vehicle.Syntax.Prelude
 
 --------------------------------------------------------------------------------
 -- Binder naming forms
@@ -133,6 +134,11 @@ pattern IrrelevantInstanceBinder :: Provenance -> expr -> GenericBinder expr
 pattern IrrelevantInstanceBinder p t <- Binder p _ Instance {} Irrelevant t
 
 --------------------------------------------------------------------------------
+-- Telescope
+
+type GenericTelescope expr = [GenericBinder expr]
+
+--------------------------------------------------------------------------------
 -- Helper functions
 
 pairBinder :: (GenericBinder a, b) -> GenericBinder (a, b)
@@ -177,3 +183,9 @@ mkExplicitBinder typ name = Binder mempty (mkDefaultBinderDisplayForm name) Expl
 
 mkImplicitBinder :: expr -> Maybe Name -> GenericBinder expr
 mkImplicitBinder typ name = Binder mempty (mkDefaultBinderDisplayForm name) (Implicit True) Relevant typ
+
+getBinderName :: GenericBinder expr -> Name
+getBinderName binder = case binderNamingForm binder of
+  NameAndType name -> name
+  OnlyName name -> name
+  OnlyType -> developerError "Binder unexpectedly does not appear to have a name"

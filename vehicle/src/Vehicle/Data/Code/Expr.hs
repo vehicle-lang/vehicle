@@ -7,7 +7,7 @@ module Vehicle.Data.Code.Expr
     Arg,
     Telescope,
     Decl,
-    Prog,
+    Module,
     normAppList,
     normApp,
     isTypeSynonym,
@@ -150,11 +150,11 @@ type Binder builtin = GenericBinder (Expr builtin)
 
 type Arg builtin = GenericArg (Expr builtin)
 
-type Telescope builtin = [Binder builtin]
+type Telescope builtin = GenericTelescope (Expr builtin)
 
 type Decl builtin = GenericDecl (Expr builtin)
 
-type Prog builtin = GenericProg (Expr builtin)
+type Module builtin = GenericModule (Expr builtin)
 
 --------------------------------------------------------------------------------
 -- Instances

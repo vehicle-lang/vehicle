@@ -113,7 +113,7 @@ data DecidabilityBuiltin
   | DecidabilityBuiltinTypeClass DecidabilityBuiltinTypeClass
   | DecidabilityBuiltinTypeClassOp DecidabilityBuiltinTypeClassOp
   | DecidabilityBuiltinFunction DecidabilityBuiltinFunction
-  deriving (Show, Eq, Generic)
+  deriving (Show, Eq, Ord, Generic)
 
 instance Hashable DecidabilityBuiltin
 
@@ -239,8 +239,8 @@ instance BuiltinHasNatLiterals DecidabilityBuiltin where
         mkExpr = StandardBuiltinConstructor . NatTensorLiteral
       }
 
-  accessAddNatBuiltin = functionAccessor (Add AddNat)
-  accessMulNatBuiltin = functionAccessor (Mul MulNat)
+  accessAddNatBuiltin = functionAccessor (AddNat)
+  accessMulNatBuiltin = functionAccessor (MulNat)
 
 instance BuiltinHasBoolType DecidabilityBuiltin where
   accessBoolTypeBuiltin = typeAccessor BoolType
@@ -267,13 +267,8 @@ instance BuiltinHasBoolLiterals DecidabilityBuiltin where
   accessCompareRatTensorPointwiseBuiltin = compareRatTensorPointwiseAccessor
   accessCompareRatTensorReducedBuiltin = compareRatTensorReducedAccessor
 
-  accessQuantifyRatTensorBuiltin =
-    Access
-      { getExpr = \case
-          StandardBuiltinFunction (QuantifyRatTensor q) -> Just q
-          _ -> Nothing,
-        mkExpr = StandardBuiltinFunction . QuantifyRatTensor
-      }
+  accessForallRatTensorBuiltin = functionAccessor ForallRatTensor
+  accessExistsRatTensorBuiltin = functionAccessor ExistsRatTensor
 
 instance BuiltinHasIndexType DecidabilityBuiltin where
   accessIndexTypeBuiltin = typeAccessor IndexType
@@ -299,13 +294,13 @@ instance BuiltinHasRatLiterals DecidabilityBuiltin where
         mkExpr = StandardBuiltinConstructor . RatTensorLiteral
       }
 
-  accessNegRatTensorBuiltin = functionAccessor $ Neg NegRatTensor
-  accessAddRatTensorBuiltin = functionAccessor $ Add AddRatTensor
-  accessMulRatTensorBuiltin = functionAccessor $ Mul MulRatTensor
-  accessSubRatTensorBuiltin = functionAccessor $ Sub SubRatTensor
-  accessDivRatTensorBuiltin = functionAccessor $ Div DivRatTensor
-  accessMinRatTensorBuiltin = functionAccessor $ Min MinRatTensor
-  accessMaxRatTensorBuiltin = functionAccessor $ Max MaxRatTensor
+  accessNegRatTensorBuiltin = functionAccessor NegRatTensor
+  accessAddRatTensorBuiltin = functionAccessor AddRatTensor
+  accessMulRatTensorBuiltin = functionAccessor MulRatTensor
+  accessSubRatTensorBuiltin = functionAccessor SubRatTensor
+  accessDivRatTensorBuiltin = functionAccessor DivRatTensor
+  accessMinRatTensorBuiltin = functionAccessor MinRatTensor
+  accessMaxRatTensorBuiltin = functionAccessor MaxRatTensor
   accessPowRatTensorBuiltin = functionAccessor PowRat
   accessReduceAddRatBuiltin = functionAccessor ReduceAddRatTensor
   accessReduceMulRatBuiltin = functionAccessor ReduceMulRatTensor
@@ -336,7 +331,8 @@ instance BuiltinHasBinders DecidabilityBuiltin where
   getBuiltinBinderType = \case
     StandardBuiltinFunction ForeachTensor -> Just ForeachBinder
     StandardBuiltinFunction ForeachVector -> Just ForeachBinder
-    StandardBuiltinFunction (QuantifyRatTensor q) -> Just $ QuantifierBinder q
+    StandardBuiltinFunction ForallRatTensor -> Just $ QuantifierBinder Forall
+    StandardBuiltinFunction ExistsRatTensor -> Just $ QuantifierBinder Exists
     _ -> Nothing
 
 instance BuiltinHasIterate DecidabilityBuiltin where

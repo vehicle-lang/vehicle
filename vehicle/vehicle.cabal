@@ -163,6 +163,7 @@ library
     Vehicle.Data.Code.Expr
     Vehicle.Data.Code.Interface
     Vehicle.Data.Code.LinearExpr
+    Vehicle.Data.Code.ModuleInterface
     Vehicle.Data.Code.Value
     Vehicle.Data.DSL
     Vehicle.Data.Hashing
@@ -212,10 +213,10 @@ library
     Vehicle.Compile.Dependency
     Vehicle.Compile.ExpandResources.Dataset.IDX
     Vehicle.Compile.FunctionaliseResources
+    Vehicle.Compile.Irrelevance
     Vehicle.Compile.LiftIf
     Vehicle.Compile.LiftMinMax
     Vehicle.Compile.LowerNot
-    Vehicle.Compile.Prelude.Utils
     Vehicle.Compile.Print.Warning
     Vehicle.Compile.Property
     Vehicle.Compile.Rational.LinearExpr
@@ -232,7 +233,6 @@ library
     Vehicle.Compile.Type.Core
     Vehicle.Compile.Type.Force
     Vehicle.Compile.Type.Generalise
-    Vehicle.Compile.Type.Irrelevance
     Vehicle.Compile.Type.Meta
     Vehicle.Compile.Type.Meta.Map
     Vehicle.Compile.Type.Meta.Set
@@ -271,6 +271,7 @@ library
     Vehicle.Data.Code.Interface.Args
     Vehicle.Data.Code.Interface.Operations
     Vehicle.Data.Code.Interface.Patterns
+    Vehicle.Data.Code.Prog
     Vehicle.Data.Code.TypedView
     Vehicle.Data.DifferentiableLogic
     Vehicle.Data.Universe

@@ -77,9 +77,7 @@ position token TokReduceMul {"reduceMul"};
 position token TokReduceMin {"reduceMin"};
 position token TokReduceMax {"reduceMax"};
 
-position token TokHasLeq    {"HasLeq"};
-position token TokHasEq     {"HasEq"};
-position token TokHasNotEq  {"HasNotEq"};
+position token TokHasCompare{"HasComparisons"};
 position token TokHasAdd    {"HasAdd"};
 position token TokHasSub    {"HasSub"};
 position token TokHasMul    {"HasMul"};
@@ -91,8 +89,9 @@ position token TokAnnNameOpt  {"name"};
 position token TokAnnInferOpt {"infer"};
 
 -- NOTE: As order matters don't declare tokens after these ones!
-position token Name         (letter (letter | digit | '_')*) ;
+position token Name         (letter (letter | digit | '_')*);
 position token HoleToken    ({"?"} (letter | digit | '_')*);
+position token ModulePath   (letter (letter | digit)*) (('.' (letter (letter | digit)*))*);
 
 -- For accessing records (e.g. `x.field1`)
 -- have to declare as single token in order to ensure no whitespace and avoid clashes
@@ -250,14 +249,12 @@ Vector.  Expr14 ::= TokVector;
 Tensor.  Expr14 ::= TokTensor;
 
 -- Type classes.
-HasEq.    Expr15 ::= TokHasEq;
-HasNotEq. Expr15 ::= TokHasNotEq;
-HasLeq.   Expr15 ::= TokHasLeq;
-HasAdd.   Expr15 ::= TokHasAdd;
-HasSub.   Expr15 ::= TokHasSub;
-HasMul.   Expr15 ::= TokHasMul;
-HasMap.   Expr15 ::= TokHasMap;
-HasFold.  Expr15 ::= TokHasFold;
+HasCompare. Expr15 ::= TokHasCompare;
+HasAdd.     Expr15 ::= TokHasAdd;
+HasSub.     Expr15 ::= TokHasSub;
+HasMul.     Expr15 ::= TokHasMul;
+HasMap.     Expr15 ::= TokHasMap;
+HasFold.    Expr15 ::= TokHasFold;
 
 IsTensorType.  Expr15 ::= TokIsTensorType;
 
@@ -286,12 +283,18 @@ DefAnn.       Decl ::= TokAnnotation DeclAnnOpts;
 DefType.      Decl ::= "type" Name [NameBinder] "=" Expr;
 DefFunType.   Decl ::= Name TokElemOf Expr;
 DefFunExpr.   Decl ::= Name [NameBinder] "=" Expr;
-DefRecord.    Decl ::= "record" Name "where" "{" [RecordFieldDef] "}";
+DefRecord.    Decl ::= "record" Name [NameBinder] "where" "{" [RecordFieldDef] "}";
 
 separator Decl ";";
 
--- * Program
+-- * Import statements
+
+Import. ImportStatement ::= "import" ModulePath;
+
+separator ImportStatement ";";
+
+-- * Module
 
 layout toplevel;
 
-Main. Prog ::= [Decl]
+DefModule. Module ::= [ImportStatement] [Decl]

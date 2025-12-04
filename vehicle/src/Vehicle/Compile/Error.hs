@@ -196,7 +196,7 @@ data CompileError
   | NoQuantifierDomainFound DeclProvenance (VBinder Builtin) (These (NonEmpty TensorIndices) (NonEmpty TensorIndices))
   | UnorderableDifferentiableLogic DeclProvenance (Value Builtin)
   | -- ITP backend errors
-    UnsupportedPolymorphicEquality InteractiveTheoremProverID Provenance Name
+    UnimplementedFeature Provenance (Doc Void)
   | UnusedMonomorphisableDeclaration Provenance Identifier
   | -- Other
     UnsupportedInequality QueryFormatID DeclProvenance

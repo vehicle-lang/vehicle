@@ -9,7 +9,7 @@ import Vehicle.Syntax.AST.Decl
 import Vehicle.Syntax.AST.Expr
 import Vehicle.Syntax.AST.Name
 import Vehicle.Syntax.AST.Record
-import Vehicle.Syntax.AST.Prog
+import Vehicle.Syntax.AST.Module
 import Vehicle.Syntax.AST.Provenance
 import Vehicle.Syntax.AST.Relevance
 import Vehicle.Syntax.AST.Visibility
@@ -56,10 +56,6 @@ instance NoThunks AddDomain
 instance NoThunks SubDomain
 instance NoThunks MulDomain
 instance NoThunks DivDomain
-instance NoThunks MinDomain
-instance NoThunks MaxDomain
-instance NoThunks FromNatDomain
-instance NoThunks FromRatDomain
 instance NoThunks Builtin
 
 -- Vehicle.Syntax.Tensor
@@ -80,8 +76,8 @@ instance NoThunks Expr
 instance NoThunks Module
 instance NoThunks Identifier
 
--- Vehicle.Syntax.AST.Prog
-instance NoThunks expr => NoThunks (GenericProg expr)
+-- Vehicle.Syntax.AST.Module
+instance NoThunks expr => NoThunks (GenericModule expr)
 
 -- Vehicle.Syntax.AST.Provenance
 instance NoThunks Position

@@ -8,21 +8,15 @@ module Vehicle.Data.Builtin.Standard.Instances
   )
 where
 
-import Data.HashMap.Strict (HashMap)
 import Vehicle.Compile.Type.Constraint.Core
-import Vehicle.Compile.Type.Core (InstanceCandidate (..), InstanceDatabase (..), InstanceSearchDepth)
+import Vehicle.Compile.Type.Core (InstanceCandidate (..), InstanceDatabase (..))
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.DSL
 import Vehicle.Prelude
 
 standardBuiltinInstances :: InstanceDatabase Builtin
-standardBuiltinInstances = makeInstanceDatabase allInstances searchDepth
-
-searchDepth :: HashMap Builtin InstanceSearchDepth
-searchDepth =
-  [ (TypeClass HasVecLits, 1)
-  ]
+standardBuiltinInstances = makeInstanceDatabase allInstances
 
 -- Manually declared here as we have no way of declaring them in the language
 -- itself.
@@ -39,8 +33,7 @@ allInstances =
           -----------------------
           ( forAllDims $ \ds ->
               validPropertyType (tBoolTensor ds),
-            lamDims $ \_ds ->
-              tUnit,
+            lamDims $ const tUnit,
             False
           ),
           ( forAllTypes $ \tElem ->
@@ -49,8 +42,7 @@ allInstances =
                   .~~~> validPropertyType (tVector tElem d),
             lamType $ \tElem ->
               lamDim $ \_d ->
-                instLam "r1" (validPropertyType tElem) $ \_inst ->
-                  tUnit,
+                instLam "r1" (validPropertyType tElem) $ const tUnit,
             False
           ),
           ------------------------------------
@@ -62,8 +54,7 @@ allInstances =
           ),
           ( forAllIrrelevantNat "n" $ \n ->
               validNonInferableParameterType (tIndex n),
-            irrelImplNatLam "n" $ \_n ->
-              unitLit,
+            irrelImplNatLam "n" $ const unitLit,
             False
           ),
           ( validNonInferableParameterType tNat,
@@ -88,8 +79,7 @@ allInstances =
               validDatasetListElementType t
                 .~~~> validDatasetType (tList t),
             implLam "t" type0 $ \t ->
-              instLam "r1" (validDatasetListElementType t) $ \_ ->
-                tUnit,
+              instLam "r1" (validDatasetListElementType t) $ const tUnit,
             False
           ),
           ( forAllTypes $ \t ->
@@ -98,8 +88,7 @@ allInstances =
                   .~~~> validDatasetType (tVector t d),
             implLam "t" type0 $ \t ->
               lam "d" (Implicit False) Irrelevant tDim $ \_d ->
-                instLam "r1" (validDatasetListElementType t) $ \_ ->
-                  tUnit,
+                instLam "r1" (validDatasetListElementType t) $ const tUnit,
             False
           ),
           ( forAllTypes $ \t ->
@@ -108,8 +97,7 @@ allInstances =
                   .~~~> validDatasetType (tTensor t ds),
             implLam "t" type0 $ \t ->
               lamDims $ \_ds ->
-                instLam "r1" (validDatasetTensorElementType t) $ \_ ->
-                  tUnit,
+                instLam "r1" (validDatasetTensorElementType t) $ const tUnit,
             False
           ),
           -- List element types
@@ -117,8 +105,7 @@ allInstances =
               validDatasetListElementType t
                 .~~~> validDatasetListElementType (tList t),
             implLam "t" type0 $ \t ->
-              instLam "r1" (validDatasetListElementType t) $ \_ ->
-                tUnit,
+              instLam "r1" (validDatasetListElementType t) $ const tUnit,
             False
           ),
           ( forAllTypes $ \t ->
@@ -127,8 +114,7 @@ allInstances =
                   .~~~> validDatasetListElementType (tVector t d),
             implLam "t" type0 $ \t ->
               lam "d" (Implicit False) Irrelevant tDim $ \_d ->
-                instLam "r1" (validDatasetListElementType t) $ \_ ->
-                  tUnit,
+                instLam "r1" (validDatasetListElementType t) $ const tUnit,
             False
           ),
           ( forAllTypes $ \t ->
@@ -137,14 +123,12 @@ allInstances =
                   .~~~> validDatasetListElementType (tTensor t ds),
             implLam "t" type0 $ \t ->
               lamDims $ \_ds ->
-                instLam "r1" (validDatasetTensorElementType t) $ \_ ->
-                  tUnit,
+                instLam "r1" (validDatasetTensorElementType t) $ const tUnit,
             False
           ),
           ( forAllIrrelevantNat "n" $ \n ->
               validDatasetListElementType (tIndex n),
-            irrelImplNatLam "n" $ \_n ->
-              tUnit,
+            irrelImplNatLam "n" $ const tUnit,
             False
           ),
           ( validDatasetListElementType tNat,
@@ -154,8 +138,7 @@ allInstances =
           -- Element typs
           ( forAllIrrelevantNat "n" $ \n ->
               validDatasetTensorElementType (tIndex n),
-            irrelImplNatLam "n" $ \_n ->
-              tUnit,
+            irrelImplNatLam "n" $ const tUnit,
             False
           ),
           ( validDatasetTensorElementType tNat,
@@ -173,8 +156,7 @@ allInstances =
               forAllDims $ \ds2 ->
                 validNetworkType (tRatTensor ds1 ~> tRatTensor ds2),
             lamDims $ \_ds1 ->
-              lamDims $ \_ds2 ->
-                tUnit,
+              lamDims $ const tUnit,
             False
           ),
           -------------------------
@@ -184,15 +166,14 @@ allInstances =
               forAllDims $ \ds ->
                 validTensorLikeType (tTensor t ds),
             lamType $ \_t ->
-              lamDim $ \_ds ->
-                tUnit,
+              lamDim $ const tUnit,
             False
           ),
           -- ----------------
           -- HasRatLits --
           ----------------
           ( hasRatLits (tRatTensor dimNil),
-            builtinCast (FromRat FromRatToRat),
+            builtinCast FromRatToRat,
             False
           ),
           ----------------
@@ -201,15 +182,15 @@ allInstances =
           ( forAllIrrelevantNat "n" $ \n ->
               hasNatLits (tIndex n),
             irrelImplNatLam "n" $ \n ->
-              builtinCast (FromNat FromNatToIndex) .@@@ [n],
+              builtinCast FromNatToIndex .@@@ [n],
             False
           ),
           ( hasNatLits tNat,
-            builtinCast (FromNat FromNatToNat),
+            builtinCast FromNatToNat,
             True
           ),
           ( hasNatLits (tRatTensor dimNil),
-            builtinCast (FromNat FromNatToRat),
+            builtinCast FromNatToRat,
             False
           ),
           ----------------
@@ -218,13 +199,13 @@ allInstances =
           ( forAllTypes $ \tElem ->
               hasVecLits (lamExplDim $ \_d -> tList tElem) tElem,
             implLam "tElem" type0 $ \tElem ->
-              builtinCast (FromVec FromVecToList) @@@ [tElem],
+              builtinCast FromVecToList @@@ [tElem],
             False
           ),
           ( forAllTypes $ \t ->
               hasVecLits (lamExplDim $ \d -> tVector t d) t,
             implLam "tElem" type0 $ \tElem ->
-              builtinCast (FromVec FromVecToTensor) @@@ [tElem],
+              builtinCast FromVecToTensor @@@ [tElem],
             False
           ),
           ( forAllTypes $ \tElem ->
@@ -232,7 +213,7 @@ allInstances =
                 hasVecLits (lamExplDim $ \d -> tTensor tElem (dimCons d ds)) (tTensor tElem ds),
             implLam "tElem" type0 $ \tElem ->
               lamDims $ \ds ->
-                builtinCast (FromVec FromVecToTensor) @@@ [tElem] .@@@ [ds],
+                builtinCast FromVecToTensor @@@ [tElem] .@@@ [ds],
             False
           ),
           ------------------
@@ -262,43 +243,43 @@ allInstances =
           -- HasNeg --
           ------------
           ( forAllDims $ \dims -> hasNeg (tRatTensor dims) (tRatTensor dims),
-            lamDims $ \dims -> builtinFunction (Neg NegRatTensor) .@@@ [dims],
+            lamDims $ \dims -> builtinFunction (NegRatTensor) .@@@ [dims],
             False
           ),
           ------------
           -- HasAdd --
           ------------
           ( hasAdd tNat tNat tNat,
-            builtinFunction (Add AddNat),
+            builtinFunction (AddNat),
             True
           ),
           ( forAllDims $ \dims -> hasAdd (tRatTensor dims) (tRatTensor dims) (tRatTensor dims),
-            lamDims $ \dims -> builtinFunction (Add AddRatTensor) .@@@ [dims],
+            lamDims $ \dims -> builtinFunction (AddRatTensor) .@@@ [dims],
             False
           ),
           ------------
           -- HasSub --
           ------------
           ( forAllDims $ \dims -> hasSub (tRatTensor dims) (tRatTensor dims) (tRatTensor dims),
-            lamDims $ \dims -> builtinFunction (Sub SubRatTensor) .@@@ [dims],
+            lamDims $ \dims -> builtinFunction (SubRatTensor) .@@@ [dims],
             False
           ),
           ------------
           -- HasMul --
           ------------
           ( hasMul tNat tNat tNat,
-            builtinFunction (Mul MulNat),
+            builtinFunction (MulNat),
             True
           ),
           ( forAllDims $ \dims -> hasMul (tRatTensor dims) (tRatTensor dims) (tRatTensor dims),
-            lamDims $ \dims -> builtinFunction (Mul MulRatTensor) .@@@ [dims],
+            lamDims $ \dims -> builtinFunction (MulRatTensor) .@@@ [dims],
             False
           ),
           ------------
           -- HasDiv --
           ------------
           ( forAllDims $ \dims -> hasDiv (tRatTensor dims) (tRatTensor dims) (tRatTensor dims),
-            lamDims $ \dims -> builtinFunction (Div DivRatTensor) .@@@ [dims],
+            lamDims $ \dims -> builtinFunction (DivRatTensor) .@@@ [dims],
             False
           ),
           ------------
@@ -358,46 +339,40 @@ allInstances =
             False
           )
         ]
-      <> comparisonCandidates Le
-      <> comparisonCandidates Lt
-      <> comparisonCandidates Ge
-      <> comparisonCandidates Gt
-      <> comparisonCandidates Eq
-      <> comparisonCandidates Ne
       <> quantifierCandidates Forall
       <> quantifierCandidates Exists
+      -----------------
+      -- Comparisons --
+      -----------------
+      <> [ ( hasCompare tNat tNat (tBoolTensor dimNil),
+             builtinInstance Nothing "natHasCompare",
+             True
+           ),
+           -- We separate out the zero-dimensional tensor case so that we have a unique
+           -- representation of comparisons over zero tensors. Otherwise, we end up
+           -- having both pointwise and reduced comparisons.
+           ( hasCompare (tRatTensor dimNil) (tRatTensor dimNil) (tBoolTensor dimNil),
+             builtinInstance Nothing "zeroDimRatTensorHasCompare",
+             False
+           ),
+           ( forAllDim Irrelevant $ \d ->
+               forAllDims $ \dims ->
+                 hasCompare (tRatTensor (dimCons d dims)) (tRatTensor (dimCons d dims)) (tBoolTensor dimNil),
+             lamDim $ \d ->
+               lamDims $ \dims ->
+                 builtinInstance Nothing "nonZeroDimRatTensorHasCompare" .@@@ [d, dims],
+             False
+           ),
+           ( forAll "d1" tNat $ \n1 ->
+               forAll "d2" tNat $ \n2 ->
+                 hasCompare (tIndex n1) (tIndex n2) (tBoolTensor dimNil),
+             lamDim $ \d1 ->
+               lamDim $ \d2 ->
+                 builtinInstance Nothing "indexHasCompare" .@@@ [d1, d2],
+             False
+           )
+         ]
   where
-    comparisonCandidates :: ComparisonOp -> [(DSLExpr Builtin, DSLExpr Builtin, Bool)]
-    comparisonCandidates op =
-      [ ( forAll "n1" tNat $ \n1 ->
-            forAll "n2" tNat $ \n2 ->
-              hasCompare op (tIndex n1) (tIndex n2) (tBoolTensor dimNil),
-          implLam "n1" tNat $ \n1 ->
-            implLam "n2" tNat $ \n2 ->
-              builtinFunction (CompareIndex op) @@@ [n1, n2],
-          False
-        ),
-        ( hasCompare op tNat tNat (tBoolTensor dimNil),
-          builtinFunction (CompareNat op),
-          True
-        ),
-        -- We separate out the zero-dimensional tensor case so that we have a unique
-        -- representation of comparisons over zero tensors. Otherwise, we end up
-        -- having both pointwise and reduced comparisons.
-        ( hasCompare op (tRatTensor dimNil) (tRatTensor dimNil) (tBoolTensor dimNil),
-          builtinFunction (CompareRatTensorPointwise op) .@@@ [dimNil],
-          False
-        ),
-        ( forAllDim Irrelevant $ \d ->
-            forAllDims $ \dims ->
-              hasCompare op (tRatTensor (dimCons d dims)) (tRatTensor (dimCons d dims)) (tBoolTensor dimNil),
-          lamDim $ \d ->
-            lamDims $ \dims ->
-              builtinDerivedFunction (CompareRatTensorReduced op) .@@@ [d, dims],
-          False
-        )
-      ]
-
     quantifierCandidates ::
       Quantifier ->
       [(DSLExpr Builtin, DSLExpr Builtin, Bool)]
@@ -411,7 +386,7 @@ allInstances =
         ( forAllDims $ \ds ->
             hasQuantifier q (tRatTensor ds),
           lamDims $ \ds ->
-            builtinFunction (QuantifyRatTensor q) @@@ [ds],
+            builtinFunction (if q == Forall then ForallRatTensor else ExistsRatTensor) @@@ [ds],
           False
         )
       ]

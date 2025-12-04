@@ -42,7 +42,7 @@ import Vehicle.Verify.Specification (CompilationStep (..), QueryMetaData (..), R
 import Vehicle.Verify.Specification.IO (writeVerificationQuery)
 
 --------------------------------------------------------------------------------
--- Main entry point
+-- Module entry point
 
 -- | Converts a set of partitions to a set of individual queries
 compilePartitionsToQueries ::

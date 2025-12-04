@@ -5,6 +5,7 @@ module Vehicle.Data.Code.Value
     VArg,
     VBinder,
     VDecl,
+    VModule,
     VProg,
     VDims,
     Spine,
@@ -85,7 +86,9 @@ type VBinder builtin = GenericBinder (Value builtin)
 
 type VDecl builtin = GenericDecl (Value builtin)
 
-type VProg builtin = GenericProg (Value builtin)
+type VModule builtin = GenericModule (Value builtin)
+
+type VProg builtin = GenericModule (Value builtin)
 
 type VDims builtin = Value builtin
 

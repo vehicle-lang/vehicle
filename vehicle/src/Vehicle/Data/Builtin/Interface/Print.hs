@@ -30,7 +30,7 @@ instance ConvertableBuiltin DerivedFunction Builtin where
   convertBuiltin p = Builtin p . DerivedFunction
 
 instance ConvertableBuiltin ComparisonOp Builtin where
-  convertBuiltin p = convertBuiltin p . CompareTC
+  convertBuiltin p = convertBuiltin p . opToTCOp
 
 convertExprBuiltins ::
   forall builtin1 builtin2.

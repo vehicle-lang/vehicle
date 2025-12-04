@@ -1,4 +1,4 @@
-module Vehicle.Compile.Type.Irrelevance
+module Vehicle.Compile.Irrelevance
   ( RemoveIrrelevantCode,
     removeIrrelevantCodeFromProg,
     removeIrrelevantCode,

@@ -72,13 +72,15 @@ type LogicDirection = Bool
 
 data LossBuiltinFunction
   = -- Rat operations
-    Add AddDomain
-  | Mul MulDomain
-  | Neg NegDomain
-  | Sub SubDomain
-  | Div DivDomain
-  | Min MinDomain
-  | Max MaxDomain
+    AddNat
+  | AddRatTensor
+  | MulNat
+  | MulRatTensor
+  | NegRatTensor
+  | SubRatTensor
+  | DivRatTensor
+  | MinRatTensor
+  | MaxRatTensor
   | PowRat
   | -- Rat tensor operations
     ReduceAddRatTensor
@@ -98,13 +100,15 @@ data LossBuiltinFunction
 -- somehow.
 instance Pretty LossBuiltinFunction where
   pretty = \case
-    Add dom -> "add" <> pretty dom
-    Mul dom -> "mul" <> pretty dom
-    Neg dom -> "neg" <> pretty dom
-    Sub dom -> "sub" <> pretty dom
-    Div dom -> "div" <> pretty dom
-    Min dom -> "min" <> pretty dom
-    Max dom -> "max" <> pretty dom
+    AddNat -> "addNat"
+    AddRatTensor -> "addRatTensor"
+    MulNat -> "mulNat"
+    MulRatTensor -> "mulRatTensor"
+    NegRatTensor -> "negRatTensor"
+    SubRatTensor -> "subRatTensor"
+    DivRatTensor -> "divRatTensor"
+    MinRatTensor -> "minRatTensor"
+    MaxRatTensor -> "maxRatTensor"
     PowRat -> "**"
     ReduceAddRatTensor -> "reduceAddRatTensor"
     ReduceMulRatTensor -> "reduceMulRatTensor"
@@ -192,8 +196,8 @@ instance BuiltinHasNatLiterals LossBuiltin where
         mkExpr = LossBuiltinConstructor . NatTensorLiteral
       }
 
-  accessAddNatBuiltin = functionAccessor (Add AddNat)
-  accessMulNatBuiltin = functionAccessor (Mul MulNat)
+  accessAddNatBuiltin = functionAccessor AddNat
+  accessMulNatBuiltin = functionAccessor MulNat
 
 --------------------------------------------------------------------------------
 -- Rat
@@ -210,13 +214,13 @@ instance BuiltinHasRatLiterals LossBuiltin where
         mkExpr = LossBuiltinConstructor . RatTensorLiteral
       }
 
-  accessNegRatTensorBuiltin = functionAccessor $ Neg NegRatTensor
-  accessAddRatTensorBuiltin = functionAccessor $ Add AddRatTensor
-  accessMulRatTensorBuiltin = functionAccessor $ Mul MulRatTensor
-  accessSubRatTensorBuiltin = functionAccessor $ Sub SubRatTensor
-  accessDivRatTensorBuiltin = functionAccessor $ Div DivRatTensor
-  accessMinRatTensorBuiltin = functionAccessor $ Min MinRatTensor
-  accessMaxRatTensorBuiltin = functionAccessor $ Max MaxRatTensor
+  accessNegRatTensorBuiltin = functionAccessor NegRatTensor
+  accessAddRatTensorBuiltin = functionAccessor AddRatTensor
+  accessMulRatTensorBuiltin = functionAccessor MulRatTensor
+  accessSubRatTensorBuiltin = functionAccessor SubRatTensor
+  accessDivRatTensorBuiltin = functionAccessor DivRatTensor
+  accessMinRatTensorBuiltin = functionAccessor MinRatTensor
+  accessMaxRatTensorBuiltin = functionAccessor MaxRatTensor
   accessPowRatTensorBuiltin = functionAccessor PowRat
   accessReduceAddRatBuiltin = functionAccessor ReduceAddRatTensor
   accessReduceMulRatBuiltin = functionAccessor ReduceMulRatTensor
@@ -290,15 +294,15 @@ instance HasLiftableTensorOperations LossBuiltin where
 instance NormalisableBuiltin LossBuiltin where
   evalScheme = \case
     LossBuiltinFunction f -> case f of
-      Add AddNat -> Simple evalAddNat
-      Mul MulNat -> Simple evalMulNat
-      Neg NegRatTensor -> Simple evalNegRatTensor
-      Add AddRatTensor -> Simple evalAddRatTensor
-      Sub SubRatTensor -> Simple evalSubRatTensor
-      Mul MulRatTensor -> Simple evalMulRatTensor
-      Div DivRatTensor -> Simple evalDivRatTensor
-      Min MinRatTensor -> Simple evalMinRatTensor
-      Max MaxRatTensor -> Simple evalMaxRatTensor
+      AddNat -> Simple evalAddNat
+      MulNat -> Simple evalMulNat
+      NegRatTensor -> Simple evalNegRatTensor
+      AddRatTensor -> Simple evalAddRatTensor
+      SubRatTensor -> Simple evalSubRatTensor
+      MulRatTensor -> Simple evalMulRatTensor
+      DivRatTensor -> Simple evalDivRatTensor
+      MinRatTensor -> Simple evalMinRatTensor
+      MaxRatTensor -> Simple evalMaxRatTensor
       PowRat -> Simple evalPowRat
       ReduceAddRatTensor -> Simple evalReduceAddRatTensor
       ReduceMulRatTensor -> Simple evalReduceMulRatTensor
@@ -344,13 +348,15 @@ instance ConvertableBuiltin LossBuiltinConstructor Builtin where
 
 instance ConvertableBuiltin LossBuiltinFunction Builtin where
   convertBuiltin p b = case b of
-    Neg dom -> convertBuiltin p (S.Neg dom)
-    Sub dom -> convertBuiltin p (S.Sub dom)
-    Div dom -> convertBuiltin p (S.Div dom)
-    Min dom -> convertBuiltin p (S.Min dom)
-    Max dom -> convertBuiltin p (S.Max dom)
-    Add dom -> convertBuiltin p (S.Add dom)
-    Mul dom -> convertBuiltin p (S.Mul dom)
+    AddNat -> convertBuiltin p S.AddNat
+    AddRatTensor -> convertBuiltin p S.AddRatTensor
+    MulNat -> convertBuiltin p S.MulNat
+    MulRatTensor -> convertBuiltin p S.MulRatTensor
+    NegRatTensor -> convertBuiltin p S.NegRatTensor
+    SubRatTensor -> convertBuiltin p S.SubRatTensor
+    DivRatTensor -> convertBuiltin p S.DivRatTensor
+    MinRatTensor -> convertBuiltin p S.MinRatTensor
+    MaxRatTensor -> convertBuiltin p S.MaxRatTensor
     PowRat -> convertBuiltin p S.PowRat
     ReduceAddRatTensor -> convertBuiltin p S.ReduceAddRatTensor
     ReduceMulRatTensor -> convertBuiltin p S.ReduceMulRatTensor

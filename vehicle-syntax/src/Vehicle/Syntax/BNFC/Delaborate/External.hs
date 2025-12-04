@@ -8,6 +8,7 @@ where
 
 import Control.Monad.Identity (Identity (runIdentity))
 import Data.Bitraversable (Bitraversable (..))
+import Data.List (intercalate)
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text, pack)
@@ -38,8 +39,16 @@ type MonadDelab m = Monad m
 class Delaborate t bnfc | t -> bnfc, bnfc -> t where
   delabM :: (MonadDelab m) => t -> m bnfc
 
-instance Delaborate V.Prog B.Prog where
-  delabM (V.Main decls) = B.Main . concat <$> traverse delabM decls
+instance Delaborate V.Module B.Module where
+  delabM (V.Module imports decls) = do
+    imports' <- traverse delabM imports
+    decls' <- concat <$> traverse delabM decls
+    return $ B.DefModule imports' decls'
+
+instance Delaborate V.ImportStatement B.ImportStatement where
+  delabM (V.ImportStatement (V.ModulePath path)) = do
+    let path' = mkToken B.ModulePath $ pack $ intercalate "." path
+    return $ B.Import path'
 
 instance Delaborate V.Decl [B.Decl] where
   delabM = \case
@@ -59,10 +68,12 @@ instance Delaborate V.Decl [B.Decl] where
       annDecls <- traverse delabM anns
       funDecls <- delabFun n t e
       return $ annDecls <> funDecls
-    V.DefRecord _ n _ _ fs -> do
+    V.DefRecord _ n anns telescope fields -> do
+      annDecls <- traverse delabM anns
       let n' = delabIdentifier n
-      fs' <- traverse delabM fs
-      return [B.DefRecord n' fs']
+      telescope' <- traverse delabNameBinder telescope
+      fields' <- traverse delabM fields
+      return $ annDecls <> [B.DefRecord n' telescope' fields']
 
 instance Delaborate V.Expr B.Expr where
   delabM expr = case expr of
@@ -204,20 +215,16 @@ delabBuiltin fun args = case fun of
   V.DerivedFunction f -> delabDerivedFunction f args
 
 delabCast :: (MonadDelab m) => V.BuiltinCast -> [V.Arg] -> m B.Expr
-delabCast fun args = case fun of
-  V.FromNat {} -> rawDelab
-  V.FromRat {} -> rawDelab
-  V.FromVec {} -> rawDelab
-  where
-    rawDelab = cheatDelabPretty fun args
+delabCast = cheatDelabPretty
 
 delabDerivedFunction :: (MonadDelab m) => V.DerivedFunction -> [V.Arg] -> m B.Expr
 delabDerivedFunction fun args = case fun of
   -- Reverse the arguments to make it un-well typed again
   V.TypeAnn -> delabInfixOp2 B.Ann tokElemOf (reverse args)
-  V.QuantifyIndex q -> delabTypeClassOp (V.QuantifierTC q) args
+  V.QuantifyIndex V.Forall -> delabTypeClassOp V.ForallTC args
+  V.QuantifyIndex V.Exists -> delabTypeClassOp V.ExistsTC args
   V.QuantifyInList q -> delabQuantifierIn q args
-  V.CompareRatTensorReduced op -> delabTypeClassOp (V.CompareTC op) args
+  V.CompareRatTensorReduced op -> delabTypeClassOp (V.opToTCOp op) args
 
 delabBuiltinFunction :: (MonadDelab m) => V.BuiltinFunction -> [V.Arg] -> m B.Expr
 delabBuiltinFunction fun args = case fun of
@@ -226,22 +233,25 @@ delabBuiltinFunction fun args = case fun of
   V.Or -> delabInfixOp2 B.Or tokOr args
   V.Implies -> delabInfixOp2 B.Impl tokImpl args
   V.If -> delabIf args
-  V.Add _dom -> delabTypeClassOp V.AddTC args
-  V.Mul _dom -> delabTypeClassOp V.MulTC args
-  V.Neg _dom -> delabTypeClassOp V.NegTC args
-  V.Sub _dom -> delabTypeClassOp V.SubTC args
-  V.Div _dom -> delabTypeClassOp V.DivTC args
-  V.Min _dom -> delabApp (B.Min tokMin) args
-  V.Max _dom -> delabApp (B.Max tokMax) args
-  V.QuantifyRatTensor q -> delabTypeClassOp (V.QuantifierTC q) args
+  V.AddNat -> delabTypeClassOp V.AddTC args
+  V.AddRatTensor -> delabTypeClassOp V.AddTC args
+  V.MulNat -> delabTypeClassOp V.MulTC args
+  V.MulRatTensor -> delabTypeClassOp V.MulTC args
+  V.NegRatTensor -> delabTypeClassOp V.NegTC args
+  V.SubRatTensor -> delabTypeClassOp V.SubTC args
+  V.DivRatTensor -> delabTypeClassOp V.DivTC args
+  V.MinRatTensor -> delabApp (B.Min tokMin) args
+  V.MaxRatTensor -> delabApp (B.Max tokMax) args
+  V.ForallRatTensor -> delabTypeClassOp V.ForallTC args
+  V.ExistsRatTensor -> delabTypeClassOp V.ExistsTC args
   V.CompareRatTensorPointwise V.Eq -> delabInfixOp2 B.EqPoint tokEqPoint args
   V.CompareRatTensorPointwise V.Ne -> delabInfixOp2 B.NePoint tokNePoint args
   V.CompareRatTensorPointwise V.Le -> delabInfixOp2 B.LePoint tokLePoint args
   V.CompareRatTensorPointwise V.Lt -> delabInfixOp2 B.LtPoint tokLtPoint args
   V.CompareRatTensorPointwise V.Ge -> delabInfixOp2 B.GePoint tokGePoint args
   V.CompareRatTensorPointwise V.Gt -> delabInfixOp2 B.GtPoint tokGtPoint args
-  V.CompareIndex op -> delabTypeClassOp (V.CompareTC op) args
-  V.CompareNat op -> delabTypeClassOp (V.CompareTC op) args
+  V.CompareIndex op -> delabTypeClassOp (V.opToTCOp op) args
+  V.CompareNat op -> delabTypeClassOp (V.opToTCOp op) args
   V.FoldList -> delabTypeClassOp V.FoldTC args
   V.MapList -> delabTypeClassOp V.MapTC args
   V.AtTensor -> delabInfixOp2 B.At tokAt args
@@ -275,11 +285,7 @@ delabBuiltinType fun args = case fun of
 
 delabTypeClass :: (MonadDelab m) => V.TypeClass -> [V.Arg] -> m B.Expr
 delabTypeClass tc args = case tc of
-  V.HasCompare eq -> case eq of
-    V.Eq -> delabApp (B.HasEq tokHasEq) args
-    V.Ne -> delabApp (B.HasNotEq tokHasNotEq) args
-    V.Le -> delabApp (B.HasLeq tokHasLeq) args
-    _ -> cheat
+  V.HasComparisons -> cheat
   V.HasAdd -> delabApp (B.HasAdd tokHasAdd) args
   V.HasSub -> delabApp (B.HasSub tokHasSub) args
   V.HasMul -> delabApp (B.HasMul tokHasMul) args
@@ -311,18 +317,18 @@ delabTypeClassOp op args = case op of
   V.SubTC -> delabInfixOp2 B.Sub tokSub args
   V.MulTC -> delabInfixOp2 B.Mul tokMul args
   V.DivTC -> delabInfixOp2 B.Div tokDiv args
-  V.CompareTC eq -> case eq of
-    V.Eq -> delabInfixOp2 B.Eq tokEq args
-    V.Ne -> delabInfixOp2 B.Ne tokNe args
-    V.Le -> delabInfixOp2 B.Le tokLe args
-    V.Lt -> delabInfixOp2 B.Lt tokLt args
-    V.Ge -> delabInfixOp2 B.Ge tokGe args
-    V.Gt -> delabInfixOp2 B.Gt tokGt args
+  V.EqTC -> delabInfixOp2 B.Eq tokEq args
+  V.NeTC -> delabInfixOp2 B.Ne tokNe args
+  V.LeTC -> delabInfixOp2 B.Le tokLe args
+  V.LtTC -> delabInfixOp2 B.Lt tokLt args
+  V.GeTC -> delabInfixOp2 B.Ge tokGe args
+  V.GtTC -> delabInfixOp2 B.Gt tokGt args
   V.MapTC -> delabApp (B.Map tokMap) args
   V.FoldTC -> delabApp (B.Fold tokFold) args
   V.AtTC -> delabInfixOp2 B.At tokAt args
   V.ForeachTC -> delabForeach args
-  V.QuantifierTC q -> delabQuantifier q args
+  V.ForallTC -> delabQuantifier V.Forall args
+  V.ExistsTC -> delabQuantifier V.Exists args
   V.TensorTypeTC -> cheatDelabPretty op args
 
 delabOp1 :: (MonadDelab m, IsToken token) => (token -> B.Expr -> B.Expr) -> token -> [V.Arg] -> m B.Expr
@@ -346,6 +352,14 @@ delabIf args@[arg1, arg2, arg3]
       return $ B.If tokIf e1 tokThen e2 tokElse e3
 delabIf args = cheatDelabPretty V.If args
 
+-- | Collapses telescope into a list of binders
+delabTelescope :: (MonadDelab m) => V.Binder -> V.Expr -> m ([B.NameBinder], B.Expr)
+delabTelescope binder body = do
+  let (foldedBinders, foldedBody) = foldBinders PiBinder binder body
+  binders' <- traverse delabNameBinder (binder : foldedBinders)
+  body' <- delabM foldedBody
+  return (binders', body')
+
 -- | Collapses pi expressions into either a function or a sequence of forall bindings
 delabPi :: (MonadDelab m) => V.Binder -> V.Expr -> m B.Expr
 delabPi binder body = case V.binderNamingForm binder of
@@ -354,12 +368,10 @@ delabPi binder body = case V.binderNamingForm binder of
     body' <- delabM body
     return $ B.Fun binder' tokArrow body'
   _ -> do
-    let (foldedBinders, foldedBody) = foldBinders PiBinder binder body
-    binders' <- traverse delabNameBinder (binder : foldedBinders)
-    body' <- delabM foldedBody
+    (binders', body') <- delabTelescope binder body
     return $ B.ForallT tokForallT binders' tokDot body'
 
--- | Collapses let expressions into a sequence of let declarations
+-- | Collapses let expressions into a f'sequence of let declarations
 delabLet :: (MonadDelab m) => V.Expr -> V.Binder -> V.Expr -> m B.Expr
 delabLet bound binder body = do
   let (otherBoundExprs, foldedBody) = foldLetBinders body

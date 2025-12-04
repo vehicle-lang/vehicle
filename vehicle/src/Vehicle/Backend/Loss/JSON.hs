@@ -10,11 +10,23 @@ import Data.Aeson (ToJSON (..), genericToJSON)
 import Data.List (elemIndex)
 import Data.Ratio (Ratio, denominator, numerator, (%))
 import GHC.Generics (Generic)
-import Prettyprinter (Pretty (..), (<+>))
 import Vehicle.Compile.Arity
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE (normaliseInEmptyFreeEnv)
-import Vehicle.Compile.Prelude (Doc, HasProvenance (..), Ix (..), Name, Provenance (..), getBinderName, mkExplicitBinder, normAppList)
+import Vehicle.Compile.Prelude
+  ( GenericArg (..),
+    HasName (..),
+    HasProvenance (..),
+    HasType (..),
+    Identifier (..),
+    Ix (..),
+    Name,
+    Provenance (..),
+    explicit,
+    getBinderName,
+    mkExplicitBinder,
+    normAppList,
+  )
 import Vehicle.Compile.Prelude qualified as S (Binder, Decl, Expr (..), GenericDecl (..), GenericProg (..), Prog)
 import Vehicle.Compile.Print
 import Vehicle.Data.Builtin.Interface (Accessor (..))
@@ -24,8 +36,10 @@ import Vehicle.Data.Code.Interface.Args
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Tensor (Tensor, mapTensor)
 import Vehicle.Data.Variable.Bound.Context.Name
-import Vehicle.Prelude (Annotation (..), GenericArg (..), HasName (..), HasType (..), Identifier (..), explicit, indent, jsonOptions, line, resolutionError, squotes, userModule)
+import Vehicle.Prelude (Annotation (..), resolutionError, userModulePath)
 import Vehicle.Prelude.Logging.Class
+import Vehicle.Prelude.Misc
+import Vehicle.Prelude.Prettyprinter
 import Vehicle.Syntax.Prelude (developerError)
 
 --------------------------------------------------------------------------------
@@ -34,9 +48,7 @@ import Vehicle.Syntax.Prelude (developerError)
 
 convertToJSONProg :: (MonadCompile m) => S.Prog LossBuiltin -> m JProg
 convertToJSONProg prog =
-  logCompilerSection2 MinDetail currentPass $ do
-    -- relevantProg <- removeIrrelevantCodeFromProg prog
-    runFreshNameBoundContextT $ convertProg prog
+  logCompilerSection2 MinDetail currentPass $ runFreshNameBoundContextT $ convertProg prog
 
 convertFromJSONProg :: JProg -> S.Prog LossBuiltin
 convertFromJSONProg = fromJProg
@@ -272,13 +284,13 @@ convertBuiltin b spine = case b of
     L.NatTensorLiteral _ -> unsupportedError b
     L.RatTensorLiteral t -> convertNullaryOp b (RatTensor $ mapTensor toRat t) spine
   LossBuiltinFunction op -> case op of
-    L.Neg L.NegRatTensor -> convertTensorOp1 convertValue b NegRatTensor spine
-    L.Add L.AddRatTensor -> convertTensorOp2 convertValue b AddRatTensor spine
-    L.Mul L.MulRatTensor -> convertTensorOp2 convertValue b MulRatTensor spine
-    L.Sub L.SubRatTensor -> convertTensorOp2 convertValue b SubRatTensor spine
-    L.Div L.DivRatTensor -> convertTensorOp2 convertValue b DivRatTensor spine
-    L.Min L.MinRatTensor -> convertTensorOp2 convertValue b MinRatTensor spine
-    L.Max L.MaxRatTensor -> convertTensorOp2 convertValue b MaxRatTensor spine
+    L.NegRatTensor -> convertTensorOp1 convertValue b NegRatTensor spine
+    L.AddRatTensor -> convertTensorOp2 convertValue b AddRatTensor spine
+    L.MulRatTensor -> convertTensorOp2 convertValue b MulRatTensor spine
+    L.SubRatTensor -> convertTensorOp2 convertValue b SubRatTensor spine
+    L.DivRatTensor -> convertTensorOp2 convertValue b DivRatTensor spine
+    L.MinRatTensor -> convertTensorOp2 convertValue b MinRatTensor spine
+    L.MaxRatTensor -> convertTensorOp2 convertValue b MaxRatTensor spine
     L.PowRat -> unsupportedError b
     L.ReduceAddRatTensor -> convertTensorReduction convertValue b ReduceAddRatTensor spine
     L.ReduceMulRatTensor -> convertTensorReduction convertValue b ReduceMulRatTensor spine
@@ -289,8 +301,8 @@ convertBuiltin b spine = case b of
     L.ConstTensor -> convertConstTensor spine
     L.SearchRatTensor name minimise -> convertSearch name minimise spine
     -- Dimension operations, not yet converted
-    L.Add L.AddNat -> unsupportedError b
-    L.Mul L.MulNat -> unsupportedError b
+    L.AddNat -> unsupportedError b
+    L.MulNat -> unsupportedError b
     L.MapList -> unsupportedError b
     L.FoldList -> unsupportedError b
 
@@ -378,13 +390,13 @@ arityError fun arity explicitArgs =
             <+> pretty fun
             <> line
             <> "fun-arity:"
-            <+> pretty arity
+              <+> pretty arity
             <> line
             <> "args-len:"
-            <+> prettyVerbose (length explicitArgs)
+              <+> prettyVerbose (length explicitArgs)
             <> line
             <> "args:"
-            <+> prettyVerbose explicitArgs
+              <+> prettyVerbose explicitArgs
         )
 
 showEntry :: (MonadJSON m) => Value LossBuiltin -> m ()
@@ -411,7 +423,7 @@ fromJDecl = \case
     runFreshNameBoundContext $ do
       typ' <- fromJType typ
       body' <- fromJExpr body
-      let ident = Identifier userModule name
+      let ident = Identifier userModulePath name
       return $ S.DefFunction p ident [AnnProperty] typ' body'
 
 fromJType :: (MonadNameContext m) => JType -> m (S.Expr LossBuiltin)
@@ -446,13 +458,13 @@ fromJExpr = \case
     spine' <- traverse fromJExpr spine
     return $ normAppList (S.BoundVar mempty ix) (fmap explicit spine')
   RatTensor t -> toConstructor (L.RatTensorLiteral (mapTensor fromRat t)) []
-  NegRatTensor e -> toFunction (L.Neg L.NegRatTensor) [e]
-  AddRatTensor e1 e2 -> toFunction (L.Add L.AddRatTensor) [e1, e2]
-  SubRatTensor e1 e2 -> toFunction (L.Sub L.SubRatTensor) [e1, e2]
-  MulRatTensor e1 e2 -> toFunction (L.Mul L.MulRatTensor) [e1, e2]
-  DivRatTensor e1 e2 -> toFunction (L.Div L.DivRatTensor) [e1, e2]
-  MinRatTensor e1 e2 -> toFunction (L.Min L.MinRatTensor) [e1, e2]
-  MaxRatTensor e1 e2 -> toFunction (L.Max L.MaxRatTensor) [e1, e2]
+  NegRatTensor e -> toFunction L.NegRatTensor [e]
+  AddRatTensor e1 e2 -> toFunction L.AddRatTensor [e1, e2]
+  SubRatTensor e1 e2 -> toFunction L.SubRatTensor [e1, e2]
+  MulRatTensor e1 e2 -> toFunction L.MulRatTensor [e1, e2]
+  DivRatTensor e1 e2 -> toFunction L.DivRatTensor [e1, e2]
+  MinRatTensor e1 e2 -> toFunction L.MinRatTensor [e1, e2]
+  MaxRatTensor e1 e2 -> toFunction L.MaxRatTensor [e1, e2]
   ReduceAddRatTensor e xs -> toFunction L.ReduceAddRatTensor [e, xs]
   ReduceMulRatTensor e xs -> toFunction L.ReduceMulRatTensor [e, xs]
   ReduceMinRatTensor e xs -> toFunction L.ReduceMinRatTensor [e, xs]

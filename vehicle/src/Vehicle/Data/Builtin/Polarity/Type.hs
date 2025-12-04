@@ -57,20 +57,23 @@ typeOfBuiltinFunction p = \case
   Or {} -> typeOfOp2 maxPolarity
   ReduceAndTensor -> typeOfOp2 maxPolarity
   ReduceOrTensor -> typeOfOp2 maxPolarity
-  QuantifyRatTensor q -> typeOfQuantifier p q
+  ForallRatTensor -> typeOfQuantifier p Forall
+  ExistsRatTensor -> typeOfQuantifier p Exists
   If -> typeOfIf
   -- Comparisons
   CompareNat {} -> typeOfOp2 maxPolarity
   CompareIndex {} -> typeOfOp2 maxPolarity
   CompareRatTensorPointwise {} -> typeOfOp2 maxPolarity
   -- Arithmetic operations
-  Add {} -> typeOfUnquantifiedOp2
-  Mul {} -> typeOfUnquantifiedOp2
-  Neg {} -> typeOfUnquantifiedOp1
-  Sub {} -> typeOfUnquantifiedOp2
-  Div {} -> typeOfUnquantifiedOp2
-  Min {} -> typeOfUnquantifiedOp2
-  Max {} -> typeOfUnquantifiedOp2
+  AddNat -> typeOfUnquantifiedOp2
+  MulNat -> typeOfUnquantifiedOp2
+  AddRatTensor -> typeOfUnquantifiedOp2
+  MulRatTensor -> typeOfUnquantifiedOp2
+  NegRatTensor -> typeOfUnquantifiedOp1
+  SubRatTensor -> typeOfUnquantifiedOp2
+  DivRatTensor -> typeOfUnquantifiedOp2
+  MinRatTensor -> typeOfUnquantifiedOp2
+  MaxRatTensor -> typeOfUnquantifiedOp2
   PowRat {} -> typeOfUnquantifiedOp2
   ReduceAddRatTensor -> typeOfUnquantifiedOp2
   ReduceMulRatTensor -> typeOfUnquantifiedOp2
@@ -203,6 +206,7 @@ instance HasTypeSystem PolarityBuiltin where
   solveAuxiliaryInstanceConstraint = solvePolarityConstraint
   addAuxiliaryInputOutputConstraints = addFunctionAuxiliaryInputOutputConstraints (PolarityRelation . FunctionPolarity)
   generateDefaultAuxiliaryConstraint _ = return False
+  fromBuiltinName = const Nothing
 
 pattern PolarityExpr :: Provenance -> Polarity -> Expr PolarityBuiltin
 pattern PolarityExpr p pol = Builtin p (Polarity pol)

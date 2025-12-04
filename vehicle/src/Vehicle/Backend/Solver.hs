@@ -61,7 +61,8 @@ compileToQueries queryFormat typedProg resources maybeVerificationFolder = do
     Just folder -> liftIO $ createDirectoryIfMissing True folder
 
   -- Expand out the external resources in the specification (datasets, networks etc.)
-  (resourceFreeProg, networkCtx, integrityInfo, missingResources, uninferableParameters) <- expandResources resources typedProg
+  (resourceFreeProg, networkCtx, integrityInfo, missingResources, uninferableParameters) <-
+    expandResources resources typedProg
   case (missingResources, uninferableParameters) of
     (r : rs, _) -> throwError $ ResourcesNotProvided (r :| rs)
     (_, r : rs) -> throwError $ InferableParametersUninferrable (r :| rs)
@@ -118,7 +119,7 @@ compileDecls ::
 compileDecls settings = \case
   [] -> return []
   (d : ds) -> do
-    declCtxEntry@(_, normDecl) <- mkDeclCtxEntry d
+    normDecl <- mkDeclCtxEntry d
     property <- case normDecl of
       DefFunction p ident anns typ body
         | isAnnotatedAsProperty anns ->
@@ -130,7 +131,7 @@ compileDecls settings = \case
                 return (name, multiProperty)
       _ -> return Nothing
 
-    addDeclEntryToContext declCtxEntry $ do
+    addDeclEntryToContext normDecl $ do
       properties <- compileDecls settings ds
       return $ maybeToList property ++ properties
 
@@ -276,7 +277,7 @@ topLevelUnblockingActions =
     (developerError "Unblocking of constant network functions at top-level not yet supported")
 
 handlePropertyCompileError ::
-  (MonadCompile m) =>
+  (MonadIO m, MonadCompile m) =>
   CompilationSettings ->
   DeclProvenance ->
   CompileError ->

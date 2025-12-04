@@ -88,7 +88,7 @@ searchDecls = \case
   d : ds -> do
     normDecl <- traverse normaliseInEmptyEnv d
     searchDecl normDecl
-    addDeclEntryToContext (d, normDecl) $ searchDecls ds
+    addDeclEntryToContext normDecl $ searchDecls ds
 
 searchDecl :: (MonadList m, MonadSupply PropertyID m) => VDecl Builtin -> m ()
 searchDecl decl = do

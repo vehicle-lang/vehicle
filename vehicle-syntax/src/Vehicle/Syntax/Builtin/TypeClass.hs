@@ -5,16 +5,16 @@ import Data.Hashable (Hashable (..))
 import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..))
-import Vehicle.Syntax.AST.Decl (ParameterSort)
-import Vehicle.Syntax.Builtin.BasicOperations
+import Vehicle.Syntax.Builtin.BasicOperations (ComparisonOp (..))
 
 --------------------------------------------------------------------------------
 -- Type classes
 
 data TypeClass
   = -- Operation type-classes
-    HasCompare ComparisonOp
-  | HasQuantifier Quantifier
+    HasComparisons
+  | HasForall
+  | HasExists
   | HasAdd
   | HasSub
   | HasMul
@@ -22,7 +22,8 @@ data TypeClass
   | HasNeg
   | HasFold
   | HasMap
-  | HasQuantifierIn Quantifier
+  | HasForallIn
+  | HasExistsIn
   | HasAt
   | HasForeach
   | -- Literal type-classes
@@ -33,14 +34,15 @@ data TypeClass
     IsTensorType
   | -- Declaration type restrictions
     ValidPropertyType
-  | ValidParameterType ParameterSort
+  | ValidInferableParameterType
+  | ValidNonInferableParameterType
   | ValidNetworkType
   | ValidNetworkTensorType
   | ValidDatasetType
   | ValidDatasetListElementType
   | ValidDatasetTensorElementType
   | ValidTensorLikeType
-  deriving (Eq, Ord, Generic, Show)
+  deriving (Eq, Ord, Enum, Bounded, Generic, Show)
 
 instance NFData TypeClass
 
@@ -50,11 +52,11 @@ instance Serialize TypeClass
 
 instance Pretty TypeClass where
   pretty = \case
-    HasCompare {} -> "HasComparison"
-    HasQuantifier Forall -> "HasForall"
-    HasQuantifier Exists -> "HasExists"
-    HasQuantifierIn Forall -> "HasForallIn"
-    HasQuantifierIn Exists -> "HasExistsIn"
+    HasComparisons -> "HasComparisons"
+    HasForall -> "HasForall"
+    HasExists -> "HasExists"
+    HasForallIn -> "HasForallIn"
+    HasExistsIn -> "HasExistsIn"
     HasAdd -> "HasAdd"
     HasSub -> "HasSub"
     HasMul -> "HasMul"
@@ -69,7 +71,8 @@ instance Pretty TypeClass where
     HasForeach -> "HasForeach"
     IsTensorType -> "IsTensorType"
     ValidPropertyType -> "ValidPropertyType"
-    ValidParameterType {} -> "ValidParameterType"
+    ValidInferableParameterType -> "ValidInferableParameterType"
+    ValidNonInferableParameterType -> "ValidNonInferableParameterType"
     ValidNetworkType -> "ValidNetworkType"
     ValidNetworkTensorType -> "ValidNetworkTensorType"
     ValidDatasetType -> "ValidDatasetType"
@@ -92,14 +95,20 @@ data TypeClassOp
   | SubTC
   | MulTC
   | DivTC
-  | CompareTC ComparisonOp
+  | LeTC
+  | LtTC
+  | GeTC
+  | GtTC
+  | EqTC
+  | NeTC
   | AtTC
   | MapTC
   | FoldTC
   | ForeachTC
-  | QuantifierTC Quantifier
+  | ForallTC
+  | ExistsTC
   | TensorTypeTC
-  deriving (Eq, Ord, Generic, Show)
+  deriving (Eq, Ord, Enum, Bounded, Generic, Show)
 
 instance NFData TypeClassOp
 
@@ -109,18 +118,33 @@ instance Serialize TypeClassOp
 
 instance Pretty TypeClassOp where
   pretty = \case
-    NegTC -> "-"
-    AddTC -> "+"
-    SubTC -> "-"
-    MulTC -> "*"
-    DivTC -> "/"
-    FromNatTC -> "fromNat"
-    FromRatTC -> "fromRat"
-    FromVecTC {} -> "fromVec"
-    CompareTC op -> pretty op
-    AtTC -> "!"
-    MapTC -> "map"
-    FoldTC -> "fold"
-    ForeachTC -> "foreach"
-    QuantifierTC q -> pretty q
+    NegTC -> "negTC"
+    AddTC -> "addTC"
+    SubTC -> "subTC"
+    MulTC -> "mulTC"
+    DivTC -> "divTC"
+    FromNatTC -> "fromNatTC"
+    FromRatTC -> "fromRatTC"
+    FromVecTC {} -> "fromVecTC"
+    LeTC -> "leTC"
+    LtTC -> "ltTC"
+    GeTC -> "geTC"
+    GtTC -> "gtTC"
+    EqTC -> "eqTC"
+    NeTC -> "neTC"
+    AtTC -> "atTC"
+    MapTC -> "mapTC"
+    FoldTC -> "foldTC"
+    ForeachTC -> "foreachTC"
+    ForallTC -> "forallTC"
+    ExistsTC -> "existsTC"
     TensorTypeTC -> "TensorTC"
+
+opToTCOp :: ComparisonOp -> TypeClassOp
+opToTCOp = \case
+  Eq -> EqTC
+  Ne -> NeTC
+  Le -> LeTC
+  Lt -> LtTC
+  Ge -> GeTC
+  Gt -> GtTC

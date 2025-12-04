@@ -26,6 +26,7 @@ import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Data.Builtin.Interface.Print (PrintableBuiltin)
+import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin)
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Variable.Bound.Context.Generic
 
@@ -33,7 +34,8 @@ import Vehicle.Data.Variable.Bound.Context.Generic
 -- Generalisation
 
 type MonadGeneralise builtin m =
-  ( MonadTypeChecker builtin m
+  ( MonadTypeChecker builtin m,
+    TypableBuiltin builtin
   )
 
 generaliseOverUnsolvedMetasAndConstraints ::
@@ -44,17 +46,15 @@ generaliseOverUnsolvedMetasAndConstraints ::
 generaliseOverUnsolvedMetasAndConstraints decl = do
   let proxy = (Proxy @builtin)
   logCompilerSection2 MaxDetail "generalisation over unsolved metas and constraints" $ do
-    -- Check unification constraints solved
+    -- Check unification and application constraints solved
     checkAllConstraintsSolved proxy getActiveUnificationConstraints UnificationConstraint
-
-    -- Check application constraints solved
     checkAllConstraintsSolved proxy getActiveApplicationConstraints ApplicationConstraint
 
-    -- Remaining constraints and metas to be generalised can have no dependendies on
+    -- Remaining constraints and metas to be generalised can have no dependencies on
     -- the variables inside the term to remove them.
     dependencyFreeDecl <- removeAllDependencies decl
 
-    -- Generalise over the
+    -- Generalise over the unsolved metas
     generalisedDecl <- generaliseOverUnsolvedMetas dependencyFreeDecl
 
     logUnsolvedUnknowns proxy
@@ -260,7 +260,7 @@ prependBinderAndSolve decl (meta, binder) =
     return finalDecl
 
 solveInTermsOfNewMetaWithDependencies ::
-  (MonadTypeChecker builtin m) =>
+  (MonadGeneralise builtin m) =>
   MetaID ->
   MetaInfo builtin ->
   BoundCtx (Type builtin) ->

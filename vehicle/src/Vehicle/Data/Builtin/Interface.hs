@@ -49,13 +49,13 @@ class BuiltinHasBoolLiterals builtin where
   accessReduceAndBuiltin :: Accessor builtin ()
   accessReduceOrBuiltin :: Accessor builtin ()
   accessIfBuiltin :: Accessor builtin ()
+  accessForallRatTensorBuiltin :: Accessor builtin ()
+  accessExistsRatTensorBuiltin :: Accessor builtin ()
 
   accessCompareIndexBuiltin :: Accessor builtin ComparisonOp
   accessCompareNatBuiltin :: Accessor builtin ComparisonOp
   accessCompareRatTensorPointwiseBuiltin :: Accessor builtin ComparisonOp
   accessCompareRatTensorReducedBuiltin :: Accessor builtin ComparisonOp
-
-  accessQuantifyRatTensorBuiltin :: Accessor builtin Quantifier
 
 --------------------------------------------------------------------------------
 -- Index

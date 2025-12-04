@@ -1,44 +1,44 @@
 module Vehicle.TypeCheck
   ( TypeCheckOptions (..),
     typeCheck,
-    typeCheckSolitaryExpr,
-    parseAndTypeCheckExpr,
     typeCheckUserProg,
-    loadModule,
     runCompileMonad,
   )
 where
 
-import Control.Monad.Except (ExceptT, MonadError (..), runExcept)
-import Control.Monad.IO.Class (MonadIO (..))
-import Data.Data (Proxy (..))
+import Control.Monad.Except (ExceptT, MonadError (..))
+import Control.Monad.Reader (MonadReader (..), ReaderT (..), asks)
+import Control.Monad.State
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.Map (Map)
+import Data.Map qualified as Map
 import Data.Set qualified as Set
-import Data.Text as T (Text)
 import Vehicle.Backend.Prelude
+import Vehicle.Compile.Dependency (AdjacencyGraph, emptyAdjacencyGraph, insertEdge, topologicalSort)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Monomorphisation (monomorphise)
+import Vehicle.Compile.Normalise.NBE (normaliseInEmptyEnv)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Print.Error
-import Vehicle.Compile.Scope (scopeCheck, scopeCheckClosedExpr)
-import Vehicle.Compile.Serialise
-import Vehicle.Compile.Type (typeCheckProg, typeCheckSolitaryExpr)
+import Vehicle.Compile.Scope (scopeModuleDecls)
+import Vehicle.Compile.Serialise (readObjectFile, writeObjectFile)
+import Vehicle.Compile.Type
 import Vehicle.Compile.Type.Subsystem
 import Vehicle.Data.Builtin.Decidability.Type ()
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Linearity.Type ()
 import Vehicle.Data.Builtin.Polarity.Type ()
 import Vehicle.Data.Builtin.Standard
-import Vehicle.Data.Builtin.Standard.Instances
 import Vehicle.Data.Builtin.Standard.Type ()
-import Vehicle.Data.Variable.Free.Context
-import Vehicle.Libraries (Library (..), LibraryInfo (..), findModuleFile)
-import Vehicle.Libraries.StandardLibrary (standardLibrary)
+import Vehicle.Data.Code.ModuleInterface (ImportedModuleContext, ModuleInterface (..), mergeImportedFreeEnvs, typedModule)
+import Vehicle.Data.Code.Value (FreeEnv)
+import Vehicle.Data.Variable.Free.Context (runFreeContextT)
+import Vehicle.Libraries (ensureLatestVersionOfLibraryInstalled, resolveLibrary)
+import Vehicle.Libraries.Core (ResolvedLibrary (..))
+import Vehicle.Libraries.StandardLibrary (standardLibrary, standardLibraryContent, standardLibraryDefinitionsModulePath, standardLibraryName)
 import Vehicle.Prelude.Logging.Instance
-import Vehicle.Syntax.AST.Expr qualified as S
-import Vehicle.Syntax.Parse
-import Vehicle.Verify.Specification.IO
+import Vehicle.Verify.Specification.IO (readSpecification)
 
 data TypeCheckOptions = TypeCheckOptions
   { specification :: FilePath,
@@ -61,37 +61,28 @@ typeCheck loggingSettings outputAsJSON options@TypeCheckOptions {..} =
 --------------------------------------------------------------------------------
 -- Useful functions that apply to multiple compiler passes
 
-parseAndTypeCheckExpr :: (MonadIO m, MonadCompile m) => (FilePath, Text) -> m (Expr Builtin)
-parseAndTypeCheckExpr expr = do
-  standardLibraryProg <- loadModule standardLibrary (Module ["Definitions"])
-  freeCtx <- createFreeCtx [standardLibraryProg]
-  vehicleExpr <- parseExprText expr
-  scopedExpr <- scopeCheckClosedExpr vehicleExpr
-  typedExpr <- typeCheckSolitaryExpr standardBuiltinInstances freeCtx scopedExpr
-  convertBackToStandardBuiltin typedExpr
-
-parseExprText :: (MonadCompile m) => (FilePath, Text) -> m S.Expr
-parseExprText (file, txt) = do
-  let location = (userModule, file)
-  case runExcept (parseExpr location =<< readExpr txt) of
-    Left err -> throwError $ ParseError location err
-    Right expr -> return expr
-
 typeCheckUserProg ::
   (MonadIO m, MonadCompile m) =>
   TypeCheckOptions ->
   m (Prog Builtin)
 typeCheckUserProg TypeCheckOptions {..} = do
-  imports <- (: []) <$> loadModule standardLibrary (Module ["Definitions"])
-  typedProg <- typeCheckOrLoadProg userModule imports specification
+  ensureLatestVersionOfLibraryInstalled standardLibrary standardLibraryContent
 
-  keepUnusedDeclarationFn <- checkDeclarationNamesPresent typedProg declarationsToCompile
-  monomorphisedProg <- monomorphise typedProg keepUnusedDeclarationFn
+  -- Load builtins and definitions
+  program <- loadUserSpecification specification
+
+  -- Post-process the program to simplify it
+  keepUnusedDeclarationFn <- checkDeclarationNamesPresent program declarationsToCompile
+  monomorphisedProg <- monomorphise program keepUnusedDeclarationFn
   castFreeProgram <- resolveInstanceArgumentsAndCasts monomorphisedProg
-  let mergedProg = mergeImports imports castFreeProgram
-  return mergedProg
 
-checkDeclarationNamesPresent :: (MonadCompile m) => Prog Builtin -> DeclarationNames -> m (Identifier -> Bool)
+  return castFreeProgram
+
+checkDeclarationNamesPresent ::
+  (MonadCompile m) =>
+  Prog Builtin ->
+  DeclarationNames ->
+  m (Identifier -> Bool)
 checkDeclarationNamesPresent (Main decls) requestedDeclNames = do
   let actualDeclNames = Set.fromList $ fmap nameOf decls
   let missingNames = Set.toList $ Set.fromList requestedDeclNames `Set.difference` actualDeclNames
@@ -107,54 +98,6 @@ checkDeclarationNamesPresent (Main decls) requestedDeclNames = do
       else do
         let declsToCompile = Set.fromList requestedDeclNames
         \ident -> Set.member (nameOf ident) declsToCompile
-
--- | Parses and type-checks the program but does
--- not load networks and datasets from disk.
-typeCheckProgram ::
-  (MonadIO m, MonadCompile m) =>
-  Module ->
-  Imports ->
-  S.Prog ->
-  m (Prog Builtin)
-typeCheckProgram modl imports vehicleProg = do
-  scopedProg <- scopeCheck imports vehicleProg
-  freeCtx <- createFreeCtx imports
-  typedProg <- typeCheckProg modl standardBuiltinInstances freeCtx scopedProg
-  traverse convertBackToStandardBuiltin typedProg
-
--- | Parses and type-checks the program but does
--- not load networks and datasets from disk.
-typeCheckOrLoadProg ::
-  (MonadIO m, MonadCompile m) =>
-  Module ->
-  Imports ->
-  FilePath ->
-  m (Prog Builtin)
-typeCheckOrLoadProg modul imports specificationFile = do
-  spec <- readSpecification specificationFile
-  interfaceFileResult <- readObjectFile specificationFile spec
-  case interfaceFileResult of
-    Just result -> return result
-    Nothing -> do
-      vehicleProg <- parseProgText (modul, specificationFile) spec
-      result <- typeCheckProgram modul imports vehicleProg
-      writeObjectFile specificationFile spec result
-      return result
-
-parseProgText :: (MonadCompile m) => ParseLocation -> Text -> m S.Prog
-parseProgText location txt = do
-  case runExcept (readAndParseProg location txt) of
-    Left err -> throwError $ ParseError location err
-    Right prog -> case traverseDecls (parseDecl location) prog of
-      Left err -> throwError $ ParseError location err
-      Right prog' -> return prog'
-
-loadModule :: (MonadIO m, MonadCompile m) => Library -> Module -> m (Prog Builtin)
-loadModule library modul = do
-  let libname = libraryName $ libraryInfo library
-  logCompilerSection MinDetail ("Loading library" <+> quotePretty libname) $ do
-    libraryFile <- findModuleFile library modul
-    typeCheckOrLoadProg modul mempty libraryFile
 
 printPropertyTypes ::
   (MonadStdIO m, MonadCompile m, PrintableBuiltin builtin) =>
@@ -187,25 +130,264 @@ runCompileMonad loggingSettings outputAsJSON x = do
     Left err -> fatalError $ prettyCompileError outputAsJSON err
     Right val -> return val
 
-convertBackToStandardBuiltin ::
-  (MonadCompile m) =>
-  Expr Builtin ->
-  m (Expr Builtin)
-convertBackToStandardBuiltin = traverseBuiltinsM $
-  \p b args -> return $ normAppList (Builtin p b) args
+--------------------------------------------------------------------------------
+-- Monad
 
-createFreeCtx ::
+data ModuleStatus
+  = Unchanged
+  | Changed
+
+instance Semigroup ModuleStatus where
+  Changed <> _ = Changed
+  _ <> Changed = Changed
+  Unchanged <> Unchanged = Unchanged
+
+data ModuleInfo = ModuleInfo
+  { moduleInterface :: ModuleInterface Builtin,
+    moduleFreeEnv :: FreeEnv Builtin,
+    moduleStatus :: ModuleStatus
+  }
+
+-- | The full state of the Vehicle program
+data ProgramContext = ProgramContext
+  { moduleGraph :: AdjacencyGraph ModulePath,
+    loadedModules :: Map ModulePath ModuleInfo,
+    availableModules :: Map ModulePath FilePath
+  }
+
+lookupModuleCertain :: ProgramContext -> ModulePath -> ModuleInfo
+lookupModuleCertain program modulePath = do
+  case Map.lookup modulePath $ loadedModules program of
+    Nothing -> developerError $ "Missing module" <+> quotePretty modulePath
+    Just result -> result
+
+flattenProgram :: ModulePath -> ProgramContext -> Prog Builtin
+flattenProgram modulePath programContext = do
+  let sortedModulePaths = topologicalSort modulePath (moduleGraph programContext)
+  let moduleInfos = fmap (lookupModuleCertain programContext) sortedModulePaths
+  Main $ concatMap (moduleDeclarations . typedModule . moduleInterface) moduleInfos
+
+data ModuleStack = ModuleStack
+  { stackCurrentModule :: ModulePath,
+    stackRemainingModules :: [ModulePath]
+  }
+
+type MonadTCMProg m =
+  ( MonadState ProgramContext m,
+    MonadReader ModuleStack m,
+    MonadIO m,
+    MonadCompile m
+  )
+
+getCurrentModulePath :: (MonadTCMProg m) => m ModulePath
+getCurrentModulePath = asks stackCurrentModule
+
+lookupModule :: (MonadTCMProg m) => ModulePath -> m (Maybe ModuleInfo)
+lookupModule modulePath = gets (Map.lookup modulePath . loadedModules)
+
+lookupModuleFilePath :: (MonadTCMProg m) => ModulePath -> m FilePath
+lookupModuleFilePath modulePath = do
+  maybeFilePath <- gets (Map.lookup modulePath . availableModules)
+  case maybeFilePath of
+    Nothing -> missingImportError modulePath
+    Just moduleFile -> return moduleFile
+
+enterModule :: (MonadTCMProg m) => ModulePath -> m a -> m a
+enterModule newModule action = do
+  ModuleStack {..} <- ask
+
+  -- Add an edge to the dependency graph
+  modify $ \ProgramContext {..} ->
+    ProgramContext
+      { moduleGraph = insertEdge (stackCurrentModule, newModule) moduleGraph,
+        ..
+      }
+
+  -- Check for import loops
+  let previousStack = stackCurrentModule : stackRemainingModules
+  when (newModule `elem` previousStack) $ do
+    cyclicImportsError newModule previousStack
+
+  -- Run the action under the updated
+  let newStack = ModuleStack newModule previousStack
+  local (const newStack) action
+
+storeModule :: (MonadTCMProg m) => ModulePath -> ModuleInfo -> m ()
+storeModule modulePath moduleInfo =
+  modify $ \ProgramContext {..} ->
+    ProgramContext
+      { loadedModules = Map.insert modulePath moduleInfo loadedModules,
+        ..
+      }
+
+--------------------------------------------------------------------------------
+-- Algorithm
+
+loadUserSpecification ::
+  (MonadCompile m, MonadIO m) =>
+  FilePath ->
+  m (Prog Builtin)
+loadUserSpecification specificationFile = do
+  availableModules <- loadLibraries specificationFile
+
+  let initialContext =
+        ProgramContext
+          { moduleGraph = emptyAdjacencyGraph,
+            loadedModules = mempty,
+            availableModules = availableModules
+          }
+  let initialStack =
+        ModuleStack
+          { stackCurrentModule = userModulePath,
+            stackRemainingModules = []
+          }
+  let implicitImports = ImportStatement <$> [standardLibraryDefinitionsModulePath]
+  let action = loadUnloadedModule implicitImports userModulePath
+  (_status, program) <- runStateT (runReaderT action initialStack) initialContext
+  return $ flattenProgram userModulePath program
+
+loadLibraries ::
+  (MonadCompile m, MonadIO m) =>
+  FilePath ->
+  m (Map ModulePath FilePath)
+loadLibraries specificationFile = do
+  let resolvedUserLibrary =
+        ResolvedLibrary
+          { resolvedModules = [(userModulePath, specificationFile)]
+          }
+  resolvedStandardLibrary <- resolveLibrary standardLibraryName
+  let libraries = [resolvedStandardLibrary, resolvedUserLibrary] :: [ResolvedLibrary]
+  let availableModules = concatMap resolvedModules libraries
+  return $ Map.fromListWithKey duplicateModuleError availableModules
+
+-- | Loads a module into the program state and returning `True` if
+-- the module .
+loadModule ::
+  (MonadTCMProg m) =>
+  ModulePath ->
+  m ModuleInfo
+loadModule modulePath =
+  enterModule modulePath $ do
+    alreadyLoadedModuleInfo <- lookupModule modulePath
+    case alreadyLoadedModuleInfo of
+      Just info -> return info
+      Nothing -> loadUnloadedModule mempty modulePath
+
+loadUnloadedModule ::
+  (MonadTCMProg m) =>
+  [ImportStatement] ->
+  ModulePath ->
+  m ModuleInfo
+loadUnloadedModule implicitImports modulePath = do
+  logCompilerSection2 MidDetail ("loading module" <+> quotePretty modulePath) $ do
+    moduleFile <- lookupModuleFilePath modulePath
+    moduleText <- readSpecification moduleFile
+    interfaceFileResult <- readObjectFile moduleFile moduleText
+    moduleInfo <- case interfaceFileResult of
+      Just cachedModule -> loadCachedModule moduleFile implicitImports moduleText cachedModule
+      Nothing -> parseAndTypeCheckModule moduleFile implicitImports moduleText
+    storeModule modulePath moduleInfo
+    return moduleInfo
+
+loadCachedModule ::
+  (MonadTCMProg m) =>
+  FilePath ->
+  [ImportStatement] ->
+  ModuleText ->
+  ModuleInterface Builtin ->
+  m ModuleInfo
+loadCachedModule moduleFile implicitImports moduleText moduleInterface = do
+  let Module imports decls = typedModule moduleInterface
+  (status, importedCtx) <- loadImports imports
+  case status of
+    Changed -> parseAndTypeCheckModule moduleFile implicitImports moduleText
+    Unchanged -> do
+      freeEnv <- calculateModuleEnv importedCtx decls
+      return $
+        ModuleInfo
+          { moduleInterface = moduleInterface,
+            moduleFreeEnv = freeEnv,
+            moduleStatus = Unchanged
+          }
+
+loadImports ::
+  (MonadTCMProg m) =>
+  [ImportStatement] ->
+  m (ModuleStatus, ImportedModuleContext Builtin)
+loadImports imports = do
+  results <- forM imports $ \importStatement -> do
+    let modulePath = importPath importStatement
+    ModuleInfo {..} <- loadModule modulePath
+    return (moduleStatus, (modulePath, moduleInterface, moduleFreeEnv))
+
+  let (statuses, importedCtx) = unzipF results
+  let finalStatus = foldr (<>) Unchanged statuses
+  return (finalStatus, importedCtx)
+
+parseAndTypeCheckModule ::
+  (MonadTCMProg m) =>
+  FilePath ->
+  [ImportStatement] ->
+  ModuleText ->
+  m ModuleInfo
+parseAndTypeCheckModule moduleFile implicitImports moduleText = do
+  modulePath <- getCurrentModulePath
+
+  Module imports decls <- parseModuleText (modulePath, moduleFile) moduleText
+  let finalImports = implicitImports <> imports
+  (_status, importedCtx) <- loadImports finalImports
+
+  (scopedDecls, scopingInterface) <- scopeModuleDecls modulePath importedCtx decls
+  (typedDecls, typingInterface, moduleEnv) <- typeCheckModuleDecls modulePath importedCtx scopedDecls
+  let typedModule = Module finalImports typedDecls
+
+  let moduleInterface =
+        ModuleInterface
+          { scopingInterface = scopingInterface,
+            typingInterface = typingInterface,
+            typedModule = typedModule
+          }
+
+  writeObjectFile moduleFile moduleText moduleInterface
+
+  return $
+    ModuleInfo
+      { moduleInterface = moduleInterface,
+        moduleFreeEnv = moduleEnv,
+        moduleStatus = Changed
+      }
+
+calculateModuleEnv ::
+  forall m.
   (MonadCompile m) =>
-  Imports ->
-  m (FreeCtx Builtin)
-createFreeCtx imports = do
-  let decls = [d | imp <- imports, let Main ds = imp, d <- ds]
-  runFreshFreeContextT (Proxy @Builtin) (calculateCtx decls)
+  ImportedModuleContext Builtin ->
+  [Decl Builtin] ->
+  m (FreeEnv Builtin)
+calculateModuleEnv importedCtx = go (mergeImportedFreeEnvs importedCtx)
   where
-    calculateCtx ::
-      (MonadFreeContext Builtin m) =>
-      [Decl Builtin] ->
-      m (FreeCtx Builtin)
-    calculateCtx = \case
-      [] -> getFreeCtx (Proxy @Builtin)
-      d : ds -> addDeclToContext d $ calculateCtx ds
+    go :: FreeEnv Builtin -> [Decl Builtin] -> m (FreeEnv Builtin)
+    go env = \case
+      [] -> return env
+      d : ds -> do
+        d' <- runFreeContextT env $ traverse normaliseInEmptyEnv d
+        go (Map.insert (identifierOf d') d' env) ds
+
+cyclicImportsError :: (MonadTCMProg m) => ModulePath -> [ModulePath] -> m a
+cyclicImportsError newModule previousModules =
+  developerError $
+    "cyclic module imports not yet handled correctly:"
+      <> lineIndent (pretty $ newModule : previousModules)
+
+missingImportError :: (MonadTCMProg m) => ModulePath -> m a
+missingImportError modulePath = do
+  allModules <- gets availableModules
+  developerError $
+    "unable to find module" <+> quotePretty modulePath <+> "in imported modules:"
+      <> lineIndent (prettyMap allModules)
+
+duplicateModuleError :: ModulePath -> FilePath -> FilePath -> a
+duplicateModuleError modulePath filePath1 filePath2 =
+  developerError $
+    "duplicate files found for module" <+> quotePretty modulePath
+      <> ":"
+      <> lineIndent (prettyMultiLineList (fmap pretty [filePath1, filePath2]))

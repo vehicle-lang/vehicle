@@ -67,9 +67,9 @@ insertNatLiteralCoercion p builtin args = case builtin of
 removeNatLiteralCoercion :: CoercionRemoval
 removeNatLiteralCoercion _p builtin args = case (builtin, args) of
   (TypeClassOp FromNatTC {}, _) -> firstExplicit args
-  (BuiltinCast (FromNat FromNatToIndex), _ : value : _) -> Just $ argExpr value
-  (BuiltinCast (FromNat FromNatToNat), value : _) -> Just $ argExpr value
-  (BuiltinCast (FromNat FromNatToRat), value : _) -> Just $ argExpr value
+  (BuiltinCast FromNatToIndex, _ : value : _) -> Just $ argExpr value
+  (BuiltinCast FromNatToNat, value : _) -> Just $ argExpr value
+  (BuiltinCast FromNatToRat, value : _) -> Just $ argExpr value
   _ -> Nothing
 
 --------------------------------------------------------------------------------
@@ -77,14 +77,13 @@ removeNatLiteralCoercion _p builtin args = case (builtin, args) of
 
 insertRatLiteralCoercion :: CoercionInsertion
 insertRatLiteralCoercion p builtin args = case builtin of
-  BuiltinConstructor (RatTensorLiteral {}) -> Just $ do
-    insertLitCoercion FromRatTC p builtin args
+  BuiltinConstructor (RatTensorLiteral {}) -> Just $ insertLitCoercion FromRatTC p builtin args
   _ -> Nothing
 
 removeRatLiteralCoercion :: CoercionRemoval
 removeRatLiteralCoercion _p builtin args = case (builtin, args) of
   (TypeClassOp FromRatTC {}, _) -> firstExplicit args
-  (BuiltinCast (FromRat FromRatToRat), value : _) -> Just $ argExpr value
+  (BuiltinCast FromRatToRat, value : _) -> Just $ argExpr value
   _ -> Nothing
 
 --------------------------------------------------------------------------------
@@ -92,21 +91,18 @@ removeRatLiteralCoercion _p builtin args = case (builtin, args) of
 
 insertVectorLiteralCoercion :: CoercionInsertion
 insertVectorLiteralCoercion p builtin args = case builtin of
-  BuiltinConstructor (VectorLiteral {}) -> Just $ do
-    insertLitCoercion FromVecTC p builtin args
+  BuiltinConstructor (VectorLiteral {}) -> Just $ insertLitCoercion FromVecTC p builtin args
   _ -> Nothing
 
 removeVectorLiteralCoercion :: CoercionRemoval
 removeVectorLiteralCoercion _p builtin args = case (builtin, args) of
   (TypeClassOp FromVecTC {}, _) -> firstExplicit args
-  (BuiltinCast (FromVec FromVecToList), _ : _ : value : _) -> Just $ argExpr value
-  (BuiltinCast (FromVec FromVecToVec), _ : _ : value : _) -> Just $ argExpr value
-  (BuiltinCast (FromVec FromVecToTensor), _ : _ : _ : value : _) -> Just $ argExpr value
+  (BuiltinCast FromVecToList, _ : _ : value : _) -> Just $ argExpr value
+  (BuiltinCast FromVecToVec, _ : _ : value : _) -> Just $ argExpr value
+  (BuiltinCast FromVecToTensor, _ : _ : _ : value : _) -> Just $ argExpr value
   (BuiltinConstructor Nil, getExpr accessSpine -> Just (NilArgs t)) -> Just $ IVecLiteral t []
-  (BuiltinConstructor Cons, getExpr accessSpine -> Just (ConsArgs t x xs)) -> do
-    IVecLiteral t . (x :) <$> getListExpr xs
-  (BuiltinFunction StackTensor, getExpr accessSpine -> Just stackArgs) -> do
-    return $ IVecLiteral (stackType stackArgs) (stackElements stackArgs)
+  (BuiltinConstructor Cons, getExpr accessSpine -> Just (ConsArgs t x xs)) -> IVecLiteral t . (x :) <$> getListExpr xs
+  (BuiltinFunction StackTensor, getExpr accessSpine -> Just stackArgs) -> return $ IVecLiteral (stackType stackArgs) (stackElements stackArgs)
   _ -> Nothing
 
 --------------------------------------------------------------------------------
@@ -114,15 +110,22 @@ removeVectorLiteralCoercion _p builtin args = case (builtin, args) of
 
 insertTensorTypeCoercion :: CoercionInsertion
 insertTensorTypeCoercion p builtin args = case builtin of
-  BuiltinType TensorType -> Just $ do
-    normAppList (Builtin p (TypeClassOp TensorTypeTC)) args
+  BuiltinType TensorType -> Just $ normAppList (Builtin p (TypeClassOp TensorTypeTC)) args
+  BuiltinType BoolType -> Just $ mkTensorType p IBoolType IDimNil
+  BuiltinType RatType -> Just $ mkTensorType p IRatType IDimNil
   _ -> Nothing
 
 removeTensorTypeCoercion :: CoercionRemoval
 removeTensorTypeCoercion p builtin args = case (builtin, args) of
-  (TypeClassOp TensorTypeTC, tElem : dim : _) -> Just $ normAppList (Builtin p (BuiltinType TensorType)) [tElem, dim]
+  (TypeClassOp TensorTypeTC, tElem : dim : _) -> Just $ mkTensorType p (argExpr tElem) (argExpr dim)
   (BuiltinType TensorType, [tElem, argExpr -> IDimNil]) -> Just $ argExpr tElem
   _ -> Nothing
+
+mkTensorType :: Provenance -> Expr Builtin -> Expr Builtin -> Expr Builtin
+mkTensorType p tElem dims =
+  -- Would be good to be able to use ITensorType here but can't set the
+  -- provenance...
+  normAppList (Builtin p (BuiltinType TensorType)) [explicit tElem, explicitIrrelevant dims]
 
 --------------------------------------------------------------------------------
 -- Utilities

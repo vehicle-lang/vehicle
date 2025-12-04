@@ -49,7 +49,7 @@ convertDecls logicID logic = \case
   decl : decls -> do
     normDecl <- traverse normaliseInEmptyEnv decl
     maybeLossDecl <- convertDecl logicID logic normDecl
-    decls' <- addDeclEntryToContext (decl, normDecl) $ convertDecls logicID logic decls
+    decls' <- addDeclEntryToContext normDecl $ convertDecls logicID logic decls
     return $ maybeToList maybeLossDecl ++ decls'
 
 convertDecl ::

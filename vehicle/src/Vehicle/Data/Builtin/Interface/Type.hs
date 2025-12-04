@@ -1,19 +1,20 @@
 module Vehicle.Data.Builtin.Interface.Type where
 
 import Data.Proxy (Proxy)
+import Vehicle.Compile.Type.Monad.Class (MonadTypeChecker)
 import Vehicle.Data.Builtin.Interface
+import Vehicle.Data.Builtin.Interface.Normalise (NormalisableBuiltin)
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.Code.Expr (Type)
 import Vehicle.Data.DSL
-import Vehicle.Data.Variable.Free.Context (MonadFreeContext)
 import Vehicle.Prelude (Provenance, Relevance (..))
 import Prelude hiding (iterate)
 
-class (PrintableBuiltin builtin) => TypableBuiltin builtin where
+class (Ord builtin, PrintableBuiltin builtin, NormalisableBuiltin builtin) => TypableBuiltin builtin where
   -- | Construct a type for the builtin
-  typeBuiltin :: (MonadFreeContext builtin m) => Provenance -> builtin -> m (Type builtin)
+  typeBuiltin :: (MonadTypeChecker builtin m) => Provenance -> builtin -> m (Type builtin)
 
   -- | Can meta variables depend on other values in the scope?
   -- Efficiency hack for polarity/linearity subsystems.
@@ -43,27 +44,21 @@ typeOfBuiltinFunction = \case
   And -> typeOfTensorOp2 tBool
   Or -> typeOfTensorOp2 tBool
   Implies -> typeOfTensorOp2 tBool
-  QuantifyRatTensor _ -> forAllDims $ \ds -> typeOfQuantifier (tRatTensor ds)
+  ForallRatTensor -> forAllDims $ \ds -> typeOfQuantifier (tRatTensor ds)
+  ExistsRatTensor -> forAllDims $ \ds -> typeOfQuantifier (tRatTensor ds)
   If -> typeOfIf
   ReduceAndTensor -> typeOfTensorBoolReduceOp
   ReduceOrTensor -> typeOfTensorBoolReduceOp
   -- Arithmetic operations
-  Neg dom -> case dom of
-    NegRatTensor -> typeOfTensorOp1 tRat
-  Add dom -> case dom of
-    AddNat -> tNat ~> tNat ~> tNat
-    AddRatTensor -> typeOfTensorOp2 tRat
-  Sub dom -> case dom of
-    SubRatTensor -> typeOfTensorOp2 tRat
-  Mul dom -> case dom of
-    MulNat -> tNat ~> tNat ~> tNat
-    MulRatTensor -> typeOfTensorOp2 tRat
-  Div dom -> case dom of
-    DivRatTensor -> typeOfTensorOp2 tRat
-  Min dom -> case dom of
-    MinRatTensor -> typeOfTensorOp2 tRat
-  Max dom -> case dom of
-    MaxRatTensor -> typeOfTensorOp2 tRat
+  NegRatTensor -> typeOfTensorOp1 tRat
+  AddNat -> tNat ~> tNat ~> tNat
+  AddRatTensor -> typeOfTensorOp2 tRat
+  SubRatTensor -> typeOfTensorOp2 tRat
+  MulNat -> tNat ~> tNat ~> tNat
+  MulRatTensor -> typeOfTensorOp2 tRat
+  DivRatTensor -> typeOfTensorOp2 tRat
+  MinRatTensor -> typeOfTensorOp2 tRat
+  MaxRatTensor -> typeOfTensorOp2 tRat
   PowRat -> forAllDims $ \dims -> tRatTensor dims ~> tNat ~> tRatTensor dims
   ReduceAddRatTensor -> typeOfTensorRatReduceOp
   ReduceMulRatTensor -> typeOfTensorRatReduceOp

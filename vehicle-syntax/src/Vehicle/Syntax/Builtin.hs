@@ -17,6 +17,7 @@ import Prettyprinter.Render.Text (renderStrict)
 import Vehicle.Syntax.Builtin.BasicOperations as X
 import Vehicle.Syntax.Builtin.Derived as X
 import Vehicle.Syntax.Builtin.TypeClass as X
+import Vehicle.Syntax.Prelude (enumerate)
 import Vehicle.Syntax.Tensor
 
 --------------------------------------------------------------------------------
@@ -33,7 +34,7 @@ data BuiltinType
   | ListType
   | VectorType
   | TensorType
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Enum, Bounded, Show, Generic)
 
 instance NFData BuiltinType
 
@@ -69,6 +70,13 @@ data BuiltinConstructor
   | RatTensorLiteral (Tensor Rational)
   deriving (Eq, Ord, Show, Generic)
 
+partiallyEnumerateBuiltinConstructors :: [BuiltinConstructor]
+partiallyEnumerateBuiltinConstructors =
+  [ Nil,
+    Cons,
+    UnitLiteral
+  ]
+
 instance NFData BuiltinConstructor
 
 instance Hashable BuiltinConstructor
@@ -91,7 +99,7 @@ instance Pretty Rational where
   pretty p = pretty (fromRational p :: Double)
 
 --------------------------------------------------------------------------------
--- Builtin
+-- BuiltinFunction
 
 data BuiltinFunction
   = -- Boolean operations
@@ -99,7 +107,8 @@ data BuiltinFunction
   | And
   | Or
   | Implies
-  | QuantifyRatTensor Quantifier
+  | ForallRatTensor
+  | ExistsRatTensor
   | If
   | CompareIndex ComparisonOp
   | CompareNat ComparisonOp
@@ -107,13 +116,15 @@ data BuiltinFunction
   | ReduceAndTensor
   | ReduceOrTensor
   | -- Rat operations
-    Add AddDomain
-  | Mul MulDomain
-  | Neg NegDomain
-  | Sub SubDomain
-  | Div DivDomain
-  | Min MinDomain
-  | Max MaxDomain
+    AddNat
+  | AddRatTensor
+  | MulNat
+  | MulRatTensor
+  | NegRatTensor
+  | SubRatTensor
+  | DivRatTensor
+  | MinRatTensor
+  | MaxRatTensor
   | PowRat
   | ReduceAddRatTensor
   | ReduceMulRatTensor
@@ -133,6 +144,50 @@ data BuiltinFunction
   | MapList
   deriving (Eq, Ord, Show, Generic)
 
+enumerateBuiltinFunctions :: [BuiltinFunction]
+enumerateBuiltinFunctions =
+  [ Not,
+    And,
+    Or,
+    Implies,
+    ForallRatTensor,
+    ExistsRatTensor,
+    If
+  ]
+    <> fmap CompareIndex enumerate
+    <> fmap CompareNat enumerate
+    <> fmap CompareRatTensorPointwise enumerate
+    <> [ ReduceAndTensor,
+         ReduceOrTensor,
+         -- Rat operations
+         AddNat,
+         AddRatTensor,
+         MulNat,
+         MulRatTensor,
+         NegRatTensor,
+         SubRatTensor,
+         DivRatTensor,
+         MinRatTensor,
+         MaxRatTensor,
+         PowRat,
+         ReduceAddRatTensor,
+         ReduceMulRatTensor,
+         ReduceMinRatTensor,
+         ReduceMaxRatTensor,
+         -- Tensor operations
+         AtTensor,
+         StackTensor,
+         ConstTensor,
+         Iterate,
+         ForeachTensor,
+         -- Vector operations
+         AtVector,
+         ForeachVector,
+         -- List operations
+         FoldList,
+         MapList
+       ]
+
 instance NFData BuiltinFunction
 
 instance Hashable BuiltinFunction
@@ -147,17 +202,20 @@ instance Pretty BuiltinFunction where
     Or -> "or"
     Not -> "not"
     Implies -> "=>"
-    QuantifyRatTensor q -> pretty q
+    ForallRatTensor -> "forallRatTensor"
+    ExistsRatTensor -> "existsRatTensor"
     If -> "if"
     ReduceAndTensor -> "reduceAndTensor"
     ReduceOrTensor -> "reduceOrTensor"
-    Neg dom -> "neg" <> pretty dom
-    Add dom -> "add" <> pretty dom
-    Sub dom -> "sub" <> pretty dom
-    Mul dom -> "mul" <> pretty dom
-    Div dom -> "div" <> pretty dom
-    Min dom -> "min" <> pretty dom
-    Max dom -> "max" <> pretty dom
+    NegRatTensor -> "negRatTensor"
+    AddNat -> "addNat"
+    AddRatTensor -> "addRatTensor"
+    SubRatTensor -> "subRatTensor"
+    MulNat -> "mulNat"
+    MulRatTensor -> "mulRatTensor"
+    DivRatTensor -> "divRatTensor"
+    MinRatTensor -> "minRatTensor"
+    MaxRatTensor -> "maxRatTensor"
     PowRat -> "**"
     ReduceAddRatTensor -> "reduceAddRatTensor"
     ReduceMulRatTensor -> "reduceMulRatTensor"
@@ -176,12 +234,19 @@ instance Pretty BuiltinFunction where
     StackTensor {} -> "stack"
     ConstTensor -> "const"
 
+--------------------------------------------------------------------------------
+-- BuiltinCast
+
 data BuiltinCast
-  = -- Cast operations
-    FromNat FromNatDomain
-  | FromRat FromRatDomain
-  | FromVec FromVecDomain
-  deriving (Eq, Ord, Show, Generic)
+  = -- This is actually needed as it takes an empty type-class parameter (see typing module)
+    FromNatToNat
+  | FromNatToIndex
+  | FromNatToRat
+  | FromRatToRat
+  | FromVecToVec
+  | FromVecToList
+  | FromVecToTensor
+  deriving (Eq, Ord, Enum, Bounded, Show, Generic)
 
 instance NFData BuiltinCast
 
@@ -191,9 +256,13 @@ instance Serialize BuiltinCast
 
 instance Pretty BuiltinCast where
   pretty = \case
-    FromNat dom -> "fromNatTo" <> pretty dom
-    FromRat dom -> "fromRatTo" <> pretty dom
-    FromVec dom -> "fromVecTo" <> pretty dom
+    FromNatToNat -> "fromNatToNat"
+    FromNatToIndex -> "fromNatToIndex"
+    FromNatToRat -> "fromNatToRat"
+    FromRatToRat -> "fromRatToRat"
+    FromVecToVec -> "fromVecToVec"
+    FromVecToList -> "fromVecToList"
+    FromVecToTensor -> "fromVecToTensor"
 
 -- | Builtins in the Vehicle language
 data Builtin
@@ -225,12 +294,6 @@ instance Pretty Builtin where
     TypeClass tc -> pretty tc
     TypeClassOp o -> pretty o
     NatInDomainConstraint {} -> "NatInDomainConstraint"
-
-builtinSymbols :: [(Text, Builtin)]
-builtinSymbols = mempty
-
-builtinFromSymbol :: Text -> Maybe Builtin
-builtinFromSymbol symbol = lookup symbol builtinSymbols
 
 symbolFromBuiltin :: Builtin -> Text
 symbolFromBuiltin builtin = renderStrict . layoutPretty defaultLayoutOptions $ pretty builtin

@@ -40,7 +40,7 @@ data ComparisonOp
   | Gt
   | Eq
   | Ne
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Enum, Bounded, Show, Generic)
 
 instance NFData ComparisonOp
 
@@ -110,7 +110,7 @@ chainable e1 e2 = (e1 == e2 || e1 == flipStrictness e2) && e1 /= Ne
 data Quantifier
   = Forall
   | Exists
-  deriving (Show, Eq, Ord, Generic)
+  deriving (Show, Eq, Ord, Enum, Bounded, Generic)
 
 instance NFData Quantifier
 
@@ -124,168 +124,3 @@ instance Pretty Quantifier where
   pretty = \case
     Forall -> "forall"
     Exists -> "exists"
-
---------------------------------------------------------------------------------
--- Domains
-
-data NegDomain
-  = NegRatTensor
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData NegDomain
-
-instance Hashable NegDomain
-
-instance Serialize NegDomain
-
-instance Pretty NegDomain where
-  pretty = \case
-    NegRatTensor -> "RatTensor"
-
-data AddDomain
-  = AddNat
-  | AddRatTensor
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData AddDomain
-
-instance Hashable AddDomain
-
-instance Serialize AddDomain
-
-instance Pretty AddDomain where
-  pretty = \case
-    AddNat -> "Nat"
-    AddRatTensor -> "RatTensor"
-
-data SubDomain
-  = SubRatTensor
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData SubDomain
-
-instance Hashable SubDomain
-
-instance Serialize SubDomain
-
-instance Pretty SubDomain where
-  pretty = \case
-    SubRatTensor -> "RatTensor"
-
-data MulDomain
-  = MulNat
-  | MulRatTensor
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData MulDomain
-
-instance Hashable MulDomain
-
-instance Serialize MulDomain
-
-instance Pretty MulDomain where
-  pretty = \case
-    MulNat -> "Nat"
-    MulRatTensor -> "RatTensor"
-
-data DivDomain
-  = DivRatTensor
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData DivDomain
-
-instance Hashable DivDomain
-
-instance Serialize DivDomain
-
-instance Pretty DivDomain where
-  pretty = \case
-    DivRatTensor -> "RatTensor"
-
-data MinDomain
-  = MinRatTensor
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData MinDomain
-
-instance Hashable MinDomain
-
-instance Serialize MinDomain
-
-instance Pretty MinDomain where
-  pretty = \case
-    MinRatTensor -> "RatTensor"
-
-data MaxDomain
-  = MaxRatTensor
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData MaxDomain
-
-instance Hashable MaxDomain
-
-instance Serialize MaxDomain
-
-instance Pretty MaxDomain where
-  pretty = \case
-    MaxRatTensor -> "RatTensor"
-
---------------------------------------------------------------------------------
--- FromNatDomain
-
-data FromNatDomain
-  = -- This is actually needed as it takes an empty type-class parameter (see typing module)
-    FromNatToNat
-  | FromNatToIndex
-  | FromNatToRat
-  deriving (Eq, Ord, Show, Generic)
-
-instance Pretty FromNatDomain where
-  pretty = \case
-    FromNatToNat -> "Nat"
-    FromNatToIndex -> "Index"
-    FromNatToRat -> "Rat"
-
-instance Serialize FromNatDomain
-
-instance NFData FromNatDomain
-
-instance Hashable FromNatDomain
-
---------------------------------------------------------------------------------
--- FromRatDomain
-
-data FromRatDomain
-  = FromRatToRat
-  deriving (Eq, Ord, Show, Generic)
-
-instance Pretty FromRatDomain where
-  pretty = \case
-    FromRatToRat -> "Rat"
-
-instance NFData FromRatDomain
-
-instance Hashable FromRatDomain
-
-instance Serialize FromRatDomain
-
---------------------------------------------------------------------------------
--- FromVecDomain
-
-data FromVecDomain
-  = FromVecToVec
-  | FromVecToList
-  | FromVecToTensor
-  deriving (Eq, Ord, Show, Generic)
-
-instance Pretty FromVecDomain where
-  pretty = \case
-    FromVecToVec -> "Vector"
-    FromVecToList -> "List"
-    FromVecToTensor -> "Tensor"
-
-instance NFData FromVecDomain
-
-instance Hashable FromVecDomain
-
-instance Serialize FromVecDomain

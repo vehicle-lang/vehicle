@@ -26,7 +26,7 @@ import Vehicle.Prelude.Warning (CompileWarning (..))
 import Vehicle.Verify.Specification (CompilationStep (..), ReconstructionDepth (OneDimension))
 
 --------------------------------------------------------------------------------
--- Main function
+-- Module function
 
 type MonadSolveExists m = MonadQueryStructure m
 

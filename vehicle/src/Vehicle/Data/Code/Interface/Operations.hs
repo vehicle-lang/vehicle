@@ -167,12 +167,18 @@ accessQuantifyRatTensor ::
 accessQuantifyRatTensor =
   Access
     { getExpr = \case
-        (getBuiltin accessQuantifyRatTensorBuiltin -> Just (q, spine)) ->
+        (getBuiltin accessForallRatTensorBuiltin -> Just ((), spine)) ->
           case getExpr accessQuantifyRatTensorSpine spine of
-            Just args -> Just (q, args)
+            Just args -> Just (Forall, args)
+            _ -> Nothing
+        (getBuiltin accessExistsRatTensorBuiltin -> Just ((), spine)) ->
+          case getExpr accessQuantifyRatTensorSpine spine of
+            Just args -> Just (Exists, args)
             _ -> Nothing
         _ -> Nothing,
-      mkExpr = \(q, args) -> mkBuiltin accessQuantifyRatTensorBuiltin q (mkExpr accessQuantifyRatTensorSpine args)
+      mkExpr = \(q, args) -> case q of
+        Forall -> mkBuiltin accessForallRatTensorBuiltin () (mkExpr accessQuantifyRatTensorSpine args)
+        Exists -> mkBuiltin accessExistsRatTensorBuiltin () (mkExpr accessQuantifyRatTensorSpine args)
     }
 
 --------------------------------------------------------------------------------

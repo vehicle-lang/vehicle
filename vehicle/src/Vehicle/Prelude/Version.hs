@@ -74,7 +74,7 @@ preciseVehicleVersion = showVersion Cabal.version
 
       -- Check if any tracked files have uncommitted changes
       dirty | isDirtyRepo = ".dirty"
-            | otherwise          = ""
+            | otherwise   = ""
 
       -- Abbreviate a commit hash while keeping it unambiguous
       abbrev = take 7

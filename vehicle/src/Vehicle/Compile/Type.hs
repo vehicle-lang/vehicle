@@ -1,6 +1,5 @@
 module Vehicle.Compile.Type
-  ( typeCheckProg,
-    typeCheckSolitaryExpr,
+  ( typeCheckModuleDecls,
   )
 where
 
@@ -12,7 +11,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.Proxy (Proxy (..))
 import Data.Set (Set)
 import Data.Set qualified as Set
-import Vehicle.Compile.Dependency (completelyUnusedDeclarations, createDependencyGraph)
+import Vehicle.Compile.Dependency (completelyUnusedDeclarations)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
@@ -26,50 +25,30 @@ import Vehicle.Compile.Type.Generalise
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Monad.Class
-import Vehicle.Compile.Type.System (HasTypeSystem (..), TCM, runAuxiliarySolver)
+import Vehicle.Compile.Type.System (HasTypeSystem (..), TCM, lookupBuiltin, runAuxiliarySolver)
 import Vehicle.Data.Builtin.Interface.Normalise (NormalisableBuiltin)
 import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin (..))
 import Vehicle.Data.Builtin.Standard
-import Vehicle.Data.Variable.Free.Context
+import Vehicle.Data.Code.ModuleInterface
+import Vehicle.Data.Code.Value (FreeEnv)
+import Vehicle.Data.Variable.Free.Context (addDeclToContext)
 
 -------------------------------------------------------------------------------
--- Algorithm
+-- Interface
 
-typeCheckProg ::
-  forall builtin m.
-  (HasTypeSystem builtin, NormalisableBuiltin builtin, MonadCompile m) =>
-  Module ->
-  InstanceDatabase builtin ->
-  FreeCtx builtin ->
-  Prog Builtin ->
-  m (Prog builtin)
-typeCheckProg modul instanceCandidates freeCtx prog@(Main uncheckedProg) =
-  logCompilerPass TypeChecking $
-    runTypeCheckerTInitially freeCtx instanceCandidates $ do
+typeCheckModuleDecls ::
+  (MonadCompile m, HasTypeSystem builtin) =>
+  ModulePath ->
+  ImportedModuleContext builtin ->
+  [Decl Builtin] ->
+  m ([Decl builtin], ModuleTypingInterface builtin, FreeEnv builtin)
+typeCheckModuleDecls modulePath importedCtx decls = do
+  logCompilerPass TypeChecking $ do
+    runTypeCheckerTInitially importedCtx $ do
       let unusedDecls
-            | modul == userModule = completelyUnusedDeclarations (createDependencyGraph prog)
+            | modulePath == userModulePath = completelyUnusedDeclarations decls
             | otherwise = mempty
-      xs <- typeCheckDecls unusedDecls uncheckedProg
-      return $ Main xs
-
-typeCheckSolitaryExpr ::
-  forall builtin m.
-  (HasTypeSystem builtin, NormalisableBuiltin builtin, MonadCompile m) =>
-  InstanceDatabase builtin ->
-  FreeCtx builtin ->
-  Expr Builtin ->
-  m (Expr builtin)
-typeCheckSolitaryExpr instanceCandidates freeCtx expr1 = do
-  runTypeCheckerTInitially freeCtx instanceCandidates $ do
-    expr2 <- convertFromStandardBuiltins expr1
-    (expr3, _exprType) <- inferExprType mempty Relevant expr2
-    solveConstraints (Proxy @builtin)
-    expr4 <- substMetaVariablesAt mempty expr3
-    checkAllUnknownsSolved (Proxy @builtin)
-    return expr4
-
--------------------------------------------------------------------------------
--- Type-class for things that can be type-checked
+      typeCheckDecls unusedDecls decls
 
 typeCheckDecls :: (TCM builtin m) => Set Identifier -> [Decl Builtin] -> m [Decl builtin]
 typeCheckDecls unusedDecls = \case
@@ -78,6 +57,9 @@ typeCheckDecls unusedDecls = \case
     typedDecl <- typeCheckDecl d (identifierOf d `Set.member` unusedDecls)
     checkedDecls <- addDeclToContext typedDecl $ typeCheckDecls unusedDecls ds
     return $ typedDecl : checkedDecls
+
+-------------------------------------------------------------------------------
+-- Type-class for things that can be type-checked
 
 typeCheckDecl :: forall builtin m. (TCM builtin m) => Decl Builtin -> DeclIsUnused -> m (Decl builtin)
 typeCheckDecl uncheckedDecl isUnused =
@@ -94,7 +76,7 @@ typeCheckDecl uncheckedDecl isUnused =
     decl <- case convertedDecl of
       DefAbstract p n r t -> typeCheckAbstractDef p n r t isUnused
       DefFunction p n b t e -> typeCheckFunctionDef p n b t e isUnused
-      DefRecord p n b t fs -> typeCheckRecordDef p n b t fs isUnused
+      DefRecord p n b ts fs -> typeCheckRecordDef p n b ts fs isUnused
     checkAllUnknownsSolved (Proxy @builtin)
     finalDecl <- substMetaVariables decl
     logCompilerPassOutput $ prettyExternal finalDecl
@@ -121,8 +103,12 @@ typeCheckAbstractDef p ident defSort uncheckedType isUnused = do
 
   logUnsolvedUnknowns (Proxy @builtin)
 
-  finalDecl <- generaliseOverUnsolvedMetasAndConstraints substDecl
-  return finalDecl
+  if defSort == BuiltinDef
+    then do
+      addBuiltinTypeToDatabase (lookupBuiltin (nameOf ident)) checkedType
+      return substDecl
+    else do
+      generaliseOverUnsolvedMetasAndConstraints substDecl
 
 typeCheckFunctionDef ::
   forall builtin m.
@@ -175,21 +161,16 @@ typeCheckRecordDef ::
   Provenance ->
   Identifier ->
   [Annotation] ->
-  Type builtin ->
+  Telescope builtin ->
   RecordFields (Type builtin) ->
   DeclIsUnused ->
   m (Decl builtin)
-typeCheckRecordDef p ident anns uncheckedType uncheckedFields isUnused = do
-  checkedType <- checkDeclType ident uncheckedType
-
-  -- Type check the body.
-  let pass = bidirectionalPassDoc <+> "fields of" <+> quotePretty ident
-  checkedFields <-
-    logCompilerSection2 MidDetail pass $
-      traverse (checkRecordFieldDef ident) uncheckedFields
+typeCheckRecordDef p ident anns uncheckedTelescope uncheckedFields isUnused = do
+  (checkedTelescope, checkedFields) <-
+    checkRecordTelescopeAndFields ident uncheckedTelescope uncheckedFields
 
   -- Reconstruct the function.
-  let checkedDecl = DefRecord p ident anns checkedType checkedFields
+  let checkedDecl = DefRecord p ident anns checkedTelescope checkedFields
 
   -- Solve constraints and substitute through.
   setCurrentDecl $ Just (checkedDecl, isUnused)
@@ -205,6 +186,23 @@ typeCheckRecordDef p ident anns uncheckedType uncheckedFields isUnused = do
       solveConstraints (Proxy @builtin)
 
   substMetaVariables checkedDecl
+
+checkRecordTelescopeAndFields ::
+  forall builtin m.
+  (TCM builtin m) =>
+  Identifier ->
+  Telescope builtin ->
+  RecordFields (Type builtin) ->
+  m (Telescope builtin, RecordFields (Type builtin))
+checkRecordTelescopeAndFields ident telescope fields =
+  runMonadBidirectional @m @builtin mempty Relevant $ do
+    checkTelescope telescope $ do
+      -- Type check the body.
+      let pass = bidirectionalPassDoc <+> "fields of" <+> quotePretty ident
+      checkedFields <-
+        logCompilerSection2 MidDetail pass $
+          traverse (checkRecordFieldDef ident) fields
+      return checkedFields
 
 checkRecordFieldDef ::
   (TCM builtin m) =>
@@ -306,7 +304,7 @@ solveConstraints proxy = logCompilerSection2 MidDetail "constraint solving" $ do
 -------------------------------------------------------------------------------
 -- Unsolved constraint checks
 
-checkAllUnknownsSolved :: forall builtin m. (MonadTypeChecker builtin m) => Proxy builtin -> m ()
+checkAllUnknownsSolved :: forall builtin m. (MonadTypeChecker builtin m, NormalisableBuiltin builtin) => Proxy builtin -> m ()
 checkAllUnknownsSolved proxy = do
   -- First check all user constraints (i.e. unification and type-class
   -- constraints) are solved.
@@ -318,7 +316,7 @@ checkAllUnknownsSolved proxy = do
   -- ...and the fresh names
   clearFreshNames proxy
 
-checkAllMetasSolved :: forall builtin m. (MonadTypeChecker builtin m) => Proxy builtin -> m ()
+checkAllMetasSolved :: forall builtin m. (MonadTypeChecker builtin m, Eq builtin, NormalisableBuiltin builtin) => Proxy builtin -> m ()
 checkAllMetasSolved proxy = do
   unsolvedMetas <- getUnsolvedMetas proxy
   case MetaSet.toList unsolvedMetas of

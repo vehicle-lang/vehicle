@@ -86,7 +86,7 @@ unitLit :: (BuiltinHasStandardData builtin) => DSLExpr builtin
 unitLit = builtinConstructor UnitLiteral
 
 shapeOf :: (BuiltinHasStandardData builtin, BuiltinHasStandardTypes builtin) => Tensor a -> DSLExpr builtin
-shapeOf t = foldr (\x xs -> cons tNat (natLit x) xs) (nil tNat) (T.shapeOf t)
+shapeOf t = foldr (cons tNat . natLit) (nil tNat) (T.shapeOf t)
 
 --------------------------------------------------------------------------------
 -- Functions DSL
@@ -95,7 +95,7 @@ builtinFunction :: (BuiltinHasStandardData builtin) => BuiltinFunction -> DSLExp
 builtinFunction = builtin . mkExpr accessBuiltinFunction
 
 addNat :: (BuiltinHasStandardData builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
-addNat x y = builtinFunction (Add AddNat) @@ [x, y]
+addNat x y = builtinFunction AddNat @@ [x, y]
 
 ite ::
   (BuiltinHasStandardData builtin) =>
@@ -115,11 +115,13 @@ builtinTypeClass = builtin . mkBuiltinTypeClass
 typeClass :: (BuiltinHasStandardTypeClasses builtin) => TypeClass -> NonEmpty (DSLExpr builtin) -> DSLExpr builtin
 typeClass tc args = builtinTypeClass tc @@ args
 
-hasCompare :: (BuiltinHasStandardTypeClasses builtin) => ComparisonOp -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
-hasCompare eq t1 t2 t3 = typeClass (HasCompare eq) [t1, t2, t3]
+hasCompare :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+hasCompare t1 t2 t3 = typeClass HasComparisons [t1, t2, t3]
 
 hasQuantifier :: (BuiltinHasStandardTypeClasses builtin) => Quantifier -> DSLExpr builtin -> DSLExpr builtin
-hasQuantifier q t = typeClass (HasQuantifier q) [t]
+hasQuantifier q t = case q of
+  Forall -> typeClass HasForall [t]
+  Exists -> typeClass HasExists [t]
 
 numOp2TypeClass :: (BuiltinHasStandardTypeClasses builtin) => TypeClass -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 numOp2TypeClass tc t1 t2 t3 = typeClass tc [t1, t2, t3]
@@ -151,8 +153,11 @@ hasMap tCont = typeClass HasMap [tCont]
 hasFold :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
 hasFold tCont = typeClass HasFold [tCont]
 
-hasQuantifierIn :: (BuiltinHasStandardTypeClasses builtin) => Quantifier -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
-hasQuantifierIn q tCont tElem tRes = typeClass (HasQuantifierIn q) [tCont, tElem, tRes]
+hasForallIn :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+hasForallIn tCont tElem tRes = typeClass HasForallIn [tCont, tElem, tRes]
+
+hasExistsIn :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+hasExistsIn tCont tElem tRes = typeClass HasExistsIn [tCont, tElem, tRes]
 
 hasNatLits :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
 hasNatLits t = typeClass HasNatLits [t]
@@ -163,17 +168,14 @@ hasRatLits t = typeClass HasRatLits [t]
 hasVecLits :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 hasVecLits tCont tElem = typeClass HasVecLits [tCont, tElem]
 
-validParameterType :: (BuiltinHasStandardTypeClasses builtin) => ParameterSort -> DSLExpr builtin -> DSLExpr builtin
-validParameterType s t = typeClass (ValidParameterType s) [t]
-
 validPropertyType :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
 validPropertyType t = typeClass ValidPropertyType [t]
 
 validInferableParameterType :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
-validInferableParameterType t = typeClass (ValidParameterType Inferable) [t]
+validInferableParameterType t = typeClass ValidInferableParameterType [t]
 
 validNonInferableParameterType :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
-validNonInferableParameterType t = typeClass (ValidParameterType NonInferable) [t]
+validNonInferableParameterType t = typeClass ValidNonInferableParameterType [t]
 
 validNetworkType :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
 validNetworkType t = typeClass ValidNetworkType [t]

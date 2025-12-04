@@ -55,15 +55,15 @@ instance NormalisableBuiltin Builtin where
       Not -> Simple evalNot
       And -> Simple evalAnd
       Or -> Simple evalOr
-      Add AddNat -> Simple evalAddNat
-      Mul MulNat -> Simple evalMulNat
-      Neg NegRatTensor -> Simple evalNegRatTensor
-      Add AddRatTensor -> Simple evalAddRatTensor
-      Sub SubRatTensor -> Simple evalSubRatTensor
-      Mul MulRatTensor -> Simple evalMulRatTensor
-      Div DivRatTensor -> Simple evalDivRatTensor
-      Min MinRatTensor -> Simple evalMinRatTensor
-      Max MaxRatTensor -> Simple evalMaxRatTensor
+      AddNat -> Simple evalAddNat
+      MulNat -> Simple evalMulNat
+      NegRatTensor -> Simple evalNegRatTensor
+      AddRatTensor -> Simple evalAddRatTensor
+      SubRatTensor -> Simple evalSubRatTensor
+      MulRatTensor -> Simple evalMulRatTensor
+      DivRatTensor -> Simple evalDivRatTensor
+      MinRatTensor -> Simple evalMinRatTensor
+      MaxRatTensor -> Simple evalMaxRatTensor
       PowRat -> Simple evalPowRat
       ReduceAddRatTensor -> Simple evalReduceAddRatTensor
       ReduceMulRatTensor -> Simple evalReduceMulRatTensor
@@ -82,7 +82,8 @@ instance NormalisableBuiltin Builtin where
       ForeachTensor -> NonSimple evalForeachTensor
       ForeachVector -> NonSimple evalForeachVector
       Iterate -> NonSimple evalIterate
-      QuantifyRatTensor {} -> None
+      ForallRatTensor {} -> None
+      ExistsRatTensor {} -> None
     BuiltinCast c -> case evalCast c of
       CastEval evalFn -> Simple evalFn
     DerivedFunction f -> Derived (identifierOf f)
@@ -111,13 +112,13 @@ data CastEval expr m
 
 evalCast :: (MonadNormBuiltin m, HasBuiltinConstructor expr, PrettyVerbose (expr Builtin), Show (expr Builtin)) => BuiltinCast -> CastEval expr m
 evalCast cast = case cast of
-  FromNat FromNatToNat -> CastEval evalFromNatToNat
-  FromNat FromNatToIndex -> CastEval evalFromNatToIndex
-  FromNat FromNatToRat -> CastEval evalFromNatToRat
-  FromRat FromRatToRat -> CastEval evalFromRatToRat
-  FromVec FromVecToVec -> CastEval evalVectorToVector
-  FromVec FromVecToList -> CastEval evalVectorToList
-  FromVec FromVecToTensor -> CastEval evalVectorToTensor
+  FromNatToNat -> CastEval evalFromNatToNat
+  FromNatToIndex -> CastEval evalFromNatToIndex
+  FromNatToRat -> CastEval evalFromNatToRat
+  FromRatToRat -> CastEval evalFromRatToRat
+  FromVecToVec -> CastEval evalVectorToVector
+  FromVecToList -> CastEval evalVectorToList
+  FromVecToTensor -> CastEval evalVectorToTensor
 
 evalFromNatToNat :: (MonadNormBuiltin m) => EvalSimple FromNatToSimpleArgs expr Builtin m
 evalFromNatToNat (FromNatToSimpleArgs v _) = return v

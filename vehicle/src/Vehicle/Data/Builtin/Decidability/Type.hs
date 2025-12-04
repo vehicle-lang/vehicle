@@ -9,13 +9,14 @@ import Data.Proxy (Proxy (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
+import Vehicle.Compile.Type.Monad.Class (getDeclType)
 import Vehicle.Compile.Type.System
 import Vehicle.Data.Builtin.Decidability
 import Vehicle.Data.Builtin.Interface.Type
 import Vehicle.Data.Builtin.Standard (BuiltinConstructor (..), BuiltinFunction (..), BuiltinType (..), DerivedFunction (..))
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.DSL
-import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..), getDeclType)
+import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..))
 import Vehicle.Syntax.Builtin (Builtin (..))
 import Prelude hiding (iterate, pi)
 
@@ -47,7 +48,8 @@ typeDecidabilityBuiltin = \case
   StandardBuiltinType t -> typeOfBuiltinType t
   StandardBuiltinConstructor c -> typeOfBuiltinConstructor c
   StandardBuiltinFunction f -> case f of
-    QuantifyRatTensor {} -> forAllDims $ \_dims -> forAllTypes $ \t -> (t ~> tProp) ~> tProp
+    ForallRatTensor {} -> forAllDims $ \_dims -> forAllTypes $ \t -> (t ~> tProp) ~> tProp
+    ExistsRatTensor {} -> forAllDims $ \_dims -> forAllTypes $ \t -> (t ~> tProp) ~> tProp
     _ -> typeOfBuiltinFunction f
   StandardBuiltinDerivedFunction f -> typeOfDerivedFunction f
   DecidabilityBuiltinTypeClass t -> typeDecidableTypeClass t
@@ -183,6 +185,7 @@ instance HasTypeSystem DecidabilityBuiltin where
   solveAuxiliaryInstanceConstraint _ = return ()
   addAuxiliaryInputOutputConstraints = return
   generateDefaultAuxiliaryConstraint _ = return False
+  fromBuiltinName = const Nothing
 
 convertToDecidabilityFreeVars ::
   forall m.
@@ -225,15 +228,18 @@ convertToDecidabilityBuiltins p b args = return $
         CompareIndex op -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC $ FieldCompareIndex op)
         CompareNat op -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC $ FieldCompareNat op)
         -- Nothing needs to change
-        QuantifyRatTensor {} -> sameFunction f
+        ForallRatTensor {} -> sameFunction f
+        ExistsRatTensor {} -> sameFunction f
         If -> sameFunction f
-        Neg {} -> sameFunction f
-        Add {} -> sameFunction f
-        Sub {} -> sameFunction f
-        Mul {} -> sameFunction f
-        Div {} -> sameFunction f
-        Min {} -> sameFunction f
-        Max {} -> sameFunction f
+        AddNat -> sameFunction f
+        MulNat -> sameFunction f
+        NegRatTensor -> sameFunction f
+        AddRatTensor -> sameFunction f
+        SubRatTensor -> sameFunction f
+        MulRatTensor -> sameFunction f
+        DivRatTensor -> sameFunction f
+        MinRatTensor -> sameFunction f
+        MaxRatTensor -> sameFunction f
         PowRat -> sameFunction f
         ReduceAddRatTensor -> sameFunction f
         ReduceMulRatTensor -> sameFunction f

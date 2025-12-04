@@ -120,6 +120,9 @@ readRat str = case readFloat (Text.unpack str) of
   ((n, []) : _) -> n
   _ -> developerError "Invalid number"
 
+enumerate :: (Bounded a, Enum a) => [a]
+enumerate = [minBound .. maxBound]
+
 --------------------------------------------------------------------------------
 -- Serialization instances missing from Cereal
 

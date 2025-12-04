@@ -1,5 +1,8 @@
 module Vehicle.Compile.Type.Bidirectional
-  ( checkExprType,
+  ( MonadBidirectional,
+    runMonadBidirectional,
+    checkTelescope,
+    checkExprType,
     inferExprType,
     solveArgInsertionProblem,
     createFreshUnificationConstraint,
@@ -22,14 +25,13 @@ import Vehicle.Compile.Type.Force (forceHead)
 import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad
-import Vehicle.Compile.Type.Monad.Class (createFreshConstraintCtx)
+import Vehicle.Compile.Type.Monad.Class (createFreshConstraintCtx, getDeclType)
 import Vehicle.Compile.Type.System (HasTypeSystem (..), TCM)
 import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin (..))
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Universe (UniverseLevel (..))
 import Vehicle.Data.Variable.Bound.Context.Generic
 import Vehicle.Data.Variable.Bound.Context.Name (MonadReadableNameContext (..))
-import Vehicle.Data.Variable.Free.Context.Class
 import Prelude hiding (pi)
 
 --------------------------------------------------------------------------------
@@ -123,6 +125,9 @@ checkExpr expectedType expr = do
 
           return $ Lam p lamBinder checkedExpr
     -- checkExpr expectedType (Lam p lamBinder e)
+    (Record _p1 recordIdent declaredFields, Record p2 _recordIdent2 actualFields) -> do
+      checkedFields <- traverse (checkRecordField declaredFields) actualFields
+      return (Record p2 recordIdent checkedFields)
 
     -- Otherwise switch to inference mode
     (_, _) -> viaInfer expectedType expr
@@ -144,6 +149,31 @@ viaInfer expectedType expr = do
   -- Check the expected and the actual types are equal
   checkExprTypesEqual p expr expectedType resultType
   return appliedCheckedExpr
+
+checkBinder ::
+  (MonadBidirectional builtin m) =>
+  Binder builtin ->
+  m a ->
+  m (Binder builtin, a)
+checkBinder binder checkBody = do
+  let p = provenanceOf binder
+  checkedBinderType <- checkExpr (TypeUniverse p 0) (typeOf binder)
+  let checkedBinder = replaceBinderType checkedBinderType binder
+
+  checkedBody <- addBinderToContext checkedBinder checkBody
+  return (checkedBinder, checkedBody)
+
+checkTelescope ::
+  (MonadBidirectional builtin m) =>
+  Telescope builtin ->
+  m a ->
+  m (Telescope builtin, a)
+checkTelescope telescope checkBody = case telescope of
+  [] -> ([],) <$> checkBody
+  binder : binders -> do
+    (checkedBinder, (checkedBinders, checkedFields)) <-
+      checkBinder binder $ checkTelescope binders checkBody
+    return (checkedBinder : checkedBinders, checkedFields)
 
 --------------------------------------------------------------------------------
 -- Inference
@@ -168,7 +198,8 @@ inferExpr e = do
   showInferEntry e
   res <- case e of
     -- TODO fix once we have a universe solver up and running.
-    Universe p (UniverseLevel l) -> return (e, TypeUniverse p l)
+    Universe p (UniverseLevel l) ->
+      return (e, TypeUniverse p l)
     Meta _ m -> do
       metaType <- getMetaType m
       return (e, metaType)
@@ -180,15 +211,12 @@ inferExpr e = do
       metaType <- freshMetaExpr p (TypeUniverse p 0) boundCtx
       metaExpr <- freshMetaExpr p metaType boundCtx
       return (metaExpr, metaType)
-    Pi p binder resultType -> do
-      checkedBinderType <- checkExpr (TypeUniverse p 0) (typeOf binder)
-      let checkedBinder = replaceBinderType checkedBinderType binder
+    Pi p binder body -> do
+      (checkedBinder, checkedBody) <-
+        checkBinder binder $
+          checkExpr (TypeUniverse p 0) body
 
-      checkedResultType <-
-        addBinderToContext checkedBinder $
-          checkExpr (TypeUniverse p 0) resultType
-
-      return (Pi p checkedBinder checkedResultType, TypeUniverse p 0)
+      return (Pi p checkedBinder checkedBody, TypeUniverse p 0)
     App fun args -> do
       (checkedFun, checkedFunType) <- inferExpr fun
       inferApp checkedFun checkedFunType (NonEmpty.toList args)
@@ -207,46 +235,37 @@ inferExpr e = do
       originalType <- getDeclType (Proxy @builtin) ident
       return (FreeVar p ident, originalType)
     Let p boundExpr binder body -> do
-      -- Check that the type of the bound variable is a type
-      (typeOfBoundExpr, typeOfBoundExprType) <- inferExpr (typeOf binder)
-      checkExprTypesEqual p typeOfBoundExpr (TypeUniverse p 0) typeOfBoundExprType
-      let checkedBinder = replaceBinderType typeOfBoundExpr binder
+      -- Check that the body checks out
+      (checkedBinder, (checkedBody, typeOfBody)) <-
+        checkBinder binder $ inferExpr body
 
       -- Check that the expression being bound is correct.
+      let typeOfBoundExpr = typeOf checkedBinder
       checkedBoundExpr <- checkExpr typeOfBoundExpr boundExpr
-
-      -- Check the type of the body, with the bound variable added to the context.
-      (checkedBody, typeOfBody) <- addBinderToContext checkedBinder $ inferExpr body
 
       -- Substitute through the type of the bound expression to preserve well-typedness
       let finalType = typeOfBoundExpr `substDBInto` typeOfBody
 
       return (Let p checkedBoundExpr checkedBinder checkedBody, finalType)
     Lam p binder body -> do
-      -- Infer the type of the bound variable from the binder
-      (typeOfBinder, typeOfBinderType) <- inferExpr (typeOf binder)
-
-      checkExprTypesEqual p typeOfBinder (TypeUniverse p 0) typeOfBinderType
-      let checkedBinder = replaceBinderType typeOfBinder binder
-
       -- Update the context with the bound variable
-      (checkedBody, typeOfBody) <- addBinderToContext checkedBinder $ inferExpr body
+      (checkedBinder, (checkedBody, typeOfBody)) <-
+        checkBinder binder $ inferExpr body
       return (Lam p checkedBinder checkedBody, Pi p checkedBinder typeOfBody)
     Builtin p op -> do
       typ <- typeBuiltin p op
       return (Builtin p op, typ)
-    Record p recordIdent fields -> do
-      declaredFields <- getDeclaredRecordFields (Proxy @builtin) recordIdent
-      checkedFields <- traverse (checkRecordField declaredFields) fields
-      let checkedType = FreeVar p recordIdent
-      return (Record p recordIdent checkedFields, checkedType)
     RecordAcc p record (recordIdent, field) -> do
-      let recordType = FreeVar (provenanceOf field) recordIdent
-      checkedRecord <- checkExpr recordType record
-      declaredFields <- getDeclaredRecordFields (Proxy @builtin) recordIdent
+      (checkedRecord, _checkedRecordType) <- inferExpr record
+      declaredFields <- case checkedRecord of
+        Record _p declIdent fields
+          | declIdent == recordIdent -> return fields
+          | otherwise -> developerError "Record unexpectedly evaluated to different parent record"
+        _ -> developerError "Record unexpectedly did not evaluate to a record declaration"
       let fieldType = lookupRecordField declaredFields field
       return (RecordAcc p checkedRecord (recordIdent, field), fieldType)
-
+    Record _p _ident _fields -> do
+      developerError "Records should never be checked in inference mode"
   showInferExit res
   return res
 
@@ -333,7 +352,7 @@ checkRecordField declaredFields (field, value) = do
 -- derived from another constraint).
 createFreshUnificationConstraint ::
   forall builtin m.
-  (MonadTypeChecker builtin m) =>
+  (MonadTypeChecker builtin m, TypableBuiltin builtin) =>
   Provenance ->
   BoundCtx (Type builtin) ->
   UnificationConstraintOrigin builtin ->
@@ -392,7 +411,7 @@ solveArgInsertionProblem ctx problem@ArgInsertionProblem {..} = do
                   throwError $ TypingError $ FunctionTypeMismatch $ FunctionTypeMismatchError boundCtx originalFun currentExpectedType uncheckedArgs
 
 forceApplicationHeadType ::
-  (MonadTypeChecker builtin m) =>
+  (MonadTypeChecker builtin m, TypableBuiltin builtin) =>
   BoundCtx (Type builtin) ->
   Type builtin ->
   m (Type builtin, MetaSet)

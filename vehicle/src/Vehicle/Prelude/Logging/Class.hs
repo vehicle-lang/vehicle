@@ -28,11 +28,11 @@ import Data.Text (Text)
 import Data.Text qualified as Text (unpack)
 import System.Console.ANSI (Color (..))
 import Vehicle.Data.MaybeTrivial (MaybeTrivialT)
-import Vehicle.Prelude.Misc (enumerate, setTextColour)
+import Vehicle.Prelude.Misc (setTextColour)
 import Vehicle.Prelude.Prettyprinter
 import Vehicle.Prelude.Supply (SupplyT)
 import Vehicle.Prelude.Warning
-import Vehicle.Syntax.Prelude (layoutAsText)
+import Vehicle.Syntax.Prelude (enumerate, layoutAsText)
 
 --------------------------------------------------------------------------------
 -- Settings

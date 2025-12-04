@@ -8,9 +8,8 @@ module Vehicle.Compile.Prelude
   )
 where
 
-import Vehicle.Compile.Prelude.Utils as X
-import Vehicle.Data.Builtin.Core (Builtin)
 import Vehicle.Data.Code.Expr as X
+import Vehicle.Data.Code.Prog as X
 import Vehicle.Data.Variable.Bound.Context.Core as X
 import Vehicle.Data.Variable.Bound.Index (Ix (..))
 import Vehicle.Data.Variable.Bound.Level (Lv (..))
@@ -43,11 +42,3 @@ mapObject f WithContext {..} = WithContext {objectIn = f objectIn, ..}
 
 mapContextOf :: (ctx1 -> ctx2) -> Contextualised object ctx1 -> Contextualised object ctx2
 mapContextOf f WithContext {..} = WithContext {contextOf = f contextOf, ..}
-
--------------------------------------------------------------------------------
--- Imports
-
-type Imports = [Prog Builtin]
-
-mergeImports :: Imports -> Prog Builtin -> Prog Builtin
-mergeImports imports userProg = Main $ concatMap (\(Main ds) -> ds) (imports <> [userProg])

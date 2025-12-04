@@ -6,7 +6,7 @@ module Vehicle.Syntax.AST.Expr
     Arg,
     Binder,
     Decl,
-    Prog,
+    Module,
     Expr
       ( Universe,
         App,
@@ -33,8 +33,8 @@ import GHC.Generics (Generic)
 import Vehicle.Syntax.AST.Arg
 import Vehicle.Syntax.AST.Binder
 import Vehicle.Syntax.AST.Decl (GenericDecl)
+import Vehicle.Syntax.AST.Module (GenericModule)
 import Vehicle.Syntax.AST.Name (Name)
-import Vehicle.Syntax.AST.Prog (GenericProg)
 import Vehicle.Syntax.AST.Provenance (HasProvenance (..), Provenance, fillInProvenance)
 import Vehicle.Syntax.AST.Record (FieldName, RecordField)
 import Vehicle.Syntax.Builtin (Builtin)
@@ -115,7 +115,7 @@ type Arg = GenericArg Expr
 
 type Decl = GenericDecl Expr
 
-type Prog = GenericProg Expr
+type Module = GenericModule Expr
 
 --------------------------------------------------------------------------------
 -- Safe applications

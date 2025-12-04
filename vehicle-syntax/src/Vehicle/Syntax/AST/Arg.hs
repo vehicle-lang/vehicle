@@ -117,6 +117,21 @@ implicitIrrelevant = Arg mempty (Implicit True) Irrelevant
 instanceIrrelevant :: expr -> GenericArg expr
 instanceIrrelevant = Arg mempty (Instance True) Irrelevant
 
+getExplicitArg :: GenericArg expr -> Maybe expr
+getExplicitArg arg
+  | isExplicit arg = Just (argExpr arg)
+  | otherwise = Nothing
+
+getImplicitArg :: GenericArg expr -> Maybe expr
+getImplicitArg arg
+  | isImplicit arg = Just (argExpr arg)
+  | otherwise = Nothing
+
+getRelevantArg :: GenericArg expr -> Maybe expr
+getRelevantArg arg
+  | isRelevant arg = Just (argExpr arg)
+  | otherwise = Nothing
+
 --------------------------------------------------------------------------------
 -- Args
 

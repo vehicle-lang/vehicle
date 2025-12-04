@@ -12,10 +12,12 @@ import Data.Bitraversable
 import Data.ByteString.Lazy.Char8 (unpack)
 import Data.Graph (Edge, Vertex, buildG, topSort)
 import Data.Hashable (Hashable)
+import Data.List (sortOn)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Maybe (listToMaybe, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -24,15 +26,16 @@ import Data.These (These (..))
 import GHC.Generics (Generic)
 import Numeric (readFloat, readSigned)
 import System.Console.ANSI
+import Text.EditDistance (defaultEditCosts, levenshteinDistance)
 import Vehicle.Prelude.Prettyprinter (Doc, Pretty (pretty))
-import Vehicle.Syntax.AST.Name (Name)
+import Vehicle.Syntax.AST.Name (HasName, Name, nameOf)
 import Vehicle.Syntax.Prelude (developerError, unzipF)
 
 data VehicleLang = External | Internal
   deriving (Show)
 
--- | A textual representation of a Vehicle specification.
-type SpecificationText = Text
+-- | A textual representation of a Vehicle module.
+type ModuleText = Text
 
 -- | A set of declarations in the specification.
 type DeclarationNames = [Name]
@@ -146,6 +149,9 @@ unionWithM f m1 m2 = sequence $ Map.unionWith (\xm ym -> join $ liftM2 f xm ym) 
 mapKeysM :: (Monad m, Ord key) => (key -> m key) -> Map key val -> m (Map key val)
 mapKeysM f xs = Map.fromList <$> traverse (bitraverse f pure) (Map.toList xs)
 
+fromMappedList :: (Ord key) => (key -> value) -> [key] -> Map key value
+fromMappedList f keys = Map.fromList $ fmap (\key -> (key, f key)) keys
+
 -- Base 4.16 once we upgrade
 prependList :: [a] -> NonEmpty a -> NonEmpty a
 prependList ls ne = case ls of
@@ -217,9 +223,6 @@ instance Pretty InputOrOutput where
 
 xor :: Bool -> Bool -> Bool
 xor p q = p /= q
-
-enumerate :: (Bounded a, Enum a) => [a]
-enumerate = [minBound .. maxBound]
 
 whenM :: (Monad m) => m Bool -> m () -> m ()
 whenM cond action = do
@@ -302,8 +305,28 @@ localState f action = do
   put originalState
   return result
 
+firstJust :: (a -> Maybe b) -> [a] -> Maybe b
+firstJust f = listToMaybe . mapMaybe f
+
 --------------------------------------------------------------------------------
 -- Constants
 
 -- At the moment we only support rational coefficients.
 type Coefficient = Rational
+
+--------------------------------------------------------------------------------
+-- Spelling
+
+mispellingsSortedByLikelihood :: (HasName object Name) => object -> [object] -> [object]
+mispellingsSortedByLikelihood symbol possibilities = do
+  let scoredPossibilities = mapMaybe (symbol `isMispellingOf`) possibilities
+  let finalPossibilities = sortOn snd scoredPossibilities
+  fmap fst finalPossibilities
+
+isMispellingOf :: (HasName object Name) => object -> object -> Maybe (object, Int)
+isMispellingOf symbol possibility = do
+  let fieldName = Text.unpack $ nameOf symbol
+  let distance = levenshteinDistance defaultEditCosts fieldName (Text.unpack $ nameOf possibility)
+  if distance <= length fieldName `div` 2
+    then Just (possibility, distance)
+    else Nothing
