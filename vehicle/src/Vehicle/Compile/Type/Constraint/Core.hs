@@ -14,7 +14,7 @@ import Data.Bifunctor (Bifunctor (..))
 import Data.HashMap.Strict (HashMap, fromListWith, mapMaybeWithKey)
 import Data.Hashable (Hashable)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBE (normaliseInEnv)
+import Vehicle.Compile.Normalise.NBE (eval)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Core
@@ -106,6 +106,6 @@ instantiateInstanceConstraintSolution (WithContext (Resolve origin meta _ _) ctx
       logDebug MaxDetail ("solved" <+> pretty meta <+> "as" <+> prettyVerbose solution)
       logDebug MaxDetail (indent 2 ("however" <+> pretty meta <+> "=" <+> prettyVerbose (unnormalised existingSolution) <+> "already so unifying"))
       let abstractedSolution = abstractOverCtx (metaCtx metaInfo) solution
-      normSolution <- normaliseInEnv (toNamedBoundCtx boundCtx) (boundContextToEnv boundCtx) abstractedSolution
+      normSolution <- eval (toNamedBoundCtx boundCtx) (boundContextToEnv boundCtx) abstractedSolution
       newConstraint <- createInstanceUnification (ctx, origin) normSolution (normalised existingSolution)
       addUnificationConstraints [newConstraint]

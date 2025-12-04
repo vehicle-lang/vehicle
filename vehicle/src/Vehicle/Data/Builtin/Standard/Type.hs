@@ -17,7 +17,7 @@ import Vehicle.Data.Builtin.Standard.IndexSolver
 import Vehicle.Data.Builtin.Standard.Normalise ()
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.DSL
-import Vehicle.Data.Variable.Free.Context (MonadFreeContext, getDeclType, getFreeEnv)
+import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..), getDeclType)
 import Prelude hiding (iterate, pi)
 
 --------------------------------------------------------------------------------
@@ -183,7 +183,7 @@ restrictStandardDeclType ::
   Type Builtin ->
   m (Type Builtin)
 restrictStandardDeclType declSort (ident, p) typ = do
-  env <- getFreeEnv
+  env <- getFreeCtx (Proxy @Builtin)
   let tc = case declSort of
         RestrictedProperty -> ValidPropertyType
         RestrictedParameter s -> ValidParameterType s
@@ -204,7 +204,7 @@ restrictStandardRecordAnnotatedAsTensorType ::
 restrictStandardRecordAnnotatedAsTensorType (ident, p) fields = case fields of
   [] -> return ()
   (firstFieldName, firstFieldType) : restFields -> do
-    env <- getFreeEnv
+    env <- getFreeCtx (Proxy @Builtin)
     let expr = BuiltinExpr p (TypeClass ValidTensorLikeType) [explicit firstFieldType]
     let restrictionDetails = Right (FieldTypeIsAllowed firstFieldName)
     let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin env (ident, p) restrictionDetails firstFieldType
@@ -221,7 +221,7 @@ checkRecordFieldTypesMatch ::
   RecordField (Type Builtin) ->
   m ()
 checkRecordFieldTypesMatch (ident, p) (firstFieldName, firstFieldType) (currFieldName, currFieldType) = do
-  env <- getFreeEnv
+  env <- getFreeCtx (Proxy @Builtin)
   let restrictionDetails = Right (FieldTypesMatch firstFieldName currFieldName)
   let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin env (ident, p) restrictionDetails firstFieldType
   _ <- createFreshUnificationConstraint p mempty (CheckingInstanceType origin) firstFieldType currFieldType

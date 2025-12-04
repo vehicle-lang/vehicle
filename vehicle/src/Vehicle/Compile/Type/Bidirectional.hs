@@ -12,7 +12,7 @@ import Data.Data (Proxy (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Maybe (fromMaybe)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBE (normaliseInEnv)
+import Vehicle.Compile.Normalise.NBE (eval)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
@@ -342,8 +342,8 @@ createFreshUnificationConstraint ::
   m ()
 createFreshUnificationConstraint p ctx origin expectedType actualType = do
   let env = boundContextToEnv ctx
-  normExpectedType <- normaliseInEnv (toNamedBoundCtx ctx) env expectedType
-  normActualType <- normaliseInEnv (toNamedBoundCtx ctx) env actualType
+  normExpectedType <- eval (toNamedBoundCtx ctx) env expectedType
+  normActualType <- eval (toNamedBoundCtx ctx) env actualType
   context <- createFreshConstraintCtx p ctx
   let unification = Unify origin normExpectedType normActualType
   solveUnificationConstraint (WithContext unification context)
@@ -397,7 +397,7 @@ forceApplicationHeadType ::
   Type builtin ->
   m (Type builtin, MetaSet)
 forceApplicationHeadType ctx typ = do
-  normType <- normaliseInEnv (toNamedBoundCtx ctx) (boundContextToEnv ctx) typ
+  normType <- eval (toNamedBoundCtx ctx) (boundContextToEnv ctx) typ
   (forcedType, blockingMetas) <- forceHead (toNamedBoundCtx ctx) normType
   return (quote (provenanceOf typ) (boundCtxLv ctx) forcedType, blockingMetas)
 

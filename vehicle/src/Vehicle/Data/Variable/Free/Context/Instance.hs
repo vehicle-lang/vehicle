@@ -3,7 +3,7 @@
 module Vehicle.Data.Variable.Free.Context.Instance where
 
 import Control.Monad.Except (MonadError (..))
-import Control.Monad.Reader (MonadReader (..), ReaderT (..), mapReaderT)
+import Control.Monad.Reader (MonadReader (..), ReaderT (..), asks, mapReaderT)
 import Control.Monad.State
 import Data.Data (Proxy (..))
 import Data.Map qualified as Map
@@ -88,3 +88,6 @@ instance
     local updateCtx (unFreeContextT cont)
 
   getFreeCtx _ = FreeContextT ask
+
+  getDeclEntry _proxy ident = FreeContextT $ do
+    asks (lookupInFreeCtx ident)

@@ -6,6 +6,7 @@ module Vehicle.Data.Builtin.Linearity.Type
   )
 where
 
+import Data.Proxy (Proxy (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Bidirectional (createFreshUnificationConstraint)
 import Vehicle.Compile.Type.Core
@@ -19,7 +20,7 @@ import Vehicle.Data.Builtin.Linearity.Solver
 import Vehicle.Data.Builtin.Standard (Builtin (..))
 import Vehicle.Data.Code.DSL (iterate)
 import Vehicle.Data.DSL
-import Vehicle.Data.Variable.Free.Context (getFreeEnv)
+import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..))
 import Prelude hiding (iterate)
 
 --------------------------------------------------------------------------------
@@ -228,7 +229,7 @@ restrictLinearityDeclType ::
   Type LinearityBuiltin ->
   m (Type LinearityBuiltin)
 restrictLinearityDeclType rDecl declProv declType = do
-  freeEnv <- getFreeEnv
+  freeEnv <- getFreeCtx (Proxy @LinearityBuiltin)
   let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin freeEnv declProv (Left rDecl) declType
   case rDecl of
     RestrictedNetwork -> restrictLinearityNetworkType origin declProv declType
