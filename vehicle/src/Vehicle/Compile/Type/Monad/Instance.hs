@@ -73,6 +73,7 @@ mapTypeCheckerT f m = TypeCheckerT (mapFreeContextT (mapStateT f) (unTypeChecker
 instance (PrintableBuiltin builtin, MonadCompile m) => MonadFreeContext builtin (TypeCheckerT builtin m) where
   addDeclEntryToContext entry = TypeCheckerT . addDeclEntryToContext entry . unTypeCheckerT
   getFreeCtx = TypeCheckerT . getFreeCtx
+  getDeclEntry proxy = TypeCheckerT . getDeclEntry proxy
 
 instance (Eq builtin, Hashable builtin, PrintableBuiltin builtin, NormalisableBuiltin builtin, TypableBuiltin builtin, MonadCompile m) => MonadTypeChecker builtin (TypeCheckerT builtin m) where
   getTypeCheckerState = TypeCheckerT get

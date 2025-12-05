@@ -35,7 +35,6 @@ import Vehicle.Data.Tensor (HasShape (..))
 import Vehicle.Data.Variable.Bound.Context.Name (getNameContext, prettyFriendlyInCtx)
 import Vehicle.Data.Variable.Bound.Context.Tensor.Class
 import Vehicle.Data.Variable.Bound.Level
-import Vehicle.Data.Variable.Free.Context (getFreeEnv)
 import Vehicle.Verify.Core (inputShape)
 import Vehicle.Verify.QueryFormat (QueryFormat (..), supportsStrictInequalities)
 import Prelude hiding (Applicative (..))
@@ -63,7 +62,7 @@ eliminateExists (QuantifyRatTensorArgs _ binder (Closure env body)) = do
 
     -- Normalise the expression
     let newEnv = extendEnvWithBound (toLv userVar) binder env
-    normExpr <- normaliseInEnv (Just userVarName : namedCtx) newEnv body
+    normExpr <- eval (Just userVarName : namedCtx) newEnv body
 
     -- Recursively compile the expression.
     (partitions, networkInputEqualities) <-
@@ -262,12 +261,11 @@ eliminateTensorAssertion ::
 eliminateTensorAssertion op (TensorOp2Args dims xs ys) =
   case dims of
     IDimCons d@(INatLiteral n) ds -> do
-      freeEnv <- getFreeEnv
       -- TODO switch to use `etaReduceTensor`?
       nameCtx <- getNameContext
       let tElem = fromTypeValue VRatType
       let d0Arg = mkDims []
-      let mkAt vs i = evalAtTensor nameCtx (evalApp freeEnv) (eval freeEnv) (AtTensorArgs tElem d ds vs (IIndexLiteral i))
+      let mkAt vs i = evalAtTensor nameCtx evalApp eval (AtTensorArgs tElem d ds vs (IIndexLiteral i))
       let mkStackElement i = do
             xsi <- mkAt xs i
             ysi <- mkAt ys i

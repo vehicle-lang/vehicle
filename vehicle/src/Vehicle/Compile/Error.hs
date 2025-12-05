@@ -94,13 +94,13 @@ data FunctionTypeMismatchError builtin = FunctionTypeMismatchError
   deriving (Show)
 
 data FailedUnificationConstraintsError builtin = FailedUnificationConstraintsError
-  { _freeEnv :: FreeEnv builtin,
+  { _freeCtx :: FreeCtx builtin,
     failedConstraints :: NonEmpty (WithContext (UnificationConstraint builtin))
   }
   deriving (Show)
 
 data FailedInstanceConstraintError builtin = FailedInstanceConstraintError
-  { _freeEnv :: FreeEnv builtin,
+  { _freeCtx :: FreeCtx builtin,
     failedConstraint :: WithContext (InstanceConstraint builtin),
     exploredCandidates :: [(WithContext (InstanceCandidate builtin), UnAnnDoc)]
   }

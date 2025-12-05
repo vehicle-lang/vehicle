@@ -2,8 +2,10 @@ module Vehicle.Compile.Normalise.NBE
   ( MonadNorm,
     FreeEnv,
     normalise,
-    normaliseInEnv,
     normaliseInEmptyEnv,
+    normaliseInEmptyFreeEnv,
+    normaliseAppInEmptyFreeEnv,
+    normaliseInFreeCtx,
     normaliseApp,
     normaliseBuiltin,
     normaliseClosure,
@@ -31,7 +33,8 @@ import Vehicle.Data.Code.Value
 import Vehicle.Data.Variable.Bound.Context.Generic
 import Vehicle.Data.Variable.Bound.Context.Name.Class (MonadReadableNameContext (getNameContext))
 import Vehicle.Data.Variable.Bound.Context.Name.Core
-import Vehicle.Data.Variable.Free.Context.Class (MonadFreeContext (..), getFreeEnv)
+import Vehicle.Data.Variable.Free.Context.Class (MonadFreeContext (..), lookupIdentValue)
+import Vehicle.Data.Variable.Free.Context.Instance (runFreeContextT, runFreshFreeContextT)
 
 -- NOTE: there is no evaluatation to NF in this file. To do it
 -- efficiently you should just evaluate to WHNF and then recursively
@@ -49,23 +52,33 @@ normalise ::
 normalise e = do
   boundCtx <- getBoundCtx (Proxy @(Type builtin))
   let boundEnv = boundContextToEnv boundCtx
-  normaliseInEnv (toNamedBoundCtx boundCtx) boundEnv e
+  eval (toNamedBoundCtx boundCtx) boundEnv e
 
-normaliseInEnv ::
-  (MonadNorm builtin m, MonadFreeContext builtin m) =>
+normaliseInFreeCtx ::
+  (MonadNorm builtin m) =>
+  FreeCtx builtin ->
   NamedBoundCtx ->
   BoundEnv builtin ->
   Expr builtin ->
   m (Value builtin)
-normaliseInEnv ctx boundEnv expr = do
-  freeEnv <- getFreeEnv
-  eval freeEnv ctx boundEnv expr
+normaliseInFreeCtx freeCtx ctx boundEnv expr = do
+  runFreeContextT freeCtx $ eval ctx boundEnv expr
 
 normaliseInEmptyEnv ::
   (MonadNorm builtin m, MonadFreeContext builtin m) =>
   Expr builtin ->
   m (Value builtin)
-normaliseInEmptyEnv = normaliseInEnv mempty emptyBoundEnv
+normaliseInEmptyEnv = eval mempty emptyBoundEnv
+
+normaliseInEmptyFreeEnv ::
+  forall builtin m.
+  (MonadNorm builtin m) =>
+  NamedBoundCtx ->
+  BoundEnv builtin ->
+  Expr builtin ->
+  m (Value builtin)
+normaliseInEmptyFreeEnv ctx env expr =
+  runFreshFreeContextT (Proxy @builtin) $ eval ctx env expr
 
 normaliseApp ::
   (MonadNorm builtin m, MonadFreeContext builtin m) =>
@@ -74,8 +87,17 @@ normaliseApp ::
   Spine builtin ->
   m (Value builtin)
 normaliseApp ctx fn spine = do
-  freeEnv <- getFreeEnv
-  evalApp freeEnv ctx fn spine
+  evalApp ctx fn spine
+
+normaliseAppInEmptyFreeEnv ::
+  forall builtin m.
+  (MonadNorm builtin m) =>
+  NamedBoundCtx ->
+  Value builtin ->
+  Spine builtin ->
+  m (Value builtin)
+normaliseAppInEmptyFreeEnv ctx fn spine = do
+  runFreshFreeContextT (Proxy @builtin) $ evalApp ctx fn spine
 
 normaliseBuiltin ::
   (MonadNorm builtin m, MonadFreeContext builtin m) =>
@@ -84,8 +106,7 @@ normaliseBuiltin ::
   Spine builtin ->
   m (Value builtin)
 normaliseBuiltin ctx b spine = do
-  freeEnv <- getFreeEnv
-  evalBuiltin freeEnv ctx b spine
+  evalBuiltin ctx b spine
 
 normaliseClosureInCtx ::
   (MonadNorm builtin m, MonadFreeContext builtin m) =>
@@ -94,9 +115,8 @@ normaliseClosureInCtx ::
   Closure builtin ->
   m (Value builtin)
 normaliseClosureInCtx ctx binder (Closure env body) = do
-  freeEnv <- getFreeEnv
   let newEnv = extendEnvWithBound (boundCtxLv ctx) binder env
-  eval freeEnv ctx newEnv body
+  eval ctx newEnv body
 
 normaliseClosure ::
   (MonadNorm builtin m, MonadFreeContext builtin m, MonadReadableNameContext m) =>
@@ -117,21 +137,20 @@ type MonadNorm builtin m =
   )
 
 eval ::
-  (MonadNorm builtin m) =>
-  FreeEnv builtin ->
+  (MonadNorm builtin m, MonadFreeContext builtin m) =>
   NamedBoundCtx ->
   BoundEnv builtin ->
   Expr builtin ->
   m (Value builtin)
-eval freeEnv ctx boundEnv expr = do
+eval ctx boundEnv expr = do
   showEntry ctx boundEnv expr
-  let recEval = eval freeEnv ctx boundEnv
+  let recEval = eval ctx boundEnv
   result <- case expr of
     Hole {} -> resolutionError currentPass "Hole"
     Meta _ m -> return $ VMeta m []
     Universe _ u -> return $ VUniverse u
     BoundVar _ v -> return $ lookupIxInEnv boundEnv v
-    FreeVar _ v -> return $ lookupIdentValueInEnv freeEnv v
+    FreeVar _ v -> lookupIdentValue v
     Builtin _ b -> return $ VBuiltin b []
     Lam _ binder body -> do
       binder' <- traverse recEval binder
@@ -143,11 +162,11 @@ eval freeEnv ctx boundEnv expr = do
       binder' <- traverse recEval binder
       boundNormExpr <- recEval bound
       let newBoundEnv = extendEnvWithDefined boundNormExpr binder' boundEnv
-      eval freeEnv ctx newBoundEnv body
+      eval ctx newBoundEnv body
     App fun args -> do
       fun' <- recEval fun
       args' <- traverse (traverse recEval) (NonEmpty.toList args)
-      evalApp freeEnv ctx fun' args'
+      evalApp ctx fun' args'
     Record _p ident fields -> do
       fields' <- traverseRecordFields recEval fields
       return $ VRecord ident $ OMap.fromList fields'
@@ -161,27 +180,26 @@ eval freeEnv ctx boundEnv expr = do
   return result
 
 evalApp ::
-  (MonadNorm builtin m) =>
-  FreeEnv builtin ->
+  (MonadNorm builtin m, MonadFreeContext builtin m) =>
   NamedBoundCtx ->
   Value builtin ->
   Spine builtin ->
   m (Value builtin)
-evalApp _freeEnv _ctx fun [] = return fun
-evalApp freeEnv ctx fun args@(a : as) = do
+evalApp _ctx fun [] = return fun
+evalApp ctx fun args@(a : as) = do
   showApp ctx fun args
   result <- case fun of
     VMeta v spine -> return $ VMeta v (spine <> args)
     VBoundVar v spine -> return $ VBoundVar v (spine <> args)
     VFreeVar v spine -> return $ VFreeVar v (spine <> args)
-    VBuiltin b spine -> evalBuiltin freeEnv ctx b (spine <> args)
+    VBuiltin b spine -> evalBuiltin ctx b (spine <> args)
     VLam binder (Closure env body)
       | not (visibilityMatches binder a) ->
           visibilityError ctx fun a
       | otherwise -> do
           let newEnv = extendEnvWithDefined (argExpr a) binder env
-          body' <- eval freeEnv ctx newEnv body
-          evalApp freeEnv ctx body' as
+          body' <- eval ctx newEnv body
+          evalApp ctx body' as
     VUniverse {} -> unexpected "VUniverse"
     VPi {} -> unexpected "VUniverse"
     VRecord {} -> unexpected "VUniverse"
@@ -192,21 +210,22 @@ evalApp freeEnv ctx fun args@(a : as) = do
     unexpected name = unexpectedExprError currentPass (name <+> prettyVerbose args)
 
 evalBuiltin ::
-  (MonadNorm builtin m) =>
-  FreeEnv builtin ->
+  (MonadNorm builtin m, MonadFreeContext builtin m) =>
   NamedBoundCtx ->
   builtin ->
   Spine builtin ->
   m (Value builtin)
-evalBuiltin freeEnv ctx b spine
+evalBuiltin ctx b spine
   | not (isTypeClassOp b) = case evalScheme b of
       Simple evalFn -> maybe (return $ VBuiltin b spine) evalFn (getExpr accessSpine spine)
-      NonSimple evalFn -> maybe (return $ VBuiltin b spine) (evalFn ctx (evalApp freeEnv) (eval freeEnv)) (getExpr accessSpine spine)
-      Derived ident -> evalApp freeEnv ctx (lookupIdentValueInEnv freeEnv ident) spine
+      NonSimple evalFn -> maybe (return $ VBuiltin b spine) (evalFn ctx evalApp eval) (getExpr accessSpine spine)
+      Derived ident -> do
+        value <- lookupIdentValue ident
+        evalApp ctx value spine
       None -> return $ VBuiltin b spine
   | otherwise = do
       (inst, remainingArgs) <- findInstanceArg b spine
-      evalApp freeEnv ctx inst remainingArgs
+      evalApp ctx inst remainingArgs
 
 findInstanceArg :: (MonadLogger m, Show op) => op -> [GenericArg a] -> m (a, [GenericArg a])
 findInstanceArg op = \case

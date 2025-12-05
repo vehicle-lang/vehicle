@@ -35,7 +35,7 @@ import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin (..))
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Variable.Bound.Context.Generic
 import Vehicle.Data.Variable.Bound.Level
-import Vehicle.Data.Variable.Free.Context (getFreeEnv)
+import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..))
 
 --------------------------------------------------------------------------------
 -- Unification solver
@@ -95,8 +95,8 @@ solveUnificationConstraint (WithContext (Unify origin e1 e2) ctx) = do
     HardFailure failedProblems -> do
       finalFailedConstraints <- forM failedProblems $ \problem ->
         createNewConstraint ctx origin (problem, mempty)
-      freeEnv <- getFreeEnv
-      throwError $ TypingError $ FailedUnificationConstraints $ FailedUnificationConstraintsError freeEnv finalFailedConstraints
+      freeCtx <- getFreeCtx (Proxy @builtin)
+      throwError $ TypingError $ FailedUnificationConstraints $ FailedUnificationConstraintsError freeCtx finalFailedConstraints
 
 createNewConstraint ::
   (MonadUnify builtin m) =>
@@ -262,8 +262,8 @@ solveClosure info (binder1, Closure env1 body1) (binder2, Closure env2 body2) = 
 
   -- Evaluate the normalised bodies of the lambdas
   let lv = boundCtxLv $ infoBoundCtx info
-  nbody1 <- normaliseInEnv (toNamedBoundCtx $ infoBoundCtx info) (extendEnvWithBound lv binder1 env1) body1
-  nbody2 <- normaliseInEnv (toNamedBoundCtx $ infoBoundCtx info) (extendEnvWithBound lv binder2 env2) body2
+  nbody1 <- eval (toNamedBoundCtx $ infoBoundCtx info) (extendEnvWithBound lv binder1 env1) body1
+  nbody2 <- eval (toNamedBoundCtx $ infoBoundCtx info) (extendEnvWithBound lv binder2 env2) body2
 
   -- Update the context.
   let updatedInfo = updateInfoUnderBinder info (binder1, binder2)
@@ -426,7 +426,7 @@ createMetaWithRestrictedDependencies ctx meta newDependencies spine = do
     let substMetaExpr = substDBAll 0 (\v -> unIx v `IntMap.lookup` substitution) newMetaExpr
     solveMeta meta substMetaExpr ctx
 
-    normMetaExpr <- normaliseInEnv (toNamedBoundCtx ctx) (boundContextToEnv restrictedContext) newMetaExpr
+    normMetaExpr <- eval (toNamedBoundCtx ctx) (boundContextToEnv restrictedContext) newMetaExpr
     normaliseApp (toNamedBoundCtx ctx) normMetaExpr spine
 
 updateInfoUnderBinder ::
