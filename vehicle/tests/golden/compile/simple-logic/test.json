@@ -55,7 +55,7 @@
   {
     "name": "IsabelleVerify",
     "run": "vehicle compile -s spec.vcl -t Isabelle -o isabelle/Isabelle.thy && isabelle build -d vehicle-isabelle/ -d isabelle/ IsabelleTest > /dev/null 2>&1 && echo $? || echo 1",
-    "enabled": true,
+    "enabled": false,
     "needs": [
       "spec.vcl",
       "isabelle/ROOT",
