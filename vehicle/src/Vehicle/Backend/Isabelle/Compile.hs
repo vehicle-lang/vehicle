@@ -590,8 +590,8 @@ compileFunDef localeAssms name (Universe _ _) _ body = do
       return $ compileTensorTypeDef name shape cbody
     App (Builtin _p (StandardBuiltinType IndexType)) [i] -> do
       let unfoldings = compileExprUnfoldings (argExpr i)
-      let unfoldingsText = if null unfoldings 
-                           then "" 
+      let unfoldingsText = if null unfoldings
+                           then ""
                            else renderStrict (layoutCompact (vsep unfoldings)) <> "\n"
       cbody <- annotateNotation localeAssms [RequireImport VehicleUtils] 0 (
                   "\"{ i :: nat. i < ($0) }\"\n" <>
@@ -624,7 +624,7 @@ compileFunDef localeAssms n t binders body = do
 idxBasedOp :: (MonadIsabelleCompile m) => [LocaleDef] -> Code -> [Arg DecidabilityBuiltin] -> m Code
 idxBasedOp localeAssms op args = case args of
         [(ExplicitArg _ _ (Lam _ binder _body))] -> case (typeOf binder) of
-          -- (App (Builtin _ IndexType) [maxIdx]) -> 
+          -- (App (Builtin _ IndexType) [maxIdx]) ->
           (App (Builtin _p (StandardBuiltinType IndexType)) [maxIdx]) -> do
             idxArg <- (compileExpr False localeAssms (argExpr maxIdx))
             annotateApp localeAssms [RequireImport VehicleTensor] (op<+>idxArg<>" ") args
