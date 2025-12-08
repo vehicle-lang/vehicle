@@ -23,7 +23,7 @@ fun testInstantiation :: "InputVector \<Rightarrow> OutputVector"
       (tensor_from_vec [1] [
         (-2 * (8*(lookup (Rep_InputVector x) [currentSensor])-4) +
              (8*(lookup (Rep_InputVector x) [previousSensor])-4))
-        
+
       ]))"
 
 lemma cdot_0dim[simp]: "(dims (tensor_cdot x (flextensor_from_vec [] [y]))) = []"
@@ -130,7 +130,7 @@ proof -
     have safeInputAssm:"- (13 / 4) \<le> cur \<and> cur * 4 \<le> 13 \<and> - (13 / 4) \<le> prev \<and> prev * 4 \<le> 13"
         using inputSafe
         unfolding safeInput_def ltTensorReduced_def
-        apply (simp add: xa_rewrite)      
+        apply (simp add: xa_rewrite)
         apply (simp add: tensor_ops tensor_0dim_arithmetic)
         by (simp add: tensor_ops tensor_from_lookup_def lookup_def subtensor_combine_def lookup_base.simps)
 
@@ -153,7 +153,7 @@ proof -
               (Rep_FlexTensor
                 (tensor_cdot (- 1) (subtensor (Rep_InputVector xa) 1)))))"
       unfolding ltTensorReduced_def reduceAnd_def
-      apply (simp add: xa_rewrite)      
+      apply (simp add: xa_rewrite)
       apply (simp add: tensor_ops)
       unfolding normalise_def testInstantiation.simps
       apply (simp add: tensor_ops)
@@ -182,7 +182,7 @@ proof -
                 (tensor_cdot (- 1) (subtensor (Rep_InputVector xa) 1)))))
           (Rep_FlexTensor (flextensor_from_vec [] [5 / 4]))"
       unfolding ltTensorReduced_def reduceAnd_def
-      apply (simp add: xa_rewrite)      
+      apply (simp add: xa_rewrite)
       apply (simp add: tensor_ops)
       unfolding normalise_def testInstantiation.simps
       apply (simp add: tensor_ops)

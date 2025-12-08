@@ -199,7 +199,7 @@ proof -
     apply simp
     by (smt (verit, best) One_nat_def Rep_OutputVector_inverse Rep_tensor_inverse dimsFact5 length_0_conv length_Suc_conv mult.right_neutral prod.collapse prod_list.Cons prod_list.Nil)
 
-  have fact1: "(controllerFun x y + 2 * x - y) < roadWidth - maxWindShift - 3 * maxSensorError"  
+  have fact1: "(controllerFun x y + 2 * x - y) < roadWidth - maxWindShift - 3 * maxSensorError"
     using outputSafe
     unfolding safeOutput_def Let_def X_def
     unfolding controllerFun_def
@@ -208,7 +208,7 @@ proof -
     unfolding WindControllerSpec.velocity_def
     apply (simp add: dimFact dimFact2 dimsFact3 dimsFact4 dimsFact5 tensor_ops tensor_0dim_arithmetic)
     by (simp add: tensor_from_lookup_def tensor_vec_from_lookup.simps tensor_ops lookup_def lookup_base.simps)
-    
+
 
   then have fact2: "(controllerFun x y + 2 * x - y) > -(roadWidth - maxWindShift - 3 * maxSensorError)"
     using outputSafe
@@ -223,7 +223,7 @@ proof -
   then show ?thesis
     using fact1 fact2
     by argo
-    
+
 qed
 
 

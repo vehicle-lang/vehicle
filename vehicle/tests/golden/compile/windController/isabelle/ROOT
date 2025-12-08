@@ -3,5 +3,5 @@ session IsabelleTest = HOL +
   sessions
     Deep_Learning
     Vehicle
-  theories 
+  theories
     "Isabelle"
