@@ -349,18 +349,15 @@ compileDecl _opts localeAssms = \case
       then return "" -- Done via localeAssm gathering
       else compileFunDef localeAssms n t binders body
         --bindersT bindersV cbody
-  DefRecord _ n _ t fs -> do
-    t' <- compileExpr False localeAssms t
+  DefRecord _ n _ _t fs -> do
+    -- t' <- compileExpr False localeAssms t
     fs' <- traverseRecordFields (compileExpr False localeAssms) fs
     return $
-      "Record"
+      "record"
         <+> compileIdentifier n
-        <+> ":"
-        <+> t'
-        <+> ":="
+        <+> "="
         <> line
-        <> indent 2 (encloseSep (lbrace <> space) (line <> rbrace) (semi <> space) $ fmap (\(field, fieldType) -> pretty field <+> ":" <+> fieldType) fs')
-        <> "."
+        <> indent 2 ((vsep :: [Code] -> Code) $ fmap (\(field, fieldType) -> pretty field <+> "::" <+> "\""<>fieldType<>"\"") fs')
 
 -- | Compile a 'network' declaration
 compilePostulate :: Code -> Code -> LocaleDef
@@ -409,8 +406,8 @@ compileExpr isOutType localeAssms expr = do
     App fun args -> compileApp isOutType localeAssms fun args
     Record _p _i fs -> do
       fs' <- traverse (compileRecordField localeAssms) fs
-      return $ encloseSep (lbrace <> "|" <> space) (space <> "|" <> rbrace) (semi <> space) fs'
-    RecordAcc _p r (_i, field) -> annotateNotation localeAssms [] 200 ("$0.(" <> nameOf field <> ")") (Just $ nameOf field) [explicit r]
+      return $ encloseSep ("\\<lparr>" <> space) (space <> "\\<rparr>") ("," <> space) fs'
+    RecordAcc _p r (_i, field) -> annotateNotation localeAssms [] 200 ("(" <> nameOf field <> " $0)") (Just $ nameOf field) [explicit r]
   logExit result
   return result
 
@@ -523,7 +520,7 @@ resolveReturnType localeAssms _ e = compileExpr True localeAssms e
 compileRecordField :: (MonadIsabelleCompile m) => [LocaleDef] -> RecordField (Expr DecidabilityBuiltin) -> m Code
 compileRecordField localeAssms (field, fieldValue) = do
   fieldValue' <- compileExpr False localeAssms fieldValue
-  return $ pretty field <+> ":=" <+> fieldValue'
+  return $ pretty field <+> "=" <+> (parens fieldValue')
 
 compileTensorTypeDef :: Identifier -> Code -> Code -> Code
 compileTensorTypeDef n shape e = ((vsep :: [Code] -> Code) [
@@ -671,8 +668,8 @@ compileBuiltin isOutType localeAssms b args = case b of
     Mul MulRatTensor -> annotateNotation localeAssms [RequireImport VehicleTensor, RequireImport VehicleUtils] 40 "(hadamard_prod $0 $1)" (Just "*%R") args
     Div DivRatTensor -> annotateNotation localeAssms [RequireImport VehicleTensor, RequireImport VehicleUtils] 40 "(pointwise_div $0 $1)" Nothing args
     Neg NegRatTensor -> annotateNotation localeAssms [RequireImport VehicleTensor, RequireImport VehicleTensorScalarMult] 80 "(tensor_cdot (-1 :: R) $0)" (Just "-%R") args
-    Min MinRatTensor -> annotateApp localeAssms [RequireImport VehicleTensor, RequireImport VehicleUtils] "pointwiseMin" args
-    Max MaxRatTensor -> annotateApp localeAssms [RequireImport VehicleTensor, RequireImport VehicleUtils] "pointwiseMax" args
+    Min MinRatTensor -> annotateApp localeAssms [RequireImport VehicleTensor, RequireImport VehicleUtils] "pointwise_min" args
+    Max MaxRatTensor -> annotateApp localeAssms [RequireImport VehicleTensor, RequireImport VehicleUtils] "pointwise_max" args
     CompareIndex op -> compileComparison localeAssms CIndex op args
     CompareNat op -> compileComparison localeAssms CNat op args
     CompareRatTensorPointwise op -> compileTensorComparison localeAssms CRatTensor op args
