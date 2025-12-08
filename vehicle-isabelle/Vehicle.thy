@@ -38,7 +38,7 @@ definition tensor_plus :: "('a::semigroup_add) tensor \<Rightarrow> 'a tensor \<
   where[tensor_arithmetic]: "tensor_plus A B = Abs_FlexTensor (A + B)"
 
 definition flex_subtensor::"'a tensor \<Rightarrow> nat \<Rightarrow> 'a FlexTensor"
-  where "flex_subtensor n t = Abs_FlexTensor (subtensor n t)"
+  where[tensor_ops]: "flex_subtensor n t = Abs_FlexTensor (subtensor n t)"
 
 declare plus_def[tensor_arithmetic]
 declare plus_base_def[tensor_arithmetic]
