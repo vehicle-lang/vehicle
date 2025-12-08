@@ -27,6 +27,12 @@
     "produces": ["Rocq.v"]
   },
   {
+    "name": "Isabelle",
+    "run": "vehicle compile -s spec.vcl -t Isabelle -o Isabelle.thy",
+    "needs": ["spec.vcl"],
+    "produces": ["Isabelle.thy"]
+  },
+  {
     "name": "RocqVerify",
     "run": "vehicle compile itp -s spec.vcl -t Rocq -o Rocq.v && rocq compile -w none -vok Rocq.v",
     "needs": ["spec.vcl"],

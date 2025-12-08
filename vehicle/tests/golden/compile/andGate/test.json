@@ -24,6 +24,12 @@
     "ignore": {"files": ["Rocq.v", ".Rocq.aux", "Rocq.glob", "Rocq.vok"]}
   },
   {
+    "name": "Isabelle",
+    "run": "vehicle compile -s spec.vcl -t Isabelle -o Isabelle.thy",
+    "needs": ["spec.vcl"],
+    "produces": ["Isabelle.thy"]
+  },
+  {
     "name": "Marabou",
     "run": "vehicle compile queries -s spec.vcl -f MarabouQueries -o Marabou.queries/ --network andGate:fake.onnx",
     "needs": ["spec.vcl", "fake.onnx"],

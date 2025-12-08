@@ -5,7 +5,6 @@ module Vehicle.Backend.Isabelle.Compile
 where
 
 import Data.Maybe (mapMaybe)
-import Data.Data (Proxy (..))
 import Data.Foldable (fold)
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NonEmpty
@@ -27,8 +26,7 @@ import Vehicle.Data.Builtin.Standard hiding (TensorType)
 import Vehicle.Data.Code.Expr ()
 import Vehicle.Data.Code.Interface (IsArgs (..), VecLitArgs (..))
 import Vehicle.Data.Universe (UniverseLevel (..))
-import Vehicle.Data.Variable.Bound.Context (getNamedBoundCtx)
-import Vehicle.Data.Variable.Bound.Context.Name (MonadNameContext, addNameToContext, ixToProperName, runFreshNameContextT)
+import Vehicle.Data.Variable.Bound.Context.Name (MonadNameContext, addNameToContext, ixToProperName, runFreshNameBoundContextT, getNameContext)
 import Vehicle.Syntax.Builtin
 import Vehicle.Syntax.Sugar
   ( BinderType (..),
@@ -63,7 +61,7 @@ compileProgToIsabelle (Main ds) options =
 
     -- Extract all locale assumptions (not as Doc annotations)
     -- let localeAssms = foldMap (getLocaleAssms . annotationOf) gatheredStatements
-    (localeNets, localeAssms, programDoc) <- runFreshNameContextT $ do
+    (localeNets, localeAssms, programDoc) <- runFreshNameBoundContextT $ do
       localeNets <- fmap concat (traverse (gatherLocaleNetworks options) ds)
       localeAssms <- fmap concat (traverse (gatherLocaleStatements options localeNets) ds)
       programDoc <- compileProg options (localeNets ++ localeAssms) (Main ds)
@@ -94,7 +92,7 @@ compileProgToIsabelle (Main ds) options =
 logEntry :: (MonadIsabelleCompile m) => Expr DecidabilityBuiltin -> m ()
 logEntry e = do
   incrCallDepth
-  ctx <- getNamedBoundCtx (Proxy @())
+  ctx <- getNameContext
   logDebug MaxDetail $ "compile-entry" <+> prettyExternal (WithContext e ctx)
 
 logExit :: (MonadIsabelleCompile m) => Code -> m ()
