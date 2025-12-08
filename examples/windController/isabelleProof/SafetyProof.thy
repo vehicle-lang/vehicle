@@ -136,14 +136,16 @@ lemma controller_lem:
               roadWidth - maxWindShift - 3*maxSensorError"
 proof -
   define X where "X = Abs_InputVector (tensor_from_vec [2] [x,y])"
-  have "forallIndex 2
-         (\<lambda>i. leqTensorReduced
-                (Rep_FlexTensor
-                  (tensor_cdot (- 1)
-                    (Rep_FlexTensor (flextensor_from_vec [] [13 / 4]))))
-                (subtensor (Rep_InputVector X) i) \<and>
-               leqTensorReduced (subtensor (Rep_InputVector X) i)
-                (Rep_FlexTensor (flextensor_from_vec [] [13 / 4])))"
+  have "   forallIndex 2 (\<lambda>x. leqTensorReduced
+            (Rep_FlexTensor
+              (tensor_cdot (- 1)
+                (Rep_FlexTensor (flextensor_from_vec [] [13 / 4]))))
+            (Rep_FlexTensor
+              (flex_subtensor (Rep_InputVector X) (Rep_FlexIndex x))) \<and>
+           leqTensorReduced
+            (Rep_FlexTensor
+              (flex_subtensor (Rep_InputVector X) (Rep_FlexIndex x)))
+            (Rep_FlexTensor (flextensor_from_vec [] [13 / 4])))"
     using assms
     unfolding forallIndex_def foreach_def upt_def X_def
     apply simp
@@ -151,7 +153,7 @@ proof -
     apply (simp add: tensor_ops tensor_0dim_arithmetic)
     apply (simp add: tensor_from_lookup_def tensor_vec_from_lookup.simps upt_def tensor_ops)
     apply (simp add: tensor_arithmetic tensor_ops lookup_def lookup_base.simps)
-    apply (simp add: subtensor_combine_def tensor_ops)
+    apply (simp add: subtensor_combine_def tensor_ops lookup_base.simps)
     by linarith
   then have outputSafe: "safeOutput controller X"
     using safe
