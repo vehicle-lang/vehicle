@@ -57,7 +57,7 @@
   },
   {
     "name": "Isabelle",
-    "run": "vehicle compile -s spec.vcl -t Isabelle -o isabelle/Isabelle.thy",
+    "run": "vehicle compile itp -s spec.vcl -t Isabelle -o isabelle/Isabelle.thy",
     "needs": [
       "spec.vcl"
     ],
@@ -67,7 +67,7 @@
   },
   {
     "name": "IsabelleVerify",
-    "run": "vehicle compile -s spec.vcl -t Isabelle -o isabelle/Isabelle.thy && isabelle build -d vehicle-isabelle/ -d isabelle/ IsabelleTest > /dev/null 2>&1 && echo $? || echo 1",
+    "run": "vehicle compile itp -s spec.vcl -t Isabelle -o isabelle/Isabelle.thy && isabelle build -d vehicle-isabelle/ -d isabelle/ IsabelleTest > /dev/null 2>&1 && echo $? || echo 1",
     "enabled": false,
     "needs": [
       "spec.vcl",
