@@ -161,5 +161,5 @@ within Isabelle.
 No integration with verification cache
 ######################################
 There is currently no integration with Vehicle's verification cache,
-meaning that it is up to the user to garuntee that the compiled specification
+meaning that it is up to the user to guarantee that the compiled specification
 does not become out of date with the Vehicle spec.
