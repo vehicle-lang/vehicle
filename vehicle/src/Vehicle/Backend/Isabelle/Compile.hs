@@ -88,9 +88,9 @@ compileProgToIsabelle (Main ds) options =
 -- | Collect dependencies from a 'Code' document by discarding precedence
 --   and folding all dependency annotations.
 collectCodeDependencies :: Code -> Set Dependency
-collectCodeDependencies doc =
+collectCodeDependencies doc = do
   let stream = layoutPretty defaultLayoutOptions doc
-   in fold (reAnnotateS fst stream)
+  fold (reAnnotateS fst stream)
 
 -- | Collect dependencies arising from a locale definition. This ensures
 --   that imports required by statements printed in the postamble are
@@ -99,13 +99,11 @@ collectLocaleDependencies :: [LocaleDef] -> Set Dependency
 collectLocaleDependencies = Set.unions . fmap deps
   where
     deps :: LocaleDef -> Set Dependency
-    deps (NetworkDefStatement name ty) =
-      collectCodeDependencies name `Set.union` collectCodeDependencies ty
-    deps (PropertyDefStatement stmt) = collectCodeDependencies stmt
-    deps (TensorTypeDefStmt _ shape body) =
-      collectCodeDependencies shape `Set.union` collectCodeDependencies body
-    deps (IndexTypeDefStmt _ maxI body) =
-      collectCodeDependencies maxI `Set.union` collectCodeDependencies body
+    deps = \case
+      NetworkDefStatement name ty -> collectCodeDependencies name `Set.union` collectCodeDependencies ty
+      PropertyDefStatement stmt -> collectCodeDependencies stmt
+      TensorTypeDefStmt _ shape body -> collectCodeDependencies shape `Set.union` collectCodeDependencies body
+      IndexTypeDefStmt _ maxI body -> collectCodeDependencies maxI `Set.union` collectCodeDependencies body
 
 --------------------------------------------------------------------------------
 -- Debug functions
@@ -163,17 +161,20 @@ instance Pretty Library where
     VehicleUtils -> "\"Vehicle.Vehicle\""
 
 onlyNetworkDef :: LocaleDef -> Bool
-onlyNetworkDef (NetworkDefStatement _ _) = True
-onlyNetworkDef _ = False
+onlyNetworkDef = \case
+  NetworkDefStatement _ _ -> True
+  _ -> False
 
 onlyPropertyDef :: LocaleDef -> Bool
-onlyPropertyDef (PropertyDefStatement _) = True
-onlyPropertyDef _ = False
+onlyPropertyDef = \case
+  PropertyDefStatement _ -> True
+  _ -> False
 
 onlyTypeDef :: LocaleDef -> Bool
-onlyTypeDef (TensorTypeDefStmt _ _ _) = True
-onlyTypeDef (IndexTypeDefStmt _ _ _) = True
-onlyTypeDef _ = False
+onlyTypeDef = \case
+  TensorTypeDefStmt _ _ _ -> True
+  IndexTypeDefStmt _ _ _ -> True
+  _ -> False
 
 preamble :: Text -> Set Dependency -> [LocaleDef] -> Code
 preamble locale deps localeAssms = (vsep2 :: [Code] -> Code) [
@@ -361,7 +362,7 @@ compileExpr isOutType localeAssms expr = do
   result <- case expr of
     Hole {} -> resolutionError currentPhase "Hole"
     Meta {} -> resolutionError currentPhase "Meta"
-    Universe _ l -> developerError $ "compilation of universes to Isabelle unsupported: " <> pretty l
+    Universe _ l -> return $ compileType l
     FreeVar _ n -> return $ annotateConstant [] (pretty (nameOf n))
     BoundVar p ix -> do
       n <- ixToProperName p ix
@@ -381,7 +382,7 @@ compileExpr isOutType localeAssms expr = do
     Lam _ binder body -> compileLam localeAssms binder body
     Builtin _p b -> compileBuiltin isOutType localeAssms b []
     App fun args -> compileApp isOutType localeAssms fun args
-    Record _p _i fs -> do
+    Record _p _i fs -> do -- TODO(steuber): Move to compileRecord function
       fs' <- traverse (compileRecordField localeAssms) fs
       return $ encloseSep ("\\<lparr>" <> space) (space <> "\\<rparr>") ("," <> space) fs'
     RecordAcc _p r (_i, field) -> annotateNotation localeAssms [] 200 ("(" <> nameOf field <> " $0)") (Just $ nameOf field) [explicit r]
@@ -389,11 +390,7 @@ compileExpr isOutType localeAssms expr = do
   return result
 
 compileType :: UniverseLevel -> Code
-compileType (UniverseLevel l)
-  | l == 0 = "Type"
-  | otherwise =
-      developerError
-        "compilation of higher-level universes to Isabelle unsupported"
+compileType _ = developerError "compilation of higher-level universes to Isabelle unsupported"
 
 compileLetBinder ::
   (MonadIsabelleCompile m) =>
@@ -430,20 +427,18 @@ compileTopLevelBindersOuter compileLocaleBinders compileTopLevelBinder localeAss
     else return $ localeResults ++ funBinders
 
 compileLocaleBindersT :: [LocaleDef] -> [Code]
-compileLocaleBindersT =  (mapMaybe compileLocaleBindersTMapper)
+compileLocaleBindersT =  mapMaybe compileLocaleBindersTMapper
   where
-    compileLocaleBindersTMapper (NetworkDefStatement _ t) = Just (parens t)
-    compileLocaleBindersTMapper (PropertyDefStatement _) = Nothing
-    compileLocaleBindersTMapper (TensorTypeDefStmt _ _ _) = Nothing
-    compileLocaleBindersTMapper (IndexTypeDefStmt _ _ _) = Nothing
+    compileLocaleBindersTMapper = \case
+      NetworkDefStatement _ t -> Just (parens t)
+      _ -> Nothing
 
 compileLocaleBindersV :: [LocaleDef] -> [Code]
 compileLocaleBindersV = mapMaybe compileLocaleBindersVMapper
   where
-    compileLocaleBindersVMapper (NetworkDefStatement n _) = Just n
-    compileLocaleBindersVMapper (PropertyDefStatement _) = Nothing
-    compileLocaleBindersVMapper (TensorTypeDefStmt _ _ _) = Nothing
-    compileLocaleBindersVMapper (IndexTypeDefStmt _ _ _) = Nothing
+    compileLocaleBindersVMapper = \case
+      NetworkDefStatement n _ -> Just n
+      _ -> Nothing
 
 compileTopLevelBinders :: (MonadIsabelleCompile m) =>
   ([LocaleDef] -> Binder DecidabilityBuiltin -> m (Maybe Code)) ->
@@ -610,7 +605,7 @@ idxBasedOp localeAssms op args = case args of
 compileBuiltin :: (MonadIsabelleCompile m) => Bool -> [LocaleDef] -> DecidabilityBuiltin -> [Arg DecidabilityBuiltin] -> m Code
 compileBuiltin isOutType localeAssms b args = case b of
   StandardBuiltinType t -> case t of
-    BoolType -> return $ compileType (UniverseLevel 0)
+    BoolType -> return "bool"
     -- For the Isabelle backend, rationals are promoted to reals
     RatType -> return $ annotateConstant [] "R"
     UnitType -> return "unit"
