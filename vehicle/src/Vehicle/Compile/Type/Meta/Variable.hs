@@ -65,11 +65,11 @@ makeMetaType boundCtx p resultType = foldr entryToPi resultType (reverse boundCt
       Type builtin
     entryToPi binder = do
       let n = fromMaybe "_" (nameOf binder)
-      Pi p (Binder p (BinderDisplayForm (OnlyName n) True) Explicit (relevanceOf binder) (typeOf binder))
+      Pi p (Binder (BinderDisplayForm (OnlyName n mempty) True) Explicit (relevanceOf binder) (typeOf binder))
 
 getMetaDependencies :: [Arg builtin] -> [Ix]
 getMetaDependencies = \case
-  (ExplicitArg _ _ (BoundVar _ i)) : args -> i : getMetaDependencies args
+  (ExplicitArg _ (BoundVar _ i)) : args -> i : getMetaDependencies args
   _ -> []
 
 --------------------------------------------------------------------------------

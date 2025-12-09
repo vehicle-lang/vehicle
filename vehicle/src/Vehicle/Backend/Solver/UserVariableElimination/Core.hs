@@ -79,13 +79,14 @@ emptyGlobalCtx =
 
 addUserVarToGlobalContext ::
   (MonadLogger m, MonadTensorBoundContext m) =>
-  Name ->
+  VBinder Builtin ->
   TensorShape ->
   GlobalCtx ->
   m (UserTensorVariable, GlobalCtx)
-addUserVarToGlobalContext userVarName shape GlobalCtx {..} = do
+addUserVarToGlobalContext binder shape GlobalCtx {..} = do
+  let (name, p) = getNamedBinderInfo binder
   -- Create the unreduced and reduced versions of the user variables.
-  tensorVar <- toSliceVar <$> addTensorBinderToContextPermenantly userVarName shape
+  tensorVar <- toSliceVar <$> addTensorBinderToContextPermenantly p name shape
   let userVar = coerce tensorVar
   let newUserVars = Set.insert userVar userTensorVariables
   let newGlobalCtx =
@@ -127,17 +128,20 @@ addNetworkApplicationToGlobalCtx ::
   Value Builtin ->
   m (Value Builtin, Value Builtin)
 addNetworkApplicationToGlobalCtx name networkInfo arg = do
+  -- Can't current track network application provenance
+  let p = mempty
+
   GlobalCtx {..} <- get
   let applicationNumber = maybe 0 length $ Map.lookup name networkApplications
 
   -- Create variables representing the input of the network.
   let inputVarName = createNetworkVarName name applicationNumber Input
-  inputVar <- toSliceVar <$> addTensorBinderToContextPermenantly inputVarName (inputShape networkInfo)
+  inputVar <- toSliceVar <$> addTensorBinderToContextPermenantly p inputVarName (inputShape networkInfo)
   let inputVarExpr = VBoundVar (toLv inputVar) []
 
   -- Create variables representing the output of the network.
   let outputVarName = createNetworkVarName name applicationNumber Output
-  outputVar <- toSliceVar <$> addTensorBinderToContextPermenantly outputVarName (outputShape networkInfo)
+  outputVar <- toSliceVar <$> addTensorBinderToContextPermenantly p outputVarName (outputShape networkInfo)
   let outputVarExpr = VBoundVar (toLv outputVar) []
 
   -- Create the object to store information about the application

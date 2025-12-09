@@ -179,8 +179,7 @@ generaliseOverUnsolvedMetas decl = do
   let unsolvedConstraints = unsolvedInstanceConstraints <> unsolvedAuxInstanceConstraints
   let unsolvedConstraintMetas = MetaMap.fromList $ fmap ((\c -> (instanceSolution c, c)) . objectIn) unsolvedConstraints
 
-  let p = provenanceOf decl
-  binders <- traverse (createBinderForMeta unsolvedConstraintMetas p) (zip [1 ..] sortedUnsolvedMetas)
+  binders <- traverse (createBinderForMeta unsolvedConstraintMetas) (zip [1 ..] sortedUnsolvedMetas)
   generalisedDecl <- logCompilerSection2 MaxDetail ("generalisation over" <+> pretty sortedUnsolvedMetas) $ do
     foldlM prependBinderAndSolve decl binders
   logUnsolvedUnknowns (Proxy @builtin)
@@ -206,10 +205,9 @@ createBinderForMeta ::
   forall builtin m.
   (MonadGeneralise builtin m) =>
   MetaMap (InstanceConstraint builtin) ->
-  Provenance ->
   (Int, MetaID) ->
   m (MetaID, Binder builtin)
-createBinderForMeta constraints p (index, meta) = do
+createBinderForMeta constraints (index, meta) = do
   metaType <- getSubstMetaType meta
   let (visibility, relevance) = case MetaMap.lookup meta constraints of
         Just constraint -> (Instance True, instanceRelevance constraint)
@@ -217,8 +215,8 @@ createBinderForMeta constraints p (index, meta) = do
 
   -- Prepend the implicit binders for the new generalised variable.
   let binderName = "_t" <> Text.pack (show index)
-  let binderDisplayForm = BinderDisplayForm (NameAndType binderName) True
-  let binder = Binder p binderDisplayForm visibility relevance metaType
+  let binderDisplayForm = BinderDisplayForm (NameAndType binderName mempty) True
+  let binder = Binder binderDisplayForm visibility relevance metaType
   return (meta, binder)
 
 --------------------------------------------------------------------------------
@@ -246,7 +244,7 @@ prependBinderAndSolve decl (meta, binder) =
 
     -- Compute the telescopes
     let typeBinder = binder
-    let bodyBinder = mapBinderNamingForm (\t -> OnlyName (fromMaybe "_" (nameOf t))) binder
+    let bodyBinder = mapBinderNamingForm (\t -> OnlyName (fromMaybe "_" (nameOf t)) mempty) binder
 
     -- Then finally update the declaration
     let alterType t = return $ Pi p typeBinder t

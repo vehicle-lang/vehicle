@@ -457,31 +457,29 @@ findRelevance ms
   | otherwise = V.Irrelevant
 
 mkArg :: [B.Modality] -> V.Visibility -> V.Expr -> V.Arg
-mkArg modalities v e = V.Arg (V.expandByArgVisibility v (V.provenanceOf e)) v (findRelevance modalities) e
+mkArg modalities v = V.Arg v (findRelevance modalities)
 
 mkBinder :: (MonadElab m) => V.BinderFoldingForm -> [B.Modality] -> V.Visibility -> These B.Name V.Expr -> m V.Binder
 mkBinder folded modalities visibility nameTyp = do
   let relevance = findRelevance modalities
-  (exprProv, form, typ) <- case nameTyp of
+  (form, typ) <- case nameTyp of
     This nameTk -> do
       p <- mkProvenance nameTk
       let name = tkSymbol nameTk
       let typ = V.mkHole p $ "typeOf[" <> name <> "]"
-      let naming = V.OnlyName name
-      return (p, naming, typ)
+      let naming = V.OnlyName name p
+      return (naming, typ)
     That typ -> do
       let naming = V.OnlyType
-      return (V.provenanceOf typ, naming, typ)
+      return (naming, typ)
     These nameTk typ -> do
-      nameProv <- mkProvenance nameTk
-      let p = V.fillInProvenance ((nameProv :: V.Provenance) :| [V.provenanceOf typ])
+      p <- mkProvenance nameTk
       let name = tkSymbol nameTk
-      let naming = V.NameAndType name
-      return (p, naming, typ)
+      let naming = V.NameAndType name p
+      return (naming, typ)
 
-  let prov = V.expandByArgVisibility visibility exprProv
   let displayForm = V.BinderDisplayForm form folded
-  return $ V.Binder prov displayForm visibility relevance typ
+  return $ V.Binder displayForm visibility relevance typ
 
 elabLetDecl :: (MonadElab m) => B.LetDecl -> m (V.Binder, V.Expr)
 elabLetDecl (B.LDecl b e) = bitraverse (elabNameBinder False) elabExpr (b, e)
@@ -561,9 +559,9 @@ app fun argExprs = V.normAppList fun args
 elabVecLiteral :: (MonadElab m, IsToken token) => token -> [B.Expr] -> m V.Expr
 elabVecLiteral tk xs = do
   p <- mkProvenance tk
-  let tCont = V.Arg p (V.Implicit True) V.Relevant (V.mkHole p "tCont")
-  let tElem = V.Arg p (V.Implicit True) V.Relevant (V.mkHole p "tElem")
-  let n = V.Arg p (V.Implicit True) V.Relevant (V.Builtin p (V.BuiltinConstructor $ V.NatLiteral (length xs)))
+  let tCont = V.Arg (V.Implicit True) V.Relevant (V.mkHole p "tCont")
+  let tElem = V.Arg (V.Implicit True) V.Relevant (V.mkHole p "tElem")
+  let n = V.Arg (V.Implicit True) V.Relevant (V.Builtin p (V.BuiltinConstructor $ V.NatLiteral (length xs)))
   xs' <- fmap (mkArg mempty V.Explicit) <$> traverse elabExpr xs
   return $ V.normAppList (V.Builtin p (V.TypeClassOp V.VecLiteralTC)) (tCont : tElem : n : xs')
 

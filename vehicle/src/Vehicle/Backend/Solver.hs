@@ -144,8 +144,6 @@ compilePropertyDecl ::
 compilePropertyDecl settings prov typ body = do
   propertyID <- demand
   let compilePropertyFn = compileSingleProperty settings prov
-  logDebug MaxDetail $ prettyFriendlyEmptyCtx typ
-  logDebug MaxDetail $ prettyFriendlyEmptyCtx body
   errorOrResult <- traverseMultiProperty compilePropertyFn propertyID (nameOf prov) typ body
   case errorOrResult of
     Left err -> throwError $ MultiPropertyTraveralError prov err
@@ -160,7 +158,7 @@ compileSingleProperty ::
   Value Builtin ->
   m PropertyAddress
 compileSingleProperty CompilationSettings {..} prov propertyAddress expr =
-  logCompilerSection2 MinDetail ("property" <+> quotePretty propertyAddress) $ do
+  logCompilerSection2 MinDetail ("individual property" <+> quotePretty propertyAddress) $ do
     let propertyMetaData =
           PropertyMetaData
             { propertyProvenance = prov,

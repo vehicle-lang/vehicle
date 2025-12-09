@@ -57,7 +57,7 @@ eliminateExists (QuantifyRatTensorArgs _ binder (Closure env body)) = do
 
     -- Update the global context
     globalCtx <- get
-    (userVar, newGlobalCtx) <- addUserVarToGlobalContext userVarName userVarShape globalCtx
+    (userVar, newGlobalCtx) <- addUserVarToGlobalContext binder userVarShape globalCtx
     put newGlobalCtx
 
     -- Normalise the expression
