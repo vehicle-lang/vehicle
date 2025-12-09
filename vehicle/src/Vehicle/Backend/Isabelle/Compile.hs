@@ -57,10 +57,8 @@ compileProgToIsabelle (Main ds) options =
   logCompilerSection2 MinDetail currentPhase $ do
     logDebug MaxDetail $ prettyExternal (Main ds)
     -- Combine the printed documents
-    -- let combined = fold gatheredStatements
 
     -- Extract all locale assumptions (not as Doc annotations)
-    -- let localeAssms = foldMap (getLocaleAssms . annotationOf) gatheredStatements
     (localeNets, localeAssms, programDoc) <- runFreshNameBoundContextT $ do
       localeNets <- fmap concat (traverse (gatherLocaleNetworks options) ds)
       localeAssms <- fmap concat (traverse (gatherLocaleStatements options localeNets) ds)
@@ -255,8 +253,6 @@ annotateNotation localeAssms dependencies precedence op mFn args
             <+> "arguments"
 
 -- | Inserts arguments to Isabelle-style notation
--- e.g. insertNotationArgs "'T[$2]_($1)'" [nil, R] = Just "'T[R]_(nil)'"
--- supports placeholders $0 .. $9, 10 arguments
 insertNotationArgs :: Text -> [Code] -> Maybe Code
 insertNotationArgs rawOp as = concatWith (<>) <$> go rawOp
   where
@@ -314,26 +310,9 @@ gatherLocaleNetworks _opts = \case
 
 gatherLocaleStatements :: (MonadIsabelleCompile m) => IsabelleOptions -> [LocaleDef] -> Decl DecidabilityBuiltin -> m [LocaleDef]
 gatherLocaleStatements _opts localeNets = \case
-  -- DefFunction _ n _ (Universe _ _) e -> do
-  --   let (_, body) = foldDeclBinders e
-  --   res <- case body of
-  --     App (Builtin _p (StandardBuiltinType TensorType)) [tensT, maxIdx] -> do
-  --       cbody <- annotateNotation localeNets [RequireImport VehicleTensor] 0 (
-  --                   "\"{ a :: $0 tensor. (dims a) = ($1) }\"\n" <>
-  --                   "  using dims_tensor_from_lookup by blast\n") Nothing [tensT, maxIdx]
-  --       shape <- compileExpr False localeNets (argExpr maxIdx)
-  --       pure [(TensorTypeDefStmt n shape cbody)]
-  --     App (Builtin _p (StandardBuiltinType IndexType)) [i] -> do
-  --       cbody <- annotateNotation localeNets [RequireImport VehicleUtils] 0 (
-  --                   "\"{ i :: nat. i < ($0) }\"\n" <>
-  --                   "  by (simp, rule_tac x = \"0\" in exI, linarith)\n") Nothing [i]
-  --       maxI <- compileExpr False localeNets (argExpr i)
-  --       pure [(IndexTypeDefStmt n maxI cbody)]
-  --     _ -> developerError $ "Only tensor and index types are currently supported for custom type definitions."
-  --   pure res
   DefFunction _ n anns _ e -> do
     if isAnnotatedAsProperty anns
-      then do -- [compileProperty (compileIdentifier n) <$> compileExpr False e]
+      then do
         cExpr <- compileExpr False localeNets e
         pure [(compileProperty (compileIdentifier n) cExpr)]
       else pure []
@@ -348,9 +327,7 @@ compileDecl _opts localeAssms = \case
     if isAnnotatedAsProperty anns
       then return "" -- Done via localeAssm gathering
       else compileFunDef localeAssms n t binders body
-        --bindersT bindersV cbody
   DefRecord _ n _ _t fs -> do
-    -- t' <- compileExpr False localeAssms t
     fs' <- traverseRecordFields (compileExpr False localeAssms) fs
     return $
       "record"
@@ -624,14 +601,12 @@ compileFunDef localeAssms n t binders body = do
 idxBasedOp :: (MonadIsabelleCompile m) => [LocaleDef] -> Code -> [Arg DecidabilityBuiltin] -> m Code
 idxBasedOp localeAssms op args = case args of
         [(ExplicitArg _ _ (Lam _ binder _body))] -> case (typeOf binder) of
-          -- (App (Builtin _ IndexType) [maxIdx]) ->
           (App (Builtin _p (StandardBuiltinType IndexType)) [maxIdx]) -> do
             idxArg <- (compileExpr False localeAssms (argExpr maxIdx))
             annotateApp localeAssms [RequireImport VehicleTensor] (op<+>idxArg<>" ") args
           _ -> developerError $ "foreach/forall/exists tensor operations are currently only supports explicit lambda arguments with indexing type"
         _ -> developerError $ "foreach/forall/exists tensor operations are currently only supports a single lambda argument"
 
--- Default precedence for standard operations can be found at https://coq.inria.fr/doc/V8.18.0/refman/language/coq-library.html#notations
 compileBuiltin :: (MonadIsabelleCompile m) => Bool -> [LocaleDef] -> DecidabilityBuiltin -> [Arg DecidabilityBuiltin] -> m Code
 compileBuiltin isOutType localeAssms b args = case b of
   StandardBuiltinType t -> case t of
@@ -641,7 +616,6 @@ compileBuiltin isOutType localeAssms b args = case b of
     UnitType -> return "unit"
     NatType -> return "nat"
     ListType -> annotateNotation localeAssms [] 2 "$0 list" Nothing args
-    --TensorType -> annotateNotation localeAssms [RequireImport VehicleTensor] 0 "'nT[$0]_($1)" Nothing args
     TensorType -> annotateNotation localeAssms [RequireImport VehicleTensor, RequireImport VehicleUtils] 0 (
       "$0 " <> (if isOutType then "FlexTensor" else "tensor")) Nothing args
     IndexType -> annotateNotation localeAssms [] 0 (if isOutType then "FlexIndex" else "nat") (Just "ordinal") args
@@ -695,7 +669,6 @@ compileBuiltin isOutType localeAssms b args = case b of
     PowRat -> unsupportedError
     AtVector -> annotateApp localeAssms [] "tnth" args
     ForeachVector -> idxBasedOp localeAssms "foreachTuple" args
-      -- annotateApp localeAssms [RequireImport VehicleUtils] "foreachTuple" args
   DecidabilityBuiltinFunction f -> case f of
     PropType -> return "bool"
     PropTrue -> return "True"
@@ -711,9 +684,7 @@ compileBuiltin isOutType localeAssms b args = case b of
     BoolVectorToProp -> monoError
     PropQuantifyIndex q -> case q of
       Forall -> idxBasedOp localeAssms "forallIndex" args
-      -- annotateApp localeAssms [RequireImport VehicleUtils] "forallIndex" args
       Exists -> idxBasedOp localeAssms "existsIndex" args
-        --annotateApp localeAssms [RequireImport VehicleUtils] "existsIndex" args
     PropQuantifyInList q -> case q of
       Forall -> annotateApp localeAssms [RequireImport VehicleUtils] "forallInList" args
       Exists -> annotateApp localeAssms [RequireImport VehicleUtils] "existsInList" args
@@ -753,7 +724,6 @@ compileApp isOutType localeAssms fun args = do
     _ -> do
       cFun <- compileExpr False localeAssms fun
       let localeResults = compileLocaleBindersV localeAssms
-      -- Compare via rendered text as Code (Doc ...) has no Eq instance
       let cFunText = renderStrict (layoutCompact cFun)
       let localeResultsText = map (renderStrict . layoutCompact) localeResults
       if not (null localeResults) && (cFunText `elem` localeResultsText)
@@ -822,10 +792,8 @@ compileTensorLiteral compileElement t = annotate ([RequireImport VehicleTensor],
   where
     toTensor :: TensorShape -> [Code] -> Code
     toTensor _ _ = developerError $
-      "Tensor literal compilation not implemented yet" -- TODO: re-enable when we support tensor literals
-      -- case shape of
-      -- [] -> "[tensor^^=" <+> concatWith (surround "; ") values <> "]"
-      -- _ -> "[tensor^^" <+> concatWith (surround "; ") values <> "]"
+      "Tensor literal compilation not implemented yet"
+      -- TODO: When does this even happen?
 
 compileBoolLiteral :: Bool -> Code
 compileBoolLiteral = \case
