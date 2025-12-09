@@ -52,6 +52,7 @@ data IsabelleOptions = IsabelleOptions
 
 currentPhase :: Doc ()
 currentPhase = "compilation to Isabelle"
+
 compileProgToIsabelle :: (MonadCompile m) => Prog DecidabilityBuiltin -> IsabelleOptions -> m (Doc a)
 compileProgToIsabelle (Main ds) options =
   logCompilerSection2 MinDetail currentPhase $ do
@@ -83,7 +84,6 @@ compileProgToIsabelle (Main ds) options =
             )
 
     return isabelleProgram
-
 
 -- | Collect dependencies from a 'Code' document by discarding precedence
 --   and folding all dependency annotations.
@@ -133,6 +133,7 @@ data LocaleDef
   | PropertyDefStatement Code
   | TensorTypeDefStmt Identifier Code Code
   | IndexTypeDefStmt Identifier Code Code
+
 instance Pretty LocaleDef where
   pretty = \case
     NetworkDefStatement n t -> ("fixes " <+> name <+> " :: \"" <+> tun <+> "\"")
@@ -299,7 +300,6 @@ type MonadIsabelleCompile m =
 
 compileProg :: (MonadIsabelleCompile m) => IsabelleOptions -> [LocaleDef] -> Prog DecidabilityBuiltin -> m Code
 compileProg opts localeAssms (Main ds) = vsep2 <$> traverse (compileDecl opts localeAssms) ds
-
 
 gatherLocaleNetworks :: (MonadIsabelleCompile m) => IsabelleOptions -> Decl DecidabilityBuiltin -> m [LocaleDef]
 gatherLocaleNetworks _opts = \case
