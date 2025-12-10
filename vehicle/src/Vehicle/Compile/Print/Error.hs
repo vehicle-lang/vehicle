@@ -648,14 +648,15 @@ formatCompileError = \case
   -- Backend errors --
   --------------------
   MultiPropertyTraveralError prov err -> propertyTraversalErrorDetails prov err
-  VariableSizeTensorQuantification (ident, _p) ctx binder dims ->
+  VariableSizeTensorQuantification (ident, _p) ctx binder dims -> do
+    let (name, p) = getNamedBinderInfo binder
     VehicleError
-      { provenance = Just $ provenanceOf binder,
+      { provenance = Just p,
         problem =
           "whilst compiling property"
             <+> quotePretty ident
             <+> "found the quantified variable"
-            <+> quotePretty (nameOf binder)
+            <+> quotePretty name
             <+> "with dimensions"
             <+> prettyFriendly (WithContext dims ctx)
             <> "."
@@ -799,14 +800,15 @@ formatCompileError = \case
             <> "Vectors with elements of type" <+> squotes (prettyFriendly (WithContext elemTyp ctx)) <+> "cannot currently be compiled to loss functions",
         fix = Nothing
       }
-  NoQuantifierDomainFound (ident, _p) binder maybeUnboundedVariables ->
+  NoQuantifierDomainFound (ident, _p) binder maybeUnboundedVariables -> do
+    let (name, p) = getNamedBinderInfo binder
     VehicleError
-      { provenance = Just $ provenanceOf binder,
+      { provenance = Just p,
         problem =
           "The property"
             <+> quotePretty ident
             <+> "cannot be compiled to tensor code as the variable"
-            <+> quotePretty (nameOf binder)
+            <+> quotePretty name
             <+> "is not properly bounded. In particular,"
             <+> missingBounds maybeUnboundedVariables,
         fix = Just "Add inequalities that restrict the value of the variable both below and above."

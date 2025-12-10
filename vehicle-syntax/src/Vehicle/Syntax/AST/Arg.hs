@@ -14,9 +14,7 @@ import Vehicle.Syntax.AST.Visibility
 -- | An argument to a function, parameterised by the type of expression it
 -- stores.
 data GenericArg expr = Arg
-  { -- | The location of the arg in the source file.
-    argProvenance :: Provenance,
-    -- | The visibility of the argument
+  { -- | The visibility of the argument
     argVisibility :: Visibility,
     -- | The relevancy of the argument
     argRelevance :: Relevance,
@@ -29,8 +27,9 @@ instance (NFData expr) => NFData (GenericArg expr)
 
 instance (Serialize expr) => Serialize (GenericArg expr)
 
-instance HasProvenance (GenericArg expr) where
-  provenanceOf = argProvenance
+instance (HasProvenance expr) => HasProvenance (GenericArg expr) where
+  provenanceOf Arg {..} =
+    expandByArgVisibility argVisibility (provenanceOf argExpr)
 
 instance HasVisibility (GenericArg expr) where
   visibilityOf = argVisibility
@@ -46,38 +45,38 @@ instance HasRelevance (GenericArg expr) where
 -- NOTE: these are all unidirectional pattern synonyms because we want to force
 -- the user to consider all arguments when constructing them.
 
-pattern ExplicitArg :: Provenance -> Relevance -> expr -> GenericArg expr
-pattern ExplicitArg p r e <- Arg p Explicit r e
+pattern ExplicitArg :: Relevance -> expr -> GenericArg expr
+pattern ExplicitArg r e <- Arg Explicit r e
 
-pattern RelevantExplicitArg :: Provenance -> expr -> GenericArg expr
-pattern RelevantExplicitArg p e <- Arg p Explicit Relevant e
+pattern RelevantExplicitArg :: expr -> GenericArg expr
+pattern RelevantExplicitArg e <- Arg Explicit Relevant e
 
-pattern ImplicitArg :: Provenance -> Relevance -> expr -> GenericArg expr
-pattern ImplicitArg p r e <- Arg p Implicit {} r e
+pattern ImplicitArg :: Relevance -> expr -> GenericArg expr
+pattern ImplicitArg r e <- Arg Implicit {} r e
 
-pattern IrrelevantExplicitArg :: Provenance -> expr -> GenericArg expr
-pattern IrrelevantExplicitArg p e <- Arg p Explicit Irrelevant e
+pattern IrrelevantExplicitArg :: expr -> GenericArg expr
+pattern IrrelevantExplicitArg e <- Arg Explicit Irrelevant e
 
-pattern RelevantImplicitArg :: Provenance -> expr -> GenericArg expr
-pattern RelevantImplicitArg p e <- Arg p Implicit {} Relevant e
+pattern RelevantImplicitArg :: expr -> GenericArg expr
+pattern RelevantImplicitArg e <- Arg Implicit {} Relevant e
 
-pattern IrrelevantImplicitArg :: Provenance -> expr -> GenericArg expr
-pattern IrrelevantImplicitArg p e <- Arg p Implicit {} Irrelevant e
+pattern IrrelevantImplicitArg :: expr -> GenericArg expr
+pattern IrrelevantImplicitArg e <- Arg Implicit {} Irrelevant e
 
-pattern InstanceArg :: Provenance -> Relevance -> expr -> GenericArg expr
-pattern InstanceArg p r e <- Arg p Instance {} r e
+pattern InstanceArg :: Relevance -> expr -> GenericArg expr
+pattern InstanceArg r e <- Arg Instance {} r e
 
-pattern RelevantInstanceArg :: Provenance -> expr -> GenericArg expr
-pattern RelevantInstanceArg p e <- Arg p Instance {} Relevant e
+pattern RelevantInstanceArg :: expr -> GenericArg expr
+pattern RelevantInstanceArg e <- Arg Instance {} Relevant e
 
 --------------------------------------------------------------------------------
 -- Helper functions
 
 pairArg :: (GenericArg a, b) -> GenericArg (a, b)
-pairArg (Arg p v r x, y) = Arg p v r (x, y)
+pairArg (Arg v r x, y) = Arg v r (x, y)
 
 unpairArg :: GenericArg (a, b) -> (GenericArg a, b)
-unpairArg (Arg p v r (x, y)) = (Arg p v r x, y)
+unpairArg (Arg v r (x, y)) = (Arg v r x, y)
 
 replaceArgExpr :: expr1 -> GenericArg expr2 -> GenericArg expr1
 replaceArgExpr e = fmap (const e)
@@ -92,30 +91,30 @@ traverseExplicitArgExpr f arg
   | otherwise = return arg
 
 argFromBinder :: GenericBinder expr -> expr -> GenericArg expr
-argFromBinder (Binder p _ v r _) = Arg p v r
+argFromBinder (Binder _ v r _) = Arg v r
 
 -- | Constructs a relevant explicit argument
 explicit :: expr -> GenericArg expr
-explicit = Arg mempty Explicit Relevant
+explicit = Arg Explicit Relevant
 
 -- | Constructs an irrelevant explicit argument
 explicitIrrelevant :: expr -> GenericArg expr
-explicitIrrelevant = Arg mempty Explicit Irrelevant
+explicitIrrelevant = Arg Explicit Irrelevant
 
 -- | Constructs a relevant implicit argument marked as being inserted by
 -- the compiler.
 implicit :: expr -> GenericArg expr
-implicit = Arg mempty (Implicit True) Relevant
+implicit = Arg (Implicit True) Relevant
 
 -- | Constructs an irrelevant implicit argument marked as being inserted by
 -- the compiler.
 implicitIrrelevant :: expr -> GenericArg expr
-implicitIrrelevant = Arg mempty (Implicit True) Irrelevant
+implicitIrrelevant = Arg (Implicit True) Irrelevant
 
 -- | Constructs an irrelevant instance argument marked as being inserted by
 -- the compiler.
 instanceIrrelevant :: expr -> GenericArg expr
-instanceIrrelevant = Arg mempty (Instance True) Irrelevant
+instanceIrrelevant = Arg (Instance True) Irrelevant
 
 --------------------------------------------------------------------------------
 -- Args

@@ -14,7 +14,7 @@ import Prettyprinter (Pretty (..), (<+>))
 import Vehicle.Compile.Arity
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE (normaliseInEmptyFreeEnv)
-import Vehicle.Compile.Prelude (Doc, HasProvenance (..), Ix (..), Name, Provenance (..), getBinderName, mkExplicitBinder, normAppList)
+import Vehicle.Compile.Prelude (Doc, Ix (..), Name, Provenance (..), getNamedBinderInfo, mkExplicitBinder, normAppList)
 import Vehicle.Compile.Prelude qualified as S (Binder, Decl, Expr (..), GenericDecl (..), GenericProg (..), Prog)
 import Vehicle.Compile.Print
 import Vehicle.Data.Builtin.Interface (Accessor (..))
@@ -242,8 +242,7 @@ convertValue expr = do
 
 convertBinder :: (MonadJSON m) => VBinder LossBuiltin -> m JBinder
 convertBinder binder = do
-  let p = provenanceOf binder
-  let name = getBinderName binder
+  let (name, p) = getNamedBinderInfo binder
   typ' <- convertTypeValue (typeOf binder)
   return $ Binder p name typ'
 
@@ -467,9 +466,9 @@ fromJExpr = \case
   StackTensor xs -> toFunction L.StackTensor xs
 
 fromJBinder :: (MonadNameContext m) => JBinder -> m (S.Binder LossBuiltin)
-fromJBinder (Binder _ name typ) = do
+fromJBinder (Binder p name typ) = do
   typ' <- fromJType typ
-  return $ mkExplicitBinder typ' (Just name)
+  return $ mkExplicitBinder typ' (Just (p, name))
 
 toExpr :: (MonadNameContext m) => (a -> m (S.Expr LossBuiltin)) -> LossBuiltin -> [a] -> m (S.Expr LossBuiltin)
 toExpr f op args = do

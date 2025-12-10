@@ -92,7 +92,7 @@ searchDecls = \case
 
 searchDecl :: (MonadList m, MonadSupply PropertyID m) => VDecl Builtin -> m ()
 searchDecl decl = do
-  let sharedData = mkSharedData nameOf decl
+  let sharedData = mkSharedData (provenanceOf decl) (nameOf decl) decl
   case decl of
     DefRecord {} -> return ()
     DefAbstract _ _ sort _ -> case sort of
@@ -159,7 +159,8 @@ searchSpine = traverse_ (traverse_ searchValue)
 searchBuiltinForQuantifier :: (MonadListProperty m) => Value Builtin -> m ()
 searchBuiltinForQuantifier value = case getExpr (accessQuantifyRatTensor @Value @Builtin @Closure) value of
   Just (q, args) -> do
-    let sharedData = mkSharedData getBinderName (quantifyBinder args)
+    let (name, p) = getNamedBinderInfo (quantifyBinder args)
+    let sharedData = mkSharedData p name (quantifyBinder args)
     tell [QuantifiedVariableSummary sharedData q]
   _ -> return ()
 
@@ -189,17 +190,17 @@ data SharedData = SharedData
 instance ToJSON SharedData
 
 mkSharedData ::
-  ( HasProvenance entity,
-    HasType entity (Value Builtin)
+  ( HasType entity (Value Builtin)
   ) =>
-  (entity -> Name) ->
+  Provenance ->
+  Name ->
   entity ->
   SharedData
-mkSharedData getName entity =
+mkSharedData p name entity =
   SharedData
-    { name = getName entity,
+    { name = name,
       typeText = pack $ show $ prettyFriendlyEmptyCtx (typeOf entity),
-      provenance = provenanceOf entity
+      provenance = p
     }
 
 --------------------------------------------------------------------------------

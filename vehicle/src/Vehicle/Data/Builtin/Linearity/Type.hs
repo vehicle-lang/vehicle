@@ -248,7 +248,7 @@ restrictLinearityNetworkType origin (ident, p) networkType = do
   inputLin <- freshLinearityMeta p
   outputLin <- freshLinearityMeta p
 
-  let inputLinBinder = Binder p (BinderDisplayForm OnlyType False) Explicit Relevant inputLin
+  let inputLinBinder = Binder (BinderDisplayForm OnlyType False) Explicit Relevant inputLin
   let functionNetworkType = Pi p inputLinBinder outputLin
   createFreshUnificationConstraint p mempty (CheckingInstanceType origin) networkType functionNetworkType
 
@@ -258,8 +258,8 @@ restrictLinearityNetworkType origin (ident, p) networkType = do
   logDebug MaxDetail "Appending `MaxLinearity` constraint to network type"
   let outputLinProvenance = Linear $ NetworkOutputProvenance p (nameOf ident)
   let linConstraintArgs = [LinearityExpr p outputLinProvenance, inputLin, outputLin]
-  let linConstraint = App (Builtin p (LinearityRelation MaxLinearity)) (Arg p Explicit Relevant <$> linConstraintArgs)
-  let linConstraintBinder = Binder p (BinderDisplayForm OnlyType False) (Instance True) Irrelevant linConstraint
+  let linConstraint = App (Builtin p (LinearityRelation MaxLinearity)) (Arg Explicit Relevant <$> linConstraintArgs)
+  let linConstraintBinder = Binder (BinderDisplayForm OnlyType False) (Instance True) Irrelevant linConstraint
 
   return $ Pi p linConstraintBinder functionNetworkType
 

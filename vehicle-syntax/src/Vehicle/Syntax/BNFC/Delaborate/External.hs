@@ -1,3 +1,4 @@
+{-# LANGUAGE InstanceSigs #-}
 {-# OPTIONS_GHC -Wno-missing-signatures #-}
 
 module Vehicle.Syntax.BNFC.Delaborate.External
@@ -104,6 +105,7 @@ instance Delaborate V.FieldName B.Name where
   delabM (V.FieldName _ name) = return $ mkToken B.Name name
 
 instance Delaborate (V.RecordField V.Expr) B.RecordFieldDef where
+  delabM :: (MonadDelab m) => V.RecordField V.Expr -> m B.RecordFieldDef
   delabM (name, typ) = do
     name' <- delabM name
     typ' <- delabM typ
@@ -138,7 +140,7 @@ delabNameBinder b = case V.binderNamingForm b of
     developerError
       "Should not be delaborating the `OnlyType` binder to a `Binder Name`"
   V.NameAndType {} -> B.BasicNameBinder <$> delabM b
-  V.OnlyName name -> do
+  V.OnlyName name _ -> do
     let modalities = delabModalities b
     let finalName = delabSymbol name
     return $ case (V.visibilityOf b, modalities) of
@@ -391,7 +393,7 @@ delabFun name typ expr = do
 
 delabQuantifier :: (MonadDelab m) => V.Quantifier -> [V.Arg] -> m B.Expr
 delabQuantifier q args = case reverse args of
-  V.RelevantExplicitArg _ (V.Lam _ binder body) : _ -> do
+  V.RelevantExplicitArg (V.Lam _ binder body) : _ -> do
     let (foldedBinders, foldedBody) = foldBinders (QuantifierBinder q) binder body
     binders' <- traverse delabNameBinder (binder : foldedBinders)
     body' <- delabM foldedBody
@@ -403,7 +405,7 @@ delabQuantifier q args = case reverse args of
 
 delabQuantifierIn :: (MonadDelab m) => V.Quantifier -> [V.Arg] -> m B.Expr
 delabQuantifierIn q args = case reverse args of
-  V.RelevantExplicitArg _ (V.Lam _ binder body) : V.RelevantExplicitArg _ container : _ -> do
+  V.RelevantExplicitArg (V.Lam _ binder body) : V.RelevantExplicitArg container : _ -> do
     binder' <- delabNameBinder binder
     body' <- delabM body
     container' <- delabM container
@@ -415,7 +417,7 @@ delabQuantifierIn q args = case reverse args of
 
 delabForeach :: (MonadDelab m) => [V.Arg] -> m B.Expr
 delabForeach args = case reverse args of
-  V.RelevantExplicitArg _ (V.Lam _ binder body) : _ -> do
+  V.RelevantExplicitArg (V.Lam _ binder body) : _ -> do
     let (foldedBinders, foldedBody) = foldBinders ForeachBinder binder body
     binders' <- traverse delabNameBinder (binder : foldedBinders)
     body' <- delabM foldedBody

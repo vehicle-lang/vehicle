@@ -4,6 +4,7 @@ module Vehicle.Backend.Rocq.Compile
   )
 where
 
+import Data.Bifunctor (Bifunctor (..))
 import Data.Foldable (fold)
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NonEmpty
@@ -29,7 +30,6 @@ import Vehicle.Syntax.Sugar
   ( BinderType (..),
     LetBinder,
     foldBinders,
-    foldDeclBinders,
   )
 import Vehicle.Syntax.Tensor
   ( Tensor (..),
@@ -53,7 +53,6 @@ currentPhase = "compilation to Rocq"
 compileProgToRocq :: (MonadCompile m) => Prog DecidabilityBuiltin -> RocqOptions -> m (Doc a)
 compileProgToRocq prog options =
   logCompilerSection2 MinDetail currentPhase $ do
-    logDebug MaxDetail $ prettyExternal prog
     programDoc <- runFreshNameBoundContextT $ compileProg options prog
     let programStream = layoutPretty defaultLayoutOptions programDoc
     -- Collects dependencies by first discarding precedence info and then
@@ -270,10 +269,10 @@ compileDecl _opts = \case
   DefAbstract _ n _ t ->
     compilePostulate (compileIdentifier n) <$> compileExpr t
   DefFunction _ n anns t e -> do
-    let (binders, body) = foldDeclBinders e
     if isAnnotatedAsProperty anns
       then compileProperty (compileIdentifier n) <$> compileExpr e
       else do
+        let (binders, body) = extractDeclBinders t e
         binders' <- compileTopLevelBinders binders
         (_, cbody) <- compileBinders binders (compileExpr body)
         defType <- resolveReturnType binders' t
@@ -290,6 +289,18 @@ compileDecl _opts = \case
         <> line
         <> indent 2 (encloseSep (lbrace <> space) (line <> rbrace) (semi <> space) $ fmap (\(field, fieldType) -> pretty field <+> ":" <+> fieldType) fs')
         <> "."
+
+extractDeclBinders ::
+  Type DecidabilityBuiltin ->
+  Expr DecidabilityBuiltin ->
+  ([Binder DecidabilityBuiltin], Expr DecidabilityBuiltin)
+extractDeclBinders typ expr = case (typ, expr) of
+  (Pi _ piBinder piBody, Lam _ lamBinder lamBody) -> do
+    -- We want the name from the lambda binder and the type from the
+    -- pi binder as this is usually what the user will write.
+    let compositeBinder = replaceBinderType (typeOf piBinder) lamBinder
+    first (compositeBinder :) (extractDeclBinders piBody lamBody)
+  (_, _) -> ([], expr)
 
 -- | Compile a 'network' declaration
 compilePostulate :: Code -> Code -> Code
@@ -380,9 +391,9 @@ compileBinder :: (MonadRocqCompile m) => Binder DecidabilityBuiltin -> m Code
 compileBinder binder = do
   binderType <- compileExpr (typeOf binder)
   (binderDoc, noExplicitBrackets) <- case binderNamingForm binder of
-    OnlyName name -> return (pretty name, True)
+    OnlyName name _ -> return (pretty name, True)
     OnlyType -> return (binderType, True)
-    NameAndType name -> do
+    NameAndType name _ -> do
       let annName = annotate (Set.empty, minPrecedence) (pretty name <+> ":" <+> binderType)
       return (annName, False)
 
@@ -458,7 +469,7 @@ compileBuiltin b args = case b of
     ReduceMulRatTensor -> annotateApp [] "reduceMul" args
     ConstTensor -> annotateApp [RequireImport VehicleTensor] "const_t" args
     QuantifyRatTensor q -> case reverse args of
-      (ExplicitArg _ _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier q [binder] body
+      (ExplicitArg _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier q [binder] body
       _ -> unsupportedArgsError
     AtTensor -> annotateNotation [RequireImport VehicleTensor] 201 "$0^^$1" (Just "nindex") args
     If -> annotateNotation [RequireImport MathcompSsreflectSsrbool] minPrecedence "if $0 then $1 else $2" Nothing args

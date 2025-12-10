@@ -333,19 +333,18 @@ makeMetaExpr ::
 makeMetaExpr p metaID boundCtx = do
   -- Create bound variables for everything in the context
   let dependencyLevels = [0 .. (length boundCtx - 1)]
-  let unnormBoundEnv = [Arg p Explicit Relevant (BoundVar p $ Ix i) | i <- reverse dependencyLevels]
+  let unnormBoundEnv = [Arg Explicit Relevant (BoundVar p $ Ix i) | i <- reverse dependencyLevels]
 
   -- Returns a meta applied to every bound variable in the context
   return $ normAppList (Meta p metaID) unnormBoundEnv
 
 abstractOverCtx :: BoundCtx (Type builtin) -> Expr builtin -> Expr builtin
 abstractOverCtx ctx body = do
-  let p = mempty
-  let lamBinderForm n = BinderDisplayForm (OnlyName (fromMaybe "_" n)) True
+  let lamBinderForm n = BinderDisplayForm (OnlyName (fromMaybe "_" n) mempty) True
   -- WARNING: in theory the type of this binder should be `typeOf binder` but because these binders
   -- have temporary mutually recursive dependencies that are eliminated upon substitution
   -- then actualy using `t` here results in meta-substitution looping.
-  let lam binder = Lam p (Binder p (lamBinderForm (nameOf binder)) Explicit (relevanceOf binder) (TypeUniverse p 0))
+  let lam binder = Lam mempty (Binder (lamBinderForm (nameOf binder)) Explicit (relevanceOf binder) (TypeUniverse (provenanceOf $ typeOf binder) 0))
   foldr lam body (reverse ctx)
 
 prettyMetas :: forall builtin m a. (MonadTypeChecker builtin m) => Proxy builtin -> MetaSet -> m (Doc a)

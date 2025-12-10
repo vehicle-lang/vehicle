@@ -229,7 +229,7 @@ evalBuiltin ctx b spine
 
 findInstanceArg :: (MonadLogger m, Show op) => op -> [GenericArg a] -> m (a, [GenericArg a])
 findInstanceArg op = \case
-  (InstanceArg _ _ inst : xs) -> return (inst, xs)
+  (InstanceArg _ inst : xs) -> return (inst, xs)
   (_ : xs) -> findInstanceArg op xs
   [] -> developerError $ "Malformed type class operation:" <+> pretty (show op)
 

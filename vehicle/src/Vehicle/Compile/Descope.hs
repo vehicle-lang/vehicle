@@ -108,7 +108,7 @@ descopeClosure ::
 descopeClosure f _binder (Closure env body) = do
   body' <- genericDescopeExpr (ixToName f) $ convertExprBuiltins body
   env' <- traverse (genericDescopeValue f) (cheatEnvToValues env) :: m [S.Expr]
-  let envExpr = S.normAppList (S.Var mempty "ENV") $ fmap (Arg mempty Explicit Relevant) env'
+  let envExpr = S.normAppList (S.Var mempty "ENV") $ fmap (Arg Explicit Relevant) env'
   return $ S.App envExpr [explicit body']
 
 -- | This function is not meant to do anything sensible and is merely

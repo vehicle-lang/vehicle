@@ -121,7 +121,7 @@ compileConstraints ::
   Partition ->
   m (MaybeTrivial Partitions)
 compileConstraints finalCtx dims binder var (maybeConstraints, maybeRemainder) = do
-  let varName = getBinderName binder
+  let (varName, _) = getNamedBinderInfo binder
   logCompilerSection2 MidDetail ("extracting bounds for" <+> quotePretty varName <+> "from partition") $ do
     -- Extract the constraints we can use to bound the variable
     constraints <- case maybeConstraints of
@@ -244,7 +244,11 @@ findTensorBounds parentVar parentVarShape constraints =
               Just childVariables -> foldM go disjunctedBoundsAndRemainders childVariables
       return $ disjunctDisjuncts result
 
-noQuantifierDomainError :: (MonadDomain m) => VBinder Builtin -> UnboundedIndices -> m a
+noQuantifierDomainError ::
+  (MonadDomain m) =>
+  VBinder Builtin ->
+  UnboundedIndices ->
+  m a
 noQuantifierDomainError binder missingIndices = do
   propertyProv <- getDeclProvenance
   throwError $ NoQuantifierDomainFound propertyProv binder missingIndices

@@ -2,7 +2,6 @@ module Vehicle.Data.Variable.Bound.Context.Generic
   ( module Export,
     getBoundVarByIx,
     getBoundVarByLv,
-    piBinderToLamBinder,
   )
 where
 
@@ -30,15 +29,3 @@ getBoundVarByLv ::
   m (GenericBinder expr)
 getBoundVarByLv _ lv =
   lookupLvInBoundCtx lv <$> getBoundCtx (Proxy @expr)
-
-piBinderToLamBinder ::
-  (MonadBoundContext (Expr builtin) m) =>
-  Binder builtin ->
-  m (Binder builtin)
-piBinderToLamBinder binder@(Binder p _ v r t) = do
-  binderName <- case nameOf binder of
-    Just name -> return name
-    Nothing -> getFreshNameForBound (typeOf binder)
-
-  let displayForm = BinderDisplayForm (OnlyName binderName) True
-  return $ Binder p displayForm v r t

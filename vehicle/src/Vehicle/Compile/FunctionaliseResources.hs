@@ -174,7 +174,7 @@ replaceResourceUses (mkBinder, binders, binderNames) initialExpr = do
 
       let extraResourceNames = lookupInFreeCtx ident resourceUsageFreeCtx
       extraResourceVarArgs <- traverse mkResourceVar extraResourceNames
-      let extraResourceArgs = fmap (Arg p Explicit Relevant) extraResourceVarArgs
+      let extraResourceArgs = fmap (Arg Explicit Relevant) extraResourceVarArgs
       return $ normAppList newFun (extraResourceArgs <> args')
 
 createBinders ::
@@ -189,8 +189,8 @@ createBinders isType p idents = do
   let identsAndTypesList = OMap.assocs identsAndTypes
   let mkBindingForm ident
         | isType = BinderDisplayForm OnlyType True
-        | otherwise = BinderDisplayForm (OnlyName (nameOf ident)) True
-  let mkBinder (ident, typ) = Binder p (mkBindingForm ident) Explicit Relevant typ
+        | otherwise = BinderDisplayForm (OnlyName (nameOf ident) mempty) True
+  let mkBinder (ident, typ) = Binder (mkBindingForm ident) Explicit Relevant typ
   let binders = fmap mkBinder identsAndTypesList
   let binderConstructor
         | isType = Pi p

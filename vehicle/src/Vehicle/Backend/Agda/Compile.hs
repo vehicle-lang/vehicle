@@ -426,9 +426,9 @@ compileBinder :: (MonadAgdaCompile m) => Binder DecidabilityBuiltin -> m Code
 compileBinder binder = do
   binderType <- compileExpr (typeOf binder)
   (binderDoc, noExplicitBrackets) <- case binderNamingForm binder of
-    OnlyName name -> return (pretty name, True)
+    OnlyName name _ -> return (pretty name, True)
     OnlyType -> return (binderType, True)
-    NameAndType name -> do
+    NameAndType name _ -> do
       let annName = "(" <> pretty name <+> ":" <+> binderType <> ")"
       return (annName, False)
 
@@ -541,7 +541,7 @@ compileBuiltinFunction f args = case f of
   ReduceMulRatTensor -> annotateApp [DataTensor] Nothing "reduceMul" args
   ConstTensor -> annotateApp [DataTensor] Nothing "constTensor" args
   QuantifyRatTensor q -> case reverse args of
-    (ExplicitArg _ _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier q [binder] body
+    (ExplicitArg _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier q [binder] body
     _ -> unsupportedArgsError
   AtTensor -> annotateInfixApp [DataTensor] (-1) Nothing "_!_" args
   AtVector -> annotateInfixApp [FunctionBase] (-1) Nothing "_$_" args

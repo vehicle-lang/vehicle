@@ -66,8 +66,8 @@ solve = \case
 solveQuantifierLinearity :: Quantifier -> LinearitySolver
 solveQuantifierLinearity _ _ [getNMeta -> Just m, _] = blockOn [m]
 solveQuantifierLinearity _ info@(ctx, _) [VPi binder closure, res] = Just $ do
-  let varName = getBinderName binder
-  let domainLin = VLinearityExpr (Linear (QuantifiedVariableProvenance (provenanceOf binder) varName))
+  let (varName, p) = getNamedBinderInfo binder
+  let domainLin = VLinearityExpr (Linear (QuantifiedVariableProvenance p varName))
   domEq <- createInstanceUnification info (typeOf binder) domainLin
   resultType <- normaliseClosureInCtx (toNamedBoundCtx $ boundContext ctx) binder closure
   resEq <- createInstanceUnification info res resultType
