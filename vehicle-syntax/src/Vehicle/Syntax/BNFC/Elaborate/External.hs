@@ -4,7 +4,7 @@ module Vehicle.Syntax.BNFC.Elaborate.External
   ( PartiallyParsedProg,
     PartiallyParsedDecl,
     UnparsedExpr (..),
-    partiallyElabProg,
+    partiallyElabModule,
     elaborateDecl,
     elaborateExpr,
   )
@@ -32,7 +32,6 @@ import Vehicle.Syntax.BNFC.Utils
     getModule,
     mkProvenance,
     tokArrow,
-    tokDot,
     tokForallT,
     tokLambda,
     tokType,
@@ -48,7 +47,7 @@ import Vehicle.Syntax.Tensor (pattern ZeroDimTensor)
 --------------------------------------------------------------------------------
 -- Public interface
 
-type PartiallyParsedProg = V.GenericProg UnparsedExpr
+type PartiallyParsedProg = V.GenericModule UnparsedExpr
 
 type PartiallyParsedDecl = V.GenericDecl UnparsedExpr
 
@@ -62,13 +61,20 @@ newtype UnparsedExpr = UnparsedExpr B.Expr
 -- to the expression level. In theory this should allow us to read the
 -- declaration signatures from the file without actually having to parse their
 -- types and definitions.
-partiallyElabProg ::
+partiallyElabModule ::
   (MonadError ParseError m) =>
   ParseLocation ->
-  B.Prog ->
+  B.Module ->
   m PartiallyParsedProg
-partiallyElabProg file (B.Main decls) = flip runReaderT file $ do
-  V.Main <$> partiallyElabDecls decls
+partiallyElabModule file (B.DefModule imports decls) = flip runReaderT file $ do
+  let imports' = fmap elabImportStatement imports
+  decls' <- partiallyElabDecls decls
+  return $ V.Module imports' decls'
+
+elabImportStatement :: B.ImportStatement -> V.ImportStatement
+elabImportStatement (B.Import path) = do
+  let fragToString (B.ModulePathFrag frag) = unpack $ tkSymbol frag
+  V.ImportStatement $ V.ModulePath $ fmap fragToString path
 
 partiallyElabDecls :: (MonadElab m) => [B.Decl] -> m [PartiallyParsedDecl]
 partiallyElabDecls = \case
@@ -165,7 +171,7 @@ elabTypeDef ::
 elabTypeDef anns n binders e = do
   let typeTyp
         | null binders = tokType 0
-        | otherwise = B.ForallT tokForallT binders tokDot (tokType 0)
+        | otherwise = B.ForallT tokForallT binders (tokType 0)
   elabDefFun anns n n typeTyp binders e
 
 elabDefFun :: (MonadElab m) => [Annotation] -> B.Name -> B.Name -> B.Expr -> [B.NameBinder] -> B.Expr -> m (V.GenericDecl UnparsedExpr)
@@ -320,15 +326,15 @@ elabExpr expr = case expr of
   B.VecLiteral tk1 es _tk2 -> elabVecLiteral tk1 es
   B.App e1 e2 -> elabApp e1 e2
   B.Let tk1 ds e -> elabLet tk1 ds e
-  B.ForallT tk1 ns _tk2 t -> elabForallT tk1 ns t
+  B.ForallT tk1 ns t -> elabForallT tk1 ns t
   B.Lam tk1 ns _tk2 e -> elabLam tk1 ns e
   B.Record xs -> elabRecord xs
   B.RecordAcc e n -> elabRecordAcc e n
-  B.Forall tk1 ns _tk2 e -> elabQuantifier tk1 V.Forall ns e
-  B.Exists tk1 ns _tk2 e -> elabQuantifier tk1 V.Exists ns e
-  B.ForallIn tk1 ns e1 _tk2 e2 -> elabQuantifierIn tk1 V.Forall ns e1 e2
-  B.ExistsIn tk1 ns e1 _tk2 e2 -> elabQuantifierIn tk1 V.Exists ns e1 e2
-  B.Foreach tk1 ns _tk2 e -> elabForeach tk1 ns e
+  B.Forall tk1 ns e -> elabQuantifier tk1 V.Forall ns e
+  B.Exists tk1 ns e -> elabQuantifier tk1 V.Exists ns e
+  B.ForallIn tk1 ns e1 e2 -> elabQuantifierIn tk1 V.Forall ns e1 e2
+  B.ExistsIn tk1 ns e1 e2 -> elabQuantifierIn tk1 V.Exists ns e1 e2
+  B.Foreach tk1 ns e -> elabForeach tk1 ns e
   B.Unit tk -> builtinType V.UnitType tk []
   B.Index tk -> builtinType V.IndexType tk []
   B.Bool tk -> castToTensorType V.BoolType tk
@@ -421,12 +427,12 @@ elabRecord xs = do
         f : fs -> V.fillInProvenance $ fmap V.provenanceOf (f :| fs)
   return $ V.Record p fields
 
-elabRecordAcc :: (MonadElab m) => B.Expr -> B.TokRecordAccess -> m V.Expr
-elabRecordAcc e (B.TokRecordAccess ((l1, l2), txt)) = do
-  -- Adjust the field name to strip off the extra "."
-  let field = B.Name ((l1 + 1, l2), Text.drop 1 txt)
-  fieldName <- elabRecordFieldName field
+elabRecordAcc :: (MonadElab m) => B.Expr -> B.FieldAccess -> m V.Expr
+elabRecordAcc e field = do
+  p <- mkProvenance field
+  let fieldName = V.FieldName p (Text.tail $ tkSymbol field)
   r <- elabExpr e
+
   return $ V.RecordAcc (V.provenanceOf fieldName) r fieldName
 
 elabBasicBinder :: (MonadElab m) => Bool -> B.BasicBinder -> m V.Binder
@@ -701,7 +707,7 @@ elabNamedBinders tk binders = case binders of
 constructUnknownDefType :: B.Name -> [B.NameBinder] -> B.Expr
 constructUnknownDefType n binders
   | null binders = returnType
-  | otherwise = B.ForallT tokForallT binders tokDot returnType
+  | otherwise = B.ForallT tokForallT binders returnType
   where
     returnType :: B.Expr
     returnType = B.Hole $ mkToken B.HoleToken (typifyName (tkSymbol n))

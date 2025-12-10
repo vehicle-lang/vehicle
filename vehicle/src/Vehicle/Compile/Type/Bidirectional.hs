@@ -22,14 +22,13 @@ import Vehicle.Compile.Type.Force (forceHead)
 import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad
-import Vehicle.Compile.Type.Monad.Class (createFreshConstraintCtx)
+import Vehicle.Compile.Type.Monad.Class (createFreshConstraintCtx, getDeclType, getDeclaredRecordFields)
 import Vehicle.Compile.Type.System (HasTypeSystem (..), TCM)
 import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin (..))
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Universe (UniverseLevel (..))
 import Vehicle.Data.Variable.Bound.Context.Generic
 import Vehicle.Data.Variable.Bound.Context.Name (MonadReadableNameContext (..))
-import Vehicle.Data.Variable.Free.Context.Class
 import Prelude hiding (pi)
 
 --------------------------------------------------------------------------------
@@ -329,7 +328,7 @@ checkRecordField declaredFields (field, value) = do
 -- derived from another constraint).
 createFreshUnificationConstraint ::
   forall builtin m.
-  (MonadTypeChecker builtin m) =>
+  (MonadTypeChecker builtin m, TypableBuiltin builtin) =>
   Provenance ->
   BoundCtx (Type builtin) ->
   UnificationConstraintOrigin builtin ->

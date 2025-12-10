@@ -52,7 +52,7 @@ findGeneralisableVariablesBinder binder update = do
 
 registerVar :: (MonadScopeExpr m, MonadWriter [GeneralisableVariable] m) => Provenance -> Name -> m ()
 registerVar p symbol = do
-  maybeVar <- lookupVariable symbol
+  maybeVar <- lookupMaybeVariable symbol
   when (isNothing maybeVar) $ tell [(p, symbol)]
 
 generaliseOverVariables ::
@@ -73,7 +73,7 @@ generaliseOverVariable (expr, seenNames) (p, name)
       logDebug MaxDetail $
         "Generalising over unbound variable" <+> quotePretty name
       let binderType = S.mkHole p ("typeOf[" <> name <> "]")
-      let binderDisplayForm = BinderDisplayForm (OnlyName name mempty) True
+      let binderDisplayForm = BinderDisplayForm (OnlyName name p) True
       let binder = Binder binderDisplayForm (Implicit True) Relevant binderType
       let newExpr = S.Pi p binder expr
       return (newExpr, Set.insert name seenNames)

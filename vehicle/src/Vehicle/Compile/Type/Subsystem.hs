@@ -3,23 +3,24 @@ module Vehicle.Compile.Type.Subsystem
     linearityTypeCheck,
     decidabilityTypeCheck,
     resolveInstanceArgumentsAndCasts,
+    parseModuleText,
   )
 where
 
-import Control.Monad.Except (runExceptT)
+import Control.Monad.Except (MonadError (..), MonadIO, runExcept, runExceptT)
 import Data.List.NonEmpty qualified as NonEmpty
-import Data.Maybe (mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
+import Data.Text (Text)
 import Vehicle.Backend.Prelude
-import Vehicle.Compile.Dependency (createDependencyGraph, pruneUnusedDeclarations)
+import Vehicle.Compile.Dependency (pruneUnusedDeclarations)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Monomorphisation (monomorphise)
 import Vehicle.Compile.Normalise.NBE (findInstanceArg)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyExternal)
 import Vehicle.Compile.Print.Error (errorInSubsystemMessage)
-import Vehicle.Compile.Type (typeCheckProg)
+import Vehicle.Compile.Type (typeCheckModuleDecls)
 import Vehicle.Compile.Type.Core (InstanceDatabase, emptyInstanceDatabase)
 import Vehicle.Compile.Type.Irrelevance
 import Vehicle.Compile.Type.System
@@ -34,9 +35,13 @@ import Vehicle.Data.Builtin.Linearity.Type ()
 import Vehicle.Data.Builtin.Polarity (PolarityBuiltin)
 import Vehicle.Data.Builtin.Polarity.Type ()
 import Vehicle.Data.Builtin.Standard
+import Vehicle.Data.Code.ModuleInterface (ImportedModuleContext, ModuleInterface (..), emptyModuleScopingInterface, emptyModuleTypingInterface)
+import Vehicle.Libraries.StandardLibrary (standardLibraryBuiltinModulePath)
+import Vehicle.Syntax.AST.Expr qualified as S
+import Vehicle.Syntax.Parse (ParseLocation, parseDecl, readAndParseModule)
 
 polarityTypeCheck ::
-  (MonadCompile m) =>
+  (MonadIO m, MonadCompile m) =>
   Prog Builtin ->
   Set Identifier ->
   m (Either CompileError (Prog PolarityBuiltin))
@@ -49,7 +54,7 @@ polarityTypeCheck prog declarationsToCompile = do
   typeCheckWithSubsystem PolarityTypes emptyInstanceDatabase instanceFreeProg
 
 linearityTypeCheck ::
-  (MonadCompile m) =>
+  (MonadIO m, MonadCompile m) =>
   Prog Builtin ->
   Set Identifier ->
   m (Either CompileError (Prog LinearityBuiltin))
@@ -62,15 +67,11 @@ linearityTypeCheck prog declarationsToCompile = do
   typeCheckWithSubsystem LinearityTypes emptyInstanceDatabase instanceFreeProg
 
 decidabilityTypeCheck ::
-  (MonadCompile m) =>
+  (MonadIO m, MonadCompile m) =>
   Prog Builtin ->
   m (Prog DecidabilityBuiltin)
 decidabilityTypeCheck prog = do
-  -- Prune all standard-library declarations that aren't used.
-  let declsToCompile = mapMaybe (\d -> if isUserCode d then Just (nameOf d) else Nothing) (declarations prog)
-  let dependencyGraph = createDependencyGraph prog
-  prunedProg <- pruneUnusedDeclarations prog dependencyGraph declsToCompile
-
+  prunedProg <- pruneUnusedDeclarations prog
   errorOrDecProg <- typeCheckWithSubsystem DecidabilityTypes decidabilityBuiltinInstances prunedProg
   decProg <- case errorOrDecProg of
     Left err -> developerError $ errorInSubsystemMessage "determine the decidability of the program for export to ITP" err
@@ -80,8 +81,7 @@ decidabilityTypeCheck prog = do
   resolveInstanceArgumentsAndCasts monoDecProg
 
 typeCheckWithSubsystem ::
-  forall builtin m.
-  (HasTypeSystem builtin, NormalisableBuiltin builtin, BuiltinHasListLiterals builtin, MonadCompile m) =>
+  (MonadIO m, MonadCompile m, HasTypeSystem builtin) =>
   SecondaryTypeSystem ->
   InstanceDatabase builtin ->
   Prog Builtin ->
@@ -89,10 +89,45 @@ typeCheckWithSubsystem ::
 typeCheckWithSubsystem typingSystem instanceCandidates prog = do
   callDepth <- getCallDepth
   logCompilerSection2 MinDetail ("typing using" <+> quotePretty typingSystem <+> "type subsystem") $ do
-    result <- runExceptT $ typeCheckProg userModule instanceCandidates mempty prog
-    -- Need to reset the call depth explicitly as type-checking may have errored.
-    setCallDepth (callDepth + 1)
-    return result
+    logCompilerPass TypeChecking $ do
+      builtinModuleCtx <- loadTypeSystemBuiltins typingSystem instanceCandidates
+      errorOrResult <- runExceptT $ typeCheckModuleDecls userModulePath instanceCandidates builtinModuleCtx (programDeclarations prog)
+      -- Need to reset the call depth explicitly as type-checking may have errored.
+      setCallDepth (callDepth + 1)
+      return $ case errorOrResult of
+        Left err -> Left err
+        Right (decls, _, _) -> Right $ Main decls
+
+loadTypeSystemBuiltins ::
+  (MonadIO m, MonadCompile m, HasTypeSystem builtin) =>
+  SecondaryTypeSystem ->
+  InstanceDatabase builtin ->
+  m (ImportedModuleContext builtin)
+loadTypeSystemBuiltins typeSystem _instanceCandidates = do
+  -- Locate the builtin module file
+  let builtinModulePath = standardLibraryBuiltinModulePath (Just typeSystem)
+  -- standardLibraryPath <- getLibraryPath standardLibraryName
+  -- let builtinModuleFile = calculateModuleFilePath standardLibraryPath builtinModulePath
+
+  -- Parse the builtin file
+  -- builtinModuleText <- readSpecification builtinModuleFile
+  -- builtinModule <- parseModuleText (builtinModulePath, builtinModuleFile) builtinModuleText
+  -- let builtinModuleDecls = moduleDeclarations builtinModule
+
+  -- Scope and type the builtin file
+  -- (scopedDecls, scopingInterface) <- scopeModuleDecls builtinModulePath mempty builtinModuleDecls
+  -- (typedDecls, typingInterface, freeEnv) <- typeCheckModuleDecls builtinModulePath instanceCandidates mempty scopedDecls
+  let freeEnv = mempty
+  let typedDecls = mempty
+
+  -- Add in the builtins
+  let finalInterface =
+        ModuleInterface
+          { scopingInterface = emptyModuleScopingInterface,
+            typingInterface = emptyModuleTypingInterface,
+            typedModule = Module mempty typedDecls
+          }
+  return [(builtinModulePath, finalInterface, freeEnv)]
 
 resolveInstanceArgumentsAndCasts ::
   forall m builtin.
@@ -173,3 +208,11 @@ removeImplicitArgs prog =
       Let p bound binder body -> Let p <$> go bound <*> traverse go binder <*> go body
       Record p ident fields -> Record p ident <$> traverseRecordFields go fields
       RecordAcc p record field -> RecordAcc p <$> go record <*> pure field
+
+parseModuleText :: (MonadCompile m) => ParseLocation -> Text -> m S.Module
+parseModuleText location txt = do
+  case runExcept (readAndParseModule location txt) of
+    Left err -> throwError $ ParseError location err
+    Right prog -> case traverseModuleDecls (parseDecl location) prog of
+      Left err -> throwError $ ParseError location err
+      Right prog' -> return prog'

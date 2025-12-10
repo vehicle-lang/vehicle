@@ -80,8 +80,8 @@ instance NoThunks Expr
 instance NoThunks Module
 instance NoThunks Identifier
 
--- Vehicle.Syntax.AST.Prog
-instance NoThunks expr => NoThunks (GenericProg expr)
+-- Vehicle.Syntax.AST.Module
+instance NoThunks expr => NoThunks (GenericModule expr)
 
 -- Vehicle.Syntax.AST.Provenance
 instance NoThunks Position

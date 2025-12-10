@@ -6,7 +6,6 @@ where
 
 import Control.Monad.Except (MonadError (..))
 import Data.Either (partitionEithers)
-import Data.Hashable (Hashable)
 import Data.Proxy (Proxy (..))
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE (eval)
@@ -19,6 +18,7 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Data.Builtin.Interface.Print
+import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin)
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Variable.Bound.Context.Generic
 import Vehicle.Data.Variable.Bound.Level (dbLevelToIndex)
@@ -29,7 +29,7 @@ import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..))
 
 -- | Attempts to solve as many instance constraints as possible.
 runInstanceSolver ::
-  (MonadInstance builtin m) =>
+  (MonadInstance builtin m, TypableBuiltin builtin) =>
   Proxy builtin ->
   InstanceSearchDepth ->
   m ()
@@ -47,7 +47,7 @@ runInstanceSolver proxy depth = do
 
 type MonadInstance builtin m =
   ( MonadTypeChecker builtin m,
-    Hashable builtin
+    TypableBuiltin builtin
   )
 
 -- The algorithm for this is taken from
@@ -55,7 +55,7 @@ type MonadInstance builtin m =
 
 solveInstanceConstraint ::
   forall builtin m.
-  (Hashable builtin, MonadInstance builtin m) =>
+  (MonadInstance builtin m) =>
   InstanceSearchDepth ->
   WithContext (InstanceConstraint builtin) ->
   m ()
@@ -64,8 +64,7 @@ solveInstanceConstraint depth constraint = do
   logDebug MaxDetail $ "Forced:" <+> prettyExternal normConstraint
 
   let goal = instanceGoal $ objectIn normConstraint
-  database <- getInstanceCandidates
-  let candidates = lookupInstances database goal
+  candidates <- getInstanceCandidates goal
   solveInstanceGoal normConstraint candidates depth goal
 
 solveInstanceGoal ::

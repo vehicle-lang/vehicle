@@ -18,12 +18,11 @@ import Vehicle.Data.DSL
 
 createTensorRecordConversionFunctions ::
   (MonadScope m) =>
-  Type Builtin ->
   Provenance ->
   Identifier ->
   [RecordField (Type Builtin)] ->
   m [Decl Builtin]
-createTensorRecordConversionFunctions _t p ident fields = do
+createTensorRecordConversionFunctions p ident fields = do
   nonEmptyFields <- case fields of
     [] -> throwError $ ZeroFieldTensorLike (ident, p)
     f : fs -> return $ f :| fs

@@ -83,8 +83,8 @@ instance
   (PrintableBuiltin builtin, MonadLogger m) =>
   MonadFreeContext builtin (FreeContextT builtin m)
   where
-  addDeclEntryToContext entry@(decl, _) cont = FreeContextT $ do
-    let updateCtx = Map.insert (identifierOf decl) entry
+  addDeclEntryToContext decl cont = FreeContextT $ do
+    let updateCtx = Map.insert (identifierOf decl) decl
     local updateCtx (unFreeContextT cont)
 
   getFreeCtx _ = FreeContextT ask

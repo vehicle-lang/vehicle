@@ -8,21 +8,15 @@ module Vehicle.Data.Builtin.Standard.Instances
   )
 where
 
-import Data.HashMap.Strict (HashMap)
 import Vehicle.Compile.Type.Constraint.Core
-import Vehicle.Compile.Type.Core (InstanceCandidate (..), InstanceDatabase (..), InstanceSearchDepth)
+import Vehicle.Compile.Type.Core (InstanceCandidate (..), InstanceDatabase (..))
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.DSL
 import Vehicle.Prelude
 
 standardBuiltinInstances :: InstanceDatabase Builtin
-standardBuiltinInstances = makeInstanceDatabase allInstances searchDepth
-
-searchDepth :: HashMap Builtin InstanceSearchDepth
-searchDepth =
-  [ (TypeClass HasVecLits, 1)
-  ]
+standardBuiltinInstances = makeInstanceDatabase allInstances
 
 -- Manually declared here as we have no way of declaring them in the language
 -- itself.

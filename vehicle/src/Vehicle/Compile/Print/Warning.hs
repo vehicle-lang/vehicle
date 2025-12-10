@@ -23,7 +23,7 @@ instance Pretty SummarisedCompileWarning where
         <+> pretty resourceType
         <> "s were provided"
           <+> "but not used by the specification:"
-          <+> prettySet unusedResources
+          <+> prettySet pretty unusedResources
     TrivialPropertySummary propertyName status ->
       "The property"
         <+> quotePretty propertyName

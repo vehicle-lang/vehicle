@@ -111,8 +111,8 @@ library
     Vehicle.Syntax.AST.Decl
     Vehicle.Syntax.AST.Expr
     Vehicle.Syntax.AST.Instances.NoThunks
+    Vehicle.Syntax.AST.Module
     Vehicle.Syntax.AST.Name
-    Vehicle.Syntax.AST.Prog
     Vehicle.Syntax.AST.Provenance
     Vehicle.Syntax.AST.Record
     Vehicle.Syntax.AST.Relevance

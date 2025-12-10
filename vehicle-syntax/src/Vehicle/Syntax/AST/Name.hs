@@ -1,8 +1,10 @@
 module Vehicle.Syntax.AST.Name where
 
 import Control.DeepSeq (NFData)
-import Data.Aeson (FromJSON, ToJSON, ToJSONKey)
+import Data.Aeson (FromJSON (..), ToJSON (..), ToJSONKey)
 import Data.Hashable (Hashable)
+import Data.List (intercalate)
+import Data.List.Split (splitOn)
 import Data.Serialize (Serialize)
 import Data.Serialize.Text ()
 import Data.Text (Text)
@@ -17,29 +19,37 @@ type Name = Text
 --------------------------------------------------------------------------------
 -- Module system
 
-newtype Module = Module
-  { modules :: [String]
+newtype ModulePath = ModulePath
+  { path :: [String]
   }
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Generic)
 
-instance NFData Module
+instance NFData ModulePath
 
-instance Hashable Module
+instance Hashable ModulePath
 
-instance ToJSON Module
+instance Serialize ModulePath
 
-instance FromJSON Module
+instance Pretty ModulePath where
+  pretty (ModulePath path) = concatWith (surround dot) (fmap pretty path)
 
-instance Serialize Module
+instance Show ModulePath where
+  show (ModulePath path) = intercalate "." path
 
-instance Pretty Module where
-  pretty (Module names) = concatWith (surround dot) (fmap pretty names)
+instance ToJSON ModulePath where
+  toJSON = toJSON . show
+
+instance FromJSON ModulePath where
+  parseJSON value = readModulePath <$> parseJSON value
+
+readModulePath :: String -> ModulePath
+readModulePath s = ModulePath $ splitOn "." s
 
 --------------------------------------------------------------------------------
 -- Identifiers
 
 data Identifier = Identifier
-  { modulePath :: Module,
+  { modulePath :: ModulePath,
     identifierName :: Name
   }
   deriving (Eq, Ord, Show, Generic)
@@ -65,14 +75,14 @@ class HasIdentifier a where
 instance HasIdentifier Identifier where
   identifierOf = id
 
-userModule :: Module
-userModule = Module ["User"]
+userModulePath :: ModulePath
+userModulePath = ModulePath ["User"]
 
 stdlibIdentifier :: Name -> Identifier
-stdlibIdentifier = Identifier (Module ["Definitions"])
+stdlibIdentifier = Identifier (ModulePath ["Definitions"])
 
 isUserCode :: (HasIdentifier a) => a -> Bool
-isUserCode object = modulePath (identifierOf object) == userModule
+isUserCode object = modulePath (identifierOf object) == userModulePath
 
 changeName :: Identifier -> Name -> Identifier
 changeName Identifier {..} newName = Identifier {identifierName = newName, ..}

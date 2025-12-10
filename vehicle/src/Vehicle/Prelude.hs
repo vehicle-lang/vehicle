@@ -14,8 +14,8 @@ import Vehicle.Prelude.Version as X
 import Vehicle.Syntax.AST.Arg as X
 import Vehicle.Syntax.AST.Binder as X
 import Vehicle.Syntax.AST.Decl as X
+import Vehicle.Syntax.AST.Module as X
 import Vehicle.Syntax.AST.Name as X
-import Vehicle.Syntax.AST.Prog as X
 import Vehicle.Syntax.AST.Provenance as X
 import Vehicle.Syntax.AST.Record as X
 import Vehicle.Syntax.AST.Relevance as X

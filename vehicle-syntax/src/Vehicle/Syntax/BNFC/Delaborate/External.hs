@@ -39,8 +39,19 @@ type MonadDelab m = Monad m
 class Delaborate t bnfc | t -> bnfc, bnfc -> t where
   delabM :: (MonadDelab m) => t -> m bnfc
 
-instance Delaborate V.Prog B.Prog where
-  delabM (V.Main decls) = B.Main . concat <$> traverse delabM decls
+instance Delaborate V.Module B.Module where
+  delabM (V.Module imports decls) = do
+    imports' <- traverse delabM imports
+    decls' <- concat <$> traverse delabM decls
+    return $ B.DefModule imports' decls'
+
+instance Delaborate V.ImportStatement B.ImportStatement where
+  delabM (V.ImportStatement (V.ModulePath path)) = do
+    let path' = fmap go path
+    return $ B.Import path'
+    where
+      go :: String -> B.ModulePathFragment
+      go = B.ModulePathFrag . mkToken B.Name . pack
 
 instance Delaborate V.Decl [B.Decl] where
   delabM = \case
@@ -131,7 +142,7 @@ delabRelevance x = case V.relevanceOf x of
 
 delabRecordAccess :: (MonadDelab m) => V.Expr -> V.FieldName -> m B.Expr
 delabRecordAccess expr fieldName = do
-  let tok = mkToken B.TokRecordAccess ("." <> V.nameOf fieldName)
+  let tok = mkToken B.FieldAccess ("." <> V.nameOf fieldName)
   B.RecordAcc <$> delabM expr <*> pure tok
 
 delabNameBinder :: (MonadDelab m) => V.Binder -> m B.NameBinder
@@ -359,7 +370,7 @@ delabPi binder body = case V.binderNamingForm binder of
     let (foldedBinders, foldedBody) = foldBinders PiBinder binder body
     binders' <- traverse delabNameBinder (binder : foldedBinders)
     body' <- delabM foldedBody
-    return $ B.ForallT tokForallT binders' tokDot body'
+    return $ B.ForallT tokForallT binders' body'
 
 -- | Collapses let expressions into a sequence of let declarations
 delabLet :: (MonadDelab m) => V.Expr -> V.Binder -> V.Expr -> m B.Expr
@@ -400,7 +411,7 @@ delabQuantifier q args = case reverse args of
     let mkTk = case q of
           V.Forall -> B.Forall tokForall
           V.Exists -> B.Exists tokExists
-    return $ mkTk binders' tokDot body'
+    return $ mkTk binders' body'
   _ -> cheatDelabPretty q args
 
 delabQuantifierIn :: (MonadDelab m) => V.Quantifier -> [V.Arg] -> m B.Expr
@@ -412,7 +423,7 @@ delabQuantifierIn q args = case reverse args of
     let mkTk = case q of
           V.Forall -> B.ForallIn tokForall
           V.Exists -> B.ExistsIn tokExists
-    return $ mkTk binder' container' tokDot body'
+    return $ mkTk binder' container' body'
   _ -> cheatDelabPretty q args
 
 delabForeach :: (MonadDelab m) => [V.Arg] -> m B.Expr
@@ -421,7 +432,7 @@ delabForeach args = case reverse args of
     let (foldedBinders, foldedBody) = foldBinders ForeachBinder binder body
     binders' <- traverse delabNameBinder (binder : foldedBinders)
     body' <- delabM foldedBody
-    return $ B.Foreach tokForeach binders' tokDot body'
+    return $ B.Foreach tokForeach binders' body'
   _ -> cheatDelabPretty V.ForeachTC args
 
 delabRecord :: (MonadDelab m) => [V.RecordField V.Expr] -> m B.Expr

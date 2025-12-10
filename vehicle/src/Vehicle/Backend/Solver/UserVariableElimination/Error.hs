@@ -4,6 +4,7 @@ module Vehicle.Backend.Solver.UserVariableElimination.Error
   )
 where
 
+import Control.Monad.IO.Class (MonadIO)
 import Data.Set (Set)
 import Data.Set qualified as Set (singleton)
 import Vehicle.Compile.Error
@@ -18,7 +19,7 @@ import Vehicle.Verify.QueryFormat.Core (QueryFormatID)
 
 diagnoseNonLinearity ::
   forall m.
-  (MonadCompile m) =>
+  (MonadCompile m, MonadIO m) =>
   QueryFormatID ->
   Prog Builtin ->
   DeclProvenance ->
@@ -34,7 +35,7 @@ diagnoseNonLinearity queryFormat prog propertyProv@(propertyIdentifier, _) = do
 
 diagnoseAlternatingQuantifiers ::
   forall m.
-  (MonadCompile m) =>
+  (MonadCompile m, MonadIO m) =>
   QueryFormatID ->
   Prog Builtin ->
   DeclProvenance ->

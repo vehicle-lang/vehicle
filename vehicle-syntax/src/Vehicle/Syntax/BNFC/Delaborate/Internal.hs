@@ -34,8 +34,8 @@ class Delaborate t bnfc | t -> bnfc, bnfc -> t where
   delabM :: (MonadDelab m) => t -> m bnfc
 
 -- | Elaborate programs.
-instance Delaborate V.Prog B.Prog where
-  delabM (V.Main decls) = B.Main <$> traverse delabM decls
+instance Delaborate V.Module B.Module where
+  delabM (V.Module _imports decls) = B.Main <$> traverse delabM decls
 
 -- | Elaborate declarations.
 instance Delaborate V.Decl B.Decl where
