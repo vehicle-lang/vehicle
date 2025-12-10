@@ -50,6 +50,18 @@ To upgrade to a newer version of Vehicle, run the following command:
 pip install vehicle-lang --upgrade
 ```
 
+### Backend extras
+
+The `vehicle_lang` package keeps deep-learning frameworks behind optional extras so you only install what you need:
+
+```sh
+
+    pip install "vehicle_lang[pytorch]"
+    pip install "vehicle_lang[tensorflow]"
+```
+
+Install both extras or combine them with any others to only install what is needed for you.
+
 ## Building Vehicle
 
 <a id="getting-the-source"></a>

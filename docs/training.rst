@@ -2,17 +2,6 @@ Training with a specification
 =============================
 Vehicle compiles each ``@property`` in your specification into a callable loss function. Use one of the backend modules (PyTorch or TensorFlow) to load the compiled declarations into Python.
 
-Backend extras
---------------
-
-The `vehicle_lang` wheel keeps deep-learning frameworks behind optional extras so you only install what you need:
-
-.. code-block:: bash
-
-    pip install "vehicle_lang[pytorch]"
-    pip install "vehicle_lang[tensorflow]"
-
-Install both extras (or combine them with ``test``/``pygments``) if you need to exercise several backends in the same environment.
 
 Loading declarations
 --------------------
@@ -64,23 +53,6 @@ Each callable returned by ``load_specification`` has a signature that mirrors th
 
 Here ``train_loader`` can be any ``torch.utils.data.DataLoader`` that yields ``(x_batch, y_batch)`` pairs, and the ``network`` callable must match the type you declared for the Vehicle network so gradient-based samplers can evaluate it.
 
-Custom samplers and declaration context
----------------------------------------
-
-Pass a ``samplers`` dictionary if you want to override how individual properties explore the search space. Each entry maps the ``@property`` name to a callable with the ``get_loss`` signature described in ``vehicle_lang.loss._common``. ``declaration_context`` lets you share state across declarations, for example to reuse an optimiser or cache dataset handles.
-
-.. code-block:: python
-
-   custom = {"output_bounded": MySampler(num_samples=32).get_loss}
-   context = {"model": model, "epsilon": 0.1}
-
-   declarations = loss_pt.load_specification(
-       "spec.vcl",
-       samplers=custom,
-       declaration_context=context,
-       declarations=["output_bounded"],
-   )
-
 TensorFlow works the same way—load the declarations through ``vehicle_lang.loss.tensorflow`` and call the compiled property inside a ``tf.GradientTape`` so gradients flow through both the task loss and the constraint loss:
 
 .. code-block:: python
@@ -105,13 +77,37 @@ TensorFlow works the same way—load the declarations through ``vehicle_lang.los
 
 By combining your usual task loss with the constraint losses returned by Vehicle, you ensure the optimiser simultaneously keeps the model on task and enforces the specification.
 
+
 Logic selection
 ---------------
 
-Switch the differentiable backend by passing ``logic=`` when calling ``load_specification``. ``DifferentiableLogic.DL2`` matches the classic loss semantics, while ``DifferentiableLogic.Vehicle`` enables the experimental optimisation pipeline that keeps compilation inside Vehicle whenever possible.
+By default, Vehicle compiles properties into loss functions using the ``Vehicle`` differentiable logic. You can select a different logic by passing the ``logic`` argument to ``load_specification``. Available options are:
+- ``vehicle_lang.DifferentiableLogic.Vehicle`` (default)
+- ``vehicle_lang.DifferentiableLogic.DL2``
 
-.. autoclass:: vehicle_lang.DifferentiableLogic
-    :members:
+
+Custom samplers and declaration context
+---------------------------------------
+
+Properties with quantifiers like `forall` or `exists` need to explore the input space to find satisfying or violating examples. The strategy used to find these examples can be customised by passing different samplers to the backend.
+
+Pass a ``samplers`` dictionary if you want to override the default implementation, which is just a `defaultdict` mapping to the default implementation of a sampler. The keys in the dictionary are the names of the variables being sampled, and the values are instances of the appropriate sampler class for the backend (``PyTorchSampler`` or ``TensorFlowSampler``). For example, to provide a custom sampler for a variable named ``images`` in PyTorch, you could do:
+
+.. code-block:: python
+
+   custom = {"images": MySampler().get_loss}
+   context = {"model": model, "epsilon": 0.1}
+
+   declarations = loss_pt.load_specification(
+       "spec.vcl",
+       samplers=custom,
+       declaration_context=context,
+       declarations=["output_bounded"],
+   )
+
+
+
+
 
 Loss API reference
 ------------------
