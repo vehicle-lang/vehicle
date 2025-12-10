@@ -3,7 +3,7 @@ In particular the multiplication in file 'spec.vcl' at Line 6, Columns 37-38 inv
   1. the output of network 'f' in file 'spec.vcl' at Line 2, Columns 1-2
   2. which is used in the left hand side of the multiplication
 and
-  1. the quantified variable 'x' introduced in file 'spec.vcl' at Line 6, Columns 13-21
+  1. the quantified variable 'x' introduced in file 'spec.vcl' at Line 6, Columns 13-14
   2. which is used in the right hand side of the multiplication
 
 Fix: try rewriting the specification to avoid the non-linearity.

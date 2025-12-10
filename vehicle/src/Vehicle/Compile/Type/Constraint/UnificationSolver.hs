@@ -395,7 +395,7 @@ pruneMetaDependencies ctx (solvingMetaID, solvingMetaSpine) attemptedSolution = 
       metaCtx <- getMetaCtx (Proxy @builtin) meta
       let (deps, remainingArgs) = splitAt (length metaCtx) spine
       let getLv arg = case arg of
-            ExplicitArg _ _ (VBoundVar i []) -> i
+            ExplicitArg _ (VBoundVar i []) -> i
             _ -> developerError $ "Meta variable" <+> pretty meta <+> "has none index arg"
       return (fmap getLv deps, remainingArgs)
 
@@ -465,7 +465,7 @@ invert ctxSize (metaID, spine) = do
     go :: Int -> IntMap Ix -> Spine builtin -> Maybe Renaming
     go i revMap = \case
       [] -> Just revMap
-      (ExplicitArg _ _ (VBoundVar j []) : restArgs) -> do
+      (ExplicitArg _ (VBoundVar j []) : restArgs) -> do
         -- TODO: we could eta-reduce arguments too, if possible
         let jIndex = dbLevelToIndex ctxSize j
         if IntMap.member (unIx jIndex) revMap

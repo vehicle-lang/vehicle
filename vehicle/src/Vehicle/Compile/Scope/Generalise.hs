@@ -73,7 +73,7 @@ generaliseOverVariable (expr, seenNames) (p, name)
       logDebug MaxDetail $
         "Generalising over unbound variable" <+> quotePretty name
       let binderType = S.mkHole p ("typeOf[" <> name <> "]")
-      let binderDisplayForm = BinderDisplayForm (OnlyName name) True
-      let binder = Binder p binderDisplayForm (Implicit True) Relevant binderType
+      let binderDisplayForm = BinderDisplayForm (OnlyName name mempty) True
+      let binder = Binder binderDisplayForm (Implicit True) Relevant binderType
       let newExpr = S.Pi p binder expr
       return (newExpr, Set.insert name seenNames)

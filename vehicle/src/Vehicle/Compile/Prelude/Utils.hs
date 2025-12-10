@@ -3,6 +3,7 @@ module Vehicle.Compile.Prelude.Utils where
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Maybe (mapMaybe)
+import GHC.Stack (HasCallStack)
 import Vehicle.Data.Code.Expr
 import Vehicle.Prelude
 
@@ -52,10 +53,14 @@ getMetaID e = case exprHead e of
   Meta _ m -> Just m
   _ -> Nothing
 
-getBinderName :: GenericBinder expr -> Name
-getBinderName binder = case binderNamingForm binder of
-  NameAndType name -> name
-  OnlyName name -> name
+-- | Should only be called on binders that are guaranteed to have a name.
+getBinderName :: (HasCallStack) => GenericBinder expr -> Name
+getBinderName binder = fst $ getNamedBinderInfo binder
+
+getNamedBinderInfo :: (HasCallStack) => GenericBinder expr -> (Name, Provenance)
+getNamedBinderInfo binder = case binderNamingForm binder of
+  NameAndType name p -> (name, p)
+  OnlyName name p -> (name, p)
   OnlyType -> developerError "Binder unexpectedly does not appear to have a name"
 
 getExplicitArg :: GenericArg expr -> Maybe expr

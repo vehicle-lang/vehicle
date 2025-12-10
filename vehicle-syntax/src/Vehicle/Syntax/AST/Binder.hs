@@ -1,17 +1,19 @@
+{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Vehicle.Syntax.AST.Binder where
 
 import Control.DeepSeq (NFData)
 import Data.Hashable (Hashable (..))
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.Serialize (Serialize)
 import Data.Serialize.Text ()
 import GHC.Generics (Generic)
 import Vehicle.Syntax.AST.Name (HasName (..), Name)
-import Vehicle.Syntax.AST.Provenance (HasProvenance (..), Provenance)
+import Vehicle.Syntax.AST.Provenance (HasProvenance (..), Provenance, fillInProvenance)
 import Vehicle.Syntax.AST.Relevance (HasRelevance (..), Relevance (..))
 import Vehicle.Syntax.AST.Type
-import Vehicle.Syntax.AST.Visibility (HasVisibility (..), Visibility (..))
+import Vehicle.Syntax.AST.Visibility (HasVisibility (..), Visibility (..), expandByArgVisibility)
 
 --------------------------------------------------------------------------------
 -- Binder naming forms
@@ -19,9 +21,9 @@ import Vehicle.Syntax.AST.Visibility (HasVisibility (..), Visibility (..))
 -- | What form the binder's name appears in the user expression
 data BinderNamingForm
   = -- | Both name and type appear (e.g. {x : A})
-    NameAndType Name
+    NameAndType Name Provenance
   | -- | Only name appears (e.g. {x})
-    OnlyName Name
+    OnlyName Name Provenance
   | -- | Only type appears (e.g. {{HasEq A}})
     OnlyType
   deriving (Eq, Ord, Show, Generic)
@@ -37,14 +39,14 @@ instance Hashable BinderNamingForm where
 
 instance HasName BinderNamingForm (Maybe Name) where
   nameOf = \case
-    NameAndType name -> Just name
-    OnlyName name -> Just name
+    NameAndType name _ -> Just name
+    OnlyName name _ -> Just name
     OnlyType -> Nothing
 
 mapBindingNamingFormName :: (Name -> Name) -> BinderNamingForm -> BinderNamingForm
 mapBindingNamingFormName f = \case
-  NameAndType name -> NameAndType $ f name
-  OnlyName name -> OnlyName name
+  NameAndType name p -> NameAndType (f name) p
+  OnlyName name p -> OnlyName name p
   OnlyType -> OnlyType
 
 --------------------------------------------------------------------------------
@@ -81,10 +83,8 @@ instance Serialize BinderDisplayForm
 -- reversibility during delaboration, and that as the type annotation was
 -- manually provided by the user it never needs to be updated after unification
 -- and type-class resolution.
-data GenericBinder value = Binder
-  { -- | Location of the binder in the source file
-    binderProvenance :: Provenance,
-    -- | What form the binder should take when displayed
+data GenericBinder expr = Binder
+  { -- | What form the binder should take when displayed
     binderDisplayForm :: BinderDisplayForm,
     -- | The visibility of the binder
     binderVisibility :: Visibility,
@@ -92,7 +92,7 @@ data GenericBinder value = Binder
     binderRelevance :: Relevance,
     -- | The value associated with the bound variable.
     -- Usually (but not always) its type.
-    binderValue :: value
+    binderValue :: expr
   }
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable, Generic)
 
@@ -100,10 +100,17 @@ instance (NFData expr) => NFData (GenericBinder expr)
 
 instance (Serialize expr) => Serialize (GenericBinder expr)
 
-instance HasProvenance (GenericBinder expr) where
-  provenanceOf = binderProvenance
+instance (HasProvenance expr) => HasProvenance (GenericBinder expr) where
+  provenanceOf Binder {..} = do
+    let typeProv = provenanceOf binderValue
+    let nameAndTypeProv = case namingForm binderDisplayForm of
+          NameAndType _n p -> fillInProvenance (p :| [typeProv])
+          OnlyName _n p -> fillInProvenance (p :| [typeProv])
+          OnlyType -> typeProv
+    expandByArgVisibility binderVisibility nameAndTypeProv
 
 instance HasVisibility (GenericBinder expr) where
+  visibilityOf :: GenericBinder expr -> Visibility
   visibilityOf = binderVisibility
   setVisibility r Binder {..} = Binder {binderVisibility = r, ..}
 
@@ -120,26 +127,26 @@ instance HasType (GenericBinder expr) expr where
 --------------------------------------------------------------------------------
 -- Pattern synonyms for binders
 
-pattern ExplicitBinder :: Provenance -> expr -> GenericBinder expr
-pattern ExplicitBinder p t <- Binder p _ Explicit Relevant t
+pattern ExplicitBinder :: expr -> GenericBinder expr
+pattern ExplicitBinder t <- Binder _ Explicit Relevant t
 
-pattern ImplicitBinder :: Provenance -> expr -> GenericBinder expr
-pattern ImplicitBinder p t <- Binder p _ Implicit {} Relevant t
+pattern ImplicitBinder :: expr -> GenericBinder expr
+pattern ImplicitBinder t <- Binder _ Implicit {} Relevant t
 
-pattern InstanceBinder :: Provenance -> expr -> GenericBinder expr
-pattern InstanceBinder p t <- Binder p _ Instance {} Relevant t
+pattern InstanceBinder :: expr -> GenericBinder expr
+pattern InstanceBinder t <- Binder _ Instance {} Relevant t
 
-pattern IrrelevantInstanceBinder :: Provenance -> expr -> GenericBinder expr
-pattern IrrelevantInstanceBinder p t <- Binder p _ Instance {} Irrelevant t
+pattern IrrelevantInstanceBinder :: expr -> GenericBinder expr
+pattern IrrelevantInstanceBinder t <- Binder _ Instance {} Irrelevant t
 
 --------------------------------------------------------------------------------
 -- Helper functions
 
 pairBinder :: (GenericBinder a, b) -> GenericBinder (a, b)
-pairBinder (Binder p u v r x, y) = Binder p u v r (x, y)
+pairBinder (Binder u v r x, y) = Binder u v r (x, y)
 
 unpairBinder :: GenericBinder (a, b) -> (GenericBinder a, b)
-unpairBinder (Binder p u v r (x, y)) = (Binder p u v r x, y)
+unpairBinder (Binder u v r (x, y)) = (Binder u v r x, y)
 
 replaceBinderType ::
   expr1 ->
@@ -154,7 +161,7 @@ binderNamingForm :: GenericBinder expr -> BinderNamingForm
 binderNamingForm = namingForm . binderDisplayForm
 
 setBinderRelevance :: GenericBinder expr -> Relevance -> GenericBinder expr
-setBinderRelevance (Binder p u v _r x) r = Binder p u v r x
+setBinderRelevance (Binder u v _r x) r = Binder u v r x
 
 mapBinderNamingForm :: (BinderNamingForm -> BinderNamingForm) -> GenericBinder expr -> GenericBinder expr
 mapBinderNamingForm f Binder {..} =
@@ -167,13 +174,13 @@ mapBinderNamingForm f Binder {..} =
       ..
     }
 
-mkDefaultBinderDisplayForm :: Maybe Name -> BinderDisplayForm
+mkDefaultBinderDisplayForm :: Maybe (Provenance, Name) -> BinderDisplayForm
 mkDefaultBinderDisplayForm = \case
-  Just name -> BinderDisplayForm (OnlyName name) True
+  Just (p, name) -> BinderDisplayForm (OnlyName name p) True
   Nothing -> BinderDisplayForm OnlyType True
 
-mkExplicitBinder :: expr -> Maybe Name -> GenericBinder expr
-mkExplicitBinder typ name = Binder mempty (mkDefaultBinderDisplayForm name) Explicit Relevant typ
+mkExplicitBinder :: expr -> Maybe (Provenance, Name) -> GenericBinder expr
+mkExplicitBinder typ name = Binder (mkDefaultBinderDisplayForm name) Explicit Relevant typ
 
-mkImplicitBinder :: expr -> Maybe Name -> GenericBinder expr
-mkImplicitBinder typ name = Binder mempty (mkDefaultBinderDisplayForm name) (Implicit True) Relevant typ
+mkImplicitBinder :: expr -> Maybe (Provenance, Name) -> GenericBinder expr
+mkImplicitBinder typ name = Binder (mkDefaultBinderDisplayForm name) (Implicit True) Relevant typ

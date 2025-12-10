@@ -91,38 +91,38 @@ checkExpr expectedType expr = do
     -- aid inference of lambda binder.
     (Pi _ piBinder resultType, Lam p lamBinder body)
       | visibilityOf piBinder == visibilityOf lamBinder -> do
-          let binderName = nameOf lamBinder
-          -- Check that the type of the lambda binder is a type.
-          checkedLamBinderType <- checkExpr (TypeUniverse p 0) (typeOf lamBinder)
+          -- Check the lambda binder
+          checkedLamBinder <- checkBinder lamBinder
 
           -- Check that the lambda and pi binders have the same type.
-          checkBinderTypesEqual p binderName (typeOf piBinder) checkedLamBinderType
+          checkPiBinderMatchesLamBinder piBinder checkedLamBinder
 
-          let checkedLamBinder = replaceBinderType (typeOf piBinder) lamBinder
           let finalLamBinder = setBinderRelevance checkedLamBinder (relevanceOf piBinder)
+
           -- Add bound variable to context and check if the type of the expression
           -- matches the expected result type.
           checkedBody <- addBinderToContext finalLamBinder $ checkExpr resultType body
+
           return $ Lam p finalLamBinder checkedBody
 
     -- In the case where we have an implicit or instance pi binder then insert a new
     -- lambda expression.
-    (Pi _ piBinder resultType, e)
+    (Pi p piBinder resultType, e)
       | isImplicit piBinder || isInstance piBinder -> do
           logDebug MaxDetail $ "inserting-binder" <+> prettyVerbose piBinder
 
           -- Create a suitable binder
-          let p = provenanceOf piBinder
-          let binderType = typeOf piBinder
-          lamBinderName <- getBinderNameOrFreshName (nameOf piBinder) binderType
-          let lamBinderForm = BinderDisplayForm (OnlyName lamBinderName) False
-          let lamBinder = Binder p lamBinderForm (visibilityOf piBinder) (relevanceOf piBinder) binderType
+          lamBinderName <- getBinderNameOrFreshName (nameOf piBinder) (typeOf piBinder)
+          let lamBinderForm = BinderDisplayForm (OnlyName lamBinderName mempty) False
+          let lamBinder =
+                piBinder
+                  { binderDisplayForm = lamBinderForm
+                  }
 
           -- Re-check the expression
           checkedExpr <- addBinderToContext lamBinder $ checkExpr resultType (liftDBIndices 1 e)
 
           return $ Lam p lamBinder checkedExpr
-    -- checkExpr expectedType (Lam p lamBinder e)
 
     -- Otherwise switch to inference mode
     (_, _) -> viaInfer expectedType expr
@@ -144,6 +144,16 @@ viaInfer expectedType expr = do
   -- Check the expected and the actual types are equal
   checkExprTypesEqual p expr expectedType resultType
   return appliedCheckedExpr
+
+checkBinder ::
+  (MonadBidirectional builtin m) =>
+  Binder builtin ->
+  m (Binder builtin)
+checkBinder binder = do
+  let p = provenanceOf binder
+  checkedBinderType <- checkExpr (TypeUniverse p 0) (typeOf binder)
+  let checkedBinder = replaceBinderType checkedBinderType binder
+  return checkedBinder
 
 --------------------------------------------------------------------------------
 -- Inference
@@ -180,15 +190,10 @@ inferExpr e = do
       metaType <- freshMetaExpr p (TypeUniverse p 0) boundCtx
       metaExpr <- freshMetaExpr p metaType boundCtx
       return (metaExpr, metaType)
-    Pi p binder resultType -> do
-      checkedBinderType <- checkExpr (TypeUniverse p 0) (typeOf binder)
-      let checkedBinder = replaceBinderType checkedBinderType binder
-
-      checkedResultType <-
-        addBinderToContext checkedBinder $
-          checkExpr (TypeUniverse p 0) resultType
-
-      return (Pi p checkedBinder checkedResultType, TypeUniverse p 0)
+    Pi p binder body -> do
+      checkedBinder <- checkBinder binder
+      checkedBody <- addBinderToContext checkedBinder $ checkExpr (TypeUniverse p 0) body
+      return (Pi p checkedBinder checkedBody, TypeUniverse p 0)
     App fun args -> do
       (checkedFun, checkedFunType) <- inferExpr fun
       inferApp checkedFun checkedFunType (NonEmpty.toList args)
@@ -207,29 +212,20 @@ inferExpr e = do
       originalType <- getDeclType (Proxy @builtin) ident
       return (FreeVar p ident, originalType)
     Let p boundExpr binder body -> do
-      -- Check that the type of the bound variable is a type
-      (typeOfBoundExpr, typeOfBoundExprType) <- inferExpr (typeOf binder)
-      checkExprTypesEqual p typeOfBoundExpr (TypeUniverse p 0) typeOfBoundExprType
-      let checkedBinder = replaceBinderType typeOfBoundExpr binder
-
-      -- Check that the expression being bound is correct.
-      checkedBoundExpr <- checkExpr typeOfBoundExpr boundExpr
+      checkedBinder <- checkBinder binder
 
       -- Check the type of the body, with the bound variable added to the context.
-      (checkedBody, typeOfBody) <- addBinderToContext checkedBinder $ inferExpr body
+      (checkedBody, typeOfBody) <-
+        addBinderToContext checkedBinder $ inferExpr body
 
+      -- Check that the expression being bound is correct.
+      let typeOfBoundExpr = typeOf checkedBinder
+      checkedBoundExpr <- checkExpr typeOfBoundExpr boundExpr
       -- Substitute through the type of the bound expression to preserve well-typedness
       let finalType = typeOfBoundExpr `substDBInto` typeOfBody
-
       return (Let p checkedBoundExpr checkedBinder checkedBody, finalType)
     Lam p binder body -> do
-      -- Infer the type of the bound variable from the binder
-      (typeOfBinder, typeOfBinderType) <- inferExpr (typeOf binder)
-
-      checkExprTypesEqual p typeOfBinder (TypeUniverse p 0) typeOfBinderType
-      let checkedBinder = replaceBinderType typeOfBinder binder
-
-      -- Update the context with the bound variable
+      checkedBinder <- checkBinder binder
       (checkedBody, typeOfBody) <- addBinderToContext checkedBinder $ inferExpr body
       return (Lam p checkedBinder checkedBody, Pi p checkedBinder typeOfBody)
     Builtin p op -> do
@@ -300,24 +296,24 @@ checkExprTypesEqual p expr expectedType actualType = do
             }
   createFreshUnificationConstraint p ctx origin expectedType actualType
 
-checkBinderTypesEqual ::
+checkPiBinderMatchesLamBinder ::
   forall builtin m.
   (MonadBidirectional builtin m) =>
-  Provenance ->
-  Maybe Name ->
-  Type builtin ->
-  Type builtin ->
+  Binder builtin ->
+  Binder builtin ->
   m ()
-checkBinderTypesEqual p binderName expectedType actualType = do
+checkPiBinderMatchesLamBinder piBinder lamBinder = do
   ctx <- getBoundCtx (Proxy @(Type builtin))
+  let expectedType = typeOf piBinder
+  let actualType = typeOf lamBinder
   let origin =
         CheckingExprType $
           CheckingExpr
-            { checkedExpr = Left binderName,
+            { checkedExpr = Left (nameOf lamBinder),
               checkedExprExpectedType = expectedType,
               checkedExprActualType = actualType
             }
-  createFreshUnificationConstraint p ctx origin expectedType actualType
+  createFreshUnificationConstraint (provenanceOf lamBinder) ctx origin expectedType actualType
 
 checkRecordField ::
   (MonadBidirectional builtin m) =>
@@ -342,8 +338,9 @@ createFreshUnificationConstraint ::
   m ()
 createFreshUnificationConstraint p ctx origin expectedType actualType = do
   let env = boundContextToEnv ctx
-  normExpectedType <- eval (toNamedBoundCtx ctx) env expectedType
-  normActualType <- eval (toNamedBoundCtx ctx) env actualType
+  let nameCtx = toNamedBoundCtx ctx
+  normExpectedType <- eval nameCtx env expectedType
+  normActualType <- eval nameCtx env actualType
   context <- createFreshConstraintCtx p ctx
   let unification = Unify origin normExpectedType normActualType
   solveUnificationConstraint (WithContext unification context)
@@ -437,7 +434,7 @@ checkArgsAgainstPiType ctx problem@ArgInsertionProblem {..} binder resultType
           let relevance = relevanceOf binder
           let ctxRelevance = if contextRelevance == Irrelevant then Irrelevant else relevance
           checkedArgExpr <- checkExprType ctx ctxRelevance (typeOf binder) (argExpr arg)
-          return $ Arg p (visibilityOf arg) relevance checkedArgExpr
+          return $ Arg (visibilityOf arg) relevance checkedArgExpr
         Nothing -> do
           logDebug MaxDetail "no-matching-arg-found"
           let original = (originalFun, originalArgs, originalType)
@@ -490,7 +487,7 @@ instantiateArgForNonExplicitBinder boundCtx p (fun, funArgs, funType) binder = d
                   checkedInstanceType = binderType
                 }
       createFreshInstanceConstraint (isAuxiliaryConstraint binderType) boundCtx (provenanceOf fun) origin (relevanceOf binder) binderType
-  return $ Arg p (markInserted $ visibilityOf binder) (relevanceOf binder) checkedExpr
+  return $ Arg (markInserted $ visibilityOf binder) (relevanceOf binder) checkedExpr
 
 --------------------------------------------------------------------------------
 -- Debug functions
