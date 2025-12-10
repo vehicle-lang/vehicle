@@ -9,7 +9,7 @@ import Vehicle.Syntax.AST.Decl
 import Vehicle.Syntax.AST.Expr
 import Vehicle.Syntax.AST.Name
 import Vehicle.Syntax.AST.Record
-import Vehicle.Syntax.AST.Prog
+import Vehicle.Syntax.AST.Module
 import Vehicle.Syntax.AST.Provenance
 import Vehicle.Syntax.AST.Relevance
 import Vehicle.Syntax.AST.Visibility

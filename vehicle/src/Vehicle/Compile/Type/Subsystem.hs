@@ -7,7 +7,8 @@ module Vehicle.Compile.Type.Subsystem
   )
 where
 
-import Control.Monad.Except (MonadError (..), MonadIO, runExcept, runExceptT)
+import Control.Monad.Except (MonadError (..), runExcept, runExceptT)
+import Control.Monad.IO.Class (MonadIO)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Set (Set)
 import Data.Set qualified as Set
