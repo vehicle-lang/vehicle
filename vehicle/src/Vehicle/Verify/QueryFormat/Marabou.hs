@@ -54,11 +54,11 @@ compileMarabouQuery address _metaNetwork _variables bounds assertions = do
 
   return $
     layoutAsText $
-      line
+      lineComment
+        <> line
         <> lineComment <+> "Assertions"
         <> line
         <> vsep assertionDocs
-        <> line
         <> line
         <> lineComment <+> "Input bounds"
         <> line
