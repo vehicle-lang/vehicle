@@ -26,8 +26,12 @@ import Vehicle.Data.Code.Interface.Args
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Tensor (Tensor, mapTensor)
 import Vehicle.Data.Variable.Bound.Context.Name
-import Vehicle.Prelude (Annotation (..), Doc, GenericArg (..), HasName (..), HasType (..), Identifier (..), Name, Provenance, explicit, indent, jsonOptions, line, mkExplicitBinder, resolutionError, squotes, userModulePath)
+import Vehicle.Prelude (Doc, GenericArg (..), HasName (..), HasType (..), Identifier (..), Name, Provenance, explicit, indent, jsonOptions, line, mkExplicitBinder, resolutionError, squotes, userModulePath)
 import Vehicle.Prelude.Logging.Class
+import Vehicle.Syntax.AST.Decl
+  ( DefFunctionSort (..),
+    FunctionDeclAnnotation (..),
+  )
 import Vehicle.Syntax.Prelude (developerError)
 
 --------------------------------------------------------------------------------
@@ -161,7 +165,6 @@ convertProg (S.Main decls) = Main <$> traverse convertDecl decls
 convertDecl :: (MonadJSON m) => S.Decl LossBuiltin -> m JDecl
 convertDecl = \case
   S.DefAbstract {} -> compilerDeveloperError "Found abstract definition when converting to JSON"
-  S.DefRecord {} -> compilerDeveloperError "Found record when converting to JSON"
   S.DefFunction p ident _ typ body -> do
     typ' <- convertType emptyBoundEnv typ
     expr' <- convertExpr emptyBoundEnv body
@@ -413,7 +416,8 @@ fromJDecl = \case
       typ' <- fromJType typ
       body' <- fromJExpr body
       let ident = Identifier userModulePath name
-      return $ S.DefFunction p ident [AnnProperty] typ' body'
+      let sort = FunctionDecl 0 (Just AnnProperty)
+      return $ S.DefFunction p ident sort typ' body'
 
 fromJType :: (MonadNameContext m) => JType -> m (S.Expr LossBuiltin)
 fromJType = \case

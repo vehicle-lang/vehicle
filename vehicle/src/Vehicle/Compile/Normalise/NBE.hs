@@ -33,7 +33,7 @@ import Vehicle.Data.Code.Value
 import Vehicle.Data.Variable.Bound.Context.Generic
 import Vehicle.Data.Variable.Bound.Context.Name.Class (MonadReadableNameContext (getNameContext))
 import Vehicle.Data.Variable.Bound.Context.Name.Core
-import Vehicle.Data.Variable.Free.Context.Class (MonadFreeContext (..), lookupIdentValue)
+import Vehicle.Data.Variable.Free.Context.Class (MonadFreeContext (..))
 import Vehicle.Data.Variable.Free.Context.Instance (runFreeContextT, runFreshFreeContextT)
 
 -- NOTE: there is no evaluatation to NF in this file. To do it
@@ -226,6 +226,15 @@ evalBuiltin ctx b spine
   | otherwise = do
       (inst, remainingArgs) <- findInstanceArg b spine
       evalApp ctx inst remainingArgs
+
+lookupIdentValue :: forall builtin m. (MonadFreeContext builtin m) => Identifier -> m (Value builtin)
+lookupIdentValue ident = do
+  decl <- getDeclEntry (Proxy @builtin) ident
+  return $ case decl of
+    -- This record check is kind of dodgy...
+    DefFunction _ _ sort _ value
+      | not (isDeclaredAsRecord sort) -> value
+    _ -> VFreeVar ident []
 
 findInstanceArg :: (MonadLogger m, Show op) => op -> [GenericArg a] -> m (a, [GenericArg a])
 findInstanceArg op = \case

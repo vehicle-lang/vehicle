@@ -4,6 +4,7 @@ module Vehicle.Data.Code.Value
     VType,
     VArg,
     VBinder,
+    VTelescope,
     VDecl,
     VModule,
     VProg,
@@ -74,7 +75,7 @@ data Value builtin
   | VBuiltin !builtin !(Spine builtin)
   | VLam !(VBinder builtin) !(Closure builtin)
   | VPi !(VBinder builtin) !(Closure builtin)
-  | VRecord Identifier !(OMap FieldName (Value builtin))
+  | VRecord (Maybe Identifier) !(OMap FieldName (Value builtin))
   | VRecordAcc !(Value builtin) !(Identifier, FieldName)
   deriving (Show, Generic, Eq, Ord)
 
@@ -83,6 +84,8 @@ type VType builtin = Value builtin
 type VArg builtin = GenericArg (Value builtin)
 
 type VBinder builtin = GenericBinder (Value builtin)
+
+type VTelescope builtin = GenericTelescope (Value builtin)
 
 type VDecl builtin = GenericDecl (Value builtin)
 

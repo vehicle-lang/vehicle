@@ -43,3 +43,8 @@ mapObject f WithContext {..} = WithContext {objectIn = f objectIn, ..}
 
 mapContextOf :: (ctx1 -> ctx2) -> Contextualised object ctx1 -> Contextualised object ctx2
 mapContextOf f WithContext {..} = WithContext {contextOf = f contextOf, ..}
+
+getTensorRecordFields :: Expr builtin -> RecordFields builtin
+getTensorRecordFields = \case
+  Record _ _ fields -> fields
+  _ -> developerError "Malformed tensor record definition"

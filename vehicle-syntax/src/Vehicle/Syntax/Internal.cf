@@ -78,7 +78,6 @@ DeclParam.     Decl ::= "(" "declare-parameter"      NameToken Expr1 ")";
 DeclImplParam. Decl ::= "(" "declare-impl-parameter" NameToken Expr1 ")";
 DeclPost.      Decl ::= "(" "declare-postulate"      NameToken Expr1 ")";
 DefFun.        Decl ::= "(" "define-fun"             NameToken Expr1 Expr1 ")";
-DefRecord.     Decl ::= "(" "define-record"          NameToken [RecordField] ")";
 
 separator Decl "";
 

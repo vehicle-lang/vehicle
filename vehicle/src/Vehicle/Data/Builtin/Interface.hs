@@ -2,7 +2,6 @@ module Vehicle.Data.Builtin.Interface where
 
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Tensor (Tensor)
-import Vehicle.Syntax.Sugar (BinderType)
 
 --------------------------------------------------------------------------------
 -- Interface to standard builtins
@@ -163,6 +162,3 @@ type HasStandardBuiltins builtin =
   ( BuiltinHasStandardTypes builtin,
     BuiltinHasStandardData builtin
   )
-
-class BuiltinHasBinders builtin where
-  getBuiltinBinder :: builtin -> Maybe BinderType

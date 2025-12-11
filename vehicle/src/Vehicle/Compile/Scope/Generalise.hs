@@ -19,9 +19,9 @@ import Vehicle.Syntax.AST.Expr qualified as S
 
 type GeneralisableVariable = (Provenance, Name)
 
-generaliseType :: (MonadScope m) => S.Expr -> m S.Expr
+generaliseType :: (MonadScopeExpr m) => S.Expr -> m S.Expr
 generaliseType expr = do
-  candidates <- execWriterT (runMonadScopeExprT (findGeneralisableVariables expr))
+  candidates <- execWriterT (findGeneralisableVariables expr)
   generaliseOverVariables (reverse candidates) expr
 
 findGeneralisableVariables :: (MonadScopeExpr m, MonadWriter [GeneralisableVariable] m) => S.Expr -> m ()

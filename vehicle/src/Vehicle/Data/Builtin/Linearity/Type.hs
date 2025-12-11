@@ -277,7 +277,7 @@ restrictLinearityRecordAnnotatedAsTensor ::
   forall m.
   (MonadTypeChecker LinearityBuiltin m) =>
   DeclProvenance ->
-  [RecordField (Type LinearityBuiltin)] ->
+  [GenericRecordField (Type LinearityBuiltin)] ->
   m ()
 restrictLinearityRecordAnnotatedAsTensor (_ident, _p) _fields =
   return ()

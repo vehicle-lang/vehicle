@@ -92,18 +92,17 @@ searchDecls = \case
 
 searchDecl :: (MonadList m, MonadSupply PropertyID m) => VDecl Builtin -> m ()
 searchDecl decl = do
-  let sharedData = mkSharedData (provenanceOf decl) (nameOf decl) decl
+  let sharedData = mkSharedData (provenanceOf decl) (nameOf decl)
   case decl of
-    DefRecord {} -> return ()
-    DefAbstract _ _ sort _ -> case sort of
-      NetworkDef -> tell [Network $ NetworkSummary sharedData]
-      DatasetDef -> tell [Dataset $ DatasetSummary sharedData]
-      ParameterDef s -> tell [Parameter $ ParameterSummary sharedData (isInferable s)]
+    DefAbstract _ _ sort t -> case sort of
+      NetworkDef -> tell [Network $ NetworkSummary (sharedData t)]
+      DatasetDef -> tell [Dataset $ DatasetSummary (sharedData t)]
+      ParameterDef s -> tell [Parameter $ ParameterSummary (sharedData t) (isInferable s)]
       BuiltinDef -> return ()
-    DefFunction _ _ anns typ body
-      | AnnProperty `notElem` anns -> return ()
+    DefFunction _ _ sort typ body
+      | not $ isAnnotatedAsProperty sort -> return ()
       | otherwise -> do
-          entity <- searchPropertyDecl (identifierOf decl, provenanceOf decl) sharedData typ body
+          entity <- searchPropertyDecl (identifierOf decl, provenanceOf decl) (sharedData typ) typ body
           tell [entity]
 
 searchPropertyDecl :: (MonadList m, MonadSupply PropertyID m) => DeclProvenance -> SharedData -> VType Builtin -> Value Builtin -> m ListableEntity
@@ -160,7 +159,7 @@ searchBuiltinForQuantifier :: (MonadListProperty m) => Value Builtin -> m ()
 searchBuiltinForQuantifier value = case getExpr (accessQuantifyRatTensor @Value @Builtin @Closure) value of
   Just (q, args) -> do
     let (name, p) = getNamedBinderInfo (quantifyBinder args)
-    let sharedData = mkSharedData p name (quantifyBinder args)
+    let sharedData = mkSharedData p name (typeOf $ quantifyBinder args)
     tell [QuantifiedVariableSummary sharedData q]
   _ -> return ()
 
@@ -190,16 +189,14 @@ data SharedData = SharedData
 instance ToJSON SharedData
 
 mkSharedData ::
-  ( HasType entity (Value Builtin)
-  ) =>
   Provenance ->
   Name ->
-  entity ->
+  VType Builtin ->
   SharedData
-mkSharedData p name entity =
+mkSharedData p name entityType =
   SharedData
     { name = name,
-      typeText = pack $ show $ prettyFriendlyEmptyCtx (typeOf entity),
+      typeText = pack $ show $ prettyFriendlyEmptyCtx entityType,
       provenance = p
     }
 

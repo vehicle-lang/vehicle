@@ -67,7 +67,7 @@ instance CapitaliseTypes (Expr DecidabilityBuiltin) where
     BoundVar p v -> return $ BoundVar p v
     FreeVar p ident -> FreeVar p <$> capitaliseIdentifierIfType ident
     Record p ident fields -> do
-      ident' <- capitaliseIdentifierIfType ident
+      ident' <- traverse capitaliseIdentifierIfType ident
       Record p ident' <$> traverseRecordFields cap fields
     RecordAcc p record (ident, field) -> do
       ident' <- capitaliseIdentifierIfType ident

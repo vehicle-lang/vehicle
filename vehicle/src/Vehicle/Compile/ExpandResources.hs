@@ -46,8 +46,10 @@ expandResources resources prog =
     return (finalProg, networkCtx, integrityInfo, missingResources, uninferableParameters)
 
 mkFunctionDefFromResource :: Provenance -> Identifier -> Type Builtin -> Value Builtin -> Decl Builtin
-mkFunctionDefFromResource p ident typ normValue =
-  DefFunction p ident mempty typ $ unnormalise 0 normValue
+mkFunctionDefFromResource p ident typ normValue = do
+  let sort = FunctionDecl 0 Nothing
+  let body = unnormalise 0 normValue
+  DefFunction p ident sort typ body
 
 --------------------------------------------------------------------------------
 -- 1st pass - reading in resources

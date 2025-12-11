@@ -100,17 +100,18 @@ convertLogicDecl ::
   DifferentiableLogicID ->
   VDecl Builtin ->
   m ()
-convertLogicDecl logicID decl = case decl of
-  DefFunction p ident _ann _typ body
-    | isLogicDecl decl -> do
-        if nameOf logicID /= nameOf ident
-          then registerUnmatchedLogic ident
-          else case body of
-            VRecord _ fields -> do
-              logic <- compileLogic logicID decl fields
-              registerMatchedLogic logic
-            _ -> throwError $ UnreducableDifferentiableLogic (ident, p)
-  _ -> return ()
+convertLogicDecl logicID decl =
+  case decl of
+    DefFunction p ident _ann _typ body
+      | isLogicDecl decl -> do
+          if nameOf logicID /= nameOf ident
+            then registerUnmatchedLogic ident
+            else case body of
+              VRecord _ fields -> do
+                logic <- compileLogic logicID decl fields
+                registerMatchedLogic logic
+              _ -> throwError $ UnreducableDifferentiableLogic (ident, p)
+    _ -> return ()
 
 -- | Compiles a differentiable logic from the DSL over booleans to normalised
 -- values over tensors that are suitable for substitution.

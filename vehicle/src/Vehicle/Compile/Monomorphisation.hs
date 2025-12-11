@@ -150,7 +150,6 @@ handleUsedDecl applications decl = do
       let createNewName = numberOfApplications > 1 || ident `Set.member` allFreeVarsInArgs
       traverse (performMonomorphisation (p, ident, anns, typ, body) createNewName) monomorphisations
     DefAbstract {} -> noMonomorphisation
-    DefRecord {} -> noMonomorphisation
 
 handleUnusedDecl ::
   (MonadCollect builtin m) =>
@@ -193,18 +192,18 @@ calculateMonomorphisations declType allApplications = do
 
 performMonomorphisation ::
   (MonadCollect builtin m) =>
-  (Provenance, Identifier, [Annotation], Type builtin, Expr builtin) ->
+  (Provenance, Identifier, DefFunctionSort, Type builtin, Expr builtin) ->
   Bool ->
   [Arg builtin] ->
   m (Decl builtin)
-performMonomorphisation (p, ident, anns, typ, body) createNewName args = do
+performMonomorphisation (p, ident, sort, typ, body) createNewName args = do
   newIdent <-
     if createNewName
       then changeName ident <$> getMonomorphisedName (nameOf ident) args
       else return ident
   (newType, newBody) <- substituteArgsThrough (typ, body, args)
   tell (Map.singleton ident (typ, HashMap.singleton args newIdent))
-  let newDecl = DefFunction p newIdent anns newType newBody
+  let newDecl = DefFunction p newIdent sort newType newBody
   logDebug MaxDetail $ "Result:" <> lineIndent (prettyFriendly newDecl)
   return newDecl
 

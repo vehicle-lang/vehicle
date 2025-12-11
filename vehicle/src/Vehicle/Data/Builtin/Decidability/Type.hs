@@ -303,7 +303,7 @@ restrictDecidabilityRecordAnnotatedAsTensor ::
   forall m.
   (MonadTypeChecker DecidabilityBuiltin m) =>
   DeclProvenance ->
-  [RecordField (Type DecidabilityBuiltin)] ->
+  [GenericRecordField (Type DecidabilityBuiltin)] ->
   m ()
 restrictDecidabilityRecordAnnotatedAsTensor (_ident, _p) _fields =
   return ()
