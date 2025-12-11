@@ -81,6 +81,7 @@ instance NoThunks Module
 instance NoThunks Identifier
 
 -- Vehicle.Syntax.AST.Module
+instance NoThunks ImportStatement
 instance NoThunks expr => NoThunks (GenericModule expr)
 
 -- Vehicle.Syntax.AST.Provenance

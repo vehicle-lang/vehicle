@@ -6,9 +6,11 @@ module Vehicle.TypeCheck
   )
 where
 
+import Control.Monad (forM, when)
 import Control.Monad.Except (ExceptT, MonadError (..))
+import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Reader (MonadReader (..), ReaderT (..), asks)
-import Control.Monad.State
+import Control.Monad.State (MonadState (..), StateT (..), gets, modify)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
