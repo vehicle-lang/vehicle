@@ -77,7 +77,7 @@ instance NoThunks Annotation
 instance NoThunks Expr
 
 -- Vehicle.Syntax.AST.Name
-instance NoThunks Module
+instance NoThunks ModulePath
 instance NoThunks Identifier
 
 -- Vehicle.Syntax.AST.Module
