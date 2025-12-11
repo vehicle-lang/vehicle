@@ -14,6 +14,7 @@ import Vehicle.Compile.Type.Monad (MonadTypeChecker)
 import Vehicle.Compile.Type.Monad.Class (substMetaVariables)
 import Vehicle.Compile.Type.System
 import Vehicle.Data.Builtin.Core
+import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin)
 import Vehicle.Data.Builtin.Linearity
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Variable.Bound.Context.Generic
@@ -44,7 +45,8 @@ pattern VLinearityExpr l <- VBuiltin (Linearity l) []
     VLinearityExpr l = VBuiltin (Linearity l) []
 
 type MonadLinearitySolver m =
-  ( MonadTypeChecker LinearityBuiltin m
+  ( MonadTypeChecker LinearityBuiltin m,
+    TypableBuiltin LinearityBuiltin
   )
 
 type LinearitySolver =

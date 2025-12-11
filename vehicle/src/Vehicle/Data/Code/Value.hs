@@ -5,6 +5,7 @@ module Vehicle.Data.Code.Value
     VArg,
     VBinder,
     VDecl,
+    VModule,
     VProg,
     VDims,
     Spine,
@@ -85,7 +86,9 @@ type VBinder builtin = GenericBinder (Value builtin)
 
 type VDecl builtin = GenericDecl (Value builtin)
 
-type VProg builtin = GenericProg (Value builtin)
+type VModule builtin = GenericModule (Value builtin)
+
+type VProg builtin = GenericModule (Value builtin)
 
 type VDims builtin = Value builtin
 
@@ -198,7 +201,7 @@ boundContextToEnv ctx = BoundEnv $ do
 namedBoundContextToEnv :: NamedBoundCtx -> BoundEnv builtin
 namedBoundContextToEnv ctx = BoundEnv $ do
   let numberedCtx = zip ctx (reverse [0 .. Lv (length ctx - 1)])
-  fmap (bimap (\n -> mkExplicitBinder () ((mempty,) <$> n)) Unbound) numberedCtx
+  fmap (bimap (\n -> mkExplicitBinder () (fmap (mempty,) n)) Unbound) numberedCtx
 
 boundEnvToCtx :: BoundEnv builtin -> NamedBoundCtx
 boundEnvToCtx (BoundEnv env) = toNamedBoundCtx (fmap fst env)
@@ -279,5 +282,5 @@ instance HasLambdaConstructor Value Closure where
       { getExpr = \case
           VLam binder closure -> Just (binder, closure)
           _ -> Nothing,
-        mkExpr = \(binder, closure) -> VLam binder closure
+        mkExpr = uncurry VLam
       }

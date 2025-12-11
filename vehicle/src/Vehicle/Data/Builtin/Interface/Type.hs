@@ -1,19 +1,19 @@
 module Vehicle.Data.Builtin.Interface.Type where
 
 import Data.Proxy (Proxy)
+import Vehicle.Compile.Type.Monad.Class (MonadTypeChecker)
 import Vehicle.Data.Builtin.Interface
-import Vehicle.Data.Builtin.Interface.Print
+import Vehicle.Data.Builtin.Interface.Normalise (NormalisableBuiltin)
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.Code.Expr (Type)
 import Vehicle.Data.DSL
-import Vehicle.Data.Variable.Free.Context (MonadFreeContext)
 import Vehicle.Prelude (Provenance, Relevance (..))
 import Prelude hiding (iterate)
 
-class (PrintableBuiltin builtin) => TypableBuiltin builtin where
+class (NormalisableBuiltin builtin, Ord builtin) => TypableBuiltin builtin where
   -- | Construct a type for the builtin
-  typeBuiltin :: (MonadFreeContext builtin m) => Provenance -> builtin -> m (Type builtin)
+  typeBuiltin :: (MonadTypeChecker builtin m) => Provenance -> builtin -> m (Type builtin)
 
   -- | Can meta variables depend on other values in the scope?
   -- Efficiency hack for polarity/linearity subsystems.

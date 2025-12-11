@@ -1,57 +1,70 @@
-module Vehicle.Compile.Scope.Core where
+module Vehicle.Compile.Scope.Core
+  ( MonadScope,
+    ModuleInterface,
+    runMonadScopeT,
+    addNewDecl,
+    addNewRecordDef,
+    addNewRecordDefField,
+    isScopingBuiltinModule,
+    MonadScopeExpr,
+    runMonadScopeExprT,
+    addBinder,
+    lookupRecordDefinitionByField,
+    lookupRecordDefinitionByFields,
+    lookupVariable,
+    lookupMaybeVariable,
+    mispellingsSortedByLikelihood,
+  )
+where
 
 import Control.Monad.Except (MonadError (..))
-import Control.Monad.Reader (MonadReader (..), ReaderT, runReaderT)
-import Control.Monad.State (MonadState (..), StateT, evalStateT, gets)
+import Control.Monad.Reader (MonadReader (..), ReaderT, asks, runReaderT)
+import Control.Monad.State (MonadState (..), StateT (..))
 import Data.Bifunctor (Bifunctor (..))
 import Data.Foldable (maximumBy)
-import Data.List (elemIndex, sortOn)
+import Data.List (elemIndex)
 import Data.List qualified as List
-import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Maybe (catMaybes, mapMaybe)
+import Data.Maybe (catMaybes)
 import Data.Ord (comparing)
 import Data.Set (Set)
 import Data.Set qualified as Set
-import Data.Text qualified as Text
-import Text.EditDistance
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
+import Vehicle.Data.Builtin.Standard.Core
+import Vehicle.Data.Code.ModuleInterface
+import Vehicle.Libraries.StandardLibrary (isBuiltinModule)
 
 --------------------------------------------------------------------------------
 -- Scope checking over declarations
 
-data DeclCtx = DeclCtx
-  { recordIdentifiersByField :: Map FieldName Identifier,
-    recordIdentifiersByFields :: Map (Set FieldName) Identifier,
-    fieldsByRecordIdentifier :: Map Identifier (Set FieldName),
-    declsIdentifiersByName :: Map Name Identifier
-  }
-
-emptyDeclCtx :: DeclCtx
-emptyDeclCtx = DeclCtx mempty mempty mempty mempty
-
 type MonadScope m =
   ( MonadCompile m,
-    MonadState DeclCtx m
+    MonadReader (ModulePath, ImportedModuleContext Builtin) m,
+    MonadState ModuleScopingInterface m
   )
 
-runMonadScopeT :: (MonadCompile m) => StateT DeclCtx m a -> m a
-runMonadScopeT = flip evalStateT emptyDeclCtx
+runMonadScopeT ::
+  (MonadCompile m) =>
+  ModulePath ->
+  ImportedModuleContext Builtin ->
+  ReaderT (ModulePath, ImportedModuleContext Builtin) (StateT ModuleScopingInterface m) a ->
+  m (a, ModuleScopingInterface)
+runMonadScopeT modulePath importedCtx action = do
+  runStateT (runReaderT action (modulePath, importedCtx)) emptyModuleScopingInterface
 
 -- | Called when parsing a record definition field-by-field so that
 -- earlier fields are in scope for later fields.
-addNewRecordDefField :: (MonadScope m) => Identifier -> FieldName -> m ()
+addNewRecordDefField :: (MonadState ModuleScopingInterface m, MonadCompile m) => Identifier -> FieldName -> m ()
 addNewRecordDefField ident newField = do
-  DeclCtx {..} <- get
-
+  ModuleScopingInterface {..} <- get
   case Map.lookup newField recordIdentifiersByField of
     Nothing -> return ()
     Just existingIdentifier ->
       throwError $ DeclarationDeclarationShadowing (provenanceOf newField) (Left newField) existingIdentifier
 
   put $
-    DeclCtx
+    ModuleScopingInterface
       { recordIdentifiersByField = Map.insert newField ident recordIdentifiersByField,
         ..
       }
@@ -59,77 +72,70 @@ addNewRecordDefField ident newField = do
 -- | Called when finishing parsing a record definition so that we can add
 -- the information necessary to do efficient parsing of instances of that
 -- record.
-addNewRecordDef :: (MonadScope m) => Identifier -> [FieldName] -> m ()
+addNewRecordDef :: (MonadState ModuleScopingInterface m) => Identifier -> [FieldName] -> m ()
 addNewRecordDef ident fields = do
-  DeclCtx {..} <- get
+  ModuleScopingInterface {..} <- get
   let fieldSet = Set.fromList fields
   put $
-    DeclCtx
+    ModuleScopingInterface
       { recordIdentifiersByFields = Map.insert fieldSet ident recordIdentifiersByFields,
         fieldsByRecordIdentifier = Map.insert ident fieldSet fieldsByRecordIdentifier,
         ..
       }
 
-addNewDecl :: (MonadScope m, HasProvenance decl, HasIdentifier decl) => decl -> m ()
+addNewDecl :: (MonadScope m) => Decl builtin -> m ()
 addNewDecl decl = do
-  DeclCtx {..} <- get
+  ModuleScopingInterface {..} <- get
   let ident = identifierOf decl
   let name = nameOf ident
-
   case Map.lookup name declsIdentifiersByName of
     Nothing -> return ()
     Just existingIdent ->
       throwError $ DeclarationDeclarationShadowing (provenanceOf decl) (Right name) existingIdent
 
   put $
-    DeclCtx
+    ModuleScopingInterface
       { declsIdentifiersByName = Map.insert name ident declsIdentifiersByName,
         ..
       }
 
-lookupFreeVariable :: (MonadScope m) => Name -> m (Maybe Identifier)
-lookupFreeVariable name = do
-  DeclCtx {..} <- get
-  return $ Map.lookup name declsIdentifiersByName
-
-lookupRecordDefinitionByField :: (MonadScopeExpr m) => FieldName -> m Identifier
-lookupRecordDefinitionByField field = do
-  DeclCtx {..} <- get
-  case Map.lookup field recordIdentifiersByField of
-    Just definitionIdent -> return definitionIdent
-    Nothing -> do
-      let fieldName = nameOf field
-      fields <- getFieldsInScope
-      let suggestions = mispellingsSortedByLikelihood fieldName (fmap nameOf fields)
-      throwError $ UnboundRecordAccessor (provenanceOf field) fieldName suggestions
-
-lookupRecordDefinitionByFields :: (MonadScopeExpr m) => Provenance -> [FieldName] -> m Identifier
-lookupRecordDefinitionByFields p fields = do
-  DeclCtx {..} <- get
-  case Map.lookup (Set.fromList fields) recordIdentifiersByFields of
-    Just ident -> return ident
-    Nothing -> do
-      let bestMatch = findBestRecordMatch fields (Map.toList fieldsByRecordIdentifier)
-      throwError $ UnmatchedRecord p fields bestMatch
-
-getFieldsInScope :: (MonadScope m) => m [FieldName]
-getFieldsInScope = gets $ Map.keys . recordIdentifiersByField
-
 --------------------------------------------------------------------------------
 -- Scope checking over expressions
 
-type LocalCtx = [Maybe Name]
-
-emptyLocalCtx :: LocalCtx
-emptyLocalCtx = mempty
+data LocalCtx = LocalCtx
+  { currentModulePath :: ModulePath,
+    importedCtx :: ImportedModuleContext Builtin,
+    currentModuleCtx :: ModuleScopingInterface,
+    boundCtx :: [Maybe Name]
+  }
 
 type MonadScopeExpr m =
-  ( MonadScope m,
+  ( MonadCompile m,
+    MonadState ModuleScopingInterface m,
     MonadReader LocalCtx m
   )
 
+lookupInNonLocalCtx :: (MonadScopeExpr m) => (ModuleScopingInterface -> Maybe a) -> m (Maybe a)
+lookupInNonLocalCtx lookupValue = do
+  LocalCtx {..} <- ask
+  return $ lookupInCombinedContext scopingInterface lookupValue currentModuleCtx importedCtx
+
+concatInNonLocalCtx :: (MonadScopeExpr m, Monoid a) => (ModuleScopingInterface -> a) -> m a
+concatInNonLocalCtx lookupValue = do
+  LocalCtx {..} <- ask
+  return $ concatInCombinedContext scopingInterface lookupValue currentModuleCtx importedCtx
+
 runMonadScopeExprT :: (MonadScope m) => ReaderT LocalCtx m a -> m a
-runMonadScopeExprT = flip runReaderT emptyLocalCtx
+runMonadScopeExprT action = do
+  (modulePath, importedCtx) <- ask
+  currentCtx <- get
+  runReaderT action $
+    LocalCtx
+      { currentModulePath = modulePath,
+        importedCtx = importedCtx,
+        currentModuleCtx = currentCtx,
+        boundCtx = mempty
+      }
 
 addBinder :: (MonadScopeExpr m, HasProvenance binder, HasName binder (Maybe Name)) => binder -> m a -> m a
 addBinder binder continuation = do
@@ -146,24 +152,68 @@ addBinder binder continuation = do
           throwError $ DeclarationBoundShadowing (provenanceOf binder) name
         Nothing -> return ()
 
-  local (maybeName :) continuation
+  flip local continuation $ \LocalCtx {..} ->
+    LocalCtx
+      { boundCtx = maybeName : boundCtx,
+        ..
+      }
 
-lookupVariable :: (MonadScopeExpr m) => Name -> m (Maybe (Either Identifier Ix))
-lookupVariable name = do
+lookupVariable :: (MonadScopeExpr m) => Provenance -> Name -> m (Either Identifier Ix)
+lookupVariable p name = do
+  maybeResult <- lookupMaybeVariable name
+  case maybeResult of
+    Just result -> return result
+    Nothing -> do
+      nonLocalNames <- concatInNonLocalCtx (Map.keys . declsIdentifiersByName)
+      localNames <- asks (catMaybes . boundCtx)
+      let closestMatches = mispellingsSortedByLikelihood name (localNames <> nonLocalNames)
+      throwError $ UnboundName p name closestMatches
+
+lookupMaybeVariable :: (MonadScopeExpr m) => Name -> m (Maybe (Either Identifier Ix))
+lookupMaybeVariable name = do
   maybeFreeVar <- lookupFreeVariable name
   case maybeFreeVar of
     Just ident -> return $ Just $ Left ident
     Nothing -> do
-      boundCtx <- ask
-      case elemIndex (Just name) boundCtx of
-        Just i -> return $ Just $ Right $ Ix i
+      maybeIx <- lookupBoundVariable name
+      case maybeIx of
+        Just ix -> return $ Just $ Right ix
         Nothing -> return Nothing
 
-getAllNamesInScope :: (MonadScopeExpr m) => m [Name]
-getAllNamesInScope = do
-  DeclCtx {..} <- get
-  localCtx <- ask
-  return $ catMaybes localCtx <> Map.keys declsIdentifiersByName
+lookupFreeVariable :: (MonadScopeExpr m) => Name -> m (Maybe Identifier)
+lookupFreeVariable name = do
+  LocalCtx {..} <- ask
+  return $ lookupInCombinedContext scopingInterface (Map.lookup name . declsIdentifiersByName) currentModuleCtx importedCtx
+
+lookupBoundVariable :: (MonadScopeExpr m) => Name -> m (Maybe Ix)
+lookupBoundVariable name = do
+  boundCtx <- asks boundCtx
+  return (Ix <$> elemIndex (Just name) boundCtx)
+
+lookupRecordDefinitionByField :: (MonadScopeExpr m) => FieldName -> m Identifier
+lookupRecordDefinitionByField field = do
+  maybeResult <- lookupInNonLocalCtx (Map.lookup field . recordIdentifiersByField)
+  case maybeResult of
+    Just definitionIdent -> return definitionIdent
+    Nothing -> do
+      allFieldsInScope <- concatInNonLocalCtx (Map.keys . recordIdentifiersByField)
+      let fieldName = nameOf field
+      let suggestions = mispellingsSortedByLikelihood fieldName (fmap nameOf allFieldsInScope)
+      throwError $ UnboundRecordAccessor (provenanceOf field) fieldName suggestions
+
+lookupRecordDefinitionByFields :: (MonadScopeExpr m) => Provenance -> [FieldName] -> m Identifier
+lookupRecordDefinitionByFields p fields = do
+  let fieldSet = Set.fromList fields
+  maybeResult <- lookupInNonLocalCtx (Map.lookup fieldSet . recordIdentifiersByFields)
+  case maybeResult of
+    Just ident -> return ident
+    Nothing -> do
+      allFieldsByIdentifier <- concatInNonLocalCtx (Map.toList . fieldsByRecordIdentifier)
+      let bestMatch = findBestRecordMatch fields allFieldsByIdentifier
+      throwError $ UnmatchedRecord p fields bestMatch
+
+isScopingBuiltinModule :: (MonadScopeExpr m) => m Bool
+isScopingBuiltinModule = asks $ isBuiltinModule . currentModulePath
 
 --------------------------------------------------------------------------------
 -- Utility functions
@@ -222,17 +272,3 @@ calculateMatch recordFields actualFields = do
             extraFields = extraFields,
             ..
           }
-
-mispellingsSortedByLikelihood :: (HasName object Name) => object -> [object] -> [object]
-mispellingsSortedByLikelihood symbol possibilities = do
-  let scoredPossibilities = mapMaybe (symbol `isMispellingOf`) possibilities
-  let finalPossibilities = sortOn snd scoredPossibilities
-  fmap fst finalPossibilities
-
-isMispellingOf :: (HasName object Name) => object -> object -> Maybe (object, Int)
-isMispellingOf symbol possibility = do
-  let fieldName = Text.unpack $ nameOf symbol
-  let distance = levenshteinDistance defaultEditCosts fieldName (Text.unpack $ nameOf possibility)
-  if distance <= length fieldName `div` 2
-    then Just (possibility, distance)
-    else Nothing

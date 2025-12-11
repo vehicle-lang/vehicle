@@ -22,7 +22,7 @@ class Simplify a where
   -- | Shortens vectors
   shortenVec :: a -> a
 
-instance Simplify Prog where
+instance Simplify Module where
   clean = fmap clean
   shortenVec = fmap shortenVec
 

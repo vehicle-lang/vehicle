@@ -59,9 +59,9 @@ instance Pretty Resources where
   pretty Resources {..} =
     vsep
       ( [ "specification:" <+> pretty specification,
-          "networks" <> lineIndent (prettyMap networks),
-          "datasets" <> lineIndent (prettyMap datasets),
-          "parameters" <> lineIndent (prettyMap parameters)
+          "networks" <> lineIndent (prettyMap pretty pretty networks),
+          "datasets" <> lineIndent (prettyMap pretty pretty datasets),
+          "parameters" <> lineIndent (prettyMap pretty pretty parameters)
         ] ::
           [Doc ann]
       )
@@ -172,9 +172,9 @@ generateResourcesIntegrityInfo Resources {..} = do
       }
 
 data ResourceIntegrityStatus
-  = Unchanged
-  | Altered
-  | Missing
+  = ResourceUnchanged
+  | ResourceAltered
+  | ResourceMissing
 
 checkResourceIntegrity :: (MonadIO m) => ResourceIntegrityInfo -> m ResourceIntegrityStatus
 checkResourceIntegrity ResourceIntegrityInfo {..} = do
@@ -185,10 +185,10 @@ checkResourceIntegrity ResourceIntegrityInfo {..} = do
         (const $ return Nothing)
 
   return $ case maybeNewHash of
-    Nothing -> Missing
+    Nothing -> ResourceMissing
     Just newFileHash
-      | fileHash /= newFileHash -> Altered
-      | otherwise -> Unchanged
+      | fileHash /= newFileHash -> ResourceAltered
+      | otherwise -> ResourceUnchanged
 
 checkResourcesIntegrity ::
   (MonadIO m) =>
@@ -200,9 +200,9 @@ checkResourcesIntegrity = \case
     (missing, altered) <- checkResourcesIntegrity rs
     resourceStatus <- liftIO (checkResourceIntegrity r)
     return $ case resourceStatus of
-      Unchanged -> (missing, altered)
-      Altered -> (missing, r : altered)
-      Missing -> (r : missing, altered)
+      ResourceUnchanged -> (missing, altered)
+      ResourceAltered -> (missing, r : altered)
+      ResourceMissing -> (r : missing, altered)
 
 checkIntegrityOfResources ::
   (MonadIO m) =>

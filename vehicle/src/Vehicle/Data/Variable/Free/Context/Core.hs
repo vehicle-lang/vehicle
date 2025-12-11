@@ -3,7 +3,6 @@ module Vehicle.Data.Variable.Free.Context.Core where
 import Data.Map (Map)
 import Data.Map qualified as Map (lookup)
 import GHC.Stack (HasCallStack)
-import Vehicle.Data.Code.Expr (Decl)
 import Vehicle.Data.Code.Value
 import Vehicle.Prelude
 
@@ -12,8 +11,7 @@ import Vehicle.Prelude
 type GenericFreeCtx a = Map Identifier a
 
 type FreeCtxEntry builtin =
-  ( Decl builtin,
-    VDecl builtin
+  ( VDecl builtin
   )
 
 type FreeCtx builtin = GenericFreeCtx (FreeCtxEntry builtin)
@@ -25,9 +23,7 @@ lookupInFreeCtx ident ctx = case Map.lookup ident ctx of
   Nothing -> internalScopingError $ pretty ident
   Just x -> x
 
-lookupIdentValueInEnv :: (HasCallStack) => FreeEnv builtin -> Identifier -> Value builtin
-lookupIdentValueInEnv freeEnv ident = do
-  let decl = lookupInFreeCtx ident freeEnv
-  case bodyOf decl of
-    Just value -> value
-    _ -> VFreeVar ident []
+-- | Looks up the declaration associated the provided `Identifier`, throwing
+-- an error if that identifier is out of scope.
+lookupInFreeCtxMaybe :: (HasCallStack) => Identifier -> GenericFreeCtx a -> Maybe a
+lookupInFreeCtxMaybe = Map.lookup

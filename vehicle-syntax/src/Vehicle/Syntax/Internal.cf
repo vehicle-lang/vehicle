@@ -84,4 +84,4 @@ separator Decl "";
 
 -- * Program
 
-Main. Prog ::= "(" [Decl] ")";
+Main. Module ::= "(" [Decl] ")";

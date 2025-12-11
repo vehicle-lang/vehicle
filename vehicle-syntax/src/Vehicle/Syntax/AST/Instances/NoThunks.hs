@@ -9,7 +9,7 @@ import Vehicle.Syntax.AST.Decl
 import Vehicle.Syntax.AST.Expr
 import Vehicle.Syntax.AST.Name
 import Vehicle.Syntax.AST.Record
-import Vehicle.Syntax.AST.Prog
+import Vehicle.Syntax.AST.Module
 import Vehicle.Syntax.AST.Provenance
 import Vehicle.Syntax.AST.Relevance
 import Vehicle.Syntax.AST.Visibility
@@ -77,11 +77,12 @@ instance NoThunks Annotation
 instance NoThunks Expr
 
 -- Vehicle.Syntax.AST.Name
-instance NoThunks Module
+instance NoThunks ModulePath
 instance NoThunks Identifier
 
--- Vehicle.Syntax.AST.Prog
-instance NoThunks expr => NoThunks (GenericProg expr)
+-- Vehicle.Syntax.AST.Module
+instance NoThunks ImportStatement
+instance NoThunks expr => NoThunks (GenericModule expr)
 
 -- Vehicle.Syntax.AST.Provenance
 instance NoThunks Position

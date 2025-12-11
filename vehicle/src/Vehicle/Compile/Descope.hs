@@ -22,13 +22,13 @@ import Vehicle.Syntax.AST.Expr qualified as S
 --------------------------------------------------------------------------------
 -- Interface
 
-descopeExpr :: (PrintableBuiltin builtin) => Expr builtin -> NamedBoundCtx -> S.Expr
-descopeExpr e ctx =
+descopeExpr :: (PrintableBuiltin builtin) => NamedBoundCtx -> Expr builtin -> S.Expr
+descopeExpr ctx e =
   runNameBoundContext ctx $
     genericDescopeExpr (ixToName Named) (convertExprBuiltins e)
 
 descopeExprInEmptyCtx :: (PrintableBuiltin builtin) => Expr builtin -> S.Expr
-descopeExprInEmptyCtx e = descopeExpr e mempty
+descopeExprInEmptyCtx e = descopeExpr mempty e
 
 descopeExprNaively :: (PrintableBuiltin builtin) => Expr builtin -> S.Expr
 descopeExprNaively e = do

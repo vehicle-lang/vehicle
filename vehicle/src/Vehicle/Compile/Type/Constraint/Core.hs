@@ -11,8 +11,7 @@ module Vehicle.Compile.Type.Constraint.Core
 where
 
 import Data.Bifunctor (Bifunctor (..))
-import Data.HashMap.Strict (HashMap, fromListWith, mapMaybeWithKey)
-import Data.Hashable (Hashable)
+import Data.Map (fromListWith, mapMaybeWithKey)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE (eval)
 import Vehicle.Compile.Prelude
@@ -21,6 +20,7 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Variable
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Monad.Class
+import Vehicle.Data.Builtin.Interface.Normalise (NormalisableBuiltin)
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Code.Value
 import Vehicle.Data.DSL
@@ -76,12 +76,12 @@ mkCandidate (expr, solution, defaultInstance) = do
   let solution' = fromDSL p solution
   InstanceCandidate expr' solution' defaultInstance
 
-makeInstanceDatabase :: (PrintableBuiltin builtin, Hashable builtin) => [InstanceCandidate builtin] -> HashMap builtin InstanceSearchDepth -> InstanceDatabase builtin
-makeInstanceDatabase allInstances searchDepth = do
+makeInstanceDatabase :: (PrintableBuiltin builtin, Ord builtin) => [InstanceCandidate builtin] -> InstanceDatabase builtin
+makeInstanceDatabase allInstances = do
   let tcAndCandidates = fmap (second (: []) . extractHeadFromInstanceCandidate) allInstances
   let instances = fromListWith (<>) tcAndCandidates
   let defaults = mapMaybeWithKey findDefault instances
-  InstanceDatabase instances defaults searchDepth
+  InstanceDatabase instances defaults
   where
     findDefault :: (Pretty builtin) => builtin -> [InstanceCandidate builtin] -> Maybe (InstanceCandidate builtin)
     findDefault b instances = do
@@ -93,7 +93,7 @@ makeInstanceDatabase allInstances searchDepth = do
 
 instantiateInstanceConstraintSolution ::
   forall builtin m.
-  (MonadTypeChecker builtin m) =>
+  (MonadTypeChecker builtin m, NormalisableBuiltin builtin) =>
   WithContext (InstanceConstraint builtin) ->
   Expr builtin ->
   m ()

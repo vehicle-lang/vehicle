@@ -7,13 +7,12 @@ module Vehicle.Data.Code.Expr
     Arg,
     Telescope,
     Decl,
-    Prog,
+    Module,
     normAppList,
     normApp,
     isTypeSynonym,
     mkHole,
     pattern TypeUniverse,
-    pattern BuiltinExpr,
     BuiltinUpdate,
     traverseBuiltinsM,
     mapBuiltins,
@@ -26,6 +25,7 @@ module Vehicle.Data.Code.Expr
     liftDBIndices,
     Substitution,
     substituteDB,
+    getBuiltinApp,
   )
 where
 
@@ -150,11 +150,11 @@ type Binder builtin = GenericBinder (Expr builtin)
 
 type Arg builtin = GenericArg (Expr builtin)
 
-type Telescope builtin = [Binder builtin]
+type Telescope builtin = GenericTelescope (Expr builtin)
 
 type Decl builtin = GenericDecl (Expr builtin)
 
-type Prog builtin = GenericProg (Expr builtin)
+type Module builtin = GenericModule (Expr builtin)
 
 --------------------------------------------------------------------------------
 -- Instances
@@ -194,15 +194,6 @@ isTypeSynonym = \case
 
 pattern TypeUniverse :: Provenance -> Int -> Expr builtin
 pattern TypeUniverse p l = Universe p (UniverseLevel l)
-
-pattern BuiltinExpr ::
-  Provenance ->
-  builtin ->
-  NonEmpty (Arg builtin) ->
-  Expr builtin
-pattern BuiltinExpr p b args <- App (Builtin p b) args
-  where
-    BuiltinExpr p b args = App (Builtin p b) args
 
 getBuiltinApp :: Expr builtin -> Maybe (builtin, [Arg builtin])
 getBuiltinApp = \case
@@ -326,7 +317,10 @@ instance (BuiltinHasBinders builtin) => HasBinders (Expr builtin) where
   getBinder = \case
     Pi _ binder body -> Just (PiBinder, binder, body)
     Lam _ binder body -> Just (LamBinder, binder, body)
-    BuiltinExpr _ (getBuiltinBinder -> Just b) (NonEmpty.last -> (argExpr -> Lam _ binder body)) -> Just (b, binder, body)
+    (getBuiltinApp -> Just (builtin, a : as)) ->
+      case (getBuiltinBinder builtin, argExpr $ NonEmpty.last (a :| as)) of
+        (Just binderType, Lam _ binder body) -> Just (binderType, binder, body)
+        _ -> Nothing
     _ -> Nothing
 
   getLetBinder = \case

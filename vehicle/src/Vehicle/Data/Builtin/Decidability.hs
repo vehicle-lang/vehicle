@@ -113,7 +113,7 @@ data DecidabilityBuiltin
   | DecidabilityBuiltinTypeClass DecidabilityBuiltinTypeClass
   | DecidabilityBuiltinTypeClassOp DecidabilityBuiltinTypeClassOp
   | DecidabilityBuiltinFunction DecidabilityBuiltinFunction
-  deriving (Show, Eq, Generic)
+  deriving (Show, Ord, Eq, Generic)
 
 instance Hashable DecidabilityBuiltin
 

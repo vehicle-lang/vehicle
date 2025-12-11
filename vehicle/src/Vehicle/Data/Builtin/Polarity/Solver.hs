@@ -14,6 +14,7 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.System
 import Vehicle.Data.Builtin.Core
+import Vehicle.Data.Builtin.Interface.Type
 import Vehicle.Data.Builtin.Polarity
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Variable.Bound.Context.Generic
@@ -46,7 +47,10 @@ pattern VPolarityExpr l <- VBuiltin (Polarity l) []
   where
     VPolarityExpr l = VBuiltin (Polarity l) []
 
-type MonadPolaritySolver m = MonadTypeChecker PolarityBuiltin m
+type MonadPolaritySolver m =
+  ( MonadTypeChecker PolarityBuiltin m,
+    TypableBuiltin PolarityBuiltin
+  )
 
 type PolaritySolver =
   forall m.

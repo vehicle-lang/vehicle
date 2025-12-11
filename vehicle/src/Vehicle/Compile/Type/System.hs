@@ -1,6 +1,5 @@
 module Vehicle.Compile.Type.System where
 
-import Data.Hashable (Hashable)
 import Data.Proxy (Proxy)
 import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
@@ -12,7 +11,6 @@ import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Monad.Class
-import Vehicle.Data.Builtin.Interface.Normalise (NormalisableBuiltin)
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin)
 import Vehicle.Data.Builtin.Standard.Core (Builtin (..))
@@ -27,7 +25,7 @@ type TCM builtin m =
   )
 
 -- | A class that provides an abstract interface for a set of builtins.
-class (Eq builtin, Hashable builtin, NormalisableBuiltin builtin, TypableBuiltin builtin) => HasTypeSystem builtin where
+class (TypableBuiltin builtin) => HasTypeSystem builtin where
   convertFromStandardBuiltins ::
     (MonadTypeChecker builtin m) =>
     Expr Builtin ->
@@ -46,6 +44,9 @@ class (Eq builtin, Hashable builtin, NormalisableBuiltin builtin, TypableBuiltin
     [RecordField (Type builtin)] ->
     m ()
 
+  isAuxiliaryConstraint ::
+    Expr builtin -> Bool
+
   addAuxiliaryInputOutputConstraints ::
     (MonadTypeChecker builtin m) => Decl builtin -> m (Decl builtin)
 
@@ -53,9 +54,6 @@ class (Eq builtin, Hashable builtin, NormalisableBuiltin builtin, TypableBuiltin
     (MonadTypeChecker builtin m) =>
     Proxy builtin ->
     m Bool
-
-  isAuxiliaryConstraint ::
-    Expr builtin -> Bool
 
   -- | Solves an auxiliary instance constraint (i.e. a constraint that is
   -- not solvable by the default instance mechanism)
@@ -74,10 +72,6 @@ runAuxiliarySolver proxy = do
       solveAuxiliaryInstanceConstraint
       False
       proxy
-
------------------------------------------------------------------------------
--- Standard builtins
------------------------------------------------------------------------------
 
 extractElementType :: (PrintableBuiltin builtin1, PrintableBuiltin builtin2) => builtin1 -> [Arg builtin2] -> Expr builtin2
 extractElementType b args = case args of
@@ -99,7 +93,7 @@ data AuxiliaryConstraintProgress builtin
   deriving (Show)
 
 handleAuxiliaryConstraintProgress ::
-  (MonadTypeChecker builtin m) =>
+  (MonadTypeChecker builtin m, TypableBuiltin builtin) =>
   Value builtin ->
   WithContext (InstanceConstraint builtin) ->
   AuxiliaryConstraintProgress builtin ->

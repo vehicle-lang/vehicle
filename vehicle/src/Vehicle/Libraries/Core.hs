@@ -1,34 +1,51 @@
-module Vehicle.Libraries.Core where
+module Vehicle.Libraries.Core
+  ( Library (..),
+    LibraryName,
+    LibraryContent,
+    calculateModuleFilePath,
+    calculateLibraryFilePath,
+    ResolvedLibrary (..),
+  )
+where
 
-import Control.Monad.IO.Class (MonadIO (..))
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Map (Map)
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import System.FilePath ((</>))
+import System.FilePath (joinPath, (<.>), (</>))
 import Vehicle.Prelude
 
 type LibraryName = String
 
-data LibraryInfo = LibraryInfo
+--------------------------------------------------------------------------------
+-- The file format on disk for library files
+
+data Library = Library
   { libraryName :: LibraryName,
-    libraryVersion :: VersionString
+    libraryVersion :: VersionString,
+    libraryModules :: [ModulePath]
   }
   deriving (Generic)
 
-instance FromJSON LibraryInfo
+instance FromJSON Library
 
-instance ToJSON LibraryInfo
+instance ToJSON Library
 
-data Library = Library
-  { libraryInfo :: LibraryInfo,
-    libraryContent :: Map Module Text
+--------------------------------------------------------------------------------
+-- The format used internally in the compiler
+
+-- | Information about a parsed library file
+newtype ResolvedLibrary = ResolvedLibrary
+  { resolvedModules :: [(ModulePath, FilePath)]
   }
+  deriving (Generic)
 
-getLibraryPath :: (MonadIO m) => LibraryName -> m FilePath
-getLibraryPath name = do
-  vehiclePath <- getVehiclePath
-  return $ vehiclePath </> "libraries" </> name
+type LibraryContent = Map ModulePath Text
 
-getLibraryInfoFile :: FilePath -> FilePath
-getLibraryInfoFile libraryFolder = libraryFolder </> vehicleLibraryExtension
+calculateLibraryFilePath :: FilePath -> FilePath
+calculateLibraryFilePath libraryLocation =
+  libraryLocation </> vehicleLibraryExtension
+
+calculateModuleFilePath :: FilePath -> ModulePath -> FilePath
+calculateModuleFilePath libraryLocation (ModulePath path) =
+  libraryLocation </> joinPath path <.> specificationFileExtension

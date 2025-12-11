@@ -161,9 +161,6 @@ class RawMetaSubstitutable m builtin a | a -> builtin where
 instance (MetaSubstitutable m builtin expr) => RawMetaSubstitutable m builtin (GenericDecl expr) where
   substMetas s = traverse (substMetasAt mempty s)
 
-instance (MetaSubstitutable m builtin expr) => RawMetaSubstitutable m builtin (GenericProg expr) where
-  substMetas s (Main ds) = Main <$> traverse (substMetas s) ds
-
 instance (MetaSubstitutable m builtin constraint) => RawMetaSubstitutable m builtin (Contextualised constraint (ConstraintContext builtin)) where
   substMetas s (WithContext constraint ctx) = WithContext <$> substMetasAt (namedBoundCtxOf ctx) s constraint <*> pure ctx
 

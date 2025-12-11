@@ -271,6 +271,8 @@ library
     Vehicle.Data.Code.Interface.Args
     Vehicle.Data.Code.Interface.Operations
     Vehicle.Data.Code.Interface.Patterns
+    Vehicle.Data.Code.ModuleInterface
+    Vehicle.Data.Code.Prog
     Vehicle.Data.Code.TypedView
     Vehicle.Data.DifferentiableLogic
     Vehicle.Data.Universe

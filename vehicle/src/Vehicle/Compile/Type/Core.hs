@@ -3,9 +3,10 @@
 
 module Vehicle.Compile.Type.Core where
 
-import Data.HashMap.Strict (HashMap)
-import Data.HashMap.Strict qualified as Map (findWithDefault, lookup)
-import Data.Hashable (Hashable)
+import Data.Map (Map)
+import Data.Map qualified as Map (findWithDefault, lookup)
+import Data.Serialize (Serialize)
+import GHC.Generics (Generic)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Meta.Set (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
@@ -176,7 +177,9 @@ data InstanceCandidate builtin = InstanceCandidate
     candidateSolution :: Expr builtin,
     defaultInstance :: Bool
   }
-  deriving (Show)
+  deriving (Generic, Show)
+
+instance (Serialize builtin) => Serialize (InstanceCandidate builtin)
 
 type instance
   WithContext (InstanceCandidate builtin) =
@@ -193,22 +196,21 @@ type InstanceSearchDepth = Int
 -- We use a HashMap rather than an ordinary Map as not all builtins may be
 -- totally ordered (e.g. PolarityBuiltin and LinearityBuiltin)
 data InstanceDatabase builtin = InstanceDatabase
-  { instances :: HashMap builtin [InstanceCandidate builtin],
-    defaultInstances :: HashMap builtin (InstanceCandidate builtin),
-    instanceSearchDepth :: HashMap builtin InstanceSearchDepth
+  { instances :: Map builtin [InstanceCandidate builtin],
+    defaultInstances :: Map builtin (InstanceCandidate builtin)
   }
+  deriving (Generic)
 
-emptyInstanceDatabase :: (Hashable builtin) => InstanceDatabase builtin
-emptyInstanceDatabase = InstanceDatabase mempty mempty mempty
+instance (Ord builtin, Serialize builtin) => Serialize (InstanceDatabase builtin)
 
-lookupInstances :: (Hashable builtin) => InstanceDatabase builtin -> InstanceGoal builtin -> [InstanceCandidate builtin]
-lookupInstances database goal = Map.findWithDefault [] (goalHead goal) (instances database)
+emptyInstanceDatabase :: (Ord builtin) => InstanceDatabase builtin
+emptyInstanceDatabase = InstanceDatabase mempty mempty
 
-lookupDefaultInstance :: (Hashable builtin) => InstanceDatabase builtin -> InstanceGoal builtin -> Maybe (InstanceCandidate builtin)
-lookupDefaultInstance database goal = Map.lookup (goalHead goal) (defaultInstances database)
+lookupInstances :: (Ord builtin) => InstanceGoal builtin -> InstanceDatabase builtin -> [InstanceCandidate builtin]
+lookupInstances goal database = Map.findWithDefault [] (goalHead goal) (instances database)
 
-lookupSearchDepth :: (Hashable builtin) => InstanceDatabase builtin -> InstanceGoal builtin -> InstanceSearchDepth
-lookupSearchDepth database goal = Map.findWithDefault 0 (goalHead goal) (instanceSearchDepth database)
+lookupDefaultInstance :: (Ord builtin) => InstanceGoal builtin -> InstanceDatabase builtin -> Maybe (InstanceCandidate builtin)
+lookupDefaultInstance goal database = Map.lookup (goalHead goal) (defaultInstances database)
 
 --------------------------------------------------------------------------------
 -- Unification constraints

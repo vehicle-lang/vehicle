@@ -16,7 +16,7 @@ import Data.Text.Internal.Read qualified as Text.Read
 import GHC.Real (denominator, numerator)
 import Prettyprinter hiding (hcat, hsep, vcat, vsep)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Prelude hiding (Module)
+import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Data.Builtin.Decidability
 import Vehicle.Data.Builtin.Interface (Accessor (..))
@@ -89,7 +89,7 @@ logExit e = do
 
 data Dependency
   = RequireImport Library
-  | Import Module
+  | Import RocqModule
   | Open Scope
   deriving (Eq, Ord)
 
@@ -129,11 +129,11 @@ instance Pretty Library where
     MathcompSsreflectSsrnat -> "mathcomp.ssreflect.ssrnat"
     MathcompSsreflectEqtype -> "mathcomp.ssreflect.eqtype"
 
-data Module
+data RocqModule
   = OrderDef
   deriving (Eq, Ord)
 
-instance Pretty Module where
+instance Pretty RocqModule where
   pretty = \case
     OrderDef -> "Order.Def"
 
