@@ -1,20 +1,12 @@
 from typing import List
 
-from . import compile, session
+from . import loss, session
 from ._version import VERSION
-from .compile import (
-    DefaultPyTorchSampler,
-    DefaultTensorFlowSampler,
-    PyTorchSampler,
-    TensorFlowSampler,
-    call_vehicle,
-    compile_specification,
-    load_specification,
-)
-from .compile.error import VehicleBuiltinUnsupported, VehiclePropertyNotFound
+from .compile import call_vehicle, compile_specification
 from .error import VehicleError, VehicleInternalError
 from .export import export_to_solver
 from .list import list
+from .loss.error import VehicleBuiltinUnsupported, VehiclePropertyNotFound
 from .session.error import VehicleSessionClosed, VehicleSessionUsed
 from .typecheck import TypeSystem, typecheck
 from .typing import (
@@ -32,15 +24,12 @@ from .verify import verify
 __all__: List[str] = [
     "VERSION",
     # Typecheck
-    "TypeSystem" "typecheck",
+    "TypeSystem",
+    "typecheck",
     # Compile
     "compile_specification",
-    "load_specification",
-    # Samplers
-    "PyTorchSampler",
-    "DefaultPyTorchSampler",
-    "TensorFlowSampler",
-    "DefaultTensorFlowSampler",
+    # Loss helpers
+    "loss",
     # Call Vehicle
     "call_vehicle",
     # Verify
@@ -57,8 +46,8 @@ __all__: List[str] = [
     "VehicleError",
     "VehicleSessionClosed",
     "VehicleSessionUsed",
-    "VehicleBuiltinUnsupported",
     "VehicleInternalError",
+    "VehicleBuiltinUnsupported",
     "VehiclePropertyNotFound",
     # Argument types
     "DeclarationName",

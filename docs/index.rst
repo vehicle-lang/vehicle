@@ -25,5 +25,4 @@ Contents
    training.rst
    verifying.rst
    exporting.rst
-   python-api.rst
    dev/index.md

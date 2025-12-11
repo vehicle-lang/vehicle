@@ -56,4 +56,4 @@ def typecheck(
     return out
 
 
-__all__: List[str] = ["TypeSystem" "typecheck"]
+__all__: List[str] = ["TypeSystem", "typecheck"]

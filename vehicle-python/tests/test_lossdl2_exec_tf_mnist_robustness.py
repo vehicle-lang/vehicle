@@ -1,7 +1,7 @@
 # 2024-04-16: Disable end-to-end tests
 if False:
     from pathlib import Path
-    from typing import Any, Callable, Dict, Tuple, cast
+    from typing import Any, Callable, cast
 
     import vehicle_lang as vcl
     from typing_extensions import TypeAlias

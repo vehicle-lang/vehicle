@@ -85,18 +85,12 @@ The following operations over tensors are currently supported:
      - :code:`foreach i . 0`
      - Constructs a new tensor by specifying each outermost row in terms of the row's index.
    * - Comparisons
-     - :code:`<=`
-     | :code:`<`
-     | :code:`>=`
-     | :code:`>`
+     - ``<=``, ``<``, ``>=``, ``>``
      - :code:`Tensor A ds -> Tensor A ds -> Bool`
      - :code:`t1 <= t2`
      - Check that all pairs of elements in the tensor satisfy the comparison.
    * - Pointwise comparisons
-     - :code:`.<=`
-     | :code:`.<`
-     | :code:`.>=`
-     | :code:`.>`
+     - ``.<=``, ``.<``, ``.>=``, ``.>``
      - :code:`Tensor A ds -> Tensor A ds -> Tensor Bool ds`
      - :code:`t1 .<= t2`
      - Compare all the elements of the tensor pointwise.

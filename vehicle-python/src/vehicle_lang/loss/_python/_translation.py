@@ -27,6 +27,14 @@ class EraseType(Exception):
     pass
 
 
+_IGNORED_RETURN_KEYS = {
+    "__vehicle__",
+    "__vehicle_user_samplers__",
+    "__builtins__",
+    "__annotations__",
+}
+
+
 @dataclass(frozen=True)
 class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
     builtins: AnyBuiltins
@@ -45,9 +53,15 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         try:
             declaration_context["__vehicle__"] = self.builtins
             declaration_context["__vehicle_user_samplers__"] = samplers
+            before_exec = dict(declaration_context)
             py_bytecode = compile(py_ast, filename=str(path), mode="exec")
             exec(py_bytecode, declaration_context)
-            return declaration_context
+            return {
+                key: value
+                for key, value in declaration_context.items()
+                if key not in _IGNORED_RETURN_KEYS
+                and (key not in before_exec or before_exec[key] is not value)
+            }
         except TypeError as e:
             py_ast_str: str
             try:
@@ -59,12 +73,12 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
     def translate_Main(self, program: vcl.Main) -> py.Module:
         return py.Module(
             body=[
-                # NOTE: 'vehicle_lang.ast' is imported for 'Tensor'
+                # NOTE: 'vehicle_lang.loss._ast._nodes' is imported for 'Tensor'
                 #       which is used to translate vcl.Tensor
                 py.Import(
                     names=[
                         py.alias(
-                            name="vehicle_lang.compile._ast._nodes",
+                            name="vehicle_lang.loss._ast._nodes",
                             asname=None,
                             lineno=0,
                             col_offset=0,

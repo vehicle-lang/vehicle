@@ -38,4 +38,4 @@ if [ -s "$fail" ]; then
 fi
 
 # Create a container for the build
-"${docker}" run --rm -v "${package_root}:/vehicle" -w "/vehicle/vehicle-python" "${manylinux_image}" pipx run tox
+"${docker}" run --rm -v "${package_root}:/vehicle" -w "/vehicle/vehicle-python" "${manylinux_image}" pipx run uv run --extra wheel scripts/build-wheel.sh

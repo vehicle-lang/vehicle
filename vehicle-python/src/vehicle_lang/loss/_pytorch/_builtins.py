@@ -1,9 +1,21 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from fractions import Fraction
-from typing import Any, Sequence, cast
+from typing import TYPE_CHECKING, Any, Sequence, cast
 
-import torch
 from typing_extensions import override
+
+from ..._deps import require_optional_dependency
+
+if TYPE_CHECKING:
+    import torch
+else:  # pragma: no cover - exercised implicitly
+    torch = require_optional_dependency(
+        "torch",
+        extra="pytorch",
+        feature="The PyTorch loss backend",
+    )
 
 from .._abc import ABCBuiltins
 from .._ast import _nodes
