@@ -10,7 +10,17 @@ position token Boolean  ({"True"} | {"False"});
 position token Natural  (digit+);
 position token Rational (digit+ '.' digit+);
 
-position token TokAnnotation ({"@"} ({"network"} | {"dataset"} | {"parameter"} | {"property"} | {"tensor"} | {"instance"} | {"builtin"}));
+position token TokAnnotation ({"@"}
+  ( {"network"}
+  | {"dataset"}
+  | {"parameter"}
+  | {"property"}
+  | {"tensor"}
+  | {"instance"}
+  | {"builtin"}
+  | {"typeclass"}
+  )
+);
 
 position token TokArrow     {"->"};
 position token TokForallT   {"forallT"};

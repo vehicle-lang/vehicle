@@ -123,6 +123,7 @@ instance Delaborate V.RecordDeclAnnotation B.Decl where
   delabM = \case
     V.AnnTensor -> return $ delabAnn tensorAnn []
     V.AnnInstance -> return $ delabAnn instanceAnn []
+    V.AnnTypeClass -> return $ delabAnn typeClassAnn []
 
 instance Delaborate V.FunctionDeclAnnotation B.Decl where
   delabM = \case

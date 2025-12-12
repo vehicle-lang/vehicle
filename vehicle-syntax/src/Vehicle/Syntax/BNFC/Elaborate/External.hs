@@ -162,6 +162,9 @@ parseAnnotation (tkName, opts) = do
     "@instance" -> do
       validateEmptyOpts tkName opts
       return $ RecordDeclAnn V.AnnInstance
+    "@typeclass" -> do
+      validateEmptyOpts tkName opts
+      return $ RecordDeclAnn V.AnnTypeClass
     name -> developerError $ "Unknown annotation found" <+> squotes (pretty name)
 
 elabDefAbstract ::

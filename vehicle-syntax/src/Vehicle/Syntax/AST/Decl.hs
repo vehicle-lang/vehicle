@@ -186,6 +186,8 @@ data RecordDeclAnnotation
     AnnTensor
   | -- | The record was annotated with @instance
     AnnInstance
+  | -- | The record was annotated with @typeclass
+    AnnTypeClass
   deriving (Eq, Show, Generic)
 
 instance NFData RecordDeclAnnotation
@@ -196,6 +198,7 @@ instance Pretty RecordDeclAnnotation where
   pretty = \case
     AnnTensor -> "@tensor"
     AnnInstance -> "@instance"
+    AnnTypeClass -> "@typeclass"
 
 -- | Possible annotations for ordinatary functions.
 data FunctionDeclAnnotation
