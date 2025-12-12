@@ -20,6 +20,7 @@ import Data.Version (showVersion)
 #ifdef releaseBuild
 #else
 import Development.GitRev
+import Vehicle.Prelude.Git (gitChangedTreeHash)
 #endif
 import GHC.Generics (Generic)
 import Paths_vehicle qualified as Cabal (version)
@@ -64,8 +65,8 @@ preciseVehicleVersion = showVersion Cabal.version
       hash = $(gitHash)
 
       -- Check if any tracked files have uncommitted changes
-      dirty | $(gitDirtyTracked) = ".dirty"
-            | otherwise          = ""
+      dirty | $(gitDirtyTracked) = ".dirty" <> $(gitChangedTreeHash)
+            | otherwise   = ""
 
       -- Abbreviate a commit hash while keeping it unambiguous
       abbrev = take 7
