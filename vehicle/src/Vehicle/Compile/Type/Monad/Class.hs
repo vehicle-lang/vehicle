@@ -36,6 +36,7 @@ import Vehicle.Data.Variable.Bound.Context.Generic
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Free.Context (addDeclToContext)
 import Vehicle.Data.Variable.Free.Context.Class (MonadFreeContext)
+import Vehicle.Syntax.Sugar (foldRecordDef)
 
 --------------------------------------------------------------------------------
 -- Solved meta-state
@@ -374,16 +375,35 @@ getDecl _proxy ident = do
   declsByName <- getsTypeCheckerState @builtin declsByName
   return $ lookupInFreeCtx ident declsByName
 
+getRecordDefinition ::
+  (MonadTypeChecker builtin m) =>
+  Proxy builtin ->
+  Identifier ->
+  m (Type builtin, Expr builtin)
+getRecordDefinition proxy ident = do
+  decl <- getDecl proxy ident
+  case decl of
+    DefFunction _ _ sort typ body
+      | isDeclaredAsRecord sort ->
+          return (typ, body)
+    _ ->
+      developerError $
+        pretty ident <+> "is unexpectedly not a record"
+
 getDeclaredRecordFields ::
   (MonadTypeChecker builtin m) =>
   Proxy builtin ->
   Identifier ->
-  m (RecordFields (Type builtin))
+  m (RecordFields builtin)
 getDeclaredRecordFields proxy ident = do
   decl <- getDecl proxy ident
   case decl of
-    DefRecord _ _ _ _ fields -> return fields
-    _ -> developerError $ quotePretty ident <+> "is unexpectedly not a record"
+    DefFunction _ _ sort typ body
+      | isDeclaredAsRecord sort ->
+          return $ snd $ foldRecordDef typ body
+    _ ->
+      developerError $
+        pretty ident <+> "is unexpectedly not a record"
 
 getDeclType ::
   (MonadTypeChecker builtin m, HasCallStack) =>

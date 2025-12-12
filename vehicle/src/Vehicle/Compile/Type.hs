@@ -8,6 +8,7 @@ import Control.Monad.Except (MonadError (..))
 import Data.IntSet qualified as IntSet
 import Data.List (sortOn)
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.Maybe (fromMaybe)
 import Data.Proxy (Proxy (..))
 import Data.Set (Set)
 import Data.Set qualified as Set
@@ -76,7 +77,6 @@ typeCheckDecl uncheckedDecl isUnused =
     decl <- case convertedDecl of
       DefAbstract p n r t -> typeCheckAbstractDef p n r t isUnused
       DefFunction p n b t e -> typeCheckFunctionDef p n b t e isUnused
-      DefRecord p n b ts fs -> typeCheckRecordDef p n b ts fs isUnused
     checkAllUnknownsSolved (Proxy @builtin)
     finalDecl <- substMetaVariables decl
     logCompilerPassOutput $ prettyExternal finalDecl
@@ -115,7 +115,7 @@ typeCheckFunctionDef ::
   (TCM builtin m) =>
   Provenance ->
   Identifier ->
-  [Annotation] ->
+  DefFunctionSort ->
   Type builtin ->
   Expr builtin ->
   DeclIsUnused ->
@@ -142,6 +142,16 @@ typeCheckFunctionDef p ident anns typ body isUnused = do
   solveConstraints (Proxy @builtin)
   substDecl <- substMetaVariables checkedDecl
 
+  -- Check if the record is annotated as a tensor and check the restrictions.
+  -- Needs to be done after the main solving pass so that we are guaranteed to
+  -- get the most informative error message.
+  when (isAnnotatedAsTensor anns) $
+    logCompilerSection2 MidDetail "checking suitability of type as @tensor" $ do
+      let solvedBody = fromMaybe (developerError "body error") $ bodyOf checkedDecl
+      let checkedFields = getTensorRecordFields solvedBody
+      restrictRecordAnnotatedAsTensor (ident, p) checkedFields
+      solveConstraints (Proxy @builtin)
+
   if isAnnotatedAsProperty anns
     then return substDecl
     else do
@@ -154,66 +164,6 @@ typeCheckFunctionDef p ident anns typ body isUnused = do
       logUnsolvedUnknowns (Proxy @builtin)
 
       generaliseOverUnsolvedMetasAndConstraints checkedDecl1
-
-typeCheckRecordDef ::
-  forall builtin m.
-  (TCM builtin m) =>
-  Provenance ->
-  Identifier ->
-  [Annotation] ->
-  Type builtin ->
-  RecordFields (Type builtin) ->
-  DeclIsUnused ->
-  m (Decl builtin)
-typeCheckRecordDef p ident anns uncheckedType uncheckedFields isUnused = do
-  -- (checkedTelescope, checkedFields) <-
-  --   checkRecordTelescopeAndFields ident uncheckedTelescope uncheckedFields
-  checkedType <- checkDeclType ident uncheckedType
-  checkedFields <- traverse (checkRecordFieldDef ident) uncheckedFields
-  -- Reconstruct the function.
-  let checkedDecl = DefRecord p ident anns checkedType checkedFields
-
-  -- Solve constraints and substitute through.
-  setCurrentDecl $ Just (checkedDecl, isUnused)
-  solveConstraints (Proxy @builtin)
-
-  -- Check if the record is annotated as a tensor and check the restrictions.
-  -- Needs to be done after the main solving pass so that we are guaranteed to
-  -- get the most informative error message.
-  when (isAnnotatedAsTensor anns) $
-    logCompilerSection2 MidDetail "checking suitability of type as @tensor" $ do
-      checkedFields' <- traverseRecordFields (substMetaVariablesAt mempty) checkedFields
-      restrictRecordAnnotatedAsTensor (ident, p) checkedFields'
-      solveConstraints (Proxy @builtin)
-
-  substMetaVariables checkedDecl
-
-{-
-checkRecordTelescopeAndFields ::
-  forall builtin m.
-  (TCM builtin m) =>
-  Identifier ->
-  Telescope builtin ->
-  RecordFields (Type builtin) ->
-  m (Telescope builtin, RecordFields (Type builtin))
-checkRecordTelescopeAndFields ident telescope fields =
-  runMonadBidirectional @m @builtin mempty Relevant $ do
-    checkTelescope telescope $ do
-      -- Type check the body.
-      let pass = bidirectionalPassDoc <+> "fields of" <+> quotePretty ident
-      checkedFields <-
-        logCompilerSection2 MidDetail pass $
-          traverse (checkRecordFieldDef ident) fields
-      return checkedFields
--}
-checkRecordFieldDef ::
-  (TCM builtin m) =>
-  Identifier ->
-  RecordField (Type builtin) ->
-  m (RecordField (Type builtin))
-checkRecordFieldDef _recordIdent (field, fieldType) = do
-  checkedFieldType <- checkDeclType field fieldType
-  return (field, checkedFieldType)
 
 checkDeclType :: (TCM builtin m, HasName name Name) => name -> Type builtin -> m (Type builtin)
 checkDeclType ident declType = do

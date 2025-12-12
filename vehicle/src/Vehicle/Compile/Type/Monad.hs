@@ -29,6 +29,8 @@ module Vehicle.Compile.Type.Monad
     setInstanceConstraints,
     setUnificationConstraints,
     addUnificationConstraints,
+    TelescopeType (..),
+    instantiateTelescope,
     -- Other
     clearMetaCtx,
     logUnsolvedUnknowns,
@@ -356,3 +358,31 @@ checkAllConstraintsSolved _ getConstraints toConstraint = do
     (c : cs) -> do
       let failedConstraints = mapObject toConstraint <$> (c :| cs)
       throwError $ TypingError $ UnsolvedConstraints failedConstraints
+
+data TelescopeType
+  = InstanceTelescope
+  | RecordTelescope
+
+instantiateTelescope ::
+  (MonadTypeChecker builtin m, TypableBuiltin builtin) =>
+  TelescopeType ->
+  (Relevance -> Type builtin -> m (Expr builtin)) ->
+  BoundCtx (Type builtin) ->
+  (Type builtin, Expr builtin) ->
+  m (Type builtin, Expr builtin, [Arg builtin])
+instantiateTelescope telescopeType createFreshInstance boundCtx = \case
+  (Pi _ piBinder exprBody, Lam _ _solutionBinder solutionBody) -> do
+    let binderType = typeOf piBinder
+    newArg <- case visibilityOf piBinder of
+      Explicit {} -> case telescopeType of
+        InstanceTelescope -> compilerDeveloperError "Should not have an explicit argument in instance goal telescope"
+        RecordTelescope -> freshMetaExpr (provenanceOf piBinder) binderType boundCtx
+      Implicit {} ->
+        freshMetaExpr (provenanceOf piBinder) binderType boundCtx
+      Instance {} -> do
+        createFreshInstance (relevanceOf piBinder) binderType
+    let exprBodyResult = newArg `substDBInto` exprBody
+    let solutionBodyResult = newArg `substDBInto` solutionBody
+    (typ', body', args) <- instantiateTelescope telescopeType createFreshInstance boundCtx (exprBodyResult, solutionBodyResult)
+    return (typ', body', argFromBinder piBinder newArg : args)
+  (typ, body) -> return (typ, body, [])

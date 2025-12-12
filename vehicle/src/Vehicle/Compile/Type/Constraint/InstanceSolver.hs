@@ -194,9 +194,8 @@ acceptCandidate (WithContext Resolve {..} constraintCtx) goal candidate = do
   let extendedGoalInfo = (newConstraintCtx, instanceOrigin)
 
   -- Instantiate the candidate telescope with metas and subst into body.
-  (substCandidateExpr, substCandidateSolution, recInstanceConstraints) <-
+  (substCandidateExpr, substCandidateSolution) <-
     instantiateCandidateTelescope goalCtxExtension (constraintCtx, instanceOrigin) candidate
-  addInstanceConstraints recInstanceConstraints
 
   -- Unify the goal and candidate bodies
   goalConstraint <- createInstanceUnification extendedGoalInfo (goalExpr goal) substCandidateExpr
@@ -214,40 +213,22 @@ instantiateCandidateTelescope ::
   BoundCtx (Type builtin) ->
   InstanceConstraintInfo builtin ->
   WithContext (InstanceCandidate builtin) ->
-  m (Value builtin, Expr builtin, [WithContext (InstanceConstraint builtin)])
+  m (Value builtin, Expr builtin)
 instantiateCandidateTelescope goalCtxExtension (constraintCtx, constraintOrigin) candidate = do
   let WithContext InstanceCandidate {..} candidateCtx = candidate
   logCompilerSection MaxDetail "instantiating candidate telescope" $ do
     let initialCtx = goalCtxExtension ++ candidateCtx
-    (candidateBody, candidateSol, newInstanceConstraints, finalCtx) <-
-      go (candidateExpr, candidateSolution, [], initialCtx)
-    normCandidateBody <- eval (toNamedBoundCtx finalCtx) (boundContextToEnv finalCtx) candidateBody
-    return (normCandidateBody, candidateSol, newInstanceConstraints)
-  where
-    go ::
-      (MonadInstance builtin m) =>
-      (Type builtin, Expr builtin, [WithContext (InstanceConstraint builtin)], BoundCtx (Type builtin)) ->
-      m (Type builtin, Expr builtin, [WithContext (InstanceConstraint builtin)], BoundCtx (Type builtin))
-    go = \case
-      (Pi _ exprBinder exprBody, Lam _ _solutionBinder solutionBody, constraints, boundCtx) -> do
-        let binderType = typeOf exprBinder
-        (newArg, newConstraints) <- case visibilityOf exprBinder of
-          Explicit {} ->
-            compilerDeveloperError "Should not have an explicit argument in instance goal telescope"
-          Implicit {} -> do
-            let p = provenanceOf constraintCtx
-            expr <- freshMetaExpr p binderType boundCtx
-            return (expr, [])
-          Instance {} -> do
-            let newInfo = (setConstraintBoundCtx constraintCtx boundCtx, constraintOrigin)
-            -- WARNING massive hack should be traversing the normalised type here.
-            normBinderType <- eval (toNamedBoundCtx boundCtx) (boundContextToEnv boundCtx) binderType
-            (expr, constraint) <- createDerivedInstanceConstraint newInfo (relevanceOf exprBinder) normBinderType
-            return (expr, [constraint])
-        let exprBodyResult = newArg `substDBInto` exprBody
-        let solutionBodyResult = newArg `substDBInto` solutionBody
-        go (exprBodyResult, solutionBodyResult, newConstraints <> constraints, boundCtx)
-      body -> return body
+    let createInstance relevance typ = do
+          let newInfo = (setConstraintBoundCtx constraintCtx initialCtx, constraintOrigin)
+          -- WARNING massive hack should be traversing the normalised type here.
+          normBinderType <- eval (toNamedBoundCtx initialCtx) (boundContextToEnv initialCtx) typ
+          (expr, constraint) <- createDerivedInstanceConstraint newInfo relevance normBinderType
+          addInstanceConstraints [constraint]
+          return expr
+
+    (candidateBody, candidateSol, _args) <- instantiateTelescope InstanceTelescope createInstance initialCtx (candidateExpr, candidateSolution)
+    normCandidateBody <- eval (toNamedBoundCtx initialCtx) (boundContextToEnv initialCtx) candidateBody
+    return (normCandidateBody, candidateSol)
 
 -- TODO move this to Print
 prettyCandidate :: (PrintableBuiltin builtin) => WithContext (InstanceCandidate builtin) -> Doc a

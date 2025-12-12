@@ -200,7 +200,7 @@ restrictStandardRecordAnnotatedAsTensorType ::
   forall m.
   (MonadTypeChecker Builtin m) =>
   DeclProvenance ->
-  [RecordField (Type Builtin)] ->
+  [RecordField Builtin] ->
   m ()
 restrictStandardRecordAnnotatedAsTensorType (ident, p) fields = case fields of
   [] -> return ()
@@ -218,8 +218,8 @@ checkRecordFieldTypesMatch ::
   forall m.
   (MonadTypeChecker Builtin m) =>
   DeclProvenance ->
-  RecordField (Type Builtin) ->
-  RecordField (Type Builtin) ->
+  RecordField Builtin ->
+  RecordField Builtin ->
   m ()
 checkRecordFieldTypesMatch (ident, p) (firstFieldName, firstFieldType) (currFieldName, currFieldType) = do
   env <- getFreeCtx (Proxy @Builtin)

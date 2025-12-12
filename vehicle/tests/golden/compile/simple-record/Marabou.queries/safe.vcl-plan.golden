@@ -1,0 +1,93 @@
+{
+  "queryMetaData": {
+    "tag": "NonTrivial",
+    "contents": {
+      "tag": "Query",
+      "contents": {
+        "queries": {
+          "unDisjunctAll": [
+            {
+              "variableStore": {
+                "vehicleVariableCtx": [
+                  "f₀[output]!1",
+                  "f₀[output]!0",
+                  "f₀[output]",
+                  "f₀[input]!1",
+                  "f₀[input]!0",
+                  "f₀[input]"
+                ],
+                "userVariables": [],
+                "queryVariableMapping": {
+                  "y1": 5,
+                  "y0": 4,
+                  "x1": 2,
+                  "x0": 1
+                }
+              },
+              "variableCompilationTrace": {
+                "reconstructionSteps": [
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      {
+                        "nestedTensorShape": [
+                          2
+                        ],
+                        "nestedStartingVariable": 0
+                      },
+                      "AllDimensions"
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      {
+                        "nestedTensorShape": [
+                          2
+                        ],
+                        "nestedStartingVariable": 3
+                      },
+                      "AllDimensions"
+                    ]
+                  }
+                ]
+              },
+              "queryAddress": [
+                {
+                  "propertyName": "safe",
+                  "propertyIndices": [],
+                  "propertyID": 0
+                },
+                1
+              ],
+              "metaNetwork": [
+                [
+                  "f",
+                  {
+                    "networkType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          2
+                        ],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          2
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "networkFilepath": "fake.onnx"
+                  },
+                  1
+                ]
+              ]
+            }
+          ]
+        },
+        "negated": false
+      }
+    }
+  }
+}

@@ -10,11 +10,10 @@ module Vehicle.Syntax.BNFC.Elaborate.External
   )
 where
 
-import Control.Monad (foldM_)
+import Control.Monad (foldM_, unless, when)
 import Control.Monad.Except (MonadError (..), throwError)
 import Control.Monad.Reader (runReaderT)
 import Data.Bitraversable (bitraverse)
-import Data.Either (partitionEithers)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
 import Data.Map qualified as Map (insert, lookup)
@@ -99,28 +98,23 @@ elabDeclGroup anns = \case
 
   -- Function declaration and body.
   B.DefFunType typeName _ t :| B.DefFunExpr exprName bs e : ds -> do
-    d' <- elabDefFun anns typeName exprName t bs e
+    d' <- elabFunctionDef anns typeName exprName t bs e
     return (d', ds)
 
   -- Function body without a declaration.
   B.DefFunExpr n bs e :| ds -> do
     let unknownType = constructUnknownDefType n bs
-    d' <- elabDefFun anns n n unknownType bs e
+    d' <- elabFunctionDef anns n n unknownType bs e
     return (d', ds)
 
   -- Abstract function declaration with no body
   B.DefFunType n _tk t :| ds -> do
-    abstractType <- elabDefAbstractSort n anns
-    d' <- elabDefAbstract n t abstractType
+    d' <- elabDefAbstract anns n t
     return (d', ds)
 
   -- Record declaration
-  B.DefRecord tk fields :| ds -> do
-    p <- mkProvenance tk
-    n <- elabName tk
-    fields' <- traverse elabRecordFieldDef fields
-    (_, annotations) <- partitionEithers <$> traverse parseAnnotation anns
-    let d' = V.DefRecord p n annotations (UnparsedExpr (tokType 0)) fields'
+  B.DefRecord name telescope fields :| ds -> do
+    d' <- elabRecordDefinition anns name telescope fields
     return (d', ds)
 
   -- Annotation declaration.
@@ -132,34 +126,66 @@ elabDeclGroup anns = \case
     p <- mkProvenance ann
     throwError $ AnnotationWithNoDef p (tkSymbol ann)
 
-elabDefAbstractSort ::
-  (MonadElab m) =>
-  B.Name ->
-  [Annotation] ->
-  m V.DefAbstractSort
-elabDefAbstractSort defName anns = do
-  (sorts, annotations) <- partitionEithers <$> traverse parseAnnotation anns
-  case annotations of
-    ann : _ -> do
-      p <- mkProvenance defName
-      throwError $ AbstractDefWithNonAbstractAnnotation p (tkSymbol defName) ann
-    [] -> case sorts of
-      [] -> do
-        p <- mkProvenance defName
-        throwError $ UnannotatedAbstractDef p (tkSymbol defName)
-      [ann] -> return ann
-      ann1 : ann2 : _ -> do
-        p <- mkProvenance defName
-        throwError $ MultiplyAnnotatedAbstractDef p (tkSymbol defName) ann1 ann2
+data AnnotationResult
+  = FunDeclAnn V.FunctionDeclAnnotation
+  | RecordDeclAnn V.RecordDeclAnnotation
+  | AbstractDeclAnn V.DefAbstractSort
+
+instance Pretty AnnotationResult where
+  pretty = \case
+    FunDeclAnn ann -> pretty ann
+    RecordDeclAnn ann -> pretty ann
+    AbstractDeclAnn ann -> pretty ann
+
+parseAnnotation :: (MonadElab m) => Annotation -> m AnnotationResult
+parseAnnotation (tkName, opts) = do
+  case tkSymbol tkName of
+    "@builtin" -> do
+      validateEmptyOpts tkName opts
+      return $ AbstractDeclAnn V.BuiltinDef
+    "@network" -> do
+      validateEmptyOpts tkName opts
+      return $ AbstractDeclAnn V.NetworkDef
+    "@dataset" -> do
+      validateEmptyOpts tkName opts
+      return $ AbstractDeclAnn V.DatasetDef
+    "@parameter" -> do
+      let allowedOptions = Set.fromList [InferableOption]
+      optsList <- validateOpts tkName allowedOptions opts
+      AbstractDeclAnn <$> elabParameterOptions optsList
+    "@property" -> do
+      validateEmptyOpts tkName opts
+      return $ FunDeclAnn V.AnnProperty
+    "@tensor" -> do
+      validateEmptyOpts tkName opts
+      return $ RecordDeclAnn V.AnnTensor
+    "@instance" -> do
+      validateEmptyOpts tkName opts
+      return $ RecordDeclAnn V.AnnInstance
+    name -> developerError $ "Unknown annotation found" <+> squotes (pretty name)
 
 elabDefAbstract ::
   (MonadElab m) =>
+  [Annotation] ->
   B.Name ->
   B.Expr ->
-  V.DefAbstractSort ->
   m (V.GenericDecl UnparsedExpr)
-elabDefAbstract n t r =
-  V.DefAbstract <$> mkProvenance n <*> elabName n <*> pure r <*> pure (UnparsedExpr t)
+elabDefAbstract anns n t = do
+  p <- mkProvenance n
+  ident <- elabName n
+
+  annotations <- traverse parseAnnotation anns
+  annotation <- case annotations of
+    [AbstractDeclAnn abstractAnn] ->
+      return abstractAnn
+    [] ->
+      throwError $ UnannotatedAbstractDef p ident
+    ann1 : ann2 : _ ->
+      throwError $ MultiplyAnnotatedDef p ident (pretty ann1) (pretty ann2)
+    [ann] ->
+      throwError $ AbstractDefWithNonAbstractAnnotation p ident (pretty ann)
+
+  return $ V.DefAbstract p ident annotation (UnparsedExpr t)
 
 elabTypeDef ::
   (MonadElab m) =>
@@ -168,65 +194,112 @@ elabTypeDef ::
   [B.NameBinder] ->
   B.Expr ->
   m (V.GenericDecl UnparsedExpr)
-elabTypeDef anns n binders e = do
+elabTypeDef anns name binders expr = do
+  p <- mkProvenance name
+  ident <- elabName name
+
+  annotations <- traverse parseAnnotation anns
+  case annotations of
+    ann : _ ->
+      throwError $ TypeDefWithAnnotation p ident (pretty ann)
+    [] -> do
+      return ()
+
   let typeTyp
         | null binders = tokType 0
         | otherwise = B.ForallT tokForallT binders (tokType 0)
-  elabDefFun anns n n typeTyp binders e
 
-elabDefFun :: (MonadElab m) => [Annotation] -> B.Name -> B.Name -> B.Expr -> [B.NameBinder] -> B.Expr -> m (V.GenericDecl UnparsedExpr)
-elabDefFun anns n1 n2 t binders e
-  | tkSymbol n1 /= tkSymbol n2 = do
-      p <- mkProvenance n1
-      throwError $ FunctionWithMismatchedNames p (tkSymbol n1) (tkSymbol n2)
-  | otherwise = do
-      p <- mkProvenance n1
-      name <- elabName n1
-      -- This is a bit evil, we don't normally store possibly empty set of
-      -- binders, but we will use this to indicate the set of LHS variables.
-      let body = B.Lam tokLambda binders tokArrow e
-      annotations <- elabDefFunctionAnnotations n1 anns
-      return $ V.DefFunction p name annotations (UnparsedExpr t) (UnparsedExpr body)
+  let sort = V.TypeDecl (length binders)
 
-elabDefFunctionAnnotations ::
+  elabGenericDefFun p ident sort typeTyp binders expr
+
+elabFunctionDef ::
   (MonadElab m) =>
-  B.Name ->
   [Annotation] ->
-  m [V.Annotation]
-elabDefFunctionAnnotations defName anns = do
-  (abstractSorts, annotations) <- partitionEithers <$> traverse parseAnnotation anns
-  case abstractSorts of
-    s : _ -> do
-      p <- mkProvenance defName
-      throwError $ NonAbstractDefWithAbstractAnnotation p (tkSymbol defName) s
-    [] -> return annotations
+  B.Name ->
+  B.Name ->
+  B.Expr ->
+  [B.NameBinder] ->
+  B.Expr ->
+  m (V.GenericDecl UnparsedExpr)
+elabFunctionDef anns name1 name2 typ binders expr = do
+  p <- mkProvenance name1
+  ident1 <- elabName name1
+  ident2 <- elabName name2
 
-parseAnnotation :: (MonadElab m) => Annotation -> m (Either V.DefAbstractSort V.Annotation)
-parseAnnotation (tkName, opts) = do
-  case tkSymbol tkName of
-    "@builtin" -> do
-      validateEmptyOpts tkName opts
-      return $ Left V.BuiltinDef
-    "@network" -> do
-      validateEmptyOpts tkName opts
-      return $ Left V.NetworkDef
-    "@dataset" -> do
-      validateEmptyOpts tkName opts
-      return $ Left V.DatasetDef
-    "@parameter" -> do
-      let allowedOptions = Set.fromList [InferableOption]
-      optsList <- validateOpts tkName allowedOptions opts
-      Left <$> elabParameterOptions optsList
-    "@property" -> do
-      validateEmptyOpts tkName opts
-      return $ Right V.AnnProperty
-    "@tensor" -> do
-      validateEmptyOpts tkName opts
-      return $ Right V.AnnTensor
-    "@instance" -> do
-      validateEmptyOpts tkName opts
-      return $ Right V.AnnInstance
-    name -> developerError $ "Unknown annotation found" <+> squotes (pretty name)
+  unless (ident1 == ident2) $ do
+    throwError $ FunctionWithMismatchedNames p ident1 ident2
+
+  annotations <- traverse parseAnnotation anns
+  sort <-
+    V.FunctionDecl (length binders) <$> case annotations of
+      [FunDeclAnn funAnn] ->
+        return $ Just funAnn
+      [] ->
+        return Nothing
+      ann1 : ann2 : _ ->
+        throwError $ MultiplyAnnotatedDef p ident1 (pretty ann1) (pretty ann2)
+      [AbstractDeclAnn absAnn] ->
+        throwError $ NonAbstractDefWithAbstractAnnotation p ident1 (pretty absAnn)
+      [RecordDeclAnn absAnn] ->
+        throwError $ FunctionDefWithRecordAnnotation p ident1 (pretty absAnn)
+
+  elabGenericDefFun p ident1 sort typ binders expr
+
+elabRecordDefinition ::
+  (MonadElab m) =>
+  [Annotation] ->
+  B.Name ->
+  [B.NameBinder] ->
+  [B.RecordFieldDef] ->
+  m (V.GenericDecl UnparsedExpr)
+elabRecordDefinition anns name telescope fields = do
+  p <- mkProvenance name
+  ident <- elabName name
+
+  annotations <- traverse parseAnnotation anns
+  sort <-
+    V.RecordDecl <$> case annotations of
+      [RecordDeclAnn recordAnn] ->
+        return $ Just recordAnn
+      [] ->
+        return Nothing
+      ann1 : ann2 : _ ->
+        throwError $ MultiplyAnnotatedDef p ident (pretty ann1) (pretty ann2)
+      [AbstractDeclAnn absAnn] ->
+        throwError $ NonAbstractDefWithAbstractAnnotation p ident (pretty absAnn)
+      [FunDeclAnn absAnn] ->
+        throwError $ RecordDefWithFunctionAnnotation p ident (pretty absAnn)
+
+  when (V.isAnnotatedAsTensor sort && not (null telescope)) $ do
+    throwError $ TensorAnnotationWithParameters p ident
+
+  let defToAssign (B.FieldDef nam _tk val) = B.FieldAssign nam val
+  let fields' = B.Record $ fmap defToAssign fields
+
+  let (typ, expr)
+        | null telescope = (tokType 0, fields')
+        | otherwise =
+            ( B.ForallT tokForallT telescope (tokType 0),
+              B.Lam tokLambda telescope tokArrow fields'
+            )
+
+  elabGenericDefFun p ident sort typ mempty expr
+
+elabGenericDefFun ::
+  (MonadElab m) =>
+  V.Provenance ->
+  V.Identifier ->
+  V.DefFunctionSort ->
+  B.Expr ->
+  [B.NameBinder] ->
+  B.Expr ->
+  m (V.GenericDecl UnparsedExpr)
+elabGenericDefFun p ident sort t binders e = do
+  -- This is a bit evil, we don't normally store possibly empty set of
+  -- binders, but we will use this to indicate the set of LHS variables.
+  let body = B.Lam tokLambda binders tokArrow e
+  return $ V.DefFunction p ident sort (UnparsedExpr t) (UnparsedExpr body)
 
 validateOpts :: forall m token. (MonadElab m, IsToken token) => token -> Set Text -> B.DeclAnnOpts -> m [B.DeclAnnOption]
 validateOpts _token _allowedNames B.DeclAnnWithoutOpts = return mempty
@@ -283,7 +356,6 @@ elaborateDecl ::
 elaborateDecl file decl = flip runReaderT file $ case decl of
   V.DefAbstract p n r t -> V.DefAbstract p n r <$> elabDeclType t
   V.DefFunction p n b t e -> V.DefFunction p n b <$> elabDeclType t <*> elabDeclBody e
-  V.DefRecord p n b t fs -> V.DefRecord p n b <$> elabDeclType t <*> traverse elabRecordDefEntry fs
 
 elabDeclType ::
   (MonadElab m) =>
@@ -297,17 +369,11 @@ elabDeclBody ::
   m V.Expr
 elabDeclBody (UnparsedExpr expr) = case expr of
   B.Lam tk binders _ body -> do
-    binders' <- traverse (elabNameBinder True) binders
+    binders' <- traverse (elabNameBinder elabExpr True) binders
     body' <- elabExpr body
     p <- mkProvenance tk
     return $ foldr (V.Lam p) body' binders'
   _ -> developerError "Invalid declaration body - no lambdas found"
-
-elabRecordDefEntry ::
-  (MonadElab m) =>
-  V.RecordField UnparsedExpr ->
-  m (V.RecordField V.Expr)
-elabRecordDefEntry = V.traverseRecordField (\(UnparsedExpr typ) -> elabExpr typ)
 
 elaborateExpr ::
   (MonadError ParseError m) =>
@@ -322,7 +388,7 @@ elabExpr expr = case expr of
   B.Var n -> V.Var <$> mkProvenance n <*> pure (tkSymbol n)
   B.Hole n -> V.mkHole <$> mkProvenance n <*> pure (tkSymbol n)
   B.Literal l -> elabLiteral l
-  B.Fun t1 tk t2 -> op2 V.Pi tk (elabTypeBinder False t1) (elabExpr t2)
+  B.Fun t1 tk t2 -> op2 V.Pi tk (elabTypeBinder elabExpr False t1) (elabExpr t2)
   B.VecLiteral tk1 es _tk2 -> elabVecLiteral tk1 es
   B.App e1 e2 -> elabApp e1 e2
   B.Let tk1 ds e -> elabLet tk1 ds e
@@ -408,10 +474,7 @@ elabRecordFieldName tk = do
   p <- mkProvenance tk
   return $ V.FieldName p (tkSymbol tk)
 
-elabRecordFieldDef :: (MonadElab m) => B.RecordFieldDef -> m (V.RecordField UnparsedExpr)
-elabRecordFieldDef (B.FieldDef name _tk expr) = (,) <$> elabRecordFieldName name <*> pure (UnparsedExpr expr)
-
-elabRecordFieldAssign :: (MonadElab m) => B.RecordFieldAssign -> m (V.RecordField V.Expr)
+elabRecordFieldAssign :: (MonadElab m) => B.RecordFieldAssign -> m (V.GenericRecordField V.Expr)
 elabRecordFieldAssign (B.FieldAssign name expr) = (,) <$> elabRecordFieldName name <*> elabExpr expr
 
 elabRecord :: (MonadElab m) => [B.RecordFieldAssign] -> m V.Expr
@@ -435,27 +498,40 @@ elabRecordAcc e field = do
 
   return $ V.RecordAcc (V.provenanceOf fieldName) r fieldName
 
-elabBasicBinder :: (MonadElab m) => Bool -> B.BasicBinder -> m V.Binder
-elabBasicBinder folded = \case
-  B.ExplicitBinder modalities n _tk typ -> mkBinder folded modalities V.Explicit . These n =<< elabExpr typ
-  B.ImplicitBinder modalities n _tk typ -> mkBinder folded modalities (V.Implicit False) . These n =<< elabExpr typ
-  B.InstanceBinder modalities n _tk typ -> mkBinder folded modalities (V.Instance False) . These n =<< elabExpr typ
+elabBasicBinder ::
+  (MonadElab m) =>
+  (B.Expr -> m expr) ->
+  Bool ->
+  B.BasicBinder ->
+  m (V.GenericBinder expr)
+elabBasicBinder elab folded = \case
+  B.ExplicitBinder mods n _tk typ -> mkBinder elab folded mods V.Explicit (These n typ)
+  B.ImplicitBinder mods n _tk typ -> mkBinder elab folded mods (V.Implicit False) (These n typ)
+  B.InstanceBinder mods n _tk typ -> mkBinder elab folded mods (V.Instance False) (These n typ)
 
-elabNameBinder :: (MonadElab m) => Bool -> B.NameBinder -> m V.Binder
-elabNameBinder folded = \case
-  B.ExplicitNameBinder n -> mkBinder folded mempty V.Explicit (This n)
-  -- B.ExplicitNameBinderMods m modalities n -> mkBinder folded (m : modalities) V.Explicit (This n)
-  B.ImplicitNameBinder modalities n -> mkBinder folded modalities (V.Implicit False) (This n)
-  B.InstanceNameBinder modalities n -> mkBinder folded modalities (V.Instance False) (This n)
-  B.BasicNameBinder b -> elabBasicBinder folded b
+elabNameBinder ::
+  (MonadElab m) =>
+  (B.Expr -> m expr) ->
+  Bool ->
+  B.NameBinder ->
+  m (V.GenericBinder expr)
+elabNameBinder elab folded = \case
+  B.ExplicitNameBinder n -> mkBinder elab folded mempty V.Explicit (This n)
+  B.ImplicitNameBinder modalities n -> mkBinder elab folded modalities (V.Implicit False) (This n)
+  B.InstanceNameBinder modalities n -> mkBinder elab folded modalities (V.Instance False) (This n)
+  B.BasicNameBinder b -> elabBasicBinder elab folded b
 
-elabTypeBinder :: (MonadElab m) => Bool -> B.TypeBinder -> m V.Binder
-elabTypeBinder folded = \case
-  B.ExplicitTypeBinder t -> mkBinder folded mempty V.Explicit . That =<< elabExpr t
-  -- B.ExplicitTypeBinderMods m mods t -> mkBinder folded (m : mods) V.Explicit . That =<< elabExpr t
-  B.ImplicitTypeBinder modalities t -> mkBinder folded modalities (V.Implicit False) . That =<< elabExpr t
-  B.InstanceTypeBinder modalities t -> mkBinder folded modalities (V.Instance False) . That =<< elabExpr t
-  B.BasicTypeBinder b -> elabBasicBinder folded b
+elabTypeBinder ::
+  (MonadElab m) =>
+  (B.Expr -> m expr) ->
+  Bool ->
+  B.TypeBinder ->
+  m (V.GenericBinder expr)
+elabTypeBinder elab folded = \case
+  B.ExplicitTypeBinder t -> mkBinder elab folded mempty V.Explicit $ That t
+  B.ImplicitTypeBinder modalities t -> mkBinder elab folded modalities (V.Implicit False) $ That t
+  B.InstanceTypeBinder modalities t -> mkBinder elab folded modalities (V.Instance False) $ That t
+  B.BasicTypeBinder b -> elabBasicBinder elab folded b
 
 findRelevance :: [B.Modality] -> V.Relevance
 findRelevance ms
@@ -465,14 +541,21 @@ findRelevance ms
 mkArg :: [B.Modality] -> V.Visibility -> V.Expr -> V.Arg
 mkArg modalities v = V.Arg v (findRelevance modalities)
 
-mkBinder :: (MonadElab m) => V.BinderFoldingForm -> [B.Modality] -> V.Visibility -> These B.Name V.Expr -> m V.Binder
-mkBinder folded modalities visibility nameTyp = do
+mkBinder ::
+  (MonadElab m) =>
+  (B.Expr -> m expr) ->
+  V.BinderFoldingForm ->
+  [B.Modality] ->
+  V.Visibility ->
+  These B.Name B.Expr ->
+  m (V.GenericBinder expr)
+mkBinder elab folded modalities visibility nameTyp = do
   let relevance = findRelevance modalities
   (form, typ) <- case nameTyp of
     This nameTk -> do
       p <- mkProvenance nameTk
       let name = tkSymbol nameTk
-      let typ = V.mkHole p $ "typeOf[" <> name <> "]"
+      let typ = mkHole (tkLocation nameTk) $ "typeOf[" <> name <> "]"
       let naming = V.OnlyName name p
       return (naming, typ)
     That typ -> do
@@ -485,10 +568,11 @@ mkBinder folded modalities visibility nameTyp = do
       return (naming, typ)
 
   let displayForm = V.BinderDisplayForm form folded
-  return $ V.Binder displayForm visibility relevance typ
+  elabType <- elab typ
+  return $ V.Binder displayForm visibility relevance elabType
 
 elabLetDecl :: (MonadElab m) => B.LetDecl -> m (V.Binder, V.Expr)
-elabLetDecl (B.LDecl b e) = bitraverse (elabNameBinder False) elabExpr (b, e)
+elabLetDecl (B.LDecl b e) = bitraverse (elabNameBinder elabExpr False) elabExpr (b, e)
 
 elabLiteral :: (MonadElab m) => B.Lit -> m V.Expr
 elabLiteral = \case
@@ -650,7 +734,7 @@ elabQuantifierIn ::
 elabQuantifierIn tk q binder container body = do
   p <- mkProvenance tk
   let quantBuiltin = V.DerivedFunction $ V.QuantifyInList q
-  binder' <- elabNameBinder False binder
+  binder' <- elabNameBinder elabExpr False binder
   container' <- elabExpr container
   body' <- elabExpr body
 
@@ -698,8 +782,8 @@ elabNamedBinders tk binders = case binders of
     p <- mkProvenance tk
     throwError $ MissingVariables p (tkSymbol tk)
   (d : ds) -> do
-    d' <- elabNameBinder False d
-    ds' <- traverse (elabNameBinder True) ds
+    d' <- elabNameBinder elabExpr False d
+    ds' <- traverse (elabNameBinder elabExpr True) ds
     return (d' :| ds')
 
 -- | Constructs a pi type filled with an appropriate number of holes for
@@ -714,3 +798,6 @@ constructUnknownDefType n binders
 
     typifyName :: Text -> Text
     typifyName x = "typeOf_" <> x
+
+mkHole :: (Int, Int) -> Text -> B.Expr
+mkHole location name = B.Hole $ B.HoleToken (location, name)

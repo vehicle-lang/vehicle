@@ -4,6 +4,7 @@ module Vehicle.Backend.Agda.Compile
   )
 where
 
+import Control.Monad.Except (MonadError (..))
 import Data.Foldable (fold)
 import Data.List (sort)
 import Data.List.NonEmpty (NonEmpty (..))
@@ -315,26 +316,49 @@ compileDecl :: (MonadAgdaCompile m) => AgdaOptions -> Decl DecidabilityBuiltin -
 compileDecl opts = \case
   DefAbstract _ n _ t ->
     compilePostulate (compileIdentifier n) <$> compileExpr t
-  DefFunction _ n anns t e -> do
-    let (binders, body) = foldDeclBinders e
-    if isAnnotatedAsProperty anns
-      then compileProperty opts (compileIdentifier n) =<< compileExpr e
-      else do
-        let binders' = mapMaybe compileTopLevelBinder binders
-        (_, cbody) <- compileBinders binders (compileExpr body)
-        compileFunDef (compileIdentifier n) <$> compileExpr t <*> pure binders' <*> pure cbody
-  DefRecord _ n _ t fs -> do
-    t' <- compileExpr t
-    fs' <- traverseRecordFields compileExpr fs
-    return $
-      "record"
-        <+> compileIdentifier n
-        <+> ":"
-        <+> t'
-        <+> "where"
-        <> line
-        <> indent 2 "field"
-        <> indent 4 (vsep $ fmap (\(field, fieldType) -> pretty field <+> ":" <+> fieldType) fs')
+  DefFunction p n funSort t e -> case funSort of
+    TypeDecl binderCount -> compileFunctionDecl n binderCount t e
+    FunctionDecl binderCount Nothing -> compileFunctionDecl n binderCount t e
+    FunctionDecl _ (Just AnnProperty) -> compileProperty opts n e
+    RecordDecl _ -> compileRecordDecl p n t e
+
+compileRecordDecl ::
+  (MonadAgdaCompile m) =>
+  Provenance ->
+  Identifier ->
+  Type DecidabilityBuiltin ->
+  Expr DecidabilityBuiltin ->
+  m Code
+compileRecordDecl p ident typ expr = do
+  let (telescope, fields) = foldRecordDef typ expr
+  t' <-
+    if null telescope
+      then return (compileType 0)
+      else throwError $ UnimplementedFeature p "Compiling parameterised records to Rocq"
+  fs' <- traverseRecordFields compileExpr fields
+
+  return $
+    "record"
+      <+> compileIdentifier ident
+      <+> ":"
+      <+> t'
+      <+> "where"
+      <> line
+      <> indent 2 "field"
+      <> indent 4 (vsep $ fmap (\(f, t) -> pretty f <+> ":" <+> t) fs')
+
+compileFunctionDecl ::
+  (MonadAgdaCompile m) =>
+  Identifier ->
+  LHSBinderCount ->
+  Type DecidabilityBuiltin ->
+  Expr DecidabilityBuiltin ->
+  m Code
+compileFunctionDecl ident binderCount t e = do
+  let (binders, body) = foldDeclBinders binderCount e
+  let binders' = mapMaybe compileTopLevelBinder binders
+  (_, cbody) <- compileBinders binders (compileExpr body)
+  compileFunDef (compileIdentifier ident) <$> compileExpr t <*> pure binders' <*> pure cbody
 
 compileExpr :: (MonadAgdaCompile m) => Expr DecidabilityBuiltin -> m Code
 compileExpr expr = do
@@ -353,7 +377,7 @@ compileExpr expr = do
         cOutput <- addNameToContext binder $ compileExpr result
         return $ cInput <+> "→" <+> cOutput
       _ -> do
-        let (binders, body) = foldBinders PiBinder binder result
+        let (binders, body) = foldPiBinders binder result
         compileTypeLevelQuantifier Forall (binder :| binders) body
     Let _ bound binder body -> do
       cBoundExpr <- compileLetBinder (binder, bound)
@@ -395,7 +419,7 @@ compileLetBinder (binder, expr) = do
 
 compileLam :: (MonadAgdaCompile m) => Binder DecidabilityBuiltin -> Expr DecidabilityBuiltin -> m Code
 compileLam binder expr = do
-  let (binders, body) = foldBinders LamBinder binder expr
+  let (binders, body) = foldLamBinders binder expr
   (cBinders, cBody) <- compileBinders (binder : binders) (compileExpr body)
   return $ annotate (mempty, minPrecedence) ("λ" <+> hsep cBinders <+> "→" <+> cBody)
 
@@ -434,7 +458,7 @@ compileBinder binder = do
 
   return $ binderBrackets noExplicitBrackets (visibilityOf binder) binderDoc
 
-compileRecordField :: (MonadAgdaCompile m) => RecordField (Expr DecidabilityBuiltin) -> m Code
+compileRecordField :: (MonadAgdaCompile m) => GenericRecordField (Expr DecidabilityBuiltin) -> m Code
 compileRecordField (field, fieldValue) = do
   fieldValue' <- compileExpr fieldValue
   return $ pretty field <+> "=" <+> fieldValue'
@@ -676,8 +700,15 @@ compileFunDef n t ns e =
 compilePostulate :: Code -> Code -> Code
 compilePostulate name t = "postulate" <+> name <+> ":" <+> align t
 
-compileProperty :: (MonadAgdaCompile m) => AgdaOptions -> Code -> Code -> m Code
-compileProperty options propertyName propertyBody = do
+compileProperty ::
+  (MonadAgdaCompile m) =>
+  AgdaOptions ->
+  Identifier ->
+  Expr DecidabilityBuiltin ->
+  m Code
+compileProperty options ident body = do
+  let propertyName = compileIdentifier ident
+  propertyBody <- compileExpr body
   let maybeVerificationCache = verificationCache options
   return $
     case maybeVerificationCache of

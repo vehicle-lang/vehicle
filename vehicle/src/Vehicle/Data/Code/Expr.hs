@@ -6,6 +6,8 @@ module Vehicle.Data.Code.Expr
     Binder,
     Arg,
     Telescope,
+    RecordField,
+    RecordFields,
     Decl,
     Module,
     normAppList,
@@ -46,7 +48,7 @@ import Vehicle.Data.Universe (UniverseLevel (..))
 import Vehicle.Data.Variable.Bound.Index (Ix (..))
 import Vehicle.Data.Variable.Bound.Level (Lv, unLv)
 import Vehicle.Prelude
-import Vehicle.Syntax.Sugar (BinderType (..), HasBinders (..))
+import Vehicle.Syntax.Sugar (HasBasicBinders (..), HasBuiltinBinders (..))
 
 --------------------------------------------------------------------------------
 -- Expressions
@@ -111,8 +113,8 @@ data Expr builtin
   | -- | Records
     Record
       Provenance
-      Identifier
-      (RecordFields (Expr builtin))
+      (Maybe Identifier) -- Nothing indicates a definition, Just indicates the parent record definition
+      (RecordFields builtin)
   | -- | Records accessors
     RecordAcc
       Provenance
@@ -151,6 +153,10 @@ type Binder builtin = GenericBinder (Expr builtin)
 type Arg builtin = GenericArg (Expr builtin)
 
 type Telescope builtin = GenericTelescope (Expr builtin)
+
+type RecordField builtin = GenericRecordField (Expr builtin)
+
+type RecordFields builtin = GenericRecordFields (Expr builtin)
 
 type Decl builtin = GenericDecl (Expr builtin)
 
@@ -313,19 +319,52 @@ freeVarsIn =
 -----------------------------------------------------------------------------
 -- Instances
 
-instance (BuiltinHasBinders builtin) => HasBinders (Expr builtin) where
-  getBinder = \case
-    Pi _ binder body -> Just (PiBinder, binder, body)
-    Lam _ binder body -> Just (LamBinder, binder, body)
-    (getBuiltinApp -> Just (builtin, a : as)) ->
-      case (getBuiltinBinder builtin, argExpr $ NonEmpty.last (a :| as)) of
-        (Just binderType, Lam _ binder body) -> Just (binderType, binder, body)
-        _ -> Nothing
+instance HasBasicBinders (Expr builtin) where
+  isUniverse = \case
+    Universe _ _ -> True
+    _ -> False
+
+  getPiBinder = \case
+    Pi _ binder body -> Just (binder, body)
+    _ -> Nothing
+
+  getLamBinder = \case
+    Lam _ binder body -> Just (binder, body)
     _ -> Nothing
 
   getLetBinder = \case
     Let _ value binder body -> Just (value, binder, body)
     _ -> Nothing
+
+  getRecord = \case
+    Record _ _ fields -> Just fields
+    _ -> Nothing
+
+instance (BuiltinHasBoolLiterals builtin, BuiltinHasForeach builtin) => HasBuiltinBinders (Expr builtin) where
+  getQuantifierBinder q expr =
+    case getLastArgLambda expr of
+      Just (b, binder, body) ->
+        case getExpr accessQuantifyRatTensorBuiltin b of
+          (Just q') | q == q' -> Just (binder, body)
+          _ -> Nothing
+      _ -> Nothing
+
+  getForeachBinder expr = case getLastArgLambda expr of
+    Just (b, binder, body) ->
+      case getExpr accessForeachTensorBuiltin b of
+        Just () -> Just (binder, body)
+        _ -> case getExpr accessForeachVectorBuiltin b of
+          Just () -> Just (binder, body)
+          _ -> Nothing
+    _ -> Nothing
+
+getLastArgLambda :: Expr builtin -> Maybe (builtin, Binder builtin, Expr builtin)
+getLastArgLambda = \case
+  (getBuiltinApp -> Just (builtin, a : as)) ->
+    case argExpr $ NonEmpty.last (a :| as) of
+      Lam _ binder body -> Just (builtin, binder, body)
+      _ -> Nothing
+  _ -> Nothing
 
 instance HasBuiltinConstructor Expr where
   accessBuiltinC =

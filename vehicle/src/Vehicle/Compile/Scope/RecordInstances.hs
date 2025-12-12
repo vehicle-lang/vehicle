@@ -20,9 +20,11 @@ createTensorRecordConversionFunctions ::
   (MonadScope m) =>
   Provenance ->
   Identifier ->
-  [RecordField (Type Builtin)] ->
+  Expr Builtin ->
   m [Decl Builtin]
-createTensorRecordConversionFunctions p ident fields = do
+createTensorRecordConversionFunctions p ident expr = do
+  let fields = getTensorRecordFields expr
+
   nonEmptyFields <- case fields of
     [] -> throwError $ ZeroFieldTensorLike (ident, p)
     f : fs -> return $ f :| fs
@@ -52,7 +54,7 @@ createRecordToTensor ::
   Identifier ->
   DSLExpr Builtin ->
   DSLExpr Builtin ->
-  NonEmpty (RecordField (Type Builtin)) ->
+  NonEmpty (GenericRecordField (Type Builtin)) ->
   Decl Builtin
 createRecordToTensor p recordIdent fieldElementType fieldDimensions fields = do
   -- Create the name
@@ -70,4 +72,4 @@ createRecordToTensor p recordIdent fieldElementType fieldDimensions fields = do
         let tensorElements = fmap (\(fieldName, _) -> recordAcc record (recordIdent, fieldName)) fields
         stackTensor fieldElementType firstDimension fieldDimensions tensorElements
 
-  DefFunction p functionIdent mempty functionType functionBody
+  DefFunction p functionIdent (FunctionDecl 1 Nothing) functionType functionBody

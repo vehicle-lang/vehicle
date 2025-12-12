@@ -62,7 +62,6 @@ convertDecl logicID logic decl = do
   logCompilerSection2 MinDetail ("declaration" <+> quotePretty (identifierOf decl)) $ do
     runMonadLogicT logicID logic decl $ do
       case decl of
-        DefRecord {} -> return Nothing
         DefAbstract p ident sort typ
           | isExternalResourceDecl decl -> Just <$> convertResourceDecl p ident sort typ
           | otherwise -> return Nothing
@@ -87,7 +86,7 @@ convertPropertyDecl ::
   (MonadLogic m) =>
   Provenance ->
   Identifier ->
-  [Annotation] ->
+  DefFunctionSort ->
   VType Builtin ->
   Value Builtin ->
   m (Decl LossBuiltin)

@@ -72,7 +72,11 @@ addNewRecordDefField ident newField = do
 -- | Called when finishing parsing a record definition so that we can add
 -- the information necessary to do efficient parsing of instances of that
 -- record.
-addNewRecordDef :: (MonadState ModuleScopingInterface m) => Identifier -> [FieldName] -> m ()
+addNewRecordDef ::
+  (MonadState ModuleScopingInterface m) =>
+  Identifier ->
+  [FieldName] ->
+  m ()
 addNewRecordDef ident fields = do
   ModuleScopingInterface {..} <- get
   let fieldSet = Set.fromList fields
@@ -137,24 +141,23 @@ runMonadScopeExprT action = do
         boundCtx = mempty
       }
 
-addBinder :: (MonadScopeExpr m, HasProvenance binder, HasName binder (Maybe Name)) => binder -> m a -> m a
+addBinder :: (MonadScopeExpr m) => GenericBinder expr -> m a -> m a
 addBinder binder continuation = do
-  let maybeName = nameOf binder
-  case maybeName of
+  case getMaybeNamedBinderInfo binder of
     Nothing -> return ()
-    Just name -> do
+    Just (name, p) -> do
       maybeFreeVar <- lookupFreeVariable name
       case maybeFreeVar of
         Just {} ->
           -- This restriction is needed so that
           -- `Vehicle.Compile.ResourceFunctionalisation`
           -- doesn't accidentally capture variables.
-          throwError $ DeclarationBoundShadowing (provenanceOf binder) name
+          throwError $ DeclarationBoundShadowing p name
         Nothing -> return ()
 
   flip local continuation $ \LocalCtx {..} ->
     LocalCtx
-      { boundCtx = maybeName : boundCtx,
+      { boundCtx = nameOf binder : boundCtx,
         ..
       }
 

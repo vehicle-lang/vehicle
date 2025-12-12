@@ -4,6 +4,8 @@ module Vehicle.Syntax.Parse.Error
 where
 
 import Data.Text (Text)
+import Data.Void (Void)
+import Prettyprinter (Doc)
 import Vehicle.Syntax.AST
 import Vehicle.Syntax.Builtin
 
@@ -13,14 +15,18 @@ import Vehicle.Syntax.Builtin
 data ParseError
   = -- Parse errors
     RawParseError String
-  | -- Declarations
-    UnannotatedAbstractDef Provenance Name
-  | MultiplyAnnotatedAbstractDef Provenance Name DefAbstractSort DefAbstractSort
-  | NonAbstractDefWithAbstractAnnotation Provenance Name DefAbstractSort
-  | AbstractDefWithNonAbstractAnnotation Provenance Name Annotation
-  | AnnotationWithNoDef Provenance Name
-  | FunctionWithMismatchedNames Provenance Name Name
+  | FunctionWithMismatchedNames Provenance Identifier Identifier
   | -- Annotations
+    UnannotatedAbstractDef Provenance Identifier
+  | MultiplyAnnotatedDef Provenance Identifier (Doc Void) (Doc Void)
+  | TypeDefWithAnnotation Provenance Identifier (Doc Void)
+  | FunctionDefWithRecordAnnotation Provenance Identifier (Doc Void)
+  | RecordDefWithFunctionAnnotation Provenance Identifier (Doc Void)
+  | AbstractDefWithNonAbstractAnnotation Provenance Identifier (Doc Void)
+  | NonAbstractDefWithAbstractAnnotation Provenance Identifier (Doc Void)
+  | AnnotationWithNoDef Provenance Name
+  | TensorAnnotationWithParameters Provenance Identifier
+  | -- Annotation options
     InvalidAnnotationOption Provenance Name Name [Name]
   | InvalidAnnotationOptionValue Name Expr
   | MissingAnnotationOption Provenance Text Name

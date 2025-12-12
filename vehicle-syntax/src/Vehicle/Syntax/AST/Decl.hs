@@ -7,8 +7,7 @@ import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..))
 import Vehicle.Syntax.AST.Name
 import Vehicle.Syntax.AST.Provenance
-import Vehicle.Syntax.AST.Record
-import Vehicle.Syntax.AST.Type
+import Vehicle.Syntax.AST.Type (HasType (..))
 
 --------------------------------------------------------------------------------
 -- Declarations
@@ -25,16 +24,9 @@ data GenericDecl expr
     DefFunction
       Provenance -- Location in source file.
       Identifier -- Name of definition.
-      [Annotation] -- List of annotations.
+      DefFunctionSort -- List of annotations.
       expr -- Type of the definition.
       expr -- Body of the definition.
-  | -- | Record definitions
-    DefRecord
-      Provenance -- Location in source file.
-      Identifier -- Name of definition.
-      [Annotation] -- List of annotations.
-      expr -- Type of the record
-      (RecordFields expr) -- Fields in the record definition.
   deriving (Show, Functor, Foldable, Traversable, Generic)
 
 instance (NFData expr) => NFData (GenericDecl expr)
@@ -45,13 +37,11 @@ instance HasProvenance (GenericDecl expr) where
   provenanceOf = \case
     DefAbstract p _ _ _ -> p
     DefFunction p _ _ _ _ -> p
-    DefRecord p _ _ _ _ -> p
 
 instance HasIdentifier (GenericDecl expr) where
   identifierOf = \case
     DefAbstract _ i _ _ -> i
     DefFunction _ i _ _ _ -> i
-    DefRecord _ i _ _ _ -> i
 
 instance HasName (GenericDecl expr) Name where
   nameOf = nameOf . identifierOf
@@ -60,25 +50,16 @@ instance HasType (GenericDecl expr) expr where
   typeOf = \case
     DefAbstract _ _ _ t -> t
     DefFunction _ _ _ t _ -> t
-    DefRecord _ _ _ t _ -> t
 
 bodyOf :: GenericDecl expr -> Maybe expr
 bodyOf = \case
   DefFunction _ _ _ _ e -> Just e
   DefAbstract {} -> Nothing
-  DefRecord {} -> Nothing
-
-annotationsOf :: GenericDecl expr -> [Annotation]
-annotationsOf = \case
-  DefFunction _ _ anns _ _ -> anns
-  DefAbstract {} -> []
-  DefRecord _ _ anns _ _ -> anns
 
 abstractSortOf :: GenericDecl expr -> Maybe DefAbstractSort
 abstractSortOf decl = case decl of
   DefAbstract _ _ sort _ -> Just sort
   DefFunction {} -> Nothing
-  DefRecord {} -> Nothing
 
 -- | Traverses the type and body of a declaration using the first and
 -- second provided functions respectively.
@@ -92,7 +73,6 @@ traverseDeclTypeAndExpr ::
 traverseDeclTypeAndExpr f1 f2 = \case
   DefAbstract p n r t -> DefAbstract p n r <$> f1 t
   DefFunction p n b t e -> DefFunction p n b <$> f1 t <*> f2 e
-  DefRecord p n b t fs -> DefRecord p n b <$> f1 t <*> traverseRecordFields f2 fs
 
 mapIdentifier ::
   (Identifier -> Identifier) ->
@@ -101,7 +81,6 @@ mapIdentifier ::
 mapIdentifier f = \case
   DefAbstract p n r t -> DefAbstract p (f n) r t
   DefFunction p n b t e -> DefFunction p (f n) b t e
-  DefRecord p n b t fs -> DefRecord p (f n) b t fs
 
 -- | Traverses the type of the declaration.
 traverseDeclType ::
@@ -114,14 +93,12 @@ traverseDeclType f = traverseDeclTypeAndExpr f return
 isPropertyDecl :: GenericDecl expr -> Bool
 isPropertyDecl = \case
   DefAbstract {} -> False
-  DefFunction _ _ anns _ _ -> AnnProperty `elem` anns
-  DefRecord {} -> False
+  DefFunction _ _ anns _ _ -> isAnnotatedAsProperty anns
 
 isAbstractDecl :: GenericDecl expr -> Bool
 isAbstractDecl = \case
   DefAbstract {} -> True
   DefFunction {} -> False
-  DefRecord {} -> False
 
 --------------------------------------------------------------------------------
 -- Abstract definition types options
@@ -176,34 +153,85 @@ isExternalResourceSort = \case
 isExternalResourceDecl :: GenericDecl expr -> Bool
 isExternalResourceDecl decl = maybe False isExternalResourceSort (abstractSortOf decl)
 
-convertToPostulate :: GenericDecl expr -> GenericDecl expr
-convertToPostulate d =
-  DefAbstract (provenanceOf d) (identifierOf d) BuiltinDef (typeOf d)
-
 --------------------------------------------------------------------------------
 -- Annotations options
 
-data Annotation
-  = AnnProperty
-  | AnnTensor
-  | AnnInstance
+-- | How many arguments the function declaration is expecting
+-- on the LHS.
+--
+-- e.g.
+--   f : Nat -> Nat -> Nat
+--   f x = \y -> x + y
+--
+-- should have a value of 1.
+type LHSBinderCount = Int
+
+-- | Possible declaration modes for the `DefFunction` node.
+data DefFunctionSort
+  = -- | The function was declared using `type ... = ...` syntax
+    TypeDecl LHSBinderCount
+  | -- | The function was declared with `record X .... where` syntax.
+    RecordDecl (Maybe RecordDeclAnnotation)
+  | -- | The function was declared as a standard function
+    FunctionDecl LHSBinderCount (Maybe FunctionDeclAnnotation)
   deriving (Eq, Show, Generic)
 
-instance NFData Annotation
+instance NFData DefFunctionSort
 
-instance Serialize Annotation
+instance Serialize DefFunctionSort
 
-instance Pretty Annotation where
+-- | Possible annotations for records.
+data RecordDeclAnnotation
+  = -- | The record was annotated with @record
+    AnnTensor
+  | -- | The record was annotated with @instance
+    AnnInstance
+  deriving (Eq, Show, Generic)
+
+instance NFData RecordDeclAnnotation
+
+instance Serialize RecordDeclAnnotation
+
+instance Pretty RecordDeclAnnotation where
   pretty = \case
-    AnnProperty -> "@property"
     AnnTensor -> "@tensor"
     AnnInstance -> "@instance"
 
-isAnnotatedAsProperty :: [Annotation] -> Bool
-isAnnotatedAsProperty anns = AnnProperty `elem` anns
+-- | Possible annotations for ordinatary functions.
+data FunctionDeclAnnotation
+  = -- | The function was annotated with @property
+    AnnProperty
+  deriving (Eq, Show, Generic)
 
-isAnnotatedAsTensor :: [Annotation] -> Bool
-isAnnotatedAsTensor anns = AnnTensor `elem` anns
+instance NFData FunctionDeclAnnotation
 
-isAnnotatedAsInstance :: [Annotation] -> Bool
-isAnnotatedAsInstance anns = AnnInstance `elem` anns
+instance Serialize FunctionDeclAnnotation
+
+instance Pretty FunctionDeclAnnotation where
+  pretty = \case
+    AnnProperty -> "@property"
+
+isDeclaredAsRecord :: DefFunctionSort -> Bool
+isDeclaredAsRecord = \case
+  RecordDecl {} -> True
+  _ -> False
+
+isDeclaredAsType :: DefFunctionSort -> Bool
+isDeclaredAsType = \case
+  TypeDecl {} -> True
+  _ -> False
+
+isAnnotatedAsProperty :: DefFunctionSort -> Bool
+isAnnotatedAsProperty = \case
+  FunctionDecl _ (Just AnnProperty) -> True
+  _ -> False
+
+isAnnotatedAsTensor :: DefFunctionSort -> Bool
+isAnnotatedAsTensor = \case
+  RecordDecl (Just AnnTensor) -> True
+  _ -> False
+
+isAnnotatedAsInstance :: DefFunctionSort -> Bool
+isAnnotatedAsInstance = \case
+  RecordDecl (Just AnnInstance) -> True
+  _ -> False

@@ -36,7 +36,7 @@ import Vehicle.Syntax.AST.Decl (GenericDecl)
 import Vehicle.Syntax.AST.Module (GenericModule)
 import Vehicle.Syntax.AST.Name (Name)
 import Vehicle.Syntax.AST.Provenance (HasProvenance (..), Provenance, fillInProvenance)
-import Vehicle.Syntax.AST.Record (FieldName, RecordField)
+import Vehicle.Syntax.AST.Record (FieldName, GenericRecordFields)
 import Vehicle.Syntax.Builtin (Builtin)
 
 --------------------------------------------------------------------------------
@@ -93,7 +93,7 @@ data Expr
   | -- | Records
     Record
       Provenance
-      [RecordField Expr]
+      (GenericRecordFields Expr)
   | -- | Record accessors.
     --
     -- NOTE: we could replace `RecordAcc` with `App Identifier Record`

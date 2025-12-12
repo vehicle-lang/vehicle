@@ -69,9 +69,11 @@ instance NoThunks (Tensor Rational)
 
 -- Vehicle.Syntax.AST.Decl
 instance NoThunks expr => NoThunks (GenericDecl expr)
-instance NoThunks ParameterSort
 instance NoThunks DefAbstractSort
-instance NoThunks Annotation
+instance NoThunks ParameterSort
+instance NoThunks DefFunctionSort
+instance NoThunks RecordDeclAnnotation
+instance NoThunks FunctionDeclAnnotation
 
 -- Vehicle.Syntax.AST.Expr
 instance NoThunks Expr

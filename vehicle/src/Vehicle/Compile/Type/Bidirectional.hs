@@ -1,8 +1,11 @@
 module Vehicle.Compile.Type.Bidirectional
   ( checkExprType,
+    checkTelescope,
     inferExprType,
     solveArgInsertionProblem,
     createFreshUnificationConstraint,
+    MonadBidirectional,
+    runMonadBidirectional,
   )
 where
 
@@ -22,7 +25,7 @@ import Vehicle.Compile.Type.Force (forceHead)
 import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad
-import Vehicle.Compile.Type.Monad.Class (createFreshConstraintCtx, getDeclType, getDeclaredRecordFields)
+import Vehicle.Compile.Type.Monad.Class (createFreshConstraintCtx, getDeclType, getRecordDefinition)
 import Vehicle.Compile.Type.System (HasTypeSystem (..), TCM)
 import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin (..))
 import Vehicle.Data.Code.Value
@@ -154,6 +157,20 @@ checkBinder binder = do
   let checkedBinder = replaceBinderType checkedBinderType binder
   return checkedBinder
 
+checkTelescope ::
+  (MonadBidirectional builtin m) =>
+  Telescope builtin ->
+  m a ->
+  m (Telescope builtin, a)
+checkTelescope telescope checkBody = case telescope of
+  [] -> ([],) <$> checkBody
+  binder : binders -> do
+    checkedBinder <- checkBinder binder
+    (checkedBinders, checkedFields) <-
+      addBinderToContext checkedBinder $
+        checkTelescope binders checkBody
+    return (checkedBinder : checkedBinders, checkedFields)
+
 --------------------------------------------------------------------------------
 -- Inference
 
@@ -230,20 +247,50 @@ inferExpr e = do
     Builtin p op -> do
       typ <- typeBuiltin p op
       return (Builtin p op, typ)
-    Record p recordIdent fields -> do
-      declaredFields <- getDeclaredRecordFields (Proxy @builtin) recordIdent
-      checkedFields <- traverse (checkRecordField declaredFields) fields
-      let checkedType = FreeVar p recordIdent
-      return (Record p recordIdent checkedFields, checkedType)
-    RecordAcc p record (recordIdent, field) -> do
-      let recordType = FreeVar (provenanceOf field) recordIdent
-      checkedRecord <- checkExpr recordType record
-      declaredFields <- getDeclaredRecordFields (Proxy @builtin) recordIdent
+    Record p maybeParentIdent uncheckedFields -> do
+      case maybeParentIdent of
+        Nothing -> do
+          let checkedType = Universe p 0
+          let declaredFields = mapRecordFields (const $ Universe p 0) uncheckedFields
+          checkedFields <- traverse (checkRecordField declaredFields) uncheckedFields
+          return (Record p maybeParentIdent checkedFields, checkedType)
+        Just parentIdent -> do
+          (typ, declaredFields) <- instantiateRecordExpr p parentIdent
+          checkedFields <- traverse (checkRecordField declaredFields) uncheckedFields
+          return (Record p (Just parentIdent) checkedFields, typ)
+    RecordAcc p uncheckedRecord (parentIdent, field) -> do
+      (recordTyp, declaredFields) <- instantiateRecordExpr p parentIdent
+      checkedRecord <- checkExpr recordTyp uncheckedRecord
       let fieldType = lookupRecordField declaredFields field
-      return (RecordAcc p checkedRecord (recordIdent, field), fieldType)
+      return (RecordAcc p checkedRecord (parentIdent, field), fieldType)
 
   showInferExit res
   return res
+
+instantiateRecordExpr ::
+  forall builtin m.
+  (MonadBidirectional builtin m) =>
+  Provenance ->
+  Identifier ->
+  m (Type builtin, RecordFields builtin)
+instantiateRecordExpr p ident = do
+  abstractTypAndExpr <- getRecordDefinition (Proxy @builtin) ident
+  boundCtx <- getBoundCtx (Proxy @(Type builtin))
+  let instanceConstraintOrigin t =
+        InstanceArgOrigin $
+          ArgOrigin
+            { checkedInstanceOp = FreeVar p ident,
+              checkedInstanceOpArgs = mempty,
+              -- This is very likely wrong
+              checkedInstanceOpType = FreeVar p ident,
+              checkedInstanceType = t
+            }
+  let createInstance r t = createFreshInstanceConstraint False boundCtx p (instanceConstraintOrigin t) r t
+  (_typ, expr, args) <- instantiateTelescope RecordTelescope createInstance boundCtx abstractTypAndExpr
+  let finalType = normAppList (FreeVar p ident) args
+  case expr of
+    Record _ Nothing fields -> return (finalType, fields)
+    _ -> developerError $ "Malformed record" <+> prettyVerbose expr
 
 -- | Takes a function and its arguments, inserts any needed implicits
 -- or instance arguments and then returns the function applied to the full
@@ -316,9 +363,9 @@ checkPiBinderMatchesLamBinder piBinder lamBinder = do
 
 checkRecordField ::
   (MonadBidirectional builtin m) =>
-  RecordFields (Type builtin) ->
-  RecordField (Expr builtin) ->
-  m (RecordField (Expr builtin))
+  GenericRecordFields (Type builtin) ->
+  RecordField builtin ->
+  m (RecordField builtin)
 checkRecordField declaredFields (field, value) = do
   let fieldType = lookupRecordField declaredFields field
   checkedValue <- checkExpr fieldType value
@@ -501,7 +548,6 @@ showCheckExit :: forall builtin m. (MonadBidirectional builtin m) => Expr builti
 showCheckExit e = do
   decrCallDepth
   ctx <- getNameContext
-  logDebug MaxDetail $ "check-exit " <+> prettyVerbose e -- (WithContext e ctx)
   logDebug MaxDetail $ "check-exit " <+> prettyExternal (WithContext e ctx)
 
 showInferEntry :: forall builtin m. (MonadBidirectional builtin m) => Expr builtin -> m ()

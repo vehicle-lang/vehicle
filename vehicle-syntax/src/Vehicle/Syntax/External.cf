@@ -279,7 +279,7 @@ DefAnn.       Decl ::= TokAnnotation DeclAnnOpts;
 DefType.      Decl ::= "type" Name [NameBinder] "=" Expr;
 DefFunType.   Decl ::= Name TokElemOf Expr;
 DefFunExpr.   Decl ::= Name [NameBinder] "=" Expr;
-DefRecord.    Decl ::= "record" Name "where" "{" [RecordFieldDef] "}";
+DefRecord.    Decl ::= "record" Name [NameBinder] "where" "{" [RecordFieldDef] "}";
 
 separator Decl ";";
 
