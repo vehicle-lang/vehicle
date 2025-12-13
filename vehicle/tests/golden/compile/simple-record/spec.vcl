@@ -12,8 +12,10 @@ Pair = \x y -> { a : x, b : y }
 a : \forall {x} {y} -> Pair x y -> x
 a {x} {y} r = Proj (Pair x y) r a
 
-b : \forall x y -> y
+a : \forall {x} {y} -> Pair x y -> y
+a {x} {y} r = Proj (Pair x y) r b
 -}
+
 RealPair : Type
 RealPair = Pair Real Real
 

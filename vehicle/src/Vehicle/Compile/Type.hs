@@ -184,20 +184,6 @@ typeCheckRecordDef p ident anns uncheckedTelescope uncheckedFields isUnused = do
   solveConstraints (Proxy @builtin)
   substMetaVariables checkedDecl
 
-{-
-
-  -- Check if the record is annotated as a tensor and check the restrictions.
-  -- Needs to be done after the main solving pass so that we are guaranteed to
-  -- get the most informative error message.
-  when (isAnnotatedAsTensor anns) $
-    logCompilerSection2 MidDetail "checking suitability of type as @tensor" $ do
-
-      solveConstraints (Proxy @builtin)
-          let checkedType = Universe p 0
-          let declaredFields = mapRecordFields (const $ Universe p 0) uncheckedFields
-          checkedFields <- traverse (checkRecordField declaredFields) uncheckedFields
-          return (Record p maybeParentIdent checkedFields, checkedType)
--}
 checkDeclType :: (TCM builtin m, HasName name Name) => name -> Type builtin -> m (Type builtin)
 checkDeclType ident declType = do
   let pass = bidirectionalPassDoc <+> "type of" <+> quotePretty (nameOf ident)
