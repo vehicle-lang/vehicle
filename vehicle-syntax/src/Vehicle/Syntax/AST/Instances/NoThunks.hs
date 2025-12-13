@@ -72,7 +72,7 @@ instance NoThunks expr => NoThunks (GenericDecl expr)
 instance NoThunks DefAbstractSort
 instance NoThunks ParameterSort
 instance NoThunks DefFunctionSort
-instance NoThunks RecordDeclAnnotation
+instance NoThunks DefRecordSort
 instance NoThunks FunctionDeclAnnotation
 
 -- Vehicle.Syntax.AST.Expr
