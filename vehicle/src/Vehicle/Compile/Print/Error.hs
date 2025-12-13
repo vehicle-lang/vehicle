@@ -191,22 +191,6 @@ formatCompileError = \case
                 <+> ann
                 <+> "annotation."
         }
-    TensorAnnotationWithParameters p name ->
-      VehicleError
-        { provenance = Just p,
-          problem =
-            "The record"
-              <+> prettyIdentName name
-              <+> "cannot be annotated with a"
-              <+> pretty AnnTensor
-              <+> "annotation as annotating"
-              <+> "parameterised records is not yet supported.",
-          fix =
-            Just $
-              "remove the type parameters from the definition of"
-                <+> prettyIdentName name
-                <> "."
-        }
     AnnotationWithNoDef p ann ->
       VehicleError
         { provenance = Just p,

@@ -1,16 +1,16 @@
 module Vehicle.Compile.Type.Bidirectional
   ( checkExprType,
     checkTelescope,
+    checkRecordDefinition,
     inferExprType,
     solveArgInsertionProblem,
     createFreshUnificationConstraint,
-    MonadBidirectional,
-    runMonadBidirectional,
   )
 where
 
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
+import Data.Bifunctor (Bifunctor (..))
 import Data.Data (Proxy (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Maybe (fromMaybe)
@@ -31,7 +31,7 @@ import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin (..))
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Universe (UniverseLevel (..))
 import Vehicle.Data.Variable.Bound.Context.Generic
-import Vehicle.Data.Variable.Bound.Context.Name (MonadReadableNameContext (..))
+import Vehicle.Data.Variable.Bound.Context.Name (MonadReadableNameContext (..), prettyFriendlyInCtx)
 import Prelude hiding (pi)
 
 --------------------------------------------------------------------------------
@@ -247,50 +247,73 @@ inferExpr e = do
     Builtin p op -> do
       typ <- typeBuiltin p op
       return (Builtin p op, typ)
-    Record p maybeParentIdent uncheckedFields -> do
-      case maybeParentIdent of
-        Nothing -> do
-          let checkedType = Universe p 0
-          let declaredFields = mapRecordFields (const $ Universe p 0) uncheckedFields
-          checkedFields <- traverse (checkRecordField declaredFields) uncheckedFields
-          return (Record p maybeParentIdent checkedFields, checkedType)
-        Just parentIdent -> do
-          (typ, declaredFields) <- instantiateRecordExpr p parentIdent
-          checkedFields <- traverse (checkRecordField declaredFields) uncheckedFields
-          return (Record p (Just parentIdent) checkedFields, typ)
-    RecordAcc p uncheckedRecord (parentIdent, field) -> do
-      (recordTyp, declaredFields) <- instantiateRecordExpr p parentIdent
-      checkedRecord <- checkExpr recordTyp uncheckedRecord
-      let fieldType = lookupRecordField declaredFields field
-      return (RecordAcc p checkedRecord (parentIdent, field), fieldType)
+    Record p uncheckedRecordType uncheckedFields -> do
+      (checkedRecordType, expectedFieldTypes) <- checkRecordTypeAndCalculateRecordFieldTypes p uncheckedRecordType
+      checkedFields <- traverse (checkRecordField expectedFieldTypes) uncheckedFields
+      return (Record p checkedRecordType checkedFields, checkedRecordType)
+    RecordProj p uncheckedRecordType uncheckedRecord field -> do
+      (checkedRecordType, expectedFieldTypes) <- checkRecordTypeAndCalculateRecordFieldTypes p uncheckedRecordType
+      logDebugM MaxDetail $ prettyFriendlyInCtx checkedRecordType
+      prettyFields <- traverseRecordFields prettyFriendlyInCtx expectedFieldTypes
+      logDebug MaxDetail $ prettyMapEntries (fmap (first pretty) prettyFields)
+      checkedRecord <- checkExpr checkedRecordType uncheckedRecord
+      let fieldType = lookupRecordField expectedFieldTypes field
+      return (RecordProj p checkedRecordType checkedRecord field, fieldType)
 
   showInferExit res
   return res
 
-instantiateRecordExpr ::
+checkRecordTypeAndCalculateRecordFieldTypes ::
   forall builtin m.
   (MonadBidirectional builtin m) =>
   Provenance ->
-  Identifier ->
+  Type builtin ->
   m (Type builtin, RecordFields builtin)
-instantiateRecordExpr p ident = do
-  abstractTypAndExpr <- getRecordDefinition (Proxy @builtin) ident
-  boundCtx <- getBoundCtx (Proxy @(Type builtin))
-  let instanceConstraintOrigin t =
-        InstanceArgOrigin $
-          ArgOrigin
-            { checkedInstanceOp = FreeVar p ident,
-              checkedInstanceOpArgs = mempty,
-              -- This is very likely wrong
-              checkedInstanceOpType = FreeVar p ident,
-              checkedInstanceType = t
-            }
-  let createInstance r t = createFreshInstanceConstraint False boundCtx p (instanceConstraintOrigin t) r t
-  (_typ, expr, args) <- instantiateTelescope RecordTelescope createInstance boundCtx abstractTypAndExpr
-  let finalType = normAppList (FreeVar p ident) args
-  case expr of
-    Record _ Nothing fields -> return (finalType, fields)
-    _ -> developerError $ "Malformed record" <+> prettyVerbose expr
+checkRecordTypeAndCalculateRecordFieldTypes p uncheckedRecordType = do
+  checkedRecordType <- checkExpr (Universe p 0) uncheckedRecordType
+
+  (recordIdent, recordParameters) <- case checkedRecordType of
+    App (FreeVar _ ident) args -> return (ident, NonEmpty.toList args)
+    FreeVar _ ident -> return (ident, [])
+    _ ->
+      developerError $
+        "Ill-formed record type found during type-checking:"
+          <> lineIndent (prettyVerbose checkedRecordType)
+
+  (telescope, fields) <- getRecordDefinition (Proxy @builtin) recordIdent
+  ctx <- getNameContext
+  logDebug MaxDetail $ pretty ctx
+  logDebug MaxDetail $ prettyVerbose recordParameters
+  logDebug MaxDetail $ prettyVerbose fields
+  let substField fieldType = calculateRarameterisedRecordFieldType telescope fieldType recordParameters
+  let finalFields = mapRecordFields substField fields
+
+  return (checkedRecordType, finalFields)
+
+checkRecordDefinition ::
+  forall builtin m.
+  (MonadTypeChecker builtin m, HasTypeSystem builtin) =>
+  Telescope builtin ->
+  RecordFields builtin ->
+  m (Telescope builtin, RecordFields builtin)
+checkRecordDefinition t f =
+  runMonadBidirectional @m @builtin emptyBoundCtx Relevant $ checkRecordFieldsDef f t
+
+checkRecordFieldsDef ::
+  forall builtin m.
+  (MonadBidirectional builtin m) =>
+  RecordFields builtin ->
+  Telescope builtin ->
+  m (Telescope builtin, RecordFields builtin)
+checkRecordFieldsDef fields = \case
+  [] -> do
+    checkedFields <- traverseRecordFields (checkExpr (Universe mempty 0)) fields
+    return ([], checkedFields)
+  binder : binders -> do
+    checkedBinder <- checkBinder binder
+    (checkedBinders, checkedFields) <-
+      addBinderToContext checkedBinder $ checkRecordFieldsDef fields binders
+    return (checkedBinder : checkedBinders, checkedFields)
 
 -- | Takes a function and its arguments, inserts any needed implicits
 -- or instance arguments and then returns the function applied to the full

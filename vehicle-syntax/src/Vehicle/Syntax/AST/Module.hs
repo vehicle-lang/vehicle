@@ -35,6 +35,13 @@ instance (NFData expr) => NFData (GenericModule expr)
 
 instance (Serialize expr) => Serialize (GenericModule expr)
 
+mapModuleDecls ::
+  (GenericDecl expr1 -> GenericDecl expr2) ->
+  GenericModule expr1 ->
+  GenericModule expr2
+mapModuleDecls f (Module imports ds) =
+  Module imports $ fmap f ds
+
 traverseModuleDecls ::
   (Monad m) =>
   (GenericDecl expr1 -> m (GenericDecl expr2)) ->

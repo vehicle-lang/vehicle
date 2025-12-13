@@ -9,7 +9,7 @@ import Data.Foldable (fold)
 import Data.List (sort)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
-import Data.Maybe (mapMaybe)
+import Data.Maybe (catMaybes, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -310,27 +310,31 @@ binderBrackets topLevel = \case
 -- Compilation of program structure
 
 compileProg :: (MonadAgdaCompile m) => AgdaOptions -> Prog DecidabilityBuiltin -> m Code
-compileProg opts (Main ds) = vsep2 <$> traverse (compileDecl opts) ds
+compileProg opts (Main ds) = do
+  decls <- catMaybes <$> traverse (compileDecl opts) ds
+  return $ vsep2 decls
 
-compileDecl :: (MonadAgdaCompile m) => AgdaOptions -> Decl DecidabilityBuiltin -> m Code
+compileDecl :: (MonadAgdaCompile m) => AgdaOptions -> Decl DecidabilityBuiltin -> m (Maybe Code)
 compileDecl opts = \case
   DefAbstract _ n _ t ->
-    compilePostulate (compileIdentifier n) <$> compileExpr t
+    Just <$> compilePostulate n t
   DefFunction p n funSort t e -> case funSort of
-    TypeDecl binderCount -> compileFunctionDecl n binderCount t e
-    FunctionDecl binderCount Nothing -> compileFunctionDecl n binderCount t e
-    FunctionDecl _ (Just AnnProperty) -> compileProperty opts n e
-    RecordDecl _ -> compileRecordDecl p n t e
+    TypeDecl binderCount -> Just <$> compileFunctionDecl n binderCount t e
+    FunctionDecl binderCount Nothing -> Just <$> compileFunctionDecl n binderCount t e
+    FunctionDecl _ (Just AnnProperty) -> Just <$> compileProperty opts n e
+    FunctionDecl _ (Just AnnInstance) -> throwError $ UnimplementedFeature p "Compiling instances to Agda"
+    ProjectionDecl _ -> return Nothing
+  DefRecord p n _sort telescope fields ->
+    Just <$> compileRecordDecl p n telescope fields
 
 compileRecordDecl ::
   (MonadAgdaCompile m) =>
   Provenance ->
   Identifier ->
-  Type DecidabilityBuiltin ->
-  Expr DecidabilityBuiltin ->
+  Telescope DecidabilityBuiltin ->
+  RecordFields DecidabilityBuiltin ->
   m Code
-compileRecordDecl p ident typ expr = do
-  let (telescope, fields) = foldRecordDef typ expr
+compileRecordDecl p ident telescope fields = do
   t' <-
     if null telescope
       then return (compileType 0)
@@ -395,7 +399,7 @@ compileExpr expr = do
           <> concatWith (\x y -> x <> line <> ";" <+> y) fs'
           <> line
           <> "}"
-    RecordAcc _p r (_i, field) ->
+    RecordProj _p _t r field ->
       annotateApp [] Nothing (pretty field) [explicit r]
   logExit result
   return result
@@ -697,8 +701,15 @@ compileFunDef n t ns e =
     <+> e
 
 -- | Compile a `network` declaration
-compilePostulate :: Code -> Code -> Code
-compilePostulate name t = "postulate" <+> name <+> ":" <+> align t
+compilePostulate ::
+  (MonadAgdaCompile m) =>
+  Identifier ->
+  Type DecidabilityBuiltin ->
+  m Code
+compilePostulate ident typ = do
+  let name = compileIdentifier ident
+  t <- compileExpr typ
+  return $ "postulate" <+> name <+> ":" <+> align t
 
 compileProperty ::
   (MonadAgdaCompile m) =>

@@ -68,6 +68,7 @@ convertDecl logicID logic decl = do
         DefFunction p ident ann typ expr
           | isPropertyDecl decl -> Just <$> convertPropertyDecl p ident ann typ expr
           | otherwise -> return Nothing
+        DefRecord {} -> return Nothing
 
 convertResourceDecl ::
   (MonadLogic m) =>

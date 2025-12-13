@@ -9,7 +9,6 @@ module Vehicle.Syntax.Sugar
     foldForeachBinders,
     foldDeclBinders,
     foldLetBinders,
-    foldRecordDef,
     LetBinder,
   )
 where
@@ -18,7 +17,6 @@ import Data.Bifunctor (Bifunctor (..))
 import Data.List.NonEmpty (NonEmpty (..))
 import Vehicle.Syntax.AST
 import Vehicle.Syntax.Builtin
-import Vehicle.Syntax.Prelude (developerError)
 
 -- This module deals with all the unfolding and folding of syntactic
 -- sugar in the external language. The unfolding is designed so that it should
@@ -28,21 +26,15 @@ import Vehicle.Syntax.Prelude (developerError)
 -- Pi/Fun/Forall declarations
 
 class HasBasicBinders expr where
-  isUniverse :: expr -> Bool
   getPiBinder :: expr -> Maybe (GenericBinder expr, expr)
   getLamBinder :: expr -> Maybe (GenericBinder expr, expr)
   getLetBinder :: expr -> Maybe (expr, GenericBinder expr, expr)
-  getRecord :: expr -> Maybe (GenericRecordFields expr)
 
 class HasBuiltinBinders expr where
   getQuantifierBinder :: Quantifier -> expr -> Maybe (GenericBinder expr, expr)
   getForeachBinder :: expr -> Maybe (GenericBinder expr, expr)
 
 instance HasBasicBinders Expr where
-  isUniverse = \case
-    Universe {} -> True
-    _ -> False
-
   getPiBinder = \case
     Pi _ binder body -> Just (binder, body)
     _ -> Nothing
@@ -53,10 +45,6 @@ instance HasBasicBinders Expr where
 
   getLetBinder = \case
     Let _ value binder body -> Just (value, binder, body)
-    _ -> Nothing
-
-  getRecord = \case
-    Record _ fields -> Just fields
     _ -> Nothing
 
 instance HasBuiltinBinders Expr where
@@ -151,20 +139,3 @@ foldLetBinders expr = case getLetBinder expr of
   Just (bound, binder, body)
     | wantsToFold binder -> first ((binder, bound) :) (foldLetBinders body)
   _ -> ([], expr)
-
---------------------------------------------------------------------------------
--- Decls
-
-foldRecordDef ::
-  (HasBasicBinders expr) =>
-  expr ->
-  expr ->
-  (GenericTelescope expr, GenericRecordFields expr)
-foldRecordDef typ body = case (getPiBinder typ, getLamBinder body) of
-  (Nothing, Nothing) -> case getRecord body of
-    Just fields | isUniverse typ -> ([], fields)
-    _ -> developerError "Malformed record definition"
-  (Just (piBinder, piBody), Just (_lamBinder, lamBody)) -> do
-    let (telescope, fields) = foldRecordDef piBody lamBody
-    (piBinder : telescope, fields)
-  _ -> developerError "Malformed record definition"

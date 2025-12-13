@@ -164,7 +164,8 @@ convertProg (S.Main decls) = Main <$> traverse convertDecl decls
 
 convertDecl :: (MonadJSON m) => S.Decl LossBuiltin -> m JDecl
 convertDecl = \case
-  S.DefAbstract {} -> compilerDeveloperError "Found abstract definition when converting to JSON"
+  S.DefAbstract {} -> developerError "Found abstract definition when converting to JSON"
+  S.DefRecord {} -> developerError "Found record when converting to JSON"
   S.DefFunction p ident _ typ body -> do
     typ' <- convertType emptyBoundEnv typ
     expr' <- convertExpr emptyBoundEnv body

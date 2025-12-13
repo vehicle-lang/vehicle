@@ -40,9 +40,9 @@ findGeneralisableVariables = \case
   S.Let _ bound binder body -> do
     findGeneralisableVariables bound
     findGeneralisableVariablesBinder binder $ findGeneralisableVariables body
-  S.Record _ fields ->
+  S.Record _ fields -> do
     void $ traverseRecordFields findGeneralisableVariables fields
-  S.RecordAcc _ record _field ->
+  S.RecordAcc _ record _field -> do
     findGeneralisableVariables record
 
 findGeneralisableVariablesBinder :: (MonadScopeExpr m, MonadWriter [GeneralisableVariable] m) => S.Binder -> m () -> m ()

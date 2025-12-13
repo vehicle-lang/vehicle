@@ -104,6 +104,7 @@ searchDecl decl = do
       | otherwise -> do
           entity <- searchPropertyDecl (identifierOf decl, provenanceOf decl) (sharedData typ) typ body
           tell [entity]
+    DefRecord {} -> return ()
 
 searchPropertyDecl :: (MonadList m, MonadSupply PropertyID m) => DeclProvenance -> SharedData -> VType Builtin -> Value Builtin -> m ListableEntity
 searchPropertyDecl prov sharedData declType declBody = do
@@ -144,7 +145,7 @@ searchValue value = case value of
     body <- normaliseClosure binder closure
     searchValue body
   VRecord _ fields -> traverse_ searchValue fields
-  VRecordAcc record _ -> searchValue record
+  VRecordAcc _ record _ -> searchValue record
   -- Never traverse into types so the following cases shouldn't happen!
   VUniverse {} -> unexpectedExprError pass "VUniverse"
   VPi {} -> unexpectedExprError pass "VUniverse"

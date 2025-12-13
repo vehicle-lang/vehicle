@@ -8,7 +8,7 @@ import Data.Map.Ordered qualified as OMap
 import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), squotes, (<+>))
-import Vehicle.Syntax.AST.Name (HasName (..), Name)
+import Vehicle.Syntax.AST.Name (HasName (..), Identifier (..), Name)
 import Vehicle.Syntax.AST.Provenance (HasProvenance (..), Provenance)
 import Vehicle.Syntax.Prelude (developerError)
 
@@ -38,6 +38,10 @@ instance HasProvenance FieldName where
 
 instance HasName FieldName Name where
   nameOf (FieldName _ name) = name
+
+fieldAccessIdentifier :: Identifier -> FieldName -> Identifier
+fieldAccessIdentifier recordIdent field =
+  Identifier (modulePath recordIdent) (nameOf field)
 
 --------------------------------------------------------------------------------
 -- Record fields

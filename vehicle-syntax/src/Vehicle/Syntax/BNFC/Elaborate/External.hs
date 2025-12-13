@@ -1,16 +1,12 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Vehicle.Syntax.BNFC.Elaborate.External
-  ( PartiallyParsedProg,
-    PartiallyParsedDecl,
-    UnparsedExpr (..),
-    partiallyElabModule,
-    elaborateDecl,
+  ( elabModule,
     elaborateExpr,
   )
 where
 
-import Control.Monad (foldM_, unless, when)
+import Control.Monad (foldM_, unless)
 import Control.Monad.Except (MonadError (..), throwError)
 import Control.Monad.Reader (runReaderT)
 import Data.Bitraversable (bitraverse)
@@ -44,30 +40,16 @@ import Vehicle.Syntax.Prelude (developerError, readNat, readRat)
 import Vehicle.Syntax.Tensor (pattern ZeroDimTensor)
 
 --------------------------------------------------------------------------------
--- Public interface
-
-type PartiallyParsedProg = V.GenericModule UnparsedExpr
-
-type PartiallyParsedDecl = V.GenericDecl UnparsedExpr
-
-newtype UnparsedExpr = UnparsedExpr B.Expr
-
---------------------------------------------------------------------------------
 -- Partially elaborating declarations
 
--- | We partially elaborate from the simple AST generated automatically by BNFC
--- to our more complicated internal version of the AST. We stop when we get
--- to the expression level. In theory this should allow us to read the
--- declaration signatures from the file without actually having to parse their
--- types and definitions.
-partiallyElabModule ::
+elabModule ::
   (MonadError ParseError m) =>
   ParseLocation ->
   B.Module ->
-  m PartiallyParsedProg
-partiallyElabModule file (B.DefModule imports decls) = flip runReaderT file $ do
+  m V.Module
+elabModule file (B.DefModule imports decls) = flip runReaderT file $ do
   let imports' = fmap elabImportStatement imports
-  decls' <- partiallyElabDecls decls
+  decls' <- elabDecls decls
   return $ V.Module imports' decls'
 
 elabImportStatement :: B.ImportStatement -> V.ImportStatement
@@ -75,12 +57,12 @@ elabImportStatement (B.Import path) = do
   let fragToString (B.ModulePathFrag frag) = unpack $ tkSymbol frag
   V.ImportStatement $ V.ModulePath $ fmap fragToString path
 
-partiallyElabDecls :: (MonadElab m) => [B.Decl] -> m [PartiallyParsedDecl]
-partiallyElabDecls = \case
+elabDecls :: (MonadElab m) => [B.Decl] -> m [V.Decl]
+elabDecls = \case
   [] -> return []
   decl : decls -> do
     (d', ds) <- elabDeclGroup [] (decl :| decls)
-    ds' <- partiallyElabDecls ds
+    ds' <- elabDecls ds
     return $ d' : ds'
 
 type Annotation = (B.TokAnnotation, B.DeclAnnOpts)
@@ -89,7 +71,7 @@ elabDeclGroup ::
   (MonadElab m) =>
   [Annotation] ->
   NonEmpty B.Decl ->
-  m (PartiallyParsedDecl, [B.Decl])
+  m (V.Decl, [B.Decl])
 elabDeclGroup anns = \case
   -- Type definition.
   B.DefType n bs t :| ds -> do
@@ -128,7 +110,7 @@ elabDeclGroup anns = \case
 
 data AnnotationResult
   = FunDeclAnn V.FunctionDeclAnnotation
-  | RecordDeclAnn V.RecordDeclAnnotation
+  | RecordDeclAnn V.DefRecordSort
   | AbstractDeclAnn V.DefAbstractSort
 
 instance Pretty AnnotationResult where
@@ -138,38 +120,40 @@ instance Pretty AnnotationResult where
     AbstractDeclAnn ann -> pretty ann
 
 parseAnnotation :: (MonadElab m) => Annotation -> m AnnotationResult
-parseAnnotation (tkName, opts) = do
-  case tkSymbol tkName of
-    "@builtin" -> do
-      validateEmptyOpts tkName opts
-      return $ AbstractDeclAnn V.BuiltinDef
-    "@network" -> do
-      validateEmptyOpts tkName opts
-      return $ AbstractDeclAnn V.NetworkDef
-    "@dataset" -> do
-      validateEmptyOpts tkName opts
-      return $ AbstractDeclAnn V.DatasetDef
-    "@parameter" -> do
-      let allowedOptions = Set.fromList [InferableOption]
-      optsList <- validateOpts tkName allowedOptions opts
-      AbstractDeclAnn <$> elabParameterOptions optsList
-    "@property" -> do
-      validateEmptyOpts tkName opts
-      return $ FunDeclAnn V.AnnProperty
-    "@tensor" -> do
-      validateEmptyOpts tkName opts
-      return $ RecordDeclAnn V.AnnTensor
-    "@instance" -> do
-      validateEmptyOpts tkName opts
-      return $ RecordDeclAnn V.AnnInstance
-    name -> developerError $ "Unknown annotation found" <+> squotes (pretty name)
+parseAnnotation (tkName, opts) = case tkSymbol tkName of
+  "@builtin" -> do
+    validateEmptyOpts tkName opts
+    return $ AbstractDeclAnn V.BuiltinDef
+  "@network" -> do
+    validateEmptyOpts tkName opts
+    return $ AbstractDeclAnn V.NetworkDef
+  "@dataset" -> do
+    validateEmptyOpts tkName opts
+    return $ AbstractDeclAnn V.DatasetDef
+  "@parameter" -> do
+    let allowedOptions = Set.fromList [InferableOption]
+    optsList <- validateOpts tkName allowedOptions opts
+    AbstractDeclAnn <$> elabParameterOptions optsList
+  "@property" -> do
+    validateEmptyOpts tkName opts
+    return $ FunDeclAnn V.AnnProperty
+  "@instance" -> do
+    validateEmptyOpts tkName opts
+    return $ FunDeclAnn V.AnnInstance
+  "@tensor" -> do
+    validateEmptyOpts tkName opts
+    return $ RecordDeclAnn V.AnnTensor
+  "@typeclass" -> do
+    validateEmptyOpts tkName opts
+    return $ RecordDeclAnn V.AnnTypeClass
+  name -> developerError $ "Unknown annotation found" <+> squotes (pretty name)
 
 elabDefAbstract ::
   (MonadElab m) =>
   [Annotation] ->
   B.Name ->
   B.Expr ->
-  m (V.GenericDecl UnparsedExpr)
+  m V.Decl
 elabDefAbstract anns n t = do
   p <- mkProvenance n
   ident <- elabName n
@@ -185,7 +169,8 @@ elabDefAbstract anns n t = do
     [ann] ->
       throwError $ AbstractDefWithNonAbstractAnnotation p ident (pretty ann)
 
-  return $ V.DefAbstract p ident annotation (UnparsedExpr t)
+  typ <- elabDeclType t
+  return $ V.DefAbstract p ident annotation typ
 
 elabTypeDef ::
   (MonadElab m) =>
@@ -193,7 +178,7 @@ elabTypeDef ::
   B.Name ->
   [B.NameBinder] ->
   B.Expr ->
-  m (V.GenericDecl UnparsedExpr)
+  m V.Decl
 elabTypeDef anns name binders expr = do
   p <- mkProvenance name
   ident <- elabName name
@@ -202,8 +187,7 @@ elabTypeDef anns name binders expr = do
   case annotations of
     ann : _ ->
       throwError $ TypeDefWithAnnotation p ident (pretty ann)
-    [] -> do
-      return ()
+    [] -> return ()
 
   let typeTyp
         | null binders = tokType 0
@@ -221,7 +205,7 @@ elabFunctionDef ::
   B.Expr ->
   [B.NameBinder] ->
   B.Expr ->
-  m (V.GenericDecl UnparsedExpr)
+  m V.Decl
 elabFunctionDef anns name1 name2 typ binders expr = do
   p <- mkProvenance name1
   ident1 <- elabName name1
@@ -252,39 +236,28 @@ elabRecordDefinition ::
   B.Name ->
   [B.NameBinder] ->
   [B.RecordFieldDef] ->
-  m (V.GenericDecl UnparsedExpr)
+  m V.Decl
 elabRecordDefinition anns name telescope fields = do
   p <- mkProvenance name
   ident <- elabName name
 
   annotations <- traverse parseAnnotation anns
-  sort <-
-    V.RecordDecl <$> case annotations of
-      [RecordDeclAnn recordAnn] ->
-        return $ Just recordAnn
-      [] ->
-        return Nothing
-      ann1 : ann2 : _ ->
-        throwError $ MultiplyAnnotatedDef p ident (pretty ann1) (pretty ann2)
-      [AbstractDeclAnn absAnn] ->
-        throwError $ NonAbstractDefWithAbstractAnnotation p ident (pretty absAnn)
-      [FunDeclAnn absAnn] ->
-        throwError $ RecordDefWithFunctionAnnotation p ident (pretty absAnn)
+  sort <- case annotations of
+    [RecordDeclAnn recordAnn] ->
+      return $ Just recordAnn
+    [] ->
+      return Nothing
+    ann1 : ann2 : _ ->
+      throwError $ MultiplyAnnotatedDef p ident (pretty ann1) (pretty ann2)
+    [AbstractDeclAnn absAnn] ->
+      throwError $ NonAbstractDefWithAbstractAnnotation p ident (pretty absAnn)
+    [FunDeclAnn absAnn] ->
+      throwError $ RecordDefWithFunctionAnnotation p ident (pretty absAnn)
 
-  when (V.isAnnotatedAsTensor sort && not (null telescope)) $ do
-    throwError $ TensorAnnotationWithParameters p ident
+  fields' <- traverse elabRecordFieldDef fields
+  telescope' <- traverse (elabNameBinder elabExpr False) telescope
 
-  let defToAssign (B.FieldDef nam _tk val) = B.FieldAssign nam val
-  let fields' = B.Record $ fmap defToAssign fields
-
-  let (typ, expr)
-        | null telescope = (tokType 0, fields')
-        | otherwise =
-            ( B.ForallT tokForallT telescope (tokType 0),
-              B.Lam tokLambda telescope tokArrow fields'
-            )
-
-  elabGenericDefFun p ident sort typ mempty expr
+  return $ V.DefRecord p ident sort telescope' fields'
 
 elabGenericDefFun ::
   (MonadElab m) =>
@@ -294,12 +267,16 @@ elabGenericDefFun ::
   B.Expr ->
   [B.NameBinder] ->
   B.Expr ->
-  m (V.GenericDecl UnparsedExpr)
+  m V.Decl
 elabGenericDefFun p ident sort t binders e = do
   -- This is a bit evil, we don't normally store possibly empty set of
   -- binders, but we will use this to indicate the set of LHS variables.
-  let body = B.Lam tokLambda binders tokArrow e
-  return $ V.DefFunction p ident sort (UnparsedExpr t) (UnparsedExpr body)
+  t' <- elabDeclType t
+  let body = case binders of
+        [] -> e
+        _ -> B.Lam tokLambda binders tokArrow e
+  e' <- elabDeclType body
+  return $ V.DefFunction p ident sort t' e'
 
 validateOpts :: forall m token. (MonadElab m, IsToken token) => token -> Set Text -> B.DeclAnnOpts -> m [B.DeclAnnOption]
 validateOpts _token _allowedNames B.DeclAnnWithoutOpts = return mempty
@@ -337,8 +314,7 @@ elabParameterOptions opts =
         V.Builtin _ (V.BuiltinConstructor (V.BoolTensorLiteral (ZeroDimTensor infer)))
           | infer -> return V.Inferable
           | otherwise -> return V.NonInferable
-        _ -> do
-          throwError $ InvalidAnnotationOptionValue InferableOption expr'
+        _ -> throwError $ InvalidAnnotationOptionValue InferableOption expr'
 
 getInferOption :: B.DeclAnnOption -> Maybe (B.TokAnnInferOpt, B.Expr)
 getInferOption = \case
@@ -348,39 +324,18 @@ getInferOption = \case
 --------------------------------------------------------------------------------
 -- Full elaboration
 
-elaborateDecl ::
-  (MonadError ParseError m) =>
-  ParseLocation ->
-  PartiallyParsedDecl ->
-  m V.Decl
-elaborateDecl file decl = flip runReaderT file $ case decl of
-  V.DefAbstract p n r t -> V.DefAbstract p n r <$> elabDeclType t
-  V.DefFunction p n b t e -> V.DefFunction p n b <$> elabDeclType t <*> elabDeclBody e
-
 elabDeclType ::
   (MonadElab m) =>
-  UnparsedExpr ->
+  B.Expr ->
   m V.Expr
-elabDeclType (UnparsedExpr expr) = elabExpr expr
-
-elabDeclBody ::
-  (MonadElab m) =>
-  UnparsedExpr ->
-  m V.Expr
-elabDeclBody (UnparsedExpr expr) = case expr of
-  B.Lam tk binders _ body -> do
-    binders' <- traverse (elabNameBinder elabExpr True) binders
-    body' <- elabExpr body
-    p <- mkProvenance tk
-    return $ foldr (V.Lam p) body' binders'
-  _ -> developerError "Invalid declaration body - no lambdas found"
+elabDeclType = elabExpr
 
 elaborateExpr ::
   (MonadError ParseError m) =>
   ParseLocation ->
-  UnparsedExpr ->
+  B.Expr ->
   m V.Expr
-elaborateExpr file (UnparsedExpr expr) = runReaderT (elabExpr expr) file
+elaborateExpr file expr = runReaderT (elabExpr expr) file
 
 elabExpr :: (MonadElab m) => B.Expr -> m V.Expr
 elabExpr expr = case expr of
@@ -474,14 +429,19 @@ elabRecordFieldName tk = do
   p <- mkProvenance tk
   return $ V.FieldName p (tkSymbol tk)
 
-elabRecordFieldAssign :: (MonadElab m) => B.RecordFieldAssign -> m (V.GenericRecordField V.Expr)
-elabRecordFieldAssign (B.FieldAssign name expr) = (,) <$> elabRecordFieldName name <*> elabExpr expr
+elabRecordFieldAssign :: (MonadElab m) => B.RecordFieldAssign -> m V.RecordField
+elabRecordFieldAssign (B.FieldAssign name expr) = do
+  (,) <$> elabRecordFieldName name <*> elabExpr expr
+
+elabRecordFieldDef :: (MonadElab m) => B.RecordFieldDef -> m V.RecordField
+elabRecordFieldDef (B.FieldDef name _ expr) =
+  (,) <$> elabRecordFieldName name <*> elabExpr expr
 
 elabRecord :: (MonadElab m) => [B.RecordFieldAssign] -> m V.Expr
 elabRecord xs = do
   fields <- traverse elabRecordFieldAssign xs
   -- I'm struggling to make the left/right braces into tokens as the tokenizer doesn't
-  -- seem to recognise them correcty. Hence this very ugly hack.
+  -- seem to recognise them correctly. Hence this very ugly hack.
   -- pL <- mkProvenance tkL
   -- pR <- mkProvenance tkR
   -- let p = V.fillInProvenance (pL :| [pR])
@@ -493,10 +453,9 @@ elabRecord xs = do
 elabRecordAcc :: (MonadElab m) => B.Expr -> B.FieldAccess -> m V.Expr
 elabRecordAcc e field = do
   p <- mkProvenance field
-  let fieldName = V.FieldName p (Text.tail $ tkSymbol field)
+  let fieldName = V.FieldName p $ Text.tail $ tkSymbol field
   r <- elabExpr e
-
-  return $ V.RecordAcc (V.provenanceOf fieldName) r fieldName
+  return $ V.RecordAcc p r fieldName
 
 elabBasicBinder ::
   (MonadElab m) =>

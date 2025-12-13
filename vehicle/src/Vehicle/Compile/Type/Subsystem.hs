@@ -39,7 +39,7 @@ import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.ModuleInterface (ImportedModuleContext, ModuleInterface (..), emptyModuleScopingInterface, emptyModuleTypingInterface)
 import Vehicle.Libraries.StandardLibrary (standardLibraryBuiltinModulePath)
 import Vehicle.Syntax.AST.Expr qualified as S
-import Vehicle.Syntax.Parse (ParseLocation, parseDecl, readAndParseModule)
+import Vehicle.Syntax.Parse (ParseLocation, readAndParseModule)
 
 polarityTypeCheck ::
   (MonadIO m, MonadCompile m) =>
@@ -178,7 +178,7 @@ resolveInstanceArgumentsAndCasts prog =
           Let _ e1 binder e2 -> Let p (go e1) (fmap go binder) (go e2)
           Lam _ binder e -> Lam p (fmap go binder) (go e)
           Record _ ident fields -> Record p ident (mapRecordFields go fields)
-          RecordAcc _ record (ident, FieldName _ name) -> RecordAcc p (go record) (ident, FieldName p name)
+          RecordProj _ recordType record field -> RecordProj p (go recordType) (go record) field
 
 removeImplicitArgs ::
   forall m builtin.
@@ -208,12 +208,10 @@ removeImplicitArgs prog =
       Lam p binder body -> Lam p <$> traverse go binder <*> go body
       Let p bound binder body -> Let p <$> go bound <*> traverse go binder <*> go body
       Record p ident fields -> Record p ident <$> traverseRecordFields go fields
-      RecordAcc p record field -> RecordAcc p <$> go record <*> pure field
+      RecordProj p recordType record field -> RecordProj p <$> go recordType <*> go record <*> pure field
 
 parseModuleText :: (MonadCompile m) => ParseLocation -> Text -> m S.Module
 parseModuleText location txt = do
   case runExcept (readAndParseModule location txt) of
     Left err -> throwError $ ParseError location err
-    Right prog -> case traverseModuleDecls (parseDecl location) prog of
-      Left err -> throwError $ ParseError location err
-      Right prog' -> return prog'
+    Right modul -> return modul

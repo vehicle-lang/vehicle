@@ -163,6 +163,9 @@ binderNamingForm = namingForm . binderDisplayForm
 setBinderRelevance :: GenericBinder expr -> Relevance -> GenericBinder expr
 setBinderRelevance (Binder u v _r x) r = Binder u v r x
 
+setBinderVisibility :: GenericBinder expr -> Visibility -> GenericBinder expr
+setBinderVisibility (Binder u _v r x) v = Binder u v r x
+
 mapBinderNamingForm :: (BinderNamingForm -> BinderNamingForm) -> GenericBinder expr -> GenericBinder expr
 mapBinderNamingForm f Binder {..} =
   Binder

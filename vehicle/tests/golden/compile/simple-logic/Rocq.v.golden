@@ -45,4 +45,4 @@ Definition myLogic : DifferentiableLogic := {| true := - const_t (100000 : R)
 
 Parameter f : 'nT[R]_(nil) -> 'nT[R]_(nil).
 
-Axiom p : forall x, f x >= myLogic.(true).
+Axiom p : forall x, f x >= true myLogic.

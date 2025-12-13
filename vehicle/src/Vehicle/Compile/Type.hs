@@ -8,7 +8,6 @@ import Control.Monad.Except (MonadError (..))
 import Data.IntSet qualified as IntSet
 import Data.List (sortOn)
 import Data.List.NonEmpty (NonEmpty (..))
-import Data.Maybe (fromMaybe)
 import Data.Proxy (Proxy (..))
 import Data.Set (Set)
 import Data.Set qualified as Set
@@ -75,8 +74,9 @@ typeCheckDecl uncheckedDecl isUnused =
     setCurrentDecl $ Just (convertedDecl, isUnused)
 
     decl <- case convertedDecl of
-      DefAbstract p n r t -> typeCheckAbstractDef p n r t isUnused
-      DefFunction p n b t e -> typeCheckFunctionDef p n b t e isUnused
+      DefAbstract p n s t -> typeCheckAbstractDef p n s t isUnused
+      DefFunction p n s t e -> typeCheckFunctionDef p n s t e isUnused
+      DefRecord p n s t f -> typeCheckRecordDef p n s t f isUnused
     checkAllUnknownsSolved (Proxy @builtin)
     finalDecl <- substMetaVariables decl
     logCompilerPassOutput $ prettyExternal finalDecl
@@ -142,16 +142,6 @@ typeCheckFunctionDef p ident anns typ body isUnused = do
   solveConstraints (Proxy @builtin)
   substDecl <- substMetaVariables checkedDecl
 
-  -- Check if the record is annotated as a tensor and check the restrictions.
-  -- Needs to be done after the main solving pass so that we are guaranteed to
-  -- get the most informative error message.
-  when (isAnnotatedAsTensor anns) $
-    logCompilerSection2 MidDetail "checking suitability of type as @tensor" $ do
-      let solvedBody = fromMaybe (developerError "body error") $ bodyOf checkedDecl
-      let checkedFields = getTensorRecordFields solvedBody
-      restrictRecordAnnotatedAsTensor (ident, p) checkedFields
-      solveConstraints (Proxy @builtin)
-
   if isAnnotatedAsProperty anns
     then return substDecl
     else do
@@ -164,6 +154,35 @@ typeCheckFunctionDef p ident anns typ body isUnused = do
       logUnsolvedUnknowns (Proxy @builtin)
 
       generaliseOverUnsolvedMetasAndConstraints checkedDecl1
+
+typeCheckRecordDef ::
+  forall builtin m.
+  (TCM builtin m) =>
+  Provenance ->
+  Identifier ->
+  Maybe DefRecordSort ->
+  Telescope builtin ->
+  RecordFields builtin ->
+  DeclIsUnused ->
+  m (Decl builtin)
+typeCheckRecordDef p ident anns uncheckedTelescope uncheckedFields isUnused = do
+  -- Type check the body.
+  let pass = bidirectionalPassDoc <+> "fields of" <+> quotePretty ident
+  (checkedTelescope, checkedFields) <-
+    logCompilerSection2 MidDetail pass $
+      checkRecordDefinition uncheckedTelescope uncheckedFields
+
+  when (isAnnotatedAsTensor anns) $
+    logCompilerSection2 MidDetail "checking suitability of type as @tensor" $ do
+      restrictRecordAnnotatedAsTensor (ident, p) checkedFields
+
+  -- Reconstruct the function.
+  let checkedDecl = DefRecord p ident anns checkedTelescope checkedFields
+
+  -- Solve constraints and substitute through.
+  setCurrentDecl $ Just (checkedDecl, isUnused)
+  solveConstraints (Proxy @builtin)
+  substMetaVariables checkedDecl
 
 checkDeclType :: (TCM builtin m, HasName name Name) => name -> Type builtin -> m (Type builtin)
 checkDeclType ident declType = do

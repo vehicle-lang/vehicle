@@ -36,7 +36,6 @@ import Vehicle.Data.Variable.Bound.Context.Generic
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Free.Context (addDeclToContext)
 import Vehicle.Data.Variable.Free.Context.Class (MonadFreeContext)
-import Vehicle.Syntax.Sugar (foldRecordDef)
 
 --------------------------------------------------------------------------------
 -- Solved meta-state
@@ -379,28 +378,12 @@ getRecordDefinition ::
   (MonadTypeChecker builtin m) =>
   Proxy builtin ->
   Identifier ->
-  m (Type builtin, Expr builtin)
+  m (Telescope builtin, RecordFields builtin)
 getRecordDefinition proxy ident = do
   decl <- getDecl proxy ident
   case decl of
-    DefFunction _ _ sort typ body
-      | isDeclaredAsRecord sort ->
-          return (typ, body)
-    _ ->
-      developerError $
-        pretty ident <+> "is unexpectedly not a record"
-
-getDeclaredRecordFields ::
-  (MonadTypeChecker builtin m) =>
-  Proxy builtin ->
-  Identifier ->
-  m (RecordFields builtin)
-getDeclaredRecordFields proxy ident = do
-  decl <- getDecl proxy ident
-  case decl of
-    DefFunction _ _ sort typ body
-      | isDeclaredAsRecord sort ->
-          return $ snd $ foldRecordDef typ body
+    DefRecord _ _ _ telescope fields ->
+      return (telescope, fields)
     _ ->
       developerError $
         pretty ident <+> "is unexpectedly not a record"
@@ -410,7 +393,12 @@ getDeclType ::
   Proxy builtin ->
   Identifier ->
   m (Type builtin)
-getDeclType proxy ident = typeOf <$> getDecl proxy ident
+getDeclType proxy ident = do
+  decl <- getDecl proxy ident
+  return $ case decl of
+    DefAbstract _ _ _ t -> t
+    DefFunction _ _ _ t _ -> t
+    DefRecord p _ _ telescope _ -> foldr (Pi p) (Universe p 0) telescope
 
 addTypedDeclToContext ::
   (MonadTypeChecker builtin m) =>

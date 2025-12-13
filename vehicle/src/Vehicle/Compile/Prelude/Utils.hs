@@ -30,7 +30,7 @@ freeNamesIn = \case
   Let _ bound binder body -> freeNamesIn bound <> freeNamesIn (typeOf binder) <> freeNamesIn body
   Lam _ binder body -> freeNamesIn (typeOf binder) <> freeNamesIn body
   Record _ _ fields -> concatMap (freeNamesIn . snd) fields
-  RecordAcc _ r _ -> freeNamesIn r
+  RecordProj _ t r _ -> freeNamesIn t <> freeNamesIn r
 
 --------------------------------------------------------------------------------
 -- Destruction functions

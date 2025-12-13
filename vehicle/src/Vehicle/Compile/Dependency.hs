@@ -104,7 +104,7 @@ createDependencyGraph ds = fromEdges $ AdjacencyGraph $ Map.fromList $ fmap goDe
       Lam _ binder body -> do traverse_ go binder; go body
       Let _ bound binder body -> do go bound; traverse_ go binder; go body
       Record _ _ fields -> traverse_ (go . snd) fields
-      RecordAcc _ record _ -> go record
+      RecordProj _ recordType record _ -> do go recordType; go record
 
 --------------------------------------------------------------------------------
 -- Completely unused declarations

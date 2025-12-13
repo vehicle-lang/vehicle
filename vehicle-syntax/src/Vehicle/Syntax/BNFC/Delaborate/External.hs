@@ -70,8 +70,10 @@ instance Delaborate V.Decl [B.Decl] where
       return [defAnn, defFun]
     V.DefFunction _ n sort t e -> case sort of
       V.TypeDecl binderCount -> delabTypeDecl n binderCount e
-      V.RecordDecl ann -> delabRecordDecl n ann t e
       V.FunctionDecl binderCount ann -> delabFunctionDecl n binderCount ann t e
+      V.ProjectionDecl binderCount -> delabFunctionDecl n binderCount Nothing t e
+    V.DefRecord _ n sort t e -> do
+      delabRecordDecl n sort t e
 
 instance Delaborate V.Expr B.Expr where
   delabM expr = case expr of
@@ -119,13 +121,14 @@ instance Delaborate (V.GenericRecordField V.Expr) B.RecordFieldDef where
     typ' <- delabM typ
     return $ B.FieldDef name' tokElemOf typ'
 
-instance Delaborate V.RecordDeclAnnotation B.Decl where
+instance Delaborate V.DefRecordSort B.Decl where
   delabM = \case
     V.AnnTensor -> return $ delabAnn tensorAnn []
-    V.AnnInstance -> return $ delabAnn instanceAnn []
+    V.AnnTypeClass -> return $ delabAnn typeClassAnn []
 
 instance Delaborate V.FunctionDeclAnnotation B.Decl where
   delabM = \case
+    V.AnnInstance -> return $ delabAnn instanceAnn []
     V.AnnProperty -> return $ delabAnn propertyAnn []
 
 -- | Used for things not in the user-syntax.
@@ -425,17 +428,16 @@ delabTypeDecl ident binderCount expr = do
 delabRecordDecl ::
   (MonadDelab m) =>
   V.Identifier ->
-  Maybe V.RecordDeclAnnotation ->
-  V.Expr ->
-  V.Expr ->
+  Maybe V.DefRecordSort ->
+  V.Telescope ->
+  V.RecordFields ->
   m [B.Decl]
-delabRecordDecl ident maybeAnn typ expr = do
-  annDecls <- maybeToList <$> traverse delabM maybeAnn
+delabRecordDecl ident sort telescope fields = do
+  annDecl <- traverse delabM $ maybeToList sort
   let n' = delabIdentifier ident
-  let (telescope, fields) = foldRecordDef typ expr
   telescope' <- traverse delabNameBinder telescope
   fields' <- traverse delabM fields
-  return $ annDecls <> [B.DefRecord n' telescope' fields']
+  return $ annDecl <> [B.DefRecord n' telescope' fields']
 
 delabQuantifier :: (MonadDelab m) => V.Quantifier -> [V.Arg] -> m B.Expr
 delabQuantifier q args = case reverse args of
@@ -470,7 +472,7 @@ delabForeach args = case reverse args of
     return $ B.Foreach tokForeach binders' body'
   _ -> cheatDelabPretty V.ForeachTC args
 
-delabRecord :: (MonadDelab m) => [V.GenericRecordField V.Expr] -> m B.Expr
+delabRecord :: (MonadDelab m) => V.RecordFields -> m B.Expr
 delabRecord fields = do
   fields' <- traverse (bitraverse delabM delabM) fields
   return $ B.Record (fmap (uncurry B.FieldAssign) fields')

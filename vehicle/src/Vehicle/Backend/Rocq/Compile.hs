@@ -9,6 +9,7 @@ import Data.Bifunctor (Bifunctor (..))
 import Data.Foldable (fold)
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NonEmpty
+import Data.Maybe (catMaybes)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -152,7 +153,7 @@ importStatements deps = vsep $ map pretty (Set.toList deps)
 preamble :: Set Dependency -> Code
 preamble deps =
   if Set.member (RequireImport MathcompRealsReals) deps
-    then compilePostulate "R" "realType"
+    then "Parameter" <+> "R" <+> ":" <+> align "realType" <> "."
     else ""
 
 --------------------------------------------------------------------------------
@@ -259,17 +260,22 @@ type MonadRocqCompile m =
 -- Program Compilation
 
 compileProg :: (MonadRocqCompile m) => Prog DecidabilityBuiltin -> m Code
-compileProg (Main ds) = vsep2 <$> traverse compileDecl ds
+compileProg (Main ds) = do
+  decls <- catMaybes <$> traverse compileDecl ds
+  return $ vsep2 decls
 
-compileDecl :: (MonadRocqCompile m) => Decl DecidabilityBuiltin -> m Code
+compileDecl :: (MonadRocqCompile m) => Decl DecidabilityBuiltin -> m (Maybe Code)
 compileDecl = \case
   DefAbstract _ n _ t ->
-    compilePostulate (compileIdentifier n) <$> compileExpr t
+    Just <$> compilePostulate n t
   DefFunction p n funSort t e -> case funSort of
-    TypeDecl binderCount -> compileFunctionDecl n binderCount t e
-    FunctionDecl binderCount Nothing -> compileFunctionDecl n binderCount t e
-    FunctionDecl _ (Just AnnProperty) -> compileProperty n e
-    RecordDecl _ -> compileRecordDecl p n t e
+    TypeDecl binderCount -> Just <$> compileFunctionDecl n binderCount t e
+    FunctionDecl binderCount Nothing -> Just <$> compileFunctionDecl n binderCount t e
+    FunctionDecl _ (Just AnnProperty) -> Just <$> compileProperty n e
+    FunctionDecl _ (Just AnnInstance) -> throwError $ UnimplementedFeature p "Compiling instances to Rocq"
+    ProjectionDecl {} -> return Nothing
+  DefRecord p n _ telescope fields ->
+    Just <$> compileRecordDecl p n telescope fields
 
 compileFunctionDecl ::
   (MonadRocqCompile m) =>
@@ -289,11 +295,10 @@ compileRecordDecl ::
   (MonadRocqCompile m) =>
   Provenance ->
   Identifier ->
-  Type DecidabilityBuiltin ->
-  Expr DecidabilityBuiltin ->
+  Telescope DecidabilityBuiltin ->
+  RecordFields DecidabilityBuiltin ->
   m Code
-compileRecordDecl p ident typ expr = do
-  let (telescope, fields) = foldRecordDef typ expr
+compileRecordDecl p ident telescope fields = do
   t' <-
     if null telescope
       then return (compileType 0)
@@ -325,8 +330,15 @@ extractDeclBinders binderCount typ expr
       (_, _) -> ([], expr)
 
 -- | Compile a 'network' declaration
-compilePostulate :: Code -> Code -> Code
-compilePostulate name t = "Parameter" <+> name <+> ":" <+> align t <> "."
+compilePostulate ::
+  (MonadRocqCompile m) =>
+  Identifier ->
+  Type DecidabilityBuiltin ->
+  m Code
+compilePostulate ident t = do
+  let name = compileIdentifier ident
+  typ <- compileExpr t
+  return $ "Parameter" <+> name <+> ":" <+> align typ <> "."
 
 compileExpr :: (MonadRocqCompile m) => Expr DecidabilityBuiltin -> m Code
 compileExpr expr = do
@@ -357,7 +369,7 @@ compileExpr expr = do
     Record _p _i fs -> do
       fs' <- traverse compileRecordField fs
       return $ encloseSep (lbrace <> "|" <> space) (space <> "|" <> rbrace) (semi <> space) fs'
-    RecordAcc _p r (_i, field) -> annotateNotation [] 200 ("$0.(" <> nameOf field <> ")") (Just $ nameOf field) [explicit r]
+    RecordProj _p _t r field -> annotateNotation [] 200 ("$0.(" <> nameOf field <> ")") (Just $ nameOf field) [explicit r]
   logExit result
   return result
 

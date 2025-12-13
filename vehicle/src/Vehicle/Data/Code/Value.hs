@@ -75,8 +75,8 @@ data Value builtin
   | VBuiltin !builtin !(Spine builtin)
   | VLam !(VBinder builtin) !(Closure builtin)
   | VPi !(VBinder builtin) !(Closure builtin)
-  | VRecord (Maybe Identifier) !(OMap FieldName (Value builtin))
-  | VRecordAcc !(Value builtin) !(Identifier, FieldName)
+  | VRecord (VType builtin) !(OMap FieldName (Value builtin))
+  | VRecordAcc !(VType builtin) !(Value builtin) !FieldName
   deriving (Show, Generic, Eq, Ord)
 
 type VType builtin = Value builtin
@@ -124,7 +124,9 @@ boundVariablesIn value = execWriter (go value)
         goClosure closure
       VRecord _ident fields ->
         traverse_ go fields
-      VRecordAcc record (_ident, _field) -> go record
+      VRecordAcc recordType record _ -> do
+        go recordType
+        go record
 
     goClosure :: (MonadWriter (Set Lv) m) => Closure builtin -> m ()
     goClosure (Closure (BoundEnv env) _) =
