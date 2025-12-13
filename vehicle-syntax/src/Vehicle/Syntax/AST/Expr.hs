@@ -5,6 +5,9 @@ module Vehicle.Syntax.AST.Expr
   ( -- * Generic expressions
     Arg,
     Binder,
+    Telescope,
+    RecordField,
+    RecordFields,
     Decl,
     Module,
     Expr
@@ -36,7 +39,7 @@ import Vehicle.Syntax.AST.Decl (GenericDecl)
 import Vehicle.Syntax.AST.Module (GenericModule)
 import Vehicle.Syntax.AST.Name (Name)
 import Vehicle.Syntax.AST.Provenance (HasProvenance (..), Provenance, fillInProvenance)
-import Vehicle.Syntax.AST.Record (FieldName, GenericRecordFields)
+import Vehicle.Syntax.AST.Record (FieldName, GenericRecordField, GenericRecordFields)
 import Vehicle.Syntax.Builtin (Builtin)
 
 --------------------------------------------------------------------------------
@@ -93,7 +96,7 @@ data Expr
   | -- | Records
     Record
       Provenance
-      (GenericRecordFields Expr)
+      RecordFields
   | -- | Record accessors.
     --
     -- NOTE: we could replace `RecordAcc` with `App Identifier Record`
@@ -111,7 +114,13 @@ type Type = Expr
 
 type Binder = GenericBinder Expr
 
+type Telescope = GenericTelescope Expr
+
 type Arg = GenericArg Expr
+
+type RecordField = GenericRecordField Expr
+
+type RecordFields = GenericRecordFields Expr
 
 type Decl = GenericDecl Expr
 

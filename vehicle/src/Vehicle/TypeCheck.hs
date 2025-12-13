@@ -14,6 +14,7 @@ import Control.Monad.State (MonadState (..), StateT (..), gets, modify)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Maybe (mapMaybe)
 import Data.Set qualified as Set
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Dependency (AdjacencyGraph, emptyAdjacencyGraph, insertEdge, insertNode, topologicalSort)
@@ -109,16 +110,17 @@ printPropertyTypes ::
 printPropertyTypes = \case
   Left err -> throwError err
   Right (Main decls) -> do
-    let properties = filter isPropertyDecl decls
-    let propertyDocs = fmap propertySummary properties
+    let propertyDocs = mapMaybe toPropertySummary decls
     let outputDoc = concatWith (\a b -> a <> line <> b) propertyDocs
     programOutput outputDoc
     where
-      propertySummary :: (PrintableBuiltin builtin) => Decl builtin -> Doc a
-      propertySummary decl = do
-        let propertyName = pretty $ identifierName $ identifierOf decl
-        let propertyType = prettyFriendlyEmptyCtx (typeOf decl)
-        propertyName <+> ":" <+> propertyType
+      toPropertySummary :: (PrintableBuiltin builtin) => Decl builtin -> Maybe (Doc a)
+      toPropertySummary = \case
+        DefFunction _ ident sort typ _ | isAnnotatedAsProperty sort -> do
+          let propertyName = pretty $ identifierName ident
+          let propertyType = prettyFriendlyEmptyCtx typ
+          Just $ propertyName <+> ":" <+> propertyType
+        _ -> Nothing
 
 runCompileMonad ::
   forall m a.

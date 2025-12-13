@@ -25,7 +25,6 @@ data ParseError
   | AbstractDefWithNonAbstractAnnotation Provenance Identifier (Doc Void)
   | NonAbstractDefWithAbstractAnnotation Provenance Identifier (Doc Void)
   | AnnotationWithNoDef Provenance Name
-  | TensorAnnotationWithParameters Provenance Identifier
   | -- Annotation options
     InvalidAnnotationOption Provenance Name Name [Name]
   | InvalidAnnotationOptionValue Name Expr

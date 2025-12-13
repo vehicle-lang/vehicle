@@ -11,10 +11,10 @@ import Data.Foldable (traverse_)
 import Data.List.NonEmpty qualified as NonEmpty
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
+import Vehicle.Compile.Print (prettyExternal)
 import Vehicle.Compile.Scope.Core
 import Vehicle.Compile.Scope.Generalise
-import Vehicle.Compile.Scope.RecordInstances (createTensorRecordConversionFunctions)
+import Vehicle.Compile.Scope.RecordInstances (createAuxilliaryRecordDeclarations)
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.ModuleInterface
 import Vehicle.Data.Universe (UniverseLevel (..))
@@ -42,49 +42,44 @@ scopeDecl decl =
         t' <- runMonadScopeExprT $ scopeExpr t
         return [DefAbstract p ident r t']
       DefFunction p ident anns t e -> do
-        t' <-
-          runMonadScopeExprT $
-            scopeExpr =<< generaliseType t
-
-        e' <-
-          runMonadScopeExprT $
-            if isDeclaredAsRecord anns
-              then scopeRecordDefinition ident e
-              else scopeExpr e
-
-        conversionFunctions <-
-          if isAnnotatedAsTensor anns
-            then createTensorRecordConversionFunctions p ident e'
-            else return []
-
-        let defFun = DefFunction p ident anns t' e'
-        return $ defFun : conversionFunctions
+        t' <- runMonadScopeExprT $ scopeExpr =<< generaliseType t
+        e' <- runMonadScopeExprT $ scopeExpr e
+        return [DefFunction p ident anns t' e']
+      DefRecord p ident sort telescope fields -> do
+        (telescope', fields') <- runMonadScopeExprT $ scopeRecordDefinition ident telescope fields
+        auxiliaryDeclarations <- createAuxilliaryRecordDeclarations p ident sort telescope' fields'
+        let defFun = DefRecord p ident sort telescope' fields'
+        return $ defFun : auxiliaryDeclarations
 
     traverse_ addNewDecl scopedDecls
-    traverse_ (logCompilerPassOutput . prettyVerbose) scopedDecls
-    traverse_ (logCompilerPassOutput . prettyFriendly) scopedDecls
+    traverse_ (logCompilerPassOutput . prettyExternal) scopedDecls
     return scopedDecls
 
 --------------------------------------------------------------------------------
 -- Expr scoping
 
 scopeRecordDefinition ::
+  forall m.
   (MonadScopeExpr m) =>
   Identifier ->
-  S.Expr ->
-  m (Expr Builtin)
-scopeRecordDefinition ident = \case
-  S.Lam p binder body -> do
-    scopeBinder binder $ \binder' ->
-      Lam p binder' <$> scopeRecordDefinition ident body
-  S.Record p fields -> do
-    fields' <- forM fields $ \(field, fieldType) -> do
-      fieldType' <- scopeExpr =<< generaliseType fieldType
-      addNewRecordDefField ident field
-      return (field, fieldType')
-    addNewRecordDef ident (fmap fst fields')
-    return $ Record p Nothing fields'
-  _ -> developerError "Found ill-formed record definition"
+  S.Telescope ->
+  S.RecordFields ->
+  m (Telescope Builtin, RecordFields Builtin)
+scopeRecordDefinition ident telescope fields = go [] telescope
+  where
+    go :: Telescope Builtin -> S.Telescope -> m (Telescope Builtin, RecordFields Builtin)
+    go revScopedTelescope = \case
+      binder : binders -> do
+        scopeBinder binder $ \binder' ->
+          go (binder' : revScopedTelescope) binders
+      [] -> do
+        let scopedTelescope = reverse revScopedTelescope
+        scopedFields <- forM fields $ \(field, fieldType) -> do
+          fieldType' <- scopeExpr =<< generaliseType fieldType
+          addNewRecordDefField ident scopedTelescope field
+          return (field, fieldType')
+        addNewRecordDef ident scopedTelescope scopedFields
+        return (scopedTelescope, scopedFields)
 
 scopeExpr ::
   (MonadScopeExpr m) =>
@@ -110,12 +105,14 @@ scopeExpr e = case e of
       Let p bound' binder' <$> scopeExpr body
   S.Record p fields -> do
     fields' <- traverseRecordFields scopeExpr fields
-    recordDefinitionIdent <- lookupRecordDefinitionByFields p (fmap fst fields')
-    return $ Record p (Just recordDefinitionIdent) fields'
+    identAndTelescope <- lookupRecordDefinitionByFields p (fmap fst fields')
+    let recordType = calculateConcreteRecordType p identAndTelescope
+    return $ Record p recordType fields'
   S.RecordAcc p record field -> do
     record' <- scopeExpr record
-    recordDefinitionIdent <- lookupRecordDefinitionByField field
-    return $ RecordAcc p record' (recordDefinitionIdent, field)
+    (ident, _) <- lookupRecordDefinitionByField field
+    let projFn = FreeVar p (Identifier (modulePath ident) (nameOf field))
+    return $ normAppList projFn [explicit record']
 
 scopeBuiltin ::
   (MonadScopeExpr m) =>
@@ -152,6 +149,14 @@ scopeVar p symbol = do
   case maybeVariable of
     Left ident -> return $ FreeVar p ident
     Right ix -> return $ BoundVar p ix
+
+calculateConcreteRecordType ::
+  Provenance ->
+  (Identifier, Telescope builtin) ->
+  Type builtin
+calculateConcreteRecordType p (ident, telescope) = do
+  let mkHoleArg binder = argFromBinder binder (Hole (provenanceOf binder) (fst $ getNamedBinderInfo binder))
+  normAppList (FreeVar p ident) $ fmap mkHoleArg telescope
 
 {-
 logScopeEntry :: MonadTraverse m => S.Expr -> m ()

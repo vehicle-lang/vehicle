@@ -167,14 +167,17 @@ eval ctx boundEnv expr = do
       fun' <- recEval fun
       args' <- traverse (traverse recEval) (NonEmpty.toList args)
       evalApp ctx fun' args'
-    Record _p ident fields -> do
+    Record _p recordType fields -> do
+      recordType' <- recEval recordType
       fields' <- traverseRecordFields recEval fields
-      return $ VRecord ident $ OMap.fromList fields'
-    RecordAcc _p record fieldRef@(_i, field) -> do
+      return $ VRecord recordType' $ OMap.fromList fields'
+    RecordProj _p recordType record field -> do
       record' <- recEval record
       case record' of
         VRecord _ fields -> return $ lookupRecordFieldS fields field
-        _ -> return $ VRecordAcc record' fieldRef
+        _ -> do
+          recordType' <- recEval recordType
+          return $ VRecordAcc recordType' record' field
 
   showExit ctx result
   return result
@@ -231,9 +234,7 @@ lookupIdentValue :: forall builtin m. (MonadFreeContext builtin m) => Identifier
 lookupIdentValue ident = do
   decl <- getDeclEntry (Proxy @builtin) ident
   return $ case decl of
-    -- This record check is kind of dodgy...
-    DefFunction _ _ sort _ value
-      | not (isDeclaredAsRecord sort) -> value
+    DefFunction _ _ _ _ value -> value
     _ -> VFreeVar ident []
 
 findInstanceArg :: (MonadLogger m, Show op) => op -> [GenericArg a] -> m (a, [GenericArg a])

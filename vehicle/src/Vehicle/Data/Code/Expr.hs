@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Vehicle.Data.Code.Expr
-  ( Expr (Universe, Pi, Builtin, BoundVar, FreeVar, Hole, Meta, Let, Lam, Record, RecordAcc, App),
+  ( Expr (Universe, Pi, Builtin, BoundVar, FreeVar, Hole, Meta, Let, Lam, Record, RecordProj, App),
     Type,
     Binder,
     Arg,
@@ -28,6 +28,7 @@ module Vehicle.Data.Code.Expr
     Substitution,
     substituteDB,
     getBuiltinApp,
+    calculateRarameterisedRecordFieldType,
   )
 where
 
@@ -113,13 +114,14 @@ data Expr builtin
   | -- | Records
     Record
       Provenance
-      (Maybe Identifier) -- Nothing indicates a definition, Just indicates the parent record definition
+      (Type builtin) -- Type of the record, e.g. `Pair Int Int`
       (RecordFields builtin)
   | -- | Records accessors
-    RecordAcc
+    RecordProj
       Provenance
-      (Expr builtin)
-      (Identifier, FieldName)
+      (Type builtin) -- Type of the record, e.g. `Pair Int Int`
+      (Expr builtin) -- The actual record, e.g. `{a = 1, b = 1}`
+      FieldName -- The field to access, e.g. `a`
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable, Generic)
 
 --------------------------------------------------------------------------------
@@ -136,7 +138,7 @@ pattern App f xs <- UnsafeApp f xs
   where
     App f xs = normApp f xs
 
-{-# COMPLETE Universe, App, Pi, Builtin, BoundVar, FreeVar, Hole, Meta, Let, Lam, Record, RecordAcc #-}
+{-# COMPLETE Universe, App, Pi, Builtin, BoundVar, FreeVar, Hole, Meta, Let, Lam, Record, RecordProj #-}
 
 -- | Smart constructor for applications with possibly no arguments.
 normAppList :: Expr builtin -> [Arg builtin] -> Expr builtin
@@ -182,7 +184,7 @@ instance HasProvenance (Expr builtin) where
     Let p _ _ _ -> p
     Lam p _ _ -> p
     Record p _ _ -> p
-    RecordAcc p _ _ -> p
+    RecordProj p _ _ _ -> p
 
 --------------------------------------------------------------------------------
 -- Utilities
@@ -231,8 +233,8 @@ traverseBuiltinsM f expr = case expr of
   Pi p binder res -> Pi p <$> traverseBuiltinsBinder f binder <*> traverseBuiltinsM f res
   Let p bound binder body -> Let p <$> traverseBuiltinsM f bound <*> traverseBuiltinsBinder f binder <*> traverseBuiltinsM f body
   Lam p binder body -> Lam p <$> traverseBuiltinsBinder f binder <*> traverseBuiltinsM f body
-  Record p i fs -> Record p i <$> traverseRecordFields (traverseBuiltinsM f) fs
-  RecordAcc p r field -> RecordAcc p <$> traverseBuiltinsM f r <*> pure field
+  Record p t fs -> Record p <$> traverseBuiltinsM f t <*> traverseRecordFields (traverseBuiltinsM f) fs
+  RecordProj p t r field -> RecordProj p <$> traverseBuiltinsM f t <*> traverseBuiltinsM f r <*> pure field
   Universe p u -> return $ Universe p u
   FreeVar p v -> return $ FreeVar p v
   BoundVar p v -> return $ BoundVar p v
@@ -303,7 +305,7 @@ traverseFreeVarsM underBinder processFreeVar = go
         body' <- underBinder binder' (go body)
         return $ Let p bound' binder' body'
       Record p i fs -> Record p i <$> traverseRecordFields go fs
-      RecordAcc p r field -> RecordAcc p <$> go r <*> pure field
+      RecordProj p t r field -> RecordProj p <$> go t <*> go r <*> pure field
 
 freeVarsIn :: Expr builtin -> Set Identifier
 freeVarsIn =
@@ -320,10 +322,6 @@ freeVarsIn =
 -- Instances
 
 instance HasBasicBinders (Expr builtin) where
-  isUniverse = \case
-    Universe _ _ -> True
-    _ -> False
-
   getPiBinder = \case
     Pi _ binder body -> Just (binder, body)
     _ -> Nothing
@@ -334,10 +332,6 @@ instance HasBasicBinders (Expr builtin) where
 
   getLetBinder = \case
     Let _ value binder body -> Just (value, binder, body)
-    _ -> Nothing
-
-  getRecord = \case
-    Record _ _ fields -> Just fields
     _ -> Nothing
 
 instance (BuiltinHasBoolLiterals builtin, BuiltinHasForeach builtin) => HasBuiltinBinders (Expr builtin) where
@@ -407,7 +401,7 @@ instance Substitutable (Expr builtin) (Expr builtin) where
     Let p e1 binder e2 -> Let p <$> subst e1 <*> traverse subst binder <*> underDBBinder (subst e2)
     Lam p binder e -> Lam p <$> traverse subst binder <*> underDBBinder (subst e)
     Record p i fs -> Record p i <$> traverseRecordFields subst fs
-    RecordAcc p r field -> RecordAcc p <$> subst r <*> pure field
+    RecordProj p t r field -> RecordProj p <$> subst t <*> subst r <*> pure field
 
 shiftDBIndex :: Ix -> Lv -> Ix
 shiftDBIndex i l = Ix (unIx i + unLv l)
@@ -471,3 +465,6 @@ substArgs :: Expr builtin -> [Arg builtin] -> Expr builtin
 substArgs (Lam _ _ body) (arg : args) = do
   substArgs (argExpr arg `substDBInto` body) args
 substArgs e args = normAppList e args
+
+calculateRarameterisedRecordFieldType :: Telescope builtin -> Type builtin -> [Arg builtin] -> Type builtin
+calculateRarameterisedRecordFieldType telescope fieldType = substArgs (foldr (Lam mempty) fieldType telescope)

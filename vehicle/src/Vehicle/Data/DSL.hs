@@ -57,7 +57,7 @@ class DSL expr where
   app :: expr -> NonEmpty (Visibility, Relevance, expr) -> expr
   pi :: Maybe Name -> Visibility -> Relevance -> expr -> (expr -> expr) -> expr
   lam :: Name -> Visibility -> Relevance -> expr -> (expr -> expr) -> expr
-  recordAcc :: expr -> (Identifier, FieldName) -> expr
+  recordProj :: expr -> expr -> FieldName -> expr
 
 newtype DSLExpr builtin = DSL
   { unDSL :: Provenance -> Lv -> Expr builtin
@@ -108,9 +108,10 @@ instance DSL (DSLExpr builtin) where
         args' = fmap (\(v, r, e) -> Arg v r (unDSL e p i)) args
      in App fun' args'
 
-  recordAcc record field = DSL $ \p i -> do
+  recordProj recordType record field = DSL $ \p i -> do
+    let recordType' = unDSL recordType p i
     let record' = unDSL record p i
-    RecordAcc p record' field
+    RecordProj p recordType' record' field
 
 --------------------------------------------------------------------------------
 -- AST
