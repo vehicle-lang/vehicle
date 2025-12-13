@@ -66,6 +66,8 @@ position token TokAdd       {"+"};
 position token TokSub       {"-"};
 position token TokMin       {"min"};
 position token TokMax       {"max"};
+position token TokAddNat    {"addNat"};
+position token TokAddRealTensor {"addRealTensor"};
 
 position token TokNil        {"nil"};
 position token TokCons       {"::"};
@@ -86,7 +88,6 @@ position token TokReduceMax {"reduceMax"};
 position token TokHasLeq    {"HasLeq"};
 position token TokHasEq     {"HasEq"};
 position token TokHasNotEq  {"HasNotEq"};
-position token TokHasAdd    {"HasAdd"};
 position token TokHasSub    {"HasSub"};
 position token TokHasMul    {"HasMul"};
 position token TokHasFold   {"HasFold"};
@@ -95,6 +96,7 @@ position token TokIsTensorType {"IsTensorType"};
 
 position token TokAnnNameOpt  {"name"};
 position token TokAnnInferOpt {"infer"};
+position token TokAnnDefaultOpt {"default"};
 
 -- NOTE: As order matters don't declare tokens after these ones!
 position token Name         (letter (letter | digit | '_')*) ;
@@ -216,13 +218,15 @@ GePoint. Expr8  ::= Expr8 TokGePoint Expr9;
 GtPoint. Expr8  ::= Expr8 TokGtPoint Expr9;
 
 -- Numeric expressions.
-Add.     Expr9  ::= Expr9  TokAdd Expr10;
-Sub.     Expr9  ::= Expr9  TokSub Expr10;
-Mul.     Expr10 ::= Expr10 TokMul Expr11;
-Div.     Expr10 ::= Expr10 TokDiv Expr11;
-Neg.     Expr11 ::= TokSub Expr11;
-Min.     Expr15 ::= TokMin;
-Max.     Expr15 ::= TokMax;
+Add.              Expr9  ::= Expr9  TokAdd Expr10;
+Sub.              Expr9  ::= Expr9  TokSub Expr10;
+Mul.              Expr10 ::= Expr10 TokMul Expr11;
+Div.              Expr10 ::= Expr10 TokDiv Expr11;
+Neg.              Expr11 ::= TokSub Expr11;
+Min.              Expr15 ::= TokMin;
+Max.              Expr15 ::= TokMax;
+AddNat.           Expr15 ::= TokAddNat;
+AddRealTensor.    Expr15 ::= TokAddRealTensor;
 
 -- Lists and vectors.
 Foreach.    Expr2  ::= TokForeach [NameBinder] "." Expr2;
@@ -256,7 +260,6 @@ Tensor.  Expr15 ::= TokTensor;
 HasEq.    Expr15 ::= TokHasEq;
 HasNotEq. Expr15 ::= TokHasNotEq;
 HasLeq.   Expr15 ::= TokHasLeq;
-HasAdd.   Expr15 ::= TokHasAdd;
 HasSub.   Expr15 ::= TokHasSub;
 HasMul.   Expr15 ::= TokHasMul;
 HasMap.   Expr15 ::= TokHasMap;
@@ -274,6 +277,7 @@ separator Expr ",";
 -- they necessarily have priority over it.
 NameAnnOption.  DeclAnnOption ::= TokAnnNameOpt "=" Name;
 InferAnnOption. DeclAnnOption ::= TokAnnInferOpt "=" Expr;
+DefaultAnnOption. DeclAnnOption ::= TokAnnDefaultOpt "=" Boolean;
 TypeAnnOption.  DeclAnnOption ::= Name "=" Expr;
 
 separator DeclAnnOption ",";

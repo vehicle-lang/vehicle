@@ -105,7 +105,7 @@ compileToQueryFormat ::
   Prog Builtin ->
   m ()
 compileToQueryFormat QueryOptions {..} typedProg = do
-  logCompilerPass QueryBackend $ do
+  logCompilerPass Solver $ do
     let verifier = queryFormats queryFormatID
     let resources = Resources specification networkLocations datasetLocations parameterValues
     compileToQueries verifier typedProg resources outputFolder
@@ -120,7 +120,7 @@ compileToITP ITPOptions {..} typedProg = do
   decProg <- decidabilityTypeCheck typedProg
 
   -- Compile depending on the ITP
-  logCompilerPass ITPBackend $
+  logCompilerPass ITP $
     case itp of
       Agda -> do
         let agdaOptions = AgdaOptions verificationCache outputFile moduleName
@@ -139,7 +139,7 @@ compileToLossFunction ::
   OutputAsJSON ->
   m ()
 compileToLossFunction LossOptions {..} typedProg outputAsJSON =
-  logCompilerPass LossBackend $ do
+  logCompilerPass Loss $ do
     lossTensorProg <- convertToLossTensors differentiableLogicID typedProg
     hoistedProg <- hoistInferableParameters lossTensorProg
     functionalisedProg <- functionaliseResources hoistedProg

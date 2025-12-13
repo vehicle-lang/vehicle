@@ -36,7 +36,7 @@ scopeModuleDecls modulePath initialState decls = do
 
 scopeDecl :: (MonadScope m) => S.Decl -> m [Decl Builtin]
 scopeDecl decl =
-  logCompilerSection2 MidDetail ("scoping" <+> quotePretty (identifierOf decl)) $ do
+  logCompileDecl "scoping" decl $ do
     scopedDecls <- case decl of
       DefAbstract p ident r t -> do
         t' <- runMonadScopeExprT $ scopeExpr t

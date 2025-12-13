@@ -219,5 +219,5 @@ implPolarityOp p pol1 pol2 =
 
 getTypeClass :: (MonadCompile m) => InstanceGoal PolarityBuiltin -> m (PolarityRelation, Spine PolarityBuiltin)
 getTypeClass = \case
-  (InstanceGoal _ (PolarityRelation tc) args) -> return (tc, args)
+  (InstanceGoal _ (Right (PolarityRelation tc)) args) -> return (tc, args)
   _ -> compilerDeveloperError "Unexpected non-type-class instance argument found."

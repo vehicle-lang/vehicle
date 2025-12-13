@@ -18,7 +18,7 @@ import Vehicle.Backend.Loss.LossCompilation (convertFunction, convertRatTensor)
 import Vehicle.Backend.Prelude (DifferentiableLogicID)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyFriendlyEmptyCtx)
+import Vehicle.Compile.Print (prettyFriendlyEmptyCtx, prettyVerbose)
 import Vehicle.Data.Builtin.Core (Builtin)
 import Vehicle.Data.Builtin.Interface.Normalise (evalCompareRatTensorPointwise)
 import Vehicle.Data.Builtin.Loss (ComparisonOp (..), LogicDirection, LossBuiltin)
@@ -159,6 +159,7 @@ compileLogicField logicID decl fields impl field =
   logCompilerSection2 MidDetail ("compiling tensor-field" <+> quotePretty field) $ do
     let tensorValue = lookupLogicField field fields
     logDebug MaxDetail $ "tensor-result:" <+> prettyFriendlyEmptyCtx tensorValue <> line
+    logDebug MaxDetail $ "tensor-result:" <+> prettyVerbose tensorValue <> line
 
     lossTensorExpr <-
       runMonadLogicT logicID (mempty, True) decl $ do

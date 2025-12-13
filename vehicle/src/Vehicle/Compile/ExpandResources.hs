@@ -15,7 +15,7 @@ import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.ExpandResources.Dataset
 import Vehicle.Compile.ExpandResources.Network
 import Vehicle.Compile.ExpandResources.Parameter
-import Vehicle.Compile.Normalise.NBE (normaliseInEmptyEnv)
+import Vehicle.Compile.Normalise.NBE (evalInEmptyEnv)
 import Vehicle.Compile.Normalise.Quote
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print.Warning ()
@@ -71,7 +71,7 @@ readResourcesInDecls = \case
 readResourceInDecl :: (MonadIO m, MonadExpandResources m) => Decl Builtin -> m (Decl Builtin)
 readResourceInDecl decl = case decl of
   DefAbstract p ident defType declType -> do
-    normDeclType <- normaliseInEmptyEnv declType
+    normDeclType <- evalInEmptyEnv declType
     let gluedType = Glued declType normDeclType
     maybeNewDecl <- case defType of
       BuiltinDef {} -> return Nothing

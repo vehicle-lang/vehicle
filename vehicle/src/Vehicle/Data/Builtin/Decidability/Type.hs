@@ -30,7 +30,7 @@ instance TypableBuiltin DecidabilityBuiltin where
   isConstructor = isDecidabilityConstructor
 
   isCastConstraint e = case e of
-    DecidabilityBuiltinTypeClass (HasTensorTypeClassField FieldFromBoolTensorLiteral) -> True
+    Right (DecidabilityBuiltinTypeClass (HasTensorTypeClassField FieldFromBoolTensorLiteral)) -> True
     _ -> False
 
 isDecidabilityConstructor :: DecidabilityBuiltin -> Bool

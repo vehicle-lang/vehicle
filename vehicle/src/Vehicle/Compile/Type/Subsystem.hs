@@ -37,7 +37,7 @@ import Vehicle.Data.Builtin.Polarity (PolarityBuiltin)
 import Vehicle.Data.Builtin.Polarity.Type ()
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.ModuleInterface (ImportedModuleContext, ModuleInterface (..), emptyModuleScopingInterface, emptyModuleTypingInterface)
-import Vehicle.Libraries.StandardLibrary (standardLibraryBuiltinModulePath)
+import Vehicle.Libraries.StandardLibrary (standardLibraryBuiltinModulePath, standardLibraryInstanceOps)
 import Vehicle.Syntax.AST.Expr qualified as S
 import Vehicle.Syntax.Parse (ParseLocation, readAndParseModule)
 
@@ -90,7 +90,7 @@ typeCheckWithSubsystem ::
 typeCheckWithSubsystem typingSystem instanceCandidates prog = do
   callDepth <- getCallDepth
   logCompilerSection2 MinDetail ("typing using" <+> quotePretty typingSystem <+> "type subsystem") $ do
-    logCompilerPass TypeChecking $ do
+    logCompilerPass TypingSubsystem $ do
       builtinModuleCtx <- loadTypeSystemBuiltins typingSystem instanceCandidates
       errorOrResult <- runExceptT $ typeCheckModuleDecls userModulePath instanceCandidates builtinModuleCtx (programDeclarations prog)
       -- Need to reset the call depth explicitly as type-checking may have errored.
@@ -140,7 +140,8 @@ resolveInstanceArgumentsAndCasts prog =
     prog' <- flip traverseDecls prog $ \decl -> do
       decl1 <- traverse (traverseBuiltinsM removeBuiltinInstances) decl
       decl2 <- traverse (traverseBuiltinsM removeCasts) decl1
-      return decl2
+      decl3 <- traverse (traverseFreeVarsM (\_b r -> r) removeExternalInstances) decl2
+      return decl3
     logDebug MaxDetail $ prettyExternal prog'
     return prog'
   where
@@ -156,6 +157,24 @@ resolveInstanceArgumentsAndCasts prog =
           let result = substArgs newInst remainingArgs
           return result
       | otherwise = return $ normAppList (Builtin p b) args
+
+    removeExternalInstances :: FreeVarUpdate m builtin
+    removeExternalInstances recGo p ident args
+      | Set.member ident standardLibraryInstanceOps = do
+          args' <- traverseArgs recGo args
+          (inst, remainingArgs) <- findInstanceArg ident args'
+          case inst of
+            Record _ _ fields -> do
+              let solution = lookupRecordField fields (FieldName p (nameOf ident))
+              -- Replace the provenance of the final solution with the provenance of where the
+              -- constraint was generated. This is needed to get the information to propagate
+              -- properly for the polarity and linearity types, otherwise the provenance ends
+              -- up empty as the candidates are constructed independently.
+              let newSolution = replaceProvenance p solution
+              let finalValue = normAppList newSolution remainingArgs
+              return finalValue
+            _ -> developerError "Malformed standard instance argument"
+      | otherwise = return $ normAppList (FreeVar p ident) args
 
     removeCasts :: BuiltinUpdate m builtin builtin
     removeCasts p b args = case isCast p b of

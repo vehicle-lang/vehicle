@@ -8,7 +8,7 @@ import Control.Monad.State (MonadState (..), evalStateT, modify)
 import Data.Data (Proxy (..))
 import Data.Set (Set, insert, member)
 import Vehicle.Compile.Error (MonadCompile)
-import Vehicle.Compile.Normalise.NBE (normaliseClosureInCtx, normaliseInEmptyEnv)
+import Vehicle.Compile.Normalise.NBE (evalInEmptyEnv, normaliseClosureInCtx)
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Decidability (DecidabilityBuiltin (..), DecidabilityBuiltinFunction (..))
 import Vehicle.Data.Code.Value (Value (..))
@@ -97,7 +97,7 @@ isTypeDef decl = case decl of
   DefAbstract {} -> return False
   DefRecord {} -> return False
   DefFunction _ _ _ t _ -> do
-    normType <- normaliseInEmptyEnv t
+    normType <- evalInEmptyEnv t
     case normType of
       -- We don't capitalise things of type `Bool` because they will be lifted
       -- to the type level, only things of type `X -> Bool`.

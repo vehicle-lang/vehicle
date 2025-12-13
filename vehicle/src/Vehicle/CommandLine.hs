@@ -52,7 +52,7 @@ data GlobalOptions = GlobalOptions
   { version :: Bool,
     logFile :: Maybe FilePath,
     loggingLevel :: LoggingLevel,
-    loggingPass :: Maybe CompilerPass,
+    loggingTarget :: Maybe CompilerStack,
     noWarnings :: Bool,
     outputAsJSON :: OutputAsJSON
   }
@@ -64,7 +64,7 @@ defaultGlobalOptions =
     { version = False,
       logFile = Nothing,
       loggingLevel = defaultLoggingLevel,
-      loggingPass = Nothing,
+      loggingTarget = Nothing,
       noWarnings = False,
       outputAsJSON = False
     }
@@ -135,7 +135,7 @@ globalOptionsParser =
     <$> showVersionParser
     <*> redirectLogsParser
     <*> loggingLevelParser
-    <*> loggingPassParser
+    <*> loggingTargetParser
     <*> noWarningsParser
     <*> outputAsJSONParser
 
@@ -426,8 +426,8 @@ loggingLevelHelp =
     <+> supportedOptions allLoggingLevels
     <> line
 
-loggingPassParser :: Parser (Maybe CompilerPass)
-loggingPassParser =
+loggingTargetParser :: Parser (Maybe CompilerStack)
+loggingTargetParser =
   optional $
     option auto $
       long "loggingPass"

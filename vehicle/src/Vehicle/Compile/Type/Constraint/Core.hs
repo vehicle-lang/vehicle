@@ -47,7 +47,7 @@ createInstanceUnification (ctx, origin) e1 e2 = do
 extractHeadFromInstanceCandidate ::
   (PrintableBuiltin builtin) =>
   InstanceCandidate builtin ->
-  (builtin, InstanceCandidate builtin)
+  (InstanceHead builtin, InstanceCandidate builtin)
 extractHeadFromInstanceCandidate candidate@InstanceCandidate {..} = do
   case findInstanceGoalHead candidateExpr of
     Right b -> (b, candidate)
@@ -60,14 +60,6 @@ extractHeadFromInstanceCandidate candidate@InstanceCandidate {..} = do
           <> line
           <> "Problematic subexpr:"
             <+> problemDoc
-
-findInstanceGoalHead :: Expr builtin -> Either (Expr builtin) builtin
-findInstanceGoalHead = \case
-  Pi _ binder body
-    | not (isExplicit binder) -> findInstanceGoalHead body
-  App (Builtin _ b) _ -> Right b
-  Builtin _ b -> Right b
-  expr -> Left expr
 
 mkCandidate :: (DSLExpr builtin, DSLExpr builtin, Bool) -> InstanceCandidate builtin
 mkCandidate (expr, solution, defaultInstance) = do
@@ -83,7 +75,7 @@ makeInstanceDatabase allInstances = do
   let defaults = mapMaybeWithKey findDefault instances
   InstanceDatabase instances defaults
   where
-    findDefault :: (Pretty builtin) => builtin -> [InstanceCandidate builtin] -> Maybe (InstanceCandidate builtin)
+    findDefault :: (Pretty builtin) => Either Identifier builtin -> [InstanceCandidate builtin] -> Maybe (InstanceCandidate builtin)
     findDefault b instances = do
       let defaultInstances = filter defaultInstance instances
       case defaultInstances of

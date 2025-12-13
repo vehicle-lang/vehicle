@@ -193,8 +193,11 @@ unification info = \case
     solveClosure info (binder1, closure1) (binder2, closure2)
   VRecord ident1 fields1 :~: VRecord ident2 fields2
     | ident1 == ident2 -> solveRecords info fields1 fields2
-  VRecordAcc _recordType1 record1 field1 :~: VRecordAcc _recordType2 record2 field2
-    | field1 == field2 -> subUnify info record1 record2
+  VRecordAcc _recordType1 record1 field1 spine1 :~: VRecordAcc _recordType2 record2 field2 spine2
+    | field1 == field2 -> do
+        recordResult <- subUnify info record1 record2
+        spineResult <- solveSpine info spine1 spine2
+        return $ recordResult <> spineResult
   ---------------------
   -- Flex-flex cases --
   ---------------------
@@ -384,7 +387,8 @@ pruneMetaDependencies ctx (solvingMetaID, solvingMetaSpine) attemptedSolution = 
       VBoundVar v spine -> VBoundVar v <$> traverse (traverse go) spine
       VFreeVar v spine -> VFreeVar v <$> traverse (traverse go) spine
       VRecord ident fields -> VRecord ident <$> traverse go fields
-      VRecordAcc recordType record field -> VRecordAcc <$> go recordType <*> go record <*> pure field
+      VRecordAcc recordType record field spine ->
+        VRecordAcc <$> go recordType <*> go record <*> pure field <*> traverseSpine go spine
       -- Definitely going to have come back and fix this one later.
       -- Can't inspect the metas in the environment, as not every variable
       -- in the environment will be used?
