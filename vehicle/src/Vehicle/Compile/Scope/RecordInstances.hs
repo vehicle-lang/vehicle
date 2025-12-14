@@ -43,9 +43,37 @@ createTensorRecordConversionFunctions p ident fields = do
   let fieldDimensions = hole
 
   let recordToTensorDecl = createRecordToTensor p ident fieldElementType fieldDimensions nonEmptyFields
+  let tensorToRecordDecl = createTensorToRecord p ident fieldElementType fieldDimensions nonEmptyFields
+
   return
-    [ recordToTensorDecl
+    [ recordToTensorDecl,
+      tensorToRecordDecl
     ]
+
+createTensorToRecord ::
+  Provenance ->
+  Identifier ->
+  DSLExpr Builtin ->
+  DSLExpr Builtin ->
+  NonEmpty (RecordField (Type Builtin)) ->
+  Decl Builtin
+createTensorToRecord p recordIdent fieldElementType fieldDimensions fields = do
+  -- Create the name
+  let functionName = Text.pack "_" <> nameOf recordIdent <> "FromTensor"
+  let functionIdent = Identifier (modulePath recordIdent) functionName
+
+  -- Create the function type (same as below, just reversed)
+  let firstDimension = dim (length fields)
+  let allDimensions = dimCons firstDimension fieldDimensions
+  let recordType = freeVar recordIdent
+  let tensorType = tTensor fieldElementType allDimensions
+  let functionType = fromDSL mempty $ tensorType ~> recordType
+
+  -- need to lambda over the input tensor
+
+  let functionBody = fromDSL mempty $ explLam "x" tensorType $ \tensor -> tensor
+
+  DefFunction p functionIdent mempty functionType functionBody
 
 createRecordToTensor ::
   Provenance ->
