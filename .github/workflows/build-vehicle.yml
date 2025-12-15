@@ -173,7 +173,7 @@ jobs:
           cabal build all --project-file=${{ matrix.haskell.cabal.project-file }} --dry-run
 
       - name: 💾 Restore Cabal dependencies
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         if: ${{ !env.ACT }}
         id: cache-haskell
         env:
@@ -188,7 +188,7 @@ jobs:
         run: cabal build all --only-dependencies
 
       - name: 💾 Save Cabal dependencies
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         if: ${{ !env.ACT && steps.cache-haskell.outputs.cache-hit != 'true' }}
         with:
           path: ${{ steps.setup-haskell.outputs.cabal-store }}
