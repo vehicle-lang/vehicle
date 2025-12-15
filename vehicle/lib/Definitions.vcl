@@ -49,8 +49,8 @@ gtRatTensorReduced xs ys = reduceAnd True (xs >. ys)
 --------------------------------------------------------------------------------
 
 record TensorLike r t dims {{isTensorType : IsTensorType t dims}} where
-  { toTensorLike     : r -> tensor
-  , fromTensorLike   : tensor -> r
+  { toTensorLike     : r -> Tensor t dims
+  , fromTensorLike   : Tensor t dims -> r
   }
 
 --------------------------------------------------------------------------------
