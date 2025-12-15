@@ -99,42 +99,34 @@ ensureLatestVersionOfLibraryInstalled ::
   m ()
 ensureLatestVersionOfLibraryInstalled library libraryContent = do
   -- Check the library info file and see if it's up to date
-  libraryUpToDate <-
-    if isDirtyRepo
-      then do
-        logDebug MidDetail $
-          "Dirty repo so assuming library"
-            <+> quotePretty (libraryName library)
-            <+> "is out of date."
+  libraryUpToDate <- do
+    libraryFolder <- getLibraryPath (libraryName library)
+
+    errorOrContents <- readLibraryFile libraryFolder
+    case errorOrContents of
+      Left err -> do
+        logDebug MidDetail err
         return False
-      else do
-        libraryFolder <- getLibraryPath (libraryName library)
+      Right actualLibrary -> do
+        let actualVersion = libraryVersion actualLibrary
+        let expectedVersion = libraryVersion library
+        let versionsMatch = actualVersion == expectedVersion
 
-        errorOrContents <- readLibraryFile libraryFolder
-        case errorOrContents of
-          Left err -> do
-            logDebug MidDetail err
-            return False
-          Right actualLibrary -> do
-            let actualVersion = libraryVersion actualLibrary
-            let expectedVersion = libraryVersion library
-            let versionsMatch = actualVersion == expectedVersion
+        logDebug MidDetail $
+          if versionsMatch
+            then
+              "Found up-to-date installed version of"
+                <+> quotePretty (libraryName library)
+                <+> "at"
+                <+> quotePretty libraryFolder
+            else
+              "Installed version of"
+                <+> quotePretty (libraryName library)
+                <+> parens (pretty actualVersion)
+                <+> "does not match latest version"
+                <+> parens (pretty expectedVersion)
 
-            logDebug MidDetail $
-              if versionsMatch
-                then
-                  "Found up-to-date installed version of"
-                    <+> quotePretty (libraryName library)
-                    <+> "at"
-                    <+> quotePretty libraryFolder
-                else
-                  "Installed version of"
-                    <+> quotePretty (libraryName library)
-                    <+> parens (pretty actualVersion)
-                    <+> "does not match latest version"
-                    <+> parens (pretty expectedVersion)
-
-            return versionsMatch
+        return versionsMatch
 
   -- If not update to date then reinstall
   unless libraryUpToDate $ do

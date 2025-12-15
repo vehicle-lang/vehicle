@@ -33,7 +33,7 @@ import Vehicle.Data.Code.Value
 import Vehicle.Data.Variable.Bound.Context.Generic
 import Vehicle.Data.Variable.Bound.Context.Name.Class (MonadReadableNameContext (getNameContext))
 import Vehicle.Data.Variable.Bound.Context.Name.Core
-import Vehicle.Data.Variable.Free.Context.Class (MonadFreeContext (..), lookupIdentValue)
+import Vehicle.Data.Variable.Free.Context.Class (MonadFreeContext (..))
 import Vehicle.Data.Variable.Free.Context.Instance (runFreeContextT, runFreshFreeContextT)
 
 -- NOTE: there is no evaluatation to NF in this file. To do it
@@ -167,14 +167,17 @@ eval ctx boundEnv expr = do
       fun' <- recEval fun
       args' <- traverse (traverse recEval) (NonEmpty.toList args)
       evalApp ctx fun' args'
-    Record _p ident fields -> do
+    Record _p recordType fields -> do
+      recordType' <- recEval recordType
       fields' <- traverseRecordFields recEval fields
-      return $ VRecord ident $ OMap.fromList fields'
-    RecordAcc _p record fieldRef@(_i, field) -> do
+      return $ VRecord recordType' $ OMap.fromList fields'
+    RecordProj _p recordType record field -> do
       record' <- recEval record
       case record' of
         VRecord _ fields -> return $ lookupRecordFieldS fields field
-        _ -> return $ VRecordAcc record' fieldRef
+        _ -> do
+          recordType' <- recEval recordType
+          return $ VRecordAcc recordType' record' field
 
   showExit ctx result
   return result
@@ -226,6 +229,13 @@ evalBuiltin ctx b spine
   | otherwise = do
       (inst, remainingArgs) <- findInstanceArg b spine
       evalApp ctx inst remainingArgs
+
+lookupIdentValue :: forall builtin m. (MonadFreeContext builtin m) => Identifier -> m (Value builtin)
+lookupIdentValue ident = do
+  decl <- getDeclEntry (Proxy @builtin) ident
+  return $ case decl of
+    DefFunction _ _ _ _ value -> value
+    _ -> VFreeVar ident []
 
 findInstanceArg :: (MonadLogger m, Show op) => op -> [GenericArg a] -> m (a, [GenericArg a])
 findInstanceArg op = \case

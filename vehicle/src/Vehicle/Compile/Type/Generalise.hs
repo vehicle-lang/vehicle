@@ -251,7 +251,13 @@ prependBinderAndSolve decl (meta, binder) =
     -- Then finally update the declaration
     let alterType t = return $ Pi p typeBinder t
     let alterBody e = return $ Lam p bodyBinder e
-    finalDecl <- traverseDeclTypeAndExpr alterType alterBody substDecl
+    finalDecl <- case substDecl of
+      DefFunction _ i s t e -> DefFunction p i s <$> alterType t <*> alterBody e
+      DefAbstract _ i s t -> DefAbstract p i s <$> alterType t
+      _ ->
+        developerError $
+          "Unsupported definition type in generalistion:"
+            <> lineIndent (prettyVerbose substDecl)
 
     -- Substitute the new meta solution through.
     setCurrentDecl $ Just (finalDecl, False)

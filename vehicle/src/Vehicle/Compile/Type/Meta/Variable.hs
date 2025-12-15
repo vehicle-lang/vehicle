@@ -94,7 +94,7 @@ instance HasMetas (Expr builtin) where
     Lam _ binder body -> do findMetas binder; findMetas body
     App fun args -> do findMetas fun; findMetas args
     Record _ _ fields -> findMetas $ fmap snd fields
-    RecordAcc _ record _ -> findMetas record
+    RecordProj _ recordType record _ -> do findMetas recordType; findMetas record
 
 instance HasMetas (Value builtin) where
   findMetas expr = case expr of
@@ -108,7 +108,7 @@ instance HasMetas (Value builtin) where
     VPi binder closure -> do findMetas binder; findMetas closure
     VLam binder closure -> do findMetas binder; findMetas closure
     VRecord _ fields -> findMetas (snd <$> OMap.assocs fields)
-    VRecordAcc record _ -> findMetas record
+    VRecordAcc recordType record _ -> do findMetas recordType; findMetas record
 
 instance HasMetas (Closure builtin) where
   findMetas (Closure env expr) = do traverseEnv_ findMetas env; findMetas expr

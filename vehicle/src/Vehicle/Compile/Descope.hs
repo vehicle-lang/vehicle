@@ -1,5 +1,6 @@
 module Vehicle.Compile.Descope
-  ( descopeExpr,
+  ( descopeDecl,
+    descopeExpr,
     descopeExprInEmptyCtx,
     descopeExprNaively,
     descopeValueNaively,
@@ -22,13 +23,41 @@ import Vehicle.Syntax.AST.Expr qualified as S
 --------------------------------------------------------------------------------
 -- Interface
 
+descopeDecl :: (PrintableBuiltin builtin) => Decl builtin -> S.Decl
+descopeDecl decl = do
+  let builtinDecl = fmap convertExprBuiltins decl
+  case builtinDecl of
+    DefFunction p ident sort t e -> DefFunction p ident sort (descopeExprInEmptyCtx t) (descopeExprInEmptyCtx e)
+    DefAbstract p ident sort t -> DefAbstract p ident sort (descopeExprInEmptyCtx t)
+    DefRecord p ident sort t f -> do
+      let (t', f') = descopeRecordTelescope t f
+      DefRecord p ident sort t' f'
+
+descopeRecordTelescope ::
+  (PrintableBuiltin Builtin) =>
+  Telescope Builtin ->
+  RecordFields Builtin ->
+  (S.Telescope, S.RecordFields)
+descopeRecordTelescope telescope fields =
+  runFreshNameBoundContext (go telescope)
+  where
+    go :: (MonadNameContext m) => Telescope Builtin -> m (S.Telescope, S.RecordFields)
+    go = \case
+      [] -> do
+        fields' <- traverseRecordFields (genericDescopeExpr (ixToName Named)) fields
+        return ([], fields')
+      binder : binders -> do
+        binder' <- traverse (genericDescopeExpr (ixToName Named)) binder
+        (binders', fields') <- addNameToContext binder $ go binders
+        return (binder' : binders', fields')
+
 descopeExpr :: (PrintableBuiltin builtin) => NamedBoundCtx -> Expr builtin -> S.Expr
 descopeExpr ctx e =
   runNameBoundContext ctx $
     genericDescopeExpr (ixToName Named) (convertExprBuiltins e)
 
 descopeExprInEmptyCtx :: (PrintableBuiltin builtin) => Expr builtin -> S.Expr
-descopeExprInEmptyCtx e = descopeExpr mempty e
+descopeExprInEmptyCtx = descopeExpr mempty
 
 descopeExprNaively :: (PrintableBuiltin builtin) => Expr builtin -> S.Expr
 descopeExprNaively e = do
@@ -88,10 +117,10 @@ genericDescopeExpr f e = showDescopeExit $ case showDescopeEntry e of
     binder' <- traverse (genericDescopeExpr f) binder
     body' <- addNameToContext binder $ genericDescopeExpr f body
     return $ S.Pi p binder' body'
-  Record p _ fields -> do
+  Record p _recordType fields -> do
     fields' <- traverseRecordFields (genericDescopeExpr f) fields
     return $ S.Record p fields'
-  RecordAcc p record (_, field) -> do
+  RecordProj p _recordType record field -> do
     record' <- genericDescopeExpr f record
     return $ S.RecordAcc p record' field
 
@@ -140,10 +169,10 @@ genericDescopeValue f e = case e of
     binder' <- traverse (genericDescopeValue f) binder
     body' <- addNameToContext binder $ descopeClosure f binder closure
     return $ S.Lam p binder' body'
-  VRecord _ident fields -> do
+  VRecord _recordType fields -> do
     fields' <- traverseRecordFields (genericDescopeValue f) $ OMap.assocs fields
     return $ S.Record p fields'
-  VRecordAcc record (_ident, field) -> do
+  VRecordAcc _recordType record field -> do
     record' <- genericDescopeValue f record
     return $ S.RecordAcc p record' field
   where

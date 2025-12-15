@@ -70,11 +70,20 @@ diagnoseSpecIncompatiblility prog propertyIdentifier typeCheckFn = do
       Right linearityProg -> Right <$> findDeclType propertyIdentifier linearityProg
 
 findDeclType :: (MonadCompile m) => Identifier -> Prog builtin -> m (Expr builtin)
-findDeclType ident (Main decls) = do
-  let candidates = filter (\decl -> identifierOf decl == ident) decls
-  case candidates of
-    [property] -> return $ typeOf property
-    _ -> compilerDeveloperError $ "Could not find property" <+> quotePretty ident <+> "in program after subtyping."
+findDeclType propIdent (Main decls) = do
+  let maybePropertyType = firstJust getPropertyType decls
+  case maybePropertyType of
+    Just propertyType -> return propertyType
+    Nothing ->
+      compilerDeveloperError $
+        "Could not find property"
+          <+> quotePretty propIdent
+          <+> "in program after subtyping."
+  where
+    getPropertyType :: Decl builtin -> Maybe (Type builtin)
+    getPropertyType = \case
+      DefFunction _ ident _ t _ | propIdent == ident -> Just t
+      _ -> Nothing
 
 unexpectedOriginType :: Identifier -> CompileError
 unexpectedOriginType ident =

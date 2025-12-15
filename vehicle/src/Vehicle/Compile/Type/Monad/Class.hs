@@ -374,23 +374,31 @@ getDecl _proxy ident = do
   declsByName <- getsTypeCheckerState @builtin declsByName
   return $ lookupInFreeCtx ident declsByName
 
-getDeclaredRecordFields ::
+getRecordDefinition ::
   (MonadTypeChecker builtin m) =>
   Proxy builtin ->
   Identifier ->
-  m (RecordFields (Type builtin))
-getDeclaredRecordFields proxy ident = do
+  m (Telescope builtin, RecordFields builtin)
+getRecordDefinition proxy ident = do
   decl <- getDecl proxy ident
   case decl of
-    DefRecord _ _ _ _ fields -> return fields
-    _ -> developerError $ quotePretty ident <+> "is unexpectedly not a record"
+    DefRecord _ _ _ telescope fields ->
+      return (telescope, fields)
+    _ ->
+      developerError $
+        pretty ident <+> "is unexpectedly not a record"
 
 getDeclType ::
   (MonadTypeChecker builtin m, HasCallStack) =>
   Proxy builtin ->
   Identifier ->
   m (Type builtin)
-getDeclType proxy ident = typeOf <$> getDecl proxy ident
+getDeclType proxy ident = do
+  decl <- getDecl proxy ident
+  return $ case decl of
+    DefAbstract _ _ _ t -> t
+    DefFunction _ _ _ t _ -> t
+    DefRecord p _ _ telescope _ -> foldr (Pi p) (Universe p 0) telescope
 
 addTypedDeclToContext ::
   (MonadTypeChecker builtin m) =>

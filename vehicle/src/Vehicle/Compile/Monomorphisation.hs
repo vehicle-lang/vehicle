@@ -132,25 +132,22 @@ handleUsedDecl applications decl = do
       <> line
       <> indent 2 (prettyMultiLineList $ NonEmpty.toList (fmap prettyVerbose applications))
 
-  monomorphisations <- calculateMonomorphisations (typeOf decl) applications
-
-  logDebug MaxDetail $
-    "Unique monomorphisable applications:"
-      <> line
-      <> indent 2 (prettyMultiLineList (fmap prettyVerbose monomorphisations))
-
-  let noMonomorphisation = do
-        logDebug MaxDetail "Not monomorphising as an abstract declaration"
-        return [decl]
-
   case decl of
     DefFunction p ident anns typ body -> do
+      let monomorphisations = calculateMonomorphisations typ applications
+
+      logDebug MaxDetail $
+        "Unique monomorphisable applications:"
+          <> line
+          <> indent 2 (prettyMultiLineList (fmap prettyVerbose monomorphisations))
+
       let numberOfApplications = length monomorphisations
       let allFreeVarsInArgs = Set.unions (freeVarsIn . argExpr <$> concat monomorphisations)
       let createNewName = numberOfApplications > 1 || ident `Set.member` allFreeVarsInArgs
       traverse (performMonomorphisation (p, ident, anns, typ, body) createNewName) monomorphisations
-    DefAbstract {} -> noMonomorphisation
-    DefRecord {} -> noMonomorphisation
+    _ -> do
+      logDebug MaxDetail "Not monomorphising as an abstract declaration"
+      return [decl]
 
 handleUnusedDecl ::
   (MonadCollect builtin m) =>
@@ -163,7 +160,9 @@ handleUnusedDecl decl isRootDecl = do
     then do
       -- Work out if the unused declaration needs to be monomorphised
       let fakeArgs = explicit (Hole mempty "fakeArg") : fakeArgs
-      let (argsToMono, _) = obtainArgsToMonomorphise (typeOf decl) fakeArgs
+      let argsToMono = case decl of
+            DefFunction _ _ _ t _ -> fst $ obtainArgsToMonomorphise t fakeArgs
+            _ -> mempty
       let needsToBeMonomorphised = not (null argsToMono)
 
       if needsToBeMonomorphised
@@ -179,32 +178,32 @@ handleUnusedDecl decl isRootDecl = do
       return []
 
 calculateMonomorphisations ::
-  (MonadCollect builtin m) =>
+  (Eq builtin) =>
   Type builtin ->
   NonEmpty [Arg builtin] ->
-  m [[Arg builtin]]
+  [[Arg builtin]]
 calculateMonomorphisations declType allApplications = do
   let calculateMonomorphisation = obtainArgsToMonomorphise declType
   let monomorphisations = fmap (fst . calculateMonomorphisation) allApplications
   -- This is inefficient and not strictly semantically correct.
   -- Semantic equality is difficult however.
   let uniqueMonomorphisations = nub $ NonEmpty.toList monomorphisations
-  return $ toList uniqueMonomorphisations
+  toList uniqueMonomorphisations
 
 performMonomorphisation ::
   (MonadCollect builtin m) =>
-  (Provenance, Identifier, [Annotation], Type builtin, Expr builtin) ->
+  (Provenance, Identifier, DefFunctionSort, Type builtin, Expr builtin) ->
   Bool ->
   [Arg builtin] ->
   m (Decl builtin)
-performMonomorphisation (p, ident, anns, typ, body) createNewName args = do
+performMonomorphisation (p, ident, sort, typ, body) createNewName args = do
   newIdent <-
     if createNewName
       then changeName ident <$> getMonomorphisedName (nameOf ident) args
       else return ident
   (newType, newBody) <- substituteArgsThrough (typ, body, args)
   tell (Map.singleton ident (typ, HashMap.singleton args newIdent))
-  let newDecl = DefFunction p newIdent anns newType newBody
+  let newDecl = DefFunction p newIdent sort newType newBody
   logDebug MaxDetail $ "Result:" <> lineIndent (prettyFriendly newDecl)
   return newDecl
 

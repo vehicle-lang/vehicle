@@ -89,10 +89,3 @@ getFreeEnv ::
 getFreeEnv = do
   ctx <- getFreeCtx (Proxy @builtin)
   return ctx
-
-lookupIdentValue :: forall builtin m. (MonadFreeContext builtin m) => Identifier -> m (Value builtin)
-lookupIdentValue ident = do
-  decl <- getDeclEntry (Proxy @builtin) ident
-  return $ case bodyOf decl of
-    Just value -> value
-    _ -> VFreeVar ident []

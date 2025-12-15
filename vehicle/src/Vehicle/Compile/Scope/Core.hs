@@ -55,30 +55,40 @@ runMonadScopeT modulePath importedCtx action = do
 
 -- | Called when parsing a record definition field-by-field so that
 -- earlier fields are in scope for later fields.
-addNewRecordDefField :: (MonadState ModuleScopingInterface m, MonadCompile m) => Identifier -> FieldName -> m ()
-addNewRecordDefField ident newField = do
+addNewRecordDefField ::
+  (MonadState ModuleScopingInterface m, MonadCompile m) =>
+  Identifier ->
+  Telescope Builtin ->
+  FieldName ->
+  m ()
+addNewRecordDefField ident telescope newField = do
   ModuleScopingInterface {..} <- get
   case Map.lookup newField recordIdentifiersByField of
     Nothing -> return ()
-    Just existingIdentifier ->
+    Just (existingIdentifier, _) ->
       throwError $ DeclarationDeclarationShadowing (provenanceOf newField) (Left newField) existingIdentifier
 
   put $
     ModuleScopingInterface
-      { recordIdentifiersByField = Map.insert newField ident recordIdentifiersByField,
+      { recordIdentifiersByField = Map.insert newField (ident, telescope) recordIdentifiersByField,
         ..
       }
 
 -- | Called when finishing parsing a record definition so that we can add
 -- the information necessary to do efficient parsing of instances of that
 -- record.
-addNewRecordDef :: (MonadState ModuleScopingInterface m) => Identifier -> [FieldName] -> m ()
-addNewRecordDef ident fields = do
+addNewRecordDef ::
+  (MonadState ModuleScopingInterface m) =>
+  Identifier ->
+  Telescope Builtin ->
+  RecordFields Builtin ->
+  m ()
+addNewRecordDef ident telescope fields = do
   ModuleScopingInterface {..} <- get
-  let fieldSet = Set.fromList fields
+  let fieldSet = Set.fromList $ fmap fst fields
   put $
     ModuleScopingInterface
-      { recordIdentifiersByFields = Map.insert fieldSet ident recordIdentifiersByFields,
+      { recordIdentifiersByFields = Map.insert fieldSet (ident, telescope) recordIdentifiersByFields,
         fieldsByRecordIdentifier = Map.insert ident fieldSet fieldsByRecordIdentifier,
         ..
       }
@@ -137,24 +147,23 @@ runMonadScopeExprT action = do
         boundCtx = mempty
       }
 
-addBinder :: (MonadScopeExpr m, HasProvenance binder, HasName binder (Maybe Name)) => binder -> m a -> m a
+addBinder :: (MonadScopeExpr m) => GenericBinder expr -> m a -> m a
 addBinder binder continuation = do
-  let maybeName = nameOf binder
-  case maybeName of
+  case getMaybeNamedBinderInfo binder of
     Nothing -> return ()
-    Just name -> do
+    Just (name, p) -> do
       maybeFreeVar <- lookupFreeVariable name
       case maybeFreeVar of
         Just {} ->
           -- This restriction is needed so that
           -- `Vehicle.Compile.ResourceFunctionalisation`
           -- doesn't accidentally capture variables.
-          throwError $ DeclarationBoundShadowing (provenanceOf binder) name
+          throwError $ DeclarationBoundShadowing p name
         Nothing -> return ()
 
   flip local continuation $ \LocalCtx {..} ->
     LocalCtx
-      { boundCtx = maybeName : boundCtx,
+      { boundCtx = nameOf binder : boundCtx,
         ..
       }
 
@@ -190,23 +199,27 @@ lookupBoundVariable name = do
   boundCtx <- asks boundCtx
   return (Ix <$> elemIndex (Just name) boundCtx)
 
-lookupRecordDefinitionByField :: (MonadScopeExpr m) => FieldName -> m Identifier
+lookupRecordDefinitionByField :: (MonadScopeExpr m) => FieldName -> m (Identifier, Telescope Builtin)
 lookupRecordDefinitionByField field = do
   maybeResult <- lookupInNonLocalCtx (Map.lookup field . recordIdentifiersByField)
   case maybeResult of
-    Just definitionIdent -> return definitionIdent
+    Just result -> return result
     Nothing -> do
       allFieldsInScope <- concatInNonLocalCtx (Map.keys . recordIdentifiersByField)
       let fieldName = nameOf field
       let suggestions = mispellingsSortedByLikelihood fieldName (fmap nameOf allFieldsInScope)
       throwError $ UnboundRecordAccessor (provenanceOf field) fieldName suggestions
 
-lookupRecordDefinitionByFields :: (MonadScopeExpr m) => Provenance -> [FieldName] -> m Identifier
+lookupRecordDefinitionByFields ::
+  (MonadScopeExpr m) =>
+  Provenance ->
+  [FieldName] ->
+  m (Identifier, Telescope Builtin)
 lookupRecordDefinitionByFields p fields = do
   let fieldSet = Set.fromList fields
   maybeResult <- lookupInNonLocalCtx (Map.lookup fieldSet . recordIdentifiersByFields)
   case maybeResult of
-    Just ident -> return ident
+    Just result -> return result
     Nothing -> do
       allFieldsByIdentifier <- concatInNonLocalCtx (Map.toList . fieldsByRecordIdentifier)
       let bestMatch = findBestRecordMatch fields allFieldsByIdentifier

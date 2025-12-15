@@ -19,9 +19,9 @@ import Vehicle.Syntax.AST.Expr qualified as S
 
 type GeneralisableVariable = (Provenance, Name)
 
-generaliseType :: (MonadScope m) => S.Expr -> m S.Expr
+generaliseType :: (MonadScopeExpr m) => S.Expr -> m S.Expr
 generaliseType expr = do
-  candidates <- execWriterT (runMonadScopeExprT (findGeneralisableVariables expr))
+  candidates <- execWriterT (findGeneralisableVariables expr)
   generaliseOverVariables (reverse candidates) expr
 
 findGeneralisableVariables :: (MonadScopeExpr m, MonadWriter [GeneralisableVariable] m) => S.Expr -> m ()
@@ -40,9 +40,9 @@ findGeneralisableVariables = \case
   S.Let _ bound binder body -> do
     findGeneralisableVariables bound
     findGeneralisableVariablesBinder binder $ findGeneralisableVariables body
-  S.Record _ fields ->
+  S.Record _ fields -> do
     void $ traverseRecordFields findGeneralisableVariables fields
-  S.RecordAcc _ record _field ->
+  S.RecordAcc _ record _field -> do
     findGeneralisableVariables record
 
 findGeneralisableVariablesBinder :: (MonadScopeExpr m, MonadWriter [GeneralisableVariable] m) => S.Binder -> m () -> m ()

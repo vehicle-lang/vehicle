@@ -41,7 +41,7 @@ class (TypableBuiltin builtin) => HasTypeSystem builtin where
   restrictRecordAnnotatedAsTensor ::
     (MonadTypeChecker builtin m) =>
     DeclProvenance ->
-    [RecordField (Type builtin)] ->
+    [GenericRecordField (Type builtin)] ->
     m ()
 
   isAuxiliaryConstraint ::

@@ -15,8 +15,8 @@ import Vehicle.Data.Code.Value
 --- | The public interface to a module, i.e. the set of declarations that
 --- it exports.
 data ModuleScopingInterface = ModuleScopingInterface
-  { recordIdentifiersByField :: Map FieldName Identifier,
-    recordIdentifiersByFields :: Map (Set FieldName) Identifier,
+  { recordIdentifiersByField :: Map FieldName (Identifier, Telescope Builtin),
+    recordIdentifiersByFields :: Map (Set FieldName) (Identifier, Telescope Builtin),
     fieldsByRecordIdentifier :: Map Identifier (Set FieldName),
     declsIdentifiersByName :: Map Name Identifier
   }

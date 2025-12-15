@@ -1,5 +1,7 @@
 module Vehicle.Compile.Type.Bidirectional
   ( checkExprType,
+    checkTelescope,
+    checkRecordDefinition,
     inferExprType,
     solveArgInsertionProblem,
     createFreshUnificationConstraint,
@@ -8,6 +10,7 @@ where
 
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
+import Data.Bifunctor (Bifunctor (..))
 import Data.Data (Proxy (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Maybe (fromMaybe)
@@ -22,13 +25,13 @@ import Vehicle.Compile.Type.Force (forceHead)
 import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad
-import Vehicle.Compile.Type.Monad.Class (createFreshConstraintCtx, getDeclType, getDeclaredRecordFields)
+import Vehicle.Compile.Type.Monad.Class (createFreshConstraintCtx, getDeclType, getRecordDefinition)
 import Vehicle.Compile.Type.System (HasTypeSystem (..), TCM)
 import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin (..))
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Universe (UniverseLevel (..))
 import Vehicle.Data.Variable.Bound.Context.Generic
-import Vehicle.Data.Variable.Bound.Context.Name (MonadReadableNameContext (..))
+import Vehicle.Data.Variable.Bound.Context.Name (MonadReadableNameContext (..), prettyFriendlyInCtx)
 import Prelude hiding (pi)
 
 --------------------------------------------------------------------------------
@@ -154,6 +157,20 @@ checkBinder binder = do
   let checkedBinder = replaceBinderType checkedBinderType binder
   return checkedBinder
 
+checkTelescope ::
+  (MonadBidirectional builtin m) =>
+  Telescope builtin ->
+  m a ->
+  m (Telescope builtin, a)
+checkTelescope telescope checkBody = case telescope of
+  [] -> ([],) <$> checkBody
+  binder : binders -> do
+    checkedBinder <- checkBinder binder
+    (checkedBinders, checkedFields) <-
+      addBinderToContext checkedBinder $
+        checkTelescope binders checkBody
+    return (checkedBinder : checkedBinders, checkedFields)
+
 --------------------------------------------------------------------------------
 -- Inference
 
@@ -230,20 +247,73 @@ inferExpr e = do
     Builtin p op -> do
       typ <- typeBuiltin p op
       return (Builtin p op, typ)
-    Record p recordIdent fields -> do
-      declaredFields <- getDeclaredRecordFields (Proxy @builtin) recordIdent
-      checkedFields <- traverse (checkRecordField declaredFields) fields
-      let checkedType = FreeVar p recordIdent
-      return (Record p recordIdent checkedFields, checkedType)
-    RecordAcc p record (recordIdent, field) -> do
-      let recordType = FreeVar (provenanceOf field) recordIdent
-      checkedRecord <- checkExpr recordType record
-      declaredFields <- getDeclaredRecordFields (Proxy @builtin) recordIdent
-      let fieldType = lookupRecordField declaredFields field
-      return (RecordAcc p checkedRecord (recordIdent, field), fieldType)
+    Record p uncheckedRecordType uncheckedFields -> do
+      (checkedRecordType, expectedFieldTypes) <- checkRecordTypeAndCalculateRecordFieldTypes p uncheckedRecordType
+      checkedFields <- traverse (checkRecordField expectedFieldTypes) uncheckedFields
+      return (Record p checkedRecordType checkedFields, checkedRecordType)
+    RecordProj p uncheckedRecordType uncheckedRecord field -> do
+      (checkedRecordType, expectedFieldTypes) <- checkRecordTypeAndCalculateRecordFieldTypes p uncheckedRecordType
+      logDebugM MaxDetail $ prettyFriendlyInCtx checkedRecordType
+      prettyFields <- traverseRecordFields prettyFriendlyInCtx expectedFieldTypes
+      logDebug MaxDetail $ prettyMapEntries (fmap (first pretty) prettyFields)
+      checkedRecord <- checkExpr checkedRecordType uncheckedRecord
+      let fieldType = lookupRecordField expectedFieldTypes field
+      return (RecordProj p checkedRecordType checkedRecord field, fieldType)
 
   showInferExit res
   return res
+
+checkRecordTypeAndCalculateRecordFieldTypes ::
+  forall builtin m.
+  (MonadBidirectional builtin m) =>
+  Provenance ->
+  Type builtin ->
+  m (Type builtin, RecordFields builtin)
+checkRecordTypeAndCalculateRecordFieldTypes p uncheckedRecordType = do
+  checkedRecordType <- checkExpr (Universe p 0) uncheckedRecordType
+
+  (recordIdent, recordParameters) <- case checkedRecordType of
+    App (FreeVar _ ident) args -> return (ident, NonEmpty.toList args)
+    FreeVar _ ident -> return (ident, [])
+    _ ->
+      developerError $
+        "Ill-formed record type found during type-checking:"
+          <> lineIndent (prettyVerbose checkedRecordType)
+
+  (telescope, fields) <- getRecordDefinition (Proxy @builtin) recordIdent
+  ctx <- getNameContext
+  logDebug MaxDetail $ pretty ctx
+  logDebug MaxDetail $ prettyVerbose recordParameters
+  logDebug MaxDetail $ prettyVerbose fields
+  let substField fieldType = calculateRarameterisedRecordFieldType telescope fieldType recordParameters
+  let finalFields = mapRecordFields substField fields
+
+  return (checkedRecordType, finalFields)
+
+checkRecordDefinition ::
+  forall builtin m.
+  (MonadTypeChecker builtin m, HasTypeSystem builtin) =>
+  Telescope builtin ->
+  RecordFields builtin ->
+  m (Telescope builtin, RecordFields builtin)
+checkRecordDefinition t f =
+  runMonadBidirectional @m @builtin emptyBoundCtx Relevant $ checkRecordFieldsDef f t
+
+checkRecordFieldsDef ::
+  forall builtin m.
+  (MonadBidirectional builtin m) =>
+  RecordFields builtin ->
+  Telescope builtin ->
+  m (Telescope builtin, RecordFields builtin)
+checkRecordFieldsDef fields = \case
+  [] -> do
+    checkedFields <- traverseRecordFields (checkExpr (Universe mempty 0)) fields
+    return ([], checkedFields)
+  binder : binders -> do
+    checkedBinder <- checkBinder binder
+    (checkedBinders, checkedFields) <-
+      addBinderToContext checkedBinder $ checkRecordFieldsDef fields binders
+    return (checkedBinder : checkedBinders, checkedFields)
 
 -- | Takes a function and its arguments, inserts any needed implicits
 -- or instance arguments and then returns the function applied to the full
@@ -316,9 +386,9 @@ checkPiBinderMatchesLamBinder piBinder lamBinder = do
 
 checkRecordField ::
   (MonadBidirectional builtin m) =>
-  RecordFields (Type builtin) ->
-  RecordField (Expr builtin) ->
-  m (RecordField (Expr builtin))
+  GenericRecordFields (Type builtin) ->
+  RecordField builtin ->
+  m (RecordField builtin)
 checkRecordField declaredFields (field, value) = do
   let fieldType = lookupRecordField declaredFields field
   checkedValue <- checkExpr fieldType value
@@ -501,7 +571,6 @@ showCheckExit :: forall builtin m. (MonadBidirectional builtin m) => Expr builti
 showCheckExit e = do
   decrCallDepth
   ctx <- getNameContext
-  logDebug MaxDetail $ "check-exit " <+> prettyVerbose e -- (WithContext e ctx)
   logDebug MaxDetail $ "check-exit " <+> prettyExternal (WithContext e ctx)
 
 showInferEntry :: forall builtin m. (MonadBidirectional builtin m) => Expr builtin -> m ()

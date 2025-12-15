@@ -1,33 +1,28 @@
 module Vehicle.Syntax.Parse
   ( ParseError (..),
-    UnparsedExpr,
-    PartiallyParsedProg,
-    PartiallyParsedDecl,
     ParseLocation,
     readAndParseModule,
-    parseDecl,
-    parseExpr,
-    readExpr,
   )
 where
 
 import Control.Monad.Except (MonadError (..))
 import Data.Text (Text)
 import Vehicle.Syntax.AST
-import Vehicle.Syntax.BNFC.Elaborate.External
+import Vehicle.Syntax.BNFC.Elaborate.External (elabModule)
 import Vehicle.Syntax.BNFC.Utils (ParseLocation)
-import Vehicle.Syntax.External.Abs qualified as External (Expr, Module)
+import Vehicle.Syntax.External.Abs qualified as External (Module)
 import Vehicle.Syntax.External.Layout as External (resolveLayout)
 import Vehicle.Syntax.External.Lex as External (Token)
-import Vehicle.Syntax.External.Par as External (myLexer, pExpr, pModule)
+import Vehicle.Syntax.External.Par as External (myLexer, pModule)
 import Vehicle.Syntax.Parse.Error (ParseError (..))
 
 --------------------------------------------------------------------------------
 -- Interface
 
-readAndParseModule :: (MonadError ParseError m) => ParseLocation -> Text -> m PartiallyParsedProg
-readAndParseModule modul txt = castBNFCError (partiallyElabModule modul) (parseExternalModule txt)
+readAndParseModule :: (MonadError ParseError m) => ParseLocation -> Text -> m Module
+readAndParseModule modul txt = castBNFCError (elabModule modul) (parseExternalModule txt)
 
+{-
 parseDecl :: (MonadError ParseError m) => ParseLocation -> PartiallyParsedDecl -> m Decl
 parseDecl = elaborateDecl
 
@@ -36,15 +31,16 @@ parseExpr = elaborateExpr
 
 readExpr :: (MonadError ParseError m) => Text -> m UnparsedExpr
 readExpr txt = castBNFCError (return . UnparsedExpr) (parseExternalExpr txt)
-
+-}
 --------------------------------------------------------------------------------
 -- Parsing
 
 type ExternalParser a = [External.Token] -> Either String a
 
+{-
 parseExternalExpr :: Text -> Either String External.Expr
 parseExternalExpr = runExternalParser False External.pExpr
-
+-}
 parseExternalModule :: Text -> Either String External.Module
 parseExternalModule = runExternalParser True External.pModule
 

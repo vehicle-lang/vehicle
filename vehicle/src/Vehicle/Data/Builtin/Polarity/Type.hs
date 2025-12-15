@@ -283,7 +283,7 @@ restrictPolarityRecordAnnotatedAsTensor ::
   forall m.
   (MonadTypeChecker PolarityBuiltin m) =>
   DeclProvenance ->
-  [RecordField (Type PolarityBuiltin)] ->
+  [GenericRecordField (Type PolarityBuiltin)] ->
   m ()
 restrictPolarityRecordAnnotatedAsTensor (_ident, _p) _fields =
   return ()

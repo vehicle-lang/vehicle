@@ -130,9 +130,12 @@ data Strategy
 {-
 -- Testing code, do not delete!
 -- Fill in `TestType` and inspect the hole to see what it reduces to.
-type TestType = LinearExpression `In` NamedBoundCtx
+--  e.g. type TestType = LinearExpression `In` NamedBoundCtx
+
+type TestType = Prog Builtin `In` NamedBoundCtx
 
 data MyProxy (a :: Strategy) = MyProxy
+
 test :: MyProxy (StrategyFor FriendlyTags TestType)
 test = _
 -}
@@ -176,11 +179,13 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor tags (String `In` ctx) = 'Pretty
   StrategyFor tags (Identifier `In` ctx) = 'Pretty
   StrategyFor tags (ModulePath `In` ctx) = 'Pretty
+  StrategyFor tags (FieldName `In` ctx) = 'Pretty
   -------------------
   -- Unscoped expr --
   -------------------
   -- To convert any named representation to the target language, simply convert it.
   StrategyFor ('As lang) S.Expr = 'PrintAs lang
+  StrategyFor ('As lang) S.Decl = 'PrintAs lang
   StrategyFor ('Named tags) S.Expr = StrategyFor tags S.Expr
   StrategyFor ('Unnamed tags) S.Expr = StrategyFor tags S.Expr
   -----------------
@@ -190,6 +195,8 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   -- Otherwise converting it to an unnamed representation we descope naively by just converting the variables directly
   StrategyFor ('Named tags) (Expr builtin `In` NamedBoundCtx) = 'DescopeWithNames (StrategyFor tags S.Expr)
   StrategyFor ('Unnamed tags) (Expr builtin `In` ctx) = 'DescopeNaively (StrategyFor tags S.Expr)
+  StrategyFor ('Named tags) (Decl builtin `In` NoCtx) = 'DescopeWithNames (StrategyFor tags S.Decl)
+  StrategyFor ('Unnamed tags) (Decl builtin `In` ctx) = 'DescopeNaively (StrategyFor tags S.Decl)
   ------------
   -- Values --
   ------------
@@ -201,9 +208,9 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   -------------------
   -- Context setup --
   -------------------
-  StrategyFor tags (GenericProg expr) = StrategyFor tags (GenericModule expr)
-  StrategyFor tags (GenericModule expr) = 'SetupContext (StrategyFor tags (GenericModule expr `In` NamedBoundCtx))
-  StrategyFor tags (GenericDecl expr) = 'SetupContext (StrategyFor tags (GenericDecl expr `In` NamedBoundCtx))
+  StrategyFor tags (GenericProg expr) = 'SetupContext (StrategyFor tags (GenericModule expr))
+  StrategyFor tags (Module builtin) = StrategyFor tags (Decl builtin)
+  StrategyFor tags (Decl builtin) = 'SetupContext (StrategyFor tags (Decl builtin `In` NoCtx))
   StrategyFor tags (Contextualised object CompleteNamedBoundCtx) = 'AlterContext (StrategyFor tags (Contextualised object NamedBoundCtx))
   StrategyFor tags (Contextualised object ctx) = 'SetupContext (StrategyFor tags (object `In` ctx))
   StrategyFor tags (Contextualised object ctx `In` NoCtx) = 'SetupContext (StrategyFor tags (object `In` ctx))
@@ -222,8 +229,6 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor tags (MaybeTrivial a `In` ctx) = 'Functor (StrategyFor tags (a `In` ctx))
   StrategyFor tags (IntMap a `In` ctx) = 'Functor (StrategyFor tags (a `In` ctx))
   StrategyFor tags (MetaMap a `In` ctx) = 'Functor (StrategyFor tags (a `In` ctx))
-  StrategyFor tags (GenericModule expr `In` ctx) = (StrategyFor tags (expr `In` ctx))
-  StrategyFor tags (GenericDecl expr `In` ctx) = (StrategyFor tags (expr `In` ctx))
   StrategyFor tags (GenericArg expr `In` ctx) = (StrategyFor tags (expr `In` ctx))
   StrategyFor tags (GenericBinder expr `In` ctx) = (StrategyFor tags (expr `In` ctx))
   StrategyFor tags (Tensor a `In` ctx) = 'Functor (StrategyFor tags (a `In` ctx))
@@ -296,7 +301,6 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   --------------------
   StrategyFor ('Cleaned tags) a = 'Clean (StrategyFor tags a)
   StrategyFor ('ShortVectors tags) a = 'ShortenVectors (StrategyFor tags a)
-  -- StrategyFor tags (Contextualised object (ConstraintContext builtin)) = 'SetupContext (StrategyFor tags (object `In` NamedBoundCtx))
   ----------------
   -- Error case --
   ----------------
@@ -362,28 +366,52 @@ prettyWith = prettyUsing @(StrategyFor tags a) @a @b
 --------------------------------------------------------------------------------
 -- SetupContext
 
-instance (PrettyUsing rest (object `In` ctx)) => PrettyUsing ('SetupContext rest) (Contextualised object ctx) where
+instance
+  (PrettyUsing rest (object `In` ctx)) =>
+  PrettyUsing ('SetupContext rest) (Contextualised object ctx)
+  where
   prettyUsing (WithContext e ctx) = prettyUsing @rest (e, ctx)
 
-instance (PrettyUsing rest (object `In` ctx)) => PrettyUsing ('SetupContext rest) (Contextualised object ctx `In` NoCtx) where
+instance
+  (PrettyUsing rest (object `In` ctx)) =>
+  PrettyUsing ('SetupContext rest) (Contextualised object ctx `In` NoCtx)
+  where
   prettyUsing (WithContext e ctx, _) = prettyUsing @rest (e, ctx)
 
-instance (PrettyUsing rest (GenericModule expr)) => PrettyUsing rest (GenericProg expr) where
+instance
+  (PrettyUsing rest (GenericModule expr)) =>
+  PrettyUsing ('SetupContext rest) (GenericProg expr)
+  where
   prettyUsing (Main decls) = prettyUsing @rest (Module mempty decls)
 
-instance (PrettyUsing rest (GenericModule expr `In` NamedBoundCtx)) => PrettyUsing ('SetupContext rest) (GenericModule expr) where
-  prettyUsing prog = prettyUsing @rest (prog, emptyNamedCtx)
+instance
+  (PrettyUsing rest (Module expr `In` NoCtx)) =>
+  PrettyUsing ('SetupContext rest) (Module expr)
+  where
+  prettyUsing decl = prettyUsing @rest (decl, ())
 
-instance (PrettyUsing rest (GenericDecl expr `In` NamedBoundCtx)) => PrettyUsing ('SetupContext rest) (GenericDecl expr) where
-  prettyUsing decl = prettyUsing @rest (decl, emptyNamedCtx)
+instance
+  (PrettyUsing rest (Decl expr `In` NoCtx)) =>
+  PrettyUsing ('SetupContext rest) (Decl expr)
+  where
+  prettyUsing decl = prettyUsing @rest (decl, ())
 
-instance (PrettyUsing rest S.Expr) => PrettyUsing ('SetupContext rest) (S.Expr `In` NoCtx) where
+instance
+  (PrettyUsing rest S.Expr) =>
+  PrettyUsing ('SetupContext rest) (S.Expr `In` NoCtx)
+  where
   prettyUsing (e, ()) = prettyUsing @rest e
 
-instance (PrettyUsing rest S.Arg) => PrettyUsing ('SetupContext rest) (S.Arg `In` NoCtx) where
+instance
+  (PrettyUsing rest S.Arg) =>
+  PrettyUsing ('SetupContext rest) (S.Arg `In` NoCtx)
+  where
   prettyUsing (e, ()) = prettyUsing @rest e
 
-instance (PrettyUsing rest S.Binder) => PrettyUsing ('SetupContext rest) (S.Binder `In` NoCtx) where
+instance
+  (PrettyUsing rest S.Binder) =>
+  PrettyUsing ('SetupContext rest) (S.Binder `In` NoCtx)
+  where
   prettyUsing (e, ()) = prettyUsing @rest e
 
 instance
@@ -622,15 +650,15 @@ instance
 
 instance
   (PrettyUsing rest S.Decl, PrintableBuiltin builtin) =>
-  PrettyUsing ('DescopeWithNames rest) (Decl builtin `In` NamedBoundCtx)
+  PrettyUsing ('DescopeWithNames rest) (Decl builtin `In` NoCtx)
   where
-  prettyUsing (e, ctx) = prettyUsing @rest $ fmap (descopeExpr ctx) e
+  prettyUsing (e, ()) = prettyUsing @rest $ descopeDecl e
 
 instance
   (PrettyUsing rest S.Module, PrintableBuiltin builtin) =>
-  PrettyUsing ('DescopeWithNames rest) (Module builtin `In` NamedBoundCtx)
+  PrettyUsing ('DescopeWithNames rest) (Module builtin `In` NoCtx)
   where
-  prettyUsing (e, ctx) = prettyUsing @rest $ fmap (descopeExpr ctx) e
+  prettyUsing (e, ()) = prettyUsing @rest $ mapModuleDecls descopeDecl e
 
 -- Value
 

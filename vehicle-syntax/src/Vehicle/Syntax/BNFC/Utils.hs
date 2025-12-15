@@ -49,6 +49,8 @@ tensorAnn = mkToken B.TokAnnotation "@tensor"
 
 instanceAnn = mkToken B.TokAnnotation "@instance"
 
+typeClassAnn = mkToken B.TokAnnotation "@typeclass"
+
 tokArrow = mkToken B.TokArrow "->"
 
 tokForallT = mkToken B.TokForallT "forallT"

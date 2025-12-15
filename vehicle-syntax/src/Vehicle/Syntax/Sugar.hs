@@ -1,9 +1,12 @@
 {-# LANGUAGE ViewPatterns #-}
 
 module Vehicle.Syntax.Sugar
-  ( BinderType (..),
-    HasBinders (..),
-    foldBinders,
+  ( HasBasicBinders (..),
+    HasBuiltinBinders (..),
+    foldPiBinders,
+    foldLamBinders,
+    foldQuantifierBinders,
+    foldForeachBinders,
     foldDeclBinders,
     foldLetBinders,
     LetBinder,
@@ -22,51 +25,90 @@ import Vehicle.Syntax.Builtin
 --------------------------------------------------------------------------------
 -- Pi/Fun/Forall declarations
 
-data BinderType
-  = PiBinder
-  | LamBinder
-  | QuantifierBinder Quantifier
-  | ForeachBinder
-  deriving (Eq)
-
-class HasBinders expr where
-  getBinder :: expr -> Maybe (BinderType, GenericBinder expr, expr)
+class HasBasicBinders expr where
+  getPiBinder :: expr -> Maybe (GenericBinder expr, expr)
+  getLamBinder :: expr -> Maybe (GenericBinder expr, expr)
   getLetBinder :: expr -> Maybe (expr, GenericBinder expr, expr)
 
-instance HasBinders Expr where
-  getBinder = \case
-    Pi _ binder body -> Just (PiBinder, binder, body)
-    Lam _ binder body -> Just (LamBinder, binder, body)
-    App (Builtin _ (TypeClassOp (QuantifierTC q))) ((argExpr -> Lam _ binder body) :| []) -> Just (QuantifierBinder q, binder, body)
-    App (Builtin _ (TypeClassOp ForeachTC)) ((argExpr -> Lam _ binder body) :| []) -> Just (ForeachBinder, binder, body)
+class HasBuiltinBinders expr where
+  getQuantifierBinder :: Quantifier -> expr -> Maybe (GenericBinder expr, expr)
+  getForeachBinder :: expr -> Maybe (GenericBinder expr, expr)
+
+instance HasBasicBinders Expr where
+  getPiBinder = \case
+    Pi _ binder body -> Just (binder, body)
+    _ -> Nothing
+
+  getLamBinder = \case
+    Lam _ binder body -> Just (binder, body)
     _ -> Nothing
 
   getLetBinder = \case
     Let _ value binder body -> Just (value, binder, body)
     _ -> Nothing
 
-data BinderFoldTarget expr
-  = FoldableBinder BinderType (GenericBinder expr)
-  | FunFold
+instance HasBuiltinBinders Expr where
+  getQuantifierBinder q = \case
+    App (Builtin _ (TypeClassOp (QuantifierTC q'))) ((argExpr -> Lam _ binder body) :| []) | q == q' -> Just (binder, body)
+    _ -> Nothing
 
-foldBinders :: (Show expr, HasBinders expr) => BinderType -> GenericBinder expr -> expr -> ([GenericBinder expr], expr)
-foldBinders binderType binder = foldBinders' (FoldableBinder binderType binder)
+  getForeachBinder = \case
+    App (Builtin _ (TypeClassOp ForeachTC)) ((argExpr -> Lam _ binder body) :| []) -> Just (binder, body)
+    _ -> Nothing
 
-foldDeclBinders :: (Show expr, HasBinders expr) => expr -> ([GenericBinder expr], expr)
-foldDeclBinders = foldBinders' FunFold
-
-foldBinders' ::
-  forall expr.
-  (Show expr, HasBinders expr) =>
-  BinderFoldTarget expr ->
+foldPiBinders ::
+  (Show expr, HasBasicBinders expr) =>
+  GenericBinder expr ->
   expr ->
   ([GenericBinder expr], expr)
-foldBinders' foldTarget = go
+foldPiBinders = foldBinders getPiBinder
+
+foldLamBinders ::
+  (Show expr, HasBasicBinders expr) =>
+  GenericBinder expr ->
+  expr ->
+  ([GenericBinder expr], expr)
+foldLamBinders = foldBinders getLamBinder
+
+foldForeachBinders ::
+  (Show expr, HasBuiltinBinders expr) =>
+  GenericBinder expr ->
+  expr ->
+  ([GenericBinder expr], expr)
+foldForeachBinders = foldBinders getForeachBinder
+
+foldQuantifierBinders ::
+  (Show expr, HasBuiltinBinders expr) =>
+  Quantifier ->
+  GenericBinder expr ->
+  expr ->
+  ([GenericBinder expr], expr)
+foldQuantifierBinders q = foldBinders (getQuantifierBinder q)
+
+foldDeclBinders ::
+  (Show expr, HasBasicBinders expr) =>
+  LHSBinderCount ->
+  expr ->
+  ([GenericBinder expr], expr)
+foldDeclBinders binderCount expr
+  | binderCount == 0 = ([], expr)
+  | otherwise = case getLamBinder expr of
+      Nothing -> ([], expr)
+      Just (binder, body) -> first (binder :) $ foldDeclBinders (binderCount - 1) body
+
+foldBinders ::
+  forall expr.
+  (Show expr) =>
+  (expr -> Maybe (GenericBinder expr, expr)) ->
+  GenericBinder expr ->
+  expr ->
+  ([GenericBinder expr], expr)
+foldBinders getBinder leadBinder = go
   where
     go :: expr -> ([GenericBinder expr], expr)
     go expr = do
       let result = case getBinder expr of
-            Just (binderType, binder, body) -> processBinder binder body binderType
+            Just (binder, body) -> processBinder binder body
             _ -> Nothing
 
       case result of
@@ -76,24 +118,13 @@ foldBinders' foldTarget = go
     processBinder ::
       GenericBinder expr ->
       expr ->
-      BinderType ->
       Maybe (GenericBinder expr, expr)
-    processBinder binder body candidateBinderType
-      | shouldFold binder candidateBinderType = Just (binder, body)
+    processBinder binder body
+      | canFold binder && wantsToFold binder = Just (binder, body)
       | otherwise = Nothing
 
-    shouldFold :: GenericBinder expr -> BinderType -> Bool
-    shouldFold binder candidateType = case foldTarget of
-      FoldableBinder targetType targetBinder ->
-        targetType == candidateType
-          && canFold binder targetBinder
-          && wantsToFold binder
-      FunFold -> case candidateType of
-        LamBinder -> wantsToFold binder
-        _ -> False
-
-    canFold :: GenericBinder expr -> GenericBinder expr -> Bool
-    canFold leadBinder binder =
+    canFold :: GenericBinder expr -> Bool
+    canFold binder =
       visibilityMatches leadBinder binder
         && binderNamingForm leadBinder == binderNamingForm binder
 
@@ -103,7 +134,7 @@ foldBinders' foldTarget = go
 type LetBinder expr = (GenericBinder expr, expr)
 
 -- | Collapses consecutative let expressions into a list of let declarations
-foldLetBinders :: (HasBinders expr) => expr -> ([LetBinder expr], expr)
+foldLetBinders :: (HasBasicBinders expr) => expr -> ([LetBinder expr], expr)
 foldLetBinders expr = case getLetBinder expr of
   Just (bound, binder, body)
     | wantsToFold binder -> first ((binder, bound) :) (foldLetBinders body)
