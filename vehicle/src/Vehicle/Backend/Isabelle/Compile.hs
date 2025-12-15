@@ -792,8 +792,8 @@ compileTensorLiteral compileElement t = annotate ([RequireImport VehicleTensor],
 
 compileBoolLiteral :: Bool -> Code
 compileBoolLiteral = \case
-  True -> "true"
-  False -> "false"
+  True -> "True"
+  False -> "False"
 
 compileRatLiteral :: Rational -> Code
 compileRatLiteral r = parens $ annotate ([], minPrecedence) rat
