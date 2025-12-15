@@ -25,7 +25,7 @@ dependencies = [
 
 [project.optional-dependencies]
 test = [
-  "pytest>=7.1,<9",
+  "pytest>=7.1,<10",
   "packaging>=23",
   "pygments>=2.14,<3",
   "numpy>=1.21,<3",
