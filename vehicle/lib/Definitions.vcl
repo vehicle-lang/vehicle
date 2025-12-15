@@ -45,6 +45,15 @@ gtRatTensorReduced : Tensor Real (dim :: dims) -> Tensor Real (dim :: dims) -> B
 gtRatTensorReduced xs ys = reduceAnd True (xs >. ys)
 
 --------------------------------------------------------------------------------
+-- TensorLike
+--------------------------------------------------------------------------------
+
+record TensorLike r t dims {{isTensorType : IsTensorType t dims}} where
+  { toTensorLike     : r -> tensor
+  , fromTensorLike   : tensor -> r
+  }
+
+--------------------------------------------------------------------------------
 -- Index
 --------------------------------------------------------------------------------
 
