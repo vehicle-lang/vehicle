@@ -2,10 +2,9 @@
 // and should not be modified manually!
 // Metadata:
 //  - Vehicle version: 0.22.0+dev
-
+//
 // Assertions
 +y0 -y1 <= 0.0
-
 // Input bounds
 x0 >= 0.0661777504459375
 x0 <= 0.22823798668156148

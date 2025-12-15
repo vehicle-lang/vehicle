@@ -14,18 +14,24 @@ import Prettyprinter (Pretty (..), (<+>))
 import Vehicle.Compile.Arity
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE (normaliseInEmptyFreeEnv)
-import Vehicle.Compile.Prelude (Doc, HasProvenance (..), Ix (..), Name, Provenance (..), getBinderName, mkExplicitBinder, normAppList)
+import Vehicle.Compile.Prelude (Ix (..))
 import Vehicle.Compile.Prelude qualified as S (Binder, Decl, Expr (..), GenericDecl (..), GenericProg (..), Prog)
+import Vehicle.Compile.Prelude.Utils (getNamedBinderInfo)
 import Vehicle.Compile.Print
 import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Loss (LossBuiltin (..), LossBuiltinConstructor, LossBuiltinFunction, LossBuiltinType)
 import Vehicle.Data.Builtin.Loss qualified as L
+import Vehicle.Data.Code.Expr (normAppList)
 import Vehicle.Data.Code.Interface.Args
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Tensor (Tensor, mapTensor)
 import Vehicle.Data.Variable.Bound.Context.Name
-import Vehicle.Prelude (Annotation (..), GenericArg (..), HasName (..), HasType (..), Identifier (..), explicit, indent, jsonOptions, line, resolutionError, squotes, userModule)
+import Vehicle.Prelude (Doc, GenericArg (..), HasName (..), HasType (..), Identifier (..), Name, Provenance, explicit, indent, jsonOptions, line, mkExplicitBinder, resolutionError, squotes, userModulePath)
 import Vehicle.Prelude.Logging.Class
+import Vehicle.Syntax.AST.Decl
+  ( DefFunctionSort (..),
+    FunctionDeclAnnotation (..),
+  )
 import Vehicle.Syntax.Prelude (developerError)
 
 --------------------------------------------------------------------------------
@@ -158,8 +164,8 @@ convertProg (S.Main decls) = Main <$> traverse convertDecl decls
 
 convertDecl :: (MonadJSON m) => S.Decl LossBuiltin -> m JDecl
 convertDecl = \case
-  S.DefAbstract {} -> compilerDeveloperError "Found abstract definition when converting to JSON"
-  S.DefRecord {} -> compilerDeveloperError "Found record when converting to JSON"
+  S.DefAbstract {} -> developerError "Found abstract definition when converting to JSON"
+  S.DefRecord {} -> developerError "Found record when converting to JSON"
   S.DefFunction p ident _ typ body -> do
     typ' <- convertType emptyBoundEnv typ
     expr' <- convertExpr emptyBoundEnv body
@@ -242,8 +248,7 @@ convertValue expr = do
 
 convertBinder :: (MonadJSON m) => VBinder LossBuiltin -> m JBinder
 convertBinder binder = do
-  let p = provenanceOf binder
-  let name = getBinderName binder
+  let (name, p) = getNamedBinderInfo binder
   typ' <- convertTypeValue (typeOf binder)
   return $ Binder p name typ'
 
@@ -411,8 +416,9 @@ fromJDecl = \case
     runFreshNameBoundContext $ do
       typ' <- fromJType typ
       body' <- fromJExpr body
-      let ident = Identifier userModule name
-      return $ S.DefFunction p ident [AnnProperty] typ' body'
+      let ident = Identifier userModulePath name
+      let sort = FunctionDecl 0 (Just AnnProperty)
+      return $ S.DefFunction p ident sort typ' body'
 
 fromJType :: (MonadNameContext m) => JType -> m (S.Expr LossBuiltin)
 fromJType = \case
@@ -467,9 +473,9 @@ fromJExpr = \case
   StackTensor xs -> toFunction L.StackTensor xs
 
 fromJBinder :: (MonadNameContext m) => JBinder -> m (S.Binder LossBuiltin)
-fromJBinder (Binder _ name typ) = do
+fromJBinder (Binder p name typ) = do
   typ' <- fromJType typ
-  return $ mkExplicitBinder typ' (Just name)
+  return $ mkExplicitBinder typ' (Just (p, name))
 
 toExpr :: (MonadNameContext m) => (a -> m (S.Expr LossBuiltin)) -> LossBuiltin -> [a] -> m (S.Expr LossBuiltin)
 toExpr f op args = do

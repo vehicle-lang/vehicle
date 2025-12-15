@@ -32,7 +32,7 @@ import Vehicle.Verify.Specification
 --------------------------------------------------------------------------------
 -- Specification
 
-readSpecification :: (MonadIO m) => FilePath -> m SpecificationText
+readSpecification :: (MonadIO m) => FilePath -> m ModuleText
 readSpecification inputFile
   | takeExtension inputFile /= specificationFileExtension = do
       fatalError $

@@ -66,12 +66,14 @@ instance (ConvertableBuiltin builtin1 builtin2) => Quote (Value builtin1) (Expr 
       let quotedBinder = quote p level binder
       let quotedBody = quoteClosure p level (binder, closure)
       Lam mempty quotedBinder quotedBody
-    VRecord ident fields -> do
+    VRecord recordType fields -> do
+      let quotedRecordType = quote p level recordType
       let quotedFields = mapRecordFields (quote p level) $ OMap.assocs fields
-      Record p ident quotedFields
-    VRecordAcc r field -> do
-      let quotedRecord = quote p level r
-      RecordAcc p quotedRecord field
+      Record p quotedRecordType quotedFields
+    VRecordAcc recordType record field -> do
+      let quotedRecordType = quote p level recordType
+      let quotedRecord = quote p level record
+      RecordProj p quotedRecordType quotedRecord field
 
 instance (Quote expr1 expr2) => Quote (GenericBinder expr1) (GenericBinder expr2) where
   quote p level = fmap (quote p level)

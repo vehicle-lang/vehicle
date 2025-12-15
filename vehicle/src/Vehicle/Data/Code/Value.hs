@@ -4,7 +4,9 @@ module Vehicle.Data.Code.Value
     VType,
     VArg,
     VBinder,
+    VTelescope,
     VDecl,
+    VModule,
     VProg,
     VDims,
     Spine,
@@ -73,8 +75,8 @@ data Value builtin
   | VBuiltin !builtin !(Spine builtin)
   | VLam !(VBinder builtin) !(Closure builtin)
   | VPi !(VBinder builtin) !(Closure builtin)
-  | VRecord Identifier !(OMap FieldName (Value builtin))
-  | VRecordAcc !(Value builtin) !(Identifier, FieldName)
+  | VRecord (VType builtin) !(OMap FieldName (Value builtin))
+  | VRecordAcc !(VType builtin) !(Value builtin) !FieldName
   deriving (Show, Generic, Eq, Ord)
 
 type VType builtin = Value builtin
@@ -83,9 +85,13 @@ type VArg builtin = GenericArg (Value builtin)
 
 type VBinder builtin = GenericBinder (Value builtin)
 
+type VTelescope builtin = GenericTelescope (Value builtin)
+
 type VDecl builtin = GenericDecl (Value builtin)
 
-type VProg builtin = GenericProg (Value builtin)
+type VModule builtin = GenericModule (Value builtin)
+
+type VProg builtin = GenericModule (Value builtin)
 
 type VDims builtin = Value builtin
 
@@ -118,7 +124,9 @@ boundVariablesIn value = execWriter (go value)
         goClosure closure
       VRecord _ident fields ->
         traverse_ go fields
-      VRecordAcc record (_ident, _field) -> go record
+      VRecordAcc recordType record _ -> do
+        go recordType
+        go record
 
     goClosure :: (MonadWriter (Set Lv) m) => Closure builtin -> m ()
     goClosure (Closure (BoundEnv env) _) =
@@ -198,7 +206,7 @@ boundContextToEnv ctx = BoundEnv $ do
 namedBoundContextToEnv :: NamedBoundCtx -> BoundEnv builtin
 namedBoundContextToEnv ctx = BoundEnv $ do
   let numberedCtx = zip ctx (reverse [0 .. Lv (length ctx - 1)])
-  fmap (bimap (mkExplicitBinder ()) Unbound) numberedCtx
+  fmap (bimap (\n -> mkExplicitBinder () (fmap (mempty,) n)) Unbound) numberedCtx
 
 boundEnvToCtx :: BoundEnv builtin -> NamedBoundCtx
 boundEnvToCtx (BoundEnv env) = toNamedBoundCtx (fmap fst env)

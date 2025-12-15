@@ -18,22 +18,36 @@ dynamic = ["version"]
 requires-python = ">=3.10,<3.14"
 dependencies = [
     "typing-extensions>=4.6,<5",
-    "jaxtyping>=0.2, <0.3",
+    "jaxtyping>=0.2, <0.4",
     "pytest>=8.4.2",
     "pre-commit>=4.3.0",
 ]
 
 [project.optional-dependencies]
-test = ["pytest >=7.1,<9", "packaging >=23", "pygments >=2.14, <3"]
-mypy = ["types_setuptools >=45", "types_pygments >=2.14,<3"]
-pygments = ["pygments >=2.14,<3"]
-numpy = ["numpy >=1.21,<3"]
-jax = ["jax >=0.4.26"]
+test = [
+  "pytest>=7.1,<10",
+  "packaging>=23",
+  "pygments>=2.14,<3",
+  "numpy>=1.21,<3",
+]
+mypy = [
+  "types-setuptools>=45",
+  "types-pygments>=2.14,<3",
+]
+pygments = ["pygments>=2.14,<3"]
+numpy = ["numpy>=1.21,<3"]
+jax = ["jax>=0.4.26"]
+dev = ["pre-commit>=4.3.0"]
+wheel = [
+  "build",
+  "auditwheel; sys_platform == 'linux'",
+  "delocate; sys_platform == 'darwin'",
+]
 tensorflow = [
-  "tensorflow >=2,<3; (python_version>='3.10' and python_version<'3.13') and ((sys_platform=='linux' and (platform_machine=='x86_64' or platform_machine=='aarch64')) or (sys_platform=='darwin' and platform_machine=='x86_64') or (sys_platform=='win32' and platform_machine=='AMD64'))"
+  "tensorflow>=2,<3; (python_version >= '3.10' and python_version < '3.13') and ((sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')) or (sys_platform == 'darwin' and platform_machine == 'x86_64') or (sys_platform == 'win32' and platform_machine == 'AMD64'))",
 ]
 pytorch = [
-  "torch >=2.0,<3.0; python_version>='3.10' and python_version<'3.13'"
+  "torch>=2,<3; python_version >= '3.10' and python_version < '3.13'",
 ]
 
 [project.scripts]
@@ -100,49 +114,3 @@ testpaths = ["tests"]
 
 [tool.setuptools.dynamic]
 version = { attr = "vehicle_lang._version.VERSION" }
-
-[tool.tox]
-legacy_tox_ini = """
-[tox]
-min_version = 4
-env_list = py{310,311,312,313}-{lin,mac,win}
-
-[testenv:py{310,311,312,313}-{lin,mac,win}]
-package = external
-package_env = build-{env_name}
-platform =
-  lin: linux
-  mac: darwin
-  win: win32
-allowlist_externals =
-  sh
-extras =
-  test
-  pygments
-  py310,py311,py312: tensorflow
-commands =
-  {env_python} -m pytest {posargs}
-
-[testenv:build-py{310,311,312,313}-{lin,mac,win}]
-deps =
-  build
-  auditwheel; sys_platform == 'linux'
-  delocate; sys_platform == 'darwin'
-package_glob =
-  py310-lin: {package_root}{/}dist{/}*cp310*manylinux*.whl
-  py311-lin: {package_root}{/}dist{/}*cp311*manylinux*.whl
-  py312-lin: {package_root}{/}dist{/}*cp312*manylinux*.whl
-  py313-lin: {package_root}{/}dist{/}*cp313*manylinux*.whl
-  py310-mac: {package_root}{/}dist{/}*cp310*macosx*.whl
-  py311-mac: {package_root}{/}dist{/}*cp311*macosx*.whl
-  py312-mac: {package_root}{/}dist{/}*cp312*macosx*.whl
-  py313-mac: {package_root}{/}dist{/}*cp313*macosx*.whl
-  py310-win: {package_root}{/}dist{/}*cp310*win*.whl
-  py311-win: {package_root}{/}dist{/}*cp311*win*.whl
-  py312-win: {package_root}{/}dist{/}*cp312*win*.whl
-  py313-win: {package_root}{/}dist{/}*cp313*win*.whl
-allowlist_externals =
-  sh
-commands =
-  sh {package_root}/scripts/build-wheel.sh
-"""

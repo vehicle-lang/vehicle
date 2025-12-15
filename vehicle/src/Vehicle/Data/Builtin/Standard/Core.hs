@@ -19,7 +19,6 @@ import Vehicle.Data.Code.Expr
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.DSL
 import Vehicle.Prelude (GenericArg (..), HasIdentifier (identifierOf))
-import Vehicle.Syntax.Sugar (BinderType (..))
 
 -----------------------------------------------------------------------------
 -- Accessors
@@ -284,13 +283,6 @@ instance BuiltinHasStandardData Builtin where
 
 instance BuiltinHasIterate Builtin where
   accessIterateBuiltin = functionAccessor Iterate
-
-instance BuiltinHasBinders Builtin where
-  getBuiltinBinder = \case
-    BuiltinFunction ForeachVector -> Just ForeachBinder
-    BuiltinFunction ForeachTensor -> Just ForeachBinder
-    BuiltinFunction (QuantifyRatTensor q) -> Just $ QuantifierBinder q
-    _ -> Nothing
 
 ---------------------------------------------------------------------------------
 -- Printing

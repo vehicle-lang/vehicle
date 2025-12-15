@@ -21,7 +21,6 @@
       - [Installing from source](#installing-from-source)
     - [Building the Vehicle Python bindings](#building-the-vehicle-python-bindings)
       - [Dependencies](#dependencies-1)
-        - [Installing Python and pipx](#installing-python-and-pipx)
       - [Building](#building-1)
       - [Testing](#testing-1)
         - [Running tests for specific versions of Python](#running-tests-for-specific-versions-of-python)
@@ -51,7 +50,21 @@ To upgrade to a newer version of Vehicle, run the following command:
 pip install vehicle-lang --upgrade
 ```
 
+### Backend extras
+
+The `vehicle_lang` package keeps deep-learning frameworks behind optional extras so you only install what you need:
+
+```sh
+
+    pip install "vehicle_lang[pytorch]"
+    pip install "vehicle_lang[tensorflow]"
+```
+
+Install both extras or combine them with any others to only install what is needed for you.
+
 ## Building Vehicle
+
+<a id="getting-the-source"></a>
 
 ### Getting the source
 
@@ -74,6 +87,8 @@ Building the Vehicle compiler requires the Haskell compiler, called [GHC], and t
 - the latest major release of Cabal.
 
 We recommend that you install [our preferred version of GHC](#the-preferred-version-of-ghc)
+
+<a id="installing-ghc-and-cabal"></a>
 
 ##### Installing GHC and Cabal
 
@@ -128,7 +143,7 @@ The preferred version of GHC is currently _GHC 9.4.8_, which is the version of G
 
 #### Building
 
-Ensure that [you have the source code](#getting-the-source) and that you have installed [GHC and Cabal](#installing-ghc-and-cabal).
+Ensure that you have the source code and that you have installed GHC and Cabal.
 
 1. Update the list of Haskell packages.
 
@@ -150,11 +165,15 @@ Ensure that [you have the source code](#getting-the-source) and that you have in
    cabal build vehicle:exe:vehicle
    ```
 
+<a id="testing"></a>
+
+<a id="testing-1"></a>
+
 #### Testing
 
 Ensure that you can successfully build the Vehicle compiler.
 
-The tests for the Vehicle compiler are in [the tests subdirectory](./vehicle/tests/) and use [the Tasty testing framework] as well as a custom driver for golden file tests—see [`Vehicle.Test.Golden`](./vehicle/tests/golden/Vehicle/Test/Golden.hs).
+The tests for the Vehicle compiler are in the `vehicle/tests/` subdirectory and use [the Tasty testing framework] as well as a custom driver for golden file tests—see `vehicle/tests/golden/Vehicle/Test/Golden.hs`.
 
 There are three test suites for the Vehicle compiler:
 
@@ -167,7 +186,7 @@ The standard command to test the Vehicle compiler runs the unit and the compiler
 cabal test unit-tests golden-tests --test-show-details=streaming --test-option=--color=always --test-option=--num-threads=1
 ```
 
-This command is run on GitHub Actions whenever changes are pushed to Vehicle the default branch or an open pull request—see [build-vehicle.yml](./.github/workflows/build-vehicle.yml).
+This command is run on GitHub Actions whenever changes are pushed to Vehicle the default branch or an open pull request—see `.github/workflows/build-vehicle.yml`.
 
 This command builds the Vehicle compiler, if necessary, and runs the unit and compiler tests. The last lines of output should tell you about the tests, and should look like:
 
@@ -213,7 +232,7 @@ The option `--test-option=--num-threads=1` asks the testing framework to only ru
 
 ##### Running specific tests
 
-You can use the option `--test-option="-p /X/"` to only run tests with `X` in their name, _e.g._, if you only want to run the tests for the [wind controller example](./examples/windController/), you can add `--test-option="-p /windController/"`:
+You can use the option `--test-option="-p /X/"` to only run tests with `X` in their name, _e.g._, if you only want to run the tests for the wind controller example (`examples/windController/`), you can add `--test-option="-p /windController/"`:
 
 ```
 Running 1 test suites...
@@ -259,7 +278,7 @@ cabal test unit-tests --test-show-details=streaming --test-option=--color=always
 
 You can use `--test-option="--vehicle-logging X"` to set the logging level, where `X` is one of `NoDetail`, `MinDetail`, `MidDetail`, or `MaxDetail`. The logging levels can be found by running `vehicle --help`.
 
-These tests are specified in Haskell in [tests/unit](./vehicle/tests/unit/).
+These tests are specified in Haskell in `vehicle/tests/unit/`.
 
 ##### The golden tests
 
@@ -271,7 +290,7 @@ Run the following command:
 cabal test golden-tests --test-show-details=streaming --test-option=--color=always --test-option=--num-threads=1
 ```
 
-These tests are specified in `test.json` files in [tests/golden](./vehicle/tests/golden/), _e.g._, [windController/test.json](./vehicle/tests/golden/compile/windController/test.json):
+These tests are specified in `test.json` files in `vehicle/tests/golden/`, _e.g._, `vehicle/tests/golden/compile/windController/test.json`:
 
 ```json
 [
@@ -380,7 +399,7 @@ To create a new golden test, you can use the `new-golden-test` command.
 
 ##### Updating the golden files
 
-If the output of the Vehicle compiler changes, it is necessary to update the [golden files](./vehicle/tests/golden/) for the compiler tests.
+If the output of the Vehicle compiler changes, it is necessary to update the `vehicle/tests/golden/` files for the compiler tests.
 
 **Warning**: The following is a destructive action! Mistakes may result in faulty tests!
 
@@ -430,7 +449,7 @@ level is set because its simply too verbose. This includes:
 
 #### Installing from source
 
-Ensure that [you have the source code](#getting-the-source) and that you have installed [GHC and Cabal](#installing-ghc-and-cabal).
+Ensure that you have the source code and that you have installed GHC and Cabal.
 
 1. Update the list of Haskell packages.
 
@@ -468,83 +487,55 @@ Ensure that [you have the source code](#getting-the-source) and that you have in
 
 ### Building the Vehicle Python bindings
 
+#### Installing from PyPI
+
+If you only need the published Python package (for example to compile queries for verifiers), install it directly from PyPI:
+
+```sh
+pip install vehicle_lang
+```
+
+Loss backends are optional extras so that you only install the deep-learning frameworks you actually need. Add the extras when syncing an environment or installing on CI:
+
+```sh
+pip install "vehicle_lang[pytorch]"
+pip install "vehicle_lang[tensorflow]"
+```
+
+It is safe to mix extras—`pip install "vehicle_lang[test,pytorch]"` installs the pytest stack plus the PyTorch backend in one go.
+
 #### Dependencies
 
-Building the Vehicle Python bindings requires [GHC and Cabal](#installing-ghc-and-cabal)—specifically, [our preferred version of GHC](#the-preferred-version-of-ghc)—and [Python and pipx](#installing-python-and-pipx).
+Building the Vehicle Python bindings requires
 
-The Vehicle Python bindings can be built with all [supported versions of CPython], the standard Python implementation, and the latest version of pipx. Support for feature and prerelease versions of Python is not guaranteed.
+- GHC and Cabal—specifically [our preferred version of GHC](#the-preferred-version-of-ghc)
+- [uv](https://docs.astral.sh/uv/) for Python environment management, locking, and builds (see the official [Projects guide](https://docs.astral.sh/uv/guides/projects/))
+- A supported CPython (3.10–3.13). Feature or pre-release interpreters are not guaranteed to work. We recommend pinning the interpreter with ``uv python pin`` so every sync uses the same version (see [Installing Python](https://docs.astral.sh/uv/guides/install-python/)).
 
-##### Installing Python and pipx
+##### Installing uv and bindings
 
-We recommend you install Python using [pyenv].
+Follow the official `uv` installation guide or run one of the quick installers:
 
-1. Install [pyenv] following the instructions on the website: <https://github.com/pyenv/pyenv#installation>
+- macOS / Linux: `curl -LsSf https://astral.sh/uv/install.sh | sh`
+- Windows (PowerShell): `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`
 
-2. Install the latest release of each supported Python version.
+Verify your installation with `uv --version`.
 
-   Run the following command:
+`uv sync` reads `vehicle-python/pyproject.toml`, resolves dependencies into `uv.lock`, and materialises the environment in `.venv`. The base dependency set is intentionally small; install whichever extras you need with the `--extra` flag (see [Managing dependencies](https://docs.astral.sh/uv/concepts/projects/dependencies/)). PyTorch is the recommended backend, so most workflows begin with:
 
-   ```sh
-   pyenv install 3.9 3.10 3.11 3.12 3.13
-   ```
+```
+uv sync --extra pytorch
+```
 
-3. Check if your installation was successful.
+Add TensorFlow only when targeting platforms that ship TensorFlow wheels:
 
-   Run the following command:
+```
+uv sync --extra tensorflow
+uv sync --extra pytorch --extra tensorflow
+uv sync --all-extras
+```
 
-   ```sh
-   pyenv versions
-   ```
-
-   This should print something that looks like:
-
-   ```
-     system
-     3.7.16
-     3.8.16
-     3.9.16
-   * 3.10.11 (set by PYENV_VERSION environment variable)
-     3.11.3
-   ```
-
-   There may be some differences in the exact versions and the default version (marked by the `*`), and there may or may not be a _system_ version. However, there should be at least one version for each supported Python version, _e.g._, one version starting with 3.7, one starting with 3.8, _etc_.
-
-   Run the following commands:
-
-   ```sh
-   pyenv shell 3.11
-   python --version
-   ```
-
-   This should print something that looks like:
-
-   ```sh
-   Python 3.11.3
-   ```
-
-   There may be some differences in the exact version. However, the printed version should match the argument passed to `pyenv shell`, _e.g._, it should start with 3.11.
-
-4. Install the latest release of [pipx] following the instructions on the website: <https://pypa.github.io/pipx/#install-pipx>
-
-   We recommend installing pipx globally, _e.g._, using your system package manager or the package manager for your _system_ installation of Python, rather than using one of the Python versions managed by pyenv.
-
-5. Check if your installation was successful.
-
-   Run the following command:
-
-   ```sh
-   pipx --version
-   ```
-
-   This should print something like:
-
-   ```sh
-   1.2.0
-   ```
-
-   The exact version may differ. However, the printed version should be greater than or equal to 1.2.0.
-
-If you'd prefer not to use pyenv, you can install the latest release of each supported Python version using, _e.g._, your system package manager.
+The deep-learning backends remain optional—install only what you require to keep your local environment minimal.
 
 ##### Troubleshooting
 
@@ -567,7 +558,7 @@ It means that Vehicle's testing framework is using the system installation of Py
 
 #### Building
 
-Ensure that [you have the source code](#getting-the-source) and that you have installed both [GHC and Cabal](#installing-ghc-and-cabal) and [Python and pipx](#installing-python-and-pipx).
+Ensure that you have the source code and that you have installed GHC/Cabal plus `uv`.
 
 1. Navigate to your local copy of the Vehicle repository.
 
@@ -581,11 +572,17 @@ Ensure that [you have the source code](#getting-the-source) and that you have in
    cd vehicle-python
    ```
 
-3. Build the Vehicle Python bindings:
+3. Create (or refresh) the project environment. For example, to install the testing stack plus both deep-learning backends:
 
-   ```sh
-   pipx run tox
-   ```
+  ```sh
+  uv sync --extra test --extra pytorch --extra tensorflow
+  ```
+
+4. Build the Vehicle Python bindings:
+
+  ```sh
+  uv build
+  ```
 
 This creates the directory `dist` which contains "wheels", which are the binary distribution format for Python packages. These wheels will have file names such as `vehicle_lang-0.22.0-cp311-cp311-macosx_13_0_arm64`:
 
@@ -603,21 +600,13 @@ vehicle_lang-0.22.0-cp311-cp311-macosx_13_0_arm64
 
 On Linux, the operating system will be a [manylinux] platform tag, such as `manylinux2014` or `manylinux_2_28`. The `manylinux_2_28` tag means that the wheel is compatible with any Linux distribution based on libc 2.28 or later. The `manylinux2014` tag is an alias for `manylinux_2_17`.
 
-If you'd prefer to only build wheels for _one_ Python version, you can use one of the following options:
+`uv build` uses the interpreter that was pinned for the project (or the system default if none has been pinned). If you'd prefer to build with a different Python version, run `uv python install <version>` followed by `uv python pin <version>` and rebuild. For Linux builds that need delocation, use the helper script:
 
-- **On macOS and Windows**
+```sh
+uv run --extra wheel scripts/build-wheel.sh
+```
 
-  You can use the standard Python build system, [build].
-
-  Run the following command:
-
-  ```sh
-  pipx run --spec=build pyproject-build --wheel
-  ```
-
-- **On Linux**
-
-  You can use the `build-wheel.sh` script in `vehicle-python/scripts`. This script may ask you to install additional dependencies via `pip`. Unfortunately, the Linux wheels cannot be built using _just_ Python's standard build system, as they require _delocating_, which is the process of finding non-standard shared libraries and bundling them with the wheel.
+`scripts/build-wheel.sh` mirrors the CI behaviour and may prompt you to install a few additional build-time utilities.
 
 **Warning**: The binary distributions built following these instructions are less portable than those that are built by the CI:
 
@@ -633,103 +622,130 @@ If you'd prefer to only build wheels for _one_ Python version, you can use one o
 
 #### Testing
 
-Ensure that you can successfully build the Vehicle Python bindings. The tests for the Vehicle Python bindings are in [the tests subdirectory](./vehicle-python/tests/) and use [tox] for Python version and virtual environment management and [pytest] for test discovery and execution. The configuration for tox and pytest is in [`pyproject.toml`](./vehicle-python/pyproject.toml) under `[tool.tox]` and `[tool.pytest]`, respectively.
+Ensure that you can successfully build the Vehicle Python bindings. The tests for the Vehicle Python bindings live in the `vehicle-python/tests/` subdirectory and use [pytest] for discovery and execution; `uv` provides interpreter and dependency management. The pytest configuration remains in `vehicle-python/pyproject.toml` under `[tool.pytest]`.
 
-There are two test suites for the Vehicle Python bindings:
+There are three test suites for the Vehicle Python bindings:
 
 - [The executable tests](#the-executable-tests)
 - [The loss function tests](#the-loss-function-tests)
 - [The pygments tests](#the-pygments-tests)
 
-The standard command to test the Vehicle compiler runs both:
+##### Running the full suite for one interpreter
+
+After syncing the project (for example via `uv sync --extra test --extra pygments --extra pytorch`), run every suite for the currently pinned interpreter with:
 
 ```sh
-pipx run tox
+uv run --extra test --extra pygments python -m pytest
 ```
 
-This command build the Python bindings and runs all test suites with each supported version of Python.
+Add `--extra tensorflow` when running on a platform where TensorFlow wheels are available (Linux `x86_64`/`aarch64`, macOS `x86_64`, or Windows `AMD64` with Python < 3.13).
 
-##### Running tests for specific versions of Python
+##### Matrix testing across Python versions
 
-You can use the tox option `-e` to run a specific environment, _e.g._, to only run tests for Python 3.11 on macOS, run the following command:
+Install the supported interpreters (one-time):
 
 ```sh
-pipx run tox run -e py311-mac
+uv python install 3.10 3.11 3.12 3.13
 ```
 
-The environments are defined in [`pyproject.toml`](./vehicle-python/pyproject.toml) under `[tool.tox]`, and are combinations of the Python version and the platform (`lin`, `mac`, or `win`).
+Then iterate across them, letting `uv` handle the right interpreter each time:
+
+```sh
+for version in 3.10 3.11 3.12 3.13; do
+  echo "==> pytest under Python ${version}"
+  UV_PYTHON_PREFERENCE=managed \
+    uv run --python "${version}" --extra test --extra pygments python -m pytest "$@"
+done
+```
+
+On PowerShell, the equivalent loop is:
+
+```powershell
+$versions = @(3.10, 3.11, 3.12, 3.13)
+foreach ($version in $versions) {
+  Write-Host "==> pytest under Python $version"
+  $env:UV_PYTHON_PREFERENCE = "managed"
+  uv run --python $version --extra test --extra pygments python -m pytest $args
+}
+```
+
+The loops forward any additional pytest arguments. Add `--extra tensorflow` when running on a platform where the TensorFlow extra is supported. This replaces the old `tox` matrix, so CI and local workflows retain multi-version coverage.
 
 ##### Running specific tests
 
-The arguments after `--` are passed to pytest.
-
-You can pass the path to a test file, which only runs the tests in that file:
+Tests are invoked directly through pytest. Pass a file to focus on just that file:
 
 ```sh
-pipx run tox -- tests/test_main.py
+uv run --extra test --extra pygments python -m pytest tests/test_main.py
 ```
 
-You can pass `-k 'X'` to only run tests with `X` in their name, _e.g._, if you only want to run the `test_main` function from `tests/test_main.py`, you can run:
+Use pytest selectors such as `-k` to narrow to specific names, _e.g._:
 
 ```sh
-pipx run tox -- -k 'test_main'
+uv run --extra test --extra pygments python -m pytest -k 'test_main'
 ```
 
 For more information, see [the pytest documentation].
 
 ##### The executable tests
 
-The executable tests test whether the Vehicle compiler is installed as part of the Python package.
+The executable tests verify that the Vehicle compiler is installed as part of the Python package.
 
 Run the following command:
 
 ```sh
-pipx run tox -- tests/test_main.py
+uv run --extra test --extra pygments python -m pytest tests/test_main.py
 ```
 
 ##### The loss function tests
 
-The loss function tests test the translation and use of properties from Vehicle specification files as loss functions.
+The loss function tests cover translating Vehicle specifications into loss functions.
 
 Run the following command:
 
 ```sh
-pipx run tox -- tests/test_loss*.py
+uv run --extra test --extra pygments python -m pytest tests/test_loss*.py
 ```
 
 ##### The pygments tests
 
-The pygments tests test the integration with [the Pygments syntax highlighter].
+The pygments tests verify the integration with [the Pygments syntax highlighter].
 
 Run the following command:
 
 ```sh
-pipx run tox -- tests/test_pygments.py
+uv run --extra test --extra pygments python -m pytest tests/test_pygments.py
 ```
 
 #### Installing from source
 
-Ensure that [you have the source code](#getting-the-source) and that you have installed both [GHC and Cabal](#installing-ghc-and-cabal) and [Python and pipx](#installing-python-and-pipx).
+Ensure that you have the source code and that you have installed GHC/Cabal plus `uv`.
 
 1. Navigate to your local copy of the Vehicle repository.
 
-   ```sh
-   cd path/to/vehicle
-   ```
+  ```sh
+  cd path/to/vehicle
+  ```
 
 1. Navigate to the `vehicle-python` subdirectory.
 
-   ```sh
-   cd vehicle-python
-   ```
+  ```sh
+  cd vehicle-python
+  ```
 
-1. Install the Vehicle Python bindings:
+1. Build distributable artifacts (wheel + sdist):
 
-   ```sh
-   python -m pip install .
-   ```
+  ```sh
+  uv build
+  ```
 
-   This installs the Vehicle compiler and the `vehicle_lang` Python package.
+1. Install the resulting wheel into whichever interpreter you plan to use (outside the uv-managed project):
+
+  ```sh
+  python -m pip install dist/vehicle_lang-<version>-py3-none-any.whl
+  ```
+
+  Replace `<version>` with the current version string from `dist/`.
 
 1. Check if your installation of the Vehicle compiler was successful.
 
@@ -753,24 +769,13 @@ Ensure that [you have the source code](#getting-the-source) and that you have in
 
 #### Installing in editable mode
 
-If you are developing the Python bindings it can be cumbersome to rebuild the Vehicle compiler from source on every test run. To avoid this, you can install the Python bindings in editable mode.
-
-Run the following command from the `vehicle-python` subdirectory:
+If you are developing the Python bindings it can be cumbersome to rebuild the Vehicle compiler from source on every test run. Rely on the uv-managed project environment instead of a separate editable install—`uv sync` automatically installs the local project in editable mode whenever the lockfile changes. After syncing (for example with `uv sync --extra test --extra pytorch`), you can run pytest directly via `uv run`:
 
 ```sh
-python -m pip install -e .[test]
+uv run python -m pytest
 ```
 
-This installs the Python bindings in [editable mode], which directly adds the files in the development directory are added to Python's import path.
-Note that you must have the preferred version of GHC (see above) active in order to run this command otherwise you'll get a `Error: cabal: Could not resolve dependencies` error message.
-
-When the Python bindings are installed in editable mode, you can run pytest directly:
-
-```sh
-python -m pytest
-```
-
-You'll have to reinstall the Python bindings when the metadata in `pyproject.toml` or the Haskell source changes.
+You'll need to re-run `uv sync` whenever the dependency graph (or the preferred GHC version) changes so that the editable install stays aligned with the lockfile.
 
 ## Pre-commit hooks
 
@@ -778,7 +783,7 @@ The Vehicle repository has a variety of pre-commit hooks that check and ensure c
 
 We recommend that you install these hooks.
 
-1. Ensure that you have installed [GHC and Cabal](#installing-ghc-and-cabal).
+1. Ensure that you have installed GHC and Cabal.
 
 2. Install pre-commit following the instruction on the website: <https://pre-commit.com/#install>
 
@@ -851,7 +856,7 @@ We recommend using [VSCode] with the following extensions, based on what parts o
 
 Vehicle is released via [PyPI], the Python Package Index.
 
-Ensure that [you have the source code](#getting-the-source) and that you have installed both [GHC and Cabal](#installing-ghc-and-cabal) and [Python and pipx](#installing-python-and-pipx).
+Ensure that you have the source code and that you have installed both GHC and Cabal and a supported Python interpreter plus [`pipx`][pipx].
 
 To publish new releases to PyPI, you need a PyPI account that is authorised as a collaborator on [the `vehicle_lang` project], and you need to create a [PyPI API token] for that account and add it to your [.pypirc file].
 
@@ -879,19 +884,29 @@ The procedure to create a new release is:
 
    **Vehicle Python bindings tests**
 
-   Run the following command from `vehicle-python`:
+   From `vehicle-python`, ensure the lockfile is current, then execute the pytest matrix:
 
-   ```sh
-   pipx run tox
-   ```
+  ```sh
+  uv sync --extra test --extra pygments --extra pytorch --extra tensorflow
+  for version in 3.10 3.11 3.12 3.13; do
+    UV_PYTHON_PREFERENCE=managed \
+      uv run --python "${version}" --extra test --extra pygments python -m pytest
+  done
+  ```
+
+  Add any pytest arguments (for example `-k test_main`) to the `python -m pytest` invocation. When TensorFlow wheels aren't available on your platform, drop `--extra tensorflow` from the `uv sync` line. See the compiler testing guidance above for more background.
 
    **Vehicle documentation tests**
 
-   Run the following command from `docs`:
+  Run the following commands from `docs` to build the Sphinx documentation via the local pyproject:
 
-   ```sh
-   pipx run tox
-   ```
+  ```sh
+  cd docs
+  uv sync
+  uv run sphinx-build -nW --keep-going -b html . _build/html
+  ```
+
+  `uv sync` creates (or updates) `.venv` inside `docs/` and keeps it in lockstep with `docs/pyproject.toml` and `docs/uv.lock`.
 
    If any errors occur, fix them, and restart from step **1**.
 
@@ -940,11 +955,11 @@ The procedure to create a new release is:
 
    There are no GitHub Actions runners with an M1/M2 chipset, so the binary distributions for this platform must be built and published manually from an appropriate machine.
 
-   Run the following command from `vehicle-python`:
+  Run the following command from `vehicle-python` to build and delocate the wheels using the helper script:
 
-   ```sh
-   pipx run tox
-   ```
+  ```sh
+  uv run --extra wheel scripts/build-wheel.sh
+  ```
 
    This creates the directory `dist` which contains "wheels", which are the binary distribution format for Python packages. If you're on macOS with an M1/M2 chipset, these look like:
 
@@ -988,7 +1003,6 @@ The procedure to create a new release is:
 [pyenv]: https://github.com/pyenv/pyenv
 [the Tasty testing framework]: https://hackage.haskell.org/package/tasty
 [the Tasty documentation]: https://hackage.haskell.org/package/tasty#patterns
-[tox]: https://tox.wiki/en/latest/
 [pytest]: https://docs.pytest.org/en/latest/
 [the pytest documentation]: https://docs.pytest.org/en/7.3.x/how-to/usage.html#specifying-which-tests-to-run
 [editable mode]: https://pip.pypa.io/en/latest/topics/local-project-installs/

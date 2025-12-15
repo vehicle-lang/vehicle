@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, Iterable, Optional
+from typing import Any, Iterable, Optional
 
 from .. import session
 from ..error import VehicleError
@@ -60,6 +60,6 @@ def verify(
     if exc != 0:
         raise VehicleError(f"{err}")
     elif not out:
-        raise VehicleError(f"Vehicle produced no output")
+        raise VehicleError("Vehicle produced no output")
 
     return out

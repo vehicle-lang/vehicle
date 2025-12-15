@@ -19,9 +19,9 @@ import Vehicle.Syntax.AST.Expr qualified as S
 
 type GeneralisableVariable = (Provenance, Name)
 
-generaliseType :: (MonadScope m) => S.Expr -> m S.Expr
+generaliseType :: (MonadScopeExpr m) => S.Expr -> m S.Expr
 generaliseType expr = do
-  candidates <- execWriterT (runMonadScopeExprT (findGeneralisableVariables expr))
+  candidates <- execWriterT (findGeneralisableVariables expr)
   generaliseOverVariables (reverse candidates) expr
 
 findGeneralisableVariables :: (MonadScopeExpr m, MonadWriter [GeneralisableVariable] m) => S.Expr -> m ()
@@ -40,9 +40,9 @@ findGeneralisableVariables = \case
   S.Let _ bound binder body -> do
     findGeneralisableVariables bound
     findGeneralisableVariablesBinder binder $ findGeneralisableVariables body
-  S.Record _ fields ->
+  S.Record _ fields -> do
     void $ traverseRecordFields findGeneralisableVariables fields
-  S.RecordAcc _ record _field ->
+  S.RecordAcc _ record _field -> do
     findGeneralisableVariables record
 
 findGeneralisableVariablesBinder :: (MonadScopeExpr m, MonadWriter [GeneralisableVariable] m) => S.Binder -> m () -> m ()
@@ -52,7 +52,7 @@ findGeneralisableVariablesBinder binder update = do
 
 registerVar :: (MonadScopeExpr m, MonadWriter [GeneralisableVariable] m) => Provenance -> Name -> m ()
 registerVar p symbol = do
-  maybeVar <- lookupVariable symbol
+  maybeVar <- lookupMaybeVariable symbol
   when (isNothing maybeVar) $ tell [(p, symbol)]
 
 generaliseOverVariables ::
@@ -73,7 +73,7 @@ generaliseOverVariable (expr, seenNames) (p, name)
       logDebug MaxDetail $
         "Generalising over unbound variable" <+> quotePretty name
       let binderType = S.mkHole p ("typeOf[" <> name <> "]")
-      let binderDisplayForm = BinderDisplayForm (OnlyName name) True
-      let binder = Binder p binderDisplayForm (Implicit True) Relevant binderType
+      let binderDisplayForm = BinderDisplayForm (OnlyName name p) True
+      let binder = Binder binderDisplayForm (Implicit True) Relevant binderType
       let newExpr = S.Pi p binder expr
       return (newExpr, Set.insert name seenNames)

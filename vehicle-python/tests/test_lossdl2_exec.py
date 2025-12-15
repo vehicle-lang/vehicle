@@ -1,9 +1,14 @@
 from pathlib import Path
-from typing import Any, Callable, Sequence, cast
+from typing import Any, Callable, Sequence
 
 import pytest
-import tensorflow as tf
 import vehicle_lang as vcl
+
+tf = pytest.importorskip(
+    "tensorflow",
+    reason="TensorFlow extra is required for loss execution tests",
+)
+from vehicle_lang.loss import tensorflow as loss_tf
 
 
 def network_validate_output(output: dict[str, Any]) -> None:
@@ -24,37 +29,37 @@ def validate_loss_function_output(
     func = output["bounded"]
     for point in test_points:
 
-        def test_network(x: tf.Tensor) -> tf.Tensor:
-            return cast(tf.Tensor, tf.constant(point))
+        def test_network(x: Any) -> Any:
+            return tf.constant([point])
 
         loss_value = func(test_network)
         assert isinstance(loss_value, tf.Tensor)
         assert loss_value.shape == ()
 
 
-class DummySampler(vcl.TensorFlowSampler):
+class DummySampler(loss_tf.TensorFlowSampler):
     def get_loss(
         self,
         dims: Sequence[int],
-        lower_bound: tf.Tensor,
-        upper_bound: tf.Tensor,
-        search_lambda: Callable[[tf.Tensor], tf.Tensor],
+        lower_bound: Any,
+        upper_bound: Any,
+        search_lambda: Callable[[Any], Any],
         minimise: bool,
-    ) -> list[tf.Tensor]:
+    ) -> Any:
         """Sample at a few test points in the bounded range."""
         # Sample at some test points
         test_points = [
-            tf.constant(-10.0),
-            tf.constant(-1.0),
-            tf.constant(1.0),
-            tf.constant(10.0),
+            tf.constant([-10.0]),
+            tf.constant([-1.0]),
+            tf.constant([1.0]),
+            tf.constant([10.0]),
         ]
         # Evaluate the search lambda at each test point
         results = []
         for point in test_points:
-            result = search_lambda(cast(tf.Tensor, point))
+            result = search_lambda(point)
             results.append(tf.convert_to_tensor(result))
-        return results
+        return tf.stack(results)
 
 
 dummy_sampler = DummySampler()
@@ -152,9 +157,8 @@ def test_loss_function_exec(
 ) -> None:
     print(f"Exec {specification_filename}")
     specification_path = Path(__file__).parent / "data" / specification_filename
-    actual_declarations = vcl.compile.load_specification(
+    actual_declarations = loss_tf.load_specification(
         specification_path,
-        backend=vcl.LossBackend.TensorFlow,
         logic=vcl.DifferentiableLogic.DL2,
         samplers=samplers,
     )

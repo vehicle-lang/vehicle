@@ -2,6 +2,7 @@
 
 module Vehicle.Data.Builtin.Standard.Type () where
 
+import Data.Foldable (traverse_)
 import Data.Proxy (Proxy (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Bidirectional (createFreshUnificationConstraint)
@@ -17,7 +18,7 @@ import Vehicle.Data.Builtin.Standard.IndexSolver
 import Vehicle.Data.Builtin.Standard.Normalise ()
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.DSL
-import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..), getDeclType)
+import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..))
 import Prelude hiding (iterate, pi)
 
 --------------------------------------------------------------------------------
@@ -47,7 +48,7 @@ isStandardConstructor = \case
   DerivedFunction {} -> False
 
 -- | Return the type of the provided builtin.
-typeStandardBuiltin :: (MonadFreeContext Builtin m) => Provenance -> Builtin -> m (Type Builtin)
+typeStandardBuiltin :: (MonadTypeChecker Builtin m) => Provenance -> Builtin -> m (Type Builtin)
 typeStandardBuiltin p = \case
   DerivedFunction f -> getDeclType (Proxy @Builtin) (identifierOf f)
   BuiltinType s -> return $ fromDSL p $ typeOfBuiltinType s
@@ -190,7 +191,7 @@ restrictStandardDeclType declSort (ident, p) typ = do
         RestrictedDataset -> ValidDatasetType
         RestrictedNetwork -> ValidNetworkType
 
-  let expr = BuiltinExpr p (TypeClass tc) [explicit typ]
+  let expr = App (Builtin p (TypeClass tc)) [explicit typ]
   let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin env (ident, provenanceOf typ) (Left declSort) typ
   _ <- createFreshInstanceConstraint False mempty p origin Irrelevant expr
   return typ
@@ -199,26 +200,26 @@ restrictStandardRecordAnnotatedAsTensorType ::
   forall m.
   (MonadTypeChecker Builtin m) =>
   DeclProvenance ->
-  [RecordField (Type Builtin)] ->
+  [RecordField Builtin] ->
   m ()
 restrictStandardRecordAnnotatedAsTensorType (ident, p) fields = case fields of
   [] -> return ()
   (firstFieldName, firstFieldType) : restFields -> do
     env <- getFreeCtx (Proxy @Builtin)
-    let expr = BuiltinExpr p (TypeClass ValidTensorLikeType) [explicit firstFieldType]
+    let expr = App (Builtin p (TypeClass ValidTensorLikeType)) [explicit firstFieldType]
     let restrictionDetails = Right (FieldTypeIsAllowed firstFieldName)
     let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin env (ident, p) restrictionDetails firstFieldType
     _ <- createFreshInstanceConstraint False mempty p origin Irrelevant expr
 
-    _ <- traverse (checkRecordFieldTypesMatch (ident, p) (firstFieldName, firstFieldType)) restFields
+    traverse_ (checkRecordFieldTypesMatch (ident, p) (firstFieldName, firstFieldType)) restFields
     return ()
 
 checkRecordFieldTypesMatch ::
   forall m.
   (MonadTypeChecker Builtin m) =>
   DeclProvenance ->
-  RecordField (Type Builtin) ->
-  RecordField (Type Builtin) ->
+  RecordField Builtin ->
+  RecordField Builtin ->
   m ()
 checkRecordFieldTypesMatch (ident, p) (firstFieldName, firstFieldType) (currFieldName, currFieldType) = do
   env <- getFreeCtx (Proxy @Builtin)

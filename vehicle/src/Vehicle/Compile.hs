@@ -116,12 +116,12 @@ compileToITP ::
   ITPOptions ->
   Prog Builtin ->
   m ()
-compileToITP ITPOptions {..} typedProg =
-  logCompilerPass ITPBackend $ do
-    -- Analyse the program to find out which `Bool`s are decidable and which aren't.
-    decProg <- decidabilityTypeCheck typedProg
+compileToITP ITPOptions {..} typedProg = do
+  -- Analyse the program to find out which `Bool`s are decidable and which aren't.
+  decProg <- decidabilityTypeCheck typedProg
 
-    -- Compile depending on the ITP
+  -- Compile depending on the ITP
+  logCompilerPass ITPBackend $
     case itp of
       Agda -> do
         let agdaOptions = AgdaOptions verificationCache outputFile moduleName

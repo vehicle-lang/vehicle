@@ -66,7 +66,7 @@ instance MetaSubstitutable m builtin (Expr builtin) where
       FreeVar {} -> return expr
       BoundVar {} -> return expr
       Record p ident fields -> Record p ident <$> traverseRecordFields (substMetasAt ctx s) fields
-      RecordAcc p record field -> RecordAcc p <$> substMetasAt ctx s record <*> pure field
+      RecordProj p recordType record field -> RecordProj p <$> substMetasAt ctx s recordType <*> substMetasAt ctx s record <*> pure field
       -- NOTE: no need to lift the substitutions here as we're passing under the binders
       -- because by construction every meta-variable solution is a closed term.
       Pi p binder res -> Pi p <$> substMetasAt ctx s binder <*> substMetasAt (nameOf binder : ctx) s res
@@ -108,7 +108,7 @@ instance MetaSubstitutable m builtin (Value builtin) where
     VFreeVar v spine -> VFreeVar v <$> traverse (substMetasAt ctx s) spine
     VBoundVar v spine -> VBoundVar v <$> traverse (substMetasAt ctx s) spine
     VRecord ident fields -> VRecord ident <$> traverse (substMetasAt ctx s) fields
-    VRecordAcc record field -> VRecordAcc <$> substMetasAt ctx s record <*> pure field
+    VRecordAcc recordType record field -> VRecordAcc <$> substMetasAt ctx s recordType <*> substMetasAt ctx s record <*> pure field
     VBuiltin b spine -> do
       spine' <- traverse (substMetasAt ctx s) spine
       normaliseBuiltin ctx b spine'
@@ -160,9 +160,6 @@ class RawMetaSubstitutable m builtin a | a -> builtin where
 
 instance (MetaSubstitutable m builtin expr) => RawMetaSubstitutable m builtin (GenericDecl expr) where
   substMetas s = traverse (substMetasAt mempty s)
-
-instance (MetaSubstitutable m builtin expr) => RawMetaSubstitutable m builtin (GenericProg expr) where
-  substMetas s (Main ds) = Main <$> traverse (substMetas s) ds
 
 instance (MetaSubstitutable m builtin constraint) => RawMetaSubstitutable m builtin (Contextualised constraint (ConstraintContext builtin)) where
   substMetas s (WithContext constraint ctx) = WithContext <$> substMetasAt (namedBoundCtxOf ctx) s constraint <*> pure ctx

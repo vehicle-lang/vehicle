@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Get configuration from Tox
+# Helper invoked by uv to build and delocate wheel artifacts
 # 2024-04-16: The substitution for '{env_python}' and other environment variables no longer appears to work.
 python="python"
 package_root="${package_root:-"$(dirname "$( cd -- "$(dirname "$0")" >/dev/null 2>&1 || exit ; pwd -P )" )"}"

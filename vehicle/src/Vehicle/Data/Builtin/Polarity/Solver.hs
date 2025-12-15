@@ -14,6 +14,7 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.System
 import Vehicle.Data.Builtin.Core
+import Vehicle.Data.Builtin.Interface.Type
 import Vehicle.Data.Builtin.Polarity
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Variable.Bound.Context.Generic
@@ -46,7 +47,10 @@ pattern VPolarityExpr l <- VBuiltin (Polarity l) []
   where
     VPolarityExpr l = VBuiltin (Polarity l) []
 
-type MonadPolaritySolver m = MonadTypeChecker PolarityBuiltin m
+type MonadPolaritySolver m =
+  ( MonadTypeChecker PolarityBuiltin m,
+    TypableBuiltin PolarityBuiltin
+  )
 
 type PolaritySolver =
   forall m.
@@ -58,7 +62,7 @@ type PolaritySolver =
 solve :: PolarityRelation -> PolaritySolver
 solve = \case
   NegPolarity -> solveNegPolarity
-  QuantifierPolarity p q -> solveQuantifierPolarity p q
+  QuantifierPolarity q -> solveQuantifierPolarity q
   AddPolarity p q -> solveAddPolarityOp p q
   ImpliesPolarity -> solveImplPolarity
   MaxPolarity -> solveMaxPolarityOp
@@ -75,17 +79,18 @@ solveNegPolarity info@(ctx, _) [arg1, res] = case arg1 of
   _ -> Nothing
 solveNegPolarity _ _ = Nothing
 
-solveQuantifierPolarity :: Provenance -> Quantifier -> PolaritySolver
-solveQuantifierPolarity p q info@(ctx, _) [lam, res] = case lam of
+solveQuantifierPolarity :: Quantifier -> PolaritySolver
+solveQuantifierPolarity q info@(ctx, _) [lam, res] = case lam of
   (getNMeta -> Just m) -> blockOn [m]
   (VPi binder resPol) -> Just $ do
+    let (_, p) = getNamedBinderInfo binder
     binderEq <- createInstanceUnification info (typeOf binder) (VPolarityExpr Unquantified)
     let tc = PolarityRelation $ AddPolarity p q
     resultPolarity <- normaliseClosureInCtx (toNamedBoundCtx $ boundContext ctx) binder resPol
     (_, addConstraint) <- createDerivedInstanceConstraint info Irrelevant (VBuiltin tc (explicit <$> [resultPolarity, res]))
     return $ Progress [binderEq] [addConstraint]
   _ -> Nothing
-solveQuantifierPolarity _ _ _c _ = Nothing
+solveQuantifierPolarity _ _c _ = Nothing
 
 solveAddPolarityOp :: Provenance -> Quantifier -> PolaritySolver
 solveAddPolarityOp p q info [arg, res] = do

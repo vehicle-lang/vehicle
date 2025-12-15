@@ -8,7 +8,7 @@ import Data.Map.Ordered qualified as OMap
 import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), squotes, (<+>))
-import Vehicle.Syntax.AST.Name (HasName (..), Name)
+import Vehicle.Syntax.AST.Name (HasName (..), Identifier (..), Name)
 import Vehicle.Syntax.AST.Provenance (HasProvenance (..), Provenance)
 import Vehicle.Syntax.Prelude (developerError)
 
@@ -39,47 +39,51 @@ instance HasProvenance FieldName where
 instance HasName FieldName Name where
   nameOf (FieldName _ name) = name
 
+fieldAccessIdentifier :: Identifier -> FieldName -> Identifier
+fieldAccessIdentifier recordIdent field =
+  Identifier (modulePath recordIdent) (nameOf field)
+
 --------------------------------------------------------------------------------
 -- Record fields
 
-type RecordField expr = (FieldName, expr)
+type GenericRecordField expr = (FieldName, expr)
 
 mapRecordField ::
   (expr1 -> expr2) ->
-  RecordField expr1 ->
-  RecordField expr2
+  GenericRecordField expr1 ->
+  GenericRecordField expr2
 mapRecordField f (name, typ) = (name, f typ)
 
 traverseRecordField ::
   (Monad m) =>
   (expr1 -> m expr2) ->
-  RecordField expr1 ->
-  m (RecordField expr2)
+  GenericRecordField expr1 ->
+  m (GenericRecordField expr2)
 traverseRecordField f (name, typ) = (name,) <$> f typ
 
-traverseRecordField_ :: (Monad m) => (expr1 -> m ()) -> RecordField expr1 -> m ()
+traverseRecordField_ :: (Monad m) => (expr1 -> m ()) -> GenericRecordField expr1 -> m ()
 traverseRecordField_ f (_, typ) = f typ
 
-type RecordFields expr = [RecordField expr]
+type GenericRecordFields expr = [GenericRecordField expr]
 
 mapRecordFields ::
   (expr1 -> expr2) ->
-  RecordFields expr1 ->
-  RecordFields expr2
+  GenericRecordFields expr1 ->
+  GenericRecordFields expr2
 mapRecordFields f = fmap (mapRecordField f)
 
 traverseRecordFields ::
   (Monad m) =>
   (expr1 -> m expr2) ->
-  RecordFields expr1 ->
-  m (RecordFields expr2)
+  GenericRecordFields expr1 ->
+  m (GenericRecordFields expr2)
 traverseRecordFields f = traverse (traverseRecordField f)
 
-traverseRecordFields_ :: (Monad m) => (expr1 -> m ()) -> RecordFields expr1 -> m ()
+traverseRecordFields_ :: (Monad m) => (expr1 -> m ()) -> GenericRecordFields expr1 -> m ()
 traverseRecordFields_ f = traverse_ (traverseRecordField_ f)
 
 lookupRecordField ::
-  RecordFields expr ->
+  GenericRecordFields expr ->
   FieldName ->
   expr
 lookupRecordField fields field = case lookup field fields of

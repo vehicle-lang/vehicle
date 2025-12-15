@@ -26,6 +26,7 @@ import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Data.Builtin.Interface.Print (PrintableBuiltin)
+import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin)
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Variable.Bound.Context.Generic
 
@@ -33,7 +34,8 @@ import Vehicle.Data.Variable.Bound.Context.Generic
 -- Generalisation
 
 type MonadGeneralise builtin m =
-  ( MonadTypeChecker builtin m
+  ( MonadTypeChecker builtin m,
+    TypableBuiltin builtin
   )
 
 generaliseOverUnsolvedMetasAndConstraints ::
@@ -44,17 +46,15 @@ generaliseOverUnsolvedMetasAndConstraints ::
 generaliseOverUnsolvedMetasAndConstraints decl = do
   let proxy = (Proxy @builtin)
   logCompilerSection2 MaxDetail "generalisation over unsolved metas and constraints" $ do
-    -- Check unification constraints solved
+    -- Check unification and application constraints solved
     checkAllConstraintsSolved proxy getActiveUnificationConstraints UnificationConstraint
-
-    -- Check application constraints solved
     checkAllConstraintsSolved proxy getActiveApplicationConstraints ApplicationConstraint
 
-    -- Remaining constraints and metas to be generalised can have no dependendies on
+    -- Remaining constraints and metas to be generalised can have no dependencies on
     -- the variables inside the term to remove them.
     dependencyFreeDecl <- removeAllDependencies decl
 
-    -- Generalise over the
+    -- Generalise over the unsolved metas
     generalisedDecl <- generaliseOverUnsolvedMetas dependencyFreeDecl
 
     logUnsolvedUnknowns proxy
@@ -95,7 +95,7 @@ removeAllDependencies decl = do
   logCompilerSection2 MaxDetail "substituting metas through solution" $ do
     metaVariableCtx <- getMetaVariableCtx @builtin
     substMetaVariableCtx <- substMetaVariables metaVariableCtx
-    modifyTypeCheckerState (\s -> s {metaVariableCtx = substMetaVariableCtx})
+    modifyTypeCheckerDeclState (\s -> s {metaVariableCtx = substMetaVariableCtx})
 
   resultDecl <- substMetaVariables decl
   logUnsolvedUnknowns (Proxy @builtin)
@@ -149,7 +149,7 @@ updateSolutionMeta ::
   m (InstanceConstraint builtin)
 updateSolutionMeta constraint = do
   let originalMeta = instanceSolution constraint
-  metaCtx <- metaVariableCtx <$> getTypeCheckerState @builtin
+  metaCtx <- metaVariableCtx <$> getTypeCheckerDeclState @builtin
   newMeta <- findUltimateUnsolvedMeta metaCtx originalMeta
   -- This is a hack that should disappear when we get records?
   updateMetaType newMeta (Quote.unnormalise @(Value builtin) @(Expr builtin) 0 $ goalExpr $ instanceGoal constraint)
@@ -217,8 +217,8 @@ createBinderForMeta constraints p (index, meta) = do
 
   -- Prepend the implicit binders for the new generalised variable.
   let binderName = "_t" <> Text.pack (show index)
-  let binderDisplayForm = BinderDisplayForm (NameAndType binderName) True
-  let binder = Binder p binderDisplayForm visibility relevance metaType
+  let binderDisplayForm = BinderDisplayForm (NameAndType binderName p) True
+  let binder = Binder binderDisplayForm visibility relevance metaType
   return (meta, binder)
 
 --------------------------------------------------------------------------------
@@ -246,12 +246,18 @@ prependBinderAndSolve decl (meta, binder) =
 
     -- Compute the telescopes
     let typeBinder = binder
-    let bodyBinder = mapBinderNamingForm (\t -> OnlyName (fromMaybe "_" (nameOf t))) binder
+    let bodyBinder = mapBinderNamingForm (\t -> OnlyName (fromMaybe "_" (nameOf t)) p) binder
 
     -- Then finally update the declaration
     let alterType t = return $ Pi p typeBinder t
     let alterBody e = return $ Lam p bodyBinder e
-    finalDecl <- traverseDeclTypeAndExpr alterType alterBody substDecl
+    finalDecl <- case substDecl of
+      DefFunction _ i s t e -> DefFunction p i s <$> alterType t <*> alterBody e
+      DefAbstract _ i s t -> DefAbstract p i s <$> alterType t
+      _ ->
+        developerError $
+          "Unsupported definition type in generalistion:"
+            <> lineIndent (prettyVerbose substDecl)
 
     -- Substitute the new meta solution through.
     setCurrentDecl $ Just (finalDecl, False)
@@ -260,7 +266,7 @@ prependBinderAndSolve decl (meta, binder) =
     return finalDecl
 
 solveInTermsOfNewMetaWithDependencies ::
-  (MonadTypeChecker builtin m) =>
+  (MonadGeneralise builtin m) =>
   MetaID ->
   MetaInfo builtin ->
   BoundCtx (Type builtin) ->

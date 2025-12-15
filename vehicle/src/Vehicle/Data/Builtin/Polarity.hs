@@ -34,11 +34,11 @@ instance Show PolarityProvenance where
 instance Eq PolarityProvenance where
   _x == _y = True
 
+instance Ord PolarityProvenance where
+  _x <= _y = True
+
 instance NFData PolarityProvenance where
   rnf _x = ()
-
-instance Hashable PolarityProvenance where
-  hashWithSalt s _p = s
 
 --------------------------------------------------------------------------------
 -- Polarity
@@ -52,11 +52,9 @@ data Polarity
     MixedParallel PolarityProvenance PolarityProvenance
   | -- | Stores the type and provenance of the top-most quantifier first.
     MixedSequential Quantifier Provenance PolarityProvenance
-  deriving (Eq, Generic, Show)
+  deriving (Eq, Ord, Generic, Show)
 
 instance NFData Polarity
-
-instance Hashable Polarity
 
 instance Serialize Polarity
 
@@ -81,13 +79,13 @@ mapPolarityProvenance f = \case
 
 data PolarityRelation
   = NegPolarity
-  | QuantifierPolarity Provenance Quantifier
+  | QuantifierPolarity Quantifier
   | AddPolarity Provenance Quantifier
   | ImpliesPolarity
   | IfPolarity
   | MaxPolarity
   | FunctionPolarity FunctionPosition
-  deriving (Eq, Generic, Show)
+  deriving (Eq, Ord, Generic, Show)
 
 instance Serialize PolarityRelation
 
@@ -99,7 +97,7 @@ instance Pretty PolarityRelation where
   pretty = \case
     NegPolarity -> "NegPolarity"
     AddPolarity _ q -> "AddPolarity" <+> pretty q
-    QuantifierPolarity _ q -> "QuantifierPolarity" <+> pretty q
+    QuantifierPolarity q -> "QuantifierPolarity" <+> pretty q
     ImpliesPolarity -> "ImpliesPolarity"
     MaxPolarity -> "MaxPolarity"
     IfPolarity -> "IfPolarity"
@@ -113,9 +111,7 @@ data PolarityBuiltin
   | PolarityFunction BuiltinFunction
   | Polarity Polarity
   | PolarityRelation PolarityRelation
-  deriving (Show, Eq, Generic)
-
-instance Hashable PolarityBuiltin
+  deriving (Show, Ord, Eq, Generic)
 
 instance Pretty PolarityBuiltin where
   pretty = \case
@@ -167,8 +163,8 @@ instance BuiltinHasNatLiterals PolarityBuiltin where
         mkExpr = PolarityConstructor . NatTensorLiteral
       }
 
-  accessAddNatBuiltin = functionAccessor (Add AddNat)
-  accessMulNatBuiltin = functionAccessor (Mul MulNat)
+  accessAddNatBuiltin = functionAccessor $ Add AddNat
+  accessMulNatBuiltin = functionAccessor $ Mul MulNat
 
 instance BuiltinHasListLiterals PolarityBuiltin where
   accessNilBuiltin =
@@ -249,8 +245,8 @@ unquantified = builtin (Polarity Unquantified)
 polarityTypeClass :: PolarityRelation -> NonEmpty PolarityDSLExpr -> PolarityDSLExpr
 polarityTypeClass tc args = builtin (PolarityRelation tc) @@ args
 
-quantifierPolarity :: Provenance -> Quantifier -> PolarityDSLExpr -> PolarityDSLExpr -> PolarityDSLExpr
-quantifierPolarity p q l1 l2 = polarityTypeClass (QuantifierPolarity p q) [l1, l2]
+quantifierPolarity :: Quantifier -> PolarityDSLExpr -> PolarityDSLExpr -> PolarityDSLExpr
+quantifierPolarity q l1 l2 = polarityTypeClass (QuantifierPolarity q) [l1, l2]
 
 maxPolarity :: PolarityDSLExpr -> PolarityDSLExpr -> PolarityDSLExpr -> PolarityDSLExpr
 maxPolarity l1 l2 l3 = polarityTypeClass MaxPolarity [l1, l2, l3]

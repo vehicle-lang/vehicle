@@ -81,12 +81,12 @@ formatCompileError = \case
         { provenance = Just p,
           problem =
             "no definition provided for the declaration"
-              <+> quotePretty name
+              <+> prettyIdentName name
               <> ".",
           fix =
             Just $
               "either provide a definition for"
-                <+> quotePretty name
+                <+> prettyIdentName name
                 <+> "or mark it as an external resource by adding an appropriate annotation, i.e."
                 <+> pretty NetworkDef
                 <> ","
@@ -95,16 +95,16 @@ formatCompileError = \case
                   <+> pretty (ParameterDef NonInferable)
                 <> "."
         }
-    MultiplyAnnotatedAbstractDef p name ann1 ann2 ->
+    MultiplyAnnotatedDef p name ann1 ann2 ->
       VehicleError
         { provenance = Just p,
           problem =
-            "abstract declaration"
-              <+> quotePretty name
+            "declaration"
+              <+> prettyIdentName name
               <+> "cannot simultaneously be annotated with both"
-              <+> quotePretty ann1
+              <+> squotes ann1
               <+> "and"
-              <+> quotePretty ann2
+              <+> squotes ann2
               <> ".",
           fix =
             Just "remove one of annotations."
@@ -112,37 +112,95 @@ formatCompileError = \case
     AbstractDefWithNonAbstractAnnotation p name ann ->
       VehicleError
         { provenance = Just p,
-          problem = "missing definition for" <+> pretty ann <+> quotePretty name <> ".",
-          fix = Just $ "add a definition for" <+> quotePretty name <+> "."
+          problem =
+            "missing definition for"
+              <+> ann
+              <+> prettyIdentName name
+              <> ".",
+          fix =
+            Just $
+              "add a definition for"
+                <+> prettyIdentName name
+                <> "."
         }
-    NonAbstractDefWithAbstractAnnotation p name resource ->
+    TypeDefWithAnnotation p name ann ->
+      VehicleError
+        { provenance = Just p,
+          problem =
+            "cannot add a"
+              <+> ann
+              <+> "annotation to type definition"
+              <+> prettyIdentName name
+              <> ".",
+          fix =
+            Just $
+              "remove the"
+                <+> ann
+                <+> "annotation"
+                <> "."
+        }
+    FunctionDefWithRecordAnnotation p name ann ->
+      VehicleError
+        { provenance = Just p,
+          problem =
+            "cannot add a"
+              <+> ann
+              <+> "annotation to function definition"
+              <+> prettyIdentName name
+              <> ".",
+          fix =
+            Just $
+              "either remove the"
+                <+> ann
+                <+> "annotation or convert"
+                <+> pretty name
+                <+> "into a record definition."
+        }
+    RecordDefWithFunctionAnnotation p name ann ->
+      VehicleError
+        { provenance = Just p,
+          problem =
+            "cannot add a"
+              <+> ann
+              <+> "annotation to record definition"
+              <+> prettyIdentName name
+              <> ".",
+          fix =
+            Just $
+              "either remove the"
+                <+> ann
+                <+> "annotation or convert"
+                <+> prettyIdentName name
+                <+> "into a function definition."
+        }
+    NonAbstractDefWithAbstractAnnotation p name ann ->
       VehicleError
         { provenance = Just p,
           problem =
             "The declaration"
-              <+> quotePretty name
+              <+> prettyIdentName name
               <+> "should not have a definition"
               <+> "as it has been marked with a"
-              <+> quotePretty resource
+              <+> ann
               <+> "annotation.",
           fix =
             Just $
               "either remove the definition for"
-                <+> quotePretty name
+                <+> prettyIdentName name
                 <+> "or remove the"
-                <+> quotePretty resource
+                <+> ann
                 <+> "annotation."
         }
-    AnnotationWithNoDef p name ->
+    AnnotationWithNoDef p ann ->
       VehicleError
         { provenance = Just p,
-          problem = "unattached annotation" <+> quotePretty name,
+          problem = "unattached annotation" <+> quotePretty ann,
           fix = Just "either attach the annotation to a declaration or remove it entirely"
         }
     FunctionWithMismatchedNames p name1 name2 ->
       VehicleError
         { provenance = Just p,
-          problem = "mismatch in function declaration names:" <+> quotePretty name1 <+> "and" <+> quotePretty name2 <> ".",
+          problem = "mismatch in function declaration names:" <+> prettyIdentName name1 <+> "and" <+> prettyIdentName name2 <> ".",
           fix = Just "ensure the function definition has the same name as the declaration it follows."
         }
     MissingVariables p symbol ->
@@ -648,14 +706,15 @@ formatCompileError = \case
   -- Backend errors --
   --------------------
   MultiPropertyTraveralError prov err -> propertyTraversalErrorDetails prov err
-  VariableSizeTensorQuantification (ident, _p) ctx binder dims ->
+  VariableSizeTensorQuantification (ident, _p) ctx binder dims -> do
+    let (name, p) = getNamedBinderInfo binder
     VehicleError
-      { provenance = Just $ provenanceOf binder,
+      { provenance = Just p,
         problem =
           "whilst compiling property"
             <+> quotePretty ident
             <+> "found the quantified variable"
-            <+> quotePretty (nameOf binder)
+            <+> quotePretty name
             <+> "with dimensions"
             <+> prettyFriendly (WithContext dims ctx)
             <> "."
@@ -745,19 +804,16 @@ formatCompileError = \case
             <> ". ",
         fix = Just (implementationLimitation (Just 74))
       }
-  UnsupportedPolymorphicEquality target p typeName ->
+  UnimplementedFeature p feature ->
     VehicleError
       { provenance = Just p,
         problem =
-          "The use of equality over the unknown type"
-            <+> quotePretty typeName
-            <+> "is not currently supported"
-            <+> "when compiling to"
-            <+> pretty target,
+          feature
+            <+> "is not currently implemented",
         fix =
           Just $
-            "try avoiding it, otherwise open an issue on the"
-              <+> "Vehicle issue tracker describing the use case."
+            "please open an issue on the"
+              <+> "Vehicle issue tracker to discuss adding support."
       }
   NoPropertiesFound ->
     VehicleError
@@ -799,14 +855,15 @@ formatCompileError = \case
             <> "Vectors with elements of type" <+> squotes (prettyFriendly (WithContext elemTyp ctx)) <+> "cannot currently be compiled to loss functions",
         fix = Nothing
       }
-  NoQuantifierDomainFound (ident, _p) binder maybeUnboundedVariables ->
+  NoQuantifierDomainFound (ident, _p) binder maybeUnboundedVariables -> do
+    let (name, p) = getNamedBinderInfo binder
     VehicleError
-      { provenance = Just $ provenanceOf binder,
+      { provenance = Just p,
         problem =
           "The property"
             <+> quotePretty ident
             <+> "cannot be compiled to tensor code as the variable"
-            <+> quotePretty (nameOf binder)
+            <+> quotePretty name
             <+> "is not properly bounded. In particular,"
             <+> missingBounds maybeUnboundedVariables,
         fix = Just "Add inequalities that restrict the value of the variable both below and above."
@@ -868,7 +925,7 @@ formatCompileError = \case
           "The property"
             <+> quotePretty ident
             <+> "cannot be compiled as cannot deduce lower and upper bounds for the input of"
-            <+> lineIndent (prettyFriendly (WithContext (VFreeVar (Identifier userModule networkName) [explicit inputValue]) ctx))
+            <+> lineIndent (prettyFriendly (WithContext (VFreeVar (Identifier userModulePath networkName) [explicit inputValue]) ctx))
             <> line
             <> "In particular,"
               <+> missingBounds unboundedInputs

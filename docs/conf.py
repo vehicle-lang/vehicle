@@ -49,7 +49,7 @@ extlinks = {".": ("https://github.com/vehicle-lang/vehicle/tree/dev/%s", "./%s")
 
 # -- Options for excluding temporary files
 
-exclude_patterns = [".tox"]
+exclude_patterns: list[str] = ["_build", ".venv", ".DS_Store", "Thumbs.db"]
 
 # -- Options for autodoc
 
@@ -57,7 +57,12 @@ autodoc_typehints = "both"
 
 autodoc_typehints_description_target = "documented"
 
-autodoc_mock_imports = ["vehicle_lang._binding"]
+autodoc_mock_imports = [
+    "vehicle_lang._binding",
+    "torch",
+    "tensorflow",
+    "jaxtyping",
+]
 
 # -- Options for MyST --------------------------------------------------------
 

@@ -27,6 +27,10 @@
 
 * Fixed bug where unable to compile trivial inequalities (e.g. `3 < 4`, `x < x`)
 
+### Python version support
+
+* Dropped Python 3.9 support now that it has reached end-of-life upstream.
+
 ### Python backend
 
 * The module `vehicle_lang.check` has been renamed `vehicle_lang.typecheck` and the

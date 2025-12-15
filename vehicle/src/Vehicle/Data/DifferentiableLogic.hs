@@ -94,6 +94,6 @@ tensorLogicName :: Name
 tensorLogicName = "DifferentiableTensorLogic"
 
 isLogicDecl :: VDecl Builtin -> Bool
-isLogicDecl decl = case typeOf decl of
-  VFreeVar ident [] -> nameOf ident `elem` ([elementLogicName, tensorLogicName] :: [Name])
+isLogicDecl = \case
+  DefFunction _ _ _ (VFreeVar ident []) _ -> nameOf ident `elem` ([elementLogicName, tensorLogicName] :: [Name])
   _ -> False

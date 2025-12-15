@@ -49,7 +49,7 @@ convertDecls logicID logic = \case
   decl : decls -> do
     normDecl <- traverse normaliseInEmptyEnv decl
     maybeLossDecl <- convertDecl logicID logic normDecl
-    decls' <- addDeclEntryToContext (decl, normDecl) $ convertDecls logicID logic decls
+    decls' <- addDeclEntryToContext normDecl $ convertDecls logicID logic decls
     return $ maybeToList maybeLossDecl ++ decls'
 
 convertDecl ::
@@ -62,13 +62,13 @@ convertDecl logicID logic decl = do
   logCompilerSection2 MinDetail ("declaration" <+> quotePretty (identifierOf decl)) $ do
     runMonadLogicT logicID logic decl $ do
       case decl of
-        DefRecord {} -> return Nothing
         DefAbstract p ident sort typ
           | isExternalResourceDecl decl -> Just <$> convertResourceDecl p ident sort typ
           | otherwise -> return Nothing
         DefFunction p ident ann typ expr
           | isPropertyDecl decl -> Just <$> convertPropertyDecl p ident ann typ expr
           | otherwise -> return Nothing
+        DefRecord {} -> return Nothing
 
 convertResourceDecl ::
   (MonadLogic m) =>
@@ -87,7 +87,7 @@ convertPropertyDecl ::
   (MonadLogic m) =>
   Provenance ->
   Identifier ->
-  [Annotation] ->
+  DefFunctionSort ->
   VType Builtin ->
   Value Builtin ->
   m (Decl LossBuiltin)

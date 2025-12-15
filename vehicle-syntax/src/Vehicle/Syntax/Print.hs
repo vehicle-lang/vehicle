@@ -43,7 +43,7 @@ instance Printable Decl where
   printInternal' = Internal.printTree . Internal.delab
   printExternal' = External.printTree . External.delab
 
-instance Printable Prog where
+instance Printable Module where
   printInternal' = Internal.printTree . Internal.delab
   printExternal' = External.printTree . External.delab
 

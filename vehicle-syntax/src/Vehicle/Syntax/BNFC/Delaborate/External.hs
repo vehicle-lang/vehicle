@@ -1,3 +1,4 @@
+{-# LANGUAGE InstanceSigs #-}
 {-# OPTIONS_GHC -Wno-missing-signatures #-}
 
 module Vehicle.Syntax.BNFC.Delaborate.External
@@ -9,11 +10,12 @@ where
 import Control.Monad.Identity (Identity (runIdentity))
 import Data.Bitraversable (Bitraversable (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, maybeToList)
 import Data.Text (Text, pack)
 import Prettyprinter (Pretty (..))
 import Vehicle.Syntax.AST qualified as V
 import Vehicle.Syntax.AST.Arg
+import Vehicle.Syntax.AST.Decl (LHSBinderCount)
 import Vehicle.Syntax.BNFC.Utils
 import Vehicle.Syntax.Builtin qualified as V
 import Vehicle.Syntax.External.Abs qualified as B
@@ -35,11 +37,22 @@ type MonadDelab m = Monad m
 
 -- * Conversion
 
-class Delaborate t bnfc | t -> bnfc, bnfc -> t where
+class Delaborate t bnfc | t -> bnfc where
   delabM :: (MonadDelab m) => t -> m bnfc
 
-instance Delaborate V.Prog B.Prog where
-  delabM (V.Main decls) = B.Main . concat <$> traverse delabM decls
+instance Delaborate V.Module B.Module where
+  delabM (V.Module imports decls) = do
+    imports' <- traverse delabM imports
+    decls' <- concat <$> traverse delabM decls
+    return $ B.DefModule imports' decls'
+
+instance Delaborate V.ImportStatement B.ImportStatement where
+  delabM (V.ImportStatement (V.ModulePath path)) = do
+    let path' = fmap go path
+    return $ B.Import path'
+    where
+      go :: String -> B.ModulePathFragment
+      go = B.ModulePathFrag . mkToken B.Name . pack
 
 instance Delaborate V.Decl [B.Decl] where
   delabM = \case
@@ -55,14 +68,12 @@ instance Delaborate V.Decl [B.Decl] where
           V.Inferable -> delabAnn parameterAnn [mkBoolAnnOption InferableOption True]
 
       return [defAnn, defFun]
-    V.DefFunction _ n anns t e -> do
-      annDecls <- traverse delabM anns
-      funDecls <- delabFun n t e
-      return $ annDecls <> funDecls
-    V.DefRecord _ n _ _ fs -> do
-      let n' = delabIdentifier n
-      fs' <- traverse delabM fs
-      return [B.DefRecord n' fs']
+    V.DefFunction _ n sort t e -> case sort of
+      V.TypeDecl binderCount -> delabTypeDecl n binderCount e
+      V.FunctionDecl binderCount ann -> delabFunctionDecl n binderCount ann t e
+      V.ProjectionDecl binderCount -> delabFunctionDecl n binderCount Nothing t e
+    V.DefRecord _ n sort t e -> do
+      delabRecordDecl n sort t e
 
 instance Delaborate V.Expr B.Expr where
   delabM expr = case expr of
@@ -103,17 +114,22 @@ instance Delaborate V.Binder B.BasicBinder where
 instance Delaborate V.FieldName B.Name where
   delabM (V.FieldName _ name) = return $ mkToken B.Name name
 
-instance Delaborate (V.RecordField V.Expr) B.RecordFieldDef where
+instance Delaborate (V.GenericRecordField V.Expr) B.RecordFieldDef where
+  delabM :: (MonadDelab m) => V.GenericRecordField V.Expr -> m B.RecordFieldDef
   delabM (name, typ) = do
     name' <- delabM name
     typ' <- delabM typ
     return $ B.FieldDef name' tokElemOf typ'
 
-instance Delaborate V.Annotation B.Decl where
+instance Delaborate V.DefRecordSort B.Decl where
   delabM = \case
-    V.AnnProperty -> return $ delabAnn propertyAnn []
     V.AnnTensor -> return $ delabAnn tensorAnn []
+    V.AnnTypeClass -> return $ delabAnn typeClassAnn []
+
+instance Delaborate V.FunctionDeclAnnotation B.Decl where
+  delabM = \case
     V.AnnInstance -> return $ delabAnn instanceAnn []
+    V.AnnProperty -> return $ delabAnn propertyAnn []
 
 -- | Used for things not in the user-syntax.
 cheatDelab :: Text -> B.Expr
@@ -129,7 +145,7 @@ delabRelevance x = case V.relevanceOf x of
 
 delabRecordAccess :: (MonadDelab m) => V.Expr -> V.FieldName -> m B.Expr
 delabRecordAccess expr fieldName = do
-  let tok = mkToken B.TokRecordAccess ("." <> V.nameOf fieldName)
+  let tok = mkToken B.FieldAccess ("." <> V.nameOf fieldName)
   B.RecordAcc <$> delabM expr <*> pure tok
 
 delabNameBinder :: (MonadDelab m) => V.Binder -> m B.NameBinder
@@ -138,7 +154,7 @@ delabNameBinder b = case V.binderNamingForm b of
     developerError
       "Should not be delaborating the `OnlyType` binder to a `Binder Name`"
   V.NameAndType {} -> B.BasicNameBinder <$> delabM b
-  V.OnlyName name -> do
+  V.OnlyName name _ -> do
     let modalities = delabModalities b
     let finalName = delabSymbol name
     return $ case (V.visibilityOf b, modalities) of
@@ -346,6 +362,13 @@ delabIf args@[arg1, arg2, arg3]
       return $ B.If tokIf e1 tokThen e2 tokElse e3
 delabIf args = cheatDelabPretty V.If args
 
+delabTelescope :: (MonadDelab m) => V.Binder -> V.Expr -> m ([B.NameBinder], B.Expr)
+delabTelescope binder body = do
+  let (foldedBinders, foldedBody) = foldPiBinders binder body
+  binders' <- traverse delabNameBinder (binder : foldedBinders)
+  body' <- delabM foldedBody
+  return (binders', body')
+
 -- | Collapses pi expressions into either a function or a sequence of forall bindings
 delabPi :: (MonadDelab m) => V.Binder -> V.Expr -> m B.Expr
 delabPi binder body = case V.binderNamingForm binder of
@@ -354,10 +377,8 @@ delabPi binder body = case V.binderNamingForm binder of
     body' <- delabM body
     return $ B.Fun binder' tokArrow body'
   _ -> do
-    let (foldedBinders, foldedBody) = foldBinders PiBinder binder body
-    binders' <- traverse delabNameBinder (binder : foldedBinders)
-    body' <- delabM foldedBody
-    return $ B.ForallT tokForallT binders' tokDot body'
+    (binders', body') <- delabTelescope binder body
+    return $ B.ForallT tokForallT binders' body'
 
 -- | Collapses let expressions into a sequence of let declarations
 delabLet :: (MonadDelab m) => V.Expr -> V.Binder -> V.Expr -> m B.Expr
@@ -371,58 +392,87 @@ delabLet bound binder body = do
 -- | Collapses consecutative lambda expressions into a sequence of binders
 delabLam :: (MonadDelab m) => V.Binder -> V.Expr -> m B.Expr
 delabLam binder body = do
-  let (foldedBinders, foldedBody) = foldBinders LamBinder binder body
+  let (foldedBinders, foldedBody) = foldLamBinders binder body
   binders' <- traverse delabNameBinder (binder : foldedBinders)
   body' <- delabM foldedBody
   return $ B.Lam tokLambda binders' tokArrow body'
 
-delabFun :: (MonadDelab m) => V.Identifier -> V.Expr -> V.Expr -> m [B.Decl]
-delabFun name typ expr = do
+delabFunctionDecl ::
+  (MonadDelab m) =>
+  V.Identifier ->
+  LHSBinderCount ->
+  Maybe V.FunctionDeclAnnotation ->
+  V.Expr ->
+  V.Expr ->
+  m [B.Decl]
+delabFunctionDecl name lhsBinderCount maybeAnn typ expr = do
+  annDecls <- maybeToList <$> traverse delabM maybeAnn
   let n' = delabIdentifier name
-  let (binders, body) = foldDeclBinders expr
-  if V.isTypeSynonym typ
-    then do
-      defType <- B.DefType n' <$> traverse delabNameBinder binders <*> delabM body
-      return [defType]
-    else do
-      defType <- B.DefFunType n' tokElemOf <$> delabM typ
-      defExpr <- B.DefFunExpr n' <$> traverse delabNameBinder binders <*> delabM body
-      return [defType, defExpr]
+  let (binders, body) = foldDeclBinders lhsBinderCount expr
+  defType <- B.DefFunType n' tokElemOf <$> delabM typ
+  defExpr <- B.DefFunExpr n' <$> traverse delabNameBinder binders <*> delabM body
+  return $ annDecls <> [defType, defExpr]
+
+delabTypeDecl ::
+  (MonadDelab m) =>
+  V.Identifier ->
+  LHSBinderCount ->
+  V.Expr ->
+  m [B.Decl]
+delabTypeDecl ident binderCount expr = do
+  let (binders, body) = foldDeclBinders binderCount expr
+  let n' = delabIdentifier ident
+  defType <- B.DefType n' <$> traverse delabNameBinder binders <*> delabM body
+  return [defType]
+
+delabRecordDecl ::
+  (MonadDelab m) =>
+  V.Identifier ->
+  Maybe V.DefRecordSort ->
+  V.Telescope ->
+  V.RecordFields ->
+  m [B.Decl]
+delabRecordDecl ident sort telescope fields = do
+  annDecl <- traverse delabM $ maybeToList sort
+  let n' = delabIdentifier ident
+  telescope' <- traverse delabNameBinder telescope
+  fields' <- traverse delabM fields
+  return $ annDecl <> [B.DefRecord n' telescope' fields']
 
 delabQuantifier :: (MonadDelab m) => V.Quantifier -> [V.Arg] -> m B.Expr
 delabQuantifier q args = case reverse args of
-  V.RelevantExplicitArg _ (V.Lam _ binder body) : _ -> do
-    let (foldedBinders, foldedBody) = foldBinders (QuantifierBinder q) binder body
+  V.RelevantExplicitArg (V.Lam _ binder body) : _ -> do
+    let (foldedBinders, foldedBody) = foldQuantifierBinders q binder body
     binders' <- traverse delabNameBinder (binder : foldedBinders)
     body' <- delabM foldedBody
     let mkTk = case q of
           V.Forall -> B.Forall tokForall
           V.Exists -> B.Exists tokExists
-    return $ mkTk binders' tokDot body'
+    return $ mkTk binders' body'
   _ -> cheatDelabPretty q args
 
 delabQuantifierIn :: (MonadDelab m) => V.Quantifier -> [V.Arg] -> m B.Expr
 delabQuantifierIn q args = case reverse args of
-  V.RelevantExplicitArg _ (V.Lam _ binder body) : V.RelevantExplicitArg _ container : _ -> do
+  V.RelevantExplicitArg (V.Lam _ binder body) : V.RelevantExplicitArg container : _ -> do
     binder' <- delabNameBinder binder
     body' <- delabM body
     container' <- delabM container
     let mkTk = case q of
           V.Forall -> B.ForallIn tokForall
           V.Exists -> B.ExistsIn tokExists
-    return $ mkTk binder' container' tokDot body'
+    return $ mkTk binder' container' body'
   _ -> cheatDelabPretty q args
 
 delabForeach :: (MonadDelab m) => [V.Arg] -> m B.Expr
 delabForeach args = case reverse args of
-  V.RelevantExplicitArg _ (V.Lam _ binder body) : _ -> do
-    let (foldedBinders, foldedBody) = foldBinders ForeachBinder binder body
+  V.RelevantExplicitArg (V.Lam _ binder body) : _ -> do
+    let (foldedBinders, foldedBody) = foldForeachBinders binder body
     binders' <- traverse delabNameBinder (binder : foldedBinders)
     body' <- delabM foldedBody
-    return $ B.Foreach tokForeach binders' tokDot body'
+    return $ B.Foreach tokForeach binders' body'
   _ -> cheatDelabPretty V.ForeachTC args
 
-delabRecord :: (MonadDelab m) => [V.RecordField V.Expr] -> m B.Expr
+delabRecord :: (MonadDelab m) => V.RecordFields -> m B.Expr
 delabRecord fields = do
   fields' <- traverse (bitraverse delabM delabM) fields
   return $ B.Record (fmap (uncurry B.FieldAssign) fields')

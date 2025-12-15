@@ -4,9 +4,12 @@ module Vehicle.Backend.Rocq.Compile
   )
 where
 
+import Control.Monad.Except (MonadError (..))
+import Data.Bifunctor (Bifunctor (..))
 import Data.Foldable (fold)
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NonEmpty
+import Data.Maybe (catMaybes)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -15,7 +18,7 @@ import Data.Text.Internal.Read qualified as Text.Read
 import GHC.Real (denominator, numerator)
 import Prettyprinter hiding (hcat, hsep, vcat, vsep)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Prelude hiding (Module)
+import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Data.Builtin.Decidability
 import Vehicle.Data.Builtin.Interface (Accessor (..))
@@ -26,11 +29,6 @@ import Vehicle.Data.Universe (UniverseLevel (..))
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Syntax.Builtin
 import Vehicle.Syntax.Sugar
-  ( BinderType (..),
-    LetBinder,
-    foldBinders,
-    foldDeclBinders,
-  )
 import Vehicle.Syntax.Tensor
   ( Tensor (..),
     TensorShape,
@@ -51,10 +49,9 @@ currentPhase :: Doc ()
 currentPhase = "compilation to Rocq"
 
 compileProgToRocq :: (MonadCompile m) => Prog DecidabilityBuiltin -> RocqOptions -> m (Doc a)
-compileProgToRocq prog options =
+compileProgToRocq prog _options =
   logCompilerSection2 MinDetail currentPhase $ do
-    logDebug MaxDetail $ prettyExternal prog
-    programDoc <- runFreshNameBoundContextT $ compileProg options prog
+    programDoc <- runFreshNameBoundContextT $ compileProg prog
     let programStream = layoutPretty defaultLayoutOptions programDoc
     -- Collects dependencies by first discarding precedence info and then
     -- folding using Set Monoid
@@ -90,7 +87,7 @@ logExit e = do
 
 data Dependency
   = RequireImport Library
-  | Import Module
+  | Import RocqModule
   | Open Scope
   deriving (Eq, Ord)
 
@@ -130,11 +127,11 @@ instance Pretty Library where
     MathcompSsreflectSsrnat -> "mathcomp.ssreflect.ssrnat"
     MathcompSsreflectEqtype -> "mathcomp.ssreflect.eqtype"
 
-data Module
+data RocqModule
   = OrderDef
   deriving (Eq, Ord)
 
-instance Pretty Module where
+instance Pretty RocqModule where
   pretty = \case
     OrderDef -> "Order.Def"
 
@@ -156,7 +153,7 @@ importStatements deps = vsep $ map pretty (Set.toList deps)
 preamble :: Set Dependency -> Code
 preamble deps =
   if Set.member (RequireImport MathcompRealsReals) deps
-    then compilePostulate "R" "realType"
+    then "Parameter" <+> "R" <+> ":" <+> align "realType" <> "."
     else ""
 
 --------------------------------------------------------------------------------
@@ -262,38 +259,86 @@ type MonadRocqCompile m =
 --------------------------------------------------------------------------------
 -- Program Compilation
 
-compileProg :: (MonadRocqCompile m) => RocqOptions -> Prog DecidabilityBuiltin -> m Code
-compileProg opts (Main ds) = vsep2 <$> traverse (compileDecl opts) ds
+compileProg :: (MonadRocqCompile m) => Prog DecidabilityBuiltin -> m Code
+compileProg (Main ds) = do
+  decls <- catMaybes <$> traverse compileDecl ds
+  return $ vsep2 decls
 
-compileDecl :: (MonadRocqCompile m) => RocqOptions -> Decl DecidabilityBuiltin -> m Code
-compileDecl _opts = \case
+compileDecl :: (MonadRocqCompile m) => Decl DecidabilityBuiltin -> m (Maybe Code)
+compileDecl = \case
   DefAbstract _ n _ t ->
-    compilePostulate (compileIdentifier n) <$> compileExpr t
-  DefFunction _ n anns t e -> do
-    let (binders, body) = foldDeclBinders e
-    if isAnnotatedAsProperty anns
-      then compileProperty (compileIdentifier n) <$> compileExpr e
-      else do
-        binders' <- compileTopLevelBinders binders
-        (_, cbody) <- compileBinders binders (compileExpr body)
-        defType <- resolveReturnType binders' t
-        return $ compileFunDef (compileIdentifier n) defType binders' cbody
-  DefRecord _ n _ t fs -> do
-    t' <- compileExpr t
-    fs' <- traverseRecordFields compileExpr fs
-    return $
-      "Record"
-        <+> compileIdentifier n
-        <+> ":"
-        <+> t'
-        <+> ":="
-        <> line
-        <> indent 2 (encloseSep (lbrace <> space) (line <> rbrace) (semi <> space) $ fmap (\(field, fieldType) -> pretty field <+> ":" <+> fieldType) fs')
-        <> "."
+    Just <$> compilePostulate n t
+  DefFunction p n funSort t e -> case funSort of
+    TypeDecl binderCount -> Just <$> compileFunctionDecl n binderCount t e
+    FunctionDecl binderCount Nothing -> Just <$> compileFunctionDecl n binderCount t e
+    FunctionDecl _ (Just AnnProperty) -> Just <$> compileProperty n e
+    FunctionDecl _ (Just AnnInstance) -> throwError $ UnimplementedFeature p "Compiling instances to Rocq"
+    ProjectionDecl {} -> return Nothing
+  DefRecord p n _ telescope fields ->
+    Just <$> compileRecordDecl p n telescope fields
+
+compileFunctionDecl ::
+  (MonadRocqCompile m) =>
+  Identifier ->
+  LHSBinderCount ->
+  Type DecidabilityBuiltin ->
+  Expr DecidabilityBuiltin ->
+  m Code
+compileFunctionDecl ident binderCount t e = do
+  let (binders, body) = extractDeclBinders binderCount t e
+  binders' <- compileTopLevelBinders binders
+  (_, cbody) <- compileBinders binders (compileExpr body)
+  defType <- resolveReturnType binders' t
+  return $ compileFunDef (compileIdentifier ident) defType binders' cbody
+
+compileRecordDecl ::
+  (MonadRocqCompile m) =>
+  Provenance ->
+  Identifier ->
+  Telescope DecidabilityBuiltin ->
+  RecordFields DecidabilityBuiltin ->
+  m Code
+compileRecordDecl p ident telescope fields = do
+  t' <-
+    if null telescope
+      then return (compileType 0)
+      else throwError $ UnimplementedFeature p "Compiling parameterised records to Rocq"
+  fs' <- traverseRecordFields compileExpr fields
+  return $
+    "Record"
+      <+> compileIdentifier ident
+      <+> ":"
+      <+> t'
+      <+> ":="
+      <> line
+      <> indent 2 (encloseSep (lbrace <> space) (line <> rbrace) (semi <> space) $ fmap (\(field, fieldType) -> pretty field <+> ":" <+> fieldType) fs')
+      <> "."
+
+extractDeclBinders ::
+  LHSBinderCount ->
+  Type DecidabilityBuiltin ->
+  Expr DecidabilityBuiltin ->
+  ([Binder DecidabilityBuiltin], Expr DecidabilityBuiltin)
+extractDeclBinders binderCount typ expr
+  | binderCount == 0 = ([], expr)
+  | otherwise = case (typ, expr) of
+      (Pi _ piBinder piBody, Lam _ lamBinder lamBody) -> do
+        -- We want the name from the lambda binder and the type from the
+        -- pi binder as this is usually what the user will write.
+        let compositeBinder = replaceBinderType (typeOf piBinder) lamBinder
+        first (compositeBinder :) (extractDeclBinders (binderCount - 1) piBody lamBody)
+      (_, _) -> ([], expr)
 
 -- | Compile a 'network' declaration
-compilePostulate :: Code -> Code -> Code
-compilePostulate name t = "Parameter" <+> name <+> ":" <+> align t <> "."
+compilePostulate ::
+  (MonadRocqCompile m) =>
+  Identifier ->
+  Type DecidabilityBuiltin ->
+  m Code
+compilePostulate ident t = do
+  let name = compileIdentifier ident
+  typ <- compileExpr t
+  return $ "Parameter" <+> name <+> ":" <+> align typ <> "."
 
 compileExpr :: (MonadRocqCompile m) => Expr DecidabilityBuiltin -> m Code
 compileExpr expr = do
@@ -312,7 +357,7 @@ compileExpr expr = do
         cOutput <- addNameToContext binder $ compileExpr result
         return $ annotate ([], 99) $ cInput <+> "->" <+> cOutput
       _ -> do
-        let (binders, body) = foldBinders PiBinder binder result
+        let (binders, body) = foldPiBinders binder result
         compileTypeLevelQuantifier Forall (binder :| binders) body
     Let _ bound binder body -> do
       cBoundExpr <- compileLetBinder (binder, bound)
@@ -324,7 +369,7 @@ compileExpr expr = do
     Record _p _i fs -> do
       fs' <- traverse compileRecordField fs
       return $ encloseSep (lbrace <> "|" <> space) (space <> "|" <> rbrace) (semi <> space) fs'
-    RecordAcc _p r (_i, field) -> annotateNotation [] 200 ("$0.(" <> nameOf field <> ")") (Just $ nameOf field) [explicit r]
+    RecordProj _p _t r field -> annotateNotation [] 200 ("$0.(" <> nameOf field <> ")") (Just $ nameOf field) [explicit r]
   logExit result
   return result
 
@@ -347,9 +392,11 @@ compileLetBinder (binder, expr) = do
 compileIdentifier :: Identifier -> Code
 compileIdentifier ident = pretty (nameOf ident :: Name)
 
-compileProperty :: Code -> Code -> Code
-compileProperty propertyName propertyBody =
-  "Axiom" <+> propertyName <+> ":" <+> propertyBody <> "."
+compileProperty :: (MonadRocqCompile m) => Identifier -> Expr DecidabilityBuiltin -> m Code
+compileProperty ident expr = do
+  let propertyName = compileIdentifier ident
+  propertyBody <- compileExpr expr
+  return $ "Axiom" <+> propertyName <+> ":" <+> propertyBody <> "."
 
 compileTopLevelBinders :: (MonadRocqCompile m) => [Binder DecidabilityBuiltin] -> m [Code]
 compileTopLevelBinders [] = return []
@@ -380,9 +427,9 @@ compileBinder :: (MonadRocqCompile m) => Binder DecidabilityBuiltin -> m Code
 compileBinder binder = do
   binderType <- compileExpr (typeOf binder)
   (binderDoc, noExplicitBrackets) <- case binderNamingForm binder of
-    OnlyName name -> return (pretty name, True)
+    OnlyName name _ -> return (pretty name, True)
     OnlyType -> return (binderType, True)
-    NameAndType name -> do
+    NameAndType name _ -> do
       let annName = annotate (Set.empty, minPrecedence) (pretty name <+> ":" <+> binderType)
       return (annName, False)
 
@@ -392,7 +439,7 @@ resolveReturnType :: (MonadRocqCompile m) => [Code] -> Expr DecidabilityBuiltin 
 resolveReturnType (_ : bs) (Pi _ binder r) = addNameToContext binder $ resolveReturnType bs r
 resolveReturnType _ e = compileExpr e
 
-compileRecordField :: (MonadRocqCompile m) => RecordField (Expr DecidabilityBuiltin) -> m Code
+compileRecordField :: (MonadRocqCompile m) => GenericRecordField (Expr DecidabilityBuiltin) -> m Code
 compileRecordField (field, fieldValue) = do
   fieldValue' <- compileExpr fieldValue
   return $ pretty field <+> ":=" <+> fieldValue'
@@ -458,7 +505,7 @@ compileBuiltin b args = case b of
     ReduceMulRatTensor -> annotateApp [] "reduceMul" args
     ConstTensor -> annotateApp [RequireImport VehicleTensor] "const_t" args
     QuantifyRatTensor q -> case reverse args of
-      (ExplicitArg _ _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier q [binder] body
+      (ExplicitArg _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier q [binder] body
       _ -> unsupportedArgsError
     AtTensor -> annotateNotation [RequireImport VehicleTensor] 201 "$0^^$1" (Just "nindex") args
     If -> annotateNotation [RequireImport MathcompSsreflectSsrbool] minPrecedence "if $0 then $1 else $2" Nothing args
@@ -604,7 +651,7 @@ compileRatLiteral r = parens $ annotate ([RequireImport MathcompRealsReals, Requ
 
 compileLam :: (MonadRocqCompile m) => Binder DecidabilityBuiltin -> Expr DecidabilityBuiltin -> m Code
 compileLam binder expr = do
-  let (binders, body) = foldBinders LamBinder binder expr
+  let (binders, body) = foldLamBinders binder expr
   (cBinders, cBody) <- compileBinders (binder : binders) (compileExpr body)
   return $ annotate (mempty, minPrecedence) ("fun" <+> hsep cBinders <+> "=>" <+> cBody)
 

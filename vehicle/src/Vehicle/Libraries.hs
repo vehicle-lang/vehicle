@@ -1,95 +1,127 @@
-{-# LANGUAGE CPP #-}
-{-# OPTIONS_GHC -Wno-unused-top-binds #-}
-
 module Vehicle.Libraries
   ( LibraryName,
-    LibraryInfo (..),
     Library (..),
-    findModuleFile,
+    resolveLibrary,
+    getLibraryPath,
+    ensureLatestVersionOfLibraryInstalled,
   )
 where
 
 import Control.Exception
 import Control.Monad (forM_, unless)
+import Control.Monad.Except (MonadError (..), runExceptT)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.Aeson (decode)
 import Data.Aeson.Encode.Pretty (encodePretty)
+import Data.Bifunctor (Bifunctor (..))
 import Data.ByteString.Lazy qualified as BIO
 import Data.Map qualified as Map
 import Data.Text (Text)
 import Data.Text.IO qualified as TIO
 import System.Directory (createDirectoryIfMissing)
-import System.FilePath (joinPath, (<.>), (</>))
+import System.FilePath (takeDirectory, (</>))
 import Vehicle.Libraries.Core
 import Vehicle.Prelude
 import Vehicle.Prelude.Logging
 
-installLibrary :: (MonadIO m, MonadLogger m) => Library -> m ()
-installLibrary Library {..} = do
-  let name = libraryName libraryInfo
-  logCompilerSection2 MidDetail "installing library" $ do
+resolveLibrary :: (MonadIO m, MonadLogger m) => LibraryName -> m ResolvedLibrary
+resolveLibrary libraryName = do
+  logCompilerSection2 MinDetail ("resolving library" <+> quotePretty libraryName) $ do
+    libraryFolder <- getLibraryPath libraryName
+
+    -- Read the library file
+    errorOrLibrary <- readLibraryFile libraryFolder
+    library <- case errorOrLibrary of
+      Left err -> developerError err
+      Right library -> return library
+
+    -- Enumerate the modules within it
+    let moduleMapping = fmap (\m -> (m, calculateModuleFilePath libraryFolder m)) (libraryModules library)
+
+    logDebug MaxDetail $
+      "Found modules:"
+        <> lineIndent (prettyMapEntries $ fmap (bimap pretty pretty) moduleMapping)
+
+    return $ ResolvedLibrary moduleMapping
+
+getLibraryPath :: (MonadIO m) => LibraryName -> m FilePath
+getLibraryPath name = do
+  vehiclePath <- getVehiclePath
+  return $ vehiclePath </> "libraries" </> name
+
+readLibraryFile :: (MonadIO m) => FilePath -> m (Either UnAnnDoc Library)
+readLibraryFile libraryFolder = runExceptT $ do
+  let libraryFile = calculateLibraryFilePath libraryFolder
+  errorOrByteString <- liftIO $ catch (Right <$> BIO.readFile libraryFile) (\(e :: IOException) -> return $ Left e)
+  case errorOrByteString of
+    Left err ->
+      throwError $
+        "Unable to find or read library file"
+          <+> quotePretty libraryFile
+          <+> ":"
+          <> lineIndent (pretty $ show err)
+    Right byteString -> case decode byteString of
+      Nothing ->
+        throwError $
+          "Unabled to decode library file"
+            <+> quotePretty libraryFile
+            <> "."
+      Just plan -> return plan
+
+installLibrary :: (MonadIO m, MonadLogger m) => Library -> LibraryContent -> m ()
+installLibrary library@Library {..} libraryContent = do
+  let name = libraryName
+  logCompilerSection2 MinDetail ("installing library" <+> quotePretty libraryName) $ do
     libraryFolder <- getLibraryPath name
     liftIO $ createDirectoryIfMissing True libraryFolder
 
     -- Write the library info file out
-    let libraryInfoFile = getLibraryInfoFile libraryFolder
-    let libraryInfoFileContent = encodePretty libraryInfo
+    let libraryInfoFile = calculateLibraryFilePath libraryFolder
+    let libraryInfoFileContent = encodePretty library
     liftIO $ BIO.writeFile libraryInfoFile libraryInfoFileContent
 
     -- Write the modules in the library out
     forM_ (Map.toList libraryContent) $
       installModule libraryFolder
 
-installModule :: (MonadIO m, MonadLogger m) => FilePath -> (Module, Text) -> m ()
+installModule :: (MonadIO m, MonadLogger m) => FilePath -> (ModulePath, Text) -> m ()
 installModule libraryFolder (modul, content) = do
-  let libraryContentFile = libraryFolder </> moduleFilePath modul
+  let libraryContentFile = calculateModuleFilePath libraryFolder modul
   logDebug MidDetail $ "Installing" <+> quotePretty modul <+> "to" <+> quotePretty libraryContentFile
+  liftIO $ createDirectoryIfMissing True (takeDirectory libraryContentFile)
   liftIO $ TIO.writeFile libraryContentFile content
 
--- | Finds the file path to the requested module.
-findModuleFile :: (MonadIO m, MonadLogger m) => Library -> Module -> m FilePath
-findModuleFile library modul = do
-  libraryFolder <- ensureLatestVersionOfLibraryInstalled library
-  ensureLatestVersionOfModuleInstalled library modul
-  return $ libraryFolder </> moduleFilePath modul
-
 -- | Checks that the library is up-to-date and if not, installs the latest one.
-ensureLatestVersionOfLibraryInstalled :: (MonadIO m, MonadLogger m) => Library -> m FilePath
-ensureLatestVersionOfLibraryInstalled library@Library {..} = do
-  let name = libraryName libraryInfo
-  libraryFolder <- getLibraryPath name
-
+ensureLatestVersionOfLibraryInstalled ::
+  (MonadIO m, MonadLogger m) =>
+  Library ->
+  LibraryContent ->
+  m ()
+ensureLatestVersionOfLibraryInstalled library libraryContent = do
   -- Check the library info file and see if it's up to date
-  let libraryInfoFile = getLibraryInfoFile libraryFolder
-  errorOrContents <-
-    liftIO $
-      catch
-        (Right <$> BIO.readFile libraryInfoFile)
-        (\(e :: IOException) -> return (Left e))
+  libraryUpToDate <- do
+    libraryFolder <- getLibraryPath (libraryName library)
 
-  libraryUpToDate <- case errorOrContents of
-    Left _err -> do
-      logDebug MidDetail $ "Unable to find or read" <+> quotePretty libraryInfoFile
-      return False
-    Right contents -> case decode contents of
-      Nothing -> do
-        logDebug MidDetail $ "Unable to decode contents of" <+> quotePretty libraryInfoFile
+    errorOrContents <- readLibraryFile libraryFolder
+    case errorOrContents of
+      Left err -> do
+        logDebug MidDetail err
         return False
-      Just actualInfo -> do
-        let actualVersion = libraryVersion actualInfo
-        let expectedVersion = libraryVersion libraryInfo
+      Right actualLibrary -> do
+        let actualVersion = libraryVersion actualLibrary
+        let expectedVersion = libraryVersion library
         let versionsMatch = actualVersion == expectedVersion
 
         logDebug MidDetail $
           if versionsMatch
             then
               "Found up-to-date installed version of"
-                <+> quotePretty name
+                <+> quotePretty (libraryName library)
                 <+> "at"
                 <+> quotePretty libraryFolder
             else
               "Installed version of"
-                <+> quotePretty name
+                <+> quotePretty (libraryName library)
                 <+> parens (pretty actualVersion)
                 <+> "does not match latest version"
                 <+> parens (pretty expectedVersion)
@@ -98,32 +130,4 @@ ensureLatestVersionOfLibraryInstalled library@Library {..} = do
 
   -- If not update to date then reinstall
   unless libraryUpToDate $ do
-    installLibrary library
-
-  return libraryFolder
-
-moduleFilePath :: Module -> FilePath
-moduleFilePath (Module names) = joinPath names <.> specificationFileExtension
-
-#ifdef releaseBuild
-ensureLatestVersionOfModuleInstalled :: (MonadLogger m, MonadIO m) => Library -> Module -> m ()
-ensureLatestVersionOfModuleInstalled _library _modul = return ()
-#else
--- If non-release build then check that the file actually matches as well
--- in case the developer has changed them.
-ensureLatestVersionOfModuleInstalled :: (MonadLogger m, MonadIO m) => Library -> Module -> m ()
-ensureLatestVersionOfModuleInstalled Library {..} modul = do
-  libraryFolder <- getLibraryPath (libraryName libraryInfo)
-
-  expectedFileContents <- case Map.lookup modul libraryContent of
-    Nothing -> developerError ("Missing module" <+> quotePretty modul)
-    Just expectedContents -> return expectedContents
-
-  matchesExpectedContents <- liftIO $ handle (\(_e :: IOException) -> return False) $ do
-    actualFileContents <- TIO.readFile (libraryFolder </> moduleFilePath modul)
-    return $ actualFileContents == expectedFileContents
-
-  unless matchesExpectedContents $ do
-    logDebug MidDetail $ "Found dirty copy of" <+> quotePretty (moduleFilePath modul)
-    installModule libraryFolder (modul, expectedFileContents)
-#endif
+    installLibrary library libraryContent

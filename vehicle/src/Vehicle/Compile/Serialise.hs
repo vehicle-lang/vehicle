@@ -11,10 +11,11 @@ import GHC.Generics (Generic)
 import System.FilePath (dropExtension)
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Standard
+import Vehicle.Data.Code.ModuleInterface (ModuleInterface)
 
 data ObjectFileContents = ObjectFileContents
   { fileHash :: Int,
-    typeResult :: Prog Builtin
+    moduleInterface :: ModuleInterface Builtin
   }
   deriving (Generic)
 
@@ -27,8 +28,8 @@ getObjectFileFromSpecificationFile specFile =
 readObjectFile ::
   (MonadLogger m, MonadIO m) =>
   FilePath ->
-  SpecificationText ->
-  m (Maybe (Prog Builtin))
+  ModuleText ->
+  m (Maybe (ModuleInterface Builtin))
 readObjectFile specificationFile spec = do
   let interfaceFile = getObjectFileFromSpecificationFile specificationFile
   errorOrContents <- readAndDecodeVersioned interfaceFile
@@ -66,13 +67,13 @@ readObjectFile specificationFile spec = do
           return Nothing
       | otherwise -> do
           logDebug MinDetail $ "Loaded interface file for" <+> quotePretty specificationFile
-          return $ Just typeResult
+          return $ Just moduleInterface
 
 writeObjectFile ::
   (MonadIO m) =>
   FilePath ->
-  SpecificationText ->
-  Prog Builtin ->
+  ModuleText ->
+  ModuleInterface Builtin ->
   m ()
 writeObjectFile specificationFile spec result = do
   let interfaceFile = getObjectFileFromSpecificationFile specificationFile

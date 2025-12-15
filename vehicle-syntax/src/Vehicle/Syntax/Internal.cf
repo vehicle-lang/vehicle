@@ -33,6 +33,8 @@ ExplicitBinder. Binder ::= "(" [Modality] NameToken ":" Expr ")";
 ImplicitBinder. Binder ::= "{" [Modality] NameToken ":" Expr "}";
 InstanceBinder. Binder ::= "{{" [Modality] NameToken ":" Expr "}}";
 
+separator Binder "";
+
 -- * Function arguments
 
 ExplicitArg. Arg ::= [Modality] Expr1;
@@ -78,10 +80,10 @@ DeclParam.     Decl ::= "(" "declare-parameter"      NameToken Expr1 ")";
 DeclImplParam. Decl ::= "(" "declare-impl-parameter" NameToken Expr1 ")";
 DeclPost.      Decl ::= "(" "declare-postulate"      NameToken Expr1 ")";
 DefFun.        Decl ::= "(" "define-fun"             NameToken Expr1 Expr1 ")";
-DefRecord.     Decl ::= "(" "define-record"          NameToken [RecordField] ")";
+DefRecord.     Decl ::= "(" "define-record"          NameToken [Binder] [RecordField] ")";
 
 separator Decl "";
 
 -- * Program
 
-Main. Prog ::= "(" [Decl] ")";
+Main. Module ::= "(" [Decl] ")";

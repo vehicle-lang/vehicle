@@ -3,7 +3,6 @@
 module Vehicle.Data.Builtin.Linearity where
 
 import Control.DeepSeq (NFData (..))
-import Data.Hashable (Hashable (..))
 import Data.List.NonEmpty
 import Data.Serialize (Serialize)
 import Data.Text (Text)
@@ -26,18 +25,12 @@ data LinearityProof
   = QuantifiedVariableProvenance Provenance Text
   | NetworkOutputProvenance Provenance Text
   | LinFunctionProvenance Provenance LinearityProof FunctionPosition
-  deriving (Show, Generic)
+  deriving (Eq, Ord, Show, Generic)
 
 instance Serialize LinearityProof
 
-instance Eq LinearityProof where
-  _x == _y = True
-
 instance NFData LinearityProof where
   rnf _x = ()
-
-instance Hashable LinearityProof where
-  hashWithSalt s _p = s
 
 --------------------------------------------------------------------------------
 -- NonLinearity
@@ -52,7 +45,7 @@ data NonLinearityProof
     PowLinearBase Provenance LinearityProof
   | -- | An power where the exponent is linear
     PowLinearExponent Provenance LinearityProof
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Ord, Show, Generic)
 
 instance Pretty NonLinearityProof where
   pretty = \case
@@ -62,8 +55,6 @@ instance Pretty NonLinearityProof where
     PowLinearExponent {} -> "?^X"
 
 instance NFData NonLinearityProof
-
-instance Hashable NonLinearityProof
 
 instance Serialize NonLinearityProof
 
@@ -76,11 +67,9 @@ data Linearity
   = Constant
   | Linear LinearityProof
   | NonLinear NonLinearityProof
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Ord, Show, Generic)
 
 instance NFData Linearity
-
-instance Hashable Linearity
 
 instance Serialize Linearity
 
@@ -111,13 +100,11 @@ data LinearityRelation
   | PowLinearity Provenance
   | FunctionLinearity FunctionPosition
   | QuantifierLinearity Quantifier
-  deriving (Eq, Generic, Show)
+  deriving (Eq, Ord, Generic, Show)
 
 instance Serialize LinearityRelation
 
 instance NFData LinearityRelation
-
-instance Hashable LinearityRelation
 
 instance Pretty LinearityRelation where
   pretty = \case
@@ -136,9 +123,7 @@ data LinearityBuiltin
   | LinearityFunction BuiltinFunction
   | Linearity Linearity
   | LinearityRelation LinearityRelation
-  deriving (Show, Eq, Generic)
-
-instance Hashable LinearityBuiltin
+  deriving (Show, Eq, Ord, Generic)
 
 instance Pretty LinearityBuiltin where
   pretty = \case
@@ -190,8 +175,8 @@ instance BuiltinHasNatLiterals LinearityBuiltin where
         mkExpr = LinearityConstructor . NatTensorLiteral
       }
 
-  accessAddNatBuiltin = functionAccessor (Add AddNat)
-  accessMulNatBuiltin = functionAccessor (Mul MulNat)
+  accessAddNatBuiltin = functionAccessor $ Add AddNat
+  accessMulNatBuiltin = functionAccessor $ Mul MulNat
 
 instance BuiltinHasListLiterals LinearityBuiltin where
   accessNilBuiltin =

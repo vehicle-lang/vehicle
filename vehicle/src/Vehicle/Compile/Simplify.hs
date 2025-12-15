@@ -22,7 +22,7 @@ class Simplify a where
   -- | Shortens vectors
   shortenVec :: a -> a
 
-instance Simplify Prog where
+instance Simplify Module where
   clean = fmap clean
   shortenVec = fmap shortenVec
 
@@ -45,7 +45,7 @@ instance Simplify Expr where
                 normAppList
                   fun
                   [ firstArg,
-                    Arg p Explicit Relevant (Var p ("<" <> n2 <> " more>")),
+                    Arg Explicit Relevant (Var p ("<" <> n2 <> " more>")),
                     lastArg
                   ]
             where
@@ -115,7 +115,7 @@ wasInserted arg = case visibilityOf arg of
 
 delabTensorType :: [Arg] -> Expr
 delabTensorType = \case
-  [Arg _ _ _ tElem, Arg _ _ _ dim] | isNil dim -> tElem
+  [tElem, dim] | isNil (argExpr dim) -> argExpr tElem
   args -> normAppList (Builtin mempty (BuiltinType TensorType)) args
   where
     isNil :: Expr -> Bool

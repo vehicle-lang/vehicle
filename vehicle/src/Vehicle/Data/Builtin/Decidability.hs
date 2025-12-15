@@ -19,7 +19,6 @@ import Vehicle.Data.Tensor (BoolTensor, anyTensor)
 import Vehicle.Prelude (Pretty (..), Relevance (..), Visibility (..), developerError, explicit, (<+>))
 import Vehicle.Syntax.Builtin.BasicOperations
 import Vehicle.Syntax.Builtin.Derived (DerivedFunction (..))
-import Vehicle.Syntax.Sugar (BinderType (..))
 
 --------------------------------------------------------------------------------
 -- Data
@@ -113,7 +112,7 @@ data DecidabilityBuiltin
   | DecidabilityBuiltinTypeClass DecidabilityBuiltinTypeClass
   | DecidabilityBuiltinTypeClassOp DecidabilityBuiltinTypeClassOp
   | DecidabilityBuiltinFunction DecidabilityBuiltinFunction
-  deriving (Show, Eq, Generic)
+  deriving (Show, Ord, Eq, Generic)
 
 instance Hashable DecidabilityBuiltin
 
@@ -205,13 +204,6 @@ instance BuiltinHasListLiterals DecidabilityBuiltin where
 
   accessMapListBuiltin = functionAccessor MapList
   accessFoldListBuiltin = functionAccessor FoldList
-
-instance BuiltinHasBinders DecidabilityBuiltin where
-  getBuiltinBinder = \case
-    StandardBuiltinFunction ForeachTensor -> Just ForeachBinder
-    StandardBuiltinFunction ForeachVector -> Just ForeachBinder
-    StandardBuiltinFunction (QuantifyRatTensor q) -> Just $ QuantifierBinder q
-    _ -> Nothing
 
 instance BuiltinHasIterate DecidabilityBuiltin where
   accessIterateBuiltin = functionAccessor Iterate

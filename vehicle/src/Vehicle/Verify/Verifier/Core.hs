@@ -110,7 +110,7 @@ convertVerificationError Verifier {..} (propertyAddress, queryID) = \case
             <+> "was incomplete."
             <+> "In particular, values for the following variables were not provided:"
             <> line
-            <> indent 2 (prettySet missingVariables)
+            <> indent 2 (prettySet pretty missingVariables)
       }
   where
     verifierDoc = pretty verifierID <+> "verifier"

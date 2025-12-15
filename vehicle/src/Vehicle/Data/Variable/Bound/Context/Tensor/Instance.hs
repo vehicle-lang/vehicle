@@ -98,8 +98,8 @@ instance (Monad m) => MonadTensorBoundContext (TensorBoundContextT m) where
       localState (appendTensorVariableToNestedCtx (void binder) (knownPrefix partialShape)) $
         unTensorBoundContextT action
 
-  addTensorBinderToContextPermenantly name shape = do
+  addTensorBinderToContextPermenantly p name shape = do
     lv <- getBinderDepth
     TensorBoundContextT $ do
-      modify (appendTensorVariableToNestedCtx (mkExplicitBinder () (Just name)) shape)
+      modify (appendTensorVariableToNestedCtx (mkExplicitBinder () (Just (p, name))) shape)
       return $ NestedSliceVariable shape (SliceVariable lv)

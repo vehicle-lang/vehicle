@@ -6,7 +6,7 @@ import Data.Ord (Down (..), comparing)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text qualified as Text
-import Vehicle.Compile.Prelude (getBinderName)
+import Vehicle.Compile.Prelude.Utils (getNamedBinderInfo)
 import Vehicle.Data.Tensor
 import Vehicle.Data.Variable.Bound.Context.Core (GenericBoundCtx, boundCtxLv)
 import Vehicle.Data.Variable.Bound.Context.Name.Core
@@ -67,7 +67,7 @@ appendTensorVariableToNestedCtx ::
 appendTensorVariableToNestedCtx binder shape (NestedTensorVariableCtx ctx nameCtx) = do
   let var = NestedSliceVariable shape (SliceVariable $ boundCtxLv nameCtx)
   let newCtx = (binder, Just var) : ctx
-  let newNameCtx = variableNamesForAllSlices (getBinderName binder) shape <> nameCtx
+  let newNameCtx = variableNamesForAllSlices (fst $ getNamedBinderInfo binder) shape <> nameCtx
   NestedTensorVariableCtx newCtx newNameCtx
 
 variableNamesForAllSlices :: Name -> TensorShape -> [Name]

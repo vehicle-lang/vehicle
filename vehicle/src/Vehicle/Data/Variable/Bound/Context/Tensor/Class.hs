@@ -16,7 +16,7 @@ import Vehicle.Data.Variable.Bound.Context.Generic.Core
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Bound.Context.Tensor.Core
 import Vehicle.Data.Variable.Bound.Level
-import Vehicle.Prelude (GenericBinder, Name, Pretty (..), SupplyT, developerError, mapSupplyT, (<+>))
+import Vehicle.Prelude (GenericBinder, Name, Pretty (..), Provenance, SupplyT, developerError, mapSupplyT, (<+>))
 import Vehicle.Prelude.Logging.Class
 
 --------------------------------------------------------------------------------
@@ -152,34 +152,34 @@ lookupTensorVariableShrunkenLv var = do
 class (MonadReadableTensorBoundContext m) => MonadTensorBoundContext m where
   addNonTensorBinderToContext :: VBinder Builtin -> m a -> m a
   addTensorBinderToContext :: VDims Builtin -> VBinder Builtin -> m a -> m a
-  addTensorBinderToContextPermenantly :: Name -> TensorShape -> m NestedSliceVariable
+  addTensorBinderToContextPermenantly :: Provenance -> Name -> TensorShape -> m NestedSliceVariable
 
 instance (Monoid w, MonadTensorBoundContext m) => MonadTensorBoundContext (WriterT w m) where
   addNonTensorBinderToContext = mapWriterT . addNonTensorBinderToContext
   addTensorBinderToContext dims binder = mapWriterT (addTensorBinderToContext dims binder)
-  addTensorBinderToContextPermenantly dims binder = lift (addTensorBinderToContextPermenantly dims binder)
+  addTensorBinderToContextPermenantly p dims binder = lift (addTensorBinderToContextPermenantly p dims binder)
 
 instance (MonadTensorBoundContext m) => MonadTensorBoundContext (ReaderT w m) where
   addNonTensorBinderToContext = mapReaderT . addNonTensorBinderToContext
   addTensorBinderToContext dims binder = mapReaderT (addTensorBinderToContext dims binder)
-  addTensorBinderToContextPermenantly dims binder = lift (addTensorBinderToContextPermenantly dims binder)
+  addTensorBinderToContextPermenantly p dims binder = lift (addTensorBinderToContextPermenantly p dims binder)
 
 instance (MonadTensorBoundContext m) => MonadTensorBoundContext (ExceptT e m) where
   addNonTensorBinderToContext = mapExceptT . addNonTensorBinderToContext
   addTensorBinderToContext dims binder = mapExceptT (addTensorBinderToContext dims binder)
-  addTensorBinderToContextPermenantly dims binder = lift (addTensorBinderToContextPermenantly dims binder)
+  addTensorBinderToContextPermenantly p dims binder = lift (addTensorBinderToContextPermenantly p dims binder)
 
 instance (MonadTensorBoundContext m) => MonadTensorBoundContext (StateT e m) where
   addNonTensorBinderToContext = mapStateT . addNonTensorBinderToContext
   addTensorBinderToContext dims binder = mapStateT (addTensorBinderToContext dims binder)
-  addTensorBinderToContextPermenantly dims binder = lift (addTensorBinderToContextPermenantly dims binder)
+  addTensorBinderToContextPermenantly p dims binder = lift (addTensorBinderToContextPermenantly p dims binder)
 
 instance (MonadTensorBoundContext m) => MonadTensorBoundContext (SupplyT e m) where
   addNonTensorBinderToContext = mapSupplyT . addNonTensorBinderToContext
   addTensorBinderToContext dims binder = mapSupplyT (addTensorBinderToContext dims binder)
-  addTensorBinderToContextPermenantly dims binder = lift (addTensorBinderToContextPermenantly dims binder)
+  addTensorBinderToContextPermenantly p dims binder = lift (addTensorBinderToContextPermenantly p dims binder)
 
 instance (MonadTensorBoundContext m) => MonadTensorBoundContext (MaybeTrivialT m) where
   addNonTensorBinderToContext = mapMaybeTrivialT . addNonTensorBinderToContext
   addTensorBinderToContext dims binder = mapMaybeTrivialT (addTensorBinderToContext dims binder)
-  addTensorBinderToContextPermenantly dims binder = lift (addTensorBinderToContextPermenantly dims binder)
+  addTensorBinderToContextPermenantly p dims binder = lift (addTensorBinderToContextPermenantly p dims binder)

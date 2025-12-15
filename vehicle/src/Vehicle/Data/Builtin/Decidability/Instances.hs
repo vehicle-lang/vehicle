@@ -17,7 +17,7 @@ import Vehicle.Data.Code.DSL
 import Vehicle.Data.DSL
 
 decidabilityBuiltinInstances :: InstanceDatabase DecidabilityBuiltin
-decidabilityBuiltinInstances = makeInstanceDatabase allInstances mempty
+decidabilityBuiltinInstances = makeInstanceDatabase allInstances
 
 -- Manually declared here as we have no way of declaring them in the language
 -- itself.

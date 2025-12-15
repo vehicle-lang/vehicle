@@ -29,6 +29,8 @@ module Vehicle.Compile.Type.Monad
     setInstanceConstraints,
     setUnificationConstraints,
     addUnificationConstraints,
+    TelescopeType (..),
+    instantiateTelescope,
     -- Other
     clearMetaCtx,
     logUnsolvedUnknowns,
@@ -40,7 +42,6 @@ where
 import Control.Monad (when)
 import Control.Monad.Except (MonadError (..), runExceptT)
 import Control.Monad.Trans.Except (ExceptT)
-import Data.Hashable (Hashable)
 import Data.List (partition, sortOn)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (isJust)
@@ -56,21 +57,28 @@ import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Meta.Variable (MetaInfo (..), addMetaSolution)
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Compile.Type.Monad.Instance
+import Vehicle.Data.Builtin.Interface.Normalise (NormalisableBuiltin)
 import Vehicle.Data.Builtin.Interface.Print (PrintableBuiltin)
 import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin (..))
+import Vehicle.Data.Code.ModuleInterface
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Variable.Bound.Context.Generic
-import Vehicle.Data.Variable.Free.Context
 
 runTypeCheckerTInitially ::
-  (Monad m, Hashable builtin) =>
-  FreeCtx builtin ->
+  (Monad m, TypableBuiltin builtin) =>
   InstanceDatabase builtin ->
+  ImportedModuleContext builtin ->
   TypeCheckerT builtin m a ->
-  m a
-runTypeCheckerTInitially freeCtx instanceDatabase e = do
-  let state = emptyTypeCheckerState {instanceCandidates = instanceDatabase}
-  fst <$> runTypeCheckerT freeCtx state e
+  m (a, ModuleTypingInterface builtin, FreeEnv builtin)
+runTypeCheckerTInitially builtinInstances importedCtx e = do
+  let state = emptyTypeCheckerState builtinInstances importedCtx
+  (result, internalState) <- runTypeCheckerT state e
+  -- Remove the instance database again so it doesn't get propagated.
+  let finalInterface =
+        (currentModuleInterface internalState)
+          { instanceDatabase = emptyInstanceDatabase
+          }
+  return (result, finalInterface, currentFreeEnv internalState)
 
 -- | Runs a hypothetical computation in the type-checker,
 -- returning the resulting state of the type-checker.
@@ -81,9 +89,8 @@ runTypeCheckerTHypothetically ::
   m (Either CompileError (a, TypeCheckerState builtin))
 runTypeCheckerTHypothetically e = do
   callDepth <- getCallDepth
-  freeCtx <- getFreeCtx (Proxy @builtin)
   state <- getTypeCheckerState
-  result <- runExceptT $ runTypeCheckerT freeCtx state e
+  result <- runExceptT $ runTypeCheckerT state e
   case result of
     Right value -> return $ Right value
     Left err -> case err of
@@ -99,7 +106,7 @@ adoptHypotheticalState = modifyTypeCheckerState . const
 
 freshMetaExpr ::
   forall builtin m.
-  (MonadTypeChecker builtin m) =>
+  (MonadTypeChecker builtin m, TypableBuiltin builtin) =>
   Provenance ->
   Type builtin ->
   BoundCtx (Type builtin) ->
@@ -144,7 +151,7 @@ createFreshApplicationConstraint ctx problem blockingMetas = do
 -- derived from another constraint).
 createFreshInstanceConstraint ::
   forall builtin m.
-  (MonadTypeChecker builtin m) =>
+  (MonadTypeChecker builtin m, NormalisableBuiltin builtin) =>
   Bool ->
   BoundCtx (Type builtin) ->
   Provenance ->
@@ -200,7 +207,7 @@ parseInstanceGoal originalValue = go [] originalValue
 
 solveMeta ::
   forall builtin m.
-  (MonadTypeChecker builtin m) =>
+  (MonadTypeChecker builtin m, NormalisableBuiltin builtin) =>
   MetaID ->
   Expr builtin ->
   BoundCtx (Type builtin) ->
@@ -232,11 +239,10 @@ solveMeta meta solution solutionCtx = do
           <+> "as"
           <+> prettyExternal (WithContext solution (toNamedBoundCtx solutionCtx))
 
-      modifyTypeCheckerState $ \TypeCheckerState {..} ->
-        TypeCheckerState
-          { metaVariableCtx = addMetaSolution gluedSolution meta metaVariableCtx,
-            solvedMetaState = registerSolvedMeta meta solvedMetaState,
-            ..
+      modifyTypeCheckerDeclState $ \state ->
+        state
+          { metaVariableCtx = addMetaSolution gluedSolution meta (metaVariableCtx state),
+            solvedMetaState = registerSolvedMeta meta (solvedMetaState state)
           }
 
 -- | Attempts to solve as many constraints as possible. Takes in
@@ -244,7 +250,7 @@ solveMeta meta solution solutionCtx = do
 -- the set of meta-variables solved during this run.
 runConstraintSolver ::
   forall builtin m constraint.
-  (MonadTypeChecker builtin m, PrettyExternal (Contextualised constraint (ConstraintContext builtin))) =>
+  (MonadTypeChecker builtin m, TypableBuiltin builtin, PrettyExternal (Contextualised constraint (ConstraintContext builtin))) =>
   m [Contextualised constraint (ConstraintContext builtin)] ->
   ([Contextualised constraint (ConstraintContext builtin)] -> m ()) ->
   (Contextualised constraint (ConstraintContext builtin) -> m ()) ->
@@ -278,7 +284,7 @@ runConstraintSolver getConstraints setConstraints attemptToSolveConstraint topLe
 
               loop (loopNumber + 1)
 
-logUnsolvedUnknowns :: forall builtin m. (MonadTypeChecker builtin m) => Proxy builtin -> m ()
+logUnsolvedUnknowns :: forall builtin m. (MonadTypeChecker builtin m, NormalisableBuiltin builtin) => Proxy builtin -> m ()
 logUnsolvedUnknowns _proxy = do
   logDebugM MaxDetail $ do
     maybeDecl <- getCurrentDecl @builtin
@@ -340,7 +346,7 @@ findFirstConstraint p xs = (\(found, seen, unseen) -> (found, unseen <> seen)) <
         | otherwise -> fmap (\(found, seen, unseen) -> (found, c : seen, unseen)) (go cs)
 
 checkAllConstraintsSolved ::
-  (MonadTypeChecker builtin m) =>
+  (MonadTypeChecker builtin m, Eq builtin, NormalisableBuiltin builtin) =>
   Proxy builtin ->
   m [Contextualised constraint (ConstraintContext builtin)] ->
   (constraint -> Constraint builtin) ->
@@ -352,3 +358,31 @@ checkAllConstraintsSolved _ getConstraints toConstraint = do
     (c : cs) -> do
       let failedConstraints = mapObject toConstraint <$> (c :| cs)
       throwError $ TypingError $ UnsolvedConstraints failedConstraints
+
+data TelescopeType
+  = InstanceTelescope
+  | RecordTelescope
+
+instantiateTelescope ::
+  (MonadTypeChecker builtin m, TypableBuiltin builtin) =>
+  TelescopeType ->
+  (Relevance -> Type builtin -> m (Expr builtin)) ->
+  BoundCtx (Type builtin) ->
+  (Type builtin, Expr builtin) ->
+  m (Type builtin, Expr builtin, [Arg builtin])
+instantiateTelescope telescopeType createFreshInstance boundCtx = \case
+  (Pi _ piBinder exprBody, Lam _ _solutionBinder solutionBody) -> do
+    let binderType = typeOf piBinder
+    newArg <- case visibilityOf piBinder of
+      Explicit {} -> case telescopeType of
+        InstanceTelescope -> compilerDeveloperError "Should not have an explicit argument in instance goal telescope"
+        RecordTelescope -> freshMetaExpr (provenanceOf piBinder) binderType boundCtx
+      Implicit {} ->
+        freshMetaExpr (provenanceOf piBinder) binderType boundCtx
+      Instance {} -> do
+        createFreshInstance (relevanceOf piBinder) binderType
+    let exprBodyResult = newArg `substDBInto` exprBody
+    let solutionBodyResult = newArg `substDBInto` solutionBody
+    (typ', body', args) <- instantiateTelescope telescopeType createFreshInstance boundCtx (exprBodyResult, solutionBodyResult)
+    return (typ', body', argFromBinder piBinder newArg : args)
+  (typ, body) -> return (typ, body, [])

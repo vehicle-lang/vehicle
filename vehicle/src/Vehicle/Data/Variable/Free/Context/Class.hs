@@ -7,7 +7,6 @@ import Control.Monad.State (StateT (..), mapStateT)
 import Control.Monad.Trans.Maybe (MaybeT, mapMaybeT)
 import Control.Monad.Writer
 import Data.Data (Proxy (..))
-import Data.Vector.Internal.Check (HasCallStack)
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Code.Value
@@ -83,34 +82,10 @@ instance (MonadFreeContext builtin m) => MonadFreeContext builtin (MaybeT m) whe
 --------------------------------------------------------------------------------
 -- Operations
 
-getDeclType ::
-  (MonadLogger m, MonadFreeContext builtin m, HasCallStack) =>
-  Proxy builtin ->
-  Identifier ->
-  m (Type builtin)
-getDeclType proxy ident =
-  typeOf . fst <$> getDeclEntry proxy ident
-
-getDeclaredRecordFields ::
-  (MonadLogger m, MonadFreeContext builtin m, HasCallStack) =>
-  Proxy builtin ->
-  Identifier ->
-  m (RecordFields (Type builtin))
-getDeclaredRecordFields proxy ident = do
-  decl <- fst <$> getDeclEntry proxy ident
-  case decl of
-    DefRecord _ _ _ _ fields -> return fields
-    _ -> developerError $ quotePretty ident <+> "is unexpectedly not a record"
-
 getFreeEnv ::
   forall builtin m.
   (MonadFreeContext builtin m) =>
   m (FreeEnv builtin)
 getFreeEnv = do
   ctx <- getFreeCtx (Proxy @builtin)
-  return $ fmap snd ctx
-
-lookupIdentValue :: (MonadFreeContext builtin m) => Identifier -> m (Value builtin)
-lookupIdentValue ident = do
-  env <- getFreeEnv
-  return $ lookupIdentValueInEnv env ident
+  return ctx

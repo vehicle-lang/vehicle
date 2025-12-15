@@ -12,17 +12,24 @@ import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Monad
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Interface (BuiltinHasStandardData)
+import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin)
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..))
 
 -------------------------------------------------------------------------------
 -- Inserting polarity and linearity constraints to capture function application
+
+type MonadIOInsertion builtin m =
+  ( MonadTypeChecker builtin m,
+    BuiltinHasStandardData builtin,
+    TypableBuiltin builtin
+  )
 
 -- | Function for inserting function input and output constraints. Traverses
 -- the declaration type, replacing linearity and polarity types with fresh
 -- meta variables, and then relates the the two by adding a new suitable
 -- constraint.
 addFunctionAuxiliaryInputOutputConstraints ::
-  (MonadTypeChecker builtin m, BuiltinHasStandardData builtin) =>
+  (MonadIOInsertion builtin m) =>
   (FunctionPosition -> builtin) ->
   Decl builtin ->
   m (Decl builtin)
@@ -35,7 +42,7 @@ addFunctionAuxiliaryInputOutputConstraints mkConstraint = \case
   d -> return d
 
 decomposePiType ::
-  (MonadTypeChecker builtin m, MonadState (MetaMap (Expr builtin)) m, BuiltinHasStandardData builtin) =>
+  (MonadIOInsertion builtin m, MonadState (MetaMap (Expr builtin)) m) =>
   (FunctionPosition -> builtin) ->
   DeclProvenance ->
   Int ->
@@ -59,7 +66,7 @@ decomposePiType mkConstraint declProv@(ident, _) inputNumber = \case
 
 addFunctionConstraint ::
   forall builtin m.
-  (MonadTypeChecker builtin m, MonadState (MetaMap (Expr builtin)) m, BuiltinHasStandardData builtin) =>
+  (MonadIOInsertion builtin m, MonadState (MetaMap (Expr builtin)) m) =>
   builtin ->
   DeclProvenance ->
   FunctionPosition ->
@@ -81,7 +88,7 @@ addFunctionConstraint constraint declProv@(_, declP) position existingExpr = do
   let constraintArgs = case position of
         FunctionInput {} -> [newExpr, existingExpr]
         FunctionOutput {} -> [existingExpr, newExpr]
-  let tcExpr = BuiltinExpr declP constraint (explicit <$> constraintArgs)
+  let tcExpr = App (Builtin declP constraint) (explicit <$> constraintArgs)
 
   freeEnv <- getFreeCtx (Proxy @builtin)
   let declSort = developerError "function IO constraints should never fail"

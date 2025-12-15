@@ -121,8 +121,8 @@ quotePretty = squotes . pretty
 --------------------------------------------------------------------------------
 -- Pretty printing of datatypes
 
-prettyMap :: (Pretty key, Pretty value) => Map key value -> Doc a
-prettyMap = prettyMapEntries . fmap (bimap pretty pretty) . Map.toAscList
+prettyMap :: (key -> Doc a) -> (value -> Doc a) -> Map key value -> Doc a
+prettyMap prettyKey prettyValue = prettyMapEntries . fmap (bimap prettyKey prettyValue) . Map.toAscList
 
 prettyMapEntries :: [(Doc a, Doc a)] -> Doc a
 prettyMapEntries entries = prettySetLike entries'
@@ -130,8 +130,8 @@ prettyMapEntries entries = prettySetLike entries'
     (keys, values) = unzip entries
     entries' = zipWith (\k v -> k <+> ":=" <+> v) keys values
 
-prettySet :: (Pretty value) => Set value -> Doc b
-prettySet xs = prettySetLike (pretty <$> Set.toList xs)
+prettySet :: (value -> Doc b) -> Set value -> Doc b
+prettySet prettyValue xs = prettySetLike (prettyValue <$> Set.toList xs)
 
 prettySetLike :: [Doc a] -> Doc a
 prettySetLike xs =
