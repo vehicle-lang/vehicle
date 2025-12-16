@@ -1,5 +1,11 @@
 # Changelog for Vehicle
 
+## Next release
+
+### ITP backends
+
+* Tensor stack operations are now evaluated to tensor literals where possible.
+
 ## v0.23
 
 ### Command-line interface
