@@ -323,7 +323,7 @@ compileDecl _opts localeAssms = \case
     TypeDecl binderCount -> compileFunctionDecl localeAssms n binderCount t e
     FunctionDecl binderCount Nothing -> compileFunctionDecl localeAssms n binderCount t e
     FunctionDecl _ (Just AnnProperty) -> return "" -- Done via localeAssm gathering
-    FunctionDecl _ (Just AnnInstance) -> throwError $ UnimplementedFeature p "Compiling instances to Isabelle"
+    FunctionDecl _ (Just AnnInstance {}) -> throwError $ UnimplementedFeature p "Compiling instances to Isabelle"
     ProjectionDecl {} -> return ""
   DefRecord p n _ telescope fields -> compileRecordDecl localeAssms p n telescope fields
 
