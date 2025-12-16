@@ -22,7 +22,7 @@ begin
   
 
   definition dataset  :: "  (R tensor) list "
-    where " dataset   = ( (combine_subtensors [(flextensor_from_vec [] [ (((1 :: R) / 2)) ]),(flextensor_from_vec [] [ (((1 :: R) )) ])]) # [] ) "
+    where " dataset   = ( (flextensor_from_vec [2] [(((1 :: R) / 2)), (((1 :: R) ))]) # [] ) "
 
 
 

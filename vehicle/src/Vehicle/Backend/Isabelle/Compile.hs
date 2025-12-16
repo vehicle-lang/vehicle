@@ -826,9 +826,9 @@ compileTensorLiteral compileElement t = annotate ([RequireImport VehicleTensor],
   _ -> foldMapTensor compileElement toTensor t
   where
     toTensor :: TensorShape -> [Code] -> Code
-    toTensor _ _ = developerError $
-      "Tensor literal compilation not implemented yet"
-      -- TODO: When does this even happen?
+    toTensor shape values = case shape of
+      [] -> "(flextensor_from_vec [" <> pretty (length values) <> "] [" <> concatWith (surround ", ") values <> "])"
+      _ -> "(combine_subtensors [" <> concatWith (surround ", ") values <> "])"
 
 compileBoolLiteral :: Bool -> Code
 compileBoolLiteral = \case

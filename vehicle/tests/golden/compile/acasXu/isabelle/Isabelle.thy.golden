@@ -153,7 +153,7 @@ begin
     where " validInput   acasXu x = ( (forallIndex (5 :: nat)  (\<lambda>  i . (((leqTensorReduced (flex_subtensor minimumInputValues i) (flex_subtensor x i))) \<and> ((leqTensorReduced (flex_subtensor x i) (flex_subtensor maximumInputValues i)))))) ) "
 
   definition meanScalingValues  :: "  UnnormalisedInputVector "
-    where " meanScalingValues   = ( (combine_subtensors [(flextensor_from_vec [] [ (((19791091 :: R) / 1000)) ]),(flextensor_from_vec [] [ (((0 :: R) )) ]),(flextensor_from_vec [] [ (((0 :: R) )) ]),(flextensor_from_vec [] [ (((650 :: R) )) ]),(flextensor_from_vec [] [ (((600 :: R) )) ])]) ) "
+    where " meanScalingValues   = ( (flextensor_from_vec [5] [(((19791091 :: R) / 1000)), (((0 :: R) )), (((0 :: R) )), (((650 :: R) )), (((600 :: R) ))]) ) "
 
   definition normalise  :: " (InputVector \<Rightarrow> OutputVector) \<Rightarrow> (UnnormalisedInputVector) \<Rightarrow>  InputVector "
     where " normalise   acasXu x = ( (foreach (5 :: nat)  (\<lambda>  i . ((pointwise_div (tensor_plus (flex_subtensor x i) (tensor_cdot (-1 :: R) (flex_subtensor meanScalingValues i))) (tensor_plus (flex_subtensor maximumInputValues i) (tensor_cdot (-1 :: R) (flex_subtensor minimumInputValues i))))))) ) "

@@ -30,7 +30,7 @@ begin
     where " oneD   = ( (combine_subtensors [zeroD,(flextensor_from_vec [] [ (((1 :: R) )) ])]) ) "
 
   definition twoD  :: "  R FlexTensor "
-    where " twoD   = ( (combine_subtensors [oneD,(combine_subtensors [(flextensor_from_vec [] [ (((2 :: R) )) ]),(flextensor_from_vec [] [ (((3 :: R) )) ])])]) ) "
+    where " twoD   = ( (combine_subtensors [oneD,(flextensor_from_vec [2] [(((2 :: R) )), (((3 :: R) ))])]) ) "
 
   definition lookup2D  :: "  R FlexTensor "
     where " lookup2D   = ( (flex_subtensor ((flex_subtensor twoD (Abs_FlexIndex 0))) (Abs_FlexIndex 1)) ) "

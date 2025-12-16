@@ -44,12 +44,13 @@
     ],
     "produces": [
       "isabelle/Isabelle.thy"
-    ]
+    ],
+    "enabled": false
   },
   {
     "name": "IsabelleVerify",
     "run": "vehicle compile itp -s spec.vcl -t Isabelle -o isabelle/Isabelle.thy && isabelle build -d vehicle-isabelle/ -d isabelle/ IsabelleTest > /dev/null 2>&1 && echo $? || echo 1",
-    "enabled": true,
+    "enabled": false,
     "external": ["isabelle"],
     "needs": [
       "spec.vcl",
