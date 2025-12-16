@@ -9,18 +9,16 @@ Require Import mathcomp.algebra.ssralg.
 Require Import mathcomp.ssreflect.ssrnat.
 Require Import mathcomp.ssreflect.eqtype.
 Require Import mathcomp.ssreflect.seq.
-Require Import mathcomp.ssreflect.tuple.
 Require Import mathcomp.reals.reals.
 Require Import vehicle.tensor.
 Require Import vehicle.utils.
 Open Scope ring_scope.
-Open Scope form_scope.
 
 Parameter R : realType.
 
 Parameter f : 'nT[R]_(2%N :: nil) -> 'nT[R]_(1%N :: nil).
 
-Definition dataset : seq ('nT[R]_(2%N :: nil)) := nstack_tuple [tuple const_t (1 / 2 : R); const_t (1 : R)] :: nil.
+Definition dataset : seq ('nT[R]_(2%N :: nil)) := [tensor^^= (1 / 2 : R); (1 : R)] :: nil.
 
 Axiom empty : forallInList (fun x => True) dataset.
 

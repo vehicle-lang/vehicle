@@ -455,7 +455,7 @@ fromDimensionsValue e = case e of
 
 -- | Reduces a tensor value `x` to `[x!0, x!1, ..., x!n]`
 etaReduceTensor ::
-  (MonadNormBuiltin m, BuiltinHasNatLiterals builtin, BuiltinHasIndexLiterals builtin, BuiltinHasTensors builtin, HasTensorLiterals builtin, BuiltinHasListLiterals builtin, BuiltinHasNatType builtin) =>
+  (MonadNormBuiltin m, BuiltinHasNatLiterals builtin, BuiltinHasIndexLiterals builtin, BuiltinHasTensors builtin, HasTensorLiterals Value builtin, BuiltinHasListLiterals builtin, BuiltinHasNatType builtin) =>
   VType builtin ->
   Int ->
   Value builtin ->

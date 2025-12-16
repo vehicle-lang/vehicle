@@ -127,9 +127,9 @@ reconstructTensorFromConstituents _ctx variable reconstructionDepth assignment =
             Just result -> return (result, [(sliceVar, result)])
       | otherwise =
           case (shapeOf var, childVariablesOf var) of
-            (_ : _, Just childVars) -> do
+            (_ : dims, Just childVars) -> do
               (elements, assignments) <- unzipF <$> traverse (go (depth - 1)) childVars
-              let result = stack elements
+              let result = stack dims elements
               return (result, (sliceVar, result) :| concatMap NonEmpty.toList assignments)
             _ -> throwError (toSliceVar variable, MismatchedDimensions depthToReconstruct (length (shapeOf variable)))
       where

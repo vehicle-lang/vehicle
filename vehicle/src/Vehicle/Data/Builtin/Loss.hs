@@ -11,6 +11,7 @@ import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Standard.Core (Builtin)
 import Vehicle.Data.Builtin.Standard.Core qualified as S
 import Vehicle.Data.Code.Interface
+import Vehicle.Data.Code.Value (Value)
 import Vehicle.Data.Tensor (Tensor)
 import Vehicle.Prelude (Name, Pretty (..), developerError)
 import Vehicle.Syntax.Builtin.BasicOperations
@@ -267,7 +268,7 @@ instance BuiltinHasForeach LossBuiltin where
 --------------------------------------------------------------------------------
 -- Normalisation
 
-instance HasTensorLiterals LossBuiltin where
+instance HasTensorLiterals Value LossBuiltin where
   tensorLiterals =
     [ Wrapper accessNatTensorLiteral,
       Wrapper accessRatTensorLiteral

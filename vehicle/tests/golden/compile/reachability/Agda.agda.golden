@@ -18,7 +18,7 @@ module Agda where
 postulate f : Tensor ℚ (2 ∷ []) → Tensor ℚ []
 
 abstract
-  reachable : ∃ λ x → (stack 0 0 ≤ x × x ≤ stack 1 1) × f x ≈ 0
+  reachable : ∃ λ x → (0∷ᵥ0∷ᵥ[]ᵥ ≤ x × x ≤ 1∷ᵥ1∷ᵥ[]ᵥ) × f x ≈ 0
   reachable = checkSpecification record
     { cache = "Marabou.queries"
     }

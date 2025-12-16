@@ -17,7 +17,7 @@ import Vehicle.Prelude (GenericArg (..), HasIdentifier (identifierOf))
 ---------------------------------------------------------------------------------
 --- Normalisation
 
-instance HasTensorLiterals Builtin where
+instance (HasBuiltinConstructor expr) => HasTensorLiterals expr Builtin where
   tensorLiterals =
     [ Wrapper accessBoolTensorLiteral,
       Wrapper accessNatTensorLiteral,
@@ -112,6 +112,10 @@ instance NormalisableBuiltin Builtin where
       FromNat FromNatToRat -> forceEvalSimpleBuiltin p b evalFromNatToRat
       FromRat FromRatToRat -> forceEvalSimpleBuiltin p b evalFromRatToRat
       FromVectorToList -> forceEvalSimpleBuiltin p b evalVectorToList
+    BuiltinFunction StackTensor ->
+      Just $
+        -- Also force stacks to resolve as they are kind of cast.
+        forceEvalSimpleBuiltin p b evalStackTensor
     _ -> Nothing
 
 evalFromNatToNat :: (MonadNormBuiltin m) => EvalSimple FromNatToSimpleArgs expr Builtin m

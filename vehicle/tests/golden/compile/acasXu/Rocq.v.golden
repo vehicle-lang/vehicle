@@ -58,7 +58,7 @@ Definition maximumInputValues : UnnormalisedInputVector := nstack_tuple [tuple c
 
 Definition validInput (x : UnnormalisedInputVector) : Prop := forallIndex (fun i => (minimumInputValues^^i <= x^^i) /\ (x^^i <= maximumInputValues^^i)).
 
-Definition meanScalingValues : UnnormalisedInputVector := nstack_tuple [tuple const_t (19791091 / 1000 : R); const_t (0 : R); const_t (0 : R); const_t (650 : R); const_t (600 : R)].
+Definition meanScalingValues : UnnormalisedInputVector := [tensor^^= (19791091 / 1000 : R); (0 : R); (0 : R); (650 : R); (600 : R)].
 
 Definition normalise (x : UnnormalisedInputVector) : InputVector := nstack (fun i => x^^i - meanScalingValues^^i / maximumInputValues^^i - minimumInputValues^^i).
 
