@@ -1,0 +1,6 @@
+[93m
+Warning: In some cases in @property 'prop1' the constraints on quantified variable 'x' consist only of direct bounds, and 'x' is not related to a @network declaration in any way.
+
+
+Warning: In some cases in @property 'prop2' the constraints on quantified variable 'x' consist only of direct bounds, and 'x' is not related to a @network declaration in any way.
+[m
