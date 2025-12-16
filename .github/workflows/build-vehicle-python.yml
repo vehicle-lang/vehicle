@@ -74,7 +74,7 @@ jobs:
           MACOSX_DEPLOYMENT_TARGET: "${{ matrix.os.arch == 'x86_64' && '10.10' || '11.0' }}"
 
       - name: Upload wheels
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: "wheelhouse-${{ matrix.os.plat }}-${{ matrix.os.arch }}"
           path: ./vehicle-python/wheelhouse/*.whl
