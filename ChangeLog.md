@@ -1,6 +1,6 @@
 # Changelog for Vehicle
 
-## Next release
+## v0.23
 
 ### Command-line interface
 
@@ -27,11 +27,15 @@
 
 * Fixed bug where unable to compile trivial inequalities (e.g. `3 < 4`, `x < x`)
 
-### Python version support
+### Loss backend
+
+* Renabled support for compilation of some specificatons to loss functions. Support will continue to grow in future releases.
+
+* Added a PyTorch backend.
+
+### Python bindings
 
 * Dropped Python 3.9 support now that it has reached end-of-life upstream.
-
-### Python backend
 
 * The module `vehicle_lang.check` has been renamed `vehicle_lang.typecheck` and the
   function it contains has been renamed from `check` to `typecheck`.

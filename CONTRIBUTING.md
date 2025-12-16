@@ -874,17 +874,17 @@ The procedure to create a new release is:
 
 5. Run all tests and fix any errors.
 
-   **Vehicle compiler tests**
+  **Vehicle compiler tests**
 
-   Run the following command from the root of the repository:
+  Run the following command from the root of the repository:
 
-   ```sh
-   cabal test all --test-option=--num-threads=1
-   ```
+  ```sh
+  cabal test all --test-option=--num-threads=1
+  ```
 
-   **Vehicle Python bindings tests**
+  **Vehicle Python bindings tests**
 
-   From `vehicle-python`, ensure the lockfile is current, then execute the pytest matrix:
+  From `vehicle-python`, ensure the lockfile is current, then execute the pytest matrix:
 
   ```sh
   uv sync --extra test --extra pygments --extra pytorch --extra tensorflow

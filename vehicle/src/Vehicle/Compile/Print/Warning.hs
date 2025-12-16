@@ -10,6 +10,7 @@ import Data.List.NonEmpty (NonEmpty, sort)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
+import Data.Set qualified as Set
 import Data.Tuple (swap)
 import Vehicle.Data.Tensor (TensorIndices)
 import Vehicle.Prelude
@@ -80,9 +81,11 @@ prettyVariables :: NonEmpty Name -> Doc a
 prettyVariables = prettyObjects True "variable" "variables"
 
 prettyTensorIndices :: PropertyName -> NonEmpty TensorIndices -> Maybe (Doc b)
-prettyTensorIndices name indices
-  | indices == [[]] = Nothing
-  | otherwise = do
+prettyTensorIndices name indices = do
+  let uniqueIndices = Set.toList $ Set.fromList $ NonEmpty.toList indices
+  if uniqueIndices == [[]]
+    then Nothing
+    else do
       let addresses = fmap (quotePretty . PropertyAddress (-1) name) indices
       Just $ prettyNonEmptyList addresses
 
