@@ -2,15 +2,16 @@ module Vehicle.Compile.Normalise.NBE
   ( MonadNorm,
     FreeEnv,
     normalise,
-    normaliseInEmptyEnv,
     normaliseInEmptyFreeEnv,
     normaliseAppInEmptyFreeEnv,
     normaliseInFreeCtx,
     normaliseApp,
-    normaliseBuiltin,
+    evalBuiltin,
     normaliseClosure,
     normaliseClosureInCtx,
+    evalDecl,
     eval,
+    evalInEmptyEnv,
     evalApp,
     findInstanceArg,
   )
@@ -64,12 +65,6 @@ normaliseInFreeCtx ::
 normaliseInFreeCtx freeCtx ctx boundEnv expr = do
   runFreeContextT freeCtx $ eval ctx boundEnv expr
 
-normaliseInEmptyEnv ::
-  (MonadNorm builtin m, MonadFreeContext builtin m) =>
-  Expr builtin ->
-  m (Value builtin)
-normaliseInEmptyEnv = eval mempty emptyBoundEnv
-
 normaliseInEmptyFreeEnv ::
   forall builtin m.
   (MonadNorm builtin m) =>
@@ -99,15 +94,6 @@ normaliseAppInEmptyFreeEnv ::
 normaliseAppInEmptyFreeEnv ctx fn spine = do
   runFreshFreeContextT (Proxy @builtin) $ evalApp ctx fn spine
 
-normaliseBuiltin ::
-  (MonadNorm builtin m, MonadFreeContext builtin m) =>
-  NamedBoundCtx ->
-  builtin ->
-  Spine builtin ->
-  m (Value builtin)
-normaliseBuiltin ctx b spine = do
-  evalBuiltin ctx b spine
-
 normaliseClosureInCtx ::
   (MonadNorm builtin m, MonadFreeContext builtin m) =>
   NamedBoundCtx ->
@@ -116,7 +102,7 @@ normaliseClosureInCtx ::
   m (Value builtin)
 normaliseClosureInCtx ctx binder (Closure env body) = do
   let newEnv = extendEnvWithBound (boundCtxLv ctx) binder env
-  eval ctx newEnv body
+  eval (nameOf binder : ctx) newEnv body
 
 normaliseClosure ::
   (MonadNorm builtin m, MonadFreeContext builtin m, MonadReadableNameContext m) =>
@@ -135,6 +121,24 @@ type MonadNorm builtin m =
     NormalisableBuiltin builtin,
     PrintableBuiltin builtin
   )
+
+evalDecl ::
+  (MonadNorm builtin m, MonadFreeContext builtin m) =>
+  Decl builtin ->
+  m (VDecl builtin)
+evalDecl d = case d of
+  DefAbstract {} -> traverse evalInEmptyEnv d
+  DefFunction {} -> traverse evalInEmptyEnv d
+  DefRecord p ident _ _ _ -> do
+    -- Record definitions should never be used computationally?
+    let fun = DefAbstract p ident BuiltinDef (Universe p 0)
+    traverse evalInEmptyEnv fun
+
+evalInEmptyEnv ::
+  (MonadNorm builtin m, MonadFreeContext builtin m) =>
+  Expr builtin ->
+  m (Value builtin)
+evalInEmptyEnv = eval mempty emptyBoundEnv
 
 eval ::
   (MonadNorm builtin m, MonadFreeContext builtin m) =>
@@ -177,7 +181,7 @@ eval ctx boundEnv expr = do
         VRecord _ fields -> return $ lookupRecordFieldS fields field
         _ -> do
           recordType' <- recEval recordType
-          return $ VRecordAcc recordType' record' field
+          return $ VRecordAcc recordType' record' field []
 
   showExit ctx result
   return result
@@ -195,6 +199,7 @@ evalApp ctx fun args@(a : as) = do
     VMeta v spine -> return $ VMeta v (spine <> args)
     VBoundVar v spine -> return $ VBoundVar v (spine <> args)
     VFreeVar v spine -> return $ VFreeVar v (spine <> args)
+    VRecordAcc recordType record field spine -> return $ VRecordAcc recordType record field (spine <> args)
     VBuiltin b spine -> evalBuiltin ctx b (spine <> args)
     VLam binder (Closure env body)
       | not (visibilityMatches binder a) ->
@@ -204,9 +209,8 @@ evalApp ctx fun args@(a : as) = do
           body' <- eval ctx newEnv body
           evalApp ctx body' as
     VUniverse {} -> unexpected "VUniverse"
-    VPi {} -> unexpected "VUniverse"
-    VRecord {} -> unexpected "VUniverse"
-    VRecordAcc {} -> unexpected "VUniverse"
+    VPi {} -> unexpected "VPi"
+    VRecord {} -> unexpected "VRecord"
   showAppExit ctx result
   return result
   where
@@ -249,18 +253,18 @@ findInstanceArg op = \case
 currentPass :: Doc ()
 currentPass = "normalisation by evaluation"
 
+{-
 showEntry :: (MonadNorm builtin m) => NamedBoundCtx -> BoundEnv builtin -> Expr builtin -> m ()
 showEntry _ _ _ = return ()
 
 showExit :: (MonadNorm builtin m) => NamedBoundCtx -> Value builtin -> m ()
 showExit _ _ = return ()
-
-{-
+-}
 showEntry :: (MonadNorm builtin m) => NamedBoundCtx -> BoundEnv builtin -> Expr builtin -> m ()
 showEntry _ctx boundEnv expr = do
   logDebug MaxDetail $ "nbe-entry" <+> prettyFriendly (WithContext expr (boundEnvToCtx boundEnv)) -- <+> "   (ctx =" <+> pretty ctx <> "," <+> "boundEnv =" <+> prettyFriendly (WithContext boundEnv ctx) <+> ")"
   -- logDebug MidDetail $ "nbe-entry" <+> prettyFriendly (WithContext expr (boundEnvToCtx boundEnv)) <+> "   { boundEnv =" <+> prettyFriendly boundEnv <+> "}"
-  -- logDebug MidDetail $ "nbe-entry" <+> prettyVerbose expr -- <+> "   { boundEnv=" <+> prettyVerbose boundEnv <+> "}"
+  -- logDebug MidDetail $ "nbe-entry" <+> prettyVerbose expr <+> "   { boundEnv=" <+> prettyVerbose boundEnv <+> "}"
   incrCallDepth
   return ()
 
@@ -270,26 +274,25 @@ showExit ctx result = do
   -- logDebug MidDetail $ "nbe-exit" <+> prettyVerbose result
   logDebug MaxDetail $ "nbe-exit" <+> prettyFriendly (WithContext result ctx)
   return ()
--}
+
+{-
 showApp :: (MonadNorm builtin m) => NamedBoundCtx -> Value builtin -> Spine builtin -> m ()
 showApp _ _ _ = return ()
 
 showAppExit :: (MonadNorm builtin m) => NamedBoundCtx -> Value builtin -> m ()
 showAppExit _ _ = return ()
-
-{-
+-}
 showApp :: (MonadNorm builtin m) => NamedBoundCtx -> Value builtin -> Spine builtin -> m ()
-showApp ctx fun spine = do
+showApp _ctx fun spine = do
   logDebug MaxDetail $ "nbe-app:" <+> prettyVerbose fun <+> "@" <+> prettyVerbose spine
   incrCallDepth
   return ()
 
 showAppExit :: (MonadNorm builtin m) => NamedBoundCtx -> Value builtin -> m ()
-showAppExit ctx result = do
+showAppExit _ctx result = do
   decrCallDepth
   logDebug MaxDetail $ "nbe-app-exit:" <+> prettyVerbose result
   return ()
--}
 
 visibilityError ::
   (HasCallStack, MonadNorm builtin m) =>

@@ -30,6 +30,7 @@ import Vehicle.Syntax.BNFC.Utils
     tokForallT,
     tokLambda,
     tokType,
+    pattern DefaultOption,
     pattern InferableOption,
   )
 import Vehicle.Syntax.Builtin qualified as V
@@ -138,8 +139,9 @@ parseAnnotation (tkName, opts) = case tkSymbol tkName of
     validateEmptyOpts tkName opts
     return $ FunDeclAnn V.AnnProperty
   "@instance" -> do
-    validateEmptyOpts tkName opts
-    return $ FunDeclAnn V.AnnInstance
+    let allowedOptions = Set.fromList [DefaultOption]
+    optsList <- validateOpts tkName allowedOptions opts
+    FunDeclAnn <$> elabInstanceOptions optsList
   "@tensor" -> do
     validateEmptyOpts tkName opts
     return $ RecordDeclAnn V.AnnTensor
@@ -292,6 +294,7 @@ validateOpts token allowedNames (B.DeclAnnWithOpts opts) = do
         B.NameAnnOption tk value -> mkEntry tk (B.Var value)
         B.InferAnnOption tk value -> mkEntry tk value
         B.TypeAnnOption tk expr -> mkEntry tk expr
+        B.DefaultAnnOption tk value -> mkEntry tk (B.Literal $ B.BoolLiteral value)
 
       let nameTxt = name
       value' <- elabExpr value
@@ -319,6 +322,19 @@ elabParameterOptions opts =
 getInferOption :: B.DeclAnnOption -> Maybe (B.TokAnnInferOpt, B.Expr)
 getInferOption = \case
   B.InferAnnOption optTk name -> Just (optTk, name)
+  _ -> Nothing
+
+elabInstanceOptions :: (MonadElab m) => [B.DeclAnnOption] -> m V.FunctionDeclAnnotation
+elabInstanceOptions opts =
+  V.AnnInstance <$> case mapMaybe getInstanceDefaultOption opts of
+    [] -> return False
+    (_, bool) : _ -> do
+      let isDefault = elabBoolLiteral bool
+      return isDefault
+
+getInstanceDefaultOption :: B.DeclAnnOption -> Maybe (B.TokAnnDefaultOpt, B.Boolean)
+getInstanceDefaultOption = \case
+  B.DefaultAnnOption optTk name -> Just (optTk, name)
   _ -> Nothing
 
 --------------------------------------------------------------------------------
@@ -383,13 +399,15 @@ elabExpr expr = case expr of
   B.LtPoint e1 tk e2 -> builtinFunction (V.CompareRatTensorPointwise V.Lt) tk [e1, e2]
   B.GePoint e1 tk e2 -> builtinFunction (V.CompareRatTensorPointwise V.Ge) tk [e1, e2]
   B.GtPoint e1 tk e2 -> builtinFunction (V.CompareRatTensorPointwise V.Gt) tk [e1, e2]
-  B.Add e1 tk e2 -> builtinTypeClassOp V.AddTC tk [e1, e2]
+  B.Add e1 tk e2 -> standardLibFunction "addTC" tk [e1, e2]
   B.Sub e1 tk e2 -> builtinTypeClassOp V.SubTC tk [e1, e2]
   B.Mul e1 tk e2 -> builtinTypeClassOp V.MulTC tk [e1, e2]
   B.Div e1 tk e2 -> builtinTypeClassOp V.DivTC tk [e1, e2]
   B.Min tk -> builtinFunction (V.Min V.MinRatTensor) tk []
   B.Max tk -> builtinFunction (V.Max V.MaxRatTensor) tk []
   B.Neg tk e -> builtinTypeClassOp V.NegTC tk [e]
+  B.AddNat tk -> builtinFunction (V.Add V.AddNat) tk []
+  B.AddRealTensor tk -> builtinFunction (V.Add V.AddRatTensor) tk []
   B.At e1 tk e2 -> builtinTypeClassOp V.AtTC tk [e1, e2]
   B.Map tk -> builtinTypeClassOp V.MapTC tk []
   B.Fold tk -> builtinTypeClassOp V.FoldTC tk []
@@ -403,7 +421,6 @@ elabExpr expr = case expr of
   B.HasEq tk -> builtinTypeClass (V.HasCompare V.Eq) tk []
   B.HasNotEq tk -> builtinTypeClass (V.HasCompare V.Ne) tk []
   B.HasLeq tk -> builtinTypeClass (V.HasCompare V.Le) tk []
-  B.HasAdd tk -> builtinTypeClass V.HasAdd tk []
   B.HasSub tk -> builtinTypeClass V.HasSub tk []
   B.HasMul tk -> builtinTypeClass V.HasMul tk []
   B.HasMap tk -> builtinTypeClass V.HasMap tk []
@@ -591,6 +608,11 @@ builtinFunction b = builtin (V.BuiltinFunction b)
 
 derivedFunction :: (MonadElab m, IsToken token) => V.DerivedFunction -> token -> [B.Expr] -> m V.Expr
 derivedFunction b = builtin (V.DerivedFunction b)
+
+standardLibFunction :: (MonadElab m, IsToken token) => V.Name -> token -> [B.Expr] -> m V.Expr
+standardLibFunction name tk args = do
+  p <- mkProvenance tk
+  app (V.Var p name) <$> traverse elabExpr args
 
 castToTensorType :: (MonadElab m, IsToken token) => V.BuiltinType -> token -> m V.Expr
 castToTensorType tElem tk = do

@@ -128,7 +128,7 @@ instance Delaborate V.DefRecordSort B.Decl where
 
 instance Delaborate V.FunctionDeclAnnotation B.Decl where
   delabM = \case
-    V.AnnInstance -> return $ delabAnn instanceAnn []
+    V.AnnInstance t -> return $ delabAnn instanceAnn [mkBoolAnnOption DefaultOption t]
     V.AnnProperty -> return $ delabAnn propertyAnn []
 
 -- | Used for things not in the user-syntax.
@@ -242,7 +242,7 @@ delabBuiltinFunction fun args = case fun of
   V.Or -> delabInfixOp2 B.Or tokOr args
   V.Implies -> delabInfixOp2 B.Impl tokImpl args
   V.If -> delabIf args
-  V.Add _dom -> delabTypeClassOp V.AddTC args
+  V.Add _dom -> delabAdd args
   V.Mul _dom -> delabTypeClassOp V.MulTC args
   V.Neg _dom -> delabTypeClassOp V.NegTC args
   V.Sub _dom -> delabTypeClassOp V.SubTC args
@@ -296,7 +296,6 @@ delabTypeClass tc args = case tc of
     V.Ne -> delabApp (B.HasNotEq tokHasNotEq) args
     V.Le -> delabApp (B.HasLeq tokHasLeq) args
     _ -> cheat
-  V.HasAdd -> delabApp (B.HasAdd tokHasAdd) args
   V.HasSub -> delabApp (B.HasSub tokHasSub) args
   V.HasMul -> delabApp (B.HasMul tokHasMul) args
   V.HasMap -> delabApp (B.HasMap tokHasMap) args
@@ -317,13 +316,15 @@ delabConstructor fun args = case fun of
   V.RatTensorLiteral t -> cheatDelabPretty t []
   V.BoolTensorLiteral t -> cheatDelabPretty t []
 
+delabAdd :: (MonadDelab m) => [V.Arg] -> m B.Expr
+delabAdd = delabInfixOp2 B.Add tokAdd
+
 delabTypeClassOp :: (MonadDelab m) => V.TypeClassOp -> [V.Arg] -> m B.Expr
 delabTypeClassOp op args = case op of
   V.FromNatTC {} -> cheatDelabPretty op args
   V.FromRatTC {} -> cheatDelabPretty op args
   V.VecLiteralTC {} -> delabVecLiteral args
   V.NegTC -> delabOp1 B.Neg tokSub args
-  V.AddTC -> delabInfixOp2 B.Add tokAdd args
   V.SubTC -> delabInfixOp2 B.Sub tokSub args
   V.MulTC -> delabInfixOp2 B.Mul tokMul args
   V.DivTC -> delabInfixOp2 B.Div tokDiv args

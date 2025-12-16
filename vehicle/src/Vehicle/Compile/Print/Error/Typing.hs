@@ -100,6 +100,32 @@ typingErrorDetails = \case
       }
     where
       (_, p) = NonEmpty.head ms
+  InvalidInstanceHead (ident, p) expr ->
+    VehicleError
+      { provenance = Just p,
+        problem =
+          "Cannot add"
+            <+> prettyIdentName ident
+            <+> "as an instance"
+            <+> "as"
+            <+> prettyFriendlyEmptyCtx expr
+            <+> "is not a valid shape.",
+        fix = Just "add more type annotations"
+      }
+  NonTypeClassInstanceHead _ (ident, p) typeClassIdent ->
+    VehicleError
+      { provenance = Just p,
+        problem =
+          "Cannot add"
+            <+> prettyIdentName ident
+            <+> "as an instance"
+            <+> "as"
+            <+> prettyIdentName typeClassIdent
+            <+> "is not annotated as a"
+            <+> pretty AnnTypeClass
+            <+> ".",
+        fix = Just "add more type annotations"
+      }
 
 --------------------------------------------------------------------------------
 -- Individual errors

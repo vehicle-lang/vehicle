@@ -52,8 +52,8 @@ instance (MonadLogger m) => MonadLogger (FreeContextT builtin m) where
   getDebugLevel = FreeContextT getDebugLevel
   logMessage = FreeContextT . logMessage
   logWarning = FreeContextT . logWarning
-  enterCompilerPass = FreeContextT . enterCompilerPass
-  exitCompilerPass = FreeContextT exitCompilerPass
+  runCompilerPass = mapFreeContextT . runCompilerPass
+  runCompileDecl = mapFreeContextT . runCompileDecl
 
 instance (MonadError e m) => MonadError e (FreeContextT builtin m) where
   throwError = lift . throwError

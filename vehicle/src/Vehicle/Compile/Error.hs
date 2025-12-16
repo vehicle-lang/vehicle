@@ -117,6 +117,8 @@ data TypingError builtin
   | FailedIndexConstraintUnknown (ConstraintContext builtin) (Value builtin) (VType builtin)
   | UnsolvedConstraints (NonEmpty (WithContext (Constraint builtin)))
   | UnsolvedMetas (Proxy builtin) (NonEmpty (MetaID, Provenance))
+  | InvalidInstanceHead DeclProvenance (Expr builtin)
+  | NonTypeClassInstanceHead (Proxy builtin) DeclProvenance Identifier
   deriving (Show)
 
 --------------------------------------------------------------------------------

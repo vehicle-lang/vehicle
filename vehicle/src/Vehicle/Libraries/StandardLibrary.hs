@@ -6,21 +6,34 @@ module Vehicle.Libraries.StandardLibrary
     standardLibraryContent,
     standardLibraryBuiltinModulePath,
     standardLibraryDefinitionsModulePath,
+    standardLibraryInstanceOps,
     isBuiltinModule,
+    standardLibIdent,
   )
 where
 
 import Data.Bifunctor (Bifunctor (..))
 import Data.FileEmbed (embedFile, makeRelativeToProject)
 import Data.Map (fromList, keys)
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Data.Text.Encoding (decodeUtf8)
 import Vehicle.Backend.Prelude
 import Vehicle.Libraries
 import Vehicle.Libraries.Core (LibraryContent)
 import Vehicle.Prelude
 
+standardLibIdent :: Name -> Identifier
+standardLibIdent = Identifier standardLibraryDefinitionsModulePath
+
 standardLibraryDefinitionsModulePath :: ModulePath
 standardLibraryDefinitionsModulePath = ModulePath ["Definitions"]
+
+standardLibraryInstanceOps :: Set Identifier
+standardLibraryInstanceOps =
+  Set.fromList
+    [ standardLibIdent "addTC"
+    ]
 
 standardLibraryBuiltinModulePath :: Maybe SecondaryTypeSystem -> ModulePath
 standardLibraryBuiltinModulePath typeSystem = ModulePath $ case typeSystem of

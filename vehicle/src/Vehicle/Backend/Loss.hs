@@ -12,7 +12,7 @@ import Vehicle.Backend.Loss.LossCompilation
 import Vehicle.Backend.Loss.LossCompilation qualified as Loss ()
 import Vehicle.Backend.Prelude (DifferentiableLogicID)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBE (normaliseInEmptyEnv)
+import Vehicle.Compile.Normalise.NBE (evalDecl)
 import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Core
@@ -47,7 +47,7 @@ convertDecls ::
 convertDecls logicID logic = \case
   [] -> return []
   decl : decls -> do
-    normDecl <- traverse normaliseInEmptyEnv decl
+    normDecl <- evalDecl decl
     maybeLossDecl <- convertDecl logicID logic normDecl
     decls' <- addDeclEntryToContext normDecl $ convertDecls logicID logic decls
     return $ maybeToList maybeLossDecl ++ decls'

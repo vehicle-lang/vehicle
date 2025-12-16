@@ -32,7 +32,7 @@ instance TypableBuiltin Builtin where
   useDependentMetas _ = True
   isConstructor = isStandardConstructor
   isCastConstraint e = case e of
-    TypeClass c -> c `elem` ([IsTensorType, HasNatLits, HasRatLits, HasVecLits] :: [TypeClass])
+    Right (TypeClass c) -> c `elem` ([IsTensorType, HasNatLits, HasRatLits, HasVecLits] :: [TypeClass])
     _ -> False
 
 -- | Return the type of the provided builtin.
@@ -63,7 +63,6 @@ typeOfTypeClass :: TypeClass -> DSLExpr Builtin
 typeOfTypeClass tc = case tc of
   HasCompare {} -> type0 ~> type0 ~> type0
   HasQuantifier {} -> type0 ~> type0 ~> type0
-  HasAdd -> type0 ~> type0 ~> type0 ~> type0
   HasSub -> type0 ~> type0 ~> type0 ~> type0
   HasMul -> type0 ~> type0 ~> type0 ~> type0
   HasDiv -> type0 ~> type0 ~> type0 ~> type0
@@ -96,7 +95,6 @@ typeOfTypeClassOp b = case b of
   FromRatTC -> forAllTypes $ \t -> hasRatLits t ~~~> typeOfFromRat t
   VecLiteralTC -> typeOfVectorLiteral
   NegTC -> typeOfTCOp1 hasNeg
-  AddTC -> typeOfTCOp2 hasAdd
   SubTC -> typeOfTCOp2 hasSub
   MulTC -> typeOfTCOp2 hasMul
   DivTC -> typeOfTCOp2 hasDiv

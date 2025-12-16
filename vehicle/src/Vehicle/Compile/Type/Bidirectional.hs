@@ -10,7 +10,6 @@ where
 
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
-import Data.Bifunctor (Bifunctor (..))
 import Data.Data (Proxy (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Maybe (fromMaybe)
@@ -31,7 +30,7 @@ import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin (..))
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Universe (UniverseLevel (..))
 import Vehicle.Data.Variable.Bound.Context.Generic
-import Vehicle.Data.Variable.Bound.Context.Name (MonadReadableNameContext (..), prettyFriendlyInCtx)
+import Vehicle.Data.Variable.Bound.Context.Name (MonadReadableNameContext (..))
 import Prelude hiding (pi)
 
 --------------------------------------------------------------------------------
@@ -253,9 +252,6 @@ inferExpr e = do
       return (Record p checkedRecordType checkedFields, checkedRecordType)
     RecordProj p uncheckedRecordType uncheckedRecord field -> do
       (checkedRecordType, expectedFieldTypes) <- checkRecordTypeAndCalculateRecordFieldTypes p uncheckedRecordType
-      logDebugM MaxDetail $ prettyFriendlyInCtx checkedRecordType
-      prettyFields <- traverseRecordFields prettyFriendlyInCtx expectedFieldTypes
-      logDebug MaxDetail $ prettyMapEntries (fmap (first pretty) prettyFields)
       checkedRecord <- checkExpr checkedRecordType uncheckedRecord
       let fieldType = lookupRecordField expectedFieldTypes field
       return (RecordProj p checkedRecordType checkedRecord field, fieldType)

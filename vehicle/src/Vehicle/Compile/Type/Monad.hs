@@ -29,6 +29,7 @@ module Vehicle.Compile.Type.Monad
     setInstanceConstraints,
     setUnificationConstraints,
     addUnificationConstraints,
+    addInstanceToInstanceDatabase,
     TelescopeType (..),
     instantiateTelescope,
     -- Other
@@ -39,7 +40,7 @@ module Vehicle.Compile.Type.Monad
   )
 where
 
-import Control.Monad (when)
+import Control.Monad (unless, when)
 import Control.Monad.Except (MonadError (..), runExceptT)
 import Control.Monad.Trans.Except (ExceptT)
 import Data.List (partition, sortOn)
@@ -73,12 +74,7 @@ runTypeCheckerTInitially ::
 runTypeCheckerTInitially builtinInstances importedCtx e = do
   let state = emptyTypeCheckerState builtinInstances importedCtx
   (result, internalState) <- runTypeCheckerT state e
-  -- Remove the instance database again so it doesn't get propagated.
-  let finalInterface =
-        (currentModuleInterface internalState)
-          { instanceDatabase = emptyInstanceDatabase
-          }
-  return (result, finalInterface, currentFreeEnv internalState)
+  return (result, currentModuleInterface internalState, currentFreeEnv internalState)
 
 -- | Runs a hypothetical computation in the type-checker,
 -- returning the resulting state of the type-checker.
@@ -202,8 +198,51 @@ parseInstanceGoal originalValue = go [] originalValue
     go telescope = \case
       VPi binder _body
         | not (isExplicit binder) -> developerError "Instance goals with telescopes not yet supported"
-      VBuiltin b spine -> InstanceGoal telescope b spine
+      VBuiltin b spine -> InstanceGoal telescope (Right b) spine
+      VFreeVar b spine -> InstanceGoal telescope (Left b) spine
       _ -> developerError $ "Malformed instance goal" <+> prettyVerbose originalValue
+
+addInstanceToInstanceDatabase ::
+  forall builtin m.
+  (MonadTypeChecker builtin m) =>
+  Decl builtin ->
+  Bool ->
+  m ()
+addInstanceToInstanceDatabase decl isDefault =
+  case decl of
+    DefFunction _ _ _ t e -> do
+      let candidate = InstanceCandidate t e isDefault
+      instanceHead <- findValidInstanceHead (identifierOf decl, provenanceOf decl) candidate
+      modifyTypeCheckerState $ \state ->
+        state
+          { currentModuleInterface =
+              (currentModuleInterface state)
+                { instanceDatabase =
+                    insertInstanceIntoDatabase
+                      instanceHead
+                      candidate
+                      (instanceDatabase $ currentModuleInterface state)
+                }
+          }
+    _ -> developerError "Malformed instance declaration"
+
+findValidInstanceHead ::
+  forall builtin m.
+  (MonadTypeChecker builtin m) =>
+  DeclProvenance ->
+  InstanceCandidate builtin ->
+  m (InstanceHead builtin)
+findValidInstanceHead declProv candidate = do
+  let expr = candidateExpr candidate
+  case findInstanceGoalHead expr of
+    Left _err -> throwError $ TypingError $ InvalidInstanceHead declProv expr
+    Right instanceHead -> case instanceHead of
+      Left typeClassIdent -> do
+        typeClassDecl <- getDecl (Proxy @builtin) typeClassIdent
+        unless (isTypeClassDecl typeClassDecl) $ do
+          throwError $ TypingError $ NonTypeClassInstanceHead (Proxy @builtin) declProv typeClassIdent
+        return instanceHead
+      Right _builtin -> return instanceHead
 
 solveMeta ::
   forall builtin m.

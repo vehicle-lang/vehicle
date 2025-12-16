@@ -63,8 +63,8 @@ instance (MonadLogger m) => MonadLogger (TensorBoundContextT m) where
   getDebugLevel = TensorBoundContextT getDebugLevel
   logMessage = TensorBoundContextT . logMessage
   logWarning = TensorBoundContextT . logWarning
-  enterCompilerPass = TensorBoundContextT . enterCompilerPass
-  exitCompilerPass = TensorBoundContextT exitCompilerPass
+  runCompilerPass = mapTensorBoundContextT . runCompilerPass
+  runCompileDecl = mapTensorBoundContextT . runCompileDecl
 
 instance (MonadError e m) => MonadError e (TensorBoundContextT m) where
   throwError = lift . throwError

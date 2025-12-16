@@ -5,6 +5,7 @@ module Vehicle.Data.Code.Value
     VArg,
     VBinder,
     VTelescope,
+    VRecordFields,
     VDecl,
     VModule,
     VProg,
@@ -75,8 +76,8 @@ data Value builtin
   | VBuiltin !builtin !(Spine builtin)
   | VLam !(VBinder builtin) !(Closure builtin)
   | VPi !(VBinder builtin) !(Closure builtin)
-  | VRecord (VType builtin) !(OMap FieldName (Value builtin))
-  | VRecordAcc !(VType builtin) !(Value builtin) !FieldName
+  | VRecord (VType builtin) !(VRecordFields builtin)
+  | VRecordAcc !(VType builtin) !(Value builtin) !FieldName !(Spine builtin)
   deriving (Show, Generic, Eq, Ord)
 
 type VType builtin = Value builtin
@@ -86,6 +87,8 @@ type VArg builtin = GenericArg (Value builtin)
 type VBinder builtin = GenericBinder (Value builtin)
 
 type VTelescope builtin = GenericTelescope (Value builtin)
+
+type VRecordFields builtin = OMap FieldName (Value builtin)
 
 type VDecl builtin = GenericDecl (Value builtin)
 
@@ -124,9 +127,10 @@ boundVariablesIn value = execWriter (go value)
         goClosure closure
       VRecord _ident fields ->
         traverse_ go fields
-      VRecordAcc recordType record _ -> do
+      VRecordAcc recordType record _ spine -> do
         go recordType
         go record
+        traverseSpine_ go spine
 
     goClosure :: (MonadWriter (Set Lv) m) => Closure builtin -> m ()
     goClosure (Closure (BoundEnv env) _) =

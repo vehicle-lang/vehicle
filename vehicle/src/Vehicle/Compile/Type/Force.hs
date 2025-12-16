@@ -87,7 +87,7 @@ forceBuiltin ctx b spine = case blockingStatus b spine of
   Blocked traverseBlocking -> do
     (maybeUnblockedSpine, blockingMetas) <-
       runWriterT $ runMaybeT $ traverseBlocking $ forceBlockingArg ctx
-    finalValue <- traverse (normaliseBuiltin ctx b) maybeUnblockedSpine
+    finalValue <- traverse (evalBuiltin ctx b) maybeUnblockedSpine
     return (finalValue, blockingMetas)
   _ -> return (Just (VBuiltin b spine), mempty)
 

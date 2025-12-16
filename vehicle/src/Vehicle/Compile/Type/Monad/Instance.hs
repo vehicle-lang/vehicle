@@ -57,9 +57,9 @@ mapTypeCheckerT f m = TypeCheckerT (mapStateT f (unTypeCheckerT m))
 -- Instances that TypeCheckerT satisfies
 
 instance (PrintableBuiltin builtin, MonadCompile m) => MonadFreeContext builtin (TypeCheckerT builtin m) where
-  addDeclEntryToContext entry action = TypeCheckerT $ do
+  addDeclEntryToContext decl action = TypeCheckerT $ do
     modify $ \typeCheckerState ->
-      typeCheckerState {currentFreeEnv = Map.insert (identifierOf entry) entry (currentFreeEnv typeCheckerState)}
+      typeCheckerState {currentFreeEnv = Map.insert (identifierOf decl) decl (currentFreeEnv typeCheckerState)}
     unTypeCheckerT action
 
   getFreeCtx _proxy = TypeCheckerT $ gets currentFreeEnv
@@ -89,8 +89,8 @@ instance (MonadLogger m) => MonadLogger (TypeCheckerT builtin m) where
   getDebugLevel = lift getDebugLevel
   logMessage = lift . logMessage
   logWarning = lift . logWarning
-  enterCompilerPass = lift . enterCompilerPass
-  exitCompilerPass = lift exitCompilerPass
+  runCompilerPass = mapTypeCheckerT . runCompilerPass
+  runCompileDecl = mapTypeCheckerT . runCompileDecl
 
 instance (MonadReader r m) => MonadReader r (TypeCheckerT builtin m) where
   ask = lift ask

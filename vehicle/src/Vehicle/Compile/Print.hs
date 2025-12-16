@@ -172,6 +172,7 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   -- Pretty --
   ------------
   -- Things that we just pretty print.
+  StrategyFor tags (() `In` ctx) = 'Pretty
   StrategyFor tags (Int `In` ctx) = 'Pretty
   StrategyFor tags (Text `In` ctx) = 'Pretty
   StrategyFor tags (Bool `In` ctx) = 'Pretty
