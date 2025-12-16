@@ -4,7 +4,9 @@ module Vehicle.Backend.Isabelle.Compile
   )
 where
 
+import Control.Monad.Except (MonadError (..))
 import Data.Maybe (mapMaybe)
+import Data.Bifunctor (Bifunctor (..))
 import Data.Foldable (fold)
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NonEmpty
@@ -18,7 +20,7 @@ import Prettyprinter hiding (hcat, hsep, vcat, vsep)
 import Prettyprinter.Render.Text (renderStrict)
 import System.FilePath (takeBaseName)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Prelude hiding (Module)
+import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Data.Builtin.Decidability
 import Vehicle.Data.Builtin.Interface (Accessor (..))
@@ -26,14 +28,9 @@ import Vehicle.Data.Builtin.Standard hiding (TensorType)
 import Vehicle.Data.Code.Expr ()
 import Vehicle.Data.Code.Interface (IsArgs (..), VecLitArgs (..))
 import Vehicle.Data.Universe (UniverseLevel (..))
-import Vehicle.Data.Variable.Bound.Context.Name (MonadNameContext, addNameToContext, ixToProperName, runFreshNameBoundContextT, getNameContext)
+import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Syntax.Builtin
 import Vehicle.Syntax.Sugar
-  ( BinderType (..),
-    LetBinder,
-    foldBinders,
-    foldDeclBinders,
-  )
 import Vehicle.Syntax.Tensor
   ( Tensor (..),
     TensorShape,
@@ -311,31 +308,71 @@ gatherLocaleNetworks _opts = \case
 
 gatherLocaleStatements :: (MonadIsabelleCompile m) => IsabelleOptions -> [LocaleDef] -> Decl DecidabilityBuiltin -> m [LocaleDef]
 gatherLocaleStatements _opts localeNets = \case
-  DefFunction _ n anns _ e -> do
-    if isAnnotatedAsProperty anns
-      then do
-        cExpr <- compileExpr False localeNets e
-        pure [(compileProperty (compileIdentifier n) cExpr)]
-      else pure []
+  DefFunction _ n funSort _ e -> case funSort of
+    FunctionDecl _ (Just AnnProperty) -> do
+      cExpr <- compileExpr False localeNets e
+      pure [(compileProperty (compileIdentifier n) cExpr)]
+    _ -> pure []
   _ -> pure []
 
 compileDecl :: (MonadIsabelleCompile m) => IsabelleOptions -> [LocaleDef] -> Decl DecidabilityBuiltin -> m Code
 compileDecl _opts localeAssms = \case
   DefAbstract _ _ _ _ -> do
     return "" -- Done via localeAssm gathering
-  DefFunction _ n anns t e -> do
-    let (binders, body) = foldDeclBinders e
-    if isAnnotatedAsProperty anns
-      then return "" -- Done via localeAssm gathering
-      else compileFunDef localeAssms n t binders body
-  DefRecord _ n _ _t fs -> do
-    fs' <- traverseRecordFields (compileExpr False localeAssms) fs
+  DefFunction p n funSort t e -> case funSort of
+    TypeDecl binderCount -> compileFunctionDecl localeAssms n binderCount t e
+    FunctionDecl binderCount Nothing -> compileFunctionDecl localeAssms n binderCount t e
+    FunctionDecl _ (Just AnnProperty) -> return "" -- Done via localeAssm gathering
+    FunctionDecl _ (Just AnnInstance) -> throwError $ UnimplementedFeature p "Compiling instances to Isabelle"
+    ProjectionDecl {} -> return ""
+  DefRecord p n _ telescope fields -> compileRecordDecl localeAssms p n telescope fields
+
+compileFunctionDecl ::
+  (MonadIsabelleCompile m) =>
+  [LocaleDef] ->
+  Identifier ->
+  LHSBinderCount ->
+  Type DecidabilityBuiltin ->
+  Expr DecidabilityBuiltin ->
+  m Code
+compileFunctionDecl localeAssms ident binderCount t e = do
+  let (binders, body) = extractDeclBinders binderCount t e
+  compileFunDef localeAssms ident t binders body
+
+extractDeclBinders ::
+  LHSBinderCount ->
+  Type DecidabilityBuiltin ->
+  Expr DecidabilityBuiltin ->
+  ([Binder DecidabilityBuiltin], Expr DecidabilityBuiltin)
+extractDeclBinders binderCount typ expr
+  | binderCount == 0 = ([], expr)
+  | otherwise = case (typ, expr) of
+      (Pi _ piBinder piBody, Lam _ lamBinder lamBody) -> do
+        -- We want the name from the lambda binder and the type from the
+        -- pi binder as this is usually what the user will write.
+        let compositeBinder = replaceBinderType (typeOf piBinder) lamBinder
+        first (compositeBinder :) (extractDeclBinders (binderCount - 1) piBody lamBody)
+      (_, _) -> ([], expr)
+
+compileRecordDecl ::
+  (MonadIsabelleCompile m) =>
+  [LocaleDef] ->
+  Provenance ->
+  Identifier ->
+  Telescope DecidabilityBuiltin ->
+  RecordFields DecidabilityBuiltin ->
+  m Code
+compileRecordDecl localeAssms p ident telescope fields =
+  if null telescope then do
+    fs' <- traverseRecordFields (compileExpr False localeAssms) fields
     return $
       "record"
-        <+> compileIdentifier n
+        <+> compileIdentifier ident
         <+> "="
         <> line
         <> indent 2 ((vsep :: [Code] -> Code) $ fmap (\(field, fieldType) -> pretty field <+> "::" <+> "\""<>fieldType<>"\"") fs')
+  else
+    throwError $ UnimplementedFeature p "Compiling parameterized records to Isabelle"
 
 -- | Compile a 'network' declaration
 compilePostulate :: Code -> Code -> LocaleDef
@@ -348,7 +385,7 @@ compileExprUnfoldings expr = case expr of
   Pi _ binder result -> compileExprUnfoldings (typeOf binder) ++ compileExprUnfoldings result
   Let _ bound binder body -> compileExprUnfoldings bound ++ compileExprUnfoldings (typeOf binder) ++ compileExprUnfoldings body
   Record _ _ fs -> concatMap (compileExprUnfoldings . snd) fs
-  RecordAcc _ r _ -> compileExprUnfoldings r
+  RecordProj _ _ r _ -> compileExprUnfoldings r
   Builtin _ _ -> []
   FreeVar _ n -> ["unfolding " <> pretty (nameOf n) <>"_def"]
   BoundVar _ _ -> []
@@ -373,7 +410,7 @@ compileExpr isOutType localeAssms expr = do
         cOutput <- addNameToContext binder $ compileExpr True localeAssms result
         return $ annotate ([], 99) $ cInput <+> "\\<Rightarrow>" <+> cOutput
       _ -> do
-        let (binders, body) = foldBinders PiBinder binder result
+        let (binders, body) = foldPiBinders binder result
         compileTypeLevelQuantifier localeAssms Forall (binder :| binders) body
     Let _ bound binder body -> do
       cBoundExpr <- compileLetBinder localeAssms (binder, bound)
@@ -382,12 +419,15 @@ compileExpr isOutType localeAssms expr = do
     Lam _ binder body -> compileLam localeAssms binder body
     Builtin _p b -> compileBuiltin isOutType localeAssms b []
     App fun args -> compileApp isOutType localeAssms fun args
-    Record _p _i fs -> do -- TODO(steuber): Move to compileRecord function
-      fs' <- traverse (compileRecordField localeAssms) fs
-      return $ encloseSep ("\\<lparr>" <> space) (space <> "\\<rparr>") ("," <> space) fs'
-    RecordAcc _p r (_i, field) -> annotateNotation localeAssms [] 200 ("(" <> nameOf field <> " $0)") (Just $ nameOf field) [explicit r]
+    Record _p _i fs -> compileRecord localeAssms fs
+    RecordProj _p _t r field -> annotateNotation localeAssms [] 200 ("(" <> nameOf field <> " $0)") (Just $ nameOf field) [explicit r]
   logExit result
   return result
+
+compileRecord :: (MonadIsabelleCompile m) => [LocaleDef] -> [GenericRecordField (Expr DecidabilityBuiltin)] -> m Code
+compileRecord localeAssms fs = do
+  fs' <- traverse (compileRecordField localeAssms) fs
+  return $ encloseSep ("\\<lparr>" <> space) (space <> "\\<rparr>") ("," <> space) fs'
 
 compileType :: UniverseLevel -> Code
 compileType _ = developerError "compilation of higher-level universes to Isabelle unsupported"
@@ -477,9 +517,9 @@ compileBinder :: (MonadIsabelleCompile m) => [LocaleDef] -> Binder DecidabilityB
 compileBinder localeAssms binder = do
   binderType <- compileExpr False localeAssms (typeOf binder)
   (binderDoc, noExplicitBrackets) <- case binderNamingForm binder of
-    OnlyName name -> return (pretty name, True)
+    OnlyName name _ -> return (pretty name, True)
     OnlyType -> return (binderType, True)
-    NameAndType name -> do
+    NameAndType name _ -> do
       let annName = annotate (Set.empty, minPrecedence) (pretty name <+> "::" <+> binderType)
       return (annName, False)
 
@@ -489,7 +529,7 @@ resolveReturnType :: (MonadIsabelleCompile m) => [LocaleDef] -> [Code] -> Expr D
 resolveReturnType localeAssms (_ : bs) (Pi _ binder r) = addNameToContext binder $ resolveReturnType localeAssms bs r
 resolveReturnType localeAssms _ e = compileExpr True localeAssms e
 
-compileRecordField :: (MonadIsabelleCompile m) => [LocaleDef] -> RecordField (Expr DecidabilityBuiltin) -> m Code
+compileRecordField :: (MonadIsabelleCompile m) => [LocaleDef] -> GenericRecordField (Expr DecidabilityBuiltin) -> m Code
 compileRecordField localeAssms (field, fieldValue) = do
   fieldValue' <- compileExpr False localeAssms fieldValue
   return $ pretty field <+> "=" <+> (parens fieldValue')
@@ -595,7 +635,7 @@ compileFunDef localeAssms n t binders body = do
 
 idxBasedOp :: (MonadIsabelleCompile m) => [LocaleDef] -> Code -> [Arg DecidabilityBuiltin] -> m Code
 idxBasedOp localeAssms op args = case args of
-        [(ExplicitArg _ _ (Lam _ binder _body))] -> case (typeOf binder) of
+        [(ExplicitArg _ (Lam _ binder _body))] -> case (typeOf binder) of
           (App (Builtin _p (StandardBuiltinType IndexType)) [maxIdx]) -> do
             idxArg <- (compileExpr False localeAssms (argExpr maxIdx))
             annotateApp localeAssms [RequireImport VehicleTensor] (op<+>idxArg<>" ") args
@@ -654,7 +694,7 @@ compileBuiltin isOutType localeAssms b args = case b of
       bracketedArgs <- compileArgs localeAssms 1 args
       return $ annotate ([RequireImport VehicleTensor],1) (parens ("flextensor_from_vec ["<> (pretty (length args)) <>"] [" <> concatWith (\x y -> x <> ", " <> y) bracketedArgs) <> "]")
     QuantifyRatTensor q -> case reverse args of
-      (ExplicitArg _ _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier localeAssms q [binder] body
+      (ExplicitArg _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier localeAssms q [binder] body
       _ -> unsupportedArgsError
     AtTensor -> annotateNotation localeAssms [RequireImport VehicleTensor, RequireImport VehicleTensorSubtensor, RequireImport VehicleUtils] 201 "(flex_subtensor $0 $1)" (Just "nindex") args
     If -> annotateNotation localeAssms [] minPrecedence "if $0 then $1 else $2" Nothing args
@@ -804,7 +844,7 @@ compileRatLiteral r = parens $ annotate ([], minPrecedence) rat
 
 compileLam :: (MonadIsabelleCompile m) => [LocaleDef] -> Binder DecidabilityBuiltin -> Expr DecidabilityBuiltin -> m Code
 compileLam localeAssms binder expr = do
-  let (binders, body) = foldBinders LamBinder binder expr
+  let (binders, body) = foldLamBinders binder expr
   (cBinders, cBody) <- compileBinders localeAssms (binder : binders) (compileExpr False localeAssms body)
   return $ annotate (mempty, minPrecedence) ("\\<lambda> " <+> hsep cBinders <+> "." <+> (parens cBody))
 
