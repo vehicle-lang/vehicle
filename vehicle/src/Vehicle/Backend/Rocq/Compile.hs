@@ -272,7 +272,7 @@ compileDecl = \case
     TypeDecl binderCount -> Just <$> compileFunctionDecl n binderCount t e
     FunctionDecl binderCount Nothing -> Just <$> compileFunctionDecl n binderCount t e
     FunctionDecl _ (Just AnnProperty) -> Just <$> compileProperty n e
-    FunctionDecl _ (Just AnnInstance) -> throwError $ UnimplementedFeature p "Compiling instances to Rocq"
+    FunctionDecl _ (Just AnnInstance {}) -> throwError $ UnimplementedFeature p "Compiling instances to Rocq"
     ProjectionDecl {} -> return Nothing
   DefRecord p n _ telescope fields ->
     Just <$> compileRecordDecl p n telescope fields

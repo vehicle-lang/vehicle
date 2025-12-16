@@ -64,6 +64,23 @@ forallIndex : forallT {n} . (Index n -> Bool) -> Bool
 forallIndex f = reduceAnd True (foreach i . f i)
 
 --------------------------------------------------------------------------------
+-- Type classes
+--------------------------------------------------------------------------------
+
+@typeclass
+record HasAdd t1 t2 t3 where
+  { addTC : t1 -> t2 -> t3
+  }
+
+@instance(default=True)
+natHasAdd : HasAdd Nat Nat Nat
+natHasAdd = { addTC = addNat }
+
+@instance
+realTensorHasAdd : HasAdd (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
+realTensorHasAdd = { addTC = addRealTensor }
+
+--------------------------------------------------------------------------------
 -- Loss logics
 --------------------------------------------------------------------------------
 

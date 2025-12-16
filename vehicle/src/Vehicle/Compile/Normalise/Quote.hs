@@ -70,10 +70,11 @@ instance (ConvertableBuiltin builtin1 builtin2) => Quote (Value builtin1) (Expr 
       let quotedRecordType = quote p level recordType
       let quotedFields = mapRecordFields (quote p level) $ OMap.assocs fields
       Record p quotedRecordType quotedFields
-    VRecordAcc recordType record field -> do
+    VRecordAcc recordType record field spine -> do
       let quotedRecordType = quote p level recordType
       let quotedRecord = quote p level record
-      RecordProj p quotedRecordType quotedRecord field
+      let quotedProj = RecordProj p quotedRecordType quotedRecord field
+      quoteApp level p quotedProj spine
 
 instance (Quote expr1 expr2) => Quote (GenericBinder expr1) (GenericBinder expr2) where
   quote p level = fmap (quote p level)

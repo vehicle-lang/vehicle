@@ -151,5 +151,5 @@ powLinearityOp p l1 l2 = case (l1, l2) of
 
 getTypeClass :: (MonadCompile m) => InstanceGoal LinearityBuiltin -> m (LinearityRelation, Spine LinearityBuiltin)
 getTypeClass = \case
-  (InstanceGoal [] (LinearityRelation tc) args) -> return (tc, args)
+  (InstanceGoal [] (Right (LinearityRelation tc)) args) -> return (tc, args)
   _ -> compilerDeveloperError "Unexpected non-type-class instance argument found."

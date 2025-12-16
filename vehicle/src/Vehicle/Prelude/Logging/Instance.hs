@@ -15,14 +15,13 @@ where
 import Control.Monad (unless, when)
 import Control.Monad.Except (MonadError (..))
 import Control.Monad.Identity (Identity (..))
-import Control.Monad.RWS (RWST (..), gets)
+import Control.Monad.RWS (MonadReader (..), MonadState (..), RWST (..), gets)
 import Control.Monad.Reader (asks)
 import Control.Monad.State (modify)
 import Control.Monad.Trans (MonadIO (..), MonadTrans (..))
 import Control.Monad.Writer (MonadWriter (..), WriterT (..))
 import Data.Bifunctor (Bifunctor (..))
-import Data.Maybe (isNothing)
-import Data.Text (Text, pack)
+import Data.Text (Text, pack, unpack)
 import System.Console.ANSI (Color (..))
 import Vehicle.Compile.Print.Warning ()
 import Vehicle.Prelude
@@ -37,33 +36,75 @@ type OutputAsJSON = Bool
 data LoggingSettings = LoggingSettings
   { putLogLn :: Text -> IO (),
     loggingLevel :: LoggingLevel,
-    loggingPass :: Maybe CompilerPass,
+    loggingTarget :: CompilerStack,
     noWarnings :: Bool
   }
 
 --------------------------------------------------------------------------------
 -- Standard logging monad
 
+data LoggingState = LoggingState
+  { currentStack :: CompilerStack,
+    currentDepth :: Int,
+    matchesTargetStack :: Bool
+  }
+
+initialLoggingState :: LoggingSettings -> LoggingState
+initialLoggingState LoggingSettings {..} =
+  LoggingState
+    { currentStack = emptyStack,
+      currentDepth = 0,
+      matchesTargetStack = stackMatches emptyStack loggingTarget
+    }
+
+updateLoggingState ::
+  LoggingSettings ->
+  Either CompilerPass Identifier ->
+  LoggingState ->
+  LoggingState
+updateLoggingState LoggingSettings {..} item oldState = do
+  let newStack = consStack (second (unpack . nameOf) item) (currentStack oldState)
+  let newState =
+        oldState
+          { currentStack = newStack,
+            matchesTargetStack = stackMatches newStack loggingTarget
+          }
+  newState
+
 newtype LoggerT m a = LoggerT
-  { unLoggerT :: RWST LoggingSettings [CompileWarning] (Maybe CompilerPass, Int) m a
+  { unLoggerT :: RWST LoggingSettings [CompileWarning] LoggingState m a
   }
   deriving (Functor, Applicative, Monad)
 
 instance (MonadIO m) => MonadLogger (LoggerT m) where
-  setCallDepth x = LoggerT $ modify (second (const x))
-  getCallDepth = LoggerT $ gets snd
-  incrCallDepth = LoggerT $ modify (second (+ 1))
-  decrCallDepth = LoggerT $ modify (second (\x -> x - 1))
+  setCallDepth x = LoggerT $ modify (\s -> s {currentDepth = x})
+  getCallDepth = LoggerT $ gets currentDepth
+  incrCallDepth = LoggerT $ modify (\s -> s {currentDepth = currentDepth s + 1})
+  decrCallDepth = LoggerT $ modify (\s -> s {currentDepth = currentDepth s - 1})
   getDebugLevel = LoggerT $ asks loggingLevel
   logWarning w = LoggerT $ tell [w]
   logMessage message = LoggerT $ do
-    requestedLoggingPass <- asks loggingPass
-    currentPass <- gets fst
-    when (isNothing requestedLoggingPass || requestedLoggingPass == currentPass) $ do
+    loggingEnabled <- gets matchesTargetStack
+    when loggingEnabled $ do
       logAction <- asks putLogLn
       lift $ liftIO $ logAction (pack $ show message)
-  enterCompilerPass p = LoggerT $ modify (first (const $ Just p))
-  exitCompilerPass = LoggerT $ modify (first (const Nothing))
+  runCompilerPass compilerPass action =
+    LoggerT $ do
+      settings <- ask
+      oldState <- get
+      put $ updateLoggingState settings (Left compilerPass) oldState
+      result <- unLoggerT action
+      put oldState
+      return result
+
+  runCompileDecl decl action =
+    LoggerT $ do
+      settings <- ask
+      oldState <- get
+      put $ updateLoggingState settings (Right decl) oldState
+      result <- unLoggerT action
+      put oldState
+      return result
 
 instance MonadTrans LoggerT where
   lift = LoggerT . lift
@@ -83,7 +124,8 @@ instance (MonadStdIO m) => MonadStdIO (LoggerT m) where
 
 runLoudLoggerT :: (MonadIO m) => LoggingSettings -> LoggerT m a -> m (a, [CompileWarning])
 runLoudLoggerT loggingSettings (LoggerT value) = do
-  (result, _, warnings) <- runRWST value loggingSettings (Nothing, 0)
+  let initialState = initialLoggingState loggingSettings
+  (result, _, warnings) <- runRWST value loggingSettings initialState
   return (result, warnings)
 
 --------------------------------------------------------------------------------
@@ -105,8 +147,8 @@ instance (Monad m) => MonadLogger (SilentLoggerT m) where
   decrCallDepth = return ()
   getDebugLevel = return NoDetail
   logWarning w = SilentLoggerT $ tell [w]
-  enterCompilerPass _ = return ()
-  exitCompilerPass = return ()
+  runCompilerPass _ a = a
+  runCompileDecl _ a = a
 
 instance (MonadIO m) => MonadIO (SilentLoggerT m) where
   liftIO = lift . liftIO

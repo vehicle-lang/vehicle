@@ -1,6 +1,5 @@
 module Vehicle.Data.Variable.Free.Context
   ( module X,
-    mkDeclCtxEntry,
     addDeclToContext,
     traverseNormalisedDecls_,
   )
@@ -15,19 +14,13 @@ import Vehicle.Data.Variable.Free.Context.Class as X
 import Vehicle.Data.Variable.Free.Context.Core as X
 import Vehicle.Data.Variable.Free.Context.Instance as X
 
-mkDeclCtxEntry ::
-  (MonadLogger m, MonadFreeContext builtin m, NormalisableBuiltin builtin) =>
-  Decl builtin ->
-  m (FreeCtxEntry builtin)
-mkDeclCtxEntry = traverse normaliseInEmptyEnv
-
 addDeclToContext ::
   (MonadLogger m, MonadFreeContext builtin m, NormalisableBuiltin builtin) =>
   Decl builtin ->
   m a ->
   m a
 addDeclToContext decl cont = do
-  declEntry <- mkDeclCtxEntry decl
+  declEntry <- evalDecl decl
   addDeclEntryToContext declEntry cont
 
 traverseNormalisedDecls_ ::
@@ -44,7 +37,8 @@ traverseNormalisedDecls_ f (Main ds) =
     go = \case
       [] -> return ()
       decl : decls -> do
-        normDecl <- mkDeclCtxEntry decl
+        logDebug MaxDetail $ pretty $ nameOf decl
+        normDecl <- evalDecl decl
         _ <- f normDecl
         decls' <- addDeclEntryToContext normDecl $ go decls
         return decls'

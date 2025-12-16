@@ -32,7 +32,7 @@ module Vehicle.Data.Code.TypedView
 where
 
 import GHC.Stack (HasCallStack)
-import Vehicle.Compile.Normalise.NBE (normaliseBuiltin)
+import Vehicle.Compile.Normalise.NBE (evalBuiltin)
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Data.Builtin.Interface (Accessor (..), BuiltinHasIndexLiterals, BuiltinHasListLiterals, BuiltinHasNatLiterals, BuiltinHasNatType, BuiltinHasTensors)
 import Vehicle.Data.Builtin.Interface.Normalise (EvalSimple, HasTensorLiterals, MonadNormBuiltin, evalAddRatTensor, evalCompareRatTensorPointwise, evalConstTensor, evalMulRatTensor, unoptimisedEvalAtTensor)
@@ -246,7 +246,7 @@ evalCompareRatTensor op args@(TensorOp2Args dims e1 e2) = case toDimensionsValue
   VDimsCons d ds -> do
     let reduceArgs = TensorReduceComparisonArgs d ds e1 e2
     namedCtx <- getNameContext
-    normaliseBuiltin namedCtx (DerivedFunction (CompareRatTensorReduced op)) (mkExpr accessSpine reduceArgs)
+    evalBuiltin namedCtx (DerivedFunction (CompareRatTensorReduced op)) (mkExpr accessSpine reduceArgs)
   _ -> developerError "Unexpected tensorOp2Args for comparison"
 
 -------------------------------------------------------------------------------
@@ -455,7 +455,7 @@ fromDimensionsValue e = case e of
 
 -- | Reduces a tensor value `x` to `[x!0, x!1, ..., x!n]`
 etaReduceTensor ::
-  (MonadNormBuiltin m, BuiltinHasNatLiterals builtin, BuiltinHasIndexLiterals builtin, BuiltinHasTensors builtin, HasTensorLiterals builtin, BuiltinHasListLiterals builtin, BuiltinHasNatType builtin) =>
+  (MonadNormBuiltin m, BuiltinHasNatLiterals builtin, BuiltinHasIndexLiterals builtin, BuiltinHasTensors builtin, HasTensorLiterals Value builtin, BuiltinHasListLiterals builtin, BuiltinHasNatType builtin) =>
   VType builtin ->
   Int ->
   Value builtin ->

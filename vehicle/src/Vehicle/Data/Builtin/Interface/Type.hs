@@ -1,6 +1,7 @@
 module Vehicle.Data.Builtin.Interface.Type where
 
 import Data.Proxy (Proxy)
+import Vehicle.Compile.Type.Core (InstanceHead)
 import Vehicle.Compile.Type.Monad.Class (MonadTypeChecker)
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Interface.Normalise (NormalisableBuiltin)
@@ -23,7 +24,7 @@ class (NormalisableBuiltin builtin, Ord builtin) => TypableBuiltin builtin where
   isConstructor :: builtin -> Bool
 
   -- | Is the builtin a constraint for a casting operation (e.g. of literals, tensors etc.)
-  isCastConstraint :: builtin -> Bool
+  isCastConstraint :: InstanceHead builtin -> Bool
 
 typeOfBuiltinType :: (HasStandardBuiltins builtin) => BuiltinType -> DSLExpr builtin
 typeOfBuiltinType = \case

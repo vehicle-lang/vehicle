@@ -173,14 +173,12 @@ at xs i = case shapeOf xs of
           let stride = product ds
           fromVectorSlice stride ds values i
 
-stack :: (Eq a) => [Tensor a] -> Tensor a
-stack = \case
-  [] -> developerError "cannot stack zero dimensional tensors"
-  ts@(t : _) -> do
-    let dims = length ts : shapeOf t
-    case allConstant ts of
-      Just v -> ConstantTensor dims v
-      Nothing -> fromVector dims $ Vector.concat $ fmap toVector ts
+stack :: (Eq a) => TensorShape -> [Tensor a] -> Tensor a
+stack elementDims ts = do
+  let dims = length ts : elementDims
+  case allConstant ts of
+    Just v -> ConstantTensor dims v
+    Nothing -> fromVector dims $ Vector.concat $ fmap toVector ts
   where
     allConstant :: (Eq a) => [Tensor a] -> Maybe a
     allConstant [] = Nothing

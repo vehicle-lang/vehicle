@@ -63,11 +63,10 @@ diagnoseSpecIncompatiblility prog propertyIdentifier typeCheckFn = do
       <+> quotePretty propertyIdentifier
       <> line
 
-  logCompilerPass QueryError $ do
-    errorOrLinearityProg <- typeCheckFn prog (Set.singleton propertyIdentifier)
-    case errorOrLinearityProg of
-      Left err -> return $ Left err
-      Right linearityProg -> Right <$> findDeclType propertyIdentifier linearityProg
+  errorOrLinearityProg <- typeCheckFn prog (Set.singleton propertyIdentifier)
+  case errorOrLinearityProg of
+    Left err -> return $ Left err
+    Right linearityProg -> Right <$> findDeclType propertyIdentifier linearityProg
 
 findDeclType :: (MonadCompile m) => Identifier -> Prog builtin -> m (Expr builtin)
 findDeclType propIdent (Main decls) = do

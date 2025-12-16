@@ -1,19 +1,20 @@
-record Pair x y where
-  { a : x
-  , b : y
+record Pair t1 t2 where
+  { a : t1
+  , b : t2
   }
 
 {-
-Delaborated to
+Elaborated to
 
-Pair : \forall x y -> Set
-Pair = \x y -> { a : x, b : y }
+(morally)
+Pair : \forall t1 t2 -> Set
+Pair = \t1 t2 -> { a : t1, b : t2 }
 
-a : \forall {x} {y} -> Pair x y -> x
-a {x} {y} r = Proj (Pair x y) r a
+a : \forall {t1} {t2} -> Pair t1 t2 -> t1
+a {t1} {t2} r = Proj (Pair t1 t2) r a
 
-a : \forall {x} {y} -> Pair x y -> y
-a {x} {y} r = Proj (Pair x y) r b
+b : \forall {t1} {t2} -> Pair t1 t2 -> t2
+b {t1} {t2} r = Proj (Pair t1 t2) r b
 -}
 
 RealPair : Type
@@ -28,3 +29,4 @@ f : Tensor Real [2] -> Tensor Real [2]
 @property
 safe : Bool
 safe = f [pair.a, pair.b] ! 0 > 0
+-- Becomes f [a pair, b pair]

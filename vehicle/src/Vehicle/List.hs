@@ -12,7 +12,7 @@ import Data.Text (Text, pack)
 import GHC.Generics
 import Vehicle.Compile.Error (CompileError (MultiPropertyTraveralError), MultiPropertyTraveralError (..))
 import Vehicle.Compile.ExpandResources (expandResources)
-import Vehicle.Compile.Normalise.NBE (normaliseClosure, normaliseInEmptyEnv)
+import Vehicle.Compile.Normalise.NBE (evalDecl, normaliseClosure)
 import Vehicle.Compile.Prelude hiding (Dataset, Network, Parameter, name)
 import Vehicle.Compile.Print
 import Vehicle.Compile.Print.Error (prettyCompileError)
@@ -86,7 +86,7 @@ searchDecls :: (MonadList m, MonadSupply PropertyID m) => [Decl Builtin] -> m ()
 searchDecls = \case
   [] -> return ()
   d : ds -> do
-    normDecl <- traverse normaliseInEmptyEnv d
+    normDecl <- evalDecl d
     searchDecl normDecl
     addDeclEntryToContext normDecl $ searchDecls ds
 
@@ -145,7 +145,7 @@ searchValue value = case value of
     body <- normaliseClosure binder closure
     searchValue body
   VRecord _ fields -> traverse_ searchValue fields
-  VRecordAcc _ record _ -> searchValue record
+  VRecordAcc _ record _ spine -> do searchValue record; searchSpine spine
   -- Never traverse into types so the following cases shouldn't happen!
   VUniverse {} -> unexpectedExprError pass "VUniverse"
   VPi {} -> unexpectedExprError pass "VUniverse"

@@ -108,10 +108,14 @@ instance MetaSubstitutable m builtin (Value builtin) where
     VFreeVar v spine -> VFreeVar v <$> traverse (substMetasAt ctx s) spine
     VBoundVar v spine -> VBoundVar v <$> traverse (substMetasAt ctx s) spine
     VRecord ident fields -> VRecord ident <$> traverse (substMetasAt ctx s) fields
-    VRecordAcc recordType record field -> VRecordAcc <$> substMetasAt ctx s recordType <*> substMetasAt ctx s record <*> pure field
+    VRecordAcc recordType record field spine -> do
+      recordType' <- substMetasAt ctx s recordType
+      record' <- substMetasAt ctx s record
+      spine' <- traverse (substMetasAt ctx s) spine
+      return $ VRecordAcc recordType' record' field spine'
     VBuiltin b spine -> do
       spine' <- traverse (substMetasAt ctx s) spine
-      normaliseBuiltin ctx b spine'
+      evalBuiltin ctx b spine'
 
     -- NOTE: no need to lift the substitutions here as we're passing under the binders
     -- because by construction every meta-variable solution is a closed term.

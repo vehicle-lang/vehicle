@@ -7,6 +7,7 @@ where
 
 import Control.Exception (Exception (..), Handler (..), SomeException (..), catches, handle, throwIO)
 import Control.Monad.IO.Class (MonadIO (liftIO))
+import Data.Maybe (fromMaybe)
 import Data.Text qualified as Text (pack)
 import Data.Text.IO qualified as TextIO (hPutStrLn)
 import GHC.IO.Encoding (setLocaleEncoding)
@@ -77,8 +78,15 @@ runVehicle Options {..} = do
               outputAsJson = outputAsJSON globalOptions
 
 withLogger :: (MonadStdIO IO) => GlobalOptions -> (LoggingSettings -> IO a) -> IO a
-withLogger GlobalOptions {logFile, loggingPass, loggingLevel, noWarnings} action = do
-  let runAction logLn = action LoggingSettings {putLogLn = logLn, loggingPass, loggingLevel, noWarnings}
+withLogger GlobalOptions {logFile, loggingTarget, loggingLevel, noWarnings} action = do
+  let runAction logLn =
+        action
+          LoggingSettings
+            { putLogLn = logLn,
+              loggingTarget = fromMaybe emptyStack loggingTarget,
+              loggingLevel,
+              noWarnings
+            }
   case logFile of
     Nothing -> runAction VIO.writeStderrLn
     Just fp -> do

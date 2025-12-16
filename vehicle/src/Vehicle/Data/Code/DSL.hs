@@ -124,8 +124,8 @@ hasQuantifier q t = typeClass (HasQuantifier q) [t]
 numOp2TypeClass :: (BuiltinHasStandardTypeClasses builtin) => TypeClass -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 numOp2TypeClass tc t1 t2 t3 = typeClass tc [t1, t2, t3]
 
-hasAdd :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
-hasAdd = numOp2TypeClass HasAdd
+standardLib :: Name -> DSLExpr builtin
+standardLib = freeVar . stdlibIdentifier
 
 hasSub :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 hasSub = numOp2TypeClass HasSub
