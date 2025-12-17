@@ -59,6 +59,9 @@ class DSL expr where
   lam :: Name -> Visibility -> Relevance -> expr -> (expr -> expr) -> expr
   recordProj :: expr -> expr -> FieldName -> expr
 
+  -- guessing recordField
+  record :: expr -> [FieldName] -> [expr] -> expr
+
 newtype DSLExpr builtin = DSL
   { unDSL :: Provenance -> Lv -> Expr builtin
   }
@@ -108,10 +111,24 @@ instance DSL (DSLExpr builtin) where
         args' = fmap (\(v, r, e) -> Arg v r (unDSL e p i)) args
      in App fun' args'
 
-  recordProj recordType record field = DSL $ \p i -> do
+  recordProj recordType actualRecord field = DSL $ \p i -> do
     let recordType' = unDSL recordType p i
-    let record' = unDSL record p i
+    let record' = unDSL actualRecord p i
     RecordProj p recordType' record' field
+
+  record recordType fieldNames fieldContent = DSL $ \p i -> do
+    let unDSLcontent = map (\x -> unDSL x p i) fieldContent
+    let fields = zip fieldNames unDSLcontent
+    let recordType' = unDSL recordType p i
+    Record p recordType' fields
+
+-- stuff for attempting to concoct record fields and records
+-- Record
+--   Provenance
+--   (Type builtin) -- Type of the record, e.g. `Pair Int Int`
+--   (RecordFields builtin)
+
+-- type GenericRecordField expr = (FieldName, expr)
 
 --------------------------------------------------------------------------------
 -- AST
