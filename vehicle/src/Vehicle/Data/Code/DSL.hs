@@ -85,6 +85,9 @@ ratLit r = builtinConstructor (RatTensorLiteral (ZeroDimTensor r))
 unitLit :: (BuiltinHasStandardData builtin) => DSLExpr builtin
 unitLit = builtinConstructor UnitLiteral
 
+indexLit :: (BuiltinHasStandardData builtin) => Int -> DSLExpr builtin
+indexLit n = builtinConstructor (IndexLiteral n)
+
 shapeOf :: (BuiltinHasStandardData builtin, BuiltinHasStandardTypes builtin) => Tensor a -> DSLExpr builtin
 shapeOf t = foldr (\x xs -> cons tNat (natLit x) xs) (nil tNat) (T.shapeOf t)
 
@@ -237,6 +240,17 @@ constTensor t x dims = builtinFunction ConstTensor @@@ [t] @@ [x, dims]
 
 stackTensor :: (BuiltinHasStandardData builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> NonEmpty (DSLExpr builtin) -> DSLExpr builtin
 stackTensor t d ds xs = builtinFunction StackTensor @@@ [t, d, ds] @@ xs
+
+-- data AtTensorArgs expr = AtTensorArgs
+--   { atType :: expr,
+--     atFirstDim :: expr,
+--     atRemainingDims :: expr,
+--     atTensor :: expr,
+--     atIndex :: expr
+--   }
+
+atTensor :: (BuiltinHasStandardData builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+atTensor t d ds tens idx = builtinFunction AtTensor @@@ [t, d, ds] @@ [tens, idx]
 
 iterate :: (BuiltinHasStandardData builtin) => DSLExpr builtin -> (DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 iterate t f n e = do
