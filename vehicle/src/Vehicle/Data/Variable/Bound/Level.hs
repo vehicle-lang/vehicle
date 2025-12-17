@@ -32,6 +32,7 @@ import Data.Coerce (coerce)
 import Data.Hashable (Hashable (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Serialize (Serialize)
+import Data.Vector.Internal.Check (HasCallStack)
 import GHC.Generics (Generic)
 import Vehicle.Data.Tensor
 import Vehicle.Data.Variable.Bound.Index
@@ -70,7 +71,7 @@ instance Pretty Lv where
 
 -- | Converts a `Lv` x to a `Ix` given that we're currently at
 -- level `l`.
-dbLevelToIndex :: Lv -> Lv -> Ix
+dbLevelToIndex :: (HasCallStack) => Lv -> Lv -> Ix
 dbLevelToIndex l x = Ix (unLv l - unLv x - 1)
 
 -- | Converts a `Lv` x to a `Ix` given that we're currently at

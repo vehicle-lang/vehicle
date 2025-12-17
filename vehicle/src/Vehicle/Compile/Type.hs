@@ -43,7 +43,7 @@ typeCheckModuleDecls ::
   [Decl Builtin] ->
   m ([Decl builtin], ModuleTypingInterface builtin, FreeEnv builtin)
 typeCheckModuleDecls modulePath instances importedCtx decls = do
-  logCompilerPass TypeChecking $ do
+  logCompilerPass Typing $ do
     runTypeCheckerTInitially instances importedCtx $ do
       let unusedDecls
             | modulePath == userModulePath = completelyUnusedDeclarations decls
@@ -63,7 +63,7 @@ typeCheckDecls unusedDecls = \case
 
 typeCheckDecl :: forall builtin m. (TCM builtin m) => Decl Builtin -> DeclIsUnused -> m (Decl builtin)
 typeCheckDecl uncheckedDecl isUnused =
-  logCompilerSection2 MidDetail ("typing" <+> quotePretty (identifierOf uncheckedDecl)) $ do
+  logCompileDecl "typing" uncheckedDecl $ do
     logDebug MidDetail $ prettyExternal uncheckedDecl <> line
 
     convertedDecl <- logCompilerSection MaxDetail "Converting builtins" $ do
@@ -142,10 +142,13 @@ typeCheckFunctionDef p ident anns typ body isUnused = do
   solveConstraints (Proxy @builtin)
   substDecl <- substMetaVariables checkedDecl
 
-  if isAnnotatedAsProperty anns
-    then return substDecl
-    else do
-      -- Otherwise if not a property then generalise over unsolved meta-variables.
+  case anns of
+    FunctionDecl _ (Just AnnProperty) ->
+      return substDecl
+    FunctionDecl _ (Just (AnnInstance isDefault)) -> do
+      addInstanceToInstanceDatabase substDecl isDefault
+      return substDecl
+    _ -> do
       checkedDecl1 <-
         if isUserCode ident
           then addAuxiliaryInputOutputConstraints substDecl

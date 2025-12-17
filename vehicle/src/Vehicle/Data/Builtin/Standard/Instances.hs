@@ -266,17 +266,6 @@ allInstances =
             False
           ),
           ------------
-          -- HasAdd --
-          ------------
-          ( hasAdd tNat tNat tNat,
-            builtinFunction (Add AddNat),
-            True
-          ),
-          ( forAllDims $ \dims -> hasAdd (tRatTensor dims) (tRatTensor dims) (tRatTensor dims),
-            lamDims $ \dims -> builtinFunction (Add AddRatTensor) .@@@ [dims],
-            False
-          ),
-          ------------
           -- HasSub --
           ------------
           ( forAllDims $ \dims -> hasSub (tRatTensor dims) (tRatTensor dims) (tRatTensor dims),

@@ -483,7 +483,7 @@ Ensure that you have the source code and that you have installed GHC and Cabal.
    vehicle --version
    ```
 
-   This should print `0.22.0`.
+   This should print `0.23.0`.
 
 ### Building the Vehicle Python bindings
 
@@ -584,14 +584,14 @@ Ensure that you have the source code and that you have installed GHC/Cabal plus 
   uv build
   ```
 
-This creates the directory `dist` which contains "wheels", which are the binary distribution format for Python packages. These wheels will have file names such as `vehicle_lang-0.22.0-cp311-cp311-macosx_13_0_arm64`:
+This creates the directory `dist` which contains "wheels", which are the binary distribution format for Python packages. These wheels will have file names such as `vehicle_lang-0.23.0-cp311-cp311-macosx_13_0_arm64`:
 
 ```sh
 #   Supported
 #   Python   _____
 #   versions      \
 #                  vvvvvvvvvvv
-vehicle_lang-0.22.0-cp311-cp311-macosx_13_0_arm64
+vehicle_lang-0.23.0-cp311-cp311-macosx_13_0_arm64
 #                              ^^^^^^^^^^^^^^^^^
 #   Supported                /
 #   Operating System  ______/
@@ -755,7 +755,7 @@ Ensure that you have the source code and that you have installed GHC/Cabal plus 
    vehicle --version
    ```
 
-   This should print `0.22.0`.
+   This should print `0.23.0`.
 
 1. Check if your installation of the `vehicle_lang` package was successful.
 
@@ -874,17 +874,17 @@ The procedure to create a new release is:
 
 5. Run all tests and fix any errors.
 
-   **Vehicle compiler tests**
+  **Vehicle compiler tests**
 
-   Run the following command from the root of the repository:
+  Run the following command from the root of the repository:
 
-   ```sh
-   cabal test all --test-option=--num-threads=1
-   ```
+  ```sh
+  cabal test all --test-option=--num-threads=1
+  ```
 
-   **Vehicle Python bindings tests**
+  **Vehicle Python bindings tests**
 
-   From `vehicle-python`, ensure the lockfile is current, then execute the pytest matrix:
+  From `vehicle-python`, ensure the lockfile is current, then execute the pytest matrix:
 
   ```sh
   uv sync --extra test --extra pygments --extra pytorch --extra tensorflow
@@ -964,11 +964,11 @@ The procedure to create a new release is:
    This creates the directory `dist` which contains "wheels", which are the binary distribution format for Python packages. If you're on macOS with an M1/M2 chipset, these look like:
 
    ```
-   vehicle_lang-0.22.0-cp310-cp310-macosx_13_0_arm64.whl
-   vehicle_lang-0.22.0-cp37-cp37m-macosx_13_0_arm64.whl
-   vehicle_lang-0.22.0-cp39-cp39-macosx_13_0_arm64.whl
-   vehicle_lang-0.22.0-cp311-cp311-macosx_13_0_arm64.whl
-   vehicle_lang-0.22.0-cp38-cp38-macosx_13_0_arm64.whl
+   vehicle_lang-0.23.0-cp310-cp310-macosx_13_0_arm64.whl
+   vehicle_lang-0.23.0-cp37-cp37m-macosx_13_0_arm64.whl
+   vehicle_lang-0.23.0-cp39-cp39-macosx_13_0_arm64.whl
+   vehicle_lang-0.23.0-cp311-cp311-macosx_13_0_arm64.whl
+   vehicle_lang-0.23.0-cp38-cp38-macosx_13_0_arm64.whl
    ```
 
    Run the following command to check each wheel's metadata:
@@ -989,7 +989,7 @@ The procedure to create a new release is:
 
    The release will be at a URL like:
 
-   <https://github.com/vehicle-lang/vehicle/releases/tag/v0.22.0>
+   <https://github.com/vehicle-lang/vehicle/releases/tag/v0.23.0>
 
 [vehicle-lang/vehicle]: https://github.com/vehicle-lang/vehicle
 [GHC]: https://www.haskell.org/ghc/

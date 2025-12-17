@@ -4,7 +4,7 @@
 module Vehicle.Compile.Type.Core where
 
 import Data.Map (Map)
-import Data.Map qualified as Map (findWithDefault, lookup)
+import Data.Map qualified as Map
 import Data.Serialize (Serialize)
 import GHC.Generics (Generic)
 import Vehicle.Compile.Prelude
@@ -150,15 +150,20 @@ data InstanceConstraintOrigin builtin
   | InstanceTypeRestrictionOrigin (InstanceTypeRestrictionOrigin builtin)
   deriving (Show)
 
+type InstanceHead builtin = Either Identifier builtin
+
 data InstanceGoal builtin = InstanceGoal
   { goalTelescope :: Telescope builtin,
-    goalHead :: builtin,
+    goalHead :: InstanceHead builtin,
     goalSpine :: Spine builtin
   }
   deriving (Show)
 
 goalExpr :: InstanceGoal builtin -> Value builtin
-goalExpr InstanceGoal {..} = VBuiltin goalHead goalSpine
+goalExpr InstanceGoal {..} =
+  case goalHead of
+    Left ident -> VFreeVar ident goalSpine
+    Right builtin -> VBuiltin builtin goalSpine
 
 data InstanceConstraint builtin = Resolve
   { instanceOrigin :: InstanceConstraintOrigin builtin,
@@ -181,6 +186,16 @@ data InstanceCandidate builtin = InstanceCandidate
 
 instance (Serialize builtin) => Serialize (InstanceCandidate builtin)
 
+findInstanceGoalHead :: Expr builtin -> Either (Expr builtin) (InstanceHead builtin)
+findInstanceGoalHead = \case
+  Pi _ binder body
+    | not (isExplicit binder) -> findInstanceGoalHead body
+  App (Builtin _ b) _ -> Right $ Right b
+  Builtin _ b -> Right $ Right b
+  App (FreeVar _ v) _ -> Right $ Left v
+  FreeVar _ v -> Right $ Left v
+  expr -> Left expr
+
 type instance
   WithContext (InstanceCandidate builtin) =
     Contextualised (InstanceCandidate builtin) (BoundCtx (Type builtin))
@@ -196,8 +211,8 @@ type InstanceSearchDepth = Int
 -- We use a HashMap rather than an ordinary Map as not all builtins may be
 -- totally ordered (e.g. PolarityBuiltin and LinearityBuiltin)
 data InstanceDatabase builtin = InstanceDatabase
-  { instances :: Map builtin [InstanceCandidate builtin],
-    defaultInstances :: Map builtin (InstanceCandidate builtin)
+  { instances :: Map (InstanceHead builtin) [InstanceCandidate builtin],
+    defaultInstances :: Map (InstanceHead builtin) (InstanceCandidate builtin)
   }
   deriving (Generic)
 
@@ -211,6 +226,21 @@ lookupInstances goal database = Map.findWithDefault [] (goalHead goal) (instance
 
 lookupDefaultInstance :: (Ord builtin) => InstanceGoal builtin -> InstanceDatabase builtin -> Maybe (InstanceCandidate builtin)
 lookupDefaultInstance goal database = Map.lookup (goalHead goal) (defaultInstances database)
+
+insertInstanceIntoDatabase ::
+  (Ord builtin) =>
+  InstanceHead builtin ->
+  InstanceCandidate builtin ->
+  InstanceDatabase builtin ->
+  InstanceDatabase builtin
+insertInstanceIntoDatabase instanceHead instanceCandidate InstanceDatabase {..} =
+  InstanceDatabase
+    { instances = Map.insertWith (<>) instanceHead [instanceCandidate] instances,
+      defaultInstances =
+        if defaultInstance instanceCandidate
+          then Map.insert instanceHead instanceCandidate defaultInstances
+          else defaultInstances
+    }
 
 --------------------------------------------------------------------------------
 -- Unification constraints

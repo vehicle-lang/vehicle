@@ -13,7 +13,7 @@ import Control.Monad (when)
 import Control.Monad.Except (ExceptT, mapExceptT)
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Reader (MonadReader (..), ReaderT (..), asks, mapReaderT)
-import Control.Monad.State (MonadState (..), StateT (..), evalStateT, gets, modify)
+import Control.Monad.State (MonadState (..), StateT (..), evalStateT, gets, mapStateT, modify)
 import Control.Monad.Trans (MonadTrans (..))
 import Data.Aeson.Encode.Pretty (encodePretty')
 import Data.Aeson.Types
@@ -159,6 +159,12 @@ runTextProgressReporterT fn = do
   result <- runSharedStateT $ runReaderT (unTextReporterT fn) Nothing
   return result
 
+mapTextReporterT ::
+  (m (a, SharedState) -> n (b, SharedState)) ->
+  TextReporterT m a ->
+  TextReporterT n b
+mapTextReporterT f m = TextReporterT (mapReaderT (mapStateT f) (unTextReporterT m))
+
 instance (MonadStdIO m) => MonadProgressReporter (TextReporterT m) where
   reportMultiProperty name checkMultiPropertyFn = TextReporterT $ do
     result <- unTextReporterT checkMultiPropertyFn
@@ -184,8 +190,8 @@ instance MonadTrans TextReporterT where
   lift = TextReporterT . lift . lift
 
 instance (MonadLogger m) => MonadLogger (TextReporterT m) where
-  enterCompilerPass = lift . enterCompilerPass
-  exitCompilerPass = lift exitCompilerPass
+  runCompilerPass = mapTextReporterT . runCompilerPass
+  runCompileDecl = mapTextReporterT . runCompileDecl
   setCallDepth = lift . setCallDepth
   getCallDepth = lift getCallDepth
   incrCallDepth = lift incrCallDepth
@@ -298,6 +304,12 @@ runJSONProgressReporterT fn = do
   outputEvent VerificationFinish
   return result
 
+mapJSONReporterT ::
+  (m (a, SharedState) -> n (b, SharedState)) ->
+  JSONReporterT m a ->
+  JSONReporterT n b
+mapJSONReporterT f m = JSONReporterT (mapStateT f (unJSONReporterT m))
+
 instance (MonadStdIO m) => MonadProgressReporter (JSONReporterT m) where
   reportMultiProperty name checkMultiProperty = JSONReporterT $ do
     let startEvent = MultiPropertyStartEvent name
@@ -330,8 +342,8 @@ instance MonadTrans JSONReporterT where
   lift = JSONReporterT . lift
 
 instance (MonadLogger m) => MonadLogger (JSONReporterT m) where
-  enterCompilerPass = lift . enterCompilerPass
-  exitCompilerPass = lift exitCompilerPass
+  runCompilerPass = mapJSONReporterT . runCompilerPass
+  runCompileDecl = mapJSONReporterT . runCompileDecl
   setCallDepth = lift . setCallDepth
   getCallDepth = lift getCallDepth
   incrCallDepth = lift incrCallDepth

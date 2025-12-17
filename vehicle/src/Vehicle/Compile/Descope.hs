@@ -172,9 +172,11 @@ genericDescopeValue f e = case e of
   VRecord _recordType fields -> do
     fields' <- traverseRecordFields (genericDescopeValue f) $ OMap.assocs fields
     return $ S.Record p fields'
-  VRecordAcc _recordType record field -> do
+  VRecordAcc _recordType record field spine -> do
     record' <- genericDescopeValue f record
-    return $ S.RecordAcc p record' field
+    let recordAcc = S.RecordAcc p record' field
+    args <- traverseArgs (genericDescopeValue f) spine
+    return $ S.normAppList recordAcc args
   where
     p = mempty
 

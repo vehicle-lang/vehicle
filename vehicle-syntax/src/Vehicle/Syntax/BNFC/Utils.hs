@@ -19,6 +19,9 @@ type MonadElab m =
 pattern InferableOption :: Text
 pattern InferableOption = "infer"
 
+pattern DefaultOption :: Text
+pattern DefaultOption = "default"
+
 type ParseLocation = (ModulePath, FilePath)
 
 getModule :: (MonadElab m) => m ModulePath
@@ -133,6 +136,10 @@ tokMin = mkToken B.TokMin "min"
 
 tokMax = mkToken B.TokMax "max"
 
+tokAddNat = mkToken B.TokAddNat "addNat"
+
+tokAddRealTensor = mkToken B.TokAddRealTensor "addRealTensor"
+
 tokSeqOpen = mkToken B.TokSeqOpen "["
 
 tokSeqClose = mkToken B.TokSeqClose "]"
@@ -160,8 +167,6 @@ tokReduceMul = mkToken B.TokReduceMul "reduceMul"
 tokReduceMin = mkToken B.TokReduceMin "reduceMin"
 
 tokReduceMax = mkToken B.TokReduceMax "reduceMax"
-
-tokHasAdd = mkToken B.TokHasAdd "HasAdd"
 
 tokHasSub = mkToken B.TokHasSub "HasSub"
 

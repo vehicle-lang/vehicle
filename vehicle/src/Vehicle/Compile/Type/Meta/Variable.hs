@@ -108,7 +108,10 @@ instance HasMetas (Value builtin) where
     VPi binder closure -> do findMetas binder; findMetas closure
     VLam binder closure -> do findMetas binder; findMetas closure
     VRecord _ fields -> findMetas (snd <$> OMap.assocs fields)
-    VRecordAcc recordType record _ -> do findMetas recordType; findMetas record
+    VRecordAcc recordType record _ spine -> do
+      findMetas recordType
+      findMetas record
+      findMetas spine
 
 instance HasMetas (Closure builtin) where
   findMetas (Closure env expr) = do traverseEnv_ findMetas env; findMetas expr

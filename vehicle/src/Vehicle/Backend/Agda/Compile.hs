@@ -322,7 +322,7 @@ compileDecl opts = \case
     TypeDecl binderCount -> Just <$> compileFunctionDecl n binderCount t e
     FunctionDecl binderCount Nothing -> Just <$> compileFunctionDecl n binderCount t e
     FunctionDecl _ (Just AnnProperty) -> Just <$> compileProperty opts n e
-    FunctionDecl _ (Just AnnInstance) -> throwError $ UnimplementedFeature p "Compiling instances to Agda"
+    FunctionDecl _ (Just AnnInstance {}) -> throwError $ UnimplementedFeature p "Compiling instances to Agda"
     ProjectionDecl _ -> return Nothing
   DefRecord p n _sort telescope fields ->
     Just <$> compileRecordDecl p n telescope fields

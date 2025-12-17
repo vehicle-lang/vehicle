@@ -22,7 +22,7 @@ newtype Ix = InnerIx
   }
   deriving (Eq, Ord, Num, Enum, Show, Generic)
 
-pattern Ix :: Int -> Ix
+pattern Ix :: (HasCallStack) => Int -> Ix
 pattern Ix i <- InnerIx i
   where
     Ix i = checkIx i

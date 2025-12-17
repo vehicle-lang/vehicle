@@ -45,6 +45,15 @@ gtRatTensorReduced : Tensor Real (dim :: dims) -> Tensor Real (dim :: dims) -> B
 gtRatTensorReduced xs ys = reduceAnd True (xs >. ys)
 
 --------------------------------------------------------------------------------
+-- TensorLike
+--------------------------------------------------------------------------------
+
+record TensorLike r t dims {{isTensorType : IsTensorType t dims}} where
+  { toTensor         : r -> Tensor t dims
+  , fromTensor       : Tensor t dims -> r
+  }
+
+--------------------------------------------------------------------------------
 -- Index
 --------------------------------------------------------------------------------
 
@@ -53,6 +62,23 @@ existsIndex f = reduceOr False (foreach i . f i)
 
 forallIndex : forallT {n} . (Index n -> Bool) -> Bool
 forallIndex f = reduceAnd True (foreach i . f i)
+
+--------------------------------------------------------------------------------
+-- Type classes
+--------------------------------------------------------------------------------
+
+@typeclass
+record HasAdd t1 t2 t3 where
+  { addTC : t1 -> t2 -> t3
+  }
+
+@instance(default=True)
+natHasAdd : HasAdd Nat Nat Nat
+natHasAdd = { addTC = addNat }
+
+@instance
+realTensorHasAdd : HasAdd (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
+realTensorHasAdd = { addTC = addRealTensor }
 
 --------------------------------------------------------------------------------
 -- Loss logics

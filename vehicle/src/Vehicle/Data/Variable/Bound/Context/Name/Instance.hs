@@ -62,8 +62,8 @@ instance (MonadLogger m) => MonadLogger (NameBoundContextT m) where
   getDebugLevel = NameBoundContextT getDebugLevel
   logMessage = NameBoundContextT . logMessage
   logWarning = NameBoundContextT . logWarning
-  enterCompilerPass = NameBoundContextT . enterCompilerPass
-  exitCompilerPass = NameBoundContextT exitCompilerPass
+  runCompilerPass = mapNameBoundContextT . runCompilerPass
+  runCompileDecl = mapNameBoundContextT . runCompileDecl
 
 instance (MonadError e m) => MonadError e (NameBoundContextT m) where
   throwError = lift . throwError

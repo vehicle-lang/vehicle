@@ -21,6 +21,7 @@ import Vehicle.Compile.ExpandResources (expandResources)
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.LiftIf (unfoldIf)
 import Vehicle.Compile.LowerNot (lowerNot, negateQuantifierBody)
+import Vehicle.Compile.Normalise.NBE (evalDecl)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyFriendlyEmptyCtx)
 import Vehicle.Compile.Print.Warning ()
@@ -119,8 +120,8 @@ compileDecls ::
 compileDecls settings = \case
   [] -> return []
   (d : ds) -> do
-    normDecl <- mkDeclCtxEntry d
-    property <- case normDecl of
+    decl <- evalDecl d
+    property <- case decl of
       DefFunction p ident anns typ body
         | isAnnotatedAsProperty anns ->
             Just <$> do
@@ -131,7 +132,7 @@ compileDecls settings = \case
                 return (name, multiProperty)
       _ -> return Nothing
 
-    addDeclEntryToContext normDecl $ do
+    addDeclEntryToContext decl $ do
       properties <- compileDecls settings ds
       return $ maybeToList property ++ properties
 

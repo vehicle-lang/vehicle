@@ -77,6 +77,12 @@ isTypeDecl = \case
   DefFunction _ _ anns _ _ -> isDeclaredAsType anns
   DefRecord {} -> False
 
+isTypeClassDecl :: GenericDecl expr -> Bool
+isTypeClassDecl = \case
+  DefAbstract {} -> False
+  DefFunction {} -> False
+  DefRecord _ _ anns _ _ -> isAnnotatedAsTypeClass anns
+
 isAbstractDecl :: GenericDecl expr -> Bool
 isAbstractDecl = \case
   DefAbstract {} -> True
@@ -170,8 +176,9 @@ instance Serialize DefFunctionSort
 data FunctionDeclAnnotation
   = -- | The function was annotated with @property
     AnnProperty
-  | -- | The function was annotated with @instance
-    AnnInstance
+  | -- | The function was annotated with @instance.
+    -- The `Bool` indicates whether it should be the default instance.
+    AnnInstance Bool
   deriving (Eq, Show, Generic)
 
 instance NFData FunctionDeclAnnotation
@@ -181,7 +188,7 @@ instance Serialize FunctionDeclAnnotation
 instance Pretty FunctionDeclAnnotation where
   pretty = \case
     AnnProperty -> "@property"
-    AnnInstance -> "@instance"
+    AnnInstance {} -> "@instance"
 
 isDeclaredAsType :: DefFunctionSort -> Bool
 isDeclaredAsType = \case
@@ -191,11 +198,6 @@ isDeclaredAsType = \case
 isAnnotatedAsProperty :: DefFunctionSort -> Bool
 isAnnotatedAsProperty = \case
   FunctionDecl _ (Just AnnProperty) -> True
-  _ -> False
-
-isAnnotatedAsInstance :: DefFunctionSort -> Bool
-isAnnotatedAsInstance = \case
-  FunctionDecl _ (Just AnnInstance) -> True
   _ -> False
 
 --------------------------------------------------------------------------------

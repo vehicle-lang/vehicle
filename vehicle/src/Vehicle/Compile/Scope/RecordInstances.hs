@@ -159,6 +159,15 @@ createTensorToRecord p recordIdent fieldElementType fieldDimensions fields = do
 
   DefFunction p functionIdent (FunctionDecl 1 Nothing) functionType functionBody
 
+{-
+
+toRecord : Tensor A (2 : _) -> r
+toRecord t =
+  { f1 = t ! 0
+  , f2 = t ! 1
+  }
+
+-}
 createRecordToTensor ::
   Provenance ->
   Identifier ->
