@@ -159,7 +159,7 @@ createTensorToRecord p recordIdent fieldElementType fieldDimensions fields = do
   let indexStyle = fmap indexLit indicesToGrab :: [DSLExpr Builtin]
 
   let functionBody = fromDSL mempty $ explLam "x" tensorType $ \tensor -> do
-        let fieldContents = fmap (\index -> atTensor fieldElementType firstDimension allDimensions tensor index) indexStyle
+        let fieldContents = fmap (\index -> atTensor fieldElementType firstDimension fieldDimensions tensor index) indexStyle
         record recordType fieldNames fieldContents
 
   DefFunction p functionIdent (FunctionDecl 1 Nothing) functionType functionBody
