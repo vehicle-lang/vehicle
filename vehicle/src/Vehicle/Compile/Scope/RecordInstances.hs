@@ -131,6 +131,41 @@ createTensorRecordConversionFunctions p ident telescope fields = do
       tensorToRecordDecl
     ]
 
+{-
+
+toRecord : Tensor A (2 : _) -> r
+toRecord t =
+  { f1 = t ! 0
+  , f2 = t ! 1
+  }
+
+-}
+
+createRecordToTensor ::
+  Provenance ->
+  Identifier ->
+  DSLExpr Builtin ->
+  DSLExpr Builtin ->
+  NonEmpty (GenericRecordField (Type Builtin)) ->
+  Decl Builtin
+createRecordToTensor p recordIdent fieldElementType fieldDimensions fields = do
+  -- Create the name
+  let functionName = Text.pack "_" <> nameOf recordIdent <> "ToTensor"
+  let functionIdent = Identifier (modulePath recordIdent) functionName
+
+  -- Create the type
+  let firstDimension = dim (length fields)
+  let allDimensions = dimCons firstDimension fieldDimensions
+  let recordType = freeVar recordIdent
+  let functionType = fromDSL mempty $ recordType ~> tTensor fieldElementType allDimensions
+
+  -- Create the body
+  let functionBody = fromDSL mempty $ explLam "x" recordType $ \r -> do
+        let tensorElements = fmap (\(fieldName, _) -> recordProj (freeVar recordIdent) r fieldName) fields
+        stackTensor fieldElementType firstDimension fieldDimensions tensorElements
+
+  DefFunction p functionIdent (FunctionDecl 1 Nothing) functionType functionBody
+
 createTensorToRecord ::
   Provenance ->
   Identifier ->
@@ -156,39 +191,5 @@ createTensorToRecord p recordIdent fieldElementType fieldDimensions fields = do
   let functionBody = fromDSL mempty $ explLam "x" tensorType $ \tensor -> do
         let fieldContents = fmap (\index -> atTensor fieldElementType firstDimension fieldDimensions tensor index) tensorIndices
         record recordType (zip fieldNames fieldContents)
-
-  DefFunction p functionIdent (FunctionDecl 1 Nothing) functionType functionBody
-
-{-
-
-toRecord : Tensor A (2 : _) -> r
-toRecord t =
-  { f1 = t ! 0
-  , f2 = t ! 1
-  }
-
--}
-createRecordToTensor ::
-  Provenance ->
-  Identifier ->
-  DSLExpr Builtin ->
-  DSLExpr Builtin ->
-  NonEmpty (GenericRecordField (Type Builtin)) ->
-  Decl Builtin
-createRecordToTensor p recordIdent fieldElementType fieldDimensions fields = do
-  -- Create the name
-  let functionName = Text.pack "_" <> nameOf recordIdent <> "ToTensor"
-  let functionIdent = Identifier (modulePath recordIdent) functionName
-
-  -- Create the type
-  let firstDimension = dim (length fields)
-  let allDimensions = dimCons firstDimension fieldDimensions
-  let recordType = freeVar recordIdent
-  let functionType = fromDSL mempty $ recordType ~> tTensor fieldElementType allDimensions
-
-  -- Create the body
-  let functionBody = fromDSL mempty $ explLam "x" recordType $ \actualRecord -> do
-        let tensorElements = fmap (\(fieldName, _) -> recordProj (freeVar recordIdent) actualRecord fieldName) fields
-        stackTensor fieldElementType firstDimension fieldDimensions tensorElements
 
   DefFunction p functionIdent (FunctionDecl 1 Nothing) functionType functionBody

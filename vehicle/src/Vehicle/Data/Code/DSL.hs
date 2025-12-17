@@ -241,14 +241,6 @@ constTensor t x dims = builtinFunction ConstTensor @@@ [t] @@ [x, dims]
 stackTensor :: (BuiltinHasStandardData builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> NonEmpty (DSLExpr builtin) -> DSLExpr builtin
 stackTensor t d ds xs = builtinFunction StackTensor @@@ [t, d, ds] @@ xs
 
--- data AtTensorArgs expr = AtTensorArgs
---   { atType :: expr,
---     atFirstDim :: expr,
---     atRemainingDims :: expr,
---     atTensor :: expr,
---     atIndex :: expr
---   }
-
 atTensor :: (BuiltinHasStandardData builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 atTensor t d ds tens idx = builtinFunction AtTensor @@@ [t, d, ds] @@ [tens, idx]
 
