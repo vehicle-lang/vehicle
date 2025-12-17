@@ -143,24 +143,19 @@ createTensorToRecord p recordIdent fieldElementType fieldDimensions fields = do
   let functionName = Text.pack "_" <> nameOf recordIdent <> "FromTensor"
   let functionIdent = Identifier (modulePath recordIdent) functionName
 
-  -- Create the function type (same as below, just reversed)
+  -- Create the type
   let firstDimension = dim (length fields)
-  let allDimensions = dimCons firstDimension fieldDimensions
   let recordType = freeVar recordIdent
-  let tensorType = tTensor fieldElementType allDimensions
+  let tensorType = tTensor fieldElementType (dimCons firstDimension fieldDimensions)
   let functionType = fromDSL mempty $ tensorType ~> recordType
 
-  -- need to lambda over the input tensor
-  -- use at to index into the specific part of the tensor
-  -- get all the fieldnames
-  let fieldNames = map fst (toList fields)
-  let highestIndex = length fields - 1
-  let indicesToGrab = ([0 .. highestIndex] :: [Int])
-  let indexStyle = fmap indexLit indicesToGrab :: [DSLExpr Builtin]
+  let fieldNames = fmap fst (toList fields)
+  let tensorIndices = fmap indexLit ([0 .. length fields - 1] :: [Int]) :: [DSLExpr Builtin]
 
+  -- Create the body
   let functionBody = fromDSL mempty $ explLam "x" tensorType $ \tensor -> do
-        let fieldContents = fmap (\index -> atTensor fieldElementType firstDimension fieldDimensions tensor index) indexStyle
-        record recordType fieldNames fieldContents
+        let fieldContents = fmap (\index -> atTensor fieldElementType firstDimension fieldDimensions tensor index) tensorIndices
+        record recordType (zip fieldNames fieldContents)
 
   DefFunction p functionIdent (FunctionDecl 1 Nothing) functionType functionBody
 
