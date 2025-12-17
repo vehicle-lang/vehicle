@@ -109,10 +109,10 @@ instance DSL (DSLExpr builtin) where
         args' = fmap (\(v, r, e) -> Arg v r (unDSL e p i)) args
      in App fun' args'
 
-  recordProj recordType actualRecord field = DSL $ \p i -> do
+  recordProj recordType r field = DSL $ \p i -> do
     let recordType' = unDSL recordType p i
-    let record' = unDSL actualRecord p i
-    RecordProj p recordType' record' field
+    let r' = unDSL r p i
+    RecordProj p recordType' r' field
 
   record recordType fields = DSL $ \p i -> do
     let fields' = fmap (\(fieldName, fieldExpr) -> (fieldName, unDSL fieldExpr p i)) fields
