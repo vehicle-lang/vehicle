@@ -59,7 +59,7 @@ compileProgToIsabelle (Main ds) options =
     -- Combine the printed documents
 
     -- Extract all locale assumptions (not as Doc annotations)
-    ((localeNets, localeAssms, programDoc), _) <- runStateT 
+    ((localeNets, localeAssms, programDoc), _) <- runStateT
       (runFreshNameBoundContextT $ do
         localeNets <- fmap concat (traverse (gatherLocaleNetworks options) ds)
         programDoc <- compileProg options localeNets (Main ds)
