@@ -25,9 +25,9 @@ jobs:
           - name: "Linux"
             isaname: "linux"
             type: "ubuntu-latest"
-          # - name: "macOS"
-          #   isaname: "macos"
-          #   type: "macos-latest"
+          - name: "macOS"
+            isaname: "macos"
+            type: "macos-latest"
         haskell:
           - ghc:
               version: "9.6.5"
