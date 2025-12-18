@@ -93,7 +93,7 @@ jobs:
 
         # Isabelle installation (currently fixed to Isabelle2024)
       - name: 🛠️ Install Isabelle
-        if: ${{ !env.ACT || steps.cache-isabelle.outputs.cache-hit != 'true' }}
+        if: ${{ env.ACT || steps.cache-isabelle.outputs.cache-hit != 'true' }}
         run: |
           mkdir ~/Isabelle
           cd ~/Isabelle
@@ -101,7 +101,7 @@ jobs:
           tar -xz --strip-components=1 -f isabelle.tar.gz
           rm isabelle.tar.gz
       - name: 🛠️ Install Isabelle AFP
-        if: ${{ !env.ACT || steps.cache-isabelle.outputs.cache-hit != 'true' }}
+        if: ${{ env.ACT || steps.cache-isabelle.outputs.cache-hit != 'true' }}
         run: |
           mkdir ~/AFP
           cd ~/AFP
@@ -114,7 +114,7 @@ jobs:
       
       - name: 💾 Save Isabelle dependencies
         uses: actions/cache/save@v5
-        if: ${{ !env.ACT }}
+        if: ${{ !env.ACT && steps.cache-isabelle.outputs.cache-hit != 'true' }}
         env:
           key: v3-Isabelle-${{ matrix.os.name }}-2024
         with:
