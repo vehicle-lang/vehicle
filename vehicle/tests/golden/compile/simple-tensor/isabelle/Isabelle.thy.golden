@@ -21,8 +21,6 @@ begin
 
   
 
-  
-
   definition zeroD  :: "  R FlexTensor "
     where " zeroD   = ( (flextensor_from_vec [] [ (((5 :: R) / 2)) ]) ) "
 
@@ -40,8 +38,6 @@ begin
 
   definition subtraction  :: "  R FlexTensor "
     where " subtraction   = ( (tensor_plus twoD (tensor_cdot (-1 :: R) twoD)) ) "
-
-
 
   locale  Isabelle  = 
 

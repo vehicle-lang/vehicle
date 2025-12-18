@@ -5,6 +5,8 @@ module Vehicle.Backend.Isabelle.Compile
 where
 
 import Control.Monad.Except (MonadError (..))
+import Control.Monad.State.Class (MonadState, modify, gets)
+import Control.Monad.State (runStateT)
 import Data.Maybe (mapMaybe)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Foldable (fold)
@@ -57,11 +59,12 @@ compileProgToIsabelle (Main ds) options =
     -- Combine the printed documents
 
     -- Extract all locale assumptions (not as Doc annotations)
-    (localeNets, localeAssms, programDoc) <- runFreshNameBoundContextT $ do
-      localeNets <- fmap concat (traverse (gatherLocaleNetworks options) ds)
-      localeAssms <- fmap concat (traverse (gatherLocaleStatements options localeNets) ds)
-      programDoc <- compileProg options (localeNets ++ localeAssms) (Main ds)
-      return (localeNets, localeAssms, programDoc)
+    ((localeNets, localeAssms, programDoc), _) <- runStateT 
+      (runFreshNameBoundContextT $ do
+        localeNets <- fmap concat (traverse (gatherLocaleNetworks options) ds)
+        programDoc <- compileProg options localeNets (Main ds)
+        localeAssms <- fmap concat (traverse (gatherLocaleStatements options localeNets) ds)
+        return (localeNets, localeAssms, programDoc)) Set.empty
     let programDependencies =
           collectCodeDependencies programDoc
             `Set.union` collectLocaleDependencies localeNets
@@ -290,14 +293,15 @@ binderBrackets _topLevel Instance {} = braces . braces
 
 type MonadIsabelleCompile m =
   ( MonadCompile m,
-    MonadNameContext m
+    MonadNameContext m,
+    MonadState (Set Name) m
   )
 
 --------------------------------------------------------------------------------
 -- Program Compilation
 
 compileProg :: (MonadIsabelleCompile m) => IsabelleOptions -> [LocaleDef] -> Prog DecidabilityBuiltin -> m Code
-compileProg opts localeAssms (Main ds) = vsep2 <$> traverse (compileDecl opts localeAssms) ds
+compileProg opts localeAssms (Main ds) = vsep2 <$> traverse (compileDecl opts localeAssms) (filter filterRelevantDecls ds)
 
 gatherLocaleNetworks :: (MonadIsabelleCompile m) => IsabelleOptions -> Decl DecidabilityBuiltin -> m [LocaleDef]
 gatherLocaleNetworks _opts = \case
@@ -318,14 +322,23 @@ gatherLocaleStatements _opts localeNets = \case
 compileDecl :: (MonadIsabelleCompile m) => IsabelleOptions -> [LocaleDef] -> Decl DecidabilityBuiltin -> m Code
 compileDecl _opts localeAssms = \case
   DefAbstract _ _ _ _ -> do
-    return "" -- Done via localeAssm gathering
+    developerError "DefAbstract should have been filtered out"
   DefFunction p n funSort t e -> case funSort of
     TypeDecl binderCount -> compileFunctionDecl localeAssms n binderCount t e
     FunctionDecl binderCount Nothing -> compileFunctionDecl localeAssms n binderCount t e
-    FunctionDecl _ (Just AnnProperty) -> return "" -- Done via localeAssm gathering
+    FunctionDecl _ (Just AnnProperty) -> developerError "Properties should have been filtered out"
     FunctionDecl _ (Just AnnInstance {}) -> throwError $ UnimplementedFeature p "Compiling instances to Isabelle"
-    ProjectionDecl {} -> return ""
+    ProjectionDecl {} -> developerError "ProjectionDecl should have been filtered out"
   DefRecord p n _ telescope fields -> compileRecordDecl localeAssms p n telescope fields
+
+filterRelevantDecls :: Decl DecidabilityBuiltin -> Bool
+filterRelevantDecls = \case
+  DefAbstract _ _ _ _ -> False
+  DefFunction _ _ funSort _ _ -> case funSort of
+    FunctionDecl _ (Just AnnProperty) -> False
+    ProjectionDecl {} -> False
+    _ -> True
+  DefRecord {} -> True
 
 compileFunctionDecl ::
   (MonadIsabelleCompile m) =>
@@ -362,9 +375,10 @@ compileRecordDecl ::
   Telescope DecidabilityBuiltin ->
   RecordFields DecidabilityBuiltin ->
   m Code
-compileRecordDecl localeAssms p ident telescope fields =
+compileRecordDecl localeAssms p ident telescope fields = do
   if null telescope then do
     fs' <- traverseRecordFields (compileExpr False localeAssms) fields
+    modify (Set.fromList (map (nameOf . fst) fs') `Set.union`)
     return $
       "record"
         <+> compileIdentifier ident
@@ -420,7 +434,7 @@ compileExpr isOutType localeAssms expr = do
     Builtin _p b -> compileBuiltin isOutType localeAssms b []
     App fun args -> compileApp isOutType localeAssms fun args
     Record _p _i fs -> compileRecord localeAssms fs
-    RecordProj _p _t r field -> annotateNotation localeAssms [] 200 ("(" <> nameOf field <> " $0)") (Just $ nameOf field) [explicit r]
+    RecordProj _p _t _r _field -> developerError "Record projection should have been eliminated before compilation"
   logExit result
   return result
 
@@ -758,10 +772,13 @@ compileApp isOutType localeAssms fun args = do
       compileBuiltin isOutType localeAssms b userArgs
     _ -> do
       cFun <- compileExpr False localeAssms fun
+      isProjectionFn <- case fun of
+            FreeVar _ n -> gets (Set.member (nameOf n))
+            _ -> return False
       let localeResults = compileLocaleBindersV localeAssms
       let cFunText = renderStrict (layoutCompact cFun)
       let localeResultsText = map (renderStrict . layoutCompact) localeResults
-      if not (null localeResults) && (cFunText `elem` localeResultsText)
+      if (not (null localeResults) && (cFunText `elem` localeResultsText)) || isProjectionFn
         then
           annotateApp localeAssms [] cFun userArgs
         else

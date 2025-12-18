@@ -22,14 +22,6 @@ begin
   definition add1  :: " (R tensor \<Rightarrow> R FlexTensor) \<Rightarrow> (R tensor \<Rightarrow> R FlexTensor) \<Rightarrow> (R tensor) \<Rightarrow>  R FlexTensor "
     where " add1   f g x = ( (tensor_plus x (flextensor_from_vec [] [ (((1 :: R) )) ])) ) "
 
-
-
-
-
-
-
-
-
   locale  Isabelle  = 
 
     fixes  f  :: " R tensor \<Rightarrow> R FlexTensor "

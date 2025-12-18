@@ -111,8 +111,6 @@ begin
     ultimately show ?thesis by simp
   qed
 
-
-
   definition validPixel  :: " (Image \<Rightarrow> R FlexTensor) \<Rightarrow> (R tensor) \<Rightarrow>  bool "
     where " validPixel   score p = ( ((leqTensorReduced (flextensor_from_vec [] [ (((0 :: R) )) ]) p)) \<and> ((leqTensorReduced p (flextensor_from_vec [] [ (((1 :: R) )) ]))) ) "
 
@@ -127,8 +125,6 @@ begin
 
   definition noConfusionWith  :: " (Image \<Rightarrow> R FlexTensor) \<Rightarrow> (Image) \<Rightarrow> (Dog list) \<Rightarrow> (Dog list) \<Rightarrow>  bool "
     where " noConfusionWith   score x dogs1 dogs2 = ( (forallInList (\<lambda>  dog1 . ((forallInList (\<lambda>  dog2 . (\<not> (isFirstChoice score x dog1) \<and> (isSecondChoice score x dog2))) dogs2))) dogs1) ) "
-
-
 
   locale  Isabelle  = 
 

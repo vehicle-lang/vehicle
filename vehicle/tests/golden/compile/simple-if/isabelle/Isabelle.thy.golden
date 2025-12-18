@@ -22,12 +22,6 @@ begin
 
   
 
-
-
-
-
-
-
   locale  Isabelle  = 
 
     fixes  f  :: " R tensor \<Rightarrow> R FlexTensor "

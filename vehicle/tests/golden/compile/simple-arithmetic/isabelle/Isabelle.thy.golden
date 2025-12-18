@@ -27,10 +27,6 @@ begin
   definition natLitNatLitDiv  :: "  R FlexTensor "
     where " natLitNatLitDiv   = ( (pointwise_div (flextensor_from_vec [] [ (((1 :: R) )) ]) (flextensor_from_vec [] [ (((2 :: R) )) ])) ) "
 
-
-
-
-
   locale  Isabelle  = 
 
     fixes  f  :: " R tensor \<Rightarrow> R FlexTensor "

@@ -88,8 +88,6 @@ begin
   definition velocity  :: "  FlexIndex "
     where " velocity   = ( (Abs_FlexIndex 0) ) "
 
-
-
   definition normalise  :: " (InputVector \<Rightarrow> OutputVector) \<Rightarrow> (InputVector) \<Rightarrow>  InputVector "
     where " normalise   controller x = ( (foreach (2 :: nat)  (\<lambda>  i . ((pointwise_div (tensor_plus (flex_subtensor x i) (flextensor_from_vec [] [ (((4 :: R) )) ])) (flextensor_from_vec [] [ (((8 :: R) )) ]))))) ) "
 
@@ -98,8 +96,6 @@ begin
 
   definition safeOutput  :: " (InputVector \<Rightarrow> OutputVector) \<Rightarrow> (InputVector) \<Rightarrow>  bool "
     where " safeOutput   controller x = ( let y = (flex_subtensor ((controller ((normalise controller x)))) velocity) in ((ltTensorReduced (tensor_cdot (-1 :: R) (flextensor_from_vec [] [ (((5 :: R) / 4)) ])) ((tensor_plus ((tensor_plus y ((hadamard_prod (flextensor_from_vec [] [ (((2 :: R) )) ]) (flex_subtensor x currentSensor))))) (tensor_cdot (-1 :: R) (flex_subtensor x previousSensor)))))) \<and> ((ltTensorReduced ((tensor_plus ((tensor_plus y ((hadamard_prod (flextensor_from_vec [] [ (((2 :: R) )) ]) (flex_subtensor x currentSensor))))) (tensor_cdot (-1 :: R) (flex_subtensor x previousSensor)))) (flextensor_from_vec [] [ (((5 :: R) / 4)) ]))) ) "
-
-
 
   locale  Isabelle  = 
 

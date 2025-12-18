@@ -20,14 +20,8 @@ begin
 
   
 
-  
-
-
-
   definition epsilon  :: "  R FlexTensor "
     where " epsilon   = ( (foreach (5 :: nat)  (\<lambda>  i . ((flextensor_from_vec [] [ (((1 :: R) / 10)) ])))) ) "
-
-
 
   locale  Isabelle  = 
 

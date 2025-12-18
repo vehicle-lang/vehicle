@@ -48,10 +48,6 @@ begin
   , equals = (\<lambda>  x . (\<lambda>  y . ((pointwise_max ((tensor_plus x (tensor_cdot (-1 :: R) y))) ((tensor_plus y (tensor_cdot (-1 :: R) x)))))))
   , notEquals = (\<lambda>  x . (\<lambda>  y . ((tensor_cdot (-1 :: R) (pointwise_max ((tensor_plus x (tensor_cdot (-1 :: R) y))) ((tensor_plus y (tensor_cdot (-1 :: R) x)))))))) \<rparr> ) "
 
-
-
-
-
   locale  Isabelle  = 
 
     fixes  f  :: " R tensor \<Rightarrow> R FlexTensor "
