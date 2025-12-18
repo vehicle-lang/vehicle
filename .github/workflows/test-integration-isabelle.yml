@@ -25,9 +25,9 @@ jobs:
           - name: "Linux"
             isaname: "linux"
             type: "ubuntu-latest"
-          - name: "macOS"
-            isaname: "macos"
-            type: "macos-latest"
+          # - name: "macOS"
+          #   isaname: "macos"
+          #   type: "macos-latest"
         haskell:
           - ghc:
               version: "9.6.5"
@@ -115,6 +115,8 @@ jobs:
       - name: 💾 Save Isabelle dependencies
         uses: actions/cache/save@v5
         if: ${{ !env.ACT }}
+        env:
+          key: v3-Isabelle-${{ matrix.os.name }}-2024
         with:
           path: |
             ~/.isabelle
