@@ -42,6 +42,7 @@ import Vehicle.Data.Variable.Bound.Context.Generic (BoundCtx)
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Bound.Context.Tensor
 import Vehicle.Data.Variable.Bound.Level
+import Vehicle.Prelude.Warning (CompileWarning (..))
 
 compileQuantifier ::
   (MonadLogic m) =>
@@ -135,20 +136,24 @@ compileConstraints finalCtx dims binder var (maybeConstraints, maybeRemainder) =
         return constraints
 
     -- Extract the remaining body of the quantifier
-    remainder <- case maybeRemainder of
-      Nothing -> developerError "Support for bounds-only quantifiers not yet added"
-      Just remainder -> do
-        logDebugM MidDetail $ do
-          remainderDoc <- prettyFriendlyInCtx remainder
-          return $
-            "remaining-expression:"
-              <> lineIndent remainderDoc
+    remaindingBody <- case maybeRemainder of
+      Just remainder -> return remainder
+      Nothing -> do
+        (ident, _p) <- getDeclProvenance
+        logWarning $ BoundsOnlyQuantifier (nameOf ident) varName
+        getLogicField TruthityElement
 
-        -- Reform the closure around the body. Note that this needs to be done
-        -- in the final context (i.e. without any reference to slice variables!)
-        let lossBody = quote mempty (1 + boundCtxLv finalCtx) remainder
-        let finalEnv = boundContextToEnv finalCtx
-        return $ Closure finalEnv lossBody
+    logDebugM MidDetail $ do
+      remainderDoc <- prettyFriendlyInCtx remaindingBody
+      return $
+        "remaining-expression:"
+          <> lineIndent remainderDoc
+
+    -- Reform the closure around the body. Note that this needs to be done
+    -- in the final context (i.e. without any reference to slice variables!)
+    let lossBody = quote mempty (1 + boundCtxLv finalCtx) remaindingBody
+    let finalEnv = boundContextToEnv finalCtx
+    let remainder = Closure finalEnv lossBody
 
     -- Find the bounds on the quantified variable from the constraints
     let partialShape = extractPartialShape dims

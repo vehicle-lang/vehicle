@@ -10,6 +10,7 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
 import Data.Map qualified as Map (insertWith, toList)
 import Data.Set (Set)
+import Data.Set qualified as Set (insert, toList)
 import Vehicle.Data.Tensor (TensorIndices)
 import Vehicle.Prelude (Name)
 import Vehicle.Resource (ExternalResource)
@@ -25,6 +26,7 @@ data CompileWarning
   | UnderSpecifiedProblemSpaceVar PropertyAddress Name
   | UnsoundStrictOrderConversion QueryFormatID QueryAddress
   | AllConstantNetworkInputVars QueryFormatID PropertyAddress
+  | BoundsOnlyQuantifier PropertyName Name
 
 data SummarisedCompileWarning
   = UnusedResourcesSummary ExternalResource (Set Name)
@@ -32,6 +34,7 @@ data SummarisedCompileWarning
   | UnderSpecifiedProblemSpaceVariablesSummary PropertyID PropertyName (NonEmpty (Name, TensorIndices))
   | UnsoundStrictOrderConversionsSummary QueryFormatID PropertyID PropertyName Int
   | AllConstantNetworkInputVariablesSummary QueryFormatID PropertyID PropertyName (NonEmpty TensorIndices)
+  | BoundsOnlyQuantifierSummary PropertyName Name
 
 --------------------------------------------------------------------------------
 -- Combinable compile warnings
@@ -40,11 +43,19 @@ data CombiningState = CombiningState
   { uniqueWarnings :: [SummarisedCompileWarning],
     underSpecifiedProblemSpaceVars :: Map (PropertyID, PropertyName) (NonEmpty (Name, TensorIndices)),
     unsoundStrictnessConversions :: Map (QueryFormatID, PropertyID, PropertyName) Int,
-    allConstantNetworkInputVars :: Map (QueryFormatID, PropertyID, PropertyName) (NonEmpty TensorIndices)
+    allConstantNetworkInputVars :: Map (QueryFormatID, PropertyID, PropertyName) (NonEmpty TensorIndices),
+    allBoundsOnlyQuantifier :: Set (PropertyName, Name)
   }
 
 emptyState :: CombiningState
-emptyState = CombiningState mempty mempty mempty mempty
+emptyState =
+  CombiningState
+    { uniqueWarnings = mempty,
+      underSpecifiedProblemSpaceVars = mempty,
+      unsoundStrictnessConversions = mempty,
+      allConstantNetworkInputVars = mempty,
+      allBoundsOnlyQuantifier = mempty
+    }
 
 addWarningToState :: CombiningState -> CompileWarning -> CombiningState
 addWarningToState CombiningState {..} = \case
@@ -74,6 +85,12 @@ addWarningToState CombiningState {..} = \case
           Map.insertWith (<>) (queryFormat, propertyID, propertyName) [propertyIndices] allConstantNetworkInputVars,
         ..
       }
+  BoundsOnlyQuantifier ident varName ->
+    CombiningState
+      { allBoundsOnlyQuantifier =
+          Set.insert (ident, varName) allBoundsOnlyQuantifier,
+        ..
+      }
 
 groupWarnings :: [CompileWarning] -> [SummarisedCompileWarning]
 groupWarnings warnings = stateToWarnings $ foldl addWarningToState emptyState warnings
@@ -85,6 +102,7 @@ stateToWarnings CombiningState {..} =
       <> fmap combineUnderSpecifiedProblemSpaceVars (Map.toList underSpecifiedProblemSpaceVars)
       <> fmap combineUnsoundStrictnessConversions (Map.toList unsoundStrictnessConversions)
       <> fmap combineAllConstantNetworkInputVars (Map.toList allConstantNetworkInputVars)
+      <> fmap combineAllBoundsOnlyQuantifier (Set.toList allBoundsOnlyQuantifier)
 
 combineUnderSpecifiedProblemSpaceVars :: ((PropertyID, PropertyName), NonEmpty (Name, TensorIndices)) -> SummarisedCompileWarning
 combineUnderSpecifiedProblemSpaceVars ((propertyID, property), vars) = UnderSpecifiedProblemSpaceVariablesSummary propertyID property vars
@@ -97,6 +115,10 @@ combineAllConstantNetworkInputVars :: ((QueryFormatID, PropertyID, PropertyName)
 combineAllConstantNetworkInputVars ((queryFormatID, propertyID, property), queries) =
   AllConstantNetworkInputVariablesSummary queryFormatID propertyID property queries
 
+combineAllBoundsOnlyQuantifier :: (PropertyName, Name) -> SummarisedCompileWarning
+combineAllBoundsOnlyQuantifier (propertyName, quantifierName) =
+  BoundsOnlyQuantifierSummary propertyName quantifierName
+
 compareWarning :: SummarisedCompileWarning -> SummarisedCompileWarning -> Ordering
 compareWarning w1 w2 = compare (warningPropertyId w1) (warningPropertyId w2)
   where
@@ -108,3 +130,4 @@ compareWarning w1 w2 = compare (warningPropertyId w1) (warningPropertyId w2)
         UnderSpecifiedProblemSpaceVariablesSummary propertyID _ _ -> Just propertyID
         UnsoundStrictOrderConversionsSummary _ propertyID _ _ -> Just propertyID
         AllConstantNetworkInputVariablesSummary _ propertyID _ _ -> Just propertyID
+        BoundsOnlyQuantifierSummary {} -> Nothing
