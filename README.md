@@ -65,6 +65,7 @@ to discuss it with us.
 
 - [Agda](https://agda.readthedocs.io/)
 - [Rocq](https://rocq-prover.org/)
+- [Isabelle](https://isabelle.in.tum.de/)
 
 ## Related papers
 
