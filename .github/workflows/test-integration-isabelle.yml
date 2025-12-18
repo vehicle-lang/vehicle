@@ -1,7 +1,17 @@
 name: Test Rocq
 
 on:
-  workflow_call:
+  push:
+    branches:
+      - dev
+    tags:
+      - "v*"
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+  merge_group:
 
 defaults:
   run:
@@ -15,11 +25,9 @@ jobs:
           - name: "Linux"
             isaname: "linux"
             type: "ubuntu-latest"
-            plat: "manylinux_2_17_x86_64.manylinux2014_x86_64"
           - name: "macOS"
             isaname: "macos"
             type: "macos-latest"
-            plat: "macosx_10_9_x86_64"
         haskell:
           - ghc:
               version: "9.4.8"
