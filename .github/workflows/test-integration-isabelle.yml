@@ -18,7 +18,7 @@ defaults:
     shell: sh
 
 jobs:
-  test-vehicle-rocq:
+  test-vehicle-isabelle:
     strategy:
       matrix:
         os:
@@ -78,18 +78,22 @@ jobs:
           path: ${{ steps.setup-haskell.outputs.cabal-store }}
           key: ${{ steps.cache-haskell.outputs.cache-primary-key }}
       
-      - name: Cache Isabelle dependencies
-        uses: actions/cache@v3
+      - name: 💾 Restore Isabelle dependencies
+        uses: actions/cache/restore@v5
+        id: cache-isabelle
+        env:
+          key: v3-Isabelle-${{ matrix.os.name }}-2024
         with:
           path: |
             ~/.isabelle
             ~/Isabelle
             ~/AFP/thys
-          key: v3-Isabelle-2024-361b8b643a1d8e7cf0f7f4adb3f3a3bc58991fdb
-          restore-keys: v3-Isabelle-
+          key: ${{ env.key }}
+          restore-keys: ${{ env.key }}
 
         # Isabelle installation (currently fixed to Isabelle2024)
       - name: Install Isabelle
+        if: ${{ !env.ACT || steps.cache-isabelle.outputs.cache-hit != 'true' }}
         run: |
           mkdir ~/Isabelle
           cd ~/Isabelle
@@ -97,6 +101,7 @@ jobs:
           tar -xz --strip-components=1 -f isabelle.tar.gz
           rm isabelle.tar.gz
       - name: Installe Isabelle AFP
+        if: ${{ !env.ACT || steps.cache-isabelle.outputs.cache-hit != 'true' }}
         run: |
           mkdir ~/AFP
           cd ~/AFP
@@ -106,9 +111,20 @@ jobs:
           rm -rf afp-devel-*/ afp.zip
           ~/Isabelle/bin/isabelle components -u ~/AFP/thys;
           export PATH=$PATH:~/Isabelle/bin
+      
+      - name: 💾 Save Isabelle dependencies
+        uses: actions/cache/save@v5
+        if: ${{ !env.ACT }}
+        with:
+          path: |
+            ~/.isabelle
+            ~/Isabelle
+            ~/AFP/thys
+          key: ${{ env.key }}
 
-      - name: Test Vehicle-Rocq interaction
+      - name: Test Vehicle-Isabelle interaction
         run: |
+          export PATH=$PATH:~/Isabelle/bin
           cabal test                                 \
             vehicle:test:golden-tests                \
             --test-show-details=always               \
