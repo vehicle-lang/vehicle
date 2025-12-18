@@ -92,7 +92,7 @@ jobs:
           restore-keys: ${{ env.key }}
 
         # Isabelle installation (currently fixed to Isabelle2024)
-      - name: Install Isabelle
+      - name: 🛠️ Install Isabelle
         if: ${{ !env.ACT || steps.cache-isabelle.outputs.cache-hit != 'true' }}
         run: |
           mkdir ~/Isabelle
@@ -100,7 +100,7 @@ jobs:
           wget -O isabelle.tar.gz https://isabelle.in.tum.de/website-Isabelle2024/dist/Isabelle2024_${{ matrix.os.isaname }}.tar.gz
           tar -xz --strip-components=1 -f isabelle.tar.gz
           rm isabelle.tar.gz
-      - name: Installe Isabelle AFP
+      - name: 🛠️ Install Isabelle AFP
         if: ${{ !env.ACT || steps.cache-isabelle.outputs.cache-hit != 'true' }}
         run: |
           mkdir ~/AFP
@@ -124,7 +124,7 @@ jobs:
             ~/AFP/thys
           key: ${{ env.key }}
 
-      - name: Test Vehicle-Isabelle interaction
+      - name: 🧪 Test Vehicle-Isabelle interaction
         run: |
           export PATH=$PATH:~/Isabelle/bin
           cabal test                                 \
@@ -132,4 +132,6 @@ jobs:
             --test-show-details=always               \
             --test-option=--color=always             \
             --test-option=--num-threads=1            \
+            --test-option=-p                         \
+            --test-option='/Isabelle/'               \
             --test-option=--allowlist-externals=isabelle
