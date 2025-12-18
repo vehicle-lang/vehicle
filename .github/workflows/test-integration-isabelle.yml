@@ -1,0 +1,81 @@
+name: Test Rocq
+
+on:
+  workflow_call:
+
+defaults:
+  run:
+    shell: sh
+
+jobs:
+  test-vehicle-rocq:
+    strategy:
+      matrix:
+        os:
+          - name: "Linux"
+            isaname: "linux"
+            type: "ubuntu-latest"
+            plat: "manylinux_2_17_x86_64.manylinux2014_x86_64"
+          - name: "macOS"
+            isaname: "macos"
+            type: "macos-latest"
+            plat: "macosx_10_9_x86_64"
+        haskell:
+          - ghc:
+              version: "9.4.8"
+            cabal:
+              version: "3.14.2.1"
+              project-file: "cabal.project.ghc-9.4.8"
+              extra-args: ""
+
+    name: Isabelle / ${{ matrix.os.name }} - Isabelle 2024
+    runs-on: ${{ matrix.os.type }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Haskell
+        uses: ./.github/actions/setup-haskell
+        with:
+          ghc-version: ${{ matrix.haskell.ghc.version }}
+          cabal-version: ${{ matrix.haskell.cabal.version }}
+          cabal-project-file: ${{ matrix.haskell.cabal.project-file }}
+          cabal-project-freeze-file: ${{ matrix.haskell.cabal.project-file }}.freeze
+      
+      - name: Cache Isabelle dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.isabelle
+            ~/Isabelle
+            ~/AFP/thys
+          key: v3-Isabelle-2024-361b8b643a1d8e7cf0f7f4adb3f3a3bc58991fdb
+          restore-keys: v3-Isabelle-
+
+        # Isabelle installation (currently fixed to Isabelle2024)
+      - name: Install Isabelle
+        run: |
+          mkdir ~/Isabelle
+          cd ~/Isabelle
+          wget -O isabelle.tar.gz https://isabelle.in.tum.de/website-Isabelle2024/dist/Isabelle2024_${{ matrix.os.isaname }}.tar.gz
+          tar -xz --strip-components=1 -f isabelle.tar.gz
+          rm isabelle.tar.gz
+      - name: Installe Isabelle AFP
+        run: |
+          mkdir ~/AFP
+          cd ~/AFP
+          wget -O afp.zip https://foss.heptapod.net/isa-afp/afp-devel/-/archive/361b8b643a1d8e7cf0f7f4adb3f3a3bc58991fdb/afp-devel-361b8b643a1d8e7cf0f7f4adb3f3a3bc58991fdb.zip
+          unzip -q afp.zip
+          mv afp-devel-*/** .
+          rm -rf afp-devel-*/ afp.zip
+          ~/Isabelle/bin/isabelle components -u ~/AFP/thys;
+          export PATH=$PATH:~/Isabelle/bin
+
+      - name: Test Vehicle-Rocq interaction
+        run: |
+          cabal test                                 \
+            vehicle:test:golden-tests                \
+            --test-show-details=always               \
+            --test-option=--color=always             \
+            --test-option=--num-threads=1            \
+            --test-option=--allowlist-externals=isabelle
