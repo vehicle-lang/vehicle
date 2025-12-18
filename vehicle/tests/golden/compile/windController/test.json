@@ -1,7 +1,7 @@
 [
   {
     "name": "TypeCheck",
-    "run": "vehicle check -s spec.vcl",
+    "run": "vehicle typecheck -s spec.vcl",
     "needs": [
       "spec.vcl"
     ]
@@ -15,7 +15,7 @@
   },
   {
     "name": "VNNLib",
-    "run": "vehicle compile -s spec.vcl -t VNNLibQueries -o VNNLib.queries/ --network controller:controller.onnx",
+    "run": "vehicle compile queries -s spec.vcl -f VNNLibQueries -o VNNLib.queries/ --network controller:controller.onnx",
     "needs": [
       "spec.vcl",
       "controller.onnx"
@@ -31,7 +31,7 @@
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile -s spec.vcl -t MarabouQueries -o Marabou.queries/ --network controller:controller.onnx",
+    "run": "vehicle compile queries -s spec.vcl -f MarabouQueries -o Marabou.queries/ --network controller:controller.onnx",
     "needs": [
       "spec.vcl",
       "controller.onnx"
