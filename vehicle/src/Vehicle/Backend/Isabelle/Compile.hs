@@ -5,13 +5,13 @@ module Vehicle.Backend.Isabelle.Compile
 where
 
 import Control.Monad.Except (MonadError (..))
-import Control.Monad.State.Class (MonadState, modify, gets)
 import Control.Monad.State (runStateT)
-import Data.Maybe (mapMaybe)
+import Control.Monad.State.Class (MonadState, gets, modify)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Foldable (fold)
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NonEmpty
+import Data.Maybe (mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -59,12 +59,15 @@ compileProgToIsabelle (Main ds) options =
     -- Combine the printed documents
 
     -- Extract all locale assumptions (not as Doc annotations)
-    ((localeNets, localeAssms, programDoc), _) <- runStateT 
-      (runFreshNameBoundContextT $ do
-        localeNets <- fmap concat (traverse (gatherLocaleNetworks options) ds)
-        programDoc <- compileProg options localeNets (Main ds)
-        localeAssms <- fmap concat (traverse (gatherLocaleStatements options localeNets) ds)
-        return (localeNets, localeAssms, programDoc)) Set.empty
+    ((localeNets, localeAssms, programDoc), _) <-
+      runStateT
+        ( runFreshNameBoundContextT $ do
+            localeNets <- fmap concat (traverse (gatherLocaleNetworks options) ds)
+            programDoc <- compileProg options localeNets (Main ds)
+            localeAssms <- fmap concat (traverse (gatherLocaleStatements options localeNets) ds)
+            return (localeNets, localeAssms, programDoc)
+        )
+        Set.empty
     let programDependencies =
           collectCodeDependencies programDoc
             `Set.union` collectLocaleDependencies localeNets
@@ -177,25 +180,27 @@ onlyTypeDef = \case
   _ -> False
 
 preamble :: Text -> Set Dependency -> [LocaleDef] -> Code
-preamble locale deps localeAssms = (vsep2 :: [Code] -> Code) [
-    ("theory " <+> pretty locale),
-    ("  imports"),
-    ("    \"Complex_Main\""),
-    indent 4 (vsep (map pretty (Set.toList deps))),
-    "begin",
-    (indent 2 "type_synonym R = \"real\""),
-    (indent 2 (vsep (map pretty (filter onlyTypeDef localeAssms))))
-  ]
+preamble locale deps localeAssms =
+  (vsep2 :: [Code] -> Code)
+    [ ("theory " <+> pretty locale),
+      ("  imports"),
+      ("    \"Complex_Main\""),
+      indent 4 (vsep (map pretty (Set.toList deps))),
+      "begin",
+      (indent 2 "type_synonym R = \"real\""),
+      (indent 2 (vsep (map pretty (filter onlyTypeDef localeAssms))))
+    ]
 
 postamble :: Text -> [LocaleDef] -> Code
-postamble locale localeAssms = (vsep2 :: [Code] -> Code) [
-    ("  locale " <+> pretty locale <+> " = "),
-    indent 4 (vsep (map pretty (filter onlyNetworkDef localeAssms))),
-    indent 4 (vsep (map pretty (filter onlyPropertyDef localeAssms))),
-    indent 4 "begin",
-    indent 4 "end",
-    "end"
-  ]
+postamble locale localeAssms =
+  (vsep2 :: [Code] -> Code)
+    [ ("  locale " <+> pretty locale <+> " = "),
+      indent 4 (vsep (map pretty (filter onlyNetworkDef localeAssms))),
+      indent 4 (vsep (map pretty (filter onlyPropertyDef localeAssms))),
+      indent 4 "begin",
+      indent 4 "end",
+      "end"
+    ]
 
 --------------------------------------------------------------------------------
 -- Intermediate results of compilation
@@ -376,17 +381,18 @@ compileRecordDecl ::
   RecordFields DecidabilityBuiltin ->
   m Code
 compileRecordDecl localeAssms p ident telescope fields = do
-  if null telescope then do
-    fs' <- traverseRecordFields (compileExpr False localeAssms) fields
-    modify (Set.fromList (map (nameOf . fst) fs') `Set.union`)
-    return $
-      "record"
-        <+> compileIdentifier ident
-        <+> "="
-        <> line
-        <> indent 2 ((vsep :: [Code] -> Code) $ fmap (\(field, fieldType) -> pretty field <+> "::" <+> "\""<>fieldType<>"\"") fs')
-  else
-    throwError $ UnimplementedFeature p "Compiling parameterized records to Isabelle"
+  if null telescope
+    then do
+      fs' <- traverseRecordFields (compileExpr False localeAssms) fields
+      modify (Set.fromList (map (nameOf . fst) fs') `Set.union`)
+      return $
+        "record"
+          <+> compileIdentifier ident
+          <+> "="
+          <> line
+          <> indent 2 ((vsep :: [Code] -> Code) $ fmap (\(field, fieldType) -> pretty field <+> "::" <+> "\"" <> fieldType <> "\"") fs')
+    else
+      throwError $ UnimplementedFeature p "Compiling parameterized records to Isabelle"
 
 -- | Compile a 'network' declaration
 compilePostulate :: Code -> Code -> LocaleDef
@@ -401,7 +407,7 @@ compileExprUnfoldings expr = case expr of
   Record _ _ fs -> concatMap (compileExprUnfoldings . snd) fs
   RecordProj _ _ r _ -> compileExprUnfoldings r
   Builtin _ _ -> []
-  FreeVar _ n -> ["unfolding " <> pretty (nameOf n) <>"_def"]
+  FreeVar _ n -> ["unfolding " <> pretty (nameOf n) <> "_def"]
   BoundVar _ _ -> []
   Universe _ _ -> []
   Meta _ _ -> []
@@ -461,7 +467,8 @@ compileIdentifier ident = pretty (nameOf ident :: Name)
 
 compileProperty :: Code -> Code -> LocaleDef
 compileProperty propertyName propertyBody = (PropertyDefStatement codeSnippet)
-  where codeSnippet = ("assumes " <+> propertyName <+> ":  \"" <+> propertyBody <+> "\"")
+  where
+    codeSnippet = ("assumes " <+> propertyName <+> ":  \"" <+> propertyBody <+> "\"")
 
 compileTopLevelBindersV :: (MonadIsabelleCompile m) => [LocaleDef] -> [Binder DecidabilityBuiltin] -> m [Code]
 compileTopLevelBindersV = compileTopLevelBindersOuter compileLocaleBindersV compileTopLevelBinderV
@@ -469,10 +476,13 @@ compileTopLevelBindersV = compileTopLevelBindersOuter compileLocaleBindersV comp
 compileTopLevelBindersT :: (MonadIsabelleCompile m) => [LocaleDef] -> [Binder DecidabilityBuiltin] -> m [Code]
 compileTopLevelBindersT = compileTopLevelBindersOuter compileLocaleBindersT compileTopLevelBinderT
 
-compileTopLevelBindersOuter :: (MonadIsabelleCompile m) =>
+compileTopLevelBindersOuter ::
+  (MonadIsabelleCompile m) =>
   ([LocaleDef] -> [Code]) ->
   ([LocaleDef] -> Binder DecidabilityBuiltin -> m (Maybe Code)) ->
-   [LocaleDef] -> [Binder DecidabilityBuiltin] -> m [Code]
+  [LocaleDef] ->
+  [Binder DecidabilityBuiltin] ->
+  m [Code]
 compileTopLevelBindersOuter compileLocaleBinders compileTopLevelBinder localeAssms binders = do
   let localeResults = compileLocaleBinders localeAssms
   funBinders <- compileTopLevelBinders compileTopLevelBinder localeAssms binders
@@ -481,7 +491,7 @@ compileTopLevelBindersOuter compileLocaleBinders compileTopLevelBinder localeAss
     else return $ localeResults ++ funBinders
 
 compileLocaleBindersT :: [LocaleDef] -> [Code]
-compileLocaleBindersT =  mapMaybe compileLocaleBindersTMapper
+compileLocaleBindersT = mapMaybe compileLocaleBindersTMapper
   where
     compileLocaleBindersTMapper = \case
       NetworkDefStatement _ t -> Just (parens t)
@@ -494,9 +504,12 @@ compileLocaleBindersV = mapMaybe compileLocaleBindersVMapper
       NetworkDefStatement n _ -> Just n
       _ -> Nothing
 
-compileTopLevelBinders :: (MonadIsabelleCompile m) =>
+compileTopLevelBinders ::
+  (MonadIsabelleCompile m) =>
   ([LocaleDef] -> Binder DecidabilityBuiltin -> m (Maybe Code)) ->
-   [LocaleDef] -> [Binder DecidabilityBuiltin] -> m [Code]
+  [LocaleDef] ->
+  [Binder DecidabilityBuiltin] ->
+  m [Code]
 compileTopLevelBinders _ _ [] = return []
 compileTopLevelBinders compileTopLevelBinder localeAssms (b : bs) = do
   b' <- compileTopLevelBinder localeAssms b
@@ -549,80 +562,105 @@ compileRecordField localeAssms (field, fieldValue) = do
   return $ pretty field <+> "=" <+> (parens fieldValue')
 
 compileTensorTypeDef :: Identifier -> Code -> Code -> Code
-compileTensorTypeDef n shape e = ((vsep :: [Code] -> Code) [
-      ("typedef" <+> (compileIdentifier n) <+> " = " <+> e),
-      (compileTensorTypeDefCoercions n shape),
-      (compileTypeDefRewrites n shape)
-    ])
+compileTensorTypeDef n shape e =
+  ( (vsep :: [Code] -> Code)
+      [ ("typedef" <+> (compileIdentifier n) <+> " = " <+> e),
+        (compileTensorTypeDefCoercions n shape),
+        (compileTypeDefRewrites n shape)
+      ]
+  )
 
 compileIndexTypeDef :: Identifier -> Code -> Code -> Code
-compileIndexTypeDef n maxI e = ((vsep :: [Code] -> Code) [
-      ("typedef" <+> (compileIdentifier n) <+> " = " <+> e),
-      (compileIndexTypeDefCoercions n maxI)
-  ])
+compileIndexTypeDef n maxI e =
+  ( (vsep :: [Code] -> Code)
+      [ ("typedef" <+> (compileIdentifier n) <+> " = " <+> e),
+        (compileIndexTypeDefCoercions n maxI)
+      ]
+  )
 
 compileTensorTypeDefCoercions :: Identifier -> Code -> Code
-compileTensorTypeDefCoercions n shape = ((vsep :: [Code] -> Code) [
-      ("(* Type Coercions *)"),
-      ("declare [[coercion Rep_"<>(compileIdentifier n)<>"]]"),
-      ("definition to_"<>(compileIdentifier n)<>" :: \"R FlexTensor \\<Rightarrow> " <> compileIdentifier n <> "\""),
-      (indent 2 $ "where[simp]: \"to_" <> compileIdentifier n <> " a = ("),
-      (indent 4 $ "let t = Rep_FlexTensor a"),
-      (indent 4 $ "in (if dims t = (" <> shape <> ") then Abs_" <> compileIdentifier n <> " t else undefined))\""),
-      ("declare [[coercion to_" <> compileIdentifier n <> "]]")
-    ])
+compileTensorTypeDefCoercions n shape =
+  ( (vsep :: [Code] -> Code)
+      [ ("(* Type Coercions *)"),
+        ("declare [[coercion Rep_" <> (compileIdentifier n) <> "]]"),
+        ("definition to_" <> (compileIdentifier n) <> " :: \"R FlexTensor \\<Rightarrow> " <> compileIdentifier n <> "\""),
+        (indent 2 $ "where[simp]: \"to_" <> compileIdentifier n <> " a = ("),
+        (indent 4 $ "let t = Rep_FlexTensor a"),
+        (indent 4 $ "in (if dims t = (" <> shape <> ") then Abs_" <> compileIdentifier n <> " t else undefined))\""),
+        ("declare [[coercion to_" <> compileIdentifier n <> "]]")
+      ]
+  )
 
 compileIndexTypeDefCoercions :: Identifier -> Code -> Code
-compileIndexTypeDefCoercions n maxI = ((vsep :: [Code] -> Code) [
-      ("(* Type Coercions *)"),
-      ("declare [[coercion Rep_"<>(compileIdentifier n)<>"]]"),
-      ("definition to_"<>(compileIdentifier n)<>" :: \"FlexIndex \\<Rightarrow> " <> compileIdentifier n <> "\""),
-      (indent 2 $ "where[simp]: \"to_" <> compileIdentifier n <> " a = ("),
-      (indent 4 $ "let i = Rep_FlexIndex a"),
-      (indent 4 $ "in (if i < " <> maxI <> " then Abs_" <> compileIdentifier n <> " i else undefined))\""),
-      ("declare [[coercion to_" <> compileIdentifier n <> "]]")
-  ])
+compileIndexTypeDefCoercions n maxI =
+  ( (vsep :: [Code] -> Code)
+      [ ("(* Type Coercions *)"),
+        ("declare [[coercion Rep_" <> (compileIdentifier n) <> "]]"),
+        ("definition to_" <> (compileIdentifier n) <> " :: \"FlexIndex \\<Rightarrow> " <> compileIdentifier n <> "\""),
+        (indent 2 $ "where[simp]: \"to_" <> compileIdentifier n <> " a = ("),
+        (indent 4 $ "let i = Rep_FlexIndex a"),
+        (indent 4 $ "in (if i < " <> maxI <> " then Abs_" <> compileIdentifier n <> " i else undefined))\""),
+        ("declare [[coercion to_" <> compileIdentifier n <> "]]")
+      ]
+  )
 
 compileTypeDefRewrites :: Identifier -> Code -> Code
-compileTypeDefRewrites n shape = ((vsep :: [Code] -> Code) [
-      ("(* Type Rewrite Rules *)"),
-      ("lemma " <> compileIdentifier n <> "_tensor_rewrite0[simp]:"),
-      (indent 2 $ "assumes \"prod_list shape = length elems\""),
-      (indent 2 $ "    and \"shape = " <> shape <> "\""),
-      (indent 2 $ "shows \"(Rep_tensor (Rep_" <> compileIdentifier n <> " (Abs_" <> compileIdentifier n <> " (Abs_tensor (shape,elems))))) =  (shape,elems)\""),
-      ("proof -"),
-      (indent 2 $ "have \"Rep_" <> compileIdentifier n <> " (Abs_" <> compileIdentifier n <> " (Abs_tensor (shape,elems)))"),
-      (indent 4 $ "= Abs_tensor (shape,elems)\""),
-      (indent 4 $ "  using Abs_" <> compileIdentifier n <> "_inverse[of \"Abs_tensor (shape,elems)\"]"),
-      (indent 4 $ "  using Abs_tensor_inverse[of \"(shape, elems)\"]"),
-      (indent 4 $ "  unfolding dims_def"),
-      (indent 4 $ "  using assms"),
-      (indent 4 $ "  by (simp)"),
-      (indent 2 $ "moreover have \"Rep_tensor (Abs_tensor (shape,elems)) = (shape,elems)\""),
-      (indent 4 $ "  using assms"),
-      (indent 4 $ "  by (simp add: Abs_tensor_inverse)"),
-      (indent 2 $ "ultimately show ?thesis by simp"),
-      ("qed")
-    ])
+compileTypeDefRewrites n shape =
+  ( (vsep :: [Code] -> Code)
+      [ ("(* Type Rewrite Rules *)"),
+        ("lemma " <> compileIdentifier n <> "_tensor_rewrite0[simp]:"),
+        (indent 2 $ "assumes \"prod_list shape = length elems\""),
+        (indent 2 $ "    and \"shape = " <> shape <> "\""),
+        (indent 2 $ "shows \"(Rep_tensor (Rep_" <> compileIdentifier n <> " (Abs_" <> compileIdentifier n <> " (Abs_tensor (shape,elems))))) =  (shape,elems)\""),
+        ("proof -"),
+        (indent 2 $ "have \"Rep_" <> compileIdentifier n <> " (Abs_" <> compileIdentifier n <> " (Abs_tensor (shape,elems)))"),
+        (indent 4 $ "= Abs_tensor (shape,elems)\""),
+        (indent 4 $ "  using Abs_" <> compileIdentifier n <> "_inverse[of \"Abs_tensor (shape,elems)\"]"),
+        (indent 4 $ "  using Abs_tensor_inverse[of \"(shape, elems)\"]"),
+        (indent 4 $ "  unfolding dims_def"),
+        (indent 4 $ "  using assms"),
+        (indent 4 $ "  by (simp)"),
+        (indent 2 $ "moreover have \"Rep_tensor (Abs_tensor (shape,elems)) = (shape,elems)\""),
+        (indent 4 $ "  using assms"),
+        (indent 4 $ "  by (simp add: Abs_tensor_inverse)"),
+        (indent 2 $ "ultimately show ?thesis by simp"),
+        ("qed")
+      ]
+  )
 
 compileFunDef :: (MonadIsabelleCompile m) => [LocaleDef] -> Identifier -> Expr DecidabilityBuiltin -> [Binder DecidabilityBuiltin] -> Expr DecidabilityBuiltin -> m Code
 compileFunDef localeAssms name (Universe _ _) _ body = do
   res <- case body of
     App (Builtin _p (StandardBuiltinType TensorType)) [tensT, maxIdx] -> do
-      cbody <- annotateNotation localeAssms [RequireImport VehicleTensor] 0 (
-                  "\"{ a :: $0 tensor. (dims a) = ($1) }\"\n" <>
-                  "  using dims_tensor_from_lookup by blast\n") Nothing [tensT, maxIdx]
+      cbody <-
+        annotateNotation
+          localeAssms
+          [RequireImport VehicleTensor]
+          0
+          ( "\"{ a :: $0 tensor. (dims a) = ($1) }\"\n"
+              <> "  using dims_tensor_from_lookup by blast\n"
+          )
+          Nothing
+          [tensT, maxIdx]
       shape <- compileExpr False localeAssms (argExpr maxIdx)
       return $ compileTensorTypeDef name shape cbody
     App (Builtin _p (StandardBuiltinType IndexType)) [i] -> do
       let unfoldings = compileExprUnfoldings (argExpr i)
-      let unfoldingsText = if null unfoldings
-                           then ""
-                           else renderStrict (layoutCompact (vsep unfoldings)) <> "\n"
-      cbody <- annotateNotation localeAssms [RequireImport VehicleUtils] 0 (
-                  "\"{ i :: nat. i < ($0) }\"\n" <>
-                  unfoldingsText <>
-                  "  by (simp, rule_tac x = \"0\" in exI, linarith)\n") Nothing [i]
+      let unfoldingsText =
+            if null unfoldings
+              then ""
+              else renderStrict (layoutCompact (vsep unfoldings)) <> "\n"
+      cbody <-
+        annotateNotation
+          localeAssms
+          [RequireImport VehicleUtils]
+          0
+          ( "\"{ i :: nat. i < ($0) }\"\n"
+              <> unfoldingsText
+              <> "  by (simp, rule_tac x = \"0\" in exI, linarith)\n"
+          )
+          Nothing
+          [i]
       maxI <- compileExpr False localeAssms (argExpr i)
       return $ compileIndexTypeDef name maxI cbody
     _ -> developerError $ "Only tensor and index types are currently supported for custom type definitions."
@@ -634,27 +672,29 @@ compileFunDef localeAssms n t binders body = do
   defType <- resolveReturnType localeAssms bindersT t
   name <- return $ compileIdentifier n
   return $
-    ("definition"
-      <+> name
-      <+> " :: \""
-      <+> (if null bindersT then mempty else (concatWith (\x y -> x <> " \\<Rightarrow> " <> y) bindersT) <> " \\<Rightarrow> ")
-      <+> align defType
-      <+> "\"\n  where \""
-      <+> name
-      <+> (if null bindersV then mempty else " ") <+> hsep bindersV
-      <+> "="
-      <+> "("
-      <+> cbody
-      <+> ") \"")
+    ( "definition"
+        <+> name
+        <+> " :: \""
+        <+> (if null bindersT then mempty else (concatWith (\x y -> x <> " \\<Rightarrow> " <> y) bindersT) <> " \\<Rightarrow> ")
+        <+> align defType
+        <+> "\"\n  where \""
+        <+> name
+        <+> (if null bindersV then mempty else " ")
+        <+> hsep bindersV
+        <+> "="
+        <+> "("
+        <+> cbody
+        <+> ") \""
+    )
 
 idxBasedOp :: (MonadIsabelleCompile m) => [LocaleDef] -> Code -> [Arg DecidabilityBuiltin] -> m Code
 idxBasedOp localeAssms op args = case args of
-        [(ExplicitArg _ (Lam _ binder _body))] -> case (typeOf binder) of
-          (App (Builtin _p (StandardBuiltinType IndexType)) [maxIdx]) -> do
-            idxArg <- (compileExpr False localeAssms (argExpr maxIdx))
-            annotateApp localeAssms [RequireImport VehicleTensor] (op<+>idxArg<>" ") args
-          _ -> developerError $ "foreach/forall/exists tensor operations are currently only supports explicit lambda arguments with indexing type"
-        _ -> developerError $ "foreach/forall/exists tensor operations are currently only supports a single lambda argument"
+  [(ExplicitArg _ (Lam _ binder _body))] -> case (typeOf binder) of
+    (App (Builtin _p (StandardBuiltinType IndexType)) [maxIdx]) -> do
+      idxArg <- (compileExpr False localeAssms (argExpr maxIdx))
+      annotateApp localeAssms [RequireImport VehicleTensor] (op <+> idxArg <> " ") args
+    _ -> developerError $ "foreach/forall/exists tensor operations are currently only supports explicit lambda arguments with indexing type"
+  _ -> developerError $ "foreach/forall/exists tensor operations are currently only supports a single lambda argument"
 
 compileBuiltin :: (MonadIsabelleCompile m) => Bool -> [LocaleDef] -> DecidabilityBuiltin -> [Arg DecidabilityBuiltin] -> m Code
 compileBuiltin isOutType localeAssms b args = case b of
@@ -665,8 +705,15 @@ compileBuiltin isOutType localeAssms b args = case b of
     UnitType -> return "unit"
     NatType -> return "nat"
     ListType -> annotateNotation localeAssms [] 2 "$0 list" Nothing args
-    TensorType -> annotateNotation localeAssms [RequireImport VehicleTensor, RequireImport VehicleUtils] 0 (
-      "$0 " <> (if isOutType then "FlexTensor" else "tensor")) Nothing args
+    TensorType ->
+      annotateNotation
+        localeAssms
+        [RequireImport VehicleTensor, RequireImport VehicleUtils]
+        0
+        ( "$0 " <> (if isOutType then "FlexTensor" else "tensor")
+        )
+        Nothing
+        args
     IndexType -> annotateNotation localeAssms [] 0 (if isOutType then "FlexIndex" else "nat") (Just "ordinal") args
     VectorType -> annotateNotation localeAssms [] 2 "$0 list" Nothing args
   StandardBuiltinConstructor c -> case c of
@@ -706,7 +753,7 @@ compileBuiltin isOutType localeAssms b args = case b of
     ReduceMulRatTensor -> annotateApp localeAssms [] "reduceMul" args
     ConstTensor -> do
       bracketedArgs <- compileArgs localeAssms 1 args
-      return $ annotate ([RequireImport VehicleTensor],1) (parens ("flextensor_from_vec ["<> (pretty (length args)) <>"] [" <> concatWith (\x y -> x <> ", " <> y) bracketedArgs) <> "]")
+      return $ annotate ([RequireImport VehicleTensor], 1) (parens ("flextensor_from_vec [" <> (pretty (length args)) <> "] [" <> concatWith (\x y -> x <> ", " <> y) bracketedArgs) <> "]")
     QuantifyRatTensor q -> case reverse args of
       (ExplicitArg _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier localeAssms q [binder] body
       _ -> unsupportedArgsError
@@ -773,8 +820,8 @@ compileApp isOutType localeAssms fun args = do
     _ -> do
       cFun <- compileExpr False localeAssms fun
       isProjectionFn <- case fun of
-            FreeVar _ n -> gets (Set.member (nameOf n))
-            _ -> return False
+        FreeVar _ n -> gets (Set.member (nameOf n))
+        _ -> return False
       let localeResults = compileLocaleBindersV localeAssms
       let cFunText = renderStrict (layoutCompact cFun)
       let localeResultsText = map (renderStrict . layoutCompact) localeResults
@@ -792,7 +839,8 @@ compileDerivedFunction localeAssms fn args = case fn of
   QuantifyInList {} -> unsupported
   TypeAnn -> annotateNotation localeAssms [] minPrecedence "$1 :: $0" Nothing args
   CompareRatTensorReduced op ->
-    annotateApp localeAssms
+    annotateApp
+      localeAssms
       [RequireImport VehicleUtils]
       ( case op of
           Le -> "leRatTensorReduced"
@@ -900,7 +948,7 @@ compileTensorComparison localeAssms _ op = do
         Eq -> ("eqTensorReduced")
         Ne -> ("neTensorReduced")
   let typeDeps = [RequireImport VehicleTensor, RequireImport VehicleUtils]
-  let opDesc = ("("<>opDoc<>" $0 $1)")
+  let opDesc = ("(" <> opDoc <> " $0 $1)")
   annotateNotation localeAssms (typeDeps) 70 opDesc Nothing
 
 compileStack :: (MonadIsabelleCompile m) => [LocaleDef] -> [Arg DecidabilityBuiltin] -> m Code
