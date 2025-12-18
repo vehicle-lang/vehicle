@@ -391,8 +391,7 @@ compileRecordDecl localeAssms p ident telescope fields = do
           <+> "="
           <> line
           <> indent 2 ((vsep :: [Code] -> Code) $ fmap (\(field, fieldType) -> pretty field <+> "::" <+> "\"" <> fieldType <> "\"") fs')
-    else
-      throwError $ UnimplementedFeature p "Compiling parameterized records to Isabelle"
+    else throwError $ UnimplementedFeature p "Compiling parameterized records to Isabelle"
 
 -- | Compile a 'network' declaration
 compilePostulate :: Code -> Code -> LocaleDef
@@ -826,10 +825,8 @@ compileApp isOutType localeAssms fun args = do
       let cFunText = renderStrict (layoutCompact cFun)
       let localeResultsText = map (renderStrict . layoutCompact) localeResults
       if (not (null localeResults) && (cFunText `elem` localeResultsText)) || isProjectionFn
-        then
-          annotateApp localeAssms [] cFun userArgs
-        else
-          annotateApp localeAssms [] (cFun <+> (hsep localeResults)) userArgs
+        then annotateApp localeAssms [] cFun userArgs
+        else annotateApp localeAssms [] (cFun <+> (hsep localeResults)) userArgs
 
 compileDerivedFunction :: (MonadIsabelleCompile m) => [LocaleDef] -> DerivedFunction -> [Arg DecidabilityBuiltin] -> m Code
 compileDerivedFunction localeAssms fn args = case fn of

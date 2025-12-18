@@ -9,11 +9,11 @@ where
 
 import Control.Monad.Writer (MonadWriter (..), WriterT (..))
 import Vehicle.Backend.Agda
+import Vehicle.Backend.Isabelle
 import Vehicle.Backend.Loss (convertToLossTensors)
 import Vehicle.Backend.Loss.JSON
 import Vehicle.Backend.Prelude
 import Vehicle.Backend.Rocq
-import Vehicle.Backend.Isabelle
 import Vehicle.Backend.Solver
 import Vehicle.Compile.Error
 import Vehicle.Compile.FunctionaliseResources (functionaliseResources)
