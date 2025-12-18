@@ -30,11 +30,12 @@ jobs:
             type: "macos-latest"
         haskell:
           - ghc:
-              version: "9.4.8"
+              version: "9.6.5"
             cabal:
-              version: "3.14.2.1"
-              project-file: "cabal.project.ghc-9.4.8"
+              version: "3.14.2.0"
+              project-file: "cabal.project"
               extra-args: ""
+              extra-args-test-golden: ""
 
     name: Isabelle / ${{ matrix.os.name }} - Isabelle 2024
     runs-on: ${{ matrix.os.type }}
