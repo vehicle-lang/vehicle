@@ -131,16 +131,6 @@ createTensorRecordConversionFunctions p ident telescope fields = do
       tensorToRecordDecl
     ]
 
-{-
-
-toRecord : Tensor A (2 : _) -> r
-toRecord t =
-  { f1 = t ! 0
-  , f2 = t ! 1
-  }
-
--}
-
 createRecordToTensor ::
   Provenance ->
   Identifier ->
