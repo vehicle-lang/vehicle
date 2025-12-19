@@ -242,7 +242,7 @@ stackTensor :: (BuiltinHasStandardData builtin) => DSLExpr builtin -> DSLExpr bu
 stackTensor t d ds xs = builtinFunction StackTensor @@@ [t, d, ds] @@ xs
 
 atTensor :: (BuiltinHasStandardData builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
-atTensor t d ds tens idx = builtinFunction AtTensor @@@ [t, d, ds] @@ [tens, idx]
+atTensor t d ds tens idx = builtinFunction AtTensor @@@ [t] .@@@ [d, ds] @@ [tens, idx]
 
 iterate :: (BuiltinHasStandardData builtin) => DSLExpr builtin -> (DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 iterate t f n e = do
