@@ -150,3 +150,28 @@ directly interface with mathcomp's structure hierarchy. This can lead to issues
 when considering properties with tensor arithmetic. Users are encouraged to, when
 possible, express tensor properties using universal quantification over indices.
 This generally leads to neater proofs.
+
+Isabelle
+~~~~~~~~
+
+The Isabelle backend produces a new specification in Isabelle.
+Properties proven by Vehicle are expressed as Isabelle Locales:
+Neural Networks are fixed parameters of the locale and proven properties
+are assumptions of the locale.
+We generate the spec using the AFP's tensor formalization in `Deep_Learning`.
+Dependent tensor and index types are represented using Isabelle's `typedef` mechanism.
+
+Limitations
+***********
+
+Network Evaluation
+##################
+
+Neural networks are represented as fixed parameters of the locale and cannot be evaluated
+within Isabelle.
+
+No integration with verification cache
+######################################
+There is currently no integration with Vehicle's verification cache,
+meaning that it is up to the user to guarantee that the compiled specification
+does not become out of date with the Vehicle spec.

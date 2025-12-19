@@ -68,6 +68,17 @@ instance Pretty SummarisedCompileWarning where
         <> line
         <> line
         <> "See https://github.com/NeuralNetworkVerification/Marabou/issues/670 for details."
+    BoundsOnlyQuantifierSummary propertyName quantifierName ->
+      "In some cases in"
+        <+> pretty AnnProperty
+        <+> quotePretty propertyName
+        <+> "the constraints on quantified variable"
+        <+> quotePretty quantifierName
+        <+> "consist only of direct bounds, and"
+        <+> quotePretty quantifierName
+        <+> "is not related to a"
+        <+> pretty NetworkDef
+        <+> "declaration in any way."
 
 prettyObjects :: (Ord a, Pretty a) => Bool -> Doc b -> Doc b -> NonEmpty a -> Doc b
 prettyObjects quote single plural ids =

@@ -24,6 +24,33 @@
     "ignore": {"files": ["Rocq.v", ".Rocq.aux", "Rocq.glob", "Rocq.vok"]}
   },
   {
+    "name": "Isabelle",
+    "run": "vehicle compile itp -s spec.vcl -t Isabelle -o isabelle/Isabelle.thy",
+    "needs": [
+      "spec.vcl"
+    ],
+    "produces": [
+      "isabelle/Isabelle.thy"
+    ]
+  },
+  {
+    "name": "IsabelleVerify",
+    "run": "vehicle compile itp -s spec.vcl -t Isabelle -o isabelle/Isabelle.thy && isabelle build -d vehicle-isabelle/ -d isabelle/ IsabelleTest > /dev/null 2>&1 && echo $? || echo 1",
+    "enabled": true,
+    "external": ["isabelle"],
+    "needs": [
+      "spec.vcl",
+      "isabelle/ROOT",
+      "../../../../../vehicle-isabelle/ROOT",
+      "../../../../../vehicle-isabelle/Vehicle.thy"
+    ],
+    "ignore": {
+      "files": [
+        "isabelle/Isabelle.thy"
+      ]
+    }
+  },
+  {
     "name": "DL2Loss",
     "run": "vehicle compile loss -s spec.vcl -l DL2Loss -o DL2Loss.vcl",
     "needs": ["spec.vcl"],

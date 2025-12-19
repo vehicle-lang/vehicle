@@ -2,6 +2,10 @@
 
 ## Next release
 
+### Loss backend
+
+* Transformed case where quantifier body consists of only bounds on the quantified variable from an error to a warning.
+
 ### ITP backends
 
 * Tensor stack operations are now evaluated to tensor literals where possible.
