@@ -10,6 +10,7 @@ Available options:
   -t,--target TARGET       The target to export to. Supported options: 
                              * Agda
                              * Rocq
+                             * Isabelle
   -s,--specification FILE  The .vcl file containing the specification.
   -e,--declaration NAME    Declarations in the specification to include during
                            compilation. Can be provided multiple times. If not

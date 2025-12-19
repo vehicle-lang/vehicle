@@ -131,6 +131,7 @@ library
     Vehicle.Backend.Loss.LossCompilation
     Vehicle.Backend.Prelude
     Vehicle.Backend.Rocq
+    Vehicle.Backend.Isabelle
     Vehicle.Backend.Solver.UserVariableElimination.Error
     Vehicle.CommandLine
     Vehicle.Compile
@@ -198,6 +199,8 @@ library
     Vehicle.Backend.Loss.Domain
     Vehicle.Backend.Rocq.Compile
     Vehicle.Backend.Rocq.Interact
+    Vehicle.Backend.Isabelle.Compile
+    Vehicle.Backend.Isabelle.Interact
     Vehicle.Backend.Solver
     Vehicle.Backend.Solver.QueryCompilation
     Vehicle.Backend.Solver.QueryCompilation.Core

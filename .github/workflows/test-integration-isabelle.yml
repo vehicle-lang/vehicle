@@ -1,0 +1,137 @@
+name: Test Isabelle
+
+on:
+  push:
+    branches:
+      - dev
+    tags:
+      - "v*"
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+  merge_group:
+
+defaults:
+  run:
+    shell: sh
+
+jobs:
+  test-vehicle-isabelle:
+    strategy:
+      matrix:
+        os:
+          - name: "Linux"
+            isaname: "linux"
+            type: "ubuntu-latest"
+          - name: "macOS"
+            isaname: "macos"
+            type: "macos-latest"
+        haskell:
+          - ghc:
+              version: "9.6.5"
+            cabal:
+              version: "3.14.2.0"
+              project-file: "cabal.project"
+              extra-args: ""
+              extra-args-test-golden: ""
+
+    name: Isabelle / ${{ matrix.os.name }} - Isabelle 2024
+    runs-on: ${{ matrix.os.type }}
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v6
+
+      - name: 🛠️ Install Haskell
+        uses: haskell-actions/setup@v2
+        id: setup-haskell
+        with:
+          ghc-version: ${{ matrix.haskell.ghc.version }}
+          cabal-version: ${{ matrix.haskell.cabal.version }}
+
+      - name: 🛠️ Configure
+        run: |
+          cabal configure --project-file=${{ matrix.haskell.cabal.project-file }}
+          cabal build all --project-file=${{ matrix.haskell.cabal.project-file }} --dry-run
+
+      - name: 💾 Restore Cabal dependencies
+        uses: actions/cache/restore@v5
+        if: ${{ !env.ACT }}
+        id: cache-haskell
+        env:
+          key: ${{ matrix.os.name }}-ghc-${{ steps.setup-haskell.outputs.ghc-version }}-cabal-${{ steps.setup-haskell.outputs.cabal-version }}
+        with:
+          path: ${{ steps.setup-haskell.outputs.cabal-store }}
+          key: ${{ env.key }}-plan-${{ hashFiles('dist-newstyle/cache/plan.json') }}
+          restore-keys: ${{ env.key }}-
+
+      - name: 🛠️ Install Cabal dependencies
+        if: ${{ env.ACT || steps.cache-haskell.outputs.cache-hit != 'true' }}
+        run: cabal build all --only-dependencies
+
+      - name: 💾 Save Cabal dependencies
+        uses: actions/cache/save@v5
+        if: ${{ !env.ACT && steps.cache-haskell.outputs.cache-hit != 'true' }}
+        with:
+          path: ${{ steps.setup-haskell.outputs.cabal-store }}
+          key: ${{ steps.cache-haskell.outputs.cache-primary-key }}
+
+      - name: 💾 Restore Isabelle dependencies
+        uses: actions/cache/restore@v5
+        id: cache-isabelle
+        env:
+          key: v3-Isabelle-${{ matrix.os.name }}-2024
+        with:
+          path: |
+            ~/.isabelle
+            ~/Isabelle
+            ~/AFP/thys
+          key: ${{ env.key }}
+          restore-keys: ${{ env.key }}
+
+        # Isabelle installation (currently fixed to Isabelle2024)
+      - name: 🛠️ Install Isabelle
+        if: ${{ env.ACT || steps.cache-isabelle.outputs.cache-hit != 'true' }}
+        run: |
+          mkdir ~/Isabelle
+          cd ~/Isabelle
+          wget -O isabelle.tar.gz https://isabelle.in.tum.de/website-Isabelle2024/dist/Isabelle2024_${{ matrix.os.isaname }}.tar.gz
+          tar -xz --strip-components=1 -f isabelle.tar.gz
+          rm isabelle.tar.gz
+      - name: 🛠️ Install Isabelle AFP
+        if: ${{ env.ACT || steps.cache-isabelle.outputs.cache-hit != 'true' }}
+        run: |
+          mkdir ~/AFP
+          cd ~/AFP
+          wget -O afp.zip https://foss.heptapod.net/isa-afp/afp-devel/-/archive/361b8b643a1d8e7cf0f7f4adb3f3a3bc58991fdb/afp-devel-361b8b643a1d8e7cf0f7f4adb3f3a3bc58991fdb.zip
+          unzip -q afp.zip
+          mv afp-devel-*/** .
+          rm -rf afp-devel-*/ afp.zip
+          ~/Isabelle/bin/isabelle components -u ~/AFP/thys;
+          export PATH=$PATH:~/Isabelle/bin
+
+      - name: 💾 Save Isabelle dependencies
+        uses: actions/cache/save@v5
+        if: ${{ !env.ACT && steps.cache-isabelle.outputs.cache-hit != 'true' }}
+        env:
+          key: v3-Isabelle-${{ matrix.os.name }}-2024
+        with:
+          path: |
+            ~/.isabelle
+            ~/Isabelle
+            ~/AFP/thys
+          key: ${{ env.key }}
+
+      - name: 🧪 Test Vehicle-Isabelle interaction
+        run: |
+          export PATH=$PATH:~/Isabelle/bin
+          cabal test                                 \
+            vehicle:test:golden-tests                \
+            --test-show-details=always               \
+            --test-option=--color=always             \
+            --test-option=--num-threads=1            \
+            --test-option=-p                         \
+            --test-option='/Isabelle/'               \
+            --test-option=--allowlist-externals=isabelle
