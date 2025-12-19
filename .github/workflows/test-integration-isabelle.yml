@@ -77,7 +77,7 @@ jobs:
         with:
           path: ${{ steps.setup-haskell.outputs.cabal-store }}
           key: ${{ steps.cache-haskell.outputs.cache-primary-key }}
-      
+
       - name: 💾 Restore Isabelle dependencies
         uses: actions/cache/restore@v5
         id: cache-isabelle
@@ -111,7 +111,7 @@ jobs:
           rm -rf afp-devel-*/ afp.zip
           ~/Isabelle/bin/isabelle components -u ~/AFP/thys;
           export PATH=$PATH:~/Isabelle/bin
-      
+
       - name: 💾 Save Isabelle dependencies
         uses: actions/cache/save@v5
         if: ${{ !env.ACT && steps.cache-isabelle.outputs.cache-hit != 'true' }}
