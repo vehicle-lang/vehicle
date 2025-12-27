@@ -1,5 +1,6 @@
 module Vehicle.Compile.Scope.RecordInstances
   ( createAuxilliaryRecordDeclarations,
+    createRecordProjectionFn,
   )
 where
 
@@ -33,6 +34,9 @@ createAuxilliaryRecordDeclarations p ident sort telescope fields = do
     if isAnnotatedAsTensor sort
       then createTensorRecordConversionFunctions p ident telescope fields
       else return []
+
+  -- elabbedTensorConversionFunctions <- traverse (\x -> createProjectionFunctionsForAuxilliaryDefinitions x) tensorConversionFunctions
+  -- not sure if concat is the correct thing to be doing here??
   return $ recordProjectionFunctions <> tensorConversionFunctions
 
 -- | Given a record declaration of the form
@@ -125,11 +129,10 @@ createTensorRecordConversionFunctions p ident telescope fields = do
 
   let recordToTensorDecl = createRecordToTensor p ident fieldElementType fieldDimensions nonEmptyFields
   let tensorToRecordDecl = createTensorToRecord p ident fieldElementType fieldDimensions nonEmptyFields
+  let tensorLikeInstance = createTensorLikeInstance p ident fieldElementType fieldDimensions nonEmptyFields
 
   return
-    [ recordToTensorDecl,
-      tensorToRecordDecl
-    ]
+    [recordToTensorDecl, tensorToRecordDecl, tensorLikeInstance]
 
 createRecordToTensor ::
   Provenance ->
@@ -183,3 +186,53 @@ createTensorToRecord p recordIdent fieldElementType fieldDimensions fields = do
         record recordType (zip fieldNames fieldContents)
 
   DefFunction p functionIdent (FunctionDecl 1 Nothing) functionType functionBody
+
+createTensorLikeInstance ::
+  Provenance ->
+  Identifier ->
+  DSLExpr Builtin ->
+  DSLExpr Builtin ->
+  NonEmpty (GenericRecordField (Type Builtin)) ->
+  Decl Builtin
+createTensorLikeInstance p recordIdent fieldElementType fieldDimensions fields = do
+  -- RECORD FIELD NAMES
+  let toTensorFieldName = FieldName p "toTensor"
+  let fromTensorFieldName = FieldName p "fromTensor"
+  -- RECORD FIELD VALUES (FUNCTION IDENTS CORRESPONDING TO THE NAMES)
+  let toTensorIdent = Identifier (modulePath recordIdent) (Text.pack "_" <> nameOf recordIdent <> "ToTensor")
+  let fromTensorIdent = Identifier (modulePath recordIdent) (Text.pack "_" <> nameOf recordIdent <> "FromTensor")
+  -- PACKAGE UP FIELDS AND DEFINE FN BODY
+  let recordFields = [(toTensorFieldName, fromDSL p (freeVar toTensorIdent)), (fromTensorFieldName, fromDSL p (freeVar fromTensorIdent))]
+  let functionBody = Record p (fromDSL p (freeVar recordIdent)) recordFields
+
+  -- want to do: recordTypeIsTensorLike : TensorLike RecordType(r) Real(t) [2](dims)
+  -- IDENT FOR 'TensorLike"
+  let definitionsPath = ModulePath ["Definitions"]
+  let tensorLikeIdent = Identifier definitionsPath "TensorLike"
+  -- DIMENSIONS FOR FUNCTION TYPE
+  let firstDimension = dim (length fields)
+  let allDimensions = dimCons firstDimension fieldDimensions
+  -- DEFINE FUNCTION TYPE
+  let functionType = freeVar tensorLikeIdent @@ [fieldElementType, allDimensions]
+
+  -- Create ident for the function
+  let functionName = Text.pack "_" <> nameOf recordIdent <> "IsTensorLike"
+  let functionIdent = Identifier (modulePath recordIdent) functionName
+
+  -- define the function
+  DefFunction p functionIdent (FunctionDecl 1 (Just (AnnInstance True))) (fromDSL p functionType) functionBody
+
+-- trying to do the function declaration instead.. because we should be making something with values and not types in the fields.
+-- RECORD EXPR:
+-- Record
+--   Provenance
+--   (Type builtin) -- Type of the record, e.g. `Pair Int Int`
+--   (RecordFields builtin)
+
+-- FUNCTION DEFINITION:
+-- DefFunction
+--   Provenance -- Location in source file.
+--   Identifier -- Name of definition.
+--   DefFunctionSort -- List of annotations.
+--   expr -- Type of the definition.
+--   expr -- Body of the definition.

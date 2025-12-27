@@ -14,7 +14,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyExternal)
 import Vehicle.Compile.Scope.Core
 import Vehicle.Compile.Scope.Generalise
-import Vehicle.Compile.Scope.RecordInstances (createAuxilliaryRecordDeclarations)
+import Vehicle.Compile.Scope.RecordInstances
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.ModuleInterface
 import Vehicle.Data.Universe (UniverseLevel (..))
@@ -48,12 +48,25 @@ scopeDecl decl =
       DefRecord p ident sort telescope fields -> do
         (telescope', fields') <- runMonadScopeExprT $ scopeRecordDefinition ident telescope fields
         auxiliaryDeclarations <- createAuxilliaryRecordDeclarations p ident sort telescope' fields'
+        auxilliaryProjections <- traverse createAuxilliaryProjections auxiliaryDeclarations
         let defFun = DefRecord p ident sort telescope' fields'
-        return $ defFun : auxiliaryDeclarations
+        return $ [defFun] ++ auxiliaryDeclarations ++ concat auxilliaryProjections
 
     traverse_ addNewDecl scopedDecls
     traverse_ (logCompilerPassOutput . prettyExternal) scopedDecls
     return scopedDecls
+
+createAuxilliaryProjections ::
+  (MonadScope m) =>
+  Decl Builtin ->
+  m [Decl Builtin]
+createAuxilliaryProjections decl = case decl of
+  -- not sure if this should have Instance True visibility or Explicit
+  DefRecord p ident _sort telescope fields -> do
+    traverse_ (\(name, _) -> addNewRecordDefField ident telescope name) fields
+    _ <- addNewRecordDef ident telescope fields
+    traverse (createRecordProjectionFn p ident telescope Explicit) fields
+  _ -> return []
 
 --------------------------------------------------------------------------------
 -- Expr scoping
@@ -75,7 +88,9 @@ scopeRecordDefinition ident telescope fields = go [] telescope
       [] -> do
         let scopedTelescope = reverse revScopedTelescope
         scopedFields <- forM fields $ \(field, fieldType) -> do
+          -- generalising requires the S. types -> skip this
           fieldType' <- scopeExpr =<< generaliseType fieldType
+          -- do this per field in the new record
           addNewRecordDefField ident scopedTelescope field
           return (field, fieldType')
         addNewRecordDef ident scopedTelescope scopedFields
