@@ -195,34 +195,29 @@ createTensorLikeInstance ::
   NonEmpty (GenericRecordField (Type Builtin)) ->
   Decl Builtin
 createTensorLikeInstance p recordIdent fieldElementType fieldDimensions fields = do
-  -- RECORD FIELD NAMES
-  let toTensorFieldName = FieldName p "toTensor"
-  let fromTensorFieldName = FieldName p "fromTensor"
-  -- RECORD FIELD VALUES (FUNCTION IDENTS CORRESPONDING TO THE NAMES)
-  let toTensorIdent = Identifier (modulePath recordIdent) (Text.pack "_" <> nameOf recordIdent <> "ToTensor")
-  let fromTensorIdent = Identifier (modulePath recordIdent) (Text.pack "_" <> nameOf recordIdent <> "FromTensor")
-  -- PACKAGE UP FIELDS AND DEFINE FN BODY
-  let recordFields = [(toTensorFieldName, fromDSL p (freeVar toTensorIdent)), (fromTensorFieldName, fromDSL p (freeVar fromTensorIdent))]
-  let functionBody = Record p (fromDSL p (freeVar recordIdent)) recordFields
-
-  -- want to do: recordTypeIsTensorLike : TensorLike RecordType(r) Real(t) [2](dims)
-  -- IDENT FOR 'TensorLike"
+  -- Create path for standard lib definitions
   let definitionsPath = ModulePath ["Definitions"]
   let tensorLikeIdent = Identifier definitionsPath "TensorLike"
-  -- DIMENSIONS FOR FUNCTION TYPE
+
+  -- Create record expression for function body
+  let toTensorFieldName = FieldName p "toTensor"
+  let fromTensorFieldName = FieldName p "fromTensor"
+  let toTensorIdent = Identifier (modulePath recordIdent) (Text.pack "_" <> nameOf recordIdent <> "ToTensor")
+  let fromTensorIdent = Identifier (modulePath recordIdent) (Text.pack "_" <> nameOf recordIdent <> "FromTensor")
+  let recordFields = [(toTensorFieldName, fromDSL mempty (freeVar toTensorIdent)), (fromTensorFieldName, fromDSL mempty (freeVar fromTensorIdent))]
+  let functionBody = Record p (fromDSL mempty (freeVar tensorLikeIdent)) recordFields
+
+  -- Create function type
   let firstDimension = dim (length fields)
   let allDimensions = dimCons firstDimension fieldDimensions
-  -- DEFINE FUNCTION TYPE
-  let functionType = freeVar tensorLikeIdent @@ [fieldElementType, allDimensions]
+  let functionType = fromDSL mempty $ freeVar tensorLikeIdent @@ [freeVar recordIdent, fieldElementType, allDimensions]
 
   -- Create ident for the function
   let functionName = Text.pack "_" <> nameOf recordIdent <> "IsTensorLike"
   let functionIdent = Identifier (modulePath recordIdent) functionName
 
-  -- define the function
-  DefFunction p functionIdent (FunctionDecl 1 (Just (AnnInstance True))) (fromDSL p functionType) functionBody
+  DefFunction p functionIdent (FunctionDecl 1 (Just (AnnInstance False))) functionType functionBody
 
--- trying to do the function declaration instead.. because we should be making something with values and not types in the fields.
 -- RECORD EXPR:
 -- Record
 --   Provenance
