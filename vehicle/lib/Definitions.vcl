@@ -47,6 +47,7 @@ gtRatTensorReduced xs ys = reduceAnd True (xs >. ys)
 --------------------------------------------------------------------------------
 -- TensorLike
 --------------------------------------------------------------------------------
+
 @typeclass
 record TensorLike r t dims {{isTensorType : IsTensorType t dims}} where
   { toTensor         : r -> Tensor t dims
@@ -79,22 +80,6 @@ natHasAdd = { addTC = addNat }
 @instance
 realTensorHasAdd : HasAdd (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
 realTensorHasAdd = { addTC = addRealTensor }
-
--- WHAT TO GENERATE FOR TENSORLIKES
--- Given a record RecordType with 2 fields of Reals
-
--- @instance
--- recordTypeIsTensorLike : TensorLike RecordType Real [2]
--- recordTypeIsTensorLike = {
---   toTensor = _RecordTypeToTensor
---   fromTensor = _RecordTypeFromTensor
--- }
-
--- Need to generate a record annotated with an instance
--- generate the type declaration of the record (how..??)
--- generate the record itself
--- scope checking?? recordInstances??
-
 
 --------------------------------------------------------------------------------
 -- Loss logics
