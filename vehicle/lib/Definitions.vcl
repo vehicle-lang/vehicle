@@ -80,6 +80,15 @@ natHasAdd = { addTC = addNat }
 realTensorHasAdd : HasAdd (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
 realTensorHasAdd = { addTC = addRealTensor }
 
+@typeclass
+record HasSub t1 t2 t3 where
+  { subTC : t1 -> t2 -> t3
+  }
+
+@instance
+realTensorHasSub : HasSub (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
+realTensorHasSub = { subTC = subRealTensor }
+
 --------------------------------------------------------------------------------
 -- Loss logics
 --------------------------------------------------------------------------------

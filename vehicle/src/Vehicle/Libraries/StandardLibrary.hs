@@ -32,7 +32,8 @@ standardLibraryDefinitionsModulePath = ModulePath ["Definitions"]
 standardLibraryInstanceOps :: Set Identifier
 standardLibraryInstanceOps =
   Set.fromList
-    [ standardLibIdent "addTC"
+    [ standardLibIdent "addTC",
+      standardLibIdent "subTC"
     ]
 
 standardLibraryBuiltinModulePath :: Maybe SecondaryTypeSystem -> ModulePath

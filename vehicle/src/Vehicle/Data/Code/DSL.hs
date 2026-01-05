@@ -130,8 +130,8 @@ numOp2TypeClass tc t1 t2 t3 = typeClass tc [t1, t2, t3]
 standardLib :: Name -> DSLExpr builtin
 standardLib = freeVar . stdlibIdentifier
 
-hasSub :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
-hasSub = numOp2TypeClass HasSub
+-- hasSub :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+-- hasSub = numOp2TypeClass HasSub
 
 hasMul :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 hasMul = numOp2TypeClass HasMul
