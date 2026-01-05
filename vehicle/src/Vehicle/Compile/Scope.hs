@@ -48,25 +48,12 @@ scopeDecl decl =
       DefRecord p ident sort telescope fields -> do
         (telescope', fields') <- runMonadScopeExprT $ scopeRecordDefinition ident telescope fields
         auxiliaryDeclarations <- createAuxilliaryRecordDeclarations p ident sort telescope' fields'
-        auxilliaryProjections <- traverse createAuxilliaryProjections auxiliaryDeclarations
         let defFun = DefRecord p ident sort telescope' fields'
-        return $ [defFun] ++ auxiliaryDeclarations ++ concat auxilliaryProjections
+        return $ defFun : auxiliaryDeclarations
 
     traverse_ addNewDecl scopedDecls
     traverse_ (logCompilerPassOutput . prettyExternal) scopedDecls
     return scopedDecls
-
-createAuxilliaryProjections ::
-  (MonadScope m) =>
-  Decl Builtin ->
-  m [Decl Builtin]
-createAuxilliaryProjections decl = case decl of
-  -- not sure if this should have Instance True visibility or Explicit
-  DefRecord p ident _sort telescope fields -> do
-    traverse_ (\(name, _) -> addNewRecordDefField ident telescope name) fields
-    _ <- addNewRecordDef ident telescope fields
-    traverse (createRecordProjectionFn p ident telescope Explicit) fields
-  _ -> return []
 
 --------------------------------------------------------------------------------
 -- Expr scoping

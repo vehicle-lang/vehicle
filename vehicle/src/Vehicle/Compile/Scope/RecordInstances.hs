@@ -131,8 +131,6 @@ createTensorRecordConversionFunctions p ident telescope fields = do
   let recordToTensorDecl = createRecordToTensor p ident fieldElementType fieldDimensions nonEmptyFields
   let tensorToRecordDecl = createTensorToRecord p ident fieldElementType fieldDimensions nonEmptyFields
   let tensorLikeInstance = createTensorLikeInstance p ident fieldElementType fieldDimensions nonEmptyFields
-  -- hardcoding in values bc the holes are not filling them in properly??
-  -- let tensorLikeInstance = createTensorLikeInstance p ident tRat dimNil nonEmptyFields
 
   return
     [recordToTensorDecl, tensorToRecordDecl, tensorLikeInstance]
@@ -219,34 +217,3 @@ createTensorLikeInstance p recordIdent fieldElementType fieldDimensions fields =
   let functionIdent = Identifier (modulePath recordIdent) functionName
 
   DefFunction p functionIdent (FunctionDecl 1 (Just (AnnInstance False))) recordType functionBody
-
--- issue: just using holes here doesn't seem to be enough
--- @instance
--- recordTypeIsTensorLike : TensorLike TestRecord _ _ {{isTensorType : IsTensorType _ _}}
--- recordTypeIsTensorLike = {
---   toTensor = _TestRecordToTensors (TestRecord -> Tensor _ _)
---   fromTensor = _TestRecordFromTensor (Tensor _ _ -> TestRecord)
--- }
-
--- particularly, the metas inside the instance argument don't seem to be getting resolved
-
--- current-decl:
---         >         @instance (default = False);
---         >         _Test1IsTensorLike : TensorLike Test1 ?6 (:: {Nat} 2 ?8) {{ ?4 }};
---         >         _Test1IsTensorLike = {toTensor = _Test1ToTensor, fromTensor = _Test1FromTensor}
---         >
---         >      Finished instance solver run
---         >     Finished trying to increase the depth for instance search
---         >     Starting trying to generate a new constraint using instance defaults
---         >      Suitable defaultable constraints:
---         >        { { id       := #6
---         >          ; goal     := ?4 <= (IsTensorType ?6) @0 (((:: {Nat} ) 2) ?8)
---         >          ; context  := [  ]
---         >          ; blockers := [ ?4, ?6, ?8 ]
---         >          }
---         >        ; { id       := #14
---         >          ; goal     := ?9 <= (IsTensorType ?6) @0 (((:: {Nat} ) 2) ?8)
---         >          ; context  := [  ]
---         >          ; blockers := [ ?4, ?6, ?8 ]
---         >          }
---         >        }
