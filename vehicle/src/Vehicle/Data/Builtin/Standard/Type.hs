@@ -63,7 +63,6 @@ typeOfTypeClass :: TypeClass -> DSLExpr Builtin
 typeOfTypeClass tc = case tc of
   HasCompare {} -> type0 ~> type0 ~> type0
   HasQuantifier {} -> type0 ~> type0 ~> type0
-  -- HasSub -> type0 ~> type0 ~> type0 ~> type0
   HasMul -> type0 ~> type0 ~> type0 ~> type0
   HasDiv -> type0 ~> type0 ~> type0 ~> type0
   HasNeg -> type0 ~> type0 ~> type0
@@ -95,7 +94,6 @@ typeOfTypeClassOp b = case b of
   FromRatTC -> forAllTypes $ \t -> hasRatLits t ~~~> typeOfFromRat t
   VecLiteralTC -> typeOfVectorLiteral
   NegTC -> typeOfTCOp1 hasNeg
-  -- SubTC -> typeOfTCOp2 hasSub
   MulTC -> typeOfTCOp2 hasMul
   DivTC -> typeOfTCOp2 hasDiv
   CompareTC op -> typeOfTCComparisonOp $ hasCompare op

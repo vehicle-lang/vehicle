@@ -422,7 +422,6 @@ elabExpr expr = case expr of
   B.HasEq tk -> builtinTypeClass (V.HasCompare V.Eq) tk []
   B.HasNotEq tk -> builtinTypeClass (V.HasCompare V.Ne) tk []
   B.HasLeq tk -> builtinTypeClass (V.HasCompare V.Le) tk []
-  -- B.HasSub tk -> builtinTypeClass V.HasSub tk []
   B.HasMul tk -> builtinTypeClass V.HasMul tk []
   B.HasMap tk -> builtinTypeClass V.HasMap tk []
   B.HasFold tk -> builtinTypeClass V.HasFold tk []

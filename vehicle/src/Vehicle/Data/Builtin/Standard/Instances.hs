@@ -266,13 +266,6 @@ allInstances =
             False
           ),
           ------------
-          -- HasSub --
-          ------------
-          -- ( forAllDims $ \dims -> hasSub (tRatTensor dims) (tRatTensor dims) (tRatTensor dims),
-          --   lamDims $ \dims -> builtinFunction (Sub SubRatTensor) .@@@ [dims],
-          --   False
-          -- ),
-          ------------
           -- HasMul --
           ------------
           ( hasMul tNat tNat tNat,
