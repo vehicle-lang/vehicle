@@ -158,6 +158,8 @@ createRecordToTensor p recordIdent fieldElementType fieldDimensions fields = do
   -- Create the body
   let functionBody = fromDSL mempty $ explLam "x" recordType $ \r -> do
         let tensorElements = fmap (\(fieldName, _) -> recordProj (freeVar recordIdent) r fieldName) fields
+  let functionBody = fromDSL mempty $ explLam "x" recordType $ \r -> do
+        let tensorElements = fmap (\(fieldName, _) -> recordProj (freeVar recordIdent) r fieldName) fields
         stackTensor fieldElementType firstDimension fieldDimensions tensorElements
 
   DefFunction p functionIdent (FunctionDecl 1 Nothing) functionType functionBody
