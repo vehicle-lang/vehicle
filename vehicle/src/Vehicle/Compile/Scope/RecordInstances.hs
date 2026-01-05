@@ -1,6 +1,5 @@
 module Vehicle.Compile.Scope.RecordInstances
   ( createAuxilliaryRecordDeclarations,
-    createRecordProjectionFn,
   )
 where
 
@@ -35,9 +34,6 @@ createAuxilliaryRecordDeclarations p ident sort telescope fields = do
     if isAnnotatedAsTensor sort
       then createTensorRecordConversionFunctions p ident telescope fields
       else return []
-
-  -- elabbedTensorConversionFunctions <- traverse (\x -> createProjectionFunctionsForAuxilliaryDefinitions x) tensorConversionFunctions
-  -- not sure if concat is the correct thing to be doing here??
   return $ recordProjectionFunctions <> tensorConversionFunctions
 
 -- | Given a record declaration of the form

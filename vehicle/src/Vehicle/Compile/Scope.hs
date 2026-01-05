@@ -14,7 +14,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyExternal)
 import Vehicle.Compile.Scope.Core
 import Vehicle.Compile.Scope.Generalise
-import Vehicle.Compile.Scope.RecordInstances
+import Vehicle.Compile.Scope.RecordInstances (createAuxilliaryRecordDeclarations)
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.ModuleInterface
 import Vehicle.Data.Universe (UniverseLevel (..))
@@ -75,9 +75,7 @@ scopeRecordDefinition ident telescope fields = go [] telescope
       [] -> do
         let scopedTelescope = reverse revScopedTelescope
         scopedFields <- forM fields $ \(field, fieldType) -> do
-          -- generalising requires the S. types -> skip this
           fieldType' <- scopeExpr =<< generaliseType fieldType
-          -- do this per field in the new record
           addNewRecordDefField ident scopedTelescope field
           return (field, fieldType')
         addNewRecordDef ident scopedTelescope scopedFields
