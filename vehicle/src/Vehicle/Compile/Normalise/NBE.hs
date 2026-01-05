@@ -253,13 +253,13 @@ findInstanceArg op = \case
 currentPass :: Doc ()
 currentPass = "normalisation by evaluation"
 
-{-
 showEntry :: (MonadNorm builtin m) => NamedBoundCtx -> BoundEnv builtin -> Expr builtin -> m ()
 showEntry _ _ _ = return ()
 
 showExit :: (MonadNorm builtin m) => NamedBoundCtx -> Value builtin -> m ()
 showExit _ _ = return ()
--}
+
+{-
 showEntry :: (MonadNorm builtin m) => NamedBoundCtx -> BoundEnv builtin -> Expr builtin -> m ()
 showEntry _ctx boundEnv expr = do
   logDebug MaxDetail $ "nbe-entry" <+> prettyFriendly (WithContext expr (boundEnvToCtx boundEnv)) -- <+> "   (ctx =" <+> pretty ctx <> "," <+> "boundEnv =" <+> prettyFriendly (WithContext boundEnv ctx) <+> ")"
@@ -274,14 +274,15 @@ showExit ctx result = do
   -- logDebug MidDetail $ "nbe-exit" <+> prettyVerbose result
   logDebug MaxDetail $ "nbe-exit" <+> prettyFriendly (WithContext result ctx)
   return ()
+-}
 
-{-
 showApp :: (MonadNorm builtin m) => NamedBoundCtx -> Value builtin -> Spine builtin -> m ()
 showApp _ _ _ = return ()
 
 showAppExit :: (MonadNorm builtin m) => NamedBoundCtx -> Value builtin -> m ()
 showAppExit _ _ = return ()
--}
+
+{-
 showApp :: (MonadNorm builtin m) => NamedBoundCtx -> Value builtin -> Spine builtin -> m ()
 showApp _ctx fun spine = do
   logDebug MaxDetail $ "nbe-app:" <+> prettyVerbose fun <+> "@" <+> prettyVerbose spine
@@ -293,6 +294,7 @@ showAppExit _ctx result = do
   decrCallDepth
   logDebug MaxDetail $ "nbe-app-exit:" <+> prettyVerbose result
   return ()
+-}
 
 visibilityError ::
   (HasCallStack, MonadNorm builtin m) =>
