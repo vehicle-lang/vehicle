@@ -142,6 +142,8 @@ tokAddNat = mkToken B.TokAddNat "addNat"
 
 tokAddRealTensor = mkToken B.TokAddRealTensor "addRealTensor"
 
+tokSubRealTensor = mkToken B.TokSubRealTensor "subRealTensor"
+
 tokSeqOpen = mkToken B.TokSeqOpen "["
 
 tokSeqClose = mkToken B.TokSeqClose "]"
@@ -169,8 +171,6 @@ tokReduceMul = mkToken B.TokReduceMul "reduceMul"
 tokReduceMin = mkToken B.TokReduceMin "reduceMin"
 
 tokReduceMax = mkToken B.TokReduceMax "reduceMax"
-
-tokHasSub = mkToken B.TokHasSub "HasSub"
 
 tokHasMul = mkToken B.TokHasMul "HasMul"
 
