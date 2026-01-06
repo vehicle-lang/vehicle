@@ -74,6 +74,8 @@ tokVector = mkToken B.TokVector "Vector"
 
 tokTensor = mkToken B.TokTensor "Tensor"
 
+tokNonCastingTensor = mkToken B.TokNonCastingTensor "NonCastingTensor"
+
 tokUnit = mkToken B.TokUnit "Unit"
 
 tokBool = mkToken B.TokBool "Bool"

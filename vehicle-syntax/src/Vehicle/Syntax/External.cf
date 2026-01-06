@@ -40,7 +40,7 @@ position token TokReal      {"Real"};
 position token TokList      {"List"};
 position token TokVector    {"Vector"};
 position token TokTensor    {"Tensor"};
-
+position token TokNonCastingTensor   {"NonCastingTensor"};
 position token TokForall    {"forall"};
 position token TokExists    {"exists"};
 position token TokForeach   {"foreach"};
@@ -256,6 +256,7 @@ Real.    Expr15 ::= TokReal;
 List.    Expr15 ::= TokList;
 Vector.  Expr15 ::= TokVector;
 Tensor.  Expr15 ::= TokTensor;
+NonCastingTensor. Expr15 ::= TokNonCastingTensor;
 
 -- Type classes.
 HasEq.    Expr15 ::= TokHasEq;
