@@ -89,6 +89,33 @@ record HasSub t1 t2 t3 where
 realTensorHasSub : HasSub (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
 realTensorHasSub = { subTC = subRealTensor }
 
+
+-- (2) -- type of the instance
+-- TensorLike r t dims -> -- would need to make instance arguments
+-- HasAdd (Tensor t dims) (Tensor t dims) (Tensor t dims) ->
+-- HasAdd r r r
+
+-- adfsd : HasAdd skfajslkfjds
+-- \tensorLikeRecord hasAdd -> -- hasAdd is the actual record that contains the HasAdd instance, would need to wrap both in double curly braces
+--     { addTC = \r1 r2 ->
+--         tensorLikeRecord.fromTensor
+--             (hasAdd.addTC
+--                 (tensorLikeRecord.toTensor r1)
+--                 (tensorLikeRecord.toTensor r2)
+--             )
+--     }
+
+@instance
+tensorLikeHasAdd : {{ tensorLikeRecord : TensorLike r t dims }} -> {{ hasAdd : HasAdd (NonCastingTensor t dims) (NonCastingTensor t dims) (NonCastingTensor t dims) }} -> HasAdd r r r
+tensorLikeHasAdd tensorLikeRecord hasAdd =
+    { addTC = \r1 r2 ->
+        tensorLikeRecord.fromTensor
+            (hasAdd.addTC
+                (tensorLikeRecord.toTensor r1)
+                (tensorLikeRecord.toTensor r2)
+            )
+    }
+
 --------------------------------------------------------------------------------
 -- Loss logics
 --------------------------------------------------------------------------------
