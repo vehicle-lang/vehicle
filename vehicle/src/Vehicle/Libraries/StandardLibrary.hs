@@ -33,7 +33,9 @@ standardLibraryInstanceOps :: Set Identifier
 standardLibraryInstanceOps =
   Set.fromList
     [ standardLibIdent "addTC",
-      standardLibIdent "subTC"
+      standardLibIdent "subTC",
+      standardLibIdent "mulTC",
+      standardLibIdent "divTC"
     ]
 
 standardLibraryBuiltinModulePath :: Maybe SecondaryTypeSystem -> ModulePath

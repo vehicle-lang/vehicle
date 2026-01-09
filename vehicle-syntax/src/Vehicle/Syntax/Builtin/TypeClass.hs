@@ -15,8 +15,6 @@ data TypeClass
   = -- Operation type-classes
     HasCompare ComparisonOp
   | HasQuantifier Quantifier
-  | HasMul
-  | HasDiv
   | HasNeg
   | HasFold
   | HasMap
@@ -53,8 +51,8 @@ instance Pretty TypeClass where
     HasQuantifier Exists -> "HasExists"
     HasQuantifierIn Forall -> "HasForallIn"
     HasQuantifierIn Exists -> "HasExistsIn"
-    HasMul -> "HasMul"
-    HasDiv -> "HasDiv"
+    -- HasMul -> "HasMul"
+    -- HasDiv -> "HasDiv"
     HasNeg -> "HasNeg"
     HasMap -> "HasMap"
     HasFold -> "HasFold"
@@ -84,9 +82,6 @@ data TypeClassOp
     -- have it as a literal in the type-class.
     VecLiteralTC
   | NegTC
-  | -- | SubTC
-    MulTC
-  | DivTC
   | CompareTC ComparisonOp
   | AtTC
   | MapTC
@@ -105,9 +100,6 @@ instance Serialize TypeClassOp
 instance Pretty TypeClassOp where
   pretty = \case
     NegTC -> "-"
-    -- SubTC -> "-"
-    MulTC -> "*"
-    DivTC -> "/"
     FromNatTC -> "fromNat"
     FromRatTC -> "fromRat"
     VecLiteralTC {} -> "vec"

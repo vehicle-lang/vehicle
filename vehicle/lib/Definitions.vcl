@@ -67,6 +67,8 @@ forallIndex f = reduceAnd True (foreach i . f i)
 -- Type classes
 --------------------------------------------------------------------------------
 
+-- HasAdd
+
 @typeclass
 record HasAdd t1 t2 t3 where
   { addTC : t1 -> t2 -> t3
@@ -80,6 +82,8 @@ natHasAdd = { addTC = addNat }
 realTensorHasAdd : HasAdd (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
 realTensorHasAdd = { addTC = addRealTensor }
 
+-- HasSub
+
 @typeclass
 record HasSub t1 t2 t3 where
   { subTC : t1 -> t2 -> t3
@@ -88,6 +92,32 @@ record HasSub t1 t2 t3 where
 @instance
 realTensorHasSub : HasSub (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
 realTensorHasSub = { subTC = subRealTensor }
+
+-- HasMul
+@typeclass
+record HasMul t1 t2 t3 where
+  { mulTC : t1 -> t2 -> t3
+  }
+
+@instance(default=True)
+natHasMul : HasMul Nat Nat Nat
+natHasMul = { mulTC = addNat }
+
+@instance
+realTensorHasMul : HasMul (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
+realTensorHasMul = { mulTC = mulRealTensor }
+
+-- HasDiv
+
+@typeclass
+record HasDiv t1 t2 t3 where
+  { divTC : t1 -> t2 -> t3
+  }
+
+@instance
+realTensorHasDiv : HasDiv (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
+realTensorHasDiv = { divTC = divRealTensor }
+
 
 --------------------------------------------------------------------------------
 -- Loss logics

@@ -100,6 +100,9 @@ builtinFunction = builtin . mkExpr accessBuiltinFunction
 addNat :: (BuiltinHasStandardData builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 addNat x y = builtinFunction (Add AddNat) @@ [x, y]
 
+mulNat :: (BuiltinHasStandardData builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+mulNat x y = builtinFunction (Mul MulNat) @@ [x, y]
+
 ite ::
   (BuiltinHasStandardData builtin) =>
   DSLExpr builtin ->
@@ -129,12 +132,6 @@ numOp2TypeClass tc t1 t2 t3 = typeClass tc [t1, t2, t3]
 
 standardLib :: Name -> DSLExpr builtin
 standardLib = freeVar . stdlibIdentifier
-
-hasMul :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
-hasMul = numOp2TypeClass HasMul
-
-hasDiv :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
-hasDiv = numOp2TypeClass HasDiv
 
 hasNeg :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 hasNeg t1 t2 = typeClass HasNeg [t1, t2]

@@ -243,10 +243,10 @@ delabBuiltinFunction fun args = case fun of
   V.Implies -> delabInfixOp2 B.Impl tokImpl args
   V.If -> delabIf args
   V.Add _dom -> delabAdd args
-  V.Mul _dom -> delabTypeClassOp V.MulTC args
+  V.Mul _dom -> delabMul args
   V.Neg _dom -> delabTypeClassOp V.NegTC args
   V.Sub _dom -> delabSub args
-  V.Div _dom -> delabTypeClassOp V.DivTC args
+  V.Div _dom -> delabDiv args
   V.Min _dom -> delabApp (B.Min tokMin) args
   V.Max _dom -> delabApp (B.Max tokMax) args
   V.QuantifyRatTensor q -> delabTypeClassOp (V.QuantifierTC q) args
@@ -296,7 +296,6 @@ delabTypeClass tc args = case tc of
     V.Ne -> delabApp (B.HasNotEq tokHasNotEq) args
     V.Le -> delabApp (B.HasLeq tokHasLeq) args
     _ -> cheat
-  V.HasMul -> delabApp (B.HasMul tokHasMul) args
   V.HasMap -> delabApp (B.HasMap tokHasMap) args
   V.HasFold -> delabApp (B.HasFold tokHasFold) args
   _ -> cheat
@@ -321,14 +320,18 @@ delabAdd = delabInfixOp2 B.Add tokAdd
 delabSub :: (MonadDelab m) => [V.Arg] -> m B.Expr
 delabSub = delabInfixOp2 B.Sub tokSub
 
+delabMul :: (MonadDelab m) => [V.Arg] -> m B.Expr
+delabMul = delabInfixOp2 B.Mul tokMul
+
+delabDiv :: (MonadDelab m) => [V.Arg] -> m B.Expr
+delabDiv = delabInfixOp2 B.Div tokDiv
+
 delabTypeClassOp :: (MonadDelab m) => V.TypeClassOp -> [V.Arg] -> m B.Expr
 delabTypeClassOp op args = case op of
   V.FromNatTC {} -> cheatDelabPretty op args
   V.FromRatTC {} -> cheatDelabPretty op args
   V.VecLiteralTC {} -> delabVecLiteral args
   V.NegTC -> delabOp1 B.Neg tokSub args
-  V.MulTC -> delabInfixOp2 B.Mul tokMul args
-  V.DivTC -> delabInfixOp2 B.Div tokDiv args
   V.CompareTC eq -> case eq of
     V.Eq -> delabInfixOp2 B.Eq tokEq args
     V.Ne -> delabInfixOp2 B.Ne tokNe args
