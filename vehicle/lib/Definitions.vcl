@@ -105,16 +105,39 @@ realTensorHasSub = { subTC = subRealTensor }
 --             )
 --     }
 
+-- @instance
+-- tensorLikeHasAdd : forallT { r : Type } { t : Type } { dims : List Nat } {{ a : TensorLike r t dims }} {{ b : HasAdd (Tensor t dims) (Tensor t dims) (Tensor t dims) }} . HasAdd r r r
+-- tensorLikeHasAdd {r} {t} {dims} {{tensorLikeRecord}} {{hasAdd}} =
+--     { addTC = \r1 r2 ->
+--         fromTensor {r} {t} {dims} {{tensorLikeRecord}}
+--             (addTC {{hasAdd}}
+--                 (toTensor {r} {t} {dims} {{tensorLikeRecord}} r1)
+--                 (toTensor {r} {t} {dims} {{tensorLikeRecord}} r2)
+--             )
+--     }
+
 @instance
-tensorLikeHasAdd : {{ tensorLikeRecord : TensorLike r t dims }} -> {{ hasAdd : HasAdd (NonCastingTensor t dims) (NonCastingTensor t dims) (NonCastingTensor t dims) }} -> HasAdd r r r
-tensorLikeHasAdd tensorLikeRecord hasAdd =
+tensorLikeHasAdd : forallT { r : Type } { t : Type } { dims : List Nat } {{ a : TensorLike r t dims }} {{ b : HasAdd (NonCastingTensor t dims) (NonCastingTensor t dims) (NonCastingTensor t dims) }} . HasAdd r r r
+tensorLikeHasAdd {r} {t} {dims} {{tensorLikeRecord}} {{hasAdd}} =
     { addTC = \r1 r2 ->
-        tensorLikeRecord.fromTensor
-            (hasAdd.addTC
-                (tensorLikeRecord.toTensor r1)
-                (tensorLikeRecord.toTensor r2)
+        fromTensor
+            (addTC
+                (toTensor r1)
+                (toTensor r2)
             )
     }
+
+-- @instance
+-- tensorLikeHasAdd : {{ TensorLike r t dims }} -> {{ HasAdd (NonCastingTensor t dims) (NonCastingTensor t dims) (NonCastingTensor t dims) }} -> HasAdd r r r
+-- tensorLikeHasAdd {{tensorLikeRecord}} {{hasAdd}} =
+--     { addTC = \r1 r2 ->
+--         fromTensor {{tensorLikeRecord}}
+--             (addTC {{hasAdd}}
+--                 (toTensor {{tensorLikeRecord}} r1)
+--                 (toTensor {{tensorLikeRecord}} r2)
+--             )
+--     }
+
 
 --------------------------------------------------------------------------------
 -- Loss logics
