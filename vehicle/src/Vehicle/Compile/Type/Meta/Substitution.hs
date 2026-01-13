@@ -129,8 +129,8 @@ instance MetaSubstitutable m builtin (GluedExpr builtin) where
   substMetasAt ctx s (Glued a b) = Glued <$> substMetasAt ctx s a <*> substMetasAt ctx s b
 
 instance MetaSubstitutable m builtin (InstanceConstraint builtin) where
-  substMetasAt ctx s (Resolve origin m r g) = do
-    Resolve <$> substMetasAt ctx s origin <*> findUltimateUnsolvedMeta s m <*> pure r <*> substMetasAt ctx s g
+  substMetasAt ctx s (Resolve origin m r c g) = do
+    Resolve <$> substMetasAt ctx s origin <*> findUltimateUnsolvedMeta s m <*> pure r <*> pure c <*> substMetasAt ctx s g
 
 instance MetaSubstitutable m builtin (InstanceGoal builtin) where
   substMetasAt ctx s (InstanceGoal t h spine) =

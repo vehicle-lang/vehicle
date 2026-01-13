@@ -172,13 +172,17 @@ instance NFData DefFunctionSort
 
 instance Serialize DefFunctionSort
 
+-- | The priority of the candidate when trying to find a default.
+-- Instances with lower priority will be used as a default in
+-- preference to higher priorities.
+type InstancePriority = Int
+
 -- | Possible annotations for ordinatary functions.
 data FunctionDeclAnnotation
   = -- | The function was annotated with @property
     AnnProperty
-  | -- | The function was annotated with @instance.
-    -- The `Bool` indicates whether it should be the default instance.
-    AnnInstance Bool
+  | -- | The function was annotated with @instance..
+    AnnInstance (Maybe InstancePriority)
   deriving (Eq, Show, Generic)
 
 instance NFData FunctionDeclAnnotation

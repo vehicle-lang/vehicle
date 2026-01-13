@@ -194,23 +194,14 @@ getMetaVariableCtx = getsTypeCheckerDeclState metaVariableCtx
 getNumberOfMetasCreated :: forall builtin m. (MonadTypeChecker builtin m) => Proxy builtin -> m Int
 getNumberOfMetasCreated _ = getsTypeCheckerDeclState @builtin (length . metaVariableCtx)
 
-getInstanceCandidates ::
+getInstanceCandidatesFromFreeCtx ::
   (MonadTypeChecker builtin m) =>
   InstanceGoal builtin ->
   m [InstanceCandidate builtin]
-getInstanceCandidates goal = do
+getInstanceCandidatesFromFreeCtx goal = do
   imports <- getsTypeCheckerState importedModules
   current <- getsTypeCheckerState currentModuleInterface
   return $ concatInCombinedContext typingInterface (lookupInstances goal . instanceDatabase) current imports
-
-getDefaultInstanceCandidate ::
-  (MonadTypeChecker builtin m) =>
-  InstanceGoal builtin ->
-  m (Maybe (InstanceCandidate builtin))
-getDefaultInstanceCandidate goal = do
-  imports <- getsTypeCheckerState importedModules
-  current <- getsTypeCheckerState currentModuleInterface
-  return $ lookupInCombinedContext typingInterface (lookupDefaultInstance goal . instanceDatabase) current imports
 
 -- | Gets the type from the database
 getBuiltinTypeFromDatabase ::
