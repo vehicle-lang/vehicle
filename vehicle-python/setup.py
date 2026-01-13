@@ -21,7 +21,7 @@ ext_module = setuptools.Extension(
 )
 
 
-class cabal_build_ext(setuptools.command.build_ext.build_ext):
+class cabal_build_ext(setuptools.command.build_ext.build_ext, setuptools.Command):
     def finalize_options(self) -> None:
         super().finalize_options()
 
@@ -65,7 +65,7 @@ class cabal_build_ext(setuptools.command.build_ext.build_ext):
         # Taken from setuptools:
         # https://github.com/pypa/setuptools/blob/245d72a8aa4d47e1811425213aba2a06a0bb64fa/setuptools/command/build_ext.py#L247-L249
         if ext._needs_stub:  # type: ignore[attr-defined]
-            build_lib = self.get_finalized_command("build_py").build_lib  # type: ignore[attr-defined]
+            build_lib = self.get_finalized_command("build_py").build_lib
             self.write_stub(build_lib, ext)
 
     def cabal_configure_ext(self, ext: setuptools.Extension) -> None:
