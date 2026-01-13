@@ -24,7 +24,7 @@ solveLinearityConstraint ::
   WithContext (InstanceConstraint LinearityBuiltin) ->
   m ()
 solveLinearityConstraint constraintWithCtx = do
-  substConstraintWithCtx@(WithContext normConstraint@(Resolve origin _ _ goal) ctx) <- substMetaVariables @LinearityBuiltin constraintWithCtx
+  substConstraintWithCtx@(WithContext normConstraint@(Resolve origin _ _ _ goal) ctx) <- substMetaVariables @LinearityBuiltin constraintWithCtx
   logDebug MaxDetail $ "Forced:" <+> prettyFriendly substConstraintWithCtx
 
   (tc, spine) <- getTypeClass goal
