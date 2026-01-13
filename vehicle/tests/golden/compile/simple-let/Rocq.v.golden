@@ -4,13 +4,9 @@
 (*  - Vehicle version: 0.23.0+dev *)
 (*  - Rocq version: 9.0.0 *)
 
-Require Import mathcomp.ssreflect.ssrbool.
-Require Import mathcomp.algebra.ssralg.
-Require Import mathcomp.ssreflect.ssrnat.
-Require Import mathcomp.ssreflect.eqtype.
-Require Import mathcomp.ssreflect.order.
-Require Import mathcomp.ssreflect.seq.
-Require Import mathcomp.reals.reals.
+From mathcomp Require Import all_boot.
+From mathcomp Require Import all_algebra.
+From mathcomp Require Import all_reals.
 Require Import vehicle.tensor.
 Require Import vehicle.utils.
 Open Scope ring_scope.
