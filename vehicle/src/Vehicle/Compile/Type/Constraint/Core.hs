@@ -11,7 +11,7 @@ module Vehicle.Compile.Type.Constraint.Core
 where
 
 import Data.Bifunctor (Bifunctor (..))
-import Data.Map (fromListWith, mapMaybeWithKey)
+import Data.Map (fromListWith)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE (eval)
 import Vehicle.Compile.Prelude
@@ -61,27 +61,23 @@ extractHeadFromInstanceCandidate candidate@InstanceCandidate {..} = do
           <> "Problematic subexpr:"
             <+> problemDoc
 
-mkCandidate :: (DSLExpr builtin, DSLExpr builtin, Bool) -> InstanceCandidate builtin
-mkCandidate (expr, solution, defaultInstance) = do
+mkCandidate ::
+  (DSLExpr builtin, DSLExpr builtin, Maybe InstancePriority) ->
+  InstanceCandidate builtin
+mkCandidate (expr, solution, priority) = do
   let p = mempty
   let expr' = fromDSL p expr
   let solution' = fromDSL p solution
-  InstanceCandidate expr' solution' defaultInstance
+  InstanceCandidate expr' solution' priority
 
-makeInstanceDatabase :: (PrintableBuiltin builtin, Ord builtin) => [InstanceCandidate builtin] -> InstanceDatabase builtin
+makeInstanceDatabase ::
+  (Ord builtin, PrintableBuiltin builtin) =>
+  [InstanceCandidate builtin] ->
+  InstanceDatabase builtin
 makeInstanceDatabase allInstances = do
   let tcAndCandidates = fmap (second (: []) . extractHeadFromInstanceCandidate) allInstances
-  let instances = fromListWith (<>) tcAndCandidates
-  let defaults = mapMaybeWithKey findDefault instances
-  InstanceDatabase instances defaults
-  where
-    findDefault :: (Pretty builtin) => Either Identifier builtin -> [InstanceCandidate builtin] -> Maybe (InstanceCandidate builtin)
-    findDefault b instances = do
-      let defaultInstances = filter defaultInstance instances
-      case defaultInstances of
-        [] -> Nothing
-        [inst] -> Just inst
-        _ -> developerError $ "Multiple default instances found for" <+> quotePretty b
+  let instances = fromListWith (<>) (reverse tcAndCandidates)
+  InstanceDatabase instances
 
 instantiateInstanceConstraintSolution ::
   forall builtin m.
@@ -89,7 +85,7 @@ instantiateInstanceConstraintSolution ::
   WithContext (InstanceConstraint builtin) ->
   Expr builtin ->
   m ()
-instantiateInstanceConstraintSolution (WithContext (Resolve origin meta _ _) ctx) solution = do
+instantiateInstanceConstraintSolution (WithContext (Resolve origin meta _ _ _) ctx) solution = do
   metaInfo <- getMetaInfo meta
   let boundCtx = boundContextOf ctx
   case metaSolution metaInfo of

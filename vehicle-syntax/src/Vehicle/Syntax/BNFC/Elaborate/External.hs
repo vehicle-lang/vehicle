@@ -294,7 +294,7 @@ validateOpts token allowedNames (B.DeclAnnWithOpts opts) = do
         B.NameAnnOption tk value -> mkEntry tk (B.Var value)
         B.InferAnnOption tk value -> mkEntry tk value
         B.TypeAnnOption tk expr -> mkEntry tk expr
-        B.DefaultAnnOption tk value -> mkEntry tk (B.Literal $ B.BoolLiteral value)
+        B.DefaultAnnOption tk value -> mkEntry tk (B.Literal $ B.NatLiteral value)
 
       let nameTxt = name
       value' <- elabExpr value
@@ -324,17 +324,18 @@ getInferOption = \case
   B.InferAnnOption optTk name -> Just (optTk, name)
   _ -> Nothing
 
-elabInstanceOptions :: (MonadElab m) => [B.DeclAnnOption] -> m V.FunctionDeclAnnotation
+elabInstanceOptions ::
+  (MonadElab m) =>
+  [B.DeclAnnOption] ->
+  m V.FunctionDeclAnnotation
 elabInstanceOptions opts =
   V.AnnInstance <$> case mapMaybe getInstanceDefaultOption opts of
-    [] -> return False
-    (_, bool) : _ -> do
-      let isDefault = elabBoolLiteral bool
-      return isDefault
+    [] -> return Nothing
+    (_, priority) : _ -> return $ Just priority
 
-getInstanceDefaultOption :: B.DeclAnnOption -> Maybe (B.TokAnnDefaultOpt, B.Boolean)
+getInstanceDefaultOption :: B.DeclAnnOption -> Maybe (B.TokAnnDefaultOpt, Int)
 getInstanceDefaultOption = \case
-  B.DefaultAnnOption optTk name -> Just (optTk, name)
+  B.DefaultAnnOption optTk name -> Just (optTk, elabNatLiteral name)
   _ -> Nothing
 
 --------------------------------------------------------------------------------
@@ -563,7 +564,7 @@ elabLiteral = \case
     return $ V.Builtin p $ V.BuiltinConstructor $ V.BoolTensorLiteral $ ZeroDimTensor b
   B.NatLiteral t -> do
     p <- mkProvenance t
-    let n = readNat (tkSymbol t)
+    let n = elabNatLiteral t
     let fromNat = V.Builtin p (V.TypeClassOp V.FromNatTC)
     return $ app fromNat [V.Builtin p $ V.BuiltinConstructor $ V.NatLiteral n]
   B.RatLiteral t -> do
@@ -571,6 +572,9 @@ elabLiteral = \case
     let r = readRat (tkSymbol t)
     let fromRat = V.Builtin p (V.TypeClassOp V.FromRatTC)
     return $ app fromRat [V.Builtin p $ V.BuiltinConstructor $ V.RatTensorLiteral $ ZeroDimTensor r]
+
+elabNatLiteral :: B.Natural -> Int
+elabNatLiteral t = readNat (tkSymbol t)
 
 elabBoolLiteral :: B.Boolean -> Bool
 elabBoolLiteral t = read (unpack $ tkSymbol t)

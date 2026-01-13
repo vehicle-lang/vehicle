@@ -74,11 +74,11 @@ record HasAdd t1 t2 t3 where
   { addTC : t1 -> t2 -> t3
   }
 
-@instance(default=True)
+@instance(default=0)
 natHasAdd : HasAdd Nat Nat Nat
 natHasAdd = { addTC = addNat }
 
-@instance
+@instance(default=1)
 realTensorHasAdd : HasAdd (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
 realTensorHasAdd = { addTC = addRealTensor }
 

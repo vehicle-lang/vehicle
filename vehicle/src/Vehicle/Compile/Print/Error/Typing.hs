@@ -82,7 +82,7 @@ typingErrorDetails = \case
               <+> "but was unable to prove it."
           CheckingInstanceType instanceOrigin ->
             instanceOriginConstraintMessage instanceOrigin
-        InstanceConstraint (Resolve instanceOrigin _ _ _) -> instanceOriginConstraintMessage instanceOrigin
+        InstanceConstraint (Resolve instanceOrigin _ _ _ _) -> instanceOriginConstraintMessage instanceOrigin
         -- AuxiliaryConstraint (Auxiliary auxiliaryOrigin _ _) -> auxiliaryOriginConstraintMessage auxiliaryOrigin
         ApplicationConstraint {} ->
           "unsolved application constraint: " <+> prettyFriendly (WithContext constraint ctx)
@@ -396,7 +396,10 @@ calculateInstanceCandidateTypeArgs (WithContext candidate typingCtx) =
     calculateCandidateType :: BoundCtx (Expr builtin) -> Expr builtin -> ([Arg builtin], BoundCtx (Expr builtin))
     calculateCandidateType dbCtx = \case
       Builtin _ _tc -> ([], dbCtx)
+      FreeVar _ _ident -> ([], dbCtx)
       App (Builtin _ _tc) args ->
+        (NonEmpty.toList args, dbCtx)
+      App (FreeVar _ _ident) args ->
         (NonEmpty.toList args, dbCtx)
       Pi _ binder result ->
         calculateCandidateType (binder : dbCtx) result

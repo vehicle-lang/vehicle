@@ -282,7 +282,7 @@ separator Expr ",";
 -- they necessarily have priority over it.
 NameAnnOption.  DeclAnnOption ::= TokAnnNameOpt "=" Name;
 InferAnnOption. DeclAnnOption ::= TokAnnInferOpt "=" Expr;
-DefaultAnnOption. DeclAnnOption ::= TokAnnDefaultOpt "=" Boolean;
+DefaultAnnOption. DeclAnnOption ::= TokAnnDefaultOpt "=" Natural;
 TypeAnnOption.  DeclAnnOption ::= Name "=" Expr;
 
 separator DeclAnnOption ",";
