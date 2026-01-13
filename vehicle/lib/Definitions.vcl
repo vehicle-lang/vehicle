@@ -80,45 +80,9 @@ natHasAdd = { addTC = addNat }
 realTensorHasAdd : HasAdd (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
 realTensorHasAdd = { addTC = addRealTensor }
 
-@typeclass
-record HasSub t1 t2 t3 where
-  { subTC : t1 -> t2 -> t3
-  }
-
-@instance
-realTensorHasSub : HasSub (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
-realTensorHasSub = { subTC = subRealTensor }
-
-
--- (2) -- type of the instance
--- TensorLike r t dims -> -- would need to make instance arguments
--- HasAdd (Tensor t dims) (Tensor t dims) (Tensor t dims) ->
--- HasAdd r r r
-
--- adfsd : HasAdd skfajslkfjds
--- \tensorLikeRecord hasAdd -> -- hasAdd is the actual record that contains the HasAdd instance, would need to wrap both in double curly braces
---     { addTC = \r1 r2 ->
---         tensorLikeRecord.fromTensor
---             (hasAdd.addTC
---                 (tensorLikeRecord.toTensor r1)
---                 (tensorLikeRecord.toTensor r2)
---             )
---     }
-
--- @instance
--- tensorLikeHasAdd : forallT { r : Type } { t : Type } { dims : List Nat } {{ a : TensorLike r t dims }} {{ b : HasAdd (Tensor t dims) (Tensor t dims) (Tensor t dims) }} . HasAdd r r r
--- tensorLikeHasAdd {r} {t} {dims} {{tensorLikeRecord}} {{hasAdd}} =
---     { addTC = \r1 r2 ->
---         fromTensor {r} {t} {dims} {{tensorLikeRecord}}
---             (addTC {{hasAdd}}
---                 (toTensor {r} {t} {dims} {{tensorLikeRecord}} r1)
---                 (toTensor {r} {t} {dims} {{tensorLikeRecord}} r2)
---             )
---     }
-
 @instance
 tensorLikeHasAdd : forallT { r : Type } { t : Type } { dims : List Nat } {{ a : TensorLike r t dims }} {{ b : HasAdd (NonCastingTensor t dims) (NonCastingTensor t dims) (NonCastingTensor t dims) }} . HasAdd r r r
-tensorLikeHasAdd {r} {t} {dims} {{tensorLikeRecord}} {{hasAdd}} =
+tensorLikeHasAdd =
     { addTC = \r1 r2 ->
         fromTensor
             (addTC
@@ -127,17 +91,14 @@ tensorLikeHasAdd {r} {t} {dims} {{tensorLikeRecord}} {{hasAdd}} =
             )
     }
 
--- @instance
--- tensorLikeHasAdd : {{ TensorLike r t dims }} -> {{ HasAdd (NonCastingTensor t dims) (NonCastingTensor t dims) (NonCastingTensor t dims) }} -> HasAdd r r r
--- tensorLikeHasAdd {{tensorLikeRecord}} {{hasAdd}} =
---     { addTC = \r1 r2 ->
---         fromTensor {{tensorLikeRecord}}
---             (addTC {{hasAdd}}
---                 (toTensor {{tensorLikeRecord}} r1)
---                 (toTensor {{tensorLikeRecord}} r2)
---             )
---     }
+@typeclass
+record HasSub t1 t2 t3 where
+  { subTC : t1 -> t2 -> t3
+  }
 
+@instance
+realTensorHasSub : HasSub (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
+realTensorHasSub = { subTC = subRealTensor }
 
 --------------------------------------------------------------------------------
 -- Loss logics
