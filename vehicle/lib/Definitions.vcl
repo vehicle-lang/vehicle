@@ -101,7 +101,7 @@ record HasMul t1 t2 t3 where
 
 @instance(default=True)
 natHasMul : HasMul Nat Nat Nat
-natHasMul = { mulTC = addNat }
+natHasMul = { mulTC = mulNat }
 
 @instance
 realTensorHasMul : HasMul (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)

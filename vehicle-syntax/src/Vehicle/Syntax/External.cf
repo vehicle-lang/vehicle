@@ -228,6 +228,7 @@ Neg.              Expr11 ::= TokSub Expr11;
 Min.              Expr15 ::= TokMin;
 Max.              Expr15 ::= TokMax;
 AddNat.           Expr15 ::= TokAddNat;
+MulNat.           Expr15 ::= TokMulNat;
 AddRealTensor.    Expr15 ::= TokAddRealTensor;
 SubRealTensor.    Expr15 ::= TokSubRealTensor;
 MulRealTensor.    Expr15 ::= TokMulRealTensor;

@@ -51,8 +51,6 @@ instance Pretty TypeClass where
     HasQuantifier Exists -> "HasExists"
     HasQuantifierIn Forall -> "HasForallIn"
     HasQuantifierIn Exists -> "HasExistsIn"
-    -- HasMul -> "HasMul"
-    -- HasDiv -> "HasDiv"
     HasNeg -> "HasNeg"
     HasMap -> "HasMap"
     HasFold -> "HasFold"
