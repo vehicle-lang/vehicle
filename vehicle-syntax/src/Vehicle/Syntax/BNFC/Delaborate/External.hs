@@ -128,7 +128,9 @@ instance Delaborate V.DefRecordSort B.Decl where
 
 instance Delaborate V.FunctionDeclAnnotation B.Decl where
   delabM = \case
-    V.AnnInstance t -> return $ delabAnn instanceAnn [mkBoolAnnOption DefaultOption t]
+    V.AnnInstance t -> return $ delabAnn instanceAnn $ case t of
+      Nothing -> []
+      Just v -> [mkMaybeIntAnnOption DefaultOption v]
     V.AnnProperty -> return $ delabAnn propertyAnn []
 
 -- | Used for things not in the user-syntax.
@@ -489,4 +491,9 @@ delabVecLiteral args = do
   B.VecLiteral tokSeqOpen <$> traverse (delabM . argExpr) explArgs <*> pure tokSeqClose
 
 mkBoolAnnOption :: Text -> Bool -> B.DeclAnnOption
-mkBoolAnnOption name value = B.InferAnnOption (mkToken B.TokAnnInferOpt name) (B.Literal (B.BoolLiteral (delabBoolLit value)))
+mkBoolAnnOption name value =
+  B.InferAnnOption (mkToken B.TokAnnInferOpt name) (B.Literal (B.BoolLiteral (delabBoolLit value)))
+
+mkMaybeIntAnnOption :: Text -> Int -> B.DeclAnnOption
+mkMaybeIntAnnOption name value =
+  B.DefaultAnnOption (mkToken B.TokAnnDefaultOpt name) (delabNatLit value)

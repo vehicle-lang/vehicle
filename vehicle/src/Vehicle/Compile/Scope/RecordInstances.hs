@@ -212,4 +212,4 @@ createTensorLikeInstance p recordIdent fieldElementType fieldDimensions fields =
   let functionName = Text.pack "_" <> nameOf recordIdent <> "IsTensorLike"
   let functionIdent = Identifier (modulePath recordIdent) functionName
 
-  DefFunction p functionIdent (FunctionDecl 1 (Just (AnnInstance False))) recordType functionBody
+  DefFunction p functionIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) recordType functionBody
