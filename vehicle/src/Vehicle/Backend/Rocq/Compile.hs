@@ -38,7 +38,7 @@ import Vehicle.Syntax.Tensor
   )
 
 --------------------------------------------------------------------------------
--- Rocq-specific optionsjuice
+-- Rocq-specific options
 
 data RocqOptions = RocqOptions
   { output :: Maybe FilePath,
