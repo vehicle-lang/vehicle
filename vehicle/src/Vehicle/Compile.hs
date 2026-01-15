@@ -26,6 +26,7 @@ import Vehicle.Data.Builtin.Standard
 import Vehicle.Prelude.Logging
 import Vehicle.TypeCheck (TypeCheckOptions (..), runCompileMonad, typeCheckUserProg)
 import Vehicle.Verify.QueryFormat
+import Vehicle.Compile.ExpandResources (expandResources)
 
 --------------------------------------------------------------------------------
 -- Interface
@@ -118,7 +119,10 @@ compileToITP ::
   m ()
 compileToITP ITPOptions {..} typedProg = do
   -- Analyse the program to find out which `Bool`s are decidable and which aren't.
-  decProg <- decidabilityTypeCheck typedProg
+  let resources = Resources specification networkLocations datasetLocations parameterValues
+  (expandedProg, _, _, _, _) <- expandResources resources typedProg
+  decProg <- decidabilityTypeCheck expandedProg
+
 
   -- Compile depending on the ITP
   logCompilerPass ITP $
