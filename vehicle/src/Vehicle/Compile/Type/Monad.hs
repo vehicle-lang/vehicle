@@ -162,7 +162,7 @@ createFreshInstanceConstraint auxiliaryConstraint boundCtx p origin relevance tc
   context <- createFreshConstraintCtx p boundCtx
   nTCExpr <- eval (toNamedBoundCtx boundCtx) env tcExpr
   let goal = parseInstanceGoal nTCExpr
-  let constraint = WithContext (Resolve origin metaID relevance goal) context
+  let constraint = WithContext (Resolve origin metaID relevance Nothing goal) context
 
   if auxiliaryConstraint
     then addAuxiliaryInstanceConstraints [constraint]
@@ -182,7 +182,7 @@ createDerivedInstanceConstraint (ctx, origin) r t = do
   let dbLevel = contextDBLevel ctx
   let newTypeClassExpr = quote p dbLevel t
   (metaID, metaExpr) <- freshSolutionMeta p newTypeClassExpr (boundContextOf ctx)
-  let newConstraint = Resolve origin metaID r $ parseInstanceGoal t
+  let newConstraint = Resolve origin metaID r Nothing $ parseInstanceGoal t
 
   newCtx <- copyContext ctx Nothing
   return (metaExpr, WithContext newConstraint newCtx)
@@ -206,12 +206,12 @@ addInstanceToInstanceDatabase ::
   forall builtin m.
   (MonadTypeChecker builtin m) =>
   Decl builtin ->
-  Bool ->
+  Maybe InstancePriority ->
   m ()
-addInstanceToInstanceDatabase decl isDefault =
+addInstanceToInstanceDatabase decl priority =
   case decl of
     DefFunction _ _ _ t e -> do
-      let candidate = InstanceCandidate t e isDefault
+      let candidate = InstanceCandidate t e priority
       instanceHead <- findValidInstanceHead (identifierOf decl, provenanceOf decl) candidate
       modifyTypeCheckerState $ \state ->
         state

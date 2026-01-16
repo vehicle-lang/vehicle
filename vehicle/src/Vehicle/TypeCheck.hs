@@ -6,7 +6,7 @@ module Vehicle.TypeCheck
   )
 where
 
-import Control.Monad (forM, forM_, when)
+import Control.Monad (forM, when)
 import Control.Monad.Except (ExceptT, MonadError (..))
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Reader (MonadReader (..), ReaderT (..), asks)
@@ -27,7 +27,7 @@ import Vehicle.Compile.Print.Error
 import Vehicle.Compile.Scope (scopeModuleDecls)
 import Vehicle.Compile.Serialise (readObjectFile, writeObjectFile)
 import Vehicle.Compile.Type
-import Vehicle.Compile.Type.Core (InstanceDatabase (..), emptyInstanceDatabase)
+import Vehicle.Compile.Type.Core (emptyInstanceDatabase)
 import Vehicle.Compile.Type.Subsystem
 import Vehicle.Data.Builtin.Decidability.Type ()
 import Vehicle.Data.Builtin.Interface.Print
@@ -36,7 +36,7 @@ import Vehicle.Data.Builtin.Polarity.Type ()
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Builtin.Standard.Instances (standardBuiltinInstances)
 import Vehicle.Data.Builtin.Standard.Type ()
-import Vehicle.Data.Code.ModuleInterface (ImportedModuleContext, ModuleInterface (..), instanceDatabase, mergeImportedFreeEnvs, typedModule)
+import Vehicle.Data.Code.ModuleInterface (ImportedModuleContext, ModuleInterface (..), mergeImportedFreeEnvs, typedModule)
 import Vehicle.Data.Code.Value (FreeEnv)
 import Vehicle.Data.Variable.Free.Context (runFreeContextT)
 import Vehicle.Libraries (ensureLatestVersionOfLibraryInstalled, resolveLibrary)
@@ -358,10 +358,6 @@ parseAndTypeCheckModule moduleFile implicitImports moduleText = do
   let finalImports = implicitImports <> imports
   (_status, importedCtx) <- loadImports finalImports
 
-  forM_ importedCtx $ \(path, int, _) -> do
-    let InstanceDatabase dat _ = instanceDatabase $ typingInterface int
-    logDebug MinDetail $ pretty path <+> pretty (length dat)
-
   let instances =
         if modulePath == standardLibraryDefinitionsModulePath
           then standardBuiltinInstances
@@ -376,9 +372,6 @@ parseAndTypeCheckModule moduleFile implicitImports moduleText = do
             typingInterface = typingInterface,
             typedModule = typedModule
           }
-
-  let InstanceDatabase dat2 _ = instanceDatabase typingInterface
-  logDebug MinDetail $ "after" <+> pretty (length dat2)
 
   writeObjectFile moduleFile moduleText moduleInterface
 

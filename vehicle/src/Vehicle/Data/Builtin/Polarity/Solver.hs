@@ -24,7 +24,7 @@ solvePolarityConstraint ::
   WithContext (InstanceConstraint PolarityBuiltin) ->
   m ()
 solvePolarityConstraint constraintWithCtx = do
-  normConstraintWithCtx@(WithContext normConstraint@(Resolve origin _ _ goal) ctx) <- substMetaVariables constraintWithCtx
+  normConstraintWithCtx@(WithContext normConstraint@(Resolve origin _ _ _ goal) ctx) <- substMetaVariables constraintWithCtx
   logDebugM MaxDetail $ do
     let forcedExpr = goalExpr $ instanceGoal $ objectIn normConstraintWithCtx
     let boundCtx = namedBoundCtxOf $ contextOf normConstraintWithCtx

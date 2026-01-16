@@ -5,7 +5,9 @@ module Vehicle.Compile.Type.Constraint.InstanceDefaultSolver
 where
 
 import Control.Monad (filterM)
-import Data.Maybe (catMaybes)
+import Data.Foldable (minimumBy)
+import Data.Maybe (catMaybes, mapMaybe)
+import Data.Ord (comparing)
 import Data.Proxy (Proxy (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (PrettyVerbose, prettyVerbose)
@@ -16,7 +18,6 @@ import Vehicle.Compile.Type.Meta.Variable
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin)
-import Vehicle.Data.Variable.Bound.Context.Generic (HasBoundCtx (..))
 
 type MonadInstanceDefault builtin m =
   ( MonadTypeChecker builtin m,
@@ -27,12 +28,12 @@ newtype DefaultCandidate builtin
   = DefaultCandidate
       ( WithContext (InstanceConstraint builtin),
         InstanceGoal builtin,
-        InstanceCandidate builtin
+        PossibleInstanceCandidate builtin
       )
 
 instance (PrintableBuiltin builtin) => Pretty (DefaultCandidate builtin) where
   pretty (DefaultCandidate (constraint, _, candidate)) =
-    prettyVerbose constraint <+> "~" <+> prettyVerbose (candidateExpr candidate)
+    prettyVerbose constraint <+> "~" <+> prettyVerbose (candidateExpr $ objectIn candidate)
 
 addNewInstanceConstraintUsingDefaults ::
   forall builtin m.
@@ -104,10 +105,15 @@ findDefault ::
   m (Maybe (DefaultCandidate builtin))
 findDefault constraint = do
   let goal = instanceGoal $ objectIn constraint
-  maybeDefaultCandidate <- getDefaultInstanceCandidate goal
-  return $ case maybeDefaultCandidate of
-    Just candidate -> Just $ DefaultCandidate (constraint, goal, candidate)
-    Nothing -> Nothing
+  case instanceCandidateState $ objectIn constraint of
+    Nothing -> developerError "No attempt has been made to solve constraint that we are trying to solve with defaults"
+    Just (allCandidates, _) -> do
+      let candidateAndPriorities = mapMaybe (\c -> (,c) <$> candidatePriority (objectIn c)) allCandidates
+      return $ case candidateAndPriorities of
+        [] -> Nothing
+        cs -> do
+          let highestPriorityCandidate = snd $ minimumBy (comparing fst) cs
+          Just $ DefaultCandidate (constraint, goal, highestPriorityCandidate)
 
 acceptDefaultCandidate ::
   forall builtin m.
@@ -117,4 +123,5 @@ acceptDefaultCandidate ::
 acceptDefaultCandidate c@(DefaultCandidate (constraint, goal, candidate)) = do
   logDebug MaxDetail $ "using default" <+> pretty c
   _ <- removeInstanceConstraint (Proxy @builtin) (constraintID $ contextOf constraint)
-  acceptCandidate constraint goal (WithContext candidate (boundContextOf $ contextOf constraint))
+  _ <- acceptCandidate constraint goal candidate
+  return ()

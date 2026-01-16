@@ -165,22 +165,10 @@ goalExpr InstanceGoal {..} =
     Left ident -> VFreeVar ident goalSpine
     Right builtin -> VBuiltin builtin goalSpine
 
-data InstanceConstraint builtin = Resolve
-  { instanceOrigin :: InstanceConstraintOrigin builtin,
-    instanceSolution :: MetaID,
-    instanceRelevance :: Relevance,
-    instanceGoal :: InstanceGoal builtin
-  }
-  deriving (Show)
-
-type instance
-  WithContext (InstanceConstraint builtin) =
-    Contextualised (InstanceConstraint builtin) (ConstraintContext builtin)
-
 data InstanceCandidate builtin = InstanceCandidate
   { candidateExpr :: Expr builtin,
     candidateSolution :: Expr builtin,
-    defaultInstance :: Bool
+    candidatePriority :: Maybe InstancePriority
   }
   deriving (Generic, Show)
 
@@ -200,6 +188,28 @@ type instance
   WithContext (InstanceCandidate builtin) =
     Contextualised (InstanceCandidate builtin) (BoundCtx (Type builtin))
 
+type FailedInstanceCandidate builtin = (WithContext (InstanceCandidate builtin), UnAnnDoc)
+
+type PossibleInstanceCandidate builtin = WithContext (InstanceCandidate builtin)
+
+type InstanceCandidateState builtin =
+  ( [PossibleInstanceCandidate builtin],
+    [FailedInstanceCandidate builtin]
+  )
+
+data InstanceConstraint builtin = Resolve
+  { instanceOrigin :: InstanceConstraintOrigin builtin,
+    instanceSolution :: MetaID,
+    instanceRelevance :: Relevance,
+    instanceCandidateState :: Maybe (InstanceCandidateState builtin),
+    instanceGoal :: InstanceGoal builtin
+  }
+  deriving (Show)
+
+type instance
+  WithContext (InstanceConstraint builtin) =
+    Contextualised (InstanceConstraint builtin) (ConstraintContext builtin)
+
 type InstanceConstraintInfo builtin =
   ( ConstraintContext builtin,
     InstanceConstraintOrigin builtin
@@ -210,22 +220,18 @@ type InstanceSearchDepth = Int
 -- | Stores the list of instance candidates currently in scope.
 -- We use a HashMap rather than an ordinary Map as not all builtins may be
 -- totally ordered (e.g. PolarityBuiltin and LinearityBuiltin)
-data InstanceDatabase builtin = InstanceDatabase
-  { instances :: Map (InstanceHead builtin) [InstanceCandidate builtin],
-    defaultInstances :: Map (InstanceHead builtin) (InstanceCandidate builtin)
+newtype InstanceDatabase builtin = InstanceDatabase
+  { instances :: Map (InstanceHead builtin) [InstanceCandidate builtin]
   }
   deriving (Generic)
 
 instance (Ord builtin, Serialize builtin) => Serialize (InstanceDatabase builtin)
 
 emptyInstanceDatabase :: (Ord builtin) => InstanceDatabase builtin
-emptyInstanceDatabase = InstanceDatabase mempty mempty
+emptyInstanceDatabase = InstanceDatabase mempty
 
 lookupInstances :: (Ord builtin) => InstanceGoal builtin -> InstanceDatabase builtin -> [InstanceCandidate builtin]
 lookupInstances goal database = Map.findWithDefault [] (goalHead goal) (instances database)
-
-lookupDefaultInstance :: (Ord builtin) => InstanceGoal builtin -> InstanceDatabase builtin -> Maybe (InstanceCandidate builtin)
-lookupDefaultInstance goal database = Map.lookup (goalHead goal) (defaultInstances database)
 
 insertInstanceIntoDatabase ::
   (Ord builtin) =>
@@ -235,11 +241,7 @@ insertInstanceIntoDatabase ::
   InstanceDatabase builtin
 insertInstanceIntoDatabase instanceHead instanceCandidate InstanceDatabase {..} =
   InstanceDatabase
-    { instances = Map.insertWith (<>) instanceHead [instanceCandidate] instances,
-      defaultInstances =
-        if defaultInstance instanceCandidate
-          then Map.insert instanceHead instanceCandidate defaultInstances
-          else defaultInstances
+    { instances = Map.insertWith (<>) instanceHead [instanceCandidate] instances
     }
 
 --------------------------------------------------------------------------------
