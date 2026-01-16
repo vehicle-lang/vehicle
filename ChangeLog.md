@@ -9,6 +9,8 @@
 ### ITP backends
 
 * Tensor stack operations are now evaluated to tensor literals where possible.
+* Rocq updated to work with the most recent version of mathcomp (2.5.0).
+
 
 ## v0.23
 
