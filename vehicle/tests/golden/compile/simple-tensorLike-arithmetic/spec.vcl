@@ -1,5 +1,3 @@
--- Check addition and subtraction typecheck for tensorLikes
-
 @tensor
 record Test1 where
   { f1 : Real

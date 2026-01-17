@@ -91,7 +91,6 @@ tensorLikeHasAdd =
             )
     }
 
-
 @typeclass
 record HasSub t1 t2 t3 where
   { subTC : t1 -> t2 -> t3
