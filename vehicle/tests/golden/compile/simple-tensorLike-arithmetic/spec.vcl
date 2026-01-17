@@ -12,8 +12,8 @@ value1 = { f1 = 1, f2 = 2 }
 value2 : Test1
 value2 = { f1 = 1, f2 = 2 }
 
-adding : Test1
-adding = value1 + value2
+add : Test1
+add = value1 + value2
 
-subtracting : Test1
-subtracting = value1 - value2
+subtract : Test1
+subtract = value1 - value2
