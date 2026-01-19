@@ -99,11 +99,11 @@ record HasMul t1 t2 t3 where
   { mulTC : t1 -> t2 -> t3
   }
 
-@instance(default=True)
+@instance(default=0)
 natHasMul : HasMul Nat Nat Nat
 natHasMul = { mulTC = mulNat }
 
-@instance
+@instance(default=1)
 realTensorHasMul : HasMul (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
 realTensorHasMul = { mulTC = mulRealTensor }
 

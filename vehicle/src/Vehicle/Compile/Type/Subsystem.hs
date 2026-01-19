@@ -174,7 +174,9 @@ resolveInstanceArgumentsAndCasts prog =
               let finalValue = normAppList newSolution remainingArgs
               return finalValue
             _ -> developerError "Malformed standard instance argument"
-      | otherwise = return $ normAppList (FreeVar p ident) args
+      | otherwise = do
+          args' <- traverseArgs recGo args
+          return $ normAppList (FreeVar p ident) args'
 
     removeCasts :: BuiltinUpdate m builtin builtin
     removeCasts p b args = case isCast p b of
