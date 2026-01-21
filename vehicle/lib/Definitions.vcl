@@ -127,6 +127,18 @@ natHasMul = { mulTC = mulNat }
 realTensorHasMul : HasMul (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
 realTensorHasMul = { mulTC = mulRealTensor }
 
+@instance
+tensorLikeHasMul : forallT { r : Type } { t : Type } { dims : List Nat } {{ tensorLike : TensorLike r t dims }} {{ hasMul : HasMul (NonCastingTensor t dims) (NonCastingTensor t dims) (NonCastingTensor t dims) }} . HasMul r r r
+tensorLikeHasMul =
+    { mulTC = \r1 r2 ->
+        fromTensor
+            (mulTC
+                (toTensor r1)
+                (toTensor r2)
+            )
+    }
+
+
 -- HasDiv
 @typeclass
 record HasDiv t1 t2 t3 where
@@ -136,7 +148,18 @@ record HasDiv t1 t2 t3 where
 @instance
 realTensorHasDiv : HasDiv (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
 realTensorHasDiv = { divTC = divRealTensor }
--- werwnkrwenkwkenr
+
+@instance
+tensorLikeHasDiv : forallT { r : Type } { t : Type } { dims : List Nat } {{ tensorLike : TensorLike r t dims }} {{ hasDiv : HasDiv (NonCastingTensor t dims) (NonCastingTensor t dims) (NonCastingTensor t dims) }} . HasDiv r r r
+tensorLikeHasDiv =
+    { divTC = \r1 r2 ->
+        fromTensor
+            (divTC
+                (toTensor r1)
+                (toTensor r2)
+            )
+    }
+
 --------------------------------------------------------------------------------
 -- Loss logics
 --------------------------------------------------------------------------------
