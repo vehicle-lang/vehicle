@@ -68,7 +68,6 @@ forallIndex f = reduceAnd True (foreach i . f i)
 --------------------------------------------------------------------------------
 
 -- HasAdd
-
 @typeclass
 record HasAdd t1 t2 t3 where
   { addTC : t1 -> t2 -> t3
@@ -93,6 +92,7 @@ tensorLikeHasAdd =
             )
     }
 
+-- HasSub
 @typeclass
 record HasSub t1 t2 t3 where
   { subTC : t1 -> t2 -> t3
@@ -113,6 +113,30 @@ tensorLikeHasSub =
             )
     }
 
+-- HasMul
+@typeclass
+record HasMul t1 t2 t3 where
+  { mulTC : t1 -> t2 -> t3
+  }
+
+@instance(default=0)
+natHasMul : HasMul Nat Nat Nat
+natHasMul = { mulTC = mulNat }
+
+@instance(default=1)
+realTensorHasMul : HasMul (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
+realTensorHasMul = { mulTC = mulRealTensor }
+
+-- HasDiv
+@typeclass
+record HasDiv t1 t2 t3 where
+  { divTC : t1 -> t2 -> t3
+  }
+
+@instance
+realTensorHasDiv : HasDiv (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
+realTensorHasDiv = { divTC = divRealTensor }
+-- werwnkrwenkwkenr
 --------------------------------------------------------------------------------
 -- Loss logics
 --------------------------------------------------------------------------------
