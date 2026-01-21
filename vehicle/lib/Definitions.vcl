@@ -82,7 +82,16 @@ natHasAdd = { addTC = addNat }
 realTensorHasAdd : HasAdd (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
 realTensorHasAdd = { addTC = addRealTensor }
 
--- HasSub
+@instance
+tensorLikeHasAdd : forallT { r : Type } { t : Type } { dims : List Nat } {{ tensorLike : TensorLike r t dims }} {{ hasAdd : HasAdd (NonCastingTensor t dims) (NonCastingTensor t dims) (NonCastingTensor t dims) }} . HasAdd r r r
+tensorLikeHasAdd =
+    { addTC = \r1 r2 ->
+        fromTensor
+            (addTC
+                (toTensor r1)
+                (toTensor r2)
+            )
+    }
 
 @typeclass
 record HasSub t1 t2 t3 where
@@ -93,31 +102,16 @@ record HasSub t1 t2 t3 where
 realTensorHasSub : HasSub (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
 realTensorHasSub = { subTC = subRealTensor }
 
--- HasMul
-@typeclass
-record HasMul t1 t2 t3 where
-  { mulTC : t1 -> t2 -> t3
-  }
-
-@instance(default=0)
-natHasMul : HasMul Nat Nat Nat
-natHasMul = { mulTC = mulNat }
-
-@instance(default=1)
-realTensorHasMul : HasMul (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
-realTensorHasMul = { mulTC = mulRealTensor }
-
--- HasDiv
-
-@typeclass
-record HasDiv t1 t2 t3 where
-  { divTC : t1 -> t2 -> t3
-  }
-
 @instance
-realTensorHasDiv : HasDiv (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
-realTensorHasDiv = { divTC = divRealTensor }
-
+tensorLikeHasSub : forallT { r : Type } { t : Type } { dims : List Nat } {{ tensorLike : TensorLike r t dims }} {{ hasSub : HasSub (NonCastingTensor t dims) (NonCastingTensor t dims) (NonCastingTensor t dims) }} . HasSub r r r
+tensorLikeHasSub =
+    { subTC = \r1 r2 ->
+        fromTensor
+            (subTC
+                (toTensor r1)
+                (toTensor r2)
+            )
+    }
 
 --------------------------------------------------------------------------------
 -- Loss logics
