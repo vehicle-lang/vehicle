@@ -105,9 +105,10 @@ typeOfTypeClassOp b = case b of
           hasForeach t1 t2 t3 ~~~> typeOfForeach t1 t2 t3
   MapTC -> forAll "f" (type0 ~> type0) $ \f -> hasMap f ~~~> typeOfMap f
   FoldTC -> forAll "f" (type0 ~> type0) $ \f -> hasFold f ~~~> typeOfFold f
-  QuantifierTC q ->
-    forAll "A" (type0 ~> type0) $ \t ->
-      hasQuantifier q t ~~~> typeOfQuantifier t
+
+-- QuantifierTC q ->
+--   forAll "A" (type0 ~> type0) $ \t ->
+--     hasQuantifier q t ~~~> typeOfQuantifier t
 
 typeOfBuiltinCast :: BuiltinCast -> DSLExpr Builtin
 typeOfBuiltinCast = \case

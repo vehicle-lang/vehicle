@@ -69,6 +69,8 @@ position token TokMax       {"max"};
 position token TokAddNat    {"addNat"};
 position token TokAddRealTensor {"addRealTensor"};
 position token TokSubRealTensor {"subRealTensor"};
+position token TokQuantifyForAllNat {"quantifyForAllNat"};
+position token TokQuantifyExistsNat {"quantifyExistsNat"};
 
 position token TokNil        {"nil"};
 position token TokCons       {"::"};
@@ -228,6 +230,8 @@ Max.              Expr15 ::= TokMax;
 AddNat.           Expr15 ::= TokAddNat;
 AddRealTensor.    Expr15 ::= TokAddRealTensor;
 SubRealTensor.    Expr15 ::= TokSubRealTensor;
+QuantifyForAllNat. Expr15 ::= TokQuantifyForAllNat Expr14; -- not sure if these are the numbers we want? guessing randomly o7
+QuantifyExistsNat. Expr15 ::= TokQuantifyExistsNat Expr14;
 
 -- Lists and vectors.
 Foreach.    Expr2  ::= TokForeach [NameBinder] "." Expr2;

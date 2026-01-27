@@ -92,8 +92,8 @@ data TypeClassOp
   | MapTC
   | FoldTC
   | ForeachTC
-  | QuantifierTC Quantifier
-  | TensorTypeTC
+  | -- | QuantifierTC Quantifier
+    TensorTypeTC
   deriving (Eq, Ord, Generic, Show)
 
 instance NFData TypeClassOp
@@ -116,5 +116,5 @@ instance Pretty TypeClassOp where
     MapTC -> "map"
     FoldTC -> "fold"
     ForeachTC -> "foreach"
-    QuantifierTC q -> pretty q
+    -- QuantifierTC q -> pretty q
     TensorTypeTC -> "TensorTC"
