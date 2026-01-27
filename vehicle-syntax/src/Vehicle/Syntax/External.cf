@@ -67,8 +67,11 @@ position token TokSub       {"-"};
 position token TokMin       {"min"};
 position token TokMax       {"max"};
 position token TokAddNat    {"addNat"};
+position token TokMulNat    {"mulNat"};
 position token TokAddRealTensor {"addRealTensor"};
 position token TokSubRealTensor {"subRealTensor"};
+position token TokMulRealTensor {"mulRealTensor"};
+position token TokDivRealTensor {"divRealTensor"};
 
 position token TokNil        {"nil"};
 position token TokCons       {"::"};
@@ -89,7 +92,6 @@ position token TokReduceMax {"reduceMax"};
 position token TokHasLeq    {"HasLeq"};
 position token TokHasEq     {"HasEq"};
 position token TokHasNotEq  {"HasNotEq"};
-position token TokHasMul    {"HasMul"};
 position token TokHasFold   {"HasFold"};
 position token TokHasMap    {"HasMap"};
 position token TokIsTensorType {"IsTensorType"};
@@ -226,8 +228,11 @@ Neg.              Expr11 ::= TokSub Expr11;
 Min.              Expr15 ::= TokMin;
 Max.              Expr15 ::= TokMax;
 AddNat.           Expr15 ::= TokAddNat;
+MulNat.           Expr15 ::= TokMulNat;
 AddRealTensor.    Expr15 ::= TokAddRealTensor;
 SubRealTensor.    Expr15 ::= TokSubRealTensor;
+MulRealTensor.    Expr15 ::= TokMulRealTensor;
+DivRealTensor.    Expr15 ::= TokDivRealTensor;
 
 -- Lists and vectors.
 Foreach.    Expr2  ::= TokForeach [NameBinder] "." Expr2;
@@ -262,7 +267,6 @@ NonCastingTensor. Expr15 ::= TokNonCastingTensor;
 HasEq.    Expr15 ::= TokHasEq;
 HasNotEq. Expr15 ::= TokHasNotEq;
 HasLeq.   Expr15 ::= TokHasLeq;
-HasMul.   Expr15 ::= TokHasMul;
 HasMap.   Expr15 ::= TokHasMap;
 HasFold.  Expr15 ::= TokHasFold;
 
