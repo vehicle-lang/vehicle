@@ -232,13 +232,13 @@ removeImplicitArgs prog =
       Record p ident fields -> Record p ident <$> traverseRecordFields go fields
       RecordProj p recordType record field -> RecordProj p <$> go recordType <*> go record <*> pure field
 
-parseModuleText :: (MonadCompile m) => ParseLocation -> Text -> m S.Module
+parseModuleText :: (MonadCompile m) => ParseLocation -> Text -> m (S.Module Builtin)
 parseModuleText location txt = do
   case runExcept (readAndParseModule location txt) of
     Left err -> throwError $ ParseError location err
     Right modul -> return modul
 
-readAndParseModule :: (MonadError ParseError m) => ParseLocation -> Text -> m S.Module
+readAndParseModule :: (MonadError ParseError m) => ParseLocation -> Text -> m (S.Module Builtin)
 readAndParseModule modul txt = castBNFCError (elabModule modul) (parseExternalModule txt)
 
 castBNFCError :: (MonadError ParseError m) => (a -> m b) -> Either String a -> m b

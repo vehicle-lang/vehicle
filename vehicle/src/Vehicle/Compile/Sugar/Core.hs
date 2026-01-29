@@ -3,9 +3,43 @@
 module Vehicle.Compile.Sugar.Core where
 
 import Data.Text (Text, pack)
+import Vehicle.Compile.Prelude (Provenance)
+import Vehicle.Data.AST.Expr.Desugared (Expr)
 import Vehicle.Syntax.External.Abs qualified as B
 import Vehicle.Syntax.Token (mkToken)
 
+class DesugarableBuiltin builtin where
+  elabUnitLiteral :: Provenance -> Expr builtin
+  elabBoolLiteral :: Provenance -> Bool -> Expr builtin
+  elabNatLiteral :: Provenance -> Int -> Expr builtin
+  elabDecimalLiteral :: Provenance -> Rational -> Expr builtin
+
+{-
+  foreachBuiltin :: Expr builtin
+  forallBuiltin :: Expr builtin
+  existsBuiltin :: Expr builtin
+  forallInBuiltin :: Expr builtin
+  existsInBuiltin :: Expr builtin
+
+  addBuiltin :: Expr builtin
+  subBuiltin :: Expr builtin
+  mulBuiltin :: Expr builtin
+  divBuiltin :: Expr builtin
+  negBuiltin :: Expr builtin
+
+  ifBuiltin :: Expr builtin
+  implBuiltin :: Expr builtin
+  andBuiltin :: Expr builtin
+  orBuiltin :: Expr builtin
+  notBuiltin :: Expr builtin
+  neBuiltin :: Expr builtin
+  compBuiltin :: ComparisonOp -> Expr builtin
+  compPointBuiltin :: ComparisonOp -> Expr builtin
+
+  vecLitBuiltin :: Expr builtin
+  consBuiltin :: Expr builtin
+  atBuiltin :: Expr builtin
+  -}
 pattern InferableOption :: Text
 pattern InferableOption = "infer"
 

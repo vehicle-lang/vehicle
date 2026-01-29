@@ -13,7 +13,7 @@ import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Interface.Blocked
 import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Interface.Print
-import Vehicle.Data.Builtin.Standard (Builtin, BuiltinConstructor (..), BuiltinFunction (..), BuiltinType (..), DerivedFunction)
+import Vehicle.Data.Builtin.Standard (Builtin, BuiltinConstructor (..), BuiltinFunction (..), BuiltinType (..))
 import Vehicle.Data.Code.DSL (tDim, tDims)
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.DSL

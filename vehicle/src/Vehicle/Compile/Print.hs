@@ -189,25 +189,25 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   -- Unscoped expr --
   -------------------
   -- To convert any named representation to the target language, simply convert it.
-  StrategyFor ('As lang) D.Expr = 'PrintAs lang
-  StrategyFor ('As lang) D.Decl = 'PrintAs lang
-  StrategyFor ('Named tags) D.Expr = StrategyFor tags D.Expr
-  StrategyFor ('Unnamed tags) D.Expr = StrategyFor tags D.Expr
+  StrategyFor ('As lang) (D.Expr Builtin) = 'PrintAs lang
+  StrategyFor ('As lang) (D.Decl Builtin) = 'PrintAs lang
+  StrategyFor ('Named tags) (D.Expr Builtin) = StrategyFor tags (D.Expr Builtin)
+  StrategyFor ('Unnamed tags) (D.Expr Builtin) = StrategyFor tags (D.Expr Builtin)
   -----------------
   -- Scoped expr --
   -----------------
   -- Converting an `Expr` with DeBruijn indices to a named representation requires a named bound context to descope.
   -- Otherwise converting it to an unnamed representation we descope naively by just converting the variables directly
-  StrategyFor ('Named tags) (Expr builtin `In` NamedBoundCtx) = 'DescopeWithNames (StrategyFor tags D.Expr)
-  StrategyFor ('Unnamed tags) (Expr builtin `In` ctx) = 'DescopeNaively (StrategyFor tags D.Expr)
-  StrategyFor ('Named tags) (Decl builtin `In` NoCtx) = 'DescopeWithNames (StrategyFor tags D.Decl)
-  StrategyFor ('Unnamed tags) (Decl builtin `In` ctx) = 'DescopeNaively (StrategyFor tags D.Decl)
+  StrategyFor ('Named tags) (Expr builtin `In` NamedBoundCtx) = 'DescopeWithNames (StrategyFor tags (D.Expr Builtin))
+  StrategyFor ('Unnamed tags) (Expr builtin `In` ctx) = 'DescopeNaively (StrategyFor tags (D.Expr Builtin))
+  StrategyFor ('Named tags) (Decl builtin `In` NoCtx) = 'DescopeWithNames (StrategyFor tags (D.Decl Builtin))
+  StrategyFor ('Unnamed tags) (Decl builtin `In` ctx) = 'DescopeNaively (StrategyFor tags (D.Decl Builtin))
   ------------
   -- Values --
   ------------
   -- To print a `Value` we need to quote it first. Note that we convert it to a `Builtin` representation immediately
   StrategyFor ('Named tags) (Value builtin `In` NamedBoundCtx) = 'QuoteValue (StrategyFor ('Named tags) (Expr Builtin `In` NamedBoundCtx))
-  StrategyFor ('Unnamed tags) (Value builtin `In` ctx) = 'DescopeNaively (StrategyFor tags D.Expr)
+  StrategyFor ('Unnamed tags) (Value builtin `In` ctx) = 'DescopeNaively (StrategyFor tags (D.Expr Builtin))
   StrategyFor tags (BoundEnv builtin `In` ctx) = StrategyFor tags (Value builtin `In` ctx)
   StrategyFor tags (DimensionedTensorValue builtin `In` ctx) = StrategyFor tags (Value builtin `In` ctx)
   -------------------
@@ -219,9 +219,9 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor tags (Contextualised object CompleteNamedBoundCtx) = 'AlterContext (StrategyFor tags (Contextualised object NamedBoundCtx))
   StrategyFor tags (Contextualised object ctx) = 'SetupContext (StrategyFor tags (object `In` ctx))
   StrategyFor tags (Contextualised object ctx `In` NoCtx) = 'SetupContext (StrategyFor tags (object `In` ctx))
-  StrategyFor tags (D.Expr `In` NoCtx) = 'SetupContext (StrategyFor tags D.Expr)
-  StrategyFor tags (D.Arg `In` NoCtx) = 'SetupContext (StrategyFor tags D.Expr)
-  StrategyFor tags (D.Binder `In` NoCtx) = 'SetupContext (StrategyFor tags D.Expr)
+  StrategyFor tags (D.Expr Builtin `In` NoCtx) = 'SetupContext (StrategyFor tags (D.Expr Builtin))
+  StrategyFor tags (D.Arg Builtin `In` NoCtx) = 'SetupContext (StrategyFor tags (D.Expr Builtin))
+  StrategyFor tags (D.Binder Builtin `In` NoCtx) = 'SetupContext (StrategyFor tags (D.Expr Builtin))
   --------------------------------
   -- Distributing over functors --
   --------------------------------
@@ -403,20 +403,20 @@ instance
   prettyUsing decl = prettyUsing @rest (decl, ())
 
 instance
-  (PrettyUsing rest D.Expr) =>
-  PrettyUsing ('SetupContext rest) (D.Expr `In` NoCtx)
+  (PrettyUsing rest (D.Expr Builtin)) =>
+  PrettyUsing ('SetupContext rest) (D.Expr Builtin `In` NoCtx)
   where
   prettyUsing (e, ()) = prettyUsing @rest e
 
 instance
-  (PrettyUsing rest D.Arg) =>
-  PrettyUsing ('SetupContext rest) (D.Arg `In` NoCtx)
+  (PrettyUsing rest (D.Arg Builtin)) =>
+  PrettyUsing ('SetupContext rest) (D.Arg Builtin `In` NoCtx)
   where
   prettyUsing (e, ()) = prettyUsing @rest e
 
 instance
-  (PrettyUsing rest D.Binder) =>
-  PrettyUsing ('SetupContext rest) (D.Binder `In` NoCtx)
+  (PrettyUsing rest (D.Binder Builtin)) =>
+  PrettyUsing ('SetupContext rest) (D.Binder Builtin `In` NoCtx)
   where
   prettyUsing (e, ()) = prettyUsing @rest e
 
@@ -435,58 +435,58 @@ instance
 
 -- Expr
 
-instance (PrettyUsing rest D.Expr, PrintableBuiltin builtin) => PrettyUsing ('DescopeNaively rest) (Expr builtin `In` ctx) where
+instance (PrettyUsing rest (D.Expr Builtin), PrintableBuiltin builtin) => PrettyUsing ('DescopeNaively rest) (Expr builtin `In` ctx) where
   prettyUsing (e, _ctx) = prettyUsing @rest $ descopeExprNaively e
 
 instance
-  (PrettyUsing rest D.Arg, PrintableBuiltin builtin) =>
+  (PrettyUsing rest (D.Arg Builtin), PrintableBuiltin builtin) =>
   PrettyUsing ('DescopeNaively rest) (Arg builtin `In` ctx)
   where
   prettyUsing (e, _ctx) = prettyUsing @rest $ fmap descopeExprNaively e
 
 instance
-  (PrettyUsing rest D.Binder, PrintableBuiltin builtin) =>
+  (PrettyUsing rest (D.Binder Builtin), PrintableBuiltin builtin) =>
   PrettyUsing ('DescopeNaively rest) (Binder builtin `In` ctx)
   where
   prettyUsing (e, _ctx) = prettyUsing @rest $ fmap descopeExprNaively e
 
 instance
-  (PrettyUsing rest D.Decl, PrintableBuiltin builtin) =>
+  (PrettyUsing rest (D.Decl Builtin), PrintableBuiltin builtin) =>
   PrettyUsing ('DescopeNaively rest) (Decl builtin `In` ctx)
   where
   prettyUsing (e, _ctx) = prettyUsing @rest $ fmap descopeExprNaively e
 
 instance
-  (PrettyUsing rest D.Module, PrintableBuiltin builtin) =>
+  (PrettyUsing rest (D.Module Builtin), PrintableBuiltin builtin) =>
   PrettyUsing ('DescopeNaively rest) (Module builtin `In` ctx)
   where
   prettyUsing (e, _ctx) = prettyUsing @rest $ fmap descopeExprNaively e
 
 -- Value
 
-instance (PrettyUsing rest D.Expr, PrintableBuiltin builtin) => PrettyUsing ('DescopeNaively rest) (Value builtin `In` ctx) where
+instance (PrettyUsing rest (D.Expr Builtin), PrintableBuiltin builtin) => PrettyUsing ('DescopeNaively rest) (Value builtin `In` ctx) where
   prettyUsing (e, _ctx) = prettyUsing @rest $ descopeValueNaively @builtin e
 
 instance
-  (PrettyUsing rest D.Arg, PrintableBuiltin builtin) =>
+  (PrettyUsing rest (D.Arg Builtin), PrintableBuiltin builtin) =>
   PrettyUsing ('DescopeNaively rest) (VArg builtin `In` ctx)
   where
   prettyUsing (e, _ctx) = prettyUsing @rest $ fmap descopeValueNaively e
 
 instance
-  (PrettyUsing rest D.Binder, PrintableBuiltin builtin) =>
+  (PrettyUsing rest (D.Binder Builtin), PrintableBuiltin builtin) =>
   PrettyUsing ('DescopeNaively rest) (VBinder builtin `In` ctx)
   where
   prettyUsing (e, _ctx) = prettyUsing @rest $ fmap descopeValueNaively e
 
 instance
-  (PrettyUsing rest D.Decl, PrintableBuiltin builtin) =>
+  (PrettyUsing rest (D.Decl Builtin), PrintableBuiltin builtin) =>
   PrettyUsing ('DescopeNaively rest) (VDecl builtin `In` ctx)
   where
   prettyUsing (e, _ctx) = prettyUsing @rest $ fmap descopeValueNaively e
 
 instance
-  ( PrettyUsing rest D.Module,
+  ( PrettyUsing rest (D.Module Builtin),
     PrintableBuiltin builtin,
     Debug ('DescopeNaively rest) "Resolve LinearExpr"
   ) =>
@@ -637,31 +637,31 @@ instance
 -- Expr
 
 instance
-  (PrettyUsing rest D.Expr, PrintableBuiltin builtin) =>
+  (PrettyUsing rest (D.Expr Builtin), PrintableBuiltin builtin) =>
   PrettyUsing ('DescopeWithNames rest) (Expr builtin `In` NamedBoundCtx)
   where
   prettyUsing (e, ctx) = prettyUsing @rest $ descopeExpr ctx e
 
 instance
-  (PrettyUsing rest D.Arg, PrintableBuiltin builtin) =>
+  (PrettyUsing rest (D.Arg Builtin), PrintableBuiltin builtin) =>
   PrettyUsing ('DescopeWithNames rest) (Arg builtin `In` NamedBoundCtx)
   where
   prettyUsing (e, ctx) = prettyUsing @rest $ fmap (descopeExpr ctx) e
 
 instance
-  (PrettyUsing rest D.Binder, PrintableBuiltin builtin) =>
+  (PrettyUsing rest (D.Binder Builtin), PrintableBuiltin builtin) =>
   PrettyUsing ('DescopeWithNames rest) (Binder builtin `In` NamedBoundCtx)
   where
   prettyUsing (e, ctx) = prettyUsing @rest $ fmap (descopeExpr ctx) e
 
 instance
-  (PrettyUsing rest D.Decl, PrintableBuiltin builtin) =>
+  (PrettyUsing rest (D.Decl Builtin), PrintableBuiltin builtin) =>
   PrettyUsing ('DescopeWithNames rest) (Decl builtin `In` NoCtx)
   where
   prettyUsing (e, ()) = prettyUsing @rest $ descopeDecl e
 
 instance
-  (PrettyUsing rest D.Module, PrintableBuiltin builtin) =>
+  (PrettyUsing rest (D.Module Builtin), PrintableBuiltin builtin) =>
   PrettyUsing ('DescopeWithNames rest) (Module builtin `In` NoCtx)
   where
   prettyUsing (e, ()) = prettyUsing @rest $ mapModuleDecls descopeDecl e
@@ -688,40 +688,40 @@ instance
 
 -- Internal
 
-instance PrettyUsing ('PrintAs 'Internal) D.Module where
+instance PrettyUsing ('PrintAs 'Internal) (D.Module Builtin) where
   prettyUsing (Module _ decls) =
     -- BNFC doesn't add empty lines so add them manually here.
     vsep2 $ fmap (prettyUsing @('PrintAs 'Internal)) decls
 
-instance PrettyUsing ('PrintAs 'Internal) D.Decl where
+instance PrettyUsing ('PrintAs 'Internal) (D.Decl Builtin) where
   prettyUsing = printInternal
 
-instance PrettyUsing ('PrintAs 'Internal) D.Expr where
+instance PrettyUsing ('PrintAs 'Internal) (D.Expr Builtin) where
   prettyUsing = printInternal
 
-instance PrettyUsing ('PrintAs 'Internal) D.Arg where
+instance PrettyUsing ('PrintAs 'Internal) (D.Arg Builtin) where
   prettyUsing = printInternal
 
-instance PrettyUsing ('PrintAs 'Internal) D.Binder where
+instance PrettyUsing ('PrintAs 'Internal) (D.Binder Builtin) where
   prettyUsing = printInternal
 
 -- External
 
-instance PrettyUsing ('PrintAs 'External) D.Module where
+instance PrettyUsing ('PrintAs 'External) (D.Module Builtin) where
   prettyUsing (Module _imports decls) =
     -- BNFC doesn't add empty lines so add them manually here.
     vsep2 $ fmap (prettyUsing @('PrintAs 'External)) decls
 
-instance PrettyUsing ('PrintAs 'External) D.Decl where
+instance PrettyUsing ('PrintAs 'External) (D.Decl Builtin) where
   prettyUsing = printExternal
 
-instance PrettyUsing ('PrintAs 'External) D.Expr where
+instance PrettyUsing ('PrintAs 'External) (D.Expr Builtin) where
   prettyUsing = printExternal
 
-instance PrettyUsing ('PrintAs 'External) D.Arg where
+instance PrettyUsing ('PrintAs 'External) (D.Arg Builtin) where
   prettyUsing = printExternal
 
-instance PrettyUsing ('PrintAs 'External) D.Binder where
+instance PrettyUsing ('PrintAs 'External) (D.Binder Builtin) where
   prettyUsing = printExternal
 
 --------------------------------------------------------------------------------
@@ -869,8 +869,7 @@ instance
   ) =>
   PrettyUsing rest (InstanceCandidate builtin `In` BoundCtx (Type builtin))
   where
-  prettyUsing (candidate, ctx) = do
-    prettyUsing @rest (candidateExpr candidate, toNamedBoundCtx ctx)
+  prettyUsing (candidate, ctx) = prettyUsing @rest (candidateExpr candidate, toNamedBoundCtx ctx)
 
 instance
   ( PrettyUsing rest (Type builtin `In` NamedBoundCtx)
@@ -1087,23 +1086,23 @@ class Printable a where
   printExternal :: a -> Doc b
   printExternal = pretty . bnfcPrintHack . printExternal'
 
-instance Printable D.Arg where
+instance Printable (D.Arg Builtin) where
   printInternal' = Internal.printTree . Internal.delab
   printExternal' = External.printTree . External.delab
 
-instance Printable D.Binder where
+instance Printable (D.Binder Builtin) where
   printInternal' = Internal.printTree . Internal.delab
   printExternal' = External.printTree . External.delab
 
-instance Printable D.Expr where
+instance Printable (D.Expr Builtin) where
   printInternal' = Internal.printTree . Internal.delab
   printExternal' = External.printTree . External.delab
 
-instance Printable D.Decl where
+instance Printable (D.Decl Builtin) where
   printInternal' = Internal.printTree . Internal.delab
   printExternal' = External.printTree . External.delab
 
-instance Printable D.Module where
+instance Printable (D.Module Builtin) where
   printInternal' = Internal.printTree . Internal.delab
   printExternal' = External.printTree . External.delab
 

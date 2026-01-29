@@ -41,7 +41,7 @@ type MonadDelab m = Monad m
 class Delaborate t bnfc | t -> bnfc where
   delabM :: (MonadDelab m) => t -> m bnfc
 
-instance Delaborate V.Module B.Module where
+instance Delaborate (V.Module V.Builtin) B.Module where
   delabM (V.Module imports decls) = do
     imports' <- traverse delabM imports
     decls' <- concat <$> traverse delabM decls
@@ -55,7 +55,7 @@ instance Delaborate V.ImportStatement B.ImportStatement where
       go :: String -> B.ModulePathFragment
       go = B.ModulePathFrag . mkToken B.Name . pack
 
-instance Delaborate V.Decl [B.Decl] where
+instance Delaborate (V.Decl V.Builtin) [B.Decl] where
   delabM = \case
     V.DefAbstract _ n a t -> do
       defFun <- B.DefFunType (delabIdentifier n) tokElemOf <$> delabM t
@@ -76,7 +76,7 @@ instance Delaborate V.Decl [B.Decl] where
     V.DefRecord _ n sort t e -> do
       delabRecordDecl n sort t e
 
-instance Delaborate V.Expr B.Expr where
+instance Delaborate (V.Expr V.Builtin) B.Expr where
   delabM expr = case expr of
     V.Universe _ -> return $ B.Type (mkToken B.TokType "Type")
     V.Var _ n -> return $ B.Var (delabSymbol n)
@@ -92,7 +92,7 @@ instance Delaborate V.Expr B.Expr where
     V.Record _ fields -> delabRecord fields
     V.RecordAcc _ record field -> delabRecordAccess record field
 
-instance Delaborate V.Arg B.Arg where
+instance Delaborate (V.Arg V.Builtin) B.Arg where
   delabM arg = do
     let modalities = delabRelevance arg
     e' <- delabM (V.argExpr arg)
@@ -102,7 +102,7 @@ instance Delaborate V.Arg B.Arg where
       (V.Implicit {}, _) -> B.ImplicitArg modalities e'
       (V.Instance {}, _) -> B.InstanceArg modalities e'
 
-instance Delaborate V.Binder B.BasicBinder where
+instance Delaborate (V.Binder V.Builtin) B.BasicBinder where
   delabM binder = do
     let n' = delabSymbol $ fromMaybe "_" (V.nameOf binder)
     let m' = delabModalities binder
@@ -115,8 +115,7 @@ instance Delaborate V.Binder B.BasicBinder where
 instance Delaborate V.FieldName B.Name where
   delabM (V.FieldName _ name) = return $ mkToken B.Name name
 
-instance Delaborate (V.GenericRecordField V.Expr) B.RecordFieldDef where
-  delabM :: (MonadDelab m) => V.GenericRecordField V.Expr -> m B.RecordFieldDef
+instance Delaborate (V.GenericRecordField (V.Expr V.Builtin)) B.RecordFieldDef where
   delabM (name, typ) = do
     name' <- delabM name
     typ' <- delabM typ
@@ -138,7 +137,7 @@ instance Delaborate V.FunctionDeclAnnotation B.Decl where
 cheatDelab :: Text -> B.Expr
 cheatDelab n = B.Var (delabSymbol n)
 
-cheatDelabPretty :: (MonadDelab m, Pretty a) => a -> [V.Arg] -> m B.Expr
+cheatDelabPretty :: (MonadDelab m, Pretty a) => a -> [V.Arg V.Builtin] -> m B.Expr
 cheatDelabPretty x = delabApp (cheatDelab (layoutAsText $ pretty x))
 
 delabRelevance :: (V.HasRelevance a) => a -> [B.Modality]
@@ -146,12 +145,12 @@ delabRelevance x = case V.relevanceOf x of
   V.Relevant -> []
   V.Irrelevant -> [B.Irrelevant]
 
-delabRecordAccess :: (MonadDelab m) => V.Expr -> V.FieldName -> m B.Expr
+delabRecordAccess :: (MonadDelab m) => V.Expr V.Builtin -> V.FieldName -> m B.Expr
 delabRecordAccess expr fieldName = do
   let tok = mkToken B.FieldAccess ("." <> V.nameOf fieldName)
   B.RecordAcc <$> delabM expr <*> pure tok
 
-delabNameBinder :: (MonadDelab m) => V.Binder -> m B.NameBinder
+delabNameBinder :: (MonadDelab m) => V.Binder V.Builtin -> m B.NameBinder
 delabNameBinder b = case V.binderNamingForm b of
   V.OnlyType {} ->
     developerError
@@ -166,12 +165,12 @@ delabNameBinder b = case V.binderNamingForm b of
       (V.Implicit {}, _) -> B.ImplicitNameBinder modalities finalName
       (V.Instance {}, _) -> B.InstanceNameBinder modalities finalName
 
-delabModalities :: V.Binder -> [B.Modality]
+delabModalities :: V.Binder V.Builtin -> [B.Modality]
 delabModalities binder
   | V.isRelevant binder = mempty
   | otherwise = [B.Irrelevant]
 
-delabTypeBinder :: (MonadDelab m) => V.Binder -> m B.TypeBinder
+delabTypeBinder :: (MonadDelab m) => V.Binder V.Builtin -> m B.TypeBinder
 delabTypeBinder b = case V.binderNamingForm b of
   V.OnlyName {} ->
     developerError
@@ -186,7 +185,7 @@ delabTypeBinder b = case V.binderNamingForm b of
       (V.Implicit {}, _) -> B.ImplicitTypeBinder modalities typ
       (V.Instance {}, _) -> B.InstanceTypeBinder modalities typ
 
-delabLetBinding :: (MonadDelab m) => (V.Binder, V.Expr) -> m B.LetDecl
+delabLetBinding :: (MonadDelab m) => (V.Binder V.Builtin, V.Expr V.Builtin) -> m B.LetDecl
 delabLetBinding (binder, bound) = B.LDecl <$> delabNameBinder binder <*> delabM bound
 
 delabNatLit :: Int -> B.Natural
@@ -202,13 +201,13 @@ delabSymbol = mkToken B.Name
 delabIdentifier :: V.Identifier -> B.Name
 delabIdentifier (V.Identifier _ n) = mkToken B.Name n
 
-delabApp :: (MonadDelab m) => B.Expr -> [V.Arg] -> m B.Expr
+delabApp :: (MonadDelab m) => B.Expr -> [V.Arg V.Builtin] -> m B.Expr
 delabApp fun allArgs = go fun <$> traverse delabM (reverse allArgs)
   where
     go fn [] = fn
     go fn (arg : args) = B.App (go fn args) arg
 
-delabBuiltin :: (MonadDelab m) => V.Builtin -> [V.Arg] -> m B.Expr
+delabBuiltin :: (MonadDelab m) => V.Builtin -> [V.Arg V.Builtin] -> m B.Expr
 delabBuiltin fun args = case fun of
   V.BuiltinFunction f -> delabBuiltinFunction f args
   V.BuiltinType t -> delabBuiltinType t args
@@ -219,7 +218,7 @@ delabBuiltin fun args = case fun of
   V.NatInDomainConstraint -> cheatDelabPretty fun args
   V.DerivedFunction f -> delabDerivedFunction f args
 
-delabCast :: (MonadDelab m) => V.BuiltinCast -> [V.Arg] -> m B.Expr
+delabCast :: (MonadDelab m) => V.BuiltinCast -> [V.Arg V.Builtin] -> m B.Expr
 delabCast fun args = case fun of
   V.FromNat {} -> rawDelab
   V.FromRat {} -> rawDelab
@@ -227,7 +226,7 @@ delabCast fun args = case fun of
   where
     rawDelab = cheatDelabPretty fun args
 
-delabDerivedFunction :: (MonadDelab m) => V.DerivedFunction -> [V.Arg] -> m B.Expr
+delabDerivedFunction :: (MonadDelab m) => V.DerivedFunction -> [V.Arg V.Builtin] -> m B.Expr
 delabDerivedFunction fun args = case fun of
   -- Reverse the arguments to make it un-well typed again
   V.TypeAnn -> delabInfixOp2 B.Ann tokElemOf (reverse args)
@@ -235,7 +234,7 @@ delabDerivedFunction fun args = case fun of
   V.QuantifyInList q -> delabQuantifierIn q args
   V.CompareRatTensorReduced op -> delabTypeClassOp (V.CompareTC op) args
 
-delabBuiltinFunction :: (MonadDelab m) => V.BuiltinFunction -> [V.Arg] -> m B.Expr
+delabBuiltinFunction :: (MonadDelab m) => V.BuiltinFunction -> [V.Arg V.Builtin] -> m B.Expr
 delabBuiltinFunction fun args = case fun of
   V.Not -> delabOp1 B.Not tokNot args
   V.And -> delabInfixOp2 B.And tokAnd args
@@ -278,7 +277,7 @@ delabBuiltinFunction fun args = case fun of
   where
     rawDelab = cheatDelabPretty fun args
 
-delabBuiltinType :: (MonadDelab m) => V.BuiltinType -> [V.Arg] -> m B.Expr
+delabBuiltinType :: (MonadDelab m) => V.BuiltinType -> [V.Arg V.Builtin] -> m B.Expr
 delabBuiltinType fun args = case fun of
   V.UnitType -> delabApp (B.Unit tokUnit) args
   V.BoolType -> delabApp (B.Bool tokBool) args
@@ -289,7 +288,7 @@ delabBuiltinType fun args = case fun of
   V.VectorType -> delabApp (B.Vector tokVector) args
   V.TensorType -> delabApp (B.Tensor tokTensor) args
 
-delabTypeClass :: (MonadDelab m) => V.TypeClass -> [V.Arg] -> m B.Expr
+delabTypeClass :: (MonadDelab m) => V.TypeClass -> [V.Arg V.Builtin] -> m B.Expr
 delabTypeClass tc args = case tc of
   V.HasCompare eq -> case eq of
     V.Eq -> delabApp (B.HasEq tokHasEq) args
@@ -302,7 +301,7 @@ delabTypeClass tc args = case tc of
   where
     cheat = delabApp (B.Var (delabSymbol (layoutAsText $ pretty tc))) args
 
-delabConstructor :: (MonadDelab m) => V.BuiltinConstructor -> [V.Arg] -> m B.Expr
+delabConstructor :: (MonadDelab m) => V.BuiltinConstructor -> [V.Arg V.Builtin] -> m B.Expr
 delabConstructor fun args = case fun of
   V.Cons -> delabInfixOp2 B.Cons tokCons args
   V.Nil -> delabApp (B.Nil tokNil) args
@@ -314,19 +313,19 @@ delabConstructor fun args = case fun of
   V.RatTensorLiteral t -> cheatDelabPretty t []
   V.BoolTensorLiteral t -> cheatDelabPretty t []
 
-delabAdd :: (MonadDelab m) => [V.Arg] -> m B.Expr
+delabAdd :: (MonadDelab m) => [V.Arg V.Builtin] -> m B.Expr
 delabAdd = delabInfixOp2 B.Add tokAdd
 
-delabSub :: (MonadDelab m) => [V.Arg] -> m B.Expr
+delabSub :: (MonadDelab m) => [V.Arg V.Builtin] -> m B.Expr
 delabSub = delabInfixOp2 B.Sub tokSub
 
-delabMul :: (MonadDelab m) => [V.Arg] -> m B.Expr
+delabMul :: (MonadDelab m) => [V.Arg V.Builtin] -> m B.Expr
 delabMul = delabInfixOp2 B.Mul tokMul
 
-delabDiv :: (MonadDelab m) => [V.Arg] -> m B.Expr
+delabDiv :: (MonadDelab m) => [V.Arg V.Builtin] -> m B.Expr
 delabDiv = delabInfixOp2 B.Div tokDiv
 
-delabTypeClassOp :: (MonadDelab m) => V.TypeClassOp -> [V.Arg] -> m B.Expr
+delabTypeClassOp :: (MonadDelab m) => V.TypeClassOp -> [V.Arg V.Builtin] -> m B.Expr
 delabTypeClassOp op args = case op of
   V.FromNatTC {} -> cheatDelabPretty op args
   V.FromRatTC {} -> cheatDelabPretty op args
@@ -346,19 +345,19 @@ delabTypeClassOp op args = case op of
   V.QuantifierTC q -> delabQuantifier q args
   V.TensorTypeTC -> cheatDelabPretty op args
 
-delabOp1 :: (MonadDelab m, IsToken token) => (token -> B.Expr -> B.Expr) -> token -> [V.Arg] -> m B.Expr
+delabOp1 :: (MonadDelab m, IsToken token) => (token -> B.Expr -> B.Expr) -> token -> [V.Arg V.Builtin] -> m B.Expr
 delabOp1 op tk [arg]
   | V.isExplicit arg = op tk <$> delabM (argExpr arg)
 delabOp1 _ tk args = delabApp (cheatDelab $ tkSymbol tk) args
 
-delabInfixOp2 :: (MonadDelab m, IsToken token) => (B.Expr -> token -> B.Expr -> B.Expr) -> token -> [V.Arg] -> m B.Expr
+delabInfixOp2 :: (MonadDelab m, IsToken token) => (B.Expr -> token -> B.Expr -> B.Expr) -> token -> [V.Arg V.Builtin] -> m B.Expr
 delabInfixOp2 op tk args@[arg1, arg2]
   | all V.isExplicit args = op <$> delabM (argExpr arg1) <*> pure tk <*> delabM (argExpr arg2)
 delabInfixOp2 _op tk args
   | null args = delabApp (cheatDelab $ "(" <> tkSymbol tk <> ")") []
   | otherwise = delabApp (cheatDelab $ tkSymbol tk) args
 
-delabIf :: (MonadDelab m) => [V.Arg] -> m B.Expr
+delabIf :: (MonadDelab m) => [V.Arg V.Builtin] -> m B.Expr
 delabIf args@[arg1, arg2, arg3]
   | all V.isExplicit args = do
       e1 <- delabM (argExpr arg1)
@@ -367,7 +366,7 @@ delabIf args@[arg1, arg2, arg3]
       return $ B.If tokIf e1 tokThen e2 tokElse e3
 delabIf args = cheatDelabPretty V.If args
 
-delabTelescope :: (MonadDelab m) => V.Binder -> V.Expr -> m ([B.NameBinder], B.Expr)
+delabTelescope :: (MonadDelab m) => V.Binder V.Builtin -> V.Expr V.Builtin -> m ([B.NameBinder], B.Expr)
 delabTelescope binder body = do
   let (foldedBinders, foldedBody) = foldPiBinders binder body
   binders' <- traverse delabNameBinder (binder : foldedBinders)
@@ -375,7 +374,7 @@ delabTelescope binder body = do
   return (binders', body')
 
 -- | Collapses pi expressions into either a function or a sequence of forall bindings
-delabPi :: (MonadDelab m) => V.Binder -> V.Expr -> m B.Expr
+delabPi :: (MonadDelab m) => V.Binder V.Builtin -> V.Expr V.Builtin -> m B.Expr
 delabPi binder body = case V.binderNamingForm binder of
   V.OnlyType -> do
     binder' <- delabTypeBinder binder
@@ -386,7 +385,7 @@ delabPi binder body = case V.binderNamingForm binder of
     return $ B.ForallT tokForallT binders' body'
 
 -- | Collapses let expressions into a sequence of let declarations
-delabLet :: (MonadDelab m) => V.Expr -> V.Binder -> V.Expr -> m B.Expr
+delabLet :: (MonadDelab m) => V.Expr V.Builtin -> V.Binder V.Builtin -> V.Expr V.Builtin -> m B.Expr
 delabLet bound binder body = do
   let (otherBoundExprs, foldedBody) = foldLetBinders body
   let boundExprs = (binder, bound) : otherBoundExprs
@@ -395,7 +394,7 @@ delabLet bound binder body = do
   return $ B.Let tokLet binders' body'
 
 -- | Collapses consecutative lambda expressions into a sequence of binders
-delabLam :: (MonadDelab m) => V.Binder -> V.Expr -> m B.Expr
+delabLam :: (MonadDelab m) => V.Binder V.Builtin -> V.Expr V.Builtin -> m B.Expr
 delabLam binder body = do
   let (foldedBinders, foldedBody) = foldLamBinders binder body
   binders' <- traverse delabNameBinder (binder : foldedBinders)
@@ -407,8 +406,8 @@ delabFunctionDecl ::
   V.Identifier ->
   LHSBinderCount ->
   Maybe V.FunctionDeclAnnotation ->
-  V.Expr ->
-  V.Expr ->
+  V.Expr V.Builtin ->
+  V.Expr V.Builtin ->
   m [B.Decl]
 delabFunctionDecl name lhsBinderCount maybeAnn typ expr = do
   annDecls <- maybeToList <$> traverse delabM maybeAnn
@@ -422,7 +421,7 @@ delabTypeDecl ::
   (MonadDelab m) =>
   V.Identifier ->
   LHSBinderCount ->
-  V.Expr ->
+  V.Expr V.Builtin ->
   m [B.Decl]
 delabTypeDecl ident binderCount expr = do
   let (binders, body) = foldDeclBinders binderCount expr
@@ -434,8 +433,8 @@ delabRecordDecl ::
   (MonadDelab m) =>
   V.Identifier ->
   Maybe V.DefRecordSort ->
-  V.Telescope ->
-  V.RecordFields ->
+  V.Telescope V.Builtin ->
+  V.RecordFields V.Builtin ->
   m [B.Decl]
 delabRecordDecl ident sort telescope fields = do
   annDecl <- traverse delabM $ maybeToList sort
@@ -444,7 +443,7 @@ delabRecordDecl ident sort telescope fields = do
   fields' <- traverse delabM fields
   return $ annDecl <> [B.DefRecord n' telescope' fields']
 
-delabQuantifier :: (MonadDelab m) => V.Quantifier -> [V.Arg] -> m B.Expr
+delabQuantifier :: (MonadDelab m) => V.Quantifier -> [V.Arg V.Builtin] -> m B.Expr
 delabQuantifier q args = case reverse args of
   V.RelevantExplicitArg (V.Lam _ binder body) : _ -> do
     let (foldedBinders, foldedBody) = foldQuantifierBinders q binder body
@@ -456,7 +455,7 @@ delabQuantifier q args = case reverse args of
     return $ mkTk binders' body'
   _ -> cheatDelabPretty q args
 
-delabQuantifierIn :: (MonadDelab m) => V.Quantifier -> [V.Arg] -> m B.Expr
+delabQuantifierIn :: (MonadDelab m) => V.Quantifier -> [V.Arg V.Builtin] -> m B.Expr
 delabQuantifierIn q args = case reverse args of
   V.RelevantExplicitArg (V.Lam _ binder body) : V.RelevantExplicitArg container : _ -> do
     binder' <- delabNameBinder binder
@@ -468,7 +467,7 @@ delabQuantifierIn q args = case reverse args of
     return $ mkTk binder' container' body'
   _ -> cheatDelabPretty q args
 
-delabForeach :: (MonadDelab m) => [V.Arg] -> m B.Expr
+delabForeach :: (MonadDelab m) => [V.Arg V.Builtin] -> m B.Expr
 delabForeach args = case reverse args of
   V.RelevantExplicitArg (V.Lam _ binder body) : _ -> do
     let (foldedBinders, foldedBody) = foldForeachBinders binder body
@@ -477,7 +476,7 @@ delabForeach args = case reverse args of
     return $ B.Foreach tokForeach binders' body'
   _ -> cheatDelabPretty V.ForeachTC args
 
-delabRecord :: (MonadDelab m) => V.RecordFields -> m B.Expr
+delabRecord :: (MonadDelab m) => V.RecordFields V.Builtin -> m B.Expr
 delabRecord fields = do
   fields' <- traverse (bitraverse delabM delabM) fields
   return $ B.Record (fmap (uncurry B.FieldAssign) fields')
@@ -486,7 +485,7 @@ delabAnn :: B.TokAnnotation -> [B.DeclAnnOption] -> B.Decl
 delabAnn name [] = B.DefAnn name B.DeclAnnWithoutOpts
 delabAnn name ops = B.DefAnn name $ B.DeclAnnWithOpts ops
 
-delabVecLiteral :: (MonadDelab m) => [V.Arg] -> m B.Expr
+delabVecLiteral :: (MonadDelab m) => [V.Arg V.Builtin] -> m B.Expr
 delabVecLiteral args = do
   let explArgs = filter V.isExplicit args
   B.VecLiteral tokSeqOpen <$> traverse (delabM . argExpr) explArgs <*> pure tokSeqClose

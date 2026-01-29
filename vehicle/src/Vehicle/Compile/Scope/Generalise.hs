@@ -19,12 +19,12 @@ import Vehicle.Data.AST.Expr.Desugared qualified as S
 
 type GeneralisableVariable = (Provenance, Name)
 
-generaliseType :: (MonadScopeExpr builtin m) => S.Expr -> m S.Expr
+generaliseType :: (MonadScopeExpr builtin m) => S.Expr builtin -> m (S.Expr builtin)
 generaliseType expr = do
   candidates <- execWriterT (findGeneralisableVariables expr)
   generaliseOverVariables (reverse candidates) expr
 
-findGeneralisableVariables :: (MonadScopeExpr builtin m, MonadWriter [GeneralisableVariable] m) => S.Expr -> m ()
+findGeneralisableVariables :: (MonadScopeExpr builtin m, MonadWriter [GeneralisableVariable] m) => S.Expr builtin -> m ()
 findGeneralisableVariables = \case
   S.Var p v -> registerVar p v
   S.Universe {} -> return ()
@@ -45,7 +45,7 @@ findGeneralisableVariables = \case
   S.RecordAcc _ record _field -> do
     findGeneralisableVariables record
 
-findGeneralisableVariablesBinder :: (MonadScopeExpr builtin m, MonadWriter [GeneralisableVariable] m) => S.Binder -> m () -> m ()
+findGeneralisableVariablesBinder :: (MonadScopeExpr builtin m, MonadWriter [GeneralisableVariable] m) => S.Binder builtin -> m () -> m ()
 findGeneralisableVariablesBinder binder update = do
   traverse_ findGeneralisableVariables binder
   addBinder binder update
@@ -58,15 +58,15 @@ registerVar p symbol = do
 generaliseOverVariables ::
   (MonadCompile m) =>
   [GeneralisableVariable] ->
-  S.Expr ->
-  m S.Expr
+  S.Expr builtin ->
+  m (S.Expr builtin)
 generaliseOverVariables vars e = fst <$> foldM generaliseOverVariable (e, mempty) vars
 
 generaliseOverVariable ::
   (MonadCompile m) =>
-  (S.Expr, Set Name) ->
+  (S.Expr builtin, Set Name) ->
   GeneralisableVariable ->
-  m (S.Expr, Set Name)
+  m (S.Expr builtin, Set Name)
 generaliseOverVariable (expr, seenNames) (p, name)
   | name `Set.member` seenNames = return (expr, seenNames)
   | otherwise = do

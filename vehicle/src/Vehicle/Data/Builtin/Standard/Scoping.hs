@@ -9,16 +9,28 @@ import Data.Text qualified as Text
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Scope.Core
+import Vehicle.Compile.Sugar.Core
+import Vehicle.Data.AST.Expr.Desugared qualified as D (Expr (..), normAppList)
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.DSL
+import Vehicle.Data.Tensor (pattern ZeroDimTensor)
 import Vehicle.Libraries.StandardLibrary
 
 instance ScopableBuiltin Builtin where
   generateAuxiliaryRecordDefinitions p ident sort telescope fields
     | isAnnotatedAsTensor sort = createTensorRecordConversionFunctions p ident telescope fields
     | otherwise = return []
-  convertScopeBuiltin = id
+
+instance DesugarableBuiltin Builtin where
+  elabUnitLiteral p = D.Builtin p $ BuiltinConstructor UnitLiteral
+  elabBoolLiteral p = D.Builtin p . BuiltinConstructor . BoolTensorLiteral . ZeroDimTensor
+  elabNatLiteral p n = do
+    let fromNat = D.Builtin p (TypeClassOp FromNatTC)
+    D.normAppList fromNat $ fmap explicit [D.Builtin p $ BuiltinConstructor $ NatLiteral n]
+  elabDecimalLiteral p r = do
+    let fromRat = D.Builtin p (TypeClassOp FromRatTC)
+    D.normAppList fromRat $ fmap explicit [D.Builtin p $ BuiltinConstructor $ RatTensorLiteral $ ZeroDimTensor r]
 
 createTensorRecordConversionFunctions ::
   (MonadCompile m) =>

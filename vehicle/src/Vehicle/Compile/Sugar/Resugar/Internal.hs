@@ -1,4 +1,3 @@
-{-# LANGUAGE InstanceSigs #-}
 {-# OPTIONS_GHC -Wno-missing-signatures #-}
 
 module Vehicle.Compile.Sugar.Resugar.Internal
@@ -36,11 +35,11 @@ class Delaborate t bnfc | t -> bnfc, bnfc -> t where
   delabM :: (MonadDelab m) => t -> m bnfc
 
 -- | Elaborate programs.
-instance Delaborate V.Module B.Module where
+instance Delaborate (V.Module V.Builtin) B.Module where
   delabM (V.Module _imports decls) = B.Main <$> traverse delabM decls
 
 -- | Elaborate declarations.
-instance Delaborate V.Decl B.Decl where
+instance Delaborate (V.Decl V.Builtin) B.Decl where
   delabM = \case
     V.DefFunction _ n _ t e ->
       B.DefFun (delabIdentifier n) <$> delabM t <*> delabM e
@@ -59,7 +58,7 @@ instance Delaborate V.DefAbstractSort (B.NameToken -> B.Expr -> B.Decl) where
       V.NonInferable -> B.DeclParam
       V.Inferable -> B.DeclImplParam
 
-instance Delaborate V.Expr B.Expr where
+instance Delaborate (V.Expr V.Builtin) B.Expr where
   delabM expr = case expr of
     V.Universe _ -> return delabUniverse
     V.Var _ n -> return $ B.Var (delabSymbol n)
@@ -75,7 +74,7 @@ instance Delaborate V.Expr B.Expr where
 instance Delaborate V.FieldName B.NameToken where
   delabM (V.FieldName _ name) = return $ delabSymbol name
 
-instance Delaborate V.RecordField B.RecordField where
+instance Delaborate (V.RecordField V.Builtin) B.RecordField where
   delabM (field, expr) = B.Field <$> delabM field <*> delabM expr
 
 delabRelevance :: (V.HasRelevance a) => a -> [B.Modality]
@@ -83,8 +82,7 @@ delabRelevance x = case V.relevanceOf x of
   V.Relevant -> []
   V.Irrelevant -> [B.Irrelevant]
 
-instance Delaborate V.Arg B.Arg where
-  delabM :: (MonadDelab m) => V.Arg -> m B.Arg
+instance Delaborate (V.Arg V.Builtin) B.Arg where
   delabM arg = do
     expr <- delabM $ V.argExpr arg
     let modalities = delabRelevance arg
@@ -93,7 +91,7 @@ instance Delaborate V.Arg B.Arg where
       V.Implicit {} -> return $ B.ImplicitArg modalities expr
       V.Instance {} -> return $ B.InstanceArg modalities expr
 
-instance Delaborate V.Binder B.Binder where
+instance Delaborate (V.Binder V.Builtin) B.Binder where
   delabM binder = do
     typ <- delabM $ V.binderValue binder
     let modalities = delabRelevance binder

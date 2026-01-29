@@ -27,14 +27,14 @@ scopeModuleDecls ::
   (MonadCompile m, ScopableBuiltin builtin) =>
   ModulePath ->
   ImportedModuleContext builtin ->
-  [S.Decl] ->
+  [S.Decl builtin] ->
   m ([Decl builtin], ModuleScopingInterface builtin)
 scopeModuleDecls modulePath initialState decls = do
   logCompilerPass Scoping $ do
     runMonadScopeT modulePath initialState $ do
       concat <$> traverse scopeDecl decls
 
-scopeDecl :: (MonadScope builtin m, PrintableBuiltin builtin) => S.Decl -> m [Decl builtin]
+scopeDecl :: (MonadScope builtin m, PrintableBuiltin builtin) => S.Decl builtin -> m [Decl builtin]
 scopeDecl decl =
   logCompileDecl "scoping" decl $ do
     scopedDecls <- case decl of
@@ -62,12 +62,12 @@ scopeRecordDefinition ::
   forall m builtin.
   (MonadScopeExpr builtin m) =>
   Identifier ->
-  S.Telescope ->
-  S.RecordFields ->
+  S.Telescope builtin ->
+  S.RecordFields builtin ->
   m (Telescope builtin, RecordFields builtin)
 scopeRecordDefinition ident telescope fields = go [] telescope
   where
-    go :: Telescope builtin -> S.Telescope -> m (Telescope builtin, RecordFields builtin)
+    go :: Telescope builtin -> S.Telescope builtin -> m (Telescope builtin, RecordFields builtin)
     go revScopedTelescope = \case
       binder : binders -> do
         scopeBinder binder $ \binder' ->
@@ -83,15 +83,15 @@ scopeRecordDefinition ident telescope fields = go [] telescope
 
 scopeExpr ::
   (MonadScopeExpr builtin m) =>
-  S.Expr ->
+  S.Expr builtin ->
   m (Expr builtin)
 scopeExpr e = case e of
   S.Var p v -> scopeVar p v
   S.Universe p -> return $ Universe p (UniverseLevel 0)
   S.Hole p n -> return $ Hole p n
-  S.Builtin p op -> scopeBuiltin p (convertScopeBuiltin op) mempty
+  S.Builtin p op -> scopeBuiltin p op mempty
   S.App fun args -> case fun of
-    S.Builtin p op -> scopeBuiltin p (convertScopeBuiltin op) $ NonEmpty.toList args
+    S.Builtin p op -> scopeBuiltin p op $ NonEmpty.toList args
     _ -> App <$> scopeExpr fun <*> traverse (traverse scopeExpr) args
   S.Pi p binder res ->
     scopeBinder binder $ \binder' ->
@@ -118,7 +118,7 @@ scopeBuiltin ::
   (MonadScopeExpr builtin m) =>
   Provenance ->
   builtin ->
-  [S.Arg] ->
+  [S.Arg builtin] ->
   m (Expr builtin)
 scopeBuiltin p builtin args = do
   args' <- traverse (traverse scopeExpr) args
@@ -135,7 +135,7 @@ scopeBuiltin p builtin args = do
 
 scopeBinder ::
   (MonadScopeExpr builtin m) =>
-  S.Binder ->
+  S.Binder builtin ->
   (Binder builtin -> m a) ->
   m a
 scopeBinder binder update = do

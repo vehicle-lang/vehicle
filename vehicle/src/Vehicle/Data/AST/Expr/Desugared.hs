@@ -47,29 +47,23 @@ import Vehicle.Data.Builtin.Standard.Core (Builtin (..), TypeClassOp (..))
 -- Expressions
 
 -- | Type of Vehicle internal expressions.
---
--- Annotations are parameterised over so that they can
--- store arbitrary information used in e.g. type-checking.
---
--- Names are parameterised over so that they can store
--- either the user assigned names or deBruijn indices.
-data Expr
+data Expr builtin
   = -- | A universe, used to type types.
     Universe
       Provenance
   | -- | Application of one term to another. Doesn't have provenance as it has no syntax in the grammar.
     UnsafeApp
-      Expr -- Function.
-      (NonEmpty Arg) -- Arguments.
+      (Expr builtin) -- Function.
+      (NonEmpty (Arg builtin)) -- Arguments.
   | -- | Dependent product (subsumes both functions and universal quantification).
     Pi
       Provenance
-      Binder -- The bound name
-      Expr -- (Dependent) result type.
+      (Binder builtin) -- The bound name
+      (Expr builtin) -- (Dependent) result type.
   | -- | Terms consisting of constants that are built into the language.
     Builtin
       Provenance
-      Builtin -- Builtin name.
+      builtin -- Builtin name.
   | -- | Variables in the program.
     Var
       Provenance
@@ -86,25 +80,25 @@ data Expr
     -- operations concisely much easier.
     Let
       Provenance
-      Expr -- Bound expression body.
-      Binder -- Bound expression name.
-      Expr -- Expression body.
+      (Expr builtin) -- Bound expression body.
+      (Binder builtin) -- Bound expression name.
+      (Expr builtin) -- Expression body.
   | -- | Lambda expressions (i.e. anonymous functions).
     Lam
       Provenance
-      Binder -- Bound expression name.
-      Expr -- Expression body.
+      (Binder builtin) -- Bound expression name.
+      (Expr builtin) -- Expression body.
   | -- | Records
     Record
       Provenance
-      RecordFields
+      (RecordFields builtin)
   | -- | Record accessors.
     --
     -- NOTE: we could replace `RecordAcc` with `App Identifier Record`
     -- but difficult to elaborate back afterwards
     RecordAcc
       Provenance
-      Expr -- The record
+      (Expr builtin) -- The record
       FieldName -- The field to access
   deriving (Show, Generic)
 
@@ -113,35 +107,35 @@ data Expr
 
 type Type = Expr
 
-type Binder = GenericBinder Expr
+type Binder builtin = GenericBinder (Expr builtin)
 
-type Telescope = GenericTelescope Expr
+type Telescope builtin = GenericTelescope (Expr builtin)
 
-type Arg = GenericArg Expr
+type Arg builtin = GenericArg (Expr builtin)
 
-type RecordField = GenericRecordField Expr
+type RecordField builtin = GenericRecordField (Expr builtin)
 
-type RecordFields = GenericRecordFields Expr
+type RecordFields builtin = GenericRecordFields (Expr builtin)
 
-type Decl = GenericDecl Expr
+type Decl builtin = GenericDecl (Expr builtin)
 
-type Module = GenericModule Expr
+type Module builtin = GenericModule (Expr builtin)
 
 --------------------------------------------------------------------------------
 -- Safe applications
 
 -- | Smart constructor for applications with possibly no arguments.
-normAppList :: Expr -> [Arg] -> Expr
+normAppList :: Expr builtin -> [Arg builtin] -> Expr builtin
 normAppList f [] = f
 normAppList f (x : xs) = App f (x :| xs)
 
 -- | Smart constructor for applications.
-normApp :: Expr -> NonEmpty Arg -> Expr
+normApp :: Expr builtin -> NonEmpty (Arg builtin) -> Expr builtin
 normApp (UnsafeApp f xs) ys = UnsafeApp f (xs <> ys)
 normApp f xs = UnsafeApp f xs
 
 -- | Safe pattern synonym for applications.
-pattern App :: Expr -> NonEmpty Arg -> Expr
+pattern App :: Expr builtin -> NonEmpty (Arg builtin) -> Expr builtin
 pattern App f xs <- UnsafeApp f xs
   where
     App f xs = normApp f xs
@@ -151,7 +145,7 @@ pattern App f xs <- UnsafeApp f xs
 --------------------------------------------------------------------------------
 -- Instances
 
-instance HasProvenance Expr where
+instance HasProvenance (Expr builtin) where
   provenanceOf = \case
     Universe p -> p
     Hole p _ -> p
@@ -164,7 +158,7 @@ instance HasProvenance Expr where
     Record p _ -> p
     RecordAcc p _ _ -> p
 
-instance HasBasicBinders Expr where
+instance HasBasicBinders (Expr builtin) where
   getPiBinder = \case
     Pi _ binder body -> Just (binder, body)
     _ -> Nothing
@@ -177,7 +171,7 @@ instance HasBasicBinders Expr where
     Let _ value binder body -> Just (value, binder, body)
     _ -> Nothing
 
-instance HasBuiltinBinders Expr where
+instance HasBuiltinBinders (Expr Builtin) where
   getQuantifierBinder q = \case
     App (Builtin _ (TypeClassOp (QuantifierTC q'))) ((argExpr -> Lam _ binder body) :| []) | q == q' -> Just (binder, body)
     _ -> Nothing
@@ -189,12 +183,12 @@ instance HasBuiltinBinders Expr where
 --------------------------------------------------------------------------------
 -- Utilities
 
-mkHole :: Provenance -> Name -> Expr
+mkHole :: Provenance -> Name -> Expr builtin
 mkHole p name = Hole p ("_" <> name)
 
 -- | Tests if a definition's type indicates that the definition is a type
 -- synonym.
-isTypeSynonym :: Type -> Bool
+isTypeSynonym :: Type builtin -> Bool
 isTypeSynonym = \case
   Universe {} -> True
   Pi _ _ res -> isTypeSynonym res
