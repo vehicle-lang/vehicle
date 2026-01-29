@@ -76,7 +76,7 @@ instance NoThunks DefRecordSort
 instance NoThunks FunctionDeclAnnotation
 
 -- Vehicle.Data.AST.Expr.Desugared
-instance NoThunks Expr
+instance NoThunks builtin => NoThunks (Expr builtin)
 
 -- Vehicle.Data.AST.Name
 instance NoThunks ModulePath
