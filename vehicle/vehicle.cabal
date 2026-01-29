@@ -126,12 +126,12 @@ library
   exposed-modules:
     Vehicle
     Vehicle.Backend.Agda
+    Vehicle.Backend.Isabelle
     Vehicle.Backend.Loss.JSON
     Vehicle.Backend.Loss.LogicCompilation
     Vehicle.Backend.Loss.LossCompilation
     Vehicle.Backend.Prelude
     Vehicle.Backend.Rocq
-    Vehicle.Backend.Isabelle
     Vehicle.Backend.Solver.UserVariableElimination.Error
     Vehicle.CommandLine
     Vehicle.Compile
@@ -194,13 +194,13 @@ library
     Vehicle.Backend.Agda.CapitaliseTypeNames
     Vehicle.Backend.Agda.Compile
     Vehicle.Backend.Agda.Interact
+    Vehicle.Backend.Isabelle.Compile
+    Vehicle.Backend.Isabelle.Interact
     Vehicle.Backend.Loss
     Vehicle.Backend.Loss.Core
     Vehicle.Backend.Loss.Domain
     Vehicle.Backend.Rocq.Compile
     Vehicle.Backend.Rocq.Interact
-    Vehicle.Backend.Isabelle.Compile
-    Vehicle.Backend.Isabelle.Interact
     Vehicle.Backend.Solver
     Vehicle.Backend.Solver.QueryCompilation
     Vehicle.Backend.Solver.QueryCompilation.Core
@@ -270,6 +270,7 @@ library
     Vehicle.Data.Builtin.Standard.IndexSolver
     Vehicle.Data.Builtin.Standard.Instances
     Vehicle.Data.Builtin.Standard.Normalise
+    Vehicle.Data.Builtin.Standard.Scoping
     Vehicle.Data.Builtin.Standard.Type
     Vehicle.Data.Code.Interface.Args
     Vehicle.Data.Code.Interface.Operations

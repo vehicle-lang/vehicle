@@ -19,12 +19,12 @@ import Vehicle.Syntax.AST.Expr qualified as S
 
 type GeneralisableVariable = (Provenance, Name)
 
-generaliseType :: (MonadScopeExpr m) => S.Expr -> m S.Expr
+generaliseType :: (MonadScopeExpr builtin m) => S.Expr -> m S.Expr
 generaliseType expr = do
   candidates <- execWriterT (findGeneralisableVariables expr)
   generaliseOverVariables (reverse candidates) expr
 
-findGeneralisableVariables :: (MonadScopeExpr m, MonadWriter [GeneralisableVariable] m) => S.Expr -> m ()
+findGeneralisableVariables :: (MonadScopeExpr builtin m, MonadWriter [GeneralisableVariable] m) => S.Expr -> m ()
 findGeneralisableVariables = \case
   S.Var p v -> registerVar p v
   S.Universe {} -> return ()
@@ -45,12 +45,12 @@ findGeneralisableVariables = \case
   S.RecordAcc _ record _field -> do
     findGeneralisableVariables record
 
-findGeneralisableVariablesBinder :: (MonadScopeExpr m, MonadWriter [GeneralisableVariable] m) => S.Binder -> m () -> m ()
+findGeneralisableVariablesBinder :: (MonadScopeExpr builtin m, MonadWriter [GeneralisableVariable] m) => S.Binder -> m () -> m ()
 findGeneralisableVariablesBinder binder update = do
   traverse_ findGeneralisableVariables binder
   addBinder binder update
 
-registerVar :: (MonadScopeExpr m, MonadWriter [GeneralisableVariable] m) => Provenance -> Name -> m ()
+registerVar :: (MonadScopeExpr builtin m, MonadWriter [GeneralisableVariable] m) => Provenance -> Name -> m ()
 registerVar p symbol = do
   maybeVar <- lookupMaybeVariable symbol
   when (isNothing maybeVar) $ tell [(p, symbol)]

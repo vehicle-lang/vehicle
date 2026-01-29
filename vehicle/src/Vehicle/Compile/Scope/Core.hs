@@ -1,5 +1,6 @@
 module Vehicle.Compile.Scope.Core
-  ( MonadScope,
+  ( ScopableBuiltin (..),
+    MonadScope,
     ModuleInterface,
     runMonadScopeT,
     addNewDecl,
@@ -31,34 +32,45 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Data.Builtin.Standard.Core
+import Vehicle.Data.Builtin.Interface.Print (PrintableBuiltin)
 import Vehicle.Data.Code.ModuleInterface
 import Vehicle.Libraries.StandardLibrary (isBuiltinModule)
+import Vehicle.Syntax.Builtin
+
+--------------------------------------------------------------------------------
+-- Builtin interface
+
+class (PrintableBuiltin builtin, Ord builtin) => ScopableBuiltin builtin where
+  generateAuxiliaryRecordDefinitions ::
+    (MonadCompile m) => Provenance -> Identifier -> Maybe DefRecordSort -> Telescope builtin -> RecordFields builtin -> m [Decl builtin]
+
+  convertScopeBuiltin :: Builtin -> builtin
 
 --------------------------------------------------------------------------------
 -- Scope checking over declarations
 
-type MonadScope m =
+type MonadScope builtin m =
   ( MonadCompile m,
-    MonadReader (ModulePath, ImportedModuleContext Builtin) m,
-    MonadState ModuleScopingInterface m
+    ScopableBuiltin builtin,
+    MonadReader (ModulePath, ImportedModuleContext builtin) m,
+    MonadState (ModuleScopingInterface builtin) m
   )
 
 runMonadScopeT ::
   (MonadCompile m) =>
   ModulePath ->
-  ImportedModuleContext Builtin ->
-  ReaderT (ModulePath, ImportedModuleContext Builtin) (StateT ModuleScopingInterface m) a ->
-  m (a, ModuleScopingInterface)
+  ImportedModuleContext builtin ->
+  ReaderT (ModulePath, ImportedModuleContext builtin) (StateT (ModuleScopingInterface builtin) m) a ->
+  m (a, ModuleScopingInterface builtin)
 runMonadScopeT modulePath importedCtx action = do
   runStateT (runReaderT action (modulePath, importedCtx)) emptyModuleScopingInterface
 
 -- | Called when parsing a record definition field-by-field so that
 -- earlier fields are in scope for later fields.
 addNewRecordDefField ::
-  (MonadState ModuleScopingInterface m, MonadCompile m) =>
+  (MonadState (ModuleScopingInterface builtin) m, MonadCompile m) =>
   Identifier ->
-  Telescope Builtin ->
+  Telescope builtin ->
   FieldName ->
   m ()
 addNewRecordDefField ident telescope newField = do
@@ -78,10 +90,10 @@ addNewRecordDefField ident telescope newField = do
 -- the information necessary to do efficient parsing of instances of that
 -- record.
 addNewRecordDef ::
-  (MonadState ModuleScopingInterface m) =>
+  (MonadState (ModuleScopingInterface builtin) m) =>
   Identifier ->
-  Telescope Builtin ->
-  RecordFields Builtin ->
+  Telescope builtin ->
+  RecordFields builtin ->
   m ()
 addNewRecordDef ident telescope fields = do
   ModuleScopingInterface {..} <- get
@@ -93,7 +105,7 @@ addNewRecordDef ident telescope fields = do
         ..
       }
 
-addNewDecl :: (MonadScope m) => Decl builtin -> m ()
+addNewDecl :: (MonadScope builtin m) => Decl builtin -> m ()
 addNewDecl decl = do
   ModuleScopingInterface {..} <- get
   let ident = identifierOf decl
@@ -112,30 +124,31 @@ addNewDecl decl = do
 --------------------------------------------------------------------------------
 -- Scope checking over expressions
 
-data LocalCtx = LocalCtx
+data LocalCtx builtin = LocalCtx
   { currentModulePath :: ModulePath,
-    importedCtx :: ImportedModuleContext Builtin,
-    currentModuleCtx :: ModuleScopingInterface,
+    importedCtx :: ImportedModuleContext builtin,
+    currentModuleCtx :: ModuleScopingInterface builtin,
     boundCtx :: [Maybe Name]
   }
 
-type MonadScopeExpr m =
+type MonadScopeExpr builtin m =
   ( MonadCompile m,
-    MonadState ModuleScopingInterface m,
-    MonadReader LocalCtx m
+    ScopableBuiltin builtin,
+    MonadState (ModuleScopingInterface builtin) m,
+    MonadReader (LocalCtx builtin) m
   )
 
-lookupInNonLocalCtx :: (MonadScopeExpr m) => (ModuleScopingInterface -> Maybe a) -> m (Maybe a)
+lookupInNonLocalCtx :: (MonadScopeExpr builtin m) => (ModuleScopingInterface builtin -> Maybe a) -> m (Maybe a)
 lookupInNonLocalCtx lookupValue = do
   LocalCtx {..} <- ask
   return $ lookupInCombinedContext scopingInterface lookupValue currentModuleCtx importedCtx
 
-concatInNonLocalCtx :: (MonadScopeExpr m, Monoid a) => (ModuleScopingInterface -> a) -> m a
+concatInNonLocalCtx :: (MonadScopeExpr builtin m, Monoid a) => (ModuleScopingInterface builtin -> a) -> m a
 concatInNonLocalCtx lookupValue = do
   LocalCtx {..} <- ask
   return $ concatInCombinedContext scopingInterface lookupValue currentModuleCtx importedCtx
 
-runMonadScopeExprT :: (MonadScope m) => ReaderT LocalCtx m a -> m a
+runMonadScopeExprT :: (MonadScope builtin m) => ReaderT (LocalCtx builtin) m a -> m a
 runMonadScopeExprT action = do
   (modulePath, importedCtx) <- ask
   currentCtx <- get
@@ -147,7 +160,7 @@ runMonadScopeExprT action = do
         boundCtx = mempty
       }
 
-addBinder :: (MonadScopeExpr m) => GenericBinder expr -> m a -> m a
+addBinder :: (MonadScopeExpr builtin m) => GenericBinder expr -> m a -> m a
 addBinder binder continuation = do
   case getMaybeNamedBinderInfo binder of
     Nothing -> return ()
@@ -167,7 +180,7 @@ addBinder binder continuation = do
         ..
       }
 
-lookupVariable :: (MonadScopeExpr m) => Provenance -> Name -> m (Either Identifier Ix)
+lookupVariable :: (MonadScopeExpr builtin m) => Provenance -> Name -> m (Either Identifier Ix)
 lookupVariable p name = do
   maybeResult <- lookupMaybeVariable name
   case maybeResult of
@@ -178,7 +191,7 @@ lookupVariable p name = do
       let closestMatches = mispellingsSortedByLikelihood name (localNames <> nonLocalNames)
       throwError $ UnboundName p name closestMatches
 
-lookupMaybeVariable :: (MonadScopeExpr m) => Name -> m (Maybe (Either Identifier Ix))
+lookupMaybeVariable :: (MonadScopeExpr builtin m) => Name -> m (Maybe (Either Identifier Ix))
 lookupMaybeVariable name = do
   maybeFreeVar <- lookupFreeVariable name
   case maybeFreeVar of
@@ -189,17 +202,17 @@ lookupMaybeVariable name = do
         Just ix -> return $ Just $ Right ix
         Nothing -> return Nothing
 
-lookupFreeVariable :: (MonadScopeExpr m) => Name -> m (Maybe Identifier)
+lookupFreeVariable :: (MonadScopeExpr builtin m) => Name -> m (Maybe Identifier)
 lookupFreeVariable name = do
   LocalCtx {..} <- ask
   return $ lookupInCombinedContext scopingInterface (Map.lookup name . declsIdentifiersByName) currentModuleCtx importedCtx
 
-lookupBoundVariable :: (MonadScopeExpr m) => Name -> m (Maybe Ix)
+lookupBoundVariable :: (MonadScopeExpr builtin m) => Name -> m (Maybe Ix)
 lookupBoundVariable name = do
   boundCtx <- asks boundCtx
   return (Ix <$> elemIndex (Just name) boundCtx)
 
-lookupRecordDefinitionByField :: (MonadScopeExpr m) => FieldName -> m (Identifier, Telescope Builtin)
+lookupRecordDefinitionByField :: (MonadScopeExpr builtin m) => FieldName -> m (Identifier, Telescope builtin)
 lookupRecordDefinitionByField field = do
   maybeResult <- lookupInNonLocalCtx (Map.lookup field . recordIdentifiersByField)
   case maybeResult of
@@ -211,10 +224,10 @@ lookupRecordDefinitionByField field = do
       throwError $ UnboundRecordAccessor (provenanceOf field) fieldName suggestions
 
 lookupRecordDefinitionByFields ::
-  (MonadScopeExpr m) =>
+  (MonadScopeExpr builtin m) =>
   Provenance ->
   [FieldName] ->
-  m (Identifier, Telescope Builtin)
+  m (Identifier, Telescope builtin)
 lookupRecordDefinitionByFields p fields = do
   let fieldSet = Set.fromList fields
   maybeResult <- lookupInNonLocalCtx (Map.lookup fieldSet . recordIdentifiersByFields)
@@ -225,7 +238,7 @@ lookupRecordDefinitionByFields p fields = do
       let bestMatch = findBestRecordMatch fields allFieldsByIdentifier
       throwError $ UnmatchedRecord p fields bestMatch
 
-isScopingBuiltinModule :: (MonadScopeExpr m) => m Bool
+isScopingBuiltinModule :: (MonadScopeExpr builtin m) => m Bool
 isScopingBuiltinModule = asks $ isBuiltinModule . currentModulePath
 
 --------------------------------------------------------------------------------
