@@ -195,10 +195,18 @@ Literal.   Expr15 ::= Lit;
 Hole.      Expr15 ::= HoleToken;
 
 -- Quantification
+Foreach.   Expr2 ::= TokForeach [NameBinder] "." Expr2;
 Forall.    Expr2 ::= TokForall [NameBinder] "." Expr2;
 Exists.    Expr2 ::= TokExists [NameBinder] "." Expr2;
 ForallIn.  Expr2 ::= TokForall NameBinder "in" Expr3 "." Expr2;
 ExistsIn.  Expr2 ::= TokExists NameBinder "in" Expr3 "." Expr2;
+
+-- Numeric expressions.
+Add. Expr9  ::= Expr9  TokAdd Expr10;
+Sub. Expr9  ::= Expr9  TokSub Expr10;
+Mul. Expr10 ::= Expr10 TokMul Expr11;
+Div. Expr10 ::= Expr10 TokDiv Expr11;
+Neg. Expr11 ::= TokSub Expr11;
 
 -- Boolean expressions.
 If.      Expr4  ::= TokIf Expr5 TokThen Expr5 TokElse Expr5;
@@ -219,71 +227,55 @@ LtPoint. Expr8  ::= Expr8 TokLtPoint Expr9;
 GePoint. Expr8  ::= Expr8 TokGePoint Expr9;
 GtPoint. Expr8  ::= Expr8 TokGtPoint Expr9;
 
--- Numeric expressions.
-Add.              Expr9  ::= Expr9  TokAdd Expr10;
-Sub.              Expr9  ::= Expr9  TokSub Expr10;
-Mul.              Expr10 ::= Expr10 TokMul Expr11;
-Div.              Expr10 ::= Expr10 TokDiv Expr11;
-Neg.              Expr11 ::= TokSub Expr11;
-Min.              Expr15 ::= TokMin;
-Max.              Expr15 ::= TokMax;
-AddNat.           Expr15 ::= TokAddNat;
-MulNat.           Expr15 ::= TokMulNat;
-AddRealTensor.    Expr15 ::= TokAddRealTensor;
-SubRealTensor.    Expr15 ::= TokSubRealTensor;
-MulRealTensor.    Expr15 ::= TokMulRealTensor;
-DivRealTensor.    Expr15 ::= TokDivRealTensor;
-
--- Lists and vectors.
-Foreach.    Expr2  ::= TokForeach [NameBinder] "." Expr2;
+-- Container syntax.
 VecLiteral. Expr15 ::= TokSeqOpen [Expr] TokSeqClose;
-Nil.        Expr15 ::= TokNil;
 Cons.       Expr4  ::= Expr5 TokCons Expr4;
 At.         Expr12 ::= Expr12 TokAt Expr13;
-Const.      Expr15 ::= TokConst;
-Map.        Expr15 ::= TokMap;
-Fold.       Expr15 ::= TokFold;
 
--- Tensors
-ReduceOr.   Expr15 ::= TokReduceOr;
-ReduceAnd.  Expr15 ::= TokReduceAnd;
-ReduceAdd.  Expr15 ::= TokReduceAdd;
-ReduceMul.  Expr15 ::= TokReduceMul;
-ReduceMin.  Expr15 ::= TokReduceMin;
-ReduceMax.  Expr15 ::= TokReduceMax;
-
--- Primitive types.
-Unit.    Expr15 ::= TokUnit;
-Bool.    Expr15 ::= TokBool;
-Index.   Expr15 ::= TokIndex;
-Nat.     Expr15 ::= TokNat;
-Real.    Expr15 ::= TokReal;
-List.    Expr15 ::= TokList;
-Vector.  Expr15 ::= TokVector;
-Tensor.  Expr15 ::= TokTensor;
-NonCastingTensor. Expr15 ::= TokNonCastingTensor;
-
--- Type classes.
-HasEq.    Expr15 ::= TokHasEq;
-HasNotEq. Expr15 ::= TokHasNotEq;
-HasLeq.   Expr15 ::= TokHasLeq;
-HasMap.   Expr15 ::= TokHasMap;
-HasFold.  Expr15 ::= TokHasFold;
-
+-- Hard-coded builtins remove
+Min.           Expr15 ::= TokMin;
+Max.           Expr15 ::= TokMax;
+AddNat.        Expr15 ::= TokAddNat;
+MulNat.        Expr15 ::= TokMulNat;
+AddRealTensor. Expr15 ::= TokAddRealTensor;
+SubRealTensor. Expr15 ::= TokSubRealTensor;
+MulRealTensor. Expr15 ::= TokMulRealTensor;
+DivRealTensor. Expr15 ::= TokDivRealTensor;
+Nil.           Expr15 ::= TokNil;
+Const.         Expr15 ::= TokConst;
+Map.           Expr15 ::= TokMap;
+Fold.          Expr15 ::= TokFold;
+ReduceOr.      Expr15 ::= TokReduceOr;
+ReduceAnd.     Expr15 ::= TokReduceAnd;
+ReduceAdd.     Expr15 ::= TokReduceAdd;
+ReduceMul.     Expr15 ::= TokReduceMul;
+ReduceMin.     Expr15 ::= TokReduceMin;
+ReduceMax.     Expr15 ::= TokReduceMax;
+Unit.          Expr15 ::= TokUnit;
+Bool.          Expr15 ::= TokBool;
+Index.         Expr15 ::= TokIndex;
+Nat.           Expr15 ::= TokNat;
+Real.          Expr15 ::= TokReal;
+List.          Expr15 ::= TokList;
+Vector.        Expr15 ::= TokVector;
+Tensor.        Expr15 ::= TokTensor;
+HasEq.         Expr15 ::= TokHasEq;
+HasNotEq.      Expr15 ::= TokHasNotEq;
+HasLeq.        Expr15 ::= TokHasLeq;
+HasMap.        Expr15 ::= TokHasMap;
+HasFold.       Expr15 ::= TokHasFold;
 IsTensorType.  Expr15 ::= TokIsTensorType;
+NonCastingTensor. Expr15 ::= TokNonCastingTensor;
 
 coercions Expr 15;
 separator Expr ",";
 
 -- * Annotation options
 
--- The LHS of an annotation is an `Expr` rather than a `Name` so we can capture
--- the builtin names `Bool` etc. which aren't captured by the `Name` class because
--- they necessarily have priority over it.
-NameAnnOption.  DeclAnnOption ::= TokAnnNameOpt "=" Name;
-InferAnnOption. DeclAnnOption ::= TokAnnInferOpt "=" Expr;
+NameAnnOption.    DeclAnnOption ::= TokAnnNameOpt "=" Name;
+InferAnnOption.   DeclAnnOption ::= TokAnnInferOpt "=" Boolean;
 DefaultAnnOption. DeclAnnOption ::= TokAnnDefaultOpt "=" Natural;
-TypeAnnOption.  DeclAnnOption ::= Name "=" Expr;
+TypeAnnOption.    DeclAnnOption ::= Name "=" Expr;
 
 separator DeclAnnOption ",";
 

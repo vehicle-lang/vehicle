@@ -7,12 +7,12 @@ import Data.List.NonEmpty
 import Data.Serialize (Serialize)
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import Vehicle.Data.Builtin.Core
+import Vehicle.Data.AST.Expr.Scoped
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Interface.Blocked (BlockingStatus (..), functionBlockingStatus)
 import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Interface.Print
-import Vehicle.Data.Code.Expr
+import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.DSL
 import Vehicle.Prelude
 

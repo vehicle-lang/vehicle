@@ -45,8 +45,8 @@ import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import GHC.Generics
+import Vehicle.Data.AST.Expr.Scoped (Expr)
 import Vehicle.Data.Builtin.Interface
-import Vehicle.Data.Code.Expr (Expr)
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Universe (UniverseLevel)
 import Vehicle.Data.Variable.Bound.Context.Core

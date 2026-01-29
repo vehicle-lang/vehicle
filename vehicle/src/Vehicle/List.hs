@@ -17,14 +17,13 @@ import Vehicle.Compile.Prelude hiding (Dataset, Network, Parameter, name)
 import Vehicle.Compile.Print
 import Vehicle.Compile.Print.Error (prettyCompileError)
 import Vehicle.Compile.Property (traverseMultiProperty)
-import Vehicle.Data.Builtin.Core (Quantifier)
 import Vehicle.Data.Builtin.Interface (Accessor (..))
+import Vehicle.Data.Builtin.Standard (Builtin (..), Quantifier)
 import Vehicle.Data.Code.Interface (QuantifyRatTensorArgs (..), accessQuantifyRatTensor)
 import Vehicle.Data.Code.Value (Closure, Spine, VDecl, VType, Value (..))
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext, addDeclEntryToContext, runFreshFreeContextT)
 import Vehicle.Prelude.Logging.Instance
-import Vehicle.Syntax.Builtin (Builtin (..))
 import Vehicle.TypeCheck (TypeCheckOptions (..), runCompileMonad, typeCheckUserProg)
 import Vehicle.Verify.Core (PropertyAddress, PropertyID)
 import Vehicle.Verify.Specification (MultiProperty)

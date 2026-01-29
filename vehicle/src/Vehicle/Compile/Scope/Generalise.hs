@@ -12,7 +12,7 @@ import Data.Set qualified as Set
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Scope.Core
-import Vehicle.Syntax.AST.Expr qualified as S
+import Vehicle.Data.AST.Expr.Desugared qualified as S
 
 --------------------------------------------------------------------------------
 -- Expr generalisation

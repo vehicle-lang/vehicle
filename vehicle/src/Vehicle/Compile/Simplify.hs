@@ -6,12 +6,12 @@ where
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty (filter, reverse, toList)
 import Data.Text qualified as Text
-import Vehicle.Data.Builtin.Core
-import Vehicle.Syntax.AST.Arg
-import Vehicle.Syntax.AST.Expr
-import Vehicle.Syntax.AST.Record (mapRecordFields)
-import Vehicle.Syntax.AST.Relevance (Relevance (..), setRelevance)
-import Vehicle.Syntax.AST.Visibility (Visibility (..), visibilityOf)
+import Vehicle.Data.AST.Arg
+import Vehicle.Data.AST.Expr.Desugared
+import Vehicle.Data.AST.Record (mapRecordFields)
+import Vehicle.Data.AST.Relevance (Relevance (..), setRelevance)
+import Vehicle.Data.AST.Visibility (Visibility (..), visibilityOf)
+import Vehicle.Data.Builtin.Standard.Core
 
 -- | Note that these operations can be seen as undoing parts of the type-checking,
 -- and therefore the resulting code is not guaranteed to be well-typed.

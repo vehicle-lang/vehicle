@@ -21,10 +21,12 @@ import Vehicle.Compile.Normalise.NBE (findInstanceArg)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyExternal)
 import Vehicle.Compile.Print.Error (errorInSubsystemMessage)
+import Vehicle.Compile.Sugar.Desugar (elabModule)
 import Vehicle.Compile.Type (typeCheckModuleDecls)
 import Vehicle.Compile.Type.Core (InstanceDatabase, emptyInstanceDatabase)
 import Vehicle.Compile.Type.Irrelevance
 import Vehicle.Compile.Type.System
+import Vehicle.Data.AST.Expr.Desugared qualified as S
 import Vehicle.Data.Builtin.Decidability (DecidabilityBuiltin (..))
 import Vehicle.Data.Builtin.Decidability.Instances (decidabilityBuiltinInstances)
 import Vehicle.Data.Builtin.Decidability.Type ()
@@ -38,8 +40,7 @@ import Vehicle.Data.Builtin.Polarity.Type ()
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.ModuleInterface (ImportedModuleContext, ModuleInterface (..), emptyModuleScopingInterface, emptyModuleTypingInterface)
 import Vehicle.Libraries.StandardLibrary (standardLibraryBuiltinModulePath, standardLibraryInstanceOps)
-import Vehicle.Syntax.AST.Expr qualified as S
-import Vehicle.Syntax.Parse (ParseLocation, readAndParseModule)
+import Vehicle.Syntax.Parse (parseExternalModule)
 
 polarityTypeCheck ::
   (MonadIO m, MonadCompile m) =>
@@ -236,3 +237,11 @@ parseModuleText location txt = do
   case runExcept (readAndParseModule location txt) of
     Left err -> throwError $ ParseError location err
     Right modul -> return modul
+
+readAndParseModule :: (MonadError ParseError m) => ParseLocation -> Text -> m S.Module
+readAndParseModule modul txt = castBNFCError (elabModule modul) (parseExternalModule txt)
+
+castBNFCError :: (MonadError ParseError m) => (a -> m b) -> Either String a -> m b
+castBNFCError f = \case
+  Left err -> throwError $ RawParseError err
+  Right value -> f value

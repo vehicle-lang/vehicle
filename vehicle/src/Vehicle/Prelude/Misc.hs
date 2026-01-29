@@ -1,10 +1,17 @@
+{-# LANGUAGE CPP #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
+
 module Vehicle.Prelude.Misc where
+
+#if MIN_VERSION_base(4,19,0)
+import qualified Data.Functor as F
+#endif
 
 import Control.DeepSeq (NFData)
 import Control.Monad (join, liftM2, when)
 import Control.Monad.Identity (Identity (..))
 import Control.Monad.Reader (MonadReader (..))
-import Control.Monad.State.Class (MonadState (..), modify)
+import Control.Monad.State.Class as State (MonadState (..), modify)
 import Data.Aeson (FromJSON, Options (..), ToJSON (..), defaultOptions)
 import Data.Aeson.Encode.Pretty (Config (..), Indent (..), NumberFormat (..), encodePretty')
 import Data.Bifunctor (Bifunctor (..))
@@ -14,10 +21,11 @@ import Data.Graph (Edge, Vertex, buildG, topSort)
 import Data.Hashable (Hashable)
 import Data.List (sortOn)
 import Data.List.NonEmpty (NonEmpty (..))
-import Data.List.NonEmpty qualified as NonEmpty (toList)
+import Data.List.NonEmpty qualified as NonEmpty (nonEmpty, toList)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (listToMaybe, mapMaybe)
+import Data.Serialize as Serialize (Get, Putter, Serialize (..), getListOf, putListOf)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -27,9 +35,9 @@ import GHC.Generics (Generic)
 import Numeric (readFloat, readSigned)
 import System.Console.ANSI
 import Text.EditDistance (defaultEditCosts, levenshteinDistance)
+import Vehicle.Data.AST.Name (HasName, Name, nameOf)
+import Vehicle.Prelude.Error (developerError)
 import Vehicle.Prelude.Prettyprinter (Doc, Pretty (pretty))
-import Vehicle.Syntax.AST.Name (HasName, Name, nameOf)
-import Vehicle.Syntax.Prelude (developerError, unzipF)
 
 data VehicleLang = External | Internal
   deriving (Show)
@@ -308,17 +316,32 @@ theseErrors f v1 v2 = case (v1, v2) of
 
 localState :: (MonadState s m) => (s -> s) -> m a -> m a
 localState f action = do
-  originalState <- get
+  originalState <- State.get
   modify f
   result <- action
-  put originalState
+  State.put originalState
   return result
+
+unzipF :: (Functor f) => f (a, b) -> (f a, f b)
+#if MIN_VERSION_base(4,19,0)
+unzipF = F.unzip
+#else
+unzipF = NonEmpty.unzip
+#endif
 
 --------------------------------------------------------------------------------
 -- Constants
 
 -- At the moment we only support rational coefficients.
 type Coefficient = Rational
+
+readNat :: Text -> Int
+readNat = read . Text.unpack
+
+readRat :: Text -> Prelude.Rational
+readRat str = case readFloat (Text.unpack str) of
+  ((n, []) : _) -> n
+  _ -> developerError "Invalid number"
 
 --------------------------------------------------------------------------------
 -- Spelling
@@ -336,3 +359,20 @@ isMispellingOf symbol possibility = do
   if distance <= length fieldName `div` 2
     then Just (possibility, distance)
     else Nothing
+
+--------------------------------------------------------------------------------
+-- Serialization instances missing from Cereal
+
+instance (Serialize a) => Serialize (NonEmpty a) where
+  put = putNonEmptyListOf Serialize.put
+  get = getNonEmptyListOf Serialize.get
+
+getNonEmptyListOf :: Get a -> Get (NonEmpty a)
+getNonEmptyListOf m = do
+  xs <- Serialize.getListOf m
+  case NonEmpty.nonEmpty xs of
+    Nothing -> fail "getNonEmptyListOf: empty list"
+    Just neList -> pure neList
+
+putNonEmptyListOf :: Putter a -> Putter (NonEmpty a)
+putNonEmptyListOf pa = Serialize.putListOf pa . NonEmpty.toList

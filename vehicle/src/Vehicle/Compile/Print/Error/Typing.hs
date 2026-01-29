@@ -16,13 +16,13 @@ import Vehicle.Compile.Normalise.Quote (Quote (..), unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Core
+import Vehicle.Data.Builtin.Core (BuiltinType (..))
 import Vehicle.Data.Builtin.Interface.Normalise (NormalisableBuiltin)
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Code.Value
 import Vehicle.Data.DSL
 import Vehicle.Data.Variable.Bound.Context.Generic
 import Vehicle.Prelude.Logging (SilentLoggerT, runSilentLoggerT)
-import Vehicle.Syntax.Builtin (BuiltinType (..))
 import Prelude hiding (pi)
 
 typingErrorDetails ::

@@ -33,9 +33,9 @@ import Data.Set qualified as Set
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Interface.Print (PrintableBuiltin)
+import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.ModuleInterface
 import Vehicle.Libraries.StandardLibrary (isBuiltinModule)
-import Vehicle.Syntax.Builtin
 
 --------------------------------------------------------------------------------
 -- Builtin interface
@@ -45,6 +45,33 @@ class (PrintableBuiltin builtin, Ord builtin) => ScopableBuiltin builtin where
     (MonadCompile m) => Provenance -> Identifier -> Maybe DefRecordSort -> Telescope builtin -> RecordFields builtin -> m [Decl builtin]
 
   convertScopeBuiltin :: Builtin -> builtin
+
+{-
+  foreachBuiltin :: Expr builtin
+  forallBuiltin :: Expr builtin
+  existsBuiltin :: Expr builtin
+  forallInBuiltin :: Expr builtin
+  existsInBuiltin :: Expr builtin
+
+  addBuiltin :: Expr builtin
+  subBuiltin :: Expr builtin
+  mulBuiltin :: Expr builtin
+  divBuiltin :: Expr builtin
+  negBuiltin :: Expr builtin
+
+  ifBuiltin :: Expr builtin
+  implBuiltin :: Expr builtin
+  andBuiltin :: Expr builtin
+  orBuiltin :: Expr builtin
+  notBuiltin :: Expr builtin
+  neBuiltin :: Expr builtin
+  compBuiltin :: ComparisonOp -> Expr builtin
+  compPointBuiltin :: ComparisonOp -> Expr builtin
+
+  vecLitBuiltin :: Expr builtin
+  consBuiltin :: Expr builtin
+  atBuiltin :: Expr builtin
+  -}
 
 --------------------------------------------------------------------------------
 -- Scope checking over declarations

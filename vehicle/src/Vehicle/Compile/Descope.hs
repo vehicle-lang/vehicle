@@ -11,6 +11,7 @@ where
 
 import Data.Map.Ordered qualified as OMap
 import Vehicle.Compile.Prelude
+import Vehicle.Data.AST.Expr.Desugared qualified as S
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Standard.Core (Builtin)
 import Vehicle.Data.Code.Value
@@ -18,7 +19,6 @@ import Vehicle.Data.Universe (UniverseLevel)
 import Vehicle.Data.Variable.Bound.Context.Name.Class
 import Vehicle.Data.Variable.Bound.Context.Name.Core
 import Vehicle.Data.Variable.Bound.Context.Name.Instance
-import Vehicle.Syntax.AST.Expr qualified as S
 
 --------------------------------------------------------------------------------
 -- Interface

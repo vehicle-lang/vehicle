@@ -1,8 +1,8 @@
 module Vehicle.Compile.Normalise.Quote where
 
 import Data.Map.Ordered qualified as OMap
+import Vehicle.Data.AST.Expr.Scoped (Expr (..), Substitution, normAppList, substituteDB)
 import Vehicle.Data.Builtin.Interface.Print
-import Vehicle.Data.Code.Expr (Expr (..), Substitution, normAppList, substituteDB)
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Variable.Bound.Context.Name.Class (MonadReadableNameContext, getBinderDepth)
 import Vehicle.Data.Variable.Bound.Level (Lv, dbLevelToIndex)

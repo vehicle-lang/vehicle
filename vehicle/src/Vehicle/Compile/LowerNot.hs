@@ -7,14 +7,13 @@ where
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
-import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Interface (Accessor (..))
-import Vehicle.Data.Builtin.Standard ()
+import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
+import Vehicle.Data.Tensor (mapTensor)
 import Vehicle.Data.Variable.Bound.Context.Name
-import Vehicle.Syntax.Tensor (mapTensor)
 
 --------------------------------------------------------------------------------
 -- Not elimination

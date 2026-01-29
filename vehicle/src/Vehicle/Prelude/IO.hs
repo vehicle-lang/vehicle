@@ -27,7 +27,6 @@ import Control.Monad.Trans.Class (MonadTrans (lift))
 import Control.Monad.Writer (WriterT)
 import Data.Text (Text)
 import Data.Version (Version)
-import Prettyprinter (Doc)
 import System.Directory (createDirectoryIfMissing, removeFile)
 import System.Environment (getEnvironment, lookupEnv)
 import System.Exit (exitFailure)
@@ -35,7 +34,7 @@ import System.FilePath ((</>))
 import System.IO (hPrint, stderr)
 import System.IO.Error (isDoesNotExistError)
 import System.Info (os)
-import Vehicle.Syntax.Prelude (layoutAsText)
+import Vehicle.Prelude.Prettyprinter
 
 --------------------------------------------------------------------------------
 -- Streams

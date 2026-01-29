@@ -40,7 +40,7 @@ where
 
 import Data.List.NonEmpty (NonEmpty)
 import Data.Maybe (fromMaybe)
-import Vehicle.Data.Code.Expr
+import Vehicle.Data.AST.Expr.Scoped
 import Vehicle.Data.Universe
 import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Prelude

@@ -15,8 +15,8 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE (evalDecl)
 import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
-import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Loss (LossBuiltin)
+import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Builtin.Standard.Normalise ()
 import Vehicle.Data.Code.Interface.Patterns
 import Vehicle.Data.Code.TypedView

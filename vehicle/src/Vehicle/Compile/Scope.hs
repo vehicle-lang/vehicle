@@ -15,10 +15,10 @@ import Vehicle.Compile.Print (prettyExternal)
 import Vehicle.Compile.Scope.Core
 import Vehicle.Compile.Scope.Generalise
 import Vehicle.Compile.Scope.RecordInstances (createAuxilliaryRecordDeclarations)
+import Vehicle.Data.AST.Expr.Desugared qualified as S
 import Vehicle.Data.Builtin.Interface.Print (PrintableBuiltin)
 import Vehicle.Data.Code.ModuleInterface
 import Vehicle.Data.Universe (UniverseLevel (..))
-import Vehicle.Syntax.AST.Expr qualified as S
 
 --------------------------------------------------------------------------------
 -- Decl scoping
