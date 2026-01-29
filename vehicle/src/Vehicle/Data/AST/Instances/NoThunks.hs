@@ -6,7 +6,7 @@ module Vehicle.Data.AST.Instances.NoThunks where
 import Vehicle.Data.AST.Arg
 import Vehicle.Data.AST.Binder
 import Vehicle.Data.AST.Decl
-import Vehicle.Data.AST.Expr
+import Vehicle.Data.AST.Expr.Desugared
 import Vehicle.Data.AST.Name
 import Vehicle.Data.AST.Record
 import Vehicle.Data.AST.Module
@@ -75,7 +75,7 @@ instance NoThunks DefFunctionSort
 instance NoThunks DefRecordSort
 instance NoThunks FunctionDeclAnnotation
 
--- Vehicle.Data.AST.Expr
+-- Vehicle.Data.AST.Expr.Desugared
 instance NoThunks Expr
 
 -- Vehicle.Data.AST.Name
