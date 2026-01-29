@@ -21,7 +21,7 @@ import Data.Graph (Edge, Vertex, buildG, topSort)
 import Data.Hashable (Hashable)
 import Data.List (sortOn)
 import Data.List.NonEmpty (NonEmpty (..))
-import Data.List.NonEmpty qualified as NonEmpty (nonEmpty, toList)
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (listToMaybe, mapMaybe)
