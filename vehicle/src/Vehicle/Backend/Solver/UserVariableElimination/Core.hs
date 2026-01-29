@@ -19,7 +19,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Resource (NetworkName)
 import Vehicle.Data.Assertion
 import Vehicle.Data.Bound (BoundedValue, Domain)
-import Vehicle.Data.Builtin.Core
+import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.Code.Value

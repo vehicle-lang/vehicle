@@ -11,11 +11,11 @@ where
 import Data.List.NonEmpty (NonEmpty)
 import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Core (InstanceCandidate (..), InstanceDatabase (..))
+import Vehicle.Data.AST.Decl (InstancePriority)
 import Vehicle.Data.Builtin.Core (BuiltinFunction (..), DerivedFunction (..))
 import Vehicle.Data.Builtin.Decidability
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.DSL
-import Vehicle.Syntax.AST.Decl (InstancePriority)
 
 decidabilityBuiltinInstances :: InstanceDatabase DecidabilityBuiltin
 decidabilityBuiltinInstances = makeInstanceDatabase allInstances

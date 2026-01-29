@@ -9,8 +9,8 @@ module Vehicle.Compile.Prelude
 where
 
 import Vehicle.Compile.Prelude.Utils as X
-import Vehicle.Data.Code.Expr as X
-import Vehicle.Data.Code.Prog as X
+import Vehicle.Data.AST.Expr.Scoped as X
+import Vehicle.Data.AST.Prog as X
 import Vehicle.Data.Variable.Bound.Context.Core as X
 import Vehicle.Data.Variable.Bound.Index (Ix (..))
 import Vehicle.Data.Variable.Bound.Level (Lv (..))

@@ -1,10 +1,11 @@
 module Vehicle.Data.Builtin.Loss
   ( module Vehicle.Data.Builtin.Loss,
-    module Vehicle.Syntax.Builtin.BasicOperations,
+    module Vehicle.Data.Builtin.Core.BasicOperations,
   )
 where
 
 import GHC.Generics (Generic)
+import Vehicle.Data.Builtin.Core.BasicOperations
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Interface.Print
@@ -14,7 +15,6 @@ import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value (Value)
 import Vehicle.Data.Tensor (Tensor)
 import Vehicle.Prelude (Name, Pretty (..), developerError)
-import Vehicle.Syntax.Builtin.BasicOperations
 
 --------------------------------------------------------------------------------
 -- Builtin datatype

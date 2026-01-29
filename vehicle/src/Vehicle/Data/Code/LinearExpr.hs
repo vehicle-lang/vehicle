@@ -9,9 +9,9 @@ import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import GHC.Generics (Generic)
+import Vehicle.Data.Tensor (HasShape (..), RatTensor, allTensor)
 import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Prelude
-import Vehicle.Syntax.Tensor (HasShape (..), RatTensor, allTensor)
 
 -------------------------------------------------------------------------------
 -- Constants

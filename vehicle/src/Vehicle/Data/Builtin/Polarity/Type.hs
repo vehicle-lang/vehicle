@@ -12,7 +12,7 @@ import Vehicle.Compile.Type.Bidirectional (createFreshUnificationConstraint)
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.System
-import Vehicle.Data.Builtin.Core hiding (Builtin (..))
+import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Interface.InputOutputInsertion
 import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin (..))
 import Vehicle.Data.Builtin.Polarity

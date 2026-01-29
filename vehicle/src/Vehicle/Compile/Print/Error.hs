@@ -24,9 +24,8 @@ import Vehicle.Data.Code.Interface (getDimsExprs)
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
 import Vehicle.Data.DifferentiableLogic (TensorDifferentiableLogicField (..))
+import Vehicle.Data.Tensor (TensorIndices)
 import Vehicle.Data.Variable.Bound.Context.Name
-import Vehicle.Syntax.Parse (ParseError (..))
-import Vehicle.Syntax.Tensor (TensorIndices)
 import Prelude hiding (pi)
 
 --------------------------------------------------------------------------------
@@ -233,12 +232,12 @@ formatCompileError = \case
               [] -> Nothing
               (s : _) -> Just $ "did you mean" <+> quotePretty s <> "?"
         }
-    InvalidAnnotationOptionValue parameterName parameterValue ->
+    InvalidAnnotationOptionValue p parameterName parameterValue ->
       VehicleError
-        { provenance = Just $ provenanceOf parameterValue,
+        { provenance = Just p,
           problem =
             "unable to parse the value"
-              <+> squotes (prettyFriendly parameterValue)
+              <+> squotes (pretty parameterValue)
               <+> "for option"
               <+> quotePretty parameterName,
           fix = Nothing

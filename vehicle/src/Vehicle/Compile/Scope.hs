@@ -15,26 +15,26 @@ import Vehicle.Compile.Print (prettyExternal)
 import Vehicle.Compile.Scope.Core
 import Vehicle.Compile.Scope.Generalise
 import Vehicle.Compile.Scope.RecordInstances (createAuxilliaryRecordDeclarations)
-import Vehicle.Data.Builtin.Standard
+import Vehicle.Data.AST.Expr.Desugared qualified as S
+import Vehicle.Data.Builtin.Interface.Print (PrintableBuiltin)
 import Vehicle.Data.Code.ModuleInterface
 import Vehicle.Data.Universe (UniverseLevel (..))
-import Vehicle.Syntax.AST.Expr qualified as S
 
 --------------------------------------------------------------------------------
 -- Decl scoping
 
 scopeModuleDecls ::
-  (MonadCompile m) =>
+  (MonadCompile m, ScopableBuiltin builtin) =>
   ModulePath ->
-  ImportedModuleContext Builtin ->
-  [S.Decl] ->
-  m ([Decl Builtin], ModuleScopingInterface)
+  ImportedModuleContext builtin ->
+  [S.Decl builtin] ->
+  m ([Decl builtin], ModuleScopingInterface builtin)
 scopeModuleDecls modulePath initialState decls = do
   logCompilerPass Scoping $ do
     runMonadScopeT modulePath initialState $ do
       concat <$> traverse scopeDecl decls
 
-scopeDecl :: (MonadScope m) => S.Decl -> m [Decl Builtin]
+scopeDecl :: (MonadScope builtin m, PrintableBuiltin builtin) => S.Decl builtin -> m [Decl builtin]
 scopeDecl decl =
   logCompileDecl "scoping" decl $ do
     scopedDecls <- case decl of
@@ -59,15 +59,15 @@ scopeDecl decl =
 -- Expr scoping
 
 scopeRecordDefinition ::
-  forall m.
-  (MonadScopeExpr m) =>
+  forall m builtin.
+  (MonadScopeExpr builtin m) =>
   Identifier ->
-  S.Telescope ->
-  S.RecordFields ->
-  m (Telescope Builtin, RecordFields Builtin)
+  S.Telescope builtin ->
+  S.RecordFields builtin ->
+  m (Telescope builtin, RecordFields builtin)
 scopeRecordDefinition ident telescope fields = go [] telescope
   where
-    go :: Telescope Builtin -> S.Telescope -> m (Telescope Builtin, RecordFields Builtin)
+    go :: Telescope builtin -> S.Telescope builtin -> m (Telescope builtin, RecordFields builtin)
     go revScopedTelescope = \case
       binder : binders -> do
         scopeBinder binder $ \binder' ->
@@ -82,9 +82,9 @@ scopeRecordDefinition ident telescope fields = go [] telescope
         return (scopedTelescope, scopedFields)
 
 scopeExpr ::
-  (MonadScopeExpr m) =>
-  S.Expr ->
-  m (Expr Builtin)
+  (MonadScopeExpr builtin m) =>
+  S.Expr builtin ->
+  m (Expr builtin)
 scopeExpr e = case e of
   S.Var p v -> scopeVar p v
   S.Universe p -> return $ Universe p (UniverseLevel 0)
@@ -115,11 +115,11 @@ scopeExpr e = case e of
     return $ normAppList projFn [explicit record']
 
 scopeBuiltin ::
-  (MonadScopeExpr m) =>
+  (MonadScopeExpr builtin m) =>
   Provenance ->
-  Builtin ->
-  [S.Arg] ->
-  m (Expr Builtin)
+  builtin ->
+  [S.Arg builtin] ->
+  m (Expr builtin)
 scopeBuiltin p builtin args = do
   args' <- traverse (traverse scopeExpr) args
   let defaultResult = normAppList (Builtin p builtin) args'
@@ -134,16 +134,16 @@ scopeBuiltin p builtin args = do
 --     Just coercedResult -> return coercedResult
 
 scopeBinder ::
-  (MonadScopeExpr m) =>
-  S.Binder ->
-  (Binder Builtin -> m a) ->
+  (MonadScopeExpr builtin m) =>
+  S.Binder builtin ->
+  (Binder builtin -> m a) ->
   m a
 scopeBinder binder update = do
   binder' <- traverse scopeExpr binder
   addBinder binder (update binder')
 
 -- | Find the index for a given name of a given sort.
-scopeVar :: (MonadScopeExpr m) => Provenance -> Name -> m (Expr builtin)
+scopeVar :: (MonadScopeExpr builtin m) => Provenance -> Name -> m (Expr builtin)
 scopeVar p symbol = do
   maybeVariable <- lookupVariable p symbol
   case maybeVariable of

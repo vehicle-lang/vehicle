@@ -8,7 +8,7 @@ import: cabal.project
 
 package vehicle-syntax
   flags:
-    -- Necessary for Vehicle.Syntax.AST to derive instances of NoThunks,
+    -- Necessary for Vehicle.Data.AST to derive instances of NoThunks,
     -- and for Vehicle.Syntax.Debug to implement unsafeCheckThunks
     +nothunks
 

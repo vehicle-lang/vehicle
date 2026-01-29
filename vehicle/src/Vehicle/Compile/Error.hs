@@ -3,6 +3,7 @@
 module Vehicle.Compile.Error
   ( VehicleError (..),
     CompileError (..),
+    ParseError (..),
     TypingError (..),
     MultiPropertyTraveralError (..),
     RecordMatch (..),
@@ -14,6 +15,7 @@ module Vehicle.Compile.Error
     MissingResource,
     UninferableParameter,
     UnboundedIndices,
+    ParseLocation,
     MonadCompile,
     compilerDeveloperError,
   )
@@ -43,7 +45,6 @@ import Vehicle.Data.Code.Value
 import Vehicle.Data.DifferentiableLogic
 import Vehicle.Data.Tensor (TensorIndices, TensorShape)
 import Vehicle.Data.Variable.Bound.Context.Name.Core
-import Vehicle.Syntax.Parse (ParseError, ParseLocation)
 import Vehicle.Verify.QueryFormat.Core
 
 --------------------------------------------------------------------------------
@@ -137,7 +138,36 @@ type MissingResource = (ExternalResource, DeclProvenance)
 type UninferableParameter = DeclProvenance
 
 --------------------------------------------------------------------------------
+-- Sugaring error
+
+data ParseError
+  = -- Parse errors
+    RawParseError String
+  | FunctionWithMismatchedNames Provenance Identifier Identifier
+  | -- Annotations
+    UnannotatedAbstractDef Provenance Identifier
+  | MultiplyAnnotatedDef Provenance Identifier (Doc Void) (Doc Void)
+  | TypeDefWithAnnotation Provenance Identifier (Doc Void)
+  | FunctionDefWithRecordAnnotation Provenance Identifier (Doc Void)
+  | RecordDefWithFunctionAnnotation Provenance Identifier (Doc Void)
+  | AbstractDefWithNonAbstractAnnotation Provenance Identifier (Doc Void)
+  | NonAbstractDefWithAbstractAnnotation Provenance Identifier (Doc Void)
+  | AnnotationWithNoDef Provenance Name
+  | -- Annotation options
+    InvalidAnnotationOption Provenance Name Name [Name]
+  | InvalidAnnotationOptionValue Provenance Name Text
+  | MissingAnnotationOption Provenance Text Name
+  | DuplicateAnnotationOption Provenance Text Name
+  | -- Other
+    UnknownBuiltin Provenance Text
+  | MissingVariables Provenance Name
+  | UnchainableComparisons Provenance ComparisonOp ComparisonOp
+  deriving (Show)
+
+--------------------------------------------------------------------------------
 -- Compilation errors
+
+type ParseLocation = (ModulePath, FilePath)
 
 data CompileError
   = DevError UnAnnDoc

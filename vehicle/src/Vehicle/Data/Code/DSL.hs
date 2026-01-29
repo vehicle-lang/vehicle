@@ -1,11 +1,11 @@
 module Vehicle.Data.Code.DSL where
 
 import Data.List.NonEmpty (NonEmpty (..))
+import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.DSL
 import Vehicle.Data.Tensor as T (Tensor, shapeOf, pattern ZeroDimTensor)
 import Vehicle.Prelude
-import Vehicle.Syntax.Builtin
 import Prelude hiding (pi)
 
 --------------------------------------------------------------------------------

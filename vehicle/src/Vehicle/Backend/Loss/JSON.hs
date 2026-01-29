@@ -18,21 +18,21 @@ import Vehicle.Compile.Prelude (Ix (..))
 import Vehicle.Compile.Prelude qualified as S (Binder, Decl, Expr (..), GenericDecl (..), GenericProg (..), Prog)
 import Vehicle.Compile.Prelude.Utils (getNamedBinderInfo)
 import Vehicle.Compile.Print
+import Vehicle.Data.AST.Decl
+  ( DefFunctionSort (..),
+    FunctionDeclAnnotation (..),
+  )
+import Vehicle.Data.AST.Expr.Scoped (normAppList)
 import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Loss (LossBuiltin (..), LossBuiltinConstructor, LossBuiltinFunction, LossBuiltinType)
 import Vehicle.Data.Builtin.Loss qualified as L
-import Vehicle.Data.Code.Expr (normAppList)
 import Vehicle.Data.Code.Interface.Args
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Tensor (Tensor, mapTensor)
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Prelude (Doc, GenericArg (..), HasName (..), HasType (..), Identifier (..), Name, Provenance, explicit, indent, jsonOptions, line, mkExplicitBinder, resolutionError, squotes, userModulePath)
+import Vehicle.Prelude.Error (developerError)
 import Vehicle.Prelude.Logging.Class
-import Vehicle.Syntax.AST.Decl
-  ( DefFunctionSort (..),
-    FunctionDeclAnnotation (..),
-  )
-import Vehicle.Syntax.Prelude (developerError)
 
 --------------------------------------------------------------------------------
 -- Public method
