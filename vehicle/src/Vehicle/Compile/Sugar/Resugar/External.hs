@@ -232,7 +232,7 @@ delabDerivedFunction fun args = case fun of
   V.TypeAnn -> delabInfixOp2 B.Ann tokElemOf (reverse args)
   V.QuantifyIndex q -> delabTypeClassOp (V.QuantifierTC q) args
   V.QuantifyInList q -> delabQuantifierIn q args
-  V.CompareRatTensorReduced op -> delabTypeClassOp (V.CompareTC op) args
+  V.CompareRatTensorReduced op -> delabComparison op args
 
 delabBuiltinFunction :: (MonadDelab m) => V.BuiltinFunction -> [V.Arg V.Builtin] -> m B.Expr
 delabBuiltinFunction fun args = case fun of
@@ -255,8 +255,8 @@ delabBuiltinFunction fun args = case fun of
   V.CompareRatTensorPointwise V.Lt -> delabInfixOp2 B.LtPoint tokLtPoint args
   V.CompareRatTensorPointwise V.Ge -> delabInfixOp2 B.GePoint tokGePoint args
   V.CompareRatTensorPointwise V.Gt -> delabInfixOp2 B.GtPoint tokGtPoint args
-  V.CompareIndex op -> delabTypeClassOp (V.CompareTC op) args
-  V.CompareNat op -> delabTypeClassOp (V.CompareTC op) args
+  V.CompareIndex op -> delabComparison op args
+  V.CompareNat op -> delabComparison op args
   V.FoldList -> delabTypeClassOp V.FoldTC args
   V.MapList -> delabTypeClassOp V.MapTC args
   V.AtTensor -> delabInfixOp2 B.At tokAt args
@@ -290,11 +290,6 @@ delabBuiltinType fun args = case fun of
 
 delabTypeClass :: (MonadDelab m) => V.TypeClass -> [V.Arg V.Builtin] -> m B.Expr
 delabTypeClass tc args = case tc of
-  V.HasCompare eq -> case eq of
-    V.Eq -> delabApp (B.HasEq tokHasEq) args
-    V.Ne -> delabApp (B.HasNotEq tokHasNotEq) args
-    V.Le -> delabApp (B.HasLeq tokHasLeq) args
-    _ -> cheat
   V.HasMap -> delabApp (B.HasMap tokHasMap) args
   V.HasFold -> delabApp (B.HasFold tokHasFold) args
   _ -> cheat
@@ -325,19 +320,21 @@ delabMul = delabInfixOp2 B.Mul tokMul
 delabDiv :: (MonadDelab m) => [V.Arg V.Builtin] -> m B.Expr
 delabDiv = delabInfixOp2 B.Div tokDiv
 
+delabComparison :: (MonadDelab m) => V.ComparisonOp -> [V.Arg V.Builtin] -> m B.Expr
+delabComparison = \case
+  V.Eq -> delabInfixOp2 B.Eq tokEq
+  V.Ne -> delabInfixOp2 B.Ne tokNe
+  V.Le -> delabInfixOp2 B.Le tokLe
+  V.Lt -> delabInfixOp2 B.Lt tokLt
+  V.Ge -> delabInfixOp2 B.Ge tokGe
+  V.Gt -> delabInfixOp2 B.Gt tokGt
+
 delabTypeClassOp :: (MonadDelab m) => V.TypeClassOp -> [V.Arg V.Builtin] -> m B.Expr
 delabTypeClassOp op args = case op of
   V.FromNatTC {} -> cheatDelabPretty op args
   V.FromRatTC {} -> cheatDelabPretty op args
   V.VecLiteralTC {} -> delabVecLiteral args
   V.NegTC -> delabOp1 B.Neg tokSub args
-  V.CompareTC eq -> case eq of
-    V.Eq -> delabInfixOp2 B.Eq tokEq args
-    V.Ne -> delabInfixOp2 B.Ne tokNe args
-    V.Le -> delabInfixOp2 B.Le tokLe args
-    V.Lt -> delabInfixOp2 B.Lt tokLt args
-    V.Ge -> delabInfixOp2 B.Ge tokGe args
-    V.Gt -> delabInfixOp2 B.Gt tokGt args
   V.MapTC -> delabApp (B.Map tokMap) args
   V.FoldTC -> delabApp (B.Fold tokFold) args
   V.AtTC -> delabInfixOp2 B.At tokAt args

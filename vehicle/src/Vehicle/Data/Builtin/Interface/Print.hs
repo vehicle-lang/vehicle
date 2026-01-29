@@ -29,9 +29,10 @@ instance ConvertableBuiltin BuiltinFunction Builtin where
 instance ConvertableBuiltin DerivedFunction Builtin where
   convertBuiltin p = Builtin p . DerivedFunction
 
+{-
 instance ConvertableBuiltin ComparisonOp Builtin where
   convertBuiltin p = convertBuiltin p . CompareTC
-
+-}
 convertExprBuiltins ::
   forall builtin1 builtin2.
   (ConvertableBuiltin builtin1 builtin2) =>

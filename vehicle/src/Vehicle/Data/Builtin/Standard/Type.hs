@@ -61,7 +61,6 @@ typeStandardBuiltin p = \case
 
 typeOfTypeClass :: TypeClass -> DSLExpr Builtin
 typeOfTypeClass tc = case tc of
-  HasCompare {} -> type0 ~> type0 ~> type0
   HasQuantifier {} -> type0 ~> type0 ~> type0
   HasNeg -> type0 ~> type0 ~> type0
   HasAt -> type0 ~> type0 ~> type0 ~> type0
@@ -92,7 +91,6 @@ typeOfTypeClassOp b = case b of
   FromRatTC -> forAllTypes $ \t -> hasRatLits t ~~~> typeOfFromRat t
   VecLiteralTC -> typeOfVectorLiteral
   NegTC -> typeOfTCOp1 hasNeg
-  CompareTC op -> typeOfTCComparisonOp $ hasCompare op
   AtTC -> typeOfTCOp2 hasAt
   ForeachTC ->
     forAll "A" type0 $ \t1 ->
@@ -114,17 +112,6 @@ typeOfBuiltinCast = \case
   FromRat dom -> case dom of
     FromRatToRat -> typeOfFromRat (tRatTensor dimNil)
   FromVectorToList -> typeOfFromVectorToList
-
-typeOfTCComparisonOp ::
-  (BuiltinHasStandardTypes builtin) =>
-  (DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin) ->
-  DSLExpr builtin
-typeOfTCComparisonOp constraint =
-  forAllTypeTriples $ \t1 t2 t3 ->
-    constraint t1 t2 t3
-      ~~~> t1
-      ~> t2
-      ~> t3
 
 typeOfFromVectorToList :: (HasStandardBuiltins builtin) => DSLExpr builtin
 typeOfFromVectorToList =

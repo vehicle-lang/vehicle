@@ -121,9 +121,6 @@ builtinTypeClass = builtin . mkBuiltinTypeClass
 typeClass :: (BuiltinHasStandardTypeClasses builtin) => TypeClass -> NonEmpty (DSLExpr builtin) -> DSLExpr builtin
 typeClass tc args = builtinTypeClass tc @@ args
 
-hasCompare :: (BuiltinHasStandardTypeClasses builtin) => ComparisonOp -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
-hasCompare eq t1 t2 t3 = typeClass (HasCompare eq) [t1, t2, t3]
-
 hasQuantifier :: (BuiltinHasStandardTypeClasses builtin) => Quantifier -> DSLExpr builtin -> DSLExpr builtin
 hasQuantifier q t = typeClass (HasQuantifier q) [t]
 

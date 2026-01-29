@@ -418,6 +418,24 @@ elabExpr expr = case expr of
   B.SubRealTensor tk -> builtinFunction (V.Sub V.SubRatTensor) tk []
   B.MulRealTensor tk -> builtinFunction (V.Mul V.MulRatTensor) tk []
   B.DivRealTensor tk -> builtinFunction (V.Div V.DivRatTensor) tk []
+  B.EqIndex tk -> builtinFunction (V.CompareIndex V.Eq) tk []
+  B.NeIndex tk -> builtinFunction (V.CompareIndex V.Ne) tk []
+  B.LeIndex tk -> builtinFunction (V.CompareIndex V.Le) tk []
+  B.LtIndex tk -> builtinFunction (V.CompareIndex V.Lt) tk []
+  B.GeIndex tk -> builtinFunction (V.CompareIndex V.Ge) tk []
+  B.GtIndex tk -> builtinFunction (V.CompareIndex V.Gt) tk []
+  B.EqNat tk -> builtinFunction (V.CompareNat V.Eq) tk []
+  B.NeNat tk -> builtinFunction (V.CompareNat V.Ne) tk []
+  B.LeNat tk -> builtinFunction (V.CompareNat V.Le) tk []
+  B.LtNat tk -> builtinFunction (V.CompareNat V.Lt) tk []
+  B.GeNat tk -> builtinFunction (V.CompareNat V.Ge) tk []
+  B.GtNat tk -> builtinFunction (V.CompareNat V.Gt) tk []
+  B.EqRealTensorPointwise tk -> builtinFunction (V.CompareRatTensorPointwise V.Eq) tk []
+  B.NeRealTensorPointwise tk -> builtinFunction (V.CompareRatTensorPointwise V.Ne) tk []
+  B.LeRealTensorPointwise tk -> builtinFunction (V.CompareRatTensorPointwise V.Le) tk []
+  B.LtRealTensorPointwise tk -> builtinFunction (V.CompareRatTensorPointwise V.Lt) tk []
+  B.GeRealTensorPointwise tk -> builtinFunction (V.CompareRatTensorPointwise V.Ge) tk []
+  B.GtRealTensorPointwise tk -> builtinFunction (V.CompareRatTensorPointwise V.Gt) tk []
   B.At e1 tk e2 -> builtinTypeClassOp V.AtTC tk [e1, e2]
   B.Map tk -> builtinTypeClassOp V.MapTC tk []
   B.Fold tk -> builtinTypeClassOp V.FoldTC tk []
@@ -428,9 +446,6 @@ elabExpr expr = case expr of
   B.ReduceMul tk -> builtinFunction V.ReduceMulRatTensor tk []
   B.ReduceMin tk -> builtinFunction V.ReduceMinRatTensor tk []
   B.ReduceMax tk -> builtinFunction V.ReduceMaxRatTensor tk []
-  B.HasEq tk -> builtinTypeClass (V.HasCompare V.Eq) tk []
-  B.HasNotEq tk -> builtinTypeClass (V.HasCompare V.Ne) tk []
-  B.HasLeq tk -> builtinTypeClass (V.HasCompare V.Le) tk []
   B.HasMap tk -> builtinTypeClass V.HasMap tk []
   B.HasFold tk -> builtinTypeClass V.HasFold tk []
   B.IsTensorType tk -> builtinTypeClass V.IsTensorType tk []
@@ -663,7 +678,7 @@ elabComparison op tk e1 e2 = do
         _ -> Nothing
 
   case chainedOrder of
-    Nothing -> builtin (V.TypeClassOp $ V.CompareTC op) tk [e1, e2]
+    Nothing -> _ -- builtin (V.TypeClassOp $ V.CompareTC op) tk [e1, e2]
     Just (prevOp, e)
       | not (V.chainable prevOp op) -> do
           p <- mkProvenance tk

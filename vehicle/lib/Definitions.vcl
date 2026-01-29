@@ -47,6 +47,7 @@ gtRatTensorReduced xs ys = reduceAnd True (xs >. ys)
 --------------------------------------------------------------------------------
 -- TensorLike
 --------------------------------------------------------------------------------
+
 @typeclass
 record TensorLike r t dims where
   { toTensor         : r -> NonCastingTensor t dims
@@ -66,8 +67,8 @@ forallIndex f = reduceAnd True (foreach i . f i)
 --------------------------------------------------------------------------------
 -- Type classes
 --------------------------------------------------------------------------------
-
 -- HasAdd
+
 @typeclass
 record HasAdd t1 t2 t3 where
   { addTC : t1 -> t2 -> t3
@@ -93,6 +94,7 @@ tensorLikeHasAdd =
     }
 
 -- HasSub
+
 @typeclass
 record HasSub t1 t2 t3 where
   { subTC : t1 -> t2 -> t3
@@ -114,6 +116,7 @@ tensorLikeHasSub =
     }
 
 -- HasMul
+
 @typeclass
 record HasMul t1 t2 t3 where
   { mulTC : t1 -> t2 -> t3
@@ -140,6 +143,7 @@ tensorLikeHasMul =
 
 
 -- HasDiv
+
 @typeclass
 record HasDiv t1 t2 t3 where
   { divTC : t1 -> t2 -> t3
@@ -159,6 +163,65 @@ tensorLikeHasDiv =
                 (toTensor r2)
             )
     }
+
+-- HasCompare
+
+@typeclass
+record HasCompare t1 t2 t3 where
+  { leTC :: t1 -> t2 -> t3
+  , ltTC :: t1 -> t2 -> t3
+  , geTC :: t1 -> t2 -> t3
+  , gtTC :: t1 -> t2 -> t3
+  , eqTC :: t1 -> t2 -> t3
+  , neTC :: t1 -> t2 -> t3
+  }
+
+@instance
+indexHasCompare :: HasCompare (Index n1) (Index n2) Bool
+indexHasCompare =
+  { leTC = leIndex
+  , ltTC = ltIndex
+  , geTC = geIndex
+  , gtTC = gtIndex
+  , eqTC = eqIndex
+  , neTC = neIndex
+  }
+
+@instance(default=0)
+natHasCompare :: HasCompare Nat Nat Bool
+natHasCompare =
+  { leTC = leNat
+  , ltTC = ltNat
+  , geTC = geNat
+  , gtTC = gtNat
+  , eqTC = eqNat
+  , neTC = neNat
+  }
+
+-- We separate out the zero-dimensional tensor case so that we have a unique
+-- representation of comparisons over zero tensors. Otherwise, we end up
+-- having both pointwise and reduced comparisons.
+@instance(default=1)
+realHasCompare :: HasCompare (Tensor Real []) (Tensor Real []) Bool
+realHasCompare =
+  { leTC = leRatTensorPointwise
+  , ltTC = ltRatTensorPointwise
+  , geTC = geRatTensorPointwise
+  , gtTC = gtRatTensorPointwise
+  , eqTC = eqRatTensorPointwise
+  , neTC = neRatTensorPointwise
+  }
+
+@instance
+realTensorHasCompare :: HasCompare (Tensor Real (d :: ds)) (Tensor Real (d :: ds)) Bool
+realTensorHasCompare =
+  { leTC = leRatTensorReduced
+  , ltTC = ltRatTensorReduced
+  , geTC = geRatTensorReduced
+  , gtTC = gtRatTensorReduced
+  , eqTC = eqRatTensorReduced
+  , neTC = neRatTensorReduced
+  }
 
 --------------------------------------------------------------------------------
 -- Loss logics
