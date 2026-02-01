@@ -415,6 +415,8 @@ elabExpr expr = case expr of
   B.SubRealTensor tk -> builtinFunction (V.Sub V.SubRatTensor) tk []
   B.QuantifyForAllNat tk n -> derivedFunction (V.QuantifyIndex V.Forall) tk [n]
   B.QuantifyExistsNat tk n -> derivedFunction (V.QuantifyIndex V.Exists) tk [n]
+  B.QuantifyForallRealTensor tk n -> builtinFunction (V.QuantifyRatTensor V.Forall) tk [n]
+  B.QuantifyExistsRealTensor tk n -> builtinFunction (V.QuantifyRatTensor V.Exists) tk [n]
   B.At e1 tk e2 -> builtinTypeClassOp V.AtTC tk [e1, e2]
   B.Map tk -> builtinTypeClassOp V.MapTC tk []
   B.Fold tk -> builtinTypeClassOp V.FoldTC tk []

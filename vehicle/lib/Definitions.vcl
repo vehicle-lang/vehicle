@@ -140,11 +140,17 @@ indexHasQuantifier = { forAllTC = \n1 -> quantifyForAllNat n1,
 --                            existsTC = existsIndex (quantifyExistsNat n)
 --                         }
 
+        -- ( forAllDims $ \ds ->
+        --     hasQuantifier q (tRatTensor ds),
+        --   lamDims $ \ds ->
+        --     builtinFunction (QuantifyRatTensor q) @@@ [ds],
+        --   Nothing
+        -- )
 
 @instance
-tensorHasQuantifier : forallT {n : Nat} . HasQuantifier (Index n)
-tensorHasQuantifier = { forAllTC = \n1 -> quantifyForAllNat n1,
-                       existsTC = \n1 -> quantifyExistsNat n1}
+tensorHasQuantifier : forallT { dims : List Nat } . HasQuantifier (Tensor Real dims)
+tensorHasQuantifier = { forAllTC = \n1 -> quantifyForallRealTensor n1,
+                       existsTC = \n1 -> quantifyExistsRealTensor n1}
 
 --------------------------------------------------------------------------------
 -- Loss logics
