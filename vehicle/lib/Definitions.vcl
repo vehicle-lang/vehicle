@@ -112,6 +112,7 @@ tensorLikeHasSub =
     }
 
 -- quantification
+@typeclass
 record HasQuantifier t where
   { forAllTC : (t -> Bool) -> Bool
   , existsTC : (t -> Bool) -> Bool
@@ -129,7 +130,7 @@ record HasQuantifier t where
 -- forallIndex f = reduceAnd True (foreach i . f i)
 
 -- QuantifyIndex {} -> forAllDim Relevant $ \d -> (tIndex d ~> tBool) ~> tBool
-
+@instance
 indexHasQuantifier : forallT {n : Nat} . HasQuantifier (Index n)
 indexHasQuantifier = { forAllTC = \n1 -> quantifyForAllNat n1,
                        existsTC = \n1 -> quantifyExistsNat n1}
@@ -138,6 +139,12 @@ indexHasQuantifier = { forAllTC = \n1 -> quantifyForAllNat n1,
 -- indexHasQuantifier {n} = { forAllTC = forallIndex (quantifyForAllNat n),
 --                            existsTC = existsIndex (quantifyExistsNat n)
 --                         }
+
+
+@instance
+tensorHasQuantifier : forallT {n : Nat} . HasQuantifier (Index n)
+tensorHasQuantifier = { forAllTC = \n1 -> quantifyForAllNat n1,
+                       existsTC = \n1 -> quantifyExistsNat n1}
 
 --------------------------------------------------------------------------------
 -- Loss logics
