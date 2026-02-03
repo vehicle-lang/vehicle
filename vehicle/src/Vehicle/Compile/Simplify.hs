@@ -6,12 +6,12 @@ where
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty (filter, reverse, toList)
 import Data.Text qualified as Text
-import Vehicle.Data.Builtin.Core
-import Vehicle.Syntax.AST.Arg
-import Vehicle.Syntax.AST.Expr
-import Vehicle.Syntax.AST.Record (mapRecordFields)
-import Vehicle.Syntax.AST.Relevance (Relevance (..), setRelevance)
-import Vehicle.Syntax.AST.Visibility (Visibility (..), visibilityOf)
+import Vehicle.Data.AST.Arg
+import Vehicle.Data.AST.Expr.Desugared
+import Vehicle.Data.AST.Record (mapRecordFields)
+import Vehicle.Data.AST.Relevance (Relevance (..), setRelevance)
+import Vehicle.Data.AST.Visibility (Visibility (..), visibilityOf)
+import Vehicle.Data.Builtin.Standard.Core
 
 -- | Note that these operations can be seen as undoing parts of the type-checking,
 -- and therefore the resulting code is not guaranteed to be well-typed.
@@ -22,15 +22,15 @@ class Simplify a where
   -- | Shortens vectors
   shortenVec :: a -> a
 
-instance Simplify Module where
+instance Simplify (Module Builtin) where
   clean = fmap clean
   shortenVec = fmap shortenVec
 
-instance Simplify Decl where
+instance Simplify (Decl Builtin) where
   clean = fmap clean
   shortenVec = fmap shortenVec
 
-instance Simplify Expr where
+instance Simplify (Expr Builtin) where
   clean = mapApp $ \fun args -> do
     let fun' = clean fun
     -- Remove automatically inserted cast functions
@@ -62,15 +62,15 @@ instance Simplify Expr where
           go l [e] = Just (x, l, e)
           go l (_ : ys) = go (l + 1) ys
 
-instance Simplify Binder where
+instance Simplify (Binder Builtin) where
   clean = fmap clean . setRelevance Relevant
   shortenVec = fmap shortenVec
 
-instance Simplify Arg where
+instance Simplify (Arg Builtin) where
   clean = fmap clean . setRelevance Relevant
   shortenVec = fmap shortenVec
 
-mapApp :: (Expr -> NonEmpty Arg -> Expr) -> Expr -> Expr
+mapApp :: (Expr Builtin -> NonEmpty (Arg Builtin) -> Expr Builtin) -> Expr Builtin -> Expr Builtin
 mapApp f expr = case expr of
   Universe {} -> expr
   Hole {} -> expr
@@ -83,7 +83,7 @@ mapApp f expr = case expr of
   Record p fs -> Record p (mapRecordFields (mapApp f) fs)
   RecordAcc p e field -> RecordAcc p (mapApp f e) field
 
-removeInsertedCasts :: Expr -> NonEmpty Arg -> Expr
+removeInsertedCasts :: Expr Builtin -> NonEmpty (Arg Builtin) -> Expr Builtin
 removeInsertedCasts fun args
   | null args = fun
   | otherwise = case fun of
@@ -99,37 +99,37 @@ removeInsertedCasts fun args
         _ -> normAppList fun $ simplifyArgs args
       _ -> normAppList fun $ simplifyArgs args
 
-simplifyAndGetLastArg :: Expr -> NonEmpty Arg -> Expr
+simplifyAndGetLastArg :: Expr Builtin -> NonEmpty (Arg Builtin) -> Expr Builtin
 simplifyAndGetLastArg fun args = case simplifyArgs args of
   [] -> fun
   res -> argExpr $ last res
 
-simplifyArgs :: NonEmpty Arg -> [Arg]
+simplifyArgs :: NonEmpty (Arg Builtin) -> [Arg Builtin]
 simplifyArgs = fmap clean . NonEmpty.filter (not . wasInserted)
 
-wasInserted :: Arg -> Bool
+wasInserted :: Arg Builtin -> Bool
 wasInserted arg = case visibilityOf arg of
   Implicit True -> True
   Instance True -> True
   _ -> False
 
-delabTensorType :: [Arg] -> Expr
+delabTensorType :: [Arg Builtin] -> Expr Builtin
 delabTensorType = \case
   [tElem, dim] | isNil (argExpr dim) -> argExpr tElem
   args -> normAppList (Builtin mempty (BuiltinType TensorType)) args
   where
-    isNil :: Expr -> Bool
+    isNil :: Expr Builtin -> Bool
     isNil = \case
       Builtin _ (BuiltinConstructor Nil) -> True
       App (Builtin _ (BuiltinConstructor Nil)) _ -> True
       _ -> False
 
-delabList :: Expr -> NonEmpty Arg -> Expr
+delabList :: Expr Builtin -> NonEmpty (Arg Builtin) -> Expr Builtin
 delabList fun args = case go (App fun args) of
   Nothing -> normAppList fun $ simplifyArgs args
   Just xs -> normAppList (Builtin mempty (TypeClassOp VecLiteralTC)) $ fmap clean xs
   where
-    go :: Expr -> Maybe [Arg]
+    go :: Expr Builtin -> Maybe [Arg Builtin]
     go = \case
       Builtin _ (BuiltinConstructor Nil) -> Just []
       App (Builtin _ (BuiltinConstructor Nil)) _ -> Just []

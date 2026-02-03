@@ -1,6 +1,6 @@
 module Vehicle.Compile.Arity where
 
-import Vehicle.Data.Code.Expr
+import Vehicle.Data.AST.Expr.Scoped
 import Vehicle.Prelude (isExplicit)
 
 type Arity = Int

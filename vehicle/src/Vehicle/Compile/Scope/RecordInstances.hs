@@ -3,37 +3,24 @@ module Vehicle.Compile.Scope.RecordInstances
   )
 where
 
-import Control.Monad (unless)
-import Control.Monad.Except (MonadError (..))
-import Data.List.NonEmpty (NonEmpty (..), toList)
-import Data.Text qualified as Text
-import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Scope.Core
-import Vehicle.Data.Builtin.Interface.Print (PrintableBuiltin)
-import Vehicle.Data.Builtin.Standard
-import Vehicle.Data.Code.DSL
-import Vehicle.Data.DSL
-import Vehicle.Libraries.StandardLibrary
 
 --------------------------------------------------------------------------------
 -- Expr generalisation
 
 createAuxilliaryRecordDeclarations ::
-  (MonadScope m) =>
+  (MonadScope builtin m) =>
   Provenance ->
   Identifier ->
   Maybe DefRecordSort ->
-  Telescope Builtin ->
-  RecordFields Builtin ->
-  m [Decl Builtin]
+  Telescope builtin ->
+  RecordFields builtin ->
+  m [Decl builtin]
 createAuxilliaryRecordDeclarations p ident sort telescope fields = do
   let visibility = if isAnnotatedAsTypeClass sort then Instance True else Explicit
   recordProjectionFunctions <- traverse (createRecordProjectionFn p ident telescope visibility) fields
-  tensorConversionFunctions <-
-    if isAnnotatedAsTensor sort
-      then createTensorRecordConversionFunctions p ident telescope fields
-      else return []
+  tensorConversionFunctions <- generateAuxiliaryRecordDefinitions p ident sort telescope fields
   return $ recordProjectionFunctions <> tensorConversionFunctions
 
 -- | Given a record declaration of the form
@@ -51,7 +38,7 @@ createAuxilliaryRecordDeclarations p ident sort telescope fields = do
 --
 -- where `[ ... ]` represents the provided visibility.
 createRecordProjectionFn ::
-  (MonadScope m, PrintableBuiltin builtin) =>
+  (MonadScope builtin m) =>
   Provenance ->
   Identifier ->
   Telescope builtin ->
@@ -92,124 +79,3 @@ createRecordProjectionFn p ident telescope visibility (field, fieldType) = do
 
   -- Create the declaration
   return $ DefFunction p fnIdent fnSort fnType fnBody
-
-createTensorRecordConversionFunctions ::
-  (MonadScope m) =>
-  Provenance ->
-  Identifier ->
-  Telescope Builtin ->
-  RecordFields Builtin ->
-  m [Decl Builtin]
-createTensorRecordConversionFunctions p ident telescope fields = do
-  unless (null telescope) $
-    throwError $
-      UnimplementedFeature p ("Annotating parameterised records with" <+> pretty AnnTensor)
-
-  nonEmptyFields <- case fields of
-    [] -> throwError $ ZeroFieldTensorLike (ident, p)
-    f : fs -> return $ f :| fs
-
-  -- We can't actually know the element and the field types at scope checking
-  -- time because the user may be using type synonyms for the tensors, e.g.
-  --
-  --    @tensor
-  --    record Input where
-  --      { red   : Image
-  --      , green : Image
-  --      , blue  : Image
-  --      }
-  --
-  -- but if we make holes for them, the type checker should be able to fill
-  -- them in.
-  let fieldElementType = hole
-  let fieldDimensions = hole
-
-  let recordToTensorDecl = createRecordToTensor p ident fieldElementType fieldDimensions nonEmptyFields
-  let tensorToRecordDecl = createTensorToRecord p ident fieldElementType fieldDimensions nonEmptyFields
-  let tensorLikeInstance = createTensorLikeInstance p ident fieldElementType fieldDimensions nonEmptyFields
-
-  return
-    [recordToTensorDecl, tensorToRecordDecl, tensorLikeInstance]
-
-createRecordToTensor ::
-  Provenance ->
-  Identifier ->
-  DSLExpr Builtin ->
-  DSLExpr Builtin ->
-  NonEmpty (GenericRecordField (Type Builtin)) ->
-  Decl Builtin
-createRecordToTensor p recordIdent fieldElementType fieldDimensions fields = do
-  -- Create the name
-  let functionName = Text.pack "_" <> nameOf recordIdent <> "ToTensor"
-  let functionIdent = Identifier (modulePath recordIdent) functionName
-
-  -- Create the type
-  let firstDimension = dim (length fields)
-  let allDimensions = dimCons firstDimension fieldDimensions
-  let recordType = freeVar recordIdent
-  let functionType = fromDSL mempty $ recordType ~> tTensor fieldElementType allDimensions
-
-  -- Create the body
-  let functionBody = fromDSL mempty $ explLam "x" recordType $ \r -> do
-        let tensorElements = fmap (\(fieldName, _) -> recordProj (freeVar recordIdent) r fieldName) fields
-        stackTensor fieldElementType firstDimension fieldDimensions tensorElements
-
-  DefFunction p functionIdent (FunctionDecl 1 Nothing) functionType functionBody
-
-createTensorToRecord ::
-  Provenance ->
-  Identifier ->
-  DSLExpr Builtin ->
-  DSLExpr Builtin ->
-  NonEmpty (GenericRecordField (Type Builtin)) ->
-  Decl Builtin
-createTensorToRecord p recordIdent fieldElementType fieldDimensions fields = do
-  -- Create the name
-  let functionName = Text.pack "_" <> nameOf recordIdent <> "FromTensor"
-  let functionIdent = Identifier (modulePath recordIdent) functionName
-
-  -- Create the type
-  let firstDimension = dim (length fields)
-  let recordType = freeVar recordIdent
-  let tensorType = tTensor fieldElementType (dimCons firstDimension fieldDimensions)
-  let functionType = fromDSL mempty $ tensorType ~> recordType
-
-  let fieldNames = fmap fst (toList fields)
-  let tensorIndices = fmap indexLit ([0 .. length fields - 1] :: [Int]) :: [DSLExpr Builtin]
-
-  -- Create the body
-  let functionBody = fromDSL mempty $ explLam "x" tensorType $ \tensor -> do
-        let fieldContents = fmap (\index -> atTensor fieldElementType firstDimension fieldDimensions tensor index) tensorIndices
-        record recordType (zip fieldNames fieldContents)
-
-  DefFunction p functionIdent (FunctionDecl 1 Nothing) functionType functionBody
-
-createTensorLikeInstance ::
-  Provenance ->
-  Identifier ->
-  DSLExpr Builtin ->
-  DSLExpr Builtin ->
-  NonEmpty (GenericRecordField (Type Builtin)) ->
-  Decl Builtin
-createTensorLikeInstance p recordIdent fieldElementType fieldDimensions fields = do
-  -- Create ident for TensorLike typeclass
-  let tensorLikeIdent = Identifier standardLibraryDefinitionsModulePath "TensorLike"
-
-  -- Create record type
-  let firstDimension = dim (length fields)
-  let allDimensions = dimCons firstDimension fieldDimensions
-  let recordType = fromDSL mempty $ freeVar tensorLikeIdent @@ [freeVar recordIdent, fieldElementType, allDimensions]
-
-  -- Create record expression for the function body
-  let toTensorFieldName = FieldName p "toTensor"
-  let fromTensorFieldName = FieldName p "fromTensor"
-  let toTensorIdent = Identifier (modulePath recordIdent) (Text.pack "_" <> nameOf recordIdent <> "ToTensor")
-  let fromTensorIdent = Identifier (modulePath recordIdent) (Text.pack "_" <> nameOf recordIdent <> "FromTensor")
-  let recordFields = [(toTensorFieldName, fromDSL mempty (freeVar toTensorIdent)), (fromTensorFieldName, fromDSL mempty (freeVar fromTensorIdent))]
-  let functionBody = Record p recordType recordFields
-
-  -- Create ident for the function
-  let functionName = Text.pack "_" <> nameOf recordIdent <> "IsTensorLike"
-  let functionIdent = Identifier (modulePath recordIdent) functionName
-
-  DefFunction p functionIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) recordType functionBody

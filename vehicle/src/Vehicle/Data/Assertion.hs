@@ -12,14 +12,15 @@ import Vehicle.Data.Code.BooleanExpr (ConjunctAll (..))
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.Hashing ()
 import Vehicle.Data.MaybeTrivial (MaybeTrivial (..))
-import Vehicle.Data.Tensor (HasShape, RatTensor, Tensor, at)
-import Vehicle.Data.Variable.Bound.Level
-import Vehicle.Prelude
-import Vehicle.Syntax.Tensor
+import Vehicle.Data.Tensor
   ( HasShape (..),
+    RatTensor,
     Tensor (..),
+    at,
     compareTensor,
   )
+import Vehicle.Data.Variable.Bound.Level
+import Vehicle.Prelude
 
 class IsRelation relation where
   isRelated :: relation -> Tensor Rational -> Tensor Rational -> Bool

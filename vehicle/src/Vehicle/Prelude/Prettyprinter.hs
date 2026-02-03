@@ -19,10 +19,11 @@ import Data.Map (Map)
 import Data.Map qualified as Map (toAscList)
 import Data.Set (Set)
 import Data.Set qualified as Set
+import Data.Text (Text)
 import Data.Version (Version, showVersion)
 import Data.Void (Void)
 import Numeric (showFFloat)
-import Prettyprinter (group, line', surround, unAnnotate)
+import Prettyprinter (defaultLayoutOptions, group, layoutPretty, line', surround, unAnnotate)
 import Prettyprinter as CommonPrettyprinter
   ( Doc,
     Pretty (..),
@@ -41,6 +42,8 @@ import Prettyprinter as CommonPrettyprinter
     (<+>),
   )
 import Prettyprinter.Internal (Doc (Annotated))
+import Prettyprinter.Render.String (renderString)
+import Prettyprinter.Render.Text (renderStrict)
 
 -- * Additions to the prettyprinter library
 
@@ -118,6 +121,12 @@ docAnn _ = Nothing
 quotePretty :: (Pretty a) => a -> Doc b
 quotePretty = squotes . pretty
 
+layoutAsString :: Doc a -> String
+layoutAsString = renderString . layoutPretty defaultLayoutOptions
+
+layoutAsText :: Doc a -> Text
+layoutAsText = renderStrict . layoutPretty defaultLayoutOptions
+
 --------------------------------------------------------------------------------
 -- Pretty printing of datatypes
 
@@ -144,6 +153,9 @@ prettyRationalAsFloat :: Rational -> Doc a
 prettyRationalAsFloat p = do
   let f = realToFrac p :: Double
   pretty $ showFFloat Nothing f ""
+
+instance Pretty Rational where
+  pretty p = pretty (fromRational p :: Double)
 
 instance Pretty IntSet where
   pretty m = pretty (IntSet.toAscList m)

@@ -115,17 +115,19 @@ jobs:
                 extra-args: ""
                 extra-args-test-golden: ""
           # Build with -fnothunks:
-          - os:
-              name: Linux
-              type: ubuntu-latest
-            haskell:
-              ghc:
-                version: "9.6.5"
-              cabal:
-                version: "3.14.2.0"
-                project-file: "cabal.project.nothunks"
-                extra-args: "-fnothunks"
-                extra-args-test-golden: ""
+          # 30-01-2025:
+          # Disabled while not using NoThunks
+          # - os:
+          #     name: Linux
+          #     type: ubuntu-latest
+          #   haskell:
+          #     ghc:
+          #       version: "9.6.5"
+          #     cabal:
+          #       version: "3.14.2.0"
+          #       project-file: "cabal.project.nothunks"
+          #       extra-args: "-fnothunks"
+          #       extra-args-test-golden: ""
           # 20-12-2022:
           # This test is disabled because -fghc-debug requires two threads, which triggers #342.
           # Build with -fghc-debug:

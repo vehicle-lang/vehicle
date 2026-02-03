@@ -9,8 +9,8 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Bound (BoundedValue (..), Domain (..), LowerBound (..), UpperBound (..))
 import Vehicle.Data.Code.BooleanExpr (conjunctsToList)
+import Vehicle.Data.Tensor (flattenIndices)
 import Vehicle.Prelude.Warning
-import Vehicle.Syntax.Tensor (flattenIndices)
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
 import Vehicle.Verify.QueryFormat.Interface

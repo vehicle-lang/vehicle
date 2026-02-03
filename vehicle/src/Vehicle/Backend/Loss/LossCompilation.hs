@@ -32,10 +32,10 @@ import Vehicle.Backend.Loss.Core hiding (currentPass)
 import Vehicle.Compile.Normalise.NBE (normaliseAppInEmptyFreeEnv, normaliseClosure)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
-import Vehicle.Data.Builtin.Core (Builtin (..))
 import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Loss
+import Vehicle.Data.Builtin.Standard (Builtin (..))
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value

@@ -2,23 +2,73 @@
 
 module Vehicle.Data.Builtin.Standard.Core
   ( module Syntax,
+    Builtin (..),
     builtinCast,
     accessFromNatToIndex,
     accessFromNatToRat,
     accessFromVectorToList,
     isTensorType,
     builtinDerivedFunction,
+    builtinSymbols,
+    builtinFromSymbol,
+    symbolFromBuiltin,
   )
 where
 
+import Control.DeepSeq (NFData)
+import Data.Hashable (Hashable)
+import Data.Serialize (Serialize)
+import Data.Text (Text)
+import GHC.Generics (Generic)
 import Vehicle.Data.Builtin.Core as Syntax
 import Vehicle.Data.Builtin.Interface
-import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Code.DSL
-import Vehicle.Data.Code.Expr
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.DSL
-import Vehicle.Prelude (GenericArg (..), HasIdentifier (identifierOf))
+import Vehicle.Prelude
+
+-----------------------------------------------------------------------------
+-- Definition
+
+-- | Builtins in the Vehicle language
+data Builtin
+  = BuiltinConstructor BuiltinConstructor
+  | BuiltinFunction BuiltinFunction
+  | BuiltinType BuiltinType
+  | BuiltinCast BuiltinCast
+  | DerivedFunction DerivedFunction
+  | TypeClass TypeClass
+  | TypeClassOp TypeClassOp
+  | NatInDomainConstraint
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData Builtin
+
+instance Hashable Builtin
+
+instance Serialize Builtin
+
+-- TODO all the show instances should really be obtainable from the grammar
+-- somehow.
+instance Pretty Builtin where
+  pretty = \case
+    BuiltinFunction f -> pretty f
+    BuiltinType t -> pretty t
+    BuiltinConstructor c -> pretty c
+    BuiltinCast c -> pretty c
+    DerivedFunction f -> pretty f
+    TypeClass tc -> pretty tc
+    TypeClassOp o -> pretty o
+    NatInDomainConstraint {} -> "NatInDomainConstraint"
+
+builtinSymbols :: [(Text, Builtin)]
+builtinSymbols = mempty
+
+builtinFromSymbol :: Text -> Maybe Builtin
+builtinFromSymbol symbol = lookup symbol builtinSymbols
+
+symbolFromBuiltin :: Builtin -> Text
+symbolFromBuiltin b = layoutAsText $ pretty b
 
 -----------------------------------------------------------------------------
 -- Accessors
@@ -283,22 +333,6 @@ instance BuiltinHasStandardData Builtin where
 
 instance BuiltinHasIterate Builtin where
   accessIterateBuiltin = functionAccessor Iterate
-
----------------------------------------------------------------------------------
--- Printing
-
-instance PrintableBuiltin Builtin where
-  coercionArgs b = case b of
-    BuiltinCast FromNat {} -> Just $ \args -> argExpr $ last args
-    BuiltinCast FromRat {} -> Just $ \args -> argExpr $ last args
-    TypeClassOp FromNatTC {} -> Just $ \args -> argExpr $ last args
-    TypeClassOp FromRatTC {} -> Just $ \args -> argExpr $ last args
-    TypeClassOp VecLiteralTC {} -> Just $ \args -> normAppList (Builtin mempty b) args
-    _ -> Nothing
-
-  isDerivedBuiltin b = case b of
-    DerivedFunction f -> Just $ identifierOf f
-    _ -> Nothing
 
 ---------------------------------------------------------------------------------
 --- Casts

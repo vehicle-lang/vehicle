@@ -13,11 +13,16 @@ import Vehicle.Compile.Type.Monad.Class (getDeclType)
 import Vehicle.Compile.Type.System
 import Vehicle.Data.Builtin.Decidability
 import Vehicle.Data.Builtin.Interface.Type
-import Vehicle.Data.Builtin.Standard (BuiltinConstructor (..), BuiltinFunction (..), BuiltinType (..), DerivedFunction (..))
+import Vehicle.Data.Builtin.Standard
+  ( Builtin (..),
+    BuiltinConstructor (..),
+    BuiltinFunction (..),
+    BuiltinType (..),
+    DerivedFunction (..),
+  )
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.DSL
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..))
-import Vehicle.Syntax.Builtin (Builtin (..))
 import Prelude hiding (iterate, pi)
 
 --------------------------------------------------------------------------------

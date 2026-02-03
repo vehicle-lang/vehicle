@@ -126,12 +126,12 @@ library
   exposed-modules:
     Vehicle
     Vehicle.Backend.Agda
+    Vehicle.Backend.Isabelle
     Vehicle.Backend.Loss.JSON
     Vehicle.Backend.Loss.LogicCompilation
     Vehicle.Backend.Loss.LossCompilation
     Vehicle.Backend.Prelude
     Vehicle.Backend.Rocq
-    Vehicle.Backend.Isabelle
     Vehicle.Backend.Solver.UserVariableElimination.Error
     Vehicle.CommandLine
     Vehicle.Compile
@@ -156,12 +156,12 @@ library
     Vehicle.Compile.Scope
     Vehicle.Compile.Simplify
     Vehicle.Compile.Type
+    Vehicle.Data.AST.Expr.Scoped
     Vehicle.Data.Builtin.Interface
     Vehicle.Data.Builtin.Loss
     Vehicle.Data.Builtin.Standard
     Vehicle.Data.Code.BooleanExpr
     Vehicle.Data.Code.DSL
-    Vehicle.Data.Code.Expr
     Vehicle.Data.Code.Interface
     Vehicle.Data.Code.LinearExpr
     Vehicle.Data.Code.Value
@@ -194,13 +194,13 @@ library
     Vehicle.Backend.Agda.CapitaliseTypeNames
     Vehicle.Backend.Agda.Compile
     Vehicle.Backend.Agda.Interact
+    Vehicle.Backend.Isabelle.Compile
+    Vehicle.Backend.Isabelle.Interact
     Vehicle.Backend.Loss
     Vehicle.Backend.Loss.Core
     Vehicle.Backend.Loss.Domain
     Vehicle.Backend.Rocq.Compile
     Vehicle.Backend.Rocq.Interact
-    Vehicle.Backend.Isabelle.Compile
-    Vehicle.Backend.Isabelle.Interact
     Vehicle.Backend.Solver
     Vehicle.Backend.Solver.QueryCompilation
     Vehicle.Backend.Solver.QueryCompilation.Core
@@ -226,6 +226,11 @@ library
     Vehicle.Compile.Scope.Generalise
     Vehicle.Compile.Scope.RecordInstances
     Vehicle.Compile.Serialise
+    Vehicle.Compile.Sugar.Binders
+    Vehicle.Compile.Sugar.Core
+    Vehicle.Compile.Sugar.Desugar
+    Vehicle.Compile.Sugar.Resugar.External
+    Vehicle.Compile.Sugar.Resugar.Internal
     Vehicle.Compile.Type.Bidirectional
     Vehicle.Compile.Type.Constraint.ApplicationSolver
     Vehicle.Compile.Type.Constraint.Core
@@ -249,9 +254,26 @@ library
     Vehicle.Compile.Unblock
     Vehicle.Compile.Variable
     Vehicle.Data.Assertion
+    Vehicle.Data.AST
+    Vehicle.Data.AST.Arg
+    Vehicle.Data.AST.Binder
+    Vehicle.Data.AST.Decl
+    Vehicle.Data.AST.Expr.Desugared
+    Vehicle.Data.AST.Instances.NoThunks
+    Vehicle.Data.AST.Module
+    Vehicle.Data.AST.Name
+    Vehicle.Data.AST.Prog
+    Vehicle.Data.AST.Provenance
+    Vehicle.Data.AST.Record
+    Vehicle.Data.AST.Relevance
+    Vehicle.Data.AST.Type
+    Vehicle.Data.AST.Visibility
     Vehicle.Data.Bound
     Vehicle.Data.Bound.FourierMotzkinElimination
     Vehicle.Data.Builtin.Core
+    Vehicle.Data.Builtin.Core.BasicOperations
+    Vehicle.Data.Builtin.Core.Derived
+    Vehicle.Data.Builtin.Core.TypeClass
     Vehicle.Data.Builtin.Decidability
     Vehicle.Data.Builtin.Decidability.Instances
     Vehicle.Data.Builtin.Decidability.Type
@@ -270,12 +292,12 @@ library
     Vehicle.Data.Builtin.Standard.IndexSolver
     Vehicle.Data.Builtin.Standard.Instances
     Vehicle.Data.Builtin.Standard.Normalise
+    Vehicle.Data.Builtin.Standard.Scoping
     Vehicle.Data.Builtin.Standard.Type
     Vehicle.Data.Code.Interface.Args
     Vehicle.Data.Code.Interface.Operations
     Vehicle.Data.Code.Interface.Patterns
     Vehicle.Data.Code.ModuleInterface
-    Vehicle.Data.Code.Prog
     Vehicle.Data.Code.TypedView
     Vehicle.Data.DifferentiableLogic
     Vehicle.Data.Universe
@@ -296,6 +318,7 @@ library
     Vehicle.Data.Variable.Free.Context.Core
     Vehicle.Data.Variable.Free.Context.Instance
     Vehicle.Debug
+    Vehicle.Prelude.Error
     Vehicle.Prelude.IO
     Vehicle.Prelude.Logging.Class
     Vehicle.Prelude.Logging.Instance
@@ -325,6 +348,8 @@ library
     , base                   >=4.13     && <5
     , bytestring             >=0.10.12  && <0.12
     , cereal                 >=0.5      && <1
+    , cereal-text            >=0.1      && <1
+    , cereal-vector          >=0.2      && <1
     , containers             >=0.5      && <1
     , data-default           >=0.7      && <1
     , data-default-class     >=0.1.2    && <0.2
@@ -353,6 +378,7 @@ library
     , transformers           >=0.4      && <0.7
     , unordered-containers   >=0.2.19   && <0.3
     , vector                 >=0.12.3   && <0.14
+    , vector-instances       >=3        && <4
     , vehicle-syntax
 
   if (os(linux) || os(osx))

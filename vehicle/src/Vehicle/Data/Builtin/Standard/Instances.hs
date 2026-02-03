@@ -266,24 +266,6 @@ allInstances =
             Nothing
           ),
           ------------
-          -- HasMul --
-          ------------
-          ( hasMul tNat tNat tNat,
-            builtinFunction (Mul MulNat),
-            Just 0
-          ),
-          ( forAllDims $ \dims -> hasMul (tRatTensor dims) (tRatTensor dims) (tRatTensor dims),
-            lamDims $ \dims -> builtinFunction (Mul MulRatTensor) .@@@ [dims],
-            Nothing
-          ),
-          ------------
-          -- HasDiv --
-          ------------
-          ( forAllDims $ \dims -> hasDiv (tRatTensor dims) (tRatTensor dims) (tRatTensor dims),
-            lamDims $ \dims -> builtinFunction (Div DivRatTensor) .@@@ [dims],
-            Nothing
-          ),
-          ------------
           -- HasAt --
           ------------
           ( forAllTypes $ \tElem ->

@@ -34,14 +34,13 @@ import Data.Text (Text)
 import Data.Text qualified as Text (unpack)
 import System.Console.ANSI (Color (..))
 import Text.Read (readMaybe)
+import Vehicle.Data.AST.Decl (GenericDecl)
+import Vehicle.Data.AST.Name (HasIdentifier (identifierOf), Identifier, nameOf)
 import Vehicle.Data.MaybeTrivial (MaybeTrivialT, mapMaybeTrivialT)
 import Vehicle.Prelude.Misc (enumerate, setTextColour)
 import Vehicle.Prelude.Prettyprinter
 import Vehicle.Prelude.Supply (SupplyT, mapSupplyT)
 import Vehicle.Prelude.Warning
-import Vehicle.Syntax.AST.Decl (GenericDecl)
-import Vehicle.Syntax.AST.Name (HasIdentifier (identifierOf), Identifier, nameOf)
-import Vehicle.Syntax.Prelude (layoutAsText)
 
 --------------------------------------------------------------------------------
 -- Settings

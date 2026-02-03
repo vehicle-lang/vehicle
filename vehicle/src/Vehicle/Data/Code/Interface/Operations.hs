@@ -1,10 +1,10 @@
 module Vehicle.Data.Code.Interface.Operations where
 
+import Vehicle.Data.Builtin.Core.BasicOperations
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Code.Interface.Args
 import Vehicle.Data.Tensor
 import Vehicle.Prelude
-import Vehicle.Syntax.Builtin.BasicOperations
 
 --------------------------------------------------------------------------------
 -- Interface to standard builtins

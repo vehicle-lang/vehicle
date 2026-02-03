@@ -7,7 +7,7 @@ import Data.Proxy (Proxy (..))
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Resource (NetworkName)
-import Vehicle.Data.Builtin.Core (Builtin)
+import Vehicle.Data.Builtin.Standard (Builtin)
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Variable.Free.Context (FreeContextT, MonadFreeContext, runFreshFreeContextT)
 import Vehicle.Verify.Core

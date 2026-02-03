@@ -1,0 +1,101 @@
+module Vehicle.Data.AST.Record where
+
+import Control.DeepSeq (NFData)
+import Data.Foldable (traverse_)
+import Data.Hashable (Hashable)
+import Data.Map.Ordered (OMap)
+import Data.Map.Ordered qualified as OMap
+import Data.Serialize (Serialize)
+import GHC.Generics (Generic)
+import Prettyprinter (Pretty (..), squotes, (<+>))
+import Vehicle.Data.AST.Name (HasName (..), Identifier (..), Name)
+import Vehicle.Data.AST.Provenance (HasProvenance (..), Provenance)
+import Vehicle.Prelude.Error (developerError)
+
+--------------------------------------------------------------------------------
+-- Record field names
+
+data FieldName = FieldName Provenance Name
+  deriving (Show, Generic)
+
+instance Eq FieldName where
+  FieldName _ n1 == FieldName _ n2 = n1 == n2
+
+instance Ord FieldName where
+  FieldName _ n1 <= FieldName _ n2 = n1 <= n2
+
+instance NFData FieldName
+
+instance Serialize FieldName
+
+instance Hashable FieldName
+
+instance Pretty FieldName where
+  pretty (FieldName _ name) = pretty name
+
+instance HasProvenance FieldName where
+  provenanceOf (FieldName p _) = p
+
+instance HasName FieldName Name where
+  nameOf (FieldName _ name) = name
+
+fieldAccessIdentifier :: Identifier -> FieldName -> Identifier
+fieldAccessIdentifier recordIdent field =
+  Identifier (modulePath recordIdent) (nameOf field)
+
+--------------------------------------------------------------------------------
+-- Record fields
+
+type GenericRecordField expr = (FieldName, expr)
+
+mapRecordField ::
+  (expr1 -> expr2) ->
+  GenericRecordField expr1 ->
+  GenericRecordField expr2
+mapRecordField f (name, typ) = (name, f typ)
+
+traverseRecordField ::
+  (Monad m) =>
+  (expr1 -> m expr2) ->
+  GenericRecordField expr1 ->
+  m (GenericRecordField expr2)
+traverseRecordField f (name, typ) = (name,) <$> f typ
+
+traverseRecordField_ :: (Monad m) => (expr1 -> m ()) -> GenericRecordField expr1 -> m ()
+traverseRecordField_ f (_, typ) = f typ
+
+type GenericRecordFields expr = [GenericRecordField expr]
+
+mapRecordFields ::
+  (expr1 -> expr2) ->
+  GenericRecordFields expr1 ->
+  GenericRecordFields expr2
+mapRecordFields f = fmap (mapRecordField f)
+
+traverseRecordFields ::
+  (Monad m) =>
+  (expr1 -> m expr2) ->
+  GenericRecordFields expr1 ->
+  m (GenericRecordFields expr2)
+traverseRecordFields f = traverse (traverseRecordField f)
+
+traverseRecordFields_ :: (Monad m) => (expr1 -> m ()) -> GenericRecordFields expr1 -> m ()
+traverseRecordFields_ f = traverse_ (traverseRecordField_ f)
+
+lookupRecordField ::
+  GenericRecordFields expr ->
+  FieldName ->
+  expr
+lookupRecordField fields field = case lookup field fields of
+  Just value -> value
+  Nothing -> developerError $ "Ill-scoped record, could not find field" <+> squotes (pretty field)
+
+type SearchableRecordFields expr = OMap FieldName expr
+
+lookupRecordFieldS ::
+  SearchableRecordFields expr ->
+  FieldName ->
+  expr
+lookupRecordFieldS fields field = case OMap.lookup field fields of
+  Just value -> value
+  Nothing -> developerError $ "Ill-scoped record, could not find field" <+> squotes (pretty field)

@@ -34,6 +34,8 @@ standardLibraryInstanceOps =
   Set.fromList
     [ standardLibIdent "addTC",
       standardLibIdent "subTC",
+      standardLibIdent "mulTC",
+      standardLibIdent "divTC",
       standardLibIdent "forAllTC",
       standardLibIdent "existsTC"
     ]

@@ -3,7 +3,7 @@
 module Vehicle.Data.Hashing () where
 
 import Data.Hashable (Hashable (..))
-import Vehicle.Data.Code.Expr (Expr)
+import Vehicle.Data.AST.Expr.Scoped (Expr)
 import Vehicle.Prelude
 
 -- We used to have full blown alpha-equivalence based on co-deBruijn indices

@@ -4,7 +4,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Maybe (mapMaybe)
 import GHC.Stack (HasCallStack)
-import Vehicle.Data.Code.Expr
+import Vehicle.Data.AST.Expr.Scoped
 import Vehicle.Prelude
 
 --------------------------------------------------------------------------------

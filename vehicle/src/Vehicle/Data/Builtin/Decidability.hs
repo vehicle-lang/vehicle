@@ -1,24 +1,24 @@
 module Vehicle.Data.Builtin.Decidability
   ( module Vehicle.Data.Builtin.Decidability,
-    module Vehicle.Syntax.Builtin.BasicOperations,
+    module Vehicle.Data.Builtin.Core.BasicOperations,
   )
 where
 
 import Data.Hashable (Hashable)
 import GHC.Generics (Generic)
 import Vehicle.Compile.Prelude (Expr (..), normAppList)
+import Vehicle.Data.Builtin.Core.BasicOperations
+import Vehicle.Data.Builtin.Core.Derived (DerivedFunction (..))
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Interface.Blocked
 import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Interface.Print
-import Vehicle.Data.Builtin.Standard (Builtin, BuiltinConstructor (..), BuiltinFunction (..), BuiltinType (..), DerivedFunction)
+import Vehicle.Data.Builtin.Standard (Builtin, BuiltinConstructor (..), BuiltinFunction (..), BuiltinType (..))
 import Vehicle.Data.Code.DSL (tDim, tDims)
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.DSL
 import Vehicle.Data.Tensor (BoolTensor, anyTensor)
 import Vehicle.Prelude (Pretty (..), Relevance (..), Visibility (..), developerError, explicit, (<+>))
-import Vehicle.Syntax.Builtin.BasicOperations
-import Vehicle.Syntax.Builtin.Derived (DerivedFunction (..))
 
 --------------------------------------------------------------------------------
 -- Data
