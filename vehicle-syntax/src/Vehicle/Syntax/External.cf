@@ -73,6 +73,8 @@ position token TokQuantifyForAllNat {"quantifyForAllNat"};
 position token TokQuantifyExistsNat {"quantifyExistsNat"};
 position token TokQuantifyForallRealTensor {"quantifyForallRealTensor"};
 position token TokQuantifyExistsRealTensor {"quantifyExistsRealTensor"};
+position token TokQuantifyForallTensorLike {"quantifyForallTensorLike"};
+position token TokQuantifyExistsTensorLike {"quantifyExistsTensorLike"};
 
 position token TokNil        {"nil"};
 position token TokCons       {"::"};
@@ -236,6 +238,8 @@ QuantifyForAllNat. Expr15 ::= TokQuantifyForAllNat Expr14; -- not sure if these 
 QuantifyExistsNat. Expr15 ::= TokQuantifyExistsNat Expr14;
 QuantifyForallRealTensor. Expr15 ::= TokQuantifyForallRealTensor Expr14;
 QuantifyExistsRealTensor. Expr15 ::= TokQuantifyExistsRealTensor Expr14;
+QuantifyForallTensorLike. Expr15 ::= TokQuantifyForallTensorLike Expr14;
+QuantifyExistsTensorLike. Expr15 ::= TokQuantifyExistsTensorLike Expr14;
 
 -- Lists and vectors.
 Foreach.    Expr2  ::= TokForeach [NameBinder] "." Expr2;

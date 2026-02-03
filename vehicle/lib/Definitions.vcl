@@ -150,7 +150,15 @@ indexHasQuantifier = { forAllTC = \n1 -> quantifyForAllNat n1,
 @instance
 tensorHasQuantifier : forallT { dims : List Nat } . HasQuantifier (Tensor Real dims)
 tensorHasQuantifier = { forAllTC = \n1 -> quantifyForallRealTensor n1,
-                       existsTC = \n1 -> quantifyExistsRealTensor n1}
+                        existsTC = \n1 -> quantifyExistsRealTensor n1}
+
+-- do we need something here to enforce that the element type is valid?
+-- elements would have to be reals?? bc anything we convert will be a tensor so we need a tensor of reals??
+-- see if this works for now and add in later
+@instance
+tensorLikeHasQuantifier : forallT { r : Type } { t : Type } { dims : List Nat } {{ tensorLike : TensorLike r t dims }} . HasQuantifier (TensorLike r t dims)
+tensorLikeHasQuantifier = { forAllTC = \n1 -> quantifyForallTensorLike n1,
+                            existsTC = \n1 -> quantifyExistsTensorLike n1}
 
 --------------------------------------------------------------------------------
 -- Loss logics

@@ -227,6 +227,7 @@ convertToDecidabilityBuiltins p b args = return $
         CompareNat op -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC $ FieldCompareNat op)
         -- Nothing needs to change
         QuantifyRatTensor {} -> sameFunction f
+        QuantifyTensorLike _ -> developerError "Quantifying over tensorLikes is not yet supported."
         If -> sameFunction f
         Neg {} -> sameFunction f
         Add {} -> sameFunction f

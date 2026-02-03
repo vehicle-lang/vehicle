@@ -86,6 +86,7 @@ instance NormalisableBuiltin Builtin where
       ForeachVector -> NonSimple evalForeachVector
       Iterate -> NonSimple evalIterate
       QuantifyRatTensor {} -> None
+      QuantifyTensorLike {} -> None
     BuiltinCast c -> case c of
       FromNat FromNatToNat -> Simple evalFromNatToNat
       FromNat FromNatToIndex -> Simple evalFromNatToIndex

@@ -253,6 +253,7 @@ delabBuiltinFunction fun args = case fun of
   V.Min _dom -> delabApp (B.Min tokMin) args
   V.Max _dom -> delabApp (B.Max tokMax) args
   V.QuantifyRatTensor q -> delabQuantifier q args
+  V.QuantifyTensorLike q -> delabQuantifier q args
   V.CompareRatTensorPointwise V.Eq -> delabInfixOp2 B.EqPoint tokEqPoint args
   V.CompareRatTensorPointwise V.Ne -> delabInfixOp2 B.NePoint tokNePoint args
   V.CompareRatTensorPointwise V.Le -> delabInfixOp2 B.LePoint tokLePoint args

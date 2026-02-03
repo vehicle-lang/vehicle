@@ -1046,6 +1046,7 @@ prettyPolarityProvenance topQuantifierProv topQuantifier bottomQuantifierProvena
     go :: Quantifier -> PolarityProvenance -> [Doc a]
     go q = \case
       QuantifierProvenance p ->
+        -- is this the issue?? -- we have q but pretty p dies??
         ["the inner quantifier is the" <+> quotePretty q <+> "located in" <+> pretty p]
       NegateProvenance p pp ->
         transform p ("the" <+> quotePretty Not) : go (neg q) pp

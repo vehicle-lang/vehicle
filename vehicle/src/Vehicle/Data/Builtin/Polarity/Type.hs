@@ -58,6 +58,7 @@ typeOfBuiltinFunction = \case
   ReduceAndTensor -> typeOfOp2 maxPolarity
   ReduceOrTensor -> typeOfOp2 maxPolarity
   QuantifyRatTensor q -> typeOfQuantifier q
+  QuantifyTensorLike _ -> developerError "Quantifying over tensorLikes is not yet supported."
   If -> typeOfIf
   -- Comparisons
   CompareNat {} -> typeOfOp2 maxPolarity
