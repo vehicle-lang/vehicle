@@ -167,26 +167,16 @@ record HasQuantifier t where
   , existsTC : (t -> Bool) -> Bool
   }
 
--- indexHasQuantifier : forallT { n : Nat } . HasQuantifier (Index n) -- need to use the forall index here
--- indexHasQuantifier = {  forAllTC = \n -> quantifyForAllNat n, -- QuantifyIndex Forall n
---                       existsTC = \n -> quantifyExistsNat n  -- QuantifyIndex Exists n
---                    }
-
---  need to do (Index n) -> Bool
--- can we do some king of pattern matching here? i.e. \(Index n) -> quantifyForAllNat n
-
--- forallIndex : forallT {n} . (Index n -> Bool) -> Bool
--- forallIndex f = reduceAnd True (foreach i . f i)
 
 -- QuantifyIndex {} -> forAllDim Relevant $ \d -> (tIndex d ~> tBool) ~> tBool
 @instance
 indexHasQuantifier : forallT {n : Nat} . HasQuantifier (Index n)
-indexHasQuantifier = { forAllTC = \n1 -> quantifyForAllNat n1,
-                       existsTC = \n1 -> quantifyExistsNat n1}
+indexHasQuantifier = { forAllTC = \n1 -> quantifyForAllIndex n1,
+                       existsTC = \n1 -> quantifyExistsIndex n1}
 
 -- indexHasQuantifier : forallT {n : Nat} . HasQuantifier (Index n)
--- indexHasQuantifier {n} = { forAllTC = forallIndex (quantifyForAllNat n),
---                            existsTC = existsIndex (quantifyExistsNat n)
+-- indexHasQuantifier {n} = { forAllTC = forallIndex (quantifyForAllIndex n),
+--                            existsTC = existsIndex (quantifyExistsImdex n)
 --                         }
 
         -- ( forAllDims $ \ds ->
