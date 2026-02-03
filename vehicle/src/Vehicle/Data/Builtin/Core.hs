@@ -92,6 +92,7 @@ data BuiltinFunction
   | Or
   | Implies
   | QuantifyRatTensor Quantifier
+  | QuantifyTensorLike Quantifier
   | If
   | CompareIndex ComparisonOp
   | CompareNat ComparisonOp
@@ -140,6 +141,7 @@ instance Pretty BuiltinFunction where
     Not -> "not"
     Implies -> "=>"
     QuantifyRatTensor q -> pretty q
+    QuantifyTensorLike q -> pretty q
     If -> "if"
     ReduceAndTensor -> "reduceAndTensor"
     ReduceOrTensor -> "reduceOrTensor"

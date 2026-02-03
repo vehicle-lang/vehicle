@@ -10,7 +10,6 @@ import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.DSL
 import Vehicle.Prelude (Provenance, Relevance (..))
-import Vehicle.Syntax.Prelude
 import Prelude hiding (iterate)
 
 class (NormalisableBuiltin builtin, Ord builtin) => TypableBuiltin builtin where
@@ -46,10 +45,8 @@ typeOfBuiltinFunction = \case
   Or -> typeOfTensorOp2 tBool
   Implies -> typeOfTensorOp2 tBool
   QuantifyRatTensor _ -> forAllDims $ \ds -> typeOfQuantifier (tRatTensor ds)
-  -- not sure if this is correct bc we should only be able to quantify over tensorLikes that convert to rat tensor
   -- tensorLikeHasQuantifier : forallT { r : Type } { t : Type } { dims : List Nat } {{ tensorLike : TensorLike r t dims }} . HasQuantifier (TensorLike r t dims)
-  -- developer error here??
-  QuantifyTensorLike _ -> developerError "Quantifying over tensorLikes is not yet supported."
+  QuantifyTensorLike _ -> forAllTypes $ \ts -> typeOfQuantifier ts
   If -> typeOfIf
   ReduceAndTensor -> typeOfTensorBoolReduceOp
   ReduceOrTensor -> typeOfTensorBoolReduceOp

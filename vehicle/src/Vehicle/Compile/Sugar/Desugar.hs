@@ -728,8 +728,7 @@ elabStandardLibQuantifier ::
   [B.NameBinder] ->
   B.Expr ->
   m (V.Expr Builtin)
-
-elabQuantifier tk q binders body = do
+elabStandardLibQuantifier tk name binders body = do
   p <- mkProvenance tk
   let quant = V.Var p name
 

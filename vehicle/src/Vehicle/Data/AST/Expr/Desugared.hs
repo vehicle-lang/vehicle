@@ -41,6 +41,7 @@ import Vehicle.Data.AST.Module (GenericModule)
 import Vehicle.Data.AST.Name (Name)
 import Vehicle.Data.AST.Provenance (HasProvenance (..), Provenance, fillInProvenance)
 import Vehicle.Data.AST.Record (FieldName, GenericRecordField, GenericRecordFields)
+import Vehicle.Data.Builtin.Core.BasicOperations
 import Vehicle.Data.Builtin.Standard.Core (Builtin (..), TypeClassOp (..))
 
 --------------------------------------------------------------------------------
@@ -173,7 +174,9 @@ instance HasBasicBinders (Expr builtin) where
 
 instance HasBuiltinBinders (Expr Builtin) where
   getQuantifierBinder q = \case
-    App (Builtin _ (TypeClassOp (QuantifierTC q'))) ((argExpr -> Lam _ binder body) :| []) | q == q' -> Just (binder, body)
+    -- App (Builtin _ (TypeClassOp (QuantifierTC q'))) ((argExpr -> Lam _ binder body) :| []) | q == q' -> Just (binder, body)
+    App (Var _ "existsTC") ((argExpr -> Lam _ binder body) :| []) | q == Exists -> Just (binder, body)
+    App (Var _ "forAllTC") ((argExpr -> Lam _ binder body) :| []) | q == Forall -> Just (binder, body)
     _ -> Nothing
 
   getForeachBinder = \case
