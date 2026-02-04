@@ -234,26 +234,6 @@ GePoint. Expr8  ::= Expr8 TokGePoint Expr9;
 GtPoint. Expr8  ::= Expr8 TokGtPoint Expr9;
 
 -- Container syntax.
--- Numeric expressions.
-Add.              Expr9  ::= Expr9  TokAdd Expr10;
-Sub.              Expr9  ::= Expr9  TokSub Expr10;
-Mul.              Expr10 ::= Expr10 TokMul Expr11;
-Div.              Expr10 ::= Expr10 TokDiv Expr11;
-Neg.              Expr11 ::= TokSub Expr11;
-Min.              Expr15 ::= TokMin;
-Max.              Expr15 ::= TokMax;
-AddNat.           Expr15 ::= TokAddNat;
-AddRealTensor.    Expr15 ::= TokAddRealTensor;
-SubRealTensor.    Expr15 ::= TokSubRealTensor;
-QuantifyForAllIndex. Expr15 ::= TokQuantifyForAllIndex; -- not sure if these are the numbers we want? guessing randomly o7
-QuantifyExistsIndex. Expr15 ::= TokQuantifyExistsIndex;
-QuantifyForallRealTensor. Expr15 ::= TokQuantifyForallRealTensor;
-QuantifyExistsRealTensor. Expr15 ::= TokQuantifyExistsRealTensor;
-QuantifyForallTensorLike. Expr15 ::= TokQuantifyForallTensorLike;
-QuantifyExistsTensorLike. Expr15 ::= TokQuantifyExistsTensorLike;
-
--- Lists and vectors.
-Foreach.    Expr2  ::= TokForeach [NameBinder] "." Expr2;
 VecLiteral. Expr15 ::= TokSeqOpen [Expr] TokSeqClose;
 Cons.       Expr4  ::= Expr5 TokCons Expr4;
 At.         Expr12 ::= Expr12 TokAt Expr13;
@@ -267,6 +247,12 @@ AddRealTensor. Expr15 ::= TokAddRealTensor;
 SubRealTensor. Expr15 ::= TokSubRealTensor;
 MulRealTensor. Expr15 ::= TokMulRealTensor;
 DivRealTensor. Expr15 ::= TokDivRealTensor;
+QuantifyForAllIndex. Expr15 ::= TokQuantifyForAllIndex;
+QuantifyExistsIndex. Expr15 ::= TokQuantifyExistsIndex;
+QuantifyForallRealTensor. Expr15 ::= TokQuantifyForallRealTensor;
+QuantifyExistsRealTensor. Expr15 ::= TokQuantifyExistsRealTensor;
+QuantifyForallTensorLike. Expr15 ::= TokQuantifyForallTensorLike;
+QuantifyExistsTensorLike. Expr15 ::= TokQuantifyExistsTensorLike;
 Nil.           Expr15 ::= TokNil;
 Const.         Expr15 ::= TokConst;
 Map.           Expr15 ::= TokMap;

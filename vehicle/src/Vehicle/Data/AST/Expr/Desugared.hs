@@ -174,7 +174,6 @@ instance HasBasicBinders (Expr builtin) where
 
 instance HasBuiltinBinders (Expr Builtin) where
   getQuantifierBinder q = \case
-    -- App (Builtin _ (TypeClassOp (QuantifierTC q'))) ((argExpr -> Lam _ binder body) :| []) | q == q' -> Just (binder, body)
     App (Var _ "existsTC") ((argExpr -> Lam _ binder body) :| []) | q == Exists -> Just (binder, body)
     App (Var _ "forallTC") ((argExpr -> Lam _ binder body) :| []) | q == Forall -> Just (binder, body)
     _ -> Nothing

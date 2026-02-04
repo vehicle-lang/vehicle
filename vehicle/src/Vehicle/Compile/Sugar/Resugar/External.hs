@@ -230,7 +230,6 @@ delabDerivedFunction :: (MonadDelab m) => V.DerivedFunction -> [V.Arg V.Builtin]
 delabDerivedFunction fun args = case fun of
   -- Reverse the arguments to make it un-well typed again
   V.TypeAnn -> delabInfixOp2 B.Ann tokElemOf (reverse args)
-  -- V.QuantifyIndex q -> delabTypeClassOp (V.QuantifierTC q) args
   V.QuantifyIndex q -> delabQuantifier q args
   V.QuantifyInList q -> delabQuantifierIn q args
   V.CompareRatTensorReduced op -> delabTypeClassOp (V.CompareTC op) args
@@ -344,7 +343,6 @@ delabTypeClassOp op args = case op of
   V.FoldTC -> delabApp (B.Fold tokFold) args
   V.AtTC -> delabInfixOp2 B.At tokAt args
   V.ForeachTC -> delabForeach args
-  -- V.QuantifierTC q -> delabQuantifier q args
   V.TensorTypeTC -> cheatDelabPretty op args
 
 delabOp1 :: (MonadDelab m, IsToken token) => (token -> B.Expr -> B.Expr) -> token -> [V.Arg V.Builtin] -> m B.Expr

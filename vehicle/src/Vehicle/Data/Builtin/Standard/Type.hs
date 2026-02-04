@@ -102,10 +102,6 @@ typeOfTypeClassOp b = case b of
   MapTC -> forAll "f" (type0 ~> type0) $ \f -> hasMap f ~~~> typeOfMap f
   FoldTC -> forAll "f" (type0 ~> type0) $ \f -> hasFold f ~~~> typeOfFold f
 
--- QuantifierTC q ->
---   forAll "A" (type0 ~> type0) $ \t ->
---     hasQuantifier q t ~~~> typeOfQuantifier t
-
 typeOfBuiltinCast :: BuiltinCast -> DSLExpr Builtin
 typeOfBuiltinCast = \case
   FromNat dom -> case dom of

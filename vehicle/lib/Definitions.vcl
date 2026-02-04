@@ -160,7 +160,7 @@ tensorLikeHasDiv =
             )
     }
 
--- Quantification
+-- Quantifiers
 @typeclass
 record HasQuantifier t where
   { forallTC : (t -> Bool) -> Bool
@@ -170,17 +170,20 @@ record HasQuantifier t where
 @instance
 indexHasQuantifier : forallT {n : Nat} . HasQuantifier (Index n)
 indexHasQuantifier = { forallTC = quantifyForAllIndex,
-                       existsTC = quantifyExistsIndex }
+                       existsTC = quantifyExistsIndex
+                     }
 
 @instance
 tensorHasQuantifier : forallT { ds : List Nat } . HasQuantifier (Tensor Real ds)
 tensorHasQuantifier = { forallTC = quantifyForallRealTensor,
-                        existsTC = quantifyExistsRealTensor }
+                        existsTC = quantifyExistsRealTensor
+                      }
 
 @instance
 tensorLikeHasQuantifier : forallT { r : Type } { t : Type } { dims : List Nat } {{ tensorLike : TensorLike r t dims }} . HasQuantifier (TensorLike r t dims)
 tensorLikeHasQuantifier = { forallTC = quantifyForallTensorLike,
-                            existsTC = quantifyExistsTensorLike }
+                            existsTC = quantifyExistsTensorLike
+                          }
 
 --------------------------------------------------------------------------------
 -- Loss logics

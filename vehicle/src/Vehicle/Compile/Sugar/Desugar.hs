@@ -372,8 +372,8 @@ elabExpr expr = case expr of
   B.Lam tk1 ns _tk2 e -> elabLam tk1 ns e
   B.Record xs -> elabRecord xs
   B.RecordAcc e n -> elabRecordAcc e n
-  B.Forall tk1 ns e -> elabStandardLibQuantifier tk1 "forallTC" ns e
-  B.Exists tk1 ns e -> elabStandardLibQuantifier tk1 "existsTC" ns e
+  B.Forall tk1 ns e -> standardLibQuantifier tk1 "forallTC" ns e
+  B.Exists tk1 ns e -> standardLibQuantifier tk1 "existsTC" ns e
   B.ForallIn tk1 ns e1 e2 -> elabQuantifierIn tk1 V.Forall ns e1 e2
   B.ExistsIn tk1 ns e1 e2 -> elabQuantifierIn tk1 V.Exists ns e1 e2
   B.Foreach tk1 ns e -> elabForeach tk1 ns e
@@ -697,36 +697,14 @@ elabLam tk binders body = do
   body' <- elabExpr body
   return $ foldr (V.Lam p) body' binders'
 
--- elabQuantifier ::
---   (MonadElab m, IsToken token) =>
---   token ->
---   V.Quantifier ->
---   [B.NameBinder] ->
---   B.Expr ->
---   m V.Expr
--- elabQuantifier tk q binders body = do
---   p <- mkProvenance tk
---   let quantBuiltin = V.Builtin p $ V.TypeClassOp $ V.QuantifierTC q
-
---   binders' <- elabNamedBinders tk binders
---   body' <- elabExpr body
-
---   let mkQuantifier binder newBody =
---         V.normAppList
---           quantBuiltin
---           [ mkArg mempty V.Explicit (V.Lam (V.provenanceOf binder) binder newBody)
---           ]
-
---   return $ foldr mkQuantifier body' binders'
-
-elabStandardLibQuantifier ::
+standardLibQuantifier ::
   (MonadElab m, IsToken token) =>
   token ->
   V.Name ->
   [B.NameBinder] ->
   B.Expr ->
   m (V.Expr Builtin)
-elabStandardLibQuantifier tk name binders body = do
+standardLibQuantifier tk name binders body = do
   p <- mkProvenance tk
   let quant = V.Var p name
 

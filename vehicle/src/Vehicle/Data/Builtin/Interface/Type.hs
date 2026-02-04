@@ -45,7 +45,6 @@ typeOfBuiltinFunction = \case
   Or -> typeOfTensorOp2 tBool
   Implies -> typeOfTensorOp2 tBool
   QuantifyRatTensor _ -> forAllDims $ \ds -> typeOfQuantifier (tRatTensor ds)
-  -- tensorLikeHasQuantifier : forallT { r : Type } { t : Type } { dims : List Nat } {{ tensorLike : TensorLike r t dims }} . HasQuantifier (TensorLike r t dims)
   QuantifyTensorLike _ -> forAllTypes $ \ts -> typeOfQuantifier ts
   If -> typeOfIf
   ReduceAndTensor -> typeOfTensorBoolReduceOp
