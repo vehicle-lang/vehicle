@@ -160,42 +160,27 @@ tensorLikeHasDiv =
             )
     }
 
--- quantification
+-- Quantification
 @typeclass
 record HasQuantifier t where
-  { forAllTC : (t -> Bool) -> Bool
+  { forallTC : (t -> Bool) -> Bool
   , existsTC : (t -> Bool) -> Bool
   }
 
--- QuantifyIndex {} -> forAllDim Relevant $ \d -> (tIndex d ~> tBool) ~> tBool
-
--- errors about missing application of forallIndex and existsIndex
--- @instance
--- indexHasQuantifier : forallT {n : Nat} . HasQuantifier (Index n)
--- indexHasQuantifier = { forAllTC = forallIndex,
---                        existsTC = existsIndex }
-
--- error message comes up with tensor instance first instead of index
--- is this ok or do we need to find a way to make them swap?
-
 @instance
 indexHasQuantifier : forallT {n : Nat} . HasQuantifier (Index n)
-indexHasQuantifier = { forAllTC = quantifyForAllIndex,
-                       existsTC = quantifyForAllIndex }
+indexHasQuantifier = { forallTC = quantifyForAllIndex,
+                       existsTC = quantifyExistsIndex }
 
 @instance
 tensorHasQuantifier : forallT { ds : List Nat } . HasQuantifier (Tensor Real ds)
-tensorHasQuantifier = { forAllTC = quantifyForallRealTensor,
-                        existsTC = quantifyExistsRealTensor}
-
--- do we need something here to enforce that the element type is valid?
--- elements would have to be reals?? bc anything we convert will be a tensor so we need a tensor of reals??
--- see if this works for now and add in later
+tensorHasQuantifier = { forallTC = quantifyForallRealTensor,
+                        existsTC = quantifyExistsRealTensor }
 
 @instance
 tensorLikeHasQuantifier : forallT { r : Type } { t : Type } { dims : List Nat } {{ tensorLike : TensorLike r t dims }} . HasQuantifier (TensorLike r t dims)
-tensorLikeHasQuantifier = { forAllTC = \n1 -> quantifyForallTensorLike n1,
-                            existsTC = \n1 -> quantifyExistsTensorLike n1}
+tensorLikeHasQuantifier = { forallTC = quantifyForallTensorLike,
+                            existsTC = quantifyExistsTensorLike }
 
 --------------------------------------------------------------------------------
 -- Loss logics

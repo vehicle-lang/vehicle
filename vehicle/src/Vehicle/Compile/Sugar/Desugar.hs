@@ -372,9 +372,7 @@ elabExpr expr = case expr of
   B.Lam tk1 ns _tk2 e -> elabLam tk1 ns e
   B.Record xs -> elabRecord xs
   B.RecordAcc e n -> elabRecordAcc e n
-  -- B.Forall tk1 ns e -> elabQuantifier tk1 V.Forall ns e
-  B.Forall tk1 ns e -> elabStandardLibQuantifier tk1 "forAllTC" ns e
-  -- B.Exists tk1 ns e -> elabQuantifier tk1 V.Exists ns e
+  B.Forall tk1 ns e -> elabStandardLibQuantifier tk1 "forallTC" ns e
   B.Exists tk1 ns e -> elabStandardLibQuantifier tk1 "existsTC" ns e
   B.ForallIn tk1 ns e1 e2 -> elabQuantifierIn tk1 V.Forall ns e1 e2
   B.ExistsIn tk1 ns e1 e2 -> elabQuantifierIn tk1 V.Exists ns e1 e2

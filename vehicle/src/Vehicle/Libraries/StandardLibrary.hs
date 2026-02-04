@@ -36,7 +36,7 @@ standardLibraryInstanceOps =
       standardLibIdent "subTC",
       standardLibIdent "mulTC",
       standardLibIdent "divTC",
-      standardLibIdent "forAllTC",
+      standardLibIdent "forallTC",
       standardLibIdent "existsTC"
     ]
 
