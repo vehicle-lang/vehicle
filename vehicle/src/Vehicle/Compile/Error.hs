@@ -18,7 +18,7 @@ module Vehicle.Compile.Error
     ParseLocation,
     MonadCompile,
     compilerDeveloperError,
-    unsupportedTensorLikeQuantification,
+    unsupportedTensorLikeQuantifier,
   )
 where
 
@@ -286,5 +286,5 @@ data JSONError = JSONError
 instance ToJSON JSONError
 
 -- developer error for unsupported tensorLike quantification
-unsupportedTensorLikeQuantification :: forall b. (HasCallStack) => b
-unsupportedTensorLikeQuantification = developerError "abcd"
+unsupportedTensorLikeQuantifier :: forall b. (HasCallStack) => b
+unsupportedTensorLikeQuantifier = developerError "Quantification over TensorLikes is unsupported."
