@@ -245,12 +245,12 @@ Max.              Expr15 ::= TokMax;
 AddNat.           Expr15 ::= TokAddNat;
 AddRealTensor.    Expr15 ::= TokAddRealTensor;
 SubRealTensor.    Expr15 ::= TokSubRealTensor;
-QuantifyForAllIndex. Expr15 ::= TokQuantifyForAllIndex Expr14; -- not sure if these are the numbers we want? guessing randomly o7
-QuantifyExistsIndex. Expr15 ::= TokQuantifyExistsIndex Expr14;
-QuantifyForallRealTensor. Expr15 ::= TokQuantifyForallRealTensor Expr14;
-QuantifyExistsRealTensor. Expr15 ::= TokQuantifyExistsRealTensor Expr14;
-QuantifyForallTensorLike. Expr15 ::= TokQuantifyForallTensorLike Expr14;
-QuantifyExistsTensorLike. Expr15 ::= TokQuantifyExistsTensorLike Expr14;
+QuantifyForAllIndex. Expr15 ::= TokQuantifyForAllIndex; -- not sure if these are the numbers we want? guessing randomly o7
+QuantifyExistsIndex. Expr15 ::= TokQuantifyExistsIndex;
+QuantifyForallRealTensor. Expr15 ::= TokQuantifyForallRealTensor;
+QuantifyExistsRealTensor. Expr15 ::= TokQuantifyExistsRealTensor;
+QuantifyForallTensorLike. Expr15 ::= TokQuantifyForallTensorLike;
+QuantifyExistsTensorLike. Expr15 ::= TokQuantifyExistsTensorLike;
 
 -- Lists and vectors.
 Foreach.    Expr2  ::= TokForeach [NameBinder] "." Expr2;

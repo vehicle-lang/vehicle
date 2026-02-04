@@ -167,33 +167,31 @@ record HasQuantifier t where
   , existsTC : (t -> Bool) -> Bool
   }
 
-
 -- QuantifyIndex {} -> forAllDim Relevant $ \d -> (tIndex d ~> tBool) ~> tBool
+
+-- errors about missing application of forallIndex and existsIndex
+-- @instance
+-- indexHasQuantifier : forallT {n : Nat} . HasQuantifier (Index n)
+-- indexHasQuantifier = { forAllTC = forallIndex,
+--                        existsTC = existsIndex }
+
+-- error message comes up with tensor instance first instead of index
+-- is this ok or do we need to find a way to make them swap?
+
 @instance
 indexHasQuantifier : forallT {n : Nat} . HasQuantifier (Index n)
-indexHasQuantifier = { forAllTC = \n1 -> quantifyForAllIndex n1,
-                       existsTC = \n1 -> quantifyExistsIndex n1}
-
--- indexHasQuantifier : forallT {n : Nat} . HasQuantifier (Index n)
--- indexHasQuantifier {n} = { forAllTC = forallIndex (quantifyForAllIndex n),
---                            existsTC = existsIndex (quantifyExistsImdex n)
---                         }
-
-        -- ( forAllDims $ \ds ->
-        --     hasQuantifier q (tRatTensor ds),
-        --   lamDims $ \ds ->
-        --     builtinFunction (QuantifyRatTensor q) @@@ [ds],
-        --   Nothing
-        -- )
+indexHasQuantifier = { forAllTC = quantifyForAllIndex,
+                       existsTC = quantifyForAllIndex }
 
 @instance
-tensorHasQuantifier : forallT { dims : List Nat } . HasQuantifier (Tensor Real dims)
-tensorHasQuantifier = { forAllTC = \n1 -> quantifyForallRealTensor n1,
-                        existsTC = \n1 -> quantifyExistsRealTensor n1}
+tensorHasQuantifier : forallT { ds : List Nat } . HasQuantifier (Tensor Real ds)
+tensorHasQuantifier = { forAllTC = quantifyForallRealTensor,
+                        existsTC = quantifyExistsRealTensor}
 
 -- do we need something here to enforce that the element type is valid?
 -- elements would have to be reals?? bc anything we convert will be a tensor so we need a tensor of reals??
 -- see if this works for now and add in later
+
 @instance
 tensorLikeHasQuantifier : forallT { r : Type } { t : Type } { dims : List Nat } {{ tensorLike : TensorLike r t dims }} . HasQuantifier (TensorLike r t dims)
 tensorLikeHasQuantifier = { forAllTC = \n1 -> quantifyForallTensorLike n1,
