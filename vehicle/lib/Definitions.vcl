@@ -180,7 +180,7 @@ tensorHasQuantifier = { forallTC = quantifyForallRealTensor,
                       }
 
 @instance
-tensorLikeHasQuantifier : forallT { r : Type } { t : Type } { dims : List Nat } {{ tensorLike : TensorLike r t dims }} . HasQuantifier (TensorLike r t dims)
+tensorLikeHasQuantifier : forallT { r : Type } { dims : List Nat } {{ tensorLike : TensorLike r Real dims }} . HasQuantifier (TensorLike r Real dims)
 tensorLikeHasQuantifier = { forallTC = quantifyForallTensorLike,
                             existsTC = quantifyExistsTensorLike
                           }
