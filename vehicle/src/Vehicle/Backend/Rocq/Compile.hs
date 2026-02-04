@@ -500,7 +500,7 @@ compileBuiltin b args = case b of
     QuantifyRatTensor q -> case reverse args of
       (ExplicitArg _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier q [binder] body
       _ -> unsupportedArgsError
-    QuantifyTensorLike _ -> developerError "Quantifying over tensorLikes is not yet supported."
+    QuantifyTensorLike _ -> unsupportedTensorLikeQuantification
     AtTensor -> annotateNotation [RequireImport VehicleTensor] 201 "$0^^$1" (Just "nindex") args
     If -> annotateNotation [MathcompImport Boot] minPrecedence "if $0 then $1 else $2" Nothing args
     ForeachTensor -> annotateApp [RequireImport VehicleTensor] "nstack" args

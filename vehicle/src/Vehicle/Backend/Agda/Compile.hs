@@ -571,7 +571,7 @@ compileBuiltinFunction f args = case f of
   QuantifyRatTensor q -> case reverse args of
     (ExplicitArg _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier q [binder] body
     _ -> unsupportedArgsError
-  QuantifyTensorLike _ -> developerError "Quantifying over tensorLikes is not yet supported."
+  QuantifyTensorLike _ -> unsupportedTensorLikeQuantification
   AtTensor -> annotateInfixApp [DataTensor] (-1) Nothing "_!_" args
   AtVector -> annotateInfixApp [FunctionBase] (-1) Nothing "_$_" args
   If -> annotateInfixApp [DataBool] 0 Nothing "if_then_else_" args
