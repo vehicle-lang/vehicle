@@ -9,63 +9,125 @@ module Vehicle.Data.Builtin.Decidability.Instances
 where
 
 import Data.List.NonEmpty (NonEmpty)
+import Vehicle.Compile.Prelude (Decl, Expr (..), GenericDecl (..), GenericRecordField, Name, Relevance (..), Type, stdlibIdentifier)
 import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Core (InstanceCandidate (..), InstanceDatabase (..))
-import Vehicle.Data.AST.Decl (InstancePriority, DefRecordSort (..))
+import Vehicle.Data.AST.Decl (DefFunctionSort (..), DefRecordSort (..), FunctionDeclAnnotation (..), InstancePriority)
+import Vehicle.Data.AST.Record (FieldName (..))
 import Vehicle.Data.Builtin.Core (BuiltinFunction (..), BuiltinType (..), DerivedFunction (..))
 import Vehicle.Data.Builtin.Decidability
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.DSL
-import Vehicle.Compile.Prelude (Decl, GenericDecl (..), stdlibIdentifier)
-import Vehicle.Data.AST.Record (FieldName(..))
 
 decidabilityBuiltinInstances :: [Decl DecidabilityBuiltin]
-decidabilityBuiltinInstances = 
-  [ decidabilityTypeClass
-  , _
-  , _
+decidabilityBuiltinInstances =
+  [ decidabilityTypeClass,
+    boolInstance,
+    _
   ]
-
 
 decidabilityTypeClass :: Decl DecidabilityBuiltin
-decidabilityTypeClass = DefRecord mempty (stdlibIdentifier "BooleanImplementation") (Just AnnTypeClass) [] 
-  [ (FieldName mempty "BooleanTypeTC", _)
-  , (FieldName mempty "FromBoolTensorLiteralTC", _)
-  , (FieldName mempty "FieldNot", _)
-  , (FieldName mempty "FieldAnd", _)
-  , (FieldName mempty "FieldOr", _)
-  , (FieldName mempty "FieldImplies", _)
-  , (FieldName mempty "FieldReduceAnd", _)
-  , (FieldName mempty "FieldReduceOr", _)
-  , (FieldName mempty "FieldCompareNatEq", _)
-  , (FieldName mempty "FieldCompareNatNe", _)
-  , (FieldName mempty "FieldCompareNatLe", _)
-  , (FieldName mempty "FieldCompareNatLt", _)
-  , (FieldName mempty "FieldCompareNatGe", _)
-  , (FieldName mempty "FieldCompareNatGt", _)
-  , (FieldName mempty "FieldCompareIndexEq", _)
-  , (FieldName mempty "FieldCompareIndexNe", _)
-  , (FieldName mempty "FieldCompareIndexLe", _)
-  , (FieldName mempty "FieldCompareIndexLt", _)
-  , (FieldName mempty "FieldCompareIndexGe", _)
-  , (FieldName mempty "FieldCompareIndexGt", _)
-  , (FieldName mempty "FieldCompareRatTensorPointwiseEq", _)
-  , (FieldName mempty "FieldCompareRatTensorPointwiseNe", _)
-  , (FieldName mempty "FieldCompareRatTensorPointwiseLe", _)
-  , (FieldName mempty "FieldCompareRatTensorPointwiseLt", _)
-  , (FieldName mempty "FieldCompareRatTensorPointwiseGe", _)
-  , (FieldName mempty "FieldCompareRatTensorPointwiseGt", _)
-  , (FieldName mempty "FieldCompareRatTensorReducedEq", _)
-  , (FieldName mempty "FieldCompareRatTensorReducedNe", _)
-  , (FieldName mempty "FieldCompareRatTensorReducedLe", _)
-  , (FieldName mempty "FieldCompareRatTensorReducedLt", _)
-  , (FieldName mempty "FieldCompareRatTensorReducedGe", _)
-  , (FieldName mempty "FieldCompareRatTensorReducedGt", _)
-  , (FieldName mempty "FieldExistsIndex", _)
-  , (FieldName mempty "FieldForallIndex", _)
-  , (FieldName mempty "FieldForallInList", _)
-  , (FieldName mempty "FieldExistsInList", _)
-  ]
+decidabilityTypeClass =
+  DefRecord mempty (stdlibIdentifier "BooleanImplementation") (Just AnnTypeClass) [] $
+    fmap
+      mkField
+      [ ("BoolTypeTC", type0),
+        ("FromBoolTensorLiteralTC", forAllDims $ \ds -> tBoolTensor ds ~> tTensor tBoolTC ds),
+        ("NotTC", forAllDims $ \ds -> tTensor tBoolTC ds ~> tTensor tBoolTC ds),
+        ("AndTC", forAllDims $ \ds -> tTensor tBoolTC ds ~> tTensor tBoolTC ds ~> tTensor tBoolTC ds),
+        ("OrTC", forAllDims $ \ds -> tTensor tBoolTC ds ~> tTensor tBoolTC ds ~> tTensor tBoolTC ds),
+        ("ImpliesTC", forAllDims $ \ds -> tTensor tBoolTC ds ~> tTensor tBoolTC ds ~> tTensor tBoolTC ds),
+        ("ReduceAndTC", forAllDims $ \ds -> tTensor tBoolTC dimNil ~> tTensor tBoolTC ds ~> tTensor tBoolTC dimNil),
+        ("ReduceOrTC", forAllDims $ \ds -> tTensor tBoolTC dimNil ~> tTensor tBoolTC ds ~> tTensor tBoolTC dimNil),
+        ("CompareNatEqTC", tNat ~> tNat ~> tTensor tBoolTC dimNil),
+        ("CompareNatNeTC", tNat ~> tNat ~> tTensor tBoolTC dimNil),
+        ("CompareNatLeTC", tNat ~> tNat ~> tTensor tBoolTC dimNil),
+        ("CompareNatLtTC", tNat ~> tNat ~> tTensor tBoolTC dimNil),
+        ("CompareNatGeTC", tNat ~> tNat ~> tTensor tBoolTC dimNil),
+        ("CompareNatGtTC", tNat ~> tNat ~> tTensor tBoolTC dimNil),
+        ("CompareIndexEqTC", forAllDim Irrelevant $ \n -> tIndex n ~> tIndex n ~> tTensor tBoolTC dimNil),
+        ("CompareIndexNeTC", forAllDim Irrelevant $ \n -> tIndex n ~> tIndex n ~> tTensor tBoolTC dimNil),
+        ("CompareIndexLeTC", forAllDim Irrelevant $ \n -> tIndex n ~> tIndex n ~> tTensor tBoolTC dimNil),
+        ("CompareIndexLtTC", forAllDim Irrelevant $ \n -> tIndex n ~> tIndex n ~> tTensor tBoolTC dimNil),
+        ("CompareIndexGeTC", forAllDim Irrelevant $ \n -> tIndex n ~> tIndex n ~> tTensor tBoolTC dimNil),
+        ("CompareIndexGtTC", forAllDim Irrelevant $ \n -> tIndex n ~> tIndex n ~> tTensor tBoolTC dimNil),
+        ("CompareRatTensorPointwiseEqTC", forAllDims $ \ds -> tRatTensor ds ~> tRatTensor ds ~> tTensor tBoolTC ds),
+        ("CompareRatTensorPointwiseNeTC", forAllDims $ \ds -> tRatTensor ds ~> tRatTensor ds ~> tTensor tBoolTC ds),
+        ("CompareRatTensorPointwiseLeTC", forAllDims $ \ds -> tRatTensor ds ~> tRatTensor ds ~> tTensor tBoolTC ds),
+        ("CompareRatTensorPointwiseLtTC", forAllDims $ \ds -> tRatTensor ds ~> tRatTensor ds ~> tTensor tBoolTC ds),
+        ("CompareRatTensorPointwiseGeTC", forAllDims $ \ds -> tRatTensor ds ~> tRatTensor ds ~> tTensor tBoolTC ds),
+        ("CompareRatTensorPointwiseGtTC", forAllDims $ \ds -> tRatTensor ds ~> tRatTensor ds ~> tTensor tBoolTC ds),
+        ("CompareRatTensorReducedEqTC", forAllDims $ \ds -> tRatTensor ds ~> tRatTensor ds ~> tBoolTC),
+        ("CompareRatTensorReducedNeTC", forAllDims $ \ds -> tRatTensor ds ~> tRatTensor ds ~> tBoolTC),
+        ("CompareRatTensorReducedLeTC", forAllDims $ \ds -> tRatTensor ds ~> tRatTensor ds ~> tBoolTC),
+        ("CompareRatTensorReducedLtTC", forAllDims $ \ds -> tRatTensor ds ~> tRatTensor ds ~> tBoolTC),
+        ("CompareRatTensorReducedGeTC", forAllDims $ \ds -> tRatTensor ds ~> tRatTensor ds ~> tBoolTC),
+        ("CompareRatTensorReducedGtTC", forAllDims $ \ds -> tRatTensor ds ~> tRatTensor ds ~> tBoolTC),
+        ("ExistsIndexTC", forAllDim Relevant $ \d -> (tIndex d ~> tTensor tBoolTC dimNil) ~> tTensor tBoolTC dimNil),
+        ("ForallIndexTC", forAllDim Relevant $ \d -> (tIndex d ~> tTensor tBoolTC dimNil) ~> tTensor tBoolTC dimNil),
+        ("ForallInListTC", forAllTypes $ \tElem -> (tElem ~> tTensor tBoolTC dimNil) ~> tList tElem ~> tTensor tBoolTC dimNil),
+        ("ExistsInListTC", forAllTypes $ \tElem -> (tElem ~> tTensor tBoolTC dimNil) ~> tList tElem ~> tTensor tBoolTC dimNil)
+      ]
+  where
+    mkField :: (Name, DSLExpr DecidabilityBuiltin) -> GenericRecordField (Type DecidabilityBuiltin)
+    mkField (name, typ) = (FieldName mempty name, fromDSL mempty _)
+
+    tBoolTC :: DSLExpr DecidabilityBuiltin
+    tBoolTC = _
+
+implementationType :: Expr DecidabilityBuiltin
+implementationType = FreeVar mempty (stdlibIdentifier "BooleanImplementation")
+
+boolInstance :: Decl DecidabilityBuiltin
+boolInstance =
+  DefFunction
+    mempty
+    (stdlibIdentifier "boolImpl")
+    (FunctionDecl 0 $ Just $ AnnInstance Nothing)
+    implementationType
+    $ Record mempty implementationType
+    $ fmap
+      mkField
+      [ ("BoolTypeTC", tBool),
+        ("FromBoolTensorLiteralTC", boolTensorToBoolTensor),
+        ("NotTC", builtinFunction Not),
+        ("AndTC", builtinFunction And),
+        ("OrTC", builtinFunction Or),
+        ("ImpliesTC", builtinFunction Implies),
+        ("ReduceAndTC", builtinFunction ReduceAndTensor),
+        ("ReduceOrTC", builtinFunction ReduceOrTensor),
+        ("CompareNatEqTC", builtinFunction $ CompareNat Eq),
+        ("CompareNatNeTC", builtinFunction $ CompareNat Ne),
+        ("CompareNatLeTC", builtinFunction $ CompareNat Le),
+        ("CompareNatLtTC", builtinFunction $ CompareNat Lt),
+        ("CompareNatGeTC", builtinFunction $ CompareNat Ge),
+        ("CompareNatGtTC", builtinFunction $ CompareNat Gt),
+        ("CompareIndexEqTC", builtinFunction $ CompareIndex Eq),
+        ("CompareIndexNeTC", builtinFunction $ CompareIndex Ne),
+        ("CompareIndexLeTC", builtinFunction $ CompareIndex Le),
+        ("CompareIndexLtTC", builtinFunction $ CompareIndex Lt),
+        ("CompareIndexGeTC", builtinFunction $ CompareIndex Ge),
+        ("CompareIndexGtTC", builtinFunction $ CompareIndex Gt),
+        ("CompareRatTensorPointwiseEqTC", builtinFunction $ CompareRatTensorPointwise Eq),
+        ("CompareRatTensorPointwiseNeTC", builtinFunction $ CompareRatTensorPointwise Ne),
+        ("CompareRatTensorPointwiseLeTC", builtinFunction $ CompareRatTensorPointwise Le),
+        ("CompareRatTensorPointwiseLtTC", builtinFunction $ CompareRatTensorPointwise Lt),
+        ("CompareRatTensorPointwiseGeTC", builtinFunction $ CompareRatTensorPointwise Ge),
+        ("CompareRatTensorPointwiseGtTC", builtinFunction $ CompareRatTensorPointwise Gt),
+        ("CompareRatTensorReducedEqTC", builtinDerivedFunction $ CompareRatTensorReduced Eq),
+        ("CompareRatTensorReducedNeTC", builtinDerivedFunction $ CompareRatTensorReduced Ne),
+        ("CompareRatTensorReducedLeTC", builtinDerivedFunction $ CompareRatTensorReduced Le),
+        ("CompareRatTensorReducedLtTC", builtinDerivedFunction $ CompareRatTensorReduced Lt),
+        ("CompareRatTensorReducedGeTC", builtinDerivedFunction $ CompareRatTensorReduced Ge),
+        ("CompareRatTensorReducedGtTC", builtinDerivedFunction $ CompareRatTensorReduced Gt),
+        ("ExistsIndexTC", builtinDerivedFunction $ QuantifyIndex Exists),
+        ("ForallIndexTC", builtinDerivedFunction $ QuantifyIndex Forall),
+        ("ForallInListTC", builtinDerivedFunction $ QuantifyInList Exists),
+        ("ExistsInListTC", builtinDerivedFunction $ QuantifyInList Forall)
+      ]
+  where
+    mkField :: (Name, DSLExpr DecidabilityBuiltin) -> GenericRecordField (Type DecidabilityBuiltin)
+    mkField (name, typ) = (FieldName mempty name, fromDSL mempty _)
 
 -- Manually declared here as we have no way of declaring them in the language
 -- itself.
