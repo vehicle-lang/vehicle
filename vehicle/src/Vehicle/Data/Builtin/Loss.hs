@@ -317,7 +317,7 @@ instance NormalisableBuiltin LossBuiltin where
 
   isTypeClassOp _ = False
 
-  isCast _ _ = Nothing
+  evalCast _ _ = Nothing
 
 --------------------------------------------------------------------------------
 -- Printing

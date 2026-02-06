@@ -21,6 +21,9 @@ data BuiltinDifferentiableLogicID
 instance Pretty BuiltinDifferentiableLogicID where
   pretty = pretty . show
 
+allBuiltinDifferentiableLogicIDs :: [BuiltinDifferentiableLogicID]
+allBuiltinDifferentiableLogicIDs = enumerate @BuiltinDifferentiableLogicID
+
 --------------------------------------------------------------------------------
 -- Differentiable logics
 

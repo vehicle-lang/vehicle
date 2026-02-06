@@ -3,6 +3,8 @@ module Vehicle.Data.Builtin.Core.Derived where
 import Control.DeepSeq (NFData)
 import Data.Hashable (Hashable)
 import Data.Serialize (Serialize)
+import Data.Universe.Class
+import Data.Universe.Generic (universeGeneric)
 import GHC.Generics (Generic)
 import Vehicle.Data.AST.Name
 import Vehicle.Data.Builtin.Core.BasicOperations
@@ -14,6 +16,9 @@ data DerivedFunction
   | QuantifyInList Quantifier
   | CompareRatTensorReduced ComparisonOp
   deriving (Eq, Show, Ord, Generic)
+
+instance Universe DerivedFunction where
+  universe = universeGeneric
 
 instance Pretty DerivedFunction where
   pretty = \case

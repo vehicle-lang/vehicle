@@ -18,7 +18,7 @@ import Vehicle.Data.Code.DSL (tDim, tDims)
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.DSL
 import Vehicle.Data.Tensor (BoolTensor, anyTensor)
-import Vehicle.Prelude (Pretty (..), Relevance (..), Visibility (..), developerError, explicit, (<+>))
+import Vehicle.Prelude (Pretty (..), Relevance (..), Visibility (..), explicit)
 
 --------------------------------------------------------------------------------
 -- Data
@@ -294,34 +294,35 @@ instance NormalisableBuiltin DecidabilityBuiltin where
     DecidabilityBuiltinTypeClassOp {} -> True
     _ -> False
 
-  isCast p e = case e of
-    DecidabilityBuiltinFunction BoolTensorToProp -> Just $ forceEvalSimpleBuiltin p e evalBoolTensorToProp
-    DecidabilityBuiltinFunction BoolVectorToProp -> Just $ forceEvalSimpleBuiltin p e evalBoolVectorToProp
+  evalCast b args = case b of
+    DecidabilityBuiltinFunction BoolTensorToProp -> forceEvalSimpleBuiltin evalBoolTensorToProp args
+    DecidabilityBuiltinFunction BoolVectorToProp -> forceEvalSimpleBuiltin evalBoolVectorToProp args
     _ -> Nothing
 
 evalBoolTensorToProp ::
   (MonadNormBuiltin m, HasBuiltinConstructor expr) =>
   TensorOp1Args (expr DecidabilityBuiltin) ->
-  m (expr DecidabilityBuiltin)
-evalBoolTensorToProp args = return $ case args of
-  TensorOp1Args _ (getExpr accessBuiltinC -> Just (StandardBuiltinConstructor (BoolTensorLiteral t), [])) -> do
-    let op = if anyTensor not t then PropFalse else PropTrue
-    mkExpr accessBuiltinC (DecidabilityBuiltinFunction op, [])
-  _ -> developerError $ "Should not be possible to have non-literal" <+> pretty BoolTensorToProp <+> "args"
+  Maybe (m (expr DecidabilityBuiltin))
+evalBoolTensorToProp args = case args of
+  TensorOp1Args _ (getExpr accessBuiltinC -> Just (StandardBuiltinConstructor (BoolTensorLiteral t), [])) ->
+    Just $ return $ do
+      let op = if anyTensor not t then PropFalse else PropTrue
+      mkExpr accessBuiltinC (DecidabilityBuiltinFunction op, [])
+  _ -> Nothing
 
 evalBoolVectorToProp ::
   (MonadNormBuiltin m) =>
   VectorOp1Args (Expr DecidabilityBuiltin) ->
-  m (Expr DecidabilityBuiltin)
-evalBoolVectorToProp args = return $ case args of
-  VectorOp1Args _ (IVecLiteral _ _ xs) -> case xs of
+  Maybe (m (Expr DecidabilityBuiltin))
+evalBoolVectorToProp args = case args of
+  VectorOp1Args _ (IVecLiteral _ _ xs) -> Just $ return $ case xs of
     [] -> mkExpr accessBuiltinC (DecidabilityBuiltinFunction PropTrue, [])
     (v : vs) -> do
       let andFn a b = normAppList (Builtin mempty (DecidabilityBuiltinFunction PropAnd)) (explicit <$> [a, b])
       foldr andFn v vs
   --    let op = if anyTensor not t then PropFalse else PropTrue
   --    mkExpr accessBuiltinC (DecidabilityBuiltinFunction op, [])
-  _ -> developerError $ "Should not be possible to have non-literal" <+> pretty BoolTensorToProp <+> "args"
+  _ -> Nothing
 
 --------------------------------------------------------------------------------
 -- DSL

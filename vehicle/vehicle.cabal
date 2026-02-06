@@ -371,6 +371,7 @@ library
     , text                   >=1.2      && <3
     , these                  >=1.2      && <2
     , transformers           >=0.4      && <0.7
+    , universe-base          >=1.0      && <2
     , unordered-containers   >=0.2.19   && <0.3
     , vector                 >=0.12.3   && <0.14
     , vector-instances       >=3        && <4

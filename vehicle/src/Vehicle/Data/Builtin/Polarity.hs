@@ -216,7 +216,7 @@ instance NormalisableBuiltin PolarityBuiltin where
     _ -> DoesNotReduce
 
   isTypeClassOp _ = False
-  isCast _ _ = Nothing
+  evalCast _ _ = Nothing
 
 -----------------------------------------------------------------------------
 -- DSL

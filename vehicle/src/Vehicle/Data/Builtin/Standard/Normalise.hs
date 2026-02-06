@@ -50,7 +50,7 @@ instance HasLiftableTensorOperations Builtin where
       compPointwise op = (getExpr (accessArgsForOp accessCompareRatTensorPointwise op), evalCompareRatTensorPointwise op, IBoolType)
 
 instance NormalisableBuiltin Builtin where
-  evalScheme = \case
+  evalScheme b = case b of
     BuiltinFunction f -> case f of
       CompareIndex op -> Simple (evalCompareIndex op)
       CompareNat op -> Simple (evalCompareNat op)
@@ -89,10 +89,10 @@ instance NormalisableBuiltin Builtin where
       QuantifyTensorLike {} -> None
     BuiltinCast c -> case c of
       FromNat FromNatToNat -> Simple evalFromNatToNat
-      FromNat FromNatToIndex -> Simple evalFromNatToIndex
-      FromNat FromNatToRat -> Simple evalFromNatToRat
+      FromNat FromNatToIndex -> Simple $ evalSimple b evalFromNatToIndex
+      FromNat FromNatToRat -> Simple $ evalSimple b evalFromNatToRat
       FromRat FromRatToRat -> Simple evalFromRatToRat
-      FromVectorToList -> Simple evalVectorToList
+      FromVectorToList -> Simple $ evalSimple b evalVectorToList
     DerivedFunction f -> Derived (identifierOf f)
     _ -> None
 
@@ -106,40 +106,41 @@ instance NormalisableBuiltin Builtin where
     TypeClassOp {} -> True
     _ -> False
 
-  isCast p b = case b of
-    BuiltinCast c -> Just $ case c of
-      FromNat FromNatToNat -> forceEvalSimpleBuiltin p b evalFromNatToNat
-      FromNat FromNatToIndex -> forceEvalSimpleBuiltin p b evalFromNatToIndex
-      FromNat FromNatToRat -> forceEvalSimpleBuiltin p b evalFromNatToRat
-      FromRat FromRatToRat -> forceEvalSimpleBuiltin p b evalFromRatToRat
-      FromVectorToList -> forceEvalSimpleBuiltin p b evalVectorToList
+  evalCast b args = case b of
+    BuiltinCast c -> case c of
+      FromNat FromNatToNat -> forceEvalSimpleBuiltin (Just . evalFromNatToNat) args
+      FromNat FromNatToIndex -> forceEvalSimpleBuiltin evalFromNatToIndex args
+      FromNat FromNatToRat -> forceEvalSimpleBuiltin evalFromNatToRat args
+      FromRat FromRatToRat -> forceEvalSimpleBuiltin (Just . evalFromRatToRat) args
+      FromVectorToList -> forceEvalSimpleBuiltin evalVectorToList args
     BuiltinFunction StackTensor ->
-      Just $
-        -- Also force stacks to resolve as they are kind of cast.
-        forceEvalSimpleBuiltin p b evalStackTensor
+      -- Also force stacks to resolve as they are kind of cast.
+      forceEvalSimpleBuiltin partialEvalStackTensor args
     _ -> Nothing
 
 evalFromNatToNat :: (MonadNormBuiltin m) => EvalSimple FromNatToSimpleArgs expr Builtin m
 evalFromNatToNat (FromNatToSimpleArgs v _) = return v
 
-evalFromNatToIndex :: (MonadNormBuiltin m, HasBuiltinConstructor expr) => EvalSimple FromNatToIndexArgs expr Builtin m
-evalFromNatToIndex args = return $ case args of
-  FromNatToIndexArgs _ (INatLiteral v) _ -> IIndexLiteral v
-  _ -> mkExpr accessFromNatToIndex args
+evalFromNatToIndex :: (MonadNormBuiltin m, HasBuiltinConstructor expr) => EvalSimplePartial FromNatToIndexArgs expr Builtin m
+evalFromNatToIndex args = case args of
+  FromNatToIndexArgs _ (INatLiteral v) _ -> Just $ return $ IIndexLiteral v
+  _ -> Nothing
 
-evalFromNatToRat :: (MonadNormBuiltin m, HasBuiltinConstructor expr) => EvalSimple FromNatToSimpleArgs expr Builtin m
-evalFromNatToRat args = return $ case args of
-  FromNatToSimpleArgs (INatLiteral n) _ -> IRatLiteral $ fromIntegral n
-  _ -> mkExpr accessFromNatToRat args
+-- mkExpr accessFromNatToIndex args
+
+evalFromNatToRat :: (MonadNormBuiltin m, HasBuiltinConstructor expr) => EvalSimplePartial FromNatToSimpleArgs expr Builtin m
+evalFromNatToRat args = case args of
+  FromNatToSimpleArgs (INatLiteral n) _ -> Just $ return $ IRatLiteral $ fromIntegral n
+  _ -> Nothing
 
 evalFromRatToRat :: (MonadNormBuiltin m) => EvalSimple Op1Args expr Builtin m
 evalFromRatToRat (Op1Args x) = return x
 
-evalVectorToList :: (MonadNormBuiltin m, HasBuiltinConstructor expr) => EvalSimple VectorToListArgs expr Builtin m
-evalVectorToList args@(VectorToListArgs t d xs) =
-  return $ case argExpr d of
-    INatLiteral n | n == length xs -> mkListExpr (argExpr t) xs
-    _ -> mkExpr accessFromVectorToList args
+evalVectorToList :: (MonadNormBuiltin m, HasBuiltinConstructor expr) => EvalSimplePartial VectorToListArgs expr Builtin m
+evalVectorToList (VectorToListArgs t d xs) =
+  case argExpr d of
+    INatLiteral n | n == length xs -> Just $ return $ mkListExpr (argExpr t) xs
+    _ -> Nothing
 
 foldReduceAndComparison ::
   TensorReductionArgs (Value Builtin) ->

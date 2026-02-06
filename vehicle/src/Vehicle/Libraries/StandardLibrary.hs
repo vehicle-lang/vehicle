@@ -7,6 +7,8 @@ module Vehicle.Libraries.StandardLibrary
     standardLibraryBuiltinModulePath,
     standardLibraryDefinitionsModulePath,
     standardLibraryInstanceOps,
+    standardLibraryDifferentiableLogics,
+    standardLibraryDerivedBuiltins,
     isBuiltinModule,
     standardLibIdent,
     validNetworkTypeIdent,
@@ -20,7 +22,9 @@ import Data.Map (fromList, keys)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text.Encoding (decodeUtf8)
+import Data.Universe.Class (Universe (..))
 import Vehicle.Backend.Prelude
+import Vehicle.Data.Builtin.Core.Derived (DerivedFunction)
 import Vehicle.Libraries
 import Vehicle.Libraries.Core (LibraryContent)
 import Vehicle.Prelude
@@ -41,6 +45,16 @@ standardLibraryInstanceOps =
       standardLibIdent "forallTC",
       standardLibIdent "existsTC"
     ]
+
+standardLibraryDifferentiableLogics :: Set Identifier
+standardLibraryDifferentiableLogics = do
+  let mkIdent logicID = standardLibIdent (layoutAsText $ pretty logicID)
+  Set.fromList $ fmap mkIdent allBuiltinDifferentiableLogicIDs
+
+standardLibraryDerivedBuiltins :: Set Identifier
+standardLibraryDerivedBuiltins = do
+  let mkIdent fn = standardLibIdent (layoutAsText $ pretty fn)
+  Set.fromList $ fmap mkIdent (universe @DerivedFunction)
 
 standardLibraryBuiltinModulePath :: Maybe SecondaryTypeSystem -> ModulePath
 standardLibraryBuiltinModulePath typeSystem = ModulePath $ case typeSystem of

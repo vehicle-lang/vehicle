@@ -7,6 +7,8 @@ import Data.Hashable (Hashable (..))
 import Data.Serialize (Serialize)
 import Data.Serialize.Text ()
 import Data.Text (Text)
+import Data.Universe.Class
+import Data.Universe.Generic
 import GHC.Generics (Generic)
 import Prettyprinter (Doc, Pretty (..))
 
@@ -56,6 +58,9 @@ instance Pretty ComparisonOp where
     Gt -> ">"
     Eq -> "=="
     Ne -> "!="
+
+instance Universe ComparisonOp where
+  universe = universeGeneric
 
 comparisonOp :: (Ord a) => ComparisonOp -> (a -> a -> Bool)
 comparisonOp Le = (<=)
@@ -124,6 +129,9 @@ instance Pretty Quantifier where
   pretty = \case
     Forall -> "forall"
     Exists -> "exists"
+
+instance Universe Quantifier where
+  universe = universeGeneric
 
 --------------------------------------------------------------------------------
 -- Domains

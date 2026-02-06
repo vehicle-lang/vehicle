@@ -14,7 +14,7 @@ import Control.Monad.State (MonadState (..), StateT (..), gets, modify)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Maybe (mapMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set qualified as Set
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Dependency (AdjacencyGraph, emptyAdjacencyGraph, insertEdge, insertNode, topologicalSort)
@@ -42,7 +42,7 @@ import Vehicle.Data.Code.Value (FreeEnv)
 import Vehicle.Data.Variable.Free.Context (runFreeContextT)
 import Vehicle.Libraries (ensureLatestVersionOfLibraryInstalled, resolveLibrary)
 import Vehicle.Libraries.Core (ResolvedLibrary (..))
-import Vehicle.Libraries.StandardLibrary (standardLibrary, standardLibraryContent, standardLibraryDefinitionsModulePath, standardLibraryName)
+import Vehicle.Libraries.StandardLibrary (standardLibrary, standardLibraryContent, standardLibraryDefinitionsModulePath, standardLibraryDerivedBuiltins, standardLibraryDifferentiableLogics, standardLibraryName)
 import Vehicle.Prelude.Logging.Instance
 import Vehicle.Verify.Specification.IO (readSpecification)
 
@@ -75,21 +75,20 @@ typeCheckUserProg TypeCheckOptions {..} = do
   ensureLatestVersionOfLibraryInstalled standardLibrary standardLibraryContent
 
   -- Load builtins and definitions
-  (userProg, importedModules, moduleGraph) <- loadUserSpecification specification
+  (userModule, importedModules, moduleGraph) <- loadUserSpecification specification
 
   -- Post-process the program to simplify it
-  keepUnusedDeclarationFn <- checkDeclarationNamesPresent userProg declarationsToCompile
-  monomorphisedProg <- monomorphise userProg keepUnusedDeclarationFn
-  castFreeProgram <- resolveInstanceArgumentsAndCasts monomorphisedProg
+  flattenedProg <- flattenProgram userModule importedModules moduleGraph
 
-  flattenProgram castFreeProgram importedModules moduleGraph
+  keepUnusedDeclarationFn <- checkDeclarationNamesPresent userModule declarationsToCompile
+  monomorphise flattenedProg keepUnusedDeclarationFn
 
 checkDeclarationNamesPresent ::
   (MonadCompile m) =>
-  Prog Builtin ->
+  Module Builtin ->
   DeclarationNames ->
   m (Identifier -> Bool)
-checkDeclarationNamesPresent (Main decls) requestedDeclNames = do
+checkDeclarationNamesPresent (Module _ decls) requestedDeclNames = do
   let actualDeclNames = Set.fromList $ fmap nameOf decls
   let missingNames = Set.toList $ Set.fromList requestedDeclNames `Set.difference` actualDeclNames
   case missingNames of
@@ -98,12 +97,16 @@ checkDeclarationNamesPresent (Main decls) requestedDeclNames = do
       throwError $
         MissingRequestedDeclarations (n :| ns)
 
-  return $
-    if null requestedDeclNames
-      then isUserCode
-      else do
-        let declsToCompile = Set.fromList requestedDeclNames
-        \ident -> Set.member (nameOf ident) declsToCompile
+  -- Compute the declarations to keep. Need to keep differentiable logics even
+  -- if not referenced.
+  let userDeclsToKeep
+        | null requestedDeclNames = fmap nameOf decls
+        | otherwise = requestedDeclNames
+  let differentiableLogics = Set.map nameOf standardLibraryDifferentiableLogics
+  let derivedFunctions = Set.map nameOf standardLibraryDerivedBuiltins
+  let allDeclsToKeep = Set.fromList userDeclsToKeep <> differentiableLogics <> derivedFunctions
+
+  return $ \ident -> Set.member (nameOf ident) allDeclsToKeep
 
 printPropertyTypes ::
   (MonadStdIO m, MonadCompile m, PrintableBuiltin builtin) =>
@@ -163,12 +166,12 @@ data ProgramContext = ProgramContext
   }
 
 lookupModuleCertain ::
-  Prog Builtin ->
-  Map ModulePath [Decl Builtin] ->
+  Module Builtin ->
+  Map ModulePath (Module Builtin) ->
   ModulePath ->
-  [Decl Builtin]
-lookupModuleCertain userProg importedModules modulePath
-  | modulePath == userModulePath = programDeclarations userProg
+  Module Builtin
+lookupModuleCertain userModule importedModules modulePath
+  | modulePath == userModulePath = userModule
   | otherwise = do
       case Map.lookup modulePath importedModules of
         Nothing -> developerError $ "Missing module" <+> quotePretty modulePath
@@ -176,13 +179,13 @@ lookupModuleCertain userProg importedModules modulePath
 
 flattenProgram ::
   (MonadCompile m) =>
-  Prog Builtin ->
-  Map ModulePath [Decl Builtin] ->
+  Module Builtin ->
+  Map ModulePath (Module Builtin) ->
   AdjacencyGraph ModulePath ->
   m (Prog Builtin)
 flattenProgram userProg importedModules moduleGraph = do
   let sortedModulePaths = reverse $ topologicalSort userModulePath moduleGraph
-  let moduleDecls = fmap (lookupModuleCertain userProg importedModules) sortedModulePaths
+  let moduleDecls = fmap (moduleDeclarations . lookupModuleCertain userProg importedModules) sortedModulePaths
   return $ Main $ concat moduleDecls
 
 data ModuleStack = ModuleStack
@@ -244,7 +247,7 @@ storeModule modulePath moduleInfo =
 loadUserSpecification ::
   (MonadCompile m, MonadIO m) =>
   FilePath ->
-  m (Prog Builtin, Map ModulePath [Decl Builtin], AdjacencyGraph ModulePath)
+  m (Module Builtin, Map ModulePath (Module Builtin), AdjacencyGraph ModulePath)
 loadUserSpecification specificationFile = do
   availableModules <- loadLibraries specificationFile
 
@@ -263,9 +266,9 @@ loadUserSpecification specificationFile = do
   let action = loadUnloadedModule implicitImports userModulePath
   (_status, programCtx) <- runStateT (runReaderT action initialStack) initialContext
 
-  let declsMap = fmap (moduleDeclarations . typedModule . moduleInterface) (loadedModules programCtx)
-  let (maybeUserModule, builtinModules) = Map.updateLookupWithKey (\_ _ -> Nothing) userModulePath declsMap
-  let userModule = maybe (developerError "missing user module") Main maybeUserModule
+  let moduleMap = fmap (typedModule . moduleInterface) (loadedModules programCtx)
+  let (maybeUserModule, builtinModules) = Map.updateLookupWithKey (\_ _ -> Nothing) userModulePath moduleMap
+  let userModule = fromMaybe (developerError "missing user module") maybeUserModule
   return (userModule, builtinModules, moduleGraph programCtx)
 
 loadLibraries ::

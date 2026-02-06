@@ -5,7 +5,6 @@ module Vehicle.Compile.Monomorphisation
   )
 where
 
-import Control.Monad (forM_)
 import Control.Monad.Reader (MonadReader (..), ReaderT (..), asks)
 import Control.Monad.State
   ( MonadState (..),
@@ -15,7 +14,7 @@ import Control.Monad.State
   )
 import Control.Monad.Writer (MonadWriter (..), runWriterT)
 import Data.Bifunctor (Bifunctor (..))
-import Data.Foldable (Foldable (..), traverse_)
+import Data.Foldable (Foldable (..))
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HashMap
 import Data.Hashable (Hashable)
@@ -29,10 +28,13 @@ import Data.Set qualified as Set (member, unions)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Vehicle.Compile.Error
+import Vehicle.Compile.Normalise.NBE (findInstanceArg)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyExternal, prettyFriendly, prettyFriendlyEmptyCtx, prettyVerbose)
+import Vehicle.Data.Builtin.Interface.Normalise (NormalisableBuiltin (..))
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Hashing ()
+import Vehicle.Libraries.StandardLibrary (standardLibraryInstanceOps)
 
 --------------------------------------------------------------------------------
 -- Public interface
@@ -53,7 +55,7 @@ import Vehicle.Data.Hashing ()
 -- by Wen et al is a good starting point.
 monomorphise ::
   forall m builtin.
-  (MonadCompile m, Hashable builtin, PrintableBuiltin builtin) =>
+  (MonadCompile m, Hashable builtin, PrintableBuiltin builtin, NormalisableBuiltin builtin) =>
   Prog builtin ->
   RootDeclarations ->
   m (Prog builtin)
@@ -80,7 +82,8 @@ type MonadCollect builtin m =
     MonadState (CandidateApplications builtin) m,
     MonadWriter (SubsitutionSolutions builtin) m,
     Hashable builtin,
-    PrintableBuiltin builtin
+    PrintableBuiltin builtin,
+    NormalisableBuiltin builtin
   )
 
 monomorphiseProg ::
@@ -103,8 +106,7 @@ monomorphiseDecls rootDecls decl = do
   logCompilerSection2 MaxDetail (quotePretty ident) $ do
     logDebug MaxDetail $ prettyExternal decl <> line
     newDecls <- monomorphiseDecl decl (rootDecls ident)
-    forM_ newDecls collectReferences
-    return newDecls
+    traverse collectReferencesAndResolve newDecls
 
 monomorphiseDecl ::
   (MonadCollect builtin m) =>
@@ -228,28 +230,92 @@ substituteArgsThrough = \case
         <> line
         <> prettyVerbose args
 
-collectReferences :: forall builtin m. (MonadCollect builtin m) => Decl builtin -> m ()
-collectReferences decl =
+collectReferencesAndResolve :: forall builtin m. (MonadCollect builtin m) => Decl builtin -> m (Decl builtin)
+collectReferencesAndResolve decl =
   logCompilerSection2 MaxDetail ("collecting internal applications for" <+> quotePretty (identifierOf decl)) $ do
-    -- TODO do this in a single traversal
-    traverse_ (traverseFreeVarsM (const id) collectReference) decl
-    traverse_ (traverseBuiltinsM collectDerivedReference) decl
+    traverse go decl
   where
-    collectReference :: FreeVarUpdate m builtin
-    collectReference recGo p ident args = do
-      args' <- traverse (traverse recGo) args
-      foundApplication ident args'
-      return $ normAppList (FreeVar p ident) args
+    go :: Expr builtin -> m (Expr builtin)
+    go expr = logEntryExit expr $ case expr of
+      -- Builtins
+      Builtin p b -> handleBuiltin p b []
+      App (Builtin p b) args -> do
+        handleBuiltin p b (NonEmpty.toList args)
+      -- Free variables
+      FreeVar p ident -> do
+        handleFreeVar go p ident mempty
+      App (FreeVar p ident) args -> do
+        handleFreeVar go p ident (NonEmpty.toList args)
+      -- Others
+      App fun args -> App <$> go fun <*> traverse (traverse go) args
+      Pi p binder res -> Pi p <$> traverse go binder <*> go res
+      Let p bound binder body -> Let p <$> go bound <*> traverse go binder <*> go body
+      Lam p binder body -> Lam p <$> traverse go binder <*> go body
+      Record p t fs -> Record p <$> go t <*> traverseRecordFields go fs
+      RecordProj p t r field -> RecordProj p <$> go t <*> go r <*> pure field
+      Universe p u -> return $ Universe p u
+      BoundVar p v -> return $ BoundVar p v
+      Hole p n -> return $ Hole p n
+      Meta p m -> return $ Meta p m
 
-    collectDerivedReference :: BuiltinUpdate m builtin builtin
-    collectDerivedReference p b args = do
-      case isDerivedBuiltin b of
-        Just ident -> foundApplication ident args
-        Nothing -> return ()
-      return $ normAppList (Builtin p b) args
+    handleBuiltin :: BuiltinUpdate m builtin builtin
+    handleBuiltin p b args = do
+      -- Need to evaluate args before evaluating casts as `stack` won't evaluate otherwise.
+      --
+      -- Currently need to traverse before expanding type-class ops as previous declarations
+      -- may only be used in those arguments, but once forcing is refactored to use expressions
+      -- we may be able to remove this.
+      args' <- traverse (traverse go) args
+      if isTypeClassOp b
+        then go =<< expandBuiltinTypeClassOp p b args'
+        else do
+          case evalCast b args' of
+            Just result -> go =<< result
+            Nothing -> do
+              case isDerivedBuiltin b of
+                -- We don't actually want to monorphise derived builtins, but we still want to
+                -- keep their definition around. Hence we pass the empty arguments here.
+                Just ident -> logFoundApplication ident []
+                Nothing -> return ()
+              return $ normAppList (Builtin p b) args'
 
-    foundApplication :: Identifier -> [Arg builtin] -> m ()
-    foundApplication ident args = do
+    expandBuiltinTypeClassOp :: Provenance -> builtin -> [Arg builtin] -> m (Expr builtin)
+    expandBuiltinTypeClassOp p b args = do
+      (inst, remainingArgs) <- findInstanceArg b args
+      -- Replace the provenance of the final solution with the provenance of where the
+      -- constraint was generated. This is needed to get the information to propagate
+      -- properly for the polarity and linearity types, otherwise the provenance ends
+      -- up empty as the candidates are constructed independently.
+      let newInst = replaceProvenance p inst
+      let result = substArgs newInst remainingArgs
+      return result
+
+    handleFreeVar :: FreeVarUpdate m builtin
+    handleFreeVar recGo p ident args
+      | Set.member ident standardLibraryInstanceOps =
+          go =<< expandExternalTypeClassOp p ident args
+      | otherwise = do
+          args' <- traverse (traverse recGo) args
+          logFoundApplication ident args'
+          return $ normAppList (FreeVar p ident) args'
+
+    expandExternalTypeClassOp :: Provenance -> Identifier -> [Arg builtin] -> m (Expr builtin)
+    expandExternalTypeClassOp p ident args = do
+      (inst, remainingArgs) <- findInstanceArg ident args
+      case inst of
+        Record _ _ fields -> do
+          let solution = lookupRecordField fields (FieldName p (nameOf ident))
+          -- Replace the provenance of the final solution with the provenance of where the
+          -- constraint was generated. This is needed to get the information to propagate
+          -- properly for the polarity and linearity types, otherwise the provenance ends
+          -- up empty as the candidates are constructed independently.
+          let newSolution = replaceProvenance p solution
+          let finalValue = normAppList newSolution remainingArgs
+          return finalValue
+        _ -> developerError "Malformed standard instance argument"
+
+    logFoundApplication :: Identifier -> [Arg builtin] -> m ()
+    logFoundApplication ident args = do
       logDebug MaxDetail $
         "Found application:"
           <> line
@@ -260,6 +326,33 @@ collectReferences decl =
                 <> "arguments:" <+> prettyVerbose args
             )
       modify (Map.insert ident [args])
+
+    logEntryExit :: Expr builtin -> m (Expr builtin) -> m (Expr builtin)
+    logEntryExit input calcOutput = do
+      logDebug MaxDetail $ "collect-enter" <+> prettyVerbose input
+      incrCallDepth
+      output <- calcOutput
+      decrCallDepth
+      logDebug MaxDetail $ "collect-exit" <+> prettyVerbose output
+      return output
+
+replaceProvenance :: Provenance -> Expr builtin -> Expr builtin
+replaceProvenance p = go
+  where
+    go :: Expr builtin -> Expr builtin
+    go = \case
+      Meta _p m -> Meta p m
+      App fun args -> App (go fun) (fmap (fmap go) args)
+      Universe _ u -> Universe p u
+      Hole _ h -> Hole p h
+      Builtin _ b -> Builtin p b
+      FreeVar _ v -> FreeVar p v
+      BoundVar _ v -> BoundVar p v
+      Pi _ binder res -> Pi p (fmap go binder) (go res)
+      Let _ e1 binder e2 -> Let p (go e1) (fmap go binder) (go e2)
+      Lam _ binder e -> Lam p (fmap go binder) (go e)
+      Record _ ident fields -> Record p ident (mapRecordFields go fields)
+      RecordProj _ recordType record field -> RecordProj p (go recordType) (go record) field
 
 --------------------------------------------------------------------------------
 -- Forward pass - insert the monorphised identifiers

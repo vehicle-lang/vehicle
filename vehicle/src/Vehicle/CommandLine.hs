@@ -16,7 +16,7 @@ import Data.Map qualified as Map (fromList)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Options.Applicative
-import Vehicle.Backend.Prelude (BuiltinDifferentiableLogicID, DifferentiableLogicID, InteractiveTheoremProverID, SecondaryTypeSystem (..))
+import Vehicle.Backend.Prelude (DifferentiableLogicID, InteractiveTheoremProverID, SecondaryTypeSystem (..), allBuiltinDifferentiableLogicIDs)
 import Vehicle.Compile (CompileOptions (..), ITPOptions (..), LossOptions (..), QueryOptions (..))
 import Vehicle.Export (ExportOptions (..))
 import Vehicle.List (ListOptions (..))
@@ -378,7 +378,7 @@ allVerifiersFormats :: [String]
 allVerifiersFormats = map show (enumerate @QueryFormatID)
 
 allBuiltinDifferentiableLogics :: [String]
-allBuiltinDifferentiableLogics = map show (enumerate @BuiltinDifferentiableLogicID)
+allBuiltinDifferentiableLogics = map show allBuiltinDifferentiableLogicIDs
 
 allTypeSystems :: [Doc a]
 allTypeSystems = flip map (zip [1 :: Int ..] (enumerate @SecondaryTypeSystem)) $ \(n, t) ->

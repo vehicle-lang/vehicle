@@ -53,19 +53,14 @@ class (PrintableBuiltin builtin) => NormalisableBuiltin builtin where
   evalScheme :: (MonadLogger m) => builtin -> EvalScheme builtin m
   blockingStatus :: builtin -> Spine builtin -> BlockingStatus builtin
   isTypeClassOp :: builtin -> Bool
-  isCast :: (MonadLogger m) => Provenance -> builtin -> Maybe ([GenericArg (Expr builtin)] -> m (Expr builtin))
+  evalCast :: (MonadLogger m) => builtin -> [GenericArg (Expr builtin)] -> Maybe (m (Expr builtin))
 
 forceEvalSimpleBuiltin ::
   (IsArgs args, MonadLogger m, Pretty builtin, PrintableBuiltin builtin) =>
-  Provenance ->
-  builtin ->
-  EvalSimple args Expr builtin m ->
+  (args (Expr builtin) -> Maybe (m (Expr builtin))) ->
   [GenericArg (Expr builtin)] ->
-  m (Expr builtin)
-forceEvalSimpleBuiltin p b eval spine =
-  case getExpr accessSpine spine of
-    Just args -> eval args
-    Nothing -> return $ normAppList (Builtin p b) spine
+  Maybe (m (Expr builtin))
+forceEvalSimpleBuiltin eval spine = eval =<< getExpr accessSpine spine
 
 --------------------------------------------------------------------------------
 -- Evaluation
@@ -85,18 +80,18 @@ type EvalSimple args expr builtin m =
   args (expr builtin) ->
   m (expr builtin)
 
-type EvalSimplePartial args builtin m =
-  args (Value builtin) ->
-  Maybe (m (Value builtin))
+type EvalSimplePartial args expr builtin m =
+  args (expr builtin) ->
+  Maybe (m (expr builtin))
 
 evalSimple ::
-  (MonadNormBuiltin m, IsArgs args) =>
+  (MonadNormBuiltin m, IsArgs args, HasBuiltinConstructor expr) =>
   builtin ->
-  EvalSimplePartial args builtin m ->
-  EvalSimple args Value builtin m
+  EvalSimplePartial args expr builtin m ->
+  EvalSimple args expr builtin m
 evalSimple b eval args = case eval args of
   Just result -> result
-  Nothing -> return $ VBuiltin b (mkExpr accessSpine args)
+  Nothing -> return $ mkExpr accessBuiltinC (b, mkExpr accessSpine args)
 
 evalNonSimple ::
   (MonadNormBuiltin m, IsArgs args) =>
@@ -121,7 +116,7 @@ evalTensorOp1 ::
 evalTensorOp1 accessBuiltinOp accessLit op args =
   evalSimple (mkExpr accessBuiltinOp ()) eval args
   where
-    eval :: EvalSimplePartial TensorOp1Args builtin m
+    eval :: EvalSimplePartial TensorOp1Args Value builtin m
     eval = \case
       TensorOp1Args _ds (getExpr accessLit -> Just t) ->
         Just $ return $ mkExpr accessLit $ mapTensor op t
@@ -163,7 +158,7 @@ evalHeteroTensorOp2 ::
 evalHeteroTensorOp2 b inputLit outputLit op leftUnit rightUnit leftZero rightZero args =
   evalSimple b eval args
   where
-    eval :: EvalSimplePartial TensorOp2Args builtin m
+    eval :: EvalSimplePartial TensorOp2Args Value builtin m
     eval = \case
       TensorOp2Args _ds (getExpr inputLit -> Just xs) (getExpr inputLit -> Just ys) ->
         Just $ return $ mkExpr outputLit $ zipWithTensor op xs ys
@@ -219,7 +214,7 @@ evalReduceTensor ::
 evalReduceTensor accessReductionOp accessLit evalOp2 op2 args = do
   evalSimple (mkExpr accessReductionOp ()) eval args
   where
-    eval :: EvalSimplePartial TensorReductionArgs builtin m
+    eval :: EvalSimplePartial TensorReductionArgs Value builtin m
     eval = \case
       TensorReductionArgs _ (getExpr accessLit -> Just e) (getExpr accessLit -> Just xs) ->
         Just $ return $ mkExpr accessLit $ foldTensor op2 e xs
@@ -707,7 +702,7 @@ unoptimisedEvalForeachTensor ::
 unoptimisedEvalForeachTensor ctx evalApp args@(ForeachTensorArgs t d ds f) = case d of
   INatLiteral n -> do
     xs <- traverse (\i -> evalApp ctx f [explicit (IIndexLiteral i)]) [0 .. (n - 1 :: Int)]
-    evalStackTensor (StackTensorArgs t d ds xs)
+    evalStackTensor $ StackTensorArgs t d ds xs
   _ -> return $ mkExpr accessForeachTensor args
 
 -----------------------------------------------------------------------------
@@ -716,26 +711,36 @@ unoptimisedEvalForeachTensor ctx evalApp args@(ForeachTensorArgs t d ds f) = cas
 evalStackTensor ::
   (MonadNormBuiltin m, HasTensorLiterals expr builtin, BuiltinHasNatLiterals builtin, HasTensorExpr expr builtin) =>
   EvalSimple StackTensorArgs expr builtin m
-evalStackTensor = evalStackTensorWithPrimitives tensorLiterals
+evalStackTensor = evalSimple (mkExpr accessStackTensorBuiltin ()) partialEvalStackTensor
+
+partialEvalStackTensor ::
+  (MonadNormBuiltin m, HasTensorLiterals expr builtin, BuiltinHasNatLiterals builtin, HasTensorExpr expr builtin) =>
+  EvalSimplePartial StackTensorArgs expr builtin m
+partialEvalStackTensor = partialEvalStackTensorWithPrimitives tensorLiterals
 
 evalStackTensorWithPrimitives ::
   (MonadNormBuiltin m, BuiltinHasNatLiterals builtin, HasTensorExpr expr builtin) =>
   [TensorLiteralAccessor expr builtin] ->
   EvalSimple StackTensorArgs expr builtin m
-evalStackTensorWithPrimitives tensorLits args@(StackTensorArgs _t d ds xs) = do
-  return $
-    fromMaybe (mkExpr accessStackTensor args) $
-      -- If we know that all the tensors being stacked are concrete tensors, then
-      -- we must know the dimensions as well.
-      case (d, getDims ds) of
-        (INatLiteral n, Just ns) | length xs == n -> go ns xs tensorLits
-        _ -> Nothing
+evalStackTensorWithPrimitives tensorLits =
+  evalSimple (mkExpr accessStackTensorBuiltin ()) (partialEvalStackTensorWithPrimitives tensorLits)
+
+partialEvalStackTensorWithPrimitives ::
+  (MonadNormBuiltin m, BuiltinHasNatLiterals builtin, HasTensorExpr expr builtin) =>
+  [TensorLiteralAccessor expr builtin] ->
+  EvalSimplePartial StackTensorArgs expr builtin m
+partialEvalStackTensorWithPrimitives tensorLits (StackTensorArgs _t d ds xs) = do
+  -- If we know that all the tensors being stacked are concrete tensors, then
+  -- we must know the dimensions as well.
+  case (d, getDims ds) of
+    (INatLiteral n, Just ns) | length xs == n -> go ns xs tensorLits
+    _ -> Nothing
   where
-    go :: TensorShape -> [expr builtin] -> [TensorLiteralAccessor expr builtin] -> Maybe (expr builtin)
+    go :: (Monad m) => TensorShape -> [expr builtin] -> [TensorLiteralAccessor expr builtin] -> Maybe (m (expr builtin))
     go elemDims elements = \case
       Wrapper Access {..} : prims ->
         case traverse getExpr elements of
-          Just xss -> Just $ mkExpr $ stack elemDims xss
+          Just xss -> Just $ return $ mkExpr $ stack elemDims xss
           Nothing -> go elemDims elements prims
       [] -> Nothing
 
