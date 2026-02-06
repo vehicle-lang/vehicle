@@ -47,6 +47,7 @@ gtRatTensorReduced xs ys = reduceAnd True (xs >. ys)
 --------------------------------------------------------------------------------
 -- TensorLike
 --------------------------------------------------------------------------------
+
 @typeclass
 record TensorLike r t dims where
   { toTensor         : r -> NonCastingTensor t dims
@@ -82,7 +83,7 @@ realTensorHasAdd : HasAdd (Tensor Real dims) (Tensor Real dims) (Tensor Real dim
 realTensorHasAdd = { addTC = addRealTensor }
 
 @instance
-tensorLikeHasAdd : forallT { r : Type } { t : Type } { dims : List Nat } {{ tensorLike : TensorLike r t dims }} {{ hasAdd : HasAdd (NonCastingTensor t dims) (NonCastingTensor t dims) (NonCastingTensor t dims) }} . HasAdd r r r
+tensorLikeHasAdd : {{ TensorLike r t dims }} -> {{ HasAdd (NonCastingTensor t dims) (NonCastingTensor t dims) (NonCastingTensor t dims) }} -> HasAdd r r r
 tensorLikeHasAdd =
     { addTC = \r1 r2 ->
         fromTensor
@@ -103,7 +104,7 @@ realTensorHasSub : HasSub (Tensor Real dims) (Tensor Real dims) (Tensor Real dim
 realTensorHasSub = { subTC = subRealTensor }
 
 @instance
-tensorLikeHasSub : forallT { r : Type } { t : Type } { dims : List Nat } {{ tensorLike : TensorLike r t dims }} {{ hasSub : HasSub (NonCastingTensor t dims) (NonCastingTensor t dims) (NonCastingTensor t dims) }} . HasSub r r r
+tensorLikeHasSub : {{ TensorLike r t dims }} -> {{ HasSub (NonCastingTensor t dims) (NonCastingTensor t dims) (NonCastingTensor t dims) }} -> HasSub r r r
 tensorLikeHasSub =
     { subTC = \r1 r2 ->
         fromTensor
@@ -128,7 +129,7 @@ realTensorHasMul : HasMul (Tensor Real dims) (Tensor Real dims) (Tensor Real dim
 realTensorHasMul = { mulTC = mulRealTensor }
 
 @instance
-tensorLikeHasMul : forallT { r : Type } { t : Type } { dims : List Nat } {{ tensorLike : TensorLike r t dims }} {{ hasMul : HasMul (NonCastingTensor t dims) (NonCastingTensor t dims) (NonCastingTensor t dims) }} . HasMul r r r
+tensorLikeHasMul : {{ TensorLike r t dims }} -> {{ HasMul (NonCastingTensor t dims) (NonCastingTensor t dims) (NonCastingTensor t dims) }} -> HasMul r r r
 tensorLikeHasMul =
     { mulTC = \r1 r2 ->
         fromTensor
@@ -150,7 +151,7 @@ realTensorHasDiv : HasDiv (Tensor Real dims) (Tensor Real dims) (Tensor Real dim
 realTensorHasDiv = { divTC = divRealTensor }
 
 @instance
-tensorLikeHasDiv : forallT { r : Type } { t : Type } { dims : List Nat } {{ tensorLike : TensorLike r t dims }} {{ hasDiv : HasDiv (NonCastingTensor t dims) (NonCastingTensor t dims) (NonCastingTensor t dims) }} . HasDiv r r r
+tensorLikeHasDiv : {{ TensorLike r t dims }} -> {{ HasDiv (NonCastingTensor t dims) (NonCastingTensor t dims) (NonCastingTensor t dims) }} -> HasDiv r r r
 tensorLikeHasDiv =
     { divTC = \r1 r2 ->
         fromTensor
@@ -168,22 +169,25 @@ record HasQuantifier t where
   }
 
 @instance
-indexHasQuantifier : forallT {n : Nat} . HasQuantifier (Index n)
-indexHasQuantifier = { forallTC = quantifyForAllIndex,
-                       existsTC = quantifyExistsIndex
-                     }
+indexHasQuantifier : HasQuantifier (Index n)
+indexHasQuantifier =
+  { forallTC = quantifyForAllIndex
+  , existsTC = quantifyExistsIndex
+  }
 
 @instance
-tensorHasQuantifier : forallT { ds : List Nat } . HasQuantifier (Tensor Real ds)
-tensorHasQuantifier = { forallTC = quantifyForallRealTensor,
-                        existsTC = quantifyExistsRealTensor
-                      }
+tensorHasQuantifier : HasQuantifier (Tensor Real ds)
+tensorHasQuantifier =
+  { forallTC = quantifyForallRealTensor
+  , existsTC = quantifyExistsRealTensor
+  }
 
 @instance
-tensorLikeHasQuantifier : forallT { r : Type } { dims : List Nat } {{ tensorLike : TensorLike r Real dims }} . HasQuantifier (TensorLike r Real dims)
-tensorLikeHasQuantifier = { forallTC = quantifyForallTensorLike,
-                            existsTC = quantifyExistsTensorLike
-                          }
+tensorLikeHasQuantifier : {{ TensorLike r Real dims }} -> HasQuantifier (TensorLike r Real dims)
+tensorLikeHasQuantifier =
+  { forallTC = quantifyForallTensorLike
+  , existsTC = quantifyExistsTensorLike
+  }
 
 --------------------------------------------------------------------------------
 -- Loss logics
