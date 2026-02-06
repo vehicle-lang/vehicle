@@ -372,8 +372,8 @@ elabExpr expr = case expr of
   B.Lam tk1 ns _tk2 e -> elabLam tk1 ns e
   B.Record xs -> elabRecord xs
   B.RecordAcc e n -> elabRecordAcc e n
-  B.Forall tk1 ns e -> elabQuantifier tk1 V.Forall ns e
-  B.Exists tk1 ns e -> elabQuantifier tk1 V.Exists ns e
+  B.Forall tk1 ns e -> standardLibQuantifier tk1 "forallTC" ns e
+  B.Exists tk1 ns e -> standardLibQuantifier tk1 "existsTC" ns e
   B.ForallIn tk1 ns e1 e2 -> elabQuantifierIn tk1 V.Forall ns e1 e2
   B.ExistsIn tk1 ns e1 e2 -> elabQuantifierIn tk1 V.Exists ns e1 e2
   B.Foreach tk1 ns e -> elabForeach tk1 ns e
@@ -418,6 +418,12 @@ elabExpr expr = case expr of
   B.SubRealTensor tk -> builtinFunction (V.Sub V.SubRatTensor) tk []
   B.MulRealTensor tk -> builtinFunction (V.Mul V.MulRatTensor) tk []
   B.DivRealTensor tk -> builtinFunction (V.Div V.DivRatTensor) tk []
+  B.QuantifyForAllIndex tk -> derivedFunction (V.QuantifyIndex V.Forall) tk []
+  B.QuantifyExistsIndex tk -> derivedFunction (V.QuantifyIndex V.Exists) tk []
+  B.QuantifyForallRealTensor tk -> builtinFunction (V.QuantifyRatTensor V.Forall) tk []
+  B.QuantifyExistsRealTensor tk -> builtinFunction (V.QuantifyRatTensor V.Exists) tk []
+  B.QuantifyForallTensorLike tk -> builtinFunction (V.QuantifyTensorLike V.Forall) tk []
+  B.QuantifyExistsTensorLike tk -> builtinFunction (V.QuantifyTensorLike V.Exists) tk []
   B.At e1 tk e2 -> builtinTypeClassOp V.AtTC tk [e1, e2]
   B.Map tk -> builtinTypeClassOp V.MapTC tk []
   B.Fold tk -> builtinTypeClassOp V.FoldTC tk []
@@ -691,26 +697,25 @@ elabLam tk binders body = do
   body' <- elabExpr body
   return $ foldr (V.Lam p) body' binders'
 
-elabQuantifier ::
-  (MonadElab m, IsToken token, DesugarableBuiltin Builtin) =>
+standardLibQuantifier ::
+  (MonadElab m, IsToken token) =>
   token ->
-  V.Quantifier ->
+  V.Name ->
   [B.NameBinder] ->
   B.Expr ->
   m (V.Expr Builtin)
-elabQuantifier tk q binders body = do
+standardLibQuantifier tk name binders body = do
   p <- mkProvenance tk
-  let quantBuiltin = V.Builtin p $ V.TypeClassOp $ V.QuantifierTC q
+  let quant = V.Var p name
 
   binders' <- elabNamedBinders tk binders
   body' <- elabExpr body
 
   let mkQuantifier binder newBody =
         V.normAppList
-          quantBuiltin
+          quant
           [ mkArg mempty V.Explicit (V.Lam (V.provenanceOf binder) binder newBody)
           ]
-
   return $ foldr mkQuantifier body' binders'
 
 elabQuantifierIn ::

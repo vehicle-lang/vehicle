@@ -18,6 +18,7 @@ module Vehicle.Compile.Error
     ParseLocation,
     MonadCompile,
     compilerDeveloperError,
+    unsupportedTensorLikeQuantifier,
   )
 where
 
@@ -31,6 +32,7 @@ import Data.These (These)
 import Data.Typeable (Proxy)
 import Data.Void (Void)
 import GHC.Generics (Generic)
+import GHC.Stack (HasCallStack)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Resource (NetworkName)
@@ -282,3 +284,7 @@ data JSONError = JSONError
   deriving (Generic)
 
 instance ToJSON JSONError
+
+-- developer error for unsupported tensorLike quantification
+unsupportedTensorLikeQuantifier :: forall b. (HasCallStack) => b
+unsupportedTensorLikeQuantifier = developerError "Quantification over TensorLikes is unsupported."

@@ -56,6 +56,7 @@ typeOfBuiltinFunction p = \case
   And {} -> typeOfOp2 maxLinearity
   Or {} -> typeOfOp2 maxLinearity
   QuantifyRatTensor q -> typeOfQuantifier q
+  QuantifyTensorLike q -> typeOfQuantifier q
   If -> typeOfIf
   ReduceAndTensor -> typeOfOp2 maxLinearity
   ReduceOrTensor -> typeOfOp2 maxLinearity

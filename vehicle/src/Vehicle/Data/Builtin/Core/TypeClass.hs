@@ -85,7 +85,6 @@ data TypeClassOp
   | MapTC
   | FoldTC
   | ForeachTC
-  | QuantifierTC Quantifier
   | TensorTypeTC
   deriving (Eq, Ord, Generic, Show)
 
@@ -106,5 +105,4 @@ instance Pretty TypeClassOp where
     MapTC -> "map"
     FoldTC -> "fold"
     ForeachTC -> "foreach"
-    QuantifierTC q -> pretty q
     TensorTypeTC -> "TensorTC"

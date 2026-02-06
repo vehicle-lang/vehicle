@@ -708,8 +708,7 @@ compileBuiltin isOutType localeAssms b args = case b of
         localeAssms
         [RequireImport VehicleTensor, RequireImport VehicleUtils]
         0
-        ( "$0 " <> (if isOutType then "FlexTensor" else "tensor")
-        )
+        ("$0 " <> (if isOutType then "FlexTensor" else "tensor"))
         Nothing
         args
     IndexType -> annotateNotation localeAssms [] 0 (if isOutType then "FlexIndex" else "nat") (Just "ordinal") args
@@ -755,6 +754,7 @@ compileBuiltin isOutType localeAssms b args = case b of
     QuantifyRatTensor q -> case reverse args of
       (ExplicitArg _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier localeAssms q [binder] body
       _ -> unsupportedArgsError
+    QuantifyTensorLike _ -> unsupportedTensorLikeQuantifier
     AtTensor -> annotateNotation localeAssms [RequireImport VehicleTensor, RequireImport VehicleTensorSubtensor, RequireImport VehicleUtils] 201 "(flex_subtensor $0 $1)" (Just "nindex") args
     If -> annotateNotation localeAssms [] minPrecedence "if $0 then $1 else $2" Nothing args
     ForeachTensor -> idxBasedOp localeAssms "foreach" args

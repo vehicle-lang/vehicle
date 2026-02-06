@@ -7,6 +7,7 @@ module Vehicle.Data.Builtin.Polarity.Type
 where
 
 import Data.Proxy (Proxy (..))
+import Vehicle.Compile.Error (unsupportedTensorLikeQuantifier)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Bidirectional (createFreshUnificationConstraint)
 import Vehicle.Compile.Type.Core
@@ -58,6 +59,7 @@ typeOfBuiltinFunction = \case
   ReduceAndTensor -> typeOfOp2 maxPolarity
   ReduceOrTensor -> typeOfOp2 maxPolarity
   QuantifyRatTensor q -> typeOfQuantifier q
+  QuantifyTensorLike _ -> unsupportedTensorLikeQuantifier
   If -> typeOfIf
   -- Comparisons
   CompareNat {} -> typeOfOp2 maxPolarity

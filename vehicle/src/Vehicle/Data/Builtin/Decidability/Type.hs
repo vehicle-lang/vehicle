@@ -6,6 +6,7 @@ module Vehicle.Data.Builtin.Decidability.Type
 where
 
 import Data.Proxy (Proxy (..))
+import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
@@ -232,6 +233,7 @@ convertToDecidabilityBuiltins p b args = return $
         CompareNat op -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC $ FieldCompareNat op)
         -- Nothing needs to change
         QuantifyRatTensor {} -> sameFunction f
+        QuantifyTensorLike _ -> unsupportedTensorLikeQuantifier
         If -> sameFunction f
         Neg {} -> sameFunction f
         Add {} -> sameFunction f

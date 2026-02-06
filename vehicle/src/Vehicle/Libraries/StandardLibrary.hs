@@ -35,7 +35,9 @@ standardLibraryInstanceOps =
     [ standardLibIdent "addTC",
       standardLibIdent "subTC",
       standardLibIdent "mulTC",
-      standardLibIdent "divTC"
+      standardLibIdent "divTC",
+      standardLibIdent "forallTC",
+      standardLibIdent "existsTC"
     ]
 
 standardLibraryBuiltinModulePath :: Maybe SecondaryTypeSystem -> ModulePath
