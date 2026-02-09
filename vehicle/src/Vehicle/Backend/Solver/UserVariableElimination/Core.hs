@@ -191,8 +191,8 @@ createSubstitutionForVariable varToSolveFor (NormalisedRelation () linearExpr) =
 
       return $ (toSliceVar var, rearrangedExpr) : childSubsts
 
-data BoundedAssertions inputVariable variable constant = BoundedAssertions
-  { variableBounds :: [BoundedValue inputVariable (Domain constant)],
+data BoundedAssertions variable constant = BoundedAssertions
+  { variableBounds :: [BoundedValue NetworkIOElementVariable (Domain Rational)],
     assertions :: ConjunctAll (Assertion (LinearExpr variable constant))
   }
 

@@ -12,7 +12,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Data.Assertion
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.Hashing ()
-import Vehicle.Data.Tensor (HasShape (..), RatTensor, TensorIndices, TensorShape, allTensor, anyTensor, zipWithTensor)
+import Vehicle.Data.Tensor (HasShape (..), TensorIndices, TensorShape)
 import Vehicle.Data.Tensor.Traversal
 import Vehicle.Data.Variable.Bound.Context.Name.Class
 import Vehicle.Data.Variable.Bound.Level
@@ -310,14 +310,14 @@ data Domain expr = Domain
   }
   deriving (Show, Functor)
 
-isSatisfiable :: Domain RatTensor -> Bool
+isSatisfiable :: Domain Rational -> Bool
 isSatisfiable (Domain LowerBound {..} UpperBound {..}) = do
   let relation = combineInequalityRelations lowerBoundRel upperBoundRel
-  anyTensor id $ zipWithTensor (inequalityRelationToOp relation) lowerBoundValue upperBoundValue
+  inequalityRelationToOp relation lowerBoundValue upperBoundValue
 
-isEquality :: Domain RatTensor -> Bool
+isEquality :: Domain Rational -> Bool
 isEquality (Domain LowerBound {..} UpperBound {..}) = do
   let relation = combineInequalityRelations lowerBoundRel upperBoundRel
   case relation of
     Strict -> False
-    NonStrict -> allTensor id $ zipWithTensor (==) lowerBoundValue upperBoundValue
+    NonStrict -> (==) lowerBoundValue upperBoundValue

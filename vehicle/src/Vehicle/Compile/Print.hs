@@ -50,7 +50,7 @@ import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.Code.Value
 import Vehicle.Data.MaybeTrivial
-import Vehicle.Data.Tensor (Tensor, prettyTensor, pattern ZeroDimTensor)
+import Vehicle.Data.Tensor (Tensor, TensorIndices, prettyTensor, showTensorIndices, pattern ZeroDimTensor)
 import Vehicle.Data.Variable.Bound.Context.Generic.Core
 import Vehicle.Data.Variable.Bound.Context.Name.Core
 import Vehicle.Data.Variable.Bound.Level
@@ -268,8 +268,8 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
       (StrategyFor tags (BoundedValue value (UpperBound expr) `In` ctx))
   StrategyFor tags (BoundedValue value (TensorBounds expr) `In` ctx) =
     'Branch
-      (StrategyFor tags (BoundedValue value (LowerBound expr) `In` ctx))
-      (StrategyFor tags (BoundedValue value (UpperBound expr) `In` ctx))
+      (StrategyFor tags (value `In` ctx))
+      (StrategyFor tags (expr `In` ctx))
   StrategyFor tags (BoundedValue value (Domain expr) `In` ctx) =
     'Branch
       (StrategyFor tags (value `In` ctx))
@@ -940,26 +940,28 @@ instance
 prettyNestedSliceBounds ::
   forall bound expr a.
   (SliceBounds expr -> [bound expr]) ->
-  (bound expr -> Doc a) ->
+  (TensorIndices -> bound expr -> Doc a) ->
   NestedSliceBounds expr ->
   [Doc a]
-prettyNestedSliceBounds toBounds prettyBound = go
+prettyNestedSliceBounds toBounds prettyBound = go mempty
   where
-    go :: NestedSliceBounds expr -> [Doc a]
-    go (NestedSliceBounds sliceBounds maybeChildBounds) = do
-      let boundDoc = prettyBound <$> toBounds sliceBounds
-      let childBoundDocs = maybe [] (fmap go) maybeChildBounds
+    go :: TensorIndices -> NestedSliceBounds expr -> [Doc a]
+    go indices (NestedSliceBounds sliceBounds maybeChildBounds) = do
+      let boundDoc = prettyBound (reverse indices) <$> toBounds sliceBounds
+      let childBoundDocs = maybe [] (\xs -> zipWith (\i bs -> go (i : indices) bs) [0 ..] xs) maybeChildBounds
       boundDoc <> concat childBoundDocs
 
 instance
-  ( PrettyUsing rest1 (BoundedValue value (LowerBound expr) `In` ctx),
-    PrettyUsing rest2 (BoundedValue value (UpperBound expr) `In` ctx)
+  ( PrettyUsing rest1 (value `In` ctx),
+    PrettyUsing rest2 (expr `In` ctx)
   ) =>
   PrettyUsing ('Branch rest1 rest2) (BoundedValue value (TensorBounds expr) `In` ctx)
   where
   prettyUsing (BoundedValue value TensorBounds {..}, ctx) = do
-    let printLowerBound bound = prettyUsing @rest1 (BoundedValue value bound, ctx)
-    let printUpperBound bound = prettyUsing @rest2 (BoundedValue value bound, ctx)
+    let printLowerBound indices (LowerBound rel bound) =
+          prettyUsing @rest1 (value, ctx) <> pretty (showTensorIndices indices) <+> prettyFlip rel <+> prettyUsing @rest2 (bound, ctx)
+    let printUpperBound indices (UpperBound rel bound) =
+          prettyUsing @rest1 (value, ctx) <> pretty (showTensorIndices indices) <+> pretty rel <+> prettyUsing @rest2 (bound, ctx)
     let lowerDocs = prettyNestedSliceBounds lowerBounds printLowerBound tensorSliceBounds
     let upperDocs = prettyNestedSliceBounds upperBounds printUpperBound tensorSliceBounds
     case (lowerDocs, upperDocs) of

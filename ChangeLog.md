@@ -2,6 +2,10 @@
 
 ## Next release
 
+### Solver backend
+
+* Fixed bug where trivially unsatisfiable constraints weren't being detected correctly.
+
 ### Loss backend
 
 * Transformed case where quantifier body consists of only bounds on the quantified variable from an error to a warning.

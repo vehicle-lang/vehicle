@@ -5,7 +5,7 @@ module Vehicle.Backend.Solver.QueryCompilation
   )
 where
 
-import Control.Monad (forM, zipWithM)
+import Control.Monad (forM)
 import Control.Monad.Reader (MonadReader (..))
 import Data.Bifunctor (Bifunctor (..))
 import Data.Coerce (coerce)
@@ -27,7 +27,7 @@ import Vehicle.Compile.ExpandResources.Core (NetworkContext)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Data.Assertion
-import Vehicle.Data.Bound (BoundedValue (..), Domain (..), unstackBounds)
+import Vehicle.Data.Bound (BoundedValue (..), Domain (..))
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.MaybeTrivial
@@ -71,7 +71,7 @@ compilePartitionToQuery ::
   (MonadQueryCompilation m, MonadStdIO m, MonadSupply QueryID m) =>
   NetworkApplications ->
   [CompilationStep] ->
-  BoundedAssertions NetworkIOElementVariable NetworkIOElementVariable Rational ->
+  BoundedAssertions NetworkIOElementVariable Rational ->
   m QueryMetaData
 compilePartitionToQuery metaNetworkApps compilationSteps (BoundedAssertions bounds assertions) = do
   (PropertyMetaData {..}, _) <- ask
@@ -120,12 +120,11 @@ reduceAllRemainingNetworkTensorVariables ::
   forall m.
   (MonadQueryCompilation m, MonadMaybeTrivial m) =>
   NetworkApplications ->
-  BoundedAssertions NetworkInputTensorVariable SliceVariable RatTensor ->
-  m (BoundedAssertions NetworkIOElementVariable NetworkIOElementVariable Rational, [CompilationStep])
-reduceAllRemainingNetworkTensorVariables metaNetwork (BoundedAssertions bounds assertions) = do
+  BoundedAssertions SliceVariable RatTensor ->
+  m (BoundedAssertions NetworkIOElementVariable Rational, [CompilationStep])
+reduceAllRemainingNetworkTensorVariables metaNetwork (BoundedAssertions newBounds assertions) = do
   logCompilerSection2 MaxDetail "eliminating remaining tensor assertions" $ do
     -- Create the assertions
-    newBounds <- concat <$> traverse reduceDomain bounds
     flattenedAssertions <- concat <$> traverse reduceAssertion assertions
 
     -- Update the compilation trace
@@ -142,31 +141,6 @@ reduceAllRemainingNetworkTensorVariables metaNetwork (BoundedAssertions bounds a
         let newAssertions = ConjunctAll (a :| as)
         let newBoundedAssertions = BoundedAssertions newBounds newAssertions
         (newBoundedAssertions, newSteps)
-
-reduceDomain ::
-  forall m.
-  (MonadQueryCompilation m) =>
-  BoundedValue NetworkInputTensorVariable (Domain RatTensor) ->
-  m [BoundedValue NetworkIOElementVariable (Domain Rational)]
-reduceDomain (BoundedValue inputTensorVar bounds) = go (toSliceVar inputTensorVar, bounds)
-  where
-    go ::
-      (SliceVariable, Domain RatTensor) ->
-      m [BoundedValue NetworkIOElementVariable (Domain Rational)]
-    go (var, Domain lowerBound upperBound) =
-      case shapeOf lowerBound of
-        [] -> do
-          let elementVar = coerce var
-          let lowerValue = fmap extractRationalConstant lowerBound
-          let upperValue = fmap extractRationalConstant upperBound
-          let domain = Domain lowerValue upperValue
-          return [BoundedValue elementVar domain]
-        _ : _ -> do
-          childVars <- lookupChildVariablesCertain var
-          let lowerBounds = unstackBounds lowerBound
-          let upperBounds = unstackBounds upperBound
-          let domains = zipWith Domain lowerBounds upperBounds
-          concat <$> zipWithM (curry go) childVars domains
 
 extractRationalConstant :: RatTensor -> Rational
 extractRationalConstant = \case

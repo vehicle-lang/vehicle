@@ -1,0 +1,14 @@
+[
+  {
+    "name": "VNNLIB",
+    "run": "vehicle compile queries -s bug.vcl -n bug:bug.onnx -f VNNLibQueries -o VNNLIB.queries/",
+    "needs": [
+      "bug.vcl",
+      "bug.onnx"
+    ],
+    "produces": [
+      "VNNLIB.queries/safeFar.vcl-plan"
+    ],
+    "sizeOnly": ".vcl-plan"
+  }
+]
