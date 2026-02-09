@@ -127,6 +127,7 @@ library
     Vehicle
     Vehicle.Backend.Agda
     Vehicle.Backend.Isabelle
+    Vehicle.Backend.Lean
     Vehicle.Backend.Loss.JSON
     Vehicle.Backend.Loss.LogicCompilation
     Vehicle.Backend.Loss.LossCompilation
@@ -196,6 +197,8 @@ library
     Vehicle.Backend.Agda.Interact
     Vehicle.Backend.Isabelle.Compile
     Vehicle.Backend.Isabelle.Interact
+    Vehicle.Backend.Lean.Compile
+    Vehicle.Backend.Lean.Interact
     Vehicle.Backend.Loss
     Vehicle.Backend.Loss.Core
     Vehicle.Backend.Loss.Domain

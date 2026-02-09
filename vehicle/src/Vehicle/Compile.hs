@@ -10,6 +10,7 @@ where
 import Control.Monad.Writer (MonadWriter (..), WriterT (..))
 import Vehicle.Backend.Agda
 import Vehicle.Backend.Isabelle
+import Vehicle.Backend.Lean
 import Vehicle.Backend.Loss (convertToLossTensors)
 import Vehicle.Backend.Loss.JSON
 import Vehicle.Backend.Prelude
@@ -135,6 +136,10 @@ compileToITP ITPOptions {..} typedProg = do
         let isabelleOptions = IsabelleOptions outputFile moduleName
         isabelleCode <- compileProgToIsabelle decProg isabelleOptions
         writeIsabelleFile outputFile isabelleCode
+      Lean -> do
+        let leanOptions = LeanOptions outputFile moduleName
+        leanCode <- compileProgToLean decProg leanOptions
+        writeLeanFile outputFile leanCode
 
 compileToLossFunction ::
   forall m.
