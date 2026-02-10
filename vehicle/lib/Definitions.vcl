@@ -201,13 +201,11 @@ tensorLikeHasQuantifier =
           -- ),
 
 @typeclass
-record ValidNetworkType (t : Type) where {}
+record HasValidNetworkType (t : Type) where {}
 
 @instance
-tensorToTensorHasValidNetworkType : ValidNetworkType ( NonCastingTensor Real dims -> NonCastingTensor Real dims )
+tensorToTensorHasValidNetworkType : HasValidNetworkType ( Tensor Real dims -> Tensor Real dims )
 tensorToTensorHasValidNetworkType = {}
-
-
 
 --------------------------------------------------------------------------------
 -- Loss logics

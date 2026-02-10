@@ -19,6 +19,7 @@ import Vehicle.Data.Builtin.Standard.Normalise ()
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.DSL
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..))
+import Vehicle.Libraries.StandardLibrary
 import Prelude hiding (iterate, pi)
 
 --------------------------------------------------------------------------------
@@ -175,12 +176,12 @@ restrictStandardDeclType ::
 restrictStandardDeclType declSort (ident, p) typ = do
   env <- getFreeCtx (Proxy @Builtin)
   let tc = case declSort of
-        RestrictedProperty -> ValidPropertyType
-        RestrictedParameter s -> ValidParameterType s
-        RestrictedDataset -> ValidDatasetType
-        RestrictedNetwork -> ValidNetworkType
+        RestrictedProperty -> Builtin p (TypeClass ValidPropertyType)
+        RestrictedParameter s -> Builtin p (TypeClass (ValidParameterType s))
+        RestrictedDataset -> Builtin p (TypeClass ValidDatasetType)
+        RestrictedNetwork -> FreeVar p (standardLibIdent "HasValidNetworkType")
 
-  let expr = App (Builtin p (TypeClass tc)) [explicit typ]
+  let expr = App tc [explicit typ]
   let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin env (ident, provenanceOf typ) (Left declSort) typ
   _ <- createFreshInstanceConstraint False mempty p origin Irrelevant expr
   return typ
