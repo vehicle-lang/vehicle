@@ -189,6 +189,26 @@ tensorLikeHasQuantifier =
   , existsTC = quantifyExistsTensorLike
   }
 
+-- Network types
+
+          -- ( forAllDims $ \ds1 ->
+          --     forAllDims $ \ds2 ->
+          --       validNetworkType (tRatTensor ds1 ~> tRatTensor ds2),
+          --   lamDims $ \_ds1 ->
+          --     lamDims $ \_ds2 ->
+          --       tUnit,
+          --   Nothing
+          -- ),
+
+@typeclass
+record ValidNetworkType (t : Type) where {}
+
+@instance
+tensorToTensorHasValidNetworkType : ValidNetworkType ( NonCastingTensor Real dims -> NonCastingTensor Real dims )
+tensorToTensorHasValidNetworkType = {}
+
+
+
 --------------------------------------------------------------------------------
 -- Loss logics
 --------------------------------------------------------------------------------
