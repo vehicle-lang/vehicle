@@ -1,0 +1,326 @@
+(* ========================================================================== *)
+(* Tensor.iml - Translation of Isabelle/HOL Tensor Theory to ImandraX         *)
+(*                                                                            *)
+(* Original Isabelle theory: Tensor.thy                                       *)
+(* This translation preserves the key definitions and properties.             *)
+(*                                                                            *)
+(* Author: Grant Passmore (grant@imandra.ai)                                  *)
+(* ========================================================================== *)
+
+(* -------------------------------------------------------------------------- *)
+(* Helper Functions                                                           *)
+(* -------------------------------------------------------------------------- *)
+
+(* Product of a list of integers (dimensions). *)
+
+let rec prod_list (ds : int list) : int =
+  match ds with
+  | [] -> 1
+  | d :: ds' -> d * prod_list ds'
+
+(* Flatten a list of lists. *)
+
+let rec concat (xss : 'a list list) : 'a list =
+  match xss with
+  | [] -> []
+  | xs :: xss' -> xs @ concat xss'
+
+(* -------------------------------------------------------------------------- *)
+(* Index Generation                                                           *)
+(* -------------------------------------------------------------------------- *)
+
+(* Prepend an element to all lists in a list of lists. *)
+
+let rec prepend_to_all (i : int) (iss : int list list) : int list list =
+  match iss with
+  | [] -> []
+  | is :: iss' -> (i :: is) :: prepend_to_all i iss'
+
+(* For each j in [curr..limit), prepend j to all lists in rest and concatenate. *)
+let rec prepend_range (curr : int) (limit : int) (rest : int list list) : int list list =
+  if curr >= limit then []
+  else prepend_to_all curr rest @ prepend_range (curr + 1) limit rest
+[@@measure Ordinal.of_int (limit - curr)]
+
+(* Generate all valid index lists for given dimensions.
+    Produces the Cartesian product of ranges [0..d₁-1] × [0..d₂-1] × ...
+ *)
+let rec all_indices (ds : int list) : int list list =
+  match ds with
+  | [] -> [[]]
+  | d :: ds' ->
+    let rest = all_indices ds' in
+    prepend_range 0 d rest
+
+(* -------------------------------------------------------------------------- *)
+(* Tensor Type Definition                                                     *)
+(* -------------------------------------------------------------------------- *)
+
+(* A tensor is represented as a record with:
+    - dims: list of dimension sizes
+    - vec: flat storage of all elements in row-major order
+    
+    Well-formedness invariant: length vec = prod_list dims
+    
+    Together, these correspond to Isabelle's typedef:
+      typedef 'a tensor = "{t::nat list × 'a list. length (snd t) = prod_list (fst t)}"
+*)
+
+type 'a tensor = {
+  dims : int list;
+  vec : 'a list;
+}
+
+(* Smart constructor for tensors.
+   Corresponds to Isabelle's tensor_from_vec. *)
+
+let tensor_from_vec (d : int list) (v : 'a list) : 'a tensor =
+  { dims = d; vec = v }
+
+(* Order (rank) of a tensor = number of dimensions.
+   A scalar has order 0, vector has order 1, matrix has order 2, etc. *)
+
+let order (t : 'a tensor) : int =
+  List.length t.dims
+
+(* Well-formedness predicate.
+   A tensor is well-formed if vec length equals product of dims.
+   In Isabelle this is enforced by the typedef. *)
+
+let tensor_wf (t : 'a tensor) : bool =
+  List.length t.vec = prod_list t.dims
+
+(* Structural equality for tensors. *)
+
+let tensor_eq (t1 : 'a tensor) (t2 : 'a tensor) : bool =
+  t1.dims = t2.dims && t1.vec = t2.vec
+
+(* -------------------------------------------------------------------------- *)
+(* Valid Index Predicate                                                      *)
+(* -------------------------------------------------------------------------- *)
+
+(* An index list is valid for given dimensions if:
+    - They have the same length
+    - Each index i is in range [0, d) for corresponding dimension d
+    
+    Corresponds to Isabelle's inductive valid_index predicate:
+      inductive valid_index::"nat list ⇒ nat list ⇒ bool" (infix ‹⊲› 50) where
+        Nil: "[] ⊲ []" |
+        Cons: "is ⊲ ds ⟹ i<d ⟹ i#is ⊲ d#ds"
+*)
+
+let rec valid_index (is : int list) (ds : int list) : bool =
+  match is, ds with
+  | [], [] -> true
+  | i :: is', d :: ds' -> 0 <= i && i < d && valid_index is' ds'
+  | _, _ -> false
+
+(* Check validity at a specific position in the index.
+   Helper function for component-wise validity checking. *)
+
+let rec valid_index_nth (is : int list) (ds : int list) (m : int) : bool =
+  match is, ds, m with
+  | i :: _, d :: _, 0 -> 0 <= i && i < d
+  | _ :: is', _ :: ds', n -> valid_index_nth is' ds' (n - 1)
+  | _, _, _ -> false
+
+(* -------------------------------------------------------------------------- *)
+(* Fixed Length Sublist (for navigating tensor storage)                       *)
+(* -------------------------------------------------------------------------- *)
+
+(* Extract a sublist of fixed length at a given position.
+    fixed_length_sublist xs l i = take l (drop (l*i) xs)
+    
+    This is used to navigate through the flat tensor storage:
+    - l is the "stride" (product of remaining dimensions)
+    - i is the index in the current dimension
+    
+    Corresponds to Isabelle's fixed_length_sublist. *)
+
+let fixed_length_sublist (xs : 'a list) (l : int) (i : int) : 'a list =
+  List.take l (List.drop (l * i) xs)
+
+(* -------------------------------------------------------------------------- *)
+(* Tensor Lookup                                                              *)
+(* -------------------------------------------------------------------------- *)
+
+(* Base lookup function: navigates through dimensions to find element.
+    
+    The algorithm:
+    1. For each dimension d with index i:
+       - Compute stride = prod_list remaining_dims
+       - Extract the relevant sublist starting at position stride * i
+    2. When all dimensions are consumed, return the head of the remaining list
+    
+    Corresponds to Isabelle's lookup_base:
+      fun lookup_base::"nat list ⇒ 'a list ⇒ nat list ⇒ 'a" where
+        lookup_base_Nil: "lookup_base [] v [] = hd v" |
+        lookup_base_Cons: "lookup_base (d # ds) v (i # is) =
+          lookup_base ds (fixed_length_sublist v (prod_list ds) i) is"
+*)
+
+let rec lookup_base (ds : int list) (v : 'a list) (is : int list) : 'a option =
+  match ds, is with
+  | [], [] -> List.head_opt v
+  | d :: ds', i :: is' ->
+    if 0 <= i && i < d then
+      lookup_base ds' (fixed_length_sublist v (prod_list ds') i) is'
+    else
+      None
+  | _, _ -> None
+
+(* Main lookup function for tensors.
+   Returns Some value if index is valid, None otherwise.
+    
+   Note: In Isabelle this is a total function (partial in the logic sense),
+   here we make partiality explicit with Option. *)
+let lookup (t : 'a tensor) (is : int list) : 'a option =
+  lookup_base t.dims t.vec is
+
+(* -------------------------------------------------------------------------- *)
+(* Tensor Construction from Lookup Function                                   *)
+(* -------------------------------------------------------------------------- *)
+
+(* Build tensor by generating all indices and mapping the lookup function.
+    
+   This is equivalent to Isabelle's tensor_from_lookup, which builds
+   the flat vector by evaluating the lookup function at each valid index
+   in lexicographic order.
+    
+   tensor_from_lookup ds e produces a tensor where:
+     lookup (tensor_from_lookup ds e) is = Some (e is)  for all valid is
+*)
+
+let tensor_from_lookup (ds : int list) (e : int list -> 'a) : 'a tensor =
+  let indices = all_indices ds in
+  tensor_from_vec ds (List.map e indices)
+
+(* -------------------------------------------------------------------------- *)
+(* Tensor Operations                                                          *)
+(* -------------------------------------------------------------------------- *)
+
+(* Map a function over all elements of a tensor.
+   Preserves the shape (dimensions). *)
+
+let tensor_map (f : 'a -> 'b) (t : 'a tensor) : 'b tensor =
+  { dims = t.dims; vec = List.map f t.vec }
+
+(* Scalar multiplication for integer tensors. *)
+
+let tensor_scale (s : int) (t : int tensor) : int tensor =
+  tensor_map (fun x -> s * x) t
+
+(* Pointwise operation on two tensors of the same shape.
+   Returns None if shapes don't match. *)
+
+let tensor_zip_with (f : 'a -> 'b -> 'c) (t1 : 'a tensor) (t2 : 'b tensor) : 'c tensor option =
+  if t1.dims = t2.dims then
+    match List.map2 f t1.vec t2.vec with
+    | Ok v -> Some { dims = t1.dims; vec = v }
+    | Error _ -> None
+  else
+    None
+
+(* Element-wise tensor addition. *)
+
+let tensor_add (t1 : int tensor) (t2 : int tensor) : int tensor option =
+  tensor_zip_with (fun x y -> x + y) t1 t2
+
+(* Element-wise tensor subtraction. *)
+
+let tensor_sub (t1 : int tensor) (t2 : int tensor) : int tensor option =
+  tensor_zip_with (fun x y -> x - y) t1 t2
+
+(* Element-wise tensor multiplication (Hadamard product). *)
+
+let tensor_hadamard (t1 : int tensor) (t2 : int tensor) : int tensor option =
+  tensor_zip_with (fun x y -> x * y) t1 t2
+
+(* -------------------------------------------------------------------------- *)
+(* Convenience Constructors                                                   *)
+(* -------------------------------------------------------------------------- *)
+
+(* Create a scalar (0-dimensional tensor). *)
+
+let scalar (x : 'a) : 'a tensor =
+  { dims = []; vec = [x] }
+
+(* Create a vector (1-dimensional tensor). *)
+
+let vector (v : 'a list) : 'a tensor =
+  { dims = [List.length v]; vec = v }
+
+(* Create a matrix (2-dimensional tensor) from row-major flat list. *)
+
+let matrix (rows : int) (cols : int) (v : 'a list) : 'a tensor =
+  { dims = [rows; cols]; vec = v }
+
+(* -------------------------------------------------------------------------- *)
+(* Examples                                                                   *)
+(* -------------------------------------------------------------------------- *)
+
+(* Example: 2x3 matrix [1,2,3; 4,5,6] in row-major order *)
+
+let example_matrix : int tensor =
+  matrix 2 3 [1; 2; 3; 4; 5; 6]
+
+eval example_matrix
+
+(* Example: Create same tensor from lookup function *)
+
+let example_from_lookup : int tensor =
+  tensor_from_lookup [2; 3] (fun is ->
+    match is with
+    | [i; j] -> i * 3 + j + 1
+    | _ -> 0)
+
+eval example_from_lookup
+
+(* ========================================================================== *)
+(* THEOREMS                                                                   *)
+(*                                                                            *)
+(* The following theorems correspond to key lemmas from the Isabelle theory.  *)
+(* ========================================================================== *)
+
+(* --- Properties of prepend_to_all --- *)
+
+lemma prepend_to_all_length i iss =
+  List.length (prepend_to_all i iss) = List.length iss
+[@@by auto]
+
+(* --- Properties of valid_index --- *)
+
+lemma valid_index_length is ds =
+  valid_index is ds ==> List.length is = List.length ds
+[@@by auto]
+
+lemma valid_index_append is1 ds1 is2 ds2 = 
+  valid_index is1 ds1 && valid_index is2 ds2 
+  ==> valid_index (is1 @ is2) (ds1 @ ds2)
+[@@by auto]
+
+(* --- Properties of prod_list --- *)
+
+lemma prod_list_nil =
+  prod_list [] = 1
+[@@by auto]
+
+lemma prod_list_cons d ds =
+  prod_list (d :: ds) = d * prod_list ds
+[@@by auto]
+
+lemma prod_list_append ds1 ds2 =
+  prod_list (ds1 @ ds2) = prod_list ds1 * prod_list ds2
+[@@by auto]
+
+(* --- Properties of tensor operations --- *)
+
+lemma tensor_map_dims f t = 
+  (tensor_map f t).dims = t.dims
+[@@by auto]
+
+lemma tensor_eq_intro a b = 
+  a.dims = b.dims && a.vec = b.vec 
+  ==> 
+  a = b
+[@@by auto]

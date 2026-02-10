@@ -126,6 +126,7 @@ library
   exposed-modules:
     Vehicle
     Vehicle.Backend.Agda
+    Vehicle.Backend.Imandra
     Vehicle.Backend.Isabelle
     Vehicle.Backend.Loss.JSON
     Vehicle.Backend.Loss.LogicCompilation
@@ -194,6 +195,8 @@ library
     Vehicle.Backend.Agda.CapitaliseTypeNames
     Vehicle.Backend.Agda.Compile
     Vehicle.Backend.Agda.Interact
+    Vehicle.Backend.Imandra.Compile
+    Vehicle.Backend.Imandra.Interact
     Vehicle.Backend.Isabelle.Compile
     Vehicle.Backend.Isabelle.Interact
     Vehicle.Backend.Loss

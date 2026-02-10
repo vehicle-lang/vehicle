@@ -1,0 +1,323 @@
+(* ========================================================================== *)
+(* Plus.iml - Translation of Isabelle Tensor_Plus Theory to ImandraX          *)
+(*                                                                            *)
+(* Original Isabelle theory: Tensor_Plus.thy                                  *)
+(* This translation provides tensor addition and related operations.          *)
+(*                                                                            *)
+(* Author: Grant Passmore (grant@imandra.ai)                                  *)
+(* ========================================================================== *)
+
+[@@@import "tensor.iml"]
+[@@@import "subtensor.iml"]
+
+(* -------------------------------------------------------------------------- *)
+(* Vector Addition                                                            *)
+(* -------------------------------------------------------------------------- *)
+
+(* Pointwise addition of two lists (vectors).
+   First-order version of Isabelle's:
+     definition "vec_plus a b = map (λ(x,y). plus x y) (zip a b)"
+*)
+
+let rec vec_plus (xs : int list) (ys : int list) : int list =
+  match xs, ys with
+  | [], _ -> []
+  | _, [] -> []
+  | x :: xs', y :: ys' -> (x + y) :: vec_plus xs' ys'
+
+(* -------------------------------------------------------------------------- *)
+(* Tensor Addition                                                            *)
+(* -------------------------------------------------------------------------- *)
+
+(* Base tensor addition (assumes dimensions match).
+   Corresponds to Isabelle's:
+     definition plus_base::"'a::semigroup_add tensor ⇒ 'a tensor ⇒ 'a tensor"
+       where "plus_base A B = (tensor_from_vec (dims A) (vec_plus (vec A) (vec B)))"
+*)
+
+let plus_base (a : int Tensor.tensor) (b : int Tensor.tensor) : int Tensor.tensor =
+  Tensor.tensor_from_vec a.dims (vec_plus a.vec b.vec)
+
+(* Tensor addition with dimension check.
+   Returns Some of the sum if dimensions match, None otherwise.
+   
+   Corresponds to Isabelle's:
+     definition plus_def: "A + B = (if (dims A = dims B)
+                   then plus_base A B
+                   else undefined)"
+*)
+
+let tensor_plus (a : int Tensor.tensor) (b : int Tensor.tensor) : int Tensor.tensor option =
+  if a.dims = b.dims then
+    Some (plus_base a b)
+  else
+    None
+
+(* Total version that requires matching dimensions (for use in listsum). *)
+
+let tensor_plus_unsafe (a : int Tensor.tensor) (b : int Tensor.tensor) : int Tensor.tensor =
+  plus_base a b
+
+(* -------------------------------------------------------------------------- *)
+(* Zero Tensor                                                                *)
+(* -------------------------------------------------------------------------- *)
+
+(* Zero vector of length n.
+   Corresponds to Isabelle's: definition "vec0 n = replicate n 0" *)
+
+let rec vec0 (n : int) : int list =
+  if n <= 0 then []
+  else 0 :: vec0 (n - 1)
+[@@measure Ordinal.of_int n]
+
+(* Zero tensor with given dimensions.
+   Corresponds to Isabelle's:
+     definition tensor0::"nat list ⇒ 'a::zero tensor" where
+       "tensor0 d = tensor_from_vec d (vec0 (prod_list d))"
+*)
+
+let tensor0 (ds : int list) : int Tensor.tensor =
+  Tensor.tensor_from_vec ds (vec0 (Tensor.prod_list ds))
+
+(* -------------------------------------------------------------------------- *)
+(* Tensor List Summation                                                      *)
+(* -------------------------------------------------------------------------- *)
+
+(* Right fold for tensor list summation.
+   Corresponds to Isabelle's:
+     definition listsum::"nat list ⇒ 'a::monoid_add tensor list ⇒ 'a tensor" where
+       "listsum ds As = foldr (+) As (tensor0 ds)"
+*)
+
+let rec listsum (ds : int list) (ts : int Tensor.tensor list) : int Tensor.tensor =
+  match ts with
+  | [] -> tensor0 ds
+  | t :: ts' -> plus_base t (listsum ds ts')
+
+(* Alternative using head's dimensions.
+   Corresponds to Isabelle's:
+     definition listsum'::"'a::monoid_add tensor list ⇒ 'a tensor" where
+       "listsum' As = listsum (dims (hd As)) As"
+*)
+
+let listsum' (ts : int Tensor.tensor list) : int Tensor.tensor option =
+  match ts with
+  | [] -> None
+  | t :: _ -> Some (listsum t.dims ts)
+
+(* -------------------------------------------------------------------------- *)
+(* Subtensor of Plus                                                          *)
+(* -------------------------------------------------------------------------- *)
+
+(* Helper: fixed_length_sublist distributes over vec_plus.
+   Corresponds to Isabelle's fixed_length_sublist_plus lemma. *)
+
+let rec fixed_length_sublist_vec_plus (xs1 : int list) (xs2 : int list) (l : int) (i : int) : int list =
+  Tensor.fixed_length_sublist (vec_plus xs1 xs2) l i
+
+(* -------------------------------------------------------------------------- *)
+(* Examples                                                                   *)
+(* -------------------------------------------------------------------------- *)
+
+(* Example tensors *)
+
+let t1 : int Tensor.tensor = Tensor.tensor_from_vec [2; 3] [1; 2; 3; 4; 5; 6]
+let t2 : int Tensor.tensor = Tensor.tensor_from_vec [2; 3] [10; 20; 30; 40; 50; 60]
+
+eval t1
+eval t2
+
+(* Add them *)
+
+let t_sum = tensor_plus t1 t2
+
+eval t_sum  (* Should be Some { dims = [2; 3]; vec = [11; 22; 33; 44; 55; 66] } *)
+
+(* Zero tensor *)
+
+let t_zero = tensor0 [2; 3]
+
+eval t_zero  (* Should be { dims = [2; 3]; vec = [0; 0; 0; 0; 0; 0] } *)
+
+(* Sum of list *)
+
+let t_listsum = listsum [2; 3] [t1; t2]
+
+eval t_listsum  (* Should be { dims = [2; 3]; vec = [11; 22; 33; 44; 55; 66] } *)
+
+(* ========================================================================== *)
+(* THEOREMS                                                                   *)
+(* ========================================================================== *)
+
+(* --- Properties of vec_plus --- *)
+
+lemma vec_plus_length xs ys =
+  List.length xs = List.length ys 
+  ==> 
+  List.length (vec_plus xs ys) = List.length xs
+[@@by auto]
+
+lemma vec_plus_comm xs ys =
+  vec_plus xs ys = vec_plus ys xs
+[@@by auto]
+
+lemma vec_plus_assoc xs ys zs =
+  vec_plus (vec_plus xs ys) zs = vec_plus xs (vec_plus ys zs)
+[@@by auto]
+
+(* --- Properties of vec0 --- *)
+
+lemma vec0_length n =
+  n >= 0 ==> List.length (vec0 n) = n
+[@@by auto]
+
+lemma vec_plus_vec0_right xs =
+  vec_plus xs (vec0 (List.length xs)) = xs
+[@@by auto]
+
+lemma vec_plus_vec0_left xs =
+  vec_plus (vec0 (List.length xs)) xs = xs
+[@@by auto]
+
+(* --- Properties of tensor0 --- *)
+
+lemma tensor0_dims ds =
+  (tensor0 ds).dims = ds
+[@@by auto]
+
+lemma tensor0_vec ds =
+  (tensor0 ds).vec = vec0 (Tensor.prod_list ds)
+[@@by auto]
+
+(* --- Properties of plus_base --- *)
+
+lemma plus_base_dims a b =
+  (plus_base a b).dims = a.dims
+[@@by auto]
+
+lemma plus_base_vec a b =
+  (plus_base a b).vec = vec_plus a.vec b.vec
+[@@by auto]
+
+lemma plus_base_comm a b =
+  let open Tensor in
+  a.dims = b.dims 
+  ==> 
+  plus_base a b = plus_base b a
+[@@by auto]
+
+lemma plus_base_assoc a b c =
+  let open Tensor in
+  a.dims = b.dims && b.dims = c.dims
+  ==> 
+  plus_base (plus_base a b) c = plus_base a (plus_base b c)
+[@@by auto]
+
+(* --- Properties of tensor_plus --- *)
+
+lemma tensor_plus_dims a b =
+  let open Tensor in
+  a.dims = b.dims 
+  ==> 
+  tensor_plus a b = Some (plus_base a b)
+[@@by auto]
+
+lemma tensor_plus_none a b =
+  let open Tensor in
+  a.dims <> b.dims 
+  ==> 
+  tensor_plus a b = None
+[@@by auto]
+
+lemma tensor_plus_comm a b =
+  tensor_plus a b = tensor_plus b a
+[@@by [%simp_only tensor_plus, plus_base]
+   @>| [auto;
+        auto;
+        auto]
+   ]
+
+(* --- Properties of listsum --- *)
+
+lemma listsum_nil ds =
+  listsum ds [] = tensor0 ds
+[@@by auto]
+
+lemma listsum_cons ds t ts =
+  listsum ds (t :: ts) = plus_base t (listsum ds ts)
+[@@by auto]
+
+lemma listsum_one ds t =
+  listsum ds [t] = plus_base t (tensor0 ds)
+[@@by auto]
+
+(* --- Key identity properties --- *)
+
+(* Adding tensor0 on the right is identity (when tensor is well-formed). *)
+
+lemma tensor_plus_zero_right a =
+  Tensor.tensor_wf a
+  ==>
+  tensor_plus a (tensor0 a.dims) = Some a
+[@@by auto]
+
+(* Adding tensor0 on the left is identity (when tensor is well-formed). *)
+
+lemma tensor_plus_zero_left a =
+  Tensor.tensor_wf a
+  ==>
+  tensor_plus (tensor0 a.dims) a = Some a
+[@@by auto]
+
+(* --- Subtensor and plus interaction --- *)
+
+(* The key fixed_length_sublist_plus property: 
+   fixed_length_sublist distributes over vec_plus.
+   
+   Corresponds to Isabelle's:
+     lemma fixed_length_sublist_plus:
+       assumes "length xs1 = c * l" "length xs2 = c * l" "i < c"
+       shows "fixed_length_sublist (vec_plus xs1 xs2) l i
+                = vec_plus (fixed_length_sublist xs1 l i) (fixed_length_sublist xs2 l i)"
+*)
+
+lemma drop_vec_plus xs ys n =
+  List.length xs = List.length ys 
+  ==> 
+  List.drop n (vec_plus xs ys) = vec_plus (List.drop n xs) (List.drop n ys)
+[@@by auto] [@@rw] [@@fc]
+
+lemma take_vec_plus xs ys n =
+  List.length xs = List.length ys 
+  ==> 
+  List.take n (vec_plus xs ys) = vec_plus (List.take n xs) (List.take n ys)
+[@@by auto] [@@rw] [@@fc]
+
+lemma drop_length xs ys n =
+  List.length xs = List.length ys
+  ==>
+  List.length (List.drop n xs) = List.length (List.drop n ys)
+[@@by auto]
+
+lemma fixed_length_sublist_vec_plus xs1 xs2 l i =
+  List.length xs1 = List.length xs2
+  ==>
+  Tensor.fixed_length_sublist (vec_plus xs1 xs2) l i
+    = vec_plus (Tensor.fixed_length_sublist xs1 l i) (Tensor.fixed_length_sublist xs2 l i)
+[@@by 
+  [%use drop_vec_plus xs1 xs2 (l * i)]
+  @> [%use drop_length xs1 xs2 (l * i)]
+  @> [%use take_vec_plus (List.drop (l * i) xs1) (List.drop (l * i) xs2) l]
+  @> auto]
+  
+(* Subtensor distributes over plus_base (dims part).
+
+   Corresponds to Isabelle's subtensor_plus lemma. *)
+
+lemma subtensor_plus_dims a b i =
+  let open Tensor in
+  a.dims = b.dims && a.dims <> [] && 0 <= i && i < List.hd a.dims 
+  ==> 
+  (Subtensor.subtensor (plus_base a b) i).dims 
+    = (plus_base (Subtensor.subtensor a i) (Subtensor.subtensor b i)).dims
+[@@by auto]
