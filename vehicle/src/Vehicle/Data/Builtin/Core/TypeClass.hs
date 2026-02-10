@@ -30,7 +30,6 @@ data TypeClass
   | -- Declaration type restrictions
     ValidPropertyType
   | ValidParameterType ParameterSort
-  | ValidNetworkType
   | ValidNetworkTensorType
   | ValidDatasetType
   | ValidDatasetListElementType
@@ -62,7 +61,6 @@ instance Pretty TypeClass where
     IsTensorType -> "IsTensorType"
     ValidPropertyType -> "ValidPropertyType"
     ValidParameterType {} -> "ValidParameterType"
-    ValidNetworkType -> "ValidNetworkType"
     ValidNetworkTensorType -> "ValidNetworkTensorType"
     ValidDatasetType -> "ValidDatasetType"
     ValidDatasetListElementType -> "ValidDatasetListElementType"
