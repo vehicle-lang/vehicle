@@ -282,7 +282,7 @@ let rec vec_gt (xs : int list) (ys : int list) : bool list =
 (* eqTensorReduced - check if all corresponding elements are equal.
    Corresponds to Isabelle's:
      definition eqTensorReduced :: "'a tensor ⇒ 'a tensor ⇒ bool"
-       where "eqTensorReduced A B = reduceAnd (tensor_from_lookup (dims A) 
+       where "eqTensorReduced A B = reduceAnd (tensor_from_lookup (dims A)
               (λi. ((lookup A i) = (lookup B i)))) True"
 *)
 
@@ -301,7 +301,7 @@ let ne_tensor_reduced (a : int Tensor.tensor) (b : int Tensor.tensor) : bool =
 (* leqTensorReduced - check if all elements of A are ≤ corresponding elements of B.
    Corresponds to Isabelle's:
      definition leqTensorReduced :: "('a::ord) tensor ⇒ 'a tensor ⇒ bool"
-       where "leqTensorReduced A B = reduceAnd (tensor_from_lookup (dims A) 
+       where "leqTensorReduced A B = reduceAnd (tensor_from_lookup (dims A)
               (λi. ((lookup A i) <= (lookup B i)))) True"
 *)
 
@@ -337,7 +337,7 @@ let gt_tensor_reduced (a : int Tensor.tensor) (b : int Tensor.tensor) : bool =
    Corresponds to Isabelle's:
      definition combine_subtensors :: "'a tensor list ⇒ 'a FlexTensor"
        where "combine_subtensors As = Abs_FlexTensor (subtensor_combine (dims (hd As)) As)"
-   
+
    Note: This is essentially the same as subtensor_combine from Subtensor module.
 *)
 

@@ -25,13 +25,13 @@ let rec map_vec (ts : 'a Tensor.tensor list) : 'a list list =
 (* -------------------------------------------------------------------------- *)
 
 (* Extract the i-th subtensor along the first dimension.
-   
+
    For a tensor of shape [d0, d1, ..., dn], subtensor A i returns
    a tensor of shape [d1, ..., dn] corresponding to the i-th slice.
-    
+
    Corresponds to Isabelle's:
       definition subtensor::"'a tensor ⇒ nat ⇒ 'a tensor" where
-        "subtensor A i = tensor_from_vec (tl (dims A)) 
+        "subtensor A i = tensor_from_vec (tl (dims A))
            (fixed_length_sublist (vec A) (prod_list (tl (dims A))) i)"
 *)
 
@@ -42,10 +42,10 @@ let subtensor (a : 'a Tensor.tensor) (i : int) : 'a Tensor.tensor =
 
 (* Combine a list of tensors (all with same dims) into a single tensor
    by stacking them along a new first dimension.
-    
+
    For tensors of shape [d1, ..., dn], produces a tensor of shape [n, d1, ..., dn]
    where n = length As.
-    
+
    Corresponds to Isabelle's:
       definition subtensor_combine::"nat list ⇒ 'a tensor list ⇒ 'a tensor" where
         "subtensor_combine ds As = tensor_from_vec (length As # ds) (concat (map vec As))"
@@ -79,7 +79,7 @@ let map_subtensor (a : 'a Tensor.tensor) (n : int) : 'a Tensor.tensor list =
 
 (* Apply subtensor repeatedly for each index in the list.
    fold_subtensor [i0, i1, ..., in] A = subtensor (... (subtensor (subtensor A i0) i1) ...) in
-    
+
    Corresponds to Isabelle's: fold (λi A. subtensor A i) is A *)
 
 let rec fold_subtensor (is : int list) (a : 'a Tensor.tensor) : 'a Tensor.tensor =
@@ -100,7 +100,7 @@ let example_matrix : int Tensor.tensor =
 
 let first_row : int Tensor.tensor = subtensor example_matrix 0
 
-(** Extract second row (subtensor at index 1) *)  
+(** Extract second row (subtensor at index 1) *)
 
 let second_row : int Tensor.tensor = subtensor example_matrix 1
 
@@ -123,15 +123,15 @@ eval recombined  (* evals to example_matrix! *)
 
 lemma dims_subtensor a i =
   let open Tensor in
-  a.dims <> [] 
-  ==> 
+  a.dims <> []
+  ==>
   (subtensor a i).dims = List.tl a.dims
 [@@by auto]
 
 (* vec (subtensor A i) = fixed_length_sublist (vec A) (prod_list (tl (dims A))) i *)
 
 lemma vec_subtensor a i =
-  (subtensor a i).vec 
+  (subtensor a i).vec
    = Tensor.fixed_length_sublist a.vec (Tensor.prod_list (List.tl a.dims)) i
 [@@by auto]
 
@@ -158,8 +158,8 @@ lemma map_vec_length ts =
 (* --- Properties of map_subtensor_range --- *)
 
 lemma map_subtensor_range_empty a curr limit =
-  curr >= limit 
-  ==> 
+  curr >= limit
+  ==>
   map_subtensor_range a curr limit = []
 [@@by auto]
 
@@ -178,8 +178,8 @@ lemma fold_subtensor_cons i is a =
 (* All subtensors have the same dims *)
 lemma subtensor_dims_consistent a i j =
   let open Tensor in
-  a.dims <> [] 
-  ==> 
+  a.dims <> []
+  ==>
   (subtensor a i).dims = (subtensor a j).dims
 [@@by auto]
 
@@ -191,9 +191,9 @@ lemma subtensor_dims_consistent a i j =
 
 lemma lookup_subtensor1 a i is =
   let open Tensor in
-  a.dims <> [] && 0 <= i 
+  a.dims <> [] && 0 <= i
   && i < List.hd a.dims && Tensor.valid_index is (List.tl a.dims)
-  ==> 
+  ==>
   Tensor.lookup (subtensor a i) is = Tensor.lookup a (i :: is)
 [@@by auto]
 
@@ -202,7 +202,7 @@ lemma lookup_subtensor1 a i is =
 *)
 
 lemma subtensor_subtensor_combine_dims ds ts i =
-  0 <= i && i < List.length ts 
-  ==> 
+  0 <= i && i < List.length ts
+  ==>
   (subtensor (subtensor_combine ds ts) i).dims = ds
 [@@by auto]

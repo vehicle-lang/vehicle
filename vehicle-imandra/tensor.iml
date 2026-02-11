@@ -59,9 +59,9 @@ let rec all_indices (ds : int list) : int list list =
 (* A tensor is represented as a record with:
     - dims: list of dimension sizes
     - vec: flat storage of all elements in row-major order
-    
+
     Well-formedness invariant: length vec = prod_list dims
-    
+
     Together, these correspond to Isabelle's typedef:
       typedef 'a tensor = "{t::nat list × 'a list. length (snd t) = prod_list (fst t)}"
 *)
@@ -102,7 +102,7 @@ let tensor_eq (t1 : 'a tensor) (t2 : 'a tensor) : bool =
 (* An index list is valid for given dimensions if:
     - They have the same length
     - Each index i is in range [0, d) for corresponding dimension d
-    
+
     Corresponds to Isabelle's inductive valid_index predicate:
       inductive valid_index::"nat list ⇒ nat list ⇒ bool" (infix ‹⊲› 50) where
         Nil: "[] ⊲ []" |
@@ -130,11 +130,11 @@ let rec valid_index_nth (is : int list) (ds : int list) (m : int) : bool =
 
 (* Extract a sublist of fixed length at a given position.
     fixed_length_sublist xs l i = take l (drop (l*i) xs)
-    
+
     This is used to navigate through the flat tensor storage:
     - l is the "stride" (product of remaining dimensions)
     - i is the index in the current dimension
-    
+
     Corresponds to Isabelle's fixed_length_sublist. *)
 
 let fixed_length_sublist (xs : 'a list) (l : int) (i : int) : 'a list =
@@ -145,13 +145,13 @@ let fixed_length_sublist (xs : 'a list) (l : int) (i : int) : 'a list =
 (* -------------------------------------------------------------------------- *)
 
 (* Base lookup function: navigates through dimensions to find element.
-    
+
     The algorithm:
     1. For each dimension d with index i:
        - Compute stride = prod_list remaining_dims
        - Extract the relevant sublist starting at position stride * i
     2. When all dimensions are consumed, return the head of the remaining list
-    
+
     Corresponds to Isabelle's lookup_base:
       fun lookup_base::"nat list ⇒ 'a list ⇒ nat list ⇒ 'a" where
         lookup_base_Nil: "lookup_base [] v [] = hd v" |
@@ -171,7 +171,7 @@ let rec lookup_base (ds : int list) (v : 'a list) (is : int list) : 'a option =
 
 (* Main lookup function for tensors.
    Returns Some value if index is valid, None otherwise.
-    
+
    Note: In Isabelle this is a total function (partial in the logic sense),
    here we make partiality explicit with Option. *)
 let lookup (t : 'a tensor) (is : int list) : 'a option =
@@ -182,11 +182,11 @@ let lookup (t : 'a tensor) (is : int list) : 'a option =
 (* -------------------------------------------------------------------------- *)
 
 (* Build tensor by generating all indices and mapping the lookup function.
-    
+
    This is equivalent to Isabelle's tensor_from_lookup, which builds
    the flat vector by evaluating the lookup function at each valid index
    in lexicographic order.
-    
+
    tensor_from_lookup ds e produces a tensor where:
      lookup (tensor_from_lookup ds e) is = Some (e is)  for all valid is
 *)
@@ -294,8 +294,8 @@ lemma valid_index_length is ds =
   valid_index is ds ==> List.length is = List.length ds
 [@@by auto]
 
-lemma valid_index_append is1 ds1 is2 ds2 = 
-  valid_index is1 ds1 && valid_index is2 ds2 
+lemma valid_index_append is1 ds1 is2 ds2 =
+  valid_index is1 ds1 && valid_index is2 ds2
   ==> valid_index (is1 @ is2) (ds1 @ ds2)
 [@@by auto]
 
@@ -315,12 +315,12 @@ lemma prod_list_append ds1 ds2 =
 
 (* --- Properties of tensor operations --- *)
 
-lemma tensor_map_dims f t = 
+lemma tensor_map_dims f t =
   (tensor_map f t).dims = t.dims
 [@@by auto]
 
-lemma tensor_eq_intro a b = 
-  a.dims = b.dims && a.vec = b.vec 
-  ==> 
+lemma tensor_eq_intro a b =
+  a.dims = b.dims && a.vec = b.vec
+  ==>
   a = b
 [@@by auto]

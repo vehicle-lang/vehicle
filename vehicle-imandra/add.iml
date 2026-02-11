@@ -40,7 +40,7 @@ let plus_base (a : int Tensor.tensor) (b : int Tensor.tensor) : int Tensor.tenso
 
 (* Tensor addition with dimension check.
    Returns Some of the sum if dimensions match, None otherwise.
-   
+
    Corresponds to Isabelle's:
      definition plus_def: "A + B = (if (dims A = dims B)
                    then plus_base A B
@@ -152,8 +152,8 @@ eval t_listsum  (* Should be { dims = [2; 3]; vec = [11; 22; 33; 44; 55; 66] } *
 (* --- Properties of vec_plus --- *)
 
 lemma vec_plus_length xs ys =
-  List.length xs = List.length ys 
-  ==> 
+  List.length xs = List.length ys
+  ==>
   List.length (vec_plus xs ys) = List.length xs
 [@@by auto]
 
@@ -201,15 +201,15 @@ lemma plus_base_vec a b =
 
 lemma plus_base_comm a b =
   let open Tensor in
-  a.dims = b.dims 
-  ==> 
+  a.dims = b.dims
+  ==>
   plus_base a b = plus_base b a
 [@@by auto]
 
 lemma plus_base_assoc a b c =
   let open Tensor in
   a.dims = b.dims && b.dims = c.dims
-  ==> 
+  ==>
   plus_base (plus_base a b) c = plus_base a (plus_base b c)
 [@@by auto]
 
@@ -217,15 +217,15 @@ lemma plus_base_assoc a b c =
 
 lemma tensor_plus_dims a b =
   let open Tensor in
-  a.dims = b.dims 
-  ==> 
+  a.dims = b.dims
+  ==>
   tensor_plus a b = Some (plus_base a b)
 [@@by auto]
 
 lemma tensor_plus_none a b =
   let open Tensor in
-  a.dims <> b.dims 
-  ==> 
+  a.dims <> b.dims
+  ==>
   tensor_plus a b = None
 [@@by auto]
 
@@ -271,9 +271,9 @@ lemma tensor_plus_zero_left a =
 
 (* --- Subtensor and plus interaction --- *)
 
-(* The key fixed_length_sublist_plus property: 
+(* The key fixed_length_sublist_plus property:
    fixed_length_sublist distributes over vec_plus.
-   
+
    Corresponds to Isabelle's:
      lemma fixed_length_sublist_plus:
        assumes "length xs1 = c * l" "length xs2 = c * l" "i < c"
@@ -282,14 +282,14 @@ lemma tensor_plus_zero_left a =
 *)
 
 lemma drop_vec_plus xs ys n =
-  List.length xs = List.length ys 
-  ==> 
+  List.length xs = List.length ys
+  ==>
   List.drop n (vec_plus xs ys) = vec_plus (List.drop n xs) (List.drop n ys)
 [@@by auto] [@@rw] [@@fc]
 
 lemma take_vec_plus xs ys n =
-  List.length xs = List.length ys 
-  ==> 
+  List.length xs = List.length ys
+  ==>
   List.take n (vec_plus xs ys) = vec_plus (List.take n xs) (List.take n ys)
 [@@by auto] [@@rw] [@@fc]
 
@@ -304,20 +304,20 @@ lemma fixed_length_sublist_vec_plus xs1 xs2 l i =
   ==>
   Tensor.fixed_length_sublist (vec_plus xs1 xs2) l i
     = vec_plus (Tensor.fixed_length_sublist xs1 l i) (Tensor.fixed_length_sublist xs2 l i)
-[@@by 
+[@@by
   [%use drop_vec_plus xs1 xs2 (l * i)]
   @> [%use drop_length xs1 xs2 (l * i)]
   @> [%use take_vec_plus (List.drop (l * i) xs1) (List.drop (l * i) xs2) l]
   @> auto]
-  
+
 (* Subtensor distributes over plus_base (dims part).
 
    Corresponds to Isabelle's subtensor_plus lemma. *)
 
 lemma subtensor_plus_dims a b i =
   let open Tensor in
-  a.dims = b.dims && a.dims <> [] && 0 <= i && i < List.hd a.dims 
-  ==> 
-  (Subtensor.subtensor (plus_base a b) i).dims 
+  a.dims = b.dims && a.dims <> [] && 0 <= i && i < List.hd a.dims
+  ==>
+  (Subtensor.subtensor (plus_base a b) i).dims
     = (plus_base (Subtensor.subtensor a i) (Subtensor.subtensor b i)).dims
 [@@by auto]

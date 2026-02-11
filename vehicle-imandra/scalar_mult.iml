@@ -123,7 +123,7 @@ lemma take_vec_smult alpha xs n =
    Corresponds to Isabelle's smult_fixed_length_sublist. *)
 
 lemma fixed_length_sublist_vec_smult alpha xs l i =
-  Tensor.fixed_length_sublist (vec_smult alpha xs) l i 
+  Tensor.fixed_length_sublist (vec_smult alpha xs) l i
     = vec_smult alpha (Tensor.fixed_length_sublist xs l i)
 [@@by auto] [@@rw]
 
@@ -186,7 +186,7 @@ lemma tensor_smult_assoc alpha beta a =
 (* Subtensor commutes with smult.
    Corresponds to Isabelle's smult_subtensor:
      "α ⋅ subtensor A i = subtensor (α ⋅ A) i"
-   
+
    Note: This relies on drop_vec_smult and take_vec_smult [@@rw] lemmas above.
 *)
 
