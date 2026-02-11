@@ -168,7 +168,6 @@ onlyPropertyDefStmt = \case
   PropertyDefStmt _ -> True
   _ -> False
 
-
 preamble :: Text -> Set Dependency -> Code
 preamble modName _deps =
   (vsep2 :: [Code] -> Code)
@@ -219,14 +218,22 @@ annotateApp moduleDefs dependencies fun args = do
 
 annotateBinOp ::
   (MonadImandraCompile m) =>
-  [ModuleDef] -> [Dependency] -> Precedence -> Code ->
-  [Arg DecidabilityBuiltin] -> m Code
+  [ModuleDef] ->
+  [Dependency] ->
+  Precedence ->
+  Code ->
+  [Arg DecidabilityBuiltin] ->
+  m Code
 annotateBinOp moduleDefs dependencies precedence op args = do
   bracketedArgs <- compileArgs moduleDefs precedence args
   case bracketedArgs of
     [lhs, rhs] ->
-      return $ annotate (Set.fromList dependencies, maxPrecedence) $
-        parens $ group $ nest 2 $ lhs <> line <> op <+> rhs
+      return $
+        annotate (Set.fromList dependencies, maxPrecedence) $
+          parens $
+            group $
+              nest 2 $
+                lhs <> line <> op <+> rhs
     _ -> developerError "Binary operator expects exactly 2 arguments"
 
 annotateNotation ::
@@ -458,7 +465,12 @@ compileFunDef moduleDefs n t binders body = do
       then "let" <+> name <+> ":" <+> retType <+> "=" <+> cbody
       else
         group $
-          "let" <+> name <+> hsep typedBinders <+> ":" <+> retType <+> "="
+          "let"
+            <+> name
+            <+> hsep typedBinders
+            <+> ":"
+            <+> retType
+            <+> "="
             <> nest 2 (line <> cbody)
 
 -- | Generate typed binder docs like (arg : type) for function parameters
