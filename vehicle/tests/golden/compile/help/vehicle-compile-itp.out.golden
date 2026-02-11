@@ -11,6 +11,7 @@ Available options:
                              * Agda
                              * Rocq
                              * Isabelle
+                             * Imandra
   -s,--specification FILE  The .vcl file containing the specification.
   -e,--declaration NAME    Declarations in the specification to include during
                            compilation. Can be provided multiple times. If not
