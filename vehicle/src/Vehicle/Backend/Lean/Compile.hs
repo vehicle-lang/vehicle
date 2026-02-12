@@ -92,10 +92,10 @@ data Dependency
 instance Pretty Dependency where
   pretty = \case
     VehicleLib -> "Vehicle"
-    MathlibData -> "Mathlib.Data.List.Basic"
+    MathlibData -> "Mathlib"
     MathlibTactic -> "Mathlib.Tactic"
-    MathlibAlgebra -> "Mathlib.Algebra.Basic"
-    MathlibOrder -> "Mathlib.Order.Basic"
+    MathlibAlgebra -> "Mathlib"
+    MathlibOrder -> "Mathlib"
 
 importStatement :: Dependency -> Doc a
 importStatement dep = "import" <+> pretty dep
@@ -248,7 +248,13 @@ compileExpr expr = do
     Pi _ binder result -> do
       cInput <- compileBinder binder
       cOutput <- addNameToContext binder $ compileExpr result
-      return $ "∀" <+> cInput <> "," <+> cOutput
+      case binderNamingForm binder of
+        OnlyType -> do
+          -- For unnamed parameters, use arrow notation
+          return $ annotate (Set.empty, 99) $ cInput <+> "->" <+> cOutput
+        _ -> do
+          -- For named parameters, use forall notation  
+          return $ "∀" <+> cInput <> "," <+> cOutput
     App fun args -> compileApp fun args
     Lam _ binder body -> do
       cBinder <- compileBinder binder
@@ -282,7 +288,7 @@ compileBuiltin b args = case b of
     UnitType -> return "Unit"
     NatType -> return "ℕ"
     ListType -> annotateApp [MathlibData] "List" args
-    TensorType -> annotateApp [VehicleLib] "'T" args
+    TensorType -> annotateApp [VehicleLib] "Tensor" args
     IndexType -> annotateApp [MathlibData] "Fin" args
     VectorType -> annotateApp [MathlibData] "Vector" args
   StandardBuiltinConstructor c -> case c of
@@ -301,14 +307,14 @@ compileBuiltin b args = case b of
     Not -> annotateApp [] "!" args
     Implies -> annotateApp [] "→" args
     If -> annotateApp [] "ite" args
-    Add {} -> annotateApp [] "+" args
-    Sub {} -> annotateApp [] "-" args
-    Mul {} -> annotateApp [] "*" args
-    Div {} -> annotateApp [] "/" args
-    Neg {} -> annotateApp [] "-" args
+    Add {} -> compileBinaryOp "+" 65 args
+    Sub {} -> compileBinaryOp "-" 65 args
+    Mul {} -> compileBinaryOp "*" 70 args
+    Div {} -> compileBinaryOp "/" 70 args
+    Neg {} -> compileUnaryOp "-" 75 args
     Min {} -> annotateApp [] "min" args
     Max {} -> annotateApp [] "max" args
-    PowRat -> annotateApp [] "^" args
+    PowRat -> compileBinaryOp "^" 80 args
     ReduceAndTensor -> annotateApp [VehicleLib] "reduceAnd" args
     ReduceOrTensor -> annotateApp [VehicleLib] "reduceOr" args
     QuantifyRatTensor {} -> annotateApp [] "forall" args
@@ -340,6 +346,16 @@ compileDecidabilityBuiltinFunction ::
   [Arg DecidabilityBuiltin] ->
   m Code
 compileDecidabilityBuiltinFunction fn args = case fn of
+  PropType -> return "Prop"
+  PropTrue -> return "True"
+  PropFalse -> return "False"
+  PropNot -> annotateApp [] "Not" args
+  PropAnd -> annotateApp [] "And" args
+  PropOr -> annotateApp [] "Or" args
+  PropImplies -> annotateApp [] "→" args
+  PropCompareNat op -> compileComparison op args
+  PropCompareIndex op -> compileComparison op args
+  PropCompareRatTensorPointwise op -> compileComparison op args
   PropQuantifyIndex q -> case q of
     Forall -> annotateApp [VehicleLib] "forallIndex" args
     Exists -> annotateApp [VehicleLib] "existsIndex" args
@@ -348,16 +364,41 @@ compileDecidabilityBuiltinFunction fn args = case fn of
     Exists -> annotateApp [VehicleLib] "existsInList" args
   _ -> developerError $ "compilation of builtin" <+> quotePretty fn <+> "to Lean unsupported"
 
+-- Compile binary arithmetic operators as infix with proper precedence
+compileBinaryOp :: (MonadLeanCompile m) => String -> Precedence -> [Arg DecidabilityBuiltin] -> m Code
+compileBinaryOp opSymbol prec args =
+  case args of
+    [_lhs, _rhs] -> do
+      bracketedArgs <- compileArgs prec args
+      case bracketedArgs of
+        [clhs, crhs] -> return $ annotate (Set.empty, prec) (clhs <+> pretty opSymbol <+> crhs)
+        _ -> annotateApp [] (pretty opSymbol) args
+    _ -> annotateApp [] (pretty opSymbol) args
+
+-- Compile unary operators as prefix with proper precedence
+compileUnaryOp :: (MonadLeanCompile m) => String -> Precedence -> [Arg DecidabilityBuiltin] -> m Code
+compileUnaryOp opSymbol prec args =
+  case args of
+    [ExplicitArg _ arg] -> do
+      carg <- compileExpr arg
+      return $ annotate (Set.empty, prec) (pretty opSymbol <+> parens carg)
+    _ -> annotateApp [] (pretty opSymbol) args
+
 compileComparison :: (MonadLeanCompile m) => ComparisonOp -> [Arg DecidabilityBuiltin] -> m Code
-compileComparison op args = annotateApp [] (pretty opText) args
-  where
-    opText = case op of
-      Le -> ("≤" :: String)
-      Lt -> "<"
-      Ge -> "≥"
-      Gt -> ">"
-      Eq -> "="
-      Ne -> "≠"
+compileComparison op args = do
+  let opText = case op of
+        Le -> ("≤" :: String)
+        Lt -> "<"
+        Ge -> "≥"
+        Gt -> ">"
+        Eq -> "="
+        Ne -> "≠"
+  case args of
+    [ExplicitArg _ lhs, ExplicitArg _ rhs] -> do
+      clhs <- compileExpr lhs
+      crhs <- compileExpr rhs
+      return $ annotate (Set.empty, 50) (clhs <+> pretty opText <+> crhs)
+    _ -> annotateApp [] (pretty opText) args
 
 compileDerivedFunction :: (MonadLeanCompile m) => DerivedFunction -> [Arg DecidabilityBuiltin] -> m Code
 compileDerivedFunction fn args = case fn of
@@ -427,11 +468,8 @@ compileBinders (b : bs) c = do
   return (cb : cbs, cc)
 
 resolveReturnType :: (MonadLeanCompile m) => [Code] -> Expr DecidabilityBuiltin -> m Code
-resolveReturnType binders t = do
-  cType <- compileExpr t
-  return $ case binders of
-    [] -> cType
-    _ -> foldr (\b acc -> b <+> "->" <+> acc) cType binders
+resolveReturnType (_ : bs) (Pi _ binder r) = addNameToContext binder $ resolveReturnType bs r
+resolveReturnType _ e = compileExpr e
 
 compileLetBinder :: (MonadLeanCompile m) => LetBinder (Expr DecidabilityBuiltin) -> m Code
 compileLetBinder (binder, expr) = do
@@ -450,7 +488,7 @@ compileRecordField (field, fieldValue) = do
   return $ pretty field <+> "=" <+> cFieldValue
 
 compileIndexLiteral :: Int -> Code
-compileIndexLiteral i = annotateConstant [MathlibData] $ "⟨" <> pretty i <> "⟩"
+compileIndexLiteral i = annotateConstant [] $ "Fin.ofNat" <+> pretty i
 
 compileNatLiteral :: Int -> Code
 compileNatLiteral i = annotateConstant [] $ pretty i
@@ -467,7 +505,8 @@ compileRatLiteral r =
 
 compileTensorLiteral :: (a -> Code) -> Tensor a -> Code
 compileTensorLiteral compileElement t =
-  annotateConstant [VehicleLib] $ "⟨" <> concatWith (surround "; ") (map compileElement (toList t)) <> "⟩"
+  annotateConstant [] $
+    encloseSep lbracket rbracket (comma <> space) (map compileElement (toList t))
 
 compileVecLiteral :: (MonadLeanCompile m) => [Arg DecidabilityBuiltin] -> m Code
 compileVecLiteral _xs =

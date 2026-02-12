@@ -4,9 +4,10 @@ open Lake DSL
 package vehicle
 
 
-lean_lib Vehicle {
-  -- Library configuration
-}
+@[default_target]
+lean_lib Vehicle where
+  srcDir := "src"
+  roots := #[`Vehicle, `Vehicle.Tensor, `Vehicle.Utils, `TensorTest]
 
 require Mathlib from git
   "https://github.com/leanprover-community/mathlib4.git" @ "master"
