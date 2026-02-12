@@ -194,8 +194,17 @@ tensorLikeHasQuantifier =
 record HasValidNetworkType (t : Type) where {}
 
 @instance
-tensorToTensorHasValidNetworkType : forallT {ds1 : List Nat} {ds2 : List Nat} . HasValidNetworkType ( Tensor Real ds1 -> Tensor Real ds2 )
+tensorToTensorHasValidNetworkType : HasValidNetworkType ( Tensor Real ds1 -> Tensor Real ds2 )
 tensorToTensorHasValidNetworkType = {}
+
+-- @instance
+-- tensorLikeToTensorLikeHasValidNetworkType : forallT {{ t1 : TensorLike r1 Real ds1 }} {{ t2 : TensorLike r2 Real ds2 }} . HasValidNetworkType ( r1 -> r2 )
+-- tensorLikeToTensorLikeHasValidNetworkType = {}
+
+@instance
+tensorLikeToTensorLikeHasValidNetworkType : {{ TensorLike r1 t1 ds1 }} -> {{ TensorLike r2 t2 ds2 }} -> HasValidNetworkType ( r1 -> r2 )
+tensorLikeToTensorLikeHasValidNetworkType = {}
+
 
 --------------------------------------------------------------------------------
 -- Loss logics
