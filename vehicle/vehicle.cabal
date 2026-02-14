@@ -125,13 +125,13 @@ library
   hs-source-dirs:  src
   exposed-modules:
     Vehicle
-    Vehicle.Backend.Agda
-    Vehicle.Backend.Isabelle
+    Vehicle.Backend.ITP.Agda
+    Vehicle.Backend.ITP.Isabelle
+    Vehicle.Backend.ITP.Rocq
     Vehicle.Backend.Loss.JSON
     Vehicle.Backend.Loss.LogicCompilation
     Vehicle.Backend.Loss.LossCompilation
     Vehicle.Backend.Prelude
-    Vehicle.Backend.Rocq
     Vehicle.Backend.Solver.UserVariableElimination.Error
     Vehicle.CommandLine
     Vehicle.Compile
@@ -191,16 +191,9 @@ library
 
   other-modules:
     Paths_vehicle
-    Vehicle.Backend.Agda.CapitaliseTypeNames
-    Vehicle.Backend.Agda.Compile
-    Vehicle.Backend.Agda.Interact
-    Vehicle.Backend.Isabelle.Compile
-    Vehicle.Backend.Isabelle.Interact
     Vehicle.Backend.Loss
     Vehicle.Backend.Loss.Core
     Vehicle.Backend.Loss.Domain
-    Vehicle.Backend.Rocq.Compile
-    Vehicle.Backend.Rocq.Interact
     Vehicle.Backend.Solver
     Vehicle.Backend.Solver.QueryCompilation
     Vehicle.Backend.Solver.QueryCompilation.Core
@@ -212,6 +205,7 @@ library
     Vehicle.Backend.Solver.UserVariableElimination.EliminateExists
     Vehicle.Backend.Solver.UserVariableElimination.VariableReconstruction
     Vehicle.Compile.Arity
+    Vehicle.Compile.CapitaliseTypeNames
     Vehicle.Compile.Dependency
     Vehicle.Compile.ExpandResources.Dataset.IDX
     Vehicle.Compile.FunctionaliseResources

@@ -1,10 +1,12 @@
-module Vehicle.Backend.Rocq.Compile
+module Vehicle.Backend.ITP.Rocq
   ( RocqOptions (..),
     compileProgToRocq,
+    writeRocqFile,
   )
 where
 
 import Control.Monad.Except (MonadError (..))
+import Control.Monad.IO.Class (MonadIO (..))
 import Data.Bifunctor (Bifunctor (..))
 import Data.Foldable (fold)
 import Data.List.NonEmpty (NonEmpty ((:|)))
@@ -15,8 +17,10 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Internal.Read qualified as Text.Read
+import Data.Version (makeVersion)
 import GHC.Real (denominator, numerator)
 import Prettyprinter hiding (hcat, hsep, vcat, vsep)
+import Vehicle.Backend.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
@@ -66,6 +70,22 @@ compileProgToRocq prog _options =
             )
 
     return rocqProgram
+
+writeRocqFile ::
+  (MonadLogger m, MonadIO m, MonadStdIO m) =>
+  Maybe FilePath ->
+  Doc a ->
+  m ()
+writeRocqFile = writeResultToFile (Just rocqOutputFormat)
+
+rocqOutputFormat :: ExternalOutputFormat
+rocqOutputFormat =
+  ExternalOutputFormat
+    { formatName = "Rocq",
+      formatVersion = Just $ makeVersion [9, 0, 0],
+      commentStyle = Block "(*" "*)",
+      emptyLines = True
+    }
 
 --------------------------------------------------------------------------------
 -- Debug functions
