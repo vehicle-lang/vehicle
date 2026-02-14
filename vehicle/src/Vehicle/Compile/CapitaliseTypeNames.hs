@@ -1,4 +1,4 @@
-module Vehicle.Backend.Agda.CapitaliseTypeNames
+module Vehicle.Compile.CapitaliseTypeNames
   ( capitaliseTypeNames,
   )
 where
