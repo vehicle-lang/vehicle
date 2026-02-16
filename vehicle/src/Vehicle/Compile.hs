@@ -66,7 +66,8 @@ data ITPOptions = ITPOptions
     parameterValues :: ParameterValues,
     outputFile :: Maybe FilePath,
     moduleName :: Maybe String,
-    verificationCache :: Maybe FilePath
+    verificationCache :: Maybe FilePath,
+    constructiveReals :: Bool
   }
   deriving (Show, Eq)
 
@@ -81,6 +82,8 @@ declarationsOf = \case
   LossTarget LossOptions {..} -> declarationsToCompile
   QueryTarget QueryOptions {..} -> declarationsToCompile
   ITPTarget ITPOptions {..} -> declarationsToCompile
+
+
 
 compile :: (MonadStdIO IO) => LoggingSettings -> OutputAsJSON -> CompileOptions -> IO ()
 compile loggingSettings outputAsJSON options =
@@ -118,9 +121,9 @@ compileToITP ::
   Prog Builtin ->
   m ()
 compileToITP ITPOptions {..} typedProg = do
-  -- Analyse the program to find out which `Bool`s are decidable and which aren't.
-  let resources = Resources specification networkLocations datasetLocations parameterValues
+  let resources =  Resources specification networkLocations datasetLocations parameterValues
   (expandedProg, _, _, _, _) <- expandResources resources typedProg
+  -- Analyse the program to find out which `Bool`s are decidable and which aren't.
   decProg <- decidabilityTypeCheck expandedProg
 
 
@@ -132,7 +135,7 @@ compileToITP ITPOptions {..} typedProg = do
         agdaCode <- compileProgToAgda decProg agdaOptions
         writeAgdaFile outputFile agdaCode
       Rocq -> do
-        let rocqOptions = RocqOptions outputFile moduleName
+        let rocqOptions = RocqOptions outputFile moduleName constructiveReals
         rocqCode <- compileProgToRocq decProg rocqOptions
         writeRocqFile outputFile rocqCode
       Isabelle -> do
