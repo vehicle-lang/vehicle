@@ -190,12 +190,20 @@ tensorLikeHasQuantifier =
   , existsTC = quantifyExistsTensorLike
   }
 
+-- Network IO
+@typeclass
+record HasValidNetworkIOType (t : Type) where {}
+
+@instance
+realTensorHasValidNetworkIOType : HasValidNetworkIOType (Tensor Real dims)
+realTensorHasValidNetworkIOType = {}
+
 -- Network types
 @typeclass
 record HasValidNetworkType (t : Type) where {}
 
 @instance
-tensorToTensorHasValidNetworkType : HasValidNetworkType ( Tensor Real ds1 -> Tensor Real ds2 )
+tensorToTensorHasValidNetworkType : {{ HasValidNetworkIOType t1 }} -> {{ HasValidNetworkIOType t2 }} -> HasValidNetworkType ( t1 -> t2 )
 tensorToTensorHasValidNetworkType = {}
 
 --------------------------------------------------------------------------------
