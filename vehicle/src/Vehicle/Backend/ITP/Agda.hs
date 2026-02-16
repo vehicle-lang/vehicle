@@ -1,10 +1,12 @@
-module Vehicle.Backend.Agda.Compile
+module Vehicle.Backend.ITP.Agda
   ( AgdaOptions (..),
     compileProgToAgda,
+    writeAgdaFile,
   )
 where
 
 import Control.Monad.Except (MonadError (..))
+import Control.Monad.IO.Class (MonadIO (..))
 import Data.Foldable (fold)
 import Data.List (sort)
 import Data.List.NonEmpty (NonEmpty (..))
@@ -14,10 +16,12 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Data.Version (makeVersion)
 import GHC.Real (denominator, numerator)
 import Prettyprinter hiding (hcat, hsep, vcat, vsep)
 import System.FilePath (takeBaseName)
-import Vehicle.Backend.Agda.CapitaliseTypeNames (capitaliseTypeNames)
+import Vehicle.Backend.Prelude
+import Vehicle.Compile.CapitaliseTypeNames (capitaliseTypeNames)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
@@ -67,6 +71,22 @@ compileProgToAgda prog options =
             )
 
     return agdaProgram
+
+writeAgdaFile ::
+  (MonadLogger m, MonadIO m, MonadStdIO m) =>
+  Maybe FilePath ->
+  Doc a ->
+  m ()
+writeAgdaFile = writeResultToFile (Just agdaOutputFormat)
+
+agdaOutputFormat :: ExternalOutputFormat
+agdaOutputFormat =
+  ExternalOutputFormat
+    { formatName = "Agda",
+      formatVersion = Just $ makeVersion [2, 6, 2],
+      commentStyle = Line "--",
+      emptyLines = True
+    }
 
 --------------------------------------------------------------------------------
 -- Debug functions
