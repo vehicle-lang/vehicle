@@ -1,10 +1,12 @@
-module Vehicle.Backend.Imandra.Compile
+module Vehicle.Backend.ITP.Imandra
   ( ImandraOptions (..),
     compileProgToImandra,
+    writeImandraFile,
   )
 where
 
 import Control.Monad.Except (MonadError (..))
+import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.State (runStateT)
 import Control.Monad.State.Class (MonadState, modify)
 import Data.Bifunctor (Bifunctor (..))
@@ -20,6 +22,7 @@ import Data.Text qualified as Text
 import GHC.Real (denominator, numerator)
 import Prettyprinter hiding (hcat, hsep, vcat, vsep)
 import System.FilePath (takeBaseName)
+import Vehicle.Backend.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
@@ -90,6 +93,22 @@ compileProgToImandra (Main ds) options =
             )
 
     return imandraProgram
+
+writeImandraFile ::
+  (MonadLogger m, MonadIO m, MonadStdIO m) =>
+  Maybe FilePath ->
+  Doc a ->
+  m ()
+writeImandraFile = writeResultToFileWide (Just imandraOutputFormat)
+
+imandraOutputFormat :: ExternalOutputFormat
+imandraOutputFormat =
+  ExternalOutputFormat
+    { formatName = "Imandra",
+      formatVersion = Nothing,
+      commentStyle = Block "(*" "*)",
+      emptyLines = True
+    }
 
 -- | Collect dependencies from a 'Code' document by discarding precedence
 --   and folding all dependency annotations.
