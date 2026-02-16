@@ -182,7 +182,6 @@ tensorHasQuantifier =
   , existsTC = quantifyExistsRealTensor
   }
 
--- is this supposed to be HasQuantifier r??
 @instance
 tensorLikeHasQuantifier : {{ TensorLike r Real dims }} -> HasQuantifier (TensorLike r Real dims)
 tensorLikeHasQuantifier =
