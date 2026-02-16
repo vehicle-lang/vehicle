@@ -182,6 +182,7 @@ tensorHasQuantifier =
   , existsTC = quantifyExistsRealTensor
   }
 
+-- is this supposed to be HasQuantifier r??
 @instance
 tensorLikeHasQuantifier : {{ TensorLike r Real dims }} -> HasQuantifier (TensorLike r Real dims)
 tensorLikeHasQuantifier =
@@ -196,15 +197,6 @@ record HasValidNetworkType (t : Type) where {}
 @instance
 tensorToTensorHasValidNetworkType : HasValidNetworkType ( Tensor Real ds1 -> Tensor Real ds2 )
 tensorToTensorHasValidNetworkType = {}
-
--- @instance
--- tensorLikeToTensorLikeHasValidNetworkType : forallT {{ t1 : TensorLike r1 Real ds1 }} {{ t2 : TensorLike r2 Real ds2 }} . HasValidNetworkType ( r1 -> r2 )
--- tensorLikeToTensorLikeHasValidNetworkType = {}
-
-@instance
-tensorLikeToTensorLikeHasValidNetworkType : {{ TensorLike r1 t1 ds1 }} -> {{ TensorLike r2 t2 ds2 }} -> HasValidNetworkType ( r1 -> r2 )
-tensorLikeToTensorLikeHasValidNetworkType = {}
-
 
 --------------------------------------------------------------------------------
 -- Loss logics

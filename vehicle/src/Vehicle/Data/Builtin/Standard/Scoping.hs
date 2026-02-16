@@ -66,9 +66,10 @@ createTensorRecordConversionFunctions p ident telescope fields = do
   let recordToTensorDecl = createRecordToTensor p ident fieldElementType fieldDimensions nonEmptyFields
   let tensorToRecordDecl = createTensorToRecord p ident fieldElementType fieldDimensions nonEmptyFields
   let tensorLikeInstance = createTensorLikeInstance p ident fieldElementType fieldDimensions nonEmptyFields
+  let validNetworkInstance = createValidNetworkInstance p ident
 
   return
-    [recordToTensorDecl, tensorToRecordDecl, tensorLikeInstance]
+    [recordToTensorDecl, tensorToRecordDecl, tensorLikeInstance, validNetworkInstance]
 
 createRecordToTensor ::
   Provenance ->
@@ -149,6 +150,20 @@ createTensorLikeInstance p recordIdent fieldElementType fieldDimensions fields =
 
   -- Create ident for the function
   let functionName = Text.pack "_" <> nameOf recordIdent <> "IsTensorLike"
+  let functionIdent = Identifier (modulePath recordIdent) functionName
+
+  DefFunction p functionIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) recordType functionBody
+
+createValidNetworkInstance ::
+  Provenance ->
+  Identifier ->
+  Decl Builtin
+createValidNetworkInstance p recordIdent = do
+  let validNetworkTypeIdent = Identifier standardLibraryDefinitionsModulePath "HasValidNetworkType"
+  let recordType = fromDSL mempty $ freeVar validNetworkTypeIdent @@ [freeVar recordIdent ~> freeVar recordIdent]
+  let functionBody = Record p recordType []
+
+  let functionName = Text.pack "_" <> nameOf recordIdent <> "HasValidNetworkType"
   let functionIdent = Identifier (modulePath recordIdent) functionName
 
   DefFunction p functionIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) recordType functionBody
