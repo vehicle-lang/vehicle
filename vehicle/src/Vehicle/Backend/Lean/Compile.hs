@@ -263,7 +263,7 @@ compileExpr expr = do
     Let _ bound binder body -> do
       cBoundExpr <- compileLetBinder (binder, bound)
       cBody <- addNameToContext binder $ compileExpr body
-      return $ "let" <+> cBoundExpr <+> "in" <+> cBody
+      return $ "let" <+> cBoundExpr <> ";" <> line <> cBody
     Builtin _p b -> compileBuiltin b []
     Record _p _i fs -> do
       fs' <- traverse compileRecordField fs
@@ -288,7 +288,7 @@ compileBuiltin b args = case b of
     UnitType -> return "Unit"
     NatType -> return "ℕ"
     ListType -> annotateApp [MathlibData] "List" args
-    TensorType -> annotateApp [VehicleLib] "Tensor" args
+    TensorType -> compileTensorType [VehicleLib] args
     IndexType -> annotateApp [MathlibData] "Fin" args
     VectorType -> annotateApp [MathlibData] "Vector" args
   StandardBuiltinConstructor c -> case c of
@@ -317,8 +317,8 @@ compileBuiltin b args = case b of
     PowRat -> compileBinaryOp "^" 80 args
     ReduceAndTensor -> annotateApp [VehicleLib] "reduceAnd" args
     ReduceOrTensor -> annotateApp [VehicleLib] "reduceOr" args
-    QuantifyRatTensor {} -> annotateApp [] "forall" args
-    QuantifyTensorLike {} -> annotateApp [] "forall" args
+    QuantifyRatTensor {} -> compileForall args
+    QuantifyTensorLike {} -> compileForall args
     CompareNat op -> compileComparison op args
     CompareIndex op -> compileComparison op args
     CompareRatTensorPointwise op -> compileComparison op args
@@ -340,6 +340,17 @@ compileBuiltin b args = case b of
   DecidabilityBuiltinTypeClass {} -> developerError "Monomorphisation should have eliminated type classes"
   DecidabilityBuiltinTypeClassOp {} -> developerError "Monomorphisation should have eliminated type classes"
 
+
+compileTensorType :: (MonadLeanCompile m) => [Dependency] -> [Arg DecidabilityBuiltin] -> m Code
+compileTensorType deps args = case args of
+  [elemTypeArg, shapeArg] -> do
+    elemType <- compileExpr (argExpr elemTypeArg)
+    shapeExpr <- compileExpr (argExpr shapeArg)
+    -- The shape comes out as cons notation like "2 :: []"
+    -- Just format it normally for now - Lean accepts both "2 :: []" and "[2]"
+    return $ annotate (Set.fromList deps, maxPrecedence) $ "Tensor" <+> elemType <+> shapeExpr
+  _ -> annotateApp deps "Tensor" args
+
 compileDecidabilityBuiltinFunction ::
   (MonadLeanCompile m) =>
   DecidabilityBuiltinFunction ->
@@ -350,9 +361,9 @@ compileDecidabilityBuiltinFunction fn args = case fn of
   PropTrue -> return "True"
   PropFalse -> return "False"
   PropNot -> annotateApp [] "Not" args
-  PropAnd -> annotateApp [] "And" args
-  PropOr -> annotateApp [] "Or" args
-  PropImplies -> annotateApp [] "→" args
+  PropAnd -> compileBinaryOp "∧" 35 args
+  PropOr -> compileBinaryOp "∨" 30 args
+  PropImplies -> compileBinaryOp "→" 25 args
   PropCompareNat op -> compileComparison op args
   PropCompareIndex op -> compileComparison op args
   PropCompareRatTensorPointwise op -> compileComparison op args
@@ -374,6 +385,18 @@ compileBinaryOp opSymbol prec args =
         [clhs, crhs] -> return $ annotate (Set.empty, prec) (clhs <+> pretty opSymbol <+> crhs)
         _ -> annotateApp [] (pretty opSymbol) args
     _ -> annotateApp [] (pretty opSymbol) args
+
+-- Compile forall expressions: ∀ x, body
+compileForall :: (MonadLeanCompile m) => [Arg DecidabilityBuiltin] -> m Code
+compileForall args = case args of
+  [lamArg] -> do
+    case argExpr lamArg of
+      Lam _ binder body -> do
+        let binderName = getBinderName binder
+        cBody <- addNameToContext binder $ compileExpr body
+        return $ annotate (Set.empty, minPrecedence) $ "∀" <+> pretty binderName <> "," <+> cBody
+      _ -> annotateApp [] "forall" args
+  _ -> annotateApp [] "forall" args
 
 -- Compile unary operators as prefix with proper precedence
 compileUnaryOp :: (MonadLeanCompile m) => String -> Precedence -> [Arg DecidabilityBuiltin] -> m Code
@@ -488,7 +511,7 @@ compileRecordField (field, fieldValue) = do
   return $ pretty field <+> "=" <+> cFieldValue
 
 compileIndexLiteral :: Int -> Code
-compileIndexLiteral i = annotateConstant [] $ "Fin.ofNat" <+> pretty i
+compileIndexLiteral i = annotateConstant [MathlibData] $ "Fin.ofNat _" <+> pretty i
 
 compileNatLiteral :: Int -> Code
 compileNatLiteral i = annotateConstant [] $ pretty i
@@ -505,8 +528,10 @@ compileRatLiteral r =
 
 compileTensorLiteral :: (a -> Code) -> Tensor a -> Code
 compileTensorLiteral compileElement t =
-  annotateConstant [] $
-    encloseSep lbracket rbracket (comma <> space) (map compileElement (toList t))
+  let elements = map compileElement (toList t)
+  in case elements of
+    [single] -> single  -- For single-element tensors, return the element directly without brackets
+    _ -> annotateConstant [] $ encloseSep lbracket rbracket (comma <> space) elements
 
 compileVecLiteral :: (MonadLeanCompile m) => [Arg DecidabilityBuiltin] -> m Code
 compileVecLiteral _xs =
