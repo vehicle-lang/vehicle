@@ -83,19 +83,13 @@ logExit e = do
 
 data Dependency
   = VehicleLib
-  | MathlibData
-  | MathlibTactic
-  | MathlibAlgebra
-  | MathlibOrder
+  | Mathlib
   deriving (Eq, Ord)
 
 instance Pretty Dependency where
   pretty = \case
     VehicleLib -> "Vehicle"
-    MathlibData -> "Mathlib"
-    MathlibTactic -> "Mathlib.Tactic"
-    MathlibAlgebra -> "Mathlib"
-    MathlibOrder -> "Mathlib"
+    Mathlib -> "Mathlib"
 
 importStatement :: Dependency -> Doc a
 importStatement dep = "import" <+> pretty dep
@@ -283,17 +277,17 @@ compileType (UniverseLevel l)
 compileBuiltin :: (MonadLeanCompile m) => DecidabilityBuiltin -> [Arg DecidabilityBuiltin] -> m Code
 compileBuiltin b args = case b of
   StandardBuiltinType t -> case t of
-    BoolType -> return $ annotateConstant [MathlibData] "Bool"
-    RatType -> return $ annotateConstant [MathlibAlgebra] "ℚ"
+    BoolType -> return $ annotateConstant [Mathlib] "Bool"
+    RatType -> return $ annotateConstant [Mathlib] "ℚ"
     UnitType -> return "Unit"
     NatType -> return "ℕ"
-    ListType -> annotateApp [MathlibData] "List" args
+    ListType -> annotateApp [Mathlib] "List" args
     TensorType -> compileTensorType [VehicleLib] args
-    IndexType -> annotateApp [MathlibData] "Fin" args
-    VectorType -> annotateApp [MathlibData] "Vector" args
+    IndexType -> annotateApp [Mathlib] "Fin" args
+    VectorType -> annotateApp [Mathlib] "Vector" args
   StandardBuiltinConstructor c -> case c of
-    Nil -> return $ annotateConstant [MathlibData] "[]"
-    Cons -> annotateApp [MathlibData] "::" args
+    Nil -> return $ annotateConstant [Mathlib] "[]"
+    Cons -> compileBinaryOp "::" 60 args
     UnitLiteral -> return $ annotateConstant [] "()"
     IndexLiteral n -> return $ compileIndexLiteral n
     NatLiteral n -> return $ compileNatLiteral n
@@ -326,10 +320,10 @@ compileBuiltin b args = case b of
     StackTensor -> annotateApp [VehicleLib] "stack_tensor" args
     ConstTensor -> annotateApp [VehicleLib] "const_tensor" args
     ForeachTensor -> annotateApp [VehicleLib] "foreach_tensor" args
-    AtVector -> annotateApp [MathlibData] "Vector.get" args
-    ForeachVector -> annotateApp [MathlibData] "Vector.map" args
-    FoldList -> annotateApp [MathlibData] "List.foldl" args
-    MapList -> annotateApp [MathlibData] "List.map" args
+    AtVector -> annotateApp [Mathlib] "Vector.get" args
+    ForeachVector -> annotateApp [Mathlib] "Vector.map" args
+    FoldList -> annotateApp [Mathlib] "List.foldl" args
+    MapList -> annotateApp [Mathlib] "List.map" args
     Iterate -> annotateApp [] "Nat.rec" args
     ReduceAddRatTensor -> annotateApp [VehicleLib] "reduceAdd" args
     ReduceMulRatTensor -> annotateApp [VehicleLib] "reduceMul" args
@@ -348,7 +342,7 @@ compileTensorType deps args = case args of
     shapeExpr <- compileExpr (argExpr shapeArg)
     -- The shape comes out as cons notation like "2 :: []"
     -- Just format it normally for now - Lean accepts both "2 :: []" and "[2]"
-    return $ annotate (Set.fromList deps, maxPrecedence) $ "Tensor" <+> elemType <+> shapeExpr
+    return $ annotate (Set.fromList deps, maxPrecedence) $ "Tensor" <+> elemType <+> parens shapeExpr
   _ -> annotateApp deps "Tensor" args
 
 compileDecidabilityBuiltinFunction ::
@@ -511,7 +505,7 @@ compileRecordField (field, fieldValue) = do
   return $ pretty field <+> "=" <+> cFieldValue
 
 compileIndexLiteral :: Int -> Code
-compileIndexLiteral i = annotateConstant [MathlibData] $ "Fin.ofNat _" <+> pretty i
+compileIndexLiteral i = annotateConstant [Mathlib] $ "Fin.ofNat _" <+> pretty i
 
 compileNatLiteral :: Int -> Code
 compileNatLiteral i = annotateConstant [] $ pretty i
@@ -523,7 +517,7 @@ compileBoolLiteral = \case
 
 compileRatLiteral :: Rational -> Code
 compileRatLiteral r =
-  annotateConstant [MathlibAlgebra] $
+  annotateConstant [Mathlib] $
     "(" <> pretty (numerator r) <> " : ℚ)" <> " / " <> pretty (denominator r)
 
 compileTensorLiteral :: (a -> Code) -> Tensor a -> Code
@@ -535,4 +529,4 @@ compileTensorLiteral compileElement t =
 
 compileVecLiteral :: (MonadLeanCompile m) => [Arg DecidabilityBuiltin] -> m Code
 compileVecLiteral _xs =
-  return $ annotateConstant [MathlibData] "Vector.mk"
+  return $ annotateConstant [Mathlib] "Vector.mk"
