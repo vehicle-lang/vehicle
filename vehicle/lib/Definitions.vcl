@@ -182,12 +182,12 @@ tensorHasQuantifier =
   , existsTC = quantifyExistsRealTensor
   }
 
-@instance
-tensorLikeHasQuantifier : {{ TensorLike r Real dims }} -> HasQuantifier (TensorLike r Real dims)
-tensorLikeHasQuantifier =
-  { forallTC = quantifyForallTensorLike
-  , existsTC = quantifyExistsTensorLike
-  }
+-- @instance
+-- tensorLikeHasQuantifier : {{ TensorLike r Real dims }} -> HasQuantifier (TensorLike r Real dims)
+-- tensorLikeHasQuantifier =
+--   { forallTC = quantifyForallTensorLike
+--   , existsTC = quantifyExistsTensorLike
+--   }
 
 -- Network IO
 @typeclass
@@ -247,8 +247,9 @@ realTensorDimnilHasComparison = { leTC = compareRatTensorPointwiseLe
                           , neTC = compareRatTensorPointwiseNe
                           }
 
+-- note: currently only works for tensors with one value in dims
 @instance
-realTensorHasComparison : {{d : Nat}} -> HasComparison (Tensor Real [d]) (Tensor Real [d])
+realTensorHasComparison : HasComparison (Tensor Real [ds]) (Tensor Real [ds])
 realTensorHasComparison = { leTC = compareRatTensorReducedLe
                           , ltTC = compareRatTensorReducedLt
                           , geTC = compareRatTensorReducedGe
