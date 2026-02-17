@@ -167,3 +167,29 @@ createValidNetworkIOInstance p recordIdent = do
   let functionIdent = Identifier (modulePath recordIdent) functionName
 
   DefFunction p functionIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) recordType functionBody
+
+-- add instance for comparisons for testing quantifiers
+-- should be able to compare two tensorLikes with the same type
+
+-- RECREATE:
+-- ( forAllDim Irrelevant $ \d ->
+--             forAllDims $ \dims ->
+--               hasCompare op (tRatTensor (dimCons d dims)) (tRatTensor (dimCons d dims)) (tBoolTensor dimNil),
+--           lamDim $ \d ->
+--             lamDims $ \dims ->
+--               builtinDerivedFunction (CompareRatTensorReduced op) .@@@ [d, dims],
+--           Nothing
+--         )
+
+-- * can use the values we have here for d and dims?
+
+-- * where to apply the compare to and from tensors?
+
+-- * are we supposed to format this as a record??
+
+-- IN DSL
+
+-- hasCompare gt r r tBoolTensor dimNil
+-- fromTensor (builtinDerivedFunction (CompareRatTensorReduced gt) .@@@ [d, dims])
+
+-- createGTComparisonInstance ::

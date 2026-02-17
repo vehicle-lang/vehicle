@@ -127,6 +127,56 @@ tokGe = mkToken B.TokGe ">="
 
 tokGt = mkToken B.TokGt ">"
 
+-- lauren jank
+
+compareIndexEq = mkToken B.TokCompareIndexEq "compareIndexEq"
+
+compareIndexNe = mkToken B.TokCompareIndexNe "compareIndexNe"
+
+compareIndexLe = mkToken B.TokCompareIndexLe "compareIndexLe"
+
+compareIndexLt = mkToken B.TokCompareIndexLe "compareIndexLt"
+
+compareIndexGe = mkToken B.TokCompareIndexGe "compareIndexGe"
+
+compareIndexGt = mkToken B.TokCompareIndexGt "compareIndexGt"
+
+compareNatEq = mkToken B.TokCompareNatEq "compareNatEq"
+
+compareNatNe = mkToken B.TokCompareNatNe "compareNatNe"
+
+compareNatLe = mkToken B.TokCompareNatLe "compareNatLe"
+
+compareNatLt = mkToken B.TokCompareNatLt "compareNatLt"
+
+compareNatGe = mkToken B.TokCompareNatGe "compareNatGe"
+
+compareNatGt = mkToken B.TokCompareNatGt "compareNatGt"
+
+compareRatTensorPointwiseEq = mkToken B.TokCompareRatTensorPointwiseEq "compareRatTensorPointwiseEq"
+
+compareRatTensorPointwiseNe = mkToken B.TokCompareRatTensorPointwiseNe "compareRatTensorPointwiseNe"
+
+compareRatTensorPointwiseLe = mkToken B.TokCompareRatTensorPointwiseLe "compareRatTensorPointwiseLe"
+
+compareRatTensorPointwiseLt = mkToken B.TokCompareRatTensorPointwiseLt "compareRatTensorPointwiseLt"
+
+compareRatTensorPointwiseGe = mkToken B.TokCompareRatTensorPointwiseGe "compareRatTensorPointwiseGe"
+
+compareRatTensorPointwisedGt = mkToken B.TokCompareRatTensorPointwiseGt "compareRatTensorPointwiseGt"
+
+compareRatTensorReducedEq = mkToken B.TokCompareRatTensorReducedEq "compareRatTensorReducedEq"
+
+compareRatTensorReducedNe = mkToken B.TokCompareRatTensorReducedNe "compareRatTensorReducedNe"
+
+compareRatTensorReducedLe = mkToken B.TokCompareRatTensorReducedLe "compareRatTensorReducedLe"
+
+compareRatTensorReducedLt = mkToken B.TokCompareRatTensorReducedLt "compareRatTensorReducedLt"
+
+compareRatTensorReducedGe = mkToken B.TokCompareRatTensorReducedGe "compareRatTensorReducedGe"
+
+compareRatTensorReducedGt = mkToken B.TokCompareRatTensorReducedGt "compareRatTensorReducedGt"
+
 tokEqPoint = mkToken B.TokEqPoint "==."
 
 tokNePoint = mkToken B.TokNePoint "!=."

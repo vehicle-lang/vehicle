@@ -205,6 +205,58 @@ record HasValidNetworkType (t : Type) where {}
 tensorToTensorHasValidNetworkType : {{ HasValidNetworkIOType t1 }} -> {{ HasValidNetworkIOType t2 }} -> HasValidNetworkType ( t1 -> t2 )
 tensorToTensorHasValidNetworkType = {}
 
+-- Comparisons
+
+@typeclass
+record HasComparison t1 t2 where
+  { leTC : t1 -> t2 -> Bool
+  , ltTC : t1 -> t2 -> Bool
+  , geTC : t1 -> t2 -> Bool
+  , gtTC : t1 -> t2 -> Bool
+  , eqTC : t1 -> t2 -> Bool
+  , neTC : t1 -> t2 -> Bool
+  }
+
+@instance
+indexHasComparison : HasComparison (Index n1) (Index n2)
+indexHasComparison =  { leTC = compareIndexLe
+                      , ltTC = compareIndexLt
+                      , geTC = compareIndexGe
+                      , gtTC = compareIndexGt
+                      , eqTC = compareIndexEq
+                      , neTC = compareIndexNe
+                      }
+
+@instance
+natHasComparison : HasComparison Nat Nat
+natHasComparison =  { leTC = compareNatLe
+                    , ltTC = compareNatLt
+                    , geTC = compareNatGe
+                    , gtTC = compareNatGt
+                    , eqTC = compareNatEq
+                    , neTC = compareNatNe
+                    }
+
+@instance
+realTensorDimnilHasComparison : HasComparison (Tensor Real []) (Tensor Real [])
+realTensorDimnilHasComparison = { leTC = compareRatTensorPointwiseLe
+                          , ltTC = compareRatTensorPointwiseLt
+                          , geTC = compareRatTensorPointwiseGe
+                          , gtTC = compareRatTensorPointwiseGt
+                          , eqTC = compareRatTensorPointwiseEq
+                          , neTC = compareRatTensorPointwiseNe
+                          }
+
+@instance
+realTensorHasComparison : {{d : Nat}} -> HasComparison (Tensor Real [d]) (Tensor Real [d])
+realTensorHasComparison = { leTC = compareRatTensorReducedLe
+                          , ltTC = compareRatTensorReducedLt
+                          , geTC = compareRatTensorReducedGe
+                          , gtTC = compareRatTensorReducedGt
+                          , eqTC = compareRatTensorReducedEq
+                          , neTC = compareRatTensorReducedNe
+                          }
+
 --------------------------------------------------------------------------------
 -- Loss logics
 --------------------------------------------------------------------------------
