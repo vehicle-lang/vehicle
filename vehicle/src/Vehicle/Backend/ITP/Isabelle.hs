@@ -1,10 +1,12 @@
-module Vehicle.Backend.Isabelle.Compile
+module Vehicle.Backend.ITP.Isabelle
   ( IsabelleOptions (..),
     compileProgToIsabelle,
+    writeIsabelleFile,
   )
 where
 
 import Control.Monad.Except (MonadError (..))
+import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.State (runStateT)
 import Control.Monad.State.Class (MonadState, gets, modify)
 import Data.Bifunctor (Bifunctor (..))
@@ -17,10 +19,12 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Internal.Read qualified as Text.Read
+import Data.Version (makeVersion)
 import GHC.Real (denominator, numerator)
 import Prettyprinter hiding (hcat, hsep, vcat, vsep)
 import Prettyprinter.Render.Text (renderStrict)
 import System.FilePath (takeBaseName)
+import Vehicle.Backend.Prelude
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
@@ -86,6 +90,22 @@ compileProgToIsabelle (Main ds) options =
             )
 
     return isabelleProgram
+
+writeIsabelleFile ::
+  (MonadLogger m, MonadIO m, MonadStdIO m) =>
+  Maybe FilePath ->
+  Doc a ->
+  m ()
+writeIsabelleFile = writeResultToFile (Just isabelleOutputFormat)
+
+isabelleOutputFormat :: ExternalOutputFormat
+isabelleOutputFormat =
+  ExternalOutputFormat
+    { formatName = "Isabelle",
+      formatVersion = Just $ makeVersion [2024],
+      commentStyle = Block "(*" "*)",
+      emptyLines = True
+    }
 
 -- | Collect dependencies from a 'Code' document by discarding precedence
 --   and folding all dependency annotations.

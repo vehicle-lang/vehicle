@@ -23,7 +23,7 @@ import Data.ByteString.Lazy qualified as BIO
 import Data.Text.IO qualified as TIO
 import System.Directory (doesFileExist)
 import System.FilePath (takeExtension, (<.>), (</>))
-import Vehicle.Backend.Agda.Interact (writeResultToFile)
+import Vehicle.Backend.Prelude (writeResultToFile)
 import Vehicle.Compile.Prelude
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat

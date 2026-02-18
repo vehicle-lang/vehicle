@@ -1,13 +1,12 @@
-{-# LANGUAGE DefaultSignatures #-}
-{-# LANGUAGE LambdaCase #-}
-
-module Vehicle.Backend.Lean.Compile
+module Vehicle.Backend.ITP.Lean
   ( LeanOptions (..),
     compileProgToLean,
+    writeLeanFile,
   )
 where
 
 import Control.Monad.Except (MonadError (throwError))
+import Control.Monad.IO.Class (MonadIO (..))
 import Data.Bifunctor (first)
 import Data.Foldable (fold)
 import Data.List (sort)
@@ -16,8 +15,10 @@ import Data.List.NonEmpty qualified as NonEmpty
 import Data.Maybe (catMaybes)
 import Data.Set (Set)
 import Data.Set qualified as Set
+import Data.Version
 import GHC.Real (denominator, numerator)
 import Prettyprinter hiding (hcat, hsep, vcat, vsep)
+import Vehicle.Backend.Prelude (writeResultToFile)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
@@ -51,13 +52,29 @@ compileProgToLean prog _options =
 
     let leanProgram =
           unAnnotate
-            ((vsep2 :: [Code] -> Code)
-              [ importStatements programDependencies,
-                programDoc
-              ]
+            ( (vsep2 :: [Code] -> Code)
+                [ importStatements programDependencies,
+                  programDoc
+                ]
             )
 
     return leanProgram
+
+writeLeanFile ::
+  (MonadLogger m, MonadIO m, MonadStdIO m) =>
+  Maybe FilePath ->
+  Doc a ->
+  m ()
+writeLeanFile = writeResultToFile (Just leanOutputFormat)
+
+leanOutputFormat :: ExternalOutputFormat
+leanOutputFormat =
+  ExternalOutputFormat
+    { formatName = "Lean",
+      formatVersion = Just $ makeVersion [4, 0, 0],
+      commentStyle = Line "--",
+      emptyLines = True
+    }
 
 --------------------------------------------------------------------------------
 -- Debug functions
@@ -101,6 +118,7 @@ importStatements deps = vsep $ map importStatement (sort (Set.toList deps))
 -- Intermediate results of compilation
 
 type Precedence = Int
+
 type Code = Doc (Set Dependency, Precedence)
 
 minPrecedence :: Precedence
@@ -247,7 +265,7 @@ compileExpr expr = do
           -- For unnamed parameters, use arrow notation
           return $ annotate (Set.empty, 99) $ cInput <+> "->" <+> cOutput
         _ -> do
-          -- For named parameters, use forall notation  
+          -- For named parameters, use forall notation
           return $ "∀" <+> cInput <> "," <+> cOutput
     App fun args -> compileApp fun args
     Lam _ binder body -> do
@@ -333,7 +351,6 @@ compileBuiltin b args = case b of
   DecidabilityBuiltinFunction f -> compileDecidabilityBuiltinFunction f args
   DecidabilityBuiltinTypeClass {} -> developerError "Monomorphisation should have eliminated type classes"
   DecidabilityBuiltinTypeClassOp {} -> developerError "Monomorphisation should have eliminated type classes"
-
 
 compileTensorType :: (MonadLeanCompile m) => [Dependency] -> [Arg DecidabilityBuiltin] -> m Code
 compileTensorType deps args = case args of
@@ -523,9 +540,9 @@ compileRatLiteral r =
 compileTensorLiteral :: (a -> Code) -> Tensor a -> Code
 compileTensorLiteral compileElement t =
   let elements = map compileElement (toList t)
-  in case elements of
-    [single] -> single  -- For single-element tensors, return the element directly without brackets
-    _ -> annotateConstant [] $ encloseSep lbracket rbracket (comma <> space) elements
+   in case elements of
+        [single] -> single -- For single-element tensors, return the element directly without brackets
+        _ -> annotateConstant [] $ encloseSep lbracket rbracket (comma <> space) elements
 
 compileVecLiteral :: (MonadLeanCompile m) => [Arg DecidabilityBuiltin] -> m Code
 compileVecLiteral _xs =
