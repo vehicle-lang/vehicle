@@ -159,7 +159,6 @@ createValidNetworkIOInstance ::
   Identifier ->
   Decl Builtin
 createValidNetworkIOInstance p recordIdent = do
-  let validNetworkTypeIdent = Identifier standardLibraryDefinitionsModulePath "HasValidNetworkIOType"
   let recordType = fromDSL mempty $ freeVar validNetworkTypeIdent @@ [freeVar recordIdent]
   let functionBody = Record p recordType []
 

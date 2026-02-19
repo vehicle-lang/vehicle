@@ -9,6 +9,7 @@ module Vehicle.Libraries.StandardLibrary
     standardLibraryInstanceOps,
     isBuiltinModule,
     standardLibIdent,
+    validNetworkTypeIdent,
   )
 where
 
@@ -46,6 +47,9 @@ standardLibraryBuiltinModulePath typeSystem = ModulePath $ case typeSystem of
   Just PolarityTypes -> ["Builtins", "Polarity"]
   Just LinearityTypes -> ["Builtins", "Linearity"]
   Just DecidabilityTypes -> ["Builtins", "Decidability"]
+
+validNetworkTypeIdent :: Identifier
+validNetworkTypeIdent = standardLibIdent "HasValidNetworkType"
 
 isBuiltinModule :: ModulePath -> Bool
 isBuiltinModule = \case
