@@ -183,7 +183,7 @@ tensorHasQuantifier =
   }
 
 @instance
-tensorLikeHasQuantifier : {{ TensorLike r Real dims }} -> HasQuantifier (TensorLike r Real dims)
+tensorLikeHasQuantifier : {{ TensorLike r t dims }} -> {{ HasQuantifier (NonCastingTensor t dims) }} -> HasQuantifier r
 tensorLikeHasQuantifier =
   { forallTC = quantifyForallTensorLike
   , existsTC = quantifyExistsTensorLike
