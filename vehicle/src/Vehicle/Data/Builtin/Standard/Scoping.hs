@@ -159,7 +159,7 @@ createValidNetworkIOInstance ::
   Identifier ->
   Decl Builtin
 createValidNetworkIOInstance p recordIdent = do
-  let recordType = fromDSL mempty $ freeVar validNetworkTypeIdent @@ [freeVar recordIdent]
+  let recordType = fromDSL mempty $ freeVar validNetworkIOTypeIdent @@ [freeVar recordIdent]
   let functionBody = Record p recordType []
 
   let functionName = Text.pack "_" <> nameOf recordIdent <> "HasValidNetworkIOType"
