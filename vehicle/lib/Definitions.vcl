@@ -256,6 +256,15 @@ realTensorHasComparison = { leTC = compareRatTensorReducedLe
                           , neTC = compareRatTensorReducedNe
                           }
 
+@instance
+realTensorLikeHasComparison : {{ TensorLike r t dims }} -> {{ HasComparison (NonCastingTensor t dims) (NonCastingTensor t dims) }} -> HasComparison r r
+realTensorLikeHasComparison = { leTC = \r1 r2 -> ( leTC (toTensor r1) (toTensor r2) )
+                              , ltTC = \r1 r2 -> ( ltTC (toTensor r1) (toTensor r2) )
+                              , geTC = \r1 r2 -> ( geTC (toTensor r1) (toTensor r2) )
+                              , gtTC = \r1 r2 -> ( gtTC (toTensor r1) (toTensor r2) )
+                              , eqTC = \r1 r2 -> ( eqTC (toTensor r1) (toTensor r2) )
+                              , neTC = \r1 r2 -> ( neTC (toTensor r1) (toTensor r2) )
+                              }
 --------------------------------------------------------------------------------
 -- Loss logics
 --------------------------------------------------------------------------------
