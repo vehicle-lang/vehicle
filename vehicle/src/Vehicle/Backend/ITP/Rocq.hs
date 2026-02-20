@@ -45,7 +45,8 @@ import Vehicle.Data.Variable.Bound.Context.Name
 
 data RocqOptions = RocqOptions
   { output :: Maybe FilePath,
-    moduleName :: Maybe String
+    moduleName :: Maybe String,
+    constructiveReals :: Bool
   }
 
 currentPhase :: Doc ()
@@ -59,12 +60,18 @@ compileProgToRocq prog _options =
     -- Collects dependencies by first discarding precedence info and then
     -- folding using Set Monoid
     let programDependencies = fold (reAnnotateS fst programStream)
+    -- If using constructive reals, add the required import
+    let programDependencies' =
+          if constructiveReals _options
+          then Set.insert (MathcompImport Rstruct) $
+          Set.insert (RequireImport ConstructiveReals) programDependencies
+          else programDependencies
 
     let rocqProgram =
           unAnnotate
             ( (vsep2 :: [Code] -> Code)
-                [ importStatements programDependencies,
-                  preamble programDependencies,
+                [ importStatements programDependencies',
+                  preamble programDependencies',
                   programDoc
                 ]
             )
@@ -122,6 +129,7 @@ data Mathcomp
   = Boot
   | Algebra
   | Reals
+  | Rstruct
   deriving (Eq, Ord)
 
 instance Pretty Mathcomp where
@@ -129,16 +137,19 @@ instance Pretty Mathcomp where
     Boot -> "all_boot"
     Algebra -> "all_algebra"
     Reals -> "all_reals"
+  | Rstruct -> "Rstruct"
 
 data Library
   = VehicleTensor
   | VehicleUtils
+  | ConstructiveReals
   deriving (Eq, Ord)
 
 instance Pretty Library where
   pretty = \case
     VehicleTensor -> "vehicle.tensor"
     VehicleUtils -> "vehicle.utils"
+    ConstructiveReals -> "Stdlib.Reals.Reals"
 
 data RocqModule
   = OrderDef
@@ -163,11 +174,12 @@ instance Pretty Scope where
 importStatements :: Set Dependency -> Code
 importStatements deps = vsep $ map pretty (Set.toList deps)
 
-preamble :: Set Dependency -> Code
-preamble deps =
-  if Set.member (MathcompImport Reals) deps
-    then "Parameter" <+> "R" <+> ":" <+> align "realType" <> "."
-    else ""
+preamble deps
+  | Set.member (RequireImport ConstructiveReals) deps =
+    "Notation" <+> "R" <+> ":=" <+> align "Rdefinitions.R" <> "."
+  | Set.member (MathcompImport Reals) deps =
+    "Parameter" <+> "R" <+> ":" <+> align "realType" <> "."
+  | otherwise = ""
 
 --------------------------------------------------------------------------------
 -- Intermediate results of compilation
