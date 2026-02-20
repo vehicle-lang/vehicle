@@ -137,7 +137,7 @@ instance Pretty Mathcomp where
     Boot -> "all_boot"
     Algebra -> "all_algebra"
     Reals -> "all_reals"
-  | Rstruct -> "Rstruct"
+    Rstruct -> "Rstruct"
 
 data Library
   = VehicleTensor
@@ -174,6 +174,7 @@ instance Pretty Scope where
 importStatements :: Set Dependency -> Code
 importStatements deps = vsep $ map pretty (Set.toList deps)
 
+preamble :: Set Dependency -> Code
 preamble deps
   | Set.member (RequireImport ConstructiveReals) deps =
     "Notation" <+> "R" <+> ":=" <+> align "Rdefinitions.R" <> "."
