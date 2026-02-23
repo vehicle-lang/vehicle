@@ -667,7 +667,7 @@ compileCacheParser = optional exportCacheParser
 compileConstReals :: Parser Bool
 compileConstReals =
   switch $
-  long "constructive-reals"
+    long "constructive-reals"
       <> short 'r'
       <> helpDoc (Just "Use constructive reals instead of mathcomp reals for Rocq.")
 

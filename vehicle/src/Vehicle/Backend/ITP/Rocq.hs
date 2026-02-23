@@ -63,9 +63,10 @@ compileProgToRocq prog _options =
     -- If using constructive reals, add the required import
     let programDependencies' =
           if constructiveReals _options
-          then Set.insert (MathcompImport Rstruct) $
-          Set.insert (RequireImport ConstructiveReals) programDependencies
-          else programDependencies
+            then
+              Set.insert (MathcompImport Rstruct) $
+                Set.insert (RequireImport ConstructiveReals) programDependencies
+            else programDependencies
 
     let rocqProgram =
           unAnnotate
@@ -177,9 +178,9 @@ importStatements deps = vsep $ map pretty (Set.toList deps)
 preamble :: Set Dependency -> Code
 preamble deps
   | Set.member (RequireImport ConstructiveReals) deps =
-    "Notation" <+> "R" <+> ":=" <+> align "Rdefinitions.R" <> "."
+      "Notation" <+> "R" <+> ":=" <+> align "Rdefinitions.R" <> "."
   | Set.member (MathcompImport Reals) deps =
-    "Parameter" <+> "R" <+> ":" <+> align "realType" <> "."
+      "Parameter" <+> "R" <+> ":" <+> align "realType" <> "."
   | otherwise = ""
 
 --------------------------------------------------------------------------------

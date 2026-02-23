@@ -16,6 +16,7 @@ import Vehicle.Backend.Loss.JSON
 import Vehicle.Backend.Prelude
 import Vehicle.Backend.Solver
 import Vehicle.Compile.Error
+import Vehicle.Compile.ExpandResources (expandResources)
 import Vehicle.Compile.FunctionaliseResources (functionaliseResources)
 import Vehicle.Compile.Prelude as CompilePrelude
 import Vehicle.Compile.Print (prettyFriendly)
@@ -26,7 +27,6 @@ import Vehicle.Data.Builtin.Standard
 import Vehicle.Prelude.Logging
 import Vehicle.TypeCheck (TypeCheckOptions (..), runCompileMonad, typeCheckUserProg)
 import Vehicle.Verify.QueryFormat
-import Vehicle.Compile.ExpandResources (expandResources)
 
 --------------------------------------------------------------------------------
 -- Interface
@@ -121,7 +121,7 @@ compileToITP ::
   Prog Builtin ->
   m ()
 compileToITP ITPOptions {..} typedProg = do
-  let resources =  Resources specification networkLocations datasetLocations parameterValues
+  let resources = Resources specification networkLocations datasetLocations parameterValues
   (expandedProg, _, _, _, _) <- expandResources resources typedProg
   -- Analyse the program to find out which `Bool`s are decidable and which aren't.
   decProg <- decidabilityTypeCheck expandedProg

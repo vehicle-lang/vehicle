@@ -37,5 +37,5 @@ export loggingSettings outputAsJSON ExportOptions {..} = do
           outputFile = output,
           moduleName = moduleName,
           verificationCache = Just verificationCache,
-        constructiveReals = constructiveReals
+          constructiveReals = constructiveReals
         }
