@@ -83,8 +83,6 @@ declarationsOf = \case
   QueryTarget QueryOptions {..} -> declarationsToCompile
   ITPTarget ITPOptions {..} -> declarationsToCompile
 
-
-
 compile :: (MonadStdIO IO) => LoggingSettings -> OutputAsJSON -> CompileOptions -> IO ()
 compile loggingSettings outputAsJSON options =
   runCompileMonad loggingSettings outputAsJSON $ do
@@ -125,7 +123,6 @@ compileToITP ITPOptions {..} typedProg = do
   (expandedProg, _, _, _, _) <- expandResources resources typedProg
   -- Analyse the program to find out which `Bool`s are decidable and which aren't.
   decProg <- decidabilityTypeCheck expandedProg
-
 
   -- Compile depending on the ITP
   logCompilerPass ITP $
