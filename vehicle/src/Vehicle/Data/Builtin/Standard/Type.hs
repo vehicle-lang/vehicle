@@ -178,7 +178,7 @@ restrictStandardDeclType declSort (ident, p) typ = do
         RestrictedProperty -> Builtin p (TypeClass ValidPropertyType)
         RestrictedParameter s -> Builtin p (TypeClass (ValidParameterType s))
         RestrictedDataset -> Builtin p (TypeClass ValidDatasetType)
-        RestrictedNetwork -> FreeVar p (standardLibIdent "HasValidNetworkType")
+        RestrictedNetwork -> FreeVar p validNetworkTypeIdent
 
   let expr = App tc [explicit typ]
   let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin env (ident, provenanceOf typ) (Left declSort) typ

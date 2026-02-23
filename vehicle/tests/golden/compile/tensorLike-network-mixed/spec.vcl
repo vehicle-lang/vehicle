@@ -5,4 +5,4 @@ record Pair where
   }
 
 @network
-f : Pair -> Pair
+f : Pair -> Tensor Real [5]
