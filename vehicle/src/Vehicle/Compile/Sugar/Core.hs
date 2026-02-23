@@ -127,8 +127,6 @@ tokGe = mkToken B.TokGe ">="
 
 tokGt = mkToken B.TokGt ">"
 
--- lauren jank
-
 compareIndexEq = mkToken B.TokCompareIndexEq "compareIndexEq"
 
 compareIndexNe = mkToken B.TokCompareIndexNe "compareIndexNe"

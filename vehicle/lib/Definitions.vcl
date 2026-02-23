@@ -237,14 +237,14 @@ natHasComparison =  { leTC = compareNatLe
                     }
 
 @instance
-realTensorDimnilHasComparison : HasComparison (Tensor Real []) (Tensor Real [])
-realTensorDimnilHasComparison = { leTC = compareRatTensorPointwiseLe
-                          , ltTC = compareRatTensorPointwiseLt
-                          , geTC = compareRatTensorPointwiseGe
-                          , gtTC = compareRatTensorPointwiseGt
-                          , eqTC = compareRatTensorPointwiseEq
-                          , neTC = compareRatTensorPointwiseNe
-                          }
+realTensorEmptyDimsHasComparison : HasComparison (Tensor Real []) (Tensor Real [])
+realTensorEmptyDimsHasComparison = { leTC = compareRatTensorPointwiseLe
+                                   , ltTC = compareRatTensorPointwiseLt
+                                   , geTC = compareRatTensorPointwiseGe
+                                   , gtTC = compareRatTensorPointwiseGt
+                                   , eqTC = compareRatTensorPointwiseEq
+                                   , neTC = compareRatTensorPointwiseNe
+                                   }
 
 @instance
 realTensorHasComparison : HasComparison (Tensor Real (dim :: dims)) (Tensor Real (dim :: dims))
@@ -265,6 +265,7 @@ realTensorLikeHasComparison = { leTC = \r1 r2 -> ( leTC (toTensor r1) (toTensor 
                               , eqTC = \r1 r2 -> ( eqTC (toTensor r1) (toTensor r2) )
                               , neTC = \r1 r2 -> ( neTC (toTensor r1) (toTensor r2) )
                               }
+
 --------------------------------------------------------------------------------
 -- Loss logics
 --------------------------------------------------------------------------------

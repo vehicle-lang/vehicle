@@ -393,14 +393,6 @@ elabExpr expr = case expr of
   B.And e1 tk e2 -> builtinFunction V.And tk [e1, e2]
   B.Or e1 tk e2 -> builtinFunction V.Or tk [e1, e2]
   B.If tk1 e1 _ e2 _ e3 -> builtinFunction V.If tk1 [e1, e2, e3]
-  -- these are the victims muahaha
-  -- B.Eq e1 tk e2 -> elabComparison V.Eq tk e1 e2
-  -- B.Ne e1 tk e2 -> elabComparison V.Ne tk e1 e2
-  -- B.Le e1 tk e2 -> elabComparison V.Le tk e1 e2
-  -- B.Lt e1 tk e2 -> elabComparison V.Lt tk e1 e2
-  -- B.Ge e1 tk e2 -> elabComparison V.Ge tk e1 e2
-  -- B.Gt e1 tk e2 -> elabComparison V.Gt tk e1 e2
-
   B.Eq e1 tk e2 -> standardLibComparison V.Eq tk e1 e2
   B.Ne e1 tk e2 -> standardLibComparison V.Ne tk e1 e2
   B.Le e1 tk e2 -> standardLibComparison V.Le tk e1 e2
@@ -689,31 +681,6 @@ elabApp fun arg = do
   arg' <- elabArg arg
   return $ V.normAppList fun' [arg']
 
--- elabComparison :: (MonadElab m, IsToken token, DesugarableBuiltin Builtin) => V.ComparisonOp -> token -> B.Expr -> B.Expr -> m (V.Expr Builtin)
--- elabComparison op tk e1 e2 = do
---   let Tk tkDetails@(tkPos, _) = toToken tk
---   let chainedOrder = case e1 of
---         B.Le _ _ e -> Just (V.Le, e)
---         B.Lt _ _ e -> Just (V.Lt, e)
---         B.Ge _ _ e -> Just (V.Ge, e)
---         B.Gt _ _ e -> Just (V.Gt, e)
---         B.Eq _ _ e -> Just (V.Eq, e)
---         _ -> Nothing
-
---   case chainedOrder of
---     Nothing -> builtin (V.TypeClassOp $ V.CompareTC op) tk [e1, e2] -- this is what we should be changing here
---     Just (prevOp, e)
---       | not (V.chainable prevOp op) -> do
---           p <- mkProvenance tk
---           throwError $ UnchainableComparisons p prevOp op
---       | otherwise -> elabExpr $ B.And e1 (B.TokAnd (tkPos, "and")) $ case op of
---           V.Le -> B.Le e (B.TokLe tkDetails) e2
---           V.Lt -> B.Lt e (B.TokLt tkDetails) e2
---           V.Ge -> B.Ge e (B.TokGe tkDetails) e2
---           V.Gt -> B.Gt e (B.TokGt tkDetails) e2
---           V.Eq -> B.Eq e (B.TokEq tkDetails) e2
---           V.Ne -> B.Ne e (B.TokNe tkDetails) e2
-
 -- | Unfolds a list of binders into a consecutative forall expressions
 elabForallT :: (MonadElab m, DesugarableBuiltin Builtin) => B.TokForallT -> [B.NameBinder] -> B.Expr -> m (V.Expr Builtin)
 elabForallT tk binders body = do
@@ -729,32 +696,6 @@ elabLam tk binders body = do
   body' <- elabExpr body
   return $ foldr (V.Lam p) body' binders'
 
--- standardLibQuantifier ::
---   (MonadElab m, IsToken token) =>
---   token ->
---   V.Name ->
---   [B.NameBinder] ->
---   B.Expr ->
---   m (V.Expr Builtin)
--- standardLibQuantifier tk name binders body = do
---   p <- mkProvenance tk
---   let quant = V.Var p name
-
---   binders' <- elabNamedBinders tk binders
---   body' <- elabExpr body
-
---   let mkQuantifier binder newBody =
---         V.normAppList
---           quant
---           [ mkArg mempty V.Explicit (V.Lam (V.provenanceOf binder) binder newBody)
---           ]
---   return $ foldr mkQuantifier body' binders'
-
--- standardLibFunction :: (MonadElab m, IsToken token) => V.Name -> token -> [B.Expr] -> m (V.Expr Builtin)
--- standardLibFunction name tk args = do
---   p <- mkProvenance tk
---   app (V.Var p name) <$> traverse elabExpr args
-
 standardLibComparison :: (MonadElab m, IsToken token, DesugarableBuiltin Builtin) => V.ComparisonOp -> token -> B.Expr -> B.Expr -> m (V.Expr Builtin)
 standardLibComparison op tk e1 e2 = do
   let Tk tkDetails@(tkPos, _) = toToken tk
@@ -767,9 +708,8 @@ standardLibComparison op tk e1 e2 = do
         _ -> Nothing
   p <- mkProvenance tk
   case chainedOrder of
-    -- Nothing -> builtin (V.TypeClassOp $ V.CompareTC op) tk [e1, e2]
     Nothing -> case op of
-      V.Le -> app (V.Var p "leTC") <$> traverse elabExpr [e1, e2] -- B.Le e (B.TokLe tkDetails) e2
+      V.Le -> app (V.Var p "leTC") <$> traverse elabExpr [e1, e2]
       V.Lt -> app (V.Var p "ltTC") <$> traverse elabExpr [e1, e2]
       V.Ge -> app (V.Var p "geTC") <$> traverse elabExpr [e1, e2]
       V.Gt -> app (V.Var p "gtTC") <$> traverse elabExpr [e1, e2]
