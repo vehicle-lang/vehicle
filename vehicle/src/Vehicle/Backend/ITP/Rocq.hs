@@ -528,7 +528,7 @@ compileBuiltin b args = case b of
     QuantifyRatTensor q -> case reverse args of
       (ExplicitArg _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier q [binder] body
       _ -> unsupportedArgsError
-    AtTensor -> compileNotationAndArgs [RequireImport VehicleTensor] LeftAssociative (Just 2) "$0 ^^ $1" (Just "nindex") args
+    AtTensor -> compileNotationAndArgs [RequireImport VehicleTensor] LeftAssociative (Just (-2)) "$0 ^^ $1" (Just "nindex") args
     If -> compileNotationAndArgs [MathcompImport Boot] NotAssociative (Just 0) "if $0 then $1 else $2" Nothing args
     ForeachTensor -> compileApplication [RequireImport VehicleTensor] "nstack" args
     StackTensor -> compileStack args
@@ -641,11 +641,14 @@ bracketArgs maybeParentPrecedence = traverse bracketArg
       logDebug MaxDetail $
         "!!!"
           <+> body
-          <+> pretty (getPrecedence body)
-          <+> ">="
-          <+> pretty maybeParentPrecedence
-          <+> "="
-          <+> pretty (getPrecedence body >= maybeParentPrecedence)
+          <+> parens
+            ( "precedence"
+                <+> pretty (getPrecedence body)
+                <+> ">="
+                <+> pretty maybeParentPrecedence
+                <+> "="
+                <+> pretty (getPrecedence body >= maybeParentPrecedence)
+            )
       return $ case visibilityOf arg of
         Instance {} -> annotate (mempty, Nothing) $ braces (braces body)
         Implicit {} -> annotate (mempty, Nothing) $ braces body
