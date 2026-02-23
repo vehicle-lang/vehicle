@@ -38,7 +38,7 @@ Parameter score : Image -> 'nT[R]_(6%N :: nil).
 
 Definition validPixel (p : 'nT[R]_(nil)) : Prop := const_t (0 : R) <= p /\ p <= const_t (1 : R).
 
-Definition validImage (x : Image) : Prop := forallIndex (fun i => forallIndex (fun j => validPixel ((x ^^ i) ^^ j))).
+Definition validImage (x : Image) : Prop := forallIndex (fun i => forallIndex (fun j => validPixel (x ^^ i) ^^ j)).
 
 Definition isFirstChoice (x : Image) (dog1 : Dog) : Prop := let scores := score x in forallIndex (fun d => d != dog1 :> nat -> scores ^^ dog1 > scores ^^ d).
 
