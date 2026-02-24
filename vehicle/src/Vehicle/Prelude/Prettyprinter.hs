@@ -23,7 +23,7 @@ import Data.Text (Text)
 import Data.Version (Version, showVersion)
 import Data.Void (Void)
 import Numeric (showFFloat)
-import Prettyprinter (defaultLayoutOptions, group, layoutPretty, line', surround, unAnnotate)
+import Prettyprinter (LayoutOptions (..), PageWidth (..), defaultLayoutOptions, group, layoutPretty, line', surround, unAnnotate)
 import Prettyprinter as CommonPrettyprinter
   ( Doc,
     Pretty (..),
@@ -126,6 +126,12 @@ layoutAsString = renderString . layoutPretty defaultLayoutOptions
 
 layoutAsText :: Doc a -> Text
 layoutAsText = renderStrict . layoutPretty defaultLayoutOptions
+
+layoutAsTextWide :: Doc a -> Text
+layoutAsTextWide = renderStrict . layoutPretty wideLayoutOptions
+
+wideLayoutOptions :: LayoutOptions
+wideLayoutOptions = LayoutOptions (AvailablePerLine 120 1.0)
 
 --------------------------------------------------------------------------------
 -- Pretty printing of datatypes

@@ -52,6 +52,7 @@ data InteractiveTheoremProverID
   = Agda
   | Rocq
   | Isabelle
+  | Imandra
   deriving (Eq, Show, Read, Bounded, Enum)
 
 instance Pretty InteractiveTheoremProverID where
@@ -117,8 +118,25 @@ writeResultToFile ::
   Maybe FilePath ->
   Doc a ->
   m ()
-writeResultToFile target filepath doc = do
-  let text = layoutAsText $ prependfileHeader doc target
+writeResultToFile = writeResultToFileWith layoutAsText
+
+writeResultToFileWide ::
+  (MonadStdIO m, MonadLogger m) =>
+  Maybe ExternalOutputFormat ->
+  Maybe FilePath ->
+  Doc a ->
+  m ()
+writeResultToFileWide = writeResultToFileWith layoutAsTextWide
+
+writeResultToFileWith ::
+  (MonadStdIO m, MonadLogger m) =>
+  (Doc a -> Text.Text) ->
+  Maybe ExternalOutputFormat ->
+  Maybe FilePath ->
+  Doc a ->
+  m ()
+writeResultToFileWith layout target filepath doc = do
+  let text = layout $ prependfileHeader doc target
   case filepath of
     Nothing -> VIO.writeStdoutLn text
     Just outputFilePath -> do

@@ -1,0 +1,684 @@
+(* ========================================================================== *)
+(* Vehicle.iml - Translation of Isabelle Vehicle Theory to ImandraX           *)
+(*                                                                            *)
+(* Original Isabelle theory: Vehicle.thy                                      *)
+(* This translation provides pointwise operations, reductions, and tensor     *)
+(* comparisons building on the core tensor infrastructure.                    *)
+(*                                                                            *)
+(* Author: Grant Passmore (grant@imandra.ai)                                  *)
+(* ========================================================================== *)
+
+[@@@import "tensor.iml"]
+[@@@import "subtensor.iml"]
+[@@@import "add.iml"]
+[@@@import "scalar_mult.iml"]
+
+(* ========================================================================== *)
+(* POINTWISE VECTOR OPERATIONS                                                *)
+(* ========================================================================== *)
+
+(* Pointwise multiplication of two lists.
+   Corresponds to Isabelle's:
+     definition "vec_times a b = map (λ(x,y). times x y) (zip a b)"
+*)
+
+let rec vec_times (xs : int list) (ys : int list) : int list =
+  match xs, ys with
+  | [], _ -> []
+  | _, [] -> []
+  | x :: xs', y :: ys' -> (x * y) :: vec_times xs' ys'
+
+(* Pointwise division of two lists.
+   Corresponds to Isabelle's:
+     definition "vec_div a b = map (λ(x,y). divide x y) (zip a b)"
+*)
+
+let rec vec_div (xs : int list) (ys : int list) : int list =
+  match xs, ys with
+  | [], _ -> []
+  | _, [] -> []
+  | x :: xs', y :: ys' -> (x / y) :: vec_div xs' ys'
+
+(* Pointwise minimum of two lists.
+   Corresponds to Isabelle's:
+     definition "vec_min a b = map (λ(x,y). min x y) (zip a b)"
+*)
+
+let rec vec_min (xs : int list) (ys : int list) : int list =
+  match xs, ys with
+  | [], _ -> []
+  | _, [] -> []
+  | x :: xs', y :: ys' -> (if x <= y then x else y) :: vec_min xs' ys'
+
+(* Pointwise maximum of two lists.
+   Corresponds to Isabelle's:
+     definition "vec_max a b = map (λ(x,y). max x y) (zip a b)"
+*)
+
+let rec vec_max (xs : int list) (ys : int list) : int list =
+  match xs, ys with
+  | [], _ -> []
+  | _, [] -> []
+  | x :: xs', y :: ys' -> (if x >= y then x else y) :: vec_max xs' ys'
+
+(* ========================================================================== *)
+(* POINTWISE TENSOR OPERATIONS                                                *)
+(* ========================================================================== *)
+
+(* Base Hadamard (pointwise) product - assumes dimensions match.
+   Corresponds to Isabelle's times_base. *)
+
+let times_base (a : int Tensor.tensor) (b : int Tensor.tensor) : int Tensor.tensor =
+  Tensor.tensor_from_vec a.dims (vec_times a.vec b.vec)
+
+(* Hadamard product with dimension check.
+   Corresponds to Isabelle's hadamard_prod. *)
+
+let hadamard_prod (a : int Tensor.tensor) (b : int Tensor.tensor) : int Tensor.tensor option =
+  if a.dims = b.dims then Some (times_base a b)
+  else None
+
+(* Base pointwise division - assumes dimensions match.
+   Corresponds to Isabelle's div_base. *)
+
+let div_base (a : int Tensor.tensor) (b : int Tensor.tensor) : int Tensor.tensor =
+  Tensor.tensor_from_vec a.dims (vec_div a.vec b.vec)
+
+(* Pointwise division with dimension check.
+   Corresponds to Isabelle's pointwise_div. *)
+
+let pointwise_div (a : int Tensor.tensor) (b : int Tensor.tensor) : int Tensor.tensor option =
+  if a.dims = b.dims then Some (div_base a b)
+  else None
+
+(* Base pointwise minimum - assumes dimensions match.
+   Corresponds to Isabelle's min_base. *)
+
+let min_base (a : int Tensor.tensor) (b : int Tensor.tensor) : int Tensor.tensor =
+  Tensor.tensor_from_vec a.dims (vec_min a.vec b.vec)
+
+(* Pointwise minimum with dimension check.
+   Corresponds to Isabelle's pointwise_min. *)
+
+let pointwise_min (a : int Tensor.tensor) (b : int Tensor.tensor) : int Tensor.tensor option =
+  if a.dims = b.dims then Some (min_base a b)
+  else None
+
+(* Base pointwise maximum - assumes dimensions match.
+   Corresponds to Isabelle's max_base. *)
+
+let max_base (a : int Tensor.tensor) (b : int Tensor.tensor) : int Tensor.tensor =
+  Tensor.tensor_from_vec a.dims (vec_max a.vec b.vec)
+
+(* Pointwise maximum with dimension check.
+   Corresponds to Isabelle's pointwise_max. *)
+
+let pointwise_max (a : int Tensor.tensor) (b : int Tensor.tensor) : int Tensor.tensor option =
+  if a.dims = b.dims then Some (max_base a b)
+  else None
+
+(* ========================================================================== *)
+(* REDUCTION OPERATIONS                                                       *)
+(* ========================================================================== *)
+
+(* reduceAnd - fold conjunction over bool list.
+   Corresponds to Isabelle's:
+     definition reduceAnd :: "bool tensor ⇒ bool ⇒ bool"
+       where "reduceAnd A i = fold (∧) (vec A) i"
+*)
+
+let rec reduce_and_vec (xs : bool list) (init : bool) : bool =
+  match xs with
+  | [] -> init
+  | x :: xs' -> reduce_and_vec xs' (init && x)
+
+let reduce_and (a : bool Tensor.tensor) (init : bool) : bool =
+  reduce_and_vec a.vec init
+
+(* reduceOr - fold disjunction over bool list.
+   Corresponds to Isabelle's:
+     definition reduceOr :: "bool tensor ⇒ bool ⇒ bool"
+       where "reduceOr A i = fold (∨) (vec A) i"
+*)
+
+let rec reduce_or_vec (xs : bool list) (init : bool) : bool =
+  match xs with
+  | [] -> init
+  | x :: xs' -> reduce_or_vec xs' (init || x)
+
+let reduce_or (a : bool Tensor.tensor) (init : bool) : bool =
+  reduce_or_vec a.vec init
+
+(* reduceSum - fold addition over int list.
+   Corresponds to Isabelle's:
+     definition reduceSum :: "('a::plus) tensor ⇒ 'a ⇒ 'a"
+       where "reduceSum A i = fold (+) (vec A) i"
+*)
+
+let rec reduce_sum_vec (xs : int list) (init : int) : int =
+  match xs with
+  | [] -> init
+  | x :: xs' -> reduce_sum_vec xs' (init + x)
+
+let reduce_sum (a : int Tensor.tensor) (init : int) : int =
+  reduce_sum_vec a.vec init
+
+(* reduceMul - fold multiplication over int list.
+   Corresponds to Isabelle's:
+     definition reduceMul :: "('a::times) tensor ⇒ 'a ⇒ 'a"
+       where "reduceMul A i = fold ( * ) (vec A) i"
+*)
+
+let rec reduce_mul_vec (xs : int list) (init : int) : int =
+  match xs with
+  | [] -> init
+  | x :: xs' -> reduce_mul_vec xs' (init * x)
+
+let reduce_mul (a : int Tensor.tensor) (init : int) : int =
+  reduce_mul_vec a.vec init
+
+(* reduceMin - fold min over int list.
+   Corresponds to Isabelle's:
+     definition reduceMin :: "('a::ord) tensor ⇒ 'a ⇒ 'a"
+       where "reduceMin A i = fold (min) (vec A) i"
+*)
+
+let rec reduce_min_vec (xs : int list) (init : int) : int =
+  match xs with
+  | [] -> init
+  | x :: xs' -> reduce_min_vec xs' (if x < init then x else init)
+
+let reduce_min (a : int Tensor.tensor) (init : int) : int =
+  reduce_min_vec a.vec init
+
+(* reduceMax - fold max over int list.
+   Corresponds to Isabelle's:
+     definition reduceMax :: "('a::ord) tensor ⇒ 'a ⇒ 'a"
+       where "reduceMax A i = fold (max) (vec A) i"
+*)
+
+let rec reduce_max_vec (xs : int list) (init : int) : int =
+  match xs with
+  | [] -> init
+  | x :: xs' -> reduce_max_vec xs' (if x > init then x else init)
+
+let reduce_max (a : int Tensor.tensor) (init : int) : int =
+  reduce_max_vec a.vec init
+
+(* ========================================================================== *)
+(* LIST QUANTIFIERS                                                           *)
+(* ========================================================================== *)
+
+(* forallInList - check if all elements satisfy predicate.
+   Corresponds to Isabelle's:
+     definition forallInList :: "('a ⇒ bool) ⇒ 'a list ⇒ bool"
+       where "forallInList f l = list_all f l"
+*)
+
+let rec forall_in_list (xs : bool list) : bool =
+  match xs with
+  | [] -> true
+  | x :: xs' -> x && forall_in_list xs'
+
+(* existsInList - check if some element satisfies predicate.
+   Corresponds to Isabelle's:
+     definition existsInList :: "('a ⇒ bool) ⇒ 'a list ⇒ bool"
+       where "existsInList f l = list_ex f l"
+*)
+
+let rec exists_in_list (xs : bool list) : bool =
+  match xs with
+  | [] -> false
+  | x :: xs' -> x || exists_in_list xs'
+
+(* ========================================================================== *)
+(* POINTWISE COMPARISON VECTORS                                               *)
+(* ========================================================================== *)
+
+(* Pointwise equality comparison. *)
+
+let rec vec_eq (xs : int list) (ys : int list) : bool list =
+  match xs, ys with
+  | [], [] -> []
+  | x :: xs', y :: ys' -> (x = y) :: vec_eq xs' ys'
+  | _, _ -> []
+
+(* Pointwise less-than-or-equal comparison. *)
+
+let rec vec_leq (xs : int list) (ys : int list) : bool list =
+  match xs, ys with
+  | [], [] -> []
+  | x :: xs', y :: ys' -> (x <= y) :: vec_leq xs' ys'
+  | _, _ -> []
+
+(* Pointwise less-than comparison. *)
+
+let rec vec_lt (xs : int list) (ys : int list) : bool list =
+  match xs, ys with
+  | [], [] -> []
+  | x :: xs', y :: ys' -> (x < y) :: vec_lt xs' ys'
+  | _, _ -> []
+
+(* Pointwise greater-than-or-equal comparison. *)
+
+let rec vec_geq (xs : int list) (ys : int list) : bool list =
+  match xs, ys with
+  | [], [] -> []
+  | x :: xs', y :: ys' -> (x >= y) :: vec_geq xs' ys'
+  | _, _ -> []
+
+(* Pointwise greater-than comparison. *)
+
+let rec vec_gt (xs : int list) (ys : int list) : bool list =
+  match xs, ys with
+  | [], [] -> []
+  | x :: xs', y :: ys' -> (x > y) :: vec_gt xs' ys'
+  | _, _ -> []
+
+(* ========================================================================== *)
+(* TENSOR COMPARISON OPERATIONS                                               *)
+(* ========================================================================== *)
+
+(* eqTensorReduced - check if all corresponding elements are equal.
+   Corresponds to Isabelle's:
+     definition eqTensorReduced :: "'a tensor ⇒ 'a tensor ⇒ bool"
+       where "eqTensorReduced A B = reduceAnd (tensor_from_lookup (dims A)
+              (λi. ((lookup A i) = (lookup B i)))) True"
+*)
+
+let eq_tensor_reduced (a : int Tensor.tensor) (b : int Tensor.tensor) : bool =
+  a.dims = b.dims && forall_in_list (vec_eq a.vec b.vec)
+
+(* neTensorReduced - check if tensors are not equal.
+   Corresponds to Isabelle's:
+     definition neTensorReduced :: "'a tensor ⇒ 'a tensor ⇒ bool"
+       where "neTensorReduced A B = (¬(eqTensorReduced A B))"
+*)
+
+let ne_tensor_reduced (a : int Tensor.tensor) (b : int Tensor.tensor) : bool =
+  not (eq_tensor_reduced a b)
+
+(* leqTensorReduced - check if all elements of A are ≤ corresponding elements of B.
+   Corresponds to Isabelle's:
+     definition leqTensorReduced :: "('a::ord) tensor ⇒ 'a tensor ⇒ bool"
+       where "leqTensorReduced A B = reduceAnd (tensor_from_lookup (dims A)
+              (λi. ((lookup A i) <= (lookup B i)))) True"
+*)
+
+let leq_tensor_reduced (a : int Tensor.tensor) (b : int Tensor.tensor) : bool =
+  a.dims = b.dims && forall_in_list (vec_leq a.vec b.vec)
+
+(* ltTensorReduced - check if all elements of A are < corresponding elements of B.
+   Corresponds to Isabelle's ltTensorReduced.
+*)
+
+let lt_tensor_reduced (a : int Tensor.tensor) (b : int Tensor.tensor) : bool =
+  a.dims = b.dims && forall_in_list (vec_lt a.vec b.vec)
+
+(* geqTensorReduced - check if all elements of A are ≥ corresponding elements of B.
+   Corresponds to Isabelle's geqTensorReduced.
+*)
+
+let geq_tensor_reduced (a : int Tensor.tensor) (b : int Tensor.tensor) : bool =
+  a.dims = b.dims && forall_in_list (vec_geq a.vec b.vec)
+
+(* gtTensorReduced - check if all elements of A are > corresponding elements of B.
+   Corresponds to Isabelle's gtTensorReduced.
+*)
+
+let gt_tensor_reduced (a : int Tensor.tensor) (b : int Tensor.tensor) : bool =
+  a.dims = b.dims && forall_in_list (vec_gt a.vec b.vec)
+
+(* ========================================================================== *)
+(* FOREACH AND COMBINE OPERATIONS                                             *)
+(* ========================================================================== *)
+
+(* combine_subtensors - combine list of tensors along new first dimension.
+   Corresponds to Isabelle's:
+     definition combine_subtensors :: "'a tensor list ⇒ 'a FlexTensor"
+       where "combine_subtensors As = Abs_FlexTensor (subtensor_combine (dims (hd As)) As)"
+
+   Note: This is essentially the same as subtensor_combine from Subtensor module.
+*)
+
+let combine_subtensors (ts : 'a Tensor.tensor list) : 'a Tensor.tensor option =
+  match ts with
+  | [] -> None
+  | t :: _ -> Some (Subtensor.subtensor_combine t.dims ts)
+
+(* foreach with range - apply function to indices [0..n) and combine results.
+   First-order helper to generate tensor list from index range.
+*)
+
+let rec foreach_range (f : int -> int Tensor.tensor) (curr : int) (limit : int) : int Tensor.tensor list =
+  if curr >= limit then []
+  else f curr :: foreach_range f (curr + 1) limit
+[@@measure Ordinal.of_int (limit - curr)]
+
+(* foreachTuple - generate list by applying function to indices n, n-1, ..., 1.
+   Corresponds to Isabelle's:
+     fun foreachTuple :: "nat ⇒ (nat ⇒ 'a) ⇒ 'a list" where
+       "foreachTuple 0 f = []"
+       "foreachTuple n f = (f n) # (foreachTuple (n-1) f)"
+*)
+
+let rec foreach_tuple (n : int) (f : int -> 'a) : 'a list =
+  if n <= 0 then []
+  else f n :: foreach_tuple (n - 1) f
+[@@measure Ordinal.of_int n]
+
+(* ========================================================================== *)
+(* REAL-VALUED TENSOR OPERATIONS                                              *)
+(* Extensions to the existing tensor infrastructure for real-valued tensors   *)
+(* ========================================================================== *)
+
+(* Pointwise comparison for real vectors *)
+let rec vec_leq_real (xs : real list) (ys : real list) : bool list =
+  match xs, ys with
+  | [], [] -> []
+  | x :: xs', y :: ys' -> (x <=. y) :: vec_leq_real xs' ys'
+  | _, _ -> []
+
+let rec vec_lt_real (xs : real list) (ys : real list) : bool list =
+  match xs, ys with
+  | [], [] -> []
+  | x :: xs', y :: ys' -> (x <. y) :: vec_lt_real xs' ys'
+  | _, _ -> []
+
+(* Tensor comparison operations for reals *)
+let leq_tensor_reduced_real (a : real Tensor.tensor) (b : real Tensor.tensor) : bool =
+  a.dims = b.dims && forall_in_list (vec_leq_real a.vec b.vec)
+
+let lt_tensor_reduced_real (a : real Tensor.tensor) (b : real Tensor.tensor) : bool =
+  a.dims = b.dims && forall_in_list (vec_lt_real a.vec b.vec)
+
+(* Scalar multiplication for real tensors: tensor_cdot *)
+let rec vec_smult_real (c : real) (xs : real list) : real list =
+  match xs with
+  | [] -> []
+  | x :: xs' -> (c *. x) :: vec_smult_real c xs'
+
+let tensor_cdot (c : real) (t : real Tensor.tensor) : real Tensor.tensor =
+  Tensor.tensor_from_vec t.dims (vec_smult_real c t.vec)
+
+(* Tensor addition for reals *)
+let rec vec_plus_real (xs : real list) (ys : real list) : real list =
+  match xs, ys with
+  | [], _ -> []
+  | _, [] -> []
+  | x :: xs', y :: ys' -> (x +. y) :: vec_plus_real xs' ys'
+
+let tensor_plus_real (a : real Tensor.tensor) (b : real Tensor.tensor) : real Tensor.tensor =
+  Tensor.tensor_from_vec a.dims (vec_plus_real a.vec b.vec)
+
+(* Hadamard product (pointwise multiplication) for real tensors *)
+let rec vec_times_real (xs : real list) (ys : real list) : real list =
+  match xs, ys with
+  | [], _ -> []
+  | _, [] -> []
+  | x :: xs', y :: ys' -> (x *. y) :: vec_times_real xs' ys'
+
+let hadamard_prod_real (a : real Tensor.tensor) (b : real Tensor.tensor) : real Tensor.tensor =
+  Tensor.tensor_from_vec a.dims (vec_times_real a.vec b.vec)
+
+(* Pointwise division for real tensors *)
+let rec vec_div_real (xs : real list) (ys : real list) : real list =
+  match xs, ys with
+  | [], _ -> []
+  | _, [] -> []
+  | x :: xs', y :: ys' -> (x /. y) :: vec_div_real xs' ys'
+
+let pointwise_div_real (a : real Tensor.tensor) (b : real Tensor.tensor) : real Tensor.tensor =
+  Tensor.tensor_from_vec a.dims (vec_div_real a.vec b.vec)
+
+(* FlexTensor operations for reals *)
+let flextensor_from_vec (d : int list) (v : real list) : real Tensor.tensor =
+  Tensor.tensor_from_vec d v
+
+(* flex_subtensor: extract element at index i as a 0-dimensional tensor *)
+let flex_subtensor (t : real Tensor.tensor) (i : int) : real Tensor.tensor =
+  match List.nth i t.vec with
+  | Some v -> Tensor.tensor_from_vec [] [v]
+  | None -> Tensor.tensor_from_vec [] [0.0]
+
+(* Extract first element of tensor as scalar *)
+let tensor_head (t : real Tensor.tensor) : real =
+  match t.vec with
+  | x :: _ -> x
+  | [] -> 0.0
+
+(* forallIndex: check predicate for indices 0..n-1 *)
+let rec forall_index_aux (n : int) (i : int) (p : int -> bool) : bool =
+  if i >= n then true
+  else p i && forall_index_aux n (i + 1) p
+[@@measure Ordinal.of_int (n - i)]
+
+let forall_index (n : int) (p : int -> bool) : bool =
+  forall_index_aux n 0 p
+
+(* existsIndex: check if some index in 0..n-1 satisfies predicate *)
+let rec exists_index_aux (n : int) (i : int) (p : int -> bool) : bool =
+  if i >= n then false
+  else p i || exists_index_aux n (i + 1) p
+[@@measure Ordinal.of_int (n - i)]
+
+let exists_index (n : int) (p : int -> bool) : bool =
+  exists_index_aux n 0 p
+
+(* foreach: apply function to indices 0..n-1 and combine results into tensor *)
+let rec foreach_aux (n : int) (i : int) (f : int -> real Tensor.tensor) : real list =
+  if i >= n then []
+  else tensor_head (f i) :: foreach_aux n (i + 1) f
+[@@measure Ordinal.of_int (n - i)]
+
+let foreach (n : int) (f : int -> real Tensor.tensor) : real Tensor.tensor =
+  Tensor.tensor_from_vec [n] (foreach_aux n 0 f)
+
+(* ========================================================================== *)
+(* EXAMPLES                                                                   *)
+(* ========================================================================== *)
+
+let t1 : int Tensor.tensor = Tensor.tensor_from_vec [2; 3] [1; 2; 3; 4; 5; 6]
+let t2 : int Tensor.tensor = Tensor.tensor_from_vec [2; 3] [2; 2; 2; 2; 2; 2]
+
+eval t1
+eval t2
+
+(* Hadamard product *)
+let t_hadamard = hadamard_prod t1 t2
+eval t_hadamard  (* Should be Some { dims = [2;3]; vec = [2;4;6;8;10;12] } *)
+
+(* Pointwise min/max *)
+let t_min = pointwise_min t1 t2
+let t_max = pointwise_max t1 t2
+eval t_min  (* Should be Some { dims = [2;3]; vec = [1;2;2;2;2;2] } *)
+eval t_max  (* Should be Some { dims = [2;3]; vec = [2;2;3;4;5;6] } *)
+
+(* Reductions *)
+let sum_t1 = reduce_sum t1 0
+eval sum_t1  (* Should be 21 *)
+
+let prod_t1 = reduce_mul t1 1
+eval prod_t1  (* Should be 720 *)
+
+(* Tensor comparisons *)
+let t1_leq_t2 = leq_tensor_reduced t1 t2
+eval t1_leq_t2  (* Should be false (since 3,4,5,6 > 2) *)
+
+let t2_leq_t1 = leq_tensor_reduced t2 t1
+eval t2_leq_t1  (* Should be false (since 2 > 1) *)
+
+(* ========================================================================== *)
+(* THEOREMS                                                                   *)
+(* ========================================================================== *)
+
+(* --- Properties of vec_times --- *)
+
+lemma vec_times_nil_left ys =
+  vec_times [] ys = []
+[@@by auto]
+
+lemma vec_times_nil_right xs =
+  vec_times xs [] = []
+[@@by auto]
+
+lemma vec_times_comm xs ys =
+  vec_times xs ys = vec_times ys xs
+[@@by auto]
+
+(* --- Properties of vec_min/vec_max --- *)
+
+lemma vec_min_comm xs ys =
+  vec_min xs ys = vec_min ys xs
+[@@by auto]
+
+lemma vec_max_comm xs ys =
+  vec_max xs ys = vec_max ys xs
+[@@by auto]
+
+(* --- Properties of times_base --- *)
+
+lemma times_base_dims a b =
+  (times_base a b).dims = a.dims
+[@@by auto]
+
+lemma times_base_vec a b =
+  (times_base a b).vec = vec_times a.vec b.vec
+[@@by auto]
+
+lemma times_base_comm a b =
+  let open Tensor in
+  a.dims = b.dims
+  ==>
+  times_base a b = times_base b a
+[@@by auto]
+
+(* --- Properties of hadamard_prod --- *)
+
+lemma hadamard_prod_dims a b =
+  let open Tensor in
+  a.dims = b.dims
+  ==>
+  hadamard_prod a b = Some (times_base a b)
+[@@by auto]
+
+lemma hadamard_prod_none a b =
+  let open Tensor in
+  a.dims <> b.dims
+  ==>
+  hadamard_prod a b = None
+[@@by auto]
+
+(* --- Properties of min_base/max_base --- *)
+
+lemma min_base_dims a b =
+  (min_base a b).dims = a.dims
+[@@by auto]
+
+lemma max_base_dims a b =
+  (max_base a b).dims = a.dims
+[@@by auto]
+
+lemma min_base_comm a b =
+  let open Tensor in
+  a.dims = b.dims
+  ==>
+  min_base a b = min_base b a
+[@@by auto]
+
+lemma max_base_comm a b =
+  let open Tensor in
+  a.dims = b.dims
+  ==>
+  max_base a b = max_base b a
+[@@by auto]
+
+(* --- Properties of reductions --- *)
+
+lemma reduce_and_nil init =
+  reduce_and_vec [] init = init
+[@@by auto]
+
+lemma reduce_or_nil init =
+  reduce_or_vec [] init = init
+[@@by auto]
+
+lemma reduce_sum_nil init =
+  reduce_sum_vec [] init = init
+[@@by auto]
+
+lemma reduce_mul_nil init =
+  reduce_mul_vec [] init = init
+[@@by auto]
+
+lemma reduce_and_true xs =
+  reduce_and_vec xs true = forall_in_list xs
+[@@by auto]
+
+lemma reduce_or_false xs =
+  reduce_or_vec xs false = exists_in_list xs
+[@@by auto]
+
+(* --- Properties of quantifiers --- *)
+
+lemma forall_nil =
+  forall_in_list [] = true
+[@@by auto]
+
+lemma exists_nil =
+  exists_in_list [] = false
+[@@by auto]
+
+lemma forall_cons x xs =
+  forall_in_list (x :: xs) = (x && forall_in_list xs)
+[@@by auto]
+
+lemma exists_cons x xs =
+  exists_in_list (x :: xs) = (x || exists_in_list xs)
+[@@by auto]
+
+(* --- Properties of tensor comparisons --- *)
+
+lemma eq_tensor_reflexive a =
+  eq_tensor_reduced a a = true
+[@@by auto]
+
+lemma leq_tensor_reflexive a =
+  leq_tensor_reduced a a = true
+[@@by auto]
+
+lemma geq_tensor_reflexive a =
+  geq_tensor_reduced a a = true
+[@@by auto]
+
+(* Helper lemma for symmetry *)
+lemma vec_eq_sym xs ys =
+  vec_eq xs ys = vec_eq ys xs
+[@@by auto] [@@rw]
+
+(* --- 0-dimensional tensor arithmetic --- *)
+
+(* These correspond to Isabelle's tensor_0dim_arithmetic lemmas *)
+
+lemma scalar_plus x y =
+  let tx = Tensor.tensor_from_vec [] [x] in
+  let ty = Tensor.tensor_from_vec [] [y] in
+  Add.plus_base tx ty = Tensor.tensor_from_vec [] [x + y]
+[@@by auto]
+
+lemma scalar_times x y =
+  let tx = Tensor.tensor_from_vec [] [x] in
+  let ty = Tensor.tensor_from_vec [] [y] in
+  times_base tx ty = Tensor.tensor_from_vec [] [x * y]
+[@@by auto]
+
+lemma scalar_smult x y =
+  let ty = Tensor.tensor_from_vec [] [y] in
+  Scalar_mult.smult x ty = Tensor.tensor_from_vec [] [x * y]
+[@@by auto]
+
+lemma scalar_div x y =
+  let tx = Tensor.tensor_from_vec [] [x] in
+  let ty = Tensor.tensor_from_vec [] [y] in
+  div_base tx ty = Tensor.tensor_from_vec [] [x / y]
+[@@by auto]

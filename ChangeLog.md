@@ -1,12 +1,14 @@
 # Changelog for Vehicle
 
-## Next release
+## v0.24
 
 ### Loss backend
 
 * Transformed case where quantifier body consists of only bounds on the quantified variable from an error to a warning.
 
 ### ITP backends
+
+* Added Isabelle and Imandra ITP backends.
 
 * All backends: Tensor stack operations are now evaluated to tensor literals where possible.
 

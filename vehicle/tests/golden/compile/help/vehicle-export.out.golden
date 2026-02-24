@@ -8,6 +8,7 @@ Available options:
                              * Agda
                              * Rocq
                              * Isabelle
+                             * Imandra
   -c,--cache FILE          The location of the verification cache that can be
                            used to check the verification status of the
                            specification. Should be passed when compiling to an
