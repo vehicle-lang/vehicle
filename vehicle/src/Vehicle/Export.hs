@@ -13,7 +13,8 @@ data ExportOptions = ExportOptions
   { target :: InteractiveTheoremProverID,
     verificationCache :: FilePath,
     output :: Maybe FilePath,
-    moduleName :: Maybe String
+    moduleName :: Maybe String,
+    constructiveReals :: Bool
   }
   deriving (Eq, Show)
 
@@ -35,5 +36,6 @@ export loggingSettings outputAsJSON ExportOptions {..} = do
           parameterValues = parameters resources,
           outputFile = output,
           moduleName = moduleName,
-          verificationCache = Just verificationCache
+          verificationCache = Just verificationCache,
+          constructiveReals = constructiveReals
         }

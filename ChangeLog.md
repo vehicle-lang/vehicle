@@ -14,6 +14,8 @@
 
 * Rocq backend: Fixed issues with operator precedence in generated code.
 
+* Rocq backend: Added support for using Rocq's constructive reals instead of MathComp interfaces. This can be invoked using the `-r` or `--constructive-reals` command-line arguments when using `compile itp` or `export` with the arugment `-t Rocq`.
+
 ## v0.23
 
 ### Command-line interface

@@ -10,14 +10,9 @@ From mathcomp Require Import all_reals.
 Require Import vehicle.tensor.
 Open Scope ring_scope.
 Open Scope order_scope.
-Open Scope form_scope.
 
 Parameter R : realType.
 
-Definition precedence (x : 'nT[R]_(nil)) (y : 'nT[R]_(nil)) (z : 'nT[R]_(nil)) : 'nT[R]_(nil) := (x + const_t (2 : R) * y) - z / y.
+Parameter pk : 'nT[R]_(nil) -> 'nT[R]_(1%N :: nil).
 
-Definition natLitNatLitDiv : 'nT[R]_(nil) := const_t (1 : R) / const_t (2 : R).
-
-Parameter f : 'nT[R]_(1%N :: nil) -> 'nT[R]_(1%N :: nil).
-
-Axiom property : (f (nstack_tuple [tuple natLitNatLitDiv])) ^^ 0 >= const_t (0 : R).
+Axiom example : forall x, (pk x) ^^ 0 <= const_t (5 : R).

@@ -57,15 +57,15 @@ Definition normalise (x : UnnormalisedInputVector) : InputVector := nstack (fun 
 
 Definition normAcasXu (x : UnnormalisedInputVector) : OutputVector := acasXu (normalise x).
 
-Definition minimalScore (i : 'I_5%N) (x : UnnormalisedInputVector) : Prop := forallIndex (fun j => i != j :> nat -> normAcasXu x ^^ i < normAcasXu x ^^ j).
+Definition minimalScore (i : 'I_5%N) (x : UnnormalisedInputVector) : Prop := forallIndex (fun j => i != j :> nat -> (normAcasXu x) ^^ i < (normAcasXu x) ^^ j).
 
-Definition maximalScore (i : 'I_5%N) (x : UnnormalisedInputVector) : Prop := forallIndex (fun j => i != j :> nat -> normAcasXu x ^^ i > normAcasXu x ^^ j).
+Definition maximalScore (i : 'I_5%N) (x : UnnormalisedInputVector) : Prop := forallIndex (fun j => i != j :> nat -> (normAcasXu x) ^^ i > (normAcasXu x) ^^ j).
 
 Definition scaleCOCOutput (x : 'nT[R]_(nil)) : 'nT[R]_(nil) := (x - const_t (1879721 / 250000 : R)) / const_t (2337187 / 6250 : R).
 
 Definition intruderDistantAndSlower (x : UnnormalisedInputVector) : Prop := x ^^ distanceToIntruder >= const_t (55947691 / 1000 : R) /\ (x ^^ speed >= const_t (1145 : R) /\ x ^^ intruderSpeed <= const_t (60 : R)).
 
-Axiom property1 : forall x, validInput x /\ intruderDistantAndSlower x -> normAcasXu x ^^ clearOfConflict <= scaleCOCOutput const_t (1500 : R).
+Axiom property1 : forall x, validInput x /\ intruderDistantAndSlower x -> (normAcasXu x) ^^ clearOfConflict <= scaleCOCOutput const_t (1500 : R).
 
 Axiom property2 : forall x, validInput x /\ intruderDistantAndSlower x -> ~ maximalScore clearOfConflict x.
 
