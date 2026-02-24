@@ -15,4 +15,4 @@ Parameter R : realType.
 
 Parameter f : 'nT[R]_(nil) -> 'nT[R]_(nil).
 
-Axiom increasing : forall x, (const_t (0 : R) < x) /\ (x < const_t (1 : R)) -> x <= f x.
+Axiom increasing : forall x, const_t (0 : R) < x /\ x < const_t (1 : R) -> x <= f x.

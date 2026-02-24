@@ -19,4 +19,4 @@ Parameter decode : 'nT[R]_(2%N :: nil) -> 'nT[R]_(5%N :: nil).
 
 Definition epsilon : 'nT[R]_(5%N :: nil) := nstack (fun i => const_t (1 / 10 : R)).
 
-Axiom identity : forall x, ((x - epsilon) <= decode (encode x)) /\ (decode (encode x) <= (x + epsilon)).
+Axiom identity : forall x, x - epsilon <= decode (encode x) /\ decode (encode x) <= x + epsilon.

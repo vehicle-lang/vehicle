@@ -1,5 +1,5 @@
 Usage: vehicle export (-t|--target TARGET) (-c|--cache FILE) [-o|--output FILE] 
-                      [-m|--module-name MODULENAME]
+                      [-m|--module-name MODULENAME] [-r|--constructive-reals]
 
   Export a.vcl specification file to an interactive theorem prover.
 
@@ -21,4 +21,5 @@ Available options:
                            Agda module with the internal name `Foo.Bar.agda`. If
                            not provided then the name will default to the name
                            of the output file.
+  -r,--constructive-reals  Use constructive reals instead of mathcomp reals for Rocq.
   -h,--help                Show this help text
