@@ -160,17 +160,6 @@ allInstances =
             tUnit,
             Nothing
           ),
-          ----------------------
-          -- ValidNetworkType --
-          ----------------------
-          ( forAllDims $ \ds1 ->
-              forAllDims $ \ds2 ->
-                validNetworkType (tRatTensor ds1 ~> tRatTensor ds2),
-            lamDims $ \_ds1 ->
-              lamDims $ \_ds2 ->
-                tUnit,
-            Nothing
-          ),
           -------------------------
           -- ValidTensorLikeType --
           -------------------------
