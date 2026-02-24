@@ -172,9 +172,6 @@ validInferableParameterType t = typeClass (ValidParameterType Inferable) [t]
 validNonInferableParameterType :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
 validNonInferableParameterType t = typeClass (ValidParameterType NonInferable) [t]
 
-validNetworkType :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
-validNetworkType t = typeClass ValidNetworkType [t]
-
 validNetworkTensorType :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
 validNetworkTensorType t = typeClass ValidNetworkTensorType [t]
 
