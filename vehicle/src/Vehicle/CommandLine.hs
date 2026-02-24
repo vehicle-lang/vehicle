@@ -295,6 +295,7 @@ compileITPParser =
     <*> outputParser
     <*> modulePrefixOption
     <*> compileCacheParser
+    <*> compileConstReals
 
 --------------------------------------------------------------------------------
 -- Verify mode
@@ -356,6 +357,7 @@ exportParser =
     <*> exportCacheParser
     <*> outputParser
     <*> modulePrefixOption
+    <*> compileConstReals
 
 exportParserInfo :: ParserInfo ModeOptions
 exportParserInfo = info (Export <$> exportParser) exportDescription
@@ -661,6 +663,13 @@ verifyCacheParser =
 
 compileCacheParser :: Parser (Maybe FilePath)
 compileCacheParser = optional exportCacheParser
+
+compileConstReals :: Parser Bool
+compileConstReals =
+  switch $
+    long "constructive-reals"
+      <> short 'r'
+      <> helpDoc (Just "Use constructive reals instead of mathcomp reals for Rocq.")
 
 supportedOptions :: [String] -> Doc a
 supportedOptions opts = "Supported options: " <> lineIndent (vsep $ fmap (\v -> "*" <+> pretty v) opts)

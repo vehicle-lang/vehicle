@@ -8,9 +8,13 @@
 
 ### ITP backends
 
-* Tensor stack operations are now evaluated to tensor literals where possible.
-* Rocq updated to work with the most recent version of mathcomp (2.5.0).
+* All backends: Tensor stack operations are now evaluated to tensor literals where possible.
 
+* Rocq backend: Updated to work with the most recent version of mathcomp (2.5.0).
+
+* Rocq backend: Fixed issues with operator precedence in generated code.
+
+* Rocq backend: Added support for using Rocq's constructive reals instead of MathComp interfaces. This can be invoked using the `-r` or `--constructive-reals` command-line arguments when using `compile itp` or `export` with the arugment `-t Rocq`.
 
 ## v0.23
 

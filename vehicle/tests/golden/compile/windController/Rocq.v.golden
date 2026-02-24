@@ -26,10 +26,10 @@ Definition velocity : 'I_1%N := 0.
 
 Parameter controller : InputVector -> OutputVector.
 
-Definition normalise (x : InputVector) : InputVector := nstack (fun i => x^^i + const_t (4 : R) / const_t (8 : R)).
+Definition normalise (x : InputVector) : InputVector := nstack (fun i => (x ^^ i + const_t (4 : R)) / const_t (8 : R)).
 
-Definition safeInput (x : InputVector) : Prop := forallIndex (fun i => (- const_t (13 / 4 : R) <= x^^i) /\ (x^^i <= const_t (13 / 4 : R))).
+Definition safeInput (x : InputVector) : Prop := forallIndex (fun i => (- const_t (13 / 4 : R)) <= x ^^ i /\ x ^^ i <= const_t (13 / 4 : R)).
 
-Definition safeOutput (x : InputVector) : Prop := let y := (controller (normalise x))^^velocity in (- const_t (5 / 4 : R) < ((y + (const_t (2 : R) * x^^currentSensor)) - x^^previousSensor)) /\ (((y + (const_t (2 : R) * x^^currentSensor)) - x^^previousSensor) < const_t (5 / 4 : R)).
+Definition safeOutput (x : InputVector) : Prop := let y := (controller (normalise x)) ^^ velocity in (- const_t (5 / 4 : R)) < (y + const_t (2 : R) * x ^^ currentSensor) - x ^^ previousSensor /\ (y + const_t (2 : R) * x ^^ currentSensor) - x ^^ previousSensor < const_t (5 / 4 : R).
 
 Axiom safe : forall x, safeInput x -> safeOutput x.

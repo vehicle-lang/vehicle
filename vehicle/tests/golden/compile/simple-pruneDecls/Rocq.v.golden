@@ -15,4 +15,4 @@ Parameter R : realType.
 
 Parameter g : 'nT[R]_(nil) -> 'nT[R]_(nil).
 
-Axiom p2 : forall x, (const_t (0 : R) < x) /\ (x < const_t (1 : R)) -> g x >= const_t (0 : R).
+Axiom p2 : forall x, const_t (0 : R) < x /\ x < const_t (1 : R) -> g x >= const_t (0 : R).

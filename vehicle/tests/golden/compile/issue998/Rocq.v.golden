@@ -13,6 +13,6 @@ Open Scope order_scope.
 
 Parameter R : realType.
 
-Parameter f : 'nT[R]_(nil) -> 'nT[R]_(nil).
+Parameter pk : 'nT[R]_(nil) -> 'nT[R]_(1%N :: nil).
 
-Axiom monotonic : forall x1, forall x2, (const_t (0 : R) < x1 /\ x1 < const_t (1 : R)) /\ ((const_t (0 : R) < x2 /\ x2 < const_t (1 : R)) /\ x1 <= x2) -> f x1 <= f x2.
+Axiom example : forall x, (pk x) ^^ 0 <= const_t (5 : R).

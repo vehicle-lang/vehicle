@@ -23,10 +23,10 @@ Definition oneD : 'nT[R]_(2%N :: nil) := nstack_tuple [tuple zeroD; const_t (1 :
 
 Definition twoD : 'nT[R]_(2%N :: (2%N :: nil)) := nstack_tuple [tuple oneD; [tensor^^= (2 : R); (3 : R)]].
 
-Definition lookup2D : 'nT[R]_(nil) := (twoD^^0)^^1.
+Definition lookup2D : 'nT[R]_(nil) := (twoD ^^ 0) ^^ 1.
 
 Definition addition : 'nT[R]_(2%N :: (2%N :: nil)) := twoD + twoD.
 
 Definition subtraction : 'nT[R]_(2%N :: (2%N :: nil)) := twoD - twoD.
 
-Axiom p : forallIndex (fun i => forallIndex (fun j => ((f subtraction + addition)^^i)^^j >= const_t (0 : R))).
+Axiom p : forallIndex (fun i => forallIndex (fun j => ((f subtraction + addition) ^^ i) ^^ j >= const_t (0 : R))).
