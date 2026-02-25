@@ -32,12 +32,6 @@ push = true
 "vehicle-syntax/vehicle-syntax.cabal" = [
     "^version:            {pep440_version}$"
 ]
-"vehicle/tests/golden/**/*.agda.golden" = [
-    "- Vehicle version: {pep440_version}+dev"
-]
-"vehicle/tests/golden/**/*.v.golden" = [
-    "- Vehicle version: {pep440_version}+dev"
-]
-"vehicle/tests/golden/**/*-query*.txt.golden" = [
+"vehicle/tests/golden/**/*.golden" = [
     "- Vehicle version: {pep440_version}+dev"
 ]
