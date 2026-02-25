@@ -32,6 +32,18 @@ push = true
 "vehicle-syntax/vehicle-syntax.cabal" = [
     "^version:            {pep440_version}$"
 ]
-"vehicle/tests/golden/**/*.golden" = [
+"vehicle/tests/golden/**/*.agda.golden" = [
+    "- Vehicle version: {pep440_version}+dev"
+]
+"vehicle/tests/golden/**/*.v.golden" = [
+    "- Vehicle version: {pep440_version}+dev"
+]
+"vehicle/tests/golden/**/*.thy.golden" = [
+    "- Vehicle version: {pep440_version}+dev"
+]
+"vehicle/tests/golden/**/*.iml.golden" = [
+    "- Vehicle version: {pep440_version}+dev"
+]
+"vehicle/tests/golden/**/*-query*.txt.golden" = [
     "- Vehicle version: {pep440_version}+dev"
 ]
