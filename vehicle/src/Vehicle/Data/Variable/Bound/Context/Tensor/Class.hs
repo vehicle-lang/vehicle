@@ -101,8 +101,13 @@ lookupParentTensorVariables ::
   m (Set TensorVariable)
 lookupParentTensorVariables sliceVars = do
   ctx <- getNestedVariableCtx
-  let result = findCorrespondingTensorSliceVariables ctx sliceVars
-  return $ Set.fromList $ fmap (coerce . nestedStartingVariable) result
+  let result = findCorrespondingVariableInOriginalCtx ctx sliceVars
+  return $ Set.fromList $ fmap extractTensorVar result
+  where
+    extractTensorVar :: (OriginalLv, Maybe NestedSliceVariable) -> TensorVariable
+    extractTensorVar = \case
+      (_, Nothing) -> developerError "was expecting only tensor variables"
+      (_, Just var) -> coerce $ nestedStartingVariable var
 
 lookupParentTensorVariable ::
   (MonadReadableTensorBoundContext m, SliceVariableLike variable) =>
@@ -111,37 +116,20 @@ lookupParentTensorVariable ::
 lookupParentTensorVariable var = do
   ctx <- getNestedVariableCtx
   -- TODO turn this into a binary search for added efficiency?
-  case findCorrespondingTensorSliceVariables ctx (Set.singleton (toSliceVar var)) of
-    [v] -> return v
+  case findCorrespondingVariableInOriginalCtx ctx (Set.singleton $ toLv var) of
+    [(_, Just v)] -> return v
     _ -> developerError "Missing variable"
 
-lookupSliceVariable ::
+lookupVariableInNestedCtx ::
   (MonadReadableTensorBoundContext m) =>
   Lv ->
-  m (Maybe (NestedSliceVariable, SliceVariable))
-lookupSliceVariable lv = do
+  m (OriginalLv, Maybe (NestedSliceVariable, SliceVariable))
+lookupVariableInNestedCtx lv = do
   ctx <- getNestedVariableCtx
-  let sliceVar = SliceVariable lv
   -- TODO turn this into a binary search for added efficiency?
-  return $ case findCorrespondingTensorSliceVariables ctx (Set.singleton sliceVar) of
-    [parentVar] -> Just (parentVar, sliceVar)
-    _ -> Nothing
-
-lookupTensorVariableShrunkenLv ::
-  (MonadReadableTensorBoundContext m, TensorVariableLike variable) =>
-  variable ->
-  m Lv
-lookupTensorVariableShrunkenLv var = do
-  NestedTensorVariableCtx ctx _ <- getNestedVariableCtx
-  return $ findVar 0 ctx
-  where
-    findVar :: Lv -> GenericBoundCtx (GenericBinder (), Maybe NestedSliceVariable) -> Lv
-    findVar lv = \case
-      [] -> developerError $ "Missing nested tensor variable" <+> pretty (toLv var)
-      (_, Nothing) : xs -> findVar (lv + 1) xs
-      (_, Just tensorVar) : xs
-        | toLv tensorVar == toLv var -> lv
-        | otherwise -> findVar (lv + 1) xs
+  return $ case findCorrespondingVariableInOriginalCtx ctx (Set.singleton lv) of
+    [(originalCtxLv, maybeParentVar)] -> (originalCtxLv, fmap (,SliceVariable lv) maybeParentVar)
+    _ -> developerError "could not find variable in nested context"
 
 --------------------------------------------------------------------------------
 -- Context monad class

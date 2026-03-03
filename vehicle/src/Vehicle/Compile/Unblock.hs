@@ -15,7 +15,6 @@ import Vehicle.Compile.Print
 import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Standard
-import Vehicle.Data.Builtin.Standard.Normalise
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
@@ -146,7 +145,7 @@ unblockBoolValue actions expr = do
     VQuantifyRatTensor {} -> return expr
     VCompareRatTensor {} -> return expr
     -- Recursively unblock
-    VReduceAndTensor args -> unblockReduceAndTensor unblockTensor args
+    VReduceAndTensor args -> unblockReduceTensor unblockTensor unoptimisedEvalReduceAndTensor args
     VReduceOrTensor args -> unblockReduceTensor unblockTensor evalReduceOrTensor args
     VCompareIndex (op, args) -> unblockIndexOp2 (evalCompareIndex op) args
     VCompareNat (op, args) -> unblockOp2 return (evalCompareNat op) args
@@ -287,15 +286,6 @@ unblockReduceTensor unblock evalFn (TensorReductionArgs ds e xs) = do
   xs' <- unblock xs
   liftIf xs' $ \xs'' ->
     evalFn $ TensorReductionArgs ds e xs''
-
-unblockReduceAndTensor ::
-  (MonadUnblock m) =>
-  UnblockingFunction m ->
-  TensorReductionArgs (Value Builtin) ->
-  m (Value Builtin)
-unblockReduceAndTensor unblock args = case foldReduceAndComparison args of
-  Just expr -> return expr
-  _ -> unblockReduceTensor unblock unoptimisedEvalReduceAndTensor args
 
 unblockConstTensor ::
   (MonadUnblock m) =>

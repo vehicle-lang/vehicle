@@ -6,6 +6,7 @@ where
 import Control.Monad (foldM, forM)
 import Control.Monad.Except (MonadError (..), runExceptT)
 import Control.Monad.State (MonadState (..), evalStateT)
+import Data.Bifunctor (Bifunctor (..))
 import Data.Coerce (coerce)
 import Data.Foldable (foldrM)
 import Data.List.NonEmpty (NonEmpty (..))
@@ -111,6 +112,7 @@ compileExists (QuantifyRatTensorArgs dims binder closure) =
           userTensorVar <- lookupNestedTensorVariable $ UserTensorVariable $ TensorVariable $ SliceVariable lv
           xs <- traverse (compileConstraints finalCtx dims binder userTensorVar) (partitionsToDisjuncts partitions)
           disjunctMaybeTrivialPartitions xs
+
     return result
 
 compileConstraints ::
@@ -136,7 +138,7 @@ compileConstraints finalCtx dims binder var (maybeConstraints, maybeRemainder) =
         return constraints
 
     -- Extract the remaining body of the quantifier
-    remaindingBody <- case maybeRemainder of
+    remainingBody <- case maybeRemainder of
       Just remainder -> return remainder
       Nothing -> do
         (ident, _p) <- getDeclProvenance
@@ -144,14 +146,14 @@ compileConstraints finalCtx dims binder var (maybeConstraints, maybeRemainder) =
         getLogicField TruthityElement
 
     logDebugM MidDetail $ do
-      remainderDoc <- prettyFriendlyInCtx remaindingBody
+      remainderDoc <- prettyFriendlyInCtx remainingBody
       return $
         "remaining-expression:"
           <> lineIndent remainderDoc
 
     -- Reform the closure around the body. Note that this needs to be done
     -- in the final context (i.e. without any reference to slice variables!)
-    let lossBody = quote mempty (1 + boundCtxLv finalCtx) remaindingBody
+    let lossBody = quote mempty (1 + boundCtxLv finalCtx) remainingBody
     let finalEnv = boundContextToEnv finalCtx
     let remainder = Closure finalEnv lossBody
 
@@ -238,15 +240,17 @@ findTensorBounds parentVar parentVarShape constraints =
     go allBounds var = do
       result <- forM allBounds $ \(bounds, maybeTree) ->
         case maybeTree of
-          Nothing -> return $ DisjunctAll [(bounds, maybeTree)]
+          Nothing ->
+            return $ DisjunctAll [(bounds, maybeTree)]
           Just tree -> do
             let tensorVar = TensorVariable $ toSliceVar parentVar
             let indices = findSliceIndices parentVar var
             let varInfo = VariableInfo tensorVar parentVarShape indices
             disjunctedBoundsAndRemainders <- findAllBounds (findVarBound var varInfo) tree
+            let finalBoundsAndRemainders = fmap (first (andBounds bounds)) disjunctedBoundsAndRemainders
             case childVariablesOf var of
-              Nothing -> return disjunctedBoundsAndRemainders
-              Just childVariables -> foldM go disjunctedBoundsAndRemainders childVariables
+              Nothing -> return finalBoundsAndRemainders
+              Just childVariables -> foldM go finalBoundsAndRemainders childVariables
       return $ disjunctDisjuncts result
 
 noQuantifierDomainError ::
@@ -282,10 +286,10 @@ type MonadDomain m =
   )
 
 orLossValue :: (MonadDomain m) => Value LossBuiltin -> Value LossBuiltin -> m (Value LossBuiltin)
-orLossValue e1 e2 = convertOr $ TensorOp2Args IDimNil e1 e2
+orLossValue e1 e2 = convertOr (TensorOp2Args IDimNil e1 e2)
 
 andLossValue :: (MonadDomain m) => Value LossBuiltin -> Value LossBuiltin -> m (Value LossBuiltin)
-andLossValue e1 e2 = convertAnd $ TensorOp2Args IDimNil e1 e2
+andLossValue e1 e2 = convertAnd (TensorOp2Args IDimNil e1 e2)
 
 notConstraint :: (MonadDomain m) => UserVariableConstraint -> m (BooleanExpr UserVariableConstraint)
 notConstraint (NormalisedRelation rel expr) = do
@@ -298,6 +302,8 @@ notConstraint (NormalisedRelation rel expr) = do
       let greater = NormalisedRelation OLe negExpr
       Disjunct $ DisjunctAll [Query less, Query greater]
 
+-- | Note that the constraints live in the extended tensor context, where as the remaining value lives
+-- in the original unextended context.
 type Partition = (Maybe UserVariableConstraintTree, Maybe (Value LossBuiltin))
 
 notPartition :: (MonadDomain m) => VDims LossBuiltin -> Partition -> m Partition
@@ -312,13 +318,16 @@ andPartition (c1, v1) (c2, v2) = do
   v <- unionMaybeWithM andLossValue v1 v2
   return (c, v)
 
+-- | Note that the constraints live in the extended tensor context, where as the remaining value lives
+-- in the original unextended context.
 newtype Partitions = Partitions (Map (Maybe UserVariableConstraintTree) (Maybe (Value LossBuiltin)))
 
 singletonConstrainedPartition :: UserVariableConstraint -> Partitions
 singletonConstrainedPartition constraint = Partitions $ Map.singleton (Just (Query constraint)) Nothing
 
-singletonUnconstrainedPartition :: Value LossBuiltin -> Partitions
-singletonUnconstrainedPartition unconstrained = Partitions $ Map.singleton Nothing (Just unconstrained)
+singletonUnconstrainedPartition :: (MonadDomain m) => Value LossBuiltin -> m Partitions
+singletonUnconstrainedPartition unconstrained = do
+  return $ Partitions $ Map.singleton Nothing (Just unconstrained)
 
 singletonPartition :: Partition -> Partitions
 singletonPartition (tree, value) = Partitions $ Map.singleton tree value
@@ -459,7 +468,7 @@ compileNonBoundComparison ::
   m (MaybeTrivial Partitions)
 compileNonBoundComparison args = do
   value <- convertRatTensorPointwiseComparison args
-  return $ NonTrivial $ singletonUnconstrainedPartition value
+  NonTrivial <$> singletonUnconstrainedPartition value
 
 -- | Unblocking a boolean value is a little complicated.
 -- If an expression cannot be immediately compiled to constriants, we have two
@@ -482,7 +491,7 @@ unblockBoolValue value = do
         then return maybePartitions
         else do
           lossValue <- convertBoolTensor value
-          return $ NonTrivial $ singletonUnconstrainedPartition lossValue
+          NonTrivial <$> singletonUnconstrainedPartition lossValue
 
 --------------------------------------------------------------------------------
 -- Comparison purification
@@ -531,7 +540,7 @@ purifyNetworkApp ident _spine = throwError $ ContainsNetwork ident
 
 purifyBoundVar :: (MonadPurifyAssertion m) => Lv -> m (Value Builtin)
 purifyBoundVar lv = do
-  maybeUserVars <- lookupSliceVariable lv
+  (_, maybeUserVars) <- lookupVariableInNestedCtx lv
   case maybeUserVars of
     Nothing -> return $ VBoundVar lv []
     Just (tensorVar, sliceVar) -> do
@@ -610,7 +619,7 @@ compileRatTensorVar ::
   Lv ->
   m (Maybe (LinearExpr SliceVariable TensorValue))
 compileRatTensorVar dims lv = do
-  maybeSliceVar <- lookupSliceVariable lv
+  (_, maybeSliceVar) <- lookupVariableInNestedCtx lv
   forM maybeSliceVar $ \(_tensorVar, sliceVar) -> do
     zeroTensor <- evalConstTensor $ ConstTensorArgs IRatType (IRatLiteral 0) dims
     return $ singletonVarExpr (TensorValue dims zeroTensor) sliceVar
@@ -630,5 +639,7 @@ logEntryAndExit start action = do
   incrCallDepth
   result <- action
   decrCallDepth
-  logDebug MaxDetail "search-exit"
+  logDebugM MaxDetail $ do
+    -- tensorCtx <- toNamedBoundCtx . originalCtx <$> getNestedVariableCtx
+    return "search-exit" -- :" <+> prettyFriendlyInCt
   return result
