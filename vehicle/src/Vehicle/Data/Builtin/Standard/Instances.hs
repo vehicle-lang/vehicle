@@ -317,8 +317,6 @@ allInstances =
       <> comparisonCandidates Gt
       <> comparisonCandidates Eq
       <> comparisonCandidates Ne
-      <> quantifierCandidates Forall
-      <> quantifierCandidates Exists
   where
     comparisonCandidates :: ComparisonOp -> [(DSLExpr Builtin, DSLExpr Builtin, Maybe InstancePriority)]
     comparisonCandidates op =
@@ -347,24 +345,6 @@ allInstances =
           lamDim $ \d ->
             lamDims $ \dims ->
               builtinDerivedFunction (CompareRatTensorReduced op) .@@@ [d, dims],
-          Nothing
-        )
-      ]
-
-    quantifierCandidates ::
-      Quantifier ->
-      [(DSLExpr Builtin, DSLExpr Builtin, Maybe InstancePriority)]
-    quantifierCandidates q =
-      [ ( forAllNat $ \n ->
-            hasQuantifier q (tIndex n),
-          lamDim $ \n ->
-            builtinDerivedFunction (QuantifyIndex q) @@@ [n],
-          Nothing
-        ),
-        ( forAllDims $ \ds ->
-            hasQuantifier q (tRatTensor ds),
-          lamDims $ \ds ->
-            builtinFunction (QuantifyRatTensor q) @@@ [ds],
           Nothing
         )
       ]
