@@ -9,12 +9,17 @@ import Data.Text qualified as Text
 import Vehicle.Compile.Prelude.Utils (getNamedBinderInfo)
 import Vehicle.Data.Tensor
 import Vehicle.Data.Variable.Bound.Context.Core (GenericBoundCtx, boundCtxLv)
+import Vehicle.Data.Variable.Bound.Context.Generic (BoundCtx)
 import Vehicle.Data.Variable.Bound.Context.Name.Core
 import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
 -- Tensor variables
+
+-- | The level of a variable in the original context (i.e. without all the
+-- tensor variables have being expanded out).
+type OriginalLv = Lv
 
 data NestedTensorVariableCtx = NestedTensorVariableCtx
   { nestedVariableCtx :: GenericBoundCtx (GenericBinder (), Maybe NestedSliceVariable),
@@ -24,22 +29,28 @@ data NestedTensorVariableCtx = NestedTensorVariableCtx
 instance Pretty NestedTensorVariableCtx where
   pretty (NestedTensorVariableCtx _ n) = pretty n <+> pretty (length n)
 
+originalCtx :: NestedTensorVariableCtx -> BoundCtx ()
+originalCtx = fmap fst . nestedVariableCtx
+
 emptyNestedCtx :: NestedTensorVariableCtx
 emptyNestedCtx = NestedTensorVariableCtx mempty mempty
 
-findCorrespondingTensorSliceVariables ::
+findCorrespondingVariableInOriginalCtx ::
+  (VariableLike var) =>
   NestedTensorVariableCtx ->
-  Set SliceVariable ->
-  [NestedSliceVariable]
-findCorrespondingTensorSliceVariables (NestedTensorVariableCtx wholeCtx _) vars = do
+  Set var ->
+  [(OriginalLv, Maybe NestedSliceVariable)]
+findCorrespondingVariableInOriginalCtx (NestedTensorVariableCtx wholeCtx _) vars = do
   let sortedVarList = sortBy (comparing Down) (Set.toList vars)
-  go wholeCtx sortedVarList
+  go 0 wholeCtx sortedVarList
   where
-    go :: GenericBoundCtx (GenericBinder (), Maybe NestedSliceVariable) -> [SliceVariable] -> [NestedSliceVariable]
-    go [] _ = []
-    go _ [] = []
-    go ((_binder, maybeTensorVar) : ctx) (v : vs) = case maybeTensorVar of
-      Nothing -> go ctx (v : vs)
+    go :: (VariableLike var) => OriginalLv -> GenericBoundCtx (GenericBinder (), Maybe NestedSliceVariable) -> [var] -> [(Lv, Maybe NestedSliceVariable)]
+    go _ [] _ = []
+    go _ _ [] = []
+    go lv ((_binder, maybeTensorVar) : ctx) (v : vs) = case maybeTensorVar of
+      Nothing
+        | lv == toLv v -> (lv, Nothing) : go (lv + 1) ctx (v : vs)
+        | otherwise -> go (lv + 1) ctx (v : vs)
       Just tensorVar -> do
         let startPoint = toLv tensorVar
         let endPoint = startPoint + Lv (numberOfSliceVariablesIn $ shapeOf tensorVar)
@@ -47,10 +58,10 @@ findCorrespondingTensorSliceVariables (NestedTensorVariableCtx wholeCtx _) vars 
           then developerError "Incorrectly sorted slice variables"
           else
             if toLv v < startPoint
-              then go ctx (v : vs)
+              then go (lv + 1) ctx (v : vs)
               else do
                 let newVars = dropWhile (\u -> toLv u >= startPoint) vs
-                tensorVar : go ctx newVars
+                (lv, Just tensorVar) : go (lv + 1) ctx newVars
 
 appendNonTensorVariableToNestedCtx :: GenericBinder () -> NestedTensorVariableCtx -> NestedTensorVariableCtx
 appendNonTensorVariableToNestedCtx binder (NestedTensorVariableCtx ctx nameCtx) = do

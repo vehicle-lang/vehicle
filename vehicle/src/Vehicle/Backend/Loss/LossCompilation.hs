@@ -32,6 +32,7 @@ import Vehicle.Backend.Loss.Core hiding (currentPass)
 import Vehicle.Compile.Normalise.NBE (normaliseAppInEmptyFreeEnv, normaliseClosure)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Loss
@@ -43,7 +44,7 @@ import Vehicle.Data.DifferentiableLogic
 import Vehicle.Data.Tensor (Tensor, foldMapTensor, shapeOf)
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Bound.Context.Tensor
-import Vehicle.Data.Variable.Bound.Level (SliceVariableLike (..), TensorVariable (..), VariableLike (..), findSliceIndices)
+import Vehicle.Data.Variable.Bound.Level (findSliceIndices)
 
 --------------------------------------------------------------------------------
 -- Types
@@ -143,16 +144,13 @@ convertBoundVar ::
 convertBoundVar lv = \case
   _ : _ -> unexpectedExprError currentPass "bound function variables"
   [] -> do
-    maybeVars <- lookupSliceVariable lv
+    (originalLv, maybeVars) <- lookupVariableInNestedCtx lv
+    let var = VBoundVar originalLv []
     case maybeVars of
-      Nothing -> return $ VBoundVar lv []
-      Just (parentVar, sliceVar)
-        | toLv parentVar == toLv sliceVar -> return $ VBoundVar lv []
-        | otherwise -> do
-            let indices = findSliceIndices parentVar sliceVar
-            parentLv <- lookupTensorVariableShrunkenLv (TensorVariable $ toSliceVar parentVar)
-            let parentVarValue = VBoundVar parentLv []
-            return $ mkIndexInto IRatType parentVarValue (shapeOf parentVar) indices
+      Nothing -> return var
+      Just (parentVar, sliceVar) -> do
+        let indices = findSliceIndices parentVar sliceVar
+        return $ mkIndexInto IRatType var (shapeOf parentVar) indices
 
 convertFreeVar ::
   (MonadLogic m) =>
@@ -229,7 +227,8 @@ convertRatTensorPointwiseComparison (op, args) = do
   convertLogicField (comparisonOpToField op) args'
 
 convertRatTensorReducedComparison :: (MonadLogic m) => (ComparisonOp, TensorReduceComparisonArgs (Value Builtin)) -> m (Value LossBuiltin)
-convertRatTensorReducedComparison _args = unsupportedOperation "RatTensorCompareReduced"
+convertRatTensorReducedComparison (op, args) =
+  unsupportedOperation $ "RatTensorCompareReduced" <+> pretty op <+> prettyVerbose (mkExpr accessSpine args)
 
 convertIf ::
   (MonadLogic m) =>
