@@ -28,15 +28,18 @@ module Vehicle.Data.AST.Expr.Scoped
     Substitution,
     substituteDB,
     getBuiltinApp,
+    boundVariablesIn,
     calculateRarameterisedRecordFieldType,
   )
 where
 
 import Control.DeepSeq (NFData)
+import Control.Monad (when)
 import Control.Monad.Identity (Identity (..))
 import Control.Monad.Reader (MonadReader (..), runReader)
 import Control.Monad.Writer (MonadWriter (..), execWriter)
 import Data.Bifunctor (Bifunctor (..))
+import Data.Foldable (traverse_)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Serialize (Serialize)
@@ -48,7 +51,7 @@ import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Code.Interface (HasBuiltinConstructor (..))
 import Vehicle.Data.Universe (UniverseLevel (..))
 import Vehicle.Data.Variable.Bound.Index (Ix (..))
-import Vehicle.Data.Variable.Bound.Level (Lv, unLv)
+import Vehicle.Data.Variable.Bound.Level (Lv, dbIndexToLevel, unLv)
 import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
@@ -317,6 +320,34 @@ freeVarsIn =
           tell $ Set.singleton i
           return $ normAppList (FreeVar p i) args'
       )
+
+boundVariablesIn :: Lv -> Expr builtin -> Set Lv
+boundVariablesIn ctxSize value = execWriter (go ctxSize value)
+  where
+    go :: (MonadWriter (Set Lv) m) => Lv -> Expr builtin -> m ()
+    go depth = \case
+      FreeVar {} -> return ()
+      Meta {} -> return ()
+      Hole {} -> return ()
+      Builtin {} -> return ()
+      Universe {} -> return ()
+      App fun args -> do go depth fun; traverse_ (traverse (go depth)) args
+      BoundVar _ ix -> do
+        let lv = dbIndexToLevel depth ix
+        when (lv >= ctxSize) $
+          tell (Set.singleton lv)
+      Pi _ binder body -> do
+        traverse_ (go depth) binder
+        go (depth + 1) body
+      Lam _ binder body -> do
+        traverse_ (go depth) binder
+        go (depth + 1) body
+      Let _ bound binder body -> do
+        go depth bound
+        traverse_ (go depth) binder
+        go (depth + 1) body
+      Record _ i fs -> do go depth i; traverseRecordFields_ (go depth) fs
+      RecordProj _ t r _field -> do go depth t; go depth r
 
 -----------------------------------------------------------------------------
 -- Instances
