@@ -144,7 +144,10 @@ handleUsedDecl applications decl = do
       let numberOfApplications = length monomorphisations
       let allFreeVarsInArgs = Set.unions (freeVarsIn . argExpr <$> concat monomorphisations)
       let createNewName = numberOfApplications > 1 || ident `Set.member` allFreeVarsInArgs
-      traverse (performMonomorphisation (p, ident, anns, typ, body) createNewName) monomorphisations
+      monomorphisationResults <- traverse (performMonomorphisation (p, ident, anns, typ, body) createNewName) monomorphisations
+      let (newDecls, substitutions) = unzip monomorphisationResults
+      tell (Map.singleton ident (typ, HashMap.fromList substitutions))
+      return newDecls
     _ -> do
       logDebug MaxDetail "Not monomorphising as an abstract declaration"
       return [decl]
@@ -195,17 +198,16 @@ performMonomorphisation ::
   (Provenance, Identifier, DefFunctionSort, Type builtin, Expr builtin) ->
   Bool ->
   [Arg builtin] ->
-  m (Decl builtin)
+  m (Decl builtin, ([Arg builtin], Identifier))
 performMonomorphisation (p, ident, sort, typ, body) createNewName args = do
   newIdent <-
     if createNewName
       then changeName ident <$> getMonomorphisedName (nameOf ident) args
       else return ident
   (newType, newBody) <- substituteArgsThrough (typ, body, args)
-  tell (Map.singleton ident (typ, HashMap.singleton args newIdent))
   let newDecl = DefFunction p newIdent sort newType newBody
   logDebug MaxDetail $ "Result:" <> lineIndent (prettyFriendly newDecl)
-  return newDecl
+  return (newDecl, (args, newIdent))
 
 substituteArgsThrough ::
   (MonadCollect builtin m) =>
@@ -259,7 +261,7 @@ collectReferences decl =
                 <> line
                 <> "arguments:" <+> prettyVerbose args
             )
-      modify (Map.insert ident [args])
+      modify (Map.insertWith (<>) ident (NonEmpty.singleton args))
 
 --------------------------------------------------------------------------------
 -- Forward pass - insert the monorphised identifiers
