@@ -11,7 +11,6 @@ module Vehicle.Data.Code.Value
     VProg,
     VDims,
     Spine,
-    traverseSpine,
     getNMeta,
     BoundEnv (..),
     EnvEntry (..),
@@ -30,20 +29,16 @@ module Vehicle.Data.Code.Value
     GluedExpr (..),
     GluedType,
     envEntryToValue,
-    boundVariablesIn,
     DimensionedTensorValue (..),
   )
 where
 
 import Control.Monad (void)
-import Control.Monad.Writer (MonadWriter (..), execWriter)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Foldable (traverse_)
 import Data.Map (Map)
 import Data.Map.Ordered (OMap)
 import Data.Maybe (fromMaybe)
-import Data.Set (Set)
-import Data.Set qualified as Set
 import GHC.Generics
 import Vehicle.Data.AST.Expr.Scoped (Expr)
 import Vehicle.Data.Builtin.Interface
@@ -100,46 +95,6 @@ type VDims builtin = Value builtin
 
 -- | A list of arguments for an application that cannot be normalised.
 type Spine builtin = [VArg builtin]
-
-traverseSpine :: (Monad m) => (Value builtin1 -> m (Value builtin2)) -> Spine builtin1 -> m (Spine builtin2)
-traverseSpine f = traverse (traverse f)
-
-traverseSpine_ :: (Monad m) => (Value builtin1 -> m ()) -> Spine builtin1 -> m ()
-traverseSpine_ f = traverse_ (traverse_ f)
-
-boundVariablesIn :: Value builtin -> Set Lv
-boundVariablesIn value = execWriter (go value)
-  where
-    go :: (MonadWriter (Set Lv) m) => Value builtin -> m ()
-    go = \case
-      VUniverse {} -> return ()
-      VMeta _ spine -> traverseSpine_ go spine
-      VFreeVar _ spine -> traverseSpine_ go spine
-      VBuiltin _ spine -> traverseSpine_ go spine
-      VBoundVar v spine -> do
-        tell (Set.singleton v)
-        traverseSpine_ go spine
-      VPi binder closure -> do
-        traverse_ go binder
-        goClosure closure
-      VLam binder closure -> do
-        traverse_ go binder
-        goClosure closure
-      VRecord _ident fields ->
-        traverse_ go fields
-      VRecordAcc recordType record _ spine -> do
-        go recordType
-        go record
-        traverseSpine_ go spine
-
-    goClosure :: (MonadWriter (Set Lv) m) => Closure builtin -> m ()
-    goClosure (Closure (BoundEnv env) _) =
-      traverse_ (\(_, entry) -> goEnvEntry entry) env
-
-    goEnvEntry :: (MonadWriter (Set Lv) m) => EnvEntry builtin -> m ()
-    goEnvEntry = \case
-      Bound v -> go v
-      Unbound lv -> tell (Set.singleton lv)
 
 ----------------------------------------------------------------------------
 -- Bound environments
