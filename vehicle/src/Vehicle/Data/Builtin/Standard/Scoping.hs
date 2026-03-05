@@ -67,9 +67,10 @@ createTensorRecordConversionFunctions p ident telescope fields = do
   let tensorToRecordDecl = createTensorToRecord p ident fieldElementType fieldDimensions nonEmptyFields
   let tensorLikeInstance = createTensorLikeInstance p ident fieldElementType fieldDimensions nonEmptyFields
   let validNetworkInstance = createValidNetworkIOInstance p ident
+  let validQuantifierInstance = createTensorLikeHasQuantifierInstance p ident
 
   return
-    [recordToTensorDecl, tensorToRecordDecl, tensorLikeInstance, validNetworkInstance]
+    [recordToTensorDecl, tensorToRecordDecl, tensorLikeInstance, validNetworkInstance, validQuantifierInstance]
 
 createRecordToTensor ::
   Provenance ->
@@ -164,5 +165,28 @@ createValidNetworkIOInstance p recordIdent = do
 
   let functionName = Text.pack "_" <> nameOf recordIdent <> "HasValidNetworkIOType"
   let functionIdent = Identifier (modulePath recordIdent) functionName
+
+  DefFunction p functionIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) recordType functionBody
+
+createTensorLikeHasQuantifierInstance ::
+  Provenance ->
+  Identifier ->
+  Decl Builtin
+createTensorLikeHasQuantifierInstance p recordIdent = do
+  let recordType = fromDSL mempty $ freeVar hasQuantifierIdent @@ [freeVar recordIdent]
+
+  let functionName = Text.pack "_" <> nameOf recordIdent <> "HasQuantifier"
+  let functionIdent = Identifier (modulePath recordIdent) functionName
+
+  let forAllTCFieldName = FieldName p "forallTC"
+  let existsTCFieldName = FieldName p "existsTC"
+
+  let functionBody =
+        Record
+          p
+          recordType
+          [ (forAllTCFieldName, fromDSL mempty (builtinFunction (QuantifyTensorLike Forall))),
+            (existsTCFieldName, fromDSL mempty (builtinFunction (QuantifyTensorLike Exists)))
+          ]
 
   DefFunction p functionIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) recordType functionBody

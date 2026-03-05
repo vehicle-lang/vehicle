@@ -1,5 +1,13 @@
 # Changelog for Vehicle
 
+## v0.25
+
+### Loss backend
+
+* Fixed a bug where the compiler would loop infinitely on certain specifications.
+
+* Fixed a bug where the compiler where if a propery involved multiple quantifiers, the compiler woudl sometimes report that one of them was unbounded.
+
 ## v0.24
 
 ### Loss backend

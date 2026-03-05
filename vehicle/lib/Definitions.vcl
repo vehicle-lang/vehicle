@@ -182,13 +182,6 @@ tensorHasQuantifier =
   , existsTC = quantifyExistsRealTensor
   }
 
-@instance
-tensorLikeHasQuantifier : {{ TensorLike r Real dims }} -> HasQuantifier (TensorLike r Real dims)
-tensorLikeHasQuantifier =
-  { forallTC = quantifyForallTensorLike
-  , existsTC = quantifyExistsTensorLike
-  }
-
 -- Network IO
 @typeclass
 record HasValidNetworkIOType (t : Type) where {}

@@ -505,17 +505,15 @@ instance
   where
   prettyUsing (BoundEnv env, ctx) = prettyFlatList $ go env
     where
-      go :: GenericBoundCtx (GenericBinder (), EnvEntry builtin) -> [Doc a]
+      go :: GenericBoundCtx (GenericBinder (), Value builtin) -> [Doc a]
       go = \case
         [] -> []
         (binder, value) : rs -> do
           let valueDoc = goEntry value
           (pretty (nameOf binder) <+> "=" <+> valueDoc) : go rs
 
-      goEntry :: EnvEntry builtin -> Doc a
-      goEntry = \case
-        Bound v -> "bound" <+> prettyUsing @rest (v, ctx)
-        Unbound lv -> "unbound" <+> pretty lv
+      goEntry :: Value builtin -> Doc a
+      goEntry v = prettyUsing @rest (v, ctx)
 
 instance
   ( PrettyUsing rest (Value builtin `In` ctx),

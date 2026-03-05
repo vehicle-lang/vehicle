@@ -37,7 +37,7 @@ import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Data.Builtin.Interface (Accessor (..), BuiltinHasIndexLiterals, BuiltinHasListLiterals, BuiltinHasNatLiterals, BuiltinHasNatType, BuiltinHasTensors)
 import Vehicle.Data.Builtin.Interface.Normalise (EvalSimple, HasTensorLiterals, MonadNormBuiltin, evalAddRatTensor, evalCompareRatTensorPointwise, evalConstTensor, evalMulRatTensor, unoptimisedEvalAtTensor)
 import Vehicle.Data.Builtin.Standard.Core
-import Vehicle.Data.Builtin.Standard.Normalise ()
+import Vehicle.Data.Builtin.Standard.Normalise (foldReduceAndComparison)
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.Code.Value
@@ -203,7 +203,10 @@ toBoolValue expr = case expr of
   (getExpr accessCompareNat -> Just args) -> VCompareNat args
   (getExpr accessCompareIndex -> Just args) -> VCompareIndex args
   (getExpr accessQuantifyRatTensor -> Just args) -> VQuantifyRatTensor args
-  (getExpr accessReduceAnd -> Just args) -> VReduceAndTensor args
+  (getExpr accessReduceAnd -> Just args) ->
+    case foldReduceAndComparison args of
+      Nothing -> VReduceAndTensor args
+      Just e -> toBoolValue e
   (getExpr accessReduceOr -> Just args) -> VReduceOrTensor args
   (getExpr accessAtTensor -> Just args) -> VBoolAt args
   (getExpr accessIf -> Just args) -> VBoolIf args
@@ -284,7 +287,10 @@ toBoolTensorValue expr = case expr of
   (getExpr accessCompareNat -> Just args) -> VBoolTensorCompareNat args
   (getExpr accessCompareIndex -> Just args) -> VBoolTensorCompareIndex args
   (getExpr accessQuantifyRatTensor -> Just args) -> VBoolTensorQuantifyRat args
-  (getExpr accessReduceAnd -> Just args) -> VBoolTensorReduceAnd args
+  (getExpr accessReduceAnd -> Just args) ->
+    case foldReduceAndComparison args of
+      Nothing -> VBoolTensorReduceAnd args
+      Just e -> toBoolTensorValue e
   (getExpr accessReduceOr -> Just args) -> VBoolTensorReduceOr args
   (getExpr accessAtTensor -> Just args) -> VBoolTensorAt args
   (getExpr accessForeachTensor -> Just args) -> VBoolTensorForeach args

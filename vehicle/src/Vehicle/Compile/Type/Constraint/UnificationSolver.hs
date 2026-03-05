@@ -388,7 +388,7 @@ pruneMetaDependencies ctx (solvingMetaID, solvingMetaSpine) attemptedSolution = 
       VFreeVar v spine -> VFreeVar v <$> traverse (traverse go) spine
       VRecord ident fields -> VRecord ident <$> traverse go fields
       VRecordAcc recordType record field spine ->
-        VRecordAcc <$> go recordType <*> go record <*> pure field <*> traverseSpine go spine
+        VRecordAcc <$> go recordType <*> go record <*> pure field <*> traverse (traverse go) spine
       -- Definitely going to have come back and fix this one later.
       -- Can't inspect the metas in the environment, as not every variable
       -- in the environment will be used?
