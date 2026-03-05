@@ -280,7 +280,9 @@ replacePreviousApplications ::
   m (Prog builtin)
 replacePreviousApplications prog =
   logCompilerSection2 MaxDetail "applying monomorphisation sites" $ do
-    traverse (traverseFreeVarsM (const id) replaceCandidateApplication) prog
+    -- TODO do this in a single traversal
+    prog' <- traverse (traverseFreeVarsM (const id) replaceCandidateApplication) prog
+    traverse (traverseBuiltinsM replaceDerivedApplication) prog'
   where
     replaceCandidateApplication ::
       (MonadInsert builtin m) =>
@@ -303,6 +305,28 @@ replacePreviousApplications prog =
               Just newIdent -> do
                 remainingArgs' <- traverse (traverse recGo) remainingArgs
                 return $ normAppList (FreeVar p newIdent) remainingArgs'
+
+    replaceDerivedApplication ::
+      (MonadInsert builtin m) =>
+      BuiltinUpdate m builtin builtin
+    replaceDerivedApplication p b args = do
+      case isDerivedBuiltin b of
+        Nothing -> return $ normAppList (Builtin p b) args
+        Just ident -> do
+          maybeSolution <- asks (Map.lookup ident)
+          case maybeSolution of
+            Nothing -> return $ normAppList (Builtin p b) args
+            Just (typ, applications) -> do
+              logCompilerSection2 MaxDetail "replacing monomorphised derived application" $ do
+                logDebug MaxDetail $ "function: " <+> pretty ident
+                logDebug MaxDetail $ "arguments:" <+> prettyVerbose args
+                let (argsToMono, remainingArgs) = obtainArgsToMonomorphise typ args
+                logDebug MaxDetail $ "arguments-to-mono:" <+> prettyVerbose argsToMono
+                logDebug MaxDetail $ "remaining-mono:" <+> prettyVerbose remainingArgs
+                case HashMap.lookup argsToMono applications of
+                  Nothing -> developerError $ "Missing derived application of" <+> pretty ident
+                  Just newIdent -> do
+                    return $ normAppList (FreeVar p newIdent) remainingArgs
 
 getMonomorphisedName ::
   (MonadCollect builtin m) =>
