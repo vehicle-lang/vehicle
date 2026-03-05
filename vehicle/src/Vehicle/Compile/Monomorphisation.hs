@@ -261,7 +261,7 @@ collectReferences decl =
                 <> line
                 <> "arguments:" <+> prettyVerbose args
             )
-      modify (Map.insertWith (<>) ident (NonEmpty.singleton args))
+      modify (Map.insertWith (<>) ident (args NonEmpty.:| []))
 
 --------------------------------------------------------------------------------
 -- Forward pass - insert the monorphised identifiers
