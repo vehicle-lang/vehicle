@@ -320,4 +320,6 @@ separator ImportStatement ";";
 
 layout toplevel;
 
+layout stop "}";
+
 DefModule. Module ::= [ImportStatement] [Decl]
