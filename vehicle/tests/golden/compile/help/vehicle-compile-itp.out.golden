@@ -2,7 +2,7 @@ Usage: vehicle compile itp (-t|--target TARGET) (-s|--specification FILE)
                            [-e|--declaration NAME] [-n|--network NAME:FILE] 
                            [-d|--dataset NAME:FILE] [-p|--parameter NAME:VALUE] 
                            [-o|--output FILE] [-m|--module-name MODULENAME] 
-                           [-c|--cache FILE]
+                           [-c|--cache FILE] [-r|--constructive-reals]
 
   Compile a specification to interactive theorem prover code.
 
@@ -11,6 +11,7 @@ Available options:
                              * Agda
                              * Rocq
                              * Isabelle
+                             * Imandra
   -s,--specification FILE  The .vcl file containing the specification.
   -e,--declaration NAME    Declarations in the specification to include during
                            compilation. Can be provided multiple times. If not
@@ -43,4 +44,5 @@ Available options:
                            used to check the verification status of the
                            specification. Should be passed when compiling to an
                            ITP.
+  -r,--constructive-reals  Use constructive reals instead of mathcomp reals for Rocq.
   -h,--help                Show this help text

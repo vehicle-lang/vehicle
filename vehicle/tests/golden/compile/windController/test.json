@@ -92,6 +92,12 @@
     }
   },
   {
+    "name": "Imandra",
+    "run": "vehicle compile itp -s spec.vcl -t Imandra -o Imandra.iml",
+    "needs": ["spec.vcl"],
+    "produces": ["Imandra.iml"]
+  },
+  {
     "name": "DL2Loss",
     "run": "vehicle compile loss -s spec.vcl -l DL2Loss -o DL2Loss.vcl",
     "needs": ["spec.vcl"],

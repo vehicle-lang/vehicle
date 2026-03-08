@@ -1,6 +1,6 @@
 cabal-version:      3.4
 name:               vehicle
-version:            0.23.0
+version:            0.24.0
 description:
   Please see the README on GitHub at <https://github.com/vehicle-lang/vehicle#readme>
 
@@ -126,6 +126,7 @@ library
   exposed-modules:
     Vehicle
     Vehicle.Backend.ITP.Agda
+    Vehicle.Backend.ITP.Imandra
     Vehicle.Backend.ITP.Isabelle
     Vehicle.Backend.ITP.Rocq
     Vehicle.Backend.Loss.JSON

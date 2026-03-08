@@ -9,6 +9,7 @@ where
 
 import Control.Monad.Writer (MonadWriter (..), WriterT (..))
 import Vehicle.Backend.ITP.Agda
+import Vehicle.Backend.ITP.Imandra
 import Vehicle.Backend.ITP.Isabelle
 import Vehicle.Backend.ITP.Rocq
 import Vehicle.Backend.Loss (convertToLossTensors)
@@ -16,6 +17,7 @@ import Vehicle.Backend.Loss.JSON
 import Vehicle.Backend.Prelude
 import Vehicle.Backend.Solver
 import Vehicle.Compile.Error
+import Vehicle.Compile.ExpandResources (expandResources)
 import Vehicle.Compile.FunctionaliseResources (functionaliseResources)
 import Vehicle.Compile.Prelude as CompilePrelude
 import Vehicle.Compile.Print (prettyFriendly)
@@ -65,7 +67,8 @@ data ITPOptions = ITPOptions
     parameterValues :: ParameterValues,
     outputFile :: Maybe FilePath,
     moduleName :: Maybe String,
-    verificationCache :: Maybe FilePath
+    verificationCache :: Maybe FilePath,
+    constructiveReals :: Bool
   }
   deriving (Show, Eq)
 
@@ -117,8 +120,10 @@ compileToITP ::
   Prog Builtin ->
   m ()
 compileToITP ITPOptions {..} typedProg = do
+  let resources = Resources specification networkLocations datasetLocations parameterValues
+  (expandedProg, _, _, _, _) <- expandResources resources typedProg
   -- Analyse the program to find out which `Bool`s are decidable and which aren't.
-  decProg <- decidabilityTypeCheck typedProg
+  decProg <- decidabilityTypeCheck expandedProg
 
   -- Compile depending on the ITP
   logCompilerPass ITP $
@@ -128,13 +133,17 @@ compileToITP ITPOptions {..} typedProg = do
         agdaCode <- compileProgToAgda decProg agdaOptions
         writeAgdaFile outputFile agdaCode
       Rocq -> do
-        let rocqOptions = RocqOptions outputFile moduleName
+        let rocqOptions = RocqOptions outputFile moduleName constructiveReals
         rocqCode <- compileProgToRocq decProg rocqOptions
         writeRocqFile outputFile rocqCode
       Isabelle -> do
         let isabelleOptions = IsabelleOptions outputFile moduleName
         isabelleCode <- compileProgToIsabelle decProg isabelleOptions
         writeIsabelleFile outputFile isabelleCode
+      Imandra -> do
+        let imandraOptions = ImandraOptions outputFile moduleName
+        imandraCode <- compileProgToImandra decProg imandraOptions
+        writeImandraFile outputFile imandraCode
 
 compileToLossFunction ::
   forall m.

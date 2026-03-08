@@ -1,0 +1,198 @@
+(* ========================================================================== *)
+(* Scalar_Mult.iml - Translation of Isabelle Tensor_Scalar_Mult to ImandraX   *)
+(*                                                                            *)
+(* Original Isabelle theory: Tensor_Scalar_Mult.thy                           *)
+(* This translation provides tensor scalar multiplication operations.         *)
+(*                                                                            *)
+(* Author: Grant Passmore (grant@imandra.ai)                                  *)
+(* ========================================================================== *)
+
+[@@@import "tensor.iml"]
+[@@@import "subtensor.iml"]
+[@@@import "add.iml"]
+
+(* -------------------------------------------------------------------------- *)
+(* Vector Scalar Multiplication                                               *)
+(* -------------------------------------------------------------------------- *)
+
+(* Scalar multiplication on vectors.
+   Corresponds to Isabelle's:
+     definition vec_smult::"'a::ring ⇒ 'a list ⇒ 'a list" where
+       "vec_smult α β = map (( * ) α) β"
+*)
+
+let rec vec_smult (alpha : int) (xs : int list) : int list =
+  match xs with
+  | [] -> []
+  | x :: xs' -> (alpha * x) :: vec_smult alpha xs'
+
+(* -------------------------------------------------------------------------- *)
+(* Tensor Scalar Multiplication                                               *)
+(* -------------------------------------------------------------------------- *)
+
+(* Scalar multiplication on tensors.
+   Corresponds to Isabelle's:
+     definition smult::"'a::ring ⇒ 'a tensor ⇒ 'a tensor" (infixl ‹⋅› 70) where
+       "smult α A = (tensor_from_vec (dims A) (vec_smult α (vec A)))"
+*)
+
+let smult (alpha : int) (a : int Tensor.tensor) : int Tensor.tensor =
+  Tensor.tensor_from_vec a.dims (vec_smult alpha a.vec)
+
+(* -------------------------------------------------------------------------- *)
+(* Examples                                                                   *)
+(* -------------------------------------------------------------------------- *)
+
+let t1 : int Tensor.tensor = Tensor.tensor_from_vec [2; 3] [1; 2; 3; 4; 5; 6]
+
+eval t1
+
+let t1_scaled = smult 10 t1
+
+eval t1_scaled  (* Should be { dims = [2; 3]; vec = [10; 20; 30; 40; 50; 60] } *)
+
+let t1_zero = smult 0 t1
+
+eval t1_zero  (* Should be { dims = [2; 3]; vec = [0; 0; 0; 0; 0; 0] } *)
+
+(* ========================================================================== *)
+(* THEOREMS                                                                   *)
+(* ========================================================================== *)
+
+(* --- Properties of vec_smult --- *)
+
+lemma vec_smult_length alpha xs =
+  List.length (vec_smult alpha xs) = List.length xs
+[@@by auto]
+
+lemma vec_smult_nil alpha =
+  vec_smult alpha [] = []
+[@@by auto]
+
+lemma vec_smult_cons alpha x xs =
+  vec_smult alpha (x :: xs) = (alpha * x) :: vec_smult alpha xs
+[@@by auto]
+
+(* Multiplying by 0 gives the zero vector.
+   Corresponds to Isabelle's vec_smult0. *)
+
+lemma vec_smult0 xs =
+  vec_smult 0 xs = Add.vec0 (List.length xs)
+[@@by auto]
+
+(* Multiplying by 1 is identity. *)
+
+lemma vec_smult1 xs =
+  vec_smult 1 xs = xs
+[@@by auto]
+
+(* Right distribution: (α + β) * xs = α * xs + β * xs
+   Corresponds to Isabelle's vec_smult_distr_right. *)
+
+lemma vec_smult_distr_right alpha beta xs =
+  vec_smult (alpha + beta) xs = Add.vec_plus (vec_smult alpha xs) (vec_smult beta xs)
+[@@by auto]
+
+(* Left distribution: α * (xs + ys) = α * xs + α * ys
+   Corresponds to Isabelle's vec_smult_distr_left. *)
+
+lemma vec_smult_distr_left alpha xs ys =
+  List.length xs = List.length ys
+  ==>
+  vec_smult alpha (Add.vec_plus xs ys) = Add.vec_plus (vec_smult alpha xs) (vec_smult alpha ys)
+[@@by auto]
+
+(* Associativity: α * (β * xs) = (α * β) * xs
+   Corresponds to Isabelle's tensor_smult_assoc at vector level. *)
+
+lemma vec_smult_assoc alpha beta xs =
+  vec_smult alpha (vec_smult beta xs) = vec_smult (alpha * beta) xs
+[@@by auto]
+
+(* --- Interaction with drop/take --- *)
+
+lemma drop_vec_smult alpha xs n =
+  List.drop n (vec_smult alpha xs) = vec_smult alpha (List.drop n xs)
+[@@by auto] [@@rw]
+
+lemma take_vec_smult alpha xs n =
+  List.take n (vec_smult alpha xs) = vec_smult alpha (List.take n xs)
+[@@by auto] [@@rw]
+
+(* fixed_length_sublist distributes over vec_smult.
+   Corresponds to Isabelle's smult_fixed_length_sublist. *)
+
+lemma fixed_length_sublist_vec_smult alpha xs l i =
+  Tensor.fixed_length_sublist (vec_smult alpha xs) l i
+    = vec_smult alpha (Tensor.fixed_length_sublist xs l i)
+[@@by auto] [@@rw]
+
+(* --- Properties of smult (tensor level) --- *)
+
+lemma smult_dims alpha a =
+  (smult alpha a).dims = a.dims
+[@@by auto]
+
+lemma smult_vec alpha a =
+  (smult alpha a).vec = vec_smult alpha a.vec
+[@@by auto]
+
+(* Multiplying tensor by 0 gives tensor0.
+   Corresponds to Isabelle's tensor_smult0.
+   Note: Requires well-formedness to ensure vec length matches prod_list dims. *)
+
+lemma tensor_smult0 a =
+  Tensor.tensor_wf a
+  ==>
+  smult 0 a = Add.tensor0 a.dims
+[@@by auto]
+
+(* Multiplying tensor by 1 is identity. *)
+
+lemma tensor_smult1 a =
+  smult 1 a = a
+[@@by auto]
+
+(* --- Distribution laws at tensor level --- *)
+
+(* Right distribution: (α + β) * A = α * A + β * A
+   Corresponds to Isabelle's tensor_smult_distr_right. *)
+
+lemma tensor_smult_distr_right alpha beta a =
+  smult (alpha + beta) a = Add.plus_base (smult alpha a) (smult beta a)
+[@@by auto]
+
+(* Left distribution: α * (A + B) = α * A + α * B  (when dims match)
+   Corresponds to Isabelle's tensor_smult_distr_left. *)
+
+lemma tensor_smult_distr_left alpha a b =
+  let open Tensor in
+  a.dims = b.dims
+  ==>
+  smult alpha (Add.plus_base a b) = Add.plus_base (smult alpha a) (smult alpha b)
+[@@by auto]
+
+(* --- Associativity at tensor level --- *)
+
+(* α * (β * A) = (α * β) * A
+   Corresponds to Isabelle's tensor_smult_assoc. *)
+
+lemma tensor_smult_assoc alpha beta a =
+  smult alpha (smult beta a) = smult (alpha * beta) a
+[@@by auto]
+
+(* --- Interaction with subtensor --- *)
+
+(* Subtensor commutes with smult.
+   Corresponds to Isabelle's smult_subtensor:
+     "α ⋅ subtensor A i = subtensor (α ⋅ A) i"
+
+   Note: This relies on drop_vec_smult and take_vec_smult [@@rw] lemmas above.
+*)
+
+lemma smult_subtensor alpha a i =
+  let open Tensor in
+  a.dims <> [] && 0 <= i && i < List.hd a.dims
+  ==>
+  smult alpha (Subtensor.subtensor a i) = Subtensor.subtensor (smult alpha a) i
+[@@by auto]

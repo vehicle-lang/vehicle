@@ -45,7 +45,8 @@ import Vehicle.Data.Variable.Bound.Context.Name
 
 data RocqOptions = RocqOptions
   { output :: Maybe FilePath,
-    moduleName :: Maybe String
+    moduleName :: Maybe String,
+    constructiveReals :: Bool
   }
 
 currentPhase :: Doc ()
@@ -59,12 +60,19 @@ compileProgToRocq prog _options =
     -- Collects dependencies by first discarding precedence info and then
     -- folding using Set Monoid
     let programDependencies = fold (reAnnotateS fst programStream)
+    -- If using constructive reals, add the required import
+    let programDependencies' =
+          if constructiveReals _options
+            then
+              Set.insert (MathcompImport Rstruct) $
+                Set.insert (RequireImport ConstructiveReals) programDependencies
+            else programDependencies
 
     let rocqProgram =
           unAnnotate
             ( (vsep2 :: [Code] -> Code)
-                [ importStatements programDependencies,
-                  preamble programDependencies,
+                [ importStatements programDependencies',
+                  preamble programDependencies',
                   programDoc
                 ]
             )
@@ -122,6 +130,7 @@ data Mathcomp
   = Boot
   | Algebra
   | Reals
+  | Rstruct
   deriving (Eq, Ord)
 
 instance Pretty Mathcomp where
@@ -129,16 +138,19 @@ instance Pretty Mathcomp where
     Boot -> "all_boot"
     Algebra -> "all_algebra"
     Reals -> "all_reals"
+    Rstruct -> "Rstruct"
 
 data Library
   = VehicleTensor
   | VehicleUtils
+  | ConstructiveReals
   deriving (Eq, Ord)
 
 instance Pretty Library where
   pretty = \case
     VehicleTensor -> "vehicle.tensor"
     VehicleUtils -> "vehicle.utils"
+    ConstructiveReals -> "Stdlib.Reals.Reals"
 
 data RocqModule
   = OrderDef
@@ -164,59 +176,65 @@ importStatements :: Set Dependency -> Code
 importStatements deps = vsep $ map pretty (Set.toList deps)
 
 preamble :: Set Dependency -> Code
-preamble deps =
-  if Set.member (MathcompImport Reals) deps
-    then "Parameter" <+> "R" <+> ":" <+> align "realType" <> "."
-    else ""
+preamble deps
+  | Set.member (RequireImport ConstructiveReals) deps =
+      "Notation" <+> "R" <+> ":=" <+> align "Rdefinitions.R" <> "."
+  | Set.member (MathcompImport Reals) deps =
+      "Parameter" <+> "R" <+> ":" <+> align "realType" <> "."
+  | otherwise = ""
 
 --------------------------------------------------------------------------------
 -- Intermediate results of compilation
 
 type Precedence = Int
 
-type Code = Doc (Set Dependency, Precedence)
+functionApplicationPrecedence :: Maybe Precedence
+functionApplicationPrecedence = Just 0
 
-minPrecedence :: Precedence
-minPrecedence = -1000
+data Associativity
+  = LeftAssociative
+  | RightAssociative
+  | NotAssociative
 
-maxPrecedence :: Precedence
-maxPrecedence = 1000
+type Code = Doc (Set Dependency, Maybe Precedence)
 
-getPrecedence :: Code -> Precedence
-getPrecedence e = maybe maxPrecedence snd (docAnn e)
+getPrecedence :: Code -> Maybe Precedence
+getPrecedence e = maybe (developerError $ "missing annotation for" <+> e) snd (docAnn e)
 
 annotateConstant :: [Dependency] -> Code -> Code
-annotateConstant dependencies = annotate (Set.fromList dependencies, maxPrecedence)
+annotateConstant dependencies = annotate (Set.fromList dependencies, Nothing)
 
-annotateApp :: (MonadRocqCompile m) => [Dependency] -> Code -> [Arg DecidabilityBuiltin] -> m Code
-annotateApp dependencies fun args = do
+compileApplication :: (MonadRocqCompile m) => [Dependency] -> Code -> [Arg DecidabilityBuiltin] -> m Code
+compileApplication dependencies fun args = do
   (precedence, annDoc) <-
     if null args
       then return (getPrecedence fun, fun)
       else do
-        let precedence = 200
-        bracketedArgs <- compileArgs precedence args
-        return (precedence, hsep (fun : bracketedArgs))
+        compiledArgs <- traverseArgs compileExpr args
+        bracketedArgs <- bracketArgs functionApplicationPrecedence compiledArgs
+        return (functionApplicationPrecedence, hsep (fun : bracketedArgs))
 
   return $ annotate (Set.fromList dependencies, precedence) annDoc
 
-annotateNotation ::
+compileNotationAndArgs ::
   (MonadRocqCompile m) =>
   [Dependency] ->
-  Precedence ->
+  Associativity ->
+  Maybe Precedence ->
   Text ->
   Maybe Text ->
   [Arg DecidabilityBuiltin] ->
   m Code
-annotateNotation dependencies precedence op mFn args
+compileNotationAndArgs dependencies _associativity precedence op mFn args
   | not (all isExplicit args) = fallback
   | otherwise = do
-      bracketedArgs <- compileArgs precedence args
+      compiledArgs <- traverseArgs compileExpr args
+      bracketedArgs <- bracketArgs precedence compiledArgs
       let doc = insertNotationArgs op bracketedArgs
       maybe fallback (return . annotate (Set.fromList dependencies, precedence)) doc
   where
     fallback = case mFn of
-      Just fn -> annotateApp dependencies (pretty fn) args
+      Just fn -> compileApplication dependencies (pretty fn) args
       Nothing ->
         developerError $
           "Failed to process notation:"
@@ -246,20 +264,6 @@ insertNotationArgs rawOp as = concatWith (<>) <$> go rawOp
     atMaybe [] _ = Nothing
     atMaybe (x : _) 0 = Just x
     atMaybe (_ : xs) n = atMaybe xs (n - 1)
-
-argBrackets :: Precedence -> Visibility -> Code -> Code
-argBrackets parentPrecedence v e = case v of
-  Explicit {}
-    | getPrecedence e > parentPrecedence -> e
-    | otherwise -> parens e
-  Implicit {} -> braces e
-  Instance {} -> braces (braces e)
-
-binderBrackets :: Bool -> Visibility -> Code -> Code
-binderBrackets True Explicit {} = id
-binderBrackets False Explicit {} = parens
-binderBrackets _topLevel Implicit {} = braces
-binderBrackets _topLevel Instance {} = braces . braces
 
 --------------------------------------------------------------------------------
 -- Monad stack
@@ -365,10 +369,7 @@ compileExpr expr = do
       n <- ixToProperName p ix
       return $ annotateConstant [] (pretty n)
     Pi _ binder result -> case binderNamingForm binder of
-      OnlyType -> do
-        cInput <- compileBinder binder
-        cOutput <- addNameToContext binder $ compileExpr result
-        return $ annotate ([], 99) $ cInput <+> "->" <+> cOutput
+      OnlyType -> compileFunctionType [argFromBinder binder (typeOf binder), explicit result]
       _ -> do
         let (binders, body) = foldPiBinders binder result
         compileTypeLevelQuantifier Forall (binder :| binders) body
@@ -382,7 +383,8 @@ compileExpr expr = do
     Record _p _i fs -> do
       fs' <- traverse compileRecordField fs
       return $ encloseSep (lbrace <> "|" <> space) (space <> "|" <> rbrace) (semi <> space) fs'
-    RecordProj _p _t r field -> annotateNotation [] 200 ("$0.(" <> nameOf field <> ")") (Just $ nameOf field) [explicit r]
+    RecordProj _p _t r field ->
+      compileNotationAndArgs [] NotAssociative Nothing ("$0.(" <> nameOf field <> ")") (Just $ nameOf field) [explicit r]
   logExit result
   return result
 
@@ -443,10 +445,16 @@ compileBinder binder = do
     OnlyName name _ -> return (pretty name, True)
     OnlyType -> return (binderType, True)
     NameAndType name _ -> do
-      let annName = annotate (Set.empty, minPrecedence) (pretty name <+> ":" <+> binderType)
+      let annName = annotate (Set.empty, Nothing) (pretty name <+> ":" <+> binderType)
       return (annName, False)
 
   return $ binderBrackets noExplicitBrackets (visibilityOf binder) binderDoc
+
+binderBrackets :: Bool -> Visibility -> Code -> Code
+binderBrackets True Explicit {} = id
+binderBrackets False Explicit {} = parens
+binderBrackets _topLevel Implicit {} = braces
+binderBrackets _topLevel Instance {} = braces . braces
 
 resolveReturnType :: (MonadRocqCompile m) => [Code] -> Expr DecidabilityBuiltin -> m Code
 resolveReturnType (_ : bs) (Pi _ binder r) = addNameToContext binder $ resolveReturnType bs r
@@ -475,16 +483,16 @@ compileBuiltin b args = case b of
     BoolType -> return $ compileType (UniverseLevel 0)
     -- For the Rocq backend, rationals are promoted to reals
     RatType -> return $ annotateConstant [MathcompImport Reals] "R"
-    UnitType -> return "unit"
-    NatType -> return "nat"
-    ListType -> annotateApp [MathcompImport Boot] "seq" args
-    TensorType -> annotateNotation [RequireImport VehicleTensor] 0 "'nT[$0]_($1)" Nothing args
-    IndexType -> annotateNotation [MathcompImport Boot] 0 "'I_$0" (Just "ordinal") args
-    VectorType -> annotateNotation [MathcompImport Boot] 2 "$0.-tuple $1" Nothing args
+    UnitType -> return $ annotateConstant [] "unit"
+    NatType -> return $ annotateConstant [] "nat"
+    ListType -> compileApplication [MathcompImport Boot] "seq" args
+    TensorType -> compileNotationAndArgs [RequireImport VehicleTensor] NotAssociative Nothing "'nT[$0]_($1)" Nothing args
+    IndexType -> compileNotationAndArgs [MathcompImport Boot] NotAssociative Nothing "'I_$0" (Just "ordinal") args
+    VectorType -> compileNotationAndArgs [MathcompImport Boot] NotAssociative (Just 2) "$0.-tuple $1" Nothing args
   StandardBuiltinConstructor c -> case c of
-    Nil -> return "nil"
-    Cons -> annotateNotation [MathcompImport Boot] 60 "$0 :: $1" (Just "cons") args
-    UnitLiteral -> return "tt"
+    Nil -> return $ annotateConstant [MathcompImport Boot] "nil"
+    Cons -> compileNotationAndArgs [MathcompImport Boot] RightAssociative (Just 60) "$0 :: $1" (Just "cons") args
+    UnitLiteral -> return $ annotateConstant [] "tt"
     IndexLiteral n -> return $ compileIndexLiteral n
     NatLiteral n -> return $ compileNatLiteral n
     NatTensorLiteral t -> return $ compileTensorLiteral compileNatLiteral t
@@ -492,62 +500,62 @@ compileBuiltin b args = case b of
     RatTensorLiteral t -> return $ compileTensorLiteral compileRatLiteral t
     VectorLiteral -> compileVecLiteral args
   StandardBuiltinFunction f -> case f of
-    And -> annotateNotation [] 40 "$0 && $1" (Just "andb") args
-    Or -> annotateNotation [] 50 "$0 || $1" (Just "orb") args
-    Not -> annotateNotation [MathcompImport Boot] 35 "~~ $0" (Just "negb") args
-    Implies -> annotateNotation [MathcompImport Boot] 55 "$0 ==> $1" (Just "implb") args
-    Add AddNat -> annotateNotation [MathcompImport Algebra, Open RingScope] 50 "$0 + $1" (Just "+%R") args
-    Mul MulNat -> annotateNotation [MathcompImport Algebra, Open RingScope] 40 "$0 * $1" (Just "*%R") args
-    Add AddRatTensor -> annotateNotation [RequireImport VehicleTensor] 50 "$0 + $1" (Just "+%R") args
-    Sub SubRatTensor -> annotateNotation [RequireImport VehicleTensor] 50 "$0 - $1" Nothing args
-    Mul MulRatTensor -> annotateNotation [RequireImport VehicleTensor] 40 "$0 * $1" (Just "*%R") args
-    Div DivRatTensor -> annotateNotation [RequireImport VehicleTensor] 40 "$0 / $1" Nothing args
-    Neg NegRatTensor -> annotateNotation [RequireImport VehicleTensor] 80 "- $0" (Just "-%R") args
-    Min MinRatTensor -> annotateApp [RequireImport VehicleTensor, Import OrderDef] "min" args
-    Max MaxRatTensor -> annotateApp [RequireImport VehicleTensor, Import OrderDef] "max" args
+    And -> compileNotationAndArgs [] LeftAssociative (Just 40) "$0 && $1" (Just "andb") args
+    Or -> compileNotationAndArgs [] LeftAssociative (Just 50) "$0 || $1" (Just "orb") args
+    Not -> compileNotationAndArgs [MathcompImport Boot] LeftAssociative (Just 35) "~~ $0" (Just "negb") args
+    Implies -> compileNotationAndArgs [MathcompImport Boot] RightAssociative (Just 55) "$0 ==> $1" (Just "implb") args
+    Add AddNat -> compileNotationAndArgs [MathcompImport Algebra, Open RingScope] LeftAssociative (Just 50) "$0 + $1" (Just "+%R") args
+    Mul MulNat -> compileNotationAndArgs [MathcompImport Algebra, Open RingScope] LeftAssociative (Just 40) "$0 * $1" (Just "*%R") args
+    Add AddRatTensor -> compileNotationAndArgs [RequireImport VehicleTensor] LeftAssociative (Just 50) "$0 + $1" (Just "+%R") args
+    Sub SubRatTensor -> compileNotationAndArgs [RequireImport VehicleTensor] LeftAssociative (Just 50) "$0 - $1" Nothing args
+    Mul MulRatTensor -> compileNotationAndArgs [RequireImport VehicleTensor] LeftAssociative (Just 40) "$0 * $1" (Just "*%R") args
+    Div DivRatTensor -> compileNotationAndArgs [RequireImport VehicleTensor] LeftAssociative (Just 40) "$0 / $1" Nothing args
+    Neg NegRatTensor -> compileNotationAndArgs [RequireImport VehicleTensor] NotAssociative (Just 80) "- $0" (Just "-%R") args
+    Min MinRatTensor -> compileApplication [RequireImport VehicleTensor, Import OrderDef] "min" args
+    Max MaxRatTensor -> compileApplication [RequireImport VehicleTensor, Import OrderDef] "max" args
     CompareIndex op -> compileComparison CIndex op args
     CompareNat op -> compileComparison CNat op args
     CompareRatTensorPointwise op -> compileComparison CRatTensor op args
-    FoldList -> annotateApp [MathcompImport Boot] "foldr" args
-    MapList -> annotateApp [MathcompImport Boot] "map" args
-    ReduceAndTensor -> annotateApp [RequireImport VehicleUtils] "reduceAnd" args
-    ReduceOrTensor -> annotateApp [RequireImport VehicleUtils] "reduceOr" args
-    ReduceAddRatTensor -> annotateApp [] "reduceAdd" args
+    FoldList -> compileApplication [MathcompImport Boot] "foldr" args
+    MapList -> compileApplication [MathcompImport Boot] "map" args
+    ReduceAndTensor -> compileApplication [RequireImport VehicleUtils] "reduceAnd" args
+    ReduceOrTensor -> compileApplication [RequireImport VehicleUtils] "reduceOr" args
+    ReduceAddRatTensor -> compileApplication [] "reduceAdd" args
     ReduceMinRatTensor -> unsupportedError
     ReduceMaxRatTensor -> unsupportedError
-    ReduceMulRatTensor -> annotateApp [] "reduceMul" args
-    ConstTensor -> annotateApp [RequireImport VehicleTensor] "const_t" args
+    ReduceMulRatTensor -> compileApplication [] "reduceMul" args
+    ConstTensor -> compileApplication [RequireImport VehicleTensor] "const_t" args
     QuantifyRatTensor q -> case reverse args of
       (ExplicitArg _ (Lam _ binder body)) : _ -> compileTypeLevelQuantifier q [binder] body
       _ -> unsupportedArgsError
-    QuantifyTensorLike _ -> unsupportedTensorLikeQuantifier
-    AtTensor -> annotateNotation [RequireImport VehicleTensor] 201 "$0^^$1" (Just "nindex") args
-    If -> annotateNotation [MathcompImport Boot] minPrecedence "if $0 then $1 else $2" Nothing args
-    ForeachTensor -> annotateApp [RequireImport VehicleTensor] "nstack" args
+    AtTensor -> compileNotationAndArgs [RequireImport VehicleTensor] LeftAssociative (Just (-2)) "$0 ^^ $1" (Just "nindex") args
+    If -> compileNotationAndArgs [MathcompImport Boot] NotAssociative (Just 0) "if $0 then $1 else $2" Nothing args
+    ForeachTensor -> compileApplication [RequireImport VehicleTensor] "nstack" args
     StackTensor -> compileStack args
     Iterate -> unsupportedError
     PowRat -> unsupportedError
-    AtVector -> annotateApp [MathcompImport Boot] "tnth" args
-    ForeachVector -> annotateApp [RequireImport VehicleUtils] "foreachTuple" args
+    AtVector -> compileApplication [MathcompImport Boot] "tnth" args
+    ForeachVector -> compileApplication [RequireImport VehicleUtils] "foreachTuple" args
+    QuantifyTensorLike _ -> unsupportedTensorLikeQuantifier
   DecidabilityBuiltinFunction f -> case f of
-    PropType -> return "Prop"
-    PropTrue -> return "True"
-    PropFalse -> return "False"
-    PropNot -> annotateNotation [] 75 "~ $0" (Just "not") args
-    PropAnd -> annotateNotation [] 80 "$0 /\\ $1" (Just "and") args
-    PropOr -> annotateNotation [] 85 "$0 \\/ $1" (Just "or") args
-    PropImplies -> annotateNotation [MathcompImport Boot] minPrecedence "$0 -> $1" (Just "implies") args
+    PropType -> return $ annotateConstant [] "Prop"
+    PropTrue -> return $ annotateConstant [] "True"
+    PropFalse -> return $ annotateConstant [] "False"
+    PropNot -> compileNotationAndArgs [] RightAssociative (Just 75) "~ $0" (Just "not") args
+    PropAnd -> compileNotationAndArgs [] RightAssociative (Just 80) "$0 /\\ $1" (Just "and") args
+    PropOr -> compileNotationAndArgs [] RightAssociative (Just 85) "$0 \\/ $1" (Just "or") args
+    PropImplies -> compileFunctionType args
     PropCompareIndex op -> compileComparison CIndex op args
     PropCompareNat op -> compileComparison CNat op args
     PropCompareRatTensorPointwise op -> compileComparison CRatTensor op args
     BoolTensorToProp -> monoError
     BoolVectorToProp -> monoError
     PropQuantifyIndex q -> case q of
-      Forall -> annotateApp [RequireImport VehicleUtils] "forallIndex" args
-      Exists -> annotateApp [RequireImport VehicleUtils] "existsIndex" args
+      Forall -> compileApplication [RequireImport VehicleUtils] "forallIndex" args
+      Exists -> compileApplication [RequireImport VehicleUtils] "existsIndex" args
     PropQuantifyInList q -> case q of
-      Forall -> annotateApp [RequireImport VehicleUtils] "forallInList" args
-      Exists -> annotateApp [RequireImport VehicleUtils] "existsInList" args
+      Forall -> compileApplication [RequireImport VehicleUtils] "forallInList" args
+      Exists -> compileApplication [RequireImport VehicleUtils] "existsInList" args
     PropNaryProduct -> unsupportedError
     PropNaryProductForeach -> unsupportedError
     PropNaryProductAt -> unsupportedError
@@ -575,6 +583,9 @@ compileBuiltin b args = case b of
         "Monomorphisation should have got rid of"
           <+> quotePretty (show b)
 
+compileFunctionType :: (MonadRocqCompile m) => [Arg DecidabilityBuiltin] -> m Code
+compileFunctionType = compileNotationAndArgs [MathcompImport Boot] RightAssociative (Just 100) "$0 -> $1" (Just "implies")
+
 compileApp :: (MonadRocqCompile m) => Expr DecidabilityBuiltin -> NonEmpty (Arg DecidabilityBuiltin) -> m Code
 compileApp fun args = do
   let userArgs = NonEmpty.filter (not . wasInsertedByCompiler) args
@@ -583,17 +594,18 @@ compileApp fun args = do
       compileBuiltin b userArgs
     _ -> do
       cFun <- compileExpr fun
-      annotateApp [] cFun userArgs
+      compileApplication [] cFun userArgs
 
 compileDerivedFunction :: (MonadRocqCompile m) => DerivedFunction -> [Arg DecidabilityBuiltin] -> m Code
 compileDerivedFunction fn args = case fn of
   QuantifyIndex q -> case q of
-    Exists -> annotateApp [RequireImport VehicleUtils] "existsIndex" args
-    Forall -> annotateApp [RequireImport VehicleUtils] "forallIndex" args
+    Exists -> compileApplication [RequireImport VehicleUtils] "existsIndex" args
+    Forall -> compileApplication [RequireImport VehicleUtils] "forallIndex" args
   QuantifyInList {} -> unsupported
-  TypeAnn -> annotateNotation [] minPrecedence "$1 : $0" Nothing args
+  TypeAnn ->
+    compileNotationAndArgs [] NotAssociative (Just 99) "$1 : $0" Nothing args
   CompareRatTensorReduced op ->
-    annotateApp
+    compileApplication
       [RequireImport VehicleUtils]
       ( case op of
           Le -> "leRatTensorReduced"
@@ -618,15 +630,33 @@ compileTypeLevelQuantifier q binders body = do
   quant <- case q of
     Forall -> return "forall"
     Exists -> return "exists"
-  return $ quant <+> hsep cBinders <> "," <+> cBody
+  return $ annotate (mempty, Just 100) (quant <+> hsep cBinders <> "," <+> cBody)
 
-compileArg :: (MonadRocqCompile m) => Precedence -> Arg DecidabilityBuiltin -> m Code
-compileArg precedence arg = do
-  body <- compileExpr (argExpr arg)
-  return $ argBrackets precedence (visibilityOf arg) body
-
-compileArgs :: (MonadRocqCompile m) => Precedence -> [Arg DecidabilityBuiltin] -> m [Code]
-compileArgs precedence = traverse (compileArg precedence)
+bracketArgs :: (MonadRocqCompile m) => Maybe Precedence -> [GenericArg Code] -> m [Code]
+bracketArgs maybeParentPrecedence = traverse bracketArg
+  where
+    bracketArg :: (MonadRocqCompile m) => GenericArg Code -> m Code
+    bracketArg arg = do
+      let body = argExpr arg
+      logDebug MaxDetail $
+        "!!!"
+          <+> body
+          <+> parens
+            ( "precedence"
+                <+> pretty (getPrecedence body)
+                <+> ">="
+                <+> pretty maybeParentPrecedence
+                <+> "="
+                <+> pretty (getPrecedence body >= maybeParentPrecedence)
+            )
+      return $ case visibilityOf arg of
+        Instance {} -> annotate (mempty, Nothing) $ braces (braces body)
+        Implicit {} -> annotate (mempty, Nothing) $ braces body
+        Explicit {} -> case (getPrecedence body, maybeParentPrecedence) of
+          (Just argPrecedence, Just parentPrecedence)
+            | argPrecedence >= parentPrecedence -> annotate (mempty, Nothing) $ parens body
+            | otherwise -> body
+          _ -> body
 
 compileIndexLiteral :: Int -> Code
 compileIndexLiteral i =
@@ -638,10 +668,10 @@ compileIndexLiteral i =
     (pretty i)
 
 compileNatLiteral :: Int -> Code
-compileNatLiteral i = annotate ([MathcompImport Boot], maxPrecedence) $ pretty i <> "%N"
+compileNatLiteral i = annotateConstant [MathcompImport Boot] $ pretty i <> "%N"
 
 compileTensorLiteral :: (a -> Code) -> Tensor a -> Code
-compileTensorLiteral compileElement t = annotate ([RequireImport VehicleTensor], 200) $ case (shapeOf t, toList t) of
+compileTensorLiteral compileElement t = annotate ([RequireImport VehicleTensor], Nothing) $ case (shapeOf t, toList t) of
   ([], [x]) -> "const_t" <+> compileElement x
   _ -> foldMapTensor compileElement toTensor t
   where
@@ -656,7 +686,7 @@ compileBoolLiteral = \case
   False -> "false"
 
 compileRatLiteral :: Rational -> Code
-compileRatLiteral r = parens $ annotate ([MathcompImport Reals, MathcompImport Algebra, Open RingScope], minPrecedence) rat
+compileRatLiteral r = parens $ annotate ([MathcompImport Reals, MathcompImport Algebra, Open RingScope], Nothing) rat
   where
     num = pretty $ numerator r
     denom = pretty $ denominator r
@@ -666,7 +696,7 @@ compileLam :: (MonadRocqCompile m) => Binder DecidabilityBuiltin -> Expr Decidab
 compileLam binder expr = do
   let (binders, body) = foldLamBinders binder expr
   (cBinders, cBody) <- compileBinders (binder : binders) (compileExpr body)
-  return $ annotate (mempty, minPrecedence) ("fun" <+> hsep cBinders <+> "=>" <+> cBody)
+  return $ annotate (mempty, Just 100) ("fun" <+> hsep cBinders <+> "=>" <+> cBody)
 
 data ComparisonDomain
   = CIndex
@@ -693,20 +723,22 @@ compileComparison domain op = do
         if domain == CIndex
           then ("$0 " <> opDoc <> " $1 :> nat", dependencies ++ [MathcompImport Boot])
           else ("$0 " <> opDoc <> " $1", dependencies)
-  annotateNotation (dependencies' <> typeDeps) 70 opDoc' Nothing
+  compileNotationAndArgs (dependencies' <> typeDeps) NotAssociative (Just 70) opDoc' Nothing
   where
     orderDeps = [MathcompImport Boot, Open OrderScope]
     eqDeps = [MathcompImport Boot]
 
 compileStack :: (MonadRocqCompile m) => [Arg DecidabilityBuiltin] -> m Code
 compileStack args = do
-  as <- compileArgs minPrecedence args
-  return $ annotate ([RequireImport VehicleTensor], 200) $ "nstack_tuple" <+> toVec as
+  vecExpr <- toVec args
+  return $ annotate ([RequireImport VehicleTensor], functionApplicationPrecedence) $ "nstack_tuple" <+> vecExpr
 
 compileVecLiteral :: (MonadRocqCompile m) => [Arg DecidabilityBuiltin] -> m Code
 compileVecLiteral xs = case getExpr accessSpine xs of
-  Just (VecLitArgs _t _d ds) -> toVec <$> traverse compileExpr ds
+  Just (VecLitArgs _t _d ds) -> toVec (fmap explicit ds)
   Nothing -> developerError "Malformed type-checked vector literal"
 
-toVec :: [Code] -> Code
-toVec xs = annotate ([MathcompImport Boot, Open FormScope], maxPrecedence) "[tuple" <+> concatWith (surround "; ") xs <> "]"
+toVec :: (MonadRocqCompile m) => [Arg DecidabilityBuiltin] -> m Code
+toVec xs = do
+  let text = layoutAsText $ "[tuple" <+> concatWith (surround "; ") ["$" <> pretty x | x <- [0 .. length xs - 1]] <> "]"
+  compileNotationAndArgs [MathcompImport Boot, Open FormScope] NotAssociative Nothing text Nothing xs
