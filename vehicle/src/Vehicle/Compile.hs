@@ -42,6 +42,7 @@ data LossOptions = LossOptions
   { differentiableLogicID :: DifferentiableLogicID,
     specification :: FilePath,
     declarationsToCompile :: DeclarationNames,
+    parameterValues :: ParameterValues,
     outputFile :: Maybe FilePath
   }
   deriving (Show, Eq)
@@ -154,7 +155,9 @@ compileToLossFunction ::
   m ()
 compileToLossFunction LossOptions {..} typedProg outputAsJSON =
   logCompilerPass Loss $ do
-    lossTensorProg <- convertToLossTensors differentiableLogicID typedProg
+    let resources = Resources specification mempty mempty parameterValues
+    (expandedProg, _, _, _, _) <- expandResources resources typedProg
+    lossTensorProg <- convertToLossTensors differentiableLogicID expandedProg
     hoistedProg <- hoistInferableParameters lossTensorProg
     functionalisedProg <- functionaliseResources hoistedProg
     jsonProg <- convertToJSONProg functionalisedProg

@@ -23,6 +23,7 @@ def load_specification(
     logic: DifferentiableLogic = DifferentiableLogic.DL2,
     samplers: Mapping[str, Any] | None = None,
     declarations: Iterable[DeclarationName] = (),
+    parameters: Mapping[str, Any] | None = None,
     declaration_context: MutableMapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Load a loss function compiled for TensorFlow."""
@@ -32,6 +33,7 @@ def load_specification(
         logic=logic,
         samplers=samplers,
         declarations=declarations,
+        parameters=parameters,
         declaration_context=declaration_context,
         translation_factory=TensorFlowTranslation,
         default_sampler_factory=DefaultTensorFlowSampler,

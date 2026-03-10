@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Iterable
+from typing import Any, Iterable, Mapping
 
 from ... import session as session
 from ...typing import DeclarationName, DifferentiableLogic, Target
@@ -11,6 +11,7 @@ def load(
     path: str | Path,
     *,
     declarations: Iterable[DeclarationName] = (),
+    parameters: Mapping[str, Any] | None = None,
     target: Target = DifferentiableLogic.Vehicle,
 ) -> _nodes.Program:
     exc, out, err, log = session.check_output(
@@ -22,6 +23,10 @@ def load(
             target._vehicle_option_name,
             f"--specification={path}",
             *[f"--declaration={declaration_name}" for declaration_name in declarations],
+            *[
+                f"--parameter={name}:{value}"
+                for name, value in (parameters or {}).items()
+            ],
         ]
     )
     if exc != 0:

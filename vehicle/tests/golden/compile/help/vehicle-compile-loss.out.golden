@@ -1,5 +1,6 @@
 Usage: vehicle compile loss (-l|--logic LOGIC) (-s|--specification FILE) 
-                            [-e|--declaration NAME] [-o|--output FILE]
+                            [-e|--declaration NAME] [-p|--parameter NAME:VALUE] 
+                            [-o|--output FILE]
 
   Compile a specification to a loss function.
 
@@ -12,6 +13,12 @@ Available options:
                            compilation. Can be provided multiple times. If not
                            provided then all declarations in the specification
                            will be compiled.
+  -p,--parameter NAME:VALUE
+                           Provide a value for a parameter referenced in the
+                           specification. Its value should consist of a
+                           colon-separated pair of the name of the parameter in
+                           the specification and its value. Can be provided
+                           multiple times.
   -o,--output FILE         Output location for compiled file(s). Defaults to
                            `stdout` if not provided.
   -h,--help                Show this help text

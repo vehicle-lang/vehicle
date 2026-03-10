@@ -24,6 +24,7 @@ def load_loss_specification(
     logic: DifferentiableLogic,
     samplers: Mapping[str, Any] | None,
     declarations: Iterable[DeclarationName],
+    parameters: Mapping[str, Any] | None = None,
     declaration_context: MutableMapping[str, Any] | None,
     translation_factory: TranslationFactory,
     default_sampler_factory: SamplerFactory,
@@ -41,6 +42,7 @@ def load_loss_specification(
         path,
         target=logic,
         declarations=declarations,
+        parameters=parameters,
     )
 
     translation = translation_factory()

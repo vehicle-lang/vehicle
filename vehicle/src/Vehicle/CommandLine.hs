@@ -231,6 +231,7 @@ compileLossParser =
     <$> lossLogicParser
     <*> specificationParser
     <*> declarationParser
+    <*> parameterParser
     <*> outputParser
 
 lossLogicParser :: Parser DifferentiableLogicID
