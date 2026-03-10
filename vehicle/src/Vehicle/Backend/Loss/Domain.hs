@@ -3,7 +3,7 @@ module Vehicle.Backend.Loss.Domain
   )
 where
 
-import Control.Monad (foldM, forM)
+import Control.Monad (foldM, forM, guard)
 import Control.Monad.Except (MonadError (..), runExceptT)
 import Control.Monad.State (MonadState (..), evalStateT)
 import Data.Bifunctor (Bifunctor (..))
@@ -593,6 +593,20 @@ compileLinearExpr dims expr = case toRatTensorValue expr of
   -- The expression is being blocked
   VRatConstTensor {} -> unlinearisable
   VRatStackTensor {} -> unlinearisable
+  -- Handle concrete index lookups on bound tensor variables (e.g. x ! 0).
+  -- This allows per-index bounds like `0 <= x ! 0 <= 1 and 0 <= x ! 1 <= 2`
+  -- to be recognised as constraints, not just the `forall i . min ! i <= x ! i`
+  -- pattern (which NBE's foreach-fusion lifts to tensor-level comparisons).
+  VRatAt (AtTensorArgs _tElem _d _ds tensor (IIndexLiteral i)) ->
+    case toRatTensorValue tensor of
+      VRatTensorBoundVar lv -> do
+        maybeChildLv <- resolveAtBoundVar lv i
+        case maybeChildLv of
+          Nothing -> unlinearisable
+          Just childLv -> do
+            maybeExpr <- compileRatTensorVar dims childLv
+            maybe unlinearisable return maybeExpr
+      _ -> unlinearisable
   VRatAt {} -> unlinearisable
   VRatTensorFreeVar {} -> unlinearisable
   VRatForeach {} -> unlinearisable
@@ -623,6 +637,23 @@ compileRatTensorVar dims lv = do
   forM maybeSliceVar $ \(_tensorVar, sliceVar) -> do
     zeroTensor <- evalConstTensor $ ConstTensorArgs IRatType (IRatLiteral 0) dims
     return $ singletonVarExpr (TensorValue dims zeroTensor) sliceVar
+
+-- | Given a tensor bound variable at level @parentLv@ and a concrete index @i@,
+-- resolve the de Bruijn level of the corresponding child slice variable.
+-- For example, if @x : Tensor Real [5]@ is at level @lv@, then
+-- @resolveAtBoundVar lv 2@ returns @Just (lv + 3)@ (the slice for @x ! 2@).
+resolveAtBoundVar ::
+  (MonadReadableTensorBoundContext m) =>
+  Lv ->
+  Int ->
+  m (Maybe Lv)
+resolveAtBoundVar parentLv idx = do
+  (_, maybeSliceVar) <- lookupVariableInNestedCtx parentLv
+  return $ do
+    (nestedVar, _) <- maybeSliceVar
+    children <- childVariablesOf nestedVar
+    guard (idx >= 0 && idx < length children)
+    return $ toLv $ nestedStartingVariable (children !! idx)
 
 --------------------------------------------------------------------------------
 -- Utils
