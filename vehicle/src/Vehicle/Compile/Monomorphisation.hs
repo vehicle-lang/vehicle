@@ -144,7 +144,10 @@ handleUsedDecl applications decl = do
       let numberOfApplications = length monomorphisations
       let allFreeVarsInArgs = Set.unions (freeVarsIn . argExpr <$> concat monomorphisations)
       let createNewName = numberOfApplications > 1 || ident `Set.member` allFreeVarsInArgs
-      traverse (performMonomorphisation (p, ident, anns, typ, body) createNewName) monomorphisations
+      monomorphisationResults <- traverse (performMonomorphisation (p, ident, anns, typ, body) createNewName) monomorphisations
+      let (newDecls, substitutions) = unzip monomorphisationResults
+      tell (Map.singleton ident (typ, HashMap.fromList substitutions))
+      return newDecls
     _ -> do
       logDebug MaxDetail "Not monomorphising as an abstract declaration"
       return [decl]
@@ -195,17 +198,16 @@ performMonomorphisation ::
   (Provenance, Identifier, DefFunctionSort, Type builtin, Expr builtin) ->
   Bool ->
   [Arg builtin] ->
-  m (Decl builtin)
+  m (Decl builtin, ([Arg builtin], Identifier))
 performMonomorphisation (p, ident, sort, typ, body) createNewName args = do
   newIdent <-
     if createNewName
       then changeName ident <$> getMonomorphisedName (nameOf ident) args
       else return ident
   (newType, newBody) <- substituteArgsThrough (typ, body, args)
-  tell (Map.singleton ident (typ, HashMap.singleton args newIdent))
   let newDecl = DefFunction p newIdent sort newType newBody
   logDebug MaxDetail $ "Result:" <> lineIndent (prettyFriendly newDecl)
-  return newDecl
+  return (newDecl, (args, newIdent))
 
 substituteArgsThrough ::
   (MonadCollect builtin m) =>
@@ -259,7 +261,7 @@ collectReferences decl =
                 <> line
                 <> "arguments:" <+> prettyVerbose args
             )
-      modify (Map.insert ident [args])
+      modify (Map.insertWith (<>) ident (args NonEmpty.:| []))
 
 --------------------------------------------------------------------------------
 -- Forward pass - insert the monorphised identifiers
@@ -278,7 +280,9 @@ replacePreviousApplications ::
   m (Prog builtin)
 replacePreviousApplications prog =
   logCompilerSection2 MaxDetail "applying monomorphisation sites" $ do
-    traverse (traverseFreeVarsM (const id) replaceCandidateApplication) prog
+    -- TODO do this in a single traversal
+    prog' <- traverse (traverseFreeVarsM (const id) replaceCandidateApplication) prog
+    traverse (traverseBuiltinsM replaceDerivedApplication) prog'
   where
     replaceCandidateApplication ::
       (MonadInsert builtin m) =>
@@ -301,6 +305,28 @@ replacePreviousApplications prog =
               Just newIdent -> do
                 remainingArgs' <- traverse (traverse recGo) remainingArgs
                 return $ normAppList (FreeVar p newIdent) remainingArgs'
+
+    replaceDerivedApplication ::
+      (MonadInsert builtin m) =>
+      BuiltinUpdate m builtin builtin
+    replaceDerivedApplication p b args = do
+      case isDerivedBuiltin b of
+        Nothing -> return $ normAppList (Builtin p b) args
+        Just ident -> do
+          maybeSolution <- asks (Map.lookup ident)
+          case maybeSolution of
+            Nothing -> return $ normAppList (Builtin p b) args
+            Just (typ, applications) -> do
+              logCompilerSection2 MaxDetail "replacing monomorphised derived application" $ do
+                logDebug MaxDetail $ "function: " <+> pretty ident
+                logDebug MaxDetail $ "arguments:" <+> prettyVerbose args
+                let (argsToMono, remainingArgs) = obtainArgsToMonomorphise typ args
+                logDebug MaxDetail $ "arguments-to-mono:" <+> prettyVerbose argsToMono
+                logDebug MaxDetail $ "remaining-mono:" <+> prettyVerbose remainingArgs
+                case HashMap.lookup argsToMono applications of
+                  Nothing -> developerError $ "Missing derived application of" <+> pretty ident
+                  Just newIdent -> do
+                    return $ normAppList (FreeVar p newIdent) remainingArgs
 
 getMonomorphisedName ::
   (MonadCollect builtin m) =>
