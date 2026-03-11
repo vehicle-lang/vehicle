@@ -1,0 +1,72 @@
+{
+  "name": "vscode-vehicle",
+  "description": "The VSCode extension for the Vehicle language.",
+  "author": "Wen Kokke",
+  "license": "AGPL-3.0-only",
+  "version": "1.0.0",
+  "categories": [
+    "Programming Languages"
+  ],
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "main": "./out/extension",
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -b",
+    "watch": "tsc -b -w",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "glob": "^11.0.0",
+    "vscode-languageclient": "^7.0.0"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.6",
+    "@types/node": "^20",
+    "@types/vscode": "^1.75.0",
+    "@vscode/test-cli": "^0.0.10",
+    "@vscode/test-electron": "^2.3.9",
+    "mocha": "^10.3.0",
+    "typescript": "^5.6.2",
+    "which": "^5.0.0"
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "vehicle",
+        "extensions": [
+          ".vcl"
+        ],
+        "aliases": [
+          "Vehicle",
+          "vehicle"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "Vehicle",
+      "properties": {
+        "vehicle.maxNumberOfProblems": {
+          "scope": "resource",
+          "type": "number",
+          "default": 100,
+          "description": "Controls the maximum number of problems produced by the server."
+        },
+        "vehicle.trace.server": {
+          "scope": "window",
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "messages",
+          "description": "Traces the communication between VS Code and the language server."
+        }
+      }
+    }
+  }
+}
