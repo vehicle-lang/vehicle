@@ -2,6 +2,10 @@
 
 ## v0.25
 
+### General
+
+* Removed support for GHC 8.10 and 9.0 and added support for GHC 9.10 and 9.12.
+
 ### Loss backend
 
 * Fixed a bug where the compiler would loop infinitely on certain specifications.
