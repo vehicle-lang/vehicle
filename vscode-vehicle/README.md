@@ -1,15 +1,32 @@
-# LSP Multi Server Example
+# Vehicle VS Code Extension
 
-A language server example that demonstrates how to start a server per workspace folder. If the workspace has nested workspace folders only a server for the outer most workspace folder is started assuming that the language service handles nested code.
+To build the extension, run:
 
-The example uses proposed Language Server protocol. So the code demoed here might change when the final version of the configuration and workspace folder protocol is released.
+```sh
+npm install
+npm run compile
+```
 
-## Running the Sample
+To start the extension:
 
-- run `npm install` in this folder. This installs all necessary npm modules in both the client and server folder
-- open VS Code on this folder.
-- Press Ctrl+Shift+B to compile the client and server
-- Switch to the Debug viewlet
-- Select `Launch Client` from the drop down
-- Run the launch config
-- If you want to debug the server as well use the launch configuration `Attach to Server`
+1.  Build `vehicle-lsp`
+
+    ```sh
+    # from anywhere in the project
+    cabal build vehicle-lsp
+    ```
+
+2.  Build `vscode-vehicle`
+
+    ```sh
+    # from the vscode-vehicle directory
+    npm run compile
+    ```
+
+3.  Run the VS Code extension.
+    Any of the following should work:
+
+    - Press F5
+    - In the menu, select "Run" followed by "Start Debugging".
+    - In the "Run and Debug" tab, press "Run Extension".
+
