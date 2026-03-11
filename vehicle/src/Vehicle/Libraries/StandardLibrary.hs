@@ -40,7 +40,13 @@ standardLibraryInstanceOps =
       standardLibIdent "mulTC",
       standardLibIdent "divTC",
       standardLibIdent "forallTC",
-      standardLibIdent "existsTC"
+      standardLibIdent "existsTC",
+      standardLibIdent "leTC",
+      standardLibIdent "ltTC",
+      standardLibIdent "geTC",
+      standardLibIdent "gtTC",
+      standardLibIdent "eqTC",
+      standardLibIdent "neTC"
     ]
 
 standardLibraryBuiltinModulePath :: Maybe SecondaryTypeSystem -> ModulePath
