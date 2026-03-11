@@ -198,6 +198,67 @@ record HasValidNetworkType (t : Type) where {}
 tensorToTensorHasValidNetworkType : {{ HasValidNetworkIOType t1 }} -> {{ HasValidNetworkIOType t2 }} -> HasValidNetworkType ( t1 -> t2 )
 tensorToTensorHasValidNetworkType = {}
 
+-- Comparisons
+@typeclass
+record HasComparison t1 t2 where
+  { leTC : t1 -> t2 -> Bool
+  , ltTC : t1 -> t2 -> Bool
+  , geTC : t1 -> t2 -> Bool
+  , gtTC : t1 -> t2 -> Bool
+  , eqTC : t1 -> t2 -> Bool
+  , neTC : t1 -> t2 -> Bool
+  }
+
+@instance
+indexHasComparison : HasComparison (Index n1) (Index n2)
+indexHasComparison =  { leTC = compareIndexLe
+                      , ltTC = compareIndexLt
+                      , geTC = compareIndexGe
+                      , gtTC = compareIndexGt
+                      , eqTC = compareIndexEq
+                      , neTC = compareIndexNe
+                      }
+
+@instance
+natHasComparison : HasComparison Nat Nat
+natHasComparison =  { leTC = compareNatLe
+                    , ltTC = compareNatLt
+                    , geTC = compareNatGe
+                    , gtTC = compareNatGt
+                    , eqTC = compareNatEq
+                    , neTC = compareNatNe
+                    }
+
+@instance
+realTensorEmptyDimsHasComparison : HasComparison (Tensor Real []) (Tensor Real [])
+realTensorEmptyDimsHasComparison = { leTC = compareRatTensorPointwiseLe
+                                   , ltTC = compareRatTensorPointwiseLt
+                                   , geTC = compareRatTensorPointwiseGe
+                                   , gtTC = compareRatTensorPointwiseGt
+                                   , eqTC = compareRatTensorPointwiseEq
+                                   , neTC = compareRatTensorPointwiseNe
+                                   }
+
+@instance
+realTensorHasComparison : HasComparison (Tensor Real (dim :: dims)) (Tensor Real (dim :: dims))
+realTensorHasComparison = { leTC = compareRatTensorReducedLe
+                          , ltTC = compareRatTensorReducedLt
+                          , geTC = compareRatTensorReducedGe
+                          , gtTC = compareRatTensorReducedGt
+                          , eqTC = compareRatTensorReducedEq
+                          , neTC = compareRatTensorReducedNe
+                          }
+
+@instance
+realTensorLikeHasComparison : {{ TensorLike r t dims }} -> {{ HasComparison (NonCastingTensor t dims) (NonCastingTensor t dims) }} -> HasComparison r r
+realTensorLikeHasComparison = { leTC = \r1 r2 -> ( leTC (toTensor r1) (toTensor r2) )
+                              , ltTC = \r1 r2 -> ( ltTC (toTensor r1) (toTensor r2) )
+                              , geTC = \r1 r2 -> ( geTC (toTensor r1) (toTensor r2) )
+                              , gtTC = \r1 r2 -> ( gtTC (toTensor r1) (toTensor r2) )
+                              , eqTC = \r1 r2 -> ( eqTC (toTensor r1) (toTensor r2) )
+                              , neTC = \r1 r2 -> ( neTC (toTensor r1) (toTensor r2) )
+                              }
+
 --------------------------------------------------------------------------------
 -- Loss logics
 --------------------------------------------------------------------------------
