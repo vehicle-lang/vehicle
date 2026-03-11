@@ -21,6 +21,7 @@ import: cabal.project.config
 packages:
   vehicle/vehicle.cabal
   vehicle-syntax/vehicle-syntax.cabal
+  vehicle-lsp/vehicle-lsp.cabal
   tasty-golden-executable/tasty-golden-executable.cabal
 
   -- 03-04-2023:
