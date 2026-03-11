@@ -8,9 +8,6 @@
 # Mac specific files
 *.DS_Store
 
-# VSCode
-.vscode/
-
 # Example folders
 examples/**/.vcl-cache-index
 examples/**/*.vclplan
@@ -565,6 +562,14 @@ TSWLatexianTemp*
 # option is specified. Footnotes are the stored in a file with suffix Notes.bib.
 # Uncomment the next line to have this generated file ignored.
 #*Notes.bib
+
+################################################################################
+# JavaScript
+################################################################################
+
+node_modules/
+vscode-vehicle/out/
+tsconfig.tsbuildinfo
 
 ################################################################################
 # Add Vehicle Standard Library
