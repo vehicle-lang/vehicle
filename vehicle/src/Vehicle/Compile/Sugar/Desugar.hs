@@ -393,12 +393,12 @@ elabExpr expr = case expr of
   B.And e1 tk e2 -> builtinFunction V.And tk [e1, e2]
   B.Or e1 tk e2 -> builtinFunction V.Or tk [e1, e2]
   B.If tk1 e1 _ e2 _ e3 -> builtinFunction V.If tk1 [e1, e2, e3]
-  B.Eq e1 tk e2 -> elabComparison V.Eq tk e1 e2
-  B.Ne e1 tk e2 -> elabComparison V.Ne tk e1 e2
-  B.Le e1 tk e2 -> elabComparison V.Le tk e1 e2
-  B.Lt e1 tk e2 -> elabComparison V.Lt tk e1 e2
-  B.Ge e1 tk e2 -> elabComparison V.Ge tk e1 e2
-  B.Gt e1 tk e2 -> elabComparison V.Gt tk e1 e2
+  B.Eq e1 tk e2 -> standardLibComparison V.Eq tk e1 e2
+  B.Ne e1 tk e2 -> standardLibComparison V.Ne tk e1 e2
+  B.Le e1 tk e2 -> standardLibComparison V.Le tk e1 e2
+  B.Lt e1 tk e2 -> standardLibComparison V.Lt tk e1 e2
+  B.Ge e1 tk e2 -> standardLibComparison V.Ge tk e1 e2
+  B.Gt e1 tk e2 -> standardLibComparison V.Gt tk e1 e2
   B.EqPoint e1 tk e2 -> builtinFunction (V.CompareRatTensorPointwise V.Eq) tk [e1, e2]
   B.NePoint e1 tk e2 -> builtinFunction (V.CompareRatTensorPointwise V.Ne) tk [e1, e2]
   B.LePoint e1 tk e2 -> builtinFunction (V.CompareRatTensorPointwise V.Le) tk [e1, e2]
@@ -424,6 +424,30 @@ elabExpr expr = case expr of
   B.QuantifyExistsRealTensor tk -> builtinFunction (V.QuantifyRatTensor V.Exists) tk []
   B.QuantifyForallTensorLike tk -> builtinFunction (V.QuantifyTensorLike V.Forall) tk []
   B.QuantifyExistsTensorLike tk -> builtinFunction (V.QuantifyTensorLike V.Exists) tk []
+  B.CompareIndexEq tk -> builtinFunction (V.CompareIndex V.Eq) tk []
+  B.CompareIndexNe tk -> builtinFunction (V.CompareIndex V.Ne) tk []
+  B.CompareIndexLe tk -> builtinFunction (V.CompareIndex V.Le) tk []
+  B.CompareIndexLt tk -> builtinFunction (V.CompareIndex V.Lt) tk []
+  B.CompareIndexGe tk -> builtinFunction (V.CompareIndex V.Ge) tk []
+  B.CompareIndexGt tk -> builtinFunction (V.CompareIndex V.Gt) tk []
+  B.CompareNatEq tk -> builtinFunction (V.CompareNat V.Eq) tk []
+  B.CompareNatNe tk -> builtinFunction (V.CompareNat V.Ne) tk []
+  B.CompareNatLe tk -> builtinFunction (V.CompareNat V.Le) tk []
+  B.CompareNatLt tk -> builtinFunction (V.CompareNat V.Lt) tk []
+  B.CompareNatGe tk -> builtinFunction (V.CompareNat V.Ge) tk []
+  B.CompareNatGt tk -> builtinFunction (V.CompareNat V.Gt) tk []
+  B.CompareRatTensorPointwiseEq tk -> builtinFunction (V.CompareRatTensorPointwise V.Eq) tk []
+  B.CompareRatTensorPointwiseNe tk -> builtinFunction (V.CompareRatTensorPointwise V.Ne) tk []
+  B.CompareRatTensorPointwiseLe tk -> builtinFunction (V.CompareRatTensorPointwise V.Le) tk []
+  B.CompareRatTensorPointwiseLt tk -> builtinFunction (V.CompareRatTensorPointwise V.Lt) tk []
+  B.CompareRatTensorPointwiseGe tk -> builtinFunction (V.CompareRatTensorPointwise V.Ge) tk []
+  B.CompareRatTensorPointwiseGt tk -> builtinFunction (V.CompareRatTensorPointwise V.Gt) tk []
+  B.CompareRatTensorReducedEq tk -> derivedFunction (V.CompareRatTensorReduced V.Eq) tk []
+  B.CompareRatTensorReducedNe tk -> derivedFunction (V.CompareRatTensorReduced V.Ne) tk []
+  B.CompareRatTensorReducedLe tk -> derivedFunction (V.CompareRatTensorReduced V.Le) tk []
+  B.CompareRatTensorReducedLt tk -> derivedFunction (V.CompareRatTensorReduced V.Lt) tk []
+  B.CompareRatTensorReducedGe tk -> derivedFunction (V.CompareRatTensorReduced V.Ge) tk []
+  B.CompareRatTensorReducedGt tk -> derivedFunction (V.CompareRatTensorReduced V.Gt) tk []
   B.At e1 tk e2 -> builtinTypeClassOp V.AtTC tk [e1, e2]
   B.Map tk -> builtinTypeClassOp V.MapTC tk []
   B.Fold tk -> builtinTypeClassOp V.FoldTC tk []
@@ -657,31 +681,6 @@ elabApp fun arg = do
   arg' <- elabArg arg
   return $ V.normAppList fun' [arg']
 
-elabComparison :: (MonadElab m, IsToken token, DesugarableBuiltin Builtin) => V.ComparisonOp -> token -> B.Expr -> B.Expr -> m (V.Expr Builtin)
-elabComparison op tk e1 e2 = do
-  let Tk tkDetails@(tkPos, _) = toToken tk
-  let chainedOrder = case e1 of
-        B.Le _ _ e -> Just (V.Le, e)
-        B.Lt _ _ e -> Just (V.Lt, e)
-        B.Ge _ _ e -> Just (V.Ge, e)
-        B.Gt _ _ e -> Just (V.Gt, e)
-        B.Eq _ _ e -> Just (V.Eq, e)
-        _ -> Nothing
-
-  case chainedOrder of
-    Nothing -> builtin (V.TypeClassOp $ V.CompareTC op) tk [e1, e2]
-    Just (prevOp, e)
-      | not (V.chainable prevOp op) -> do
-          p <- mkProvenance tk
-          throwError $ UnchainableComparisons p prevOp op
-      | otherwise -> elabExpr $ B.And e1 (B.TokAnd (tkPos, "and")) $ case op of
-          V.Le -> B.Le e (B.TokLe tkDetails) e2
-          V.Lt -> B.Lt e (B.TokLt tkDetails) e2
-          V.Ge -> B.Ge e (B.TokGe tkDetails) e2
-          V.Gt -> B.Gt e (B.TokGt tkDetails) e2
-          V.Eq -> B.Eq e (B.TokEq tkDetails) e2
-          V.Ne -> B.Ne e (B.TokNe tkDetails) e2
-
 -- | Unfolds a list of binders into a consecutative forall expressions
 elabForallT :: (MonadElab m, DesugarableBuiltin Builtin) => B.TokForallT -> [B.NameBinder] -> B.Expr -> m (V.Expr Builtin)
 elabForallT tk binders body = do
@@ -696,6 +695,36 @@ elabLam tk binders body = do
   binders' <- elabNamedBinders tk binders
   body' <- elabExpr body
   return $ foldr (V.Lam p) body' binders'
+
+standardLibComparison :: (MonadElab m, IsToken token, DesugarableBuiltin Builtin) => V.ComparisonOp -> token -> B.Expr -> B.Expr -> m (V.Expr Builtin)
+standardLibComparison op tk e1 e2 = do
+  let Tk tkDetails@(tkPos, _) = toToken tk
+  let chainedOrder = case e1 of
+        B.Le _ _ e -> Just (V.Le, e)
+        B.Lt _ _ e -> Just (V.Lt, e)
+        B.Ge _ _ e -> Just (V.Ge, e)
+        B.Gt _ _ e -> Just (V.Gt, e)
+        B.Eq _ _ e -> Just (V.Eq, e)
+        _ -> Nothing
+  p <- mkProvenance tk
+  case chainedOrder of
+    Nothing -> case op of
+      V.Le -> app (V.Var p "leTC") <$> traverse elabExpr [e1, e2]
+      V.Lt -> app (V.Var p "ltTC") <$> traverse elabExpr [e1, e2]
+      V.Ge -> app (V.Var p "geTC") <$> traverse elabExpr [e1, e2]
+      V.Gt -> app (V.Var p "gtTC") <$> traverse elabExpr [e1, e2]
+      V.Eq -> app (V.Var p "eqTC") <$> traverse elabExpr [e1, e2]
+      V.Ne -> app (V.Var p "neTC") <$> traverse elabExpr [e1, e2]
+    Just (prevOp, e)
+      | not (V.chainable prevOp op) -> do
+          throwError $ UnchainableComparisons p prevOp op
+      | otherwise -> elabExpr $ B.And e1 (B.TokAnd (tkPos, "and")) $ case op of
+          V.Le -> B.Le e (B.TokLe tkDetails) e2
+          V.Lt -> B.Lt e (B.TokLt tkDetails) e2
+          V.Ge -> B.Ge e (B.TokGe tkDetails) e2
+          V.Gt -> B.Gt e (B.TokGt tkDetails) e2
+          V.Eq -> B.Eq e (B.TokEq tkDetails) e2
+          V.Ne -> B.Ne e (B.TokNe tkDetails) e2
 
 standardLibQuantifier ::
   (MonadElab m, IsToken token) =>
