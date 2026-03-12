@@ -205,7 +205,7 @@ function isTest(context?: vscode.ExtensionContext): boolean {
  *  This checks for `cabal` on the path and for the following files:
  *
  *  - `/cabal.project`
- *  - `/packages/vehicle-lsp/vehicle-lsp.cabal`
+ *  - `/packages/vehicle/vehicle.cabal`
  */
 // NOTE(directory-structure):
 // This function depends on the name and location of the `vscode-vehicle` and
@@ -223,8 +223,8 @@ function isDevelopmentEnvironment(projectRoot: string): boolean {
   }
   const vehicleLspCabal = path.join(
     projectRoot,
-    "vehicle-lsp",
-    "vehicle-lsp.cabal",
+    "vehicle",
+    "vehicle.cabal",
   );
   if (!fs.existsSync(vehicleLspCabal)) {
     return false;
