@@ -104,8 +104,8 @@ We recommend you install GHC and Cabal using [GHCup].
    ghcup upgrade
    ghcup install ghc 9.4.8
    ghcup set ghc 9.4.8
-   ghcup install cabal latest
-   ghcup set cabal latest
+   ghcup install cabal 3.10.2.1
+   ghcup set cabal 3.10.2.1
    ```
 
 3. Check if your installation was successful.
