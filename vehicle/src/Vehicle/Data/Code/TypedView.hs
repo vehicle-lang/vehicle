@@ -51,7 +51,7 @@ import Vehicle.Prelude.Logging
 -------------------------------------------------------------------------------
 -- Types
 
--- | A view on all possible expressions that can have type `List Int`.
+-- | A view on all possible expressions that can have type `Type`.
 data TypeValue
   = VUnitType
   | VBoolType
@@ -60,7 +60,7 @@ data TypeValue
   | VRatType
   | VBoolTensorType (VDims Builtin)
   | VNatTensorType (VDims Builtin)
-  | VRatTensorType (VDims Builtin)
+  | VTensorLike TensorLikeValue
   | VIndexTensorType (Value Builtin) (Value Builtin)
   | VListType (Value Builtin)
   | VVectorType (Value Builtin) (Value Builtin)
@@ -68,11 +68,19 @@ data TypeValue
   | VBoundTypeVar Lv (Spine Builtin)
   | VFreeTypeVar Identifier (Spine Builtin)
 
+data TensorLikeValue
+  = VRatTensorType (VDims Builtin)
+  | VRecordType (VType Builtin) !(VRecordFields Builtin)
+
 toTypeValue :: (HasCallStack) => Value Builtin -> TypeValue
 toTypeValue t = case t of
   VPi binder value -> VPiType binder value
   VBoundVar lv spine -> VBoundTypeVar lv spine
   VFreeVar v spine -> VFreeTypeVar v spine
+  -- case for VRecord
+  -- \| VRecord (VType builtin) !(VRecordFields builtin)
+  -- not sure if we are supposed to have this here or if we need to grab it from the context at some other stage?
+  VRecord recordType fields -> VTensorLike (VRecordType recordType fields)
   VBuiltin (BuiltinType typ) spine -> case (typ, spine) of
     (UnitType, []) -> VUnitType
     (BoolType, []) -> VBoolType
@@ -81,7 +89,7 @@ toTypeValue t = case t of
     (NatType, []) -> VNatType
     (ListType, [tElem]) -> VListType (argExpr tElem)
     (TensorType, [toTypeValue . argExpr -> VBoolType, ds]) -> VBoolTensorType (argExpr ds)
-    (TensorType, [toTypeValue . argExpr -> VRatType, ds]) -> VRatTensorType (argExpr ds)
+    (TensorType, [toTypeValue . argExpr -> VRatType, ds]) -> VTensorLike (VRatTensorType (argExpr ds))
     (TensorType, [toTypeValue . argExpr -> VNatType, ds]) -> VNatTensorType (argExpr ds)
     (TensorType, [toTypeValue . argExpr -> VIndexType n, ds]) -> VIndexTensorType n (argExpr ds)
     (VectorType, [tElem, dim]) -> VVectorType (argExpr tElem) (argExpr dim)
@@ -102,10 +110,14 @@ fromTypeValue t = case t of
   VNatType -> INatType
   VListType tElem -> IListType tElem
   VBoolTensorType ds -> ITensorType (fromTypeValue VBoolType) ds
-  VRatTensorType ds -> ITensorType (fromTypeValue VRatType) ds
+  VTensorLike (VRatTensorType ds) -> ITensorType (fromTypeValue VRatType) ds
   VNatTensorType ds -> ITensorType (fromTypeValue VNatType) ds
   VIndexTensorType n ds -> ITensorType (fromTypeValue (VIndexType n)) ds
   VVectorType tElem d -> IVectorType tElem d
+  -- case for VRecord
+  -- \| VRecord (VType builtin) !(VRecordFields builtin)
+  -- I = Interface? do we need one of these for records??
+  VTensorLike (VRecordType _recordType _fields) -> undefined
 
 -------------------------------------------------------------------------------
 -- Index
@@ -188,7 +200,17 @@ data BoolValue
   | VCompareRatTensor (ComparisonOp, TensorOp2Args (Value Builtin))
   | VReduceAndTensor (TensorReductionArgs (Value Builtin))
   | VReduceOrTensor (TensorReductionArgs (Value Builtin))
-  | VQuantifyRatTensor (Quantifier, QuantifyRatTensorArgs (Value Builtin) (Closure Builtin))
+  | VQuantifyRatTensor (Quantifier, QuantifyRatTensorArgs (Value Builtin) (Closure Builtin)) -- write the equivalent for this for records
+  -- args for QuantifyRatTensor
+  -- data QuantifyRatTensorArgs expr body = QuantifyRatTensorArgs
+  -- { quantifyDimensions :: expr, -- not sure what this is, may need to change?
+  --   quantifyBinder :: GenericBinder expr, -- is this the Forall, Exists etc..?
+  --   quantifyBody :: body
+  -- }
+  -- is this where we would have field information??
+  -- (i think) this should be similar to what we do for rat tensor qantifier?
+  -- then we can keep the details of the record in the body in a VRecord
+  | VQuantifyRecord (Quantifier, QuantifyRatTensorArgs (Value Builtin) (Closure Builtin))
   | VBoolIf (IfArgs (Value Builtin))
   | VBoolAt (AtTensorArgs (Value Builtin))
 
@@ -222,6 +244,8 @@ fromBoolValue = \case
   VCompareIndex args -> mkExpr accessCompareIndex args
   VCompareRatTensor args -> toComparison args
   VQuantifyRatTensor args -> mkExpr accessQuantifyRatTensor args
+  -- need to make equivalent for accessQuantifyRatTensor for accessQuantifyRecord?
+  VQuantifyRecord _args -> undefined
   VReduceAndTensor args -> mkExpr accessReduceAnd args
   VReduceOrTensor args -> mkExpr accessReduceOr args
   VBoolIf args -> mkExpr accessIf args
