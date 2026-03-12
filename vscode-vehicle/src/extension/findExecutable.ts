@@ -6,10 +6,10 @@ import type * as vscode from "vscode";
 import * as which from "which";
 import { LogLevel, type Logger } from "./logger/Logger";
 
-/** Find executable for `vehicle-lsp` when running in Development Mode.
+/** Find executable for `vehicle` when running in Development Mode.
  *
- * This fails if there are multiple versions of `vehicle-lsp` under the
- * `dist-newstyle` directory, which may happen when `vehicle-lsp` has been
+ * This fails if there are multiple versions of `vehicle` under the
+ * `dist-newstyle` directory, which may happen when `vehicle` has been
  * compiled by different versions of GHC or for different target systems.
  */
 export function findExecutable(
@@ -37,16 +37,16 @@ export function findExecutable(
 
 /** Find the executable on the PATH. */
 function findExecutableOnPath(logger: Logger): string | null {
-  // Try and find `vehicle-lsp` on the PATH.
+  // Try and find `vehicle` on the PATH.
   const executableName =
-    process.platform === "win32" ? "vehicle-lsp.exe" : "vehicle-lsp";
+    process.platform === "win32" ? "vehicle.exe" : "vehicle";
   const executable = which.sync(executableName, { nothrow: true });
   if (executable !== null) {
     logger.log(
       LogLevel.Debug,
       [
         // Log message
-        `Found vehicle-lsp executable on path:`,
+        `Found vehicle executable on path:`,
         executable,
       ].join("\n"),
     );
@@ -57,7 +57,7 @@ function findExecutableOnPath(logger: Logger): string | null {
       LogLevel.Error,
       [
         // Log and user message
-        `Could not find vehicle-lsp on the PATH`,
+        `Could not find vehicle on the PATH`,
       ].join("\n"),
     );
   }
@@ -67,14 +67,14 @@ function findExecutableOnPath(logger: Logger): string | null {
 /** Find the executable in Cabal's dist-newstyle. */
 // NOTE(directory-structure):
 // This function depends on the name and location of the `vscode-vehicle` and
-// `vehicle-lsp` packages as well as the structure of Cabal's dist-newstyle
+// `vehicle` packages as well as the structure of Cabal's dist-newstyle
 // directory and must be updated if those change.
 // TODO:
 // This function could be refined to search only those directories in the
 // `dist-newstyle` directory that match the current platform---which would
 // require mapping the names for platforms and archirectures from JavaScript
 // (`process.platform` and `process.arch`) to Haskell (`System.Info.os` and
-// `System.Info.arch`)---and could choose to prefer the `vehicle-lsp` binary
+// `System.Info.arch`)---and could choose to prefer the `vehicle` binary
 // compiled by the GHC version that is currently on the path, if any.
 function findExecutableInDevelopmentEnvironment(
   logger: Logger,
@@ -83,13 +83,13 @@ function findExecutableInDevelopmentEnvironment(
   const projectRoot = findProjectRoot(context);
   logger.log(LogLevel.Debug, `Project root is ${projectRoot}.`);
   const executableName =
-    process.platform === "win32" ? "vehicle-lsp.exe" : "vehicle-lsp";
+    process.platform === "win32" ? "vehicle.exe" : "vehicle";
   if (isDevelopmentEnvironment(projectRoot)) {
-    // Find the executable for `vehicle-lsp` using `cabal list-bin`.
+    // Find the executable for `vehicle` using `cabal list-bin`.
     const cabal = which.sync("cabal", { nothrow: true });
     if (cabal !== null) {
       logger.log(LogLevel.Debug, `Found cabal at ${cabal}.`);
-      const vehicleLspBin = execSync(`${cabal} list-bin -v0 vehicle-lsp`, {
+      const vehicleLspBin = execSync(`${cabal} list-bin -v0 vehicle`, {
         cwd: projectRoot,
         encoding: "utf-8",
       }).trim();
@@ -97,33 +97,33 @@ function findExecutableInDevelopmentEnvironment(
         return vehicleLspBin;
       }
     }
-    // Find the executable for `vehicle-lsp` using a glob pattern.
+    // Find the executable for `vehicle` using a glob pattern.
     const pattern = path.join(
       "dist-newstyle",
       "build",
       "*-*",
       "ghc-*",
-      "vehicle-lsp-*",
+      "vehicle-*",
       "x",
-      "vehicle-lsp",
+      "vehicle",
       "build",
-      "vehicle-lsp",
+      "vehicle",
       executableName,
     );
     const candidates = globSync(pattern, {
       cwd: projectRoot,
       windowsPathsNoEscape: true,
     });
-    // Found exactly one executable for `vehicle-lsp`.
+    // Found exactly one executable for `vehicle`.
     if (candidates.length == 1) {
       const executable = candidates[0];
       const executableRelative = path.dirname(
         path.relative(projectRoot, executable),
       );
-      logger.log(LogLevel.Debug, `Found vehicle-lsp in '${executableRelative}'`);
+      logger.log(LogLevel.Debug, `Found vehicle in '${executableRelative}'`);
       return executable;
     }
-    // Found multiple executables for `vehicle-lsp`.
+    // Found multiple executables for `vehicle`.
     if (candidates.length >= 2) {
       const candidatesRelative = candidates.map((candidate) =>
         path.dirname(path.relative(projectRoot, candidate)),
@@ -132,19 +132,19 @@ function findExecutableInDevelopmentEnvironment(
         LogLevel.Warning,
         [
           // Log message
-          `Found multiple candidates for vehicle-lsp:`,
+          `Found multiple candidates for vehicle:`,
           ...candidatesRelative,
         ].join("\n"),
       );
     }
-    // Could not find `vehicle-lsp`.
+    // Could not find `vehicle`.
     if (candidates.length == 0) {
       logger.log(
         LogLevel.Warning,
         [
           // User message
-          "Could not find vehicle-lsp in dist-newstyle.",
-          "Did you forget to run `cabal build vehicle-lsp`?",
+          "Could not find vehicle in dist-newstyle.",
+          "Did you forget to run `cabal build vehicle`?",
         ].join("\n"),
       );
       logger.log(LogLevel.Debug, `Searched with ${pattern}`);
@@ -209,7 +209,7 @@ function isTest(context?: vscode.ExtensionContext): boolean {
  */
 // NOTE(directory-structure):
 // This function depends on the name and location of the `vscode-vehicle` and
-// `vehicle-lsp` packages and must be updated if those change.
+// `vehicle` packages and must be updated if those change.
 function isDevelopmentEnvironment(projectRoot: string): boolean {
   // Check for `cabal` on the path:
   const cabal = which.sync("cabal", { nothrow: true });

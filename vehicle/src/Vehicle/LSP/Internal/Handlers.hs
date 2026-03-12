@@ -29,14 +29,15 @@ handlers logger clientCapabilities =
     initializedHandler :: Lsp.Handlers LspTc
     initializedHandler =
       Lsp.notificationHandler SMethod_Initialized $ \_notification -> do
-        logger <& (T.pack "ClientCapabilities: " <> TL.toStrict (encodeToLazyText clientCapabilities)) `WithSeverity` Debug
+        logger <& (T.pack "ClientCapabilities: " <> TL.toStrict (encodeToLazyText clientCapabilities)) `WithSeverity` Info
         config <- Lsp.getConfig
-        logger <& (T.pack "Config: " <> TL.toStrict (encodeToLazyText config)) `WithSeverity` Debug
+        logger <& (T.pack "Config: " <> TL.toStrict (encodeToLazyText config)) `WithSeverity` Info
         pure ()
 
     textDocumentDidChangeHandler :: Lsp.Handlers LspTc
     textDocumentDidChangeHandler =
       Lsp.notificationHandler SMethod_TextDocumentDidChange $ \_notification -> do
+        logger <& "Received TextDocumentDidChange event" `WithSeverity` Info
         pure ()
 
     workspaceDidChangeConfiguration :: Lsp.Handlers LspTc

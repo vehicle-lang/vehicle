@@ -23,10 +23,13 @@ export async function activate(
 ): Promise<ExtensionAPI> {
   // Create output channels.
   const debugOutputChannel = vscode.window.createOutputChannel(
-    "Vehicle Language Extension",
+    "Vehicle LSP Client",
     "vehicle",
   );
-  const outputChannel = vscode.window.createOutputChannel("Vehicle", "vehicle");
+  const outputChannel = vscode.window.createOutputChannel(
+    "Vehicle LSP Server",
+    "vehicle",
+  );
 
   // Create logger.
   const clientLogger = new ArrayLogger([
@@ -36,7 +39,7 @@ export async function activate(
 
   // Create filesystem watcher for the LSP Client.
   const clientFileSystemWatcher =
-    vscode.workspace.createFileSystemWatcher("*.vehicle");
+    vscode.workspace.createFileSystemWatcher("*.vcl");
 
   // Create options for the LSP Client.
   const clientOptions: lsp.LanguageClientOptions = {
@@ -50,16 +53,19 @@ export async function activate(
     outputChannel: outputChannel,
   };
 
-  // Find the vehicle-lsp executable:
-  const vehicleLspCommand = findExecutable(clientLogger, context);
+  // Find the vehicle executable:
+  const vehicleExecutable = findExecutable(clientLogger, context);
 
   // Create options for running the LSP Server.
   const serverOptions: lsp.ServerOptions = {
-    command: vehicleLspCommand,
+    command: vehicleExecutable,
+    args: ["lsp"]
   };
 
   // Create a Language Server Client.
   client = new lsp.LanguageClient("Vehicle", serverOptions, clientOptions);
+
+  // client.trace = lsp.Trace.Verbose;
 
   // Start the Language Server Client.
   client.start();
