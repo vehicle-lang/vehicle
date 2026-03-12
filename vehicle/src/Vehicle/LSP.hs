@@ -9,7 +9,7 @@ where
 import Colog qualified
 import Colog.Core (LogAction, Severity (..), WithSeverity (..), (<&))
 import Control.Concurrent (forkIO)
-import Control.Concurrent.STM (atomically)
+import Control.Concurrent.STM (atomically, newTVarIO)
 import Control.Concurrent.STM.TChan
   ( TChan,
     newTChanIO,
@@ -47,9 +47,11 @@ import Paths_vehicle (version)
 import Prettyprinter (Pretty (..))
 import System.Exit (ExitCode (ExitFailure), exitSuccess, exitWith)
 import System.IO (BufferMode (..), Handle, IOMode (..), hSetBuffering, stderr, stdin, stdout, withFile)
-import Vehicle.LSP.Internal.Config (Config, LspTc)
-import Vehicle.LSP.Internal.Config qualified as Config
-import Vehicle.LSP.Internal.Handlers (handlers)
+import Vehicle.LSP.Config (Config)
+import Vehicle.LSP.Config qualified as Config
+import Vehicle.LSP.Handlers (handlers)
+import Vehicle.LSP.Monad as LSPMonad
+import Vehicle.LSP.State (ServerState, ServerStateRef, initialServerState, initialiseServerState)
 
 --------------------------------------------------------------------------------
 
@@ -70,9 +72,12 @@ runLSP LSPOptions {..} = do
     -- Setup global queue with LSP message reactions:
     reactorInputChan <- newTChanIO
 
+    -- Initialise the global state
+    stateVar <- liftIO $ newTVarIO initialServerState
+
     -- Start the LSP server:
     runServerWithHandles handleLogger (dualLogger @(LspM Config)) stdin stdout $
-      lspDefinition handleLogger (dualLogger @LspTc) reactorInputChan
+      lspDefinition handleLogger (dualLogger @LspTc) stateVar reactorInputChan
 
   case result of
     0 -> exitSuccess
@@ -116,16 +121,17 @@ newtype ReactorInput
 lspDefinition ::
   LogAction IO (WithSeverity Text) ->
   LogAction LspTc (WithSeverity Text) ->
+  ServerStateRef ->
   TChan ReactorInput ->
   ServerDefinition Config
-lspDefinition handleLogger dualLogger reactorInputChan =
+lspDefinition handleLogger dualLogger serverState reactorInputChan = do
   ServerDefinition
     { defaultConfig = Config.defaultConfig,
       configSection = "vehicle",
       parseConfig = Config.parseConfig,
-      onConfigChange = Config.onConfigChange,
-      doInitialize = lspInitialise handleLogger reactorInputChan,
-      staticHandlers = lspHandlers dualLogger reactorInputChan,
+      onConfigChange = LSPMonad.onConfigChange,
+      doInitialize = lspInitialise handleLogger serverState reactorInputChan,
+      staticHandlers = lspHandlers dualLogger serverState reactorInputChan,
       interpretHandler = lspInterpretHandler,
       options = lspOptions
     }
@@ -143,39 +149,42 @@ reactor logger reactorInputChan = do
 
 lspInitialise ::
   LogAction IO (WithSeverity Text) ->
+  ServerStateRef ->
   TChan ReactorInput ->
   LanguageContextEnv Config ->
   TMessage 'Method_Initialize ->
   IO (Either (TResponseError 'Method_Initialize) (LanguageContextEnv Config))
-lspInitialise logger reactorInputChan languageContextEnv _request = do
+lspInitialise logger serverState reactorInputChan languageContextEnv _request = do
   _reactorId <- forkIO (reactor logger reactorInputChan)
+  maybeError <- initialiseServerState serverState
   pure $ Right languageContextEnv
 
 lspHandlers ::
   LogAction LspTc (WithSeverity Text) ->
+  ServerStateRef ->
   TChan ReactorInput ->
   ClientCapabilities ->
   Handlers LspTc
-lspHandlers logger reactorInputChan =
-  mapHandlers pushRequest pushNotification . handlers logger
+lspHandlers logger serverState reactorInputChan =
+  mapHandlers pushRequest pushNotification . handlers logger serverState
   where
     pushRequest :: forall (a :: Method 'ClientToServer 'Request). Handler LspTc a -> Handler LspTc a
     pushRequest handler message responder = do
       lspEnv <- getLspEnv
-      let !action = Config.runLspTc lspEnv (handler message responder)
+      let !action = runLspTc lspEnv (handler message responder)
       liftIO . atomically . writeTChan reactorInputChan $ ReactorAction action
 
     pushNotification :: forall (a :: Method 'ClientToServer 'Notification). Handler LspTc a -> Handler LspTc a
     pushNotification handler message = do
       lspEnv <- getLspEnv
-      let !action = Config.runLspTc lspEnv (handler message)
+      let !action = runLspTc lspEnv (handler message)
       liftIO . atomically . writeTChan reactorInputChan $ ReactorAction action
 
 lspInterpretHandler ::
   LanguageContextEnv Config ->
   LspTc <~> IO
 lspInterpretHandler languageContextEnv =
-  Iso (Config.runLspTc languageContextEnv) liftIO
+  Iso (runLspTc languageContextEnv) liftIO
 
 lspOptions :: Options
 lspOptions =
@@ -192,9 +201,9 @@ lspOptions =
 textDocumentSyncOptions :: TextDocumentSyncOptions
 textDocumentSyncOptions =
   TextDocumentSyncOptions
-    { _openClose = Just False,
-      _change = Just TextDocumentSyncKind_None,
+    { _openClose = Just True,
+      _change = Just TextDocumentSyncKind_Full,
       _willSave = Just False,
       _willSaveWaitUntil = Just False,
-      _save = Just . InR . SaveOptions $ Just True
+      _save = Just . InR . SaveOptions $ Just False
     }

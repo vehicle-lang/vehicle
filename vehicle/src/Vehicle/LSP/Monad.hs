@@ -1,31 +1,15 @@
-{-# LANGUAGE OverloadedRecordDot #-}
-
-module Vehicle.LSP.Internal.Config
-  ( packageName,
-    LspTc,
-    runLspTc,
-    Config (..),
-    defaultConfig,
-    parseConfig,
+module Vehicle.LSP.Monad
+  ( LspTc (..),
     onConfigChange,
+    runLspTc,
   )
 where
 
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.IO.Unlift (MonadUnliftIO (..))
-import Data.Aeson.Types (FromJSON (..), KeyValue (..), Parser, Result (..), ToJSON (..), Value, fromJSON, object, withObject, (.!=), (.:?))
-import Data.Default (Default (..))
-import Data.Text (Text)
-import Data.Text qualified as T
 import GHC.Exts (oneShot)
 import Language.LSP.Server (LanguageContextEnv, MonadLsp (..))
-
---------------------------------------------------------------------------------
--- Language-Server Package Name
---------------------------------------------------------------------------------
-
-packageName :: Text
-packageName = T.pack "vehicle-lsp"
+import Vehicle.LSP.Config
 
 --------------------------------------------------------------------------------
 -- Language-Server Type-Checker Monad Stack
@@ -76,42 +60,6 @@ instance MonadUnliftIO LspTc where
 instance MonadLsp Config LspTc where
   getLspEnv :: LspTc (LanguageContextEnv Config)
   getLspEnv = LspTc $ \lcEnv -> pure lcEnv
-
---------------------------------------------------------------------------------
--- Language-Server Configuration
---------------------------------------------------------------------------------
-
-newtype Config = Config
-  { maxNumberOfProblems :: Int
-  }
-
-defaultConfig :: Config
-defaultConfig =
-  Config
-    { maxNumberOfProblems = 100
-    }
-
-instance Default Config where
-  def = defaultConfig
-
-instance FromJSON Config where
-  parseJSON :: Value -> Parser Config
-  parseJSON = withObject "Config" $ \l -> do
-    maxNumberOfProblems <- l .:? "maxNumberOfProblems" .!= (def @Config).maxNumberOfProblems
-    pure Config {..}
-
-instance ToJSON Config where
-  toJSON :: Config -> Value
-  toJSON Config {..} =
-    object
-      [ "maxNumberOfProblems" .= maxNumberOfProblems
-      ]
-
-parseConfig :: Config -> Value -> Either Text Config
-parseConfig _oldConfig newConfigRaw =
-  case fromJSON newConfigRaw of
-    Error errorMessage -> Left (T.pack errorMessage)
-    Success newConfig -> Right newConfig
 
 onConfigChange :: Config -> LspTc ()
 onConfigChange _newConfig = pure ()

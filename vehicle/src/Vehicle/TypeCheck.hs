@@ -1,5 +1,7 @@
 module Vehicle.TypeCheck
   ( TypeCheckOptions (..),
+    ProgramContext (..),
+    initialProgramContext,
     typeCheck,
     typeCheckUserProg,
     runCompileMonad,
@@ -158,9 +160,15 @@ data ModuleInfo = ModuleInfo
 -- | The full state of the Vehicle program
 data ProgramContext = ProgramContext
   { moduleGraph :: AdjacencyGraph ModulePath,
-    loadedModules :: Map ModulePath ModuleInfo,
-    availableModules :: Map ModulePath FilePath
+    loadedModules :: Map ModulePath ModuleInfo
   }
+
+initialProgramContext :: ProgramContext
+initialProgramContext = do
+  ProgramContext
+    { moduleGraph = emptyAdjacencyGraph,
+      loadedModules = mempty
+    }
 
 lookupModuleCertain ::
   Prog Builtin ->
@@ -187,7 +195,8 @@ flattenProgram userProg importedModules moduleGraph = do
 
 data ModuleStack = ModuleStack
   { stackCurrentModule :: ModulePath,
-    stackRemainingModules :: [ModulePath]
+    stackRemainingModules :: [ModulePath],
+    availableModules :: Map ModulePath FilePath
   }
 
 type MonadTCMProg m =
@@ -205,14 +214,14 @@ lookupModule modulePath = gets (Map.lookup modulePath . loadedModules)
 
 lookupModuleFilePath :: (MonadTCMProg m) => ModulePath -> m FilePath
 lookupModuleFilePath modulePath = do
-  maybeFilePath <- gets (Map.lookup modulePath . availableModules)
+  maybeFilePath <- asks (Map.lookup modulePath . availableModules)
   case maybeFilePath of
     Nothing -> missingImportError modulePath
     Just moduleFile -> return moduleFile
 
 enterModule :: (MonadTCMProg m) => ModulePath -> m a -> m a
 enterModule newModule action = do
-  ModuleStack {..} <- ask
+  currentStack@ModuleStack {..} <- ask
 
   -- Add an edge to the dependency graph
   modify $ \ProgramContext {..} ->
@@ -227,7 +236,11 @@ enterModule newModule action = do
     cyclicImportsError newModule previousStack
 
   -- Run the action under the updated
-  let newStack = ModuleStack newModule previousStack
+  let newStack =
+        currentStack
+          { stackCurrentModule = newModule,
+            stackRemainingModules = previousStack
+          }
   local (const newStack) action
 
 storeModule :: (MonadTCMProg m) => ModulePath -> ModuleInfo -> m ()
@@ -246,18 +259,13 @@ loadUserSpecification ::
   FilePath ->
   m (Prog Builtin, Map ModulePath [Decl Builtin], AdjacencyGraph ModulePath)
 loadUserSpecification specificationFile = do
+  let initialContext = initialProgramContext
   availableModules <- loadLibraries specificationFile
-
-  let initialContext =
-        ProgramContext
-          { moduleGraph = emptyAdjacencyGraph,
-            loadedModules = mempty,
-            availableModules = availableModules
-          }
   let initialStack =
         ModuleStack
           { stackCurrentModule = userModulePath,
-            stackRemainingModules = []
+            stackRemainingModules = [],
+            availableModules = availableModules
           }
   let implicitImports = ImportStatement <$> [standardLibraryDefinitionsModulePath]
   let action = loadUnloadedModule implicitImports userModulePath
@@ -406,7 +414,7 @@ cyclicImportsError newModule previousModules =
 
 missingImportError :: (MonadTCMProg m) => ModulePath -> m a
 missingImportError modulePath = do
-  allModules <- gets availableModules
+  allModules <- asks availableModules
   developerError $
     "unable to find module" <+> quotePretty modulePath <+> "in imported modules:"
       <> lineIndent (prettyMap pretty pretty allModules)
