@@ -31,9 +31,8 @@ import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
 import Vehicle.Data.MaybeTrivial
-import Vehicle.Data.Tensor (HasShape (..))
 import Vehicle.Data.Variable.Bound.Context.Name (getNameContext, prettyFriendlyInCtx)
-import Vehicle.Data.Variable.Bound.Context.Tensor.Class
+import Vehicle.Data.Variable.Bound.Context.Tensor (replaceTensorVariableWithStackedChildren)
 import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Verify.Core (inputShape)
 import Vehicle.Verify.QueryFormat (QueryFormat (..), supportsStrictInequalities)
@@ -188,21 +187,8 @@ unblockQuantifiedBoundVar ::
   (MonadQuantifierBody m) =>
   Lv ->
   m (Value Builtin)
-unblockQuantifiedBoundVar lv = do
-  nestedVar <- lookupNestedSliceVariable (SliceVariable lv)
-  case (childVariablesOf nestedVar, shapeOf nestedVar) of
-    (Nothing, []) -> return $ VBoundVar lv []
-    (Just childVars, d : ds) ->
-      return $
-        fromRatTensorValue $
-          VRatStackTensor $
-            StackTensorArgs
-              { stackType = IRatType,
-                stackFirstDim = INatLiteral d,
-                stackRemainingDims = mkDims ds,
-                stackElements = flip map childVars $ \v -> VBoundVar (toLv v) []
-              }
-    _ -> developerError "mismatched children and shape"
+unblockQuantifiedBoundVar lv =
+  replaceTensorVariableWithStackedChildren (SliceVariable lv)
 
 unblockNetworkApplication ::
   (MonadQuantifierBody m) =>
