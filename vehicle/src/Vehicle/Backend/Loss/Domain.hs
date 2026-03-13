@@ -5,9 +5,7 @@ where
 
 import Control.Monad (foldM, forM)
 import Control.Monad.Except (MonadError (..), runExceptT)
-import Control.Monad.State (MonadState (..), evalStateT)
 import Data.Bifunctor (Bifunctor (..))
-import Data.Coerce (coerce)
 import Data.Foldable (foldrM)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
@@ -442,13 +440,13 @@ compileComparison (op, args)
         Left err -> case err of
           ImpureButProgress value -> compileBool value
           ContainsNetwork ident -> do
-            logDebug MaxDetail $ "rejected-assertion" <+> parens ("contains" <+> quotePretty ident)
+            logDebug MaxDetail $ "invalid-bound" <+> parens ("contains" <+> quotePretty ident)
             compileNonBoundComparison (op, args)
           ContainsMultipleUserVariablesFromSameSlice _parent var1 var2 -> do
             logDebugM MaxDetail $ do
               var1Doc <- squotes <$> prettyFriendlyInCtx var1
               var2Doc <- squotes <$> prettyFriendlyInCtx var2
-              return $ "rejected-assertion" <+> parens ("contains" <+> var1Doc <+> "and" <+> var2Doc <+> "from same tensor")
+              return $ "invalid-bound" <+> parens ("contains" <+> var1Doc <+> "and" <+> var2Doc <+> "from same tensor")
             compileNonBoundComparison (op, args)
         Right (TensorOp2Args dims e1 e2) -> do
           lossDims <- convertDims dims
@@ -458,9 +456,19 @@ compileComparison (op, args)
             comparisonToAssertion op linX linY
 
           case errorOrAssertion of
-            Left _uncompilable -> compileNonBoundComparison (op, args)
-            Right (Left trivialValue) -> return $ Trivial trivialValue
-            Right (Right assertion) -> return $ NonTrivial $ singletonConstrainedPartition assertion
+            Left uncompilable -> do
+              logDebugM MaxDetail $ do
+                doc <- prettyFriendlyInCtx uncompilable
+                return $ "invalid-bound" <+> parens ("unable to unblock" <+> doc)
+              compileNonBoundComparison (op, args)
+            Right (Left trivialValue) -> do
+              logDebug MaxDetail $ "invalid-bound" <+> parens ("trivially" <+> pretty trivialValue)
+              return $ Trivial trivialValue
+            Right (Right assertion) -> do
+              logDebugM MaxDetail $ do
+                doc <- prettyFriendlyInCtx assertion
+                return $ "valid-bound: " <+> doc
+              return $ NonTrivial $ singletonConstrainedPartition assertion
 
 compileNonBoundComparison ::
   (MonadDomain m) =>
@@ -508,7 +516,6 @@ data PurificationError
 type MonadPurifyAssertion m =
   ( MonadPurify m,
     MonadError PurificationError m,
-    MonadState (Map UserTensorVariable UserSliceVariable) m,
     MonadReadableTensorBoundContext m
   )
 
@@ -519,14 +526,13 @@ purifyAssertion ::
   m (Either PurificationError (TensorOp2Args (Value Builtin)))
 purifyAssertion op args = do
   callDepth <- getCallDepth
-  runExceptT $
-    flip evalStateT mempty $ do
-      errorOrResult <- tryPurifyAssertion purifyUnblockingActions op args
-      case errorOrResult of
-        Left err -> do
-          setCallDepth callDepth
-          throwError $ ImpureButProgress err
-        Right value -> return value
+  runExceptT $ do
+    errorOrResult <- tryPurifyAssertion purifyUnblockingActions op args
+    case errorOrResult of
+      Left err -> do
+        setCallDepth callDepth
+        throwError $ ImpureButProgress err
+      Right value -> return value
 
 purifyUnblockingActions :: (MonadPurifyAssertion m) => UnblockingActions m
 purifyUnblockingActions =
@@ -543,16 +549,7 @@ purifyBoundVar lv = do
   (_, maybeUserVars) <- lookupVariableInNestedCtx lv
   case maybeUserVars of
     Nothing -> return $ VBoundVar lv []
-    Just (tensorVar, sliceVar) -> do
-      let userTensorVar = coerce $ toLv tensorVar
-      let userSliceVar = coerce sliceVar
-      seenUserVars <- get
-      let (maybeExistingVar, newMap) = Map.insertLookupWithKey (\_ n _ -> n) userTensorVar userSliceVar seenUserVars
-      case maybeExistingVar of
-        Just other -> throwError $ ContainsMultipleUserVariablesFromSameSlice userTensorVar userSliceVar other
-        Nothing -> do
-          put newMap
-          return $ VBoundVar lv []
+    Just (_tensorVar, sliceVar) -> replaceTensorVariableWithStackedChildren sliceVar
 
 --------------------------------------------------------------------------------
 -- Compiling linear expressions

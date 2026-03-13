@@ -8,6 +8,8 @@
 
 * Fixed a bug where the compiler where if a propery involved multiple quantifiers, the compiler woudl sometimes report that one of them was unbounded.
 
+* Fixed a bug where bounds on sub-indices of a tensor weren't being detected properly.
+
 ## v0.24
 
 ### Loss backend
