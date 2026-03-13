@@ -6,7 +6,6 @@ where
 
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.Interface
-import Vehicle.Data.Code.Interface.Args
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Tensor (HasShape (..))
