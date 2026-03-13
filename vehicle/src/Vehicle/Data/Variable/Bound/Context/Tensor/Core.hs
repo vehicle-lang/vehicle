@@ -35,6 +35,9 @@ originalCtx = fmap fst . nestedVariableCtx
 emptyNestedCtx :: NestedTensorVariableCtx
 emptyNestedCtx = NestedTensorVariableCtx mempty mempty
 
+-- | Given a set of variables in the extended tensor context,
+-- returns a pair consisting of the Lv of the variable in the original context
+-- and the top-level tensor variable if the variable is a tensor variable.
 findCorrespondingVariableInOriginalCtx ::
   (VariableLike var) =>
   NestedTensorVariableCtx ->
