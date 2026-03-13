@@ -25,7 +25,7 @@ import Vehicle.Data.Assertion (NormalisedRelation (..), Relation (..), compariso
 import Vehicle.Data.Bound
 import Vehicle.Data.Bound.FourierMotzkinElimination (fourierMotzkinTensorBoundsElimination)
 import Vehicle.Data.Builtin.Interface (Accessor (..))
-import Vehicle.Data.Builtin.Interface.Normalise (evalConstTensor)
+import Vehicle.Data.Builtin.Interface.Normalise (evalConstTensor, evalDivRatTensor, evalMulRatTensor)
 import Vehicle.Data.Builtin.Loss
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.BooleanExpr (BooleanExpr (..), DisjunctAll (..), andBoolExpr, conjunctDisjunctsM, disjunctDisjuncts, disjunctsToList, eliminateTrivialDisjunctions, flattenBoolExpr)
@@ -41,6 +41,7 @@ import Vehicle.Data.Variable.Bound.Context.Generic (BoundCtx)
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Bound.Context.Tensor
 import Vehicle.Data.Variable.Bound.Level
+import Vehicle.Prelude.Logging (runSilentLogger)
 import Vehicle.Prelude.Warning (CompileWarning (..))
 
 compileQuantifier ::
@@ -606,8 +607,24 @@ compileLinearExpr dims expr = case toRatTensorValue expr of
   VReduceMulRatTensor {} -> unlinearisable
   VReduceMinRatTensor {} -> unlinearisable
   VReduceMaxRatTensor {} -> unlinearisable
-  VMulRatTensor (TensorOp2Args _ _e1 _e2) -> unlinearisable
-  VDivRatTensor (TensorOp2Args _ _e1 _e2) -> unlinearisable
+  VMulRatTensor (TensorOp2Args _ e1 e2) -> do
+    e1' <- compileLinearExpr dims e1
+    e2' <- compileLinearExpr dims e2
+    if Map.null (coefficients e1') && Map.null (coefficients e2')
+      then do
+        let TensorValue _ v1 = constantValue e1'
+        let TensorValue _ v2 = constantValue e2'
+        return $ constantExpr $ TensorValue dims (runSilentLogger $ evalMulRatTensor (TensorOp2Args dims v1 v2))
+      else unlinearisable
+  VDivRatTensor (TensorOp2Args _ e1 e2) -> do
+    e1' <- compileLinearExpr dims e1
+    e2' <- compileLinearExpr dims e2
+    if Map.null (coefficients e1') && Map.null (coefficients e2')
+      then do
+        let TensorValue _ v1 = constantValue e1'
+        let TensorValue _ v2 = constantValue e2'
+        return $ constantExpr $ TensorValue dims (runSilentLogger $ evalDivRatTensor (TensorOp2Args dims v1 v2))
+      else unlinearisable
   where
     unlinearisable :: m (LinearExpr SliceVariable TensorValue)
     unlinearisable = throwError expr
