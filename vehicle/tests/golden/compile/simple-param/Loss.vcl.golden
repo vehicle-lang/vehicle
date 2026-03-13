@@ -1,0 +1,3 @@
+@property;
+p : Tensor Real -> (Tensor Real -> Tensor Real) -> Tensor Real;
+p = \ r -> \ f -> max 0.0 (0.0 - f r)

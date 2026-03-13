@@ -1,0 +1,34 @@
+[
+  {
+    "name": "TypeCheck",
+    "run": "vehicle typecheck -s spec.vcl",
+    "needs": [
+      "spec.vcl"
+    ]
+  },
+  {
+    "name": "VNNLIB",
+    "run": "vehicle compile queries -s spec.vcl -f VNNLibQueries -n f:fake.onnx -p r:0.5 -o VNNLIB.queries/",
+    "needs": [
+      "spec.vcl",
+      "fake.onnx"
+    ],
+    "produces": [
+      "VNNLIB.queries/p.vcl-plan",
+      "VNNLIB.queries/*.txt"
+    ],
+    "ignore": {
+      "lines": ".*\"fileHash\".*"
+    }
+  },
+  {
+    "name": "Loss",
+    "run": "vehicle compile loss -s spec.vcl -l DL2Loss -o Loss.vcl",
+    "needs": [
+      "spec.vcl"
+    ],
+    "produces": [
+      "Loss.vcl"
+    ]
+  }
+]
