@@ -53,7 +53,7 @@ solveInDomain ::
 solveInDomain _ [_, typ@VMeta {}] = return $ blockOnMetas [typ]
 solveInDomain c [value, typ] = case toTypeValue typ of
   VNatType {} -> return Nothing
-  VRatTensorType IDimNil -> return Nothing
+  VTensorLike (VRatTensorType IDimNil) -> return Nothing
   VIndexType size -> case value of
     VMeta {} -> return $ blockOnMetas [value]
     INatLiteral n -> do

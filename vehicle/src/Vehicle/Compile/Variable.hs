@@ -19,8 +19,7 @@ import Prelude hiding (Applicative (..))
 -- Extraction
 
 type MonadCreateUserVar m =
-  ( MonadCompile m
-  )
+  (MonadCompile m)
 
 createUserVar ::
   (MonadCreateUserVar m) =>
@@ -53,5 +52,5 @@ checkUserVariableType ::
   m (Value Builtin)
 checkUserVariableType binder =
   case toTypeValue (typeOf binder) of
-    VRatTensorType dims -> return dims
+    VTensorLike (VRatTensorType dims) -> return dims
     _ -> developerError $ "Unexpected quantifier type:" <+> prettyVerbose (typeOf binder)

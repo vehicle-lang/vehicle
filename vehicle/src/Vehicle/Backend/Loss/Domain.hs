@@ -282,8 +282,7 @@ findVarBound var VariableInfo {..} (NormalisedRelation rel expr)
 -- Definitions
 
 type MonadDomain m =
-  ( MonadLogic m
-  )
+  (MonadLogic m)
 
 orLossValue :: (MonadDomain m) => Value LossBuiltin -> Value LossBuiltin -> m (Value LossBuiltin)
 orLossValue e1 e2 = convertOr (TensorOp2Args IDimNil e1 e2)
@@ -401,6 +400,7 @@ compileBool value = logEntryAndExit value $ case toBoolValue value of
   VBoolIf args -> compileBool =<< unfoldIf args
   VNot args -> compileBool =<< lowerNot (unblockBoolExpr unblockingActions) args
   VQuantifyRatTensor args -> compileQuantifierInternal args
+  VQuantifyRecord args -> compileQuantifierInternal args
   -------------------
   -- Blocked cases --
   -------------------

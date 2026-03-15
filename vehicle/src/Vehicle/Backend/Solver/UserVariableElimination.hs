@@ -103,6 +103,8 @@ compileBoolExpr expr = do
     VBoolLiteral b -> return $ Trivial b
     VCompareRatTensor (op, args) -> purifyAndCompileAssertion op args
     VQuantifyRatTensor (Forall, _) -> throwError catchableUnsupportedAlternatingQuantifiersError
+    VQuantifyRecord (Forall, _) -> throwError catchableUnsupportedAlternatingQuantifiersError
+    -- TODO: ^ not sure if this is the right thing to do here
     ---------------------
     -- Recursive cases --
     ---------------------
@@ -111,6 +113,7 @@ compileBoolExpr expr = do
     VAnd (TensorOp2Args _dims x y) -> andTrivial andPartitions <$> compileBoolExpr x <*> compileBoolExpr y
     VOr (TensorOp2Args _dims x y) -> orTrivial orPartitions <$> compileBoolExpr x <*> compileBoolExpr y
     VQuantifyRatTensor (Exists, args) -> eliminateExists args
+    VQuantifyRecord (Exists, args) -> eliminateExists args -- TODO: not sure if this is the right thing to do here
     VCompareNat {} -> unblockAndRec expr
     VCompareIndex {} -> unblockAndRec expr
     VReduceAndTensor {} -> unblockAndRec expr

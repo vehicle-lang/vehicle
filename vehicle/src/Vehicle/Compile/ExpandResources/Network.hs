@@ -13,7 +13,7 @@ import Vehicle.Compile.Print
 import Vehicle.Compile.Resource
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.Interface
-import Vehicle.Data.Code.TypedView (DimensionsValue (..), TypeValue (..), toDimensionsValue, toTypeValue)
+import Vehicle.Data.Code.TypedView (DimensionsValue (..), TensorLikeValue (..), TypeValue (..), toDimensionsValue, toTypeValue)
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Tensor (TensorShape)
 import Vehicle.Verify.Core (NetworkContextInfo (..))
@@ -53,7 +53,7 @@ getNetworkType decl networkType = case normalised networkType of
   where
     tensorType :: InputOrOutput -> VType Builtin -> m NetworkTensorType
     tensorType io t = case toTypeValue t of
-      VRatTensorType dims -> do
+      VTensorLike (VRatTensorType dims) -> do
         shape <- tensorDimensions io dims
         return $ NetworkTensorType NetworkRatType shape
       _ -> typingError

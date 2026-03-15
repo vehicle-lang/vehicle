@@ -143,6 +143,7 @@ unblockBoolValue actions expr = do
     VNot {} -> return expr
     VBoolIf {} -> return expr
     VQuantifyRatTensor {} -> return expr
+    VQuantifyRecord {} -> return expr
     VCompareRatTensor {} -> return expr
     -- Recursively unblock
     VReduceAndTensor args -> unblockReduceTensor unblockTensor unoptimisedEvalReduceAndTensor args

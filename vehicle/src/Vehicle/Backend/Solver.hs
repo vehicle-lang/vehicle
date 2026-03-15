@@ -206,6 +206,12 @@ compileQueries expr = do
       logDebug MaxDetail $ "negate" <+> pretty Forall
       negatedArgs <- negateQuantifierBody args
       compileQuantifiedQuerySet True negatedArgs
+    VQuantifyRecord (Exists, args) -> compileQuantifiedQuerySet False args
+    VQuantifyRecord (Forall, args) -> do
+      -- TODO: not sure if this is what i need to do here
+      logDebug MaxDetail $ "negate" <+> pretty Forall
+      negatedArgs <- negateQuantifierBody args
+      compileQuantifiedQuerySet True negatedArgs
     ---------------------
     -- Recursive cases --
     ---------------------

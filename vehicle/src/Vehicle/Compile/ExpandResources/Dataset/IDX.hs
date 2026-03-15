@@ -93,7 +93,7 @@ parseContainer ctx currentDim actualDims elems expectedType = case toTypeValue e
   VListType expectedElemType -> parseList ctx currentDim expectedElemType actualDims elems
   VVectorType expectedElemType dim -> parseVector ctx currentDim expectedElemType dim actualDims elems
   VBoolTensorType expectedDims -> parseTensor ctx currentDim actualDims elems (fromTypeValue VBoolType) expectedDims
-  VRatTensorType expectedDims -> parseTensor ctx currentDim actualDims elems (fromTypeValue VRatType) expectedDims
+  VTensorLike (VRatTensorType expectedDims) -> parseTensor ctx currentDim actualDims elems (fromTypeValue VRatType) expectedDims
   VNatTensorType expectedDims -> parseTensor ctx currentDim actualDims elems (fromTypeValue VNatType) expectedDims
   VIndexTensorType n expectedDims -> parseTensor ctx currentDim actualDims elems (fromTypeValue $ VIndexType n) expectedDims
   _

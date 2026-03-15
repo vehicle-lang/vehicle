@@ -28,6 +28,7 @@ module Vehicle.Data.Code.TypedView
     etaReduceTensor,
     scaleValue,
     addValues,
+    TensorLikeValue (..),
   )
 where
 
