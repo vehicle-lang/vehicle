@@ -6,14 +6,6 @@
 --   Any configuration that is shared by all configurations of Vehicle should
 --   be put into `cabal.project.config`.
 --
---   Each supported GHC version has its own version of this file, which is
---   named `cabal.project.ghc-X.Y`. If no changes are needed, that file simply
---   imports this file.
---
---   For each project file `cabal.project.ghc-X.Y` there is a corresponding
---   freeze file `cabal.project.ghc-X.Y.freeze` which records the package
---   versions and flags with which the project is known to compile.
---
 -- See: https://cabal.readthedocs.io/en/latest/cabal-project.html
 
 import: cabal.project.config
