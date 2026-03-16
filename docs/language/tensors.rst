@@ -66,7 +66,7 @@ Operations
 The following operations over tensors are currently supported:
 
 .. list-table::
-   :widths: auto
+   :widths: 15 10 30 15 30
    :header-rows: 1
 
    * - Operation
@@ -75,35 +75,45 @@ The following operations over tensors are currently supported:
      - Example
      - Description
    * - Lookup
-     - :code:`!`
-     - :code:`Tensor A [d, ds] -> Index d -> Tensor A ds`
-     - :code:`t ! i`
+     - ``!``
+     - ``Tensor A [d, ds] -> Index d -> Tensor A ds``
+     - ``t ! i``
      - Extract the value at a given index of the tensor.
    * - Foreach
-     - :code:`!`
-     - :code:`(Index d -> Tensor A ds) -> Tensor A [d, ds]`
-     - :code:`foreach i . 0`
+     - ``!``
+     - ``(Index d -> Tensor A ds) -> Tensor A [d, ds]``
+     - ``foreach i . 0``
      - Constructs a new tensor by specifying each outermost row in terms of the row's index.
    * - Comparisons
-     - ``<=``, ``<``, ``>=``, ``>``
-     - :code:`Tensor A ds -> Tensor A ds -> Bool`
-     - :code:`t1 <= t2`
+     - | ``<=``
+       | ``<``
+       | ``>=``
+       | ``>``
+       | ``==``
+       | ``!=``
+     - ``Tensor A ds -> Tensor A ds -> Bool``
+     - ``t1 <= t2``
      - Check that all pairs of elements in the tensor satisfy the comparison.
    * - Pointwise comparisons
-     - ``.<=``, ``.<``, ``.>=``, ``.>``
-     - :code:`Tensor A ds -> Tensor A ds -> Tensor Bool ds`
-     - :code:`t1 .<= t2`
+     - | ``.<=``
+       | ``.<``
+       | ``.>=``
+       | ``.>``
+       | ``.==``
+       | ``.!=``
+     - ``Tensor A ds -> Tensor A ds -> Tensor Bool ds``
+     - ``t1 .<= t2``
      - Compare all the elements of the tensor pointwise.
    * - Pointwise addition
-     - :code:`+`
-     - :code:`Tensor A ds -> Tensor A ds -> Tensor A ds`
-     - :code:`t1 + t2`
+     - ``+``
+     - ``Tensor A ds -> Tensor A ds -> Tensor A ds``
+     - ``t1 + t2``
      - Pointwise add the values in two tensors together. Only valid
        if addition is defined for the type of elements ``A``.
    * - Pointwise subtraction
-     - :code:`-`
-     - :code:`Tensor A ds -> Tensor A ds -> Tensor A ds`
-     - :code:`t1 - t2`
+     - ``-``
+     - ``Tensor A ds -> Tensor A ds -> Tensor A ds``
+     - ``t1 - t2``
      - Pointwise subtract the values in the first tensor from the values
        in the second. Only valid if subtraction is defined for the type of
        elements ``A``.
