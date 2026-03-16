@@ -1,0 +1,35 @@
+[
+  {
+    "name": "TypeCheck",
+    "run": "vehicle typecheck -s spec.vcl",
+    "needs": [
+      "spec.vcl"
+    ]
+  },
+  {
+    "name": "Marabou",
+    "run": "vehicle compile queries -s spec.vcl -f MarabouQueries -o Marabou.queries/ --network f:fake.onnx",
+    "needs": [
+      "spec.vcl",
+      "fake.onnx"
+    ],
+    "produces": [
+      "Marabou.queries/*.txt",
+      "Marabou.queries/safe.vcl-plan"
+    ],
+    "ignore": {
+      "lines": ".*\"fileHash\".*"
+    },
+    "sizeOnly": ".vcl-plan"
+  },
+  {
+    "name": "DL2Loss",
+    "run": "vehicle compile loss -s spec.vcl -l DL2Loss -o DL2Loss.vcl",
+    "needs": [
+      "spec.vcl"
+    ],
+    "produces": [
+      "DL2Loss.vcl"
+    ]
+  }
+]

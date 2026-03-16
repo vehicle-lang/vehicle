@@ -10,43 +10,14 @@ module Vehicle.CommandLine
   )
 where
 
-import Control.Applicative (Alternative (many), (<**>))
 import Data.List (delete)
 import Data.Map (Map)
 import Data.Map qualified as Map (fromList)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Options.Applicative
-  ( InfoMod,
-    Mod,
-    OptionFields,
-    Parser,
-    ParserInfo,
-    ReadM,
-    auto,
-    command,
-    eitherReader,
-    fullDesc,
-    header,
-    help,
-    helper,
-    hsubparser,
-    info,
-    internal,
-    long,
-    maybeReader,
-    metavar,
-    option,
-    optional,
-    progDesc,
-    short,
-    showDefault,
-    strOption,
-    switch,
-    value,
-  )
-import Vehicle.Backend.Prelude (DifferentiableLogicID, ITP, ListableEntities (..), SecondaryTypeSystem (..), Target (..), findTarget)
-import Vehicle.Compile (CompileOptions (..))
+import Vehicle.Backend.Prelude (BuiltinDifferentiableLogicID, DifferentiableLogicID, InteractiveTheoremProverID, SecondaryTypeSystem (..))
+import Vehicle.Compile (CompileOptions (..), ITPOptions (..), LossOptions (..), QueryOptions (..))
 import Vehicle.Export (ExportOptions (..))
 import Vehicle.List (ListOptions (..))
 import Vehicle.Prelude
@@ -56,8 +27,8 @@ import Vehicle.Prelude
     indent,
     layoutAsString,
     line,
+    lineIndent,
     specificationFileExtension,
-    supportedOptions,
     vsep,
     (<+>),
   )
@@ -75,17 +46,17 @@ data Options = Options
   { globalOptions :: GlobalOptions,
     modeOptions :: Maybe ModeOptions
   }
-  deriving (Eq, Show)
+  deriving (Show, Eq)
 
 data GlobalOptions = GlobalOptions
   { version :: Bool,
     logFile :: Maybe FilePath,
     loggingLevel :: LoggingLevel,
-    loggingPass :: Maybe CompilerPass,
+    loggingTarget :: Maybe CompilerStack,
     noWarnings :: Bool,
     outputAsJSON :: OutputAsJSON
   }
-  deriving (Eq, Show)
+  deriving (Show, Eq)
 
 defaultGlobalOptions :: GlobalOptions
 defaultGlobalOptions =
@@ -93,19 +64,19 @@ defaultGlobalOptions =
     { version = False,
       logFile = Nothing,
       loggingLevel = defaultLoggingLevel,
-      loggingPass = Nothing,
+      loggingTarget = Nothing,
       noWarnings = False,
       outputAsJSON = False
     }
 
 data ModeOptions
-  = Check TypeCheckOptions
+  = TypeCheck TypeCheckOptions
   | Compile CompileOptions
   | Verify VerifyOptions
   | Validate ValidateOptions
   | Export ExportOptions
   | List ListOptions
-  deriving (Eq, Show)
+  deriving (Show, Eq)
 
 --------------------------------------------------------------------------------
 -- List of all options
@@ -164,7 +135,7 @@ globalOptionsParser =
     <$> showVersionParser
     <*> redirectLogsParser
     <*> loggingLevelParser
-    <*> loggingPassParser
+    <*> loggingTargetParser
     <*> noWarningsParser
     <*> outputAsJSONParser
 
@@ -175,7 +146,7 @@ modeOptionsParser :: Parser (Maybe ModeOptions)
 modeOptionsParser =
   optional $
     hsubparser $
-      command "check" typeCheckParserInfo
+      command "typecheck" typeCheckParserInfo
         <> command "compile" compileParserInfo
         <> command "verify" verifyParserInfo
         <> command "validate" validateParserInfo
@@ -198,9 +169,10 @@ typeCheckParser =
   TypeCheckOptions
     <$> specificationParser
     <*> typeSystemParser
+    <*> declarationParser
 
 typeCheckParserInfo :: ParserInfo ModeOptions
-typeCheckParserInfo = info (Check <$> typeCheckParser) typeCheckDescription
+typeCheckParserInfo = info (TypeCheck <$> typeCheckParser) typeCheckDescription
 
 --------------------------------------------------------------------------------
 -- List mode
@@ -216,8 +188,10 @@ listDescription =
 listParser :: Parser ListOptions
 listParser =
   ListOptions
-    <$> listModeParser
-    <*> specificationParser
+    <$> specificationParser
+    <*> networkParser
+    <*> datasetParser
+    <*> parameterParser
 
 listParserInfo :: ParserInfo ModeOptions
 listParserInfo = info (List <$> listParser) listDescription
@@ -230,10 +204,89 @@ compileDescription =
   progDesc $
     "Compile a " <> specificationFileExtension <> " specification file."
 
+compileParserInfo :: ParserInfo ModeOptions
+compileParserInfo = info (Compile <$> compileParser) compileDescription
+
 compileParser :: Parser CompileOptions
 compileParser =
-  CompileOptions
-    <$> compileTargetParser
+  hsubparser $
+    command "loss" compileLossParserInfo
+      <> command "queries" compileQueryParserInfo
+      <> command "itp" compileITPParserInfo
+
+--------------------------------------------------------------------------------
+-- Compile loss mode
+
+compileLossParserInfo :: ParserInfo CompileOptions
+compileLossParserInfo = info (LossTarget <$> compileLossParser) compileLossDescription
+
+compileLossDescription :: InfoMod CompileOptions
+compileLossDescription =
+  progDesc
+    "Compile a specification to a loss function."
+
+compileLossParser :: Parser LossOptions
+compileLossParser =
+  LossOptions
+    <$> lossLogicParser
+    <*> specificationParser
+    <*> declarationParser
+    <*> outputParser
+
+lossLogicParser :: Parser DifferentiableLogicID
+lossLogicParser =
+  option auto $
+    long "logic"
+      <> short 'l'
+      <> metavar "LOGIC"
+      <> helpDoc (Just ("The differentiable logic to export to." <+> supportedOptions allBuiltinDifferentiableLogics))
+
+--------------------------------------------------------------------------------
+-- Compile query mode
+
+compileQueryParserInfo :: ParserInfo CompileOptions
+compileQueryParserInfo = info (QueryTarget <$> compileQueryParser) compileQueryDescription
+
+compileQueryDescription :: InfoMod CompileOptions
+compileQueryDescription =
+  progDesc
+    "Compile a specification to verifier queries."
+
+compileQueryParser :: Parser QueryOptions
+compileQueryParser =
+  QueryOptions
+    <$> queryFormatParser
+    <*> specificationParser
+    <*> declarationParser
+    <*> networkParser
+    <*> datasetParser
+    <*> parameterParser
+    <*> outputParser
+    <*> compileCacheParser
+
+queryFormatParser :: Parser QueryFormatID
+queryFormatParser =
+  option auto $
+    long "format"
+      <> short 'f'
+      <> metavar "FORMAT"
+      <> helpDoc (Just ("The query format to export to." <+> supportedOptions allVerifiersFormats))
+
+--------------------------------------------------------------------------------
+-- Compile ITP mode
+
+compileITPParserInfo :: ParserInfo CompileOptions
+compileITPParserInfo = info (ITPTarget <$> compileITPParser) compileITPDescription
+
+compileITPDescription :: InfoMod CompileOptions
+compileITPDescription =
+  progDesc
+    "Compile a specification to interactive theorem prover code."
+
+compileITPParser :: Parser ITPOptions
+compileITPParser =
+  ITPOptions
+    <$> itpParser
     <*> specificationParser
     <*> declarationParser
     <*> networkParser
@@ -242,9 +295,7 @@ compileParser =
     <*> outputParser
     <*> modulePrefixOption
     <*> compileCacheParser
-
-compileParserInfo :: ParserInfo ModeOptions
-compileParserInfo = info (Compile <$> compileParser) compileDescription
+    <*> compileConstReals
 
 --------------------------------------------------------------------------------
 -- Verify mode
@@ -302,10 +353,11 @@ exportDescription =
 exportParser :: Parser ExportOptions
 exportParser =
   ExportOptions
-    <$> exportTargetParser
+    <$> itpParser
     <*> exportCacheParser
     <*> outputParser
     <*> modulePrefixOption
+    <*> compileConstReals
 
 exportParserInfo :: ParserInfo ModeOptions
 exportParserInfo = info (Export <$> exportParser) exportDescription
@@ -317,7 +369,7 @@ repeatedParameterHelp :: String
 repeatedParameterHelp = "Can be provided multiple times."
 
 allITPs :: [String]
-allITPs = map show (enumerate @ITP)
+allITPs = map show (enumerate @InteractiveTheoremProverID)
 
 allVerifiers :: [String]
 allVerifiers = map show (delete TestVerifier (enumerate @VerifierID))
@@ -325,11 +377,8 @@ allVerifiers = map show (delete TestVerifier (enumerate @VerifierID))
 allVerifiersFormats :: [String]
 allVerifiersFormats = map show (enumerate @QueryFormatID)
 
-allLossFunctionDLs :: [String]
-allLossFunctionDLs = map show (enumerate @DifferentiableLogicID)
-
-allTargets :: [String]
-allTargets = allLossFunctionDLs <> allVerifiersFormats <> allITPs
+allBuiltinDifferentiableLogics :: [String]
+allBuiltinDifferentiableLogics = map show (enumerate @BuiltinDifferentiableLogicID)
 
 allTypeSystems :: [Doc a]
 allTypeSystems = flip map (zip [1 :: Int ..] (enumerate @SecondaryTypeSystem)) $ \(n, t) ->
@@ -371,14 +420,25 @@ loggingLevelParser =
     long "logging"
       <> value defaultLoggingLevel
       <> showDefault
-      <> help loggingLevelHelp
+      <> helpDoc (Just loggingLevelHelp)
 
-loggingPassParser :: Parser (Maybe CompilerPass)
-loggingPassParser =
+loggingLevelHelp :: Doc a
+loggingLevelHelp =
+  "Sets the level of detail in the logs if the --log argument has been passed."
+    <+> supportedOptions allLoggingLevels
+    <> line
+
+loggingTargetParser :: Parser (Maybe CompilerStack)
+loggingTargetParser =
   optional $
     option auto $
       long "loggingPass"
-        <> help loggingPassHelp
+        <> helpDoc (Just loggingPassHelp)
+
+loggingPassHelp :: Doc a
+loggingPassHelp =
+  "Sets which compiler pass logging is enabled for."
+    <+> supportedOptions allCompilerPasses
 
 noWarningsParser :: Parser Bool
 noWarningsParser = do
@@ -396,43 +456,28 @@ verifySpecificationParser =
         ( "Either: i) a "
             <> specificationFileExtension
             <> " file containing the specification "
-            <> "or ii) a folder containing the queries and verification plan generated by"
-            <> "a previous call to `vehicle compile`."
+            <> "or ii) a folder containing the queries and verification plan generated by "
+            <> "a previous call to `vehicle compile queries`."
         )
 
 typeSystemParser :: Parser (Maybe SecondaryTypeSystem)
 typeSystemParser =
-  option auto $
-    long "typeSystem"
-      <> short 't'
-      <> help
-        ( "Which typing system should be used."
-            <> layoutAsString
-              ( line
-                  <> line
-                  <> indent
-                    2
-                    ( vsep allTypeSystems
-                    )
-              )
-        )
-      <> value Nothing
-
-listModeParser :: Parser ListableEntities
-listModeParser =
-  hsubparser $
-    command
-      "resources"
-      ( info
-          (pure ExternalResources)
-          (progDesc "List all networks, datasets, and parameters in the specification.")
-      )
-      <> command
-        "properties"
-        ( info
-            (pure Properties)
-            (progDesc "List all properties in the specification.")
-        )
+  optional $
+    option auto $
+      long "typeSystem"
+        <> short 't'
+        <> metavar "TYPE_SYSTEM"
+        <> help
+          ( "A secondary type system to be used."
+              <> layoutAsString
+                ( line
+                    <> line
+                    <> indent
+                      2
+                      ( vsep allTypeSystems
+                      )
+                )
+          )
 
 specificationParser :: Parser FilePath
 specificationParser =
@@ -440,7 +485,7 @@ specificationParser =
     long "specification"
       <> short 's'
       <> metavar "FILE"
-      <> help ("The " <> specificationFileExtension <> " file containing the specification.")
+      <> helpDoc (Just ("The " <> pretty specificationFileExtension <> " file containing the specification."))
 
 networkParser :: Parser (Map Text FilePath)
 networkParser =
@@ -502,7 +547,7 @@ outputParser =
       long "output"
         <> short 'o'
         <> metavar "FILE"
-        <> help "Output location for compiled file(s). Defaults to stdout if not provided."
+        <> help "Output location for compiled file(s). Defaults to `stdout` if not provided."
 
 outputAsJSONParser :: Parser OutputAsJSON
 outputAsJSONParser =
@@ -546,7 +591,7 @@ verifierParser =
     long "verifier"
       <> short 'v'
       <> metavar "VERIFIER"
-      <> help ("Verifier to use. " <> supportedOptions allVerifiers)
+      <> helpDoc (Just ("Verifier to use." <+> supportedOptions allVerifiers))
 
 verifierLocationParser :: Parser (Maybe FilePath)
 verifierLocationParser =
@@ -576,26 +621,13 @@ noSatPrintParser = do
     long "no-sat-print"
       <> help "Suppress the printing of witnesses and counter-examples found during verification."
 
-exportTargetParser :: Parser ITP
-exportTargetParser =
+itpParser :: Parser InteractiveTheoremProverID
+itpParser =
   option auto $
     long "target"
       <> short 't'
       <> metavar "TARGET"
-      <> help ("The target to export to. " <> supportedOptions allITPs)
-
-compileTargetParser :: Parser Target
-compileTargetParser =
-  option targetReader $
-    long "target"
-      <> short 't'
-      <> metavar "TARGET"
-      <> help ("The target that the specification should be compiled to. " <> supportedOptions allTargets <> ".")
-  where
-    targetReader :: ReadM Target
-    targetReader = eitherReader $ \s -> case findTarget s of
-      Nothing -> Left ("Could not parse 'target' value '" <> s <> "'")
-      Just t -> Right t
+      <> helpDoc (Just ("The target to export to." <+> supportedOptions allITPs))
 
 cacheOption :: Mod OptionFields String -> Parser String
 cacheOption helpField =
@@ -631,3 +663,13 @@ verifyCacheParser =
 
 compileCacheParser :: Parser (Maybe FilePath)
 compileCacheParser = optional exportCacheParser
+
+compileConstReals :: Parser Bool
+compileConstReals =
+  switch $
+    long "constructive-reals"
+      <> short 'r'
+      <> helpDoc (Just "Use constructive reals instead of mathcomp reals for Rocq.")
+
+supportedOptions :: [String] -> Doc a
+supportedOptions opts = "Supported options: " <> lineIndent (vsep $ fmap (\v -> "*" <+> pretty v) opts)

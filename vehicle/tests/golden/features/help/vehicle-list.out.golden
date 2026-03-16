@@ -1,0 +1,23 @@
+Usage: vehicle list (-s|--specification FILE) [-n|--network NAME:FILE] 
+                    [-d|--dataset NAME:FILE] [-p|--parameter NAME:VALUE]
+
+  List entities for a .vcl specification file.
+
+Available options:
+  -s,--specification FILE  The .vcl file containing the specification.
+  -n,--network NAME:FILE   Provide the implementation of a network declared in
+                           the specification. Its value should consist of a
+                           colon-separated pair of the name of the network in
+                           the specification and a file path. Can be provided
+                           multiple times.
+  -d,--dataset NAME:FILE   Provide a dataset declared in the specification. Its
+                           value should consist of a colon-separated pair of the
+                           name of the dataset in the specification and a file
+                           path. Can be provided multiple times.
+  -p,--parameter NAME:VALUE
+                           Provide a value for a parameter referenced in the
+                           specification. Its value should consist of a
+                           colon-separated pair of the name of the parameter in
+                           the specification and its value. Can be provided
+                           multiple times.
+  -h,--help                Show this help text

@@ -1,0 +1,7 @@
+session WindCtrl = HOL +
+  sessions
+    Deep_Learning
+    Vehicle
+  theories
+    "WindControllerSpec"
+    "SafetyProof"

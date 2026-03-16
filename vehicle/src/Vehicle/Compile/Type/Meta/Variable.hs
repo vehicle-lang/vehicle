@@ -21,6 +21,7 @@ import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Meta.Set (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Data.Code.Value
+import Vehicle.Data.Variable.Bound.Context.Generic.Core
 
 -- Eventually when metas make into the builtins, this should module
 -- should also contain the definition of meta-variables themselves.
@@ -64,11 +65,11 @@ makeMetaType boundCtx p resultType = foldr entryToPi resultType (reverse boundCt
       Type builtin
     entryToPi binder = do
       let n = fromMaybe "_" (nameOf binder)
-      Pi p (Binder p (BinderDisplayForm (OnlyName n) True) Explicit (relevanceOf binder) (typeOf binder))
+      Pi p (Binder (BinderDisplayForm (OnlyName n mempty) True) Explicit (relevanceOf binder) (typeOf binder))
 
 getMetaDependencies :: [Arg builtin] -> [Ix]
 getMetaDependencies = \case
-  (ExplicitArg _ _ (BoundVar _ i)) : args -> i : getMetaDependencies args
+  (ExplicitArg _ (BoundVar _ i)) : args -> i : getMetaDependencies args
   _ -> []
 
 --------------------------------------------------------------------------------
@@ -93,7 +94,7 @@ instance HasMetas (Expr builtin) where
     Lam _ binder body -> do findMetas binder; findMetas body
     App fun args -> do findMetas fun; findMetas args
     Record _ _ fields -> findMetas $ fmap snd fields
-    RecordAcc _ record _ -> findMetas record
+    RecordProj _ recordType record _ -> do findMetas recordType; findMetas record
 
 instance HasMetas (Value builtin) where
   findMetas expr = case expr of
@@ -107,7 +108,10 @@ instance HasMetas (Value builtin) where
     VPi binder closure -> do findMetas binder; findMetas closure
     VLam binder closure -> do findMetas binder; findMetas closure
     VRecord _ fields -> findMetas (snd <$> OMap.assocs fields)
-    VRecordAcc record _ -> findMetas record
+    VRecordAcc recordType record _ spine -> do
+      findMetas recordType
+      findMetas record
+      findMetas spine
 
 instance HasMetas (Closure builtin) where
   findMetas (Closure env expr) = do traverseEnv_ findMetas env; findMetas expr
@@ -125,7 +129,7 @@ instance (HasMetas a) => HasMetas (NonEmpty a) where
   findMetas = mapM_ findMetas
 
 instance HasMetas (InstanceConstraint builtin) where
-  findMetas (Resolve _ m _ goal) = do
+  findMetas (Resolve _ m _ _ goal) = do
     tell (MetaSet.singleton m)
     findMetas goal
 

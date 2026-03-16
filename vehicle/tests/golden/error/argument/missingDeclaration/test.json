@@ -1,5 +1,0 @@
-{
-  "name": "Marabou",
-  "run": "vehicle compile -t MarabouQueries -s missingDeclaration.vcl --declaration property",
-  "needs": ["missingDeclaration.vcl"]
-}

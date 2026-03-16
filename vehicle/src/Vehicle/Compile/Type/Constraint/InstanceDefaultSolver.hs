@@ -5,37 +5,39 @@ module Vehicle.Compile.Type.Constraint.InstanceDefaultSolver
 where
 
 import Control.Monad (filterM)
-import Data.Hashable (Hashable)
-import Data.Maybe (mapMaybe)
+import Data.Foldable (minimumBy)
+import Data.Maybe (catMaybes, mapMaybe)
+import Data.Ord (comparing)
 import Data.Proxy (Proxy (..))
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (In, NoCtx, PrettyVerbose, prettyVerbose)
+import Vehicle.Compile.Print (PrettyVerbose, prettyVerbose)
 import Vehicle.Compile.Type.Constraint.InstanceSolver (acceptCandidate)
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Meta.Variable
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Data.Builtin.Interface.Print
+import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin)
 
 type MonadInstanceDefault builtin m =
   ( MonadTypeChecker builtin m,
-    Hashable builtin
+    TypableBuiltin builtin
   )
 
 newtype DefaultCandidate builtin
   = DefaultCandidate
       ( WithContext (InstanceConstraint builtin),
         InstanceGoal builtin,
-        InstanceCandidate builtin
+        PossibleInstanceCandidate builtin
       )
 
 instance (PrintableBuiltin builtin) => Pretty (DefaultCandidate builtin) where
   pretty (DefaultCandidate (constraint, _, candidate)) =
-    prettyVerbose constraint <+> "~" <+> prettyVerbose (candidateExpr candidate)
+    prettyVerbose constraint <+> "~" <+> prettyVerbose (candidateExpr $ objectIn candidate)
 
 addNewInstanceConstraintUsingDefaults ::
   forall builtin m.
-  (MonadTypeChecker builtin m, Hashable builtin) =>
+  (MonadInstanceDefault builtin m) =>
   Proxy builtin ->
   m Bool
 addNewInstanceConstraintUsingDefaults proxy = do
@@ -50,21 +52,21 @@ addNewInstanceConstraintUsingDefaults proxy = do
 
 getDefaultableConstraints ::
   forall constraint ctx builtin m.
-  (MonadInstanceDefault builtin m, HasMetas constraint, PrettyVerbose (Contextualised constraint ctx `In` NoCtx)) =>
+  (MonadInstanceDefault builtin m, HasMetas constraint, PrettyVerbose (Contextualised constraint ctx)) =>
   Proxy builtin ->
   [Contextualised constraint ctx] ->
   m [Contextualised constraint ctx]
 getDefaultableConstraints proxy possibleConstraints = do
   maybeDecl <- getCurrentDeclAndUnused @builtin
   result <- case maybeDecl of
-    Just (decl, declIsUnused) | not (isAbstractDecl decl || declIsUnused) -> do
+    Just (DefFunction _ _ _ t _, declIsUnused) | not declIsUnused -> do
       logDebug MaxDetail $ pretty declIsUnused
       -- We only want to generate default solutions for constraints
       -- that *don't* appear in the type of the declaration, as those will be
       -- quantified over later. However, if the declaration is unused then
       -- we don't care and we should use any defaults we can find.
       constraints <- getActiveConstraints
-      typeMetas <- getMetasLinkedToMetasIn constraints (typeOf decl)
+      typeMetas <- getMetasLinkedToMetasIn constraints t
 
       logDebugM MaxDetail $ do
         unsolvedMetasInTypeDoc <- prettyMetas proxy typeMetas
@@ -85,12 +87,11 @@ getDefaultableConstraints proxy possibleConstraints = do
 
 chooseDefaultConstraint ::
   forall builtin m.
-  (MonadTypeChecker builtin m) =>
+  (MonadInstanceDefault builtin m) =>
   [WithContext (InstanceConstraint builtin)] ->
   m (Maybe (DefaultCandidate builtin))
 chooseDefaultConstraint constraints = do
-  instanceDatabase <- getInstanceCandidates
-  let defaults = mapMaybe (findDefault instanceDatabase) constraints
+  defaults <- catMaybes <$> traverse findDefault constraints
   case defaults of
     [] -> do
       logDebug MaxDetail "No default solution found"
@@ -99,15 +100,20 @@ chooseDefaultConstraint constraints = do
       return $ Just candidate
 
 findDefault ::
-  (PrintableBuiltin builtin, Hashable builtin) =>
-  InstanceDatabase builtin ->
+  (MonadInstanceDefault builtin m) =>
   WithContext (InstanceConstraint builtin) ->
-  Maybe (DefaultCandidate builtin)
-findDefault database constraint = do
+  m (Maybe (DefaultCandidate builtin))
+findDefault constraint = do
   let goal = instanceGoal $ objectIn constraint
-  case lookupDefaultInstance database goal of
-    Just candidate -> Just $ DefaultCandidate (constraint, goal, candidate)
-    Nothing -> Nothing
+  case instanceCandidateState $ objectIn constraint of
+    Nothing -> developerError "No attempt has been made to solve constraint that we are trying to solve with defaults"
+    Just (allCandidates, _) -> do
+      let candidateAndPriorities = mapMaybe (\c -> (,c) <$> candidatePriority (objectIn c)) allCandidates
+      return $ case candidateAndPriorities of
+        [] -> Nothing
+        cs -> do
+          let highestPriorityCandidate = snd $ minimumBy (comparing fst) cs
+          Just $ DefaultCandidate (constraint, goal, highestPriorityCandidate)
 
 acceptDefaultCandidate ::
   forall builtin m.
@@ -117,4 +123,5 @@ acceptDefaultCandidate ::
 acceptDefaultCandidate c@(DefaultCandidate (constraint, goal, candidate)) = do
   logDebug MaxDetail $ "using default" <+> pretty c
   _ <- removeInstanceConstraint (Proxy @builtin) (constraintID $ contextOf constraint)
-  acceptCandidate constraint goal (WithContext candidate (boundContextOf $ contextOf constraint))
+  _ <- acceptCandidate constraint goal candidate
+  return ()

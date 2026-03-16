@@ -1,0 +1,6 @@
+{
+  "name": "TypeCheck",
+  "run": "vehicle typecheck -s unsolvedMeta.vcl --logging MaxDetail",
+  "needs": ["unsolvedMeta.vcl"],
+  "enabled": false
+}

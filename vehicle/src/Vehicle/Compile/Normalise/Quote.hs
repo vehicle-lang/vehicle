@@ -1,10 +1,11 @@
 module Vehicle.Compile.Normalise.Quote where
 
 import Data.Map.Ordered qualified as OMap
+import Vehicle.Data.AST.Expr.Scoped (Expr (..), Substitution, normAppList, substituteDB)
 import Vehicle.Data.Builtin.Interface.Print
-import Vehicle.Data.Code.Expr
 import Vehicle.Data.Code.Value
-import Vehicle.Data.DeBruijn (Lv, Substitution, dbLevelToIndex)
+import Vehicle.Data.Variable.Bound.Context.Name.Class (MonadReadableNameContext, getBinderDepth)
+import Vehicle.Data.Variable.Bound.Level (Lv, dbLevelToIndex)
 import Vehicle.Prelude
 
 -- | Converts from a normalised representation to an unnormalised representation.
@@ -12,6 +13,15 @@ import Vehicle.Prelude
 -- lambdas.
 unnormalise :: forall a b. (Quote a b) => Lv -> a -> b
 unnormalise = quote mempty
+
+unnormaliseInCtx ::
+  forall expr m.
+  (MonadReadableNameContext m, Show expr) =>
+  Value expr ->
+  m (Expr expr)
+unnormaliseInCtx e = do
+  lv <- getBinderDepth
+  return $ unnormalise lv e
 
 -----------------------------------------------------------------------------
 -- Quoting closures
@@ -56,12 +66,15 @@ instance (ConvertableBuiltin builtin1 builtin2) => Quote (Value builtin1) (Expr 
       let quotedBinder = quote p level binder
       let quotedBody = quoteClosure p level (binder, closure)
       Lam mempty quotedBinder quotedBody
-    VRecord ident fields -> do
+    VRecord recordType fields -> do
+      let quotedRecordType = quote p level recordType
       let quotedFields = mapRecordFields (quote p level) $ OMap.assocs fields
-      Record p ident quotedFields
-    VRecordAcc r field -> do
-      let quotedRecord = quote p level r
-      RecordAcc p quotedRecord field
+      Record p quotedRecordType quotedFields
+    VRecordAcc recordType record field spine -> do
+      let quotedRecordType = quote p level recordType
+      let quotedRecord = quote p level record
+      let quotedProj = RecordProj p quotedRecordType quotedRecord field
+      quoteApp level p quotedProj spine
 
 instance (Quote expr1 expr2) => Quote (GenericBinder expr1) (GenericBinder expr2) where
   quote p level = fmap (quote p level)

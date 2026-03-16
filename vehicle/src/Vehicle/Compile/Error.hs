@@ -1,30 +1,52 @@
 {-# LANGUAGE StandaloneDeriving #-}
 
-module Vehicle.Compile.Error where
+module Vehicle.Compile.Error
+  ( VehicleError (..),
+    CompileError (..),
+    ParseError (..),
+    TypingError (..),
+    MultiPropertyTraveralError (..),
+    RecordMatch (..),
+    MissingExplicitArgError (..),
+    RelevantUseOfIrrelevantVariableError (..),
+    FunctionTypeMismatchError (..),
+    FailedInstanceConstraintError (..),
+    FailedUnificationConstraintsError (..),
+    MissingResource,
+    UninferableParameter,
+    UnboundedIndices,
+    ParseLocation,
+    MonadCompile,
+    compilerDeveloperError,
+    unsupportedTensorLikeQuantifier,
+  )
+where
 
 import Control.Exception (IOException)
 import Control.Monad.Except (MonadError, throwError)
-import Data.Aeson (ToJSON, object, toJSON, (.=))
+import Data.Aeson (ToJSON)
+import Data.Aeson.Types (ToJSON (..))
 import Data.List.NonEmpty (NonEmpty)
 import Data.Text (Text)
+import Data.These (These)
 import Data.Typeable (Proxy)
 import Data.Void (Void)
 import GHC.Generics (Generic)
-import Prettyprinter (defaultLayoutOptions, layoutPretty)
-import Prettyprinter.Render.String (renderString)
-import Vehicle.Backend.LossFunction.Core (BooleanDifferentiableLogicField, TensorDifferentiableLogicField)
+import GHC.Stack (HasCallStack)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Resource (NetworkName)
 import Vehicle.Compile.Type.Core
-import Vehicle.Data.Assertion (UnderConstrainedVariableStatus)
+import Vehicle.Data.Bound (UnboundedIndices)
 import Vehicle.Data.Builtin.Interface.Normalise (NormalisableBuiltin)
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Linearity
 import Vehicle.Data.Builtin.Polarity
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.Value
-import Vehicle.Data.Tensor (TensorShape)
-import Vehicle.Syntax.Parse (ParseError, ParseLocation)
+import Vehicle.Data.DifferentiableLogic
+import Vehicle.Data.Tensor (TensorIndices, TensorShape)
+import Vehicle.Data.Variable.Bound.Context.Name.Core
 import Vehicle.Verify.QueryFormat.Core
 
 --------------------------------------------------------------------------------
@@ -45,6 +67,9 @@ data RecordMatch = RecordMatch
     extraFields :: [FieldName]
   }
   deriving (Show)
+
+instance Pretty RecordMatch where
+  pretty = pretty . show
 
 --------------------------------------------------------------------------------
 -- Typing errors
@@ -72,13 +97,13 @@ data FunctionTypeMismatchError builtin = FunctionTypeMismatchError
   deriving (Show)
 
 data FailedUnificationConstraintsError builtin = FailedUnificationConstraintsError
-  { _freeEnv :: FreeEnv builtin,
+  { _freeCtx :: FreeCtx builtin,
     failedConstraints :: NonEmpty (WithContext (UnificationConstraint builtin))
   }
   deriving (Show)
 
 data FailedInstanceConstraintError builtin = FailedInstanceConstraintError
-  { _freeEnv :: FreeEnv builtin,
+  { _freeCtx :: FreeCtx builtin,
     failedConstraint :: WithContext (InstanceConstraint builtin),
     exploredCandidates :: [(WithContext (InstanceCandidate builtin), UnAnnDoc)]
   }
@@ -95,16 +120,62 @@ data TypingError builtin
   | FailedIndexConstraintUnknown (ConstraintContext builtin) (Value builtin) (VType builtin)
   | UnsolvedConstraints (NonEmpty (WithContext (Constraint builtin)))
   | UnsolvedMetas (Proxy builtin) (NonEmpty (MetaID, Provenance))
+  | InvalidInstanceHead DeclProvenance (Expr builtin)
+  | NonTypeClassInstanceHead (Proxy builtin) DeclProvenance Identifier
+  deriving (Show)
+
+--------------------------------------------------------------------------------
+-- MultiPropertyTraveralError
+
+data MultiPropertyTraveralError
+  = UnsupportedVectorDimension (Value Builtin)
+  | UnsupportedVectorValue (Value Builtin)
+  | UnsupportedTensorDimensions (Value Builtin)
+  | UnreducableTensorValue (Value Builtin)
+  | UnreducableType (VType Builtin)
+  deriving (Show)
+
+type MissingResource = (ExternalResource, DeclProvenance)
+
+type UninferableParameter = DeclProvenance
+
+--------------------------------------------------------------------------------
+-- Sugaring error
+
+data ParseError
+  = -- Parse errors
+    RawParseError String
+  | FunctionWithMismatchedNames Provenance Identifier Identifier
+  | -- Annotations
+    UnannotatedAbstractDef Provenance Identifier
+  | MultiplyAnnotatedDef Provenance Identifier (Doc Void) (Doc Void)
+  | TypeDefWithAnnotation Provenance Identifier (Doc Void)
+  | FunctionDefWithRecordAnnotation Provenance Identifier (Doc Void)
+  | RecordDefWithFunctionAnnotation Provenance Identifier (Doc Void)
+  | AbstractDefWithNonAbstractAnnotation Provenance Identifier (Doc Void)
+  | NonAbstractDefWithAbstractAnnotation Provenance Identifier (Doc Void)
+  | AnnotationWithNoDef Provenance Name
+  | -- Annotation options
+    InvalidAnnotationOption Provenance Name Name [Name]
+  | InvalidAnnotationOptionValue Provenance Name Text
+  | MissingAnnotationOption Provenance Text Name
+  | DuplicateAnnotationOption Provenance Text Name
+  | -- Other
+    UnknownBuiltin Provenance Text
+  | MissingVariables Provenance Name
+  | UnchainableComparisons Provenance ComparisonOp ComparisonOp
   deriving (Show)
 
 --------------------------------------------------------------------------------
 -- Compilation errors
 
+type ParseLocation = (ModulePath, FilePath)
+
 data CompileError
-  = DevError (Doc ())
+  = DevError UnAnnDoc
   | -- Parse errors
     ParseError ParseLocation ParseError
-  | -- Errors thrown by scope checking.
+  | -- Scoping errors.
     UnboundName Provenance Name [Name]
   | UnboundRecordAccessor Provenance Name [Name]
   | DeclarationDeclarationShadowing Provenance (Either FieldName Name) Identifier
@@ -116,7 +187,7 @@ data CompileError
     (Eq builtin, PrintableBuiltin builtin, NormalisableBuiltin builtin, Show builtin) =>
     TypingError (TypingError builtin)
   | -- Resource loading errors
-    ResourceNotProvided DeclProvenance ExternalResource
+    ResourcesNotProvided (NonEmpty MissingResource)
   | ResourceIOError DeclProvenance ExternalResource IOException
   | UnsupportedResourceFormat DeclProvenance ExternalResource String
   | UnableToParseResource DeclProvenance ExternalResource String
@@ -137,22 +208,29 @@ data CompileError
   | ParameterValueInvalidIndex DeclProvenance Int Int
   | ParameterValueInvalidNat DeclProvenance Int
   | InferableParameterContradictory Identifier (DeclProvenance, ExternalResource, Int) (DeclProvenance, ExternalResource, Int)
-  | InferableParameterUninferrable DeclProvenance
-  | -- Unsupported properties
+  | InferableParametersUninferrable (NonEmpty UninferableParameter)
+  | -- Unsupported tensor record
+    ZeroFieldTensorLike DeclProvenance
+  | -- Query backend
     NoPropertiesFound
   | HigherOrderVectors DeclProvenance NamedBoundCtx (VType Builtin) (VType Builtin)
   | UnsupportedAlternatingQuantifiers QueryFormatID DeclProvenance (Either CompileError (Quantifier, Provenance, PolarityProvenance))
   | DuplicateQuantifierNames DeclProvenance Name
   | UnsupportedNonLinearConstraint QueryFormatID DeclProvenance (Either CompileError NonLinearityProof)
-  | UnsupportedMultipleNetworkApplications QueryFormatID DeclProvenance CompleteNamedBoundCtx [(Name, Value Builtin)]
+  | UnsupportedMultipleNetworkApplications QueryFormatID DeclProvenance CompleteNamedBoundCtx [(NetworkName, Value Builtin)]
   | VariableSizeTensorQuantification DeclProvenance NamedBoundCtx (VBinder Builtin) (VType Builtin)
+  | MultiPropertyTraveralError DeclProvenance MultiPropertyTraveralError
+  | UnboundedNetworkInputVariables DeclProvenance CompleteNamedBoundCtx (NonEmpty (NetworkName, Value Builtin, [Lv], UnboundedIndices))
   | -- Loss backend errors
-    UnsupportedLossOperation DeclProvenance Provenance (Doc Void)
+    UnknownDifferentiableLogic Name [Name]
+  | UnreducableDifferentiableLogic DeclProvenance
+  | UnsupportedLossOperation DeclProvenance (Doc Void)
   | UnsupportedHigherOrderTensorCode DeclProvenance NamedBoundCtx (Value Builtin) NamedBoundCtx (Value Builtin)
   | UnableToLiftLogicFieldToTensors DifferentiableLogicID TensorDifferentiableLogicField (BooleanDifferentiableLogicField, Value Builtin) NamedBoundCtx (Value Builtin)
-  | NoQuantifierDomainFound DeclProvenance (GenericBinder ()) (Maybe [(Name, UnderConstrainedVariableStatus)])
+  | NoQuantifierDomainFound DeclProvenance (VBinder Builtin) (These (NonEmpty TensorIndices) (NonEmpty TensorIndices))
+  | UnorderableDifferentiableLogic DeclProvenance (Value Builtin)
   | -- ITP backend errors
-    UnsupportedPolymorphicEquality ITP Provenance Name
+    UnimplementedFeature Provenance (Doc Void)
   | UnusedMonomorphisableDeclaration Provenance Identifier
   | -- Other
     UnsupportedInequality QueryFormatID DeclProvenance
@@ -165,59 +243,48 @@ deriving instance Show CompileError
 
 -- | Should be used in preference to `developerError` whenever in the error
 -- monad, as unlike the latter this method does not prevent logging.
-compilerDeveloperError :: (MonadError CompileError m) => Doc () -> m b
+compilerDeveloperError :: (MonadError CompileError m) => UnAnnDoc -> m b
 compilerDeveloperError message = throwError $ DevError message
 
 --------------------------------------------------------------------------------
 -- The final error type
 
--- | Errors from external code that we have no control over.
---  These may be either user or developer errors but in general we
---  can't distinguish between the two.
-newtype ExternalError = ExternalError Text
-  deriving (Generic)
-
-instance ToJSON ExternalError
-
 -- | Errors that are the user's responsibility to fix.
-data UserError = UserError
-  { provenance :: Provenance,
+data VehicleError = VehicleError
+  { provenance :: Maybe Provenance,
     problem :: UnAnnDoc,
     fix :: Maybe UnAnnDoc
   }
 
--- | Concrete instance for JSON serialization of UserError as
--- UnAnnDoc cannot be serialized directly.
-instance ToJSON UserError where
-  toJSON (UserError p prob probFix) =
-    object
-      [ "provenance" .= toJSON p,
-        "problem" .= renderString (layoutPretty defaultLayoutOptions prob),
-        "fix" .= maybe "" (renderString . layoutPretty defaultLayoutOptions) probFix
-      ]
-
-data VehicleError
-  = UError UserError
-  | EError ExternalError
-  | DError (Doc ())
-  deriving (Generic)
-
 instance Pretty VehicleError where
-  pretty (UError (UserError p prob probFix)) =
+  pretty VehicleError {..} =
     unAnnotate $
-      "Error in"
-        <+> pretty p
+      "Error"
+        <> maybe "" (\p -> " in" <+> pretty p) provenance
         <> ":"
-          <+> prob
-        <> maybe "" (\fix -> line <> fixText fix) probFix
-  pretty (EError (ExternalError text)) = pretty text
-  pretty (DError text) = unAnnotate text
+          <+> problem
+        <> maybe "" (\f -> line <> "Fix:" <+> f) fix
 
 instance ToJSON VehicleError where
-  toJSON vehicleError = case vehicleError of
-    DError doc -> toJSON $ renderString $ layoutPretty defaultLayoutOptions doc
-    EError eError -> toJSON eError
-    UError uError -> toJSON uError
+  toJSON = toJSON . toJSONError
 
-fixText :: Doc ann -> Doc ann
-fixText t = "Fix:" <+> t
+toJSONError :: VehicleError -> JSONError
+toJSONError VehicleError {..} =
+  JSONError
+    { provenance = provenance,
+      problem = layoutAsText problem,
+      fix = fmap layoutAsText fix
+    }
+
+data JSONError = JSONError
+  { provenance :: Maybe Provenance,
+    problem :: Text,
+    fix :: Maybe Text
+  }
+  deriving (Generic)
+
+instance ToJSON JSONError
+
+-- developer error for unsupported tensorLike quantification
+unsupportedTensorLikeQuantifier :: forall b. (HasCallStack) => b
+unsupportedTensorLikeQuantifier = developerError "Quantification over TensorLikes is unsupported."

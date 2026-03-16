@@ -1,7 +1,0 @@
-[
-  {
-    "name": "MarabouQueries",
-    "run": "vehicle compile --target MarabouQueries --specification spec.vcl --network classifier:fake.onnx",
-    "needs": ["spec.vcl", "fake.onnx"]
-  }
-]

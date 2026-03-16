@@ -1,6 +1,6 @@
 module Vehicle.Compile.Rational.LinearExpr
   ( LinearityError (..),
-    compileLinearRelation,
+    compileLinearAssertion,
   )
 where
 
@@ -8,14 +8,16 @@ where
 import Control.Applicative (Applicative (..))
 import Control.Monad.Except (MonadError (..), runExceptT)
 import Control.Monad.Trans (MonadTrans (..))
+import Vehicle.Compile.Constants.Rational
 import Vehicle.Compile.Prelude
+import Vehicle.Data.Assertion (comparisonToAssertion)
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.Interface
-import Vehicle.Data.Code.LinearExpr (LinearExpr, addExprs, constantExpr, isConstant, scaleExpr, singletonVarExpr)
+import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
-import Vehicle.Data.QuantifiedVariable (TensorVariable)
-import Vehicle.Data.Tensor (RatTensor, TensorShape, pattern ConstantTensor)
+import Vehicle.Data.Tensor (TensorShape, pattern ConstantTensor)
+import Vehicle.Data.Variable.Bound.Level
 import Prelude hiding (Applicative (..))
 
 type MonadCompileLinearExpr m =
@@ -27,47 +29,50 @@ data LinearityError
   = NonLinearity
   | UnexpectedExpr (Value Builtin)
   | UnreducedExpr (Value Builtin)
+  | TrivialExpr Bool
 
 --------------------------------------------------------------------------------
 -- Tensor expression
 
-compileLinearRelation ::
+compileLinearAssertion ::
   (MonadLogger m) =>
-  (Lv -> m TensorVariable) ->
+  (Lv -> m SliceVariable) ->
+  ComparisonOp ->
   TensorShape ->
   Value Builtin ->
   Value Builtin ->
-  m (Either LinearityError (LinearExpr TensorVariable RatTensor, LinearExpr TensorVariable RatTensor))
-compileLinearRelation toVar shape x y = do
+  m (Either LinearityError LinearAssertion)
+compileLinearAssertion toVar op shape x y = do
   runExceptT $ do
-    x' <- compile (lift . toVar) shape x
-    y' <- compile (lift . toVar) shape y
-    return (x', y')
+    linX <- compile (lift . toVar) shape x
+    linY <- compile (lift . toVar) shape y
+    boolOrAssertion <- comparisonToAssertion op linX linY
+    either (throwError . TrivialExpr) return boolOrAssertion
 
 compile ::
   forall m.
   (MonadCompileLinearExpr m) =>
-  (Lv -> m TensorVariable) ->
+  (Lv -> m SliceVariable) ->
   TensorShape ->
   Value Builtin ->
-  m (LinearExpr TensorVariable RatTensor)
+  m LinearExpression
 compile toVar shape = go
   where
-    go :: Value Builtin -> m (LinearExpr TensorVariable RatTensor)
+    go :: Value Builtin -> m LinearExpression
     go expr = case toRatTensorValue expr of
       ----------------
       -- Base cases --
       ----------------
       VRatTensorLiteral t -> do
         return $ constantExpr t
-      VRatTensorVar lv -> do
+      VRatTensorBoundVar lv -> do
         singletonVarExpr (ConstantTensor shape 0) <$> toVar lv
       ---------------------
       -- Inductive cases --
       ---------------------
       VNegRatTensor (TensorOp1Args _ e) -> scaleExpr (-1) <$> go e
-      VAddRatTensor (TensorOp2Args _ e1 e2) -> addExprs 1 1 <$> go e1 <*> go e2
-      VSubRatTensor (TensorOp2Args _ e1 e2) -> addExprs 1 (-1) <$> go e1 <*> go e2
+      VAddRatTensor (TensorOp2Args _ e1 e2) -> addExprsUnsafe 1 1 <$> go e1 <*> go e2
+      VSubRatTensor (TensorOp2Args _ e1 e2) -> addExprsUnsafe 1 (-1) <$> go e1 <*> go e2
       VMulRatTensor (TensorOp2Args _ e1 e2) -> do
         e1' <- compile toVar shape e1
         e2' <- compile toVar shape e2
@@ -91,7 +96,7 @@ compile toVar shape = go
       VRatConstTensor {} -> unreduced
       VRatStackTensor {} -> unreduced
       VRatAt {} -> unreduced
-      VNetworkApp {} -> unreduced
+      VRatTensorFreeVar {} -> unreduced
       VRatForeach {} -> unreduced
       VIfRatTensor {} -> unreduced
       -----------------------

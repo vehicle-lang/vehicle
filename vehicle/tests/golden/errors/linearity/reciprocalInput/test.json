@@ -1,0 +1,5 @@
+{
+  "name": "Marabou",
+  "run": "vehicle compile queries -s spec.vcl -f MarabouQueries --network f:fake.onnx",
+  "needs": ["spec.vcl", "fake.onnx"]
+}

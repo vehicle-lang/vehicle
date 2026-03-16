@@ -2,27 +2,76 @@
 
 module Vehicle.Data.Builtin.Standard.Core
   ( module Syntax,
+    Builtin (..),
     builtinCast,
     accessFromNatToIndex,
     accessFromNatToRat,
     accessFromVectorToList,
     isTensorType,
     builtinDerivedFunction,
+    builtinSymbols,
+    builtinFromSymbol,
+    symbolFromBuiltin,
   )
 where
 
+import Control.DeepSeq (NFData)
+import Data.Hashable (Hashable)
+import Data.Serialize (Serialize)
+import Data.Text (Text)
+import GHC.Generics (Generic)
 import Vehicle.Data.Builtin.Core as Syntax
 import Vehicle.Data.Builtin.Interface
-import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Code.DSL
-import Vehicle.Data.Code.Expr
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.DSL
-import Vehicle.Prelude (GenericArg (..), HasIdentifier (identifierOf))
-import Vehicle.Syntax.Sugar (BinderType (..))
+import Vehicle.Prelude
 
 -----------------------------------------------------------------------------
--- Classes
+-- Definition
+
+-- | Builtins in the Vehicle language
+data Builtin
+  = BuiltinConstructor BuiltinConstructor
+  | BuiltinFunction BuiltinFunction
+  | BuiltinType BuiltinType
+  | BuiltinCast BuiltinCast
+  | DerivedFunction DerivedFunction
+  | TypeClass TypeClass
+  | TypeClassOp TypeClassOp
+  | NatInDomainConstraint
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData Builtin
+
+instance Hashable Builtin
+
+instance Serialize Builtin
+
+-- TODO all the show instances should really be obtainable from the grammar
+-- somehow.
+instance Pretty Builtin where
+  pretty = \case
+    BuiltinFunction f -> pretty f
+    BuiltinType t -> pretty t
+    BuiltinConstructor c -> pretty c
+    BuiltinCast c -> pretty c
+    DerivedFunction f -> pretty f
+    TypeClass tc -> pretty tc
+    TypeClassOp o -> pretty o
+    NatInDomainConstraint {} -> "NatInDomainConstraint"
+
+builtinSymbols :: [(Text, Builtin)]
+builtinSymbols = mempty
+
+builtinFromSymbol :: Text -> Maybe Builtin
+builtinFromSymbol symbol = lookup symbol builtinSymbols
+
+symbolFromBuiltin :: Builtin -> Text
+symbolFromBuiltin b = layoutAsText $ pretty b
+
+-----------------------------------------------------------------------------
+-- Accessors
 
 typeAccessor :: BuiltinType -> Accessor Builtin ()
 typeAccessor b =
@@ -87,8 +136,13 @@ compareRatTensorReducedAccessor =
       mkExpr = \op -> DerivedFunction (CompareRatTensorReduced op)
     }
 
-instance BuiltinHasBoolLiterals Builtin where
+--------------------------------------------------------------------------------
+-- Bool
+
+instance BuiltinHasBoolType Builtin where
   accessBoolTypeBuiltin = typeAccessor BoolType
+
+instance BuiltinHasBoolLiterals Builtin where
   accessBoolTensorLitBuiltin =
     Access
       { getExpr = \case
@@ -118,6 +172,12 @@ instance BuiltinHasBoolLiterals Builtin where
         mkExpr = BuiltinFunction . QuantifyRatTensor
       }
 
+--------------------------------------------------------------------------------
+-- Index
+
+instance BuiltinHasIndexType Builtin where
+  accessIndexTypeBuiltin = typeAccessor IndexType
+
 instance BuiltinHasIndexLiterals Builtin where
   accessIndexLitBuiltin =
     Access
@@ -126,6 +186,9 @@ instance BuiltinHasIndexLiterals Builtin where
           _ -> Nothing,
         mkExpr = BuiltinConstructor . IndexLiteral
       }
+
+--------------------------------------------------------------------------------
+-- Nat
 
 instance BuiltinHasNatType Builtin where
   accessNatTypeBuiltin = typeAccessor NatType
@@ -150,8 +213,13 @@ instance BuiltinHasNatLiterals Builtin where
   accessAddNatBuiltin = functionAccessor (Add AddNat)
   accessMulNatBuiltin = functionAccessor (Mul MulNat)
 
-instance BuiltinHasRatLiterals Builtin where
+--------------------------------------------------------------------------------
+-- Rat
+
+instance BuiltinHasRatType Builtin where
   accessRatTypeBuiltin = typeAccessor RatType
+
+instance BuiltinHasRatLiterals Builtin where
   accessRatTensorLitBuiltin =
     Access
       { getExpr = \case
@@ -173,6 +241,12 @@ instance BuiltinHasRatLiterals Builtin where
   accessReduceMinRatBuiltin = functionAccessor ReduceMinRatTensor
   accessReduceMaxRatBuiltin = functionAccessor ReduceMaxRatTensor
 
+--------------------------------------------------------------------------------
+-- List
+
+instance BuiltinHasListType Builtin where
+  accessListTypeBuiltin = typeAccessor ListType
+
 instance BuiltinHasListLiterals Builtin where
   accessNilBuiltin =
     Access
@@ -193,6 +267,12 @@ instance BuiltinHasListLiterals Builtin where
   accessMapListBuiltin = functionAccessor MapList
   accessFoldListBuiltin = functionAccessor FoldList
 
+--------------------------------------------------------------------------------
+-- Vector
+
+instance BuiltinHasVectorType Builtin where
+  accessVectorTypeBuiltin = typeAccessor VectorType
+
 instance BuiltinHasVectors Builtin where
   accessVecLitBuiltin =
     Access
@@ -204,10 +284,19 @@ instance BuiltinHasVectors Builtin where
 
   accessAtVectorBuiltin = functionAccessor AtVector
 
+--------------------------------------------------------------------------------
+-- Tensor
+
+instance BuiltinHasTensorType Builtin where
+  accessTensorTypeBuiltin = typeAccessor TensorType
+
 instance BuiltinHasTensors Builtin where
   accessConstTensorBuiltin = functionAccessor ConstTensor
   accessStackTensorBuiltin = functionAccessor StackTensor
   accessAtTensorBuiltin = functionAccessor AtTensor
+
+--------------------------------------------------------------------------------
+-- Others
 
 instance BuiltinHasForeach Builtin where
   accessForeachTensorBuiltin = functionAccessor ForeachTensor
@@ -244,29 +333,6 @@ instance BuiltinHasStandardData Builtin where
 
 instance BuiltinHasIterate Builtin where
   accessIterateBuiltin = functionAccessor Iterate
-
-instance BuiltinHasBinders Builtin where
-  getBuiltinBinder = \case
-    BuiltinFunction ForeachVector -> Just ForeachBinder
-    BuiltinFunction ForeachTensor -> Just ForeachBinder
-    BuiltinFunction (QuantifyRatTensor q) -> Just $ QuantifierBinder q
-    _ -> Nothing
-
----------------------------------------------------------------------------------
--- Printing
-
-instance PrintableBuiltin Builtin where
-  coercionArgs b = case b of
-    BuiltinCast FromNat {} -> Just $ \args -> argExpr $ last args
-    BuiltinCast FromRat {} -> Just $ \args -> argExpr $ last args
-    TypeClassOp FromNatTC {} -> Just $ \args -> argExpr $ last args
-    TypeClassOp FromRatTC {} -> Just $ \args -> argExpr $ last args
-    TypeClassOp VecLiteralTC {} -> Just $ \args -> normAppList (Builtin mempty b) args
-    _ -> Nothing
-
-  isDerivedBuiltin b = case b of
-    DerivedFunction f -> Just $ identifierOf f
-    _ -> Nothing
 
 ---------------------------------------------------------------------------------
 --- Casts

@@ -1,7 +1,7 @@
 # 2024-04-16: Disable end-to-end tests
 if False:
     from pathlib import Path
-    from typing import Any, Callable, Dict, Tuple, cast
+    from typing import Any, Callable, cast
 
     import vehicle_lang as vcl
     from typing_extensions import TypeAlias
@@ -16,13 +16,13 @@ if False:
     )
     MNIST_ROBUSTNESS = GOLDEN_PATH / "mnist-robustness" / "spec.vcl"
 
-    Image: TypeAlias = Tuple[Tuple[float, ...], ...]
+    Image: TypeAlias = tuple[tuple[float, ...], ...]
 
     Perturbation: TypeAlias = Image
 
     Label: TypeAlias = int
 
-    LabelDistribution: TypeAlias = Tuple[
+    LabelDistribution: TypeAlias = tuple[
         float, float, float, float, float, float, float, float, float, float
     ]
 
@@ -71,7 +71,7 @@ if False:
 
             def optimiser_for_perturbation(
                 _minimise: bool,
-                _context: Dict[str, Any],
+                _context: dict[str, Any],
                 _joiner: Callable[[tf.Tensor, tf.Tensor], tf.Tensor],
                 _predicate: Callable[[Any], tf.Tensor],
             ) -> tf.Tensor:

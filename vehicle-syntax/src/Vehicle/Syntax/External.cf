@@ -10,18 +10,23 @@ position token Boolean  ({"True"} | {"False"});
 position token Natural  (digit+);
 position token Rational (digit+ '.' digit+);
 
-position token TokAnnotation ({"@"} ({"network"} | {"dataset"} | {"parameter"} | {"property"} | {"tensor"}));
-position token TokPostulate {"@postulate"};
-
-position token TokLeftBrace  {"{"};
-position token TokRightBrace {"}"};
+position token TokAnnotation ({"@"}
+  ( {"network"}
+  | {"dataset"}
+  | {"parameter"}
+  | {"property"}
+  | {"tensor"}
+  | {"instance"}
+  | {"builtin"}
+  | {"typeclass"}
+  )
+);
 
 position token TokArrow     {"->"};
 position token TokForallT   {"forallT"};
 position token TokIf        {"if"};
 position token TokThen      {"then"};
 position token TokElse      {"else"};
-position token TokDot       {"."};
 position token TokElemOf    {":"};
 position token TokLambda    {"\\"};
 position token TokLet       {"let"};
@@ -35,7 +40,7 @@ position token TokReal      {"Real"};
 position token TokList      {"List"};
 position token TokVector    {"Vector"};
 position token TokTensor    {"Tensor"};
-
+position token TokNonCastingTensor   {"NonCastingTensor"};
 position token TokForall    {"forall"};
 position token TokExists    {"exists"};
 position token TokForeach   {"foreach"};
@@ -62,6 +67,43 @@ position token TokSub       {"-"};
 position token TokMin       {"min"};
 position token TokMax       {"max"};
 
+position token TokAddNat    {"addNat"};
+position token TokMulNat    {"mulNat"};
+position token TokAddRealTensor {"addRealTensor"};
+position token TokSubRealTensor {"subRealTensor"};
+position token TokMulRealTensor {"mulRealTensor"};
+position token TokDivRealTensor {"divRealTensor"};
+position token TokQuantifyForAllIndex {"quantifyForAllIndex"};
+position token TokQuantifyExistsIndex {"quantifyExistsIndex"};
+position token TokQuantifyForallRealTensor {"quantifyForallRealTensor"};
+position token TokQuantifyExistsRealTensor {"quantifyExistsRealTensor"};
+position token TokQuantifyForallTensorLike {"quantifyForallTensorLike"};
+position token TokQuantifyExistsTensorLike {"quantifyExistsTensorLike"};
+position token TokCompareIndexEq {"compareIndexEq"};
+position token TokCompareIndexNe {"compareIndexNe"};
+position token TokCompareIndexLe {"compareIndexLe"};
+position token TokCompareIndexLt {"compareIndexLt"};
+position token TokCompareIndexGe {"compareIndexGe"};
+position token TokCompareIndexGt {"compareIndexGt"};
+position token TokCompareNatEq {"compareNatEq"};
+position token TokCompareNatNe {"compareNatNe"};
+position token TokCompareNatLe {"compareNatLe"};
+position token TokCompareNatLt {"compareNatLt"};
+position token TokCompareNatGe {"compareNatGe"};
+position token TokCompareNatGt {"compareNatGt"};
+position token TokCompareRatTensorPointwiseEq {"compareRatTensorPointwiseEq"};
+position token TokCompareRatTensorPointwiseNe {"compareRatTensorPointwiseNe"};
+position token TokCompareRatTensorPointwiseLe {"compareRatTensorPointwiseLe"};
+position token TokCompareRatTensorPointwiseLt {"compareRatTensorPointwiseLt"};
+position token TokCompareRatTensorPointwiseGe {"compareRatTensorPointwiseGe"};
+position token TokCompareRatTensorPointwiseGt {"compareRatTensorPointwiseGt"};
+position token TokCompareRatTensorReducedEq {"compareRatTensorReducedEq"};
+position token TokCompareRatTensorReducedNe {"compareRatTensorReducedNe"};
+position token TokCompareRatTensorReducedLe {"compareRatTensorReducedLe"};
+position token TokCompareRatTensorReducedLt {"compareRatTensorReducedLt"};
+position token TokCompareRatTensorReducedGe {"compareRatTensorReducedGe"};
+position token TokCompareRatTensorReducedGt {"compareRatTensorReducedGt"};
+
 position token TokNil        {"nil"};
 position token TokCons       {"::"};
 position token TokSeqOpen    {"["};
@@ -69,6 +111,7 @@ position token TokSeqClose   {"]"};
 position token TokAt         {"!"};
 position token TokMap        {"map"};
 position token TokFold       {"fold"};
+position token TokConst      {"const"};
 
 position token TokReduceOr  {"reduceOr"};
 position token TokReduceAnd {"reduceAnd"};
@@ -80,23 +123,18 @@ position token TokReduceMax {"reduceMax"};
 position token TokHasLeq    {"HasLeq"};
 position token TokHasEq     {"HasEq"};
 position token TokHasNotEq  {"HasNotEq"};
-position token TokHasAdd    {"HasAdd"};
-position token TokHasSub    {"HasSub"};
-position token TokHasMul    {"HasMul"};
 position token TokHasFold   {"HasFold"};
 position token TokHasMap    {"HasMap"};
 position token TokIsTensorType {"IsTensorType"};
 
 position token TokAnnNameOpt  {"name"};
 position token TokAnnInferOpt {"infer"};
+position token TokAnnDefaultOpt {"default"};
 
 -- NOTE: As order matters don't declare tokens after these ones!
 position token Name         (letter (letter | digit | '_')*) ;
+position token FieldAccess  ({"."} letter (letter | digit | '_')*);
 position token HoleToken    ({"?"} (letter | digit | '_')*);
-
--- For accessing records (e.g. `x.field1`)
--- have to declare as single token in order to ensure no whitespace and avoid clashes
-position token TokRecordAccess ('.' (letter (letter | digit | '_')*));
 
 separator Name "";
 
@@ -171,27 +209,35 @@ BoolLiteral.  Lit ::= Boolean;
 --   aren't used for `let` and `in`.
 
 -- Kinds.
-Type.    Expr14 ::= TokType;
+Type.    Expr15 ::= TokType;
 
 -- Core structure.
 Ann.       Expr   ::= Expr2 TokElemOf Expr1;
-ForallT.   Expr1  ::= TokForallT [NameBinder] TokDot Expr1;
+ForallT.   Expr1  ::= TokForallT [NameBinder] "." Expr1;
 Let.       Expr2  ::= TokLet [LetDecl] "in" Expr2;
 Lam.       Expr2  ::= TokLambda [NameBinder] TokArrow Expr2;
 Fun.       Expr11 ::= TypeBinder TokArrow Expr11;
 App.       Expr13 ::= Expr13 Arg;
 -- This record declaration causes a shift-reduce conflict.
-Record.    Expr13 ::= "{" [RecordFieldAssign] "}";
-RecordAcc. Expr13 ::= Expr15 TokRecordAccess;
+Record.    Expr10 ::= "{" [RecordFieldAssign] "}";
+RecordAcc. Expr13 ::= Expr13 FieldAccess;
 Var.       Expr15 ::= Name;
 Literal.   Expr15 ::= Lit;
 Hole.      Expr15 ::= HoleToken;
 
 -- Quantification
-Forall.    Expr2 ::= TokForall [NameBinder] TokDot Expr2;
-Exists.    Expr2 ::= TokExists [NameBinder] TokDot Expr2;
-ForallIn.  Expr2 ::= TokForall NameBinder "in" Expr3 TokDot Expr2;
-ExistsIn.  Expr2 ::= TokExists NameBinder "in" Expr3 TokDot Expr2;
+Foreach.   Expr2 ::= TokForeach [NameBinder] "." Expr2;
+Forall.    Expr2 ::= TokForall [NameBinder] "." Expr2;
+Exists.    Expr2 ::= TokExists [NameBinder] "." Expr2;
+ForallIn.  Expr2 ::= TokForall NameBinder "in" Expr3 "." Expr2;
+ExistsIn.  Expr2 ::= TokExists NameBinder "in" Expr3 "." Expr2;
+
+-- Numeric expressions.
+Add. Expr9  ::= Expr9  TokAdd Expr10;
+Sub. Expr9  ::= Expr9  TokSub Expr10;
+Mul. Expr10 ::= Expr10 TokMul Expr11;
+Div. Expr10 ::= Expr10 TokDiv Expr11;
+Neg. Expr11 ::= TokSub Expr11;
 
 -- Boolean expressions.
 If.      Expr4  ::= TokIf Expr5 TokThen Expr5 TokElse Expr5;
@@ -212,65 +258,86 @@ LtPoint. Expr8  ::= Expr8 TokLtPoint Expr9;
 GePoint. Expr8  ::= Expr8 TokGePoint Expr9;
 GtPoint. Expr8  ::= Expr8 TokGtPoint Expr9;
 
--- Numeric expressions.
-Add.     Expr9  ::= Expr9  TokAdd Expr10;
-Sub.     Expr9  ::= Expr9  TokSub Expr10;
-Mul.     Expr10 ::= Expr10 TokMul Expr11;
-Div.     Expr10 ::= Expr10 TokDiv Expr11;
-Neg.     Expr11 ::= TokSub Expr11;
-Min.     Expr15 ::= TokMin;
-Max.     Expr15 ::= TokMax;
-
--- Lists and vectors.
-Foreach.    Expr2  ::= TokForeach [NameBinder] TokDot Expr2;
+-- Container syntax.
 VecLiteral. Expr15 ::= TokSeqOpen [Expr] TokSeqClose;
-Nil.        Expr15 ::= TokNil;
 Cons.       Expr4  ::= Expr5 TokCons Expr4;
 At.         Expr12 ::= Expr12 TokAt Expr13;
-Map.        Expr15 ::= TokMap;
-Fold.       Expr15 ::= TokFold;
 
--- Tensors
-ReduceOr.   Expr15 ::= TokReduceOr;
-ReduceAnd.  Expr15 ::= TokReduceAnd;
-ReduceAdd.  Expr15 ::= TokReduceAdd;
-ReduceMul.  Expr15 ::= TokReduceMul;
-ReduceMin.  Expr15 ::= TokReduceMin;
-ReduceMax.  Expr15 ::= TokReduceMax;
+-- Hard-coded builtins remove
+Min.                          Expr15 ::= TokMin;
+Max.                          Expr15 ::= TokMax;
+AddNat.                       Expr15 ::= TokAddNat;
+MulNat.                       Expr15 ::= TokMulNat;
+AddRealTensor.                Expr15 ::= TokAddRealTensor;
+SubRealTensor.                Expr15 ::= TokSubRealTensor;
+MulRealTensor.                Expr15 ::= TokMulRealTensor;
+DivRealTensor.                Expr15 ::= TokDivRealTensor;
+QuantifyForAllIndex.          Expr15 ::= TokQuantifyForAllIndex;
+QuantifyExistsIndex.          Expr15 ::= TokQuantifyExistsIndex;
+QuantifyForallRealTensor.     Expr15 ::= TokQuantifyForallRealTensor;
+QuantifyExistsRealTensor.     Expr15 ::= TokQuantifyExistsRealTensor;
+QuantifyForallTensorLike.     Expr15 ::= TokQuantifyForallTensorLike;
+QuantifyExistsTensorLike.     Expr15 ::= TokQuantifyExistsTensorLike;
+CompareIndexEq.               Expr15 ::= TokCompareIndexEq;
+CompareIndexNe.               Expr15 ::= TokCompareIndexNe;
+CompareIndexLe.               Expr15 ::= TokCompareIndexLe;
+CompareIndexLt.               Expr15 ::= TokCompareIndexLt;
+CompareIndexGe.               Expr15 ::= TokCompareIndexGe;
+CompareIndexGt.               Expr15 ::= TokCompareIndexGt;
+CompareNatEq.                 Expr15 ::= TokCompareNatEq;
+CompareNatNe.                 Expr15 ::= TokCompareNatNe;
+CompareNatLe.                 Expr15 ::= TokCompareNatLe;
+CompareNatLt.                 Expr15 ::= TokCompareNatLt;
+CompareNatGe.                 Expr15 ::= TokCompareNatGe;
+CompareNatGt.                 Expr15 ::= TokCompareNatGt;
+CompareRatTensorPointwiseEq.  Expr15 ::= TokCompareRatTensorPointwiseEq;
+CompareRatTensorPointwiseNe.  Expr15 ::= TokCompareRatTensorPointwiseNe;
+CompareRatTensorPointwiseLe.  Expr15 ::= TokCompareRatTensorPointwiseLe;
+CompareRatTensorPointwiseLt.  Expr15 ::= TokCompareRatTensorPointwiseLt;
+CompareRatTensorPointwiseGe.  Expr15 ::= TokCompareRatTensorPointwiseGe;
+CompareRatTensorPointwiseGt.  Expr15 ::= TokCompareRatTensorPointwiseGt;
+CompareRatTensorReducedEq.    Expr15 ::= TokCompareRatTensorReducedEq;
+CompareRatTensorReducedNe.    Expr15 ::= TokCompareRatTensorReducedNe;
+CompareRatTensorReducedLe.    Expr15 ::= TokCompareRatTensorReducedLe;
+CompareRatTensorReducedLt.    Expr15 ::= TokCompareRatTensorReducedLt;
+CompareRatTensorReducedGe.    Expr15 ::= TokCompareRatTensorReducedGe;
+CompareRatTensorReducedGt.    Expr15 ::= TokCompareRatTensorReducedGt;
 
--- Primitive types.
-Unit.    Expr15 ::= TokUnit;
-Bool.    Expr15 ::= TokBool;
-Index.   Expr14 ::= TokIndex;
-Nat.     Expr15 ::= TokNat;
-Real.    Expr15 ::= TokReal;
-List.    Expr14 ::= TokList;
-Vector.  Expr14 ::= TokVector;
-Tensor.  Expr14 ::= TokTensor;
-
--- Type classes.
-HasEq.    Expr15 ::= TokHasEq;
-HasNotEq. Expr15 ::= TokHasNotEq;
-HasLeq.   Expr15 ::= TokHasLeq;
-HasAdd.   Expr15 ::= TokHasAdd;
-HasSub.   Expr15 ::= TokHasSub;
-HasMul.   Expr15 ::= TokHasMul;
-HasMap.   Expr15 ::= TokHasMap;
-HasFold.  Expr15 ::= TokHasFold;
-
+Nil.           Expr15 ::= TokNil;
+Const.         Expr15 ::= TokConst;
+Map.           Expr15 ::= TokMap;
+Fold.          Expr15 ::= TokFold;
+ReduceOr.      Expr15 ::= TokReduceOr;
+ReduceAnd.     Expr15 ::= TokReduceAnd;
+ReduceAdd.     Expr15 ::= TokReduceAdd;
+ReduceMul.     Expr15 ::= TokReduceMul;
+ReduceMin.     Expr15 ::= TokReduceMin;
+ReduceMax.     Expr15 ::= TokReduceMax;
+Unit.          Expr15 ::= TokUnit;
+Bool.          Expr15 ::= TokBool;
+Index.         Expr15 ::= TokIndex;
+Nat.           Expr15 ::= TokNat;
+Real.          Expr15 ::= TokReal;
+List.          Expr15 ::= TokList;
+Vector.        Expr15 ::= TokVector;
+Tensor.        Expr15 ::= TokTensor;
+HasEq.         Expr15 ::= TokHasEq;
+HasNotEq.      Expr15 ::= TokHasNotEq;
+HasLeq.        Expr15 ::= TokHasLeq;
+HasMap.        Expr15 ::= TokHasMap;
+HasFold.       Expr15 ::= TokHasFold;
 IsTensorType.  Expr15 ::= TokIsTensorType;
+NonCastingTensor. Expr15 ::= TokNonCastingTensor;
 
 coercions Expr 15;
 separator Expr ",";
 
 -- * Annotation options
 
--- The LHS of an annotation is an `Expr` rather than a `Name` so we can capture
--- the builtin names `Bool` etc. which aren't captured by the `Name` class because
--- they necessarily have priority over it.
-NameAnnOption.  DeclAnnOption ::= TokAnnNameOpt "=" Name;
-InferAnnOption. DeclAnnOption ::= TokAnnInferOpt "=" Expr;
-TypeAnnOption.  DeclAnnOption ::= Name "=" Expr;
+NameAnnOption.    DeclAnnOption ::= TokAnnNameOpt "=" Name;
+InferAnnOption.   DeclAnnOption ::= TokAnnInferOpt "=" Boolean;
+DefaultAnnOption. DeclAnnOption ::= TokAnnDefaultOpt "=" Natural;
+TypeAnnOption.    DeclAnnOption ::= Name "=" Expr;
 
 separator DeclAnnOption ",";
 
@@ -285,13 +352,24 @@ DefAnn.       Decl ::= TokAnnotation DeclAnnOpts;
 DefType.      Decl ::= "type" Name [NameBinder] "=" Expr;
 DefFunType.   Decl ::= Name TokElemOf Expr;
 DefFunExpr.   Decl ::= Name [NameBinder] "=" Expr;
-DefPostulate. Decl ::= TokPostulate DeclAnnOpts;
-DefRecord.    Decl ::= "record" Name "where" "{" [RecordFieldDef] "}";
+DefRecord.    Decl ::= "record" Name [NameBinder] "where" "{" [RecordFieldDef] "}";
 
 separator Decl ";";
 
--- * Program
+-- * Import statements
+
+ModulePathFrag. ModulePathFragment ::= Name;
+
+separator nonempty ModulePathFragment ".";
+
+Import. ImportStatement ::= "import" [ModulePathFragment];
+
+separator ImportStatement ";";
+
+-- * Module
 
 layout toplevel;
 
-Main. Prog ::= [Decl]
+layout stop "}";
+
+DefModule. Module ::= [ImportStatement] [Decl]

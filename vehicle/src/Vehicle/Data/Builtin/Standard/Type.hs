@@ -2,9 +2,10 @@
 
 module Vehicle.Data.Builtin.Standard.Type () where
 
+import Data.Foldable (traverse_)
 import Data.Proxy (Proxy (..))
-import Vehicle.Compile.Context.Free (MonadFreeContext, getDeclType, getFreeEnv)
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Type.Bidirectional (createFreshUnificationConstraint)
 import Vehicle.Compile.Type.Constraint.InstanceDefaultSolver
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
@@ -17,6 +18,8 @@ import Vehicle.Data.Builtin.Standard.IndexSolver
 import Vehicle.Data.Builtin.Standard.Normalise ()
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.DSL
+import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..))
+import Vehicle.Libraries.StandardLibrary
 import Prelude hiding (iterate, pi)
 
 --------------------------------------------------------------------------------
@@ -30,7 +33,7 @@ instance TypableBuiltin Builtin where
   useDependentMetas _ = True
   isConstructor = isStandardConstructor
   isCastConstraint e = case e of
-    TypeClass c -> c `elem` ([IsTensorType, HasNatLits, HasRatLits, HasVecLits] :: [TypeClass])
+    Right (TypeClass c) -> c `elem` ([IsTensorType, HasNatLits, HasRatLits, HasVecLits] :: [TypeClass])
     _ -> False
 
 -- | Return the type of the provided builtin.
@@ -46,7 +49,7 @@ isStandardConstructor = \case
   DerivedFunction {} -> False
 
 -- | Return the type of the provided builtin.
-typeStandardBuiltin :: (MonadFreeContext Builtin m) => Provenance -> Builtin -> m (Type Builtin)
+typeStandardBuiltin :: (MonadTypeChecker Builtin m) => Provenance -> Builtin -> m (Type Builtin)
 typeStandardBuiltin p = \case
   DerivedFunction f -> getDeclType (Proxy @Builtin) (identifierOf f)
   BuiltinType s -> return $ fromDSL p $ typeOfBuiltinType s
@@ -61,10 +64,6 @@ typeOfTypeClass :: TypeClass -> DSLExpr Builtin
 typeOfTypeClass tc = case tc of
   HasCompare {} -> type0 ~> type0 ~> type0
   HasQuantifier {} -> type0 ~> type0 ~> type0
-  HasAdd -> type0 ~> type0 ~> type0 ~> type0
-  HasSub -> type0 ~> type0 ~> type0 ~> type0
-  HasMul -> type0 ~> type0 ~> type0 ~> type0
-  HasDiv -> type0 ~> type0 ~> type0 ~> type0
   HasNeg -> type0 ~> type0 ~> type0
   HasAt -> type0 ~> type0 ~> type0 ~> type0
   HasForeach -> type0 ~> type0 ~> type0 ~> type0
@@ -76,12 +75,12 @@ typeOfTypeClass tc = case tc of
   HasVecLits {} -> tNat ~> (type0 ~> type0) ~> type0
   ValidPropertyType -> type0 ~> type0
   ValidParameterType {} -> type0 ~> type0
-  ValidNetworkType -> type0 ~> type0
   ValidNetworkTensorType -> type0 ~> type0
   ValidDatasetType -> type0 ~> type0
   ValidDatasetListElementType -> type0 ~> type0
   ValidDatasetTensorElementType -> type0 ~> type0
   IsTensorType {} -> typeOfBuiltinType TensorType
+  ValidTensorLikeType -> type0 ~> type0
 
 typeOfTypeClassOp :: TypeClassOp -> DSLExpr Builtin
 typeOfTypeClassOp b = case b of
@@ -93,10 +92,6 @@ typeOfTypeClassOp b = case b of
   FromRatTC -> forAllTypes $ \t -> hasRatLits t ~~~> typeOfFromRat t
   VecLiteralTC -> typeOfVectorLiteral
   NegTC -> typeOfTCOp1 hasNeg
-  AddTC -> typeOfTCOp2 hasAdd
-  SubTC -> typeOfTCOp2 hasSub
-  MulTC -> typeOfTCOp2 hasMul
-  DivTC -> typeOfTCOp2 hasDiv
   CompareTC op -> typeOfTCComparisonOp $ hasCompare op
   AtTC -> typeOfTCOp2 hasAt
   ForeachTC ->
@@ -106,9 +101,6 @@ typeOfTypeClassOp b = case b of
           hasForeach t1 t2 t3 ~~~> typeOfForeach t1 t2 t3
   MapTC -> forAll "f" (type0 ~> type0) $ \f -> hasMap f ~~~> typeOfMap f
   FoldTC -> forAll "f" (type0 ~> type0) $ \f -> hasFold f ~~~> typeOfFold f
-  QuantifierTC q ->
-    forAll "A" (type0 ~> type0) $ \t ->
-      hasQuantifier q t ~~~> typeOfQuantifier t
 
 typeOfBuiltinCast :: BuiltinCast -> DSLExpr Builtin
 typeOfBuiltinCast = \case
@@ -164,6 +156,7 @@ typeOfVectorLiteral =
 instance HasTypeSystem Builtin where
   convertFromStandardBuiltins = return
   restrictDeclType = restrictStandardDeclType
+  restrictRecordAnnotatedAsTensor = restrictStandardRecordAnnotatedAsTensorType
   isAuxiliaryConstraint e = case e of
     App (Builtin _ NatInDomainConstraint) _ -> True
     _ -> False
@@ -180,17 +173,49 @@ restrictStandardDeclType ::
   Type Builtin ->
   m (Type Builtin)
 restrictStandardDeclType declSort (ident, p) typ = do
-  env <- getFreeEnv
+  env <- getFreeCtx (Proxy @Builtin)
   let tc = case declSort of
-        RestrictedProperty -> ValidPropertyType
-        RestrictedParameter s -> ValidParameterType s
-        RestrictedDataset -> ValidDatasetType
-        RestrictedNetwork -> ValidNetworkType
+        RestrictedProperty -> Builtin p (TypeClass ValidPropertyType)
+        RestrictedParameter s -> Builtin p (TypeClass (ValidParameterType s))
+        RestrictedDataset -> Builtin p (TypeClass ValidDatasetType)
+        RestrictedNetwork -> FreeVar p validNetworkTypeIdent
 
-  let expr = BuiltinExpr p (TypeClass tc) [explicit typ]
-  let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin env (ident, provenanceOf typ) declSort typ
+  let expr = App tc [explicit typ]
+  let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin env (ident, provenanceOf typ) (Left declSort) typ
   _ <- createFreshInstanceConstraint False mempty p origin Irrelevant expr
   return typ
+
+restrictStandardRecordAnnotatedAsTensorType ::
+  forall m.
+  (MonadTypeChecker Builtin m) =>
+  DeclProvenance ->
+  [RecordField Builtin] ->
+  m ()
+restrictStandardRecordAnnotatedAsTensorType (ident, p) fields = case fields of
+  [] -> return ()
+  (firstFieldName, firstFieldType) : restFields -> do
+    env <- getFreeCtx (Proxy @Builtin)
+    let expr = App (Builtin p (TypeClass ValidTensorLikeType)) [explicit firstFieldType]
+    let restrictionDetails = Right (FieldTypeIsAllowed firstFieldName)
+    let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin env (ident, p) restrictionDetails firstFieldType
+    _ <- createFreshInstanceConstraint False mempty p origin Irrelevant expr
+
+    traverse_ (checkRecordFieldTypesMatch (ident, p) (firstFieldName, firstFieldType)) restFields
+    return ()
+
+checkRecordFieldTypesMatch ::
+  forall m.
+  (MonadTypeChecker Builtin m) =>
+  DeclProvenance ->
+  RecordField Builtin ->
+  RecordField Builtin ->
+  m ()
+checkRecordFieldTypesMatch (ident, p) (firstFieldName, firstFieldType) (currFieldName, currFieldType) = do
+  env <- getFreeCtx (Proxy @Builtin)
+  let restrictionDetails = Right (FieldTypesMatch firstFieldName currFieldName)
+  let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin env (ident, p) restrictionDetails firstFieldType
+  _ <- createFreshUnificationConstraint p mempty (CheckingInstanceType origin) firstFieldType currFieldType
+  return ()
 
 -- | Tries to add new unification constraints using default values.
 addNewStandardAuxiliaryConstraintUsingDefaults ::

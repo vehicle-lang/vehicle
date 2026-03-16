@@ -1,5 +1,5 @@
 [bumpver]
-current_version = "v0.19.0"
+current_version = "v0.24.0"
 version_pattern = "vMAJOR.MINOR.PATCH"
 commit_message = "Bump version {old_version} -> {new_version}"
 commit = true
@@ -38,9 +38,12 @@ push = true
 "vehicle/tests/golden/**/*.v.golden" = [
     "- Vehicle version: {pep440_version}+dev"
 ]
-"vehicle/tests/golden/**/Marabou.queries/*-query*.txt.golden" = [
+"vehicle/tests/golden/**/*.thy.golden" = [
     "- Vehicle version: {pep440_version}+dev"
 ]
-"vehicle/tests/golden/**/VNNLib.queries/*-query*.txt.golden" = [
+"vehicle/tests/golden/**/*.iml.golden" = [
+    "- Vehicle version: {pep440_version}+dev"
+]
+"vehicle/tests/golden/**/*-query*.txt.golden" = [
     "- Vehicle version: {pep440_version}+dev"
 ]

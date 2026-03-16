@@ -19,9 +19,11 @@ import Data.Map (Map)
 import Data.Map qualified as Map (toAscList)
 import Data.Set (Set)
 import Data.Set qualified as Set
+import Data.Text (Text)
 import Data.Version (Version, showVersion)
 import Data.Void (Void)
-import Prettyprinter (group, line', surround, unAnnotate)
+import Numeric (showFFloat)
+import Prettyprinter (LayoutOptions (..), PageWidth (..), defaultLayoutOptions, group, layoutPretty, line', surround, unAnnotate)
 import Prettyprinter as CommonPrettyprinter
   ( Doc,
     Pretty (..),
@@ -40,6 +42,8 @@ import Prettyprinter as CommonPrettyprinter
     (<+>),
   )
 import Prettyprinter.Internal (Doc (Annotated))
+import Prettyprinter.Render.String (renderString)
+import Prettyprinter.Render.Text (renderStrict)
 
 -- * Additions to the prettyprinter library
 
@@ -69,6 +73,9 @@ commaSep = concatWith (surround ", ")
 
 numberedList :: [Doc ann] -> Doc ann
 numberedList elems = vsep (zipWith (\i e -> pretty i <> "." <+> e) [(1 :: Int) ..] elems)
+
+starredList :: [Doc ann] -> Doc ann
+starredList elems = vsep (fmap ("*" <+>) elems)
 
 lineIndent :: Doc ann -> Doc ann
 lineIndent x = line <> indent 2 x
@@ -114,11 +121,23 @@ docAnn _ = Nothing
 quotePretty :: (Pretty a) => a -> Doc b
 quotePretty = squotes . pretty
 
+layoutAsString :: Doc a -> String
+layoutAsString = renderString . layoutPretty defaultLayoutOptions
+
+layoutAsText :: Doc a -> Text
+layoutAsText = renderStrict . layoutPretty defaultLayoutOptions
+
+layoutAsTextWide :: Doc a -> Text
+layoutAsTextWide = renderStrict . layoutPretty wideLayoutOptions
+
+wideLayoutOptions :: LayoutOptions
+wideLayoutOptions = LayoutOptions (AvailablePerLine 120 1.0)
+
 --------------------------------------------------------------------------------
 -- Pretty printing of datatypes
 
-prettyMap :: (Pretty key, Pretty value) => Map key value -> Doc a
-prettyMap = prettyMapEntries . fmap (bimap pretty pretty) . Map.toAscList
+prettyMap :: (key -> Doc a) -> (value -> Doc a) -> Map key value -> Doc a
+prettyMap prettyKey prettyValue = prettyMapEntries . fmap (bimap prettyKey prettyValue) . Map.toAscList
 
 prettyMapEntries :: [(Doc a, Doc a)] -> Doc a
 prettyMapEntries entries = prettySetLike entries'
@@ -126,8 +145,8 @@ prettyMapEntries entries = prettySetLike entries'
     (keys, values) = unzip entries
     entries' = zipWith (\k v -> k <+> ":=" <+> v) keys values
 
-prettySet :: (Pretty value) => Set value -> Doc b
-prettySet xs = prettySetLike (pretty <$> Set.toList xs)
+prettySet :: (value -> Doc b) -> Set value -> Doc b
+prettySet prettyValue xs = prettySetLike (prettyValue <$> Set.toList xs)
 
 prettySetLike :: [Doc a] -> Doc a
 prettySetLike xs =
@@ -135,6 +154,14 @@ prettySetLike xs =
     <+> concatWith (\x y -> x <> line <> ";" <+> y) xs
     <> line
     <> "}"
+
+prettyRationalAsFloat :: Rational -> Doc a
+prettyRationalAsFloat p = do
+  let f = realToFrac p :: Double
+  pretty $ showFFloat Nothing f ""
+
+instance Pretty Rational where
+  pretty p = pretty (fromRational p :: Double)
 
 instance Pretty IntSet where
   pretty m = pretty (IntSet.toAscList m)
@@ -149,3 +176,11 @@ instance (Pretty a, Pretty b) => Pretty (Either a b) where
   pretty = \case
     Left x -> pretty x
     Right x -> pretty x
+
+pluraliseNonStandard :: (Foldable f) => f b -> Doc a -> Doc a -> Doc a
+pluraliseNonStandard objects singular pluralSuffix
+  | length objects == 1 = "1" <+> singular
+  | otherwise = pretty (length objects) <+> singular <> pluralSuffix
+
+pluralise :: (Foldable f) => f b -> Doc a -> Doc a
+pluralise objects singular = pluraliseNonStandard objects singular "s"

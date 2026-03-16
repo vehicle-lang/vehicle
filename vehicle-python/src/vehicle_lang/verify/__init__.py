@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, Iterable, Optional, Union
+from typing import Any, Iterable, Optional
 
 from .. import session
 from ..error import VehicleError
@@ -7,19 +7,19 @@ from ..typing import DeclarationName, Verifier
 
 
 def verify(
-    specification: Union[str, Path],
+    specification: str | Path,
     properties: Optional[Iterable[DeclarationName]] = None,
-    networks: Dict[DeclarationName, Union[str, Path]] = {},
-    datasets: Dict[DeclarationName, Union[str, Path]] = {},
-    parameters: Dict[DeclarationName, Any] = {},
+    networks: dict[DeclarationName, str | Path] = {},
+    datasets: dict[DeclarationName, str | Path] = {},
+    parameters: dict[DeclarationName, Any] = {},
     verifier: Verifier = Verifier.Marabou,
-    verifier_location: Optional[Union[str, Path]] = None,
-    cache: Optional[Union[str, Path]] = None,
+    verifier_location: Optional[str | Path] = None,
+    cache: Optional[str | Path] = None,
 ) -> str:
     """
     Check whether properties in a Vehicle specification hold.
 
-    :param specification: The path to the Vehicle specification file to verify.
+    :param specification: The path to the Vehicle specification file or Vehicle  to verify.
     :param properties: The names of the properties in the specification to verify, defaults to all declarations.
     :param networks: A map from the network names in the specification to files containing the networks.
     :param datasets: A map from the dataset names in the specification to files containing the datasets.
@@ -51,6 +51,8 @@ def verify(
     if cache is not None:
         args.extend(["--cache", str(cache)])
 
+    args.extend(["--json"])
+
     # Call Vehicle
     exc, out, err, log = session.check_output(args)
 
@@ -58,6 +60,6 @@ def verify(
     if exc != 0:
         raise VehicleError(f"{err}")
     elif not out:
-        raise VehicleError(f"Vehicle produced no output")
+        raise VehicleError("Vehicle produced no output")
 
     return out

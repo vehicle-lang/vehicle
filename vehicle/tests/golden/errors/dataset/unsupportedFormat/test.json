@@ -1,0 +1,5 @@
+{
+  "name": "Marabou",
+  "run": "vehicle compile queries -s unsupportedFormat.vcl -f MarabouQueries -d trainingDataset:non-existent.blerp",
+  "needs": ["unsupportedFormat.vcl"]
+}

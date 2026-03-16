@@ -1,8 +1,0 @@
-{
-  "name": "Type",
-  "run": "vehicle check -s spec.vcl",
-  "needs": [
-    "spec.vcl"
-  ],
-  "produces": []
-}

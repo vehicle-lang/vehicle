@@ -1,5 +1,0 @@
-{
-  "name": "TypeCheck",
-  "run": "vehicle check -s invalidType.vcl",
-  "needs": ["invalidType.vcl"]
-}

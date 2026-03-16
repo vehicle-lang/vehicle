@@ -1,0 +1,6 @@
+Error in file 'spec.vcl' at Line 4, Columns 8-13: All fields of record declarations annotated with '@tensor' must have the same type.
+In the declaration of 'Test1' field 'f1' has type:
+  'Real'
+which is not the same as the type of field 'f2'
+  'Nat'
+Fix: either remove the @tensor annotation or ensure 'f1' and 'f2' have the same type

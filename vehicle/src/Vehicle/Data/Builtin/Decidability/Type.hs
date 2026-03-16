@@ -6,17 +6,24 @@ module Vehicle.Data.Builtin.Decidability.Type
 where
 
 import Data.Proxy (Proxy (..))
-import Vehicle.Compile.Context.Free (getDeclType, getFreeEnv)
+import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
+import Vehicle.Compile.Type.Monad.Class (getDeclType)
 import Vehicle.Compile.Type.System
 import Vehicle.Data.Builtin.Decidability
 import Vehicle.Data.Builtin.Interface.Type
-import Vehicle.Data.Builtin.Standard (BuiltinConstructor (..), BuiltinFunction (..), BuiltinType (..), DerivedFunction (..))
+import Vehicle.Data.Builtin.Standard
+  ( Builtin (..),
+    BuiltinConstructor (..),
+    BuiltinFunction (..),
+    BuiltinType (..),
+    DerivedFunction (..),
+  )
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.DSL
-import Vehicle.Syntax.Builtin (Builtin (..))
+import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..))
 import Prelude hiding (iterate, pi)
 
 --------------------------------------------------------------------------------
@@ -29,7 +36,7 @@ instance TypableBuiltin DecidabilityBuiltin where
   isConstructor = isDecidabilityConstructor
 
   isCastConstraint e = case e of
-    DecidabilityBuiltinTypeClass (HasTensorTypeClassField FieldFromBoolTensorLiteral) -> True
+    Right (DecidabilityBuiltinTypeClass (HasTensorTypeClassField FieldFromBoolTensorLiteral)) -> True
     _ -> False
 
 isDecidabilityConstructor :: DecidabilityBuiltin -> Bool
@@ -177,6 +184,7 @@ typeOp2 t = t ~> t ~> t
 instance HasTypeSystem DecidabilityBuiltin where
   convertFromStandardBuiltins x = traverseFreeVarsM (const id) convertToDecidabilityFreeVars =<< traverseBuiltinsM convertToDecidabilityBuiltins x
   restrictDeclType = restrictDecidabilityDeclType
+  restrictRecordAnnotatedAsTensor = restrictDecidabilityRecordAnnotatedAsTensor
   isAuxiliaryConstraint _ = False
 
   solveAuxiliaryInstanceConstraint _ = return ()
@@ -225,6 +233,7 @@ convertToDecidabilityBuiltins p b args = return $
         CompareNat op -> insertTypeArgumentAndConvertTo (TensorTypeClassFieldTC $ FieldCompareNat op)
         -- Nothing needs to change
         QuantifyRatTensor {} -> sameFunction f
+        QuantifyTensorLike _ -> unsupportedTensorLikeQuantifier
         If -> sameFunction f
         Neg {} -> sameFunction f
         Add {} -> sameFunction f
@@ -289,10 +298,19 @@ restrictDecidabilityDeclType declSort (ident, p) declType = do
   case maybeTypeClass of
     Nothing -> return ()
     Just tc -> do
-      freeEnv <- getFreeEnv
-      let expr = BuiltinExpr p (DecidabilityBuiltinTypeClass tc) [explicit declType]
-      let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin freeEnv (ident, provenanceOf declType) declSort declType
+      freeEnv <- getFreeCtx (Proxy @DecidabilityBuiltin)
+      let expr = App (Builtin p (DecidabilityBuiltinTypeClass tc)) [explicit declType]
+      let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin freeEnv (ident, provenanceOf declType) (Left declSort) declType
       _ <- createFreshInstanceConstraint False mempty p origin Irrelevant expr
       return ()
 
   return declType
+
+restrictDecidabilityRecordAnnotatedAsTensor ::
+  forall m.
+  (MonadTypeChecker DecidabilityBuiltin m) =>
+  DeclProvenance ->
+  [GenericRecordField (Type DecidabilityBuiltin)] ->
+  m ()
+restrictDecidabilityRecordAnnotatedAsTensor (_ident, _p) _fields =
+  return ()

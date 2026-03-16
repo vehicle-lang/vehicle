@@ -1,26 +1,24 @@
 module Vehicle.Data.Builtin.Decidability
   ( module Vehicle.Data.Builtin.Decidability,
-    module Vehicle.Syntax.Builtin.BasicOperations,
+    module Vehicle.Data.Builtin.Core.BasicOperations,
   )
 where
 
 import Data.Hashable (Hashable)
 import GHC.Generics (Generic)
-import Vehicle.Compile.Normalise.NBE (NormalisableBuiltin)
 import Vehicle.Compile.Prelude (Expr (..), normAppList)
+import Vehicle.Data.Builtin.Core.BasicOperations
+import Vehicle.Data.Builtin.Core.Derived (DerivedFunction (..))
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Interface.Blocked
-import Vehicle.Data.Builtin.Interface.Normalise (EvalScheme (..), MonadNormBuiltin, NormalisableBuiltin (..), evalFoldList, evalIterate, forceEvalSimpleBuiltin)
+import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Interface.Print
-import Vehicle.Data.Builtin.Standard (Builtin, BuiltinConstructor (..), BuiltinFunction (..), BuiltinType (..), DerivedFunction)
+import Vehicle.Data.Builtin.Standard (Builtin, BuiltinConstructor (..), BuiltinFunction (..), BuiltinType (..))
 import Vehicle.Data.Code.DSL (tDim, tDims)
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.DSL
 import Vehicle.Data.Tensor (BoolTensor, anyTensor)
 import Vehicle.Prelude (Pretty (..), Relevance (..), Visibility (..), developerError, explicit, (<+>))
-import Vehicle.Syntax.Builtin.BasicOperations
-import Vehicle.Syntax.Builtin.Derived (DerivedFunction (..))
-import Vehicle.Syntax.Sugar (BinderType (..))
 
 --------------------------------------------------------------------------------
 -- Data
@@ -114,7 +112,7 @@ data DecidabilityBuiltin
   | DecidabilityBuiltinTypeClass DecidabilityBuiltinTypeClass
   | DecidabilityBuiltinTypeClassOp DecidabilityBuiltinTypeClassOp
   | DecidabilityBuiltinFunction DecidabilityBuiltinFunction
-  deriving (Show, Eq, Generic)
+  deriving (Show, Ord, Eq, Generic)
 
 instance Hashable DecidabilityBuiltin
 
@@ -206,13 +204,6 @@ instance BuiltinHasListLiterals DecidabilityBuiltin where
 
   accessMapListBuiltin = functionAccessor MapList
   accessFoldListBuiltin = functionAccessor FoldList
-
-instance BuiltinHasBinders DecidabilityBuiltin where
-  getBuiltinBinder = \case
-    StandardBuiltinFunction ForeachTensor -> Just ForeachBinder
-    StandardBuiltinFunction ForeachVector -> Just ForeachBinder
-    StandardBuiltinFunction (QuantifyRatTensor q) -> Just $ QuantifierBinder q
-    _ -> Nothing
 
 instance BuiltinHasIterate DecidabilityBuiltin where
   accessIterateBuiltin = functionAccessor Iterate

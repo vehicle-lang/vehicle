@@ -7,6 +7,7 @@ where
 
 import Control.Exception (Exception (..), Handler (..), SomeException (..), catches, handle, throwIO)
 import Control.Monad.IO.Class (MonadIO (liftIO))
+import Data.Maybe (fromMaybe)
 import Data.Text qualified as Text (pack)
 import Data.Text.IO qualified as TextIO (hPutStrLn)
 import GHC.IO.Encoding (setLocaleEncoding)
@@ -65,9 +66,9 @@ runVehicle Options {..} = do
         else case modeOptions of
           Nothing ->
             fatalError
-              "No mode provided. Please use one of 'check', 'compile','verify', 'check', 'export', 'list'"
+              "No mode provided. See `vehicle --help` for list of available modes."
           Just mode -> case mode of
-            Check options -> typeCheck logSettings outputAsJson options
+            TypeCheck options -> typeCheck logSettings outputAsJson options
             Compile options -> compile logSettings outputAsJson options
             Verify options -> verify logSettings outputAsJson options
             Validate options -> validate logSettings outputAsJson options
@@ -77,8 +78,15 @@ runVehicle Options {..} = do
               outputAsJson = outputAsJSON globalOptions
 
 withLogger :: (MonadStdIO IO) => GlobalOptions -> (LoggingSettings -> IO a) -> IO a
-withLogger GlobalOptions {logFile, loggingPass, loggingLevel, noWarnings} action = do
-  let runAction logLn = action LoggingSettings {putLogLn = logLn, loggingPass, loggingLevel, noWarnings}
+withLogger GlobalOptions {logFile, loggingTarget, loggingLevel, noWarnings} action = do
+  let runAction logLn =
+        action
+          LoggingSettings
+            { putLogLn = logLn,
+              loggingTarget = fromMaybe emptyStack loggingTarget,
+              loggingLevel,
+              noWarnings
+            }
   case logFile of
     Nothing -> runAction VIO.writeStderrLn
     Just fp -> do
@@ -87,7 +95,7 @@ withLogger GlobalOptions {logFile, loggingPass, loggingLevel, noWarnings} action
         hSetBuffering logHandle NoBuffering
         runAction (TextIO.hPutStrLn logHandle)
 
-execParserWithArgs :: ParserInfo a -> [String] -> IO a
+execParserWithArgs :: (MonadStdIO m) => ParserInfo a -> [String] -> m a
 execParserWithArgs parserInfo args =
   handleParseResult (execParserPure defaultPrefs parserInfo args)
 
@@ -99,17 +107,17 @@ handleExitCode = return . fromExitCode
     fromExitCode (ExitFailure exitCode) = exitCode
 
 -- Inlining Options.Applicative handleParserResult to enable stdout and stderr to be piped
-handleParseResult :: ParserResult a -> IO a
+handleParseResult :: (MonadStdIO m) => ParserResult a -> m a
 handleParseResult (Success a) = return a
 handleParseResult (Failure failure) = do
-  progn <- getProgName
+  progn <- liftIO getProgName
   let (msg, exit) = renderFailure failure progn
   case exit of
     ExitSuccess -> VIO.programOutput (pretty msg)
     _ -> VIO.fatalError (pretty msg)
-  exitWith exit
+  liftIO $ exitWith exit
 handleParseResult (CompletionInvoked compl) = do
-  progn <- getProgName
-  msg <- execCompletion compl progn
+  progn <- liftIO getProgName
+  msg <- liftIO $ execCompletion compl progn
   VIO.programOutput (pretty msg)
-  exitSuccess
+  liftIO exitSuccess

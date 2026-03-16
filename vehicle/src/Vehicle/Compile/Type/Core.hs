@@ -3,13 +3,15 @@
 
 module Vehicle.Compile.Type.Core where
 
-import Data.HashMap.Strict (HashMap)
-import Data.HashMap.Strict qualified as Map (findWithDefault, lookup)
-import Data.Hashable (Hashable)
+import Data.Map (Map)
+import Data.Map qualified as Map
+import Data.Serialize (Serialize)
+import GHC.Generics (Generic)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Meta.Set (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Data.Code.Value
+import Vehicle.Data.Variable.Bound.Context.Generic.Core
 
 --------------------------------------------------------------------------------
 -- Constraints
@@ -136,9 +138,9 @@ data InstanceArgOrigin builtin = ArgOrigin
   deriving (Show)
 
 data InstanceTypeRestrictionOrigin builtin = TypeRestrictionOrigin
-  { freeEnv :: FreeEnv builtin,
+  { freeEnv :: FreeCtx builtin,
     restrictedDeclProv :: DeclProvenance,
-    restrictedDeclSort :: RestrictedDecl,
+    restrictedDeclSort :: Either RestrictedDecl RestrictedRecordField,
     restrictedDeclType :: Type builtin
   }
   deriving (Show)
@@ -148,20 +150,58 @@ data InstanceConstraintOrigin builtin
   | InstanceTypeRestrictionOrigin (InstanceTypeRestrictionOrigin builtin)
   deriving (Show)
 
+type InstanceHead builtin = Either Identifier builtin
+
 data InstanceGoal builtin = InstanceGoal
   { goalTelescope :: Telescope builtin,
-    goalHead :: builtin,
+    goalHead :: InstanceHead builtin,
     goalSpine :: Spine builtin
   }
   deriving (Show)
 
 goalExpr :: InstanceGoal builtin -> Value builtin
-goalExpr InstanceGoal {..} = VBuiltin goalHead goalSpine
+goalExpr InstanceGoal {..} =
+  case goalHead of
+    Left ident -> VFreeVar ident goalSpine
+    Right builtin -> VBuiltin builtin goalSpine
+
+data InstanceCandidate builtin = InstanceCandidate
+  { candidateExpr :: Expr builtin,
+    candidateSolution :: Expr builtin,
+    candidatePriority :: Maybe InstancePriority
+  }
+  deriving (Generic, Show)
+
+instance (Serialize builtin) => Serialize (InstanceCandidate builtin)
+
+findInstanceGoalHead :: Expr builtin -> Either (Expr builtin) (InstanceHead builtin)
+findInstanceGoalHead = \case
+  Pi _ binder body
+    | not (isExplicit binder) -> findInstanceGoalHead body
+  App (Builtin _ b) _ -> Right $ Right b
+  Builtin _ b -> Right $ Right b
+  App (FreeVar _ v) _ -> Right $ Left v
+  FreeVar _ v -> Right $ Left v
+  expr -> Left expr
+
+type instance
+  WithContext (InstanceCandidate builtin) =
+    Contextualised (InstanceCandidate builtin) (BoundCtx (Type builtin))
+
+type FailedInstanceCandidate builtin = (WithContext (InstanceCandidate builtin), UnAnnDoc)
+
+type PossibleInstanceCandidate builtin = WithContext (InstanceCandidate builtin)
+
+type InstanceCandidateState builtin =
+  ( [PossibleInstanceCandidate builtin],
+    [FailedInstanceCandidate builtin]
+  )
 
 data InstanceConstraint builtin = Resolve
   { instanceOrigin :: InstanceConstraintOrigin builtin,
     instanceSolution :: MetaID,
     instanceRelevance :: Relevance,
+    instanceCandidateState :: Maybe (InstanceCandidateState builtin),
     instanceGoal :: InstanceGoal builtin
   }
   deriving (Show)
@@ -169,17 +209,6 @@ data InstanceConstraint builtin = Resolve
 type instance
   WithContext (InstanceConstraint builtin) =
     Contextualised (InstanceConstraint builtin) (ConstraintContext builtin)
-
-data InstanceCandidate builtin = InstanceCandidate
-  { candidateExpr :: Expr builtin,
-    candidateSolution :: Expr builtin,
-    defaultInstance :: Bool
-  }
-  deriving (Show)
-
-type instance
-  WithContext (InstanceCandidate builtin) =
-    Contextualised (InstanceCandidate builtin) (BoundCtx (Type builtin))
 
 type InstanceConstraintInfo builtin =
   ( ConstraintContext builtin,
@@ -191,23 +220,29 @@ type InstanceSearchDepth = Int
 -- | Stores the list of instance candidates currently in scope.
 -- We use a HashMap rather than an ordinary Map as not all builtins may be
 -- totally ordered (e.g. PolarityBuiltin and LinearityBuiltin)
-data InstanceDatabase builtin = InstanceDatabase
-  { instances :: HashMap builtin [InstanceCandidate builtin],
-    defaultInstances :: HashMap builtin (InstanceCandidate builtin),
-    instanceSearchDepth :: HashMap builtin InstanceSearchDepth
+newtype InstanceDatabase builtin = InstanceDatabase
+  { instances :: Map (InstanceHead builtin) [InstanceCandidate builtin]
   }
+  deriving (Generic)
 
-emptyInstanceDatabase :: (Hashable builtin) => InstanceDatabase builtin
-emptyInstanceDatabase = InstanceDatabase mempty mempty mempty
+instance (Ord builtin, Serialize builtin) => Serialize (InstanceDatabase builtin)
 
-lookupInstances :: (Hashable builtin) => InstanceDatabase builtin -> InstanceGoal builtin -> [InstanceCandidate builtin]
-lookupInstances database goal = Map.findWithDefault [] (goalHead goal) (instances database)
+emptyInstanceDatabase :: (Ord builtin) => InstanceDatabase builtin
+emptyInstanceDatabase = InstanceDatabase mempty
 
-lookupDefaultInstance :: (Hashable builtin) => InstanceDatabase builtin -> InstanceGoal builtin -> Maybe (InstanceCandidate builtin)
-lookupDefaultInstance database goal = Map.lookup (goalHead goal) (defaultInstances database)
+lookupInstances :: (Ord builtin) => InstanceGoal builtin -> InstanceDatabase builtin -> [InstanceCandidate builtin]
+lookupInstances goal database = Map.findWithDefault [] (goalHead goal) (instances database)
 
-lookupSearchDepth :: (Hashable builtin) => InstanceDatabase builtin -> InstanceGoal builtin -> InstanceSearchDepth
-lookupSearchDepth database goal = Map.findWithDefault 0 (goalHead goal) (instanceSearchDepth database)
+insertInstanceIntoDatabase ::
+  (Ord builtin) =>
+  InstanceHead builtin ->
+  InstanceCandidate builtin ->
+  InstanceDatabase builtin ->
+  InstanceDatabase builtin
+insertInstanceIntoDatabase instanceHead instanceCandidate InstanceDatabase {..} =
+  InstanceDatabase
+    { instances = Map.insertWith (<>) instanceHead [instanceCandidate] instances
+    }
 
 --------------------------------------------------------------------------------
 -- Unification constraints
@@ -275,6 +310,15 @@ data RestrictedDecl
   | RestrictedNetwork
   | RestrictedDataset
   deriving (Show)
+
+data RestrictedRecordField
+  = FieldTypeIsAllowed FieldName
+  | FieldTypesMatch FieldName FieldName
+  deriving (Show)
+
+instance Pretty RestrictedRecordField where
+  pretty = \case
+    _ -> "@tensor"
 
 instance Pretty RestrictedDecl where
   pretty = \case

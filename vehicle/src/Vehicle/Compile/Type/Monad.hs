@@ -29,6 +29,9 @@ module Vehicle.Compile.Type.Monad
     setInstanceConstraints,
     setUnificationConstraints,
     addUnificationConstraints,
+    addInstanceToInstanceDatabase,
+    TelescopeType (..),
+    instantiateTelescope,
     -- Other
     clearMetaCtx,
     logUnsolvedUnknowns,
@@ -37,14 +40,13 @@ module Vehicle.Compile.Type.Monad
   )
 where
 
-import Control.Monad (when)
+import Control.Monad (unless, when)
 import Control.Monad.Except (MonadError (..), runExceptT)
 import Control.Monad.Trans.Except (ExceptT)
 import Data.List (partition, sortOn)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (isJust)
 import Data.Proxy (Proxy (..))
-import Vehicle.Compile.Context.Free
 import Vehicle.Compile.Error (CompileError (..), TypingError (..), compilerDeveloperError)
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Normalise.Quote (Quote (..))
@@ -56,18 +58,23 @@ import Vehicle.Compile.Type.Meta.Map qualified as MetaMap
 import Vehicle.Compile.Type.Meta.Variable (MetaInfo (..), addMetaSolution)
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Compile.Type.Monad.Instance
+import Vehicle.Data.Builtin.Interface.Normalise (NormalisableBuiltin)
 import Vehicle.Data.Builtin.Interface.Print (PrintableBuiltin)
 import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin (..))
+import Vehicle.Data.Code.ModuleInterface
 import Vehicle.Data.Code.Value
+import Vehicle.Data.Variable.Bound.Context.Generic
 
 runTypeCheckerTInitially ::
-  (Monad m) =>
-  FreeCtx builtin ->
+  (Monad m, TypableBuiltin builtin) =>
   InstanceDatabase builtin ->
+  ImportedModuleContext builtin ->
   TypeCheckerT builtin m a ->
-  m a
-runTypeCheckerTInitially freeCtx instanceCandidates e =
-  fst <$> runTypeCheckerT freeCtx instanceCandidates emptyTypeCheckerState e
+  m (a, ModuleTypingInterface builtin, FreeEnv builtin)
+runTypeCheckerTInitially builtinInstances importedCtx e = do
+  let state = emptyTypeCheckerState builtinInstances importedCtx
+  (result, internalState) <- runTypeCheckerT state e
+  return (result, currentModuleInterface internalState, currentFreeEnv internalState)
 
 -- | Runs a hypothetical computation in the type-checker,
 -- returning the resulting state of the type-checker.
@@ -78,10 +85,8 @@ runTypeCheckerTHypothetically ::
   m (Either CompileError (a, TypeCheckerState builtin))
 runTypeCheckerTHypothetically e = do
   callDepth <- getCallDepth
-  freeCtx <- getFreeCtx (Proxy @builtin)
-  instanceCandidates <- getInstanceCandidates
   state <- getTypeCheckerState
-  result <- runExceptT $ runTypeCheckerT freeCtx instanceCandidates state e
+  result <- runExceptT $ runTypeCheckerT state e
   case result of
     Right value -> return $ Right value
     Left err -> case err of
@@ -97,7 +102,7 @@ adoptHypotheticalState = modifyTypeCheckerState . const
 
 freshMetaExpr ::
   forall builtin m.
-  (MonadTypeChecker builtin m) =>
+  (MonadTypeChecker builtin m, TypableBuiltin builtin) =>
   Provenance ->
   Type builtin ->
   BoundCtx (Type builtin) ->
@@ -142,7 +147,7 @@ createFreshApplicationConstraint ctx problem blockingMetas = do
 -- derived from another constraint).
 createFreshInstanceConstraint ::
   forall builtin m.
-  (MonadTypeChecker builtin m) =>
+  (MonadTypeChecker builtin m, NormalisableBuiltin builtin) =>
   Bool ->
   BoundCtx (Type builtin) ->
   Provenance ->
@@ -155,9 +160,9 @@ createFreshInstanceConstraint auxiliaryConstraint boundCtx p origin relevance tc
   (metaID, metaExpr) <- freshSolutionMeta p tcExpr boundCtx
 
   context <- createFreshConstraintCtx p boundCtx
-  nTCExpr <- normaliseInEnv (toNamedBoundCtx boundCtx) env tcExpr
+  nTCExpr <- eval (toNamedBoundCtx boundCtx) env tcExpr
   let goal = parseInstanceGoal nTCExpr
-  let constraint = WithContext (Resolve origin metaID relevance goal) context
+  let constraint = WithContext (Resolve origin metaID relevance Nothing goal) context
 
   if auxiliaryConstraint
     then addAuxiliaryInstanceConstraints [constraint]
@@ -177,7 +182,7 @@ createDerivedInstanceConstraint (ctx, origin) r t = do
   let dbLevel = contextDBLevel ctx
   let newTypeClassExpr = quote p dbLevel t
   (metaID, metaExpr) <- freshSolutionMeta p newTypeClassExpr (boundContextOf ctx)
-  let newConstraint = Resolve origin metaID r $ parseInstanceGoal t
+  let newConstraint = Resolve origin metaID r Nothing $ parseInstanceGoal t
 
   newCtx <- copyContext ctx Nothing
   return (metaExpr, WithContext newConstraint newCtx)
@@ -193,12 +198,55 @@ parseInstanceGoal originalValue = go [] originalValue
     go telescope = \case
       VPi binder _body
         | not (isExplicit binder) -> developerError "Instance goals with telescopes not yet supported"
-      VBuiltin b spine -> InstanceGoal telescope b spine
+      VBuiltin b spine -> InstanceGoal telescope (Right b) spine
+      VFreeVar b spine -> InstanceGoal telescope (Left b) spine
       _ -> developerError $ "Malformed instance goal" <+> prettyVerbose originalValue
+
+addInstanceToInstanceDatabase ::
+  forall builtin m.
+  (MonadTypeChecker builtin m) =>
+  Decl builtin ->
+  Maybe InstancePriority ->
+  m ()
+addInstanceToInstanceDatabase decl priority =
+  case decl of
+    DefFunction _ _ _ t e -> do
+      let candidate = InstanceCandidate t e priority
+      instanceHead <- findValidInstanceHead (identifierOf decl, provenanceOf decl) candidate
+      modifyTypeCheckerState $ \state ->
+        state
+          { currentModuleInterface =
+              (currentModuleInterface state)
+                { instanceDatabase =
+                    insertInstanceIntoDatabase
+                      instanceHead
+                      candidate
+                      (instanceDatabase $ currentModuleInterface state)
+                }
+          }
+    _ -> developerError "Malformed instance declaration"
+
+findValidInstanceHead ::
+  forall builtin m.
+  (MonadTypeChecker builtin m) =>
+  DeclProvenance ->
+  InstanceCandidate builtin ->
+  m (InstanceHead builtin)
+findValidInstanceHead declProv candidate = do
+  let expr = candidateExpr candidate
+  case findInstanceGoalHead expr of
+    Left _err -> throwError $ TypingError $ InvalidInstanceHead declProv expr
+    Right instanceHead -> case instanceHead of
+      Left typeClassIdent -> do
+        typeClassDecl <- getDecl (Proxy @builtin) typeClassIdent
+        unless (isTypeClassDecl typeClassDecl) $ do
+          throwError $ TypingError $ NonTypeClassInstanceHead (Proxy @builtin) declProv typeClassIdent
+        return instanceHead
+      Right _builtin -> return instanceHead
 
 solveMeta ::
   forall builtin m.
-  (MonadTypeChecker builtin m) =>
+  (MonadTypeChecker builtin m, NormalisableBuiltin builtin) =>
   MetaID ->
   Expr builtin ->
   BoundCtx (Type builtin) ->
@@ -222,7 +270,7 @@ solveMeta meta solution solutionCtx = do
     Nothing -> do
       let abstractedSolution = abstractOverCtx (metaCtx metaInfo) solution
       let env = boundContextToEnv solutionCtx
-      gluedSolution <- Glued abstractedSolution <$> normaliseInEnv (toNamedBoundCtx solutionCtx) env abstractedSolution
+      gluedSolution <- Glued abstractedSolution <$> eval (toNamedBoundCtx solutionCtx) env abstractedSolution
 
       logDebug MaxDetail $
         "solved"
@@ -230,11 +278,10 @@ solveMeta meta solution solutionCtx = do
           <+> "as"
           <+> prettyExternal (WithContext solution (toNamedBoundCtx solutionCtx))
 
-      modifyTypeCheckerState $ \TypeCheckerState {..} ->
-        TypeCheckerState
-          { metaVariableCtx = addMetaSolution gluedSolution meta metaVariableCtx,
-            solvedMetaState = registerSolvedMeta meta solvedMetaState,
-            ..
+      modifyTypeCheckerDeclState $ \state ->
+        state
+          { metaVariableCtx = addMetaSolution gluedSolution meta (metaVariableCtx state),
+            solvedMetaState = registerSolvedMeta meta (solvedMetaState state)
           }
 
 -- | Attempts to solve as many constraints as possible. Takes in
@@ -242,7 +289,7 @@ solveMeta meta solution solutionCtx = do
 -- the set of meta-variables solved during this run.
 runConstraintSolver ::
   forall builtin m constraint.
-  (MonadTypeChecker builtin m, PrettyExternal (Contextualised constraint (ConstraintContext builtin))) =>
+  (MonadTypeChecker builtin m, TypableBuiltin builtin, PrettyExternal (Contextualised constraint (ConstraintContext builtin))) =>
   m [Contextualised constraint (ConstraintContext builtin)] ->
   ([Contextualised constraint (ConstraintContext builtin)] -> m ()) ->
   (Contextualised constraint (ConstraintContext builtin) -> m ()) ->
@@ -276,7 +323,7 @@ runConstraintSolver getConstraints setConstraints attemptToSolveConstraint topLe
 
               loop (loopNumber + 1)
 
-logUnsolvedUnknowns :: forall builtin m. (MonadTypeChecker builtin m) => Proxy builtin -> m ()
+logUnsolvedUnknowns :: forall builtin m. (MonadTypeChecker builtin m, NormalisableBuiltin builtin) => Proxy builtin -> m ()
 logUnsolvedUnknowns _proxy = do
   logDebugM MaxDetail $ do
     maybeDecl <- getCurrentDecl @builtin
@@ -338,7 +385,7 @@ findFirstConstraint p xs = (\(found, seen, unseen) -> (found, unseen <> seen)) <
         | otherwise -> fmap (\(found, seen, unseen) -> (found, c : seen, unseen)) (go cs)
 
 checkAllConstraintsSolved ::
-  (MonadTypeChecker builtin m) =>
+  (MonadTypeChecker builtin m, Eq builtin, NormalisableBuiltin builtin) =>
   Proxy builtin ->
   m [Contextualised constraint (ConstraintContext builtin)] ->
   (constraint -> Constraint builtin) ->
@@ -350,3 +397,31 @@ checkAllConstraintsSolved _ getConstraints toConstraint = do
     (c : cs) -> do
       let failedConstraints = mapObject toConstraint <$> (c :| cs)
       throwError $ TypingError $ UnsolvedConstraints failedConstraints
+
+data TelescopeType
+  = InstanceTelescope
+  | RecordTelescope
+
+instantiateTelescope ::
+  (MonadTypeChecker builtin m, TypableBuiltin builtin) =>
+  TelescopeType ->
+  (Relevance -> Type builtin -> m (Expr builtin)) ->
+  BoundCtx (Type builtin) ->
+  (Type builtin, Expr builtin) ->
+  m (Type builtin, Expr builtin, [Arg builtin])
+instantiateTelescope telescopeType createFreshInstance boundCtx = \case
+  (Pi _ piBinder exprBody, Lam _ _solutionBinder solutionBody) -> do
+    let binderType = typeOf piBinder
+    newArg <- case visibilityOf piBinder of
+      Explicit {} -> case telescopeType of
+        InstanceTelescope -> compilerDeveloperError "Should not have an explicit argument in instance goal telescope"
+        RecordTelescope -> freshMetaExpr (provenanceOf piBinder) binderType boundCtx
+      Implicit {} ->
+        freshMetaExpr (provenanceOf piBinder) binderType boundCtx
+      Instance {} -> do
+        createFreshInstance (relevanceOf piBinder) binderType
+    let exprBodyResult = newArg `substDBInto` exprBody
+    let solutionBodyResult = newArg `substDBInto` solutionBody
+    (typ', body', args) <- instantiateTelescope telescopeType createFreshInstance boundCtx (exprBodyResult, solutionBodyResult)
+    return (typ', body', argFromBinder piBinder newArg : args)
+  (typ, body) -> return (typ, body, [])

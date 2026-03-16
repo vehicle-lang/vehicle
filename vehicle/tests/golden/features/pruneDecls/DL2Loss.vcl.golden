@@ -1,0 +1,7 @@
+@property;
+p1 : (Tensor Real -> Tensor Real) -> Tensor Real;
+p1 = \ f -> 1.0 / search[x] (\ e -> \ xs -> reduceMul e xs) nil 0.0 1.0 (\ x -> max 0.0 (f x - 1.0))
+
+@property;
+p2 : (Tensor Real -> Tensor Real) -> Tensor Real;
+p2 = \ g -> 1.0 / search[x] (\ e -> \ xs -> reduceMul e xs) nil 0.0 1.0 (\ x -> max 0.0 (g x))

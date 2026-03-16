@@ -1,6 +1,6 @@
 cabal-version:      3.4
 name:               vehicle
-version:            0.19.0
+version:            0.24.0
 description:
   Please see the README on GitHub at <https://github.com/vehicle-lang/vehicle#readme>
 
@@ -13,12 +13,17 @@ license:            BSD-3-Clause
 license-file:       LICENSE
 build-type:         Simple
 tested-with:
-  GHC ==8.10.7 || ==9.0.2 || ==9.2.8 || ==9.4.8 || ==9.6.5 || ==9.8.4
+  GHC ==9.2.8
+   || ==9.4.8
+   || ==9.6.5
+   || ==9.8.4
+   || ==9.10.3
+   || ==9.12.2
 
 -- Standard library
 -- Test files
 extra-source-files:
-  lib/std.vcl
+  lib/**/*.vcl
   tests/datasets/*.idx
   tests/golden/**/*.golden
   tests/golden/**/*.idx
@@ -125,19 +130,19 @@ library
   hs-source-dirs:  src
   exposed-modules:
     Vehicle
-    Vehicle.Backend.Agda
-    Vehicle.Backend.LossFunction.JSON
-    Vehicle.Backend.LossFunction.LogicCompilation
-    Vehicle.Backend.LossFunction.LossCompilation
+    Vehicle.Backend.ITP.Agda
+    Vehicle.Backend.ITP.Imandra
+    Vehicle.Backend.ITP.Isabelle
+    Vehicle.Backend.ITP.Rocq
+    Vehicle.Backend.Loss.JSON
+    Vehicle.Backend.Loss.LogicCompilation
+    Vehicle.Backend.Loss.LossCompilation
     Vehicle.Backend.Prelude
-    Vehicle.Backend.Queries.Error
-    Vehicle.Backend.Rocq
+    Vehicle.Backend.Solver.UserVariableElimination.Error
     Vehicle.CommandLine
     Vehicle.Compile
-    Vehicle.Compile.Context.Bound
-    Vehicle.Compile.Context.Free
-    Vehicle.Compile.Context.Name
-    Vehicle.Compile.Context.Var
+    Vehicle.Compile.Constants.Rational
+    Vehicle.Compile.Constants.Value
     Vehicle.Compile.Descope
     Vehicle.Compile.Error
     Vehicle.Compile.ExpandResources
@@ -151,25 +156,30 @@ library
     Vehicle.Compile.Prelude
     Vehicle.Compile.Print
     Vehicle.Compile.Print.Error
-    Vehicle.Compile.Print.TypingError
+    Vehicle.Compile.Print.Error.Property
+    Vehicle.Compile.Print.Error.Typing
     Vehicle.Compile.Resource
     Vehicle.Compile.Scope
     Vehicle.Compile.Simplify
     Vehicle.Compile.Type
+    Vehicle.Data.AST.Expr.Scoped
     Vehicle.Data.Builtin.Interface
     Vehicle.Data.Builtin.Loss
     Vehicle.Data.Builtin.Standard
     Vehicle.Data.Code.BooleanExpr
     Vehicle.Data.Code.DSL
-    Vehicle.Data.Code.Expr
     Vehicle.Data.Code.Interface
     Vehicle.Data.Code.LinearExpr
     Vehicle.Data.Code.Value
-    Vehicle.Data.DeBruijn
     Vehicle.Data.DSL
     Vehicle.Data.Hashing
+    Vehicle.Data.MaybeTrivial
     Vehicle.Data.Meta
     Vehicle.Data.Tensor
+    Vehicle.Data.Tensor.Traversal
+    Vehicle.Data.Variable.Bound.Index
+    Vehicle.Data.Variable.Bound.Level
+    Vehicle.Data.Variable.Free.Context
     Vehicle.Export
     Vehicle.Libraries
     Vehicle.Libraries.Core
@@ -187,43 +197,40 @@ library
 
   other-modules:
     Paths_vehicle
-    Vehicle.Backend.Agda.CapitaliseTypeNames
-    Vehicle.Backend.Agda.Compile
-    Vehicle.Backend.Agda.Interact
-    Vehicle.Backend.LossFunction
-    Vehicle.Backend.LossFunction.Core
-    Vehicle.Backend.LossFunction.Domain
-    Vehicle.Backend.LossFunction.Logics
-    Vehicle.Backend.Queries
-    Vehicle.Backend.Queries.ConstraintSearch
-    Vehicle.Backend.Queries.MetaNetworkCalculation
-    Vehicle.Backend.Queries.PostProcessing
-    Vehicle.Backend.Queries.Unblock
-    Vehicle.Backend.Queries.UserVariableElimination
-    Vehicle.Backend.Queries.UserVariableElimination.Core
-    Vehicle.Backend.Queries.UserVariableElimination.EliminateExists
-    Vehicle.Backend.Queries.UserVariableElimination.VariableReconstruction
-    Vehicle.Backend.Rocq.Compile
-    Vehicle.Backend.Rocq.Interact
+    Vehicle.Backend.Loss
+    Vehicle.Backend.Loss.Core
+    Vehicle.Backend.Loss.Domain
+    Vehicle.Backend.Solver
+    Vehicle.Backend.Solver.QueryCompilation
+    Vehicle.Backend.Solver.QueryCompilation.Core
+    Vehicle.Backend.Solver.QueryCompilation.InputBoundsCheck
+    Vehicle.Backend.Solver.QueryCompilation.MetaNetworkCalculation
+    Vehicle.Backend.Solver.UserVariableElimination
+    Vehicle.Backend.Solver.UserVariableElimination.ConstraintSearch
+    Vehicle.Backend.Solver.UserVariableElimination.Core
+    Vehicle.Backend.Solver.UserVariableElimination.EliminateExists
+    Vehicle.Backend.Solver.UserVariableElimination.VariableReconstruction
     Vehicle.Compile.Arity
-    Vehicle.Compile.Context.Bound.Class
-    Vehicle.Compile.Context.Bound.Core
-    Vehicle.Compile.Context.Bound.Instance
-    Vehicle.Compile.Context.Free.Class
-    Vehicle.Compile.Context.Free.Core
-    Vehicle.Compile.Context.Free.Instance
+    Vehicle.Compile.CapitaliseTypeNames
     Vehicle.Compile.Dependency
-    Vehicle.Compile.EtaConversion
     Vehicle.Compile.ExpandResources.Dataset.IDX
-    Vehicle.Compile.FourierMotzkinElimination
     Vehicle.Compile.FunctionaliseResources
     Vehicle.Compile.LiftIf
     Vehicle.Compile.LiftMinMax
     Vehicle.Compile.LowerNot
-    Vehicle.Compile.ObjectFile
     Vehicle.Compile.Prelude.Utils
     Vehicle.Compile.Print.Warning
+    Vehicle.Compile.Property
     Vehicle.Compile.Rational.LinearExpr
+    Vehicle.Compile.Scope.Core
+    Vehicle.Compile.Scope.Generalise
+    Vehicle.Compile.Scope.RecordInstances
+    Vehicle.Compile.Serialise
+    Vehicle.Compile.Sugar.Binders
+    Vehicle.Compile.Sugar.Core
+    Vehicle.Compile.Sugar.Desugar
+    Vehicle.Compile.Sugar.Resugar.External
+    Vehicle.Compile.Sugar.Resugar.Internal
     Vehicle.Compile.Type.Bidirectional
     Vehicle.Compile.Type.Constraint.ApplicationSolver
     Vehicle.Compile.Type.Constraint.Core
@@ -244,9 +251,29 @@ library
     Vehicle.Compile.Type.Monad.Instance
     Vehicle.Compile.Type.Subsystem
     Vehicle.Compile.Type.System
+    Vehicle.Compile.Unblock
     Vehicle.Compile.Variable
     Vehicle.Data.Assertion
+    Vehicle.Data.AST
+    Vehicle.Data.AST.Arg
+    Vehicle.Data.AST.Binder
+    Vehicle.Data.AST.Decl
+    Vehicle.Data.AST.Expr.Desugared
+    Vehicle.Data.AST.Instances.NoThunks
+    Vehicle.Data.AST.Module
+    Vehicle.Data.AST.Name
+    Vehicle.Data.AST.Prog
+    Vehicle.Data.AST.Provenance
+    Vehicle.Data.AST.Record
+    Vehicle.Data.AST.Relevance
+    Vehicle.Data.AST.Type
+    Vehicle.Data.AST.Visibility
+    Vehicle.Data.Bound
+    Vehicle.Data.Bound.FourierMotzkinElimination
     Vehicle.Data.Builtin.Core
+    Vehicle.Data.Builtin.Core.BasicOperations
+    Vehicle.Data.Builtin.Core.Derived
+    Vehicle.Data.Builtin.Core.TypeClass
     Vehicle.Data.Builtin.Decidability
     Vehicle.Data.Builtin.Decidability.Instances
     Vehicle.Data.Builtin.Decidability.Type
@@ -265,11 +292,33 @@ library
     Vehicle.Data.Builtin.Standard.IndexSolver
     Vehicle.Data.Builtin.Standard.Instances
     Vehicle.Data.Builtin.Standard.Normalise
+    Vehicle.Data.Builtin.Standard.Scoping
     Vehicle.Data.Builtin.Standard.Type
+    Vehicle.Data.Code.Interface.Args
+    Vehicle.Data.Code.Interface.Operations
+    Vehicle.Data.Code.Interface.Patterns
+    Vehicle.Data.Code.ModuleInterface
     Vehicle.Data.Code.TypedView
-    Vehicle.Data.QuantifiedVariable
+    Vehicle.Data.DifferentiableLogic
     Vehicle.Data.Universe
+    Vehicle.Data.Variable.Bound.Context.Core
+    Vehicle.Data.Variable.Bound.Context.Generic
+    Vehicle.Data.Variable.Bound.Context.Generic.Class
+    Vehicle.Data.Variable.Bound.Context.Generic.Core
+    Vehicle.Data.Variable.Bound.Context.Generic.Instance
+    Vehicle.Data.Variable.Bound.Context.Name
+    Vehicle.Data.Variable.Bound.Context.Name.Class
+    Vehicle.Data.Variable.Bound.Context.Name.Core
+    Vehicle.Data.Variable.Bound.Context.Name.Instance
+    Vehicle.Data.Variable.Bound.Context.Tensor
+    Vehicle.Data.Variable.Bound.Context.Tensor.Class
+    Vehicle.Data.Variable.Bound.Context.Tensor.Core
+    Vehicle.Data.Variable.Bound.Context.Tensor.Instance
+    Vehicle.Data.Variable.Free.Context.Class
+    Vehicle.Data.Variable.Free.Context.Core
+    Vehicle.Data.Variable.Free.Context.Instance
     Vehicle.Debug
+    Vehicle.Prelude.Error
     Vehicle.Prelude.IO
     Vehicle.Prelude.Logging.Class
     Vehicle.Prelude.Logging.Instance
@@ -283,6 +332,8 @@ library
     Vehicle.Verify.QueryFormat.Marabou
     Vehicle.Verify.QueryFormat.VNNLib
     Vehicle.Verify.Specification
+    Vehicle.Verify.Specification.Execute
+    Vehicle.Verify.Specification.Execute.Reporting
     Vehicle.Verify.Specification.IO
     Vehicle.Verify.Specification.Status
     Vehicle.Verify.Verifier.Core
@@ -297,12 +348,15 @@ library
     , base                   >=4.13     && <5
     , bytestring             >=0.10.12  && <0.12
     , cereal                 >=0.5      && <1
+    , cereal-text            >=0.1      && <1
+    , cereal-vector          >=0.2      && <1
     , containers             >=0.5      && <1
     , data-default           >=0.7      && <1
     , data-default-class     >=0.1.2    && <0.2
     , data-fix               >=0.2      && <1
     , deepseq                >=1.4      && <2
     , directory              >=1.3.6    && <1.4
+    , disjoint-containers    >=0.3.0    && <1
     , edit-distance          >=0.2.2    && <1
     , file-embed             >=0.0.15.0 && <0.1
     , filepath               >=1.4      && <2
@@ -324,6 +378,7 @@ library
     , transformers           >=0.4      && <0.7
     , unordered-containers   >=0.2.19   && <0.3
     , vector                 >=0.12.3   && <0.14
+    , vector-instances       >=3        && <4
     , vehicle-syntax
 
   if (os(linux) || os(osx))
@@ -359,8 +414,6 @@ library unit-tests-common
   exposed-modules:
     Vehicle.Test.Unit.Common
     Vehicle.Test.Unit.Compile.CommandLine
-    Vehicle.Test.Unit.Compile.DeBruijn
-    Vehicle.Test.Unit.Compile.Normalisation
 
   build-depends:
     , base
@@ -386,5 +439,7 @@ test-suite golden-tests
     , tagged
     , tasty
     , tasty-golden-executable
+    , vehicle
+    , vehicle-syntax
 
   build-tool-depends: vehicle:vehicle

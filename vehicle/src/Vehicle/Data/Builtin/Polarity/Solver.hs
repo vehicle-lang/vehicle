@@ -6,7 +6,7 @@ where
 import Control.Monad.Except (MonadError (..))
 import Data.Maybe (mapMaybe)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBE (normaliseClosure)
+import Vehicle.Compile.Normalise.NBE (normaliseClosureInCtx)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Type.Constraint.Core
@@ -14,15 +14,17 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.System
 import Vehicle.Data.Builtin.Core
+import Vehicle.Data.Builtin.Interface.Type
 import Vehicle.Data.Builtin.Polarity
 import Vehicle.Data.Code.Value
+import Vehicle.Data.Variable.Bound.Context.Generic
 
 solvePolarityConstraint ::
   (MonadPolaritySolver m) =>
   WithContext (InstanceConstraint PolarityBuiltin) ->
   m ()
 solvePolarityConstraint constraintWithCtx = do
-  normConstraintWithCtx@(WithContext normConstraint@(Resolve origin _ _ goal) ctx) <- substMetaVariables constraintWithCtx
+  normConstraintWithCtx@(WithContext normConstraint@(Resolve origin _ _ _ goal) ctx) <- substMetaVariables constraintWithCtx
   logDebugM MaxDetail $ do
     let forcedExpr = goalExpr $ instanceGoal $ objectIn normConstraintWithCtx
     let boundCtx = namedBoundCtxOf $ contextOf normConstraintWithCtx
@@ -45,7 +47,10 @@ pattern VPolarityExpr l <- VBuiltin (Polarity l) []
   where
     VPolarityExpr l = VBuiltin (Polarity l) []
 
-type MonadPolaritySolver m = MonadTypeChecker PolarityBuiltin m
+type MonadPolaritySolver m =
+  ( MonadTypeChecker PolarityBuiltin m,
+    TypableBuiltin PolarityBuiltin
+  )
 
 type PolaritySolver =
   forall m.
@@ -57,7 +62,7 @@ type PolaritySolver =
 solve :: PolarityRelation -> PolaritySolver
 solve = \case
   NegPolarity -> solveNegPolarity
-  QuantifierPolarity p q -> solveQuantifierPolarity p q
+  QuantifierPolarity q -> solveQuantifierPolarity q
   AddPolarity p q -> solveAddPolarityOp p q
   ImpliesPolarity -> solveImplPolarity
   MaxPolarity -> solveMaxPolarityOp
@@ -74,17 +79,18 @@ solveNegPolarity info@(ctx, _) [arg1, res] = case arg1 of
   _ -> Nothing
 solveNegPolarity _ _ = Nothing
 
-solveQuantifierPolarity :: Provenance -> Quantifier -> PolaritySolver
-solveQuantifierPolarity p q info@(ctx, _) [lam, res] = case lam of
+solveQuantifierPolarity :: Quantifier -> PolaritySolver
+solveQuantifierPolarity q info@(ctx, _) [lam, res] = case lam of
   (getNMeta -> Just m) -> blockOn [m]
   (VPi binder resPol) -> Just $ do
+    let (_, p) = getNamedBinderInfo binder
     binderEq <- createInstanceUnification info (typeOf binder) (VPolarityExpr Unquantified)
     let tc = PolarityRelation $ AddPolarity p q
-    resultPolarity <- normaliseClosure (toNamedBoundCtx $ boundContext ctx) binder resPol
+    resultPolarity <- normaliseClosureInCtx (toNamedBoundCtx $ boundContext ctx) binder resPol
     (_, addConstraint) <- createDerivedInstanceConstraint info Irrelevant (VBuiltin tc (explicit <$> [resultPolarity, res]))
     return $ Progress [binderEq] [addConstraint]
   _ -> Nothing
-solveQuantifierPolarity _ _ _c _ = Nothing
+solveQuantifierPolarity _ _c _ = Nothing
 
 solveAddPolarityOp :: Provenance -> Quantifier -> PolaritySolver
 solveAddPolarityOp p q info [arg, res] = do
@@ -138,8 +144,8 @@ solveFunctionPolarity functionPosition info@(ctx, _) [arg, res] = case (arg, res
     let tc = PolarityRelation $ FunctionPolarity functionPosition
     (_, binderConstraint) <- createDerivedInstanceConstraint info Irrelevant (VBuiltin tc (explicit <$> [typeOf binder1, typeOf binder2]))
     let namedCtx = toNamedBoundCtx $ boundContext ctx
-    body1 <- normaliseClosure namedCtx binder1 closure1
-    body2 <- normaliseClosure namedCtx binder2 closure2
+    body1 <- normaliseClosureInCtx namedCtx binder1 closure1
+    body2 <- normaliseClosureInCtx namedCtx binder2 closure2
     (_, bodyConstraint) <- createDerivedInstanceConstraint info Irrelevant (VBuiltin tc (explicit <$> [body1, body2]))
     return $ Progress [] [binderConstraint, bodyConstraint]
   _ -> Nothing
@@ -213,5 +219,5 @@ implPolarityOp p pol1 pol2 =
 
 getTypeClass :: (MonadCompile m) => InstanceGoal PolarityBuiltin -> m (PolarityRelation, Spine PolarityBuiltin)
 getTypeClass = \case
-  (InstanceGoal _ (PolarityRelation tc) args) -> return (tc, args)
+  (InstanceGoal _ (Right (PolarityRelation tc)) args) -> return (tc, args)
   _ -> compilerDeveloperError "Unexpected non-type-class instance argument found."

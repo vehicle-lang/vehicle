@@ -18,7 +18,7 @@ import Vehicle.Compile.Error (MonadCompile)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Data.Builtin.Interface.Print
-import Vehicle.Data.DeBruijn (dbLevelToIndex)
+import Vehicle.Data.Variable.Bound.Level (dbLevelToIndex)
 
 --------------------------------------------------------------------------------
 -- Public interface
@@ -85,7 +85,7 @@ functionaliseProg ::
   (MonadResource m builtin) =>
   Prog builtin ->
   m (Prog builtin)
-functionaliseProg (Main ds) =
+functionaliseProg (Main ds) = do
   Main . catMaybes <$> traverseListLocal functionaliseDecl ds
 
 functionaliseDecl ::
@@ -100,7 +100,7 @@ functionaliseDecl d =
       finalType <- replaceResourceUses (mkBinder, binders, binderNames) initialType
 
       return $ case s of
-        PostulateDef {} -> (addResourceUsage i binderNames, Just (DefAbstract p i s finalType))
+        BuiltinDef {} -> (addResourceUsage i binderNames, Just (DefAbstract p i s finalType))
         _ -> (addResourceUsage i binderNames . addResourceDeclaration i finalType, Nothing)
     DefFunction p i anns initialType initialBody -> do
       typeResourceUsage <- findResourceUses initialType
@@ -174,7 +174,7 @@ replaceResourceUses (mkBinder, binders, binderNames) initialExpr = do
 
       let extraResourceNames = lookupInFreeCtx ident resourceUsageFreeCtx
       extraResourceVarArgs <- traverse mkResourceVar extraResourceNames
-      let extraResourceArgs = fmap (Arg p Explicit Relevant) extraResourceVarArgs
+      let extraResourceArgs = fmap (Arg Explicit Relevant) extraResourceVarArgs
       return $ normAppList newFun (extraResourceArgs <> args')
 
 createBinders ::
@@ -189,8 +189,8 @@ createBinders isType p idents = do
   let identsAndTypesList = OMap.assocs identsAndTypes
   let mkBindingForm ident
         | isType = BinderDisplayForm OnlyType True
-        | otherwise = BinderDisplayForm (OnlyName (nameOf ident)) True
-  let mkBinder (ident, typ) = Binder p (mkBindingForm ident) Explicit Relevant typ
+        | otherwise = BinderDisplayForm (OnlyName (nameOf ident) mempty) True
+  let mkBinder (ident, typ) = Binder (mkBindingForm ident) Explicit Relevant typ
   let binders = fmap mkBinder identsAndTypesList
   let binderConstructor
         | isType = Pi p

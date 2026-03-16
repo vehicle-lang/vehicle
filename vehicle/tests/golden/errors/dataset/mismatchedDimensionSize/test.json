@@ -1,0 +1,5 @@
+{
+  "name": "Marabou",
+  "run": "vehicle compile queries -s mismatchedDimensionSize.vcl -f MarabouQueries -d trainingDataset:dataset-nat-4.idx",
+  "needs": ["mismatchedDimensionSize.vcl", "dataset-nat-4.idx"]
+}

@@ -1,0 +1,5 @@
+{
+  "name": "Marabou",
+  "run": "vehicle compile queries -s alternatingNeg.vcl -f MarabouQueries --network f:fake.onnx",
+  "needs": ["alternatingNeg.vcl", "fake.onnx"]
+}

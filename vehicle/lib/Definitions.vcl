@@ -1,0 +1,330 @@
+--------------------------------------------------------------------------------
+-- Type annotations
+--------------------------------------------------------------------------------
+
+-- Implementation of the `:` syntax
+typeAnn : forallT (t : Type) . t -> t
+typeAnn t a = a
+
+--------------------------------------------------------------------------------
+-- Bool
+--------------------------------------------------------------------------------
+
+implies : Tensor Bool dims -> Tensor Bool dims -> Tensor Bool dims
+implies x y = (not x) or y
+
+forallInList : (A -> Bool) -> List A -> Bool
+forallInList f xs = fold (\x y -> x and y) True (map f xs)
+
+existsInList : (A -> Bool) -> List A -> Bool
+existsInList f xs = fold (\x y -> x or y) False (map f xs)
+
+--------------------------------------------------------------------------------
+-- Tensor
+--------------------------------------------------------------------------------
+-- These operations have non-zero dimensions so that we have a unique
+-- representation of relationships between zero-dimensional tensors
+-- (i.e. pointwise comparison).
+
+eqRatTensorReduced : Tensor Real (dim :: dims) -> Tensor Real (dim :: dims) -> Bool
+eqRatTensorReduced xs ys = reduceAnd True (xs ==. ys)
+
+neRatTensorReduced : Tensor Real (dim :: dims) -> Tensor Real (dim :: dims) -> Bool
+neRatTensorReduced xs ys = not (eqRatTensorReduced xs ys)
+
+leRatTensorReduced : Tensor Real (dim :: dims) -> Tensor Real (dim :: dims) -> Bool
+leRatTensorReduced xs ys = reduceAnd True (xs <=. ys)
+
+ltRatTensorReduced : Tensor Real (dim :: dims) -> Tensor Real (dim :: dims) -> Bool
+ltRatTensorReduced xs ys = reduceAnd True (xs <. ys)
+
+geRatTensorReduced : Tensor Real (dim :: dims) -> Tensor Real (dim :: dims) -> Bool
+geRatTensorReduced xs ys = reduceAnd True (xs >=. ys)
+
+gtRatTensorReduced : Tensor Real (dim :: dims) -> Tensor Real (dim :: dims) -> Bool
+gtRatTensorReduced xs ys = reduceAnd True (xs >. ys)
+
+--------------------------------------------------------------------------------
+-- TensorLike
+--------------------------------------------------------------------------------
+
+@typeclass
+record TensorLike r t dims where
+  { toTensor         : r -> NonCastingTensor t dims
+  , fromTensor       : NonCastingTensor t dims -> r
+  }
+
+--------------------------------------------------------------------------------
+-- Index
+--------------------------------------------------------------------------------
+
+existsIndex : forallT {n} . (Index n -> Bool) -> Bool
+existsIndex f = reduceOr False (foreach i . f i)
+
+forallIndex : forallT {n} . (Index n -> Bool) -> Bool
+forallIndex f = reduceAnd True (foreach i . f i)
+
+--------------------------------------------------------------------------------
+-- Type classes
+--------------------------------------------------------------------------------
+
+-- HasAdd
+@typeclass
+record HasAdd t1 t2 t3 where
+  { addTC : t1 -> t2 -> t3
+  }
+
+@instance(default=0)
+natHasAdd : HasAdd Nat Nat Nat
+natHasAdd = { addTC = addNat }
+
+@instance(default=1)
+realTensorHasAdd : HasAdd (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
+realTensorHasAdd = { addTC = addRealTensor }
+
+@instance
+tensorLikeHasAdd : {{ TensorLike r t dims }} -> {{ HasAdd (NonCastingTensor t dims) (NonCastingTensor t dims) (NonCastingTensor t dims) }} -> HasAdd r r r
+tensorLikeHasAdd =
+    { addTC = \r1 r2 ->
+        fromTensor
+            (addTC
+                (toTensor r1)
+                (toTensor r2)
+            )
+    }
+
+-- HasSub
+@typeclass
+record HasSub t1 t2 t3 where
+  { subTC : t1 -> t2 -> t3
+  }
+
+@instance
+realTensorHasSub : HasSub (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
+realTensorHasSub = { subTC = subRealTensor }
+
+@instance
+tensorLikeHasSub : {{ TensorLike r t dims }} -> {{ HasSub (NonCastingTensor t dims) (NonCastingTensor t dims) (NonCastingTensor t dims) }} -> HasSub r r r
+tensorLikeHasSub =
+    { subTC = \r1 r2 ->
+        fromTensor
+            (subTC
+                (toTensor r1)
+                (toTensor r2)
+            )
+    }
+
+-- HasMul
+@typeclass
+record HasMul t1 t2 t3 where
+  { mulTC : t1 -> t2 -> t3
+  }
+
+@instance(default=0)
+natHasMul : HasMul Nat Nat Nat
+natHasMul = { mulTC = mulNat }
+
+@instance(default=1)
+realTensorHasMul : HasMul (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
+realTensorHasMul = { mulTC = mulRealTensor }
+
+@instance
+tensorLikeHasMul : {{ TensorLike r t dims }} -> {{ HasMul (NonCastingTensor t dims) (NonCastingTensor t dims) (NonCastingTensor t dims) }} -> HasMul r r r
+tensorLikeHasMul =
+    { mulTC = \r1 r2 ->
+        fromTensor
+            (mulTC
+                (toTensor r1)
+                (toTensor r2)
+            )
+    }
+
+
+-- HasDiv
+@typeclass
+record HasDiv t1 t2 t3 where
+  { divTC : t1 -> t2 -> t3
+  }
+
+@instance
+realTensorHasDiv : HasDiv (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
+realTensorHasDiv = { divTC = divRealTensor }
+
+@instance
+tensorLikeHasDiv : {{ TensorLike r t dims }} -> {{ HasDiv (NonCastingTensor t dims) (NonCastingTensor t dims) (NonCastingTensor t dims) }} -> HasDiv r r r
+tensorLikeHasDiv =
+    { divTC = \r1 r2 ->
+        fromTensor
+            (divTC
+                (toTensor r1)
+                (toTensor r2)
+            )
+    }
+
+-- Quantifiers
+@typeclass
+record HasQuantifier t where
+  { forallTC : (t -> Bool) -> Bool
+  , existsTC : (t -> Bool) -> Bool
+  }
+
+@instance
+indexHasQuantifier : HasQuantifier (Index n)
+indexHasQuantifier =
+  { forallTC = quantifyForAllIndex
+  , existsTC = quantifyExistsIndex
+  }
+
+@instance
+tensorHasQuantifier : HasQuantifier (Tensor Real ds)
+tensorHasQuantifier =
+  { forallTC = quantifyForallRealTensor
+  , existsTC = quantifyExistsRealTensor
+  }
+
+-- Network IO
+@typeclass
+record HasValidNetworkIOType (t : Type) where {}
+
+@instance
+realTensorHasValidNetworkIOType : HasValidNetworkIOType (Tensor Real dims)
+realTensorHasValidNetworkIOType = {}
+
+-- Network types
+@typeclass
+record HasValidNetworkType (t : Type) where {}
+
+@instance
+tensorToTensorHasValidNetworkType : {{ HasValidNetworkIOType t1 }} -> {{ HasValidNetworkIOType t2 }} -> HasValidNetworkType ( t1 -> t2 )
+tensorToTensorHasValidNetworkType = {}
+
+-- Comparisons
+@typeclass
+record HasComparison t1 t2 where
+  { leTC : t1 -> t2 -> Bool
+  , ltTC : t1 -> t2 -> Bool
+  , geTC : t1 -> t2 -> Bool
+  , gtTC : t1 -> t2 -> Bool
+  , eqTC : t1 -> t2 -> Bool
+  , neTC : t1 -> t2 -> Bool
+  }
+
+@instance
+indexHasComparison : HasComparison (Index n1) (Index n2)
+indexHasComparison =  { leTC = compareIndexLe
+                      , ltTC = compareIndexLt
+                      , geTC = compareIndexGe
+                      , gtTC = compareIndexGt
+                      , eqTC = compareIndexEq
+                      , neTC = compareIndexNe
+                      }
+
+@instance
+natHasComparison : HasComparison Nat Nat
+natHasComparison =  { leTC = compareNatLe
+                    , ltTC = compareNatLt
+                    , geTC = compareNatGe
+                    , gtTC = compareNatGt
+                    , eqTC = compareNatEq
+                    , neTC = compareNatNe
+                    }
+
+@instance
+realTensorEmptyDimsHasComparison : HasComparison (Tensor Real []) (Tensor Real [])
+realTensorEmptyDimsHasComparison = { leTC = compareRatTensorPointwiseLe
+                                   , ltTC = compareRatTensorPointwiseLt
+                                   , geTC = compareRatTensorPointwiseGe
+                                   , gtTC = compareRatTensorPointwiseGt
+                                   , eqTC = compareRatTensorPointwiseEq
+                                   , neTC = compareRatTensorPointwiseNe
+                                   }
+
+@instance
+realTensorHasComparison : HasComparison (Tensor Real (dim :: dims)) (Tensor Real (dim :: dims))
+realTensorHasComparison = { leTC = compareRatTensorReducedLe
+                          , ltTC = compareRatTensorReducedLt
+                          , geTC = compareRatTensorReducedGe
+                          , gtTC = compareRatTensorReducedGt
+                          , eqTC = compareRatTensorReducedEq
+                          , neTC = compareRatTensorReducedNe
+                          }
+
+@instance
+realTensorLikeHasComparison : {{ TensorLike r t dims }} -> {{ HasComparison (NonCastingTensor t dims) (NonCastingTensor t dims) }} -> HasComparison r r
+realTensorLikeHasComparison = { leTC = \r1 r2 -> ( leTC (toTensor r1) (toTensor r2) )
+                              , ltTC = \r1 r2 -> ( ltTC (toTensor r1) (toTensor r2) )
+                              , geTC = \r1 r2 -> ( geTC (toTensor r1) (toTensor r2) )
+                              , gtTC = \r1 r2 -> ( gtTC (toTensor r1) (toTensor r2) )
+                              , eqTC = \r1 r2 -> ( eqTC (toTensor r1) (toTensor r2) )
+                              , neTC = \r1 r2 -> ( neTC (toTensor r1) (toTensor r2) )
+                              }
+
+--------------------------------------------------------------------------------
+-- Loss logics
+--------------------------------------------------------------------------------
+
+{-
+record DifferentiableElementLogic where
+  { true             : Real
+  , false            : Real
+  , negation         : Real -> Real
+  , conjunction      : Real -> Real -> Real
+  , disjunction      : Real -> Real -> Real
+  , lessThan         : Real -> Real -> Real
+  , lessEqualThan    : Real -> Real -> Real
+  , greaterThan      : Real -> Real -> Real
+  , greaterEqualThan : Real -> Real -> Real
+  , equal            : Real -> Real -> Real
+  , notEqual         : Real -> Real -> Real
+  }
+-}
+
+record DifferentiableTensorLogic where
+  { trueElement               : Real
+  , falseElement              : Real
+  , pointwiseNegation         : Tensor Real dims -> Tensor Real dims
+  , pointwiseConjunction      : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
+  , pointwiseDisjunction      : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
+  , pointwiseLessThan         : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
+  , pointwiseLessEqualThan    : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
+  , pointwiseGreaterThan      : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
+  , pointwiseGreaterEqualThan : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
+  , pointwiseEqual            : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
+  , pointwiseNotEqual         : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
+  , reduceConjunction         : Real -> Tensor Real dims -> Real
+  , reduceDisjunction         : Real -> Tensor Real dims -> Real
+  }
+
+VehicleLoss : DifferentiableTensorLogic
+VehicleLoss =
+  { trueElement                = -1000000
+  , falseElement               = 1000000
+  , pointwiseNegation          = \x -> -x
+  , pointwiseConjunction       = \x y -> max x y
+  , pointwiseDisjunction       = \x y -> min x y
+  , pointwiseLessThan          = \x y -> x - y
+  , pointwiseLessEqualThan     = \x y -> x - y
+  , pointwiseGreaterThan       = \x y -> y - x
+  , pointwiseGreaterEqualThan  = \x y -> y - x
+  , pointwiseEqual             = \x y -> min (x - y) (y - x)
+  , pointwiseNotEqual          = \x y -> max (x - y) (y - x)
+  , reduceConjunction          = \e xs -> reduceMax e xs
+  , reduceDisjunction          = \e xs -> reduceMin e xs
+  }
+
+DL2Loss : DifferentiableTensorLogic
+DL2Loss =
+  { trueElement                = 0
+  , falseElement               = 1000000 -- TODO should be infinity
+  , pointwiseNegation          = \{dims} x -> (const 1 dims) / x
+  , pointwiseConjunction       = \x y -> x + y
+  , pointwiseDisjunction       = \x y -> x * y
+  , pointwiseLessThan          = \{dims} x y -> max (const 0 dims) (x - y)
+  , pointwiseLessEqualThan     = \{dims} x y -> max (const 0 dims) (x - y)
+  , pointwiseGreaterThan       = \{dims} x y -> max (const 0 dims) (y - x)
+  , pointwiseGreaterEqualThan  = \{dims} x y -> max (const 0 dims) (y - x)
+  , pointwiseEqual             = \{dims} x y -> - (max (const 0 dims) (x - y) + max (const 0 dims) (y - x))
+  , pointwiseNotEqual          = \{dims} x y -> (max (const 0 dims) (x - y) + max (const 0 dims) (y - x))
+  , reduceConjunction          = \e xs -> reduceAdd e xs
+  , reduceDisjunction          = \e xs -> reduceMul e xs
+  }

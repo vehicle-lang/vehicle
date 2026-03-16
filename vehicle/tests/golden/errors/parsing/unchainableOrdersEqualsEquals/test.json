@@ -1,0 +1,5 @@
+{
+  "name": "TypeCheck",
+  "run": "vehicle typecheck -s unchainableOrdersEqualsEquals.vcl",
+  "needs": ["unchainableOrdersEqualsEquals.vcl"]
+}

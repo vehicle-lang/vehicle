@@ -1,0 +1,113 @@
+[
+  {
+    "tag": "Network",
+    "contents": {
+      "sharedData": {
+        "typeText": "Tensor Real [28, 28] -> Tensor Real [10]",
+        "provenance": {
+          "tag": "Provenance",
+          "contents": [
+            22,
+            1,
+            22,
+            11
+          ]
+        },
+        "name": "classifier"
+      }
+    }
+  },
+  {
+    "tag": "Parameter",
+    "contents": {
+      "sharedData": {
+        "typeText": "Real",
+        "provenance": {
+          "tag": "Provenance",
+          "contents": [
+            37,
+            1,
+            37,
+            8
+          ]
+        },
+        "name": "epsilon"
+      },
+      "inferable": false
+    }
+  },
+  {
+    "tag": "Parameter",
+    "contents": {
+      "sharedData": {
+        "typeText": "Nat",
+        "provenance": {
+          "tag": "Provenance",
+          "contents": [
+            72,
+            1,
+            72,
+            2
+          ]
+        },
+        "name": "n"
+      },
+      "inferable": true
+    }
+  },
+  {
+    "tag": "Dataset",
+    "contents": {
+      "sharedData": {
+        "typeText": "Vector (Tensor Real [28, 28]) n",
+        "provenance": {
+          "tag": "Provenance",
+          "contents": [
+            78,
+            1,
+            78,
+            15
+          ]
+        },
+        "name": "trainingImages"
+      }
+    }
+  },
+  {
+    "tag": "Dataset",
+    "contents": {
+      "sharedData": {
+        "typeText": "Vector (Index 10) n",
+        "provenance": {
+          "tag": "Provenance",
+          "contents": [
+            81,
+            1,
+            81,
+            15
+          ]
+        },
+        "name": "trainingLabels"
+      }
+    }
+  },
+  {
+    "tag": "Property",
+    "contents": {
+      "subcomponents": null,
+      "sharedData": {
+        "typeText": "Vector Bool n",
+        "provenance": {
+          "tag": "Provenance",
+          "contents": [
+            92,
+            1,
+            92,
+            7
+          ]
+        },
+        "name": "robust"
+      }
+    }
+  }
+]

@@ -15,7 +15,7 @@ import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta (MetaSet)
 import Vehicle.Compile.Type.Meta.Set qualified as MetaSet
 import Vehicle.Compile.Type.Monad.Class
-import Vehicle.Data.Builtin.Core
+import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
@@ -53,7 +53,7 @@ solveInDomain ::
 solveInDomain _ [_, typ@VMeta {}] = return $ blockOnMetas [typ]
 solveInDomain c [value, typ] = case toTypeValue typ of
   VNatType {} -> return Nothing
-  VRatTensorType INil {} -> return Nothing
+  VRatTensorType IDimNil -> return Nothing
   VIndexType size -> case value of
     VMeta {} -> return $ blockOnMetas [value]
     INatLiteral n -> do
@@ -117,7 +117,7 @@ solveDefaultIndexConstraint ::
   m Bool
 solveDefaultIndexConstraint (WithContext constraint ctx) = do
   case instanceGoal constraint of
-    (InstanceGoal [] NatInDomainConstraint [n, argExpr -> toTypeValue -> VIndexType size]) -> do
+    (InstanceGoal [] (Right NatInDomainConstraint) [n, argExpr -> toTypeValue -> VIndexType size]) -> do
       let succN = fromNatValue $ case argExpr n of
             INatLiteral x -> VNatLiteral (x + 1)
             n' -> VNatAdd (Op2Args n' (INatLiteral 1))

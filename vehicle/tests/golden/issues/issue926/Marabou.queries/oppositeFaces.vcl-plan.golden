@@ -1,0 +1,143 @@
+{
+  "queryMetaData": {
+    "tag": "NonTrivial",
+    "contents": {
+      "tag": "Query",
+      "contents": {
+        "queries": {
+          "unDisjunctAll": [
+            {
+              "variableStore": {
+                "vehicleVariableCtx": [
+                  "classifier₀[output]!5",
+                  "classifier₀[output]!4",
+                  "classifier₀[output]!3",
+                  "classifier₀[output]!2",
+                  "classifier₀[output]!1",
+                  "classifier₀[output]!0",
+                  "classifier₀[output]",
+                  "classifier₀[input]!0!0",
+                  "classifier₀[input]!0",
+                  "classifier₀[input]",
+                  "perturbation!0!0",
+                  "perturbation!0",
+                  "perturbation"
+                ],
+                "userVariables": [
+                  0
+                ],
+                "queryVariableMapping": {
+                  "y5": 12,
+                  "y4": 11,
+                  "y3": 10,
+                  "y2": 9,
+                  "y1": 8,
+                  "y0": 7,
+                  "x0": 5
+                }
+              },
+              "variableCompilationTrace": {
+                "reconstructionSteps": [
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      {
+                        "nestedTensorShape": [
+                          1,
+                          1
+                        ],
+                        "nestedStartingVariable": 3
+                      },
+                      "AllDimensions"
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      {
+                        "nestedTensorShape": [
+                          6
+                        ],
+                        "nestedStartingVariable": 6
+                      },
+                      "AllDimensions"
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      {
+                        "nestedTensorShape": [
+                          1,
+                          1
+                        ],
+                        "nestedStartingVariable": 0
+                      },
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [
+                              1,
+                              1
+                            ],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            3,
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "queryAddress": [
+                {
+                  "propertyName": "oppositeFaces",
+                  "propertyIndices": [],
+                  "propertyID": 0
+                },
+                1
+              ],
+              "metaNetwork": [
+                [
+                  "classifier",
+                  {
+                    "networkType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          6
+                        ],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          1,
+                          1
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "networkFilepath": "network.onnx"
+                  },
+                  1
+                ]
+              ]
+            }
+          ]
+        },
+        "negated": true
+      }
+    }
+  }
+}

@@ -1,0 +1,20 @@
+Usage: vehicle typecheck (-s|--specification FILE) [-t|--typeSystem TYPE_SYSTEM]
+                         [-e|--declaration NAME]
+
+  Type-check a .vcl specification file.
+
+Available options:
+  -s,--specification FILE  The .vcl file containing the specification.
+  -t,--typeSystem TYPE_SYSTEM
+                           A secondary type system to be used. 1. Polarity -
+                           check whether alternating quantifiers are used in the
+                           specification. 2. Linearity - check whether
+                           quantified variables are used linearly in the
+                           specification. 3. Decidability - check which booleans
+                           are decidable and which are undecidable in the
+                           context of Vehicle
+  -e,--declaration NAME    Declarations in the specification to include during
+                           compilation. Can be provided multiple times. If not
+                           provided then all declarations in the specification
+                           will be compiled.
+  -h,--help                Show this help text

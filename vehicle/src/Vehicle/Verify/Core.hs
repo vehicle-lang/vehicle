@@ -1,19 +1,16 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
-{-# HLINT ignore "Use newtype instead of data" #-}
 module Vehicle.Verify.Core where
 
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON)
-import Data.Char.SScript (subscript)
 import Data.Text (Text, unpack)
 import GHC.Generics (Generic)
-import Prettyprinter (brackets)
 import System.FilePath ((<.>), (</>))
 import Vehicle.Compile.Resource
-import Vehicle.Data.Assertion (Relation (..))
+import Vehicle.Data.Assertion (InequalityRelation (..), Relation (..))
 import Vehicle.Data.Builtin.Core
-import Vehicle.Data.Tensor (TensorIndices, showTensorIndices)
+import Vehicle.Data.Tensor (RatTensor, TensorIndices, TensorShape, showTensorIndices)
 import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
@@ -31,27 +28,14 @@ instance ToJSON NetworkContextInfo
 
 instance FromJSON NetworkContextInfo
 
-data MetaNetworkEntry = MetaNetworkEntry
-  { metaNetworkEntryName :: Name,
-    metaNetworkEntryInfo :: NetworkContextInfo
-  }
-  deriving (Eq, Ord, Show, Generic)
-
-instance NFData MetaNetworkEntry
-
-instance ToJSON MetaNetworkEntry
-
-instance FromJSON MetaNetworkEntry
-
-instance Pretty MetaNetworkEntry where
-  pretty MetaNetworkEntry {..} =
-    pretty metaNetworkEntryName
-      <> ":"
-      <> softline
-      <> pretty (networkType metaNetworkEntryInfo)
-
 -- | A list of neural networks used in a given query.
-type MetaNetwork = [MetaNetworkEntry]
+type MetaNetwork = [(Name, NetworkContextInfo, Int)]
+
+inputShape :: NetworkContextInfo -> TensorShape
+inputShape = dimensions . inputTensor . networkType
+
+outputShape :: NetworkContextInfo -> TensorShape
+outputShape = dimensions . outputTensor . networkType
 
 --------------------------------------------------------------------------------
 -- Queries misc
@@ -83,6 +67,11 @@ instance (Pretty witness) => Pretty (QueryResult witness) where
   pretty = \case
     SAT w -> "SAT:" <+> pretty w
     UnSAT -> "UNSAT"
+
+querySatisified :: QueryResult witness -> Bool
+querySatisified = \case
+  SAT {} -> True
+  UnSAT -> False
 
 --------------------------------------------------------------------------------
 -- Property addresses
@@ -165,6 +154,11 @@ relationToQueryRelation = \case
   OLt -> LtRel
   OLe -> LeRel
 
+inequalityToQueryRelation :: InequalityRelation -> QueryRelation
+inequalityToQueryRelation = \case
+  Strict -> LtRel
+  NonStrict -> LeRel
+
 flipQueryRel :: QueryRelation -> QueryRelation
 flipQueryRel = \case
   EqRel -> EqRel
@@ -173,8 +167,18 @@ flipQueryRel = \case
   GeRel -> LeRel
   GtRel -> GtRel
 
-createNetworkVarName :: Name -> Int -> InputOrOutput -> Doc a
-createNetworkVarName networkName application inputOrOutput =
-  pretty networkName
-    <> pretty (fmap subscript (show application))
-    <> brackets (pretty inputOrOutput)
+--------------------------------------------------------------------------------
+-- User variable assignments
+
+-- | A (satisfying) assignment to a set of user-level variables.
+newtype UserVariableAssignment
+  = UserVariableAssignment [(Name, RatTensor)]
+  deriving (Generic)
+
+instance ToJSON UserVariableAssignment
+
+instance FromJSON UserVariableAssignment
+
+instance Pretty UserVariableAssignment where
+  pretty (UserVariableAssignment assignment) =
+    vsep (fmap pretty assignment)

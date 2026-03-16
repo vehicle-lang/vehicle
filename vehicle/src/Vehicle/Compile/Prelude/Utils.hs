@@ -3,7 +3,8 @@ module Vehicle.Compile.Prelude.Utils where
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty (toList)
 import Data.Maybe (mapMaybe)
-import Vehicle.Data.Code.Expr
+import GHC.Stack (HasCallStack)
+import Vehicle.Data.AST.Expr.Scoped
 import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
@@ -29,7 +30,7 @@ freeNamesIn = \case
   Let _ bound binder body -> freeNamesIn bound <> freeNamesIn (typeOf binder) <> freeNamesIn body
   Lam _ binder body -> freeNamesIn (typeOf binder) <> freeNamesIn body
   Record _ _ fields -> concatMap (freeNamesIn . snd) fields
-  RecordAcc _ r _ -> freeNamesIn r
+  RecordProj _ t r _ -> freeNamesIn t <> freeNamesIn r
 
 --------------------------------------------------------------------------------
 -- Destruction functions
@@ -52,11 +53,20 @@ getMetaID e = case exprHead e of
   Meta _ m -> Just m
   _ -> Nothing
 
-getBinderName :: GenericBinder expr -> Name
-getBinderName binder = case binderNamingForm binder of
-  NameAndType name -> name
-  OnlyName name -> name
-  OnlyType -> developerError "Binder unexpectedly does not appear to have a name"
+-- | Should only be called on binders that are guaranteed to have a name.
+getBinderName :: (HasCallStack) => GenericBinder expr -> Name
+getBinderName binder = fst $ getNamedBinderInfo binder
+
+getMaybeNamedBinderInfo :: GenericBinder expr -> Maybe (Name, Provenance)
+getMaybeNamedBinderInfo binder = case binderNamingForm binder of
+  NameAndType name p -> Just (name, p)
+  OnlyName name p -> Just (name, p)
+  OnlyType -> Nothing
+
+getNamedBinderInfo :: (HasCallStack) => GenericBinder expr -> (Name, Provenance)
+getNamedBinderInfo binder = case getMaybeNamedBinderInfo binder of
+  Just (name, p) -> (name, p)
+  Nothing -> developerError "Binder unexpectedly does not appear to have a name"
 
 getExplicitArg :: GenericArg expr -> Maybe expr
 getExplicitArg arg

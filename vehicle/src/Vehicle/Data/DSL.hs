@@ -33,14 +33,16 @@ module Vehicle.Data.DSL
     implTypeDoubleLam,
     builtin,
     tHole,
+    boundVar,
+    freeVar,
   )
 where
 
 import Data.List.NonEmpty (NonEmpty)
 import Data.Maybe (fromMaybe)
-import Vehicle.Data.Code.Expr
-import Vehicle.Data.DeBruijn
+import Vehicle.Data.AST.Expr.Scoped
 import Vehicle.Data.Universe
+import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Prelude
 import Prelude hiding (pi)
 
@@ -55,6 +57,8 @@ class DSL expr where
   app :: expr -> NonEmpty (Visibility, Relevance, expr) -> expr
   pi :: Maybe Name -> Visibility -> Relevance -> expr -> (expr -> expr) -> expr
   lam :: Name -> Visibility -> Relevance -> expr -> (expr -> expr) -> expr
+  recordProj :: expr -> expr -> FieldName -> expr
+  record :: expr -> [(FieldName, expr)] -> expr
 
 newtype DSLExpr builtin = DSL
   { unDSL :: Provenance -> Lv -> Expr builtin
@@ -72,10 +76,13 @@ toDSL e = DSL $ \_p l ->
 boundVar :: Lv -> DSLExpr builtin
 boundVar i = DSL $ \p j -> BoundVar p (dbLevelToIndex j i)
 
+freeVar :: Identifier -> DSLExpr builtin
+freeVar i = DSL $ \p _j -> FreeVar p i
+
 approxPiForm :: Maybe Name -> Visibility -> BinderDisplayForm
 approxPiForm name = \case
   Explicit {} -> BinderDisplayForm OnlyType False
-  Implicit {} -> BinderDisplayForm (OnlyName $ fromMaybe "_" name) True
+  Implicit {} -> BinderDisplayForm (OnlyName (fromMaybe "_" name) mempty) True
   Instance {} -> BinderDisplayForm OnlyType False
 
 instance DSL (DSLExpr builtin) where
@@ -86,21 +93,31 @@ instance DSL (DSLExpr builtin) where
     let varType = unDSL binderType p i
         var = boundVar i
         form = approxPiForm name v
-        binder = Binder p form v r varType
+        binder = Binder form v r varType
         body = unDSL (bodyFn var) p (i + 1)
      in Pi p binder body
 
   lam name v r binderType bodyFn = DSL $ \p i ->
     let varType = unDSL binderType p i
         var = boundVar i
-        binder = Binder p (BinderDisplayForm (OnlyName name) True) v r varType
+        binder = Binder (BinderDisplayForm (OnlyName name mempty) True) v r varType
         body = unDSL (bodyFn var) p (i + 1)
      in Lam p binder body
 
   app fun args = DSL $ \p i ->
     let fun' = unDSL fun p i
-        args' = fmap (\(v, r, e) -> Arg p v r (unDSL e p i)) args
+        args' = fmap (\(v, r, e) -> Arg v r (unDSL e p i)) args
      in App fun' args'
+
+  recordProj recordType r field = DSL $ \p i -> do
+    let recordType' = unDSL recordType p i
+    let r' = unDSL r p i
+    RecordProj p recordType' r' field
+
+  record recordType fields = DSL $ \p i -> do
+    let fields' = fmap (\(fieldName, fieldExpr) -> (fieldName, unDSL fieldExpr p i)) fields
+    let recordType' = unDSL recordType p i
+    Record p recordType' fields'
 
 --------------------------------------------------------------------------------
 -- AST

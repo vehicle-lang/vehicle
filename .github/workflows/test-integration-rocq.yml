@@ -34,7 +34,7 @@ jobs:
     runs-on: ${{ matrix.os.type }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Haskell
         uses: ./.github/actions/setup-haskell
@@ -45,7 +45,7 @@ jobs:
           cabal-project-freeze-file: ${{ matrix.haskell.cabal.project-file }}.freeze
 
       - name: Setup Ocaml
-        uses: ocaml/setup-ocaml@v3.2.16
+        uses: ocaml/setup-ocaml@v3.4.6
         with:
           ocaml-compiler: ${{ matrix.ocaml.version }}
 

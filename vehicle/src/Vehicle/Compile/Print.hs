@@ -11,7 +11,6 @@ module Vehicle.Compile.Print
     PrettyExternal,
     Tags (..),
     In,
-    NoCtx,
     prettyVerbose,
     prettyFriendly,
     prettyExternal,
@@ -23,31 +22,40 @@ import Data.Bifunctor (Bifunctor (..))
 import Data.Foldable qualified as NonEmpty
 import Data.IntMap (IntMap)
 import Data.IntMap qualified as IntMap (assocs)
-import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Text (Text)
+import Data.Text qualified as Text
 import Data.Tuple (swap)
 import GHC.Exts qualified as GHC (Constraint)
 import GHC.TypeLits
 import Prettyprinter (fill)
+import Vehicle.Compile.Constants.Rational
 import Vehicle.Compile.Descope
 import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Simplify
+import Vehicle.Compile.Sugar.Resugar.External as External (delab)
+import Vehicle.Compile.Sugar.Resugar.Internal as Internal (delab)
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta (MetaInfo (..))
 import Vehicle.Compile.Type.Meta.Map (MetaMap (..))
-import Vehicle.Data.Assertion (Bounds (..), Inequality, NormalisedRelation (..))
+import Vehicle.Data.AST.Expr.Desugared qualified as D
+import Vehicle.Data.Assertion (NormalisedRelation (..), prettyFlip)
+import Vehicle.Data.Bound
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.Code.Value
-import Vehicle.Data.QuantifiedVariable (NetworkIOElementVariable, NetworkIOVariable, TensorVariable, TensorVariableLike (..), UserVariable, variableValue)
-import Vehicle.Data.Tensor (RatTensor, Tensor, prettyTensor, pattern ZeroDimTensor)
-import Vehicle.Syntax.AST.Expr qualified as S
-import Vehicle.Syntax.Print
+import Vehicle.Data.MaybeTrivial
+import Vehicle.Data.Tensor (Tensor, prettyTensor, pattern ZeroDimTensor)
+import Vehicle.Data.Variable.Bound.Context.Generic.Core
+import Vehicle.Data.Variable.Bound.Context.Name.Core
+import Vehicle.Data.Variable.Bound.Level
+import Vehicle.Syntax.External.Print as External (printTree)
+import Vehicle.Syntax.Internal.Print as Internal (printTree)
 import Vehicle.Verify.QueryFormat.Interface (QueryAssertion (..))
 import Vehicle.Verify.Specification (CompilationStep (..))
 
@@ -56,7 +64,7 @@ import Vehicle.Verify.Specification (CompilationStep (..))
 --------------------------------------------------------------------------------
 
 -- | Prints to the internal language in all it's gory detail. Useful for debugging.
-prettyVerbose :: (PrettyVerbose (a `In` NoCtx)) => a -> Doc b
+prettyVerbose :: (PrettyVerbose a) => a -> Doc b
 prettyVerbose x = prettyWith @VerboseTags (x, ())
 
 -- | Prints to the internal language in all it's gory detail. Useful for debugging.
@@ -120,14 +128,18 @@ data Strategy
   | Clean Strategy
   | ShortenVectors Strategy
   | Branch Strategy Strategy
+  | Branch3 Strategy Strategy Strategy
   | Pretty
 
 {-
 -- Testing code, do not delete!
 -- Fill in `TestType` and inspect the hole to see what it reduces to.
-type TestType = LinearExpr TensorVariable RatTensor `In` NamedBoundCtx
+--  e.g. type TestType = LinearExpression `In` NamedBoundCtx
+
+type TestType = Prog Builtin `In` NamedBoundCtx
 
 data MyProxy (a :: Strategy) = MyProxy
+
 test :: MyProxy (StrategyFor FriendlyTags TestType)
 test = _
 -}
@@ -160,35 +172,56 @@ type family Debug (strat :: Strategy) (msg :: Symbol) :: GHC.Constraint where
 -- | This type family computes the correct printing strategy given the tags
 -- and the type of the expression.
 type family StrategyFor (tags :: Tags) a :: Strategy where
-  ----------
-  -- Expr --
-  ----------
+  ------------
+  -- Pretty --
+  ------------
+  -- Things that we just pretty print.
+  StrategyFor tags (() `In` ctx) = 'Pretty
+  StrategyFor tags (Int `In` ctx) = 'Pretty
+  StrategyFor tags (Text `In` ctx) = 'Pretty
+  StrategyFor tags (Bool `In` ctx) = 'Pretty
+  StrategyFor tags (Rational `In` ctx) = 'Pretty
+  StrategyFor tags (String `In` ctx) = 'Pretty
+  StrategyFor tags (Identifier `In` ctx) = 'Pretty
+  StrategyFor tags (ModulePath `In` ctx) = 'Pretty
+  StrategyFor tags (FieldName `In` ctx) = 'Pretty
+  -------------------
+  -- Unscoped expr --
+  -------------------
   -- To convert any named representation to the target language, simply convert it.
-  StrategyFor ('As lang) S.Expr = 'PrintAs lang
-  StrategyFor ('Named tags) S.Expr = StrategyFor tags S.Expr
-  StrategyFor ('Unnamed tags) S.Expr = StrategyFor tags S.Expr
-  -------------------------
-  -- Variable conversion --
-  -------------------------
+  StrategyFor ('As lang) (D.Expr Builtin) = 'PrintAs lang
+  StrategyFor ('As lang) (D.Decl Builtin) = 'PrintAs lang
+  StrategyFor ('Named tags) (D.Expr Builtin) = StrategyFor tags (D.Expr Builtin)
+  StrategyFor ('Unnamed tags) (D.Expr Builtin) = StrategyFor tags (D.Expr Builtin)
+  -----------------
+  -- Scoped expr --
+  -----------------
   -- Converting an `Expr` with DeBruijn indices to a named representation requires a named bound context to descope.
   -- Otherwise converting it to an unnamed representation we descope naively by just converting the variables directly
-  StrategyFor ('Named tags) (Expr builtin `In` NamedBoundCtx) = 'DescopeWithNames (StrategyFor tags S.Expr)
-  StrategyFor ('Unnamed tags) (Expr builtin `In` ctx) = 'DescopeNaively (StrategyFor tags S.Expr)
+  StrategyFor ('Named tags) (Expr builtin `In` NamedBoundCtx) = 'DescopeWithNames (StrategyFor tags (D.Expr Builtin))
+  StrategyFor ('Unnamed tags) (Expr builtin `In` ctx) = 'DescopeNaively (StrategyFor tags (D.Expr Builtin))
+  StrategyFor ('Named tags) (Decl builtin `In` NoCtx) = 'DescopeWithNames (StrategyFor tags (D.Decl Builtin))
+  StrategyFor ('Unnamed tags) (Decl builtin `In` ctx) = 'DescopeNaively (StrategyFor tags (D.Decl Builtin))
+  ------------
+  -- Values --
+  ------------
   -- To print a `Value` we need to quote it first. Note that we convert it to a `Builtin` representation immediately
   StrategyFor ('Named tags) (Value builtin `In` NamedBoundCtx) = 'QuoteValue (StrategyFor ('Named tags) (Expr Builtin `In` NamedBoundCtx))
-  StrategyFor ('Unnamed tags) (Value builtin `In` ctx) = 'DescopeNaively (StrategyFor tags S.Expr)
+  StrategyFor ('Unnamed tags) (Value builtin `In` ctx) = 'DescopeNaively (StrategyFor tags (D.Expr Builtin))
   StrategyFor tags (BoundEnv builtin `In` ctx) = StrategyFor tags (Value builtin `In` ctx)
+  StrategyFor tags (DimensionedTensorValue builtin `In` ctx) = StrategyFor tags (Value builtin `In` ctx)
   -------------------
   -- Context setup --
   -------------------
-  StrategyFor tags (GenericProg expr) = 'SetupContext (StrategyFor tags (GenericProg expr `In` NamedBoundCtx))
-  StrategyFor tags (GenericDecl expr) = 'SetupContext (StrategyFor tags (GenericDecl expr `In` NamedBoundCtx))
+  StrategyFor tags (GenericProg expr) = 'SetupContext (StrategyFor tags (GenericModule expr))
+  StrategyFor tags (Module builtin) = StrategyFor tags (Decl builtin)
+  StrategyFor tags (Decl builtin) = 'SetupContext (StrategyFor tags (Decl builtin `In` NoCtx))
   StrategyFor tags (Contextualised object CompleteNamedBoundCtx) = 'AlterContext (StrategyFor tags (Contextualised object NamedBoundCtx))
   StrategyFor tags (Contextualised object ctx) = 'SetupContext (StrategyFor tags (object `In` ctx))
   StrategyFor tags (Contextualised object ctx `In` NoCtx) = 'SetupContext (StrategyFor tags (object `In` ctx))
-  StrategyFor tags (S.Expr `In` NoCtx) = 'SetupContext (StrategyFor tags S.Expr)
-  StrategyFor tags (S.Arg `In` NoCtx) = 'SetupContext (StrategyFor tags S.Expr)
-  StrategyFor tags (S.Binder `In` NoCtx) = 'SetupContext (StrategyFor tags S.Expr)
+  StrategyFor tags (D.Expr Builtin `In` NoCtx) = 'SetupContext (StrategyFor tags (D.Expr Builtin))
+  StrategyFor tags (D.Arg Builtin `In` NoCtx) = 'SetupContext (StrategyFor tags (D.Expr Builtin))
+  StrategyFor tags (D.Binder Builtin `In` NoCtx) = 'SetupContext (StrategyFor tags (D.Expr Builtin))
   --------------------------------
   -- Distributing over functors --
   --------------------------------
@@ -201,63 +234,95 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor tags (MaybeTrivial a `In` ctx) = 'Functor (StrategyFor tags (a `In` ctx))
   StrategyFor tags (IntMap a `In` ctx) = 'Functor (StrategyFor tags (a `In` ctx))
   StrategyFor tags (MetaMap a `In` ctx) = 'Functor (StrategyFor tags (a `In` ctx))
-  StrategyFor tags (GenericProg expr `In` ctx) = (StrategyFor tags (expr `In` ctx))
-  StrategyFor tags (GenericDecl expr `In` ctx) = (StrategyFor tags (expr `In` ctx))
   StrategyFor tags (GenericArg expr `In` ctx) = (StrategyFor tags (expr `In` ctx))
   StrategyFor tags (GenericBinder expr `In` ctx) = (StrategyFor tags (expr `In` ctx))
   StrategyFor tags (Tensor a `In` ctx) = 'Functor (StrategyFor tags (a `In` ctx))
   StrategyFor tags ((a, b) `In` ctx) = 'Branch (StrategyFor tags (a `In` ctx)) (StrategyFor tags (b `In` ctx))
   StrategyFor tags (Map a b `In` ctx) = 'Branch (StrategyFor tags (a `In` ctx)) (StrategyFor tags (b `In` ctx))
-  -----------------
-  -- Constraints --
-  -----------------
+  -------------------------------
+  -- Type-checking constraints --
+  -------------------------------
   StrategyFor tags (ArgInsertionProblem builtin `In` NamedBoundCtx) = StrategyFor tags (Expr builtin `In` NamedBoundCtx)
   StrategyFor tags (InstanceConstraint builtin `In` ConstraintContext builtin) = StrategyFor tags (Value builtin `In` NamedBoundCtx)
   StrategyFor tags (UnificationConstraint builtin `In` ConstraintContext builtin) = StrategyFor tags (Value builtin `In` NamedBoundCtx)
   StrategyFor tags (ApplicationConstraint builtin `In` ConstraintContext builtin) = StrategyFor tags (Value builtin `In` NamedBoundCtx)
   StrategyFor tags (Constraint builtin `In` ConstraintContext builtin) = StrategyFor tags (Value builtin `In` NamedBoundCtx)
+  StrategyFor tags (InstanceCandidate builtin `In` BoundCtx (Type builtin)) = StrategyFor tags (Expr builtin `In` NamedBoundCtx)
   StrategyFor tags (MetaInfo builtin `In` NoCtx) = StrategyFor tags (Value builtin `In` NamedBoundCtx)
-  ---------------------
-  -- Query variables --
-  ---------------------
-  StrategyFor tags (UserVariable `In` ctx) =
-    StrategyFor tags (Value Builtin `In` ctx)
-  StrategyFor tags (NetworkIOElementVariable `In` ctx) =
-    StrategyFor tags (Value Builtin `In` ctx)
-  StrategyFor tags (TensorVariable `In` ctx) =
-    StrategyFor tags (Value Builtin `In` ctx)
-  StrategyFor tags (NormalisedRelation rel variable constant `In` ctx) =
-    StrategyFor tags (LinearExpr variable constant `In` ctx)
-  StrategyFor tags (Bounds variable constant `In` ctx) =
-    StrategyFor tags (Inequality variable constant `In` ctx)
+  --------------------------
+  -- Variable constraints --
+  --------------------------
+  StrategyFor tags (QueryAssertion variable `In` ctx) = StrategyFor tags (variable `In` ctx)
+  StrategyFor tags (NormalisedRelation rel expr `In` ctx) = StrategyFor tags (expr `In` ctx)
+  StrategyFor tags (BoundedValue value (LowerBound expr) `In` ctx) =
+    'Branch
+      (StrategyFor tags (value `In` ctx))
+      (StrategyFor tags (expr `In` ctx))
+  StrategyFor tags (BoundedValue value (UpperBound expr) `In` ctx) =
+    'Branch
+      (StrategyFor tags (value `In` ctx))
+      (StrategyFor tags (expr `In` ctx))
+  StrategyFor tags (BoundedValue value (SliceBounds expr) `In` ctx) =
+    'Branch
+      (StrategyFor tags (BoundedValue value (LowerBound expr) `In` ctx))
+      (StrategyFor tags (BoundedValue value (UpperBound expr) `In` ctx))
+  StrategyFor tags (BoundedValue value (TensorBounds expr) `In` ctx) =
+    'Branch
+      (StrategyFor tags (BoundedValue value (LowerBound expr) `In` ctx))
+      (StrategyFor tags (BoundedValue value (UpperBound expr) `In` ctx))
+  StrategyFor tags (BoundedValue value (Domain expr) `In` ctx) =
+    'Branch
+      (StrategyFor tags (value `In` ctx))
+      (StrategyFor tags (expr `In` ctx))
   StrategyFor tags (LinearExpr variable constant `In` ctx) =
     'Branch
       (StrategyFor tags (variable `In` NamedBoundCtx))
       (StrategyFor tags (constant `In` NamedBoundCtx))
   StrategyFor tags (CompilationStep `In` ctx) =
-    'Branch
-      (StrategyFor tags (TensorVariable `In` ctx))
-      (StrategyFor tags (LinearExpr TensorVariable RatTensor `In` ctx))
-  StrategyFor tags (QueryAssertion variable `In` ctx) =
-    StrategyFor tags (variable `In` ctx)
-  ------------
-  -- Pretty --
-  ------------
-  -- Things that we just pretty print.
-  StrategyFor tags (Int `In` ctx) = 'Pretty
-  StrategyFor tags (Text `In` ctx) = 'Pretty
-  StrategyFor tags (Rational `In` ctx) = 'Pretty
+    'Branch3
+      (StrategyFor tags (SliceVariable `In` ctx))
+      (StrategyFor tags (LinearExpression `In` ctx))
+      (StrategyFor tags (BoundedValue SliceVariable LinearBounds `In` ctx))
+  ---------------------
+  -- Query variables --
+  ---------------------
+  StrategyFor tags (SliceVariable `In` ctx) =
+    StrategyFor tags (Value Builtin `In` ctx)
+  StrategyFor tags (NestedSliceVariable `In` ctx) =
+    StrategyFor tags (SliceVariable `In` ctx)
+  StrategyFor tags (UserSliceVariable `In` ctx) =
+    StrategyFor tags (SliceVariable `In` ctx)
+  StrategyFor tags (NetworkIOElementVariable `In` ctx) =
+    StrategyFor tags (SliceVariable `In` ctx)
+  StrategyFor tags (TensorVariable `In` ctx) =
+    StrategyFor tags (SliceVariable `In` ctx)
+  StrategyFor tags (UserTensorVariable `In` ctx) =
+    StrategyFor tags (SliceVariable `In` ctx)
+  StrategyFor tags (NetworkInputTensorVariable `In` ctx) =
+    StrategyFor tags (SliceVariable `In` ctx)
+  StrategyFor tags (NetworkOutputTensorVariable `In` ctx) =
+    StrategyFor tags (SliceVariable `In` ctx)
   --------------------
   -- Simplification --
   --------------------
   StrategyFor ('Cleaned tags) a = 'Clean (StrategyFor tags a)
   StrategyFor ('ShortVectors tags) a = 'ShortenVectors (StrategyFor tags a)
-  -- StrategyFor tags (Contextualised object (ConstraintContext builtin)) = 'SetupContext (StrategyFor tags (object `In` NamedBoundCtx))
   ----------------
   -- Error case --
   ----------------
   -- Otherwise if we cannot compute an error then throw an informative error
   -- at type-checking time.
+
+  StrategyFor tags (LowerBound expr `In` ctx) =
+    TypeError (BoundsErrorFunction tags (LowerBound expr))
+  StrategyFor tags (UpperBound expr `In` ctx) =
+    TypeError (BoundsErrorFunction tags (UpperBound expr))
+  StrategyFor tags (SliceBounds expr `In` ctx) =
+    TypeError (BoundsErrorFunction tags (SliceBounds expr))
+  StrategyFor tags (Domain expr `In` ctx) =
+    TypeError (BoundsErrorFunction tags (SliceBounds expr))
+  StrategyFor tags (TensorBounds expr `In` ctx) =
+    TypeError (BoundsErrorFunction tags (SliceBounds expr))
   StrategyFor tags a =
     TypeError
       ( 'Text "Cannot print value of type \""
@@ -267,6 +332,16 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
           ':<>: 'Text "\"."
           ':$$: 'Text "Perhaps you could add support to Vehicle.Compile.Print.StrategyFor?"
       )
+
+type family BoundsErrorFunction tags (a :: k) :: ErrorMessage where
+  BoundsErrorFunction tags a =
+    ( 'Text "Deliberately cannot print value of type \""
+        ':<>: 'ShowType a
+        ':<>: 'Text "\" with tags \""
+        ':<>: 'ShowType tags
+        ':<>: 'Text "\"."
+    )
+      ':$$: 'Text "Use the `BoundedValue` type to wrap the bounds objects."
 
 --------------------------------------------------------------------------------
 -- Executing printing strategies
@@ -282,7 +357,7 @@ type ExternalTags = 'Named ('ShortVectors ('As 'External))
 
 type FriendlyTags = 'Named ('Cleaned ('As 'External))
 
-type PrettyVerbose a = PrettyWith VerboseTags a
+type PrettyVerbose a = PrettyWith VerboseTags (a `In` NoCtx)
 
 type PrettyExternal a = PrettyWith ExternalTags a
 
@@ -297,25 +372,52 @@ prettyWith = prettyUsing @(StrategyFor tags a) @a @b
 --------------------------------------------------------------------------------
 -- SetupContext
 
-instance (PrettyUsing rest (object `In` ctx)) => PrettyUsing ('SetupContext rest) (Contextualised object ctx) where
+instance
+  (PrettyUsing rest (object `In` ctx)) =>
+  PrettyUsing ('SetupContext rest) (Contextualised object ctx)
+  where
   prettyUsing (WithContext e ctx) = prettyUsing @rest (e, ctx)
 
-instance (PrettyUsing rest (object `In` ctx)) => PrettyUsing ('SetupContext rest) (Contextualised object ctx `In` NoCtx) where
+instance
+  (PrettyUsing rest (object `In` ctx)) =>
+  PrettyUsing ('SetupContext rest) (Contextualised object ctx `In` NoCtx)
+  where
   prettyUsing (WithContext e ctx, _) = prettyUsing @rest (e, ctx)
 
-instance (PrettyUsing rest (GenericProg expr `In` NamedBoundCtx)) => PrettyUsing ('SetupContext rest) (GenericProg expr) where
-  prettyUsing prog = prettyUsing @rest (prog, emptyNamedCtx)
+instance
+  (PrettyUsing rest (GenericModule expr)) =>
+  PrettyUsing ('SetupContext rest) (GenericProg expr)
+  where
+  prettyUsing (Main decls) = prettyUsing @rest (Module mempty decls)
 
-instance (PrettyUsing rest (GenericDecl expr `In` NamedBoundCtx)) => PrettyUsing ('SetupContext rest) (GenericDecl expr) where
-  prettyUsing decl = prettyUsing @rest (decl, emptyNamedCtx)
+instance
+  (PrettyUsing rest (Module expr `In` NoCtx)) =>
+  PrettyUsing ('SetupContext rest) (Module expr)
+  where
+  prettyUsing decl = prettyUsing @rest (decl, ())
 
-instance (PrettyUsing rest S.Expr) => PrettyUsing ('SetupContext rest) (S.Expr `In` NoCtx) where
+instance
+  (PrettyUsing rest (Decl expr `In` NoCtx)) =>
+  PrettyUsing ('SetupContext rest) (Decl expr)
+  where
+  prettyUsing decl = prettyUsing @rest (decl, ())
+
+instance
+  (PrettyUsing rest (D.Expr Builtin)) =>
+  PrettyUsing ('SetupContext rest) (D.Expr Builtin `In` NoCtx)
+  where
   prettyUsing (e, ()) = prettyUsing @rest e
 
-instance (PrettyUsing rest S.Arg) => PrettyUsing ('SetupContext rest) (S.Arg `In` NoCtx) where
+instance
+  (PrettyUsing rest (D.Arg Builtin)) =>
+  PrettyUsing ('SetupContext rest) (D.Arg Builtin `In` NoCtx)
+  where
   prettyUsing (e, ()) = prettyUsing @rest e
 
-instance (PrettyUsing rest S.Binder) => PrettyUsing ('SetupContext rest) (S.Binder `In` NoCtx) where
+instance
+  (PrettyUsing rest (D.Binder Builtin)) =>
+  PrettyUsing ('SetupContext rest) (D.Binder Builtin `In` NoCtx)
+  where
   prettyUsing (e, ()) = prettyUsing @rest e
 
 instance
@@ -333,58 +435,58 @@ instance
 
 -- Expr
 
-instance (PrettyUsing rest S.Expr, PrintableBuiltin builtin) => PrettyUsing ('DescopeNaively rest) (Expr builtin `In` ctx) where
+instance (PrettyUsing rest (D.Expr Builtin), PrintableBuiltin builtin) => PrettyUsing ('DescopeNaively rest) (Expr builtin `In` ctx) where
   prettyUsing (e, _ctx) = prettyUsing @rest $ descopeExprNaively e
 
 instance
-  (PrettyUsing rest S.Arg, PrintableBuiltin builtin) =>
+  (PrettyUsing rest (D.Arg Builtin), PrintableBuiltin builtin) =>
   PrettyUsing ('DescopeNaively rest) (Arg builtin `In` ctx)
   where
   prettyUsing (e, _ctx) = prettyUsing @rest $ fmap descopeExprNaively e
 
 instance
-  (PrettyUsing rest S.Binder, PrintableBuiltin builtin) =>
+  (PrettyUsing rest (D.Binder Builtin), PrintableBuiltin builtin) =>
   PrettyUsing ('DescopeNaively rest) (Binder builtin `In` ctx)
   where
   prettyUsing (e, _ctx) = prettyUsing @rest $ fmap descopeExprNaively e
 
 instance
-  (PrettyUsing rest S.Decl, PrintableBuiltin builtin) =>
+  (PrettyUsing rest (D.Decl Builtin), PrintableBuiltin builtin) =>
   PrettyUsing ('DescopeNaively rest) (Decl builtin `In` ctx)
   where
   prettyUsing (e, _ctx) = prettyUsing @rest $ fmap descopeExprNaively e
 
 instance
-  (PrettyUsing rest S.Prog, PrintableBuiltin builtin) =>
-  PrettyUsing ('DescopeNaively rest) (Prog builtin `In` ctx)
+  (PrettyUsing rest (D.Module Builtin), PrintableBuiltin builtin) =>
+  PrettyUsing ('DescopeNaively rest) (Module builtin `In` ctx)
   where
   prettyUsing (e, _ctx) = prettyUsing @rest $ fmap descopeExprNaively e
 
 -- Value
 
-instance (PrettyUsing rest S.Expr, PrintableBuiltin builtin) => PrettyUsing ('DescopeNaively rest) (Value builtin `In` ctx) where
+instance (PrettyUsing rest (D.Expr Builtin), PrintableBuiltin builtin) => PrettyUsing ('DescopeNaively rest) (Value builtin `In` ctx) where
   prettyUsing (e, _ctx) = prettyUsing @rest $ descopeValueNaively @builtin e
 
 instance
-  (PrettyUsing rest S.Arg, PrintableBuiltin builtin) =>
+  (PrettyUsing rest (D.Arg Builtin), PrintableBuiltin builtin) =>
   PrettyUsing ('DescopeNaively rest) (VArg builtin `In` ctx)
   where
   prettyUsing (e, _ctx) = prettyUsing @rest $ fmap descopeValueNaively e
 
 instance
-  (PrettyUsing rest S.Binder, PrintableBuiltin builtin) =>
+  (PrettyUsing rest (D.Binder Builtin), PrintableBuiltin builtin) =>
   PrettyUsing ('DescopeNaively rest) (VBinder builtin `In` ctx)
   where
   prettyUsing (e, _ctx) = prettyUsing @rest $ fmap descopeValueNaively e
 
 instance
-  (PrettyUsing rest S.Decl, PrintableBuiltin builtin) =>
+  (PrettyUsing rest (D.Decl Builtin), PrintableBuiltin builtin) =>
   PrettyUsing ('DescopeNaively rest) (VDecl builtin `In` ctx)
   where
   prettyUsing (e, _ctx) = prettyUsing @rest $ fmap descopeValueNaively e
 
 instance
-  ( PrettyUsing rest S.Prog,
+  ( PrettyUsing rest (D.Module Builtin),
     PrintableBuiltin builtin,
     Debug ('DescopeNaively rest) "Resolve LinearExpr"
   ) =>
@@ -392,35 +494,39 @@ instance
   where
   prettyUsing (e, _ctx) = prettyUsing @rest $ fmap descopeValueNaively e
 
+--------------------------------------------------------------------------------
+-- Value
+
 instance
   ( PrettyUsing rest (Value builtin `In` ctx),
     PrintableBuiltin builtin
   ) =>
   PrettyUsing rest (BoundEnv builtin `In` ctx)
   where
-  prettyUsing (env, ctx) = prettyEnv @rest ctx env
+  prettyUsing (BoundEnv env, ctx) = prettyFlatList $ go env
+    where
+      go :: GenericBoundCtx (GenericBinder (), Value builtin) -> [Doc a]
+      go = \case
+        [] -> []
+        (binder, value) : rs -> do
+          let valueDoc = goEntry value
+          (pretty (nameOf binder) <+> "=" <+> valueDoc) : go rs
 
-prettyEnv :: forall rest builtin ctx a. (PrettyUsing rest (Value builtin `In` ctx)) => ctx -> BoundEnv builtin -> Doc a
-prettyEnv ctx (BoundEnv env) = prettyFlatList $ go env
+      goEntry :: Value builtin -> Doc a
+      goEntry v = prettyUsing @rest (v, ctx)
+
+instance
+  ( PrettyUsing rest (Value builtin `In` ctx),
+    PrintableBuiltin builtin
+  ) =>
+  PrettyUsing rest (DimensionedTensorValue builtin `In` ctx)
   where
-    go :: GenericBoundCtx (GenericBinder (), EnvEntry builtin) -> [Doc a]
-    go = \case
-      [] -> []
-      (binder, value) : rs -> do
-        let valueDoc = goEntry value
-        (pretty (nameOf binder) <+> "=" <+> valueDoc) : go rs
-
-    goEntry :: EnvEntry builtin -> Doc a
-    goEntry = \case
-      Bound v -> "bound" <+> prettyUsing @rest (v, ctx)
-      Unbound lv -> "unbound" <+> pretty lv
+  prettyUsing (TensorValue _dims value, ctx) = prettyUsing @rest (value, ctx)
 
 -- Linear expression
 
 instance
-  ( VariableLike variable,
-    ConstantLike constant,
-    PrettyUsing restVariable (variable `In` ctx),
+  ( PrettyUsing restVariable (variable `In` ctx),
     PrettyUsing restConstant (constant `In` ctx)
   ) =>
   PrettyUsing ('Branch restVariable restConstant) (LinearExpr variable constant `In` ctx)
@@ -433,48 +539,81 @@ instance
 --------------------------------------------------------------------------------
 -- Query variables
 
-instance
-  (PrettyUsing rest (Value Builtin `In` ctx)) =>
-  PrettyUsing rest (TensorVariable `In` ctx)
-  where
-  prettyUsing (var, ctx) = prettyUsing @rest (variableValue @TensorVariable @Builtin var, ctx)
+variableValue :: (VariableLike variable) => variable -> Value Builtin
+variableValue var = VBoundVar (toLv var) []
 
 instance
   (PrettyUsing rest (Value Builtin `In` ctx)) =>
-  PrettyUsing rest (UserVariable `In` ctx)
+  PrettyUsing rest (SliceVariable `In` ctx)
   where
-  prettyUsing (var, ctx) = prettyUsing @rest (variableValue @UserVariable @Builtin var, ctx)
+  prettyUsing (var, ctx) = prettyUsing @rest (variableValue var, ctx)
+
+instance
+  (PrettyUsing rest (Value Builtin `In` ctx)) =>
+  PrettyUsing rest (NestedSliceVariable `In` ctx)
+  where
+  prettyUsing (var, ctx) = prettyUsing @rest (variableValue var, ctx)
+
+instance
+  (PrettyUsing rest (Value Builtin `In` ctx)) =>
+  PrettyUsing rest (UserSliceVariable `In` ctx)
+  where
+  prettyUsing (var, ctx) = prettyUsing @rest (variableValue var, ctx)
 
 instance
   (PrettyUsing rest (Value Builtin `In` ctx)) =>
   PrettyUsing rest (NetworkIOVariable `In` ctx)
   where
-  prettyUsing (var, ctx) = prettyUsing @rest (variableValue @NetworkIOVariable @Builtin var, ctx)
+  prettyUsing (var, ctx) = prettyUsing @rest (variableValue var, ctx)
 
 instance
   (PrettyUsing rest (Value Builtin `In` ctx)) =>
   PrettyUsing rest (NetworkIOElementVariable `In` ctx)
   where
-  prettyUsing (var, ctx) = prettyUsing @rest (variableValue @NetworkIOElementVariable @Builtin var, ctx)
+  prettyUsing (var, ctx) = prettyUsing @rest (variableValue var, ctx)
 
 instance
-  ( PrettyUsing restVar (TensorVariable `In` ctx),
-    PrettyUsing restLinExp (LinearExpr TensorVariable RatTensor `In` ctx)
+  (PrettyUsing rest (Value Builtin `In` ctx)) =>
+  PrettyUsing rest (TensorVariable `In` ctx)
+  where
+  prettyUsing (var, ctx) = prettyUsing @rest (variableValue var, ctx)
+
+instance
+  (PrettyUsing rest (Value Builtin `In` ctx)) =>
+  PrettyUsing rest (UserTensorVariable `In` ctx)
+  where
+  prettyUsing (var, ctx) = prettyUsing @rest (variableValue var, ctx)
+
+instance
+  (PrettyUsing rest (Value Builtin `In` ctx)) =>
+  PrettyUsing rest (NetworkInputTensorVariable `In` ctx)
+  where
+  prettyUsing (var, ctx) = prettyUsing @rest (variableValue var, ctx)
+
+instance
+  (PrettyUsing rest (Value Builtin `In` ctx)) =>
+  PrettyUsing rest (NetworkOutputTensorVariable `In` ctx)
+  where
+  prettyUsing (var, ctx) = prettyUsing @rest (variableValue var, ctx)
+
+instance
+  ( PrettyUsing restVar (SliceVariable `In` ctx),
+    PrettyUsing restExp (LinearExpression `In` ctx),
+    PrettyUsing restBound (BoundedValue SliceVariable LinearBounds `In` ctx)
   ) =>
-  PrettyUsing ('Branch restVar restLinExp) (CompilationStep `In` ctx)
+  PrettyUsing ('Branch3 restVar restExp restBound) (CompilationStep `In` ctx)
   where
   prettyUsing (step, ctx) = case step of
-    SolveEquality var _childVars expr ->
-      prettyUsing @restVar (toTensorVar var, ctx)
+    SolveEquality var expr ->
+      prettyUsing @restVar (toSliceVar var, ctx)
         <+> "=="
-        <+> prettyUsing @restLinExp (expr, ctx)
+        <+> prettyUsing @restExp (expr, ctx)
     SolveInequalities var bounds ->
-      prettyUsing @restVar (toTensorVar var, ctx)
-        <+> prettyUsing @restLinExp (bounds, ctx)
-    ReconstructTensorVariable var childVars ->
-      prettyUsing @restVar (var, ctx)
+      prettyUsing @restBound (BoundedValue var bounds, ctx)
+    ReconstructTensorVariable var d ->
+      prettyUsing @restVar (toSliceVar var, ctx)
         <+> "->"
-        <+> prettyUsing @('Functor restVar) (childVars, ctx)
+        <+> pretty d
 
 instance
   ( PrettyUsing restVar (variable `In` ctx)
@@ -496,34 +635,34 @@ instance
 -- Expr
 
 instance
-  (PrettyUsing rest S.Expr, PrintableBuiltin builtin) =>
+  (PrettyUsing rest (D.Expr Builtin), PrintableBuiltin builtin) =>
   PrettyUsing ('DescopeWithNames rest) (Expr builtin `In` NamedBoundCtx)
   where
-  prettyUsing (e, ctx) = prettyUsing @rest $ descopeExpr e ctx
+  prettyUsing (e, ctx) = prettyUsing @rest $ descopeExpr ctx e
 
 instance
-  (PrettyUsing rest S.Arg, PrintableBuiltin builtin) =>
+  (PrettyUsing rest (D.Arg Builtin), PrintableBuiltin builtin) =>
   PrettyUsing ('DescopeWithNames rest) (Arg builtin `In` NamedBoundCtx)
   where
-  prettyUsing (e, ctx) = prettyUsing @rest $ fmap (`descopeExpr` ctx) e
+  prettyUsing (e, ctx) = prettyUsing @rest $ fmap (descopeExpr ctx) e
 
 instance
-  (PrettyUsing rest S.Binder, PrintableBuiltin builtin) =>
+  (PrettyUsing rest (D.Binder Builtin), PrintableBuiltin builtin) =>
   PrettyUsing ('DescopeWithNames rest) (Binder builtin `In` NamedBoundCtx)
   where
-  prettyUsing (e, ctx) = prettyUsing @rest $ fmap (`descopeExpr` ctx) e
+  prettyUsing (e, ctx) = prettyUsing @rest $ fmap (descopeExpr ctx) e
 
 instance
-  (PrettyUsing rest S.Decl, PrintableBuiltin builtin) =>
-  PrettyUsing ('DescopeWithNames rest) (Decl builtin `In` NamedBoundCtx)
+  (PrettyUsing rest (D.Decl Builtin), PrintableBuiltin builtin) =>
+  PrettyUsing ('DescopeWithNames rest) (Decl builtin `In` NoCtx)
   where
-  prettyUsing (e, ctx) = prettyUsing @rest $ fmap (`descopeExpr` ctx) e
+  prettyUsing (e, ()) = prettyUsing @rest $ descopeDecl e
 
 instance
-  (PrettyUsing rest S.Prog, PrintableBuiltin builtin) =>
-  PrettyUsing ('DescopeWithNames rest) (Prog builtin `In` NamedBoundCtx)
+  (PrettyUsing rest (D.Module Builtin), PrintableBuiltin builtin) =>
+  PrettyUsing ('DescopeWithNames rest) (Module builtin `In` NoCtx)
   where
-  prettyUsing (e, ctx) = prettyUsing @rest $ fmap (`descopeExpr` ctx) e
+  prettyUsing (e, ()) = prettyUsing @rest $ mapModuleDecls descopeDecl e
 
 -- Value
 
@@ -547,40 +686,40 @@ instance
 
 -- Internal
 
-instance PrettyUsing ('PrintAs 'Internal) S.Prog where
-  prettyUsing (Main decls) =
+instance PrettyUsing ('PrintAs 'Internal) (D.Module Builtin) where
+  prettyUsing (Module _ decls) =
     -- BNFC doesn't add empty lines so add them manually here.
     vsep2 $ fmap (prettyUsing @('PrintAs 'Internal)) decls
 
-instance PrettyUsing ('PrintAs 'Internal) S.Decl where
+instance PrettyUsing ('PrintAs 'Internal) (D.Decl Builtin) where
   prettyUsing = printInternal
 
-instance PrettyUsing ('PrintAs 'Internal) S.Expr where
+instance PrettyUsing ('PrintAs 'Internal) (D.Expr Builtin) where
   prettyUsing = printInternal
 
-instance PrettyUsing ('PrintAs 'Internal) S.Arg where
+instance PrettyUsing ('PrintAs 'Internal) (D.Arg Builtin) where
   prettyUsing = printInternal
 
-instance PrettyUsing ('PrintAs 'Internal) S.Binder where
+instance PrettyUsing ('PrintAs 'Internal) (D.Binder Builtin) where
   prettyUsing = printInternal
 
 -- External
 
-instance PrettyUsing ('PrintAs 'External) S.Prog where
-  prettyUsing (Main decls) =
+instance PrettyUsing ('PrintAs 'External) (D.Module Builtin) where
+  prettyUsing (Module _imports decls) =
     -- BNFC doesn't add empty lines so add them manually here.
     vsep2 $ fmap (prettyUsing @('PrintAs 'External)) decls
 
-instance PrettyUsing ('PrintAs 'External) S.Decl where
+instance PrettyUsing ('PrintAs 'External) (D.Decl Builtin) where
   prettyUsing = printExternal
 
-instance PrettyUsing ('PrintAs 'External) S.Expr where
+instance PrettyUsing ('PrintAs 'External) (D.Expr Builtin) where
   prettyUsing = printExternal
 
-instance PrettyUsing ('PrintAs 'External) S.Arg where
+instance PrettyUsing ('PrintAs 'External) (D.Arg Builtin) where
   prettyUsing = printExternal
 
-instance PrettyUsing ('PrintAs 'External) S.Binder where
+instance PrettyUsing ('PrintAs 'External) (D.Binder Builtin) where
   prettyUsing = printExternal
 
 --------------------------------------------------------------------------------
@@ -692,7 +831,7 @@ instance
   ) =>
   PrettyUsing rest (InstanceConstraint builtin `In` ConstraintContext builtin)
   where
-  prettyUsing (Resolve _ solution _ goal, ctx) = do
+  prettyUsing (Resolve _ solution _ _ goal, ctx) = do
     let nameCtx = namedBoundCtxOf ctx
     let solution' = pretty solution
     let expr' = prettyUsing @rest (goalExpr goal, nameCtx)
@@ -724,6 +863,13 @@ instance
     ApplicationConstraint tc -> prettyUsing @rest (tc, ctx)
 
 instance
+  ( PrettyUsing rest (Expr builtin `In` NamedBoundCtx)
+  ) =>
+  PrettyUsing rest (InstanceCandidate builtin `In` BoundCtx (Type builtin))
+  where
+  prettyUsing (candidate, ctx) = prettyUsing @rest (candidateExpr candidate, toNamedBoundCtx ctx)
+
+instance
   ( PrettyUsing rest (Type builtin `In` NamedBoundCtx)
   ) =>
   PrettyUsing rest (MetaInfo builtin `In` NoCtx)
@@ -745,21 +891,98 @@ instance
 -- Assertions
 
 instance
-  (ConstantLike constant, Pretty rel, PrettyUsing rest (LinearExpr variable constant `In` ctx)) =>
-  PrettyUsing rest (NormalisedRelation rel variable constant `In` ctx)
+  (Pretty rel, PrettyUsing rest (expr `In` ctx)) =>
+  PrettyUsing rest (NormalisedRelation rel expr `In` ctx)
   where
-  prettyUsing (e, ctx) = prettyUsing @rest (linearExpr e, ctx) <+> pretty (relation e) <+> "0"
+  prettyUsing (e, ctx) = prettyUsing @rest (expression e, ctx) <+> pretty (relation e) <+> "0"
+
+--------------------------------------------------------------------------------
+-- Bounds
 
 instance
-  (ConstantLike constant, PrettyUsing rest (Inequality variable constant `In` ctx)) =>
-  PrettyUsing rest (Bounds variable constant `In` ctx)
+  ( PrettyUsing rest1 (value `In` ctx),
+    PrettyUsing rest2 (expr `In` ctx)
+  ) =>
+  PrettyUsing ('Branch rest1 rest2) (BoundedValue value (LowerBound expr) `In` ctx)
   where
-  prettyUsing (Bounds {..}, ctx) =
-    "below by max"
-      <+> vsep (fmap (prettyUsing @rest . (,ctx)) lowerBounds)
-      <+> "and"
-      <+> "above by min"
-      <+> vsep (fmap (prettyUsing @rest . (,ctx)) upperBounds)
+  prettyUsing (BoundedValue value (LowerBound rel bound), ctx) =
+    prettyUsing @rest1 (value, ctx) <+> prettyFlip rel <+> prettyUsing @rest2 (bound, ctx)
+
+instance
+  ( PrettyUsing rest1 (value `In` ctx),
+    PrettyUsing rest2 (expr `In` ctx)
+  ) =>
+  PrettyUsing ('Branch rest1 rest2) (BoundedValue value (UpperBound expr) `In` ctx)
+  where
+  prettyUsing (BoundedValue value (UpperBound rel bound), ctx) =
+    prettyUsing @rest1 (value, ctx) <+> pretty rel <+> prettyUsing @rest2 (bound, ctx)
+
+instance
+  ( PrettyUsing rest1 (BoundedValue value (LowerBound expr) `In` ctx),
+    PrettyUsing rest2 (BoundedValue value (UpperBound expr) `In` ctx)
+  ) =>
+  PrettyUsing ('Branch rest1 rest2) (BoundedValue value (SliceBounds expr) `In` ctx)
+  where
+  prettyUsing (BoundedValue value SliceBounds {..}, ctx) =
+    "lower bounds:"
+      <> boundsDoc (prettyUsing @rest1) lowerBounds
+      <> line
+      <> "upper bounds:"
+      <> boundsDoc (prettyUsing @rest2) upperBounds
+    where
+      boundsDoc :: (BoundedValue value bound `In` ctx -> Doc a) -> [bound] -> Doc a
+      boundsDoc prettyBound bounds = lineIndent $ case bounds of
+        [] -> "none"
+        _ -> vsep (fmap (\b -> prettyBound (BoundedValue value b, ctx)) bounds)
+
+prettyNestedSliceBounds ::
+  forall bound expr a.
+  (SliceBounds expr -> [bound expr]) ->
+  (bound expr -> Doc a) ->
+  NestedSliceBounds expr ->
+  [Doc a]
+prettyNestedSliceBounds toBounds prettyBound = go
+  where
+    go :: NestedSliceBounds expr -> [Doc a]
+    go (NestedSliceBounds sliceBounds maybeChildBounds) = do
+      let boundDoc = prettyBound <$> toBounds sliceBounds
+      let childBoundDocs = maybe [] (fmap go) maybeChildBounds
+      boundDoc <> concat childBoundDocs
+
+instance
+  ( PrettyUsing rest1 (BoundedValue value (LowerBound expr) `In` ctx),
+    PrettyUsing rest2 (BoundedValue value (UpperBound expr) `In` ctx)
+  ) =>
+  PrettyUsing ('Branch rest1 rest2) (BoundedValue value (TensorBounds expr) `In` ctx)
+  where
+  prettyUsing (BoundedValue value TensorBounds {..}, ctx) = do
+    let printLowerBound bound = prettyUsing @rest1 (BoundedValue value bound, ctx)
+    let printUpperBound bound = prettyUsing @rest2 (BoundedValue value bound, ctx)
+    let lowerDocs = prettyNestedSliceBounds lowerBounds printLowerBound tensorSliceBounds
+    let upperDocs = prettyNestedSliceBounds upperBounds printUpperBound tensorSliceBounds
+    case (lowerDocs, upperDocs) of
+      ([], []) -> "unbounded"
+      (l : ls, []) -> prettyDocs True (l :| ls)
+      ([], u : us) -> prettyDocs False (u :| us)
+      (l : ls, u : us) -> prettyDocs True (l :| ls) <> line <> prettyDocs False (u :| us)
+    where
+      prettyDocs :: Bool -> NonEmpty (Doc b) -> Doc b
+      prettyDocs isLowerBound (b :| bs) =
+        (if isLowerBound then "lower" else "upper") <> ":" <> case bs of
+          [] -> " " <> b
+          _ -> indent 2 (vsep (b :| bs))
+
+instance
+  ( PrettyUsing rest1 (value `In` ctx),
+    PrettyUsing rest2 (expr `In` ctx)
+  ) =>
+  PrettyUsing ('Branch rest1 rest2) (BoundedValue value (Domain expr) `In` ctx)
+  where
+  prettyUsing (BoundedValue value (Domain LowerBound {..} UpperBound {..}), ctx) = do
+    let valueDoc = prettyUsing @rest1 (value, ctx)
+    let lowerDoc = prettyUsing @rest2 (lowerBoundValue, ctx)
+    let upperDoc = prettyUsing @rest2 (upperBoundValue, ctx)
+    lowerDoc <+> pretty lowerBoundRel <+> valueDoc <+> pretty upperBoundRel <+> upperDoc
 
 --------------------------------------------------------------------------------
 -- Instances for functors types
@@ -834,3 +1057,78 @@ instance
     let prettyKey v = prettyUsing @restKey (v, ctx)
     let prettyValue v = prettyUsing @restValue (v, ctx)
     prettyMapEntries $ fmap (bimap prettyKey prettyValue) (Map.toList x)
+
+instance
+  ( PrettyUsing restKey (a `In` ctx),
+    PrettyUsing restValue (b `In` ctx)
+  ) =>
+  PrettyUsing ('Branch restKey restValue) ((a, b) `In` ctx)
+  where
+  prettyUsing ((x, y), ctx) = do
+    let x' = prettyUsing @restKey (x, ctx)
+    let y' = prettyUsing @restValue (y, ctx)
+    parens (x' <> "," <> y')
+
+--------------------------------------------------------------------------------
+-- Conversion to BNFC representation
+
+class Printable a where
+  printInternal' :: a -> String
+  printExternal' :: a -> String
+
+  -- | Prints to a Lisp-like language for debugging
+  printInternal :: a -> Doc b
+  printInternal = pretty . bnfcPrintHack . printInternal'
+
+  -- | Prints to the user surface syntax.
+  printExternal :: a -> Doc b
+  printExternal = pretty . bnfcPrintHack . printExternal'
+
+instance Printable (D.Arg Builtin) where
+  printInternal' = Internal.printTree . Internal.delab
+  printExternal' = External.printTree . External.delab
+
+instance Printable (D.Binder Builtin) where
+  printInternal' = Internal.printTree . Internal.delab
+  printExternal' = External.printTree . External.delab
+
+instance Printable (D.Expr Builtin) where
+  printInternal' = Internal.printTree . Internal.delab
+  printExternal' = External.printTree . External.delab
+
+instance Printable (D.Decl Builtin) where
+  printInternal' = Internal.printTree . Internal.delab
+  printExternal' = External.printTree . External.delab
+
+instance Printable (D.Module Builtin) where
+  printInternal' = Internal.printTree . Internal.delab
+  printExternal' = External.printTree . External.delab
+
+-- BNFC printer treats the braces for implicit arguments as layout braces and
+-- therefore adds a ton of tree structured new-lines everywhere. This hack attempts to undo this.
+bnfcPrintHack :: String -> Text
+bnfcPrintHack = go removeTrailingSpace . removeNewLines . go leftAlignBrackets . Text.pack
+  where
+    go :: (Text -> Text) -> Text -> Text
+    go f t = do
+      let t' = f t
+      if t == t'
+        then t'
+        else go f t'
+
+    leftAlignBrackets :: Text -> Text
+    leftAlignBrackets =
+      Text.replace "  {" "{"
+        . Text.replace "  }" "}"
+
+    removeNewLines :: Text -> Text
+    removeNewLines =
+      Text.replace "\n{" " {"
+        . Text.replace "{\n" "{"
+        . Text.replace "\n}" "}"
+        . Text.replace "}\n" "} "
+
+    removeTrailingSpace :: Text -> Text
+    removeTrailingSpace =
+      Text.replace "{  " "{"
+        . Text.replace "}  " "}"

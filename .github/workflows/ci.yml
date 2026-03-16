@@ -27,14 +27,14 @@ jobs:
   test-integration-bumpver:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - run: pipx run bumpver update --patch --dry
 
   test-integration-citation-cff:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: dieghernan/cff-validator@v3
+      - uses: actions/checkout@v6
+      - uses: dieghernan/cff-validator@v4
 
   # NOTE: This job is disabled because Marabou reliably runs out of memory.
   #
@@ -44,7 +44,7 @@ jobs:
   test-integration-ormolu:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: mrkkrp/ormolu-action@v15
         with:
           version: "0.7.1.0"
@@ -69,7 +69,7 @@ jobs:
 
     steps:
       - name: Download wheelhouse
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: wheelhouse-*-*
           path: wheelhouse
@@ -105,7 +105,7 @@ jobs:
 
     steps:
       - name: Download wheelhouse
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: wheelhouse-*-*
           path: wheelhouse

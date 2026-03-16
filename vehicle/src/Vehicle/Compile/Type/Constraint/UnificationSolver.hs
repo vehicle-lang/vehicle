@@ -20,7 +20,6 @@ import Data.Map.Ordered.Strict qualified as OMap
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Proxy (Proxy (..))
 import Prettyprinter (sep)
-import Vehicle.Compile.Context.Free (getFreeEnv)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Normalise.Quote (Quote (..), unnormalise)
@@ -34,7 +33,9 @@ import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin (..))
 import Vehicle.Data.Code.Value
-import Vehicle.Data.DeBruijn
+import Vehicle.Data.Variable.Bound.Context.Generic
+import Vehicle.Data.Variable.Bound.Level
+import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..))
 
 --------------------------------------------------------------------------------
 -- Unification solver
@@ -43,7 +44,7 @@ import Vehicle.Data.DeBruijn
 -- for an excellent tutorial on the algorithm.
 
 -- | Attempts to solve as many unification constraints as possible.
-runUnificationSolver :: (MonadTypeChecker builtin m) => Proxy builtin -> Bool -> m ()
+runUnificationSolver :: (MonadUnify builtin m) => Proxy builtin -> Bool -> m ()
 runUnificationSolver proxy topLevel =
   logCompilerSection2 MaxDetail "unification solver run" $
     runConstraintSolver
@@ -56,7 +57,10 @@ runUnificationSolver proxy topLevel =
 --------------------------------------------------------------------------------
 -- Unification algorithm
 
-type MonadUnify builtin m = MonadTypeChecker builtin m
+type MonadUnify builtin m =
+  ( MonadTypeChecker builtin m,
+    TypableBuiltin builtin
+  )
 
 type UnificationProblem builtin =
   ( BoundCtx (Type builtin),
@@ -94,8 +98,8 @@ solveUnificationConstraint (WithContext (Unify origin e1 e2) ctx) = do
     HardFailure failedProblems -> do
       finalFailedConstraints <- forM failedProblems $ \problem ->
         createNewConstraint ctx origin (problem, mempty)
-      freeEnv <- getFreeEnv
-      throwError $ TypingError $ FailedUnificationConstraints $ FailedUnificationConstraintsError freeEnv finalFailedConstraints
+      freeCtx <- getFreeCtx (Proxy @builtin)
+      throwError $ TypingError $ FailedUnificationConstraints $ FailedUnificationConstraintsError freeCtx finalFailedConstraints
 
 createNewConstraint ::
   (MonadUnify builtin m) =>
@@ -144,7 +148,7 @@ instance Monoid (UnificationResult builtin) where
 
 -- | Create a new unification constraint, copying the context as appropriate.
 subUnify ::
-  (MonadTypeChecker builtin m) =>
+  (MonadUnify builtin m) =>
   ConstraintInfo builtin ->
   Value builtin ->
   Value builtin ->
@@ -189,8 +193,11 @@ unification info = \case
     solveClosure info (binder1, closure1) (binder2, closure2)
   VRecord ident1 fields1 :~: VRecord ident2 fields2
     | ident1 == ident2 -> solveRecords info fields1 fields2
-  VRecordAcc record1 field1 :~: VRecordAcc record2 field2
-    | field1 == field2 -> subUnify info record1 record2
+  VRecordAcc _recordType1 record1 field1 spine1 :~: VRecordAcc _recordType2 record2 field2 spine2
+    | field1 == field2 -> do
+        recordResult <- subUnify info record1 record2
+        spineResult <- solveSpine info spine1 spine2
+        return $ recordResult <> spineResult
   ---------------------
   -- Flex-flex cases --
   ---------------------
@@ -261,8 +268,8 @@ solveClosure info (binder1, Closure env1 body1) (binder2, Closure env2 body2) = 
 
   -- Evaluate the normalised bodies of the lambdas
   let lv = boundCtxLv $ infoBoundCtx info
-  nbody1 <- normaliseInEnv (toNamedBoundCtx $ infoBoundCtx info) (extendEnvWithBound lv binder1 env1) body1
-  nbody2 <- normaliseInEnv (toNamedBoundCtx $ infoBoundCtx info) (extendEnvWithBound lv binder2 env2) body2
+  nbody1 <- eval (toNamedBoundCtx $ infoBoundCtx info) (extendEnvWithBound lv binder1 env1) body1
+  nbody2 <- eval (toNamedBoundCtx $ infoBoundCtx info) (extendEnvWithBound lv binder2 env2) body2
 
   -- Update the context.
   let updatedInfo = updateInfoUnderBinder info (binder1, binder2)
@@ -380,7 +387,8 @@ pruneMetaDependencies ctx (solvingMetaID, solvingMetaSpine) attemptedSolution = 
       VBoundVar v spine -> VBoundVar v <$> traverse (traverse go) spine
       VFreeVar v spine -> VFreeVar v <$> traverse (traverse go) spine
       VRecord ident fields -> VRecord ident <$> traverse go fields
-      VRecordAcc record field -> VRecordAcc <$> go record <*> pure field
+      VRecordAcc recordType record field spine ->
+        VRecordAcc <$> go recordType <*> go record <*> pure field <*> traverse (traverse go) spine
       -- Definitely going to have come back and fix this one later.
       -- Can't inspect the metas in the environment, as not every variable
       -- in the environment will be used?
@@ -394,7 +402,7 @@ pruneMetaDependencies ctx (solvingMetaID, solvingMetaSpine) attemptedSolution = 
       metaCtx <- getMetaCtx (Proxy @builtin) meta
       let (deps, remainingArgs) = splitAt (length metaCtx) spine
       let getLv arg = case arg of
-            ExplicitArg _ _ (VBoundVar i []) -> i
+            ExplicitArg _ (VBoundVar i []) -> i
             _ -> developerError $ "Meta variable" <+> pretty meta <+> "has none index arg"
       return (fmap getLv deps, remainingArgs)
 
@@ -425,7 +433,7 @@ createMetaWithRestrictedDependencies ctx meta newDependencies spine = do
     let substMetaExpr = substDBAll 0 (\v -> unIx v `IntMap.lookup` substitution) newMetaExpr
     solveMeta meta substMetaExpr ctx
 
-    normMetaExpr <- normaliseInEnv (toNamedBoundCtx ctx) (boundContextToEnv restrictedContext) newMetaExpr
+    normMetaExpr <- eval (toNamedBoundCtx ctx) (boundContextToEnv restrictedContext) newMetaExpr
     normaliseApp (toNamedBoundCtx ctx) normMetaExpr spine
 
 updateInfoUnderBinder ::
@@ -464,7 +472,7 @@ invert ctxSize (metaID, spine) = do
     go :: Int -> IntMap Ix -> Spine builtin -> Maybe Renaming
     go i revMap = \case
       [] -> Just revMap
-      (ExplicitArg _ _ (VBoundVar j []) : restArgs) -> do
+      (ExplicitArg _ (VBoundVar j []) : restArgs) -> do
         -- TODO: we could eta-reduce arguments too, if possible
         let jIndex = dbLevelToIndex ctxSize j
         if IntMap.member (unIx jIndex) revMap

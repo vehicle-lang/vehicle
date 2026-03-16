@@ -1,0 +1,11 @@
+[
+  {
+    "name": "Marabou",
+    "run": "vehicle compile queries -s spec.vcl -f MarabouQueries -o Marabou.queries/",
+    "needs": ["spec.vcl"],
+    "produces": ["Marabou.queries/p.vcl-plan"],
+    "ignore": {
+      "lines": ".*\"fileHash\".*"
+    }
+  }
+]

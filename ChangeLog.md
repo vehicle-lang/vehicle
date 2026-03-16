@@ -1,8 +1,120 @@
 # Changelog for Vehicle
 
-## Next release
+## v0.25
 
-### Rocq Interface
+### General
+
+* Removed support for GHC 8.10 and 9.0 and added support for GHC 9.10 and 9.12.
+
+### Loss backend
+
+* Fixed a bug where the compiler would loop infinitely on certain specifications.
+
+* Fixed a bug where the compiler where if a propery involved multiple quantifiers, the compiler woudl sometimes report that one of them was unbounded.
+
+* Fixed a bug where bounds on sub-indices of a tensor weren't being detected properly.
+
+## v0.24
+
+### Loss backend
+
+* Transformed case where quantifier body consists of only bounds on the quantified variable from an error to a warning.
+
+### ITP backends
+
+* Added Isabelle and Imandra ITP backends.
+
+* All backends: Tensor stack operations are now evaluated to tensor literals where possible.
+
+* Rocq backend: Updated to work with the most recent version of mathcomp (2.5.0).
+
+* Rocq backend: Fixed issues with operator precedence in generated code.
+
+* Rocq backend: Added support for using Rocq's constructive reals instead of MathComp interfaces. This can be invoked using the `-r` or `--constructive-reals` command-line arguments when using `compile itp` or `export` with the arugment `-t Rocq`.
+
+## v0.23
+
+### Command-line interface
+
+* The `vehicle compile` command has been split into three separate modes:
+  - `vehicle compile loss`
+  - `vehicle compile queries`
+  - `vehicle compile itp`
+  The three new modes have the same options as before with the sole exception that the
+  `vehicle compile queries` mode has a `--format` option to replace the old `--target option`.
+  This command is only used internally and therefore this is not considered a breaking change.
+
+* The `vehicle check` command has been renamed `vehicle typecheck`.
+
+### Verifier backend
+
+* Missing bounds on network inputs is now a hard error rather than a warning.
+  This shouldn't break anything as Marabou throws an error if there are missing bounds.
+
+* Improved error messages when missing bounds on network inputs.
+
+* Improved layout of the generated Marabou and VNNLIB query files so input bounds are all located in one place.
+
+* Decreased the size of the generated Marabou and VNNLIB query files (usually by ~50%) by eliminating some redundant inequalities.
+
+* Fixed bug where unable to compile trivial inequalities (e.g. `3 < 4`, `x < x`)
+
+### Loss backend
+
+* Renabled support for compilation of some specificatons to loss functions. Support will continue to grow in future releases.
+
+* Added a PyTorch backend.
+
+### Python bindings
+
+* Dropped Python 3.9 support now that it has reached end-of-life upstream.
+
+* The module `vehicle_lang.check` has been renamed `vehicle_lang.typecheck` and the
+  function it contains has been renamed from `check` to `typecheck`.
+
+## v0.22
+
+### Verifier backend
+
+* Improved error messages when trying to verify very dependently-typed properties.
+
+### Python backend
+
+* Fixes the `--json` flag parsing error when using the `verify` command.
+
+### Command-line interface
+
+* The `vehicle-check` command no longer errors when you request a typing subsystem.
+
+* The `vehicle check` command now accepts the `--declaration` argument to only type-check certain declarations.
+
+* The `vehicle list` command now accepts `network`, `dataset` and `parameter` arguments, similar to `vehicle compile` and `vehicle verify`.
+They are not compulsory to pass in, but a more accurate description of the set of properties will be returned if they are.
+
+### Other
+
+* Fixed bug introduced in v0.21 where obsolete `.vclo` object files were incorrectly read in causing unexpected behaviour.
+
+## Version 0.21.0
+
+### Command-line interface
+
+* (BREAKING) The subcommands `properties` and `resources` for `vehicle list` have been removed. The `vehicle list` command now outputs all resources as well as quantified variables as JSON.
+
+### Python backend
+
+* (BREAKING) Removed `vehicle_lang.list_resources` and `vehicle_lang.list_properties`, in favour of the `vehicle_lang.list` function.
+
+* The `verify` command now produces output as JSON.
+
+## Version 0.20.0
+
+### Verifier backend
+
+* Reduced compilation time from O(n^2) to O(1) where n is the size of the input tensor in certain
+  cases where different sub-tensors are normalised in different ways (e.g. multi-channel images).
+
+### Rocq backend
 
 * Changes to syntax of compiled Rocq scripts to match standard formatting
 
@@ -13,6 +125,14 @@
 ### Command-line interface
 
 * Fixed the `list resources` such that inferable parameters are not listed.
+
+* Fixed parsing of the `--typeSystem` option to the `check` command.
+
+### Python interface
+
+* Renamed `vehicle_lang.compile_to_query` to `vehicle_lang.compile` and made the `output_file` argument non-optional.
+
+* Added new function `vehicle_lang.compile_to_queries`.
 
 ## Version 0.19.0
 

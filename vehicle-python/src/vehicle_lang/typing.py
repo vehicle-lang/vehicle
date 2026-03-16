@@ -1,11 +1,6 @@
 from enum import Enum
-from typing import Any, Callable, Dict, Iterator
 
-from typing_extensions import Protocol, TypeAlias, TypeVar
-
-_T = TypeVar("_T")
-_R = TypeVar("_R")
-
+from typing_extensions import Protocol, TypeAlias
 
 DeclarationName: TypeAlias = str
 """
@@ -15,29 +10,6 @@ A name of a top-level declaration in a Vehicle specification file.
 QuantifiedVariableName: TypeAlias = str
 """
 A name of a quantified variable in a Vehicle specification file.
-"""
-
-Optimiser: TypeAlias = Callable[
-    [
-        bool,
-        Dict[QuantifiedVariableName, _T],
-        Callable[[_R, _R], _R],
-        Callable[[_T], _R],
-    ],
-    _R,
-]
-"""
-TODO: add description
-"""
-
-AnyOptimiser: TypeAlias = Optimiser[Any, Any]
-"""
-An optimiser that promises to work for any type.
-"""
-
-AnyOptimisers: TypeAlias = Dict[str, AnyOptimiser]
-"""
-A mapping from quantified variable names to optimisers.
 """
 
 
@@ -71,20 +43,37 @@ class DifferentiableLogic(Enum):
 
     Vehicle = 1
     DL2 = 2
-    Godel = 3
-    Lukasiewicz = 4
-    Product = 5
-    Yager = 6
+    # Godel = 3
+    # Lukasiewicz = 4
+    # Product = 5
+    # Yager = 6
 
     @property
     def _vehicle_option_name(self) -> str:
         return {
             DifferentiableLogic.Vehicle: "VehicleLoss",
             DifferentiableLogic.DL2: "DL2Loss",
-            DifferentiableLogic.Godel: "GodelLoss",
-            DifferentiableLogic.Lukasiewicz: "LukasiewiczLoss",
-            DifferentiableLogic.Product: "ProductLoss",
-            DifferentiableLogic.Yager: "YagerLoss",
+            # Currently unsupported options
+            # DifferentiableLogic.Godel: "GodelLoss",
+            # DifferentiableLogic.Lukasiewicz: "LukasiewiczLoss",
+            # DifferentiableLogic.Product: "ProductLoss",
+            # DifferentiableLogic.Yager: "YagerLoss",
+        }[self]
+
+
+class LossBackend(Enum):
+    """
+    The backends supported for loss function computation.
+    """
+
+    TensorFlow = 1
+    PyTorch = 2
+
+    @property
+    def _vehicle_option_name(self) -> str:
+        return {
+            LossBackend.TensorFlow: "TensorFlow",
+            LossBackend.PyTorch: "PyTorch",
         }[self]
 
 
@@ -95,15 +84,26 @@ class QueryFormat(Enum):
 
     VNNLib = 1
     Marabou = 2
-    Agda = 3
 
     @property
     def _vehicle_option_name(self) -> str:
         return {
             QueryFormat.VNNLib: "VNNLibQueries",
             QueryFormat.Marabou: "MarabouQueries",
-            QueryFormat.Agda: "Agda",
         }[self]
+
+
+class ITP(Enum):
+    """
+    The ITPs supported by Vehicle.
+    """
+
+    Agda = 1
+    Rocq = 2
+
+    @property
+    def _vehicle_option_name(self) -> str:
+        return {ITP.Agda: "Agda", ITP.Rocq: "Rocq"}[self]
 
 
 class Verifier(Enum):
@@ -125,31 +125,14 @@ class Verifier(Enum):
         }[self]
 
 
-class TypeSystem(Enum):
-    """
-    The type system supported used to check a vehicle specification
-    """
-
-    Standard = 1
-    Polarity = 2
-    Linearity = 3
-
-    @property
-    def _vehicle_option_name(self) -> str:
-        return {
-            TypeSystem.Standard: "Standard",
-            TypeSystem.Polarity: "Polarity",
-            TypeSystem.Linearity: "Linearity",
-        }[self]
-
-
 class ExportTarget(Enum):
     """
     The target to export to. Only Agda is currently supported.
     """
 
     Agda = 1
+    Rocq = 2
 
     @property
     def _vehicle_option_name(self) -> str:
-        return {ExportTarget.Agda: "Agda"}[self]
+        return {ExportTarget.Agda: "Agda", ExportTarget.Rocq: "Rocq"}[self]

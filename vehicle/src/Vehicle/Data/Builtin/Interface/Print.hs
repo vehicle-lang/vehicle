@@ -1,8 +1,8 @@
 module Vehicle.Data.Builtin.Interface.Print where
 
 import Data.Maybe (isJust)
-import Vehicle.Data.Builtin.Core
-import Vehicle.Data.Code.Expr (Arg, Expr (..), mapBuiltins, normAppList, pattern App)
+import Vehicle.Data.AST.Expr.Scoped (Arg, Expr (..), mapBuiltins, normAppList, pattern App)
+import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Prelude
 
 --------------------------------------------------------------------------------
@@ -60,3 +60,16 @@ isCoercionExpr = \case
 -- standard `Builtin` type.
 cheatConvertBuiltin :: Provenance -> Doc a -> Expr builtin
 cheatConvertBuiltin p b = FreeVar p $ stdlibIdentifier $ layoutAsText b
+
+instance PrintableBuiltin Builtin where
+  coercionArgs b = case b of
+    BuiltinCast FromNat {} -> Just $ \args -> argExpr $ last args
+    BuiltinCast FromRat {} -> Just $ \args -> argExpr $ last args
+    TypeClassOp FromNatTC {} -> Just $ \args -> argExpr $ last args
+    TypeClassOp FromRatTC {} -> Just $ \args -> argExpr $ last args
+    TypeClassOp VecLiteralTC {} -> Just $ \args -> normAppList (Builtin mempty b) args
+    _ -> Nothing
+
+  isDerivedBuiltin b = case b of
+    DerivedFunction f -> Just $ identifierOf f
+    _ -> Nothing

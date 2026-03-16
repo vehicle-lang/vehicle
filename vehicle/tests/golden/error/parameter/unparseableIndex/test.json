@@ -1,5 +1,0 @@
-{
-  "name": "Marabou",
-  "run": "vehicle compile -s unparseableIndex.vcl -t MarabouQueries -p n:~",
-  "needs": ["unparseableIndex.vcl"]
-}

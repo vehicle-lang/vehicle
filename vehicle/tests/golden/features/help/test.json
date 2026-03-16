@@ -1,0 +1,38 @@
+[
+  {
+    "name": "vehicle",
+    "run": "vehicle --help"
+  },
+  {
+    "name": "vehicle-typecheck",
+    "run": "vehicle typecheck --help"
+  },
+  {
+    "name": "vehicle-compile",
+    "run": "vehicle compile --help"
+  },
+  {
+    "name": "vehicle-compile-loss",
+    "run": "vehicle compile loss --help"
+  },
+  {
+    "name": "vehicle-compile-queries",
+    "run": "vehicle compile queries --help"
+  },
+  {
+    "name": "vehicle-compile-itp",
+    "run": "vehicle compile itp --help"
+  },
+  {
+    "name": "vehicle-verify",
+    "run": "vehicle verify --help"
+  },
+  {
+    "name": "vehicle-export",
+    "run": "vehicle export --help"
+  },
+  {
+    "name": "vehicle-list",
+    "run": "vehicle list --help"
+  }
+]

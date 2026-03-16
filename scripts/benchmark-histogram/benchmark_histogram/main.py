@@ -15,7 +15,7 @@ import seaborn as sns
 @click.command("benchmark_histogram")
 @click.argument("sources", type=click.Path(exists=True), nargs=-1)
 @click.option("--commits", type=str, required=False)
-def main(sources: typing.List[str], commits: typing.Optional[str]):
+def main(sources: list[str], commits: typing.Optional[str]):
     # Load all benchmarks:
     benchmarks = Benchmark.load_all(*[pathlib.Path(source) for source in sources])
 
@@ -67,8 +67,8 @@ class BenchmarkResult:
     system: float
     min: float
     max: float
-    times: typing.List[float]
-    exit_codes: typing.List[int]
+    times: list[float]
+    exit_codes: list[int]
 
     def __len__(self) -> int:
         return len(self.times)
@@ -81,7 +81,7 @@ class Benchmark:
     platform: str
     result: BenchmarkResult
 
-    def commit_index(self, commit_order: typing.List[str]) -> int:
+    def commit_index(self, commit_order: list[str]) -> int:
         try:
             return commit_order.index(self.commit_hash)
         except ValueError:
@@ -93,7 +93,7 @@ class Benchmark:
     )
 
     @classmethod
-    def parse_command(cls, command: str) -> typing.Dict[str, str]:
+    def parse_command(cls, command: str) -> dict[str, str]:
         match = cls.re_command.match(command)
         if match is None:
             raise ValueError(
@@ -108,8 +108,8 @@ class Benchmark:
         return match.groupdict() if match is not None else None
 
     @classmethod
-    def load_all(cls, *paths: pathlib.Path) -> typing.List["Benchmark"]:
-        benchmarks: typing.List[Benchmark] = []
+    def load_all(cls, *paths: pathlib.Path) -> list["Benchmark"]:
+        benchmarks: list[Benchmark] = []
 
         for path in paths:
             # Load the results from the benchmark file:

@@ -7,7 +7,7 @@ import Control.Monad.Except (MonadError (..))
 import Data.Map qualified as Map
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
-import Vehicle.Compile.Normalise.NBE (normaliseClosure)
+import Vehicle.Compile.Normalise.NBE (normaliseClosureInCtx)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Resource
@@ -23,23 +23,20 @@ import Vehicle.Verify.Core (NetworkContextInfo (..))
 
 checkNetwork ::
   forall m.
-  (MonadReadResources m) =>
-  NetworkLocations ->
+  (MonadExpandResources m) =>
   DeclProvenance ->
   GluedType Builtin ->
+  FilePath ->
   m NetworkContextInfo
-checkNetwork networkLocations decl@(ident, _) networkType = do
-  case Map.lookup (identifierName ident) networkLocations of
-    Nothing -> throwError $ ResourceNotProvided decl Network
-    Just location -> do
-      typ <- getNetworkType decl networkType
-      return $ NetworkContextInfo location typ
+checkNetwork decl networkType filePath = do
+  typ <- getNetworkType decl networkType
+  return $ NetworkContextInfo filePath typ
 
 -- | Decomposes the Pi types in a network type signature, checking that the
 --  binders are explicit and their types are equal.
 getNetworkType ::
   forall m.
-  (MonadReadResources m) =>
+  (MonadExpandResources m) =>
   DeclProvenance ->
   GluedType Builtin ->
   m NetworkType
@@ -48,7 +45,7 @@ getNetworkType decl networkType = case normalised networkType of
     | visibilityOf binder /= Explicit -> typingError
     | otherwise -> do
         inputDetails <- tensorType Input (typeOf binder)
-        resultType <- normaliseClosure mempty binder closure
+        resultType <- normaliseClosureInCtx mempty binder closure
         outputDetails <- tensorType Output resultType
         let networkDetails = NetworkType inputDetails outputDetails
         return networkDetails

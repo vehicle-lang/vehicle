@@ -6,13 +6,14 @@ module Vehicle.Data.Builtin.Polarity.Type
   )
 where
 
-import Vehicle.Compile.Context.Free (getFreeEnv)
+import Data.Proxy (Proxy (..))
+import Vehicle.Compile.Error (unsupportedTensorLikeQuantifier)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Bidirectional (createFreshUnificationConstraint)
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.System
-import Vehicle.Data.Builtin.Core hiding (Builtin (..))
+import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Interface.InputOutputInsertion
 import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin (..))
 import Vehicle.Data.Builtin.Polarity
@@ -20,6 +21,7 @@ import Vehicle.Data.Builtin.Polarity.Solver (solvePolarityConstraint)
 import Vehicle.Data.Builtin.Standard (Builtin (..))
 import Vehicle.Data.Code.DSL (iterate)
 import Vehicle.Data.DSL
+import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..))
 import Prelude hiding (iterate, pi)
 
 --------------------------------------------------------------------------------
@@ -27,7 +29,7 @@ import Prelude hiding (iterate, pi)
 --------------------------------------------------------------------------------
 
 instance TypableBuiltin PolarityBuiltin where
-  typeBuiltin p b = return (fromDSL p $ typePolarityBuiltin p b)
+  typeBuiltin p b = return (fromDSL p $ typePolarityBuiltin b)
   useDependentMetas _ = False
   isConstructor = isPolarityBuiltinConstructor
   isCastConstraint _ = False
@@ -40,15 +42,15 @@ isPolarityBuiltinConstructor = \case
   PolarityRelation {} -> True
 
 -- | Return the type of the provided builtin.
-typePolarityBuiltin :: Provenance -> PolarityBuiltin -> PolarityDSLExpr
-typePolarityBuiltin p = \case
+typePolarityBuiltin :: PolarityBuiltin -> PolarityDSLExpr
+typePolarityBuiltin = \case
   PolarityConstructor c -> typeOfConstructor c
-  PolarityFunction f -> typeOfBuiltinFunction p f
+  PolarityFunction f -> typeOfBuiltinFunction f
   Polarity {} -> tPol
   PolarityRelation r -> typeOfPolarityRelation r
 
-typeOfBuiltinFunction :: Provenance -> BuiltinFunction -> PolarityDSLExpr
-typeOfBuiltinFunction p = \case
+typeOfBuiltinFunction :: BuiltinFunction -> PolarityDSLExpr
+typeOfBuiltinFunction = \case
   -- Boolean operations
   Not {} -> typeOfOp1 negPolarity
   Implies -> typeOfOp2 impliesPolarity
@@ -56,7 +58,8 @@ typeOfBuiltinFunction p = \case
   Or {} -> typeOfOp2 maxPolarity
   ReduceAndTensor -> typeOfOp2 maxPolarity
   ReduceOrTensor -> typeOfOp2 maxPolarity
-  QuantifyRatTensor q -> typeOfQuantifier p q
+  QuantifyRatTensor q -> typeOfQuantifier q
+  QuantifyTensorLike _ -> unsupportedTensorLikeQuantifier
   If -> typeOfIf
   -- Comparisons
   CompareNat {} -> typeOfOp2 maxPolarity
@@ -163,11 +166,11 @@ typeOfMap =
     forAllPolarities $ \p2 ->
       (p1 ~> p2) ~> p1 ~> p2
 
-typeOfQuantifier :: Provenance -> Quantifier -> PolarityDSLExpr
-typeOfQuantifier p q =
+typeOfQuantifier :: Quantifier -> PolarityDSLExpr
+typeOfQuantifier q =
   forAll "f" type0 $ \tLam ->
     forAll "A" type0 $ \tRes ->
-      quantifierPolarity p q tLam tRes
+      quantifierPolarity q tLam tRes
         .~~~> tLam
         ~> tRes
 
@@ -197,6 +200,7 @@ typeOfStack = typeOfVectorLiteral
 instance HasTypeSystem PolarityBuiltin where
   convertFromStandardBuiltins = traverseBuiltinsM convertToPolarityTypes
   restrictDeclType = restrictDeclPolarityType
+  restrictRecordAnnotatedAsTensor = restrictPolarityRecordAnnotatedAsTensor
   isAuxiliaryConstraint _ = True
   solveAuxiliaryInstanceConstraint = solvePolarityConstraint
   addAuxiliaryInputOutputConstraints = addFunctionAuxiliaryInputOutputConstraints (PolarityRelation . FunctionPolarity)
@@ -242,8 +246,8 @@ restrictDeclPolarityType ::
   Type PolarityBuiltin ->
   m (Type PolarityBuiltin)
 restrictDeclPolarityType rDecl declProv declType = do
-  freeEnv <- getFreeEnv
-  let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin freeEnv declProv rDecl declType
+  freeEnv <- getFreeCtx (Proxy @PolarityBuiltin)
+  let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin freeEnv declProv (Left rDecl) declType
 
   case rDecl of
     RestrictedNetwork -> restrictPolarityNetworkType origin declProv declType
@@ -262,7 +266,7 @@ restrictPolarityNetworkType origin (_, p) networkType = do
   let inputPol = PolarityExpr p Unquantified
   let outputPol = PolarityExpr p Unquantified
 
-  let inputPolBinder = Binder p (BinderDisplayForm OnlyType False) Explicit Relevant inputPol
+  let inputPolBinder = Binder (BinderDisplayForm OnlyType False) Explicit Relevant inputPol
   let functionNetworkType = Pi p inputPolBinder outputPol
   createFreshUnificationConstraint p mempty (CheckingInstanceType origin) networkType functionNetworkType
   return networkType
@@ -276,3 +280,12 @@ assertUnquantifiedPolarity ::
 assertUnquantifiedPolarity origin (_, p) t = do
   createFreshUnificationConstraint p mempty (CheckingInstanceType origin) (PolarityExpr p Unquantified) t
   return t
+
+restrictPolarityRecordAnnotatedAsTensor ::
+  forall m.
+  (MonadTypeChecker PolarityBuiltin m) =>
+  DeclProvenance ->
+  [GenericRecordField (Type PolarityBuiltin)] ->
+  m ()
+restrictPolarityRecordAnnotatedAsTensor (_ident, _p) _fields =
+  return ()

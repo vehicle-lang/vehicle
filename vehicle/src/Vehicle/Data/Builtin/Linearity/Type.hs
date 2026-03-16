@@ -6,13 +6,13 @@ module Vehicle.Data.Builtin.Linearity.Type
   )
 where
 
-import Vehicle.Compile.Context.Free (getFreeEnv)
+import Data.Proxy (Proxy (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Type.Bidirectional (createFreshUnificationConstraint)
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.System
-import Vehicle.Data.Builtin.Core hiding (Builtin (..))
+import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Interface.InputOutputInsertion
 import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin (..))
 import Vehicle.Data.Builtin.Linearity
@@ -20,6 +20,7 @@ import Vehicle.Data.Builtin.Linearity.Solver
 import Vehicle.Data.Builtin.Standard (Builtin (..))
 import Vehicle.Data.Code.DSL (iterate)
 import Vehicle.Data.DSL
+import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..))
 import Prelude hiding (iterate)
 
 --------------------------------------------------------------------------------
@@ -55,6 +56,7 @@ typeOfBuiltinFunction p = \case
   And {} -> typeOfOp2 maxLinearity
   Or {} -> typeOfOp2 maxLinearity
   QuantifyRatTensor q -> typeOfQuantifier q
+  QuantifyTensorLike q -> typeOfQuantifier q
   If -> typeOfIf
   ReduceAndTensor -> typeOfOp2 maxLinearity
   ReduceOrTensor -> typeOfOp2 maxLinearity
@@ -181,6 +183,7 @@ typeOfStack = typeOfVectorLiteral
 instance HasTypeSystem LinearityBuiltin where
   convertFromStandardBuiltins = traverseBuiltinsM convertToLinearityTypes
   restrictDeclType = restrictLinearityDeclType
+  restrictRecordAnnotatedAsTensor = restrictLinearityRecordAnnotatedAsTensor
   isAuxiliaryConstraint _ = True
   solveAuxiliaryInstanceConstraint = solveLinearityConstraint
   addAuxiliaryInputOutputConstraints = addFunctionAuxiliaryInputOutputConstraints (LinearityRelation . FunctionLinearity)
@@ -227,8 +230,8 @@ restrictLinearityDeclType ::
   Type LinearityBuiltin ->
   m (Type LinearityBuiltin)
 restrictLinearityDeclType rDecl declProv declType = do
-  freeEnv <- getFreeEnv
-  let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin freeEnv declProv rDecl declType
+  freeEnv <- getFreeCtx (Proxy @LinearityBuiltin)
+  let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin freeEnv declProv (Left rDecl) declType
   case rDecl of
     RestrictedNetwork -> restrictLinearityNetworkType origin declProv declType
     RestrictedDataset -> assertConstantLinearity origin declProv declType
@@ -246,7 +249,7 @@ restrictLinearityNetworkType origin (ident, p) networkType = do
   inputLin <- freshLinearityMeta p
   outputLin <- freshLinearityMeta p
 
-  let inputLinBinder = Binder p (BinderDisplayForm OnlyType False) Explicit Relevant inputLin
+  let inputLinBinder = Binder (BinderDisplayForm OnlyType False) Explicit Relevant inputLin
   let functionNetworkType = Pi p inputLinBinder outputLin
   createFreshUnificationConstraint p mempty (CheckingInstanceType origin) networkType functionNetworkType
 
@@ -256,8 +259,8 @@ restrictLinearityNetworkType origin (ident, p) networkType = do
   logDebug MaxDetail "Appending `MaxLinearity` constraint to network type"
   let outputLinProvenance = Linear $ NetworkOutputProvenance p (nameOf ident)
   let linConstraintArgs = [LinearityExpr p outputLinProvenance, inputLin, outputLin]
-  let linConstraint = App (Builtin p (LinearityRelation MaxLinearity)) (Arg p Explicit Relevant <$> linConstraintArgs)
-  let linConstraintBinder = Binder p (BinderDisplayForm OnlyType False) (Instance True) Irrelevant linConstraint
+  let linConstraint = App (Builtin p (LinearityRelation MaxLinearity)) (Arg Explicit Relevant <$> linConstraintArgs)
+  let linConstraintBinder = Binder (BinderDisplayForm OnlyType False) (Instance True) Irrelevant linConstraint
 
   return $ Pi p linConstraintBinder functionNetworkType
 
@@ -270,3 +273,12 @@ assertConstantLinearity ::
 assertConstantLinearity origin (_, p) t = do
   createFreshUnificationConstraint p mempty (CheckingInstanceType origin) (LinearityExpr p Constant) t
   return t
+
+restrictLinearityRecordAnnotatedAsTensor ::
+  forall m.
+  (MonadTypeChecker LinearityBuiltin m) =>
+  DeclProvenance ->
+  [GenericRecordField (Type LinearityBuiltin)] ->
+  m ()
+restrictLinearityRecordAnnotatedAsTensor (_ident, _p) _fields =
+  return ()

@@ -1,39 +1,37 @@
 from typing import List
 
-from ._version import VERSION as VERSION
-from .check import check as check
-from .compile import compile_to_query as compile_to_query
-from .compile.error import VehicleBuiltinUnsupported as VehicleBuiltinUnsupported
-from .compile.error import VehiclePropertyNotFound as VehiclePropertyNotFound
-
-# from .compile.python import load_loss_function as load_loss_function
-from .error import VehicleError as VehicleError
-from .error import VehicleInternalError as VehicleInternalError
-from .export import export_to_solver as export_to_solver
-from .list import list_properties as list_properties
-from .list import list_resources as list_resources
-from .session.error import VehicleSessionClosed as VehicleSessionClosed
-from .session.error import VehicleSessionUsed as VehicleSessionUsed
-from .typing import AnyOptimiser as AnyOptimiser
-from .typing import AnyOptimisers as AnyOptimisers
-from .typing import DeclarationName as DeclarationName
-from .typing import DifferentiableLogic as DifferentiableLogic
-from .typing import ExportTarget as ExportTarget
-from .typing import Optimiser as Optimiser
-from .typing import QuantifiedVariableName as QuantifiedVariableName
-from .typing import QueryFormat as QueryFormat
-from .typing import TypeSystem as TypeSystem
-from .typing import Verifier as Verifier
-from .validate import validate as validate
-from .verify import verify as verify
+from . import loss, session
+from ._version import VERSION
+from .compile import call_vehicle, compile_specification
+from .error import VehicleError, VehicleInternalError
+from .export import export_to_solver
+from .list import list
+from .loss.error import VehicleBuiltinUnsupported, VehiclePropertyNotFound
+from .session.error import VehicleSessionClosed, VehicleSessionUsed
+from .typecheck import TypeSystem, typecheck
+from .typing import (
+    DeclarationName,
+    DifferentiableLogic,
+    ExportTarget,
+    LossBackend,
+    QuantifiedVariableName,
+    QueryFormat,
+    Verifier,
+)
+from .validate import validate
+from .verify import verify
 
 __all__: List[str] = [
     "VERSION",
-    # Check
-    "check",
+    # Typecheck
+    "TypeSystem",
+    "typecheck",
     # Compile
-    "load_loss_function",
-    "compile_to_query",
+    "compile_specification",
+    # Loss helpers
+    "loss",
+    # Call Vehicle
+    "call_vehicle",
     # Verify
     "verify",
     # Validate,
@@ -41,24 +39,22 @@ __all__: List[str] = [
     # Export
     "export_to_solver",
     # List
-    "list_resources",
-    "list_properties",
+    "list",
+    # Session
+    "session",
     # Error types
     "VehicleError",
     "VehicleSessionClosed",
     "VehicleSessionUsed",
-    "VehicleBuiltinUnsupported",
     "VehicleInternalError",
+    "VehicleBuiltinUnsupported",
     "VehiclePropertyNotFound",
     # Argument types
     "DeclarationName",
     "QuantifiedVariableName",
-    "Optimiser",
-    "AnyOptimiser",
-    "AnyOptimisers",
     "DifferentiableLogic",
+    "LossBackend",
     "QueryFormat",
     "Verifier",
-    "TypeSystem",
     "ExportTarget",
 ]

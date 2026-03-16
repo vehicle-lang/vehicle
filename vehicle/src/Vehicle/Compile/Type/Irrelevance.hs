@@ -58,7 +58,7 @@ instance RemoveIrrelevantCode m (Expr builtin) where
           else Lam p <$> remove binder <*> remove body
       Let p bound binder body -> Let p <$> remove bound <*> remove binder <*> remove body
       Record p ident fields -> Record p ident <$> traverseRecordFields remove fields
-      RecordAcc p record field -> RecordAcc p <$> remove record <*> pure field
+      RecordProj p recordType record field -> RecordProj p <$> remove recordType <*> remove record <*> pure field
       Universe {} -> return expr
       FreeVar {} -> return expr
       BoundVar {} -> return expr

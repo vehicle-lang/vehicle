@@ -17,6 +17,7 @@ import Vehicle.Compile.Type.Monad.Class
 import Vehicle.Data.Builtin.Interface.Blocked (BlockingStatus (..))
 import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Code.Value
+import Vehicle.Data.Variable.Bound.Context.Name.Core
 
 -----------------------------------------------------------------------------
 -- Meta-variable forcing
@@ -86,7 +87,7 @@ forceBuiltin ctx b spine = case blockingStatus b spine of
   Blocked traverseBlocking -> do
     (maybeUnblockedSpine, blockingMetas) <-
       runWriterT $ runMaybeT $ traverseBlocking $ forceBlockingArg ctx
-    finalValue <- traverse (normaliseBuiltin ctx b) maybeUnblockedSpine
+    finalValue <- traverse (evalBuiltin ctx b) maybeUnblockedSpine
     return (finalValue, blockingMetas)
   _ -> return (Just (VBuiltin b spine), mempty)
 

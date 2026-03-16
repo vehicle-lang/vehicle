@@ -1,0 +1,13 @@
+{
+  "name": "Marabou",
+  "run": "vehicle compile queries -f MarabouQueries -s spec.vcl -n classifier:network.onnx -o Marabou.queries/",
+  "needs": [
+    "spec.vcl",
+    "network.onnx"
+  ],
+  "produces": [
+    "Marabou.queries/oppositeFaces.vcl-plan",
+    "Marabou.queries/oppositeFaces-query1.txt"
+  ],
+  "sizeOnly": ".vcl-plan"
+}

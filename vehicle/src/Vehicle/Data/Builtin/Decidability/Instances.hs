@@ -11,13 +11,14 @@ where
 import Data.List.NonEmpty (NonEmpty)
 import Vehicle.Compile.Type.Constraint.Core
 import Vehicle.Compile.Type.Core (InstanceCandidate (..), InstanceDatabase (..))
+import Vehicle.Data.AST.Decl (InstancePriority)
 import Vehicle.Data.Builtin.Core (BuiltinFunction (..), DerivedFunction (..))
 import Vehicle.Data.Builtin.Decidability
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.DSL
 
 decidabilityBuiltinInstances :: InstanceDatabase DecidabilityBuiltin
-decidabilityBuiltinInstances = makeInstanceDatabase allInstances mempty
+decidabilityBuiltinInstances = makeInstanceDatabase allInstances
 
 -- Manually declared here as we have no way of declaring them in the language
 -- itself.
@@ -34,7 +35,7 @@ allInstances =
     --------------
     [ ( decTypeClass ValidPropertyType [tProp],
         tUnit,
-        False
+        Nothing
       )
     ]
       -------------
@@ -46,7 +47,7 @@ allInstances =
              lamDims $ \_ds1 ->
                lamDims $ \_ds2 ->
                  tUnit,
-             False
+             Nothing
            )
          ]
       -------------
@@ -54,11 +55,11 @@ allInstances =
       -------------
       <> [ ( isTensorType,
              tTensorRaw,
-             True
+             Just 0
            ),
            ( isTensorType,
              propTensor,
-             False
+             Nothing
            )
          ]
       <> tensorTypeClassCandidate FieldNot (builtinFunction Not) PropNot
@@ -83,18 +84,22 @@ allInstances =
       -------------
       <> [ ( isVectorType,
              tVectorRaw,
-             True
+             Just 0
            ),
            ( isVectorType,
              propVector,
-             False
+             Nothing
            )
          ]
       <> vectorTypeClassCandidate FieldFromVectorLiteral vectorToVector BoolVectorToProp
       <> vectorTypeClassCandidate FieldAtVector (builtinFunction AtVector) PropNaryProductAt
       <> vectorTypeClassCandidate FieldForeachVector (builtinFunction ForeachVector) PropNaryProductForeach
 
-type TempCandidate = (DSLExpr DecidabilityBuiltin, DSLExpr DecidabilityBuiltin, Bool)
+type TempCandidate =
+  ( DSLExpr DecidabilityBuiltin,
+    DSLExpr DecidabilityBuiltin,
+    Maybe InstancePriority
+  )
 
 decTypeClass :: DecidabilityBuiltinTypeClass -> NonEmpty (DSLExpr DecidabilityBuiltin) -> DSLExpr DecidabilityBuiltin
 decTypeClass tc args = builtin (DecidabilityBuiltinTypeClass tc) @@ args
@@ -118,11 +123,11 @@ vectorTypeClassCandidate ::
 vectorTypeClassCandidate field standardOp typeOp =
   [ ( decTypeClass (HasVectorTypeClassField field) [tVectorRaw],
       standardOp,
-      False
+      Nothing
     ),
     ( decTypeClass (HasVectorTypeClassField field) [propVector],
       decFunction typeOp,
-      False
+      Nothing
     )
   ]
 
@@ -134,11 +139,11 @@ tensorTypeClassCandidate ::
 tensorTypeClassCandidate field standardOp typeOp =
   [ ( decTypeClass (HasTensorTypeClassField field) [tTensorRaw],
       standardOp,
-      False
+      Nothing
     ),
     ( decTypeClass (HasTensorTypeClassField field) [propTensor],
       decFunction typeOp,
-      False
+      Nothing
     )
   ]
 

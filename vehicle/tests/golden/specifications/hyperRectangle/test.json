@@ -1,0 +1,20 @@
+[
+  {
+    "name": "TypeCheck",
+    "run": "vehicle typecheck -s spec.vcl",
+    "needs": ["spec.vcl"]
+  },
+  {
+    "name": "Marabou",
+    "run": "vehicle compile queries -s spec.vcl -f MarabouQueries -o Marabou.queries/ --network classifier:adv.onnx --dataset inputs:5inputs.idx",
+    "needs": ["spec.vcl", "adv.onnx", "5inputs.idx"],
+    "produces": [
+      "Marabou.queries/*.txt",
+      "Marabou.queries/property.vcl-plan"
+    ],
+    "ignore": {
+      "lines": ".*\"fileHash\".*"
+    },
+    "sizeOnly": ".vcl-plan"
+  }
+]

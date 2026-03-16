@@ -11,19 +11,20 @@ module Vehicle.Compile.Type.Constraint.Core
 where
 
 import Data.Bifunctor (Bifunctor (..))
-import Data.HashMap.Strict (HashMap, fromListWith, mapMaybeWithKey)
-import Data.Hashable (Hashable)
+import Data.Map (fromListWith)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBE (normaliseInEnv)
+import Vehicle.Compile.Normalise.NBE (eval)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Type.Core
 import Vehicle.Compile.Type.Meta.Variable
 import Vehicle.Compile.Type.Monad
 import Vehicle.Compile.Type.Monad.Class
+import Vehicle.Data.Builtin.Interface.Normalise (NormalisableBuiltin)
 import Vehicle.Data.Builtin.Interface.Print
 import Vehicle.Data.Code.Value
 import Vehicle.Data.DSL
+import Vehicle.Data.Variable.Bound.Context.Generic
 
 malformedConstraintError ::
   (PrintableBuiltin builtin, MonadCompile m) =>
@@ -46,7 +47,7 @@ createInstanceUnification (ctx, origin) e1 e2 = do
 extractHeadFromInstanceCandidate ::
   (PrintableBuiltin builtin) =>
   InstanceCandidate builtin ->
-  (builtin, InstanceCandidate builtin)
+  (InstanceHead builtin, InstanceCandidate builtin)
 extractHeadFromInstanceCandidate candidate@InstanceCandidate {..} = do
   case findInstanceGoalHead candidateExpr of
     Right b -> (b, candidate)
@@ -60,43 +61,31 @@ extractHeadFromInstanceCandidate candidate@InstanceCandidate {..} = do
           <> "Problematic subexpr:"
             <+> problemDoc
 
-findInstanceGoalHead :: Expr builtin -> Either (Expr builtin) builtin
-findInstanceGoalHead = \case
-  Pi _ binder body
-    | not (isExplicit binder) -> findInstanceGoalHead body
-  App (Builtin _ b) _ -> Right b
-  Builtin _ b -> Right b
-  expr -> Left expr
-
-mkCandidate :: (DSLExpr builtin, DSLExpr builtin, Bool) -> InstanceCandidate builtin
-mkCandidate (expr, solution, defaultInstance) = do
+mkCandidate ::
+  (DSLExpr builtin, DSLExpr builtin, Maybe InstancePriority) ->
+  InstanceCandidate builtin
+mkCandidate (expr, solution, priority) = do
   let p = mempty
   let expr' = fromDSL p expr
   let solution' = fromDSL p solution
-  InstanceCandidate expr' solution' defaultInstance
+  InstanceCandidate expr' solution' priority
 
-makeInstanceDatabase :: (PrintableBuiltin builtin, Hashable builtin) => [InstanceCandidate builtin] -> HashMap builtin InstanceSearchDepth -> InstanceDatabase builtin
-makeInstanceDatabase allInstances searchDepth = do
+makeInstanceDatabase ::
+  (Ord builtin, PrintableBuiltin builtin) =>
+  [InstanceCandidate builtin] ->
+  InstanceDatabase builtin
+makeInstanceDatabase allInstances = do
   let tcAndCandidates = fmap (second (: []) . extractHeadFromInstanceCandidate) allInstances
-  let instances = fromListWith (<>) tcAndCandidates
-  let defaults = mapMaybeWithKey findDefault instances
-  InstanceDatabase instances defaults searchDepth
-  where
-    findDefault :: (Pretty builtin) => builtin -> [InstanceCandidate builtin] -> Maybe (InstanceCandidate builtin)
-    findDefault b instances = do
-      let defaultInstances = filter defaultInstance instances
-      case defaultInstances of
-        [] -> Nothing
-        [inst] -> Just inst
-        _ -> developerError $ "Multiple default instances found for" <+> quotePretty b
+  let instances = fromListWith (<>) (reverse tcAndCandidates)
+  InstanceDatabase instances
 
 instantiateInstanceConstraintSolution ::
   forall builtin m.
-  (MonadTypeChecker builtin m) =>
+  (MonadTypeChecker builtin m, NormalisableBuiltin builtin) =>
   WithContext (InstanceConstraint builtin) ->
   Expr builtin ->
   m ()
-instantiateInstanceConstraintSolution (WithContext (Resolve origin meta _ _) ctx) solution = do
+instantiateInstanceConstraintSolution (WithContext (Resolve origin meta _ _ _) ctx) solution = do
   metaInfo <- getMetaInfo meta
   let boundCtx = boundContextOf ctx
   case metaSolution metaInfo of
@@ -105,6 +94,6 @@ instantiateInstanceConstraintSolution (WithContext (Resolve origin meta _ _) ctx
       logDebug MaxDetail ("solved" <+> pretty meta <+> "as" <+> prettyVerbose solution)
       logDebug MaxDetail (indent 2 ("however" <+> pretty meta <+> "=" <+> prettyVerbose (unnormalised existingSolution) <+> "already so unifying"))
       let abstractedSolution = abstractOverCtx (metaCtx metaInfo) solution
-      normSolution <- normaliseInEnv (toNamedBoundCtx boundCtx) (boundContextToEnv boundCtx) abstractedSolution
+      normSolution <- eval (toNamedBoundCtx boundCtx) (boundContextToEnv boundCtx) abstractedSolution
       newConstraint <- createInstanceUnification (ctx, origin) normSolution (normalised existingSolution)
       addUnificationConstraints [newConstraint]

@@ -9,10 +9,10 @@ where
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Vehicle.Compile.Prelude (GenericArg (..))
+import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Interface (BuiltinHasNatLiterals)
 import Vehicle.Data.Code.Interface (pattern INatLiteral)
 import Vehicle.Data.Code.Value
-import Vehicle.Syntax.Builtin
 
 -----------------------------------------------------------------------------
 -- Blocking arguments
@@ -51,6 +51,7 @@ functionBlockingStatus ::
   BlockingStatus builtin
 functionBlockingStatus b spine = case b of
   QuantifyRatTensor {} -> DoesNotReduce
+  QuantifyTensorLike {} -> DoesNotReduce
   Implies -> AlwaysReduces
   Not -> fixedStatus [1] spine
   And -> fixedStatus [1, 2] spine

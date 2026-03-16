@@ -2,9 +2,10 @@ module Vehicle.Verify.QueryFormat.VNNLib where
 
 import Control.Monad (forM)
 import Data.List.NonEmpty qualified as NonEmpty
+import Data.Version (Version (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Resource (NetworkTensorType (dimensions), NetworkType (inputTensor, outputTensor))
-import Vehicle.Data.QuantifiedVariable (prettyRationalAsFloat)
+import Vehicle.Data.Bound (BoundedValue (..), Domain (..), LowerBound (..), UpperBound (..))
 import Vehicle.Data.Tensor (TensorShape)
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
@@ -30,27 +31,91 @@ outputFormat =
   ExternalOutputFormat
     { formatName = pretty VNNLibQueries,
       formatVersion = Nothing,
-      commentStyle = Line ";",
+      commentStyle = Line lineComment,
       emptyLines = True
     }
 
+vnnlibVersion :: Version
+vnnlibVersion = Version [2, 0] []
+
+lineComment :: Doc a
+lineComment = ";"
+
+-- | Compiles an expression representing a single VNNLib query.
+compileVNNLibQuery :: CompileQuery
+compileVNNLibQuery _address metaNetwork _variables bounds assertions = do
+  networkDocs <- compileNetworks metaNetwork
+  assertionDocs <- forM assertions compileQueryAssertion
+  let boundsDoc = fmap compileBound bounds
+  let assertionsDoc =
+        "(vnnlib-version <"
+          <> pretty vnnlibVersion
+          <> ">)"
+          <> line
+          <> line
+          <> lineComment <+> "Networks"
+          <> line
+          <> networkDocs
+          <> line
+          <> line
+          <> lineComment <+> "Assertions"
+          <> line
+          <> vsep assertionDocs
+          <> line
+          <> line
+          <> lineComment <+> "Input bounds"
+          <> line
+          <> vsep boundsDoc
+  return $ layoutAsText assertionsDoc
+
+-- | Compiles all network entries in the MetaNetwork
+compileNetworks :: (MonadLogger m) => MetaNetwork -> m (Doc a)
+compileNetworks metaNetwork = return $ vsep $ fmap compileNetwork metaNetwork
+
+compileNetwork :: (Name, NetworkContextInfo, Int) -> Doc a
+compileNetwork (name, info, apps) = do
+  let compileFn = compileNetworkApp name (networkType info)
+  vsep (fmap compileFn ([1 .. apps] :: [Int]))
+
+-- | Compiles the declarations for a network query
+compileNetworkApp :: Name -> NetworkType -> Int -> Doc a
+compileNetworkApp networkName networkType appIndex = do
+  let equalToDoc
+        | appIndex > 1 = "(equalTo" <+> compileNetworkName networkName 1 <> ")" <> line
+        | otherwise = ""
+  let networkVarName = compileNetworkName networkName appIndex
+  let networkInputDocs = uncurry compileNetworkInput $ networkTensor networkName networkType appIndex Input
+  let networkOutputDocs = uncurry compileNetworkOutput $ networkTensor networkName networkType appIndex Output
+  "(declare-network" <+> networkVarName
+    <> line
+    <> indent
+      2
+      ( equalToDoc
+          <> networkInputDocs
+          <> line
+          <> networkOutputDocs
+      )
+    <> line
+    <> ")"
+
+-- | Generates the variable name and fetches the shape of the the input or output network tensor
+networkTensor :: Name -> NetworkType -> Int -> InputOrOutput -> (Name, TensorShape)
+networkTensor networkName networkType appIndex inputOrOutput = do
+  let name = layoutAsText $ compileNetworkVariableName networkName appIndex inputOrOutput
+  case inputOrOutput of
+    Input -> (name, dimensions $ inputTensor networkType)
+    Output -> (name, dimensions $ outputTensor networkType)
+
+-- | Compile network name. Prefixes an index to all subsequent network applications
+compileNetworkName :: Name -> Int -> Doc a
+compileNetworkName networkName appIndex
+  | appIndex == 1 = pretty networkName
+  | otherwise = pretty networkName <> "_" <> pretty appIndex
+
 -- | Compile network variable name
-compileNetworkVariableName :: Name -> Maybe Int -> InputOrOutput -> Doc a
-compileNetworkVariableName networkName networkIndex inputOrOutput =
-  compileNetworkName networkName networkIndex <> "_" <> if inputOrOutput == Input then "X" else "Y"
-
--- | Compile network name using _ and application index
-compileNetworkName :: Name -> Maybe Int -> Doc a
-compileNetworkName networkName Nothing = pretty networkName
-compileNetworkName networkName (Just networkIndex) = pretty networkName <> "_" <> pretty networkIndex
-
--- | Compiles an individual variable
-compileVNNLibVar :: CompileQueryVariable
-compileVNNLibVar QueryVariableInfo {..} = do
-  let networkVariableName = case numberOfNetworkApps of
-        1 -> compileNetworkVariableName networkName Nothing inputOrOutput
-        _ -> compileNetworkVariableName networkName (Just networkAppIndex) inputOrOutput
-  layoutAsText $ networkVariableName <> pretty parentVariableIndices
+compileNetworkVariableName :: Name -> Int -> InputOrOutput -> Doc a
+compileNetworkVariableName networkName appIndex inputOrOutput =
+  compileNetworkName networkName appIndex <> "_" <> if inputOrOutput == Input then "X" else "Y"
 
 -- | Compiles a network input
 compileNetworkInput :: Name -> TensorShape -> Doc a
@@ -60,45 +125,44 @@ compileNetworkInput name shape = parens ("declare-input" <+> pretty name <+> "Re
 compileNetworkOutput :: Name -> TensorShape -> Doc a
 compileNetworkOutput name shape = parens ("declare-output" <+> pretty name <+> "Real" <+> pretty shape)
 
--- | Generates the variable name and fetches the shape of the the input or output network tensor
-networkTensor :: MetaNetworkEntry -> InputOrOutput -> Maybe Int -> (Name, TensorShape)
-networkTensor MetaNetworkEntry {..} inputOrOutput metaNetworkIndex = do
-  let networkTensors = networkType metaNetworkEntryInfo
-  case inputOrOutput of
-    Input -> (layoutAsText $ compileNetworkVariableName metaNetworkEntryName metaNetworkIndex inputOrOutput, dimensions $ inputTensor networkTensors)
-    Output -> (layoutAsText $ compileNetworkVariableName metaNetworkEntryName metaNetworkIndex inputOrOutput, dimensions $ outputTensor networkTensors)
+-- | Compiles an individual variable
+compileVNNLibVar :: CompileQueryVariable
+compileVNNLibVar QueryVariableInfo {..} = do
+  let networkVariableName = compileNetworkVariableName networkName networkAppIndex inputOrOutput
+  let indicesDoc = if null parentVariableIndices then "" else pretty parentVariableIndices
+  layoutAsText $ networkVariableName <> indicesDoc
 
--- | Compiles the declarations for a network query
-compileNetworkEntry :: MetaNetworkEntry -> Maybe Int -> Doc a
-compileNetworkEntry metaNetworkEntry@MetaNetworkEntry {..} metaNetworkIndex = do
-  let networkInputDocs = indent 2 $ uncurry compileNetworkInput $ networkTensor metaNetworkEntry Input metaNetworkIndex
-  let networkOutputDocs = indent 2 $ uncurry compileNetworkOutput $ networkTensor metaNetworkEntry Output metaNetworkIndex
-  parens ("declare-network" <+> compileNetworkName metaNetworkEntryName metaNetworkIndex <> line <> networkInputDocs <> line <> networkOutputDocs)
+compileBound :: BoundedValue QueryVariable (Domain Rational) -> Doc a
+compileBound (BoundedValue var (Domain LowerBound {..} UpperBound {..})) =
+  compileAssertion $
+    if lowerBoundValue == upperBoundValue
+      then compileComparison (pretty var) "==" (prettyRationalAsFloat lowerBoundValue)
+      else do
+        let lowerRel = compileRel $ inequalityToQueryRelation lowerBoundRel
+        let upperRel = compileRel $ inequalityToQueryRelation upperBoundRel
+        compileAnd
+          [ compileComparison (prettyRationalAsFloat lowerBoundValue) lowerRel (pretty var),
+            compileComparison (pretty var) upperRel (prettyRationalAsFloat upperBoundValue)
+          ]
 
--- | Compiles "all" (network) entries in the MetaNetwork
-compileNetworks :: (MonadLogger m) => MetaNetwork -> m (Doc a)
-compileNetworks metaNetwork =
-  return $
-    vsep
-      ( zipWith compileNetworkEntry metaNetwork $
-          if length metaNetwork == 1 then [Nothing] else map Just [0 ..]
-      )
-
--- | Compiles an expression representing a single VNNLib query.
-compileVNNLibQuery :: CompileQuery
-compileVNNLibQuery _address metaNetwork _variables assertions = do
-  networkDocs <- compileNetworks metaNetwork
-  assertionDocs <- forM assertions compileAssertion
-  let assertionsDoc = networkDocs <> line <> vsep assertionDocs
-  return $ layoutAsText assertionsDoc
-
-compileAssertion :: (MonadLogger m) => QueryAssertion QueryVariable -> m (Doc a)
-compileAssertion QueryAssertion {..} = do
+compileQueryAssertion :: (MonadLogger m) => QueryAssertion QueryVariable -> m (Doc a)
+compileQueryAssertion QueryAssertion {..} = do
   let compiledRel = compileRel rel
   let (headVar NonEmpty.:| tailVars) = lhs
-  let compiledLHS = foldl compileCoefVar (compileCoefFirstVar headVar) tailVars
+  let compiledLHS = case tailVars of
+        [] -> compileCoefVar headVar
+        _ -> parens ("+" <+> hsep (fmap compileCoefVar lhs))
   let compiledRHS = prettyRationalAsFloat rhs
-  return $ parens ("assert" <+> parens (compiledRel <+> parens compiledLHS <+> compiledRHS))
+  return $ compileAssertion $ compileComparison compiledLHS compiledRel compiledRHS
+
+compileAnd :: [Doc a] -> Doc a
+compileAnd xs = parens $ hsep $ "and" : xs
+
+compileComparison :: Doc a -> Doc a -> Doc a -> Doc a
+compileComparison lhs rel rhs = parens $ rel <+> lhs <+> rhs
+
+compileAssertion :: Doc a -> Doc a
+compileAssertion ass = parens ("assert" <+> ass)
 
 compileRel :: QueryRelation -> Doc a
 compileRel = \case
@@ -108,16 +172,8 @@ compileRel = \case
   LtRel -> "<"
   GtRel -> ">"
 
-compileCoefFirstVar :: (Coefficient, QueryVariable) -> Doc a
-compileCoefFirstVar (coef, var)
-  | coef == 1 = "+" <+> pretty var
-  | coef == -1 = "-" <+> pretty var
-  | coef < 0 = "-" <+> parens ("*" <+> prettyRationalAsFloat (-coef) <+> pretty var)
-  | otherwise = "*" <+> prettyRationalAsFloat coef <+> pretty var
-
-compileCoefVar :: Doc a -> (Coefficient, QueryVariable) -> Doc a
-compileCoefVar r (coef, var)
-  | coef == 1 = "+" <+> parens r <+> pretty var
-  | coef == -1 = "-" <+> parens r <+> pretty var
-  | coef < 0 = "-" <+> parens r <+> parens ("*" <+> prettyRationalAsFloat (-coef) <+> pretty var)
-  | otherwise = "+" <+> parens r <+> parens ("*" <+> prettyRationalAsFloat coef <+> pretty var)
+compileCoefVar :: (Coefficient, QueryVariable) -> Doc a
+compileCoefVar (coef, var)
+  | coef == 1 = pretty var
+  | coef == -1 = parens ("-" <+> pretty var)
+  | otherwise = parens ("*" <+> prettyRationalAsFloat coef <+> pretty var)

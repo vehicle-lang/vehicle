@@ -1,21 +1,27 @@
 module Vehicle.Compile.ExpandResources.Core where
 
-import Control.Monad.Reader
 import Control.Monad.State
-import Control.Monad.Writer (MonadWriter)
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Vehicle.Compile.Context.Free (MonadFreeContext)
+import Data.Proxy (Proxy (..))
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Data.Builtin.Core (Builtin)
+import Vehicle.Compile.Resource (NetworkName)
+import Vehicle.Data.Builtin.Standard (Builtin)
 import Vehicle.Data.Code.Value
+import Vehicle.Data.Variable.Free.Context (FreeContextT, MonadFreeContext, runFreshFreeContextT)
 import Vehicle.Verify.Core
 
 --------------------------------------------------------------------------------
 -- Context
 
-type NetworkContext = Map Name NetworkContextInfo
+type NetworkContext = Map NetworkName NetworkContextInfo
+
+lookupNetworkInfo :: NetworkName -> NetworkContext -> NetworkContextInfo
+lookupNetworkInfo name ctx = do
+  case Map.lookup name ctx of
+    Nothing -> developerError $ "Expecting" <+> quotePretty name <+> "to be a @network"
+    Just info -> info
 
 --------------------------------------------------------------------------------
 -- Resource contexts
@@ -29,28 +35,48 @@ type ExplicitParameterContext = Map Identifier (Value Builtin)
 --------------------------------------------------------------------------------
 -- The resource monad
 
-type MonadReadResources m =
-  ( MonadIO m,
-    MonadExpandResources m,
-    MonadFreeContext Builtin m,
-    MonadWriter (FreeCtx Builtin) m
-  )
+data ExpandResourcesState = ExpandResourcesState
+  { networkCtx :: NetworkContext,
+    inferableParamCtx :: InferableParameterContext,
+    nonInferableParamCtx :: ExplicitParameterContext,
+    missingResources :: [MissingResource],
+    unusedResources :: Resources
+  }
+
+initialExpandResourcesState :: Resources -> ExpandResourcesState
+initialExpandResourcesState resources =
+  ExpandResourcesState
+    { networkCtx = mempty,
+      inferableParamCtx = mempty,
+      nonInferableParamCtx = mempty,
+      missingResources = mempty,
+      unusedResources = resources
+    }
 
 type MonadExpandResources m =
   ( MonadCompile m,
-    MonadReader Resources m,
-    MonadState (NetworkContext, InferableParameterContext, ExplicitParameterContext) m
+    MonadState ExpandResourcesState m,
+    MonadFreeContext Builtin m
   )
+
+runExpandResourcesT ::
+  (Monad m) =>
+  Resources ->
+  StateT ExpandResourcesState (FreeContextT Builtin m) a ->
+  m (a, ExpandResourcesState)
+runExpandResourcesT resources action =
+  runFreshFreeContextT (Proxy @Builtin) $
+    runStateT action (initialExpandResourcesState resources)
 
 getExplicitParameterContext ::
   (MonadExpandResources m) =>
   m ExplicitParameterContext
-getExplicitParameterContext = gets (\(_, _, w) -> w)
+getExplicitParameterContext = gets nonInferableParamCtx
 
 getInferableParameterContext ::
   (MonadExpandResources m) =>
   m InferableParameterContext
-getInferableParameterContext = gets (\(_, v, _) -> v)
+getInferableParameterContext = gets inferableParamCtx
 
 isInferableParameter ::
   (MonadExpandResources m) =>
@@ -66,15 +92,98 @@ noteInferableParameter ::
   GluedType Builtin ->
   m ()
 noteInferableParameter p ident paramType =
-  modify (\(u, v, w) -> (u, Map.insert ident (p, paramType, Nothing) v, w))
+  modify $ \ExpandResourcesState {..} ->
+    ExpandResourcesState
+      { inferableParamCtx = Map.insert ident (p, paramType, Nothing) inferableParamCtx,
+        ..
+      }
 
-noteExplicitParameter ::
+findNonInferableParameterValue ::
+  (MonadExpandResources m) =>
+  Provenance ->
+  Identifier ->
+  m (Maybe String)
+findNonInferableParameterValue p ident = do
+  ExpandResourcesState {unusedResources = Resources {..}, ..} <- get
+  let (maybeResult, unusedParameters) = deleteAndGet (nameOf ident) parameters
+  case maybeResult of
+    Nothing -> do
+      put $
+        ExpandResourcesState
+          { unusedResources = Resources {..},
+            missingResources = (Parameter, (ident, p)) : missingResources,
+            ..
+          }
+      return Nothing
+    Just result -> do
+      put $
+        ExpandResourcesState
+          { unusedResources = Resources {parameters = unusedParameters, ..},
+            ..
+          }
+      return $ Just result
+
+noteNonInferableParameter ::
   (MonadExpandResources m) =>
   Identifier ->
   Value Builtin ->
   m ()
-noteExplicitParameter ident value =
-  modify (\(u, v, w) -> (u, v, Map.insert ident value w))
+noteNonInferableParameter ident value =
+  modify $ \ExpandResourcesState {..} ->
+    ExpandResourcesState
+      { nonInferableParamCtx = Map.insert ident value nonInferableParamCtx,
+        ..
+      }
+
+findDatasetValue ::
+  (MonadExpandResources m) =>
+  Provenance ->
+  Identifier ->
+  m (Maybe FilePath)
+findDatasetValue p ident = do
+  ExpandResourcesState {unusedResources = Resources {..}, ..} <- get
+  let (maybeResult, unusedDatasets) = deleteAndGet (nameOf ident) datasets
+  case maybeResult of
+    Nothing -> do
+      put $
+        ExpandResourcesState
+          { unusedResources = Resources {..},
+            missingResources = (Dataset, (ident, p)) : missingResources,
+            ..
+          }
+      return Nothing
+    Just result -> do
+      put $
+        ExpandResourcesState
+          { unusedResources = Resources {datasets = unusedDatasets, ..},
+            ..
+          }
+      return $ Just result
+
+findNetworkValue ::
+  (MonadExpandResources m) =>
+  Provenance ->
+  Identifier ->
+  m (Maybe FilePath)
+findNetworkValue p ident = do
+  ExpandResourcesState {unusedResources = Resources {..}, ..} <- get
+  let (maybeResult, unusedNetworks) = deleteAndGet (nameOf ident) networks
+  case maybeResult of
+    Nothing -> do
+      put $
+        ExpandResourcesState
+          { unusedResources = Resources {..},
+            missingResources = (Network, (ident, p)) : missingResources,
+            ..
+          }
+      return Nothing
+    Just result -> do
+      put $
+        ExpandResourcesState
+          { unusedResources = Resources {networks = unusedNetworks, ..},
+            ..
+          }
+      return $ Just result
 
 addPossibleInferableParameterSolution ::
   (MonadExpandResources m) =>
@@ -84,12 +193,20 @@ addPossibleInferableParameterSolution ::
   InferableParameterEntry ->
   m ()
 addPossibleInferableParameterSolution ident p declType entry =
-  modify (\(u, v, w) -> (u, Map.insert ident (p, declType, Just entry) v, w))
+  modify $ \ExpandResourcesState {..} ->
+    ExpandResourcesState
+      { inferableParamCtx = Map.insert ident (p, declType, Just entry) inferableParamCtx,
+        ..
+      }
 
-addNetworkType ::
+noteNetwork ::
   (MonadExpandResources m) =>
   Identifier ->
   NetworkContextInfo ->
   m ()
-addNetworkType ident details =
-  modify (\(u, v, w) -> (Map.insert (nameOf ident) details u, v, w))
+noteNetwork ident details =
+  modify $ \ExpandResourcesState {..} ->
+    ExpandResourcesState
+      { networkCtx = Map.insert (nameOf ident) details networkCtx,
+        ..
+      }

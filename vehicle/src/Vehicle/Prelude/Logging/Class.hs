@@ -1,11 +1,13 @@
 module Vehicle.Prelude.Logging.Class
   ( CompilerPass (..),
     allCompilerPasses,
-    loggingPassHelp,
+    CompilerStack,
     LoggingLevel (..),
+    emptyStack,
+    stackMatches,
+    consStack,
     defaultLoggingLevel,
     allLoggingLevels,
-    loggingLevelHelp,
     DebugMessage,
     MonadLogger (..),
     logDebug,
@@ -14,55 +16,79 @@ module Vehicle.Prelude.Logging.Class
     logCompilerPassOutput,
     logCompilerSection,
     logCompilerSection2,
+    logCompileDecl,
     logIndent,
   )
 where
 
 import Control.Monad (when)
-import Control.Monad.Except (ExceptT (..))
-import Control.Monad.Identity (IdentityT (..))
-import Control.Monad.Reader (ReaderT (..))
-import Control.Monad.State (StateT (..))
+import Control.Monad.Except (ExceptT (..), mapExceptT)
+import Control.Monad.Identity (IdentityT (..), mapIdentityT)
+import Control.Monad.Reader (ReaderT (..), mapReaderT)
+import Control.Monad.State (StateT (..), mapStateT)
 import Control.Monad.Trans (MonadTrans (..))
-import Control.Monad.Trans.Maybe (MaybeT)
-import Control.Monad.Writer (WriterT (..))
+import Control.Monad.Trans.Maybe (MaybeT, mapMaybeT)
+import Control.Monad.Writer (WriterT (..), mapWriterT)
+import Data.List.Split (splitOn)
 import Data.Text (Text)
 import Data.Text qualified as Text (unpack)
 import System.Console.ANSI (Color (..))
-import Vehicle.Prelude.Misc (enumerate, setTextColour, supportedOptions)
+import Text.Read (readMaybe)
+import Vehicle.Data.AST.Decl (GenericDecl)
+import Vehicle.Data.AST.Name (HasIdentifier (identifierOf), Identifier, nameOf)
+import Vehicle.Data.MaybeTrivial (MaybeTrivialT, mapMaybeTrivialT)
+import Vehicle.Prelude.Misc (enumerate, setTextColour)
 import Vehicle.Prelude.Prettyprinter
-import Vehicle.Prelude.Supply (SupplyT)
+import Vehicle.Prelude.Supply (SupplyT, mapSupplyT)
 import Vehicle.Prelude.Warning
-import Vehicle.Syntax.Prelude (layoutAsText)
 
 --------------------------------------------------------------------------------
 -- Settings
 
 data CompilerPass
   = Scoping
-  | TypeChecking
-  | QueryBackend
-  | ITPBackend
-  | LossBackend
-  | QueryError
+  | Typing
+  | Solver
+  | ITP
+  | Loss
+  | TypingSubsystem
+  | WitnessReconstruction
   deriving (Eq, Show, Read, Bounded, Enum)
 
 instance Pretty CompilerPass where
   pretty = \case
     Scoping -> "scope checking"
-    TypeChecking -> "typing checking"
-    QueryBackend -> "query compilation"
-    ITPBackend -> "ITP compilation"
-    LossBackend -> "loss compilation"
-    QueryError -> "query error"
+    Typing -> "type checking"
+    Solver -> "solver compilation"
+    ITP -> "ITP compilation"
+    Loss -> "loss compilation"
+    TypingSubsystem -> "subsystem type checking"
+    WitnessReconstruction -> "witness reconstruction"
 
 allCompilerPasses :: [String]
 allCompilerPasses = map show (enumerate @CompilerPass)
 
-loggingPassHelp :: String
-loggingPassHelp =
-  "Sets the which compiler pass logging is enabled for. "
-    <> supportedOptions allCompilerPasses
+newtype CompilerStack = CS [Either CompilerPass String]
+  deriving (Show, Eq)
+
+instance Read CompilerStack where
+  readsPrec _r s = do
+    let parts = splitOn "." s
+    let items = fmap (\v -> maybe (Right v) Left (readMaybe @CompilerPass v)) parts
+    return (CS (reverse items), [])
+
+emptyStack :: CompilerStack
+emptyStack = CS []
+
+consStack :: Either CompilerPass String -> CompilerStack -> CompilerStack
+consStack item (CS items) = CS (item : items)
+
+stackMatches :: CompilerStack -> CompilerStack -> Bool
+stackMatches (CS _) (CS []) = True
+stackMatches (CS []) (CS (_ : _)) = False
+stackMatches (CS (d : ds)) (CS (t : ts))
+  | d == t = stackMatches (CS ds) (CS ts)
+  | otherwise = stackMatches (CS ds) (CS (t : ts))
 
 --------------------------------------------------------------------------------
 -- Logging levels
@@ -80,11 +106,6 @@ allLoggingLevels = map show (enumerate @LoggingLevel)
 defaultLoggingLevel :: LoggingLevel
 defaultLoggingLevel = NoDetail
 
-loggingLevelHelp :: String
-loggingLevelHelp =
-  "Sets the level of detail in the logs if the --log argument has been passed. "
-    <> supportedOptions allLoggingLevels
-
 --------------------------------------------------------------------------------
 -- Messages
 
@@ -99,8 +120,8 @@ type CallDepth = Int
 -- Logging monad
 
 class (Monad m) => MonadLogger m where
-  enterCompilerPass :: CompilerPass -> m ()
-  exitCompilerPass :: m ()
+  runCompilerPass :: CompilerPass -> m a -> m a
+  runCompileDecl :: Identifier -> m a -> m a
   setCallDepth :: CallDepth -> m ()
   getCallDepth :: m CallDepth
   incrCallDepth :: m ()
@@ -110,8 +131,8 @@ class (Monad m) => MonadLogger m where
   logWarning :: CompileWarning -> m ()
 
 instance (MonadLogger m) => MonadLogger (StateT s m) where
-  enterCompilerPass = lift . enterCompilerPass
-  exitCompilerPass = lift exitCompilerPass
+  runCompilerPass = mapStateT . runCompilerPass
+  runCompileDecl = mapStateT . runCompileDecl
   setCallDepth = lift . setCallDepth
   getCallDepth = lift getCallDepth
   incrCallDepth = lift incrCallDepth
@@ -121,8 +142,8 @@ instance (MonadLogger m) => MonadLogger (StateT s m) where
   logWarning = lift . logWarning
 
 instance (MonadLogger m) => MonadLogger (ReaderT s m) where
-  enterCompilerPass = lift . enterCompilerPass
-  exitCompilerPass = lift exitCompilerPass
+  runCompilerPass = mapReaderT . runCompilerPass
+  runCompileDecl = mapReaderT . runCompileDecl
   setCallDepth = lift . setCallDepth
   getCallDepth = lift getCallDepth
   incrCallDepth = lift incrCallDepth
@@ -132,8 +153,8 @@ instance (MonadLogger m) => MonadLogger (ReaderT s m) where
   logWarning = lift . logWarning
 
 instance (Monoid w, MonadLogger m) => MonadLogger (WriterT w m) where
-  enterCompilerPass = lift . enterCompilerPass
-  exitCompilerPass = lift exitCompilerPass
+  runCompilerPass = mapWriterT . runCompilerPass
+  runCompileDecl = mapWriterT . runCompileDecl
   setCallDepth = lift . setCallDepth
   getCallDepth = lift getCallDepth
   incrCallDepth = lift incrCallDepth
@@ -143,8 +164,8 @@ instance (Monoid w, MonadLogger m) => MonadLogger (WriterT w m) where
   logWarning = lift . logWarning
 
 instance (MonadLogger m) => MonadLogger (ExceptT e m) where
-  enterCompilerPass = lift . enterCompilerPass
-  exitCompilerPass = lift exitCompilerPass
+  runCompilerPass = mapExceptT . runCompilerPass
+  runCompileDecl = mapExceptT . runCompileDecl
   setCallDepth = lift . setCallDepth
   getCallDepth = lift getCallDepth
   incrCallDepth = lift incrCallDepth
@@ -154,8 +175,8 @@ instance (MonadLogger m) => MonadLogger (ExceptT e m) where
   logWarning = lift . logWarning
 
 instance (MonadLogger m) => MonadLogger (SupplyT s m) where
-  enterCompilerPass = lift . enterCompilerPass
-  exitCompilerPass = lift exitCompilerPass
+  runCompilerPass = mapSupplyT . runCompilerPass
+  runCompileDecl = mapSupplyT . runCompileDecl
   setCallDepth = lift . setCallDepth
   getCallDepth = lift getCallDepth
   incrCallDepth = lift incrCallDepth
@@ -165,8 +186,8 @@ instance (MonadLogger m) => MonadLogger (SupplyT s m) where
   logWarning = lift . logWarning
 
 instance (MonadLogger m) => MonadLogger (IdentityT m) where
-  enterCompilerPass = lift . enterCompilerPass
-  exitCompilerPass = lift exitCompilerPass
+  runCompilerPass = mapIdentityT . runCompilerPass
+  runCompileDecl = mapIdentityT . runCompileDecl
   setCallDepth = lift . setCallDepth
   getCallDepth = lift getCallDepth
   incrCallDepth = lift incrCallDepth
@@ -176,8 +197,19 @@ instance (MonadLogger m) => MonadLogger (IdentityT m) where
   logWarning = lift . logWarning
 
 instance (MonadLogger m) => MonadLogger (MaybeT m) where
-  enterCompilerPass = lift . enterCompilerPass
-  exitCompilerPass = lift exitCompilerPass
+  runCompilerPass = mapMaybeT . runCompilerPass
+  runCompileDecl = mapMaybeT . runCompileDecl
+  setCallDepth = lift . setCallDepth
+  getCallDepth = lift getCallDepth
+  incrCallDepth = lift incrCallDepth
+  decrCallDepth = lift decrCallDepth
+  getDebugLevel = lift getDebugLevel
+  logMessage = lift . logMessage
+  logWarning = lift . logWarning
+
+instance (MonadLogger m) => MonadLogger (MaybeTrivialT m) where
+  runCompilerPass = mapMaybeTrivialT . runCompilerPass
+  runCompileDecl = mapMaybeTrivialT . runCompileDecl
   setCallDepth = lift . setCallDepth
   getCallDepth = lift getCallDepth
   incrCallDepth = lift incrCallDepth
@@ -201,12 +233,19 @@ logDebug level text = logDebugM level (return text)
 
 logCompilerPass :: (MonadLogger m) => CompilerPass -> m b -> m b
 logCompilerPass pass performPass = do
-  enterCompilerPass pass
-  let passName = pretty pass
-  result <- logIndent MinDetail ("Starting" <+> passName) performPass
-  logDebug MinDetail $ "Finished" <+> passName <> line
-  exitCompilerPass
-  return result
+  runCompilerPass pass $ do
+    let passName = pretty pass
+    result <- logIndent MinDetail ("Starting" <+> passName) performPass
+    logDebug MinDetail $ "Finished" <+> passName <> line
+    return result
+
+logCompileDecl :: (MonadLogger m) => Doc a -> GenericDecl builtin -> m b -> m b
+logCompileDecl action decl performPass = do
+  runCompileDecl (identifierOf decl) $ do
+    let text = action <+> quotePretty (nameOf decl)
+    result <- logIndent MidDetail ("Starting" <+> text) performPass
+    logDebug MidDetail $ "Finished" <+> text <> line
+    return result
 
 logCompilerSection2 :: (MonadLogger m) => LoggingLevel -> Doc a -> m b -> m b
 logCompilerSection2 level passName performPass = do

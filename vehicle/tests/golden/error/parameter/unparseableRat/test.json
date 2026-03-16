@@ -1,5 +1,0 @@
-{
-  "name": "Marabou",
-  "run": "vehicle compile -s unparseableRat.vcl -t MarabouQueries -p r:~",
-  "needs": ["unparseableRat.vcl"]
-}

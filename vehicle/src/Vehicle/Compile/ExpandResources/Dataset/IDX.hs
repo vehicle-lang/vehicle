@@ -22,7 +22,6 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
-import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
@@ -185,7 +184,7 @@ parseVector ctx currentDim expectedElemType expectedDim actualDims actualElems =
       checkDimension ctx currentDim expectedDim d
       let splitElems = partitionData d ds actualElems
       exprs <- traverse (\es -> parseContainer ctx (currentDim + 1) ds es expectedElemType) splitElems
-      return $ mkExpr accessVecLit (VecLitArgs (implicit expectedElemType) expectedDim exprs)
+      return $ IVecLiteral expectedElemType expectedDim exprs
 
 parseElements ::
   (MonadExpandResources m, Vector.Unbox a) =>

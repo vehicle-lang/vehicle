@@ -1,0 +1,16 @@
+{
+  "name": "Marabou",
+  "run": "vehicle compile queries -s spec.vcl -f MarabouQueries -o Marabou.queries/ --network f:fake.onnx --network g:fake.onnx",
+  "needs": [
+    "spec.vcl",
+    "fake.onnx"
+  ],
+  "produces": [
+    "Marabou.queries/trivialSemantic2.vcl-plan",
+    "Marabou.queries/trivialSemantic1.vcl-plan",
+    "Marabou.queries/trivial.vcl-plan"
+  ],
+  "ignore": {
+    "lines": ".*\"fileHash\".*"
+  }
+}

@@ -1,5 +1,0 @@
-{
-  "name": "TypeCheck",
-  "run": "vehicle check -s invalidAnnotationParameterValue.vcl",
-  "needs": ["invalidAnnotationParameterValue.vcl"]
-}

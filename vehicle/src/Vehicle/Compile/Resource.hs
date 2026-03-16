@@ -4,12 +4,14 @@ import Control.DeepSeq (NFData)
 import Data.Aeson (ToJSON)
 import Data.Aeson.Types (FromJSON)
 import GHC.Generics
+import Vehicle.Data.Builtin.Core (BuiltinType (..))
 import Vehicle.Data.Tensor (TensorShape)
 import Vehicle.Prelude
-import Vehicle.Syntax.Builtin (BuiltinType (..))
 
 --------------------------------------------------------------------------------
 -- Networks
+
+type NetworkName = Name
 
 data NetworkType = NetworkType
   { inputTensor :: NetworkTensorType,

@@ -1,38 +1,49 @@
+{-# LANGUAGE CPP #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
+
 module Vehicle.Prelude.Misc where
 
+#if MIN_VERSION_base(4,19,0)
+import qualified Data.Functor as F
+#endif
+
 import Control.DeepSeq (NFData)
-import Control.Monad (join, when)
+import Control.Monad (join, liftM2, when)
 import Control.Monad.Identity (Identity (..))
 import Control.Monad.Reader (MonadReader (..))
-import Control.Monad.State (MonadState (..), modify)
-import Data.Aeson (FromJSON, Options (..), ToJSON, defaultOptions)
-import Data.Aeson.Encode.Pretty (Config (..), Indent (..), NumberFormat (..))
+import Control.Monad.State.Class as State (MonadState (..), modify)
+import Data.Aeson (FromJSON, Options (..), ToJSON (..), defaultOptions)
+import Data.Aeson.Encode.Pretty (Config (..), Indent (..), NumberFormat (..), encodePretty')
 import Data.Bifunctor (Bifunctor (..))
+import Data.Bitraversable
+import Data.ByteString.Lazy.Char8 (unpack)
 import Data.Graph (Edge, Vertex, buildG, topSort)
 import Data.Hashable (Hashable)
-import Data.IntMap (IntMap, updateLookupWithKey)
-import Data.List qualified as List
+import Data.List (sortOn)
 import Data.List.NonEmpty (NonEmpty (..))
-import Data.List.NonEmpty qualified as NonEmpty (toList)
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Maybe (listToMaybe, mapMaybe)
+import Data.Serialize as Serialize (Get, Putter, Serialize (..), getListOf, putListOf)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Data.These (These (..), these)
+import Data.These (These (..))
 import GHC.Generics (Generic)
 import Numeric (readFloat, readSigned)
 import System.Console.ANSI
-import Vehicle.Prelude.Prettyprinter (Pretty (pretty))
-import Vehicle.Syntax.AST.Name (Name)
-import Vehicle.Syntax.Prelude (developerError, unzipF)
+import Text.EditDistance (defaultEditCosts, levenshteinDistance)
+import Vehicle.Data.AST.Name (HasName, Name, nameOf)
+import Vehicle.Prelude.Error (developerError)
+import Vehicle.Prelude.Prettyprinter (Doc, Pretty (pretty))
 
 data VehicleLang = External | Internal
   deriving (Show)
 
--- | A textual representation of a Vehicle specification.
-type SpecificationText = Text
+-- | A textual representation of a Vehicle module.
+type ModuleText = Text
 
 -- | A set of declarations in the specification.
 type DeclarationNames = [Name]
@@ -85,6 +96,11 @@ unionMaybeWith _ Nothing mb = mb
 unionMaybeWith _ ma Nothing = ma
 unionMaybeWith f (Just a) (Just b) = Just $ f a b
 
+unionMaybeWithM :: (Monad m) => (a -> a -> m a) -> Maybe a -> Maybe a -> m (Maybe a)
+unionMaybeWithM _ Nothing mb = return mb
+unionMaybeWithM _ ma Nothing = return ma
+unionMaybeWithM f (Just a) (Just b) = Just <$> f a b
+
 partitionMaybe :: (a -> Maybe b) -> [a] -> ([b], [a])
 partitionMaybe f xs = runIdentity (partitionMaybeM (return . f) xs)
 
@@ -132,8 +148,20 @@ oneHot i l x
   | i == 0 = Just x : replicate l Nothing
   | otherwise = Nothing : oneHot (i - 1) (l - 1) x
 
-deleteAndGet :: Int -> IntMap a -> (Maybe a, IntMap a)
-deleteAndGet = updateLookupWithKey (\_ _ -> Nothing)
+deleteAndGet :: (Ord a) => a -> Map a b -> (Maybe b, Map a b)
+deleteAndGet = Map.updateLookupWithKey (\_ _ -> Nothing)
+
+unionWithM :: (Monad m, Ord key) => (val -> val -> m val) -> Map key val -> Map key val -> m (Map key val)
+unionWithM f m1 m2 = sequence $ Map.unionWith (\xm ym -> join $ liftM2 f xm ym) (Map.map return m1) (Map.map return m2)
+
+mapKeysM :: (Monad m, Ord key) => (key -> m key) -> Map key val -> m (Map key val)
+mapKeysM f xs = Map.fromList <$> traverse (bitraverse f pure) (Map.toList xs)
+
+fromMappedKeyList :: (Ord key) => (key -> value) -> [key] -> Map key value
+fromMappedKeyList f keys = Map.fromList $ fmap (\key -> (key, f key)) keys
+
+fromMappedValueList :: (Ord key) => (value -> key) -> [value] -> Map key value
+fromMappedValueList f values = Map.fromList $ fmap (\value -> (f value, value)) values
 
 -- Base 4.16 once we upgrade
 prependList :: [a] -> NonEmpty a -> NonEmpty a
@@ -210,9 +238,6 @@ xor p q = p /= q
 enumerate :: (Bounded a, Enum a) => [a]
 enumerate = [minBound .. maxBound]
 
-supportedOptions :: [String] -> String
-supportedOptions opts = "Supported options: " <> List.intercalate ", " opts
-
 whenM :: (Monad m) => m Bool -> m () -> m ()
 whenM cond action = do
   c <- cond
@@ -226,6 +251,9 @@ prettyJSONConfig =
       confNumFormat = Generic,
       confTrailingNewline = False
     }
+
+prettyAsJSON :: (ToJSON a) => a -> Doc b
+prettyAsJSON x = pretty $ unpack $ encodePretty' prettyJSONConfig $ toJSON x
 
 jsonOptions :: Options
 jsonOptions =
@@ -247,25 +275,22 @@ setTextColour c s =
 cartesianProduct :: (a -> b -> c) -> [a] -> [b] -> [c]
 cartesianProduct g xs ys = [g x y | x <- xs, y <- ys]
 
-nonEmptyCartesianProduct :: (a -> b -> c) -> NonEmpty a -> NonEmpty b -> NonEmpty c
-nonEmptyCartesianProduct f (x :| xs) (y :| ys) =
-  f x y :| (fmap (f x) ys <> cartesianProduct f xs (y : ys))
+cartesianProductM :: (Monad m) => (a -> b -> m c) -> [a] -> [b] -> m [c]
+cartesianProductM g xs ys = sequence [g x y | x <- xs, y <- ys]
+
+concatNonEmpty :: NonEmpty (NonEmpty a) -> NonEmpty a
+concatNonEmpty ((x :| xs) :| xss) = x :| (xs <> concatMap NonEmpty.toList xss)
+
+nonEmptyCartesianProductM :: (Monad m) => (a -> b -> m c) -> NonEmpty a -> NonEmpty b -> m (NonEmpty c)
+nonEmptyCartesianProductM f (x :| xs) (y :| ys) = do
+  z <- f x y
+  zs <- traverse (f x) ys
+  zss <- cartesianProductM f xs (y : ys)
+  return $ z :| (zs <> zss)
 
 thenCmp :: Ordering -> Ordering -> Ordering
 thenCmp EQ o2 = o2
 thenCmp o1 _ = o1
-
-getModify :: (MonadState s m) => (s -> s) -> m s
-getModify f = do
-  x <- get
-  modify f
-  return x
-
-mergeTheses :: (a -> a -> a) -> (b -> b -> b) -> These a b -> These a b -> These a b
-mergeTheses f g = \case
-  This x -> first (f x)
-  That y -> second (g y)
-  These x y -> bimap (f x) (g y)
 
 mergeNonEmptyKeyValues :: (Ord a) => (NonEmpty b -> b) -> NonEmpty (a, b) -> NonEmpty (a, b)
 mergeNonEmptyKeyValues f xs = do
@@ -274,22 +299,80 @@ mergeNonEmptyKeyValues f xs = do
     [] -> developerError "impossible"
     u : us -> fmap (second f) (u :| us)
 
-mergeThesesByThis :: forall a b. (Ord a) => (NonEmpty b -> b) -> NonEmpty (These a b) -> NonEmpty (These a b)
-mergeThesesByThis f xs = do
-  let pairs = fmap (these (\a -> (Just a, [])) (\b -> (Nothing, [b])) (\a b -> (Just a, [b]))) xs
-  let thatByThis = Map.toList $ Map.fromListWith (<>) $ NonEmpty.toList pairs
-  case thatByThis of
-    [] -> developerError "impossible"
-    u : us -> fmap convert (u :| us)
-  where
-    convert :: (Maybe a, [b]) -> These a b
-    convert (Nothing, []) = developerError "impossible"
-    convert (Just a, []) = This a
-    convert (Nothing, b : bs) = That (f (b :| bs))
-    convert (Just a, b : bs) = These a (f (b :| bs))
+firstJust :: (a -> Maybe b) -> [a] -> Maybe b
+firstJust f = listToMaybe . mapMaybe f
+
+eitherM :: (a -> m c) -> (b -> m c) -> Either a b -> m c
+eitherM f g = \case
+  Left x -> f x
+  Right y -> g y
+
+theseErrors :: (a -> b -> c) -> Either e1 a -> Either e2 b -> Either (These e1 e2) c
+theseErrors f v1 v2 = case (v1, v2) of
+  (Left e1, Left e2) -> Left $ These e1 e2
+  (Left e1, Right {}) -> Left $ This e1
+  (Right {}, Left e2) -> Left $ That e2
+  (Right r1, Right r2) -> Right $ f r1 r2
+
+localState :: (MonadState s m) => (s -> s) -> m a -> m a
+localState f action = do
+  originalState <- State.get
+  modify f
+  result <- action
+  State.put originalState
+  return result
+
+unzipF :: (Functor f) => f (a, b) -> (f a, f b)
+#if MIN_VERSION_base(4,19,0)
+unzipF = F.unzip
+#else
+unzipF = NonEmpty.unzip
+#endif
 
 --------------------------------------------------------------------------------
 -- Constants
 
 -- At the moment we only support rational coefficients.
 type Coefficient = Rational
+
+readNat :: Text -> Int
+readNat = read . Text.unpack
+
+readRat :: Text -> Prelude.Rational
+readRat str = case readFloat (Text.unpack str) of
+  ((n, []) : _) -> n
+  _ -> developerError "Invalid number"
+
+--------------------------------------------------------------------------------
+-- Spelling
+
+mispellingsSortedByLikelihood :: (HasName object Name) => object -> [object] -> [object]
+mispellingsSortedByLikelihood symbol possibilities = do
+  let scoredPossibilities = mapMaybe (symbol `isMispellingOf`) possibilities
+  let finalPossibilities = sortOn snd scoredPossibilities
+  fmap fst finalPossibilities
+
+isMispellingOf :: (HasName object Name) => object -> object -> Maybe (object, Int)
+isMispellingOf symbol possibility = do
+  let fieldName = Text.unpack $ nameOf symbol
+  let distance = levenshteinDistance defaultEditCosts fieldName (Text.unpack $ nameOf possibility)
+  if distance <= length fieldName `div` 2
+    then Just (possibility, distance)
+    else Nothing
+
+--------------------------------------------------------------------------------
+-- Serialization instances missing from Cereal
+
+instance (Serialize a) => Serialize (NonEmpty a) where
+  put = putNonEmptyListOf Serialize.put
+  get = getNonEmptyListOf Serialize.get
+
+getNonEmptyListOf :: Get a -> Get (NonEmpty a)
+getNonEmptyListOf m = do
+  xs <- Serialize.getListOf m
+  case NonEmpty.nonEmpty xs of
+    Nothing -> fail "getNonEmptyListOf: empty list"
+    Just neList -> pure neList
+
+putNonEmptyListOf :: Putter a -> Putter (NonEmpty a)
+putNonEmptyListOf pa = Serialize.putListOf pa . NonEmpty.toList

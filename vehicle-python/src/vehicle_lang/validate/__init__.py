@@ -1,11 +1,10 @@
 from pathlib import Path
-from typing import Union
 
 from .. import session
 from ..error import VehicleError
 
 
-def validate(cache: Union[str, Path]) -> str:
+def validate(cache: str | Path) -> str:
     """
     Validate a verification result to check whether it still holds.
 

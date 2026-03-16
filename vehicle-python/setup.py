@@ -1,4 +1,5 @@
 import os.path
+import shutil
 import subprocess
 import sys
 import typing
@@ -13,7 +14,6 @@ import setuptools.command.build_ext
 # isort: split
 
 import distutils.errors
-import distutils.spawn
 
 ext_module = setuptools.Extension(
     name="vehicle_lang._binding",
@@ -141,7 +141,7 @@ class cabal_build_ext(setuptools.command.build_ext.build_ext):
 
     def find_cabal(self) -> str:
         if self._cabal is None:
-            self._cabal = distutils.spawn.find_executable("cabal")
+            self._cabal = shutil.which("cabal")
             if self._cabal is None:
                 raise distutils.errors.DistutilsExecError(
                     "Could not find executable 'cabal'. "
@@ -162,7 +162,7 @@ class cabal_build_ext(setuptools.command.build_ext.build_ext):
 
     def find_ghc(self) -> str:
         if self._ghc is None:
-            self._ghc = distutils.spawn.find_executable("ghc")
+            self._ghc = shutil.which("ghc")
             if self._ghc is None:
                 raise distutils.errors.DistutilsExecError(
                     "Could not find executable 'ghc'. "
@@ -183,7 +183,7 @@ class cabal_build_ext(setuptools.command.build_ext.build_ext):
 def main() -> None:
     setuptools.setup(
         ext_modules=[ext_module],
-        cmdclass={"build_ext": cabal_build_ext},
+        cmdclass={"build_ext": cabal_build_ext},  # type: ignore[arg-type]
     )
 
 

@@ -1,0 +1,3 @@
+@property;
+test1 : (Tensor Real -> Tensor Real) -> Tensor Real;
+test1 = \ f -> search[a] (\ e -> \ xs -> reduceMul e xs) nil 0.0 1.0 (\ a -> - (max [ 0.0 ] (f [a + 2.0]) + max [ 0.0 ] ([ 0.0 ] - f [a + 2.0])))

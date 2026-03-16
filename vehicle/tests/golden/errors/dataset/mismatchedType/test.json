@@ -1,0 +1,5 @@
+{
+  "name": "Marabou",
+  "run": "vehicle compile queries -s mismatchedType.vcl -f MarabouQueries -d trainingDataset:dataset-rat-4.idx",
+  "needs": ["mismatchedType.vcl", "dataset-rat-4.idx"]
+}

@@ -5,7 +5,7 @@ where
 
 import Data.Maybe (mapMaybe)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBE (normaliseClosure)
+import Vehicle.Compile.Normalise.NBE (normaliseClosureInCtx)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Type.Constraint.Core
@@ -14,15 +14,17 @@ import Vehicle.Compile.Type.Monad (MonadTypeChecker)
 import Vehicle.Compile.Type.Monad.Class (substMetaVariables)
 import Vehicle.Compile.Type.System
 import Vehicle.Data.Builtin.Core
+import Vehicle.Data.Builtin.Interface.Type (TypableBuiltin)
 import Vehicle.Data.Builtin.Linearity
 import Vehicle.Data.Code.Value
+import Vehicle.Data.Variable.Bound.Context.Generic
 
 solveLinearityConstraint ::
   (MonadLinearitySolver m) =>
   WithContext (InstanceConstraint LinearityBuiltin) ->
   m ()
 solveLinearityConstraint constraintWithCtx = do
-  substConstraintWithCtx@(WithContext normConstraint@(Resolve origin _ _ goal) ctx) <- substMetaVariables @LinearityBuiltin constraintWithCtx
+  substConstraintWithCtx@(WithContext normConstraint@(Resolve origin _ _ _ goal) ctx) <- substMetaVariables @LinearityBuiltin constraintWithCtx
   logDebug MaxDetail $ "Forced:" <+> prettyFriendly substConstraintWithCtx
 
   (tc, spine) <- getTypeClass goal
@@ -43,7 +45,8 @@ pattern VLinearityExpr l <- VBuiltin (Linearity l) []
     VLinearityExpr l = VBuiltin (Linearity l) []
 
 type MonadLinearitySolver m =
-  ( MonadTypeChecker LinearityBuiltin m
+  ( MonadTypeChecker LinearityBuiltin m,
+    TypableBuiltin LinearityBuiltin
   )
 
 type LinearitySolver =
@@ -65,10 +68,10 @@ solve = \case
 solveQuantifierLinearity :: Quantifier -> LinearitySolver
 solveQuantifierLinearity _ _ [getNMeta -> Just m, _] = blockOn [m]
 solveQuantifierLinearity _ info@(ctx, _) [VPi binder closure, res] = Just $ do
-  let varName = getBinderName binder
-  let domainLin = VLinearityExpr (Linear (QuantifiedVariableProvenance (provenanceOf binder) varName))
+  let (varName, p) = getNamedBinderInfo binder
+  let domainLin = VLinearityExpr (Linear (QuantifiedVariableProvenance p varName))
   domEq <- createInstanceUnification info (typeOf binder) domainLin
-  resultType <- normaliseClosure (toNamedBoundCtx $ boundContext ctx) binder closure
+  resultType <- normaliseClosureInCtx (toNamedBoundCtx $ boundContext ctx) binder closure
   resEq <- createInstanceUnification info res resultType
   return $ Progress [domEq, resEq] []
 solveQuantifierLinearity _ _ _ = Nothing
@@ -148,5 +151,5 @@ powLinearityOp p l1 l2 = case (l1, l2) of
 
 getTypeClass :: (MonadCompile m) => InstanceGoal LinearityBuiltin -> m (LinearityRelation, Spine LinearityBuiltin)
 getTypeClass = \case
-  (InstanceGoal [] (LinearityRelation tc) args) -> return (tc, args)
+  (InstanceGoal [] (Right (LinearityRelation tc)) args) -> return (tc, args)
   _ -> compilerDeveloperError "Unexpected non-type-class instance argument found."

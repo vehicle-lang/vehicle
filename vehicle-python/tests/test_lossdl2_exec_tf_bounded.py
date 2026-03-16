@@ -1,7 +1,7 @@
 # 2024-04-16: Disable end-to-end tests
 if False:
     from pathlib import Path
-    from typing import Any, Callable, Dict
+    from typing import Any, Callable
 
     def test_lossdl2_exec_tf_bounded() -> None:
         try:
@@ -26,7 +26,7 @@ if False:
 
             def optimiser_for_x(
                 _minimise: bool,
-                _context: Dict[str, Any],
+                _context: dict[str, Any],
                 _joiner: Callable[[tf.Tensor, tf.Tensor], tf.Tensor],
                 _predicate: Callable[[Any], tf.Tensor],
             ) -> tf.Tensor:

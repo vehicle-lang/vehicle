@@ -1,0 +1,5 @@
+{
+  "name": "Marabou",
+  "run": "vehicle compile queries -s tooBigIndex.vcl -f MarabouQueries -d trainingDataset:dataset-nat-4.idx",
+  "needs": ["tooBigIndex.vcl", "dataset-nat-4.idx"]
+}

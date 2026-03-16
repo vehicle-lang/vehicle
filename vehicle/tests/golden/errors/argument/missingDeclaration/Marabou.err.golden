@@ -1,0 +1,2 @@
+Error: Requested to compile the declaration 'property' but no declarations exist with that name in the specification.
+Fix: check the spelling of the names and that the correct specification is being used.

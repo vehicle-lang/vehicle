@@ -1,5 +1,0 @@
-{
-  "name": "Marabou",
-  "run": "vehicle compile -s invalidIndex.vcl -t MarabouQueries -p n:5",
-  "needs": ["invalidIndex.vcl"]
-}

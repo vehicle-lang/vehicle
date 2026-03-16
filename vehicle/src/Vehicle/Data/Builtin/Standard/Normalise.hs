@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Vehicle.Data.Builtin.Standard.Normalise
-  (
+  ( foldReduceAndComparison,
   )
 where
 
@@ -11,12 +11,13 @@ import Vehicle.Data.Builtin.Interface.Blocked
 import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.Interface
+import Vehicle.Data.Code.Value
 import Vehicle.Prelude (GenericArg (..), HasIdentifier (identifierOf))
 
 ---------------------------------------------------------------------------------
 --- Normalisation
 
-instance HasTensorLiterals Builtin where
+instance (HasBuiltinConstructor expr) => HasTensorLiterals expr Builtin where
   tensorLiterals =
     [ Wrapper accessBoolTensorLiteral,
       Wrapper accessNatTensorLiteral,
@@ -85,6 +86,7 @@ instance NormalisableBuiltin Builtin where
       ForeachVector -> NonSimple evalForeachVector
       Iterate -> NonSimple evalIterate
       QuantifyRatTensor {} -> None
+      QuantifyTensorLike {} -> None
     BuiltinCast c -> case c of
       FromNat FromNatToNat -> Simple evalFromNatToNat
       FromNat FromNatToIndex -> Simple evalFromNatToIndex
@@ -111,6 +113,10 @@ instance NormalisableBuiltin Builtin where
       FromNat FromNatToRat -> forceEvalSimpleBuiltin p b evalFromNatToRat
       FromRat FromRatToRat -> forceEvalSimpleBuiltin p b evalFromRatToRat
       FromVectorToList -> forceEvalSimpleBuiltin p b evalVectorToList
+    BuiltinFunction StackTensor ->
+      Just $
+        -- Also force stacks to resolve as they are kind of cast.
+        forceEvalSimpleBuiltin p b evalStackTensor
     _ -> Nothing
 
 evalFromNatToNat :: (MonadNormBuiltin m) => EvalSimple FromNatToSimpleArgs expr Builtin m
@@ -134,3 +140,13 @@ evalVectorToList args@(VectorToListArgs t d xs) =
   return $ case argExpr d of
     INatLiteral n | n == length xs -> mkListExpr (argExpr t) xs
     _ -> mkExpr accessFromVectorToList args
+
+foldReduceAndComparison ::
+  TensorReductionArgs (Value Builtin) ->
+  Maybe (Value Builtin)
+foldReduceAndComparison (TensorReductionArgs _ unit tensor) =
+  case (unit, getExpr accessCompareRatTensorPointwise tensor) of
+    (IBoolLiteral True, Just (op, TensorOp2Args (IDimCons d ds) xs ys)) | op /= Ne -> do
+      let compareArgs = TensorReduceComparisonArgs d ds xs ys
+      Just $ mkExpr accessCompareRatTensorReduced (op, compareArgs)
+    _ -> Nothing
