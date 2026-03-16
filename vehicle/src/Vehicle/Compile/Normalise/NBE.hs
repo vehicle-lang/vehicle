@@ -129,16 +129,38 @@ evalDecl ::
 evalDecl d = case d of
   DefAbstract {} -> traverse evalInEmptyEnv d
   DefFunction {} -> traverse evalInEmptyEnv d
-  DefRecord p ident _ _ _ -> do
-    -- Record definitions should never be used computationally?
-    let fun = DefAbstract p ident BuiltinDef (Universe p 0)
-    traverse evalInEmptyEnv fun
+  DefRecord p ident sort telescope fields -> do
+    (telescope', fields') <- evalRecordDef (telescope, fields)
+    return $ DefRecord p ident sort telescope' fields'
 
 evalInEmptyEnv ::
   (MonadNorm builtin m, MonadFreeContext builtin m) =>
   Expr builtin ->
   m (Value builtin)
 evalInEmptyEnv = eval mempty emptyBoundEnv
+
+evalRecordDef ::
+  forall builtin m.
+  (MonadNorm builtin m, MonadFreeContext builtin m) =>
+  (Telescope builtin, RecordFields builtin) ->
+  m (VTelescope builtin, GenericRecordFields (Value builtin))
+evalRecordDef = go mempty emptyBoundEnv
+  where
+    go ::
+      NamedBoundCtx ->
+      BoundEnv builtin ->
+      (Telescope builtin, RecordFields builtin) ->
+      m (VTelescope builtin, GenericRecordFields (Value builtin))
+    go ctx boundEnv (telescope, fields) = case telescope of
+      binder : binders -> do
+        binder' <- traverse (eval ctx boundEnv) binder
+        let newEnv = extendEnvWithBound (boundCtxLv ctx) binder boundEnv
+        let newCtx = nameOf binder : ctx
+        (binders', fields') <- go newCtx newEnv (binders, fields)
+        return (binder' : binders', fields')
+      [] -> do
+        fields' <- traverseRecordFields (eval ctx boundEnv) fields
+        return ([], fields')
 
 eval ::
   (MonadNorm builtin m, MonadFreeContext builtin m) =>
