@@ -8,22 +8,16 @@ where
 import Colog.Core (LogAction, Severity (..), WithSeverity (..), (<&))
 import Control.Lens ((^.))
 import Data.Aeson.Text (encodeToLazyText)
-import Data.List (sortOn)
-import Data.List.NonEmpty qualified as NonEmpty
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Lazy qualified as TL
-import Language.LSP.Protocol.Lens qualified as Lsp
-import Language.LSP.Protocol.Message (Method (..), SMethod (..), TResponseError (..))
-import Language.LSP.Protocol.Types as Lsp (ClientCapabilities, LSPErrorCodes (..), SemanticTokenAbsolute (..), SemanticTokenModifiers, SemanticTokenTypes (..), SemanticTokens (..), defaultSemanticTokensLegend, makeSemanticTokens, toNormalizedUri, type (|?) (..))
+import Language.LSP.Protocol.Lens
+import Language.LSP.Protocol.Message (Method (..), SMethod (..))
+import Language.LSP.Protocol.Types as Lsp (ClientCapabilities, toNormalizedUri)
 import Language.LSP.Server (MonadLsp)
 import Language.LSP.Server qualified as Lsp
-import Language.LSP.VFS
-import Vehicle.Data.AST.Expr.Scoped (Arg, Binder, Expr (..), RecordFields)
-import Vehicle.Data.Builtin.Standard
 import Vehicle.LSP.Config (Config)
-import Vehicle.LSP.State (ServerStateRef)
-import Vehicle.Prelude
+import Vehicle.LSP.State (Server, fileUpdated)
 
 type MonadVehicleLsp m =
   ( MonadLsp Config m
@@ -33,21 +27,21 @@ handlers ::
   forall m.
   (MonadVehicleLsp m) =>
   LogAction m (WithSeverity Text) ->
-  ServerStateRef ->
+  Server ->
   Lsp.ClientCapabilities ->
   Lsp.Handlers m
-handlers logger serverState clientCapabilities =
+handlers logger server clientCapabilities =
   mconcat
     [ Lsp.notificationHandler SMethod_Initialized initializedHandler,
       -- TextDocument notifications
       Lsp.notificationHandler SMethod_WorkspaceDidChangeConfiguration workspaceDidChangeConfigurationHandler,
       -- TextDocument notifications
       Lsp.notificationHandler SMethod_TextDocumentDidOpen textDocumentDidOpenHandler,
-      Lsp.notificationHandler SMethod_TextDocumentDidChange textDocumentDidChangeHandler,
+      -- Lsp.notificationHandler SMethod_TextDocumentDidChange textDocumentDidChangeHandler,
       Lsp.notificationHandler SMethod_TextDocumentDidSave textDocumentDidSaveHandler,
-      Lsp.notificationHandler SMethod_TextDocumentDidClose textDocumentDidCloseHandler,
+      Lsp.notificationHandler SMethod_TextDocumentDidClose textDocumentDidCloseHandler
       -- TextDocument requests
-      Lsp.requestHandler SMethod_TextDocumentSemanticTokensFull textDocumentSemanticTokensFull
+      -- Lsp.requestHandler SMethod_TextDocumentSemanticTokensFull textDocumentSemanticTokensFull
     ]
   where
     initializedHandler :: Lsp.Handler m Method_Initialized
@@ -62,21 +56,21 @@ handlers logger serverState clientCapabilities =
       return ()
 
     textDocumentDidOpenHandler :: Lsp.Handler m Method_TextDocumentDidOpen
-    textDocumentDidOpenHandler notification = do
-      let doc = notification ^. Lsp.params . Lsp.textDocument . Lsp.uri
-      mdoc <- Lsp.getVirtualFile (Lsp.toNormalizedUri doc)
-      case mdoc of
-        Nothing -> _
-        Just vfile -> do
-          let src = virtualFileText vfile
-          expr <- _
-          _
-      return ()
-
-    textDocumentDidChangeHandler :: Lsp.Handler m Method_TextDocumentDidChange
-    textDocumentDidChangeHandler _notification = do
-      return ()
-
+    textDocumentDidOpenHandler msg = do
+      let doc = msg ^. params . textDocument
+      let url = Lsp.toNormalizedUri (doc ^. uri)
+      let txt = doc ^. text
+      let ver = doc ^. version
+      fileUpdated server ver url txt
+    {-
+        textDocumentDidChangeHandler :: Lsp.Handler m Method_TextDocumentDidChange
+        textDocumentDidChangeHandler msg = do
+          let doc = msg ^. params . textDocument
+          let url = Lsp.toNormalizedUri (doc ^. uri)
+          let txt = doc ^. text
+          let ver = doc ^. version
+          fileUpdated server ver url txt
+    -}
     textDocumentDidCloseHandler :: Lsp.Handler m Method_TextDocumentDidClose
     textDocumentDidCloseHandler _notification = do
       return ()
@@ -85,6 +79,7 @@ handlers logger serverState clientCapabilities =
     textDocumentDidSaveHandler _notification = do
       return ()
 
+{-
     textDocumentSemanticTokensFull :: Lsp.Handler m Method_TextDocumentSemanticTokensFull
     textDocumentSemanticTokensFull request responder = do
       let doc = request ^. Lsp.params . Lsp.textDocument . Lsp.uri
@@ -160,3 +155,4 @@ collectBinderTokens = collectTokens . binderValue
 collectFieldsTokens :: RecordFields Builtin -> [Lsp.SemanticTokenAbsolute]
 collectFieldsTokens = concatMap $ \(field, fieldValue) ->
   makeToken (provenanceOf field) SemanticTokenTypes_Method [] : collectTokens fieldValue
+      -}

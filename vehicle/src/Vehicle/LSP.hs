@@ -9,7 +9,7 @@ where
 import Colog qualified
 import Colog.Core (LogAction, Severity (..), WithSeverity (..), (<&))
 import Control.Concurrent (forkIO)
-import Control.Concurrent.STM (atomically, newTVarIO)
+import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TChan
   ( TChan,
     newTChanIO,
@@ -51,7 +51,7 @@ import Vehicle.LSP.Config (Config)
 import Vehicle.LSP.Config qualified as Config
 import Vehicle.LSP.Handlers (handlers)
 import Vehicle.LSP.Monad as LSPMonad
-import Vehicle.LSP.State (ServerState, ServerStateRef, initialServerState, initialiseServerState)
+import Vehicle.LSP.State (Server, initialiseServer, newServer)
 
 --------------------------------------------------------------------------------
 
@@ -72,12 +72,12 @@ runLSP LSPOptions {..} = do
     -- Setup global queue with LSP message reactions:
     reactorInputChan <- newTChanIO
 
-    -- Initialise the global state
-    stateVar <- liftIO $ newTVarIO initialServerState
+    -- Create the server
+    server <- newServer
 
     -- Start the LSP server:
     runServerWithHandles handleLogger (dualLogger @(LspM Config)) stdin stdout $
-      lspDefinition handleLogger (dualLogger @LspTc) stateVar reactorInputChan
+      lspDefinition server handleLogger (dualLogger @LspTc) reactorInputChan
 
   case result of
     0 -> exitSuccess
@@ -119,19 +119,19 @@ newtype ReactorInput
   = ReactorAction {runReactorAction :: IO ()}
 
 lspDefinition ::
+  Server ->
   LogAction IO (WithSeverity Text) ->
   LogAction LspTc (WithSeverity Text) ->
-  ServerStateRef ->
   TChan ReactorInput ->
   ServerDefinition Config
-lspDefinition handleLogger dualLogger serverState reactorInputChan = do
+lspDefinition server handleLogger dualLogger reactorInputChan = do
   ServerDefinition
     { defaultConfig = Config.defaultConfig,
       configSection = "vehicle",
       parseConfig = Config.parseConfig,
       onConfigChange = LSPMonad.onConfigChange,
-      doInitialize = lspInitialise handleLogger serverState reactorInputChan,
-      staticHandlers = lspHandlers dualLogger serverState reactorInputChan,
+      doInitialize = lspInitialise server handleLogger reactorInputChan,
+      staticHandlers = lspHandlers server dualLogger reactorInputChan,
       interpretHandler = lspInterpretHandler,
       options = lspOptions
     }
@@ -148,25 +148,25 @@ reactor logger reactorInputChan = do
   forever (runReactorAction =<< atomically (readTChan reactorInputChan))
 
 lspInitialise ::
+  Server ->
   LogAction IO (WithSeverity Text) ->
-  ServerStateRef ->
   TChan ReactorInput ->
   LanguageContextEnv Config ->
   TMessage 'Method_Initialize ->
   IO (Either (TResponseError 'Method_Initialize) (LanguageContextEnv Config))
-lspInitialise logger serverState reactorInputChan languageContextEnv _request = do
+lspInitialise server logger reactorInputChan languageContextEnv _request = do
   _reactorId <- forkIO (reactor logger reactorInputChan)
-  maybeError <- initialiseServerState serverState
+  initialiseServer server languageContextEnv
   pure $ Right languageContextEnv
 
 lspHandlers ::
+  Server ->
   LogAction LspTc (WithSeverity Text) ->
-  ServerStateRef ->
   TChan ReactorInput ->
   ClientCapabilities ->
   Handlers LspTc
-lspHandlers logger serverState reactorInputChan =
-  mapHandlers pushRequest pushNotification . handlers logger serverState
+lspHandlers server logger reactorInputChan =
+  mapHandlers pushRequest pushNotification . handlers logger server
   where
     pushRequest :: forall (a :: Method 'ClientToServer 'Request). Handler LspTc a -> Handler LspTc a
     pushRequest handler message responder = do
