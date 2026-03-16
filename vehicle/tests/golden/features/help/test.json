@@ -1,6 +1,6 @@
 [
   {
-    "name": "vehicle",
+    "name": "vehicle-main",
     "run": "vehicle --help"
   },
   {
