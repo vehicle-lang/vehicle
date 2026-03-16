@@ -33,9 +33,13 @@ expandResources ::
   Resources ->
   Prog Builtin ->
   m (Prog Builtin, NetworkContext, ResourcesIntegrityInfo, [MissingResource], [UninferableParameter])
-expandResources resources prog =
+expandResources resources prog@(Main decls) =
   logCompilerSection2 MinDetail "expansion of external resources" $ do
     logDebug MidDetail $ "Provided resources:" <> lineIndent (pretty resources)
+    forM_ decls $ \decl ->
+      when (nameOf decl == "Pair") $
+        logDebug MidDetail $
+          pretty (show $ decl)
 
     (progWithoutResources, ExpandResourcesState {..}) <- runExpandResourcesT resources (readResourcesInProg prog)
 

@@ -1,24 +1,34 @@
+@tensor
+record Pair where
+  { a : Real
+  , b : Real
+  }
+
 @network
-f : Tensor Real [2,2] -> Tensor Real [2,2]
+f : Pair -> Pair
 
-zeroD : Tensor Real []
-zeroD = 2.5
 
-oneD : Tensor Real [2]
-oneD = [zeroD, 1]
+-- @network
+-- f : Tensor Real [2,2] -> Tensor Real [2,2]
 
-twoD : Tensor Real [2, 2]
-twoD = [oneD, [2, 3]]
+-- zeroD : Tensor Real []
+-- zeroD = 2.5
 
-lookup2D : Real
-lookup2D = twoD ! 0 ! 1
+-- oneD : Tensor Real [2]
+-- oneD = [zeroD, 1]
 
-addition : Tensor Real [2, 2]
-addition = twoD + twoD
+-- twoD : Tensor Real [2, 2]
+-- twoD = [oneD, [2, 3]]
 
-subtraction : Tensor Real [2, 2]
-subtraction = twoD - twoD
+-- lookup2D : Real
+-- lookup2D = twoD ! 0 ! 1
+
+-- addition : Tensor Real [2, 2]
+-- addition = twoD + twoD
+
+-- subtraction : Tensor Real [2, 2]
+-- subtraction = twoD - twoD
 
 @property
 p : Bool
-p = forall i j . (f subtraction + addition) ! i ! j >= 0
+p = forall x . (f x).a >= 0
