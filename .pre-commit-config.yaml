@@ -37,20 +37,20 @@ repos:
       - id: mixed-line-ending
       - id: trailing-whitespace
   - repo: https://github.com/ikamensh/flynt/
-    rev: "1.0.1"
+    rev: "1.0.6"
     hooks:
       - id: flynt
   - repo: https://github.com/pycqa/isort
-    rev: "7.0.0"
+    rev: "8.0.1"
     hooks:
       - id: isort
         args: ["--profile", "black", "--filter-files"]
-  - repo: https://github.com/psf/black
-    rev: "24.4.2"
+  - repo: https://github.com/psf/black-pre-commit-mirror
+    rev: "26.3.1"
     hooks:
       - id: black
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: "v1.10.1"
+    rev: "v1.19.1"
     hooks:
       - id: mypy
         name: mypy (vehicle-python)

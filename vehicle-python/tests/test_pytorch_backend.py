@@ -58,7 +58,7 @@ def test_pytorch_translation_basic() -> None:
     assert hasattr(translation.builtins, "AddRatTensor")
 
 
-@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")  # type: ignore[misc]
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")  # type: ignore[untyped-decorator]
 def test_pytorch_cuda_compatibility() -> None:
     """Test that PyTorch backend works with CUDA if available."""
     from vehicle_lang.loss._pytorch._builtins import PyTorchBuiltins

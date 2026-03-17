@@ -180,7 +180,7 @@ class TaggedObjectDecoder(Decoder[_T]):
                     value, subcls_origin, f"unused field '{self.CONTENTS}'"
                 )
             else:
-                return cast(_T, subcls_origin())
+                return subcls_origin()
 
         # If CONTENTS field is present, decode arguments by position:
         if self.CONTENTS in value:
@@ -196,7 +196,7 @@ class TaggedObjectDecoder(Decoder[_T]):
                 try:
                     fld_type = required_init_fld_types[0]
                     arg: Any = decoder.decode(fld_type, value_args)
-                    return cast(_T, subcls_origin(*[arg]))
+                    return subcls_origin(*[arg])
                 except DecodeError:
                     value_args = [value_args]
 
@@ -224,7 +224,7 @@ class TaggedObjectDecoder(Decoder[_T]):
                         value, subcls_origin, f"missing value for {fld_name}"
                     )
 
-            return cast(_T, subcls_origin(*args))
+            return subcls_origin(*args)
 
         # If CONTENTS field is absent, decode arguments by name:
         else:
@@ -247,7 +247,7 @@ class TaggedObjectDecoder(Decoder[_T]):
                             e.reason,
                             telescope=((subcls_origin, fld_name), *e.telescope),
                         )
-            return cast(_T, subcls_origin(**kwargs))
+            return subcls_origin(**kwargs)
 
 
 def _decode_None(value: JsonValue) -> None:
@@ -489,7 +489,7 @@ _DEFAULT_DECODER.register(Literal, LiteralDecoder())
 _DEFAULT_DECODER.register(Union, UnionDecoder())
 
 
-def decode(cls: Type[_T] | Any, value: JsonValue) -> _T:
+def decode(cls: Type[_T], value: JsonValue) -> _T:
     return _DEFAULT_DECODER.decode(cls, value)
 
 

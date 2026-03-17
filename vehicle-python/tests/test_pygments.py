@@ -11,7 +11,7 @@ TESTS_DATA = Path(__file__).parent / "data"
 @pytest.mark.parametrize(
     "vehicle_file",
     TESTS_DATA.glob("*.vcl"),
-)  # type: ignore[misc]
+)  # type: ignore[untyped-decorator]
 def test_pygments(vehicle_file: Path) -> None:
     UPDATE_GOLDENS = os.environ.get("UPDATE_GOLDENS")
     actual_tokens = subprocess.check_output(
