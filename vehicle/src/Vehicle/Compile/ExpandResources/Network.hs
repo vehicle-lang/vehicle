@@ -50,38 +50,21 @@ getNetworkType decl networkType = case normalised networkType of
         inputDetails <- tensorType Input (typeOf binder)
         resultType <- normaliseClosureInCtx mempty binder closure
         outputDetails <- tensorType Output resultType
-        let networkDetails = NetworkType (NetworkTensorTypeConstructor inputDetails) (NetworkTensorTypeConstructor outputDetails)
+        let networkDetails = NetworkType inputDetails outputDetails
         return networkDetails
   _ -> compilerDeveloperError "Should have caught the fact that the network type is not a function during type-checking"
   where
-    tensorType :: InputOrOutput -> VType Builtin -> m NetworkTensorType
+    tensorType :: InputOrOutput -> VType Builtin -> m NetworkIOType
     tensorType io t = case toTypeValue t of
       VTensorLike (VRatTensorType dims) -> do
         shape <- tensorDimensions io dims
-        return $ NetworkTensorType NetworkRatType shape
+        return $ NetworkTensorTypeConstructor $ NetworkTensorType NetworkRatType shape
       VFreeTypeVar v _spine -> do
-        recordType <- getDeclEntry (Proxy @Builtin) v
-        case recordType of
-          DefRecord p ident _sort _telescope _fields -> compilerDeveloperError $ "matching on DefRecord" <+> pretty ident <+> pretty p
-          _ -> compilerDeveloperError "not matching on DefRecord"
+        entry <- getDeclEntry (Proxy @Builtin) v
+        shape <- getRecordDimsFromFreeCtx entry
+        fields <- getRecordFieldsFromFreeCtx entry
+        return $ NetworkRecordTypeConstructor $ NetworkRecordType NetworkRatType shape fields
       _ -> typingError
-
-    -- is this where we would need to look up the dimensions of the records in the context?
-    -- our record type is is an explicit pi binder
-    -- VPi binder value -> VPiType binder value
-    -- data Closure builtin = Closure (BoundEnv builtin) (Expr builtin)
-    -- type VBinder builtin = GenericBinder (Value builtin)
-
-    -- then the type of that binder is VFreeTypeVar
-    -- VFreeTypeVar Identifier (Spine Builtin)
-
-    -- then from there we should have a DefRecord
-    -- DefRecord
-    --   Provenance -- Location in source file.
-    --   Identifier -- Name of definition.
-    --   (Maybe DefRecordSort) -- List of annotations.
-    --   (GenericTelescope expr) -- Type parameters.
-    --   (GenericRecordFields expr) -- Fields.
 
     tensorDimensions :: InputOrOutput -> VType Builtin -> m TensorShape
     tensorDimensions io dims = case toDimensionsValue dims of
@@ -113,6 +96,8 @@ getNetworkType decl networkType = case normalised networkType of
 
 -- gets the equivalent tensor dims for a record
 -- type GenericRecordFields expr = [GenericRecordField expr]
+-- NOTE THIS WILL NOT WORK FOR NESTED TENSOR FIELDS YET!!!
+-- TODO: ^
 getRecordDimsFromFreeCtx ::
   forall m.
   (MonadExpandResources m) =>
@@ -122,9 +107,12 @@ getRecordDimsFromFreeCtx entry = case entry of
   DefRecord _p _ident _sort _telescope fields -> return [length fields]
   _ -> compilerDeveloperError "Unexpectedly not a record."
 
--- gets the fields for a record in
+-- gets the names of the fields for a record
 getRecordFieldsFromFreeCtx ::
   forall m.
   (MonadExpandResources m) =>
   FreeCtxEntry Builtin ->
-  VRecordFields Builtin
+  m GenericRecordFieldNames
+getRecordFieldsFromFreeCtx entry = case entry of
+  DefRecord _p _ident _sort _telescope fields -> return $ map fst fields
+  _ -> compilerDeveloperError "Unexpectedly not a record."
