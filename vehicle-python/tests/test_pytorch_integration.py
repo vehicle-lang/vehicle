@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Type
 
 import pytest
+
 from vehicle_lang.loss._ast._nodes import Program
 
 torch = pytest.importorskip(
@@ -109,7 +110,7 @@ def test_pytorch_vs_tensorflow_equivalence() -> None:
     ), "Function names should match between backends"
 
 
-@pytest.mark.parametrize("spec_name", ["test_addition.vcl"])  # type: ignore[misc]
+@pytest.mark.parametrize("spec_name", ["test_addition.vcl"])  # type: ignore[untyped-decorator]
 def test_pytorch_compile_specifications(spec_name: str) -> None:
     """Test PyTorch compilation on various Vehicle specifications."""
     tests_dir = Path(__file__).parent.resolve()
