@@ -183,7 +183,7 @@ class cabal_build_ext(setuptools.command.build_ext.build_ext):
 def main() -> None:
     setuptools.setup(
         ext_modules=[ext_module],
-        cmdclass={"build_ext": cabal_build_ext},  # type: ignore[arg-type]
+        cmdclass={"build_ext": cabal_build_ext},
     )
 
 
