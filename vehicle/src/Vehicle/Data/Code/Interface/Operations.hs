@@ -175,6 +175,21 @@ accessQuantifyRatTensor =
       mkExpr = \(q, args) -> mkBuiltin accessQuantifyRatTensorBuiltin q (mkExpr accessQuantifyRatTensorSpine args)
     }
 
+-- TODO: need to write one of these for quantify record
+accessQuantifyRecord ::
+  (HasBoolExpr expr builtin, HasLambdaConstructor expr body) =>
+  Accessor (expr builtin) (Quantifier, QuantifyRecordArgs (expr builtin) (body builtin))
+accessQuantifyRecord =
+  Access
+    { getExpr = \case
+        (getBuiltin accessQuantifyRecordBuiltin -> Just (q, spine)) ->
+          case getExpr accessQuantifyRecordSpine spine of
+            Just args -> Just (q, args)
+            _ -> Nothing
+        _ -> Nothing,
+      mkExpr = \(q, args) -> mkBuiltin accessQuantifyRecordBuiltin q (mkExpr accessQuantifyRecordSpine args)
+    }
+
 --------------------------------------------------------------------------------
 -- Indices
 

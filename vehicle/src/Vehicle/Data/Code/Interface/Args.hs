@@ -495,7 +495,7 @@ instance IsArgs NetworkAppArgs where
         mkExpr = \(NetworkAppArgs xs) -> [explicit xs]
       }
 
--- | Arguments for `QuantifyRatTenosr`
+-- | Arguments for `QuantifyRatTensor`
 data QuantifyRatTensorArgs expr body = QuantifyRatTensorArgs
   { quantifyDimensions :: expr,
     quantifyBinder :: GenericBinder expr,
@@ -513,6 +513,32 @@ accessQuantifyRatTensorSpine =
           _ -> Nothing
         _ -> Nothing,
       mkExpr = \(QuantifyRatTensorArgs dims binder body) ->
+        [ implicitIrrelevant dims,
+          explicit (mkExpr accessLamC (binder, body))
+        ]
+    }
+
+-- GUESSING
+
+-- | Arguments for `QuantifyRecord`
+data QuantifyRecordArgs expr body = QuantifyRecordArgs
+  { quantifyDimensions :: expr,
+    quantifyBinder :: GenericBinder expr,
+    quantifyBody :: body -- would this include the record body somehow? may need to look up if it doesnt
+    -- need to add a field for record details/fields?
+  }
+
+accessQuantifyRecordSpine ::
+  (HasLambdaConstructor expr body) =>
+  Accessor [GenericArg (expr builtin)] (QuantifyRecordArgs (expr builtin) (body builtin))
+accessQuantifyRecordSpine =
+  Access
+    { getExpr = \case
+        (fmap argExpr -> [dims, fn]) -> case getExpr accessLamC fn of
+          Just (binder, body) -> Just (QuantifyRecordArgs dims binder body)
+          _ -> Nothing
+        _ -> Nothing,
+      mkExpr = \(QuantifyRecordArgs dims binder body) ->
         [ implicitIrrelevant dims,
           explicit (mkExpr accessLamC (binder, body))
         ]

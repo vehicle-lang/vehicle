@@ -211,7 +211,7 @@ data BoolValue
   -- is this where we would have field information??
   -- (i think) this should be similar to what we do for rat tensor qantifier?
   -- then we can keep the details of the record in the body in a VRecord
-  | VQuantifyRecord (Quantifier, QuantifyRatTensorArgs (Value Builtin) (Closure Builtin))
+  | VQuantifyRecord (Quantifier, QuantifyRecordArgs (Value Builtin) (Closure Builtin))
   | VBoolIf (IfArgs (Value Builtin))
   | VBoolAt (AtTensorArgs (Value Builtin))
 
@@ -226,6 +226,8 @@ toBoolValue expr = case expr of
   (getExpr accessCompareNat -> Just args) -> VCompareNat args
   (getExpr accessCompareIndex -> Just args) -> VCompareIndex args
   (getExpr accessQuantifyRatTensor -> Just args) -> VQuantifyRatTensor args
+  -- helppp lol
+  (getExpr accessQuantifyRecord -> Just args) -> VQuantifyRecord args
   (getExpr accessReduceAnd -> Just args) ->
     case foldReduceAndComparison args of
       Nothing -> VReduceAndTensor args

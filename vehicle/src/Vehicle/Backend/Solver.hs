@@ -206,12 +206,14 @@ compileQueries expr = do
       logDebug MaxDetail $ "negate" <+> pretty Forall
       negatedArgs <- negateQuantifierBody args
       compileQuantifiedQuerySet True negatedArgs
-    VQuantifyRecord (Exists, args) -> compileQuantifiedQuerySet False args
-    VQuantifyRecord (Forall, args) -> do
+    -- VQuantifyRecord (Exists, args) -> compileQuantifiedQuerySet False args
+    VQuantifyRecord (Exists, _args) -> compilerDeveloperError "quantifying over records not supported yet - hit compileQueries base case"
+    VQuantifyRecord (Forall, _args) -> do
       -- TODO: not sure if this is what i need to do here
       logDebug MaxDetail $ "negate" <+> pretty Forall
-      negatedArgs <- negateQuantifierBody args
-      compileQuantifiedQuerySet True negatedArgs
+      -- negatedArgs <- negateQuantifierBody args
+      -- compileQuantifiedQuerySet True negatedArgs
+      compilerDeveloperError "quantifying over records not supported yet - hit compileQueries base case"
     ---------------------
     -- Recursive cases --
     ---------------------
