@@ -14,6 +14,7 @@ of neural networks.
   lists
   vectors
   tensors
+  records
   quantifiers
   networks
   datasets
@@ -21,4 +22,3 @@ of neural networks.
   properties
   type-synonyms
   tips-and-tricks
-  advanced
