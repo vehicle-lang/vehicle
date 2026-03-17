@@ -28,7 +28,7 @@ scopeModuleDecls ::
   ModulePath ->
   ImportedModuleContext builtin ->
   [S.Decl builtin] ->
-  m ([Decl builtin], ModuleScopingInterface builtin)
+  m ([Decl builtin], ModuleTypingState builtin)
 scopeModuleDecls modulePath initialState decls = do
   logCompilerPass Scoping $ do
     runMonadScopeT modulePath initialState $ do

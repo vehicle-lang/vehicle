@@ -38,7 +38,7 @@ import Vehicle.Data.Builtin.Linearity.Type ()
 import Vehicle.Data.Builtin.Polarity (PolarityBuiltin)
 import Vehicle.Data.Builtin.Polarity.Type ()
 import Vehicle.Data.Builtin.Standard
-import Vehicle.Data.Code.ModuleInterface (ImportedModuleContext, ModuleInterface (..), emptyModuleScopingInterface, emptyModuleTypingInterface)
+import Vehicle.Data.Code.ModuleInterface
 import Vehicle.Libraries.StandardLibrary (standardLibraryBuiltinModulePath, standardLibraryInstanceOps)
 import Vehicle.Syntax.Parse (parseExternalModule)
 
@@ -125,8 +125,7 @@ loadTypeSystemBuiltins typeSystem _instanceCandidates = do
   -- Add in the builtins
   let finalInterface =
         ModuleInterface
-          { scopingInterface = emptyModuleScopingInterface,
-            typingInterface = emptyModuleTypingInterface,
+          { typingState = emptyModuleTypingState,
             typedModule = Module mempty typedDecls
           }
   return [(builtinModulePath, finalInterface, freeEnv)]

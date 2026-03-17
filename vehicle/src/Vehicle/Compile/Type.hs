@@ -41,7 +41,7 @@ typeCheckModuleDecls ::
   InstanceDatabase builtin ->
   ImportedModuleContext builtin ->
   [Decl Builtin] ->
-  m ([Decl builtin], ModuleTypingInterface builtin, FreeEnv builtin)
+  m ([Decl builtin], ModuleTypingState builtin, FreeEnv builtin)
 typeCheckModuleDecls modulePath instances importedCtx decls = do
   logCompilerPass Typing $ do
     runTypeCheckerTInitially instances importedCtx $ do

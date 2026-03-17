@@ -50,35 +50,35 @@ type MonadScope builtin m =
   ( MonadCompile m,
     ScopableBuiltin builtin,
     MonadReader (ModulePath, ImportedModuleContext builtin) m,
-    MonadState (ModuleScopingInterface builtin) m
+    MonadState (ModuleTypingState builtin) m
   )
 
 runMonadScopeT ::
-  (MonadCompile m) =>
+  (MonadCompile m, Ord builtin) =>
   ModulePath ->
   ImportedModuleContext builtin ->
-  ReaderT (ModulePath, ImportedModuleContext builtin) (StateT (ModuleScopingInterface builtin) m) a ->
-  m (a, ModuleScopingInterface builtin)
+  ReaderT (ModulePath, ImportedModuleContext builtin) (StateT (ModuleTypingState builtin) m) a ->
+  m (a, ModuleTypingState builtin)
 runMonadScopeT modulePath importedCtx action = do
-  runStateT (runReaderT action (modulePath, importedCtx)) emptyModuleScopingInterface
+  runStateT (runReaderT action (modulePath, importedCtx)) emptyModuleTypingState
 
 -- | Called when parsing a record definition field-by-field so that
 -- earlier fields are in scope for later fields.
 addNewRecordDefField ::
-  (MonadState (ModuleScopingInterface builtin) m, MonadCompile m) =>
+  (MonadState (ModuleTypingState builtin) m, MonadCompile m) =>
   Identifier ->
   Telescope builtin ->
   FieldName ->
   m ()
 addNewRecordDefField ident telescope newField = do
-  ModuleScopingInterface {..} <- get
+  ModuleTypingState {..} <- get
   case Map.lookup newField recordIdentifiersByField of
     Nothing -> return ()
     Just (existingIdentifier, _) ->
       throwError $ DeclarationDeclarationShadowing (provenanceOf newField) (Left newField) existingIdentifier
 
   put $
-    ModuleScopingInterface
+    ModuleTypingState
       { recordIdentifiersByField = Map.insert newField (ident, telescope) recordIdentifiersByField,
         ..
       }
@@ -87,16 +87,16 @@ addNewRecordDefField ident telescope newField = do
 -- the information necessary to do efficient parsing of instances of that
 -- record.
 addNewRecordDef ::
-  (MonadState (ModuleScopingInterface builtin) m) =>
+  (MonadState (ModuleTypingState builtin) m) =>
   Identifier ->
   Telescope builtin ->
   RecordFields builtin ->
   m ()
 addNewRecordDef ident telescope fields = do
-  ModuleScopingInterface {..} <- get
+  ModuleTypingState {..} <- get
   let fieldSet = Set.fromList $ fmap fst fields
   put $
-    ModuleScopingInterface
+    ModuleTypingState
       { recordIdentifiersByFields = Map.insert fieldSet (ident, telescope) recordIdentifiersByFields,
         fieldsByRecordIdentifier = Map.insert ident fieldSet fieldsByRecordIdentifier,
         ..
@@ -104,7 +104,7 @@ addNewRecordDef ident telescope fields = do
 
 addNewDecl :: (MonadScope builtin m) => Decl builtin -> m ()
 addNewDecl decl = do
-  ModuleScopingInterface {..} <- get
+  ModuleTypingState {..} <- get
   let ident = identifierOf decl
   let name = nameOf ident
   case Map.lookup name declsIdentifiersByName of
@@ -113,7 +113,7 @@ addNewDecl decl = do
       throwError $ DeclarationDeclarationShadowing (provenanceOf decl) (Right name) existingIdent
 
   put $
-    ModuleScopingInterface
+    ModuleTypingState
       { declsIdentifiersByName = Map.insert name ident declsIdentifiersByName,
         ..
       }
@@ -124,26 +124,26 @@ addNewDecl decl = do
 data LocalCtx builtin = LocalCtx
   { currentModulePath :: ModulePath,
     importedCtx :: ImportedModuleContext builtin,
-    currentModuleCtx :: ModuleScopingInterface builtin,
+    currentModuleCtx :: ModuleTypingState builtin,
     boundCtx :: [Maybe Name]
   }
 
 type MonadScopeExpr builtin m =
   ( MonadCompile m,
     ScopableBuiltin builtin,
-    MonadState (ModuleScopingInterface builtin) m,
+    MonadState (ModuleTypingState builtin) m,
     MonadReader (LocalCtx builtin) m
   )
 
-lookupInNonLocalCtx :: (MonadScopeExpr builtin m) => (ModuleScopingInterface builtin -> Maybe a) -> m (Maybe a)
+lookupInNonLocalCtx :: (MonadScopeExpr builtin m) => (ModuleTypingState builtin -> Maybe a) -> m (Maybe a)
 lookupInNonLocalCtx lookupValue = do
   LocalCtx {..} <- ask
-  return $ lookupInCombinedContext scopingInterface lookupValue currentModuleCtx importedCtx
+  return $ lookupInCombinedContext lookupValue currentModuleCtx importedCtx
 
-concatInNonLocalCtx :: (MonadScopeExpr builtin m, Monoid a) => (ModuleScopingInterface builtin -> a) -> m a
+concatInNonLocalCtx :: (MonadScopeExpr builtin m, Monoid a) => (ModuleTypingState builtin -> a) -> m a
 concatInNonLocalCtx lookupValue = do
   LocalCtx {..} <- ask
-  return $ concatInCombinedContext scopingInterface lookupValue currentModuleCtx importedCtx
+  return $ concatInCombinedContext typingState lookupValue currentModuleCtx importedCtx
 
 runMonadScopeExprT :: (MonadScope builtin m) => ReaderT (LocalCtx builtin) m a -> m a
 runMonadScopeExprT action = do
@@ -202,7 +202,7 @@ lookupMaybeVariable name = do
 lookupFreeVariable :: (MonadScopeExpr builtin m) => Name -> m (Maybe Identifier)
 lookupFreeVariable name = do
   LocalCtx {..} <- ask
-  return $ lookupInCombinedContext scopingInterface (Map.lookup name . declsIdentifiersByName) currentModuleCtx importedCtx
+  return $ lookupInCombinedContext (Map.lookup name . declsIdentifiersByName) currentModuleCtx importedCtx
 
 lookupBoundVariable :: (MonadScopeExpr builtin m) => Name -> m (Maybe Ix)
 lookupBoundVariable name = do

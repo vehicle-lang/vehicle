@@ -108,7 +108,7 @@ emptyTypeCheckerDeclState =
 -- | The meta-variables and constraints relating the variables currently in scope.
 data TypeCheckerState builtin = TypeCheckerState
   { importedModules :: ImportedModuleContext builtin,
-    currentModuleInterface :: ModuleTypingInterface builtin,
+    currentModuleInterface :: ModuleTypingState builtin,
     declsByName :: Map Identifier (Decl builtin),
     currentFreeEnv :: FreeEnv builtin,
     currentDeclState :: TypeCheckerDeclState builtin
@@ -124,7 +124,7 @@ emptyTypeCheckerState instanceDatabase importedModules = do
   let importedDeclsByName = mconcat $ fmap (fromMappedValueList identifierOf) typedModules
   TypeCheckerState
     { importedModules = importedModules,
-      currentModuleInterface = emptyModuleTypingInterface {instanceDatabase = instanceDatabase},
+      currentModuleInterface = emptyModuleTypingState {instanceDatabase = instanceDatabase},
       currentFreeEnv = mergeImportedFreeEnvs importedModules,
       declsByName = importedDeclsByName,
       currentDeclState = emptyTypeCheckerDeclState
@@ -201,7 +201,7 @@ getInstanceCandidatesFromFreeCtx ::
 getInstanceCandidatesFromFreeCtx goal = do
   imports <- getsTypeCheckerState importedModules
   current <- getsTypeCheckerState currentModuleInterface
-  return $ concatInCombinedContext typingInterface (lookupInstances goal . instanceDatabase) current imports
+  return $ concatInCombinedContext typingState (lookupInstances goal . instanceDatabase) current imports
 
 -- | Gets the type from the database
 getBuiltinTypeFromDatabase ::
@@ -211,7 +211,7 @@ getBuiltinTypeFromDatabase ::
 getBuiltinTypeFromDatabase builtin = do
   imports <- getsTypeCheckerState importedModules
   current <- getsTypeCheckerState currentModuleInterface
-  let maybeType = lookupInCombinedContext typingInterface (Map.lookup builtin . builtinDatabase) current imports
+  let maybeType = lookupInCombinedContext (Map.lookup builtin . builtinDatabase) current imports
   case maybeType of
     Nothing -> developerError $ "unexpectedly no type found for builtin" <+> quotePretty builtin
     Just typ -> return typ
