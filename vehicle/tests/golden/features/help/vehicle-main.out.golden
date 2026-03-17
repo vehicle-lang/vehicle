@@ -1,7 +1,7 @@
 Vehicle - a program for enforcing neural network specifications
 
 Usage: vehicle [-v|--version] [--logging ARG] [--loggingPass ARG] 
-               [--no-warnings] [COMMAND]
+               [--no-warnings] [-j|--json] [COMMAND]
 
 Available options:
   -v,--version             Show version information.
@@ -20,6 +20,7 @@ Available options:
                              * TypingSubsystem
                              * WitnessReconstruction
   --no-warnings            Suppress the printing of warnings.
+  -j,--json                Output the program as JSON instead of text.
   -h,--help                Show this help text
 
 Available commands:
