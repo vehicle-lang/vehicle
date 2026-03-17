@@ -32,10 +32,15 @@ instance FromJSON NetworkContextInfo
 type MetaNetwork = [(Name, NetworkContextInfo, Int)]
 
 inputShape :: NetworkContextInfo -> TensorShape
-inputShape = dimensions . inputTensor . networkType
+-- inputShape = dimensions . inputTensor . networkType
+inputShape ctx = case inputTensor (networkType ctx) of
+  NetworkTensorTypeConstructor tensor -> dimensions tensor
+  NetworkRecordTypeConstructor record -> recordDimensions record
 
 outputShape :: NetworkContextInfo -> TensorShape
-outputShape = dimensions . outputTensor . networkType
+outputShape ctx = case outputTensor (networkType ctx) of
+  NetworkTensorTypeConstructor tensor -> dimensions tensor
+  NetworkRecordTypeConstructor record -> recordDimensions record
 
 --------------------------------------------------------------------------------
 -- Queries misc

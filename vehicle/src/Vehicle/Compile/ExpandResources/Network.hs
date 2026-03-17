@@ -50,11 +50,10 @@ getNetworkType decl networkType = case normalised networkType of
         inputDetails <- tensorType Input (typeOf binder)
         resultType <- normaliseClosureInCtx mempty binder closure
         outputDetails <- tensorType Output resultType
-        let networkDetails = NetworkType inputDetails outputDetails
+        let networkDetails = NetworkType (NetworkTensorTypeConstructor inputDetails) (NetworkTensorTypeConstructor outputDetails)
         return networkDetails
   _ -> compilerDeveloperError "Should have caught the fact that the network type is not a function during type-checking"
   where
-    -- Do we want the network represented as a tensor or as a record if it is a record?
     tensorType :: InputOrOutput -> VType Builtin -> m NetworkTensorType
     tensorType io t = case toTypeValue t of
       VTensorLike (VRatTensorType dims) -> do
@@ -63,11 +62,8 @@ getNetworkType decl networkType = case normalised networkType of
       VFreeTypeVar v _spine -> do
         recordType <- getDeclEntry (Proxy @Builtin) v
         case recordType of
-          DefAbstract p _ident _ expr ->
-            case expr of
-              VUniverse lvl -> compilerDeveloperError $ "matching on VUniverse" <+> pretty lvl <+> pretty p <+> pretty v
-              _ -> compilerDeveloperError "nope!!"
-          _ -> compilerDeveloperError $ "not matching on DefAbstractz1 type" <+> pretty v
+          DefRecord p ident _sort _telescope _fields -> compilerDeveloperError $ "matching on DefRecord" <+> pretty ident <+> pretty p
+          _ -> compilerDeveloperError "not matching on DefRecord"
       _ -> typingError
 
     -- is this where we would need to look up the dimensions of the records in the context?
@@ -79,23 +75,13 @@ getNetworkType decl networkType = case normalised networkType of
     -- then the type of that binder is VFreeTypeVar
     -- VFreeTypeVar Identifier (Spine Builtin)
 
-    -- then when we look up in context we have a DefAbstract
-    -- the expr part of the DefAbstract is a VUniverse?SSS
-
-    -- looks like this is what the record defs get evaluated to, which makes sense for what we are seeing
-    --   evalDecl ::
-    --   (MonadNorm builtin m, MonadFreeContext builtin m) =>
-    --   Decl builtin ->
-    --   m (VDecl builtin)
-    -- evalDecl d = case d of
-    --   DefAbstract {} -> traverse evalInEmptyEnv d
-    --   DefFunction {} -> traverse evalInEmptyEnv d
-    --   DefRecord p ident _ _ _ -> do
-    --     -- Record definitions should never be used computationally?
-    --     let fun = DefAbstract p ident BuiltinDef (Universe p 0)
-    --     traverse evalInEmptyEnv fun
-
-    -- what format does this produce? how do we get the fields?
+    -- then from there we should have a DefRecord
+    -- DefRecord
+    --   Provenance -- Location in source file.
+    --   Identifier -- Name of definition.
+    --   (Maybe DefRecordSort) -- List of annotations.
+    --   (GenericTelescope expr) -- Type parameters.
+    --   (GenericRecordFields expr) -- Fields.
 
     tensorDimensions :: InputOrOutput -> VType Builtin -> m TensorShape
     tensorDimensions io dims = case toDimensionsValue dims of
@@ -124,3 +110,21 @@ getNetworkType decl networkType = case normalised networkType of
         "Invalid network type"
           <+> squotes (prettyVerbose $ normalised networkType)
           <+> "should have been caught during type-checking"
+
+-- gets the equivalent tensor dims for a record
+-- type GenericRecordFields expr = [GenericRecordField expr]
+getRecordDimsFromFreeCtx ::
+  forall m.
+  (MonadExpandResources m) =>
+  FreeCtxEntry Builtin ->
+  m TensorShape
+getRecordDimsFromFreeCtx entry = case entry of
+  DefRecord _p _ident _sort _telescope fields -> return [length fields]
+  _ -> compilerDeveloperError "Unexpectedly not a record."
+
+-- gets the fields for a record in
+getRecordFieldsFromFreeCtx ::
+  forall m.
+  (MonadExpandResources m) =>
+  FreeCtxEntry Builtin ->
+  VRecordFields Builtin
