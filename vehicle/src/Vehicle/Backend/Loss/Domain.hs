@@ -398,7 +398,8 @@ compileBool value = logEntryAndExit value $ case toBoolValue value of
   VBoolIf args -> compileBool =<< unfoldIf args
   VNot args -> compileBool =<< lowerNot (unblockBoolExpr unblockingActions) args
   VQuantifyRatTensor args -> compileQuantifierInternal args
-  VQuantifyRecord args -> compileQuantifierInternal args
+  -- VQuantifyRecord args -> compileQuantifierInternal args
+  VQuantifyRecord _args -> compilerDeveloperError "LAUREN TODO: unsupported record quantifier"
   -------------------
   -- Blocked cases --
   -------------------

@@ -112,7 +112,8 @@ compileBoolExpr expr = do
     VAnd (TensorOp2Args _dims x y) -> andTrivial andPartitions <$> compileBoolExpr x <*> compileBoolExpr y
     VOr (TensorOp2Args _dims x y) -> orTrivial orPartitions <$> compileBoolExpr x <*> compileBoolExpr y
     VQuantifyRatTensor (Exists, args) -> eliminateExists args
-    VQuantifyRecord (Exists, args) -> eliminateExists args -- TODO: not sure if this is the right thing to do here
+    -- VQuantifyRecord (Exists, args) -> eliminateExists args -- TODO: not sure if this is the right thing to do here
+    VQuantifyRecord (Exists, _args) -> compilerDeveloperError "LAUREN TODO: hit case in compileBoolExpr"
     VCompareNat {} -> unblockAndRec expr
     VCompareIndex {} -> unblockAndRec expr
     VReduceAndTensor {} -> unblockAndRec expr

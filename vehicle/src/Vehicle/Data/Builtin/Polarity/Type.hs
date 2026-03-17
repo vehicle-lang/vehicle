@@ -59,7 +59,7 @@ typeOfBuiltinFunction = \case
   ReduceAndTensor -> typeOfOp2 maxPolarity
   ReduceOrTensor -> typeOfOp2 maxPolarity
   QuantifyRatTensor q -> typeOfQuantifier q
-  QuantifyTensorLike _ -> unsupportedTensorLikeQuantifier
+  QuantifyRecord _ -> unsupportedTensorLikeQuantifier
   If -> typeOfIf
   -- Comparisons
   CompareNat {} -> typeOfOp2 maxPolarity

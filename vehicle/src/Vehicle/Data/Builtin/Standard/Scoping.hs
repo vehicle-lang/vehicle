@@ -185,8 +185,8 @@ createTensorLikeHasQuantifierInstance p recordIdent = do
         Record
           p
           recordType
-          [ (forAllTCFieldName, fromDSL mempty (builtinFunction (QuantifyTensorLike Forall))),
-            (existsTCFieldName, fromDSL mempty (builtinFunction (QuantifyTensorLike Exists)))
+          [ (forAllTCFieldName, fromDSL mempty (builtinFunction (QuantifyRecord Forall))),
+            (existsTCFieldName, fromDSL mempty (builtinFunction (QuantifyRecord Exists)))
           ]
 
   DefFunction p functionIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) recordType functionBody

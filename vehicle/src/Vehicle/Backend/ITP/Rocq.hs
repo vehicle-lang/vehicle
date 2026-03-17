@@ -536,7 +536,7 @@ compileBuiltin b args = case b of
     PowRat -> unsupportedError
     AtVector -> compileApplication [MathcompImport Boot] "tnth" args
     ForeachVector -> compileApplication [RequireImport VehicleUtils] "foreachTuple" args
-    QuantifyTensorLike _ -> unsupportedTensorLikeQuantifier
+    QuantifyRecord _ -> unsupportedTensorLikeQuantifier
   DecidabilityBuiltinFunction f -> case f of
     PropType -> return $ annotateConstant [] "Prop"
     PropTrue -> return $ annotateConstant [] "True"
