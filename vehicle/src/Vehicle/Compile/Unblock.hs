@@ -194,7 +194,9 @@ unblockRatTensorValue actions@UnblockingActions {..} status expr = do
       | otherwise -> unblockRatTensorBoundVar v
     VRatTensorFreeVar n spine -> case getExpr accessSpine spine of
       Just args -> unblock status =<< unblockNetworkApp n args
-      _ -> unexpectedExprError currentPass "non-network free var"
+      -- Parameters and other scalar free vars may appear in constraints used
+      -- for quantifier-domain extraction, e.g. `-epsilon < x ! 0 < epsilon`.
+      _ -> return expr
     VRatConstTensor args -> unblockConstTensor args
     VRatStackTensor args -> unblockStackTensor (unblock DifferentDimensions) args
     VRatAt args -> unblockAtTensor (unblock DifferentDimensions) args
