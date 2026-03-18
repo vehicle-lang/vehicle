@@ -37,7 +37,7 @@ createRecordHasValidIOTypeInstance ::
   Identifier ->
   RecordFields Builtin ->
   Decl Builtin
-createRecordHasValidIOTypeInstance p recordIdent _ =  do
+createRecordHasValidIOTypeInstance p recordIdent fields =  do
   -- For each record R we want to create a function that looks like:
   --
   --   @instance
@@ -53,10 +53,16 @@ createRecordHasValidIOTypeInstance p recordIdent _ =  do
   let instanceName = Text.pack "record" <> nameOf recordIdent <> "HasValidNetworkIOType"
   let instanceIdent = Identifier (modulePath recordIdent) instanceName
 
-  let recordType = fromDSL mempty $ freeVar validNetworkIOTypeIdent @@ [freeVar recordIdent]
+  -- Create the type
+  let convertFieldToConstraint f = freeVar validNetworkIOTypeIdent @@ [toDSL . snd $ f]
+  let recordType' = freeVar validNetworkIOTypeIdent @@ [freeVar recordIdent]
+  let instanceType = fromDSL mempty $ foldr (\field currentType -> convertFieldToConstraint field ~~~> currentType) recordType' fields
+
+  -- Create the function body
+  let recordType = fromDSL mempty recordType'
   let functionBody = Record p recordType []
 
-  DefFunction p instanceIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) recordType functionBody
+  DefFunction p instanceIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) instanceType functionBody
 
 createTensorRecordConversionFunctions ::
   (MonadCompile m) =>

@@ -1,7 +1,7 @@
-record Pair where
+record R where
   { a : Real
-  , b : Real
+  , b : Tensor Real [4]
   }
 
 @network
-f : Pair -> Pair
+f : R -> R
