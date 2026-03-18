@@ -20,7 +20,7 @@ import Vehicle.Libraries.StandardLibrary
 instance ScopableBuiltin Builtin where
   generateAuxiliaryRecordDefinitions p ident sort telescope fields
     | isAnnotatedAsTensor sort = createTensorRecordConversionFunctions p ident telescope fields
-    | otherwise = return []
+    | otherwise = return [createRecordHasValidIOTypeInstance p ident fields]
 
 instance DesugarableBuiltin Builtin where
   elabUnitLiteral p = D.Builtin p $ BuiltinConstructor UnitLiteral
@@ -31,6 +31,32 @@ instance DesugarableBuiltin Builtin where
   elabDecimalLiteral p r = do
     let fromRat = D.Builtin p (TypeClassOp FromRatTC)
     D.normAppList fromRat $ fmap explicit [D.Builtin p $ BuiltinConstructor $ RatTensorLiteral $ ZeroDimTensor r]
+
+createRecordHasValidIOTypeInstance ::
+  Provenance ->
+  Identifier ->
+  RecordFields Builtin ->
+  Decl Builtin
+createRecordHasValidIOTypeInstance p recordIdent _ =  do
+  -- For each record R we want to create a function that looks like:
+  --
+  --   @instance
+  --   recordRHasValidNetworkIOType : 
+  --     {{HasValidNetworkIOType t1}} -> 
+  --     {{HasValidNetworkIOType tn}} -> 
+  --     HasValidNetworkIOType R
+  --   recordRHasValidNetworkIOType = {}
+  --
+  -- ... where t1 through tn are the types of R's fields.
+
+  -- Create the name 
+  let instanceName = Text.pack "record" <> nameOf recordIdent <> "HasValidNetworkIOType"
+  let instanceIdent = Identifier (modulePath recordIdent) instanceName
+
+  let recordType = fromDSL mempty $ freeVar validNetworkIOTypeIdent @@ [freeVar recordIdent]
+  let functionBody = Record p recordType []
+
+  DefFunction p instanceIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) recordType functionBody
 
 createTensorRecordConversionFunctions ::
   (MonadCompile m) =>
