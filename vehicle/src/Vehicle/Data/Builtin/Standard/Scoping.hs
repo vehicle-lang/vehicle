@@ -41,15 +41,15 @@ createRecordHasValidIOTypeInstance p recordIdent fields =  do
   -- For each record R we want to create a function that looks like:
   --
   --   @instance
-  --   recordRHasValidNetworkIOType : 
-  --     {{HasValidNetworkIOType t1}} -> 
-  --     {{HasValidNetworkIOType tn}} -> 
+  --   recordRHasValidNetworkIOType :
+  --     {{HasValidNetworkIOType t1}} ->
+  --     {{HasValidNetworkIOType tn}} ->
   --     HasValidNetworkIOType R
   --   recordRHasValidNetworkIOType = {}
   --
   -- ... where t1 through tn are the types of R's fields.
 
-  -- Create the name 
+  -- Create the name
   let instanceName = Text.pack "record" <> nameOf recordIdent <> "HasValidNetworkIOType"
   let instanceIdent = Identifier (modulePath recordIdent) instanceName
 
