@@ -37,12 +37,13 @@ createRecordHasValidIOTypeInstance ::
   Identifier ->
   RecordFields Builtin ->
   Decl Builtin
-createRecordHasValidIOTypeInstance p recordIdent fields =  do
+createRecordHasValidIOTypeInstance p recordIdent fields = do
   -- For each record R we want to create a function that looks like:
   --
   --   @instance
   --   recordRHasValidNetworkIOType :
   --     {{HasValidNetworkIOType t1}} ->
+  --     ...
   --     {{HasValidNetworkIOType tn}} ->
   --     HasValidNetworkIOType R
   --   recordRHasValidNetworkIOType = {}
