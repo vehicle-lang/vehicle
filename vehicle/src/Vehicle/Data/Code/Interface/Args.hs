@@ -522,7 +522,7 @@ accessQuantifyRatTensorSpine =
 
 -- | Arguments for `QuantifyRecord`
 data QuantifyRecordArgs expr body = QuantifyRecordArgs
-  { quantifyRecordDimensions :: expr,
+  { quantifyRecordType :: expr,
     quantifyRecordBinder :: GenericBinder expr,
     quantifyRecordBody :: body -- would this include the record body somehow? may need to look up if it doesnt
     -- need to add a field for record details/fields?
@@ -534,8 +534,8 @@ accessQuantifyRecordSpine ::
 accessQuantifyRecordSpine =
   Access
     { getExpr = \case
-        (fmap argExpr -> [dims, fn]) -> case getExpr accessLamC fn of
-          Just (binder, body) -> Just (QuantifyRecordArgs dims binder body)
+        (fmap argExpr -> [typ, fn]) -> case getExpr accessLamC fn of
+          Just (binder, body) -> Just (QuantifyRecordArgs typ binder body)
           _ -> Nothing
         _ -> Nothing,
       mkExpr = \(QuantifyRecordArgs dims binder body) ->

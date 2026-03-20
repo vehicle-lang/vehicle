@@ -259,7 +259,7 @@ transformQuantifiedRecord ::
   QuantifyRecordArgs (Value Builtin) (Closure Builtin) ->
   m (QuantifyRatTensorArgs (Value Builtin) (Closure Builtin))
 transformQuantifiedRecord args = do
-  let recordTypeVar = quantifyRecordDimensions args
+  let recordTypeVar = quantifyRecordType args
       binder = quantifyRecordBinder args
       body = quantifyRecordBody args
 
