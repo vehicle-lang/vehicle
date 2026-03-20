@@ -48,7 +48,7 @@ eliminateExists (QuantifyRatTensorArgs _ binder (Closure env body)) = do
   logCompilerSection2 MidDetail subpassDoc $ do
     -- Get the shape and name of the quantified variable
     namedCtx <- getNameContext
-    propertyProv <- asks propertyProvenance
+    propertyProv <- asks propertyProvenance -- create userVar is where we are falling over
     (userVarName, userVarShapeValue) <- createUserVar propertyProv namedCtx binder
     userVarShape <- case getDims userVarShapeValue of
       Just shape -> return shape

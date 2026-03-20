@@ -50,6 +50,7 @@ compilePartitionsToQueries ::
   Partitions ->
   m (MaybeTrivial (DisjunctAll QueryMetaData))
 compilePartitionsToQueries partitions = do
+  -- LAUREN TODO: is trace what we need to add on to?
   allQueries <- forM (partitionsToDisjuncts partitions) $ \(trace, assertions) -> do
     logCompilerSection2 MaxDetail "compiling partition" $ do
       let dnfTree = exprToDNF assertions

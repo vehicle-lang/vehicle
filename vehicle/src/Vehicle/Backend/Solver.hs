@@ -27,6 +27,7 @@ import Vehicle.Compile.Print (prettyFriendly, prettyFriendlyEmptyCtx)
 import Vehicle.Compile.Print.Warning ()
 import Vehicle.Compile.Property (traverseMultiProperty)
 import Vehicle.Compile.Unblock (UnblockingActions (..), unblockBoolExpr)
+import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.Interface
@@ -206,14 +207,14 @@ compileQueries expr = do
       logDebug MaxDetail $ "negate" <+> pretty Forall
       negatedArgs <- negateQuantifierBody args
       compileQuantifiedQuerySet True negatedArgs
-    -- VQuantifyRecord (Exists, args) -> compileQuantifiedQuerySet False args
-    VQuantifyRecord (Exists, _args) -> compilerDeveloperError "quantifying over records not supported yet - hit compileQueries base case"
-    VQuantifyRecord (Forall, _args) -> do
-      -- TODO: not sure if this is what i need to do here
+    VQuantifyRecord (Exists, args) -> do
+      transformedArgs <- transformQuantifiedRecord args
+      compileQuantifiedQuerySet False transformedArgs
+    VQuantifyRecord (Forall, args) -> do
       logDebug MaxDetail $ "negate" <+> pretty Forall
-      -- negatedArgs <- negateQuantifierBody args
-      -- compileQuantifiedQuerySet True negatedArgs
-      compilerDeveloperError "quantifying over records not supported yet - hit compileQueries base case"
+      transformedArgs <- transformQuantifiedRecord args
+      negatedArgs <- negateQuantifierBody transformedArgs
+      compileQuantifiedQuerySet True negatedArgs
     ---------------------
     -- Recursive cases --
     ---------------------
@@ -252,6 +253,33 @@ compileQuantifiedQuerySet isPropertyNegated args =
   logCompilerSection2 MaxDetail "compilation of query set" $ do
     (maybePartitions, globalCtx) <- runStateT (eliminateExists args) emptyGlobalCtx
     compileQuerySetPartitions globalCtx isPropertyNegated maybePartitions
+
+transformQuantifiedRecord ::
+  (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m) =>
+  QuantifyRecordArgs (Value Builtin) (Closure Builtin) ->
+  m (QuantifyRatTensorArgs (Value Builtin) (Closure Builtin))
+transformQuantifiedRecord args = do
+  let recordTypeVar = quantifyRecordDimensions args
+      binder = quantifyRecordBinder args
+      body = quantifyRecordBody args
+
+  recordTypeIdent <- case toTypeValue recordTypeVar of
+    VFreeTypeVar v _spine -> do return v
+    _ -> compilerDeveloperError "record binder is not of expected format."
+
+  recordTypeDecl <- getDeclEntry (Proxy @Builtin) recordTypeIdent
+  -- TODO: only dealing with the first dimension for now, fix later once fully working
+  dimensions <- case recordTypeDecl of
+    DefRecord _p _ident _sort _telescope fields -> return ([length fields] :: [Int])
+    _ -> compilerDeveloperError "record declaration is not of expected format."
+
+  dimensionsValue <- case dimensions of
+    [] -> return $ mkExpr accessNil (NilArgs INatType)
+    -- TODO: only dealing with the first dimension for now, fix later once fully working
+    (x : _xs) -> return $ IDimCons (INatLiteral x) IDimNil
+
+  let tensorBinder = binder {binderValue = fromTypeValue $ VTensorLike (VRatTensorType dimensionsValue)}
+  return $ QuantifyRatTensorArgs dimensionsValue tensorBinder body
 
 -- | We only need this because we can't evaluate networks in the compiler.
 compileUnquantifiedQuerySet ::

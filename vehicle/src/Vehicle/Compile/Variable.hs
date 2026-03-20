@@ -53,4 +53,6 @@ checkUserVariableType ::
 checkUserVariableType binder =
   case toTypeValue (typeOf binder) of
     VTensorLike (VRatTensorType dims) -> return dims
+    -- theoretically we should be converting before here
+    -- or should we be allowing a record type here??
     _ -> developerError $ "Unexpected quantifier type:" <+> prettyVerbose (typeOf binder)

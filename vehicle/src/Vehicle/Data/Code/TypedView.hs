@@ -476,6 +476,7 @@ toDimensionsValue e = case e of
   (getExpr accessIf -> Just args) -> VDimsIf args
   _ -> developerError $ "ill-typed Dimensions expression" <+> prettyVerbose e
 
+-- TODO: use this for conversion of lengths back to dims
 fromDimensionsValue :: (HasCallStack) => DimensionsValue -> Value Builtin
 fromDimensionsValue e = case e of
   VDimsBoundVar lv spine -> VBoundVar lv spine

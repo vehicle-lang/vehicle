@@ -522,9 +522,9 @@ accessQuantifyRatTensorSpine =
 
 -- | Arguments for `QuantifyRecord`
 data QuantifyRecordArgs expr body = QuantifyRecordArgs
-  { quantifyDimensions :: expr,
-    quantifyBinder :: GenericBinder expr,
-    quantifyBody :: body -- would this include the record body somehow? may need to look up if it doesnt
+  { quantifyRecordDimensions :: expr,
+    quantifyRecordBinder :: GenericBinder expr,
+    quantifyRecordBody :: body -- would this include the record body somehow? may need to look up if it doesnt
     -- need to add a field for record details/fields?
   }
 
