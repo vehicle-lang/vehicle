@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
 {-# HLINT ignore "Use fewer imports" #-}
@@ -410,9 +411,7 @@ redirectLogsParser =
       long "redirect-logs"
         <> internal
         <> metavar "FILE"
-        <> help
-          "Redirects logs to the provided file. \
-          \ If no argument is provided will default to stdout."
+        <> help "Redirects logs to the provided file. If no argument is provided will default to stdout."
 
 loggingLevelParser :: Parser LoggingLevel
 loggingLevelParser =
@@ -494,10 +493,9 @@ networkParser =
       <> short 'n'
       <> metavar "NAME:FILE"
       <> help
-        ( "Provide the implementation of a network declared in the \
-          \ specification. Its value should consist of a colon-separated \
-          \ pair of the name of the network in the specification and a file \
-          \ path. "
+        ( "Provide the implementation of a network declared in the "
+            <> "specification. Its value should consist of a colon-separated "
+            <> "pair of the name of the network in the specification and a file path. "
             <> repeatedParameterHelp
         )
 
@@ -508,9 +506,9 @@ datasetParser =
       <> short 'd'
       <> metavar "NAME:FILE"
       <> help
-        ( "Provide a dataset declared in the specification. Its value should \
-          \ consist of a colon-separated pair of the name of the dataset in \
-          \ the specification and a file path. "
+        ( "Provide a dataset declared in the specification. Its value should "
+            <> "consist of a colon-separated pair of the name of the dataset in "
+            <> "the specification and a file path. "
             <> repeatedParameterHelp
         )
 
@@ -521,9 +519,9 @@ parameterParser =
       <> short 'p'
       <> metavar "NAME:VALUE"
       <> help
-        ( "Provide a value for a parameter referenced in the specification. Its value \
-          \ should consist of a colon-separated pair of the name of the \
-          \ parameter in the specification and its value. "
+        ( "Provide a value for a parameter referenced in the specification. Its value "
+            <> "should consist of a colon-separated pair of the name of the "
+            <> "parameter in the specification and its value. "
             <> repeatedParameterHelp
         )
 
@@ -535,10 +533,11 @@ modulePrefixOption =
         <> short 'm'
         <> metavar "MODULENAME"
         <> help
-          "Override the name of the exported ITP module. For example, \
-          \compiling with 'Foo.Bar' will result in \
-          \the Agda module with the internal name `Foo.Bar.agda`. If not \
-          \provided then the name will default to the name of the output file."
+          ( "Override the name of the exported ITP module. For example, "
+              <> "compiling with 'Foo.Bar' will result in "
+              <> "the Agda module with the internal name `Foo.Bar.agda`. If not "
+              <> "provided then the name will default to the name of the output file."
+          )
 
 outputParser :: Parser (Maybe String)
 outputParser =
@@ -555,7 +554,11 @@ outputAsJSONParser =
     long "json"
       <> short 'j'
       <> help "Output the program as JSON instead of text."
+
+-- Don't advertise JSON capabilities if a release build.
+#ifdef releaseBuild
       <> internal
+#endif
 
 propertyParser :: Parser [Text]
 propertyParser =
@@ -601,9 +604,10 @@ verifierLocationParser =
         <> short 'l'
         <> metavar "FILE"
         <> help
-          "Location of the executable for the verifier. \
-          \If not provided then Vehicle will search for it in the PATH \
-          \environment variable."
+          ( "Location of the executable for the verifier. "
+              <> "If not provided then Vehicle will search for it in the PATH "
+              <> "environment variable."
+          )
 
 verifierExtraArgsParser :: Parser (Maybe String)
 verifierExtraArgsParser =
@@ -640,26 +644,26 @@ cacheOption helpField =
 validateCacheParser :: Parser FilePath
 validateCacheParser =
   cacheOption $
-    help
-      "The location of the verification cache to validate. \
-      \ This is the folder generated via the \
-      \ `vehicle verify` command."
+    help $
+      "The location of the verification cache to validate. "
+        <> " This is the folder generated via the "
+        <> " `vehicle verify` command."
 
 exportCacheParser :: Parser FilePath
 exportCacheParser =
   cacheOption $
-    help
-      "The location of the verification cache \
-      \ that can be used to check the verification status \
-      \ of the specification. Should be passed when compiling to an ITP. "
+    help $
+      "The location of the verification cache "
+        <> "that can be used to check the verification status "
+        <> "of the specification. Should be passed when compiling to an ITP. "
 
 verifyCacheParser :: Parser (Maybe FilePath)
 verifyCacheParser =
   optional $
     cacheOption $
-      help
-        "The location that the verification cache for the specification will be generated.\
-        \ If not provided then no cache will be created."
+      help $
+        "The location that the verification cache for the specification will be generated. "
+          <> "If not provided then no cache will be created."
 
 compileCacheParser :: Parser (Maybe FilePath)
 compileCacheParser = optional exportCacheParser

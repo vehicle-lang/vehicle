@@ -1,0 +1,14 @@
+[
+  {
+    "name": "DL2Loss1",
+    "run": "vehicle compile loss -s spec1.vcl -l DL2Loss -o DL2Loss1.vcl",
+    "needs": ["spec1.vcl"],
+    "produces": ["DL2Loss1.vcl"]
+  },
+  {
+    "name": "DL2Loss2",
+    "run": "vehicle compile loss -s spec2.vcl -l DL2Loss -o DL2Loss2.vcl",
+    "needs": ["spec2.vcl"],
+    "produces": ["DL2Loss2.vcl"]
+  }
+]

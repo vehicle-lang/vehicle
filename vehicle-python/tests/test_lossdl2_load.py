@@ -11,7 +11,7 @@ GOLDEN_LOSS_FUNCTION_FILES = GOLDEN_PATH.glob("*.vcl")
 @pytest.mark.parametrize(
     "specification_path",
     GOLDEN_LOSS_FUNCTION_FILES,
-)  # type: ignore[misc]
+)  # type: ignore[untyped-decorator]
 def test_lossdl2_load(specification_path: Path) -> None:
     print(f"Load {specification_path}")
     if specification_path == GOLDEN_PATH / "test_quantifier_all.vcl":

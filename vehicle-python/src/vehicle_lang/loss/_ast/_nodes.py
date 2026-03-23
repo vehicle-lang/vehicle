@@ -366,7 +366,7 @@ class Program(AST):
     @override
     @classmethod
     def from_dict(cls, value: JsonValue) -> Self:
-        return decode(Program, value)
+        return decode(cls, value)
 
 
 @dataclass(frozen=True)

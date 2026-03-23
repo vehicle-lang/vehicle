@@ -30,11 +30,11 @@ The following operations over lists are currently supported:
    * - Map
      - :code:`map`
      - :code:`(A -> B) -> List A -> List B`
-     - :code:`map (\x -> x + 1) xs`
+     - :code:`map (\\x -> x + 1) xs`
    * - Fold
      - :code:`fold`
      - :code:`(A -> B -> B) -> B -> List A -> B`
-     - :code:`fold (\x y -> x + y) 0 xs`
+     - :code:`fold (\\x y -> x + y) 0 xs`
 
 Absence of a lookup function
 ----------------------------
