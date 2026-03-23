@@ -102,11 +102,8 @@ common common-library
   ghc-options:
     -Werror -Wall -fno-warn-orphans
     -fno-warn-missing-pattern-synonym-signatures
-    -fno-warn-missing-signatures -Wno-deriving-typeable
+    -fno-warn-missing-signatures
 
--- See https://github.com/BNFC/bnfc/issues/503 for why this is necessary.
--- If BNFC is fixed upstream we can remove this.
--- These warnings are triggered by the auto-generated BNFC files so ignore.
 library
   import:             common-library
   hs-source-dirs:     autogen src
@@ -148,5 +145,5 @@ library
 
   build-tool-depends:
     , alex:alex    >=3.2
-    , BNFC:bnfc    >=2.9.4
+    , BNFC:bnfc    >=2.9.6.1
     , happy:happy  >=1.19
