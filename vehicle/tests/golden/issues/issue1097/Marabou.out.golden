@@ -1,0 +1,136 @@
+
+
+(testProperty, 1)
+//
+// Assertions
++y0 -y1 <= 0.0
+-y0 +y1 <= 0.0
+-y0 +y2 <= 0.0
+// Input bounds
+x0 >= 4.0
+x0 <= 8.0
+x1 >= 1.5
+x1 <= 5.0
+x2 >= 0.5
+x2 <= 7.0
+x3 >= 0.01
+x3 <= 3.0
+
+
+(testProperty, 2)
+//
+// Assertions
++y0 -y1 <= 0.0
+-y0 +y2 <= 0.0
++y1 -y2 <= 0.0
+// Input bounds
+x0 >= 4.0
+x0 <= 8.0
+x1 >= 1.5
+x1 <= 5.0
+x2 >= 0.5
+x2 <= 7.0
+x3 >= 0.01
+x3 <= 3.0
+
+
+(testProperty, 3)
+//
+// Assertions
+-y0 +y1 <= 0.0
+-y0 +y2 <= 0.0
++y0 -y2 <= 0.0
+// Input bounds
+x0 >= 4.0
+x0 <= 8.0
+x1 >= 1.5
+x1 <= 5.0
+x2 >= 0.5
+x2 <= 7.0
+x3 >= 0.01
+x3 <= 3.0
+
+
+(testProperty, 4)
+//
+// Assertions
+-y0 +y2 <= 0.0
++y0 -y2 <= 0.0
++y1 -y2 <= 0.0
+// Input bounds
+x0 >= 4.0
+x0 <= 8.0
+x1 >= 1.5
+x1 <= 5.0
+x2 >= 0.5
+x2 <= 7.0
+x3 >= 0.01
+x3 <= 3.0
+
+
+(testProperty, 5)
+//
+// Assertions
++y0 -y1 <= 0.0
+-y0 +y1 <= 0.0
+-y1 +y2 <= 0.0
+// Input bounds
+x0 >= 4.0
+x0 <= 8.0
+x1 >= 1.5
+x1 <= 5.0
+x2 >= 0.5
+x2 <= 7.0
+x3 >= 0.01
+x3 <= 3.0
+
+
+(testProperty, 6)
+//
+// Assertions
++y0 -y1 <= 0.0
+-y1 +y2 <= 0.0
++y1 -y2 <= 0.0
+// Input bounds
+x0 >= 4.0
+x0 <= 8.0
+x1 >= 1.5
+x1 <= 5.0
+x2 >= 0.5
+x2 <= 7.0
+x3 >= 0.01
+x3 <= 3.0
+
+
+(testProperty, 7)
+//
+// Assertions
+-y0 +y1 <= 0.0
++y0 -y2 <= 0.0
+-y1 +y2 <= 0.0
+// Input bounds
+x0 >= 4.0
+x0 <= 8.0
+x1 >= 1.5
+x1 <= 5.0
+x2 >= 0.5
+x2 <= 7.0
+x3 >= 0.01
+x3 <= 3.0
+
+
+(testProperty, 8)
+//
+// Assertions
++y0 -y2 <= 0.0
+-y1 +y2 <= 0.0
++y1 -y2 <= 0.0
+// Input bounds
+x0 >= 4.0
+x0 <= 8.0
+x1 >= 1.5
+x1 <= 5.0
+x2 >= 0.5
+x2 <= 7.0
+x3 >= 0.01
+x3 <= 3.0
