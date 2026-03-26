@@ -1,6 +1,7 @@
 from pygments.lexer import RegexLexer
 from pygments.token import *
 
+
 class VehicleLexer(RegexLexer):
     name = "Vehicle"
     aliases = ["vehicle", "vcl"]
@@ -32,14 +33,8 @@ class VehicleLexer(RegexLexer):
             (r"[A-Z]\w*", Keyword.Type),
             (r".", Name.Variable),
         ],
-        "f_name": [
-            (r"\s*--.*", Comment),
-            (r"\w+\s*", Keyword.Type, "#pop")
-        ],
-        "t_name": [
-            (r"\s*--.*", Comment),
-            (r"\w+\s*", Name.Variable, "#pop")
-        ],
+        "f_name": [(r"\s*--.*", Comment), (r"\w+\s*", Keyword.Type, "#pop")],
+        "t_name": [(r"\s*--.*", Comment), (r"\w+\s*", Name.Variable, "#pop")],
         "type": [
             (r"\s*--.*", Comment),
             (r"=\s*", Operator),
@@ -62,7 +57,7 @@ class VehicleLexer(RegexLexer):
             (r"\s*{{[\w\? ]+}}\s*", Keyword.Variable.Magic),
             (r"\s*[a-zA-Z_]\w*\s*", Name.Variable),
         ],
-        "expr" : [
+        "expr": [
             (r"\s*--.*", Comment),
             (r"\s*{{[\w\? ]+}}\s*", Keyword.Variable.Magic),
             (r"\s*let\s*", Operator.Word, ("expr", "t_name")),
@@ -91,7 +86,10 @@ class VehicleLexer(RegexLexer):
             (r"[a-zA-Z_]\w*(?=\s*!)", Name.Variable),
             (r"[a-zA-Z_]\w*(?=\s*-)", Name.Variable),
             (r"[a-zA-Z_]\w*\s*\n\n", Name.Variable, "#pop"),
-            (r"[a-zA-Z_]\w*\s*(?!\s*(and|or|else|then))(?=\s*(\s+\w+|[\(\[{]))", Name.Function),
+            (
+                r"[a-zA-Z_]\w*\s*(?!\s*(and|or|else|then))(?=\s*(\s+\w+|[\(\[{]))",
+                Name.Function,
+            ),
             (r"\s*[a-zA-Z_]\w*\s{2,}", Name.Variable, "#pop"),
             (r"\s*[a-zA-Z_]\w*", Name.Variable, "#pop"),
         ],
