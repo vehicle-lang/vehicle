@@ -14,6 +14,10 @@
 
 * Fixed a bug where bounds on sub-indices of a tensor weren't being detected properly.
 
+### Solver backend
+
+* Fixed a bug where sometiems compilation of `forall` over indices failed.
+
 ## v0.24
 
 ### Loss backend

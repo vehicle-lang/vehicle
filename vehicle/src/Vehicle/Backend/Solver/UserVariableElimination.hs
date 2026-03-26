@@ -105,7 +105,7 @@ compileBoolExpr expr = do
     ---------------------
     -- Recursive cases --
     ---------------------
-    VNot arg -> compileBoolExpr =<< lowerNot unblock arg
+    VNot arg -> compileBoolExpr =<< lowerNot arg
     VBoolIf args -> compileBoolExpr =<< unfoldIf args
     VAnd (TensorOp2Args _dims x y) -> andTrivial andPartitions <$> compileBoolExpr x <*> compileBoolExpr y
     VOr (TensorOp2Args _dims x y) -> orTrivial orPartitions <$> compileBoolExpr x <*> compileBoolExpr y
