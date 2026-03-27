@@ -41,7 +41,8 @@ data CompileOptions
   deriving (Show, Eq)
 
 data LossOptions = LossOptions
-  { differentiableLogicID :: DifferentiableLogicID,
+  { lossFunctionMode :: LossFunctionMode,
+    differentiableLogicID :: DifferentiableLogicID,
     specification :: FilePath,
     declarationsToCompile :: DeclarationNames,
     outputFile :: Maybe FilePath
