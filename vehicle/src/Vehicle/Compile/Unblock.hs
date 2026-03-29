@@ -7,7 +7,6 @@ module Vehicle.Compile.Unblock
   )
 where
 
-import Control.Monad (when)
 import Vehicle.Compile.LiftIf
 import Vehicle.Compile.Normalise.NBE (eval, evalApp)
 import Vehicle.Compile.Prelude
@@ -46,22 +45,7 @@ unblockBoolExpr ::
   UnblockingActions m ->
   Value Builtin ->
   m (Value Builtin)
-unblockBoolExpr actions expr = do
-  ctx <- getNameContext
-  let exprDoc = prettyFriendly (WithContext expr ctx)
-  -- logDebug MaxDetail $ line <> "unblocking" <+> exprDoc
-  -- incrCallDepth
-
-  unblockedExpr <- unblockBoolValue actions expr
-
-  newCtx <- getNameContext
-  let unblockedExprDoc = prettyFriendly (WithContext unblockedExpr newCtx)
-  when (layoutAsString exprDoc == layoutAsString unblockedExprDoc) $
-    developerError $
-      "Failed to unblock expression:" <+> exprDoc
-
-  decrCallDepth
-  return unblockedExpr
+unblockBoolExpr = unblockBoolValue
 
 --------------------------------------------------------------------------------
 -- Purification
@@ -139,12 +123,12 @@ unblockBoolValue actions expr = do
     -- Already unblocked
     VBoolLiteral {} -> return expr
     VAnd {} -> return expr
-    VOr {} -> return expr
     VNot {} -> return expr
     VBoolIf {} -> return expr
     VQuantifyRatTensor {} -> return expr
     VCompareRatTensor {} -> return expr
     -- Recursively unblock
+    VOr args -> unblockTensorOp2 unblockTensor evalOr args
     VReduceAndTensor args -> unblockReduceTensor unblockTensor unoptimisedEvalReduceAndTensor args
     VReduceOrTensor args -> unblockReduceTensor unblockTensor evalReduceOrTensor args
     VCompareIndex (op, args) -> unblockIndexOp2 (evalCompareIndex op) args
@@ -193,7 +177,9 @@ unblockRatTensorValue actions@UnblockingActions {..} status expr = do
       | status == DesiredDimensions -> return expr
       | otherwise -> unblockRatTensorBoundVar v
     VRatTensorFreeVar n spine -> case getExpr accessSpine spine of
-      Just args -> unblock status =<< unblockNetworkApp n args
+      Just args -> do
+        unblocked <- unblockNetworkApp n args
+        if unblocked == expr then return unblocked else unblock status unblocked
       -- Parameters and other scalar free vars may appear in constraints used
       -- for quantifier-domain extraction, e.g. `-epsilon < x ! 0 < epsilon`.
       _ -> return expr

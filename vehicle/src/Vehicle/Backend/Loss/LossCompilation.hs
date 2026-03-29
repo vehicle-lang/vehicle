@@ -246,7 +246,8 @@ convertLogicField field args = do
   logDebugM MaxDetail $ do
     fnDoc <- prettyFriendlyInCtx fn
     return $ "subst-field" <+> pretty field <> ":" <+> fnDoc
-  normaliseAppInEmptyFreeEnv mempty fn (mkExpr accessSpine args)
+  nameCtx <- getNameContext
+  normaliseAppInEmptyFreeEnv nameCtx fn (mkExpr accessSpine args)
 
 --------------------------------------------------------------------------------
 -- Index
@@ -418,9 +419,8 @@ logConversion e action = do
 
   result <- action
 
+  logDebug MaxDetail "post-action"
   decrCallDepth
-  logDebugM MaxDetail $ do
-    outputDoc <- prettyFriendlyInCtx result
-    return $ "exit-loss" <+> ": " <+> outputDoc
+  logDebug MaxDetail "post-decrCallDepth"
 
   return result

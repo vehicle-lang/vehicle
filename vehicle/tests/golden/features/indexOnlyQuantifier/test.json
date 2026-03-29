@@ -1,0 +1,8 @@
+[
+    {
+        "name": "indexOnlyQuantifier",
+        "run": "vehicle compile loss -s spec.vcl -l DL2Loss -o DL2Loss.vcl",
+        "produces": ["DL2Loss.vcl"],
+        "needs": ["spec.vcl"]
+    }
+]

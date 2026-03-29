@@ -18,7 +18,7 @@ import Vehicle.Backend.Loss.LossCompilation (convertFunction, convertRatTensor)
 import Vehicle.Backend.Prelude (DifferentiableLogicID)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyFriendlyEmptyCtx, prettyVerbose)
+import Vehicle.Compile.Print (prettyFriendlyEmptyCtx)
 import Vehicle.Data.Builtin.Interface.Normalise (evalCompareRatTensorPointwise)
 import Vehicle.Data.Builtin.Loss (ComparisonOp (..), LogicDirection, LossBuiltin)
 import Vehicle.Data.Builtin.Standard (Builtin)
@@ -158,7 +158,6 @@ compileLogicField logicID decl fields impl field =
   logCompilerSection2 MidDetail ("compiling tensor-field" <+> quotePretty field) $ do
     let tensorValue = lookupLogicField field fields
     logDebug MaxDetail $ "tensor-result:" <+> prettyFriendlyEmptyCtx tensorValue <> line
-    logDebug MaxDetail $ "tensor-result:" <+> prettyVerbose tensorValue <> line
 
     lossTensorExpr <-
       runMonadLogicT logicID (mempty, True) decl $ do
@@ -432,8 +431,7 @@ reduceOp2Body ::
 reduceOp2Body = convertHigherOrderFunction "reduction" $ \case
   VBuiltin (BuiltinFunction (reduceOp -> Just reducedOp)) (getExpr accessSpine -> Just (TensorOp2Args _ (VBoundVar 0 []) (VBoundVar 1 []))) ->
     return $ \dims e xs -> builtinFunction reducedOp .@@@ [dims] @@ [e, xs]
-  blockedExpr -> do
-    logDebug MaxDetail $ prettyVerbose blockedExpr
+  blockedExpr ->
     throwError blockedExpr
 
 convertHigherOrderFunction ::
