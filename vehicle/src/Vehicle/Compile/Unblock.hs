@@ -123,12 +123,12 @@ unblockBoolValue actions expr = do
     -- Already unblocked
     VBoolLiteral {} -> return expr
     VAnd {} -> return expr
+    VOr {} -> return expr
     VNot {} -> return expr
     VBoolIf {} -> return expr
     VQuantifyRatTensor {} -> return expr
     VCompareRatTensor {} -> return expr
     -- Recursively unblock
-    VOr args -> unblockTensorOp2 unblockTensor evalOr args
     VReduceAndTensor args -> unblockReduceTensor unblockTensor unoptimisedEvalReduceAndTensor args
     VReduceOrTensor args -> unblockReduceTensor unblockTensor evalReduceOrTensor args
     VCompareIndex (op, args) -> unblockIndexOp2 (evalCompareIndex op) args
@@ -177,9 +177,7 @@ unblockRatTensorValue actions@UnblockingActions {..} status expr = do
       | status == DesiredDimensions -> return expr
       | otherwise -> unblockRatTensorBoundVar v
     VRatTensorFreeVar n spine -> case getExpr accessSpine spine of
-      Just args -> do
-        unblocked <- unblockNetworkApp n args
-        if unblocked == expr then return unblocked else unblock status unblocked
+      Just args -> unblock status =<< unblockNetworkApp n args
       -- Parameters and other scalar free vars may appear in constraints used
       -- for quantifier-domain extraction, e.g. `-epsilon < x ! 0 < epsilon`.
       _ -> return expr

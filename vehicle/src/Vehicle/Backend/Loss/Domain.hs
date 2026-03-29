@@ -3,7 +3,7 @@ module Vehicle.Backend.Loss.Domain
   )
 where
 
-import Control.Monad (foldM, forM)
+import Control.Monad (filterM, foldM, forM)
 import Control.Monad.Except (MonadError (..), runExceptT)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Foldable (foldrM)
@@ -67,7 +67,10 @@ checkFinalPartitionUnconstrained ::
 checkFinalPartitionUnconstrained = \case
   (Nothing, Nothing) -> developerError "Found unexpected trivial partition"
   (Nothing, Just value) -> return value
-  (Just {}, _) -> developerError "Constraints still unexpected present after compiling top-level quantifier"
+  (Just constraints, Nothing) -> constraintsTreeToLoss constraints
+  (Just constraints, Just value) -> do
+    constraintsValue <- constraintsTreeToLoss constraints
+    andLossValue value constraintsValue
 
 constraintsTreeToLoss ::
   (MonadLogic m) =>
@@ -112,9 +115,7 @@ compileForall args@(QuantifyRatTensorArgs dims _ _) = do
   maybePartitions <- compileExists notArgs
   case maybePartitions of
     Trivial b -> return $ Trivial $ not b
-    NonTrivial partitions ->
-      addTensorBinderToContext dims (quantifyBinder notArgs) $
-        NonTrivial <$> notPartitions dims partitions
+    NonTrivial partitions -> NonTrivial <$> notPartitions dims partitions
 
 compileExists ::
   (MonadLogic m) =>
@@ -201,56 +202,59 @@ compileConstraints finalCtx dims binder var (maybeConstraints, maybeRemainder) =
           remDoc <- maybe (return "") (fmap lineIndent . prettyFriendlyInCtx) remainingTree
           return $ "remaining-constraints:" <> remDoc
 
-        partitionBody <- case remainingTree of
-          Nothing -> return remainingBody
-          Just tree -> do
-            constraintValue <- constraintsTreeToLoss tree
-            andLossValue remainingBody constraintValue
-
-        partitionBodyClosed <- closeTensorValue partitionBody
+        partitionBodyClosed <- closeCurrentTensorValue var remainingBody
         let lossBody = quote mempty (1 + boundCtxLv finalCtx) partitionBodyClosed
         let finalEnv = boundContextToEnv finalCtx
         let remainder = Closure finalEnv lossBody
 
-        finalValue <- compileSearch varName dims binder remainder domain
-        return $ singletonPartition (Nothing, Just finalValue)
+        finalValue <- compileSearch var varName dims binder remainder domain
+        return $ singletonPartition (remainingTree, Just finalValue)
     NonTrivial <$> disjunctPartitions newPartitions
 
 -- | Replaces VBoundVar slice-level references in a TensorValue with x!i
 -- indexed access, so the value is closed with respect to the tensor context.
-closeTensorValue :: (MonadLogic m) => Value LossBuiltin -> m (Value LossBuiltin)
-closeTensorValue val = case val of
+closeCurrentTensorValue :: (MonadLogic m) => NestedSliceVariable -> Value LossBuiltin -> m (Value LossBuiltin)
+closeCurrentTensorValue target val = case val of
   VBoundVar lv [] -> do
-    (originalLv, maybeVars) <- lookupVariableInNestedCtx lv
-    let var = VBoundVar originalLv []
-    case maybeVars of
-      Nothing -> return var
-      Just (parentVar, sliceVar) -> do
-        let indices = findSliceIndices parentVar sliceVar
-        return $ mkIndexInto IRatType var (shapeOf parentVar) indices
+    if shouldClose lv
+      then do
+        (_, maybeVars) <- lookupVariableInNestedCtx lv
+        let var = VBoundVar (toLv target) []
+        case maybeVars of
+          Nothing -> return var
+          Just (parentVar, sliceVar) -> do
+            let indices = findSliceIndices parentVar sliceVar
+            return $ mkIndexInto IRatType var (shapeOf parentVar) indices
+      else return $ VBoundVar lv []
   VBoundVar lv spine -> do
-    spine' <- traverse (traverse closeTensorValue) spine
+    spine' <- traverse (traverse (closeCurrentTensorValue target)) spine
     return $ VBoundVar lv spine'
   VBuiltin b spine -> do
-    spine' <- traverse (traverse closeTensorValue) spine
+    spine' <- traverse (traverse (closeCurrentTensorValue target)) spine
     return $ VBuiltin b spine'
   VFreeVar v spine -> do
-    spine' <- traverse (traverse closeTensorValue) spine
+    spine' <- traverse (traverse (closeCurrentTensorValue target)) spine
     return $ VFreeVar v spine'
   VLam binder (Closure env body) -> do
-    binder' <- traverse closeTensorValue binder
+    binder' <- traverse (closeCurrentTensorValue target) binder
     return $ VLam binder' (Closure env body)
   other -> return other
+  where
+    shouldClose lv =
+      let start = toLv target
+          end = start + Lv (numberOfSliceVariablesIn $ shapeOf target)
+       in lv >= start && lv < end
 
 compileSearch ::
   (MonadLogic m) =>
+  NestedSliceVariable ->
   Name ->
   VDims Builtin ->
   VBinder Builtin ->
   Closure LossBuiltin ->
   Domain TensorValue ->
   m (Value LossBuiltin)
-compileSearch varName dims binder closure (Domain lowerBound upperBound) = do
+compileSearch target varName dims binder closure (Domain lowerBound upperBound) = do
   -- Convert the binder and the dimensions.
   lossBinder <- traverse convertType binder
   lossDims <- convertDims dims
@@ -266,8 +270,8 @@ compileSearch varName dims binder closure (Domain lowerBound upperBound) = do
   let lossPredicate = VLam lossBinder closure
 
   -- Close the bound values by replacing slice-level VBoundVars with x!i indexing
-  closedLowerBound <- closeTensorValue $ tensorValue $ lowerBoundValue lowerBound
-  closedUpperBound <- closeTensorValue $ tensorValue $ upperBoundValue upperBound
+  closedLowerBound <- closeCurrentTensorValue target $ tensorValue $ lowerBoundValue lowerBound
+  closedUpperBound <- closeCurrentTensorValue target $ tensorValue $ upperBoundValue upperBound
 
   -- Create the final expression
   -- NOTE that this is unsound as we discard the strictness information.
@@ -336,7 +340,8 @@ findVarBound var VariableInfo {..} (NormalisedRelation rel expr)
       -- If the bound still depends on any slice from the same parent tensor,
       -- keep it as a residual constraint in the predicate instead.
       let dependentVars = Set.toList $ variablesOf expr'
-      selfDependent <- or <$> traverse isFromSameParentTensor dependentVars
+      sameParentDeps <- filterM isFromSameParentTensor dependentVars
+      let selfDependent = length sameParentDeps > 1
       if selfDependent
         then return Nothing
         else do
@@ -470,11 +475,7 @@ compileBool value = logEntryAndExit value $ case toBoolValue value of
   -- Recursive cases --
   ---------------------
   VAnd args -> compileAnd args
-  VOr {} -> do
-    -- Don't decompose or expressions - convert directly to a loss value
-    -- to avoid exponential type checking complexity
-    lossValue <- convertBoolTensor value
-    NonTrivial <$> singletonUnconstrainedPartition lossValue
+  VOr args -> compileOr args
   VBoolIf args -> compileBool =<< unfoldIf args
   VNot args -> compileBool =<< lowerNot args
   VQuantifyRatTensor args -> compileQuantifierInternal args
@@ -493,6 +494,15 @@ compileAnd (TensorOp2Args _ e1 e2) = do
   c1 <- compileBool e1
   c2 <- compileBool e2
   andTrivialM andPartitions c1 c2
+
+compileOr ::
+  (MonadDomain m) =>
+  TensorOp2Args (Value Builtin) ->
+  m (MaybeTrivial Partitions)
+compileOr (TensorOp2Args _ e1 e2) = do
+  c1 <- compileBool e1
+  c2 <- compileBool e2
+  orTrivialM orPartitions c1 c2
 
 compileComparison ::
   forall m.
