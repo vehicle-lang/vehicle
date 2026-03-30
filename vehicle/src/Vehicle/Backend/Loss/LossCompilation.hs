@@ -419,8 +419,9 @@ logConversion e action = do
 
   result <- action
 
-  logDebug MaxDetail "post-action"
   decrCallDepth
-  logDebug MaxDetail "post-decrCallDepth"
+  logDebugM MaxDetail $ do
+    outputDoc <- prettyFriendlyInCtx result
+    return $ "exit-loss" <+> ": " <+> outputDoc
 
   return result

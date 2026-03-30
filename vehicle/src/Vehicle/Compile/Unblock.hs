@@ -45,7 +45,18 @@ unblockBoolExpr ::
   UnblockingActions m ->
   Value Builtin ->
   m (Value Builtin)
-unblockBoolExpr = unblockBoolValue
+unblockBoolExpr actions expr = do
+  ctx <- getNameContext
+  let exprDoc = prettyFriendly (WithContext expr ctx)
+  logDebug MaxDetail $ "unblocking:" <+> exprDoc
+
+  unblockedExpr <- unblockBoolValue actions expr
+
+  newCtx <- getNameContext
+  let unblockedExprDoc = prettyFriendly (WithContext unblockedExpr newCtx)
+  logDebug MaxDetail $ "unblocked:" <+> unblockedExprDoc
+
+  return unblockedExpr
 
 --------------------------------------------------------------------------------
 -- Purification
