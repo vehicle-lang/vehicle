@@ -25,7 +25,7 @@ import Vehicle.Data.Assertion (NormalisedRelation (..), Relation (..), compariso
 import Vehicle.Data.Bound
 import Vehicle.Data.Bound.FourierMotzkinElimination (fourierMotzkinTensorBoundsElimination)
 import Vehicle.Data.Builtin.Interface (Accessor (..))
-import Vehicle.Data.Builtin.Interface.Normalise (evalConstTensor)
+import Vehicle.Data.Builtin.Interface.Normalise (evalConstTensor, evalDivRatTensor, evalMulRatTensor)
 import Vehicle.Data.Builtin.Loss
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.BooleanExpr (BooleanExpr (..), DisjunctAll (..), andBoolExpr, conjunctDisjunctsM, disjunctDisjuncts, disjunctsToList, eliminateTrivialDisjunctions, flattenBoolExpr)
@@ -396,7 +396,7 @@ compileBool value = logEntryAndExit value $ case toBoolValue value of
   VAnd args -> compileAnd args
   VOr args -> compileOr args
   VBoolIf args -> compileBool =<< unfoldIf args
-  VNot args -> compileBool =<< lowerNot (unblockBoolExpr unblockingActions) args
+  VNot args -> compileBool =<< lowerNot args
   VQuantifyRatTensor args -> compileQuantifierInternal args
   -- VQuantifyRecord args -> compileQuantifierInternal args
   VQuantifyRecord _args -> compilerDeveloperError "LAUREN TODO: unsupported record quantifier"
@@ -592,6 +592,8 @@ compileLinearExpr dims expr = case toRatTensorValue expr of
   VRatConstTensor {} -> unlinearisable
   VRatStackTensor {} -> unlinearisable
   VRatAt {} -> unlinearisable
+  VRatTensorFreeVar ident [] ->
+    return $ constantExpr $ TensorValue dims (VFreeVar ident [])
   VRatTensorFreeVar {} -> unlinearisable
   VRatForeach {} -> unlinearisable
   VIfRatTensor {} -> unlinearisable
@@ -605,8 +607,22 @@ compileLinearExpr dims expr = case toRatTensorValue expr of
   VReduceMulRatTensor {} -> unlinearisable
   VReduceMinRatTensor {} -> unlinearisable
   VReduceMaxRatTensor {} -> unlinearisable
-  VMulRatTensor (TensorOp2Args _ _e1 _e2) -> unlinearisable
-  VDivRatTensor (TensorOp2Args _ _e1 _e2) -> unlinearisable
+  VMulRatTensor (TensorOp2Args _ e1 e2) -> do
+    e1' <- compileLinearExpr dims e1
+    e2' <- compileLinearExpr dims e2
+    case (isConstant e1', isConstant e2') of
+      (Just (TensorValue _ v1), Just (TensorValue _ v2)) -> do
+        result <- evalMulRatTensor (TensorOp2Args dims v1 v2)
+        return $ constantExpr $ TensorValue dims result
+      _ -> unlinearisable
+  VDivRatTensor (TensorOp2Args _ e1 e2) -> do
+    e1' <- compileLinearExpr dims e1
+    e2' <- compileLinearExpr dims e2
+    case (isConstant e1', isConstant e2') of
+      (Just (TensorValue _ v1), Just (TensorValue _ v2)) -> do
+        result <- evalDivRatTensor (TensorOp2Args dims v1 v2)
+        return $ constantExpr $ TensorValue dims result
+      _ -> unlinearisable
   where
     unlinearisable :: m (LinearExpr SliceVariable TensorValue)
     unlinearisable = throwError expr

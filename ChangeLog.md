@@ -1,6 +1,6 @@
 # Changelog for Vehicle
 
-## v0.25
+## v0.24.1
 
 ### General
 
@@ -13,6 +13,10 @@
 * Fixed a bug where the compiler where if a propery involved multiple quantifiers, the compiler woudl sometimes report that one of them was unbounded.
 
 * Fixed a bug where bounds on sub-indices of a tensor weren't being detected properly.
+
+### Solver backend
+
+* Fixed a bug where sometiems compilation of `forall` over indices failed.
 
 ## v0.24
 

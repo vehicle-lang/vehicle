@@ -65,7 +65,7 @@ class DummySampler(loss_tf.TensorFlowSampler):
 dummy_sampler = DummySampler()
 
 
-@pytest.mark.parametrize(  # type: ignore[misc]
+@pytest.mark.parametrize(  # type: ignore[untyped-decorator]
     "specification_filename,samplers,validate_output",
     [
         (

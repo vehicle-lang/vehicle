@@ -17,13 +17,13 @@ GOLDEN_SPEC_FILES = [
 ]
 
 
-@pytest.mark.parametrize("spec_path", GOLDEN_SPEC_FILES)  # type: ignore[misc]
+@pytest.mark.parametrize("spec_path", GOLDEN_SPEC_FILES)  # type: ignore[untyped-decorator]
 def test_golden_spec_load(spec_path: Path) -> None:
     """Test that golden specs can be loaded into AST."""
     loss_ast.load(spec_path, target=vcl.DifferentiableLogic.DL2)
 
 
-@pytest.mark.parametrize("spec_path", GOLDEN_SPEC_FILES)  # type: ignore[misc]
+@pytest.mark.parametrize("spec_path", GOLDEN_SPEC_FILES)  # type: ignore[untyped-decorator]
 def test_golden_spec_tensorflow_compile(spec_path: Path) -> None:
     """Test that golden specs compile to TensorFlow."""
     loss_tf = pytest.importorskip(
@@ -42,7 +42,7 @@ def test_golden_spec_tensorflow_compile(spec_path: Path) -> None:
     assert len(user_declarations) > 0
 
 
-@pytest.mark.parametrize("spec_path", GOLDEN_SPEC_FILES)  # type: ignore[misc]
+@pytest.mark.parametrize("spec_path", GOLDEN_SPEC_FILES)  # type: ignore[untyped-decorator]
 def test_golden_spec_pytorch_compile(spec_path: Path) -> None:
     """Test that golden specs compile to PyTorch."""
     loss_pt = pytest.importorskip(
