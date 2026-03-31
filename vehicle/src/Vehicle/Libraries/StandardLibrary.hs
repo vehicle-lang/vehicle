@@ -15,7 +15,8 @@ module Vehicle.Libraries.StandardLibrary
     hasAddIdent,
     hasSubIdent,
     hasMulIdent,
-    hasDivIdent
+    hasDivIdent,
+    hasComparisonIdent
   )
 where
 
@@ -78,9 +79,11 @@ hasSubIdent = standardLibIdent "HasSub"
 hasMulIdent :: Identifier
 hasMulIdent = standardLibIdent "HasMul"
 
-
 hasDivIdent :: Identifier
 hasDivIdent = standardLibIdent "HasDiv"
+
+hasComparisonIdent :: Identifier
+hasComparisonIdent = standardLibIdent "HasComparison"
 
 isBuiltinModule :: ModulePath -> Bool
 isBuiltinModule = \case
