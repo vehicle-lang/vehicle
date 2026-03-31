@@ -70,8 +70,8 @@ createTensorRecordConversionFunctions p ident telescope fields = do
   let validQuantifierInstance = createTensorLikeHasQuantifierInstance p ident
   let validHasAddInstance = createTensorLikeHasAdd p ident
 
-  return
-    [recordToTensorDecl, tensorToRecordDecl, tensorLikeInstance, validNetworkInstance, validQuantifierInstance, validHasAddInstance]
+  return $ 
+    [recordToTensorDecl, tensorToRecordDecl, tensorLikeInstance, validNetworkInstance, validQuantifierInstance] ++ validHasAddInstance
 
 createRecordToTensor ::
   Provenance ->
@@ -213,7 +213,7 @@ createTensorLikeHasQuantifierInstance p recordIdent = do
 createTensorLikeHasAdd ::
   Provenance ->
   Identifier ->
-  Decl Builtin
+  [Decl Builtin]
 createTensorLikeHasAdd p recordIdent = do
 
 -- DEFINE COMMON THINGS
@@ -225,7 +225,7 @@ createTensorLikeHasAdd p recordIdent = do
   let toTensorName = Text.pack "_" <> nameOf recordIdent <> "ToTensor"
   let toTensorIdent = freeVar $ Identifier (modulePath recordIdent) toTensorName
 
--- HASADD
+-- hasAdd
   let hasAddTypeclass = fromDSL mempty $ freeVar hasAddIdent @@ [recordType, recordType, recordType]
   let hasAddInstanceName = Text.pack "_" <> nameOf recordIdent <> "HasAdd"
   let hasAddInstanceIdent = Identifier (modulePath recordIdent) hasAddInstanceName
@@ -236,6 +236,23 @@ createTensorLikeHasAdd p recordIdent = do
             let innerAddTC = addTCIdent @@ [toTensorIdent @@ [r1], toTensorIdent @@ [r2]]
             fromTensorIdent @@ [innerAddTC]
   
-  let functionBody = Record p hasAddTypeclass [(FieldName p "addTC",  addTCField)]
-  DefFunction p hasAddInstanceIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) hasAddTypeclass functionBody
+  let hasAddBody = Record p hasAddTypeclass [(FieldName p "addTC",  addTCField)]
+  let hasAddFunction = DefFunction p hasAddInstanceIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) hasAddTypeclass hasAddBody
+
+
+-- hasSub
+  let hasSubTypeclass = fromDSL mempty $ freeVar hasSubIdent @@ [recordType, recordType, recordType]
+  let hasSubInstanceName = Text.pack "_" <> nameOf recordIdent <> "HasSub"
+  let hasSubInstanceIdent = Identifier (modulePath recordIdent) hasSubInstanceName
+  let subTCIdent = freeVar $ standardLibIdent "subTC"
+
+  let subTCField = fromDSL mempty $ explLam "r1" recordType $ \r1 ->
+          explLam "r2" recordType $ \r2 -> do
+            let innerSubTC = subTCIdent @@ [toTensorIdent @@ [r1], toTensorIdent @@ [r2]]
+            fromTensorIdent @@ [innerSubTC]
+  
+  let hasSubBody = Record p hasSubTypeclass [(FieldName p "subTC",  subTCField)]
+  let hasSubFunction = DefFunction p hasSubInstanceIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) hasSubTypeclass hasSubBody
+
+  [hasAddFunction, hasSubFunction]
 

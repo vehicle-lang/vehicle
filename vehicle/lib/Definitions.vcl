@@ -92,17 +92,6 @@ record HasSub t1 t2 t3 where
 realTensorHasSub : HasSub (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
 realTensorHasSub = { subTC = subRealTensor }
 
-@instance
-tensorLikeHasSub : {{ TensorLike r t dims }} -> {{ HasSub (NonCastingTensor t dims) (NonCastingTensor t dims) (NonCastingTensor t dims) }} -> HasSub r r r
-tensorLikeHasSub =
-    { subTC = \r1 r2 ->
-        fromTensor
-            (subTC
-                (toTensor r1)
-                (toTensor r2)
-            )
-    }
-
 -- HasMul
 @typeclass
 record HasMul t1 t2 t3 where
