@@ -106,18 +106,6 @@ natHasMul = { mulTC = mulNat }
 realTensorHasMul : HasMul (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
 realTensorHasMul = { mulTC = mulRealTensor }
 
-@instance
-tensorLikeHasMul : {{ TensorLike r t dims }} -> {{ HasMul (NonCastingTensor t dims) (NonCastingTensor t dims) (NonCastingTensor t dims) }} -> HasMul r r r
-tensorLikeHasMul =
-    { mulTC = \r1 r2 ->
-        fromTensor
-            (mulTC
-                (toTensor r1)
-                (toTensor r2)
-            )
-    }
-
-
 -- HasDiv
 @typeclass
 record HasDiv t1 t2 t3 where
@@ -127,17 +115,6 @@ record HasDiv t1 t2 t3 where
 @instance
 realTensorHasDiv : HasDiv (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
 realTensorHasDiv = { divTC = divRealTensor }
-
-@instance
-tensorLikeHasDiv : {{ TensorLike r t dims }} -> {{ HasDiv (NonCastingTensor t dims) (NonCastingTensor t dims) (NonCastingTensor t dims) }} -> HasDiv r r r
-tensorLikeHasDiv =
-    { divTC = \r1 r2 ->
-        fromTensor
-            (divTC
-                (toTensor r1)
-                (toTensor r2)
-            )
-    }
 
 -- Quantifiers
 @typeclass
