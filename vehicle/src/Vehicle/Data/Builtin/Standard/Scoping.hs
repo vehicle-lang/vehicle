@@ -250,9 +250,8 @@ createComparisonField ::
   DSLExpr Builtin -> -- fromTensor
   DSLExpr Builtin -> -- field ident
   Expr Builtin
-createComparisonField recordType toTensor fromTensor fieldIdent = do
+createComparisonField recordType toTensor _fromTensor fieldIdent = do
   fromDSL mempty $ explLam "r1" recordType $ \r1 ->
-          explLam "r2" recordType $ \r2 -> do
-            let innerAddTC = fieldIdent @@ [toTensor @@ [r1], toTensor @@ [r2]]
-            fromTensor @@ [innerAddTC]
+          explLam "r2" recordType $ \r2 -> fieldIdent @@ [toTensor @@ [r1], toTensor @@ [r2]]
+
 
