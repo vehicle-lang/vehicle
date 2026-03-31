@@ -13,11 +13,11 @@ value2 = { f1 = 1, f2 = 2 }
 add : Test1
 add = value1 + value2
 
-subtract : Test1
-subtract = value1 - value2
+-- subtract : Test1
+-- subtract = value1 - value2
 
-multiply : Test1
-multiply = value1 * value2
+-- multiply : Test1
+-- multiply = value1 * value2
 
-divide : Test1
-divide = value1 / value2
+-- divide : Test1
+-- divide = value1 / value2

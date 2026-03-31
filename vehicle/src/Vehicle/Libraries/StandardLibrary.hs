@@ -12,6 +12,7 @@ module Vehicle.Libraries.StandardLibrary
     validNetworkTypeIdent,
     validNetworkIOTypeIdent,
     hasQuantifierIdent,
+    hasAddIdent
   )
 where
 
@@ -64,6 +65,9 @@ validNetworkIOTypeIdent = standardLibIdent "HasValidNetworkIOType"
 
 hasQuantifierIdent :: Identifier
 hasQuantifierIdent = standardLibIdent "HasQuantifier"
+
+hasAddIdent :: Identifier
+hasAddIdent = standardLibIdent "HasAdd"
 
 isBuiltinModule :: ModulePath -> Bool
 isBuiltinModule = \case

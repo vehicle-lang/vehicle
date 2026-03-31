@@ -68,9 +68,10 @@ createTensorRecordConversionFunctions p ident telescope fields = do
   let tensorLikeInstance = createTensorLikeInstance p ident fieldElementType fieldDimensions nonEmptyFields
   let validNetworkInstance = createValidNetworkIOInstance p ident
   let validQuantifierInstance = createTensorLikeHasQuantifierInstance p ident
+  let validHasAddInstance = createTensorLikeHasAdd p ident
 
   return
-    [recordToTensorDecl, tensorToRecordDecl, tensorLikeInstance, validNetworkInstance, validQuantifierInstance]
+    [recordToTensorDecl, tensorToRecordDecl, tensorLikeInstance, validNetworkInstance, validQuantifierInstance, validHasAddInstance]
 
 createRecordToTensor ::
   Provenance ->
@@ -190,3 +191,54 @@ createTensorLikeHasQuantifierInstance p recordIdent = do
           ]
 
   DefFunction p functionIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) recordType functionBody
+
+-- TensorLike hasAdd
+
+-- @instance
+-- tensorLikeHasAdd : {{ TensorLike r t dims }} -> {{ HasAdd (NonCastingTensor t dims) (NonCastingTensor t dims) (NonCastingTensor t dims) }} -> HasAdd r r r
+-- tensorLikeHasAdd =
+--     { addTC = \r1 r2 ->
+--         fromTensor
+--             (addTC
+--                 (toTensor r1)
+--                 (toTensor r2)
+--             )
+--     }
+
+-- what we want to write:
+-- recordTypeHasAdd : HasAdd recordType recordType recordType
+-- recordTypeHasAdd r1 r2 =
+-- { addTC = recordTypeFromTensor (addTC (recordTypeToTensor r1) (recordTypeToTensor r2))}
+
+createTensorLikeHasAdd ::
+  Provenance ->
+  Identifier ->
+  Decl Builtin
+createTensorLikeHasAdd p recordIdent = do
+  -- this is the hasAdd typeclass applied to the record type, e.g. HasAdd r r r
+  let recordType = freeVar recordIdent
+  let typeclassRecordType = freeVar hasAddIdent @@ [recordType, recordType, recordType]
+
+  -- function name and ident
+  let functionName = Text.pack "_" <> nameOf recordIdent <> "HasAdd"
+  let functionIdent = Identifier (modulePath recordIdent) functionName
+
+  -- addTC field name
+  let addTCFieldName = FieldName p "addTC"
+  let addTCIdent = freeVar $ standardLibIdent "addTC"
+
+  -- recordToTensor and recordFromTensor names 
+  let fromTensorName = Text.pack "_" <> nameOf recordIdent <> "FromTensor"
+  let fromTensorIdent = freeVar $ Identifier (modulePath recordIdent) fromTensorName
+
+  let toTensorName = Text.pack "_" <> nameOf recordIdent <> "ToTensor"
+  let toTensorIdent = freeVar $ Identifier (modulePath recordIdent) toTensorName
+
+  let addTCField = explLam "r1" recordType $ \r1 ->
+          explLam "r2" recordType $ \r2 -> do
+            let innerAddTC = addTCIdent @@ [toTensorIdent @@ [r1], toTensorIdent @@ [r2]]
+            fromTensorIdent @@ [innerAddTC]
+  
+  let functionBody = record typeclassRecordType [(addTCFieldName, addTCField)]
+
+  DefFunction p functionIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) (fromDSL mempty typeclassRecordType) (fromDSL p functionBody)
