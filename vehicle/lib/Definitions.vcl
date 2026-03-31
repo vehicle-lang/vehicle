@@ -82,17 +82,6 @@ natHasAdd = { addTC = addNat }
 realTensorHasAdd : HasAdd (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
 realTensorHasAdd = { addTC = addRealTensor }
 
--- @instance
--- tensorLikeHasAdd : {{ TensorLike r t dims }} -> {{ HasAdd (NonCastingTensor t dims) (NonCastingTensor t dims) (NonCastingTensor t dims) }} -> HasAdd r r r
--- tensorLikeHasAdd =
---     { addTC = \r1 r2 ->
---         fromTensor
---             (addTC
---                 (toTensor r1)
---                 (toTensor r2)
---             )
---     }
-
 -- HasSub
 @typeclass
 record HasSub t1 t2 t3 where

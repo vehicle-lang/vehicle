@@ -215,30 +215,27 @@ createTensorLikeHasAdd ::
   Identifier ->
   Decl Builtin
 createTensorLikeHasAdd p recordIdent = do
-  -- this is the hasAdd typeclass applied to the record type, e.g. HasAdd r r r
+
+-- DEFINE COMMON THINGS
   let recordType = freeVar recordIdent
-  let typeclassRecordType = freeVar hasAddIdent @@ [recordType, recordType, recordType]
 
-  -- function name and ident
-  let functionName = Text.pack "_" <> nameOf recordIdent <> "HasAdd"
-  let functionIdent = Identifier (modulePath recordIdent) functionName
-
-  -- addTC field name
-  let addTCFieldName = FieldName p "addTC"
-  let addTCIdent = freeVar $ standardLibIdent "addTC"
-
-  -- recordToTensor and recordFromTensor names 
   let fromTensorName = Text.pack "_" <> nameOf recordIdent <> "FromTensor"
   let fromTensorIdent = freeVar $ Identifier (modulePath recordIdent) fromTensorName
 
   let toTensorName = Text.pack "_" <> nameOf recordIdent <> "ToTensor"
   let toTensorIdent = freeVar $ Identifier (modulePath recordIdent) toTensorName
 
-  let addTCField = explLam "r1" recordType $ \r1 ->
+-- HASADD
+  let hasAddTypeclass = fromDSL mempty $ freeVar hasAddIdent @@ [recordType, recordType, recordType]
+  let hasAddInstanceName = Text.pack "_" <> nameOf recordIdent <> "HasAdd"
+  let hasAddInstanceIdent = Identifier (modulePath recordIdent) hasAddInstanceName
+  let addTCIdent = freeVar $ standardLibIdent "addTC"
+
+  let addTCField = fromDSL mempty $ explLam "r1" recordType $ \r1 ->
           explLam "r2" recordType $ \r2 -> do
             let innerAddTC = addTCIdent @@ [toTensorIdent @@ [r1], toTensorIdent @@ [r2]]
             fromTensorIdent @@ [innerAddTC]
   
-  let functionBody = record typeclassRecordType [(addTCFieldName, addTCField)]
+  let functionBody = Record p hasAddTypeclass [(FieldName p "addTC",  addTCField)]
+  DefFunction p hasAddInstanceIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) hasAddTypeclass functionBody
 
-  DefFunction p functionIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) (fromDSL mempty typeclassRecordType) (fromDSL p functionBody)
