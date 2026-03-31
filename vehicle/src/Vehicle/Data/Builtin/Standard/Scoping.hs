@@ -66,13 +66,13 @@ createTensorRecordConversionFunctions p ident telescope fields = do
 
   let recordToTensorDecl = createRecordToTensor p ident fieldElementType fieldDimensions nonEmptyFields
   let tensorToRecordDecl = createTensorToRecord p ident fieldElementType fieldDimensions nonEmptyFields
-  -- let tensorLikeInstance = createTensorLikeInstance p ident fieldElementType fieldDimensions nonEmptyFields
   let validNetworkInstance = createValidNetworkIOInstance p ident
   let validQuantifierInstance = createTensorLikeHasQuantifierInstance p ident
   let validHasAddInstance = createTensorLikeArithmeticInstance p ident hasAddIdent "HasAdd" "addTC"
   let validHasSubInstance = createTensorLikeArithmeticInstance p ident hasSubIdent "HasSub" "subTC"
   let validHasMulInstance = createTensorLikeArithmeticInstance p ident hasMulIdent "HasMul" "mulTC"
   let validHasDivInstance = createTensorLikeArithmeticInstance p ident hasDivIdent "HasDiv" "divTC"
+  let validHasComparisonInstance = createTensorLikeComparisonInstance p ident
 
   return
     [recordToTensorDecl,
@@ -82,7 +82,8 @@ createTensorRecordConversionFunctions p ident telescope fields = do
     validHasAddInstance,
     validHasSubInstance,
     validHasDivInstance,
-    validHasMulInstance]
+    validHasMulInstance,
+    validHasComparisonInstance]
 
 createRecordToTensor ::
   Provenance ->
@@ -233,12 +234,6 @@ createTensorLikeComparisonInstance p recordIdent = do
   let typeclass = fromDSL mempty $ freeVar hasComparisonIdent @@ [recordType, recordType]
   let instanceName = Text.pack "_" <> nameOf recordIdent <> "HasComparison"
   let instanceIdent = Identifier (modulePath recordIdent) instanceName
-  -- let leFieldIdent = freeVar $ standardLibIdent "leTC"
-  -- let ltFieldIdent = freeVar $ standardLibIdent "ltTC"
-  -- let geFieldIdent = freeVar $ standardLibIdent "geTC"
-  -- let gtFieldIdent = freeVar $ standardLibIdent "gtTC"
-  -- let eqFieldIdent = freeVar $ standardLibIdent "eqTC"
-  -- let neFieldIdent = freeVar $ standardLibIdent "neTC"
 
   let fieldLabels = ["leTC", "ltTC", "geTC", "gtTC", "eqTC", "neTC"]
   let fieldIdents = map (freeVar . standardLibIdent) fieldLabels
