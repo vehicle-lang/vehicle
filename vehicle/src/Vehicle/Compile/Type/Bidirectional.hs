@@ -386,9 +386,6 @@ checkRecordField ::
   RecordField builtin ->
   m (RecordField builtin)
 checkRecordField declaredFields (field, value) = do
-  _ <- logDebug MidDetail $
-         pretty (show declaredFields)
-
   let fieldType = lookupRecordField declaredFields field
   checkedValue <- checkExpr fieldType value
   return (field, checkedValue)
