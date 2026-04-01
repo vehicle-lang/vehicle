@@ -28,13 +28,12 @@ type MonadDropNot m =
 lowerNot ::
   forall m.
   (MonadDropNot m) =>
-  (Value Builtin -> m (Value Builtin)) ->
   TensorOp1Args (Value Builtin) ->
   m (Value Builtin)
-lowerNot onBlocked (TensorOp1Args _ arg) = do
+lowerNot (TensorOp1Args _ arg) = do
   result <- go arg
   ctx <- getNameContext
-  logDebug MaxDetail $ "push-not" <+> prettyFriendly (WithContext result ctx)
+  logDebug MaxDetail $ "push-not:" <+> prettyFriendly (WithContext result ctx)
   return result
   where
     go :: Value Builtin -> m (Value Builtin)
@@ -64,7 +63,7 @@ lowerNot onBlocked (TensorOp1Args _ arg) = do
       VBoolTensorReduceOr args -> fromBoolTensorValue . VBoolTensorReduceAnd <$> traverseReductionArgs go args
       VBoolTensorReduceAnd args -> fromBoolTensorValue . VBoolTensorReduceOr <$> traverseReductionArgs go args
       VBoolTensorAt args -> fromBoolTensorValue . VBoolTensorAt <$> traverseAtTensorArg go args
-      VBoolTensorForeach {} -> onBlocked e
+      VBoolTensorForeach args -> fromBoolTensorValue . VBoolTensorForeach <$> negateForeachArgs args
 
 negateQuantifierBody ::
   (MonadReadableNameContext m) =>
@@ -75,3 +74,16 @@ negateQuantifierBody (QuantifyRatTensorArgs dims binder (Closure env body)) = do
   let dims' = quote mempty lv dims
   let newBody = mkExpr accessNotTensor $ TensorOp1Args dims' body
   return $ QuantifyRatTensorArgs dims binder (Closure env newBody)
+
+negateForeachArgs ::
+  (MonadReadableNameContext m) =>
+  ForeachTensorArgs (Value Builtin) ->
+  m (ForeachTensorArgs (Value Builtin))
+negateForeachArgs (ForeachTensorArgs t dim dims fn) = do
+  (binder, Closure env body) <- case fn of
+    VLam binder closure -> return (binder, closure)
+    _ -> developerError "Malformed foreachTensor"
+  lv <- getBinderDepth
+  let dims' = quote mempty lv dims
+  let newBody = mkExpr accessNotTensor $ TensorOp1Args dims' body
+  return $ ForeachTensorArgs t dim dims (VLam binder (Closure env newBody))

@@ -372,7 +372,7 @@ andPartitions p1 p2 = do
 unblockingActions :: (MonadDomain m) => UnblockingActions m
 unblockingActions =
   UnblockingActions
-    { unblockRatTensorBoundVar = \lv -> return $ VBoundVar lv [],
+    { unblockRatTensorBoundVar = purifyBoundVar,
       unblockNetworkApp = \ident args -> return $ VFreeVar ident (mkExpr accessSpine args)
     }
 
@@ -397,7 +397,7 @@ compileBool value = logEntryAndExit value $ case toBoolValue value of
   VAnd args -> compileAnd args
   VOr args -> compileOr args
   VBoolIf args -> compileBool =<< unfoldIf args
-  VNot args -> compileBool =<< lowerNot (unblockBoolExpr unblockingActions) args
+  VNot args -> compileBool =<< lowerNot args
   VQuantifyRatTensor args -> compileQuantifierInternal args
   -------------------
   -- Blocked cases --
@@ -544,7 +544,7 @@ purifyUnblockingActions =
 purifyNetworkApp :: (MonadPurifyAssertion m) => Identifier -> NetworkAppArgs (Value Builtin) -> m (Value Builtin)
 purifyNetworkApp ident _spine = throwError $ ContainsNetwork ident
 
-purifyBoundVar :: (MonadPurifyAssertion m) => Lv -> m (Value Builtin)
+purifyBoundVar :: (MonadLogger m, MonadReadableTensorBoundContext m) => Lv -> m (Value Builtin)
 purifyBoundVar lv = do
   (_, maybeUserVars) <- lookupVariableInNestedCtx lv
   case maybeUserVars of
