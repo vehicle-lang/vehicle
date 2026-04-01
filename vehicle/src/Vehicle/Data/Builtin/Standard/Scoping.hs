@@ -42,9 +42,9 @@ createRecordHasValidIOTypeInstance p recordIdent fields = do
   --
   --   @instance
   --   recordRHasValidNetworkIOType :
-  --     {{HasValidNetworkIOType t1}} ->
+  --     {{HasValidNetworkFieldType t1}} ->
   --     ...
-  --     {{HasValidNetworkIOType tn}} ->
+  --     {{HasValidNetworkFieldType tn}} ->
   --     HasValidNetworkIOType R
   --   recordRHasValidNetworkIOType = {}
   --
