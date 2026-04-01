@@ -205,28 +205,12 @@ createTensorLikeArithmeticInstance p recordIdent typeclassIdent typeclassName fi
   DefFunction p instanceIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) typeclass body
 
 
--- @instance
--- realTensorLikeHasComparison : {{ TensorLike r t dims }} -> {{ HasComparison (NonCastingTensor t dims) (NonCastingTensor t dims) }} -> HasComparison r r
--- realTensorLikeHasComparison = { leTC = \r1 r2 -> ( leTC (toTensor r1) (toTensor r2) )
---                               , ltTC = \r1 r2 -> ( ltTC (toTensor r1) (toTensor r2) )
---                               , geTC = \r1 r2 -> ( geTC (toTensor r1) (toTensor r2) )
---                               , gtTC = \r1 r2 -> ( gtTC (toTensor r1) (toTensor r2) )
---                               , eqTC = \r1 r2 -> ( eqTC (toTensor r1) (toTensor r2) )
---                               , neTC = \r1 r2 -> ( neTC (toTensor r1) (toTensor r2) )
---                               }
-
 createTensorLikeComparisonInstance ::
   Provenance ->
   Identifier ->
-  -- Identifier -> -- standard library identifier for the typeclass, e.g. hasAddIdent
-  -- Text ->       -- name of typeclass in text, e.g HasAdd
-  -- Text ->       -- name of the field for the operation in text e.g. addTC
   Decl Builtin
 createTensorLikeComparisonInstance p recordIdent = do
   let recordType = freeVar recordIdent
-
-  let fromTensorName = Text.pack "_" <> nameOf recordIdent <> "FromTensor"
-  let fromTensorIdent = freeVar $ Identifier (modulePath recordIdent) fromTensorName
 
   let toTensorName = Text.pack "_" <> nameOf recordIdent <> "ToTensor"
   let toTensorIdent = freeVar $ Identifier (modulePath recordIdent) toTensorName
@@ -235,22 +219,21 @@ createTensorLikeComparisonInstance p recordIdent = do
   let instanceName = Text.pack "_" <> nameOf recordIdent <> "HasComparison"
   let instanceIdent = Identifier (modulePath recordIdent) instanceName
 
-  let fieldLabels = ["leTC", "ltTC", "geTC", "gtTC", "eqTC", "neTC"]
-  let fieldIdents = map (freeVar . standardLibIdent) fieldLabels
-  let fieldValues = map (createComparisonField (freeVar recordIdent) toTensorIdent fromTensorIdent) fieldIdents 
-  let fieldNames = map (FieldName p) fieldLabels
+  let fieldText = ["leTC", "ltTC", "geTC", "gtTC", "eqTC", "neTC"]
+  let fieldIdents = map (freeVar . standardLibIdent) fieldText
+  let fieldValues = map (createComparisonField (freeVar recordIdent) toTensorIdent) fieldIdents 
+  let fieldNames = map (FieldName p) fieldText
   let fields = zip fieldNames fieldValues
 
   let body = Record p typeclass fields
   DefFunction p instanceIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) typeclass body
 
 createComparisonField :: 
-  DSLExpr Builtin -> -- recordType
-  DSLExpr Builtin -> -- toTensor
-  DSLExpr Builtin -> -- fromTensor
-  DSLExpr Builtin -> -- field ident
+  DSLExpr Builtin ->
+  DSLExpr Builtin ->
+  DSLExpr Builtin ->
   Expr Builtin
-createComparisonField recordType toTensor _fromTensor fieldIdent = do
+createComparisonField recordType toTensor fieldIdent = do
   fromDSL mempty $ explLam "r1" recordType $ \r1 ->
           explLam "r2" recordType $ \r2 -> fieldIdent @@ [toTensor @@ [r1], toTensor @@ [r2]]
 
