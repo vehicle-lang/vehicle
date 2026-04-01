@@ -55,8 +55,8 @@ createRecordHasValidIOTypeInstance p recordIdent fields = do
   let instanceIdent = Identifier (modulePath recordIdent) instanceName
 
   -- Create the type
-  let convertFieldToConstraint f = freeVar validNetworkIOTypeIdent @@ [toDSL . snd $ f]
   let recordType' = freeVar validNetworkIOTypeIdent @@ [freeVar recordIdent]
+  let convertFieldToConstraint f = freeVar validNetworkFieldTypeIdent @@ [toDSL . snd $ f]
   let instanceType = fromDSL mempty $ foldr (\field currentType -> convertFieldToConstraint field ~~~> currentType) recordType' fields
 
   -- Create the function body

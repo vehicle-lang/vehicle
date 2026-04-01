@@ -190,6 +190,14 @@ record HasValidNetworkIOType (t : Type) where {}
 realTensorHasValidNetworkIOType : HasValidNetworkIOType (Tensor Real dims)
 realTensorHasValidNetworkIOType = {}
 
+-- Network Fields
+@typeclass
+record HasValidNetworkFieldType (t : Type) where {}
+
+@instance
+realTensorHasValidNetworkFieldType : HasValidNetworkFieldType (Tensor Real dims)
+realTensorHasValidNetworkFieldType = {}
+
 -- Network types
 @typeclass
 record HasValidNetworkType (t : Type) where {}

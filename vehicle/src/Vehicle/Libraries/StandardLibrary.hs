@@ -11,6 +11,7 @@ module Vehicle.Libraries.StandardLibrary
     standardLibIdent,
     validNetworkTypeIdent,
     validNetworkIOTypeIdent,
+    validNetworkFieldTypeIdent,
     hasQuantifierIdent,
   )
 where
@@ -61,6 +62,9 @@ validNetworkTypeIdent = standardLibIdent "HasValidNetworkType"
 
 validNetworkIOTypeIdent :: Identifier
 validNetworkIOTypeIdent = standardLibIdent "HasValidNetworkIOType"
+
+validNetworkFieldTypeIdent :: Identifier
+validNetworkFieldTypeIdent = standardLibIdent "HasValidNetworkFieldType"
 
 hasQuantifierIdent :: Identifier
 hasQuantifierIdent = standardLibIdent "HasQuantifier"
