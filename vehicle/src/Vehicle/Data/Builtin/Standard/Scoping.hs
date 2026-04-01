@@ -200,7 +200,7 @@ createTensorLikeArithmeticInstance p recordIdent typeclassIdent typeclassName fi
           explLam "r2" recordType $ \r2 -> do
             let innerAddTC = fieldIdent @@ [toTensorIdent @@ [r1], toTensorIdent @@ [r2]]
             fromTensorIdent @@ [innerAddTC]
-  
+
   let body = Record p typeclass [(FieldName p fieldName, field)]
   DefFunction p instanceIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) typeclass body
 
@@ -221,14 +221,14 @@ createTensorLikeComparisonInstance p recordIdent = do
 
   let fieldText = ["leTC", "ltTC", "geTC", "gtTC", "eqTC", "neTC"]
   let fieldIdents = map (freeVar . standardLibIdent) fieldText
-  let fieldValues = map (createComparisonField (freeVar recordIdent) toTensorIdent) fieldIdents 
+  let fieldValues = map (createComparisonField (freeVar recordIdent) toTensorIdent) fieldIdents
   let fieldNames = map (FieldName p) fieldText
   let fields = zip fieldNames fieldValues
 
   let body = Record p typeclass fields
   DefFunction p instanceIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) typeclass body
 
-createComparisonField :: 
+createComparisonField ::
   DSLExpr Builtin ->
   DSLExpr Builtin ->
   DSLExpr Builtin ->
@@ -236,5 +236,3 @@ createComparisonField ::
 createComparisonField recordType toTensor fieldIdent = do
   fromDSL mempty $ explLam "r1" recordType $ \r1 ->
           explLam "r2" recordType $ \r2 -> fieldIdent @@ [toTensor @@ [r1], toTensor @@ [r2]]
-
-
