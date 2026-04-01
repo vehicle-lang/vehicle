@@ -16,7 +16,7 @@ module Vehicle.Libraries.StandardLibrary
     hasSubIdent,
     hasMulIdent,
     hasDivIdent,
-    hasComparisonIdent
+    hasComparisonIdent,
   )
 where
 

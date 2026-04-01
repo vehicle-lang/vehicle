@@ -5,6 +5,7 @@ module Vehicle.Data.Builtin.Standard.Scoping where
 import Control.Monad (unless)
 import Control.Monad.Except (MonadError (..))
 import Data.List.NonEmpty (NonEmpty (..), toList)
+import Data.Text (Text)
 import Data.Text qualified as Text
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
@@ -16,7 +17,6 @@ import Vehicle.Data.Code.DSL
 import Vehicle.Data.DSL
 import Vehicle.Data.Tensor (pattern ZeroDimTensor)
 import Vehicle.Libraries.StandardLibrary
-import Data.Text (Text)
 
 instance ScopableBuiltin Builtin where
   generateAuxiliaryRecordDefinitions p ident sort telescope fields
@@ -75,15 +75,16 @@ createTensorRecordConversionFunctions p ident telescope fields = do
   let validHasComparisonInstance = createTensorLikeComparisonInstance p ident
 
   return
-    [recordToTensorDecl,
-    tensorToRecordDecl,
-    validNetworkInstance,
-    validQuantifierInstance,
-    validHasAddInstance,
-    validHasSubInstance,
-    validHasDivInstance,
-    validHasMulInstance,
-    validHasComparisonInstance]
+    [ recordToTensorDecl,
+      tensorToRecordDecl,
+      validNetworkInstance,
+      validQuantifierInstance,
+      validHasAddInstance,
+      validHasSubInstance,
+      validHasDivInstance,
+      validHasMulInstance,
+      validHasComparisonInstance
+    ]
 
 createRecordToTensor ::
   Provenance ->
@@ -174,13 +175,12 @@ createTensorLikeHasQuantifierInstance p recordIdent = do
 
   DefFunction p functionIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) recordType functionBody
 
-
 createTensorLikeArithmeticInstance ::
   Provenance ->
   Identifier ->
   Identifier -> -- standard library identifier for the typeclass, e.g. hasAddIdent
-  Text ->       -- name of typeclass in text, e.g HasAdd
-  Text ->       -- name of the field for the operation in text e.g. addTC
+  Text -> -- name of typeclass in text, e.g HasAdd
+  Text -> -- name of the field for the operation in text e.g. addTC
   Decl Builtin
 createTensorLikeArithmeticInstance p recordIdent typeclassIdent typeclassName fieldName = do
   let recordType = freeVar recordIdent
@@ -197,13 +197,12 @@ createTensorLikeArithmeticInstance p recordIdent typeclassIdent typeclassName fi
   let fieldIdent = freeVar $ standardLibIdent fieldName
 
   let field = fromDSL mempty $ explLam "r1" recordType $ \r1 ->
-          explLam "r2" recordType $ \r2 -> do
-            let innerAddTC = fieldIdent @@ [toTensorIdent @@ [r1], toTensorIdent @@ [r2]]
-            fromTensorIdent @@ [innerAddTC]
+        explLam "r2" recordType $ \r2 -> do
+          let innerAddTC = fieldIdent @@ [toTensorIdent @@ [r1], toTensorIdent @@ [r2]]
+          fromTensorIdent @@ [innerAddTC]
 
   let body = Record p typeclass [(FieldName p fieldName, field)]
   DefFunction p instanceIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) typeclass body
-
 
 createTensorLikeComparisonInstance ::
   Provenance ->
@@ -235,4 +234,4 @@ createComparisonField ::
   Expr Builtin
 createComparisonField recordType toTensor fieldIdent = do
   fromDSL mempty $ explLam "r1" recordType $ \r1 ->
-          explLam "r2" recordType $ \r2 -> fieldIdent @@ [toTensor @@ [r1], toTensor @@ [r2]]
+    explLam "r2" recordType $ \r2 -> fieldIdent @@ [toTensor @@ [r1], toTensor @@ [r2]]
