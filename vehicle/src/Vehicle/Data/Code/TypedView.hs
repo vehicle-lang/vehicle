@@ -410,11 +410,14 @@ data RatTensorValue
   | VRatStackTensor (StackTensorArgs (Value Builtin))
   | VRatAt (AtTensorArgs (Value Builtin))
   | VRatForeach (ForeachTensorArgs (Value Builtin))
+  | VRatRecordAcc !(VType Builtin) !(Value Builtin) !FieldName !(Spine Builtin)
 
 toRatTensorValue :: (HasCallStack) => Value Builtin -> RatTensorValue
 toRatTensorValue expr = case expr of
   VBoundVar lv [] -> VRatTensorBoundVar lv
   VFreeVar n spine -> VRatTensorFreeVar n spine
+  -- need to find out what value is 
+  VRecordAcc typ value fieldName spine -> VRatRecordAcc typ value fieldName spine
   (getExpr accessRatTensorLiteral -> Just t) -> VRatTensorLiteral t
   (getExpr accessNegRatTensor -> Just args) -> VNegRatTensor args
   (getExpr accessAddRatTensor -> Just args) -> VAddRatTensor args
@@ -432,14 +435,19 @@ toRatTensorValue expr = case expr of
   (getExpr accessStackTensor -> Just args) -> VRatStackTensor args
   (getExpr accessAtTensor -> Just args) -> VRatAt args
   (getExpr accessForeachTensor -> Just args) -> VRatForeach args
+  -- TRY TO MIRROR WHAT HAPPENS WITH VRatAt
+  -- add VRatRecordAcc here
+  -- | VRecordAcc !(VType builtin) !(Value builtin) !FieldName !(Spine builtin)
+
   _ -> illTyped
   where
-    illTyped = developerError $ "ill-typed RatTensor expression:" <+> pretty (show expr) -- rettyVerbose expr
+    illTyped = developerError $ "ill-typed RatTensor expression:" <+> pretty (show expr) <+> "THIS ONE "
 
 fromRatTensorValue :: RatTensorValue -> Value Builtin
 fromRatTensorValue = \case
   VRatTensorBoundVar v -> VBoundVar v []
   VRatTensorFreeVar name args -> VFreeVar name args
+  VRatRecordAcc typ value fieldName spine -> VRecordAcc typ value fieldName spine
   VRatTensorLiteral t -> mkExpr accessRatTensorLiteral t
   VNegRatTensor args -> mkExpr accessNegRatTensor args
   VAddRatTensor args -> mkExpr accessAddRatTensor args

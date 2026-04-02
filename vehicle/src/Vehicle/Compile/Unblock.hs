@@ -202,6 +202,8 @@ unblockRatTensorValue actions@UnblockingActions {..} status expr = do
     VRatStackTensor args -> unblockStackTensor (unblock DifferentDimensions) args
     VRatAt args -> unblockAtTensor (unblock DifferentDimensions) args
     VRatForeach args -> unblockForeachTensor args
+    VRatRecordAcc {} -> developerError $
+      "IN UNBLOCK RAT TENSOR VALUE"
   where
     unblock = unblockRatTensorValue actions
 

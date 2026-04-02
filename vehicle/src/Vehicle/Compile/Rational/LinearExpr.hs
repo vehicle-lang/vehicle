@@ -96,6 +96,8 @@ compile toVar shape = go
       VRatConstTensor {} -> unreduced
       VRatStackTensor {} -> unreduced
       VRatAt {} -> unreduced
+      -- copying VRatAt
+      VRatRecordAcc {} -> unreduced
       VRatTensorFreeVar {} -> unreduced
       VRatForeach {} -> unreduced
       VIfRatTensor {} -> unreduced
