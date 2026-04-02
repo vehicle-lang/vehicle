@@ -473,8 +473,7 @@ typeSystemParser =
                     <> line
                     <> indent
                       2
-                      ( vsep allTypeSystems
-                      )
+                      (vsep allTypeSystems)
                 )
           )
 

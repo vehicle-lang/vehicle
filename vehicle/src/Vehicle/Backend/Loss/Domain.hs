@@ -280,8 +280,7 @@ findVarBound var VariableInfo {..} (NormalisedRelation rel expr)
 -- Definitions
 
 type MonadDomain m =
-  ( MonadLogic m
-  )
+  (MonadLogic m)
 
 orLossValue :: (MonadDomain m) => Value LossBuiltin -> Value LossBuiltin -> m (Value LossBuiltin)
 orLossValue e1 e2 = convertOr (TensorOp2Args IDimNil e1 e2)

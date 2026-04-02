@@ -19,8 +19,7 @@ import Prelude hiding (Applicative (..))
 -- Extraction
 
 type MonadCreateUserVar m =
-  ( MonadCompile m
-  )
+  (MonadCompile m)
 
 createUserVar ::
   (MonadCreateUserVar m) =>

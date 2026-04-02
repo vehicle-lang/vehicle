@@ -46,8 +46,7 @@ calculateCurrentDimensions PartiallyKnownTensorShape {..} reverseIndices = do
 -- Tensor traversal
 
 type MonadTraverseTensor m =
-  ( MonadReader (PartiallyKnownTensorShape, TensorIndices) m
-  )
+  (MonadReader (PartiallyKnownTensorShape, TensorIndices) m)
 
 traverseTensorRows :: (MonadTraverseTensor m) => (a -> m b) -> [a] -> m [b]
 traverseTensorRows f rows = do
