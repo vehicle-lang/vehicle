@@ -1,0 +1,3 @@
+[93m
+Warning: In some cases in @property 'indexOnlyQuantifier' the constraints on quantified variable 'x' consist only of direct bounds, and 'x' is not related to a @network declaration in any way.
+[m

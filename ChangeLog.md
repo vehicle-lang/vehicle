@@ -1,5 +1,11 @@
 # Changelog for Vehicle
 
+## Next release
+
+### Loss backend
+
+* Fixed a bug where compiler was erroring on some uses of `forall` for indices.
+
 ## v0.24.1
 
 ### General

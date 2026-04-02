@@ -33,7 +33,7 @@ lowerNot ::
 lowerNot (TensorOp1Args _ arg) = do
   result <- go arg
   ctx <- getNameContext
-  logDebug MaxDetail $ "push-not" <+> prettyFriendly (WithContext result ctx)
+  logDebug MaxDetail $ "push-not:" <+> prettyFriendly (WithContext result ctx)
   return result
   where
     go :: Value Builtin -> m (Value Builtin)

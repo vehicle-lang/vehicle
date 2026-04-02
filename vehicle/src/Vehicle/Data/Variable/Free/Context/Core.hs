@@ -11,8 +11,7 @@ import Vehicle.Prelude
 type GenericFreeCtx a = Map Identifier a
 
 type FreeCtxEntry builtin =
-  ( VDecl builtin
-  )
+  (VDecl builtin)
 
 type FreeCtx builtin = GenericFreeCtx (FreeCtxEntry builtin)
 
