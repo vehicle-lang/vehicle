@@ -1,6 +1,7 @@
 module Vehicle.Compile.ExpandResources.Network
   ( checkNetwork,
     getRecordDimsFromFreeCtx,
+    getRecordFieldsFromFreeCtx
   )
 where
 

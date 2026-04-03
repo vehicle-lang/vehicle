@@ -19,8 +19,9 @@ import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Variable.Bound.Context.Name
-import Vehicle.Data.Variable.Free.Context (MonadFreeContext)
-
+import Data.Text qualified as Text
+import Data.Data (Proxy (..))
+import Vehicle.Data.Variable.Free.Context.Class
 --------------------------------------------------------------------------------
 -- Unblocking
 --------------------------------------------------------------------------------
@@ -202,10 +203,68 @@ unblockRatTensorValue actions@UnblockingActions {..} status expr = do
     VRatStackTensor args -> unblockStackTensor (unblock DifferentDimensions) args
     VRatAt args -> unblockAtTensor (unblock DifferentDimensions) args
     VRatForeach args -> unblockForeachTensor args
-    VRatRecordAcc {} -> developerError $
-      "IN UNBLOCK RAT TENSOR VALUE"
+    VRatRecordAcc typ value fieldName spine -> do
+      args <- unblockRecordAcc typ value fieldName spine
+      unblockAtTensor (unblock DifferentDimensions) args
+
   where
     unblock = unblockRatTensorValue actions
+
+
+
+unblockRecordAcc :: (MonadUnblock m) =>
+  VType Builtin -> -- type of the record we are trying to access - freevar Pair in the test
+  Value Builtin -> -- value is the value of the record we are trying to access?? have freevar f in the test
+  FieldName -> -- FieldName "a"
+  Spine Builtin -> -- empty, '[]'
+  m (AtTensorArgs (Value Builtin))
+unblockRecordAcc typ value fieldName _spine = do
+  -- get ident of record type
+  typIdent <- case typ of 
+    VFreeVar ident _spine -> return ident 
+    _ -> developerError "Record type in record access structured incorrectly"
+
+  -- get ident of value
+  -- recordIdent <- case value of 
+  --   VFreeVar ident _spine -> return ident 
+  --   _ -> developerError $ "Value in record access structured incorrectly" --TODO: better error
+
+  -- construct toTensor function
+  let toTensorName = Text.pack "_" <> identifierName typIdent <> "ToTensor"
+  let recordArg = Arg Explicit Relevant value
+  let toTensor = VFreeVar (Identifier (modulePath typIdent) toTensorName) [recordArg]
+
+  -- get the index of the field that we want
+
+  -- look up the record type in the context to get all the fields
+  entry <- getDeclEntry (Proxy @Builtin) typIdent
+  fields <- case entry of
+      DefRecord _p _ident _sort _telescope fields -> return $ map fst fields
+      _ -> developerError "Record definition formatted incorrectly"
+
+
+  let zippedFieldNames = zip ([0..] :: [Int]) fields
+  let matching = filter (\(_,y) -> y == fieldName) zippedFieldNames
+  indexInt <- case length matching of 
+    0 -> developerError "No fields in type found to match record access"
+    1 -> return $ fst $ head matching
+    _ -> developerError "More than one field in type found to match record access"
+
+  -- going to see if this will work but may need to be in Value form
+  --let index = VIndexLiteral indexInt
+  let index =  mkExpr accessIndexLiteral indexInt
+
+    -- atTensor args
+  let args = AtTensorArgs { atType = VBuiltin (BuiltinType NatType) [], -- hardcoding nat for now
+    atFirstDim = INatLiteral 1, -- hardcoding one for now
+    atRemainingDims = INatLiteral 0, -- hardcoding zero for now
+    atTensor = toTensor, -- toTensor applied to the value
+    atIndex = index
+  }
+
+  return args
+
+
 
 unblockDimensionsValue :: UnblockingFunction m
 unblockDimensionsValue expr = case toDimensionsValue expr of
