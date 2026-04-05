@@ -194,13 +194,16 @@ unblockQuantifiedBoundVar ::
 unblockQuantifiedBoundVar lv =
   replaceTensorVariableWithStackedChildren (SliceVariable lv)
 
+-- this is what we are hitting
 unblockNetworkApplication ::
   (MonadQuantifierBody m) =>
   Identifier ->
   NetworkAppArgs (Value Builtin) ->
   m (Value Builtin)
 unblockNetworkApplication ident (NetworkAppArgs arg) = do
+  -- this should not be 
   let name = nameOf ident
+  _ <- developerError "unblockNetworkApplication"
   networkInfo <- asks (lookupNetworkInfo name . networkCtx)
 
   (inputVarExpr, outputVarExpr) <- addNetworkApplicationToGlobalCtx name networkInfo arg

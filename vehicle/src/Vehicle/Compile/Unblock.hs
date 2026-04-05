@@ -195,7 +195,10 @@ unblockRatTensorValue actions@UnblockingActions {..} status expr = do
       | status == DesiredDimensions -> return expr
       | otherwise -> unblockRatTensorBoundVar v
     VRatTensorFreeVar n spine -> case getExpr accessSpine spine of
-      Just args -> unblock status =<< unblockNetworkApp n args
+      Just args -> do
+        -- unblocking the args is funneling us into this case
+        -- _ <- developerError "VRatTensorFreeVar case"
+        unblock status =<< unblockNetworkApp n args
       -- Parameters and other scalar free vars may appear in constraints used
       -- for quantifier-domain extraction, e.g. `-epsilon < x ! 0 < epsilon`.
       _ -> return expr
@@ -205,7 +208,7 @@ unblockRatTensorValue actions@UnblockingActions {..} status expr = do
     VRatForeach args -> unblockForeachTensor args
     VRatRecordAcc typ value fieldName spine -> do
       args <- unblockRecordAcc typ value fieldName spine
-      unblockAtTensor (unblock DifferentDimensions) args
+      unblockStackTensor (unblock DifferentDimensions) args
 
   where
     unblock = unblockRatTensorValue actions
@@ -217,7 +220,7 @@ unblockRecordAcc :: (MonadUnblock m) =>
   Value Builtin -> -- value is the value of the record we are trying to access?? have freevar f in the test
   FieldName -> -- FieldName "a"
   Spine Builtin -> -- empty, '[]'
-  m (AtTensorArgs (Value Builtin))
+  m (StackTensorArgs (Value Builtin))
 unblockRecordAcc typ value fieldName _spine = do
   -- get ident of record type
   typIdent <- case typ of 
@@ -254,15 +257,29 @@ unblockRecordAcc typ value fieldName _spine = do
   --let index = VIndexLiteral indexInt
   let index =  mkExpr accessIndexLiteral indexInt
 
+  -- put the product of the function application inside a stackTensor
+  -- VRatStackTensor
+
+
     -- atTensor args
-  let args = AtTensorArgs { atType = VBuiltin (BuiltinType NatType) [], -- hardcoding nat for now
+  let atArgs = AtTensorArgs { 
+    atType = VBuiltin (BuiltinType NatType) [], -- hardcoding nat for now
     atFirstDim = INatLiteral 1, -- hardcoding one for now
     atRemainingDims = INatLiteral 0, -- hardcoding zero for now
     atTensor = toTensor, -- toTensor applied to the value
     atIndex = index
   }
 
-  return args
+  let atValue = fromRatTensorValue $ VRatAt atArgs
+
+  let stackArgs = StackTensorArgs {
+     stackType = VBuiltin (BuiltinType NatType) [], -- hardcoding nat for now
+    stackFirstDim = INatLiteral 1, -- hardcoding one for now
+    stackRemainingDims = INatLiteral 0, 
+    stackElements = [atValue]
+  }
+
+  return stackArgs
 
 
 
@@ -372,6 +389,7 @@ unblockStackTensor unblock (StackTensorArgs tElem d ds xss) = do
     liftIfValues xss' $ \xss'' ->
       evalStackTensor $ StackTensorArgs tElem d'' ds xss''
 
+-- unblockAtTensor (unblock DifferentDimensions) args
 unblockAtTensor ::
   (MonadUnblock m) =>
   UnblockingFunction m ->
