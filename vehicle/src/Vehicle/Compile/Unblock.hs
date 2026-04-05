@@ -22,6 +22,8 @@ import Vehicle.Data.Variable.Bound.Context.Name
 import Data.Text qualified as Text
 import Data.Data (Proxy (..))
 import Vehicle.Data.Variable.Free.Context.Class
+
+
 --------------------------------------------------------------------------------
 -- Unblocking
 --------------------------------------------------------------------------------
@@ -227,15 +229,13 @@ unblockRecordAcc typ value fieldName _spine = do
     VFreeVar ident _spine -> return ident 
     _ -> developerError "Record type in record access structured incorrectly"
 
-  -- get ident of value
-  -- recordIdent <- case value of 
-  --   VFreeVar ident _spine -> return ident 
-  --   _ -> developerError $ "Value in record access structured incorrectly" --TODO: better error
-
   -- construct toTensor function
   let toTensorName = Text.pack "_" <> identifierName typIdent <> "ToTensor"
   let recordArg = Arg Explicit Relevant value
-  let toTensor = VFreeVar (Identifier (modulePath typIdent) toTensorName) [recordArg]
+  let toTensor = VFreeVar (Identifier (modulePath typIdent) toTensorName) []
+  nameCtx <- getNameContext
+  -- i do not think calling eval actually made any difference
+  evalTensor <- evalApp nameCtx toTensor [recordArg]
 
   -- get the index of the field that we want
 
@@ -255,19 +255,15 @@ unblockRecordAcc typ value fieldName _spine = do
 
   -- going to see if this will work but may need to be in Value form
   --let index = VIndexLiteral indexInt
-  let index =  mkExpr accessIndexLiteral indexInt
-
-  -- put the product of the function application inside a stackTensor
-  -- VRatStackTensor
-
+  let idx =  mkExpr accessIndexLiteral indexInt
 
     -- atTensor args
   let atArgs = AtTensorArgs { 
     atType = VBuiltin (BuiltinType NatType) [], -- hardcoding nat for now
     atFirstDim = INatLiteral 1, -- hardcoding one for now
     atRemainingDims = INatLiteral 0, -- hardcoding zero for now
-    atTensor = toTensor, -- toTensor applied to the value
-    atIndex = index
+    atTensor = evalTensor, -- toTensor applied to the value
+    atIndex = idx
   }
 
   let atValue = fromRatTensorValue $ VRatAt atArgs
