@@ -20,7 +20,8 @@ import Vehicle.Libraries.StandardLibrary
 instance ScopableBuiltin Builtin where
   generateAuxiliaryRecordDefinitions p ident sort telescope fields
     | isAnnotatedAsTensor sort = createTensorRecordConversionFunctions p ident telescope fields
-    | otherwise = return [createRecordHasValidIOTypeInstance p ident fields]
+    | not (isStandardLibIdent ident) = return [createRecordHasValidIOTypeInstance p ident fields]
+    | otherwise = return []
 
 instance DesugarableBuiltin Builtin where
   elabUnitLiteral p = D.Builtin p $ BuiltinConstructor UnitLiteral
