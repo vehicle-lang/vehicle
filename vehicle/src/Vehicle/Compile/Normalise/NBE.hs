@@ -176,7 +176,8 @@ eval ctx boundEnv expr = do
     Meta _ m -> return $ VMeta m []
     Universe _ u -> return $ VUniverse u
     BoundVar _ v -> return $ lookupIxInEnv boundEnv v
-    FreeVar _ v -> lookupIdentValue v
+    FreeVar _ v -> lookupIdentValue v -- I think this could be the issue?
+    -- lookupIdentValue eventually does a getDeclEntry which then does lookupInFreeCtx
     Builtin _ b -> return $ VBuiltin b []
     Lam _ binder body -> do
       binder' <- traverse recEval binder

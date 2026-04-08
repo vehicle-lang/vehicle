@@ -316,7 +316,7 @@ wrapQuantifyRecord QuantifyRecordArgs{..} = do
   -- }
 
   let displayForm = BinderDisplayForm {
-    namingForm = NameAndType "_t" mempty,
+    namingForm = NameAndType "tens" mempty,
     foldingForm = True -- not sure if this should be true or not
   }
 
@@ -333,7 +333,7 @@ wrapQuantifyRecord QuantifyRecordArgs{..} = do
 
 -- tTensor :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 -- tTensor tElem ds = tTensorRaw @@ [tElem] .@@ [ds]
-  let tensorType = fromDSL mempty $ tTensor (dimCons (dim dimensions) dimNil) tRat
+  let tensorType = fromDSL mempty $ tTensor tRat (dimCons (dim dimensions) dimNil)
 
   -- normalise tensorType so we can have Binder (Value Builtin)
   let Closure boundEnv _bodyExpr = quantifyRecordBody
@@ -366,8 +366,13 @@ wrapQuantifyRecord QuantifyRecordArgs{..} = do
   -- }
 
   -- I don't think modulePath recordTypeIdent is the right thing to use here
-  let tensorFreeVar = FreeVar mempty (Identifier (modulePath recordTypeIdent) "_y")
-  let tensorFreeVarArg = Arg Explicit Relevant tensorFreeVar
+  -- as the tensor is what we are lambda-ing over, it is a bound variable
+      -- BoundVar
+      -- Provenance
+      -- Ix
+
+  let tensorBoundVar = BoundVar mempty 0
+  let tensorBoundVarArg = Arg Explicit Relevant tensorBoundVar
 
   -- apply binder to fromTensor function
   recordTypeProv <- case recordTypeDecl of
@@ -377,9 +382,9 @@ wrapQuantifyRecord QuantifyRecordArgs{..} = do
   let fromTensorName = Text.pack "_" <> identifierName recordTypeIdent <> "FromTensor"
   let fromTensorFn = FreeVar recordTypeProv (Identifier (modulePath recordTypeIdent) fromTensorName)
 
-  let appliedFromTensor = App fromTensorFn [tensorFreeVarArg]
+  let appliedFromTensor = App fromTensorFn [tensorBoundVarArg]
 
-  -- apply (fromTensor _y) to initial recordQuantifier
+  -- apply (fromTensor _t) to initial recordQuantifier
   let appliedFromTensorArg = Arg Explicit Relevant appliedFromTensor
 
   let nestedRecordQuantifier = App unnormalisedQuantifierLam [appliedFromTensorArg]
@@ -393,11 +398,6 @@ wrapQuantifyRecord QuantifyRecordArgs{..} = do
   return ratTensorArgs
 
   
-
-
-
-
-
 -- keeping this around for legacy purposes
 _transformQuantifiedRecord ::
   (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m) =>

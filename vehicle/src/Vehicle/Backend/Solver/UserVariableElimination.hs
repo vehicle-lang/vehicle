@@ -48,7 +48,7 @@ eliminateExists (QuantifyRatTensorArgs _ binder (Closure env body)) = do
   logCompilerSection2 MidDetail subpassDoc $ do
     -- Get the shape and name of the quantified variable
     namedCtx <- getNameContext
-    propertyProv <- asks propertyProvenance -- create userVar is where we are falling over
+    propertyProv <- asks propertyProvenance
     (userVarName, userVarShapeValue) <- createUserVar propertyProv namedCtx binder
     userVarShape <- case getDims userVarShapeValue of
       Just shape -> return shape
@@ -61,7 +61,8 @@ eliminateExists (QuantifyRatTensorArgs _ binder (Closure env body)) = do
 
     -- Normalise the expression
     let newEnv = extendEnvWithBound (toLv userVar) binder env
-    normExpr <- eval (Just userVarName : namedCtx) newEnv body
+    logDebug MidDetail $ pretty (show userVarName) <+> pretty (show newEnv)
+    normExpr <- eval (Just userVarName : namedCtx) newEnv body -- here is where we are missing smth from context
 
     -- Recursively compile the expression.
     (partitions, networkInputEqualities) <-

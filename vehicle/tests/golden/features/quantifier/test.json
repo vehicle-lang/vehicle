@@ -1,12 +1,12 @@
 [
   {
     "name": "TypeCheck",
-    "run": "vehicle typecheck -s spec.vcl --logging --MaxDetail",
+    "run": "vehicle typecheck -s spec.vcl",
     "needs": ["spec.vcl"]
   },
   {
     "name": "Marabou",
-    "run": "vehicle compile queries -s spec.vcl -f MarabouQueries -o Marabou.queries/ --network f:fake.onnx",
+    "run": "vehicle compile queries -s spec.vcl -f MarabouQueries -o Marabou.queries/ --network f:fake.onnx --logging MaxDetail",
     "needs": ["spec.vcl", "fake.onnx"],
     "produces": [
       "Marabou.queries/*.txt",
