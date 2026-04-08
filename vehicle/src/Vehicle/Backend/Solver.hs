@@ -46,6 +46,7 @@ import Data.Text qualified as Text
 import Vehicle.Compile.Normalise.Quote
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.DSL
+import Vehicle.Compile.Normalise.NBE
 
 --------------------------------------------------------------------------------
 -- Compilation to individual queries
@@ -216,14 +217,15 @@ compileQueries expr = do
       logDebug MaxDetail $ "negate" <+> pretty Forall
       negatedArgs <- negateQuantifierBody args
       compileQuantifiedQuerySet True negatedArgs
-    VQuantifyRecord (Exists, args) -> do
-      transformedArgs <- transformQuantifiedRecord args
-      compileQuantifiedQuerySet False transformedArgs
-    VQuantifyRecord (Forall, args) -> do
-      logDebug MaxDetail $ "negate" <+> pretty Forall
-      transformedArgs <- transformQuantifiedRecord args
-      negatedArgs <- negateQuantifierBody transformedArgs
-      compileQuantifiedQuerySet True negatedArgs
+    VQuantifyRecord (_q, args) -> do
+      wrappedBinder <- wrapQuantifyRecord args
+      compileQueries wrappedBinder
+    
+    -- VQuantifyRecord (Forall, args) -> do
+    --   logDebug MaxDetail $ "negate" <+> pretty Forall
+    --   transformedArgs <- transformQuantifiedRecord args
+    --   negatedArgs <- negateQuantifierBody transformedArgs
+    --   compileQuantifiedQuerySet True negatedArgs
     ---------------------
     -- Recursive cases --
     ---------------------
@@ -268,7 +270,7 @@ compileQuantifiedQuerySet isPropertyNegated args =
 wrapQuantifyRecord ::
   (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m) =>
   QuantifyRecordArgs (Value Builtin) (Closure Builtin) ->
-  m BoolValue
+  m (Value Builtin)
 wrapQuantifyRecord QuantifyRecordArgs{..} = do
     -- quantifyRecordType :: expr,
     -- quantifyRecordBinder :: GenericBinder expr,
@@ -279,9 +281,6 @@ wrapQuantifyRecord QuantifyRecordArgs{..} = do
   recordTypeIdent <- case toTypeValue quantifyRecordType of
     VFreeTypeVar v _spine -> do return v
     _ -> compilerDeveloperError "record binder is not of expected format."
-  
-  let fromTensorName = Text.pack "_" <> identifierName recordTypeIdent <> "FromTensor"
-  let fromTensorFn = VFreeVar (Identifier (modulePath recordTypeIdent) fromTensorName) []
 
   -- reform VLam from quantifier binder and body
   -- | VLam !(VBinder builtin) !(Closure builtin)
@@ -347,13 +346,47 @@ wrapQuantifyRecord QuantifyRecordArgs{..} = do
       -- (Expr builtin) -- Expression body.
 
   -- make arg for tensorBinder
-  
+
+  -- data GenericArg expr = Arg
+  -- { -- | The visibility of the argument
+  --   argVisibility :: Visibility,
+  --   -- | The relevancy of the argument
+  --   argRelevance :: Relevance,
+  --   -- | The argument expression
+  --   argExpr :: expr
+  -- }
+
+  -- not sure if mempty will cause issues here
+  let tensorFreeVar = FreeVar mempty (Identifier (modulePath mempty) "_y")
+  let tensorFreeVarArg = Arg Explicit Relevant tensorFreeVar
+
   -- apply binder to fromTensor function
+  recordTypeProv <- case recordTypeDecl of
+    DefRecord p _ident _sort _telescope _fields -> return p
+    _ -> compilerDeveloperError "record declaration is not of expected format."
 
+  let fromTensorName = Text.pack "_" <> identifierName recordTypeIdent <> "FromTensor"
+  let fromTensorFn = FreeVar recordTypeProv (Identifier (modulePath recordTypeIdent) fromTensorName)
 
- 
+  let appliedFromTensor = App fromTensorFn [tensorFreeVarArg]
 
-  return $ VQuantifyRatTensor (Exists, args) -- placeholder for now
+  -- apply (fromTensor _y) to initial recordQuantifier
+  let appliedFromTensorArg = Arg Explicit Relevant appliedFromTensor
+
+  let nestedRecordQuantifier = App unnormalisedQuantifierLam [appliedFromTensorArg]
+
+  -- construct new Lam with this as the body
+      -- Lam
+      -- Provenance
+      -- (Binder builtin) -- Bound expression name.
+      -- (Expr builtin) -- Expression body.
+
+  let nestedRecordLam = Lam mempty tensorBinder nestedRecordQuantifier
+
+  -- normalise Lam
+  let normalisedRecordLam = normalise nestedRecordLam
+
+  normalisedRecordLam
 
 
 
