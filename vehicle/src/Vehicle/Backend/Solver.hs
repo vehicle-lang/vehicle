@@ -216,9 +216,9 @@ compileQueries expr = do
       logDebug MaxDetail $ "negate" <+> pretty Forall
       negatedArgs <- negateQuantifierBody args
       compileQuantifiedQuerySet True negatedArgs
-    VQuantifyRecord (_q, args) -> do
-      wrappedBinder <- wrapQuantifyRecord args
-      compileQueries wrappedBinder
+    VQuantifyRecord (q, args) -> do
+      wrappedBinderArgs <- wrapQuantifyRecord args
+      compileQueries (fromBoolValue $ VQuantifyRatTensor (q, wrappedBinderArgs))
     
     -- VQuantifyRecord (Forall, args) -> do
     --   logDebug MaxDetail $ "negate" <+> pretty Forall
@@ -273,7 +273,7 @@ wrapQuantifyRecord ::
   MonadStdIO m,
   MonadFreeContext Builtin m) =>
   QuantifyRecordArgs (Value Builtin) (Closure Builtin) ->
-  m (Value Builtin)
+  m (QuantifyRatTensorArgs (Value Builtin) (Closure Builtin))
 wrapQuantifyRecord QuantifyRecordArgs{..} = do
     -- quantifyRecordType :: expr,
     -- quantifyRecordBinder :: GenericBinder expr,
@@ -335,12 +335,18 @@ wrapQuantifyRecord QuantifyRecordArgs{..} = do
 -- tTensor tElem ds = tTensorRaw @@ [tElem] .@@ [ds]
   let tensorType = fromDSL mempty $ tTensor (dimCons (dim dimensions) dimNil) tRat
 
+  -- normalise tensorType so we can have Binder (Value Builtin)
+  let Closure boundEnv _bodyExpr = quantifyRecordBody
+  namedCtx <- getNameContext
+  normalisedTensorType <- eval namedCtx boundEnv tensorType
+  normalisedDims <- eval namedCtx boundEnv (fromDSL mempty $ dimCons (dim dimensions) dimNil)
+  
 
   let tensorBinder = Binder { 
     binderDisplayForm = displayForm,
     binderVisibility = visibility,
     binderRelevance = relevance,
-    binderValue = tensorType
+    binderValue = normalisedTensorType
     }
   
       -- Lam
@@ -378,30 +384,13 @@ wrapQuantifyRecord QuantifyRecordArgs{..} = do
 
   let nestedRecordQuantifier = App unnormalisedQuantifierLam [appliedFromTensorArg]
 
-  -- construct new Lam with this as the body
-      -- Lam
-      -- Provenance
-      -- (Binder builtin) -- Bound expression name.
-      -- (Expr builtin) -- Expression body.
+  -- make closure for new body 
+  -- may need to include the binder for the OG body in here?
+  let nestedRecordQuantifierClosure = Closure boundEnv nestedRecordQuantifier
 
-  let nestedRecordLam = Lam mempty tensorBinder nestedRecordQuantifier
-
-  -- use eval for monad requirements
-  -- eval ctx boundEnv expr
-  -- data Closure builtin = Closure (BoundEnv builtin) (Expr builtin)
-  -- use closure from quantifyRecordBody plus binder for the recordQuantifier fn?
-
-  -- From UserVariableElimination:
-  -- let newEnv = extendEnvWithBound (toLv userVar) binder env
-  -- normExpr <- eval (Just userVarName : namedCtx) newEnv body
-
-  -- will need to add binder for the recordQuantifier fn i think
-  -- placeholder to get it to compile
-  let Closure boundEnv _bodyExpr = quantifyRecordBody
-  namedCtx <- getNameContext
-
-  normalisedNestedRecordLam <- eval namedCtx boundEnv nestedRecordLam
-  return normalisedNestedRecordLam
+  let ratTensorArgs = QuantifyRatTensorArgs normalisedDims tensorBinder nestedRecordQuantifierClosure
+  
+  return ratTensorArgs
 
   
 
