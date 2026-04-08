@@ -208,22 +208,22 @@ unblockRatTensorValue actions@UnblockingActions {..} status expr = do
     VRatStackTensor args -> unblockStackTensor (unblock DifferentDimensions) args
     VRatAt args -> unblockAtTensor (unblock DifferentDimensions) args
     VRatForeach args -> unblockForeachTensor args
-    VRatRecordAcc typ value fieldName spine -> do
-      args <- unblockRecordAcc typ value fieldName spine
-      unblockStackTensor (unblock DifferentDimensions) args
+    -- VRatRecordAcc typ value fieldName spine -> do
+    --   args <- unblockRecordAcc typ value fieldName spine
+    --   unblockStackTensor (unblock DifferentDimensions) args
 
   where
     unblock = unblockRatTensorValue actions
 
 
 
-unblockRecordAcc :: (MonadUnblock m) =>
+_unblockRecordAcc :: (MonadUnblock m) =>
   VType Builtin -> -- type of the record we are trying to access - freevar Pair in the test
   Value Builtin -> -- value is the value of the record we are trying to access?? have freevar f in the test
   FieldName -> -- FieldName "a"
   Spine Builtin -> -- empty, '[]'
   m (StackTensorArgs (Value Builtin))
-unblockRecordAcc typ value fieldName _spine = do
+_unblockRecordAcc typ value fieldName _spine = do
   -- get ident of record type
   typIdent <- case typ of 
     VFreeVar ident _spine -> return ident 

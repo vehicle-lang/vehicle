@@ -593,7 +593,7 @@ compileLinearExpr dims expr = case toRatTensorValue expr of
   VRatStackTensor {} -> unlinearisable
   VRatAt {} -> unlinearisable
   -- copying VRatAt
-  VRatRecordAcc {} -> unlinearisable
+  -- VRatRecordAcc {} -> unlinearisable
   VRatTensorFreeVar ident [] ->
     return $ constantExpr $ TensorValue dims (VFreeVar ident [])
   VRatTensorFreeVar {} -> unlinearisable

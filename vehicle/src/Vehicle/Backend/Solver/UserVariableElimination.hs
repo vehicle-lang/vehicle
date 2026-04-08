@@ -61,7 +61,6 @@ eliminateExists (QuantifyRatTensorArgs _ binder (Closure env body)) = do
 
     -- Normalise the expression
     let newEnv = extendEnvWithBound (toLv userVar) binder env
-    logDebug MidDetail $ pretty (show userVarName) <+> pretty (show newEnv)
     normExpr <- eval (Just userVarName : namedCtx) newEnv body -- here is where we are missing smth from context
 
     -- Recursively compile the expression.
@@ -204,7 +203,6 @@ unblockNetworkApplication ::
 unblockNetworkApplication ident (NetworkAppArgs arg) = do
   -- this should not be 
   let name = nameOf ident
-  _ <- developerError "unblockNetworkApplication"
   networkInfo <- asks (lookupNetworkInfo name . networkCtx)
 
   (inputVarExpr, outputVarExpr) <- addNetworkApplicationToGlobalCtx name networkInfo arg
