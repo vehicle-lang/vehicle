@@ -21,7 +21,6 @@ import Vehicle.Compile.ExpandResources (expandResources)
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.LiftIf (unfoldIf)
 import Vehicle.Compile.LowerNot (lowerNot, negateQuantifierBody)
-import Vehicle.Compile.Normalise.NBE (evalDecl)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyFriendlyEmptyCtx)
 import Vehicle.Compile.Print.Warning ()
@@ -197,7 +196,7 @@ compileSingleProperty CompilationSettings {..} prov propertyAddress expr =
 -- Assumptions - expression is well-typed in the empty context and of type Bool.
 compileQueries ::
   forall m.
-  (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m) =>
+  (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m, MonadFreeContext Builtin m) =>
   Value Builtin ->
   m (Property QueryMetaData)
 compileQueries expr = do
@@ -265,10 +264,14 @@ compileQuantifiedQuerySet isPropertyNegated args =
     (maybePartitions, globalCtx) <- runStateT (eliminateExists args) emptyGlobalCtx
     compileQuerySetPartitions globalCtx isPropertyNegated maybePartitions
 
+
 -- new attempt
 -- want to produce a BoolValue? (this is what VQuantifyRatTensor is)
 wrapQuantifyRecord ::
-  (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m) =>
+  (MonadPropertyStructure m,
+  MonadSupply QueryID m,
+  MonadStdIO m,
+  MonadFreeContext Builtin m) =>
   QuantifyRecordArgs (Value Builtin) (Closure Builtin) ->
   m (Value Builtin)
 wrapQuantifyRecord QuantifyRecordArgs{..} = do
@@ -356,8 +359,8 @@ wrapQuantifyRecord QuantifyRecordArgs{..} = do
   --   argExpr :: expr
   -- }
 
-  -- not sure if mempty will cause issues here
-  let tensorFreeVar = FreeVar mempty (Identifier (modulePath mempty) "_y")
+  -- I don't think modulePath recordTypeIdent is the right thing to use here
+  let tensorFreeVar = FreeVar mempty (Identifier (modulePath recordTypeIdent) "_y")
   let tensorFreeVarArg = Arg Explicit Relevant tensorFreeVar
 
   -- apply binder to fromTensor function
@@ -383,10 +386,25 @@ wrapQuantifyRecord QuantifyRecordArgs{..} = do
 
   let nestedRecordLam = Lam mempty tensorBinder nestedRecordQuantifier
 
-  -- normalise Lam
-  let normalisedRecordLam = normalise nestedRecordLam
+  -- use eval for monad requirements
+  -- eval ctx boundEnv expr
+  -- data Closure builtin = Closure (BoundEnv builtin) (Expr builtin)
+  -- use closure from quantifyRecordBody plus binder for the recordQuantifier fn?
 
-  normalisedRecordLam
+  -- From UserVariableElimination:
+  -- let newEnv = extendEnvWithBound (toLv userVar) binder env
+  -- normExpr <- eval (Just userVarName : namedCtx) newEnv body
+
+  -- will need to add binder for the recordQuantifier fn i think
+  -- placeholder to get it to compile
+  let Closure boundEnv _bodyExpr = quantifyRecordBody
+  namedCtx <- getNameContext
+
+  normalisedNestedRecordLam <- eval namedCtx boundEnv nestedRecordLam
+  return normalisedNestedRecordLam
+
+  
+
 
 
 
