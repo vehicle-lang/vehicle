@@ -585,6 +585,20 @@ unoptimisedEvalAtTensor args@(AtTensorArgs _t _d ds tensor index) = do
         Nothing -> goLiterals i remainingLiterals
       _ -> Nothing
 
+
+evalRecordAcc ::
+  forall builtin m.
+  (MonadNormBuiltin m, HasTensorLiterals Value builtin, HasLiftableTensorOperations builtin, BuiltinHasListLiterals builtin, BuiltinHasIndexLiterals builtin, HasTensorExpr Value builtin, BuiltinHasForeach builtin) =>
+  NamedBoundCtx ->
+  --EvalApp builtin m ->
+  -- Eval builtin m ->
+  Value builtin -> -- value
+  FieldName ->  -- fieldname
+  m (Value builtin)
+evalRecordAcc _ctx value _fieldName = do
+  return value
+
+
 -----------------------------------------------------------------------------
 -- Foreach
 

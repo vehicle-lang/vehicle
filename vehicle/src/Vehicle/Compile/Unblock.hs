@@ -19,8 +19,6 @@ import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Variable.Bound.Context.Name
-import Data.Text qualified as Text
-import Data.Data (Proxy (..))
 import Vehicle.Data.Variable.Free.Context.Class
 
 
@@ -208,76 +206,10 @@ unblockRatTensorValue actions@UnblockingActions {..} status expr = do
     VRatStackTensor args -> unblockStackTensor (unblock DifferentDimensions) args
     VRatAt args -> unblockAtTensor (unblock DifferentDimensions) args
     VRatForeach args -> unblockForeachTensor args
-    -- VRatRecordAcc typ value fieldName spine -> do
-    --   args <- unblockRecordAcc typ value fieldName spine
-    --   unblockStackTensor (unblock DifferentDimensions) args
+    VRatRecordAcc typ value fieldName spine -> unblockRecordAcc  (unblock DifferentDimensions) typ value fieldName spine
 
   where
     unblock = unblockRatTensorValue actions
-
-
-
-_unblockRecordAcc :: (MonadUnblock m) =>
-  VType Builtin -> -- type of the record we are trying to access - freevar Pair in the test
-  Value Builtin -> -- value is the value of the record we are trying to access?? have freevar f in the test
-  FieldName -> -- FieldName "a"
-  Spine Builtin -> -- empty, '[]'
-  m (StackTensorArgs (Value Builtin))
-_unblockRecordAcc typ value fieldName _spine = do
-  -- get ident of record type
-  typIdent <- case typ of 
-    VFreeVar ident _spine -> return ident 
-    _ -> developerError "Record type in record access structured incorrectly"
-
-  -- construct toTensor function
-  let toTensorName = Text.pack "_" <> identifierName typIdent <> "ToTensor"
-  let recordArg = Arg Explicit Relevant value
-  let toTensor = VFreeVar (Identifier (modulePath typIdent) toTensorName) []
-  nameCtx <- getNameContext
-  -- i do not think calling eval actually made any difference
-  evalTensor <- evalApp nameCtx toTensor [recordArg]
-
-  -- get the index of the field that we want
-
-  -- look up the record type in the context to get all the fields
-  entry <- getDeclEntry (Proxy @Builtin) typIdent
-  fields <- case entry of
-      DefRecord _p _ident _sort _telescope fields -> return $ map fst fields
-      _ -> developerError "Record definition formatted incorrectly"
-
-
-  let zippedFieldNames = zip ([0..] :: [Int]) fields
-  let matching = filter (\(_,y) -> y == fieldName) zippedFieldNames
-  indexInt <- case length matching of 
-    0 -> developerError "No fields in type found to match record access"
-    1 -> return $ fst $ head matching
-    _ -> developerError "More than one field in type found to match record access"
-
-  -- going to see if this will work but may need to be in Value form
-  --let index = VIndexLiteral indexInt
-  let idx =  mkExpr accessIndexLiteral indexInt
-
-    -- atTensor args
-  let atArgs = AtTensorArgs { 
-    atType = VBuiltin (BuiltinType NatType) [], -- hardcoding nat for now
-    atFirstDim = INatLiteral 1, -- hardcoding one for now
-    atRemainingDims = INatLiteral 0, -- hardcoding zero for now
-    atTensor = evalTensor, -- toTensor applied to the value
-    atIndex = idx
-  }
-
-  let atValue = fromRatTensorValue $ VRatAt atArgs
-
-  let stackArgs = StackTensorArgs {
-     stackType = VBuiltin (BuiltinType NatType) [], -- hardcoding nat for now
-    stackFirstDim = INatLiteral 1, -- hardcoding one for now
-    stackRemainingDims = INatLiteral 0, 
-    stackElements = [atValue]
-  }
-
-  return stackArgs
-
-
 
 unblockDimensionsValue :: UnblockingFunction m
 unblockDimensionsValue expr = case toDimensionsValue expr of
@@ -398,6 +330,22 @@ unblockAtTensor unblock (AtTensorArgs tElem d ds xs i) = do
     liftIf i' $ \i'' -> do
       nameCtx <- getNameContext
       evalAtTensor nameCtx evalApp eval $ AtTensorArgs tElem d ds xs'' i''
+
+
+unblockRecordAcc ::
+  (MonadUnblock m) =>
+  UnblockingFunction m ->
+  VType Builtin -> -- type of the record we are trying to access - freevar Pair in the test
+  Value Builtin -> -- value is the value of the record we are trying to access?? have freevar f in the test
+  FieldName -> -- FieldName "a"
+  Spine Builtin -> -- empty, '[]'
+  m (Value Builtin)
+unblockRecordAcc unblock _typ value fieldName _spine = do
+  value' <- unblock value
+  _ <- logDebug MidDetail $ pretty (show value)
+  nameCtx <- getNameContext
+  evalRecordAcc nameCtx value' fieldName
+
 
 unblockForeachTensor ::
   (MonadUnblock m) =>
