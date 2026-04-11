@@ -21,7 +21,6 @@ import Vehicle.Data.Code.Value
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Free.Context.Class
 
-
 --------------------------------------------------------------------------------
 -- Unblocking
 --------------------------------------------------------------------------------
@@ -175,6 +174,7 @@ unblockBoolMultiDimTensorValue actions expr = do
 unblockRatTensorValue :: (MonadPurify m) => UnblockingActions m -> DimensionsStatus -> Value Builtin -> m (Value Builtin)
 unblockRatTensorValue actions@UnblockingActions {..} status expr = do
   showEntry expr
+  _ <- logDebug MidDetail (pretty $ show expr)
   showExit =<< case toRatTensorValue expr of
     -- Rational operators
     VRatTensorLiteral {} -> return expr
@@ -197,7 +197,6 @@ unblockRatTensorValue actions@UnblockingActions {..} status expr = do
     VRatTensorFreeVar n spine -> case getExpr accessSpine spine of
       Just args -> do
         -- unblocking the args is funneling us into this case
-        -- _ <- developerError "VRatTensorFreeVar case"
         unblock status =<< unblockNetworkApp n args
       -- Parameters and other scalar free vars may appear in constraints used
       -- for quantifier-domain extraction, e.g. `-epsilon < x ! 0 < epsilon`.
@@ -206,7 +205,7 @@ unblockRatTensorValue actions@UnblockingActions {..} status expr = do
     VRatStackTensor args -> unblockStackTensor (unblock DifferentDimensions) args
     VRatAt args -> unblockAtTensor (unblock DifferentDimensions) args
     VRatForeach args -> unblockForeachTensor args
-    VRatRecordAcc typ value fieldName spine -> unblockRecordAcc  (unblock DifferentDimensions) typ value fieldName spine
+    VRatRecordAcc args -> unblockRecordAcc (unblock DifferentDimensions) args
 
   where
     unblock = unblockRatTensorValue actions
@@ -219,10 +218,19 @@ unblockDimensionsValue expr = case toDimensionsValue expr of
   VDimsBoundVar {} -> unexpectedExprError currentPass (prettyVerbose expr)
 
 unblockIndexValue :: UnblockingFunction m
-unblockIndexValue expr = case toIndexValue expr of
-  VIndexLiteral {} -> return expr
-  VIndexIf {} -> return expr
-  VIndexBoundVar {} -> unexpectedExprError currentPass (prettyVerbose expr)
+unblockIndexValue expr = do 
+  -- attempted fix for random arguments showing up on index
+  -- TODO: fix later
+  expr' <- case expr of 
+    VBuiltin (BuiltinConstructor (IndexLiteral i)) [_args] -> return $ VBuiltin (BuiltinConstructor (IndexLiteral i)) []
+    _ -> return expr
+
+  _ <- logDebug MidDetail $ "after stripping args from indexLit" <+> pretty (show expr')
+
+  case toIndexValue expr' of
+    VIndexLiteral {} -> return expr
+    VIndexIf {} -> return expr
+    VIndexBoundVar {} -> unexpectedExprError currentPass (prettyVerbose expr)
 
 unblockNatValue :: UnblockingFunction m
 unblockNatValue expr = case toNatValue expr of
@@ -325,6 +333,7 @@ unblockAtTensor ::
   m (Value Builtin)
 unblockAtTensor unblock (AtTensorArgs tElem d ds xs i) = do
   xs' <- unblock xs
+  _ <- logDebug MidDetail $ pretty (show i)
   i' <- unblockIndexValue i
   liftIf xs' $ \xs'' ->
     liftIf i' $ \i'' -> do
@@ -335,17 +344,23 @@ unblockAtTensor unblock (AtTensorArgs tElem d ds xs i) = do
 unblockRecordAcc ::
   (MonadUnblock m) =>
   UnblockingFunction m ->
-  VType Builtin -> -- type of the record we are trying to access - freevar Pair in the test
-  Value Builtin -> -- value is the value of the record we are trying to access?? have freevar f in the test
-  FieldName -> -- FieldName "a"
-  Spine Builtin -> -- empty, '[]'
+  RecordAccArgs (Value Builtin) ->
+  -- VType Builtin -> -- type of the record we are trying to access - freevar Pair in the test
+  -- Value Builtin -> -- value is the value of the record we are trying to access?? have freevar f in the test
+  -- FieldName -> -- FieldName "a"
+  -- Spine Builtin -> -- empty, '[]'
   m (Value Builtin)
-unblockRecordAcc unblock _typ value fieldName _spine = do
+-- unblockRecordAcc unblock _typ value fieldName _spine = do
+unblockRecordAcc unblock (RecordAccArgs typ value fieldName) = do
   value' <- unblock value
-  _ <- logDebug MidDetail $ pretty (show value)
-  nameCtx <- getNameContext
-  evalRecordAcc nameCtx value' fieldName
+  -- _ <- logDebug MidDetail $ "VALUE IS" <+> pretty (show value)
+  -- _ <- logDebug MidDetail $ "FIELD IS" <+> pretty (show fieldName)
+  _ <- logDebug MidDetail $ "UNBLOCKED VALUE IS" <+> pretty (show value')
+  -- should end up with  unblock-exit: [tens!0, tens!1] (stackTensor)
 
+  nameCtx <- getNameContext
+
+  evalRecordAcc nameCtx evalApp eval $ RecordAccArgs typ value' fieldName
 
 unblockForeachTensor ::
   (MonadUnblock m) =>

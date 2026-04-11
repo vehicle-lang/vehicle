@@ -573,7 +573,7 @@ unoptimisedEvalAtTensor args@(AtTensorArgs _t _d ds tensor index) = do
       IIndexLiteral i ->
         goLiterals i tensorLiterals
           <|> case tensor of
-            (getExpr accessStackTensor -> Just stackArgs) -> Just $ return $ stackElements stackArgs !! i
+            (getExpr accessStackTensor -> Just stackArgs) -> Just $ return $ stackElements stackArgs !! i -- copy this bit here!
             (getExpr accessConstTensor -> Just constArgs) -> Just $ return $ mkExpr accessConstTensor $ constArgs {constDims = ds}
             _ -> Nothing
       _ -> Nothing
@@ -590,15 +590,50 @@ evalRecordAcc ::
   forall builtin m.
   (MonadNormBuiltin m, HasTensorLiterals Value builtin, HasLiftableTensorOperations builtin, BuiltinHasListLiterals builtin, BuiltinHasIndexLiterals builtin, HasTensorExpr Value builtin, BuiltinHasForeach builtin) =>
   NamedBoundCtx ->
-  --EvalApp builtin m ->
-  -- Eval builtin m ->
-  Value builtin -> -- value
-  FieldName ->  -- fieldname
-  m (Value builtin)
-evalRecordAcc _ctx value _fieldName = do
-  return value
+  EvalApp builtin m ->
+  Eval builtin m ->
+  EvalSimple RecordAccArgs Value builtin m
+evalRecordAcc _ctx _evalApp _eval _args@(RecordAccArgs _typ value _fieldName) = do
+  _ <- logDebug MidDetail "------ ENTERING EVAL RECORD ACC FUNCTION --------------"
+  -- data StackTensorArgs expr = StackTensorArgs
+  -- { stackType :: expr,
+  --   stackFirstDim :: expr, -- getting invalid index here
+  --   stackRemainingDims :: expr,
+  --   stackElements :: [expr]
+  -- }
+
+  -- [
+  -- Arg {argVisibility = Implicit True, argRelevance = Relevant, argExpr = VBuiltin (BuiltinType RatType) []}
+  -- Arg {argVisibility = Implicit True, argRelevance = Relevant, argExpr = VBuiltin (BuiltinConstructor (NatLiteral 2)) []}
+  -- Arg {argVisibility = Implicit True, argRelevance = Irrelevant, argExpr = VBuiltin (BuiltinConstructor Nil) [Arg {argVisibility = Implicit True, argRelevance = Relevant, argExpr = VBuiltin (BuiltinType NatType) []}]}
+  -- Arg {argVisibility = Explicit, argRelevance = Relevant, argExpr = VBoundVar (Lv {unLv = 7}) []}
+  -- Arg {argVisibility = Explicit, argRelevance = Relevant, argExpr = VBoundVar (Lv {unLv = 8}) []}
+  -- ]
+  -- -> weird, thought stackElements should be in a list together?
+  -- need to nab one of these arguments
+  -- end up with tens ! 0, which is the first element of the record
 
 
+  fieldValue <- case value of
+    (getExpr accessStackTensor -> Just stackArgs) -> return $ stackElements stackArgs !! 0 -- hardcode for now, fix later
+    _ -> developerError "fieldValue is not a stackTensor"
+  _ <- logDebug MidDetail "------ LEAVING EVAL FN --------------"
+  return fieldValue
+
+-- data AtTensorArgs expr = AtTensorArgs
+--   { atType :: expr,
+--     atFirstDim :: expr,
+--     atRemainingDims :: expr,
+--     atTensor :: expr,
+--     atIndex :: expr
+--   }
+
+-- [
+-- Arg {argVisibility = Implicit True, argRelevance = Relevant, argExpr = VBuiltin (BuiltinType RatType) []}
+-- Arg {argVisibility = Implicit True, argRelevance = Irrelevant, argExpr = VBuiltin (BuiltinConstructor (NatLiteral 2)) []},
+-- Arg {argVisibility = Implicit True, argRelevance = Irrelevant, argExpr = VBuiltin (BuiltinConstructor Nil) [Arg {argVisibility = Implicit True, argRelevance = Relevant, argExpr = VBuiltin (BuiltinType NatType) []}]},
+-- Arg {argVisibility = Explicit, argRelevance = Relevant, argExpr = VBoundVar (Lv {unLv = 0}) []}
+-- Arg {argVisibility = Explicit, argRelevance = Relevant, argExpr = VBuiltin (BuiltinConstructor (IndexLiteral 0)) [Arg {argVisibility = Implicit True, argRelevance = Irrelevant, argExpr = VBuiltin (BuiltinConstructor (NatLiteral 2)) []}]}]
 -----------------------------------------------------------------------------
 -- Foreach
 

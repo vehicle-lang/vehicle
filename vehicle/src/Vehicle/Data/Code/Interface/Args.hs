@@ -630,3 +630,12 @@ instance IsArgs SearchRatTensorArgs where
             explicit predicate
           ]
       }
+
+
+-- TODO: move
+data RecordAccArgs expr = RecordAccArgs
+  { recordAccType :: expr, -- type of the record we are accessing
+    recordAccValue :: expr, -- value of the record we are accessing
+    recordAccFieldName :: FieldName -- fieldName of the field we are accessing
+     -- recordAccSpine :: [VArg expr] -- really worried about this bc normally everything else would be from the spine
+  }

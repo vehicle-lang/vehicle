@@ -410,14 +410,19 @@ data RatTensorValue
   | VRatStackTensor (StackTensorArgs (Value Builtin))
   | VRatAt (AtTensorArgs (Value Builtin))
   | VRatForeach (ForeachTensorArgs (Value Builtin))
-  | VRatRecordAcc !(VType Builtin) !(Value Builtin) !FieldName !(Spine Builtin)
+  -- just going to package recordAcc params as args for now, RecordAcc isnt a Builtin like the others (Expr builtin instead) so not sure if this will work overall
+  -- | VRatRecordAcc !(VType Builtin) !(Value Builtin) !FieldName !(Spine Builtin)
+  | VRatRecordAcc (RecordAccArgs (Value Builtin))
+
+
 
 toRatTensorValue :: (HasCallStack) => Value Builtin -> RatTensorValue
 toRatTensorValue expr = case expr of
   VBoundVar lv [] -> VRatTensorBoundVar lv
   VFreeVar n spine -> VRatTensorFreeVar n spine
   -- need to find out what value is 
-  VRecordAcc typ value fieldName spine -> VRatRecordAcc typ value fieldName spine
+  -- VRecordAcc typ value fieldName spine -> VRatRecordAcc typ value fieldName spine
+  VRecordAcc typ value fieldName _spine -> VRatRecordAcc RecordAccArgs {recordAccType=typ, recordAccValue=value, recordAccFieldName=fieldName}
   (getExpr accessRatTensorLiteral -> Just t) -> VRatTensorLiteral t
   (getExpr accessNegRatTensor -> Just args) -> VNegRatTensor args
   (getExpr accessAddRatTensor -> Just args) -> VAddRatTensor args
@@ -447,7 +452,7 @@ fromRatTensorValue :: RatTensorValue -> Value Builtin
 fromRatTensorValue = \case
   VRatTensorBoundVar v -> VBoundVar v []
   VRatTensorFreeVar name args -> VFreeVar name args
-  VRatRecordAcc typ value fieldName spine -> VRecordAcc typ value fieldName spine
+  VRatRecordAcc args -> VRecordAcc (recordAccType args) (recordAccValue args) (recordAccFieldName args) [] -- TODO: losing spine is probably problematic
   VRatTensorLiteral t -> mkExpr accessRatTensorLiteral t
   VNegRatTensor args -> mkExpr accessNegRatTensor args
   VAddRatTensor args -> mkExpr accessAddRatTensor args

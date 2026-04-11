@@ -167,7 +167,7 @@ compilePurifiedAssertion op args@(TensorOp2Args dims xs ys) = do
       logDebugM MaxDetail $ do
         exprDoc <- prettyFriendlyInCtx e
         return $ "non-variable-terms:" <+> exprDoc
-      elementComparisonValue <- eliminateTensorAssertion op args
+      elementComparisonValue <- eliminateTensorAssertion op args -- this is where issues are
       logDebugM MaxDetail $ do
         newValueDoc <- prettyFriendlyInCtx elementComparisonValue
         return $ "converting-to-element-assertions:" <+> newValueDoc
@@ -250,9 +250,17 @@ eliminateTensorAssertion ::
   ComparisonOp ->
   TensorOp2Args (Value Builtin) ->
   m (Value Builtin)
-eliminateTensorAssertion op (TensorOp2Args dims xs ys) =
+eliminateTensorAssertion op (TensorOp2Args dims xs ys) = do
+  _ <- logDebug MidDetail $ "dims are" <+> pretty (show dims) <+> "xs are" <+> pretty (show xs) <+> "ys are" <+> pretty (show ys)
+  -- VBuiltin (BuiltinConstructor Nil)
+  -- [Arg {
+  --  argVisibility = Implicit True,
+  --  argRelevance = Relevant,
+  --  argExpr = VBuiltin (BuiltinType NatType) []
+  -- }]
+
   case dims of
-    IDimCons d@(INatLiteral n) ds -> do
+    IDimCons d@(INatLiteral n) ds -> do -- our dims are not of this type, we never enter here in tensor-only example
       -- TODO switch to use `etaReduceTensor`?
       nameCtx <- getNameContext
       let tElem = fromTypeValue VRatType
