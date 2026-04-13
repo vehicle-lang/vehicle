@@ -616,8 +616,7 @@ instance
         <+> pretty d
 
 instance
-  ( PrettyUsing restVar (variable `In` ctx)
-  ) =>
+  (PrettyUsing restVar (variable `In` ctx)) =>
   PrettyUsing restVar (QueryAssertion variable `In` ctx)
   where
   prettyUsing (QueryAssertion {..}, ctx) = do
@@ -863,15 +862,13 @@ instance
     ApplicationConstraint tc -> prettyUsing @rest (tc, ctx)
 
 instance
-  ( PrettyUsing rest (Expr builtin `In` NamedBoundCtx)
-  ) =>
+  (PrettyUsing rest (Expr builtin `In` NamedBoundCtx)) =>
   PrettyUsing rest (InstanceCandidate builtin `In` BoundCtx (Type builtin))
   where
   prettyUsing (candidate, ctx) = prettyUsing @rest (candidateExpr candidate, toNamedBoundCtx ctx)
 
 instance
-  ( PrettyUsing rest (Type builtin `In` NamedBoundCtx)
-  ) =>
+  (PrettyUsing rest (Type builtin `In` NamedBoundCtx)) =>
   PrettyUsing rest (MetaInfo builtin `In` NoCtx)
   where
   prettyUsing (MetaInfo {..}, ()) = do

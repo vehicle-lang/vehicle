@@ -8,7 +8,7 @@ where
 
 import Data.Aeson (ToJSON (..), genericToJSON)
 import Data.List (elemIndex)
-import Data.Ratio (Ratio, denominator, numerator, (%))
+import Data.Ratio (Ratio)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), (<+>))
 import Vehicle.Compile.Arity
@@ -101,27 +101,16 @@ data JExpr
   | StackTensor [JExpr]
   deriving (Show, Generic)
 
--- | Tensorflow doesn't support arbitrary precision integers. We should think
--- about this in the more future, about the actual precision the tensor backend
--- can represent rationals in, e.g. Storable.getSize, Haskell int64, etc.
-type Rat = Ratio Int
-
-mapRatio :: (Integral b) => (a -> b) -> Ratio a -> Ratio b
-mapRatio f r = do
-  let num = f $ numerator r
-  let denom = f $ denominator r
-  num % denom
+-- NOTE:
+-- Keep JSON rationals unbounded to avoid internal overflows during conversion.
+-- Downstream backends can choose their own finite-precision lowering.
+type Rat = Ratio Integer
 
 toRat :: Rational -> Rat
-toRat = mapRatio toInt
-  where
-    toInt x
-      | x < toInteger (minBound :: Int) = developerError $ "Underflow converting" <+> pretty x <+> "to `Int`"
-      | x > toInteger (maxBound :: Int) = developerError $ "Overflow converting" <+> pretty x <+> "to `Int`"
-      | otherwise = fromInteger x
+toRat = id
 
 fromRat :: Rat -> Rational
-fromRat = mapRatio toInteger
+fromRat = id
 
 instance ToJSON JProg where
   toJSON = genericToJSON jsonOptions
