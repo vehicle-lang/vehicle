@@ -73,15 +73,19 @@ isPropertyDecl = \case
 
 isTypeDecl :: GenericDecl expr -> Bool
 isTypeDecl = \case
-  DefAbstract {} -> False
-  DefFunction _ _ anns _ _ -> isDeclaredAsType anns
-  DefRecord {} -> False
+  DefFunction _ _ (TypeDecl {}) _ _ -> True
+  _ -> False
 
 isTypeClassDecl :: GenericDecl expr -> Bool
 isTypeClassDecl = \case
   DefAbstract {} -> False
   DefFunction {} -> False
   DefRecord _ _ anns _ _ -> isAnnotatedAsTypeClass anns
+
+isInstanceDecl :: GenericDecl expr -> Bool
+isInstanceDecl = \case
+  DefFunction _ _ (FunctionDecl _ (Just (AnnInstance {}))) _ _ -> True
+  _ -> False
 
 isAbstractDecl :: GenericDecl expr -> Bool
 isAbstractDecl = \case
@@ -91,7 +95,11 @@ isAbstractDecl = \case
 
 isExternalResourceDecl :: GenericDecl expr -> Bool
 isExternalResourceDecl = \case
-  DefAbstract _ _ sort _ -> isExternalResourceSort sort
+  DefAbstract _ _ sort _ -> case sort of
+    NetworkDef -> True
+    DatasetDef -> True
+    ParameterDef parameterType -> parameterType == NonInferable
+    BuiltinDef {} -> False
   DefFunction {} -> False
   DefRecord {} -> False
 
@@ -116,13 +124,6 @@ instance Pretty DefAbstractSort where
       DatasetDef -> "dataset"
       ParameterDef {} -> "parameter"
       BuiltinDef {} -> "postulate"
-
-isExternalResourceSort :: DefAbstractSort -> Bool
-isExternalResourceSort = \case
-  NetworkDef -> True
-  DatasetDef -> True
-  ParameterDef parameterType -> parameterType == NonInferable
-  BuiltinDef {} -> False
 
 data ParameterSort
   = Inferable
@@ -193,11 +194,6 @@ instance Pretty FunctionDeclAnnotation where
   pretty = \case
     AnnProperty -> "@property"
     AnnInstance {} -> "@instance"
-
-isDeclaredAsType :: DefFunctionSort -> Bool
-isDeclaredAsType = \case
-  TypeDecl {} -> True
-  _ -> False
 
 isAnnotatedAsProperty :: DefFunctionSort -> Bool
 isAnnotatedAsProperty = \case
