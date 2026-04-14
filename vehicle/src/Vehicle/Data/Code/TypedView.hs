@@ -413,7 +413,7 @@ data RatTensorValue
   -- just going to package recordAcc params as args for now, RecordAcc isnt a Builtin like the others (Expr builtin instead) so not sure if this will work overall
   -- | VRatRecordAcc !(VType Builtin) !(Value Builtin) !FieldName !(Spine Builtin)
   | VRatRecordAcc (RecordAccArgs (Value Builtin))
-  | VRatRecord (VType Builtin) !(VRecordFields Builtin)
+  -- | VRatRecord (VType Builtin) !(VRecordFields Builtin)
 
 
 
@@ -424,7 +424,7 @@ toRatTensorValue expr = case expr of
   -- need to find out what value is 
   -- VRecordAcc typ value fieldName spine -> VRatRecordAcc typ value fieldName spine
   VRecordAcc typ value fieldName _spine -> VRatRecordAcc RecordAccArgs {recordAccType=typ, recordAccValue=value, recordAccFieldName=fieldName}
-  VRecord typ fields -> VRatRecord typ fields
+  -- VRecord typ fields -> VRatRecord typ fields
   -- VRecord   | VRecord (VType builtin) !(VRecordFields builtin)
   (getExpr accessRatTensorLiteral -> Just t) -> VRatTensorLiteral t
   (getExpr accessNegRatTensor -> Just args) -> VNegRatTensor args
@@ -454,7 +454,7 @@ fromRatTensorValue = \case
   VRatTensorBoundVar v -> VBoundVar v []
   VRatTensorFreeVar name args -> VFreeVar name args
   VRatRecordAcc args -> VRecordAcc (recordAccType args) (recordAccValue args) (recordAccFieldName args) [] -- TODO: losing spine is probably problematic
-  VRatRecord typ fields -> VRecord typ fields
+  -- VRatRecord typ fields -> VRecord typ fields
   VRatTensorLiteral t -> mkExpr accessRatTensorLiteral t
   VNegRatTensor args -> mkExpr accessNegRatTensor args
   VAddRatTensor args -> mkExpr accessAddRatTensor args

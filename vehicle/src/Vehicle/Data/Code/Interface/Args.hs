@@ -287,7 +287,7 @@ instance IsArgs StackTensorArgs where
     Access
       { getExpr = \case
           (fmap argExpr -> t : d : ds : xs) -> Just $ StackTensorArgs t d ds xs
-          _ -> Nothing,
+          _ -> developerError "no worky",
         mkExpr = \(StackTensorArgs t d ds xs) -> implicit t : implicit d : implicitIrrelevant ds : fmap explicit xs
       }
 

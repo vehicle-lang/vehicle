@@ -310,7 +310,16 @@ wrapQuantifyRecord QuantifyRecordArgs{..} = do
   namedCtx <- getNameContext
   normalisedTensorType <- eval namedCtx boundEnv tensorType
   normalisedDims <- eval namedCtx boundEnv (fromDSL mempty $ dimCons (dim dimensions) dimNil)
-  
+
+-- mkExpr accessAtTensor $
+-- AtTensorArgs
+--   { atType = elementType,
+--     atFirstDim = INatLiteral d,
+--     atRemainingDims = mkDims $ fmap fst xs,
+--     atTensor = tensor,
+--     atIndex = IIndexLiteral i
+--   }
+
   -- construct tensor binder
   let tensorBinder = Binder { 
     binderDisplayForm = displayForm,

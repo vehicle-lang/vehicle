@@ -105,7 +105,6 @@ compileBoolExpr expr = do
     VCompareRatTensor (op, args) -> purifyAndCompileAssertion op args
     VQuantifyRatTensor (Forall, _) -> throwError catchableUnsupportedAlternatingQuantifiersError
     VQuantifyRecord (Forall, _) -> throwError catchableUnsupportedAlternatingQuantifiersError
-    -- TODO: ^ not sure if this is the right thing to do here
     ---------------------
     -- Recursive cases --
     ---------------------
@@ -114,7 +113,6 @@ compileBoolExpr expr = do
     VAnd (TensorOp2Args _dims x y) -> andTrivial andPartitions <$> compileBoolExpr x <*> compileBoolExpr y
     VOr (TensorOp2Args _dims x y) -> orTrivial orPartitions <$> compileBoolExpr x <*> compileBoolExpr y
     VQuantifyRatTensor (Exists, args) -> eliminateExists args
-    -- VQuantifyRecord (Exists, args) -> eliminateExists args -- TODO: not sure if this is the right thing to do here
     VQuantifyRecord (Exists, _args) -> compilerDeveloperError "LAUREN TODO: hit case in compileBoolExpr"
     VCompareNat {} -> unblockAndRec expr
     VCompareIndex {} -> unblockAndRec expr
@@ -142,7 +140,7 @@ purifyAndCompileAssertion op args
             _ <- logDebug MidDetail "--------- first value case -------------------"
             return $ Left purifiedValue
           Right purifiedArgs -> do
-            _ <- logDebug MidDetail "--------- frist assertion case -------------------" -- HITTING THIS HERE
+            _ <- logDebug MidDetail "--------- first assertion case -------------------" -- HITTING THIS HERE
             compilePurifiedAssertion op purifiedArgs
 
       case recurseOrResult of

@@ -174,7 +174,7 @@ unblockBoolMultiDimTensorValue actions expr = do
 unblockRatTensorValue :: (MonadPurify m) => UnblockingActions m -> DimensionsStatus -> Value Builtin -> m (Value Builtin)
 unblockRatTensorValue actions@UnblockingActions {..} status expr = do
   showEntry expr
-  -- _ <- logDebug MidDetail (pretty $ show expr)
+  _ <- logDebug MidDetail "unblockRatTensorValue"
   showExit =<< case toRatTensorValue expr of
     -- Rational operators
     VRatTensorLiteral {} -> return expr
@@ -182,7 +182,9 @@ unblockRatTensorValue actions@UnblockingActions {..} status expr = do
     VMinRatTensor {} -> return expr
     VMaxRatTensor {} -> return expr
     -- Recursively purify
-    VNegRatTensor args -> unblockTensorOp1 (unblock status) evalNegRatTensor args
+    VNegRatTensor args -> do
+       (logDebug MidDetail "VNegRatTensor")
+       unblockTensorOp1 (unblock status) evalNegRatTensor args
     VAddRatTensor args -> unblockTensorOp2 (unblock status) evalAddRatTensor args
     VSubRatTensor args -> unblockTensorOp2 (unblock status) evalSubRatTensor args
     VMulRatTensor args -> unblockTensorOp2 (unblock status) evalMulRatTensor args
@@ -207,7 +209,7 @@ unblockRatTensorValue actions@UnblockingActions {..} status expr = do
     VRatAt args -> unblockAtTensor (unblock DifferentDimensions) args
     VRatForeach args -> unblockForeachTensor args
     VRatRecordAcc args -> unblockRecordAcc (unblock DifferentDimensions) args
-    VRatRecord typ fields -> return $ VRecord typ fields
+    -- VRatRecord typ fields -> return $ VRecord typ fields
   where
     unblock = unblockRatTensorValue actions
 
