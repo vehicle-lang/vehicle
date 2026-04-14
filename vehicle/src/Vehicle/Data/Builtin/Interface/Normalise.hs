@@ -563,26 +563,61 @@ evalAtTensor ctx evalApp eval args@(AtTensorArgs t d ds tensor index) =
         evalApp ctx fn [explicit index]
       _ -> Nothing
 
+-- unoptimisedEvalAtTensor ::
+--   forall builtin m.
+--   (MonadNormBuiltin m, HasTensorLiterals Value builtin, BuiltinHasListLiterals builtin, BuiltinHasIndexLiterals builtin, HasTensorExpr Value builtin) =>
+--   EvalSimple AtTensorArgs Value builtin m
+-- unoptimisedEvalAtTensor args@(AtTensorArgs _t _d ds tensor index) = do
+--   fromMaybe (return $ mkExpr accessAtTensor args) $
+--     case index of
+--       IIndexLiteral i ->
+--         goLiterals i tensorLiterals
+--           <|> case tensor of
+--             (getExpr accessStackTensor -> Just stackArgs) -> do
+--               Just $ return $ stackElements stackArgs !! i -- copy this bit here!
+--             (getExpr accessConstTensor -> Just constArgs) -> Just $ return $ mkExpr accessConstTensor $ constArgs {constDims = ds}
+--             _ -> Nothing
+--       _ -> Nothing
+--   where
+--     goLiterals :: Int -> [TensorLiteralAccessor Value builtin] -> Maybe (m (Value builtin))
+--     goLiterals i literals = case literals of
+--       Wrapper Access {..} : remainingLiterals -> case getExpr tensor of
+--         Just xs -> Just $ return $ mkExpr (xs `at` i)
+--         Nothing -> do
+--           logDebug MaxDetail "dsadas"
+--           goLiterals i remainingLiterals
+--       _ -> Nothing
+
 unoptimisedEvalAtTensor ::
   forall builtin m.
   (MonadNormBuiltin m, HasTensorLiterals Value builtin, BuiltinHasListLiterals builtin, BuiltinHasIndexLiterals builtin, HasTensorExpr Value builtin) =>
   EvalSimple AtTensorArgs Value builtin m
 unoptimisedEvalAtTensor args@(AtTensorArgs _t _d ds tensor index) = do
-  fromMaybe (return $ mkExpr accessAtTensor args) $
-    case index of
-      IIndexLiteral i ->
-        goLiterals i tensorLiterals
-          <|> case tensor of
-            (getExpr accessStackTensor -> Just stackArgs) -> Just $ return $ stackElements stackArgs !! i -- copy this bit here!
-            (getExpr accessConstTensor -> Just constArgs) -> Just $ return $ mkExpr accessConstTensor $ constArgs {constDims = ds}
-            _ -> Nothing
-      _ -> Nothing
+  let result =
+        case index of
+          IIndexLiteral i ->
+            goLiterals i tensorLiterals
+              <|> case tensor of
+                (getExpr accessStackTensor -> Just stackArgs) ->
+                  Just $ return $ stackElements stackArgs !! i
+                (getExpr accessConstTensor -> Just constArgs) ->
+                  Just $ return $ mkExpr accessConstTensor $
+                    constArgs {constDims = ds}
+                _ -> Nothing
+          _ -> Nothing
+  case result of
+    Just action ->
+      action
+    Nothing -> do
+      logDebug MaxDetail "--------------- fallback: could not evaluate tensor index -----------------"
+      return $ mkExpr accessAtTensor args
   where
     goLiterals :: Int -> [TensorLiteralAccessor Value builtin] -> Maybe (m (Value builtin))
     goLiterals i literals = case literals of
       Wrapper Access {..} : remainingLiterals -> case getExpr tensor of
         Just xs -> Just $ return $ mkExpr (xs `at` i)
-        Nothing -> goLiterals i remainingLiterals
+        Nothing -> do
+          goLiterals i remainingLiterals
       _ -> Nothing
 
 
@@ -593,47 +628,13 @@ evalRecordAcc ::
   EvalApp builtin m ->
   Eval builtin m ->
   EvalSimple RecordAccArgs Value builtin m
-evalRecordAcc _ctx _evalApp _eval _args@(RecordAccArgs _typ value _fieldName) = do
-  _ <- logDebug MidDetail "------ ENTERING EVAL RECORD ACC FUNCTION --------------"
-  -- data StackTensorArgs expr = StackTensorArgs
-  -- { stackType :: expr,
-  --   stackFirstDim :: expr, -- getting invalid index here
-  --   stackRemainingDims :: expr,
-  --   stackElements :: [expr]
-  -- }
+evalRecordAcc _ctx _evalApp _eval _args@(RecordAccArgs _typ value fieldName) = do
+  logDebug MidDetail "------ ENTERING EVAL RECORD ACC FUNCTION --------------"
 
-  -- [
-  -- Arg {argVisibility = Implicit True, argRelevance = Relevant, argExpr = VBuiltin (BuiltinType RatType) []}
-  -- Arg {argVisibility = Implicit True, argRelevance = Relevant, argExpr = VBuiltin (BuiltinConstructor (NatLiteral 2)) []}
-  -- Arg {argVisibility = Implicit True, argRelevance = Irrelevant, argExpr = VBuiltin (BuiltinConstructor Nil) [Arg {argVisibility = Implicit True, argRelevance = Relevant, argExpr = VBuiltin (BuiltinType NatType) []}]}
-  -- Arg {argVisibility = Explicit, argRelevance = Relevant, argExpr = VBoundVar (Lv {unLv = 7}) []}
-  -- Arg {argVisibility = Explicit, argRelevance = Relevant, argExpr = VBoundVar (Lv {unLv = 8}) []}
-  -- ]
-  -- -> weird, thought stackElements should be in a list together?
-  -- need to nab one of these arguments
-  -- end up with tens ! 0, which is the first element of the record
-
-
-  fieldValue <- case value of
-    (getExpr accessStackTensor -> Just stackArgs) -> return $ stackElements stackArgs !! 0 -- hardcode for now, fix later
-    _ -> developerError "fieldValue is not a stackTensor"
-  _ <- logDebug MidDetail "------ LEAVING EVAL FN --------------"
-  return fieldValue
-
--- data AtTensorArgs expr = AtTensorArgs
---   { atType :: expr,
---     atFirstDim :: expr,
---     atRemainingDims :: expr,
---     atTensor :: expr,
---     atIndex :: expr
---   }
-
--- [
--- Arg {argVisibility = Implicit True, argRelevance = Relevant, argExpr = VBuiltin (BuiltinType RatType) []}
--- Arg {argVisibility = Implicit True, argRelevance = Irrelevant, argExpr = VBuiltin (BuiltinConstructor (NatLiteral 2)) []},
--- Arg {argVisibility = Implicit True, argRelevance = Irrelevant, argExpr = VBuiltin (BuiltinConstructor Nil) [Arg {argVisibility = Implicit True, argRelevance = Relevant, argExpr = VBuiltin (BuiltinType NatType) []}]},
--- Arg {argVisibility = Explicit, argRelevance = Relevant, argExpr = VBoundVar (Lv {unLv = 0}) []}
--- Arg {argVisibility = Explicit, argRelevance = Relevant, argExpr = VBuiltin (BuiltinConstructor (IndexLiteral 0)) [Arg {argVisibility = Implicit True, argRelevance = Irrelevant, argExpr = VBuiltin (BuiltinConstructor (NatLiteral 2)) []}]}]
+  fields <- case value of
+    VRecord _typ fields -> return fields
+    _ -> developerError "record not of expected type"
+  return $ lookupRecordFieldS fields fieldName
 -----------------------------------------------------------------------------
 -- Foreach
 

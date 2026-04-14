@@ -14,6 +14,7 @@ module Vehicle.Compile.Normalise.NBE
     evalInEmptyEnv,
     evalApp,
     findInstanceArg,
+    lookupIdentValue
   )
 where
 
@@ -171,6 +172,7 @@ eval ::
 eval ctx boundEnv expr = do
   showEntry ctx boundEnv expr
   let recEval = eval ctx boundEnv
+  -- logDebug MidDetail $ "eval" <+> pretty (show expr)
   result <- case expr of
     Hole {} -> resolutionError currentPass "Hole"
     Meta _ m -> return $ VMeta m []
@@ -221,13 +223,18 @@ evalApp ctx fun args@(a : as) = do
   result <- case fun of
     VMeta v spine -> return $ VMeta v (spine <> args)
     VBoundVar v spine -> return $ VBoundVar v (spine <> args)
-    VFreeVar v spine -> return $ VFreeVar v (spine <> args)
+    VFreeVar v spine -> do
+      -- logDebug MaxDetail $ "VFreeVar case" <+> pretty (show fun)
+      -- might need to be a lam and not a freevar - look up the ident?
+
+      return $ VFreeVar v (spine <> args)
     VRecordAcc recordType record field spine -> return $ VRecordAcc recordType record field (spine <> args)
     VBuiltin b spine -> evalBuiltin ctx b (spine <> args)
     VLam binder (Closure env body)
       | not (visibilityMatches binder a) ->
           visibilityError ctx fun a
       | otherwise -> do
+          -- logDebug MidDetail $ "lam case reached for expr" <+> pretty (show fun)
           let newEnv = extendEnvWithDefined (argExpr a) binder env
           body' <- eval ctx newEnv body
           evalApp ctx body' as

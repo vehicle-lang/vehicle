@@ -65,7 +65,7 @@ getNetworkType decl networkType = case normalised networkType of
         entry <- getDeclEntry (Proxy @Builtin) v
         shape <- getRecordDimsFromFreeCtx entry
         fields <- getRecordFieldsFromFreeCtx entry
-        return $ NetworkRecordTypeConstructor $ NetworkRecordType NetworkRatType shape fields
+        return $ NetworkRecordTypeConstructor $ NetworkRecordType NetworkRatType v shape fields
       _ -> typingError
 
     tensorDimensions :: InputOrOutput -> VType Builtin -> m TensorShape

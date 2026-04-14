@@ -127,7 +127,7 @@ addNetworkApplicationToGlobalCtx ::
   NetworkContextInfo ->
   Value Builtin ->
   m (Value Builtin, Value Builtin)
-addNetworkApplicationToGlobalCtx name networkInfo arg = do
+addNetworkApplicationToGlobalCtx name networkInfo arg = do -- arg is the thing the network is applied to
   -- Can't current track network application provenance
   let p = mempty
 

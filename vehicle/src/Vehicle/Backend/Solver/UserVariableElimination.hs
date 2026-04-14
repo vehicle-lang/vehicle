@@ -34,9 +34,11 @@ import Vehicle.Data.MaybeTrivial
 import Vehicle.Data.Variable.Bound.Context.Name (getNameContext, prettyFriendlyInCtx)
 import Vehicle.Data.Variable.Bound.Context.Tensor (replaceTensorVariableWithStackedChildren)
 import Vehicle.Data.Variable.Bound.Level
-import Vehicle.Verify.Core (inputShape)
 import Vehicle.Verify.QueryFormat (QueryFormat (..), supportsStrictInequalities)
 import Prelude hiding (Applicative (..))
+import Vehicle.Verify.Core 
+import Vehicle.Compile.Resource
+import Data.Text qualified as Text
 
 eliminateExists ::
   (MonadQueryStructure m) =>
@@ -89,7 +91,7 @@ eliminateExistless value = do
 -- | Attempts to compile an arbitrary expression of type `Bool` down to a tree
 -- of assertions implicitly existentially quantified by a set of network
 -- input/output variables.
-compileBoolExpr ::
+compileBoolExpr :: -- we have the monad context for unnormalise here
   (MonadQueryStructure m, MonadWriter [Value Builtin] m) =>
   Value Builtin ->
   m (MaybeTrivial Partitions)
@@ -136,12 +138,20 @@ purifyAndCompileAssertion op args
       recurseOrResult <- logCompilerSection2 MaxDetail "assertion compilation" $ do
         maybePurifiedValue <- Unblocking.tryPurifyAssertion unblockingActions op args
         case maybePurifiedValue of
-          Left purifiedValue -> return $ Left purifiedValue
-          Right purifiedArgs -> compilePurifiedAssertion op purifiedArgs
+          Left purifiedValue -> do
+            _ <- logDebug MidDetail "--------- first value case -------------------"
+            return $ Left purifiedValue
+          Right purifiedArgs -> do
+            _ <- logDebug MidDetail "--------- frist assertion case -------------------" -- HITTING THIS HERE
+            compilePurifiedAssertion op purifiedArgs
 
       case recurseOrResult of
-        Left value -> compileBoolExpr value
-        Right assertion -> return $ mkTrivialPartition assertion
+        Left value -> do 
+          _ <- logDebug MidDetail "--------- recursive value case -------------------"
+          compileBoolExpr value
+        Right assertion -> do 
+          _ <- logDebug MidDetail "--------- recursive assertion case -------------------"
+          return $ mkTrivialPartition assertion
 
 compilePurifiedAssertion ::
   (MonadQuantifierBody m) =>
@@ -163,11 +173,11 @@ compilePurifiedAssertion op args@(TensorOp2Args dims xs ys) = do
       developerError ("unexpected expression" <+> prettyVerbose e)
     Left (TrivialExpr b) ->
       return $ Left $ IBoolLiteral b
-    Left (UnreducedExpr e) -> do
-      logDebugM MaxDetail $ do
+    Left (UnreducedExpr e) -> do -- hitting this, not sure why. should be getting more reduced by now i think??
+      logDebugM MaxDetail $ do -- basically complaining that we can't reduce it (because AtTensor is not reducable?)
         exprDoc <- prettyFriendlyInCtx e
         return $ "non-variable-terms:" <+> exprDoc
-      elementComparisonValue <- eliminateTensorAssertion op args -- this is where issues are
+      elementComparisonValue <- eliminateTensorAssertion op args -- this is where issues are, should be, I'm reducing down to  f₀[output]!0 <=. [tens!0, tens!1] ! 0 but do I need to go further?
       logDebugM MaxDetail $ do
         newValueDoc <- prettyFriendlyInCtx elementComparisonValue
         return $ "converting-to-element-assertions:" <+> newValueDoc
@@ -184,7 +194,7 @@ type MonadQuantifierBody m =
     MonadWriter [Value Builtin] m
   )
 
-unblockingActions :: (MonadQuantifierBody m) => UnblockingActions m
+unblockingActions :: (MonadQuantifierBody m, MonadPropertyStructure m) => UnblockingActions m
 unblockingActions = UnblockingActions unblockQuantifiedBoundVar unblockNetworkApplication
 
 unblockQuantifiedBoundVar ::
@@ -201,18 +211,64 @@ unblockNetworkApplication ::
   NetworkAppArgs (Value Builtin) ->
   m (Value Builtin)
 unblockNetworkApplication ident (NetworkAppArgs arg) = do
-  -- this should not be 
+
   let name = nameOf ident
   networkInfo <- asks (lookupNetworkInfo name . networkCtx)
 
+-- need to equate the input var with something of the correct record typw, and substitute the output var for something 
+-- of the correct record type - preserve well-typedness
+
+  let typ = networkType networkInfo
+  _ <- logDebug MidDetail $ "network type is" <+> pretty (show typ)
+
+  -- network input tensor is toTensor of network input (which is the args being fed into this function)
+  -- network gives a tensor as an output then we convert it to a record with toRecord/fromTensor
+
+  -- leave the tensors stored in the global context as they are but just wrap the equality expressions
+  -- input:
+  -- Pair {} = toRecord (sliceTensor) 
+  -- output:
+  -- sliceTensor
+  -- so for both we would have to do the same thing????
+
   (inputVarExpr, outputVarExpr) <- addNetworkApplicationToGlobalCtx name networkInfo arg
+
+  transformedInput <- case inputTensor typ of 
+    NetworkRecordTypeConstructor (NetworkRecordType _baseType typIdent _dims _fields) -> do 
+      let fromTensorName = Text.pack "_" <> identifierName typIdent <> "FromTensor"
+      let fromTensorFreeVar = FreeVar mempty (Identifier (modulePath typIdent) fromTensorName)
+      let inputVarArg = Arg Explicit Relevant inputVarExpr
+      ctx <- getNameContext
+      fromTensorValue <- eval ctx emptyBoundEnv fromTensorFreeVar
+      evalApp ctx fromTensorValue [inputVarArg]
+    _ -> return inputVarExpr
+
+  transformedOutput <- case outputTensor typ of 
+    NetworkRecordTypeConstructor (NetworkRecordType _baseType typIdent _dims _fields) -> do 
+      let fromTensorName = Text.pack "_" <> identifierName typIdent <> "FromTensor"
+      let fromTensorFreeVar = FreeVar mempty (Identifier (modulePath typIdent) fromTensorName)
+      let outputVarArg = Arg Explicit Relevant outputVarExpr
+      ctx <- getNameContext
+      fromTensorValue <- eval ctx emptyBoundEnv fromTensorFreeVar
+      evalApp ctx fromTensorValue [outputVarArg]
+    _ -> return outputVarExpr
+
+    -- do I need to wrap it in a lam to make it not register as a network application?
+    -- may need to eval the application so it subsitutes and doesnt show up as a freevar
+    -- conversion functions never get evalled when they are here
+    
+    --   normalisedTensorType <- eval namedCtx boundEnv tensorType
+
+  -- namedCtx <- getNameContext
+  -- normalisedFnApplication<- eval namedCtx boundEnv tensorType
+
   let inputEquality =
         fromBoolValue $
-          VCompareRatTensor
+          VCompareRatTensor -- might have to make a version of this that converts both to records in order to do this?
             ( Eq,
               TensorOp2Args
                 { tensorOp2Dims = mkDims (inputShape networkInfo),
-                  tensorOp2Arg1 = inputVarExpr,
+                  tensorOp2Arg1 = transformedInput,
                   tensorOp2Arg2 = arg
                 }
             )
@@ -220,13 +276,14 @@ unblockNetworkApplication ident (NetworkAppArgs arg) = do
 
   logDebugM MaxDetail $ do
     inputEqualityDoc <- prettyFriendlyInCtx inputEquality
-    replacementExprDoc <- prettyFriendlyInCtx outputVarExpr
+    replacementExprDoc <- prettyFriendlyInCtx transformedOutput
     return $
       "note-input-equality" <+> inputEqualityDoc
         <> line
         <> "replace-expr" <+> replacementExprDoc
 
-  return outputVarExpr
+  logDebug MidDetail $ pretty (show transformedOutput)
+  return transformedOutput
 
 --------------------------------------------------------------------------------
 -- Elimination operations
@@ -252,15 +309,8 @@ eliminateTensorAssertion ::
   m (Value Builtin)
 eliminateTensorAssertion op (TensorOp2Args dims xs ys) = do
   _ <- logDebug MidDetail $ "dims are" <+> pretty (show dims) <+> "xs are" <+> pretty (show xs) <+> "ys are" <+> pretty (show ys)
-  -- VBuiltin (BuiltinConstructor Nil)
-  -- [Arg {
-  --  argVisibility = Implicit True,
-  --  argRelevance = Relevant,
-  --  argExpr = VBuiltin (BuiltinType NatType) []
-  -- }]
-
   case dims of
-    IDimCons d@(INatLiteral n) ds -> do -- our dims are not of this type, we never enter here in tensor-only example
+    IDimCons d@(INatLiteral n) ds -> do -- our dims are not of this type (they are dimNil), we never enter here in tensor-only example
       -- TODO switch to use `etaReduceTensor`?
       nameCtx <- getNameContext
       let tElem = fromTypeValue VRatType

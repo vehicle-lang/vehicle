@@ -52,6 +52,7 @@ type GenericRecordFieldNames = [FieldName]
 
 data NetworkRecordType = NetworkRecordType
   { baseRecordType :: NetworkBaseType, -- TODO: see if we can name these better? not sure why we cant have duplicate names here
+    recordTypeIdent :: Identifier, -- trying to avoid making things complicated lol
     recordDimensions :: TensorShape,
     recordFields :: GenericRecordFieldNames
   }
