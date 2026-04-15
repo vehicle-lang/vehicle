@@ -69,7 +69,7 @@ validNetworkIOTypeIdent :: Identifier
 validNetworkIOTypeIdent = standardLibIdent "HasValidNetworkIOType"
 
 validDatasetTensorElementTypeIdent :: Identifier
-validDatasetTensorElementTypeIdent = standardLibIdent "ValidDatasetTensorElementType"
+validDatasetTensorElementTypeIdent = standardLibIdent "HasValidDatasetTensorElementType"
 
 hasQuantifierIdent :: Identifier
 hasQuantifierIdent = standardLibIdent "HasQuantifier"

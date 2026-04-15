@@ -143,6 +143,10 @@ record HasValidNetworkType (t : Type) where {}
 tensorToTensorHasValidNetworkType : {{ HasValidNetworkIOType t1 }} -> {{ HasValidNetworkIOType t2 }} -> HasValidNetworkType ( t1 -> t2 )
 tensorToTensorHasValidNetworkType = {}
 
+-- Dataset element types
+@typeclass
+record HasValidDatasetTensorElementType (t : Type) where {}
+
 -- Comparisons
 @typeclass
 record HasComparison t1 t2 where

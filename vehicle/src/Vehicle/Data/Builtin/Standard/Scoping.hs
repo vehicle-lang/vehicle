@@ -73,6 +73,7 @@ createTensorRecordConversionFunctions p ident telescope fields = do
   let validHasMulInstance = createTensorLikeArithmeticInstance p ident hasMulIdent "HasMul" "mulTC"
   let validHasDivInstance = createTensorLikeArithmeticInstance p ident hasDivIdent "HasDiv" "divTC"
   let validHasComparisonInstance = createTensorLikeComparisonInstance p ident
+  let validHasDatasetTensorElementType = createValidDatasetTensorElementType p ident
 
   return
     [ recordToTensorDecl,
@@ -83,7 +84,8 @@ createTensorRecordConversionFunctions p ident telescope fields = do
       validHasSubInstance,
       validHasDivInstance,
       validHasMulInstance,
-      validHasComparisonInstance
+      validHasComparisonInstance,
+      validHasDatasetTensorElementType
     ]
 
 createRecordToTensor ::
