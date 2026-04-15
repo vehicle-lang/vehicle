@@ -107,6 +107,12 @@ tokExists = mkToken B.TokExists "exists"
 
 tokForeach = mkToken B.TokForeach "foreach"
 
+tokGlobally = mkToken B.TokGlobally "globally"
+
+tokFinally = mkToken B.TokFinally "finally"
+
+tokUntil = mkToken B.TokUntil "until"
+
 tokImpl = mkToken B.TokImpl "=>"
 
 tokAnd = mkToken B.TokAnd "and"

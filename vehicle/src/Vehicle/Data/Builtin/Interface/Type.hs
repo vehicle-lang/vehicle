@@ -44,6 +44,10 @@ typeOfBuiltinFunction = \case
   And -> typeOfTensorOp2 tBool
   Or -> typeOfTensorOp2 tBool
   Implies -> typeOfTensorOp2 tBool
+  Temporal op -> case op of
+    Globally -> typeOfTemporalOp1
+    Finally -> typeOfTemporalOp1
+    Until -> typeOfTemporalOp2
   QuantifyRatTensor _ -> forAllDims $ \ds -> typeOfQuantifier (tRatTensor ds)
   QuantifyTensorLike _ -> forAllTypes $ \ts -> typeOfQuantifier ts
   If -> typeOfIf
@@ -121,6 +125,14 @@ typeOfTensorOp1 tElem = forAllDims $ \dims -> tTensor tElem dims ~> tTensor tEle
 
 typeOfTensorOp2 :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin -> DSLExpr builtin
 typeOfTensorOp2 tElem = forAllDims $ \dims -> tTensor tElem dims ~> tTensor tElem dims ~> tTensor tElem dims
+
+-- NOTE: These are initial placeholder signatures for bounded STL operators.
+-- They keep interval bounds explicit and preserve tensor dimensions.
+typeOfTemporalOp1 :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin
+typeOfTemporalOp1 = forAllDims $ \dims -> tNat ~> tNat ~> tBoolTensor dims ~> tBoolTensor dims
+
+typeOfTemporalOp2 :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin
+typeOfTemporalOp2 = forAllDims $ \dims -> tNat ~> tNat ~> tBoolTensor dims ~> tBoolTensor dims ~> tBoolTensor dims
 
 typeOfConstTensor :: (HasStandardBuiltins builtin) => DSLExpr builtin
 typeOfConstTensor =

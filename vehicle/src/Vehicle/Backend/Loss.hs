@@ -125,6 +125,9 @@ convertTensorProperty value = case toBoolTensorValue value of
   VBoolTensorAnd args -> convertAnd =<< convertTensorOp2 convertTensorProperty args
   VBoolTensorOr args -> convertOr =<< convertTensorOp2 convertTensorProperty args
   VBoolTensorNot args -> convertNot =<< convertTensorOp1 convertTensorProperty args
+  VBoolTensorGlobally {} -> convertBoolTensor value
+  VBoolTensorFinally {} -> convertBoolTensor value
+  VBoolTensorUntil {} -> convertBoolTensor value
   VBoolTensorCompareNat args -> convertNatComparison args
   VBoolTensorCompareIndex args -> convertIndexComparison args
   VBoolTensorCompareRatPointwise args -> convertRatTensorPointwiseComparison args

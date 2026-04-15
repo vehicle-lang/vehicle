@@ -172,6 +172,14 @@ instance BuiltinHasBoolLiterals Builtin where
         mkExpr = BuiltinFunction . QuantifyRatTensor
       }
 
+  accessTemporalBuiltin =
+    Access
+      { getExpr = \case
+          BuiltinFunction (Temporal op) -> Just op
+          _ -> Nothing,
+        mkExpr = BuiltinFunction . Temporal
+      }
+
 --------------------------------------------------------------------------------
 -- Index
 

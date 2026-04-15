@@ -63,6 +63,9 @@ lowerNot (TensorOp1Args _ arg) = do
       VBoolTensorReduceOr args -> fromBoolTensorValue . VBoolTensorReduceAnd <$> traverseReductionArgs go args
       VBoolTensorReduceAnd args -> fromBoolTensorValue . VBoolTensorReduceOr <$> traverseReductionArgs go args
       VBoolTensorAt args -> fromBoolTensorValue . VBoolTensorAt <$> traverseAtTensorArg go args
+      VBoolTensorGlobally {} -> onBlocked e
+      VBoolTensorFinally {} -> onBlocked e
+      VBoolTensorUntil {} -> onBlocked e
       VBoolTensorForeach args -> fromBoolTensorValue . VBoolTensorForeach <$> negateForeachArgs args
 
 negateQuantifierBody ::

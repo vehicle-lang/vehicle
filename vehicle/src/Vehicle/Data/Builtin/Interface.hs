@@ -56,6 +56,8 @@ class BuiltinHasBoolLiterals builtin where
 
   accessQuantifyRatTensorBuiltin :: Accessor builtin Quantifier
 
+  accessTemporalBuiltin :: Accessor builtin TemporalOperator
+
 --------------------------------------------------------------------------------
 -- Index
 

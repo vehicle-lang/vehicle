@@ -91,6 +91,7 @@ data BuiltinFunction
   | And
   | Or
   | Implies
+  | Temporal TemporalOperator
   | QuantifyRatTensor Quantifier
   | QuantifyTensorLike Quantifier
   | If
@@ -140,6 +141,7 @@ instance Pretty BuiltinFunction where
     Or -> "or"
     Not -> "not"
     Implies -> "=>"
+    Temporal op -> pretty op
     QuantifyRatTensor q -> pretty q
     QuantifyTensorLike q -> pretty q
     If -> "if"

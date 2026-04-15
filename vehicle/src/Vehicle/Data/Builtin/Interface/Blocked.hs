@@ -52,6 +52,9 @@ functionBlockingStatus ::
 functionBlockingStatus b spine = case b of
   QuantifyRatTensor {} -> DoesNotReduce
   QuantifyTensorLike {} -> DoesNotReduce
+  Temporal Globally -> fixedStatus [1, 2, 3] spine
+  Temporal Finally -> fixedStatus [1, 2, 3] spine
+  Temporal Until -> fixedStatus [1, 2, 3, 4] spine
   Implies -> AlwaysReduces
   Not -> fixedStatus [1] spine
   And -> fixedStatus [1, 2] spine

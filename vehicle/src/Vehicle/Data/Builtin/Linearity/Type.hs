@@ -90,6 +90,19 @@ typeOfBuiltinFunction p = \case
   ForeachTensor -> typeOfForeach
   ForeachVector -> typeOfForeach
   Iterate -> typeOfIterate
+  Temporal Globally -> typeOfTemporalOp1
+  Temporal Finally -> typeOfTemporalOp1
+  Temporal Until -> typeOfTemporalOp2
+
+typeOfTemporalOp1 :: LinearityDSLExpr
+typeOfTemporalOp1 =
+  forAllLinearities $ \l ->
+    constant ~> constant ~> l ~> l
+
+typeOfTemporalOp2 :: LinearityDSLExpr
+typeOfTemporalOp2 =
+  forAllLinearityTriples $ \l1 l2 l3 ->
+    maxLinearity l1 l2 l3 .~~~> constant ~> constant ~> l1 ~> l2 ~> l3
 
 typeOfConstructor :: BuiltinConstructor -> LinearityDSLExpr
 typeOfConstructor = \case

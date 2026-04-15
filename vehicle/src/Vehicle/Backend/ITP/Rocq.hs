@@ -534,6 +534,7 @@ compileBuiltin b args = case b of
     StackTensor -> compileStack args
     Iterate -> unsupportedError
     PowRat -> unsupportedError
+    Temporal {} -> unsupportedError
     AtVector -> compileApplication [MathcompImport Boot] "tnth" args
     ForeachVector -> compileApplication [RequireImport VehicleUtils] "foreachTuple" args
     QuantifyTensorLike _ -> unsupportedTensorLikeQuantifier

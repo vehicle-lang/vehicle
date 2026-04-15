@@ -220,7 +220,10 @@ compileQueries expr = do
     VBoolAt {} -> compileQueries =<< unblock expr
     VCompareIndex {} -> compileQueries =<< unblock expr
     VCompareNat {} -> compileQueries =<< unblock expr
-    VNot args -> compileQueries =<< lowerNot args
+    VGlobally {} -> compileQueries =<< unblock expr
+    VFinally {} -> compileQueries =<< unblock expr
+    VUntil {} -> compileQueries =<< unblock expr
+    VNot args -> compileQueries =<< lowerNot unblock args
     -----------------
     -- Mixed cases --
     -----------------

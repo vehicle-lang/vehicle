@@ -141,6 +141,42 @@ traverseReductionArgs f (TensorReductionArgs ds e xs) =
   TensorReductionArgs ds <$> f e <*> f xs
 
 --------------------------------------------------------------------------------
+-- Temporal args
+
+data TemporalOp1Args expr = TemporalOp1Args
+  { temporalOp1Dims :: expr,
+    temporalOp1Start :: expr,
+    temporalOp1End :: expr,
+    temporalOp1Arg :: expr
+  }
+
+instance IsArgs TemporalOp1Args where
+  accessSpine =
+    Access
+      { getExpr = \case
+          (fmap argExpr -> [ds, a, b, x]) -> Just $ TemporalOp1Args ds a b x
+          _ -> Nothing,
+        mkExpr = \(TemporalOp1Args ds a b x) -> [implicitIrrelevant ds, explicit a, explicit b, explicit x]
+      }
+
+data TemporalOp2Args expr = TemporalOp2Args
+  { temporalOp2Dims :: expr,
+    temporalOp2Start :: expr,
+    temporalOp2End :: expr,
+    temporalOp2Arg1 :: expr,
+    temporalOp2Arg2 :: expr
+  }
+
+instance IsArgs TemporalOp2Args where
+  accessSpine =
+    Access
+      { getExpr = \case
+          (fmap argExpr -> [ds, a, b, x, y]) -> Just $ TemporalOp2Args ds a b x y
+          _ -> Nothing,
+        mkExpr = \(TemporalOp2Args ds a b x y) -> [implicitIrrelevant ds, explicit a, explicit b, explicit x, explicit y]
+      }
+
+--------------------------------------------------------------------------------
 -- IndexComparisonArgs
 
 -- | Arguments for comparisons (==, <= etc.) over Index

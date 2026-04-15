@@ -115,6 +115,9 @@ compileBoolExpr expr = do
     VReduceAndTensor {} -> unblockAndRec expr
     VReduceOrTensor {} -> unblockAndRec expr
     VBoolAt {} -> unblockAndRec expr
+    VGlobally {} -> unblockAndRec expr
+    VFinally {} -> unblockAndRec expr
+    VUntil {} -> unblockAndRec expr
   where
     unblock = Unblocking.unblockBoolExpr unblockingActions
     unblockAndRec e = compileBoolExpr =<< unblock e

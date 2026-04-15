@@ -126,6 +126,27 @@ instance Pretty Quantifier where
     Exists -> "exists"
 
 --------------------------------------------------------------------------------
+-- Temporal operators
+
+data TemporalOperator
+  = Globally
+  | Finally
+  | Until
+  deriving (Show, Eq, Ord, Generic)
+
+instance NFData TemporalOperator
+
+instance Hashable TemporalOperator
+
+instance Serialize TemporalOperator
+
+instance Pretty TemporalOperator where
+  pretty = \case
+    Globally -> "globally"
+    Finally -> "finally"
+    Until -> "until"
+
+--------------------------------------------------------------------------------
 -- Domains
 
 data NegDomain

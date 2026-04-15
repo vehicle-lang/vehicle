@@ -404,6 +404,9 @@ compileBool value = logEntryAndExit value $ case toBoolValue value of
   VReduceAndTensor {} -> unblockBoolValue value
   VReduceOrTensor {} -> unblockBoolValue value
   VBoolAt {} -> unblockBoolValue value
+  VGlobally {} -> unblockBoolValue value
+  VFinally {} -> unblockBoolValue value
+  VUntil {} -> unblockBoolValue value
 
 compileAnd ::
   (MonadDomain m) =>

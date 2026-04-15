@@ -252,6 +252,7 @@ convertToDecidabilityBuiltins p b args = return $
         Iterate -> sameFunction f
         StackTensor -> sameFunction f
         ConstTensor -> sameFunction f
+        Temporal {} -> sameFunction f
     BuiltinConstructor c -> do
       let original = normAppList (Builtin p (StandardBuiltinConstructor c)) args
       case c of

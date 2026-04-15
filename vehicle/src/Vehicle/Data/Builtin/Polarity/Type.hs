@@ -88,6 +88,19 @@ typeOfBuiltinFunction = \case
   ForeachTensor -> typeOfForeach
   ForeachVector -> typeOfForeach
   Iterate -> typeOfIterate
+  Temporal Globally -> typeOfTemporalOp1
+  Temporal Finally -> typeOfTemporalOp1
+  Temporal Until -> typeOfTemporalOp2
+
+typeOfTemporalOp1 :: PolarityDSLExpr
+typeOfTemporalOp1 =
+  forAllPolarities $ \p ->
+    unquantified ~> unquantified ~> p ~> p
+
+typeOfTemporalOp2 :: PolarityDSLExpr
+typeOfTemporalOp2 =
+  forAllPolarityTriples $ \p1 p2 p3 ->
+    maxPolarity p1 p2 p3 .~~~> unquantified ~> unquantified ~> p1 ~> p2 ~> p3
 
 typeOfConstructor :: BuiltinConstructor -> PolarityDSLExpr
 typeOfConstructor = \case

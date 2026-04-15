@@ -392,6 +392,9 @@ elabExpr expr = case expr of
   B.Impl e1 tk e2 -> builtinFunction V.Implies tk [e1, e2]
   B.And e1 tk e2 -> builtinFunction V.And tk [e1, e2]
   B.Or e1 tk e2 -> builtinFunction V.Or tk [e1, e2]
+  B.Globally tk _open e1 e2 _close e3 -> builtinFunction (V.Temporal V.Globally) tk [e1, e2, e3]
+  B.Finally tk _open e1 e2 _close e3 -> builtinFunction (V.Temporal V.Finally) tk [e1, e2, e3]
+  B.Until tk _open e1 e2 _close e3 e4 -> builtinFunction (V.Temporal V.Until) tk [e1, e2, e3, e4]
   B.If tk1 e1 _ e2 _ e3 -> builtinFunction V.If tk1 [e1, e2, e3]
   B.Eq e1 tk e2 -> standardLibComparison V.Eq tk e1 e2
   B.Ne e1 tk e2 -> standardLibComparison V.Ne tk e1 e2

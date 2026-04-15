@@ -175,6 +175,26 @@ accessQuantifyRatTensor =
       mkExpr = \(q, args) -> mkBuiltin accessQuantifyRatTensorBuiltin q (mkExpr accessQuantifyRatTensorSpine args)
     }
 
+-- | Accessor for unary temporal operators (Globally, Finally). Until is excluded
+-- because it has a different arity (TemporalOp2Args); use accessTemporalUntil directly.
+accessTemporalUnary :: (HasBoolExpr expr builtin) => Accessor (expr builtin) (TemporalOperator, TemporalOp1Args (expr builtin))
+accessTemporalUnary = accessOpAndArgs accessTemporalBuiltin
+
+accessTemporalGlobally :: (HasBoolExpr expr builtin) => Accessor (expr builtin) (TemporalOp1Args (expr builtin))
+accessTemporalGlobally = accessArgsForOp accessTemporalUnary Globally
+
+accessTemporalFinally :: (HasBoolExpr expr builtin) => Accessor (expr builtin) (TemporalOp1Args (expr builtin))
+accessTemporalFinally = accessArgsForOp accessTemporalUnary Finally
+
+accessTemporalUntil :: (HasBoolExpr expr builtin) => Accessor (expr builtin) (TemporalOp2Args (expr builtin))
+accessTemporalUntil =
+  Access
+    { getExpr = \case
+        (getBuiltin accessTemporalBuiltin -> Just (Until, getExpr accessSpine -> Just args)) -> Just args
+        _ -> Nothing,
+      mkExpr = \args -> mkBuiltin accessTemporalBuiltin Until (mkExpr accessSpine args)
+    }
+
 --------------------------------------------------------------------------------
 -- Indices
 
