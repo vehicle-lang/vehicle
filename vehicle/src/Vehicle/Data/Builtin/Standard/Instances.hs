@@ -68,6 +68,7 @@ allInstances =
             unitLit,
             Nothing
           ),
+          -- should add one of these for tensorLIkes as well?
           ---------------------------------
           -- ValidInferableParameterType --
           ---------------------------------
@@ -96,6 +97,7 @@ allInstances =
                   tUnit,
             Nothing
           ),
+          -- !! copy this one (I think??)
           ( forAllTypes $ \t ->
               forAllDims $ \ds ->
                 validDatasetTensorElementType t
@@ -160,6 +162,14 @@ allInstances =
             tUnit,
             Nothing
           ),
+
+          -- validDatasetTensorElementType
+          -- validDatasetListElementType
+          -- validDatasetType
+
+          -- valid dataset types can be (tList t), (tVector t d), (tTensor t ds)
+          -- just create an instance for validDatasetInstanceElementType for each tensorLike
+
           -------------------------
           -- ValidTensorLikeType --
           -------------------------

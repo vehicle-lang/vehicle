@@ -152,6 +152,20 @@ createValidNetworkIOInstance p recordIdent = do
 
   DefFunction p functionIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) recordType functionBody
 
+  -- | ValidDatasetTensorElementType
+createValidDatasetTensorElementType ::
+  Provenance ->
+  Identifier ->
+  Decl Builtin
+createValidDatasetTensorElementType p recordIdent = do
+  let recordType = fromDSL mempty $ freeVar validDatasetTensorElementTypeIdent @@ [freeVar recordIdent]
+  let functionBody = Record p recordType []
+
+  let functionName = Text.pack "_" <> nameOf recordIdent <> "HasValidDatasetTensorElementType"
+  let functionIdent = Identifier (modulePath recordIdent) functionName
+
+  DefFunction p functionIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) recordType functionBody
+
 createTensorLikeHasQuantifierInstance ::
   Provenance ->
   Identifier ->
