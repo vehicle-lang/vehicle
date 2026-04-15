@@ -171,7 +171,6 @@ unblockBoolMultiDimTensorValue actions expr = do
   where
     unblock = unblockBoolMultiDimTensorValue actions
 
--- need to move this somewhere else later
 unblockRecordValue :: UnblockingActions m -> UnblockingFunction m
 unblockRecordValue UnblockingActions{..} expr = do
   showEntry expr
@@ -180,7 +179,6 @@ unblockRecordValue UnblockingActions{..} expr = do
       Just args -> do
         unblockNetworkApp n args
       _ -> return expr
-
     VRecordBoundVar {} -> return expr
 
 unblockRatTensorValue :: (MonadPurify m) => UnblockingActions m -> DimensionsStatus -> Value Builtin -> m (Value Builtin)
@@ -217,7 +215,6 @@ unblockRatTensorValue actions@UnblockingActions {..} status expr = do
     VRatAt args -> unblockAtTensor (unblock DifferentDimensions) args
     VRatForeach args -> unblockForeachTensor args
     VRatRecordAcc args -> unblockRecordAcc (unblock DifferentDimensions) args actions
-    -- VRatRecord typ fields -> return $ VRecord typ fields
   where
     unblock = unblockRatTensorValue actions
 
@@ -235,8 +232,6 @@ unblockIndexValue expr = do
   expr' <- case expr of 
     VBuiltin (BuiltinConstructor (IndexLiteral i)) [_args] -> return $ VBuiltin (BuiltinConstructor (IndexLiteral i)) []
     _ -> return expr
-
-  -- _ <- logDebug MidDetail $ "after stripping args from indexLit" <+> pretty (show expr')
 
   case toIndexValue expr' of
     VIndexLiteral {} -> return expr
@@ -336,7 +331,6 @@ unblockStackTensor unblock (StackTensorArgs tElem d ds xss) = do
     liftIfValues xss' $ \xss'' ->
       evalStackTensor $ StackTensorArgs tElem d'' ds xss''
 
--- unblockAtTensor (unblock DifferentDimensions) args
 unblockAtTensor ::
   (MonadUnblock m) =>
   UnblockingFunction m ->
@@ -347,7 +341,6 @@ unblockAtTensor unblock (AtTensorArgs tElem d ds xs i) = do
   i' <- unblockIndexValue i
   liftIf xs' $ \xs'' ->
     liftIf i' $ \i'' -> do
-      -- _ <- logDebug MidDetail $ "UNBLOCKED XS GOING INTO evalAtTensor:" <+> pretty (show xs'')
       nameCtx <- getNameContext
       evalAtTensor nameCtx evalApp eval $ AtTensorArgs tElem d ds xs'' i''
 
@@ -364,14 +357,8 @@ unblockRecordAcc ::
   m (Value Builtin)
 -- unblockRecordAcc unblock _typ value fieldName _spine = do
 unblockRecordAcc _unblock (RecordAccArgs typ value fieldName) actions = do
-  -- TODO: get rid of undefined here when we have proper unblockingActions
   logDebug MidDetail "----------------- UNBLOCK RECORDACC FUNCTION ----------------"
   value' <- unblockRecordValue actions value
-  -- logDebug MidDetail $ "unblocked value in unblockRecordAcc:" <+> pretty (show value')
-  -- _ <- logDebug MidDetail $ "VALUE IS" <+> pretty (show value)
-  -- _ <- logDebug MidDetail $ "FIELD IS" <+> pretty (show fieldName)
-  -- _ <- logDebug MidDetail $ "UNBLOCKED VALUE IS" <+> pretty (show value')
-  -- should end up with  unblock-exit: [tens!0, tens!1] (stackTensor)
 
   nameCtx <- getNameContext
   evalRecordAcc nameCtx evalApp eval $ RecordAccArgs typ value' fieldName
