@@ -27,8 +27,16 @@ def load_loss_specification(
     declaration_context: MutableMapping[str, Any] | None,
     translation_factory: TranslationFactory,
     default_sampler_factory: SamplerFactory,
+    _program: Any | None = None,
 ) -> dict[str, Any]:
-    """Load a specification using the provided backend factories."""
+    """Load a specification using the provided backend factories.
+
+    Args:
+        _program: Internal — if provided, skip calling ``_ast.load`` and use
+            this pre-loaded program directly. Allows callers that have already
+            loaded the program (e.g., to derive temporal semantics) to avoid a
+            second compiler invocation.
+    """
 
     if declaration_context is None:
         declaration_context = {}
@@ -37,10 +45,14 @@ def load_loss_specification(
         default_sampler = default_sampler_factory()
         samplers = defaultdict(lambda: default_sampler.get_loss)
 
-    program = _ast.load(
-        path,
-        target=logic,
-        declarations=declarations,
+    program = (
+        _program
+        if _program is not None
+        else _ast.load(
+            path,
+            target=logic,
+            declarations=declarations,
+        )
     )
 
     translation = translation_factory()

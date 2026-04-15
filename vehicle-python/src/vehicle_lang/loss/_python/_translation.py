@@ -434,6 +434,43 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             provenance=vcl.MISSING,
         )
 
+    def translate_binary_function(self, expr: vcl.Lam) -> py.Lambda:
+        """Translate a compiled DL binary-field lambda to a 2-argument Python lambda.
+
+        The compiled form is Lam {dims: DimensionsType} (Lam x (Lam y body)).
+        We skip any leading DimensionsType binders (the implicit dims argument
+        from the VCL record's polymorphic tensor type), then extract the two
+        explicit tensor binders.
+        """
+        # Skip implicit dimension binders (type DimensionsType)
+        inner: vcl.Expression = expr
+        while isinstance(inner, vcl.Lam) and isinstance(
+            inner.binder.type, vcl.DimensionsType
+        ):
+            inner = inner.body
+
+        if not isinstance(inner, vcl.Lam):
+            raise ValueError(
+                f"Expected explicit Lam after implicit dimension binders, got {type(inner).__name__}"
+            )
+        outer_binder = inner.binder
+
+        inner2 = inner.body
+        if not isinstance(inner2, vcl.Lam):
+            raise ValueError(
+                f"Expected second explicit Lam for binary function, got {type(inner2).__name__}"
+            )
+        inner_binder = inner2.binder
+        body_expr = self.translate_expression(inner2.body)
+
+        return py.Lambda(
+            args=py_binder(
+                self.translate_binder(outer_binder),
+                self.translate_binder(inner_binder),
+            ),
+            body=body_expr,
+        )
+
 
 def py_name(name: vcl.Name, *, provenance: vcl.Provenance) -> py.Name:
     """Make a name."""

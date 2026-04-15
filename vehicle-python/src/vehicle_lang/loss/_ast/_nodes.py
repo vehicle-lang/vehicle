@@ -398,5 +398,16 @@ class Program(AST):
 
 
 @dataclass(frozen=True)
+class JTemporalSemantics(AST):
+    """Temporal semantics extracted from a compiled DifferentiableTensorLogic."""
+
+    conjunction: Expression
+    disjunction: Expression
+    conjunction_identity: Expression
+    disjunction_identity: Expression
+
+
+@dataclass(frozen=True)
 class Main(Program):
     declarations: Sequence[Declaration]
+    temporal_semantics: JTemporalSemantics
