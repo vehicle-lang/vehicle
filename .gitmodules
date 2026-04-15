@@ -1,0 +1,3 @@
+[submodule "vehicle-stl"]
+	path = vehicle-stl
+	url = git@github.com:ggustavs/vehicle-stl.git
