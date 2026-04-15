@@ -220,14 +220,15 @@ record DifferentiableTensorLogic where
   , pointwiseNegation         : Tensor Real dims -> Tensor Real dims
   , pointwiseConjunction      : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
   , pointwiseDisjunction      : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
-  -- NOTE: These fields are required for record completeness (the compiler iterates all
-  -- TensorDifferentiableLogicField values via [minBound..maxBound]) but are NOT called
-  -- at runtime. Temporal operators bypass the logic-field dispatch and are handled
-  -- directly by the backend (stlcg++ for PyTorch). The implementations below are
-  -- structural placeholders only.
-  , temporalGlobally          : Nat -> Nat -> Tensor Real dims -> Tensor Real dims
-  , temporalFinally           : Nat -> Nat -> Tensor Real dims -> Tensor Real dims
-  , temporalUntil             : Nat -> Nat -> Tensor Real dims -> Tensor Real dims -> Tensor Real dims
+  -- Temporal semantics: these fields define how temporal operators (Globally, Finally,
+  -- Until) reduce over time windows. They encode the conjunction and disjunction used
+  -- by the sliding-window fold in the backend runtime (vehicle-stl for PyTorch).
+  -- The identity values are the neutral elements for each operation in this DL's
+  -- value domain — used both as the fold starting value and as the OOB mask fill.
+  , temporalConjunction         : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
+  , temporalDisjunction         : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
+  , temporalConjunctionIdentity : Real
+  , temporalDisjunctionIdentity : Real
   , pointwiseLessThan         : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
   , pointwiseLessEqualThan    : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
   , pointwiseGreaterThan      : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
@@ -245,9 +246,10 @@ VehicleLoss =
   , pointwiseNegation          = \x -> -x
   , pointwiseConjunction       = \x y -> max x y
   , pointwiseDisjunction       = \x y -> min x y
-  , temporalGlobally           = \a b x -> x
-  , temporalFinally            = \a b x -> x
-  , temporalUntil              = \a b x y -> y
+  , temporalConjunction         = \x y -> max x y
+  , temporalDisjunction         = \x y -> min x y
+  , temporalConjunctionIdentity = -1000000
+  , temporalDisjunctionIdentity = 1000000
   , pointwiseLessThan          = \x y -> x - y
   , pointwiseLessEqualThan     = \x y -> x - y
   , pointwiseGreaterThan       = \x y -> y - x
@@ -265,9 +267,10 @@ DL2Loss =
   , pointwiseNegation          = \{dims} x -> (const 1 dims) / x
   , pointwiseConjunction       = \x y -> x + y
   , pointwiseDisjunction       = \x y -> x * y
-  , temporalGlobally           = \a b x -> x
-  , temporalFinally            = \a b x -> x
-  , temporalUntil              = \a b x y -> y
+  , temporalConjunction         = \x y -> max x y
+  , temporalDisjunction         = \x y -> min x y
+  , temporalConjunctionIdentity = 0
+  , temporalDisjunctionIdentity = 1000000
   , pointwiseLessThan          = \{dims} x y -> max (const 0 dims) (x - y)
   , pointwiseLessEqualThan     = \{dims} x y -> max (const 0 dims) (x - y)
   , pointwiseGreaterThan       = \{dims} x y -> max (const 0 dims) (y - x)
@@ -285,9 +288,10 @@ STLLoss =
   , pointwiseNegation          = \x -> -x
   , pointwiseConjunction       = \x y -> min x y   -- AND = worst-case robustness
   , pointwiseDisjunction       = \x y -> max x y   -- OR  = best-case robustness
-  , temporalGlobally           = \a b x -> x       -- placeholder (handled by vehicle-stl)
-  , temporalFinally            = \a b x -> x       -- placeholder
-  , temporalUntil              = \a b x y -> y     -- placeholder
+  , temporalConjunction         = \x y -> min x y   -- worst-case robustness
+  , temporalDisjunction         = \x y -> max x y   -- best-case robustness
+  , temporalConjunctionIdentity = 1000000            -- neutral for min
+  , temporalDisjunctionIdentity = -1000000           -- neutral for max
   , pointwiseLessThan          = \x y -> y - x     -- positive when x < y
   , pointwiseLessEqualThan     = \x y -> y - x     -- positive when x <= y
   , pointwiseGreaterThan       = \x y -> x - y     -- positive when x > y

@@ -8,7 +8,8 @@ where
 
 import Data.Aeson (ToJSON (..), genericToJSON)
 import Data.List (elemIndex)
-import Data.Ratio (Ratio)
+import Data.Map qualified as Map
+import Data.Ratio (Ratio, denominator, numerator, (%))
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), (<+>))
 import Vehicle.Compile.Arity
@@ -26,6 +27,7 @@ import Vehicle.Data.AST.Expr.Scoped (normAppList)
 import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Loss (LossBuiltin (..), LossBuiltinConstructor, LossBuiltinFunction, LossBuiltinType)
 import Vehicle.Data.Builtin.Loss qualified as L
+import Vehicle.Data.DifferentiableLogic (DifferentiableLogicImplementation, TensorDifferentiableLogicField (..))
 import Vehicle.Data.Code.Interface.Args
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Tensor (Tensor, mapTensor)
@@ -38,11 +40,13 @@ import Vehicle.Prelude.Logging.Class
 -- Public method
 --------------------------------------------------------------------------------
 
-convertToJSONProg :: (MonadCompile m) => S.Prog LossBuiltin -> m JProg
-convertToJSONProg prog =
+convertToJSONProg :: (MonadCompile m) => DifferentiableLogicImplementation -> S.Prog LossBuiltin -> m JProg
+convertToJSONProg logicImpl prog =
   logCompilerSection2 MinDetail currentPass $ do
-    -- relevantProg <- removeIrrelevantCodeFromProg prog
-    runFreshNameBoundContextT $ convertProg prog
+    runFreshNameBoundContextT $ do
+      decls <- convertProg prog
+      temporalSem <- convertTemporalSemantics logicImpl
+      return $ Main decls temporalSem
 
 convertFromJSONProg :: JProg -> S.Prog LossBuiltin
 convertFromJSONProg = fromJProg
@@ -51,9 +55,11 @@ convertFromJSONProg = fromJProg
 -- The AST exported to JSON
 --------------------------------------------------------------------------------
 
-newtype JProg
-  = Main [JDecl]
+data JProg = Main [JDecl] JTemporalSemantics
   deriving (Generic)
+
+data JTemporalSemantics = JTemporalSemantics JExpr JExpr JExpr JExpr
+  deriving (Show, Generic)
 
 data JDecl
   = DefFunction Provenance Name JType JExpr
@@ -118,6 +124,9 @@ fromRat = id
 instance ToJSON JProg where
   toJSON = genericToJSON jsonOptions
 
+instance ToJSON JTemporalSemantics where
+  toJSON = genericToJSON jsonOptions
+
 instance ToJSON JDecl where
   toJSON = genericToJSON jsonOptions
 
@@ -151,8 +160,21 @@ dependentTypesError b = developerError $ "Conversion of" <+> pretty b <+> "is no
 --------------------------------------------------------------------------------
 -- Programs and declarations
 
-convertProg :: (MonadJSON m) => S.Prog LossBuiltin -> m JProg
-convertProg (S.Main decls) = Main <$> traverse convertDecl decls
+convertProg :: (MonadJSON m) => S.Prog LossBuiltin -> m [JDecl]
+convertProg (S.Main decls) = traverse convertDecl decls
+
+convertTemporalSemantics ::
+  (MonadJSON m) =>
+  DifferentiableLogicImplementation ->
+  m JTemporalSemantics
+convertTemporalSemantics (logicMap, _direction) = do
+  conj     <- convertField TemporalConjunction
+  disj     <- convertField TemporalDisjunction
+  conjId   <- convertField TemporalConjunctionIdentity
+  disjId   <- convertField TemporalDisjunctionIdentity
+  return $ JTemporalSemantics conj disj conjId disjId
+  where
+    convertField field = convertValue (logicMap Map.! field)
 
 convertDecl :: (MonadJSON m) => S.Decl LossBuiltin -> m JDecl
 convertDecl = \case
@@ -198,7 +220,7 @@ convertBuiltinType b spine = case b of
     L.IndexType -> convertNullaryOp b DimensionIndexType spine
     L.NatType -> convertNullaryOp b DimensionType spine
     L.RatType -> convertNullaryOp b RatType spine
-    L.ListType -> convertNullaryOp b DimensionsType spine
+    L.ListType -> return DimensionsType -- always List Nat in dimension context; drop the Nat arg
     L.TensorType -> convertTensorType spine
   _ -> dependentTypesError b
 
@@ -429,8 +451,7 @@ showExit _e = do
 --------------------------------------------------------------------------------
 
 fromJProg :: JProg -> S.Prog LossBuiltin
-fromJProg = \case
-  Main decls -> S.Main (fmap fromJDecl decls)
+fromJProg (Main decls _) = S.Main (fmap fromJDecl decls)
 
 fromJDecl :: JDecl -> S.Decl LossBuiltin
 fromJDecl = \case

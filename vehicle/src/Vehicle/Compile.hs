@@ -154,10 +154,10 @@ compileToLossFunction ::
   m ()
 compileToLossFunction LossOptions {..} typedProg outputAsJSON =
   logCompilerPass Loss $ do
-    lossTensorProg <- convertToLossTensors differentiableLogicID typedProg
+    (lossTensorProg, logicImpl) <- convertToLossTensors differentiableLogicID typedProg
     hoistedProg <- hoistInferableParameters lossTensorProg
     functionalisedProg <- functionaliseResources hoistedProg
-    jsonProg <- convertToJSONProg functionalisedProg
+    jsonProg <- convertToJSONProg logicImpl functionalisedProg
     let outputText
           | outputAsJSON = prettyAsJSON jsonProg
           | otherwise = prettyFriendly (convertFromJSONProg jsonProg)

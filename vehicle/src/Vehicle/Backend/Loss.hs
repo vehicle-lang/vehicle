@@ -28,12 +28,13 @@ convertToLossTensors ::
   (MonadCompile m) =>
   DifferentiableLogicID ->
   Prog Builtin ->
-  m (Prog LossBuiltin)
+  m (Prog LossBuiltin, DifferentiableLogicImplementation)
 convertToLossTensors logicID prog@(Main ds) =
   logCompilerSection2 MinDetail currentPass $ do
     logic <- findAndCompileLogic logicID prog
-    runFreshFreeContextT (Proxy @Builtin) $ do
+    converted <- runFreshFreeContextT (Proxy @Builtin) $ do
       Main <$> convertDecls logicID logic ds
+    return (converted, logic)
 
 --------------------------------------------------------------------------------
 -- Program conversion
