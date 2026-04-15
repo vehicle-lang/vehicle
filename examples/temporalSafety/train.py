@@ -1,20 +1,31 @@
 #!/usr/bin/env python3
-"""Example: compiling and evaluating temporal safety properties with Vehicle.
+"""Adaptive Cruise Control: training a controller to satisfy temporal STL properties.
 
-This script demonstrates how to:
-1. Load a Vehicle specification containing temporal operators (globally, finally, until).
-2. Compile the specification into differentiable PyTorch loss functions.
-3. Evaluate the loss functions with a simple neural network.
-4. Use temporal losses in a training loop to enforce temporal safety properties.
-5. Optionally use custom temporal semantics for smoother gradients.
+Scenario
+--------
+An ego vehicle follows a lead vehicle.  The controller receives the initial
+state (v_ego=15 m/s, d_rel=30 m) and outputs a predicted velocity trajectory
+over 10 time steps.  Three temporal STL properties must hold:
 
-Prerequisites:
-    pip install vehicle-lang[pytorch]
-    # or, if using uv from the Vehicle repo:
-    # uv run --extra pytorch python examples/temporalSafety/train.py
+  alwaysBelowLimit   □[0,9]  v(t) ≤ 33 m/s           (hard speed limit)
+  eventuallyAtTarget ◇[0,9]  28.5 ≤ v(t) ≤ 31.5 m/s  (reach cruise speed)
+  limitUntilTarget   𝜙𝒰[0,9] speed stays within limit until cruise is reached
 
-The Vehicle compiler (cabal-built or installed) must be available on PATH,
-or you can run via `cabal run vehicle` from the repo root.
+STL robustness convention (used throughout this script)
+--------------------------------------------------------
+  positive value  →  property satisfied  (magnitude = margin to violation)
+  negative value  →  property violated   (magnitude = distance to satisfaction)
+
+Training loss: relu(-robustness) for each property — penalises violations,
+contributes zero once the property is satisfied.
+
+Prerequisites
+-------------
+  pip install vehicle-lang[pytorch]
+  # or from the repo:
+  #   cd vehicle-python
+  #   uv run --extra pytorch python ../examples/temporalSafety/train.py
+  The Vehicle compiler (cabal or a vehicle binary) must be on PATH.
 """
 
 from __future__ import annotations
@@ -23,105 +34,116 @@ from pathlib import Path
 
 import torch
 import torch.nn as nn
+from vehicle_lang import DifferentiableLogic
 from vehicle_lang.loss import pytorch as loss_pt
-from vehicle_stl import logsumexp
 
 # ---------------------------------------------------------------------------
-# Step 1: Load the temporal specification
+# 1. Compile the Vehicle specification to STL loss functions
 # ---------------------------------------------------------------------------
-
 
 SPEC_PATH = Path(__file__).parent / "temporalSafety.vcl"
+PROPS = ["alwaysBelowLimit", "eventuallyAtTarget", "limitUntilTarget"]
 
-print("=" * 60)
-print("Loading Vehicle specification with temporal operators...")
-print(f"  Spec: {SPEC_PATH}")
-print("=" * 60)
+print("=" * 62)
+print("Loading ACC specification...")
+print(f"  {SPEC_PATH.name}")
+print("=" * 62)
 
-# load_specification compiles the .vcl file to a loss-function IR via the
-# Vehicle compiler, then translates it to executable PyTorch code.
-# Each @property in the spec becomes a callable entry in the returned dict.
-declarations = loss_pt.load_specification(SPEC_PATH, temporal_semantics=logsumexp())
+# logic=STL: temporal operators use exact min/max robustness semantics,
+# automatically derived from the STLLoss DifferentiableTensorLogic defined
+# in Definitions.vcl.  Each @property becomes a callable (network) -> scalar.
+declarations = loss_pt.load_specification(
+    SPEC_PATH,
+    logic=DifferentiableLogic.STL,
+    declarations=PROPS,
+)
 
-print(f"\nCompiled declarations: {list(declarations.keys())}")
+print(f"\nCompiled properties: {PROPS}")
 
 # ---------------------------------------------------------------------------
-# Step 2: Define a simple network matching the @network declaration
+# 2. Define a small network matching the @network declaration
+#    controller : Tensor Real [2] -> Tensor Real [10]
 # ---------------------------------------------------------------------------
 
-# The spec declares:  @network controller : Tensor Real [4] -> Tensor Real [4]
-# So our network must accept a [4]-tensor and return a [4]-tensor.
-
+torch.manual_seed(0)
 model = nn.Sequential(
-    nn.Linear(4, 16),
+    nn.Linear(2, 16),
     nn.ReLU(),
-    nn.Linear(16, 4),
+    nn.Linear(16, 10),
 )
 
 
 def controller(x: torch.Tensor) -> torch.Tensor:
-    """Wrapper matching the Vehicle @network signature."""
+    """Thin wrapper satisfying the Vehicle @network interface."""
     return model(x)
 
 
 # ---------------------------------------------------------------------------
-# Step 3: Evaluate each temporal property
+# 3. Evaluate BEFORE training
+#    An untrained network outputs values near zero.
+#    alwaysBelowLimit   ≈ +33   (trivially satisfied — outputs << 33 m/s)
+#    eventuallyAtTarget ≈ -28.5 (deeply violated — outputs never near 30 m/s)
+#    limitUntilTarget   ≈ -28.5 (violated because atTarget is never true)
 # ---------------------------------------------------------------------------
 
-print("\n" + "=" * 60)
-print("Evaluating temporal properties (before training)")
-print("=" * 60)
-
-property_names = ["alwaysPositive", "eventuallyPositive", "respondsInTime"]
-
-for name in property_names:
-    if name not in declarations:
-        print(f"  {name}: not found in compiled declarations")
-        continue
-
-    # Each compiled property expects the @network callable as its argument.
-    result = declarations[name](controller)
-    print(f"  {name} = {result}")
-    print(f"    (more positve = less satisfied, 0 is fully satisfied)")
+print("\n" + "=" * 62)
+print("Robustness BEFORE training  (positive = satisfied)")
+print("=" * 62)
+with torch.no_grad():
+    for name in PROPS:
+        rob = declarations[name](controller).item()
+        status = "OK      " if rob >= 0 else "VIOLATED"
+        print(f"  {name:<24} {rob:+8.2f}  [{status}]")
 
 # ---------------------------------------------------------------------------
-# Step 4: Training loop using temporal losses
+# 4. Training loop
+#    Minimise the sum of hinge losses relu(-robustness) across all properties.
+#    A satisfied property (robustness >= 0) contributes 0 to the loss.
+#    The network learns to push its trajectory toward the [28.5, 31.5] band.
 # ---------------------------------------------------------------------------
 
-print("\n" + "=" * 60)
-print("Training to satisfy temporal safety properties")
-print("=" * 60)
+print("\n" + "=" * 62)
+print("Training (300 epochs, Adam lr=1e-3)")
+print("=" * 62)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
-num_epochs = 200
 
-for epoch in range(num_epochs):
+for epoch in range(300):
     optimizer.zero_grad()
 
-    # Compute the temporal safety loss for each property.
-    # Vehicle's loss convention: higher = more satisfied, lower = more violated.
-    # We negate to get a minimisation objective.
-    total_loss = torch.tensor(0.0)
-    for name in property_names:
-        if name in declarations:
-            total_loss += declarations[name](controller)
+    robs = [declarations[name](controller) for name in PROPS]
+    loss = torch.stack([torch.relu(-r) for r in robs]).sum()
 
-    if (epoch + 1) % 50 == 0 or epoch == 0:
-        print(f"  Epoch {epoch + 1:4d}  loss = {total_loss.item():.4f}")
-
-    total_loss.backward()
+    loss.backward()
     optimizer.step()
 
+    if (epoch + 1) % 100 == 0 or epoch == 0:
+        print(f"  epoch {epoch + 1:4d}  loss = {loss.item():.4f}")
 
 # ---------------------------------------------------------------------------
-# Step 5: Evaluate again after training
+# 5. Evaluate AFTER training
+#    All three robustness values should now be positive.
 # ---------------------------------------------------------------------------
 
-print("\n" + "=" * 60)
-print("Evaluating temporal properties (after training)")
-print("=" * 60)
+print("\n" + "=" * 62)
+print("Robustness AFTER training   (positive = satisfied)")
+print("=" * 62)
+with torch.no_grad():
+    for name in PROPS:
+        rob = declarations[name](controller).item()
+        status = "OK      " if rob >= 0 else "VIOLATED"
+        print(f"  {name:<24} {rob:+8.2f}  [{status}]")
 
-for name in property_names:
-    if name in declarations:
-        result = declarations[name](controller)
-        print(f"  {name} = {result.item():.4f} (after training)")
+# ---------------------------------------------------------------------------
+# 6. Inspect the learned velocity trajectory
+#    Should show the vehicle accelerating from ~15 m/s toward the 30 m/s target.
+# ---------------------------------------------------------------------------
+
+print("\n" + "=" * 62)
+print("Learned velocity trace (m/s)  [target band: 28.5 – 31.5]")
+print("=" * 62)
+with torch.no_grad():
+    trace = controller(torch.tensor([15.0, 30.0])).tolist()
+for t, v in enumerate(trace):
+    bar = "#" * max(0, int(v / 2))
+    print(f"  step {t:2d}: {v:6.2f} m/s  {bar}")

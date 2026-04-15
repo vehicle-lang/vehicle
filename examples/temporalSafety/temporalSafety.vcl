@@ -1,68 +1,75 @@
 --------------------------------------------------------------------------------
--- Temporal safety example
+-- Adaptive Cruise Control (ACC) temporal safety specification
 --
--- A controller that maps a 4-dimensional state observation to a 4-dimensional
--- output. We specify three temporal properties over the controller's output
--- signal to express safety, reachability, and reactive response requirements.
+-- A controller receives an initial state (ego speed, relative gap to lead
+-- vehicle) and outputs a predicted velocity trajectory over T=10 time steps.
+-- Three temporal properties are verified over that trajectory.
+--
+--   alwaysBelowLimit   (globally)   speed never exceeds the hard limit
+--   eventuallyAtTarget (finally)    speed reaches the cruise target at some step
+--   limitUntilTarget   (until)      speed stays within limit until cruise reached
 --------------------------------------------------------------------------------
 
--- Type aliases for readability
-type State  = Tensor Real [4]
-type Signal = Tensor Bool [4]
+-- Physical constants (types inferred from usage context)
+vTarget  = 30.0   -- target cruising speed (m/s)
+vMax     = 33.0   -- hard speed limit (m/s)
+epsilon  = 1.5    -- acceptable deviation from target speed (m/s)
+maxAccel = 5.0    -- maximum speed change between consecutive steps (m/s)
 
 --------------------------------------------------------------------------------
 -- Network declaration
+-- Input:  (v_ego, d_rel) — ego speed (m/s) and gap to lead vehicle (m)
+-- Output: predicted velocity trajectory over 10 time steps
 
 @network
-controller : State -> State
+controller : Tensor Real [2] -> Tensor Real [10]
 
--- A fixed input trajectory (e.g., sampled from the environment)
-input : State
-input = [0.5, -0.3, 0.2, 0.4]
+-- Fixed initial state: ego at 15 m/s, 30 m behind the lead vehicle
+initState : Tensor Real [2]
+initState = [15.0, 30.0]
 
--- The controller's output signal, compared element-wise against zero
-output : Signal
-output = controller input >. [0, 0, 0, 0]
-
---------------------------------------------------------------------------------
--- Property 1: Safety (Globally)
---
--- "The controller output remains non-negative at every time step in [0,2]."
---
--- globally[a,b] checks that the property holds at all positions within the
--- sliding window [i+a, i+b] for each starting position i. The ! 0 extracts
--- the result at the first position.
-
-@property
-alwaysPositive : Bool
-alwaysPositive = forall i . (globally[0,2] output) ! i
+-- Predicted velocity trace produced by the controller
+vTrace : Tensor Real [10]
+vTrace = controller initState
 
 --------------------------------------------------------------------------------
--- Property 2: Reachability (Finally)
---
--- "The controller output becomes non-negative at some point within [0,3]."
---
--- finally[a,b] checks that the property holds at least once within the window.
+-- Element-wise boolean signals over the trajectory
 
-@property
-eventuallyPositive : Bool
-eventuallyPositive = exists i . (finally[0,3] output) ! i
+-- True at each step where speed is within physical limits [0, vMax]
+belowLimit : Tensor Bool [10]
+belowLimit = foreach i . 0 <= vTrace ! i <= vMax
+
+-- True at each step where speed is within epsilon of the target
+atTarget : Tensor Bool [10]
+atTarget = foreach i . vTarget - epsilon <= vTrace ! i <= vTarget + epsilon
 
 --------------------------------------------------------------------------------
--- Property 3: Reactive response (Until)
---
--- "A precondition signal holds at every step until a goal signal becomes true,
---  within the interval [0,2]."
---
--- until[a,b] phi psi checks that phi holds at all steps before some step
--- where psi becomes true, and that such a step exists within [a,b].
+-- Temporal properties
 
-precondition : Signal
-precondition = controller [1.0, 2.0, 3.0, 4.0] >. [0, 0, 0, 0]
-
-goal : Signal
-goal = controller [4.0, 3.0, 2.0, 1.0] >. [0, 0, 0, 0]
-
+-- Safety: speed must stay within physical limits [0, vMax] at every step,
+-- and no consecutive step change may exceed maxAccel (law of physics).
+-- VCL's type system does not support i+1 index arithmetic in foreach, so the
+-- nine step-to-step smoothness checks are enumerated explicitly.
 @property
-respondsInTime : Bool
-respondsInTime = exists i . (until[0,2] precondition goal) ! i
+alwaysBelowLimit : Bool
+alwaysBelowLimit = ((globally[0,9] belowLimit) ! 0)
+    -- and (forall i . -maxAccel <= (vTrace ! i) - (vTrace ! (i-1)) <= maxAccel)
+  and -maxAccel <= vTrace ! 1 - vTrace ! 0 <= maxAccel
+  and -maxAccel <= vTrace ! 2 - vTrace ! 1 <= maxAccel
+  and -maxAccel <= vTrace ! 3 - vTrace ! 2 <= maxAccel
+  and -maxAccel <= vTrace ! 4 - vTrace ! 3 <= maxAccel
+  and -maxAccel <= vTrace ! 5 - vTrace ! 4 <= maxAccel
+  and -maxAccel <= vTrace ! 6 - vTrace ! 5 <= maxAccel
+  and -maxAccel <= vTrace ! 7 - vTrace ! 6 <= maxAccel
+  and -maxAccel <= vTrace ! 8 - vTrace ! 7 <= maxAccel
+  and -maxAccel <= vTrace ! 9 - vTrace ! 8 <= maxAccel
+
+-- Reachability: speed must reach the target band at some point
+@property
+eventuallyAtTarget : Bool
+eventuallyAtTarget = (finally[0,9] atTarget) ! 0
+
+-- Progress: speed stays within the hard limit until the target is reached
+@property
+limitUntilTarget : Bool
+limitUntilTarget = (until[0,9] belowLimit atTarget) ! 0
