@@ -213,21 +213,8 @@ unblockNetworkApplication ident (NetworkAppArgs arg) = do
   let name = nameOf ident
   networkInfo <- asks (lookupNetworkInfo name . networkCtx)
 
--- need to equate the input var with something of the correct record typw, and substitute the output var for something 
--- of the correct record type - preserve well-typedness
-
   let typ = networkType networkInfo
   _ <- logDebug MidDetail $ "network type is" <+> pretty (show typ)
-
-  -- network input tensor is toTensor of network input (which is the args being fed into this function)
-  -- network gives a tensor as an output then we convert it to a record with toRecord/fromTensor
-
-  -- leave the tensors stored in the global context as they are but just wrap the equality expressions
-  -- input:
-  -- Pair {} = toRecord (sliceTensor) 
-  -- output:
-  -- sliceTensor
-  -- so for both we would have to do the same thing????
 
   (inputVarExpr, outputVarExpr) <- addNetworkApplicationToGlobalCtx name networkInfo arg
 
@@ -250,15 +237,6 @@ unblockNetworkApplication ident (NetworkAppArgs arg) = do
       fromTensorValue <- eval ctx emptyBoundEnv fromTensorFreeVar
       evalApp ctx fromTensorValue [outputVarArg]
     _ -> return outputVarExpr
-
-    -- do I need to wrap it in a lam to make it not register as a network application?
-    -- may need to eval the application so it subsitutes and doesnt show up as a freevar
-    -- conversion functions never get evalled when they are here
-    
-    --   normalisedTensorType <- eval namedCtx boundEnv tensorType
-
-  -- namedCtx <- getNameContext
-  -- normalisedFnApplication<- eval namedCtx boundEnv tensorType
 
   let inputEquality =
         fromBoolValue $

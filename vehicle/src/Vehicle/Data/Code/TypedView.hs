@@ -29,6 +29,8 @@ module Vehicle.Data.Code.TypedView
     scaleValue,
     addValues,
     TensorLikeValue (..),
+    toRecordValue,
+    RecordValue(..)
   )
 where
 
@@ -385,6 +387,18 @@ fromMultiDimBoolTensorValue = \case
   VMultiDimBoolIf args -> mkExpr accessIf args
   VMultiDimBoolAt args -> mkExpr accessAtTensor args
   VBoolForeach args -> mkExpr accessForeachTensor args
+
+-------------------------------------------------------------------------------
+-- Record
+data RecordValue
+  = VRecordFreeVar Identifier (Spine Builtin)
+  | VRecordBoundVar Lv
+
+toRecordValue :: (HasCallStack) => Value Builtin -> RecordValue
+toRecordValue expr = case expr of
+  VBoundVar lv [] -> VRecordBoundVar lv
+  VFreeVar n spine -> VRecordFreeVar n spine
+  _ -> developerError $ "ill-typed Record expression" <+> prettyVerbose expr
 
 -------------------------------------------------------------------------------
 -- Tensor Rat

@@ -171,6 +171,18 @@ unblockBoolMultiDimTensorValue actions expr = do
   where
     unblock = unblockBoolMultiDimTensorValue actions
 
+-- need to move this somewhere else later
+unblockRecordValue :: UnblockingActions m -> UnblockingFunction m
+unblockRecordValue UnblockingActions{..} expr = do
+  showEntry expr
+  showExit =<< case toRecordValue expr of
+    VRecordFreeVar n spine -> case getExpr accessSpine spine of
+      Just args -> do
+        unblockNetworkApp n args
+      _ -> return expr
+
+    VRecordBoundVar {} -> return expr
+
 unblockRatTensorValue :: (MonadPurify m) => UnblockingActions m -> DimensionsStatus -> Value Builtin -> m (Value Builtin)
 unblockRatTensorValue actions@UnblockingActions {..} status expr = do
   showEntry expr
@@ -182,9 +194,7 @@ unblockRatTensorValue actions@UnblockingActions {..} status expr = do
     VMinRatTensor {} -> return expr
     VMaxRatTensor {} -> return expr
     -- Recursively purify
-    VNegRatTensor args -> do
-       (logDebug MidDetail "VNegRatTensor")
-       unblockTensorOp1 (unblock status) evalNegRatTensor args
+    VNegRatTensor args -> unblockTensorOp1 (unblock status) evalNegRatTensor args
     VAddRatTensor args -> unblockTensorOp2 (unblock status) evalAddRatTensor args
     VSubRatTensor args -> unblockTensorOp2 (unblock status) evalSubRatTensor args
     VMulRatTensor args -> unblockTensorOp2 (unblock status) evalMulRatTensor args
@@ -198,8 +208,6 @@ unblockRatTensorValue actions@UnblockingActions {..} status expr = do
       | otherwise -> unblockRatTensorBoundVar v
     VRatTensorFreeVar n spine -> case getExpr accessSpine spine of
       Just args -> do
-        -- _ <- logDebug MidDetail "unblock network application case"
-        -- unblocking the args is funneling us into this case
         unblock status =<< unblockNetworkApp n args
       -- Parameters and other scalar free vars may appear in constraints used
       -- for quantifier-domain extraction, e.g. `-epsilon < x ! 0 < epsilon`.
@@ -208,7 +216,7 @@ unblockRatTensorValue actions@UnblockingActions {..} status expr = do
     VRatStackTensor args -> unblockStackTensor (unblock DifferentDimensions) args
     VRatAt args -> unblockAtTensor (unblock DifferentDimensions) args
     VRatForeach args -> unblockForeachTensor args
-    VRatRecordAcc args -> unblockRecordAcc (unblock DifferentDimensions) args
+    VRatRecordAcc args -> unblockRecordAcc (unblock DifferentDimensions) args actions
     -- VRatRecord typ fields -> return $ VRecord typ fields
   where
     unblock = unblockRatTensorValue actions
@@ -352,10 +360,14 @@ unblockRecordAcc ::
   -- Value Builtin -> -- value is the value of the record we are trying to access?? have freevar f in the test
   -- FieldName -> -- FieldName "a"
   -- Spine Builtin -> -- empty, '[]'
+  UnblockingActions m -> -- this is not a good way to do this - fix later
   m (Value Builtin)
 -- unblockRecordAcc unblock _typ value fieldName _spine = do
-unblockRecordAcc unblock (RecordAccArgs typ value fieldName) = do
-  value' <- unblock value
+unblockRecordAcc _unblock (RecordAccArgs typ value fieldName) actions = do
+  -- TODO: get rid of undefined here when we have proper unblockingActions
+  logDebug MidDetail "----------------- UNBLOCK RECORDACC FUNCTION ----------------"
+  value' <- unblockRecordValue actions value
+  -- logDebug MidDetail $ "unblocked value in unblockRecordAcc:" <+> pretty (show value')
   -- _ <- logDebug MidDetail $ "VALUE IS" <+> pretty (show value)
   -- _ <- logDebug MidDetail $ "FIELD IS" <+> pretty (show fieldName)
   -- _ <- logDebug MidDetail $ "UNBLOCKED VALUE IS" <+> pretty (show value')
