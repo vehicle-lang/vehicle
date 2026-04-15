@@ -2,7 +2,9 @@ from pathlib import Path
 from typing import Any, Callable, Sequence
 
 import pytest
+
 import vehicle_lang as vcl
+from vehicle_lang.error import VehicleInternalError
 
 tf = pytest.importorskip(
     "tensorflow",
@@ -37,7 +39,23 @@ def validate_loss_function_output(
         assert loss_value.shape == ()
 
 
-class DummySampler(loss_tf.TensorFlowSampler):
+def validate_temporal_tensorflow_gating(output: dict[str, Any]) -> None:
+    """Temporal operators should fail explicitly on TensorFlow in milestone 1."""
+
+    def test_network(_x: Any) -> Any:
+        return tf.constant([1.0, -1.0, 0.5, -0.2], dtype=tf.float32)
+
+    for prop_name, op_name in [
+        ("prop_globally", "Globally"),
+        ("prop_finally", "Finally"),
+        ("prop_until", "Until"),
+    ]:
+        assert prop_name in output
+        with pytest.raises(VehicleInternalError, match=op_name):
+            output[prop_name](test_network)
+
+
+class DummySampler(loss_tf.TensorFlowSampler):  # type: ignore[misc]
     def get_loss(
         self,
         dims: Sequence[int],
@@ -147,6 +165,11 @@ dummy_sampler = DummySampler()
             "test_variable.vcl",
             {},
             {"prop": 0.0},
+        ),
+        (
+            "test_temporal_runtime.vcl",
+            {},
+            validate_temporal_tensorflow_gating,
         ),
     ],
 )

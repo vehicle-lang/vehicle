@@ -1,11 +1,13 @@
 """Test PyTorch backend with actual Vehicle specifications."""
 
 import json
+import shutil
 import subprocess
 from pathlib import Path
-from typing import Any, Type
+from typing import Any, Type, cast
 
 import pytest
+
 from vehicle_lang.loss._ast._nodes import Program
 
 torch = pytest.importorskip(
@@ -22,30 +24,65 @@ def require_tensorflow_translation() -> Type[Any]:
     )
     from vehicle_lang.loss._tensorflow._translation import TensorFlowTranslation
 
-    return TensorFlowTranslation
+    return cast(Type[Any], TensorFlowTranslation)
+
+
+def _vehicle_command(spec_path: Path) -> tuple[list[str], str | None]:
+    """Return (argv, cwd) to invoke the Vehicle CLI, or pytest.skip if unavailable.
+
+    Prefer ``cabal run`` when available so that integration tests use the
+    latest source build rather than a potentially stale binary bundled in
+    the Python wheel.
+    """
+    cabal_bin = shutil.which("cabal")
+    if cabal_bin is not None:
+        vehicle_root_dir = str(Path(__file__).resolve().parents[2])
+        return (
+            [
+                cabal_bin,
+                "run",
+                "-v0",
+                "vehicle",
+                "--",
+                "--json",
+                "compile",
+                "loss",
+                "--logic",
+                "DL2Loss",
+                f"--specification={spec_path}",
+            ],
+            vehicle_root_dir,
+        )
+    vehicle_bin = shutil.which("vehicle")
+    if vehicle_bin is not None:
+        return (
+            [
+                vehicle_bin,
+                "--json",
+                "compile",
+                "loss",
+                "--logic",
+                "DL2Loss",
+                f"--specification={spec_path}",
+            ],
+            None,
+        )
+    pytest.skip(
+        "Neither 'cabal' nor 'vehicle' binary found — skipping compilation test"
+    )
+    raise AssertionError("unreachable")
 
 
 def compile_vehicle_spec(spec_path: Path) -> str:
     """Compile a Vehicle specification to JSON using the Vehicle CLI."""
-    vehicle_python_dir = Path(__file__).parent.parent.resolve()
+    argv, cwd = _vehicle_command(spec_path)
     result = subprocess.run(
-        [
-            "uv",
-            "run",
-            "vehicle",
-            "--json",
-            "compile",
-            "loss",
-            "--logic",
-            "DL2Loss",
-            f"--specification={spec_path}",
-        ],
+        argv,
         capture_output=True,
         text=True,
-        timeout=60,
-        cwd=str(vehicle_python_dir),
+        timeout=120,
+        cwd=cwd,
     )
-
     if result.returncode != 0:
         raise RuntimeError(f"Vehicle compilation failed: {result.stderr}")
     return result.stdout
@@ -109,7 +146,43 @@ def test_pytorch_vs_tensorflow_equivalence() -> None:
     ), "Function names should match between backends"
 
 
-@pytest.mark.parametrize("spec_name", ["test_addition.vcl"])  # type: ignore[untyped-decorator]
+def test_pytorch_temporal_spec_compile_and_execute() -> None:
+    """Test temporal operators compile to JSON and execute in PyTorch translation."""
+    tests_dir = Path(__file__).parent.resolve()
+    spec_path = tests_dir / "data" / "test_temporal.vcl"
+    if not spec_path.exists():
+        pytest.skip("test_temporal.vcl not found")
+
+    json_output = compile_vehicle_spec(spec_path)
+    json_data = json.loads(json_output)
+    json_text = json.dumps(json_data)
+
+    # Ensure temporal IR nodes appear in emitted JSON.
+    assert any(op in json_text for op in ["Globally", "Finally", "Until"])
+
+    program = Program.from_dict(json_data)
+    pytorch_translation = PyTorchTranslation()
+    pytorch_functions = pytorch_translation.compile(
+        program, path=spec_path, declaration_context={}, samplers={}
+    )
+
+    # The spec declares `@network network : Tensor Real [4] -> Tensor Real [4]`
+    # so compiled properties expect a `network` callable argument.
+    def mock_network(x: Any) -> Any:
+        return x  # identity network
+
+    for decl_name in ["prop_globally", "prop_finally", "prop_until"]:
+        assert decl_name in pytorch_functions
+        compiled_decl = pytorch_functions[decl_name]
+        result = (
+            compiled_decl(mock_network) if callable(compiled_decl) else compiled_decl
+        )
+        assert isinstance(result, torch.Tensor)
+
+
+@pytest.mark.parametrize(
+    "spec_name", ["test_addition.vcl", "test_temporal.vcl"]
+)  # type: ignore[untyped-decorator]
 def test_pytorch_compile_specifications(spec_name: str) -> None:
     """Test PyTorch compilation on various Vehicle specifications."""
     tests_dir = Path(__file__).parent.resolve()
