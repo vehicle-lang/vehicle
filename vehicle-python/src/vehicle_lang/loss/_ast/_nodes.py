@@ -269,6 +269,34 @@ class ReduceMaxRatTensor(Expression):
 
 
 @dataclass(frozen=True)
+class Globally(Expression):
+    """Temporal globally operator with inclusive bounds."""
+
+    start: Expression
+    end: Expression
+    x: Expression
+
+
+@dataclass(frozen=True)
+class Finally(Expression):
+    """Temporal finally operator with inclusive bounds."""
+
+    start: Expression
+    end: Expression
+    x: Expression
+
+
+@dataclass(frozen=True)
+class Until(Expression):
+    """Temporal until operator with inclusive bounds."""
+
+    start: Expression
+    end: Expression
+    x: Expression
+    y: Expression
+
+
+@dataclass(frozen=True)
 class SearchRatTensor(Expression):
     """Search tensor: SearchRatTensor reductionOp lowerBound upperBound searchLambda"""
 

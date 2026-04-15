@@ -10,6 +10,7 @@ from .loss.error import VehicleBuiltinUnsupported, VehiclePropertyNotFound
 from .session.error import VehicleSessionClosed, VehicleSessionUsed
 from .typecheck import TypeSystem, typecheck
 from .typing import (
+    CustomLogic,
     DeclarationName,
     DifferentiableLogic,
     ExportTarget,
@@ -52,6 +53,7 @@ __all__: List[str] = [
     # Argument types
     "DeclarationName",
     "QuantifiedVariableName",
+    "CustomLogic",
     "DifferentiableLogic",
     "LossBackend",
     "QueryFormat",

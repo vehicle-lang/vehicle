@@ -72,6 +72,12 @@ class ABCTranslation(
                 return self.translate_ReduceMinRatTensor(expression)
             case vcl_ast.ReduceMaxRatTensor():
                 return self.translate_ReduceMaxRatTensor(expression)
+            case vcl_ast.Globally():
+                return self.translate_Globally(expression)
+            case vcl_ast.Finally():
+                return self.translate_Finally(expression)
+            case vcl_ast.Until():
+                return self.translate_Until(expression)
             case vcl_ast.SearchRatTensor():
                 return self.translate_SearchRatTensor(expression)
             case vcl_ast.Dimension():
@@ -162,6 +168,17 @@ class ABCTranslation(
     def translate_ReduceMaxRatTensor(
         self, expression: vcl_ast.ReduceMaxRatTensor
     ) -> vcl_var.Expression: ...
+
+    @abstractmethod
+    def translate_Globally(
+        self, expression: vcl_ast.Globally
+    ) -> vcl_var.Expression: ...
+
+    @abstractmethod
+    def translate_Finally(self, expression: vcl_ast.Finally) -> vcl_var.Expression: ...
+
+    @abstractmethod
+    def translate_Until(self, expression: vcl_ast.Until) -> vcl_var.Expression: ...
 
     @abstractmethod
     def translate_SearchRatTensor(

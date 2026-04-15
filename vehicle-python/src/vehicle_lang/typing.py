@@ -38,27 +38,54 @@ class Explicit(Enum):
 
 class DifferentiableLogic(Enum):
     """
-    The differentiable logics supported by Vehicle.
+    The built-in differentiable logics supported by Vehicle.
+
+    For custom logics defined in a Vehicle specification, use
+    :class:`CustomLogic` instead.
     """
 
     Vehicle = 1
     DL2 = 2
-    # Godel = 3
-    # Lukasiewicz = 4
-    # Product = 5
-    # Yager = 6
+    STL = 3
+    # Godel = 4
+    # Lukasiewicz = 5
+    # Product = 6
+    # Yager = 7
 
     @property
     def _vehicle_option_name(self) -> str:
         return {
             DifferentiableLogic.Vehicle: "VehicleLoss",
             DifferentiableLogic.DL2: "DL2Loss",
+            DifferentiableLogic.STL: "STLLoss",
             # Currently unsupported options
             # DifferentiableLogic.Godel: "GodelLoss",
             # DifferentiableLogic.Lukasiewicz: "LukasiewiczLoss",
             # DifferentiableLogic.Product: "ProductLoss",
             # DifferentiableLogic.Yager: "YagerLoss",
         }[self]
+
+
+class CustomLogic:
+    """
+    A user-defined differentiable logic.
+
+    Use this to reference a custom ``DifferentiableTensorLogic`` definition
+    from your Vehicle specification by name::
+
+        logic = CustomLogic("MyCustomLoss")
+        specs = load_specification("spec.vcl", logic=logic)
+    """
+
+    def __init__(self, name: str) -> None:
+        self._name = name
+
+    @property
+    def _vehicle_option_name(self) -> str:
+        return self._name
+
+    def __repr__(self) -> str:
+        return f"CustomLogic({self._name!r})"
 
 
 class LossBackend(Enum):

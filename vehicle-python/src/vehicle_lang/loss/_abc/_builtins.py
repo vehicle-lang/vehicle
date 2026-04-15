@@ -57,6 +57,25 @@ class ABCBuiltins(
     def ReduceMaxRatTensor(self, e: vcl.Rat, x: vcl.Tensor) -> vcl.Tensor: ...
 
     @abstractmethod
+    def Globally(
+        self, start: vcl.Index, end: vcl.Index, x: vcl.Tensor
+    ) -> vcl.Tensor: ...
+
+    @abstractmethod
+    def Finally(
+        self, start: vcl.Index, end: vcl.Index, x: vcl.Tensor
+    ) -> vcl.Tensor: ...
+
+    @abstractmethod
+    def Until(
+        self,
+        start: vcl.Index,
+        end: vcl.Index,
+        x: vcl.Tensor,
+        y: vcl.Tensor,
+    ) -> vcl.Tensor: ...
+
+    @abstractmethod
     def DimensionLookup(self, xs: vcl.Tensor, i: vcl.Index) -> vcl.Tensor: ...
 
     @abstractmethod

@@ -300,6 +300,34 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             provenance=vcl.MISSING,
         )
 
+    def translate_Globally(self, expression: vcl.Globally) -> py.expr:
+        return py_app(
+            py_builtin("Globally", provenance=vcl.MISSING),
+            self.translate_expression(expression.start),
+            self.translate_expression(expression.end),
+            self.translate_expression(expression.x),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_Finally(self, expression: vcl.Finally) -> py.expr:
+        return py_app(
+            py_builtin("Finally", provenance=vcl.MISSING),
+            self.translate_expression(expression.start),
+            self.translate_expression(expression.end),
+            self.translate_expression(expression.x),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_Until(self, expression: vcl.Until) -> py.expr:
+        return py_app(
+            py_builtin("Until", provenance=vcl.MISSING),
+            self.translate_expression(expression.start),
+            self.translate_expression(expression.end),
+            self.translate_expression(expression.x),
+            self.translate_expression(expression.y),
+            provenance=vcl.MISSING,
+        )
+
     def translate_SearchRatTensor(self, expression: vcl.SearchRatTensor) -> py.expr:
         """Translate SearchRatTensor to builtin call.
 

@@ -6,7 +6,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping, MutableMapping, Protocol, cast
 
-from ..typing import DeclarationName, DifferentiableLogic
+from ..typing import DeclarationName, Target
 from . import _ast
 
 
@@ -21,7 +21,7 @@ SamplerFactory = Callable[[], _SamplerProtocol]
 def load_loss_specification(
     path: str | Path,
     *,
-    logic: DifferentiableLogic,
+    logic: Target,
     samplers: Mapping[str, Any] | None,
     declarations: Iterable[DeclarationName],
     declaration_context: MutableMapping[str, Any] | None,

@@ -121,6 +121,24 @@ class TensorFlowBuiltins(
         return tf.reduce_max(x)
 
     @override
+    def Globally(self, start: int, end: int, x: tf.Tensor) -> tf.Tensor:
+        raise error.VehicleInternalError(  # type: ignore[attr-defined]
+            f"Temporal operator Globally[{start},{end}] is not supported in the TensorFlow backend yet."
+        )
+
+    @override
+    def Finally(self, start: int, end: int, x: tf.Tensor) -> tf.Tensor:
+        raise error.VehicleInternalError(  # type: ignore[attr-defined]
+            f"Temporal operator Finally[{start},{end}] is not supported in the TensorFlow backend yet."
+        )
+
+    @override
+    def Until(self, start: int, end: int, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
+        raise error.VehicleInternalError(  # type: ignore[attr-defined]
+            f"Temporal operator Until[{start},{end}] is not supported in the TensorFlow backend yet."
+        )
+
+    @override
     def DimensionLookup(
         self, xs: tf.Tensor | tuple[tf.Tensor, ...] | list[tf.Tensor], i: int
     ) -> tf.Tensor:
