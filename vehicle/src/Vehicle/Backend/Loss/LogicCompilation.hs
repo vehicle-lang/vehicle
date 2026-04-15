@@ -125,7 +125,7 @@ compileLogic ::
 compileLogic logicID decl fields = do
   logCompilerSection2 MinDetail ("compiling logic" <+> quotePretty logicID) $ do
     -- Lift fields to the tensor level
-    let tensorLogicFields = [minBound .. maxBound] :: [TensorDifferentiableLogicField]
+    let tensorLogicFields = filter (not . isTemporalField) ([minBound .. maxBound] :: [TensorDifferentiableLogicField])
     lossTensorImplementation <- foldM (compileLogicField logicID decl fields) mempty tensorLogicFields
     minimise <- calculateLogicDirection decl fields
     -- Convert fields to loss tensors
@@ -171,6 +171,16 @@ lookupLogicField field logicFields = do
   case OMap.lookup (FieldName mempty (nameOf field)) logicFields of
     Nothing -> developerError $ "Non-compiled logic field" <+> quotePretty field <+> "found"
     Just value -> value
+
+-- | Temporal fields are compiled directly as IR nodes in LossCompilation.hs
+-- (see convertGlobally, convertFinally, convertUntil) and do not go through
+-- the logic-field substitution path.  Skip them during compileLogic.
+isTemporalField :: TensorDifferentiableLogicField -> Bool
+isTemporalField = \case
+  TemporalGlobally -> True
+  TemporalFinally -> True
+  TemporalUntil -> True
+  _ -> False
 
 {-
 fieldIdentifier :: DifferentiableLogicID -> TensorDifferentiableLogicField -> Identifier

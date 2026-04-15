@@ -220,6 +220,14 @@ record DifferentiableTensorLogic where
   , pointwiseNegation         : Tensor Real dims -> Tensor Real dims
   , pointwiseConjunction      : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
   , pointwiseDisjunction      : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
+  -- NOTE: These fields are required for record completeness (the compiler iterates all
+  -- TensorDifferentiableLogicField values via [minBound..maxBound]) but are NOT called
+  -- at runtime. Temporal operators bypass the logic-field dispatch and are handled
+  -- directly by the backend (stlcg++ for PyTorch). The implementations below are
+  -- structural placeholders only.
+  , temporalGlobally          : Nat -> Nat -> Tensor Real dims -> Tensor Real dims
+  , temporalFinally           : Nat -> Nat -> Tensor Real dims -> Tensor Real dims
+  , temporalUntil             : Nat -> Nat -> Tensor Real dims -> Tensor Real dims -> Tensor Real dims
   , pointwiseLessThan         : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
   , pointwiseLessEqualThan    : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
   , pointwiseGreaterThan      : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
@@ -237,6 +245,9 @@ VehicleLoss =
   , pointwiseNegation          = \x -> -x
   , pointwiseConjunction       = \x y -> max x y
   , pointwiseDisjunction       = \x y -> min x y
+  , temporalGlobally           = \a b x -> x
+  , temporalFinally            = \a b x -> x
+  , temporalUntil              = \a b x y -> y
   , pointwiseLessThan          = \x y -> x - y
   , pointwiseLessEqualThan     = \x y -> x - y
   , pointwiseGreaterThan       = \x y -> y - x
@@ -254,6 +265,9 @@ DL2Loss =
   , pointwiseNegation          = \{dims} x -> (const 1 dims) / x
   , pointwiseConjunction       = \x y -> x + y
   , pointwiseDisjunction       = \x y -> x * y
+  , temporalGlobally           = \a b x -> x
+  , temporalFinally            = \a b x -> x
+  , temporalUntil              = \a b x y -> y
   , pointwiseLessThan          = \{dims} x y -> max (const 0 dims) (x - y)
   , pointwiseLessEqualThan     = \{dims} x y -> max (const 0 dims) (x - y)
   , pointwiseGreaterThan       = \{dims} x y -> max (const 0 dims) (y - x)
@@ -262,4 +276,24 @@ DL2Loss =
   , pointwiseNotEqual          = \{dims} x y -> (max (const 0 dims) (x - y) + max (const 0 dims) (y - x))
   , reduceConjunction          = \e xs -> reduceAdd e xs
   , reduceDisjunction          = \e xs -> reduceMul e xs
+  }
+
+STLLoss : DifferentiableTensorLogic
+STLLoss =
+  { trueElement                = 1000000     -- large positive: fully satisfied
+  , falseElement               = -1000000    -- large negative: fully violated
+  , pointwiseNegation          = \x -> -x
+  , pointwiseConjunction       = \x y -> min x y   -- AND = worst-case robustness
+  , pointwiseDisjunction       = \x y -> max x y   -- OR  = best-case robustness
+  , temporalGlobally           = \a b x -> x       -- placeholder (handled by vehicle-stl)
+  , temporalFinally            = \a b x -> x       -- placeholder
+  , temporalUntil              = \a b x y -> y     -- placeholder
+  , pointwiseLessThan          = \x y -> y - x     -- positive when x < y
+  , pointwiseLessEqualThan     = \x y -> y - x     -- positive when x <= y
+  , pointwiseGreaterThan       = \x y -> x - y     -- positive when x > y
+  , pointwiseGreaterEqualThan  = \x y -> x - y     -- positive when x >= y
+  , pointwiseEqual             = \x y -> min (x - y) (y - x)   -- = -(|x-y|), 0 when equal
+  , pointwiseNotEqual          = \x y -> max (x - y) (y - x)   -- = |x-y|, positive when unequal
+  , reduceConjunction          = \e xs -> reduceMin e xs  -- AND-over-vector = min
+  , reduceDisjunction          = \e xs -> reduceMax e xs  -- OR-over-vector  = max
   }

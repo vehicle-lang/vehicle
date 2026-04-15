@@ -176,6 +176,9 @@ convertBoolTensor value = logConversion value $ case toBoolTensorValue value of
   VBoolTensorNot args -> convertNot =<< convertTensorOp1 convertBoolTensor args
   VBoolTensorAnd args -> convertAnd =<< convertTensorOp2 convertBoolTensor args
   VBoolTensorOr args -> convertOr =<< convertTensorOp2 convertBoolTensor args
+  VBoolTensorGlobally args -> convertGlobally =<< convertTemporalOp1 convertBoolTensor args
+  VBoolTensorFinally args -> convertFinally =<< convertTemporalOp1 convertBoolTensor args
+  VBoolTensorUntil args -> convertUntil =<< convertTemporalOp2 convertBoolTensor args
   VBoolTensorCompareIndex args -> convertIndexComparison args
   VBoolTensorCompareNat args -> convertNatComparison args
   VBoolTensorCompareRatPointwise args -> convertRatTensorPointwiseComparison args
@@ -214,6 +217,44 @@ convertReduceAnd = convertLogicField ReduceConjunction
 
 convertReduceOr :: (MonadLogic m) => TensorReductionArgs (Value LossBuiltin) -> m (Value LossBuiltin)
 convertReduceOr = convertLogicField ReduceDisjunction
+
+-- NOTE: The temporal converters below intentionally bypass `convertLogicField`.
+-- Unlike And/Or/Not (whose implementations are user-configurable via the
+-- DifferentiableTensorLogic record), temporal operator semantics are fixed and
+-- provided by the backend runtime (stlcg++ for PyTorch). The compiler therefore
+-- emits temporal IR nodes directly rather than substituting a logic-field value.
+-- The temporalGlobally/temporalFinally/temporalUntil fields in Definitions.vcl
+-- exist only to satisfy record completeness (compileLogic iterates [minBound..maxBound])
+-- and are never called at runtime.
+
+convertGlobally :: (MonadLogic m) => TemporalOp1Args (Value LossBuiltin) -> m (Value LossBuiltin)
+convertGlobally args = return $ mkExpr (accessTemporalLoss1 Globally) args
+
+convertFinally :: (MonadLogic m) => TemporalOp1Args (Value LossBuiltin) -> m (Value LossBuiltin)
+convertFinally args = return $ mkExpr (accessTemporalLoss1 Finally) args
+
+convertUntil :: (MonadLogic m) => TemporalOp2Args (Value LossBuiltin) -> m (Value LossBuiltin)
+convertUntil args = return $ mkExpr (accessTemporalLoss2 Until) args
+
+-- | Accessor for unary temporal operators (Globally, Finally) in the loss IR.
+accessTemporalLoss1 :: TemporalOperator -> Accessor (Value LossBuiltin) (TemporalOp1Args (Value LossBuiltin))
+accessTemporalLoss1 op =
+  Access
+    { getExpr = \case
+        VBuiltin (LossBuiltinFunction (Temporal op')) spine | op == op' -> getExpr accessSpine spine
+        _ -> Nothing,
+      mkExpr = \args -> VBuiltin (LossBuiltinFunction (Temporal op)) (mkExpr accessSpine args)
+    }
+
+-- | Accessor for binary temporal operators (Until) in the loss IR.
+accessTemporalLoss2 :: TemporalOperator -> Accessor (Value LossBuiltin) (TemporalOp2Args (Value LossBuiltin))
+accessTemporalLoss2 op =
+  Access
+    { getExpr = \case
+        VBuiltin (LossBuiltinFunction (Temporal op')) spine | op == op' -> getExpr accessSpine spine
+        _ -> Nothing,
+      mkExpr = \args -> VBuiltin (LossBuiltinFunction (Temporal op)) (mkExpr accessSpine args)
+    }
 
 convertNatComparison :: (MonadLogic m) => (ComparisonOp, Op2Args (Value Builtin)) -> m (Value LossBuiltin)
 convertNatComparison _args = unsupportedOperation "NatComparison"
@@ -350,6 +391,22 @@ convertTensorReduction ::
   m (TensorReductionArgs (Value LossBuiltin))
 convertTensorReduction go (TensorReductionArgs dims e xs) =
   TensorReductionArgs <$> convertDims dims <*> go e <*> go xs
+
+convertTemporalOp1 ::
+  (MonadLogic m) =>
+  (Value Builtin -> m (Value LossBuiltin)) ->
+  TemporalOp1Args (Value Builtin) ->
+  m (TemporalOp1Args (Value LossBuiltin))
+convertTemporalOp1 go (TemporalOp1Args ds a b x) =
+  TemporalOp1Args <$> convertDims ds <*> convertDim a <*> convertDim b <*> go x
+
+convertTemporalOp2 ::
+  (MonadLogic m) =>
+  (Value Builtin -> m (Value LossBuiltin)) ->
+  TemporalOp2Args (Value Builtin) ->
+  m (TemporalOp2Args (Value LossBuiltin))
+convertTemporalOp2 go (TemporalOp2Args ds a b x y) =
+  TemporalOp2Args <$> convertDims ds <*> convertDim a <*> convertDim b <*> go x <*> go y
 
 convertAtTensor ::
   (MonadLogic m) =>

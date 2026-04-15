@@ -16,6 +16,7 @@ import Vehicle.Prelude.Logging
 data BuiltinDifferentiableLogicID
   = VehicleLoss
   | DL2Loss
+  | STLLoss
   deriving (Eq, Show, Read, Enum, Bounded)
 
 instance Pretty BuiltinDifferentiableLogicID where

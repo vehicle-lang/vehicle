@@ -90,6 +90,9 @@ data JExpr
   | ReduceMulRatTensor JExpr JExpr
   | ReduceMinRatTensor JExpr JExpr
   | ReduceMaxRatTensor JExpr JExpr
+  | Globally JExpr JExpr JExpr
+  | Finally JExpr JExpr JExpr
+  | Until JExpr JExpr JExpr JExpr
   | SearchRatTensor Name JExpr JExpr JExpr JExpr JExpr L.LogicDirection -- (Dims, ReductionOp, LowerBound, UpperBound, SearchLambda, Minimise)
   -- Dimensions
   | Dimension Int
@@ -278,9 +281,17 @@ convertBuiltin b spine = case b of
     L.ReduceMulRatTensor -> convertTensorReduction convertValue b ReduceMulRatTensor spine
     L.ReduceMinRatTensor -> convertTensorReduction convertValue b ReduceMinRatTensor spine
     L.ReduceMaxRatTensor -> convertTensorReduction convertValue b ReduceMaxRatTensor spine
+    L.Temporal L.Globally -> convertTemporalOp1 convertValue b Globally spine
+    L.Temporal L.Finally -> convertTemporalOp1 convertValue b Finally spine
+    L.Temporal L.Until -> convertTemporalOp2 convertValue b Until spine
     L.At -> convertAtTensor convertValue spine
     L.StackTensor -> convertStackTensor spine
     L.ConstTensor -> convertConstTensor spine
+    -- ForeachTensor/ForeachVector are added to LossBuiltinFunction so that the
+    -- BuiltinHasForeach instance compiles, but they are never emitted into loss
+    -- IR and therefore cannot appear in the JSON conversion path.
+    L.ForeachTensor -> unsupportedError b
+    L.ForeachVector -> unsupportedError b
     L.SearchRatTensor name minimise -> convertSearch name minimise spine
     -- Dimension operations, not yet converted
     L.Add L.AddNat -> unsupportedError b
@@ -335,6 +346,28 @@ convertTensorReduction ::
 convertTensorReduction convert b fn spine = case getExpr accessSpine spine of
   Just (TensorReductionArgs _ e xs) -> fn <$> convert e <*> convert xs
   Nothing -> arityError b 2 spine
+
+convertTemporalOp1 ::
+  (MonadJSON m) =>
+  (Value LossBuiltin -> m a) ->
+  LossBuiltin ->
+  (a -> a -> a -> a) ->
+  Spine LossBuiltin ->
+  m a
+convertTemporalOp1 convert b fn spine = case getExpr accessSpine spine of
+  Just (TemporalOp1Args _ds a endBound x) -> fn <$> convert a <*> convert endBound <*> convert x
+  Nothing -> arityError b 3 spine
+
+convertTemporalOp2 ::
+  (MonadJSON m) =>
+  (Value LossBuiltin -> m a) ->
+  LossBuiltin ->
+  (a -> a -> a -> a -> a) ->
+  Spine LossBuiltin ->
+  m a
+convertTemporalOp2 convert b fn spine = case getExpr accessSpine spine of
+  Just (TemporalOp2Args _ds a endBound x y) -> fn <$> convert a <*> convert endBound <*> convert x <*> convert y
+  Nothing -> arityError b 4 spine
 
 convertAtTensor ::
   (MonadJSON m) =>
@@ -452,6 +485,9 @@ fromJExpr = \case
   ReduceMulRatTensor e xs -> toFunction L.ReduceMulRatTensor [e, xs]
   ReduceMinRatTensor e xs -> toFunction L.ReduceMinRatTensor [e, xs]
   ReduceMaxRatTensor e xs -> toFunction L.ReduceMaxRatTensor [e, xs]
+  Globally a b x -> toFunction (L.Temporal L.Globally) [a, b, x]
+  Finally a b x -> toFunction (L.Temporal L.Finally) [a, b, x]
+  Until a b x y -> toFunction (L.Temporal L.Until) [a, b, x, y]
   SearchRatTensor name dims e1 e2 e3 e4 minimise -> toFunction (L.SearchRatTensor name minimise) [dims, e1, e2, e3, e4]
   Dimension d -> toConstructor (L.NatLiteral d) []
   DimensionNil -> toConstructor L.Nil []

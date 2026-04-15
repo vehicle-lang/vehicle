@@ -90,6 +90,9 @@ data LossBuiltinFunction
     At
   | StackTensor
   | ConstTensor
+  | ForeachTensor
+  | ForeachVector
+  | Temporal TemporalOperator
   | SearchRatTensor Name LogicDirection
   | MapList
   | FoldList
@@ -114,6 +117,9 @@ instance Pretty LossBuiltinFunction where
     At -> "!"
     StackTensor {} -> "stack"
     ConstTensor -> "const"
+    ForeachTensor -> "foreachTensor"
+    ForeachVector -> "foreachVector"
+    Temporal op -> pretty op
     SearchRatTensor name _minimise -> "search[" <> pretty name <> "]"
     MapList -> "mapList"
     FoldList -> "foldList"
@@ -262,8 +268,8 @@ instance BuiltinHasTensors LossBuiltin where
   accessAtTensorBuiltin = functionAccessor At
 
 instance BuiltinHasForeach LossBuiltin where
-  accessForeachTensorBuiltin = functionAccessor (developerError "loss foreach not yet supported")
-  accessForeachVectorBuiltin = functionAccessor (developerError "loss foreach not yet supported")
+  accessForeachTensorBuiltin = functionAccessor ForeachTensor
+  accessForeachVectorBuiltin = functionAccessor ForeachVector
 
 --------------------------------------------------------------------------------
 -- Normalisation
@@ -308,8 +314,11 @@ instance NormalisableBuiltin LossBuiltin where
       At -> NonSimple evalAtTensor
       StackTensor -> Simple evalStackTensor
       ConstTensor -> Simple evalConstTensor
+      ForeachTensor -> None
+      ForeachVector -> None
       FoldList -> NonSimple evalFoldList
       MapList -> NonSimple evalMapList
+      Temporal {} -> None
       SearchRatTensor {} -> None
     _ -> None
 
@@ -360,6 +369,9 @@ instance ConvertableBuiltin LossBuiltinFunction Builtin where
     At -> convertBuiltin p S.AtTensor
     StackTensor -> convertBuiltin p S.StackTensor
     ConstTensor -> convertBuiltin p S.ConstTensor
+    ForeachTensor -> convertBuiltin p S.ForeachTensor
+    ForeachVector -> convertBuiltin p S.ForeachVector
+    Temporal op -> convertBuiltin p (S.Temporal op)
     MapList -> convertBuiltin p S.MapList
     FoldList -> convertBuiltin p S.FoldList
     SearchRatTensor {} -> cheatConvertBuiltin p $ pretty b

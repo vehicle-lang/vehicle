@@ -1,5 +1,6 @@
 Error: Unable to find a differentiable logic named 'CustomLoss'
 Fix: use one of the following available logics:
+  * STLLoss
   * DL2Loss
   * VehicleLoss
 or declare your own logic called 'CustomLoss'.
