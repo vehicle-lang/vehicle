@@ -53,6 +53,8 @@ builtinAnn = mkToken B.TokAnnotation "@builtin"
 
 networkAnn = mkToken B.TokAnnotation "@network"
 
+dynamicsAnn = mkToken B.TokAnnotation "@dynamics"
+
 datasetAnn = mkToken B.TokAnnotation "@dataset"
 
 parameterAnn = mkToken B.TokAnnotation "@parameter"
@@ -112,6 +114,8 @@ tokGlobally = mkToken B.TokGlobally "globally"
 tokFinally = mkToken B.TokFinally "finally"
 
 tokUntil = mkToken B.TokUntil "until"
+
+tokRollout = mkToken B.TokRollout "rollout"
 
 tokImpl = mkToken B.TokImpl "=>"
 

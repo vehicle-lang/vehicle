@@ -139,6 +139,9 @@ parseAnnotation (tkName, opts) = case tkSymbol tkName of
   "@dataset" -> do
     validateEmptyOpts tkName opts
     return $ AbstractDeclAnn V.DatasetDef
+  "@dynamics" -> do
+    validateEmptyOpts tkName opts
+    return $ AbstractDeclAnn V.DynamicsDef
   "@parameter" -> do
     let allowedOptions = Set.fromList [InferableOption]
     optsList <- validateOpts tkName allowedOptions opts
@@ -395,6 +398,7 @@ elabExpr expr = case expr of
   B.Globally tk _open e1 e2 _close e3 -> builtinFunction (V.Temporal V.Globally) tk [e1, e2, e3]
   B.Finally tk _open e1 e2 _close e3 -> builtinFunction (V.Temporal V.Finally) tk [e1, e2, e3]
   B.Until tk _open e1 e2 _close e3 e4 -> builtinFunction (V.Temporal V.Until) tk [e1, e2, e3, e4]
+  B.Rollout tk _open e1 _close e2 e3 e4 -> builtinFunction V.Rollout tk [e1, e2, e3, e4]
   B.If tk1 e1 _ e2 _ e3 -> builtinFunction V.If tk1 [e1, e2, e3]
   B.Eq e1 tk e2 -> standardLibComparison V.Eq tk e1 e2
   B.Ne e1 tk e2 -> standardLibComparison V.Ne tk e1 e2

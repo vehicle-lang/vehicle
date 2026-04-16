@@ -63,6 +63,7 @@ instance Delaborate (V.Decl V.Builtin) [B.Decl] where
       defAnn <- case a of
         V.BuiltinDef -> return $ delabAnn builtinAnn []
         V.NetworkDef -> return $ delabAnn networkAnn []
+        V.DynamicsDef -> return $ delabAnn dynamicsAnn []
         V.DatasetDef -> return $ delabAnn datasetAnn []
         V.ParameterDef sort -> return $ case sort of
           V.NonInferable -> delabAnn parameterAnn []
@@ -278,6 +279,7 @@ delabBuiltinFunction fun args = case fun of
   V.StackTensor {} -> rawDelab
   V.ConstTensor -> delabApp (B.Const tokConst) args
   V.Iterate -> rawDelab
+  V.Rollout -> delabRollout args
   where
     rawDelab = cheatDelabPretty fun args
 
@@ -372,14 +374,20 @@ delabIf args = cheatDelabPretty V.If args
 delabTemporalOp1 :: (MonadDelab m, IsToken token) => (token -> B.TokSeqOpen -> B.Expr -> B.Expr -> B.TokSeqClose -> B.Expr -> B.Expr) -> token -> [V.Arg V.Builtin] -> m B.Expr
 delabTemporalOp1 op tk args@[arg1, arg2, arg3]
   | all V.isExplicit args =
-  op tk tokSeqOpen <$> delabM (argExpr arg1) <*> delabM (argExpr arg2) <*> pure tokSeqClose <*> delabM (argExpr arg3)
+      op tk tokSeqOpen <$> delabM (argExpr arg1) <*> delabM (argExpr arg2) <*> pure tokSeqClose <*> delabM (argExpr arg3)
 delabTemporalOp1 _ tk args = delabApp (cheatDelab $ tkSymbol tk) args
 
 delabTemporalOp2 :: (MonadDelab m, IsToken token) => (token -> B.TokSeqOpen -> B.Expr -> B.Expr -> B.TokSeqClose -> B.Expr -> B.Expr -> B.Expr) -> token -> [V.Arg V.Builtin] -> m B.Expr
 delabTemporalOp2 op tk args@[arg1, arg2, arg3, arg4]
   | all V.isExplicit args =
-  op tk tokSeqOpen <$> delabM (argExpr arg1) <*> delabM (argExpr arg2) <*> pure tokSeqClose <*> delabM (argExpr arg3) <*> delabM (argExpr arg4)
+      op tk tokSeqOpen <$> delabM (argExpr arg1) <*> delabM (argExpr arg2) <*> pure tokSeqClose <*> delabM (argExpr arg3) <*> delabM (argExpr arg4)
 delabTemporalOp2 _ tk args = delabApp (cheatDelab $ tkSymbol tk) args
+
+delabRollout :: (MonadDelab m) => [V.Arg V.Builtin] -> m B.Expr
+delabRollout args@[arg1, arg2, arg3, arg4]
+  | all V.isExplicit args =
+      B.Rollout tokRollout tokSeqOpen <$> delabM (argExpr arg1) <*> pure tokSeqClose <*> delabM (argExpr arg2) <*> delabM (argExpr arg3) <*> delabM (argExpr arg4)
+delabRollout args = cheatDelabPretty V.Rollout args
 
 delabTelescope :: (MonadDelab m) => V.Binder V.Builtin -> V.Expr V.Builtin -> m ([B.NameBinder], B.Expr)
 delabTelescope binder body = do

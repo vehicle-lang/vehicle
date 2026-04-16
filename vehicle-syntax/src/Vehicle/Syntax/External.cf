@@ -19,6 +19,7 @@ position token TokAnnotation ({"@"}
   | {"instance"}
   | {"builtin"}
   | {"typeclass"}
+  | {"dynamics"}
   )
 );
 
@@ -47,6 +48,7 @@ position token TokForeach   {"foreach"};
 position token TokGlobally  {"globally"};
 position token TokFinally   {"finally"};
 position token TokUntil     {"until"};
+position token TokRollout   {"rollout"};
 position token TokImpl      {"=>"};
 position token TokAnd       {"and"};
 position token TokOr        {"or"};
@@ -250,6 +252,7 @@ Or.      Expr7  ::= Expr8 TokOr  Expr7;
 Globally. Expr7 ::= TokGlobally TokSeqOpen Expr "," Expr TokSeqClose Expr8;
 Finally.  Expr7 ::= TokFinally  TokSeqOpen Expr "," Expr TokSeqClose Expr8;
 Until.    Expr7 ::= TokUntil    TokSeqOpen Expr "," Expr TokSeqClose Expr14 Expr14;
+Rollout.  Expr7 ::= TokRollout  TokSeqOpen Expr TokSeqClose Expr14 Expr14 Expr14;
 Not.     Expr14 ::= TokNot Expr14;
 Eq.      Expr8  ::= Expr8 TokEq Expr9;
 Ne.      Expr8  ::= Expr8 TokNe Expr9;
