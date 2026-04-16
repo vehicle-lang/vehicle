@@ -92,6 +92,10 @@ class ABCTranslation(
                 return self.translate_DimensionNil(expression)
             case vcl_ast.ConstTensor():
                 return self.translate_ConstTensor(expression)
+            case vcl_ast.Rollout():
+                return self.translate_Rollout(expression)
+            case vcl_ast.ForeachTensor():
+                return self.translate_ForeachTensor(expression)
             case vcl_ast.StackTensor():
                 return self.translate_StackTensor(expression)
             case _:
@@ -183,6 +187,14 @@ class ABCTranslation(
     @abstractmethod
     def translate_SearchRatTensor(
         self, expression: vcl_ast.SearchRatTensor
+    ) -> vcl_var.Expression: ...
+
+    @abstractmethod
+    def translate_Rollout(self, expression: vcl_ast.Rollout) -> vcl_var.Expression: ...
+
+    @abstractmethod
+    def translate_ForeachTensor(
+        self, expression: vcl_ast.ForeachTensor
     ) -> vcl_var.Expression: ...
 
     @abstractmethod

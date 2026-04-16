@@ -310,6 +310,24 @@ class SearchRatTensor(Expression):
 
 
 @dataclass(frozen=True)
+class Rollout(Expression):
+    """Rollout: rollout[N] controller dynamics initState"""
+
+    n: Expression
+    controller: Expression
+    dynamics: Expression
+    init_state: Expression
+
+
+@dataclass(frozen=True)
+class ForeachTensor(Expression):
+    """ForeachTensor: applies lambda to each index, stacks results."""
+
+    dim: Expression
+    fn: Expression
+
+
+@dataclass(frozen=True)
 class Dimension(Expression):
     """Dimension Int - for JSON parsing"""
 

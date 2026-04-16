@@ -25,7 +25,7 @@ else:  # pragma: no cover - exercised implicitly
 
 from .._abc import ABCBuiltins
 from .._ast import _nodes
-from ..error import VehicleInternalError  # type: ignore[attr-defined]
+from ..error import VehicleInternalError
 
 ################################################################################
 ### Type-safe PyTorch wrappers
@@ -219,6 +219,25 @@ class PyTorchBuiltins(
         # Convert Fraction values to floats
         float_values = [float(val) for val in values]
         return _torch_tensor(data=float_values, dtype=self.dtype_rat).reshape(shape)
+
+    @override
+    def Rollout(
+        self,
+        n: int,
+        controller: Any,
+        dynamics: Any,
+        init_state: torch.Tensor,
+    ) -> torch.Tensor:
+        states = [init_state]
+        for _ in range(n):
+            action = controller(states[-1])
+            next_state = dynamics(states[-1], action)
+            states.append(next_state)
+        return torch.stack(states)
+
+    @override
+    def ForeachTensor(self, dim: int, fn: Any) -> torch.Tensor:
+        return torch.stack([fn(i) for i in range(dim)])
 
     @override
     def StackTensor(self, tensors: Sequence[torch.Tensor]) -> torch.Tensor:

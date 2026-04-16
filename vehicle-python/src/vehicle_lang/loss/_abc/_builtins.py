@@ -104,6 +104,22 @@ class ABCBuiltins(
         return ()
 
     @abstractmethod
+    def Rollout(
+        self,
+        n: vcl.Index,
+        controller: Any,
+        dynamics: Any,
+        init_state: vcl.Tensor,
+    ) -> vcl.Tensor: ...
+
+    @abstractmethod
+    def ForeachTensor(
+        self,
+        dim: int,
+        fn: Any,
+    ) -> vcl.Tensor: ...
+
+    @abstractmethod
     def StackTensor(self, tensors: Sequence[vcl.Tensor]) -> vcl.Tensor: ...
 
     @abstractmethod

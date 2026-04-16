@@ -378,6 +378,26 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             provenance=vcl.MISSING,
         )
 
+    def translate_Rollout(self, expression: vcl.Rollout) -> py.expr:
+        """Translate Rollout to builtin call."""
+        return py_app(
+            py_builtin("Rollout", provenance=vcl.MISSING),
+            self.translate_expression(expression.n),
+            self.translate_expression(expression.controller),
+            self.translate_expression(expression.dynamics),
+            self.translate_expression(expression.init_state),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_ForeachTensor(self, expression: vcl.ForeachTensor) -> py.expr:
+        """Translate ForeachTensor to builtin call."""
+        return py_app(
+            py_builtin("ForeachTensor", provenance=vcl.MISSING),
+            self.translate_expression(expression.dim),
+            self.translate_expression(expression.fn),
+            provenance=vcl.MISSING,
+        )
+
     def translate_Dimension(self, expression: vcl.Dimension) -> py.expr:
         """Translate Dimension to constant."""
         return py.Constant(value=expression.value, **asdict(vcl.MISSING))
