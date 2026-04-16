@@ -780,6 +780,7 @@ compileBuiltin isOutType localeAssms b args = case b of
     ForeachTensor -> idxBasedOp localeAssms "foreach" args
     StackTensor -> compileStack localeAssms args
     Iterate -> unsupportedError
+    Rollout -> unsupportedError
     PowRat -> unsupportedError
     Temporal {} -> unsupportedError
     AtVector -> annotateApp localeAssms [] "tnth" args

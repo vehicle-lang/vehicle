@@ -679,6 +679,7 @@ compileBuiltin _isOutType moduleDefs b args = case b of
     ForeachTensor -> idxBasedOp moduleDefs "foreach" args
     StackTensor -> compileStack moduleDefs args
     Iterate -> unsupportedError
+    Rollout -> unsupportedError
     PowRat -> unsupportedError
     Temporal {} -> unsupportedError
     AtVector -> annotateApp moduleDefs [] "List.nth" args

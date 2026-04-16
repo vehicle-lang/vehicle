@@ -533,6 +533,7 @@ compileBuiltin b args = case b of
     ForeachTensor -> compileApplication [RequireImport VehicleTensor] "nstack" args
     StackTensor -> compileStack args
     Iterate -> unsupportedError
+    Rollout -> unsupportedError
     PowRat -> unsupportedError
     Temporal {} -> unsupportedError
     AtVector -> compileApplication [MathcompImport Boot] "tnth" args
