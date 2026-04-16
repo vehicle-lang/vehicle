@@ -93,6 +93,7 @@ data LossBuiltinFunction
   | ForeachTensor
   | ForeachVector
   | Temporal TemporalOperator
+  | Rollout
   | SearchRatTensor Name LogicDirection
   | MapList
   | FoldList
@@ -120,6 +121,7 @@ instance Pretty LossBuiltinFunction where
     ForeachTensor -> "foreachTensor"
     ForeachVector -> "foreachVector"
     Temporal op -> pretty op
+    Rollout -> "rollout"
     SearchRatTensor name _minimise -> "search[" <> pretty name <> "]"
     MapList -> "mapList"
     FoldList -> "foldList"
@@ -271,6 +273,9 @@ instance BuiltinHasForeach LossBuiltin where
   accessForeachTensorBuiltin = functionAccessor ForeachTensor
   accessForeachVectorBuiltin = functionAccessor ForeachVector
 
+instance BuiltinHasRollout LossBuiltin where
+  accessRolloutBuiltin = functionAccessor Rollout
+
 --------------------------------------------------------------------------------
 -- Normalisation
 
@@ -319,6 +324,7 @@ instance NormalisableBuiltin LossBuiltin where
       FoldList -> NonSimple evalFoldList
       MapList -> NonSimple evalMapList
       Temporal {} -> None
+      Rollout -> None
       SearchRatTensor {} -> None
     _ -> None
 
@@ -372,6 +378,7 @@ instance ConvertableBuiltin LossBuiltinFunction Builtin where
     ForeachTensor -> convertBuiltin p S.ForeachTensor
     ForeachVector -> convertBuiltin p S.ForeachVector
     Temporal op -> convertBuiltin p (S.Temporal op)
+    Rollout -> convertBuiltin p S.Rollout
     MapList -> convertBuiltin p S.MapList
     FoldList -> convertBuiltin p S.FoldList
     SearchRatTensor {} -> cheatConvertBuiltin p $ pretty b

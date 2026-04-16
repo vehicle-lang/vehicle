@@ -103,6 +103,7 @@ data DefAbstractSort
   | DatasetDef
   | ParameterDef ParameterSort
   | BuiltinDef
+  | DynamicsDef
   deriving (Eq, Show, Generic)
 
 instance NFData DefAbstractSort
@@ -116,11 +117,13 @@ instance Pretty DefAbstractSort where
       DatasetDef -> "dataset"
       ParameterDef {} -> "parameter"
       BuiltinDef {} -> "postulate"
+      DynamicsDef -> "dynamics"
 
 isExternalResourceSort :: DefAbstractSort -> Bool
 isExternalResourceSort = \case
   NetworkDef -> True
   DatasetDef -> True
+  DynamicsDef -> True
   ParameterDef parameterType -> parameterType == NonInferable
   BuiltinDef {} -> False
 

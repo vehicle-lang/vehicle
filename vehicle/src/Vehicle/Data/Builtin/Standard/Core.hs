@@ -342,6 +342,9 @@ instance BuiltinHasStandardData Builtin where
 instance BuiltinHasIterate Builtin where
   accessIterateBuiltin = functionAccessor Iterate
 
+instance BuiltinHasRollout Builtin where
+  accessRolloutBuiltin = functionAccessor Rollout
+
 ---------------------------------------------------------------------------------
 --- Casts
 

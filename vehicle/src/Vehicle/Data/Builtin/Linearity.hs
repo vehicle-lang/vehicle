@@ -201,6 +201,9 @@ instance BuiltinHasListLiterals LinearityBuiltin where
 instance BuiltinHasIterate LinearityBuiltin where
   accessIterateBuiltin = functionAccessor Iterate
 
+instance BuiltinHasRollout LinearityBuiltin where
+  accessRolloutBuiltin = functionAccessor Rollout
+
 --------------------------------------------------------------------------------
 -- Printing
 

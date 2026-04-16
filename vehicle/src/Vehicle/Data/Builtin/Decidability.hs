@@ -58,6 +58,7 @@ data DecidabilityBuiltinTypeClass
   | HasVectorTypeClassField VectorTypeClassField
   | ValidPropertyType
   | ValidNetworkType
+  | ValidDynamicsType
   deriving (Eq, Ord, Show, Generic)
 
 instance Hashable DecidabilityBuiltinTypeClass
@@ -208,6 +209,9 @@ instance BuiltinHasListLiterals DecidabilityBuiltin where
 instance BuiltinHasIterate DecidabilityBuiltin where
   accessIterateBuiltin = functionAccessor Iterate
 
+instance BuiltinHasRollout DecidabilityBuiltin where
+  accessRolloutBuiltin = functionAccessor Rollout
+
 --------------------------------------------------------------------------------
 -- Pretty printing
 
@@ -219,6 +223,7 @@ instance Pretty DecidabilityBuiltinTypeClass where
     IsVectorType -> pretty $ show t
     ValidPropertyType -> pretty $ show t
     ValidNetworkType -> pretty $ show t
+    ValidDynamicsType -> pretty $ show t
 
 instance Pretty DecidabilityBuiltinFunction where
   pretty = \case

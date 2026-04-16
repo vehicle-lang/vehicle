@@ -189,6 +189,9 @@ instance BuiltinHasListLiterals PolarityBuiltin where
 instance BuiltinHasIterate PolarityBuiltin where
   accessIterateBuiltin = functionAccessor Iterate
 
+instance BuiltinHasRollout PolarityBuiltin where
+  accessRolloutBuiltin = functionAccessor Rollout
+
 -----------------------------------------------------------------------------
 -- Printing
 
