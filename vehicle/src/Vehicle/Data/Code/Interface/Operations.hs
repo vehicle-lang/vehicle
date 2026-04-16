@@ -391,3 +391,8 @@ accessIterate ::
   (HasBuiltinConstructor expr, BuiltinHasIterate builtin) =>
   Accessor (expr builtin) (IterateArgs (expr builtin))
 accessIterate = accessArgs accessIterateBuiltin
+
+accessRollout ::
+  (HasBuiltinConstructor expr, BuiltinHasRollout builtin) =>
+  Accessor (expr builtin) (RolloutArgs (expr builtin))
+accessRollout = accessArgs accessRolloutBuiltin

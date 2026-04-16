@@ -352,6 +352,28 @@ instance IsArgs ForeachTensorArgs where
         mkExpr = \(ForeachTensorArgs t d ds fn) -> [implicit t, implicit d, implicitIrrelevant ds, explicit fn]
       }
 
+-- | Arguments for `Rollout`
+data RolloutArgs expr = RolloutArgs
+  { rolloutStateType :: expr,
+    rolloutActionType :: expr,
+    rolloutStateDims :: expr,
+    rolloutActionDims :: expr,
+    rolloutN :: expr,
+    rolloutController :: expr,
+    rolloutDynamics :: expr,
+    rolloutInitState :: expr
+  }
+
+instance IsArgs RolloutArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          (fmap argExpr -> [s, a, ds, da, n, ctrl, dyn, s0]) -> Just $ RolloutArgs s a ds da n ctrl dyn s0
+          _ -> Nothing,
+        mkExpr = \(RolloutArgs s a ds da n ctrl dyn s0) ->
+          [implicit s, implicit a, implicitIrrelevant ds, implicitIrrelevant da, explicit n, explicit ctrl, explicit dyn, explicit s0]
+      }
+
 -- | Arguments for `ForeachVector`
 data ForeachVectorArgs expr = ForeachVectorArgs
   { foreachVectorType :: expr,

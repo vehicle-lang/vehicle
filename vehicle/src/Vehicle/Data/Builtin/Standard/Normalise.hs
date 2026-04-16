@@ -59,6 +59,7 @@ instance NormalisableBuiltin Builtin where
       And -> Simple evalAnd
       Or -> Simple evalOr
       Temporal {} -> None
+      Rollout -> None
       Add AddNat -> Simple evalAddNat
       Mul MulNat -> Simple evalMulNat
       Neg NegRatTensor -> Simple evalNegRatTensor

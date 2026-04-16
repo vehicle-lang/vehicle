@@ -94,6 +94,7 @@ typeOfBuiltinFunction = \case
   ForeachTensor -> typeOfForeachTensor
   ForeachVector -> typeOfForeachVector
   Iterate -> forAllTypes $ \t -> ((t ~> t) ~> t ~> t) ~> tNat ~> t
+  Rollout -> typeOfRollout
 
 typeOfBuiltinConstructor :: (HasStandardBuiltins builtin) => BuiltinConstructor -> DSLExpr builtin
 typeOfBuiltinConstructor = \case
@@ -126,8 +127,8 @@ typeOfTensorOp1 tElem = forAllDims $ \dims -> tTensor tElem dims ~> tTensor tEle
 typeOfTensorOp2 :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin -> DSLExpr builtin
 typeOfTensorOp2 tElem = forAllDims $ \dims -> tTensor tElem dims ~> tTensor tElem dims ~> tTensor tElem dims
 
--- NOTE: These are initial placeholder signatures for bounded STL operators.
--- They keep interval bounds explicit and preserve tensor dimensions.
+-- | Bounded temporal operators: two Nat bounds (interval start/end) and
+-- a boolean tensor signal, producing a boolean tensor of the same shape.
 typeOfTemporalOp1 :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin
 typeOfTemporalOp1 = forAllDims $ \dims -> tNat ~> tNat ~> tBoolTensor dims ~> tBoolTensor dims
 
@@ -213,6 +214,24 @@ typeOfForeachVector =
   forAll "A" type0 $ \tElem ->
     forAll "d" tDim $ \d ->
       typeOfForeach (tVector tElem d) (tIndex d) tElem
+
+-- | Type of rollout:
+-- forall S A {ds : Dims} {da : Dims} .
+--   (n : Dim) ->
+--   (Tensor S ds -> Tensor A da) ->
+--   (Tensor S ds -> Tensor A da -> Tensor S ds) ->
+--   Tensor S ds ->
+--   Tensor S (n :: ds)
+typeOfRollout :: (HasStandardBuiltins builtin) => DSLExpr builtin
+typeOfRollout =
+  forAll "S" type0 $ \tState ->
+    forAll "A" type0 $ \tAction ->
+      forAllIrrelevant "ds" tDims $ \dimsS ->
+        forAllIrrelevant "da" tDims $ \dimsA ->
+          forAllExpl "n" tDim $ \n ->
+            let stateT = tTensor tState dimsS
+                actionT = tTensor tAction dimsA
+             in (stateT ~> actionT) ~> (stateT ~> actionT ~> stateT) ~> stateT ~> tTensor tState (dimCons n dimsS)
 
 typeOfMap :: (HasStandardBuiltins builtin) => DSLExpr builtin -> DSLExpr builtin
 typeOfMap f =
