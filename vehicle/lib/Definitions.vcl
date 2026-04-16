@@ -143,6 +143,14 @@ record HasValidNetworkType (t : Type) where {}
 tensorToTensorHasValidNetworkType : {{ HasValidNetworkIOType t1 }} -> {{ HasValidNetworkIOType t2 }} -> HasValidNetworkType ( t1 -> t2 )
 tensorToTensorHasValidNetworkType = {}
 
+-- Dynamics types (two-input functions: State -> Action -> State)
+@typeclass
+record HasValidDynamicsType (t : Type) where {}
+
+@instance
+tensorToTensorToTensorHasValidDynamicsType : {{ HasValidNetworkIOType t1 }} -> {{ HasValidNetworkIOType t2 }} -> {{ HasValidNetworkIOType t3 }} -> HasValidDynamicsType ( t1 -> t2 -> t3 )
+tensorToTensorToTensorHasValidDynamicsType = {}
+
 -- Comparisons
 @typeclass
 record HasComparison t1 t2 where

@@ -179,6 +179,7 @@ restrictStandardDeclType declSort (ident, p) typ = do
         RestrictedParameter s -> Builtin p (TypeClass (ValidParameterType s))
         RestrictedDataset -> Builtin p (TypeClass ValidDatasetType)
         RestrictedNetwork -> FreeVar p validNetworkTypeIdent
+        RestrictedDynamics -> FreeVar p validDynamicsTypeIdent
 
   let expr = App tc [explicit typ]
   let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin env (ident, provenanceOf typ) (Left declSort) typ

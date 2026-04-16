@@ -95,6 +95,7 @@ searchDecl decl = do
   case decl of
     DefAbstract _ _ sort t -> case sort of
       NetworkDef -> tell [Network $ NetworkSummary (sharedData t)]
+      DynamicsDef -> tell [Network $ NetworkSummary (sharedData t)]
       DatasetDef -> tell [Dataset $ DatasetSummary (sharedData t)]
       ParameterDef s -> tell [Parameter $ ParameterSummary (sharedData t) (isInferable s)]
       BuiltinDef -> return ()

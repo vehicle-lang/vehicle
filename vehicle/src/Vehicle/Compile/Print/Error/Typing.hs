@@ -339,6 +339,7 @@ typeRestrictionError ctx (TypeRestrictionOrigin freeEnv (ident, p) sort typ) _ca
       Left (RestrictedParameter NonInferable) -> map pretty [BoolType, IndexType, NatType, RatType]
       Left RestrictedDataset -> ["List A    " <+> datasetElementTypes, "Vector A n" <+> datasetElementTypes]
       Left RestrictedNetwork -> ["Tensor Rat [a_1, ..., a_n] -> Tensor Rat [b_1, ..., b_n]  (where 'a_i' and 'b_i' are all constants at compile time)"]
+      Left RestrictedDynamics -> ["Tensor Rat [a_1, ..., a_n] -> Tensor Rat [b_1, ..., b_n] -> Tensor Rat [c_1, ..., c_n]  (where all dimensions are constants at compile time)"]
       Right _ -> ["The element of a tensor (e.g. Real), or", "A tensor (e.g. Tensor Real [...])"]
 
     datasetElementTypes = "(where A is either `Index n`, `Nat`, `Rat`, `List A`, `Vector A n`)"

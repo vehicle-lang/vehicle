@@ -206,6 +206,7 @@ restrictAbstractDefType resource decl@(ident, _) defType = do
       ParameterDef sort -> restrictDeclType (RestrictedParameter sort) decl defType
       DatasetDef -> restrictDeclType RestrictedDataset decl defType
       NetworkDef -> restrictDeclType RestrictedNetwork decl defType
+      DynamicsDef -> restrictDeclType RestrictedDynamics decl defType
       BuiltinDef {} -> return defType
 
 -------------------------------------------------------------------------------

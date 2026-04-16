@@ -88,6 +88,7 @@ typeOfBuiltinFunction = \case
   ForeachTensor -> typeOfForeach
   ForeachVector -> typeOfForeach
   Iterate -> typeOfIterate
+  Rollout -> typeOfRollout
   Temporal Globally -> typeOfTemporalOp1
   Temporal Finally -> typeOfTemporalOp1
   Temporal Until -> typeOfTemporalOp2
@@ -190,6 +191,9 @@ typeOfQuantifier q =
 typeOfIterate :: PolarityDSLExpr
 typeOfIterate = ((type0 ~> type0) ~> type0 ~> type0) ~> unquantified ~> type0
 
+typeOfRollout :: PolarityDSLExpr
+typeOfRollout = unquantified ~> (type0 ~> type0) ~> (type0 ~> type0 ~> type0) ~> type0 ~> type0
+
 typeOfVectorLiteral :: PolarityDSLExpr
 typeOfVectorLiteral =
   forAll "n" unquantified $ \n ->
@@ -264,6 +268,7 @@ restrictDeclPolarityType rDecl declProv declType = do
 
   case rDecl of
     RestrictedNetwork -> restrictPolarityNetworkType origin declProv declType
+    RestrictedDynamics -> restrictPolarityDynamicsType origin declProv declType
     RestrictedDataset -> assertUnquantifiedPolarity origin declProv declType
     RestrictedParameter {} -> assertUnquantifiedPolarity origin declProv declType
     RestrictedProperty -> return declType
@@ -283,6 +288,21 @@ restrictPolarityNetworkType origin (_, p) networkType = do
   let functionNetworkType = Pi p inputPolBinder outputPol
   createFreshUnificationConstraint p mempty (CheckingInstanceType origin) networkType functionNetworkType
   return networkType
+
+restrictPolarityDynamicsType ::
+  forall m.
+  (MonadTypeChecker PolarityBuiltin m) =>
+  InstanceConstraintOrigin PolarityBuiltin ->
+  DeclProvenance ->
+  Type PolarityBuiltin ->
+  m (Type PolarityBuiltin)
+restrictPolarityDynamicsType origin (_, p) dynamicsType = do
+  let unq = PolarityExpr p Unquantified
+  let innerBinder = Binder (BinderDisplayForm OnlyType False) Explicit Relevant unq
+  let outerBinder = Binder (BinderDisplayForm OnlyType False) Explicit Relevant unq
+  let functionDynamicsType = Pi p outerBinder (Pi p innerBinder unq)
+  createFreshUnificationConstraint p mempty (CheckingInstanceType origin) dynamicsType functionDynamicsType
+  return dynamicsType
 
 assertUnquantifiedPolarity ::
   (MonadTypeChecker PolarityBuiltin m) =>

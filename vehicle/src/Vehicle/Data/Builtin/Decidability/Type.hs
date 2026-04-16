@@ -79,6 +79,7 @@ typeDecidableTypeClass = \case
   HasVectorTypeClassField _f -> absVectorType ~> type0
   ValidPropertyType -> type0 ~> type0
   ValidNetworkType -> type0 ~> type0
+  ValidDynamicsType -> type0 ~> type0
 
 typeDecidableTypeClassOp :: DecidabilityBuiltinTypeClassOp -> DSLExpr DecidabilityBuiltin
 typeDecidableTypeClassOp = \case
@@ -250,6 +251,7 @@ convertToDecidabilityBuiltins p b args = return $
         FoldList -> sameFunction f
         MapList -> sameFunction f
         Iterate -> sameFunction f
+        Rollout -> sameFunction f
         StackTensor -> sameFunction f
         ConstTensor -> sameFunction f
         Temporal {} -> sameFunction f
@@ -294,6 +296,7 @@ restrictDecidabilityDeclType declSort (ident, p) declType = do
   let maybeTypeClass = case declSort of
         RestrictedProperty -> Just ValidPropertyType
         RestrictedNetwork -> Just ValidNetworkType
+        RestrictedDynamics -> Just ValidDynamicsType
         _ -> Nothing
 
   case maybeTypeClass of

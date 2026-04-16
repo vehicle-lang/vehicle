@@ -11,6 +11,7 @@ module Vehicle.Libraries.StandardLibrary
     standardLibIdent,
     validNetworkTypeIdent,
     validNetworkIOTypeIdent,
+    validDynamicsTypeIdent,
     hasQuantifierIdent,
     hasAddIdent,
     hasSubIdent,
@@ -66,6 +67,9 @@ validNetworkTypeIdent = standardLibIdent "HasValidNetworkType"
 
 validNetworkIOTypeIdent :: Identifier
 validNetworkIOTypeIdent = standardLibIdent "HasValidNetworkIOType"
+
+validDynamicsTypeIdent :: Identifier
+validDynamicsTypeIdent = standardLibIdent "HasValidDynamicsType"
 
 hasQuantifierIdent :: Identifier
 hasQuantifierIdent = standardLibIdent "HasQuantifier"

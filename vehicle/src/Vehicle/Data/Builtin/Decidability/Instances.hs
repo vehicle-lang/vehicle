@@ -50,6 +50,20 @@ allInstances =
              Nothing
            )
          ]
+      --------------
+      -- Dynamics --
+      --------------
+      <> [ ( forAllDims $ \ds1 ->
+               forAllDims $ \ds2 ->
+                 forAllDims $ \ds3 ->
+                   decTypeClass ValidDynamicsType [tRatTensor ds1 ~> tRatTensor ds2 ~> tRatTensor ds3],
+             lamDims $ \_ds1 ->
+               lamDims $ \_ds2 ->
+                 lamDims $ \_ds3 ->
+                   tUnit,
+             Nothing
+           )
+         ]
       -------------
       -- Tensors --
       -------------

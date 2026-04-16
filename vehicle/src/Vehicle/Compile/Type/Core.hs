@@ -308,6 +308,7 @@ data RestrictedDecl
   = RestrictedParameter ParameterSort
   | RestrictedProperty
   | RestrictedNetwork
+  | RestrictedDynamics
   | RestrictedDataset
   deriving (Show)
 
@@ -325,4 +326,5 @@ instance Pretty RestrictedDecl where
     RestrictedParameter s -> pretty (ParameterDef s)
     RestrictedProperty {} -> "@property"
     RestrictedNetwork {} -> pretty NetworkDef
+    RestrictedDynamics {} -> pretty DynamicsDef
     RestrictedDataset {} -> pretty DatasetDef
