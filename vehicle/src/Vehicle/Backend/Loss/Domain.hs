@@ -608,6 +608,7 @@ compileLinearExpr dims expr = case toRatTensorValue expr of
   VReduceMulRatTensor {} -> unlinearisable
   VReduceMinRatTensor {} -> unlinearisable
   VReduceMaxRatTensor {} -> unlinearisable
+  VRatTensorRollout {} -> unlinearisable
   VMulRatTensor (TensorOp2Args _ e1 e2) -> do
     e1' <- compileLinearExpr dims e1
     e2' <- compileLinearExpr dims e2

@@ -32,7 +32,7 @@ import Vehicle.Backend.Loss.Core hiding (currentPass)
 import Vehicle.Compile.Normalise.NBE (normaliseAppInEmptyFreeEnv, normaliseClosure)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyVerbose)
+import Vehicle.Compile.Print ()
 import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Loss
@@ -268,8 +268,15 @@ convertRatTensorPointwiseComparison (op, args) = do
   convertLogicField (comparisonOpToField op) args'
 
 convertRatTensorReducedComparison :: (MonadLogic m) => (ComparisonOp, TensorReduceComparisonArgs (Value Builtin)) -> m (Value LossBuiltin)
-convertRatTensorReducedComparison (op, args) =
-  unsupportedOperation $ "RatTensorCompareReduced" <+> pretty op <+> prettyVerbose (mkExpr accessSpine args)
+convertRatTensorReducedComparison (op, TensorReduceComparisonArgs d ds e1 e2) = do
+  -- Decompose into: reduceAnd True (e1 <op>. e2)
+  -- 1. Pointwise comparison on the full [d :: ds] dimensions
+  let fullDims = IDimCons d ds
+  compArgs <- convertTensorOp2 convertRatTensor (TensorOp2Args fullDims e1 e2)
+  compResult <- convertLogicField (comparisonOpToField op) compArgs
+  -- 2. Wrap in reduceAnd
+  truthId <- getLogicField TruthityElement
+  convertReduceAnd (TensorReductionArgs (tensorOp2Dims compArgs) truthId compResult)
 
 convertIf ::
   (MonadLogic m) =>
@@ -329,6 +336,7 @@ convertRatTensor value = logConversion value $ case toRatTensorValue value of
   VRatStackTensor args -> convertStackTensor convertRatTensor args
   VRatAt args -> convertAtTensor convertRatTensor args
   VRatForeach args -> convertForeachTensor convertRatTensor args
+  VRatTensorRollout args -> convertRollout args
 
 --------------------------------------------------------------------------------
 -- Vector
@@ -455,6 +463,21 @@ convertForeachTensor convertValue (ForeachTensorArgs t dim dims fn) = do
   dims' <- convertDims dims
   fn' <- convertFunction convertValue fn
   return $ mkExpr accessForeachTensor $ ForeachTensorArgs t' dim' dims' fn'
+
+convertRollout ::
+  (MonadLogic m) =>
+  RolloutArgs (Value Builtin) ->
+  m (Value LossBuiltin)
+convertRollout (RolloutArgs sType aType sDims aDims n ctrl dyn s0) = do
+  sType' <- convertType sType
+  aType' <- convertType aType
+  sDims' <- convertDims sDims
+  aDims' <- convertDims aDims
+  n' <- convertDim n
+  ctrl' <- convertFunction convertRatTensor ctrl
+  dyn' <- convertFunction convertRatTensor dyn
+  s0' <- convertRatTensor s0
+  return $ mkExpr accessRollout $ RolloutArgs sType' aType' sDims' aDims' n' ctrl' dyn' s0'
 
 --------------------------------------------------------------------------------
 -- Utils

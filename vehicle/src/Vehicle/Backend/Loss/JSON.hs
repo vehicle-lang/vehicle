@@ -99,6 +99,7 @@ data JExpr
   | Globally JExpr JExpr JExpr
   | Finally JExpr JExpr JExpr
   | Until JExpr JExpr JExpr JExpr
+  | Rollout JExpr JExpr JExpr JExpr -- (N, Controller, Dynamics, InitState)
   | SearchRatTensor Name JExpr JExpr JExpr JExpr JExpr L.LogicDirection -- (Dims, ReductionOp, LowerBound, UpperBound, SearchLambda, Minimise)
   -- Dimensions
   | Dimension Int
@@ -107,6 +108,7 @@ data JExpr
   | DimensionIndex Int
   | DimensionLookup JExpr JExpr
   | ConstTensor JExpr JExpr
+  | ForeachTensor JExpr JExpr -- (firstDim, fn/lambda)
   | StackTensor [JExpr]
   deriving (Show, Generic)
 
@@ -217,7 +219,9 @@ convertBuiltinType :: (MonadJSON m) => LossBuiltin -> Spine LossBuiltin -> m JTy
 convertBuiltinType b spine = case b of
   LossBuiltinType op -> case op of
     L.UnitType -> unsupportedError b
-    L.IndexType -> convertNullaryOp b DimensionIndexType spine
+    L.IndexType -> case fmap argExpr spine of
+      [n] -> DimensionIndexType <$ convertValue n -- Index carries a dim arg; drop it for JSON
+      _ -> convertNullaryOp b DimensionIndexType spine -- defensive: Index always has a dim arg in practice
     L.NatType -> convertNullaryOp b DimensionType spine
     L.RatType -> convertNullaryOp b RatType spine
     L.ListType -> return DimensionsType -- always List Nat in dimension context; drop the Nat arg
@@ -309,15 +313,13 @@ convertBuiltin b spine = case b of
     L.At -> convertAtTensor convertValue spine
     L.StackTensor -> convertStackTensor spine
     L.ConstTensor -> convertConstTensor spine
-    -- ForeachTensor/ForeachVector are added to LossBuiltinFunction so that the
-    -- BuiltinHasForeach instance compiles, but they are never emitted into loss
-    -- IR and therefore cannot appear in the JSON conversion path.
-    L.ForeachTensor -> unsupportedError b
+    L.ForeachTensor -> convertForeachTensor convertValue spine
     L.ForeachVector -> unsupportedError b
     L.SearchRatTensor name minimise -> convertSearch name minimise spine
     -- Dimension operations, not yet converted
     L.Add L.AddNat -> unsupportedError b
     L.Mul L.MulNat -> unsupportedError b
+    L.Rollout -> convertRollout convertValue spine
     L.MapList -> unsupportedError b
     L.FoldList -> unsupportedError b
 
@@ -416,6 +418,26 @@ convertSearch name minimise spine = case getExpr accessSpine spine of
     SearchRatTensor name <$> convertValue unaryOp <*> convertValue dims <*> convertValue lowerBound <*> convertValue upperBound <*> convertValue fn <*> pure minimise
   Nothing -> arityError (show (L.SearchRatTensor name minimise)) 5 spine
 
+convertRollout ::
+  (MonadJSON m) =>
+  (Value LossBuiltin -> m JExpr) ->
+  Spine LossBuiltin ->
+  m JExpr
+convertRollout convert spine = case getExpr accessSpine spine of
+  Just (RolloutArgs _sType _aType _sDims _aDims n ctrl dyn s0) ->
+    Rollout <$> convert n <*> convert ctrl <*> convert dyn <*> convert s0
+  Nothing -> arityError L.Rollout 8 spine
+
+convertForeachTensor ::
+  (MonadJSON m) =>
+  (Value LossBuiltin -> m JExpr) ->
+  Spine LossBuiltin ->
+  m JExpr
+convertForeachTensor convert spine = case getExpr accessSpine spine of
+  Just (ForeachTensorArgs _t d _ds fn) ->
+    ForeachTensor <$> convert d <*> convert fn
+  Nothing -> arityError L.ForeachTensor 4 spine
+
 arityError :: (MonadCompile m, Pretty fn) => fn -> Arity -> Spine LossBuiltin -> m a
 arityError fun arity explicitArgs =
   compilerDeveloperError $
@@ -509,6 +531,7 @@ fromJExpr = \case
   Globally a b x -> toFunction (L.Temporal L.Globally) [a, b, x]
   Finally a b x -> toFunction (L.Temporal L.Finally) [a, b, x]
   Until a b x y -> toFunction (L.Temporal L.Until) [a, b, x, y]
+  Rollout n ctrl dyn s0 -> toFunction L.Rollout [n, ctrl, dyn, s0]
   SearchRatTensor name dims e1 e2 e3 e4 minimise -> toFunction (L.SearchRatTensor name minimise) [dims, e1, e2, e3, e4]
   Dimension d -> toConstructor (L.NatLiteral d) []
   DimensionNil -> toConstructor L.Nil []
@@ -516,6 +539,7 @@ fromJExpr = \case
   DimensionIndex i -> toConstructor (L.IndexLiteral i) []
   DimensionLookup xs i -> toFunction L.At [xs, i]
   ConstTensor c ds -> toFunction L.ConstTensor [c, ds]
+  ForeachTensor d fn -> toFunction L.ForeachTensor [d, fn]
   StackTensor xs -> toFunction L.StackTensor xs
 
 fromJBinder :: (MonadNameContext m) => JBinder -> m (S.Binder LossBuiltin)

@@ -172,7 +172,6 @@ lookupLogicField field logicFields = do
     Nothing -> developerError $ "Non-compiled logic field" <+> quotePretty field <+> "found"
     Just value -> value
 
-
 {-
 fieldIdentifier :: DifferentiableLogicID -> TensorDifferentiableLogicField -> Identifier
 fieldIdentifier logicID field = do
@@ -343,6 +342,8 @@ isLiftableOp = \case
   ForeachTensor -> False
   ForeachVector -> False
   Iterate -> False
+  Rollout -> False
+  Temporal {} -> False
 
 reduceOp :: BuiltinFunction -> Maybe BuiltinFunction
 reduceOp = \case
@@ -380,6 +381,8 @@ reduceOp = \case
   ForeachTensor -> Nothing
   ForeachVector -> Nothing
   Iterate -> Nothing
+  Rollout -> Nothing
+  Temporal {} -> Nothing
 
 type MonadCompileBody m =
   ( MonadLogger m,
