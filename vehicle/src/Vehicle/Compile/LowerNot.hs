@@ -28,9 +28,10 @@ type MonadDropNot m =
 lowerNot ::
   forall m.
   (MonadDropNot m) =>
+  (Value Builtin -> m (Value Builtin)) ->
   TensorOp1Args (Value Builtin) ->
   m (Value Builtin)
-lowerNot (TensorOp1Args _ arg) = do
+lowerNot onBlocked (TensorOp1Args _ arg) = do
   result <- go arg
   ctx <- getNameContext
   logDebug MaxDetail $ "push-not:" <+> prettyFriendly (WithContext result ctx)

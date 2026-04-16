@@ -9,7 +9,7 @@ where
 import Data.Aeson (ToJSON (..), genericToJSON)
 import Data.List (elemIndex)
 import Data.Map qualified as Map
-import Data.Ratio (Ratio, denominator, numerator, (%))
+import Data.Ratio (Ratio)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), (<+>))
 import Vehicle.Compile.Arity
@@ -27,9 +27,9 @@ import Vehicle.Data.AST.Expr.Scoped (normAppList)
 import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Loss (LossBuiltin (..), LossBuiltinConstructor, LossBuiltinFunction, LossBuiltinType)
 import Vehicle.Data.Builtin.Loss qualified as L
-import Vehicle.Data.DifferentiableLogic (DifferentiableLogicImplementation, TensorDifferentiableLogicField (..))
 import Vehicle.Data.Code.Interface.Args
 import Vehicle.Data.Code.Value
+import Vehicle.Data.DifferentiableLogic (DifferentiableLogicImplementation, TensorDifferentiableLogicField (..))
 import Vehicle.Data.Tensor (Tensor, mapTensor)
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Prelude (Doc, GenericArg (..), HasName (..), HasType (..), Identifier (..), Name, Provenance, explicit, indent, jsonOptions, line, mkExplicitBinder, resolutionError, squotes, userModulePath)
@@ -168,10 +168,10 @@ convertTemporalSemantics ::
   DifferentiableLogicImplementation ->
   m JTemporalSemantics
 convertTemporalSemantics (logicMap, _direction) = do
-  conj     <- convertField TemporalConjunction
-  disj     <- convertField TemporalDisjunction
-  conjId   <- convertField TemporalConjunctionIdentity
-  disjId   <- convertField TemporalDisjunctionIdentity
+  conj <- convertField TemporalConjunction
+  disj <- convertField TemporalDisjunction
+  conjId <- convertField TemporalConjunctionIdentity
+  disjId <- convertField TemporalDisjunctionIdentity
   return $ JTemporalSemantics conj disj conjId disjId
   where
     convertField field = convertValue (logicMap Map.! field)

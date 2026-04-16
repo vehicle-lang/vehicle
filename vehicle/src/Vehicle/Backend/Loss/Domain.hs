@@ -396,7 +396,7 @@ compileBool value = logEntryAndExit value $ case toBoolValue value of
   VAnd args -> compileAnd args
   VOr args -> compileOr args
   VBoolIf args -> compileBool =<< unfoldIf args
-  VNot args -> compileBool =<< lowerNot args
+  VNot args -> compileBool =<< lowerNot (unblockBoolExpr unblockingActions) args
   VQuantifyRatTensor args -> compileQuantifierInternal args
   -------------------
   -- Blocked cases --
