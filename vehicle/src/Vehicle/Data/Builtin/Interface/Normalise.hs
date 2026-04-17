@@ -620,7 +620,7 @@ unoptimisedEvalAtTensor args@(AtTensorArgs _t _d ds tensor index) = do
           goLiterals i remainingLiterals
       _ -> Nothing
 
-
+-- TODO: move into NBE
 evalRecordAcc ::
   forall builtin m.
   (MonadNormBuiltin m, HasTensorLiterals Value builtin, HasLiftableTensorOperations builtin, BuiltinHasListLiterals builtin, BuiltinHasIndexLiterals builtin, HasTensorExpr Value builtin, BuiltinHasForeach builtin) =>

@@ -184,7 +184,6 @@ unblockRecordValue UnblockingActions{..} expr = do
 unblockRatTensorValue :: (MonadPurify m) => UnblockingActions m -> DimensionsStatus -> Value Builtin -> m (Value Builtin)
 unblockRatTensorValue actions@UnblockingActions {..} status expr = do
   showEntry expr
-  _ <- logDebug MidDetail "unblockRatTensorValue"
   showExit =<< case toRatTensorValue expr of
     -- Rational operators
     VRatTensorLiteral {} -> return expr
@@ -214,7 +213,7 @@ unblockRatTensorValue actions@UnblockingActions {..} status expr = do
     VRatStackTensor args -> unblockStackTensor (unblock DifferentDimensions) args
     VRatAt args -> unblockAtTensor (unblock DifferentDimensions) args
     VRatForeach args -> unblockForeachTensor args
-    VRatRecordAcc args -> unblockRecordAcc (unblock DifferentDimensions) args actions
+    VRatRecordAcc args -> unblockRecordAcc (unblock status) args actions
   where
     unblock = unblockRatTensorValue actions
 
@@ -356,12 +355,13 @@ unblockRecordAcc ::
   UnblockingActions m -> -- this is not a good way to do this - fix later
   m (Value Builtin)
 -- unblockRecordAcc unblock _typ value fieldName _spine = do
-unblockRecordAcc _unblock (RecordAccArgs typ value fieldName) actions = do
+unblockRecordAcc unblock (RecordAccArgs typ value fieldName) actions = do
   logDebug MidDetail "----------------- UNBLOCK RECORDACC FUNCTION ----------------"
   value' <- unblockRecordValue actions value
 
   nameCtx <- getNameContext
-  evalRecordAcc nameCtx evalApp eval $ RecordAccArgs typ value' fieldName
+  res <- evalRecordAcc nameCtx evalApp eval $ RecordAccArgs typ value' fieldName
+  unblock res
 
 
 unblockForeachTensor ::

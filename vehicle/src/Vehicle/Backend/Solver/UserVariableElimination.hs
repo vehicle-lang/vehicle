@@ -63,7 +63,7 @@ eliminateExists (QuantifyRatTensorArgs _ binder (Closure env body)) = do
 
     -- Normalise the expression
     let newEnv = extendEnvWithBound (toLv userVar) binder env
-    normExpr <- eval (Just userVarName : namedCtx) newEnv body -- here is where we are missing smth from context
+    normExpr <- eval (Just userVarName : namedCtx) newEnv body
 
     -- Recursively compile the expression.
     (partitions, networkInputEqualities) <-
