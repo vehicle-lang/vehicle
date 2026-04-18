@@ -194,7 +194,7 @@ realTensorHasComparison = { leTC = compareRatTensorReducedLe
                           , neTC = compareRatTensorReducedNe
                           }
 
--- Dataset tensor elements
+-- Dataset tensor element types
 @typeclass
 record HasValidDatasetTensorElementType (t : Type) where {}
 
@@ -210,27 +210,27 @@ natHasValidDatasetTensorElementType = {}
 realHasValidDatasetTensorElementType : HasValidDatasetTensorElementType Real
 realHasValidDatasetTensorElementType = {}
 
--- Dataset list elements
+-- Dataset list element types
 @typeclass
 record HasValidDatasetListElementType (t : Type) where {}
 
-@instance(default=0)
+@instance
 listHasValidDatasetListElementType : {{HasValidDatasetListElementType t}} -> HasValidDatasetListElementType (List t)
 listHasValidDatasetListElementType = {}
 
-@instance(default=0)
+@instance
 vectorHasValidDatasetListElementType : {{HasValidDatasetListElementType t}} -> HasValidDatasetListElementType (Vector t dim)
 vectorHasValidDatasetListElementType = {}
 
-@instance(default=1)
+@instance
 tensorHasValidDatasetListElementType : {{HasValidDatasetTensorElementType t}} -> {{ IsTensorType t dims }} -> HasValidDatasetListElementType (Tensor t dims)
 tensorHasValidDatasetListElementType = {}
 
-@instance(default=0)
+@instance
 indexHasValidDatasetListElementType : HasValidDatasetListElementType (Index n)
 indexHasValidDatasetListElementType = {}
 
-@instance(default=0)
+@instance
 natHasValidDatasetListElementType : HasValidDatasetListElementType Nat
 natHasValidDatasetListElementType = {}
 
@@ -238,15 +238,15 @@ natHasValidDatasetListElementType = {}
 @typeclass
 record HasValidDatasetType (t : Type) where {}
 
-@instance(default=0)
+@instance
 listHasValidDatasetType : {{HasValidDatasetListElementType t}} -> HasValidDatasetType (List t)
 listHasValidDatasetType = {}
 
-@instance(default=0)
+@instance
 vectorHasValidDatasetType : {{HasValidDatasetListElementType t}} -> HasValidDatasetType (Vector t dim)
 vectorHasValidDatasetType = {}
 
-@instance(default=1)
+@instance
 tensorHasValidDatasetType : {{HasValidDatasetTensorElementType t}} ->  {{ IsTensorType t dims }} -> HasValidDatasetType (Tensor t dims)
 tensorHasValidDatasetType = {}
 
