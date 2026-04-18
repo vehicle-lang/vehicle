@@ -16,7 +16,7 @@ import Vehicle.Data.Variable.Bound.Context.Generic (HasBoundCtx (..))
 -- | Attempts to solve as many type-class constraints as possible.
 runApplicationSolver :: (TCM builtin m) => Proxy builtin -> m ()
 runApplicationSolver proxy = do
-  logCompilerSection2 MaxDetail "application solver run" $
+  logCompilerSection2 MidDetail "application solver run" $
     runConstraintSolver
       getActiveApplicationConstraints
       setApplicationConstraints

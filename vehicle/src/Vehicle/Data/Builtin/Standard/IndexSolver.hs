@@ -29,7 +29,7 @@ solveIndexConstraint ::
   m ()
 solveIndexConstraint constraint = do
   normConstraint <- substMetaVariables constraint
-  logDebug MaxDetail $ "Forced:" <+> prettyFriendly normConstraint
+  logDebug MidDetail $ "Forced:" <+> prettyFriendly normConstraint
 
   let args = mapMaybe getExplicitArg $ goalSpine $ instanceGoal $ objectIn normConstraint
   progress <- solveInDomain normConstraint args

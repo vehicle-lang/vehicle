@@ -33,7 +33,7 @@ runInstanceSolver ::
   InstanceSearchDepth ->
   m ()
 runInstanceSolver proxy depth = do
-  logCompilerSection2 MaxDetail "instance solver run" $
+  logCompilerSection2 MidDetail "instance solver run" $
     runConstraintSolver
       getActiveInstanceConstraints
       setInstanceConstraints
@@ -216,10 +216,10 @@ checkCandidate ::
   m (Either (FailedInstanceCandidate builtin) (SuccessfulInstanceCandidate builtin))
 checkCandidate constraint goal depth candidate = do
   let candidateDoc = squotes (prettyExternal candidate)
-  logCompilerSection2 MaxDetail ("trying candidate instance" <+> candidateDoc) $ do
+  logCompilerSection2 MidDetail ("trying candidate instance" <+> candidateDoc) $ do
     result <- runTypeCheckerTHypothetically $ do
       instantiatedSolution <-
-        logCompilerSection MaxDetail "hypothetically accepting candidate" $
+        logCompilerSection MidDetail "hypothetically accepting candidate" $
           acceptCandidate constraint goal candidate
 
       -- Run the solvers to check for conflicts
@@ -278,7 +278,7 @@ instantiateCandidateTelescope ::
   m (Value builtin, Expr builtin)
 instantiateCandidateTelescope goalCtxExtension (constraintCtx, constraintOrigin) candidate = do
   let WithContext InstanceCandidate {..} candidateCtx = candidate
-  logCompilerSection MaxDetail "instantiating candidate telescope" $ do
+  logCompilerSection MidDetail "instantiating candidate telescope" $ do
     let initialCtx = goalCtxExtension ++ candidateCtx
     let createInstance relevance typ = do
           let newInfo = (setConstraintBoundCtx constraintCtx initialCtx, constraintOrigin)

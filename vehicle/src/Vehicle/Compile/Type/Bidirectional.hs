@@ -110,7 +110,7 @@ checkExpr expectedType expr = do
     -- lambda expression.
     (Pi p piBinder resultType, e)
       | isImplicit piBinder || isInstance piBinder -> do
-          logDebug MaxDetail $ "inserting-binder" <+> prettyVerbose piBinder
+          logDebug MidDetail $ "inserting-binder" <+> prettyVerbose piBinder
 
           -- Create a suitable binder
           lamBinderName <- getBinderNameOrFreshName (nameOf piBinder) (typeOf piBinder)
@@ -278,9 +278,9 @@ checkRecordTypeAndCalculateRecordFieldTypes p uncheckedRecordType = do
 
   (telescope, fields) <- getRecordDefinition (Proxy @builtin) recordIdent
   ctx <- getNameContext
-  logDebug MaxDetail $ pretty ctx
-  logDebug MaxDetail $ prettyVerbose recordParameters
-  logDebug MaxDetail $ prettyVerbose fields
+  logDebug MidDetail $ pretty ctx
+  logDebug MidDetail $ prettyVerbose recordParameters
+  logDebug MidDetail $ prettyVerbose fields
   let substField fieldType = calculateRarameterisedRecordFieldType telescope fieldType recordParameters
   let finalFields = mapRecordFields substField fields
 
@@ -580,4 +580,4 @@ showInferExit (e, t) = do
   decrCallDepth
   ctx <- getNameContext
   -- logDebug MaxDetail $ "infer-exit " <+> prettyVerbose e <+> ":" <+> prettyVerbose t <+> pretty (length ctx)
-  logDebug MaxDetail $ "infer-exit " <+> prettyExternal (WithContext e ctx) <+> ":" <+> prettyExternal (WithContext t ctx)
+  logDebug MidDetail $ "infer-exit " <+> prettyExternal (WithContext e ctx) <+> ":" <+> prettyExternal (WithContext t ctx)

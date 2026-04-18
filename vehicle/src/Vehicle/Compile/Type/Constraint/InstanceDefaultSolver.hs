@@ -60,7 +60,7 @@ getDefaultableConstraints proxy possibleConstraints = do
   maybeDecl <- getCurrentDeclAndUnused @builtin
   result <- case maybeDecl of
     Just (DefFunction _ _ _ t _, declIsUnused) | not declIsUnused -> do
-      logDebug MaxDetail $ pretty declIsUnused
+      logDebug MidDetail $ pretty declIsUnused
       -- We only want to generate default solutions for constraints
       -- that *don't* appear in the type of the declaration, as those will be
       -- quantified over later. However, if the declaration is unused then
@@ -68,7 +68,7 @@ getDefaultableConstraints proxy possibleConstraints = do
       constraints <- getActiveConstraints
       typeMetas <- getMetasLinkedToMetasIn constraints t
 
-      logDebugM MaxDetail $ do
+      logDebugM MidDetail $ do
         unsolvedMetasInTypeDoc <- prettyMetas proxy typeMetas
         return $ "Metas transitively related to type-signature:" <+> lineIndent unsolvedMetasInTypeDoc
 
@@ -77,7 +77,7 @@ getDefaultableConstraints proxy possibleConstraints = do
         return $ MetaSet.disjoint constraintMetas typeMetas
     _ -> return possibleConstraints
 
-  logDebug MaxDetail $
+  logDebug MidDetail $
     "Suitable defaultable constraints:"
       <> line
       <> indent 2 (prettySetLike (fmap prettyVerbose result))
@@ -94,7 +94,7 @@ chooseDefaultConstraint constraints = do
   defaults <- catMaybes <$> traverse findDefault constraints
   case defaults of
     [] -> do
-      logDebug MaxDetail "No default solution found"
+      logDebug MidDetail "No default solution found"
       return Nothing
     candidate : _ -> do
       return $ Just candidate
@@ -121,7 +121,7 @@ acceptDefaultCandidate ::
   DefaultCandidate builtin ->
   m ()
 acceptDefaultCandidate c@(DefaultCandidate (constraint, goal, candidate)) = do
-  logDebug MaxDetail $ "using default" <+> pretty c
+  logDebug MidDetail $ "using default" <+> pretty c
   _ <- removeInstanceConstraint (Proxy @builtin) (constraintID $ contextOf constraint)
   _ <- acceptCandidate constraint goal candidate
   return ()

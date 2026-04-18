@@ -6,7 +6,7 @@
 
 type Pair = Tensor Real [3]
 
-@parameter(infer=True)
+@parameter
 n : Nat
 
 @dataset

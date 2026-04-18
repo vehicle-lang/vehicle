@@ -206,7 +206,7 @@ indexHasValidDatasetTensorElementType = {}
 natHasValidDatasetTensorElementType : HasValidDatasetTensorElementType Nat
 natHasValidDatasetTensorElementType = {}
 
-@instance
+@instance(default=0)
 realHasValidDatasetTensorElementType : HasValidDatasetTensorElementType Real
 realHasValidDatasetTensorElementType = {}
 
@@ -214,23 +214,23 @@ realHasValidDatasetTensorElementType = {}
 @typeclass
 record HasValidDatasetListElementType (t : Type) where {}
 
-@instance
+@instance(default=0)
 listHasValidDatasetListElementType : {{HasValidDatasetListElementType t}} -> HasValidDatasetListElementType (List t)
 listHasValidDatasetListElementType = {}
 
-@instance
+@instance(default=0)
 vectorHasValidDatasetListElementType : {{HasValidDatasetListElementType t}} -> HasValidDatasetListElementType (Vector t dim)
 vectorHasValidDatasetListElementType = {}
 
-@instance
+@instance(default=1)
 tensorHasValidDatasetListElementType : {{HasValidDatasetTensorElementType t}} -> {{ IsTensorType t dims }} -> HasValidDatasetListElementType (Tensor t dims)
 tensorHasValidDatasetListElementType = {}
 
-@instance
+@instance(default=0)
 indexHasValidDatasetListElementType : HasValidDatasetListElementType (Index n)
 indexHasValidDatasetListElementType = {}
 
-@instance
+@instance(default=0)
 natHasValidDatasetListElementType : HasValidDatasetListElementType Nat
 natHasValidDatasetListElementType = {}
 
@@ -238,15 +238,15 @@ natHasValidDatasetListElementType = {}
 @typeclass
 record HasValidDatasetType (t : Type) where {}
 
-@instance
+@instance(default=0)
 listHasValidDatasetType : {{HasValidDatasetListElementType t}} -> HasValidDatasetType (List t)
 listHasValidDatasetType = {}
 
-@instance
+@instance(default=0)
 vectorHasValidDatasetType : {{HasValidDatasetListElementType t}} -> HasValidDatasetType (Vector t dim)
 vectorHasValidDatasetType = {}
 
-@instance
+@instance(default=1)
 tensorHasValidDatasetType : {{HasValidDatasetTensorElementType t}} ->  {{ IsTensorType t dims }} -> HasValidDatasetType (Tensor t dims)
 tensorHasValidDatasetType = {}
 
