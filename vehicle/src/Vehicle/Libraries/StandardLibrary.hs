@@ -17,7 +17,7 @@ module Vehicle.Libraries.StandardLibrary
     hasMulIdent,
     hasDivIdent,
     hasComparisonIdent,
-    validDatasetTypeIdent
+    validDatasetTypeIdent,
   )
 where
 
