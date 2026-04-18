@@ -68,7 +68,6 @@ allInstances =
             unitLit,
             Nothing
           ),
-          -- should add one of these for tensorLIkes as well?
           ---------------------------------
           -- ValidInferableParameterType --
           ---------------------------------
@@ -79,97 +78,88 @@ allInstances =
           ----------------------
           -- ValidDatasetType --
           ----------------------
-          ( forAllTypes $ \t ->
-              validDatasetListElementType t
-                .~~~> validDatasetType (tList t),
-            implLam "t" type0 $ \t ->
-              instLam "r1" (validDatasetListElementType t) $ \_ ->
-                tUnit,
-            Nothing
-          ),
-          ( forAllTypes $ \t ->
-              forAllDim Irrelevant $ \d ->
-                validDatasetListElementType t
-                  .~~~> validDatasetType (tVector t d),
-            implLam "t" type0 $ \t ->
-              lam "d" (Implicit False) Irrelevant tDim $ \_d ->
-                instLam "r1" (validDatasetListElementType t) $ \_ ->
-                  tUnit,
-            Nothing
-          ),
-          -- !! copy this one (I think??)
-          ( forAllTypes $ \t ->
-              forAllDims $ \ds ->
-                validDatasetTensorElementType t
-                  .~~~> validDatasetType (tTensor t ds),
-            implLam "t" type0 $ \t ->
-              lamDims $ \_ds ->
-                instLam "r1" (validDatasetTensorElementType t) $ \_ ->
-                  tUnit,
-            Nothing
-          ),
-          -- List element types
-          ( forAllTypes $ \t ->
-              validDatasetListElementType t
-                .~~~> validDatasetListElementType (tList t),
-            implLam "t" type0 $ \t ->
-              instLam "r1" (validDatasetListElementType t) $ \_ ->
-                tUnit,
-            Nothing
-          ),
-          ( forAllTypes $ \t ->
-              forAllDim Irrelevant $ \d ->
-                validDatasetListElementType t
-                  .~~~> validDatasetListElementType (tVector t d),
-            implLam "t" type0 $ \t ->
-              lam "d" (Implicit False) Irrelevant tDim $ \_d ->
-                instLam "r1" (validDatasetListElementType t) $ \_ ->
-                  tUnit,
-            Nothing
-          ),
-          ( forAllTypes $ \t ->
-              forAllDims $ \ds ->
-                validDatasetTensorElementType t
-                  .~~~> validDatasetListElementType (tTensor t ds),
-            implLam "t" type0 $ \t ->
-              lamDims $ \_ds ->
-                instLam "r1" (validDatasetTensorElementType t) $ \_ ->
-                  tUnit,
-            Nothing
-          ),
-          ( forAllIrrelevantNat "n" $ \n ->
-              validDatasetListElementType (tIndex n),
-            irrelImplNatLam "n" $ \_n ->
-              tUnit,
-            Nothing
-          ),
-          ( validDatasetListElementType tNat,
-            tUnit,
-            Nothing
-          ),
+          -- ( forAllTypes $ \t ->
+          --     validDatasetListElementType t
+          --       .~~~> validDatasetType (tList t),
+          --   implLam "t" type0 $ \t ->
+          --     instLam "r1" (validDatasetListElementType t) $ \_ ->
+          --       tUnit,
+          --   Nothing
+          -- ),
+          -- ( forAllTypes $ \t ->
+          --     forAllDim Irrelevant $ \d ->
+          --       validDatasetListElementType t
+          --         .~~~> validDatasetType (tVector t d),
+          --   implLam "t" type0 $ \t ->
+          --     lam "d" (Implicit False) Irrelevant tDim $ \_d ->
+          --       instLam "r1" (validDatasetListElementType t) $ \_ ->
+          --         tUnit,
+          --   Nothing
+          -- ),
+          -- ( forAllTypes $ \t ->
+          --     forAllDims $ \ds ->
+          --       validDatasetTensorElementType t
+          --         .~~~> validDatasetType (tTensor t ds),
+          --   implLam "t" type0 $ \t ->
+          --     lamDims $ \_ds ->
+          --       instLam "r1" (validDatasetTensorElementType t) $ \_ ->
+          --         tUnit,
+          --   Nothing
+          -- ),
+          -- List element typesssss
+          -- ( forAllTypes $ \t ->
+          --     validDatasetListElementType t
+          --       .~~~> validDatasetListElementType (tList t),
+          --   implLam "t" type0 $ \t ->
+          --     instLam "r1" (validDatasetListElementType t) $ \_ ->
+          --       tUnit,
+          --   Nothing
+          -- ),
+          -- ( forAllTypes $ \t ->
+          --     forAllDim Irrelevant $ \d ->
+          --       validDatasetListElementType t
+          --         .~~~> validDatasetListElementType (tVector t d),
+          --   implLam "t" type0 $ \t ->
+          --     lam "d" (Implicit False) Irrelevant tDim $ \_d ->
+          --       instLam "r1" (validDatasetListElementType t) $ \_ ->
+          --         tUnit,
+          --   Nothing
+          -- ),
+          -- ( forAllTypes $ \t ->
+          --     forAllDims $ \ds ->
+          --       validDatasetTensorElementType t
+          --         .~~~> validDatasetListElementType (tTensor t ds),
+          --   implLam "t" type0 $ \t ->
+          --     lamDims $ \_ds ->
+          --       instLam "r1" (validDatasetTensorElementType t) $ \_ ->
+          --         tUnit,
+          --   Nothing
+          -- ),
+          -- ( forAllIrrelevantNat "n" $ \n ->
+          --     validDatasetListElementType (tIndex n),
+          --   irrelImplNatLam "n" $ \_n ->
+          --     tUnit,
+          --   Nothing
+          -- ),
+          -- ( validDatasetListElementType tNat,
+          --   tUnit,
+          --   Nothing
+          -- ),
           -- Element typs
-          ( forAllIrrelevantNat "n" $ \n ->
-              validDatasetTensorElementType (tIndex n),
-            irrelImplNatLam "n" $ \_n ->
-              tUnit,
-            Nothing
-          ),
-          ( validDatasetTensorElementType tNat,
-            tUnit,
-            Nothing
-          ),
-          ( validDatasetTensorElementType tRat,
-            tUnit,
-            Nothing
-          ),
-
-          -- validDatasetTensorElementType
-          -- validDatasetListElementType
-          -- validDatasetType
-
-          -- valid dataset types can be (tList t), (tVector t d), (tTensor t ds)
-          -- just create an instance for validDatasetInstanceElementType for each tensorLike
-
+          -- ( forAllIrrelevantNat "n" $ \n ->
+          --     validDatasetTensorElementType (tIndex n),
+          --   irrelImplNatLam "n" $ \_n ->
+          --     tUnit,
+          --   Nothing
+          -- ),
+          -- ( validDatasetTensorElementType tNat,
+          --   tUnit,
+          --   Nothing
+          -- ),
+          -- ( validDatasetTensorElementType tRat,
+          --   tUnit,
+          --   Nothing
+          -- ),
           -------------------------
           -- ValidTensorLikeType --
           -------------------------

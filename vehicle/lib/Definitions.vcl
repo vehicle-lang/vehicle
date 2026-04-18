@@ -143,10 +143,6 @@ record HasValidNetworkType (t : Type) where {}
 tensorToTensorHasValidNetworkType : {{ HasValidNetworkIOType t1 }} -> {{ HasValidNetworkIOType t2 }} -> HasValidNetworkType ( t1 -> t2 )
 tensorToTensorHasValidNetworkType = {}
 
--- Dataset element types
-@typeclass
-record HasValidDatasetTensorElementType (t : Type) where {}
-
 -- Comparisons
 @typeclass
 record HasComparison t1 t2 where
@@ -197,6 +193,63 @@ realTensorHasComparison = { leTC = compareRatTensorReducedLe
                           , eqTC = compareRatTensorReducedEq
                           , neTC = compareRatTensorReducedNe
                           }
+
+-- Dataset list elements
+@typeclass
+record HasValidDatasetListElementType (t : Type) where {}
+
+@isntance
+listHasValidDatasetListElementType : {{HasValidDatasetListElementType t}} -> HasValidDatasetListElementType (List t)
+listHasValidDatasetListElementType = {}
+
+@instance
+vectorHasValidDatasetListElementType : {{HasValidDatasetListElementType t}} -> HasValidDatasetListElementType (Vector t dims)
+vectorHasValidDatasetListElementType = {}
+
+@instance
+tensorHasValidDatasetListElementType : {{HasValidDatasetListElementType t}} -> HasValidDatasetListElementType (Tensor t dims)
+tensorHasValidDatasetListElementType = {}
+
+@instance
+indexHasValidDatasetListElementType : HasValidDatasetListElementType Index
+indexHasValidDatasetListElementType = {}
+
+@instance
+natHasValidDatasetListElementType : HasValidDatasetListElementType Nat
+natHasValidDatasetListElementType = {}
+
+-- Dataset tensor element typess
+@typeclass
+record HasValidDatasetTensorElementType (t : Type) where {}
+
+@instance
+indexHasValidDatasetTensorElementType : HasValidDatasetTensorElementType Index
+indexHasValidDatasetTensorElementType = {}
+
+@instance
+natHasValidDatasetTensorElementType : HasValidDatasetTensorElementType Nat
+natHasValidDatasetTensorElementType = {}
+
+@instance
+realHasValidDatasetTensorElementType : HasValidDatasetTensorElementType Real
+realHasValidDatasetTensorElementType = {}
+
+-- Dataset types
+@typeclass
+record HasValidDatasetType (t : Type) where {}
+
+@instance
+listHasValidDatasetType : {{HasValidDatasetListElementType t}} -> HasValidDatasetType (List t)
+listHasValidDatasetType = {}
+
+vectorHasValidDatasetType : {{HasValidDatasetListElementType t}} -> HasValidDatasetType (Vector t dims)
+vectorHasValidDatasetType = {}
+
+@instance
+tensorHasValidDatasetType : {{HasValidDatasetTensorElementType t}} -> HasValidDatasetElement
+tensorHasValidDatasetType = {}
+
+
 
 --------------------------------------------------------------------------------
 -- Loss logics
