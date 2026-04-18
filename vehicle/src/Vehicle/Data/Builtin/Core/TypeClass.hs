@@ -59,9 +59,6 @@ instance Pretty TypeClass where
     ValidPropertyType -> "ValidPropertyType"
     ValidParameterType {} -> "ValidParameterType"
     ValidNetworkTensorType -> "ValidNetworkTensorType"
-    -- ValidDatasetType -> "ValidDatasetType"
-    -- ValidDatasetListElementType -> "ValidDatasetListElementType"
-    -- ValidDatasetTensorElementType -> "ValidDatasetTensorElementType"
     ValidTensorLikeType -> "ValidTensorLikeType"
 
 -- Builtin operations for type-classes
