@@ -194,13 +194,13 @@ realTensorHasComparison = { leTC = compareRatTensorReducedLe
                           , neTC = compareRatTensorReducedNe
                           }
 
--- Dataset tensor element typess
+-- Dataset tensor elements
 @typeclass
 record HasValidDatasetTensorElementType (t : Type) where {}
 
-@instance
-indexHasValidDatasetTensorElementType : HasValidDatasetTensorElementType (Index n)
-indexHasValidDatasetTensorElementType = {}
+-- @instance
+-- indexHasValidDatasetTensorElementType : HasValidDatasetTensorElementType (Index n)
+-- indexHasValidDatasetTensorElementType = {}
 
 @instance
 natHasValidDatasetTensorElementType : HasValidDatasetTensorElementType Nat
@@ -223,7 +223,7 @@ vectorHasValidDatasetListElementType : {{HasValidDatasetListElementType t}} -> H
 vectorHasValidDatasetListElementType = {}
 
 @instance
-tensorHasValidDatasetListElementType : {{ HasValidDatasetTensorElementType t }} -> HasValidDatasetListElementType (NonCastingTensor t dims)
+tensorHasValidDatasetListElementType : {{HasValidDatasetTensorElementType t}} -> HasValidDatasetListElementType (Tensor t dims)
 tensorHasValidDatasetListElementType = {}
 
 @instance
@@ -233,7 +233,6 @@ indexHasValidDatasetListElementType = {}
 @instance
 natHasValidDatasetListElementType : HasValidDatasetListElementType Nat
 natHasValidDatasetListElementType = {}
-
 
 -- Dataset types
 @typeclass
@@ -248,7 +247,7 @@ vectorHasValidDatasetType : {{HasValidDatasetListElementType t}} -> HasValidData
 vectorHasValidDatasetType = {}
 
 @instance
-tensorHasValidDatasetType : {{HasValidDatasetTensorElementType t}} -> HasValidDatasetType (NonCastingTensor t dims)
+tensorHasValidDatasetType : {{HasValidDatasetTensorElementType t}} -> HasValidDatasetType (Tensor t (dim :: dims))
 tensorHasValidDatasetType = {}
 
 
