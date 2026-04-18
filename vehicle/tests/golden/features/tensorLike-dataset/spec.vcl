@@ -4,6 +4,5 @@ record Pair where
   , b : Real
   }
 
-
 @dataset
 data : Pair

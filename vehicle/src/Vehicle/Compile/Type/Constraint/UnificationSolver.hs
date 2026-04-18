@@ -46,7 +46,7 @@ import Vehicle.Data.Variable.Free.Context (MonadFreeContext (..))
 -- | Attempts to solve as many unification constraints as possible.
 runUnificationSolver :: (MonadUnify builtin m) => Proxy builtin -> Bool -> m ()
 runUnificationSolver proxy topLevel =
-  logCompilerSection2 MidDetail "unification solver run" $
+  logCompilerSection2 MaxDetail "unification solver run" $
     runConstraintSolver
       getActiveUnificationConstraints
       setUnificationConstraints
@@ -131,7 +131,7 @@ unify ctx e1 e2 = do
   -- Perform the unification
   let prettyExpr e = prettyExternal (WithContext e namedCtx)
   let passDoc = "unifying" <+> prettyExpr ne1 <+> "~" <+> prettyExpr ne2 -- <+> "in context" <+> prettyVerbose ctx
-  logIndent MidDetail passDoc $ do
+  logIndent MaxDetail passDoc $ do
     unification constraintInfo (ne1, ne2)
 
 instance Semigroup (UnificationResult builtin) where
@@ -219,7 +219,7 @@ unification info = \case
 
 solveTrivially :: (MonadUnify builtin m) => m (UnificationResult builtin)
 solveTrivially = do
-  logDebug MidDetail "solved-trivially"
+  logDebug MaxDetail "solved-trivially"
   return Success
 
 solveArg ::
@@ -422,7 +422,7 @@ createMetaWithRestrictedDependencies ctx meta newDependencies spine = do
   let dbIndices = fmap (dbLevelToIndex constraintLevel) newDependencies
   let newDeps = fmap (\v -> prettyFriendly (WithContext (BoundVar p v :: Expr builtin) (toNamedBoundCtx ctx))) dbIndices
 
-  logCompilerSection MidDetail ("restricting dependencies of" <+> pretty meta <+> "to" <+> sep newDeps) $ do
+  logCompilerSection MaxDetail ("restricting dependencies of" <+> pretty meta <+> "to" <+> sep newDeps) $ do
     let levelSet = IntSet.fromList $ fmap unLv newDependencies
     let makeElem (i, v) = if i `IntSet.member` levelSet then Just v else Nothing
     let ctxWithLevels = zip (reverse [0 .. length ctx - 1 :: Int]) ctx
@@ -451,7 +451,7 @@ hardFail ::
   ConstraintInfo builtin ->
   m (UnificationResult builtin)
 hardFail (problem, _) = do
-  logDebug MidDetail "failed"
+  logDebug MaxDetail "failed"
   return $ HardFailure [problem]
 
 --------------------------------------------------------------------------------
