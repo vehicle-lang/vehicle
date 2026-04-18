@@ -76,9 +76,6 @@ typeOfTypeClass tc = case tc of
   ValidPropertyType -> type0 ~> type0
   ValidParameterType {} -> type0 ~> type0
   ValidNetworkTensorType -> type0 ~> type0
-  -- ValidDatasetType -> type0 ~> type0
-  -- ValidDatasetListElementType -> type0 ~> type0
-  -- ValidDatasetTensorElementType -> type0 ~> type0
   IsTensorType {} -> typeOfBuiltinType TensorType
   ValidTensorLikeType -> type0 ~> type0
 

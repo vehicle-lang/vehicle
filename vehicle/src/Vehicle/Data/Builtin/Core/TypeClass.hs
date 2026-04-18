@@ -31,9 +31,6 @@ data TypeClass
     ValidPropertyType
   | ValidParameterType ParameterSort
   | ValidNetworkTensorType
-  -- | ValidDatasetType
-  -- | ValidDatasetListElementType
-  -- | ValidDatasetTensorElementType
   | ValidTensorLikeType
   deriving (Eq, Ord, Generic, Show)
 

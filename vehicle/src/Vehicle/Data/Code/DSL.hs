@@ -175,15 +175,6 @@ validNonInferableParameterType t = typeClass (ValidParameterType NonInferable) [
 validNetworkTensorType :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
 validNetworkTensorType t = typeClass ValidNetworkTensorType [t]
 
--- validDatasetType :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
--- validDatasetType t = typeClass ValidDatasetType [t]
-
--- validDatasetListElementType :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
--- validDatasetListElementType t = typeClass ValidDatasetListElementType [t]
-
--- validDatasetTensorElementType :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
--- validDatasetTensorElementType t = typeClass ValidDatasetTensorElementType [t]
-
 validTensorLikeType :: (BuiltinHasStandardTypeClasses builtin) => DSLExpr builtin -> DSLExpr builtin
 validTensorLikeType t = typeClass ValidTensorLikeType [t]
 

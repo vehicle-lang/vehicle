@@ -73,7 +73,7 @@ createTensorRecordConversionFunctions p ident telescope fields = do
   let validHasMulInstance = createTensorLikeArithmeticInstance p ident hasMulIdent "HasMul" "mulTC"
   let validHasDivInstance = createTensorLikeArithmeticInstance p ident hasDivIdent "HasDiv" "divTC"
   let validHasComparisonInstance = createTensorLikeComparisonInstance p ident
-  let validDatasetTypeInstance = createValidDatasetType p ident
+  let validDatasetTypeInstance = createValidDatasetTypeInstance p ident
 
   return
     [ recordToTensorDecl,
@@ -154,11 +154,11 @@ createValidNetworkIOInstance p recordIdent = do
 
   DefFunction p functionIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) recordType functionBody
 
-createValidDatasetType ::
+createValidDatasetTypeInstance ::
   Provenance ->
   Identifier ->
   Decl Builtin
-createValidDatasetType p recordIdent = do
+createValidDatasetTypeInstance p recordIdent = do
   let recordType = fromDSL mempty $ freeVar validDatasetTypeIdent @@ [freeVar recordIdent]
   let functionBody = Record p recordType []
 
