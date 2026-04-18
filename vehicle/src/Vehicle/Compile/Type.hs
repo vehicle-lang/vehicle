@@ -66,7 +66,7 @@ typeCheckDecl uncheckedDecl isUnused =
   logCompileDecl "typing" uncheckedDecl $ do
     logDebug MidDetail $ prettyExternal uncheckedDecl <> line
 
-    convertedDecl <- logCompilerSection MaxDetail "Converting builtins" $ do
+    convertedDecl <- logCompilerSection MidDetail "Converting builtins" $ do
       traverse convertFromStandardBuiltins uncheckedDecl
 
     logDebug MidDetail $ prettyExternal convertedDecl
@@ -233,7 +233,7 @@ solveConstraints proxy = logCompilerSection2 MidDetail "constraint solving" $ do
 
       -- Try to solve the constraints pass
       oldConstraintIDS <- getActiveConstraintIDs proxy
-      logCompilerSection2 MaxDetail ("constraint solving pass" <+> pretty loopNumber) runSolvers
+      logCompilerSection2 MidDetail ("constraint solving pass" <+> pretty loopNumber) runSolvers
       newConstraintIDS <- getActiveConstraintIDs proxy
 
       if IntSet.null newConstraintIDS
@@ -243,7 +243,7 @@ solveConstraints proxy = logCompilerSection2 MidDetail "constraint solving" $ do
             then loopOverConstraints (loopNumber + 1)
             else do
               -- If no constraints are unblocked then try generating new constraints using defaults.
-              logDebug MaxDetail $ "Temporarily stuck" <> line
+              logDebug MidDetail $ "Temporarily stuck" <> line
               success <- tryToUnstick
               when success $
                 -- If new constraints generated then continue solving.

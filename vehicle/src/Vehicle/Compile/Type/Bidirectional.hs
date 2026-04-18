@@ -439,7 +439,7 @@ solveArgInsertionProblem ctx problem@ArgInsertionProblem {..} = do
       | otherwise -> do
           -- Force the current expected type to normalise
           (forcedExpectedType, blockingMetas) <- forceApplicationHeadType ctx currentExpectedType
-          logDebug MaxDetail ("normalising type to" <+> prettyExternal (WithContext forcedExpectedType (toNamedBoundCtx ctx)))
+          logDebug MidDetail ("normalising type to" <+> prettyExternal (WithContext forcedExpectedType (toNamedBoundCtx ctx)))
           case forcedExpectedType of
             -- If the forced expression is a `Pi` then well we've lost the user's types but we can proceed
             Pi _ binder resultType -> checkArgsAgainstPiType ctx problem binder resultType
@@ -477,9 +477,9 @@ checkArgsAgainstPiType ctx problem@ArgInsertionProblem {..} binder resultType
 
       let checkedExprDoc = prettyExternal (WithContext (solutionSoFar problem) nameCtx)
       let uncheckedArgsDoc = prettyExternal (WithContext uncheckedArgs nameCtx)
-      logDebug MaxDetail $ "checking-args-enter" <+> checkedExprDoc <+> "@" <+> uncheckedArgsDoc
+      logDebug MidDetail $ "checking-args-enter" <+> checkedExprDoc <+> "@" <+> uncheckedArgsDoc
       incrCallDepth
-      logDebug MaxDetail $ "expected-type:" <+> prettyExternal (WithContext currentExpectedType nameCtx)
+      logDebug MidDetail $ "expected-type:" <+> prettyExternal (WithContext currentExpectedType nameCtx)
 
       -- Determine whether we have an arg that matches the binder
       let visibility = visibilityOf binder
@@ -495,13 +495,13 @@ checkArgsAgainstPiType ctx problem@ArgInsertionProblem {..} binder resultType
       let p = provenanceOf originalFun
       checkedArg <- case matchedUncheckedArg of
         Just arg -> do
-          logDebug MaxDetail $ "matching-arg-found" <+> prettyVerbose arg
+          logDebug MidDetail $ "matching-arg-found" <+> prettyVerbose arg
           let relevance = relevanceOf binder
           let ctxRelevance = if contextRelevance == Irrelevant then Irrelevant else relevance
           checkedArgExpr <- checkExprType ctx ctxRelevance (typeOf binder) (argExpr arg)
           return $ Arg (visibilityOf arg) relevance checkedArgExpr
         Nothing -> do
-          logDebug MaxDetail "no-matching-arg-found"
+          logDebug MidDetail "no-matching-arg-found"
           let original = (originalFun, originalArgs, originalType)
           instantiateArgForNonExplicitBinder ctx p original binder
 
@@ -514,11 +514,11 @@ checkArgsAgainstPiType ctx problem@ArgInsertionProblem {..} binder resultType
                 uncheckedArgs = remainingUncheckedArgs
               }
 
-      logDebug MaxDetail $ "new-expected-type:" <+> prettyExternal (WithContext newExpectedType nameCtx)
+      logDebug MidDetail $ "new-expected-type:" <+> prettyExternal (WithContext newExpectedType nameCtx)
       decrCallDepth
       let newCheckedExprDoc = prettyExternal (WithContext (solutionSoFar newProblem) nameCtx)
       let newUncheckedArgsDoc = prettyExternal (WithContext remainingUncheckedArgs nameCtx)
-      logDebug MaxDetail $ "checking-args-exit" <+> newCheckedExprDoc <+> "@" <+> newUncheckedArgsDoc
+      logDebug MidDetail $ "checking-args-exit" <+> newCheckedExprDoc <+> "@" <+> newUncheckedArgsDoc
 
       -- Recurse to check the remaining unchecked args
       solveArgInsertionProblem ctx newProblem
@@ -560,19 +560,19 @@ instantiateArgForNonExplicitBinder boundCtx p (fun, funArgs, funType) binder = d
 showCheckEntry :: forall builtin m. (MonadBidirectional builtin m) => Type builtin -> Expr builtin -> m ()
 showCheckEntry t e = do
   ctx <- getNameContext
-  logDebug MaxDetail $ "check-entry" <+> prettyExternal (WithContext e ctx) <+> ":" <+> prettyExternal (WithContext t ctx) -- <+> "::::" <+> pretty (length ctx)
+  logDebug MidDetail $ "check-entry" <+> prettyExternal (WithContext e ctx) <+> ":" <+> prettyExternal (WithContext t ctx) -- <+> "::::" <+> pretty (length ctx)
   incrCallDepth
 
 showCheckExit :: forall builtin m. (MonadBidirectional builtin m) => Expr builtin -> m ()
 showCheckExit e = do
   decrCallDepth
   ctx <- getNameContext
-  logDebug MaxDetail $ "check-exit " <+> prettyExternal (WithContext e ctx)
+  logDebug MidDetail $ "check-exit " <+> prettyExternal (WithContext e ctx)
 
 showInferEntry :: forall builtin m. (MonadBidirectional builtin m) => Expr builtin -> m ()
 showInferEntry e = do
   ctx <- getNameContext
-  logDebug MaxDetail $ "infer-entry" <+> prettyExternal (WithContext e ctx)
+  logDebug MidDetail $ "infer-entry" <+> prettyExternal (WithContext e ctx)
   incrCallDepth
 
 showInferExit :: forall builtin m. (MonadBidirectional builtin m) => (Expr builtin, Type builtin) -> m ()

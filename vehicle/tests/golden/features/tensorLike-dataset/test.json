@@ -1,7 +1,7 @@
 [
   {
     "name": "TypeCheck",
-    "run": "vehicle typecheck -s spec.vcl --logging MaxDetail",
+    "run": "vehicle typecheck -s spec.vcl --logging MidDetail",
     "needs": ["spec.vcl"]
   }
 ]
