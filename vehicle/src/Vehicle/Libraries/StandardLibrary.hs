@@ -17,7 +17,8 @@ module Vehicle.Libraries.StandardLibrary
     hasMulIdent,
     hasDivIdent,
     hasComparisonIdent,
-    validDatasetTensorElementTypeIdent
+    validDatasetTensorElementTypeIdent,
+    validDatasetTypeIdent
   )
 where
 
@@ -67,6 +68,9 @@ validNetworkTypeIdent = standardLibIdent "HasValidNetworkType"
 
 validNetworkIOTypeIdent :: Identifier
 validNetworkIOTypeIdent = standardLibIdent "HasValidNetworkIOType"
+
+validDatasetTypeIdent :: Identifier
+validDatasetTypeIdent = standardLibIdent "HasValidDatasetType"
 
 validDatasetTensorElementTypeIdent :: Identifier
 validDatasetTensorElementTypeIdent = standardLibIdent "HasValidDatasetTensorElementType"

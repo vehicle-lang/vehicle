@@ -198,7 +198,7 @@ realTensorHasComparison = { leTC = compareRatTensorReducedLe
 @typeclass
 record HasValidDatasetListElementType (t : Type) where {}
 
-@isntance
+@instance
 listHasValidDatasetListElementType : {{HasValidDatasetListElementType t}} -> HasValidDatasetListElementType (List t)
 listHasValidDatasetListElementType = {}
 
@@ -246,7 +246,7 @@ vectorHasValidDatasetType : {{HasValidDatasetListElementType t}} -> HasValidData
 vectorHasValidDatasetType = {}
 
 @instance
-tensorHasValidDatasetType : {{HasValidDatasetTensorElementType t}} -> HasValidDatasetElement
+tensorHasValidDatasetType : {{HasValidDatasetTensorElementType t}} -> HasValidDatasetType (Tensor t dims)
 tensorHasValidDatasetType = {}
 
 

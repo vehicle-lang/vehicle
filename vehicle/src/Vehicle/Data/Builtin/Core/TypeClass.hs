@@ -31,9 +31,9 @@ data TypeClass
     ValidPropertyType
   | ValidParameterType ParameterSort
   | ValidNetworkTensorType
-  | ValidDatasetType
-  | ValidDatasetListElementType
-  | ValidDatasetTensorElementType
+  -- | ValidDatasetType
+  -- | ValidDatasetListElementType
+  -- | ValidDatasetTensorElementType
   | ValidTensorLikeType
   deriving (Eq, Ord, Generic, Show)
 
@@ -62,9 +62,9 @@ instance Pretty TypeClass where
     ValidPropertyType -> "ValidPropertyType"
     ValidParameterType {} -> "ValidParameterType"
     ValidNetworkTensorType -> "ValidNetworkTensorType"
-    ValidDatasetType -> "ValidDatasetType"
-    ValidDatasetListElementType -> "ValidDatasetListElementType"
-    ValidDatasetTensorElementType -> "ValidDatasetTensorElementType"
+    -- ValidDatasetType -> "ValidDatasetType"
+    -- ValidDatasetListElementType -> "ValidDatasetListElementType"
+    -- ValidDatasetTensorElementType -> "ValidDatasetTensorElementType"
     ValidTensorLikeType -> "ValidTensorLikeType"
 
 -- Builtin operations for type-classes

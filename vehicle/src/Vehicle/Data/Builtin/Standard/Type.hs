@@ -76,9 +76,9 @@ typeOfTypeClass tc = case tc of
   ValidPropertyType -> type0 ~> type0
   ValidParameterType {} -> type0 ~> type0
   ValidNetworkTensorType -> type0 ~> type0
-  ValidDatasetType -> type0 ~> type0
-  ValidDatasetListElementType -> type0 ~> type0
-  ValidDatasetTensorElementType -> type0 ~> type0
+  -- ValidDatasetType -> type0 ~> type0
+  -- ValidDatasetListElementType -> type0 ~> type0
+  -- ValidDatasetTensorElementType -> type0 ~> type0
   IsTensorType {} -> typeOfBuiltinType TensorType
   ValidTensorLikeType -> type0 ~> type0
 
@@ -177,7 +177,7 @@ restrictStandardDeclType declSort (ident, p) typ = do
   let tc = case declSort of
         RestrictedProperty -> Builtin p (TypeClass ValidPropertyType)
         RestrictedParameter s -> Builtin p (TypeClass (ValidParameterType s))
-        RestrictedDataset -> Builtin p (TypeClass ValidDatasetType)
+        RestrictedDataset -> FreeVar p validDatasetTypeIdent
         RestrictedNetwork -> FreeVar p validNetworkTypeIdent
 
   let expr = App tc [explicit typ]
