@@ -73,7 +73,7 @@ createTensorRecordConversionFunctions p ident telescope fields = do
   let validHasMulInstance = createTensorLikeArithmeticInstance p ident hasMulIdent "HasMul" "mulTC"
   let validHasDivInstance = createTensorLikeArithmeticInstance p ident hasDivIdent "HasDiv" "divTC"
   let validHasComparisonInstance = createTensorLikeComparisonInstance p ident
-  -- let validHasDatasetTensorElementType = createValidDatasetTensorElementType p ident
+  let validDatasetTypeInstance = createValidDatasetType p ident
 
   return
     [ recordToTensorDecl,
@@ -84,8 +84,8 @@ createTensorRecordConversionFunctions p ident telescope fields = do
       validHasSubInstance,
       validHasDivInstance,
       validHasMulInstance,
-      validHasComparisonInstance
-      -- validHasDatasetTensorElementType
+      validHasComparisonInstance,
+      validDatasetTypeInstance
     ]
 
 createRecordToTensor ::
@@ -154,19 +154,18 @@ createValidNetworkIOInstance p recordIdent = do
 
   DefFunction p functionIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) recordType functionBody
 
-  -- | ValidDatasetTensorElementType
--- createValidDatasetTensorElementType ::
---   Provenance ->
---   Identifier ->
---   Decl Builtin
--- createValidDatasetTensorElementType p recordIdent = do
---   let recordType = fromDSL mempty $ freeVar validDatasetTensorElementTypeIdent @@ [freeVar recordIdent]
---   let functionBody = Record p recordType []
+createValidDatasetType ::
+  Provenance ->
+  Identifier ->
+  Decl Builtin
+createValidDatasetType p recordIdent = do
+  let recordType = fromDSL mempty $ freeVar validDatasetTypeIdent @@ [freeVar recordIdent]
+  let functionBody = Record p recordType []
 
---   let functionName = Text.pack "_" <> nameOf recordIdent <> "HasValidDatasetTensorElementType"
---   let functionIdent = Identifier (modulePath recordIdent) functionName
+  let functionName = Text.pack "_" <> nameOf recordIdent <> "HasValidDatasetType"
+  let functionIdent = Identifier (modulePath recordIdent) functionName
 
---   DefFunction p functionIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) recordType functionBody
+  DefFunction p functionIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) recordType functionBody
 
 createTensorLikeHasQuantifierInstance ::
   Provenance ->
