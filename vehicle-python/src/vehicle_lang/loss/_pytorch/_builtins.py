@@ -229,7 +229,7 @@ class PyTorchBuiltins(
         init_state: torch.Tensor,
     ) -> torch.Tensor:
         states = [init_state]
-        for _ in range(n):
+        for _ in range(n - 1):
             action = controller(states[-1])
             next_state = dynamics(states[-1], action)
             states.append(next_state)

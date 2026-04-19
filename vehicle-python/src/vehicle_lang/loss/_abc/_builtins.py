@@ -110,7 +110,13 @@ class ABCBuiltins(
         controller: Any,
         dynamics: Any,
         init_state: vcl.Tensor,
-    ) -> vcl.Tensor: ...
+    ) -> vcl.Tensor:
+        """Return n visited states starting from init_state: [s_0, ..., s_{n-1}].
+
+        Performs n-1 transition steps of `s -> dynamics s (controller s)`,
+        matching the declared Vehicle type `Tensor S (n :: ds)`.
+        """
+        ...
 
     @abstractmethod
     def ForeachTensor(
