@@ -680,6 +680,8 @@ compileBuiltin _isOutType moduleDefs b args = case b of
     StackTensor -> compileStack moduleDefs args
     Iterate -> unsupportedError
     Rollout -> unsupportedError
+    ReverseDims -> unsupportedError
+    Transpose -> unsupportedError
     PowRat -> unsupportedError
     Temporal {} -> unsupportedError
     AtVector -> annotateApp moduleDefs [] "List.nth" args

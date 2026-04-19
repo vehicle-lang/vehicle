@@ -600,6 +600,8 @@ compileBuiltinFunction f args = case f of
   StackTensor {} -> annotateApp [DataTensor] Nothing "stack" args
   Iterate -> unsupportedError
   Rollout -> unsupportedError
+  ReverseDims -> unsupportedError
+  Transpose -> unsupportedError
   PowRat -> unsupportedError
   Temporal {} -> unsupportedError
   where

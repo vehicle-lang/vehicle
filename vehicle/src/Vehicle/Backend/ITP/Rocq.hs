@@ -534,6 +534,8 @@ compileBuiltin b args = case b of
     StackTensor -> compileStack args
     Iterate -> unsupportedError
     Rollout -> unsupportedError
+    ReverseDims -> unsupportedError
+    Transpose -> unsupportedError
     PowRat -> unsupportedError
     Temporal {} -> unsupportedError
     AtVector -> compileApplication [MathcompImport Boot] "tnth" args

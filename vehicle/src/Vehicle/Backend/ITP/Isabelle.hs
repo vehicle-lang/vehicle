@@ -781,6 +781,8 @@ compileBuiltin isOutType localeAssms b args = case b of
     StackTensor -> compileStack localeAssms args
     Iterate -> unsupportedError
     Rollout -> unsupportedError
+    ReverseDims -> unsupportedError
+    Transpose -> unsupportedError
     PowRat -> unsupportedError
     Temporal {} -> unsupportedError
     AtVector -> annotateApp localeAssms [] "tnth" args
