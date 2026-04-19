@@ -157,6 +157,10 @@ class TensorFlowBuiltins(
         )
 
     @override
+    def Transpose(self, xs: tf.Tensor) -> tf.Tensor:
+        return tf.transpose(xs)
+
+    @override
     def DimensionLookup(
         self, xs: tf.Tensor | tuple[tf.Tensor, ...] | list[tf.Tensor], i: int
     ) -> tf.Tensor:

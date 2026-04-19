@@ -240,5 +240,9 @@ class PyTorchBuiltins(
         return torch.stack([fn(i) for i in range(dim)])
 
     @override
+    def Transpose(self, xs: torch.Tensor) -> torch.Tensor:
+        return xs.permute(*reversed(range(xs.ndim)))
+
+    @override
     def StackTensor(self, tensors: Sequence[torch.Tensor]) -> torch.Tensor:
         return torch.stack(cast(tuple[torch.Tensor], tensors))

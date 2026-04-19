@@ -96,6 +96,8 @@ class ABCTranslation(
                 return self.translate_Rollout(expression)
             case vcl_ast.ForeachTensor():
                 return self.translate_ForeachTensor(expression)
+            case vcl_ast.Transpose():
+                return self.translate_Transpose(expression)
             case vcl_ast.StackTensor():
                 return self.translate_StackTensor(expression)
             case _:
@@ -195,6 +197,11 @@ class ABCTranslation(
     @abstractmethod
     def translate_ForeachTensor(
         self, expression: vcl_ast.ForeachTensor
+    ) -> vcl_var.Expression: ...
+
+    @abstractmethod
+    def translate_Transpose(
+        self, expression: vcl_ast.Transpose
     ) -> vcl_var.Expression: ...
 
     @abstractmethod

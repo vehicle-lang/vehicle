@@ -126,6 +126,9 @@ class ABCBuiltins(
     ) -> vcl.Tensor: ...
 
     @abstractmethod
+    def Transpose(self, xs: vcl.Tensor) -> vcl.Tensor: ...
+
+    @abstractmethod
     def StackTensor(self, tensors: Sequence[vcl.Tensor]) -> vcl.Tensor: ...
 
     @abstractmethod
