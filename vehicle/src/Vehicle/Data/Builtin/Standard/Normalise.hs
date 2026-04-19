@@ -12,7 +12,7 @@ import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
-import Vehicle.Prelude (GenericArg (..), HasIdentifier (identifierOf))
+import Vehicle.Prelude (GenericArg (..), HasIdentifier (identifierOf), explicit)
 
 ---------------------------------------------------------------------------------
 --- Normalisation
@@ -87,6 +87,8 @@ instance NormalisableBuiltin Builtin where
       ForeachTensor -> NonSimple evalForeachTensor
       ForeachVector -> NonSimple evalForeachVector
       Iterate -> NonSimple evalIterate
+      ReverseDims -> Simple evalReverseDims
+      Transpose -> None
       QuantifyRatTensor {} -> None
       QuantifyTensorLike {} -> None
     BuiltinCast c -> case c of
@@ -142,6 +144,18 @@ evalVectorToList args@(VectorToListArgs t d xs) =
   return $ case argExpr d of
     INatLiteral n | n == length xs -> mkListExpr (argExpr t) xs
     _ -> mkExpr accessFromVectorToList args
+
+evalReverseDims :: (MonadNormBuiltin m) => EvalSimple ReverseDimsArgs Value Builtin m
+evalReverseDims (ReverseDimsArgs ds) =
+  return $ case tryReverse IDimNil ds of
+    Just result -> result
+    Nothing -> mkBuiltin accessBuiltinFunction ReverseDims [explicit ds]
+  where
+    tryReverse :: Value Builtin -> Value Builtin -> Maybe (Value Builtin)
+    tryReverse acc = \case
+      IDimNil -> Just acc
+      IDimCons n rest -> tryReverse (IDimCons n acc) rest
+      _ -> Nothing
 
 foldReduceAndComparison ::
   TensorReductionArgs (Value Builtin) ->

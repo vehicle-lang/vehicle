@@ -396,3 +396,8 @@ accessRollout ::
   (HasBuiltinConstructor expr, BuiltinHasRollout builtin) =>
   Accessor (expr builtin) (RolloutArgs (expr builtin))
 accessRollout = accessArgs accessRolloutBuiltin
+
+accessTranspose ::
+  (HasBuiltinConstructor expr, BuiltinHasTranspose builtin) =>
+  Accessor (expr builtin) (TransposeArgs (expr builtin))
+accessTranspose = accessArgs accessTransposeBuiltin

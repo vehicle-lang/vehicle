@@ -374,6 +374,39 @@ instance IsArgs RolloutArgs where
           [implicit s, implicit a, implicitIrrelevant ds, implicitIrrelevant da, explicit n, explicit ctrl, explicit dyn, explicit s0]
       }
 
+-- | Arguments for `Transpose`
+data TransposeArgs expr = TransposeArgs
+  { transposeType :: expr,
+    transposeDims :: expr,
+    transposeTensor :: expr
+  }
+
+instance IsArgs TransposeArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          (fmap argExpr -> [t, ds, xs]) -> Just $ TransposeArgs t ds xs
+          _ -> Nothing,
+        mkExpr = \(TransposeArgs t ds xs) -> [implicit t, implicitIrrelevant ds, explicit xs]
+      }
+
+traverseTransposeTensor :: (Applicative f) => (t -> f t) -> TransposeArgs t -> f (TransposeArgs t)
+traverseTransposeTensor f (TransposeArgs t ds xs) = TransposeArgs t ds <$> f xs
+
+-- | Arguments for `ReverseDims`
+newtype ReverseDimsArgs expr = ReverseDimsArgs
+  { reverseDimsInput :: expr
+  }
+
+instance IsArgs ReverseDimsArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          (fmap argExpr -> [ds]) -> Just $ ReverseDimsArgs ds
+          _ -> Nothing,
+        mkExpr = \(ReverseDimsArgs ds) -> [explicit ds]
+      }
+
 -- | Arguments for `ForeachVector`
 data ForeachVectorArgs expr = ForeachVectorArgs
   { foreachVectorType :: expr,

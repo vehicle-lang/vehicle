@@ -95,6 +95,8 @@ typeOfBuiltinFunction = \case
   ForeachVector -> typeOfForeachVector
   Iterate -> forAllTypes $ \t -> ((t ~> t) ~> t ~> t) ~> tNat ~> t
   Rollout -> typeOfRollout
+  ReverseDims -> tDims ~> tDims
+  Transpose -> typeOfTranspose
 
 typeOfBuiltinConstructor :: (HasStandardBuiltins builtin) => BuiltinConstructor -> DSLExpr builtin
 typeOfBuiltinConstructor = \case
@@ -180,6 +182,14 @@ typeOfAtTensor =
     forAllDim Irrelevant $ \d ->
       forAllDims $ \ds ->
         tTensor tElem (dimCons d ds) ~> tIndex d ~> tTensor tElem ds
+
+-- | Type of transpose: reverses every axis of a tensor.
+-- forall A {ds : Dims} . Tensor A ds -> Tensor A (reverseDims ds)
+typeOfTranspose :: (HasStandardBuiltins builtin) => DSLExpr builtin
+typeOfTranspose =
+  forAll "A" type0 $ \tElem ->
+    forAllDims $ \ds ->
+      tTensor tElem ds ~> tTensor tElem (reverseDims ds)
 
 typeOfVecLiteralCast :: (HasStandardBuiltins builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 typeOfVecLiteralCast tCont tElem d =

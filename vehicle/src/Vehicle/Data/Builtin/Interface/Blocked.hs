@@ -88,6 +88,8 @@ functionBlockingStatus b spine = case b of
   ForeachVector -> fixedStatus [1] spine
   Iterate -> fixedStatus [2] spine
   Rollout -> DoesNotReduce
+  ReverseDims -> fixedStatus [0] spine
+  Transpose -> DoesNotReduce
   StackTensor -> stackBlockingStatus spine
 
 derivedFunctionBlockingStatus :: DerivedFunction -> Spine builtin -> BlockingStatus builtin

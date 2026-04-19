@@ -402,6 +402,7 @@ data RatTensorValue
   | VRatAt (AtTensorArgs (Value Builtin))
   | VRatForeach (ForeachTensorArgs (Value Builtin))
   | VRatTensorRollout (RolloutArgs (Value Builtin))
+  | VRatTensorTranspose (TransposeArgs (Value Builtin))
 
 toRatTensorValue :: (HasCallStack) => Value Builtin -> RatTensorValue
 toRatTensorValue expr = case expr of
@@ -425,6 +426,7 @@ toRatTensorValue expr = case expr of
   (getExpr accessAtTensor -> Just args) -> VRatAt args
   (getExpr accessForeachTensor -> Just args) -> VRatForeach args
   (getExpr accessRollout -> Just args) -> VRatTensorRollout args
+  (getExpr accessTranspose -> Just args) -> VRatTensorTranspose args
   _ -> illTyped
   where
     illTyped = developerError $ "ill-typed RatTensor expression:" <+> pretty (show expr) -- rettyVerbose expr
@@ -451,6 +453,7 @@ fromRatTensorValue = \case
   VRatAt args -> mkExpr accessAtTensor args
   VRatForeach args -> mkExpr accessForeachTensor args
   VRatTensorRollout args -> mkExpr accessRollout args
+  VRatTensorTranspose args -> mkExpr accessTranspose args
 
 -------------------------------------------------------------------------------
 -- Dim

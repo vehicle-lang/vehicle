@@ -205,6 +205,7 @@ unblockRatTensorValue actions@UnblockingActions {..} status expr = do
     VRatAt args -> unblockAtTensor (unblock DifferentDimensions) args
     VRatForeach args -> unblockForeachTensor args
     VRatTensorRollout {} -> return expr
+    VRatTensorTranspose {} -> return expr
   where
     unblock = unblockRatTensorValue actions
 
