@@ -345,6 +345,9 @@ instance BuiltinHasIterate Builtin where
 instance BuiltinHasRollout Builtin where
   accessRolloutBuiltin = functionAccessor Rollout
 
+instance BuiltinHasTranspose Builtin where
+  accessTransposeBuiltin = functionAccessor Transpose
+
 ---------------------------------------------------------------------------------
 --- Casts
 

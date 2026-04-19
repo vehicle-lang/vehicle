@@ -97,6 +97,7 @@ data LossBuiltinFunction
   | SearchRatTensor Name LogicDirection
   | MapList
   | FoldList
+  | Transpose
   deriving (Eq, Ord, Show, Generic)
 
 -- TODO all the show instances should really be obtainable from the grammar
@@ -125,6 +126,7 @@ instance Pretty LossBuiltinFunction where
     SearchRatTensor name _minimise -> "search[" <> pretty name <> "]"
     MapList -> "mapList"
     FoldList -> "foldList"
+    Transpose -> "transpose"
 
 --------------------------------------------------------------------------------
 -- Builtin datatype
@@ -276,6 +278,9 @@ instance BuiltinHasForeach LossBuiltin where
 instance BuiltinHasRollout LossBuiltin where
   accessRolloutBuiltin = functionAccessor Rollout
 
+instance BuiltinHasTranspose LossBuiltin where
+  accessTransposeBuiltin = functionAccessor Transpose
+
 --------------------------------------------------------------------------------
 -- Normalisation
 
@@ -325,6 +330,7 @@ instance NormalisableBuiltin LossBuiltin where
       MapList -> NonSimple evalMapList
       Temporal {} -> None
       Rollout -> None
+      Transpose -> None
       SearchRatTensor {} -> None
     _ -> None
 
@@ -379,6 +385,7 @@ instance ConvertableBuiltin LossBuiltinFunction Builtin where
     ForeachVector -> convertBuiltin p S.ForeachVector
     Temporal op -> convertBuiltin p (S.Temporal op)
     Rollout -> convertBuiltin p S.Rollout
+    Transpose -> convertBuiltin p S.Transpose
     MapList -> convertBuiltin p S.MapList
     FoldList -> convertBuiltin p S.FoldList
     SearchRatTensor {} -> cheatConvertBuiltin p $ pretty b

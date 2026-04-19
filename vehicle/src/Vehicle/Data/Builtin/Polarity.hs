@@ -192,6 +192,9 @@ instance BuiltinHasIterate PolarityBuiltin where
 instance BuiltinHasRollout PolarityBuiltin where
   accessRolloutBuiltin = functionAccessor Rollout
 
+instance BuiltinHasTranspose PolarityBuiltin where
+  accessTransposeBuiltin = functionAccessor Transpose
+
 -----------------------------------------------------------------------------
 -- Printing
 

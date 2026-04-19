@@ -156,6 +156,9 @@ class BuiltinHasIterate builtin where
 class BuiltinHasRollout builtin where
   accessRolloutBuiltin :: Accessor builtin ()
 
+class BuiltinHasTranspose builtin where
+  accessTransposeBuiltin :: Accessor builtin ()
+
 -- | Indicates that this set of builtins has the standard set of constructors,
 -- functions and types.
 class BuiltinHasStandardTypeClasses builtin where

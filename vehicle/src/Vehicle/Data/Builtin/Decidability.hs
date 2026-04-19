@@ -212,6 +212,9 @@ instance BuiltinHasIterate DecidabilityBuiltin where
 instance BuiltinHasRollout DecidabilityBuiltin where
   accessRolloutBuiltin = functionAccessor Rollout
 
+instance BuiltinHasTranspose DecidabilityBuiltin where
+  accessTransposeBuiltin = functionAccessor Transpose
+
 --------------------------------------------------------------------------------
 -- Pretty printing
 

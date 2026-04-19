@@ -204,6 +204,9 @@ instance BuiltinHasIterate LinearityBuiltin where
 instance BuiltinHasRollout LinearityBuiltin where
   accessRolloutBuiltin = functionAccessor Rollout
 
+instance BuiltinHasTranspose LinearityBuiltin where
+  accessTransposeBuiltin = functionAccessor Transpose
+
 --------------------------------------------------------------------------------
 -- Printing
 
