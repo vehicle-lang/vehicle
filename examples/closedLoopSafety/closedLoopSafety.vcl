@@ -30,9 +30,13 @@ trajectory : Tensor Real [10, 2]
 trajectory = rollout[10] controller dynamics initState
 
 -- Safety: position stays within [0, posMax] at every step
+positions : Tensor Real [10]
+positions = (transpose trajectory) ! 0
+
 @property
 stayBounded : Bool
-stayBounded = forall (i : Index 10) . (0 <= trajectory ! i ! 0 <= posMax)
+stayBounded = (globally[0,9]
+                (const 0.0 [10] <. positions and positions <. const posMax [10])) ! 0
 
 -- Liveness: position eventually enters goal region [goalLo, goalHi]
 @property
