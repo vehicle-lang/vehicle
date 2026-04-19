@@ -399,6 +399,7 @@ elabExpr expr = case expr of
   B.Finally tk _open e1 e2 _close e3 -> builtinFunction (V.Temporal V.Finally) tk [e1, e2, e3]
   B.Until tk _open e1 e2 _close e3 e4 -> builtinFunction (V.Temporal V.Until) tk [e1, e2, e3, e4]
   B.Rollout tk _open e1 _close e2 e3 e4 -> builtinFunction V.Rollout tk [e1, e2, e3, e4]
+  B.Transpose tk e -> builtinFunction V.Transpose tk [e]
   B.If tk1 e1 _ e2 _ e3 -> builtinFunction V.If tk1 [e1, e2, e3]
   B.Eq e1 tk e2 -> standardLibComparison V.Eq tk e1 e2
   B.Ne e1 tk e2 -> standardLibComparison V.Ne tk e1 e2

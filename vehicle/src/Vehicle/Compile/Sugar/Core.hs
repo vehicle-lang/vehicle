@@ -117,6 +117,8 @@ tokUntil = mkToken B.TokUntil "until"
 
 tokRollout = mkToken B.TokRollout "rollout"
 
+tokTranspose = mkToken B.TokTranspose "transpose"
+
 tokImpl = mkToken B.TokImpl "=>"
 
 tokAnd = mkToken B.TokAnd "and"

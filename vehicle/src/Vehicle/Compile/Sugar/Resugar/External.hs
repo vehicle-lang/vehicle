@@ -280,6 +280,8 @@ delabBuiltinFunction fun args = case fun of
   V.ConstTensor -> delabApp (B.Const tokConst) args
   V.Iterate -> rawDelab
   V.Rollout -> delabRollout args
+  V.ReverseDims -> rawDelab
+  V.Transpose -> delabTranspose args
   where
     rawDelab = cheatDelabPretty fun args
 
@@ -388,6 +390,11 @@ delabRollout args@[arg1, arg2, arg3, arg4]
   | all V.isExplicit args =
       B.Rollout tokRollout tokSeqOpen <$> delabM (argExpr arg1) <*> pure tokSeqClose <*> delabM (argExpr arg2) <*> delabM (argExpr arg3) <*> delabM (argExpr arg4)
 delabRollout args = cheatDelabPretty V.Rollout args
+
+delabTranspose :: (MonadDelab m) => [V.Arg V.Builtin] -> m B.Expr
+delabTranspose args = case filter V.isExplicit args of
+  [arg] -> B.Transpose tokTranspose <$> delabM (argExpr arg)
+  _ -> cheatDelabPretty V.Transpose args
 
 delabTelescope :: (MonadDelab m) => V.Binder V.Builtin -> V.Expr V.Builtin -> m ([B.NameBinder], B.Expr)
 delabTelescope binder body = do
