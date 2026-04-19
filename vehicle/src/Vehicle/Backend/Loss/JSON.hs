@@ -110,6 +110,7 @@ data JExpr
   | ConstTensor JExpr JExpr
   | ForeachTensor JExpr JExpr -- (firstDim, fn/lambda)
   | StackTensor [JExpr]
+  | Transpose JExpr -- (tensor): reverses every axis
   deriving (Show, Generic)
 
 -- NOTE:
@@ -320,6 +321,7 @@ convertBuiltin b spine = case b of
     L.Add L.AddNat -> unsupportedError b
     L.Mul L.MulNat -> unsupportedError b
     L.Rollout -> convertRollout convertValue spine
+    L.Transpose -> convertTranspose convertValue spine
     L.MapList -> unsupportedError b
     L.FoldList -> unsupportedError b
 
@@ -427,6 +429,15 @@ convertRollout convert spine = case getExpr accessSpine spine of
   Just (RolloutArgs _sType _aType _sDims _aDims n ctrl dyn s0) ->
     Rollout <$> convert n <*> convert ctrl <*> convert dyn <*> convert s0
   Nothing -> arityError L.Rollout 8 spine
+
+convertTranspose ::
+  (MonadJSON m) =>
+  (Value LossBuiltin -> m JExpr) ->
+  Spine LossBuiltin ->
+  m JExpr
+convertTranspose convert spine = case getExpr accessSpine spine of
+  Just (TransposeArgs _t _ds xs) -> Transpose <$> convert xs
+  Nothing -> arityError L.Transpose 3 spine
 
 convertForeachTensor ::
   (MonadJSON m) =>
@@ -541,6 +552,7 @@ fromJExpr = \case
   ConstTensor c ds -> toFunction L.ConstTensor [c, ds]
   ForeachTensor d fn -> toFunction L.ForeachTensor [d, fn]
   StackTensor xs -> toFunction L.StackTensor xs
+  Transpose xs -> toFunction L.Transpose [xs]
 
 fromJBinder :: (MonadNameContext m) => JBinder -> m (S.Binder LossBuiltin)
 fromJBinder (Binder p name typ) = do
