@@ -252,6 +252,8 @@ convertToDecidabilityBuiltins p b args = return $
         MapList -> sameFunction f
         Iterate -> sameFunction f
         Rollout -> sameFunction f
+        ReverseDims -> sameFunction f
+        Transpose -> sameFunction f
         StackTensor -> sameFunction f
         ConstTensor -> sameFunction f
         Temporal {} -> sameFunction f

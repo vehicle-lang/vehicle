@@ -91,6 +91,8 @@ typeOfBuiltinFunction p = \case
   ForeachVector -> typeOfForeach
   Iterate -> typeOfIterate
   Rollout -> typeOfRollout
+  ReverseDims -> constant ~> constant
+  Transpose -> typeOfOp1
   Temporal Globally -> typeOfTemporalOp1
   Temporal Finally -> typeOfTemporalOp1
   Temporal Until -> typeOfTemporalOp2

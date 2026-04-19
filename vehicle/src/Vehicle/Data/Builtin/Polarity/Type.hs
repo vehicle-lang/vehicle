@@ -89,6 +89,8 @@ typeOfBuiltinFunction = \case
   ForeachVector -> typeOfForeach
   Iterate -> typeOfIterate
   Rollout -> typeOfRollout
+  ReverseDims -> typeOfUnquantifiedOp1
+  Transpose -> forAllPolarities $ \pol -> pol ~> pol
   Temporal Globally -> typeOfTemporalOp1
   Temporal Finally -> typeOfTemporalOp1
   Temporal Until -> typeOfTemporalOp2
