@@ -191,8 +191,8 @@ type HasIndexExpr expr builtin =
 accessIndexType :: (HasIndexType expr builtin) => Accessor (expr builtin) (IndexTypeArgs (expr builtin))
 accessIndexType = accessArgs accessIndexTypeBuiltin
 
-accessIndexLiteral :: (HasIndexExpr expr builtin) => Accessor (expr builtin) (Int, IndexLiteralArgs (expr builtin))
-accessIndexLiteral = accessOpAndArgs accessIndexLitBuiltin
+accessIndexLiteral :: (HasIndexExpr expr builtin) => Accessor (expr builtin) Int
+accessIndexLiteral = accessNoArgs accessIndexLitBuiltin
 
 --------------------------------------------------------------------------------
 -- Naturals

@@ -226,10 +226,10 @@ intElemParser ::
   ElemParser m Int
 intElemParser decl datasetType file dims values expectedElementType = do
   case toTypeValue expectedElementType of
-    VIndexType dim@(INatLiteral n) -> case (dims, Vector.toList values) of
+    VIndexType (INatLiteral n) -> case (dims, Vector.toList values) of
       ([], [value]) -> do
         if 0 <= value && value < n
-          then return $ IIndexLiteral value dim
+          then return $ IIndexLiteral value
           else throwError $ DatasetInvalidIndex decl file value n
       _ -> developerError "Should not be parsing tensors of indices"
     VNatType {} -> do

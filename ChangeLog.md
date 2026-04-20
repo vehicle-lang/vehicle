@@ -4,8 +4,7 @@
 
 ### Loss backend
 
-* Fixed a bug where the compiler was erroring on some uses of `forall` for indices.
-* Fixed a bug where networks were recursively unblocked without changes. Backends now control when recursive unblocking happens.
+* Fixed a bug where compiler was erroring on some uses of `forall` for indices.
 
 ## v0.24.1
 

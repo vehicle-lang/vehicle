@@ -351,7 +351,7 @@ evalCompareIndex ::
   ComparisonOp ->
   EvalSimple IndexComparisonArgs Value builtin m
 evalCompareIndex op = \case
-  IndexCompArgs _ _ (IIndexLiteral x _) (IIndexLiteral y _) -> return $ IBoolLiteral (comparisonOp op x y)
+  IndexCompArgs _ _ (IIndexLiteral x) (IIndexLiteral y) -> return $ IBoolLiteral (comparisonOp op x y)
   args -> return $ mkExpr accessCompareIndex (op, args)
 
 -----------------------------------------------------------------------------
@@ -493,7 +493,7 @@ evalAtVector ::
 evalAtVector args@(AtVectorArgs _t _d vector index) = do
   fromMaybe (return $ mkExpr accessAtVector args) $
     case (vector, index) of
-      (IVecLiteral _t _d xs, IIndexLiteral i _) -> Just $ return $ xs !! i
+      (IVecLiteral _t _d xs, IIndexLiteral i) -> Just $ return $ xs !! i
       _ -> Nothing
 
 -----------------------------------------------------------------------------
@@ -570,7 +570,7 @@ unoptimisedEvalAtTensor ::
 unoptimisedEvalAtTensor args@(AtTensorArgs _t _d ds tensor index) = do
   fromMaybe (return $ mkExpr accessAtTensor args) $
     case index of
-      IIndexLiteral i _ ->
+      IIndexLiteral i ->
         goLiterals i tensorLiterals
           <|> case tensor of
             (getExpr accessStackTensor -> Just stackArgs) -> Just $ return $ stackElements stackArgs !! i
@@ -611,9 +611,8 @@ evalForeachTensor ::
   Eval builtin m ->
   ForeachTensorArgs (Value builtin) ->
   m (Value builtin)
-evalForeachTensor ctx evalApp eval (ForeachTensorArgs typ d ds fn) = case fn of
+evalForeachTensor ctx _evalApp eval (ForeachTensorArgs typ d ds fn) = case fn of
   VLam binder (Closure env body) -> do
-    logDebug MaxDetail "Hit"
     let lv = boundCtxLv ctx
     let newEnv = extendEnvWithBound lv binder env
     let newCtx = nameOf binder : ctx
@@ -622,7 +621,10 @@ evalForeachTensor ctx evalApp eval (ForeachTensorArgs typ d ds fn) = case fn of
           let newBody' = quote mempty (lv + 1) newBody
           let newLam = VLam binder (Closure (namedBoundContextToEnv ctx) newBody')
           let args = ForeachTensorArgs t d ds newLam
-          unoptimisedEvalForeachTensor ctx evalApp args
+          -- We simply recreate the foreach so that the call site
+          -- can do tensor fusion.
+          let result = mkExpr accessForeachTensor args
+          return result
     result <- liftForeach newCtx createForeach lv d typ body'
     return result
   e -> unexpectedExprError "NBE" ("foreachIndex" <+> prettyVerbose e)
@@ -642,15 +644,13 @@ liftForeach ctx evalForeach lv d = go
     go :: VType builtin -> Value builtin -> m (Value builtin)
     go typ body = do
       showFusionEntry ctx body
-      let maybeResult =
-            goOp1 body liftableTensorOp1s
-              <|> goOp2 body liftableTensorOp2s
-              <|> goAt body
-              <|> goConst body
-              <|> goLiterals body tensorLiterals
-      logDebug MaxDetail (prettyVerbose body)
-      logDebug MaxDetail (pretty $ isJust maybeResult)
-      result <- fromMaybe (evalForeach typ body) maybeResult
+      result <-
+        fromMaybe (evalForeach typ body) $
+          goOp1 body liftableTensorOp1s
+            <|> goOp2 body liftableTensorOp2s
+            <|> goAt body
+            <|> goConst body
+            <|> goLiterals body tensorLiterals
       showFusionExit ctx result
 
     -- Distribute the `forallIndex` across a liftable operation (e.g. `not`).
@@ -706,7 +706,7 @@ unoptimisedEvalForeachTensor ::
   m (Value builtin)
 unoptimisedEvalForeachTensor ctx evalApp args@(ForeachTensorArgs t d ds f) = case d of
   INatLiteral n -> do
-    xs <- traverse (\i -> evalApp ctx f [explicit (IIndexLiteral i d)]) [0 .. (n - 1 :: Int)]
+    xs <- traverse (\i -> evalApp ctx f [explicit (IIndexLiteral i)]) [0 .. (n - 1 :: Int)]
     evalStackTensor (StackTensorArgs t d ds xs)
   _ -> return $ mkExpr accessForeachTensor args
 
@@ -773,7 +773,7 @@ evalForeachVector ::
   m (Value builtin)
 evalForeachVector ctx evalApp _eval args@(ForeachVectorArgs t d f) = case d of
   INatLiteral n -> do
-    xs <- traverse (\i -> evalApp ctx f [explicit (IIndexLiteral i d)]) [0 .. (n - 1 :: Int)]
+    xs <- traverse (\i -> evalApp ctx f [explicit (IIndexLiteral i)]) [0 .. (n - 1 :: Int)]
     return $ IVecLiteral t d xs
   _ -> return $ mkExpr accessForeachVector args
 
