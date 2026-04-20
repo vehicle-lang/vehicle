@@ -1,5 +1,6 @@
 module Vehicle.Compile.Unblock
   ( unblockBoolExpr,
+    maybeUnblockBoolExpr,
     tryPurifyAssertion,
     UnblockingActions (..),
     MonadPurify,
@@ -7,7 +8,6 @@ module Vehicle.Compile.Unblock
   )
 where
 
-import Control.Monad (when)
 import Vehicle.Compile.LiftIf
 import Vehicle.Compile.Normalise.NBE (eval, evalApp)
 import Vehicle.Compile.Prelude
@@ -35,7 +35,7 @@ type MonadPurify m = MonadUnblock m
 
 data UnblockingActions m = UnblockingActions
   { unblockRatTensorBoundVar :: Lv -> m (Value Builtin),
-    unblockNetworkApp :: Identifier -> NetworkAppArgs (Value Builtin) -> m (Value Builtin)
+    unblockNetworkApp :: (Value Builtin -> m (Value Builtin)) -> Identifier -> NetworkAppArgs (Value Builtin) -> m (Value Builtin)
   }
 
 -- | Lifts all `if`s in the provided expression `e` to the top-level, while
@@ -47,21 +47,32 @@ unblockBoolExpr ::
   Value Builtin ->
   m (Value Builtin)
 unblockBoolExpr actions expr = do
+  maybeResult <- maybeUnblockBoolExpr actions expr
+  case maybeResult of
+    Nothing -> do
+      exprDoc <- prettyFriendlyInCtx expr
+      developerError $ "Failed to unblock expression:" <+> exprDoc
+    Just result -> return result
+
+maybeUnblockBoolExpr ::
+  (MonadUnblock m) =>
+  UnblockingActions m ->
+  Value Builtin ->
+  m (Maybe (Value Builtin))
+maybeUnblockBoolExpr actions expr = do
   ctx <- getNameContext
   let exprDoc = prettyFriendly (WithContext expr ctx)
-  -- logDebug MaxDetail $ line <> "unblocking" <+> exprDoc
-  -- incrCallDepth
 
   unblockedExpr <- unblockBoolValue actions expr
 
   newCtx <- getNameContext
   let unblockedExprDoc = prettyFriendly (WithContext unblockedExpr newCtx)
-  when (layoutAsString exprDoc == layoutAsString unblockedExprDoc) $
-    developerError $
-      "Failed to unblock expression:" <+> exprDoc
-
   decrCallDepth
-  return unblockedExpr
+
+  return $
+    if layoutAsString exprDoc == layoutAsString unblockedExprDoc
+      then Nothing
+      else Just unblockedExpr
 
 --------------------------------------------------------------------------------
 -- Purification
@@ -204,8 +215,7 @@ unblockRatTensorValue actions@UnblockingActions {..} status expr = do
       | status == DesiredDimensions -> return expr
       | otherwise -> unblockRatTensorBoundVar v
     VRatTensorFreeVar n spine -> case getExpr accessSpine spine of
-      Just args -> do
-        unblock status =<< unblockNetworkApp n args
+      Just args -> unblockNetworkApp (unblock status) n args
       -- Parameters and other scalar free vars may appear in constraints used
       -- for quantifier-domain extraction, e.g. `-epsilon < x ! 0 < epsilon`.
       _ -> return expr

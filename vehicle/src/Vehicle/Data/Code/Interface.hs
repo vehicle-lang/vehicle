@@ -74,6 +74,6 @@ mkIndexInto elementType value shape indices = go value (zip shape indices)
                     atFirstDim = INatLiteral d,
                     atRemainingDims = mkDims $ fmap fst xs,
                     atTensor = tensor,
-                    atIndex = IIndexLiteral i
+                    atIndex = IIndexLiteral i (INatLiteral d)
                   }
         go result xs

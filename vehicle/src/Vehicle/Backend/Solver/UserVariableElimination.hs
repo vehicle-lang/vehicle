@@ -205,11 +205,11 @@ unblockQuantifiedBoundVar lv =
 -- this is what we are hitting
 unblockNetworkApplication ::
   (MonadQuantifierBody m) =>
+  (Value Builtin -> m (Value Builtin)) ->
   Identifier ->
   NetworkAppArgs (Value Builtin) ->
   m (Value Builtin)
-unblockNetworkApplication ident (NetworkAppArgs arg) = do
-
+unblockNetworkApplication unblockFn ident (NetworkAppArgs arg) = do
   let name = nameOf ident
   networkInfo <- asks (lookupNetworkInfo name . networkCtx)
 
@@ -258,8 +258,7 @@ unblockNetworkApplication ident (NetworkAppArgs arg) = do
         <> line
         <> "replace-expr" <+> replacementExprDoc
 
-  logDebug MidDetail $ pretty (show transformedOutput)
-  return transformedOutput
+  unblockFn outputVarExpr
 
 --------------------------------------------------------------------------------
 -- Elimination operations
@@ -286,12 +285,15 @@ eliminateTensorAssertion ::
 eliminateTensorAssertion op (TensorOp2Args dims xs ys) = do
   _ <- logDebug MidDetail $ "dims are" <+> pretty (show dims) <+> "xs are" <+> pretty (show xs) <+> "ys are" <+> pretty (show ys)
   case dims of
-    IDimCons d@(INatLiteral n) ds -> do -- our dims are not of this type (they are dimNil), we never enter here in tensor-only example
+    IDimNil -> do
+      -- For scalar comparisons, directly apply the comparison
+      evalCompareRatTensor op (TensorOp2Args IDimNil xs ys)
+    IDimCons d@(INatLiteral n) ds -> do
       -- TODO switch to use `etaReduceTensor`?
       nameCtx <- getNameContext
       let tElem = fromTypeValue VRatType
       let d0Arg = mkDims []
-      let mkAt vs i = evalAtTensor nameCtx evalApp eval (AtTensorArgs tElem d ds vs (IIndexLiteral i))
+      let mkAt vs i = evalAtTensor nameCtx evalApp eval (AtTensorArgs tElem d ds vs (IIndexLiteral i d))
       let mkStackElement i = do
             xsi <- mkAt xs i
             ysi <- mkAt ys i

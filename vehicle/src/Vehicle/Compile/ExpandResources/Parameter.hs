@@ -71,5 +71,5 @@ parseIndex n decl value = case readMaybe value of
   Nothing -> throwError $ ParameterValueUnparsable decl value IndexType
   Just v ->
     if v >= 0 && v < n
-      then return $ IIndexLiteral v
+      then return $ IIndexLiteral v (INatLiteral n)
       else throwError $ ParameterValueInvalidIndex decl v n

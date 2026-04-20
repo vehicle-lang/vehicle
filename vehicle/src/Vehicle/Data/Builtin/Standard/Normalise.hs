@@ -124,7 +124,7 @@ evalFromNatToNat (FromNatToSimpleArgs v _) = return v
 
 evalFromNatToIndex :: (MonadNormBuiltin m, HasBuiltinConstructor expr) => EvalSimple FromNatToIndexArgs expr Builtin m
 evalFromNatToIndex args = return $ case args of
-  FromNatToIndexArgs _ (INatLiteral v) _ -> IIndexLiteral v
+  FromNatToIndexArgs d (INatLiteral v) _ -> IIndexLiteral v d
   _ -> mkExpr accessFromNatToIndex args
 
 evalFromNatToRat :: (MonadNormBuiltin m, HasBuiltinConstructor expr) => EvalSimple FromNatToSimpleArgs expr Builtin m
