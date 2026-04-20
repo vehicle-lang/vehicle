@@ -255,7 +255,7 @@ eliminateTensorAssertion op (TensorOp2Args dims xs ys) =
       nameCtx <- getNameContext
       let tElem = fromTypeValue VRatType
       let d0Arg = mkDims []
-      let mkAt vs i = evalAtTensor nameCtx evalApp eval (AtTensorArgs tElem d ds vs (IIndexLiteral i))
+      let mkAt vs i = evalAtTensor nameCtx evalApp eval (AtTensorArgs tElem d ds vs (IIndexLiteral i d))
       let mkStackElement i = do
             xsi <- mkAt xs i
             ysi <- mkAt ys i
