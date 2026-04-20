@@ -18,6 +18,7 @@ module Vehicle.Libraries.StandardLibrary
     hasDivIdent,
     hasComparisonIdent,
     validDatasetTypeIdent,
+    validDatasetListElementTypeIdent
   )
 where
 
@@ -70,6 +71,9 @@ validNetworkIOTypeIdent = standardLibIdent "HasValidNetworkIOType"
 
 validDatasetTypeIdent :: Identifier
 validDatasetTypeIdent = standardLibIdent "HasValidDatasetType"
+
+validDatasetListElementTypeIdent :: Identifier
+validDatasetListElementTypeIdent = standardLibIdent "HasValidDatasetListElementType"
 
 hasQuantifierIdent :: Identifier
 hasQuantifierIdent = standardLibIdent "HasQuantifier"

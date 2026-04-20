@@ -8,11 +8,8 @@ record Pair where
 pairData : Pair
 
 @dataset
-realData : List Nat
+pairListData : List Pair
 
+@dataset
+pairVecData : Vector Pair 2
 
--- @dataset
--- pairListData : List Pair
-
--- @dataset
--- pairVecData : Vector Pair 2

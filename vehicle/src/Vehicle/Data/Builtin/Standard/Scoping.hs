@@ -74,6 +74,7 @@ createTensorRecordConversionFunctions p ident telescope fields = do
   let validHasDivInstance = createTensorLikeArithmeticInstance p ident hasDivIdent "HasDiv" "divTC"
   let validHasComparisonInstance = createTensorLikeComparisonInstance p ident
   let validDatasetTypeInstance = createValidDatasetTypeInstance p ident
+  let validDatasetListElementTypeInstance = createValidDatasetListElementTypeInstance p ident
 
   return
     [ recordToTensorDecl,
@@ -85,7 +86,8 @@ createTensorRecordConversionFunctions p ident telescope fields = do
       validHasDivInstance,
       validHasMulInstance,
       validHasComparisonInstance,
-      validDatasetTypeInstance
+      validDatasetTypeInstance,
+      validDatasetListElementTypeInstance
     ]
 
 createRecordToTensor ::
@@ -163,6 +165,19 @@ createValidDatasetTypeInstance p recordIdent = do
   let functionBody = Record p recordType []
 
   let functionName = Text.pack "_" <> nameOf recordIdent <> "HasValidDatasetType"
+  let functionIdent = Identifier (modulePath recordIdent) functionName
+
+  DefFunction p functionIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) recordType functionBody
+
+createValidDatasetListElementTypeInstance ::
+  Provenance ->
+  Identifier ->
+  Decl Builtin
+createValidDatasetListElementTypeInstance p recordIdent = do
+  let recordType = fromDSL mempty $ freeVar validDatasetListElementTypeIdent @@ [freeVar recordIdent]
+  let functionBody = Record p recordType []
+
+  let functionName = Text.pack "_" <> nameOf recordIdent <> "HasValidDatasetListElementType"
   let functionIdent = Identifier (modulePath recordIdent) functionName
 
   DefFunction p functionIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) recordType functionBody
