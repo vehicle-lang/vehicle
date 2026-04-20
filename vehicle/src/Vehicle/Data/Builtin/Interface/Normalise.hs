@@ -351,7 +351,7 @@ evalCompareIndex ::
   ComparisonOp ->
   EvalSimple IndexComparisonArgs Value builtin m
 evalCompareIndex op = \case
-  IndexCompArgs _ _ (IIndexLiteral x) (IIndexLiteral y) -> return $ IBoolLiteral (comparisonOp op x y)
+  IndexCompArgs _ _ (IIndexLiteral x _) (IIndexLiteral y _) -> return $ IBoolLiteral (comparisonOp op x y)
   args -> return $ mkExpr accessCompareIndex (op, args)
 
 -----------------------------------------------------------------------------
@@ -493,7 +493,7 @@ evalAtVector ::
 evalAtVector args@(AtVectorArgs _t _d vector index) = do
   fromMaybe (return $ mkExpr accessAtVector args) $
     case (vector, index) of
-      (IVecLiteral _t _d xs, IIndexLiteral i) -> Just $ return $ xs !! i
+      (IVecLiteral _t _d xs, IIndexLiteral i _) -> Just $ return $ xs !! i
       _ -> Nothing
 
 -----------------------------------------------------------------------------
@@ -570,7 +570,7 @@ unoptimisedEvalAtTensor ::
 unoptimisedEvalAtTensor args@(AtTensorArgs _t _d ds tensor index) = do
   fromMaybe (return $ mkExpr accessAtTensor args) $
     case index of
-      IIndexLiteral i ->
+      IIndexLiteral i _ ->
         goLiterals i tensorLiterals
           <|> case tensor of
             (getExpr accessStackTensor -> Just stackArgs) -> Just $ return $ stackElements stackArgs !! i
@@ -706,7 +706,7 @@ unoptimisedEvalForeachTensor ::
   m (Value builtin)
 unoptimisedEvalForeachTensor ctx evalApp args@(ForeachTensorArgs t d ds f) = case d of
   INatLiteral n -> do
-    xs <- traverse (\i -> evalApp ctx f [explicit (IIndexLiteral i)]) [0 .. (n - 1 :: Int)]
+    xs <- traverse (\i -> evalApp ctx f [explicit (IIndexLiteral i d)]) [0 .. (n - 1 :: Int)]
     evalStackTensor (StackTensorArgs t d ds xs)
   _ -> return $ mkExpr accessForeachTensor args
 
@@ -773,7 +773,7 @@ evalForeachVector ::
   m (Value builtin)
 evalForeachVector ctx evalApp _eval args@(ForeachVectorArgs t d f) = case d of
   INatLiteral n -> do
-    xs <- traverse (\i -> evalApp ctx f [explicit (IIndexLiteral i)]) [0 .. (n - 1 :: Int)]
+    xs <- traverse (\i -> evalApp ctx f [explicit (IIndexLiteral i d)]) [0 .. (n - 1 :: Int)]
     return $ IVecLiteral t d xs
   _ -> return $ mkExpr accessForeachVector args
 
