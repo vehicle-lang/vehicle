@@ -56,10 +56,10 @@ pattern IBoolTensorLiteral n <- (getExpr accessBoolTensorLiteral -> Just n)
 pattern IBoolLiteral :: (HasBoolExpr expr builtin) => Bool -> expr builtin
 pattern IBoolLiteral n = IBoolTensorLiteral (ZeroDimTensor n)
 
-pattern IIndexLiteral :: (HasIndexExpr expr builtin) => Int -> expr builtin
-pattern IIndexLiteral n <- (getExpr accessIndexLiteral -> Just n)
+pattern IIndexLiteral :: (HasIndexExpr expr builtin) => Int -> expr builtin -> expr builtin
+pattern IIndexLiteral n d <- (getExpr accessIndexLiteral -> Just (n, indexLiteralDim -> d))
   where
-    IIndexLiteral n = mkExpr accessIndexLiteral n
+    IIndexLiteral n d = mkExpr accessIndexLiteral (n, IndexLiteralArgs d)
 
 pattern INatLiteral :: (HasNatExpr expr builtin) => Int -> expr builtin
 pattern INatLiteral n <- (getExpr accessNatLiteral -> Just n)
