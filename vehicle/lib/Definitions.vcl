@@ -230,10 +230,6 @@ indexHasValidDatasetListElementType = {}
 natHasValidDatasetListElementType : HasValidDatasetListElementType Nat
 natHasValidDatasetListElementType = {}
 
--- @instance
--- natHasValidDatasetListElementType : HasValidDatasetListElementType Nat
--- natHasValidDatasetListElementType = {}
-
 -- Dataset types
 @typeclass
 record HasValidDatasetType (t : Type) where {}
