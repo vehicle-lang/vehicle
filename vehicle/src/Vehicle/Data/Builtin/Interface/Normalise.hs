@@ -524,7 +524,7 @@ class HasTensorLiterals expr builtin where
 -- For example `(xs + ys) ! i` becomes `xs ! i + ys ! i`.
 evalAtTensor ::
   forall builtin m.
-  (MonadNormBuiltin m, HasTensorLiterals Value builtin, HasLiftableTensorOperations builtin, BuiltinHasListLiterals builtin, BuiltinHasIndexLiterals builtin, HasTensorExpr Value builtin, BuiltinHasForeach builtin) =>
+  (MonadNormBuiltin m, PrintableBuiltin builtin, HasTensorLiterals Value builtin, HasLiftableTensorOperations builtin, BuiltinHasListLiterals builtin, BuiltinHasIndexLiterals builtin, HasTensorExpr Value builtin, BuiltinHasForeach builtin) =>
   NamedBoundCtx ->
   EvalApp builtin m ->
   Eval builtin m ->
@@ -590,16 +590,21 @@ evalAtTensor ctx evalApp eval args@(AtTensorArgs t d ds tensor index) =
 
 unoptimisedEvalAtTensor ::
   forall builtin m.
-  (MonadNormBuiltin m, HasTensorLiterals Value builtin, BuiltinHasListLiterals builtin, BuiltinHasIndexLiterals builtin, HasTensorExpr Value builtin) =>
+  (MonadNormBuiltin m, PrintableBuiltin builtin, HasTensorLiterals Value builtin, BuiltinHasListLiterals builtin, BuiltinHasIndexLiterals builtin, HasTensorExpr Value builtin) =>
   EvalSimple AtTensorArgs Value builtin m
 unoptimisedEvalAtTensor args@(AtTensorArgs _t _d ds tensor index) = do
+  logDebug MaxDetail $ pretty (isJust $ getExpr accessStackTensor tensor)
+  logDebug MaxDetail $ pretty (isJust $ goLiterals 0 tensorLiterals)
+  logDebug MaxDetail $ pretty $ show index
   let result =
         case index of
           IIndexLiteral i ->
             goLiterals i tensorLiterals
               <|> case tensor of
                 (getExpr accessStackTensor -> Just stackArgs) ->
-                  Just $ return $ stackElements stackArgs !! i
+                  Just $ do 
+                    logDebug MaxDetail "hit!!!!!!!"
+                    return $ stackElements stackArgs !! i
                 (getExpr accessConstTensor -> Just constArgs) ->
                   Just $ return $ mkExpr accessConstTensor $
                     constArgs {constDims = ds}

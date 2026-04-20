@@ -50,6 +50,7 @@ import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext)
 import Vehicle.Prelude
 import Vehicle.Prelude.Logging
+import Vehicle.Data.Builtin.Interface.Print
 
 -------------------------------------------------------------------------------
 -- Types
@@ -518,7 +519,7 @@ fromDimensionsValue e = case e of
 
 -- | Reduces a tensor value `x` to `[x!0, x!1, ..., x!n]`
 etaReduceTensor ::
-  (MonadNormBuiltin m, BuiltinHasNatLiterals builtin, BuiltinHasIndexLiterals builtin, BuiltinHasTensors builtin, HasTensorLiterals Value builtin, BuiltinHasListLiterals builtin, BuiltinHasNatType builtin) =>
+  (MonadNormBuiltin m, PrintableBuiltin builtin, BuiltinHasNatLiterals builtin, BuiltinHasIndexLiterals builtin, BuiltinHasTensors builtin, HasTensorLiterals Value builtin, BuiltinHasListLiterals builtin, BuiltinHasNatType builtin) =>
   VType builtin ->
   Int ->
   Value builtin ->

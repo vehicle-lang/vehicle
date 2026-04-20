@@ -340,6 +340,9 @@ unblockAtTensor unblock (AtTensorArgs tElem d ds xs i) = do
   i' <- unblockIndexValue i
   liftIf xs' $ \xs'' ->
     liftIf i' $ \i'' -> do
+      logDebug MaxDetail "abcd"
+      logDebug MaxDetail $ prettyVerbose xs''
+      logDebug MaxDetail $ prettyVerbose i''
       nameCtx <- getNameContext
       evalAtTensor nameCtx evalApp eval $ AtTensorArgs tElem d ds xs'' i''
 

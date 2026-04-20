@@ -4,8 +4,8 @@ record Pair where
   , b : Real
   }
 
-type Input = Tensor Real [2]
-type Output = Tensor Real [2]
+-- type Input = Tensor Real [2]
+-- type Output = Tensor Real [2]
 -- unused : Bool
 -- unused = forall (x : Real) . True
 
@@ -15,8 +15,8 @@ f : Pair -> Pair
 -- @network
 -- f : Input -> Output
 
--- pair : Pair
--- pair = { a = 1, b = 1 }
+pair : Pair
+pair = { a = 1, b = 1 }
 
 
 @property
