@@ -37,6 +37,10 @@ def _torch_tensor(*args: Any, **kwargs: Any) -> torch.Tensor:
     return cast(torch.Tensor, torch.tensor(*args, **kwargs))
 
 
+def _tensor_content_key(t: torch.Tensor) -> tuple[tuple[int, ...], tuple[float, ...]]:
+    return (tuple(t.shape), tuple(t.detach().flatten().tolist()))
+
+
 ################################################################################
 ### Interpretations of Vehicle builtins in PyTorch
 ################################################################################
@@ -56,6 +60,12 @@ class PyTorchBuiltins(
     _formula_cache: dict[tuple[str, int, int], Any] = field(
         default_factory=dict, repr=False, compare=False, hash=False
     )
+    _rollout_cache: dict[
+        tuple[int, int, int, tuple[tuple[int, ...], tuple[float, ...]]], torch.Tensor
+    ] = field(default_factory=dict, repr=False, compare=False, hash=False)
+
+    def _clear_rollout_cache(self) -> None:
+        self._rollout_cache.clear()
 
     def _get_formula(self, kind: str, start: int, end: int) -> Any:
         """Get or create a cached vehicle-stl formula for the given operator and interval."""
@@ -228,12 +238,18 @@ class PyTorchBuiltins(
         dynamics: Any,
         init_state: torch.Tensor,
     ) -> torch.Tensor:
+        key = (n, id(controller), id(dynamics), _tensor_content_key(init_state))
+        cached = self._rollout_cache.get(key)
+        if cached is not None:
+            return cached
         states = [init_state]
         for _ in range(n - 1):
             action = controller(states[-1])
             next_state = dynamics(states[-1], action)
             states.append(next_state)
-        return torch.stack(states)
+        result = torch.stack(states)
+        self._rollout_cache[key] = result
+        return result
 
     @override
     def ForeachTensor(self, dim: int, fn: Any) -> torch.Tensor:

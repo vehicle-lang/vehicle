@@ -41,4 +41,5 @@ stayBounded = (globally[0,9]
 -- Liveness: position eventually enters goal region [goalLo, goalHi]
 @property
 reachGoal : Bool
-reachGoal = exists (i : Index 10) . (goalLo <= trajectory ! i ! 0 <= goalHi)
+reachGoal = (finally[0,9]
+                (const goalLo [10] <. positions and positions <. const goalHi [10])) ! 0

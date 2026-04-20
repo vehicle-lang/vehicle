@@ -5,12 +5,13 @@ from __future__ import annotations
 import ast as py
 from fractions import Fraction
 from pathlib import Path
-from typing import Any, Iterable, Mapping, MutableMapping
+from typing import Any, Iterable, Mapping, MutableMapping, cast
 
 from ..typing import CustomLogic, DeclarationName, DifferentiableLogic, Target
 from . import _ast as _loss_ast
 from ._ast import _nodes as vcl
 from ._common import load_loss_specification
+from ._pytorch._builtins import PyTorchBuiltins
 from ._pytorch._semantics import lift_to_reduction
 from ._pytorch._translation import PyTorchTranslation
 from ._pytorch.samplers import DefaultPyTorchSampler, PyTorchSampler
@@ -123,15 +124,37 @@ def load_specification(
     if temporal_semantics is None:
         temporal_semantics = _derive_temporal_semantics(program)
 
-    return load_loss_specification(
+    translation_holder: dict[str, PyTorchTranslation] = {}
+
+    def _factory() -> PyTorchTranslation:
+        translation = PyTorchTranslation(temporal_semantics=temporal_semantics)
+        translation_holder["translation"] = translation
+        return translation
+
+    compiled = load_loss_specification(
         path,
         logic=logic,
         samplers=samplers,
         declarations=declarations,
         declaration_context=declaration_context,
-        translation_factory=lambda: PyTorchTranslation(
-            temporal_semantics=temporal_semantics
-        ),
+        translation_factory=_factory,
         default_sampler_factory=DefaultPyTorchSampler,
         _program=program,
     )
+
+    builtins = cast(PyTorchBuiltins, translation_holder["translation"].builtins)
+
+    def _wrap(fn: Any) -> Any:
+        def wrapped(*args: Any, **kwargs: Any) -> Any:
+            builtins._clear_rollout_cache()
+            try:
+                return fn(*args, **kwargs)
+            finally:
+                builtins._clear_rollout_cache()
+
+        return wrapped
+
+    return {
+        name: (_wrap(value) if callable(value) else value)
+        for name, value in compiled.items()
+    }
