@@ -199,10 +199,6 @@ realTensorHasComparison = { leTC = compareRatTensorReducedLe
 record HasValidDatasetTensorElementType (t : Type) where {}
 
 @instance
-indexHasValidDatasetTensorElementType : HasValidDatasetTensorElementType (Index n)
-indexHasValidDatasetTensorElementType = {}
-
-@instance
 natHasValidDatasetTensorElementType : HasValidDatasetTensorElementType Nat
 natHasValidDatasetTensorElementType = {}
 
@@ -233,6 +229,10 @@ indexHasValidDatasetListElementType = {}
 @instance
 natHasValidDatasetListElementType : HasValidDatasetListElementType Nat
 natHasValidDatasetListElementType = {}
+
+-- @instance
+-- natHasValidDatasetListElementType : HasValidDatasetListElementType Nat
+-- natHasValidDatasetListElementType = {}
 
 -- Dataset types
 @typeclass
