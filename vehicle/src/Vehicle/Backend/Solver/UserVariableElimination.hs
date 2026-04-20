@@ -192,10 +192,11 @@ unblockQuantifiedBoundVar lv =
 
 unblockNetworkApplication ::
   (MonadQuantifierBody m) =>
+  (Value Builtin -> m (Value Builtin)) ->
   Identifier ->
   NetworkAppArgs (Value Builtin) ->
   m (Value Builtin)
-unblockNetworkApplication ident (NetworkAppArgs arg) = do
+unblockNetworkApplication unblockFn ident (NetworkAppArgs arg) = do
   let name = nameOf ident
   networkInfo <- asks (lookupNetworkInfo name . networkCtx)
 
@@ -220,7 +221,7 @@ unblockNetworkApplication ident (NetworkAppArgs arg) = do
         <> line
         <> "replace-expr" <+> replacementExprDoc
 
-  return outputVarExpr
+  unblockFn outputVarExpr
 
 --------------------------------------------------------------------------------
 -- Elimination operations
@@ -246,6 +247,9 @@ eliminateTensorAssertion ::
   m (Value Builtin)
 eliminateTensorAssertion op (TensorOp2Args dims xs ys) =
   case dims of
+    IDimNil -> do
+      -- For scalar comparisons, directly apply the comparison
+      evalCompareRatTensor op (TensorOp2Args IDimNil xs ys)
     IDimCons d@(INatLiteral n) ds -> do
       -- TODO switch to use `etaReduceTensor`?
       nameCtx <- getNameContext

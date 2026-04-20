@@ -611,8 +611,9 @@ evalForeachTensor ::
   Eval builtin m ->
   ForeachTensorArgs (Value builtin) ->
   m (Value builtin)
-evalForeachTensor ctx _evalApp eval (ForeachTensorArgs typ d ds fn) = case fn of
+evalForeachTensor ctx evalApp eval (ForeachTensorArgs typ d ds fn) = case fn of
   VLam binder (Closure env body) -> do
+    logDebug MaxDetail "Hit"
     let lv = boundCtxLv ctx
     let newEnv = extendEnvWithBound lv binder env
     let newCtx = nameOf binder : ctx
@@ -621,10 +622,7 @@ evalForeachTensor ctx _evalApp eval (ForeachTensorArgs typ d ds fn) = case fn of
           let newBody' = quote mempty (lv + 1) newBody
           let newLam = VLam binder (Closure (namedBoundContextToEnv ctx) newBody')
           let args = ForeachTensorArgs t d ds newLam
-          -- We simply recreate the foreach so that the call site
-          -- can do tensor fusion.
-          let result = mkExpr accessForeachTensor args
-          return result
+          unoptimisedEvalForeachTensor ctx evalApp args
     result <- liftForeach newCtx createForeach lv d typ body'
     return result
   e -> unexpectedExprError "NBE" ("foreachIndex" <+> prettyVerbose e)
@@ -644,13 +642,15 @@ liftForeach ctx evalForeach lv d = go
     go :: VType builtin -> Value builtin -> m (Value builtin)
     go typ body = do
       showFusionEntry ctx body
-      result <-
-        fromMaybe (evalForeach typ body) $
-          goOp1 body liftableTensorOp1s
-            <|> goOp2 body liftableTensorOp2s
-            <|> goAt body
-            <|> goConst body
-            <|> goLiterals body tensorLiterals
+      let maybeResult =
+            goOp1 body liftableTensorOp1s
+              <|> goOp2 body liftableTensorOp2s
+              <|> goAt body
+              <|> goConst body
+              <|> goLiterals body tensorLiterals
+      logDebug MaxDetail (prettyVerbose body)
+      logDebug MaxDetail (pretty $ isJust maybeResult)
+      result <- fromMaybe (evalForeach typ body) maybeResult
       showFusionExit ctx result
 
     -- Distribute the `forallIndex` across a liftable operation (e.g. `not`).
