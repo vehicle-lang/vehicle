@@ -231,7 +231,11 @@ unblockIndexValue :: UnblockingFunction m
 unblockIndexValue expr = case toIndexValue expr of
   VIndexLiteral {} -> return expr
   VIndexIf {} -> return expr
-  VIndexBoundVar {} -> unexpectedExprError currentPass (prettyVerbose expr)
+  -- A bound index may legally appear here when a quantifier body is
+  -- unblocked inside an outer `foreach`. `evalAtTensor` already handles
+  -- non-literal indices by returning the reconstructed `At` unchanged,
+  -- so the caller gets a well-formed opaque leaf.
+  VIndexBoundVar {} -> return expr
 
 unblockNatValue :: UnblockingFunction m
 unblockNatValue expr = case toNatValue expr of
