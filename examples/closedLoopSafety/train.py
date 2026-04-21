@@ -1,34 +1,34 @@
 #!/usr/bin/env python3
-"""Double-Integrator Reach-Avoid: training a controller via STL robustness.
+"""Double-integrator reach-avoid: train a controller via STL robustness.
 
 Scenario
 --------
-A point mass on a line (the double integrator) must be steered from the origin
-to a goal region [9, 11] while keeping position within [0, 15].  The controller
-observes [position, velocity] and outputs [acceleration].  The dynamics are:
+A point mass on a line must be steered from the origin to the goal band
+[9, 11] while keeping position within [0, 15]. The controller observes
+[position, velocity] and outputs [acceleration]. Dynamics:
 
     x' = x + v * dt
-    v' = v + u * dt       (dt = 0.4, so 10 steps = 4 seconds)
+    v' = v + u * dt       (dt = 0.4, 10 steps = 4 seconds)
 
-Two STL properties are compiled to differentiable robustness losses:
+Three STL properties are compiled to differentiable robustness losses:
 
-    stayBounded  =  forall i . 0 <= x(i) <= 15       (safety)
-    reachGoal    =  exists i . 9 <= x(i) <= 11       (liveness)
+    stayBounded    globally[0,9]  position in [0, posMax]
+    reachGoal      finally[0,9]   position in [goalLo, goalHi]
+    safeUntilGoal  until[0,9]     all state dims bounded UNTIL goal reached
 
-The training objective combines a traditional task loss (control effort
-minimisation) with the STL constraint penalties:
+Training objective:
 
-    loss = effort_loss + weight * sum(relu(-robustness))
+    loss = effort + weight * sum(relu(-robustness))
 
 STL robustness: positive = satisfied, negative = violated.
 
 Prerequisites
 -------------
-  pip install vehicle-lang[pytorch]
-  # or from the repo:
-  #   cd vehicle-python
-  #   uv run ../examples/closedLoopSafety/train.py
-  The Vehicle compiler must be on PATH.
+    pip install vehicle-lang[pytorch]
+    # or from the repo:
+    #   cd vehicle-python
+    #   uv run ../examples/closedLoopSafety/train.py
+    The Vehicle compiler must be on PATH.
 """
 
 from __future__ import annotations
@@ -36,171 +36,142 @@ from __future__ import annotations
 from pathlib import Path
 
 import torch
-import torch.nn as nn
+from torch import nn
 from vehicle_lang import DifferentiableLogic
 from vehicle_lang.loss import pytorch as loss_pt
 
-# ---------------------------------------------------------------------------
-# 0. Device setup — use GPU if available
-# ---------------------------------------------------------------------------
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-torch.set_default_device(device)
-print(f"Using device: {device}")
-
-# ---------------------------------------------------------------------------
-# 1. Compile the Vehicle specification
-# ---------------------------------------------------------------------------
-
 SPEC_PATH = Path(__file__).parent / "closedLoopSafety.vcl"
-PROPS = ["stayBounded", "reachGoal"]
-
-print("\n" + "=" * 62)
-print("Loading double-integrator reach-avoid specification...")
-print(f"  {SPEC_PATH.name}")
-print("=" * 62)
-
-declarations = loss_pt.load_specification(
-    SPEC_PATH,
-    logic=DifferentiableLogic.STL,
-    declarations=PROPS,
-)
-
-print(f"\nCompiled properties: {PROPS}")
-
-# ---------------------------------------------------------------------------
-# 2. Define the controller network
-#    controller : Tensor Real [2] -> Tensor Real [1]
-#    Maps [position, velocity] to [acceleration].
-# ---------------------------------------------------------------------------
-
-torch.manual_seed(0)
-model = nn.Sequential(
-    nn.Linear(2, 32),
-    nn.ReLU(),
-    nn.Linear(32, 1),
-)
-
-
-def controller(x: torch.Tensor) -> torch.Tensor:
-    """Neural controller: [position, velocity] -> [acceleration]."""
-    return model(x)
-
-
-# ---------------------------------------------------------------------------
-# 3. Define the dynamics (double integrator, dt = 0.2)
-#    dynamics : Tensor Real [2] -> Tensor Real [1] -> Tensor Real [2]
-# ---------------------------------------------------------------------------
+PROPERTIES = ["stayBounded", "reachGoal", "safeUntilGoal"]
 
 DT = 0.4
 N_STEPS = 10
+EPOCHS = 300
+LEARNING_RATE = 1e-3
+CONSTRAINT_WEIGHT = 50.0
+BANNER = "=" * 62
+
+
+def build_model(seed: int = 0) -> nn.Module:
+    torch.manual_seed(seed)
+    return nn.Sequential(nn.Linear(2, 32), nn.ReLU(), nn.Linear(32, 1))
 
 
 def dynamics(state: torch.Tensor, action: torch.Tensor) -> torch.Tensor:
-    """Double integrator: x' = x + v*dt, v' = v + u*dt."""
-    x = state[0]
-    v = state[1]
+    x, v = state[0], state[1]
     u = action[0]
-    x_new = x + v * DT
-    v_new = v + u * DT
-    return torch.stack([x_new, v_new])
+    return torch.stack([x + v * DT, v + u * DT])
 
 
-def rollout_trajectory(ctrl, dyn, init):
-    """Run the closed loop manually to compute control effort."""
-    states = [init]
-    actions = []
-    state = init
+def rollout(
+    controller: nn.Module, init_state: torch.Tensor
+) -> tuple[torch.Tensor, torch.Tensor]:
+    state = init_state
+    states = [state]
+    actions: list[torch.Tensor] = []
     for _ in range(N_STEPS):
-        action = ctrl(state)
+        action = controller(state)
         actions.append(action)
-        state = dyn(state, action)
+        state = dynamics(state, action)
         states.append(state)
     return torch.stack(states), torch.stack(actions)
 
 
-# ---------------------------------------------------------------------------
-# 4. Evaluate BEFORE training
-#    stayBounded: likely satisfied (near origin, small actions)
-#    reachGoal:   violated (position never reaches [9, 11])
-# ---------------------------------------------------------------------------
+def compute_robustness(declarations, controller: nn.Module) -> list[torch.Tensor]:
+    return [declarations[name](controller, dynamics) for name in PROPERTIES]
 
-print("\n" + "=" * 62)
-print("Robustness BEFORE training  (positive = satisfied)")
-print("=" * 62)
-with torch.no_grad():
-    for name in PROPS:
-        rob = declarations[name](controller, dynamics).item()
+
+def evaluate(declarations, controller: nn.Module) -> dict[str, float]:
+    with torch.no_grad():
+        return {
+            name: rob.item()
+            for name, rob in zip(
+                PROPERTIES, compute_robustness(declarations, controller)
+            )
+        }
+
+
+def print_robustness(title: str, results: dict[str, float]) -> None:
+    print(f"\n{BANNER}\n{title}\n{BANNER}")
+    for name, rob in results.items():
         status = "OK      " if rob >= 0 else "VIOLATED"
         print(f"  {name:<16} {rob:+8.2f}  [{status}]")
 
-# ---------------------------------------------------------------------------
-# 5. Training loop
-#    Combined loss = effort + weight * constraint_penalty
-#    - effort: sum of squared accelerations (traditional task loss)
-#    - constraint: relu(-robustness) for each STL property
-# ---------------------------------------------------------------------------
 
-print("\n" + "=" * 62)
-print("Training (300 epochs, Adam lr=1e-3)")
-print("=" * 62)
+def train(
+    declarations,
+    controller: nn.Module,
+    init_state: torch.Tensor,
+) -> None:
+    optimizer = torch.optim.Adam(controller.parameters(), lr=LEARNING_RATE)
+    for epoch in range(EPOCHS):
+        optimizer.zero_grad()
 
-CONSTRAINT_WEIGHT = 50.0
-INIT_STATE = torch.tensor([0.0, 0.0])
+        robustnesses = compute_robustness(declarations, controller)
+        constraint_loss = torch.stack([torch.relu(-r) for r in robustnesses]).sum()
 
-optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+        _, actions = rollout(controller, init_state)
+        effort_loss = (actions**2).sum()
 
-for epoch in range(300):
-    optimizer.zero_grad()
+        loss = effort_loss + CONSTRAINT_WEIGHT * constraint_loss
+        loss.backward()
+        optimizer.step()
 
-    # STL constraint losses from Vehicle
-    robs = [declarations[name](controller, dynamics) for name in PROPS]
-    constraint_loss = torch.stack([torch.relu(-r) for r in robs]).sum()
+        if (epoch + 1) % 100 == 0 or epoch == 0:
+            print(
+                f"  epoch {epoch + 1:4d}  loss = {loss.item():.4f}"
+                f"  (effort = {effort_loss.item():.2f},"
+                f" constraint = {constraint_loss.item():.2f})"
+            )
 
-    # Traditional task loss: minimise control effort
-    _, actions = rollout_trajectory(controller, dynamics, INIT_STATE)
-    effort_loss = (actions**2).sum()
 
-    loss = effort_loss + CONSTRAINT_WEIGHT * constraint_loss
+def print_trajectory(controller: nn.Module, init_state: torch.Tensor) -> None:
+    print(f"\n{BANNER}\nLearned trajectory  [goal: 9-11, bounds: 0-15]\n{BANNER}")
+    print(f"  {'step':>4}  {'pos':>7}  {'vel':>7}  {'accel':>7}")
+    print(f"  {'----':>4}  {'-------':>7}  {'-------':>7}  {'-------':>7}")
+    with torch.no_grad():
+        states, actions = rollout(controller, init_state)
+        for t in range(N_STEPS + 1):
+            x, v = states[t][0].item(), states[t][1].item()
+            if t == 0:
+                print(f"  {t:4d}  {x:+7.2f}  {v:+7.2f}  {'':>7}")
+            else:
+                a = actions[t - 1][0].item()
+                print(f"  {t:4d}  {x:+7.2f}  {v:+7.2f}  {a:+7.2f}")
 
-    loss.backward()
-    optimizer.step()
 
-    if (epoch + 1) % 100 == 0 or epoch == 0:
-        print(
-            f"  epoch {epoch + 1:4d}  loss = {loss.item():.4f}"
-            f"  (effort = {effort_loss.item():.2f},"
-            f" constraint = {constraint_loss.item():.2f})"
-        )
+def main() -> None:
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    torch.set_default_device(device)
+    print(f"Using device: {device}")
 
-# ---------------------------------------------------------------------------
-# 6. Evaluate AFTER training
-# ---------------------------------------------------------------------------
+    print(f"\n{BANNER}")
+    print(f"Loading double-integrator reach-avoid specification...\n  {SPEC_PATH.name}")
+    print(BANNER)
+    declarations = loss_pt.load_specification(
+        SPEC_PATH,
+        logic=DifferentiableLogic.STL,
+        declarations=PROPERTIES,
+    )
+    print(f"\nCompiled properties: {PROPERTIES}")
 
-print("\n" + "=" * 62)
-print("Robustness AFTER training   (positive = satisfied)")
-print("=" * 62)
-with torch.no_grad():
-    for name in PROPS:
-        rob = declarations[name](controller, dynamics).item()
-        status = "OK      " if rob >= 0 else "VIOLATED"
-        print(f"  {name:<16} {rob:+8.2f}  [{status}]")
+    controller = build_model()
+    init_state = torch.tensor([0.0, 0.0])
 
-# ---------------------------------------------------------------------------
-# 7. Inspect the learned trajectory
-# ---------------------------------------------------------------------------
+    print_robustness(
+        "Robustness BEFORE training  (positive = satisfied)",
+        evaluate(declarations, controller),
+    )
 
-print("\n" + "=" * 62)
-print("Learned trajectory  [goal: 9-11, bounds: 0-15]")
-print("=" * 62)
-print(f"  {'step':>4}  {'pos':>7}  {'vel':>7}  {'accel':>7}")
-print(f"  {'----':>4}  {'-------':>7}  {'-------':>7}  {'-------':>7}")
-with torch.no_grad():
-    states, actions = rollout_trajectory(controller, dynamics, INIT_STATE)
-    for t in range(N_STEPS + 1):
-        x, v = states[t][0].item(), states[t][1].item()
-        if t == 0:
-            print(f"  {t:4d}  {x:+7.2f}  {v:+7.2f}  {'':>7}")
-        else:
-            a = actions[t - 1][0].item()
-            print(f"  {t:4d}  {x:+7.2f}  {v:+7.2f}  {a:+7.2f}")
+    print(f"\n{BANNER}\nTraining ({EPOCHS} epochs, Adam lr={LEARNING_RATE})\n{BANNER}")
+    train(declarations, controller, init_state)
+
+    print_robustness(
+        "Robustness AFTER training   (positive = satisfied)",
+        evaluate(declarations, controller),
+    )
+
+    print_trajectory(controller, init_state)
+
+
+if __name__ == "__main__":
+    main()

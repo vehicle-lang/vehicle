@@ -43,3 +43,25 @@ stayBounded = (globally[0,9]
 reachGoal : Bool
 reachGoal = (finally[0,9]
                 (const goalLo [10] <. positions and positions <. const goalHi [10])) ! 0
+
+-- Per-dimension bounds on the state vector [position, velocity]
+stateLoBounds : Tensor Real [2]
+stateLoBounds = [0.0, -10.0]
+
+stateHiBounds : Tensor Real [2]
+stateHiBounds = [posMax, 10.0]
+
+stateInBounds : Tensor Real [2] -> Bool
+stateInBounds s = forall k . stateLoBounds ! k <= s ! k <= stateHiBounds ! k
+
+inGoalRegion : Tensor Real [2] -> Bool
+inGoalRegion s = goalLo <= s ! 0 <= goalHi
+
+-- Safety-until-reach: the state stays within valid bounds in every dimension
+-- until the position enters the goal band. Mixes `until[0,9]` (temporal) with
+-- `forall k` over `Index 2` (first-order over state dimensions).
+@property
+safeUntilGoal : Bool
+safeUntilGoal = (until[0,9]
+                   (foreach t . stateInBounds (trajectory ! t))
+                   (foreach t . inGoalRegion (trajectory ! t))) ! 0
