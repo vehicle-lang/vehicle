@@ -394,11 +394,13 @@ fromMultiDimBoolTensorValue = \case
 data RecordValue
   = VRecordFreeVar Identifier (Spine Builtin)
   | VRecordBoundVar Lv
+  | VRecordLiteral (VType Builtin) !(VRecordFields Builtin)
 
 toRecordValue :: (HasCallStack) => Value Builtin -> RecordValue
 toRecordValue expr = case expr of
   VBoundVar lv [] -> VRecordBoundVar lv
   VFreeVar n spine -> VRecordFreeVar n spine
+  VRecord typ fields-> VRecordLiteral typ fields
   _ -> developerError $ "ill-typed Record expression" <+> prettyVerbose expr
 
 -------------------------------------------------------------------------------

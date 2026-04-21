@@ -413,6 +413,7 @@ topLevelUnblockingActions :: (MonadCompile m) => UnblockingActions m
 topLevelUnblockingActions =
   UnblockingActions
     (developerError "Should not be unblocking variables at top-level")
+    (developerError "Should not be unblocking variables at top-level")
     (developerError "Unblocking of constant network functions at top-level not yet supported")
 
 handlePropertyCompileError ::

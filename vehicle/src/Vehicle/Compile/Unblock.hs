@@ -5,6 +5,7 @@ module Vehicle.Compile.Unblock
     UnblockingActions (..),
     MonadPurify,
     unblockRatTensorValue,
+    DimensionsStatus (..)
   )
 where
 
@@ -35,7 +36,8 @@ type MonadPurify m = MonadUnblock m
 
 data UnblockingActions m = UnblockingActions
   { unblockRatTensorBoundVar :: Lv -> m (Value Builtin),
-    unblockNetworkApp :: (Value Builtin -> m (Value Builtin)) -> Identifier -> NetworkAppArgs (Value Builtin) -> m (Value Builtin)
+    unblockRecordBoundVar :: Lv -> m (Value Builtin),
+    unblockNetworkApp :: (Value Builtin -> m (Value Builtin)) -> (Value Builtin -> m (Value Builtin)) -> Identifier -> NetworkAppArgs (Value Builtin) -> m (Value Builtin)
   }
 
 -- | Lifts all `if`s in the provided expression `e` to the top-level, while
@@ -182,18 +184,25 @@ unblockBoolMultiDimTensorValue actions expr = do
   where
     unblock = unblockBoolMultiDimTensorValue actions
 
-unblockRecordValue :: UnblockingActions m -> UnblockingFunction m
-unblockRecordValue UnblockingActions{..} expr = do
+unblockRecordValue :: UnblockingActions m -> DimensionsStatus -> UnblockingFunction m
+unblockRecordValue actions@UnblockingActions{..} status expr = do
+  logDebug MidDetail "------------ UNBLOCK RECORD VALUE -----------------------"
   showEntry expr
+  logDebug MidDetail $ pretty (show expr)
   showExit =<< case toRecordValue expr of
     VRecordFreeVar n spine -> case getExpr accessSpine spine of
       Just args -> do
-        unblockNetworkApp n args
+        unblockNetworkApp (unblockTensor status) (unblockRecord status) n args
       _ -> return expr
     VRecordBoundVar {} -> return expr
+    VRecordLiteral {} -> return expr
+  where
+    unblockTensor = unblockRatTensorValue actions
+    unblockRecord = unblockRecordValue actions
 
 unblockRatTensorValue :: (MonadPurify m) => UnblockingActions m -> DimensionsStatus -> Value Builtin -> m (Value Builtin)
 unblockRatTensorValue actions@UnblockingActions {..} status expr = do
+  logDebug MidDetail "------------ UNBLOCK RAT TENSOR VALUE -----------------------"
   showEntry expr
   showExit =<< case toRatTensorValue expr of
     -- Rational operators
@@ -215,7 +224,7 @@ unblockRatTensorValue actions@UnblockingActions {..} status expr = do
       | status == DesiredDimensions -> return expr
       | otherwise -> unblockRatTensorBoundVar v
     VRatTensorFreeVar n spine -> case getExpr accessSpine spine of
-      Just args -> unblockNetworkApp (unblock status) n args
+      Just args -> unblockNetworkApp (unblock status) (unblockRecordValue actions status) n args
       -- Parameters and other scalar free vars may appear in constraints used
       -- for quantifier-domain extraction, e.g. `-epsilon < x ! 0 < epsilon`.
       _ -> return expr
@@ -223,7 +232,7 @@ unblockRatTensorValue actions@UnblockingActions {..} status expr = do
     VRatStackTensor args -> unblockStackTensor (unblock DifferentDimensions) args
     VRatAt args -> unblockAtTensor (unblock DifferentDimensions) args
     VRatForeach args -> unblockForeachTensor args
-    VRatRecordAcc args -> unblockRecordAcc (unblock status) args actions
+    VRatRecordAcc args -> unblockRecordAcc (unblock status) args actions status
   where
     unblock = unblockRatTensorValue actions
 
@@ -236,13 +245,7 @@ unblockDimensionsValue expr = case toDimensionsValue expr of
 
 unblockIndexValue :: UnblockingFunction m
 unblockIndexValue expr = do 
-  -- attempted fix for random arguments showing up on index
-  -- TODO: fix later
-  expr' <- case expr of 
-    VBuiltin (BuiltinConstructor (IndexLiteral i)) [_args] -> return $ VBuiltin (BuiltinConstructor (IndexLiteral i)) []
-    _ -> return expr
-
-  case toIndexValue expr' of
+  case toIndexValue expr of
     VIndexLiteral {} -> return expr
     VIndexIf {} -> return expr
     VIndexBoundVar {} -> unexpectedExprError currentPass (prettyVerbose expr)
@@ -350,9 +353,8 @@ unblockAtTensor unblock (AtTensorArgs tElem d ds xs i) = do
   i' <- unblockIndexValue i
   liftIf xs' $ \xs'' ->
     liftIf i' $ \i'' -> do
-      logDebug MaxDetail "abcd"
-      logDebug MaxDetail $ prettyVerbose xs''
-      logDebug MaxDetail $ prettyVerbose i''
+      -- logDebug MaxDetail $ prettyVerbose xs''
+      -- logDebug MaxDetail $ prettyVerbose i''
       nameCtx <- getNameContext
       evalAtTensor nameCtx evalApp eval $ AtTensorArgs tElem d ds xs'' i''
 
@@ -366,11 +368,13 @@ unblockRecordAcc ::
   -- FieldName -> -- FieldName "a"
   -- Spine Builtin -> -- empty, '[]'
   UnblockingActions m -> -- this is not a good way to do this - fix later
+   DimensionsStatus -> -- also not a good way to do - fix
   m (Value Builtin)
 -- unblockRecordAcc unblock _typ value fieldName _spine = do
-unblockRecordAcc unblock (RecordAccArgs typ value fieldName) actions = do
+unblockRecordAcc unblock (RecordAccArgs typ value fieldName) actions status = do
   logDebug MidDetail "----------------- UNBLOCK RECORDACC FUNCTION ----------------"
-  value' <- unblockRecordValue actions value
+  value' <- unblockRecordValue actions status value
+  logDebug MidDetail $ pretty (show value')
 
   nameCtx <- getNameContext
   res <- evalRecordAcc nameCtx evalApp eval $ RecordAccArgs typ value' fieldName

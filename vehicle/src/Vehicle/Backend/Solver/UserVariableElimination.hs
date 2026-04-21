@@ -193,7 +193,7 @@ type MonadQuantifierBody m =
   )
 
 unblockingActions :: (MonadQuantifierBody m, MonadPropertyStructure m) => UnblockingActions m
-unblockingActions = UnblockingActions unblockQuantifiedBoundVar unblockNetworkApplication
+unblockingActions = UnblockingActions unblockQuantifiedBoundVar undefined unblockNetworkApplication
 
 unblockQuantifiedBoundVar ::
   (MonadQuantifierBody m) =>
@@ -206,10 +206,11 @@ unblockQuantifiedBoundVar lv =
 unblockNetworkApplication ::
   (MonadQuantifierBody m) =>
   (Value Builtin -> m (Value Builtin)) ->
+  (Value Builtin -> m (Value Builtin)) ->
   Identifier ->
   NetworkAppArgs (Value Builtin) ->
   m (Value Builtin)
-unblockNetworkApplication unblockFn ident (NetworkAppArgs arg) = do
+unblockNetworkApplication unblockFnTensor _unblockFnRecord ident (NetworkAppArgs arg) = do
   let name = nameOf ident
   networkInfo <- asks (lookupNetworkInfo name . networkCtx)
 
@@ -258,7 +259,7 @@ unblockNetworkApplication unblockFn ident (NetworkAppArgs arg) = do
         <> line
         <> "replace-expr" <+> replacementExprDoc
 
-  unblockFn outputVarExpr
+  unblockFnTensor transformedOutput
 
 --------------------------------------------------------------------------------
 -- Elimination operations
