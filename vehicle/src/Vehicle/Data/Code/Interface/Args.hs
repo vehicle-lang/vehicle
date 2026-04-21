@@ -440,7 +440,7 @@ instance IsArgs FromNatToSimpleArgs where
 
 -- | Arguments for `FromNatToIndex`
 data FromNatToIndexArgs expr = FromNatToIndexArgs
-  { indexSize :: GenericArg expr,
+  { indexSize :: expr,
     fromNatArg :: expr,
     fromNatInDomain :: GenericArg expr
   }
@@ -449,9 +449,9 @@ instance IsArgs FromNatToIndexArgs where
   accessSpine =
     Access
       { getExpr = \case
-          [n, x, d] -> Just $ FromNatToIndexArgs n (argExpr x) d
+          [n, x, d] -> Just $ FromNatToIndexArgs (argExpr n) (argExpr x) d
           _ -> Nothing,
-        mkExpr = \(FromNatToIndexArgs n x d) -> [n, explicit x, d]
+        mkExpr = \(FromNatToIndexArgs n x d) -> [implicitIrrelevant n, explicit x, d]
       }
 
 --------------------------------------------------------------------------------
@@ -624,6 +624,23 @@ instance IsArgs IndexTypeArgs where
           [x] -> Just $ IndexTypeArgs (argExpr x)
           _ -> Nothing,
         mkExpr = \(IndexTypeArgs x) -> [explicitIrrelevant x]
+      }
+
+--------------------------------------------------------------------------------
+-- IndexTypeArgs
+
+-- | Arguments for the `Index` type
+newtype IndexLiteralArgs expr = IndexLiteralArgs
+  { indexLiteralDim :: expr
+  }
+
+instance IsArgs IndexLiteralArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          [d] -> Just $ IndexLiteralArgs (argExpr d)
+          _ -> Nothing,
+        mkExpr = \(IndexLiteralArgs d) -> [implicitIrrelevant d]
       }
 
 --------------------------------------------------------------------------------

@@ -9,6 +9,18 @@
             {
               "variableStore": {
                 "vehicleVariableCtx": [
+                  "acasXu₅[output]!4",
+                  "acasXu₅[output]!3",
+                  "acasXu₅[output]!2",
+                  "acasXu₅[output]!1",
+                  "acasXu₅[output]!0",
+                  "acasXu₅[output]",
+                  "acasXu₅[input]!4",
+                  "acasXu₅[input]!3",
+                  "acasXu₅[input]!2",
+                  "acasXu₅[input]!1",
+                  "acasXu₅[input]!0",
+                  "acasXu₅[input]",
                   "acasXu₄[output]!4",
                   "acasXu₄[output]!3",
                   "acasXu₄[output]!2",
@@ -364,6 +376,74 @@
                           5
                         ],
                         "nestedStartingVariable": 54
+                      },
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [
+                              5
+                            ],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            6,
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      {
+                        "nestedTensorShape": [
+                          5
+                        ],
+                        "nestedStartingVariable": 72
+                      },
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [
+                              5
+                            ],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            12,
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      {
+                        "nestedTensorShape": [
+                          5
+                        ],
+                        "nestedStartingVariable": 66
                       },
                       {
                         "constantValue": {
@@ -589,6 +669,18 @@
             {
               "variableStore": {
                 "vehicleVariableCtx": [
+                  "acasXu₅[output]!4",
+                  "acasXu₅[output]!3",
+                  "acasXu₅[output]!2",
+                  "acasXu₅[output]!1",
+                  "acasXu₅[output]!0",
+                  "acasXu₅[output]",
+                  "acasXu₅[input]!4",
+                  "acasXu₅[input]!3",
+                  "acasXu₅[input]!2",
+                  "acasXu₅[input]!1",
+                  "acasXu₅[input]!0",
+                  "acasXu₅[input]",
                   "acasXu₄[output]!4",
                   "acasXu₄[output]!3",
                   "acasXu₄[output]!2",
@@ -944,6 +1036,74 @@
                           5
                         ],
                         "nestedStartingVariable": 54
+                      },
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [
+                              5
+                            ],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            6,
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      {
+                        "nestedTensorShape": [
+                          5
+                        ],
+                        "nestedStartingVariable": 72
+                      },
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [
+                              5
+                            ],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            12,
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      {
+                        "nestedTensorShape": [
+                          5
+                        ],
+                        "nestedStartingVariable": 66
                       },
                       {
                         "constantValue": {
@@ -1169,6 +1329,18 @@
             {
               "variableStore": {
                 "vehicleVariableCtx": [
+                  "acasXu₅[output]!4",
+                  "acasXu₅[output]!3",
+                  "acasXu₅[output]!2",
+                  "acasXu₅[output]!1",
+                  "acasXu₅[output]!0",
+                  "acasXu₅[output]",
+                  "acasXu₅[input]!4",
+                  "acasXu₅[input]!3",
+                  "acasXu₅[input]!2",
+                  "acasXu₅[input]!1",
+                  "acasXu₅[input]!0",
+                  "acasXu₅[input]",
                   "acasXu₄[output]!4",
                   "acasXu₄[output]!3",
                   "acasXu₄[output]!2",
@@ -1524,6 +1696,74 @@
                           5
                         ],
                         "nestedStartingVariable": 54
+                      },
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [
+                              5
+                            ],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            6,
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      {
+                        "nestedTensorShape": [
+                          5
+                        ],
+                        "nestedStartingVariable": 72
+                      },
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [
+                              5
+                            ],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            12,
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      {
+                        "nestedTensorShape": [
+                          5
+                        ],
+                        "nestedStartingVariable": 66
                       },
                       {
                         "constantValue": {
@@ -1749,6 +1989,18 @@
             {
               "variableStore": {
                 "vehicleVariableCtx": [
+                  "acasXu₅[output]!4",
+                  "acasXu₅[output]!3",
+                  "acasXu₅[output]!2",
+                  "acasXu₅[output]!1",
+                  "acasXu₅[output]!0",
+                  "acasXu₅[output]",
+                  "acasXu₅[input]!4",
+                  "acasXu₅[input]!3",
+                  "acasXu₅[input]!2",
+                  "acasXu₅[input]!1",
+                  "acasXu₅[input]!0",
+                  "acasXu₅[input]",
                   "acasXu₄[output]!4",
                   "acasXu₄[output]!3",
                   "acasXu₄[output]!2",
@@ -2104,6 +2356,74 @@
                           5
                         ],
                         "nestedStartingVariable": 54
+                      },
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [
+                              5
+                            ],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            6,
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      {
+                        "nestedTensorShape": [
+                          5
+                        ],
+                        "nestedStartingVariable": 72
+                      },
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [
+                              5
+                            ],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            12,
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      {
+                        "nestedTensorShape": [
+                          5
+                        ],
+                        "nestedStartingVariable": 66
                       },
                       {
                         "constantValue": {
@@ -2329,6 +2649,18 @@
             {
               "variableStore": {
                 "vehicleVariableCtx": [
+                  "acasXu₅[output]!4",
+                  "acasXu₅[output]!3",
+                  "acasXu₅[output]!2",
+                  "acasXu₅[output]!1",
+                  "acasXu₅[output]!0",
+                  "acasXu₅[output]",
+                  "acasXu₅[input]!4",
+                  "acasXu₅[input]!3",
+                  "acasXu₅[input]!2",
+                  "acasXu₅[input]!1",
+                  "acasXu₅[input]!0",
+                  "acasXu₅[input]",
                   "acasXu₄[output]!4",
                   "acasXu₄[output]!3",
                   "acasXu₄[output]!2",
@@ -2684,6 +3016,74 @@
                           5
                         ],
                         "nestedStartingVariable": 54
+                      },
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [
+                              5
+                            ],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            6,
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      {
+                        "nestedTensorShape": [
+                          5
+                        ],
+                        "nestedStartingVariable": 72
+                      },
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [
+                              5
+                            ],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            12,
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      {
+                        "nestedTensorShape": [
+                          5
+                        ],
+                        "nestedStartingVariable": 66
                       },
                       {
                         "constantValue": {
@@ -2909,6 +3309,18 @@
             {
               "variableStore": {
                 "vehicleVariableCtx": [
+                  "acasXu₅[output]!4",
+                  "acasXu₅[output]!3",
+                  "acasXu₅[output]!2",
+                  "acasXu₅[output]!1",
+                  "acasXu₅[output]!0",
+                  "acasXu₅[output]",
+                  "acasXu₅[input]!4",
+                  "acasXu₅[input]!3",
+                  "acasXu₅[input]!2",
+                  "acasXu₅[input]!1",
+                  "acasXu₅[input]!0",
+                  "acasXu₅[input]",
                   "acasXu₄[output]!4",
                   "acasXu₄[output]!3",
                   "acasXu₄[output]!2",
@@ -3264,6 +3676,74 @@
                           5
                         ],
                         "nestedStartingVariable": 54
+                      },
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [
+                              5
+                            ],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            6,
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      {
+                        "nestedTensorShape": [
+                          5
+                        ],
+                        "nestedStartingVariable": 72
+                      },
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [
+                              5
+                            ],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            12,
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      {
+                        "nestedTensorShape": [
+                          5
+                        ],
+                        "nestedStartingVariable": 66
                       },
                       {
                         "constantValue": {
@@ -3489,6 +3969,18 @@
             {
               "variableStore": {
                 "vehicleVariableCtx": [
+                  "acasXu₅[output]!4",
+                  "acasXu₅[output]!3",
+                  "acasXu₅[output]!2",
+                  "acasXu₅[output]!1",
+                  "acasXu₅[output]!0",
+                  "acasXu₅[output]",
+                  "acasXu₅[input]!4",
+                  "acasXu₅[input]!3",
+                  "acasXu₅[input]!2",
+                  "acasXu₅[input]!1",
+                  "acasXu₅[input]!0",
+                  "acasXu₅[input]",
                   "acasXu₄[output]!4",
                   "acasXu₄[output]!3",
                   "acasXu₄[output]!2",
@@ -3844,6 +4336,74 @@
                           5
                         ],
                         "nestedStartingVariable": 54
+                      },
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [
+                              5
+                            ],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            6,
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      {
+                        "nestedTensorShape": [
+                          5
+                        ],
+                        "nestedStartingVariable": 72
+                      },
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [
+                              5
+                            ],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            12,
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      {
+                        "nestedTensorShape": [
+                          5
+                        ],
+                        "nestedStartingVariable": 66
                       },
                       {
                         "constantValue": {
@@ -4069,6 +4629,18 @@
             {
               "variableStore": {
                 "vehicleVariableCtx": [
+                  "acasXu₅[output]!4",
+                  "acasXu₅[output]!3",
+                  "acasXu₅[output]!2",
+                  "acasXu₅[output]!1",
+                  "acasXu₅[output]!0",
+                  "acasXu₅[output]",
+                  "acasXu₅[input]!4",
+                  "acasXu₅[input]!3",
+                  "acasXu₅[input]!2",
+                  "acasXu₅[input]!1",
+                  "acasXu₅[input]!0",
+                  "acasXu₅[input]",
                   "acasXu₄[output]!4",
                   "acasXu₄[output]!3",
                   "acasXu₄[output]!2",
@@ -4424,6 +4996,74 @@
                           5
                         ],
                         "nestedStartingVariable": 54
+                      },
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [
+                              5
+                            ],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            6,
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      {
+                        "nestedTensorShape": [
+                          5
+                        ],
+                        "nestedStartingVariable": 72
+                      },
+                      {
+                        "constantValue": {
+                          "tag": "ConstantTensor",
+                          "contents": [
+                            [
+                              5
+                            ],
+                            {
+                              "numerator": 0,
+                              "denominator": 1
+                            }
+                          ]
+                        },
+                        "coefficients": [
+                          [
+                            12,
+                            {
+                              "numerator": 1,
+                              "denominator": 1
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tag": "SolveEquality",
+                    "contents": [
+                      {
+                        "nestedTensorShape": [
+                          5
+                        ],
+                        "nestedStartingVariable": 66
                       },
                       {
                         "constantValue": {

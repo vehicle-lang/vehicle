@@ -20,7 +20,7 @@ import Vehicle.Compile.LowerNot (lowerNot, negateQuantifierBody)
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Unblock (MonadPurify, UnblockingActions (..), tryPurifyAssertion, unblockBoolExpr)
+import Vehicle.Compile.Unblock (MonadPurify, UnblockingActions (..), maybeUnblockBoolExpr, tryPurifyAssertion)
 import Vehicle.Data.Assertion (NormalisedRelation (..), Relation (..), comparisonToAssertion)
 import Vehicle.Data.Bound
 import Vehicle.Data.Bound.FourierMotzkinElimination (fourierMotzkinTensorBoundsElimination)
@@ -372,7 +372,7 @@ unblockingActions :: (MonadDomain m) => UnblockingActions m
 unblockingActions =
   UnblockingActions
     { unblockRatTensorBoundVar = purifyBoundVar,
-      unblockNetworkApp = \ident args -> return $ VFreeVar ident (mkExpr accessSpine args)
+      unblockNetworkApp = \_unblockFn ident args -> return $ VFreeVar ident (mkExpr accessSpine args)
     }
 
 --------------------------------------------------------------------------------
@@ -481,7 +481,7 @@ compileNonBoundComparison args = do
   NonTrivial <$> singletonUnconstrainedPartition value
 
 -- | Unblocking a boolean value is a little complicated.
--- If an expression cannot be immediately compiled to constriants, we have two
+-- If an expression cannot be immediately compiled to constraints, we have two
 -- options. Firstly, it _may_ contain constraints so we need to try unblocking
 -- it to see and then compiling the results. However, if the resulting expression
 -- contains no constraints over the quantified variables, then we instead
@@ -492,16 +492,23 @@ unblockBoolValue ::
   Value Builtin ->
   m (MaybeTrivial Partitions)
 unblockBoolValue value = do
-  result <- unblockBoolExpr unblockingActions value
-  maybePartitions <- compileBool result
-  case maybePartitions of
-    Trivial {} -> return maybePartitions
-    NonTrivial partitions ->
-      if containsConstraints partitions
-        then return maybePartitions
-        else do
-          lossValue <- convertBoolTensor value
-          NonTrivial <$> singletonUnconstrainedPartition lossValue
+  maybeUnblockedExpr <- maybeUnblockBoolExpr unblockingActions value
+  maybeResult <- case maybeUnblockedExpr of
+    Nothing -> return Nothing
+    Just unblockedExpr -> do
+      maybePartitions <- compileBool unblockedExpr
+      case maybePartitions of
+        Trivial {} -> return $ Just maybePartitions
+        NonTrivial partitions ->
+          if containsConstraints partitions
+            then return $ Just maybePartitions
+            else return Nothing
+
+  case maybeResult of
+    Just result -> return result
+    Nothing -> do
+      lossValue <- convertBoolTensor value
+      NonTrivial <$> singletonUnconstrainedPartition lossValue
 
 --------------------------------------------------------------------------------
 -- Comparison purification
@@ -543,8 +550,13 @@ purifyUnblockingActions =
       unblockNetworkApp = purifyNetworkApp
     }
 
-purifyNetworkApp :: (MonadPurifyAssertion m) => Identifier -> NetworkAppArgs (Value Builtin) -> m (Value Builtin)
-purifyNetworkApp ident _spine = throwError $ ContainsNetwork ident
+purifyNetworkApp ::
+  (MonadPurifyAssertion m) =>
+  (Value Builtin -> m (Value Builtin)) ->
+  Identifier ->
+  NetworkAppArgs (Value Builtin) ->
+  m (Value Builtin)
+purifyNetworkApp _unblockFn ident _spine = throwError $ ContainsNetwork ident
 
 purifyBoundVar :: (MonadLogger m, MonadReadableTensorBoundContext m) => Lv -> m (Value Builtin)
 purifyBoundVar lv = do

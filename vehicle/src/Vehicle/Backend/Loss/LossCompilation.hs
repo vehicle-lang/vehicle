@@ -304,7 +304,7 @@ convertIndex ::
   Value Builtin ->
   m (Value LossBuiltin)
 convertIndex value = logConversion value $ case toIndexValue value of
-  VIndexLiteral i -> return $ IIndexLiteral i
+  VIndexLiteral i dim -> IIndexLiteral i <$> convertDim dim
   VIndexBoundVar v spine -> convertBoundVar v spine
   VIndexIf args -> convertIf args
 

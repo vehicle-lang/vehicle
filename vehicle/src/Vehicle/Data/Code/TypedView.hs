@@ -112,14 +112,14 @@ fromTypeValue t = case t of
 
 -- | A view on all possible expressions that can have type `Index n`.
 data IndexValue
-  = VIndexLiteral Int
+  = VIndexLiteral Int (Value Builtin)
   | VIndexBoundVar Lv (Spine Builtin)
   | VIndexIf (IfArgs (Value Builtin))
 
 toIndexValue :: (HasCallStack) => Value Builtin -> IndexValue
 toIndexValue e = case e of
   VBoundVar v spine -> VIndexBoundVar v spine
-  (getExpr accessIndexLiteral -> Just i) -> VIndexLiteral i
+  (getExpr accessIndexLiteral -> Just (i, args)) -> VIndexLiteral i (indexLiteralDim args)
   (getExpr accessIf -> Just args) -> VIndexIf args
   _ -> developerError $ "ill-typed index expression" <+> pretty (show e)
 
@@ -498,7 +498,7 @@ etaReduceTensor typ dim dims tensor = do
             atFirstDim = INatLiteral dim,
             atRemainingDims = dims,
             atTensor = tensor,
-            atIndex = IIndexLiteral i
+            atIndex = IIndexLiteral i (INatLiteral dim)
           }
   let mkAt i = unoptimisedEvalAtTensor (mkAtArgs i)
   traverse mkAt [0 .. (dim - 1)]
