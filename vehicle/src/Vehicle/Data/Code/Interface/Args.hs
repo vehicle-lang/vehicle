@@ -159,6 +159,9 @@ instance IsArgs TemporalOp1Args where
         mkExpr = \(TemporalOp1Args ds a b x) -> [implicitIrrelevant ds, explicit a, explicit b, explicit x]
       }
 
+traverseTemporalOp1Args :: (Applicative f) => (t -> f t) -> TemporalOp1Args t -> f (TemporalOp1Args t)
+traverseTemporalOp1Args f (TemporalOp1Args ds a b x) = TemporalOp1Args ds a b <$> f x
+
 data TemporalOp2Args expr = TemporalOp2Args
   { temporalOp2Dims :: expr,
     temporalOp2Start :: expr,

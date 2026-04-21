@@ -1,5 +1,6 @@
 module Vehicle.Backend.Loss.Domain
   ( compileQuantifier,
+    convertBoolTensor,
   )
 where
 
@@ -10,6 +11,7 @@ import Data.Foldable (foldrM)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Maybe (fromMaybe)
 import Vehicle.Backend.Loss.Core
 import Vehicle.Backend.Loss.LossCompilation
 import Vehicle.Backend.Solver.UserVariableElimination.ConstraintSearch (findAllBounds)
@@ -42,6 +44,34 @@ import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Bound.Context.Tensor
 import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Prelude.Warning (CompileWarning (..))
+
+-- | Dispatch for bool-valued tensor subexpressions.  Unlike
+-- `convertTensorProperty` in `Vehicle.Backend.Loss`, this runs on bool
+-- expressions that appear *nested* under other operators (most commonly
+-- temporal operators and `foreach`).  It lives here rather than in
+-- `LossCompilation` so that nested `VBoolTensorQuantifyRat` nodes can be
+-- dispatched to `compileQuantifier` without introducing a module cycle.
+convertBoolTensor :: (MonadLogic m) => Value Builtin -> m (Value LossBuiltin)
+convertBoolTensor value = logConversion value $ case toBoolTensorValue value of
+  VBoolTensorLiteral bs -> convertBoolTensorLiteral bs
+  VBoolConstTensor args -> convertConstTensor convertBoolTensor args
+  VBoolStackTensor args -> convertStackTensor convertBoolTensor args
+  VBoolTensorNot args -> convertNot =<< convertTensorOp1 convertBoolTensor args
+  VBoolTensorAnd args -> convertAnd =<< convertTensorOp2 convertBoolTensor args
+  VBoolTensorOr args -> convertOr =<< convertTensorOp2 convertBoolTensor args
+  VBoolTensorGlobally args -> convertGlobally =<< convertTemporalOp1 convertBoolTensor args
+  VBoolTensorFinally args -> convertFinally =<< convertTemporalOp1 convertBoolTensor args
+  VBoolTensorUntil args -> convertUntil =<< convertTemporalOp2 convertBoolTensor args
+  VBoolTensorCompareIndex args -> convertIndexComparison args
+  VBoolTensorCompareNat args -> convertNatComparison args
+  VBoolTensorCompareRatPointwise args -> convertRatTensorPointwiseComparison args
+  VBoolTensorCompareRatReduced args -> convertRatTensorReducedComparison args
+  VBoolTensorReduceAnd args -> convertReduceAnd =<< convertTensorReduction convertBoolTensor args
+  VBoolTensorReduceOr args -> convertReduceOr =<< convertTensorReduction convertBoolTensor args
+  VBoolTensorQuantifyRat args -> compileQuantifier args
+  VBoolTensorBoolIf args -> convertIf args
+  VBoolTensorAt args -> convertAtTensor convertBoolTensor args
+  VBoolTensorForeach args -> convertForeachTensor convertBoolTensor args
 
 compileQuantifier ::
   (MonadLogic m) =>
@@ -396,7 +426,15 @@ compileBool value = logEntryAndExit value $ case toBoolValue value of
   VAnd args -> compileAnd args
   VOr args -> compileOr args
   VBoolIf args -> compileBool =<< unfoldIf args
-  VNot args -> compileBool =<< lowerNot (unblockBoolExpr unblockingActions) args
+  VNot args -> do
+    -- `tryUnblock` returning the original `e` on unblock-failure is only
+    -- safe because `lowerNot`'s `Until` arm wraps its result in `Not`;
+    -- if that ever changes the negation would be silently dropped.
+    let tryUnblock e = do
+          maybeE <- maybeUnblockBoolExpr unblockingActions e
+          return $ fromMaybe e maybeE
+    lowered <- lowerNot tryUnblock args
+    compileBool lowered
   VQuantifyRatTensor args -> compileQuantifierInternal args
   -------------------
   -- Blocked cases --
@@ -603,7 +641,14 @@ compileLinearExpr dims expr = case toRatTensorValue expr of
   ---------------------
   -- The expression is being blocked
   VRatConstTensor {} -> unlinearisable
-  VRatStackTensor {} -> unlinearisable
+  VRatStackTensor (StackTensorArgs _ _ _ xs) -> do
+    let innerDims = case dims of
+          IDimCons _ ds -> ds
+          _ -> developerError "VRatStackTensor must have non-nil dims"
+    children <- traverse (compileLinearExpr innerDims) xs
+    case traverse isConstant children of
+      Just constChildren -> return $ constantExpr $ stackTensorValues constChildren
+      Nothing -> unlinearisable
   VRatAt {} -> unlinearisable
   VRatTensorFreeVar ident [] ->
     return $ constantExpr $ TensorValue dims (VFreeVar ident [])

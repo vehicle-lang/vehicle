@@ -6,7 +6,7 @@ where
 import Data.Maybe (maybeToList)
 import Data.Proxy (Proxy (..))
 import Vehicle.Backend.Loss.Core
-import Vehicle.Backend.Loss.Domain (compileQuantifier)
+import Vehicle.Backend.Loss.Domain (compileQuantifier, convertBoolTensor)
 import Vehicle.Backend.Loss.LogicCompilation (findAndCompileLogic)
 import Vehicle.Backend.Loss.LossCompilation
 import Vehicle.Backend.Loss.LossCompilation qualified as Loss ()

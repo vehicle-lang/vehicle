@@ -18,13 +18,18 @@ module Vehicle.Backend.Loss.LossCompilation
     convertForeachTensor,
     convertTensorOp1,
     convertTensorOp2,
-    convertBoolTensor,
+    convertTemporalOp1,
+    convertTemporalOp2,
+    convertGlobally,
+    convertFinally,
+    convertUntil,
     convertNot,
     convertOr,
     convertAnd,
     convertReduceAnd,
     convertReduceOr,
     convertIf,
+    logConversion,
   )
 where
 
@@ -168,27 +173,11 @@ convertFreeVar name = \case
 --------------------------------------------------------------------------------
 -- Bool
 
-convertBoolTensor :: (MonadLogic m) => Value Builtin -> m (Value LossBuiltin)
-convertBoolTensor value = logConversion value $ case toBoolTensorValue value of
-  VBoolTensorLiteral bs -> convertBoolTensorLiteral bs
-  VBoolConstTensor args -> convertConstTensor convertBoolTensor args
-  VBoolStackTensor args -> convertStackTensor convertBoolTensor args
-  VBoolTensorNot args -> convertNot =<< convertTensorOp1 convertBoolTensor args
-  VBoolTensorAnd args -> convertAnd =<< convertTensorOp2 convertBoolTensor args
-  VBoolTensorOr args -> convertOr =<< convertTensorOp2 convertBoolTensor args
-  VBoolTensorGlobally args -> convertGlobally =<< convertTemporalOp1 convertBoolTensor args
-  VBoolTensorFinally args -> convertFinally =<< convertTemporalOp1 convertBoolTensor args
-  VBoolTensorUntil args -> convertUntil =<< convertTemporalOp2 convertBoolTensor args
-  VBoolTensorCompareIndex args -> convertIndexComparison args
-  VBoolTensorCompareNat args -> convertNatComparison args
-  VBoolTensorCompareRatPointwise args -> convertRatTensorPointwiseComparison args
-  VBoolTensorCompareRatReduced args -> convertRatTensorReducedComparison args
-  VBoolTensorReduceAnd args -> convertReduceAnd =<< convertTensorReduction convertBoolTensor args
-  VBoolTensorReduceOr args -> convertReduceOr =<< convertTensorReduction convertBoolTensor args
-  VBoolTensorQuantifyRat {} -> unexpectedOperation "quantifier"
-  VBoolTensorBoolIf args -> convertIf args
-  VBoolTensorAt args -> convertAtTensor convertBoolTensor args
-  VBoolTensorForeach args -> convertForeachTensor convertBoolTensor args
+-- NOTE: `convertBoolTensor` — the general dispatch over bool-valued tensor
+-- expressions — lives in `Vehicle.Backend.Loss.Domain`. It needs to dispatch
+-- `VBoolTensorQuantifyRat` to `compileQuantifier`, which itself depends on
+-- the helpers in this module. Keeping the dispatcher in `Domain` is the
+-- cleanest way to avoid a module cycle.
 
 convertBoolTensorLiteral :: (MonadLogic m) => Tensor Bool -> m (Value LossBuiltin)
 convertBoolTensorLiteral tensor = do
