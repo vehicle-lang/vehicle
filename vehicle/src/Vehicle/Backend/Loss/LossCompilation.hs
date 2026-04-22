@@ -207,14 +207,16 @@ convertReduceAnd = convertLogicField ReduceConjunction
 convertReduceOr :: (MonadLogic m) => TensorReductionArgs (Value LossBuiltin) -> m (Value LossBuiltin)
 convertReduceOr = convertLogicField ReduceDisjunction
 
--- NOTE: The temporal converters below intentionally bypass `convertLogicField`.
--- Unlike And/Or/Not (whose implementations are user-configurable via the
--- DifferentiableTensorLogic record), temporal operator semantics are fixed and
--- provided by the backend runtime (stlcg++ for PyTorch). The compiler therefore
--- emits temporal IR nodes directly rather than substituting a logic-field value.
--- The temporalGlobally/temporalFinally/temporalUntil fields in Definitions.vcl
--- exist only to satisfy record completeness (compileLogic iterates [minBound..maxBound])
--- and are never called at runtime.
+-- NOTE: Unlike And/Or/Not (which are inlined into the IR via `convertLogicField`),
+-- temporal operators are emitted as opaque IR nodes. The
+-- `temporalConjunction` / `temporalDisjunction` / `temporalConjunctionIdentity` /
+-- `temporalDisjunctionIdentity` fields from the DL record are extracted
+-- separately by `Vehicle.Backend.Loss.JSON.convertTemporalSemantics`, bundled
+-- as a `JTemporalSemantics` payload, and reconstructed at runtime as a
+-- `vehicle_stl.Semantics` object that is passed to every stlcg++ formula
+-- constructor. Negation and nesting of temporal ops is handled by the standard
+-- logic-field path — the temporal output is treated as an ordinary real-valued
+-- signal once emitted.
 
 convertGlobally :: (MonadLogic m) => TemporalOp1Args (Value LossBuiltin) -> m (Value LossBuiltin)
 convertGlobally args = return $ mkExpr (accessTemporalLoss1 Globally) args

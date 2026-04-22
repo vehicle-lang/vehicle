@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Any, Tuple
 
 import pytest
-
 import vehicle_lang as vcl
 
 
@@ -29,7 +28,7 @@ def test_rollout_shared_across_duplicate_references() -> None:
     torch, loss_pt = require_pytorch()
     spec_path = Path(__file__).parent / "data" / "test_rollout_sharing.vcl"
 
-    declarations = loss_pt.load_specification(
+    declarations, _ = loss_pt.load_specification(
         spec_path,
         logic=vcl.DifferentiableLogic.STL,
         declarations=["bounded"],
@@ -61,7 +60,7 @@ def test_rollout_cache_clears_between_invocations() -> None:
     torch, loss_pt = require_pytorch()
     spec_path = Path(__file__).parent / "data" / "test_rollout_sharing.vcl"
 
-    declarations = loss_pt.load_specification(
+    declarations, _ = loss_pt.load_specification(
         spec_path,
         logic=vcl.DifferentiableLogic.STL,
         declarations=["bounded"],

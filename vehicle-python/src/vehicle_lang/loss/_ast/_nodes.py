@@ -423,16 +423,23 @@ class Program(AST):
 
 
 @dataclass(frozen=True)
-class JTemporalSemantics(AST):
-    """Temporal semantics extracted from a compiled DifferentiableTensorLogic."""
+class JLogicMetadata(AST):
+    """Per-program metadata extracted from a compiled DifferentiableTensorLogic.
+
+    Carries the four temporal-combinator lambdas (conjunction / disjunction
+    and their identities) plus the logic direction:
+    ``direction = True`` means the logic is loss-oriented (minimise the
+    output), ``False`` means robustness-oriented (maximise).
+    """
 
     conjunction: Expression
     disjunction: Expression
     conjunction_identity: Expression
     disjunction_identity: Expression
+    direction: bool
 
 
 @dataclass(frozen=True)
 class Main(Program):
     declarations: Sequence[Declaration]
-    temporal_semantics: JTemporalSemantics
+    logic_metadata: JLogicMetadata

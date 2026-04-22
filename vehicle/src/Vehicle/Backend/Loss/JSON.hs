@@ -45,8 +45,8 @@ convertToJSONProg logicImpl prog =
   logCompilerSection2 MinDetail currentPass $ do
     runFreshNameBoundContextT $ do
       decls <- convertProg prog
-      temporalSem <- convertTemporalSemantics logicImpl
-      return $ Main decls temporalSem
+      meta <- convertLogicMetadata logicImpl
+      return $ Main decls meta
 
 convertFromJSONProg :: JProg -> S.Prog LossBuiltin
 convertFromJSONProg = fromJProg
@@ -55,10 +55,10 @@ convertFromJSONProg = fromJProg
 -- The AST exported to JSON
 --------------------------------------------------------------------------------
 
-data JProg = Main [JDecl] JTemporalSemantics
+data JProg = Main [JDecl] JLogicMetadata
   deriving (Generic)
 
-data JTemporalSemantics = JTemporalSemantics JExpr JExpr JExpr JExpr
+data JLogicMetadata = JLogicMetadata JExpr JExpr JExpr JExpr L.LogicDirection
   deriving (Show, Generic)
 
 data JDecl
@@ -127,7 +127,7 @@ fromRat = id
 instance ToJSON JProg where
   toJSON = genericToJSON jsonOptions
 
-instance ToJSON JTemporalSemantics where
+instance ToJSON JLogicMetadata where
   toJSON = genericToJSON jsonOptions
 
 instance ToJSON JDecl where
@@ -166,16 +166,16 @@ dependentTypesError b = developerError $ "Conversion of" <+> pretty b <+> "is no
 convertProg :: (MonadJSON m) => S.Prog LossBuiltin -> m [JDecl]
 convertProg (S.Main decls) = traverse convertDecl decls
 
-convertTemporalSemantics ::
+convertLogicMetadata ::
   (MonadJSON m) =>
   DifferentiableLogicImplementation ->
-  m JTemporalSemantics
-convertTemporalSemantics (logicMap, _direction) = do
+  m JLogicMetadata
+convertLogicMetadata (logicMap, direction) = do
   conj <- convertField TemporalConjunction
   disj <- convertField TemporalDisjunction
   conjId <- convertField TemporalConjunctionIdentity
   disjId <- convertField TemporalDisjunctionIdentity
-  return $ JTemporalSemantics conj disj conjId disjId
+  return $ JLogicMetadata conj disj conjId disjId direction
   where
     convertField field = convertValue (logicMap Map.! field)
 

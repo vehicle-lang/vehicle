@@ -35,7 +35,7 @@ def test_constraint_only_training_tensorflow() -> None:
     """Test that training with ONLY constraint loss (no task loss) actually enforces the constraint."""
     tf, loss_tf = require_tensorflow()
     spec_path = Path(__file__).parent / "data" / "test_trainable.vcl"
-    declarations = loss_tf.load_specification(
+    declarations, _ = loss_tf.load_specification(
         spec_path,
         logic=vcl.DifferentiableLogic.Vehicle,
     )
@@ -112,7 +112,7 @@ def test_constraint_only_training_pytorch() -> None:
     """Test that training with ONLY constraint loss (no task loss) actually enforces the constraint."""
     torch, loss_pt = require_pytorch()
     spec_path = Path(__file__).parent / "data" / "test_trainable.vcl"
-    declarations = loss_pt.load_specification(
+    declarations, _ = loss_pt.load_specification(
         spec_path,
         logic=vcl.DifferentiableLogic.Vehicle,
     )
@@ -182,7 +182,7 @@ def test_tensorflow_combined_loss() -> None:
     """Test that TensorFlow can train with combined task + constraint loss."""
     tf, loss_tf = require_tensorflow()
     spec_path = Path(__file__).parent / "data" / "test_trainable.vcl"
-    declarations = loss_tf.load_specification(
+    declarations, _ = loss_tf.load_specification(
         spec_path,
         logic=vcl.DifferentiableLogic.Vehicle,
     )
@@ -268,7 +268,7 @@ def test_pytorch_combined_loss() -> None:
     """Test that PyTorch can train with combined task + constraint loss."""
     torch, loss_pt = require_pytorch()
     spec_path = Path(__file__).parent / "data" / "test_trainable.vcl"
-    declarations = loss_pt.load_specification(
+    declarations, _ = loss_pt.load_specification(
         spec_path,
         logic=vcl.DifferentiableLogic.Vehicle,
     )
@@ -352,7 +352,7 @@ def test_pytorch_multi_step_training() -> None:
     """Test multi-step training converges with combined loss."""
     torch, loss_pt = require_pytorch()
     spec_path = Path(__file__).parent / "data" / "test_trainable.vcl"
-    declarations = loss_pt.load_specification(
+    declarations, _ = loss_pt.load_specification(
         spec_path,
         logic=vcl.DifferentiableLogic.Vehicle,
     )

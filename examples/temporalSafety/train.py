@@ -1,23 +1,24 @@
 #!/usr/bin/env python3
-"""Adaptive Cruise Control: training a controller to satisfy temporal STL properties.
+"""Adaptive Cruise Control: training a controller to satisfy temporal properties.
 
 Scenario
 --------
 An ego vehicle follows a lead vehicle.  The controller receives the initial
 state (v_ego=15 m/s, d_rel=30 m) and outputs a predicted velocity trajectory
-over 10 time steps.  Three temporal STL properties must hold:
+over 10 time steps.  Three temporal properties must hold:
 
   alwaysBelowLimit   □[0,9]  v(t) ≤ 33 m/s           (hard speed limit)
   eventuallyAtTarget ◇[0,9]  28.5 ≤ v(t) ≤ 31.5 m/s  (reach cruise speed)
   limitUntilTarget   𝜙𝒰[0,9] speed stays within limit until cruise is reached
 
-STL robustness convention (used throughout this script)
---------------------------------------------------------
-  positive value  →  property satisfied  (magnitude = margin to violation)
-  negative value  →  property violated   (magnitude = distance to satisfaction)
-
-Training loss: relu(-robustness) for each property — penalises violations,
-contributes zero once the property is satisfied.
+Sign convention
+---------------
+``load_specification`` returns ``(declarations, minimise)``.  The flag is
+``True`` for loss-style logics (DL2, Vehicle) where a satisfied property
+is ``<= 0``, and ``False`` for robustness-style logics (STL) where a
+satisfied property is ``>= 0``.  This script negates the raw value when
+``minimise`` is ``False`` so the constraint term always shrinks under
+gradient descent — the same code then runs unchanged under any logic.
 
 Prerequisites
 -------------
@@ -52,13 +53,19 @@ print("=" * 62)
 # logic=STL: temporal operators use exact min/max robustness semantics,
 # automatically derived from the STLLoss DifferentiableTensorLogic defined
 # in Definitions.vcl.  Each @property becomes a callable (network) -> scalar.
-declarations = loss_pt.load_specification(
+declarations, minimise = loss_pt.load_specification(
     SPEC_PATH,
     logic=DifferentiableLogic.STL,
     declarations=PROPS,
 )
 
 print(f"\nCompiled properties: {PROPS}")
+sign_hint = "negative = satisfied" if minimise else "positive = satisfied"
+
+
+def is_satisfied(rob: float) -> bool:
+    return rob <= 0 if minimise else rob >= 0
+
 
 # ---------------------------------------------------------------------------
 # 2. Define a small network matching the @network declaration
@@ -87,19 +94,19 @@ def controller(x: torch.Tensor) -> torch.Tensor:
 # ---------------------------------------------------------------------------
 
 print("\n" + "=" * 62)
-print("Robustness BEFORE training  (positive = satisfied)")
+print(f"Robustness BEFORE training  ({sign_hint})")
 print("=" * 62)
 with torch.no_grad():
     for name in PROPS:
         rob = declarations[name](controller).item()
-        status = "OK      " if rob >= 0 else "VIOLATED"
+        status = "OK      " if is_satisfied(rob) else "VIOLATED"
         print(f"  {name:<24} {rob:+8.2f}  [{status}]")
 
 # ---------------------------------------------------------------------------
 # 4. Training loop
-#    Minimise the sum of hinge losses relu(-robustness) across all properties.
-#    A satisfied property (robustness >= 0) contributes 0 to the loss.
-#    The network learns to push its trajectory toward the [28.5, 31.5] band.
+#    Minimise the sum of signed property values.  Each raw value is negated
+#    when the logic is robustness-oriented, so gradient descent always
+#    drives the property toward satisfaction.
 # ---------------------------------------------------------------------------
 
 print("\n" + "=" * 62)
@@ -112,7 +119,8 @@ for epoch in range(300):
     optimizer.zero_grad()
 
     robs = [declarations[name](controller) for name in PROPS]
-    loss = torch.stack([torch.relu(-r) for r in robs]).sum()
+    signed = [r if minimise else -r for r in robs]
+    loss = torch.stack(signed).sum()
 
     loss.backward()
     optimizer.step()
@@ -122,16 +130,16 @@ for epoch in range(300):
 
 # ---------------------------------------------------------------------------
 # 5. Evaluate AFTER training
-#    All three robustness values should now be positive.
+#    All three properties should now be satisfied.
 # ---------------------------------------------------------------------------
 
 print("\n" + "=" * 62)
-print("Robustness AFTER training   (positive = satisfied)")
+print(f"Robustness AFTER training   ({sign_hint})")
 print("=" * 62)
 with torch.no_grad():
     for name in PROPS:
         rob = declarations[name](controller).item()
-        status = "OK      " if rob >= 0 else "VIOLATED"
+        status = "OK      " if is_satisfied(rob) else "VIOLATED"
         print(f"  {name:<24} {rob:+8.2f}  [{status}]")
 
 # ---------------------------------------------------------------------------

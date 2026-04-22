@@ -24,8 +24,15 @@ def load_specification(
     samplers: Mapping[str, Any] | None = None,
     declarations: Iterable[DeclarationName] = (),
     declaration_context: MutableMapping[str, Any] | None = None,
-) -> dict[str, Any]:
-    """Load a loss function compiled for TensorFlow."""
+) -> tuple[dict[str, Any], bool]:
+    """Load a loss function compiled for TensorFlow.
+
+    Returns:
+        ``(declarations, minimise)``. ``minimise`` is ``True`` for
+        loss-oriented logics (``DL2``, ``Vehicle``) and ``False`` for
+        robustness-oriented logics (``STL``). See
+        :func:`vehicle_lang.loss.pytorch.load_specification` for details.
+    """
 
     return load_loss_specification(
         path,

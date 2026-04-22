@@ -3,7 +3,6 @@
 from pathlib import Path
 
 import pytest
-
 import vehicle_lang as vcl
 from vehicle_lang.loss import _ast as loss_ast
 
@@ -35,7 +34,7 @@ def test_golden_spec_tensorflow_compile(spec_path: Path) -> None:
         "vehicle_lang.loss.tensorflow",
         reason="vehicle_lang[tensorflow] extra is not installed",
     )
-    output = loss_tf.load_specification(
+    output, _ = loss_tf.load_specification(
         spec_path,
         logic=vcl.DifferentiableLogic.DL2,
         samplers={},
@@ -54,7 +53,7 @@ def test_golden_spec_pytorch_compile(spec_path: Path) -> None:
         "vehicle_lang.loss.pytorch",
         reason="vehicle_lang[pytorch] extra is not installed",
     )
-    output = loss_pt.load_specification(
+    output, _ = loss_pt.load_specification(
         spec_path,
         logic=vcl.DifferentiableLogic.DL2,
         samplers={},

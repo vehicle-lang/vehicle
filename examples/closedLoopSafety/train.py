@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Double-integrator reach-avoid: train a controller via STL robustness.
+"""Double-integrator reach-avoid: train a controller against STL properties.
 
 Scenario
 --------
@@ -10,7 +10,7 @@ A point mass on a line must be steered from the origin to the goal band
     x' = x + v * dt
     v' = v + u * dt       (dt = 0.4, 10 steps = 4 seconds)
 
-Three STL properties are compiled to differentiable robustness losses:
+Three properties are compiled to differentiable losses:
 
     stayBounded    globally[0,9]  position in [0, posMax]
     reachGoal      finally[0,9]   position in [goalLo, goalHi]
@@ -18,9 +18,12 @@ Three STL properties are compiled to differentiable robustness losses:
 
 Training objective:
 
-    loss = effort + weight * sum(relu(-robustness))
+    loss = effort + weight * sum(signed_constraint)
 
-STL robustness: positive = satisfied, negative = violated.
+where ``signed_constraint`` is the compiled property value, negated when
+the logic reports ``minimise = False`` so that reducing it always pushes
+the property toward satisfaction. This makes the same script runnable
+under any differentiable logic (DL2, Vehicle, STL).
 
 Prerequisites
 -------------
@@ -90,10 +93,11 @@ def evaluate(declarations, controller: nn.Module) -> dict[str, float]:
         }
 
 
-def print_robustness(title: str, results: dict[str, float]) -> None:
+def print_robustness(title: str, results: dict[str, float], minimise: bool) -> None:
     print(f"\n{BANNER}\n{title}\n{BANNER}")
     for name, rob in results.items():
-        status = "OK      " if rob >= 0 else "VIOLATED"
+        satisfied = rob <= 0 if minimise else rob >= 0
+        status = "OK      " if satisfied else "VIOLATED"
         print(f"  {name:<16} {rob:+8.2f}  [{status}]")
 
 
@@ -101,13 +105,15 @@ def train(
     declarations,
     controller: nn.Module,
     init_state: torch.Tensor,
+    minimise: bool,
 ) -> None:
     optimizer = torch.optim.Adam(controller.parameters(), lr=LEARNING_RATE)
     for epoch in range(EPOCHS):
         optimizer.zero_grad()
 
         robustnesses = compute_robustness(declarations, controller)
-        constraint_loss = torch.stack([torch.relu(-r) for r in robustnesses]).sum()
+        signed = [r if minimise else -r for r in robustnesses]
+        constraint_loss = torch.stack(signed).sum()
 
         _, actions = rollout(controller, init_state)
         effort_loss = (actions**2).sum()
@@ -147,27 +153,30 @@ def main() -> None:
     print(f"\n{BANNER}")
     print(f"Loading double-integrator reach-avoid specification...\n  {SPEC_PATH.name}")
     print(BANNER)
-    declarations = loss_pt.load_specification(
+    declarations, minimise = loss_pt.load_specification(
         SPEC_PATH,
         logic=DifferentiableLogic.STL,
         declarations=PROPERTIES,
     )
     print(f"\nCompiled properties: {PROPERTIES}")
+    sign_hint = "negative = satisfied" if minimise else "positive = satisfied"
 
     controller = build_model()
     init_state = torch.tensor([0.0, 0.0])
 
     print_robustness(
-        "Robustness BEFORE training  (positive = satisfied)",
+        f"Robustness BEFORE training  ({sign_hint})",
         evaluate(declarations, controller),
+        minimise,
     )
 
     print(f"\n{BANNER}\nTraining ({EPOCHS} epochs, Adam lr={LEARNING_RATE})\n{BANNER}")
-    train(declarations, controller, init_state)
+    train(declarations, controller, init_state, minimise)
 
     print_robustness(
-        "Robustness AFTER training   (positive = satisfied)",
+        f"Robustness AFTER training   ({sign_hint})",
         evaluate(declarations, controller),
+        minimise,
     )
 
     print_trajectory(controller, init_state)

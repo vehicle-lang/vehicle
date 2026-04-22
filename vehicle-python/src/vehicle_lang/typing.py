@@ -74,7 +74,7 @@ class CustomLogic:
     from your Vehicle specification by name::
 
         logic = CustomLogic("MyCustomLoss")
-        specs = load_specification("spec.vcl", logic=logic)
+        specs, minimise = load_specification("spec.vcl", logic=logic)
     """
 
     def __init__(self, name: str) -> None:

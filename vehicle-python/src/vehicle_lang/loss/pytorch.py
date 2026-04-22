@@ -46,7 +46,7 @@ def _derive_temporal_semantics(program: vcl.Program) -> Any:
     if not isinstance(program, vcl.Main):
         raise ValueError("Expected Main program node")
 
-    meta = program.temporal_semantics
+    meta = program.logic_metadata
 
     # Build a throwaway translation to compile the VCL lambda AST nodes
     translation = PyTorchTranslation()
@@ -101,7 +101,7 @@ def load_specification(
     samplers: Mapping[str, Any] | None = None,
     declarations: Iterable[DeclarationName] = (),
     declaration_context: MutableMapping[str, Any] | None = None,
-) -> dict[str, Any]:
+) -> tuple[dict[str, Any], bool]:
     """Load a loss function compiled for PyTorch.
 
     Args:
@@ -117,6 +117,13 @@ def load_specification(
         samplers: Custom samplers keyed by declaration name.
         declarations: Names of declarations to compile.
         declaration_context: Mutable context shared across declarations.
+
+    Returns:
+        ``(declarations, minimise)``. ``minimise`` is ``True`` for
+        loss-oriented logics (``DL2``, ``Vehicle``) whose compiled output
+        should be minimised directly, and ``False`` for robustness-oriented
+        logics (``STL``) whose output should be negated (or maximised)
+        to drive the property toward satisfaction.
     """
     # Load the program once so we can derive temporal semantics if needed.
     program = _loss_ast.load(path, target=logic, declarations=declarations)
@@ -131,7 +138,7 @@ def load_specification(
         translation_holder["translation"] = translation
         return translation
 
-    compiled = load_loss_specification(
+    compiled, minimise = load_loss_specification(
         path,
         logic=logic,
         samplers=samplers,
@@ -154,7 +161,8 @@ def load_specification(
 
         return wrapped
 
-    return {
+    wrapped = {
         name: (_wrap(value) if callable(value) else value)
         for name, value in compiled.items()
     }
+    return wrapped, minimise
