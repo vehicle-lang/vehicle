@@ -6,21 +6,23 @@ Vehicle compiles each ``@property`` in your specification into a callable loss f
 Loading declarations
 --------------------
 
-Feed a ``.vcl`` file to the backend-specific ``load_specification`` helper. Each property becomes a callable entry whose signature mirrors the ``@network`` declarations referenced inside that property:
+Feed a ``.vcl`` file to the backend-specific ``load_specification`` helper. It returns a pair ``(declarations, minimise)``: a dictionary of compiled callables and a flag describing the sign convention of the selected logic. Each callable entry has a signature that mirrors the ``@network`` declarations referenced inside the corresponding property:
 
 .. code-block:: python
 
    import vehicle_lang as vcl
    from vehicle_lang.loss import pytorch as loss_pt
 
-   declarations = loss_pt.load_specification(
+   declarations, minimise = loss_pt.load_specification(
        "spec.vcl",
        logic=vcl.DifferentiableLogic.Vehicle,  # optional, defaults to DL2
    )
 
    constraint_loss_fn = declarations["output_bounded"]
 
-Each callable returned by ``load_specification`` has a signature that mirrors the ``@network`` declarations referenced inside that property. Pass a Python callable for each network so the loss function can evaluate (and differentiate through) your model. A typical PyTorch training step looks like this:
+``minimise`` is ``True`` for loss-style logics (``DL2``, ``Vehicle``) whose output is ``<= 0`` for a satisfied property, and ``False`` for robustness-style logics (``STL``) whose output is ``>= 0`` for a satisfied property. Branch on it so the same training loop runs unchanged across logics.
+
+Pass a Python callable for each network so the loss function can evaluate (and differentiate through) your model. A typical PyTorch training step looks like this:
 
 .. code-block:: python
 
@@ -45,7 +47,8 @@ Each callable returned by ``load_specification`` has a signature that mirrors th
            preds = model(x_batch)
            task_loss = torch.nn.functional.mse_loss(preds, y_batch)
 
-           constraint_loss = constraint_loss_fn(network)
+           raw = constraint_loss_fn(network)
+           constraint_loss = raw if minimise else -raw
            total_loss = alpha * task_loss + (1.0 - alpha) * constraint_loss
 
            total_loss.backward()
@@ -60,7 +63,7 @@ TensorFlow works the same way—load the declarations through ``vehicle_lang.los
    import vehicle_lang as vcl
    from vehicle_lang.loss import tensorflow as loss_tf
 
-   declarations = loss_tf.load_specification(
+   declarations, minimise = loss_tf.load_specification(
        "spec.vcl",
        logic=vcl.DifferentiableLogic.Vehicle,
    )
@@ -69,7 +72,8 @@ TensorFlow works the same way—load the declarations through ``vehicle_lang.los
    with tf.GradientTape() as tape:
        preds = model(x_batch)
        task_loss = tf.reduce_mean(tf.square(preds - y_batch))
-       constraint_loss = constraint_loss_fn(network)
+       raw = constraint_loss_fn(network)
+       constraint_loss = raw if minimise else -raw
        total_loss = alpha * task_loss + (1.0 - alpha) * constraint_loss
 
    grads = tape.gradient(total_loss, model.trainable_variables)
@@ -84,6 +88,7 @@ Logic selection
 By default, Vehicle compiles properties into loss functions using the ``Vehicle`` differentiable logic. You can select a different logic by passing the ``logic`` argument to ``load_specification``. Available options are:
 - ``vehicle_lang.DifferentiableLogic.Vehicle`` (default)
 - ``vehicle_lang.DifferentiableLogic.DL2``
+- ``vehicle_lang.DifferentiableLogic.STL``
 
 
 Custom samplers and declaration context
@@ -98,7 +103,7 @@ Pass a ``samplers`` dictionary if you want to override the default implementatio
    custom = {"images": MySampler().get_loss}
    context = {"model": model, "epsilon": 0.1}
 
-   declarations = loss_pt.load_specification(
+   declarations, minimise = loss_pt.load_specification(
        "spec.vcl",
        samplers=custom,
        declaration_context=context,

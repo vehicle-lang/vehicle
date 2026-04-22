@@ -28,14 +28,17 @@ uv run --extra pytorch python ../examples/temporalSafety/train.py
 ## Expected output
 
 An untrained network outputs values near zero, so `eventuallyAtTarget` and
-`limitUntilTarget` are deeply violated (robustness ≈ −28.5) while
-`alwaysBelowLimit` is trivially satisfied (outputs are far below 33 m/s).
+`limitUntilTarget` are deeply violated while `alwaysBelowLimit` is trivially
+satisfied (outputs are far below 33 m/s).
 
 After 300 training epochs all three properties should be satisfied, and the
 velocity trace should show acceleration from ~15 m/s toward the 30 m/s target.
+The sign convention in the printed output depends on the selected logic —
+`STL` reports positive values for satisfied properties, `DL2` and `Vehicle`
+report non-positive values.
 
 ```
-Robustness BEFORE training  (positive = satisfied)
+Robustness BEFORE training  (positive = satisfied)   # STL
   alwaysBelowLimit          +33.xx  [OK      ]
   eventuallyAtTarget        -28.xx  [VIOLATED]
   limitUntilTarget          -28.xx  [VIOLATED]
@@ -51,14 +54,18 @@ Learned velocity trace (m/s)  [target band: 28.5 – 31.5]
   step  9:  ~30.x m/s  ###############
 ```
 
-## STL robustness convention
+## Logic-portable sign handling
 
-Vehicle uses **STL quantitative robustness**:
+`load_specification` returns `(declarations, minimise)`.  The flag lets a
+single training script run unchanged under any differentiable logic:
 
-- **positive** = property satisfied (value = margin to violation)
-- **negative** = property violated (value = distance to satisfaction)
+- `minimise = True` for loss-style logics (`DL2`, `Vehicle`): a satisfied
+  property collapses to ≤ 0 and the raw value is minimised directly.
+- `minimise = False` for robustness-style logics (`STL`): a satisfied
+  property is ≥ 0, so the script negates the raw value before adding it to
+  the total loss.
 
-Training uses a hinge loss `relu(-robustness)` that penalises violations and
-contributes zero once a property is satisfied.  Temporal conjunction (`globally`,
-`until` prefix) maps to min-robustness; disjunction (`finally`, `until` goal)
-maps to max-robustness.
+The training loop therefore uses `r if minimise else -r` for each property,
+and the status printer flips its satisfaction check on the same flag.  See
+the [`training.rst` reference](../../docs/training.rst) for the full
+convention.

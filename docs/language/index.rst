@@ -16,6 +16,7 @@ of neural networks.
   tensors
   records
   quantifiers
+  temporal-operators
   networks
   datasets
   parameters

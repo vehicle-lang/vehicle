@@ -4,6 +4,14 @@
 
 ### Loss backend
 
+* **Breaking (Python API):** `load_specification` now returns a tuple
+  `(declarations, minimise)`. The `minimise` flag comes from the compiled
+  logic's direction — `True` for loss-style logics (`DL2`, `Vehicle`)
+  whose output should be minimised directly, and `False` for
+  robustness-style logics (`STL`) whose output should be negated before
+  being minimised. Training loops that branch on this flag become
+  portable across differentiable logics.
+
 * Fixed a bug where the compiler was erroring on some uses of `forall` for indices.
 * Fixed a bug where networks were recursively unblocked without changes. Backends now control when recursive unblocking happens.
 
