@@ -21,7 +21,7 @@ import Vehicle.Libraries.StandardLibrary
 instance ScopableBuiltin Builtin where
   generateAuxiliaryRecordDefinitions p ident sort telescope fields
     | isAnnotatedAsTensor sort = createTensorRecordConversionFunctions p ident telescope fields
-    | not (isStandardLibIdent ident) = return [createRecordHasValidIOTypeInstance p ident fields]
+    | not (isStandardLibIdent ident) = return [createRecordHasValidIOTypeInstance p ident telescope fields]
     | otherwise = return []
 
 instance DesugarableBuiltin Builtin where
@@ -37,35 +37,49 @@ instance DesugarableBuiltin Builtin where
 createRecordHasValidIOTypeInstance ::
   Provenance ->
   Identifier ->
+  Telescope Builtin ->
   RecordFields Builtin ->
   Decl Builtin
-createRecordHasValidIOTypeInstance p recordIdent fields = do
+createRecordHasValidIOTypeInstance p recordIdent telescope fields = do
   -- For each record R we want to create a function that looks like:
   --
   --   @instance
   --   recordRHasValidNetworkIOType :
+  --     {{t1}} ->
+  --     ...
+  --     {{t2}} ->
   --     {{HasValidNetworkFieldType t1}} ->
   --     ...
   --     {{HasValidNetworkFieldType tn}} ->
-  --     HasValidNetworkIOType R
-  --   recordRHasValidNetworkIOType = {}
+  --     HasValidNetworkIOType (R t1 ... tn)
+  --   recordRHasValidNetworkIOType t1 ... tn = {}
   --
   -- ... where t1 through tn are the types of R's fields.
 
-  -- Create the name
   let instanceName = Text.pack "record" <> nameOf recordIdent <> "HasValidNetworkIOType"
   let instanceIdent = Identifier (modulePath recordIdent) instanceName
 
-  -- Create the type
-  let recordType' = freeVar validNetworkIOTypeIdent @@ [freeVar recordIdent]
-  let convertFieldToConstraint f = freeVar validNetworkFieldTypeIdent @@ [toDSL . snd $ f]
-  let instanceType = fromDSL mempty $ foldr (\field currentType -> convertFieldToConstraint field ~~~> currentType) recordType' fields
+  let makeConstraint (_, fieldType) k = Binder (BinderDisplayForm {namingForm = OnlyType, foldingForm = True}) (Instance True) Relevant $ normAppList target [argument]
+        where
+          target = FreeVar p validNetworkFieldTypeIdent
+          argument = Arg Explicit Relevant (liftDBIndices k fieldType)
 
-  -- Create the function body
-  let recordType = fromDSL mempty recordType'
-  let functionBody = Record p recordType []
+  let implicitTelescope = fmap (flip setBinderVisibility $ Implicit True) telescope
+  let constraintBinders = zipWith makeConstraint fields (fmap Lv [0 .. length fields])
 
-  DefFunction p instanceIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) instanceType functionBody
+  let binderList = implicitTelescope ++ constraintBinders
+  let binderIndices = reverse $ fmap Ix [0 .. (length implicitTelescope + length fields - 1)]
+
+  let makeArg (binder, ix) = argFromBinder binder (BoundVar p ix)
+  let args = fmap makeArg (zip telescope binderIndices)
+
+  let parameterisedRecordType = normAppList (FreeVar p recordIdent) args
+  let resultType = fromDSL mempty $ freeVar validNetworkIOTypeIdent @@ [toDSL parameterisedRecordType]
+
+  let functionType = foldr (Pi p) resultType binderList
+  let functionBody = foldr (Lam p) (Record p resultType []) binderList
+
+  DefFunction p instanceIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) functionType functionBody
 
 createTensorRecordConversionFunctions ::
   (MonadCompile m) =>
