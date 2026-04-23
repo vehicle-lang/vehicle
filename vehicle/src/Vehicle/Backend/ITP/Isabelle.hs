@@ -749,7 +749,9 @@ compileBuiltin isOutType localeAssms b args = case b of
     Not -> annotateNotation localeAssms [] 35 "(\\<not> $0)" (Just "negb") args
     Implies -> annotateNotation localeAssms [] 55 "($0 \\<longrightarrow> $1)" (Just "implb") args
     Add AddNat -> annotateNotation localeAssms [] 50 "($0 + $1)" (Just "+%R") args
+    Sub SubNat -> annotateNotation localeAssms [] 50 "($0 - $1)" Nothing args
     Mul MulNat -> annotateNotation localeAssms [] 40 "($0 * $1)" (Just "*%R") args
+    Div DivNat -> annotateNotation localeAssms [] 40 "($0 div $1)" Nothing args
     Add AddRatTensor -> annotateNotation localeAssms [RequireImport VehicleTensor, RequireImport VehicleUtils] 50 "(tensor_plus $0 $1)" (Just "+%R") args
     Sub SubRatTensor -> annotateNotation localeAssms [RequireImport VehicleTensor, RequireImport VehicleUtils, RequireImport VehicleTensorScalarMult] 50 "(tensor_plus $0 (tensor_cdot (-1 :: R) $1))" Nothing args
     Mul MulRatTensor -> annotateNotation localeAssms [RequireImport VehicleTensor, RequireImport VehicleUtils] 40 "(hadamard_prod $0 $1)" (Just "*%R") args

@@ -239,8 +239,14 @@ accessNatTensorLiteral = accessNoArgs accessNatTensorLitBuiltin
 accessAddNat :: (HasNatExpr expr builtin) => Op2Accessor (expr builtin)
 accessAddNat = accessArgs accessAddNatBuiltin
 
+accessSubNat :: (HasNatExpr expr builtin) => Op2Accessor (expr builtin)
+accessSubNat = accessArgs accessSubNatBuiltin
+
 accessMulNat :: (HasNatExpr expr builtin) => Op2Accessor (expr builtin)
 accessMulNat = accessArgs accessMulNatBuiltin
+
+accessDivNat :: (HasNatExpr expr builtin) => Op2Accessor (expr builtin)
+accessDivNat = accessArgs accessDivNatBuiltin
 
 --------------------------------------------------------------------------------
 -- Rationals

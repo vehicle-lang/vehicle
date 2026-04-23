@@ -568,7 +568,9 @@ compileBuiltinFunction f args = case f of
   Not -> annotateApp [DataBool] Nothing "not" args
   Implies -> annotateInfixApp [VehicleUtils] 4 Nothing "_⇒_" args
   Add AddNat -> annotateInfixApp [DataNat] 6 (Just natQualifier) "_⊕_" args
+  Sub SubNat -> annotateInfixApp [DataNat] 6 (Just natQualifier) "_∸_" args
   Mul MulNat -> annotateInfixApp [DataNat] 7 (Just natQualifier) "_*_" args
+  Div DivNat -> annotateInfixApp [DataNat] 7 (Just natQualifier) "_/_" args
   Add AddRatTensor -> annotateInfixApp [DataTensor] 6 (Just tensorQualifier) "_⊕_" args
   Sub SubRatTensor -> annotateInfixApp [DataTensor] 6 (Just tensorQualifier) "_⊖_" args
   Mul MulRatTensor -> annotateInfixApp [DataTensor] 7 (Just tensorQualifier) "_*_" args

@@ -204,7 +204,9 @@ instance BuiltinHasNatLiterals LossBuiltin where
       }
 
   accessAddNatBuiltin = functionAccessor (Add AddNat)
+  accessSubNatBuiltin = functionAccessor (Sub SubNat)
   accessMulNatBuiltin = functionAccessor (Mul MulNat)
+  accessDivNatBuiltin = functionAccessor (Div DivNat)
 
 --------------------------------------------------------------------------------
 -- Rat
@@ -308,7 +310,9 @@ instance NormalisableBuiltin LossBuiltin where
   evalScheme = \case
     LossBuiltinFunction f -> case f of
       Add AddNat -> Simple evalAddNat
+      Sub SubNat -> Simple evalSubNat
       Mul MulNat -> Simple evalMulNat
+      Div DivNat -> Simple evalDivNat
       Neg NegRatTensor -> Simple evalNegRatTensor
       Add AddRatTensor -> Simple evalAddRatTensor
       Sub SubRatTensor -> Simple evalSubRatTensor

@@ -78,7 +78,11 @@ record HasSub t1 t2 t3 where
   { subTC : t1 -> t2 -> t3
   }
 
-@instance
+@instance(default=0)
+natHasSub : HasSub Nat Nat Nat
+natHasSub = { subTC = subNat }
+
+@instance(default=1)
 realTensorHasSub : HasSub (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
 realTensorHasSub = { subTC = subRealTensor }
 
@@ -102,7 +106,11 @@ record HasDiv t1 t2 t3 where
   { divTC : t1 -> t2 -> t3
   }
 
-@instance
+@instance(default=0)
+natHasDiv : HasDiv Nat Nat Nat
+natHasDiv = { divTC = divNat }
+
+@instance(default=1)
 realTensorHasDiv : HasDiv (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
 realTensorHasDiv = { divTC = divRealTensor }
 

@@ -242,7 +242,9 @@ unblockNatValue expr = case toNatValue expr of
   VNatLiteral {} -> return expr
   VNatIf {} -> return expr
   VNatAdd args -> unblockOp2 unblockNatValue evalAddNat args
+  VNatSub args -> unblockOp2 unblockNatValue evalSubNat args
   VNatMul args -> unblockOp2 unblockNatValue evalMulNat args
+  VNatDiv args -> unblockOp2 unblockNatValue evalDivNat args
   VNatBoundVar {} -> unexpectedExprError currentPass (prettyVerbose expr)
   VNatParameter {} -> unexpectedExprError currentPass (prettyVerbose expr)
 

@@ -61,7 +61,9 @@ instance NormalisableBuiltin Builtin where
       Temporal {} -> None
       Rollout -> None
       Add AddNat -> Simple evalAddNat
+      Sub SubNat -> Simple evalSubNat
       Mul MulNat -> Simple evalMulNat
+      Div DivNat -> Simple evalDivNat
       Neg NegRatTensor -> Simple evalNegRatTensor
       Add AddRatTensor -> Simple evalAddRatTensor
       Sub SubRatTensor -> Simple evalSubRatTensor

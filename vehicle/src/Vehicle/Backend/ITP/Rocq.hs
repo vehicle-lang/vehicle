@@ -505,7 +505,9 @@ compileBuiltin b args = case b of
     Not -> compileNotationAndArgs [MathcompImport Boot] LeftAssociative (Just 35) "~~ $0" (Just "negb") args
     Implies -> compileNotationAndArgs [MathcompImport Boot] RightAssociative (Just 55) "$0 ==> $1" (Just "implb") args
     Add AddNat -> compileNotationAndArgs [MathcompImport Algebra, Open RingScope] LeftAssociative (Just 50) "$0 + $1" (Just "+%R") args
+    Sub SubNat -> compileApplication [] "Nat.sub" args
     Mul MulNat -> compileNotationAndArgs [MathcompImport Algebra, Open RingScope] LeftAssociative (Just 40) "$0 * $1" (Just "*%R") args
+    Div DivNat -> compileApplication [] "Nat.div" args
     Add AddRatTensor -> compileNotationAndArgs [RequireImport VehicleTensor] LeftAssociative (Just 50) "$0 + $1" (Just "+%R") args
     Sub SubRatTensor -> compileNotationAndArgs [RequireImport VehicleTensor] LeftAssociative (Just 50) "$0 - $1" Nothing args
     Mul MulRatTensor -> compileNotationAndArgs [RequireImport VehicleTensor] LeftAssociative (Just 40) "$0 * $1" (Just "*%R") args

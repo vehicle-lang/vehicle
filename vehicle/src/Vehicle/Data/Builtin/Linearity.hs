@@ -176,7 +176,9 @@ instance BuiltinHasNatLiterals LinearityBuiltin where
       }
 
   accessAddNatBuiltin = functionAccessor $ Add AddNat
+  accessSubNatBuiltin = functionAccessor $ Sub SubNat
   accessMulNatBuiltin = functionAccessor $ Mul MulNat
+  accessDivNatBuiltin = functionAccessor $ Div DivNat
 
 instance BuiltinHasListLiterals LinearityBuiltin where
   accessNilBuiltin =

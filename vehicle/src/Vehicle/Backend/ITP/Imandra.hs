@@ -648,7 +648,9 @@ compileBuiltin _isOutType moduleDefs b args = case b of
     Not -> annotateNotation moduleDefs [] 35 "(not $0)" (Just "not") args
     Implies -> annotateBinOp moduleDefs [] 55 "==>" args
     Add AddNat -> annotateNotation moduleDefs [] 50 "($0 + $1)" (Just "+") args
+    Sub SubNat -> annotateNotation moduleDefs [] 50 "($0 - $1)" (Just "-") args
     Mul MulNat -> annotateNotation moduleDefs [] 40 "($0 * $1)" (Just "*") args
+    Div DivNat -> annotateNotation moduleDefs [] 40 "($0 / $1)" (Just "/") args
     Add AddRatTensor -> annotateApp moduleDefs [RequireImport ImlVehicle] "tensor_plus_real" args
     Sub SubRatTensor -> annotateNotation moduleDefs [RequireImport ImlVehicle] 50 "(tensor_plus_real $0 (tensor_cdot (-1.0) $1))" Nothing args
     Mul MulRatTensor -> annotateApp moduleDefs [RequireImport ImlVehicle] "hadamard_prod_real" args

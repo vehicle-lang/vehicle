@@ -78,7 +78,9 @@ class BuiltinHasNatLiterals builtin where
   accessNatTensorLitBuiltin :: Accessor builtin (Tensor Int)
 
   accessAddNatBuiltin :: Accessor builtin ()
+  accessSubNatBuiltin :: Accessor builtin ()
   accessMulNatBuiltin :: Accessor builtin ()
+  accessDivNatBuiltin :: Accessor builtin ()
 
 --------------------------------------------------------------------------------
 -- Rat

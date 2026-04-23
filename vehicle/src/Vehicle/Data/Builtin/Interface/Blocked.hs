@@ -60,7 +60,9 @@ functionBlockingStatus b spine = case b of
   And -> fixedStatus [1, 2] spine
   Or -> fixedStatus [1, 2] spine
   Add AddNat -> fixedStatus [0, 1] spine
+  Sub SubNat -> fixedStatus [0, 1] spine
   Mul MulNat -> fixedStatus [0, 1] spine
+  Div DivNat -> fixedStatus [0, 1] spine
   Neg NegRatTensor -> fixedStatus [1] spine
   Add AddRatTensor -> fixedStatus [1, 2] spine
   Mul MulRatTensor -> fixedStatus [1, 2] spine

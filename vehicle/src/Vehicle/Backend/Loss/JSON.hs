@@ -319,7 +319,9 @@ convertBuiltin b spine = case b of
     L.SearchRatTensor name minimise -> convertSearch name minimise spine
     -- Dimension operations, not yet converted
     L.Add L.AddNat -> unsupportedError b
+    L.Sub L.SubNat -> unsupportedError b
     L.Mul L.MulNat -> unsupportedError b
+    L.Div L.DivNat -> unsupportedError b
     L.Rollout -> convertRollout convertValue spine
     L.Transpose -> convertTranspose convertValue spine
     L.MapList -> unsupportedError b

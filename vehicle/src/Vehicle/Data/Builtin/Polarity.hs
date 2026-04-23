@@ -164,7 +164,9 @@ instance BuiltinHasNatLiterals PolarityBuiltin where
       }
 
   accessAddNatBuiltin = functionAccessor $ Add AddNat
+  accessSubNatBuiltin = functionAccessor $ Sub SubNat
   accessMulNatBuiltin = functionAccessor $ Mul MulNat
+  accessDivNatBuiltin = functionAccessor $ Div DivNat
 
 instance BuiltinHasListLiterals PolarityBuiltin where
   accessNilBuiltin =

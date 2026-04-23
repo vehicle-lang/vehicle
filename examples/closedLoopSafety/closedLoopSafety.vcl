@@ -13,6 +13,9 @@ goalLo = 9.0
 goalHi = 11.0
 posMax = 15.0
 
+T : Nat
+T = 10
+
 -- Controller: maps [position, velocity] to [acceleration]
 @network
 controller : Tensor Real [2] -> Tensor Real [1]
@@ -26,23 +29,23 @@ initState : Tensor Real [2]
 initState = [0.0, 0.0]
 
 -- Roll out the closed-loop system for 10 steps
-trajectory : Tensor Real [10, 2]
-trajectory = rollout[10] controller dynamics initState
+trajectory : Tensor Real [T, 2]
+trajectory = rollout[T] controller dynamics initState
 
 -- Safety: position stays within [0, posMax] at every step
-positions : Tensor Real [10]
+positions : Tensor Real [T]
 positions = (transpose trajectory) ! 0
 
 @property
 stayBounded : Bool
-stayBounded = (globally[0,9]
-                (const 0.0 [10] <. positions and positions <. const posMax [10])) ! 0
+stayBounded = (globally[0,T - 1]
+                (const 0.0 [T] <. positions and positions <. const posMax [T])) ! 0
 
 -- Liveness: position eventually enters goal region [goalLo, goalHi]
 @property
 reachGoal : Bool
-reachGoal = (finally[0,9]
-                (const goalLo [10] <. positions and positions <. const goalHi [10])) ! 0
+reachGoal = (finally[0,T - 1]
+                (const goalLo [T] <. positions and positions <. const goalHi [T])) ! 0
 
 -- Per-dimension bounds on the state vector [position, velocity]
 stateLoBounds : Tensor Real [2]
@@ -58,10 +61,10 @@ inGoalRegion : Tensor Real [2] -> Bool
 inGoalRegion s = goalLo <= s ! 0 <= goalHi
 
 -- Safety-until-reach: the state stays within valid bounds in every dimension
--- until the position enters the goal band. Mixes `until[0,9]` (temporal) with
+-- until the position enters the goal band. Mixes `until[0,T - 1]` (temporal) with
 -- `forall k` over `Index 2` (first-order over state dimensions).
 @property
 safeUntilGoal : Bool
-safeUntilGoal = (until[0,9]
+safeUntilGoal = (until[0,T - 1]
                    (foreach t . stateInBounds (trajectory ! t))
                    (foreach t . inGoalRegion (trajectory ! t))) ! 0

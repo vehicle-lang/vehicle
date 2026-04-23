@@ -364,12 +364,29 @@ evalAddNat = \case
   Op2Args (INatLiteral x) (INatLiteral y) -> return $ INatLiteral (x + y)
   args -> return $ mkExpr accessAddNat args
 
+evalSubNat ::
+  (MonadNormBuiltin m, BuiltinHasNatLiterals builtin) =>
+  EvalSimple Op2Args Value builtin m
+evalSubNat = \case
+  -- Saturating subtraction on Nat (Agda's `monus`): x ∸ y = max 0 (x - y).
+  Op2Args (INatLiteral x) (INatLiteral y) -> return $ INatLiteral (max 0 (x - y))
+  args -> return $ mkExpr accessSubNat args
+
 evalMulNat ::
   (MonadNormBuiltin m, BuiltinHasNatLiterals builtin) =>
   EvalSimple Op2Args Value builtin m
 evalMulNat = \case
   Op2Args (INatLiteral x) (INatLiteral y) -> return $ INatLiteral (x * y)
   args -> return $ mkExpr accessMulNat args
+
+evalDivNat ::
+  (MonadNormBuiltin m, BuiltinHasNatLiterals builtin) =>
+  EvalSimple Op2Args Value builtin m
+evalDivNat = \case
+  -- Coq's `Nat.div` convention: x / 0 = 0, otherwise floor division.
+  Op2Args (INatLiteral x) (INatLiteral y) ->
+    return $ INatLiteral (if y == 0 then 0 else x `div` y)
+  args -> return $ mkExpr accessDivNat args
 
 evalCompareNat ::
   (MonadNormBuiltin m, HasBoolExpr Value builtin, BuiltinHasNatLiterals builtin) =>

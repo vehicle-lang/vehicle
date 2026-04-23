@@ -219,7 +219,9 @@ instance BuiltinHasNatLiterals Builtin where
       }
 
   accessAddNatBuiltin = functionAccessor (Add AddNat)
+  accessSubNatBuiltin = functionAccessor (Sub SubNat)
   accessMulNatBuiltin = functionAccessor (Mul MulNat)
+  accessDivNatBuiltin = functionAccessor (Div DivNat)
 
 --------------------------------------------------------------------------------
 -- Rat

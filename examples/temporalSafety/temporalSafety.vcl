@@ -16,31 +16,34 @@ vMax     = 33.0   -- hard speed limit (m/s)
 epsilon  = 1.5    -- acceptable deviation from target speed (m/s)
 maxAccel = 5.0    -- maximum speed change between consecutive steps (m/s)
 
+T : Nat
+T = 10
+
 --------------------------------------------------------------------------------
 -- Network declaration
 -- Input:  (v_ego, d_rel) — ego speed (m/s) and gap to lead vehicle (m)
--- Output: predicted velocity trajectory over 10 time steps
+-- Output: predicted velocity trajectory over T time steps
 
 @network
-controller : Tensor Real [2] -> Tensor Real [10]
+controller : Tensor Real [2] -> Tensor Real [T]
 
 -- Fixed initial state: ego at 15 m/s, 30 m behind the lead vehicle
 initState : Tensor Real [2]
 initState = [15.0, 30.0]
 
 -- Predicted velocity trace produced by the controller
-vTrace : Tensor Real [10]
+vTrace : Tensor Real [T]
 vTrace = controller initState
 
 --------------------------------------------------------------------------------
 -- Element-wise boolean signals over the trajectory
 
 -- True at each step where speed is within physical limits [0, vMax]
-belowLimit : Tensor Bool [10]
+belowLimit : Tensor Bool [T]
 belowLimit = foreach i . 0 <= vTrace ! i <= vMax
 
 -- True at each step where speed is within epsilon of the target
-atTarget : Tensor Bool [10]
+atTarget : Tensor Bool [T]
 atTarget = foreach i . vTarget - epsilon <= vTrace ! i <= vTarget + epsilon
 
 --------------------------------------------------------------------------------

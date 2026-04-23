@@ -61,11 +61,13 @@ typeOfBuiltinFunction = \case
     AddRatTensor -> typeOfTensorOp2 tRat
   Sub dom -> case dom of
     SubRatTensor -> typeOfTensorOp2 tRat
+    SubNat -> tNat ~> tNat ~> tNat
   Mul dom -> case dom of
     MulNat -> tNat ~> tNat ~> tNat
     MulRatTensor -> typeOfTensorOp2 tRat
   Div dom -> case dom of
     DivRatTensor -> typeOfTensorOp2 tRat
+    DivNat -> tNat ~> tNat ~> tNat
   Min dom -> case dom of
     MinRatTensor -> typeOfTensorOp2 tRat
   Max dom -> case dom of

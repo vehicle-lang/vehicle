@@ -181,6 +181,7 @@ instance Pretty AddDomain where
 
 data SubDomain
   = SubRatTensor
+  | SubNat
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData SubDomain
@@ -192,6 +193,7 @@ instance Serialize SubDomain
 instance Pretty SubDomain where
   pretty = \case
     SubRatTensor -> "RatTensor"
+    SubNat -> "Nat"
 
 data MulDomain
   = MulNat
@@ -211,6 +213,7 @@ instance Pretty MulDomain where
 
 data DivDomain
   = DivRatTensor
+  | DivNat
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData DivDomain
@@ -222,6 +225,7 @@ instance Serialize DivDomain
 instance Pretty DivDomain where
   pretty = \case
     DivRatTensor -> "RatTensor"
+    DivNat -> "Nat"
 
 data MinDomain
   = MinRatTensor

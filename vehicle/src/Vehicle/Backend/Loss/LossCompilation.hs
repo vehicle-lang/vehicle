@@ -95,7 +95,9 @@ convertDim value = logConversion value $ case toNatValue value of
   VNatParameter ident -> return $ VFreeVar ident []
   VNatLiteral i -> return $ mkExpr accessNatLiteral i
   VNatAdd args -> mkExpr accessAddNat <$> traverseOp2Args convertDim args
+  VNatSub args -> mkExpr accessSubNat <$> traverseOp2Args convertDim args
   VNatMul args -> mkExpr accessMulNat <$> traverseOp2Args convertDim args
+  VNatDiv args -> mkExpr accessDivNat <$> traverseOp2Args convertDim args
   VNatIf {} -> unsupportedOperation "if"
 
 convertDims ::
