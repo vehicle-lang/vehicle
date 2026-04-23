@@ -1710,14 +1710,14 @@ requires-dist = [
     { name = "types-pygments", marker = "extra == 'mypy'", specifier = ">=2.14,<3" },
     { name = "types-setuptools", marker = "extra == 'mypy'", specifier = ">=45" },
     { name = "typing-extensions", specifier = ">=4.6,<5" },
-    { name = "vehicle-stl", marker = "extra == 'pytorch'", directory = "../vehicle-stl" },
+    { name = "vehicle-stl", marker = "extra == 'pytorch'", directory = "vehicle-stl" },
 ]
 provides-extras = ["test", "mypy", "pygments", "numpy", "jax", "dev", "wheel", "tensorflow", "pytorch"]
 
 [[package]]
 name = "vehicle-stl"
 version = "0.1.0"
-source = { directory = "../vehicle-stl" }
+source = { directory = "vehicle-stl" }
 dependencies = [
     { name = "torch" },
 ]

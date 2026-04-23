@@ -117,4 +117,4 @@ testpaths = ["tests"]
 version = { attr = "vehicle_lang._version.VERSION" }
 
 [tool.uv.sources]
-vehicle-stl = { path = "../vehicle-stl" }
+vehicle-stl = { path = "vehicle-stl" }

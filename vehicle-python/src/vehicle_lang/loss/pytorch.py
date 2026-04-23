@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import ast as py
-from fractions import Fraction
 from pathlib import Path
 from typing import Any, Iterable, Mapping, MutableMapping, cast
 
-from ..typing import CustomLogic, DeclarationName, DifferentiableLogic, Target
+from ..typing import DeclarationName, DifferentiableLogic, Target
 from . import _ast as _loss_ast
 from ._ast import _nodes as vcl
 from ._common import load_loss_specification
