@@ -1,6 +1,3 @@
-Error in file 'spec.vcl' at Line 8 Column 5 - Line 20 Column 22: Unable to find a record declaration with matching fields.
-Fix: it seems likely that the intension is to construct a 'DifferentiableTensorLogic' record. If so, then add the missing fields:
-  temporalConjunction
-  temporalConjunctionIdentity
-  temporalDisjunction
-  temporalDisjunctionIdentity
+Error in file 'spec.vcl' at Line 6, Columns 1-11: Unable to compile differentiable logic 'CustomLoss'.
+Its definition does not compute to a record literal.
+Fix: declare the logic directly as a record literal.

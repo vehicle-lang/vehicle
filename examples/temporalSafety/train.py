@@ -50,9 +50,11 @@ print("Loading ACC specification...")
 print(f"  {SPEC_PATH.name}")
 print("=" * 62)
 
-# logic=STL: temporal operators use exact min/max robustness semantics,
-# automatically derived from the STLLoss DifferentiableTensorLogic defined
-# in Definitions.vcl.  Each @property becomes a callable (network) -> scalar.
+# logic=STL: temporal operators lift the logic's pointwiseConjunction and
+# pointwiseDisjunction as time-indexed reductions, with trueElement and
+# falseElement as reduction identities.  Under STL these are min and max,
+# giving the classical quantitative-robustness semantics.  Each @property
+# becomes a callable (network) -> scalar.
 declarations, minimise = loss_pt.load_specification(
     SPEC_PATH,
     logic=DifferentiableLogic.STL,

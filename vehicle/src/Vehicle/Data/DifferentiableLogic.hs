@@ -41,10 +41,6 @@ data TensorDifferentiableLogicField
   | PointwiseNegation
   | PointwiseConjunction
   | PointwiseDisjunction
-  | TemporalConjunction
-  | TemporalDisjunction
-  | TemporalConjunctionIdentity
-  | TemporalDisjunctionIdentity
   | PointwiseLe
   | PointwiseLt
   | PointwiseGe
@@ -65,10 +61,6 @@ instance HasName TensorDifferentiableLogicField Name where
     PointwiseNegation -> "pointwiseNegation"
     PointwiseConjunction -> "pointwiseConjunction"
     PointwiseDisjunction -> "pointwiseDisjunction"
-    TemporalConjunction -> "temporalConjunction"
-    TemporalDisjunction -> "temporalDisjunction"
-    TemporalConjunctionIdentity -> "temporalConjunctionIdentity"
-    TemporalDisjunctionIdentity -> "temporalDisjunctionIdentity"
     PointwiseLe -> "pointwiseLessEqualThan"
     PointwiseLt -> "pointwiseLessThan"
     PointwiseGe -> "pointwiseGreaterEqualThan"

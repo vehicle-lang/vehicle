@@ -208,15 +208,17 @@ convertReduceOr :: (MonadLogic m) => TensorReductionArgs (Value LossBuiltin) -> 
 convertReduceOr = convertLogicField ReduceDisjunction
 
 -- NOTE: Unlike And/Or/Not (which are inlined into the IR via `convertLogicField`),
--- temporal operators are emitted as opaque IR nodes. The
--- `temporalConjunction` / `temporalDisjunction` / `temporalConjunctionIdentity` /
--- `temporalDisjunctionIdentity` fields from the DL record are extracted
--- separately by `Vehicle.Backend.Loss.JSON.convertTemporalSemantics`, bundled
--- as a `JTemporalSemantics` payload, and reconstructed at runtime as a
--- `vehicle_stl.Semantics` object that is passed to every stlcg++ formula
--- constructor. Negation and nesting of temporal ops is handled by the standard
--- logic-field path — the temporal output is treated as an ordinary real-valued
--- signal once emitted.
+-- temporal operators are emitted as opaque IR nodes. The runtime `Semantics`
+-- for them is derived from the DL record's `pointwiseConjunction` /
+-- `pointwiseDisjunction` lambdas, with `trueElement` / `falseElement` as
+-- reduction identities: a temporal operator is a time-indexed reduction of
+-- the pointwise logical connective, matching the standard STL presentation
+-- in the literature. `Vehicle.Backend.Loss.JSON.convertLogicMetadata` packages
+-- these four fields as a `JLogicMetadata` payload, which the Python backend
+-- reconstructs as a `vehicle_stl.Semantics` object passed to every stlcg++
+-- formula constructor. Negation and nesting of temporal ops is handled by
+-- the standard logic-field path — the temporal output is treated as an
+-- ordinary real-valued signal once emitted.
 
 convertGlobally :: (MonadLogic m) => TemporalOp1Args (Value LossBuiltin) -> m (Value LossBuiltin)
 convertGlobally args = return $ mkExpr (accessTemporalLoss1 Globally) args

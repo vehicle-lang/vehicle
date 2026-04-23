@@ -266,21 +266,24 @@ def _derive_semantics_from(logic: Any) -> Any:
 class TestDerivedSemantics:
     """Verify that _derive_temporal_semantics produces correct semantics from each DL.
 
-    The auto-derivation path compiles the VCL ``temporalConjunction`` /
-    ``temporalDisjunction`` lambdas from the logic record, lifts them to
-    ``ReductionOp`` callables via ``lift_to_reduction``, and constructs a
+    Temporal operators are time-indexed reductions of the logic's pointwise
+    conjunction / disjunction, with ``trueElement`` / ``falseElement`` as
+    reduction identities.  The auto-derivation path compiles these four
+    fields from the logic record, lifts the two lambdas to ``ReductionOp``
+    callables via ``lift_to_reduction``, and constructs a
     ``vehicle_stl.Semantics``.  These tests confirm that the resulting
-    semantics are numerically equivalent to the expected min/max operations,
-    using ``_sliding_window`` as the independent reference — not another
-    vehicle-stl call that could mask an upstream regression.
+    semantics are numerically equivalent to the expected reductions, using
+    ``_sliding_window`` (for min/max) or explicit sum/product (for DL2) as
+    the independent reference — not another vehicle-stl call that could
+    mask an upstream regression.
 
     STLLoss:
-      - ``temporalConjunction = \\x y -> min x y``  →  Globally = sliding-window min
-      - ``temporalDisjunction = \\x y -> max x y``  →  Finally  = sliding-window max
+      - ``pointwiseConjunction = \\x y -> min x y``  →  Globally = sliding-window min
+      - ``pointwiseDisjunction = \\x y -> max x y``  →  Finally  = sliding-window max
 
     DL2Loss:
-      - ``temporalConjunction = \\x y -> max x y``  →  Globally = sliding-window max
-      - ``temporalDisjunction = \\x y -> min x y``  →  Finally  = sliding-window min
+      - ``pointwiseConjunction = \\x y -> x + y``    →  Globally = summed violation over window
+      - ``pointwiseDisjunction = \\x y -> x * y``    →  Finally  = product of penalties over window
     """
 
     @pytest.fixture(scope="class")
@@ -349,37 +352,44 @@ class TestDerivedSemantics:
                     f"sliding-window max {exp:.5f}"
                 )
 
-    # -- DL2Loss: derived semantics must use max/min (opposite of STL) --
+    # -- DL2Loss: derived semantics use DL2's pointwise connectives (+, *) --
 
-    def test_dl2_globally_uses_max(self, dl2_semantics: Any) -> None:
-        """DL2Loss encodes max as temporal conjunction: Globally = worst-case penalty.
+    def test_dl2_globally_uses_pointwise_sum(self, dl2_semantics: Any) -> None:
+        """DL2 pointwiseConjunction is x + y, so Globally = summed penalty over window.
 
         In DL2, loss values are non-negative and larger = worse violation.
-        The worst-case element in a time window dominates, so temporal
-        conjunction reduces to max (not min as in STL).
+        Temporal conjunction reduces via the pointwise connective, which is
+        addition — the reduction identity is trueElement = 0.
         """
-        # signal[0:3] = [0.1, 0.5, 0.2]; min=0.1, max=0.5
+        # signal[0:3] = [0.1, 0.5, 0.2]; sum = 0.8
         signal = torch.tensor([0.1, 0.5, 0.2, 0.9], dtype=torch.float32)
         dl2 = PyTorchBuiltins(temporal_semantics=dl2_semantics)
 
         r_dl2 = dl2.Globally(0, 2, signal)
 
         assert r_dl2[0].item() == pytest.approx(
-            0.5, abs=1e-5
-        ), "DL2 Globally[0,2] at t=0 should be max([0.1,0.5,0.2])=0.5"
+            0.8, abs=1e-5
+        ), "DL2 Globally[0,2] at t=0 should be sum([0.1,0.5,0.2])=0.8"
 
-    def test_dl2_finally_uses_min(self, dl2_semantics: Any) -> None:
-        """DL2Loss encodes min as temporal disjunction: Finally = best-case satisfaction.
+    def test_dl2_finally_uses_pointwise_product(self, dl2_semantics: Any) -> None:
+        """DL2 pointwiseDisjunction is x * y, so Finally reduces via multiplication.
 
-        In DL2, loss=0 means fully satisfied; Finally looks for the timestep
-        with the smallest penalty, so temporal disjunction reduces to min (not max).
+        Unlike Globally (whose additive identity 0 washes out) the disjunction
+        identity for DL2 is ``falseElement = 1e6`` — a large sentinel meaning
+        "fully violated".  stlcg++'s ``Eventually`` pads out-of-bounds
+        positions with this identity and folds starting from it too, so for
+        a length-T signal with interval ``[a, b]`` each output position
+        multiplies the k = b-a+1 in-window values by ``1e6^(T - k + 1)``.
+
+        For signal ``[0.5, 0.1, 0.3, 0.8]`` and ``Finally[0, 2]`` at t=0 the
+        in-window values are ``[0.5, 0.1, 0.3]`` and the fold is
+        ``1e6 * 0.5 * 0.1 * 0.3 * 1e6 * 1e6 * 1e6 * 1e6 = 1.5e28``.
         """
-        # signal[0:3] = [0.5, 0.1, 0.3]; min=0.1, max=0.5
         signal = torch.tensor([0.5, 0.1, 0.3, 0.8], dtype=torch.float32)
         dl2 = PyTorchBuiltins(temporal_semantics=dl2_semantics)
 
         r_dl2 = dl2.Finally(0, 2, signal)
 
         assert r_dl2[0].item() == pytest.approx(
-            0.1, abs=1e-5
-        ), "DL2 Finally[0,2] at t=0 should be min([0.5,0.1,0.3])=0.1"
+            1.5e28, rel=1e-4
+        ), "DL2 Finally[0,2] at t=0 should be 1e6^5 * 0.5 * 0.1 * 0.3 = 1.5e28"

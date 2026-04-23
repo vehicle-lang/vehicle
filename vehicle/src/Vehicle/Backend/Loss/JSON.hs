@@ -171,10 +171,10 @@ convertLogicMetadata ::
   DifferentiableLogicImplementation ->
   m JLogicMetadata
 convertLogicMetadata (logicMap, direction) = do
-  conj <- convertField TemporalConjunction
-  disj <- convertField TemporalDisjunction
-  conjId <- convertField TemporalConjunctionIdentity
-  disjId <- convertField TemporalDisjunctionIdentity
+  conj <- convertField PointwiseConjunction
+  disj <- convertField PointwiseDisjunction
+  conjId <- convertField TruthityElement
+  disjId <- convertField FalsityElement
   return $ JLogicMetadata conj disj conjId disjId direction
   where
     convertField field = convertValue (logicMap Map.! field)

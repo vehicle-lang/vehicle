@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
+
+from vehicle_stl.semantics import ReductionOp
 
 if TYPE_CHECKING:
     import torch
@@ -12,7 +14,7 @@ if TYPE_CHECKING:
 def lift_to_reduction(
     binary_op: Callable[["torch.Tensor", "torch.Tensor"], "torch.Tensor"],
     identity: float,
-) -> Callable[["torch.Tensor", int, bool], "torch.Tensor"]:
+) -> ReductionOp:
     """Lift a binary tensor op to a fold-based ReductionOp for vehicle-stl.
 
     Converts a binary function ``op(acc, s)`` into a reduction
@@ -26,6 +28,7 @@ def lift_to_reduction(
         signal: "torch.Tensor",
         dim: int = 0,
         keepdim: bool = True,
+        **kwargs: Any,
     ) -> "torch.Tensor":
         import torch
 
