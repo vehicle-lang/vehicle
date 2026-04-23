@@ -56,30 +56,36 @@ createRecordHasValidIOTypeInstance p recordIdent telescope fields = do
   --
   -- ... where t1 through tn are the types of R's fields.
 
+  -- Create the name
   let instanceName = Text.pack "record" <> nameOf recordIdent <> "HasValidNetworkIOType"
   let instanceIdent = Identifier (modulePath recordIdent) instanceName
 
-  let makeConstraint (_, fieldType) k = Binder (BinderDisplayForm {namingForm = OnlyType, foldingForm = True}) (Instance True) Relevant $ normAppList target [argument]
+  let mkConstraint (_, fieldType) k = mkBinder $ normAppList target [argument]
         where
           target = FreeVar p validNetworkFieldTypeIdent
-          argument = Arg Explicit Relevant (liftDBIndices k fieldType)
+          argument = Arg Explicit Relevant (liftDBIndices (Lv k) fieldType)
+          mkBinder = Binder (BinderDisplayForm {namingForm = OnlyType, foldingForm = True}) (Instance True) Relevant
 
+  -- Construct both the telescope and the typeclass constraints
   let implicitTelescope = fmap (flip setBinderVisibility $ Implicit True) telescope
-  let constraintBinders = zipWith makeConstraint fields (fmap Lv [0 .. length fields])
-
+  let constraintBinders = zipWith mkConstraint fields [0 .. length fields]
   let binderList = implicitTelescope ++ constraintBinders
-  let binderIndices = reverse $ fmap Ix [0 .. (length implicitTelescope + length fields - 1)]
 
-  let makeArg (binder, ix) = argFromBinder binder (BoundVar p ix)
-  let args = fmap makeArg (zip telescope binderIndices)
+  -- Create the type arguments for the fully applied record type
+  let mkArg (binder, ix) = argFromBinder binder (BoundVar p ix)
+  let binderIndices = reverse $ fmap Ix [0 .. (length binderList - 1)]
+  let args = fmap mkArg (zip telescope binderIndices)
 
+  -- Create the applied record and result type
   let parameterisedRecordType = normAppList (FreeVar p recordIdent) args
   let resultType = fromDSL mempty $ freeVar validNetworkIOTypeIdent @@ [toDSL parameterisedRecordType]
 
+  -- Create the function
   let functionType = foldr (Pi p) resultType binderList
   let functionBody = foldr (Lam p) (Record p resultType []) binderList
+  let functionSort = FunctionDecl 1 (Just (AnnInstance Nothing))
 
-  DefFunction p instanceIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) functionType functionBody
+  DefFunction p instanceIdent functionSort functionType functionBody
 
 createTensorRecordConversionFunctions ::
   (MonadCompile m) =>
