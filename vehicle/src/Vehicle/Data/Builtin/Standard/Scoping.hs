@@ -47,24 +47,24 @@ createRecordHasValidIOTypeInstance p recordIdent telescope fields = do
   --   recordRHasValidNetworkIOType :
   --     {{t1}} ->
   --     ...
-  --     {{t2}} ->
-  --     {{HasValidNetworkFieldType t1}} ->
+  --     {{tn}} ->
+  --     {{HasValidNetworkFieldType f1}} ->
   --     ...
-  --     {{HasValidNetworkFieldType tn}} ->
+  --     {{HasValidNetworkFieldType fn}} ->
   --     HasValidNetworkIOType (R t1 ... tn)
   --   recordRHasValidNetworkIOType t1 ... tn = {}
   --
-  -- ... where t1 through tn are the types of R's fields.
+  -- ... where t1 through tn are the types in the telescope,
+  -- and f1 through fn are the types of R's fields.
 
   -- Create the name
   let instanceName = Text.pack "record" <> nameOf recordIdent <> "HasValidNetworkIOType"
   let instanceIdent = Identifier (modulePath recordIdent) instanceName
 
-  let mkConstraint (_, fieldType) k = mkBinder $ normAppList target [argument]
+  let mkConstraint (_, fieldType) k = flip mkInstanceBinder Nothing $ normAppList target [argument]
         where
           target = FreeVar p validNetworkFieldTypeIdent
-          argument = Arg Explicit Relevant (liftDBIndices (Lv k) fieldType)
-          mkBinder = Binder (BinderDisplayForm {namingForm = OnlyType, foldingForm = True}) (Instance True) Relevant
+          argument = explicit (liftDBIndices (Lv k) fieldType)
 
   -- Construct both the telescope and the typeclass constraints
   let implicitTelescope = fmap (flip setBinderVisibility $ Implicit True) telescope
