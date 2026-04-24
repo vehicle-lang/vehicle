@@ -1,5 +1,5 @@
 Error in file 'parameterisedRecordNotValidIOType.vcl' at Line 8, Columns 5-37: The type of @network 'f':
   Rec (Rec Real Real) Real -> Real
 is not supported. The possible valid types for '@network' annotated declarations are:
-  1. Tensor Rat [a_1, ..., a_n] -> Tensor Rat [b_1, ..., b_n]  (where 'a_i' and 'b_i' are all constants at compile time)
+  1. S -> T, where S and T are either of the form Tensor Rat [a_1, ..., a_n] (and a_1 through a_n are compile-time constants), or a record whose fields are such tensors.
 Fix: change the type of 'f' to a supported type
