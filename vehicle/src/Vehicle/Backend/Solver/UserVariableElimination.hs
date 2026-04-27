@@ -39,6 +39,7 @@ import Prelude hiding (Applicative (..))
 import Vehicle.Verify.Core 
 import Vehicle.Compile.Resource
 import Data.Text qualified as Text
+import Vehicle.Libraries.StandardLibrary (hasComparisonIdent)
 
 eliminateExists ::
   (MonadQueryStructure m) =>
@@ -210,7 +211,7 @@ unblockNetworkApplication ::
   Identifier ->
   NetworkAppArgs (Value Builtin) ->
   m (Value Builtin)
-unblockNetworkApplication unblockFnTensor _unblockFnRecord ident (NetworkAppArgs arg) = do
+unblockNetworkApplication unblockFnTensor unblockFnRecord ident (NetworkAppArgs arg) = do
   let name = nameOf ident
   networkInfo <- asks (lookupNetworkInfo name . networkCtx)
 
@@ -239,9 +240,47 @@ unblockNetworkApplication unblockFnTensor _unblockFnRecord ident (NetworkAppArgs
       evalApp ctx fromTensorValue [outputVarArg]
     _ -> return outputVarExpr
 
+  -- we are comparing records with a tensor op here - needs to change
+  -- should be able to use the instance here for record equality
+
+  -- record HasComparison t1 t2 where
+  -- { leTC : t1 -> t2 -> Bool
+  -- , ltTC : t1 -> t2 -> Bool
+  -- , geTC : t1 -> t2 -> Bool
+  -- , gtTC : t1 -> t2 -> Bool
+  -- , eqTC : t1 -> t2 -> Bool
+  -- , neTC : t1 -> t2 -> Bool
+  -- }
+
+-- swap tensorOp2Args to (HasComparison t1 t2).eqTC transformedInput arg
+-- how to do (HasComparison t1 t2) ? t1 and t2 are the record type
+  
+  -- get the ident for HasComparison
+  -- hasComparisonIdent
+
+  -- don't know how to deal with one output being a different type to the other
+  -- currently just check what the input is and assume the output is the same
+  inputInequality <- case inputTensor typ of 
+    NetworkRecordTypeConstructor (NetworkRecordType _baseType typIdent _dims _fields) -> do
+      -- need to apply t1 (record type) and t2 (record type) to the HasComparison ident
+      -- not sure about implicit and relevant here?
+      let recordTypeExpr = Arg Explicit Relevant typIdent
+      let hasComparisonFreeVar = VFreeVar hasComparisonIdent []
+      ctx <- getNameContext
+      let recordExpr = evalApp ctx hasComparisonFreeVar [recordTypeExpr, recordTypeExpr]
+      recordExpr
+    _ -> fromBoolValue $ VCompareRatTensor ( Eq,TensorOp2Args
+                  { tensorOp2Dims = mkDims (inputShape networkInfo),
+                    tensorOp2Arg1 = transformedInput,
+                    tensorOp2Arg2 = arg
+                  }
+              )
+
+
+
   let inputEquality =
         fromBoolValue $
-          VCompareRatTensor -- might have to make a version of this that converts both to records in order to do this?
+          VCompareRatTensor
             ( Eq,
               TensorOp2Args
                 { tensorOp2Dims = mkDims (inputShape networkInfo),
@@ -259,7 +298,10 @@ unblockNetworkApplication unblockFnTensor _unblockFnRecord ident (NetworkAppArgs
         <> line
         <> "replace-expr" <+> replacementExprDoc
 
-  unblockFnTensor transformedOutput
+  case outputTensor typ of 
+    NetworkRecordTypeConstructor {} -> unblockFnRecord transformedOutput
+    _ -> unblockFnTensor transformedOutput
+
 
 --------------------------------------------------------------------------------
 -- Elimination operations
