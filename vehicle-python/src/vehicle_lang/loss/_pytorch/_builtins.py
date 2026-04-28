@@ -37,8 +37,17 @@ def _torch_tensor(*args: Any, **kwargs: Any) -> torch.Tensor:
     return cast(torch.Tensor, torch.tensor(*args, **kwargs))
 
 
-def _tensor_content_key(t: torch.Tensor) -> tuple[tuple[int, ...], tuple[float, ...]]:
-    return (tuple(t.shape), tuple(t.detach().flatten().tolist()))
+def _tensor_content_key(
+    t: torch.Tensor,
+) -> tuple[int, tuple[int, ...], tuple[int, ...], int, torch.dtype, torch.device]:
+    return (
+        t.data_ptr(),
+        tuple(t.shape),
+        tuple(t.stride()),
+        t.storage_offset(),
+        t.dtype,
+        t.device,
+    )
 
 
 ################################################################################

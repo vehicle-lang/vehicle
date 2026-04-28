@@ -138,7 +138,7 @@ signal at each of the 10 time steps; the ``until[0,9]`` composes the
 two signals into a single property.
 
 Make sure to think about how the quantifiers interact with the temporal operators. If used
-imporperly, they can lead to expensive computations that take a long time to evaluate.
+improperly, they can lead to expensive computations that take a long time to evaluate.
 
 Open-loop specifications
 ------------------------
@@ -170,4 +170,4 @@ produced, not about which properties can be expressed over it.
 Support
 ------------------------------
 
-Temoporal operators are currently only supported with the loss backend.
+Temporal operators are currently only supported with the loss backend.
