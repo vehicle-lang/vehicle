@@ -44,7 +44,7 @@ def _tensor_content_key(
         t.data_ptr(),
         tuple(t.shape),
         tuple(t.stride()),
-        t.storage_offset(),
+        cast(int, t.storage_offset()),
         t.dtype,
         t.device,
     )
@@ -70,7 +70,15 @@ class PyTorchBuiltins(
         default_factory=dict, repr=False, compare=False, hash=False
     )
     _rollout_cache: dict[
-        tuple[int, int, int, tuple[tuple[int, ...], tuple[float, ...]]], torch.Tensor
+        tuple[
+            int,
+            int,
+            int,
+            tuple[
+                int, tuple[int, ...], tuple[int, ...], int, torch.dtype, torch.device
+            ],
+        ],
+        torch.Tensor,
     ] = field(default_factory=dict, repr=False, compare=False, hash=False)
 
     def _clear_rollout_cache(self) -> None:
