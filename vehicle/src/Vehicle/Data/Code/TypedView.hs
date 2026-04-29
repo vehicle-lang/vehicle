@@ -351,6 +351,9 @@ data MultiDimBoolTensorValue
   | VPointwiseNot (TensorOp1Args (Value Builtin))
   | VPointwiseAnd (TensorOp2Args (Value Builtin))
   | VPointwiseOr (TensorOp2Args (Value Builtin))
+  | VMultiDimBoolGlobally (TemporalOp1Args (Value Builtin))
+  | VMultiDimBoolFinally (TemporalOp1Args (Value Builtin))
+  | VMultiDimBoolUntil (TemporalOp2Args (Value Builtin))
   | VCompareRatTensorPointwise (ComparisonOp, TensorOp2Args (Value Builtin))
   | VMultiDimBoolIf (IfArgs (Value Builtin))
   | VMultiDimBoolAt (AtTensorArgs (Value Builtin))
@@ -364,6 +367,9 @@ toMultiDimBoolTensorValue expr = case expr of
   (getExpr accessNotTensor -> Just args) -> VPointwiseNot args
   (getExpr accessAndTensor -> Just args) -> VPointwiseAnd args
   (getExpr accessOrTensor -> Just args) -> VPointwiseOr args
+  (getExpr accessTemporalGlobally -> Just args) -> VMultiDimBoolGlobally args
+  (getExpr accessTemporalFinally -> Just args) -> VMultiDimBoolFinally args
+  (getExpr accessTemporalUntil -> Just args) -> VMultiDimBoolUntil args
   (getExpr accessCompareRatTensorPointwise -> Just args) -> VCompareRatTensorPointwise args
   (getExpr accessIf -> Just args) -> VMultiDimBoolIf args
   (getExpr accessAtTensor -> Just args) -> VMultiDimBoolAt args
@@ -378,6 +384,9 @@ fromMultiDimBoolTensorValue = \case
   VPointwiseNot args -> mkExpr accessNotTensor args
   VPointwiseAnd args -> mkExpr accessAndTensor args
   VPointwiseOr args -> mkExpr accessOrTensor args
+  VMultiDimBoolGlobally args -> mkExpr accessTemporalGlobally args
+  VMultiDimBoolFinally args -> mkExpr accessTemporalFinally args
+  VMultiDimBoolUntil args -> mkExpr accessTemporalUntil args
   VCompareRatTensorPointwise args -> mkExpr accessCompareRatTensorPointwise args
   VMultiDimBoolIf args -> mkExpr accessIf args
   VMultiDimBoolAt args -> mkExpr accessAtTensor args

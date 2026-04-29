@@ -8,6 +8,7 @@ import Control.Monad (foldM, forM)
 import Control.Monad.Except (MonadError (..), runExceptT)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Foldable (foldrM)
+import Data.List (partition)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
 import Data.Map qualified as Map
@@ -37,7 +38,7 @@ import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
 import Vehicle.Data.DifferentiableLogic (TensorDifferentiableLogicField (..))
 import Vehicle.Data.MaybeTrivial
-import Vehicle.Data.Tensor (pattern ZeroDimTensor)
+import Vehicle.Data.Tensor (Tensor (ConstantTensor), pattern ZeroDimTensor)
 import Vehicle.Data.Tensor.Traversal
 import Vehicle.Data.Variable.Bound.Context.Generic (BoundCtx)
 import Vehicle.Data.Variable.Bound.Context.Name
@@ -118,6 +119,124 @@ compileForall args@(QuantifyRatTensorArgs dims _ _) = do
     Trivial b -> return $ Trivial $ not b
     NonTrivial partitions -> NonTrivial <$> notPartitions dims partitions
 
+-- | `globally(P and B) == globally(P) and B` (and similarly for `finally`/
+-- `until`) when `B` is constant in time. Lifting `B` out of the temporal
+-- envelope exposes its bounds to the Fourier-Motzkin extractor in
+-- `compileExists`.
+hoistTimeIndependentBounds :: Value Builtin -> Value Builtin
+hoistTimeIndependentBounds = goScalar
+  where
+    goScalar :: Value Builtin -> Value Builtin
+    goScalar e = case toBoolValue e of
+      VAnd (TensorOp2Args ds e1 e2) ->
+        mkExpr accessAndTensor (TensorOp2Args ds (goScalar e1) (goScalar e2))
+      VOr (TensorOp2Args ds e1 e2) ->
+        mkExpr accessOrTensor (TensorOp2Args ds (goScalar e1) (goScalar e2))
+      VNot (TensorOp1Args ds e1) ->
+        mkExpr accessNotTensor (TensorOp1Args ds (goScalar e1))
+      VBoolAt (AtTensorArgs t d ds tensor i) ->
+        mkExpr accessAtTensor (AtTensorArgs t d ds (goTensor tensor) i)
+      _ -> e
+
+    goTensor :: Value Builtin -> Value Builtin
+    goTensor e = case toBoolTensorValue e of
+      VBoolTensorGlobally args -> hoistTemporal1 accessTemporalGlobally args
+      VBoolTensorFinally args -> hoistTemporal1 accessTemporalFinally args
+      VBoolTensorUntil args -> hoistTemporal2 args
+      VBoolTensorAnd (TensorOp2Args ds e1 e2) ->
+        mkExpr accessAndTensor (TensorOp2Args ds (goTensor e1) (goTensor e2))
+      VBoolTensorOr (TensorOp2Args ds e1 e2) ->
+        mkExpr accessOrTensor (TensorOp2Args ds (goTensor e1) (goTensor e2))
+      VBoolTensorNot (TensorOp1Args ds e1) ->
+        mkExpr accessNotTensor (TensorOp1Args ds (goTensor e1))
+      _ -> e
+
+    hoistTemporal1 ::
+      Accessor (Value Builtin) (TemporalOp1Args (Value Builtin)) ->
+      TemporalOp1Args (Value Builtin) ->
+      Value Builtin
+    hoistTemporal1 acc (TemporalOp1Args dims a b body) =
+      let body' = goTensor body
+          (timeDep, timeInv) = partition (not . isTimeInvariant) (splitConj body')
+       in case (timeDep, timeInv) of
+            (_, []) -> mkExpr acc (TemporalOp1Args dims a b body')
+            ([], invs) -> conjunctTensors dims invs
+            (deps, invs) ->
+              let newTemporal = mkExpr acc (TemporalOp1Args dims a b (conjunctTensors dims deps))
+               in andTensors dims newTemporal (conjunctTensors dims invs)
+
+    hoistTemporal2 :: TemporalOp2Args (Value Builtin) -> Value Builtin
+    hoistTemporal2 (TemporalOp2Args dims a b body1 body2) =
+      let body1' = goTensor body1
+          body2' = goTensor body2
+          (dep1, inv1) = partition (not . isTimeInvariant) (splitConj body1')
+          (dep2, inv2) = partition (not . isTimeInvariant) (splitConj body2')
+          allInv = inv1 ++ inv2
+       in if null allInv
+            then mkExpr accessTemporalUntil (TemporalOp2Args dims a b body1' body2')
+            else
+              let newBody1 = case dep1 of
+                    [] -> body1'
+                    _ -> conjunctTensors dims dep1
+                  newBody2 = case dep2 of
+                    [] -> body2'
+                    _ -> conjunctTensors dims dep2
+                  newUntil = mkExpr accessTemporalUntil (TemporalOp2Args dims a b newBody1 newBody2)
+               in andTensors dims newUntil (conjunctTensors dims allInv)
+
+    splitConj :: Value Builtin -> [Value Builtin]
+    splitConj e = case toBoolTensorValue e of
+      VBoolTensorAnd (TensorOp2Args _ e1 e2) -> splitConj e1 ++ splitConj e2
+      _ -> [e]
+
+    conjunctTensors :: Value Builtin -> [Value Builtin] -> Value Builtin
+    conjunctTensors _ [x] = x
+    conjunctTensors dims (x : xs) = foldl (andTensors dims) x xs
+    conjunctTensors _ [] = developerError "conjunctTensors: empty list"
+
+    andTensors :: Value Builtin -> Value Builtin -> Value Builtin -> Value Builtin
+    andTensors dims x y = mkExpr accessAndTensor (TensorOp2Args dims x y)
+
+isTimeInvariant :: Value Builtin -> Bool
+isTimeInvariant e = case toBoolTensorValue e of
+  VBoolConstTensor (ConstTensorArgs _ v _) -> isScalarTimeInvariant v
+  VBoolTensorAnd (TensorOp2Args _ e1 e2) -> isTimeInvariant e1 && isTimeInvariant e2
+  VBoolTensorOr (TensorOp2Args _ e1 e2) -> isTimeInvariant e1 && isTimeInvariant e2
+  VBoolTensorNot (TensorOp1Args _ e1) -> isTimeInvariant e1
+  VBoolTensorCompareRatPointwise (_, TensorOp2Args _ e1 e2) ->
+    isRatTimeInvariant e1 && isRatTimeInvariant e2
+  _ -> False
+
+-- NBE folds `const c [T]` to `ConstantTensor [T] c` when c is a literal, so
+-- both `VRatTensorLiteral` and `VRatConstTensor` arms are needed.
+isRatTimeInvariant :: Value Builtin -> Bool
+isRatTimeInvariant e = case toRatTensorValue e of
+  VRatTensorLiteral t -> isUniformTensor t
+  VRatConstTensor (ConstTensorArgs _ v _) -> isScalarTimeInvariant v
+  VNegRatTensor (TensorOp1Args _ e1) -> isRatTimeInvariant e1
+  VAddRatTensor (TensorOp2Args _ e1 e2) -> isRatTimeInvariant e1 && isRatTimeInvariant e2
+  VSubRatTensor (TensorOp2Args _ e1 e2) -> isRatTimeInvariant e1 && isRatTimeInvariant e2
+  VMulRatTensor (TensorOp2Args _ e1 e2) -> isRatTimeInvariant e1 && isRatTimeInvariant e2
+  VDivRatTensor (TensorOp2Args _ e1 e2) -> isRatTimeInvariant e1 && isRatTimeInvariant e2
+  _ -> False
+
+-- `Tensor.fromVector` collapses uniform `DenseTensor`s to `ConstantTensor`,
+-- so the dense arm can stay False.
+isUniformTensor :: Tensor a -> Bool
+isUniformTensor (ConstantTensor _ _) = True
+isUniformTensor _ = False
+
+isScalarTimeInvariant :: Value Builtin -> Bool
+isScalarTimeInvariant v = case toRatTensorValue v of
+  VRatTensorLiteral _ -> True
+  VRatTensorBoundVar _ -> True
+  VNegRatTensor (TensorOp1Args _ e1) -> isScalarTimeInvariant e1
+  VAddRatTensor (TensorOp2Args _ e1 e2) -> isScalarTimeInvariant e1 && isScalarTimeInvariant e2
+  VSubRatTensor (TensorOp2Args _ e1 e2) -> isScalarTimeInvariant e1 && isScalarTimeInvariant e2
+  VMulRatTensor (TensorOp2Args _ e1 e2) -> isScalarTimeInvariant e1 && isScalarTimeInvariant e2
+  VDivRatTensor (TensorOp2Args _ e1 e2) -> isScalarTimeInvariant e1 && isScalarTimeInvariant e2
+  _ -> False
+
 compileExists ::
   (MonadLogic m) =>
   QuantifyRatTensorArgs (Value Builtin) (Closure Builtin) ->
@@ -126,7 +245,7 @@ compileExists (QuantifyRatTensorArgs dims binder closure) =
   logCompilerSection2 MaxDetail "convert-exists" $ do
     -- Extract the domain for the search
     lv <- getBinderDepth
-    body <- normaliseClosure binder closure
+    body <- hoistTimeIndependentBounds <$> normaliseClosure binder closure
     finalCtx <- getShrunkenContext
 
     result <- addTensorBinderToContext dims binder $ do
@@ -639,8 +758,10 @@ compileLinearExpr dims expr = case toRatTensorValue expr of
   ---------------------
   -- Unreduced cases --
   ---------------------
-  -- The expression is being blocked
-  VRatConstTensor {} -> unlinearisable
+  -- A zero-dim `const v []` is `v`; NBE leaves this form when v is non-literal.
+  VRatConstTensor (ConstTensorArgs _ v innerDims) -> case toDimensionsValue innerDims of
+    VDimsNil -> compileLinearExpr dims v
+    _ -> unlinearisable
   VRatStackTensor (StackTensorArgs _ _ _ xs) -> do
     let innerDims = case dims of
           IDimCons _ ds -> ds

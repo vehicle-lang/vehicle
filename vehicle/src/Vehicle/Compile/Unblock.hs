@@ -175,6 +175,9 @@ unblockBoolMultiDimTensorValue actions expr = do
     VMultiDimBoolConstTensor {} -> return expr
     VMultiDimBoolStackTensor {} -> return expr
     VMultiDimBoolIf {} -> return expr
+    VMultiDimBoolGlobally {} -> return expr
+    VMultiDimBoolFinally {} -> return expr
+    VMultiDimBoolUntil {} -> return expr
     VPointwiseNot args -> unblockTensorOp1 unblock evalNot args
     VPointwiseAnd args -> unblockTensorOp2 unblock evalAnd args
     VPointwiseOr args -> unblockTensorOp2 unblock evalOr args
