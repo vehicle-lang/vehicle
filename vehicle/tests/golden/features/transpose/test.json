@@ -1,0 +1,19 @@
+[
+  {
+    "name": "TypeCheck",
+    "run": "vehicle typecheck -s spec.vcl",
+    "needs": ["spec.vcl"]
+  },
+  {
+    "name": "STLLoss",
+    "run": "vehicle compile loss -s spec.vcl -l STLLoss -o STLLoss.vcl",
+    "needs": ["spec.vcl"],
+    "produces": ["STLLoss.vcl"]
+  },
+  {
+    "name": "DL2Loss",
+    "run": "vehicle compile loss -s spec.vcl -l DL2Loss -o DL2Loss.vcl",
+    "needs": ["spec.vcl"],
+    "produces": ["DL2Loss.vcl"]
+  }
+]
