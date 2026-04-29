@@ -87,6 +87,11 @@ isInstanceDecl = \case
   DefFunction _ _ (FunctionDecl _ (Just (AnnInstance {}))) _ _ -> True
   _ -> False
 
+isProjectionDecl :: GenericDecl expr -> Bool
+isProjectionDecl = \case
+  DefFunction _ _ ProjectionDecl {} _ _ -> True
+  _ -> False
+
 isAbstractDecl :: GenericDecl expr -> Bool
 isAbstractDecl = \case
   DefAbstract {} -> True
