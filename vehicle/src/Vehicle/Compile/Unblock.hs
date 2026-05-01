@@ -197,7 +197,7 @@ unblockRecordValue :: UnblockingActions m -> DimensionsStatus -> UnblockingFunct
 unblockRecordValue actions@UnblockingActions{..} status expr = do
   logDebug MidDetail "------------ UNBLOCK RECORD VALUE -----------------------"
   showEntry expr
-  logDebug MidDetail $ pretty (show expr)
+  -- logDebug MidDetail $ pretty (show expr)
   showExit =<< case toRecordValue expr of
     VRecordFreeVar n spine -> case getExpr accessSpine spine of
       Just args -> do
@@ -387,7 +387,7 @@ unblockRecordAcc ::
 unblockRecordAcc unblock (RecordAccArgs typ value fieldName) actions status = do
   logDebug MidDetail "----------------- UNBLOCK RECORDACC FUNCTION ----------------"
   value' <- unblockRecordValue actions status value
-  logDebug MidDetail $ pretty (show value')
+  -- logDebug MidDetail $ pretty (show value')
 
   nameCtx <- getNameContext
   res <- evalRecordAcc nameCtx evalApp eval $ RecordAccArgs typ value' fieldName

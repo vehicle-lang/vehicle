@@ -39,7 +39,6 @@ import Prelude hiding (Applicative (..))
 import Vehicle.Verify.Core 
 import Vehicle.Compile.Resource
 import Data.Text qualified as Text
-import Vehicle.Libraries.StandardLibrary (hasComparisonIdent)
 
 eliminateExists ::
   (MonadQueryStructure m) =>
@@ -216,7 +215,7 @@ unblockNetworkApplication unblockFnTensor unblockFnRecord ident (NetworkAppArgs 
   networkInfo <- asks (lookupNetworkInfo name . networkCtx)
 
   let typ = networkType networkInfo
-  _ <- logDebug MidDetail $ "network type is" <+> pretty (show typ)
+  -- _ <- logDebug MidDetail $ "network type is" <+> pretty (show typ)
 
   (inputVarExpr, outputVarExpr) <- addNetworkApplicationToGlobalCtx name networkInfo arg
 
@@ -240,54 +239,30 @@ unblockNetworkApplication unblockFnTensor unblockFnRecord ident (NetworkAppArgs 
       evalApp ctx fromTensorValue [outputVarArg]
     _ -> return outputVarExpr
 
-  -- we are comparing records with a tensor op here - needs to change
-  -- should be able to use the instance here for record equality
-
-  -- record HasComparison t1 t2 where
-  -- { leTC : t1 -> t2 -> Bool
-  -- , ltTC : t1 -> t2 -> Bool
-  -- , geTC : t1 -> t2 -> Bool
-  -- , gtTC : t1 -> t2 -> Bool
-  -- , eqTC : t1 -> t2 -> Bool
-  -- , neTC : t1 -> t2 -> Bool
-  -- }
-
--- swap tensorOp2Args to (HasComparison t1 t2).eqTC transformedInput arg
--- how to do (HasComparison t1 t2) ? t1 and t2 are the record type
-  
-  -- get the ident for HasComparison
-  -- hasComparisonIdent
-
-  -- don't know how to deal with one output being a different type to the other
-  -- currently just check what the input is and assume the output is the same
-  inputInequality <- case inputTensor typ of 
+  inputEquality <- case inputTensor typ of 
     NetworkRecordTypeConstructor (NetworkRecordType _baseType typIdent _dims _fields) -> do
-      -- need to apply t1 (record type) and t2 (record type) to the HasComparison ident
-      -- not sure about implicit and relevant here?
-      let recordTypeExpr = Arg Explicit Relevant typIdent
-      let hasComparisonFreeVar = VFreeVar hasComparisonIdent []
       ctx <- getNameContext
-      let recordExpr = evalApp ctx hasComparisonFreeVar [recordTypeExpr, recordTypeExpr]
-      recordExpr
-    _ -> fromBoolValue $ VCompareRatTensor ( Eq,TensorOp2Args
+      let toTensorIdent = Identifier userModulePath (Text.pack "_" <> nameOf typIdent <> "ToTensor")
+      let toTensorFreeVar = FreeVar mempty toTensorIdent
+      toTensorValue <- eval ctx emptyBoundEnv toTensorFreeVar
+      let argArg = Arg Explicit Relevant arg
+      let transformedInputArg = Arg Explicit Relevant transformedInput
+      toTensorArg <- evalApp ctx toTensorValue [argArg]
+      toTensorTransformedInput <- evalApp ctx toTensorValue [transformedInputArg]
+      return $ fromBoolValue $ VCompareRatTensor ( Eq, TensorOp2Args
+                  { tensorOp2Dims = mkDims (inputShape networkInfo),
+                    tensorOp2Arg1 = toTensorTransformedInput,
+                    tensorOp2Arg2 = toTensorArg
+                  }
+              )
+
+    _ -> return $ fromBoolValue $ VCompareRatTensor ( Eq,TensorOp2Args
                   { tensorOp2Dims = mkDims (inputShape networkInfo),
                     tensorOp2Arg1 = transformedInput,
                     tensorOp2Arg2 = arg
                   }
               )
 
-
-
-  let inputEquality =
-        fromBoolValue $
-          VCompareRatTensor
-            ( Eq,
-              TensorOp2Args
-                { tensorOp2Dims = mkDims (inputShape networkInfo),
-                  tensorOp2Arg1 = transformedInput,
-                  tensorOp2Arg2 = arg
-                }
-            )
   tell [inputEquality]
 
   logDebugM MaxDetail $ do

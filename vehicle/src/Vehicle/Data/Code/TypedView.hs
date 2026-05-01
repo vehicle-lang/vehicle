@@ -229,7 +229,6 @@ toBoolValue expr = case expr of
   (getExpr accessCompareNat -> Just args) -> VCompareNat args
   (getExpr accessCompareIndex -> Just args) -> VCompareIndex args
   (getExpr accessQuantifyRatTensor -> Just args) -> VQuantifyRatTensor args
-  -- helppp lol
   (getExpr accessQuantifyRecord -> Just args) -> VQuantifyRecord args
   (getExpr accessReduceAnd -> Just args) ->
     case foldReduceAndComparison args of
