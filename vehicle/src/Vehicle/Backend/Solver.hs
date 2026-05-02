@@ -26,7 +26,6 @@ import Vehicle.Compile.Print (prettyFriendly, prettyFriendlyEmptyCtx)
 import Vehicle.Compile.Print.Warning ()
 import Vehicle.Compile.Property (traverseMultiProperty)
 import Vehicle.Compile.Unblock (UnblockingActions (..), unblockBoolExpr)
-import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.Interface
@@ -264,6 +263,31 @@ compileQuantifiedQuerySet isPropertyNegated args =
     (maybePartitions, globalCtx) <- runStateT (eliminateExists args) emptyGlobalCtx
     compileQuerySetPartitions globalCtx isPropertyNegated maybePartitions
 
+getRecordDims ::
+  (MonadError CompileError m) =>
+  FreeCtxEntry Builtin ->
+  m (Expr Builtin)
+getRecordDims (DefRecord _ _ _ _ fields) = return $ fromDSL mempty $ dimCons (dim $ length fields) dimNil
+getRecordDims _ = compilerDeveloperError "record declaration is not of expected format."
+
+getRecordProvenance ::
+  (MonadError CompileError m) =>
+  FreeCtxEntry Builtin ->
+  m Provenance
+getRecordProvenance (DefRecord p _ _ _ _) = return p
+getRecordProvenance _ = compilerDeveloperError "record declaration is not of expected format."
+
+constructFromTensorFreeVar ::
+  Identifier ->
+  Provenance ->
+  Expr Builtin
+constructFromTensorFreeVar ident p =
+  let name = Text.pack "_" <> identifierName ident <> "FromTensor"
+  in FreeVar p (Identifier (modulePath ident) name)
+
+
+
+
 
 wrapQuantifyRecord ::
   (MonadPropertyStructure m,
@@ -273,117 +297,44 @@ wrapQuantifyRecord ::
   QuantifyRecordArgs (Value Builtin) (Closure Builtin) ->
   m (QuantifyRatTensorArgs (Value Builtin) (Closure Builtin))
 wrapQuantifyRecord QuantifyRecordArgs{..} = do
-    -- quantifyRecordType :: expr,
-    -- quantifyRecordBinder :: GenericBinder expr,
-    -- quantifyRecordBody :: body 
 
-  -- get fromTensor function
   recordTypeIdent <- case toTypeValue quantifyRecordType of
-    VFreeTypeVar v _spine -> do return v
+    VFreeTypeVar v _spine -> pure v
     _ -> compilerDeveloperError "record binder is not of expected format."
 
-  -- re-form VLam from quantifier binder and body
   let recordQuantifierLam = VLam quantifyRecordBinder quantifyRecordBody 
-
-  -- unnormalise record quantifier lam
   unnormalisedQuantifierLam <- unnormaliseInCtx recordQuantifierLam
-  
-  -- make display form for tensor binder
-  let displayForm = BinderDisplayForm {
-    namingForm = NameAndType "tens" mempty,
-    foldingForm = True -- not sure if this should be true or not
-  }
-  let visibility = Explicit -- not sure if this is correct
-  let relevance = Relevant
 
-  -- construct binder type for binderValue
-  recordTypeDecl <- getDeclEntry (Proxy @Builtin) recordTypeIdent -- logic exists elsewhere, take out when cleaning up
-  -- TODO: only dealing with the first dimension for now, fix later once fully working
-  dimensions <- case recordTypeDecl of
-    DefRecord _p _ident _sort _telescope fields -> return (length fields)
-    _ -> compilerDeveloperError "record declaration is not of expected format."
+  recordTypeDecl <- getDeclEntry (Proxy @Builtin) recordTypeIdent
+  dims <- getRecordDims recordTypeDecl
 
-  let tensorType = fromDSL mempty $ tTensor tRat (dimCons (dim dimensions) dimNil)
+  let tensorType = fromDSL mempty $ tTensor tRat (toDSL dims)
+  let Closure boundEnv _body = quantifyRecordBody
 
-  -- normalise tensorType so we can have Binder (Value Builtin)
-  let Closure boundEnv _bodyExpr = quantifyRecordBody
   namedCtx <- getNameContext
   normalisedTensorType <- eval namedCtx boundEnv tensorType
-  normalisedDims <- eval namedCtx boundEnv (fromDSL mempty $ dimCons (dim dimensions) dimNil)
+  normalisedDims <- eval namedCtx boundEnv dims
 
--- mkExpr accessAtTensor $
--- AtTensorArgs
---   { atType = elementType,
---     atFirstDim = INatLiteral d,
---     atRemainingDims = mkDims $ fmap fst xs,
---     atTensor = tensor,
---     atIndex = IIndexLiteral i
---   }
-
-  -- construct tensor binder
   let tensorBinder = Binder { 
-    binderDisplayForm = displayForm,
-    binderVisibility = visibility,
-    binderRelevance = relevance,
+    binderDisplayForm = BinderDisplayForm (NameAndType "_t" mempty) True,
+    binderVisibility = Explicit,
+    binderRelevance = Relevant,
     binderValue = normalisedTensorType
     }
 
-  -- boundVar to refer to the tensor within the lambda
   let tensorBoundVar = BoundVar mempty 0
   let tensorBoundVarArg = Arg Explicit Relevant tensorBoundVar
 
-  -- get fromTensor function
-  recordTypeProv <- case recordTypeDecl of
-    DefRecord p _ident _sort _telescope _fields -> return p
-    _ -> compilerDeveloperError "record declaration is not of expected format."
+  recordTypeProv <- getRecordProvenance recordTypeDecl
+  let appliedFromTensor = App (constructFromTensorFreeVar recordTypeIdent recordTypeProv) [tensorBoundVarArg]
 
-  let fromTensorName = Text.pack "_" <> identifierName recordTypeIdent <> "FromTensor"
-  let fromTensorFn = FreeVar recordTypeProv (Identifier (modulePath recordTypeIdent) fromTensorName)
-
-  -- apply the fromTensor function to tensor boundVar
-  let appliedFromTensor = App fromTensorFn [tensorBoundVarArg]
-
-  -- apply the (fromTensor boundVar) to the original quantifier function
   let appliedFromTensorArg = Arg Explicit Relevant appliedFromTensor
   let nestedRecordQuantifier = App unnormalisedQuantifierLam [appliedFromTensorArg]
-
-  -- make closure for the new quantifier body 
-  -- may need to include the binder for the OG body in here?
   let nestedRecordQuantifierClosure = Closure boundEnv nestedRecordQuantifier
 
   let ratTensorArgs = QuantifyRatTensorArgs normalisedDims tensorBinder nestedRecordQuantifierClosure
   return ratTensorArgs
 
-  
--- keeping this around for legacy purposes
-_transformQuantifiedRecord ::
-  (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m) =>
-  QuantifyRecordArgs (Value Builtin) (Closure Builtin) ->
-  m (QuantifyRatTensorArgs (Value Builtin) (Closure Builtin))
-_transformQuantifiedRecord args = do
-  let recordTypeVar = quantifyRecordType args
-      binder = quantifyRecordBinder args
-      body = quantifyRecordBody args
-
-  recordTypeIdent <- case toTypeValue recordTypeVar of
-    VFreeTypeVar v _spine -> do return v
-    _ -> compilerDeveloperError "record binder is not of expected format."
-
-  recordTypeDecl <- getDeclEntry (Proxy @Builtin) recordTypeIdent
-  -- TODO: only dealing with the first dimension for now, fix later once fully working
-  dimensions <- case recordTypeDecl of
-    DefRecord _p _ident _sort _telescope fields -> return ([length fields] :: [Int])
-    _ -> compilerDeveloperError "record declaration is not of expected format."
-
-  dimensionsValue <- case dimensions of
-    [] -> return $ mkExpr accessNil (NilArgs INatType)
-    -- TODO: only dealing with the first dimension for now, fix later once fully working
-    (x : _xs) -> return $ IDimCons (INatLiteral x) IDimNil
-
-  let tensorBinder = binder {binderValue = fromTypeValue $ VTensorLike (VRatTensorType dimensionsValue)}
-  return $ QuantifyRatTensorArgs dimensionsValue tensorBinder body
-
--- | We only need this because we can't evaluate networks in the compiler.
 compileUnquantifiedQuerySet ::
   (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m) =>
   Value Builtin ->
