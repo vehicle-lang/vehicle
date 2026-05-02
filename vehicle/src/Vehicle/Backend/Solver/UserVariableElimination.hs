@@ -38,7 +38,7 @@ import Vehicle.Verify.QueryFormat (QueryFormat (..), supportsStrictInequalities)
 import Prelude hiding (Applicative (..))
 import Vehicle.Verify.Core 
 import Vehicle.Compile.Resource
-import Data.Text qualified as Text
+import Vehicle.Data.Builtin.Standard.Scoping (constructFromTensorFreeVar, constructToTensorFreeVar)
 
 eliminateExists ::
   (MonadQueryStructure m) =>
@@ -113,7 +113,7 @@ compileBoolExpr expr = do
     VAnd (TensorOp2Args _dims x y) -> andTrivial andPartitions <$> compileBoolExpr x <*> compileBoolExpr y
     VOr (TensorOp2Args _dims x y) -> orTrivial orPartitions <$> compileBoolExpr x <*> compileBoolExpr y
     VQuantifyRatTensor (Exists, args) -> eliminateExists args
-    VQuantifyRecord (Exists, _args) -> compilerDeveloperError "LAUREN TODO: hit case in compileBoolExpr"
+    VQuantifyRecord (Exists, _args) -> compilerDeveloperError "LAUREN TODO: quantifyRecord case in compileBoolExpr"
     VCompareNat {} -> unblockAndRec expr
     VCompareIndex {} -> unblockAndRec expr
     VReduceAndTensor {} -> unblockAndRec expr
@@ -137,18 +137,14 @@ purifyAndCompileAssertion op args
         maybePurifiedValue <- Unblocking.tryPurifyAssertion unblockingActions op args
         case maybePurifiedValue of
           Left purifiedValue -> do
-            _ <- logDebug MidDetail "--------- first value case -------------------"
             return $ Left purifiedValue
           Right purifiedArgs -> do
-            _ <- logDebug MidDetail "--------- first assertion case -------------------" -- HITTING THIS HERE
             compilePurifiedAssertion op purifiedArgs
 
       case recurseOrResult of
         Left value -> do 
-          _ <- logDebug MidDetail "--------- recursive value case -------------------"
           compileBoolExpr value
         Right assertion -> do 
-          _ <- logDebug MidDetail "--------- recursive assertion case -------------------"
           return $ mkTrivialPartition assertion
 
 compilePurifiedAssertion ::
@@ -171,11 +167,11 @@ compilePurifiedAssertion op args@(TensorOp2Args dims xs ys) = do
       developerError ("unexpected expression" <+> prettyVerbose e)
     Left (TrivialExpr b) ->
       return $ Left $ IBoolLiteral b
-    Left (UnreducedExpr e) -> do -- hitting this, not sure why. should be getting more reduced by now i think??
-      logDebugM MaxDetail $ do -- basically complaining that we can't reduce it (because AtTensor is not reducable?)
+    Left (UnreducedExpr e) -> do
+      logDebugM MaxDetail $ do
         exprDoc <- prettyFriendlyInCtx e
         return $ "non-variable-terms:" <+> exprDoc
-      elementComparisonValue <- eliminateTensorAssertion op args -- this is where issues are, should be, I'm reducing down to  f₀[output]!0 <=. [tens!0, tens!1] ! 0 but do I need to go further?
+      elementComparisonValue <- eliminateTensorAssertion op args
       logDebugM MaxDetail $ do
         newValueDoc <- prettyFriendlyInCtx elementComparisonValue
         return $ "converting-to-element-assertions:" <+> newValueDoc
@@ -202,7 +198,6 @@ unblockQuantifiedBoundVar ::
 unblockQuantifiedBoundVar lv =
   replaceTensorVariableWithStackedChildren (SliceVariable lv)
 
--- this is what we are hitting
 unblockNetworkApplication ::
   (MonadQuantifierBody m) =>
   (Value Builtin -> m (Value Builtin)) ->
@@ -215,44 +210,30 @@ unblockNetworkApplication unblockFnTensor unblockFnRecord ident (NetworkAppArgs 
   networkInfo <- asks (lookupNetworkInfo name . networkCtx)
 
   let typ = networkType networkInfo
-  -- _ <- logDebug MidDetail $ "network type is" <+> pretty (show typ)
-
   (inputVarExpr, outputVarExpr) <- addNetworkApplicationToGlobalCtx name networkInfo arg
+  ctx <- getNameContext
 
   transformedInput <- case inputTensor typ of 
-    NetworkRecordTypeConstructor (NetworkRecordType _baseType typIdent _dims _fields) -> do 
-      let fromTensorName = Text.pack "_" <> identifierName typIdent <> "FromTensor"
-      let fromTensorFreeVar = FreeVar mempty (Identifier (modulePath typIdent) fromTensorName)
-      let inputVarArg = Arg Explicit Relevant inputVarExpr
-      ctx <- getNameContext
-      fromTensorValue <- eval ctx emptyBoundEnv fromTensorFreeVar
-      evalApp ctx fromTensorValue [inputVarArg]
+    NetworkRecordTypeConstructor (NetworkRecordType _ recordTyp _ _) -> do 
+      fromTensorFn <- eval ctx emptyBoundEnv (constructFromTensorFreeVar recordTyp mempty)
+      evalApp ctx fromTensorFn [Arg Explicit Relevant inputVarExpr]
     _ -> return inputVarExpr
 
   transformedOutput <- case outputTensor typ of 
-    NetworkRecordTypeConstructor (NetworkRecordType _baseType typIdent _dims _fields) -> do 
-      let fromTensorName = Text.pack "_" <> identifierName typIdent <> "FromTensor"
-      let fromTensorFreeVar = FreeVar mempty (Identifier (modulePath typIdent) fromTensorName)
-      let outputVarArg = Arg Explicit Relevant outputVarExpr
-      ctx <- getNameContext
-      fromTensorValue <- eval ctx emptyBoundEnv fromTensorFreeVar
-      evalApp ctx fromTensorValue [outputVarArg]
+    NetworkRecordTypeConstructor (NetworkRecordType _baseType recordTyp _ _) -> do 
+      fromTensorValue <- eval ctx emptyBoundEnv (constructFromTensorFreeVar recordTyp mempty)
+      evalApp ctx fromTensorValue [Arg Explicit Relevant outputVarExpr]
     _ -> return outputVarExpr
 
   inputEquality <- case inputTensor typ of 
-    NetworkRecordTypeConstructor (NetworkRecordType _baseType typIdent _dims _fields) -> do
-      ctx <- getNameContext
-      let toTensorIdent = Identifier userModulePath (Text.pack "_" <> nameOf typIdent <> "ToTensor")
-      let toTensorFreeVar = FreeVar mempty toTensorIdent
-      toTensorValue <- eval ctx emptyBoundEnv toTensorFreeVar
-      let argArg = Arg Explicit Relevant arg
-      let transformedInputArg = Arg Explicit Relevant transformedInput
-      toTensorArg <- evalApp ctx toTensorValue [argArg]
-      toTensorTransformedInput <- evalApp ctx toTensorValue [transformedInputArg]
+    NetworkRecordTypeConstructor (NetworkRecordType _ recordTyp _ _) -> do
+      toTensorFn <- eval ctx emptyBoundEnv (constructToTensorFreeVar recordTyp mempty)
+      argAsTensor <- evalApp ctx toTensorFn [Arg Explicit Relevant arg]
+      inputAsTensor <- evalApp ctx toTensorFn [Arg Explicit Relevant transformedInput]
       return $ fromBoolValue $ VCompareRatTensor ( Eq, TensorOp2Args
                   { tensorOp2Dims = mkDims (inputShape networkInfo),
-                    tensorOp2Arg1 = toTensorTransformedInput,
-                    tensorOp2Arg2 = toTensorArg
+                    tensorOp2Arg1 = inputAsTensor,
+                    tensorOp2Arg2 = argAsTensor
                   }
               )
 

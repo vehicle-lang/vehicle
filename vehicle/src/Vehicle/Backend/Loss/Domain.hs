@@ -400,7 +400,6 @@ compileBool value = logEntryAndExit value $ case toBoolValue value of
   VBoolIf args -> compileBool =<< unfoldIf args
   VNot args -> compileBool =<< lowerNot args
   VQuantifyRatTensor args -> compileQuantifierInternal args
-  -- VQuantifyRecord args -> compileQuantifierInternal args
   VQuantifyRecord _args -> compilerDeveloperError "LAUREN TODO: unsupported record quantifier"
   -------------------
   -- Blocked cases --
@@ -609,8 +608,6 @@ compileLinearExpr dims expr = case toRatTensorValue expr of
   VRatConstTensor {} -> unlinearisable
   VRatStackTensor {} -> unlinearisable
   VRatAt {} -> unlinearisable
-  -- this will probably need to move
-  -- VRatRecord {} -> unlinearisable
   VRatRecordAcc {} -> unlinearisable
   VRatTensorFreeVar ident [] ->
     return $ constantExpr $ TensorValue dims (VFreeVar ident [])

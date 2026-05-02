@@ -246,7 +246,7 @@ getRecordDims ::
   FreeCtxEntry Builtin ->
   m Int
 getRecordDims (DefRecord _ _ _ _ fields) = return $ length fields
-getRecordDims _ = compilerDeveloperError "record declaration is not of expected format."
+getRecordDims _ = compilerDeveloperError "Record declaration is not of expected format."
 
 getRecordDimsExpr ::
   (MonadError CompileError m) =>
@@ -261,7 +261,7 @@ getRecordProvenance ::
   FreeCtxEntry Builtin ->
   m Provenance
 getRecordProvenance (DefRecord p _ _ _ _) = return p
-getRecordProvenance _ = compilerDeveloperError "record declaration is not of expected format."
+getRecordProvenance _ = compilerDeveloperError "Record declaration is not of expected format."
 
 getRecordFieldNames ::
   forall m.
@@ -270,8 +270,7 @@ getRecordFieldNames ::
   m GenericRecordFieldNames
 getRecordFieldNames r = case r of
   DefRecord _p _ident _sort _telescope fields -> return $ map fst fields
-  _ -> compilerDeveloperError "record declaration is not of expected format."
-
+  _ -> compilerDeveloperError "Record declaration is not of expected format."
 
 constructFromTensorFreeVar ::
   Identifier ->
@@ -279,4 +278,12 @@ constructFromTensorFreeVar ::
   Expr Builtin
 constructFromTensorFreeVar ident p =
   let name = Text.pack "_" <> identifierName ident <> "FromTensor"
+  in FreeVar p (Identifier (modulePath ident) name)
+
+constructToTensorFreeVar ::
+  Identifier ->
+  Provenance ->
+  Expr Builtin
+constructToTensorFreeVar ident p =
+  let name = Text.pack "_" <> identifierName ident <> "ToTensor"
   in FreeVar p (Identifier (modulePath ident) name)

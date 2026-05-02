@@ -289,9 +289,7 @@ convertRatTensor value = logConversion value $ case toRatTensorValue value of
   VRatStackTensor args -> convertStackTensor convertRatTensor args
   VRatAt args -> convertAtTensor convertRatTensor args
   VRatForeach args -> convertForeachTensor convertRatTensor args
-  VRatRecordAcc {} -> developerError "record accessees in loss functions not supported yet"
-  -- VRatRecord {} -> developerError "records in loss functions not supported yet"
-
+  VRatRecordAcc {} -> developerError "record accesses in loss functions not supported yet"
 --------------------------------------------------------------------------------
 -- Vector
 

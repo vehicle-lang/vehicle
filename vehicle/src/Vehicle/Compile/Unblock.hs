@@ -195,9 +195,7 @@ unblockBoolMultiDimTensorValue actions expr = do
 
 unblockRecordValue :: UnblockingActions m -> DimensionsStatus -> UnblockingFunction m
 unblockRecordValue actions@UnblockingActions{..} status expr = do
-  logDebug MidDetail "------------ UNBLOCK RECORD VALUE -----------------------"
   showEntry expr
-  -- logDebug MidDetail $ pretty (show expr)
   showExit =<< case toRecordValue expr of
     VRecordFreeVar n spine -> case getExpr accessSpine spine of
       Just args -> do
@@ -211,7 +209,6 @@ unblockRecordValue actions@UnblockingActions{..} status expr = do
 
 unblockRatTensorValue :: (MonadPurify m) => UnblockingActions m -> DimensionsStatus -> Value Builtin -> m (Value Builtin)
 unblockRatTensorValue actions@UnblockingActions {..} status expr = do
-  logDebug MidDetail "------------ UNBLOCK RAT TENSOR VALUE -----------------------"
   showEntry expr
   showExit =<< case toRatTensorValue expr of
     -- Rational operators
@@ -314,9 +311,6 @@ unblockTensorOp2 ::
   TensorOp2Args (Value Builtin) ->
   m (Value Builtin)
 unblockTensorOp2 unblock evalFn (TensorOp2Args ds xs ys) = do
-  -- convert records to tensors here if they need it
-  -- IN PROGRESS - ASKING MATTHEW!!
-
   logDebug MaxDetail $ pretty (show xs)
   xs' <- unblock xs
   ys' <- unblock ys
@@ -366,8 +360,6 @@ unblockAtTensor unblock (AtTensorArgs tElem d ds xs i) = do
   i' <- unblockIndexValue i
   liftIf xs' $ \xs'' ->
     liftIf i' $ \i'' -> do
-      -- logDebug MaxDetail $ prettyVerbose xs''
-      -- logDebug MaxDetail $ prettyVerbose i''
       nameCtx <- getNameContext
       evalAtTensor nameCtx evalApp eval $ AtTensorArgs tElem d ds xs'' i''
 
@@ -376,22 +368,15 @@ unblockRecordAcc ::
   (MonadUnblock m) =>
   UnblockingFunction m ->
   RecordAccArgs (Value Builtin) ->
-  -- VType Builtin -> -- type of the record we are trying to access - freevar Pair in the test
-  -- Value Builtin -> -- value is the value of the record we are trying to access?? have freevar f in the test
-  -- FieldName -> -- FieldName "a"
-  -- Spine Builtin -> -- empty, '[]'
-  UnblockingActions m -> -- this is not a good way to do this - fix later
-   DimensionsStatus -> -- also not a good way to do - fix
+  UnblockingActions m ->
+   DimensionsStatus ->
   m (Value Builtin)
--- unblockRecordAcc unblock _typ value fieldName _spine = do
 unblockRecordAcc unblock (RecordAccArgs typ value fieldName) actions status = do
-  logDebug MidDetail "----------------- UNBLOCK RECORDACC FUNCTION ----------------"
   value' <- unblockRecordValue actions status value
-  -- logDebug MidDetail $ pretty (show value')
-
-  nameCtx <- getNameContext
-  res <- evalRecordAcc nameCtx evalApp eval $ RecordAccArgs typ value' fieldName
-  unblock res
+  liftIf value' $ \value'' -> do
+    nameCtx <- getNameContext
+    res <- evalRecordAcc nameCtx evalApp eval $ RecordAccArgs typ value'' fieldName
+    unblock res
 
 
 unblockForeachTensor ::
