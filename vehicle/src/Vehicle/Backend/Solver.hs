@@ -40,11 +40,12 @@ import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat
 import Vehicle.Verify.Specification
 import Vehicle.Verify.Specification.IO
-import Data.Text qualified as Text
 import Vehicle.Compile.Normalise.Quote
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.DSL
 import Vehicle.Compile.Normalise.NBE
+import Vehicle.Data.Builtin.Standard.Scoping (getRecordDimsExpr, getRecordProvenance, constructFromTensorFreeVar)
+
 
 --------------------------------------------------------------------------------
 -- Compilation to individual queries
@@ -263,31 +264,6 @@ compileQuantifiedQuerySet isPropertyNegated args =
     (maybePartitions, globalCtx) <- runStateT (eliminateExists args) emptyGlobalCtx
     compileQuerySetPartitions globalCtx isPropertyNegated maybePartitions
 
-getRecordDims ::
-  (MonadError CompileError m) =>
-  FreeCtxEntry Builtin ->
-  m (Expr Builtin)
-getRecordDims (DefRecord _ _ _ _ fields) = return $ fromDSL mempty $ dimCons (dim $ length fields) dimNil
-getRecordDims _ = compilerDeveloperError "record declaration is not of expected format."
-
-getRecordProvenance ::
-  (MonadError CompileError m) =>
-  FreeCtxEntry Builtin ->
-  m Provenance
-getRecordProvenance (DefRecord p _ _ _ _) = return p
-getRecordProvenance _ = compilerDeveloperError "record declaration is not of expected format."
-
-constructFromTensorFreeVar ::
-  Identifier ->
-  Provenance ->
-  Expr Builtin
-constructFromTensorFreeVar ident p =
-  let name = Text.pack "_" <> identifierName ident <> "FromTensor"
-  in FreeVar p (Identifier (modulePath ident) name)
-
-
-
-
 
 wrapQuantifyRecord ::
   (MonadPropertyStructure m,
@@ -306,7 +282,7 @@ wrapQuantifyRecord QuantifyRecordArgs{..} = do
   unnormalisedQuantifierLam <- unnormaliseInCtx recordQuantifierLam
 
   recordTypeDecl <- getDeclEntry (Proxy @Builtin) recordTypeIdent
-  dims <- getRecordDims recordTypeDecl
+  dims <- getRecordDimsExpr recordTypeDecl
 
   let tensorType = fromDSL mempty $ tTensor tRat (toDSL dims)
   let Closure boundEnv _body = quantifyRecordBody
@@ -322,11 +298,9 @@ wrapQuantifyRecord QuantifyRecordArgs{..} = do
     binderValue = normalisedTensorType
     }
 
-  let tensorBoundVar = BoundVar mempty 0
-  let tensorBoundVarArg = Arg Explicit Relevant tensorBoundVar
-
+  let tensorBoundVar = Arg Explicit Relevant (BoundVar mempty 0)
   recordTypeProv <- getRecordProvenance recordTypeDecl
-  let appliedFromTensor = App (constructFromTensorFreeVar recordTypeIdent recordTypeProv) [tensorBoundVarArg]
+  let appliedFromTensor = App (constructFromTensorFreeVar recordTypeIdent recordTypeProv) [tensorBoundVar]
 
   let appliedFromTensorArg = Arg Explicit Relevant appliedFromTensor
   let nestedRecordQuantifier = App unnormalisedQuantifierLam [appliedFromTensorArg]

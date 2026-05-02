@@ -1,7 +1,5 @@
 module Vehicle.Compile.ExpandResources.Network
   ( checkNetwork,
-    getRecordDimsFromFreeCtx,
-    getRecordFieldsFromFreeCtx
   )
 where
 
@@ -21,6 +19,7 @@ import Vehicle.Data.Code.Value
 import Vehicle.Data.Tensor (TensorShape)
 import Vehicle.Data.Variable.Free.Context.Class
 import Vehicle.Verify.Core (NetworkContextInfo (..))
+import Vehicle.Data.Builtin.Standard.Scoping (getRecordDims, getRecordFieldNames)
 
 -- import Vehicle.Data.AST.Decl (GenericDecl (..))
 --------------------------------------------------------------------------------
@@ -63,9 +62,9 @@ getNetworkType decl networkType = case normalised networkType of
         return $ NetworkTensorTypeConstructor $ NetworkTensorType NetworkRatType shape
       VFreeTypeVar v _spine -> do
         entry <- getDeclEntry (Proxy @Builtin) v
-        shape <- getRecordDimsFromFreeCtx entry
-        fields <- getRecordFieldsFromFreeCtx entry
-        return $ NetworkRecordTypeConstructor $ NetworkRecordType NetworkRatType v shape fields
+        shape <- getRecordDims entry
+        fields <- getRecordFieldNames entry
+        return $ NetworkRecordTypeConstructor $ NetworkRecordType NetworkRatType v [shape] fields
       _ -> typingError
 
     tensorDimensions :: InputOrOutput -> VType Builtin -> m TensorShape
@@ -95,26 +94,3 @@ getNetworkType decl networkType = case normalised networkType of
         "Invalid network type"
           <+> squotes (prettyVerbose $ normalised networkType)
           <+> "should have been caught during type-checking"
-
--- gets the equivalent tensor dims for a record
--- type GenericRecordFields expr = [GenericRecordField expr]
--- NOTE THIS WILL NOT WORK FOR NESTED TENSOR FIELDS YET!!!
--- TODO: ^
-getRecordDimsFromFreeCtx ::
-  forall m.
-  (MonadExpandResources m) =>
-  FreeCtxEntry Builtin ->
-  m TensorShape
-getRecordDimsFromFreeCtx entry = case entry of
-  DefRecord _p _ident _sort _telescope fields -> return [length fields]
-  _ -> compilerDeveloperError "Unexpectedly not a record."
-
--- gets the names of the fields for a record
-getRecordFieldsFromFreeCtx ::
-  forall m.
-  (MonadExpandResources m) =>
-  FreeCtxEntry Builtin ->
-  m GenericRecordFieldNames
-getRecordFieldsFromFreeCtx entry = case entry of
-  DefRecord _p _ident _sort _telescope fields -> return $ map fst fields
-  _ -> compilerDeveloperError "Unexpectedly not a record."
