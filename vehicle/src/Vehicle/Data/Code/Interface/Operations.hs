@@ -175,7 +175,6 @@ accessQuantifyRatTensor =
       mkExpr = \(q, args) -> mkBuiltin accessQuantifyRatTensorBuiltin q (mkExpr accessQuantifyRatTensorSpine args)
     }
 
--- TODO: need to write one of these for quantify record
 accessQuantifyRecord ::
   (HasBoolExpr expr builtin, HasLambdaConstructor expr body) =>
   Accessor (expr builtin) (Quantifier, QuantifyRecordArgs (expr builtin) (body builtin))

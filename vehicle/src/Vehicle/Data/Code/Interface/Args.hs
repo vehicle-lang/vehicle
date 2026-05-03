@@ -287,7 +287,7 @@ instance IsArgs StackTensorArgs where
     Access
       { getExpr = \case
           (fmap argExpr -> t : d : ds : xs) -> Just $ StackTensorArgs t d ds xs
-          _ -> developerError "no worky",
+          _ -> Nothing,
         mkExpr = \(StackTensorArgs t d ds xs) -> implicit t : implicit d : implicitIrrelevant ds : fmap explicit xs
       }
 
@@ -644,12 +644,3 @@ instance IsArgs SearchRatTensorArgs where
             explicit predicate
           ]
       }
-
-
--- -- TODO: move
--- data RecordAccArgs expr = RecordAccArgs
---   { recordAccType :: expr, -- type of the record we are accessing
---     recordAccValue :: expr, -- value of the record we are accessing
---     recordAccFieldName :: FieldName -- fieldName of the field we are accessing
---      -- recordAccSpine :: [VArg expr] -- really worried about this bc normally everything else would be from the spine
---   }

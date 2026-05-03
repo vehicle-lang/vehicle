@@ -86,15 +86,6 @@ tryPurifyAssertion ::
   TensorOp2Args (Value Builtin) ->
   m (Either (Value Builtin) (TensorOp2Args (Value Builtin)))
 tryPurifyAssertion actions op args = do
-  -- I think we need to convert to tensors here to do the comparison?
-  -- data TensorOp2Args expr = TensorOp2Args
-  -- { tensorOp2Dims :: expr,
-  --   tensorOp2Arg1 :: expr,
-  --   tensorOp2Arg2 :: expr
-  -- }
-  logDebug MaxDetail $ prettyVerbose $ tensorOp2Dims args
-  logDebug MaxDetail $ prettyVerbose $ tensorOp2Arg1 args
-  logDebug MaxDetail $ prettyVerbose $ tensorOp2Arg2 args
   let mkCompare newArgs = return $ fromBoolValue $ VCompareRatTensor (op, newArgs)
   unblockedExpr <- unblockTensorOp2 (unblockRatTensorValue actions DesiredDimensions) mkCompare args
 

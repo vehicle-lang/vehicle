@@ -81,9 +81,6 @@ toTypeValue t = case t of
   VPi binder value -> VPiType binder value
   VBoundVar lv spine -> VBoundTypeVar lv spine
   VFreeVar v spine -> VFreeTypeVar v spine
-  -- case for VRecord
-  -- \| VRecord (VType builtin) !(VRecordFields builtin)
-  -- not sure if we are supposed to have this here or if we need to grab it from the context at some other stage?
   VRecord recordType fields -> VTensorLike (VRecordType recordType fields)
   VBuiltin (BuiltinType typ) spine -> case (typ, spine) of
     (UnitType, []) -> VUnitType
@@ -118,9 +115,6 @@ fromTypeValue t = case t of
   VNatTensorType ds -> ITensorType (fromTypeValue VNatType) ds
   VIndexTensorType n ds -> ITensorType (fromTypeValue (VIndexType n)) ds
   VVectorType tElem d -> IVectorType tElem d
-  -- case for VRecord
-  -- \| VRecord (VType builtin) !(VRecordFields builtin)
-  -- I = Interface? do we need one of these for records??
   VTensorLike (VRecordType _recordType _fields) -> undefined
 
 -------------------------------------------------------------------------------
@@ -418,8 +412,6 @@ data RatTensorValue
   | VRatForeach (ForeachTensorArgs (Value Builtin))
   | VRatRecordAcc !(VType Builtin) !(Value Builtin) !FieldName !(Spine Builtin)
 
-
-
 toRatTensorValue :: (HasCallStack) => Value Builtin -> RatTensorValue
 toRatTensorValue expr = case expr of
   VBoundVar lv [] -> VRatTensorBoundVar lv
@@ -442,8 +434,6 @@ toRatTensorValue expr = case expr of
   (getExpr accessStackTensor -> Just args) -> VRatStackTensor args
   (getExpr accessAtTensor -> Just args) -> VRatAt args
   (getExpr accessForeachTensor -> Just args) -> VRatForeach args
-
-
   _ -> illTyped
   where
     illTyped = developerError $ "ill-typed RatTensor expression:" <+> pretty (show expr)

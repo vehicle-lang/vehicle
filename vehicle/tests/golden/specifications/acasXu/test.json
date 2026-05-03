@@ -11,7 +11,7 @@
   },
   {
     "name": "VNNLib",
-    "run": "vehicle compile queries -s spec.vcl -f VNNLibQueries -o VNNLib.queries --network acasXu:fake.onnx --logging MaxDetail",
+    "run": "vehicle compile queries -s spec.vcl -f VNNLibQueries -o VNNLib.queries --network acasXu:fake.onnx",
     "needs": ["spec.vcl", "fake.onnx"],
     "produces": ["VNNLib.queries/*.txt", "VNNLib.queries/property*.vcl-plan"],
     "ignore": {
