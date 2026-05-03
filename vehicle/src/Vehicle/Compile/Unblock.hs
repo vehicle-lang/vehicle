@@ -10,7 +10,7 @@ module Vehicle.Compile.Unblock
 where
 
 import Vehicle.Compile.LiftIf
-import Vehicle.Compile.Normalise.NBE (eval, evalApp)
+import Vehicle.Compile.Normalise.NBE (eval, evalApp, evalRecordAcc)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Data.Builtin.Interface (Accessor (..))
@@ -374,8 +374,7 @@ unblockRecordAcc ::
 unblockRecordAcc unblock (RecordAccArgs typ value fieldName) actions status = do
   value' <- unblockRecordValue actions status value
   liftIf value' $ \value'' -> do
-    nameCtx <- getNameContext
-    res <- evalRecordAcc nameCtx evalApp eval $ RecordAccArgs typ value'' fieldName
+    res <- evalRecordAcc $ RecordAccArgs typ value'' fieldName
     unblock res
 
 

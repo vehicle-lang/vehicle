@@ -7,6 +7,7 @@ module Vehicle.Compile.Normalise.NBE
     normaliseInFreeCtx,
     normaliseApp,
     evalBuiltin,
+    evalRecordAcc,
     normaliseClosure,
     normaliseClosureInCtx,
     evalDecl,
@@ -30,7 +31,7 @@ import Vehicle.Data.Builtin.Interface.Normalise
     NormalisableBuiltin (..),
   )
 import Vehicle.Data.Builtin.Interface.Print
-import Vehicle.Data.Code.Interface (IsArgs (..))
+import Vehicle.Data.Code.Interface (IsArgs (..), RecordAccArgs (RecordAccArgs))
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Variable.Bound.Context.Generic
 import Vehicle.Data.Variable.Bound.Context.Name.Class (MonadReadableNameContext (getNameContext))
@@ -163,6 +164,17 @@ evalRecordDef = go mempty emptyBoundEnv
         fields' <- traverseRecordFields (eval ctx boundEnv) fields
         return ([], fields')
 
+evalRecordAcc ::
+  (MonadNorm builtin m, MonadFreeContext builtin m) =>
+  RecordAccArgs (Value builtin) -> 
+  m (Value builtin)
+evalRecordAcc (RecordAccArgs _typ value fieldName) = do
+  fields <- case value of
+    VRecord _typ fields -> return fields
+    _ -> developerError "record not of expected type"
+  return $ lookupRecordFieldS fields fieldName
+
+
 eval ::
   (MonadNorm builtin m, MonadFreeContext builtin m) =>
   NamedBoundCtx ->
@@ -172,14 +184,12 @@ eval ::
 eval ctx boundEnv expr = do
   showEntry ctx boundEnv expr
   let recEval = eval ctx boundEnv
-  -- logDebug MidDetail $ "eval" <+> pretty (show expr)
   result <- case expr of
     Hole {} -> resolutionError currentPass "Hole"
     Meta _ m -> return $ VMeta m []
     Universe _ u -> return $ VUniverse u
     BoundVar _ v -> return $ lookupIxInEnv boundEnv v
-    FreeVar _ v -> lookupIdentValue v -- I think this could be the issue?
-    -- lookupIdentValue eventually does a getDeclEntry which then does lookupInFreeCtx
+    FreeVar _ v -> lookupIdentValue v
     Builtin _ b -> return $ VBuiltin b []
     Lam _ binder body -> do
       binder' <- traverse recEval binder

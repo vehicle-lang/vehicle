@@ -91,7 +91,7 @@ eliminateExistless value = do
 -- | Attempts to compile an arbitrary expression of type `Bool` down to a tree
 -- of assertions implicitly existentially quantified by a set of network
 -- input/output variables.
-compileBoolExpr :: -- we have the monad context for unnormalise here
+compileBoolExpr ::
   (MonadQueryStructure m, MonadWriter [Value Builtin] m) =>
   Value Builtin ->
   m (MaybeTrivial Partitions)
@@ -136,16 +136,12 @@ purifyAndCompileAssertion op args
       recurseOrResult <- logCompilerSection2 MaxDetail "assertion compilation" $ do
         maybePurifiedValue <- Unblocking.tryPurifyAssertion unblockingActions op args
         case maybePurifiedValue of
-          Left purifiedValue -> do
-            return $ Left purifiedValue
-          Right purifiedArgs -> do
-            compilePurifiedAssertion op purifiedArgs
+          Left purifiedValue -> return $ Left purifiedValue
+          Right purifiedArgs -> compilePurifiedAssertion op purifiedArgs
 
       case recurseOrResult of
-        Left value -> do 
-          compileBoolExpr value
-        Right assertion -> do 
-          return $ mkTrivialPartition assertion
+        Left value -> compileBoolExpr value
+        Right assertion -> return $ mkTrivialPartition assertion
 
 compilePurifiedAssertion ::
   (MonadQuantifierBody m) =>

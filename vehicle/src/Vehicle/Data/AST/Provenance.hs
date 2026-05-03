@@ -116,7 +116,6 @@ instance ToJSON Provenance where
         "contents" .= toJSON @[Int] [posLine start, posColumn start, posLine end, posColumn end]
       ]
 
--- TODO: check
 instance FromJSON Provenance where
   parseJSON = withObject "Provenance" $ \v -> do
     contents <- v .: "contents" :: Parser [Int]

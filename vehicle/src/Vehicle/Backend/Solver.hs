@@ -205,11 +205,6 @@ compileQueries expr = do
     ----------------
     -- Base cases --
     ----------------
-
-    -- this is where we need to convert the record quantifier to
-    -- the version wrapped in the conversion function
-
-
     VBoolLiteral b -> return $ Trivial b
     VQuantifyRatTensor (Exists, args) -> compileQuantifiedQuerySet False args
     VQuantifyRatTensor (Forall, args) -> do
@@ -219,12 +214,6 @@ compileQueries expr = do
     VQuantifyRecord (q, args) -> do
       wrappedBinderArgs <- wrapQuantifyRecord args
       compileQueries (fromBoolValue $ VQuantifyRatTensor (q, wrappedBinderArgs))
-    
-    -- VQuantifyRecord (Forall, args) -> do
-    --   logDebug MaxDetail $ "negate" <+> pretty Forall
-    --   transformedArgs <- transformQuantifiedRecord args
-    --   negatedArgs <- negateQuantifierBody transformedArgs
-    --   compileQuantifiedQuerySet True negatedArgs
     ---------------------
     -- Recursive cases --
     ---------------------

@@ -563,30 +563,6 @@ evalAtTensor ctx evalApp eval args@(AtTensorArgs t d ds tensor index) =
         evalApp ctx fn [explicit index]
       _ -> Nothing
 
--- unoptimisedEvalAtTensor ::
---   forall builtin m.
---   (MonadNormBuiltin m, HasTensorLiterals Value builtin, BuiltinHasListLiterals builtin, BuiltinHasIndexLiterals builtin, HasTensorExpr Value builtin) =>
---   EvalSimple AtTensorArgs Value builtin m
--- unoptimisedEvalAtTensor args@(AtTensorArgs _t _d ds tensor index) = do
---   fromMaybe (return $ mkExpr accessAtTensor args) $
---     case index of
---       IIndexLiteral i ->
---         goLiterals i tensorLiterals
---           <|> case tensor of
---             (getExpr accessStackTensor -> Just stackArgs) -> do
---               Just $ return $ stackElements stackArgs !! i -- copy this bit here!
---             (getExpr accessConstTensor -> Just constArgs) -> Just $ return $ mkExpr accessConstTensor $ constArgs {constDims = ds}
---             _ -> Nothing
---       _ -> Nothing
---   where
---     goLiterals :: Int -> [TensorLiteralAccessor Value builtin] -> Maybe (m (Value builtin))
---     goLiterals i literals = case literals of
---       Wrapper Access {..} : remainingLiterals -> case getExpr tensor of
---         Just xs -> Just $ return $ mkExpr (xs `at` i)
---         Nothing -> do
---           logDebug MaxDetail "dsadas"
---           goLiterals i remainingLiterals
---       _ -> Nothing
 
 unoptimisedEvalAtTensor ::
   forall builtin m.
@@ -612,20 +588,15 @@ unoptimisedEvalAtTensor args@(AtTensorArgs _t _d ds tensor index) = do
       _ -> Nothing
 
 -- TODO: move into NBE
-evalRecordAcc ::
-  forall builtin m.
-  (MonadNormBuiltin m, HasTensorLiterals Value builtin, HasLiftableTensorOperations builtin, BuiltinHasListLiterals builtin, BuiltinHasIndexLiterals builtin, HasTensorExpr Value builtin, BuiltinHasForeach builtin) =>
-  NamedBoundCtx ->
-  EvalApp builtin m ->
-  Eval builtin m ->
-  EvalSimple RecordAccArgs Value builtin m
-evalRecordAcc _ctx _evalApp _eval _args@(RecordAccArgs _typ value fieldName) = do
-  logDebug MidDetail "------ ENTERING EVAL RECORD ACC FUNCTION --------------"
-
-  fields <- case value of
-    VRecord _typ fields -> return fields
-    _ -> developerError "record not of expected type"
-  return $ lookupRecordFieldS fields fieldName
+-- evalRecordAcc ::
+--   forall builtin m.
+--   (MonadNormBuiltin m, HasTensorLiterals Value builtin, HasLiftableTensorOperations builtin, BuiltinHasListLiterals builtin, BuiltinHasIndexLiterals builtin, HasTensorExpr Value builtin, BuiltinHasForeach builtin) =>
+--   EvalSimple RecordAccArgs Value builtin m
+-- evalRecordAcc (RecordAccArgs _typ value fieldName) = do
+--   fields <- case value of
+--     VRecord _typ fields -> return fields
+--     _ -> developerError "record not of expected type"
+--   return $ lookupRecordFieldS fields fieldName
 -----------------------------------------------------------------------------
 -- Foreach
 
