@@ -45,6 +45,7 @@ import Vehicle.Data.Code.DSL
 import Vehicle.Data.DSL
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Data.Builtin.Standard.Scoping (getRecordDimsExpr, getRecordProvenance, constructFromTensorFreeVar)
+import qualified Data.Text as Text
 
 
 --------------------------------------------------------------------------------
@@ -253,6 +254,17 @@ compileQuantifiedQuerySet isPropertyNegated args =
     (maybePartitions, globalCtx) <- runStateT (eliminateExists args) emptyGlobalCtx
     compileQuerySetPartitions globalCtx isPropertyNegated maybePartitions
 
+getFreshTensorBinderName ::
+  NamedBoundCtx ->
+  Text.Text
+getFreshTensorBinderName ctx = checkExistsInCtx 0
+  where
+    checkExistsInCtx :: Int -> Text.Text
+    checkExistsInCtx n =
+      let name = "_t" <> Text.pack (show n)
+      in if Just name `elem` ctx
+        then checkExistsInCtx (n + 1)
+        else "_t" <> Text.pack (show n)
 
 wrapQuantifyRecord ::
   (MonadPropertyStructure m,
@@ -281,7 +293,7 @@ wrapQuantifyRecord QuantifyRecordArgs{..} = do
   normalisedDims <- eval namedCtx boundEnv dims
 
   let tensorBinder = Binder { 
-    binderDisplayForm = BinderDisplayForm (NameAndType "_t" mempty) True,
+    binderDisplayForm = BinderDisplayForm (NameAndType (getFreshTensorBinderName namedCtx) mempty) True,
     binderVisibility = Explicit,
     binderRelevance = Relevant,
     binderValue = normalisedTensorType
