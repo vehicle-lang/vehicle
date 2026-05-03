@@ -34,13 +34,13 @@ type MetaNetwork = [(Name, NetworkContextInfo, Int)]
 inputShape :: NetworkContextInfo -> TensorShape
 -- inputShape = dimensions . inputTensor . networkType
 inputShape ctx = case inputTensor (networkType ctx) of
-  NetworkTensorTypeConstructor tensor -> dimensions tensor
-  NetworkRecordTypeConstructor record -> recordDimensions record
+  NetworkTensorType _ dims -> dims
+  NetworkRecordType  _ _ dims _  -> dims
 
 outputShape :: NetworkContextInfo -> TensorShape
 outputShape ctx = case outputTensor (networkType ctx) of
-  NetworkTensorTypeConstructor tensor -> dimensions tensor
-  NetworkRecordTypeConstructor record -> recordDimensions record
+  NetworkTensorType _ dims -> dims
+  NetworkRecordType _ _ dims _ -> dims
 
 --------------------------------------------------------------------------------
 -- Queries misc

@@ -210,19 +210,19 @@ unblockNetworkApplication unblockFnTensor unblockFnRecord ident (NetworkAppArgs 
   ctx <- getNameContext
 
   transformedInput <- case inputTensor typ of 
-    NetworkRecordTypeConstructor (NetworkRecordType _ recordTyp _ _) -> do 
+    NetworkRecordType  _ recordTyp _ _ -> do 
       fromTensorFn <- eval ctx emptyBoundEnv (constructFromTensorFreeVar recordTyp mempty)
       evalApp ctx fromTensorFn [Arg Explicit Relevant inputVarExpr]
     _ -> return inputVarExpr
 
   transformedOutput <- case outputTensor typ of 
-    NetworkRecordTypeConstructor (NetworkRecordType _baseType recordTyp _ _) -> do 
+    NetworkRecordType _ recordTyp _ _ -> do 
       fromTensorValue <- eval ctx emptyBoundEnv (constructFromTensorFreeVar recordTyp mempty)
       evalApp ctx fromTensorValue [Arg Explicit Relevant outputVarExpr]
     _ -> return outputVarExpr
 
   inputEquality <- case inputTensor typ of 
-    NetworkRecordTypeConstructor (NetworkRecordType _ recordTyp _ _) -> do
+    NetworkRecordType _ recordTyp _ _ -> do
       toTensorFn <- eval ctx emptyBoundEnv (constructToTensorFreeVar recordTyp mempty)
       argAsTensor <- evalApp ctx toTensorFn [Arg Explicit Relevant arg]
       inputAsTensor <- evalApp ctx toTensorFn [Arg Explicit Relevant transformedInput]
@@ -251,7 +251,7 @@ unblockNetworkApplication unblockFnTensor unblockFnRecord ident (NetworkAppArgs 
         <> "replace-expr" <+> replacementExprDoc
 
   case outputTensor typ of 
-    NetworkRecordTypeConstructor {} -> unblockFnRecord transformedOutput
+    NetworkRecordType {} -> unblockFnRecord transformedOutput
     _ -> unblockFnTensor transformedOutput
 
 

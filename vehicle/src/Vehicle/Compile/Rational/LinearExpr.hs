@@ -95,10 +95,7 @@ compile toVar shape = go
       -- The expression is being blocked
       VRatConstTensor {} -> unreduced
       VRatStackTensor {} -> unreduced
-      -- this will probably have to move
-      -- VRatRecord {} -> unreduced
       VRatAt {} -> unreduced
-      -- copying VRatAt
       VRatRecordAcc {} -> unreduced
       VRatTensorFreeVar {} -> unreduced
       VRatForeach {} -> unreduced

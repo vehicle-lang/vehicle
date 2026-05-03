@@ -59,12 +59,12 @@ getNetworkType decl networkType = case normalised networkType of
     tensorType io t = case toTypeValue t of
       VTensorLike (VRatTensorType dims) -> do
         shape <- tensorDimensions io dims
-        return $ NetworkTensorTypeConstructor $ NetworkTensorType NetworkRatType shape
+        return $ NetworkTensorType  NetworkRatType shape
       VFreeTypeVar v _spine -> do
         entry <- getDeclEntry (Proxy @Builtin) v
         shape <- getRecordDims entry
         fields <- getRecordFieldNames entry
-        return $ NetworkRecordTypeConstructor $ NetworkRecordType NetworkRatType v [shape] fields
+        return $ NetworkRecordType NetworkRatType v [shape] fields
       _ -> typingError
 
     tensorDimensions :: InputOrOutput -> VType Builtin -> m TensorShape
