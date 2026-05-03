@@ -31,7 +31,7 @@ import Vehicle.Data.Builtin.Interface.Normalise
     NormalisableBuiltin (..),
   )
 import Vehicle.Data.Builtin.Interface.Print
-import Vehicle.Data.Code.Interface (IsArgs (..), RecordAccArgs (RecordAccArgs))
+import Vehicle.Data.Code.Interface (IsArgs (..))
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Variable.Bound.Context.Generic
 import Vehicle.Data.Variable.Bound.Context.Name.Class (MonadReadableNameContext (getNameContext))
@@ -166,9 +166,10 @@ evalRecordDef = go mempty emptyBoundEnv
 
 evalRecordAcc ::
   (MonadNorm builtin m, MonadFreeContext builtin m) =>
-  RecordAccArgs (Value builtin) -> 
+  Value builtin ->
+  FieldName ->
   m (Value builtin)
-evalRecordAcc (RecordAccArgs _typ value fieldName) = do
+evalRecordAcc value fieldName = do
   fields <- case value of
     VRecord _typ fields -> return fields
     _ -> developerError "record not of expected type"
@@ -233,18 +234,13 @@ evalApp ctx fun args@(a : as) = do
   result <- case fun of
     VMeta v spine -> return $ VMeta v (spine <> args)
     VBoundVar v spine -> return $ VBoundVar v (spine <> args)
-    VFreeVar v spine -> do
-      -- logDebug MaxDetail $ "VFreeVar case" <+> pretty (show fun)
-      -- might need to be a lam and not a freevar - look up the ident?
-
-      return $ VFreeVar v (spine <> args)
+    VFreeVar v spine -> return $ VFreeVar v (spine <> args)
     VRecordAcc recordType record field spine -> return $ VRecordAcc recordType record field (spine <> args)
     VBuiltin b spine -> evalBuiltin ctx b (spine <> args)
     VLam binder (Closure env body)
       | not (visibilityMatches binder a) ->
           visibilityError ctx fun a
       | otherwise -> do
-          -- logDebug MidDetail $ "lam case reached for expr" <+> pretty (show fun)
           let newEnv = extendEnvWithDefined (argExpr a) binder env
           body' <- eval ctx newEnv body
           evalApp ctx body' as

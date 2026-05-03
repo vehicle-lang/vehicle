@@ -587,19 +587,6 @@ unoptimisedEvalAtTensor args@(AtTensorArgs _t _d ds tensor index) = do
           goLiterals i remainingLiterals
       _ -> Nothing
 
--- TODO: move into NBE
--- evalRecordAcc ::
---   forall builtin m.
---   (MonadNormBuiltin m, HasTensorLiterals Value builtin, HasLiftableTensorOperations builtin, BuiltinHasListLiterals builtin, BuiltinHasIndexLiterals builtin, HasTensorExpr Value builtin, BuiltinHasForeach builtin) =>
---   EvalSimple RecordAccArgs Value builtin m
--- evalRecordAcc (RecordAccArgs _typ value fieldName) = do
---   fields <- case value of
---     VRecord _typ fields -> return fields
---     _ -> developerError "record not of expected type"
---   return $ lookupRecordFieldS fields fieldName
------------------------------------------------------------------------------
--- Foreach
-
 type HasOptimisedAtBuiltins builtin =
   ( HasTensorLiterals Value builtin,
     HasLiftableTensorOperations builtin,

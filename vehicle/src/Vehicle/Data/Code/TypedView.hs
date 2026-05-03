@@ -204,16 +204,7 @@ data BoolValue
   | VCompareRatTensor (ComparisonOp, TensorOp2Args (Value Builtin))
   | VReduceAndTensor (TensorReductionArgs (Value Builtin))
   | VReduceOrTensor (TensorReductionArgs (Value Builtin))
-  | VQuantifyRatTensor (Quantifier, QuantifyRatTensorArgs (Value Builtin) (Closure Builtin)) -- write the equivalent for this for records
-  -- args for QuantifyRatTensor
-  -- data QuantifyRatTensorArgs expr body = QuantifyRatTensorArgs
-  -- { quantifyDimensions :: expr, -- not sure what this is, may need to change?
-  --   quantifyBinder :: GenericBinder expr, -- is this the Forall, Exists etc..?
-  --   quantifyBody :: body
-  -- }
-  -- is this where we would have field information??
-  -- (i think) this should be similar to what we do for rat tensor qantifier?
-  -- then we can keep the details of the record in the body in a VRecord
+  | VQuantifyRatTensor (Quantifier, QuantifyRatTensorArgs (Value Builtin) (Closure Builtin))
   | VQuantifyRecord (Quantifier, QuantifyRecordArgs (Value Builtin) (Closure Builtin))
   | VBoolIf (IfArgs (Value Builtin))
   | VBoolAt (AtTensorArgs (Value Builtin))
@@ -249,7 +240,6 @@ fromBoolValue = \case
   VCompareIndex args -> mkExpr accessCompareIndex args
   VCompareRatTensor args -> toComparison args
   VQuantifyRatTensor args -> mkExpr accessQuantifyRatTensor args
-  -- need to make equivalent for accessQuantifyRatTensor for accessQuantifyRecord?
   VQuantifyRecord _args -> undefined
   VReduceAndTensor args -> mkExpr accessReduceAnd args
   VReduceOrTensor args -> mkExpr accessReduceOr args
@@ -426,10 +416,7 @@ data RatTensorValue
   | VRatStackTensor (StackTensorArgs (Value Builtin))
   | VRatAt (AtTensorArgs (Value Builtin))
   | VRatForeach (ForeachTensorArgs (Value Builtin))
-  -- just going to package recordAcc params as args for now, RecordAcc isnt a Builtin like the others (Expr builtin instead) so not sure if this will work overall
-  -- | VRatRecordAcc !(VType Builtin) !(Value Builtin) !FieldName !(Spine Builtin)
-  | VRatRecordAcc (RecordAccArgs (Value Builtin))
-  -- | VRatRecord (VType Builtin) !(VRecordFields Builtin)
+  | VRatRecordAcc !(VType Builtin) !(Value Builtin) !FieldName !(Spine Builtin)
 
 
 
@@ -437,11 +424,7 @@ toRatTensorValue :: (HasCallStack) => Value Builtin -> RatTensorValue
 toRatTensorValue expr = case expr of
   VBoundVar lv [] -> VRatTensorBoundVar lv
   VFreeVar n spine -> VRatTensorFreeVar n spine
-  -- need to find out what value is 
-  -- VRecordAcc typ value fieldName spine -> VRatRecordAcc typ value fieldName spine
-  VRecordAcc typ value fieldName _spine -> VRatRecordAcc RecordAccArgs {recordAccType=typ, recordAccValue=value, recordAccFieldName=fieldName}
-  -- VRecord typ fields -> VRatRecord typ fields
-  -- VRecord   | VRecord (VType builtin) !(VRecordFields builtin)
+  VRecordAcc typ value fieldName spine -> VRatRecordAcc typ value fieldName spine
   (getExpr accessRatTensorLiteral -> Just t) -> VRatTensorLiteral t
   (getExpr accessNegRatTensor -> Just args) -> VNegRatTensor args
   (getExpr accessAddRatTensor -> Just args) -> VAddRatTensor args
@@ -469,8 +452,7 @@ fromRatTensorValue :: RatTensorValue -> Value Builtin
 fromRatTensorValue = \case
   VRatTensorBoundVar v -> VBoundVar v []
   VRatTensorFreeVar name args -> VFreeVar name args
-  VRatRecordAcc args -> VRecordAcc (recordAccType args) (recordAccValue args) (recordAccFieldName args) [] -- TODO: losing spine is probably problematic
-  -- VRatRecord typ fields -> VRecord typ fields
+  VRatRecordAcc typ value fieldName spine -> VRecordAcc typ value fieldName spine
   VRatTensorLiteral t -> mkExpr accessRatTensorLiteral t
   VNegRatTensor args -> mkExpr accessNegRatTensor args
   VAddRatTensor args -> mkExpr accessAddRatTensor args
