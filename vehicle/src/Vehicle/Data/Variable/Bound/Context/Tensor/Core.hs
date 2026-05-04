@@ -35,25 +35,32 @@ originalCtx = fmap fst . nestedVariableCtx
 emptyNestedCtx :: NestedTensorVariableCtx
 emptyNestedCtx = NestedTensorVariableCtx mempty mempty
 
--- | Given a set of variables in the extended tensor context,
--- returns a pair consisting of the Lv of the variable in the original context
--- and the top-level tensor variable if the variable is a tensor variable.
+-- | Given a set of variables in the extended tensor context, returns a list
+-- of pairs of (Lv of the variable in the original context, top-level tensor
+-- variable if the variable is a tensor variable).
 findCorrespondingVariableInOriginalCtx ::
   (VariableLike var) =>
   NestedTensorVariableCtx ->
   Set var ->
   [(OriginalLv, Maybe NestedSliceVariable)]
-findCorrespondingVariableInOriginalCtx (NestedTensorVariableCtx wholeCtx _) vars = do
+findCorrespondingVariableInOriginalCtx (NestedTensorVariableCtx wholeCtx nameCtx) vars = do
   let sortedVarList = sortBy (comparing Down) (Set.toList vars)
-  go 0 wholeCtx sortedVarList
+  go 0 (boundCtxLv nameCtx) wholeCtx sortedVarList
   where
-    go :: (VariableLike var) => OriginalLv -> GenericBoundCtx (GenericBinder (), Maybe NestedSliceVariable) -> [var] -> [(Lv, Maybe NestedSliceVariable)]
-    go _ [] _ = []
-    go _ _ [] = []
-    go lv ((_binder, maybeTensorVar) : ctx) (v : vs) = case maybeTensorVar of
-      Nothing
-        | lv == toLv v -> (lv, Nothing) : go (lv + 1) ctx (v : vs)
-        | otherwise -> go (lv + 1) ctx (v : vs)
+    ctxLen :: Lv
+    ctxLen = Lv (length wholeCtx)
+    go :: (VariableLike var) => OriginalLv -> Lv -> GenericBoundCtx (GenericBinder (), Maybe NestedSliceVariable) -> [var] -> [(Lv, Maybe NestedSliceVariable)]
+    go _ _ [] _ = []
+    go _ _ _ [] = []
+    go lv topSlice ((_binder, maybeTensorVar) : ctx) (v : vs) = case maybeTensorVar of
+      Nothing -> do
+        -- Match against the slice-level position so non-tensor binders above
+        -- tensor binders (e.g. a rollout's projection lambda above a `forall
+        -- (x : Tensor)`) don't slip through and trip the assertion below.
+        let mySlice = topSlice - 1
+        if mySlice == toLv v
+          then (ctxLen - 1 - lv, Nothing) : go (lv + 1) mySlice ctx vs
+          else go (lv + 1) mySlice ctx (v : vs)
       Just tensorVar -> do
         let startPoint = toLv tensorVar
         let endPoint = startPoint + Lv (numberOfSliceVariablesIn $ shapeOf tensorVar)
@@ -61,10 +68,10 @@ findCorrespondingVariableInOriginalCtx (NestedTensorVariableCtx wholeCtx _) vars
           then developerError "Incorrectly sorted slice variables"
           else
             if toLv v < startPoint
-              then go (lv + 1) ctx (v : vs)
+              then go (lv + 1) startPoint ctx (v : vs)
               else do
                 let newVars = dropWhile (\u -> toLv u >= startPoint) vs
-                (lv, Just tensorVar) : go (lv + 1) ctx newVars
+                (lv, Just tensorVar) : go (lv + 1) startPoint ctx newVars
 
 appendNonTensorVariableToNestedCtx :: GenericBinder () -> NestedTensorVariableCtx -> NestedTensorVariableCtx
 appendNonTensorVariableToNestedCtx binder (NestedTensorVariableCtx ctx nameCtx) = do
