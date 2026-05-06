@@ -42,6 +42,25 @@ There are various libraries to convert trained models to the ONNX format:
 
 If you would be interested in other formats being supported, please get in touch.
 
+The ``@dynamics`` annotation
+----------------------------
+
+A ``@dynamics``-annotated declaration is a runtime-bound plant model
+analogous to ``@network``. It represents system dynamics rather than a
+learned function:
+
+.. code-block:: agda
+
+   @dynamics
+   dynamics : Tensor Real [stateDim] -> Tensor Real [actDim]
+           -> Tensor Real [stateDim]
+
+The signature is ``state -> action -> next-state``. Like ``@network``,
+the body is supplied at the Python boundary by ``load_specification``.
+The primary use case is closed-loop controller specifications, where
+``@dynamics`` is paired with a ``@network`` controller via the
+``rollout[T]`` operator — see :doc:`temporal-operators`.
+
 Limitations
 -----------
 

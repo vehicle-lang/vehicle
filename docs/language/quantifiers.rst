@@ -95,6 +95,10 @@ The type annotation ``Index 3`` on the quantified variable ``i`` is
 included for clarity but are not need in practice as it can be inferred
 by the compiler.
 
+For the common case of element-by-element comparison without an explicit
+quantifier, use the pointwise comparison operators ``<=.``, ``<.``,
+``>=.``, ``>.``, ``==.``, ``!=.`` documented in :doc:`tensors`.
+
 The ``in`` keyword
 ++++++++++++++++++
 

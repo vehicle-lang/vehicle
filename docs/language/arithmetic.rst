@@ -61,6 +61,46 @@ The available operations over naturals are:
 Note that inequalities can be chained, so that ``x < y <= z`` will be
 expanded to ``x < y and y <= z``.
 
+Time
+----
+
+``Time`` is the type used for temporal bounds and rollout counts. It is
+distinct from ``Nat`` to keep temporal-bound arithmetic separate from
+tensor dimensions.
+
+Time literals are written as natural numbers, and Nat literals coerce to
+``Time`` where needed (e.g. temporal-operator bounds or ``rollout[T]``).
+Temporal bounds must reduce to literals at compile time.
+
+The available operations over Time are:
+
+.. list-table::
+   :widths: 25 15 40 20
+   :header-rows: 1
+
+   * - Operation
+     - Symbol
+     - Type
+     - Example
+   * - Addition
+     - :code:`+`
+     - :code:`Time -> Time -> Time`
+     - :code:`t1 + t2`
+   * - Subtraction (saturating)
+     - :code:`-`
+     - :code:`Time -> Time -> Time`
+     - :code:`t1 - t2`
+   * - Multiplication
+     - :code:`*`
+     - :code:`Time -> Time -> Time`
+     - :code:`t1 * t2`
+   * - Division (total)
+     - :code:`/`
+     - :code:`Time -> Time -> Time`
+     - :code:`t1 / t2`
+
+Subtraction saturates at 0. Division is total: ``t / 0`` is ``0``.
+
 Reals
 -----
 
