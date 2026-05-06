@@ -28,14 +28,15 @@ def load_loss_specification(
     translation_factory: TranslationFactory,
     default_sampler_factory: SamplerFactory,
     _program: Any | None = None,
-) -> tuple[dict[str, Any], bool]:
+) -> dict[str, Any]:
     """Load a specification using the provided backend factories.
 
     Returns:
-        ``(declarations, minimise)`` — the compiled callables and a flag
-        indicating whether the selected logic produces a loss (``True``,
-        minimise directly) or a robustness value (``False``, maximise /
-        negate before minimising).
+        The compiled callables. The Vehicle compiler emits each property as a
+        minimisation target by default — wrapping properties in ``not`` so
+        reducing the output always pushes the property toward satisfaction.
+        Pass ``--dl-native-direction`` through to the compiler if you need
+        the raw DL-native form.
 
     Args:
         _program: Internal — if provided, skip calling ``_ast.load`` and use
@@ -63,7 +64,6 @@ def load_loss_specification(
 
     if not isinstance(program, _ast._nodes.Main):
         raise TypeError(f"Expected Main program node, got {type(program).__name__}")
-    minimise = program.logic_metadata.direction
 
     translation = translation_factory()
     compiled = translation.compile(
@@ -72,4 +72,4 @@ def load_loss_specification(
         declaration_context=declaration_context,
         samplers=samplers,
     )
-    return cast(dict[str, Any], compiled), minimise
+    return cast(dict[str, Any], compiled)

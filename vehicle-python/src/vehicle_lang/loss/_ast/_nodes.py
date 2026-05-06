@@ -426,17 +426,14 @@ class Program(AST):
 class JLogicMetadata(AST):
     """Per-program metadata extracted from a compiled DifferentiableTensorLogic.
 
-    Carries the four temporal-combinator lambdas (conjunction / disjunction
-    and their identities) plus the logic direction:
-    ``direction = True`` means the logic is loss-oriented (minimise the
-    output), ``False`` means robustness-oriented (maximise).
+    Carries the four temporal-combinator lambdas: conjunction and disjunction,
+    and their corresponding identity elements.
     """
 
     conjunction: Expression
     disjunction: Expression
     conjunction_identity: Expression
     disjunction_identity: Expression
-    direction: bool
 
 
 @dataclass(frozen=True)

@@ -15,4 +15,4 @@ positions = (transpose trajectory) ! 0
 
 @property
 bounded : Bool
-bounded = (globally[0,3] (const (-1.0) [4] <. positions and positions <. const 1.0 [4])) ! 0
+bounded = (globally[0,3] (foreach t . -1.0 < positions ! t < 1.0)) ! 0

@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Any, Callable, Sequence
 
 import pytest
+
 import vehicle_lang as vcl
 from vehicle_lang.error import VehicleInternalError
 
@@ -179,7 +180,7 @@ def test_loss_function_exec(
 ) -> None:
     print(f"Exec {specification_filename}")
     specification_path = Path(__file__).parent / "data" / specification_filename
-    actual_declarations, _ = loss_tf.load_specification(
+    actual_declarations = loss_tf.load_specification(
         specification_path,
         logic=vcl.DifferentiableLogic.DL2,
         samplers=samplers,

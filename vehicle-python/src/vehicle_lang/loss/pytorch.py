@@ -4,13 +4,12 @@ from __future__ import annotations
 
 import ast as py
 from pathlib import Path
-from typing import Any, Iterable, Mapping, MutableMapping, cast
+from typing import Any, Iterable, Mapping, MutableMapping
 
 from ..typing import DeclarationName, DifferentiableLogic, Target
 from . import _ast as _loss_ast
 from ._ast import _nodes as vcl
 from ._common import load_loss_specification
-from ._pytorch._builtins import PyTorchBuiltins
 from ._pytorch._semantics import lift_to_reduction
 from ._pytorch._translation import PyTorchTranslation
 from ._pytorch.samplers import DefaultPyTorchSampler, PyTorchSampler
@@ -100,7 +99,7 @@ def load_specification(
     samplers: Mapping[str, Any] | None = None,
     declarations: Iterable[DeclarationName] = (),
     declaration_context: MutableMapping[str, Any] | None = None,
-) -> tuple[dict[str, Any], bool]:
+) -> dict[str, Any]:
     """Load a loss function compiled for PyTorch.
 
     Args:
@@ -118,11 +117,10 @@ def load_specification(
         declaration_context: Mutable context shared across declarations.
 
     Returns:
-        ``(declarations, minimise)``. ``minimise`` is ``True`` for
-        loss-oriented logics (``DL2``, ``Vehicle``) whose compiled output
-        should be minimised directly, and ``False`` for robustness-oriented
-        logics (``STL``) whose output should be negated (or maximised)
-        to drive the property toward satisfaction.
+        The compiled callables. Each property is emitted as a minimisation
+        target — robustness-style logics are wrapped in ``not`` by the
+        compiler so reducing the output drives the property toward
+        satisfaction regardless of which logic was selected.
     """
     # Load the program once so we can derive temporal semantics if needed.
     program = _loss_ast.load(path, target=logic, declarations=declarations)
@@ -137,7 +135,7 @@ def load_specification(
         translation_holder["translation"] = translation
         return translation
 
-    compiled, minimise = load_loss_specification(
+    compiled = load_loss_specification(
         path,
         logic=logic,
         samplers=samplers,
@@ -148,20 +146,4 @@ def load_specification(
         _program=program,
     )
 
-    builtins = cast(PyTorchBuiltins, translation_holder["translation"].builtins)
-
-    def _wrap(fn: Any) -> Any:
-        def wrapped(*args: Any, **kwargs: Any) -> Any:
-            builtins._clear_rollout_cache()
-            try:
-                return fn(*args, **kwargs)
-            finally:
-                builtins._clear_rollout_cache()
-
-        return wrapped
-
-    wrapped = {
-        name: (_wrap(value) if callable(value) else value)
-        for name, value in compiled.items()
-    }
-    return wrapped, minimise
+    return compiled
