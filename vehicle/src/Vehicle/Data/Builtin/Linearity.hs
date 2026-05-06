@@ -176,9 +176,7 @@ instance BuiltinHasNatLiterals LinearityBuiltin where
       }
 
   accessAddNatBuiltin = functionAccessor $ Add AddNat
-  accessSubNatBuiltin = functionAccessor $ Sub SubNat
   accessMulNatBuiltin = functionAccessor $ Mul MulNat
-  accessDivNatBuiltin = functionAccessor $ Div DivNat
 
 instance BuiltinHasListLiterals LinearityBuiltin where
   accessNilBuiltin =
@@ -206,7 +204,10 @@ instance BuiltinHasIterate LinearityBuiltin where
 instance BuiltinHasRollout LinearityBuiltin where
   accessRolloutBuiltin = functionAccessor Rollout
 
-instance BuiltinHasTranspose LinearityBuiltin where
+instance BuiltinHasTensors LinearityBuiltin where
+  accessStackTensorBuiltin = functionAccessor StackTensor
+  accessConstTensorBuiltin = functionAccessor ConstTensor
+  accessAtTensorBuiltin = functionAccessor AtTensor
   accessTransposeBuiltin = functionAccessor Transpose
 
 --------------------------------------------------------------------------------

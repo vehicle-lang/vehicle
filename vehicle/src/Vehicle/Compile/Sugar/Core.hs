@@ -213,11 +213,7 @@ tokMax = mkToken B.TokMax "max"
 
 tokAddNat = mkToken B.TokAddNat "addNat"
 
-tokSubNat = mkToken B.TokSubNat "subNat"
-
 tokMulNat = mkToken B.TokMulNat "mulNat"
-
-tokDivNat = mkToken B.TokDivNat "divNat"
 
 tokAddRealTensor = mkToken B.TokAddRealTensor "addRealTensor"
 

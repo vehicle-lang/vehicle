@@ -60,9 +60,11 @@ functionBlockingStatus b spine = case b of
   And -> fixedStatus [1, 2] spine
   Or -> fixedStatus [1, 2] spine
   Add AddNat -> fixedStatus [0, 1] spine
-  Sub SubNat -> fixedStatus [0, 1] spine
   Mul MulNat -> fixedStatus [0, 1] spine
-  Div DivNat -> fixedStatus [0, 1] spine
+  Add AddTime -> fixedStatus [0, 1] spine
+  Sub SubTime -> fixedStatus [0, 1] spine
+  Mul MulTime -> fixedStatus [0, 1] spine
+  Div DivTime -> fixedStatus [0, 1] spine
   Neg NegRatTensor -> fixedStatus [1] spine
   Add AddRatTensor -> fixedStatus [1, 2] spine
   Mul MulRatTensor -> fixedStatus [1, 2] spine
@@ -90,7 +92,6 @@ functionBlockingStatus b spine = case b of
   ForeachVector -> fixedStatus [1] spine
   Iterate -> fixedStatus [2] spine
   Rollout -> DoesNotReduce
-  ReverseDims -> fixedStatus [0] spine
   Transpose -> DoesNotReduce
   StackTensor -> stackBlockingStatus spine
 
@@ -107,6 +108,8 @@ castBlockingStatus f spine = case f of
   FromNat FromNatToIndex -> fixedStatus [1] spine
   FromNat FromNatToNat -> AlwaysReduces
   FromNat FromNatToRat -> fixedStatus [0] spine
+  FromNat FromNatToTime -> fixedStatus [0] spine
+  FromTime FromTimeToNat -> fixedStatus [0] spine
   FromRat FromRatToRat -> AlwaysReduces
 
 traverseArgsAtIndices ::

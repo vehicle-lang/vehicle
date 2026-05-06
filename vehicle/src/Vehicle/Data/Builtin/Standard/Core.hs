@@ -6,6 +6,8 @@ module Vehicle.Data.Builtin.Standard.Core
     builtinCast,
     accessFromNatToIndex,
     accessFromNatToRat,
+    accessFromNatToTime,
+    accessFromTimeToNat,
     accessFromVectorToList,
     isTensorType,
     builtinDerivedFunction,
@@ -219,9 +221,29 @@ instance BuiltinHasNatLiterals Builtin where
       }
 
   accessAddNatBuiltin = functionAccessor (Add AddNat)
-  accessSubNatBuiltin = functionAccessor (Sub SubNat)
   accessMulNatBuiltin = functionAccessor (Mul MulNat)
-  accessDivNatBuiltin = functionAccessor (Div DivNat)
+
+--------------------------------------------------------------------------------
+-- Time
+
+instance BuiltinHasTimeType Builtin where
+  accessTimeTypeBuiltin = typeAccessor TimeType
+
+instance BuiltinHasTimeLiterals Builtin where
+  accessTimeLitBuiltin =
+    Access
+      { getExpr = \case
+          BuiltinConstructor (TimeLiteral n) -> Just n
+          _ -> Nothing,
+        mkExpr = BuiltinConstructor . TimeLiteral
+      }
+
+  accessAddTimeBuiltin = functionAccessor (Add AddTime)
+  accessSubTimeBuiltin = functionAccessor (Sub SubTime)
+  accessMulTimeBuiltin = functionAccessor (Mul MulTime)
+  accessDivTimeBuiltin = functionAccessor (Div DivTime)
+  accessFromNatToTimeBuiltin = castAccessor (FromNat FromNatToTime)
+  accessFromTimeToNatBuiltin = castAccessor (FromTime FromTimeToNat)
 
 --------------------------------------------------------------------------------
 -- Rat
@@ -304,6 +326,7 @@ instance BuiltinHasTensors Builtin where
   accessConstTensorBuiltin = functionAccessor ConstTensor
   accessStackTensorBuiltin = functionAccessor StackTensor
   accessAtTensorBuiltin = functionAccessor AtTensor
+  accessTransposeBuiltin = functionAccessor Transpose
 
 --------------------------------------------------------------------------------
 -- Others
@@ -341,14 +364,20 @@ instance BuiltinHasStandardData Builtin where
           _ -> Nothing
       }
 
+instance BuiltinHasDerivedFunction Builtin where
+  accessBuiltinDerivedFunction =
+    Access
+      { mkExpr = DerivedFunction,
+        getExpr = \case
+          DerivedFunction c -> Just c
+          _ -> Nothing
+      }
+
 instance BuiltinHasIterate Builtin where
   accessIterateBuiltin = functionAccessor Iterate
 
 instance BuiltinHasRollout Builtin where
   accessRolloutBuiltin = functionAccessor Rollout
-
-instance BuiltinHasTranspose Builtin where
-  accessTransposeBuiltin = functionAccessor Transpose
 
 ---------------------------------------------------------------------------------
 --- Casts
@@ -365,6 +394,16 @@ accessFromNatToRat ::
   (HasBuiltinConstructor expr) =>
   Accessor (expr Builtin) (FromNatToSimpleArgs (expr Builtin))
 accessFromNatToRat = accessArgs (castAccessor (FromNat FromNatToIndex))
+
+accessFromNatToTime ::
+  (HasBuiltinConstructor expr) =>
+  Accessor (expr Builtin) (FromNatToSimpleArgs (expr Builtin))
+accessFromNatToTime = accessArgs (castAccessor (FromNat FromNatToTime))
+
+accessFromTimeToNat ::
+  (HasBuiltinConstructor expr) =>
+  Accessor (expr Builtin) (Op1Args (expr Builtin))
+accessFromTimeToNat = accessArgs (castAccessor (FromTime FromTimeToNat))
 
 accessFromVectorToList ::
   (HasBuiltinConstructor expr) =>

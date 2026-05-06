@@ -245,9 +245,7 @@ unblockNatValue expr = case toNatValue expr of
   VNatLiteral {} -> return expr
   VNatIf {} -> return expr
   VNatAdd args -> unblockOp2 unblockNatValue evalAddNat args
-  VNatSub args -> unblockOp2 unblockNatValue evalSubNat args
   VNatMul args -> unblockOp2 unblockNatValue evalMulNat args
-  VNatDiv args -> unblockOp2 unblockNatValue evalDivNat args
   VNatBoundVar {} -> unexpectedExprError currentPass (prettyVerbose expr)
   VNatParameter {} -> unexpectedExprError currentPass (prettyVerbose expr)
 
@@ -346,7 +344,31 @@ unblockAtTensor unblock (AtTensorArgs tElem d ds xs i) = do
   liftIf xs' $ \xs'' ->
     liftIf i' $ \i'' -> do
       nameCtx <- getNameContext
-      evalAtTensor nameCtx evalApp eval $ AtTensorArgs tElem d ds xs'' i''
+      let unswappedArgs = AtTensorArgs tElem d ds xs'' i''
+      case rewriteTransposeAt unswappedArgs of
+        Just args' -> evalAtTensor nameCtx evalApp eval args'
+        Nothing -> evalAtTensor nameCtx evalApp eval unswappedArgs
+
+-- | Verifier-local index-through-transpose for 2-D: `(transpose t) ! i ! j`
+-- becomes `(t ! j) ! i` once the chain is fully indexed.
+rewriteTransposeAt ::
+  AtTensorArgs (Value Builtin) ->
+  Maybe (AtTensorArgs (Value Builtin))
+rewriteTransposeAt (AtTensorArgs tElem _outerD outerRemDims outerTensor outerIndex) = do
+  -- Outer `at` must fully consume the tensor.
+  IDimNil <- pure outerRemDims
+  -- Outer's tensor must be itself an `at`.
+  AtTensorArgs _ innerD innerRemDims innerTensor innerIndex <- getExpr accessAtTensor outerTensor
+  -- The inner `at` must leave one dim — i.e., the original transpose was 2-D.
+  IDimCons innerLastDim IDimNil <- pure innerRemDims
+  -- The inner `at`'s tensor must be a transpose.
+  TransposeArgs _ _ underlying <- getExpr accessTranspose innerTensor
+  -- Build the swapped middle access: `t ! outerIndex` (peels the original
+  -- `[innerLastDim, innerD]` tensor along its first dim, leaving `[innerD]`).
+  let midDims = IDimCons innerD IDimNil
+  let midResult = mkExpr accessAtTensor (AtTensorArgs tElem innerLastDim midDims underlying outerIndex)
+  -- Then peel that with the original inner index.
+  pure (AtTensorArgs tElem innerD IDimNil midResult innerIndex)
 
 unblockForeachTensor ::
   (MonadUnblock m) =>

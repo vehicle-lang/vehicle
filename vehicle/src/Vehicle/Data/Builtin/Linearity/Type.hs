@@ -91,7 +91,6 @@ typeOfBuiltinFunction p = \case
   ForeachVector -> typeOfForeach
   Iterate -> typeOfIterate
   Rollout -> typeOfRollout
-  ReverseDims -> constant ~> constant
   Transpose -> typeOfOp1
   Temporal Globally -> typeOfTemporalOp1
   Temporal Finally -> typeOfTemporalOp1
@@ -118,6 +117,7 @@ typeOfConstructor = \case
   NatTensorLiteral {} -> constant
   BoolTensorLiteral {} -> constant
   RatTensorLiteral {} -> constant
+  TimeLiteral {} -> constant
 
 typeOfLinearityRelation :: LinearityRelation -> LinearityDSLExpr
 typeOfLinearityRelation = \case
@@ -235,6 +235,7 @@ convertToLinearityTypes p b args = case b of
     ListType -> return $ extractElementType b args
     VectorType -> return $ extractElementType b args
     TensorType -> return $ extractElementType b args
+    TimeType -> return $ Builtin p $ Linearity Constant
   DerivedFunction f -> return $ normAppList (FreeVar p (identifierOf f)) args
   TypeClass {} -> monomorphisationError b args
   TypeClassOp {} -> monomorphisationError b args

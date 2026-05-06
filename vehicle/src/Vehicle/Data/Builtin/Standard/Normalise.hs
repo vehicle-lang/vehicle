@@ -5,6 +5,8 @@ module Vehicle.Data.Builtin.Standard.Normalise
   )
 where
 
+import Control.Applicative ((<|>))
+import Data.Maybe (fromMaybe)
 import Vehicle.Data.Builtin.Core as Syntax
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Interface.Blocked
@@ -12,7 +14,7 @@ import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
-import Vehicle.Prelude (GenericArg (..), HasIdentifier (identifierOf), explicit)
+import Vehicle.Prelude (GenericArg (..), HasIdentifier (identifierOf))
 
 ---------------------------------------------------------------------------------
 --- Normalisation
@@ -61,9 +63,11 @@ instance NormalisableBuiltin Builtin where
       Temporal {} -> None
       Rollout -> None
       Add AddNat -> Simple evalAddNat
-      Sub SubNat -> Simple evalSubNat
       Mul MulNat -> Simple evalMulNat
-      Div DivNat -> Simple evalDivNat
+      Add AddTime -> Simple evalAddTime
+      Sub SubTime -> Simple evalSubTime
+      Mul MulTime -> Simple evalMulTime
+      Div DivTime -> Simple evalDivTime
       Neg NegRatTensor -> Simple evalNegRatTensor
       Add AddRatTensor -> Simple evalAddRatTensor
       Sub SubRatTensor -> Simple evalSubRatTensor
@@ -89,14 +93,15 @@ instance NormalisableBuiltin Builtin where
       ForeachTensor -> NonSimple evalForeachTensor
       ForeachVector -> NonSimple evalForeachVector
       Iterate -> NonSimple evalIterate
-      ReverseDims -> Simple evalReverseDims
-      Transpose -> None
+      Transpose -> Simple evalTranspose
       QuantifyRatTensor {} -> None
       QuantifyTensorLike {} -> None
     BuiltinCast c -> case c of
       FromNat FromNatToNat -> Simple evalFromNatToNat
       FromNat FromNatToIndex -> Simple evalFromNatToIndex
       FromNat FromNatToRat -> Simple evalFromNatToRat
+      FromNat FromNatToTime -> Simple evalFromNatToTime
+      FromTime FromTimeToNat -> Simple evalFromTimeToNat
       FromRat FromRatToRat -> Simple evalFromRatToRat
       FromVectorToList -> Simple evalVectorToList
     DerivedFunction f -> Derived (identifierOf f)
@@ -117,6 +122,8 @@ instance NormalisableBuiltin Builtin where
       FromNat FromNatToNat -> forceEvalSimpleBuiltin p b evalFromNatToNat
       FromNat FromNatToIndex -> forceEvalSimpleBuiltin p b evalFromNatToIndex
       FromNat FromNatToRat -> forceEvalSimpleBuiltin p b evalFromNatToRat
+      FromNat FromNatToTime -> forceEvalSimpleBuiltin p b evalFromNatToTime
+      FromTime FromTimeToNat -> forceEvalSimpleBuiltin p b evalFromTimeToNat
       FromRat FromRatToRat -> forceEvalSimpleBuiltin p b evalFromRatToRat
       FromVectorToList -> forceEvalSimpleBuiltin p b evalVectorToList
     BuiltinFunction StackTensor ->
@@ -138,6 +145,16 @@ evalFromNatToRat args = return $ case args of
   FromNatToSimpleArgs (INatLiteral n) _ -> IRatLiteral $ fromIntegral n
   _ -> mkExpr accessFromNatToRat args
 
+evalFromNatToTime :: (MonadNormBuiltin m, HasBuiltinConstructor expr) => EvalSimple FromNatToSimpleArgs expr Builtin m
+evalFromNatToTime args = return $ case args of
+  FromNatToSimpleArgs (INatLiteral n) _ -> ITimeLiteral n
+  _ -> mkExpr accessFromNatToTime args
+
+evalFromTimeToNat :: (MonadNormBuiltin m, HasBuiltinConstructor expr) => EvalSimple Op1Args expr Builtin m
+evalFromTimeToNat args = return $ case args of
+  Op1Args (ITimeLiteral n) -> INatLiteral n
+  _ -> mkExpr accessFromTimeToNat args
+
 evalFromRatToRat :: (MonadNormBuiltin m) => EvalSimple Op1Args expr Builtin m
 evalFromRatToRat (Op1Args x) = return x
 
@@ -147,17 +164,44 @@ evalVectorToList args@(VectorToListArgs t d xs) =
     INatLiteral n | n == length xs -> mkListExpr (argExpr t) xs
     _ -> mkExpr accessFromVectorToList args
 
-evalReverseDims :: (MonadNormBuiltin m) => EvalSimple ReverseDimsArgs Value Builtin m
-evalReverseDims (ReverseDimsArgs ds) =
-  return $ case tryReverse IDimNil ds of
-    Just result -> result
-    Nothing -> mkBuiltin accessBuiltinFunction ReverseDims [explicit ds]
+-- | Transpose normalisation. Fold concrete tensors; otherwise leave it for
+-- index-through-transpose in `evalAtTensor`.
+evalTranspose :: (MonadNormBuiltin m) => EvalSimple TransposeArgs Value Builtin m
+evalTranspose args@(TransposeArgs _ resultDims tensor) =
+  return $
+    fromMaybe (mkExpr accessTranspose args) $
+      -- ConstTensor is uniform: only dims change.
+      goConst <|> goStack2D
   where
-    tryReverse :: Value Builtin -> Value Builtin -> Maybe (Value Builtin)
-    tryReverse acc = \case
-      IDimNil -> Just acc
-      IDimCons n rest -> tryReverse (IDimCons n acc) rest
-      _ -> Nothing
+    goConst :: Maybe (Value Builtin)
+    goConst = case getExpr accessConstTensor tensor of
+      Just (ConstTensorArgs t v _) -> Just $ mkExpr accessConstTensor (ConstTensorArgs t v resultDims)
+      Nothing -> Nothing
+
+    -- 2-D Stack of Stacks: rebuild rows by swapping indices.
+    goStack2D :: Maybe (Value Builtin)
+    goStack2D = case getExpr accessStackTensor tensor of
+      Just (StackTensorArgs t outerDim _ rows) -> do
+        innerStacks <- traverse (getExpr accessStackTensor) rows
+        case innerStacks of
+          [] -> Nothing
+          (StackTensorArgs _ innerDim innerRest _ : _) ->
+            -- Only handle 2-D for now: the inner stacks must have empty
+            -- remaining dims.
+            case innerRest of
+              IDimNil -> do
+                let innerCols = map stackElements innerStacks
+                let n = length (head innerCols)
+                if any (\xs -> length xs /= n) innerCols
+                  then Nothing
+                  else do
+                    let transposedRows =
+                          [ mkExpr accessStackTensor (StackTensorArgs t outerDim IDimNil [row !! j | row <- innerCols])
+                            | j <- [0 .. n - 1]
+                          ]
+                    Just $ mkExpr accessStackTensor (StackTensorArgs t innerDim (IDimCons outerDim IDimNil) transposedRows)
+              _ -> Nothing
+      Nothing -> Nothing
 
 foldReduceAndComparison ::
   TensorReductionArgs (Value Builtin) ->

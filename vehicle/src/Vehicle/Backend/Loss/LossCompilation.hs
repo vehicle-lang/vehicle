@@ -73,6 +73,7 @@ convertType typ = logConversion typ $ case toTypeValue typ of
   VRatTensorType ds -> ITensorType IRatType <$> convertDims ds
   VNatTensorType ds -> ITensorType INatType <$> convertDims ds
   VIndexTensorType n ds -> (ITensorType . IIndexType <$> convertDim n) <*> convertDims ds
+  VTimeType -> unsupportedOperation "TimeType"
 
 convertBoolType :: (MonadLogic m) => m (VType LossBuiltin)
 convertBoolType = return IRatType
@@ -95,9 +96,7 @@ convertDim value = logConversion value $ case toNatValue value of
   VNatParameter ident -> return $ VFreeVar ident []
   VNatLiteral i -> return $ mkExpr accessNatLiteral i
   VNatAdd args -> mkExpr accessAddNat <$> traverseOp2Args convertDim args
-  VNatSub args -> mkExpr accessSubNat <$> traverseOp2Args convertDim args
   VNatMul args -> mkExpr accessMulNat <$> traverseOp2Args convertDim args
-  VNatDiv args -> mkExpr accessDivNat <$> traverseOp2Args convertDim args
   VNatIf {} -> unsupportedOperation "if"
 
 convertDims ::
@@ -402,7 +401,7 @@ convertTemporalOp1 ::
   TemporalOp1Args (Value Builtin) ->
   m (TemporalOp1Args (Value LossBuiltin))
 convertTemporalOp1 go (TemporalOp1Args ds a b x) =
-  TemporalOp1Args <$> convertDims ds <*> convertDim a <*> convertDim b <*> go x
+  TemporalOp1Args <$> convertDims ds <*> convertTimeBound a <*> convertTimeBound b <*> go x
 
 convertTemporalOp2 ::
   (MonadLogic m) =>
@@ -410,7 +409,19 @@ convertTemporalOp2 ::
   TemporalOp2Args (Value Builtin) ->
   m (TemporalOp2Args (Value LossBuiltin))
 convertTemporalOp2 go (TemporalOp2Args ds a b x y) =
-  TemporalOp2Args <$> convertDims ds <*> convertDim a <*> convertDim b <*> go x <*> go y
+  TemporalOp2Args <$> convertDims ds <*> convertTimeBound a <*> convertTimeBound b <*> go x <*> go y
+
+-- | Convert a Time-typed temporal bound to its Nat-shaped LossBuiltin
+-- representation. Time and Nat share runtime semantics (saturating-sub,
+-- total-div); the type-level distinction exists only for compile-time
+-- discipline. Bounds always reduce to literals before reaching the loss
+-- backend (the typechecker enforces this), so a literal-only conversion
+-- is sufficient.
+convertTimeBound :: (MonadLogic m) => Value Builtin -> m (Value LossBuiltin)
+convertTimeBound value = case value of
+  ITimeLiteral n -> return $ mkExpr accessNatLiteral n
+  INatLiteral n -> return $ mkExpr accessNatLiteral n
+  _ -> unsupportedOperation "non-literal temporal bound (compile-time reduction failed)"
 
 convertAtTensor ::
   (MonadLogic m) =>
@@ -480,7 +491,10 @@ convertRollout (RolloutArgs sType aType sDims aDims n ctrl dyn s0) = do
   aType' <- convertType aType
   sDims' <- convertDims sDims
   aDims' <- convertDims aDims
-  n' <- convertDim n
+  -- `n` is `Time`-typed (rollout asks "how many timesteps?"); reuse the
+  -- temporal-bound converter so a literal Time value bridges to a Nat
+  -- literal locally without polluting `convertDim`'s view.
+  n' <- convertTimeBound n
   ctrl' <- convertFunction convertRatTensor ctrl
   dyn' <- convertFunction convertRatTensor dyn
   s0' <- convertRatTensor s0

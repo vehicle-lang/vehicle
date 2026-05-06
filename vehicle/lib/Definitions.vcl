@@ -20,6 +20,21 @@ existsInList : (A -> Bool) -> List A -> Bool
 existsInList f xs = fold (\x y -> x or y) False (map f xs)
 
 --------------------------------------------------------------------------------
+-- List
+--------------------------------------------------------------------------------
+
+-- List append. Cons-only definition via the right-fold primitive `fold`.
+append : List A -> List A -> List A
+append xs ys = fold (\x acc -> x :: acc) ys xs
+
+-- Reverse a list. Implemented via fold and append; used in dimension lists
+-- (e.g. inside `transpose`'s type signature). The expression-level form is
+-- O(N²) via repeated append, but dim lists are tiny so the cost is
+-- irrelevant.
+reverse : List A -> List A
+reverse xs = fold (\x acc -> append acc (x :: [])) [] xs
+
+--------------------------------------------------------------------------------
 -- Tensor
 --------------------------------------------------------------------------------
 -- These operations have non-zero dimensions so that we have a unique
@@ -72,6 +87,10 @@ natHasAdd = { addTC = addNat }
 realTensorHasAdd : HasAdd (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
 realTensorHasAdd = { addTC = addRealTensor }
 
+@instance(default=2)
+timeHasAdd : HasAdd Time Time Time
+timeHasAdd = { addTC = addTime }
+
 -- HasSub
 @typeclass
 record HasSub t1 t2 t3 where
@@ -79,12 +98,12 @@ record HasSub t1 t2 t3 where
   }
 
 @instance(default=0)
-natHasSub : HasSub Nat Nat Nat
-natHasSub = { subTC = subNat }
-
-@instance(default=1)
 realTensorHasSub : HasSub (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
 realTensorHasSub = { subTC = subRealTensor }
+
+@instance(default=1)
+timeHasSub : HasSub Time Time Time
+timeHasSub = { subTC = subTime }
 
 -- HasMul
 @typeclass
@@ -100,6 +119,10 @@ natHasMul = { mulTC = mulNat }
 realTensorHasMul : HasMul (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
 realTensorHasMul = { mulTC = mulRealTensor }
 
+@instance(default=2)
+timeHasMul : HasMul Time Time Time
+timeHasMul = { mulTC = mulTime }
+
 -- HasDiv
 @typeclass
 record HasDiv t1 t2 t3 where
@@ -107,12 +130,12 @@ record HasDiv t1 t2 t3 where
   }
 
 @instance(default=0)
-natHasDiv : HasDiv Nat Nat Nat
-natHasDiv = { divTC = divNat }
-
-@instance(default=1)
 realTensorHasDiv : HasDiv (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
 realTensorHasDiv = { divTC = divRealTensor }
+
+@instance(default=1)
+timeHasDiv : HasDiv Time Time Time
+timeHasDiv = { divTC = divTime }
 
 -- Quantifiers
 @typeclass

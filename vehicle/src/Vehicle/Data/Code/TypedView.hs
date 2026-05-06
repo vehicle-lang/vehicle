@@ -64,6 +64,7 @@ data TypeValue
   | VIndexTensorType (Value Builtin) (Value Builtin)
   | VListType (Value Builtin)
   | VVectorType (Value Builtin) (Value Builtin)
+  | VTimeType
   | VPiType (VBinder Builtin) (Closure Builtin)
   | VBoundTypeVar Lv (Spine Builtin)
   | VFreeTypeVar Identifier (Spine Builtin)
@@ -85,6 +86,7 @@ toTypeValue t = case t of
     (TensorType, [toTypeValue . argExpr -> VNatType, ds]) -> VNatTensorType (argExpr ds)
     (TensorType, [toTypeValue . argExpr -> VIndexType n, ds]) -> VIndexTensorType n (argExpr ds)
     (VectorType, [tElem, dim]) -> VVectorType (argExpr tElem) (argExpr dim)
+    (TimeType, []) -> VTimeType
     _ -> err
   _ -> err
   where
@@ -106,6 +108,7 @@ fromTypeValue t = case t of
   VNatTensorType ds -> ITensorType (fromTypeValue VNatType) ds
   VIndexTensorType n ds -> ITensorType (fromTypeValue (VIndexType n)) ds
   VVectorType tElem d -> IVectorType tElem d
+  VTimeType -> VBuiltin (BuiltinType TimeType) []
 
 -------------------------------------------------------------------------------
 -- Index
@@ -132,9 +135,7 @@ data NatValue
   | VNatBoundVar Lv (Spine Builtin)
   | VNatIf (IfArgs (Value Builtin))
   | VNatAdd (Op2Args (Value Builtin))
-  | VNatSub (Op2Args (Value Builtin))
   | VNatMul (Op2Args (Value Builtin))
-  | VNatDiv (Op2Args (Value Builtin))
   | VNatParameter Identifier
 
 toNatValue :: (HasCallStack) => Value Builtin -> NatValue
@@ -144,9 +145,7 @@ toNatValue expr = case expr of
   (getExpr accessNatLiteral -> Just i) -> VNatLiteral i
   (getExpr accessIf -> Just args) -> VNatIf args
   (getExpr accessAddNat -> Just args) -> VNatAdd args
-  (getExpr accessSubNat -> Just args) -> VNatSub args
   (getExpr accessMulNat -> Just args) -> VNatMul args
-  (getExpr accessDivNat -> Just args) -> VNatDiv args
   _ -> developerError $ "ill-typed Nat expression:" <+> prettyVerbose expr
 
 fromNatValue :: NatValue -> Value Builtin
@@ -156,9 +155,7 @@ fromNatValue = \case
   VNatLiteral i -> mkExpr accessNatLiteral i
   VNatIf args -> mkExpr accessIf args
   VNatAdd args -> mkExpr accessAddNat args
-  VNatSub args -> mkExpr accessSubNat args
   VNatMul args -> mkExpr accessMulNat args
-  VNatDiv args -> mkExpr accessDivNat args
 
 -------------------------------------------------------------------------------
 -- Vector

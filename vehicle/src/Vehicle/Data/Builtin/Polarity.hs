@@ -164,9 +164,7 @@ instance BuiltinHasNatLiterals PolarityBuiltin where
       }
 
   accessAddNatBuiltin = functionAccessor $ Add AddNat
-  accessSubNatBuiltin = functionAccessor $ Sub SubNat
   accessMulNatBuiltin = functionAccessor $ Mul MulNat
-  accessDivNatBuiltin = functionAccessor $ Div DivNat
 
 instance BuiltinHasListLiterals PolarityBuiltin where
   accessNilBuiltin =
@@ -194,7 +192,10 @@ instance BuiltinHasIterate PolarityBuiltin where
 instance BuiltinHasRollout PolarityBuiltin where
   accessRolloutBuiltin = functionAccessor Rollout
 
-instance BuiltinHasTranspose PolarityBuiltin where
+instance BuiltinHasTensors PolarityBuiltin where
+  accessStackTensorBuiltin = functionAccessor StackTensor
+  accessConstTensorBuiltin = functionAccessor ConstTensor
+  accessAtTensorBuiltin = functionAccessor AtTensor
   accessTransposeBuiltin = functionAccessor Transpose
 
 -----------------------------------------------------------------------------

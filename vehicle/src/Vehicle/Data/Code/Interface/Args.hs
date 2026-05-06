@@ -396,20 +396,6 @@ instance IsArgs TransposeArgs where
 traverseTransposeTensor :: (Applicative f) => (t -> f t) -> TransposeArgs t -> f (TransposeArgs t)
 traverseTransposeTensor f (TransposeArgs t ds xs) = TransposeArgs t ds <$> f xs
 
--- | Arguments for `ReverseDims`
-newtype ReverseDimsArgs expr = ReverseDimsArgs
-  { reverseDimsInput :: expr
-  }
-
-instance IsArgs ReverseDimsArgs where
-  accessSpine =
-    Access
-      { getExpr = \case
-          (fmap argExpr -> [ds]) -> Just $ ReverseDimsArgs ds
-          _ -> Nothing,
-        mkExpr = \(ReverseDimsArgs ds) -> [explicit ds]
-      }
-
 -- | Arguments for `ForeachVector`
 data ForeachVectorArgs expr = ForeachVectorArgs
   { foreachVectorType :: expr,

@@ -345,7 +345,6 @@ isLiftableOp = \case
   Rollout -> False
   Temporal {} -> False
   Transpose -> False
-  ReverseDims -> False
 
 reduceOp :: BuiltinFunction -> Maybe BuiltinFunction
 reduceOp = \case
@@ -386,7 +385,6 @@ reduceOp = \case
   Rollout -> Nothing
   Temporal {} -> Nothing
   Transpose -> Nothing
-  ReverseDims -> Nothing
 
 type MonadCompileBody m =
   ( MonadLogger m,

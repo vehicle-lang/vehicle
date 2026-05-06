@@ -6,10 +6,14 @@ module Vehicle.Backend.Loss.JSON
   )
 where
 
-import Data.Aeson (ToJSON (..), genericToJSON)
+import Data.Aeson (ToJSON (..), camelTo2, fieldLabelModifier, genericToJSON)
 import Data.List (elemIndex)
 import Data.Map qualified as Map
+import Data.Maybe (listToMaybe)
 import Data.Ratio (Ratio)
+import Data.Set (Set)
+import Data.Set qualified as Set
+import Data.Text qualified as Text
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), (<+>))
 import Vehicle.Compile.Arity
@@ -58,7 +62,12 @@ convertFromJSONProg = fromJProg
 data JProg = Main [JDecl] JLogicMetadata
   deriving (Generic)
 
-data JLogicMetadata = JLogicMetadata JExpr JExpr JExpr JExpr L.LogicDirection
+data JLogicMetadata = JLogicMetadata
+  { conjunction :: JExpr,
+    disjunction :: JExpr,
+    conjunctionIdentity :: JExpr,
+    disjunctionIdentity :: JExpr
+  }
   deriving (Show, Generic)
 
 data JDecl
@@ -67,7 +76,7 @@ data JDecl
 
 data JBinder
   = Binder Provenance Name JType
-  deriving (Show, Generic)
+  deriving (Show, Eq, Generic)
 
 data JType
   = Pi JType JType
@@ -77,11 +86,12 @@ data JType
   | DimensionsType
   | DimensionIndexType
   | TypeVar Name [JExpr]
-  deriving (Show, Generic)
+  deriving (Show, Eq, Generic)
 
 data JExpr
   = -- Types
     Lam JBinder JExpr
+  | App Provenance JExpr [JExpr]
   | Var Name [JExpr]
   | -- Rational tensors
     RatTensor (Tensor Rat)
@@ -111,7 +121,7 @@ data JExpr
   | ForeachTensor JExpr JExpr -- (firstDim, fn/lambda)
   | StackTensor [JExpr]
   | Transpose JExpr -- (tensor): reverses every axis
-  deriving (Show, Generic)
+  deriving (Show, Eq, Generic)
 
 -- NOTE:
 -- Keep JSON rationals unbounded to avoid internal overflows during conversion.
@@ -128,7 +138,7 @@ instance ToJSON JProg where
   toJSON = genericToJSON jsonOptions
 
 instance ToJSON JLogicMetadata where
-  toJSON = genericToJSON jsonOptions
+  toJSON = genericToJSON jsonOptions {fieldLabelModifier = camelTo2 '_'}
 
 instance ToJSON JDecl where
   toJSON = genericToJSON jsonOptions
@@ -170,12 +180,14 @@ convertLogicMetadata ::
   (MonadJSON m) =>
   DifferentiableLogicImplementation ->
   m JLogicMetadata
-convertLogicMetadata (logicMap, direction) = do
+convertLogicMetadata (logicMap, _sourceDirection) = do
   conj <- convertField PointwiseConjunction
   disj <- convertField PointwiseDisjunction
   conjId <- convertField TruthityElement
   disjId <- convertField FalsityElement
-  return $ JLogicMetadata conj disj conjId disjId direction
+  -- LogicDirection is consumed only by SearchRatTensor (per-search min/max);
+  -- it is not part of the per-property metadata exposed to downstream tools.
+  return $ JLogicMetadata conj disj conjId disjId
   where
     convertField field = convertValue (logicMap Map.! field)
 
@@ -186,7 +198,7 @@ convertDecl = \case
   S.DefFunction p ident _ typ body -> do
     typ' <- convertType emptyBoundEnv typ
     expr' <- convertExpr emptyBoundEnv body
-    return $ DefFunction p (nameOf ident) typ' expr'
+    return $ DefFunction p (nameOf ident) typ' (hoistRollouts expr')
 
 --------------------------------------------------------------------------------
 -- Types
@@ -227,6 +239,7 @@ convertBuiltinType b spine = case b of
     L.RatType -> convertNullaryOp b RatType spine
     L.ListType -> return DimensionsType -- always List Nat in dimension context; drop the Nat arg
     L.TensorType -> convertTensorType spine
+    L.TimeType -> unsupportedError b
   _ -> dependentTypesError b
 
 convertTensorType :: (MonadJSON m) => Spine LossBuiltin -> m JType
@@ -319,9 +332,13 @@ convertBuiltin b spine = case b of
     L.SearchRatTensor name minimise -> convertSearch name minimise spine
     -- Dimension operations, not yet converted
     L.Add L.AddNat -> unsupportedError b
-    L.Sub L.SubNat -> unsupportedError b
     L.Mul L.MulNat -> unsupportedError b
-    L.Div L.DivNat -> unsupportedError b
+    -- Time arithmetic should be reduced to literals at compile time before
+    -- reaching the loss backend; if it survives, it is a compiler bug.
+    L.Add L.AddTime -> unsupportedError b
+    L.Sub L.SubTime -> unsupportedError b
+    L.Mul L.MulTime -> unsupportedError b
+    L.Div L.DivTime -> unsupportedError b
     L.Rollout -> convertRollout convertValue spine
     L.Transpose -> convertTranspose convertValue spine
     L.MapList -> unsupportedError b
@@ -524,6 +541,10 @@ fromJExpr = \case
     binder' <- fromJBinder binder
     body' <- addNameToContext binder' (fromJExpr body)
     return $ S.Lam mempty binder' body'
+  App _ fn args -> do
+    fn' <- fromJExpr fn
+    args' <- traverse fromJExpr args
+    return $ normAppList fn' (fmap explicit args')
   Var name spine -> do
     nameCtx <- getNameContext
     let ix = maybe (developerError ("ill-scoped JExpr, no variable" <+> squotes (pretty name))) Ix (elemIndex (Just name) nameCtx)
@@ -571,3 +592,171 @@ toConstructor op = toExpr fromJExpr (LossBuiltinConstructor op)
 
 toFunction :: (MonadNameContext m) => LossBuiltinFunction -> [JExpr] -> m (S.Expr LossBuiltin)
 toFunction op = toExpr fromJExpr (LossBuiltinFunction op)
+
+--------------------------------------------------------------------------------
+-- Rollout let-hoisting
+--
+-- Foreach expansion can duplicate rollouts. Hoist each distinct rollout into a
+-- lambda wrapper so it runs once per declaration evaluation.
+--------------------------------------------------------------------------------
+
+-- | Hoist each unique `Rollout` into the deepest Lam that binds any of its
+-- free variables. Skip rollouts with no Lam-bound free vars.
+hoistRollouts :: JExpr -> JExpr
+hoistRollouts originalExpr =
+  let tagged = tagRollouts originalExpr
+      substituted = substituteRollouts tagged originalExpr
+   in placeWraps tagged substituted
+
+type Path = [Int]
+
+tagRollouts :: JExpr -> [(Path, JExpr, Name)]
+tagRollouts expr =
+  let sites = collectRolloutSites expr
+      uniqSites = uniqueRolloutSites sites
+   in zipWith
+        (\i (site, r) -> (site, r, "__rollout_" <> Text.pack (show i)))
+        [0 :: Int ..]
+        uniqSites
+
+-- | Insert wrappers at the Lam that matches each rollout's hoist site.
+placeWraps :: [(Path, JExpr, Name)] -> JExpr -> JExpr
+placeWraps tagged = go []
+  where
+    go path (Lam b body) =
+      let body' = go (path ++ [0]) body
+          wraps = [(r, n) | (target, r, n) <- tagged, target == path]
+          wrappedBody = foldr wrapAppLam body' wraps
+       in Lam b wrappedBody
+    go path e =
+      mapJExprChildrenWithIndex
+        (\i child -> go (path ++ [i]) child)
+        e
+
+wrapAppLam :: (JExpr, Name) -> JExpr -> JExpr
+wrapAppLam (rollout, name) inner =
+  let binder = Binder mempty name (TypeVar "_" [])
+   in App mempty (Lam binder inner) [rollout]
+
+rolloutHoistSite :: [(Name, Path)] -> JExpr -> Maybe Path
+rolloutHoistSite lamStack r =
+  let fvs = freeVars r
+   in case [p | (n, p) <- lamStack, n `Set.member` fvs] of
+        (p : _) -> Just p
+        [] -> Nothing
+
+binderNameOf :: JBinder -> Name
+binderNameOf (Binder _ n _) = n
+
+-- | Free variable names in a @JExpr@, accounting for Lam binders.
+freeVars :: JExpr -> Set Name
+freeVars = go Set.empty
+  where
+    go bound e = case e of
+      Var n args ->
+        let here = if n `Set.member` bound then Set.empty else Set.singleton n
+         in Set.union here (Set.unions (map (go bound) args))
+      Lam b body -> go (Set.insert (binderNameOf b) bound) body
+      _ -> Set.unions (map (go bound) (jExprChildren e))
+
+collectRolloutSites :: JExpr -> [(Path, JExpr)]
+collectRolloutSites = go [] []
+  where
+    go path lamStack e = case e of
+      r@Rollout {} ->
+        let site = rolloutHoistSite lamStack r
+         in maybe [] (\p -> [(p, r)]) site
+      Lam b body ->
+        let lamStack' = (binderNameOf b, path) : lamStack
+         in go (path ++ [0]) lamStack' body
+      _ ->
+        concat
+          [ go (path ++ [i]) lamStack child
+            | (i, child) <- zip [0 :: Int ..] (jExprChildren e)
+          ]
+
+uniqueRolloutSites :: [(Path, JExpr)] -> [(Path, JExpr)]
+uniqueRolloutSites [] = []
+uniqueRolloutSites (x : xs) = x : uniqueRolloutSites (filter (/= x) xs)
+
+substituteRollouts :: [(Path, JExpr, Name)] -> JExpr -> JExpr
+substituteRollouts tagged = go [] []
+  where
+    lookupTag site rollout =
+      listToMaybe [n | (target, r, n) <- tagged, target == site, r == rollout]
+    go path lamStack e = case e of
+      r@Rollout {} ->
+        case rolloutHoistSite lamStack r of
+          Just site -> maybe e (\n -> Var n []) (lookupTag site r)
+          Nothing -> r
+      Lam b body ->
+        let lamStack' = (binderNameOf b, path) : lamStack
+         in Lam b (go (path ++ [0]) lamStack' body)
+      _ ->
+        mapJExprChildrenWithIndex
+          (\i child -> go (path ++ [i]) lamStack child)
+          e
+
+jExprChildren :: JExpr -> [JExpr]
+jExprChildren = \case
+  Lam _ b -> [b]
+  App _ f args -> f : args
+  Var _ args -> args
+  RatTensor _ -> []
+  NegRatTensor x -> [x]
+  AddRatTensor a b -> [a, b]
+  SubRatTensor a b -> [a, b]
+  MulRatTensor a b -> [a, b]
+  DivRatTensor a b -> [a, b]
+  MinRatTensor a b -> [a, b]
+  MaxRatTensor a b -> [a, b]
+  ReduceAddRatTensor a b -> [a, b]
+  ReduceMulRatTensor a b -> [a, b]
+  ReduceMinRatTensor a b -> [a, b]
+  ReduceMaxRatTensor a b -> [a, b]
+  Globally a b c -> [a, b, c]
+  Finally a b c -> [a, b, c]
+  Until a b c d -> [a, b, c, d]
+  Rollout a b c d -> [a, b, c, d]
+  SearchRatTensor _ a b c d e _ -> [a, b, c, d, e]
+  Dimension _ -> []
+  DimensionNil -> []
+  DimensionCons a b -> [a, b]
+  DimensionIndex _ -> []
+  DimensionLookup a b -> [a, b]
+  ConstTensor a b -> [a, b]
+  ForeachTensor a b -> [a, b]
+  StackTensor xs -> xs
+  Transpose x -> [x]
+
+mapJExprChildrenWithIndex :: (Int -> JExpr -> JExpr) -> JExpr -> JExpr
+mapJExprChildrenWithIndex f = \case
+  Lam b body -> Lam b (f 0 body)
+  App p fn args -> App p (f 0 fn) (zipWith f [1 :: Int ..] args)
+  Var n args -> Var n (zipWith f [0 :: Int ..] args)
+  e@(RatTensor _) -> e
+  NegRatTensor x -> NegRatTensor (f 0 x)
+  AddRatTensor a b -> AddRatTensor (f 0 a) (f 1 b)
+  SubRatTensor a b -> SubRatTensor (f 0 a) (f 1 b)
+  MulRatTensor a b -> MulRatTensor (f 0 a) (f 1 b)
+  DivRatTensor a b -> DivRatTensor (f 0 a) (f 1 b)
+  MinRatTensor a b -> MinRatTensor (f 0 a) (f 1 b)
+  MaxRatTensor a b -> MaxRatTensor (f 0 a) (f 1 b)
+  ReduceAddRatTensor a b -> ReduceAddRatTensor (f 0 a) (f 1 b)
+  ReduceMulRatTensor a b -> ReduceMulRatTensor (f 0 a) (f 1 b)
+  ReduceMinRatTensor a b -> ReduceMinRatTensor (f 0 a) (f 1 b)
+  ReduceMaxRatTensor a b -> ReduceMaxRatTensor (f 0 a) (f 1 b)
+  Globally a b c -> Globally (f 0 a) (f 1 b) (f 2 c)
+  Finally a b c -> Finally (f 0 a) (f 1 b) (f 2 c)
+  Until a b c d -> Until (f 0 a) (f 1 b) (f 2 c) (f 3 d)
+  Rollout a b c d -> Rollout (f 0 a) (f 1 b) (f 2 c) (f 3 d)
+  SearchRatTensor n a b c d e dir -> SearchRatTensor n (f 0 a) (f 1 b) (f 2 c) (f 3 d) (f 4 e) dir
+  e@(Dimension _) -> e
+  DimensionNil -> DimensionNil
+  DimensionCons a b -> DimensionCons (f 0 a) (f 1 b)
+  e@(DimensionIndex _) -> e
+  DimensionLookup a b -> DimensionLookup (f 0 a) (f 1 b)
+  ConstTensor a b -> ConstTensor (f 0 a) (f 1 b)
+  ForeachTensor a b -> ForeachTensor (f 0 a) (f 1 b)
+  StackTensor xs -> StackTensor (zipWith f [0 :: Int ..] xs)
+  Transpose x -> Transpose (f 0 x)

@@ -385,6 +385,7 @@ elabExpr expr = case expr of
   B.Bool tk -> castToTensorType V.BoolType tk
   B.Real tk -> castToTensorType V.RatType tk
   B.Nat tk -> builtinType V.NatType tk []
+  B.Time tk -> builtinType V.TimeType tk []
   B.List tk -> builtinType V.ListType tk []
   B.Vector tk -> builtinType V.VectorType tk []
   B.Tensor tk -> builtinTypeClassOp V.TensorTypeTC tk []
@@ -421,9 +422,12 @@ elabExpr expr = case expr of
   B.Max tk -> builtinFunction (V.Max V.MaxRatTensor) tk []
   B.Neg tk e -> builtinTypeClassOp V.NegTC tk [e]
   B.AddNat tk -> builtinFunction (V.Add V.AddNat) tk []
-  B.SubNat tk -> builtinFunction (V.Sub V.SubNat) tk []
   B.MulNat tk -> builtinFunction (V.Mul V.MulNat) tk []
-  B.DivNat tk -> builtinFunction (V.Div V.DivNat) tk []
+  B.AddTime tk -> builtinFunction (V.Add V.AddTime) tk []
+  B.SubTime tk -> builtinFunction (V.Sub V.SubTime) tk []
+  B.MulTime tk -> builtinFunction (V.Mul V.MulTime) tk []
+  B.DivTime tk -> builtinFunction (V.Div V.DivTime) tk []
+  B.FromNatToTime tk -> builtin (V.BuiltinCast (V.FromNat V.FromNatToTime)) tk []
   B.AddRealTensor tk -> builtinFunction (V.Add V.AddRatTensor) tk []
   B.SubRealTensor tk -> builtinFunction (V.Sub V.SubRatTensor) tk []
   B.MulRealTensor tk -> builtinFunction (V.Mul V.MulRatTensor) tk []

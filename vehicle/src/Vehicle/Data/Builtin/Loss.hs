@@ -28,6 +28,7 @@ data LossBuiltinType
   | RatType
   | ListType
   | TensorType
+  | TimeType
   deriving (Eq, Ord, Show)
 
 instance Pretty LossBuiltinType where
@@ -38,6 +39,7 @@ instance Pretty LossBuiltinType where
     RatType -> "RatElement"
     ListType -> "List"
     TensorType -> "Tensor"
+    TimeType -> "Time"
 
 --------------------------------------------------------------------------------
 -- Builtin datatype
@@ -204,9 +206,7 @@ instance BuiltinHasNatLiterals LossBuiltin where
       }
 
   accessAddNatBuiltin = functionAccessor (Add AddNat)
-  accessSubNatBuiltin = functionAccessor (Sub SubNat)
   accessMulNatBuiltin = functionAccessor (Mul MulNat)
-  accessDivNatBuiltin = functionAccessor (Div DivNat)
 
 --------------------------------------------------------------------------------
 -- Rat
@@ -272,6 +272,7 @@ instance BuiltinHasTensors LossBuiltin where
   accessConstTensorBuiltin = functionAccessor ConstTensor
   accessStackTensorBuiltin = functionAccessor StackTensor
   accessAtTensorBuiltin = functionAccessor At
+  accessTransposeBuiltin = functionAccessor Transpose
 
 instance BuiltinHasForeach LossBuiltin where
   accessForeachTensorBuiltin = functionAccessor ForeachTensor
@@ -279,9 +280,6 @@ instance BuiltinHasForeach LossBuiltin where
 
 instance BuiltinHasRollout LossBuiltin where
   accessRolloutBuiltin = functionAccessor Rollout
-
-instance BuiltinHasTranspose LossBuiltin where
-  accessTransposeBuiltin = functionAccessor Transpose
 
 --------------------------------------------------------------------------------
 -- Normalisation
@@ -310,9 +308,11 @@ instance NormalisableBuiltin LossBuiltin where
   evalScheme = \case
     LossBuiltinFunction f -> case f of
       Add AddNat -> Simple evalAddNat
-      Sub SubNat -> Simple evalSubNat
       Mul MulNat -> Simple evalMulNat
-      Div DivNat -> Simple evalDivNat
+      Add AddTime -> None
+      Sub SubTime -> None
+      Mul MulTime -> None
+      Div DivTime -> None
       Neg NegRatTensor -> Simple evalNegRatTensor
       Add AddRatTensor -> Simple evalAddRatTensor
       Sub SubRatTensor -> Simple evalSubRatTensor
@@ -356,6 +356,7 @@ instance ConvertableBuiltin LossBuiltinType Builtin where
       RatType -> S.RatType
       ListType -> S.ListType
       TensorType -> S.TensorType
+      TimeType -> S.TimeType
 
 instance ConvertableBuiltin LossBuiltinConstructor Builtin where
   convertBuiltin p =

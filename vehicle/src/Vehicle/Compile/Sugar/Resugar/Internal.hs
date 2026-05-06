@@ -53,7 +53,7 @@ instance Delaborate V.DefAbstractSort (B.NameToken -> B.Expr -> B.Decl) where
   delabM sort = return $ case sort of
     V.BuiltinDef {} -> B.DeclPost
     V.NetworkDef -> B.DeclNetw
-    V.DynamicsDef -> B.DeclNetw
+    V.DynamicsDef -> B.DeclDynamics
     V.DatasetDef -> B.DeclData
     V.ParameterDef paramSort -> case paramSort of
       V.NonInferable -> B.DeclParam

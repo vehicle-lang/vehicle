@@ -13,7 +13,7 @@ import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Interface.Blocked
 import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Interface.Print
-import Vehicle.Data.Builtin.Standard (Builtin, BuiltinConstructor (..), BuiltinFunction (..), BuiltinType (..))
+import Vehicle.Data.Builtin.Standard (Builtin, BuiltinCast (..), BuiltinConstructor (..), BuiltinFunction (..), BuiltinType (..))
 import Vehicle.Data.Code.DSL (tDim, tDims)
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.DSL
@@ -110,6 +110,7 @@ data DecidabilityBuiltin
   | StandardBuiltinFunction BuiltinFunction
   | StandardBuiltinConstructor BuiltinConstructor
   | StandardBuiltinDerivedFunction DerivedFunction
+  | StandardBuiltinCast BuiltinCast
   | DecidabilityBuiltinTypeClass DecidabilityBuiltinTypeClass
   | DecidabilityBuiltinTypeClassOp DecidabilityBuiltinTypeClassOp
   | DecidabilityBuiltinFunction DecidabilityBuiltinFunction
@@ -127,6 +128,15 @@ functionAccessor b =
         StandardBuiltinFunction b1 | b == b1 -> Just ()
         _ -> Nothing,
       mkExpr = \() -> StandardBuiltinFunction b
+    }
+
+castAccessor :: BuiltinCast -> Accessor DecidabilityBuiltin ()
+castAccessor c =
+  Access
+    { getExpr = \case
+        StandardBuiltinCast c1 | c == c1 -> Just ()
+        _ -> Nothing,
+      mkExpr = \() -> StandardBuiltinCast c
     }
 
 instance BuiltinHasStandardTypes DecidabilityBuiltin where
@@ -166,6 +176,15 @@ instance BuiltinHasStandardData DecidabilityBuiltin where
           _ -> Nothing
       }
 
+instance BuiltinHasDerivedFunction DecidabilityBuiltin where
+  accessBuiltinDerivedFunction =
+    Access
+      { mkExpr = StandardBuiltinDerivedFunction,
+        getExpr = \case
+          StandardBuiltinDerivedFunction c -> Just c
+          _ -> Nothing
+      }
+
 instance BuiltinHasNatLiterals DecidabilityBuiltin where
   accessNatLitBuiltin =
     Access
@@ -184,9 +203,23 @@ instance BuiltinHasNatLiterals DecidabilityBuiltin where
       }
 
   accessAddNatBuiltin = functionAccessor (Add AddNat)
-  accessSubNatBuiltin = functionAccessor (Sub SubNat)
   accessMulNatBuiltin = functionAccessor (Mul MulNat)
-  accessDivNatBuiltin = functionAccessor (Div DivNat)
+
+instance BuiltinHasTimeLiterals DecidabilityBuiltin where
+  accessTimeLitBuiltin =
+    Access
+      { getExpr = \case
+          StandardBuiltinConstructor (TimeLiteral n) -> Just n
+          _ -> Nothing,
+        mkExpr = StandardBuiltinConstructor . TimeLiteral
+      }
+
+  accessAddTimeBuiltin = functionAccessor (Add AddTime)
+  accessSubTimeBuiltin = functionAccessor (Sub SubTime)
+  accessMulTimeBuiltin = functionAccessor (Mul MulTime)
+  accessDivTimeBuiltin = functionAccessor (Div DivTime)
+  accessFromNatToTimeBuiltin = castAccessor (FromNat FromNatToTime)
+  accessFromTimeToNatBuiltin = castAccessor (FromTime FromTimeToNat)
 
 instance BuiltinHasListLiterals DecidabilityBuiltin where
   accessNilBuiltin =
@@ -214,7 +247,10 @@ instance BuiltinHasIterate DecidabilityBuiltin where
 instance BuiltinHasRollout DecidabilityBuiltin where
   accessRolloutBuiltin = functionAccessor Rollout
 
-instance BuiltinHasTranspose DecidabilityBuiltin where
+instance BuiltinHasTensors DecidabilityBuiltin where
+  accessStackTensorBuiltin = functionAccessor StackTensor
+  accessConstTensorBuiltin = functionAccessor ConstTensor
+  accessAtTensorBuiltin = functionAccessor AtTensor
   accessTransposeBuiltin = functionAccessor Transpose
 
 --------------------------------------------------------------------------------
@@ -269,6 +305,7 @@ instance Pretty DecidabilityBuiltin where
     StandardBuiltinFunction f -> pretty f
     StandardBuiltinConstructor c -> pretty c
     StandardBuiltinDerivedFunction f -> pretty f
+    StandardBuiltinCast c -> pretty c
     DecidabilityBuiltinTypeClass t -> pretty t
     DecidabilityBuiltinTypeClassOp t -> pretty t
     DecidabilityBuiltinFunction f -> pretty f
@@ -279,6 +316,7 @@ instance ConvertableBuiltin DecidabilityBuiltin Builtin where
     StandardBuiltinFunction f -> convertBuiltin p f
     StandardBuiltinConstructor c -> convertBuiltin p c
     StandardBuiltinDerivedFunction f -> convertBuiltin p f
+    StandardBuiltinCast c -> cheatConvertBuiltin p (pretty c)
     DecidabilityBuiltinTypeClass t -> cheatConvertBuiltin p (pretty t)
     DecidabilityBuiltinTypeClassOp t -> cheatConvertBuiltin p (pretty t)
     DecidabilityBuiltinFunction f -> cheatConvertBuiltin p (pretty f)
@@ -294,7 +332,13 @@ instance NormalisableBuiltin DecidabilityBuiltin where
   evalScheme = \case
     StandardBuiltinFunction Iterate -> NonSimple evalIterate
     StandardBuiltinFunction FoldList -> NonSimple evalFoldList
+    -- Fold Time->Nat literals in rollout dims for decidability.
+    StandardBuiltinCast (FromTime FromTimeToNat) -> Simple evalFromTimeToNatDec
     _ -> None
+    where
+      evalFromTimeToNatDec args = return $ case args of
+        Op1Args (getExpr accessTimeLiteral -> Just n) -> mkExpr accessNatLiteral n
+        _ -> mkExpr (accessArgs (castAccessor (FromTime FromTimeToNat))) args
 
   blockingStatus b spine = case b of
     StandardBuiltinFunction Iterate -> functionBlockingStatus Iterate spine

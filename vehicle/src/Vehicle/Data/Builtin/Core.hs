@@ -28,6 +28,7 @@ data BuiltinType
   | ListType
   | VectorType
   | TensorType
+  | TimeType
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData BuiltinType
@@ -46,6 +47,7 @@ instance Pretty BuiltinType where
     ListType -> "List"
     VectorType -> "Vector"
     TensorType -> "Tensor"
+    TimeType -> "Time"
 
 --------------------------------------------------------------------------------
 -- Constructors
@@ -62,6 +64,7 @@ data BuiltinConstructor
   | BoolTensorLiteral (Tensor Bool)
   | NatTensorLiteral (Tensor Int)
   | RatTensorLiteral (Tensor Rational)
+  | TimeLiteral Int
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData BuiltinConstructor
@@ -81,6 +84,7 @@ instance Pretty BuiltinConstructor where
     BoolTensorLiteral x -> pretty x
     NatTensorLiteral x -> pretty x
     RatTensorLiteral x -> pretty x
+    TimeLiteral n -> pretty n
 
 --------------------------------------------------------------------------------
 -- Builtin
@@ -126,9 +130,8 @@ data BuiltinFunction
   | -- List operations
     FoldList
   | MapList
-  | -- Type-level / tensor shape operations
-    ReverseDims
-  | Transpose
+  | -- Tensor shape operations
+    Transpose
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData BuiltinFunction
@@ -176,7 +179,6 @@ instance Pretty BuiltinFunction where
     StackTensor {} -> "stack"
     ConstTensor -> "const"
     Rollout -> "rollout"
-    ReverseDims -> "reverseDims"
     Transpose -> "transpose"
 
 data BuiltinCast
@@ -184,6 +186,7 @@ data BuiltinCast
     FromNat FromNatDomain
   | FromRat FromRatDomain
   | FromVectorToList
+  | FromTime FromTimeDomain
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData BuiltinCast
@@ -197,6 +200,7 @@ instance Pretty BuiltinCast where
     FromNat dom -> "fromNatTo" <> pretty dom
     FromRat dom -> "fromRatTo" <> pretty dom
     FromVectorToList -> "fromVectorToList"
+    FromTime dom -> "fromTimeTo" <> pretty dom
 
 --------------------------------------------------------------------------------
 -- Negation

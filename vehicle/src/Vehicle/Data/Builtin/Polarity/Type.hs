@@ -89,7 +89,6 @@ typeOfBuiltinFunction = \case
   ForeachVector -> typeOfForeach
   Iterate -> typeOfIterate
   Rollout -> typeOfRollout
-  ReverseDims -> typeOfUnquantifiedOp1
   Transpose -> forAllPolarities $ \pol -> pol ~> pol
   Temporal Globally -> typeOfTemporalOp1
   Temporal Finally -> typeOfTemporalOp1
@@ -118,6 +117,7 @@ typeOfConstructor = \case
   NatTensorLiteral {} -> unquantified
   BoolTensorLiteral {} -> unquantified
   RatTensorLiteral {} -> unquantified
+  TimeLiteral {} -> unquantified
 
 typeOfPolarityRelation :: PolarityRelation -> PolarityDSLExpr
 typeOfPolarityRelation = \case
@@ -251,6 +251,7 @@ convertToPolarityTypes p b args = case b of
     ListType -> return $ extractElementType b args
     VectorType -> return $ extractElementType b args
     TensorType -> return $ extractElementType b args
+    TimeType -> return $ PolarityExpr p Unquantified
   DerivedFunction f -> return $ normAppList (FreeVar p (identifierOf f)) args
   TypeClass {} -> monomorphisationError b args
   BuiltinCast {} -> monomorphisationError b args

@@ -17,10 +17,17 @@ builtinType = builtin . mkExpr accessBuiltinType
 tUnit :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin
 tUnit = builtinType UnitType
 
-tBool, tNat, tRat :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin
+tBool, tNat, tRat, tTime :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin
 tNat = builtinType NatType
 tBool = builtinType BoolType
 tRat = builtinType RatType
+tTime = builtinType TimeType
+
+-- | Compile-time `Time → Nat` coercion. Used in the type signature of
+-- `rollout` to bridge the user-facing `Time`-typed count argument into the
+-- `Nat`-typed tensor dimension that the result tensor's outer shape needs.
+fromTimeToNat :: (BuiltinHasTimeLiterals builtin) => DSLExpr builtin -> DSLExpr builtin
+fromTimeToNat n = builtin (mkExpr accessFromTimeToNatBuiltin ()) @@ [n]
 
 tTensorRaw :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin
 tTensorRaw = builtinType TensorType
@@ -96,6 +103,9 @@ shapeOf t = foldr (\x xs -> cons tNat (natLit x) xs) (nil tNat) (T.shapeOf t)
 
 builtinFunction :: (BuiltinHasStandardData builtin) => BuiltinFunction -> DSLExpr builtin
 builtinFunction = builtin . mkExpr accessBuiltinFunction
+
+builtinDerived :: (BuiltinHasDerivedFunction builtin) => DerivedFunction -> DSLExpr builtin
+builtinDerived = builtin . mkExpr accessBuiltinDerivedFunction
 
 addNat :: (BuiltinHasStandardData builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 addNat x y = builtinFunction (Add AddNat) @@ [x, y]
@@ -235,8 +245,8 @@ stackTensor t d ds xs = builtinFunction StackTensor @@@ [t, d, ds] @@ xs
 atTensor :: (BuiltinHasStandardData builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 atTensor t d ds tens idx = builtinFunction AtTensor @@@ [t] .@@@ [d, ds] @@ [tens, idx]
 
-reverseDims :: (BuiltinHasStandardData builtin) => DSLExpr builtin -> DSLExpr builtin
-reverseDims ds = builtinFunction ReverseDims @@ [ds]
+reverseDims :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin -> DSLExpr builtin
+reverseDims ds = standardLib "reverse" @@@ [tNat] @@ [ds]
 
 transpose :: (BuiltinHasStandardData builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 transpose tElem ds xs = builtinFunction Transpose @@@ [tElem] .@@@ [ds] @@ [xs]

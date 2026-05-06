@@ -108,6 +108,9 @@ typeOfBuiltinCast = \case
     FromNatToNat -> typeOfFromNat tNat
     FromNatToIndex -> forAllIrrelevantNat "n" $ \s -> typeOfFromNat (tIndex s)
     FromNatToRat -> typeOfFromNat (tRatTensor dimNil)
+    FromNatToTime -> typeOfFromNat tTime
+  FromTime dom -> case dom of
+    FromTimeToNat -> tTime ~> tNat
   FromRat dom -> case dom of
     FromRatToRat -> typeOfFromRat (tRatTensor dimNil)
   FromVectorToList -> typeOfFromVectorToList

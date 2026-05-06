@@ -224,6 +224,7 @@ delabCast fun args = case fun of
   V.FromNat {} -> rawDelab
   V.FromRat {} -> rawDelab
   V.FromVectorToList {} -> rawDelab
+  V.FromTime {} -> rawDelab
   where
     rawDelab = cheatDelabPretty fun args
 
@@ -280,7 +281,6 @@ delabBuiltinFunction fun args = case fun of
   V.ConstTensor -> delabApp (B.Const tokConst) args
   V.Iterate -> rawDelab
   V.Rollout -> delabRollout args
-  V.ReverseDims -> rawDelab
   V.Transpose -> delabTranspose args
   where
     rawDelab = cheatDelabPretty fun args
@@ -295,6 +295,7 @@ delabBuiltinType fun args = case fun of
   V.ListType -> delabApp (B.List tokList) args
   V.VectorType -> delabApp (B.Vector tokVector) args
   V.TensorType -> delabApp (B.Tensor tokTensor) args
+  V.TimeType -> cheatDelabPretty fun args
 
 delabTypeClass :: (MonadDelab m) => V.TypeClass -> [V.Arg V.Builtin] -> m B.Expr
 delabTypeClass tc args = case tc of
@@ -320,6 +321,7 @@ delabConstructor fun args = case fun of
   V.NatTensorLiteral t -> cheatDelabPretty t []
   V.RatTensorLiteral t -> cheatDelabPretty t []
   V.BoolTensorLiteral t -> cheatDelabPretty t []
+  V.TimeLiteral n -> return $ B.Literal $ B.NatLiteral $ delabNatLit n
 
 delabAdd :: (MonadDelab m) => [V.Arg V.Builtin] -> m B.Expr
 delabAdd = delabInfixOp2 B.Add tokAdd

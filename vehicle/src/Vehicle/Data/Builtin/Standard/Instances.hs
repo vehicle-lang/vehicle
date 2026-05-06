@@ -195,6 +195,10 @@ allInstances =
             builtinCast (FromNat FromNatToRat),
             Nothing
           ),
+          ( hasNatLits tTime,
+            builtinCast (FromNat FromNatToTime),
+            Nothing
+          ),
           ----------------
           -- HasVecLits --
           ----------------

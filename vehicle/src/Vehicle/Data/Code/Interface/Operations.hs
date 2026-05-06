@@ -239,14 +239,39 @@ accessNatTensorLiteral = accessNoArgs accessNatTensorLitBuiltin
 accessAddNat :: (HasNatExpr expr builtin) => Op2Accessor (expr builtin)
 accessAddNat = accessArgs accessAddNatBuiltin
 
-accessSubNat :: (HasNatExpr expr builtin) => Op2Accessor (expr builtin)
-accessSubNat = accessArgs accessSubNatBuiltin
-
 accessMulNat :: (HasNatExpr expr builtin) => Op2Accessor (expr builtin)
 accessMulNat = accessArgs accessMulNatBuiltin
 
-accessDivNat :: (HasNatExpr expr builtin) => Op2Accessor (expr builtin)
-accessDivNat = accessArgs accessDivNatBuiltin
+--------------------------------------------------------------------------------
+-- Time
+
+type HasTimeType expr builtin =
+  ( HasBuiltinConstructor expr,
+    BuiltinHasTimeType builtin
+  )
+
+type HasTimeExpr expr builtin =
+  ( HasBuiltinConstructor expr,
+    BuiltinHasTimeLiterals builtin
+  )
+
+accessTimeType :: (HasTimeType expr builtin) => Accessor (expr builtin) ()
+accessTimeType = accessNoArgs accessTimeTypeBuiltin
+
+accessTimeLiteral :: (HasTimeExpr expr builtin) => Accessor (expr builtin) Int
+accessTimeLiteral = accessNoArgs accessTimeLitBuiltin
+
+accessAddTime :: (HasTimeExpr expr builtin) => Op2Accessor (expr builtin)
+accessAddTime = accessArgs accessAddTimeBuiltin
+
+accessSubTime :: (HasTimeExpr expr builtin) => Op2Accessor (expr builtin)
+accessSubTime = accessArgs accessSubTimeBuiltin
+
+accessMulTime :: (HasTimeExpr expr builtin) => Op2Accessor (expr builtin)
+accessMulTime = accessArgs accessMulTimeBuiltin
+
+accessDivTime :: (HasTimeExpr expr builtin) => Op2Accessor (expr builtin)
+accessDivTime = accessArgs accessDivTimeBuiltin
 
 --------------------------------------------------------------------------------
 -- Rationals
@@ -404,6 +429,6 @@ accessRollout ::
 accessRollout = accessArgs accessRolloutBuiltin
 
 accessTranspose ::
-  (HasBuiltinConstructor expr, BuiltinHasTranspose builtin) =>
+  (HasBuiltinConstructor expr, BuiltinHasTensors builtin) =>
   Accessor (expr builtin) (TransposeArgs (expr builtin))
 accessTranspose = accessArgs accessTransposeBuiltin
