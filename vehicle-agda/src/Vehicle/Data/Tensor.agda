@@ -5,7 +5,7 @@ open import Level using (Level; 0ℓ)
 open import Data.Bool using (Bool; true; false; _∧_; _∨_)
 open import Data.Empty.Polymorphic using (⊥)
 open import Data.Nat.Base using (ℕ; zero; suc)
-open import Data.List.Base using (List; []; _∷_; tabulate; concat; foldr)
+open import Data.List.Base using (List; []; _∷_; tabulate; concat; foldr; reverse; reverseAcc)
 open import Data.Vec.Functional using (Vector)
 open import Function.Base using (id; _$_)
 import Data.Vec.Functional as Vec
@@ -101,6 +101,17 @@ infix 6 _!_
 
 _!_ : Tensor A (d ∷ ds) → Fin d → Tensor A ds
 _!_ = _$_
+
+-- | Transpose reverses axes: `Tensor A ds -> Tensor A (reverse ds)`.
+-- Implemented by accumulator recursion over dimensions.
+transposeAcc : ∀ {xs ys : Dimensions} {A : Set a}
+             → Tensor (Tensor A xs) ys → Tensor A (reverseAcc ys xs)
+transposeAcc {xs = []}     xss = xss
+transposeAcc {xs = _ ∷ _}  xss =
+  transposeAcc (λ i → map (λ inner → inner i) xss)
+
+transpose : ∀ {ds : Dimensions} → Tensor A ds → Tensor A (reverse ds)
+transpose t = transposeAcc t
 
 --------------------------------------------------------------------------------
 -- Rational specialisations
