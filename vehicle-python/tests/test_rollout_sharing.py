@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Any, Tuple
 
 import pytest
-
 import vehicle_lang as vcl
 
 
