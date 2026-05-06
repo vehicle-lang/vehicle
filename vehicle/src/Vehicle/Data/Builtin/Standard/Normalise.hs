@@ -185,13 +185,13 @@ evalTranspose args@(TransposeArgs _ resultDims tensor) =
         innerStacks <- traverse (getExpr accessStackTensor) rows
         case innerStacks of
           [] -> Nothing
-          (StackTensorArgs _ innerDim innerRest _ : _) ->
+          firstStack@(StackTensorArgs _ innerDim innerRest _) : _ ->
             -- Only handle 2-D for now: the inner stacks must have empty
             -- remaining dims.
             case innerRest of
               IDimNil -> do
                 let innerCols = map stackElements innerStacks
-                let n = length (head innerCols)
+                let n = length (stackElements firstStack)
                 if any (\xs -> length xs /= n) innerCols
                   then Nothing
                   else do
