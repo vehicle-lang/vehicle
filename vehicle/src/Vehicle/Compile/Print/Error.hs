@@ -814,6 +814,12 @@ formatCompileError = \case
             "please open an issue on the"
               <+> "Vehicle issue tracker to discuss adding support."
       }
+  UnsupportedBackendFeatures p msg ->
+    VehicleError
+      { provenance = Just p,
+        problem = msg,
+        fix = Nothing
+      }
   NoPropertiesFound ->
     VehicleError
       { provenance = Nothing,

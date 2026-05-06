@@ -7,10 +7,13 @@ dynamics : Tensor Real [2] -> Tensor Real [1] -> Tensor Real [2]
 initState : Tensor Real [2]
 initState = [0.0, 0.0]
 
-T : Nat
+Tn : Nat
+Tn = 4
+
+T : Time
 T = 4
 
-trajectory : Tensor Real [T, 2]
+trajectory : Tensor Real [Tn, 2]
 trajectory = rollout[T] controller dynamics initState
 
 @property

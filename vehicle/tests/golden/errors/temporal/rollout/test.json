@@ -1,0 +1,26 @@
+[
+  {
+    "name": "Agda",
+    "run": "vehicle compile itp -s spec.vcl -t Agda -o Agda.agda",
+    "needs": ["spec.vcl"],
+    "produces": []
+  },
+  {
+    "name": "Rocq",
+    "run": "vehicle compile itp -s spec.vcl -t Rocq -o Rocq.v",
+    "needs": ["spec.vcl"],
+    "produces": []
+  },
+  {
+    "name": "Isabelle",
+    "run": "vehicle compile itp -s spec.vcl -t Isabelle -o Isabelle.thy",
+    "needs": ["spec.vcl"],
+    "produces": []
+  },
+  {
+    "name": "Imandra",
+    "run": "vehicle compile itp -s spec.vcl -t Imandra -o Imandra.iml",
+    "needs": ["spec.vcl"],
+    "produces": []
+  }
+]

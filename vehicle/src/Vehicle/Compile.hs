@@ -16,6 +16,7 @@ import Vehicle.Backend.Loss (convertToLossTensors)
 import Vehicle.Backend.Loss.JSON
 import Vehicle.Backend.Prelude
 import Vehicle.Backend.Solver
+import Vehicle.Compile.CheckBackendFeatures qualified as CBF
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources (expandResources)
 import Vehicle.Compile.FunctionaliseResources (functionaliseResources)
@@ -42,7 +43,8 @@ data LossOptions = LossOptions
   { differentiableLogicID :: DifferentiableLogicID,
     specification :: FilePath,
     declarationsToCompile :: DeclarationNames,
-    outputFile :: Maybe FilePath
+    outputFile :: Maybe FilePath,
+    nativeDirection :: Bool
   }
   deriving (Show, Eq)
 
@@ -120,6 +122,7 @@ compileToITP ::
   Prog Builtin ->
   m ()
 compileToITP ITPOptions {..} typedProg = do
+  CBF.checkBackendUnsupportedFeatures (CBF.ITPBackend itp) typedProg
   let resources = Resources specification networkLocations datasetLocations parameterValues
   (expandedProg, _, _, _, _) <- expandResources resources typedProg
   -- Analyse the program to find out which `Bool`s are decidable and which aren't.
@@ -154,7 +157,7 @@ compileToLossFunction ::
   m ()
 compileToLossFunction LossOptions {..} typedProg outputAsJSON =
   logCompilerPass Loss $ do
-    (lossTensorProg, logicImpl) <- convertToLossTensors differentiableLogicID typedProg
+    (lossTensorProg, logicImpl) <- convertToLossTensors differentiableLogicID nativeDirection typedProg
     hoistedProg <- hoistInferableParameters lossTensorProg
     functionalisedProg <- functionaliseResources hoistedProg
     jsonProg <- convertToJSONProg logicImpl functionalisedProg

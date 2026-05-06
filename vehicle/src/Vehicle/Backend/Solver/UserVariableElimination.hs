@@ -115,12 +115,18 @@ compileBoolExpr expr = do
     VReduceAndTensor {} -> unblockAndRec expr
     VReduceOrTensor {} -> unblockAndRec expr
     VBoolAt {} -> unblockAndRec expr
-    VGlobally {} -> unblockAndRec expr
-    VFinally {} -> unblockAndRec expr
-    VUntil {} -> unblockAndRec expr
+    -- Temporal operators are rejected by the pre-pass in Compile.hs.
+    VGlobally {} -> unreachableTemporal "globally"
+    VFinally {} -> unreachableTemporal "finally"
+    VUntil {} -> unreachableTemporal "until"
   where
     unblock = Unblocking.unblockBoolExpr unblockingActions
     unblockAndRec e = compileBoolExpr =<< unblock e
+    unreachableTemporal opName =
+      developerError $
+        "Temporal operator"
+          <+> squotes opName
+          <+> "should have been rejected by checkBackendUnsupportedFeatures."
 
 purifyAndCompileAssertion ::
   (MonadQuantifierBody m) =>

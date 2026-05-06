@@ -1,5 +1,6 @@
 Usage: vehicle compile loss (-l|--logic LOGIC) (-s|--specification FILE) 
-                            [-e|--declaration NAME] [-o|--output FILE]
+                            [-e|--declaration NAME] [-o|--output FILE] 
+                            [--dl-native-direction]
 
   Compile a specification to a loss function.
 
@@ -15,4 +16,9 @@ Available options:
                            will be compiled.
   -o,--output FILE         Output location for compiled file(s). Defaults to
                            `stdout` if not provided.
+  --dl-native-direction    Emit the compiled property in the differentiable
+                           logic's native direction (robustness for STL, loss
+                           for DL2). When unset (default), the property is
+                           wrapped in 'not' for robustness-style logics so the
+                           output is always a minimisation target.
   -h,--help                Show this help text

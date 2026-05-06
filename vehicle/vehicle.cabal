@@ -212,6 +212,7 @@ library
     Vehicle.Backend.Solver.UserVariableElimination.VariableReconstruction
     Vehicle.Compile.Arity
     Vehicle.Compile.CapitaliseTypeNames
+    Vehicle.Compile.CheckBackendFeatures
     Vehicle.Compile.Dependency
     Vehicle.Compile.ExpandResources.Dataset.IDX
     Vehicle.Compile.FunctionaliseResources
