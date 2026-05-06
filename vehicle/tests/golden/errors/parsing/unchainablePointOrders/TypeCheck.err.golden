@@ -1,0 +1,2 @@
+Error in file 'unchainablePointOrders.vcl' at Line 3, Columns 24-26: cannot chain '<' and '>'
+Fix: split chained orders into a conjunction
