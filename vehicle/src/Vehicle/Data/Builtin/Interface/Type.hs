@@ -1,9 +1,12 @@
 module Vehicle.Data.Builtin.Interface.Type where
 
 import Data.Proxy (Proxy)
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Vehicle.Compile.Type.Core (InstanceHead)
 import Vehicle.Compile.Type.Monad.Class (MonadTypeChecker)
 import Vehicle.Data.AST.Expr.Scoped (Type)
+import Vehicle.Data.AST.Name (Identifier, stdlibIdentifier)
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Interface.Normalise (NormalisableBuiltin)
 import Vehicle.Data.Builtin.Standard.Core
@@ -36,8 +39,9 @@ typeOfBuiltinType = \case
   VectorType -> type0 ~> tDim .~> type0
   ListType -> type0 ~> type0
   TensorType -> type0 ~> tDims .~> type0
+  TimeType -> type0
 
-typeOfBuiltinFunction :: (HasStandardBuiltins builtin) => BuiltinFunction -> DSLExpr builtin
+typeOfBuiltinFunction :: (HasStandardBuiltins builtin, BuiltinHasTimeLiterals builtin) => BuiltinFunction -> DSLExpr builtin
 typeOfBuiltinFunction = \case
   -- Boolean operations
   Not -> typeOfTensorOp1 tBool
@@ -59,15 +63,17 @@ typeOfBuiltinFunction = \case
   Add dom -> case dom of
     AddNat -> tNat ~> tNat ~> tNat
     AddRatTensor -> typeOfTensorOp2 tRat
+    AddTime -> tTime ~> tTime ~> tTime
   Sub dom -> case dom of
     SubRatTensor -> typeOfTensorOp2 tRat
-    SubNat -> tNat ~> tNat ~> tNat
+    SubTime -> tTime ~> tTime ~> tTime
   Mul dom -> case dom of
     MulNat -> tNat ~> tNat ~> tNat
     MulRatTensor -> typeOfTensorOp2 tRat
+    MulTime -> tTime ~> tTime ~> tTime
   Div dom -> case dom of
     DivRatTensor -> typeOfTensorOp2 tRat
-    DivNat -> tNat ~> tNat ~> tNat
+    DivTime -> tTime ~> tTime ~> tTime
   Min dom -> case dom of
     MinRatTensor -> typeOfTensorOp2 tRat
   Max dom -> case dom of
@@ -97,8 +103,22 @@ typeOfBuiltinFunction = \case
   ForeachVector -> typeOfForeachVector
   Iterate -> forAllTypes $ \t -> ((t ~> t) ~> t ~> t) ~> tNat ~> t
   Rollout -> typeOfRollout
-  ReverseDims -> tDims ~> tDims
   Transpose -> typeOfTranspose
+
+-- | Stdlib decls that a builtin's type signature refers to. These references
+-- live in compiler code (via `standardLib` in the DSL), so they're invisible
+-- to the AST dependency graph and would otherwise be pruned. Callers that
+-- prune unused decls before secondary-subsystem typecheck need to keep these
+-- as extra roots.
+--
+-- Currently `Transpose`'s type uses `reverseDims` which expands to a free-var
+-- reference to `Definitions.reverse`. Transitive deps (e.g. `reverse` uses
+-- `append`) are picked up automatically by the dependency graph from
+-- `reverse`'s body, so only direct references need listing here.
+typeBuiltinTypeLevelDeps :: BuiltinFunction -> Set Identifier
+typeBuiltinTypeLevelDeps = \case
+  Transpose -> Set.singleton (stdlibIdentifier "reverse")
+  _ -> Set.empty
 
 typeOfBuiltinConstructor :: (HasStandardBuiltins builtin) => BuiltinConstructor -> DSLExpr builtin
 typeOfBuiltinConstructor = \case
@@ -111,6 +131,7 @@ typeOfBuiltinConstructor = \case
   NatTensorLiteral t -> tNatTensor (shapeOf t)
   BoolTensorLiteral t -> tBoolTensor (shapeOf t)
   RatTensorLiteral t -> tRatTensor (shapeOf t)
+  TimeLiteral {} -> tTime
 
 typeOfTCOp1 :: (DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin
 typeOfTCOp1 constraint =
@@ -131,13 +152,16 @@ typeOfTensorOp1 tElem = forAllDims $ \dims -> tTensor tElem dims ~> tTensor tEle
 typeOfTensorOp2 :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin -> DSLExpr builtin
 typeOfTensorOp2 tElem = forAllDims $ \dims -> tTensor tElem dims ~> tTensor tElem dims ~> tTensor tElem dims
 
--- | Bounded temporal operators: two Nat bounds (interval start/end) and
+-- | Bounded temporal operators: two Time bounds (interval start/end) and
 -- a boolean tensor signal, producing a boolean tensor of the same shape.
+-- The Time type keeps temporal-bound arithmetic (saturating-sub / total-div)
+-- separate from Nat so the bound semantics don't leak into Nat-indexed
+-- positions. Nat literals coerce to Time automatically via FromNatToTime.
 typeOfTemporalOp1 :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin
-typeOfTemporalOp1 = forAllDims $ \dims -> tNat ~> tNat ~> tBoolTensor dims ~> tBoolTensor dims
+typeOfTemporalOp1 = forAllDims $ \dims -> tTime ~> tTime ~> tBoolTensor dims ~> tBoolTensor dims
 
 typeOfTemporalOp2 :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin
-typeOfTemporalOp2 = forAllDims $ \dims -> tNat ~> tNat ~> tBoolTensor dims ~> tBoolTensor dims ~> tBoolTensor dims
+typeOfTemporalOp2 = forAllDims $ \dims -> tTime ~> tTime ~> tBoolTensor dims ~> tBoolTensor dims ~> tBoolTensor dims
 
 typeOfConstTensor :: (HasStandardBuiltins builtin) => DSLExpr builtin
 typeOfConstTensor =
@@ -229,21 +253,26 @@ typeOfForeachVector =
 
 -- | Type of rollout:
 -- forall S A {ds : Dims} {da : Dims} .
---   (n : Dim) ->
+--   (n : Time) ->
 --   (Tensor S ds -> Tensor A da) ->
 --   (Tensor S ds -> Tensor A da -> Tensor S ds) ->
 --   Tensor S ds ->
---   Tensor S (n :: ds)
-typeOfRollout :: (HasStandardBuiltins builtin) => DSLExpr builtin
+--   Tensor S (fromTimeToNat n :: ds)
+--
+-- The count `n` is a `Time` value (rollout asks "how many timesteps?"),
+-- coerced to `Nat` at the dim-construction site so the result tensor's
+-- outer dim is a normal `Nat`. The coercion folds at compile time when
+-- `n` is a literal — the only case in practice.
+typeOfRollout :: (HasStandardBuiltins builtin, BuiltinHasTimeLiterals builtin) => DSLExpr builtin
 typeOfRollout =
   forAll "S" type0 $ \tState ->
     forAll "A" type0 $ \tAction ->
       forAllIrrelevant "ds" tDims $ \dimsS ->
         forAllIrrelevant "da" tDims $ \dimsA ->
-          forAllExpl "n" tDim $ \n ->
+          forAllExpl "n" tTime $ \n ->
             let stateT = tTensor tState dimsS
                 actionT = tTensor tAction dimsA
-             in (stateT ~> actionT) ~> (stateT ~> actionT ~> stateT) ~> stateT ~> tTensor tState (dimCons n dimsS)
+             in (stateT ~> actionT) ~> (stateT ~> actionT ~> stateT) ~> stateT ~> tTensor tState (dimCons (fromTimeToNat n) dimsS)
 
 typeOfMap :: (HasStandardBuiltins builtin) => DSLExpr builtin -> DSLExpr builtin
 typeOfMap f =

@@ -7,6 +7,7 @@ module Vehicle.Compile.Dependency
     DependencyGraph,
     createDependencyGraph,
     pruneUnusedDeclarations,
+    pruneUnusedDeclarationsKeeping,
     completelyUnusedDeclarations,
   )
 where
@@ -123,7 +124,21 @@ pruneUnusedDeclarations ::
   (MonadCompile m) =>
   Prog builtin ->
   m (Prog builtin)
-pruneUnusedDeclarations prog@(Main decls) = do
+pruneUnusedDeclarations = pruneUnusedDeclarationsKeeping mempty
+
+-- | Like 'pruneUnusedDeclarations' but takes an extra set of identifiers that
+-- must always be kept. This is needed when stdlib decls are referenced by a
+-- builtin's type signature rather than from a program AST decl — e.g. the
+-- `Transpose` builtin's type uses `reverseDims ds` (which expands to a free-var
+-- reference to `Definitions.reverse`). That reference is invisible to
+-- 'createDependencyGraph' (it lives in compiler code, not in any AST node), so
+-- the caller must list such decls explicitly when they need to survive pruning.
+pruneUnusedDeclarationsKeeping ::
+  (MonadCompile m) =>
+  Set Identifier ->
+  Prog builtin ->
+  m (Prog builtin)
+pruneUnusedDeclarationsKeeping extraRoots prog@(Main decls) = do
   logCompilerSection2 MinDetail "pruning unused declarations" $ do
     -- Prune all standard-library declarations that aren't used.
     let declsToCompile = mapMaybe (\d -> if isUserCode d then Just (nameOf d) else Nothing) decls
@@ -132,9 +147,12 @@ pruneUnusedDeclarations prog@(Main decls) = do
       else do
         let dependencyGraph = createDependencyGraph decls
 
-        let startingVertices = flip fmap declsToCompile $ \name -> do
+        let userVertices = flip fmap declsToCompile $ \name -> do
               let ident = Identifier userModulePath name
               vertexFromIdent dependencyGraph ident
+        let extraVertices =
+              fmap (vertexFromIdent dependencyGraph) (Set.toList extraRoots)
+        let startingVertices = userVertices <> extraVertices
 
         let declsToPrune = notReachableFrom dependencyGraph startingVertices
         logDebug MaxDetail $ "Pruning:" <+> indent 2 (prettySet pretty declsToPrune)
