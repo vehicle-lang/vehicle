@@ -522,6 +522,7 @@ compileBuiltin b args = case b of
   StandardBuiltinConstructor c -> compileBuiltinConstructor c args
   StandardBuiltinFunction f -> compileBuiltinFunction f args
   StandardBuiltinDerivedFunction f -> compileDerivedFunction f args
+  StandardBuiltinCast {} -> developerError $ "compilation of cast builtin to Agda unsupported:" <+> pretty b
   DecidabilityBuiltinFunction f -> compileDecidabilityBuiltinFunction f args
   DecidabilityBuiltinTypeClass {} -> monoError b
   DecidabilityBuiltinTypeClassOp {} -> monoError b
@@ -540,6 +541,9 @@ compileBuiltinType t args = case t of
   ListType -> annotateApp [DataList] Nothing "List" args
   VectorType -> annotateApp [DataVector] Nothing "Vector" args
   TensorType -> annotateApp [DataTensor] Nothing "Tensor" args
+  -- Time is rejected by checkBackendUnsupportedFeatures; reaching this case
+  -- means the pre-pass missed a Time use.
+  TimeType -> developerError "Time should have been rejected by checkBackendUnsupportedFeatures"
 
 compileBuiltinConstructor ::
   (MonadAgdaCompile m) =>
@@ -556,6 +560,7 @@ compileBuiltinConstructor c args = case c of
   NatTensorLiteral t -> return $ compileTensorLiteral compileNatLiteral t
   BoolTensorLiteral t -> return $ compileTensorLiteral compileBoolLiteral t
   RatTensorLiteral t -> return $ compileTensorLiteral compileRatLiteral t
+  TimeLiteral _ -> developerError "Time literal should have been rejected by checkBackendUnsupportedFeatures"
 
 compileBuiltinFunction ::
   (MonadAgdaCompile m) =>
@@ -568,9 +573,11 @@ compileBuiltinFunction f args = case f of
   Not -> annotateApp [DataBool] Nothing "not" args
   Implies -> annotateInfixApp [VehicleUtils] 4 Nothing "_⇒_" args
   Add AddNat -> annotateInfixApp [DataNat] 6 (Just natQualifier) "_⊕_" args
-  Sub SubNat -> annotateInfixApp [DataNat] 6 (Just natQualifier) "_∸_" args
   Mul MulNat -> annotateInfixApp [DataNat] 7 (Just natQualifier) "_*_" args
-  Div DivNat -> annotateInfixApp [DataNat] 7 (Just natQualifier) "_/_" args
+  Add AddTime -> unsupportedError
+  Sub SubTime -> unsupportedError
+  Mul MulTime -> unsupportedError
+  Div DivTime -> unsupportedError
   Add AddRatTensor -> annotateInfixApp [DataTensor] 6 (Just tensorQualifier) "_⊕_" args
   Sub SubRatTensor -> annotateInfixApp [DataTensor] 6 (Just tensorQualifier) "_⊖_" args
   Mul MulRatTensor -> annotateInfixApp [DataTensor] 7 (Just tensorQualifier) "_*_" args
@@ -601,16 +608,18 @@ compileBuiltinFunction f args = case f of
   ForeachVector -> annotateApp [VehicleUtils] Nothing "foreachVector" args
   StackTensor {} -> annotateApp [DataTensor] Nothing "stack" args
   Iterate -> unsupportedError
-  Rollout -> unsupportedError
-  ReverseDims -> unsupportedError
-  Transpose -> unsupportedError
+  Rollout -> userUnsupported "'rollout' operator"
+  Transpose -> annotateApp [DataTensor] Nothing "transpose" args
   PowRat -> unsupportedError
-  Temporal {} -> unsupportedError
+  Temporal op -> userUnsupported $ "Temporal operator '" <> pretty op <> "'"
   where
     unsupportedError :: a
     unsupportedError =
       developerError $
         "compilation of builtin" <+> quotePretty f <+> "to Agda unsupported"
+
+    userUnsupported feature =
+      throwError $ UnimplementedFeature mempty $ feature <+> "in the Agda backend"
 
     unsupportedArgsError :: a
     unsupportedArgsError = do

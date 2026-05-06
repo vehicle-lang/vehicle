@@ -489,6 +489,8 @@ compileBuiltin b args = case b of
     TensorType -> compileNotationAndArgs [RequireImport VehicleTensor] NotAssociative Nothing "'nT[$0]_($1)" Nothing args
     IndexType -> compileNotationAndArgs [MathcompImport Boot] NotAssociative Nothing "'I_$0" (Just "ordinal") args
     VectorType -> compileNotationAndArgs [MathcompImport Boot] NotAssociative (Just 2) "$0.-tuple $1" Nothing args
+    -- Time is rejected by checkBackendUnsupportedFeatures.
+    TimeType -> unsupportedError
   StandardBuiltinConstructor c -> case c of
     Nil -> return $ annotateConstant [MathcompImport Boot] "nil"
     Cons -> compileNotationAndArgs [MathcompImport Boot] RightAssociative (Just 60) "$0 :: $1" (Just "cons") args
@@ -499,15 +501,18 @@ compileBuiltin b args = case b of
     BoolTensorLiteral t -> return $ compileTensorLiteral compileBoolLiteral t
     RatTensorLiteral t -> return $ compileTensorLiteral compileRatLiteral t
     VectorLiteral -> compileVecLiteral args
+    TimeLiteral _ -> unsupportedError
   StandardBuiltinFunction f -> case f of
     And -> compileNotationAndArgs [] LeftAssociative (Just 40) "$0 && $1" (Just "andb") args
     Or -> compileNotationAndArgs [] LeftAssociative (Just 50) "$0 || $1" (Just "orb") args
     Not -> compileNotationAndArgs [MathcompImport Boot] LeftAssociative (Just 35) "~~ $0" (Just "negb") args
     Implies -> compileNotationAndArgs [MathcompImport Boot] RightAssociative (Just 55) "$0 ==> $1" (Just "implb") args
     Add AddNat -> compileNotationAndArgs [MathcompImport Algebra, Open RingScope] LeftAssociative (Just 50) "$0 + $1" (Just "+%R") args
-    Sub SubNat -> compileApplication [] "Nat.sub" args
     Mul MulNat -> compileNotationAndArgs [MathcompImport Algebra, Open RingScope] LeftAssociative (Just 40) "$0 * $1" (Just "*%R") args
-    Div DivNat -> compileApplication [] "Nat.div" args
+    Add AddTime -> unsupportedError
+    Sub SubTime -> unsupportedError
+    Mul MulTime -> unsupportedError
+    Div DivTime -> unsupportedError
     Add AddRatTensor -> compileNotationAndArgs [RequireImport VehicleTensor] LeftAssociative (Just 50) "$0 + $1" (Just "+%R") args
     Sub SubRatTensor -> compileNotationAndArgs [RequireImport VehicleTensor] LeftAssociative (Just 50) "$0 - $1" Nothing args
     Mul MulRatTensor -> compileNotationAndArgs [RequireImport VehicleTensor] LeftAssociative (Just 40) "$0 * $1" (Just "*%R") args
@@ -535,11 +540,10 @@ compileBuiltin b args = case b of
     ForeachTensor -> compileApplication [RequireImport VehicleTensor] "nstack" args
     StackTensor -> compileStack args
     Iterate -> unsupportedError
-    Rollout -> unsupportedError
-    ReverseDims -> unsupportedError
-    Transpose -> unsupportedError
+    Rollout -> userUnsupported "'rollout' operator"
+    Transpose -> compileApplication [RequireImport VehicleTensor] "transpose_t" args
     PowRat -> unsupportedError
-    Temporal {} -> unsupportedError
+    Temporal op -> userUnsupported $ "Temporal operator '" <> pretty op <> "'"
     AtVector -> compileApplication [MathcompImport Boot] "tnth" args
     ForeachVector -> compileApplication [RequireImport VehicleUtils] "foreachTuple" args
     QuantifyTensorLike _ -> unsupportedTensorLikeQuantifier
@@ -568,11 +572,15 @@ compileBuiltin b args = case b of
   DecidabilityBuiltinTypeClass {} -> monoError
   DecidabilityBuiltinTypeClassOp {} -> monoError
   StandardBuiltinDerivedFunction f -> compileDerivedFunction f args
+  StandardBuiltinCast {} -> unsupportedError
   where
     unsupportedError :: a
     unsupportedError =
       developerError $
         "compilation of builtin" <+> quotePretty b <+> "to Rocq unsupported"
+
+    userUnsupported feature =
+      throwError $ UnimplementedFeature mempty $ feature <+> "in the Rocq backend"
 
     unsupportedArgsError :: (MonadRocqCompile m) => m a
     unsupportedArgsError = do
