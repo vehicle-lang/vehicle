@@ -56,16 +56,9 @@ Learned velocity trace (m/s)  [target band: 28.5 – 31.5]
 
 ## Logic-portable sign handling
 
-`load_specification` returns `(declarations, minimise)`.  The flag lets a
-single training script run unchanged under any differentiable logic:
-
-- `minimise = True` for loss-style logics (`DL2`, `Vehicle`): a satisfied
-  property collapses to ≤ 0 and the raw value is minimised directly.
-- `minimise = False` for robustness-style logics (`STL`): a satisfied
-  property is ≥ 0, so the script negates the raw value before adding it to
-  the total loss.
-
-The training loop therefore uses `r if minimise else -r` for each property,
-and the status printer flips its satisfaction check on the same flag.  See
-the [`training.rst` reference](../../docs/training.rst) for the full
-convention.
+The compiler emits each property as a minimisation target by default —
+robustness-style logics (`STL`) are wrapped in `not` so reducing the
+output drives the property toward satisfaction, regardless of which
+logic was selected. A satisfied property reads `<= 0`. Pass
+`--dl-native-direction` through to the compiler if you need the raw
+DL-native form. See the [`training.rst` reference](../../docs/training.rst).

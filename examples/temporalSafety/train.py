@@ -3,8 +3,9 @@
 
 Scenario
 --------
-An ego vehicle follows a lead vehicle.  The controller receives the initial
-state (v_ego=15 m/s, d_rel=30 m) and outputs a predicted velocity trajectory
+A following vehicle (referred to as "ego" in the ARCH-COMP literature) tracks
+a lead vehicle.  The controller receives the initial state
+(v_ego=15 m/s, d_rel=30 m) and outputs a predicted velocity trajectory
 over 10 time steps.  Three temporal properties must hold:
 
   alwaysBelowLimit   □[0,9]  v(t) ≤ 33 m/s           (hard speed limit)
@@ -13,12 +14,12 @@ over 10 time steps.  Three temporal properties must hold:
 
 Sign convention
 ---------------
-``load_specification`` returns ``(declarations, minimise)``.  The flag is
-``True`` for loss-style logics (DL2, Vehicle) where a satisfied property
-is ``<= 0``, and ``False`` for robustness-style logics (STL) where a
-satisfied property is ``>= 0``.  This script negates the raw value when
-``minimise`` is ``False`` so the constraint term always shrinks under
-gradient descent — the same code then runs unchanged under any logic.
+By default the Vehicle compiler emits each property as a minimisation
+target — robustness-style logics (STL) are wrapped in ``not`` so reducing
+the output always pushes the property toward satisfaction, regardless of
+the logic.  A satisfied property reads ``<= 0``.  Pass
+``--dl-native-direction`` through to the compiler to opt out and get the
+raw DL-native form.
 
 Prerequisites
 -------------
@@ -55,18 +56,18 @@ print("=" * 62)
 # falseElement as reduction identities.  Under STL these are min and max,
 # giving the classical quantitative-robustness semantics.  Each @property
 # becomes a callable (network) -> scalar.
-declarations, minimise = loss_pt.load_specification(
+declarations = loss_pt.load_specification(
     SPEC_PATH,
     logic=DifferentiableLogic.STL,
     declarations=PROPS,
 )
 
 print(f"\nCompiled properties: {PROPS}")
-sign_hint = "negative = satisfied" if minimise else "positive = satisfied"
+sign_hint = "negative = satisfied"
 
 
 def is_satisfied(rob: float) -> bool:
-    return rob <= 0 if minimise else rob >= 0
+    return rob <= 0
 
 
 # ---------------------------------------------------------------------------
@@ -121,8 +122,7 @@ for epoch in range(300):
     optimizer.zero_grad()
 
     robs = [declarations[name](controller) for name in PROPS]
-    signed = [r if minimise else -r for r in robs]
-    loss = torch.stack(signed).sum()
+    loss = torch.stack(robs).sum()
 
     loss.backward()
     optimizer.step()

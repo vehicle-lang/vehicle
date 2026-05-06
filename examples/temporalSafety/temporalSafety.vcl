@@ -1,8 +1,10 @@
 --------------------------------------------------------------------------------
 -- Adaptive Cruise Control (ACC) temporal safety specification
 --
--- A controller receives an initial state (ego speed, relative gap to lead
--- vehicle) and outputs a predicted velocity trajectory over T=10 time steps.
+-- A controller receives an initial state (the following vehicle's speed and
+-- relative gap to the lead vehicle) and outputs a predicted velocity
+-- trajectory over T=10 time steps. Variables retain the ARCH-COMP "ego"
+-- naming for cross-reference with the published benchmark.
 -- Three temporal properties are verified over that trajectory.
 --
 --   alwaysBelowLimit   (globally)   speed never exceeds the hard limit
@@ -56,7 +58,6 @@ atTarget = foreach i . vTarget - epsilon <= vTrace ! i <= vTarget + epsilon
 @property
 alwaysBelowLimit : Bool
 alwaysBelowLimit = ((globally[0,9] belowLimit) ! 0)
-    -- and (forall i . -maxAccel <= (vTrace ! i) - (vTrace ! (i-1)) <= maxAccel)
   and -maxAccel <= vTrace ! 1 - vTrace ! 0 <= maxAccel
   and -maxAccel <= vTrace ! 2 - vTrace ! 1 <= maxAccel
   and -maxAccel <= vTrace ! 3 - vTrace ! 2 <= maxAccel

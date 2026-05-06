@@ -18,12 +18,12 @@ Three properties are compiled to differentiable losses:
 
 Training objective:
 
-    loss = effort + weight * sum(signed_constraint)
+    loss = effort + weight * sum(constraint)
 
-where ``signed_constraint`` is the compiled property value, negated when
-the logic reports ``minimise = False`` so that reducing it always pushes
-the property toward satisfaction. This makes the same script runnable
-under any differentiable logic (DL2, Vehicle, STL).
+The compiler emits each property as a minimisation target by default —
+robustness-style logics (STL) are wrapped in ``not`` so reducing the
+output always pushes the property toward satisfaction. The same script
+runs unchanged under any differentiable logic (DL2, Vehicle, STL).
 
 Prerequisites
 -------------
@@ -93,10 +93,10 @@ def evaluate(declarations, controller: nn.Module) -> dict[str, float]:
         }
 
 
-def print_robustness(title: str, results: dict[str, float], minimise: bool) -> None:
+def print_robustness(title: str, results: dict[str, float]) -> None:
     print(f"\n{BANNER}\n{title}\n{BANNER}")
     for name, rob in results.items():
-        satisfied = rob <= 0 if minimise else rob >= 0
+        satisfied = rob <= 0
         status = "OK      " if satisfied else "VIOLATED"
         print(f"  {name:<16} {rob:+8.2f}  [{status}]")
 
@@ -105,15 +105,13 @@ def train(
     declarations,
     controller: nn.Module,
     init_state: torch.Tensor,
-    minimise: bool,
 ) -> None:
     optimizer = torch.optim.Adam(controller.parameters(), lr=LEARNING_RATE)
     for epoch in range(EPOCHS):
         optimizer.zero_grad()
 
         robustnesses = compute_robustness(declarations, controller)
-        signed = [r if minimise else -r for r in robustnesses]
-        constraint_loss = torch.stack(signed).sum()
+        constraint_loss = torch.stack(robustnesses).sum()
 
         _, actions = rollout(controller, init_state)
         effort_loss = (actions**2).sum()
@@ -153,13 +151,13 @@ def main() -> None:
     print(f"\n{BANNER}")
     print(f"Loading double-integrator reach-avoid specification...\n  {SPEC_PATH.name}")
     print(BANNER)
-    declarations, minimise = loss_pt.load_specification(
+    declarations = loss_pt.load_specification(
         SPEC_PATH,
         logic=DifferentiableLogic.STL,
         declarations=PROPERTIES,
     )
     print(f"\nCompiled properties: {PROPERTIES}")
-    sign_hint = "negative = satisfied" if minimise else "positive = satisfied"
+    sign_hint = "negative = satisfied"
 
     controller = build_model()
     init_state = torch.tensor([0.0, 0.0])
@@ -167,16 +165,14 @@ def main() -> None:
     print_robustness(
         f"Robustness BEFORE training  ({sign_hint})",
         evaluate(declarations, controller),
-        minimise,
     )
 
     print(f"\n{BANNER}\nTraining ({EPOCHS} epochs, Adam lr={LEARNING_RATE})\n{BANNER}")
-    train(declarations, controller, init_state, minimise)
+    train(declarations, controller, init_state)
 
     print_robustness(
         f"Robustness AFTER training   ({sign_hint})",
         evaluate(declarations, controller),
-        minimise,
     )
 
     print_trajectory(controller, init_state)

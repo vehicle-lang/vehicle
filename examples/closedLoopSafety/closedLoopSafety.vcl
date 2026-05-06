@@ -13,7 +13,12 @@ goalLo = 9.0
 goalHi = 11.0
 posMax = 15.0
 
-T : Nat
+-- Tn: tensor dimension horizon (Nat).
+-- T: temporal bound horizon (Time) for rollout/operators.
+Tn : Nat
+Tn = 10
+
+T : Time
 T = 10
 
 -- Controller: maps [position, velocity] to [acceleration]
@@ -29,23 +34,23 @@ initState : Tensor Real [2]
 initState = [0.0, 0.0]
 
 -- Roll out the closed-loop system for 10 steps
-trajectory : Tensor Real [T, 2]
+trajectory : Tensor Real [Tn, 2]
 trajectory = rollout[T] controller dynamics initState
 
 -- Safety: position stays within [0, posMax] at every step
-positions : Tensor Real [T]
+positions : Tensor Real [Tn]
 positions = (transpose trajectory) ! 0
 
 @property
 stayBounded : Bool
-stayBounded = (globally[0,T - 1]
-                (const 0.0 [T] <. positions and positions <. const posMax [T])) ! 0
+stayBounded = (globally[0,9]
+                (foreach t . 1.0 <= positions ! t <= posMax)) ! 0
 
 -- Liveness: position eventually enters goal region [goalLo, goalHi]
 @property
 reachGoal : Bool
-reachGoal = (finally[0,T - 1]
-                (const goalLo [T] <. positions and positions <. const goalHi [T])) ! 0
+reachGoal = (finally[0,9]
+                (foreach t . goalLo <= positions ! t <= goalHi)) ! 0
 
 -- Per-dimension bounds on the state vector [position, velocity]
 stateLoBounds : Tensor Real [2]
@@ -65,6 +70,6 @@ inGoalRegion s = goalLo <= s ! 0 <= goalHi
 -- `forall k` over `Index 2` (first-order over state dimensions).
 @property
 safeUntilGoal : Bool
-safeUntilGoal = (until[0,T - 1]
+safeUntilGoal = (until[0,9]
                    (foreach t . stateInBounds (trajectory ! t))
                    (foreach t . inGoalRegion (trajectory ! t))) ! 0

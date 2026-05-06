@@ -51,16 +51,16 @@ Learned trajectory  [goal: 9-11, bounds: 0-15]
   ...
 ```
 
-The sign of each printed robustness depends on the selected logic —
-`STL` reports positive for satisfied, `DL2` and `Vehicle` report
-non-positive.
+A satisfied property prints `<= 0` regardless of which logic was
+selected — the compiler emits each property as a minimisation target
+by default (see the convention below).
 
 ## Logic-portable sign handling
 
-`load_specification` returns `(declarations, minimise)`.  The script
-negates the raw constraint term when `minimise = False` (robustness-style
-logics such as `STL`) and uses it directly when `minimise = True`
-(loss-style logics such as `DL2` and `Vehicle`).  The same file therefore
-trains under any differentiable logic.  See the
+The compiler emits each property as a minimisation target by default —
+robustness-style logics (`STL`) are wrapped in `not` so reducing the
+output drives the property toward satisfaction. The same file trains
+unchanged under any differentiable logic. Pass `--dl-native-direction`
+through to the compiler for the raw DL-native form. See the
 [`temporalSafety` README](../temporalSafety/README.md) for the full
 convention.
