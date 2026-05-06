@@ -1,4 +1,3 @@
-tensor.v
 utils.v
 
 -I .

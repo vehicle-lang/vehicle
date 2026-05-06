@@ -6,14 +6,14 @@
 
 From mathcomp Require Import all_boot.
 From mathcomp Require Import all_algebra.
+From mathcomp Require Import interval_inference.
 From mathcomp Require Import all_reals.
-Require Import vehicle.tensor.
 Open Scope ring_scope.
 Open Scope order_scope.
 Open Scope form_scope.
 
 Parameter R : realType.
 
-Parameter f : 'nT[R]_(2%N :: nil) -> 'nT[R]_(nil).
+Parameter f : 'nT[R]_[2] -> 'nT[R]_([tuple]).
 
 Axiom spec : forall x, const_t (0 : R) < x /\ x < const_t (1 : R) -> f (nstack_tuple [tuple x; const_t (0 : R)]) >= const_t (0 : R).

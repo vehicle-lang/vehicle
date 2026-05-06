@@ -6,8 +6,8 @@
 
 From mathcomp Require Import all_boot.
 From mathcomp Require Import all_algebra.
+From mathcomp Require Import interval_inference.
 From mathcomp Require Import all_reals.
-Require Import vehicle.tensor.
 Import Order.Def.
 Open Scope ring_scope.
 Open Scope order_scope.
@@ -15,18 +15,18 @@ Open Scope order_scope.
 Parameter R : realType.
 
 Record DifferentiableLogic : Type :=
-  { true : 'nT[R]_(nil)
-  ; false : 'nT[R]_(nil)
-  ; conjunction : 'nT[R]_(nil) -> ('nT[R]_(nil) -> 'nT[R]_(nil))
-  ; disjunction : 'nT[R]_(nil) -> ('nT[R]_(nil) -> 'nT[R]_(nil))
-  ; negation : 'nT[R]_(nil) -> 'nT[R]_(nil)
-  ; implication : 'nT[R]_(nil) -> ('nT[R]_(nil) -> 'nT[R]_(nil))
-  ; lt : 'nT[R]_(nil) -> ('nT[R]_(nil) -> 'nT[R]_(nil))
-  ; le : 'nT[R]_(nil) -> ('nT[R]_(nil) -> 'nT[R]_(nil))
-  ; gt : 'nT[R]_(nil) -> ('nT[R]_(nil) -> 'nT[R]_(nil))
-  ; ge : 'nT[R]_(nil) -> ('nT[R]_(nil) -> 'nT[R]_(nil))
-  ; equals : 'nT[R]_(nil) -> ('nT[R]_(nil) -> 'nT[R]_(nil))
-  ; notEquals : 'nT[R]_(nil) -> ('nT[R]_(nil) -> 'nT[R]_(nil))
+  { true : 'nT[R]_([tuple])
+  ; false : 'nT[R]_([tuple])
+  ; conjunction : 'nT[R]_([tuple]) -> ('nT[R]_([tuple]) -> 'nT[R]_([tuple]))
+  ; disjunction : 'nT[R]_([tuple]) -> ('nT[R]_([tuple]) -> 'nT[R]_([tuple]))
+  ; negation : 'nT[R]_([tuple]) -> 'nT[R]_([tuple])
+  ; implication : 'nT[R]_([tuple]) -> ('nT[R]_([tuple]) -> 'nT[R]_([tuple]))
+  ; lt : 'nT[R]_([tuple]) -> ('nT[R]_([tuple]) -> 'nT[R]_([tuple]))
+  ; le : 'nT[R]_([tuple]) -> ('nT[R]_([tuple]) -> 'nT[R]_([tuple]))
+  ; gt : 'nT[R]_([tuple]) -> ('nT[R]_([tuple]) -> 'nT[R]_([tuple]))
+  ; ge : 'nT[R]_([tuple]) -> ('nT[R]_([tuple]) -> 'nT[R]_([tuple]))
+  ; equals : 'nT[R]_([tuple]) -> ('nT[R]_([tuple]) -> 'nT[R]_([tuple]))
+  ; notEquals : 'nT[R]_([tuple]) -> ('nT[R]_([tuple]) -> 'nT[R]_([tuple]))
   }.
 
 Definition myLogic : DifferentiableLogic := {| true := - const_t (100000 : R)
@@ -42,6 +42,6 @@ Definition myLogic : DifferentiableLogic := {| true := - const_t (100000 : R)
 ; equals := fun x => fun y => max (x - y) (y - x)
 ; notEquals := fun x => fun y => - max (x - y) (y - x) |}.
 
-Parameter f : 'nT[R]_(nil) -> 'nT[R]_(nil).
+Parameter f : 'nT[R]_([tuple]) -> 'nT[R]_([tuple]).
 
 Axiom p : forall x, f x >= true myLogic.

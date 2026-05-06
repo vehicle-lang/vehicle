@@ -6,13 +6,13 @@
 
 From mathcomp Require Import all_boot.
 From mathcomp Require Import all_algebra.
+From mathcomp Require Import interval_inference.
 From mathcomp Require Import all_reals.
-Require Import vehicle.tensor.
 Open Scope ring_scope.
 Open Scope order_scope.
 
 Parameter R : realType.
 
-Parameter f : 'nT[R]_(nil) -> 'nT[R]_(nil).
+Parameter f : 'nT[R]_([tuple]) -> 'nT[R]_([tuple]).
 
 Axiom increasing : forall x, const_t (0 : R) < x /\ x < const_t (1 : R) -> x <= f x.
