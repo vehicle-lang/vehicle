@@ -1,8 +1,10 @@
 From mathcomp Require Import ssreflect all_boot all_algebra order reals lra.
 From mathcomp Require Import interval_inference tensor.
+From vehicle Require Import utils.
 Import Num.Theory GRing.Theory Order.POrderTheory.
 
-Open Scope ring_scope.
+Local Open Scope ring_scope.
+Local Open Scope tensor_scope.
 
 From windController Require Import WindControllerSpec.
 

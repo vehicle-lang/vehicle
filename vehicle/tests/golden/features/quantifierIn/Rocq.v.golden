@@ -9,7 +9,8 @@ From mathcomp Require Import all_algebra.
 From mathcomp Require Import interval_inference.
 From mathcomp Require Import all_reals.
 Require Import vehicle.utils.
-Open Scope ring_scope.
+Local Open Scope ring_scope.
+Local Open Scope tensor_scope.
 
 Parameter R : realType.
 

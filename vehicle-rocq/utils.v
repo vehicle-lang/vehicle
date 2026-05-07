@@ -1,8 +1,73 @@
-From mathcomp Require Import ssreflect ssrfun seq eqtype fintype ssrbool order.
-From mathcomp Require Import matrix tuple reals finfun.
-From mathcomp Require Import interval_inference numdomain tensor.
-Open Scope ring_scope.
+From HB Require Import structures.
+From mathcomp Require Import ssreflect ssrfun seq eqtype choice ssrnat ssralg.
+From mathcomp Require Import fintype ssrbool order matrix bigop tuple finfun.
+From mathcomp Require Import reals interval_inference numdomain tensor.
+Local Open Scope ring_scope.
+Local Open Scope tensor_scope.
 (* Vehicle standard library definitions *)
+
+(* Pointwise order on tensors: t <= u iff t_ij <= u_ij for all i, j.
+   Sharing R's display so order_scope notations apply directly. *)
+Section TensorPOrder.
+
+Import Order.POrderTheory.
+Local Open Scope order_scope.
+
+Context (d : Order.disp_t) (R : porderType d).
+Context {l k : nat} (u_ : {posnum nat} ^ k) (d_ : {posnum nat} ^ l).
+
+Definition le_t (t u : 'T[R]_(u_, d_)) :=
+  [forall ij, (\val t ij.1 ij.2) <= (\val u ij.1 ij.2)].
+
+Definition lt_t (t u : 'T[R]_(u_, d_)) := (u != t) && le_t t u.
+
+Let lt_t_def : forall x y, lt_t x y = (y != x) && le_t x y.
+Proof. by []. Qed.
+
+Let le_t_refl : reflexive le_t.
+Proof. by move=> x; exact /forallP. Qed.
+
+Let le_t_anti : antisymmetric le_t.
+Proof.
+move=> x y /andP[/forallP le_t_xy /forallP le_t_yx].
+apply/val_inj/matrixP=> i j; apply /le_anti/andP.
+exact (conj (le_t_xy (i, j)) (le_t_yx (i, j))).
+Qed.
+
+Let le_t_trans : transitive le_t.
+Proof.
+move=> x y z /forallP le_t_yx /forallP le_t_xz.
+apply/forallP=> ij; exact /le_trans.
+Qed.
+
+HB.instance Definition _ := Order.isPOrder.Build
+  d 'T[R]_(u_, d_) lt_t_def le_t_refl le_t_anti le_t_trans.
+
+End TensorPOrder.
+
+Section NilTensorOrderTheory.
+
+Local Open Scope order_scope.
+Import Order.POrderTheory.
+
+Lemma tensor_nil_leP {d : Order.disp_t} {R : porderType d} t u
+  : t.[::] <= u.[::] :> R <-> t <= u.
+Proof.
+split=> [?|/forallP/(_ (cast_ord prod_nil ord0, cast_ord prod_nil ord0))//].
+by apply/forallP=> [[] i j]; rewrite !ord_prod_nil.
+Qed.
+
+Lemma tensor_nil_ltP {d : Order.disp_t} {R : porderType d} t u
+  : t.[::] < u.[::] :> R <-> t < u.
+Proof.
+rewrite !lt_def; split=> /andP [u_neq_t t_le_u]; apply/andP; split.
+      by apply/contra_neq; first apply (tensor_nil_eqP u t).
+    by apply/tensor_nil_leP.
+  by apply/contra_neq; first apply (tensor_nil_eqP u t).
+by apply/tensor_nil_leP.
+Qed.
+
+End NilTensorOrderTheory.
 
 Definition forallInList {A} (f : A -> Prop) (s : seq A) := foldr and True (map f s).
 
@@ -29,7 +94,7 @@ Definition map2_t {R S T : Type} (f : R -> S -> T)
 
 Section Tensor.
 
-Open Scope order_scope.
+Local Open Scope order_scope.
 
 Context {R : realType} {k l : nat}
   {u_ : {posnum nat} ^ k} {d_ : {posnum nat} ^ l}.
