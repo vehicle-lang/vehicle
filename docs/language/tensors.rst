@@ -119,6 +119,31 @@ The following operations over tensors are currently supported:
        elements ``A``.
 
 
+Transpose
+---------
+
+``transpose t`` reverses the dimension order of a tensor:
+``Tensor A [d_1, d_2, ..., d_n]`` becomes ``Tensor A [d_n, ..., d_2, d_1]``.
+For a 2-tensor this is the standard matrix transpose.
+
+``transpose`` is normalised away at compile time when the result is
+indexed: ``(transpose t) ! i ! j`` reduces to ``t ! j ! i``. Literal
+tensors (e.g. ``transpose [[1.0, 2.0], [3.0, 4.0]]``) are folded at
+compile time as well.
+
+Backend support (non-loss)
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Verifier (Marabou): rank-2 only, and only when the transposed tensor
+  is fully indexed; non-indexed transpose is rejected.
+- Agda ITP: arbitrary rank.
+- Isabelle ITP: arbitrary rank.
+- Imandra ITP: arbitrary rank for ``Real``, ``Bool``, and ``Nat`` tensors.
+- Rocq ITP: rank-2 only.
+
+The loss backend also supports non-indexed transpose over opaque tensors.
+
+
 Non-constant dimensions
 -----------------------
 

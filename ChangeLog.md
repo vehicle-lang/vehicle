@@ -2,6 +2,16 @@
 
 ## Next release
 
+### Language
+
+* **Feature:** `transpose` operator on tensors. Reverses the
+  dimension order of an arbitrary-rank tensor. Normalised away at
+  compile time when the result is indexed (the common case).
+  Supported by the loss backend, by the verifier (rank-2 fully-indexed
+  only), and by all four ITP backends (Agda, Imandra, Isabelle:
+  arbitrary rank; Rocq: rank-2). See
+  [tensors](docs/language/tensors.rst).
+
 ### Loss backend
 
 * Fixed a bug where the compiler was erroring on some uses of `forall` for indices.

@@ -533,6 +533,7 @@ compileBuiltin b args = case b of
     ForeachTensor -> compileApplication [RequireImport VehicleTensor] "nstack" args
     StackTensor -> compileStack args
     Iterate -> unsupportedError
+    Transpose -> compileApplication [RequireImport VehicleTensor] "transpose_t" args
     PowRat -> unsupportedError
     AtVector -> compileApplication [MathcompImport Boot] "tnth" args
     ForeachVector -> compileApplication [RequireImport VehicleUtils] "foreachTuple" args
@@ -561,6 +562,7 @@ compileBuiltin b args = case b of
     PropNaryProductAt -> unsupportedError
   DecidabilityBuiltinTypeClass {} -> monoError
   DecidabilityBuiltinTypeClassOp {} -> monoError
+  StandardBuiltinCast {} -> monoError
   StandardBuiltinDerivedFunction f -> compileDerivedFunction f args
   where
     unsupportedError :: a

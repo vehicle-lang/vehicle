@@ -288,6 +288,7 @@ convertRatTensor value = logConversion value $ case toRatTensorValue value of
   VRatStackTensor args -> convertStackTensor convertRatTensor args
   VRatAt args -> convertAtTensor convertRatTensor args
   VRatForeach args -> convertForeachTensor convertRatTensor args
+  VRatTensorTranspose args -> convertTranspose convertRatTensor args
 
 --------------------------------------------------------------------------------
 -- Vector
@@ -398,6 +399,17 @@ convertForeachTensor convertValue (ForeachTensorArgs t dim dims fn) = do
   dims' <- convertDims dims
   fn' <- convertFunction convertValue fn
   return $ mkExpr accessForeachTensor $ ForeachTensorArgs t' dim' dims' fn'
+
+convertTranspose ::
+  (MonadLogic m) =>
+  (Value Builtin -> m (Value LossBuiltin)) ->
+  TransposeArgs (Value Builtin) ->
+  m (Value LossBuiltin)
+convertTranspose convertValue (TransposeArgs t ds xs) = do
+  t' <- convertType t
+  ds' <- convertDims ds
+  xs' <- convertValue xs
+  return $ mkExpr accessTranspose $ TransposeArgs t' ds' xs'
 
 --------------------------------------------------------------------------------
 -- Utils

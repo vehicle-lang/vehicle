@@ -780,6 +780,7 @@ compileBuiltin isOutType localeAssms b args = case b of
     ForeachTensor -> idxBasedOp localeAssms "foreach" args
     StackTensor -> compileStack localeAssms args
     Iterate -> unsupportedError
+    Transpose -> annotateApp localeAssms [RequireImport VehicleTensor] "tensor_transpose" args
     PowRat -> unsupportedError
     AtVector -> annotateApp localeAssms [] "tnth" args
     ForeachVector -> idxBasedOp localeAssms "foreachTuple" args
@@ -808,6 +809,7 @@ compileBuiltin isOutType localeAssms b args = case b of
   DecidabilityBuiltinTypeClass {} -> monoError
   DecidabilityBuiltinTypeClassOp {} -> monoError
   StandardBuiltinDerivedFunction f -> compileDerivedFunction localeAssms f args
+  StandardBuiltinCast {} -> unsupportedError
   where
     unsupportedError :: a
     unsupportedError =

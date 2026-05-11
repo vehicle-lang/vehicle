@@ -235,6 +235,12 @@ stackTensor t d ds xs = builtinFunction StackTensor @@@ [t, d, ds] @@ xs
 atTensor :: (BuiltinHasStandardData builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 atTensor t d ds tens idx = builtinFunction AtTensor @@@ [t] .@@@ [d, ds] @@ [tens, idx]
 
+reverseDims :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin -> DSLExpr builtin
+reverseDims ds = standardLib "reverse" @@@ [tNat] @@ [ds]
+
+transpose :: (BuiltinHasStandardData builtin) => DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
+transpose tElem ds xs = builtinFunction Transpose @@@ [tElem] .@@@ [ds] @@ [xs]
+
 iterate :: (BuiltinHasStandardData builtin) => DSLExpr builtin -> (DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin) -> DSLExpr builtin -> DSLExpr builtin -> DSLExpr builtin
 iterate t f n e = do
   let fn = explLam "f" (t ~> t) $ \iterFn -> explLam "e" t $ \resultSoFar -> f iterFn resultSoFar

@@ -522,6 +522,7 @@ compileBuiltin b args = case b of
   StandardBuiltinConstructor c -> compileBuiltinConstructor c args
   StandardBuiltinFunction f -> compileBuiltinFunction f args
   StandardBuiltinDerivedFunction f -> compileDerivedFunction f args
+  StandardBuiltinCast {} -> monoError b
   DecidabilityBuiltinFunction f -> compileDecidabilityBuiltinFunction f args
   DecidabilityBuiltinTypeClass {} -> monoError b
   DecidabilityBuiltinTypeClassOp {} -> monoError b
@@ -599,6 +600,7 @@ compileBuiltinFunction f args = case f of
   ForeachVector -> annotateApp [VehicleUtils] Nothing "foreachVector" args
   StackTensor {} -> annotateApp [DataTensor] Nothing "stack" args
   Iterate -> unsupportedError
+  Transpose -> annotateApp [DataTensor] Nothing "transpose" args
   PowRat -> unsupportedError
   where
     unsupportedError :: a

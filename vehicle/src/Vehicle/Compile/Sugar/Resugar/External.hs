@@ -275,6 +275,7 @@ delabBuiltinFunction fun args = case fun of
   V.StackTensor {} -> rawDelab
   V.ConstTensor -> delabApp (B.Const tokConst) args
   V.Iterate -> rawDelab
+  V.Transpose -> delabTranspose args
   where
     rawDelab = cheatDelabPretty fun args
 
@@ -365,6 +366,11 @@ delabIf args@[arg1, arg2, arg3]
       e3 <- delabM (argExpr arg3)
       return $ B.If tokIf e1 tokThen e2 tokElse e3
 delabIf args = cheatDelabPretty V.If args
+
+delabTranspose :: (MonadDelab m) => [V.Arg V.Builtin] -> m B.Expr
+delabTranspose args = case filter V.isExplicit args of
+  [arg] -> B.Transpose tokTranspose <$> delabM (argExpr arg)
+  _ -> cheatDelabPretty V.Transpose args
 
 delabTelescope :: (MonadDelab m) => V.Binder V.Builtin -> V.Expr V.Builtin -> m ([B.NameBinder], B.Expr)
 delabTelescope binder body = do

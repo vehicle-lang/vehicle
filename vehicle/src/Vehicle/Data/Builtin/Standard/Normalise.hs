@@ -5,6 +5,8 @@ module Vehicle.Data.Builtin.Standard.Normalise
   )
 where
 
+import Control.Applicative ((<|>))
+import Data.Maybe (fromMaybe)
 import Vehicle.Data.Builtin.Core as Syntax
 import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Interface.Blocked
@@ -85,6 +87,7 @@ instance NormalisableBuiltin Builtin where
       ForeachTensor -> NonSimple evalForeachTensor
       ForeachVector -> NonSimple evalForeachVector
       Iterate -> NonSimple evalIterate
+      Transpose -> Simple evalTranspose
       QuantifyRatTensor {} -> None
       QuantifyTensorLike {} -> None
     BuiltinCast c -> case c of
@@ -140,6 +143,45 @@ evalVectorToList args@(VectorToListArgs t d xs) =
   return $ case argExpr d of
     INatLiteral n | n == length xs -> mkListExpr (argExpr t) xs
     _ -> mkExpr accessFromVectorToList args
+
+-- | Transpose normalisation. Fold concrete tensors; otherwise leave it for
+-- index-through-transpose in `evalAtTensor`.
+evalTranspose :: (MonadNormBuiltin m) => EvalSimple TransposeArgs Value Builtin m
+evalTranspose args@(TransposeArgs _ resultDims tensor) =
+  return $
+    fromMaybe (mkExpr accessTranspose args) $
+      -- ConstTensor is uniform: only dims change.
+      goConst <|> goStack2D
+  where
+    goConst :: Maybe (Value Builtin)
+    goConst = case getExpr accessConstTensor tensor of
+      Just (ConstTensorArgs t v _) -> Just $ mkExpr accessConstTensor (ConstTensorArgs t v resultDims)
+      Nothing -> Nothing
+
+    -- 2-D Stack of Stacks: rebuild rows by swapping indices.
+    goStack2D :: Maybe (Value Builtin)
+    goStack2D = case getExpr accessStackTensor tensor of
+      Just (StackTensorArgs t outerDim _ rows) -> do
+        innerStacks <- traverse (getExpr accessStackTensor) rows
+        case innerStacks of
+          [] -> Nothing
+          firstStack@(StackTensorArgs _ innerDim innerRest _) : _ ->
+            -- Only handle 2-D for now: the inner stacks must have empty
+            -- remaining dims.
+            case innerRest of
+              IDimNil -> do
+                let innerCols = map stackElements innerStacks
+                let n = length (stackElements firstStack)
+                if any (\xs -> length xs /= n) innerCols
+                  then Nothing
+                  else do
+                    let transposedRows =
+                          [ mkExpr accessStackTensor (StackTensorArgs t outerDim IDimNil [row !! j | row <- innerCols])
+                            | j <- [0 .. n - 1]
+                          ]
+                    Just $ mkExpr accessStackTensor (StackTensorArgs t innerDim (IDimCons outerDim IDimNil) transposedRows)
+              _ -> Nothing
+      Nothing -> Nothing
 
 foldReduceAndComparison ::
   TensorReductionArgs (Value Builtin) ->

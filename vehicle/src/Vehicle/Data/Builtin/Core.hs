@@ -124,6 +124,8 @@ data BuiltinFunction
   | -- List operations
     FoldList
   | MapList
+  | -- Tensor shape operations
+    Transpose
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData BuiltinFunction
@@ -169,6 +171,7 @@ instance Pretty BuiltinFunction where
     AtVector -> "!v"
     StackTensor {} -> "stack"
     ConstTensor -> "const"
+    Transpose -> "transpose"
 
 data BuiltinCast
   = -- Cast operations

@@ -294,6 +294,7 @@ instance BuiltinHasTensors Builtin where
   accessConstTensorBuiltin = functionAccessor ConstTensor
   accessStackTensorBuiltin = functionAccessor StackTensor
   accessAtTensorBuiltin = functionAccessor AtTensor
+  accessTransposeBuiltin = functionAccessor Transpose
 
 --------------------------------------------------------------------------------
 -- Others

@@ -88,6 +88,7 @@ typeOfBuiltinFunction = \case
   ForeachTensor -> typeOfForeach
   ForeachVector -> typeOfForeach
   Iterate -> typeOfIterate
+  Transpose -> forAllPolarities $ \pol -> pol ~> pol
 
 typeOfConstructor :: BuiltinConstructor -> PolarityDSLExpr
 typeOfConstructor = \case

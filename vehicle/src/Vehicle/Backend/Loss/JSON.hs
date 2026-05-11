@@ -99,6 +99,7 @@ data JExpr
   | DimensionLookup JExpr JExpr
   | ConstTensor JExpr JExpr
   | StackTensor [JExpr]
+  | Transpose JExpr -- (tensor): reverses every axis
   deriving (Show, Generic)
 
 -- NOTE:
@@ -282,6 +283,7 @@ convertBuiltin b spine = case b of
     L.StackTensor -> convertStackTensor spine
     L.ConstTensor -> convertConstTensor spine
     L.SearchRatTensor name minimise -> convertSearch name minimise spine
+    L.Transpose -> convertTranspose convertValue spine
     -- Dimension operations, not yet converted
     L.Add L.AddNat -> unsupportedError b
     L.Mul L.MulNat -> unsupportedError b
@@ -354,6 +356,15 @@ convertConstTensor :: (MonadJSON m) => Spine LossBuiltin -> m JExpr
 convertConstTensor spine = case getExpr accessSpine spine of
   Just (ConstTensorArgs _t v ds) -> ConstTensor <$> convertValue v <*> convertValue ds
   Nothing -> arityError L.ConstTensor 4 spine
+
+convertTranspose ::
+  (MonadJSON m) =>
+  (Value LossBuiltin -> m JExpr) ->
+  Spine LossBuiltin ->
+  m JExpr
+convertTranspose convert spine = case getExpr accessSpine spine of
+  Just (TransposeArgs _t _ds xs) -> Transpose <$> convert xs
+  Nothing -> arityError L.Transpose 3 spine
 
 convertSearch :: (MonadJSON m) => Name -> Bool -> Spine LossBuiltin -> m JExpr
 convertSearch name minimise spine = case getExpr accessSpine spine of
@@ -460,6 +471,7 @@ fromJExpr = \case
   DimensionLookup xs i -> toFunction L.At [xs, i]
   ConstTensor c ds -> toFunction L.ConstTensor [c, ds]
   StackTensor xs -> toFunction L.StackTensor xs
+  Transpose xs -> toFunction L.Transpose [xs]
 
 fromJBinder :: (MonadNameContext m) => JBinder -> m (S.Binder LossBuiltin)
 fromJBinder (Binder p name typ) = do

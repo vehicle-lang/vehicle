@@ -406,6 +406,14 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             provenance=vcl.MISSING,
         )
 
+    def translate_Transpose(self, expression: vcl.Transpose) -> py.expr:
+        """Translate Transpose to builtin call."""
+        return py_app(
+            py_builtin("Transpose", provenance=vcl.MISSING),
+            self.translate_expression(expression.xs),
+            provenance=vcl.MISSING,
+        )
+
 
 def py_name(name: vcl.Name, *, provenance: vcl.Provenance) -> py.Name:
     """Make a name."""

@@ -161,5 +161,9 @@ class PyTorchBuiltins(
         return _torch_tensor(data=float_values, dtype=self.dtype_rat).reshape(shape)
 
     @override
+    def Transpose(self, xs: torch.Tensor) -> torch.Tensor:
+        return xs.permute(*reversed(range(xs.ndim)))
+
+    @override
     def StackTensor(self, tensors: Sequence[torch.Tensor]) -> torch.Tensor:
         return torch.stack(cast(tuple[torch.Tensor], tensors))

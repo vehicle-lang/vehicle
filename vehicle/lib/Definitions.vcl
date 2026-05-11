@@ -20,6 +20,21 @@ existsInList : (A -> Bool) -> List A -> Bool
 existsInList f xs = fold (\x y -> x or y) False (map f xs)
 
 --------------------------------------------------------------------------------
+-- List
+--------------------------------------------------------------------------------
+
+-- List append. Cons-only definition via the right-fold primitive `fold`.
+append : List A -> List A -> List A
+append xs ys = fold (\x acc -> x :: acc) ys xs
+
+-- Reverse a list. Implemented via fold and append; used in dimension lists
+-- (e.g. inside `transpose`'s type signature). The expression-level form is
+-- O(N²) via repeated append, but dim lists are tiny so the cost is
+-- irrelevant.
+reverse : List A -> List A
+reverse xs = fold (\x acc -> append acc (x :: [])) [] xs
+
+--------------------------------------------------------------------------------
 -- Tensor
 --------------------------------------------------------------------------------
 -- These operations have non-zero dimensions so that we have a unique
