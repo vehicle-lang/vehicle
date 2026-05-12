@@ -5,6 +5,36 @@
     "needs": ["spec.vcl"]
   },
   {
+    "name": "Marabou",
+    "run": "vehicle compile queries -s spec.vcl -f MarabouQueries -o Marabou.queries/ --network f:fake.onnx",
+    "needs": ["spec.vcl", "fake.onnx"],
+    "produces": ["Marabou.queries/*.txt", "Marabou.queries/*.vcl-plan"],
+    "ignore": {
+      "lines": ".*\"fileHash\".*"
+    },
+    "sizeOnly": ".vcl-plan"
+  },
+  {
+    "name": "TypeCheck3d",
+    "run": "vehicle typecheck -s spec3d.vcl",
+    "needs": ["spec3d.vcl"]
+  },
+  {
+    "name": "Marabou3d",
+    "run": "vehicle compile queries -s spec3d.vcl -f MarabouQueries -o Marabou3d.queries/ --network g:fake.onnx",
+    "needs": ["spec3d.vcl", "fake.onnx"],
+    "produces": ["Marabou3d.queries/*.txt", "Marabou3d.queries/*.vcl-plan"],
+    "ignore": {
+      "lines": ".*\"fileHash\".*"
+    },
+    "sizeOnly": ".vcl-plan"
+  },
+  {
+    "name": "TypeCheck2d",
+    "run": "vehicle typecheck -s spec2d.vcl",
+    "needs": ["spec2d.vcl"]
+  },
+  {
     "name": "Agda",
     "run": "vehicle compile itp -s spec.vcl -t Agda -o Agda.agda",
     "needs": ["spec.vcl"],
@@ -27,5 +57,39 @@
     "run": "vehicle compile itp -s spec.vcl -t Imandra -o Imandra.iml",
     "needs": ["spec.vcl"],
     "produces": ["Imandra.iml"]
+  },
+  {
+    "name": "Rocq2d",
+    "run": "vehicle compile itp -s spec2d.vcl -t Rocq -o Rocq2d.v",
+    "needs": ["spec2d.vcl"],
+    "produces": ["Rocq2d.v"]
+  },
+  {
+    "name": "RocqVerify2d",
+    "run": "vehicle compile itp -s spec2d.vcl -t Rocq -o Rocq2d.v && rocq compile -w none -vok Rocq2d.v",
+    "needs": ["spec2d.vcl"],
+    "external": ["rocq"],
+    "ignore": {"files": ["Rocq2d.v", ".Rocq2d.aux", "Rocq2d.glob", "Rocq2d.vok"]}
+  },
+  {
+    "name": "Isabelle2d",
+    "run": "vehicle compile itp -s spec2d.vcl -t Isabelle -o isabelle/Isabelle2d.thy",
+    "needs": ["spec2d.vcl"],
+    "produces": ["isabelle/Isabelle2d.thy"]
+  },
+  {
+    "name": "IsabelleVerify2d",
+    "run": "vehicle compile itp -s spec2d.vcl -t Isabelle -o isabelle/Isabelle2d.thy && isabelle build -d vehicle-isabelle/ -d isabelle/ IsabelleTest2d > /dev/null 2>&1 && echo $? || echo 1",
+    "enabled": true,
+    "external": ["isabelle"],
+    "needs": [
+      "spec2d.vcl",
+      "isabelle/ROOT",
+      "../../../../../vehicle-isabelle/ROOT",
+      "../../../../../vehicle-isabelle/Vehicle.thy"
+    ],
+    "ignore": {
+      "files": ["isabelle/Isabelle2d.thy"]
+    }
   }
 ]
