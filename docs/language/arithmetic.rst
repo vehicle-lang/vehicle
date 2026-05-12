@@ -64,13 +64,16 @@ expanded to ``x < y and y <= z``.
 Time
 ----
 
-``Time`` is the type used for temporal bounds and rollout counts. It is
-distinct from ``Nat`` to keep temporal-bound arithmetic separate from
-tensor dimensions.
+``Time`` is the type used for temporal-operator interval bounds and
+``rollout`` step counts. It is distinct from ``Nat`` to keep
+temporal-bound arithmetic separate from tensor dimensions. ``Time`` is
+provided by the ``STL`` library module — a specification must
+``import STL`` to refer to it.
 
 Time literals are written as natural numbers, and Nat literals coerce to
-``Time`` where needed (e.g. temporal-operator bounds or ``rollout[T]``).
-Temporal bounds must reduce to literals at compile time.
+``Time`` where needed (e.g. the temporal-operator interval ``[a, b]`` or
+the ``rollout`` count). Temporal bounds must reduce to literals at
+compile time.
 
 The available operations over Time are:
 

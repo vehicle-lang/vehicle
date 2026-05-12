@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, Tuple
 
 import pytest
+
 import vehicle_lang as vcl
 
 
@@ -44,7 +45,7 @@ def test_rollout_shared_across_duplicate_references() -> None:
     def dynamics(state: Any, action: Any) -> Any:
         return state + action
 
-    # Spec: rollout[4] => controller runs n-1 = 3 times per rollout.
+    # Spec: rollout 4 => controller runs n-1 = 3 times per rollout.
     # Without sharing: two inlined rollouts * 3 = 6 calls.
     # With sharing:    one cached rollout * 3 = 3 calls.
     result = declarations["bounded"](controller, dynamics)

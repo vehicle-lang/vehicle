@@ -45,12 +45,17 @@ insertEdge (origin, dest) (AdjacencyGraph adjList) =
   AdjacencyGraph $
     Map.insertWith (<>) origin [dest] adjList
 
+-- | Nodes reachable from @key@, ordered so each appears after everything it
+-- depends on (post-order DFS of the reachable subforest).
 topologicalSort :: (Ord value, Pretty value) => value -> AdjacencyGraph value -> [value]
 topologicalSort key adjGraph = do
   let DependencyGraph {..} = fromEdges adjGraph
   case dfs graph [vertexFromIdent key] of
-    [e] -> identFromVertex <$> Tree.flatten e
+    [tree] -> identFromVertex <$> postOrder tree
     _ -> developerError "unexpected result from Graph.dfs"
+  where
+    postOrder :: Tree.Tree a -> [a]
+    postOrder (Tree.Node v ts) = concatMap postOrder ts ++ [v]
 
 --------------------------------------------------------------------------------
 -- Types

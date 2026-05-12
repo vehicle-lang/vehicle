@@ -1,27 +1,27 @@
 @property;
 alwaysSmall : (Tensor Real -> Tensor Real) -> Tensor Real;
-alwaysSmall = \ f -> - (globally [0, 3] [ 1.0, 1.0, 1.0, 1.0 ] - f [ 0.0 ]) ! 0
+alwaysSmall = \ f -> - stlGlobally 0 3 ([ 1.0, 1.0, 1.0, 1.0 ] - f [ 0.0 ]) ! 0
 
 @property;
 eventuallyAlwaysSmall : (Tensor Real -> Tensor Real) -> Tensor Real;
-eventuallyAlwaysSmall = \ f -> - (finally [0, 3] (globally [0, 3] [ 1.0, 1.0, 1.0, 1.0 ] - f [ 0.0 ])) ! 0
+eventuallyAlwaysSmall = \ f -> - stlFinally 0 3 (stlGlobally 0 3 ([ 1.0, 1.0, 1.0, 1.0 ] - f [ 0.0 ])) ! 0
 
 @property;
 boundedExists : (Tensor Real -> Tensor Real) -> Tensor Real;
-boundedExists = \ f -> - search[v] (\ e -> \ xs -> reduceMax e xs) nil 0.0 1.0 (\ v -> (globally [0, 3] f [ 0.0 ] - const v [4]) ! 0)
+boundedExists = \ f -> - search[v] (\ e -> \ xs -> reduceMax e xs) nil 0.0 1.0 (\ v -> stlGlobally 0 3 (f [ 0.0 ] - const v [4]) ! 0)
 
 @property;
 boundedInsideTemporal : (Tensor Real -> Tensor Real) -> Tensor Real;
-boundedInsideTemporal = \ f -> - search[v] (\ e -> \ xs -> reduceMax e xs) nil 0.0 1.0 (\ v -> (globally [0, 3] f [ 0.0 ] - const v [4]) ! 0)
+boundedInsideTemporal = \ f -> - search[v] (\ e -> \ xs -> reduceMax e xs) nil 0.0 1.0 (\ v -> stlGlobally 0 3 (f [ 0.0 ] - const v [4]) ! 0)
 
 @property;
 safeUntilSmall : (Tensor Real -> Tensor Real) -> Tensor Real;
-safeUntilSmall = \ f -> - (until [0, 3] (f [ 0.0 ]) ([ 0.5, 0.5, 0.5, 0.5 ] - f [ 0.0 ])) ! 0
+safeUntilSmall = \ f -> - stlUntil 0 3 (f [ 0.0 ]) ([ 0.5, 0.5, 0.5, 0.5 ] - f [ 0.0 ]) ! 0
 
 @property;
 notAlwaysSmall : (Tensor Real -> Tensor Real) -> Tensor Real;
-notAlwaysSmall = \ f -> - - (globally [0, 3] [ 1.0, 1.0, 1.0, 1.0 ] - f [ 0.0 ]) ! 0
+notAlwaysSmall = \ f -> - - stlGlobally 0 3 ([ 1.0, 1.0, 1.0, 1.0 ] - f [ 0.0 ]) ! 0
 
 @property;
 foreachInsideTemporal : (Tensor Real -> Tensor Real) -> Tensor Real;
-foreachInsideTemporal = \ f -> - (globally [0, 3] [ 1.0, 1.0, 1.0, 1.0 ] - f [ 0.0 ]) ! 0
+foreachInsideTemporal = \ f -> - stlGlobally 0 3 ([ 1.0, 1.0, 1.0, 1.0 ] - f [ 0.0 ]) ! 0

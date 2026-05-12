@@ -59,7 +59,9 @@ The signature is ``state -> action -> next-state``. Like ``@network``,
 the body is supplied at the Python boundary by ``load_specification``.
 The primary use case is closed-loop controller specifications, where
 ``@dynamics`` is paired with a ``@network`` controller via the
-``rollout[T]`` operator — see :doc:`temporal-operators`.
+``rollout`` operator (from ``import STL``) — see
+:doc:`temporal-operators`. ``@dynamics`` itself does not require the
+``STL`` import.
 
 Limitations
 -----------

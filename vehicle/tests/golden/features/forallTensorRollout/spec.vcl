@@ -6,6 +6,8 @@
 -- the originalLv counter was being computed as a newest-first walk
 -- counter rather than the actual binder index in the un-expanded ctx.
 
+import STL
+
 T : Time
 T = 3
 
@@ -25,7 +27,7 @@ initialHi = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
 test : Bool
 test = forall (x : Tensor Real [6]) .
     initialLo < x < initialHi =>
-        (rollout[T]
+        (rollout T
             (\ s -> controller [s ! 0, s ! 1, s ! 2, s ! 3, s ! 4])
             dynamics
             x) ! 0 ! 0 >= 0.0

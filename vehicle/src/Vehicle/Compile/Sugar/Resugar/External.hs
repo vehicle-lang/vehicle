@@ -242,9 +242,9 @@ delabBuiltinFunction fun args = case fun of
   V.And -> delabInfixOp2 B.And tokAnd args
   V.Or -> delabInfixOp2 B.Or tokOr args
   V.Implies -> delabInfixOp2 B.Impl tokImpl args
-  V.Temporal V.Globally -> delabTemporalOp1 B.Globally tokGlobally args
-  V.Temporal V.Finally -> delabTemporalOp1 B.Finally tokFinally args
-  V.Temporal V.Until -> delabTemporalOp2 B.Until tokUntil args
+  V.Temporal V.Globally -> delabApp (B.StlGlobally tokStlGlobally) args
+  V.Temporal V.Finally -> delabApp (B.StlFinally tokStlFinally) args
+  V.Temporal V.Until -> delabApp (B.StlUntil tokStlUntil) args
   V.If -> delabIf args
   V.Add _dom -> delabAdd args
   V.Mul _dom -> delabMul args
@@ -280,7 +280,7 @@ delabBuiltinFunction fun args = case fun of
   V.StackTensor {} -> rawDelab
   V.ConstTensor -> delabApp (B.Const tokConst) args
   V.Iterate -> rawDelab
-  V.Rollout -> delabRollout args
+  V.Rollout -> delabApp (B.StlRollout tokStlRollout) args
   V.Transpose -> delabTranspose args
   where
     rawDelab = cheatDelabPretty fun args
@@ -374,24 +374,6 @@ delabIf args@[arg1, arg2, arg3]
       e3 <- delabM (argExpr arg3)
       return $ B.If tokIf e1 tokThen e2 tokElse e3
 delabIf args = cheatDelabPretty V.If args
-
-delabTemporalOp1 :: (MonadDelab m, IsToken token) => (token -> B.TokSeqOpen -> B.Expr -> B.Expr -> B.TokSeqClose -> B.Expr -> B.Expr) -> token -> [V.Arg V.Builtin] -> m B.Expr
-delabTemporalOp1 op tk args@[arg1, arg2, arg3]
-  | all V.isExplicit args =
-      op tk tokSeqOpen <$> delabM (argExpr arg1) <*> delabM (argExpr arg2) <*> pure tokSeqClose <*> delabM (argExpr arg3)
-delabTemporalOp1 _ tk args = delabApp (cheatDelab $ tkSymbol tk) args
-
-delabTemporalOp2 :: (MonadDelab m, IsToken token) => (token -> B.TokSeqOpen -> B.Expr -> B.Expr -> B.TokSeqClose -> B.Expr -> B.Expr -> B.Expr) -> token -> [V.Arg V.Builtin] -> m B.Expr
-delabTemporalOp2 op tk args@[arg1, arg2, arg3, arg4]
-  | all V.isExplicit args =
-      op tk tokSeqOpen <$> delabM (argExpr arg1) <*> delabM (argExpr arg2) <*> pure tokSeqClose <*> delabM (argExpr arg3) <*> delabM (argExpr arg4)
-delabTemporalOp2 _ tk args = delabApp (cheatDelab $ tkSymbol tk) args
-
-delabRollout :: (MonadDelab m) => [V.Arg V.Builtin] -> m B.Expr
-delabRollout args@[arg1, arg2, arg3, arg4]
-  | all V.isExplicit args =
-      B.Rollout tokRollout tokSeqOpen <$> delabM (argExpr arg1) <*> pure tokSeqClose <*> delabM (argExpr arg2) <*> delabM (argExpr arg3) <*> delabM (argExpr arg4)
-delabRollout args = cheatDelabPretty V.Rollout args
 
 delabTranspose :: (MonadDelab m) => [V.Arg V.Builtin] -> m B.Expr
 delabTranspose args = case filter V.isExplicit args of

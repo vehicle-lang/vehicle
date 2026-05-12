@@ -87,9 +87,7 @@ natHasAdd = { addTC = addNat }
 realTensorHasAdd : HasAdd (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
 realTensorHasAdd = { addTC = addRealTensor }
 
-@instance(default=2)
-timeHasAdd : HasAdd Time Time Time
-timeHasAdd = { addTC = addTime }
+-- (HasAdd/HasSub/HasMul/HasDiv on `Time` live in STL.vcl)
 
 -- HasSub
 @typeclass
@@ -100,10 +98,6 @@ record HasSub t1 t2 t3 where
 @instance(default=0)
 realTensorHasSub : HasSub (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
 realTensorHasSub = { subTC = subRealTensor }
-
-@instance(default=1)
-timeHasSub : HasSub Time Time Time
-timeHasSub = { subTC = subTime }
 
 -- HasMul
 @typeclass
@@ -119,10 +113,6 @@ natHasMul = { mulTC = mulNat }
 realTensorHasMul : HasMul (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
 realTensorHasMul = { mulTC = mulRealTensor }
 
-@instance(default=2)
-timeHasMul : HasMul Time Time Time
-timeHasMul = { mulTC = mulTime }
-
 -- HasDiv
 @typeclass
 record HasDiv t1 t2 t3 where
@@ -132,10 +122,6 @@ record HasDiv t1 t2 t3 where
 @instance(default=0)
 realTensorHasDiv : HasDiv (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
 realTensorHasDiv = { divTC = divRealTensor }
-
-@instance(default=1)
-timeHasDiv : HasDiv Time Time Time
-timeHasDiv = { divTC = divTime }
 
 -- Quantifiers
 @typeclass

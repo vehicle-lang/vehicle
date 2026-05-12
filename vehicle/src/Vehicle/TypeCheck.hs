@@ -181,7 +181,7 @@ flattenProgram ::
   AdjacencyGraph ModulePath ->
   m (Prog Builtin)
 flattenProgram userProg importedModules moduleGraph = do
-  let sortedModulePaths = reverse $ topologicalSort userModulePath moduleGraph
+  let sortedModulePaths = topologicalSort userModulePath moduleGraph
   let moduleDecls = fmap (lookupModuleCertain userProg importedModules) sortedModulePaths
   return $ Main $ concat moduleDecls
 

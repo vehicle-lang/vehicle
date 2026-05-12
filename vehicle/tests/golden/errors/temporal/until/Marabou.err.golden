@@ -1,4 +1,5 @@
-Error in file 'spec.vcl' at Line 6, Columns 15-20: The following features are not supported in the verifier backend:
-  - temporal operator 'until' (file 'spec.vcl' at Line 6, Columns 15-20)
+Error in file 'spec.vcl' at Line 8, Columns 15-20: The following features are not supported in the verifier backend:
+  - temporal operator 'until' (file 'spec.vcl' at Line 8, Columns 15-20)
+  - 'Time' type (file 'spec.vcl' at Line 8, Columns 21-22)
 
 Specs that need temporal operators or `Time` should be compiled with `vehicle compile loss --logic STLLoss …` instead.

@@ -3,6 +3,8 @@
 -- rather than an inline lambda. Both forms get inlined during
 -- normalisation, so both must compile under the slice-context fix.
 
+import STL
+
 T : Time
 T = 3
 
@@ -28,4 +30,4 @@ controllerOnState s = controller (stateToObs s)
 test : Bool
 test = forall (x : Tensor Real [6]) .
     initialLo < x < initialHi =>
-        (rollout[T] controllerOnState dynamics x) ! 0 ! 0 >= 0.0
+        (rollout T controllerOnState dynamics x) ! 0 ! 0 >= 0.0

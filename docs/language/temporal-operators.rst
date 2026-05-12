@@ -1,6 +1,12 @@
 Temporal operators
 ==================
 
+.. note::
+   The temporal operators, the ``rollout`` operator and the ``Time`` type
+   live in the optional ``STL`` library module. A specification must
+   ``import STL`` to use any of them; the ``@dynamics`` annotation is
+   available without the import.
+
 .. warning::
    Temporal operators are currently only supported by the loss backend.
    The verifier (Marabou) and ITP (Agda, Rocq, Isabelle, Imandra) backends
@@ -14,9 +20,10 @@ Signal Temporal Logic operators
 -------------------------------
 
 Vehicle provides three *Signal Temporal Logic* (STL) operators for
-discrete-time boolean signals. Each takes a bounded interval ``[a, b]``
-and a ``Tensor Bool`` signal, and returns a signal of the same shape.
-The outer dimension is time.
+discrete-time boolean signals. Each takes a bounded interval as a
+``Vector Time 2`` value ``[a, b]`` and a ``Tensor Bool`` signal, and
+returns a signal of the same shape. The outer dimension is time. The
+interval endpoints must reduce to compile-time constants.
 
 .. list-table::
    :header-rows: 1
@@ -25,14 +32,14 @@ The outer dimension is time.
    * - Operator
      - Type
      - Meaning at step ``t``
-   * - ``globally[a, b] s``
-     - ``Tensor Bool [N] -> Tensor Bool [N]``
+   * - ``globally [a, b] s``
+     - ``Vector Time 2 -> Tensor Bool [N] -> Tensor Bool [N]``
      - ``s`` holds at every step in ``[t + a, t + b]``
-   * - ``finally[a, b] s``
-     - ``Tensor Bool [N] -> Tensor Bool [N]``
+   * - ``finally [a, b] s``
+     - ``Vector Time 2 -> Tensor Bool [N] -> Tensor Bool [N]``
      - ``s`` holds at some step in ``[t + a, t + b]``
-   * - ``until[a, b] phi psi``
-     - ``Tensor Bool [N] -> Tensor Bool [N] -> Tensor Bool [N]``
+   * - ``until [a, b] phi psi``
+     - ``Vector Time 2 -> Tensor Bool [N] -> Tensor Bool [N] -> Tensor Bool [N]``
      - ``psi`` holds at some ``j`` in ``[t + a, t + b]`` and ``phi`` holds at every step before ``j``
 
 Signals usually come from a state trajectory. Closed-loop specs roll a
@@ -54,20 +61,22 @@ analogous to ``@network`` but representing system dynamics:
 
 It takes the current state and the controller's action, and returns
 the next state. Like ``@network``, the body is supplied at the
-Python boundary by ``load_specification``.
+Python boundary by ``load_specification``. ``@dynamics`` is available
+without ``import STL``.
 
 The ``rollout`` operator
 ------------------------
 
-``rollout[T]`` interleaves a state-shaped controller with a
-``@dynamics``-shaped plant for ``T`` steps from a given initial state:
+``rollout n`` interleaves a state-shaped controller with a
+``@dynamics``-shaped plant for ``n`` steps from a given initial state:
 
 .. code-block:: agda
 
-   rollout[T] : (Tensor Real [stateDim] -> Tensor Real [actDim])
-             -> (Tensor Real [stateDim] -> Tensor Real [actDim] -> Tensor Real [stateDim])
-             -> Tensor Real [stateDim]
-             -> Tensor Real [T, stateDim]
+   rollout : (n : Time)
+          -> (Tensor Real [stateDim] -> Tensor Real [actDim])
+          -> (Tensor Real [stateDim] -> Tensor Real [actDim] -> Tensor Real [stateDim])
+          -> Tensor Real [stateDim]
+          -> Tensor Real [n, stateDim]
 
 Use ``rollout`` for closed-loop specifications: a small controller
 and a separate dynamics model compose into a trajectory. For
@@ -86,6 +95,8 @@ signal recording whether the position at each step is within bounds:
 
 .. code-block:: agda
 
+   import STL
+
    @network
    controller : Tensor Real [2] -> Tensor Real [1]
 
@@ -96,7 +107,7 @@ signal recording whether the position at each step is within bounds:
    initState = [0.0, 0.0]
 
    trajectory : Tensor Real [10, 2]
-   trajectory = rollout[10] controller dynamics initState
+   trajectory = rollout 10 controller dynamics initState
 
    positions : Tensor Real [10]
    positions = (transpose trajectory) ! 0
@@ -113,7 +124,7 @@ signal that is true when the position lies in ``(0, 10)``.
 The ``globally`` operator
 -------------------------
 
-Given a discrete-time signal ``s``, ``globally[a, b] s`` holds at step
+Given a discrete-time signal ``s``, ``globally [a, b] s`` holds at step
 ``t`` when ``s`` holds at every step in ``[t + a, t + b]``. Use it to
 specify that a safety property must hold throughout an interval:
 
@@ -121,7 +132,7 @@ specify that a safety property must hold throughout an interval:
 
    @property
    stayBounded : Bool
-   stayBounded = (globally[0,9] belowLimit) ! 0
+   stayBounded = (globally [0,9] belowLimit) ! 0
 
 The outer ``! 0`` extracts the result at the first time step; because
 the window ``[0,9]`` covers the entire trace, this is exactly the
@@ -130,7 +141,7 @@ requirement that ``belowLimit`` holds at every step.
 The ``finally`` operator
 ------------------------
 
-``finally[a, b] s`` holds at step ``t`` when ``s`` holds at some step
+``finally [a, b] s`` holds at step ``t`` when ``s`` holds at some step
 in ``[t + a, t + b]``. Use it to specify that a property is eventually
 reached:
 
@@ -138,7 +149,7 @@ reached:
 
    @property
    eventuallyBelowLimit : Bool
-   eventuallyBelowLimit = (finally[0,9] belowLimit) ! 0
+   eventuallyBelowLimit = (finally [0,9] belowLimit) ! 0
 
 Reading at ``t = 0``, this asserts that at some step in the trace
 the position is between 0 and 10.
@@ -146,7 +157,7 @@ the position is between 0 and 10.
 The ``until`` operator
 ----------------------
 
-``until[a, b] phi psi`` holds at step ``t`` when ``psi`` becomes true
+``until [a, b] phi psi`` holds at step ``t`` when ``psi`` becomes true
 at some ``j`` in ``[t + a, t + b]`` and ``phi`` holds at every step
 before ``j``. Use it to combine progress with a safety invariant. With
 the running example, suppose we want the position to stay below 10
@@ -159,7 +170,7 @@ until it reaches a goal band ``(8, 9)``:
 
    @property
    safeUntilGoalReached : Bool
-   safeUntilGoalReached = (until[0,9] belowLimit inGoal) ! 0
+   safeUntilGoalReached = (until [0,9] belowLimit inGoal) ! 0
 
 Per-dimension state predicates
 ------------------------------
@@ -182,11 +193,11 @@ that every component of the state stays within bounds:
 
    @property
    alwaysInBounds : Bool
-   alwaysInBounds = (globally[0,9] (foreach t . stateInBounds (trajectory ! t))) ! 0
+   alwaysInBounds = (globally [0,9] (foreach t . stateInBounds (trajectory ! t))) ! 0
 
 The ``forall k`` quantifies over the finite ``Index 2`` type and
 expands to a conjunction; the ``foreach t`` builds the boolean
-signal at each of the 10 time steps; the ``globally[0,9]`` reduces
+signal at each of the 10 time steps; the ``globally [0,9]`` reduces
 the signal across the whole trace.
 
 If the only requirement on the state is per-component bounds, the
@@ -205,6 +216,8 @@ temporal operators apply to its output directly:
 
 .. code-block:: agda
 
+   import STL
+
    @network
    trajectoryPrediction : Tensor Real [2] -> Tensor Real [10]
 
@@ -216,7 +229,7 @@ temporal operators apply to its output directly:
 
    @property
    alwaysBelowLimit : Bool
-   alwaysBelowLimit = (globally[0,9] belowLimit) ! 0
+   alwaysBelowLimit = (globally [0,9] belowLimit) ! 0
 
 The closed-loop version factors the controller from a separate plant
 model; the open-loop version learns the composition end-to-end. The

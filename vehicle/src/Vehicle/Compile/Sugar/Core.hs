@@ -109,13 +109,13 @@ tokExists = mkToken B.TokExists "exists"
 
 tokForeach = mkToken B.TokForeach "foreach"
 
-tokGlobally = mkToken B.TokGlobally "globally"
+tokStlGlobally = mkToken B.TokStlGlobally "stlGlobally"
 
-tokFinally = mkToken B.TokFinally "finally"
+tokStlFinally = mkToken B.TokStlFinally "stlFinally"
 
-tokUntil = mkToken B.TokUntil "until"
+tokStlUntil = mkToken B.TokStlUntil "stlUntil"
 
-tokRollout = mkToken B.TokRollout "rollout"
+tokStlRollout = mkToken B.TokStlRollout "stlRollout"
 
 tokTranspose = mkToken B.TokTranspose "transpose"
 

@@ -12,6 +12,8 @@
 --   limitUntilTarget   (until)      speed stays within limit until cruise reached
 --------------------------------------------------------------------------------
 
+import STL
+
 -- Physical constants (types inferred from usage context)
 vTarget  = 30.0   -- target cruising speed (m/s)
 vMax     = 33.0   -- hard speed limit (m/s)
@@ -57,7 +59,7 @@ atTarget = foreach i . vTarget - epsilon <= vTrace ! i <= vTarget + epsilon
 -- nine step-to-step smoothness checks are enumerated explicitly.
 @property
 alwaysBelowLimit : Bool
-alwaysBelowLimit = ((globally[0,9] belowLimit) ! 0)
+alwaysBelowLimit = ((globally [0,9] belowLimit) ! 0)
   and -maxAccel <= vTrace ! 1 - vTrace ! 0 <= maxAccel
   and -maxAccel <= vTrace ! 2 - vTrace ! 1 <= maxAccel
   and -maxAccel <= vTrace ! 3 - vTrace ! 2 <= maxAccel
@@ -71,9 +73,9 @@ alwaysBelowLimit = ((globally[0,9] belowLimit) ! 0)
 -- Reachability: speed must reach the target band at some point
 @property
 eventuallyAtTarget : Bool
-eventuallyAtTarget = (finally[0,9] atTarget) ! 0
+eventuallyAtTarget = (finally [0,9] atTarget) ! 0
 
 -- Progress: speed stays within the hard limit until the target is reached
 @property
 limitUntilTarget : Bool
-limitUntilTarget = (until[0,9] belowLimit atTarget) ! 0
+limitUntilTarget = (until [0,9] belowLimit atTarget) ! 0

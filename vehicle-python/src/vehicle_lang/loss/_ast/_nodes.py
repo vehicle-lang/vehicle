@@ -311,7 +311,7 @@ class SearchRatTensor(Expression):
 
 @dataclass(frozen=True)
 class Rollout(Expression):
-    """Rollout: rollout[N] controller dynamics initState"""
+    """Rollout: rollout N controller dynamics initState"""
 
     n: Expression
     controller: Expression

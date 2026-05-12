@@ -1,4 +1,4 @@
-Error in file 'spec.vcl' at Line 12, Columns 20-27: The following features are not supported in the Rocq ITP backend:
-  - 'rollout' (file 'spec.vcl' at Line 12, Columns 20-27)
+Error in file 'spec.vcl' at Line 14, Columns 20-27: The following features are not supported in the Rocq ITP backend:
+  - 'rollout' (file 'spec.vcl' at Line 14, Columns 20-27)
 
 Specs that need temporal operators or `Time` should be compiled with `vehicle compile loss --logic STLLoss …` instead.

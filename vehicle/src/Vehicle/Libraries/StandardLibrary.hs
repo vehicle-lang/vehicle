@@ -6,9 +6,11 @@ module Vehicle.Libraries.StandardLibrary
     standardLibraryContent,
     standardLibraryBuiltinModulePath,
     standardLibraryDefinitionsModulePath,
+    standardLibrarySTLModulePath,
     standardLibraryInstanceOps,
     isBuiltinModule,
     standardLibIdent,
+    stlLibIdent,
     validNetworkTypeIdent,
     validNetworkIOTypeIdent,
     validDynamicsTypeIdent,
@@ -37,6 +39,13 @@ standardLibIdent = Identifier standardLibraryDefinitionsModulePath
 
 standardLibraryDefinitionsModulePath :: ModulePath
 standardLibraryDefinitionsModulePath = ModulePath ["Definitions"]
+
+-- | The optional STL extension module (not auto-imported).
+standardLibrarySTLModulePath :: ModulePath
+standardLibrarySTLModulePath = ModulePath ["STL"]
+
+stlLibIdent :: Name -> Identifier
+stlLibIdent = Identifier standardLibrarySTLModulePath
 
 standardLibraryInstanceOps :: Set Identifier
 standardLibraryInstanceOps =
@@ -102,11 +111,12 @@ standardLibraryContent =
   fromList $
     fmap
       (second decodeUtf8)
-      [ (standardLibraryDefinitionsModulePath, $(makeRelativeToProject "lib/Definitions.vcl" >>= embedFile))
-      -- (standardLibraryBuiltinModulePath Nothing, $(makeRelativeToProject "lib/Builtins/Standard.vcl" >>= embedFile)),
-      -- (standardLibraryBuiltinModulePath $ Just PolarityTypes, $(makeRelativeToProject "lib/Builtins/Polarity.vcl" >>= embedFile)),
-      -- (standardLibraryBuiltinModulePath $ Just LinearityTypes, $(makeRelativeToProject "lib/Builtins/Linearity.vcl" >>= embedFile)),
-      -- (standardLibraryBuiltinModulePath $ Just DecidabilityTypes, $(makeRelativeToProject "lib/Builtins/Decidability.vcl" >>= embedFile))
+      [ (standardLibraryDefinitionsModulePath, $(makeRelativeToProject "lib/Definitions.vcl" >>= embedFile)),
+        (standardLibrarySTLModulePath, $(makeRelativeToProject "lib/STL.vcl" >>= embedFile))
+        -- (standardLibraryBuiltinModulePath Nothing, $(makeRelativeToProject "lib/Builtins/Standard.vcl" >>= embedFile)),
+        -- (standardLibraryBuiltinModulePath $ Just PolarityTypes, $(makeRelativeToProject "lib/Builtins/Polarity.vcl" >>= embedFile)),
+        -- (standardLibraryBuiltinModulePath $ Just LinearityTypes, $(makeRelativeToProject "lib/Builtins/Linearity.vcl" >>= embedFile)),
+        -- (standardLibraryBuiltinModulePath $ Just DecidabilityTypes, $(makeRelativeToProject "lib/Builtins/Decidability.vcl" >>= embedFile))
       ]
 
 standardLibrary :: Library

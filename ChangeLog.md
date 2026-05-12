@@ -4,23 +4,25 @@
 
 ### Language
 
-* **Feature:** Signal Temporal Logic operators (`globally`, `finally`,
-  `until`) for expressing properties over discrete-time boolean signals.
-  Loss backend only; the verifier and ITP backends raise a "not
-  supported" error. See
+* **Feature:** Signal Temporal Logic, via the optional `STL` library module
+  (`import STL`, not auto-imported). Provides three temporal operators —
+  `globally`, `finally`, `until` — over discrete-time boolean signals; each
+  takes a bounded interval as a `Vector Time 2` value and a `Tensor Bool`
+  signal, e.g. `globally [a, b] s`. Loss backend only; the verifier and ITP
+  backends raise a "not supported" error. See
   [temporal-operators](docs/language/temporal-operators.rst).
 
-* **Feature:** `@dynamics` declaration kind and `rollout[T]` operator
-  for closed-loop controller specifications. `@dynamics` is a
-  runtime-bound plant model analogous to `@network`; `rollout[T]`
-  composes a controller and a `@dynamics` model into a `T`-step
-  trajectory. Loss backend only. See
+* **Feature:** `@dynamics` declaration kind and the `rollout` operator (from
+  `import STL`) for closed-loop controller specifications. `@dynamics` is a
+  runtime-bound plant model analogous to `@network` (available without the
+  import); `rollout n` composes a `@network` controller and a `@dynamics`
+  model into an `n`-step trajectory. Loss backend only. See
   `examples/closedLoopSafety` for an end-to-end specification.
 
-* **Feature:** `Time` type, used for temporal-operator bounds and
-  rollout step counts. Distinct from `Nat` so temporal-bound
-  arithmetic is not entangled with tensor dimensions. Bounds must
-  reduce to a literal at compile time. See
+* **Feature:** `Time` type (from `import STL`), used for temporal-operator
+  interval bounds and `rollout` step counts. Distinct from `Nat` so
+  temporal-bound arithmetic is not entangled with tensor dimensions; bounds
+  must reduce to a literal at compile time. See
   [arithmetic](docs/language/arithmetic.rst).
 
 * **Feature:** `transpose` operator on tensors. Reverses the

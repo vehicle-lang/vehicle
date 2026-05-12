@@ -15,6 +15,7 @@ import Vehicle.Compile.Error (CompileError (..), MonadCompile)
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Standard.Core (Builtin (..))
+import Vehicle.Libraries.StandardLibrary (stlLibIdent)
 
 -- | Which backend's feature-rejection rules to apply.
 data BackendKind
@@ -65,7 +66,10 @@ goExpr :: (MonadWriter [Hit] m) => Expr Builtin -> m ()
 goExpr expr = case expr of
   Universe {} -> return ()
   BoundVar {} -> return ()
-  FreeVar {} -> return ()
+  -- Temporal operators reach user code as STL library wrappers, not as the builtin.
+  FreeVar p ident -> case unsupportedFreeVarName ident of
+    Nothing -> return ()
+    Just desc -> tell [(desc, p)]
   Hole {} -> return ()
   Meta {} -> return ()
   Builtin p b -> reportIfUnsupported p b
@@ -109,3 +113,12 @@ unsupportedFeatureName = \case
   BuiltinCast (FromNat FromNatToTime) -> Just "cast 'Nat -> Time'"
   BuiltinCast (FromTime FromTimeToNat) -> Just "cast 'Time -> Nat'"
   _ -> Nothing
+
+-- | The `STL` library wrappers for the temporal operators / `rollout`.
+unsupportedFreeVarName :: Identifier -> Maybe Text
+unsupportedFreeVarName ident
+  | ident == stlLibIdent "globally" = Just "temporal operator 'globally'"
+  | ident == stlLibIdent "finally" = Just "temporal operator 'finally'"
+  | ident == stlLibIdent "until" = Just "temporal operator 'until'"
+  | ident == stlLibIdent "rollout" = Just "'rollout'"
+  | otherwise = Nothing
