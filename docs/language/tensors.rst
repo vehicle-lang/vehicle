@@ -138,22 +138,20 @@ the temporal-operators running example
 ``[T, stateDim]`` into ``[stateDim, T]`` so that an individual
 state component can be sliced as ``Tensor Real [T]``.
 
-``transpose`` is normalised away at compile time when the result is
-indexed: ``(transpose t) ! i ! j`` reduces to ``t ! j ! i``. Literal
-tensors (e.g. ``transpose [[1.0, 2.0], [3.0, 4.0]]``) are folded at
-compile time as well.
+A transpose that is indexed down to a scalar — ``(transpose t) ! i_1 ! ... ! i_n``
+— is eliminated at compile time (it equals ``t ! i_n ! ... ! i_1``). Constant
+tensors (``transpose (const v ds)``) and rank-2 list literals
+(``transpose [[1.0, 2.0], [3.0, 4.0]]``) are folded directly.
 
-Backend support (non-loss)
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+Backend support
+~~~~~~~~~~~~~~~
 
-- Verifier (Marabou): rank-2 only, and only when the transposed tensor
-  is fully indexed; non-indexed transpose is rejected.
-- Agda ITP: arbitrary rank.
-- Isabelle ITP: arbitrary rank.
-- Imandra ITP: arbitrary rank for ``Real``, ``Bool``, and ``Nat`` tensors.
-- Rocq ITP: rank-2 only.
-
-The loss backend also supports non-indexed transpose over opaque tensors.
+- Verifier (Marabou / VNN-LIB): any rank.
+- Loss: any rank.
+- Agda, Isabelle ITP: any rank.
+- Imandra ITP: any rank, for ``Real``, ``Bool`` and ``Nat`` element types.
+- Rocq ITP: rank 2 only. Targeting Rocq with a higher-rank transpose is an
+  error.
 
 
 Non-constant dimensions

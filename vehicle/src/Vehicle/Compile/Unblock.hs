@@ -349,26 +349,39 @@ unblockAtTensor unblock (AtTensorArgs tElem d ds xs i) = do
         Just args' -> evalAtTensor nameCtx evalApp eval args'
         Nothing -> evalAtTensor nameCtx evalApp eval unswappedArgs
 
--- | Verifier-local index-through-transpose for 2-D: `(transpose t) ! i ! j`
--- becomes `(t ! j) ! i` once the chain is fully indexed.
+-- | Index-through-transpose, any rank.  A fully-consumed indexing chain
+-- `(transpose t) ! i₁ ! … ! iₙ` (so the result is a scalar) equals the
+-- index-reversed `t ! iₙ ! … ! i₁`, because `transpose` reverses axis order.
+-- Used by the verifier (which decomposes every tensor to scalars before
+-- linearisation, so the transposed tensor is always fully consumed there);
+-- a soundness-preserving identity for any caller. Returns `Nothing` if the
+-- chain isn't a fully-consumed indexing of a `transpose`.
 rewriteTransposeAt ::
   AtTensorArgs (Value Builtin) ->
   Maybe (AtTensorArgs (Value Builtin))
-rewriteTransposeAt (AtTensorArgs tElem _outerD outerRemDims outerTensor outerIndex) = do
-  -- Outer `at` must fully consume the tensor.
+rewriteTransposeAt topArgs@(AtTensorArgs tElem _ outerRemDims _ _) = do
+  -- Whole transposed tensor consumed (scalar result) — only then is it a pure
+  -- index permutation.
   IDimNil <- pure outerRemDims
-  -- Outer's tensor must be itself an `at`.
-  AtTensorArgs _ innerD innerRemDims innerTensor innerIndex <- getExpr accessAtTensor outerTensor
-  -- The inner `at` must leave one dim — i.e., the original transpose was 2-D.
-  IDimCons innerLastDim IDimNil <- pure innerRemDims
-  -- The inner `at`'s tensor must be a transpose.
-  TransposeArgs _ _ underlying <- getExpr accessTranspose innerTensor
-  -- Build the swapped middle access: `t ! outerIndex` (peels the original
-  -- `[innerLastDim, innerD]` tensor along its first dim, leaving `[innerD]`).
-  let midDims = IDimCons innerD IDimNil
-  let midResult = mkExpr accessAtTensor (AtTensorArgs tElem innerLastDim midDims underlying outerIndex)
-  -- Then peel that with the original inner index.
-  pure (AtTensorArgs tElem innerD IDimNil midResult innerIndex)
+  (underlying, pairs) <- collect topArgs []
+  -- `pairs` (outer→inner) is [(d₁, iₙ), (d₂, iₙ₋₁), …, (dₙ, i₁)] where `t` has
+  -- shape [d₁,…,dₙ]; rebuild `underlying ! iₙ ! iₙ₋₁ ! … ! i₁`.
+  case reverse pairs of
+    [] -> Nothing -- unreachable: `topArgs` is itself an `at`
+    (lastD, lastIdx) : revInit -> do
+      let dims = map fst pairs
+          peelStep (acc, j) (dj, idx) =
+            let remDims = foldr IDimCons IDimNil (drop (j + 1) dims)
+             in (mkExpr accessAtTensor (AtTensorArgs tElem dj remDims acc idx), j + 1)
+          (innerExpr, _) = foldl peelStep (underlying, 0 :: Int) (reverse revInit)
+      pure (AtTensorArgs tElem lastD IDimNil innerExpr lastIdx)
+  where
+    collect (AtTensorArgs _ d _remDims tensor idx) acc =
+      case getExpr accessTranspose tensor of
+        Just (TransposeArgs _ _ underlying) -> Just (underlying, reverse ((d, idx) : acc))
+        Nothing -> case getExpr accessAtTensor tensor of
+          Just innerArgs -> collect innerArgs ((d, idx) : acc)
+          Nothing -> Nothing
 
 unblockForeachTensor ::
   (MonadUnblock m) =>

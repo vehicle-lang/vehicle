@@ -776,4 +776,9 @@ Context {R : Type} {n m : nat}.
 Definition transpose_t (t : 'nT[R]_([:: n.+1; m.+1])) : 'nT[R]_([:: m.+1; n.+1]) :=
   \tensor^^j \tensor^^i t^^i^^j.
 
+(* Correctness: `transpose_t` swaps the two axes — `(transpose_t t)[j][i] = t[i][j]`. *)
+Lemma transpose_tE (t : 'nT[R]_([:: n.+1; m.+1])) (i : 'I_n.+1) (j : 'I_m.+1) :
+  (transpose_t t)^^j^^i = t^^i^^j.
+Proof. by rewrite /transpose_t !nstackE. Qed.
+
 End TensorTranspose.
