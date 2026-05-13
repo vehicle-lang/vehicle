@@ -8,12 +8,14 @@ from typing import Any, Iterable, Mapping, MutableMapping
 from ..typing import DeclarationName, DifferentiableLogic
 from ._common import load_loss_specification
 from ._tensorflow._translation import TensorFlowTranslation
+from ._tensorflow.gradnorm import GradNormBalancer
 from ._tensorflow.samplers import DefaultTensorFlowSampler, TensorFlowSampler
 
 __all__ = [
     "load_specification",
     "TensorFlowSampler",
     "DefaultTensorFlowSampler",
+    "GradNormBalancer",
 ]
 
 
