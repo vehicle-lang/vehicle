@@ -21,29 +21,13 @@ begin
 
   
 
-  definition zeroD  :: "  R FlexTensor "
-    where " zeroD   = ( (flextensor_from_vec [] [ (((5 :: R) / 2)) ]) ) "
-
-  definition oneD  :: "  R FlexTensor "
-    where " oneD   = ( (combine_subtensors [zeroD,(flextensor_from_vec [] [ (((1 :: R) )) ])]) ) "
-
-  definition twoD  :: "  R FlexTensor "
-    where " twoD   = ( (combine_subtensors [oneD,(flextensor_from_vec [2] [(((2 :: R) )), (((3 :: R) ))])]) ) "
-
-  definition lookup2D  :: "  R FlexTensor "
-    where " lookup2D   = ( (flex_subtensor ((flex_subtensor twoD (Abs_FlexIndex 0))) (Abs_FlexIndex 1)) ) "
-
-  definition addition  :: "  R FlexTensor "
-    where " addition   = ( (tensor_plus twoD twoD) ) "
-
-  definition subtraction  :: "  R FlexTensor "
-    where " subtraction   = ( (tensor_plus twoD (tensor_cdot (-1 :: R) twoD)) ) "
+  
 
   locale  Isabelle  = 
 
     fixes  f  :: " R tensor \<Rightarrow> R FlexTensor "
 
-    assumes  p :  " (forallIndex (2 :: nat)  (\<lambda>  i . ((forallIndex (2 :: nat)  (\<lambda>  j . ((geqTensorReduced (flex_subtensor ((flex_subtensor ((tensor_plus (f subtraction) addition)) i)) j) (flextensor_from_vec [] [ (((0 :: R) )) ])))))))) "
+    assumes  p :  " (forallIndex (2 :: nat)  (\<lambda>  i . ((forallIndex (2 :: nat)  (\<lambda>  j . ((geqTensorReduced (flex_subtensor ((flex_subtensor ((tensor_plus (f ((tensor_plus (combine_subtensors [(combine_subtensors [(flextensor_from_vec [] [ (((5 :: R) / 2)) ]),(flextensor_from_vec [] [ (((1 :: R) )) ])]),(flextensor_from_vec [2] [(((2 :: R) )), (((3 :: R) ))])]) (tensor_cdot (-1 :: R) (combine_subtensors [(combine_subtensors [(flextensor_from_vec [] [ (((5 :: R) / 2)) ]),(flextensor_from_vec [] [ (((1 :: R) )) ])]),(flextensor_from_vec [2] [(((2 :: R) )), (((3 :: R) ))])]))))) ((tensor_plus (combine_subtensors [(combine_subtensors [(flextensor_from_vec [] [ (((5 :: R) / 2)) ]),(flextensor_from_vec [] [ (((1 :: R) )) ])]),(flextensor_from_vec [2] [(((2 :: R) )), (((3 :: R) ))])]) (combine_subtensors [(combine_subtensors [(flextensor_from_vec [] [ (((5 :: R) / 2)) ]),(flextensor_from_vec [] [ (((1 :: R) )) ])]),(flextensor_from_vec [2] [(((2 :: R) )), (((3 :: R) ))])]))))) i)) j) (flextensor_from_vec [] [ (((0 :: R) )) ])))))))) "
 
     begin
 

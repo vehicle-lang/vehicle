@@ -20,11 +20,7 @@ begin
 
   
 
-  definition numberOfDogs  :: "  nat "
-    where " numberOfDogs   = ( (6 :: nat) ) "
-
-  typedef Dog  =  "{ i :: nat. i < (numberOfDogs) }"
-  unfolding numberOfDogs_def
+  typedef Dog  =  "{ i :: nat. i < ((6 :: nat)) }"
     by (simp, rule_tac x = "0" in exI, linarith)
 
   (* Type Coercions *)
@@ -32,26 +28,8 @@ begin
   definition to_Dog :: "FlexIndex \<Rightarrow> Dog"
     where[simp]: "to_Dog a = (
       let i = Rep_FlexIndex a
-      in (if i < numberOfDogs then Abs_Dog i else undefined))"
+      in (if i < (6 :: nat) then Abs_Dog i else undefined))"
   declare [[coercion to_Dog]]
-
-  definition greatDane  :: "  FlexIndex "
-    where " greatDane   = ( (Abs_FlexIndex 1) ) "
-
-  definition germanShepherd  :: "  FlexIndex "
-    where " germanShepherd   = ( (Abs_FlexIndex 2) ) "
-
-  definition chihuahua  :: "  FlexIndex "
-    where " chihuahua   = ( (Abs_FlexIndex 4) ) "
-
-  definition pekinese  :: "  FlexIndex "
-    where " pekinese   = ( (Abs_FlexIndex 5) ) "
-
-  definition smallDogs  :: "  Dog list "
-    where " smallDogs   = ( chihuahua # (pekinese # []) ) "
-
-  definition bigDogs  :: "  Dog list "
-    where " bigDogs   = ( greatDane # (germanShepherd # []) ) "
 
   typedef Image  =  "{ a :: R tensor. (dims a) = ((4 :: nat) # ((4 :: nat) # [])) }"
     using dims_tensor_from_lookup by blast
@@ -130,7 +108,7 @@ begin
 
     fixes  score  :: " Image \<Rightarrow> R FlexTensor "
 
-    assumes  doesNotConfuseBigAndSmall :  " (\<forall> x. (validImage score x) \<longrightarrow> (noConfusionWith score x bigDogs smallDogs)) "
+    assumes  doesNotConfuseBigAndSmall :  " (\<forall> x. (validImage score x) \<longrightarrow> (noConfusionWith score x ((Abs_FlexIndex 1) # ((Abs_FlexIndex 2) # [])) ((Abs_FlexIndex 4) # ((Abs_FlexIndex 5) # [])))) "
 
     begin
 

@@ -20,14 +20,13 @@ begin
 
   
 
-  definition mat  :: "  R FlexTensor "
-    where " mat   = ( (f ((flextensor_from_vec [2] [(((0 :: R) )), (((0 :: R) ))]))) ) "
+  
 
   locale  Isabelle2d  = 
 
     fixes  f  :: " R tensor \<Rightarrow> R FlexTensor "
 
-    assumes  transposedNonNegative :  " (forallIndex (2 :: nat)  (\<lambda>  i . ((forallIndex (3 :: nat)  (\<lambda>  j . ((geqTensorReduced (flex_subtensor ((flex_subtensor ((tensor_transpose mat)) i)) j) (flextensor_from_vec [] [ (((0 :: R) )) ])))))))) "
+    assumes  transposedNonNegative :  " (forallIndex (2 :: nat)  (\<lambda>  i . ((forallIndex (3 :: nat)  (\<lambda>  j . ((geqTensorReduced (flex_subtensor ((flex_subtensor ((tensor_transpose ((f ((flextensor_from_vec [2] [(((0 :: R) )), (((0 :: R) ))])))))) i)) j) (flextensor_from_vec [] [ (((0 :: R) )) ])))))))) "
 
     begin
 

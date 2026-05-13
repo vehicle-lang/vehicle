@@ -19,8 +19,7 @@ begin
 
   
 
-  definition unused  :: "  bool "
-    where " unused   = ( (\<forall> (x :: R tensor). True) ) "
+  
 
   locale  Isabelle  = 
 

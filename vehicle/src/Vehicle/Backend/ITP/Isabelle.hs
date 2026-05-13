@@ -11,8 +11,11 @@ import Control.Monad.State (runStateT)
 import Control.Monad.State.Class (MonadState, gets, modify)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Foldable (fold)
+import Data.Functor.Identity (Identity (..))
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NonEmpty
+import Data.Map (Map)
+import Data.Map qualified as Map
 import Data.Maybe (mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
@@ -29,7 +32,6 @@ import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Sugar.Binders
-import Vehicle.Data.AST.Expr.Scoped ()
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Decidability
 import Vehicle.Data.Builtin.Interface (Accessor (..))
@@ -55,9 +57,39 @@ data IsabelleOptions = IsabelleOptions
 currentPhase :: Doc ()
 currentPhase = "compilation to Isabelle"
 
+-- | Inline zero-binder non-`@property` `FunctionDecl`s into their use sites
+-- and drop them.
+inlineNonPropertyDecls :: [Decl DecidabilityBuiltin] -> [Decl DecidabilityBuiltin]
+inlineNonPropertyDecls = go Map.empty
+  where
+    go :: Map Identifier (Expr DecidabilityBuiltin) -> [Decl DecidabilityBuiltin] -> [Decl DecidabilityBuiltin]
+    go _ [] = []
+    go env (d : ds) = case d of
+      DefFunction _ ident (FunctionDecl 0 Nothing) _ body ->
+        let body' = substFreeVars env body
+         in go (Map.insert ident body' env) ds
+      _ -> fmap (substFreeVars env) d : go env ds
+
+    substFreeVars ::
+      Map Identifier (Expr DecidabilityBuiltin) ->
+      Expr DecidabilityBuiltin ->
+      Expr DecidabilityBuiltin
+    substFreeVars env =
+      runIdentity . traverseFreeVarsM (const id) (replaceFromEnv env)
+
+    replaceFromEnv ::
+      Map Identifier (Expr DecidabilityBuiltin) ->
+      FreeVarUpdate Identity DecidabilityBuiltin
+    replaceFromEnv env recGo p ident args = do
+      args' <- traverse (traverse recGo) args
+      pure $ case Map.lookup ident env of
+        Just body -> normAppList body args'
+        Nothing -> normAppList (FreeVar p ident) args'
+
 compileProgToIsabelle :: (MonadCompile m) => Prog DecidabilityBuiltin -> IsabelleOptions -> m (Doc a)
-compileProgToIsabelle (Main ds) options =
+compileProgToIsabelle (Main ds0) options =
   logCompilerSection2 MinDetail currentPhase $ do
+    let ds = inlineNonPropertyDecls ds0
     logDebug MaxDetail $ prettyExternal (Main ds)
     -- Combine the printed documents
 
