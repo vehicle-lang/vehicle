@@ -34,6 +34,8 @@ The intermediate Marabou queries can be found in `examples/windController/verifi
 
 ## Compiling to specification to an ITP backend
 
+### Agda
+
 The (verified) specification may then be compiled to Agda by running the command:
 
 ```bash
@@ -43,9 +45,47 @@ vehicle export \
   --output examples/windController/agdaProof/WindControllerSpec.agda
 ```
 
-The full proof safety which makes uses of the generated Agda version of the specification in `agdaProof/WindControllerSpec.agda` is found in `agdaProof/SafetyProof.agda`.
+The full proof of safety which makes use of the generated Agda version of the
+specification in `agdaProof/WindControllerSpec.agda` is found in
+`agdaProof/SafetyProof.agda`.
 
-This can be equivalently achieved using Rocq, the full proof script can be found in `rocqProof/SafetyProof.v`.
+### Rocq
+
+The same is supported for Rocq:
+
+```bash
+cd examples/windController
+vehicle compile itp \
+  --target Rocq \
+  --specification windController.vcl \
+  --cache verificationResult \
+  --output rocqProof/WindControllerSpec.v
+```
+
+When `--cache` is supplied, each `@property` is emitted as
+
+```coq
+Lemma <name> : <type>.
+Proof. vehicle_validate "verificationResult". Qed.
+```
+
+instead of an `Axiom`. The `vehicle_validate` tactic — provided by the
+`vehicle-rocq` companion library — invokes `vehicle validate --cache=...`
+at `Qed.` time and closes the goal only if validation succeeds. The full
+proof of safety using the generated spec is in `rocqProof/SafetyProof.v`.
+
+To build the Rocq proof:
+
+```bash
+cd examples/windController
+make
+```
+
+The included top-level `Makefile` runs `rocq compile` from this directory
+so that the relative paths inside the cache (`windController.vcl`,
+`controller.onnx`) resolve correctly when the validator is invoked. See
+[`vehicle-rocq/README.md`](../../vehicle-rocq/README.md) for details on
+the plugin.
 
 ## Generated files
 

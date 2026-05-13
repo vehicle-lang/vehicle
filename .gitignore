@@ -55,6 +55,11 @@ MAlonzo/**
 .CoqMakefile.d
 CoqMakefile
 CoqMakefile.conf
+.Makefile.d
+Makefile.conf
+
+# dune
+_build/
 
 ################################################################################
 # Isabelle

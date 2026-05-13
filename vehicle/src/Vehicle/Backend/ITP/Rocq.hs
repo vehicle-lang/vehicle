@@ -44,7 +44,8 @@ import Vehicle.Data.Variable.Bound.Context.Name
 -- Rocq-specific options
 
 data RocqOptions = RocqOptions
-  { output :: Maybe FilePath,
+  { verificationCache :: Maybe FilePath,
+    output :: Maybe FilePath,
     moduleName :: Maybe String,
     constructiveReals :: Bool
   }
@@ -53,16 +54,16 @@ currentPhase :: Doc ()
 currentPhase = "compilation to Rocq"
 
 compileProgToRocq :: (MonadCompile m) => Prog DecidabilityBuiltin -> RocqOptions -> m (Doc a)
-compileProgToRocq prog _options =
+compileProgToRocq prog options =
   logCompilerSection2 MinDetail currentPhase $ do
-    programDoc <- runFreshNameBoundContextT $ compileProg prog
+    programDoc <- runFreshNameBoundContextT $ compileProg options prog
     let programStream = layoutPretty defaultLayoutOptions programDoc
     -- Collects dependencies by first discarding precedence info and then
     -- folding using Set Monoid
     let programDependencies = fold (reAnnotateS fst programStream)
     -- If using constructive reals, add the required import
     let programDependencies' =
-          if constructiveReals _options
+          if constructiveReals options
             then
               Set.insert (MathcompImport Rstruct) $
                 Set.insert (RequireImport ConstructiveReals) programDependencies
@@ -114,6 +115,7 @@ logExit e = do
 
 data Dependency
   = MathcompImport Mathcomp
+  | VehicleImport VehicleModule
   | RequireImport Library
   | Import RocqModule
   | Open Scope
@@ -122,6 +124,7 @@ data Dependency
 instance Pretty Dependency where
   pretty = \case
     MathcompImport l -> "From mathcomp Require Import" <+> pretty l <> "."
+    VehicleImport m -> "From vehicle Require Import" <+> pretty m <> "."
     RequireImport l -> "Require Import" <+> pretty l <> "."
     Import m -> "Import" <+> pretty m <> "."
     Open s -> "Local Open Scope" <+> pretty s <> "."
@@ -143,14 +146,22 @@ instance Pretty Mathcomp where
     Rstruct -> "Rstruct"
 
 data Library
-  = VehicleUtils
-  | ConstructiveReals
+  = ConstructiveReals
   deriving (Eq, Ord)
 
 instance Pretty Library where
   pretty = \case
-    VehicleUtils -> "vehicle.utils"
     ConstructiveReals -> "Stdlib.Reals.Reals"
+
+data VehicleModule
+  = VehicleUtils
+  | VehicleValidate
+  deriving (Eq, Ord)
+
+instance Pretty VehicleModule where
+  pretty = \case
+    VehicleUtils -> "utils"
+    VehicleValidate -> "validate"
 
 data RocqModule
   = OrderDef
@@ -278,19 +289,19 @@ type MonadRocqCompile m =
 --------------------------------------------------------------------------------
 -- Program Compilation
 
-compileProg :: (MonadRocqCompile m) => Prog DecidabilityBuiltin -> m Code
-compileProg (Main ds) = do
-  decls <- catMaybes <$> traverse compileDecl ds
+compileProg :: (MonadRocqCompile m) => RocqOptions -> Prog DecidabilityBuiltin -> m Code
+compileProg opts (Main ds) = do
+  decls <- catMaybes <$> traverse (compileDecl opts) ds
   return $ vsep2 decls
 
-compileDecl :: (MonadRocqCompile m) => Decl DecidabilityBuiltin -> m (Maybe Code)
-compileDecl = \case
+compileDecl :: (MonadRocqCompile m) => RocqOptions -> Decl DecidabilityBuiltin -> m (Maybe Code)
+compileDecl opts = \case
   DefAbstract _ n _ t ->
     Just <$> compilePostulate n t
   DefFunction p n funSort t e -> case funSort of
     TypeDecl binderCount -> Just <$> compileFunctionDecl n binderCount t e
     FunctionDecl binderCount Nothing -> Just <$> compileFunctionDecl n binderCount t e
-    FunctionDecl _ (Just AnnProperty) -> Just <$> compileProperty n e
+    FunctionDecl _ (Just AnnProperty) -> Just <$> compileProperty opts n e
     FunctionDecl _ (Just AnnInstance {}) -> throwError $ UnimplementedFeature p "Compiling instances to Rocq"
     ProjectionDecl {} -> return Nothing
   DefRecord p n _ telescope fields ->
@@ -409,11 +420,21 @@ compileLetBinder (binder, expr) = do
 compileIdentifier :: Identifier -> Code
 compileIdentifier ident = pretty (nameOf ident :: Name)
 
-compileProperty :: (MonadRocqCompile m) => Identifier -> Expr DecidabilityBuiltin -> m Code
-compileProperty ident expr = do
+compileProperty :: (MonadRocqCompile m) => RocqOptions -> Identifier -> Expr DecidabilityBuiltin -> m Code
+compileProperty opts ident expr = do
   let propertyName = compileIdentifier ident
   propertyBody <- compileExpr expr
-  return $ "Axiom" <+> propertyName <+> ":" <+> propertyBody <> "."
+  case verificationCache opts of
+    Nothing ->
+      return $ "Axiom" <+> propertyName <+> ":" <+> propertyBody <> "."
+    Just cachePath ->
+      return $
+        annotate (Set.fromList [VehicleImport VehicleValidate], Nothing) $
+          "Lemma" <+> propertyName <+> ":" <+> align propertyBody <> "."
+            <> line
+            <> "Proof. vehicle_validate"
+            <+> dquotes (pretty cachePath)
+            <> ". Qed."
 
 compileTopLevelBinders :: (MonadRocqCompile m) => [Binder DecidabilityBuiltin] -> m [Code]
 compileTopLevelBinders [] = return []
@@ -520,8 +541,8 @@ compileBuiltin b args = case b of
     CompareRatTensorPointwise op -> compileComparison CRatTensor op args
     FoldList -> compileApplication [MathcompImport Boot] "foldr" args
     MapList -> compileApplication [MathcompImport Boot] "map" args
-    ReduceAndTensor -> compileApplication [RequireImport VehicleUtils] "reduceAnd" args
-    ReduceOrTensor -> compileApplication [RequireImport VehicleUtils] "reduceOr" args
+    ReduceAndTensor -> compileApplication [VehicleImport VehicleUtils] "reduceAnd" args
+    ReduceOrTensor -> compileApplication [VehicleImport VehicleUtils] "reduceOr" args
     ReduceAddRatTensor -> compileApplication [] "reduceAdd" args
     ReduceMinRatTensor -> unsupportedError
     ReduceMaxRatTensor -> unsupportedError
@@ -537,7 +558,7 @@ compileBuiltin b args = case b of
     Iterate -> unsupportedError
     PowRat -> unsupportedError
     AtVector -> compileApplication [MathcompImport Boot] "tnth" args
-    ForeachVector -> compileApplication [RequireImport VehicleUtils] "foreachTuple" args
+    ForeachVector -> compileApplication [VehicleImport VehicleUtils] "foreachTuple" args
     QuantifyTensorLike _ -> unsupportedTensorLikeQuantifier
   DecidabilityBuiltinFunction f -> case f of
     PropType -> return $ annotateConstant [] "Prop"
@@ -553,11 +574,11 @@ compileBuiltin b args = case b of
     BoolTensorToProp -> monoError
     BoolVectorToProp -> monoError
     PropQuantifyIndex q -> case q of
-      Forall -> compileApplication [RequireImport VehicleUtils] "forallIndex" args
-      Exists -> compileApplication [RequireImport VehicleUtils] "existsIndex" args
+      Forall -> compileApplication [VehicleImport VehicleUtils] "forallIndex" args
+      Exists -> compileApplication [VehicleImport VehicleUtils] "existsIndex" args
     PropQuantifyInList q -> case q of
-      Forall -> compileApplication [RequireImport VehicleUtils] "forallInList" args
-      Exists -> compileApplication [RequireImport VehicleUtils] "existsInList" args
+      Forall -> compileApplication [VehicleImport VehicleUtils] "forallInList" args
+      Exists -> compileApplication [VehicleImport VehicleUtils] "existsInList" args
     PropNaryProduct -> unsupportedError
     PropNaryProductForeach -> unsupportedError
     PropNaryProductAt -> unsupportedError
@@ -601,14 +622,14 @@ compileApp fun args = do
 compileDerivedFunction :: (MonadRocqCompile m) => DerivedFunction -> [Arg DecidabilityBuiltin] -> m Code
 compileDerivedFunction fn args = case fn of
   QuantifyIndex q -> case q of
-    Exists -> compileApplication [RequireImport VehicleUtils] "existsIndex" args
-    Forall -> compileApplication [RequireImport VehicleUtils] "forallIndex" args
+    Exists -> compileApplication [VehicleImport VehicleUtils] "existsIndex" args
+    Forall -> compileApplication [VehicleImport VehicleUtils] "forallIndex" args
   QuantifyInList {} -> unsupported
   TypeAnn ->
     compileNotationAndArgs [] NotAssociative (Just 99) "$1 : $0" Nothing args
   CompareRatTensorReduced op ->
     compileApplication
-      [RequireImport VehicleUtils]
+      [VehicleImport VehicleUtils]
       ( case op of
           Le -> "leRatTensorReduced"
           Lt -> "ltRatTensorReduced"

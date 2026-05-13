@@ -8,6 +8,7 @@ From mathcomp Require Import all_boot.
 From mathcomp Require Import all_algebra.
 From mathcomp Require Import interval_inference.
 From mathcomp Require Import all_reals.
+From vehicle Require Import validate.
 Local Open Scope ring_scope.
 Local Open Scope order_scope.
 Local Open Scope form_scope.
@@ -25,4 +26,5 @@ Definition validInput (x : 'nT[R]_([tuple])) : Prop := const_t (0 : R) <= x /\ x
 
 Definition correctOutput (x1 : 'nT[R]_([tuple])) (x2 : 'nT[R]_([tuple])) : Prop := let y := (andGate (nstack_tuple [tuple x1; x2])) ^^ 0 in (truthy x1 /\ truthy x2 -> truthy y) /\ ((truthy x1 /\ falsey x2 -> falsey y) /\ ((falsey x1 /\ truthy x2 -> falsey y) /\ (falsey x1 /\ falsey x2 -> falsey y))).
 
-Axiom andGateCorrect : forall x1, forall x2, validInput x1 /\ validInput x2 -> correctOutput x1 x2.
+Lemma andGateCorrect : forall x1, forall x2, validInput x1 /\ validInput x2 -> correctOutput x1 x2.
+Proof. vehicle_validate "Marabou.queries". Qed.

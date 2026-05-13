@@ -1,4 +1,3 @@
--Q ../../../vehicle-rocq vehicle
 -Q . windController
 
 WindControllerSpec.v

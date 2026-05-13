@@ -8,6 +8,7 @@ From mathcomp Require Import all_boot.
 From mathcomp Require Import all_algebra.
 From mathcomp Require Import interval_inference.
 From mathcomp Require Import all_reals.
+From vehicle Require Import validate.
 Import Order.Def.
 Local Open Scope ring_scope.
 Local Open Scope order_scope.
@@ -45,4 +46,5 @@ Definition myLogic : DifferentiableLogic := {| true := - const_t (100000 : R)
 
 Parameter f : 'nT[R]_([tuple]) -> 'nT[R]_([tuple]).
 
-Axiom p : forall x, f x >= true myLogic.
+Lemma p : forall x, f x >= true myLogic.
+Proof. vehicle_validate "Marabou.queries". Qed.

@@ -133,7 +133,7 @@ compileToITP ITPOptions {..} typedProg = do
         agdaCode <- compileProgToAgda decProg agdaOptions
         writeAgdaFile outputFile agdaCode
       Rocq -> do
-        let rocqOptions = RocqOptions outputFile moduleName constructiveReals
+        let rocqOptions = RocqOptions verificationCache outputFile moduleName constructiveReals
         rocqCode <- compileProgToRocq decProg rocqOptions
         writeRocqFile outputFile rocqCode
       Isabelle -> do
