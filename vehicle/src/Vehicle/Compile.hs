@@ -23,8 +23,12 @@ import Vehicle.Compile.Prelude as CompilePrelude
 import Vehicle.Compile.Print (prettyFriendly)
 import Vehicle.Compile.Type.Subsystem
 import Vehicle.Data.Builtin.Decidability.Type ()
+import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Interface.Print (PrintableBuiltin)
 import Vehicle.Data.Builtin.Standard
+import Vehicle.Data.Code.Interface (getDims)
+import Vehicle.Data.Code.Interface.Operations (accessRatTensorLiteral)
+import Vehicle.Data.Tensor (Tensor (..), pattern ZeroDimTensor)
 import Vehicle.Prelude.Logging
 import Vehicle.TypeCheck (TypeCheckOptions (..), runCompileMonad, typeCheckUserProg)
 import Vehicle.Verify.QueryFormat
@@ -120,8 +124,9 @@ compileToITP ::
   Prog Builtin ->
   m ()
 compileToITP ITPOptions {..} typedProg = do
+  let foldedProg = fmap foldConstTensorsInExpr typedProg
   let resources = Resources specification networkLocations datasetLocations parameterValues
-  (expandedProg, _, _, _, _) <- expandResources resources typedProg
+  (expandedProg, _, _, _, _) <- expandResources resources foldedProg
   -- Analyse the program to find out which `Bool`s are decidable and which aren't.
   decProg <- decidabilityTypeCheck expandedProg
 
@@ -180,3 +185,14 @@ hoistInferableParameters (Main ds) = do
           tell [decl]
           return decls'
         _ -> return $ decl : decls'
+
+foldConstTensorsInExpr :: Expr Builtin -> Expr Builtin
+foldConstTensorsInExpr = mapBuiltins step
+  where
+    step :: Provenance -> Builtin -> [Arg Builtin] -> Expr Builtin
+    step p b args = case (b, args) of
+      (BuiltinFunction ConstTensor, [_t, ev, ed])
+        | Just dims <- getDims (argExpr ed),
+          Just (ZeroDimTensor r) <- getExpr accessRatTensorLiteral (argExpr ev) ->
+            Builtin p (BuiltinConstructor (RatTensorLiteral (ConstantTensor dims r)))
+      _ -> normAppList (Builtin p b) args
