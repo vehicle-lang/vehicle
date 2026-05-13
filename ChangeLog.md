@@ -52,6 +52,9 @@
   opt out and get the raw DL-native form (loss for `DL2`, robustness
   for `STL`).
 
+* Declaration flag can now be used to specify non-property declarations
+  that will also be compiled with the chosen DL to a callable function.
+
 * Fixed a bug where the compiler was erroring on some uses of
   `forall` for indices.
 

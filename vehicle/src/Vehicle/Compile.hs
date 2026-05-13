@@ -8,6 +8,7 @@ module Vehicle.Compile
 where
 
 import Control.Monad.Writer (MonadWriter (..), WriterT (..))
+import Data.Set qualified as Set
 import Vehicle.Backend.ITP.Agda
 import Vehicle.Backend.ITP.Imandra
 import Vehicle.Backend.ITP.Isabelle
@@ -157,7 +158,12 @@ compileToLossFunction ::
   m ()
 compileToLossFunction LossOptions {..} typedProg outputAsJSON =
   logCompilerPass Loss $ do
-    (lossTensorProg, logicImpl) <- convertToLossTensors differentiableLogicID nativeDirection typedProg
+    (lossTensorProg, logicImpl) <-
+      convertToLossTensors
+        differentiableLogicID
+        nativeDirection
+        (Set.fromList declarationsToCompile)
+        typedProg
     hoistedProg <- hoistInferableParameters lossTensorProg
     functionalisedProg <- functionaliseResources hoistedProg
     jsonProg <- convertToJSONProg logicImpl functionalisedProg

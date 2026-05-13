@@ -21,6 +21,7 @@ import Vehicle.Libraries.StandardLibrary
 instance ScopableBuiltin Builtin where
   generateAuxiliaryRecordDefinitions p ident sort telescope fields
     | isAnnotatedAsTensor sort = createTensorRecordConversionFunctions p ident telescope fields
+    | not (isStandardLibIdent ident) = return [createRecordHasValidIOTypeInstance p ident telescope fields]
     | otherwise = return []
 
 instance DesugarableBuiltin Builtin where
@@ -32,6 +33,59 @@ instance DesugarableBuiltin Builtin where
   elabDecimalLiteral p r = do
     let fromRat = D.Builtin p (TypeClassOp FromRatTC)
     D.normAppList fromRat $ fmap explicit [D.Builtin p $ BuiltinConstructor $ RatTensorLiteral $ ZeroDimTensor r]
+
+createRecordHasValidIOTypeInstance ::
+  Provenance ->
+  Identifier ->
+  Telescope Builtin ->
+  RecordFields Builtin ->
+  Decl Builtin
+createRecordHasValidIOTypeInstance p recordIdent telescope fields = do
+  -- For each record R we want to create a function that looks like:
+  --
+  --   @instance
+  --   recordRHasValidNetworkIOType :
+  --     {{t1}} ->
+  --     ...
+  --     {{tn}} ->
+  --     {{HasValidNetworkFieldType f1}} ->
+  --     ...
+  --     {{HasValidNetworkFieldType fn}} ->
+  --     HasValidNetworkIOType (R t1 ... tn)
+  --   recordRHasValidNetworkIOType t1 ... tn = {}
+  --
+  -- ... where t1 through tn are the types in the telescope,
+  -- and f1 through fn are the types of R's fields.
+
+  -- Create the name
+  let instanceName = Text.pack "record" <> nameOf recordIdent <> "HasValidNetworkIOType"
+  let instanceIdent = Identifier (modulePath recordIdent) instanceName
+
+  let mkConstraint (_, fieldType) k = flip mkInstanceBinder Nothing $ normAppList target [argument]
+        where
+          target = FreeVar p validNetworkFieldTypeIdent
+          argument = explicit (liftDBIndices (Lv k) fieldType)
+
+  -- Construct both the telescope and the typeclass constraints
+  let implicitTelescope = fmap (flip setBinderVisibility $ Implicit True) telescope
+  let constraintBinders = zipWith mkConstraint fields [0 .. length fields]
+  let binderList = implicitTelescope ++ constraintBinders
+
+  -- Create the type arguments for the fully applied record type
+  let mkArg (binder, ix) = argFromBinder binder (BoundVar p ix)
+  let binderIndices = reverse $ fmap Ix [0 .. (length binderList - 1)]
+  let args = fmap mkArg (zip telescope binderIndices)
+
+  -- Create the applied record and result type
+  let parameterisedRecordType = normAppList (FreeVar p recordIdent) args
+  let resultType = fromDSL mempty $ freeVar validNetworkIOTypeIdent @@ [toDSL parameterisedRecordType]
+
+  -- Create the function
+  let functionType = foldr (Pi p) resultType binderList
+  let functionBody = foldr (Lam p) (Record p resultType []) binderList
+  let functionSort = FunctionDecl 1 (Just (AnnInstance Nothing))
+
+  DefFunction p instanceIdent functionSort functionType functionBody
 
 createTensorRecordConversionFunctions ::
   (MonadCompile m) =>
@@ -67,6 +121,7 @@ createTensorRecordConversionFunctions p ident telescope fields = do
   let recordToTensorDecl = createRecordToTensor p ident fieldElementType fieldDimensions nonEmptyFields
   let tensorToRecordDecl = createTensorToRecord p ident fieldElementType fieldDimensions nonEmptyFields
   let validNetworkInstance = createValidNetworkIOInstance p ident
+  let validNetworkFieldInstance = createValidNetworkFieldInstance p ident
   let validQuantifierInstance = createTensorLikeHasQuantifierInstance p ident
   let validHasAddInstance = createTensorLikeArithmeticInstance p ident hasAddIdent "HasAdd" "addTC"
   let validHasSubInstance = createTensorLikeArithmeticInstance p ident hasSubIdent "HasSub" "subTC"
@@ -78,6 +133,7 @@ createTensorRecordConversionFunctions p ident telescope fields = do
     [ recordToTensorDecl,
       tensorToRecordDecl,
       validNetworkInstance,
+      validNetworkFieldInstance,
       validQuantifierInstance,
       validHasAddInstance,
       validHasSubInstance,
@@ -148,6 +204,19 @@ createValidNetworkIOInstance p recordIdent = do
   let functionBody = Record p recordType []
 
   let functionName = Text.pack "_" <> nameOf recordIdent <> "HasValidNetworkIOType"
+  let functionIdent = Identifier (modulePath recordIdent) functionName
+
+  DefFunction p functionIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) recordType functionBody
+
+createValidNetworkFieldInstance ::
+  Provenance ->
+  Identifier ->
+  Decl Builtin
+createValidNetworkFieldInstance p recordIdent = do
+  let recordType = fromDSL mempty $ freeVar validNetworkFieldTypeIdent @@ [freeVar recordIdent]
+  let functionBody = Record p recordType []
+
+  let functionName = Text.pack "_" <> nameOf recordIdent <> "HasValidNetworkFieldType"
   let functionIdent = Identifier (modulePath recordIdent) functionName
 
   DefFunction p functionIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) recordType functionBody

@@ -73,15 +73,24 @@ isPropertyDecl = \case
 
 isTypeDecl :: GenericDecl expr -> Bool
 isTypeDecl = \case
-  DefAbstract {} -> False
-  DefFunction _ _ anns _ _ -> isDeclaredAsType anns
-  DefRecord {} -> False
+  DefFunction _ _ (TypeDecl {}) _ _ -> True
+  _ -> False
 
 isTypeClassDecl :: GenericDecl expr -> Bool
 isTypeClassDecl = \case
   DefAbstract {} -> False
   DefFunction {} -> False
   DefRecord _ _ anns _ _ -> isAnnotatedAsTypeClass anns
+
+isInstanceDecl :: GenericDecl expr -> Bool
+isInstanceDecl = \case
+  DefFunction _ _ (FunctionDecl _ (Just (AnnInstance {}))) _ _ -> True
+  _ -> False
+
+isProjectionDecl :: GenericDecl expr -> Bool
+isProjectionDecl = \case
+  DefFunction _ _ ProjectionDecl {} _ _ -> True
+  _ -> False
 
 isAbstractDecl :: GenericDecl expr -> Bool
 isAbstractDecl = \case
@@ -196,11 +205,6 @@ instance Pretty FunctionDeclAnnotation where
   pretty = \case
     AnnProperty -> "@property"
     AnnInstance {} -> "@instance"
-
-isDeclaredAsType :: DefFunctionSort -> Bool
-isDeclaredAsType = \case
-  TypeDecl {} -> True
-  _ -> False
 
 isAnnotatedAsProperty :: DefFunctionSort -> Bool
 isAnnotatedAsProperty = \case

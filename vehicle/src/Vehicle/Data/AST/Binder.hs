@@ -188,6 +188,9 @@ mkExplicitBinder typ name = Binder (mkDefaultBinderDisplayForm name) Explicit Re
 mkImplicitBinder :: expr -> Maybe (Provenance, Name) -> GenericBinder expr
 mkImplicitBinder typ name = Binder (mkDefaultBinderDisplayForm name) (Implicit True) Relevant typ
 
+mkInstanceBinder :: expr -> Maybe (Provenance, Name) -> GenericBinder expr
+mkInstanceBinder typ name = Binder (mkDefaultBinderDisplayForm name) (Instance True) Relevant typ
+
 --------------------------------------------------------------------------------
 -- Telescope
 
