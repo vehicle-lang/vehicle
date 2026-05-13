@@ -1,0 +1,7 @@
+[
+  {
+    "name": "TypeCheck",
+    "run": "vehicle typecheck -s parameterisedRecordNotValidIOType.vcl",
+    "needs": ["parameterisedRecordNotValidIOType.vcl"]
+  }
+]
