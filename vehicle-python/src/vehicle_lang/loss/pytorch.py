@@ -12,12 +12,14 @@ from ._ast import _nodes as vcl
 from ._common import load_loss_specification
 from ._pytorch._semantics import lift_to_reduction
 from ._pytorch._translation import PyTorchTranslation
+from ._pytorch.gradnorm import GradNormBalancer
 from ._pytorch.samplers import DefaultPyTorchSampler, PyTorchSampler
 
 __all__ = [
     "load_specification",
     "PyTorchSampler",
     "DefaultPyTorchSampler",
+    "GradNormBalancer",
 ]
 
 
