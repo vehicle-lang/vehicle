@@ -1,2 +1,2 @@
-Error in file 'spec.vcl' at Line 4, Columns 1-9: compiling declaration 'someList' as a loss output (supported types: `Tensor Bool _`, `Tensor Real _`, `Vector _ _`) is not currently implemented
+Error in file 'spec.vcl' at Line 4, Columns 1-9: compiling declaration 'someList' as a loss output (supported leaf types: `Bool`, `Real`, `Tensor Bool _`, `Tensor Real _`, `Vector _ _`) is not currently implemented
 Fix: please open an issue on the Vehicle issue tracker to discuss adding support.

@@ -1,0 +1,3 @@
+@property;
+precedence : Tensor Real -> Tensor Real -> Tensor Real -> Tensor Real;
+precedence = \ x -> \ y -> \ z -> x + 2.0 * y - z / y

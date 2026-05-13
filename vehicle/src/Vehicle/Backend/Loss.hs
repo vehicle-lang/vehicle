@@ -15,7 +15,7 @@ import Vehicle.Backend.Loss.LossCompilation
 import Vehicle.Backend.Loss.LossCompilation qualified as Loss ()
 import Vehicle.Backend.Prelude (DifferentiableLogicID)
 import Vehicle.Compile.Error
-import Vehicle.Compile.Normalise.NBE (evalDecl)
+import Vehicle.Compile.Normalise.NBE (evalDecl, normaliseClosure)
 import Vehicle.Compile.Normalise.Quote (unnormalise)
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Loss (LossBuiltin)
@@ -25,6 +25,7 @@ import Vehicle.Data.Code.Interface.Patterns
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
 import Vehicle.Data.DifferentiableLogic
+import Vehicle.Data.Variable.Bound.Context.Tensor (addNonTensorBinderToContext)
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext, addDeclEntryToContext, runFreshFreeContextT)
 
 convertToLossTensors ::
@@ -99,24 +100,32 @@ convertOutputDecl ::
   Value Builtin ->
   m (Decl LossBuiltin)
 convertOutputDecl p ident ann typ value = do
-  checkLossOutputType p ident typ
-  lossType <- convertDeclType typ
-  lossValue <- convertMultiOutput typ value
-  let lossExpr = unnormalise 0 lossValue
-  let lossTensorDecl = DefFunction p ident ann lossType lossExpr
-  return lossTensorDecl
+  leafType <- stripPiTypes typ
+  case toTypeValue leafType of
+    VBoolTensorType {} -> emit leafType
+    VRatTensorType {} -> emit leafType
+    VVectorType {} -> emit leafType
+    VBoolType -> emit leafType
+    VRatType -> emit leafType
+    _ ->
+      throwError $
+        UnimplementedFeature p $
+          "compiling declaration"
+            <+> quotePretty (nameOf ident)
+            <+> "as a loss output (supported leaf types: `Bool`, `Real`, `Tensor Bool _`, `Tensor Real _`, `Vector _ _`)"
+  where
+    emit leafType = do
+      lossType <- convertDeclType typ
+      lossValue <- convertFunction (convertMultiOutput leafType) value
+      let lossExpr = unnormalise 0 lossValue
+      return $ DefFunction p ident ann lossType lossExpr
 
-checkLossOutputType :: (MonadLogic m) => Provenance -> Identifier -> VType Builtin -> m ()
-checkLossOutputType p ident typ = case toTypeValue typ of
-  VBoolTensorType _ -> return ()
-  VRatTensorType _ -> return ()
-  VVectorType tElem _ -> checkLossOutputType p ident tElem
-  _ ->
-    throwError $
-      UnimplementedFeature p $
-        "compiling declaration"
-          <+> quotePretty (nameOf ident)
-          <+> "as a loss output (supported types: `Tensor Bool _`, `Tensor Real _`, `Vector _ _`)"
+stripPiTypes :: (MonadLogic m) => VType Builtin -> m (VType Builtin)
+stripPiTypes typ = case toTypeValue typ of
+  VPiType binder closure -> do
+    body <- normaliseClosure binder closure
+    addNonTensorBinderToContext binder $ stripPiTypes body
+  _ -> return typ
 
 convertDeclType :: (MonadLogic m) => VType Builtin -> m (Type LossBuiltin)
 convertDeclType typ = unnormalise 0 <$> convertType typ
@@ -126,7 +135,9 @@ convertMultiOutput typ = case toTypeValue typ of
   VBoolTensorType _ds -> convertBoolTensorOutput
   VRatTensorType _ds -> convertRatTensor
   VVectorType tElem _d -> convertVectorOutput tElem
-  _ -> unexpectedExprError currentPass "Impossible property type"
+  VBoolType -> convertBoolTensorOutput
+  VRatType -> convertRatTensor
+  _ -> unexpectedExprError currentPass "unsupported leaf type"
 
 convertVectorOutput :: (MonadLogic m) => VType Builtin -> Value Builtin -> m (Value LossBuiltin)
 convertVectorOutput typ value = do
