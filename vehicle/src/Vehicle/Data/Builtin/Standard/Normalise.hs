@@ -198,7 +198,7 @@ evalTranspose args@(TransposeArgs _ inputDims tensor) =
         | revIs <- allMultiIndices (reverse shape)
       ]
       where
-        flattenIndices ds is = sum (zipWith (*) is (tail (scanr (*) 1 ds)))
+        flattenIndices ds is = sum (zipWith (*) is (drop 1 (scanr (*) 1 ds)))
 
     allMultiIndices :: TensorShape -> [[Int]]
     allMultiIndices = \case
