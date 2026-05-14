@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: dieghernan/cff-validator@v4
+      - uses: dieghernan/cff-validator@v5
 
   # NOTE: This job is disabled because Marabou reliably runs out of memory.
   #

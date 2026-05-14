@@ -9,8 +9,10 @@ module Vehicle.Libraries.StandardLibrary
     standardLibraryInstanceOps,
     isBuiltinModule,
     standardLibIdent,
+    isStandardLibIdent,
     validNetworkTypeIdent,
     validNetworkIOTypeIdent,
+    validNetworkFieldTypeIdent,
     hasQuantifierIdent,
     hasAddIdent,
     hasSubIdent,
@@ -33,6 +35,9 @@ import Vehicle.Prelude
 
 standardLibIdent :: Name -> Identifier
 standardLibIdent = Identifier standardLibraryDefinitionsModulePath
+
+isStandardLibIdent :: Identifier -> Bool
+isStandardLibIdent ident = modulePath ident == standardLibraryDefinitionsModulePath
 
 standardLibraryDefinitionsModulePath :: ModulePath
 standardLibraryDefinitionsModulePath = ModulePath ["Definitions"]
@@ -66,6 +71,9 @@ validNetworkTypeIdent = standardLibIdent "HasValidNetworkType"
 
 validNetworkIOTypeIdent :: Identifier
 validNetworkIOTypeIdent = standardLibIdent "HasValidNetworkIOType"
+
+validNetworkFieldTypeIdent :: Identifier
+validNetworkFieldTypeIdent = standardLibIdent "HasValidNetworkFieldType"
 
 hasQuantifierIdent :: Identifier
 hasQuantifierIdent = standardLibIdent "HasQuantifier"
