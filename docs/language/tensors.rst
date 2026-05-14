@@ -117,29 +117,11 @@ The following operations over tensors are currently supported:
      - Pointwise subtract the values in the first tensor from the values
        in the second. Only valid if subtraction is defined for the type of
        elements ``A``.
-
-
-Transpose
----------
-
-``transpose t`` reverses the dimension order of a tensor:
-``Tensor A [d_1, ..., d_n]`` becomes ``Tensor A [d_n, ..., d_1]``.
-For a 2-tensor this is the standard matrix transpose.
-
-A transpose that is indexed down to a scalar — ``(transpose t) ! i_1 ! ... ! i_n``
-— is eliminated at compile time (it equals ``t ! i_n ! ... ! i_1``). Constant
-tensors (``transpose (const v ds)``) and rank-2 list literals
-(``transpose [[1.0, 2.0], [3.0, 4.0]]``) are folded directly.
-
-Backend support
-~~~~~~~~~~~~~~~
-
-- Verifier (Marabou / VNN-LIB): any rank.
-- Loss: any rank.
-- Agda, Isabelle ITP: any rank.
-- Imandra ITP: any rank, for ``Real``, ``Bool`` and ``Nat`` element types.
-- Rocq ITP: rank 2 only. Targeting Rocq with a higher-rank transpose is an
-  error.
+   * - Transpose
+     - ``transpose``
+     - ``Tensor A [d_1, ..., d_n] -> Tensor A [d_n, ..., d_1]``
+     - ``transpose t``
+     - Reverse the dimension order of a tensor.
 
 
 Non-constant dimensions
