@@ -95,20 +95,15 @@ typeOfBuiltinFunction = \case
   Iterate -> forAllTypes $ \t -> ((t ~> t) ~> t ~> t) ~> tNat ~> t
   Transpose -> typeOfTranspose
 
--- | Stdlib decls that a builtin's type signature refers to. These references
--- live in compiler code (via `standardLib` in the DSL), so they're invisible
--- to the AST dependency graph and would otherwise be pruned. Callers that
--- prune unused decls before secondary-subsystem typecheck need to keep these
--- as extra roots.
---
--- Currently `Transpose`'s type uses `reverseDims` which expands to a free-var
--- reference to `Definitions.reverse`. Transitive deps (e.g. `reverse` uses
--- `append`) are picked up automatically by the dependency graph from
--- `reverse`'s body, so only direct references need listing here.
 typeBuiltinTypeLevelDeps :: BuiltinFunction -> Set Identifier
 typeBuiltinTypeLevelDeps = \case
   Transpose -> Set.singleton (stdlibIdentifier "reverse")
   _ -> Set.empty
+
+standardBuiltinTypeDeps :: Builtin -> Set Identifier
+standardBuiltinTypeDeps = \case
+  BuiltinFunction f -> typeBuiltinTypeLevelDeps f
+  _ -> mempty
 
 typeOfBuiltinConstructor :: (HasStandardBuiltins builtin) => BuiltinConstructor -> DSLExpr builtin
 typeOfBuiltinConstructor = \case
@@ -187,8 +182,6 @@ typeOfAtTensor =
       forAllDims $ \ds ->
         tTensor tElem (dimCons d ds) ~> tIndex d ~> tTensor tElem ds
 
--- | Type of transpose: reverses every axis of a tensor.
--- forall A {ds : Dims} . Tensor A ds -> Tensor A (reverseDims ds)
 typeOfTranspose :: (HasStandardBuiltins builtin) => DSLExpr builtin
 typeOfTranspose =
   forAll "A" type0 $ \tElem ->

@@ -9,14 +9,12 @@ where
 
 import Control.Monad.Except (MonadError (..), runExcept, runExceptT)
 import Control.Monad.IO.Class (MonadIO)
-import Control.Monad.Writer (Writer, execWriter, tell)
-import Data.Foldable (traverse_)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Vehicle.Backend.Prelude
-import Vehicle.Compile.Dependency (pruneUnusedDeclarationsKeeping)
+import Vehicle.Compile.Dependency (pruneUnusedDeclarations)
 import Vehicle.Compile.Error
 import Vehicle.Compile.Monomorphisation (monomorphise)
 import Vehicle.Compile.Normalise.NBE (findInstanceArg)
@@ -35,7 +33,7 @@ import Vehicle.Data.Builtin.Decidability.Type ()
 import Vehicle.Data.Builtin.Interface (BuiltinHasListLiterals)
 import Vehicle.Data.Builtin.Interface.Normalise (NormalisableBuiltin (..))
 import Vehicle.Data.Builtin.Interface.Print
-import Vehicle.Data.Builtin.Interface.Type (typeBuiltinTypeLevelDeps)
+import Vehicle.Data.Builtin.Interface.Type (standardBuiltinTypeDeps)
 import Vehicle.Data.Builtin.Linearity (LinearityBuiltin)
 import Vehicle.Data.Builtin.Linearity.Type ()
 import Vehicle.Data.Builtin.Polarity (PolarityBuiltin)
@@ -76,7 +74,7 @@ decidabilityTypeCheck ::
   Prog Builtin ->
   m (Prog DecidabilityBuiltin)
 decidabilityTypeCheck prog = do
-  prunedProg <- pruneUnusedDeclarationsKeeping (stdlibTypeLevelDepsOf prog) prog
+  prunedProg <- pruneUnusedDeclarations standardBuiltinTypeDeps prog
   castFreeProg <- resolveInstanceArgumentsAndCasts prunedProg
   errorOrDecProg <- typeCheckWithSubsystem DecidabilityTypes decidabilityBuiltinInstances castFreeProg
   decProg <- case errorOrDecProg of
@@ -85,25 +83,6 @@ decidabilityTypeCheck prog = do
 
   monoDecProg <- monomorphise decProg isUserCode
   resolveInstanceArgumentsAndCasts monoDecProg
-
--- | Collect every stdlib decl referenced by some `Builtin`'s type signature
--- in the prog. These references live in compiler code (see `reverseDims`) so
--- they don't appear in the AST dependency graph; pass the result as extra
--- roots when pruning, otherwise the kept stdlib decl is removed and
--- secondary-subsystem typecheck fails to resolve the FreeVar.
-stdlibTypeLevelDepsOf :: Prog Builtin -> Set Identifier
-stdlibTypeLevelDepsOf prog = execWriter (traverse_ go prog)
-  where
-    go :: Expr Builtin -> Writer (Set Identifier) ()
-    go = \case
-      Builtin _ (BuiltinFunction f) -> tell (typeBuiltinTypeLevelDeps f)
-      App fun args -> do go fun; traverse_ (traverse_ go) args
-      Pi _ binder result -> do traverse_ go binder; go result
-      Lam _ binder body -> do traverse_ go binder; go body
-      Let _ bound binder body -> do go bound; traverse_ go binder; go body
-      Record _ _ fields -> traverse_ (go . snd) fields
-      RecordProj _ recordType record _ -> do go recordType; go record
-      _ -> return ()
 
 typeCheckWithSubsystem ::
   (MonadIO m, MonadCompile m, HasTypeSystem builtin) =>

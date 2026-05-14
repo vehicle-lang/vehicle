@@ -7,7 +7,6 @@ module Vehicle.Compile.Dependency
     DependencyGraph,
     createDependencyGraph,
     pruneUnusedDeclarations,
-    pruneUnusedDeclarationsKeeping,
     completelyUnusedDeclarations,
   )
 where
@@ -84,8 +83,12 @@ fromEdges (AdjacencyGraph outEdges) = do
 --------------------------------------------------------------------------------
 -- Constructing the dependency graph
 
-createDependencyGraph :: [Decl builtin] -> DependencyGraph Identifier
-createDependencyGraph ds = fromEdges $ AdjacencyGraph $ Map.fromList $ fmap goDecl ds
+createDependencyGraph ::
+  forall builtin.
+  (builtin -> Set Identifier) ->
+  [Decl builtin] ->
+  DependencyGraph Identifier
+createDependencyGraph builtinTypeDeps ds = fromEdges $ AdjacencyGraph $ Map.fromList $ fmap goDecl ds
   where
     goDecl :: Decl builtin -> (Identifier, Set Identifier)
     goDecl d = (identifierOf d, execWriter (traverse_ go d))
@@ -96,7 +99,7 @@ createDependencyGraph ds = fromEdges $ AdjacencyGraph $ Map.fromList $ fmap goDe
       Universe {} -> return ()
       Meta {} -> return ()
       Hole {} -> return ()
-      Builtin {} -> return ()
+      Builtin _ b -> tell (builtinTypeDeps b)
       FreeVar _ v -> do
         tell [v]
         return ()
@@ -110,9 +113,12 @@ createDependencyGraph ds = fromEdges $ AdjacencyGraph $ Map.fromList $ fmap goDe
 --------------------------------------------------------------------------------
 -- Completely unused declarations
 
-completelyUnusedDeclarations :: [Decl builtin] -> Set Identifier
-completelyUnusedDeclarations decls = do
-  let DependencyGraph {..} = createDependencyGraph decls
+completelyUnusedDeclarations ::
+  (builtin -> Set Identifier) ->
+  [Decl builtin] ->
+  Set Identifier
+completelyUnusedDeclarations builtinTypeDeps decls = do
+  let DependencyGraph {..} = createDependencyGraph builtinTypeDeps decls
   let indegrees = indegree graph
   let unusedVertices = filter (\v -> indegrees ! v == 0) (vertices graph)
   Set.fromList $ fmap identFromVertex unusedVertices
@@ -122,37 +128,21 @@ completelyUnusedDeclarations decls = do
 
 pruneUnusedDeclarations ::
   (MonadCompile m) =>
+  (builtin -> Set Identifier) ->
   Prog builtin ->
   m (Prog builtin)
-pruneUnusedDeclarations = pruneUnusedDeclarationsKeeping mempty
-
--- | Like 'pruneUnusedDeclarations' but takes an extra set of identifiers that
--- must always be kept. This is needed when stdlib decls are referenced by a
--- builtin's type signature rather than from a program AST decl — e.g. the
--- `Transpose` builtin's type uses `reverseDims ds` (which expands to a free-var
--- reference to `Definitions.reverse`). That reference is invisible to
--- 'createDependencyGraph' (it lives in compiler code, not in any AST node), so
--- the caller must list such decls explicitly when they need to survive pruning.
-pruneUnusedDeclarationsKeeping ::
-  (MonadCompile m) =>
-  Set Identifier ->
-  Prog builtin ->
-  m (Prog builtin)
-pruneUnusedDeclarationsKeeping extraRoots prog@(Main decls) = do
+pruneUnusedDeclarations builtinTypeDeps prog@(Main decls) = do
   logCompilerSection2 MinDetail "pruning unused declarations" $ do
     -- Prune all standard-library declarations that aren't used.
     let declsToCompile = mapMaybe (\d -> if isUserCode d then Just (nameOf d) else Nothing) decls
     if null declsToCompile
       then return prog
       else do
-        let dependencyGraph = createDependencyGraph decls
+        let dependencyGraph = createDependencyGraph builtinTypeDeps decls
 
-        let userVertices = flip fmap declsToCompile $ \name -> do
+        let startingVertices = flip fmap declsToCompile $ \name -> do
               let ident = Identifier userModulePath name
               vertexFromIdent dependencyGraph ident
-        let extraVertices =
-              fmap (vertexFromIdent dependencyGraph) (Set.toList extraRoots)
-        let startingVertices = userVertices <> extraVertices
 
         let declsToPrune = notReachableFrom dependencyGraph startingVertices
         logDebug MaxDetail $ "Pruning:" <+> indent 2 (prettySet pretty declsToPrune)
