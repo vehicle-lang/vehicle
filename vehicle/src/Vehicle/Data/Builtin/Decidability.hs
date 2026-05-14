@@ -13,7 +13,7 @@ import Vehicle.Data.Builtin.Interface
 import Vehicle.Data.Builtin.Interface.Blocked
 import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Interface.Print
-import Vehicle.Data.Builtin.Standard (Builtin, BuiltinCast (..), BuiltinConstructor (..), BuiltinFunction (..), BuiltinType (..))
+import Vehicle.Data.Builtin.Standard (Builtin, BuiltinConstructor (..), BuiltinFunction (..), BuiltinType (..))
 import Vehicle.Data.Code.DSL (tDim, tDims)
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.DSL
@@ -109,7 +109,6 @@ data DecidabilityBuiltin
   | StandardBuiltinFunction BuiltinFunction
   | StandardBuiltinConstructor BuiltinConstructor
   | StandardBuiltinDerivedFunction DerivedFunction
-  | StandardBuiltinCast BuiltinCast
   | DecidabilityBuiltinTypeClass DecidabilityBuiltinTypeClass
   | DecidabilityBuiltinTypeClassOp DecidabilityBuiltinTypeClassOp
   | DecidabilityBuiltinFunction DecidabilityBuiltinFunction
@@ -260,7 +259,6 @@ instance Pretty DecidabilityBuiltin where
     StandardBuiltinFunction f -> pretty f
     StandardBuiltinConstructor c -> pretty c
     StandardBuiltinDerivedFunction f -> pretty f
-    StandardBuiltinCast c -> pretty c
     DecidabilityBuiltinTypeClass t -> pretty t
     DecidabilityBuiltinTypeClassOp t -> pretty t
     DecidabilityBuiltinFunction f -> pretty f
@@ -271,7 +269,6 @@ instance ConvertableBuiltin DecidabilityBuiltin Builtin where
     StandardBuiltinFunction f -> convertBuiltin p f
     StandardBuiltinConstructor c -> convertBuiltin p c
     StandardBuiltinDerivedFunction f -> convertBuiltin p f
-    StandardBuiltinCast c -> cheatConvertBuiltin p (pretty c)
     DecidabilityBuiltinTypeClass t -> cheatConvertBuiltin p (pretty t)
     DecidabilityBuiltinTypeClassOp t -> cheatConvertBuiltin p (pretty t)
     DecidabilityBuiltinFunction f -> cheatConvertBuiltin p (pretty f)

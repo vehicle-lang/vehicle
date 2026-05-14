@@ -16,7 +16,6 @@ import Vehicle.Data.Builtin.Decidability
 import Vehicle.Data.Builtin.Interface.Type
 import Vehicle.Data.Builtin.Standard
   ( Builtin (..),
-    BuiltinCast (..),
     BuiltinConstructor (..),
     BuiltinFunction (..),
     BuiltinType (..),
@@ -46,7 +45,6 @@ isDecidabilityConstructor = \case
   StandardBuiltinFunction {} -> False
   StandardBuiltinConstructor {} -> True
   StandardBuiltinDerivedFunction {} -> True
-  StandardBuiltinCast {} -> False
   DecidabilityBuiltinTypeClass {} -> False
   DecidabilityBuiltinTypeClassOp {} -> False
   DecidabilityBuiltinFunction {} -> False
@@ -59,18 +57,9 @@ typeDecidabilityBuiltin = \case
     QuantifyRatTensor {} -> forAllDims $ \_dims -> forAllTypes $ \t -> (t ~> tProp) ~> tProp
     _ -> typeOfBuiltinFunction f
   StandardBuiltinDerivedFunction f -> typeOfDerivedFunction f
-  StandardBuiltinCast c -> typeOfBuiltinCastDecidability c
   DecidabilityBuiltinTypeClass t -> typeDecidableTypeClass t
   DecidabilityBuiltinTypeClassOp t -> typeDecidableTypeClassOp t
   DecidabilityBuiltinFunction f -> typeDecidableFunction f
-
-typeOfBuiltinCastDecidability :: BuiltinCast -> DSLExpr DecidabilityBuiltin
-typeOfBuiltinCastDecidability = \case
-  FromNat FromNatToNat -> tNat ~> tNat
-  FromNat FromNatToIndex -> forAllIrrelevantNat "n" $ \s -> tNat ~> tIndex s
-  FromNat FromNatToRat -> tNat ~> tRatTensor dimNil
-  FromRat FromRatToRat -> tRatTensor dimNil ~> tRatTensor dimNil
-  FromVectorToList -> developerError "FromVectorToList in decidability typing"
 
 typeOfDerivedFunction :: DerivedFunction -> DSLExpr DecidabilityBuiltin
 typeOfDerivedFunction = \case
@@ -212,14 +201,9 @@ convertToDecidabilityFreeVars f p ident args = do
   finalArgs <- insertNewArgs args' declType
   return $ normAppList (FreeVar p ident) finalArgs
   where
-    -- Walk the decl's type. For each leading compiler-inserted implicit Pi,
-    -- prepend a `Hole` arg — UNLESS the call already provides an implicit at
-    -- that position, in which case consume it. This second case matters for
-    -- stdlib decls referenced from stdlib bodies: e.g. `Definitions.append`'s
-    -- type is auto-generalised by the elaborator, marking its `{A}` binder as
-    -- compiler-inserted. Calls in user code don't provide that implicit (so a
-    -- Hole is needed), but calls inside `Definitions.reverse`'s body do (so
-    -- the existing arg fills it).
+    -- For each leading auto-generalised implicit Pi binder, consume a
+    -- matching implicit from the spine if present (stdlib bodies fill
+    -- these via the recursive arg traversal); otherwise prepend a `Hole`.
     insertNewArgs :: [Arg DecidabilityBuiltin] -> Type DecidabilityBuiltin -> m [Arg DecidabilityBuiltin]
     insertNewArgs as = \case
       Pi _ binder result | wasInsertedByCompiler binder && isImplicit binder ->

@@ -562,7 +562,6 @@ compileBuiltin b args = case b of
     PropNaryProductAt -> unsupportedError
   DecidabilityBuiltinTypeClass {} -> monoError
   DecidabilityBuiltinTypeClassOp {} -> monoError
-  StandardBuiltinCast {} -> monoError
   StandardBuiltinDerivedFunction f -> compileDerivedFunction f args
   where
     unsupportedError :: a
