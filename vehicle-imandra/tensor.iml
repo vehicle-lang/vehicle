@@ -195,7 +195,7 @@ let tensor_from_lookup (ds : int list) (e : int list -> 'a) : 'a tensor =
   let indices = all_indices ds in
   tensor_from_vec ds (List.map e indices)
 
-(* Reverse (used by tensor_transpose) *)
+(* Tensor transpose *)
 
 let rec list_rev_acc (acc : 'a list) (xs : 'a list) : 'a list =
   match xs with
@@ -204,23 +204,11 @@ let rec list_rev_acc (acc : 'a list) (xs : 'a list) : 'a list =
 
 let list_rev (xs : 'a list) : 'a list = list_rev_acc [] xs
 
-(* Tensor transpose (real-typed) *)
-
-(* Transpose: reverse dims and lookup with reversed indices.
-  `Option.value` uses a type-appropriate default for the unreachable None. *)
-
-let tensor_transpose_with (default : 'a) (t : 'a tensor) : 'a tensor =
+let tensor_transpose (t : 'a tensor) : 'a tensor =
   tensor_from_lookup (list_rev t.dims) (fun is ->
-    Option.value (lookup t (list_rev is)) ~default)
-
-let tensor_transpose_real (t : real tensor) : real tensor =
-  tensor_transpose_with 0.0 t
-
-let tensor_transpose_bool (t : bool tensor) : bool tensor =
-  tensor_transpose_with false t
-
-let tensor_transpose_int (t : int tensor) : int tensor =
-  tensor_transpose_with 0 t
+    match lookup t (list_rev is) with
+    | Some v -> v
+    | None -> failwith "tensor_transpose: unreachable")
 
 (* -------------------------------------------------------------------------- *)
 (* Tensor Operations                                                          *)
