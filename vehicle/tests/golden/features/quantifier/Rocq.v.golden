@@ -14,9 +14,9 @@ Local Open Scope tensor_scope.
 
 Parameter R : realType.
 
-Definition unused : Prop := forall (x : 'nT[R]_([tuple])), True.
+Definition unused : Prop := forall (x : 'sT[R]), True.
 
-Parameter f : 'nT[R]_([tuple]) -> 'nT[R]_([tuple]).
+Parameter f : 'sT[R] -> 'sT[R].
 
 Axiom expandedExpr : forall x, const_t (0 : R) < x /\ x < const_t (1 : R) -> x >= f x.
 

@@ -33,11 +33,11 @@ Definition bigDogs : seq Dog := greatDane :: (germanShepherd :: nil).
 
 Definition Image : Type := 'nT[R]_[4, 4].
 
-Definition Score : Type := 'nT[R]_([tuple]).
+Definition Score : Type := 'sT[R].
 
 Parameter score : Image -> 'nT[R]_[6].
 
-Definition validPixel (p : 'nT[R]_([tuple])) : Prop := const_t (0 : R) <= p /\ p <= const_t (1 : R).
+Definition validPixel (p : 'sT[R]) : Prop := const_t (0 : R) <= p /\ p <= const_t (1 : R).
 
 Definition validImage (x : Image) : Prop := forallIndex (fun i => forallIndex (fun j => validPixel (x ^^ i) ^^ j)).
 

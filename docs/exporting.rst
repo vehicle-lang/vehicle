@@ -119,8 +119,12 @@ Rocq
 ~~~~
 
 The Rocq backend produces a new specification with the specification's functions
-lifted to Rocq's :code:`Prop` type. The network properties are given as
-axiomatic assumptions within.
+lifted to Rocq's :code:`Prop` type. Network properties are emitted as opaque
+:code:`Axiom` declarations by default, or — when :code:`--cache` is supplied —
+as :code:`Lemma` declarations discharged at proof-checking time by the
+:code:`vehicle_validate` tactic from the :code:`vehicle-rocq` companion
+library, which invokes :code:`vehicle validate --cache=...` and trusts the
+cached solver result if the recorded file hashes still match.
 
 The generated spec is closely linked to the popular mathcomp libraries,
 this allows for a more capable and expressive language for wider proofs.
@@ -134,13 +138,6 @@ Postulated resources
 
 Similarly to Agda, networks and datasets are expressed as opaque :code:`Parameter`
 declarations within Rocq. Hence it is not possible to evaluate a network within Rocq.
-
-No integration with verification cache
-######################################
-
-Currently Rocq does not integrate with Vehicle's verification cache,
-meaning that it is up to the user to garuntee that the compiled specification
-does not become out of date with the Vehicle spec.
 
 Poor tensor integration with Mathcomp
 #####################################

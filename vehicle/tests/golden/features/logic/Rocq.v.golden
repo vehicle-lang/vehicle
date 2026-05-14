@@ -17,18 +17,18 @@ Local Open Scope tensor_scope.
 Parameter R : realType.
 
 Record DifferentiableLogic : Type :=
-  { true : 'nT[R]_([tuple])
-  ; false : 'nT[R]_([tuple])
-  ; conjunction : 'nT[R]_([tuple]) -> ('nT[R]_([tuple]) -> 'nT[R]_([tuple]))
-  ; disjunction : 'nT[R]_([tuple]) -> ('nT[R]_([tuple]) -> 'nT[R]_([tuple]))
-  ; negation : 'nT[R]_([tuple]) -> 'nT[R]_([tuple])
-  ; implication : 'nT[R]_([tuple]) -> ('nT[R]_([tuple]) -> 'nT[R]_([tuple]))
-  ; lt : 'nT[R]_([tuple]) -> ('nT[R]_([tuple]) -> 'nT[R]_([tuple]))
-  ; le : 'nT[R]_([tuple]) -> ('nT[R]_([tuple]) -> 'nT[R]_([tuple]))
-  ; gt : 'nT[R]_([tuple]) -> ('nT[R]_([tuple]) -> 'nT[R]_([tuple]))
-  ; ge : 'nT[R]_([tuple]) -> ('nT[R]_([tuple]) -> 'nT[R]_([tuple]))
-  ; equals : 'nT[R]_([tuple]) -> ('nT[R]_([tuple]) -> 'nT[R]_([tuple]))
-  ; notEquals : 'nT[R]_([tuple]) -> ('nT[R]_([tuple]) -> 'nT[R]_([tuple]))
+  { true : 'sT[R]
+  ; false : 'sT[R]
+  ; conjunction : 'sT[R] -> ('sT[R] -> 'sT[R])
+  ; disjunction : 'sT[R] -> ('sT[R] -> 'sT[R])
+  ; negation : 'sT[R] -> 'sT[R]
+  ; implication : 'sT[R] -> ('sT[R] -> 'sT[R])
+  ; lt : 'sT[R] -> ('sT[R] -> 'sT[R])
+  ; le : 'sT[R] -> ('sT[R] -> 'sT[R])
+  ; gt : 'sT[R] -> ('sT[R] -> 'sT[R])
+  ; ge : 'sT[R] -> ('sT[R] -> 'sT[R])
+  ; equals : 'sT[R] -> ('sT[R] -> 'sT[R])
+  ; notEquals : 'sT[R] -> ('sT[R] -> 'sT[R])
   }.
 
 Definition myLogic : DifferentiableLogic := {| true := - const_t (100000 : R)
@@ -44,7 +44,7 @@ Definition myLogic : DifferentiableLogic := {| true := - const_t (100000 : R)
 ; equals := fun x => fun y => max (x - y) (y - x)
 ; notEquals := fun x => fun y => - max (x - y) (y - x) |}.
 
-Parameter f : 'nT[R]_([tuple]) -> 'nT[R]_([tuple]).
+Parameter f : 'sT[R] -> 'sT[R].
 
 Lemma p : forall x, f x >= true myLogic.
 Proof. vehicle_validate "Marabou.queries". Qed.

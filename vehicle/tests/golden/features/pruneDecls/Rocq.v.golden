@@ -14,6 +14,6 @@ Local Open Scope tensor_scope.
 
 Parameter R : realType.
 
-Parameter g : 'nT[R]_([tuple]) -> 'nT[R]_([tuple]).
+Parameter g : 'sT[R] -> 'sT[R].
 
 Axiom p2 : forall x, const_t (0 : R) < x /\ x < const_t (1 : R) -> g x >= const_t (0 : R).

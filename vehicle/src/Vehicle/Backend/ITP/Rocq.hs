@@ -29,7 +29,7 @@ import Vehicle.Data.AST.Expr.Scoped ()
 import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Decidability
 import Vehicle.Data.Builtin.Interface (Accessor (..))
-import Vehicle.Data.Code.Interface (IsArgs (..), VecLitArgs (..))
+import Vehicle.Data.Code.Interface (IsArgs (..), TensorTypeArgs (..), VecLitArgs (..), pattern ICons, pattern INatLiteral, pattern INil)
 import Vehicle.Data.Tensor
   ( Tensor (..),
     TensorShape,
@@ -693,16 +693,15 @@ compileIndexLiteral i =
 compileNatLiteral :: Int -> Code
 compileNatLiteral i = annotateConstant [MathcompImport Boot] $ pretty i <> "%N"
 
--- | Compile a tensor type using mathcomp's purely-contravariant shorthand
--- 'nT[R]_[n1, .., nk] for non-empty dimension lists, or 'nT[R]_([tuple])
--- for the empty list.
+-- | Compile a tensor type using mathcomp's shorthand notations:
+-- 'sT[R] for the scalar 0-dim case, 'nT[R]_[n1, .., nk] otherwise.
 compileTensorType :: (MonadRocqCompile m) => [Arg DecidabilityBuiltin] -> m Code
-compileTensorType args = case filter isExplicit args of
-  [elemTypeArg, dimsArg] -> do
-    elemType <- compileExpr (argExpr elemTypeArg)
-    dims <- compileDimList (argExpr dimsArg)
+compileTensorType args = case getExpr accessSpine args of
+  Just (TensorTypeArgs elemTypeArg dimsArg) -> do
+    elemType <- compileExpr elemTypeArg
+    dims <- compileDimList dimsArg
     let body = case dims of
-          [] -> "'nT[" <> elemType <> "]_([tuple])"
+          [] -> "'sT[" <> elemType <> "]"
           ns -> "'nT[" <> elemType <> "]_[" <> concatWith (surround ", ") ns <> "]"
     return $
       annotate
@@ -714,31 +713,25 @@ compileTensorType args = case filter isExplicit args of
           Nothing
         )
         body
-  _ -> developerError "compileTensorType: expected exactly two explicit arguments (element type and dimension list)"
+  Nothing -> developerError "compileTensorType: expected element type and dimension list"
 
--- | Walk a literal Cons/Nil dimension list expression and return the
--- list of compiled element codes. Errors if the expression isn't a
--- literal Cons/Nil chain (vehicle's elaborator always reduces tensor
--- shapes to literal Nat-Cons-Nil chains before codegen).
+-- | Walk a Nat-Cons/Nil dimension list expression and compile each element.
+-- Nat literals are rendered as bare digits (no `%N` suffix) so they fit
+-- the `'nT[R]_[n1, .., nk]` notation, which wraps each element with
+-- `%:posnat`. Non-literal entries (e.g. a let-bound or parameter `n`)
+-- fall through to `compileExpr`.
 compileDimList :: (MonadRocqCompile m) => Expr DecidabilityBuiltin -> m [Code]
 compileDimList = go []
   where
-    go acc expr = case expr of
-      -- Nil case: end of list
-      Builtin _ (StandardBuiltinConstructor Nil) ->
-        return (reverse acc)
-      App (Builtin _ (StandardBuiltinConstructor Nil)) _ ->
-        return (reverse acc)
-      -- Cons case: extract head and recurse on tail
-      App (Builtin _ (StandardBuiltinConstructor Cons)) consArgs ->
-        case filter isExplicit (NonEmpty.toList consArgs) of
-          [headArg, tailArg] -> do
-            n <- compileDimElem (argExpr headArg)
-            go (n : acc) (argExpr tailArg)
-          _ -> developerError "compileDimList: malformed Cons in dimension list"
-      _ -> developerError "compileDimList: dimension list is not a literal Cons/Nil chain"
-    compileDimElem (Builtin _ (StandardBuiltinConstructor (NatLiteral n))) =
-      return $ pretty n
+    go :: (MonadRocqCompile m) => [Code] -> Expr DecidabilityBuiltin -> m [Code]
+    go acc = \case
+      INil _ -> return (reverse acc)
+      ICons _ x xs -> do
+        x' <- compileDimElem x
+        go (x' : acc) xs
+      _ -> developerError "compileDimList: dimension list is not a Cons/Nil chain"
+    compileDimElem :: (MonadRocqCompile m) => Expr DecidabilityBuiltin -> m Code
+    compileDimElem (INatLiteral n) = return $ pretty n
     compileDimElem e = compileExpr e
 
 compileTensorLiteral :: (a -> Code) -> Tensor a -> Code

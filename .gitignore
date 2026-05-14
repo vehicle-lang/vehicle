@@ -576,3 +576,6 @@ TSWLatexianTemp*
 ################################################################################
 
 !/vehicle/lib
+
+# Vehicle-generated example specs
+examples/windController/rocqProof/WindControllerSpec.v

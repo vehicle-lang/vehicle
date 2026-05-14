@@ -14,6 +14,6 @@ Local Open Scope tensor_scope.
 
 Parameter R : realType.
 
-Parameter f : 'nT[R]_[2] -> 'nT[R]_([tuple]).
+Parameter f : 'nT[R]_[2] -> 'sT[R].
 
 Axiom reachable : exists x, ([tensor^^= (0 : R); (0 : R)] <= x /\ x <= [tensor^^= (1 : R); (1 : R)]) /\ f x == const_t (0 : R).

@@ -16,7 +16,7 @@ Local Open Scope tensor_scope.
 
 Parameter R : realType.
 
-Definition pi : 'nT[R]_([tuple]) := const_t (392699 / 125000 : R).
+Definition pi : 'sT[R] := const_t (392699 / 125000 : R).
 
 Definition InputVector : Type := 'nT[R]_[5].
 
@@ -62,7 +62,7 @@ Definition minimalScore (i : 'I_5%N) (x : UnnormalisedInputVector) : Prop := for
 
 Definition maximalScore (i : 'I_5%N) (x : UnnormalisedInputVector) : Prop := forallIndex (fun j => i != j :> nat -> (normAcasXu x) ^^ i > (normAcasXu x) ^^ j).
 
-Definition scaleCOCOutput (x : 'nT[R]_([tuple])) : 'nT[R]_([tuple]) := (x - const_t (1879721 / 250000 : R)) / const_t (2337187 / 6250 : R).
+Definition scaleCOCOutput (x : 'sT[R]) : 'sT[R] := (x - const_t (1879721 / 250000 : R)) / const_t (2337187 / 6250 : R).
 
 Definition intruderDistantAndSlower (x : UnnormalisedInputVector) : Prop := x ^^ distanceToIntruder >= const_t (55947691 / 1000 : R) /\ (x ^^ speed >= const_t (1145 : R) /\ x ^^ intruderSpeed <= const_t (60 : R)).
 

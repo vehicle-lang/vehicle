@@ -14,6 +14,6 @@ Local Open Scope tensor_scope.
 
 Parameter R : realType.
 
-Parameter f : 'nT[R]_([tuple]) -> 'nT[R]_([tuple]).
+Parameter f : 'sT[R] -> 'sT[R].
 
 Axiom monotonic : forall x1, forall x2, (const_t (0 : R) < x1 /\ x1 < const_t (1 : R)) /\ ((const_t (0 : R) < x2 /\ x2 < const_t (1 : R)) /\ x1 <= x2) -> f x1 <= f x2.

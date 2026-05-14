@@ -54,19 +54,18 @@ specification in `agdaProof/WindControllerSpec.agda` is found in
 The same is supported for Rocq:
 
 ```bash
-cd examples/windController
 vehicle compile itp \
   --target Rocq \
-  --specification windController.vcl \
-  --cache verificationResult \
-  --output rocqProof/WindControllerSpec.v
+  --specification examples/windController/windController.vcl \
+  --cache examples/windController/verificationResult \
+  --output examples/windController/rocqProof/WindControllerSpec.v
 ```
 
 When `--cache` is supplied, each `@property` is emitted as
 
 ```coq
 Lemma <name> : <type>.
-Proof. vehicle_validate "verificationResult". Qed.
+Proof. vehicle_validate "<absolute path to cache>". Qed.
 ```
 
 instead of an `Axiom`. The `vehicle_validate` tactic — provided by the
@@ -74,18 +73,23 @@ instead of an `Axiom`. The `vehicle_validate` tactic — provided by the
 at `Qed.` time and closes the goal only if validation succeeds. The full
 proof of safety using the generated spec is in `rocqProof/SafetyProof.v`.
 
+`vehicle compile` canonicalises the supplied cache path to an absolute
+path before embedding it in the generated `.v` file, so `rocq compile`
+can be invoked from any directory. For the cache itself to remain
+relocatable, pass absolute paths for the specification and network when
+running `vehicle verify` (otherwise those resource paths are stored
+relative to the verify cwd and `vehicle validate` will look for them
+there).
+
 To build the Rocq proof:
 
 ```bash
-cd examples/windController
+cd examples/windController/rocqProof
 make
 ```
 
-The included top-level `Makefile` runs `rocq compile` from this directory
-so that the relative paths inside the cache (`windController.vcl`,
-`controller.onnx`) resolve correctly when the validator is invoked. See
-[`vehicle-rocq/README.md`](../../vehicle-rocq/README.md) for details on
-the plugin.
+See [`vehicle-rocq/README.md`](../../vehicle-rocq/README.md) for details
+on the plugin.
 
 ## Generated files
 

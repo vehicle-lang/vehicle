@@ -18,13 +18,13 @@ Parameter R : realType.
 
 Parameter f : 'nT[R]_[2, 2] -> 'nT[R]_[2, 2].
 
-Definition zeroD : 'nT[R]_([tuple]) := const_t (5 / 2 : R).
+Definition zeroD : 'sT[R] := const_t (5 / 2 : R).
 
 Definition oneD : 'nT[R]_[2] := nstack_tuple [tuple zeroD; const_t (1 : R)].
 
 Definition twoD : 'nT[R]_[2, 2] := nstack_tuple [tuple oneD; [tensor^^= (2 : R); (3 : R)]].
 
-Definition lookup2D : 'nT[R]_([tuple]) := (twoD ^^ 0) ^^ 1.
+Definition lookup2D : 'sT[R] := (twoD ^^ 0) ^^ 1.
 
 Definition addition : 'nT[R]_[2, 2] := twoD + twoD.
 
