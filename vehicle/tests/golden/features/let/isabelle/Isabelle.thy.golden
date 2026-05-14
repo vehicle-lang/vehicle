@@ -19,10 +19,21 @@ begin
 
   
 
+  definition e3  :: "  nat "
+    where " e3   = ( let y = ((1 :: nat) + (1 :: nat)) in y ) "
+
+  definition lamLet  :: "  nat \<Rightarrow> nat "
+    where " lamLet   = ( \<lambda>  (x :: nat) . (let y = x in y) ) "
+
+  definition letLam  :: "  nat \<Rightarrow> nat "
+    where " letLam   = ( let y = \<lambda>  x . (x) in y ) "
+
   definition falsey  :: " (R tensor) \<Rightarrow>  bool "
     where " falsey   x = ( (leqTensorReduced x (flextensor_from_vec [] [ (((1 :: R) / 2)) ])) ) "
 
   locale  Isabelle  = 
+
+    
 
     
 

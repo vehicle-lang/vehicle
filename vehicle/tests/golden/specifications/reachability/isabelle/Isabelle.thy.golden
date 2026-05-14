@@ -25,6 +25,8 @@ begin
 
     fixes  f  :: " R tensor \<Rightarrow> R FlexTensor "
 
+    
+
     assumes  reachable :  " (\<exists> x. (((leqTensorReduced (flextensor_from_vec [2] [(((0 :: R) )), (((0 :: R) ))]) x)) \<and> ((leqTensorReduced x (flextensor_from_vec [2] [(((1 :: R) )), (((1 :: R) ))])))) \<and> ((eqTensorReduced (f x) (flextensor_from_vec [] [ (((0 :: R) )) ])))) "
 
     begin

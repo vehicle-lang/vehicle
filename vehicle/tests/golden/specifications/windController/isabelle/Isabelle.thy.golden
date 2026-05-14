@@ -50,6 +50,12 @@ begin
     ultimately show ?thesis by simp
   qed
 
+  definition currentSensor  :: "  FlexIndex "
+    where " currentSensor   = ( (Abs_FlexIndex 0) ) "
+
+  definition previousSensor  :: "  FlexIndex "
+    where " previousSensor   = ( (Abs_FlexIndex 1) ) "
+
   typedef OutputVector  =  "{ a :: R tensor. (dims a) = ((1 :: nat) # []) }"
     using dims_tensor_from_lookup by blast
 
@@ -79,6 +85,9 @@ begin
     ultimately show ?thesis by simp
   qed
 
+  definition velocity  :: "  FlexIndex "
+    where " velocity   = ( (Abs_FlexIndex 0) ) "
+
   definition normalise  :: " (InputVector \<Rightarrow> OutputVector) \<Rightarrow> (InputVector) \<Rightarrow>  InputVector "
     where " normalise   controller x = ( (foreach (2 :: nat)  (\<lambda>  i . ((pointwise_div (tensor_plus (flex_subtensor x i) (flextensor_from_vec [] [ (((4 :: R) )) ])) (flextensor_from_vec [] [ (((8 :: R) )) ]))))) ) "
 
@@ -86,11 +95,13 @@ begin
     where " safeInput   controller x = ( (forallIndex (2 :: nat)  (\<lambda>  i . (((leqTensorReduced (tensor_cdot (-1 :: R) (flextensor_from_vec [] [ (((13 :: R) / 4)) ])) (flex_subtensor x i))) \<and> ((leqTensorReduced (flex_subtensor x i) (flextensor_from_vec [] [ (((13 :: R) / 4)) ])))))) ) "
 
   definition safeOutput  :: " (InputVector \<Rightarrow> OutputVector) \<Rightarrow> (InputVector) \<Rightarrow>  bool "
-    where " safeOutput   controller x = ( let y = (flex_subtensor ((controller ((normalise controller x)))) (Abs_FlexIndex 0)) in ((ltTensorReduced (tensor_cdot (-1 :: R) (flextensor_from_vec [] [ (((5 :: R) / 4)) ])) ((tensor_plus ((tensor_plus y ((hadamard_prod (flextensor_from_vec [] [ (((2 :: R) )) ]) (flex_subtensor x (Abs_FlexIndex 0)))))) (tensor_cdot (-1 :: R) (flex_subtensor x (Abs_FlexIndex 1))))))) \<and> ((ltTensorReduced ((tensor_plus ((tensor_plus y ((hadamard_prod (flextensor_from_vec [] [ (((2 :: R) )) ]) (flex_subtensor x (Abs_FlexIndex 0)))))) (tensor_cdot (-1 :: R) (flex_subtensor x (Abs_FlexIndex 1))))) (flextensor_from_vec [] [ (((5 :: R) / 4)) ]))) ) "
+    where " safeOutput   controller x = ( let y = (flex_subtensor ((controller ((normalise controller x)))) velocity) in ((ltTensorReduced (tensor_cdot (-1 :: R) (flextensor_from_vec [] [ (((5 :: R) / 4)) ])) ((tensor_plus ((tensor_plus y ((hadamard_prod (flextensor_from_vec [] [ (((2 :: R) )) ]) (flex_subtensor x currentSensor))))) (tensor_cdot (-1 :: R) (flex_subtensor x previousSensor)))))) \<and> ((ltTensorReduced ((tensor_plus ((tensor_plus y ((hadamard_prod (flextensor_from_vec [] [ (((2 :: R) )) ]) (flex_subtensor x currentSensor))))) (tensor_cdot (-1 :: R) (flex_subtensor x previousSensor)))) (flextensor_from_vec [] [ (((5 :: R) / 4)) ]))) ) "
 
   locale  Isabelle  = 
 
     fixes  controller  :: " InputVector \<Rightarrow> OutputVector "
+
+    
 
     assumes  safe :  " (\<forall> x. (safeInput controller x) \<longrightarrow> (safeOutput controller x)) "
 

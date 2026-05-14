@@ -19,16 +19,19 @@ begin
 
   
 
-  
+  definition dataset  :: "  (R tensor) list "
+    where " dataset   = ( (flextensor_from_vec [2] [(((1 :: R) / 2)), (((1 :: R) ))]) # [] ) "
 
   locale  Isabelle  = 
 
     fixes  f  :: " R tensor \<Rightarrow> R FlexTensor "
 
-    assumes  empty :  " (forallInList (\<lambda>  x . (True)) ((flextensor_from_vec [2] [(((1 :: R) / 2)), (((1 :: R) ))]) # [])) "
-    assumes  double :  " (forallInList (\<lambda>  x . ((forallInList (\<lambda>  y . ((eqTensorReduced x y))) ((flextensor_from_vec [2] [(((1 :: R) / 2)), (((1 :: R) ))]) # [])))) ((flextensor_from_vec [2] [(((1 :: R) / 2)), (((1 :: R) ))]) # [])) "
-    assumes  forallForallIn :  " (\<forall> x. (forallInList (\<lambda>  y . ((eqTensorReduced x y))) ((flextensor_from_vec [2] [(((1 :: R) / 2)), (((1 :: R) ))]) # []))) "
-    assumes  forallInForall :  " (forallInList (\<lambda>  x . ((\<forall> y. (neTensorReduced (f x) y)))) ((flextensor_from_vec [2] [(((1 :: R) / 2)), (((1 :: R) ))]) # [])) "
+    
+
+    assumes  empty :  " (forallInList (\<lambda>  x . (True)) dataset) "
+    assumes  double :  " (forallInList (\<lambda>  x . ((forallInList (\<lambda>  y . ((eqTensorReduced x y))) dataset))) dataset) "
+    assumes  forallForallIn :  " (\<forall> x. (forallInList (\<lambda>  y . ((eqTensorReduced x y))) dataset)) "
+    assumes  forallInForall :  " (forallInList (\<lambda>  x . ((\<forall> y. (neTensorReduced (f x) y)))) dataset) "
 
     begin
 

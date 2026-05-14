@@ -25,6 +25,8 @@ begin
 
     fixes  f  :: " R tensor \<Rightarrow> R FlexTensor "
 
+    
+
     assumes  increasing :  " (\<forall> x. ((ltTensorReduced (flextensor_from_vec [] [ (((0 :: R) )) ]) x)) \<and> ((ltTensorReduced x (flextensor_from_vec [] [ (((1 :: R) )) ]))) \<longrightarrow> (leqTensorReduced x (f x))) "
 
     begin
