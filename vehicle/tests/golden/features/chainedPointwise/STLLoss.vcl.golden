@@ -1,0 +1,15 @@
+@property;
+strictlyBounded : (Tensor Real -> Tensor Real) -> Tensor Real;
+strictlyBounded = \ net -> - min (net [ 0.0, 0.0, 0.0 ] ! 0) (1.0 - net [ 0.0, 0.0, 0.0 ] ! 0)
+
+@property;
+mixedStrictness : (Tensor Real -> Tensor Real) -> Tensor Real;
+mixedStrictness = \ net -> - min (net [ 0.0, 0.0, 0.0 ] ! 0) (1.0 - net [ 0.0, 0.0, 0.0 ] ! 0)
+
+@property;
+upperFirst : (Tensor Real -> Tensor Real) -> Tensor Real;
+upperFirst = \ net -> - min (1.0 - net [ 0.0, 0.0, 0.0 ] ! 0) (net [ 0.0, 0.0, 0.0 ] ! 0)
+
+@property;
+threeWay : (Tensor Real -> Tensor Real) -> Tensor Real;
+threeWay = \ net -> - min (net [ 0.0, 0.0, 0.0 ] ! 0) (0.5 - net [ 0.0, 0.0, 0.0 ] ! 0)

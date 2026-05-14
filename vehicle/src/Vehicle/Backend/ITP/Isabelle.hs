@@ -733,6 +733,8 @@ compileBuiltin isOutType localeAssms b args = case b of
         args
     IndexType -> annotateNotation localeAssms [] 0 (if isOutType then "FlexIndex" else "nat") (Just "ordinal") args
     VectorType -> annotateNotation localeAssms [] 2 "$0 list" Nothing args
+    -- Time is rejected by checkBackendUnsupportedFeatures.
+    TimeType -> unsupportedError
   StandardBuiltinConstructor c -> case c of
     Nil -> return "[]"
     Cons -> annotateNotation localeAssms [] 60 "$0 # $1" (Just "cons") args
@@ -743,6 +745,7 @@ compileBuiltin isOutType localeAssms b args = case b of
     BoolTensorLiteral t -> return $ compileTensorLiteral compileBoolLiteral t
     RatTensorLiteral t -> return $ compileTensorLiteral compileRatLiteral t
     VectorLiteral -> compileVecLiteral localeAssms args
+    TimeLiteral _ -> unsupportedError
   StandardBuiltinFunction f -> case f of
     And -> annotateNotation localeAssms [] 40 "($0 \\<and> $1)" (Just "andb") args
     Or -> annotateNotation localeAssms [] 50 "($0 \\<or> $1)" (Just "orb") args
@@ -750,6 +753,10 @@ compileBuiltin isOutType localeAssms b args = case b of
     Implies -> annotateNotation localeAssms [] 55 "($0 \\<longrightarrow> $1)" (Just "implb") args
     Add AddNat -> annotateNotation localeAssms [] 50 "($0 + $1)" (Just "+%R") args
     Mul MulNat -> annotateNotation localeAssms [] 40 "($0 * $1)" (Just "*%R") args
+    Add AddTime -> unsupportedError
+    Sub SubTime -> unsupportedError
+    Mul MulTime -> unsupportedError
+    Div DivTime -> unsupportedError
     Add AddRatTensor -> annotateNotation localeAssms [RequireImport VehicleTensor, RequireImport VehicleUtils] 50 "(tensor_plus $0 $1)" (Just "+%R") args
     Sub SubRatTensor -> annotateNotation localeAssms [RequireImport VehicleTensor, RequireImport VehicleUtils, RequireImport VehicleTensorScalarMult] 50 "(tensor_plus $0 (tensor_cdot (-1 :: R) $1))" Nothing args
     Mul MulRatTensor -> annotateNotation localeAssms [RequireImport VehicleTensor, RequireImport VehicleUtils] 40 "(hadamard_prod $0 $1)" (Just "*%R") args
@@ -780,7 +787,10 @@ compileBuiltin isOutType localeAssms b args = case b of
     ForeachTensor -> idxBasedOp localeAssms "foreach" args
     StackTensor -> compileStack localeAssms args
     Iterate -> unsupportedError
+    Rollout -> userUnsupported "'rollout' operator"
+    Transpose -> annotateApp localeAssms [RequireImport VehicleTensor] "tensor_transpose" args
     PowRat -> unsupportedError
+    Temporal op -> userUnsupported $ "Temporal operator '" <> pretty op <> "'"
     AtVector -> annotateApp localeAssms [] "tnth" args
     ForeachVector -> idxBasedOp localeAssms "foreachTuple" args
   DecidabilityBuiltinFunction f -> case f of
@@ -808,11 +818,15 @@ compileBuiltin isOutType localeAssms b args = case b of
   DecidabilityBuiltinTypeClass {} -> monoError
   DecidabilityBuiltinTypeClassOp {} -> monoError
   StandardBuiltinDerivedFunction f -> compileDerivedFunction localeAssms f args
+  StandardBuiltinCast {} -> unsupportedError
   where
     unsupportedError :: a
     unsupportedError =
       developerError $
         "compilation of builtin" <+> quotePretty b <+> "to Isabelle unsupported"
+
+    userUnsupported feature =
+      throwError $ UnimplementedFeature mempty $ feature <+> "in the Isabelle backend"
 
     unsupportedArgsError :: (MonadIsabelleCompile m) => m a
     unsupportedArgsError = do

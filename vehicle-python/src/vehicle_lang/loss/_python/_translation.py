@@ -300,6 +300,34 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             provenance=vcl.MISSING,
         )
 
+    def translate_Globally(self, expression: vcl.Globally) -> py.expr:
+        return py_app(
+            py_builtin("Globally", provenance=vcl.MISSING),
+            self.translate_expression(expression.start),
+            self.translate_expression(expression.end),
+            self.translate_expression(expression.x),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_Finally(self, expression: vcl.Finally) -> py.expr:
+        return py_app(
+            py_builtin("Finally", provenance=vcl.MISSING),
+            self.translate_expression(expression.start),
+            self.translate_expression(expression.end),
+            self.translate_expression(expression.x),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_Until(self, expression: vcl.Until) -> py.expr:
+        return py_app(
+            py_builtin("Until", provenance=vcl.MISSING),
+            self.translate_expression(expression.start),
+            self.translate_expression(expression.end),
+            self.translate_expression(expression.x),
+            self.translate_expression(expression.y),
+            provenance=vcl.MISSING,
+        )
+
     def translate_SearchRatTensor(self, expression: vcl.SearchRatTensor) -> py.expr:
         """Translate SearchRatTensor to builtin call.
 
@@ -347,6 +375,34 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         return py_app(
             partial_reduction,
             sampler_call,
+            provenance=vcl.MISSING,
+        )
+
+    def translate_Rollout(self, expression: vcl.Rollout) -> py.expr:
+        """Translate Rollout to builtin call."""
+        return py_app(
+            py_builtin("Rollout", provenance=vcl.MISSING),
+            self.translate_expression(expression.n),
+            self.translate_expression(expression.controller),
+            self.translate_expression(expression.dynamics),
+            self.translate_expression(expression.init_state),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_ForeachTensor(self, expression: vcl.ForeachTensor) -> py.expr:
+        """Translate ForeachTensor to builtin call."""
+        return py_app(
+            py_builtin("ForeachTensor", provenance=vcl.MISSING),
+            self.translate_expression(expression.dim),
+            self.translate_expression(expression.fn),
+            provenance=vcl.MISSING,
+        )
+
+    def translate_Transpose(self, expression: vcl.Transpose) -> py.expr:
+        """Translate Transpose to builtin call."""
+        return py_app(
+            py_builtin("Transpose", provenance=vcl.MISSING),
+            self.translate_expression(expression.xs),
             provenance=vcl.MISSING,
         )
 
@@ -404,6 +460,43 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
                 provenance=vcl.MISSING,
             ),
             provenance=vcl.MISSING,
+        )
+
+    def translate_binary_function(self, expr: vcl.Lam) -> py.Lambda:
+        """Translate a compiled DL binary-field lambda to a 2-argument Python lambda.
+
+        The compiled form is Lam {dims: DimensionsType} (Lam x (Lam y body)).
+        We skip any leading DimensionsType binders (the implicit dims argument
+        from the VCL record's polymorphic tensor type), then extract the two
+        explicit tensor binders.
+        """
+        # Skip implicit dimension binders (type DimensionsType)
+        inner: vcl.Expression = expr
+        while isinstance(inner, vcl.Lam) and isinstance(
+            inner.binder.type, vcl.DimensionsType
+        ):
+            inner = inner.body
+
+        if not isinstance(inner, vcl.Lam):
+            raise ValueError(
+                f"Expected explicit Lam after implicit dimension binders, got {type(inner).__name__}"
+            )
+        outer_binder = inner.binder
+
+        inner2 = inner.body
+        if not isinstance(inner2, vcl.Lam):
+            raise ValueError(
+                f"Expected second explicit Lam for binary function, got {type(inner2).__name__}"
+            )
+        inner_binder = inner2.binder
+        body_expr = self.translate_expression(inner2.body)
+
+        return py.Lambda(
+            args=py_binder(
+                self.translate_binder(outer_binder),
+                self.translate_binder(inner_binder),
+            ),
+            body=body_expr,
         )
 
 

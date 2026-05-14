@@ -1,0 +1,8 @@
+[
+  {
+    "name": "Marabou",
+    "run": "vehicle compile queries -s spec.vcl -f MarabouQueries -o Marabou.queries/ -n ctrl:fake.onnx -d dyn:fake.onnx",
+    "needs": ["spec.vcl", "fake.onnx"],
+    "produces": []
+  }
+]

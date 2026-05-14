@@ -108,6 +108,8 @@ compile toVar shape = go
       VReduceMulRatTensor {} -> unexpected
       VReduceMinRatTensor {} -> unexpected
       VReduceMaxRatTensor {} -> unexpected
+      VRatTensorRollout {} -> unexpected
+      VRatTensorTranspose {} -> unexpected
       where
         unexpected = throwError $ UnexpectedExpr expr
         unreduced = throwError $ UnreducedExpr expr

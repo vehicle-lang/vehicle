@@ -108,6 +108,9 @@ typeOfBuiltinCast = \case
     FromNatToNat -> typeOfFromNat tNat
     FromNatToIndex -> forAllIrrelevantNat "n" $ \s -> typeOfFromNat (tIndex s)
     FromNatToRat -> typeOfFromNat (tRatTensor dimNil)
+    FromNatToTime -> typeOfFromNat tTime
+  FromTime dom -> case dom of
+    FromTimeToNat -> tTime ~> tNat
   FromRat dom -> case dom of
     FromRatToRat -> typeOfFromRat (tRatTensor dimNil)
   FromVectorToList -> typeOfFromVectorToList
@@ -179,6 +182,7 @@ restrictStandardDeclType declSort (ident, p) typ = do
         RestrictedParameter s -> Builtin p (TypeClass (ValidParameterType s))
         RestrictedDataset -> Builtin p (TypeClass ValidDatasetType)
         RestrictedNetwork -> FreeVar p validNetworkTypeIdent
+        RestrictedDynamics -> FreeVar p validDynamicsTypeIdent
 
   let expr = App tc [explicit typ]
   let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin env (ident, provenanceOf typ) (Left declSort) typ

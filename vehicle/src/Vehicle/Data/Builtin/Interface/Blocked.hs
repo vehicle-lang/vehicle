@@ -52,12 +52,19 @@ functionBlockingStatus ::
 functionBlockingStatus b spine = case b of
   QuantifyRatTensor {} -> DoesNotReduce
   QuantifyTensorLike {} -> DoesNotReduce
+  Temporal Globally -> fixedStatus [1, 2, 3] spine
+  Temporal Finally -> fixedStatus [1, 2, 3] spine
+  Temporal Until -> fixedStatus [1, 2, 3, 4] spine
   Implies -> AlwaysReduces
   Not -> fixedStatus [1] spine
   And -> fixedStatus [1, 2] spine
   Or -> fixedStatus [1, 2] spine
   Add AddNat -> fixedStatus [0, 1] spine
   Mul MulNat -> fixedStatus [0, 1] spine
+  Add AddTime -> fixedStatus [0, 1] spine
+  Sub SubTime -> fixedStatus [0, 1] spine
+  Mul MulTime -> fixedStatus [0, 1] spine
+  Div DivTime -> fixedStatus [0, 1] spine
   Neg NegRatTensor -> fixedStatus [1] spine
   Add AddRatTensor -> fixedStatus [1, 2] spine
   Mul MulRatTensor -> fixedStatus [1, 2] spine
@@ -84,6 +91,8 @@ functionBlockingStatus b spine = case b of
   ForeachTensor -> fixedStatus [1] spine
   ForeachVector -> fixedStatus [1] spine
   Iterate -> fixedStatus [2] spine
+  Rollout -> DoesNotReduce
+  Transpose -> DoesNotReduce
   StackTensor -> stackBlockingStatus spine
 
 derivedFunctionBlockingStatus :: DerivedFunction -> Spine builtin -> BlockingStatus builtin
@@ -99,6 +108,8 @@ castBlockingStatus f spine = case f of
   FromNat FromNatToIndex -> fixedStatus [1] spine
   FromNat FromNatToNat -> AlwaysReduces
   FromNat FromNatToRat -> fixedStatus [0] spine
+  FromNat FromNatToTime -> fixedStatus [0] spine
+  FromTime FromTimeToNat -> fixedStatus [0] spine
   FromRat FromRatToRat -> AlwaysReduces
 
 traverseArgsAtIndices ::

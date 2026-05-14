@@ -201,6 +201,15 @@ instance BuiltinHasListLiterals LinearityBuiltin where
 instance BuiltinHasIterate LinearityBuiltin where
   accessIterateBuiltin = functionAccessor Iterate
 
+instance BuiltinHasRollout LinearityBuiltin where
+  accessRolloutBuiltin = functionAccessor Rollout
+
+instance BuiltinHasTensors LinearityBuiltin where
+  accessStackTensorBuiltin = functionAccessor StackTensor
+  accessConstTensorBuiltin = functionAccessor ConstTensor
+  accessAtTensorBuiltin = functionAccessor AtTensor
+  accessTransposeBuiltin = functionAccessor Transpose
+
 --------------------------------------------------------------------------------
 -- Printing
 

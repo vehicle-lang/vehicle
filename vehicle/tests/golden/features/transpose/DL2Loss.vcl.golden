@@ -1,0 +1,11 @@
+@property;
+positionsInRange : (Tensor Real -> Tensor Real) -> Tensor Real;
+positionsInRange = \ f -> reduceAdd 0.0 (max [ 0.0, 0.0, 0.0, 0.0 ] ([ 0.0, 0.0, 0.0, 0.0 ] - transpose (f [ 0.0, 0.0 ]) ! 0)) + reduceAdd 0.0 (max [ 0.0, 0.0, 0.0, 0.0 ] (transpose (f [ 0.0, 0.0 ]) ! 0 - [ 10.0, 10.0, 10.0, 10.0 ]))
+
+@property;
+positionUnderLimit : (Tensor Real -> Tensor Real) -> Tensor Real;
+positionUnderLimit = \ f -> reduceAdd 0.0 (max [ 0.0, 0.0, 0.0, 0.0 ] (transpose (f [ 0.0, 0.0 ]) ! 0 - [ 10.0, 10.0, 10.0, 10.0 ]))
+
+@property;
+boundedScalar : (Tensor Real -> Tensor Real) -> Tensor Real;
+boundedScalar = \ f -> search[v] (\ e -> \ xs -> reduceMul e xs) nil 0.0 1.0 (\ v -> max [ 0.0, 0.0, 0.0, 0.0 ] ([v, v, v, v] - transpose (f [ 0.0, 0.0 ]) ! 0))

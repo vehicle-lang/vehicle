@@ -1,0 +1,3 @@
+@property;
+test : (Tensor Real -> Tensor Real) -> (Tensor Real -> Tensor Real -> Tensor Real) -> Tensor Real;
+test = \ controller -> \ dynamics -> [ 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 ] / search[x] (\ e -> \ xs -> reduceMul e xs) [6] [ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ] [ 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 ] (\ x -> (\ __rollout_0 -> max 0.0 (__rollout_0 ! 0 ! 0)) (stlRollout 3 (\ s -> controller [s ! 0, s ! 1, s ! 2, s ! 3, s ! 4]) dynamics x))

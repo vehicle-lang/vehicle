@@ -95,6 +95,7 @@ searchDecl decl = do
   case decl of
     DefAbstract _ _ sort t -> case sort of
       NetworkDef -> tell [Network $ NetworkSummary (sharedData t)]
+      DynamicsDef -> tell [Dynamics $ DynamicsSummary (sharedData t)]
       DatasetDef -> tell [Dataset $ DatasetSummary (sharedData t)]
       ParameterDef s -> tell [Parameter $ ParameterSummary (sharedData t) (isInferable s)]
       BuiltinDef -> return ()
@@ -169,6 +170,7 @@ searchBuiltinForQuantifier value = case getExpr (accessQuantifyRatTensor @Value 
 
 data ListableEntity
   = Network NetworkSummary
+  | Dynamics DynamicsSummary
   | Dataset DatasetSummary
   | Parameter ParameterSummary
   | Property PropertySummary
@@ -209,6 +211,16 @@ newtype NetworkSummary = NetworkSummary
   deriving (Generic)
 
 instance ToJSON NetworkSummary
+
+--------------------------------------------------------------------------------
+-- Dynamics
+
+newtype DynamicsSummary = DynamicsSummary
+  { sharedData :: SharedData
+  }
+  deriving (Generic)
+
+instance ToJSON DynamicsSummary
 
 --------------------------------------------------------------------------------
 -- Data

@@ -57,6 +57,25 @@ class ABCBuiltins(
     def ReduceMaxRatTensor(self, e: vcl.Rat, x: vcl.Tensor) -> vcl.Tensor: ...
 
     @abstractmethod
+    def Globally(
+        self, start: vcl.Index, end: vcl.Index, x: vcl.Tensor
+    ) -> vcl.Tensor: ...
+
+    @abstractmethod
+    def Finally(
+        self, start: vcl.Index, end: vcl.Index, x: vcl.Tensor
+    ) -> vcl.Tensor: ...
+
+    @abstractmethod
+    def Until(
+        self,
+        start: vcl.Index,
+        end: vcl.Index,
+        x: vcl.Tensor,
+        y: vcl.Tensor,
+    ) -> vcl.Tensor: ...
+
+    @abstractmethod
     def DimensionLookup(self, xs: vcl.Tensor, i: vcl.Index) -> vcl.Tensor: ...
 
     @abstractmethod
@@ -83,6 +102,31 @@ class ABCBuiltins(
         # Use tuple as the default empty sequence type
         # Concrete implementations can override this if needed
         return ()
+
+    @abstractmethod
+    def Rollout(
+        self,
+        n: vcl.Index,
+        controller: Any,
+        dynamics: Any,
+        init_state: vcl.Tensor,
+    ) -> vcl.Tensor:
+        """Return n visited states starting from init_state: [s_0, ..., s_{n-1}].
+
+        Performs n-1 transition steps of `s -> dynamics s (controller s)`,
+        matching the declared Vehicle type `Tensor S (n :: ds)`.
+        """
+        ...
+
+    @abstractmethod
+    def ForeachTensor(
+        self,
+        dim: int,
+        fn: Any,
+    ) -> vcl.Tensor: ...
+
+    @abstractmethod
+    def Transpose(self, xs: vcl.Tensor) -> vcl.Tensor: ...
 
     @abstractmethod
     def StackTensor(self, tensors: Sequence[vcl.Tensor]) -> vcl.Tensor: ...

@@ -90,6 +90,21 @@ typeOfBuiltinFunction p = \case
   ForeachTensor -> typeOfForeach
   ForeachVector -> typeOfForeach
   Iterate -> typeOfIterate
+  Rollout -> typeOfRollout
+  Transpose -> typeOfOp1
+  Temporal Globally -> typeOfTemporalOp1
+  Temporal Finally -> typeOfTemporalOp1
+  Temporal Until -> typeOfTemporalOp2
+
+typeOfTemporalOp1 :: LinearityDSLExpr
+typeOfTemporalOp1 =
+  forAllLinearities $ \l ->
+    constant ~> constant ~> l ~> l
+
+typeOfTemporalOp2 :: LinearityDSLExpr
+typeOfTemporalOp2 =
+  forAllLinearityTriples $ \l1 l2 l3 ->
+    maxLinearity l1 l2 l3 .~~~> constant ~> constant ~> l1 ~> l2 ~> l3
 
 typeOfConstructor :: BuiltinConstructor -> LinearityDSLExpr
 typeOfConstructor = \case
@@ -102,6 +117,7 @@ typeOfConstructor = \case
   NatTensorLiteral {} -> constant
   BoolTensorLiteral {} -> constant
   RatTensorLiteral {} -> constant
+  TimeLiteral {} -> constant
 
 typeOfLinearityRelation :: LinearityRelation -> LinearityDSLExpr
 typeOfLinearityRelation = \case
@@ -160,6 +176,9 @@ typeOfQuantifier q =
 typeOfIterate :: LinearityDSLExpr
 typeOfIterate = ((type0 ~> type0) ~> type0 ~> type0) ~> constant ~> type0
 
+typeOfRollout :: LinearityDSLExpr
+typeOfRollout = constant ~> (type0 ~> type0) ~> (type0 ~> type0 ~> type0) ~> type0 ~> type0
+
 typeOfVectorLiteral :: LinearityDSLExpr
 typeOfVectorLiteral =
   forAll "n" constant $ \n ->
@@ -216,6 +235,7 @@ convertToLinearityTypes p b args = case b of
     ListType -> return $ extractElementType b args
     VectorType -> return $ extractElementType b args
     TensorType -> return $ extractElementType b args
+    TimeType -> return $ Builtin p $ Linearity Constant
   DerivedFunction f -> return $ normAppList (FreeVar p (identifierOf f)) args
   TypeClass {} -> monomorphisationError b args
   TypeClassOp {} -> monomorphisationError b args
@@ -234,6 +254,7 @@ restrictLinearityDeclType rDecl declProv declType = do
   let origin = InstanceTypeRestrictionOrigin $ TypeRestrictionOrigin freeEnv declProv (Left rDecl) declType
   case rDecl of
     RestrictedNetwork -> restrictLinearityNetworkType origin declProv declType
+    RestrictedDynamics -> restrictLinearityDynamicsType origin declProv declType
     RestrictedDataset -> assertConstantLinearity origin declProv declType
     RestrictedParameter {} -> assertConstantLinearity origin declProv declType
     RestrictedProperty {} -> return declType
@@ -263,6 +284,41 @@ restrictLinearityNetworkType origin (ident, p) networkType = do
   let linConstraintBinder = Binder (BinderDisplayForm OnlyType False) (Instance True) Irrelevant linConstraint
 
   return $ Pi p linConstraintBinder functionNetworkType
+
+restrictLinearityDynamicsType ::
+  forall m.
+  (MonadTypeChecker LinearityBuiltin m) =>
+  InstanceConstraintOrigin LinearityBuiltin ->
+  DeclProvenance ->
+  Type LinearityBuiltin ->
+  m (Type LinearityBuiltin)
+restrictLinearityDynamicsType origin (ident, p) dynamicsType = do
+  inputLin1 <- freshLinearityMeta p
+  inputLin2 <- freshLinearityMeta p
+  outputLin <- freshLinearityMeta p
+
+  let inputLin2Binder = Binder (BinderDisplayForm OnlyType False) Explicit Relevant inputLin2
+  let innerFnType = Pi p inputLin2Binder outputLin
+  let inputLin1Binder = Binder (BinderDisplayForm OnlyType False) Explicit Relevant inputLin1
+  let functionDynamicsType = Pi p inputLin1Binder innerFnType
+  createFreshUnificationConstraint p mempty (CheckingInstanceType origin) dynamicsType functionDynamicsType
+
+  -- The linearity of the output is the max of Linear (network output), inputLin1, inputLin2.
+  -- We model this as two MaxLinearity constraints chained:
+  --   intermediate = max(Linear, inputLin1)
+  --   outputLin    = max(intermediate, inputLin2)
+  logDebug MaxDetail "Appending `MaxLinearity` constraints to dynamics type"
+  intermediateLin <- freshLinearityMeta p
+  let outputLinProvenance = Linear $ NetworkOutputProvenance p (nameOf ident)
+  let linConstraintArgs1 = [LinearityExpr p outputLinProvenance, inputLin1, intermediateLin]
+  let linConstraint1 = App (Builtin p (LinearityRelation MaxLinearity)) (Arg Explicit Relevant <$> linConstraintArgs1)
+  let linConstraintBinder1 = Binder (BinderDisplayForm OnlyType False) (Instance True) Irrelevant linConstraint1
+
+  let linConstraintArgs2 = [intermediateLin, inputLin2, outputLin]
+  let linConstraint2 = App (Builtin p (LinearityRelation MaxLinearity)) (Arg Explicit Relevant <$> linConstraintArgs2)
+  let linConstraintBinder2 = Binder (BinderDisplayForm OnlyType False) (Instance True) Irrelevant linConstraint2
+
+  return $ Pi p linConstraintBinder1 (Pi p linConstraintBinder2 functionDynamicsType)
 
 assertConstantLinearity ::
   (MonadTypeChecker LinearityBuiltin m) =>

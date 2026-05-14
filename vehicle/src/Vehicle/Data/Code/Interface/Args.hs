@@ -141,6 +141,45 @@ traverseReductionArgs f (TensorReductionArgs ds e xs) =
   TensorReductionArgs ds <$> f e <*> f xs
 
 --------------------------------------------------------------------------------
+-- Temporal args
+
+data TemporalOp1Args expr = TemporalOp1Args
+  { temporalOp1Dims :: expr,
+    temporalOp1Start :: expr,
+    temporalOp1End :: expr,
+    temporalOp1Arg :: expr
+  }
+
+instance IsArgs TemporalOp1Args where
+  accessSpine =
+    Access
+      { getExpr = \case
+          (fmap argExpr -> [ds, a, b, x]) -> Just $ TemporalOp1Args ds a b x
+          _ -> Nothing,
+        mkExpr = \(TemporalOp1Args ds a b x) -> [implicitIrrelevant ds, explicit a, explicit b, explicit x]
+      }
+
+traverseTemporalOp1Args :: (Applicative f) => (t -> f t) -> TemporalOp1Args t -> f (TemporalOp1Args t)
+traverseTemporalOp1Args f (TemporalOp1Args ds a b x) = TemporalOp1Args ds a b <$> f x
+
+data TemporalOp2Args expr = TemporalOp2Args
+  { temporalOp2Dims :: expr,
+    temporalOp2Start :: expr,
+    temporalOp2End :: expr,
+    temporalOp2Arg1 :: expr,
+    temporalOp2Arg2 :: expr
+  }
+
+instance IsArgs TemporalOp2Args where
+  accessSpine =
+    Access
+      { getExpr = \case
+          (fmap argExpr -> [ds, a, b, x, y]) -> Just $ TemporalOp2Args ds a b x y
+          _ -> Nothing,
+        mkExpr = \(TemporalOp2Args ds a b x y) -> [implicitIrrelevant ds, explicit a, explicit b, explicit x, explicit y]
+      }
+
+--------------------------------------------------------------------------------
 -- IndexComparisonArgs
 
 -- | Arguments for comparisons (==, <= etc.) over Index
@@ -315,6 +354,47 @@ instance IsArgs ForeachTensorArgs where
           _ -> Nothing,
         mkExpr = \(ForeachTensorArgs t d ds fn) -> [implicit t, implicit d, implicitIrrelevant ds, explicit fn]
       }
+
+-- | Arguments for `Rollout`
+data RolloutArgs expr = RolloutArgs
+  { rolloutStateType :: expr,
+    rolloutActionType :: expr,
+    rolloutStateDims :: expr,
+    rolloutActionDims :: expr,
+    rolloutN :: expr,
+    rolloutController :: expr,
+    rolloutDynamics :: expr,
+    rolloutInitState :: expr
+  }
+
+instance IsArgs RolloutArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          (fmap argExpr -> [s, a, ds, da, n, ctrl, dyn, s0]) -> Just $ RolloutArgs s a ds da n ctrl dyn s0
+          _ -> Nothing,
+        mkExpr = \(RolloutArgs s a ds da n ctrl dyn s0) ->
+          [implicit s, implicit a, implicitIrrelevant ds, implicitIrrelevant da, explicit n, explicit ctrl, explicit dyn, explicit s0]
+      }
+
+-- | Arguments for `Transpose`
+data TransposeArgs expr = TransposeArgs
+  { transposeType :: expr,
+    transposeDims :: expr,
+    transposeTensor :: expr
+  }
+
+instance IsArgs TransposeArgs where
+  accessSpine =
+    Access
+      { getExpr = \case
+          (fmap argExpr -> [t, ds, xs]) -> Just $ TransposeArgs t ds xs
+          _ -> Nothing,
+        mkExpr = \(TransposeArgs t ds xs) -> [implicit t, implicitIrrelevant ds, explicit xs]
+      }
+
+traverseTransposeTensor :: (Applicative f) => (t -> f t) -> TransposeArgs t -> f (TransposeArgs t)
+traverseTransposeTensor f (TransposeArgs t ds xs) = TransposeArgs t ds <$> f xs
 
 -- | Arguments for `ForeachVector`
 data ForeachVectorArgs expr = ForeachVectorArgs

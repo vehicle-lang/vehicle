@@ -100,11 +100,7 @@ isAbstractDecl = \case
 
 isExternalResourceDecl :: GenericDecl expr -> Bool
 isExternalResourceDecl = \case
-  DefAbstract _ _ sort _ -> case sort of
-    NetworkDef -> True
-    DatasetDef -> True
-    ParameterDef parameterType -> parameterType == NonInferable
-    BuiltinDef {} -> False
+  DefAbstract _ _ sort _ -> isExternalResourceSort sort
   DefFunction {} -> False
   DefRecord {} -> False
 
@@ -116,6 +112,7 @@ data DefAbstractSort
   | DatasetDef
   | ParameterDef ParameterSort
   | BuiltinDef
+  | DynamicsDef
   deriving (Eq, Show, Generic)
 
 instance NFData DefAbstractSort
@@ -129,6 +126,15 @@ instance Pretty DefAbstractSort where
       DatasetDef -> "dataset"
       ParameterDef {} -> "parameter"
       BuiltinDef {} -> "postulate"
+      DynamicsDef -> "dynamics"
+
+isExternalResourceSort :: DefAbstractSort -> Bool
+isExternalResourceSort = \case
+  NetworkDef -> True
+  DatasetDef -> True
+  DynamicsDef -> True
+  ParameterDef parameterType -> parameterType == NonInferable
+  BuiltinDef {} -> False
 
 data ParameterSort
   = Inferable

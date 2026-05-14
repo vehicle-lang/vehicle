@@ -63,6 +63,7 @@ instance Delaborate (V.Decl V.Builtin) [B.Decl] where
       defAnn <- case a of
         V.BuiltinDef -> return $ delabAnn builtinAnn []
         V.NetworkDef -> return $ delabAnn networkAnn []
+        V.DynamicsDef -> return $ delabAnn dynamicsAnn []
         V.DatasetDef -> return $ delabAnn datasetAnn []
         V.ParameterDef sort -> return $ case sort of
           V.NonInferable -> delabAnn parameterAnn []
@@ -223,6 +224,7 @@ delabCast fun args = case fun of
   V.FromNat {} -> rawDelab
   V.FromRat {} -> rawDelab
   V.FromVectorToList {} -> rawDelab
+  V.FromTime {} -> rawDelab
   where
     rawDelab = cheatDelabPretty fun args
 
@@ -240,6 +242,9 @@ delabBuiltinFunction fun args = case fun of
   V.And -> delabInfixOp2 B.And tokAnd args
   V.Or -> delabInfixOp2 B.Or tokOr args
   V.Implies -> delabInfixOp2 B.Impl tokImpl args
+  V.Temporal V.Globally -> delabApp (B.StlGlobally tokStlGlobally) args
+  V.Temporal V.Finally -> delabApp (B.StlFinally tokStlFinally) args
+  V.Temporal V.Until -> delabApp (B.StlUntil tokStlUntil) args
   V.If -> delabIf args
   V.Add _dom -> delabAdd args
   V.Mul _dom -> delabMul args
@@ -275,6 +280,8 @@ delabBuiltinFunction fun args = case fun of
   V.StackTensor {} -> rawDelab
   V.ConstTensor -> delabApp (B.Const tokConst) args
   V.Iterate -> rawDelab
+  V.Rollout -> delabApp (B.StlRollout tokStlRollout) args
+  V.Transpose -> delabTranspose args
   where
     rawDelab = cheatDelabPretty fun args
 
@@ -288,6 +295,7 @@ delabBuiltinType fun args = case fun of
   V.ListType -> delabApp (B.List tokList) args
   V.VectorType -> delabApp (B.Vector tokVector) args
   V.TensorType -> delabApp (B.Tensor tokTensor) args
+  V.TimeType -> cheatDelabPretty fun args
 
 delabTypeClass :: (MonadDelab m) => V.TypeClass -> [V.Arg V.Builtin] -> m B.Expr
 delabTypeClass tc args = case tc of
@@ -313,6 +321,7 @@ delabConstructor fun args = case fun of
   V.NatTensorLiteral t -> cheatDelabPretty t []
   V.RatTensorLiteral t -> cheatDelabPretty t []
   V.BoolTensorLiteral t -> cheatDelabPretty t []
+  V.TimeLiteral n -> return $ B.Literal $ B.NatLiteral $ delabNatLit n
 
 delabAdd :: (MonadDelab m) => [V.Arg V.Builtin] -> m B.Expr
 delabAdd = delabInfixOp2 B.Add tokAdd
@@ -365,6 +374,11 @@ delabIf args@[arg1, arg2, arg3]
       e3 <- delabM (argExpr arg3)
       return $ B.If tokIf e1 tokThen e2 tokElse e3
 delabIf args = cheatDelabPretty V.If args
+
+delabTranspose :: (MonadDelab m) => [V.Arg V.Builtin] -> m B.Expr
+delabTranspose args = case filter V.isExplicit args of
+  [arg] -> B.Transpose tokTranspose <$> delabM (argExpr arg)
+  _ -> cheatDelabPretty V.Transpose args
 
 delabTelescope :: (MonadDelab m) => V.Binder V.Builtin -> V.Expr V.Builtin -> m ([B.NameBinder], B.Expr)
 delabTelescope binder body = do

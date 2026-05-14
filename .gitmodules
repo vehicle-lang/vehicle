@@ -1,0 +1,3 @@
+[submodule "vehicle-stl"]
+	path = vehicle-python/vehicle-stl
+	url = https://github.com/ggustavs/vehicle-stl.git

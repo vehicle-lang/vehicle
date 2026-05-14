@@ -72,6 +72,12 @@ class ABCTranslation(
                 return self.translate_ReduceMinRatTensor(expression)
             case vcl_ast.ReduceMaxRatTensor():
                 return self.translate_ReduceMaxRatTensor(expression)
+            case vcl_ast.Globally():
+                return self.translate_Globally(expression)
+            case vcl_ast.Finally():
+                return self.translate_Finally(expression)
+            case vcl_ast.Until():
+                return self.translate_Until(expression)
             case vcl_ast.SearchRatTensor():
                 return self.translate_SearchRatTensor(expression)
             case vcl_ast.Dimension():
@@ -86,6 +92,12 @@ class ABCTranslation(
                 return self.translate_DimensionNil(expression)
             case vcl_ast.ConstTensor():
                 return self.translate_ConstTensor(expression)
+            case vcl_ast.Rollout():
+                return self.translate_Rollout(expression)
+            case vcl_ast.ForeachTensor():
+                return self.translate_ForeachTensor(expression)
+            case vcl_ast.Transpose():
+                return self.translate_Transpose(expression)
             case vcl_ast.StackTensor():
                 return self.translate_StackTensor(expression)
             case _:
@@ -164,8 +176,32 @@ class ABCTranslation(
     ) -> vcl_var.Expression: ...
 
     @abstractmethod
+    def translate_Globally(
+        self, expression: vcl_ast.Globally
+    ) -> vcl_var.Expression: ...
+
+    @abstractmethod
+    def translate_Finally(self, expression: vcl_ast.Finally) -> vcl_var.Expression: ...
+
+    @abstractmethod
+    def translate_Until(self, expression: vcl_ast.Until) -> vcl_var.Expression: ...
+
+    @abstractmethod
     def translate_SearchRatTensor(
         self, expression: vcl_ast.SearchRatTensor
+    ) -> vcl_var.Expression: ...
+
+    @abstractmethod
+    def translate_Rollout(self, expression: vcl_ast.Rollout) -> vcl_var.Expression: ...
+
+    @abstractmethod
+    def translate_ForeachTensor(
+        self, expression: vcl_ast.ForeachTensor
+    ) -> vcl_var.Expression: ...
+
+    @abstractmethod
+    def translate_Transpose(
+        self, expression: vcl_ast.Transpose
     ) -> vcl_var.Expression: ...
 
     @abstractmethod

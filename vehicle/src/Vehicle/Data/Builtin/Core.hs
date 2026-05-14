@@ -28,6 +28,7 @@ data BuiltinType
   | ListType
   | VectorType
   | TensorType
+  | TimeType
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData BuiltinType
@@ -46,6 +47,7 @@ instance Pretty BuiltinType where
     ListType -> "List"
     VectorType -> "Vector"
     TensorType -> "Tensor"
+    TimeType -> "Time"
 
 --------------------------------------------------------------------------------
 -- Constructors
@@ -62,6 +64,7 @@ data BuiltinConstructor
   | BoolTensorLiteral (Tensor Bool)
   | NatTensorLiteral (Tensor Int)
   | RatTensorLiteral (Tensor Rational)
+  | TimeLiteral Int
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData BuiltinConstructor
@@ -81,6 +84,7 @@ instance Pretty BuiltinConstructor where
     BoolTensorLiteral x -> pretty x
     NatTensorLiteral x -> pretty x
     RatTensorLiteral x -> pretty x
+    TimeLiteral n -> pretty n
 
 --------------------------------------------------------------------------------
 -- Builtin
@@ -91,6 +95,7 @@ data BuiltinFunction
   | And
   | Or
   | Implies
+  | Temporal TemporalOperator
   | QuantifyRatTensor Quantifier
   | QuantifyTensorLike Quantifier
   | If
@@ -118,12 +123,15 @@ data BuiltinFunction
   | ConstTensor
   | Iterate
   | ForeachTensor
+  | Rollout
   | -- Vector operations
     AtVector
   | ForeachVector
   | -- List operations
     FoldList
   | MapList
+  | -- Tensor shape operations
+    Transpose
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData BuiltinFunction
@@ -140,6 +148,7 @@ instance Pretty BuiltinFunction where
     Or -> "or"
     Not -> "not"
     Implies -> "=>"
+    Temporal op -> pretty op
     QuantifyRatTensor q -> pretty q
     QuantifyTensorLike q -> pretty q
     If -> "if"
@@ -169,12 +178,15 @@ instance Pretty BuiltinFunction where
     AtVector -> "!v"
     StackTensor {} -> "stack"
     ConstTensor -> "const"
+    Rollout -> "rollout"
+    Transpose -> "transpose"
 
 data BuiltinCast
   = -- Cast operations
     FromNat FromNatDomain
   | FromRat FromRatDomain
   | FromVectorToList
+  | FromTime FromTimeDomain
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData BuiltinCast
@@ -188,6 +200,7 @@ instance Pretty BuiltinCast where
     FromNat dom -> "fromNatTo" <> pretty dom
     FromRat dom -> "fromRatTo" <> pretty dom
     FromVectorToList -> "fromVectorToList"
+    FromTime dom -> "fromTimeTo" <> pretty dom
 
 --------------------------------------------------------------------------------
 -- Negation

@@ -16,6 +16,7 @@ import Vehicle.Backend.Solver.QueryCompilation (compilePartitionsToQueries)
 import Vehicle.Backend.Solver.UserVariableElimination (eliminateExistless, eliminateExists)
 import Vehicle.Backend.Solver.UserVariableElimination.Core
 import Vehicle.Backend.Solver.UserVariableElimination.Error
+import Vehicle.Compile.CheckBackendFeatures qualified as CBF
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources (expandResources)
 import Vehicle.Compile.ExpandResources.Core
@@ -56,6 +57,11 @@ compileToQueries ::
   Maybe FilePath ->
   m ()
 compileToQueries queryFormat typedProg resources maybeVerificationFolder = do
+  -- Reject any unsupported features (temporal operators, rollout, Time)
+  -- before resource resolution, so the user gets a useful error even if
+  -- the spec also has missing networks / dynamics.
+  CBF.checkBackendUnsupportedFeatures CBF.Verifier typedProg
+
   -- Create the verification folder if required.
   case maybeVerificationFolder of
     Nothing -> return ()
@@ -220,7 +226,12 @@ compileQueries expr = do
     VBoolAt {} -> compileQueries =<< unblock expr
     VCompareIndex {} -> compileQueries =<< unblock expr
     VCompareNat {} -> compileQueries =<< unblock expr
-    VNot args -> compileQueries =<< lowerNot args
+    -- Temporal operators are rejected by the pre-pass in Compile.hs; if any
+    -- reach here, that's a bug in the pre-pass.
+    VGlobally {} -> unreachableTemporal "globally"
+    VFinally {} -> unreachableTemporal "finally"
+    VUntil {} -> unreachableTemporal "until"
+    VNot args -> compileQueries =<< lowerNot unblock args
     -----------------
     -- Mixed cases --
     -----------------
@@ -234,6 +245,11 @@ compileQueries expr = do
     VCompareRatTensor {} -> compileUnquantifiedQuerySet expr
   where
     unblock = unblockBoolExpr topLevelUnblockingActions
+    unreachableTemporal opName =
+      developerError $
+        "Temporal operator"
+          <+> squotes opName
+          <+> "should have been rejected by checkBackendUnsupportedFeatures."
 
 compileQuantifiedQuerySet ::
   (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m) =>

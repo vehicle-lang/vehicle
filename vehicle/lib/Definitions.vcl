@@ -20,6 +20,21 @@ existsInList : (A -> Bool) -> List A -> Bool
 existsInList f xs = fold (\x y -> x or y) False (map f xs)
 
 --------------------------------------------------------------------------------
+-- List
+--------------------------------------------------------------------------------
+
+-- List append. Cons-only definition via the right-fold primitive `fold`.
+append : List A -> List A -> List A
+append xs ys = fold (\x acc -> x :: acc) ys xs
+
+-- Reverse a list. Implemented via fold and append; used in dimension lists
+-- (e.g. inside `transpose`'s type signature). The expression-level form is
+-- O(N²) via repeated append, but dim lists are tiny so the cost is
+-- irrelevant.
+reverse : List A -> List A
+reverse xs = fold (\x acc -> append acc (x :: [])) [] xs
+
+--------------------------------------------------------------------------------
 -- Tensor
 --------------------------------------------------------------------------------
 -- These operations have non-zero dimensions so that we have a unique
@@ -72,13 +87,15 @@ natHasAdd = { addTC = addNat }
 realTensorHasAdd : HasAdd (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
 realTensorHasAdd = { addTC = addRealTensor }
 
+-- (HasAdd/HasSub/HasMul/HasDiv on `Time` live in STL.vcl)
+
 -- HasSub
 @typeclass
 record HasSub t1 t2 t3 where
   { subTC : t1 -> t2 -> t3
   }
 
-@instance
+@instance(default=0)
 realTensorHasSub : HasSub (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
 realTensorHasSub = { subTC = subRealTensor }
 
@@ -102,7 +119,7 @@ record HasDiv t1 t2 t3 where
   { divTC : t1 -> t2 -> t3
   }
 
-@instance
+@instance(default=0)
 realTensorHasDiv : HasDiv (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
 realTensorHasDiv = { divTC = divRealTensor }
 
@@ -150,6 +167,14 @@ record HasValidNetworkType (t : Type) where {}
 @instance
 tensorToTensorHasValidNetworkType : {{ HasValidNetworkIOType t1 }} -> {{ HasValidNetworkIOType t2 }} -> HasValidNetworkType ( t1 -> t2 )
 tensorToTensorHasValidNetworkType = {}
+
+-- Dynamics types (two-input functions: State -> Action -> State)
+@typeclass
+record HasValidDynamicsType (t : Type) where {}
+
+@instance
+tensorToTensorToTensorHasValidDynamicsType : {{ HasValidNetworkIOType t1 }} -> {{ HasValidNetworkIOType t2 }} -> {{ HasValidNetworkIOType t3 }} -> HasValidDynamicsType ( t1 -> t2 -> t3 )
+tensorToTensorToTensorHasValidDynamicsType = {}
 
 -- Comparisons
 @typeclass
@@ -228,6 +253,10 @@ record DifferentiableTensorLogic where
   , pointwiseNegation         : Tensor Real dims -> Tensor Real dims
   , pointwiseConjunction      : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
   , pointwiseDisjunction      : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
+  -- Temporal operators (Globally, Finally, Until) lift `pointwiseConjunction` and
+  -- `pointwiseDisjunction` as time-indexed reductions, with `trueElement` and
+  -- `falseElement` as the respective reduction identities.  No separate temporal
+  -- connectives — matches the standard STL-literature derivation.
   , pointwiseLessThan         : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
   , pointwiseLessEqualThan    : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
   , pointwiseGreaterThan      : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
@@ -270,4 +299,21 @@ DL2Loss =
   , pointwiseNotEqual          = \{dims} x y -> (max (const 0 dims) (x - y) + max (const 0 dims) (y - x))
   , reduceConjunction          = \e xs -> reduceAdd e xs
   , reduceDisjunction          = \e xs -> reduceMul e xs
+  }
+
+STLLoss : DifferentiableTensorLogic
+STLLoss =
+  { trueElement                = 1000000     -- large positive: fully satisfied
+  , falseElement               = -1000000    -- large negative: fully violated
+  , pointwiseNegation          = \x -> -x
+  , pointwiseConjunction       = \x y -> min x y   -- AND = worst-case robustness
+  , pointwiseDisjunction       = \x y -> max x y   -- OR  = best-case robustness
+  , pointwiseLessThan          = \x y -> y - x     -- positive when x < y
+  , pointwiseLessEqualThan     = \x y -> y - x     -- positive when x <= y
+  , pointwiseGreaterThan       = \x y -> x - y     -- positive when x > y
+  , pointwiseGreaterEqualThan  = \x y -> x - y     -- positive when x >= y
+  , pointwiseEqual             = \x y -> min (x - y) (y - x)   -- = -(|x-y|), 0 when equal
+  , pointwiseNotEqual          = \x y -> max (x - y) (y - x)   -- = |x-y|, positive when unequal
+  , reduceConjunction          = \e xs -> reduceMin e xs  -- AND-over-vector = min
+  , reduceDisjunction          = \e xs -> reduceMax e xs  -- OR-over-vector  = max
   }

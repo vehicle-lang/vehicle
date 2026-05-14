@@ -6,7 +6,7 @@ where
 import Data.Maybe (maybeToList)
 import Data.Proxy (Proxy (..))
 import Vehicle.Backend.Loss.Core
-import Vehicle.Backend.Loss.Domain (compileQuantifier)
+import Vehicle.Backend.Loss.Domain (compileQuantifier, convertBoolTensor)
 import Vehicle.Backend.Loss.LogicCompilation (findAndCompileLogic)
 import Vehicle.Backend.Loss.LossCompilation
 import Vehicle.Backend.Loss.LossCompilation qualified as Loss ()
@@ -18,6 +18,7 @@ import Vehicle.Compile.Prelude
 import Vehicle.Data.Builtin.Loss (LossBuiltin)
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Builtin.Standard.Normalise ()
+import Vehicle.Data.Code.Interface.Args (TensorOp1Args (..))
 import Vehicle.Data.Code.Interface.Patterns
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
@@ -27,13 +28,15 @@ import Vehicle.Data.Variable.Free.Context (MonadFreeContext, addDeclEntryToConte
 convertToLossTensors ::
   (MonadCompile m) =>
   DifferentiableLogicID ->
+  Bool ->
   Prog Builtin ->
-  m (Prog LossBuiltin)
-convertToLossTensors logicID prog@(Main ds) =
+  m (Prog LossBuiltin, DifferentiableLogicImplementation)
+convertToLossTensors logicID nativeDirection prog@(Main ds) =
   logCompilerSection2 MinDetail currentPass $ do
     logic <- findAndCompileLogic logicID prog
-    runFreshFreeContextT (Proxy @Builtin) $ do
-      Main <$> convertDecls logicID logic ds
+    converted <- runFreshFreeContextT (Proxy @Builtin) $ do
+      Main <$> convertDecls logicID logic nativeDirection ds
+    return (converted, logic)
 
 --------------------------------------------------------------------------------
 -- Program conversion
@@ -42,23 +45,25 @@ convertDecls ::
   (MonadCompile m, MonadFreeContext Builtin m) =>
   DifferentiableLogicID ->
   DifferentiableLogicImplementation ->
+  Bool ->
   [Decl Builtin] ->
   m [Decl LossBuiltin]
-convertDecls logicID logic = \case
+convertDecls logicID logic nativeDirection = \case
   [] -> return []
   decl : decls -> do
     normDecl <- evalDecl decl
-    maybeLossDecl <- convertDecl logicID logic normDecl
-    decls' <- addDeclEntryToContext normDecl $ convertDecls logicID logic decls
+    maybeLossDecl <- convertDecl logicID logic nativeDirection normDecl
+    decls' <- addDeclEntryToContext normDecl $ convertDecls logicID logic nativeDirection decls
     return $ maybeToList maybeLossDecl ++ decls'
 
 convertDecl ::
   (MonadCompile m, MonadFreeContext Builtin m) =>
   DifferentiableLogicID ->
   DifferentiableLogicImplementation ->
+  Bool ->
   VDecl Builtin ->
   m (Maybe (Decl LossBuiltin))
-convertDecl logicID logic decl = do
+convertDecl logicID logic nativeDirection decl = do
   logCompilerSection2 MinDetail ("declaration" <+> quotePretty (identifierOf decl)) $ do
     runMonadLogicT logicID logic decl $ do
       case decl of
@@ -66,7 +71,7 @@ convertDecl logicID logic decl = do
           | isExternalResourceDecl decl -> Just <$> convertResourceDecl p ident sort typ
           | otherwise -> return Nothing
         DefFunction p ident ann typ expr
-          | isPropertyDecl decl -> Just <$> convertPropertyDecl p ident ann typ expr
+          | isPropertyDecl decl -> Just <$> convertPropertyDecl p ident ann typ nativeDirection expr
           | otherwise -> return Nothing
         DefRecord {} -> return Nothing
 
@@ -89,11 +94,17 @@ convertPropertyDecl ::
   Identifier ->
   DefFunctionSort ->
   VType Builtin ->
+  Bool ->
   Value Builtin ->
   m (Decl LossBuiltin)
-convertPropertyDecl p ident ann typ value = do
+convertPropertyDecl p ident ann typ nativeDirection value = do
   lossType <- convertDeclType typ
-  lossValue <- convertMultiProperty typ value
+  -- If the logic's native semantics is "higher is better" (Maximise), wrap each
+  -- leaf bool-tensor in `not` so the emitted body is always a minimisation
+  -- target. The flag opts out so users can read the raw DL-native robustness.
+  sourceMinimise <- getLogicDirection
+  let shouldWrap = not nativeDirection && not sourceMinimise
+  lossValue <- convertMultiProperty shouldWrap typ value
   let lossExpr = unnormalise 0 lossValue
   let lossTensorDecl = DefFunction p ident ann lossType lossExpr
   return lossTensorDecl
@@ -101,21 +112,30 @@ convertPropertyDecl p ident ann typ value = do
 convertDeclType :: (MonadLogic m) => VType Builtin -> m (Type LossBuiltin)
 convertDeclType typ = unnormalise 0 <$> convertType typ
 
-convertMultiProperty :: (MonadLogic m) => VType Builtin -> Value Builtin -> m (Value LossBuiltin)
-convertMultiProperty typ = case toTypeValue typ of
-  VBoolTensorType _ds -> convertTensorProperty
-  VVectorType tElem _d -> convertVectorProperty tElem
+convertMultiProperty :: (MonadLogic m) => Bool -> VType Builtin -> Value Builtin -> m (Value LossBuiltin)
+convertMultiProperty wrap typ = case toTypeValue typ of
+  VBoolTensorType ds -> wrapTensorProperty wrap ds
+  VVectorType tElem _d -> convertVectorProperty wrap tElem
   _ -> unexpectedExprError currentPass "Impossible property type"
 
-convertVectorProperty :: (MonadLogic m) => VType Builtin -> Value Builtin -> m (Value LossBuiltin)
-convertVectorProperty typ value = do
+wrapTensorProperty :: (MonadLogic m) => Bool -> VDims Builtin -> Value Builtin -> m (Value LossBuiltin)
+wrapTensorProperty wrap ds value = do
+  result <- convertTensorProperty value
+  if wrap
+    then do
+      lossDims <- convertDims ds
+      convertNot (TensorOp1Args lossDims result)
+    else return result
+
+convertVectorProperty :: (MonadLogic m) => Bool -> VType Builtin -> Value Builtin -> m (Value LossBuiltin)
+convertVectorProperty wrap typ value = do
   let dims = getVectorDims typ
   case toVectorValue value of
     VVectorBoundVar lv spine -> convertBoundVar lv spine
     VVectorDataset ident -> return $ VFreeVar ident []
-    VVectorLiteral args -> convertVecLiteralArgs (convertMultiProperty typ) (IBoolType, dims) args
+    VVectorLiteral args -> convertVecLiteralArgs (convertMultiProperty wrap typ) (IBoolType, dims) args
     VVectorIf args -> convertIf args
-    VVectorForeach args -> convertVecForeachArgs (convertMultiProperty typ) (IBoolType, dims) args
+    VVectorForeach args -> convertVecForeachArgs (convertMultiProperty wrap typ) (IBoolType, dims) args
 
 convertTensorProperty :: (MonadLogic m) => Value Builtin -> m (Value LossBuiltin)
 convertTensorProperty value = case toBoolTensorValue value of
@@ -125,6 +145,9 @@ convertTensorProperty value = case toBoolTensorValue value of
   VBoolTensorAnd args -> convertAnd =<< convertTensorOp2 convertTensorProperty args
   VBoolTensorOr args -> convertOr =<< convertTensorOp2 convertTensorProperty args
   VBoolTensorNot args -> convertNot =<< convertTensorOp1 convertTensorProperty args
+  VBoolTensorGlobally {} -> convertBoolTensor value
+  VBoolTensorFinally {} -> convertBoolTensor value
+  VBoolTensorUntil {} -> convertBoolTensor value
   VBoolTensorCompareNat args -> convertNatComparison args
   VBoolTensorCompareIndex args -> convertIndexComparison args
   VBoolTensorCompareRatPointwise args -> convertRatTensorPointwiseComparison args

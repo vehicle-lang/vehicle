@@ -28,6 +28,7 @@ data LossBuiltinType
   | RatType
   | ListType
   | TensorType
+  | TimeType
   deriving (Eq, Ord, Show)
 
 instance Pretty LossBuiltinType where
@@ -38,6 +39,7 @@ instance Pretty LossBuiltinType where
     RatType -> "RatElement"
     ListType -> "List"
     TensorType -> "Tensor"
+    TimeType -> "Time"
 
 --------------------------------------------------------------------------------
 -- Builtin datatype
@@ -90,9 +92,14 @@ data LossBuiltinFunction
     At
   | StackTensor
   | ConstTensor
+  | ForeachTensor
+  | ForeachVector
+  | Temporal TemporalOperator
+  | Rollout
   | SearchRatTensor Name LogicDirection
   | MapList
   | FoldList
+  | Transpose
   deriving (Eq, Ord, Show, Generic)
 
 -- TODO all the show instances should really be obtainable from the grammar
@@ -114,9 +121,14 @@ instance Pretty LossBuiltinFunction where
     At -> "!"
     StackTensor {} -> "stack"
     ConstTensor -> "const"
+    ForeachTensor -> "foreachTensor"
+    ForeachVector -> "foreachVector"
+    Temporal op -> pretty op
+    Rollout -> "rollout"
     SearchRatTensor name _minimise -> "search[" <> pretty name <> "]"
     MapList -> "mapList"
     FoldList -> "foldList"
+    Transpose -> "transpose"
 
 --------------------------------------------------------------------------------
 -- Builtin datatype
@@ -260,10 +272,14 @@ instance BuiltinHasTensors LossBuiltin where
   accessConstTensorBuiltin = functionAccessor ConstTensor
   accessStackTensorBuiltin = functionAccessor StackTensor
   accessAtTensorBuiltin = functionAccessor At
+  accessTransposeBuiltin = functionAccessor Transpose
 
 instance BuiltinHasForeach LossBuiltin where
-  accessForeachTensorBuiltin = functionAccessor (developerError "loss foreach not yet supported")
-  accessForeachVectorBuiltin = functionAccessor (developerError "loss foreach not yet supported")
+  accessForeachTensorBuiltin = functionAccessor ForeachTensor
+  accessForeachVectorBuiltin = functionAccessor ForeachVector
+
+instance BuiltinHasRollout LossBuiltin where
+  accessRolloutBuiltin = functionAccessor Rollout
 
 --------------------------------------------------------------------------------
 -- Normalisation
@@ -293,6 +309,10 @@ instance NormalisableBuiltin LossBuiltin where
     LossBuiltinFunction f -> case f of
       Add AddNat -> Simple evalAddNat
       Mul MulNat -> Simple evalMulNat
+      Add AddTime -> None
+      Sub SubTime -> None
+      Mul MulTime -> None
+      Div DivTime -> None
       Neg NegRatTensor -> Simple evalNegRatTensor
       Add AddRatTensor -> Simple evalAddRatTensor
       Sub SubRatTensor -> Simple evalSubRatTensor
@@ -308,8 +328,13 @@ instance NormalisableBuiltin LossBuiltin where
       At -> NonSimple evalAtTensor
       StackTensor -> Simple evalStackTensor
       ConstTensor -> Simple evalConstTensor
+      ForeachTensor -> None
+      ForeachVector -> None
       FoldList -> NonSimple evalFoldList
       MapList -> NonSimple evalMapList
+      Temporal {} -> None
+      Rollout -> None
+      Transpose -> None
       SearchRatTensor {} -> None
     _ -> None
 
@@ -331,6 +356,7 @@ instance ConvertableBuiltin LossBuiltinType Builtin where
       RatType -> S.RatType
       ListType -> S.ListType
       TensorType -> S.TensorType
+      TimeType -> S.TimeType
 
 instance ConvertableBuiltin LossBuiltinConstructor Builtin where
   convertBuiltin p =
@@ -360,6 +386,11 @@ instance ConvertableBuiltin LossBuiltinFunction Builtin where
     At -> convertBuiltin p S.AtTensor
     StackTensor -> convertBuiltin p S.StackTensor
     ConstTensor -> convertBuiltin p S.ConstTensor
+    ForeachTensor -> convertBuiltin p S.ForeachTensor
+    ForeachVector -> convertBuiltin p S.ForeachVector
+    Temporal op -> convertBuiltin p (S.Temporal op)
+    Rollout -> convertBuiltin p S.Rollout
+    Transpose -> convertBuiltin p S.Transpose
     MapList -> convertBuiltin p S.MapList
     FoldList -> convertBuiltin p S.FoldList
     SearchRatTensor {} -> cheatConvertBuiltin p $ pretty b

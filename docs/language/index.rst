@@ -20,5 +20,6 @@ of neural networks.
   datasets
   parameters
   properties
+  temporal-operators
   type-synonyms
   tips-and-tricks

@@ -632,6 +632,8 @@ compileBuiltin _isOutType moduleDefs b args = case b of
         args
     IndexType -> annotateNotation moduleDefs [] 0 "int" Nothing args
     VectorType -> annotateNotation moduleDefs [] 2 "$0 list" Nothing args
+    -- Time is rejected by checkBackendUnsupportedFeatures.
+    TimeType -> unsupportedError
   StandardBuiltinConstructor c -> case c of
     Nil -> return "[]"
     Cons -> annotateNotation moduleDefs [] 60 "$0 :: $1" (Just "cons") args
@@ -642,6 +644,7 @@ compileBuiltin _isOutType moduleDefs b args = case b of
     BoolTensorLiteral t -> return $ compileTensorLiteral compileBoolLiteral t
     RatTensorLiteral t -> return $ compileTensorLiteral compileRatLiteral t
     VectorLiteral -> compileVecLiteral moduleDefs args
+    TimeLiteral _ -> unsupportedError
   StandardBuiltinFunction f -> case f of
     And -> annotateBinOp moduleDefs [] 40 "&&" args
     Or -> annotateBinOp moduleDefs [] 50 "||" args
@@ -649,6 +652,10 @@ compileBuiltin _isOutType moduleDefs b args = case b of
     Implies -> annotateBinOp moduleDefs [] 55 "==>" args
     Add AddNat -> annotateNotation moduleDefs [] 50 "($0 + $1)" (Just "+") args
     Mul MulNat -> annotateNotation moduleDefs [] 40 "($0 * $1)" (Just "*") args
+    Add AddTime -> unsupportedError
+    Sub SubTime -> unsupportedError
+    Mul MulTime -> unsupportedError
+    Div DivTime -> unsupportedError
     Add AddRatTensor -> annotateApp moduleDefs [RequireImport ImlVehicle] "tensor_plus_real" args
     Sub SubRatTensor -> annotateNotation moduleDefs [RequireImport ImlVehicle] 50 "(tensor_plus_real $0 (tensor_cdot (-1.0) $1))" Nothing args
     Mul MulRatTensor -> annotateApp moduleDefs [RequireImport ImlVehicle] "hadamard_prod_real" args
@@ -679,7 +686,10 @@ compileBuiltin _isOutType moduleDefs b args = case b of
     ForeachTensor -> idxBasedOp moduleDefs "foreach" args
     StackTensor -> compileStack moduleDefs args
     Iterate -> unsupportedError
+    Rollout -> userUnsupported "'rollout' operator"
+    Transpose -> annotateApp moduleDefs [RequireImport ImlVehicle] "tensor_transpose_real" args
     PowRat -> unsupportedError
+    Temporal op -> userUnsupported $ "Temporal operator '" <> pretty op <> "'"
     AtVector -> annotateApp moduleDefs [] "List.nth" args
     ForeachVector -> idxBasedOp moduleDefs "foreach_tuple" args
   DecidabilityBuiltinFunction f -> case f of
@@ -707,11 +717,15 @@ compileBuiltin _isOutType moduleDefs b args = case b of
   DecidabilityBuiltinTypeClass {} -> monoError
   DecidabilityBuiltinTypeClassOp {} -> monoError
   StandardBuiltinDerivedFunction f -> compileDerivedFunction moduleDefs f args
+  StandardBuiltinCast {} -> unsupportedError
   where
     unsupportedError :: a
     unsupportedError =
       developerError $
         "compilation of builtin" <+> quotePretty b <+> "to Imandra unsupported"
+
+    userUnsupported feature =
+      throwError $ UnimplementedFeature mempty $ feature <+> "in the Imandra backend"
 
     unsupportedArgsError :: (MonadImandraCompile m) => m a
     unsupportedArgsError = do
@@ -732,11 +746,47 @@ compileApp :: (MonadImandraCompile m) => Bool -> [ModuleDef] -> Expr Decidabilit
 compileApp _isOutType moduleDefs fun args = do
   let userArgs = NonEmpty.filter (not . wasInsertedByCompiler) args
   case fun of
+    -- Transpose's element type comes in as a compiler-inserted implicit
+    -- arg; we need it to pick the IL monomorphic wrapper, so consult the
+    -- raw args before filtering.
+    Builtin _p b@(StandardBuiltinFunction Transpose) ->
+      compileTransposeApp moduleDefs (NonEmpty.toList args) userArgs b
     Builtin _p b ->
       compileBuiltin False moduleDefs b userArgs
     _ -> do
       cFun <- compileExpr False moduleDefs fun
       annotateApp moduleDefs [] cFun userArgs
+
+-- | Imandra emits one `tensor_transpose_*` per supported element type
+-- (`real`, `bool`, `int`); pick the right one from the implicit type
+-- argument, then apply it to the explicit tensor.
+compileTransposeApp ::
+  (MonadImandraCompile m) =>
+  [ModuleDef] ->
+  [Arg DecidabilityBuiltin] ->
+  [Arg DecidabilityBuiltin] ->
+  DecidabilityBuiltin ->
+  m Code
+compileTransposeApp moduleDefs rawArgs userArgs b = do
+  let fnName = case rawArgs of
+        (typeArg : _) -> imandraTransposeFnName (argExpr typeArg)
+        [] -> developerError "Transpose with no args"
+  annotateApp moduleDefs [RequireImport ImlVehicle] fnName userArgs
+  where
+    -- Map the element-type expression to the corresponding IL function.
+    -- Anything not in this table means the dispatch table needs extending
+    -- when a new tensor element type is introduced.
+    imandraTransposeFnName :: Expr DecidabilityBuiltin -> Code
+    imandraTransposeFnName e = case e of
+      Builtin _ (StandardBuiltinType RatType) -> "tensor_transpose_real"
+      Builtin _ (StandardBuiltinType BoolType) -> "tensor_transpose_bool"
+      Builtin _ (StandardBuiltinType NatType) -> "tensor_transpose_int"
+      _ ->
+        developerError $
+          "Imandra transpose dispatch missing for element type"
+            <+> prettyVerbose e
+            <+> "from"
+            <+> pretty b
 
 compileDerivedFunction :: (MonadImandraCompile m) => [ModuleDef] -> DerivedFunction -> [Arg DecidabilityBuiltin] -> m Code
 compileDerivedFunction moduleDefs fn args = case fn of

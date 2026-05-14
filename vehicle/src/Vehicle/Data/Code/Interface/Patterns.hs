@@ -66,6 +66,11 @@ pattern INatLiteral n <- (getExpr accessNatLiteral -> Just n)
   where
     INatLiteral n = mkExpr accessNatLiteral n
 
+pattern ITimeLiteral :: (HasTimeExpr expr builtin) => Int -> expr builtin
+pattern ITimeLiteral n <- (getExpr accessTimeLiteral -> Just n)
+  where
+    ITimeLiteral n = mkExpr accessTimeLiteral n
+
 pattern INatTensor :: (HasNatExpr expr builtin) => Tensor Int -> expr builtin
 pattern INatTensor n <- (getExpr accessNatTensorLiteral -> Just n)
   where

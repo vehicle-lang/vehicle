@@ -155,6 +155,9 @@ unblockBoolValue actions expr = do
     VBoolIf {} -> return expr
     VQuantifyRatTensor {} -> return expr
     VCompareRatTensor {} -> return expr
+    VGlobally {} -> return expr
+    VFinally {} -> return expr
+    VUntil {} -> return expr
     -- Recursively unblock
     VReduceAndTensor args -> unblockReduceTensor unblockTensor unoptimisedEvalReduceAndTensor args
     VReduceOrTensor args -> unblockReduceTensor unblockTensor evalReduceOrTensor args
@@ -172,6 +175,9 @@ unblockBoolMultiDimTensorValue actions expr = do
     VMultiDimBoolConstTensor {} -> return expr
     VMultiDimBoolStackTensor {} -> return expr
     VMultiDimBoolIf {} -> return expr
+    VMultiDimBoolGlobally {} -> return expr
+    VMultiDimBoolFinally {} -> return expr
+    VMultiDimBoolUntil {} -> return expr
     VPointwiseNot args -> unblockTensorOp1 unblock evalNot args
     VPointwiseAnd args -> unblockTensorOp2 unblock evalAnd args
     VPointwiseOr args -> unblockTensorOp2 unblock evalOr args
@@ -212,6 +218,8 @@ unblockRatTensorValue actions@UnblockingActions {..} status expr = do
     VRatStackTensor args -> unblockStackTensor (unblock DifferentDimensions) args
     VRatAt args -> unblockAtTensor (unblock DifferentDimensions) args
     VRatForeach args -> unblockForeachTensor args
+    VRatTensorRollout {} -> return expr
+    VRatTensorTranspose {} -> return expr
   where
     unblock = unblockRatTensorValue actions
 
@@ -226,7 +234,11 @@ unblockIndexValue :: UnblockingFunction m
 unblockIndexValue expr = case toIndexValue expr of
   VIndexLiteral {} -> return expr
   VIndexIf {} -> return expr
-  VIndexBoundVar {} -> unexpectedExprError currentPass (prettyVerbose expr)
+  -- A bound index may legally appear here when a quantifier body is
+  -- unblocked inside an outer `foreach`. `evalAtTensor` already handles
+  -- non-literal indices by returning the reconstructed `At` unchanged,
+  -- so the caller gets a well-formed opaque leaf.
+  VIndexBoundVar {} -> return expr
 
 unblockNatValue :: UnblockingFunction m
 unblockNatValue expr = case toNatValue expr of
@@ -332,7 +344,31 @@ unblockAtTensor unblock (AtTensorArgs tElem d ds xs i) = do
   liftIf xs' $ \xs'' ->
     liftIf i' $ \i'' -> do
       nameCtx <- getNameContext
-      evalAtTensor nameCtx evalApp eval $ AtTensorArgs tElem d ds xs'' i''
+      let unswappedArgs = AtTensorArgs tElem d ds xs'' i''
+      case rewriteTransposeAt unswappedArgs of
+        Just args' -> evalAtTensor nameCtx evalApp eval args'
+        Nothing -> evalAtTensor nameCtx evalApp eval unswappedArgs
+
+-- | Verifier-local index-through-transpose for 2-D: `(transpose t) ! i ! j`
+-- becomes `(t ! j) ! i` once the chain is fully indexed.
+rewriteTransposeAt ::
+  AtTensorArgs (Value Builtin) ->
+  Maybe (AtTensorArgs (Value Builtin))
+rewriteTransposeAt (AtTensorArgs tElem _outerD outerRemDims outerTensor outerIndex) = do
+  -- Outer `at` must fully consume the tensor.
+  IDimNil <- pure outerRemDims
+  -- Outer's tensor must be itself an `at`.
+  AtTensorArgs _ innerD innerRemDims innerTensor innerIndex <- getExpr accessAtTensor outerTensor
+  -- The inner `at` must leave one dim — i.e., the original transpose was 2-D.
+  IDimCons innerLastDim IDimNil <- pure innerRemDims
+  -- The inner `at`'s tensor must be a transpose.
+  TransposeArgs _ _ underlying <- getExpr accessTranspose innerTensor
+  -- Build the swapped middle access: `t ! outerIndex` (peels the original
+  -- `[innerLastDim, innerD]` tensor along its first dim, leaving `[innerD]`).
+  let midDims = IDimCons innerD IDimNil
+  let midResult = mkExpr accessAtTensor (AtTensorArgs tElem innerLastDim midDims underlying outerIndex)
+  -- Then peel that with the original inner index.
+  pure (AtTensorArgs tElem innerD IDimNil midResult innerIndex)
 
 unblockForeachTensor ::
   (MonadUnblock m) =>

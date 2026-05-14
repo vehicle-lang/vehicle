@@ -110,7 +110,7 @@ common common-library
 
 common common-executable
   import:      common-language
-  ghc-options: -threaded
+  ghc-options: -threaded -rtsopts
 
   if flag(ghc-debug)
     ghc-options: -rtsopts -with-rtsopts=-N
@@ -212,6 +212,7 @@ library
     Vehicle.Backend.Solver.UserVariableElimination.VariableReconstruction
     Vehicle.Compile.Arity
     Vehicle.Compile.CapitaliseTypeNames
+    Vehicle.Compile.CheckBackendFeatures
     Vehicle.Compile.Dependency
     Vehicle.Compile.ExpandResources.Dataset.IDX
     Vehicle.Compile.FunctionaliseResources
@@ -386,7 +387,7 @@ library
     build-depends: unix >=2.7
 
 executable vehicle
-  import:         common-library
+  import:         common-library, common-executable
   main-is:        Main.hs
   hs-source-dirs: app
   build-depends:

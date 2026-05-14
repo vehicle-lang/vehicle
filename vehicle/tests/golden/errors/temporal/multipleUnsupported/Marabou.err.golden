@@ -1,0 +1,7 @@
+Error in file 'spec.vcl' at Line 18, Columns 4-12: The following features are not supported in the verifier backend:
+  - temporal operator 'globally' (file 'spec.vcl' at Line 18, Columns 4-12)
+  - 'Time' type (file 'spec.vcl' at Line 18, Columns 13-14)
+  - '-' on 'Time' (file 'spec.vcl' at Line 18, Columns 19-20)
+  - 'rollout' (file 'spec.vcl' at Line 19, Columns 7-14)
+
+Specs that need temporal operators or `Time` should be compiled with `vehicle compile loss --logic STLLoss …` instead.

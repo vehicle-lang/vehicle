@@ -95,15 +95,18 @@ The following operations over tensors are currently supported:
      - ``t1 <= t2``
      - Check that all pairs of elements in the tensor satisfy the comparison.
    * - Pointwise comparisons
-     - | ``.<=``
-       | ``.<``
-       | ``.>=``
-       | ``.>``
-       | ``.==``
-       | ``.!=``
+     - | ``<=.``
+       | ``<.``
+       | ``>=.``
+       | ``>.``
+       | ``==.``
+       | ``!=.``
      - ``Tensor A ds -> Tensor A ds -> Tensor Bool ds``
-     - ``t1 .<= t2``
-     - Compare all the elements of the tensor pointwise.
+     - ``t1 <=. t2``
+     - Compare all the elements of two tensors pointwise. Returns a
+       boolean tensor that is true where the comparison holds. The dot
+       suffix distinguishes pointwise comparison (returns
+       ``Tensor Bool ds``) from elementwise reduction (returns ``Bool``).
    * - Pointwise addition
      - ``+``
      - ``Tensor A ds -> Tensor A ds -> Tensor A ds``
@@ -117,6 +120,40 @@ The following operations over tensors are currently supported:
      - Pointwise subtract the values in the first tensor from the values
        in the second. Only valid if subtraction is defined for the type of
        elements ``A``.
+
+Pointwise comparisons chain like the elementwise forms: ``a <=. b <=. c``
+is sugar for ``a <=. b and b <=. c`` and produces a ``Tensor Bool ds``.
+Use this for interval bounds, e.g. ``stateLoBounds <=. s <=. stateHiBounds``
+for ``s : Tensor Real [n]`` (see :doc:`temporal-operators`).
+
+
+Transpose
+---------
+
+``transpose t`` reverses the dimension order of a tensor:
+``Tensor A [d_1, d_2, ..., d_n]`` becomes ``Tensor A [d_n, ..., d_2, d_1]``.
+For a 2-tensor this is the standard matrix transpose. It is used in
+the temporal-operators running example
+(see :doc:`temporal-operators`) to project a trajectory of shape
+``[T, stateDim]`` into ``[stateDim, T]`` so that an individual
+state component can be sliced as ``Tensor Real [T]``.
+
+``transpose`` is normalised away at compile time when the result is
+indexed: ``(transpose t) ! i ! j`` reduces to ``t ! j ! i``. Literal
+tensors (e.g. ``transpose [[1.0, 2.0], [3.0, 4.0]]``) are folded at
+compile time as well.
+
+Backend support (non-loss)
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Verifier (Marabou): rank-2 only, and only when the transposed tensor
+  is fully indexed; non-indexed transpose is rejected.
+- Agda ITP: arbitrary rank.
+- Isabelle ITP: arbitrary rank.
+- Imandra ITP: arbitrary rank for ``Real``, ``Bool``, and ``Nat`` tensors.
+- Rocq ITP: rank-2 only.
+
+The loss backend also supports non-indexed transpose over opaque tensors.
 
 
 Non-constant dimensions

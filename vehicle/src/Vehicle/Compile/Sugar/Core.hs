@@ -53,6 +53,8 @@ builtinAnn = mkToken B.TokAnnotation "@builtin"
 
 networkAnn = mkToken B.TokAnnotation "@network"
 
+dynamicsAnn = mkToken B.TokAnnotation "@dynamics"
+
 datasetAnn = mkToken B.TokAnnotation "@dataset"
 
 parameterAnn = mkToken B.TokAnnotation "@parameter"
@@ -106,6 +108,16 @@ tokForall = mkToken B.TokForall "forall"
 tokExists = mkToken B.TokExists "exists"
 
 tokForeach = mkToken B.TokForeach "foreach"
+
+tokStlGlobally = mkToken B.TokStlGlobally "stlGlobally"
+
+tokStlFinally = mkToken B.TokStlFinally "stlFinally"
+
+tokStlUntil = mkToken B.TokStlUntil "stlUntil"
+
+tokStlRollout = mkToken B.TokStlRollout "stlRollout"
+
+tokTranspose = mkToken B.TokTranspose "transpose"
 
 tokImpl = mkToken B.TokImpl "=>"
 
@@ -201,7 +213,7 @@ tokMax = mkToken B.TokMax "max"
 
 tokAddNat = mkToken B.TokAddNat "addNat"
 
-tokMulNat = mkToken B.TokAddNat "mulNat"
+tokMulNat = mkToken B.TokMulNat "mulNat"
 
 tokAddRealTensor = mkToken B.TokAddRealTensor "addRealTensor"
 

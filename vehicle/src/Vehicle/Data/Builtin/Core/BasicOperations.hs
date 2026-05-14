@@ -126,6 +126,27 @@ instance Pretty Quantifier where
     Exists -> "exists"
 
 --------------------------------------------------------------------------------
+-- Temporal operators
+
+data TemporalOperator
+  = Globally
+  | Finally
+  | Until
+  deriving (Show, Eq, Ord, Generic)
+
+instance NFData TemporalOperator
+
+instance Hashable TemporalOperator
+
+instance Serialize TemporalOperator
+
+instance Pretty TemporalOperator where
+  pretty = \case
+    Globally -> "globally"
+    Finally -> "finally"
+    Until -> "until"
+
+--------------------------------------------------------------------------------
 -- Domains
 
 data NegDomain
@@ -145,6 +166,7 @@ instance Pretty NegDomain where
 data AddDomain
   = AddNat
   | AddRatTensor
+  | AddTime
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData AddDomain
@@ -157,9 +179,11 @@ instance Pretty AddDomain where
   pretty = \case
     AddNat -> "Nat"
     AddRatTensor -> "RatTensor"
+    AddTime -> "Time"
 
 data SubDomain
   = SubRatTensor
+  | SubTime
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData SubDomain
@@ -171,10 +195,12 @@ instance Serialize SubDomain
 instance Pretty SubDomain where
   pretty = \case
     SubRatTensor -> "RatTensor"
+    SubTime -> "Time"
 
 data MulDomain
   = MulNat
   | MulRatTensor
+  | MulTime
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData MulDomain
@@ -187,9 +213,11 @@ instance Pretty MulDomain where
   pretty = \case
     MulNat -> "Nat"
     MulRatTensor -> "RatTensor"
+    MulTime -> "Time"
 
 data DivDomain
   = DivRatTensor
+  | DivTime
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData DivDomain
@@ -201,6 +229,7 @@ instance Serialize DivDomain
 instance Pretty DivDomain where
   pretty = \case
     DivRatTensor -> "RatTensor"
+    DivTime -> "Time"
 
 data MinDomain
   = MinRatTensor
@@ -249,6 +278,7 @@ data FromNatDomain
     FromNatToNat
   | FromNatToIndex
   | FromNatToRat
+  | FromNatToTime
   deriving (Eq, Ord, Show, Generic)
 
 instance Pretty FromNatDomain where
@@ -256,12 +286,27 @@ instance Pretty FromNatDomain where
     FromNatToNat -> "Nat"
     FromNatToIndex -> "Index"
     FromNatToRat -> "Rat"
+    FromNatToTime -> "Time"
 
 instance Serialize FromNatDomain
 
 instance NFData FromNatDomain
 
 instance Hashable FromNatDomain
+
+data FromTimeDomain
+  = FromTimeToNat
+  deriving (Eq, Ord, Show, Generic)
+
+instance Pretty FromTimeDomain where
+  pretty = \case
+    FromTimeToNat -> "Nat"
+
+instance Serialize FromTimeDomain
+
+instance NFData FromTimeDomain
+
+instance Hashable FromTimeDomain
 
 {-
 --------------------------------------------------------------------------------

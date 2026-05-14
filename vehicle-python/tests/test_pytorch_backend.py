@@ -5,6 +5,9 @@ import pytest
 torch = pytest.importorskip(
     "torch", reason="PyTorch extra is required for backend tests"
 )
+vehicle_stl = pytest.importorskip(
+    "vehicle_stl", reason="vehicle-stl is required for temporal PyTorch backend tests"
+)
 
 
 def test_pytorch_builtins_basic_operations() -> None:
@@ -56,6 +59,34 @@ def test_pytorch_translation_basic() -> None:
     assert translation is not None
     assert hasattr(translation, "builtins")
     assert hasattr(translation.builtins, "AddRatTensor")
+
+
+def test_pytorch_temporal_until_shape_mismatch() -> None:
+    """Until should raise when the two traces have different shapes."""
+    from vehicle_lang.loss._pytorch._builtins import PyTorchBuiltins
+    from vehicle_lang.loss.error import VehicleInternalError
+
+    builtins = PyTorchBuiltins()
+    x = torch.tensor([0.5, 0.3, -0.1], dtype=torch.float32)
+    y = torch.tensor([0.1, 0.9], dtype=torch.float32)  # different length
+
+    with pytest.raises(VehicleInternalError):
+        builtins.Until(0, 1, x, y)
+
+
+def test_pytorch_temporal_interval_validation() -> None:
+    """Temporal operators should reject invalid intervals explicitly."""
+    from vehicle_lang.loss._pytorch._builtins import PyTorchBuiltins
+    from vehicle_lang.loss.error import VehicleInternalError
+
+    builtins = PyTorchBuiltins()
+    signal = torch.tensor([0.2, 0.3], dtype=torch.float32)
+
+    with pytest.raises(VehicleInternalError):
+        builtins.Globally(-1, 1, signal)
+
+    with pytest.raises(VehicleInternalError):
+        builtins.Finally(2, 1, signal)
 
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")  # type: ignore[untyped-decorator]

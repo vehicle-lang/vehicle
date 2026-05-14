@@ -189,6 +189,15 @@ instance BuiltinHasListLiterals PolarityBuiltin where
 instance BuiltinHasIterate PolarityBuiltin where
   accessIterateBuiltin = functionAccessor Iterate
 
+instance BuiltinHasRollout PolarityBuiltin where
+  accessRolloutBuiltin = functionAccessor Rollout
+
+instance BuiltinHasTensors PolarityBuiltin where
+  accessStackTensorBuiltin = functionAccessor StackTensor
+  accessConstTensorBuiltin = functionAccessor ConstTensor
+  accessAtTensorBuiltin = functionAccessor AtTensor
+  accessTransposeBuiltin = functionAccessor Transpose
+
 -----------------------------------------------------------------------------
 -- Printing
 

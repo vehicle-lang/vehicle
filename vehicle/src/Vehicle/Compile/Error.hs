@@ -231,6 +231,7 @@ data CompileError
   | UnorderableDifferentiableLogic DeclProvenance (Value Builtin)
   | -- ITP backend errors
     UnimplementedFeature Provenance (Doc Void)
+  | UnsupportedBackendFeatures Provenance (Doc Void)
   | UnusedMonomorphisableDeclaration Provenance Identifier
   | -- Other
     UnsupportedInequality QueryFormatID DeclProvenance

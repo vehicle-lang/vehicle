@@ -1,0 +1,5 @@
+{
+  "name": "TypeCheck",
+  "run": "vehicle typecheck -s unchainablePointOrders.vcl",
+  "needs": ["unchainablePointOrders.vcl"]
+}

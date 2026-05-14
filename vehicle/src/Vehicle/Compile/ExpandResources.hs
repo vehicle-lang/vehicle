@@ -78,6 +78,7 @@ readResourceInDecl decl = case decl of
       ParameterDef sort -> readParameter p ident gluedType sort
       DatasetDef -> readDataset p ident gluedType
       NetworkDef -> readNetwork p ident gluedType
+      DynamicsDef -> readNetwork p ident gluedType
     return $ fromMaybe decl maybeNewDecl
   _ -> return decl
 

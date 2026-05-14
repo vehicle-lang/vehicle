@@ -18,13 +18,18 @@ module Vehicle.Backend.Loss.LossCompilation
     convertForeachTensor,
     convertTensorOp1,
     convertTensorOp2,
-    convertBoolTensor,
+    convertTemporalOp1,
+    convertTemporalOp2,
+    convertGlobally,
+    convertFinally,
+    convertUntil,
     convertNot,
     convertOr,
     convertAnd,
     convertReduceAnd,
     convertReduceOr,
     convertIf,
+    logConversion,
   )
 where
 
@@ -32,7 +37,7 @@ import Vehicle.Backend.Loss.Core hiding (currentPass)
 import Vehicle.Compile.Normalise.NBE (normaliseAppInEmptyFreeEnv, normaliseClosure)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyVerbose)
+import Vehicle.Compile.Print ()
 import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Loss
@@ -68,6 +73,7 @@ convertType typ = logConversion typ $ case toTypeValue typ of
   VRatTensorType ds -> ITensorType IRatType <$> convertDims ds
   VNatTensorType ds -> ITensorType INatType <$> convertDims ds
   VIndexTensorType n ds -> (ITensorType . IIndexType <$> convertDim n) <*> convertDims ds
+  VTimeType -> unsupportedOperation "TimeType"
 
 convertBoolType :: (MonadLogic m) => m (VType LossBuiltin)
 convertBoolType = return IRatType
@@ -168,24 +174,11 @@ convertFreeVar name = \case
 --------------------------------------------------------------------------------
 -- Bool
 
-convertBoolTensor :: (MonadLogic m) => Value Builtin -> m (Value LossBuiltin)
-convertBoolTensor value = logConversion value $ case toBoolTensorValue value of
-  VBoolTensorLiteral bs -> convertBoolTensorLiteral bs
-  VBoolConstTensor args -> convertConstTensor convertBoolTensor args
-  VBoolStackTensor args -> convertStackTensor convertBoolTensor args
-  VBoolTensorNot args -> convertNot =<< convertTensorOp1 convertBoolTensor args
-  VBoolTensorAnd args -> convertAnd =<< convertTensorOp2 convertBoolTensor args
-  VBoolTensorOr args -> convertOr =<< convertTensorOp2 convertBoolTensor args
-  VBoolTensorCompareIndex args -> convertIndexComparison args
-  VBoolTensorCompareNat args -> convertNatComparison args
-  VBoolTensorCompareRatPointwise args -> convertRatTensorPointwiseComparison args
-  VBoolTensorCompareRatReduced args -> convertRatTensorReducedComparison args
-  VBoolTensorReduceAnd args -> convertReduceAnd =<< convertTensorReduction convertBoolTensor args
-  VBoolTensorReduceOr args -> convertReduceOr =<< convertTensorReduction convertBoolTensor args
-  VBoolTensorQuantifyRat {} -> unexpectedOperation "quantifier"
-  VBoolTensorBoolIf args -> convertIf args
-  VBoolTensorAt args -> convertAtTensor convertBoolTensor args
-  VBoolTensorForeach args -> convertForeachTensor convertBoolTensor args
+-- NOTE: `convertBoolTensor` — the general dispatch over bool-valued tensor
+-- expressions — lives in `Vehicle.Backend.Loss.Domain`. It needs to dispatch
+-- `VBoolTensorQuantifyRat` to `compileQuantifier`, which itself depends on
+-- the helpers in this module. Keeping the dispatcher in `Domain` is the
+-- cleanest way to avoid a module cycle.
 
 convertBoolTensorLiteral :: (MonadLogic m) => Tensor Bool -> m (Value LossBuiltin)
 convertBoolTensorLiteral tensor = do
@@ -215,6 +208,48 @@ convertReduceAnd = convertLogicField ReduceConjunction
 convertReduceOr :: (MonadLogic m) => TensorReductionArgs (Value LossBuiltin) -> m (Value LossBuiltin)
 convertReduceOr = convertLogicField ReduceDisjunction
 
+-- NOTE: Unlike And/Or/Not (which are inlined into the IR via `convertLogicField`),
+-- temporal operators are emitted as opaque IR nodes. The runtime `Semantics`
+-- for them is derived from the DL record's `pointwiseConjunction` /
+-- `pointwiseDisjunction` lambdas, with `trueElement` / `falseElement` as
+-- reduction identities: a temporal operator is a time-indexed reduction of
+-- the pointwise logical connective, matching the standard STL presentation
+-- in the literature. `Vehicle.Backend.Loss.JSON.convertLogicMetadata` packages
+-- these four fields as a `JLogicMetadata` payload, which the Python backend
+-- reconstructs as a `vehicle_stl.Semantics` object passed to every stlcg++
+-- formula constructor. Negation and nesting of temporal ops is handled by
+-- the standard logic-field path — the temporal output is treated as an
+-- ordinary real-valued signal once emitted.
+
+convertGlobally :: (MonadLogic m) => TemporalOp1Args (Value LossBuiltin) -> m (Value LossBuiltin)
+convertGlobally args = return $ mkExpr (accessTemporalLoss1 Globally) args
+
+convertFinally :: (MonadLogic m) => TemporalOp1Args (Value LossBuiltin) -> m (Value LossBuiltin)
+convertFinally args = return $ mkExpr (accessTemporalLoss1 Finally) args
+
+convertUntil :: (MonadLogic m) => TemporalOp2Args (Value LossBuiltin) -> m (Value LossBuiltin)
+convertUntil args = return $ mkExpr (accessTemporalLoss2 Until) args
+
+-- | Accessor for unary temporal operators (Globally, Finally) in the loss IR.
+accessTemporalLoss1 :: TemporalOperator -> Accessor (Value LossBuiltin) (TemporalOp1Args (Value LossBuiltin))
+accessTemporalLoss1 op =
+  Access
+    { getExpr = \case
+        VBuiltin (LossBuiltinFunction (Temporal op')) spine | op == op' -> getExpr accessSpine spine
+        _ -> Nothing,
+      mkExpr = \args -> VBuiltin (LossBuiltinFunction (Temporal op)) (mkExpr accessSpine args)
+    }
+
+-- | Accessor for binary temporal operators (Until) in the loss IR.
+accessTemporalLoss2 :: TemporalOperator -> Accessor (Value LossBuiltin) (TemporalOp2Args (Value LossBuiltin))
+accessTemporalLoss2 op =
+  Access
+    { getExpr = \case
+        VBuiltin (LossBuiltinFunction (Temporal op')) spine | op == op' -> getExpr accessSpine spine
+        _ -> Nothing,
+      mkExpr = \args -> VBuiltin (LossBuiltinFunction (Temporal op)) (mkExpr accessSpine args)
+    }
+
 convertNatComparison :: (MonadLogic m) => (ComparisonOp, Op2Args (Value Builtin)) -> m (Value LossBuiltin)
 convertNatComparison _args = unsupportedOperation "NatComparison"
 
@@ -227,8 +262,15 @@ convertRatTensorPointwiseComparison (op, args) = do
   convertLogicField (comparisonOpToField op) args'
 
 convertRatTensorReducedComparison :: (MonadLogic m) => (ComparisonOp, TensorReduceComparisonArgs (Value Builtin)) -> m (Value LossBuiltin)
-convertRatTensorReducedComparison (op, args) =
-  unsupportedOperation $ "RatTensorCompareReduced" <+> pretty op <+> prettyVerbose (mkExpr accessSpine args)
+convertRatTensorReducedComparison (op, TensorReduceComparisonArgs d ds e1 e2) = do
+  -- Decompose into: reduceAnd True (e1 <op>. e2)
+  -- 1. Pointwise comparison on the full [d :: ds] dimensions
+  let fullDims = IDimCons d ds
+  compArgs <- convertTensorOp2 convertRatTensor (TensorOp2Args fullDims e1 e2)
+  compResult <- convertLogicField (comparisonOpToField op) compArgs
+  -- 2. Wrap in reduceAnd
+  truthId <- getLogicField TruthityElement
+  convertReduceAnd (TensorReductionArgs (tensorOp2Dims compArgs) truthId compResult)
 
 convertIf ::
   (MonadLogic m) =>
@@ -288,6 +330,8 @@ convertRatTensor value = logConversion value $ case toRatTensorValue value of
   VRatStackTensor args -> convertStackTensor convertRatTensor args
   VRatAt args -> convertAtTensor convertRatTensor args
   VRatForeach args -> convertForeachTensor convertRatTensor args
+  VRatTensorRollout args -> convertRollout args
+  VRatTensorTranspose args -> convertTranspose convertRatTensor args
 
 --------------------------------------------------------------------------------
 -- Vector
@@ -351,6 +395,34 @@ convertTensorReduction ::
 convertTensorReduction go (TensorReductionArgs dims e xs) =
   TensorReductionArgs <$> convertDims dims <*> go e <*> go xs
 
+convertTemporalOp1 ::
+  (MonadLogic m) =>
+  (Value Builtin -> m (Value LossBuiltin)) ->
+  TemporalOp1Args (Value Builtin) ->
+  m (TemporalOp1Args (Value LossBuiltin))
+convertTemporalOp1 go (TemporalOp1Args ds a b x) =
+  TemporalOp1Args <$> convertDims ds <*> convertTimeBound a <*> convertTimeBound b <*> go x
+
+convertTemporalOp2 ::
+  (MonadLogic m) =>
+  (Value Builtin -> m (Value LossBuiltin)) ->
+  TemporalOp2Args (Value Builtin) ->
+  m (TemporalOp2Args (Value LossBuiltin))
+convertTemporalOp2 go (TemporalOp2Args ds a b x y) =
+  TemporalOp2Args <$> convertDims ds <*> convertTimeBound a <*> convertTimeBound b <*> go x <*> go y
+
+-- | Convert a Time-typed temporal bound to its Nat-shaped LossBuiltin
+-- representation. Time and Nat share runtime semantics (saturating-sub,
+-- total-div); the type-level distinction exists only for compile-time
+-- discipline. Bounds always reduce to literals before reaching the loss
+-- backend (the typechecker enforces this), so a literal-only conversion
+-- is sufficient.
+convertTimeBound :: (MonadLogic m) => Value Builtin -> m (Value LossBuiltin)
+convertTimeBound value = case value of
+  ITimeLiteral n -> return $ mkExpr accessNatLiteral n
+  INatLiteral n -> return $ mkExpr accessNatLiteral n
+  _ -> unsupportedOperation "non-literal temporal bound (compile-time reduction failed)"
+
 convertAtTensor ::
   (MonadLogic m) =>
   (Value Builtin -> m (Value LossBuiltin)) ->
@@ -398,6 +470,35 @@ convertForeachTensor convertValue (ForeachTensorArgs t dim dims fn) = do
   dims' <- convertDims dims
   fn' <- convertFunction convertValue fn
   return $ mkExpr accessForeachTensor $ ForeachTensorArgs t' dim' dims' fn'
+
+convertTranspose ::
+  (MonadLogic m) =>
+  (Value Builtin -> m (Value LossBuiltin)) ->
+  TransposeArgs (Value Builtin) ->
+  m (Value LossBuiltin)
+convertTranspose convertValue (TransposeArgs t ds xs) = do
+  t' <- convertType t
+  ds' <- convertDims ds
+  xs' <- convertValue xs
+  return $ mkExpr accessTranspose $ TransposeArgs t' ds' xs'
+
+convertRollout ::
+  (MonadLogic m) =>
+  RolloutArgs (Value Builtin) ->
+  m (Value LossBuiltin)
+convertRollout (RolloutArgs sType aType sDims aDims n ctrl dyn s0) = do
+  sType' <- convertType sType
+  aType' <- convertType aType
+  sDims' <- convertDims sDims
+  aDims' <- convertDims aDims
+  -- `n` is `Time`-typed (rollout asks "how many timesteps?"); reuse the
+  -- temporal-bound converter so a literal Time value bridges to a Nat
+  -- literal locally without polluting `convertDim`'s view.
+  n' <- convertTimeBound n
+  ctrl' <- convertFunction convertRatTensor ctrl
+  dyn' <- convertFunction convertRatTensor dyn
+  s0' <- convertRatTensor s0
+  return $ mkExpr accessRollout $ RolloutArgs sType' aType' sDims' aDims' n' ctrl' dyn' s0'
 
 --------------------------------------------------------------------------------
 -- Utils

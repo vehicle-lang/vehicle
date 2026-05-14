@@ -2,10 +2,68 @@
 
 ## Next release
 
+### Language
+
+* **Feature:** Signal Temporal Logic, via the optional `STL` library module
+  (`import STL`, not auto-imported). Provides three temporal operators —
+  `globally`, `finally`, `until` — over discrete-time boolean signals; each
+  takes a bounded interval as a `Vector Time 2` value and a `Tensor Bool`
+  signal, e.g. `globally [a, b] s`. Loss backend only; the verifier and ITP
+  backends raise a "not supported" error. See
+  [temporal-operators](docs/language/temporal-operators.rst).
+
+* **Feature:** `@dynamics` declaration kind and the `rollout` operator (from
+  `import STL`) for closed-loop controller specifications. `@dynamics` is a
+  runtime-bound plant model analogous to `@network` (available without the
+  import); `rollout n` composes a `@network` controller and a `@dynamics`
+  model into an `n`-step trajectory. Loss backend only. See
+  `examples/closedLoopSafety` for an end-to-end specification.
+
+* **Feature:** `Time` type (from `import STL`), used for temporal-operator
+  interval bounds and `rollout` step counts. Distinct from `Nat` so
+  temporal-bound arithmetic is not entangled with tensor dimensions; bounds
+  must reduce to a literal at compile time. See
+  [arithmetic](docs/language/arithmetic.rst).
+
+* **Feature:** `transpose` operator on tensors. Reverses the
+  dimension order of an arbitrary-rank tensor. Normalised away at
+  compile time when the result is indexed (the common case).
+  Supported by the loss backend, by the verifier (rank-2 fully-indexed
+  only), and by all four ITP backends (Agda, Imandra, Isabelle:
+  arbitrary rank; Rocq: rank-2). See
+  [tensors](docs/language/tensors.rst).
+
+* **Feature:** Chained pointwise tensor comparisons. `lo <. x <. hi`
+  desugars to `lo <. x and x <. hi`, mirroring the existing scalar
+  chained form. Mixed strictness in the same direction is allowed
+  (e.g. `lo <. x <=. hi`). Old changelog and docs erroneously listed
+  the operators as prefix-dotted (`.<`, `.<=`, …) — they have always
+  been suffix-dotted (`<.`, `<=.`, …); the docs are corrected here
+  alongside the chaining feature.
+
 ### Loss backend
 
-* Fixed a bug where the compiler was erroring on some uses of `forall` for indices.
-* Fixed a bug where networks were recursively unblocked without changes. Backends now control when recursive unblocking happens.
+* **Breaking (Python API):** `load_specification` now returns just
+  the declarations dict — no more `(declarations, minimise)` tuple.
+  Each property is emitted as a minimisation target: robustness-style
+  logics (`STL`) are wrapped in `not` so reducing the output drives
+  the property toward satisfaction regardless of which logic was
+  selected. Pass `--dl-native-direction` through to the compiler to
+  opt out and get the raw DL-native form (loss for `DL2`, robustness
+  for `STL`).
+
+* Fixed a bug where the compiler was erroring on some uses of
+  `forall` for indices.
+
+* Fixed a bug where networks were recursively unblocked without
+  changes. Backends now control when recursive unblocking happens.
+
+### ITP backends
+
+* Fixed a regression where compiling any specification using
+  `transpose` failed with `'Definitions.reverse' not found in scope`.
+  Stdlib decls referenced only by builtin type signatures (rather
+  than by user-program ASTs) are now kept through the pruning pass.
 
 ## v0.24.1
 

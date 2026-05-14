@@ -380,6 +380,47 @@ evalCompareNat op = \case
   args -> return $ mkExpr accessCompareNat (op, args)
 
 -----------------------------------------------------------------------------
+-- Time
+--
+-- Time literals share the saturating-subtraction and total-division semantics
+-- needed for compile-time bound reduction (e.g. `globally[0, T - 1]`). The
+-- type system keeps Time values from leaking into Nat-indexed positions, so
+-- backends are free to map Time to whichever native integer representation
+-- they prefer; in practice the compiler reduces every Time expression to a
+-- literal before the backend ever sees it.
+
+evalAddTime ::
+  (MonadNormBuiltin m, BuiltinHasTimeLiterals builtin) =>
+  EvalSimple Op2Args Value builtin m
+evalAddTime = \case
+  Op2Args (ITimeLiteral x) (ITimeLiteral y) -> return $ ITimeLiteral (x + y)
+  args -> return $ mkExpr accessAddTime args
+
+evalSubTime ::
+  (MonadNormBuiltin m, BuiltinHasTimeLiterals builtin) =>
+  EvalSimple Op2Args Value builtin m
+evalSubTime = \case
+  -- Saturating subtraction so temporal-bound arithmetic always lands in Time.
+  Op2Args (ITimeLiteral x) (ITimeLiteral y) -> return $ ITimeLiteral (max 0 (x - y))
+  args -> return $ mkExpr accessSubTime args
+
+evalMulTime ::
+  (MonadNormBuiltin m, BuiltinHasTimeLiterals builtin) =>
+  EvalSimple Op2Args Value builtin m
+evalMulTime = \case
+  Op2Args (ITimeLiteral x) (ITimeLiteral y) -> return $ ITimeLiteral (x * y)
+  args -> return $ mkExpr accessMulTime args
+
+evalDivTime ::
+  (MonadNormBuiltin m, BuiltinHasTimeLiterals builtin) =>
+  EvalSimple Op2Args Value builtin m
+evalDivTime = \case
+  -- Total division: x / 0 = 0, otherwise floor division.
+  Op2Args (ITimeLiteral x) (ITimeLiteral y) ->
+    return $ ITimeLiteral (if y == 0 then 0 else x `div` y)
+  args -> return $ mkExpr accessDivTime args
+
+-----------------------------------------------------------------------------
 -- List
 
 evalMapList ::
@@ -562,6 +603,9 @@ evalAtTensor ctx evalApp eval args@(AtTensorArgs t d ds tensor index) =
       Just (ForeachTensorArgs _ _ _ fn) -> Just $ do
         evalApp ctx fn [explicit index]
       _ -> Nothing
+
+-- Index-through-transpose is verifier-only; loss normalisation relies on
+-- the unreduced pattern. See `Vehicle.Compile.Unblock`.
 
 unoptimisedEvalAtTensor ::
   forall builtin m.

@@ -342,6 +342,9 @@ isLiftableOp = \case
   ForeachTensor -> False
   ForeachVector -> False
   Iterate -> False
+  Rollout -> False
+  Temporal {} -> False
+  Transpose -> False
 
 reduceOp :: BuiltinFunction -> Maybe BuiltinFunction
 reduceOp = \case
@@ -379,6 +382,9 @@ reduceOp = \case
   ForeachTensor -> Nothing
   ForeachVector -> Nothing
   Iterate -> Nothing
+  Rollout -> Nothing
+  Temporal {} -> Nothing
+  Transpose -> Nothing
 
 type MonadCompileBody m =
   ( MonadLogger m,

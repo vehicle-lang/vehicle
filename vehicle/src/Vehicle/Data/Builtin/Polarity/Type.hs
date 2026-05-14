@@ -88,6 +88,21 @@ typeOfBuiltinFunction = \case
   ForeachTensor -> typeOfForeach
   ForeachVector -> typeOfForeach
   Iterate -> typeOfIterate
+  Rollout -> typeOfRollout
+  Transpose -> forAllPolarities $ \pol -> pol ~> pol
+  Temporal Globally -> typeOfTemporalOp1
+  Temporal Finally -> typeOfTemporalOp1
+  Temporal Until -> typeOfTemporalOp2
+
+typeOfTemporalOp1 :: PolarityDSLExpr
+typeOfTemporalOp1 =
+  forAllPolarities $ \p ->
+    unquantified ~> unquantified ~> p ~> p
+
+typeOfTemporalOp2 :: PolarityDSLExpr
+typeOfTemporalOp2 =
+  forAllPolarityTriples $ \p1 p2 p3 ->
+    maxPolarity p1 p2 p3 .~~~> unquantified ~> unquantified ~> p1 ~> p2 ~> p3
 
 typeOfConstructor :: BuiltinConstructor -> PolarityDSLExpr
 typeOfConstructor = \case
@@ -102,6 +117,7 @@ typeOfConstructor = \case
   NatTensorLiteral {} -> unquantified
   BoolTensorLiteral {} -> unquantified
   RatTensorLiteral {} -> unquantified
+  TimeLiteral {} -> unquantified
 
 typeOfPolarityRelation :: PolarityRelation -> PolarityDSLExpr
 typeOfPolarityRelation = \case
@@ -177,6 +193,9 @@ typeOfQuantifier q =
 typeOfIterate :: PolarityDSLExpr
 typeOfIterate = ((type0 ~> type0) ~> type0 ~> type0) ~> unquantified ~> type0
 
+typeOfRollout :: PolarityDSLExpr
+typeOfRollout = unquantified ~> (type0 ~> type0) ~> (type0 ~> type0 ~> type0) ~> type0 ~> type0
+
 typeOfVectorLiteral :: PolarityDSLExpr
 typeOfVectorLiteral =
   forAll "n" unquantified $ \n ->
@@ -232,6 +251,7 @@ convertToPolarityTypes p b args = case b of
     ListType -> return $ extractElementType b args
     VectorType -> return $ extractElementType b args
     TensorType -> return $ extractElementType b args
+    TimeType -> return $ PolarityExpr p Unquantified
   DerivedFunction f -> return $ normAppList (FreeVar p (identifierOf f)) args
   TypeClass {} -> monomorphisationError b args
   BuiltinCast {} -> monomorphisationError b args
@@ -251,6 +271,7 @@ restrictDeclPolarityType rDecl declProv declType = do
 
   case rDecl of
     RestrictedNetwork -> restrictPolarityNetworkType origin declProv declType
+    RestrictedDynamics -> restrictPolarityDynamicsType origin declProv declType
     RestrictedDataset -> assertUnquantifiedPolarity origin declProv declType
     RestrictedParameter {} -> assertUnquantifiedPolarity origin declProv declType
     RestrictedProperty -> return declType
@@ -270,6 +291,21 @@ restrictPolarityNetworkType origin (_, p) networkType = do
   let functionNetworkType = Pi p inputPolBinder outputPol
   createFreshUnificationConstraint p mempty (CheckingInstanceType origin) networkType functionNetworkType
   return networkType
+
+restrictPolarityDynamicsType ::
+  forall m.
+  (MonadTypeChecker PolarityBuiltin m) =>
+  InstanceConstraintOrigin PolarityBuiltin ->
+  DeclProvenance ->
+  Type PolarityBuiltin ->
+  m (Type PolarityBuiltin)
+restrictPolarityDynamicsType origin (_, p) dynamicsType = do
+  let unq = PolarityExpr p Unquantified
+  let innerBinder = Binder (BinderDisplayForm OnlyType False) Explicit Relevant unq
+  let outerBinder = Binder (BinderDisplayForm OnlyType False) Explicit Relevant unq
+  let functionDynamicsType = Pi p outerBinder (Pi p innerBinder unq)
+  createFreshUnificationConstraint p mempty (CheckingInstanceType origin) dynamicsType functionDynamicsType
+  return dynamicsType
 
 assertUnquantifiedPolarity ::
   (MonadTypeChecker PolarityBuiltin m) =>

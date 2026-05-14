@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from fractions import Fraction
 from typing import TYPE_CHECKING, Any, Sequence, cast
 
@@ -10,16 +10,22 @@ from ..._deps import require_optional_dependency
 
 if TYPE_CHECKING:
     import torch
+    import vehicle_stl
 else:  # pragma: no cover - exercised implicitly
     torch = require_optional_dependency(
         "torch",
         extra="pytorch",
         feature="The PyTorch loss backend",
     )
+    vehicle_stl = require_optional_dependency(
+        "vehicle_stl",
+        extra="pytorch",
+        feature="Temporal operators in the PyTorch loss backend",
+    )
 
 from .._abc import ABCBuiltins
 from .._ast import _nodes
-from ..error import VehicleInternalError  # type: ignore[attr-defined]
+from ..error import VehicleInternalError
 
 ################################################################################
 ### Type-safe PyTorch wrappers
@@ -46,6 +52,39 @@ class PyTorchBuiltins(
 ):
     dtype_index: torch.dtype = torch.int32
     dtype_rat: torch.dtype = torch.float32
+    temporal_semantics: Any | None = None
+    _formula_cache: dict[tuple[str, int, int], Any] = field(
+        default_factory=dict, repr=False, compare=False, hash=False
+    )
+
+    def _get_formula(self, kind: str, start: int, end: int) -> Any:
+        """Get or create a cached vehicle-stl formula for the given operator and interval."""
+        key = (kind, start, end)
+        if key not in self._formula_cache:
+            sem = self.temporal_semantics
+            kwargs: dict[str, Any] = {"interval": [start, end]}
+            if sem is not None:
+                kwargs["semantics"] = sem
+            if kind == "always":
+                self._formula_cache[key] = vehicle_stl.Always(**kwargs)
+            elif kind == "eventually":
+                self._formula_cache[key] = vehicle_stl.Eventually(**kwargs)
+            elif kind == "until":
+                self._formula_cache[key] = vehicle_stl.Until(**kwargs)
+        return self._formula_cache[key]
+
+    def _validate_temporal_interval(self, start: int, end: int) -> tuple[int, int]:
+        start_idx = int(start)
+        end_idx = int(end)
+        if start_idx < 0:
+            raise VehicleInternalError(
+                f"Temporal operator interval start must be non-negative, found {start_idx}."
+            )
+        if end_idx < start_idx:
+            raise VehicleInternalError(
+                f"Temporal operator interval must satisfy start <= end, found [{start_idx},{end_idx}]."
+            )
+        return start_idx, end_idx
 
     @override
     def Index(self, value: int) -> int:
@@ -122,6 +161,27 @@ class PyTorchBuiltins(
         return torch.max(x)
 
     @override
+    def Globally(self, start: int, end: int, x: torch.Tensor) -> torch.Tensor:
+        start_idx, end_idx = self._validate_temporal_interval(start, end)
+        return self._get_formula("always", start_idx, end_idx)(x)
+
+    @override
+    def Finally(self, start: int, end: int, x: torch.Tensor) -> torch.Tensor:
+        start_idx, end_idx = self._validate_temporal_interval(start, end)
+        return self._get_formula("eventually", start_idx, end_idx)(x)
+
+    @override
+    def Until(
+        self, start: int, end: int, x: torch.Tensor, y: torch.Tensor
+    ) -> torch.Tensor:
+        start_idx, end_idx = self._validate_temporal_interval(start, end)
+        if x.shape != y.shape:
+            raise VehicleInternalError(
+                "Temporal Until expects both traces to have the same shape."
+            )
+        return self._get_formula("until", start_idx, end_idx)((x, y))
+
+    @override
     def DimensionLookup(
         self, xs: torch.Tensor | tuple[torch.Tensor, ...] | list[torch.Tensor], i: int
     ) -> torch.Tensor:
@@ -159,6 +219,29 @@ class PyTorchBuiltins(
         # Convert Fraction values to floats
         float_values = [float(val) for val in values]
         return _torch_tensor(data=float_values, dtype=self.dtype_rat).reshape(shape)
+
+    @override
+    def Rollout(
+        self,
+        n: int,
+        controller: Any,
+        dynamics: Any,
+        init_state: torch.Tensor,
+    ) -> torch.Tensor:
+        states = [init_state]
+        for _ in range(n - 1):
+            action = controller(states[-1])
+            next_state = dynamics(states[-1], action)
+            states.append(next_state)
+        return torch.stack(states)
+
+    @override
+    def ForeachTensor(self, dim: int, fn: Any) -> torch.Tensor:
+        return torch.stack([fn(i) for i in range(dim)])
+
+    @override
+    def Transpose(self, xs: torch.Tensor) -> torch.Tensor:
+        return xs.permute(*reversed(range(xs.ndim)))
 
     @override
     def StackTensor(self, tensors: Sequence[torch.Tensor]) -> torch.Tensor:

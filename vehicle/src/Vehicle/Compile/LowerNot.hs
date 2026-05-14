@@ -28,9 +28,10 @@ type MonadDropNot m =
 lowerNot ::
   forall m.
   (MonadDropNot m) =>
+  (Value Builtin -> m (Value Builtin)) ->
   TensorOp1Args (Value Builtin) ->
   m (Value Builtin)
-lowerNot (TensorOp1Args _ arg) = do
+lowerNot onBlocked (TensorOp1Args _ arg) = do
   result <- go arg
   ctx <- getNameContext
   logDebug MaxDetail $ "push-not:" <+> prettyFriendly (WithContext result ctx)
@@ -63,6 +64,20 @@ lowerNot (TensorOp1Args _ arg) = do
       VBoolTensorReduceOr args -> fromBoolTensorValue . VBoolTensorReduceAnd <$> traverseReductionArgs go args
       VBoolTensorReduceAnd args -> fromBoolTensorValue . VBoolTensorReduceOr <$> traverseReductionArgs go args
       VBoolTensorAt args -> fromBoolTensorValue . VBoolTensorAt <$> traverseAtTensorArg go args
+      -- STL/LTL De Morgan laws: ¬(G P) ≡ F (¬P), ¬(F P) ≡ G (¬P).
+      -- Exact when the signal covers the interval. When vehicle-stl's
+      -- Always/Eventually pad beyond the signal end, the rewritten form
+      -- uses the disjunction identity as the mask value whereas the
+      -- original `¬(G …)` form pads pessimistically with `-large_number`;
+      -- a specification that relies on the padded regime could see small
+      -- numeric drift after this rewrite.
+      VBoolTensorGlobally args -> fromBoolTensorValue . VBoolTensorFinally <$> traverseTemporalOp1Args go args
+      VBoolTensorFinally args -> fromBoolTensorValue . VBoolTensorGlobally <$> traverseTemporalOp1Args go args
+      -- ¬(P U Q) has no primitive dual without Release, so wrap in Not
+      -- after one last unblock attempt.
+      VBoolTensorUntil (TemporalOp2Args dims _ _ _ _) -> do
+        e' <- onBlocked e
+        return $ fromBoolTensorValue $ VBoolTensorNot (TensorOp1Args dims e')
       VBoolTensorForeach args -> fromBoolTensorValue . VBoolTensorForeach <$> negateForeachArgs args
 
 negateQuantifierBody ::

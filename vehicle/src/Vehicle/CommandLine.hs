@@ -233,6 +233,7 @@ compileLossParser =
     <*> specificationParser
     <*> declarationParser
     <*> outputParser
+    <*> nativeDirectionParser
 
 lossLogicParser :: Parser DifferentiableLogicID
 lossLogicParser =
@@ -241,6 +242,12 @@ lossLogicParser =
       <> short 'l'
       <> metavar "LOGIC"
       <> helpDoc (Just ("The differentiable logic to export to." <+> supportedOptions allBuiltinDifferentiableLogics))
+
+nativeDirectionParser :: Parser Bool
+nativeDirectionParser =
+  switch $
+    long "dl-native-direction"
+      <> help "Emit the compiled property in the differentiable logic's native direction (robustness for STL, loss for DL2). When unset (default), the property is wrapped in 'not' for robustness-style logics so the output is always a minimisation target."
 
 --------------------------------------------------------------------------------
 -- Compile query mode

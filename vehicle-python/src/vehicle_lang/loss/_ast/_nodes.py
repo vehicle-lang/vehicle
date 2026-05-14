@@ -269,6 +269,34 @@ class ReduceMaxRatTensor(Expression):
 
 
 @dataclass(frozen=True)
+class Globally(Expression):
+    """Temporal globally operator with inclusive bounds."""
+
+    start: Expression
+    end: Expression
+    x: Expression
+
+
+@dataclass(frozen=True)
+class Finally(Expression):
+    """Temporal finally operator with inclusive bounds."""
+
+    start: Expression
+    end: Expression
+    x: Expression
+
+
+@dataclass(frozen=True)
+class Until(Expression):
+    """Temporal until operator with inclusive bounds."""
+
+    start: Expression
+    end: Expression
+    x: Expression
+    y: Expression
+
+
+@dataclass(frozen=True)
 class SearchRatTensor(Expression):
     """Search tensor: SearchRatTensor reductionOp lowerBound upperBound searchLambda"""
 
@@ -279,6 +307,31 @@ class SearchRatTensor(Expression):
     upper_bound: Expression
     search_lambda: Expression
     minimise: bool
+
+
+@dataclass(frozen=True)
+class Rollout(Expression):
+    """Rollout: rollout N controller dynamics initState"""
+
+    n: Expression
+    controller: Expression
+    dynamics: Expression
+    init_state: Expression
+
+
+@dataclass(frozen=True)
+class ForeachTensor(Expression):
+    """ForeachTensor: applies lambda to each index, stacks results."""
+
+    dim: Expression
+    fn: Expression
+
+
+@dataclass(frozen=True)
+class Transpose(Expression):
+    """Transpose: reverses all axes of a tensor (numpy-style)."""
+
+    xs: Expression
 
 
 @dataclass(frozen=True)
@@ -370,5 +423,20 @@ class Program(AST):
 
 
 @dataclass(frozen=True)
+class JLogicMetadata(AST):
+    """Per-program metadata extracted from a compiled DifferentiableTensorLogic.
+
+    Carries the four temporal-combinator lambdas: conjunction and disjunction,
+    and their corresponding identity elements.
+    """
+
+    conjunction: Expression
+    disjunction: Expression
+    conjunction_identity: Expression
+    disjunction_identity: Expression
+
+
+@dataclass(frozen=True)
 class Main(Program):
     declarations: Sequence[Declaration]
+    logic_metadata: JLogicMetadata

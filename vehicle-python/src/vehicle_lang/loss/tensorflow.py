@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Iterable, Mapping, MutableMapping
 
-from ..typing import DeclarationName, DifferentiableLogic
+from ..typing import DeclarationName, DifferentiableLogic, Target
 from ._common import load_loss_specification
 from ._tensorflow._translation import TensorFlowTranslation
 from ._tensorflow.samplers import DefaultTensorFlowSampler, TensorFlowSampler
@@ -20,12 +20,18 @@ __all__ = [
 def load_specification(
     path: str | Path,
     *,
-    logic: DifferentiableLogic = DifferentiableLogic.DL2,
+    logic: Target = DifferentiableLogic.DL2,
     samplers: Mapping[str, Any] | None = None,
     declarations: Iterable[DeclarationName] = (),
     declaration_context: MutableMapping[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Load a loss function compiled for TensorFlow."""
+    """Load a loss function compiled for TensorFlow.
+
+    Returns:
+        The compiled callables. Each property is emitted as a minimisation
+        target by the compiler regardless of the selected logic. See
+        :func:`vehicle_lang.loss.pytorch.load_specification` for details.
+    """
 
     return load_loss_specification(
         path,

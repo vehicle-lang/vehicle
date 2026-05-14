@@ -64,6 +64,7 @@ data TypeValue
   | VIndexTensorType (Value Builtin) (Value Builtin)
   | VListType (Value Builtin)
   | VVectorType (Value Builtin) (Value Builtin)
+  | VTimeType
   | VPiType (VBinder Builtin) (Closure Builtin)
   | VBoundTypeVar Lv (Spine Builtin)
   | VFreeTypeVar Identifier (Spine Builtin)
@@ -85,6 +86,7 @@ toTypeValue t = case t of
     (TensorType, [toTypeValue . argExpr -> VNatType, ds]) -> VNatTensorType (argExpr ds)
     (TensorType, [toTypeValue . argExpr -> VIndexType n, ds]) -> VIndexTensorType n (argExpr ds)
     (VectorType, [tElem, dim]) -> VVectorType (argExpr tElem) (argExpr dim)
+    (TimeType, []) -> VTimeType
     _ -> err
   _ -> err
   where
@@ -106,6 +108,7 @@ fromTypeValue t = case t of
   VNatTensorType ds -> ITensorType (fromTypeValue VNatType) ds
   VIndexTensorType n ds -> ITensorType (fromTypeValue (VIndexType n)) ds
   VVectorType tElem d -> IVectorType tElem d
+  VTimeType -> VBuiltin (BuiltinType TimeType) []
 
 -------------------------------------------------------------------------------
 -- Index
@@ -183,6 +186,9 @@ data BoolValue
   | VNot (TensorOp1Args (Value Builtin))
   | VAnd (TensorOp2Args (Value Builtin))
   | VOr (TensorOp2Args (Value Builtin))
+  | VGlobally (TemporalOp1Args (Value Builtin))
+  | VFinally (TemporalOp1Args (Value Builtin))
+  | VUntil (TemporalOp2Args (Value Builtin))
   | VCompareIndex (ComparisonOp, IndexComparisonArgs (Value Builtin))
   | VCompareNat (ComparisonOp, Op2Args (Value Builtin))
   | VCompareRatTensor (ComparisonOp, TensorOp2Args (Value Builtin))
@@ -198,6 +204,9 @@ toBoolValue expr = case expr of
   (getExpr accessAndTensor -> Just args) -> VAnd args
   (getExpr accessOrTensor -> Just args) -> VOr args
   (getExpr accessNotTensor -> Just args) -> VNot args
+  (getExpr accessTemporalGlobally -> Just args) -> VGlobally args
+  (getExpr accessTemporalFinally -> Just args) -> VFinally args
+  (getExpr accessTemporalUntil -> Just args) -> VUntil args
   (getExpr accessCompareRatTensorPointwise -> Just args) -> fromComparison $ Left args
   (getExpr accessCompareRatTensorReduced -> Just args) -> fromComparison $ Right args
   (getExpr accessCompareNat -> Just args) -> VCompareNat args
@@ -218,6 +227,9 @@ fromBoolValue = \case
   VAnd args -> mkExpr accessAndTensor args
   VOr args -> mkExpr accessOrTensor args
   VNot args -> mkExpr accessNotTensor args
+  VGlobally args -> mkExpr accessTemporalGlobally args
+  VFinally args -> mkExpr accessTemporalFinally args
+  VUntil args -> mkExpr accessTemporalUntil args
   VCompareNat args -> mkExpr accessCompareNat args
   VCompareIndex args -> mkExpr accessCompareIndex args
   VCompareRatTensor args -> toComparison args
@@ -263,6 +275,9 @@ data BoolTensorValue
   | VBoolTensorNot (TensorOp1Args (Value Builtin))
   | VBoolTensorAnd (TensorOp2Args (Value Builtin))
   | VBoolTensorOr (TensorOp2Args (Value Builtin))
+  | VBoolTensorGlobally (TemporalOp1Args (Value Builtin))
+  | VBoolTensorFinally (TemporalOp1Args (Value Builtin))
+  | VBoolTensorUntil (TemporalOp2Args (Value Builtin))
   | VBoolTensorCompareIndex (ComparisonOp, IndexComparisonArgs (Value Builtin))
   | VBoolTensorCompareNat (ComparisonOp, Op2Args (Value Builtin))
   | VBoolTensorCompareRatPointwise (ComparisonOp, TensorOp2Args (Value Builtin))
@@ -282,6 +297,9 @@ toBoolTensorValue expr = case expr of
   (getExpr accessAndTensor -> Just args) -> VBoolTensorAnd args
   (getExpr accessOrTensor -> Just args) -> VBoolTensorOr args
   (getExpr accessNotTensor -> Just args) -> VBoolTensorNot args
+  (getExpr accessTemporalGlobally -> Just args) -> VBoolTensorGlobally args
+  (getExpr accessTemporalFinally -> Just args) -> VBoolTensorFinally args
+  (getExpr accessTemporalUntil -> Just args) -> VBoolTensorUntil args
   (getExpr accessCompareRatTensorPointwise -> Just args) -> VBoolTensorCompareRatPointwise args
   (getExpr accessCompareRatTensorReduced -> Just args) -> VBoolTensorCompareRatReduced args
   (getExpr accessCompareNat -> Just args) -> VBoolTensorCompareNat args
@@ -305,6 +323,9 @@ fromBoolTensorValue = \case
   VBoolTensorAnd args -> mkExpr accessAndTensor args
   VBoolTensorOr args -> mkExpr accessOrTensor args
   VBoolTensorNot args -> mkExpr accessNotTensor args
+  VBoolTensorGlobally args -> mkExpr accessTemporalGlobally args
+  VBoolTensorFinally args -> mkExpr accessTemporalFinally args
+  VBoolTensorUntil args -> mkExpr accessTemporalUntil args
   VBoolTensorCompareNat args -> mkExpr accessCompareNat args
   VBoolTensorCompareIndex args -> mkExpr accessCompareIndex args
   VBoolTensorCompareRatPointwise args -> mkExpr accessCompareRatTensorPointwise args
@@ -327,6 +348,9 @@ data MultiDimBoolTensorValue
   | VPointwiseNot (TensorOp1Args (Value Builtin))
   | VPointwiseAnd (TensorOp2Args (Value Builtin))
   | VPointwiseOr (TensorOp2Args (Value Builtin))
+  | VMultiDimBoolGlobally (TemporalOp1Args (Value Builtin))
+  | VMultiDimBoolFinally (TemporalOp1Args (Value Builtin))
+  | VMultiDimBoolUntil (TemporalOp2Args (Value Builtin))
   | VCompareRatTensorPointwise (ComparisonOp, TensorOp2Args (Value Builtin))
   | VMultiDimBoolIf (IfArgs (Value Builtin))
   | VMultiDimBoolAt (AtTensorArgs (Value Builtin))
@@ -340,6 +364,9 @@ toMultiDimBoolTensorValue expr = case expr of
   (getExpr accessNotTensor -> Just args) -> VPointwiseNot args
   (getExpr accessAndTensor -> Just args) -> VPointwiseAnd args
   (getExpr accessOrTensor -> Just args) -> VPointwiseOr args
+  (getExpr accessTemporalGlobally -> Just args) -> VMultiDimBoolGlobally args
+  (getExpr accessTemporalFinally -> Just args) -> VMultiDimBoolFinally args
+  (getExpr accessTemporalUntil -> Just args) -> VMultiDimBoolUntil args
   (getExpr accessCompareRatTensorPointwise -> Just args) -> VCompareRatTensorPointwise args
   (getExpr accessIf -> Just args) -> VMultiDimBoolIf args
   (getExpr accessAtTensor -> Just args) -> VMultiDimBoolAt args
@@ -354,6 +381,9 @@ fromMultiDimBoolTensorValue = \case
   VPointwiseNot args -> mkExpr accessNotTensor args
   VPointwiseAnd args -> mkExpr accessAndTensor args
   VPointwiseOr args -> mkExpr accessOrTensor args
+  VMultiDimBoolGlobally args -> mkExpr accessTemporalGlobally args
+  VMultiDimBoolFinally args -> mkExpr accessTemporalFinally args
+  VMultiDimBoolUntil args -> mkExpr accessTemporalUntil args
   VCompareRatTensorPointwise args -> mkExpr accessCompareRatTensorPointwise args
   VMultiDimBoolIf args -> mkExpr accessIf args
   VMultiDimBoolAt args -> mkExpr accessAtTensor args
@@ -383,6 +413,8 @@ data RatTensorValue
   | VRatStackTensor (StackTensorArgs (Value Builtin))
   | VRatAt (AtTensorArgs (Value Builtin))
   | VRatForeach (ForeachTensorArgs (Value Builtin))
+  | VRatTensorRollout (RolloutArgs (Value Builtin))
+  | VRatTensorTranspose (TransposeArgs (Value Builtin))
 
 toRatTensorValue :: (HasCallStack) => Value Builtin -> RatTensorValue
 toRatTensorValue expr = case expr of
@@ -405,6 +437,8 @@ toRatTensorValue expr = case expr of
   (getExpr accessStackTensor -> Just args) -> VRatStackTensor args
   (getExpr accessAtTensor -> Just args) -> VRatAt args
   (getExpr accessForeachTensor -> Just args) -> VRatForeach args
+  (getExpr accessRollout -> Just args) -> VRatTensorRollout args
+  (getExpr accessTranspose -> Just args) -> VRatTensorTranspose args
   _ -> illTyped
   where
     illTyped = developerError $ "ill-typed RatTensor expression:" <+> pretty (show expr) -- rettyVerbose expr
@@ -430,6 +464,8 @@ fromRatTensorValue = \case
   VRatStackTensor args -> mkExpr accessStackTensor args
   VRatAt args -> mkExpr accessAtTensor args
   VRatForeach args -> mkExpr accessForeachTensor args
+  VRatTensorRollout args -> mkExpr accessRollout args
+  VRatTensorTranspose args -> mkExpr accessTranspose args
 
 -------------------------------------------------------------------------------
 -- Dim

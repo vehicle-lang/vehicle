@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 from ..error import VehicleError as VehicleError
-from ..error import VehicleInternalError
+from ..error import VehicleInternalError as VehicleInternalError
 
 
 @dataclass(frozen=True)

@@ -6,7 +6,7 @@ Vehicle compiles each ``@property`` in your specification into a callable loss f
 Loading declarations
 --------------------
 
-Feed a ``.vcl`` file to the backend-specific ``load_specification`` helper. Each property becomes a callable entry whose signature mirrors the ``@network`` declarations referenced inside that property:
+Feed a ``.vcl`` file to the backend-specific ``load_specification`` helper. It returns a dictionary of compiled callables. Each callable entry has a signature that mirrors the ``@network`` declarations referenced inside the corresponding property:
 
 .. code-block:: python
 
@@ -20,7 +20,12 @@ Feed a ``.vcl`` file to the backend-specific ``load_specification`` helper. Each
 
    constraint_loss_fn = declarations["output_bounded"]
 
-Each callable returned by ``load_specification`` has a signature that mirrors the ``@network`` declarations referenced inside that property. Pass a Python callable for each network so the loss function can evaluate (and differentiate through) your model. A typical PyTorch training step looks like this:
+By default the compiler emits each property as a minimisation target. For
+STL, properties are wrapped in ``not`` so lower is better. A satisfied
+property reads ``<= 0``. Pass ``--dl-native-direction`` if you need the
+raw DL-native form (positive robustness for STL, zero loss for DL2).
+
+Pass a Python callable for each network so the loss function can evaluate (and differentiate through) your model. A typical PyTorch training step looks like this:
 
 .. code-block:: python
 
@@ -84,6 +89,7 @@ Logic selection
 By default, Vehicle compiles properties into loss functions using the ``Vehicle`` differentiable logic. You can select a different logic by passing the ``logic`` argument to ``load_specification``. Available options are:
 - ``vehicle_lang.DifferentiableLogic.Vehicle`` (default)
 - ``vehicle_lang.DifferentiableLogic.DL2``
+- ``vehicle_lang.DifferentiableLogic.STL``
 
 
 Custom samplers and declaration context

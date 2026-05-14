@@ -175,6 +175,26 @@ accessQuantifyRatTensor =
       mkExpr = \(q, args) -> mkBuiltin accessQuantifyRatTensorBuiltin q (mkExpr accessQuantifyRatTensorSpine args)
     }
 
+-- | Accessor for unary temporal operators (Globally, Finally). Until is excluded
+-- because it has a different arity (TemporalOp2Args); use accessTemporalUntil directly.
+accessTemporalUnary :: (HasBoolExpr expr builtin) => Accessor (expr builtin) (TemporalOperator, TemporalOp1Args (expr builtin))
+accessTemporalUnary = accessOpAndArgs accessTemporalBuiltin
+
+accessTemporalGlobally :: (HasBoolExpr expr builtin) => Accessor (expr builtin) (TemporalOp1Args (expr builtin))
+accessTemporalGlobally = accessArgsForOp accessTemporalUnary Globally
+
+accessTemporalFinally :: (HasBoolExpr expr builtin) => Accessor (expr builtin) (TemporalOp1Args (expr builtin))
+accessTemporalFinally = accessArgsForOp accessTemporalUnary Finally
+
+accessTemporalUntil :: (HasBoolExpr expr builtin) => Accessor (expr builtin) (TemporalOp2Args (expr builtin))
+accessTemporalUntil =
+  Access
+    { getExpr = \case
+        (getBuiltin accessTemporalBuiltin -> Just (Until, getExpr accessSpine -> Just args)) -> Just args
+        _ -> Nothing,
+      mkExpr = \args -> mkBuiltin accessTemporalBuiltin Until (mkExpr accessSpine args)
+    }
+
 --------------------------------------------------------------------------------
 -- Indices
 
@@ -221,6 +241,37 @@ accessAddNat = accessArgs accessAddNatBuiltin
 
 accessMulNat :: (HasNatExpr expr builtin) => Op2Accessor (expr builtin)
 accessMulNat = accessArgs accessMulNatBuiltin
+
+--------------------------------------------------------------------------------
+-- Time
+
+type HasTimeType expr builtin =
+  ( HasBuiltinConstructor expr,
+    BuiltinHasTimeType builtin
+  )
+
+type HasTimeExpr expr builtin =
+  ( HasBuiltinConstructor expr,
+    BuiltinHasTimeLiterals builtin
+  )
+
+accessTimeType :: (HasTimeType expr builtin) => Accessor (expr builtin) ()
+accessTimeType = accessNoArgs accessTimeTypeBuiltin
+
+accessTimeLiteral :: (HasTimeExpr expr builtin) => Accessor (expr builtin) Int
+accessTimeLiteral = accessNoArgs accessTimeLitBuiltin
+
+accessAddTime :: (HasTimeExpr expr builtin) => Op2Accessor (expr builtin)
+accessAddTime = accessArgs accessAddTimeBuiltin
+
+accessSubTime :: (HasTimeExpr expr builtin) => Op2Accessor (expr builtin)
+accessSubTime = accessArgs accessSubTimeBuiltin
+
+accessMulTime :: (HasTimeExpr expr builtin) => Op2Accessor (expr builtin)
+accessMulTime = accessArgs accessMulTimeBuiltin
+
+accessDivTime :: (HasTimeExpr expr builtin) => Op2Accessor (expr builtin)
+accessDivTime = accessArgs accessDivTimeBuiltin
 
 --------------------------------------------------------------------------------
 -- Rationals
@@ -371,3 +422,13 @@ accessIterate ::
   (HasBuiltinConstructor expr, BuiltinHasIterate builtin) =>
   Accessor (expr builtin) (IterateArgs (expr builtin))
 accessIterate = accessArgs accessIterateBuiltin
+
+accessRollout ::
+  (HasBuiltinConstructor expr, BuiltinHasRollout builtin) =>
+  Accessor (expr builtin) (RolloutArgs (expr builtin))
+accessRollout = accessArgs accessRolloutBuiltin
+
+accessTranspose ::
+  (HasBuiltinConstructor expr, BuiltinHasTensors builtin) =>
+  Accessor (expr builtin) (TransposeArgs (expr builtin))
+accessTranspose = accessArgs accessTransposeBuiltin

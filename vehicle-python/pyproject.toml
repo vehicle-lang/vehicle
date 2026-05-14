@@ -48,6 +48,7 @@ tensorflow = [
 ]
 pytorch = [
   "torch>=2,<3; python_version >= '3.10' and python_version < '3.13'",
+  "vehicle-stl",
 ]
 
 [project.scripts]
@@ -114,3 +115,6 @@ testpaths = ["tests"]
 
 [tool.setuptools.dynamic]
 version = { attr = "vehicle_lang._version.VERSION" }
+
+[tool.uv.sources]
+vehicle-stl = { path = "vehicle-stl" }

@@ -17,9 +17,9 @@ else:  # pragma: no cover - exercised implicitly
         feature="The TensorFlow loss backend",
     )
 
-from .. import error
 from .._abc import ABCBuiltins
 from .._ast import _nodes
+from ..error import VehicleInternalError
 
 ################################################################################
 ### Type-safe TensorFlow wrappers
@@ -121,6 +121,46 @@ class TensorFlowBuiltins(
         return tf.reduce_max(x)
 
     @override
+    def Globally(self, start: int, end: int, x: tf.Tensor) -> tf.Tensor:
+        raise VehicleInternalError(
+            f"Temporal operator Globally[{start},{end}] is not supported in the TensorFlow backend yet."
+        )
+
+    @override
+    def Finally(self, start: int, end: int, x: tf.Tensor) -> tf.Tensor:
+        raise VehicleInternalError(
+            f"Temporal operator Finally[{start},{end}] is not supported in the TensorFlow backend yet."
+        )
+
+    @override
+    def Until(self, start: int, end: int, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
+        raise VehicleInternalError(
+            f"Temporal operator Until[{start},{end}] is not supported in the TensorFlow backend yet."
+        )
+
+    @override
+    def Rollout(
+        self,
+        n: int,
+        controller: Any,
+        dynamics: Any,
+        init_state: tf.Tensor,
+    ) -> tf.Tensor:
+        raise VehicleInternalError(
+            "Rollout is not supported in the TensorFlow backend yet."
+        )
+
+    @override
+    def ForeachTensor(self, dim: int, fn: Any) -> tf.Tensor:
+        raise VehicleInternalError(
+            "ForeachTensor is not supported in the TensorFlow backend yet."
+        )
+
+    @override
+    def Transpose(self, xs: tf.Tensor) -> tf.Tensor:
+        return tf.transpose(xs)
+
+    @override
     def DimensionLookup(
         self, xs: tf.Tensor | tuple[tf.Tensor, ...] | list[tf.Tensor], i: int
     ) -> tf.Tensor:
@@ -132,7 +172,7 @@ class TensorFlowBuiltins(
             return xs[i]
 
         if xs.shape.ndims == 0:
-            raise error.VehicleInternalError(  # type: ignore[attr-defined]
+            raise VehicleInternalError(
                 "Cannot index into a scalar tensor in DimensionLookup, make an issue in GitHub."
             )
 

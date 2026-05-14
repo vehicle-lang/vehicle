@@ -56,6 +56,8 @@ class BuiltinHasBoolLiterals builtin where
 
   accessQuantifyRatTensorBuiltin :: Accessor builtin Quantifier
 
+  accessTemporalBuiltin :: Accessor builtin TemporalOperator
+
 --------------------------------------------------------------------------------
 -- Index
 
@@ -77,6 +79,22 @@ class BuiltinHasNatLiterals builtin where
 
   accessAddNatBuiltin :: Accessor builtin ()
   accessMulNatBuiltin :: Accessor builtin ()
+
+--------------------------------------------------------------------------------
+-- Time
+
+class BuiltinHasTimeType builtin where
+  accessTimeTypeBuiltin :: Accessor builtin ()
+
+class BuiltinHasTimeLiterals builtin where
+  accessTimeLitBuiltin :: Accessor builtin Int
+
+  accessAddTimeBuiltin :: Accessor builtin ()
+  accessSubTimeBuiltin :: Accessor builtin ()
+  accessMulTimeBuiltin :: Accessor builtin ()
+  accessDivTimeBuiltin :: Accessor builtin ()
+  accessFromNatToTimeBuiltin :: Accessor builtin ()
+  accessFromTimeToNatBuiltin :: Accessor builtin ()
 
 --------------------------------------------------------------------------------
 -- Rat
@@ -133,6 +151,7 @@ class BuiltinHasTensors builtin where
   accessStackTensorBuiltin :: Accessor builtin ()
   accessConstTensorBuiltin :: Accessor builtin ()
   accessAtTensorBuiltin :: Accessor builtin ()
+  accessTransposeBuiltin :: Accessor builtin ()
 
 class BuiltinHasForeach builtin where
   accessForeachTensorBuiltin :: Accessor builtin ()
@@ -144,12 +163,21 @@ class BuiltinHasStandardData builtin where
   accessBuiltinConstructor :: Accessor builtin BuiltinConstructor
   accessBuiltinFunction :: Accessor builtin BuiltinFunction
 
+-- | Indicates that this set of builtins exposes the standard derived (stdlib)
+-- functions. Only the standard and decidability builtin sets carry these;
+-- linearity/polarity meta-builtins use specialised typing instead.
+class BuiltinHasDerivedFunction builtin where
+  accessBuiltinDerivedFunction :: Accessor builtin DerivedFunction
+
 -- | Indicates that this set of builtins has the standard set of types.
 class BuiltinHasStandardTypes builtin where
   accessBuiltinType :: Accessor builtin BuiltinType
 
 class BuiltinHasIterate builtin where
   accessIterateBuiltin :: Accessor builtin ()
+
+class BuiltinHasRollout builtin where
+  accessRolloutBuiltin :: Accessor builtin ()
 
 -- | Indicates that this set of builtins has the standard set of constructors,
 -- functions and types.
@@ -160,5 +188,6 @@ class BuiltinHasStandardTypeClasses builtin where
 -- functions and types.
 type HasStandardBuiltins builtin =
   ( BuiltinHasStandardTypes builtin,
-    BuiltinHasStandardData builtin
+    BuiltinHasStandardData builtin,
+    BuiltinHasDerivedFunction builtin
   )

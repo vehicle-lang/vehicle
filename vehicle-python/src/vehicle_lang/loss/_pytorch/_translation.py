@@ -1,5 +1,6 @@
 import ast as py
 from dataclasses import dataclass
+from typing import Any
 
 from .._python import PythonTranslation
 from ._builtins import PyTorchBuiltins
@@ -14,9 +15,9 @@ PY_MISSING = {"lineno": 0, "col_offset": 0}
 
 @dataclass(frozen=True, init=False)
 class PyTorchTranslation(PythonTranslation):
-    def __init__(self) -> None:
+    def __init__(self, *, temporal_semantics: Any | None = None) -> None:
         super().__init__(
-            builtins=PyTorchBuiltins(),
+            builtins=PyTorchBuiltins(temporal_semantics=temporal_semantics),
             module_header=[
                 py.Import(
                     names=[
