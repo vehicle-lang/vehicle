@@ -118,14 +118,13 @@ data BuiltinFunction
   | ConstTensor
   | Iterate
   | ForeachTensor
+  | Transpose
   | -- Vector operations
     AtVector
   | ForeachVector
   | -- List operations
     FoldList
   | MapList
-  | -- Tensor shape operations
-    Transpose
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData BuiltinFunction
