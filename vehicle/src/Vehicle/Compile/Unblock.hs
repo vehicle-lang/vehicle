@@ -15,6 +15,7 @@ import Vehicle.Compile.Print
 import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Standard
+import Vehicle.Data.Builtin.Standard.Normalise (evalTranspose)
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
@@ -212,7 +213,7 @@ unblockRatTensorValue actions@UnblockingActions {..} status expr = do
     VRatStackTensor args -> unblockStackTensor (unblock DifferentDimensions) args
     VRatAt args -> unblockAtTensor (unblock DifferentDimensions) args
     VRatForeach args -> unblockForeachTensor args
-    VRatTensorTranspose {} -> return expr
+    VRatTensorTranspose args -> unblockTranspose (unblock DifferentDimensions) args
   where
     unblock = unblockRatTensorValue actions
 
@@ -333,44 +334,17 @@ unblockAtTensor unblock (AtTensorArgs tElem d ds xs i) = do
   liftIf xs' $ \xs'' ->
     liftIf i' $ \i'' -> do
       nameCtx <- getNameContext
-      let unswappedArgs = AtTensorArgs tElem d ds xs'' i''
-      case rewriteTransposeAt unswappedArgs of
-        Just args' -> evalAtTensor nameCtx evalApp eval args'
-        Nothing -> evalAtTensor nameCtx evalApp eval unswappedArgs
+      evalAtTensor nameCtx evalApp eval $ AtTensorArgs tElem d ds xs'' i''
 
--- | Index-through-transpose, any rank.  A fully-consumed indexing chain
--- `(transpose t) ! i₁ ! … ! iₙ` (so the result is a scalar) equals the
--- index-reversed `t ! iₙ ! … ! i₁`, because `transpose` reverses axis order.
--- Used by the verifier (which decomposes every tensor to scalars before
--- linearisation, so the transposed tensor is always fully consumed there);
--- a soundness-preserving identity for any caller. Returns `Nothing` if the
--- chain isn't a fully-consumed indexing of a `transpose`.
-rewriteTransposeAt ::
-  AtTensorArgs (Value Builtin) ->
-  Maybe (AtTensorArgs (Value Builtin))
-rewriteTransposeAt topArgs@(AtTensorArgs tElem _ outerRemDims _ _) = do
-  -- Whole transposed tensor consumed (scalar result) — only then is it a pure
-  -- index permutation.
-  IDimNil <- pure outerRemDims
-  (underlying, pairs) <- collect topArgs []
-  -- `pairs` (outer→inner) is [(d₁, iₙ), (d₂, iₙ₋₁), …, (dₙ, i₁)] where `t` has
-  -- shape [d₁,…,dₙ]; rebuild `underlying ! iₙ ! iₙ₋₁ ! … ! i₁`.
-  case reverse pairs of
-    [] -> Nothing -- unreachable: `topArgs` is itself an `at`
-    (lastD, lastIdx) : revInit -> do
-      let dims = map fst pairs
-          peelStep (acc, j) (dj, idx) =
-            let remDims = foldr IDimCons IDimNil (drop (j + 1) dims)
-             in (mkExpr accessAtTensor (AtTensorArgs tElem dj remDims acc idx), j + 1)
-          (innerExpr, _) = foldl peelStep (underlying, 0 :: Int) (reverse revInit)
-      pure (AtTensorArgs tElem lastD IDimNil innerExpr lastIdx)
-  where
-    collect (AtTensorArgs _ d _remDims tensor idx) acc =
-      case getExpr accessTranspose tensor of
-        Just (TransposeArgs _ _ underlying) -> Just (underlying, reverse ((d, idx) : acc))
-        Nothing -> case getExpr accessAtTensor tensor of
-          Just innerArgs -> collect innerArgs ((d, idx) : acc)
-          Nothing -> Nothing
+unblockTranspose ::
+  (MonadUnblock m) =>
+  UnblockingFunction m ->
+  TransposeArgs (Value Builtin) ->
+  m (Value Builtin)
+unblockTranspose unblock (TransposeArgs t ds xs) = do
+  xs' <- unblock xs
+  liftIf xs' $ \xs'' ->
+    evalTranspose $ TransposeArgs t ds xs''
 
 unblockForeachTensor ::
   (MonadUnblock m) =>
