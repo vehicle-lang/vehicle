@@ -1,0 +1,106 @@
+{
+  "queryMetaData": {
+    "tag": "NonTrivial",
+    "contents": {
+      "tag": "Query",
+      "contents": {
+        "queries": {
+          "unDisjunctAll": [
+            {
+              "variableStore": {
+                "vehicleVariableCtx": [
+                  "f₀[output]!2!1",
+                  "f₀[output]!2!0",
+                  "f₀[output]!2",
+                  "f₀[output]!1!1",
+                  "f₀[output]!1!0",
+                  "f₀[output]!1",
+                  "f₀[output]!0!1",
+                  "f₀[output]!0!0",
+                  "f₀[output]!0",
+                  "f₀[output]",
+                  "f₀[input]!1",
+                  "f₀[input]!0",
+                  "f₀[input]"
+                ],
+                "userVariables": [],
+                "queryVariableMapping": {
+                  "f_Y[2, 1]": 12,
+                  "f_Y[2, 0]": 11,
+                  "f_Y[1, 1]": 9,
+                  "f_Y[1, 0]": 8,
+                  "f_Y[0, 1]": 6,
+                  "f_Y[0, 0]": 5,
+                  "f_X[1]": 2,
+                  "f_X[0]": 1
+                }
+              },
+              "variableCompilationTrace": {
+                "reconstructionSteps": [
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      {
+                        "nestedTensorShape": [
+                          2
+                        ],
+                        "nestedStartingVariable": 0
+                      },
+                      "AllDimensions"
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      {
+                        "nestedTensorShape": [
+                          3,
+                          2
+                        ],
+                        "nestedStartingVariable": 3
+                      },
+                      "AllDimensions"
+                    ]
+                  }
+                ]
+              },
+              "queryAddress": [
+                {
+                  "propertyName": "positionUnderLimit",
+                  "propertyIndices": [],
+                  "propertyID": 1
+                },
+                1
+              ],
+              "metaNetwork": [
+                [
+                  "f",
+                  {
+                    "networkType": {
+                      "outputTensor": {
+                        "dimensions": [
+                          3,
+                          2
+                        ],
+                        "baseType": []
+                      },
+                      "inputTensor": {
+                        "dimensions": [
+                          2
+                        ],
+                        "baseType": []
+                      }
+                    },
+                    "networkFilepath": "fake.onnx"
+                  },
+                  1
+                ]
+              ]
+            }
+          ]
+        },
+        "negated": false
+      }
+    }
+  }
+}

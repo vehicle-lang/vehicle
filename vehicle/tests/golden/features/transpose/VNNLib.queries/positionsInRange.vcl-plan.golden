@@ -1,0 +1,813 @@
+{
+  "queryMetaData": {
+    "tag": "NonTrivial",
+    "contents": {
+      "tag": "Conjunct",
+      "contents": {
+        "unConjunctAll": [
+          {
+            "tag": "Query",
+            "contents": {
+              "queries": {
+                "unDisjunctAll": [
+                  {
+                    "variableStore": {
+                      "vehicleVariableCtx": [
+                        "f₀[output]!2!1",
+                        "f₀[output]!2!0",
+                        "f₀[output]!2",
+                        "f₀[output]!1!1",
+                        "f₀[output]!1!0",
+                        "f₀[output]!1",
+                        "f₀[output]!0!1",
+                        "f₀[output]!0!0",
+                        "f₀[output]!0",
+                        "f₀[output]",
+                        "f₀[input]!1",
+                        "f₀[input]!0",
+                        "f₀[input]"
+                      ],
+                      "userVariables": [],
+                      "queryVariableMapping": {
+                        "f_Y[2, 1]": 12,
+                        "f_Y[2, 0]": 11,
+                        "f_Y[1, 1]": 9,
+                        "f_Y[1, 0]": 8,
+                        "f_Y[0, 1]": 6,
+                        "f_Y[0, 0]": 5,
+                        "f_X[1]": 2,
+                        "f_X[0]": 1
+                      }
+                    },
+                    "variableCompilationTrace": {
+                      "reconstructionSteps": [
+                        {
+                          "tag": "ReconstructTensorVariable",
+                          "contents": [
+                            {
+                              "nestedTensorShape": [
+                                2
+                              ],
+                              "nestedStartingVariable": 0
+                            },
+                            "AllDimensions"
+                          ]
+                        },
+                        {
+                          "tag": "ReconstructTensorVariable",
+                          "contents": [
+                            {
+                              "nestedTensorShape": [
+                                3,
+                                2
+                              ],
+                              "nestedStartingVariable": 3
+                            },
+                            "AllDimensions"
+                          ]
+                        }
+                      ]
+                    },
+                    "queryAddress": [
+                      {
+                        "propertyName": "positionsInRange",
+                        "propertyIndices": [],
+                        "propertyID": 0
+                      },
+                      1
+                    ],
+                    "metaNetwork": [
+                      [
+                        "f",
+                        {
+                          "networkType": {
+                            "outputTensor": {
+                              "dimensions": [
+                                3,
+                                2
+                              ],
+                              "baseType": []
+                            },
+                            "inputTensor": {
+                              "dimensions": [
+                                2
+                              ],
+                              "baseType": []
+                            }
+                          },
+                          "networkFilepath": "fake.onnx"
+                        },
+                        1
+                      ]
+                    ]
+                  }
+                ]
+              },
+              "negated": false
+            }
+          },
+          {
+            "tag": "Query",
+            "contents": {
+              "queries": {
+                "unDisjunctAll": [
+                  {
+                    "variableStore": {
+                      "vehicleVariableCtx": [
+                        "f₀[output]!2!1",
+                        "f₀[output]!2!0",
+                        "f₀[output]!2",
+                        "f₀[output]!1!1",
+                        "f₀[output]!1!0",
+                        "f₀[output]!1",
+                        "f₀[output]!0!1",
+                        "f₀[output]!0!0",
+                        "f₀[output]!0",
+                        "f₀[output]",
+                        "f₀[input]!1",
+                        "f₀[input]!0",
+                        "f₀[input]",
+                        "f₀[output]!2!1",
+                        "f₀[output]!2!0",
+                        "f₀[output]!2",
+                        "f₀[output]!1!1",
+                        "f₀[output]!1!0",
+                        "f₀[output]!1",
+                        "f₀[output]!0!1",
+                        "f₀[output]!0!0",
+                        "f₀[output]!0",
+                        "f₀[output]",
+                        "f₀[input]!1",
+                        "f₀[input]!0",
+                        "f₀[input]"
+                      ],
+                      "userVariables": [],
+                      "queryVariableMapping": {
+                        "f_Y[2, 1]": 25,
+                        "f_Y[2, 0]": 24,
+                        "f_Y[1, 1]": 22,
+                        "f_Y[1, 0]": 21,
+                        "f_Y[0, 1]": 19,
+                        "f_Y[0, 0]": 18,
+                        "f_X[1]": 15,
+                        "f_X[0]": 14
+                      }
+                    },
+                    "variableCompilationTrace": {
+                      "reconstructionSteps": [
+                        {
+                          "tag": "ReconstructTensorVariable",
+                          "contents": [
+                            {
+                              "nestedTensorShape": [
+                                2
+                              ],
+                              "nestedStartingVariable": 13
+                            },
+                            "AllDimensions"
+                          ]
+                        },
+                        {
+                          "tag": "ReconstructTensorVariable",
+                          "contents": [
+                            {
+                              "nestedTensorShape": [
+                                3,
+                                2
+                              ],
+                              "nestedStartingVariable": 16
+                            },
+                            "AllDimensions"
+                          ]
+                        }
+                      ]
+                    },
+                    "queryAddress": [
+                      {
+                        "propertyName": "positionsInRange",
+                        "propertyIndices": [],
+                        "propertyID": 0
+                      },
+                      2
+                    ],
+                    "metaNetwork": [
+                      [
+                        "f",
+                        {
+                          "networkType": {
+                            "outputTensor": {
+                              "dimensions": [
+                                3,
+                                2
+                              ],
+                              "baseType": []
+                            },
+                            "inputTensor": {
+                              "dimensions": [
+                                2
+                              ],
+                              "baseType": []
+                            }
+                          },
+                          "networkFilepath": "fake.onnx"
+                        },
+                        1
+                      ]
+                    ]
+                  }
+                ]
+              },
+              "negated": false
+            }
+          },
+          {
+            "tag": "Query",
+            "contents": {
+              "queries": {
+                "unDisjunctAll": [
+                  {
+                    "variableStore": {
+                      "vehicleVariableCtx": [
+                        "f₀[output]!2!1",
+                        "f₀[output]!2!0",
+                        "f₀[output]!2",
+                        "f₀[output]!1!1",
+                        "f₀[output]!1!0",
+                        "f₀[output]!1",
+                        "f₀[output]!0!1",
+                        "f₀[output]!0!0",
+                        "f₀[output]!0",
+                        "f₀[output]",
+                        "f₀[input]!1",
+                        "f₀[input]!0",
+                        "f₀[input]",
+                        "f₀[output]!2!1",
+                        "f₀[output]!2!0",
+                        "f₀[output]!2",
+                        "f₀[output]!1!1",
+                        "f₀[output]!1!0",
+                        "f₀[output]!1",
+                        "f₀[output]!0!1",
+                        "f₀[output]!0!0",
+                        "f₀[output]!0",
+                        "f₀[output]",
+                        "f₀[input]!1",
+                        "f₀[input]!0",
+                        "f₀[input]",
+                        "f₀[output]!2!1",
+                        "f₀[output]!2!0",
+                        "f₀[output]!2",
+                        "f₀[output]!1!1",
+                        "f₀[output]!1!0",
+                        "f₀[output]!1",
+                        "f₀[output]!0!1",
+                        "f₀[output]!0!0",
+                        "f₀[output]!0",
+                        "f₀[output]",
+                        "f₀[input]!1",
+                        "f₀[input]!0",
+                        "f₀[input]"
+                      ],
+                      "userVariables": [],
+                      "queryVariableMapping": {
+                        "f_Y[2, 1]": 38,
+                        "f_Y[2, 0]": 37,
+                        "f_Y[1, 1]": 35,
+                        "f_Y[1, 0]": 34,
+                        "f_Y[0, 1]": 32,
+                        "f_Y[0, 0]": 31,
+                        "f_X[1]": 28,
+                        "f_X[0]": 27
+                      }
+                    },
+                    "variableCompilationTrace": {
+                      "reconstructionSteps": [
+                        {
+                          "tag": "ReconstructTensorVariable",
+                          "contents": [
+                            {
+                              "nestedTensorShape": [
+                                2
+                              ],
+                              "nestedStartingVariable": 26
+                            },
+                            "AllDimensions"
+                          ]
+                        },
+                        {
+                          "tag": "ReconstructTensorVariable",
+                          "contents": [
+                            {
+                              "nestedTensorShape": [
+                                3,
+                                2
+                              ],
+                              "nestedStartingVariable": 29
+                            },
+                            "AllDimensions"
+                          ]
+                        }
+                      ]
+                    },
+                    "queryAddress": [
+                      {
+                        "propertyName": "positionsInRange",
+                        "propertyIndices": [],
+                        "propertyID": 0
+                      },
+                      3
+                    ],
+                    "metaNetwork": [
+                      [
+                        "f",
+                        {
+                          "networkType": {
+                            "outputTensor": {
+                              "dimensions": [
+                                3,
+                                2
+                              ],
+                              "baseType": []
+                            },
+                            "inputTensor": {
+                              "dimensions": [
+                                2
+                              ],
+                              "baseType": []
+                            }
+                          },
+                          "networkFilepath": "fake.onnx"
+                        },
+                        1
+                      ]
+                    ]
+                  }
+                ]
+              },
+              "negated": false
+            }
+          },
+          {
+            "tag": "Query",
+            "contents": {
+              "queries": {
+                "unDisjunctAll": [
+                  {
+                    "variableStore": {
+                      "vehicleVariableCtx": [
+                        "f₀[output]!2!1",
+                        "f₀[output]!2!0",
+                        "f₀[output]!2",
+                        "f₀[output]!1!1",
+                        "f₀[output]!1!0",
+                        "f₀[output]!1",
+                        "f₀[output]!0!1",
+                        "f₀[output]!0!0",
+                        "f₀[output]!0",
+                        "f₀[output]",
+                        "f₀[input]!1",
+                        "f₀[input]!0",
+                        "f₀[input]",
+                        "f₀[output]!2!1",
+                        "f₀[output]!2!0",
+                        "f₀[output]!2",
+                        "f₀[output]!1!1",
+                        "f₀[output]!1!0",
+                        "f₀[output]!1",
+                        "f₀[output]!0!1",
+                        "f₀[output]!0!0",
+                        "f₀[output]!0",
+                        "f₀[output]",
+                        "f₀[input]!1",
+                        "f₀[input]!0",
+                        "f₀[input]",
+                        "f₀[output]!2!1",
+                        "f₀[output]!2!0",
+                        "f₀[output]!2",
+                        "f₀[output]!1!1",
+                        "f₀[output]!1!0",
+                        "f₀[output]!1",
+                        "f₀[output]!0!1",
+                        "f₀[output]!0!0",
+                        "f₀[output]!0",
+                        "f₀[output]",
+                        "f₀[input]!1",
+                        "f₀[input]!0",
+                        "f₀[input]",
+                        "f₀[output]!2!1",
+                        "f₀[output]!2!0",
+                        "f₀[output]!2",
+                        "f₀[output]!1!1",
+                        "f₀[output]!1!0",
+                        "f₀[output]!1",
+                        "f₀[output]!0!1",
+                        "f₀[output]!0!0",
+                        "f₀[output]!0",
+                        "f₀[output]",
+                        "f₀[input]!1",
+                        "f₀[input]!0",
+                        "f₀[input]"
+                      ],
+                      "userVariables": [],
+                      "queryVariableMapping": {
+                        "f_Y[2, 1]": 51,
+                        "f_Y[2, 0]": 50,
+                        "f_Y[1, 1]": 48,
+                        "f_Y[1, 0]": 47,
+                        "f_Y[0, 1]": 45,
+                        "f_Y[0, 0]": 44,
+                        "f_X[1]": 41,
+                        "f_X[0]": 40
+                      }
+                    },
+                    "variableCompilationTrace": {
+                      "reconstructionSteps": [
+                        {
+                          "tag": "ReconstructTensorVariable",
+                          "contents": [
+                            {
+                              "nestedTensorShape": [
+                                2
+                              ],
+                              "nestedStartingVariable": 39
+                            },
+                            "AllDimensions"
+                          ]
+                        },
+                        {
+                          "tag": "ReconstructTensorVariable",
+                          "contents": [
+                            {
+                              "nestedTensorShape": [
+                                3,
+                                2
+                              ],
+                              "nestedStartingVariable": 42
+                            },
+                            "AllDimensions"
+                          ]
+                        }
+                      ]
+                    },
+                    "queryAddress": [
+                      {
+                        "propertyName": "positionsInRange",
+                        "propertyIndices": [],
+                        "propertyID": 0
+                      },
+                      4
+                    ],
+                    "metaNetwork": [
+                      [
+                        "f",
+                        {
+                          "networkType": {
+                            "outputTensor": {
+                              "dimensions": [
+                                3,
+                                2
+                              ],
+                              "baseType": []
+                            },
+                            "inputTensor": {
+                              "dimensions": [
+                                2
+                              ],
+                              "baseType": []
+                            }
+                          },
+                          "networkFilepath": "fake.onnx"
+                        },
+                        1
+                      ]
+                    ]
+                  }
+                ]
+              },
+              "negated": false
+            }
+          },
+          {
+            "tag": "Query",
+            "contents": {
+              "queries": {
+                "unDisjunctAll": [
+                  {
+                    "variableStore": {
+                      "vehicleVariableCtx": [
+                        "f₀[output]!2!1",
+                        "f₀[output]!2!0",
+                        "f₀[output]!2",
+                        "f₀[output]!1!1",
+                        "f₀[output]!1!0",
+                        "f₀[output]!1",
+                        "f₀[output]!0!1",
+                        "f₀[output]!0!0",
+                        "f₀[output]!0",
+                        "f₀[output]",
+                        "f₀[input]!1",
+                        "f₀[input]!0",
+                        "f₀[input]",
+                        "f₀[output]!2!1",
+                        "f₀[output]!2!0",
+                        "f₀[output]!2",
+                        "f₀[output]!1!1",
+                        "f₀[output]!1!0",
+                        "f₀[output]!1",
+                        "f₀[output]!0!1",
+                        "f₀[output]!0!0",
+                        "f₀[output]!0",
+                        "f₀[output]",
+                        "f₀[input]!1",
+                        "f₀[input]!0",
+                        "f₀[input]",
+                        "f₀[output]!2!1",
+                        "f₀[output]!2!0",
+                        "f₀[output]!2",
+                        "f₀[output]!1!1",
+                        "f₀[output]!1!0",
+                        "f₀[output]!1",
+                        "f₀[output]!0!1",
+                        "f₀[output]!0!0",
+                        "f₀[output]!0",
+                        "f₀[output]",
+                        "f₀[input]!1",
+                        "f₀[input]!0",
+                        "f₀[input]",
+                        "f₀[output]!2!1",
+                        "f₀[output]!2!0",
+                        "f₀[output]!2",
+                        "f₀[output]!1!1",
+                        "f₀[output]!1!0",
+                        "f₀[output]!1",
+                        "f₀[output]!0!1",
+                        "f₀[output]!0!0",
+                        "f₀[output]!0",
+                        "f₀[output]",
+                        "f₀[input]!1",
+                        "f₀[input]!0",
+                        "f₀[input]",
+                        "f₀[output]!2!1",
+                        "f₀[output]!2!0",
+                        "f₀[output]!2",
+                        "f₀[output]!1!1",
+                        "f₀[output]!1!0",
+                        "f₀[output]!1",
+                        "f₀[output]!0!1",
+                        "f₀[output]!0!0",
+                        "f₀[output]!0",
+                        "f₀[output]",
+                        "f₀[input]!1",
+                        "f₀[input]!0",
+                        "f₀[input]"
+                      ],
+                      "userVariables": [],
+                      "queryVariableMapping": {
+                        "f_Y[2, 1]": 64,
+                        "f_Y[2, 0]": 63,
+                        "f_Y[1, 1]": 61,
+                        "f_Y[1, 0]": 60,
+                        "f_Y[0, 1]": 58,
+                        "f_Y[0, 0]": 57,
+                        "f_X[1]": 54,
+                        "f_X[0]": 53
+                      }
+                    },
+                    "variableCompilationTrace": {
+                      "reconstructionSteps": [
+                        {
+                          "tag": "ReconstructTensorVariable",
+                          "contents": [
+                            {
+                              "nestedTensorShape": [
+                                2
+                              ],
+                              "nestedStartingVariable": 52
+                            },
+                            "AllDimensions"
+                          ]
+                        },
+                        {
+                          "tag": "ReconstructTensorVariable",
+                          "contents": [
+                            {
+                              "nestedTensorShape": [
+                                3,
+                                2
+                              ],
+                              "nestedStartingVariable": 55
+                            },
+                            "AllDimensions"
+                          ]
+                        }
+                      ]
+                    },
+                    "queryAddress": [
+                      {
+                        "propertyName": "positionsInRange",
+                        "propertyIndices": [],
+                        "propertyID": 0
+                      },
+                      5
+                    ],
+                    "metaNetwork": [
+                      [
+                        "f",
+                        {
+                          "networkType": {
+                            "outputTensor": {
+                              "dimensions": [
+                                3,
+                                2
+                              ],
+                              "baseType": []
+                            },
+                            "inputTensor": {
+                              "dimensions": [
+                                2
+                              ],
+                              "baseType": []
+                            }
+                          },
+                          "networkFilepath": "fake.onnx"
+                        },
+                        1
+                      ]
+                    ]
+                  }
+                ]
+              },
+              "negated": false
+            }
+          },
+          {
+            "tag": "Query",
+            "contents": {
+              "queries": {
+                "unDisjunctAll": [
+                  {
+                    "variableStore": {
+                      "vehicleVariableCtx": [
+                        "f₀[output]!2!1",
+                        "f₀[output]!2!0",
+                        "f₀[output]!2",
+                        "f₀[output]!1!1",
+                        "f₀[output]!1!0",
+                        "f₀[output]!1",
+                        "f₀[output]!0!1",
+                        "f₀[output]!0!0",
+                        "f₀[output]!0",
+                        "f₀[output]",
+                        "f₀[input]!1",
+                        "f₀[input]!0",
+                        "f₀[input]",
+                        "f₀[output]!2!1",
+                        "f₀[output]!2!0",
+                        "f₀[output]!2",
+                        "f₀[output]!1!1",
+                        "f₀[output]!1!0",
+                        "f₀[output]!1",
+                        "f₀[output]!0!1",
+                        "f₀[output]!0!0",
+                        "f₀[output]!0",
+                        "f₀[output]",
+                        "f₀[input]!1",
+                        "f₀[input]!0",
+                        "f₀[input]",
+                        "f₀[output]!2!1",
+                        "f₀[output]!2!0",
+                        "f₀[output]!2",
+                        "f₀[output]!1!1",
+                        "f₀[output]!1!0",
+                        "f₀[output]!1",
+                        "f₀[output]!0!1",
+                        "f₀[output]!0!0",
+                        "f₀[output]!0",
+                        "f₀[output]",
+                        "f₀[input]!1",
+                        "f₀[input]!0",
+                        "f₀[input]",
+                        "f₀[output]!2!1",
+                        "f₀[output]!2!0",
+                        "f₀[output]!2",
+                        "f₀[output]!1!1",
+                        "f₀[output]!1!0",
+                        "f₀[output]!1",
+                        "f₀[output]!0!1",
+                        "f₀[output]!0!0",
+                        "f₀[output]!0",
+                        "f₀[output]",
+                        "f₀[input]!1",
+                        "f₀[input]!0",
+                        "f₀[input]",
+                        "f₀[output]!2!1",
+                        "f₀[output]!2!0",
+                        "f₀[output]!2",
+                        "f₀[output]!1!1",
+                        "f₀[output]!1!0",
+                        "f₀[output]!1",
+                        "f₀[output]!0!1",
+                        "f₀[output]!0!0",
+                        "f₀[output]!0",
+                        "f₀[output]",
+                        "f₀[input]!1",
+                        "f₀[input]!0",
+                        "f₀[input]",
+                        "f₀[output]!2!1",
+                        "f₀[output]!2!0",
+                        "f₀[output]!2",
+                        "f₀[output]!1!1",
+                        "f₀[output]!1!0",
+                        "f₀[output]!1",
+                        "f₀[output]!0!1",
+                        "f₀[output]!0!0",
+                        "f₀[output]!0",
+                        "f₀[output]",
+                        "f₀[input]!1",
+                        "f₀[input]!0",
+                        "f₀[input]"
+                      ],
+                      "userVariables": [],
+                      "queryVariableMapping": {
+                        "f_Y[2, 1]": 77,
+                        "f_Y[2, 0]": 76,
+                        "f_Y[1, 1]": 74,
+                        "f_Y[1, 0]": 73,
+                        "f_Y[0, 1]": 71,
+                        "f_Y[0, 0]": 70,
+                        "f_X[1]": 67,
+                        "f_X[0]": 66
+                      }
+                    },
+                    "variableCompilationTrace": {
+                      "reconstructionSteps": [
+                        {
+                          "tag": "ReconstructTensorVariable",
+                          "contents": [
+                            {
+                              "nestedTensorShape": [
+                                2
+                              ],
+                              "nestedStartingVariable": 65
+                            },
+                            "AllDimensions"
+                          ]
+                        },
+                        {
+                          "tag": "ReconstructTensorVariable",
+                          "contents": [
+                            {
+                              "nestedTensorShape": [
+                                3,
+                                2
+                              ],
+                              "nestedStartingVariable": 68
+                            },
+                            "AllDimensions"
+                          ]
+                        }
+                      ]
+                    },
+                    "queryAddress": [
+                      {
+                        "propertyName": "positionsInRange",
+                        "propertyIndices": [],
+                        "propertyID": 0
+                      },
+                      6
+                    ],
+                    "metaNetwork": [
+                      [
+                        "f",
+                        {
+                          "networkType": {
+                            "outputTensor": {
+                              "dimensions": [
+                                3,
+                                2
+                              ],
+                              "baseType": []
+                            },
+                            "inputTensor": {
+                              "dimensions": [
+                                2
+                              ],
+                              "baseType": []
+                            }
+                          },
+                          "networkFilepath": "fake.onnx"
+                        },
+                        1
+                      ]
+                    ]
+                  }
+                ]
+              },
+              "negated": false
+            }
+          }
+        ]
+      }
+    }
+  }
+}

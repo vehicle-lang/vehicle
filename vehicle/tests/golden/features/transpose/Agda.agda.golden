@@ -17,16 +17,16 @@ open import Data.List.Base
 
 module Agda where
 
-postulate f : Tensor ℚ (2 ∷ []) → Tensor ℚ (4 ∷ (2 ∷ []))
+postulate f : Tensor ℚ (2 ∷ []) → Tensor ℚ (3 ∷ (2 ∷ []))
 
-trajectory : Tensor ℚ (4 ∷ (2 ∷ []))
+trajectory : Tensor ℚ (3 ∷ (2 ∷ []))
 trajectory = f (0∷ᵥ0∷ᵥ[]ᵥ)
 
-positions : Tensor ℚ (4 ∷ [])
+positions : Tensor ℚ (3 ∷ [])
 positions = transpose trajectory ! # 0
 
 postulate positionsInRange : Fin.All (λ t → 0 ≤ (positions ! t) × (positions ! t) ≤ 10)
 
-postulate positionUnderLimit : positions ≤ constTensor 10 (4 ∷ [])
+postulate positionUnderLimit : positions ≤ constTensor 10 (3 ∷ [])
 
 postulate boundedScalar : ∃ λ v → (0 ≤ v × v ≤ 1) × Fin.All (λ t → (positions ! t) ≥ v)

@@ -14,14 +14,14 @@ Open Scope order_scope.
 
 Parameter R : realType.
 
-Parameter f : 'nT[R]_(2%N :: nil) -> 'nT[R]_(4%N :: (2%N :: nil)).
+Parameter f : 'nT[R]_(2%N :: nil) -> 'nT[R]_(3%N :: (2%N :: nil)).
 
-Definition trajectory : 'nT[R]_(4%N :: (2%N :: nil)) := f [tensor^^= (0 : R); (0 : R)].
+Definition trajectory : 'nT[R]_(3%N :: (2%N :: nil)) := f [tensor^^= (0 : R); (0 : R)].
 
-Definition positions : 'nT[R]_(4%N :: nil) := (transpose_t trajectory) ^^ 0.
+Definition positions : 'nT[R]_(3%N :: nil) := (transpose_t trajectory) ^^ 0.
 
 Axiom positionsInRange : forallIndex (fun t => const_t (0 : R) <= positions ^^ t /\ positions ^^ t <= const_t (10 : R)).
 
-Axiom positionUnderLimit : positions <= const_t const_t (10 : R) (4%N :: nil).
+Axiom positionUnderLimit : positions <= const_t const_t (10 : R) (3%N :: nil).
 
 Axiom boundedScalar : exists v, (const_t (0 : R) <= v /\ v <= const_t (1 : R)) /\ forallIndex (fun t => positions ^^ t >= v).

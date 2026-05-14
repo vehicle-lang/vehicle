@@ -26,9 +26,12 @@ begin
 
     fixes  f  :: " R tensor \<Rightarrow> R FlexTensor "
 
-    assumes  positionsInRange :  " (forallIndex (4 :: nat)  (\<lambda>  t . (((leqTensorReduced (flextensor_from_vec [] [ (((0 :: R) )) ]) (flex_subtensor ((flex_subtensor ((tensor_transpose ((f ((flextensor_from_vec [2] [(((0 :: R) )), (((0 :: R) ))])))))) (Abs_FlexIndex 0))) t))) \<and> ((leqTensorReduced (flex_subtensor ((flex_subtensor ((tensor_transpose ((f ((flextensor_from_vec [2] [(((0 :: R) )), (((0 :: R) ))])))))) (Abs_FlexIndex 0))) t) (flextensor_from_vec [] [ (((10 :: R) )) ])))))) "
-    assumes  positionUnderLimit :  " (leqTensorReduced (flex_subtensor ((tensor_transpose ((f ((flextensor_from_vec [2] [(((0 :: R) )), (((0 :: R) ))])))))) (Abs_FlexIndex 0)) ((flextensor_from_vec [2] [(flextensor_from_vec [] [ (((10 :: R) )) ]), (4 :: nat) # [])])) "
-    assumes  boundedScalar :  " (\<exists> v. (((leqTensorReduced (flextensor_from_vec [] [ (((0 :: R) )) ]) v)) \<and> ((leqTensorReduced v (flextensor_from_vec [] [ (((1 :: R) )) ])))) \<and> (forallIndex (4 :: nat)  (\<lambda>  t . ((geqTensorReduced (flex_subtensor ((flex_subtensor ((tensor_transpose ((f ((flextensor_from_vec [2] [(((0 :: R) )), (((0 :: R) ))])))))) (Abs_FlexIndex 0))) t) v))))) "
+    defines  trajectory_def: " trajectory \<equiv> ( (f ((flextensor_from_vec [2] [(((0 :: R) )), (((0 :: R) ))]))) ) "
+    defines  positions_def: " positions \<equiv> ( (flex_subtensor ((tensor_transpose trajectory)) (Abs_FlexIndex 0)) ) "
+
+    assumes  positionsInRange :  " (forallIndex (3 :: nat)  (\<lambda>  t . (((leqTensorReduced (flextensor_from_vec [] [ (((0 :: R) )) ]) (flex_subtensor positions t))) \<and> ((leqTensorReduced (flex_subtensor positions t) (flextensor_from_vec [] [ (((10 :: R) )) ])))))) "
+    assumes  positionUnderLimit :  " (leqTensorReduced positions ((flextensor_from_vec [2] [(flextensor_from_vec [] [ (((10 :: R) )) ]), (3 :: nat) # [])])) "
+    assumes  boundedScalar :  " (\<exists> v. (((leqTensorReduced (flextensor_from_vec [] [ (((0 :: R) )) ]) v)) \<and> ((leqTensorReduced v (flextensor_from_vec [] [ (((1 :: R) )) ])))) \<and> (forallIndex (3 :: nat)  (\<lambda>  t . ((geqTensorReduced (flex_subtensor positions t) v))))) "
 
     begin
 
