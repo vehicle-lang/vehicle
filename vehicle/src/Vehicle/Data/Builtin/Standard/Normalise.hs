@@ -2,6 +2,7 @@
 
 module Vehicle.Data.Builtin.Standard.Normalise
   ( foldReduceAndComparison,
+    evalTranspose,
   )
 where
 
@@ -14,6 +15,8 @@ import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.Value
+import Vehicle.Data.Tensor (Tensor, TensorShape)
+import Vehicle.Data.Tensor qualified as Tensor
 import Vehicle.Prelude (GenericArg (..), HasIdentifier (identifierOf))
 
 ---------------------------------------------------------------------------------
@@ -144,44 +147,83 @@ evalVectorToList args@(VectorToListArgs t d xs) =
     INatLiteral n | n == length xs -> mkListExpr (argExpr t) xs
     _ -> mkExpr accessFromVectorToList args
 
--- | Transpose normalisation. Fold concrete tensors; otherwise leave it for
--- index-through-transpose in `evalAtTensor`.
 evalTranspose :: (MonadNormBuiltin m) => EvalSimple TransposeArgs Value Builtin m
-evalTranspose args@(TransposeArgs _ resultDims tensor) =
+evalTranspose args@(TransposeArgs _ inputDims tensor) =
   return $
     fromMaybe (mkExpr accessTranspose args) $
-      -- ConstTensor is uniform: only dims change.
-      goConst <|> goStack2D
+      goLiteral <|> goConst <|> goStack
   where
-    goConst :: Maybe (Value Builtin)
-    goConst = case getExpr accessConstTensor tensor of
-      Just (ConstTensorArgs t v _) -> Just $ mkExpr accessConstTensor (ConstTensorArgs t v resultDims)
-      Nothing -> Nothing
+    revDims :: Maybe (Value Builtin)
+    revDims = mkDims . reverse <$> getDims inputDims
 
-    -- 2-D Stack of Stacks: rebuild rows by swapping indices.
-    goStack2D :: Maybe (Value Builtin)
-    goStack2D = case getExpr accessStackTensor tensor of
-      Just (StackTensorArgs t outerDim _ rows) -> do
-        innerStacks <- traverse (getExpr accessStackTensor) rows
-        case innerStacks of
-          [] -> Nothing
-          firstStack@(StackTensorArgs _ innerDim innerRest _) : _ ->
-            -- Only handle 2-D for now: the inner stacks must have empty
-            -- remaining dims.
-            case innerRest of
-              IDimNil -> do
-                let innerCols = map stackElements innerStacks
-                let n = length (stackElements firstStack)
-                if any (\xs -> length xs /= n) innerCols
-                  then Nothing
-                  else do
-                    let transposedRows =
-                          [ mkExpr accessStackTensor (StackTensorArgs t outerDim IDimNil [row !! j | row <- innerCols])
-                            | j <- [0 .. n - 1]
-                          ]
-                    Just $ mkExpr accessStackTensor (StackTensorArgs t innerDim (IDimCons outerDim IDimNil) transposedRows)
-              _ -> Nothing
-      Nothing -> Nothing
+    goLiteral :: Maybe (Value Builtin)
+    goLiteral =
+      foldTensorLit accessNatTensorLiteral
+        <|> foldTensorLit accessBoolTensorLiteral
+        <|> foldTensorLit accessRatTensorLiteral
+
+    foldTensorLit ::
+      (Eq a) =>
+      Accessor (Value Builtin) (Tensor a) ->
+      Maybe (Value Builtin)
+    foldTensorLit Access {getExpr = getLit, mkExpr = mkLit} = do
+      t <- getLit tensor
+      pure $ mkLit (Tensor.transposeTensor t)
+
+    goConst :: Maybe (Value Builtin)
+    goConst = do
+      ConstTensorArgs t v _ <- getExpr accessConstTensor tensor
+      rds <- revDims
+      pure $ mkExpr accessConstTensor (ConstTensorArgs t v rds)
+
+    goStack :: Maybe (Value Builtin)
+    goStack = do
+      shape <- getDims inputDims
+      leaves <- gatherStack shape tensor
+      pure $ buildStack tNat (reverse shape) (permuteFlat shape leaves)
+      where
+        tNat = INatType :: Value Builtin
+
+    gatherStack :: TensorShape -> Value Builtin -> Maybe [Value Builtin]
+    gatherStack [] v = Just [v]
+    gatherStack (d : ds) v = do
+      StackTensorArgs _ _ _ rows <- getExpr accessStackTensor v
+      if length rows /= d
+        then Nothing
+        else concat <$> traverse (gatherStack ds) rows
+
+    permuteFlat :: TensorShape -> [a] -> [a]
+    permuteFlat shape leaves =
+      [ leaves !! flattenIndices shape (reverse revIs)
+        | revIs <- allMultiIndices (reverse shape)
+      ]
+      where
+        flattenIndices ds is = sum (zipWith (*) is (tail (scanr (*) 1 ds)))
+
+    allMultiIndices :: TensorShape -> [[Int]]
+    allMultiIndices = \case
+      [] -> [[]]
+      d : ds -> [i : rest | i <- [0 .. d - 1], rest <- allMultiIndices ds]
+
+    buildStack :: Value Builtin -> TensorShape -> [Value Builtin] -> Value Builtin
+    buildStack _tElem [] [v] = v
+    buildStack _tElem [] _ = mkExpr accessTranspose args
+    buildStack tElem (d : ds) vs =
+      let chunkSize = product ds
+          rows = chunksOf chunkSize vs
+          subStacks = map (buildStack tElem ds) rows
+       in mkExpr
+            accessStackTensor
+            ( StackTensorArgs
+                tElem
+                (INatLiteral d)
+                (foldr (IDimCons . INatLiteral) IDimNil ds)
+                subStacks
+            )
+
+    chunksOf :: Int -> [a] -> [[a]]
+    chunksOf _ [] = []
+    chunksOf n xs = take n xs : chunksOf n (drop n xs)
 
 foldReduceAndComparison ::
   TensorReductionArgs (Value Builtin) ->
