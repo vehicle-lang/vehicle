@@ -763,20 +763,15 @@ End TensorMatrix.
 
 Section TensorTranspose.
 
-(* 2-D transpose. The general n-D case would either need a tabulate-and-
-   lookup primitive on `'nT[R]_(us)` (not currently exposed by mathcomp's
-   matrix module that Vehicle's tensor wraps) or a dependent-typed
-   bijection `'I_(\prod_(u <- us) u) <-> 'I_(\prod_(u <- rev us) u)` —
-   the cardinality is the same by commutativity of product but extracting
-   that as a usable permutation requires a recursive multi-index encoder
-   plus several `big_seq` lemmas. Tracked as a separate piece of work;
-   for now the Vehicle compiler emits transpose only at rank 2. *)
+(* 2-D transpose only. The general n-D case needs a tabulate-and-lookup
+   primitive on `'nT[R]_(us)` that mathcomp's matrix module does not yet
+   expose. *)
 Context {R : Type} {n m : nat}.
 
 Definition transpose_t (t : 'nT[R]_([:: n.+1; m.+1])) : 'nT[R]_([:: m.+1; n.+1]) :=
   \tensor^^j \tensor^^i t^^i^^j.
 
-(* Correctness: `transpose_t` swaps the two axes — `(transpose_t t)[j][i] = t[i][j]`. *)
+(* Correctness: `transpose_t` swaps the two axes: `(transpose_t t)[j][i] = t[i][j]`. *)
 Lemma transpose_tE (t : 'nT[R]_([:: n.+1; m.+1])) (i : 'I_n.+1) (j : 'I_m.+1) :
   (transpose_t t)^^j^^i = t^^i^^j.
 Proof. by rewrite /transpose_t !nstackE. Qed.
