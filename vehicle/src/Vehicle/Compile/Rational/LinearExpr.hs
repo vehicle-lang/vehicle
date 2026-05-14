@@ -16,6 +16,7 @@ import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
+import Vehicle.Data.MaybeTrivial (trivialElim)
 import Vehicle.Data.Tensor (TensorShape, pattern ConstantTensor)
 import Vehicle.Data.Variable.Bound.Level
 import Prelude hiding (Applicative (..))
@@ -47,7 +48,7 @@ compileLinearAssertion toVar op shape x y = do
     linX <- compile (lift . toVar) shape x
     linY <- compile (lift . toVar) shape y
     boolOrAssertion <- comparisonToAssertion op linX linY
-    either (throwError . TrivialExpr) return boolOrAssertion
+    trivialElim (throwError . TrivialExpr) return boolOrAssertion
 
 compile ::
   forall m.
@@ -96,8 +97,9 @@ compile toVar shape = go
       VRatConstTensor {} -> unreduced
       VRatStackTensor {} -> unreduced
       VRatAt {} -> unreduced
+      VRatTensorNetworkApp {} -> unreduced
+      VDatasetOrParameter {} -> unreduced
       VRatRecordAcc {} -> unreduced
-      VRatTensorFreeVar {} -> unreduced
       VRatForeach {} -> unreduced
       VIfRatTensor {} -> unreduced
       -----------------------

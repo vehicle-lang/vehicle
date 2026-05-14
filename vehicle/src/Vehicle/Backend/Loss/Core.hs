@@ -25,15 +25,20 @@ type LossCtx =
     DifferentiableLogicImplementation
   )
 
-type MonadLogic m =
-  ( MonadCompile m,
+type MonadLogicCore m =
+  ( MonadLogger m,
     MonadReader LossCtx m,
     MonadFreeContext Builtin m,
     MonadTensorBoundContext m
   )
 
+type MonadLogic m =
+  ( MonadLogicCore m,
+    MonadError CompileError m
+  )
+
 runMonadLogicT ::
-  (MonadCompile m) =>
+  (MonadLogger m) =>
   DifferentiableLogicID ->
   DifferentiableLogicImplementation ->
   VDecl Builtin ->
@@ -56,23 +61,23 @@ getDeclProvenance = do
 getLogicField :: (MonadLogic m) => TensorDifferentiableLogicField -> m (Value LossBuiltin)
 getLogicField field = do
   (logic, _) <- getLogic
-  lookupLogicField field logic
+  return $ lookupLogicField field logic
 
 getLogicDirection :: (MonadLogic m) => m Bool
 getLogicDirection = do
   (_, minimise) <- getLogic
   return minimise
 
-lookupLogicField :: (MonadCompile m, Ord field, Pretty field) => field -> Map field value -> m value
+lookupLogicField :: (Ord field, Pretty field) => field -> Map field value -> value
 lookupLogicField field logic = case Map.lookup field logic of
-  Nothing -> compilerDeveloperError $ "Non-compiled logic field" <+> quotePretty field <+> "found"
-  Just value -> return value
+  Nothing -> developerError $ "Non-compiled logic field" <+> quotePretty field <+> "found"
+  Just value -> value
 
 --------------------------------------------------------------------------------
 -- Other
 --------------------------------------------------------------------------------
 
-unsupportedOperation :: (MonadLogic m) => UnAnnDoc -> m b
+unsupportedOperation :: (MonadLogic m, MonadError CompileError m) => UnAnnDoc -> m b
 unsupportedOperation op = do
   prov <- getDeclProvenance
   throwError $ UnsupportedLossOperation prov op

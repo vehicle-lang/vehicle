@@ -19,6 +19,7 @@ module Vehicle.Libraries.StandardLibrary
     hasMulIdent,
     hasDivIdent,
     hasComparisonIdent,
+    standardLibraryCompareRatTensorReduced,
   )
 where
 
@@ -29,6 +30,8 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text.Encoding (decodeUtf8)
 import Vehicle.Backend.Prelude
+import Vehicle.Data.Builtin.Core (ComparisonOp)
+import Vehicle.Data.Builtin.Core.BasicOperations (ComparisonOp (..))
 import Vehicle.Libraries
 import Vehicle.Libraries.Core (LibraryContent)
 import Vehicle.Prelude
@@ -100,6 +103,18 @@ isBuiltinModule = \case
 
 standardLibraryName :: LibraryName
 standardLibraryName = "std"
+
+standardLibraryCompareRatTensorReduced :: ComparisonOp -> Identifier
+standardLibraryCompareRatTensorReduced op = do
+  let prefix = case op of
+        Le -> "le"
+        Lt -> "lt"
+        Ge -> "ge"
+        Gt -> "gt"
+        Eq -> "eq"
+        Ne -> "ne"
+
+  standardLibIdent $ prefix <> "RatTensorReduced"
 
 standardLibraryContent :: LibraryContent
 standardLibraryContent =
