@@ -4,7 +4,7 @@ import Control.Monad (forM)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Version (Version (..))
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Resource (NetworkType (inputTensor, outputTensor), NetworkIOType (..))
+import Vehicle.Compile.Resource (NetworkIOType (..), NetworkType (inputTensor, outputTensor))
 import Vehicle.Data.Bound (BoundedValue (..), Domain (..), LowerBound (..), UpperBound (..))
 import Vehicle.Data.Tensor (TensorShape)
 import Vehicle.Verify.Core

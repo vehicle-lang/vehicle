@@ -563,7 +563,6 @@ evalAtTensor ctx evalApp eval args@(AtTensorArgs t d ds tensor index) =
         evalApp ctx fn [explicit index]
       _ -> Nothing
 
-
 unoptimisedEvalAtTensor ::
   forall builtin m.
   (MonadNormBuiltin m, PrintableBuiltin builtin, HasTensorLiterals Value builtin, BuiltinHasListLiterals builtin, BuiltinHasIndexLiterals builtin, HasTensorExpr Value builtin) =>

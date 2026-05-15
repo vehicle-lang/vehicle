@@ -22,11 +22,13 @@ import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Compile.Rational.LinearExpr (LinearityError (..), compileLinearAssertion)
+import Vehicle.Compile.Resource
 import Vehicle.Compile.Unblock (UnblockingActions (..))
 import Vehicle.Compile.Unblock qualified as Unblocking
 import Vehicle.Compile.Variable (createUserVar)
 import Vehicle.Data.Builtin.Interface.Normalise (evalAtTensor, unoptimisedEvalReduceAndTensor)
 import Vehicle.Data.Builtin.Standard
+import Vehicle.Data.Builtin.Standard.Scoping (constructFromTensorFreeVar, constructToTensorFreeVar)
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
@@ -34,11 +36,9 @@ import Vehicle.Data.MaybeTrivial
 import Vehicle.Data.Variable.Bound.Context.Name (getNameContext, prettyFriendlyInCtx)
 import Vehicle.Data.Variable.Bound.Context.Tensor (replaceTensorVariableWithStackedChildren)
 import Vehicle.Data.Variable.Bound.Level
+import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat (QueryFormat (..), supportsStrictInequalities)
 import Prelude hiding (Applicative (..))
-import Vehicle.Verify.Core
-import Vehicle.Compile.Resource
-import Vehicle.Data.Builtin.Standard.Scoping (constructFromTensorFreeVar, constructToTensorFreeVar)
 
 eliminateExists ::
   (MonadQueryStructure m) =>
@@ -252,7 +252,6 @@ unblockNetworkApplication unblockFnTensor unblockFnRecord ident (NetworkAppArgs 
     -- Unblock depending on the type of the output expression from our network
     NetworkRecordType {} -> unblockFnRecord transformedOutputVarExpr
     NetworkTensorType {} -> unblockFnTensor transformedOutputVarExpr
-
 
 --------------------------------------------------------------------------------
 -- Elimination operations

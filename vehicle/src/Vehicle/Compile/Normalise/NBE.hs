@@ -15,7 +15,7 @@ module Vehicle.Compile.Normalise.NBE
     evalInEmptyEnv,
     evalApp,
     findInstanceArg,
-    lookupIdentValue
+    lookupIdentValue,
   )
 where
 
@@ -174,7 +174,6 @@ evalRecordAcc value fieldName = do
     VRecord _typ fields -> return fields
     _ -> developerError "Record declaration is not of expected format."
   return $ lookupRecordFieldS fields fieldName
-
 
 eval ::
   (MonadNorm builtin m, MonadFreeContext builtin m) =>

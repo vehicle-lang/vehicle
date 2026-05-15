@@ -5,7 +5,7 @@ module Vehicle.Compile.Unblock
     UnblockingActions (..),
     MonadPurify,
     unblockRatTensorValue,
-    DimensionsStatus (..)
+    DimensionsStatus (..),
   )
 where
 
@@ -185,7 +185,7 @@ unblockBoolMultiDimTensorValue actions expr = do
     unblock = unblockBoolMultiDimTensorValue actions
 
 unblockRecordValue :: UnblockingActions m -> DimensionsStatus -> UnblockingFunction m
-unblockRecordValue actions@UnblockingActions{..} status expr = do
+unblockRecordValue actions@UnblockingActions {..} status expr = do
   showEntry expr
   showExit =<< case toRecordValue expr of
     VRecordFreeVar n spine -> case getExpr accessSpine spine of
@@ -359,7 +359,7 @@ unblockRecordAcc ::
   Value Builtin ->
   FieldName ->
   UnblockingActions m ->
-   DimensionsStatus ->
+  DimensionsStatus ->
   m (Value Builtin)
 unblockRecordAcc unblock value fieldName actions status = do
   value' <- unblockRecordValue actions status value

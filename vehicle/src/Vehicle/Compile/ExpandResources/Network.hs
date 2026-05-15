@@ -13,13 +13,13 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Resource
 import Vehicle.Data.Builtin.Standard
+import Vehicle.Data.Builtin.Standard.Scoping (getRecordDimsExpr, getRecordFieldNames)
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView (DimensionsValue (..), TensorLikeValue (..), TypeValue (..), toDimensionsValue, toTypeValue)
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Tensor (TensorShape)
 import Vehicle.Data.Variable.Free.Context.Class
 import Vehicle.Verify.Core (NetworkContextInfo (..))
-import Vehicle.Data.Builtin.Standard.Scoping (getRecordFieldNames, getRecordDimsExpr)
 
 --------------------------------------------------------------------------------
 -- Network typing
@@ -58,7 +58,7 @@ getNetworkType decl networkType = case normalised networkType of
     tensorType io t = case toTypeValue t of
       VTensorLike (VRatTensorType dims) -> do
         shape <- tensorDimensions io dims
-        return $ NetworkTensorType  NetworkRatType shape
+        return $ NetworkTensorType NetworkRatType shape
       VFreeTypeVar v _spine -> do
         entry <- getDeclEntry (Proxy @Builtin) v
         shape <- getRecordDimsExpr entry

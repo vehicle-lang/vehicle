@@ -8,19 +8,19 @@ import Data.List.NonEmpty (NonEmpty (..), toList)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Vehicle.Compile.Error
+import Vehicle.Compile.ExpandResources.Core (MonadExpandResources)
 import Vehicle.Compile.Prelude
+import Vehicle.Compile.Resource (GenericRecordFieldNames)
 import Vehicle.Compile.Scope.Core
 import Vehicle.Compile.Sugar.Core
 import Vehicle.Data.AST.Expr.Desugared qualified as D (Expr (..), normAppList)
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.DSL
-import Vehicle.Data.DSL
-import Vehicle.Data.Tensor (pattern ZeroDimTensor, TensorShape)
-import Vehicle.Libraries.StandardLibrary
-import Vehicle.Compile.ExpandResources.Core (MonadExpandResources)
-import Vehicle.Compile.Resource (GenericRecordFieldNames)
 import Vehicle.Data.Code.Interface (getDims)
-import Vehicle.Data.Code.TypedView (toTypeValue, TypeValue (VTensorLike), TensorLikeValue (VRatTensorType))
+import Vehicle.Data.Code.TypedView (TensorLikeValue (VRatTensorType), TypeValue (VTensorLike), toTypeValue)
+import Vehicle.Data.DSL
+import Vehicle.Data.Tensor (TensorShape, pattern ZeroDimTensor)
+import Vehicle.Libraries.StandardLibrary
 
 instance ScopableBuiltin Builtin where
   generateAuxiliaryRecordDefinitions p ident sort telescope fields
@@ -245,7 +245,7 @@ getRecordDimsExpr ::
   (MonadError CompileError m) =>
   FreeCtxEntry Builtin ->
   m TensorShape
-getRecordDimsExpr (DefRecord _ _ _ _ fields@((_n, typ):_fs)) = do
+getRecordDimsExpr (DefRecord _ _ _ _ fields@((_n, typ) : _fs)) = do
   case toTypeValue typ of
     (VTensorLike (VRatTensorType dims)) -> do
       case getDims dims of
@@ -276,7 +276,7 @@ constructFromTensorFreeVar ::
   Expr Builtin
 constructFromTensorFreeVar ident p =
   let name = Text.pack "_" <> identifierName ident <> "FromTensor"
-  in FreeVar p (Identifier (modulePath ident) name)
+   in FreeVar p (Identifier (modulePath ident) name)
 
 constructToTensorFreeVar ::
   Identifier ->
@@ -284,4 +284,4 @@ constructToTensorFreeVar ::
   Expr Builtin
 constructToTensorFreeVar ident p =
   let name = Text.pack "_" <> identifierName ident <> "ToTensor"
-  in FreeVar p (Identifier (modulePath ident) name)
+   in FreeVar p (Identifier (modulePath ident) name)

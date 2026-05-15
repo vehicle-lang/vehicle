@@ -4,10 +4,10 @@ import Control.DeepSeq (NFData)
 import Data.Aeson (ToJSON)
 import Data.Aeson.Types (FromJSON)
 import GHC.Generics
+import Prettyprinter
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Tensor (TensorShape)
 import Vehicle.Prelude
-import Prettyprinter
 
 --------------------------------------------------------------------------------
 -- Networks
@@ -34,16 +34,16 @@ networkSize :: NetworkType -> Int
 networkSize network = tensorSize (inputTensor network) + tensorSize (outputTensor network)
 
 data NetworkIOType
-  = NetworkTensorType {
-    baseType :: NetworkBaseType,
-    dimensions :: TensorShape
-    }
-  | NetworkRecordType {
-      baseRecordType :: NetworkBaseType,
-      recordTypeIdent :: Identifier,
-      recordDimensions :: TensorShape,
-      recordFields :: GenericRecordFieldNames
-    }
+  = NetworkTensorType
+      { baseType :: NetworkBaseType,
+        dimensions :: TensorShape
+      }
+  | NetworkRecordType
+      { baseRecordType :: NetworkBaseType,
+        recordTypeIdent :: Identifier,
+        recordDimensions :: TensorShape,
+        recordFields :: GenericRecordFieldNames
+      }
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData NetworkIOType
@@ -51,7 +51,6 @@ instance NFData NetworkIOType
 instance ToJSON NetworkIOType
 
 instance FromJSON NetworkIOType
-
 
 type GenericRecordFieldNames = [FieldName]
 
@@ -70,9 +69,7 @@ instance Pretty NetworkIOType where
         fieldType ds = case ds of
           [] -> pretty t
           [_x] -> pretty t
-          (_x:xs) -> "Tensor" <+> pretty t <+> pretty xs
-
-
+          (_x : xs) -> "Tensor" <+> pretty t <+> pretty xs
 
 data NetworkBaseType
   = NetworkRatType

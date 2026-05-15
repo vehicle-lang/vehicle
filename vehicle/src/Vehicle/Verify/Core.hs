@@ -34,7 +34,7 @@ type MetaNetwork = [(Name, NetworkContextInfo, Int)]
 inputShape :: NetworkContextInfo -> TensorShape
 inputShape ctx = case inputTensor (networkType ctx) of
   NetworkTensorType _ dims -> dims
-  NetworkRecordType  _ _ dims _  -> dims
+  NetworkRecordType _ _ dims _ -> dims
 
 outputShape :: NetworkContextInfo -> TensorShape
 outputShape ctx = case outputTensor (networkType ctx) of

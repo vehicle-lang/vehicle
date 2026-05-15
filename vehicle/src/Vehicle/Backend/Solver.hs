@@ -11,6 +11,7 @@ import Control.Monad.State (StateT (..))
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (maybeToList)
 import Data.Proxy (Proxy (..))
+import Data.Text qualified as Text
 import System.Directory (createDirectoryIfMissing)
 import Vehicle.Backend.Solver.QueryCompilation (compilePartitionsToQueries)
 import Vehicle.Backend.Solver.UserVariableElimination (eliminateExistless, eliminateExists)
@@ -21,16 +22,21 @@ import Vehicle.Compile.ExpandResources (expandResources)
 import Vehicle.Compile.ExpandResources.Core
 import Vehicle.Compile.LiftIf (unfoldIf)
 import Vehicle.Compile.LowerNot (lowerNot, negateQuantifierBody)
+import Vehicle.Compile.Normalise.NBE
+import Vehicle.Compile.Normalise.Quote
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyFriendly, prettyFriendlyEmptyCtx)
 import Vehicle.Compile.Print.Warning ()
 import Vehicle.Compile.Property (traverseMultiProperty)
 import Vehicle.Compile.Unblock (UnblockingActions (..), unblockBoolExpr)
 import Vehicle.Data.Builtin.Standard
+import Vehicle.Data.Builtin.Standard.Scoping (constructFromTensorFreeVar, getRecordDimsExpr, getRecordProvenance)
 import Vehicle.Data.Code.BooleanExpr
+import Vehicle.Data.Code.DSL
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
+import Vehicle.Data.DSL
 import Vehicle.Data.MaybeTrivial (MaybeTrivial (..), andTrivial, orTrivial)
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Bound.Context.Tensor
@@ -40,13 +46,6 @@ import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat
 import Vehicle.Verify.Specification
 import Vehicle.Verify.Specification.IO
-import Vehicle.Compile.Normalise.Quote
-import Vehicle.Data.Code.DSL
-import Vehicle.Data.DSL
-import Vehicle.Compile.Normalise.NBE
-import Vehicle.Data.Builtin.Standard.Scoping (getRecordDimsExpr, getRecordProvenance, constructFromTensorFreeVar)
-import qualified Data.Text as Text
-
 
 --------------------------------------------------------------------------------
 -- Compilation to individual queries
@@ -254,7 +253,6 @@ compileQuantifiedQuerySet isPropertyNegated args =
     (maybePartitions, globalCtx) <- runStateT (eliminateExists args) emptyGlobalCtx
     compileQuerySetPartitions globalCtx isPropertyNegated maybePartitions
 
-
 -- Generates an unused binder name of the form '_tN', where N is an integer
 getFreshTensorBinderName ::
   NamedBoundCtx ->
@@ -264,19 +262,19 @@ getFreshTensorBinderName ctx = checkExistsInCtx 0
     checkExistsInCtx :: Int -> Text.Text
     checkExistsInCtx n =
       let name = "_t" <> Text.pack (show n)
-      in if Just name `elem` ctx
-        then checkExistsInCtx (n + 1)
-        else "_t" <> Text.pack (show n)
+       in if Just name `elem` ctx
+            then checkExistsInCtx (n + 1)
+            else "_t" <> Text.pack (show n)
 
 wrapQuantifyRecord ::
-  (MonadPropertyStructure m,
-  MonadSupply QueryID m,
-  MonadStdIO m,
-  MonadFreeContext Builtin m) =>
+  ( MonadPropertyStructure m,
+    MonadSupply QueryID m,
+    MonadStdIO m,
+    MonadFreeContext Builtin m
+  ) =>
   QuantifyRecordArgs (Value Builtin) (Closure Builtin) ->
   m (QuantifyRatTensorArgs (Value Builtin) (Closure Builtin))
-wrapQuantifyRecord QuantifyRecordArgs{..} = do
-
+wrapQuantifyRecord QuantifyRecordArgs {..} = do
   -- Takes a record quantifier and wraps the binder & body in a tensor quantifier
   -- e.g. given Pair has fields { a : Real, b : Real }
   -- forall (r : Pair) . (body)
@@ -299,12 +297,13 @@ wrapQuantifyRecord QuantifyRecordArgs{..} = do
   tensorType <- eval namedCtx boundEnv $ fromDSL mempty $ tTensor tRat (toDSL dims)
   normalisedDims <- eval namedCtx boundEnv dims
 
-  let tensorBinder = Binder {
-    binderDisplayForm = BinderDisplayForm (NameAndType (getFreshTensorBinderName namedCtx) mempty) True,
-    binderVisibility = Explicit,
-    binderRelevance = Relevant,
-    binderValue = tensorType
-    }
+  let tensorBinder =
+        Binder
+          { binderDisplayForm = BinderDisplayForm (NameAndType (getFreshTensorBinderName namedCtx) mempty) True,
+            binderVisibility = Explicit,
+            binderRelevance = Relevant,
+            binderValue = tensorType
+          }
 
   let tensorBoundVar = Arg Explicit Relevant (BoundVar mempty 0)
   recordTypeProv <- getRecordProvenance recordTypeDecl
