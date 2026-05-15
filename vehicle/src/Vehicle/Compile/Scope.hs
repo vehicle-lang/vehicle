@@ -11,7 +11,7 @@ import Data.Foldable (traverse_)
 import Data.List.NonEmpty qualified as NonEmpty
 import Vehicle.Compile.Error
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyExternal)
+import Vehicle.Compile.Print
 import Vehicle.Compile.Scope.Core
 import Vehicle.Compile.Scope.Generalise
 import Vehicle.Compile.Scope.RecordInstances (createAuxilliaryRecordDeclarations)
