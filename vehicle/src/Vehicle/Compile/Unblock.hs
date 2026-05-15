@@ -241,7 +241,7 @@ unblockDimensionsValue expr = case toDimensionsValue expr of
   VDimsBoundVar {} -> unexpectedExprError currentPass (prettyVerbose expr)
 
 unblockIndexValue :: UnblockingFunction m
-unblockIndexValue expr = do 
+unblockIndexValue expr = do
   case toIndexValue expr of
     VIndexLiteral {} -> return expr
     VIndexIf {} -> return expr

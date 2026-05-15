@@ -36,7 +36,7 @@ import Vehicle.Data.Variable.Bound.Context.Tensor (replaceTensorVariableWithStac
 import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Verify.QueryFormat (QueryFormat (..), supportsStrictInequalities)
 import Prelude hiding (Applicative (..))
-import Vehicle.Verify.Core 
+import Vehicle.Verify.Core
 import Vehicle.Compile.Resource
 import Vehicle.Data.Builtin.Standard.Scoping (constructFromTensorFreeVar, constructToTensorFreeVar)
 
@@ -213,8 +213,8 @@ unblockNetworkApplication unblockFnTensor unblockFnRecord ident (NetworkAppArgs 
   ctx <- getNameContext
 
   -- If our network outputs a tensorisable, convert our output expression to a record
-  transformedOutputVarExpr <- case outputTensor typ of 
-    NetworkRecordType _ recordTyp _ _ -> do 
+  transformedOutputVarExpr <- case outputTensor typ of
+    NetworkRecordType _ recordTyp _ _ -> do
       fromTensorFn <- eval ctx emptyBoundEnv (constructFromTensorFreeVar recordTyp mempty)
       evalApp ctx fromTensorFn [Arg Explicit Relevant outputVarExpr]
     _ -> return outputVarExpr
@@ -248,7 +248,7 @@ unblockNetworkApplication unblockFnTensor unblockFnRecord ident (NetworkAppArgs 
         <> line
         <> "replace-expr" <+> replacementExprDoc
 
-  case outputTensor typ of 
+  case outputTensor typ of
     -- Unblock depending on the type of the output expression from our network
     NetworkRecordType {} -> unblockFnRecord transformedOutputVarExpr
     NetworkTensorType {} -> unblockFnTensor transformedOutputVarExpr

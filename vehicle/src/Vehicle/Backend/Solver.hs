@@ -289,7 +289,7 @@ wrapQuantifyRecord QuantifyRecordArgs{..} = do
     _ -> compilerDeveloperError "Record binder is not of expected format."
 
   -- Construct \r -> body from binder and body in record quantifier args
-  recordQLam <- unnormaliseInCtx $ VLam quantifyRecordBinder quantifyRecordBody 
+  recordQLam <- unnormaliseInCtx $ VLam quantifyRecordBinder quantifyRecordBody
   recordTypeDecl <- getDeclEntry (Proxy @Builtin) recordTypeIdent
   shape <- getRecordDimsExpr recordTypeDecl
   let dims = mkDims shape
@@ -299,7 +299,7 @@ wrapQuantifyRecord QuantifyRecordArgs{..} = do
   tensorType <- eval namedCtx boundEnv $ fromDSL mempty $ tTensor tRat (toDSL dims)
   normalisedDims <- eval namedCtx boundEnv dims
 
-  let tensorBinder = Binder { 
+  let tensorBinder = Binder {
     binderDisplayForm = BinderDisplayForm (NameAndType (getFreshTensorBinderName namedCtx) mempty) True,
     binderVisibility = Explicit,
     binderRelevance = Relevant,
