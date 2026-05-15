@@ -186,12 +186,8 @@ createTensorLikeArithmeticInstance ::
   Decl Builtin
 createTensorLikeArithmeticInstance p recordIdent typeclassIdent typeclassName fieldName = do
   let recordType = freeVar recordIdent
-
-  let fromTensorName = Text.pack "_" <> nameOf recordIdent <> "FromTensor"
-  let fromTensorIdent = freeVar $ Identifier (modulePath recordIdent) fromTensorName
-
-  let toTensorName = Text.pack "_" <> nameOf recordIdent <> "ToTensor"
-  let toTensorIdent = freeVar $ Identifier (modulePath recordIdent) toTensorName
+  let fromTensor = toDSL $ constructFromTensorFreeVar recordIdent p
+  let toTensor = toDSL $ constructToTensorFreeVar recordIdent p
 
   let typeclass = fromDSL mempty $ freeVar typeclassIdent @@ [recordType, recordType, recordType]
   let instanceName = Text.pack "_" <> nameOf recordIdent <> typeclassName
@@ -200,8 +196,8 @@ createTensorLikeArithmeticInstance p recordIdent typeclassIdent typeclassName fi
 
   let field = fromDSL mempty $ explLam "r1" recordType $ \r1 ->
         explLam "r2" recordType $ \r2 -> do
-          let innerAddTC = fieldIdent @@ [toTensorIdent @@ [r1], toTensorIdent @@ [r2]]
-          fromTensorIdent @@ [innerAddTC]
+          let innerAddTC = fieldIdent @@ [toTensor @@ [r1], toTensor @@ [r2]]
+          fromTensor @@ [innerAddTC]
 
   let body = Record p typeclass [(FieldName p fieldName, field)]
   DefFunction p instanceIdent (FunctionDecl 1 (Just (AnnInstance Nothing))) typeclass body
@@ -213,16 +209,16 @@ createTensorLikeComparisonInstance ::
 createTensorLikeComparisonInstance p recordIdent = do
   let recordType = freeVar recordIdent
 
-  let toTensorName = Text.pack "_" <> nameOf recordIdent <> "ToTensor"
-  let toTensorIdent = freeVar $ Identifier (modulePath recordIdent) toTensorName
+  let toTensor = toDSL $ constructToTensorFreeVar recordIdent p
 
   let typeclass = fromDSL mempty $ freeVar hasComparisonIdent @@ [recordType, recordType]
   let instanceName = Text.pack "_" <> nameOf recordIdent <> "HasComparison"
+  
   let instanceIdent = Identifier (modulePath recordIdent) instanceName
 
   let fieldText = ["leTC", "ltTC", "geTC", "gtTC", "eqTC", "neTC"]
   let fieldIdents = map (freeVar . standardLibIdent) fieldText
-  let fieldValues = map (createComparisonField (freeVar recordIdent) toTensorIdent) fieldIdents
+  let fieldValues = map (createComparisonField (freeVar recordIdent) toTensor) fieldIdents
   let fieldNames = map (FieldName p) fieldText
   let fields = zip fieldNames fieldValues
 
@@ -239,8 +235,8 @@ createComparisonField recordType toTensor fieldIdent = do
     explLam "r2" recordType $ \r2 -> fieldIdent @@ [toTensor @@ [r1], toTensor @@ [r2]]
 
 -- -----------------------------------------------------------------------------------------------
--- TensorLike util functions
-
+-- Record/Tensorisable util functions
+-- Not sure if these should go here or if they are at the right level of abstraction
 getRecordDims ::
   (MonadError CompileError m) =>
   FreeCtxEntry Builtin ->

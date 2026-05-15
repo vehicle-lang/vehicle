@@ -172,7 +172,7 @@ evalRecordAcc ::
 evalRecordAcc value fieldName = do
   fields <- case value of
     VRecord _typ fields -> return fields
-    _ -> developerError "record not of expected type"
+    _ -> developerError "Record declaration is not of expected format."
   return $ lookupRecordFieldS fields fieldName
 
 

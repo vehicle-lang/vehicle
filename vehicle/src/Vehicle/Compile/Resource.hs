@@ -7,6 +7,7 @@ import GHC.Generics
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Tensor (TensorShape)
 import Vehicle.Prelude
+import Prettyprinter
 
 --------------------------------------------------------------------------------
 -- Networks
@@ -33,11 +34,11 @@ networkSize :: NetworkType -> Int
 networkSize network = tensorSize (inputTensor network) + tensorSize (outputTensor network)
 
 data NetworkIOType
-  = NetworkTensorType { 
-    baseType :: NetworkBaseType, 
-    dimensions :: TensorShape 
+  = NetworkTensorType {
+    baseType :: NetworkBaseType,
+    dimensions :: TensorShape
     }
-  | NetworkRecordType { 
+  | NetworkRecordType {
       baseRecordType :: NetworkBaseType,
       recordTypeIdent :: Identifier,
       recordDimensions :: TensorShape,
@@ -62,7 +63,16 @@ tensorSize typ = case typ of
 instance Pretty NetworkIOType where
   pretty = \case
     NetworkTensorType t dims -> "Tensor" <+> pretty t <+> pretty dims
-    NetworkRecordType t _ident dims _fields -> "Record" <+> pretty t <+> pretty dims
+    NetworkRecordType t ident dims fields ->
+      "Record" <+> pretty ident <+> ":" <+> encloseSep ("{" <> space) (space <> "}") ("," <> space) (map prettyField fields)
+      where
+        prettyField field = pretty (nameOf field) <+> ":" <+> fieldType dims
+        fieldType ds = case ds of
+          [] -> pretty t
+          [_x] -> pretty t
+          (_x:xs) -> "Tensor" <+> pretty t <+> pretty xs
+
+
 
 data NetworkBaseType
   = NetworkRatType

@@ -21,7 +21,6 @@ import Vehicle.Data.Variable.Free.Context.Class
 import Vehicle.Verify.Core (NetworkContextInfo (..))
 import Vehicle.Data.Builtin.Standard.Scoping (getRecordDims, getRecordFieldNames)
 
--- import Vehicle.Data.AST.Decl (GenericDecl (..))
 --------------------------------------------------------------------------------
 -- Network typing
 
