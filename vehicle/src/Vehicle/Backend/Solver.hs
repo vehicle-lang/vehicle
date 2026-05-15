@@ -254,6 +254,8 @@ compileQuantifiedQuerySet isPropertyNegated args =
     (maybePartitions, globalCtx) <- runStateT (eliminateExists args) emptyGlobalCtx
     compileQuerySetPartitions globalCtx isPropertyNegated maybePartitions
 
+
+-- Generates an unused binder name of the form '_tN', where N is an integer
 getFreshTensorBinderName ::
   NamedBoundCtx ->
   Text.Text
@@ -275,40 +277,42 @@ wrapQuantifyRecord ::
   m (QuantifyRatTensorArgs (Value Builtin) (Closure Builtin))
 wrapQuantifyRecord QuantifyRecordArgs{..} = do
 
+  -- Takes a record quantifier and wraps the binder & body in a tensor quantifier
+  -- e.g. given Pair has fields { a : Real, b : Real }
+  -- forall (r : Pair) . (body)
+  -- becomes
+  -- forall (_t0 : tensor Real [2]) . (body (_PairFromTensor _t0))
+
+  namedCtx <- getNameContext
   recordTypeIdent <- case toTypeValue quantifyRecordType of
     VFreeTypeVar v _spine -> pure v
-    _ -> compilerDeveloperError "record binder is not of expected format."
+    _ -> compilerDeveloperError "Record binder is not of expected format."
 
-  let recordQuantifierLam = VLam quantifyRecordBinder quantifyRecordBody 
-  unnormalisedQuantifierLam <- unnormaliseInCtx recordQuantifierLam
-
+  -- Construct \r -> body from binder and body in record quantifier args
+  recordQLam <- unnormaliseInCtx $ VLam quantifyRecordBinder quantifyRecordBody 
   recordTypeDecl <- getDeclEntry (Proxy @Builtin) recordTypeIdent
   dims <- getRecordDimsExpr recordTypeDecl
 
-  let tensorType = fromDSL mempty $ tTensor tRat (toDSL dims)
+  -- Build tensor binder with appropriate dims and type for record
   let Closure boundEnv _body = quantifyRecordBody
-
-  namedCtx <- getNameContext
-  normalisedTensorType <- eval namedCtx boundEnv tensorType
+  tensorType <- eval namedCtx boundEnv $ fromDSL mempty $ tTensor tRat (toDSL dims)
   normalisedDims <- eval namedCtx boundEnv dims
 
   let tensorBinder = Binder { 
     binderDisplayForm = BinderDisplayForm (NameAndType (getFreshTensorBinderName namedCtx) mempty) True,
     binderVisibility = Explicit,
     binderRelevance = Relevant,
-    binderValue = normalisedTensorType
+    binderValue = tensorType
     }
 
   let tensorBoundVar = Arg Explicit Relevant (BoundVar mempty 0)
   recordTypeProv <- getRecordProvenance recordTypeDecl
-  let appliedFromTensor = App (constructFromTensorFreeVar recordTypeIdent recordTypeProv) [tensorBoundVar]
+  -- Construct _PairFromTensor _t0
+  let fromTensorExpr = App (constructFromTensorFreeVar recordTypeIdent recordTypeProv) [tensorBoundVar]
 
-  let appliedFromTensorArg = Arg Explicit Relevant appliedFromTensor
-  let nestedRecordQuantifier = App unnormalisedQuantifierLam [appliedFromTensorArg]
-  let nestedRecordQuantifierClosure = Closure boundEnv nestedRecordQuantifier
-
-  let ratTensorArgs = QuantifyRatTensorArgs normalisedDims tensorBinder nestedRecordQuantifierClosure
-  return ratTensorArgs
+  -- Construct body (_PairFromTensor _t0)
+  let nestedBody = App recordQLam [Arg Explicit Relevant fromTensorExpr]
+  return $ QuantifyRatTensorArgs normalisedDims tensorBinder (Closure boundEnv nestedBody)
 
 -- | We only need this because we can't evaluate networks in the compiler.
 compileUnquantifiedQuerySet ::
