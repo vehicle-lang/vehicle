@@ -33,3 +33,4 @@ Available commands:
   export                   Export a.vcl specification file to an interactive
                            theorem prover.
   list                     List entities for a .vcl specification file.
+  

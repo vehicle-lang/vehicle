@@ -15,3 +15,4 @@
 (assert (> f_Y 0.0))
 
 ; Input bounds
+(assert (== f_X 0.5))
