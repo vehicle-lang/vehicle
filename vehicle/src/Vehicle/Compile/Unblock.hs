@@ -302,7 +302,6 @@ unblockTensorOp2 ::
   TensorOp2Args (Value Builtin) ->
   m (Value Builtin)
 unblockTensorOp2 unblock evalFn (TensorOp2Args ds xs ys) = do
-  logDebug MaxDetail $ pretty (show xs)
   xs' <- unblock xs
   ys' <- unblock ys
   liftIf xs' $ \xs'' ->
@@ -354,7 +353,6 @@ unblockAtTensor unblock (AtTensorArgs tElem d ds xs i) = do
       nameCtx <- getNameContext
       evalAtTensor nameCtx evalApp eval $ AtTensorArgs tElem d ds xs'' i''
 
-
 unblockRecordAcc ::
   (MonadUnblock m) =>
   UnblockingFunction m ->
@@ -368,7 +366,6 @@ unblockRecordAcc unblock value fieldName actions status = do
   liftIf value' $ \value'' -> do
     res <- evalRecordAcc value'' fieldName
     unblock res
-
 
 unblockForeachTensor ::
   (MonadUnblock m) =>

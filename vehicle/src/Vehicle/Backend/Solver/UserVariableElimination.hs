@@ -113,7 +113,8 @@ compileBoolExpr expr = do
     VAnd (TensorOp2Args _dims x y) -> andTrivial andPartitions <$> compileBoolExpr x <*> compileBoolExpr y
     VOr (TensorOp2Args _dims x y) -> orTrivial orPartitions <$> compileBoolExpr x <*> compileBoolExpr y
     VQuantifyRatTensor (Exists, args) -> eliminateExists args
-    VQuantifyRecord (Exists, _args) -> compilerDeveloperError "LAUREN TODO: quantifyRecord case in compileBoolExpr"
+    -- TODO: RECORD SUPPORT
+    VQuantifyRecord (Exists, _args) -> compilerDeveloperError "Non top-level record quantifiers are not supported yet"
     VCompareNat {} -> unblockAndRec expr
     VCompareIndex {} -> unblockAndRec expr
     VReduceAndTensor {} -> unblockAndRec expr
