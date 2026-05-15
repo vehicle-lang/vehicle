@@ -113,6 +113,8 @@ class (BuiltinHasTensors builtin) => BuiltinHasRatLiterals builtin where
   accessMinRatTensorBuiltin :: Accessor builtin ()
   accessMaxRatTensorBuiltin :: Accessor builtin ()
   accessPowRatTensorBuiltin :: Accessor builtin ()
+  accessExpRatTensorBuiltin :: Accessor builtin ()
+  accessLogRatTensorBuiltin :: Accessor builtin ()
   accessReduceAddRatBuiltin :: Accessor builtin ()
   accessReduceMulRatBuiltin :: Accessor builtin ()
   accessReduceMinRatBuiltin :: Accessor builtin ()

@@ -689,6 +689,8 @@ compileBuiltin _isOutType moduleDefs b args = case b of
     Rollout -> userUnsupported "'rollout' operator"
     Transpose -> annotateApp moduleDefs [RequireImport ImlVehicle] "tensor_transpose_real" args
     PowRat -> unsupportedError
+    ExpRat -> userUnsupported "'exp' operator"
+    LogRat -> userUnsupported "'log' operator"
     Temporal op -> userUnsupported $ "Temporal operator '" <> pretty op <> "'"
     AtVector -> annotateApp moduleDefs [] "List.nth" args
     ForeachVector -> idxBasedOp moduleDefs "foreach_tuple" args

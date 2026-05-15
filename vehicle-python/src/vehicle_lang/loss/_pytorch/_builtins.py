@@ -133,6 +133,18 @@ class PyTorchBuiltins(
         return torch.maximum(torch.as_tensor(x), torch.as_tensor(y))
 
     @override
+    def PowRatTensor(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        return torch.pow(torch.as_tensor(x), torch.as_tensor(y))
+
+    @override
+    def ExpRatTensor(self, x: torch.Tensor) -> torch.Tensor:
+        return torch.exp(torch.as_tensor(x))
+
+    @override
+    def LogRatTensor(self, base: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
+        return torch.log(torch.as_tensor(x)) / torch.log(torch.as_tensor(base))
+
+    @override
     def ReduceAddRatTensor(
         self, e: float, xs: torch.Tensor | Sequence[torch.Tensor]
     ) -> torch.Tensor:

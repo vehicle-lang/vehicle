@@ -316,6 +316,12 @@ accessMaxRatTensor = accessArgs accessMaxRatTensorBuiltin
 accessPowRatTensor :: (HasRatExpr expr builtin) => TensorOp2Accessor (expr builtin)
 accessPowRatTensor = accessArgs accessPowRatTensorBuiltin
 
+accessExpRatTensor :: (HasRatExpr expr builtin) => TensorOp1Accessor (expr builtin)
+accessExpRatTensor = accessArgs accessExpRatTensorBuiltin
+
+accessLogRatTensor :: (HasRatExpr expr builtin) => TensorOp2Accessor (expr builtin)
+accessLogRatTensor = accessArgs accessLogRatTensorBuiltin
+
 accessReduceAddRat :: (HasRatExpr expr builtin) => TensorReductionAccessor (expr builtin)
 accessReduceAddRat = accessArgs accessReduceAddRatBuiltin
 

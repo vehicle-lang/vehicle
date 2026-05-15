@@ -271,8 +271,9 @@ delabBuiltinFunction fun args = case fun of
   V.ForeachVector -> delabForeach args
   V.ReduceAndTensor -> delabApp (B.ReduceAnd tokReduceAnd) args
   V.ReduceOrTensor -> delabApp (B.ReduceOr tokReduceOr) args
-  -- Builtins not yet in the surface syntax.
-  V.PowRat -> rawDelab
+  V.PowRat -> delabInfixOp2 B.Pow tokPow args
+  V.ExpRat -> delabApp (B.Exp tokExp) args
+  V.LogRat -> delabApp (B.Log tokLog) args
   V.ReduceAddRatTensor -> delabApp (B.ReduceAdd tokReduceAdd) args
   V.ReduceMulRatTensor -> delabApp (B.ReduceMul tokReduceMul) args
   V.ReduceMaxRatTensor -> delabApp (B.ReduceMax tokReduceMax) args

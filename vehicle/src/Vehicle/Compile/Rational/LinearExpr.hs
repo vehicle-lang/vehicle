@@ -104,6 +104,9 @@ compile toVar shape = go
       -----------------------
       VMinRatTensor {} -> unexpected
       VMaxRatTensor {} -> unexpected
+      VPowRatTensor {} -> throwError NonLinearity
+      VExpRatTensor {} -> throwError NonLinearity
+      VLogRatTensor {} -> throwError NonLinearity
       VReduceAddRatTensor {} -> unexpected
       VReduceMulRatTensor {} -> unexpected
       VReduceMinRatTensor {} -> unexpected

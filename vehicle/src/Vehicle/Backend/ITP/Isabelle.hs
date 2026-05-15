@@ -822,6 +822,8 @@ compileBuiltin isOutType localeAssms b args = case b of
     Rollout -> userUnsupported "'rollout' operator"
     Transpose -> annotateApp localeAssms [RequireImport VehicleTensor] "tensor_transpose" args
     PowRat -> unsupportedError
+    ExpRat -> userUnsupported "'exp' operator"
+    LogRat -> userUnsupported "'log' operator"
     Temporal op -> userUnsupported $ "Temporal operator '" <> pretty op <> "'"
     AtVector -> annotateApp localeAssms [] "tnth" args
     ForeachVector -> idxBasedOp localeAssms "foreachTuple" args

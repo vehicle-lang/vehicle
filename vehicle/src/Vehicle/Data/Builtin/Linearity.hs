@@ -45,6 +45,12 @@ data NonLinearityProof
     PowLinearBase Provenance LinearityProof
   | -- | An power where the exponent is linear
     PowLinearExponent Provenance LinearityProof
+  | -- | An exponential of a linear argument
+    ExpOfLinear Provenance LinearityProof
+  | -- | A logarithm where the base is linear
+    LogLinearBase Provenance LinearityProof
+  | -- | A logarithm where the value is linear
+    LogLinearValue Provenance LinearityProof
   deriving (Eq, Ord, Show, Generic)
 
 instance Pretty NonLinearityProof where
@@ -53,6 +59,9 @@ instance Pretty NonLinearityProof where
     DivideByLinear {} -> "?/X"
     PowLinearBase {} -> "X^?"
     PowLinearExponent {} -> "?^X"
+    ExpOfLinear {} -> "exp(X)"
+    LogLinearBase {} -> "log(X,?)"
+    LogLinearValue {} -> "log(?,X)"
 
 instance NFData NonLinearityProof
 
@@ -98,6 +107,8 @@ data LinearityRelation
   | MulLinearity Provenance
   | DivLinearity Provenance
   | PowLinearity Provenance
+  | ExpLinearity Provenance
+  | LogLinearity Provenance
   | FunctionLinearity FunctionPosition
   | QuantifierLinearity Quantifier
   deriving (Eq, Ord, Generic, Show)
@@ -112,6 +123,8 @@ instance Pretty LinearityRelation where
     MulLinearity _p -> "MulLinearity"
     DivLinearity _p -> "DivLinearity"
     PowLinearity _p -> "PowLinearity"
+    ExpLinearity _p -> "ExpLinearity"
+    LogLinearity _p -> "LogLinearity"
     QuantifierLinearity q -> "QuantifierLinearity[" <> pretty q <> "]"
     FunctionLinearity p -> "FunctionLinearity[" <> pretty p <> "]"
 
@@ -247,6 +260,11 @@ type LinearityDSLExpr = DSLExpr LinearityBuiltin
 forAllLinearities :: (LinearityDSLExpr -> LinearityDSLExpr) -> LinearityDSLExpr
 forAllLinearities f = forAll "l" tLin $ \l -> f l
 
+forAllLinearityPairs :: (LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr) -> LinearityDSLExpr
+forAllLinearityPairs f =
+  forAll "l1" tLin $ \l1 ->
+    forAll "l2" tLin $ \l2 -> f l1 l2
+
 forAllLinearityTriples :: (LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr) -> LinearityDSLExpr
 forAllLinearityTriples f =
   forAll "l1" tLin $ \l1 ->
@@ -270,6 +288,12 @@ divLinearity p l1 l2 l3 = linearityRelation (DivLinearity p) [l1, l2, l3]
 
 powLinearity :: Provenance -> LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr
 powLinearity p l1 l2 l3 = linearityRelation (PowLinearity p) [l1, l2, l3]
+
+expLinearity :: Provenance -> LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr
+expLinearity p l1 l2 = linearityRelation (ExpLinearity p) [l1, l2]
+
+logLinearity :: Provenance -> LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr
+logLinearity p l1 l2 l3 = linearityRelation (LogLinearity p) [l1, l2, l3]
 
 quantLinearity :: Quantifier -> LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr
 quantLinearity q l1 l2 = linearityRelation (QuantifierLinearity q) [l1, l2]

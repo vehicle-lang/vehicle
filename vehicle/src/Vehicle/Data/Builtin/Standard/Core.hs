@@ -268,6 +268,8 @@ instance BuiltinHasRatLiterals Builtin where
   accessMinRatTensorBuiltin = functionAccessor $ Min MinRatTensor
   accessMaxRatTensorBuiltin = functionAccessor $ Max MaxRatTensor
   accessPowRatTensorBuiltin = functionAccessor PowRat
+  accessExpRatTensorBuiltin = functionAccessor ExpRat
+  accessLogRatTensorBuiltin = functionAccessor LogRat
   accessReduceAddRatBuiltin = functionAccessor ReduceAddRatTensor
   accessReduceMulRatBuiltin = functionAccessor ReduceMulRatTensor
   accessReduceMinRatBuiltin = functionAccessor ReduceMinRatTensor

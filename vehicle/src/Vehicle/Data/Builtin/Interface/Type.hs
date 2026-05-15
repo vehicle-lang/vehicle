@@ -78,7 +78,9 @@ typeOfBuiltinFunction = \case
     MinRatTensor -> typeOfTensorOp2 tRat
   Max dom -> case dom of
     MaxRatTensor -> typeOfTensorOp2 tRat
-  PowRat -> forAllDims $ \dims -> tRatTensor dims ~> tNat ~> tRatTensor dims
+  PowRat -> typeOfTensorOp2 tRat
+  ExpRat -> typeOfTensorOp1 tRat
+  LogRat -> typeOfTensorOp2 tRat
   ReduceAddRatTensor -> typeOfTensorRatReduceOp
   ReduceMulRatTensor -> typeOfTensorRatReduceOp
   ReduceMinRatTensor -> typeOfTensorRatReduceOp

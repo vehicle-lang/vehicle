@@ -76,6 +76,8 @@ instance NormalisableBuiltin Builtin where
       Min MinRatTensor -> Simple evalMinRatTensor
       Max MaxRatTensor -> Simple evalMaxRatTensor
       PowRat -> Simple evalPowRat
+      ExpRat -> Simple evalExpRat
+      LogRat -> Simple evalLogRat
       ReduceAddRatTensor -> Simple evalReduceAddRatTensor
       ReduceMulRatTensor -> Simple evalReduceMulRatTensor
       ReduceMinRatTensor -> Simple evalReduceMinRatTensor

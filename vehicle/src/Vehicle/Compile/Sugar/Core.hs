@@ -207,6 +207,12 @@ tokMul = mkToken B.TokMul "*"
 
 tokDiv = mkToken B.TokDiv "/"
 
+tokPow = mkToken B.TokPow "**"
+
+tokExp = mkToken B.TokExp "exp"
+
+tokLog = mkToken B.TokLog "log"
+
 tokMin = mkToken B.TokMin "min"
 
 tokMax = mkToken B.TokMax "max"

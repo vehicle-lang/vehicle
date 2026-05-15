@@ -611,6 +611,8 @@ compileBuiltinFunction f args = case f of
   Rollout -> userUnsupported "'rollout' operator"
   Transpose -> annotateApp [DataTensor] Nothing "transpose" args
   PowRat -> unsupportedError
+  ExpRat -> userUnsupported "'exp' operator"
+  LogRat -> userUnsupported "'log' operator"
   Temporal op -> userUnsupported $ "Temporal operator '" <> pretty op <> "'"
   where
     unsupportedError :: a

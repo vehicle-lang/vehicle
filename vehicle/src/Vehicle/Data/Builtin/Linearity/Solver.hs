@@ -62,6 +62,8 @@ solve = \case
   MulLinearity p -> solveOp2Linearity True True (mulLinearityOp p)
   DivLinearity p -> solveOp2Linearity False True (divLinearityOp p)
   PowLinearity p -> solveOp2Linearity False False (powLinearityOp p)
+  ExpLinearity p -> solveOp1Linearity (expLinearityOp p)
+  LogLinearity p -> solveOp2Linearity False False (logLinearityOp p)
   FunctionLinearity position -> solveFunctionLinearity position
   QuantifierLinearity q -> solveQuantifierLinearity q
 
@@ -99,6 +101,18 @@ solveOp2Linearity shortCircuitLHS shortCircuitRHS combine info [lin1, lin2, res]
     (_, getNMeta -> Just m2) -> blockOn [m2]
     _ -> Nothing
 solveOp2Linearity _ _ _ _ _ = Nothing
+
+solveOp1Linearity ::
+  (Linearity -> Linearity) ->
+  LinearitySolver
+solveOp1Linearity combine info [lin, res] = case lin of
+  VLinearityExpr l1 -> Just $ do
+    let linRes = VLinearityExpr $ combine l1
+    resEq <- createInstanceUnification info res linRes
+    return $ Progress [resEq] []
+  (getNMeta -> Just m1) -> blockOn [m1]
+  _ -> Nothing
+solveOp1Linearity _ _ _ = Nothing
 
 solveFunctionLinearity :: FunctionPosition -> LinearitySolver
 solveFunctionLinearity functionPosition info@(ctx, _) [arg, res] = case arg of
@@ -143,6 +157,20 @@ powLinearityOp p l1 l2 = case (l1, l2) of
   (Constant, Constant) -> Constant
   (Linear p1, _) -> NonLinear (PowLinearBase p p1)
   (_, Linear p2) -> NonLinear (PowLinearExponent p p2)
+  (NonLinear {}, _) -> l1
+  (_, NonLinear {}) -> l2
+
+expLinearityOp :: Provenance -> Linearity -> Linearity
+expLinearityOp p = \case
+  Constant -> Constant
+  Linear p1 -> NonLinear (ExpOfLinear p p1)
+  NonLinear nl -> NonLinear nl
+
+logLinearityOp :: Provenance -> Linearity -> Linearity -> Linearity
+logLinearityOp p l1 l2 = case (l1, l2) of
+  (Constant, Constant) -> Constant
+  (Linear p1, _) -> NonLinear (LogLinearBase p p1)
+  (_, Linear p2) -> NonLinear (LogLinearValue p p2)
   (NonLinear {}, _) -> l1
   (_, NonLinear {}) -> l2
 

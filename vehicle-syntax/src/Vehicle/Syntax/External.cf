@@ -71,6 +71,9 @@ position token TokMul       {"*"};
 position token TokDiv       {"/"};
 position token TokAdd       {"+"};
 position token TokSub       {"-"};
+position token TokPow       {"**"};
+position token TokExp       {"exp"};
+position token TokLog       {"log"};
 position token TokMin       {"min"};
 position token TokMax       {"max"};
 
@@ -86,6 +89,9 @@ position token TokAddRealTensor {"addRealTensor"};
 position token TokSubRealTensor {"subRealTensor"};
 position token TokMulRealTensor {"mulRealTensor"};
 position token TokDivRealTensor {"divRealTensor"};
+position token TokExpRealTensor {"expRealTensor"};
+position token TokLogRealTensor {"logRealTensor"};
+position token TokPowRealTensor {"powRealTensor"};
 position token TokQuantifyForAllIndex {"quantifyForAllIndex"};
 position token TokQuantifyExistsIndex {"quantifyExistsIndex"};
 position token TokQuantifyForallRealTensor {"quantifyForallRealTensor"};
@@ -251,6 +257,8 @@ Sub. Expr9  ::= Expr9  TokSub Expr10;
 Mul. Expr10 ::= Expr10 TokMul Expr11;
 Div. Expr10 ::= Expr10 TokDiv Expr11;
 Neg. Expr11 ::= TokSub Expr11;
+-- Right-associative, tighter than unary `-` (so `-x**2` is `-(x**2)`).
+Pow. Expr12 ::= Expr13 TokPow Expr12;
 
 -- Boolean expressions.
 If.      Expr4  ::= TokIf Expr5 TokThen Expr5 TokElse Expr5;
@@ -296,6 +304,11 @@ AddRealTensor.                Expr15 ::= TokAddRealTensor;
 SubRealTensor.                Expr15 ::= TokSubRealTensor;
 MulRealTensor.                Expr15 ::= TokMulRealTensor;
 DivRealTensor.                Expr15 ::= TokDivRealTensor;
+ExpRealTensor.                Expr15 ::= TokExpRealTensor;
+LogRealTensor.                Expr15 ::= TokLogRealTensor;
+PowRealTensor.                Expr15 ::= TokPowRealTensor;
+Exp.                          Expr15 ::= TokExp;
+Log.                          Expr15 ::= TokLog;
 QuantifyForAllIndex.          Expr15 ::= TokQuantifyForAllIndex;
 QuantifyExistsIndex.          Expr15 ::= TokQuantifyExistsIndex;
 QuantifyForallRealTensor.     Expr15 ::= TokQuantifyForallRealTensor;

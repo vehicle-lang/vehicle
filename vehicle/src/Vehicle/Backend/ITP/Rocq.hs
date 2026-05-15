@@ -543,6 +543,8 @@ compileBuiltin b args = case b of
     Rollout -> userUnsupported "'rollout' operator"
     Transpose -> compileApplication [RequireImport VehicleTensor] "transpose_t" args
     PowRat -> unsupportedError
+    ExpRat -> userUnsupported "'exp' operator"
+    LogRat -> userUnsupported "'log' operator"
     Temporal op -> userUnsupported $ "Temporal operator '" <> pretty op <> "'"
     AtVector -> compileApplication [MathcompImport Boot] "tnth" args
     ForeachVector -> compileApplication [RequireImport VehicleUtils] "foreachTuple" args

@@ -6,6 +6,7 @@ module Vehicle.Data.Builtin.Interface.Normalise where
 import Control.Applicative ((<|>))
 import Control.Monad (foldM, zipWithM)
 import Data.Maybe (fromMaybe, isJust)
+import Data.Ratio (denominator, numerator)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
@@ -491,11 +492,19 @@ evalMaxRatTensor :: (MonadNormBuiltin m, HasRatExpr Value builtin) => EvalSimple
 evalMaxRatTensor = evalTensorOp2 accessMaxRatTensorBuiltin accessRatTensorLiteral max Nothing Nothing Nothing Nothing
 
 evalPowRat ::
-  (MonadNormBuiltin m, HasRatExpr Value builtin, BuiltinHasNatLiterals builtin) =>
+  (MonadNormBuiltin m, HasRatExpr Value builtin) =>
   EvalSimple TensorOp2Args Value builtin m
 evalPowRat = \case
-  TensorOp2Args _ (IRatTensor xs) (INatLiteral n) -> return $ IRatTensor (mapTensor (^^ n) xs)
+  TensorOp2Args _ (IRatTensor xs) (IRatTensor (ConstantTensor _ y))
+    | denominator y == 1 ->
+        return $ IRatTensor (mapTensor (^^ numerator y) xs)
   args -> return $ mkExpr accessPowRatTensor args
+
+evalExpRat :: (MonadNormBuiltin m, HasRatExpr Value builtin) => EvalSimple TensorOp1Args Value builtin m
+evalExpRat args = return $ mkExpr accessExpRatTensor args
+
+evalLogRat :: (MonadNormBuiltin m, HasRatExpr Value builtin) => EvalSimple TensorOp2Args Value builtin m
+evalLogRat args = return $ mkExpr accessLogRatTensor args
 
 evalReduceAddRatTensor :: (MonadNormBuiltin m, HasRatExpr Value builtin, PrintableBuiltin builtin) => EvalSimple TensorReductionArgs Value builtin m
 evalReduceAddRatTensor = evalReduceTensor accessReduceAddRatBuiltin accessRatTensorLiteral evalAddRatTensor (+)

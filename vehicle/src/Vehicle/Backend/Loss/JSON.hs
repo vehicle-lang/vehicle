@@ -102,6 +102,9 @@ data JExpr
   | DivRatTensor JExpr JExpr
   | MinRatTensor JExpr JExpr
   | MaxRatTensor JExpr JExpr
+  | PowRatTensor JExpr JExpr
+  | ExpRatTensor JExpr
+  | LogRatTensor JExpr JExpr
   | ReduceAddRatTensor JExpr JExpr
   | ReduceMulRatTensor JExpr JExpr
   | ReduceMinRatTensor JExpr JExpr
@@ -316,7 +319,9 @@ convertBuiltin b spine = case b of
     L.Div L.DivRatTensor -> convertTensorOp2 convertValue b DivRatTensor spine
     L.Min L.MinRatTensor -> convertTensorOp2 convertValue b MinRatTensor spine
     L.Max L.MaxRatTensor -> convertTensorOp2 convertValue b MaxRatTensor spine
-    L.PowRat -> unsupportedError b
+    L.PowRat -> convertTensorOp2 convertValue b PowRatTensor spine
+    L.ExpRat -> convertTensorOp1 convertValue b ExpRatTensor spine
+    L.LogRat -> convertTensorOp2 convertValue b LogRatTensor spine
     L.ReduceAddRatTensor -> convertTensorReduction convertValue b ReduceAddRatTensor spine
     L.ReduceMulRatTensor -> convertTensorReduction convertValue b ReduceMulRatTensor spine
     L.ReduceMinRatTensor -> convertTensorReduction convertValue b ReduceMinRatTensor spine
@@ -558,6 +563,9 @@ fromJExpr = \case
   DivRatTensor e1 e2 -> toFunction (L.Div L.DivRatTensor) [e1, e2]
   MinRatTensor e1 e2 -> toFunction (L.Min L.MinRatTensor) [e1, e2]
   MaxRatTensor e1 e2 -> toFunction (L.Max L.MaxRatTensor) [e1, e2]
+  PowRatTensor e1 e2 -> toFunction L.PowRat [e1, e2]
+  ExpRatTensor e -> toFunction L.ExpRat [e]
+  LogRatTensor e1 e2 -> toFunction L.LogRat [e1, e2]
   ReduceAddRatTensor e xs -> toFunction L.ReduceAddRatTensor [e, xs]
   ReduceMulRatTensor e xs -> toFunction L.ReduceMulRatTensor [e, xs]
   ReduceMinRatTensor e xs -> toFunction L.ReduceMinRatTensor [e, xs]
@@ -710,6 +718,9 @@ jExprChildren = \case
   DivRatTensor a b -> [a, b]
   MinRatTensor a b -> [a, b]
   MaxRatTensor a b -> [a, b]
+  PowRatTensor a b -> [a, b]
+  ExpRatTensor a -> [a]
+  LogRatTensor a b -> [a, b]
   ReduceAddRatTensor a b -> [a, b]
   ReduceMulRatTensor a b -> [a, b]
   ReduceMinRatTensor a b -> [a, b]
@@ -742,6 +753,9 @@ mapJExprChildrenWithIndex f = \case
   DivRatTensor a b -> DivRatTensor (f 0 a) (f 1 b)
   MinRatTensor a b -> MinRatTensor (f 0 a) (f 1 b)
   MaxRatTensor a b -> MaxRatTensor (f 0 a) (f 1 b)
+  PowRatTensor a b -> PowRatTensor (f 0 a) (f 1 b)
+  ExpRatTensor a -> ExpRatTensor (f 0 a)
+  LogRatTensor a b -> LogRatTensor (f 0 a) (f 1 b)
   ReduceAddRatTensor a b -> ReduceAddRatTensor (f 0 a) (f 1 b)
   ReduceMulRatTensor a b -> ReduceMulRatTensor (f 0 a) (f 1 b)
   ReduceMinRatTensor a b -> ReduceMinRatTensor (f 0 a) (f 1 b)

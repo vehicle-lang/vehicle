@@ -72,7 +72,9 @@ functionBlockingStatus b spine = case b of
   Div DivRatTensor -> fixedStatus [1, 2] spine
   Min MinRatTensor -> fixedStatus [1, 2] spine
   Max MaxRatTensor -> fixedStatus [1, 2] spine
-  PowRat -> fixedStatus [0, 1] spine
+  PowRat -> fixedStatus [1, 2] spine
+  ExpRat -> fixedStatus [1] spine
+  LogRat -> fixedStatus [1, 2] spine
   CompareIndex _op -> fixedStatus [2, 3] spine
   CompareNat _op -> fixedStatus [0, 1] spine
   CompareRatTensorPointwise _op -> fixedStatus [1, 2] spine

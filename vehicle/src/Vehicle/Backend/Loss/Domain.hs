@@ -782,6 +782,9 @@ compileLinearExpr dims expr = case toRatTensorValue expr of
   -- Min/max could be handled by splitting into two constraints?
   VMinRatTensor {} -> unlinearisable
   VMaxRatTensor {} -> unlinearisable
+  VPowRatTensor {} -> unlinearisable
+  VExpRatTensor {} -> unlinearisable
+  VLogRatTensor {} -> unlinearisable
   VReduceAddRatTensor {} -> unlinearisable
   VReduceMulRatTensor {} -> unlinearisable
   VReduceMinRatTensor {} -> unlinearisable

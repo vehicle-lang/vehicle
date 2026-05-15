@@ -237,6 +237,29 @@ class MaxRatTensor(Expression):
 
 
 @dataclass(frozen=True)
+class PowRatTensor(Expression):
+    """Power: PowRatTensor base exponent"""
+
+    x: Expression
+    y: Expression
+
+
+@dataclass(frozen=True)
+class ExpRatTensor(Expression):
+    """Exponential: ExpRatTensor expr"""
+
+    x: Expression
+
+
+@dataclass(frozen=True)
+class LogRatTensor(Expression):
+    """Logarithm with base: LogRatTensor base value (i.e. log_b(x))"""
+
+    x: Expression
+    y: Expression
+
+
+@dataclass(frozen=True)
 class ReduceAddRatTensor(Expression):
     """Reduce addition: ReduceAddRatTensor expr dims"""
 

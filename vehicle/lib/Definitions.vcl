@@ -123,6 +123,36 @@ record HasDiv t1 t2 t3 where
 realTensorHasDiv : HasDiv (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
 realTensorHasDiv = { divTC = divRealTensor }
 
+-- HasPow — `x ** y`. Loss-backend only.
+@typeclass
+record HasPow t1 t2 t3 where
+  { powTC : t1 -> t2 -> t3
+  }
+
+@instance
+realTensorHasPow : HasPow (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
+realTensorHasPow = { powTC = powRealTensor }
+
+-- HasExp — `exp x`. Loss-backend only.
+@typeclass
+record HasExp t where
+  { expTC : t -> t
+  }
+
+@instance
+realTensorHasExp : HasExp (Tensor Real dims)
+realTensorHasExp = { expTC = expRealTensor }
+
+-- HasLog — `log b x` (logarithm of `x` with base `b`). Loss-backend only.
+@typeclass
+record HasLog t1 t2 t3 where
+  { logTC : t1 -> t2 -> t3
+  }
+
+@instance
+realTensorHasLog : HasLog (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
+realTensorHasLog = { logTC = logRealTensor }
+
 -- Quantifiers
 @typeclass
 record HasQuantifier t where

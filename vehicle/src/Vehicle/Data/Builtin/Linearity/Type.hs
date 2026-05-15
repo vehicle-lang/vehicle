@@ -69,6 +69,8 @@ typeOfBuiltinFunction p = \case
   Min {} -> typeOfOp2 maxLinearity
   Max {} -> typeOfOp2 maxLinearity
   PowRat {} -> typeOfOp2 (powLinearity p)
+  ExpRat {} -> typeOfOp1Constrained (expLinearity p)
+  LogRat {} -> typeOfOp2 (logLinearity p)
   ReduceAddRatTensor -> typeOfOp2 maxLinearity
   ReduceMulRatTensor ->
     forAllLinearityTriples $ \l1 l2 l3 ->
@@ -125,11 +127,20 @@ typeOfLinearityRelation = \case
   MulLinearity {} -> tLin ~> tLin ~> tLin ~> type0
   DivLinearity {} -> tLin ~> tLin ~> tLin ~> type0
   PowLinearity {} -> tLin ~> tLin ~> tLin ~> type0
+  ExpLinearity {} -> tLin ~> tLin ~> type0
+  LogLinearity {} -> tLin ~> tLin ~> tLin ~> type0
   FunctionLinearity {} -> tLin ~> tLin ~> type0
   QuantifierLinearity {} -> (tLin ~> tLin) ~> tLin ~> type0
 
 typeOfOp1 :: LinearityDSLExpr
 typeOfOp1 = forAllLinearities $ \l -> l ~> l
+
+typeOfOp1Constrained ::
+  (LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr) ->
+  LinearityDSLExpr
+typeOfOp1Constrained constraint =
+  forAllLinearityPairs $ \l1 l2 ->
+    constraint l1 l2 .~~~> l1 ~> l2
 
 typeOfOp2 ::
   (LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr -> LinearityDSLExpr) ->

@@ -202,6 +202,9 @@ unblockRatTensorValue actions@UnblockingActions {..} status expr = do
     VSubRatTensor args -> unblockTensorOp2 (unblock status) evalSubRatTensor args
     VMulRatTensor args -> unblockTensorOp2 (unblock status) evalMulRatTensor args
     VDivRatTensor args -> unblockTensorOp2 (unblock status) evalDivRatTensor args
+    VPowRatTensor args -> unblockTensorOp2 (unblock status) evalPowRat args
+    VExpRatTensor args -> unblockTensorOp1 (unblock status) evalExpRat args
+    VLogRatTensor args -> unblockTensorOp2 (unblock status) evalLogRat args
     VReduceAddRatTensor args -> unblockReduceTensor (unblock DifferentDimensions) evalReduceAddRatTensor args
     VReduceMulRatTensor args -> unblockReduceTensor (unblock DifferentDimensions) evalReduceMulRatTensor args
     VReduceMinRatTensor args -> unblockReduceTensor (unblock DifferentDimensions) evalReduceMinRatTensor args

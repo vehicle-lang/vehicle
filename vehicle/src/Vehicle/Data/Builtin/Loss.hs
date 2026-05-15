@@ -83,6 +83,8 @@ data LossBuiltinFunction
   | Min MinDomain
   | Max MaxDomain
   | PowRat
+  | ExpRat
+  | LogRat
   | -- Rat tensor operations
     ReduceAddRatTensor
   | ReduceMulRatTensor
@@ -114,6 +116,8 @@ instance Pretty LossBuiltinFunction where
     Min dom -> "min" <> pretty dom
     Max dom -> "max" <> pretty dom
     PowRat -> "**"
+    ExpRat -> "exp"
+    LogRat -> "log"
     ReduceAddRatTensor -> "reduceAddRatTensor"
     ReduceMulRatTensor -> "reduceMulRatTensor"
     ReduceMinRatTensor -> "reduceMinRatTensor"
@@ -231,6 +235,8 @@ instance BuiltinHasRatLiterals LossBuiltin where
   accessMinRatTensorBuiltin = functionAccessor $ Min MinRatTensor
   accessMaxRatTensorBuiltin = functionAccessor $ Max MaxRatTensor
   accessPowRatTensorBuiltin = functionAccessor PowRat
+  accessExpRatTensorBuiltin = functionAccessor ExpRat
+  accessLogRatTensorBuiltin = functionAccessor LogRat
   accessReduceAddRatBuiltin = functionAccessor ReduceAddRatTensor
   accessReduceMulRatBuiltin = functionAccessor ReduceMulRatTensor
   accessReduceMinRatBuiltin = functionAccessor ReduceMinRatTensor
@@ -292,7 +298,8 @@ instance HasTensorLiterals Value LossBuiltin where
 
 instance HasLiftableTensorOperations LossBuiltin where
   liftableTensorOp1s =
-    [ (getExpr accessNegRatTensor, evalNegRatTensor, IRatType)
+    [ (getExpr accessNegRatTensor, evalNegRatTensor, IRatType),
+      (getExpr accessExpRatTensor, evalExpRat, IRatType)
     ]
 
   liftableTensorOp2s =
@@ -301,7 +308,9 @@ instance HasLiftableTensorOperations LossBuiltin where
       (getExpr accessSubRatTensor, evalSubRatTensor, IRatType),
       (getExpr accessDivRatTensor, evalDivRatTensor, IRatType),
       (getExpr accessMinRatTensor, evalMinRatTensor, IRatType),
-      (getExpr accessMaxRatTensor, evalMaxRatTensor, IRatType)
+      (getExpr accessMaxRatTensor, evalMaxRatTensor, IRatType),
+      (getExpr accessPowRatTensor, evalPowRat, IRatType),
+      (getExpr accessLogRatTensor, evalLogRat, IRatType)
     ]
 
 instance NormalisableBuiltin LossBuiltin where
@@ -321,6 +330,8 @@ instance NormalisableBuiltin LossBuiltin where
       Min MinRatTensor -> Simple evalMinRatTensor
       Max MaxRatTensor -> Simple evalMaxRatTensor
       PowRat -> Simple evalPowRat
+      ExpRat -> Simple evalExpRat
+      LogRat -> Simple evalLogRat
       ReduceAddRatTensor -> Simple evalReduceAddRatTensor
       ReduceMulRatTensor -> Simple evalReduceMulRatTensor
       ReduceMinRatTensor -> Simple evalReduceMinRatTensor
@@ -379,6 +390,8 @@ instance ConvertableBuiltin LossBuiltinFunction Builtin where
     Add dom -> convertBuiltin p (S.Add dom)
     Mul dom -> convertBuiltin p (S.Mul dom)
     PowRat -> convertBuiltin p S.PowRat
+    ExpRat -> convertBuiltin p S.ExpRat
+    LogRat -> convertBuiltin p S.LogRat
     ReduceAddRatTensor -> convertBuiltin p S.ReduceAddRatTensor
     ReduceMulRatTensor -> convertBuiltin p S.ReduceMulRatTensor
     ReduceMinRatTensor -> convertBuiltin p S.ReduceMinRatTensor

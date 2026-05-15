@@ -93,6 +93,18 @@ class TensorFlowBuiltins(
         return tf.maximum(x, y)
 
     @override
+    def PowRatTensor(self, x: tf.Tensor, y: tf.Tensor) -> tf.Tensor:
+        return tf.pow(x, y)
+
+    @override
+    def ExpRatTensor(self, x: tf.Tensor) -> tf.Tensor:
+        return tf.exp(x)
+
+    @override
+    def LogRatTensor(self, base: tf.Tensor, x: tf.Tensor) -> tf.Tensor:
+        return tf.math.log(x) / tf.math.log(base)
+
+    @override
     def ReduceAddRatTensor(
         self, e: float, xs: tf.Tensor | Sequence[tf.Tensor]
     ) -> tf.Tensor:

@@ -74,6 +74,8 @@ typeOfBuiltinFunction = \case
   Min {} -> typeOfUnquantifiedOp2
   Max {} -> typeOfUnquantifiedOp2
   PowRat {} -> typeOfUnquantifiedOp2
+  ExpRat {} -> typeOfUnquantifiedOp1
+  LogRat {} -> typeOfUnquantifiedOp1
   ReduceAddRatTensor -> typeOfUnquantifiedOp2
   ReduceMulRatTensor -> typeOfUnquantifiedOp2
   ReduceMinRatTensor -> typeOfUnquantifiedOp2

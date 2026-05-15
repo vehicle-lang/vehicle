@@ -51,8 +51,8 @@ formatHits backend hits =
     [ "The following features are not supported in the" <+> pretty backend <+> "backend:",
       indent 2 (vsep @[] (fmap formatHit hits)),
       line
-        <> "Specs that need temporal operators or `Time` should be compiled with"
-          <+> "`vehicle compile loss --logic STLLoss …` instead."
+        <> "These features are only supported by the loss backend"
+          <+> "(`vehicle compile loss --logic <LOGIC> …`)."
     ]
   where
     formatHit :: Hit -> Doc Void
@@ -110,6 +110,9 @@ unsupportedFeatureName = \case
   BuiltinFunction (Sub SubTime) -> Just "'-' on 'Time'"
   BuiltinFunction (Mul MulTime) -> Just "'*' on 'Time'"
   BuiltinFunction (Div DivTime) -> Just "'/' on 'Time'"
+  BuiltinFunction ExpRat -> Just "exponential 'exp'"
+  BuiltinFunction LogRat -> Just "natural logarithm 'log'"
+  BuiltinFunction PowRat -> Just "'**' / power"
   BuiltinCast (FromNat FromNatToTime) -> Just "cast 'Nat -> Time'"
   BuiltinCast (FromTime FromTimeToNat) -> Just "cast 'Time -> Nat'"
   _ -> Nothing

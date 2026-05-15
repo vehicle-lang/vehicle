@@ -792,6 +792,21 @@ formatCompileError = \case
               <+> pretty opProv
               <+> "involves"
               <> prettyLinearityProvenance lhs "exponent of the power"
+          ExpOfLinear opProv arg ->
+            "In particular the exponential in"
+              <+> pretty opProv
+              <+> "involves"
+              <> prettyLinearityProvenance arg "argument of the exponential"
+          LogLinearBase opProv arg ->
+            "In particular the logarithm in"
+              <+> pretty opProv
+              <+> "involves"
+              <> prettyLinearityProvenance arg "base of the logarithm"
+          LogLinearValue opProv arg ->
+            "In particular the logarithm in"
+              <+> pretty opProv
+              <+> "involves"
+              <> prettyLinearityProvenance arg "value of the logarithm"
   UnsupportedInequality queryFormat (identifier, p) ->
     VehicleError
       { provenance = Just p,
