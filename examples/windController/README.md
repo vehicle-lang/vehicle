@@ -81,10 +81,12 @@ running `vehicle verify` (otherwise those resource paths are stored
 relative to the verify cwd and `vehicle validate` will look for them
 there).
 
-To build the Rocq proof:
+To build the Rocq proof, generate the Coq makefile from `_CoqProject`
+and run it:
 
 ```bash
 cd examples/windController/rocqProof
+rocq makefile -f _CoqProject -o Makefile
 make
 ```
 

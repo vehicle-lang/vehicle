@@ -139,15 +139,6 @@ Postulated resources
 Similarly to Agda, networks and datasets are expressed as opaque :code:`Parameter`
 declarations within Rocq. Hence it is not possible to evaluate a network within Rocq.
 
-Poor tensor integration with Mathcomp
-#####################################
-
-Currently, tensors are implemented using nested mathcomp tuple types and does not
-directly interface with mathcomp's structure hierarchy. This can lead to issues
-when considering properties with tensor arithmetic. Users are encouraged to, when
-possible, express tensor properties using universal quantification over indices.
-This generally leads to neater proofs.
-
 Isabelle
 ~~~~~~~~
 
