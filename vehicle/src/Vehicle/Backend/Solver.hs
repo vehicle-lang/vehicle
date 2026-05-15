@@ -291,7 +291,8 @@ wrapQuantifyRecord QuantifyRecordArgs{..} = do
   -- Construct \r -> body from binder and body in record quantifier args
   recordQLam <- unnormaliseInCtx $ VLam quantifyRecordBinder quantifyRecordBody 
   recordTypeDecl <- getDeclEntry (Proxy @Builtin) recordTypeIdent
-  dims <- getRecordDimsExpr recordTypeDecl
+  shape <- getRecordDimsExpr recordTypeDecl
+  let dims = mkDims shape
 
   -- Build tensor binder with appropriate dims and type for record
   let Closure boundEnv _body = quantifyRecordBody

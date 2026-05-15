@@ -19,7 +19,7 @@ import Vehicle.Data.Code.Value
 import Vehicle.Data.Tensor (TensorShape)
 import Vehicle.Data.Variable.Free.Context.Class
 import Vehicle.Verify.Core (NetworkContextInfo (..))
-import Vehicle.Data.Builtin.Standard.Scoping (getRecordDims, getRecordFieldNames)
+import Vehicle.Data.Builtin.Standard.Scoping (getRecordFieldNames, getRecordDimsExpr)
 
 --------------------------------------------------------------------------------
 -- Network typing
@@ -61,9 +61,9 @@ getNetworkType decl networkType = case normalised networkType of
         return $ NetworkTensorType  NetworkRatType shape
       VFreeTypeVar v _spine -> do
         entry <- getDeclEntry (Proxy @Builtin) v
-        shape <- getRecordDims entry
+        shape <- getRecordDimsExpr entry
         fields <- getRecordFieldNames entry
-        return $ NetworkRecordType NetworkRatType v [shape] fields
+        return $ NetworkRecordType NetworkRatType v shape fields
       _ -> typingError
 
     tensorDimensions :: InputOrOutput -> VType Builtin -> m TensorShape

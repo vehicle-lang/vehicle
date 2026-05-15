@@ -15,10 +15,12 @@ import Vehicle.Data.AST.Expr.Desugared qualified as D (Expr (..), normAppList)
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.DSL
-import Vehicle.Data.Tensor (pattern ZeroDimTensor)
+import Vehicle.Data.Tensor (pattern ZeroDimTensor, TensorShape)
 import Vehicle.Libraries.StandardLibrary
 import Vehicle.Compile.ExpandResources.Core (MonadExpandResources)
 import Vehicle.Compile.Resource (GenericRecordFieldNames)
+import Vehicle.Data.Code.Interface (getDims)
+import Vehicle.Data.Code.TypedView (toTypeValue, TypeValue (VTensorLike), TensorLikeValue (VRatTensorType))
 
 instance ScopableBuiltin Builtin where
   generateAuxiliaryRecordDefinitions p ident sort telescope fields
@@ -213,7 +215,7 @@ createTensorLikeComparisonInstance p recordIdent = do
 
   let typeclass = fromDSL mempty $ freeVar hasComparisonIdent @@ [recordType, recordType]
   let instanceName = Text.pack "_" <> nameOf recordIdent <> "HasComparison"
-  
+
   let instanceIdent = Identifier (modulePath recordIdent) instanceName
 
   let fieldText = ["leTC", "ltTC", "geTC", "gtTC", "eqTC", "neTC"]
@@ -237,20 +239,20 @@ createComparisonField recordType toTensor fieldIdent = do
 -- -----------------------------------------------------------------------------------------------
 -- Record/Tensorisable util functions
 -- Not sure if these should go here or if they are at the right level of abstraction
-getRecordDims ::
-  (MonadError CompileError m) =>
-  FreeCtxEntry Builtin ->
-  m Int
-getRecordDims (DefRecord _ _ _ _ fields) = return $ length fields
-getRecordDims _ = compilerDeveloperError "Record declaration is not of expected format."
 
 getRecordDimsExpr ::
+  forall m.
   (MonadError CompileError m) =>
   FreeCtxEntry Builtin ->
-  m (Expr Builtin)
-getRecordDimsExpr r = do
-  singleDim <- getRecordDims r
-  return $ fromDSL mempty $ dimCons (dim singleDim) dimNil
+  m TensorShape
+getRecordDimsExpr (DefRecord _ _ _ _ fields@((_n, typ):_fs)) = do
+  case toTypeValue typ of
+    (VTensorLike (VRatTensorType dims)) -> do
+      case getDims dims of
+        Just d -> return $ length fields : d
+        Nothing -> return [length fields]
+    _ -> return [length fields]
+getRecordDimsExpr _ = compilerDeveloperError "Record declaration is not of expected format."
 
 getRecordProvenance ::
   (MonadError CompileError m) =>
