@@ -310,6 +310,7 @@ wrapQuantifyRecord QuantifyRecordArgs{..} = do
   let ratTensorArgs = QuantifyRatTensorArgs normalisedDims tensorBinder nestedRecordQuantifierClosure
   return ratTensorArgs
 
+-- | We only need this because we can't evaluate networks in the compiler.
 compileUnquantifiedQuerySet ::
   (MonadPropertyStructure m, MonadSupply QueryID m, MonadStdIO m) =>
   Value Builtin ->

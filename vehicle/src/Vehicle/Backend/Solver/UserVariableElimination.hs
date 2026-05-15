@@ -204,55 +204,53 @@ unblockNetworkApplication ::
 unblockNetworkApplication unblockFnTensor unblockFnRecord ident (NetworkAppArgs arg) = do
   let name = nameOf ident
   networkInfo <- asks (lookupNetworkInfo name . networkCtx)
-
   let typ = networkType networkInfo
+
+  -- The low-level network representation works over tensors
+  -- Create two tensors representing the network input and output
   (inputVarExpr, outputVarExpr) <- addNetworkApplicationToGlobalCtx name networkInfo arg
   ctx <- getNameContext
 
-  transformedInput <- case inputTensor typ of 
-    NetworkRecordType  _ recordTyp _ _ -> do 
-      fromTensorFn <- eval ctx emptyBoundEnv (constructFromTensorFreeVar recordTyp mempty)
-      evalApp ctx fromTensorFn [Arg Explicit Relevant inputVarExpr]
-    _ -> return inputVarExpr
-
-  transformedOutput <- case outputTensor typ of 
+  -- If our network outputs a tensorisable, convert our output expression to a record
+  transformedOutputVarExpr <- case outputTensor typ of 
     NetworkRecordType _ recordTyp _ _ -> do 
-      fromTensorValue <- eval ctx emptyBoundEnv (constructFromTensorFreeVar recordTyp mempty)
-      evalApp ctx fromTensorValue [Arg Explicit Relevant outputVarExpr]
+      fromTensorFn <- eval ctx emptyBoundEnv (constructFromTensorFreeVar recordTyp mempty)
+      evalApp ctx fromTensorFn [Arg Explicit Relevant outputVarExpr]
     _ -> return outputVarExpr
 
-  inputEquality <- case inputTensor typ of 
+  -- Create our input equality in terms of tensors (as record equality just converts to tensor equality anyway)
+  -- If our network input is a tensorisable, i.e. arg is tensorisable, convert it to a tensor
+  transformedArg <- case inputTensor typ of
     NetworkRecordType _ recordTyp _ _ -> do
       toTensorFn <- eval ctx emptyBoundEnv (constructToTensorFreeVar recordTyp mempty)
-      argAsTensor <- evalApp ctx toTensorFn [Arg Explicit Relevant arg]
-      inputAsTensor <- evalApp ctx toTensorFn [Arg Explicit Relevant transformedInput]
-      return $ fromBoolValue $ VCompareRatTensor ( Eq, TensorOp2Args
-                  { tensorOp2Dims = mkDims (inputShape networkInfo),
-                    tensorOp2Arg1 = inputAsTensor,
-                    tensorOp2Arg2 = argAsTensor
-                  }
-              )
+      evalApp ctx toTensorFn [Arg Explicit Relevant arg]
+    _ -> return arg
 
-    _ -> return $ fromBoolValue $ VCompareRatTensor ( Eq,TensorOp2Args
-                  { tensorOp2Dims = mkDims (inputShape networkInfo),
-                    tensorOp2Arg1 = transformedInput,
-                    tensorOp2Arg2 = arg
-                  }
-              )
+  let inputEquality =
+        fromBoolValue $
+          VCompareRatTensor
+            ( Eq,
+              TensorOp2Args
+                { tensorOp2Dims = mkDims (inputShape networkInfo),
+                  tensorOp2Arg1 = inputVarExpr,
+                  tensorOp2Arg2 = transformedArg
+                }
+            )
 
   tell [inputEquality]
 
   logDebugM MaxDetail $ do
     inputEqualityDoc <- prettyFriendlyInCtx inputEquality
-    replacementExprDoc <- prettyFriendlyInCtx transformedOutput
+    replacementExprDoc <- prettyFriendlyInCtx transformedOutputVarExpr
     return $
       "note-input-equality" <+> inputEqualityDoc
         <> line
         <> "replace-expr" <+> replacementExprDoc
 
   case outputTensor typ of 
-    NetworkRecordType {} -> unblockFnRecord transformedOutput
-    _ -> unblockFnTensor transformedOutput
+    -- Unblock depending on the type of the output expression from our network
+    NetworkRecordType {} -> unblockFnRecord transformedOutputVarExpr
+    NetworkTensorType {} -> unblockFnTensor transformedOutputVarExpr
 
 
 --------------------------------------------------------------------------------

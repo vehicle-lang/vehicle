@@ -17,10 +17,6 @@ f : Pair -> Pair
 p : Bool
 p = (forall x . minBound <= x <= maxBound => (f x).a >= x.a)
 
--- @property
--- simple : Bool
--- simple = forall x . 0 <= x.a <= 1 => x.b <= (f x).b
-
 @property
 parallel : Bool
 parallel = (forall x . minBound <= x <= maxBound => (f x).a >= 0) and (exists y . minBound <= y <= maxBound and (f y).b >= 5)

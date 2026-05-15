@@ -369,7 +369,7 @@ andPartitions p1 p2 = do
   return $ Partitions $ Map.fromList $ disjunctsToList disjuncts
 
 unblockingActions :: (MonadDomain m) => UnblockingActions m
--- TODO: define proprtly for record unblock
+-- TODO: RECORD SUPPORT
 unblockingActions =
   UnblockingActions
     { unblockRatTensorBoundVar = purifyBoundVar,
@@ -400,7 +400,8 @@ compileBool value = logEntryAndExit value $ case toBoolValue value of
   VBoolIf args -> compileBool =<< unfoldIf args
   VNot args -> compileBool =<< lowerNot args
   VQuantifyRatTensor args -> compileQuantifierInternal args
-  VQuantifyRecord _args -> compilerDeveloperError "LAUREN TODO: unsupported record quantifier"
+  -- TODO: RECORD SUPPORT
+  VQuantifyRecord _args -> compilerDeveloperError "Non top-level record quantifiers are not supported yet"
   -------------------
   -- Blocked cases --
   -------------------
@@ -544,7 +545,7 @@ purifyAssertion op args = do
       Right value -> return value
 
 purifyUnblockingActions :: (MonadPurifyAssertion m) => UnblockingActions m
--- TODO: define properly for records
+-- TODO: RECORD SUPPORT
 purifyUnblockingActions =
   UnblockingActions
     { unblockRatTensorBoundVar = purifyBoundVar,
