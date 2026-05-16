@@ -212,11 +212,8 @@ eval ctx boundEnv expr = do
       return $ VRecord recordType' $ OMap.fromList fields'
     RecordProj _p recordType record field -> do
       record' <- recEval record
-      case record' of
-        VRecord _ fields -> return $ lookupRecordFieldS fields field
-        _ -> do
-          recordType' <- recEval recordType
-          return $ VRecordAcc recordType' record' field []
+      recordType' <- recEval recordType
+      evalRecordAcc recordType' record' field
 
   showExit ctx result
   return result

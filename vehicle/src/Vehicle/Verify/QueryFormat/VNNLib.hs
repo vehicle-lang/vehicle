@@ -4,7 +4,7 @@ import Control.Monad (forM)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Version (Version (..))
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Resource (NetworkIOType (..), NetworkRecordType (NetworkRecordType), NetworkTensorType (NetworkTensorType), NetworkType (networkInputType))
+import Vehicle.Compile.Resource (NetworkIOType (..), NetworkRecordType (NetworkRecordType), NetworkTensorType (NetworkTensorType), NetworkType (networkInputType), networkOutputType)
 import Vehicle.Data.Bound (BoundedValue (..), Domain (..), LowerBound (..), UpperBound (..))
 import Vehicle.Data.Tensor (TensorShape)
 import Vehicle.Verify.Core
@@ -104,7 +104,7 @@ networkTensor networkName networkType appIndex inputOrOutput = do
   let name = layoutAsText $ compileNetworkVariableName networkName appIndex inputOrOutput
   case inputOrOutput of
     Input -> (name, getNetworkIODimensions $ networkInputType networkType)
-    Output -> (name, getNetworkIODimensions $ networkInputType networkType)
+    Output -> (name, getNetworkIODimensions $ networkOutputType networkType)
 
 getNetworkIODimensions :: NetworkIOType -> TensorShape
 getNetworkIODimensions ioTensor =
