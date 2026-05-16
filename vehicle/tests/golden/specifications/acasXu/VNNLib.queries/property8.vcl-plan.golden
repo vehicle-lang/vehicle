@@ -1127,17 +1127,23 @@
                   "acasXu",
                   {
                     "networkType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
+                      "networkOutputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            5
+                          ],
+                          "baseType": []
+                        }
                       },
-                      "inputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
+                      "networkInputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            5
+                          ],
+                          "baseType": []
+                        }
                       }
                     },
                     "networkFilepath": "fake.onnx"
@@ -2267,17 +2273,23 @@
                   "acasXu",
                   {
                     "networkType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
+                      "networkOutputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            5
+                          ],
+                          "baseType": []
+                        }
                       },
-                      "inputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
+                      "networkInputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            5
+                          ],
+                          "baseType": []
+                        }
                       }
                     },
                     "networkFilepath": "fake.onnx"
@@ -3407,17 +3419,23 @@
                   "acasXu",
                   {
                     "networkType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
+                      "networkOutputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            5
+                          ],
+                          "baseType": []
+                        }
                       },
-                      "inputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
+                      "networkInputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            5
+                          ],
+                          "baseType": []
+                        }
                       }
                     },
                     "networkFilepath": "fake.onnx"
@@ -4546,19 +4564,7 @@
                 [
                   "acasXu",
                   {
-                    "networkType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
-                      },
-                      "inputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
-                      }
+
                     },
                     "networkFilepath": "fake.onnx"
                   },
@@ -5687,17 +5693,23 @@
                   "acasXu",
                   {
                     "networkType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
+                      "networkOutputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            5
+                          ],
+                          "baseType": []
+                        }
                       },
-                      "inputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
+                      "networkInputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            5
+                          ],
+                          "baseType": []
+                        }
                       }
                     },
                     "networkFilepath": "fake.onnx"
@@ -6827,17 +6839,23 @@
                   "acasXu",
                   {
                     "networkType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
+                      "networkOutputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            5
+                          ],
+                          "baseType": []
+                        }
                       },
-                      "inputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
+                      "networkInputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            5
+                          ],
+                          "baseType": []
+                        }
                       }
                     },
                     "networkFilepath": "fake.onnx"
@@ -7967,17 +7985,23 @@
                   "acasXu",
                   {
                     "networkType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
+                      "networkOutputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            5
+                          ],
+                          "baseType": []
+                        }
                       },
-                      "inputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
+                      "networkInputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            5
+                          ],
+                          "baseType": []
+                        }
                       }
                     },
                     "networkFilepath": "fake.onnx"
@@ -9107,17 +9131,23 @@
                   "acasXu",
                   {
                     "networkType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
+                      "networkOutputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            5
+                          ],
+                          "baseType": []
+                        }
                       },
-                      "inputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
+                      "networkInputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            5
+                          ],
+                          "baseType": []
+                        }
                       }
                     },
                     "networkFilepath": "fake.onnx"
@@ -10247,17 +10277,23 @@
                   "acasXu",
                   {
                     "networkType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
+                      "networkOutputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            5
+                          ],
+                          "baseType": []
+                        }
                       },
-                      "inputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
+                      "networkInputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            5
+                          ],
+                          "baseType": []
+                        }
                       }
                     },
                     "networkFilepath": "fake.onnx"
@@ -11387,17 +11423,23 @@
                   "acasXu",
                   {
                     "networkType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
+                      "networkOutputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            5
+                          ],
+                          "baseType": []
+                        }
                       },
-                      "inputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
+                      "networkInputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            5
+                          ],
+                          "baseType": []
+                        }
                       }
                     },
                     "networkFilepath": "fake.onnx"
@@ -12527,17 +12569,23 @@
                   "acasXu",
                   {
                     "networkType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
+                      "networkOutputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            5
+                          ],
+                          "baseType": []
+                        }
                       },
-                      "inputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
+                      "networkInputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            5
+                          ],
+                          "baseType": []
+                        }
                       }
                     },
                     "networkFilepath": "fake.onnx"
@@ -13667,17 +13715,23 @@
                   "acasXu",
                   {
                     "networkType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
+                      "networkOutputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            5
+                          ],
+                          "baseType": []
+                        }
                       },
-                      "inputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
+                      "networkInputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            5
+                          ],
+                          "baseType": []
+                        }
                       }
                     },
                     "networkFilepath": "fake.onnx"
@@ -14807,17 +14861,23 @@
                   "acasXu",
                   {
                     "networkType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
+                      "networkOutputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            5
+                          ],
+                          "baseType": []
+                        }
                       },
-                      "inputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
+                      "networkInputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            5
+                          ],
+                          "baseType": []
+                        }
                       }
                     },
                     "networkFilepath": "fake.onnx"
@@ -15947,17 +16007,23 @@
                   "acasXu",
                   {
                     "networkType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
+                      "networkOutputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            5
+                          ],
+                          "baseType": []
+                        }
                       },
-                      "inputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
+                      "networkInputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            5
+                          ],
+                          "baseType": []
+                        }
                       }
                     },
                     "networkFilepath": "fake.onnx"
@@ -17087,17 +17153,23 @@
                   "acasXu",
                   {
                     "networkType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
+                      "networkOutputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            5
+                          ],
+                          "baseType": []
+                        }
                       },
-                      "inputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
+                      "networkInputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            5
+                          ],
+                          "baseType": []
+                        }
                       }
                     },
                     "networkFilepath": "fake.onnx"
@@ -18227,17 +18299,23 @@
                   "acasXu",
                   {
                     "networkType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
+                      "networkOutputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            5
+                          ],
+                          "baseType": []
+                        }
                       },
-                      "inputTensor": {
-                        "dimensions": [
-                          5
-                        ],
-                        "baseType": []
+                      "networkInputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            5
+                          ],
+                          "baseType": []
+                        }
                       }
                     },
                     "networkFilepath": "fake.onnx"

@@ -14601,18 +14601,25 @@
                   "classifier",
                   {
                     "networkType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          10
-                        ],
-                        "baseType": []
+                      "networkOutputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            6
+                          ],
+                          "baseType": []
+                        }
                       },
-                      "inputTensor": {
-                        "dimensions": [
-                          28,
-                          28
-                        ],
-                        "baseType": []
+                      "networkInputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            3,
+                            28,
+                            28
+                          ],
+                          "baseType": []
+                        }
                       }
                     },
                     "networkFilepath": "fake.onnx"
@@ -29216,18 +29223,25 @@
                   "classifier",
                   {
                     "networkType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          10
-                        ],
-                        "baseType": []
+                      "networkOutputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            6
+                          ],
+                          "baseType": []
+                        }
                       },
-                      "inputTensor": {
-                        "dimensions": [
-                          28,
-                          28
-                        ],
-                        "baseType": []
+                      "networkInputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            3,
+                            28,
+                            28
+                          ],
+                          "baseType": []
+                        }
                       }
                     },
                     "networkFilepath": "fake.onnx"
@@ -43831,18 +43845,25 @@
                   "classifier",
                   {
                     "networkType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          10
-                        ],
-                        "baseType": []
+                      "networkOutputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            6
+                          ],
+                          "baseType": []
+                        }
                       },
-                      "inputTensor": {
-                        "dimensions": [
-                          28,
-                          28
-                        ],
-                        "baseType": []
+                      "networkInputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            3,
+                            28,
+                            28
+                          ],
+                          "baseType": []
+                        }
                       }
                     },
                     "networkFilepath": "fake.onnx"
@@ -58446,18 +58467,25 @@
                   "classifier",
                   {
                     "networkType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          10
-                        ],
-                        "baseType": []
+                      "networkOutputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            6
+                          ],
+                          "baseType": []
+                        }
                       },
-                      "inputTensor": {
-                        "dimensions": [
-                          28,
-                          28
-                        ],
-                        "baseType": []
+                      "networkInputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            3,
+                            28,
+                            28
+                          ],
+                          "baseType": []
+                        }
                       }
                     },
                     "networkFilepath": "fake.onnx"
@@ -73061,18 +73089,25 @@
                   "classifier",
                   {
                     "networkType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          10
-                        ],
-                        "baseType": []
+                      "networkOutputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            6
+                          ],
+                          "baseType": []
+                        }
                       },
-                      "inputTensor": {
-                        "dimensions": [
-                          28,
-                          28
-                        ],
-                        "baseType": []
+                      "networkInputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            3,
+                            28,
+                            28
+                          ],
+                          "baseType": []
+                        }
                       }
                     },
                     "networkFilepath": "fake.onnx"
@@ -87676,18 +87711,25 @@
                   "classifier",
                   {
                     "networkType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          10
-                        ],
-                        "baseType": []
+                      "networkOutputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            6
+                          ],
+                          "baseType": []
+                        }
                       },
-                      "inputTensor": {
-                        "dimensions": [
-                          28,
-                          28
-                        ],
-                        "baseType": []
+                      "networkInputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            3,
+                            28,
+                            28
+                          ],
+                          "baseType": []
+                        }
                       }
                     },
                     "networkFilepath": "fake.onnx"
@@ -102291,18 +102333,25 @@
                   "classifier",
                   {
                     "networkType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          10
-                        ],
-                        "baseType": []
+                      "networkOutputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            6
+                          ],
+                          "baseType": []
+                        }
                       },
-                      "inputTensor": {
-                        "dimensions": [
-                          28,
-                          28
-                        ],
-                        "baseType": []
+                      "networkInputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            3,
+                            28,
+                            28
+                          ],
+                          "baseType": []
+                        }
                       }
                     },
                     "networkFilepath": "fake.onnx"
@@ -116906,18 +116955,25 @@
                   "classifier",
                   {
                     "networkType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          10
-                        ],
-                        "baseType": []
+                      "networkOutputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            6
+                          ],
+                          "baseType": []
+                        }
                       },
-                      "inputTensor": {
-                        "dimensions": [
-                          28,
-                          28
-                        ],
-                        "baseType": []
+                      "networkInputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            3,
+                            28,
+                            28
+                          ],
+                          "baseType": []
+                        }
                       }
                     },
                     "networkFilepath": "fake.onnx"
@@ -131521,18 +131577,25 @@
                   "classifier",
                   {
                     "networkType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          10
-                        ],
-                        "baseType": []
+                      "networkOutputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            6
+                          ],
+                          "baseType": []
+                        }
                       },
-                      "inputTensor": {
-                        "dimensions": [
-                          28,
-                          28
-                        ],
-                        "baseType": []
+                      "networkInputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            3,
+                            28,
+                            28
+                          ],
+                          "baseType": []
+                        }
                       }
                     },
                     "networkFilepath": "fake.onnx"
