@@ -16,7 +16,7 @@ import Vehicle.Data.AST.Expr.Desugared qualified as D (Expr (..), normAppList)
 import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.Code.Interface (getDims)
-import Vehicle.Data.Code.TypedView (TensorLikeValue (VRatTensorType), TypeValue (VTensorLike), toTypeValue)
+import Vehicle.Data.Code.TypedView (TypeValue (VRatTensorType), toTypeValue)
 import Vehicle.Data.DSL
 import Vehicle.Data.Tensor (TensorShape, pattern ZeroDimTensor)
 import Vehicle.Libraries.StandardLibrary
@@ -315,7 +315,7 @@ getRecordDimsExpr ::
   m TensorShape
 getRecordDimsExpr (DefRecord _ _ _ _ fields@((_n, typ) : _fs)) = do
   case toTypeValue typ of
-    (VTensorLike (VRatTensorType dims)) -> do
+    (VRatTensorType dims) -> do
       case getDims dims of
         Just d -> return $ length fields : d
         Nothing -> return [length fields]

@@ -496,7 +496,7 @@ formatCompileError = \case
     where
       dimensionsOf :: VType Builtin -> Maybe Int
       dimensionsOf t = case toTypeValue t of
-        VTensorLike (VRatTensorType dims) -> dimLength dims
+        VRatTensorType dims -> dimLength dims
         VBoolTensorType dims -> dimLength dims
         VNatTensorType dims -> dimLength dims
         VIndexTensorType _ dims -> dimLength dims

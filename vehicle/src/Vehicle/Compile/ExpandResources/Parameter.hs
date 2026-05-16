@@ -32,7 +32,7 @@ parseParameterValue decl parameterType providedValue = do
   parser <- case toTypeValue $ normalised parameterType of
     VBoolTensorType IDimNil -> return parseBool
     VNatType {} -> return parseNat
-    VTensorLike (VRatTensorType IDimNil) -> return parseRat
+    VRatTensorType IDimNil -> return parseRat
     -- TODO check that Index dimension is constant, or at least will be after
     -- implicit parameters are filled in (the tricky bit).
     VIndexType size -> case toNatValue size of

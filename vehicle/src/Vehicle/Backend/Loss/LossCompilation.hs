@@ -65,8 +65,8 @@ convertType typ = logConversion typ $ case toTypeValue typ of
   VListType tElem -> IListType <$> convertType tElem
   VVectorType {} -> unsupportedOperation "VectorType"
   VBoolTensorType ds -> ITensorType <$> convertBoolType <*> convertDims ds
-  VTensorLike (VRatTensorType ds) -> ITensorType IRatType <$> convertDims ds
-  VTensorLike _ -> developerError "Records in loss functions are not supported yet"
+  VRatTensorType ds -> ITensorType IRatType <$> convertDims ds
+  VRecordType {} -> developerError "Records in loss functions are not supported yet"
   VNatTensorType ds -> ITensorType INatType <$> convertDims ds
   VIndexTensorType n ds -> (ITensorType . IIndexType <$> convertDim n) <*> convertDims ds
 

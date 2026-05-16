@@ -52,5 +52,5 @@ checkUserVariableType ::
   m (Value Builtin)
 checkUserVariableType binder =
   case toTypeValue (typeOf binder) of
-    VTensorLike (VRatTensorType dims) -> return dims
+    VRatTensorType dims -> return dims
     _ -> developerError $ "Unexpected quantifier type:" <+> prettyVerbose (typeOf binder)

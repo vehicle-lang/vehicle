@@ -192,7 +192,7 @@ unblockRecordValue actions@UnblockingActions {..} status expr = do
       Just args -> do
         unblockNetworkApp (unblockTensor status) (unblockRecord status) n args
       _ -> return expr
-    VRecordBoundVar {} -> return expr
+    VRecordBoundVar v -> unblockRecordBoundVar v
     VRecordLiteral {} -> return expr
   where
     unblockTensor = unblockRatTensorValue actions
