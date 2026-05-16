@@ -213,16 +213,16 @@ unblockNetworkApplication unblockFnTensor unblockFnRecord ident (NetworkAppArgs 
   ctx <- getNameContext
 
   -- If our network outputs a tensorisable, convert our output expression to a record
-  transformedOutputVarExpr <- case outputTensor typ of
-    NetworkRecordType _ recordTyp _ _ -> do
+  transformedOutputVarExpr <- case networkOutputType typ of
+    RecordIOType (NetworkRecordType _ recordTyp _ _) -> do
       fromTensorFn <- eval ctx emptyBoundEnv (constructFromTensorFreeVar recordTyp mempty)
       evalApp ctx fromTensorFn [explicit outputVarExpr]
     _ -> return outputVarExpr
 
   -- Create our input equality in terms of tensors (as record equality just converts to tensor equality anyway)
   -- If our network input is a tensorisable, i.e. arg is tensorisable, convert it to a tensor
-  transformedArg <- case inputTensor typ of
-    NetworkRecordType _ recordTyp _ _ -> do
+  transformedArg <- case networkInputType typ of
+    RecordIOType (NetworkRecordType _ recordTyp _ _) -> do
       toTensorFn <- eval ctx emptyBoundEnv (constructToTensorFreeVar recordTyp mempty)
       evalApp ctx toTensorFn [explicit arg]
     _ -> return arg
@@ -248,10 +248,10 @@ unblockNetworkApplication unblockFnTensor unblockFnRecord ident (NetworkAppArgs 
         <> line
         <> "replace-expr" <+> replacementExprDoc
 
-  case outputTensor typ of
+  case networkOutputType typ of
     -- Unblock depending on the type of the output expression from our network
-    NetworkRecordType {} -> unblockFnRecord transformedOutputVarExpr
-    NetworkTensorType {} -> unblockFnTensor transformedOutputVarExpr
+    RecordIOType (NetworkRecordType {}) -> unblockFnRecord transformedOutputVarExpr
+    TensorIOType (NetworkTensorType {}) -> unblockFnTensor transformedOutputVarExpr
 
 --------------------------------------------------------------------------------
 -- Elimination operations
@@ -275,8 +275,7 @@ eliminateTensorAssertion ::
   ComparisonOp ->
   TensorOp2Args (Value Builtin) ->
   m (Value Builtin)
-eliminateTensorAssertion op (TensorOp2Args dims xs ys) = do
-  _ <- logDebug MidDetail $ "dims are" <+> pretty (show dims) <+> "xs are" <+> pretty (show xs) <+> "ys are" <+> pretty (show ys)
+eliminateTensorAssertion op (TensorOp2Args dims xs ys) =
   case dims of
     IDimNil -> do
       -- For scalar comparisons, directly apply the comparison

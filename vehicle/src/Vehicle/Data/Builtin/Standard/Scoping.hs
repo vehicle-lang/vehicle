@@ -330,7 +330,6 @@ getRecordProvenance (DefRecord p _ _ _ _) = return p
 getRecordProvenance _ = compilerDeveloperError "Record declaration is not of expected format."
 
 getRecordFieldNames ::
-  forall m.
   (MonadExpandResources m) =>
   FreeCtxEntry Builtin ->
   m [Name]
@@ -342,14 +341,14 @@ constructFromTensorFreeVar ::
   Identifier ->
   Provenance ->
   Expr Builtin
-constructFromTensorFreeVar ident p =
+constructFromTensorFreeVar ident p = do
   let name = Text.pack "_" <> identifierName ident <> "FromTensor"
-   in FreeVar p (Identifier (modulePath ident) name)
+  FreeVar p (Identifier (modulePath ident) name)
 
 constructToTensorFreeVar ::
   Identifier ->
   Provenance ->
   Expr Builtin
-constructToTensorFreeVar ident p =
+constructToTensorFreeVar ident p = do
   let name = Text.pack "_" <> identifierName ident <> "ToTensor"
-   in FreeVar p (Identifier (modulePath ident) name)
+  FreeVar p (Identifier (modulePath ident) name)

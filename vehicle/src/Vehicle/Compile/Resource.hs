@@ -15,8 +15,8 @@ import Vehicle.Prelude
 type NetworkName = Name
 
 data NetworkType = NetworkType
-  { inputTensor :: NetworkIOType,
-    outputTensor :: NetworkIOType
+  { networkInputType :: NetworkIOType,
+    networkOutputType :: NetworkIOType
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -30,20 +30,48 @@ instance Pretty NetworkType where
   pretty (NetworkType input output) =
     pretty input <+> "->" <+> pretty output
 
-networkSize :: NetworkType -> Int
-networkSize network = tensorSize (inputTensor network) + tensorSize (outputTensor network)
+data NetworkTensorType = NetworkTensorType
+  { baseType :: NetworkBaseType,
+    dimensions :: TensorShape
+  }
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData NetworkTensorType
+
+instance ToJSON NetworkTensorType
+
+instance FromJSON NetworkTensorType
+
+instance Pretty NetworkTensorType where
+  pretty (NetworkTensorType t dims) = "Tensor" <+> pretty t <+> pretty dims
+
+data NetworkRecordType = NetworkRecordType
+  { baseRecordType :: NetworkBaseType,
+    recordTypeIdent :: Identifier,
+    recordDims :: TensorShape, -- The dimensions of the tensor equivalent of the record
+    recordFields :: [Name]
+  }
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData NetworkRecordType
+
+instance ToJSON NetworkRecordType
+
+instance FromJSON NetworkRecordType
+
+instance Pretty NetworkRecordType where
+  pretty (NetworkRecordType t ident dims fields) =
+    "Record" <+> pretty ident <+> ":" <+> encloseSep ("{" <> space) (space <> "}") ("," <> space) (map prettyField fields)
+    where
+      prettyField field = pretty (nameOf field) <+> ":" <+> fieldType dims
+      fieldType ds = case ds of
+        [] -> pretty t
+        [_x] -> pretty t
+        (_x : xs) -> "Tensor" <+> pretty t <+> pretty xs
 
 data NetworkIOType
-  = NetworkTensorType
-      { baseType :: NetworkBaseType,
-        dimensions :: TensorShape
-      }
-  | NetworkRecordType
-      { baseRecordType :: NetworkBaseType,
-        recordTypeIdent :: Identifier,
-        recordDimensions :: TensorShape, -- The dimensions of the tensor equivalent of the record type
-        recordFieldNames :: [Name]
-      }
+  = TensorIOType NetworkTensorType
+  | RecordIOType NetworkRecordType
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData NetworkIOType
@@ -52,22 +80,8 @@ instance ToJSON NetworkIOType
 
 instance FromJSON NetworkIOType
 
-tensorSize :: NetworkIOType -> Int
-tensorSize typ = case typ of
-  NetworkTensorType _ dims -> product dims
-  NetworkRecordType _ _ dims _ -> product dims
-
 instance Pretty NetworkIOType where
-  pretty = \case
-    NetworkTensorType t dims -> "Tensor" <+> pretty t <+> pretty dims
-    NetworkRecordType t ident dims fields ->
-      "Record" <+> pretty ident <+> ":" <+> encloseSep ("{" <> space) (space <> "}") ("," <> space) (map prettyField fields)
-      where
-        prettyField field = pretty (nameOf field) <+> ":" <+> fieldType dims
-        fieldType ds = case ds of
-          [] -> pretty t
-          [_x] -> pretty t
-          (_x : xs) -> "Tensor" <+> pretty t <+> pretty xs
+  pretty = pretty
 
 data NetworkBaseType
   = NetworkRatType
