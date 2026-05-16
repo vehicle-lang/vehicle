@@ -29,7 +29,7 @@ import Vehicle.Compile.Print.Warning ()
 import Vehicle.Compile.Property (traverseMultiProperty)
 import Vehicle.Compile.Unblock (UnblockingActions (..), unblockBoolExpr)
 import Vehicle.Data.Builtin.Standard
-import Vehicle.Data.Builtin.Standard.Scoping (constructFromTensorFreeVar, getRecordDimsExpr, getRecordProvenance)
+import Vehicle.Data.Builtin.Standard.Scoping (constructFromTensorFreeVar, constructTensorisableDims)
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.Code.Interface
@@ -273,8 +273,8 @@ wrapQuantifyRecord QuantifyRecordArgs {..} = do
 
   -- Construct \r -> body from binder and body in record quantifier args
   recordQLam <- unnormaliseInCtx $ VLam quantifyRecordBinder quantifyRecordBody
-  recordTypeDecl <- getDeclEntry (Proxy @Builtin) recordTypeIdent
-  shape <- getRecordDimsExpr recordTypeDecl
+  fields <- getRecordFields recordTypeIdent
+  let shape = constructTensorisableDims fields
   let dims = mkDims shape
 
   -- Build tensor binder with appropriate dims and type for record
@@ -284,7 +284,7 @@ wrapQuantifyRecord QuantifyRecordArgs {..} = do
   let tensorBinder = mkExplicitBinder tensorType (Just (mempty, getFreshTensorBinderName namedCtx))
 
   let tensorBoundVar = explicit $ BoundVar mempty 0
-  recordTypeProv <- getRecordProvenance recordTypeDecl
+  recordTypeProv <- getRecordProvenance recordTypeIdent
   -- Construct _PairFromTensor _t0
   let fromTensorExpr = App (constructFromTensorFreeVar recordTypeIdent recordTypeProv) [tensorBoundVar]
 

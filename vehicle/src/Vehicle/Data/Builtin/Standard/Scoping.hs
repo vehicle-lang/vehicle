@@ -8,7 +8,6 @@ import Data.List.NonEmpty (NonEmpty (..), toList)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Vehicle.Compile.Error
-import Vehicle.Compile.ExpandResources.Core (MonadExpandResources)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Scope.Core
 import Vehicle.Compile.Sugar.Core
@@ -17,6 +16,7 @@ import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.DSL
 import Vehicle.Data.Code.Interface (getDims)
 import Vehicle.Data.Code.TypedView (TypeValue (VRatTensorType), toTypeValue)
+import Vehicle.Data.Code.Value
 import Vehicle.Data.DSL
 import Vehicle.Data.Tensor (TensorShape, pattern ZeroDimTensor)
 import Vehicle.Libraries.StandardLibrary
@@ -308,34 +308,17 @@ createComparisonField recordType toTensor fieldIdent = do
 -- Record/Tensorisable util functions
 -- Not sure if these should go here or if they are at the right level of abstraction
 
-getRecordDimsExpr ::
-  forall m.
-  (MonadError CompileError m) =>
-  FreeCtxEntry Builtin ->
-  m TensorShape
-getRecordDimsExpr (DefRecord _ _ _ _ fields@((_n, typ) : _fs)) = do
+constructTensorisableDims ::
+  GenericRecordFields (Value Builtin) ->
+  TensorShape
+constructTensorisableDims [] = []
+constructTensorisableDims fields@((_n, typ) : _fs) =
   case toTypeValue typ of
-    (VRatTensorType dims) -> do
+    (VRatTensorType dims) ->
       case getDims dims of
-        Just d -> return $ length fields : d
-        Nothing -> return [length fields]
-    _ -> return [length fields]
-getRecordDimsExpr _ = compilerDeveloperError "Record declaration is not of expected format."
-
-getRecordProvenance ::
-  (MonadError CompileError m) =>
-  FreeCtxEntry Builtin ->
-  m Provenance
-getRecordProvenance (DefRecord p _ _ _ _) = return p
-getRecordProvenance _ = compilerDeveloperError "Record declaration is not of expected format."
-
-getRecordFieldNames ::
-  (MonadExpandResources m) =>
-  FreeCtxEntry Builtin ->
-  m [Name]
-getRecordFieldNames r = case r of
-  DefRecord _p _ident _sort _telescope fields -> return $ map (\(field, _typ) -> nameOf field) fields
-  _ -> compilerDeveloperError "Record declaration is not of expected format."
+        Just d -> length fields : d
+        Nothing -> [length fields]
+    _ -> [length fields]
 
 constructFromTensorFreeVar ::
   Identifier ->

@@ -4,7 +4,6 @@ module Vehicle.Compile.ExpandResources.Network
 where
 
 import Control.Monad.Except (MonadError (..))
-import Data.Data (Proxy (..))
 import Data.Map qualified as Map
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core
@@ -13,12 +12,12 @@ import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Compile.Resource
 import Vehicle.Data.Builtin.Standard
-import Vehicle.Data.Builtin.Standard.Scoping (getRecordDimsExpr, getRecordFieldNames)
+import Vehicle.Data.Builtin.Standard.Scoping (constructTensorisableDims)
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView (DimensionsValue (..), TypeValue (..), toDimensionsValue, toTypeValue)
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Tensor (TensorShape)
-import Vehicle.Data.Variable.Free.Context.Class
+import Vehicle.Data.Variable.Free.Context (getRecordFieldNames, getRecordFields)
 import Vehicle.Verify.Core (NetworkContextInfo (..))
 
 --------------------------------------------------------------------------------
@@ -59,11 +58,11 @@ getNetworkType decl networkType = case normalised networkType of
       VRatTensorType dims -> do
         shape <- tensorDimensions io dims
         return $ TensorIOType $ NetworkTensorType NetworkRatType shape
-      VFreeTypeVar v _spine -> do
-        entry <- getDeclEntry (Proxy @Builtin) v
-        shape <- getRecordDimsExpr entry
-        fields <- getRecordFieldNames entry
-        return $ RecordIOType $ NetworkRecordType NetworkRatType v shape fields
+      VFreeTypeVar ident _spine -> do
+        fieldNames <- getRecordFieldNames ident
+        fields <- getRecordFields ident
+        let shape = constructTensorisableDims fields
+        return $ RecordIOType $ NetworkRecordType NetworkRatType ident shape fieldNames
       _ -> typingError
 
     tensorDimensions :: InputOrOutput -> VType Builtin -> m TensorShape
