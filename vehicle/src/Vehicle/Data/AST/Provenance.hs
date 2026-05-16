@@ -13,7 +13,7 @@ module Vehicle.Data.AST.Provenance
 where
 
 import Control.DeepSeq (NFData (..))
-import Data.Aeson.Types (FromJSON (..), KeyValue ((.=)), Options (..), Parser, ToJSON (..), defaultOptions, genericToJSON, object, withObject, (.:))
+import Data.Aeson.Types (KeyValue ((.=)), Options (..), ToJSON (..), defaultOptions, genericToJSON, object)
 import Data.Hashable (Hashable (..))
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
@@ -115,18 +115,6 @@ instance ToJSON Provenance where
       [ "tag" .= toJSON @String "Provenance",
         "contents" .= toJSON @[Int] [posLine start, posColumn start, posLine end, posColumn end]
       ]
-
-instance FromJSON Provenance where
-  parseJSON = withObject "Provenance" $ \v -> do
-    contents <- v .: "contents" :: Parser [Int]
-    case contents of
-      [startLine, startCol, endLine, endCol] ->
-        let start = Position startLine startCol
-            end = Position endLine endCol
-            rangeVal = Range start end
-            fileVal = "" -- default empty
-         in pure $ Provenance rangeVal fileVal
-      _ -> fail "Expected 4 integers in contents for Provenance"
 
 noProvenance :: Provenance
 noProvenance = Provenance mempty "unknown"

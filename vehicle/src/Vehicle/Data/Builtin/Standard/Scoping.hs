@@ -10,7 +10,6 @@ import Data.Text qualified as Text
 import Vehicle.Compile.Error
 import Vehicle.Compile.ExpandResources.Core (MonadExpandResources)
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Resource (GenericRecordFieldNames)
 import Vehicle.Compile.Scope.Core
 import Vehicle.Compile.Sugar.Core
 import Vehicle.Data.AST.Expr.Desugared qualified as D (Expr (..), normAppList)
@@ -334,9 +333,9 @@ getRecordFieldNames ::
   forall m.
   (MonadExpandResources m) =>
   FreeCtxEntry Builtin ->
-  m GenericRecordFieldNames
+  m [Name]
 getRecordFieldNames r = case r of
-  DefRecord _p _ident _sort _telescope fields -> return $ map fst fields
+  DefRecord _p _ident _sort _telescope fields -> return $ map (\(field, _typ) -> nameOf field) fields
   _ -> compilerDeveloperError "Record declaration is not of expected format."
 
 constructFromTensorFreeVar ::

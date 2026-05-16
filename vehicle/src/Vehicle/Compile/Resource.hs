@@ -42,7 +42,7 @@ data NetworkIOType
       { baseRecordType :: NetworkBaseType,
         recordTypeIdent :: Identifier,
         recordDimensions :: TensorShape,
-        recordFields :: GenericRecordFieldNames
+        recordFieldNames :: [Name]
       }
   deriving (Eq, Ord, Show, Generic)
 
@@ -51,8 +51,6 @@ instance NFData NetworkIOType
 instance ToJSON NetworkIOType
 
 instance FromJSON NetworkIOType
-
-type GenericRecordFieldNames = [FieldName]
 
 tensorSize :: NetworkIOType -> Int
 tensorSize typ = case typ of
