@@ -216,7 +216,7 @@ unblockNetworkApplication unblockFnTensor unblockFnRecord ident (NetworkAppArgs 
   transformedOutputVarExpr <- case outputTensor typ of
     NetworkRecordType _ recordTyp _ _ -> do
       fromTensorFn <- eval ctx emptyBoundEnv (constructFromTensorFreeVar recordTyp mempty)
-      evalApp ctx fromTensorFn [Arg Explicit Relevant outputVarExpr]
+      evalApp ctx fromTensorFn [explicit outputVarExpr]
     _ -> return outputVarExpr
 
   -- Create our input equality in terms of tensors (as record equality just converts to tensor equality anyway)
@@ -224,7 +224,7 @@ unblockNetworkApplication unblockFnTensor unblockFnRecord ident (NetworkAppArgs 
   transformedArg <- case inputTensor typ of
     NetworkRecordType _ recordTyp _ _ -> do
       toTensorFn <- eval ctx emptyBoundEnv (constructToTensorFreeVar recordTyp mempty)
-      evalApp ctx toTensorFn [Arg Explicit Relevant arg]
+      evalApp ctx toTensorFn [explicit arg]
     _ -> return arg
 
   let inputEquality =

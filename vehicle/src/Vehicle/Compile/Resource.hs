@@ -41,7 +41,7 @@ data NetworkIOType
   | NetworkRecordType
       { baseRecordType :: NetworkBaseType,
         recordTypeIdent :: Identifier,
-        recordDimensions :: TensorShape,
+        recordDimensions :: TensorShape, -- The dimensions of the tensor equivalent of the record type
         recordFieldNames :: [Name]
       }
   deriving (Eq, Ord, Show, Generic)

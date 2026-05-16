@@ -266,6 +266,11 @@ getFreshTensorBinderName ctx = checkExistsInCtx 0
             then checkExistsInCtx (n + 1)
             else "_t" <> Text.pack (show n)
 
+-- \| Takes a record quantifier and wraps the binder & body in a tensor quantifier
+--  e.g. given Pair has fields { a : Real, b : Real }
+--  forall (r : Pair) . (body)
+--  becomes
+--  forall (_t0 : tensor Real [2]) . (body (_PairFromTensor _t0))
 wrapQuantifyRecord ::
   ( MonadPropertyStructure m,
     MonadSupply QueryID m,
@@ -275,12 +280,6 @@ wrapQuantifyRecord ::
   QuantifyRecordArgs (Value Builtin) (Closure Builtin) ->
   m (QuantifyRatTensorArgs (Value Builtin) (Closure Builtin))
 wrapQuantifyRecord QuantifyRecordArgs {..} = do
-  -- Takes a record quantifier and wraps the binder & body in a tensor quantifier
-  -- e.g. given Pair has fields { a : Real, b : Real }
-  -- forall (r : Pair) . (body)
-  -- becomes
-  -- forall (_t0 : tensor Real [2]) . (body (_PairFromTensor _t0))
-
   namedCtx <- getNameContext
   recordTypeIdent <- case toTypeValue quantifyRecordType of
     VFreeTypeVar v _spine -> pure v
@@ -296,16 +295,9 @@ wrapQuantifyRecord QuantifyRecordArgs {..} = do
   let Closure boundEnv _body = quantifyRecordBody
   tensorType <- eval namedCtx boundEnv $ fromDSL mempty $ tTensor tRat (toDSL dims)
   normalisedDims <- eval namedCtx boundEnv dims
+  let tensorBinder = mkExplicitBinder tensorType (Just (mempty, getFreshTensorBinderName namedCtx))
 
-  let tensorBinder =
-        Binder
-          { binderDisplayForm = BinderDisplayForm (NameAndType (getFreshTensorBinderName namedCtx) mempty) True,
-            binderVisibility = Explicit,
-            binderRelevance = Relevant,
-            binderValue = tensorType
-          }
-
-  let tensorBoundVar = Arg Explicit Relevant (BoundVar mempty 0)
+  let tensorBoundVar = explicit $ BoundVar mempty 0
   recordTypeProv <- getRecordProvenance recordTypeDecl
   -- Construct _PairFromTensor _t0
   let fromTensorExpr = App (constructFromTensorFreeVar recordTypeIdent recordTypeProv) [tensorBoundVar]
