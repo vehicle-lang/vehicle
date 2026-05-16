@@ -170,7 +170,7 @@ evalRecordAcc ::
   Value builtin ->
   FieldName ->
   m (Value builtin)
-evalRecordAcc typ value field = 
+evalRecordAcc typ value field =
   case value of
     VRecord _typ fields -> return $ lookupRecordFieldS fields field
     _ -> return $ VRecordAcc typ value field []
