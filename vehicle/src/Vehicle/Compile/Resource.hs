@@ -42,9 +42,6 @@ instance ToJSON NetworkTensorType
 
 instance FromJSON NetworkTensorType
 
-instance Pretty NetworkTensorType where
-  pretty (NetworkTensorType t dims) = "Tensor" <+> pretty t <+> pretty dims
-
 data NetworkRecordType = NetworkRecordType
   { baseRecordType :: NetworkBaseType,
     recordTypeIdent :: Identifier,
@@ -59,16 +56,6 @@ instance ToJSON NetworkRecordType
 
 instance FromJSON NetworkRecordType
 
-instance Pretty NetworkRecordType where
-  pretty (NetworkRecordType t ident dims fields) =
-    "Record" <+> pretty ident <+> ":" <+> encloseSep ("{" <> space) (space <> "}") ("," <> space) (map prettyField fields)
-    where
-      prettyField field = pretty (nameOf field) <+> ":" <+> fieldType dims
-      fieldType ds = case ds of
-        [] -> pretty t
-        [_x] -> pretty t
-        (_x : xs) -> "Tensor" <+> pretty t <+> pretty xs
-
 data NetworkIOType
   = TensorIOType NetworkTensorType
   | RecordIOType NetworkRecordType
@@ -81,7 +68,19 @@ instance ToJSON NetworkIOType
 instance FromJSON NetworkIOType
 
 instance Pretty NetworkIOType where
-  pretty = pretty
+  pretty = \case
+    (TensorIOType (NetworkTensorType t dims)) -> "Tensor" <+> pretty t <+> pretty dims
+    (RecordIOType (NetworkRecordType t ident dims fields)) ->
+      "Record"
+        <+> pretty ident
+        <+> ":"
+        <> line
+        <> prettyMapEntries ((,typ) <$> map pretty fields)
+      where
+        typ = case dims of
+          [] -> pretty t
+          [_x] -> pretty t
+          (_x : xs) -> "Tensor" <+> pretty t <+> pretty xs
 
 data NetworkBaseType
   = NetworkRatType

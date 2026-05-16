@@ -3,19 +3,19 @@ module Vehicle.Data.Variable.Bound.Context.Name
     prettyExternalInCtx,
     prettyFriendlyInCtx,
     debugFriendly,
-    getFreshTensorBinderName
+    getFreshTensorBinderName,
   )
 where
 
 -- Simple module that specialises MonadBoundContext for the common occurence
 -- where you only need to know the bound variable's names.
 
+import Data.Text qualified as Text
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Data.Variable.Bound.Context.Name.Class as Export
 import Vehicle.Data.Variable.Bound.Context.Name.Core as Export
 import Vehicle.Data.Variable.Bound.Context.Name.Instance as Export
-import qualified Data.Text as Text
 
 prettyFriendlyInCtx ::
   (MonadReadableNameContext m, PrettyFriendly (Contextualised a NamedBoundCtx)) =>
