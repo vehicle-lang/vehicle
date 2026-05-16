@@ -610,7 +610,23 @@
                 [
                   "f",
                   {
-
+                    "networkType": {
+                      "networkOutputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            2
+                          ],
+                          "baseType": []
+                        }
+                      },
+                      "networkInputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [],
+                          "baseType": []
+                        }
+                      }
                     },
                     "networkFilepath": "fake.onnx"
                   },

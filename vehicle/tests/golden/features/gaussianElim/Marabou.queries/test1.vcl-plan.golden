@@ -97,14 +97,18 @@
                       "networkOutputType": {
                         "tag": "TensorIOType",
                         "contents": {
-                          "dimensions": [],
+                          "dimensions": [
+                            1
+                          ],
                           "baseType": []
                         }
                       },
                       "networkInputType": {
                         "tag": "TensorIOType",
                         "contents": {
-                          "dimensions": [],
+                          "dimensions": [
+                            1
+                          ],
                           "baseType": []
                         }
                       }

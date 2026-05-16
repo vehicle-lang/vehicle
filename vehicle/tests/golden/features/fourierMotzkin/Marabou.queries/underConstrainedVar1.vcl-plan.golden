@@ -207,7 +207,8 @@
                       "networkInputType": {
                         "tag": "TensorIOType",
                         "contents": {
-                          "dimensions": [1
+                          "dimensions": [
+                            1
                           ],
                           "baseType": []
                         }
