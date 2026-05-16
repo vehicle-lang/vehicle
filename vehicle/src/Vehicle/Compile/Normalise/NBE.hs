@@ -166,14 +166,14 @@ evalRecordDef = go mempty emptyBoundEnv
 
 evalRecordAcc ::
   (MonadNorm builtin m, MonadFreeContext builtin m) =>
+  VType builtin ->
   Value builtin ->
   FieldName ->
   m (Value builtin)
-evalRecordAcc value fieldName = do
-  fields <- case value of
-    VRecord _typ fields -> return fields
-    _ -> developerError "Record declaration is not of expected format."
-  return $ lookupRecordFieldS fields fieldName
+evalRecordAcc typ value field = 
+  case value of
+    VRecord _typ fields -> return $ lookupRecordFieldS fields field
+    _ -> return $ VRecordAcc typ value field []
 
 eval ::
   (MonadNorm builtin m, MonadFreeContext builtin m) =>

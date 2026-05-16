@@ -229,7 +229,7 @@ unblockRatTensorValue actions@UnblockingActions {..} status expr = do
     VRatStackTensor args -> unblockStackTensor (unblock DifferentDimensions) args
     VRatAt args -> unblockAtTensor (unblock DifferentDimensions) args
     VRatForeach args -> unblockForeachTensor args
-    VRatRecordAcc _ value fieldName _ -> unblockRecordAcc (unblock status) value fieldName actions status
+    VRatRecordAcc typ value fieldName _ -> unblockRecordAcc (unblock status) typ value fieldName actions status
   where
     unblock = unblockRatTensorValue actions
 
@@ -356,15 +356,16 @@ unblockAtTensor unblock (AtTensorArgs tElem d ds xs i) = do
 unblockRecordAcc ::
   (MonadUnblock m) =>
   UnblockingFunction m ->
+  VType Builtin ->
   Value Builtin ->
   FieldName ->
   UnblockingActions m ->
   DimensionsStatus ->
   m (Value Builtin)
-unblockRecordAcc unblock value fieldName actions status = do
+unblockRecordAcc unblock typ value fieldName actions status = do
   value' <- unblockRecordValue actions status value
   liftIf value' $ \value'' -> do
-    res <- evalRecordAcc value'' fieldName
+    res <- evalRecordAcc typ value'' fieldName
     unblock res
 
 unblockForeachTensor ::
