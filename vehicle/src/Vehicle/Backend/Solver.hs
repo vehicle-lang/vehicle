@@ -11,7 +11,6 @@ import Control.Monad.State (StateT (..))
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Maybe (maybeToList)
 import Data.Proxy (Proxy (..))
-import Data.Text qualified as Text
 import System.Directory (createDirectoryIfMissing)
 import Vehicle.Backend.Solver.QueryCompilation (compilePartitionsToQueries)
 import Vehicle.Backend.Solver.UserVariableElimination (eliminateExistless, eliminateExists)
@@ -253,20 +252,7 @@ compileQuantifiedQuerySet isPropertyNegated args =
     (maybePartitions, globalCtx) <- runStateT (eliminateExists args) emptyGlobalCtx
     compileQuerySetPartitions globalCtx isPropertyNegated maybePartitions
 
--- Generates an unused binder name of the form '_tN', where N is an integer
-getFreshTensorBinderName ::
-  NamedBoundCtx ->
-  Text.Text
-getFreshTensorBinderName ctx = checkExistsInCtx 0
-  where
-    checkExistsInCtx :: Int -> Text.Text
-    checkExistsInCtx n =
-      let name = "_t" <> Text.pack (show n)
-       in if Just name `elem` ctx
-            then checkExistsInCtx (n + 1)
-            else "_t" <> Text.pack (show n)
-
--- \| Takes a record quantifier and wraps the binder & body in a tensor quantifier
+-- | Takes a record quantifier and wraps the binder & body in a tensor quantifier
 --  e.g. given Pair has fields { a : Real, b : Real }
 --  forall (r : Pair) . (body)
 --  becomes
