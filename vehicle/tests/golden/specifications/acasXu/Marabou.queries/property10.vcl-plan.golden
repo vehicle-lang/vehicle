@@ -647,7 +647,6 @@
                   "acasXu",
                   {
                     "networkType": {
-                    "networkType": {
                       "networkOutputType": {
                         "tag": "TensorIOType",
                         "contents": {

@@ -44543,7 +44543,7 @@
                         "tag": "TensorIOType",
                         "contents": {
                           "dimensions": [
-                            6
+                            10
                           ],
                           "baseType": []
                         }
@@ -44552,7 +44552,6 @@
                         "tag": "TensorIOType",
                         "contents": {
                           "dimensions": [
-                            3,
                             28,
                             28
                           ],
@@ -89103,7 +89102,7 @@
                         "tag": "TensorIOType",
                         "contents": {
                           "dimensions": [
-                            6
+                            10
                           ],
                           "baseType": []
                         }
@@ -89112,7 +89111,6 @@
                         "tag": "TensorIOType",
                         "contents": {
                           "dimensions": [
-                            3,
                             28,
                             28
                           ],
@@ -133663,7 +133661,7 @@
                         "tag": "TensorIOType",
                         "contents": {
                           "dimensions": [
-                            6
+                            10
                           ],
                           "baseType": []
                         }
@@ -133672,7 +133670,6 @@
                         "tag": "TensorIOType",
                         "contents": {
                           "dimensions": [
-                            3,
                             28,
                             28
                           ],
@@ -178223,7 +178220,7 @@
                         "tag": "TensorIOType",
                         "contents": {
                           "dimensions": [
-                            6
+                            10
                           ],
                           "baseType": []
                         }
@@ -178232,7 +178229,6 @@
                         "tag": "TensorIOType",
                         "contents": {
                           "dimensions": [
-                            3,
                             28,
                             28
                           ],
@@ -222783,7 +222779,7 @@
                         "tag": "TensorIOType",
                         "contents": {
                           "dimensions": [
-                            6
+                            10
                           ],
                           "baseType": []
                         }
@@ -222792,7 +222788,6 @@
                         "tag": "TensorIOType",
                         "contents": {
                           "dimensions": [
-                            3,
                             28,
                             28
                           ],
@@ -267343,7 +267338,7 @@
                         "tag": "TensorIOType",
                         "contents": {
                           "dimensions": [
-                            6
+                            10
                           ],
                           "baseType": []
                         }
@@ -267352,7 +267347,6 @@
                         "tag": "TensorIOType",
                         "contents": {
                           "dimensions": [
-                            3,
                             28,
                             28
                           ],

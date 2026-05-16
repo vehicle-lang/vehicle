@@ -16025,7 +16025,6 @@
                   "acasXu",
                   {
                     "networkType": {
-                    "networkType": {
                       "networkOutputType": {
                         "tag": "TensorIOType",
                         "contents": {
@@ -17172,7 +17171,6 @@
                   "acasXu",
                   {
                     "networkType": {
-                    "networkType": {
                       "networkOutputType": {
                         "tag": "TensorIOType",
                         "contents": {
@@ -18318,7 +18316,6 @@
                 [
                   "acasXu",
                   {
-                    "networkType": {
                     "networkType": {
                       "networkOutputType": {
                         "tag": "TensorIOType",
