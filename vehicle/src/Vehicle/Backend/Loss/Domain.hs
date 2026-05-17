@@ -527,6 +527,30 @@ unblockingActions =
 --------------------------------------------------------------------------------
 -- Search algorithm
 
+-- | Drop any `! i` indexing to get at the operator underneath.
+stripBoolAt :: Value Builtin -> Value Builtin
+stripBoolAt v = case toBoolTensorValue v of
+  VBoolTensorAt (AtTensorArgs _ _ _ t _) -> stripBoolAt t
+  _ -> case toBoolValue v of
+    VBoolAt (AtTensorArgs _ _ _ t _) -> stripBoolAt t
+    _ -> v
+
+isUntilHead :: Value Builtin -> Bool
+isUntilHead v = case toBoolTensorValue (stripBoolAt v) of
+  VBoolTensorUntil {} -> True
+  _ -> case toBoolValue (stripBoolAt v) of
+    VUntil {} -> True
+    _ -> False
+
+-- | `not (until ...)` (ignoring `! i` indexing): the one shape
+-- `lowerNot` can't simplify. Not matched through `and`/`or`.
+negatedUntilLeaf :: Value Builtin -> Bool
+negatedUntilLeaf v = case toBoolTensorValue (stripBoolAt v) of
+  VBoolTensorNot (TensorOp1Args _ e) -> isUntilHead e
+  _ -> case toBoolValue (stripBoolAt v) of
+    VNot (TensorOp1Args _ e) -> isUntilHead e
+    _ -> False
+
 compileBool :: (MonadDomain m) => Value Builtin -> m (MaybeTrivial Partitions)
 compileBool value = logEntryAndExit value $ case toBoolValue value of
   -----------------------
@@ -546,14 +570,17 @@ compileBool value = logEntryAndExit value $ case toBoolValue value of
   VOr args -> compileOr args
   VBoolIf args -> compileBool =<< unfoldIf args
   VNot args -> do
-    -- `tryUnblock` returning the original `e` on unblock-failure is only
-    -- safe because `lowerNot`'s `Until` arm wraps its result in `Not`;
-    -- if that ever changes the negation would be silently dropped.
     let tryUnblock e = do
           maybeE <- maybeUnblockBoolExpr unblockingActions e
           return $ fromMaybe e maybeE
     lowered <- lowerNot tryUnblock args
-    compileBool lowered
+    -- Recursing on `not (until ...)` would loop forever; pass it
+    -- through to the loss IR as we already do for a plain `until`.
+    if negatedUntilLeaf lowered
+      then do
+        lossValue <- convertBoolTensor value
+        NonTrivial <$> singletonUnconstrainedPartition lossValue
+      else compileBool lowered
   VQuantifyRatTensor args -> compileQuantifierInternal args
   -------------------
   -- Blocked cases --
