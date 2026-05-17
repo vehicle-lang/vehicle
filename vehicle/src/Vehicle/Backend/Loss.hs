@@ -78,6 +78,8 @@ convertDecl logicID logic nativeDirection requestedDecls decl = do
           | isExternalResourceDecl decl -> Just <$> convertResourceDecl p ident sort typ
           | otherwise -> return Nothing
         DefFunction p ident ann typ expr
+          -- Handled by convertLogicDecl, not compiled as a loss output.
+          | isLogicDecl decl -> return Nothing
           | isPropertyDecl decl || Set.member (nameOf ident) requestedDecls ->
               Just <$> convertOutputDecl p ident ann typ nativeDirection expr
           | otherwise -> return Nothing

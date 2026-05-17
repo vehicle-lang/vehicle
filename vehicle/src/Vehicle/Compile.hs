@@ -87,6 +87,14 @@ declarationsOf = \case
   QueryTarget QueryOptions {..} -> declarationsToCompile
   ITPTarget ITPOptions {..} -> declarationsToCompile
 
+typeCheckDeclarationsOf :: CompileOptions -> DeclarationNames
+typeCheckDeclarationsOf options = case declarationsOf options of
+  [] -> []
+  requested ->
+    requested <> case options of
+      LossTarget LossOptions {differentiableLogicID = CustomLogic name} -> [name]
+      _ -> []
+
 compile :: (MonadStdIO IO) => LoggingSettings -> OutputAsJSON -> CompileOptions -> IO ()
 compile loggingSettings outputAsJSON options =
   runCompileMonad loggingSettings outputAsJSON $ do
@@ -95,7 +103,7 @@ compile loggingSettings outputAsJSON options =
         TypeCheckOptions
           { specification = specificationOf options,
             secondaryTypeSystem = Nothing,
-            declarationsToCompile = declarationsOf options
+            declarationsToCompile = typeCheckDeclarationsOf options
           }
 
     case options of
