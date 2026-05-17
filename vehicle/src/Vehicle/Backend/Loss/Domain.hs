@@ -349,8 +349,10 @@ compileSearch varName dims binder closure (Domain lowerBound upperBound) = do
   -- Generate the operation for doing the reduction
   nameCtx <- getNameContext
   genericReductionOp <- getLogicField ReduceDisjunction
+  -- The reduction runs over one loss value per sample, so the shape is
+  -- just the (unknown) sample count, not the shape of the sampled input.
   -- TODO This is a complete hack. We really need the notion of an unknown dimension inside Vehicle.
-  let reductionDims = IDimCons (INatLiteral (-1)) lossDims
+  let reductionDims = IDimCons (INatLiteral (-1)) IDimNil
   reductionOp <- normaliseAppInEmptyFreeEnv nameCtx genericReductionOp [implicitIrrelevant reductionDims]
 
   -- Reform the predicate as if we had no tensor variables at all

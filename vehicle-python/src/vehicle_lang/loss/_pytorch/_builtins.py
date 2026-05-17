@@ -222,7 +222,10 @@ class PyTorchBuiltins(
 
     @override
     def ConstTensor(self, value: float, shape: Sequence[int]) -> torch.Tensor:
-        return torch.full(size=shape, fill_value=float(value), dtype=self.dtype_rat)
+        # The compiler emits -1 for the runtime-only sample count; 1
+        # broadcasts over however many samples there are.
+        size = tuple(1 if d == -1 else d for d in shape)
+        return torch.full(size=size, fill_value=float(value), dtype=self.dtype_rat)
 
     @override
     def DenseTensor(
