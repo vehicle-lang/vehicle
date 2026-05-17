@@ -390,10 +390,10 @@ class DimensionIndex(Expression):
 
 @dataclass(frozen=True)
 class ConstTensor(Expression):
-    """ConstTensor shape value - for JSON parsing"""
+    """`const c ds`: broadcast the value `c` over shape `ds`."""
 
-    c: Fraction
-    ds: Sequence[int]
+    c: Expression
+    ds: Expression
 
 
 @dataclass(frozen=True)

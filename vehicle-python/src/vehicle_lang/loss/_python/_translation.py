@@ -466,14 +466,8 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         """Translate ConstTensor to builtin call."""
         return py_app(
             py_builtin("ConstTensor", provenance=vcl.MISSING),
-            py_scalar(expression.c, provenance=vcl.MISSING),
-            py_tuple(
-                [
-                    py.Constant(value=dim, **asdict(vcl.MISSING))
-                    for dim in expression.ds
-                ],
-                provenance=vcl.MISSING,
-            ),
+            self.translate_expression(expression.c),
+            self.translate_expression(expression.ds),
             provenance=vcl.MISSING,
         )
 
@@ -492,15 +486,16 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
         """Translate a compiled DL binary-field lambda to a 2-argument Python lambda.
 
         The compiled form is Lam {dims: DimensionsType} (Lam x (Lam y body)).
-        We skip any leading DimensionsType binders (the implicit dims argument
-        from the VCL record's polymorphic tensor type), then extract the two
-        explicit tensor binders.
+        Implicit dimension binders are bound from the runtime shape of the
+        first explicit tensor argument, then the two explicit tensor binders
+        become the lambda's parameters.
         """
-        # Skip implicit dimension binders (type DimensionsType)
+        dims_binders: list[vcl.Binder] = []
         inner: vcl.Expression = expr
         while isinstance(inner, vcl.Lam) and isinstance(
             inner.binder.type, vcl.DimensionsType
         ):
+            dims_binders.append(inner.binder)
             inner = inner.body
 
         if not isinstance(inner, vcl.Lam):
@@ -516,6 +511,34 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
             )
         inner_binder = inner2.binder
         body_expr = self.translate_expression(inner2.body)
+
+        if dims_binders:
+            shape_expr = py.Call(
+                func=py.Name(id="tuple", ctx=py.Load(), **asdict(vcl.MISSING)),
+                args=[
+                    py.Attribute(
+                        value=py.Name(
+                            id=outer_binder.name or "_",
+                            ctx=py.Load(),
+                            **asdict(vcl.MISSING),
+                        ),
+                        attr="shape",
+                        ctx=py.Load(),
+                        **asdict(vcl.MISSING),
+                    )
+                ],
+                keywords=[],
+                **asdict(vcl.MISSING),
+            )
+            body_expr = py.Call(
+                func=py.Lambda(
+                    args=py_binder(*[self.translate_binder(b) for b in dims_binders]),
+                    body=body_expr,
+                ),
+                args=[shape_expr] * len(dims_binders),
+                keywords=[],
+                **asdict(vcl.MISSING),
+            )
 
         return py.Lambda(
             args=py_binder(

@@ -63,8 +63,16 @@ def _derive_temporal_semantics(program: vcl.Program) -> Any:
     conj_lambda_ast = translation.translate_binary_function(meta.conjunction)
     disj_lambda_ast = translation.translate_binary_function(meta.disjunction)
 
+    import fractions
+    import functools
+
     builtins = translation.builtins
-    scope = {"torch": torch, "__vehicle__": builtins}
+    scope = {
+        "torch": torch,
+        "__vehicle__": builtins,
+        "fractions": fractions,
+        "functools": functools,
+    }
     conj_fn = eval(
         compile(
             py.fix_missing_locations(py.Expression(body=conj_lambda_ast)),
