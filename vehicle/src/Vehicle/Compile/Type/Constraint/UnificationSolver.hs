@@ -307,7 +307,7 @@ solveFlexFlex info (meta1, spine1) (meta2, spine2) = do
       maybeRenaming <- invert (boundCtxLv (infoBoundCtx info)) (meta1, spine1)
       case maybeRenaming of
         Nothing -> solveFlexRigid info (meta2, spine2) (VMeta meta1 spine1)
-        Just renaming -> solveFlexRigidWithRenaming (infoBoundCtx info) (meta1, spine1) renaming (VMeta meta2 spine2)
+        Just renaming -> solveFlexRigidWithRenaming info (meta1, spine1) renaming (VMeta meta2 spine2)
 
 solveFlexRigid ::
   (MonadUnify builtin m) =>
@@ -321,7 +321,7 @@ solveFlexRigid info (metaID, spine) solution = do
   -- that renames the variables in `solution` to ones available to `meta`
   maybeRenaming <- invert (boundCtxLv ctx) (metaID, spine)
   case maybeRenaming of
-    Just renaming -> solveFlexRigidWithRenaming ctx (metaID, spine) renaming solution
+    Just renaming -> solveFlexRigidWithRenaming info (metaID, spine) renaming solution
     -- This constraint is stuck because it is not pattern; shelve
     -- it for now and hope that another constraint allows us to
     -- progress.
@@ -330,21 +330,48 @@ solveFlexRigid info (metaID, spine) solution = do
 solveFlexRigidWithRenaming ::
   forall builtin m.
   (MonadUnify builtin m) =>
-  BoundCtx (Type builtin) ->
+  ConstraintInfo builtin ->
   (MetaID, Spine builtin) ->
   Renaming ->
   Value builtin ->
   m (UnificationResult builtin)
-solveFlexRigidWithRenaming ctx meta@(metaID, _) renaming solution = do
+solveFlexRigidWithRenaming info meta@(metaID, _) renaming solution = do
+  let ctx = infoBoundCtx info
   prunedSolution <-
     if useDependentMetas (Proxy @builtin)
       then pruneMetaDependencies ctx meta solution
       else return solution
 
-  let unnormSolution = quote mempty (boundCtxLv ctx) prunedSolution
-  let substSolution = substDBAll 0 (\v -> unIx v `IntMap.lookup` renaming) unnormSolution
-  solveMeta metaID substSolution ctx
-  return Success
+  -- A solution mentioning a variable outside the meta's scope can't be
+  -- quoted; shelve like the non-pattern case rather than crash.
+  if solutionEscapesScope (boundCtxLv ctx) prunedSolution
+    then block info (Just (MetaSet.singleton metaID))
+    else do
+      let unnormSolution = quote mempty (boundCtxLv ctx) prunedSolution
+      let substSolution = substDBAll 0 (\v -> unIx v `IntMap.lookup` renaming) unnormSolution
+      solveMeta metaID substSolution ctx
+      return Success
+
+-- | True if `value` mentions a bound variable at or above `threshold`.
+-- Closures are treated opaquely, as in `pruneMetaDependencies`.
+solutionEscapesScope :: forall builtin. Lv -> Value builtin -> Bool
+solutionEscapesScope threshold = go
+  where
+    go :: Value builtin -> Bool
+    go = \case
+      VUniverse {} -> False
+      VMeta _ spine -> goSpine spine
+      VFreeVar _ spine -> goSpine spine
+      VBoundVar v spine -> v >= threshold || goSpine spine
+      VBuiltin _ spine -> goSpine spine
+      VRecord _ fields -> any go fields
+      VRecordAcc recordType record _ spine ->
+        go recordType || go record || goSpine spine
+      VPi binder _ -> any go binder
+      VLam binder _ -> any go binder
+
+    goSpine :: Spine builtin -> Bool
+    goSpine = any (any go)
 
 pruneMetaDependencies ::
   forall builtin m.
