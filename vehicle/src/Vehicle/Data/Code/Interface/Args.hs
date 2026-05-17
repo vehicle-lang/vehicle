@@ -495,7 +495,7 @@ instance IsArgs NetworkAppArgs where
         mkExpr = \(NetworkAppArgs xs) -> [explicit xs]
       }
 
--- | Arguments for `QuantifyRatTenosr`
+-- | Arguments for `QuantifyRatTensor`
 data QuantifyRatTensorArgs expr body = QuantifyRatTensorArgs
   { quantifyDimensions :: expr,
     quantifyBinder :: GenericBinder expr,
@@ -513,6 +513,29 @@ accessQuantifyRatTensorSpine =
           _ -> Nothing
         _ -> Nothing,
       mkExpr = \(QuantifyRatTensorArgs dims binder body) ->
+        [ implicitIrrelevant dims,
+          explicit (mkExpr accessLamC (binder, body))
+        ]
+    }
+
+-- | Arguments for `QuantifyRecord`
+data QuantifyRecordArgs expr body = QuantifyRecordArgs
+  { quantifyRecordType :: expr,
+    quantifyRecordBinder :: GenericBinder expr,
+    quantifyRecordBody :: body
+  }
+
+accessQuantifyRecordSpine ::
+  (HasLambdaConstructor expr body) =>
+  Accessor [GenericArg (expr builtin)] (QuantifyRecordArgs (expr builtin) (body builtin))
+accessQuantifyRecordSpine =
+  Access
+    { getExpr = \case
+        (fmap argExpr -> [typ, fn]) -> case getExpr accessLamC fn of
+          Just (binder, body) -> Just (QuantifyRecordArgs typ binder body)
+          _ -> Nothing
+        _ -> Nothing,
+      mkExpr = \(QuantifyRecordArgs dims binder body) ->
         [ implicitIrrelevant dims,
           explicit (mkExpr accessLamC (binder, body))
         ]

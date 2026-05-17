@@ -5,11 +5,12 @@ module Vehicle.Compile.Unblock
     UnblockingActions (..),
     MonadPurify,
     unblockRatTensorValue,
+    DimensionsStatus (..),
   )
 where
 
 import Vehicle.Compile.LiftIf
-import Vehicle.Compile.Normalise.NBE (eval, evalApp)
+import Vehicle.Compile.Normalise.NBE (eval, evalApp, evalRecordAcc)
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print
 import Vehicle.Data.Builtin.Interface (Accessor (..))
@@ -19,7 +20,7 @@ import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
 import Vehicle.Data.Variable.Bound.Context.Name
-import Vehicle.Data.Variable.Free.Context (MonadFreeContext)
+import Vehicle.Data.Variable.Free.Context.Class
 
 --------------------------------------------------------------------------------
 -- Unblocking
@@ -35,7 +36,8 @@ type MonadPurify m = MonadUnblock m
 
 data UnblockingActions m = UnblockingActions
   { unblockRatTensorBoundVar :: Lv -> m (Value Builtin),
-    unblockNetworkApp :: (Value Builtin -> m (Value Builtin)) -> Identifier -> NetworkAppArgs (Value Builtin) -> m (Value Builtin)
+    unblockRecordBoundVar :: Lv -> m (Value Builtin),
+    unblockNetworkApp :: (Value Builtin -> m (Value Builtin)) -> (Value Builtin -> m (Value Builtin)) -> Identifier -> NetworkAppArgs (Value Builtin) -> m (Value Builtin)
   }
 
 -- | Lifts all `if`s in the provided expression `e` to the top-level, while
@@ -154,6 +156,7 @@ unblockBoolValue actions expr = do
     VNot {} -> return expr
     VBoolIf {} -> return expr
     VQuantifyRatTensor {} -> return expr
+    VQuantifyRecord {} -> return expr
     VCompareRatTensor {} -> return expr
     -- Recursively unblock
     VReduceAndTensor args -> unblockReduceTensor unblockTensor unoptimisedEvalReduceAndTensor args
@@ -181,6 +184,20 @@ unblockBoolMultiDimTensorValue actions expr = do
   where
     unblock = unblockBoolMultiDimTensorValue actions
 
+unblockRecordValue :: UnblockingActions m -> DimensionsStatus -> UnblockingFunction m
+unblockRecordValue actions@UnblockingActions {..} status expr = do
+  showEntry expr
+  showExit =<< case toRecordValue expr of
+    VRecordFreeVar n spine -> case getExpr accessSpine spine of
+      Just args -> do
+        unblockNetworkApp (unblockTensor status) (unblockRecord status) n args
+      _ -> return expr
+    VRecordBoundVar v -> unblockRecordBoundVar v
+    VRecordLiteral {} -> return expr
+  where
+    unblockTensor = unblockRatTensorValue actions
+    unblockRecord = unblockRecordValue actions
+
 unblockRatTensorValue :: (MonadPurify m) => UnblockingActions m -> DimensionsStatus -> Value Builtin -> m (Value Builtin)
 unblockRatTensorValue actions@UnblockingActions {..} status expr = do
   showEntry expr
@@ -204,7 +221,7 @@ unblockRatTensorValue actions@UnblockingActions {..} status expr = do
       | status == DesiredDimensions -> return expr
       | otherwise -> unblockRatTensorBoundVar v
     VRatTensorFreeVar n spine -> case getExpr accessSpine spine of
-      Just args -> unblockNetworkApp (unblock status) n args
+      Just args -> unblockNetworkApp (unblock status) (unblockRecordValue actions status) n args
       -- Parameters and other scalar free vars may appear in constraints used
       -- for quantifier-domain extraction, e.g. `-epsilon < x ! 0 < epsilon`.
       _ -> return expr
@@ -212,6 +229,7 @@ unblockRatTensorValue actions@UnblockingActions {..} status expr = do
     VRatStackTensor args -> unblockStackTensor (unblock DifferentDimensions) args
     VRatAt args -> unblockAtTensor (unblock DifferentDimensions) args
     VRatForeach args -> unblockForeachTensor args
+    VRatRecordAcc typ value fieldName _ -> unblockRecordAcc (unblock status) typ value fieldName actions status
   where
     unblock = unblockRatTensorValue actions
 
@@ -223,10 +241,11 @@ unblockDimensionsValue expr = case toDimensionsValue expr of
   VDimsBoundVar {} -> unexpectedExprError currentPass (prettyVerbose expr)
 
 unblockIndexValue :: UnblockingFunction m
-unblockIndexValue expr = case toIndexValue expr of
-  VIndexLiteral {} -> return expr
-  VIndexIf {} -> return expr
-  VIndexBoundVar {} -> unexpectedExprError currentPass (prettyVerbose expr)
+unblockIndexValue expr = do
+  case toIndexValue expr of
+    VIndexLiteral {} -> return expr
+    VIndexIf {} -> return expr
+    VIndexBoundVar {} -> unexpectedExprError currentPass (prettyVerbose expr)
 
 unblockNatValue :: UnblockingFunction m
 unblockNatValue expr = case toNatValue expr of
@@ -333,6 +352,21 @@ unblockAtTensor unblock (AtTensorArgs tElem d ds xs i) = do
     liftIf i' $ \i'' -> do
       nameCtx <- getNameContext
       evalAtTensor nameCtx evalApp eval $ AtTensorArgs tElem d ds xs'' i''
+
+unblockRecordAcc ::
+  (MonadUnblock m) =>
+  UnblockingFunction m ->
+  VType Builtin ->
+  Value Builtin ->
+  FieldName ->
+  UnblockingActions m ->
+  DimensionsStatus ->
+  m (Value Builtin)
+unblockRecordAcc unblock typ value fieldName actions status = do
+  value' <- unblockRecordValue actions status value
+  liftIf value' $ \value'' -> do
+    res <- evalRecordAcc typ value'' fieldName
+    unblock res
 
 unblockForeachTensor ::
   (MonadUnblock m) =>

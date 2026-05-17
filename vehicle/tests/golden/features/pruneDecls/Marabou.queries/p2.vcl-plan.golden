@@ -88,13 +88,19 @@
                   "g",
                   {
                     "networkType": {
-                      "outputTensor": {
-                        "dimensions": [],
-                        "baseType": []
+                      "networkOutputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [],
+                          "baseType": []
+                        }
                       },
-                      "inputTensor": {
-                        "dimensions": [],
-                        "baseType": []
+                      "networkInputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [],
+                          "baseType": []
+                        }
                       }
                     },
                     "networkFilepath": "fake.onnx"

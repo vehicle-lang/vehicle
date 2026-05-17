@@ -9,22 +9,24 @@
             {
               "variableStore": {
                 "vehicleVariableCtx": [
-                  "f₁[output]",
-                  "f₁[input]",
+                  "f₀[output]!1",
+                  "f₀[output]!0",
                   "f₀[output]",
+                  "f₀[input]!1",
+                  "f₀[input]!0",
                   "f₀[input]",
-                  "x2",
-                  "x1"
+                  "_t0!1",
+                  "_t0!0",
+                  "_t0"
                 ],
                 "userVariables": [
-                  0,
-                  1
+                  0
                 ],
                 "queryVariableMapping": {
-                  "f_Y": 5,
-                  "f_X": 4,
-                  "f_2_Y": 3,
-                  "f_2_X": 2
+                  "y1": 8,
+                  "y0": 7,
+                  "x1": 5,
+                  "x0": 4
                 }
               },
               "variableCompilationTrace": {
@@ -33,38 +35,22 @@
                     "tag": "ReconstructTensorVariable",
                     "contents": [
                       {
-                        "nestedTensorShape": [],
-                        "nestedStartingVariable": 4
-                      },
-                      "AllDimensions"
-                    ]
-                  },
-                  {
-                    "tag": "ReconstructTensorVariable",
-                    "contents": [
-                      {
-                        "nestedTensorShape": [],
-                        "nestedStartingVariable": 5
-                      },
-                      "AllDimensions"
-                    ]
-                  },
-                  {
-                    "tag": "ReconstructTensorVariable",
-                    "contents": [
-                      {
-                        "nestedTensorShape": [],
-                        "nestedStartingVariable": 2
-                      },
-                      "AllDimensions"
-                    ]
-                  },
-                  {
-                    "tag": "ReconstructTensorVariable",
-                    "contents": [
-                      {
-                        "nestedTensorShape": [],
+                        "nestedTensorShape": [
+                          2
+                        ],
                         "nestedStartingVariable": 3
+                      },
+                      "AllDimensions"
+                    ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      {
+                        "nestedTensorShape": [
+                          2
+                        ],
+                        "nestedStartingVariable": 6
                       },
                       "AllDimensions"
                     ]
@@ -74,7 +60,7 @@
                     "contents": [
                       {
                         "nestedTensorShape": [],
-                        "nestedStartingVariable": 0
+                        "nestedStartingVariable": 2
                       },
                       {
                         "constantValue": {
@@ -89,7 +75,7 @@
                         },
                         "coefficients": [
                           [
-                            2,
+                            5,
                             {
                               "numerator": 1,
                               "denominator": 1
@@ -128,12 +114,24 @@
                         ]
                       }
                     ]
+                  },
+                  {
+                    "tag": "ReconstructTensorVariable",
+                    "contents": [
+                      {
+                        "nestedTensorShape": [
+                          2
+                        ],
+                        "nestedStartingVariable": 0
+                      },
+                      "OneDimension"
+                    ]
                   }
                 ]
               },
               "queryAddress": [
                 {
-                  "propertyName": "monotonic",
+                  "propertyName": "p",
                   "propertyIndices": [],
                   "propertyID": 0
                 },
@@ -145,23 +143,43 @@
                   {
                     "networkType": {
                       "networkOutputType": {
-                        "tag": "TensorIOType",
+                        "tag": "RecordIOType",
                         "contents": {
-                          "dimensions": [],
-                          "baseType": []
+                          "recordTypeIdent": {
+                            "modulePath": "User",
+                            "identifierName": "Pair"
+                          },
+                          "recordFields": [
+                            "a",
+                            "b"
+                          ],
+                          "recordDims": [
+                            2
+                          ],
+                          "baseRecordType": []
                         }
                       },
                       "networkInputType": {
-                        "tag": "TensorIOType",
+                        "tag": "RecordIOType",
                         "contents": {
-                          "dimensions": [],
-                          "baseType": []
+                          "recordTypeIdent": {
+                            "modulePath": "User",
+                            "identifierName": "Pair"
+                          },
+                          "recordFields": [
+                            "a",
+                            "b"
+                          ],
+                          "recordDims": [
+                            2
+                          ],
+                          "baseRecordType": []
                         }
                       }
                     },
                     "networkFilepath": "fake.onnx"
                   },
-                  2
+                  1
                 ]
               ]
             }

@@ -11,7 +11,7 @@ import Control.Monad.Trans (MonadTrans (..))
 import Vehicle.Compile.Constants.Rational
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Assertion (comparisonToAssertion)
-import Vehicle.Data.Builtin.Standard
+import Vehicle.Data.Builtin.Standard.Core (Builtin, ComparisonOp)
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.Code.TypedView
@@ -96,6 +96,7 @@ compile toVar shape = go
       VRatConstTensor {} -> unreduced
       VRatStackTensor {} -> unreduced
       VRatAt {} -> unreduced
+      VRatRecordAcc {} -> unreduced
       VRatTensorFreeVar {} -> unreduced
       VRatForeach {} -> unreduced
       VIfRatTensor {} -> unreduced

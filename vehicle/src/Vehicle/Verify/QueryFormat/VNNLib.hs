@@ -4,7 +4,7 @@ import Control.Monad (forM)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Version (Version (..))
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Resource (NetworkTensorType (dimensions), NetworkType (inputTensor, outputTensor))
+import Vehicle.Compile.Resource (NetworkIOType (..), NetworkRecordType (NetworkRecordType), NetworkTensorType (NetworkTensorType), NetworkType (networkInputType), networkOutputType)
 import Vehicle.Data.Bound (BoundedValue (..), Domain (..), LowerBound (..), UpperBound (..))
 import Vehicle.Data.Tensor (TensorShape)
 import Vehicle.Verify.Core
@@ -103,8 +103,14 @@ networkTensor :: Name -> NetworkType -> Int -> InputOrOutput -> (Name, TensorSha
 networkTensor networkName networkType appIndex inputOrOutput = do
   let name = layoutAsText $ compileNetworkVariableName networkName appIndex inputOrOutput
   case inputOrOutput of
-    Input -> (name, dimensions $ inputTensor networkType)
-    Output -> (name, dimensions $ outputTensor networkType)
+    Input -> (name, getNetworkIODimensions $ networkInputType networkType)
+    Output -> (name, getNetworkIODimensions $ networkOutputType networkType)
+
+getNetworkIODimensions :: NetworkIOType -> TensorShape
+getNetworkIODimensions ioTensor =
+  case ioTensor of
+    TensorIOType (NetworkTensorType _ dims) -> dims
+    RecordIOType (NetworkRecordType _ _ dims _) -> dims
 
 -- | Compile network name. Prefixes an index to all subsequent network applications
 compileNetworkName :: Name -> Int -> Doc a

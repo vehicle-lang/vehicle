@@ -524,7 +524,7 @@ class HasTensorLiterals expr builtin where
 -- For example `(xs + ys) ! i` becomes `xs ! i + ys ! i`.
 evalAtTensor ::
   forall builtin m.
-  (MonadNormBuiltin m, HasTensorLiterals Value builtin, HasLiftableTensorOperations builtin, BuiltinHasListLiterals builtin, BuiltinHasIndexLiterals builtin, HasTensorExpr Value builtin, BuiltinHasForeach builtin) =>
+  (MonadNormBuiltin m, PrintableBuiltin builtin, HasTensorLiterals Value builtin, HasLiftableTensorOperations builtin, BuiltinHasListLiterals builtin, BuiltinHasIndexLiterals builtin, HasTensorExpr Value builtin, BuiltinHasForeach builtin) =>
   NamedBoundCtx ->
   EvalApp builtin m ->
   Eval builtin m ->
@@ -565,7 +565,7 @@ evalAtTensor ctx evalApp eval args@(AtTensorArgs t d ds tensor index) =
 
 unoptimisedEvalAtTensor ::
   forall builtin m.
-  (MonadNormBuiltin m, HasTensorLiterals Value builtin, BuiltinHasListLiterals builtin, BuiltinHasIndexLiterals builtin, HasTensorExpr Value builtin) =>
+  (MonadNormBuiltin m, PrintableBuiltin builtin, HasTensorLiterals Value builtin, BuiltinHasListLiterals builtin, BuiltinHasIndexLiterals builtin, HasTensorExpr Value builtin) =>
   EvalSimple AtTensorArgs Value builtin m
 unoptimisedEvalAtTensor args@(AtTensorArgs _t _d ds tensor index) = do
   fromMaybe (return $ mkExpr accessAtTensor args) $
@@ -582,11 +582,9 @@ unoptimisedEvalAtTensor args@(AtTensorArgs _t _d ds tensor index) = do
     goLiterals i literals = case literals of
       Wrapper Access {..} : remainingLiterals -> case getExpr tensor of
         Just xs -> Just $ return $ mkExpr (xs `at` i)
-        Nothing -> goLiterals i remainingLiterals
+        Nothing -> do
+          goLiterals i remainingLiterals
       _ -> Nothing
-
------------------------------------------------------------------------------
--- Foreach
 
 type HasOptimisedAtBuiltins builtin =
   ( HasTensorLiterals Value builtin,
