@@ -4,7 +4,10 @@
 
 ### Loss backend
 
+* Added the ability to declare custom Differentiable Logics internally in Vehicle (see documentation for details).
+
 * Fixed a bug where the compiler was erroring on some uses of `forall` for indices.
+
 * Fixed a bug where networks were recursively unblocked without changes. Backends now control when recursive unblocking happens.
 
 ## v0.24.1
