@@ -18,10 +18,35 @@ defaults:
     shell: sh
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      build-vehicle: ${{ steps.filter.outputs.build-vehicle }}
+      build-vehicle-python: ${{ steps.filter.outputs.build-vehicle-python }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            build-vehicle:
+              - 'vehicle/**'
+              - 'vehicle-syntax/**'
+            build-vehicle-python:
+              - 'vehicle/**'
+              - 'vehicle-syntax/**'
+              - 'vehicle-python/**'
+
   build-vehicle:
+    needs: changes
+    if: startsWith(github.ref, 'refs/tags/v') || needs.changes.outputs.build-vehicle == 'true'
     uses: ./.github/workflows/build-vehicle.yml
 
   build-vehicle-python:
+    needs: changes
+    if: startsWith(github.ref, 'refs/tags/v') || needs.changes.outputs.build-vehicle-python == 'true'
     uses: ./.github/workflows/build-vehicle-python.yml
 
   test-integration-bumpver:
