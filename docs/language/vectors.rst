@@ -98,6 +98,11 @@ The following operations over vectors are currently supported:
      - :code:`Vector A d -> Index d -> A`
      - :code:`v ! i`
      - Extract the value at a given index of the vector.
+   * - Foreach
+     - ``!``
+     - ``(Index d -> A) -> Vector A d``
+     - ``foreach i . 0``
+     - Constructs a new vector by specifying each element in terms of its index.
 
 Indexing
 --------
