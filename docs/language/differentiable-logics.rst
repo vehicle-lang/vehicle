@@ -10,7 +10,7 @@ Basics
 
 Vehicle's loss function backend allows you to translate logical specifications into
 differentiable loss functions that can be used to train neural networks.
-This is achieved by using a _Differentiable Logic_ which maps the Boolean operations such as ``and``, ``or``, ``not`` in the specification to real-valued operations.
+This is achieved by using a *Differentiable Logic* which maps the Boolean operations such as ``and``, ``or``, ``not`` in the specification to real-valued operations.
 
 A differentiable logic has the following type signature:
 
@@ -55,8 +55,8 @@ For example:
     , reduceDisjunction          = \e xs -> reduceMul e xs
     }
 
-This custom logic can then be used in the loss function backend as described in :doc:`../training`.
-
 Notes on the logic above:
-- Vehicle does not yet currently support infinite values, so we use a large constant to represent falsehood.
-- Strict and non-strict inequalities are treated the same in this logic, but you could define them differently if desired.
+  1. Vehicle does not yet currently support infinite values, so we use a large constant to represent falsehood.
+  2. Strict and non-strict inequalities are treated the same in this logic, but you could define them differently if desired.
+
+This custom logic can then be used in the loss function backend as described in :doc:`../training`.
