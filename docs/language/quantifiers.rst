@@ -84,7 +84,7 @@ type. For example:
    pointwiseLess : Vector Real 3 -> Vector Real 3 -> Bool
    pointwiseLess x y = forall (i : Index 3) . x ! i < y ! i
 
-will get automatically expanded to:
+is semantically equivalent to:
 
 .. code-block:: agda
 
@@ -116,10 +116,3 @@ to a sequence of conjunctions as follows:
 
    myListInRange : Bool
    myListInRange = 0 <= f 0.4 <= 1 and 0 <= f 1.1 <= 1 and 0 <= f 0.2 <= 1
-
-Foreach quantifier
-------------------
-
-Although the ``foreach`` operator looks like a quantifier, it does not return
-a ``Bool`` but a ``Vector`` of a generic type. See the documentation for
-``Vector`` for details.
