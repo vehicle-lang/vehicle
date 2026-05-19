@@ -21,8 +21,9 @@ jobs:
   changes:
     runs-on: ubuntu-latest
     outputs:
-      build-vehicle: ${{ steps.filter.outputs.build-vehicle }}
-      build-vehicle-python: ${{ steps.filter.outputs.build-vehicle-python }}
+      vehicle_build: ${{ steps.filter.outputs.vehicle_build }}
+      vehicle_compiler: ${{ steps.filter.outputs.vehicle_compiler }}
+      vehicle_python: ${{ steps.filter.outputs.vehicle_python }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -31,22 +32,24 @@ jobs:
         id: filter
         with:
           filters: |
-            build-vehicle:
+            vehicle_build:
+              - 'cabal.project*'
+              - '.github/actions/**'
+              - '.github/workflows/**'
+            vehicle_compiler:
               - 'vehicle/**'
               - 'vehicle-syntax/**'
-            build-vehicle-python:
-              - 'vehicle/**'
-              - 'vehicle-syntax/**'
+            vehicle_python:
               - 'vehicle-python/**'
 
   build-vehicle:
     needs: changes
-    if: startsWith(github.ref, 'refs/tags/v') || needs.changes.outputs.build-vehicle == 'true'
+    if: startsWith(github.ref, 'refs/tags/v') || needs.changes.outputs.vehicle_build == 'true' || needs.changes.outputs.vehicle_compiler == 'true'
     uses: ./.github/workflows/build-vehicle.yml
 
   build-vehicle-python:
     needs: changes
-    if: startsWith(github.ref, 'refs/tags/v') || needs.changes.outputs.build-vehicle-python == 'true'
+    if: startsWith(github.ref, 'refs/tags/v') || needs.changes.outputs.vehicle_build == 'true' || needs.changes.outputs.vehicle_compiler == 'true' || needs.changes.outputs.vehicle_python == 'true'
     uses: ./.github/workflows/build-vehicle-python.yml
 
   test-integration-bumpver:
