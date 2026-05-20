@@ -30,6 +30,8 @@ import Vehicle.Data.Builtin.Standard
 import Vehicle.Prelude.Logging
 import Vehicle.TypeCheck (TypeCheckOptions (..), runCompileMonad, typeCheckUserProg)
 import Vehicle.Verify.QueryFormat
+import Vehicle.Data.Variable.Free.Context (runFreshFreeContextT)
+import Vehicle.Backend.Loss.LiftQuantifier (liftQuantifierDecls)
 
 --------------------------------------------------------------------------------
 -- Interface
@@ -161,7 +163,8 @@ compileToLossFunction ::
   m ()
 compileToLossFunction LossOptions {..} typedProg outputAsJSON =
   logCompilerPass Loss $ do
-    lossTensorProg <- convertToLossTensors differentiableLogicID typedProg
+    typedProg' <- if lossFunctionMode == CounterExample then runFreshFreeContextT (Proxy @Builtin) $ liftQuantifierDecls typedProg else pure typedProg
+    lossTensorProg <- convertToLossTensors differentiableLogicID typedProg'
     hoistedProg <- hoistInferableParameters lossTensorProg
     functionalisedProg <- functionaliseResources hoistedProg
     jsonProg <- convertToJSONProg functionalisedProg
