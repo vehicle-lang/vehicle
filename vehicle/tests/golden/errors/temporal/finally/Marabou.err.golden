@@ -2,4 +2,4 @@ Error in file 'spec.vcl' at Line 8, Columns 15-22: The following features are no
   - temporal operator 'finally' (file 'spec.vcl' at Line 8, Columns 15-22)
   - 'Time' type (file 'spec.vcl' at Line 8, Columns 23-24)
 
-These features are only supported by the loss backend (`vehicle compile loss --logic <LOGIC> …`).
+These features are only supported by the loss backend (`vehicle compile loss --logic <LOGIC> ...`).

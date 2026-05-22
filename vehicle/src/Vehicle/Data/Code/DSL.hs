@@ -23,9 +23,8 @@ tBool = builtinType BoolType
 tRat = builtinType RatType
 tTime = builtinType TimeType
 
--- | Compile-time `Time → Nat` coercion. Used in the type signature of
--- `rollout` to bridge the user-facing `Time`-typed count argument into the
--- `Nat`-typed tensor dimension that the result tensor's outer shape needs.
+-- | `rollout`'s result tensor's outer dim is `fromTimeToNat n`, where `n`
+-- is the user-facing `Time`-typed count.
 fromTimeToNat :: (BuiltinHasTimeLiterals builtin) => DSLExpr builtin -> DSLExpr builtin
 fromTimeToNat n = builtin (mkExpr accessFromTimeToNatBuiltin ()) @@ [n]
 

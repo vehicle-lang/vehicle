@@ -52,7 +52,7 @@ formatHits backend hits =
       indent 2 (vsep @[] (fmap formatHit hits)),
       line
         <> "These features are only supported by the loss backend"
-          <+> "(`vehicle compile loss --logic <LOGIC> …`)."
+          <+> "(`vehicle compile loss --logic <LOGIC> ...`)."
     ]
   where
     formatHit :: Hit -> Doc Void
@@ -102,10 +102,8 @@ unsupportedFeatureName = \case
   BuiltinFunction (Temporal Until) -> Just "temporal operator 'until'"
   BuiltinFunction Rollout -> Just "'rollout'"
   BuiltinType TimeType -> Just "'Time' type"
-  -- TimeLiteral skipped: only ever appears nested inside an operator that
-  -- itself is already in the rejection list (temporal bounds, rollout
-  -- count, or a `Time` annotation), so reporting it separately produces
-  -- redundant entries with poor provenance.
+  -- TimeLiteral skipped: only appears under an operator already on this list,
+  -- so listing it separately just adds duplicate hits with poor provenance.
   BuiltinFunction (Add AddTime) -> Just "'+' on 'Time'"
   BuiltinFunction (Sub SubTime) -> Just "'-' on 'Time'"
   BuiltinFunction (Mul MulTime) -> Just "'*' on 'Time'"

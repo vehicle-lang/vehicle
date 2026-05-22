@@ -84,72 +84,43 @@ class DefaultPyTorchSampler(PyTorchSampler):
         range_size = upper_bound - lower_bound
         epsilon = range_size / self.num_steps
 
-        results = []
+        # FGSM vectorised over the num_samples restarts (bit-identical to
+        # the per-sample loop; same RNG-stream consumption).
+        n = self.num_samples
+        frac = torch.rand((n,) + (1,) * lower_bound.ndim, dtype=lower_bound.dtype)
+        current_points = lower_bound + frac * range_size  # [n, *bound.shape]
 
-        # Use multiple random starting points to ensure diversity
-        for _ in range(self.num_samples):
-            # Start from a random initial point in the valid range
-            current_point = (
-                lower_bound + torch.rand((), dtype=lower_bound.dtype) * range_size
+        def _scalar_loss(x: torch.Tensor) -> torch.Tensor:
+            return search_lambda(x).reshape(())
+
+        _per_sample_grad = torch.func.grad(_scalar_loss)
+
+        for _ in range(self.num_steps):
+            cp = current_points.detach()
+            # `loss.requires_grad` in the original is False only when called
+            # under torch.no_grad(); mirror that as a zero perturbation.
+            if torch.is_grad_enabled():
+                try:
+                    gradient = torch.vmap(_per_sample_grad)(cp)
+                    gradient = torch.where(
+                        torch.isnan(gradient),
+                        torch.zeros_like(gradient),
+                        gradient,
+                    )
+                except RuntimeError:
+                    gradient = torch.zeros_like(cp)
+            else:
+                gradient = torch.zeros_like(cp)
+
+            sign_grad = torch.sign(gradient)
+            # minimise=True: worst violations by minimising search_lambda.
+            perturbation = (-epsilon if minimise else epsilon) * sign_grad
+            current_points = torch.clamp(
+                cp + perturbation.detach(), lower_bound, upper_bound
             )
 
-            # Perform FGSM iterations from this starting point
-            # IMPORTANT: During FGSM, we only want gradients w.r.t. the INPUT to find
-            # adversarial examples. We must NOT accumulate gradients in network parameters,
-            # as that would interfere with the actual training gradients computed later.
-            for _ in range(self.num_steps):
-                # Enable gradient computation for the current point
-                current_point_var = current_point.detach().clone().requires_grad_(True)
-
-                # Compute gradient of search_lambda with respect to input
-                loss = search_lambda(current_point_var)
-
-                # Only compute gradients if the loss requires grad
-                # (may not be the case if called inside torch.no_grad())
-                if loss.requires_grad:
-                    # Compute gradient ONLY w.r.t. the input, not network weights
-                    # Using autograd.grad instead of backward() to avoid accumulating
-                    # gradients in network parameters during adversarial search
-                    gradient = torch.autograd.grad(
-                        loss,
-                        current_point_var,
-                        create_graph=False,  # Don't need second-order gradients
-                        retain_graph=False,  # Don't need to backprop again
-                        only_inputs=True,  # Only compute for inputs, not all parameters
-                    )[0]
-
-                    # If gradient contains NaN, replace with zeros
-                    if gradient is not None:
-                        gradient = torch.where(
-                            torch.isnan(gradient), torch.zeros_like(gradient), gradient
-                        )
-                    else:
-                        gradient = torch.zeros_like(current_point_var)
-                else:
-                    # No gradients available, can't perform FGSM perturbation
-                    gradient = torch.zeros_like(current_point_var)
-
-                # FGSM: perturb in the direction of the gradient sign
-                # The compiled loss is often -aggregation(search_lambda), so to find worst-case
-                # inputs that make the training loss high, we need to minimize search_lambda.
-                # When minimise=True (we want to minimize training loss), find worst violations
-                # by MINIMIZING search_lambda (which after negation/aggregation gives high loss)
-                sign_grad = torch.sign(gradient)
-
-                if minimise:
-                    # Find worst violations by minimizing search_lambda
-                    perturbation = -epsilon * sign_grad
-                else:
-                    # Find best satisfactions by maximizing search_lambda
-                    perturbation = epsilon * sign_grad
-
-                # Apply perturbation and clip to bounds
-                current_point = torch.clamp(
-                    current_point + perturbation.detach(), lower_bound, upper_bound
-                )
-
-            # Evaluate and store the final result from this trajectory
-            result = search_lambda(current_point.detach())
-            results.append(torch.as_tensor(result))
-
-        return torch.stack(results)
+        # Final eval is a plain per-sample loop, not vmap: torch.func
+        # transforms don't connect to closed-over autograd leaves, so
+        # vmapping here would sever d_loss/d_theta and break GradNorm.
+        final = current_points.detach()
+        return torch.stack([torch.as_tensor(search_lambda(final[i])) for i in range(n)])

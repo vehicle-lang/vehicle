@@ -352,23 +352,15 @@ unblockAtTensor unblock (AtTensorArgs tElem d ds xs i) = do
         Just args' -> evalAtTensor nameCtx evalApp eval args'
         Nothing -> evalAtTensor nameCtx evalApp eval unswappedArgs
 
--- | Index-through-transpose, any rank.  A fully-consumed indexing chain
--- `(transpose t) ! i₁ ! … ! iₙ` (so the result is a scalar) equals the
--- index-reversed `t ! iₙ ! … ! i₁`, because `transpose` reverses axis order.
--- Used by the verifier (which decomposes every tensor to scalars before
--- linearisation, so the transposed tensor is always fully consumed there);
--- a soundness-preserving identity for any caller. Returns `Nothing` if the
--- chain isn't a fully-consumed indexing of a `transpose`.
+-- | `(transpose t) ! i_1 ! ... ! i_n` over a fully-consumed indexing chain
+-- (scalar result) equals `t ! i_n ! ... ! i_1`. Returns `Nothing` if the
+-- chain doesn't fully consume a transposed tensor.
 rewriteTransposeAt ::
   AtTensorArgs (Value Builtin) ->
   Maybe (AtTensorArgs (Value Builtin))
 rewriteTransposeAt topArgs@(AtTensorArgs tElem _ outerRemDims _ _) = do
-  -- Whole transposed tensor consumed (scalar result) — only then is it a pure
-  -- index permutation.
   IDimNil <- pure outerRemDims
   (underlying, pairs) <- collect topArgs []
-  -- `pairs` (outer→inner) is [(d₁, iₙ), (d₂, iₙ₋₁), …, (dₙ, i₁)] where `t` has
-  -- shape [d₁,…,dₙ]; rebuild `underlying ! iₙ ! iₙ₋₁ ! … ! i₁`.
   case reverse pairs of
     [] -> Nothing -- unreachable: `topArgs` is itself an `at`
     (lastD, lastIdx) : revInit -> do

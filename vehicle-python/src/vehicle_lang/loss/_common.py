@@ -33,13 +33,13 @@ def load_loss_specification(
 
     Returns:
         The compiled callables. The Vehicle compiler emits each property as a
-        minimisation target by default — wrapping properties in ``not`` so
+        minimisation target by default -- wrapping properties in ``not`` so
         reducing the output always pushes the property toward satisfaction.
         Pass ``--dl-native-direction`` through to the compiler if you need
         the raw DL-native form.
 
     Args:
-        _program: Internal — if provided, skip calling ``_ast.load`` and use
+        _program: Internal -- if provided, skip calling ``_ast.load`` and use
             this pre-loaded program directly. Allows callers that have already
             loaded the program (e.g., to derive temporal semantics) to avoid a
             second compiler invocation.

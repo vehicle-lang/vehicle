@@ -165,9 +165,7 @@ class BuiltinHasStandardData builtin where
   accessBuiltinConstructor :: Accessor builtin BuiltinConstructor
   accessBuiltinFunction :: Accessor builtin BuiltinFunction
 
--- | Indicates that this set of builtins exposes the standard derived (stdlib)
--- functions. Only the standard and decidability builtin sets carry these;
--- linearity/polarity meta-builtins use specialised typing instead.
+-- | Exposes the standard derived (stdlib) functions.
 class BuiltinHasDerivedFunction builtin where
   accessBuiltinDerivedFunction :: Accessor builtin DerivedFunction
 

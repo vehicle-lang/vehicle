@@ -131,13 +131,9 @@ pruneUnusedDeclarations ::
   m (Prog builtin)
 pruneUnusedDeclarations = pruneUnusedDeclarationsKeeping mempty
 
--- | Like 'pruneUnusedDeclarations' but takes an extra set of identifiers that
--- must always be kept. This is needed when stdlib decls are referenced by a
--- builtin's type signature rather than from a program AST decl — e.g. the
--- `Transpose` builtin's type uses `reverseDims ds` (which expands to a free-var
--- reference to `Definitions.reverse`). That reference is invisible to
--- 'createDependencyGraph' (it lives in compiler code, not in any AST node), so
--- the caller must list such decls explicitly when they need to survive pruning.
+-- | Like 'pruneUnusedDeclarations' but with an extra always-kept set, for
+-- stdlib decls referenced from a builtin's type signature rather than from
+-- the AST (see `typeBuiltinTypeLevelDeps`).
 pruneUnusedDeclarationsKeeping ::
   (MonadCompile m) =>
   Set Identifier ->

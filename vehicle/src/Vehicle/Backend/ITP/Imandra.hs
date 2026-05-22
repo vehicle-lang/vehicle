@@ -79,7 +79,7 @@ compileProgToImandra (Main ds) options =
           Just name -> name
           _ -> maybe "Spec" takeBaseName (output options)
 
-    -- Order: types → networks (opaque) → value definitions → axioms
+    -- Order: types, networks (opaque), value definitions, axioms.
     let imandraProgram =
           unAnnotate
             ( (vsep2 :: [Code] -> Code)
@@ -632,7 +632,6 @@ compileBuiltin _isOutType moduleDefs b args = case b of
         args
     IndexType -> annotateNotation moduleDefs [] 0 "int" Nothing args
     VectorType -> annotateNotation moduleDefs [] 2 "$0 list" Nothing args
-    -- Time is rejected by checkBackendUnsupportedFeatures.
     TimeType -> unsupportedError
   StandardBuiltinConstructor c -> case c of
     Nil -> return "[]"
@@ -748,9 +747,7 @@ compileApp :: (MonadImandraCompile m) => Bool -> [ModuleDef] -> Expr Decidabilit
 compileApp _isOutType moduleDefs fun args = do
   let userArgs = NonEmpty.filter (not . wasInsertedByCompiler) args
   case fun of
-    -- Transpose's element type comes in as a compiler-inserted implicit
-    -- arg; we need it to pick the IL monomorphic wrapper, so consult the
-    -- raw args before filtering.
+    -- Pass raw args to keep the inserted-implicit element type for dispatch.
     Builtin _p b@(StandardBuiltinFunction Transpose) ->
       compileTransposeApp moduleDefs (NonEmpty.toList args) userArgs b
     Builtin _p b ->
@@ -759,9 +756,8 @@ compileApp _isOutType moduleDefs fun args = do
       cFun <- compileExpr False moduleDefs fun
       annotateApp moduleDefs [] cFun userArgs
 
--- | Imandra emits one `tensor_transpose_*` per supported element type
--- (`real`, `bool`, `int`); pick the right one from the implicit type
--- argument, then apply it to the explicit tensor.
+-- | Pick the monomorphic `tensor_transpose_*` matching the implicit element
+-- type, then apply it to the explicit tensor.
 compileTransposeApp ::
   (MonadImandraCompile m) =>
   [ModuleDef] ->
@@ -775,9 +771,6 @@ compileTransposeApp moduleDefs rawArgs userArgs b = do
         [] -> developerError "Transpose with no args"
   annotateApp moduleDefs [RequireImport ImlVehicle] fnName userArgs
   where
-    -- Map the element-type expression to the corresponding IL function.
-    -- Anything not in this table means the dispatch table needs extending
-    -- when a new tensor element type is introduced.
     imandraTransposeFnName :: Expr DecidabilityBuiltin -> Code
     imandraTransposeFnName e = case e of
       Builtin _ (StandardBuiltinType RatType) -> "tensor_transpose_real"

@@ -128,7 +128,7 @@ def load_specification(
 
     Returns:
         The compiled callables. Each property is emitted as a minimisation
-        target — robustness-style logics are wrapped in ``not`` by the
+        target -- robustness-style logics are wrapped in ``not`` by the
         compiler so reducing the output drives the property toward
         satisfaction regardless of which logic was selected.
     """

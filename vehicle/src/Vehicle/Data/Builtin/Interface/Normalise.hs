@@ -383,12 +383,8 @@ evalCompareNat op = \case
 -----------------------------------------------------------------------------
 -- Time
 --
--- Time literals share the saturating-subtraction and total-division semantics
--- needed for compile-time bound reduction (e.g. `globally[0, T - 1]`). The
--- type system keeps Time values from leaking into Nat-indexed positions, so
--- backends are free to map Time to whichever native integer representation
--- they prefer; in practice the compiler reduces every Time expression to a
--- literal before the backend ever sees it.
+-- Saturating-sub + total-div, so `globally[0, T - 1]` and friends reduce
+-- to literals at compile time regardless of Nat-typed arithmetic rules.
 
 evalAddTime ::
   (MonadNormBuiltin m, BuiltinHasTimeLiterals builtin) =>

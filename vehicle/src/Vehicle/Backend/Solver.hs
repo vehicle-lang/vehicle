@@ -57,9 +57,7 @@ compileToQueries ::
   Maybe FilePath ->
   m ()
 compileToQueries queryFormat typedProg resources maybeVerificationFolder = do
-  -- Reject any unsupported features (temporal operators, rollout, Time)
-  -- before resource resolution, so the user gets a useful error even if
-  -- the spec also has missing networks / dynamics.
+  -- Run before expandResources so missing networks don't mask feature errors.
   CBF.checkBackendUnsupportedFeatures CBF.Verifier typedProg
 
   -- Create the verification folder if required.

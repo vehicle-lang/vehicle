@@ -29,7 +29,7 @@ append xs ys = fold (\x acc -> x :: acc) ys xs
 
 -- Reverse a list. Implemented via fold and append; used in dimension lists
 -- (e.g. inside `transpose`'s type signature). The expression-level form is
--- O(N²) via repeated append, but dim lists are tiny so the cost is
+-- O(N^2) via repeated append, but dim lists are tiny so the cost is
 -- irrelevant.
 reverse : List A -> List A
 reverse xs = fold (\x acc -> append acc (x :: [])) [] xs
@@ -123,7 +123,7 @@ record HasDiv t1 t2 t3 where
 realTensorHasDiv : HasDiv (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
 realTensorHasDiv = { divTC = divRealTensor }
 
--- HasPow — `x ** y`. Loss-backend only.
+-- HasPow: `x ** y`. Loss-backend only.
 @typeclass
 record HasPow t1 t2 t3 where
   { powTC : t1 -> t2 -> t3
@@ -133,7 +133,7 @@ record HasPow t1 t2 t3 where
 realTensorHasPow : HasPow (Tensor Real dims) (Tensor Real dims) (Tensor Real dims)
 realTensorHasPow = { powTC = powRealTensor }
 
--- HasExp — `exp x`. Loss-backend only.
+-- HasExp: `exp x`. Loss-backend only.
 @typeclass
 record HasExp t where
   { expTC : t -> t
@@ -143,7 +143,7 @@ record HasExp t where
 realTensorHasExp : HasExp (Tensor Real dims)
 realTensorHasExp = { expTC = expRealTensor }
 
--- HasLog — `log b x` (logarithm of `x` with base `b`). Loss-backend only.
+-- HasLog: `log b x` (logarithm of `x` with base `b`). Loss-backend only.
 @typeclass
 record HasLog t1 t2 t3 where
   { logTC : t1 -> t2 -> t3
@@ -283,10 +283,9 @@ record DifferentiableTensorLogic where
   , pointwiseNegation         : Tensor Real dims -> Tensor Real dims
   , pointwiseConjunction      : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
   , pointwiseDisjunction      : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
-  -- Temporal operators (Globally, Finally, Until) lift `pointwiseConjunction` and
-  -- `pointwiseDisjunction` as time-indexed reductions, with `trueElement` and
-  -- `falseElement` as the respective reduction identities.  No separate temporal
-  -- connectives — matches the standard STL-literature derivation.
+  -- Temporal operators (Globally, Finally, Until) lift `pointwiseConjunction`
+  -- and `pointwiseDisjunction` as time-indexed reductions, with `trueElement`
+  -- and `falseElement` as the reduction identities (standard STL derivation).
   , pointwiseLessThan         : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
   , pointwiseLessEqualThan    : Tensor Real dims -> Tensor Real dims -> Tensor Real dims
   , pointwiseGreaterThan      : Tensor Real dims -> Tensor Real dims -> Tensor Real dims

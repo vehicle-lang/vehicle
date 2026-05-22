@@ -1,4 +1,4 @@
 Error in file 'spec.vcl' at Line 14, Columns 20-27: The following features are not supported in the Isabelle ITP backend:
   - 'rollout' (file 'spec.vcl' at Line 14, Columns 20-27)
 
-These features are only supported by the loss backend (`vehicle compile loss --logic <LOGIC> …`).
+These features are only supported by the loss backend (`vehicle compile loss --logic <LOGIC> ...`).

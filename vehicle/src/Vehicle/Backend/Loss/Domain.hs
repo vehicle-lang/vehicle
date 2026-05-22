@@ -46,12 +46,9 @@ import Vehicle.Data.Variable.Bound.Context.Tensor
 import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Prelude.Warning (CompileWarning (..))
 
--- | Dispatch for bool-valued tensor subexpressions.  Unlike
--- `convertTensorProperty` in `Vehicle.Backend.Loss`, this runs on bool
--- expressions that appear *nested* under other operators (most commonly
--- temporal operators and `foreach`).  It lives here rather than in
--- `LossCompilation` so that nested `VBoolTensorQuantifyRat` nodes can be
--- dispatched to `compileQuantifier` without introducing a module cycle.
+-- | Dispatch for bool-valued tensor subexpressions nested under other
+-- operators (temporal, foreach). Lives here rather than in `LossCompilation`
+-- so `VBoolTensorQuantifyRat` can reach `compileQuantifier` without a cycle.
 convertBoolTensor :: (MonadLogic m) => Value Builtin -> m (Value LossBuiltin)
 convertBoolTensor value = logConversion value $ case toBoolTensorValue value of
   VBoolTensorLiteral bs -> convertBoolTensorLiteral bs

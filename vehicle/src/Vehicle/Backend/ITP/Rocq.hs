@@ -489,7 +489,6 @@ compileBuiltin b args = case b of
     TensorType -> compileNotationAndArgs [RequireImport VehicleTensor] NotAssociative Nothing "'nT[$0]_($1)" Nothing args
     IndexType -> compileNotationAndArgs [MathcompImport Boot] NotAssociative Nothing "'I_$0" (Just "ordinal") args
     VectorType -> compileNotationAndArgs [MathcompImport Boot] NotAssociative (Just 2) "$0.-tuple $1" Nothing args
-    -- Time is rejected by checkBackendUnsupportedFeatures.
     TimeType -> unsupportedError
   StandardBuiltinConstructor c -> case c of
     Nil -> return $ annotateConstant [MathcompImport Boot] "nil"

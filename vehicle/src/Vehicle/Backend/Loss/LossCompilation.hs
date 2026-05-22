@@ -174,11 +174,9 @@ convertFreeVar name = \case
 --------------------------------------------------------------------------------
 -- Bool
 
--- NOTE: `convertBoolTensor` — the general dispatch over bool-valued tensor
--- expressions — lives in `Vehicle.Backend.Loss.Domain`. It needs to dispatch
--- `VBoolTensorQuantifyRat` to `compileQuantifier`, which itself depends on
--- the helpers in this module. Keeping the dispatcher in `Domain` is the
--- cleanest way to avoid a module cycle.
+-- `convertBoolTensor`, the dispatcher, lives in `Vehicle.Backend.Loss.Domain`
+-- to avoid a cycle: it dispatches `VBoolTensorQuantifyRat` to
+-- `compileQuantifier`, which uses the helpers in this module.
 
 convertBoolTensorLiteral :: (MonadLogic m) => Tensor Bool -> m (Value LossBuiltin)
 convertBoolTensorLiteral tensor = do
@@ -208,18 +206,9 @@ convertReduceAnd = convertLogicField ReduceConjunction
 convertReduceOr :: (MonadLogic m) => TensorReductionArgs (Value LossBuiltin) -> m (Value LossBuiltin)
 convertReduceOr = convertLogicField ReduceDisjunction
 
--- NOTE: Unlike And/Or/Not (which are inlined into the IR via `convertLogicField`),
--- temporal operators are emitted as opaque IR nodes. The runtime `Semantics`
--- for them is derived from the DL record's `pointwiseConjunction` /
--- `pointwiseDisjunction` lambdas, with `trueElement` / `falseElement` as
--- reduction identities: a temporal operator is a time-indexed reduction of
--- the pointwise logical connective, matching the standard STL presentation
--- in the literature. `Vehicle.Backend.Loss.JSON.convertLogicMetadata` packages
--- these four fields as a `JLogicMetadata` payload, which the Python backend
--- reconstructs as a `vehicle_stl.Semantics` object passed to every stlcg++
--- formula constructor. Negation and nesting of temporal ops is handled by
--- the standard logic-field path — the temporal output is treated as an
--- ordinary real-valued signal once emitted.
+-- Emitted as opaque IR nodes; runtime semantics come from the DL record's
+-- pointwise{Conjunction,Disjunction} + {true,false}Element fields, packaged
+-- as JLogicMetadata by `Vehicle.Backend.Loss.JSON.convertLogicMetadata`.
 
 convertGlobally :: (MonadLogic m) => TemporalOp1Args (Value LossBuiltin) -> m (Value LossBuiltin)
 convertGlobally args = return $ mkExpr (accessTemporalLoss1 Globally) args
@@ -414,12 +403,8 @@ convertTemporalOp2 ::
 convertTemporalOp2 go (TemporalOp2Args ds a b x y) =
   TemporalOp2Args <$> convertDims ds <*> convertTimeBound a <*> convertTimeBound b <*> go x <*> go y
 
--- | Convert a Time-typed temporal bound to its Nat-shaped LossBuiltin
--- representation. Time and Nat share runtime semantics (saturating-sub,
--- total-div); the type-level distinction exists only for compile-time
--- discipline. Bounds always reduce to literals before reaching the loss
--- backend (the typechecker enforces this), so a literal-only conversion
--- is sufficient.
+-- | A temporal bound must reduce to a literal before reaching the loss
+-- backend; emit it as a Nat literal (Time and Nat share runtime semantics).
 convertTimeBound :: (MonadLogic m) => Value Builtin -> m (Value LossBuiltin)
 convertTimeBound value = case value of
   ITimeLiteral n -> return $ mkExpr accessNatLiteral n
@@ -494,9 +479,6 @@ convertRollout (RolloutArgs sType aType sDims aDims n ctrl dyn s0) = do
   aType' <- convertType aType
   sDims' <- convertDims sDims
   aDims' <- convertDims aDims
-  -- `n` is `Time`-typed (rollout asks "how many timesteps?"); reuse the
-  -- temporal-bound converter so a literal Time value bridges to a Nat
-  -- literal locally without polluting `convertDim`'s view.
   n' <- convertTimeBound n
   ctrl' <- convertFunction convertRatTensor ctrl
   dyn' <- convertFunction convertRatTensor dyn

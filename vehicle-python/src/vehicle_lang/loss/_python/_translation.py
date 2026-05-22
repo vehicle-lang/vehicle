@@ -357,7 +357,7 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
     def translate_SearchRatTensor(self, expression: vcl.SearchRatTensor) -> py.expr:
         """Translate SearchRatTensor to builtin call.
 
-        The reduction_op is a curried function (λe. λxs. reduce e xs) where:
+        The reduction_op is a curried function ``\\e. \\xs. reduce e xs``:
         - e is the identity element (a 0-dimensional tensor)
         - xs is the sequence of samples to reduce
 

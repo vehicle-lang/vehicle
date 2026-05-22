@@ -64,17 +64,14 @@ lowerNot onBlocked (TensorOp1Args _ arg) = do
       VBoolTensorReduceOr args -> fromBoolTensorValue . VBoolTensorReduceAnd <$> traverseReductionArgs go args
       VBoolTensorReduceAnd args -> fromBoolTensorValue . VBoolTensorReduceOr <$> traverseReductionArgs go args
       VBoolTensorAt args -> fromBoolTensorValue . VBoolTensorAt <$> traverseAtTensorArg go args
-      -- STL/LTL De Morgan laws: ¬(G P) ≡ F (¬P), ¬(F P) ≡ G (¬P).
-      -- Exact when the signal covers the interval. When vehicle-stl's
-      -- Always/Eventually pad beyond the signal end, the rewritten form
-      -- uses the disjunction identity as the mask value whereas the
-      -- original `¬(G …)` form pads pessimistically with `-large_number`;
-      -- a specification that relies on the padded regime could see small
-      -- numeric drift after this rewrite.
+      -- STL De Morgan: not(G P) = F (not P); not(F P) = G (not P). Exact
+      -- when the signal covers the interval; vehicle-stl's padded regime
+      -- can drift slightly because the rewrite uses the disjunction
+      -- identity as the mask whereas the original pads pessimistically.
       VBoolTensorGlobally args -> fromBoolTensorValue . VBoolTensorFinally <$> traverseTemporalOp1Args go args
       VBoolTensorFinally args -> fromBoolTensorValue . VBoolTensorGlobally <$> traverseTemporalOp1Args go args
-      -- ¬(P U Q) has no primitive dual without Release, so wrap in Not
-      -- after one last unblock attempt.
+      -- No primitive dual of Until without Release; wrap in Not after one
+      -- last unblock attempt.
       VBoolTensorUntil (TemporalOp2Args dims _ _ _ _) -> do
         e' <- onBlocked e
         return $ fromBoolTensorValue $ VBoolTensorNot (TensorOp1Args dims e')

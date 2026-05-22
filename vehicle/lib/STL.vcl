@@ -1,5 +1,5 @@
 -- The STL extension: the temporal operators (`globally`/`finally`/`until`),
--- closed-loop `rollout`, and the `Time` type. Not auto-imported — `import STL`.
+-- closed-loop `rollout`, and the `Time` type. Not auto-imported; `import STL`.
 
 import Definitions
 

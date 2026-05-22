@@ -61,21 +61,21 @@ class GradNormBalancer:
                 name: float(per_task[name].detach().item()) for name in self._task_names
             }
 
-        weighted: dict[str, torch.Tensor] = {
-            name: self._weights[name] * per_task[name] for name in self._task_names
-        }
-
+        # G_i = ||grad_theta(w_i L_i)|| = |w_i| * ||grad_theta L_i||
+        # (w_i scalar): first-order norm * |w_i| analytically, instead of
+        # a second-order graph. Algebraically identical, far cheaper.
         grad_norms: dict[str, torch.Tensor] = {}
         for name in self._task_names:
             grads = torch.autograd.grad(
-                weighted[name],
+                per_task[name],
                 self._shared_params,
                 retain_graph=True,
-                create_graph=True,
+                create_graph=False,
                 allow_unused=True,
             )
             flat = torch.cat([g.reshape(-1) for g in grads if g is not None])
-            grad_norms[name] = torch.linalg.vector_norm(flat, ord=2)
+            n_i = torch.linalg.vector_norm(flat, ord=2).detach()
+            grad_norms[name] = self._weights[name].abs() * n_i
 
         loss_ratios = torch.stack(
             [

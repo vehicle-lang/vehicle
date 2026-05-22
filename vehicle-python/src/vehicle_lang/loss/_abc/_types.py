@@ -10,7 +10,7 @@ from typing_extensions import TypeVar
 #   - Tensor type: Tensor a (generic over element type)
 #
 # Backends provide concrete implementations:
-#   - TensorFlow: Tensor → tf.Tensor
+#   - TensorFlow: Tensor -> tf.Tensor
 #
 ################################################################################
 
@@ -22,11 +22,11 @@ Expression = TypeVar("Expression")  # e.g., py.expr
 # Runtime types (matching Vehicle's type system exactly)
 
 # Scalar types (Vehicle's base types)
-Index = TypeVar("Index")  # Vehicle Index → backend scalar
-Rat = TypeVar("Rat")  # Vehicle Rat → backend scalar
+Index = TypeVar("Index")  # Vehicle Index -> backend scalar
+Rat = TypeVar("Rat")  # Vehicle Rat -> backend scalar
 
 # Generic tensor type (Vehicle's Tensor a - polymorphic over element type)
-Tensor = TypeVar("Tensor")  # Vehicle Tensor a → backend tensor
+Tensor = TypeVar("Tensor")  # Vehicle Tensor a -> backend tensor
 
 # Utility type variables
 Dimension = TypeVar("Dimension")  # Individual dimension value
@@ -49,9 +49,9 @@ DimensionIndex = TypeVar("DimensionIndex")  # Index into dimensions
 #   class Tensor(AST): shape, value
 #   class DenseTensor(Tensor), class ConstantTensor(Tensor)
 #
-# Python Translation → Python AST:
-#   Vehicle RatTensor → py.Call(__vehicle__.RatTensor, [tensor_obj])
-#   Vehicle AddRatTensor → py.Call(__vehicle__.AddRatTensor, [x_expr, y_expr])
+# Python Translation -> Python AST:
+#   Vehicle RatTensor -> py.Call(__vehicle__.RatTensor, [tensor_obj])
+#   Vehicle AddRatTensor -> py.Call(__vehicle__.AddRatTensor, [x_expr, y_expr])
 #
 # Python Runtime (TensorFlowBuiltins):
 #   def RatTensor(self, tensor: Tensor) -> tf.Tensor: ...

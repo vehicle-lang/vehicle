@@ -86,11 +86,8 @@ decidabilityTypeCheck prog = do
   monoDecProg <- monomorphise decProg isUserCode
   resolveInstanceArgumentsAndCasts monoDecProg
 
--- | Collect every stdlib decl referenced by some `Builtin`'s type signature
--- in the prog. These references live in compiler code (see `reverseDims`) so
--- they don't appear in the AST dependency graph; pass the result as extra
--- roots when pruning, otherwise the kept stdlib decl is removed and
--- secondary-subsystem typecheck fails to resolve the FreeVar.
+-- | All stdlib decls referenced by some `Builtin`'s type signature, for
+-- use as extra pruning roots (see `typeBuiltinTypeLevelDeps`).
 stdlibTypeLevelDepsOf :: Prog Builtin -> Set Identifier
 stdlibTypeLevelDepsOf prog = execWriter (traverse_ go prog)
   where

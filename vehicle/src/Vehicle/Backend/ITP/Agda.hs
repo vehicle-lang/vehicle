@@ -541,8 +541,6 @@ compileBuiltinType t args = case t of
   ListType -> annotateApp [DataList] Nothing "List" args
   VectorType -> annotateApp [DataVector] Nothing "Vector" args
   TensorType -> annotateApp [DataTensor] Nothing "Tensor" args
-  -- Time is rejected by checkBackendUnsupportedFeatures; reaching this case
-  -- means the pre-pass missed a Time use.
   TimeType -> developerError "Time should have been rejected by checkBackendUnsupportedFeatures"
 
 compileBuiltinConstructor ::

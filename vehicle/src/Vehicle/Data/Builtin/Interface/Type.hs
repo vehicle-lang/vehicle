@@ -107,16 +107,9 @@ typeOfBuiltinFunction = \case
   Rollout -> typeOfRollout
   Transpose -> typeOfTranspose
 
--- | Stdlib decls that a builtin's type signature refers to. These references
--- live in compiler code (via `standardLib` in the DSL), so they're invisible
--- to the AST dependency graph and would otherwise be pruned. Callers that
--- prune unused decls before secondary-subsystem typecheck need to keep these
--- as extra roots.
---
--- Currently `Transpose`'s type uses `reverseDims` which expands to a free-var
--- reference to `Definitions.reverse`. Transitive deps (e.g. `reverse` uses
--- `append`) are picked up automatically by the dependency graph from
--- `reverse`'s body, so only direct references need listing here.
+-- | Stdlib decls referenced by a builtin's type signature (via `standardLib`
+-- in the DSL). Invisible to the AST dependency graph, so callers that prune
+-- unused decls before secondary-subsystem typecheck need them as extra roots.
 typeBuiltinTypeLevelDeps :: BuiltinFunction -> Set Identifier
 typeBuiltinTypeLevelDeps = \case
   Transpose -> Set.singleton (stdlibIdentifier "reverse")
@@ -154,11 +147,7 @@ typeOfTensorOp1 tElem = forAllDims $ \dims -> tTensor tElem dims ~> tTensor tEle
 typeOfTensorOp2 :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin -> DSLExpr builtin
 typeOfTensorOp2 tElem = forAllDims $ \dims -> tTensor tElem dims ~> tTensor tElem dims ~> tTensor tElem dims
 
--- | Bounded temporal operators: two Time bounds (interval start/end) and
--- a boolean tensor signal, producing a boolean tensor of the same shape.
--- The Time type keeps temporal-bound arithmetic (saturating-sub / total-div)
--- separate from Nat so the bound semantics don't leak into Nat-indexed
--- positions. Nat literals coerce to Time automatically via FromNatToTime.
+-- | (interval start) -> (interval end) -> signal -> signal, of matching shape.
 typeOfTemporalOp1 :: (BuiltinHasStandardTypes builtin) => DSLExpr builtin
 typeOfTemporalOp1 = forAllDims $ \dims -> tTime ~> tTime ~> tBoolTensor dims ~> tBoolTensor dims
 
@@ -211,8 +200,7 @@ typeOfAtTensor =
       forAllDims $ \ds ->
         tTensor tElem (dimCons d ds) ~> tIndex d ~> tTensor tElem ds
 
--- | Type of transpose: reverses every axis of a tensor.
--- forall A {ds : Dims} . Tensor A ds -> Tensor A (reverseDims ds)
+-- | transpose : forall A {ds} . Tensor A ds -> Tensor A (reverseDims ds)
 typeOfTranspose :: (HasStandardBuiltins builtin) => DSLExpr builtin
 typeOfTranspose =
   forAll "A" type0 $ \tElem ->
@@ -253,18 +241,9 @@ typeOfForeachVector =
     forAll "d" tDim $ \d ->
       typeOfForeach (tVector tElem d) (tIndex d) tElem
 
--- | Type of rollout:
--- forall S A {ds : Dims} {da : Dims} .
---   (n : Time) ->
---   (Tensor S ds -> Tensor A da) ->
---   (Tensor S ds -> Tensor A da -> Tensor S ds) ->
---   Tensor S ds ->
---   Tensor S (fromTimeToNat n :: ds)
---
--- The count `n` is a `Time` value (rollout asks "how many timesteps?"),
--- coerced to `Nat` at the dim-construction site so the result tensor's
--- outer dim is a normal `Nat`. The coercion folds at compile time when
--- `n` is a literal — the only case in practice.
+-- | rollout : forall S A {ds da}
+--     . (n : Time) -> (S -> A) -> (S -> A -> S) -> S
+--     -> Tensor S (fromTimeToNat n :: ds)
 typeOfRollout :: (HasStandardBuiltins builtin, BuiltinHasTimeLiterals builtin) => DSLExpr builtin
 typeOfRollout =
   forAll "S" type0 $ \tState ->

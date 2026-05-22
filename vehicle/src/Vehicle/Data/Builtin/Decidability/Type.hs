@@ -215,14 +215,8 @@ convertToDecidabilityFreeVars f p ident args = do
   finalArgs <- insertNewArgs args' declType
   return $ normAppList (FreeVar p ident) finalArgs
   where
-    -- Walk the decl's type. For each leading compiler-inserted implicit Pi,
-    -- prepend a `Hole` arg — UNLESS the call already provides an implicit at
-    -- that position, in which case consume it. This second case matters for
-    -- stdlib decls referenced from stdlib bodies: e.g. `Definitions.append`'s
-    -- type is auto-generalised by the elaborator, marking its `{A}` binder as
-    -- compiler-inserted. Calls in user code don't provide that implicit (so a
-    -- Hole is needed), but calls inside `Definitions.reverse`'s body do (so
-    -- the existing arg fills it).
+    -- For each leading compiler-inserted implicit Pi, prepend a Hole, unless
+    -- the call already supplies an implicit there (stdlib-to-stdlib calls do).
     insertNewArgs :: [Arg DecidabilityBuiltin] -> Type DecidabilityBuiltin -> m [Arg DecidabilityBuiltin]
     insertNewArgs as = \case
       Pi _ binder result | wasInsertedByCompiler binder && isImplicit binder ->

@@ -1,7 +1,7 @@
 # Adaptive Cruise Control — temporal safety example
 
 An ego vehicle follows a lead vehicle.  The controller receives the initial
-state `(v_ego, d_rel)` — ego speed and gap to lead vehicle — and outputs a
+state `(v_ego, d_rel)` (ego speed and gap to lead vehicle) and outputs a
 predicted velocity trajectory over 10 time steps.  Three Signal Temporal Logic
 (STL) properties are verified over that trajectory using Vehicle's temporal
 operators.
