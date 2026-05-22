@@ -789,7 +789,7 @@ compileComparison domain op = do
           else ("$0 " <> opDoc <> " $1", dependencies)
   compileNotationAndArgs (dependencies' <> typeDeps) NotAssociative (Just 70) opDoc' Nothing
   where
-    orderDeps = [MathcompImport Boot, Open OrderScope]
+    orderDeps = [VehicleImport VehicleUtils, MathcompImport Boot, Open OrderScope]
     eqDeps = [MathcompImport Boot]
 
 compileStack :: (MonadRocqCompile m) => [Arg DecidabilityBuiltin] -> m Code
