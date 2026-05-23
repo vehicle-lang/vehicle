@@ -26,7 +26,7 @@ import Vehicle.Backend.Solver.UserVariableElimination.VariableReconstruction (re
 import Vehicle.Compile.Prelude
 import Vehicle.Data.Code.BooleanExpr
 import Vehicle.Data.MaybeTrivial (MaybeTrivial (..))
-import Vehicle.Data.Tensor as Tensor (HasShape (..), toVector)
+import Vehicle.Data.Tensor as Tensor (HasShape (..), toVector, stack)
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
 import Vehicle.Verify.Specification
@@ -323,10 +323,21 @@ writeWitnessToFile :: (MonadVerify m) => FilePath -> PropertyAddress -> UserVari
 writeWitnessToFile verificationCache address (UserVariableAssignment assignments) = do
   let witnessFolder = verificationCache </> layoutAsString (pretty address) <> "-assignments"
   liftIO $ createDirectoryIfMissing True witnessFolder
-  forM_ assignments $ \(var, tensor) -> do
-    let file = witnessFolder </> layoutAsString (pretty var)
-    let dims = Vector.fromList (shapeOf tensor)
-    -- TODO got to be a better way to do this conversion...
-    let unboxedVector = Vector.fromList $ BoxedVector.toList (fmap realToFrac (Tensor.toVector tensor))
-    let idxData = IDXDoubles IDXDouble dims unboxedVector
-    liftIO $ encodeIDXFile idxData file
+  forM_ assignments $ \assignment -> do
+    handleAssignment assignment witnessFolder
+    where
+      handleAssignment a folder = do
+        case a of
+          TensorAssignment (var, tensor) -> do
+            let file = folder </> layoutAsString (pretty var)
+            let dims = Vector.fromList (shapeOf tensor)
+            -- TODO got to be a better way to do this conversion...
+            let unboxedVector = Vector.fromList $ BoxedVector.toList (fmap realToFrac (Tensor.toVector tensor))
+            let idxData = IDXDoubles IDXDouble dims unboxedVector
+            liftIO $ encodeIDXFile idxData file
+            -- TODO: IDX is a file format for vectors and matrices - i think we want to convert back to a tensor here?
+          RecordAssignment (var, recordFields) -> do
+            let fieldValues = map snd recordFields
+            let dims = shapeOf $ head fieldValues
+            let tensorAssignment = TensorAssignment (var, stack dims fieldValues)
+            handleAssignment tensorAssignment folder

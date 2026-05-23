@@ -22,7 +22,7 @@ import Data.ByteString.Lazy.Char8 qualified as ByteString (unpack)
 import Data.Text (intercalate, pack)
 import Data.Text.Lazy qualified as LazyText
 import GHC.Generics (Generic)
-import Prettyprinter (fill)
+import Prettyprinter (fill, fillSep)
 import System.Console.ANSI (Color (..))
 import System.IO (stdout)
 import System.ProgressBar
@@ -33,7 +33,6 @@ import Vehicle.Verify.Core
 import Vehicle.Verify.Specification (QueryMetaData (..))
 import Vehicle.Verify.Specification.Status
 import Vehicle.Verify.Verifier.Core as Core
-
 --------------------------------------------------------------------------------
 -- Interface
 --------------------------------------------------------------------------------
@@ -262,8 +261,12 @@ statusSymbol verified = do
 
 prettyUserVariableAssignment :: UserVariableAssignment -> Doc a
 prettyUserVariableAssignment (UserVariableAssignment assignment) = do
-  let prettyLine (var, value) = pretty var <> ":" <+> pretty value
   vsep (fmap prettyLine assignment)
+  where
+    prettyLine a = do
+      case a of 
+        TensorAssignment (var, value) -> pretty var <> ":" <+> pretty value
+        RecordAssignment (var, fields) -> pretty var <> ":" <+> "{" <+> fillSep (fmap (\(name, tens) -> pretty name <+> "=" <+> pretty tens) fields) <+> "}"
 
 closeProgressBar :: (MonadStdIO m) => ProgressBar () -> m ()
 closeProgressBar _ = writeStdoutLn ""

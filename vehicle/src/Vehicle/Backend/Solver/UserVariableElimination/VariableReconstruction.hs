@@ -27,6 +27,7 @@ import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat.Core
 import Vehicle.Verify.Specification
 import Vehicle.Verify.Verifier.Core
+import Data.List ( find, delete )
 
 --------------------------------------------------------------------------------
 -- Variable reconstruction
@@ -45,8 +46,41 @@ reconstructUserVars variables (Reconstruction steps) networkVariableAssignment =
     let assignment = createInitialAssignment queryVariableMap networkVariableAssignment
     alteredAssignment <- foldlM (applyReconstructionStep vehicleVariableCtx) assignment steps
     finalAssignment <- createFinalAssignment vehicleVariableCtx userVariables alteredAssignment
-    logDebug MidDetail $ "User variables:" <> lineIndent (pretty finalAssignment)
-    return finalAssignment
+    recordSubstAssignment <- reconstructRecords finalAssignment steps
+    logDebug MidDetail $ "User variables:" <> lineIndent (pretty recordSubstAssignment)
+    return recordSubstAssignment
+
+reconstructRecords ::
+  (MonadLogger m) =>
+  UserVariableAssignment ->
+  [CompilationStep] ->
+  m UserVariableAssignment
+reconstructRecords existingAssignment steps = do
+  foldlM checkStep existingAssignment steps
+  where
+    checkStep (UserVariableAssignment assignments) step = do
+      case step of
+        ConvertQuantifiedTensorLike tensorName recordName fieldNames -> do
+          let tensorAssignment =
+                find
+                  (\case
+                    TensorAssignment (tn, _) -> tn == tensorName
+                    _ -> False)
+                  assignments
+
+          tensorValue <- case tensorAssignment of
+            Just (TensorAssignment ( _ , t)) -> return t
+            _ -> developerError "die rip"
+
+          let fieldIndices = [0 .. length fieldNames - 1] :: [Int]
+          let tensorIndices = map (\i -> at tensorValue i) fieldIndices
+          let fields = zip fieldNames tensorIndices
+          let assignment = RecordAssignment (recordName, fields)
+
+          let newMap = delete (TensorAssignment (tensorName, tensorValue)) assignments ++ [assignment]
+
+          return $ UserVariableAssignment newMap
+        _ -> return $ UserVariableAssignment assignments
 
 --------------------------------------------------------------------------------
 -- Mixed variable assignments
@@ -214,7 +248,7 @@ createFinalAssignment ::
   m UserVariableAssignment
 createFinalAssignment vehicleVariables userVariables assignment = do
   let userVariableValues = mapMaybe isUserVar $ Map.toList assignment
-  return $ UserVariableAssignment userVariableValues
+  return $ UserVariableAssignment (map (\var -> TensorAssignment var) userVariableValues)
   where
     isUserVar :: (SliceVariable, RatTensor) -> Maybe (Name, RatTensor)
     isUserVar (var, value) =
