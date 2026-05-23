@@ -98,7 +98,7 @@ unblockBoolTensorValue actions expr = showEntry expr $
     VBoolTensorIf args -> unblockIf unblock args
     VBoolTensorReduceAnd args -> unblockReduceTensor unblock unoptimisedEvalReduceAndTensor args
     VBoolTensorReduceOr args -> unblockReduceTensor unblock evalReduceOrTensor args
-    VBoolTensorCompareIndex (op, args) -> do logDebug MaxDetail "HiN"; unblockIndexOp2 (evalCompareIndex op) args
+    VBoolTensorCompareIndex (op, args) -> unblockIndexOp2 (evalCompareIndex op) args
     VBoolTensorCompareNat (op, args) -> unblockOp2 unblockNatValue (evalCompareNat op) args
     VBoolTensorAt args -> unblockAtTensor unblock args
     VBoolTensorForeach args -> unblockForeachTensor args
@@ -287,7 +287,7 @@ unblockRatTensorExtrema op unblock (TensorOp2Args ds x y) = do
     forIfTreeM y' $ \y'' -> do
       let cArgs = TensorOp2Args ds x'' y''
       let c = fromBoolValue $ VCompareRatTensor (op, cArgs)
-      return $ IfTree c x' y'
+      return $ IfTree c (IfLeaf x'') (IfLeaf y'')
 
 unblockMinRatTensor ::
   TypeUnblockingFunction (Value Builtin) m ->

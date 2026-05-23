@@ -22,7 +22,6 @@ import Vehicle.Compile.LowerNot (lowerNot, negateRatTensorQuantifierBody)
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyFriendly, prettyVerbose)
 import Vehicle.Compile.Unblock (unblockBoolExpr)
 import Vehicle.Data.Assertion (Assertion, NormalisedRelation (..), Relation (..))
 import Vehicle.Data.Bound
@@ -39,7 +38,7 @@ import Vehicle.Data.DifferentiableLogic (TensorDifferentiableLogicField (..))
 import Vehicle.Data.MaybeTrivial
 import Vehicle.Data.Tensor (pattern ZeroDimTensor)
 import Vehicle.Data.Tensor.Traversal
-import Vehicle.Data.Variable.Bound.Context.Generic (BoundCtx, toNamedBoundCtx)
+import Vehicle.Data.Variable.Bound.Context.Generic (BoundCtx)
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Bound.Context.Tensor
 import Vehicle.Data.Variable.Bound.Level
@@ -57,17 +56,9 @@ compileQuantifier (q, args) = do
       -- TODO add a warning
       convertBoolTensorLiteral (ZeroDimTensor b)
     NonTrivial partitions -> do
-      logDebug MaxDetail "Hi4"
       let disjunctedPartitions = partitionsToDisjuncts partitions
       DisjunctAll (v :| vs) <- traverse checkFinalPartitionUnconstrained disjunctedPartitions
-      logDebug MaxDetail "Hi5"
       finalValue <- foldrM orLossValue v vs
-      logDebug MaxDetail "Hi6"
-      logDebug MaxDetail $ prettyVerbose finalValue
-      ctx <- toNamedBoundCtx <$> getShrunkenContext
-      logDebug MaxDetail $ pretty ctx
-      logDebugM MaxDetail $ do
-        return $ prettyFriendly (WithContext finalValue ctx) <+> pretty ctx
       return finalValue
 
 checkFinalPartitionUnconstrained ::

@@ -1,8 +1,14 @@
+{-# LANGUAGE CPP #-}
+
 module Vehicle.Backend.Loss.Domain.PurifyAssertion
   ( tryPurifyAssertion,
     unblockingActions,
   )
 where
+
+#if !MIN_VERSION_base(4,18,0)
+import Control.Applicative (liftA2)
+#endif
 
 import Control.Monad (join)
 import Control.Monad.Except (MonadError (..), runExceptT)
