@@ -172,6 +172,14 @@ instance BuiltinHasBoolLiterals Builtin where
         mkExpr = BuiltinFunction . QuantifyRatTensor
       }
 
+  accessQuantifyRecordBuiltin =
+    Access
+      { getExpr = \case
+          BuiltinFunction (QuantifyRecord q) -> Just q
+          _ -> Nothing,
+        mkExpr = BuiltinFunction . QuantifyRecord
+      }
+
 --------------------------------------------------------------------------------
 -- Index
 

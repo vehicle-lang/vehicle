@@ -114,18 +114,24 @@
                   "classifier",
                   {
                     "networkType": {
-                      "outputTensor": {
-                        "dimensions": [
-                          6
-                        ],
-                        "baseType": []
+                      "networkOutputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            6
+                          ],
+                          "baseType": []
+                        }
                       },
-                      "inputTensor": {
-                        "dimensions": [
-                          1,
-                          1
-                        ],
-                        "baseType": []
+                      "networkInputType": {
+                        "tag": "TensorIOType",
+                        "contents": {
+                          "dimensions": [
+                            1,
+                            1
+                          ],
+                          "baseType": []
+                        }
                       }
                     },
                     "networkFilepath": "network.onnx"
