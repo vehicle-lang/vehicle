@@ -111,7 +111,7 @@ The following operations over tensors are currently supported:
        | ``x .!= y``
      - | ``Tensor A ds →``
        | ``Tensor A ds →``
-       | ``Tensor A ds``
+       | ``Tensor Bool ds``
        | (if ``A`` supports comparisons)
      - |backendall_full|
    * - | Pointwise
@@ -131,15 +131,15 @@ The following operations over tensors are currently supported:
    * - | Reduce
        | and
      - ``reduceAnd e t``
-     - | ``Tensor Bool ds →``
-       | ``Bool →``
+     - | ``Bool →``
+       | ``Tensor Bool ds →``
        | ``Bool``
      - |backendall_full|
    * - | Reduce
        | or
      - ``reduceOr e t``
-     - | ``Tensor Bool ds →``
-       | ``Bool →``
+     - | ``Bool →``
+       | ``Tensor Bool ds →``
        | ``Bool``
      - |backendall_full|
    * - | Pointwise
@@ -148,7 +148,7 @@ The following operations over tensors are currently supported:
      - | ``Tensor A ds →``
        | ``Tensor A ds →``
        | ``Tensor A ds``
-       | (if ``A`` supports addition)
+       | (if ``A`` supports ``+``)
      - |backendall_full|
    * - | Pointwise
        | subtract
@@ -156,7 +156,7 @@ The following operations over tensors are currently supported:
      - | ``Tensor A ds →``
        | ``Tensor A ds →``
        | ``Tensor A ds``
-       | (if ``A`` supports subtraction)
+       | (if ``A`` supports ``-``)
      - |backendall_full|
    * - | Pointwise
        | multiply
@@ -164,7 +164,7 @@ The following operations over tensors are currently supported:
      - | ``Tensor A ds →``
        | ``Tensor A ds →``
        | ``Tensor A ds``
-       | (if ``A`` supports multiplication)
+       | (if ``A`` supports ``*``)
      - |backendall_full|
    * - | Pointwise
        | divide
@@ -172,39 +172,31 @@ The following operations over tensors are currently supported:
      - | ``Tensor A ds →``
        | ``Tensor A ds →``
        | ``Tensor A ds``
-       | (if ``A`` supports division)
+       | (if ``A`` supports ``/``)
      - |backendall_full|
    * - | Reduce
        | add
      - ``reduceAdd e t``
-     - | ``Tensor A ds →``
-       | ``A →``
-       | ``A``
-       | (if ``A`` supports addition)
+     - | ``A → Tensor A ds → A``
+       | (if ``A`` supports ``+``)
      - |backendall_full|
    * - | Reduce
        | multiply
      - ``reduceMul e t``
-     - | ``Tensor A ds →``
-       | ``A →``
-       | ``A``
-       | (if ``A`` supports multiplication)
+     - | ``A → Tensor A ds → A``
+       | (if ``A`` supports ``*``)
      - |backendall_full|
    * - | Reduce
        | min
      - ``reduceMin e t``
-     - | ``Tensor A ds →``
-       | ``A →``
-       | ``A``
-       | (if ``A`` supports minimums)
+     - | ``A → Tensor A ds → A``
+       | (if ``A`` supports ``min``)
      - |backendall_full|
    * - | Reduce
        | max
      - ``reduceMax e t``
-     - | ``Tensor A ds →``
-       | ``A →``
-       | ``A``
-       | (if ``A`` supports maximums)
+     - | ``A → Tensor A ds → A``
+       | (if ``A`` supports ``max``)
      - |backendall_full|
 
 

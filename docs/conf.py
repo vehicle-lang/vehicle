@@ -150,7 +150,11 @@ def _svg_badge_data_uri(
 
 
 def _image_substitution(name: str, url: str, alt_text: str) -> str:
-    return f".. |{name}| image:: {url}\n   :alt: {alt_text}\n"
+    return (
+        f".. |{name}| image:: {url}\n"
+        f"   :alt: {alt_text}\n"
+        "   :class: backend-badge\n"
+    )
 
 
 def _backend_status_substitutions() -> str:

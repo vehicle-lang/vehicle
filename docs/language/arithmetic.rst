@@ -102,11 +102,11 @@ The available operations over reals are:
      - |backendall_full|
    * - Min
      - :code:`min x y`
-     - :code:`Real → Real → Bool`
+     - :code:`Real → Real → Real`
      - |backendall_full|
    * - Max
      - :code:`max x y`
-     - :code:`Real → Real → Bool`
+     - :code:`Real → Real → Real`
      - |backendall_full|
 
 

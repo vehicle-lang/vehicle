@@ -12,7 +12,7 @@ td .line-block img {
 }
 
 /* Single-image cells (e.g. backendall_full) are wrapped in a paragraph, not a line-block. */
-td > p > img {
+ td > p > img.backend-badge {
     max-width: 198px !important;
     width: 198px !important;
     height: 20px;
