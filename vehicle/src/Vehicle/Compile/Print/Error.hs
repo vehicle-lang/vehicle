@@ -1168,4 +1168,4 @@ missingOneSidedBoundsRecord :: Name -> [Name] -> Bool -> NonEmpty TensorIndices 
 missingOneSidedBoundsRecord varName fieldNames isLowerBound missingFields =
   "missing" <+> (if isLowerBound then "lower" else "upper") <+> "bounds" <> case missingFields of
     [[]] -> ""
-    _ -> " for fields" <+> vsep (fmap (\t -> pretty $ varName <> "." <> fieldNames !! head t ) missingFields)
+    _ -> " for fields" <+> hsep (fmap (\t -> pretty $ varName <> "." <> fieldNames !! head t) missingFields)
