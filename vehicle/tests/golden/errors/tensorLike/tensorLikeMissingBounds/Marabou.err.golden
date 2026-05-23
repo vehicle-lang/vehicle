@@ -1,0 +1,4 @@
+Error in file 'spec.vcl' at Line 14, Columns 1-2: The property 'User.p' cannot be compiled as cannot deduce lower and upper bounds for the input of 
+  f x
+In particular, missing upper bounds for fields x.a x.b for 'x'
+Fix: add additional inequalities that restrict the value of the following quantified variables: 
