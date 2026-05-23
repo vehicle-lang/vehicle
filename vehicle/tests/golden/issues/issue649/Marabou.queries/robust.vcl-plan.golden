@@ -9,12 +9,6 @@
             {
               "variableStore": {
                 "vehicleVariableCtx": [
-                  "classifier₂[output]!1",
-                  "classifier₂[output]!0",
-                  "classifier₂[output]",
-                  "classifier₂[input]!0!0",
-                  "classifier₂[input]!0",
-                  "classifier₂[input]",
                   "classifier₁[output]!1",
                   "classifier₁[output]!0",
                   "classifier₁[output]",
@@ -110,76 +104,6 @@
                           1
                         ],
                         "nestedStartingVariable": 9
-                      },
-                      {
-                        "constantValue": {
-                          "tag": "ConstantTensor",
-                          "contents": [
-                            [
-                              1,
-                              1
-                            ],
-                            {
-                              "numerator": 0,
-                              "denominator": 1
-                            }
-                          ]
-                        },
-                        "coefficients": [
-                          [
-                            3,
-                            {
-                              "numerator": 1,
-                              "denominator": 1
-                            }
-                          ]
-                        ]
-                      }
-                    ]
-                  },
-                  {
-                    "tag": "SolveEquality",
-                    "contents": [
-                      {
-                        "nestedTensorShape": [
-                          2
-                        ],
-                        "nestedStartingVariable": 18
-                      },
-                      {
-                        "constantValue": {
-                          "tag": "ConstantTensor",
-                          "contents": [
-                            [
-                              2
-                            ],
-                            {
-                              "numerator": 0,
-                              "denominator": 1
-                            }
-                          ]
-                        },
-                        "coefficients": [
-                          [
-                            6,
-                            {
-                              "numerator": 1,
-                              "denominator": 1
-                            }
-                          ]
-                        ]
-                      }
-                    ]
-                  },
-                  {
-                    "tag": "SolveEquality",
-                    "contents": [
-                      {
-                        "nestedTensorShape": [
-                          1,
-                          1
-                        ],
-                        "nestedStartingVariable": 15
                       },
                       {
                         "constantValue": {

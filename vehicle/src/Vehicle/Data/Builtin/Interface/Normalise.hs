@@ -565,7 +565,7 @@ evalAtTensor ctx evalApp eval args@(AtTensorArgs t d ds tensor index) =
 
 unoptimisedEvalAtTensor ::
   forall builtin m.
-  (MonadNormBuiltin m, PrintableBuiltin builtin, HasTensorLiterals Value builtin, BuiltinHasListLiterals builtin, BuiltinHasIndexLiterals builtin, HasTensorExpr Value builtin) =>
+  (MonadNormBuiltin m, HasTensorLiterals Value builtin, BuiltinHasListLiterals builtin, BuiltinHasIndexLiterals builtin, HasTensorExpr Value builtin) =>
   EvalSimple AtTensorArgs Value builtin m
 unoptimisedEvalAtTensor args@(AtTensorArgs _t _d ds tensor index) = do
   fromMaybe (return $ mkExpr accessAtTensor args) $
@@ -611,7 +611,6 @@ evalForeachTensor ::
   m (Value builtin)
 evalForeachTensor ctx evalApp eval (ForeachTensorArgs typ d ds fn) = case fn of
   VLam binder (Closure env body) -> do
-    logDebug MaxDetail "Hit"
     let lv = boundCtxLv ctx
     let newEnv = extendEnvWithBound lv binder env
     let newCtx = nameOf binder : ctx
@@ -646,8 +645,6 @@ liftForeach ctx evalForeach lv d = go
               <|> goAt body
               <|> goConst body
               <|> goLiterals body tensorLiterals
-      logDebug MaxDetail (prettyVerbose body)
-      logDebug MaxDetail (pretty $ isJust maybeResult)
       result <- fromMaybe (evalForeach typ body) maybeResult
       showFusionExit ctx result
 

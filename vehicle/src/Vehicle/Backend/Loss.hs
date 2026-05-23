@@ -130,9 +130,10 @@ convertTensorProperty value = case toBoolTensorValue value of
   VBoolTensorCompareRatPointwise args -> convertRatTensorPointwiseComparison args
   VBoolTensorCompareRatReduced args -> convertRatTensorReducedComparison args
   VBoolTensorQuantifyRat args -> compileQuantifier args
+  VBoolTensorQuantifyRecord {} -> developerError "Quantifying records not yet supported in loss backend"
   VBoolTensorReduceAnd args -> convertReduceAnd =<< convertTensorReduction convertTensorProperty args
   VBoolTensorReduceOr args -> convertReduceOr =<< convertTensorReduction convertTensorProperty args
-  VBoolTensorBoolIf args -> convertIf args
+  VBoolTensorIf args -> convertIf args
   VBoolTensorAt args -> convertAtTensor convertTensorProperty args
   VBoolTensorForeach args -> convertForeachTensor convertTensorProperty args
 

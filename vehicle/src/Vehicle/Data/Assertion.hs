@@ -2,7 +2,6 @@ module Vehicle.Data.Assertion where
 
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON)
-import Data.Bifunctor (Bifunctor (..))
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
 import Data.Vector.Internal.Check (HasCallStack)
@@ -25,12 +24,10 @@ import Vehicle.Prelude
 class IsRelation relation where
   isRelated :: relation -> Tensor Rational -> Tensor Rational -> Bool
 
-evalTrivialRelation :: (IsRelation relation, ConstantLike constant) => relation -> constant -> Bool
+evalTrivialRelation :: (IsRelation relation, ConstantLike constant) => relation -> constant -> Maybe Bool
 evalTrivialRelation rel constant = case toRatTensor constant of
-  Just tensor -> isRelated rel tensor (ConstantTensor (shapeOf tensor) 0)
-  -- Unsure if this is the right thing to do. We might need to split this up by
-  -- implementation of `constant`.
-  Nothing -> False
+  Just tensor -> Just $ isRelated rel tensor (ConstantTensor (shapeOf tensor) 0)
+  Nothing -> Nothing
 
 --------------------------------------------------------------------------------
 -- Relations
@@ -136,16 +133,6 @@ instance (HasShape expr) => HasShape (NormalisedRelation rel expr) where
 instance (Negatable rel) => Negatable (NormalisedRelation rel expr) where
   neg (NormalisedRelation rel expr) = NormalisedRelation (neg rel) expr
 
-eliminateVarsInComparison ::
-  (VariableLike variable, ConstantLike constant, IsRelation relation) =>
-  Map variable (LinearExpr variable constant) ->
-  NormalisedRelation relation (LinearExpr variable constant) ->
-  MaybeTrivial (NormalisedRelation relation (LinearExpr variable constant))
-eliminateVarsInComparison f NormalisedRelation {..} =
-  case eliminateVars f expression of
-    Right newExpr -> NonTrivial $ NormalisedRelation {expression = newExpr, ..}
-    Left tensor -> Trivial (evalTrivialRelation relation tensor)
-
 reduceComparison ::
   (Monad m, Ord variable) =>
   Int ->
@@ -209,7 +196,7 @@ comparisonToAssertion ::
   ComparisonOp ->
   LinearExpr variable constant ->
   LinearExpr variable constant ->
-  m (Either Bool (Assertion (LinearExpr variable constant)))
+  m (MaybeTrivial (Assertion (LinearExpr variable constant)))
 comparisonToAssertion op e1 e2 = do
   (rel, x, y) <- case op of
     Ne -> developerError "Cannot convert `Ne` to assertion"
@@ -220,7 +207,11 @@ comparisonToAssertion op e1 e2 = do
     Ge -> return (OLe, e2, e1)
 
   let constantOrExpr = addExprs 1 (-1) x y
-  return $ bimap (evalTrivialRelation rel) (NormalisedRelation rel) constantOrExpr
+  return $ case constantOrExpr of
+    Left constant -> case evalTrivialRelation rel constant of
+      Just trivialValue -> Trivial trivialValue
+      Nothing -> NonTrivial $ NormalisedRelation rel (constantExpr constant)
+    Right expr -> NonTrivial $ NormalisedRelation rel expr
 
 type LinearSubstitution variable = Map variable (LinearExpr variable RatTensor)
 
