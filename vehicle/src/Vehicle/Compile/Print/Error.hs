@@ -920,20 +920,20 @@ formatCompileError = \case
   UnboundedNetworkInputVariables (ident, p) ctx ((networkName, inputValue, userVariables, unboundedInputs) :| _) ->
     case toTypeValue inputValue of 
       (VRecordType _t fields) -> do
+        let varName = "x"  :: Name
         let fieldNames = fmap (\(FieldName _p name, _v) -> name) (OMap.assocs fields)
         VehicleError
           { provenance = Just p,
             problem =
-              "BLOOP YOU HAVE A RECORD! The property"
+              "The property"
                 <+> quotePretty ident
                 <+> "cannot be compiled as cannot deduce lower and upper bounds for the input of"
-                <+> lineIndent (pretty networkName) <+> "x"
+                <+> lineIndent (pretty networkName) <+> pretty varName
                 <> line
-                <> pretty (show inputValue)
                 <> "In particular,"
-                  <+> missingBoundsRecord fieldNames unboundedInputs
+                  <+> missingBoundsRecord varName fieldNames unboundedInputs
                   <+> "for"
-                  <+> squotes (prettyFriendly (WithContext inputValue ctx)),
+                  <+> squotes (pretty varName),
             fix =
               Just $
                 "add additional inequalities that restrict the value of" <+> case userVariables of
@@ -949,13 +949,6 @@ formatCompileError = \case
                 <+> "cannot be compiled as cannot deduce lower and upper bounds for the input of"
                 <+> lineIndent (prettyFriendly (WithContext (VFreeVar (Identifier userModulePath networkName) [explicit inputValue]) ctx))
                 <> line
-                <> pretty (show inputValue)
-                <> line
-                <> pretty (show userVariables)
-                <> line
-                <> pretty (show unboundedInputs)
-                <> line
-                <> pretty (show ctx)
                 <> "In particular,"
                   <+> missingBounds unboundedInputs
                   <+> "for"
@@ -1168,11 +1161,11 @@ missingOneSidedBounds isLowerBound missingIndices =
     _ -> " for indices" <+> vsep (fmap pretty missingIndices)
 
 
-missingBoundsRecord :: [Name] -> UnboundedIndices -> Doc a
-missingBoundsRecord fieldNames = mergeTheseWith (missingOneSidedBoundsRecord fieldNames True) (missingOneSidedBoundsRecord fieldNames False) (\u v -> u <+> "and" <+> v)
+missingBoundsRecord :: Name -> [Name] -> UnboundedIndices -> Doc a
+missingBoundsRecord varName fieldNames = mergeTheseWith (missingOneSidedBoundsRecord varName fieldNames True) (missingOneSidedBoundsRecord varName fieldNames False) (\u v -> u <+> "and" <+> v)
 
-missingOneSidedBoundsRecord :: [Name] -> Bool -> NonEmpty TensorIndices -> Doc a
-missingOneSidedBoundsRecord fieldNames isLowerBound missingFields =
+missingOneSidedBoundsRecord :: Name -> [Name] -> Bool -> NonEmpty TensorIndices -> Doc a
+missingOneSidedBoundsRecord varName fieldNames isLowerBound missingFields =
   "missing" <+> (if isLowerBound then "lower" else "upper") <+> "bounds" <> case missingFields of
     [[]] -> ""
-    _ -> " for fields" <+> vsep (fmap (\t -> pretty $ "x" <> "." <> fieldNames !! head t ) missingFields)
+    _ -> " for fields" <+> vsep (fmap (\t -> pretty $ varName <> "." <> fieldNames !! head t ) missingFields)
