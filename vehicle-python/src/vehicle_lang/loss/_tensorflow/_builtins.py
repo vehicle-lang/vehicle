@@ -93,6 +93,10 @@ class TensorFlowBuiltins(
         return tf.maximum(x, y)
 
     @override
+    def PowRatTensor(self, x: tf.Tensor, y: float) -> tf.Tensor:
+        return tf.pow(x, _tf_constant(value=y, shape=x.shape, dtype=self.dtype_rat))
+
+    @override
     def ReduceAddRatTensor(
         self, e: float, xs: tf.Tensor | Sequence[tf.Tensor]
     ) -> tf.Tensor:

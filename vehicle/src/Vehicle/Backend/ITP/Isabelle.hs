@@ -780,7 +780,7 @@ compileBuiltin isOutType localeAssms b args = case b of
     ForeachTensor -> idxBasedOp localeAssms "foreach" args
     StackTensor -> compileStack localeAssms args
     Iterate -> unsupportedError
-    PowRat -> unsupportedError
+    Pow {} -> unsupportedError
     AtVector -> annotateApp localeAssms [] "tnth" args
     ForeachVector -> idxBasedOp localeAssms "foreachTuple" args
   DecidabilityBuiltinFunction f -> case f of

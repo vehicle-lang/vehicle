@@ -94,6 +94,10 @@ class PyTorchBuiltins(
         return torch.maximum(torch.as_tensor(x), torch.as_tensor(y))
 
     @override
+    def PowRatTensor(self, x: torch.Tensor, y: float) -> torch.Tensor:
+        return torch.pow(torch.as_tensor(x), torch.as_tensor(y))
+
+    @override
     def ReduceAddRatTensor(
         self, e: float, xs: torch.Tensor | Sequence[torch.Tensor]
     ) -> torch.Tensor:

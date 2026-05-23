@@ -86,6 +86,7 @@ data JExpr
   | DivRatTensor JExpr JExpr
   | MinRatTensor JExpr JExpr
   | MaxRatTensor JExpr JExpr
+  | PowRatTensor JExpr JExpr
   | ReduceAddRatTensor JExpr JExpr
   | ReduceMulRatTensor JExpr JExpr
   | ReduceMinRatTensor JExpr JExpr
@@ -273,7 +274,7 @@ convertBuiltin b spine = case b of
     L.Div L.DivRatTensor -> convertTensorOp2 convertValue b DivRatTensor spine
     L.Min L.MinRatTensor -> convertTensorOp2 convertValue b MinRatTensor spine
     L.Max L.MaxRatTensor -> convertTensorOp2 convertValue b MaxRatTensor spine
-    L.PowRat -> unsupportedError b
+    L.Pow L.PowRatTensor -> convertTensorOp2 convertValue b PowRatTensor spine
     L.ReduceAddRatTensor -> convertTensorReduction convertValue b ReduceAddRatTensor spine
     L.ReduceMulRatTensor -> convertTensorReduction convertValue b ReduceMulRatTensor spine
     L.ReduceMinRatTensor -> convertTensorReduction convertValue b ReduceMinRatTensor spine
@@ -448,6 +449,7 @@ fromJExpr = \case
   DivRatTensor e1 e2 -> toFunction (L.Div L.DivRatTensor) [e1, e2]
   MinRatTensor e1 e2 -> toFunction (L.Min L.MinRatTensor) [e1, e2]
   MaxRatTensor e1 e2 -> toFunction (L.Max L.MaxRatTensor) [e1, e2]
+  PowRatTensor e1 e2 -> toFunction (L.Pow L.PowRatTensor) [e1, e2]
   ReduceAddRatTensor e xs -> toFunction L.ReduceAddRatTensor [e, xs]
   ReduceMulRatTensor e xs -> toFunction L.ReduceMulRatTensor [e, xs]
   ReduceMinRatTensor e xs -> toFunction L.ReduceMinRatTensor [e, xs]

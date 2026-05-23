@@ -45,6 +45,9 @@ class ABCBuiltins(
     def MaxRatTensor(self, x: vcl.Tensor, y: vcl.Tensor) -> vcl.Tensor: ...
 
     @abstractmethod
+    def PowRatTensor(self, x: vcl.Tensor, y: vcl.Rat) -> vcl.Tensor: ...
+
+    @abstractmethod
     def ReduceAddRatTensor(self, e: vcl.Rat, xs: vcl.Tensor) -> vcl.Tensor: ...
 
     @abstractmethod

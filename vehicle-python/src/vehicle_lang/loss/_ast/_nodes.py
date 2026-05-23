@@ -237,6 +237,14 @@ class MaxRatTensor(Expression):
 
 
 @dataclass(frozen=True)
+class PowRatTensor(Expression):
+    """Binary power: PowRatTensor left right"""
+
+    x: Expression
+    y: Expression
+
+
+@dataclass(frozen=True)
 class ReduceAddRatTensor(Expression):
     """Reduce addition: ReduceAddRatTensor expr dims"""
 

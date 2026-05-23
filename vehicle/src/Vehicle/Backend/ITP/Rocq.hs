@@ -533,7 +533,7 @@ compileBuiltin b args = case b of
     ForeachTensor -> compileApplication [RequireImport VehicleTensor] "nstack" args
     StackTensor -> compileStack args
     Iterate -> unsupportedError
-    PowRat -> unsupportedError
+    Pow {} -> unsupportedError
     AtVector -> compileApplication [MathcompImport Boot] "tnth" args
     ForeachVector -> compileApplication [RequireImport VehicleUtils] "foreachTuple" args
     QuantifyRecord _ -> unsupportedTensorLikeQuantifier

@@ -73,7 +73,7 @@ typeOfBuiltinFunction = \case
   Div {} -> typeOfUnquantifiedOp2
   Min {} -> typeOfUnquantifiedOp2
   Max {} -> typeOfUnquantifiedOp2
-  PowRat {} -> typeOfUnquantifiedOp2
+  Pow {} -> typeOfUnquantifiedOp2
   ReduceAddRatTensor -> typeOfUnquantifiedOp2
   ReduceMulRatTensor -> typeOfUnquantifiedOp2
   ReduceMinRatTensor -> typeOfUnquantifiedOp2

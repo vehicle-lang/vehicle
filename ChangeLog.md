@@ -2,7 +2,9 @@
 
 ## Next release
 
-### General
+### Language
+
+* Added the power operator `^ : Tensor Real ds -> Real -> Tensor Real ds`. Note that this operator is currently only supported on the loss backend.
 
 * Improved language documentation to show per-backend support.
 

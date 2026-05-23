@@ -80,7 +80,7 @@ data LossBuiltinFunction
   | Div DivDomain
   | Min MinDomain
   | Max MaxDomain
-  | PowRat
+  | Pow PowDomain
   | -- Rat tensor operations
     ReduceAddRatTensor
   | ReduceMulRatTensor
@@ -106,7 +106,7 @@ instance Pretty LossBuiltinFunction where
     Div dom -> "div" <> pretty dom
     Min dom -> "min" <> pretty dom
     Max dom -> "max" <> pretty dom
-    PowRat -> "**"
+    Pow dom -> "pow" <> pretty dom
     ReduceAddRatTensor -> "reduceAddRatTensor"
     ReduceMulRatTensor -> "reduceMulRatTensor"
     ReduceMinRatTensor -> "reduceMinRatTensor"
@@ -218,7 +218,7 @@ instance BuiltinHasRatLiterals LossBuiltin where
   accessDivRatTensorBuiltin = functionAccessor $ Div DivRatTensor
   accessMinRatTensorBuiltin = functionAccessor $ Min MinRatTensor
   accessMaxRatTensorBuiltin = functionAccessor $ Max MaxRatTensor
-  accessPowRatTensorBuiltin = functionAccessor PowRat
+  accessPowRatTensorBuiltin = functionAccessor $ Pow PowRatTensor
   accessReduceAddRatBuiltin = functionAccessor ReduceAddRatTensor
   accessReduceMulRatBuiltin = functionAccessor ReduceMulRatTensor
   accessReduceMinRatBuiltin = functionAccessor ReduceMinRatTensor
@@ -300,7 +300,7 @@ instance NormalisableBuiltin LossBuiltin where
       Div DivRatTensor -> Simple evalDivRatTensor
       Min MinRatTensor -> Simple evalMinRatTensor
       Max MaxRatTensor -> Simple evalMaxRatTensor
-      PowRat -> Simple evalPowRat
+      Pow PowRatTensor -> Simple evalPowRatTensor
       ReduceAddRatTensor -> Simple evalReduceAddRatTensor
       ReduceMulRatTensor -> Simple evalReduceMulRatTensor
       ReduceMinRatTensor -> Simple evalReduceMinRatTensor
@@ -352,7 +352,7 @@ instance ConvertableBuiltin LossBuiltinFunction Builtin where
     Max dom -> convertBuiltin p (S.Max dom)
     Add dom -> convertBuiltin p (S.Add dom)
     Mul dom -> convertBuiltin p (S.Mul dom)
-    PowRat -> convertBuiltin p S.PowRat
+    Pow dom -> convertBuiltin p (S.Pow dom)
     ReduceAddRatTensor -> convertBuiltin p S.ReduceAddRatTensor
     ReduceMulRatTensor -> convertBuiltin p S.ReduceMulRatTensor
     ReduceMinRatTensor -> convertBuiltin p S.ReduceMinRatTensor

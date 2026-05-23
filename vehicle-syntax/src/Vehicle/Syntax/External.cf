@@ -64,6 +64,7 @@ position token TokMul       {"*"};
 position token TokDiv       {"/"};
 position token TokAdd       {"+"};
 position token TokSub       {"-"};
+position token TokPow       {"^"};
 position token TokMin       {"min"};
 position token TokMax       {"max"};
 
@@ -237,6 +238,7 @@ Add. Expr9  ::= Expr9  TokAdd Expr10;
 Sub. Expr9  ::= Expr9  TokSub Expr10;
 Mul. Expr10 ::= Expr10 TokMul Expr11;
 Div. Expr10 ::= Expr10 TokDiv Expr11;
+Pow. Expr10 ::= Expr10 TokPow Expr11;
 Neg. Expr11 ::= TokSub Expr11;
 
 -- Boolean expressions.
