@@ -8,6 +8,13 @@ Quantifiers
 Quantifying over infinite sets
 ------------------------------
 
+| |backendloss_full|
+| |backendverification_part| (:ref:`⤴ <verifying-quantifier-limitations>`)
+| |backendagda_full|
+| |backendrocq_full|
+| |backendimandra_full|
+| |backendisabelle_full|
+
 One of the main advantages of Vehicle compared to a testing framework is
 that it can be used to state and prove specifications that describe the
 network's behaviour over an infinite set of values.
@@ -69,12 +76,14 @@ with an implication as follows:
 Quantifying over finite sets
 ----------------------------
 
+|backendall_full|
+
 While most specifications will quantify over at least one variable
 with an infinite domain, sometimes one might also want to quantify
 over a finite set of values. There are multiple ways of doing this:
 
-Quantifying over an ``Index`` type
-++++++++++++++++++++++++++++++++++
+Quantifying over an ``Index``
++++++++++++++++++++++++++++++
 
 The first approach is to quantify over a variable with the ``Index``
 type. For example:
@@ -95,8 +104,8 @@ The type annotation ``Index 3`` on the quantified variable ``i`` is
 included for clarity but are not need in practice as it can be inferred
 by the compiler.
 
-The ``in`` keyword
-++++++++++++++++++
+Quantifying over a collection
++++++++++++++++++++++++++++++
 
 Alternatively quantifiers can be modified with the ``in`` keyword to
 quantify over all the values contained within a ``List``, ``Vector`` or ``Tensor``:

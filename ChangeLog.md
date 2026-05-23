@@ -2,6 +2,12 @@
 
 ## Next release
 
+### General
+
+* Improved language documentation to show per-backend support.
+
+* Added undocumented operations to language documentation.
+
 ### Loss backend
 
 * Added the ability to declare custom Differentiable Logics internally in Vehicle (see documentation for details).

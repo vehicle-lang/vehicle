@@ -8,6 +8,13 @@ Records
 Basics
 ------
 
+| |backendloss_easy|
+| |backendverification_full|
+| |backendagda_full|
+| |backendrocq_full|
+| |backendimandra_full|
+| |backendisabelle_full|
+
 Records allow you to group logical sets of parameters to together.
 The syntax for defining a record is as follows:
 
