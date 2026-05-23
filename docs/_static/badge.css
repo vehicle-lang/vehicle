@@ -1,0 +1,19 @@
+/* Remove vertical margins from line-blocks used to stack backend badges in table cells */
+td .line-block {
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+}
+
+/* Keep badges at their designed pixel size in tables (RTD theme sets img max-width: 100%). */
+td .line-block img {
+    max-width: 198px !important;
+    width: 198px !important;
+    height: 20px;
+}
+
+/* Single-image cells (e.g. backendall_full) are wrapped in a paragraph, not a line-block. */
+td > p > img {
+    max-width: 198px !important;
+    width: 198px !important;
+    height: 20px;
+}

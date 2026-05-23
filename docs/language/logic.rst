@@ -14,42 +14,49 @@ Like many languages, Vehicle has booleans. The type of boolean values is
 The available operations over booleans are:
 
 .. list-table::
-   :widths: 25 15 40 20
+   :widths: 17 24 26 33
    :header-rows: 1
 
    * - Operation
-     - Symbol
+     - Syntax
      - Type
-     - Example
+     - Support
    * - Conjunction
-     - :code:`and`
-     - :code:`Bool -> Bool -> Bool`
      - :code:`x and y`
+     - :code:`Bool → Bool → Bool`
+     - |backendall_full|
    * - Disjunction
-     - :code:`or`
-     - :code:`Bool -> Bool -> Bool`
      - :code:`x or y`
+     - :code:`Bool → Bool → Bool`
+     - |backendall_full|
    * - Implication
-     - :code:`=>`
-     - :code:`Bool -> Bool -> Bool`
      - :code:`x => y`
+     - :code:`Bool → Bool → Bool`
+     - |backendall_full|
    * - Negation
-     - :code:`not`
-     - :code:`Bool -> Bool`
      - :code:`not x`
+     - :code:`Bool → Bool`
+     - |backendall_full|
+   * - Conditional
+     - :code:`if x then y else z`
+     - :code:`Bool → A → A → A`
+     - | |backendloss_part|
+       | |backendverification_full|
+       | |backendagda_full|
+       | |backendrocq_full|
+       | |backendimandra_full|
+       | |backendisabelle_full|
 
 Conditionals
 ------------
 
-Conditional statements are written using the syntax :code:`if .. then .. else ..`
-and have type :code:`Bool -> A -> A -> A` for any type :code:`A`.
-For example:
+Conditional statements are written as follows:
 
 .. code-block:: agda
 
    if f x > 0 then x < 0 else x > 0
 
-In a functional language like Vehicle (and unlike in imperative languages)
+In a functional language like Vehicle
 all statements must return a value. Therefore it is not possible to
 omit the :code:`else` branch when writing a conditional.
 
@@ -65,7 +72,7 @@ Equality
 Two expressions of the same type can be tested for equality/inequality
 using the :code:`==` and :code:`!=` operators respectively.
 
-The type of these operators are :code:`A -> A -> Bool` where :code:`A` can be any
+The type of these operators are :code:`A → A → Bool` where :code:`A` can be any
 of the following types:
 
 - :code:`Bool`, :code:`Nat`, :code:`Int`, :code:`Real`.

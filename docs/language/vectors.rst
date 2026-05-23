@@ -85,24 +85,21 @@ Operations
 The following operations over vectors are currently supported:
 
 .. list-table::
-   :widths: 15 12 38 15 20
+   :widths: 14 20 33 33
    :header-rows: 1
 
    * - Operation
-     - Symbol
+     - Syntax
      - Type
-     - Example
-     - Description
+     - Support
    * - Lookup
-     - :code:`!`
-     - :code:`Vector A d -> Index d -> A`
-     - :code:`v ! i`
-     - Extract the value at a given index of the vector.
+     - :code:`e ! i`
+     - :code:`Vector A d → Index d → A`
+     - |backendall_full|
    * - Foreach
-     - ``!``
-     - ``(Index d -> A) -> Vector A d``
-     - ``foreach i . 0``
-     - Constructs a new vector by specifying each element in terms of its index.
+     - ``foreach i . e``
+     - ``(Index d → A) → Vector A d``
+     - |backendall_full|
 
 Indexing
 --------
@@ -142,37 +139,22 @@ results in ``7`` which is not a member of ``Index 5``. Consequently
 the set of operations supported by ``Index`` types is extremely limited:
 
 .. list-table::
-   :widths: 25 15 40 20
+   :widths: 17 15 37 33
    :header-rows: 1
 
    * - Operation
-     - Symbol
+     - Syntax
      - Type
-     - Example
-   * - Less than or equal
-     - :code:`<=`
-     - :code:`Index d1 -> Index d2 -> Bool`
-     - :code:`x <= y`
-   * - Less than
-     - :code:`<`
-     - :code:`Index d1 -> Index d2 -> Bool`
-     - :code:`x < y`
-   * - Greater than or equal
-     - :code:`>=`
-     - :code:`Index d1 -> Index d2 -> Bool`
-     - :code:`x >= y`
-   * - Greater than
-     - :code:`>`
-     - :code:`Index d1 -> Index d2 -> Bool`
-     - :code:`x >= y`
-   * - Min
-     - :code:`min`
-     - :code:`Index d1 -> Index d2 -> Bool`
-     - :code:`min x y`
-   * - Max
-     - :code:`max`
-     - :code:`Index d1 -> Index d2 -> Bool`
-     - :code:`max x y`
+     - Support
+   * - Comparisons
+     - | ``x < y``
+       | ``x > y``
+       | ``x <= y``
+       | ``x >= y``
+       | ``x == y``
+       | ``x != y``
+     - :code:`Index d1 → Index d2 → Bool`
+     - |backendall_full|
 
 Non-constant sizes
 ------------------
