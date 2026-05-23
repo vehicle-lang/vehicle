@@ -66,6 +66,8 @@ data CompilationStep
   = SolveEquality NestedSliceVariable LinearExpression
   | SolveInequalities SliceVariable LinearBounds
   | ReconstructTensorVariable NestedSliceVariable ReconstructionDepth
+  | ConvertQuantifiedTensorLike Name Name [Name]
+
   deriving (Show, Eq, Ord, Generic)
 
 instance NFData CompilationStep

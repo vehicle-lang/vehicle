@@ -42,12 +42,15 @@ import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Verify.Core
 import Vehicle.Verify.QueryFormat (QueryFormat (..), supportsStrictInequalities)
 import Prelude hiding (Applicative (..))
+import Vehicle.Verify.Specification (CompilationStep)
+import qualified Data.Map as Map
 
 eliminateExists ::
   (MonadQueryStructure m) =>
   QuantifyRatTensorArgs (Value Builtin) (Closure Builtin) ->
+  [CompilationStep] ->
   m (MaybeTrivial Partitions)
-eliminateExists (QuantifyRatTensorArgs _ binder (Closure env body)) = do
+eliminateExists (QuantifyRatTensorArgs _ binder (Closure env body)) prevSteps = do
   let varName = getBinderName binder
   let subpassDoc = "elimination of existential quantifier over" <+> quotePretty varName
   logCompilerSection2 MidDetail subpassDoc $ do
@@ -71,13 +74,18 @@ eliminateExists (QuantifyRatTensorArgs _ binder (Closure env body)) = do
     -- Recursively compile the expression.
     (partitions, networkInputEqualities) <-
       logCompilerSection2 MidDetail "reduction of body to assertion tree" $ runWriterT (compileBoolExpr normExpr)
+    
+    partitions' <- case partitions of
+      Trivial b -> pure (Trivial b)
+      NonTrivial (Partitions m) ->
+        pure (NonTrivial (Partitions (Map.mapKeys (prevSteps ++) m)))
 
     -- Prepend network equalities to the tree (prepending is important for
     -- performance as the search for constraints will find them first.)
     networkEqPartitions <-
       logCompilerSection2 MidDetail "reduction of network equalities to assertion tree" $ networkEqualitiesToPartition networkInputEqualities
 
-    let finalPartitions = andTrivial andPartitions partitions networkEqPartitions
+    let finalPartitions = andTrivial andPartitions partitions' networkEqPartitions
 
     -- Solve for the user variable
     eliminateQuantifiedVariable finalPartitions userVar
@@ -110,7 +118,7 @@ compileBoolExpr expr = do
     VQuantifyRecord (Forall, _) -> throwError catchableUnsupportedAlternatingQuantifiersError
     VAnd (TensorOp2Args _dims x y) -> andTrivial andPartitions <$> compileBoolExpr x <*> compileBoolExpr y
     VOr (TensorOp2Args _dims x y) -> orTrivial orPartitions <$> compileBoolExpr x <*> compileBoolExpr y
-    VQuantifyRatTensor (Exists, args) -> eliminateExists args
+    VQuantifyRatTensor (Exists, args) -> eliminateExists args []
     -- TODO: RECORD SUPPORT
     VQuantifyRecord (Exists, _args) -> compilerDeveloperError "Non top-level record quantifiers are not supported yet"
     ---------------------
