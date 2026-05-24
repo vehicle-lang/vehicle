@@ -8,7 +8,7 @@
 
 * Added undocumented operations to language documentation.
 
-* Added support for `infinity : Rat` to language. Note only works for loss function backend currently as it is primarily designed to be used in differentiable logics.
+* Added support for `infinity : Real` to language. Note only works for loss function backend currently as it is primarily designed to be used in differentiable logics.
 
 ### Loss backend
 

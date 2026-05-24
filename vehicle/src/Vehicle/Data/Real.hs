@@ -33,7 +33,7 @@ instance Pretty ExtendedRational where
 
 instance Num ExtendedRational where
   -- Addition
-  NegInfinity + NegInfinity = error "Infinity + (-Infinity) is undefined"
+  PosInfinity + NegInfinity = error "Infinity + (-Infinity) is undefined"
   NegInfinity + PosInfinity = error "(-Infinity) + Infinity is undefined"
   PosInfinity + _ = PosInfinity
   _ + PosInfinity = PosInfinity
@@ -54,8 +54,8 @@ instance Num ExtendedRational where
     1 -> NegInfinity
     -1 -> PosInfinity
     _ -> error "(-Infinity) * 0 is undefined"
-  Finite r * PosInfinity = Finite r * PosInfinity
-  Finite r * NegInfinity = Finite r * NegInfinity
+  Finite r * PosInfinity = PosInfinity * Finite r
+  Finite r * NegInfinity = NegInfinity * Finite r
   Finite r1 * Finite r2 = Finite (r1 * r2)
 
   -- Negation
