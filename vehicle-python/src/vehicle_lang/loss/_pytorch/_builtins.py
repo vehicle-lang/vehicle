@@ -31,6 +31,18 @@ def _torch_tensor(*args: Any, **kwargs: Any) -> torch.Tensor:
     return cast(torch.Tensor, torch.tensor(*args, **kwargs))
 
 
+def _extended_rational_to_float(value: _nodes.ExtendedFraction) -> float:
+    match value:
+        case _nodes.Finite(value=inner):
+            return float(inner)
+        case _nodes.PosInfinity():
+            return float("inf")
+        case _nodes.NegInfinity():
+            return float("-inf")
+        case _:
+            raise ValueError(f"Unknown extended rational type: {type(value)}")
+
+
 ################################################################################
 ### Interpretations of Vehicle builtins in PyTorch
 ################################################################################
@@ -54,14 +66,14 @@ class PyTorchBuiltins(
     @override
     def RatTensor(self, value: _nodes.Tensor) -> torch.Tensor:
         match value.value:
-            case Fraction():
+            case _nodes.ExtendedFraction():
                 # Single value - expand to tensor shape
-                float_value = float(value.value)
+                float_value = _extended_rational_to_float(value.value)
                 return _torch_tensor(data=float_value, dtype=self.dtype_rat)
             case _:
                 # Sequence of values
                 return _torch_tensor(
-                    data=tuple(float(val) for val in value.value),
+                    data=tuple(_extended_rational_to_float(val) for val in value.value),
                     dtype=self.dtype_rat,
                 )
 

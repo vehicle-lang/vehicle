@@ -480,11 +480,25 @@ def py_fraction(value: Fraction, provenance: vcl.Provenance) -> py.expr:
     )
 
 
+def py_extended_fraction(
+    value: vcl.ExtendedFraction, provenance: vcl.Provenance
+) -> py.expr:
+    match value:
+        case vcl.Finite(value=inner):
+            return py_fraction(inner, provenance=provenance)
+        case vcl.PosInfinity():
+            return py.Constant(value=float("inf"), **asdict(provenance))
+        case vcl.NegInfinity():
+            return py.Constant(value=float("-inf"), **asdict(provenance))
+        case _:
+            raise ValueError(f"Unknown extended rational type: {type(value)}")
+
+
 def py_scalar(value: vcl.DType, provenance: vcl.Provenance) -> py.expr:
     """Make a scalar."""
     match value:
-        case Fraction():
-            return py_fraction(value, provenance=provenance)
+        case vcl.ExtendedFraction():
+            return py_extended_fraction(value, provenance=provenance)
         case _:
             return py.Constant(
                 value=value,

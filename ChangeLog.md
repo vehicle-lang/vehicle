@@ -8,6 +8,8 @@
 
 * Added undocumented operations to language documentation.
 
+* Added support for `infinity : Rat` to language. Note only works for loss function backend currently as it is primarily designed to be used in differentiable logics.
+
 ### Loss backend
 
 * Added the ability to declare custom Differentiable Logics internally in Vehicle (see documentation for details).
@@ -15,6 +17,8 @@
 * Fixed a bug where the compiler was erroring on some uses of `forall` for indices.
 
 * Fixed a bug where networks were recursively unblocked without changes. Backends now control when recursive unblocking happens.
+
+* Fixed the differentiable logic `DL2Loss` to use `infinity` instead of `100000` for the translation of `false`.
 
 ## v0.24.1
 

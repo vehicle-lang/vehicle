@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Any, Callable, Sequence
 
 import pytest
+
 import vehicle_lang as vcl
 
 tf = pytest.importorskip(
@@ -76,7 +77,7 @@ dummy_sampler = DummySampler()
         (
             "test_at.vcl",
             {},
-            {"prop": 1000000.0},
+            {"prop": float("inf")},
         ),
         (
             "test_constant.vcl",
@@ -91,12 +92,12 @@ dummy_sampler = DummySampler()
         (
             "test_indicator.vcl",
             {},
-            {"prop": 1000000.0},
+            {"prop": float("inf")},
         ),
         (
             "test_maximum.vcl",
             {},
-            {"prop": 1000000.0},
+            {"prop": float("inf")},
         ),
         (
             "test_minimum.vcl",
