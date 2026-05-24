@@ -30,6 +30,7 @@ import Vehicle.Data.Builtin.Core
 import Vehicle.Data.Builtin.Decidability
 import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Code.Interface (IsArgs (..), VecLitArgs (..))
+import Vehicle.Data.Real (ExtendedRational (..))
 import Vehicle.Data.Tensor
   ( Tensor (..),
     TensorShape,
@@ -497,7 +498,7 @@ compileBuiltin b args = case b of
     NatLiteral n -> return $ compileNatLiteral n
     NatTensorLiteral t -> return $ compileTensorLiteral compileNatLiteral t
     BoolTensorLiteral t -> return $ compileTensorLiteral compileBoolLiteral t
-    RatTensorLiteral t -> return $ compileTensorLiteral compileRatLiteral t
+    RatTensorLiteral t -> return $ compileTensorLiteral compileRealLiteral t
     VectorLiteral -> compileVecLiteral args
   StandardBuiltinFunction f -> case f of
     And -> compileNotationAndArgs [] LeftAssociative (Just 40) "$0 && $1" (Just "andb") args
@@ -685,12 +686,14 @@ compileBoolLiteral = \case
   True -> "true"
   False -> "false"
 
-compileRatLiteral :: Rational -> Code
-compileRatLiteral r = parens $ annotate ([MathcompImport Reals, MathcompImport Algebra, Open RingScope], Nothing) rat
-  where
-    num = pretty $ numerator r
-    denom = pretty $ denominator r
-    rat = (if denominator r == 1 then num else num <+> "/" <+> denom) <+> ":" <+> "R"
+compileRealLiteral :: ExtendedRational -> Code
+compileRealLiteral = \case
+  Finite r -> do
+    let num = pretty $ numerator r
+    let denom = pretty $ denominator r
+    let rat = (if denominator r == 1 then num else num <+> "/" <+> denom) <+> ":" <+> "R"
+    parens $ annotate ([MathcompImport Reals, MathcompImport Algebra, Open RingScope], Nothing) rat
+  _ -> developerError "Compiling infinite values to Rocq not supported"
 
 compileLam :: (MonadRocqCompile m) => Binder DecidabilityBuiltin -> Expr DecidabilityBuiltin -> m Code
 compileLam binder expr = do

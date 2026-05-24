@@ -16,6 +16,7 @@ import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
+import Vehicle.Data.Real (ExtendedRational (..))
 
 --------------------------------------------------------------------------------
 -- Parameter parsing
@@ -64,7 +65,7 @@ parseNat decl value = case readMaybe value of
 parseRat :: (MonadCompile m) => DeclProvenance -> String -> m (Value Builtin)
 parseRat decl value = case rational (pack value) of
   Left _err -> throwError $ ParameterValueUnparsable decl value RatType
-  Right (v, _) -> return $ IRatLiteral v
+  Right (v, _) -> return $ IRatLiteral $ Finite v
 
 parseIndex :: (MonadCompile m) => Int -> DeclProvenance -> String -> m (Value Builtin)
 parseIndex n decl value = case readMaybe value of

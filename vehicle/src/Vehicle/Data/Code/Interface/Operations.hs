@@ -252,7 +252,7 @@ type HasRatExpr expr builtin =
 accessRatType :: (HasRatType expr builtin) => Accessor (expr builtin) ()
 accessRatType = accessNoArgs accessRatTypeBuiltin
 
-accessRatTensorLiteral :: (HasRatExpr expr builtin) => Accessor (expr builtin) RatTensor
+accessRatTensorLiteral :: (HasRatExpr expr builtin) => Accessor (expr builtin) ExtendedRatTensor
 accessRatTensorLiteral = accessNoArgs accessRatTensorLitBuiltin
 
 accessNegRatTensor :: (HasRatExpr expr builtin) => TensorOp1Accessor (expr builtin)

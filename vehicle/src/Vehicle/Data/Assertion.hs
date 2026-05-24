@@ -22,7 +22,7 @@ import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Prelude
 
 class IsRelation relation where
-  isRelated :: relation -> Tensor Rational -> Tensor Rational -> Bool
+  isRelated :: relation -> RatTensor -> RatTensor -> Bool
 
 evalTrivialRelation :: (IsRelation relation, ConstantLike constant) => relation -> constant -> Maybe Bool
 evalTrivialRelation rel constant = case toRatTensor constant of

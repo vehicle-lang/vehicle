@@ -1,7 +1,7 @@
 module Vehicle.Data.Builtin.Interface where
 
 import Vehicle.Data.Builtin.Core
-import Vehicle.Data.Tensor (Tensor)
+import Vehicle.Data.Tensor (BoolTensor, ExtendedRatTensor, NatTensor)
 
 --------------------------------------------------------------------------------
 -- Interface to standard builtins
@@ -39,7 +39,7 @@ class BuiltinHasBoolType builtin where
   accessBoolTypeBuiltin :: Accessor builtin ()
 
 class BuiltinHasBoolLiterals builtin where
-  accessBoolTensorLitBuiltin :: Accessor builtin (Tensor Bool)
+  accessBoolTensorLitBuiltin :: Accessor builtin BoolTensor
 
   accessNotBuiltin :: Accessor builtin ()
   accessAndBuiltin :: Accessor builtin ()
@@ -74,7 +74,7 @@ class BuiltinHasNatType builtin where
 
 class BuiltinHasNatLiterals builtin where
   accessNatLitBuiltin :: Accessor builtin Int
-  accessNatTensorLitBuiltin :: Accessor builtin (Tensor Int)
+  accessNatTensorLitBuiltin :: Accessor builtin NatTensor
 
   accessAddNatBuiltin :: Accessor builtin ()
   accessMulNatBuiltin :: Accessor builtin ()
@@ -86,7 +86,7 @@ class BuiltinHasRatType builtin where
   accessRatTypeBuiltin :: Accessor builtin ()
 
 class (BuiltinHasTensors builtin) => BuiltinHasRatLiterals builtin where
-  accessRatTensorLitBuiltin :: Accessor builtin (Tensor Rational)
+  accessRatTensorLitBuiltin :: Accessor builtin ExtendedRatTensor
 
   accessNegRatTensorBuiltin :: Accessor builtin ()
   accessAddRatTensorBuiltin :: Accessor builtin ()

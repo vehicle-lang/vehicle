@@ -26,6 +26,7 @@ import Vehicle.Data.Builtin.Standard
 import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
+import Vehicle.Data.Real (ExtendedRational (..))
 import Vehicle.Data.Tensor as Tensor (Tensor, TensorShape, fromVector, mapTensor)
 
 -- The current dimension in the dataset being parsed
@@ -214,7 +215,7 @@ doubleElemParser ::
 doubleElemParser decl datasetType file dims values expectedElementType =
   case toTypeValue expectedElementType of
     VRatType {} -> do
-      return $ IRatTensor (mapTensor toRational (toTensor dims values))
+      return $ IRatTensor (mapTensor (Finite . toRational) (toTensor dims values))
     _ -> do
       throwError $ DatasetTypeMismatch decl file datasetType expectedElementType "Rat"
 
