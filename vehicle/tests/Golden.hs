@@ -5,7 +5,7 @@ import Data.Tagged
 import GHC.IO.Encoding (setLocaleEncoding, utf8)
 import System.FilePath ((</>))
 import Test.Tasty (defaultIngredients, defaultMainWithIngredients, includingOptions)
-import Test.Tasty.Golden.Executable (AllowlistExternals (..), External (..), IgnoreFiles (..), SomeOption (..), makeTestTreeFromDirectoryRecursive)
+import Test.Tasty.Golden.Executable (IgnoreFiles (..), SomeOption (..), makeTestTreeFromDirectoryRecursive)
 import Test.Tasty.Ingredients
 import Test.Tasty.Options
 import Text.Read (readMaybe)
@@ -33,8 +33,7 @@ testDirectory = "tests" </> "golden"
 
 options :: [SomeOption]
 options =
-  [ AppendOption $ IgnoreFiles ["*.vclo", "**/*.vclo", "**/.vcl-cache-index"],
-    AppendOption $ AllowlistExternals [External "TestVerifier"]
+  [ AppendOption $ IgnoreFiles ["*.vclo", "**/*.vclo", "**/.vcl-cache-index"]
   ]
 
 main :: IO ()
