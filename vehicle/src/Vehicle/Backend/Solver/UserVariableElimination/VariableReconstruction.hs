@@ -61,8 +61,7 @@ reconstructRecords existingAssignment steps = do
     checkStep (UserVariableAssignment assignments) step = do
       case step of
         ConvertQuantifiedTensorLike tensorName recordName fieldNames -> do
-          let tensorAssignment =
-                find
+          let tensorAssignment = find
                   (\case
                     TensorAssignment (tn, _) -> tn == tensorName
                     _ -> False)
@@ -70,13 +69,13 @@ reconstructRecords existingAssignment steps = do
 
           tensorValue <- case tensorAssignment of
             Just (TensorAssignment ( _ , t)) -> return t
-            _ -> developerError "die rip"
+            -- TODO: proper/better error message
+            _ -> developerError "No assignment found"
 
           let fieldIndices = [0 .. length fieldNames - 1] :: [Int]
           let tensorIndices = map (\i -> at tensorValue i) fieldIndices
           let fields = zip fieldNames tensorIndices
           let assignment = RecordAssignment (recordName, fields)
-
           let newMap = delete (TensorAssignment (tensorName, tensorValue)) assignments ++ [assignment]
 
           return $ UserVariableAssignment newMap
@@ -117,8 +116,9 @@ applyReconstructionStep ctx assignment step = do
         SolveInequalities var solution -> reconstructRationalViaFourierMotzkin var solution
         ReconstructTensorVariable var depth -> reconstructTensorFromConstituents ctx var depth
         -- do nothing if we have convertTensorLike
-        -- very bad, fix later if there is time...
-        ConvertQuantifiedTensorLike {} -> \ varAssignment->
+        -- TODO: this is not nice at all, maybe we need to store the compilationStep
+        -- differently or convert a different way?
+        ConvertQuantifiedTensorLike {} -> \varAssignment ->
           case NonEmpty.nonEmpty (Map.toList varAssignment) of
           Just a -> pure a
           Nothing -> developerError "Variable assignment list should not be empty"
