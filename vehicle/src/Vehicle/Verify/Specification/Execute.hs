@@ -59,16 +59,17 @@ verifySpecification outputAsJSON verifierSettings
 
 verifySpecificationActual :: (MonadVerify m) => m ()
 verifySpecificationActual = do
-  settings <- ask
-  let verificationPlanFile = specificationCacheIndexFileName (specificationCache settings)
-  SpecificationCacheIndex {..} <- readSpecificationCacheIndex verificationPlanFile
+  logCompilerPass Verification $ do
+    settings <- ask
+    let verificationPlanFile = specificationCacheIndexFileName (specificationCache settings)
+    SpecificationCacheIndex {..} <- readSpecificationCacheIndex verificationPlanFile
 
-  maybeIntegrityError <- checkIntegrityOfResources resourcesIntegrityInfo
-  case maybeIntegrityError of
-    Just err -> writeStderrLn $ layoutAsText $ "Resource error:" <+> pretty err
-    Nothing -> do
-      forM_ properties $ \(name, multiProperty) ->
-        reportMultiProperty name $ verifyMultiproperty multiProperty
+    maybeIntegrityError <- checkIntegrityOfResources resourcesIntegrityInfo
+    case maybeIntegrityError of
+      Just err -> writeStderrLn $ layoutAsText $ "Resource error:" <+> pretty err
+      Nothing -> do
+        forM_ properties $ \(name, multiProperty) ->
+          reportMultiProperty name $ verifyMultiproperty multiProperty
 
 verifyMultiproperty ::
   (MonadVerify m) =>
