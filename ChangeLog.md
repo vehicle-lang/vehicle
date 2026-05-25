@@ -18,7 +18,7 @@
 
 ### Python bindings
 
-* The `vehicle_lang.list` command now outputs structured objects rather than raw JSON.
+* Breaking change: the `vehicle_lang.list` Python API now returns structured Python objects instead of a JSON string. Callers relying on the previous `str` output will need to be updated.
 
 ## v0.24.1
 
