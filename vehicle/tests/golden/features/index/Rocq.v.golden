@@ -6,6 +6,7 @@
 
 From mathcomp Require Import all_boot.
 From mathcomp Require Import all_algebra.
+From vehicle Require Import utils.
 Local Open Scope ring_scope.
 Local Open Scope order_scope.
 

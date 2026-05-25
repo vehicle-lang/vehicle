@@ -430,7 +430,11 @@ compileProperty opts ident expr = do
     Just cachePath ->
       return $
         annotate (Set.fromList [VehicleImport VehicleValidate], Nothing) $
-          "Lemma" <+> propertyName <+> ":" <+> align propertyBody <> "."
+          "Lemma"
+            <+> propertyName
+            <+> ":"
+            <+> align propertyBody
+            <> "."
             <> line
             <> "Proof. vehicle_validate"
             <+> dquotes (pretty cachePath)

@@ -8,6 +8,7 @@ From mathcomp Require Import all_boot.
 From mathcomp Require Import all_algebra.
 From mathcomp Require Import interval_inference.
 From mathcomp Require Import all_reals.
+From vehicle Require Import utils.
 From vehicle Require Import validate.
 Import Order.Def.
 Local Open Scope ring_scope.
