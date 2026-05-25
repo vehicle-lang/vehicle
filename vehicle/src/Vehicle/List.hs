@@ -5,7 +5,7 @@ module Vehicle.List
 where
 
 import Control.Monad.Writer (MonadWriter (tell), execWriterT)
-import Data.Aeson (ToJSON (..))
+import Data.Aeson (ToJSON (..), genericToJSON)
 import Data.Foldable (traverse_)
 import Data.Proxy (Proxy (..))
 import Data.Text (Text, pack)
@@ -174,7 +174,8 @@ data ListableEntity
   | Property PropertySummary
   deriving (Generic)
 
-instance ToJSON ListableEntity
+instance ToJSON ListableEntity where
+  toJSON = genericToJSON jsonOptions
 
 --------------------------------------------------------------------------------
 -- Shared data
@@ -186,7 +187,8 @@ data SharedData = SharedData
   }
   deriving (Generic)
 
-instance ToJSON SharedData
+instance ToJSON SharedData where
+  toJSON = genericToJSON jsonOptions
 
 mkSharedData ::
   Provenance ->
@@ -208,7 +210,8 @@ newtype NetworkSummary = NetworkSummary
   }
   deriving (Generic)
 
-instance ToJSON NetworkSummary
+instance ToJSON NetworkSummary where
+  toJSON = genericToJSON jsonOptions
 
 --------------------------------------------------------------------------------
 -- Data
@@ -218,7 +221,8 @@ newtype DatasetSummary = DatasetSummary
   }
   deriving (Generic)
 
-instance ToJSON DatasetSummary
+instance ToJSON DatasetSummary where
+  toJSON = genericToJSON jsonOptions
 
 --------------------------------------------------------------------------------
 -- Parameter
@@ -229,7 +233,8 @@ data ParameterSummary = ParameterSummary
   }
   deriving (Generic)
 
-instance ToJSON ParameterSummary
+instance ToJSON ParameterSummary where
+  toJSON = genericToJSON jsonOptions
 
 --------------------------------------------------------------------------------
 -- Property
@@ -240,7 +245,8 @@ data PropertySummary = PropertySummary
   }
   deriving (Generic)
 
-instance ToJSON PropertySummary
+instance ToJSON PropertySummary where
+  toJSON = genericToJSON jsonOptions
 
 --------------------------------------------------------------------------------
 -- Quantified variable
@@ -251,4 +257,5 @@ data QuantifiedVariableSummary = QuantifiedVariableSummary
   }
   deriving (Generic)
 
-instance ToJSON QuantifiedVariableSummary
+instance ToJSON QuantifiedVariableSummary where
+  toJSON = genericToJSON jsonOptions

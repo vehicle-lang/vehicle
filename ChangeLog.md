@@ -16,6 +16,10 @@
 
 * Fixed a bug where networks were recursively unblocked without changes. Backends now control when recursive unblocking happens.
 
+### Python bindings
+
+* The `vehicle_lang.list` command now outputs structured objects rather than raw JSON.
+
 ## v0.24.1
 
 ### General
