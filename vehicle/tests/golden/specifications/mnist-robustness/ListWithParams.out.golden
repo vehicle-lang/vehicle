@@ -2,8 +2,10 @@
   {
     "tag": "Network",
     "contents": {
+      "tag": "NetworkSummary",
       "sharedData": {
         "typeText": "Tensor Real [28, 28] -> Tensor Real [10]",
+        "tag": "SharedData",
         "provenance": {
           "tag": "Provenance",
           "contents": [
@@ -20,6 +22,7 @@
   {
     "tag": "Property",
     "contents": {
+      "tag": "PropertySummary",
       "subcomponents": {
         "tag": "MultiProperty",
         "contents": [
@@ -27,8 +30,10 @@
             "tag": "SingleProperty",
             "contents": [
               {
+                "tag": "QuantifiedVariableSummary",
                 "sharedData": {
                   "typeText": "Tensor Real [28, 28]",
+                  "tag": "SharedData",
                   "provenance": {
                     "tag": "Provenance",
                     "contents": [
@@ -48,8 +53,10 @@
             "tag": "SingleProperty",
             "contents": [
               {
+                "tag": "QuantifiedVariableSummary",
                 "sharedData": {
                   "typeText": "Tensor Real [28, 28]",
+                  "tag": "SharedData",
                   "provenance": {
                     "tag": "Provenance",
                     "contents": [
@@ -69,6 +76,7 @@
       },
       "sharedData": {
         "typeText": "Vector Bool 2",
+        "tag": "SharedData",
         "provenance": {
           "tag": "Provenance",
           "contents": [
