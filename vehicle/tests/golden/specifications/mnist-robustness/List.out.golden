@@ -2,8 +2,10 @@
   {
     "tag": "Network",
     "contents": {
+      "tag": "NetworkSummary",
       "sharedData": {
         "typeText": "Tensor Real [28, 28] -> Tensor Real [10]",
+        "tag": "SharedData",
         "provenance": {
           "tag": "Provenance",
           "contents": [
@@ -20,8 +22,10 @@
   {
     "tag": "Parameter",
     "contents": {
+      "tag": "ParameterSummary",
       "sharedData": {
         "typeText": "Real",
+        "tag": "SharedData",
         "provenance": {
           "tag": "Provenance",
           "contents": [
@@ -39,8 +43,10 @@
   {
     "tag": "Parameter",
     "contents": {
+      "tag": "ParameterSummary",
       "sharedData": {
         "typeText": "Nat",
+        "tag": "SharedData",
         "provenance": {
           "tag": "Provenance",
           "contents": [
@@ -58,8 +64,10 @@
   {
     "tag": "Dataset",
     "contents": {
+      "tag": "DatasetSummary",
       "sharedData": {
         "typeText": "Vector (Tensor Real [28, 28]) n",
+        "tag": "SharedData",
         "provenance": {
           "tag": "Provenance",
           "contents": [
@@ -76,8 +84,10 @@
   {
     "tag": "Dataset",
     "contents": {
+      "tag": "DatasetSummary",
       "sharedData": {
         "typeText": "Vector (Index 10) n",
+        "tag": "SharedData",
         "provenance": {
           "tag": "Provenance",
           "contents": [
@@ -94,9 +104,11 @@
   {
     "tag": "Property",
     "contents": {
+      "tag": "PropertySummary",
       "subcomponents": null,
       "sharedData": {
         "typeText": "Vector Bool n",
+        "tag": "SharedData",
         "provenance": {
           "tag": "Provenance",
           "contents": [
