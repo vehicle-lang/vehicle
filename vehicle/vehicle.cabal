@@ -137,6 +137,7 @@ library
     Vehicle.Backend.Loss.JSON
     Vehicle.Backend.Loss.LogicCompilation
     Vehicle.Backend.Loss.LossCompilation
+    Vehicle.Backend.Loss.LiftQuantifier
     Vehicle.Backend.Prelude
     Vehicle.Backend.Solver.UserVariableElimination.Error
     Vehicle.CommandLine

@@ -1,110 +1,159 @@
--- add function which takes whole Prog
--- extract decls from Main, pass decls (runFreshFreeContextT here)
--- put in new file!
 module Vehicle.Backend.Loss.LiftQuantifier
-  ( liftQuantifierDecls,
+  ( liftQuantifiers,
+    liftQuantifierDecls,
     liftQuantifierDecl,
-    liftQuantifier,
-	liftForall,
-	liftExists,
+    liftQuantifierProperty,
+    liftForall,
+    liftExists,
   )
 where
 
-import Vehicle.Data.Variable.Bound.Context.Name (MonadNameContext, runFreshNameBoundContextT)
-import Vehicle.Data.Variable.Free.Context (MonadFreeContext, runFreshFreeContextT)
+import Data.Proxy (Proxy (..))
+import Vehicle.Prelude
+import Vehicle.Data.Variable.Bound.Context.Name (MonadNameContext, runFreshNameBoundContextT, addNameToContext, getNameContext)
+import Vehicle.Data.Variable.Free.Context (MonadFreeContext, runFreshFreeContextT, addDeclEntryToContext)
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Interface.Args
-import Vehicle.Data.Code.Value (Closure (..), Value (..))
-import Vehicle.Compile.Normalise.NBE (normaliseClosure)
+import Vehicle.Data.Builtin.Standard
+import Vehicle.Data.AST.Expr.Scoped (Decl)
+import Vehicle.Data.AST.Prog (GenericProg(Main), Prog)
+import Vehicle.Data.Code.Value (Closure (..), Value (..), VDecl, boundContextToEnv)
+import Vehicle.Data.Variable.Bound.Level (Lv)
+import Vehicle.Compile.Error
+import Vehicle.Compile.Normalise.NBE (normaliseClosure, evalDecl)
+import Vehicle.Compile.Normalise.Quote (unnormalise)
+import Vehicle.Compile.LiftIf (unfoldIf)
+import Vehicle.Compile.Unblock (UnblockingActions (..), unblockBoolExpr)
+
+liftQuantifiers ::
+  (MonadCompile m) =>
+  Prog Builtin ->
+  m(Prog Builtin)
+liftQuantifiers prog@(Main ds) = 
+  runFreshFreeContextT (Proxy @Builtin) $ do 
+    Main <$> liftQuantifierDecls ds
 
 liftQuantifierDecls :: 
   (MonadCompile m, MonadFreeContext Builtin m) => 
   [Decl Builtin] ->
   m[Decl Builtin]
-liftQuantifiers = \case
+liftQuantifierDecls = \case
   [] -> return []
   decl : decls -> do
-    (decl', _) <- liftQuantifier (decl, 0)
-    decls' <- liftQuantifiers decls --addDeclEntryToContext
-    return (decl' : decls')
+    normDecl <- evalDecl decl
+    decl' <- liftQuantifierDecl normDecl
+    decls' <- addDeclEntryToContext normDecl $ liftQuantifierDecls decls 
+    return (decl':decls')
 
+-- accepts normalised decl and returns it unnormalised
 liftQuantifierDecl ::
   (MonadCompile m, MonadFreeContext Builtin m) => 
-  Decl Builtin ->
+  VDecl Builtin ->
   m(Decl Builtin)
-liftQuantifierDecl = \case
-  DefFunction _ _ anns _ body -> 
-    -- call isAnnotatedAsProperty to check if the thing is a property (only lift quantifiers for properties)
-    -- runFreshNameContext 
-    -- eval body with empty context (this will change decl into value builtin)
-    liftQuantifier body
+liftQuantifierDecl decl = case decl of
+  DefAbstract {} -> unnormalise 0 decl
+  DefFunction p ident ann typ expr -> 
+    if isAnnotatedAsProperty ann
+      then do
+        (liftedValue, _) <- runFreshNameBoundContextT $ liftQuantifierProperty (expr, 0) -- how to go from Value Builtin to Decl Builtin
+        let liftedTyp = unnormalise 0 typ
+        let liftedExpr = unnormalise 0 liftedValue
+        return $ DefFunction p ident ann liftedTyp liftedExpr -- is this ok?
+      else return $ unnormalise 0 decl
+  DefRecord {} -> unnormalise 0 decl
 
 -- using contextDelta and contextSize
-liftQuantifier :: 
+liftQuantifierProperty :: 
   (MonadCompile m, MonadFreeContext Builtin m, MonadNameContext m) =>
   (Value Builtin, Lv) -> 
   m(Value Builtin, Lv)
-liftQuantifier (expr, ctxDelta) = case toBoolTensorValue expr of -- use toBoolValue (less operator types)
+liftQuantifierProperty (expr, ctxDelta) = case toBoolValue expr of
   
-  VBoolTensorAnd (TensorOp2Args dims arg1 arg2) -> do
-    (arg1', ctxSize1) <- liftQuantifier (arg1, ctxDelta)
+  VAnd (TensorOp2Args dims arg1 arg2) -> do
+    (arg1', ctxSize1) <- liftQuantifierProperty (arg1, ctxDelta)
     liftForall arg1' $ \arg1'' -> do
       liftExists arg1'' $ \arg1''' -> do
-        (arg2', ctxSize2) <- liftQuantifier (arg2, ctxDelta + ctxSize1)
+        (arg2', ctxSize2) <- liftQuantifierProperty (arg2, ctxDelta + ctxSize1)
         liftForall arg2' $ \arg2'' -> do
           liftExists arg2'' $ \arg2''' -> do
-            return (fromBoolTensorValue (VBoolTensorAnd (TensorOp2Args dims arg1''' arg2''')), ctxSize1 + ctxSize2)
+            return (fromBoolValue (VAnd (TensorOp2Args dims arg1''' arg2''')), ctxSize1 + ctxSize2)
   
-  VBoolTensorOr (TensorOp2Args dims arg1 arg2) -> do
-    (arg1', ctxSize1) <- liftQuantifier (arg1, ctxDelta)
-    (arg2', ctxSize2) <- liftQuantifier (arg2, ctxDelta)
-    return (fromBoolTensorValue (VBoolTensorOr (TensorOp2Args dims arg1' arg2')), ctxSize1 + ctxSize2) 
+  VOr (TensorOp2Args dims arg1 arg2) -> do
+    (arg1', ctxSize1) <- liftQuantifierProperty (arg1, ctxDelta)
+    (arg2', ctxSize2) <- liftQuantifierProperty (arg2, ctxDelta)
+    return (fromBoolValue (VOr (TensorOp2Args dims arg1' arg2')), ctxSize1 + ctxSize2) 
   
-  VBoolTensorNot (TensorOp1Args dims arg) -> do
-    (arg', ctxSize) <- liftQuantifier (arg, ctxDelta)
-    return (fromBoolTensorValue (VBoolTensorNot (TensorOp1Args dims arg')), ctxSize)
+  VNot (TensorOp1Args dims arg) -> do
+    (arg', ctxSize) <- liftQuantifierProperty (arg, ctxDelta)
+    return (fromBoolValue (VNot (TensorOp1Args dims arg')), ctxSize)
   
-  VBoolTensorQuantifyRat (Forall, QuantifyRatTensorArgs dims binder (Closure boundEnv bodyExpr)) -> do
-    normBody <- normaliseClosure binder (Closure boundEnv bodyExpr)
-    -- add binder to NameContext using addNameToContext
-    (body', ctxSize) <- liftQuantifier (normBody, ctxDelta)
-    -- call boundContextToEnv, give it name context from MonadReadableNameContext (for reforming Closure)
-    return (fromBoolTensorValue (VBoolTensorQuantifyRat (Forall, QuantifyRatTensorArgs dims binder (Closure boundEnv body'))), ctxSize + 1)
+  VQuantifyRatTensor (Forall, QuantifyRatTensorArgs dims binder closure) -> do -- use what is the difference with VQuantifyRecord? 
+    normBody <- normaliseClosure binder closure
+    (body', ctxSize) <- addNameToContext binder $ liftQuantifierProperty (normBody, ctxDelta)
+    let newEnv = boundContextToEnv getNameContext
+    let newBody = unnormalise 0 body'
+    return (fromBoolValue (VQuantifyRatTensor (Forall, QuantifyRatTensorArgs dims binder (Closure newEnv newBody))), ctxSize + 1)
 
-  VBoolTensorQuantifyRat (Exists, QuantifyRatTensorArgs dims binder (Closure boundEnv bodyExpr)) -> do
-    normBody <- normaliseClosure binder (Closure boundEnv bodyExpr)
-    (body', ctxSize) <- liftQuantifier (normBody, ctxDelta)
-    return (fromBoolTensorValue (VBoolTensorQuantifyRat (Exists, QuantifyRatTensorArgs dims binder (Closure boundEnv body'))), ctxSize + 1)
+  -- collapse into same thing as Forall
+  VQuantifyRatTensor (Exists, QuantifyRatTensorArgs dims binder closure) -> do
+    normBody <- normaliseClosure binder closure
+    (body', ctxSize) <- addNameToContext binder $ liftQuantifierProperty (normBody, ctxDelta)
+    let newEnv = boundContextToEnv getNameContext
+    let newBody = unnormalise 0 body'
+    return (fromBoolValue (VQuantifyRatTensor (Exists, QuantifyRatTensorArgs dims binder (Closure newEnv newBody))), ctxSize + 1)
 
   -- VBoolIf --> unfoldIf, then call liftQuantifier on result
-  -- reduceAnd, reduceOr, At --> call unblockBoolExpr (or just call developerError when pattern matching on these)
+  VBoolIf args -> do
+    unfolded <- unfoldIf args
+    liftQuantifierProperty (unfolded, ctxDelta)
+  
+  -- reduceAnd, reduceOr, At --> call unblockBoolExpr (or just call developerError when pattern matching on these) for now
+  VReduceAndTensor args -> do
+    unblocked <- unblockBoolExpr tempUnblockingActions (fromBoolValue (VReduceAndTensor args))
+    liftQuantifierProperty (unblocked, ctxDelta)
 
-  e -> return (fromBoolTensorValue e, ctxDelta)
+  VReduceOrTensor args -> do
+    unblocked <- unblockBoolExpr tempUnblockingActions (fromBoolValue (VReduceOrTensor args))
+    liftQuantifierProperty (unblocked, ctxDelta) 
+
+  VBoolAt args -> do
+    unblocked <- unblockBoolExpr tempUnblockingActions (fromBoolValue (VBoolAt args))
+    liftQuantifierProperty (unblocked, ctxDelta)
+
+  e -> return (fromBoolValue e, ctxDelta)
 
 liftForall :: 
   (MonadCompile m, MonadFreeContext Builtin m, MonadNameContext m) =>
   Value Builtin -> 
   (Value Builtin -> m(Value Builtin, Lv)) -> 
   m(Value Builtin, Lv)
-liftForall expr k = case toBoolTensorValue expr of
-  VBoolTensorQuantifyRat (Forall, QuantifyRatTensorArgs dims binder (Closure boundEnv bodyExpr)) -> do
-    (body', ctxSize') <- do
-      -- let newEnv = extendEnvWithBound ctxSize binder boundEnv (do I have to do this?)
-      body <- normaliseClosure binder (Closure boundEnv bodyExpr)
-      liftForall body k
-    return (fromBoolTensorValue (VBoolTensorQuantifyRat (Forall, QuantifyRatTensorArgs dims binder (Closure boundEnv body'))), ctxSize') -- I don't know if rebuilding this is correct
-  e -> k $ fromBoolTensorValue e
+liftForall expr k = case toBoolValue expr of
+  VQuantifyRatTensor (Forall, QuantifyRatTensorArgs dims binder closure) -> do
+    normBody <- normaliseClosure binder closure
+    (body', ctxSize) <- addNameToContext binder $ liftForall normBody k
+    let newEnv = boundContextToEnv getNameContext
+    let newBody = unnormalise 0 body'
+    return (fromBoolValue (VQuantifyRatTensor (Forall, QuantifyRatTensorArgs dims binder (Closure newEnv newBody))), ctxSize)
+  e -> k $ fromBoolValue e
 
 liftExists :: 
   (MonadCompile m, MonadFreeContext Builtin m, MonadNameContext m) =>
   Value Builtin -> 
   (Value Builtin -> m(Value Builtin, Lv)) -> 
   m(Value Builtin, Lv)
-liftExists expr k = case toBoolTensorValue expr of
-  VBoolTensorQuantifyRat (Exists, QuantifyRatTensorArgs dims binder (Closure boundEnv bodyExpr)) -> do
-    (body', ctxSize') <- do
-      -- let newEnv = extendEnvWithBound ctxSize binder boundEnv (do I have to do this?)
-      body <- normaliseClosure binder (Closure boundEnv bodyExpr)
-      liftExists body k
-    return (fromBoolTensorValue (VBoolTensorQuantifyRat (Exists, QuantifyRatTensorArgs dims binder (Closure boundEnv body'))), ctxSize') -- I don't know if rebuilding this is correct
-  e -> k $ fromBoolTensorValue e
+liftExists expr k = case toBoolValue expr of
+  VQuantifyRatTensor (Exists, QuantifyRatTensorArgs dims binder closure) -> do
+    normBody <- normaliseClosure binder closure
+    (body', ctxSize) <- addNameToContext binder $ liftExists normBody k
+    let newEnv = boundContextToEnv getNameContext
+    let newBody = unnormalise 0 body'
+    return (fromBoolValue (VQuantifyRatTensor (Exists, QuantifyRatTensorArgs dims binder (Closure newEnv newBody))), ctxSize)
+  e -> k $ fromBoolValue e
+
+tempUnblockingActions :: (MonadCompile m) => UnblockingActions m
+tempUnblockingActions =
+  UnblockingActions {
+    unblockRatTensorBoundVar = developerError "Tensor error",
+    unblockRecordBoundVar = developerError "Record error",
+    unblockNetworkApp = developerError "Network error"
+  }
