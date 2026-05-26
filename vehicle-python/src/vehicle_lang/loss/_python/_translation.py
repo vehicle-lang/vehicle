@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Iterator, Mapping, Sequence
 
 from .._abc import ABCSampler, ABCTranslation, AnyBuiltins, Index, Tensor
-from .._ast import _nodes as vcl
+from ..._ast import _nodes as vcl
 
 
 # Helper to convert Vehicle provenance to Python AST kwargs
@@ -73,12 +73,12 @@ class PythonTranslation(ABCTranslation[py.Module, py.stmt, py.expr]):
     def translate_Main(self, program: vcl.Main) -> py.Module:
         return py.Module(
             body=[
-                # NOTE: 'vehicle_lang.loss._ast._nodes' is imported for 'Tensor'
+                # NOTE: 'vehicle_lang._ast._nodes' is imported for 'Tensor'
                 #       which is used to translate vcl.Tensor
                 py.Import(
                     names=[
                         py.alias(
-                            name="vehicle_lang.loss._ast._nodes",
+                            name="vehicle_lang._ast._nodes",
                             asname=None,
                             lineno=0,
                             col_offset=0,

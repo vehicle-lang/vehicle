@@ -17,9 +17,9 @@ else:  # pragma: no cover - exercised implicitly
         feature="The TensorFlow loss backend",
     )
 
-from .. import error
+from ... import error
 from .._abc import ABCBuiltins
-from .._ast import _nodes
+from ..._ast import _nodes
 
 ################################################################################
 ### Type-safe TensorFlow wrappers

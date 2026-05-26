@@ -1,7 +1,9 @@
+import json
 from typing import Optional, Sequence
 
 from ._session import Session
-
+from .._ast._decode import decode, DecodeError
+from ..error import VehicleInternalError, VehicleUserError
 
 def check_call(args: Sequence[str]) -> int:
     """
@@ -26,6 +28,25 @@ def check_output(
     """
     return Session().__enter__().check_output_pty(args)
 
+def execute_command(
+    args: Sequence[str],
+) -> Optional[str]:
+    """
+    Execute a Vehicle command and return its output.
+
+    :param args: The command-line arguments to pass to Vehicle.
+    :return: The output of the Vehicle command, or None if it failed.
+    """
+    exec, out, err, logs = check_output(args)
+    print(exec, out, err, logs)
+    if exec != 0:
+        try:
+            raise decode(VehicleUserError, json.loads(err))
+        except DecodeError as e:
+            print(e)
+            raise VehicleInternalError(err)
+        
+    return out
 
 def close() -> None:
     """

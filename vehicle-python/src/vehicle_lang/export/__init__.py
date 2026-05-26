@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Optional
 
 from .. import session
-from ..error import VehicleError as VehicleError
+from ..error import VehicleInternalError
 from ..typing import ExportTarget
 
 
@@ -36,12 +36,8 @@ def export_to_solver(
         args.extend(["--cache", str(cache)])
 
     # Call Vehicle
-    exc, out, err, log = session.check_output(args)
+    out = session.execute_command(args)
+    if not out:
+        raise VehicleInternalError("no output")
 
-    # Check for errors or return
-    if exc != 0:
-        raise VehicleError(err or out or log or "unknown error")
-    elif not out:
-        raise VehicleError("no output")
-    else:
-        return out
+    return out

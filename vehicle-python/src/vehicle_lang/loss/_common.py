@@ -7,8 +7,10 @@ from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping, MutableMapping, Protocol, cast
 
 from ..typing import DeclarationName, DifferentiableLogic
-from . import _ast
+from pathlib import Path
+from typing import Iterable
 
+from ..loss import load_ast
 
 class _SamplerProtocol(Protocol):
     def get_loss(self, *args: Any, **kwargs: Any) -> Any: ...
@@ -37,7 +39,7 @@ def load_loss_specification(
         default_sampler = default_sampler_factory()
         samplers = defaultdict(lambda: default_sampler.get_loss)
 
-    program = _ast.load(
+    program = load_ast(
         path,
         target=logic,
         declarations=declarations,

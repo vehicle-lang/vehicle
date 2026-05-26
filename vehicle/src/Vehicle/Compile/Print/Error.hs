@@ -44,10 +44,10 @@ logCompileError x = do
 
 prettyCompileError :: Bool -> CompileError -> Doc a
 prettyCompileError outputAsJSON err = do
-  let vehicleError = formatCompileError err
+  let vehicleUserError = formatCompileError err
   if outputAsJSON
-    then prettyAsJSON vehicleError
-    else pretty vehicleError
+    then prettyAsJSON vehicleUserError
+    else pretty vehicleUserError
 
 --------------------------------------------------------------------------------
 -- Meaningful error classes
@@ -59,7 +59,7 @@ formatCompileError = \case
   ----------------------
 
   DevError text ->
-    VehicleError
+    VehicleUserError
       { provenance = Nothing,
         problem = text,
         fix = Nothing
@@ -70,13 +70,13 @@ formatCompileError = \case
 
   ParseError _module parseError -> case parseError of
     RawParseError text ->
-      VehicleError
+      VehicleUserError
         { provenance = Nothing,
           problem = pretty text,
           fix = Nothing
         }
     UnannotatedAbstractDef p name ->
-      VehicleError
+      VehicleUserError
         { provenance = Just p,
           problem =
             "no definition provided for the declaration"
@@ -95,7 +95,7 @@ formatCompileError = \case
                 <> "."
         }
     MultiplyAnnotatedDef p name ann1 ann2 ->
-      VehicleError
+      VehicleUserError
         { provenance = Just p,
           problem =
             "declaration"
@@ -109,7 +109,7 @@ formatCompileError = \case
             Just "remove one of annotations."
         }
     AbstractDefWithNonAbstractAnnotation p name ann ->
-      VehicleError
+      VehicleUserError
         { provenance = Just p,
           problem =
             "missing definition for"
@@ -123,7 +123,7 @@ formatCompileError = \case
                 <> "."
         }
     TypeDefWithAnnotation p name ann ->
-      VehicleError
+      VehicleUserError
         { provenance = Just p,
           problem =
             "cannot add a"
@@ -139,7 +139,7 @@ formatCompileError = \case
                 <> "."
         }
     FunctionDefWithRecordAnnotation p name ann ->
-      VehicleError
+      VehicleUserError
         { provenance = Just p,
           problem =
             "cannot add a"
@@ -156,7 +156,7 @@ formatCompileError = \case
                 <+> "into a record definition."
         }
     RecordDefWithFunctionAnnotation p name ann ->
-      VehicleError
+      VehicleUserError
         { provenance = Just p,
           problem =
             "cannot add a"
@@ -173,7 +173,7 @@ formatCompileError = \case
                 <+> "into a function definition."
         }
     NonAbstractDefWithAbstractAnnotation p name ann ->
-      VehicleError
+      VehicleUserError
         { provenance = Just p,
           problem =
             "The declaration"
@@ -191,25 +191,25 @@ formatCompileError = \case
                 <+> "annotation."
         }
     AnnotationWithNoDef p ann ->
-      VehicleError
+      VehicleUserError
         { provenance = Just p,
           problem = "unattached annotation" <+> quotePretty ann,
           fix = Just "either attach the annotation to a declaration or remove it entirely"
         }
     FunctionWithMismatchedNames p name1 name2 ->
-      VehicleError
+      VehicleUserError
         { provenance = Just p,
           problem = "mismatch in function declaration names:" <+> prettyIdentName name1 <+> "and" <+> prettyIdentName name2 <> ".",
           fix = Just "ensure the function definition has the same name as the declaration it follows."
         }
     MissingVariables p symbol ->
-      VehicleError
+      VehicleUserError
         { provenance = Just p,
           problem = "expected at least one variable name after" <+> quotePretty symbol,
           fix = Just $ "add one or more names after" <+> quotePretty symbol
         }
     UnchainableComparisons p prevOrder currentOrder ->
-      VehicleError
+      VehicleUserError
         { provenance = Just p,
           problem =
             "cannot chain"
@@ -219,7 +219,7 @@ formatCompileError = \case
           fix = Just "split chained orders into a conjunction"
         }
     InvalidAnnotationOption p annotationName parameterName suggestions ->
-      VehicleError
+      VehicleUserError
         { provenance = Just p,
           problem =
             "unknown option"
@@ -233,7 +233,7 @@ formatCompileError = \case
               (s : _) -> Just $ "did you mean" <+> quotePretty s <> "?"
         }
     InvalidAnnotationOptionValue p parameterName parameterValue ->
-      VehicleError
+      VehicleUserError
         { provenance = Just p,
           problem =
             "unable to parse the value"
@@ -243,7 +243,7 @@ formatCompileError = \case
           fix = Nothing
         }
     DuplicateAnnotationOption p annotation name ->
-      VehicleError
+      VehicleUserError
         { provenance = Just p,
           problem =
             "the annotation"
@@ -253,7 +253,7 @@ formatCompileError = \case
           fix = Just $ "remove all but one of the instances of" <+> quotePretty name
         }
     MissingAnnotationOption p annotation name ->
-      VehicleError
+      VehicleUserError
         { provenance = Just p,
           problem =
             "the annotation"
@@ -263,7 +263,7 @@ formatCompileError = \case
           fix = Just $ "add a value for the option" <+> quotePretty name
         }
     UnknownBuiltin p symbol ->
-      VehicleError
+      VehicleUserError
         { provenance = Just p,
           problem = "Unknown symbol" <+> quotePretty symbol,
           fix =
@@ -275,7 +275,7 @@ formatCompileError = \case
   -- Scoping --
   -------------
   MissingRequestedDeclarations names ->
-    VehicleError
+    VehicleUserError
       { provenance = Nothing,
         -- TODO can use Levenschtein distance to search contexts/builtins
         problem =
@@ -287,7 +287,7 @@ formatCompileError = \case
             "check the spelling of the names and that the correct specification is being used."
       }
   UnboundName p name suggestions ->
-    VehicleError
+    VehicleUserError
       { provenance = Just p,
         problem = "The name" <+> quotePretty name <+> "is not in scope",
         fix =
@@ -296,7 +296,7 @@ formatCompileError = \case
             else Just $ "Did you mean to use one of the following:" <> line <> indent 2 (vsep (fmap pretty suggestions))
       }
   UnboundRecordAccessor p name suggestions ->
-    VehicleError
+    VehicleUserError
       { provenance = Just p,
         problem = "No record with field" <+> quotePretty name <+> "in scope",
         fix =
@@ -305,7 +305,7 @@ formatCompileError = \case
             else Just $ "Did you mean to use one of the following:" <> line <> indent 2 (vsep (fmap pretty suggestions))
       }
   DeclarationDeclarationShadowing p name _matching ->
-    VehicleError
+    VehicleUserError
       { provenance = Just p,
         problem = "multiple" <+> typDoc <+> "with the name" <+> quotePretty name,
         fix = Just "remove or rename the duplicate definitions"
@@ -313,7 +313,7 @@ formatCompileError = \case
     where
       typDoc = either (const "record fields declared") (const "declarations") name
   DeclarationBoundShadowing p name ->
-    VehicleError
+    VehicleUserError
       { provenance = Just p,
         problem =
           "cannot re-use the name"
@@ -323,13 +323,13 @@ formatCompileError = \case
       }
   UnmatchedRecord p fields maybeBestMatch -> case maybeBestMatch of
     Nothing ->
-      VehicleError
+      VehicleUserError
         { provenance = Just p,
           problem = "Unable to find a record declaration with matching fields.",
           fix = Just $ "declare a record with the fields:" <> lineIndent (vsep $ fmap pretty fields)
         }
     Just (ident, RecordMatch {..}) -> do
-      VehicleError
+      VehicleUserError
         { provenance = Just p,
           problem = "Unable to find a record declaration with matching fields.",
           fix =
@@ -352,7 +352,7 @@ formatCompileError = \case
 
   TypingError t -> typingErrorDetails t
   QuantifiedIfCondition ctx ->
-    VehicleError
+    VehicleUserError
       { provenance = Just $ provenanceOf ctx,
         problem = "cannot currently use quantifiers in `if` conditions.",
         fix = Just $ implementationLimitation Nothing
@@ -362,7 +362,7 @@ formatCompileError = \case
   ---------------
 
   ResourcesNotProvided ((resourceType, (ident, p)) :| _) ->
-    VehicleError
+    VehicleUserError
       { provenance = Just p,
         problem =
           "No"
@@ -386,7 +386,7 @@ formatCompileError = \case
         Parameter -> ("value", "VALUE")
         _ -> ("file", "FILEPATH")
   UnsupportedResourceFormat (ident, p) resourceType fileExtension ->
-    VehicleError
+    VehicleUserError
       { provenance = Just p,
         problem =
           "The"
@@ -404,7 +404,7 @@ formatCompileError = \case
               <> ") to discuss adding support."
       }
   ResourceIOError (ident, p) resourceType ioException ->
-    VehicleError
+    VehicleUserError
       { provenance = Just p,
         problem =
           "The following exception occured when trying to read the file"
@@ -416,7 +416,7 @@ formatCompileError = \case
         fix = Nothing
       }
   UnableToParseResource (ident, p) resourceType value ->
-    VehicleError
+    VehicleUserError
       { provenance = Just p,
         problem =
           "Unable to parse the"
@@ -431,7 +431,7 @@ formatCompileError = \case
 
   -- Network errors
   NetworkTypeHasVariableSizeTensor (ident, _p) networkType tDim io ->
-    VehicleError
+    VehicleUserError
       { provenance = Just $ provenanceOf networkType,
         problem =
           unsupportedAnnotationTypeDescription (pretty NetworkDef) ident networkType
@@ -448,7 +448,7 @@ formatCompileError = \case
               <+> "tensor is constant."
       }
   NetworkTypeHasImplicitSizeTensor (ident, p) networkType implIdent _io ->
-    VehicleError
+    VehicleUserError
       { provenance = Just p,
         problem =
           unsupportedAnnotationTypeDescription (pretty NetworkDef) ident networkType
@@ -463,7 +463,7 @@ formatCompileError = \case
       }
   -- Dataset errors
   DatasetVariableSizeTensor (ident, p) datasetType variableDim ->
-    VehicleError
+    VehicleUserError
       { provenance = Just p,
         problem =
           unsupportedAnnotationTypeDescription (pretty (ParameterDef NonInferable)) ident datasetType
@@ -475,7 +475,7 @@ formatCompileError = \case
         fix = Just "make sure the dimensions of the dataset are all constants."
       }
   DatasetDimensionsMismatch (ident, p) file expectedType actualDims ->
-    VehicleError
+    VehicleUserError
       { provenance = Just p,
         problem =
           "Mismatch in the dimensions of"
@@ -507,7 +507,7 @@ formatCompileError = \case
       dimLength :: Value Builtin -> Maybe Int
       dimLength dims = either (const Nothing) (Just . length) (getDimsExprs dims)
   DatasetDimensionSizeMismatch (ident, p) file expectedSize actualSize wrongDimensionIndex ->
-    VehicleError
+    VehicleUserError
       { provenance = Just p,
         problem =
           "Mismatch in the size of"
@@ -526,7 +526,7 @@ formatCompileError = \case
         fix = Just $ datasetDimensionsFix "dimensions" ident file
       }
   DatasetInvalidNat (ident, p) file v ->
-    VehicleError
+    VehicleUserError
       { provenance = Just p,
         problem =
           "Mismatch in the type of elements of"
@@ -543,7 +543,7 @@ formatCompileError = \case
         fix = Just $ datasetDimensionsFix "type" ident file
       }
   DatasetInvalidIndex (ident, p) file v n ->
-    VehicleError
+    VehicleUserError
       { provenance = Just p,
         problem =
           "Mismatch in the type of elements of"
@@ -561,7 +561,7 @@ formatCompileError = \case
         fix = Just $ datasetDimensionsFix "type" ident file
       }
   DatasetTypeMismatch (ident, p) file _datasetType expectedType actualType ->
-    VehicleError
+    VehicleUserError
       { provenance = Just p,
         problem =
           "Mismatch in the type of elements of"
@@ -579,7 +579,7 @@ formatCompileError = \case
       }
   -- Parameter errors
   ParameterValueUnparsable (ident, p) value expectedType ->
-    VehicleError
+    VehicleUserError
       { provenance = Just p,
         problem =
           "The value"
@@ -596,7 +596,7 @@ formatCompileError = \case
               <+> "in the specification or change the value provided."
       }
   ParameterTypeVariableSizeIndex (ident, p) parameterType size ->
-    VehicleError
+    VehicleUserError
       { provenance = Just p,
         problem =
           unsupportedAnnotationTypeDescription (pretty (ParameterDef NonInferable)) ident parameterType
@@ -608,7 +608,7 @@ formatCompileError = \case
         fix = Just "make sure the dimensions of the indices are all constants."
       }
   ParameterValueInvalidIndex (ident, p) value n ->
-    VehicleError
+    VehicleUserError
       { provenance = Just p,
         problem =
           "Mismatch in the type of"
@@ -628,7 +628,7 @@ formatCompileError = \case
               <+> "(inclusive)."
       }
   ParameterValueInvalidNat (ident, p) value ->
-    VehicleError
+    VehicleUserError
       { provenance = Just p,
         problem =
           "Mismatch in the type of"
@@ -647,7 +647,7 @@ formatCompileError = \case
               <+> "or ensure the value provided is non-negative."
       }
   ParameterTypeInferableParameterIndex (ident, p) _varIndent ->
-    VehicleError
+    VehicleUserError
       { provenance = Just p,
         problem =
           "The use of an inferable parameter for the size of an"
@@ -661,7 +661,7 @@ formatCompileError = \case
               <+> "open an issue on the Github tracker to request support."
       }
   InferableParameterContradictory ident ((ident1, _p1), r1, v1) ((ident2, p2), r2, v2) ->
-    VehicleError
+    VehicleUserError
       { provenance = Just p2,
         problem =
           "Found contradictory values for inferable parameter"
@@ -679,7 +679,7 @@ formatCompileError = \case
         fix = Just "make sure the provided resources are consistent with each other."
       }
   InferableParametersUninferrable ((ident, p) :| _) ->
-    VehicleError
+    VehicleUserError
       { provenance = Just p,
         problem =
           "Unable to infer the value of"
@@ -693,7 +693,7 @@ formatCompileError = \case
       }
   -- TensorLike errors
   ZeroFieldTensorLike (ident, p) ->
-    VehicleError
+    VehicleUserError
       { provenance = Just p,
         problem =
           "annotating the record"
@@ -707,7 +707,7 @@ formatCompileError = \case
   MultiPropertyTraveralError prov err -> propertyTraversalErrorDetails prov err
   VariableSizeTensorQuantification (ident, _p) ctx binder dims -> do
     let (name, p) = getNamedBinderInfo binder
-    VehicleError
+    VehicleUserError
       { provenance = Just p,
         problem =
           "whilst compiling property"
@@ -725,7 +725,7 @@ formatCompileError = \case
               <+> "are known at compile time."
       }
   UnsupportedAlternatingQuantifiers queryFormat (ident, p) cause ->
-    VehicleError
+    VehicleUserError
       { provenance = Just p,
         problem =
           "The property"
@@ -751,7 +751,7 @@ formatCompileError = \case
             <> line
             <> indent 2 (prettyPolarityProvenance pq q pp)
   UnsupportedNonLinearConstraint queryFormat (ident, p) cause ->
-    VehicleError
+    VehicleUserError
       { provenance = Just p,
         problem =
           "The property"
@@ -793,7 +793,7 @@ formatCompileError = \case
               <+> "involves"
               <> prettyLinearityProvenance lhs "exponent of the power"
   UnsupportedInequality queryFormat (identifier, p) ->
-    VehicleError
+    VehicleUserError
       { provenance = Just p,
         problem =
           "After compilation, property"
@@ -804,7 +804,7 @@ formatCompileError = \case
         fix = Just (implementationLimitation (Just 74))
       }
   UnimplementedFeature p feature ->
-    VehicleError
+    VehicleUserError
       { provenance = Just p,
         problem =
           feature
@@ -815,13 +815,13 @@ formatCompileError = \case
               <+> "Vehicle issue tracker to discuss adding support."
       }
   NoPropertiesFound ->
-    VehicleError
+    VehicleUserError
       { provenance = Nothing,
         problem = "No properties found in file.",
         fix = Just $ "an expression is labelled as a property by giving it type" <+> squotes (pretty BoolType) <+> "."
       }
   UnsupportedLossOperation (_, p) op ->
-    VehicleError
+    VehicleUserError
       { provenance = Just p,
         problem =
           "Loss functions do not yet support compilation of"
@@ -830,7 +830,7 @@ formatCompileError = \case
         fix = Nothing
       }
   DuplicateQuantifierNames (identifier, p) name ->
-    VehicleError
+    VehicleUserError
       { provenance = Just p,
         problem =
           "The property"
@@ -841,7 +841,7 @@ formatCompileError = \case
         fix = Just "change the specification so that all quantified variables have unique names"
       }
   HigherOrderVectors (ident, p) ctx vecTyp elemTyp ->
-    VehicleError
+    VehicleUserError
       { provenance = Just p,
         problem =
           "The property"
@@ -856,7 +856,7 @@ formatCompileError = \case
       }
   NoQuantifierDomainFound (ident, _p) binder maybeUnboundedVariables -> do
     let (name, p) = getNamedBinderInfo binder
-    VehicleError
+    VehicleUserError
       { provenance = Just p,
         problem =
           "The property"
@@ -870,7 +870,7 @@ formatCompileError = \case
     where
 
   UnsupportedHigherOrderTensorCode (ident, p) originalCtx originalExpr blockedCtx blockedExpr ->
-    VehicleError
+    VehicleUserError
       { provenance = Just p,
         problem =
           "While compiling property"
@@ -885,7 +885,7 @@ formatCompileError = \case
         fix = Nothing
       }
   UnableToLiftLogicFieldToTensors logicID _tensorField (boolField, value) ctx problematicValue ->
-    VehicleError
+    VehicleUserError
       { provenance = Nothing,
         problem =
           "While compiling the logic"
@@ -901,7 +901,7 @@ formatCompileError = \case
         fix = Nothing
       }
   UnusedMonomorphisableDeclaration p ident ->
-    VehicleError
+    VehicleUserError
       { provenance = Just p,
         problem =
           "Unable to compile declaration"
@@ -912,13 +912,13 @@ formatCompileError = \case
         fix = Just "either remove the declaration, or add a type signature or use it in a property."
       }
   UnsupportedMultipleNetworkApplications queryFormat (_, p) ctx apps ->
-    VehicleError
+    VehicleUserError
       { provenance = Just p,
         problem = multipleNetworkErrorMessages (pretty queryFormat) ctx apps,
         fix = Just "this is on our road map to fix with VNNLib 2.0, but please open an issue on the Issue tracker with your use-case."
       }
   UnboundedNetworkInputVariables (ident, p) ctx ((networkName, inputValue, userVariables, unboundedInputs) :| _) ->
-    VehicleError
+    VehicleUserError
       { provenance = Just p,
         problem =
           "The property"
@@ -937,7 +937,7 @@ formatCompileError = \case
               _ -> "the following quantified variables:" <+> hsep (fmap pretty userVariables)
       }
   UnknownDifferentiableLogic name possibleNames ->
-    VehicleError
+    VehicleUserError
       { provenance = Nothing,
         problem =
           "Unable to find a differentiable logic named"
@@ -951,7 +951,7 @@ formatCompileError = \case
               <> "."
       }
   UnreducableDifferentiableLogic (ident, p) ->
-    VehicleError
+    VehicleUserError
       { provenance = Just p,
         problem =
           "Unable to compile differentiable logic"
@@ -964,7 +964,7 @@ formatCompileError = \case
             "declare the logic directly as a record literal."
       }
   UnorderableDifferentiableLogic (ident, p) value ->
-    VehicleError
+    VehicleUserError
       { provenance = Just p,
         problem =
           "Unable to compile differentiable logic"

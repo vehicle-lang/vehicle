@@ -18,8 +18,8 @@ else:  # pragma: no cover - exercised implicitly
     )
 
 from .._abc import ABCBuiltins
-from .._ast import _nodes
-from ..error import VehicleInternalError  # type: ignore[attr-defined]
+from ..._ast import _nodes
+from ...error import VehicleInternalError  # type: ignore[attr-defined]
 
 ################################################################################
 ### Type-safe PyTorch wrappers

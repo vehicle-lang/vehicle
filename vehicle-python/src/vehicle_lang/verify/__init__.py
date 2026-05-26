@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Any, Iterable, Optional
 
 from .. import session
-from ..error import VehicleError
+from ..error import VehicleInternalError
 from ..typing import DeclarationName, Verifier
 
 
@@ -54,12 +54,8 @@ def verify(
     args.extend(["--json"])
 
     # Call Vehicle
-    exc, out, err, log = session.check_output(args)
-
-    # Check for errors
-    if exc != 0:
-        raise VehicleError(f"{err}")
-    elif not out:
-        raise VehicleError("Vehicle produced no output")
+    out = session.execute_command(args)
+    if not out:
+        raise VehicleInternalError("Vehicle produced no output")
 
     return out

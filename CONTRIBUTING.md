@@ -769,8 +769,13 @@ Ensure that you have the source code and that you have installed GHC/Cabal plus 
 
 #### Installing in editable mode
 
-If you are developing the Python bindings it can be cumbersome to rebuild the Vehicle compiler from source on every test run. Rely on the uv-managed project environment instead of a separate editable install—`uv sync` automatically installs the local project in editable mode whenever the lockfile changes. After syncing (for example with `uv sync --extra test --extra pytorch`), you can run pytest directly via `uv run`:
+If you are developing the Python bindings it can be cumbersome to rebuild the Vehicle compiler from source on every test run. Rely on the uv-managed project environment instead of a separate editable install—`uv sync` automatically installs the local project in editable mode whenever the lockfile changes. 
 
+If the Haskell code changes then run:
+```sh
+uv sync --reinstall-package vehicle_lang -v
+```
+and then run pytest directly via `uv run`:
 ```sh
 uv run python -m pytest
 ```

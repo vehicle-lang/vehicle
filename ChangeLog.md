@@ -20,6 +20,10 @@
 
 * Breaking change: the `vehicle_lang.list` Python API now returns structured Python objects instead of a JSON string. Callers relying on the previous `str` output will need to be updated.
 
+* Breaking change: removed the unused `VehiclePropertyNotFound`, `VehicleBuiltinUnsupported`, and `VehiclePropertyNotCallable` error types.
+
+* Breaking change: all methods that call the Vehicle compiler now throw either a structured `VehicleUserError` or an unstructured `VehicleInternalError`.
+
 ## v0.24.1
 
 ### General

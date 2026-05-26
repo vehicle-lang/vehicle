@@ -1,12 +1,11 @@
 from typing import List
 
-from . import loss, session
+from . import session, loss
 from ._version import VERSION
 from .compile import call_vehicle, compile_specification
 from .error import VehicleError, VehicleInternalError
 from .export import export_to_solver
 from .list import list
-from .loss.error import VehicleBuiltinUnsupported, VehiclePropertyNotFound
 from .session.error import VehicleSessionClosed, VehicleSessionUsed
 from .typecheck import TypeSystem, typecheck
 from .typing import (
@@ -47,8 +46,7 @@ __all__: List[str] = [
     "VehicleSessionClosed",
     "VehicleSessionUsed",
     "VehicleInternalError",
-    "VehicleBuiltinUnsupported",
-    "VehiclePropertyNotFound",
+    "VehicleUserError",
     # Argument types
     "DeclarationName",
     "QuantifiedVariableName",

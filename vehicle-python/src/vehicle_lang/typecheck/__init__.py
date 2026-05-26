@@ -1,9 +1,8 @@
 from enum import Enum
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 from .. import session
-from ..error import VehicleError
 
 
 class TypeSystem(Enum):
@@ -17,9 +16,9 @@ class TypeSystem(Enum):
     Decidability = 4
 
     @property
-    def _vehicle_option_name(self) -> str:
+    def _vehicle_option_name(self) -> Optional[str]:
         return {
-            TypeSystem.Standard: "Standard",
+            TypeSystem.Standard: None,
             TypeSystem.Polarity: "Polarity",
             TypeSystem.Linearity: "Linearity",
             TypeSystem.Decidability: "Decidability",
@@ -36,21 +35,18 @@ def typecheck(
     :param typeSystem: The type system that should be used.
     """
     args = [
+        "--json",
         "typecheck",
         "--specification",
         str(specification),
-        "--typeSystem",
-        typeSystem._vehicle_option_name,
-        "--json",
     ]
 
-    # Call Vehicle
-    exc, out, err, _ = session.check_output(args)
+    if typeSystem._vehicle_option_name is not None:
+        args += ["--type-system", typeSystem._vehicle_option_name]
 
-    # Check for errors
-    if exc != 0:
-        raise VehicleError(f"{err}")
-    elif not out:
+    # Call Vehicle
+    out = session.execute_command(args)
+    if not out:
         return ""
 
     return out
