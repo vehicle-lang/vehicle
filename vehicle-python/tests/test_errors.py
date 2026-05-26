@@ -1,8 +1,8 @@
 from pathlib import Path
 
 import pytest
-from vehicle_lang.typecheck import typecheck
 from vehicle_lang.error import VehicleUserError
+from vehicle_lang.typecheck import typecheck
 
 GOLDEN_PATH = (
     Path(__file__).parent.parent.parent
@@ -13,6 +13,7 @@ GOLDEN_PATH = (
     / "typing"
 )
 GOLDEN_LOSS_FUNCTION_FILES = GOLDEN_PATH.glob("*/*.vcl")
+
 
 @pytest.mark.parametrize(
     "specification_path",

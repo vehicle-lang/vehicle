@@ -1,9 +1,10 @@
 import json
 from typing import Optional, Sequence
 
-from ._session import Session
-from .._ast._decode import decode, DecodeError
+from .._ast._decode import DecodeError, decode
 from ..error import VehicleInternalError, VehicleUserError
+from ._session import Session
+
 
 def check_call(args: Sequence[str]) -> int:
     """
@@ -28,6 +29,7 @@ def check_output(
     """
     return Session().__enter__().check_output_pty(args)
 
+
 def execute_command(
     args: Sequence[str],
 ) -> Optional[str]:
@@ -45,8 +47,9 @@ def execute_command(
         except DecodeError as e:
             print(e)
             raise VehicleInternalError(err)
-        
+
     return out
+
 
 def close() -> None:
     """

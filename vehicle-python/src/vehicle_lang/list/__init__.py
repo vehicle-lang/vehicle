@@ -8,9 +8,9 @@ from typing_extensions import TypeAlias
 from typing_extensions import TypeVar as TypingTypeVar
 
 from .. import session
-from ..error import VehicleInternalError
 from .._ast._decode import JsonValue, decode
 from .._ast._nodes import Provenance
+from ..error import VehicleInternalError
 
 Quantifier: TypeAlias = str
 

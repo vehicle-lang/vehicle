@@ -5,8 +5,8 @@ from functools import reduce
 from pathlib import Path
 from typing import Any, Iterator, Mapping, Sequence
 
-from .._abc import ABCSampler, ABCTranslation, AnyBuiltins, Index, Tensor
 from ..._ast import _nodes as vcl
+from .._abc import ABCSampler, ABCTranslation, AnyBuiltins, Index, Tensor
 
 
 # Helper to convert Vehicle provenance to Python AST kwargs

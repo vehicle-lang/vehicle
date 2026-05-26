@@ -142,7 +142,7 @@ generateResourceIntegrityInfo (name, filePath) = do
     liftIO $
       try @IOException
         (hashFileContents filePath)
-        
+
   case errorOrfileHash of
     Left err -> do
             fatalError $

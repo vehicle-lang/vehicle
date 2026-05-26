@@ -6,11 +6,9 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping, MutableMapping, Protocol, cast
 
-from ..typing import DeclarationName, DifferentiableLogic
-from pathlib import Path
-from typing import Iterable
-
 from ..loss import load_ast
+from ..typing import DeclarationName, DifferentiableLogic
+
 
 class _SamplerProtocol(Protocol):
     def get_loss(self, *args: Any, **kwargs: Any) -> Any: ...

@@ -46,8 +46,8 @@ readSpecification inputFile
             <+> quotePretty specificationFileExtension
             <+> "extension are supported."
   | otherwise = do
-      errorOrContents <- liftIO $ try @IOException $ TIO.readFile inputFile 
-      
+      errorOrContents <- liftIO $ try @IOException $ TIO.readFile inputFile
+
       case errorOrContents of
         Left err -> do
           fatalError $
@@ -71,7 +71,7 @@ writeSpecificationCache folder plan = do
   let planFile = specificationCacheIndexFileName folder
 
   errorOr <- liftIO $ try @IOException (BIO.writeFile planFile planText)
-  
+
   case errorOr of
     Left err ->
           fatalError $
@@ -121,8 +121,8 @@ writePropertyVerificationPlan folder propertyAddress plan = do
   logDebug MinDetail $ "Creating file:" <+> pretty planFile
 
   errorOr <- liftIO $ try @IOException (BIO.writeFile planFile planText)
-  
-  case errorOr of 
+
+  case errorOr of
     Left err -> fatalError $
             "Unable to write the verification plan to file"
               <+> quotePretty planFile

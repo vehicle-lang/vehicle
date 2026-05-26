@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import Optional
+
 from ._ast._nodes import Provenance
+
 
 class VehicleError(Exception):
     pass
@@ -11,6 +13,7 @@ class VehicleInternalError(VehicleError):
     """
     An error indicating a bug in Vehicle itself.
     """
+
     message: str
 
     def __str__(self):
@@ -22,7 +25,7 @@ class VehicleUserError(VehicleError):
     """
     An error indicating a problem in the Vehicle specification encountered during compilation.
     """
-    provenance : Optional[Provenance]
-    problem : str
-    fix : Optional[str]
 
+    provenance: Optional[Provenance]
+    problem: str
+    fix: Optional[str]

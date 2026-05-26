@@ -18,8 +18,8 @@ else:  # pragma: no cover - exercised implicitly
     )
 
 from ... import error
-from .._abc import ABCBuiltins
 from ..._ast import _nodes
+from .._abc import ABCBuiltins
 
 ################################################################################
 ### Type-safe TensorFlow wrappers
