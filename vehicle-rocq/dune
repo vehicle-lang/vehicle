@@ -1,0 +1,5 @@
+(coq.theory
+ (name vehicle)
+ (package vehicle-rocq)
+ (theories mathcomp HB elpi elpi_elpi)
+ (plugins vehicle-rocq.plugin))
