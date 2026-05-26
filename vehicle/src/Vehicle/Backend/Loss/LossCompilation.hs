@@ -32,7 +32,6 @@ import Vehicle.Backend.Loss.Core hiding (currentPass)
 import Vehicle.Compile.Normalise.NBE (normaliseAppInEmptyFreeEnv, normaliseClosure)
 import Vehicle.Compile.Normalise.Quote (Quote (..))
 import Vehicle.Compile.Prelude
-import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Data.Builtin.Interface (Accessor (..))
 import Vehicle.Data.Builtin.Interface.Normalise
 import Vehicle.Data.Builtin.Loss
@@ -41,7 +40,7 @@ import Vehicle.Data.Code.Interface
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
 import Vehicle.Data.DifferentiableLogic
-import Vehicle.Data.Tensor (Tensor, foldMapTensor, shapeOf)
+import Vehicle.Data.Tensor (Tensor, foldMapTensor, shapeOf, pattern ZeroDimTensor)
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Bound.Context.Tensor
 import Vehicle.Data.Variable.Bound.Level (findSliceIndices)
@@ -184,7 +183,8 @@ convertBoolTensor value = logConversion value $ case toBoolTensorValue value of
   VBoolTensorReduceAnd args -> convertReduceAnd =<< convertTensorReduction convertBoolTensor args
   VBoolTensorReduceOr args -> convertReduceOr =<< convertTensorReduction convertBoolTensor args
   VBoolTensorQuantifyRat {} -> unexpectedOperation "quantifier"
-  VBoolTensorBoolIf args -> convertIf args
+  VBoolTensorQuantifyRecord {} -> unexpectedOperation "quantifier"
+  VBoolTensorIf args -> convertIf args
   VBoolTensorAt args -> convertAtTensor convertBoolTensor args
   VBoolTensorForeach args -> convertForeachTensor convertBoolTensor args
 
@@ -228,8 +228,14 @@ convertRatTensorPointwiseComparison (op, args) = do
   convertLogicField (comparisonOpToField op) args'
 
 convertRatTensorReducedComparison :: (MonadLogic m) => (ComparisonOp, TensorReduceComparisonArgs (Value Builtin)) -> m (Value LossBuiltin)
-convertRatTensorReducedComparison (op, args) =
-  unsupportedOperation $ "RatTensorCompareReduced" <+> pretty op <+> prettyVerbose (mkExpr accessSpine args)
+convertRatTensorReducedComparison (op, TensorReduceComparisonArgs dim dims xs ys) = do
+  -- Can't go via the definition in the standard library because we currently refold `reduceAnd` into the comparison.
+  -- Can remove this hack once we get unified comparisons up and working.
+  let fullDims = ICons INatType dim dims
+  lPointwise <- convertRatTensorPointwiseComparison (op, TensorOp2Args fullDims xs ys)
+  lTrue <- convertBoolTensorLiteral $ ZeroDimTensor True
+  lFullDims <- convertDims fullDims
+  convertReduceAnd $ TensorReductionArgs lFullDims lTrue lPointwise
 
 convertIf ::
   (MonadLogic m) =>
@@ -270,8 +276,8 @@ convertRatTensor ::
   m (Value LossBuiltin)
 convertRatTensor value = logConversion value $ case toRatTensorValue value of
   VRatTensorBoundVar lv -> convertBoundVar lv mempty
-  VRatTensorFreeVar name [] -> return $ VFreeVar name []
-  VRatTensorFreeVar name spine -> convertFreeVar name spine
+  VRatTensorNetworkApp name args -> convertFreeVar name (mkExpr accessSpine args)
+  VDatasetOrParameter name -> convertFreeVar name []
   VRatTensorLiteral t -> return $ mkExpr accessRatTensorLiteral t
   VNegRatTensor args -> mkExpr accessNegRatTensor <$> convertTensorOp1 convertRatTensor args
   VAddRatTensor args -> mkExpr accessAddRatTensor <$> convertTensorOp2 convertRatTensor args

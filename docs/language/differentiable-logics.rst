@@ -1,6 +1,8 @@
 Differentiable Logics
 =====================
 
+|backendall_full|
+
 .. contents::
    :depth: 1
    :local:

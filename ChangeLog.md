@@ -2,6 +2,12 @@
 
 ## Next release
 
+### General
+
+* Improved language documentation to show per-backend support.
+
+* Added undocumented operations to language documentation.
+ 
 ### Rocq backend
 
 * Reworked the tensor representation to use the new `tensor` module from
@@ -27,6 +33,10 @@
 * Fixed a bug where the compiler was erroring on some uses of `forall` for indices.
 
 * Fixed a bug where networks were recursively unblocked without changes. Backends now control when recursive unblocking happens.
+
+### Python bindings
+
+* Breaking change: the `vehicle_lang.list` Python API now returns structured Python objects instead of a JSON string. Callers relying on the previous `str` output will need to be updated.
 
 ## v0.24.1
 

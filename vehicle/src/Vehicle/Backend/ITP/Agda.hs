@@ -358,7 +358,7 @@ compileRecordDecl p ident telescope fields = do
   t' <-
     if null telescope
       then return (compileType 0)
-      else throwError $ UnimplementedFeature p "Compiling parameterised records to Rocq"
+      else throwError $ UnimplementedFeature p "Compiling parameterised records to Agda"
   fs' <- traverseRecordFields compileExpr fields
 
   return $

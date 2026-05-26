@@ -237,7 +237,9 @@ type family StrategyFor (tags :: Tags) a :: Strategy where
   StrategyFor tags (GenericArg expr `In` ctx) = (StrategyFor tags (expr `In` ctx))
   StrategyFor tags (GenericBinder expr `In` ctx) = (StrategyFor tags (expr `In` ctx))
   StrategyFor tags (Tensor a `In` ctx) = 'Functor (StrategyFor tags (a `In` ctx))
+  StrategyFor tags (IfTree a b `In` ctx) = 'Branch (StrategyFor tags (a `In` ctx)) (StrategyFor tags (b `In` ctx))
   StrategyFor tags ((a, b) `In` ctx) = 'Branch (StrategyFor tags (a `In` ctx)) (StrategyFor tags (b `In` ctx))
+  StrategyFor tags (Either a b `In` ctx) = 'Branch (StrategyFor tags (a `In` ctx)) (StrategyFor tags (b `In` ctx))
   StrategyFor tags (Map a b `In` ctx) = 'Branch (StrategyFor tags (a `In` ctx)) (StrategyFor tags (b `In` ctx))
   -------------------------------
   -- Type-checking constraints --
@@ -1039,6 +1041,18 @@ instance
     Conjunct xs -> prettyUsing @('Functor ('Functor rest)) (xs, ctx)
 
 instance
+  (PrettyUsing rest1 (a `In` ctx), PrettyUsing rest2 (b `In` ctx)) =>
+  PrettyUsing ('Branch rest1 rest2) (IfTree a b `In` ctx)
+  where
+  prettyUsing (e, ctx) = case e of
+    IfLeaf x -> prettyUsing @rest2 (x, ctx)
+    IfTree c x y -> do
+      let c' = prettyUsing @rest1 (c, ctx)
+      let x' = prettyUsing @('Branch rest1 rest2) (x, ctx)
+      let y' = prettyUsing @('Branch rest1 rest2) (y, ctx)
+      "If" <+> c' <+> "Then" <+> parens x' <> "Else" <+> parens y'
+
+instance
   (PrettyUsing rest (a `In` ctx)) =>
   PrettyUsing ('Functor rest) (Tensor a `In` ctx)
   where
@@ -1056,15 +1070,33 @@ instance
     prettyMapEntries $ fmap (bimap prettyKey prettyValue) (Map.toList x)
 
 instance
-  ( PrettyUsing restKey (a `In` ctx),
-    PrettyUsing restValue (b `In` ctx)
+  ( PrettyUsing rest1 (a `In` ctx),
+    PrettyUsing rest2 (b `In` ctx)
   ) =>
-  PrettyUsing ('Branch restKey restValue) ((a, b) `In` ctx)
+  PrettyUsing ('Branch rest1 rest2) ((a, b) `In` ctx)
   where
   prettyUsing ((x, y), ctx) = do
-    let x' = prettyUsing @restKey (x, ctx)
-    let y' = prettyUsing @restValue (y, ctx)
+    let x' = prettyUsing @rest1 (x, ctx)
+    let y' = prettyUsing @rest2 (y, ctx)
     parens (x' <> "," <> y')
+
+instance
+  ( PrettyUsing rest1 (a `In` ctx),
+    PrettyUsing rest2 (b `In` ctx)
+  ) =>
+  PrettyUsing ('Branch rest1 rest2) (Either a b `In` ctx)
+  where
+  prettyUsing (v, ctx) = case v of
+    Left x -> prettyUsing @rest1 (x, ctx)
+    Right y -> prettyUsing @rest2 (y, ctx)
+
+instance
+  (PrettyUsing rest (a `In` ctx)) =>
+  PrettyUsing ('Functor rest) (Maybe a `In` ctx)
+  where
+  prettyUsing (maybeValue, ctx) = case maybeValue of
+    Nothing -> "Nothing"
+    Just value -> prettyUsing @rest (value, ctx)
 
 --------------------------------------------------------------------------------
 -- Conversion to BNFC representation

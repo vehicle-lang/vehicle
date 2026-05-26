@@ -8,6 +8,8 @@ Properties
 Single properties
 -----------------
 
+|backendall_full|
+
 A property is any self-contained statement that you wish to check using Vehicle.
 Properties are declared by annotating declarations with the ``@property`` annotation:
 
@@ -23,6 +25,13 @@ element of the ``Vector`` or ``Tensor`` individually.
 
 Multiple properties
 -------------------
+
+| |backendloss_easy|
+| |backendverification_full|
+| |backendagda_full|
+| |backendrocq_full|
+| |backendimandra_full|
+| |backendisabelle_full|
 
 Vehicle also supports marking vectors or tensors of Booleans as properties.
 This is particularly useful when checking that a property holds over
