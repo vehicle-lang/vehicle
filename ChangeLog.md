@@ -7,7 +7,7 @@
 * Improved language documentation to show per-backend support.
 
 * Added undocumented operations to language documentation.
- 
+
 ### Rocq backend
 
 * Reworked the tensor representation to use the new `tensor` module from
