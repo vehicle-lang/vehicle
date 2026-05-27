@@ -10,6 +10,27 @@
 
 * Added support for `infinity : Real` to language. Note only works for loss function backend currently as it is primarily designed to be used in differentiable logics.
 
+### Rocq backend
+
+* Reworked the tensor representation to use the new `tensor` module from
+  mathcomp 2.6.0; generated specifications now use the `'nT[R]_[n1, .., nk]`
+  / `'sT[R]` shorthand notations.
+
+* Generated `@property` declarations now integrate with the verification
+  cache: when `--cache` is supplied, properties are emitted as
+  `Lemma p : <type>. Proof. vehicle_validate "...". Qed.` instead of
+  bare `Axiom`s. The new `vehicle_validate` tactic (provided by
+  `vehicle-rocq`) invokes `vehicle validate --cache=...` at proof-checking
+  time and closes the goal only if validation succeeds. Mirrors the
+  Agda `checkSpecification` macro.
+
+* Cache paths supplied via `--cache` are canonicalised to absolute paths
+  before being embedded in the generated `.v` so `rocq compile` works
+  from any working directory.
+
+* `vehicle-rocq` switched to a Dune-based build; the OCaml plugin lives
+  in `vehicle-rocq/plugin/`.
+
 ### Loss backend
 
 * Added the ability to declare custom Differentiable Logics internally in Vehicle (see documentation for details).
@@ -19,6 +40,10 @@
 * Fixed a bug where networks were recursively unblocked without changes. Backends now control when recursive unblocking happens.
 
 * Fixed the differentiable logic `DL2Loss` to use `infinity` instead of `100000` for the translation of `false`.
+
+### Python bindings
+
+* Breaking change: the `vehicle_lang.list` Python API now returns structured Python objects instead of a JSON string. Callers relying on the previous `str` output will need to be updated.
 
 ## v0.24.1
 
