@@ -22,7 +22,7 @@ Definition zeroD : 'sT[R] := const_t (5 / 2 : R).
 
 Definition oneD : 'nT[R]_[2] := nstack_tuple [tuple zeroD; const_t (1 : R)].
 
-Definition twoD : 'nT[R]_[2, 2] := nstack_tuple [tuple oneD; [tensor^^= (2 : R); (3 : R)]].
+Definition twoD : 'nT[R]_[2, 2] := nstack_tuple [tuple oneD; ntensor_of_tuple (x := 2%:posnat) [tuple of (2 : R) :: (3 : R) :: [::]]].
 
 Definition lookup2D : 'sT[R] := (twoD ^^ 0) ^^ 1.
 

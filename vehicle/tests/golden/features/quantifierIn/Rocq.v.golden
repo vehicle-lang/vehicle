@@ -16,7 +16,7 @@ Parameter R : realType.
 
 Parameter f : 'nT[R]_[2] -> 'nT[R]_[1].
 
-Definition dataset : seq 'nT[R]_[2] := [tensor^^= (1 / 2 : R); (1 : R)] :: nil.
+Definition dataset : seq 'nT[R]_[2] := ntensor_of_tuple (x := 2%:posnat) [tuple of (1 / 2 : R) :: (1 : R) :: [::]] :: nil.
 
 Axiom empty : forallInList (fun x => True) dataset.
 
