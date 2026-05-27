@@ -5,9 +5,9 @@ from ._version import VERSION
 from .compile import call_vehicle, compile_specification
 from .error import VehicleError, VehicleInternalError
 from .export import export_to_solver
-from .list import list
+from .list import list_entities
 from .session.error import VehicleSessionClosed, VehicleSessionUsed
-from .typecheck import TypeSystem, typecheck
+from .typecheck import SecondaryTypeSystem, typecheck, typecheck_with_typesystem
 from .typing import (
     DeclarationName,
     DifferentiableLogic,
@@ -23,8 +23,9 @@ from .verify import verify
 __all__: List[str] = [
     "VERSION",
     # Typecheck
-    "TypeSystem",
+    "SecondaryTypeSystem",
     "typecheck",
+    "typecheck_with_typesystem",
     # Compile
     "compile_specification",
     # Loss helpers
@@ -38,7 +39,7 @@ __all__: List[str] = [
     # Export
     "export_to_solver",
     # List
-    "list",
+    "list_entities",
     # Session
     "session",
     # Error types

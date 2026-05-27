@@ -18,7 +18,7 @@ else:  # pragma: no cover - exercised implicitly
     )
 
 from ..._ast import _nodes
-from ...error import VehicleInternalError  # type: ignore[attr-defined]
+from ...error import VehicleInternalError
 from .._abc import ABCBuiltins
 
 ################################################################################

@@ -74,11 +74,11 @@ writeSpecificationCache folder plan = do
 
   case errorOr of
     Left err ->
-          fatalError $
-            "Unable to write the verification plan to file"
-              <+> quotePretty planFile
-              <> line
-              <> indent 2 ("error:" <+> pretty (show err))
+      fatalError $
+        "Unable to write the verification plan to file"
+          <+> quotePretty planFile
+          <> line
+          <> indent 2 ("error:" <+> pretty (show err))
     Right () -> return ()
 
 readSpecificationCacheIndex ::
@@ -123,11 +123,12 @@ writePropertyVerificationPlan folder propertyAddress plan = do
   errorOr <- liftIO $ try @IOException (BIO.writeFile planFile planText)
 
   case errorOr of
-    Left err -> fatalError $
-            "Unable to write the verification plan to file"
-              <+> quotePretty planFile
-              <> line
-              <> indent 2 ("error:" <+> pretty (show err))
+    Left err ->
+      fatalError $
+        "Unable to write the verification plan to file"
+          <+> quotePretty planFile
+          <> line
+          <> indent 2 ("error:" <+> pretty (show err))
     Right () -> return ()
 
 readPropertyVerificationPlan ::

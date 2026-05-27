@@ -8,7 +8,7 @@ from .._ast import _nodes
 from ..error import VehicleInternalError
 from ..typing import DeclarationName, DifferentiableLogic, Target
 
-__all__ = ["tensorflow", "pytorch"]
+__all__ = ["load_ast", "tensorflow", "pytorch"]
 
 if TYPE_CHECKING:  # pragma: no cover - import-time only typing aid
     from . import pytorch as pytorch

@@ -132,7 +132,7 @@ class TensorFlowBuiltins(
             return xs[i]
 
         if xs.shape.ndims == 0:
-            raise error.VehicleInternalError(  # type: ignore[attr-defined]
+            raise error.VehicleInternalError(
                 "Cannot index into a scalar tensor in DimensionLookup, make an issue in GitHub."
             )
 

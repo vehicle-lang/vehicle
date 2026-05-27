@@ -38,14 +38,17 @@ def execute_command(
 
     :param args: The command-line arguments to pass to Vehicle.
     :return: The output of the Vehicle command, or None if it failed.
+    :raises VehicleInternalError: If the Vehicle command fails to execute.
+    :raises VehicleUserError: If the Vehicle command executes but returns a non-zero exit code, indicating a user error in the specification.
     """
-    exec, out, err, logs = check_output(args)
-    print(exec, out, err, logs)
-    if exec != 0:
+    exit_code, out, err, _ = check_output(args)
+    if exit_code != 0:
+        if err is None:
+            raise VehicleInternalError("Vehicle command failed with no error message")
+
         try:
             raise decode(VehicleUserError, json.loads(err))
-        except DecodeError as e:
-            print(e)
+        except (json.JSONDecodeError, DecodeError):
             raise VehicleInternalError(err)
 
     return out

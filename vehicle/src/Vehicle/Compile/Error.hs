@@ -32,6 +32,7 @@ import Data.Text (Text)
 import Data.These (These)
 import Data.Typeable (Proxy)
 import Data.Void (Void)
+import GHC.Generics (Generic)
 import GHC.Stack (HasCallStack)
 import Vehicle.Backend.Prelude
 import Vehicle.Compile.Prelude
@@ -48,7 +49,6 @@ import Vehicle.Data.DifferentiableLogic
 import Vehicle.Data.Tensor (TensorIndices, TensorShape)
 import Vehicle.Data.Variable.Bound.Context.Name.Core
 import Vehicle.Verify.QueryFormat.Core
-import GHC.Generics (Generic)
 
 --------------------------------------------------------------------------------
 -- Compilation monad
@@ -255,7 +255,8 @@ data VehicleUserError a = VehicleUserError
   { provenance :: Maybe Provenance,
     problem :: a,
     fix :: Maybe a
-  } deriving (Generic)
+  }
+  deriving (Generic)
 
 type VehicleError = VehicleUserError UnAnnDoc
 
@@ -269,11 +270,13 @@ instance Pretty (VehicleUserError UnAnnDoc) where
         <> maybe "" (\f -> line <> "Fix:" <+> f) fix
 
 instance ToJSON (VehicleUserError UnAnnDoc) where
-  toJSON VehicleUserError{..} = genericToJSON jsonOptions $ VehicleUserError
-    { provenance = provenance,
-      problem = layoutAsText problem,
-      fix = fmap layoutAsText fix
-    }
+  toJSON VehicleUserError {..} =
+    genericToJSON jsonOptions $
+      VehicleUserError
+        { provenance = provenance,
+          problem = layoutAsText problem,
+          fix = fmap layoutAsText fix
+        }
 
 -- developer error for unsupported tensorLike quantification
 unsupportedTensorLikeQuantifier :: forall b. (HasCallStack) => b

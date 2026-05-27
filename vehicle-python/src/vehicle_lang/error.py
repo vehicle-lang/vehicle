@@ -16,7 +16,7 @@ class VehicleInternalError(VehicleError):
 
     message: str
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Vehicle threw an unexpected error: {self.message}"
 
 
@@ -29,3 +29,8 @@ class VehicleUserError(VehicleError):
     provenance: Optional[Provenance]
     problem: str
     fix: Optional[str]
+
+    def __str__(self) -> str:
+        location = f" at {self.provenance}" if self.provenance else ""
+        fix_suggestion = f" Suggested fix: {self.fix}" if self.fix else ""
+        return f"Error{location}: {self.problem}.{fix_suggestion}"

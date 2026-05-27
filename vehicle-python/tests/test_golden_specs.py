@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import pytest
+
 import vehicle_lang as vcl
 import vehicle_lang.loss as loss
 
@@ -30,7 +31,7 @@ def test_golden_spec_load(spec_path: Path) -> None:
 @pytest.mark.parametrize("spec_path", GOLDEN_SPEC_FILES)  # type: ignore[untyped-decorator]
 def test_golden_spec_list_decode(spec_path: Path) -> None:
     """Test that golden specs can be listed and decoded into structured entities."""
-    entities = vcl.list(spec_path)
+    entities = vcl.list_entities(spec_path)
     assert isinstance(entities, list)
 
 

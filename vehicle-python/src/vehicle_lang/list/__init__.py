@@ -99,7 +99,7 @@ def _decode_listable_entities(value: JsonValue) -> List[ListableEntity]:
     return decode(List[ListableEntity], value)
 
 
-def list(specification: str | Path) -> List[ListableEntity]:
+def list_entities(specification: str | Path) -> List[ListableEntity]:
     """
     List all networks, datasets, parameters, and properties in the specification.
 
@@ -136,5 +136,5 @@ __all__ = [
     "Quantifier",
     "SharedData",
     "SingleProperty",
-    "list",
+    "list_entities",
 ]

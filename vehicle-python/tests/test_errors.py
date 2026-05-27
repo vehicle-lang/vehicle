@@ -1,8 +1,9 @@
 from pathlib import Path
 
 import pytest
+
 from vehicle_lang.error import VehicleUserError
-from vehicle_lang.typecheck import typecheck
+from vehicle_lang.list import list_entities
 
 GOLDEN_PATH = (
     Path(__file__).parent.parent.parent
@@ -23,4 +24,4 @@ def test_errors(specification_path: Path) -> None:
     print(f"Type-check {specification_path}")
 
     with pytest.raises(VehicleUserError):
-        typecheck(specification_path)
+        list_entities(specification_path)
