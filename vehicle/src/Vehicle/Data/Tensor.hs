@@ -10,9 +10,10 @@ module Vehicle.Data.Tensor
     isZeroDimensional,
     Tensor (ConstantTensor),
     BoolTensor,
-    RatTensor,
     IndexTensor,
     NatTensor,
+    RatTensor,
+    ExtendedRatTensor,
     pattern ZeroDimTensor,
     allTensor,
     anyTensor,
@@ -31,6 +32,7 @@ module Vehicle.Data.Tensor
     isTensorOfAll,
     compareTensor,
     extendTensor,
+    toFiniteRatTensor,
   )
 where
 
@@ -47,6 +49,7 @@ import Data.Vector.Internal.Check (HasCallStack)
 import Data.Vector.Serialize ()
 import GHC.Generics (Generic)
 import Prettyprinter (Doc, Pretty (..), concatWith, surround, (<+>))
+import Vehicle.Data.Real
 import Vehicle.Prelude.Error (developerError)
 
 --------------------------------------------------------------------------------
@@ -237,6 +240,13 @@ type NatTensor = Tensor Int
 type IndexTensor = Tensor Int
 
 type RatTensor = Tensor Rational
+
+type ExtendedRatTensor = Tensor ExtendedRational
+
+toFiniteRatTensor :: ExtendedRatTensor -> Maybe RatTensor
+toFiniteRatTensor = traverseTensor $ \case
+  Finite v -> Just v
+  _ -> Nothing
 
 -- | Represents a plain value, with zero dimensions
 pattern ZeroDimTensor :: a -> Tensor a

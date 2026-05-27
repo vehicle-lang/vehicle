@@ -1,4 +1,4 @@
-module Vehicle.Compile.Rational.LinearExpr
+module Vehicle.Backend.Solver.UserVariableElimination.LinearExpr
   ( LinearityError (..),
     compileLinearAssertion,
   )
@@ -17,7 +17,7 @@ import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.Code.TypedView
 import Vehicle.Data.Code.Value
 import Vehicle.Data.MaybeTrivial (trivialElim)
-import Vehicle.Data.Tensor (TensorShape, pattern ConstantTensor)
+import Vehicle.Data.Tensor (TensorShape, toFiniteRatTensor, pattern ConstantTensor)
 import Vehicle.Data.Variable.Bound.Level
 import Prelude hiding (Applicative (..))
 
@@ -64,8 +64,9 @@ compile toVar shape = go
       ----------------
       -- Base cases --
       ----------------
-      VRatTensorLiteral t -> do
-        return $ constantExpr t
+      VRatTensorLiteral tensor -> case toFiniteRatTensor tensor of
+        Nothing -> developerError "Infinite values not supported in query backend"
+        Just finiteTensor -> return $ constantExpr finiteTensor
       VRatTensorBoundVar lv -> do
         singletonVarExpr (ConstantTensor shape 0) <$> toVar lv
       ---------------------

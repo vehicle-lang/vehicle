@@ -14,6 +14,7 @@ import Control.Monad.State (MonadState (..))
 import Control.Monad.Writer (MonadWriter (..), WriterT (..))
 import Vehicle.Backend.Solver.UserVariableElimination.Core
 import Vehicle.Backend.Solver.UserVariableElimination.EliminateExists (eliminateQuantifiedVariable)
+import Vehicle.Backend.Solver.UserVariableElimination.LinearExpr (LinearityError (..), compileLinearAssertion)
 import Vehicle.Backend.Solver.UserVariableElimination.PurifyAssertion (purifyAssertion)
 import Vehicle.Compile.Constants.Rational
 import Vehicle.Compile.Error
@@ -23,7 +24,6 @@ import Vehicle.Compile.LowerNot (lowerNot)
 import Vehicle.Compile.Normalise.NBE
 import Vehicle.Compile.Prelude
 import Vehicle.Compile.Print (prettyVerbose)
-import Vehicle.Compile.Rational.LinearExpr (LinearityError (..), compileLinearAssertion)
 import Vehicle.Compile.Resource
 import Vehicle.Compile.Unblock (OperationUnblockingFunction, TypeUnblockingFunction, UnblockingActions (..))
 import Vehicle.Compile.Unblock qualified as Unblocking

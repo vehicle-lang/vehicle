@@ -8,7 +8,6 @@ where
 
 import Data.Aeson (ToJSON (..), genericToJSON)
 import Data.List (elemIndex)
-import Data.Ratio (Ratio)
 import GHC.Generics (Generic)
 import Prettyprinter (Pretty (..), (<+>))
 import Vehicle.Compile.Arity
@@ -28,7 +27,7 @@ import Vehicle.Data.Builtin.Loss (LossBuiltin (..), LossBuiltinConstructor, Loss
 import Vehicle.Data.Builtin.Loss qualified as L
 import Vehicle.Data.Code.Interface.Args
 import Vehicle.Data.Code.Value
-import Vehicle.Data.Tensor (Tensor, mapTensor)
+import Vehicle.Data.Tensor (ExtendedRatTensor)
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Prelude (Doc, GenericArg (..), HasName (..), HasType (..), Identifier (..), Name, Provenance, explicit, indent, jsonOptions, line, mkExplicitBinder, resolutionError, squotes, userModulePath)
 import Vehicle.Prelude.Error (developerError)
@@ -78,7 +77,7 @@ data JExpr
     Lam JBinder JExpr
   | Var Name [JExpr]
   | -- Rational tensors
-    RatTensor (Tensor Rat)
+    RatTensor ExtendedRatTensor
   | NegRatTensor JExpr
   | AddRatTensor JExpr JExpr
   | SubRatTensor JExpr JExpr
@@ -100,17 +99,6 @@ data JExpr
   | ConstTensor JExpr JExpr
   | StackTensor [JExpr]
   deriving (Show, Generic)
-
--- NOTE:
--- Keep JSON rationals unbounded to avoid internal overflows during conversion.
--- Downstream backends can choose their own finite-precision lowering.
-type Rat = Ratio Integer
-
-toRat :: Rational -> Rat
-toRat = id
-
-fromRat :: Rat -> Rational
-fromRat = id
 
 instance ToJSON JProg where
   toJSON = genericToJSON jsonOptions
@@ -264,7 +252,7 @@ convertBuiltin b spine = case b of
     L.IndexLiteral i -> convertNullaryOp b (DimensionIndex i) []
     L.NatLiteral x -> convertNullaryOp b (Dimension x) spine
     L.NatTensorLiteral _ -> unsupportedError b
-    L.RatTensorLiteral t -> convertNullaryOp b (RatTensor $ mapTensor toRat t) spine
+    L.RatTensorLiteral t -> convertNullaryOp b (RatTensor t) spine
   LossBuiltinFunction op -> case op of
     L.Neg L.NegRatTensor -> convertTensorOp1 convertValue b NegRatTensor spine
     L.Add L.AddRatTensor -> convertTensorOp2 convertValue b AddRatTensor spine
@@ -440,7 +428,7 @@ fromJExpr = \case
     let ix = maybe (developerError ("ill-scoped JExpr, no variable" <+> squotes (pretty name))) Ix (elemIndex (Just name) nameCtx)
     spine' <- traverse fromJExpr spine
     return $ normAppList (S.BoundVar mempty ix) (fmap explicit spine')
-  RatTensor t -> toConstructor (L.RatTensorLiteral (mapTensor fromRat t)) []
+  RatTensor t -> toConstructor (L.RatTensorLiteral t) []
   NegRatTensor e -> toFunction (L.Neg L.NegRatTensor) [e]
   AddRatTensor e1 e2 -> toFunction (L.Add L.AddRatTensor) [e1, e2]
   SubRatTensor e1 e2 -> toFunction (L.Sub L.SubRatTensor) [e1, e2]
