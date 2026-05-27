@@ -26,8 +26,6 @@ module Vehicle.Data.Code.TypedView
     fromDimensionsValue,
     evalCompareRatTensor,
     etaReduceTensor,
-    scaleValue,
-    addValues,
     toRecordValue,
     RecordValue (..),
   )
@@ -37,18 +35,16 @@ import GHC.Stack (HasCallStack)
 import Vehicle.Compile.Normalise.NBE (evalBuiltin)
 import Vehicle.Compile.Print (prettyVerbose)
 import Vehicle.Data.Builtin.Interface (Accessor (..), BuiltinHasIndexLiterals, BuiltinHasListLiterals, BuiltinHasNatLiterals, BuiltinHasNatType, BuiltinHasTensors)
-import Vehicle.Data.Builtin.Interface.Normalise (EvalSimple, HasTensorLiterals, MonadNormBuiltin, evalAddRatTensor, evalCompareRatTensorPointwise, evalConstTensor, evalMulRatTensor, unoptimisedEvalAtTensor)
+import Vehicle.Data.Builtin.Interface.Normalise (EvalSimple, HasTensorLiterals, MonadNormBuiltin, evalCompareRatTensorPointwise, unoptimisedEvalAtTensor)
 import Vehicle.Data.Builtin.Standard.Core
 import Vehicle.Data.Builtin.Standard.Normalise (foldReduceAndComparison)
 import Vehicle.Data.Code.Interface
-import Vehicle.Data.Code.LinearExpr
 import Vehicle.Data.Code.Value
-import Vehicle.Data.Tensor (Tensor, pattern ZeroDimTensor)
+import Vehicle.Data.Tensor (ExtendedRatTensor, Tensor, pattern ZeroDimTensor)
 import Vehicle.Data.Variable.Bound.Context.Name
 import Vehicle.Data.Variable.Bound.Level
 import Vehicle.Data.Variable.Free.Context (MonadFreeContext)
 import Vehicle.Prelude
-import Vehicle.Prelude.Logging
 
 -------------------------------------------------------------------------------
 -- Types
@@ -389,7 +385,7 @@ toRecordValue expr = case expr of
 
 -- | A view on all possible expressions that can have type `Tensor Rat`.
 data RatTensorValue
-  = VRatTensorLiteral (Tensor Rational)
+  = VRatTensorLiteral ExtendedRatTensor
   | VNegRatTensor (TensorOp1Args (Value Builtin))
   | VAddRatTensor (TensorOp2Args (Value Builtin))
   | VSubRatTensor (TensorOp2Args (Value Builtin))
@@ -510,14 +506,3 @@ etaReduceTensor typ dim dims tensor = do
           }
   let mkAt i = unoptimisedEvalAtTensor (mkAtArgs i)
   traverse mkAt [0 .. (dim - 1)]
-
-scaleValue :: Value Builtin -> ScaleConstant (Value Builtin)
-scaleValue dims c value = runSilentLogger $ do
-  constantTensor <- evalConstTensor $ ConstTensorArgs IRatType (IRatLiteral c) dims
-  evalMulRatTensor $ TensorOp2Args dims constantTensor value
-
-addValues :: Value Builtin -> AddConstants (Value Builtin)
-addValues dims c1 c2 v1 v2 = runSilentLogger $ do
-  let cv1 = scaleValue dims c1 v1
-  let cv2 = scaleValue dims c2 v2
-  evalAddRatTensor $ TensorOp2Args dims cv1 cv2

@@ -5,6 +5,7 @@ module Vehicle.Compile.Sugar.Core where
 import Data.Text (Text, pack)
 import Vehicle.Compile.Prelude (Provenance)
 import Vehicle.Data.AST.Expr.Desugared (Expr)
+import Vehicle.Data.Real
 import Vehicle.Syntax.External.Abs qualified as B
 import Vehicle.Syntax.Token (mkToken)
 
@@ -12,7 +13,7 @@ class DesugarableBuiltin builtin where
   elabUnitLiteral :: Provenance -> Expr builtin
   elabBoolLiteral :: Provenance -> Bool -> Expr builtin
   elabNatLiteral :: Provenance -> Int -> Expr builtin
-  elabDecimalLiteral :: Provenance -> Rational -> Expr builtin
+  elabDecimalLiteral :: Provenance -> ExtendedRational -> Expr builtin
 
 {-
   foreachBuiltin :: Expr builtin

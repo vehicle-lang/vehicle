@@ -76,7 +76,7 @@ dummy_sampler = DummySampler()
         (
             "test_at.vcl",
             {},
-            {"prop": 1000000.0},
+            {"prop": float("inf")},
         ),
         (
             "test_constant.vcl",
@@ -91,12 +91,12 @@ dummy_sampler = DummySampler()
         (
             "test_indicator.vcl",
             {},
-            {"prop": 1000000.0},
+            {"prop": float("inf")},
         ),
         (
             "test_maximum.vcl",
             {},
-            {"prop": 1000000.0},
+            {"prop": float("inf")},
         ),
         (
             "test_minimum.vcl",

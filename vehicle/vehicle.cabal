@@ -175,6 +175,7 @@ library
     Vehicle.Data.Hashing
     Vehicle.Data.MaybeTrivial
     Vehicle.Data.Meta
+    Vehicle.Data.Real
     Vehicle.Data.Tensor
     Vehicle.Data.Tensor.Traversal
     Vehicle.Data.Variable.Bound.Index
@@ -210,6 +211,7 @@ library
     Vehicle.Backend.Solver.UserVariableElimination.ConstraintSearch
     Vehicle.Backend.Solver.UserVariableElimination.Core
     Vehicle.Backend.Solver.UserVariableElimination.EliminateExists
+    Vehicle.Backend.Solver.UserVariableElimination.LinearExpr
     Vehicle.Backend.Solver.UserVariableElimination.PurifyAssertion
     Vehicle.Backend.Solver.UserVariableElimination.VariableReconstruction
     Vehicle.Compile.Arity
@@ -223,7 +225,6 @@ library
     Vehicle.Compile.Prelude.Utils
     Vehicle.Compile.Print.Warning
     Vehicle.Compile.Property
-    Vehicle.Compile.Rational.LinearExpr
     Vehicle.Compile.Scope.Core
     Vehicle.Compile.Scope.Generalise
     Vehicle.Compile.Scope.RecordInstances

@@ -168,7 +168,7 @@ reduceDomain (BoundedValue inputTensorVar bounds) = go (toSliceVar inputTensorVa
           let domains = zipWith Domain lowerBounds upperBounds
           concat <$> zipWithM (curry go) childVars domains
 
-extractRationalConstant :: RatTensor -> Rational
+extractRationalConstant :: (Pretty a) => Tensor a -> a
 extractRationalConstant = \case
   ZeroDimTensor v -> v
   t -> developerError $ "Cannot extract constant from multi-dim tensor" <+> pretty t

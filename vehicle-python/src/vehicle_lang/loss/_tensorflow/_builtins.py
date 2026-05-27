@@ -31,6 +31,18 @@ def _tf_constant(*args: Any, **kwargs: Any) -> tf.Tensor:
     return cast(tf.Tensor, tf.constant(*args, **kwargs))
 
 
+def _extended_rational_to_float(value: _nodes.ExtendedFraction) -> float:
+    match value:
+        case _nodes.Finite(value=inner):
+            return float(inner)
+        case _nodes.PosInfinity():
+            return float("inf")
+        case _nodes.NegInfinity():
+            return float("-inf")
+        case _:
+            raise ValueError(f"Unknown extended rational type: {type(value)}")
+
+
 ################################################################################
 ### Interpretations of Vehicle builtins in Tensorflow
 ################################################################################
@@ -50,16 +62,18 @@ class TensorFlowBuiltins(
     @override
     def RatTensor(self, value: _nodes.Tensor) -> tf.Tensor:
         match value.value:
-            case Fraction():
+            case _nodes.ExtendedFraction():
                 # Single value - expand to tensor shape
-                float_value = float(value.value)
+                float_value = _extended_rational_to_float(value.value)
                 return _tf_constant(
                     value=float_value, dtype=self.dtype_rat, shape=value.shape
                 )
             case _:
                 # Sequence of values
                 return _tf_constant(
-                    value=tuple(float(val) for val in value.value),
+                    value=tuple(
+                        _extended_rational_to_float(val) for val in value.value
+                    ),
                     dtype=self.dtype_rat,
                     shape=value.shape,
                 )

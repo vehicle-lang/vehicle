@@ -332,9 +332,6 @@ unzipF = NonEmpty.unzip
 --------------------------------------------------------------------------------
 -- Constants
 
--- At the moment we only support rational coefficients.
-type Coefficient = Rational
-
 readNat :: Text -> Int
 readNat = read . Text.unpack
 
