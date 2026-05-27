@@ -4,7 +4,7 @@
 
 ### Loss backend
 
-* Declaration flag can now be used to specify non-property declarations that will also be compiled with the chosed DL to a callable function.
+* `--declaration` now accepts non-property declarations and restricts output to exactly the names listed.
 
 * Fixed a bug where the compiler was erroring on some uses of `forall` for indices.
 * Fixed a bug where networks were recursively unblocked without changes. Backends now control when recursive unblocking happens.

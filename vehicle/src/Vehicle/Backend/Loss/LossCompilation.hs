@@ -2,11 +2,17 @@ module Vehicle.Backend.Loss.LossCompilation
   ( convertType,
     convertFunction,
     convertRatTensor,
+    convertNatValue,
+    convertIndexValue,
+    convertNatTensor,
+    convertIndexTensor,
+    convertListValue,
     convertDims,
     convertBoundVar,
     convertVecLiteralArgs,
     convertVecForeachArgs,
     convertBoolTensorLiteral,
+    convertClosure,
     convertNatComparison,
     convertIndexComparison,
     convertRatTensorPointwiseComparison,
@@ -60,9 +66,13 @@ convertType typ = logConversion typ $ case toTypeValue typ of
   VBoolType -> convertBoolType
   VBoundTypeVar lv spine -> convertBoundVar lv spine
   VRatType -> return IRatType
-  VIndexType n -> IIndexType <$> convertDim n
+  -- Bound dropped: loss IR `IndexType` is 0-ary at the JSON layer.
+  VIndexType _n -> return $ VBuiltin (LossBuiltinType IndexType) mempty
   VNatType -> return INatType
-  VListType tElem -> IListType <$> convertType tElem
+  -- Loss IR `ListType` is 0-ary (treated as list of dimensions); only Nat fits.
+  VListType tElem -> case toTypeValue tElem of
+    VNatType -> return $ VBuiltin (LossBuiltinType ListType) mempty
+    _ -> unsupportedOperation $ "List with non-Nat element type:" <+> prettyVerbose tElem
   VVectorType {} -> unsupportedOperation "VectorType"
   VBoolTensorType ds -> ITensorType <$> convertBoolType <*> convertDims ds
   VRatTensorType ds -> ITensorType IRatType <$> convertDims ds
@@ -227,8 +237,18 @@ convertRatTensorPointwiseComparison (op, args) = do
   convertLogicField (comparisonOpToField op) args'
 
 convertRatTensorReducedComparison :: (MonadLogic m) => (ComparisonOp, TensorReduceComparisonArgs (Value Builtin)) -> m (Value LossBuiltin)
-convertRatTensorReducedComparison (op, args) =
-  unsupportedOperation $ "RatTensorCompareReduced" <+> pretty op <+> prettyVerbose (mkExpr accessSpine args)
+convertRatTensorReducedComparison (op, TensorReduceComparisonArgs d ds e1 e2) = do
+  let fullDims = IDimCons d ds
+  pointwiseArgs <- convertTensorOp2 convertRatTensor (TensorOp2Args fullDims e1 e2)
+  pointwise <- convertLogicField (comparisonOpToField op) pointwiseArgs
+  fullDims' <- convertDims fullDims
+  case op of
+    Ne -> do
+      falseId <- getLogicField FalsityElement
+      convertReduceOr (TensorReductionArgs fullDims' falseId pointwise)
+    _ -> do
+      trueId <- getLogicField TruthityElement
+      convertReduceAnd (TensorReductionArgs fullDims' trueId pointwise)
 
 convertIf ::
   (MonadLogic m) =>
@@ -259,6 +279,66 @@ convertIndex value = logConversion value $ case toIndexValue value of
   VIndexLiteral i dim -> IIndexLiteral i <$> convertDim dim
   VIndexBoundVar v spine -> convertBoundVar v spine
   VIndexIf args -> convertIf args
+
+convertNatValue ::
+  (MonadLogic m) =>
+  Value Builtin ->
+  m (Value LossBuiltin)
+convertNatValue = convertDim
+
+convertIndexValue ::
+  (MonadLogic m) =>
+  Value Builtin ->
+  m (Value LossBuiltin)
+convertIndexValue = convertIndex
+
+convertNatTensor ::
+  (MonadLogic m) =>
+  Value Builtin ->
+  m (Value LossBuiltin)
+convertNatTensor value = logConversion value $ case value of
+  VBoundVar lv [] -> convertBoundVar lv mempty
+  VFreeVar name [] -> return $ VFreeVar name []
+  VFreeVar name spine -> convertFreeVar name spine
+  INatTensor t -> return $ mkExpr accessNatTensorLiteral t
+  (getExpr accessConstTensor -> Just args) -> convertConstTensor convertNatValue args
+  (getExpr accessStackTensor -> Just args) -> convertStackTensor convertNatValue args
+  (getExpr accessAtTensor -> Just args) -> convertAtTensor convertNatTensor args
+  (getExpr accessForeachTensor -> Just args) -> convertForeachTensor convertNatValue args
+  _ -> unsupportedOperation $ "Tensor Nat value:" <+> prettyVerbose value
+
+convertIndexTensor ::
+  (MonadLogic m) =>
+  Value Builtin ->
+  m (Value LossBuiltin)
+convertIndexTensor value = logConversion value $ case value of
+  VBoundVar lv [] -> convertBoundVar lv mempty
+  VFreeVar name [] -> return $ VFreeVar name []
+  VFreeVar name spine -> convertFreeVar name spine
+  (getExpr accessConstTensor -> Just args) -> convertConstTensor convertIndexValue args
+  (getExpr accessStackTensor -> Just args) -> convertStackTensor convertIndexValue args
+  (getExpr accessAtTensor -> Just args) -> convertAtTensor convertIndexTensor args
+  (getExpr accessForeachTensor -> Just args) -> convertForeachTensor convertIndexValue args
+  _ -> unsupportedOperation $ "Tensor Index value:" <+> prettyVerbose value
+
+convertListValue ::
+  (MonadLogic m) =>
+  (Value Builtin -> m (Value LossBuiltin)) ->
+  Value Builtin ->
+  m (Value LossBuiltin)
+convertListValue convertElem value = logConversion value $ case value of
+  VBoundVar lv [] -> convertBoundVar lv mempty
+  VFreeVar name [] -> return $ VFreeVar name []
+  VFreeVar name spine -> convertFreeVar name spine
+  (getExpr accessNil -> Just (NilArgs t)) -> do
+    t' <- convertType t
+    return $ mkExpr accessNil (NilArgs t')
+  (getExpr accessCons -> Just (ConsArgs t x xs)) -> do
+    t' <- convertType t
+    x' <- convertElem x
+    xs' <- convertListValue convertElem xs
+    return $ mkExpr accessCons (ConsArgs t' x' xs')
+  _ -> unsupportedOperation $ "List value:" <+> prettyVerbose value
 
 --------------------------------------------------------------------------------
 -- Rat

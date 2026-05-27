@@ -155,7 +155,8 @@ compileToLossFunction ::
   m ()
 compileToLossFunction LossOptions {..} typedProg outputAsJSON =
   logCompilerPass Loss $ do
-    lossTensorProg <- convertToLossTensors differentiableLogicID (Set.fromList declarationsToCompile) typedProg
+    let requestedDecls = Set.fromList declarationsToCompile
+    lossTensorProg <- convertToLossTensors differentiableLogicID requestedDecls typedProg
     hoistedProg <- hoistInferableParameters lossTensorProg
     functionalisedProg <- functionaliseResources hoistedProg
     jsonProg <- convertToJSONProg functionalisedProg
